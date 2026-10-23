@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { API_PREFIX, CreateLinkPreview, type LinkPreview } from '@inkadra/shared';
 import type { FastifyInstance } from 'fastify';
 import { Parser } from 'htmlparser2';
-import { requireProjectRole } from '../access.ts';
+import { requireWriteAccess } from '../access.ts';
 import type { Auth } from '../auth.ts';
 import type { Database } from '../db/client.ts';
 import { asset } from '../db/schema.ts';
@@ -105,9 +105,9 @@ export function registerLinkPreviews(app: FastifyInstance, deps: Deps) {
   const allowAddresses = deps.allowAddresses ?? [];
 
   app.post(`${API_PREFIX}/link-previews`, async (req) => {
-    const actor = await requireActor(auth, req);
+    const actor = await requireActor(auth, req, db);
     const input = CreateLinkPreview.parse(req.body);
-    await requireProjectRole(db, actor, input.projectId, 'editor');
+    await requireWriteAccess(db, actor, input.projectId, input.boardId);
     if (!limiter.take(actor.id))
       throw new HttpError('rate_limited', 'Too many link previews: wait a minute.');
 

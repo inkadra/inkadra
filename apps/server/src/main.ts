@@ -9,6 +9,7 @@ import { loadConfig, VERSION } from './config.ts';
 import { createDatabase, runMigrations } from './db/client.ts';
 import { createApp } from './http/app.ts';
 import type { Jobs } from './jobs.ts';
+import { createMailer } from './mailer.ts';
 import { createQueues, inlineJobs, startWorkers } from './queues.ts';
 import { createStorage } from './storage.ts';
 
@@ -37,7 +38,8 @@ async function main() {
   }
 
   const { db, sql } = createDatabase(config.DATABASE_URL);
-  const auth = createAuth(config, db);
+  const mailer = createMailer(config, log);
+  const auth = createAuth(config, db, { mailer, log });
   const storage = createStorage(config);
   const tmpDir = join(config.DATA_DIR, 'tmp');
   await mkdir(tmpDir, { recursive: true });
@@ -88,6 +90,7 @@ async function main() {
       log,
       storage,
       jobs,
+      mailer,
       pingQueue,
     });
     if (collab) {

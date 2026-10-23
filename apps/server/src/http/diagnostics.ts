@@ -46,7 +46,7 @@ export function registerDiagnostics(app: FastifyInstance, deps: Deps) {
       throw new HttpError('rate_limited', 'Too many checks: wait a minute.');
     const setup = (await countUsers(db)) === 0;
     if (!setup) {
-      const actor = await requireActor(auth, req);
+      const actor = await requireActor(auth, req, db);
       if (actor.role !== 'admin')
         throw new HttpError('forbidden', 'Only administrators can see the diagnostics.');
     }

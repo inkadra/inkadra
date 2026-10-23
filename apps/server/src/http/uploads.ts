@@ -4,7 +4,7 @@ import { API_PREFIX, type AssetKind, Id, UploadMetadata } from '@inkadra/shared'
 import { Server as TusServer } from '@tus/server';
 import { eq } from 'drizzle-orm';
 import type { FastifyInstance, FastifyRequest } from 'fastify';
-import { type Actor, requireAssetRole, requireProjectRole } from '../access.ts';
+import { type Actor, requireAssetRole, requireWriteAccess } from '../access.ts';
 import type { Auth } from '../auth.ts';
 import type { Database } from '../db/client.ts';
 import { asset } from '../db/schema.ts';
@@ -78,10 +78,13 @@ export function registerUploads(app: FastifyInstance, deps: Deps) {
       if (!meta.success)
         throw tusError(400, 'Upload-Metadata needs projectId, filename and filetype.');
       try {
-        await requireProjectRole(db, ctx.actor, meta.data.projectId, 'editor');
+        await requireWriteAccess(db, ctx.actor, meta.data.projectId, meta.data.boardId);
       } catch (err) {
         if (err instanceof HttpError)
-          throw tusError(err.code === 'forbidden' ? 403 : 404, err.message);
+          throw tusError(
+            err.code === 'forbidden' ? 403 : err.code === 'bad_request' ? 400 : 404,
+            err.message,
+          );
         throw err;
       }
       const { filename, filetype, projectId } = meta.data;
@@ -113,7 +116,7 @@ export function registerUploads(app: FastifyInstance, deps: Deps) {
       reply.hijack();
       return tus.handle(req.raw, reply.raw);
     }
-    const actor = await requireActor(auth, req);
+    const actor = await requireActor(auth, req, db);
     let assetId: string;
     if (req.method === 'POST') {
       assetId = randomUUID();

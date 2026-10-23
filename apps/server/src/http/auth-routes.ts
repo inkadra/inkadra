@@ -2,6 +2,8 @@ import { AUTH_PREFIX } from '@inkadra/shared';
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import type { Actor } from '../access.ts';
 import { type Auth, CLIENT_IP_HEADER } from '../auth.ts';
+import type { Database } from '../db/client.ts';
+import { actorFromToken, bearerToken } from '../tokens.ts';
 import { HttpError } from './errors.ts';
 
 export function toHeaders(req: FastifyRequest): Headers {
@@ -39,9 +41,28 @@ export function registerAuthRoutes(app: FastifyInstance, auth: Auth, publicUrl: 
   });
 }
 
-export async function requireActor(auth: Auth, req: FastifyRequest): Promise<Actor> {
+/**
+ * The signed-in person: a bearer token (`Authorization: Bearer ink_…`) or the session cookie.
+ * Better Auth's own endpoints only accept the cookie.
+ */
+export async function requireActor(auth: Auth, req: FastifyRequest, db: Database): Promise<Actor> {
+  const token = bearerToken(req.headers.authorization);
+  if (token) {
+    const actor = await actorFromToken(db, token);
+    if (!actor) throw new HttpError('unauthorized', 'The token is not valid any more.');
+    return actor;
+  }
   const session = await auth.api.getSession({ headers: toHeaders(req) });
   if (!session) throw new HttpError('unauthorized', 'Sign in to continue.');
   const role = (session.user as { role?: string }).role === 'admin' ? 'admin' : 'member';
   return { id: session.user.id, role };
+}
+
+/** Like requireActor, for account-level actions that a token must not do. */
+export async function requireSession(auth: Auth, req: FastifyRequest) {
+  if (bearerToken(req.headers.authorization))
+    throw new HttpError('forbidden', 'Not available with a token. Sign in on the web.');
+  const session = await auth.api.getSession({ headers: toHeaders(req) });
+  if (!session) throw new HttpError('unauthorized', 'Sign in to continue.');
+  return session;
 }

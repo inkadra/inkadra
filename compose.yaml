@@ -30,6 +30,19 @@ services:
       STORAGE_DRIVER: ${STORAGE_DRIVER:-local}
       UPLOAD_MAX_SIZE: ${UPLOAD_MAX_SIZE:-20GB}
       HEIC_PREVIEWS: ${HEIC_PREVIEWS:-true}
+      # Sign-in with Google, an OIDC provider, email (see docs/self-hosting/sign-in.md)
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      GOOGLE_ALLOWED_DOMAINS: ${GOOGLE_ALLOWED_DOMAINS:-}
+      OIDC_NAME: ${OIDC_NAME:-SSO}
+      OIDC_DISCOVERY_URL: ${OIDC_DISCOVERY_URL:-}
+      OIDC_CLIENT_ID: ${OIDC_CLIENT_ID:-}
+      OIDC_CLIENT_SECRET: ${OIDC_CLIENT_SECRET:-}
+      OIDC_SCOPES: ${OIDC_SCOPES:-openid email profile}
+      OIDC_TRUST_EMAIL: ${OIDC_TRUST_EMAIL:-false}
+      SMTP_URL: ${SMTP_URL:-}
+      MAIL_FROM: ${MAIL_FROM:-}
+      CLIPPER_EXTENSION_IDS: ${CLIPPER_EXTENSION_IDS:-}
     volumes:
       # A named volume by default. Set INKADRA_DATA to a host folder to keep uploads on a disk
       # or dataset of your choice: at startup it is given to uid 1000, the user Inkadra runs as.

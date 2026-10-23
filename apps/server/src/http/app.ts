@@ -8,7 +8,9 @@ import type { Auth } from '../auth.ts';
 import type { Config } from '../config.ts';
 import type { Database } from '../db/client.ts';
 import type { Jobs } from '../jobs.ts';
+import { type Mailer, noMailer } from '../mailer.ts';
 import type { Storage } from '../storage.ts';
+import { registerAccountRoutes } from './account-routes.ts';
 import { registerApiRoutes } from './api-routes.ts';
 import { registerAssetRoutes } from './assets-routes.ts';
 import { registerAuthRoutes } from './auth-routes.ts';
@@ -17,6 +19,7 @@ import { registerDiagnostics } from './diagnostics.ts';
 import { errorHandler, sendError } from './errors.ts';
 import { registerLinkPreviews } from './link-previews.ts';
 import { registerProjectRoutes } from './projects-routes.ts';
+import { registerSharingRoutes } from './sharing-routes.ts';
 import { registerUploads } from './uploads.ts';
 
 export interface AppDeps {
@@ -26,6 +29,8 @@ export interface AppDeps {
   log: Logger;
   storage: Storage;
   jobs: Jobs;
+  /** Off when omitted (no SMTP). */
+  mailer?: Mailer;
   pingQueue?: () => Promise<boolean>;
   /** Tests only: addresses link previews may fetch besides public ones. */
   allowAddresses?: string[];
@@ -49,7 +54,10 @@ export async function createApp(deps: AppDeps) {
   });
 
   registerAuthRoutes(app, deps.auth, config.PUBLIC_URL);
-  registerApiRoutes(app, deps);
+  const mailer = deps.mailer ?? noMailer;
+  registerApiRoutes(app, { ...deps, mailer });
+  registerAccountRoutes(app, deps);
+  registerSharingRoutes(app, { ...deps, mailer });
   registerProjectRoutes(app, deps);
   registerBoardRoutes(app, deps);
   registerAssetRoutes(app, deps);
