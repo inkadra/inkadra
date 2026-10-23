@@ -8,6 +8,13 @@
       "when": 1792747352336,
       "tag": "0000_init",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1792767823459,
+      "tag": "0001_collab_and_access",
+      "breakpoints": true
     }
   ]
 }

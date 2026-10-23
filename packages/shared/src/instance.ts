@@ -29,7 +29,15 @@ export const Instance = z
     auth: z.object({
       emailPassword: z.boolean(),
       google: z.boolean(),
-      oidc: z.array(z.object({ id: z.string(), name: z.string() })),
+      oidc: z.array(z.object({ id: z.string(), name: z.string() })).openapi({
+        description: 'Sign in with `POST /api/auth/sign-in/oauth2` and `providerId: id`.',
+      }),
+      magicLink: z.boolean().openapi({
+        description: 'Sign-in links by email. Needs SMTP, so it is false without it.',
+      }),
+      email: z.boolean().openapi({
+        description: 'The instance can send email (invitations, sign-in links).',
+      }),
     }),
     collabPath: z.string().openapi({ example: '/collab' }),
     limits: z.object({

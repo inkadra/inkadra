@@ -33,6 +33,7 @@ function toUser(row: typeof user.$inferSelect): User {
     image: row.image,
     role: row.role,
     locale: row.locale,
+    twoFactorEnabled: row.twoFactorEnabled,
     createdAt: iso(row.createdAt),
   };
 }
@@ -68,7 +69,7 @@ export function registerApiRoutes(app: FastifyInstance, deps: Deps) {
       publicUrl: config.PUBLIC_URL,
       setupRequired: users === 0,
       registration: users === 0 ? 'first-user' : config.REGISTRATION,
-      auth: { emailPassword: true, google: false, oidc: [] },
+      auth: { emailPassword: true, google: false, oidc: [], magicLink: false, email: false },
       collabPath: COLLAB_PATH,
       limits: { uploadMaxBytes: config.UPLOAD_MAX_SIZE },
       serverTime: new Date().toISOString(),
