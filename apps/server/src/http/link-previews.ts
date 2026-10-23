@@ -80,8 +80,8 @@ export function readPageMeta(html: string, pageUrl: string): PageMeta {
   };
 }
 
-/** A few previews a minute per person: each one makes the server fetch two URLs. */
-class RateLimiter {
+/** At most `max` calls per key in a sliding window. */
+export class RateLimiter {
   private hits = new Map<string, number[]>();
   constructor(
     private readonly max: number,
@@ -100,6 +100,7 @@ class RateLimiter {
 
 export function registerLinkPreviews(app: FastifyInstance, deps: Deps) {
   const { db, auth, storage, jobs } = deps;
+  // A few previews a minute per person: each one makes the server fetch two URLs.
   const limiter = new RateLimiter(20, 60_000);
   const allowAddresses = deps.allowAddresses ?? [];
 

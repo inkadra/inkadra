@@ -23,7 +23,8 @@
       "closed": "La registrazione è chiusa. Chiedi un invito all’amministratore.",
       "password": "La password deve avere almeno 10 caratteri.",
       "generic": "Qualcosa è andato storto. Riprova."
-    }
+    },
+    "diagnostics": "Problemi di configurazione? Apri la diagnostica"
   },
   "nav": {
     "modules": "Moduli",
@@ -73,5 +74,76 @@
   "notFound": {
     "title": "Pagina non trovata",
     "back": "Torna alla home"
+  },
+  "diagnostics": {
+    "title": "Diagnostica dell’istanza",
+    "subtitle": "Controlla proxy, indirizzo pubblico, database e archiviazione.",
+    "summary": {
+      "ok": "Tutto a posto: l’istanza è configurata correttamente.",
+      "warning": "Funziona, ma qualcosa va sistemato.",
+      "error": "Qualcosa non funziona: segui le indicazioni qui sotto."
+    },
+    "status": {
+      "ok": "OK",
+      "warning": "Attenzione",
+      "error": "Errore"
+    },
+    "checks": {
+      "browser_origin": {
+        "title": "Indirizzo nel browser",
+        "fix": "Apri Inkadra dall’indirizzo impostato in PUBLIC_URL, oppure correggi PUBLIC_URL."
+      },
+      "websocket": {
+        "title": "Collaborazione in tempo reale (WebSocket)",
+        "fix": "Il proxy deve inoltrare le richieste WebSocket su /collab, con gli header Upgrade e Connection."
+      },
+      "public_url_https": {
+        "title": "PUBLIC_URL usa HTTPS",
+        "fix": "Fuori da localhost usa un indirizzo https://: i cookie di accesso sono sicuri solo su HTTPS."
+      },
+      "public_url_matches_request": {
+        "title": "Il server vede l’indirizzo pubblico",
+        "fix": "Il proxy deve inviare X-Forwarded-Proto e Host, e TRUST_PROXY deve includere l’indirizzo del proxy."
+      },
+      "proxy_trusted": {
+        "title": "Proxy riconosciuto",
+        "fix": "Aggiungi a TRUST_PROXY l’indirizzo da cui arriva il proxy (l’indirizzo del peer)."
+      },
+      "database": {
+        "title": "Database",
+        "fix": "Controlla DATABASE_URL e che Postgres sia avviato."
+      },
+      "queue": {
+        "title": "Coda dei lavori (Valkey)",
+        "fix": "Controlla REDIS_URL e che Valkey sia avviato."
+      },
+      "data_dir_writable": {
+        "title": "Cartella dati scrivibile",
+        "fix": "La cartella DATA_DIR deve essere scrivibile dall’utente del container (uid 1000)."
+      },
+      "storage": {
+        "title": "Archiviazione dei file",
+        "fix": "Controlla la configurazione dell’archiviazione: cartella locale o bucket S3, credenziali e permessi."
+      }
+    },
+    "expected": "Atteso",
+    "actual": "Rilevato",
+    "request": {
+      "title": "Cosa vede il server",
+      "address": "Indirizzo",
+      "clientIp": "IP del client",
+      "peer": "Connessione da",
+      "forwardedFor": "X-Forwarded-For"
+    },
+    "run": "Ripeti i controlli",
+    "running": "Controllo…",
+    "backHome": "Torna alla home",
+    "backLogin": "Torna all’accesso",
+    "docs": "Guida all’installazione:",
+    "errors": {
+      "admin": "Solo gli amministratori possono vedere la diagnostica. Accedi con un account amministratore.",
+      "rateLimited": "Troppi controlli: aspetta un minuto.",
+      "generic": "Impossibile eseguire i controlli. Riprova."
+    }
   }
 }

@@ -13,6 +13,7 @@ import { registerApiRoutes } from './api-routes.ts';
 import { registerAssetRoutes } from './assets-routes.ts';
 import { registerAuthRoutes } from './auth-routes.ts';
 import { registerBoardRoutes } from './boards-routes.ts';
+import { registerDiagnostics } from './diagnostics.ts';
 import { errorHandler, sendError } from './errors.ts';
 import { registerLinkPreviews } from './link-previews.ts';
 import { registerProjectRoutes } from './projects-routes.ts';
@@ -53,6 +54,7 @@ export async function createApp(deps: AppDeps) {
   registerBoardRoutes(app, deps);
   registerAssetRoutes(app, deps);
   registerLinkPreviews(app, deps);
+  registerDiagnostics(app, deps);
   registerUploads(app, { ...deps, uploadMaxSize: config.UPLOAD_MAX_SIZE });
 
   const webDist = config.WEB_DIST ? resolve(config.WEB_DIST) : undefined;

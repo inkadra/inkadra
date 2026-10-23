@@ -1,0 +1,121 @@
+.diagnostics {
+  position: relative;
+  width: min(560px, 100%);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.diagnostics__header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.diagnostics__title {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--ink-text-primary);
+}
+.diagnostics__subtitle {
+  margin: 2px 0 0;
+  font-size: 13px;
+}
+.diagnostics__summary {
+  margin: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--ink-border-default);
+  border-radius: 8px;
+  background: var(--ink-surface-1);
+  font-size: 13px;
+  color: var(--ink-text-primary);
+}
+.diagnostics__summary--error {
+  border-color: var(--ink-danger-border);
+  background: var(--ink-danger-bg);
+  color: var(--ink-danger-fg);
+}
+.diagnostics__list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border: 1px solid var(--ink-border-default);
+  border-radius: 8px;
+  background: var(--ink-surface-1);
+}
+.diagnostics__item {
+  display: flex;
+  gap: 10px;
+  padding: 10px 12px;
+}
+.diagnostics__item + .diagnostics__item {
+  border-top: 1px solid var(--ink-border-subtle);
+}
+.diagnostics__dot {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  margin-top: 6px;
+  border-radius: 50%;
+}
+.diagnostics__dot--ok {
+  background: var(--ink-status-ok);
+}
+.diagnostics__dot--warning {
+  background: var(--ink-status-warn);
+}
+.diagnostics__dot--error {
+  background: var(--ink-status-danger);
+}
+.diagnostics__body {
+  min-width: 0;
+  flex: 1;
+}
+.diagnostics__name {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0;
+  font-size: 13px;
+  color: var(--ink-text-primary);
+}
+.diagnostics__status {
+  flex: none;
+  font-size: 12px;
+  color: var(--ink-text-muted);
+}
+.diagnostics__hint {
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: var(--ink-text-secondary);
+}
+.diagnostics__values {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 2px 12px;
+  margin: 6px 0 0;
+  font-size: 12px;
+}
+.diagnostics__values dt {
+  color: var(--ink-text-muted);
+}
+.diagnostics__values dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  color: var(--ink-text-secondary);
+}
+.diagnostics__request h2 {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink-text-primary);
+}
+.diagnostics__actions {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.diagnostics__back {
+  font-size: 13px;
+  color: var(--ink-text-secondary);
+}

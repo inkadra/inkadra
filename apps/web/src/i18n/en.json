@@ -23,7 +23,8 @@
       "closed": "Registration is closed. Ask your administrator for an invitation.",
       "password": "The password needs at least 10 characters.",
       "generic": "Something went wrong. Try again."
-    }
+    },
+    "diagnostics": "Setup problems? Open the diagnostics"
   },
   "nav": {
     "modules": "Modules",
@@ -73,5 +74,76 @@
   "notFound": {
     "title": "Page not found",
     "back": "Back to home"
+  },
+  "diagnostics": {
+    "title": "Instance diagnostics",
+    "subtitle": "Checks the proxy, public address, database and storage.",
+    "summary": {
+      "ok": "All good: the instance is set up correctly.",
+      "warning": "It works, but something needs fixing.",
+      "error": "Something is not working: follow the hints below."
+    },
+    "status": {
+      "ok": "OK",
+      "warning": "Warning",
+      "error": "Error"
+    },
+    "checks": {
+      "browser_origin": {
+        "title": "Address in the browser",
+        "fix": "Open Inkadra from the address set in PUBLIC_URL, or fix PUBLIC_URL."
+      },
+      "websocket": {
+        "title": "Real-time collaboration (WebSocket)",
+        "fix": "The proxy must forward WebSocket requests on /collab, with the Upgrade and Connection headers."
+      },
+      "public_url_https": {
+        "title": "PUBLIC_URL uses HTTPS",
+        "fix": "Outside localhost use an https:// address: sign-in cookies are only secure over HTTPS."
+      },
+      "public_url_matches_request": {
+        "title": "The server sees the public address",
+        "fix": "The proxy must send X-Forwarded-Proto and Host, and TRUST_PROXY must include the proxy’s address."
+      },
+      "proxy_trusted": {
+        "title": "Proxy trusted",
+        "fix": "Add the address the proxy connects from (the peer address) to TRUST_PROXY."
+      },
+      "database": {
+        "title": "Database",
+        "fix": "Check DATABASE_URL and that Postgres is running."
+      },
+      "queue": {
+        "title": "Job queue (Valkey)",
+        "fix": "Check REDIS_URL and that Valkey is running."
+      },
+      "data_dir_writable": {
+        "title": "Data folder writable",
+        "fix": "DATA_DIR must be writable by the container user (uid 1000)."
+      },
+      "storage": {
+        "title": "File storage",
+        "fix": "Check the storage settings: local folder or S3 bucket, credentials and permissions."
+      }
+    },
+    "expected": "Expected",
+    "actual": "Found",
+    "request": {
+      "title": "What the server sees",
+      "address": "Address",
+      "clientIp": "Client IP",
+      "peer": "Connection from",
+      "forwardedFor": "X-Forwarded-For"
+    },
+    "run": "Run the checks again",
+    "running": "Checking…",
+    "backHome": "Back to home",
+    "backLogin": "Back to sign in",
+    "docs": "Installation guide:",
+    "errors": {
+      "admin": "Only administrators can see the diagnostics. Sign in with an administrator account.",
+      "rateLimited": "Too many checks: wait a minute.",
+      "generic": "The checks could not run. Try again."
+    }
   }
 }
