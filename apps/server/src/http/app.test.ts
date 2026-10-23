@@ -23,7 +23,7 @@ describe.skipIf(!url)('http api (needs DATABASE_URL)', () => {
 
   beforeAll(async () => {
     await runMigrations(config.DATABASE_URL, migrationsFolder);
-    await db.execute(sql`truncate table "user", project cascade`);
+    await db.execute(sql`truncate table "user", project, instance_setting cascade`);
     app = await createApp({
       config,
       db,
@@ -58,15 +58,40 @@ describe.skipIf(!url)('http api (needs DATABASE_URL)', () => {
     });
   });
 
-  it('makes the first account administrator and closes registration', async () => {
-    const first = await signUp('giulia@example.com');
-    expect(first.statusCode).toBe(200);
+  it('makes exactly one first account administrator, even under a race', async () => {
+    const attempts = await Promise.all(
+      ['giulia@example.com', 'race-1@example.com', 'race-2@example.com'].map(signUp),
+    );
+    const ok = attempts.filter((r) => r.statusCode === 200);
+    expect(ok).toHaveLength(1);
+    expect(attempts.filter((r) => r.statusCode === 403)).toHaveLength(2);
+    const first = ok[0]!;
     expect(first.json().user.role).toBe('admin');
-    cookie = String(first.headers['set-cookie']).split(';')[0] ?? '';
+    // Sign in as the winner, whichever address it used.
+    const signIn = await app.inject({
+      method: 'POST',
+      url: '/api/auth/sign-in/email',
+      headers: { origin: config.PUBLIC_URL },
+      payload: { email: first.json().user.email, password: 'correct-horse-battery' },
+    });
+    cookie = String(signIn.headers['set-cookie']).split(';')[0] ?? '';
+  });
 
+  it('closes registration after the first account', async () => {
     const second = await signUp('other@example.com');
     expect(second.statusCode).toBe(403);
     expect((await app.inject('/api/v1/instance')).json().registration).toBe('invite');
+  });
+
+  it('ignores an empty profile update', async () => {
+    const res = await app.inject({
+      method: 'PATCH',
+      url: '/api/v1/me',
+      headers: { cookie },
+      payload: {},
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().role).toBe('admin');
   });
 
   it('rejects anonymous requests with the error contract', async () => {
@@ -79,7 +104,7 @@ describe.skipIf(!url)('http api (needs DATABASE_URL)', () => {
 
   it('returns the signed-in user', async () => {
     const res = await app.inject({ url: '/api/v1/me', headers: { cookie } });
-    expect(res.json()).toMatchObject({ email: 'giulia@example.com', role: 'admin' });
+    expect(res.json()).toMatchObject({ role: 'admin' });
   });
 
   it('creates projects with a root board and lists them in order', async () => {

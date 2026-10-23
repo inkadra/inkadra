@@ -2,7 +2,7 @@ import { existsSync } from 'node:fs';
 import { join, resolve, sep } from 'node:path';
 import fastifyStatic from '@fastify/static';
 import { API_PREFIX, AUTH_PREFIX, COLLAB_PATH } from '@inkadra/shared';
-import Fastify, { type FastifyBaseLogger } from 'fastify';
+import Fastify, { type FastifyBaseLogger, type FastifyServerOptions } from 'fastify';
 import type { Logger } from 'pino';
 import type { Auth } from '../auth.ts';
 import type { Config } from '../config.ts';
@@ -21,11 +21,12 @@ export interface AppDeps {
 
 export async function createApp(deps: AppDeps) {
   const { config } = deps;
-  const app = Fastify({
+  const options: FastifyServerOptions = {
     loggerInstance: deps.log as FastifyBaseLogger,
     trustProxy: config.TRUST_PROXY,
     bodyLimit: 2 * 1024 * 1024,
-  });
+  };
+  const app = Fastify(options);
 
   app.setErrorHandler(errorHandler);
 

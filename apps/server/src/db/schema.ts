@@ -101,6 +101,15 @@ export const verification = pgTable(
   (t) => [index('verification_identifier_idx').on(t.identifier)],
 );
 
+// Instance -------------------------------------------------------------------
+
+/** Instance-wide settings and one-time markers (key `setup`: the first account was claimed). */
+export const instanceSetting = pgTable('instance_setting', {
+  key: text('key').primaryKey(),
+  value: jsonb('value').$type<Record<string, unknown>>().notNull(),
+  updatedAt: updatedAt(),
+});
+
 // Projects, boards, permissions ---------------------------------------------
 
 const roleEnum = ['owner', 'editor', 'commenter', 'viewer'] as const;

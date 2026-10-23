@@ -13,10 +13,15 @@ const Env = z.object({
   COLLAB_PORT: z.coerce.number().int().default(3001),
   DATA_DIR: z.string().default('/data'),
   WEB_DIST: z.string().optional(),
+  /**
+   * Which peers may set X-Forwarded-For: `false`, or a comma-separated list of addresses,
+   * CIDRs or the presets `loopback`, `linklocal`, `uniquelocal` (private networks, where a
+   * reverse proxy normally sits). `true` trusts everyone and lets clients pick their address.
+   */
   TRUST_PROXY: z
     .string()
-    .default('true')
-    .transform((v) => v === 'true' || v === '1'),
+    .default('loopback,linklocal,uniquelocal')
+    .transform((v): boolean | string => (v === 'true' || v === 'false' ? v === 'true' : v)),
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace']).default('info'),
 });
 

@@ -1,15 +1,16 @@
 import { AUTH_PREFIX } from '@inkadra/shared';
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import type { Actor } from '../access.ts';
-import type { Auth } from '../auth.ts';
+import { type Auth, CLIENT_IP_HEADER } from '../auth.ts';
 import { HttpError } from './errors.ts';
 
 export function toHeaders(req: FastifyRequest): Headers {
   const headers = new Headers();
   for (const [key, value] of Object.entries(req.headers)) {
-    if (value === undefined) continue;
+    if (value === undefined || key === CLIENT_IP_HEADER) continue;
     headers.set(key, Array.isArray(value) ? value.join(', ') : value);
   }
+  headers.set(CLIENT_IP_HEADER, req.ip);
   return headers;
 }
 

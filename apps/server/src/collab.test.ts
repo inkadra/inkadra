@@ -27,7 +27,7 @@ describe.skipIf(!url)('collab (needs DATABASE_URL)', () => {
   const log = pino({ level: 'silent' });
   const { db, sql: client } = createDatabase(config.DATABASE_URL, 2);
   const auth = createAuth(config, db);
-  const collab = createCollabServer({ db, auth, log });
+  const collab = createCollabServer({ db, auth, log, publicUrl: config.PUBLIC_URL });
   let app: Awaited<ReturnType<typeof createApp>>;
   let base = '';
   let cookie = '';
@@ -35,7 +35,7 @@ describe.skipIf(!url)('collab (needs DATABASE_URL)', () => {
 
   beforeAll(async () => {
     await runMigrations(config.DATABASE_URL, migrationsFolder);
-    await db.execute(sql`truncate table "user", project cascade`);
+    await db.execute(sql`truncate table "user", project, instance_setting cascade`);
     app = await createApp({ config, db, auth, log });
     attachCollab(app.server, collab);
     await app.listen({ host: '127.0.0.1', port: 0 });
@@ -62,10 +62,13 @@ describe.skipIf(!url)('collab (needs DATABASE_URL)', () => {
     await client.end();
   });
 
-  function connect(withCookie: string) {
+  function connect(withCookie: string, origin?: string) {
     class CookieSocket extends WebSocket {
       constructor(address: string, protocols?: string | string[]) {
-        super(address, protocols, { headers: { cookie: withCookie } });
+        super(address, protocols, {
+          headers: { cookie: withCookie },
+          ...(origin ? { origin } : {}),
+        });
       }
     }
     const doc = new Y.Doc();
@@ -121,8 +124,11 @@ describe.skipIf(!url)('collab (needs DATABASE_URL)', () => {
       .toBe(1);
   });
 
-  it('refuses anonymous connections', async () => {
-    const c = connect('');
+  it.each([
+    ['anonymous connections', '', undefined],
+    ['other origins', 'COOKIE', 'https://evil.example.com'],
+  ])('refuses %s', async (_label, withCookie, origin) => {
+    const c = connect(withCookie === 'COOKIE' ? cookie : withCookie, origin);
     const failed = await new Promise<boolean>((resolve) => {
       c.provider.on('authenticationFailed', () => resolve(true));
       setTimeout(() => resolve(false), 4000);

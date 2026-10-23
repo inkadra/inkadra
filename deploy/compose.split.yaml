@@ -13,7 +13,7 @@ services:
     init: true
     restart: unless-stopped
     ports:
-      - "${INKADRA_COLLAB_PORT:-3001}:3001"
+      - "${INKADRA_BIND:-127.0.0.1}:${INKADRA_COLLAB_PORT:-3001}:3001"
     environment:
       PUBLIC_URL: ${PUBLIC_URL}
       AUTH_SECRET: ${AUTH_SECRET}

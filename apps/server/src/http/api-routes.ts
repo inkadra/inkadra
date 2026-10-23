@@ -106,8 +106,11 @@ export function registerApiRoutes(app: FastifyInstance, deps: Deps) {
 
   app.patch(v1('/me'), async (req) => {
     const actor = await requireActor(auth, req);
-    const patch = UpdateMe.parse(req.body);
-    const [row] = await db.update(user).set(patch).where(eq(user.id, actor.id)).returning();
+    const patch = UpdateMe.parse(req.body ?? {});
+    const [row] =
+      Object.keys(patch).length === 0
+        ? await db.select().from(user).where(eq(user.id, actor.id))
+        : await db.update(user).set(patch).where(eq(user.id, actor.id)).returning();
     if (!row) throw new HttpError('unauthorized', 'Sign in to continue.');
     return toUser(row);
   });
