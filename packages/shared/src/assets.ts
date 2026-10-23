@@ -15,7 +15,9 @@ export const AssetVariant = z
     size: ThumbnailSize,
     width: z.int(),
     height: z.int(),
-    url: z.string(),
+    url: z.string().openapi({
+      description: 'Same-origin path, `/api/v1/assets/{assetId}/variants/{size}`.',
+    }),
   })
   .openapi('AssetVariant');
 
@@ -32,11 +34,19 @@ export const Asset = z
     height: z.int().nullable(),
     durationMs: z.int().nullable(),
     status: AssetStatus,
-    url: z
-      .string()
-      .openapi({ description: 'Original file, served with the session cookie or token.' }),
-    variants: z.array(AssetVariant),
-    exif: z.record(z.string(), z.unknown()).nullable(),
+    url: z.string().openapi({
+      description:
+        'Original file, served with the session cookie or token: same-origin path ' +
+        '`/api/v1/assets/{assetId}/file`.',
+    }),
+    variants: z.array(AssetVariant).openapi({
+      description:
+        'WebP thumbnails, smallest first, empty until `status` is `ready`. Sizes wider than ' +
+        'the original are skipped.',
+    }),
+    exif: z.record(z.string(), z.unknown()).nullable().openapi({
+      description: 'Camera and exposure data. Location (GPS) fields are never stored.',
+    }),
     palette: z.array(z.string().regex(/^#[0-9A-F]{6}$/)).nullable(),
     sourceUrl: z.url().nullable(),
     createdAt: Timestamp,
@@ -56,3 +66,27 @@ export const UploadMetadata = z
   })
   .openapi('UploadMetadata');
 export type UploadMetadata = z.infer<typeof UploadMetadata>;
+
+export const VariantParams = z.object({ assetId: Id, size: ThumbnailSize });
+
+/** Body of POST /api/v1/link-previews. */
+export const CreateLinkPreview = z
+  .object({
+    projectId: Id.openapi({ description: 'Project that will own the preview image asset.' }),
+    url: z.url({ protocol: /^https?$/ }),
+  })
+  .openapi('CreateLinkPreview');
+export type CreateLinkPreview = z.infer<typeof CreateLinkPreview>;
+
+export const LinkPreview = z
+  .object({
+    url: z.url().openapi({ description: 'Final address after redirects.' }),
+    title: z.string().max(500).nullable(),
+    description: z.string().max(2000).nullable(),
+    siteName: z.string().max(200).nullable(),
+    imageAssetId: Id.nullable().openapi({
+      description: 'Preview image (og:image) copied into the project as an asset.',
+    }),
+  })
+  .openapi('LinkPreview');
+export type LinkPreview = z.infer<typeof LinkPreview>;

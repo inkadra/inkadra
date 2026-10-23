@@ -13,6 +13,8 @@ const Env = z.object({
   COLLAB_PORT: z.coerce.number().int().default(3001),
   DATA_DIR: z.string().default('/data'),
   WEB_DIST: z.string().optional(),
+  /** Largest file an upload may have: bytes or a size such as `500MB`, `20GB`; 0 = no limit. */
+  UPLOAD_MAX_SIZE: z.string().default('20GB').transform(parseSize),
   /**
    * Which peers may set X-Forwarded-For: `false`, or a comma-separated list of addresses,
    * CIDRs or the presets `loopback`, `linklocal`, `uniquelocal` (private networks, where a
@@ -24,6 +26,26 @@ const Env = z.object({
     .transform((v): boolean | string => (v === 'true' || v === 'false' ? v === 'true' : v)),
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace']).default('info'),
 });
+
+const UNITS: Record<string, number> = {
+  '': 1,
+  B: 1,
+  K: 1024,
+  M: 1024 ** 2,
+  G: 1024 ** 3,
+  T: 1024 ** 4,
+};
+
+/** Parses `1048576`, `500MB`, `20 GB` or `2TiB` into bytes, with binary multiples. */
+export function parseSize(value: string, ctx: z.RefinementCtx): number {
+  const m = /^\s*(\d+(?:\.\d+)?)\s*([KMGT]?)(?:I?B)?\s*$/i.exec(value);
+  const unit = UNITS[m?.[2]?.toUpperCase() ?? ''];
+  if (!m || unit === undefined) {
+    ctx.addIssue({ code: 'custom', message: 'Use bytes or a size such as 500MB or 20GB' });
+    return z.NEVER;
+  }
+  return Math.floor(Number(m[1]) * unit);
+}
 
 export type Config = z.infer<typeof Env>;
 

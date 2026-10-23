@@ -92,6 +92,7 @@ export function registerApiRoutes(app: FastifyInstance, deps: Deps) {
       registration: users === 0 ? 'first-user' : config.REGISTRATION,
       auth: { emailPassword: true, google: false, oidc: [] },
       collabPath: COLLAB_PATH,
+      limits: { uploadMaxBytes: config.UPLOAD_MAX_SIZE },
       serverTime: new Date().toISOString(),
     };
     return body;

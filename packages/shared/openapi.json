@@ -184,6 +184,19 @@
             "type": "string",
             "example": "/collab"
           },
+          "limits": {
+            "type": "object",
+            "properties": {
+              "uploadMaxBytes": {
+                "type": "integer",
+                "minimum": 0,
+                "description": "Largest file an upload may have; 0 means no limit."
+              }
+            },
+            "required": [
+              "uploadMaxBytes"
+            ]
+          },
           "serverTime": {
             "type": "string",
             "format": "date-time",
@@ -198,6 +211,7 @@
           "registration",
           "auth",
           "collabPath",
+          "limits",
           "serverTime"
         ]
       },
@@ -846,20 +860,22 @@
           },
           "url": {
             "type": "string",
-            "description": "Original file, served with the session cookie or token."
+            "description": "Original file, served with the session cookie or token: same-origin path `/api/v1/assets/{assetId}/file`."
           },
           "variants": {
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/AssetVariant"
-            }
+            },
+            "description": "WebP thumbnails, smallest first, empty until `status` is `ready`. Sizes wider than the original are skipped."
           },
           "exif": {
             "type": [
               "object",
               "null"
             ],
-            "additionalProperties": {}
+            "additionalProperties": {},
+            "description": "Camera and exposure data. Location (GPS) fields are never stored."
           },
           "palette": {
             "type": [
@@ -923,13 +939,80 @@
             "type": "integer"
           },
           "url": {
-            "type": "string"
+            "type": "string",
+            "description": "Same-origin path, `/api/v1/assets/{assetId}/variants/{size}`."
           }
         },
         "required": [
           "size",
           "width",
           "height",
+          "url"
+        ]
+      },
+      "LinkPreview": {
+        "type": "object",
+        "properties": {
+          "url": {
+            "type": "string",
+            "format": "uri",
+            "description": "Final address after redirects."
+          },
+          "title": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 500
+          },
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 2000
+          },
+          "siteName": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 200
+          },
+          "imageAssetId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid",
+            "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10",
+            "description": "Preview image (og:image) copied into the project as an asset."
+          }
+        },
+        "required": [
+          "url",
+          "title",
+          "description",
+          "siteName",
+          "imageAssetId"
+        ]
+      },
+      "CreateLinkPreview": {
+        "type": "object",
+        "properties": {
+          "projectId": {
+            "type": "string",
+            "format": "uuid",
+            "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10",
+            "description": "Project that will own the preview image asset."
+          },
+          "url": {
+            "type": "string",
+            "format": "uri"
+          }
+        },
+        "required": [
+          "projectId",
           "url"
         ]
       },
@@ -2416,7 +2499,7 @@
           }
         ],
         "summary": "Start a resumable upload (tus 1.0). Continue with PATCH on the Location returned.",
-        "description": "tus creation endpoint. Send `Tus-Resumable: 1.0.0`, `Upload-Length` and `Upload-Metadata` with the base64 encoded fields of UploadMetadata. When the upload completes the response carries `Inkadra-Asset-Id`.",
+        "description": "tus creation endpoint. Send `Tus-Resumable: 1.0.0`, `Upload-Length` and `Upload-Metadata` with the base64 encoded fields of UploadMetadata. Every response about the upload, including this one, carries `Inkadra-Asset-Id`: the asset exists from the start with status `pending` and is processed once the last byte arrives. Needs `editor` on the project. Uploads left unfinished are removed after 24 hours.",
         "parameters": [
           {
             "schema": {
@@ -2451,6 +2534,224 @@
         "responses": {
           "201": {
             "description": "Upload created; Location header points to it"
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Larger than the instance limit (see Instance.limits)"
+          }
+        }
+      }
+    },
+    "/api/v1/uploads/{uploadId}": {
+      "head": {
+        "tags": [
+          "Assets"
+        ],
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Offset of a resumable upload (tus 1.0), to resume after an interruption.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10"
+            },
+            "required": true,
+            "name": "uploadId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "`Upload-Offset` and `Upload-Length` headers"
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "Assets"
+        ],
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Append bytes at `Upload-Offset` (tus 1.0, `application/offset+octet-stream`).",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10"
+            },
+            "required": true,
+            "name": "uploadId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Bytes stored; new `Upload-Offset` header"
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Assets"
+        ],
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Cancel an unfinished upload (tus termination extension).",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10"
+            },
+            "required": true,
+            "name": "uploadId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Cancelled"
           },
           "400": {
             "description": "Invalid request",
@@ -2533,6 +2834,266 @@
           },
           "400": {
             "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/assets/{assetId}/file": {
+      "get": {
+        "tags": [
+          "Assets"
+        ],
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "The original file. Supports `Range`; `?download=1` asks the browser to save it.",
+        "description": "Types a browser could run as a page (HTML, SVG, XML) are always sent as attachments, with a sandbox Content-Security-Policy.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10"
+            },
+            "required": true,
+            "name": "assetId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "1"
+              ]
+            },
+            "required": false,
+            "name": "download",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "File"
+          },
+          "206": {
+            "description": "Part of the file"
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/assets/{assetId}/variants/{size}": {
+      "get": {
+        "tags": [
+          "Assets"
+        ],
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "A WebP thumbnail, without any metadata of the original.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10"
+            },
+            "required": true,
+            "name": "assetId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "256",
+                "512",
+                "1024",
+                "2048"
+              ]
+            },
+            "required": true,
+            "name": "size",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "WebP image",
+            "content": {
+              "image/webp": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/link-previews": {
+      "post": {
+        "tags": [
+          "Assets"
+        ],
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Read title, description and image of a public web page, for a link card.",
+        "description": "The server fetches the page itself, only over http(s) on public addresses, with a size and time limit. Needs `editor` on the project. The image becomes an asset of the project.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateLinkPreview"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Preview",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LinkPreview"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid address, or the page could not be fetched",
             "content": {
               "application/json": {
                 "schema": {
