@@ -1,0 +1,28 @@
+# Nginx in front of Inkadra:
+#   docker compose -f compose.yaml -f deploy/proxy/nginx/compose.yaml up -d
+# Needs INKADRA_DOMAIN in .env and the certificate as fullchain.pem and privkey.pem in
+# NGINX_CERTS (default: ./certs next to compose.yaml), for example from certbot.
+# Split mode: add -f deploy/compose.split.yaml before this file and set
+# INKADRA_COLLAB_UPSTREAM=collab:3001.
+
+services:
+  nginx:
+    image: nginx:1.30-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      INKADRA_DOMAIN: ${INKADRA_DOMAIN:?set INKADRA_DOMAIN in .env}
+      INKADRA_UPSTREAM: inkadra:3000
+      INKADRA_COLLAB_UPSTREAM: ${INKADRA_COLLAB_UPSTREAM:-inkadra:3000}
+    volumes:
+      # Paths are relative to the folder of compose.yaml.
+      - ./deploy/proxy/nginx/inkadra.conf.template:/etc/nginx/templates/default.conf.template:ro
+      - ${NGINX_CERTS:-./certs}:/etc/nginx/certs:ro
+    depends_on:
+      - inkadra
+
+  inkadra:
+    # Reached through Nginx only.
+    ports: !reset []

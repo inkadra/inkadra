@@ -1,0 +1,11 @@
+# Inkadra behind Caddy. Caddy gets and renews the HTTPS certificate on its own, forwards
+# WebSocket upgrades and streams uploads without size limits or timeouts, so this is all it needs.
+# Outside Docker, replace the placeholders with your domain and 127.0.0.1:3000.
+
+{$INKADRA_DOMAIN} {
+	# Split mode: /collab goes to the collab container (INKADRA_COLLAB_UPSTREAM=collab:3001).
+	@collab path /collab /collab/*
+	reverse_proxy @collab {$INKADRA_COLLAB_UPSTREAM:inkadra:3000}
+
+	reverse_proxy {$INKADRA_UPSTREAM:inkadra:3000}
+}
