@@ -19,6 +19,11 @@ describe('isPublicAddress', () => {
     '::ffff:127.0.0.1',
     '::ffff:7f00:1',
     '64:ff9b::a00:1',
+    '::8.8.8.8',
+    '::7f00:1',
+    '2002:7f00:1::1',
+    '2002:a00:1::',
+    '2001:0:4136:e378:8000:63bf:3fff:fdd2',
     'not-an-ip',
   ])('refuses %s', (address) => {
     expect(isPublicAddress(address)).toBe(false);

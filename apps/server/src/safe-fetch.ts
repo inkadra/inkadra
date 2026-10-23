@@ -30,10 +30,14 @@ for (const [net, prefix] of [
 ] as const)
   blocked.addSubnet(net, prefix, 'ipv4');
 for (const [net, prefix] of [
-  ['::', 128],
+  // IPv4-compatible (::a.b.c.d) and the unspecified and loopback addresses.
+  ['::', 96],
   ['::1', 128],
   ['100::', 64],
+  // Teredo and 6to4 tunnel an IPv4 address that could be internal.
+  ['2001::', 32],
   ['2001:db8::', 32],
+  ['2002::', 16],
   ['fc00::', 7],
   ['fe80::', 10],
   ['fec0::', 10],
@@ -57,9 +61,9 @@ export function isPublicAddress(address: string): boolean {
   const family = isIP(address);
   if (family === 4) return !blocked.check(address, 'ipv4');
   if (family === 6) {
+    if (blocked.check(address, 'ipv6')) return false;
     const v4 = embeddedV4(address);
-    if (v4) return !blocked.check(v4, 'ipv4');
-    return !blocked.check(address, 'ipv6');
+    return v4 ? !blocked.check(v4, 'ipv4') : true;
   }
   return false;
 }

@@ -25,7 +25,7 @@ describe.skipIf(!url)('projects, boards, uploads and assets (needs DATABASE_URL)
     UPLOAD_MAX_SIZE: '5MB',
   });
   const log = pino({ level: 'silent' });
-  const { db, sql: client } = createDatabase(config.DATABASE_URL, 2);
+  const { db, sql: client } = createDatabase(config.DATABASE_URL, 4);
   const deps = testDeps(db, log);
   let app: Awaited<ReturnType<typeof createApp>>;
   let site: Server;
@@ -185,6 +185,24 @@ describe.skipIf(!url)('projects, boards, uploads and assets (needs DATABASE_URL)
       (await call('owner', 'DELETE', `/api/v1/projects/${projectId}/members/${as.owner.id}`))
         .statusCode,
     ).toBe(409);
+  });
+
+  it('keeps an owner when two owners demote each other at once', async () => {
+    const members = (who: string) =>
+      `/api/v1/projects/${projectId}/members/${as[who as keyof typeof as].id}`;
+    await call('owner', 'PUT', members('viewer'), { role: 'owner' });
+    const results = await Promise.all([
+      call('owner', 'PUT', members('viewer'), { role: 'editor' }),
+      call('viewer', 'PUT', members('owner'), { role: 'editor' }),
+    ]);
+    expect(results.map((r) => r.statusCode).sort()).toEqual([200, 403]);
+    const list = await call('owner', 'GET', `/api/v1/projects/${projectId}/members`);
+    expect(list.json().items.filter((m: { role: string }) => m.role === 'owner')).toHaveLength(1);
+    // Put both back as the later tests expect.
+    const owner = list.json().items.find((m: { role: string }) => m.role === 'owner').user.id;
+    const asOwner = owner === as.owner.id ? 'owner' : 'viewer';
+    await call(asOwner, 'PUT', members('owner'), { role: 'owner' });
+    await call('owner', 'PUT', members('viewer'), { role: 'viewer' });
   });
 
   // Boards -----------------------------------------------------------------------

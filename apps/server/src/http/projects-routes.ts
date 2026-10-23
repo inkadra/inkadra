@@ -88,6 +88,24 @@ async function listMembers(db: Database, projectId: string): Promise<ProjectMemb
   }));
 }
 
+type Tx = Parameters<Parameters<Database['transaction']>[0]>[0];
+
+/**
+ * Serialises membership changes of a project: two owners demoting each other at once must not
+ * leave it without an owner. Also re-reads the actor's role under the lock, so a change that
+ * was allowed when the request arrived is refused if the actor lost the role meanwhile.
+ */
+async function lockMembers(tx: Tx, projectId: string, actorId: string, needed: ProjectRole) {
+  await tx.select({ id: project.id }).from(project).where(eq(project.id, projectId)).for('update');
+  const [me] = await tx
+    .select({ role: projectMember.role })
+    .from(projectMember)
+    .where(and(eq(projectMember.projectId, projectId), eq(projectMember.userId, actorId)));
+  if (!me) throw new HttpError('not_found', 'Project not found.');
+  if (needed === 'owner' && me.role !== 'owner')
+    throw new HttpError('forbidden', 'Needs the owner role.');
+}
+
 async function ownerCount(db: Pick<Database, 'select'>, projectId: string) {
   const [row] = await db
     .select({ n: count() })
@@ -243,11 +261,11 @@ export function registerProjectRoutes(app: FastifyInstance, deps: Deps) {
     const [target] = await db.select({ id: user.id }).from(user).where(eq(user.id, userId));
     if (!target) throw new HttpError('not_found', 'User not found.');
     await db.transaction(async (tx) => {
+      await lockMembers(tx, projectId, actor.id, 'owner');
       const [current] = await tx
         .select({ role: projectMember.role })
         .from(projectMember)
-        .where(and(eq(projectMember.projectId, projectId), eq(projectMember.userId, userId)))
-        .for('update');
+        .where(and(eq(projectMember.projectId, projectId), eq(projectMember.userId, userId)));
       if (current?.role === 'owner' && role !== 'owner' && (await ownerCount(tx, projectId)) < 2)
         throw new HttpError('conflict', 'A project needs at least one owner.');
       await tx
@@ -268,16 +286,19 @@ export function registerProjectRoutes(app: FastifyInstance, deps: Deps) {
     const { projectId, userId } = MemberParams.parse(req.params);
     // Anyone can leave a project; removing someone else is for owners.
     await requireProjectRole(db, actor, projectId, userId === actor.id ? 'viewer' : 'owner');
-    const [current] = await db
-      .select({ role: projectMember.role })
-      .from(projectMember)
-      .where(and(eq(projectMember.projectId, projectId), eq(projectMember.userId, userId)));
-    if (!current) throw new HttpError('not_found', 'Not a member.');
-    if (current.role === 'owner' && (await ownerCount(db, projectId)) < 2)
-      throw new HttpError('conflict', 'A project needs at least one owner.');
-    await db
-      .delete(projectMember)
-      .where(and(eq(projectMember.projectId, projectId), eq(projectMember.userId, userId)));
+    await db.transaction(async (tx) => {
+      await lockMembers(tx, projectId, actor.id, userId === actor.id ? 'viewer' : 'owner');
+      const [current] = await tx
+        .select({ role: projectMember.role })
+        .from(projectMember)
+        .where(and(eq(projectMember.projectId, projectId), eq(projectMember.userId, userId)));
+      if (!current) throw new HttpError('not_found', 'Not a member.');
+      if (current.role === 'owner' && (await ownerCount(tx, projectId)) < 2)
+        throw new HttpError('conflict', 'A project needs at least one owner.');
+      await tx
+        .delete(projectMember)
+        .where(and(eq(projectMember.projectId, projectId), eq(projectMember.userId, userId)));
+    });
     return reply.status(204).send();
   });
 }
