@@ -11,6 +11,7 @@ import { createApp } from './http/app.ts';
 import type { Jobs } from './jobs.ts';
 import { createMailer } from './mailer.ts';
 import { createQueues, inlineJobs, startWorkers } from './queues.ts';
+import { startIndexBackfill } from './search/index-doc.ts';
 import { createStorage } from './storage.ts';
 
 const COMMANDS = ['web', 'collab', 'worker', 'all', 'migrate'] as const;
@@ -58,6 +59,8 @@ async function main() {
     collab = createCollabServer({ db, auth, log, publicUrl: config.PUBLIC_URL });
     const server = collab;
     closers.unshift(() => server.destroy());
+    const backfill = startIndexBackfill(db, log);
+    closers.unshift(async () => backfill.stop());
     if (command === 'collab') {
       await server.listen(config.COLLAB_PORT);
       log.info({ port: config.COLLAB_PORT }, 'collab listening');

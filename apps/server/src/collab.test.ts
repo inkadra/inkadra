@@ -19,7 +19,7 @@ import { createAuth } from './auth.ts';
 import { attachCollab, createCollabServer } from './collab.ts';
 import { loadConfig } from './config.ts';
 import { createDatabase, runMigrations } from './db/client.ts';
-import { boardDoc } from './db/schema.ts';
+import { boardDoc, boardElementIndex } from './db/schema.ts';
 import { createApp } from './http/app.ts';
 import { testDeps } from './test-deps.ts';
 
@@ -174,6 +174,16 @@ describe.skipIf(!url)('collab (needs DATABASE_URL)', () => {
         { timeout: 5000 },
       )
       .toBe(1);
+    // The search index follows the stored document.
+    await expect
+      .poll(
+        async () =>
+          (
+            await db.select().from(boardElementIndex).where(eq(boardElementIndex.boardId, boardId))
+          ).map((r) => r.title),
+        { timeout: 5000 },
+      )
+      .toEqual(['Location']);
   });
 
   it.each([
