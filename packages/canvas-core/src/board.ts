@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MPL-2.0
 import {
   addElement,
+  CONTAINER_TYPES,
   type Element,
   type ElementType,
   newElementId,
@@ -36,6 +37,11 @@ export const DEFAULT_WIDTH: Record<ElementType, number> = {
 };
 
 export const MIN_WIDTH = 80;
+
+/** Columns and scenes hold other cards through `parent`; they cannot be nested. */
+export function isContainer(el: Pick<Element, 'type'>): boolean {
+  return (CONTAINER_TYPES as readonly string[]).includes(el.type);
+}
 
 export type NewElement<T extends ElementType = ElementType> = Omit<
   Extract<Element, { type: T }>,
@@ -152,7 +158,7 @@ export function updateElements(
   }, origin);
 }
 
-/** Deletes elements; deleting a column deletes the cards inside it too. */
+/** Deletes elements; deleting a column or a scene deletes the cards inside it too. */
 export function deleteElements(doc: Y.Doc, ids: Iterable<string>, origin?: unknown): void {
   const { elements } = roots(doc);
   const doomed = new Set(ids);
@@ -203,7 +209,7 @@ export function moveIntoParent(
   const moving = new Set(
     ids.filter((id) => {
       const el = all.find((e) => e.id === id);
-      return el && el.type !== 'column' && el.id !== parent;
+      return el && !isContainer(el) && el.id !== parent;
     }),
   );
   if (moving.size === 0) return;
@@ -387,7 +393,7 @@ export interface ClipboardData {
 export function copyElements(doc: Y.Doc, ids: string[]): ClipboardData {
   const all = listElements(doc);
   const picked = all.filter((e) => ids.includes(e.id));
-  const columnIds = new Set(picked.filter((e) => e.type === 'column').map((e) => e.id));
+  const columnIds = new Set(picked.filter(isContainer).map((e) => e.id));
   const children = all.filter((e) => e.parent && columnIds.has(e.parent) && !ids.includes(e.id));
   const elements = [...picked, ...children];
   const bodies: Record<string, string> = {};
