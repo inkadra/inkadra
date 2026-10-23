@@ -3,7 +3,7 @@ import { Id, z } from './common.ts';
 
 /**
  * Global search over projects, boards and the cards inside them. Card content is read from
- * the board documents into an index on the server (see docs/decisions/0011), so results can
+ * the board documents into an index on the server (see docs/decisions/0012), so results can
  * lag a few seconds behind the last edit.
  */
 export const SearchQuery = z
