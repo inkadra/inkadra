@@ -1,0 +1,399 @@
+/* SPDX-License-Identifier: MPL-2.0 */
+/* The --ink-* tokens come from @inkadra/ui (see theme.ts). Blue is for focus and the primary action. */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--ink-bg-panel);
+  color: var(--ink-text-primary);
+  font:
+    400 13px / 1.45 Inter,
+    system-ui,
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+p {
+  margin: 0;
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+  color: inherit;
+}
+
+:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ink-accent-primary) 25%, transparent);
+}
+
+.ink-label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-text-muted);
+  margin: 0;
+}
+
+.ink-muted {
+  color: var(--ink-text-secondary);
+}
+
+.small {
+  font-size: 12px;
+}
+
+.strong {
+  font-weight: 600;
+}
+
+code,
+kbd {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: var(--ink-surface-2);
+  border: 1px solid var(--ink-border-default);
+  word-break: break-all;
+}
+
+a {
+  color: var(--ink-accent-soft-fg);
+}
+
+/* Controls ----------------------------------------------------------------- */
+
+input,
+textarea,
+select {
+  width: 100%;
+  padding: 7px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--ink-border-default);
+  background: var(--ink-surface-1);
+}
+
+input:focus,
+textarea:focus,
+select:focus {
+  border-color: var(--ink-accent-primary);
+}
+
+textarea {
+  resize: vertical;
+}
+
+select:disabled {
+  color: var(--ink-text-secondary);
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 14px;
+  border-radius: 8px;
+  border: 1px solid var(--ink-border-strong);
+  background: var(--ink-surface-2);
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.btn:hover {
+  background: var(--ink-surface-3);
+}
+
+.btn--primary {
+  border-color: transparent;
+  background: var(--ink-accent-button);
+  color: var(--ink-on-accent);
+}
+
+.btn--primary:hover {
+  background: var(--ink-accent-button-hover);
+}
+
+.btn--primary:active {
+  background: var(--ink-accent-button-active);
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.btn--block {
+  width: 100%;
+}
+
+.icon-btn {
+  margin-left: auto;
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--ink-text-icon);
+  cursor: pointer;
+}
+
+.icon-btn:hover {
+  background: var(--ink-surface-2);
+}
+
+.link {
+  border: 0;
+  padding: 0;
+  background: none;
+  color: var(--ink-accent-soft-fg);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.field {
+  display: grid;
+  gap: 6px;
+}
+
+.field__row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.notice {
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: var(--ink-surface-2);
+}
+
+.notice--error {
+  background: var(--ink-danger-bg);
+  border: 1px solid var(--ink-danger-border);
+  color: var(--ink-danger-fg);
+}
+
+/* Popup -------------------------------------------------------------------- */
+
+.popup {
+  width: 360px;
+}
+
+.bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 44px;
+  padding: 0 12px;
+  border-bottom: 1px solid var(--ink-border-muted);
+  background: var(--ink-bg-rail);
+}
+
+.bar__title {
+  font-weight: 600;
+}
+
+.panel {
+  display: grid;
+  gap: 12px;
+  padding: 12px;
+}
+
+.page {
+  min-width: 0;
+}
+
+.page__title {
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.page__url {
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.selected {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+  color: var(--ink-text-secondary);
+}
+
+.boards {
+  list-style: none;
+  margin: 0;
+  padding: 4px;
+  max-height: 180px;
+  overflow-y: auto;
+  border-radius: 8px;
+  border: 1px solid var(--ink-border-default);
+  background: var(--ink-surface-1);
+}
+
+.board-section {
+  padding: 6px 8px 2px;
+}
+
+.board {
+  display: flex;
+  align-items: center;
+  border-radius: 6px;
+  padding-left: calc(var(--depth, 0) * 14px);
+}
+
+.board:hover {
+  background: var(--ink-surface-2);
+}
+
+.board.is-selected {
+  background: var(--ink-accent-soft-bg);
+  color: var(--ink-accent-soft-fg);
+}
+
+.board__pick {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 5px 8px;
+  border: 0;
+  background: none;
+  text-align: left;
+  cursor: pointer;
+}
+
+.board__title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.board__project {
+  flex: none;
+  max-width: 45%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+  color: var(--ink-text-muted);
+}
+
+.board__toggle {
+  flex: none;
+  width: 24px;
+  height: 24px;
+  border: 0;
+  border-radius: 4px;
+  background: none;
+  color: var(--ink-text-icon);
+  cursor: pointer;
+}
+
+.board__toggle:hover {
+  background: var(--ink-surface-3);
+}
+
+.board-empty {
+  padding: 8px;
+}
+
+.result {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0 12px 12px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--ink-surface-float);
+  border: 1px solid var(--ink-border-strong);
+}
+
+.result[data-tone="error"] {
+  background: var(--ink-danger-bg);
+  border-color: var(--ink-danger-border);
+  color: var(--ink-danger-fg);
+}
+
+/* Options ------------------------------------------------------------------ */
+
+.options {
+  min-height: 100vh;
+  display: grid;
+  place-items: start center;
+  padding: 48px 16px;
+  background: var(--ink-bg-rail);
+}
+
+.card {
+  width: min(480px, 100%);
+  display: grid;
+  gap: 20px;
+  padding: 28px;
+  border-radius: 12px;
+  border: 1px solid var(--ink-border-default);
+  background: var(--ink-bg-panel);
+}
+
+.card section {
+  display: grid;
+  gap: 12px;
+}
+
+.card .btn {
+  justify-self: start;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.brand h1 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.help {
+  padding-top: 16px;
+  border-top: 1px solid var(--ink-border-muted);
+  color: var(--ink-text-secondary);
+}
+
+.help summary {
+  cursor: pointer;
+  color: var(--ink-text-primary);
+}
+
+.help details p {
+  margin-top: 8px;
+}
+
+/* Last, so it wins over the display of panels and sections. */
+[hidden],
+.card [hidden] {
+  display: none;
+}

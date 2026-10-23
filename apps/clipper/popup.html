@@ -1,0 +1,59 @@
+<!doctype html>
+<!-- SPDX-License-Identifier: MPL-2.0 -->
+<html lang="it">
+  <head>
+    <meta charset="utf-8" />
+    <title>Inkadra Clipper</title>
+    <link rel="stylesheet" href="./src/clipper.css" />
+  </head>
+  <body class="popup">
+    <header class="bar">
+      <img src="/icons/icon-32.png" width="20" height="20" alt="" />
+      <span class="bar__title">Inkadra</span>
+      <button type="button" id="open-options" class="icon-btn" data-i18n-aria-label="action_settings" data-i18n-title="action_settings" aria-label="Impostazioni" title="Impostazioni">⚙</button>
+    </header>
+
+    <section id="disconnected" class="panel" hidden>
+      <p id="disconnected-text"></p>
+      <button type="button" id="connect" class="btn btn--primary" data-i18n="action_connect">Connetti</button>
+    </section>
+
+    <form id="clip-form" class="panel" hidden>
+      <div class="page">
+        <p id="page-title" class="page__title"></p>
+        <p id="page-url" class="page__url ink-muted"></p>
+      </div>
+
+      <div class="field">
+        <div class="field__row">
+          <label class="ink-label" for="board-search" data-i18n="field_board">Board</label>
+          <span id="selected-board" class="selected"></span>
+        </div>
+        <input id="board-search" type="search" autocomplete="off" data-i18n-placeholder="board_search" />
+        <ul id="board-list" class="boards" data-i18n-aria-label="field_board" aria-label="Board"></ul>
+      </div>
+
+      <div class="field">
+        <label class="ink-label" for="column" data-i18n="field_column">Colonna</label>
+        <select id="column" disabled>
+          <option data-i18n="column_unsorted">Non ordinati</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label class="ink-label" for="note" data-i18n="field_note">Nota</label>
+        <textarea id="note" rows="2" maxlength="2000"></textarea>
+      </div>
+
+      <div class="field">
+        <label class="ink-label" for="tags" data-i18n="field_tags">Tag</label>
+        <input id="tags" type="text" autocomplete="off" data-i18n-placeholder="tags_placeholder" />
+      </div>
+
+      <button id="save" type="submit" class="btn btn--primary btn--block" data-i18n="action_save_page" disabled>Salva pagina</button>
+    </form>
+
+    <div id="result" class="result" role="status" hidden></div>
+    <script type="module" src="./src/popup.ts"></script>
+  </body>
+</html>
