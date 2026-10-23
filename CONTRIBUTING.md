@@ -29,7 +29,7 @@ See the _Develop_ section of the [README](README.md). Useful commands:
 | `pnpm openapi`              | Regenerate `packages/shared/openapi.json`              |
 | `pnpm mock`                 | Mock API server from the OpenAPI document, on :4010    |
 | `pnpm db:generate`          | Generate a migration after editing the database schema |
-| `pnpm licenses`             | Check licences of production dependencies              |
+| `pnpm check:licenses`       | Check licences of production dependencies              |
 
 ## Changing a contract
 
