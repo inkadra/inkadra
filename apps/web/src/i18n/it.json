@@ -271,7 +271,8 @@
       "failed": "Non riuscito",
       "cancelled": "Annullato",
       "retry": "Riprova",
-      "offline": "In attesa di rete"
+      "offline": "In attesa di rete",
+      "reconnecting": "Riconnessione…"
     },
     "palette": {
       "title": "Comandi",

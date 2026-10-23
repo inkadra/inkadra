@@ -165,6 +165,26 @@ test('an upload cut by a network outage resumes by itself', async ({ page, conte
   await expect(row).toHaveCount(0, { timeout: 10_000 });
 });
 
+test('an upload whose requests fail while online says it is reconnecting', async ({ page }) => {
+  test.setTimeout(120_000);
+  const file = join(tmpdir(), 'inkadra-e2e-ciak.mov');
+  writeFileSync(file, Buffer.alloc(120 * 1024 * 1024, 3));
+  await signIn(page);
+  await page.getByRole('link', { name: 'Ultima corsa' }).first().click();
+  await expect(page.getByRole('status').getByText('Sincronizzato')).toBeVisible();
+  // The server drops every chunk for a while, as when a proxy restarts; the browser stays online.
+  await page.route('**/api/v1/uploads/**', (route) =>
+    route.request().method() === 'PATCH' ? route.abort('connectionreset') : route.continue(),
+  );
+  await page.locator('input[type="file"]').setInputFiles(file);
+  const row = page
+    .getByRole('region', { name: 'Caricamenti' })
+    .locator('.uploads__item', { hasText: 'inkadra-e2e-ciak.mov' });
+  await expect(row).toContainText('Riconnessione…', { timeout: 30_000 });
+  await page.unroute('**/api/v1/uploads/**');
+  await expect(row).toContainText('Fatto', { timeout: 60_000 });
+});
+
 async function signIn(page: import('@playwright/test').Page) {
   await page.goto('/login');
   await page.getByLabel('Email').fill(admin.email);

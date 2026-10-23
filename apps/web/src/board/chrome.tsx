@@ -531,7 +531,7 @@ export function UploadPanel() {
             <span className="uploads__name">{u.name}</span>
             <span className="ink-muted">
               {u.state === 'uploading'
-                ? `${Math.round((u.sent / (u.size || 1)) * 100)}%`
+                ? `${u.reconnecting ? `${t('board.uploads.reconnecting')} · ` : ''}${Math.round((u.sent / (u.size || 1)) * 100)}%`
                 : t(`board.uploads.${u.state}`)}
             </span>
             {u.state === 'failed' && (

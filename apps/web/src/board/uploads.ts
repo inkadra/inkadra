@@ -9,6 +9,8 @@ export interface UploadItem {
   sent: number;
   /** `offline`: paused while the browser has no network, resumes by itself when it is back. */
   state: 'uploading' | 'offline' | 'done' | 'failed' | 'cancelled';
+  /** A request failed and tus is retrying it, while the browser still reports a network. */
+  reconnecting: boolean;
   /** Same file, same project: adding it again resumes this upload instead of starting another. */
   fingerprint: string;
   assetId: string | null;
@@ -51,7 +53,7 @@ if (typeof window !== 'undefined') {
     for (const item of items) {
       if (item.state !== 'uploading') continue;
       void uploads.get(item.key)?.abort();
-      patch(item.key, { state: 'offline' });
+      patch(item.key, { state: 'offline', reconnecting: false });
     }
   });
   // Back online: every paused upload goes on from where the server stopped.
@@ -84,6 +86,7 @@ export function startUpload({ file, projectId, onAsset, onFailed }: StartUpload)
     size: file.size,
     sent: 0,
     state: 'uploading',
+    reconnecting: false,
     fingerprint,
     assetId: null,
     preview: isImage ? URL.createObjectURL(file) : null,
@@ -104,24 +107,26 @@ export function startUpload({ file, projectId, onAsset, onFailed }: StartUpload)
     onShouldRetry: (err) => {
       if (!online()) return false;
       const status = err.originalResponse?.getStatus() ?? 0;
-      return status < 400 || status >= 500 || status === 409 || status === 423;
+      const retry = status < 400 || status >= 500 || status === 409 || status === 423;
+      if (retry) patch(key, { reconnecting: true });
+      return retry;
     },
     storeFingerprintForResuming: true,
     removeFingerprintOnSuccess: true,
     metadata: { projectId, filename: file.name, filetype: file.type || 'application/octet-stream' },
     onAfterResponse: (_req, res) => announce(res.getHeader('Inkadra-Asset-Id') ?? null),
-    onProgress: (sent) => patch(key, { sent }),
+    onProgress: (sent) => patch(key, { sent, reconnecting: false }),
     onSuccess: () => {
-      patch(key, { state: 'done', sent: file.size });
+      patch(key, { state: 'done', sent: file.size, reconnecting: false });
       uploads.delete(key);
       setTimeout(() => dismiss(key), 4000);
     },
     onError: () => {
       if (!online()) {
-        patch(key, { state: 'offline' });
+        patch(key, { state: 'offline', reconnecting: false });
         return;
       }
-      patch(key, { state: 'failed' });
+      patch(key, { state: 'failed', reconnecting: false });
       onFailed?.(items.find((i) => i.key === key)?.assetId ?? null);
     },
   });
