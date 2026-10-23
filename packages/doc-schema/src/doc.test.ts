@@ -159,6 +159,14 @@ describe('board document', () => {
     ).toHaveLength(3);
   });
 
+  it('gives every new frame its stroke array, so concurrent first strokes merge', () => {
+    const doc = createBoardDoc(boardId);
+    const frame = { ...base(), type: 'frame' as const };
+    const map = addElement(doc, frame);
+    expect(map.get('strokes')).toBeInstanceOf(Y.Array);
+    expect(readElement(map)).toEqual({ ...frame, strokes: [] });
+  });
+
   it('bounds pen strokes', () => {
     const stroke = (points: number[]) =>
       Element.safeParse({
