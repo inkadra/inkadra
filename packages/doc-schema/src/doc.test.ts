@@ -6,6 +6,7 @@ import {
   boardDocName,
   CURRENT_SCHEMA_VERSION,
   createBoardDoc,
+  Element,
   getSchemaVersion,
   migrateBoardDoc,
   newElementId,
@@ -80,5 +81,13 @@ describe('board document', () => {
     roots(doc).elements.set('broken-id', new Y.Map([['type', 'note']]));
     doc.getArray('stray');
     expect(validateBoardDoc(doc)).toHaveLength(2);
+  });
+
+  it('accepts only web addresses on link cards', () => {
+    const link = (url: string) => Element.safeParse({ ...base(), type: 'link', url }).success;
+    expect(link('https://example.com/ref')).toBe(true);
+    expect(link('http://example.com')).toBe(true);
+    expect(link('javascript:alert(1)')).toBe(false);
+    expect(link('data:text/html,<script>alert(1)</script>')).toBe(false);
   });
 });

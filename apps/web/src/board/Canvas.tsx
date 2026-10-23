@@ -71,7 +71,7 @@ import {
 import { decodeClipboard, encodeClipboard } from './clipboard.ts';
 import type { BoardConnection } from './connection.ts';
 import { BoardContext, type BoardContextValue } from './context.ts';
-import { fillLinkPreview } from './links.ts';
+import { fillLinkPreview, webUrl } from './links.ts';
 import { fillFragment, isEmpty } from './note.tsx';
 import { commandFor, isTyping } from './shortcuts.ts';
 import { LOCAL } from './store.ts';
@@ -490,8 +490,10 @@ export function Canvas({
   const openElement = useCallback(
     (el: Element) => {
       if (el.type === 'board') onOpenBoard(el.boardId);
-      else if (el.type === 'link') window.open(el.url, '_blank', 'noopener,noreferrer');
-      else if (!readOnly && el.type !== 'image' && el.type !== 'file') {
+      else if (el.type === 'link') {
+        const href = webUrl(el.url);
+        if (href) window.open(href, '_blank', 'noopener,noreferrer');
+      } else if (!readOnly && el.type !== 'image' && el.type !== 'file') {
         select([el.id]);
         setEditing(el.id);
       }
@@ -1311,12 +1313,9 @@ function LinkDraft({
       onSubmit={(e) => {
         e.preventDefault();
         const url = /^[a-z]+:\/\//i.test(value.trim()) ? value.trim() : `https://${value.trim()}`;
-        try {
-          new URL(url);
-          onSubmit(url);
-        } catch {
-          setError(true);
-        }
+        const href = webUrl(url);
+        if (href) onSubmit(href);
+        else setError(true);
       }}
     >
       <input

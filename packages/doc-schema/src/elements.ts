@@ -40,7 +40,8 @@ export const ImageElement = Base.extend({
 });
 export const LinkElement = Base.extend({
   type: z.literal('link'),
-  url: z.url(),
+  // Web addresses only: the card renders it as a link.
+  url: z.url({ protocol: /^https?$/ }),
   title: z.string().max(500).optional(),
   description: z.string().max(2000).optional(),
   imageAssetId: z.string().optional(),
