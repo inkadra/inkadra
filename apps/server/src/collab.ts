@@ -10,13 +10,14 @@ import {
   validateBoardDoc,
 } from '@inkadra/doc-schema';
 import { COLLAB_PATH } from '@inkadra/shared';
-import { and, eq, gt, isNull, or } from 'drizzle-orm';
+import { and, eq, gt, isNull, or, sql } from 'drizzle-orm';
 import type { Logger } from 'pino';
 import * as Y from 'yjs';
 import { type Actor, atLeast, boardRole } from './access.ts';
 import type { Auth } from './auth.ts';
 import type { Database } from './db/client.ts';
-import { boardDoc, personalToken, session, user } from './db/schema.ts';
+import { board, boardDoc, personalToken, session, user } from './db/schema.ts';
+import { writeBoardIndex } from './search/index-doc.ts';
 import { actorFromToken, isToken } from './tokens.ts';
 
 interface Context {
@@ -216,6 +217,19 @@ export function createCollabServer(deps: {
           target: boardDoc.boardId,
           set: { state, schemaVersion, size: state.byteLength, updatedAt: new Date() },
         });
+      // The document is safe at this point. If indexing fails, the backfill job retries it
+      // (indexed_at stays older than updated_at).
+      try {
+        await db.transaction(async (tx) => {
+          await writeBoardIndex(tx, boardId, document);
+          await tx
+            .update(board)
+            .set({ docSchemaVersion: schemaVersion, updatedAt: sql`${board.updatedAt}` })
+            .where(eq(board.id, boardId));
+        });
+      } catch (err) {
+        log.error({ err, boardId }, 'board search index not updated');
+      }
     },
   });
 

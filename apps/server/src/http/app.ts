@@ -19,6 +19,7 @@ import { registerDiagnostics } from './diagnostics.ts';
 import { errorHandler, sendError } from './errors.ts';
 import { registerLinkPreviews } from './link-previews.ts';
 import { registerProjectRoutes } from './projects-routes.ts';
+import { registerSearchRoutes } from './search-routes.ts';
 import { registerSharingRoutes } from './sharing-routes.ts';
 import { registerUploads } from './uploads.ts';
 
@@ -61,6 +62,7 @@ export async function createApp(deps: AppDeps) {
   registerProjectRoutes(app, deps);
   registerBoardRoutes(app, deps);
   registerAssetRoutes(app, deps);
+  registerSearchRoutes(app, deps);
   registerLinkPreviews(app, deps);
   registerDiagnostics(app, deps);
   registerUploads(app, { ...deps, uploadMaxSize: config.UPLOAD_MAX_SIZE });
