@@ -31,6 +31,11 @@ interface CardProps {
   childrenOf?: readonly Element[] | undefined;
   selection?: ReadonlySet<string>;
   draggingIds?: ReadonlySet<string>;
+  /**
+   * Current zoom, for the outlines and handles that keep a constant screen size. Only cards
+   * that draw them get it: a zoom change then restyles a handful of cards, not the board.
+   */
+  zoom?: number | undefined;
 }
 
 export const Card = memo(function Card({
@@ -43,6 +48,7 @@ export const Card = memo(function Card({
   childrenOf,
   selection,
   draggingIds,
+  zoom,
 }: CardProps) {
   const { store, editing, readOnly } = useBoard();
   const { t } = useTranslation();
@@ -58,6 +64,7 @@ export const Card = memo(function Card({
         height: element.h,
         transform: offset ? `translate(${offset.dx}px, ${offset.dy}px)` : undefined,
       };
+  if (zoom !== undefined) (style as Record<string, unknown>)['--zoom'] = zoom;
   const className = [
     'card',
     `card--${element.type}`,

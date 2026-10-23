@@ -3,7 +3,6 @@ import './i18n/index.ts';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { createBrowserRouter, Outlet, RouterProvider } from 'react-router';
-import { BoardPage } from './board/BoardPage.tsx';
 import { SessionProvider, useSession } from './lib/session.tsx';
 import { AppLayout } from './routes/AppLayout.tsx';
 import { Diagnostics } from './routes/Diagnostics.tsx';
@@ -17,6 +16,8 @@ function Root() {
   return <Outlet />;
 }
 
+const loadBoard = async () => ({ Component: (await import('./board/BoardPage.tsx')).BoardPage });
+
 const router = createBrowserRouter([
   {
     element: <Root />,
@@ -27,8 +28,9 @@ const router = createBrowserRouter([
         element: <AppLayout />,
         children: [
           { index: true, element: <Home /> },
-          { path: 'p/:projectId', element: <BoardPage /> },
-          { path: 'p/:projectId/b/:boardId', element: <BoardPage /> },
+          // The board editor (Yjs, Tiptap, uploads) loads with the first board opened.
+          { path: 'p/:projectId', lazy: loadBoard },
+          { path: 'p/:projectId/b/:boardId', lazy: loadBoard },
           { path: '*', element: <NotFound /> },
         ],
       },

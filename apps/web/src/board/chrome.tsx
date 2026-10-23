@@ -364,27 +364,39 @@ export function Minimap({
   const { t } = useTranslation();
   const W = 150;
   const H = 90;
-  const rects = useMemo(() => elements.map(rectOf), [elements, rectOf]);
-  if (rects.length === 0 || size.w === 0) return null;
-  const view = {
+  // The board's shapes are one path, laid out on the content bounds: moving the view only
+  // moves the view rectangle, it does not redraw a thousand shapes.
+  const layout = useMemo(() => {
+    const rects = elements.map(rectOf);
+    if (rects.length === 0) return null;
+    const minX = Math.min(...rects.map((r) => r.x));
+    const minY = Math.min(...rects.map((r) => r.y));
+    const maxX = Math.max(...rects.map((r) => r.x + r.w));
+    const maxY = Math.max(...rects.map((r) => r.y + r.h));
+    const s = Math.min((W - 8) / (maxX - minX || 1), (H - 8) / (maxY - minY || 1));
+    const ox = (W - (maxX - minX) * s) / 2;
+    const oy = (H - (maxY - minY) * s) / 2;
+    const map = (r: Rect) => ({
+      x: ox + (r.x - minX) * s,
+      y: oy + (r.y - minY) * s,
+      width: Math.max(1, r.w * s),
+      height: Math.max(1, r.h * s),
+    });
+    const path = rects
+      .map((r) => {
+        const m = map(r);
+        return `M${m.x.toFixed(1)} ${m.y.toFixed(1)}h${m.width.toFixed(1)}v${m.height.toFixed(1)}h${(-m.width).toFixed(1)}z`;
+      })
+      .join('');
+    return { minX, minY, s, ox, oy, map, path };
+  }, [elements, rectOf]);
+  if (!layout || size.w === 0) return null;
+  const { minX, minY, s, ox, oy, map, path } = layout;
+  const view = map({
     x: viewport.x,
     y: viewport.y,
     w: size.w / viewport.zoom,
     h: size.h / viewport.zoom,
-  };
-  const all = [...rects, view];
-  const minX = Math.min(...all.map((r) => r.x));
-  const minY = Math.min(...all.map((r) => r.y));
-  const maxX = Math.max(...all.map((r) => r.x + r.w));
-  const maxY = Math.max(...all.map((r) => r.y + r.h));
-  const s = Math.min((W - 8) / (maxX - minX || 1), (H - 8) / (maxY - minY || 1));
-  const ox = (W - (maxX - minX) * s) / 2;
-  const oy = (H - (maxY - minY) * s) / 2;
-  const map = (r: Rect) => ({
-    x: ox + (r.x - minX) * s,
-    y: oy + (r.y - minY) * s,
-    width: Math.max(1, r.w * s),
-    height: Math.max(1, r.h * s),
   });
   return (
     <button
@@ -400,12 +412,16 @@ export function Minimap({
       }}
     >
       <svg className="minimap__svg" width={W} height={H} aria-hidden="true">
-        {rects.slice(0, 2000).map((r, i) => (
-          // biome-ignore lint/suspicious/noArrayIndexKey: positions only, no identity needed
-          <rect key={i} {...map(r)} className="minimap__el" />
-        ))}
-        <rect {...map(view)} className="minimap__view" />
+        <path d={path} className="minimap__el" />
       </svg>
+      <span
+        className="minimap__view"
+        style={{
+          width: view.width,
+          height: view.height,
+          transform: `translate(${view.x}px, ${view.y}px)`,
+        }}
+      />
     </button>
   );
 }

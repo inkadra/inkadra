@@ -29,6 +29,13 @@ export default defineConfig({
   projects: [
     {
       name: 'chromium',
+      testIgnore: '**/perf/**',
+      use: { ...devices['Desktop Chrome'], viewport: { width: 1440, height: 900 } },
+    },
+    {
+      // Load tests, run on their own with `pnpm test:perf`.
+      name: 'perf',
+      testDir: './tests/perf',
       use: { ...devices['Desktop Chrome'], viewport: { width: 1440, height: 900 } },
     },
   ],

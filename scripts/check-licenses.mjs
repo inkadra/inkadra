@@ -28,6 +28,8 @@ const ALLOWED = new Set([
 const REVIEWED = new Map([
   // LGPL-3.0-only WebAssembly build of libheif, loaded unmodified (docs/decisions/0009).
   ['libheif-js', 'LGPL-3.0'],
+  // Dependency of tus-js-client; MIT per its Readme, the package.json has no licence field.
+  ['combine-errors', 'MIT'],
 ]);
 
 const raw = execFileSync('pnpm', ['licenses', 'list', '--prod', '--json'], {
