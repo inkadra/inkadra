@@ -13,6 +13,7 @@ import { loadConfig } from './config.ts';
 import { createDatabase, runMigrations } from './db/client.ts';
 import { boardDoc } from './db/schema.ts';
 import { createApp } from './http/app.ts';
+import { testDeps } from './test-deps.ts';
 
 const url = process.env.DATABASE_URL;
 const migrationsFolder = fileURLToPath(new URL('../drizzle', import.meta.url));
@@ -36,7 +37,7 @@ describe.skipIf(!url)('collab (needs DATABASE_URL)', () => {
   beforeAll(async () => {
     await runMigrations(config.DATABASE_URL, migrationsFolder);
     await db.execute(sql`truncate table "user", project, instance_setting cascade`);
-    app = await createApp({ config, db, auth, log });
+    app = await createApp({ config, db, auth, log, ...testDeps(db, log) });
     attachCollab(app.server, collab);
     await app.listen({ host: '127.0.0.1', port: 0 });
     base = `127.0.0.1:${(app.server.address() as AddressInfo).port}`;

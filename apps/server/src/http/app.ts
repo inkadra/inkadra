@@ -7,16 +7,27 @@ import type { Logger } from 'pino';
 import type { Auth } from '../auth.ts';
 import type { Config } from '../config.ts';
 import type { Database } from '../db/client.ts';
+import type { Jobs } from '../jobs.ts';
+import type { Storage } from '../storage.ts';
 import { registerApiRoutes } from './api-routes.ts';
+import { registerAssetRoutes } from './assets-routes.ts';
 import { registerAuthRoutes } from './auth-routes.ts';
+import { registerBoardRoutes } from './boards-routes.ts';
 import { errorHandler, sendError } from './errors.ts';
+import { registerLinkPreviews } from './link-previews.ts';
+import { registerProjectRoutes } from './projects-routes.ts';
+import { registerUploads } from './uploads.ts';
 
 export interface AppDeps {
   config: Config;
   db: Database;
   auth: Auth;
   log: Logger;
+  storage: Storage;
+  jobs: Jobs;
   pingQueue?: () => Promise<boolean>;
+  /** Tests only: addresses link previews may fetch besides public ones. */
+  allowAddresses?: string[];
 }
 
 export async function createApp(deps: AppDeps) {
@@ -38,6 +49,11 @@ export async function createApp(deps: AppDeps) {
 
   registerAuthRoutes(app, deps.auth, config.PUBLIC_URL);
   registerApiRoutes(app, deps);
+  registerProjectRoutes(app, deps);
+  registerBoardRoutes(app, deps);
+  registerAssetRoutes(app, deps);
+  registerLinkPreviews(app, deps);
+  registerUploads(app, { ...deps, uploadMaxSize: config.UPLOAD_MAX_SIZE });
 
   const webDist = config.WEB_DIST ? resolve(config.WEB_DIST) : undefined;
   if (webDist && existsSync(join(webDist, 'index.html'))) {

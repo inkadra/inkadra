@@ -25,7 +25,10 @@ const ALLOWED = new Set([
 ]);
 
 /** Packages whose licence field is missing or non-SPDX but were checked by hand. */
-const REVIEWED = new Map([]);
+const REVIEWED = new Map([
+  // LGPL-3.0-only WebAssembly build of libheif, loaded unmodified (docs/decisions/0009).
+  ['libheif-js', 'LGPL-3.0'],
+]);
 
 const raw = execFileSync('pnpm', ['licenses', 'list', '--prod', '--json'], {
   encoding: 'utf8',
