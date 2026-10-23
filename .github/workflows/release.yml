@@ -1,0 +1,47 @@
+name: Release
+
+# Tags main and publishes a GitHub release. Tags pushed with the workflow token do not trigger
+# other workflows, so this one starts CI on the new tag, which publishes the image.
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version without the leading v, e.g. 0.1.0 or 0.2.0-rc.1"
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  release:
+    name: Tag and release
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    if: github.ref == 'refs/heads/main'
+    permissions:
+      contents: write
+      actions: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      VERSION: ${{ inputs.version }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - name: Check the version
+        run: |
+          echo "$VERSION" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.]+)?$' || { echo "Not a semver version: $VERSION"; exit 1; }
+          if git rev-parse -q --verify "refs/tags/v$VERSION" >/dev/null; then echo "v$VERSION already exists"; exit 1; fi
+      - name: Tag
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "v$VERSION" -m "Inkadra $VERSION"
+          git push origin "v$VERSION"
+      - name: GitHub release
+        run: |
+          prerelease=""
+          case "$VERSION" in *-*) prerelease="--prerelease" ;; esac
+          gh release create "v$VERSION" --title "Inkadra $VERSION" --generate-notes --verify-tag $prerelease
+      - name: Build and publish the image
+        run: gh workflow run ci.yml --ref "v$VERSION"

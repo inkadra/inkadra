@@ -81,5 +81,7 @@ Number them in order and never rewrite an accepted one; supersede it with a new 
 
 ## Releases
 
-Versions follow semver. Tags `vX.Y.Z` on `main` publish `ghcr.io/inkadra/inkadra:X.Y.Z` for
-amd64 and arm64; every push to `main` publishes the `edge` tag.
+Versions follow semver. A maintainer runs the **Release** workflow on `main` with the version:
+it tags `vX.Y.Z`, publishes the GitHub release with generated notes and starts CI on the tag,
+which publishes `ghcr.io/inkadra/inkadra:X.Y.Z` (and `latest` for final versions) for amd64
+and arm64. Every push to `main` publishes the `edge` tag.
