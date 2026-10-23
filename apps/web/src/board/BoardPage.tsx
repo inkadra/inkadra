@@ -1,5 +1,5 @@
 import type { Board, BoardDetail, ProjectRole } from '@inkadra/shared';
-import { EmptyState, Icon, type IconName } from '@inkadra/ui';
+import { Avatar, Button, EmptyState, Icon, type IconName } from '@inkadra/ui';
 import { Fragment, type MouseEvent, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams, useSearchParams } from 'react-router';
@@ -12,6 +12,8 @@ import { type ConnectionStatus, useBoardConnection } from './connection.ts';
 import { ShotList } from './film/ShotList.tsx';
 import { StoryboardView } from './film/StoryboardView.tsx';
 import './film/film.css';
+import { type Peer, uniquePeople, usePeers } from './presence.ts';
+import { ShareDialog } from './ShareDialog.tsx';
 import './board.css';
 
 const canEdit = (role: ProjectRole | undefined) => role === 'owner' || role === 'editor';
@@ -55,14 +57,16 @@ export function BoardPage() {
   const { projects } = useProjects();
   const project = projects?.find((p) => p.id === projectId);
   const boardId = param ?? project?.rootBoardId;
-  if (!projectId || !project || !boardId) return null;
+  if (!projectId || !projects || !boardId) return null;
+  // People with access to some boards only are not project members: their breadcrumb starts at
+  // the top board shared with them.
   return (
     <BoardScreen
       key={boardId}
       projectId={projectId}
-      projectName={project.name}
-      rootBoardId={project.rootBoardId}
-      projectRole={project.myRole}
+      projectName={project?.name ?? ''}
+      rootBoardId={project?.rootBoardId}
+      projectRole={project?.myRole ?? null}
       boardId={boardId}
     />
   );
@@ -77,8 +81,8 @@ function BoardScreen({
 }: {
   projectId: string;
   projectName: string;
-  rootBoardId: string;
-  projectRole: ProjectRole;
+  rootBoardId: string | undefined;
+  projectRole: ProjectRole | null;
   boardId: string;
 }) {
   const { t } = useTranslation();
@@ -89,6 +93,7 @@ function BoardScreen({
   const [detail, setDetail] = useState<BoardDetail | null>(null);
   const kind = detail?.kind ?? boards?.find((b) => b.id === boardId)?.kind;
   const [view, setView] = useBoardView(kind);
+  const [sharing, setSharing] = useState(false);
 
   useEffect(() => {
     let alive = true;
@@ -159,13 +164,34 @@ function BoardScreen({
         )}
         <span className="ink-header__spacer" />
         {conn && <SyncStatus status={conn.status} readOnly={conn.readOnly} />}
+        {conn && <Peers provider={conn.provider} />}
+        {detail && (
+          <Button
+            variant={
+              detail.myRole === 'owner' || detail.myRole === 'editor' ? 'primary' : 'secondary'
+            }
+            icon="people"
+            onClick={() => setSharing(true)}
+          >
+            {t('share.open')}
+          </Button>
+        )}
       </>
     ),
-    [crumbs, t, projectId, rootBoardId, openBoard, conn, kind, view, setView],
+    [crumbs, t, projectId, rootBoardId, openBoard, conn, kind, view, setView, detail],
   );
   useHeaderContent(header);
 
   if (!conn || !user) return null;
+  if (conn.status === 'signedOut') return <SignedOut />;
+  const shareDialog = detail && (
+    <ShareDialog
+      open={sharing}
+      board={{ ...detail, title: crumbs.at(-1)?.title ?? detail.title }}
+      subBoards={countBelow(boardId, boards)}
+      onClose={() => setSharing(false)}
+    />
+  );
   if (conn.status === 'denied') {
     return (
       <div className="board-state">
@@ -192,16 +218,70 @@ function BoardScreen({
     );
   }
   return (
-    <Canvas
-      conn={conn}
-      projectId={projectId}
-      boardId={boardId}
-      userId={user.id}
-      boards={boards}
-      canEdit={canEdit(detail?.myRole ?? projectRole)}
-      onOpenBoard={openBoard}
-    />
+    <>
+      <BoardCanvas
+        conn={conn}
+        projectId={projectId}
+        boardId={boardId}
+        userId={user.id}
+        boards={boards}
+        canEdit={canEdit(detail?.myRole ?? projectRole ?? undefined)}
+        onOpenBoard={openBoard}
+      />
+      {shareDialog}
+    </>
   );
+}
+
+/** The canvas with the other people on the board. */
+function BoardCanvas(props: Omit<Parameters<typeof Canvas>[0], 'peers'>) {
+  const peers = usePeers(props.conn.provider);
+  return <Canvas {...props} peers={peers} />;
+}
+
+const MAX_AVATARS = 5;
+
+/** Who else has the board open, one avatar per person, ringed in their cursor colour. */
+function Peers({ provider }: { provider: Parameters<typeof usePeers>[0] }) {
+  const { t } = useTranslation();
+  const people = uniquePeople(usePeers(provider));
+  if (people.length === 0) return null;
+  const shown = people.slice(0, MAX_AVATARS);
+  const label = (p: Peer) =>
+    p.readOnly ? t('board.peers.viewing', { name: p.user.name }) : p.user.name;
+  return (
+    <ul className="peers" aria-label={t('board.peers.label', { count: people.length })}>
+      {shown.map((p) => (
+        <li
+          key={p.user.id}
+          className="peers__one"
+          style={{ ['--peer' as string]: p.color }}
+          title={label(p)}
+        >
+          <Avatar name={p.user.name} size={24} />
+        </li>
+      ))}
+      {people.length > shown.length && (
+        <li className="peers__more">+{people.length - shown.length}</li>
+      )}
+    </ul>
+  );
+}
+
+/** How many boards sit somewhere under this one. */
+function countBelow(boardId: string, boards: Board[] | null): number {
+  const children = new Map<string, string[]>();
+  for (const b of boards ?? [])
+    if (b.parentBoardId)
+      children.set(b.parentBoardId, [...(children.get(b.parentBoardId) ?? []), b.id]);
+  let n = 0;
+  const stack = [...(children.get(boardId) ?? [])];
+  while (stack.length > 0) {
+    const id = stack.pop() as string;
+    n++;
+    stack.push(...(children.get(id) ?? []));
+  }
+  return n;
 }
 
 function SyncStatus({ status, readOnly }: { status: ConnectionStatus; readOnly: boolean }) {
@@ -217,7 +297,7 @@ function SyncStatus({ status, readOnly }: { status: ConnectionStatus; readOnly: 
 /** Path from the project root to this board; uses the board list when the detail is missing. */
 export function breadcrumb(
   boardId: string,
-  rootBoardId: string,
+  rootBoardId: string | undefined,
   projectName: string,
   detail: BoardDetail | null,
   boards: Board[] | null,
@@ -240,6 +320,23 @@ export function breadcrumb(
     chain.unshift({ id: b.id, title: rootTitle(b.id, b.title) });
     current = b.parentBoardId;
   }
-  if (chain[0]?.id !== rootBoardId) chain.unshift({ id: rootBoardId, title: projectName });
+  if (rootBoardId && chain[0]?.id !== rootBoardId)
+    chain.unshift({ id: rootBoardId, title: projectName });
   return chain;
+}
+
+/** The session ended while the board was open: check it, which sends people to sign-in. */
+function SignedOut() {
+  const { t } = useTranslation();
+  const { refresh } = useSession();
+  useEffect(() => {
+    void refresh();
+  }, [refresh]);
+  return (
+    <div className="board-state">
+      <EmptyState icon="lock" title={t('board.signedOut.title')}>
+        {t('board.signedOut.body')}
+      </EmptyState>
+    </div>
+  );
 }

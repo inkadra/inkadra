@@ -1,4 +1,4 @@
-import type { Project } from '@inkadra/shared';
+import type { Board, Project } from '@inkadra/shared';
 import {
   AppShell,
   Avatar,
@@ -27,7 +27,7 @@ import {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Navigate, Outlet, useLocation, useNavigate, useSearchParams } from 'react-router';
-import { childBoards, useProjectBoards } from '../board/boards.ts';
+import { childBoards, useProjectBoards, useSharedBoards } from '../board/boards.ts';
 import { api, authApi } from '../lib/api.ts';
 import { HeaderContext } from '../lib/header.tsx';
 import { useSession } from '../lib/session.tsx';
@@ -37,10 +37,15 @@ import { SearchDialog } from './SearchDialog.tsx';
 
 interface ProjectsState {
   projects: Project[] | null;
+  shared: Board[] | null;
   openNewProject: () => void;
 }
 
-const ProjectsContext = createContext<ProjectsState>({ projects: null, openNewProject: () => {} });
+const ProjectsContext = createContext<ProjectsState>({
+  projects: null,
+  shared: null,
+  openNewProject: () => {},
+});
 export const useProjects = () => useContext(ProjectsContext);
 
 export function AppLayout() {
@@ -54,6 +59,7 @@ export function AppLayout() {
   const [headerContent, setHeaderContent] = useState<ReactNode | null>(null);
   const [searching, setSearching] = useState(false);
   const [params, setParams] = useSearchParams();
+  const shared = useSharedBoards(!!user);
 
   const load = useCallback(async () => {
     const page = await api.get<{ items: Project[] }>('/projects');
@@ -85,7 +91,13 @@ export function AppLayout() {
   const pathProject = pathname.startsWith('/p/') ? pathname.split('/')[2] : undefined;
   const { items: projectBoards } = useProjectBoards(pathProject);
 
-  if (!user) return <Navigate to="/login" replace />;
+  if (!user)
+    return (
+      <Navigate
+        to={pathname === '/' ? '/login' : `/login?next=${encodeURIComponent(pathname)}`}
+        replace
+      />
+    );
 
   const go = (to: string) => (e: MouseEvent) => {
     e.preventDefault();
@@ -155,7 +167,12 @@ export function AppLayout() {
         label={theme === 'dark' ? t('nav.theme.toLight') : t('nav.theme.toDark')}
         onClick={toggle}
       />
-      <RailButton icon="settings" label={t('nav.settings')} disabled />
+      <RailButton
+        icon="settings"
+        label={t('nav.settings')}
+        active={pathname.startsWith('/settings')}
+        onClick={() => navigate('/settings')}
+      />
       <RailButton icon="logout" label={t('auth.signOut')} onClick={signOut} />
       <span style={{ marginTop: 4 }}>
         <Avatar name={user.name} />
@@ -218,6 +235,21 @@ export function AppLayout() {
           )}
         </div>
       ))}
+      {shared && shared.length > 0 && (
+        <>
+          <SidebarSection title={t('nav.shared')} />
+          {shared.map((b) => (
+            <NavItem
+              key={b.id}
+              icon="people"
+              label={b.title}
+              href={`/p/${b.projectId}/b/${b.id}`}
+              active={b.id === boardId}
+              onClick={go(`/p/${b.projectId}/b/${b.id}`)}
+            />
+          ))}
+        </>
+      )}
       <SidebarSection title={t('nav.pinned')} />
       <div className="ink-muted" style={{ padding: '0 8px', fontSize: 12 }}>
         {t('home.noPinned')}
@@ -252,7 +284,7 @@ export function AppLayout() {
   );
 
   return (
-    <ProjectsContext.Provider value={{ projects, openNewProject: () => setCreating(true) }}>
+    <ProjectsContext.Provider value={{ projects, shared, openNewProject: () => setCreating(true) }}>
       <HeaderContext.Provider value={setHeaderContent}>
         <AppShell rail={rail} sidebar={sidebar} header={header} canvas={!!projectId}>
           <Outlet />

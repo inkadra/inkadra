@@ -1,5 +1,5 @@
 import type { Board, BoardDetail, BoardKind } from '@inkadra/shared';
-import { useEffect, useSyncExternalStore } from 'react';
+import { useEffect, useState, useSyncExternalStore } from 'react';
 import { api } from '../lib/api.ts';
 
 /**
@@ -88,4 +88,21 @@ export function childBoards(items: Board[] | null, parentId: string): Board[] {
   return (items ?? [])
     .filter((b) => b.parentBoardId === parentId)
     .sort((a, b) => (a.position < b.position ? -1 : a.position > b.position ? 1 : 0));
+}
+
+/** Top boards of the subtrees shared with you in projects you are not a member of. */
+export function useSharedBoards(enabled: boolean): Board[] | null {
+  const [items, setItems] = useState<Board[] | null>(null);
+  useEffect(() => {
+    if (!enabled) return;
+    let alive = true;
+    api
+      .get<{ items: Board[] }>('/shared-boards')
+      .then((page) => alive && setItems(page.items))
+      .catch(() => alive && setItems([]));
+    return () => {
+      alive = false;
+    };
+  }, [enabled]);
+  return items;
 }

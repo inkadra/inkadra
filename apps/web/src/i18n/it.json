@@ -22,9 +22,48 @@
       "invalid": "Email o password non corrette.",
       "closed": "La registrazione è chiusa. Chiedi un invito all’amministratore.",
       "password": "La password deve avere almeno 10 caratteri.",
-      "generic": "Qualcosa è andato storto. Riprova."
+      "generic": "Qualcosa è andato storto. Riprova.",
+      "domain": "Questo account Google non appartiene a un dominio consentito.",
+      "inviteEmail": "L’invito è per un altro indirizzo: usa l’email a cui è arrivato.",
+      "rateLimited": "Troppi tentativi: aspetta un minuto.",
+      "provider": "L’accesso non è riuscito. Riprova o usa un altro metodo."
     },
-    "diagnostics": "Problemi di configurazione? Apri la diagnostica"
+    "diagnostics": "Problemi di configurazione? Apri la diagnostica",
+    "signUp": "Crea account",
+    "signUpTitle": "Crea il tuo account",
+    "createAccount": "Non hai un account? Creane uno",
+    "haveAccount": "Hai già un account? Accedi",
+    "google": "Continua con Google",
+    "oidc": "Continua con {{name}}",
+    "or": "oppure",
+    "usePassword": "Usa la password",
+    "useLink": "Ricevi un link via email",
+    "link": {
+      "send": "Inviami un link",
+      "sentTitle": "Controlla la posta",
+      "sentBody": "Se {{email}} può accedere, riceverà un link valido per 15 minuti.",
+      "again": "Usa un altro indirizzo"
+    },
+    "reset": {
+      "ask": "Password dimenticata?",
+      "needEmail": "Scrivi prima la tua email",
+      "sent": "Se l’indirizzo ha un account, riceverà un link per scegliere una nuova password.",
+      "title": "Scegli una nuova password",
+      "save": "Salva la password",
+      "done": "Password cambiata. Ora puoi accedere.",
+      "invalid": "Il link non è valido o è scaduto. Chiedine un altro dalla pagina di accesso."
+    },
+    "twoFactor": {
+      "body": "Scrivi il codice di 6 cifre dell’app di autenticazione.",
+      "backupBody": "Scrivi uno dei codici di riserva che hai salvato. Ogni codice vale una volta.",
+      "code": "Codice",
+      "backupCode": "Codice di riserva",
+      "trust": "Non chiedere più su questo dispositivo per 30 giorni",
+      "verify": "Verifica",
+      "invalid": "Codice non valido. Riprova.",
+      "useBackup": "Usa un codice di riserva",
+      "useApp": "Usa l’app di autenticazione"
+    }
   },
   "nav": {
     "modules": "Moduli",
@@ -49,7 +88,8 @@
     "theme": {
       "toDark": "Passa al tema scuro",
       "toLight": "Passa al tema chiaro"
-    }
+    },
+    "shared": "Condivisi con te"
   },
   "home": {
     "greeting": {
@@ -61,7 +101,8 @@
     "recent": "Recenti",
     "noProjects": "Nessun progetto",
     "noProjectsBody": "Crea il primo progetto: un film, uno shooting, un cliente.",
-    "noPinned": "Niente di fissato"
+    "noPinned": "Niente di fissato",
+    "shared": "Condivisi con te"
   },
   "project": {
     "dialogTitle": "Nuovo progetto",
@@ -298,7 +339,8 @@
       "synced": "Sincronizzato",
       "offline": "Offline · le modifiche restano qui",
       "denied": "Accesso negato",
-      "readOnly": "Sola lettura"
+      "readOnly": "Sola lettura",
+      "signedOut": "Disconnesso"
     },
     "denied": {
       "title": "Non puoi aprire questa board",
@@ -318,6 +360,15 @@
     },
     "video": {
       "play": "Riproduci"
+    },
+    "signedOut": {
+      "title": "Sessione terminata",
+      "body": "Hai fatto logout o l’accesso è scaduto. Accedi di nuovo per continuare."
+    },
+    "peers": {
+      "label_one": "{{count}} persona sulla board",
+      "label_other": "{{count}} persone sulla board",
+      "viewing": "{{name}} (sola lettura)"
     }
   },
   "tags": {
@@ -519,6 +570,181 @@
       "picture": "Immagine",
       "scene": "Scena",
       "noMatch": "Nessuna inquadratura corrisponde al filtro"
+    }
+  },
+  "roles": {
+    "owner": "Proprietario",
+    "editor": "Editor",
+    "commenter": "Commentatore",
+    "viewer": "Lettore"
+  },
+  "share": {
+    "open": "Condividi",
+    "title": "Condividi “{{title}}”",
+    "close": "Chiudi",
+    "inherits_one": "Chi inviti vede anche il sotto-board contenuto qui.",
+    "inherits_other": "Chi inviti vede anche i {{count}} sotto-board contenuti qui.",
+    "wholeProject": "Chi inviti qui entra in tutto il progetto.",
+    "thisBoard": "Chi inviti vede solo questo board.",
+    "people": "Persone con accesso",
+    "you": "{{name}} (tu)",
+    "member": "Membro del progetto",
+    "fromProject": "Dal progetto",
+    "inherited": "Ereditato da {{board}}",
+    "custom": "Personalizzato qui · nel progetto è {{role}}",
+    "onlyHere": "Solo da questo board in giù",
+    "roleOf": "Ruolo di {{name}}",
+    "remove": "Togli l’accesso a {{name}}",
+    "pending": "Invito in attesa · {{role}} · inviato {{when}}",
+    "resend": "Reinvia",
+    "cancelInvite": "Annulla l’invito a {{email}}",
+    "inviteLabel": "Email o nome",
+    "invitePlaceholder": "Email o nome di chi ha già un account",
+    "invitePlaceholderNoEmail": "Email (riceverai un link da inoltrare) o nome",
+    "inviteRole": "Ruolo dell’invito",
+    "invite": "Invita",
+    "added": "{{name}} ora ha accesso.",
+    "sent": "Invito inviato a {{email}}.",
+    "noEmail": "Questa istanza non invia email: copia il link e mandalo a {{email}}.",
+    "copy": "Copia link",
+    "copied": "Copiato",
+    "readOnly": "Solo editor e proprietari possono invitare persone o cambiare i ruoli.",
+    "link": {
+      "title": "Link d’invito",
+      "body": "Chi apre il link entra con il ruolo scelto, anche senza account (lo crea al momento).",
+      "active_one": "{{role}} · scade il {{date}} · usato {{count}} volta",
+      "active_other": "{{role}} · scade il {{date}} · usato {{count}} volte",
+      "role": "Ruolo per chi usa il link",
+      "expires": "Scadenza del link",
+      "days_one": "{{count}} giorno",
+      "days_other": "{{count}} giorni",
+      "create": "Crea link",
+      "revoke": "Disattiva"
+    },
+    "errors": {
+      "load": "Impossibile caricare gli accessi. Riprova.",
+      "rateLimited": "Troppi inviti in poco tempo: riprova tra un po’.",
+      "forbidden": "Non puoi dare un ruolo più alto del tuo, né cambiare chi ha più accesso di te.",
+      "address": "Scrivi un indirizzo email o scegli una persona dall’elenco.",
+      "generic": "Qualcosa è andato storto. Riprova."
+    }
+  },
+  "join": {
+    "invitedBy": "{{name}} ti invita {{what}}",
+    "invited": "Sei invitato {{what}}",
+    "board": "nel board “{{board}}” di {{project}}",
+    "project": "nel progetto {{project}}",
+    "instance": "su {{instance}}",
+    "as": "come {{role}}",
+    "signedInAs": "Hai fatto l’accesso come {{name}} ({{email}})",
+    "accept": "Accetta l’invito",
+    "otherAccount": "Usa un altro account",
+    "used": "Questo invito è già stato usato.",
+    "missing": "Questo invito non esiste. Controlla il link o chiedine un altro.",
+    "home": "Vai alla home",
+    "status": {
+      "expired": "Questo invito è scaduto. Chiedine uno nuovo a chi te l’ha mandato.",
+      "used": "Questo invito è già stato usato.",
+      "revoked": "Questo invito è stato annullato."
+    }
+  },
+  "authorize": {
+    "clients": {
+      "clipper": "Inkadra Clipper",
+      "mobile": "App Inkadra"
+    },
+    "asks": "chiede di accedere al tuo account su {{instance}}",
+    "what": "L’app potrà vedere e modificare quello che puoi vedere e modificare tu. Puoi revocarla quando vuoi da Impostazioni.",
+    "allow": "Consenti",
+    "deny": "Annulla",
+    "cancelled": "Nessun accesso concesso. Puoi chiudere questa pagina.",
+    "invalid": "Questa richiesta non è valida. Riprova dall’app.",
+    "failed": "L’autorizzazione non è riuscita: l’app non è tra quelle ufficiali o la richiesta è scaduta."
+  },
+  "settings": {
+    "title": "Account",
+    "lead": "Il tuo profilo, come accedi e le app collegate.",
+    "save": "Salva",
+    "saved": "Salvato.",
+    "profile": {
+      "title": "Profilo",
+      "language": "Lingua",
+      "languages": {
+        "it": "Italiano",
+        "en": "English"
+      }
+    },
+    "methods": {
+      "title": "Metodi di accesso",
+      "body": "Collega Google o il provider dello studio per accedere senza password.",
+      "linked": "Collegato",
+      "notLinked": "Non collegato",
+      "link": "Collega",
+      "unlink": "Scollega",
+      "last": "È l’unico modo con cui accedi: aggiungine un altro prima."
+    },
+    "password": {
+      "title": "Password",
+      "body": "Cambiandola, le altre sessioni vengono chiuse.",
+      "current": "Password attuale",
+      "new": "Nuova password",
+      "change": "Cambia password",
+      "changed": "Password cambiata. Le altre sessioni sono state chiuse."
+    },
+    "twoFactor": {
+      "title": "Verifica in due passaggi",
+      "on": "Attiva: all’accesso chiediamo anche un codice dall’app.",
+      "off": "Aggiungi un codice da un’app di autenticazione (1Password, Google Authenticator, Aegis…).",
+      "needsPassword": "Serve una password sull’account. Se accedi con Google o con il provider dello studio, la verifica in due passaggi è gestita lì.",
+      "enable": "Attiva",
+      "disable": "Disattiva",
+      "scan": "Inquadra il codice con l’app di autenticazione, poi scrivi il codice di 6 cifre.",
+      "manual": "Oppure inserisci questa chiave:",
+      "backup": "Salva questi codici di riserva in un posto sicuro: ognuno ti fa entrare una volta se perdi il telefono.",
+      "confirm": "Conferma e attiva",
+      "enabled": "Verifica in due passaggi attiva.",
+      "disabled": "Verifica in due passaggi disattivata."
+    },
+    "sessions": {
+      "title": "Sessioni",
+      "body": "I dispositivi su cui hai fatto l’accesso.",
+      "this": "Questo dispositivo",
+      "since": "Ultima attività {{when}}",
+      "end": "Esci",
+      "endOthers": "Esci da tutti gli altri dispositivi",
+      "unknown": "Dispositivo sconosciuto",
+      "browser": "Browser"
+    },
+    "tokens": {
+      "title": "App e token",
+      "body": "Il clipper, l’app mobile e gli script accedono con un token personale. Revocalo se perdi un dispositivo.",
+      "none": "Nessun token.",
+      "manual": "creato a mano",
+      "clients": {
+        "clipper": "Clipper",
+        "mobile": "App mobile"
+      },
+      "used": "usato il {{when}}",
+      "unused": "mai usato",
+      "revoke": "Revoca",
+      "name": "Nome del token",
+      "namePlaceholder": "Script di backup",
+      "create": "Crea token",
+      "copyNow": "Token “{{name}}” creato. Copialo ora: non lo vedrai più.",
+      "done": "Fatto"
+    },
+    "delete": {
+      "title": "Elimina account",
+      "body": "Elimina l’account e i progetti in cui non c’è nessun altro. Non si può annullare.",
+      "open": "Elimina account…",
+      "confirmTitle": "Eliminare l’account?",
+      "confirmBody": "I progetti in cui sei da solo vengono eliminati con tutti i file. Nei progetti condivisi resta il lavoro, senza di te.",
+      "fresh": "Per sicurezza, l’accesso deve essere avvenuto negli ultimi 15 minuti: se serve, esci e rientra.",
+      "blocked": "Sei l’unico proprietario di questi progetti condivisi: nomina un altro proprietario prima.",
+      "confirm": "Elimina definitivamente"
+    },
+    "errors": {
+      "password": "La password non è corretta."
     }
   }
 }

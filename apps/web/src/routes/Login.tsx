@@ -1,99 +1,74 @@
-import { Button, Logo, TextField, Wordmark } from '@inkadra/ui';
-import { type FormEvent, useState } from 'react';
+import { Logo, Wordmark } from '@inkadra/ui';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, Navigate } from 'react-router';
-import { authApi, RequestError } from '../lib/api.ts';
+import { Link, Navigate, useNavigate, useSearchParams } from 'react-router';
 import { useSession } from '../lib/session.tsx';
+import { SignInOptions } from './SignInOptions.tsx';
 import './login.css';
+
+/** Only paths inside the app, so a crafted link cannot send people elsewhere after sign-in. */
+export function safeNext(value: string | null): string {
+  return value?.startsWith('/') && !value.startsWith('//') ? value : '/';
+}
+
+const PROVIDER_ERRORS: Record<string, string> = {
+  REGISTRATION_CLOSED: 'auth.errors.closed',
+  DOMAIN_NOT_ALLOWED: 'auth.errors.domain',
+  INVITATION_EMAIL_MISMATCH: 'auth.errors.inviteEmail',
+};
 
 export function Login() {
   const { t } = useTranslation();
   const { instance, user, refresh } = useSession();
+  const navigate = useNavigate();
+  const [params] = useSearchParams();
+  const next = safeNext(params.get('next'));
+  const providerError = params.get('error');
   const setup = instance?.setupRequired ?? false;
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
+  const open = instance?.registration === 'open';
+  const [creating, setCreating] = useState(false);
+  const signUp = setup || (open && creating);
 
-  if (user) return <Navigate to="/" replace />;
-
-  async function submit(e: FormEvent) {
-    e.preventDefault();
-    setError(null);
-    if (setup && password.length < 10) {
-      setError(t('auth.errors.password'));
-      return;
-    }
-    setBusy(true);
-    try {
-      if (setup) await authApi.signUp(name.trim(), email.trim(), password);
-      else await authApi.signIn(email.trim(), password);
-      await refresh();
-    } catch (err) {
-      if (err instanceof RequestError && err.status === 401) setError(t('auth.errors.invalid'));
-      else if (err instanceof RequestError && err.code === 'REGISTRATION_CLOSED')
-        setError(t('auth.errors.closed'));
-      else setError(t('auth.errors.generic'));
-    } finally {
-      setBusy(false);
-    }
-  }
+  if (user) return <Navigate to={next} replace />;
 
   return (
     <div className="login">
       <div className="login__dots" aria-hidden="true" />
-      <form className="login__card" onSubmit={submit} noValidate>
+      <main className="login__card">
         <div className="login__brand">
           <Logo size={56} />
           <h1 className="login__title">
             <Wordmark />
           </h1>
           <p className="ink-muted login__subtitle">
-            {setup ? t('auth.setupTitle') : t('auth.subtitle')}
+            {setup ? t('auth.setupTitle') : signUp ? t('auth.signUpTitle') : t('auth.subtitle')}
           </p>
           {setup && <p className="login__note">{t('auth.setupSubtitle')}</p>}
         </div>
 
-        {setup && (
-          <TextField
-            label={t('auth.name')}
-            name="name"
-            autoComplete="name"
-            required
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-          />
-        )}
-        <TextField
-          label={t('auth.email')}
-          name="email"
-          type="email"
-          autoComplete={setup ? 'email' : 'username'}
-          placeholder={t('auth.emailPlaceholder')}
-          required
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-        />
-        <TextField
-          label={t('auth.password')}
-          name="password"
-          type="password"
-          autoComplete={setup ? 'new-password' : 'current-password'}
-          placeholder={setup ? t('auth.passwordHint') : undefined}
-          required
-          minLength={setup ? 10 : undefined}
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-        />
-        {error && (
-          <p className="login__error" role="alert">
-            {error}
+        {providerError && (
+          <p className="login__error login__error--box" role="alert">
+            {t(PROVIDER_ERRORS[providerError] ?? 'auth.errors.provider')}
           </p>
         )}
-        <Button type="submit" variant="primary" size="lg" block disabled={busy}>
-          {busy ? t('auth.signingIn') : setup ? t('auth.createAdmin') : t('auth.signIn')}
-        </Button>
+
+        <SignInOptions
+          key={signUp ? 'up' : 'in'}
+          next={next}
+          signUp={signUp}
+          onSignedIn={async () => {
+            await refresh();
+            navigate(next, { replace: true });
+          }}
+        />
+
+        {!setup && open && (
+          <p className="login__note login__note--center">
+            <button type="button" className="login__switch" onClick={() => setCreating(!creating)}>
+              {creating ? t('auth.haveAccount') : t('auth.createAccount')}
+            </button>
+          </p>
+        )}
         {!setup && instance?.registration === 'invite' && (
           <p className="login__note login__note--center">{t('auth.inviteOnly')}</p>
         )}
@@ -102,7 +77,7 @@ export function Login() {
             <Link to="/diagnostics">{t('auth.diagnostics')}</Link>
           </p>
         )}
-      </form>
+      </main>
       <p className="login__footer">{t('app.footer', { version: instance?.version ?? '' })}</p>
     </div>
   );

@@ -185,6 +185,9 @@ importers:
       tus-js-client:
         specifier: ^4.3.1
         version: 4.3.1
+      uqr:
+        specifier: 0.1.2
+        version: 0.1.2
       yjs:
         specifier: ^13.6.0
         version: 13.6.33
@@ -3283,6 +3286,9 @@ packages:
   undici-types@6.21.0:
     resolution: {integrity: sha512-iwDZqg0QAGrg9Rav5H4n0M64c3mkR59cJ6wQp+7C4nI0gsmExaedaYLNO44eT4AtBBwjbTiGPMlt2Md0T9H9JQ==}
 
+  uqr@0.1.2:
+    resolution: {integrity: sha512-MJu7ypHq6QasgF5YRTjqscSzQp/W11zoUk6kvmlH+fmWEs63Y0Eib13hYFwAzagRJcVY8WVnlV+eBDUGMJ5IbA==}
+
   uri-template-lite@22.9.0:
     resolution: {integrity: sha512-cmGZaykSWEQ5UXKaGKnUS8zFvfp8j1Jvn7dlq3P7tGd5XeybXcfo0xnVBRWiNEp80nO1GYgCLwoaRJ8WMmmk3Q==}
 
@@ -6268,6 +6274,8 @@ snapshots:
   typescript@5.9.3: {}
 
   undici-types@6.21.0: {}
+
+  uqr@0.1.2: {}
 
   uri-template-lite@22.9.0: {}
 
