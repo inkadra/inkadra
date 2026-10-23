@@ -309,8 +309,10 @@ registry.registerPath({
   summary: 'Allow an official app to act as the signed-in person; called by /authorize.',
   description:
     'Apps open `<server>/authorize?client_id=<clipper|mobile>&redirect_uri=…&state=…&' +
-    'code_challenge=…&code_challenge_method=S256` in a browser. Once the person allows it, ' +
-    'the page sends this request and follows `redirectTo`; the app then exchanges the code.',
+    'code_challenge=…&code_challenge_method=S256&device_name=…` in a browser. The page shows ' +
+    'which app and device ask for access; once the person allows it, it sends this request ' +
+    'and follows `redirectTo`, and the app exchanges the code. The redirect address must be ' +
+    'one of the exact addresses allowed for the client (see AppClient).',
   request: { body: json(CreateAppAuthorization) },
   responses: { 200: { description: 'Redirect', ...json(AppAuthorizationRedirect) }, ...errors },
 });
@@ -333,10 +335,16 @@ registry.registerPath({
   tags: ['Users'],
   security: secured,
   summary: 'People to share with: those who share a project with you, or an exact email.',
+  description:
+    'Only for people who can share (editor or owner of at least one project or board). An ' +
+    'exact email match confirms that the account exists, so the endpoint is rate limited ' +
+    '(30 searches a minute).',
   request: { query: UserSearchQuery },
   responses: {
     200: { description: 'At most 10 people', ...json(z.object({ items: z.array(Person) })) },
     401: errors[401],
+    403: errors[403],
+    429: { description: 'Too many requests', ...json(ApiError) },
   },
 });
 

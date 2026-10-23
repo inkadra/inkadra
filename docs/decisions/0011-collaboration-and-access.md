@@ -28,8 +28,10 @@ in without cookies; and people editing the same board need to see each other.
 - **Invitations.** `invitation` rows target a project, a board or (administrators) the
   instance alone. `email` invitations are single use, `link` invitations work until they
   expire (1 to 90 days) or are revoked. Inviting the address of an existing account gives the
-  role at once. The token is looked up by SHA-256 and kept sealed (AES-256-GCM, key derived
-  from `AUTH_SECRET`) so managers can copy the link again. Opening a link sets a short-lived
+  role at once. Tokens are looked up by SHA-256. Link tokens are also kept sealed (AES-256-GCM,
+  key derived from `AUTH_SECRET`) so managers can copy the link again; email invitations get
+  a new token each time they are sent, so the old email stops working. Each person can create
+  50 invitations an hour. Opening a link sets a short-lived
   cookie (`claim`); a sign-up with any method while it is set is allowed in `invite` mode and
   accepts the invitation once the account exists.
 - **Sign-in methods** (Better Auth plugins): email and password, Google
@@ -42,9 +44,14 @@ in without cookies; and people editing the same board need to see each other.
 - **Tokens.** `personal_token` keeps a SHA-256 of `ink_` + 32 random bytes (base64url). They
   authenticate REST calls (`Authorization: Bearer`) and the collab WebSocket (Hocuspocus
   `token`). Official apps get one through `/authorize`: an OAuth 2.0 authorization code with
-  PKCE (S256 only) and fixed redirect URIs per client (`https://<id>.chromiumapp.org/…` for
-  the clipper, `inkadra://…` for the mobile app), the code stored for 2 minutes in
-  `verification`. Tokens cannot delete the account or create other tokens.
+  PKCE (S256 only) and exact redirect URIs per client, never patterns: the mobile app uses
+  `inkadra://auth`; the clipper `https://<id>.chromiumapp.org/auth`, where `<id>` is one of
+  the official extension ids pinned in the code, plus the ids in `CLIPPER_EXTENSION_IDS` for
+  self-built extensions. Any other extension could otherwise obtain a token from a person who
+  clicks "Allow". The page always shows the app and device asking. The code is stored for
+  2 minutes in `verification`. Tokens cannot delete the account or create other tokens.
+- **Finding people.** `GET /users/search` is for people who can share (editor or owner
+  somewhere) and is rate limited: an exact email match tells that an account exists.
 - **Account deletion.** `DELETE /me` asks for the password, or a sign-in in the last 15
   minutes for accounts without one. It is refused while the person is the only owner of a
   project shared with others; projects nobody else is in are deleted with their files.

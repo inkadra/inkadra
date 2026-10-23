@@ -58,8 +58,9 @@ export const Invitation = z
       .nullable()
       .openapi({
         description:
-          'Link to open the invitation. Present for the people who manage it; null when the ' +
-          'invitation can no longer be used.',
+          'Link to open the invitation. For `link` invitations, present for the people who ' +
+          'manage it while it can be used. For `email` invitations only in the answer that ' +
+          'creates or resends it: each send makes a new link and the previous one stops working.',
       }),
     emailSent: z.boolean().openapi({
       description: 'False when the instance has no SMTP: share `url` some other way.',

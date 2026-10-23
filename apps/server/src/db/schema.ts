@@ -239,8 +239,9 @@ export const boardGrant = pgTable(
 
 /**
  * Invitations to a project, a board or (from administrators) the instance alone. The token is
- * looked up by its SHA-256; `tokenSealed` keeps it encrypted with a key derived from
- * AUTH_SECRET, so the people who manage the invitation can copy its link again.
+ * looked up by its SHA-256. For `link` invitations `tokenSealed` keeps it encrypted with a key
+ * derived from AUTH_SECRET, so the people who manage it can copy the link again; `email`
+ * invitations get a new token when they are sent again, so they keep none.
  */
 export const invitation = pgTable(
   'invitation',
@@ -248,7 +249,7 @@ export const invitation = pgTable(
     id: uuid('id').primaryKey().defaultRandom(),
     kind: text('kind', { enum: ['email', 'link'] }).notNull(),
     tokenHash: text('token_hash').notNull().unique(),
-    tokenSealed: text('token_sealed').notNull(),
+    tokenSealed: text('token_sealed'),
     email: text('email'),
     projectId: uuid('project_id').references(() => project.id, { onDelete: 'cascade' }),
     boardId: uuid('board_id').references(() => board.id, { onDelete: 'cascade' }),

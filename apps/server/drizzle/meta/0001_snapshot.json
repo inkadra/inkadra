@@ -1,5 +1,5 @@
 {
-  "id": "0ab52b4a-2758-4e02-a021-8a0d35bb8658",
+  "id": "ab11928a-f45e-495a-80f2-88066e33894a",
   "prevId": "529cd10a-bf17-4a84-aa6a-206d2b1bfc7e",
   "version": "7",
   "dialect": "postgresql",
@@ -784,7 +784,7 @@
           "name": "token_sealed",
           "type": "text",
           "primaryKey": false,
-          "notNull": true
+          "notNull": false
         },
         "email": {
           "name": "email",

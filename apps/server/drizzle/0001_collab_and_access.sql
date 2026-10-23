@@ -2,7 +2,7 @@ CREATE TABLE "invitation" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"kind" text NOT NULL,
 	"token_hash" text NOT NULL,
-	"token_sealed" text NOT NULL,
+	"token_sealed" text,
 	"email" text,
 	"project_id" uuid,
 	"board_id" uuid,
