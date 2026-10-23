@@ -5,6 +5,7 @@ import { createRoot } from 'react-dom/client';
 import { createBrowserRouter, Outlet, RouterProvider } from 'react-router';
 import { SessionProvider, useSession } from './lib/session.tsx';
 import { AppLayout } from './routes/AppLayout.tsx';
+import { Diagnostics } from './routes/Diagnostics.tsx';
 import { Home } from './routes/Home.tsx';
 import { Login } from './routes/Login.tsx';
 import { NotFound } from './routes/NotFound.tsx';
@@ -21,6 +22,7 @@ const router = createBrowserRouter([
     element: <Root />,
     children: [
       { path: '/login', element: <Login /> },
+      { path: '/diagnostics', element: <Diagnostics /> },
       {
         element: <AppLayout />,
         children: [

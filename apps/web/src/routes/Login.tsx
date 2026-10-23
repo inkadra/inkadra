@@ -1,7 +1,7 @@
 import { Button, Logo, TextField, Wordmark } from '@inkadra/ui';
 import { type FormEvent, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Navigate } from 'react-router';
+import { Link, Navigate } from 'react-router';
 import { authApi, RequestError } from '../lib/api.ts';
 import { useSession } from '../lib/session.tsx';
 import './login.css';
@@ -96,6 +96,11 @@ export function Login() {
         </Button>
         {!setup && instance?.registration === 'invite' && (
           <p className="login__note login__note--center">{t('auth.inviteOnly')}</p>
+        )}
+        {setup && (
+          <p className="login__note login__note--center">
+            <Link to="/diagnostics">{t('auth.diagnostics')}</Link>
+          </p>
         )}
       </form>
       <p className="login__footer">{t('app.footer', { version: instance?.version ?? '' })}</p>
