@@ -105,7 +105,15 @@ switches to uid 1000, which drops them. Each role has its own health check.
 Every tag also exists with the suffix `-media` (`0.2.0-media`, `latest-media`, `edge-media`…):
 the same image plus ffmpeg, a few hundred MB larger. With it, videos get a poster thumbnail on the
 board and their duration. Without it they upload and play the same, with a generic card. Set
-`INKADRA_TAG=latest-media` (or the version you pin, with `-media`) to use it.
+`INKADRA_TAG=latest-media` (or the version you pin, with `-media`) to use it. The server reports
+which of these it can do in `GET /api/v1/instance` (`media.videoPosters`); previews of camera RAW
+files are not available in either image yet (`media.rawPreviews` is `false`).
+
+The `-media` image adds Debian's `ffmpeg` package and the libraries it depends on. Debian builds
+ffmpeg with GPL components, so that package is under the GPL (version 2 or later), and some of its
+libraries under the LGPL; their licence texts are in the image under `/usr/share/doc/<package>/copyright`.
+The GPL is compatible with distributing Inkadra under the AGPL-3.0. The server only runs the
+`ffmpeg` and `ffprobe` programs and does not link to them.
 
 ## Compose variants
 

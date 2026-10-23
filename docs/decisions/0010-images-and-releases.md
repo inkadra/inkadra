@@ -43,3 +43,8 @@ locked down, verifiable, and proven to work behind the common proxies before it 
 a clean state and checkable by anyone. Adding a system package to the image (ffmpeg, fonts)
 goes through the Dockerfile and shows up in the scan. A proxy example that breaks fails CI,
 so the documentation cannot drift from what works.
+
+**Update (wave 2).** ffmpeg goes into a second variant, built from the same Dockerfile with
+`MEDIA=true` and published under every tag with the suffix `-media`. The default image stays
+small and free of GPL packages; the `-media` one carries Debian's GPL build of ffmpeg, is scanned
+the same way, and is attested in the same release.
