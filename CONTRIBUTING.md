@@ -86,7 +86,7 @@ it tags `vX.Y.Z`, publishes the GitHub release with generated notes and starts C
 CI runs in full, publishes `ghcr.io/inkadra/inkadra:X.Y.Z`, `X.Y` and `latest` for amd64 and
 arm64 with build provenance and an SBOM, and attaches the deployment files to the release.
 `X.Y.Z-rc.N` makes a pre-release, which moves neither `latest` nor `X.Y`. Every push to `main`
-publishes the `edge` tag. See [decision 0009](docs/decisions/0009-images-and-releases.md).
+publishes the `edge` tag. See [decision 0010](docs/decisions/0010-images-and-releases.md).
 
 ## CI
 

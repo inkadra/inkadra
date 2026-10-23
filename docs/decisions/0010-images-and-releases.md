@@ -1,4 +1,4 @@
-# 0009 · How images are built, checked and released
+# 0010 · How images are built, checked and released
 
 Accepted, 2026-10. Extends [0002](0002-one-image-several-roles.md).
 
