@@ -1,3 +1,5 @@
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { defineConfig, devices } from '@playwright/test';
 
 /**
@@ -43,6 +45,8 @@ export default defineConfig({
       REDIS_URL: process.env.REDIS_URL ?? 'redis://localhost:6379',
       AUTH_SECRET: 'e2e-only-secret-e2e-only-secret-e2e-only',
       WEB_DIST: '../apps/web/dist',
+      // Uploaded files; the default /data only exists in the image.
+      DATA_DIR: process.env.E2E_DATA_DIR ?? join(tmpdir(), 'inkadra-e2e'),
       INKADRA_VERSION: '0.1.0-e2e',
       LOG_LEVEL: 'warn',
     },
