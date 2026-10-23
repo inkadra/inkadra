@@ -1,0 +1,198 @@
+{
+  "ext_name": {
+    "message": "Inkadra Clipper",
+    "description": "Name of the extension."
+  },
+  "ext_description": {
+    "message": "Save images, text and links to an Inkadra board.",
+    "description": "Store description."
+  },
+  "action_title": {
+    "message": "Save to Inkadra",
+    "description": "Tooltip of the toolbar button."
+  },
+  "command_save_page": {
+    "message": "Save the page to the last board",
+    "description": "Keyboard shortcut description."
+  },
+  "menu_image": {
+    "message": "Save to Inkadra",
+    "description": "Context menu on an image."
+  },
+  "menu_selection": {
+    "message": "Save selection to Inkadra",
+    "description": "Context menu on selected text."
+  },
+  "menu_link": {
+    "message": "Save link to Inkadra",
+    "description": "Context menu on a link."
+  },
+  "menu_page": {
+    "message": "Save page to Inkadra",
+    "description": "Context menu on a page."
+  },
+  "toast_saved": {
+    "message": "Saved to $BOARD$",
+    "description": "After saving.",
+    "placeholders": {
+      "board": {
+        "content": "$1",
+        "example": "Moodboard"
+      }
+    }
+  },
+  "toast_open_board": {
+    "message": "Open board",
+    "description": "Link to the board."
+  },
+  "action_settings": {
+    "message": "Settings"
+  },
+  "action_connect": {
+    "message": "Connect"
+  },
+  "action_reconnect": {
+    "message": "Reconnect"
+  },
+  "action_disconnect": {
+    "message": "Disconnect"
+  },
+  "action_save_page": {
+    "message": "Save page"
+  },
+  "action_expand": {
+    "message": "Show sub-boards"
+  },
+  "action_collapse": {
+    "message": "Hide sub-boards"
+  },
+  "field_board": {
+    "message": "Board"
+  },
+  "field_column": {
+    "message": "Column"
+  },
+  "field_note": {
+    "message": "Note"
+  },
+  "field_tags": {
+    "message": "Tags"
+  },
+  "field_server": {
+    "message": "Server address"
+  },
+  "board_search": {
+    "message": "Search for a board…"
+  },
+  "board_none_selected": {
+    "message": "No board chosen"
+  },
+  "boards_none": {
+    "message": "No boards you can add cards to."
+  },
+  "boards_none_found": {
+    "message": "No boards found."
+  },
+  "section_recent": {
+    "message": "Recent"
+  },
+  "section_projects": {
+    "message": "Projects"
+  },
+  "section_shared": {
+    "message": "Shared with you"
+  },
+  "section_search": {
+    "message": "Results"
+  },
+  "column_unsorted": {
+    "message": "Unsorted"
+  },
+  "tags_placeholder": {
+    "message": "separated by commas"
+  },
+  "page_not_web": {
+    "message": "This page cannot be saved."
+  },
+  "connect_intro": {
+    "message": "Connect the clipper to your Inkadra server. You will be asked to sign in and allow access."
+  },
+  "connect_permission": {
+    "message": "Chrome will ask for permission to contact this address only."
+  },
+  "connect_hint_ids": {
+    "message": "If you built the extension yourself, the administrator must add its ID to CLIPPER_EXTENSION_IDS."
+  },
+  "connected_as": {
+    "message": "Connected as"
+  },
+  "help_title": {
+    "message": "How to use it"
+  },
+  "help_shortcut": {
+    "message": "Save the page to the last board used:"
+  },
+  "help_shortcut_unset": {
+    "message": "no shortcut"
+  },
+  "help_shortcut_change": {
+    "message": "Change"
+  },
+  "help_menus": {
+    "message": "Right-click an image, selected text, a link or the page to save it to the last board chosen from the toolbar button."
+  },
+  "help_selfhost": {
+    "message": "Extension you built yourself"
+  },
+  "help_selfhost_text": {
+    "message": "The server only accepts the official extensions. For this one, the server administrator adds the ID below to CLIPPER_EXTENSION_IDS and restarts."
+  },
+  "help_extension_id": {
+    "message": "Extension ID:"
+  },
+  "help_redirect": {
+    "message": "Redirect address:"
+  },
+  "error_not_connected": {
+    "message": "The clipper is not connected to a server."
+  },
+  "error_unauthorized": {
+    "message": "Access was revoked or has expired: reconnect the clipper."
+  },
+  "error_forbidden": {
+    "message": "You are not allowed to add cards to this board."
+  },
+  "error_not_found": {
+    "message": "The board no longer exists or is no longer shared with you."
+  },
+  "error_too_large": {
+    "message": "The file is too large for this server."
+  },
+  "error_offline": {
+    "message": "The server does not answer: check the connection."
+  },
+  "error_rate_limited": {
+    "message": "Too many requests: try again in a minute."
+  },
+  "error_invalid_server": {
+    "message": "There is no Inkadra server at this address."
+  },
+  "error_auth_cancelled": {
+    "message": "Sign-in was not completed."
+  },
+  "error_auth_failed": {
+    "message": "Sign-in failed: try again."
+  },
+  "error_permission_denied": {
+    "message": "Without permission to contact the server the clipper cannot work."
+  },
+  "error_no_board": {
+    "message": "First choose a board from the Inkadra toolbar button."
+  },
+  "error_bad_request": {
+    "message": "This content cannot be saved."
+  },
+  "error_server": {
+    "message": "Something went wrong on the server: try again."
+  }
+}
