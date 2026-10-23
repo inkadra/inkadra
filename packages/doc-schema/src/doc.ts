@@ -114,7 +114,7 @@ export function newElementId(size = 21): string {
   return id;
 }
 
-/** Adds an element; rich text for notes is created empty under `body`. */
+/** Adds an element; rich text for notes and the strokes of frames are created empty. */
 export function addElement(doc: Y.Doc, element: Element): Y.Map<unknown> {
   const parsed = Element.parse(element);
   const map = new Y.Map<unknown>();
@@ -124,6 +124,9 @@ export function addElement(doc: Y.Doc, element: Element): Y.Map<unknown> {
       map.set(key, toYValue(key, value));
     }
     if (parsed.type === 'note') map.set('body', new Y.XmlFragment());
+    // Created with the frame, so two people drawing on a new frame add to the same array
+    // instead of each replacing the field with their own.
+    if (parsed.type === 'frame' && !map.has('strokes')) map.set('strokes', new Y.Array());
     roots(doc).elements.set(parsed.id, map);
   });
   return map;
