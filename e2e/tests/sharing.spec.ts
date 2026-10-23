@@ -29,6 +29,26 @@ async function newPage(browser: Browser) {
   return context.newPage();
 }
 
+/** A point on the canvas, relative to it, with no card or control under it. */
+async function emptySpot(page: Page, from: { x: number; y: number }) {
+  const canvas = page.getByTestId('canvas');
+  const spot = await canvas.evaluate((el, start) => {
+    const box = el.getBoundingClientRect();
+    for (let dy = 0; dy < box.height - start.y; dy += 40) {
+      for (let dx = 0; dx < box.width - start.x; dx += 40) {
+        const x = start.x + dx;
+        const y = start.y + dy;
+        const hit = document.elementFromPoint(box.left + x, box.top + y);
+        if (hit && el.contains(hit) && !hit.closest('[data-type], button, input, [role="toolbar"]'))
+          return { x, y };
+      }
+    }
+    return null;
+  }, from);
+  if (!spot) throw new Error('no empty spot on the canvas');
+  return spot;
+}
+
 test('the owner makes an invitation link for the project', async ({ page }) => {
   await signIn(page, admin);
   await openProject(page);
@@ -81,9 +101,11 @@ test('people on the board see each other, and a viewer cannot edit', async ({ pa
   // A double click makes no note for a viewer, and the owner's notes arrive live.
   const notes = other.locator('[data-type="note"]');
   const before = await notes.count();
-  await other.getByTestId('canvas').dblclick({ position: { x: 600, y: 500 } });
+  await other
+    .getByTestId('canvas')
+    .dblclick({ position: await emptySpot(other, { x: 600, y: 500 }) });
   await expect(notes).toHaveCount(before);
-  await canvas.dblclick({ position: { x: 600, y: 520 } });
+  await canvas.dblclick({ position: await emptySpot(page, { x: 600, y: 520 }) });
   await page.keyboard.type('Scaletta riprese');
   await page.keyboard.press('Escape');
   await expect(other.locator('[data-type="note"]', { hasText: 'Scaletta riprese' })).toBeVisible();
@@ -117,7 +139,9 @@ test('a role change reaches a board that is already open', async ({ page, browse
     timeout: 45_000,
   });
   await expect(other.getByRole('status').getByText('Sincronizzato')).toBeVisible();
-  await other.getByTestId('canvas').dblclick({ position: { x: 300, y: 600 } });
+  await other
+    .getByTestId('canvas')
+    .dblclick({ position: await emptySpot(other, { x: 300, y: 600 }) });
   await other.keyboard.type('Nota di Paolo');
   await other.keyboard.press('Escape');
   await expect(page.locator('[data-type="note"]', { hasText: 'Nota di Paolo' })).toBeVisible();

@@ -25,6 +25,7 @@ export function FramePanel({
   label,
   boardAspect,
   projectId,
+  boardId,
   readOnly,
   onClose,
   onDraw,
@@ -34,6 +35,7 @@ export function FramePanel({
   label: string;
   boardAspect: AspectRatio;
   projectId: string;
+  boardId: string;
   readOnly: boolean;
   onClose: () => void;
   onDraw: () => void;
@@ -240,6 +242,7 @@ export function FramePanel({
           startUpload({
             file,
             projectId,
+            boardId,
             onAsset: (assetId) => updateElement(store.doc, id, { assetId }, LOCAL),
           });
         }}
