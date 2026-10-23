@@ -17,6 +17,8 @@ export interface BoardContextValue {
   setEditing: (id: string | null) => void;
   openBoard: (boardId: string) => void;
   setNoteEditor: (editor: Editor | null) => void;
+  /** Shot number of each frame, from the scenes it sits in. */
+  frameLabels: ReadonlyMap<string, string>;
 }
 
 export const BoardContext = createContext<BoardContextValue | null>(null);

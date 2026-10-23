@@ -1,4 +1,11 @@
-import { addTodoItem, removeTodoItem, updateElement, updateTodoItem } from '@inkadra/canvas-core';
+import {
+  addTodoItem,
+  formatDuration,
+  isContainer,
+  removeTodoItem,
+  updateElement,
+  updateTodoItem,
+} from '@inkadra/canvas-core';
 import type { Element } from '@inkadra/doc-schema';
 import { Icon } from '@inkadra/ui';
 import { type CSSProperties, type KeyboardEvent, memo, useEffect, useRef, useState } from 'react';
@@ -7,10 +14,14 @@ import * as Y from 'yjs';
 import { pickVariant, useAsset } from './assets.ts';
 import { renameBoard } from './boards.ts';
 import { useBoard } from './context.ts';
+import { useBoardAspect } from './film/aspect.ts';
+import { FramePicture } from './film/FramePicture.tsx';
+import { useSlugline } from './film/StoryboardView.tsx';
 import { webUrl } from './links.ts';
 import { useMeasure } from './measure.ts';
 import { NoteBody, NoteEditor } from './note.tsx';
 import { LOCAL } from './store.ts';
+import { TagList } from './tags.tsx';
 import { localPreview, useUploadProgress } from './uploads.ts';
 
 type Of<T extends Element['type']> = Extract<Element, { type: T }>;
@@ -97,6 +108,11 @@ export const Card = memo(function Card({
         selection={selection}
         draggingIds={draggingIds}
       />
+      {!isContainer(element) && element.tags && element.tags.length > 0 && (
+        <div className="card__tags">
+          <TagList tags={element.tags} />
+        </div>
+      )}
       {element.locked && (
         <span className="card__lock" title={t('board.locked')}>
           <Icon name="lock" size={12} />
@@ -135,7 +151,7 @@ function CardBody({
     case 'link':
       return <LinkCard element={element} width={width} />;
     case 'file':
-      return <FileCard element={element} />;
+      return <FileCard element={element} width={width} />;
     case 'todo':
       return <TodoCard element={element} editing={editing} />;
     case 'color':
@@ -143,6 +159,7 @@ function CardBody({
     case 'board':
       return <BoardCard element={element} editing={editing} />;
     case 'column':
+    case 'scene':
       return (
         <ColumnCard
           element={element}
@@ -152,7 +169,42 @@ function CardBody({
           draggingIds={draggingIds}
         />
       );
+    case 'frame':
+      return <FrameCard element={element} width={width} />;
+    case 'arrow':
+      // Drawn by the arrow layer, not as a card.
+      return null;
   }
+}
+
+function FrameCard({ element, width }: { element: Of<'frame'>; width: number }) {
+  const { store, scale, frameLabels } = useBoard();
+  const { t } = useTranslation();
+  const boardAspect = useBoardAspect(store.doc);
+  const label = frameLabels.get(element.id) ?? element.label ?? '';
+  return (
+    <>
+      <div className="card__frame">
+        <FramePicture
+          assetId={element.assetId}
+          aspect={element.aspect}
+          boardAspect={boardAspect}
+          strokes={element.strokes}
+          pixels={width * scale * (window.devicePixelRatio || 1)}
+        />
+      </div>
+      <div className="card__pad card__frame-meta">
+        <span className="card__title">{label}</span>
+        <span className={`film-chip film-status--${element.status ?? 'draft'}`}>
+          {t(`film.status.${element.status ?? 'draft'}`)}
+        </span>
+        {element.durationMs !== undefined && (
+          <span className="card__desc">{formatDuration(element.durationMs)}</span>
+        )}
+      </div>
+      {element.action && <div className="card__caption">{element.action}</div>}
+    </>
+  );
 }
 
 function NoteCard({ element, editing }: { element: Of<'note'>; editing: boolean }) {
@@ -288,11 +340,39 @@ function formatSize(bytes: number): string {
   return `${v < 10 ? v.toFixed(1) : Math.round(v)} ${units[i]}`;
 }
 
-function FileCard({ element }: { element: Of<'file'> }) {
+function FileCard({ element, width }: { element: Of<'file'>; width: number }) {
   const { t } = useTranslation();
+  const { scale } = useBoard();
   const asset = useAsset(element.assetId);
   const progress = useUploadProgress(element.assetId);
   const ready = asset && asset !== 'missing' ? asset : null;
+  if (ready?.kind === 'video' && progress === null) {
+    const poster = pickVariant(ready, width * scale * (window.devicePixelRatio || 1));
+    return (
+      <>
+        <div
+          className="card__media card__video"
+          style={{
+            aspectRatio:
+              ready.width && ready.height ? `${ready.width} / ${ready.height}` : '16 / 9',
+          }}
+        >
+          {poster && ready.variants.length > 0 ? (
+            <img src={poster} alt={ready.filename} draggable={false} decoding="async" />
+          ) : (
+            <span className="card__media-state">{t('board.video.noPoster')}</span>
+          )}
+          <span className="card__play" aria-hidden="true">
+            <Icon name="play" size={16} />
+          </span>
+          {ready.durationMs !== null && (
+            <span className="card__duration">{formatDuration(ready.durationMs)}</span>
+          )}
+        </div>
+        <div className="card__caption">{ready.filename}</div>
+      </>
+    );
+  }
   const ext = ready?.filename.split('.').pop()?.slice(0, 4).toUpperCase() ?? '';
   return (
     <div className="card__pad card__file">
@@ -471,7 +551,7 @@ function BoardCard({ element, editing }: { element: Of<'board'>; editing: boolea
   return (
     <div className="card__board">
       <span className="card__board-tile" aria-hidden="true">
-        <Icon name="board" size={22} />
+        <Icon name={board?.kind === 'storyboard' ? 'storyboard' : 'board'} size={22} />
       </span>
       {editing && board ? (
         <input
@@ -491,7 +571,9 @@ function BoardCard({ element, editing }: { element: Of<'board'>; editing: boolea
       ) : (
         <span className="card__title">{title}</span>
       )}
-      <span className="card__desc">{t('board.types.board')}</span>
+      <span className="card__desc">
+        {board?.kind === 'storyboard' ? t('board.types.storyboard') : t('board.types.board')}
+      </span>
     </div>
   );
 }
@@ -503,7 +585,7 @@ function ColumnCard({
   selection,
   draggingIds,
 }: {
-  element: Of<'column'>;
+  element: Of<'column'> | Of<'scene'>;
   editing: boolean;
   items: readonly Element[];
   selection?: ReadonlySet<string> | undefined;
@@ -511,9 +593,12 @@ function ColumnCard({
 }) {
   const { store, setEditing, readOnly } = useBoard();
   const { t } = useTranslation();
+  const slugline = useSlugline();
+  const scene = element.type === 'scene' ? element : null;
   return (
     <>
       <div className="column__head">
+        {scene && <span className="column__number">{scene.number}</span>}
         {editing ? (
           <input
             className="card__inline-input column__title"
@@ -530,7 +615,10 @@ function ColumnCard({
             aria-label={t('board.column.title')}
           />
         ) : (
-          <span className="column__title">{element.title || t('board.column.untitled')}</span>
+          <span className="column__title">
+            {scene && slugline(scene) && <span className="column__slug">{slugline(scene)}</span>}
+            {element.title || (scene ? '' : t('board.column.untitled'))}
+          </span>
         )}
         <span className="column__count">{items.length}</span>
         <button
