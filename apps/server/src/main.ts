@@ -1,0 +1,107 @@
+#!/usr/bin/env node
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import pino from 'pino';
+import { createAuth } from './auth.ts';
+import { attachCollab, createCollabServer } from './collab.ts';
+import { loadConfig, VERSION } from './config.ts';
+import { createDatabase, runMigrations } from './db/client.ts';
+import { createApp } from './http/app.ts';
+import { createQueues, startWorkers } from './queues.ts';
+
+const COMMANDS = ['web', 'collab', 'worker', 'all', 'migrate'] as const;
+type Command = (typeof COMMANDS)[number];
+
+const here = dirname(fileURLToPath(import.meta.url));
+// In the image the bundle sits in dist/ next to drizzle/; in development main.ts is in src/.
+const migrationsFolder = process.env.MIGRATIONS_DIR ?? join(here, '..', 'drizzle');
+
+async function main() {
+  const command = (process.argv[2] ?? 'all') as Command;
+  if (!COMMANDS.includes(command)) {
+    console.error(`Usage: inkadra <${COMMANDS.join('|')}>`);
+    process.exit(2);
+  }
+
+  const config = loadConfig();
+  const log = pino({ level: config.LOG_LEVEL, base: { service: command } });
+  log.info({ version: VERSION }, 'starting inkadra');
+
+  if (command === 'migrate' || command === 'web' || command === 'all') {
+    await runMigrations(config.DATABASE_URL, migrationsFolder);
+    log.info('database migrations applied');
+    if (command === 'migrate') return;
+  }
+
+  const { db, sql } = createDatabase(config.DATABASE_URL);
+  const auth = createAuth(config, db);
+  const closers: Array<() => Promise<unknown>> = [() => sql.end({ timeout: 5 })];
+
+  if (command === 'worker' || command === 'all') {
+    if (!config.REDIS_URL) throw new Error('REDIS_URL is required by the worker.');
+    const workers = startWorkers(config.REDIS_URL, log);
+    closers.unshift(() => workers.close());
+    log.info('worker started');
+  }
+
+  let collab: ReturnType<typeof createCollabServer> | undefined;
+  if (command === 'collab' || command === 'all') {
+    collab = createCollabServer({ db, auth, log });
+    const server = collab;
+    closers.unshift(() => server.destroy());
+    if (command === 'collab') {
+      await server.listen(config.COLLAB_PORT);
+      log.info({ port: config.COLLAB_PORT }, 'collab listening');
+    }
+  }
+
+  if (command === 'web' || command === 'all') {
+    let pingQueue: (() => Promise<boolean>) | undefined;
+    if (config.REDIS_URL) {
+      const queues = createQueues(config.REDIS_URL);
+      closers.unshift(async () => {
+        await queues.maintenance.close();
+        queues.connection.disconnect();
+      });
+      pingQueue = async () => {
+        try {
+          return (await queues.connection.ping()) === 'PONG';
+        } catch {
+          return false;
+        }
+      };
+    }
+    const webDist = config.WEB_DIST ?? join(here, '..', 'web');
+    const app = await createApp({
+      config: { ...config, WEB_DIST: webDist },
+      db,
+      auth,
+      log,
+      pingQueue,
+    });
+    if (collab) {
+      attachCollab(app.server, collab);
+    }
+    closers.unshift(() => app.close());
+    await app.listen({ host: config.HOST, port: config.PORT });
+  }
+
+  const shutdown = async (signal: string) => {
+    log.info({ signal }, 'shutting down');
+    for (const close of closers) {
+      try {
+        await close();
+      } catch (err) {
+        log.error({ err }, 'error during shutdown');
+      }
+    }
+    process.exit(0);
+  };
+  process.once('SIGTERM', () => void shutdown('SIGTERM'));
+  process.once('SIGINT', () => void shutdown('SIGINT'));
+}
+
+main().catch((err) => {
+  console.error(err instanceof Error ? err.message : err);
+  process.exit(1);
+});

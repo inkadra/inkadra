@@ -1,0 +1,60 @@
+# Inkadra, all-in-one. Put it behind your reverse proxy (HTTPS) and set PUBLIC_URL in .env.
+# The proxy must forward WebSocket upgrades on /collab. See docs/self-hosting.md.
+
+name: inkadra
+
+services:
+  inkadra:
+    image: ghcr.io/inkadra/inkadra:${INKADRA_TAG:-latest}
+    command: all
+    init: true
+    restart: unless-stopped
+    ports:
+      - "${INKADRA_PORT:-3000}:3000"
+    environment:
+      PUBLIC_URL: ${PUBLIC_URL:?set PUBLIC_URL in .env}
+      AUTH_SECRET: ${AUTH_SECRET:?set AUTH_SECRET in .env}
+      DATABASE_URL: postgres://inkadra:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}@postgres:5432/inkadra
+      REDIS_URL: redis://valkey:6379
+      INSTANCE_NAME: ${INSTANCE_NAME:-Inkadra}
+      REGISTRATION: ${REGISTRATION:-invite}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+    volumes:
+      - inkadra-data:/data
+    depends_on:
+      postgres:
+        condition: service_healthy
+      valkey:
+        condition: service_healthy
+
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: inkadra
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: inkadra
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U inkadra -d inkadra"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  valkey:
+    image: valkey/valkey:8-alpine
+    restart: unless-stopped
+    command: ["valkey-server", "--appendonly", "yes"]
+    volumes:
+      - valkey-data:/data
+    healthcheck:
+      test: ["CMD", "valkey-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+volumes:
+  inkadra-data:
+  postgres-data:
+  valkey-data:
