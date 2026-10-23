@@ -16,6 +16,7 @@ import {
   type Guide,
   inflate,
   intersects,
+  listElements,
   MIN_WIDTH,
   moveIntoParent,
   moveToCanvas,
@@ -367,6 +368,14 @@ export function Canvas({
             file,
             projectId,
             onAsset: (assetId) => {
+              // Resuming an upload from an earlier attempt: its card is already on the board.
+              const card = listElements(doc).find(
+                (e) => (e.type === 'image' || e.type === 'file') && e.assetId === assetId,
+              );
+              if (card) {
+                if (i === 0) select([card.id]);
+                return;
+              }
               const el = createElement(doc, type, pos, { assetId }, { userId, origin: LOCAL });
               store.undo.stopCapturing();
               if (i === 0) select([el.id]);

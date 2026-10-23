@@ -269,7 +269,9 @@
       "cancel": "Annulla",
       "done": "Fatto",
       "failed": "Non riuscito",
-      "cancelled": "Annullato"
+      "cancelled": "Annullato",
+      "retry": "Riprova",
+      "offline": "In attesa di rete"
     },
     "palette": {
       "title": "Comandi",

@@ -1,3 +1,6 @@
+import { writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { expect, test } from '@playwright/test';
 
 // One story, in order: the instance starts empty, so these steps share state.
@@ -120,6 +123,46 @@ test('keys typed while the new note is not focused still land in it', async ({ p
   await expect(page.locator('[data-type="note"]', { hasText: 'Casting comparse' })).toHaveText(
     'Casting comparse',
   );
+});
+
+test('an upload cut by a network outage resumes by itself', async ({ page, context }) => {
+  test.setTimeout(120_000);
+  // Three tus chunks of 50 MiB, sent slowly enough to cut the network in the middle.
+  const file = join(tmpdir(), 'inkadra-e2e-riprese.mov');
+  writeFileSync(file, Buffer.alloc(120 * 1024 * 1024, 7));
+  await signIn(page);
+  await page.getByRole('link', { name: 'Ultima corsa' }).first().click();
+  await expect(page.getByRole('status').getByText('Sincronizzato')).toBeVisible();
+  const cdp = await context.newCDPSession(page);
+  await cdp.send('Network.emulateNetworkConditions', {
+    offline: false,
+    latency: 0,
+    downloadThroughput: -1,
+    uploadThroughput: 15 * 1024 * 1024,
+  });
+
+  const input = page.locator('input[type="file"]');
+  await input.setInputFiles(file);
+  const panel = page.getByRole('region', { name: 'Caricamenti' });
+  const row = panel.locator('.uploads__item', { hasText: 'inkadra-e2e-riprese.mov' });
+  await expect(row).toContainText(/[1-9]\d?%/, { timeout: 30_000 });
+
+  // Cut the network well into the file, past the first chunk.
+  await expect(row).toContainText(/(4[5-9]|[5-9]\d)%/, { timeout: 30_000 });
+  await context.setOffline(true);
+  await expect(row).toContainText('In attesa di rete', { timeout: 30_000 });
+  // Adding the same file again does not start a second upload or a second card.
+  await input.setInputFiles(file);
+  await expect(panel.locator('.uploads__item')).toHaveCount(1);
+
+  await context.setOffline(false);
+  // It resumes where the server stopped, not from the start.
+  await expect(row).toContainText(/([4-9]\d|100)%|Fatto/, { timeout: 30_000 });
+  await expect(row).toContainText('Fatto', { timeout: 60_000 });
+  const cards = page.locator('[data-type="file"]', { hasText: 'inkadra-e2e-riprese.mov' });
+  await expect(cards).toHaveCount(1);
+  // A finished upload leaves the panel.
+  await expect(row).toHaveCount(0, { timeout: 10_000 });
 });
 
 async function signIn(page: import('@playwright/test').Page) {
