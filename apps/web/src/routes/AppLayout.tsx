@@ -19,6 +19,7 @@ import {
 import {
   createContext,
   type MouseEvent,
+  type ReactNode,
   useCallback,
   useContext,
   useEffect,
@@ -26,7 +27,9 @@ import {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Navigate, Outlet, useLocation, useNavigate } from 'react-router';
+import { childBoards, useProjectBoards } from '../board/boards.ts';
 import { api, authApi } from '../lib/api.ts';
+import { HeaderContext } from '../lib/header.tsx';
 import { useSession } from '../lib/session.tsx';
 import { useTheme } from '../lib/theme.ts';
 import { NewProjectDialog } from './NewProjectDialog.tsx';
@@ -47,6 +50,7 @@ export function AppLayout() {
   const { pathname } = useLocation();
   const [projects, setProjects] = useState<Project[] | null>(null);
   const [creating, setCreating] = useState(false);
+  const [headerContent, setHeaderContent] = useState<ReactNode | null>(null);
 
   const load = useCallback(async () => {
     const page = await api.get<{ items: Project[] }>('/projects');
@@ -70,6 +74,7 @@ export function AppLayout() {
   }
 
   const projectId = pathname.startsWith('/p/') ? pathname.split('/')[2] : undefined;
+  const boardId = pathname.split('/')[4];
   const current = projects?.find((p) => p.id === projectId);
 
   const rail = (
@@ -141,14 +146,24 @@ export function AppLayout() {
         }
       />
       {projects?.map((p) => (
-        <NavItem
-          key={p.id}
-          leading={<ProjectGlyph shape={p.icon.shape} color={p.icon.color} />}
-          label={p.name}
-          href={`/p/${p.id}`}
-          active={p.id === projectId}
-          onClick={go(`/p/${p.id}`)}
-        />
+        <div key={p.id}>
+          <NavItem
+            leading={<ProjectGlyph shape={p.icon.shape} color={p.icon.color} />}
+            label={p.name}
+            href={`/p/${p.id}`}
+            active={p.id === projectId && !boardId}
+            onClick={go(`/p/${p.id}`)}
+          />
+          {p.id === projectId && (
+            <BoardTree
+              projectId={p.id}
+              parentId={p.rootBoardId}
+              activeId={boardId}
+              depth={1}
+              go={go}
+            />
+          )}
+        </div>
       ))}
       <SidebarSection title={t('nav.pinned')} />
       <div className="ink-muted" style={{ padding: '0 8px', fontSize: 12 }}>
@@ -165,25 +180,31 @@ export function AppLayout() {
 
   const header = (
     <Header>
-      <nav aria-label={t('nav.breadcrumb')} className="ink-header__crumbs">
-        <span style={{ fontWeight: 600 }}>{current?.name ?? t('nav.home')}</span>
-      </nav>
-      <span className="ink-header__spacer" />
-      <span
-        className="ink-muted"
-        style={{ fontSize: 12, display: 'flex', alignItems: 'center', gap: 6 }}
-      >
-        <KeyCap>⌘K</KeyCap>
-        {t('home.searchHint')}
-      </span>
+      {headerContent ?? (
+        <>
+          <nav aria-label={t('nav.breadcrumb')} className="ink-header__crumbs">
+            <span style={{ fontWeight: 600 }}>{current?.name ?? t('nav.home')}</span>
+          </nav>
+          <span className="ink-header__spacer" />
+          <span
+            className="ink-muted"
+            style={{ fontSize: 12, display: 'flex', alignItems: 'center', gap: 6 }}
+          >
+            <KeyCap>⌘K</KeyCap>
+            {t('home.searchHint')}
+          </span>
+        </>
+      )}
     </Header>
   );
 
   return (
     <ProjectsContext.Provider value={{ projects, openNewProject: () => setCreating(true) }}>
-      <AppShell rail={rail} sidebar={sidebar} header={header} canvas={!!projectId}>
-        <Outlet />
-      </AppShell>
+      <HeaderContext.Provider value={setHeaderContent}>
+        <AppShell rail={rail} sidebar={sidebar} header={header} canvas={!!projectId}>
+          <Outlet />
+        </AppShell>
+      </HeaderContext.Provider>
       <NewProjectDialog
         open={creating}
         onClose={() => setCreating(false)}
@@ -194,5 +215,46 @@ export function AppLayout() {
         }}
       />
     </ProjectsContext.Provider>
+  );
+}
+
+/** Sub-boards of the open project, as nested links under the project in the sidebar. */
+function BoardTree({
+  projectId,
+  parentId,
+  activeId,
+  depth,
+  go,
+}: {
+  projectId: string;
+  parentId: string;
+  activeId: string | undefined;
+  depth: number;
+  go: (to: string) => (e: MouseEvent) => void;
+}) {
+  const { items } = useProjectBoards(projectId);
+  const children = childBoards(items, parentId);
+  if (children.length === 0 || depth > 4) return null;
+  return (
+    <>
+      {children.map((b) => (
+        <div key={b.id}>
+          <NavItem
+            label={b.title}
+            href={`/p/${projectId}/b/${b.id}`}
+            active={b.id === activeId}
+            onClick={go(`/p/${projectId}/b/${b.id}`)}
+            style={{ paddingLeft: 8 + depth * 14 }}
+          />
+          <BoardTree
+            projectId={projectId}
+            parentId={b.id}
+            activeId={activeId}
+            depth={depth + 1}
+            go={go}
+          />
+        </div>
+      ))}
+    </>
   );
 }

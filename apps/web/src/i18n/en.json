@@ -68,8 +68,7 @@
     "name": "Project name",
     "namePlaceholder": "Last run",
     "create": "Create project",
-    "cancel": "Cancel",
-    "boardSoon": "The canvas arrives in the next version."
+    "cancel": "Cancel"
   },
   "notFound": {
     "title": "Page not found",
@@ -144,6 +143,157 @@
       "admin": "Only administrators can see the diagnostics. Sign in with an administrator account.",
       "rateLimited": "Too many checks: wait a minute.",
       "generic": "The checks could not run. Try again."
+    }
+  },
+  "board": {
+    "canvas": "Board canvas",
+    "toolbar": "Add",
+    "contextBar": "Selection actions",
+    "minimap": "Minimap: click to move there",
+    "dropFiles": "Drop to upload",
+    "undo": "Undo",
+    "locked": "Locked",
+    "deleted_one": "Deleted 1 item",
+    "deleted_other": "Deleted {{count}} items",
+    "selected_one": "1 selected",
+    "selected_other": "{{count}} selected",
+    "empty": {
+      "title": "Empty board",
+      "body": "Double-click for a note, drop files or use the bar below. / opens the commands."
+    },
+    "types": {
+      "note": "Note",
+      "image": "Image",
+      "link": "Link",
+      "file": "File",
+      "todo": "To-do",
+      "color": "Colour",
+      "column": "Column",
+      "board": "Board"
+    },
+    "tools": {
+      "select": "Select",
+      "hand": "Hand"
+    },
+    "note": {
+      "placeholder": "Write…",
+      "label": "Note text",
+      "empty": "Empty note"
+    },
+    "image": {
+      "processing": "Processing…",
+      "failed": "Preview unavailable"
+    },
+    "file": {
+      "loading": "File",
+      "uploading": "Uploading {{percent}}%",
+      "missing": "File not found"
+    },
+    "todo": {
+      "title": "List title",
+      "titlePlaceholder": "Title",
+      "item": "Item",
+      "add": "Add an item"
+    },
+    "color": {
+      "pick": "Pick the colour",
+      "label": "Colour name",
+      "labelPlaceholder": "Name"
+    },
+    "board": {
+      "untitled": "New board",
+      "unknown": "Board",
+      "title": "Board title"
+    },
+    "column": {
+      "title": "Column title",
+      "titlePlaceholder": "Title",
+      "untitled": "Untitled",
+      "empty": "Drag cards here",
+      "collapse": "Collapse the column",
+      "expand": "Expand the column"
+    },
+    "link": {
+      "label": "Link address",
+      "placeholder": "Paste a link and press Enter"
+    },
+    "format": {
+      "bold": "Bold",
+      "italic": "Italic",
+      "heading": "Heading",
+      "list": "Bulleted list"
+    },
+    "colors": {
+      "none": "No colour",
+      "blue": "Blue",
+      "orange": "Orange",
+      "purple": "Purple",
+      "green": "Green"
+    },
+    "align": {
+      "left": "Align left",
+      "center": "Centre",
+      "right": "Align right",
+      "top": "Align top",
+      "middle": "Align middle",
+      "bottom": "Align bottom",
+      "distribute": "Distribute",
+      "group": "Group in a column"
+    },
+    "menu": {
+      "open": "Open",
+      "duplicate": "Duplicate",
+      "lock": "Lock position",
+      "unlock": "Unlock",
+      "front": "Bring to front",
+      "back": "Send to back",
+      "toUnsorted": "Move to Unsorted",
+      "delete": "Delete",
+      "more": "More actions",
+      "newNote": "New note here",
+      "newColumn": "New column here"
+    },
+    "zoom": {
+      "label": "Zoom",
+      "in": "Zoom in",
+      "out": "Zoom out",
+      "reset": "Zoom to 100%",
+      "fit": "Fit to view",
+      "selection": "Zoom to selection"
+    },
+    "unsorted": {
+      "empty": "Nothing to sort. What you save from the browser or your phone lands here."
+    },
+    "uploads": {
+      "title": "Uploads",
+      "cancel": "Cancel",
+      "done": "Done",
+      "failed": "Failed",
+      "cancelled": "Cancelled"
+    },
+    "palette": {
+      "title": "Commands",
+      "placeholder": "Search a command…",
+      "add": "Add: {{type}}",
+      "unsorted": "Show or hide Unsorted",
+      "undo": "Undo",
+      "redo": "Redo",
+      "none": "No commands"
+    },
+    "status": {
+      "connecting": "Connecting…",
+      "synced": "Synced",
+      "offline": "Offline · changes stay here",
+      "denied": "Access denied",
+      "readOnly": "Read only"
+    },
+    "denied": {
+      "title": "You cannot open this board",
+      "body": "Ask the project's managers for access."
+    },
+    "errors": {
+      "boardCreate": "The board could not be created.",
+      "upload": "Uploading {{name}} failed."
     }
   }
 }

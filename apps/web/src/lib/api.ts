@@ -36,6 +36,7 @@ export const api = {
     request<T>(`${API_PREFIX}${path}`, { method: 'POST', body: JSON.stringify(body) }),
   patch: <T>(path: string, body: unknown) =>
     request<T>(`${API_PREFIX}${path}`, { method: 'PATCH', body: JSON.stringify(body) }),
+  delete: <T>(path: string) => request<T>(`${API_PREFIX}${path}`, { method: 'DELETE' }),
 };
 
 export const authApi = {
