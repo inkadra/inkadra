@@ -1,20 +1,19 @@
 # Self-hosting
 
 Inkadra runs on any machine with Docker: a VPS, a home server, a NAS. You need
-
 - Docker Engine 24 or newer with the Compose plugin (`docker compose version`), on amd64 or arm64;
 - a (sub)domain for Inkadra, such as `inkadra.example.com`, and a reverse proxy that serves it
   over HTTPS: the proxy can be one of the examples in this repository;
 - 2 GB of RAM and disk space for your files.
 
-| Page                                | What it covers                                             |
-| ----------------------------------- | ---------------------------------------------------------- |
-| This page                           | Installing, the image and its roles, compose variants      |
-| [Configuration](configuration.md)   | Every setting in `.env`                                    |
-| [Reverse proxy](reverse-proxy.md)   | Caddy, Traefik, Nginx, Nginx Proxy Manager, Pangolin       |
-| [Storage](storage.md)               | Where files go: volume, host folder, S3, bundled RustFS    |
-| [Upgrades](upgrades.md)             | Versions, updating, verifying images                       |
-| [Troubleshooting](troubleshooting.md) | What to check when something does not work               |
+| Page                                  | What it covers                                          |
+| ------------------------------------- | ------------------------------------------------------- |
+| This page                             | Installing, the image and its roles, compose variants   |
+| [Configuration](configuration.md)     | Every setting in `.env`                                 |
+| [Reverse proxy](reverse-proxy.md)     | Caddy, Traefik, Nginx, Nginx Proxy Manager, Pangolin    |
+| [Storage](storage.md)                 | Where files go: volume, host folder, S3, bundled RustFS |
+| [Upgrades](upgrades.md)               | Versions, updating, verifying images                    |
+| [Troubleshooting](troubleshooting.md) | What to check when something does not work              |
 
 ## Install
 
@@ -90,25 +89,25 @@ It needs Postgres 16 and Valkey 8 (or Redis 7); `compose.yaml` runs both. The co
 user `node` (uid 1000) with a read-only root filesystem and no Linux capabilities; it writes
 only to `/data`. Each role has its own health check.
 
-| Tag            | What it is                                                     |
-| -------------- | -------------------------------------------------------------- |
-| `0.2.0`        | One release. Recommended: pin it in `INKADRA_TAG`              |
-| `0.2`          | The latest patch release of 0.2                                |
-| `latest`       | The latest stable release                                      |
-| `edge`         | The latest commit of `main`: for testing, not for real work    |
-| `sha-1a2b3c4`  | One commit                                                     |
+| Tag           | What it is                                                  |
+| ------------- | ----------------------------------------------------------- |
+| `0.2.0`       | One release. Recommended: pin it in `INKADRA_TAG`           |
+| `0.2`         | The latest patch release of 0.2                             |
+| `latest`      | The latest stable release                                   |
+| `edge`        | The latest commit of `main`: for testing, not for real work |
+| `sha-1a2b3c4` | One commit                                                  |
 
 ## Compose variants
 
 `compose.yaml` is the all-in-one setup. Other files in `deploy/` change it when added with `-f`
 after it; they combine, in this order:
 
-| File                                 | Changes                                                       |
-| ------------------------------------ | ------------------------------------------------------------- |
-| `deploy/compose.split.yaml`          | `web`, `collab` and `worker` in separate containers           |
-| `deploy/compose.s3.yaml`             | Files in an S3-compatible bucket you already have             |
-| `deploy/compose.rustfs.yaml`         | Files in a bundled S3-compatible store (RustFS)               |
-| `deploy/proxy/<proxy>/compose.yaml`  | A reverse proxy in the stack: `caddy`, `traefik` or `nginx`   |
+| File                                | Changes                                                     |
+| ----------------------------------- | ----------------------------------------------------------- |
+| `deploy/compose.split.yaml`         | `web`, `collab` and `worker` in separate containers         |
+| `deploy/compose.s3.yaml`            | Files in an S3-compatible bucket you already have           |
+| `deploy/compose.rustfs.yaml`        | Files in a bundled S3-compatible store (RustFS)             |
+| `deploy/proxy/<proxy>/compose.yaml` | A reverse proxy in the stack: `caddy`, `traefik` or `nginx` |
 
 Split mode is for larger teams: you can restart or scale the parts on their own, and a busy
 worker does not slow down the web app. The proxy must send `/collab` to the `collab` container

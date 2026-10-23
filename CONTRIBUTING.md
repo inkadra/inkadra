@@ -82,6 +82,16 @@ Number them in order and never rewrite an accepted one; supersede it with a new 
 ## Releases
 
 Versions follow semver. A maintainer runs the **Release** workflow on `main` with the version:
-it tags `vX.Y.Z`, publishes the GitHub release with generated notes and starts CI on the tag,
-which publishes `ghcr.io/inkadra/inkadra:X.Y.Z` (and `latest` for final versions) for amd64
-and arm64. Every push to `main` publishes the `edge` tag.
+it tags `vX.Y.Z`, publishes the GitHub release with generated notes and starts CI on the tag.
+CI runs in full, publishes `ghcr.io/inkadra/inkadra:X.Y.Z`, `X.Y` and `latest` for amd64 and
+arm64 with build provenance and an SBOM, and attaches the deployment files to the release.
+`X.Y.Z-rc.N` makes a pre-release, which moves neither `latest` nor `X.Y`. Every push to `main`
+publishes the `edge` tag. See [decision 0009](docs/decisions/0009-images-and-releases.md).
+
+## CI
+
+Workflows pin third-party actions to a commit (`uses: owner/action@<sha> # vX.Y.Z`) and
+download tools with a checked SHA-256; Dependabot updates both. A job gets only the
+permissions it needs, declared on the job. `actionlint` and `zizmor` check every change to
+`.github/workflows`. `scripts/test-proxy.sh <caddy|traefik|nginx> [all|split]` runs the reverse
+proxy checks locally against a built image (`INKADRA_TAG=…`).
