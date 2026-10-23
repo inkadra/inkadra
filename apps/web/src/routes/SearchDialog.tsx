@@ -3,7 +3,7 @@ import { Icon, type IconName } from '@inkadra/ui';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router';
-import { boardPath } from '../board/BoardPage.tsx';
+import { boardPath } from '../board/boards.ts';
 import { api } from '../lib/api.ts';
 import './search.css';
 

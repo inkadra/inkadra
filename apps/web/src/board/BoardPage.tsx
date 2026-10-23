@@ -6,7 +6,7 @@ import { useNavigate, useParams, useSearchParams } from 'react-router';
 import { useHeaderContent } from '../lib/header.tsx';
 import { useSession } from '../lib/session.tsx';
 import { useProjects } from '../routes/AppLayout.tsx';
-import { fetchBoard, useProjectBoards } from './boards.ts';
+import { boardPath, fetchBoard, useProjectBoards } from './boards.ts';
 import { Canvas } from './Canvas.tsx';
 import { type ConnectionStatus, useBoardConnection } from './connection.ts';
 import { ShotList } from './film/ShotList.tsx';
@@ -48,9 +48,6 @@ export function useBoardView(kind: Board['kind'] | undefined): [BoardView, (v: B
   );
   return [view, setView];
 }
-
-export const boardPath = (projectId: string, boardId: string, rootBoardId?: string) =>
-  boardId === rootBoardId ? `/p/${projectId}` : `/p/${projectId}/b/${boardId}`;
 
 /** /p/:projectId shows the root board, /p/:projectId/b/:boardId a nested one. */
 export function BoardPage() {

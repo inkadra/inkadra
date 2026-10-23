@@ -20,6 +20,9 @@ function emit() {
   for (const l of listeners) l();
 }
 
+export const boardPath = (projectId: string, boardId: string, rootBoardId?: string) =>
+  boardId === rootBoardId ? `/p/${projectId}` : `/p/${projectId}/b/${boardId}`;
+
 export async function refreshBoards(projectId: string): Promise<void> {
   if (loading.has(projectId)) return;
   loading.add(projectId);

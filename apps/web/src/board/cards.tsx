@@ -357,10 +357,8 @@ function FileCard({ element, width }: { element: Of<'file'>; width: number }) {
               ready.width && ready.height ? `${ready.width} / ${ready.height}` : '16 / 9',
           }}
         >
-          {poster && ready.variants.length > 0 ? (
+          {poster && ready.variants.length > 0 && (
             <img src={poster} alt={ready.filename} draggable={false} decoding="async" />
-          ) : (
-            <span className="card__media-state">{t('board.video.noPoster')}</span>
           )}
           <span className="card__play" aria-hidden="true">
             <Icon name="play" size={16} />
