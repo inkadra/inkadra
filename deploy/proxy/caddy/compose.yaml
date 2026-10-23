@@ -1,0 +1,32 @@
+# Caddy in front of Inkadra, with automatic HTTPS:
+#   docker compose -f compose.yaml -f deploy/proxy/caddy/compose.yaml up -d
+# Needs INKADRA_DOMAIN in .env (the host of PUBLIC_URL) and ports 80 and 443 free.
+# Split mode: add -f deploy/compose.split.yaml before this file and set
+# INKADRA_COLLAB_UPSTREAM=collab:3001.
+
+services:
+  caddy:
+    image: caddy:2.11-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      INKADRA_DOMAIN: ${INKADRA_DOMAIN:?set INKADRA_DOMAIN in .env}
+      INKADRA_COLLAB_UPSTREAM: ${INKADRA_COLLAB_UPSTREAM:-inkadra:3000}
+    volumes:
+      # Paths are relative to the folder of compose.yaml.
+      - ./deploy/proxy/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      - inkadra
+
+  inkadra:
+    # Reached through Caddy only.
+    ports: !reset []
+
+volumes:
+  caddy-data:
+  caddy-config:

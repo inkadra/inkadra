@@ -1,0 +1,12 @@
+# Split mode with Traefik: sends /collab to the collab container. Use after
+# deploy/compose.split.yaml and deploy/proxy/traefik/compose.yaml.
+
+services:
+  collab:
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.inkadra-collab.rule=Host(`${INKADRA_DOMAIN}`) && PathPrefix(`/collab`)
+      - traefik.http.routers.inkadra-collab.entrypoints=websecure
+      - traefik.http.routers.inkadra-collab.tls=true
+      - traefik.http.routers.inkadra-collab.tls.certresolver=${TRAEFIK_CERTRESOLVER-letsencrypt}
+      - traefik.http.services.inkadra-collab.loadbalancer.server.port=3001

@@ -1,0 +1,46 @@
+# Traefik in front of Inkadra, with Let's Encrypt certificates:
+#   docker compose -f compose.yaml -f deploy/proxy/traefik/compose.yaml up -d
+# Needs INKADRA_DOMAIN and ACME_EMAIL in .env and ports 80 and 443 free.
+# Split mode: docker compose -f compose.yaml -f deploy/compose.split.yaml \
+#   -f deploy/proxy/traefik/compose.yaml -f deploy/proxy/traefik/compose.split.yaml up -d
+# If Traefik already runs on this host, copy only the labels of `inkadra` (and `collab`)
+# and put the services on the network Traefik watches.
+
+services:
+  traefik:
+    image: traefik:v3.7
+    restart: unless-stopped
+    command:
+      - --providers.docker=true
+      - --providers.docker.exposedbydefault=false
+      - --entrypoints.web.address=:80
+      - --entrypoints.web.http.redirections.entrypoint.to=websecure
+      - --entrypoints.web.http.redirections.entrypoint.scheme=https
+      - --entrypoints.websecure.address=:443
+      # Uploads of large files take longer than the 60 s default.
+      - --entrypoints.websecure.transport.respondingtimeouts.readtimeout=0
+      - --certificatesresolvers.letsencrypt.acme.email=${ACME_EMAIL:-}
+      - --certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json
+      - --certificatesresolvers.letsencrypt.acme.tlschallenge=true
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      # Read-only access to the Docker API, to read the labels below.
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - traefik-acme:/letsencrypt
+    security_opt: ["no-new-privileges:true"]
+
+  inkadra:
+    # Reached through Traefik only.
+    ports: !reset []
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.inkadra.rule=Host(`${INKADRA_DOMAIN:?set INKADRA_DOMAIN in .env}`)
+      - traefik.http.routers.inkadra.entrypoints=websecure
+      - traefik.http.routers.inkadra.tls=true
+      - traefik.http.routers.inkadra.tls.certresolver=${TRAEFIK_CERTRESOLVER-letsencrypt}
+      - traefik.http.services.inkadra.loadbalancer.server.port=3000
+
+volumes:
+  traefik-acme:
