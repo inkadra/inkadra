@@ -11,7 +11,7 @@ or share the real `.env`.
 | `PUBLIC_URL`    | required                         | Address people use, as served by your proxy, e.g. `https://inkadra.example.com`. No path |
 | `AUTH_SECRET`   | required                         | At least 32 random characters: `openssl rand -hex 32`. Changing it signs everyone out    |
 | `DATABASE_URL`  | set by compose                   | Postgres connection string                                                               |
-| `REDIS_URL`     | set by compose                   | Valkey or Redis connection string. Needed by `worker` and `all`                          |
+| `REDIS_URL`     | set by compose                   | Valkey or Redis connection string. Needed by `worker`, `all` and, for clips, `collab`    |
 | `INSTANCE_NAME` | `Inkadra`                        | Name shown in the app                                                                    |
 | `REGISTRATION`  | `invite`                         | `invite`: only invited people can sign up. `open`: anyone can                            |
 | `TRUST_PROXY`   | `loopback,linklocal,uniquelocal` | Who may tell Inkadra the client's address. See [below](#trust_proxy)                     |

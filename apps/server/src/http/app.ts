@@ -5,6 +5,7 @@ import { API_PREFIX, AUTH_PREFIX, COLLAB_PATH } from '@inkadra/shared';
 import Fastify, { type FastifyBaseLogger, type FastifyServerOptions } from 'fastify';
 import type { Logger } from 'pino';
 import type { Auth } from '../auth.ts';
+import type { BoardWriter } from '../board-writer.ts';
 import type { Config } from '../config.ts';
 import type { Database } from '../db/client.ts';
 import type { Jobs } from '../jobs.ts';
@@ -15,6 +16,7 @@ import { registerApiRoutes } from './api-routes.ts';
 import { registerAssetRoutes } from './assets-routes.ts';
 import { registerAuthRoutes } from './auth-routes.ts';
 import { registerBoardRoutes } from './boards-routes.ts';
+import { registerClipRoutes } from './clip-routes.ts';
 import { registerDiagnostics } from './diagnostics.ts';
 import { errorHandler, sendError } from './errors.ts';
 import { registerLinkPreviews } from './link-previews.ts';
@@ -33,6 +35,10 @@ export interface AppDeps {
   /** Off when omitted (no SMTP). */
   mailer?: Mailer;
   pingQueue?: () => Promise<boolean>;
+  /** Adds cards to board documents for the clip endpoint; without it clips are refused. */
+  boards?: BoardWriter;
+  /** Scratch space for files received in one piece (clips). */
+  tmpDir?: string;
   /** Tests only: addresses link previews may fetch besides public ones. */
   allowAddresses?: string[];
 }
@@ -66,6 +72,7 @@ export async function createApp(deps: AppDeps) {
   registerLinkPreviews(app, deps);
   registerDiagnostics(app, deps);
   registerUploads(app, { ...deps, uploadMaxSize: config.UPLOAD_MAX_SIZE });
+  await registerClipRoutes(app, { ...deps, uploadMaxSize: config.UPLOAD_MAX_SIZE });
 
   const webDist = config.WEB_DIST ? resolve(config.WEB_DIST) : undefined;
   if (webDist && existsSync(join(webDist, 'index.html'))) {
