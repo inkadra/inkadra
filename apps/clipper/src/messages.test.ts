@@ -29,7 +29,7 @@ function handlers(overrides: Partial<Handlers> = {}): Handlers {
 function dispatch(
   listener: ReturnType<typeof createRouter>,
   message: unknown,
-  sender: chrome.runtime.MessageSender = { id: EXT },
+  sender: chrome.runtime.MessageSender = { id: EXT, url: `chrome-extension://${EXT}/popup.html` },
 ): Promise<{ async: boolean; reply: Reply<unknown> | undefined }> {
   return new Promise((resolve) => {
     let done: ((reply: Reply<unknown>) => void) | undefined;

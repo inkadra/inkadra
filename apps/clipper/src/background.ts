@@ -18,6 +18,9 @@ import {
   toBoardRef,
 } from './storage.ts';
 
+// Content scripts the clipper injects into pages must never read the token.
+void chrome.storage.local.setAccessLevel?.({ accessLevel: 'TRUSTED_CONTEXTS' });
+
 const MENU = {
   image: 'save-image',
   selection: 'save-selection',
