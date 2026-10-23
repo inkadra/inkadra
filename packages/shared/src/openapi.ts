@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MPL-2.0
 import { OpenAPIRegistry, OpenApiGeneratorV31 } from '@asteasolutions/zod-to-openapi';
 import { Asset, UploadMetadata } from './assets.ts';
 import { Board, BoardDetail, CreateBoard, UpdateBoard } from './boards.ts';

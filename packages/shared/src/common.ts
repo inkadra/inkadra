@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MPL-2.0
 import { extendZodWithOpenApi } from '@asteasolutions/zod-to-openapi';
 import { z } from 'zod';
 

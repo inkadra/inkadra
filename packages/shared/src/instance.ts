@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MPL-2.0
 import { Timestamp, z } from './common.ts';
 
 export const Health = z

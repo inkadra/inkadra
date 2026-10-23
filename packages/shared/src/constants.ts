@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MPL-2.0
 /** Dependency-free constants, safe to import from browser bundles. */
 
 /** Prefix of every versioned REST endpoint. Authentication lives under /api/auth. */

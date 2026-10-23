@@ -12,3 +12,4 @@ in order. An accepted decision is never rewritten: a later one supersedes it.
 | [0005](0005-authentication.md)          | Better Auth, first account is administrator           |
 | [0006](0006-design-tokens.md)           | Design tokens, Inter, dark first                      |
 | [0007](0007-licence.md)                 | AGPL-3.0 and allowed dependency licences              |
+| [0008](0008-licences-per-component.md)  | Licence per component (AGPL, MPL-2.0) and DCO         |
