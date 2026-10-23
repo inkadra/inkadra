@@ -1,7 +1,19 @@
 /** Keyboard commands of the canvas. Kept apart from the component so they can be tested. */
 export type Command =
-  | { kind: 'tool'; tool: 'select' | 'hand' }
-  | { kind: 'add'; type: 'note' | 'todo' | 'link' | 'column' | 'board' | 'color' | 'image' }
+  | { kind: 'tool'; tool: 'select' | 'hand' | 'arrow' }
+  | {
+      kind: 'add';
+      type:
+        | 'note'
+        | 'todo'
+        | 'link'
+        | 'column'
+        | 'board'
+        | 'color'
+        | 'image'
+        | 'frame'
+        | 'storyboard';
+    }
   | { kind: 'palette' }
   | { kind: 'delete' }
   | { kind: 'undo' }
@@ -78,6 +90,12 @@ export function commandFor(e: KeyInput, mac = isMac()): Command | null {
       return { kind: 'tool', tool: 'select' };
     case 'h':
       return { kind: 'tool', tool: 'hand' };
+    case 'a':
+      return { kind: 'tool', tool: 'arrow' };
+    case 'f':
+      return { kind: 'add', type: 'frame' };
+    case 's':
+      return { kind: 'add', type: 'storyboard' };
     case 'n':
       return { kind: 'add', type: 'note' };
     case 't':

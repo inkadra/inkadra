@@ -2,16 +2,27 @@ import type { Point, Rect, Viewport } from '@inkadra/canvas-core';
 import type { Element } from '@inkadra/doc-schema';
 import { Icon, type IconName, KeyCap } from '@inkadra/ui';
 import type { Editor } from '@tiptap/react';
-import { type Ref, useEffect, useMemo, useRef, useState } from 'react';
+import { type ReactNode, type Ref, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Card, NOTE_COLORS } from './cards.tsx';
 import { isMac } from './shortcuts.ts';
 import { cancelUpload, retryUpload, useUploads } from './uploads.ts';
 
-export type ToolType = 'note' | 'image' | 'link' | 'todo' | 'column' | 'board' | 'color';
+export type ToolType =
+  | 'note'
+  | 'image'
+  | 'link'
+  | 'todo'
+  | 'column'
+  | 'board'
+  | 'color'
+  | 'frame'
+  | 'scene'
+  | 'storyboard';
+export type CanvasTool = 'select' | 'hand' | 'arrow';
 export const TOOL_MIME = 'application/x-inkadra-tool';
 
-const TOOLS: Array<{ type: ToolType; icon: IconName; key: string }> = [
+const TOOLS: Array<{ type: ToolType; icon: IconName; key?: string; menuOnly?: boolean }> = [
   { type: 'note', icon: 'note', key: 'N' },
   { type: 'image', icon: 'image', key: 'I' },
   { type: 'link', icon: 'link', key: 'L' },
@@ -19,6 +30,9 @@ const TOOLS: Array<{ type: ToolType; icon: IconName; key: string }> = [
   { type: 'column', icon: 'column', key: 'C' },
   { type: 'board', icon: 'board', key: 'B' },
   { type: 'color', icon: 'color', key: 'K' },
+  { type: 'frame', icon: 'frame', key: 'F' },
+  { type: 'storyboard', icon: 'storyboard', key: 'S' },
+  { type: 'scene', icon: 'scene', menuOnly: true },
 ];
 
 const mod = () => (isMac() ? '⌘' : 'Ctrl+');
@@ -29,8 +43,8 @@ export function Toolbar({
   onTool,
   onAdd,
 }: {
-  tool: 'select' | 'hand';
-  onTool: (tool: 'select' | 'hand') => void;
+  tool: CanvasTool;
+  onTool: (tool: CanvasTool) => void;
   onAdd: (type: ToolType) => void;
 }) {
   const { t } = useTranslation();
@@ -50,13 +64,20 @@ export function Toolbar({
         pressed={tool === 'hand'}
         onClick={() => onTool('hand')}
       />
+      <ToolButton
+        icon="arrow"
+        label={t('board.tools.arrow')}
+        keyHint="A"
+        pressed={tool === 'arrow'}
+        onClick={() => onTool(tool === 'arrow' ? 'select' : 'arrow')}
+      />
       <span className="toolbar__sep" aria-hidden="true" />
-      {TOOLS.map((tl) => (
+      {TOOLS.filter((tl) => !tl.menuOnly).map((tl) => (
         <ToolButton
           key={tl.type}
           icon={tl.icon}
           label={t(`board.types.${tl.type}`)}
-          keyHint={tl.key}
+          keyHint={tl.key ?? ''}
           onClick={() => onAdd(tl.type)}
           dragType={tl.type}
         />
@@ -104,7 +125,7 @@ function ToolButton({
   );
 }
 
-function BarButton({
+export function BarButton({
   icon,
   label,
   onClick,
@@ -145,6 +166,8 @@ export function ContextBar({
   onDuplicate,
   onMore,
   onColor,
+  onTags,
+  extra,
 }: {
   box: Rect;
   elements: Element[];
@@ -157,6 +180,9 @@ export function ContextBar({
   onDuplicate: () => void;
   onMore: (x: number, y: number) => void;
   onColor: (color: string | undefined) => void;
+  onTags: (x: number, y: number) => void;
+  /** Buttons that only some cards have (arrow line style). */
+  extra?: ReactNode;
 }) {
   const { t } = useTranslation();
   if (readOnly || elements.length === 0) return null;
@@ -260,6 +286,12 @@ export function ContextBar({
         label={locked ? t('board.menu.unlock') : t('board.menu.lock')}
         onClick={onLock}
         active={locked}
+      />
+      {extra}
+      <BarButton
+        icon="tag"
+        label={t('tags.title')}
+        onClick={() => onTags(Math.max(8, box.x), box.y + box.h + 8)}
       />
       <BarButton icon="copy" label={t('board.menu.duplicate')} onClick={onDuplicate} />
       <BarButton icon="trash" label={t('board.menu.delete')} onClick={onDelete} />

@@ -1,11 +1,16 @@
 import {
   type Alignment,
+  type ArrowElement,
+  addScene,
   alignRects,
+  applyTemplate,
+  arrowEnds,
   boundsOf,
   bringToFront,
   centerOn,
   containsPoint,
   copyElements,
+  createArrow,
   createElement,
   DEFAULT_WIDTH,
   deleteElements,
@@ -13,11 +18,14 @@ import {
   dropIndex,
   duplicateElements,
   fitRect,
+  frameLabels,
   type Guide,
   inflate,
   intersects,
+  isContainer,
   listElements,
   MIN_WIDTH,
+  moveArrows,
   moveIntoParent,
   moveToCanvas,
   moveToUnsorted,
@@ -26,9 +34,14 @@ import {
   pasteElements,
   type Rect,
   rectFromPoints,
+  refreshArrows,
   screenToWorld,
+  segmentBox,
   sendToBack,
   snapRect,
+  storyboardOf,
+  TEMPLATE_IDS,
+  type TemplateId,
   updateElement,
   updateElements,
   type Viewport,
@@ -36,7 +49,7 @@ import {
   worldToScreen,
   zoomAt,
 } from '@inkadra/canvas-core';
-import type { Element } from '@inkadra/doc-schema';
+import { type Element, UNSORTED } from '@inkadra/doc-schema';
 import type { Board } from '@inkadra/shared';
 import type { Editor } from '@tiptap/react';
 import {
@@ -51,11 +64,15 @@ import {
   useSyncExternalStore,
 } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useSearchParams } from 'react-router';
 import * as Y from 'yjs';
 import { useSession } from '../lib/session.tsx';
+import { ArrowLayer } from './arrows.tsx';
 import { createBoard } from './boards.ts';
 import { Card } from './cards.tsx';
 import {
+  BarButton,
+  type CanvasTool,
   CommandPalette,
   ContextBar,
   ContextMenu,
@@ -72,11 +89,16 @@ import {
 import { decodeClipboard, encodeClipboard } from './clipboard.ts';
 import type { BoardConnection } from './connection.ts';
 import { BoardContext, type BoardContextValue } from './context.ts';
+import { useBoardAspect } from './film/aspect.ts';
+import { DrawingEditor } from './film/DrawingEditor.tsx';
+import { FramePanel } from './film/FramePanel.tsx';
 import { fillLinkPreview, webUrl } from './links.ts';
 import { fillFragment, isEmpty } from './note.tsx';
 import { commandFor, isTyping } from './shortcuts.ts';
 import { LOCAL } from './store.ts';
+import { TagPopover } from './tags.tsx';
 import { startUpload } from './uploads.ts';
+import { MediaViewer } from './viewer.tsx';
 import { loadViewport, saveViewport } from './viewport.ts';
 
 const DRAG_THRESHOLD = 3;
@@ -126,7 +148,8 @@ type Gesture =
       clickOnly: string | null;
     }
   | { kind: 'marquee'; start: Point; base: Set<string> }
-  | { kind: 'resize'; id: string; edge: 'e' | 'w'; start: Point; x: number; w: number };
+  | { kind: 'resize'; id: string; edge: 'e' | 'w'; start: Point; x: number; w: number }
+  | { kind: 'arrow'; start: Point; fromId: string | null };
 
 interface Overlay {
   offset?: { dx: number; dy: number };
@@ -136,6 +159,7 @@ interface Overlay {
   marquee?: Rect;
   drop?: { kind: 'column'; id: string; index: number; line: Rect } | { kind: 'unsorted' };
   resize?: { id: string; x: number; w: number };
+  arrow?: { a: Point; b: Point };
 }
 
 const NO_OVERLAY: Overlay = {};
@@ -168,6 +192,33 @@ export function Canvas({
   const snap = useSyncExternalStore(store.subscribe, store.getSnapshot);
   const sizeVersion = useSyncExternalStore(store.subscribeSizes, store.getSizeVersion);
 
+  /** Rect of a card on the canvas, where arrows attach; null for cards inside a column. */
+  const cardRect = useCallback(
+    (id: string): Rect | null => {
+      const el = store.getSnapshot().byId.get(id);
+      return el && el.parent === null && el.type !== 'arrow' ? store.rectOf(el) : null;
+    },
+    [store],
+  );
+  /** Rect of any element on the canvas; an arrow's comes from where its ends are now. */
+  const liveRect = useCallback(
+    (el: Element): Rect => {
+      if (el.type !== 'arrow') return store.rectOf(el);
+      const { a, b } = arrowEnds(el, cardRect);
+      return segmentBox(a, b);
+    },
+    [store, cardRect],
+  );
+  const arrowsOf = useCallback(
+    (ids?: readonly string[]) =>
+      store
+        .getSnapshot()
+        .canvas.filter(
+          (e): e is ArrowElement => e.type === 'arrow' && (!ids || ids.includes(e.id)),
+        ),
+    [store],
+  );
+
   const rootRef = useRef<HTMLDivElement>(null);
   const fileInput = useRef<HTMLInputElement>(null);
   const pendingImageAt = useRef<Point | null>(null);
@@ -180,7 +231,14 @@ export function Canvas({
   const fitted = useRef(loadViewport(boardId) !== null);
   const [selection, setSelection] = useState<ReadonlySet<string>>(EMPTY_SET);
   const [editing, setEditingState] = useState<string | null>(null);
-  const [tool, setTool] = useState<'select' | 'hand'>('select');
+  const [tool, setTool] = useState<CanvasTool>('select');
+  /** Frame whose details panel is open, frame being drawn, image or video in the viewer. */
+  const [framePanel, setFramePanel] = useState<string | null>(null);
+  const [drawing, setDrawing] = useState<string | null>(null);
+  const [viewing, setViewing] = useState<string | null>(null);
+  const [tagging, setTagging] = useState<{ x: number; y: number; ids: string[] } | null>(null);
+  const boardAspect = useBoardAspect(doc);
+  const [params, setParams] = useSearchParams();
   const [overlay, setOverlayState] = useState<Overlay>(NO_OVERLAY);
   // The pointer-up handler reads the overlay of the last move, which may not be rendered yet.
   const overlayRef = useRef<Overlay>(NO_OVERLAY);
@@ -265,9 +323,9 @@ export function Canvas({
   useEffect(() => {
     if (fitted.current || conn.status !== 'synced' || size.w === 0) return;
     fitted.current = true;
-    const bounds = boundsOf(snap.canvas.map((e) => store.rectOf(e)));
+    const bounds = boundsOf(snap.canvas.map(liveRect));
     if (bounds) setViewport(fitRect(bounds, size.w, size.h));
-  }, [conn.status, size, snap, store, setViewport]);
+  }, [conn.status, size, snap, liveRect, setViewport]);
 
   // Drop selection entries that were deleted (here or by someone else).
   useEffect(() => {
@@ -332,16 +390,34 @@ export function Canvas({
           pendingImageAt.current = pos;
           fileInput.current?.click();
           return;
-        case 'board': {
+        case 'board':
+        case 'storyboard': {
+          const story = type === 'storyboard';
           try {
-            const board = await createBoard(projectId, boardId, t('board.board.untitled'));
+            const board = await createBoard(
+              projectId,
+              boardId,
+              story ? t('board.types.storyboard') : t('board.board.untitled'),
+              story ? 'storyboard' : 'board',
+            );
             created = createElement(doc, 'board', pos, { boardId: board.id }, opts);
           } catch {
-            setToast({ text: t('board.errors.boardCreate'), undo: false });
+            setToast({
+              text: story ? t('board.errors.storyboardCreate') : t('board.errors.boardCreate'),
+              undo: false,
+            });
             return;
           }
           break;
         }
+        case 'frame':
+          created = createElement(doc, 'frame', pos, {}, opts);
+          select([created.id]);
+          setFramePanel(created.id);
+          return;
+        case 'scene':
+          created = addScene(doc, {}, opts, pos);
+          break;
       }
       if (created) {
         select([created.id]);
@@ -442,25 +518,36 @@ export function Canvas({
     (how: Alignment | 'distribute') => {
       const els = [...selection]
         .map((id) => snap.byId.get(id))
-        .filter((e): e is Element => !!e && e.parent === null && !e.locked);
+        .filter((e): e is Element => !!e && e.parent === null && !e.locked && e.type !== 'arrow');
       const rects = els.map((e) => store.rectOf(e));
       const next = how === 'distribute' ? distributeRects(rects) : alignRects(rects, how);
-      updateElements(
-        doc,
-        els.map((e, i) => ({
-          id: e.id,
-          patch: { x: Math.round(next[i]?.x ?? e.x), y: Math.round(next[i]?.y ?? e.y) },
-        })),
-        LOCAL,
-      );
+      doc.transact(() => {
+        updateElements(
+          doc,
+          els.map((e, i) => ({
+            id: e.id,
+            patch: { x: Math.round(next[i]?.x ?? e.x), y: Math.round(next[i]?.y ?? e.y) },
+          })),
+          LOCAL,
+        );
+        refreshArrows(
+          doc,
+          arrowsOf(),
+          els.map((e) => e.id),
+          cardRect,
+          LOCAL,
+        );
+      }, LOCAL);
     },
-    [selection, snap, store, doc],
+    [selection, snap, store, doc, arrowsOf, cardRect],
   );
 
   const groupIntoColumn = useCallback(() => {
     const els = [...selection]
       .map((id) => snap.byId.get(id))
-      .filter((e): e is Element => !!e && e.parent === null && e.type !== 'column');
+      .filter(
+        (e): e is Element => !!e && e.parent === null && !isContainer(e) && e.type !== 'arrow',
+      );
     const bounds = boundsOf(els.map((e) => store.rectOf(e)));
     if (!bounds) return;
     store.undo.stopCapturing();
@@ -491,11 +578,11 @@ export function Canvas({
           to === 'selection'
             ? [...selection].map((id) => snap.byId.get(id)).filter((e) => e?.parent === null)
             : snap.canvas;
-        const bounds = boundsOf(els.filter((e) => e !== undefined).map((e) => store.rectOf(e)));
+        const bounds = boundsOf(els.filter((e) => e !== undefined).map(liveRect));
         if (bounds) setViewport(fitRect(bounds, size.w, size.h, 64, to === 'selection' ? 2 : 1));
       }
     },
-    [size, selection, snap, store, setViewport],
+    [size, selection, snap, liveRect, setViewport],
   );
 
   const openElement = useCallback(
@@ -504,7 +591,12 @@ export function Canvas({
       else if (el.type === 'link') {
         const href = webUrl(el.url);
         if (href) window.open(href, '_blank', 'noopener,noreferrer');
-      } else if (!readOnly && el.type !== 'image' && el.type !== 'file') {
+      } else if (el.type === 'image' || el.type === 'file') {
+        setViewing(el.id);
+      } else if (el.type === 'frame') {
+        select([el.id]);
+        setFramePanel(el.id);
+      } else if (!readOnly) {
         select([el.id]);
         setEditing(el.id);
       }
@@ -534,6 +626,16 @@ export function Canvas({
       return;
     }
     if (e.button !== 0) return;
+
+    if (tool === 'arrow' && !readOnly) {
+      if (editing) setEditing(null);
+      const from = elNode ? snap.byId.get(elNode.dataset.el ?? '') : undefined;
+      const fromId = from && from.parent === null && from.type !== 'arrow' ? from.id : null;
+      gesture.current = { kind: 'arrow', start: screenToWorld(vp.current, p), fromId };
+      rootRef.current?.setPointerCapture(e.pointerId);
+      e.preventDefault();
+      return;
+    }
 
     if (!elNode) {
       if (editing) setEditing(null);
@@ -606,10 +708,16 @@ export function Canvas({
     if (g.kind === 'marquee') {
       const rect = rectFromPoints(g.start, screenToWorld(v, p));
       const hit = new Set(g.base);
-      for (const el of snap.canvas) if (intersects(rect, store.rectOf(el))) hit.add(el.id);
+      for (const el of snap.canvas) if (intersects(rect, liveRect(el))) hit.add(el.id);
       setSelection(hit);
       const a = worldToScreen(v, { x: rect.x, y: rect.y });
       setOverlay({ marquee: { x: a.x, y: a.y, w: rect.w * v.zoom, h: rect.h * v.zoom } });
+      return;
+    }
+    if (g.kind === 'arrow') {
+      const b = screenToWorld(v, p);
+      const from = { x: g.start.x, y: g.start.y, ...(g.fromId ? { elementId: g.fromId } : {}) };
+      setOverlay({ arrow: arrowEnds({ from, to: b }, cardRect) });
       return;
     }
     if (g.kind === 'resize') {
@@ -630,7 +738,7 @@ export function Canvas({
     let dy = (p.y - g.start.y) / v.zoom;
     const moving = new Set(g.ids);
     const els = g.ids.map((id) => snap.byId.get(id)).filter((x): x is Element => !!x);
-    const free = els.filter((x) => x.parent === null);
+    const free = els.filter((x) => x.parent === null && x.type !== 'arrow');
     const anchor = snap.byId.get(g.anchor);
     const ghost =
       anchor && anchor.parent !== null
@@ -648,12 +756,12 @@ export function Canvas({
       e.clientY <= unsortedBox.bottom
     ) {
       drop = { kind: 'unsorted' };
-    } else if (els.some((x) => x.type !== 'column')) {
+    } else if (els.some((x) => !isContainer(x) && x.type !== 'arrow')) {
       const column = [...snap.canvas]
         .reverse()
         .find(
           (c) =>
-            c.type === 'column' &&
+            (c.type === 'column' || c.type === 'scene') &&
             !moving.has(c.id) &&
             !c.collapsed &&
             containsPoint(store.rectOf(c), world),
@@ -691,7 +799,7 @@ export function Canvas({
       if (bounds) {
         const area = inflate(visibleWorld(v, size.w, size.h), 200 / v.zoom);
         const others = snap.canvas
-          .filter((o) => !moving.has(o.id))
+          .filter((o) => !moving.has(o.id) && o.type !== 'arrow')
           .map((o) => store.rectOf(o))
           .filter((r) => intersects(r, area));
         const s = snapRect(
@@ -716,8 +824,42 @@ export function Canvas({
     const o = overlayRef.current;
     setOverlay(NO_OVERLAY);
     if (!g) return;
+    if (g.kind === 'arrow') {
+      const end = toWorld(e.clientX, e.clientY);
+      const under = (
+        document.elementFromPoint(e.clientX, e.clientY) as HTMLElement | null
+      )?.closest<HTMLElement>('[data-el]');
+      const target = under ? snap.byId.get(under.dataset.el ?? '') : undefined;
+      const toId =
+        target && target.parent === null && target.type !== 'arrow' && target.id !== g.fromId
+          ? target.id
+          : null;
+      const short = Math.hypot(end.x - g.start.x, end.y - g.start.y) < 12 / vp.current.zoom;
+      if (short && !toId) return;
+      store.undo.stopCapturing();
+      const arrow = createArrow(
+        doc,
+        {
+          x: Math.round(g.start.x),
+          y: Math.round(g.start.y),
+          ...(g.fromId ? { elementId: g.fromId } : {}),
+        },
+        { x: Math.round(end.x), y: Math.round(end.y), ...(toId ? { elementId: toId } : {}) },
+        cardRect,
+        {},
+        { userId, origin: LOCAL },
+      );
+      store.undo.stopCapturing();
+      select([arrow.id]);
+      setTool('select');
+      return;
+    }
     if (g.kind === 'resize' && o.resize) {
-      updateElement(doc, g.id, { x: o.resize.x, w: o.resize.w }, LOCAL);
+      const { x, w } = o.resize;
+      doc.transact(() => {
+        updateElement(doc, g.id, { x, w }, LOCAL);
+        refreshArrows(doc, arrowsOf(), [g.id], cardRect, LOCAL);
+      }, LOCAL);
       return;
     }
     if (g.kind !== 'move') return;
@@ -726,25 +868,34 @@ export function Canvas({
       return;
     }
     const { dx = 0, dy = 0 } = o.offset ?? {};
-    if (o.drop?.kind === 'unsorted') {
-      moveToUnsorted(doc, g.ids, LOCAL);
-    } else if (o.drop?.kind === 'column') {
-      moveIntoParent(doc, g.ids, o.drop.id, o.drop.index, LOCAL);
-    } else {
-      const world = toWorld(e.clientX, e.clientY);
-      let stack = 0;
-      const moves = g.ids.flatMap((id) => {
-        const el = snap.byId.get(id);
-        if (!el) return [];
-        if (el.parent === null) return [{ id, x: el.x + dx, y: el.y + dy }];
-        // Cards leaving a column or the drawer stack under the pointer.
-        const at = { id, x: world.x - g.grab.x, y: world.y - g.grab.y + stack };
-        stack += store.heightOf(el) + 12;
-        return [at];
-      });
-      moveToCanvas(doc, moves, LOCAL);
-    }
+    const arrows = arrowsOf(g.ids);
+    const cards = g.ids.filter((id) => !arrows.some((a) => a.id === id));
+    doc.transact(() => {
+      if (o.drop?.kind === 'unsorted') {
+        moveToUnsorted(doc, cards, LOCAL);
+      } else if (o.drop?.kind === 'column') {
+        moveIntoParent(doc, cards, o.drop.id, o.drop.index, LOCAL);
+      } else {
+        moveCards(cards, dx, dy, toWorld(e.clientX, e.clientY), g.grab);
+        if (arrows.length > 0) moveArrows(doc, arrows, dx, dy, cardRect, LOCAL);
+      }
+      refreshArrows(doc, arrowsOf(), cards, cardRect, LOCAL);
+    }, LOCAL);
     store.undo.stopCapturing();
+  }
+
+  /** Drops moved cards on the canvas; cards leaving a column or the drawer stack under the pointer. */
+  function moveCards(ids: string[], dx: number, dy: number, world: Point, grab: Point) {
+    let stack = 0;
+    const moves = ids.flatMap((id) => {
+      const el = snap.byId.get(id);
+      if (!el) return [];
+      if (el.parent === null) return [{ id, x: el.x + dx, y: el.y + dy }];
+      const at = { id, x: world.x - grab.x, y: world.y - grab.y + stack };
+      stack += store.heightOf(el) + 12;
+      return [at];
+    });
+    moveToCanvas(doc, moves, LOCAL);
   }
 
   function onDoubleClick(e: ReactMouseEvent<HTMLDivElement>) {
@@ -875,7 +1026,8 @@ export function Canvas({
         break;
       case 'escape':
         setMenu(null);
-        if (editing) setEditing(null);
+        if (tool === 'arrow') setTool('select');
+        else if (editing) setEditing(null);
         else setSelection(EMPTY_SET);
         break;
       case 'edit':
@@ -892,11 +1044,26 @@ export function Canvas({
         break;
       case 'nudge': {
         if (readOnly) return;
-        const changes = [...selection]
+        const els = [...selection]
           .map((id) => snap.byId.get(id))
-          .filter((x): x is Element => !!x && x.parent === null && !x.locked)
-          .map((x) => ({ id: x.id, patch: { x: x.x + cmd.dx, y: x.y + cmd.dy } }));
-        updateElements(doc, changes, LOCAL);
+          .filter((x): x is Element => !!x && x.parent === null && !x.locked);
+        const cards = els.filter((x) => x.type !== 'arrow');
+        doc.transact(() => {
+          updateElements(
+            doc,
+            cards.map((x) => ({ id: x.id, patch: { x: x.x + cmd.dx, y: x.y + cmd.dy } })),
+            LOCAL,
+          );
+          const arrows = els.filter((x): x is ArrowElement => x.type === 'arrow');
+          if (arrows.length > 0) moveArrows(doc, arrows, cmd.dx, cmd.dy, cardRect, LOCAL);
+          refreshArrows(
+            doc,
+            arrowsOf(),
+            cards.map((x) => x.id),
+            cardRect,
+            LOCAL,
+          );
+        }, LOCAL);
         break;
       }
       case 'zoom':
@@ -995,6 +1162,16 @@ export function Canvas({
   // Rendering -------------------------------------------------------------------
 
   const scale = 2 ** Math.ceil(Math.log2(Math.min(4, Math.max(0.25, viewport.zoom))));
+  // Kept as the same object while no label changed: every card reads the context.
+  const labelsRef = useRef<ReadonlyMap<string, string>>(new Map());
+  const labels = useMemo(() => {
+    const all = [...snap.byId.values()];
+    const next = all.some((e) => e.type === 'frame') ? frameLabels(storyboardOf(all)) : new Map();
+    const prev = labelsRef.current;
+    const same = prev.size === next.size && [...next].every(([k, v]) => prev.get(k) === v);
+    if (!same) labelsRef.current = next;
+    return labelsRef.current;
+  }, [snap]);
   const ctx = useMemo<BoardContextValue>(
     () => ({
       store,
@@ -1008,8 +1185,10 @@ export function Canvas({
       setEditing,
       openBoard: onOpenBoard,
       setNoteEditor,
+      frameLabels: labels,
     }),
     [
+      labels,
       store,
       readOnly,
       projectId,
@@ -1029,9 +1208,36 @@ export function Canvas({
     if (size.w === 0) return [];
     const area = inflate(visibleWorld(viewport, size.w, size.h), OVERSCAN_PX / viewport.zoom);
     return snap.canvas.filter(
-      (el) => selection.has(el.id) || editing === el.id || intersects(store.rectOf(el), area),
+      (el) =>
+        el.type !== 'arrow' &&
+        (selection.has(el.id) || editing === el.id || intersects(store.rectOf(el), area)),
     );
   }, [snap, viewport, size, selection, editing, store, sizeVersion]);
+
+  const arrows = useMemo(
+    () => snap.canvas.filter((e): e is ArrowElement => e.type === 'arrow'),
+    [snap],
+  );
+  // Where each arrow is drawn now, following the cards being dragged.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: sizeVersion invalidates measured heights
+  const arrowEndsById = useMemo(() => {
+    const out = new Map<string, { a: Point; b: Point }>();
+    if (arrows.length === 0) return out;
+    const { moving, offset } = overlay;
+    const shifted = (id: string) => {
+      const r = cardRect(id);
+      return r && offset && moving?.has(id) ? { ...r, x: r.x + offset.dx, y: r.y + offset.dy } : r;
+    };
+    for (const arrow of arrows) {
+      const moved = offset && moving?.has(arrow.id);
+      const shift = (end: ArrowElement['from']) =>
+        moved && !(end.elementId && cardRect(end.elementId))
+          ? { ...end, x: end.x + offset.dx, y: end.y + offset.dy }
+          : end;
+      out.set(arrow.id, arrowEnds({ from: shift(arrow.from), to: shift(arrow.to) }, shifted));
+    }
+    return out;
+  }, [arrows, overlay, cardRect, sizeVersion]);
 
   const selectedEls = useMemo(
     () => [...selection].map((id) => snap.byId.get(id)).filter((e): e is Element => !!e),
@@ -1040,11 +1246,73 @@ export function Canvas({
   // biome-ignore lint/correctness/useExhaustiveDependencies: sizeVersion invalidates measured heights
   const selectionBox = useMemo(() => {
     const free = selectedEls.filter((e) => e.parent === null);
-    const b = boundsOf(free.map((e) => store.rectOf(e)));
+    const b = boundsOf(free.map(liveRect));
     if (!b) return null;
     const a = worldToScreen(viewport, { x: b.x, y: b.y });
     return { x: a.x, y: a.y, w: b.w * viewport.zoom, h: b.h * viewport.zoom };
-  }, [selectedEls, viewport, store, sizeVersion]);
+  }, [selectedEls, viewport, liveRect, sizeVersion]);
+
+  const visibleCards = useMemo(() => snap.canvas.filter((e) => e.type !== 'arrow'), [snap]);
+  const frameOf = (id: string | null) => {
+    const el = id ? snap.byId.get(id) : undefined;
+    return el?.type === 'frame' ? el : null;
+  };
+  const panelFrame = frameOf(framePanel);
+  const drawnFrame = frameOf(drawing);
+  const viewedEl = viewing ? snap.byId.get(viewing) : undefined;
+  const viewed = viewedEl?.type === 'image' || viewedEl?.type === 'file' ? viewedEl : null;
+  const closeViewer = useCallback(() => setViewing(null), []);
+
+  const addTemplate = (id: TemplateId) => {
+    if (readOnly) return;
+    store.undo.stopCapturing();
+    const ids = applyTemplate(
+      doc,
+      id,
+      center(1000),
+      {
+        moodboard: {
+          refs: t('templates.moodboard.refs'),
+          light: t('templates.moodboard.light'),
+          locations: t('templates.moodboard.locations'),
+          palette: t('templates.moodboard.palette'),
+        },
+        storyboard: { scene: t('templates.storyboard.scene') },
+        production: {
+          todo: t('templates.production.todo'),
+          doing: t('templates.production.doing'),
+          done: t('templates.production.done'),
+        },
+      },
+      { userId, origin: LOCAL },
+    );
+    store.undo.stopCapturing();
+    select(ids);
+  };
+
+  // A search result links to ?el=<id>: select that card and bring it into view, once.
+  const focusId = params.get('el');
+  useEffect(() => {
+    if (!focusId || conn.status !== 'synced' || size.w === 0) return;
+    const el = snap.byId.get(focusId);
+    setParams(
+      (p) => {
+        const next = new URLSearchParams(p);
+        next.delete('el');
+        return next;
+      },
+      { replace: true },
+    );
+    if (!el) return;
+    const top = el.parent && snap.byId.get(el.parent);
+    const target = el.parent === null ? el : top && top.parent === null ? top : null;
+    select([el.id]);
+    if (target) {
+      const r = liveRect(target);
+      setViewport(centerOn(vp.current, { x: r.x + r.w / 2, y: r.y + r.h / 2 }, size.w, size.h));
+    }
+    if (el.parent === UNSORTED) setUnsortedOpen(true);
+  }, [focusId, conn.status, size, snap, liveRect, select, setParams, setViewport]);
 
   const menuItems = useMemo<MenuItem[]>(() => {
     if (!menu) return [];
@@ -1054,6 +1322,14 @@ export function Canvas({
         : [
             { label: t('board.menu.newNote'), action: () => void add('note', menu.at) },
             { label: t('board.menu.newColumn'), action: () => void add('column', menu.at) },
+            {
+              label: t('board.palette.add', { type: t('board.types.frame') }),
+              action: () => void add('frame', menu.at),
+            },
+            {
+              label: t('board.palette.add', { type: t('board.types.scene') }),
+              action: () => void add('scene', menu.at),
+            },
           ];
     }
     const locked = selectedEls.some((e) => e.locked);
@@ -1062,9 +1338,24 @@ export function Canvas({
       ...(single && (single.type === 'board' || single.type === 'link')
         ? [{ label: t('board.menu.open'), action: () => openElement(single) }]
         : []),
+      ...(single && (single.type === 'image' || single.type === 'file')
+        ? [{ label: t('board.menu.viewImage'), action: () => setViewing(single.id) }]
+        : []),
+      ...(single?.type === 'frame'
+        ? [
+            { label: t('board.menu.details'), action: () => setFramePanel(single.id) },
+            ...(readOnly
+              ? []
+              : [{ label: t('board.menu.draw'), action: () => setDrawing(single.id) }]),
+          ]
+        : []),
       ...(readOnly
         ? []
         : [
+            {
+              label: t('board.menu.tags'),
+              action: () => setTagging({ x: menu.x, y: menu.y, ids: [...selection] }),
+            },
             { label: t('board.menu.duplicate'), shortcut: '⌘D', action: duplicate },
             {
               label: locked ? t('board.menu.unlock') : t('board.menu.lock'),
@@ -1110,7 +1401,7 @@ export function Canvas({
   const drawsOutline = (el: Element) =>
     selection.has(el.id) ||
     !!overlay.moving?.has(el.id) ||
-    (el.type === 'column' && !!snap.columns.get(el.id)?.some((c) => selection.has(c.id)));
+    (isContainer(el) && !!snap.columns.get(el.id)?.some((c) => selection.has(c.id)));
 
   return (
     <BoardContext.Provider value={ctx}>
@@ -1119,6 +1410,7 @@ export function Canvas({
         className={[
           'canvas',
           tool === 'hand' || spaceDown.current ? 'canvas--hand' : '',
+          tool === 'arrow' ? 'canvas--arrow' : '',
           gesture.current?.kind === 'pan' ? 'canvas--panning' : '',
         ].join(' ')}
         onPointerDown={onPointerDown}
@@ -1150,9 +1442,9 @@ export function Canvas({
               selected={selection.has(el.id)}
               offset={overlay.moving?.has(el.id) ? overlay.offset : undefined}
               resize={overlay.resize?.id === el.id ? overlay.resize : undefined}
-              childrenOf={el.type === 'column' ? snap.columns.get(el.id) : undefined}
-              selection={el.type === 'column' ? selection : undefined}
-              draggingIds={el.type === 'column' ? draggingNested : undefined}
+              childrenOf={isContainer(el) ? snap.columns.get(el.id) : undefined}
+              selection={isContainer(el) ? selection : undefined}
+              draggingIds={isContainer(el) ? draggingNested : undefined}
               zoom={drawsOutline(el) ? viewport.zoom : undefined}
             />
           ))}
@@ -1168,6 +1460,17 @@ export function Canvas({
             >
               <Card element={overlay.ghost.element} nested selected />
             </div>
+          )}
+          {(arrows.length > 0 || overlay.arrow) && (
+            <ArrowLayer
+              doc={doc}
+              arrows={arrows}
+              ends={arrowEndsById}
+              selection={selection}
+              editing={editing}
+              draft={overlay.arrow}
+              onDone={() => setEditing(null)}
+            />
           )}
           {overlay.guides?.map((g) => (
             <span
@@ -1219,6 +1522,20 @@ export function Canvas({
           <div className="canvas__empty">
             <span className="canvas__empty-title">{t('board.empty.title')}</span>
             <span className="ink-muted">{t('board.empty.body')}</span>
+            <span className="canvas__templates-title">{t('board.empty.templates')}</span>
+            <div className="canvas__templates" data-chrome>
+              {TEMPLATE_IDS.map((id) => (
+                <button
+                  key={id}
+                  type="button"
+                  className="canvas__template"
+                  onClick={() => addTemplate(id)}
+                >
+                  <span className="canvas__template-name">{t(`templates.${id}.name`)}</span>
+                  <span className="ink-muted">{t(`templates.${id}.body`)}</span>
+                </button>
+              ))}
+            </div>
           </div>
         )}
 
@@ -1239,6 +1556,95 @@ export function Canvas({
                 if (el.type === 'note') updateElement(doc, el.id, { color }, LOCAL);
               }
             }}
+            onTags={(x, y) => setTagging({ x, y, ids: [...selection] })}
+            extra={
+              selectedEls.every((e) => e.type === 'arrow') && (
+                <>
+                  <BarButton
+                    icon="minus"
+                    label={t('board.arrow.dashed')}
+                    active={selectedEls.every((e) => e.type === 'arrow' && e.line === 'dashed')}
+                    onClick={() => {
+                      const dashed = !selectedEls.every(
+                        (e) => e.type === 'arrow' && e.line === 'dashed',
+                      );
+                      updateElements(
+                        doc,
+                        selectedEls.map((e) => ({
+                          id: e.id,
+                          patch: { line: dashed ? 'dashed' : undefined },
+                        })),
+                        LOCAL,
+                      );
+                    }}
+                  />
+                  <BarButton
+                    icon="arrow"
+                    label={t('board.arrow.heads')}
+                    onClick={() => {
+                      const first = selectedEls[0];
+                      const now = first?.type === 'arrow' ? (first.heads ?? 'end') : 'end';
+                      const heads = now === 'end' ? 'both' : now === 'both' ? 'none' : undefined;
+                      updateElements(
+                        doc,
+                        selectedEls.map((e) => ({ id: e.id, patch: { heads } })),
+                        LOCAL,
+                      );
+                    }}
+                  />
+                </>
+              )
+            }
+          />
+        )}
+        {tagging && (
+          <TagPopover
+            x={tagging.x}
+            y={tagging.y}
+            projectId={projectId}
+            elements={tagging.ids.map((id) => snap.byId.get(id)).filter((e) => e !== undefined)}
+            onChange={(changes) =>
+              updateElements(
+                doc,
+                changes.map((c) => ({ id: c.id, patch: { tags: c.tags } })),
+                LOCAL,
+              )
+            }
+            onClose={() => setTagging(null)}
+          />
+        )}
+        {panelFrame && (
+          <div className="canvas__panel">
+            <FramePanel
+              store={store}
+              frame={panelFrame}
+              label={labels.get(panelFrame.id) ?? ''}
+              boardAspect={boardAspect}
+              projectId={projectId}
+              readOnly={readOnly}
+              onClose={() => setFramePanel(null)}
+              onDraw={() => setDrawing(panelFrame.id)}
+            />
+          </div>
+        )}
+        {drawnFrame && (
+          <DrawingEditor
+            store={store}
+            frame={drawnFrame}
+            label={labels.get(drawnFrame.id) ?? ''}
+            boardAspect={boardAspect}
+            readOnly={readOnly}
+            onClose={() => setDrawing(null)}
+          />
+        )}
+        {viewed && (
+          <MediaViewer
+            store={store}
+            element={viewed}
+            projectId={projectId}
+            userId={userId}
+            readOnly={readOnly}
+            onClose={closeViewer}
           />
         )}
 
@@ -1257,7 +1663,7 @@ export function Canvas({
         />
         <div className="canvas__corner" data-chrome>
           <Minimap
-            elements={snap.canvas}
+            elements={visibleCards}
             rectOf={rectOf}
             viewport={viewport}
             size={size}

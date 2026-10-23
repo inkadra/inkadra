@@ -26,13 +26,14 @@ import {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Navigate, Outlet, useLocation, useNavigate } from 'react-router';
+import { Navigate, Outlet, useLocation, useNavigate, useSearchParams } from 'react-router';
 import { childBoards, useProjectBoards } from '../board/boards.ts';
 import { api, authApi } from '../lib/api.ts';
 import { HeaderContext } from '../lib/header.tsx';
 import { useSession } from '../lib/session.tsx';
 import { useTheme } from '../lib/theme.ts';
 import { NewProjectDialog } from './NewProjectDialog.tsx';
+import { SearchDialog } from './SearchDialog.tsx';
 
 interface ProjectsState {
   projects: Project[] | null;
@@ -51,6 +52,8 @@ export function AppLayout() {
   const [projects, setProjects] = useState<Project[] | null>(null);
   const [creating, setCreating] = useState(false);
   const [headerContent, setHeaderContent] = useState<ReactNode | null>(null);
+  const [searching, setSearching] = useState(false);
+  const [params, setParams] = useSearchParams();
 
   const load = useCallback(async () => {
     const page = await api.get<{ items: Project[] }>('/projects');
@@ -60,6 +63,27 @@ export function AppLayout() {
   useEffect(() => {
     if (user) void load();
   }, [user, load]);
+
+  // ⌘K / Ctrl+K opens the search from anywhere, even inside a text field.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const mac = /Mac|iPhone|iPad/.test(navigator.platform);
+      if (
+        (mac ? e.metaKey : e.ctrlKey) &&
+        !e.shiftKey &&
+        !e.altKey &&
+        e.key.toLowerCase() === 'k'
+      ) {
+        e.preventDefault();
+        setSearching(true);
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
+
+  const pathProject = pathname.startsWith('/p/') ? pathname.split('/')[2] : undefined;
+  const { items: projectBoards } = useProjectBoards(pathProject);
 
   if (!user) return <Navigate to="/login" replace />;
 
@@ -76,6 +100,19 @@ export function AppLayout() {
   const projectId = pathname.startsWith('/p/') ? pathname.split('/')[2] : undefined;
   const boardId = pathname.split('/')[4];
   const current = projects?.find((p) => p.id === projectId);
+  const openBoardId = boardId ?? current?.rootBoardId;
+  const isStoryboard = projectBoards?.find((b) => b.id === openBoardId)?.kind === 'storyboard';
+  const view = params.get('view');
+  const showView = (v: 'storyboard' | 'shotlist') =>
+    setParams(
+      (p) => {
+        const next = new URLSearchParams(p);
+        if (v === 'storyboard') next.delete('view');
+        else next.set('view', v);
+        return next;
+      },
+      { replace: true },
+    );
 
   const rail = (
     <Rail label={t('nav.modules')}>
@@ -88,14 +125,30 @@ export function AppLayout() {
         active={pathname === '/'}
         onClick={() => navigate('/')}
       />
-      <RailButton icon="board" label={t('nav.board')} active={!!projectId} />
-      <RailButton icon="storyboard" label={t('nav.storyboard')} disabled />
-      <RailButton icon="shotlist" label={t('nav.shotlist')} disabled />
+      <RailButton
+        icon="board"
+        label={t('nav.board')}
+        active={!!projectId && (!isStoryboard || view === 'canvas')}
+      />
+      <RailButton
+        icon="storyboard"
+        label={t('nav.storyboard')}
+        disabled={!isStoryboard}
+        active={isStoryboard && !view}
+        onClick={() => showView('storyboard')}
+      />
+      <RailButton
+        icon="shotlist"
+        label={t('nav.shotlist')}
+        disabled={!isStoryboard}
+        active={isStoryboard && view === 'shotlist'}
+        onClick={() => showView('shotlist')}
+      />
       <RailButton icon="calendar" label={t('nav.schedule')} disabled />
       <RailButton icon="people" label={t('nav.clients')} disabled />
       <RailSeparator />
       <RailButton icon="inbox" label={t('nav.inbox')} disabled />
-      <RailButton icon="search" label={t('nav.search')} disabled />
+      <RailButton icon="search" label={t('nav.search')} onClick={() => setSearching(true)} />
       <RailSpacer />
       <RailButton
         icon={theme === 'dark' ? 'sun' : 'moon'}
@@ -123,7 +176,7 @@ export function AppLayout() {
         />
         <span className="ink-nav__name">{instance?.name}</span>
       </div>
-      <button type="button" className="ink-sidebar__search" disabled>
+      <button type="button" className="ink-sidebar__search" onClick={() => setSearching(true)}>
         <Icon name="search" size={14} />
         {t('nav.search')}
         <span style={{ flex: 1 }} />
@@ -205,6 +258,7 @@ export function AppLayout() {
           <Outlet />
         </AppShell>
       </HeaderContext.Provider>
+      {searching && <SearchDialog projects={projects} onClose={() => setSearching(false)} />}
       <NewProjectDialog
         open={creating}
         onClose={() => setCreating(false)}
