@@ -146,6 +146,14 @@ describe.skipIf(!url)('collab (needs DATABASE_URL)', () => {
     return conn;
   }
 
+  /** Why the server closed the document, or null if it stays open for 4 s. */
+  function closedWith(c: ReturnType<typeof connect>) {
+    return new Promise<string | null>((resolve) => {
+      c.provider.on('close', ({ event }: { event: { reason: string } }) => resolve(event.reason));
+      setTimeout(() => resolve(null), 4000);
+    });
+  }
+
   it('syncs a board between two clients and stores it', async () => {
     const a = connect(as('owner'));
     const b = connect(as('owner'));
@@ -216,6 +224,36 @@ describe.skipIf(!url)('collab (needs DATABASE_URL)', () => {
     const c = connect({ token: created.json().token });
     await c.synced;
     expect(c.provider.isAuthenticated).toBe(true);
+
+    // Revoking the token ends the connection at the next check.
+    const closed = closedWith(c);
+    await app.inject({
+      method: 'DELETE',
+      url: `/api/v1/me/tokens/${created.json().id}`,
+      headers: as('editor'),
+    });
+    expect(await closed).toBe('Unauthorized');
+    c.close();
+  });
+
+  it('closes the connection when the person signs out', async () => {
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/auth/sign-in/email',
+      headers: { origin: config.PUBLIC_URL },
+      payload: { email: 'viewer@example.com', password: 'correct-horse-battery' },
+    });
+    const cookie = String(res.headers['set-cookie']).split(';')[0] ?? '';
+    const c = connect({ cookie });
+    await c.synced;
+    const closed = closedWith(c);
+    await app.inject({
+      method: 'POST',
+      url: '/api/auth/sign-out',
+      headers: { cookie, origin: config.PUBLIC_URL },
+      payload: {},
+    });
+    expect(await closed).toBe('Unauthorized');
     c.close();
   });
 

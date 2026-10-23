@@ -2,7 +2,7 @@ import type { AcceptedInvitation, InvitationPreview } from '@inkadra/shared';
 import { and, eq, isNull, sql } from 'drizzle-orm';
 import { atLeast, boardAccess, projectRole } from './access.ts';
 import type { Database } from './db/client.ts';
-import { board, boardGrant, invitation, project, projectMember } from './db/schema.ts';
+import { board, boardGrant, invitation, project, projectMember, user } from './db/schema.ts';
 import { HttpError } from './http/errors.ts';
 import { sha256 } from './secrets.ts';
 
@@ -49,9 +49,15 @@ export function readCookie(header: string | null | undefined, name: string): str
   return null;
 }
 
+/** Email invitations are for the address they were sent to (decision 0011). */
+export function invitedAddressMatches(row: InvitationRow, email: string): boolean {
+  return row.kind !== 'email' || row.email?.toLowerCase() === email.toLowerCase();
+}
+
 /**
  * Gives the person what the invitation is for and counts the use. Never lowers a role the
- * person already has. Throws `not_found` for an invitation that cannot be used any more.
+ * person already has. Throws `not_found` for an invitation that cannot be used any more and
+ * `forbidden` when an email invitation is opened with an account for another address.
  */
 export async function acceptInvitation(
   db: Database,
@@ -66,6 +72,15 @@ export async function acceptInvitation(
       .for('update');
     if (!row || invitationStatus(row) !== 'valid')
       throw new HttpError('not_found', 'This invitation can no longer be used.');
+    const [me] = await tx.select({ email: user.email }).from(user).where(eq(user.id, userId));
+    if (!me || !invitedAddressMatches(row, me.email))
+      throw new HttpError(
+        'forbidden',
+        `This invitation was sent to ${row.email}: sign in with that address to accept it.`,
+      );
+    // The link reached this mailbox, which proves the address.
+    if (row.kind === 'email')
+      await tx.update(user).set({ emailVerified: true }).where(eq(user.id, userId));
     await tx
       .update(invitation)
       .set({ uses: sql`${invitation.uses} + 1` })

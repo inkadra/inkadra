@@ -231,9 +231,12 @@ export function registerSharingRoutes(app: FastifyInstance, deps: Deps) {
     const actor = await requireActor(auth, req, db);
     const { boardId } = BoardParams.parse(req.params);
     const access = await requireBoardRole(db, actor, boardId, 'viewer');
+    const canManage = atLeast(access.role, 'editor');
+    const items = await accessList(db, access);
     const body: BoardAccess = {
-      items: await accessList(db, access),
-      canManage: atLeast(access.role, 'editor'),
+      // Addresses are for the people who share; the others see names only.
+      items: canManage ? items : items.map((e) => ({ ...e, user: { ...e.user, email: null } })),
+      canManage,
     };
     return body;
   });

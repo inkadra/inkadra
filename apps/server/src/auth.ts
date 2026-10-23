@@ -6,7 +6,7 @@ import type { Logger } from 'pino';
 import type { Config } from './config.ts';
 import type { Database } from './db/client.ts';
 import * as schema from './db/schema.ts';
-import { acceptInvitation, invitationFromCookie } from './invitations.ts';
+import { acceptInvitation, invitationFromCookie, invitedAddressMatches } from './invitations.ts';
 import { mailText } from './mail-texts.ts';
 import { actionMail, type Mailer } from './mailer.ts';
 
@@ -198,6 +198,12 @@ export function createAuth(config: Config, db: Database, deps: AuthDeps = {}) {
                 throw new APIError('FORBIDDEN', {
                   code: 'REGISTRATION_CLOSED',
                   message: 'Registration is closed. Ask an administrator for an invitation.',
+                });
+              }
+              if (!invitedAddressMatches(invited, user.email)) {
+                throw new APIError('FORBIDDEN', {
+                  code: 'INVITATION_EMAIL_MISMATCH',
+                  message: `This invitation was sent to ${invited.email}: sign up with that address.`,
                 });
               }
             }

@@ -23,8 +23,9 @@ in without cookies; and people editing the same board need to see each other.
   refused, and so are image originals once thumbnails exist (they see the 2048 px one); video,
   audio and PDF originals still stream, because there is nothing else to show. Files of a
   project are readable by anyone with a role on one of its boards (ids are random UUIDs).
-- **Revocation.** The collab server checks the role again at most every 30 seconds while a
-  connection is open: a lost role closes it, a lower one makes it read-only.
+- **Revocation.** The collab server checks each open connection again at most every 30
+  seconds: a revoked or expired token or session closes it (`Unauthorized`), a lost role
+  closes it (`Forbidden`), a lower one makes it read-only.
 - **Invitations.** `invitation` rows target a project, a board or (administrators) the
   instance alone. `email` invitations are single use, `link` invitations work until they
   expire (1 to 90 days) or are revoked. Inviting the address of an existing account gives the
@@ -33,7 +34,9 @@ in without cookies; and people editing the same board need to see each other.
   a new token each time they are sent, so the old email stops working. Each person can create
   50 invitations an hour. Opening a link sets a short-lived
   cookie (`claim`); a sign-up with any method while it is set is allowed in `invite` mode and
-  accepts the invitation once the account exists.
+  accepts the invitation once the account exists. An `email` invitation works only for its
+  address: sign-ups with the cookie must use it, and only an account with that address can
+  accept it (which also marks the address verified). A forwarded email gives nothing.
 - **Sign-in methods** (Better Auth plugins): email and password, Google
   (`GOOGLE_CLIENT_ID`/`SECRET`, optional `GOOGLE_ALLOWED_DOMAINS`), one generic OIDC provider
   (`OIDC_*`, discovery URL), sign-in links by email and TOTP two-factor with backup codes.
@@ -54,7 +57,8 @@ in without cookies; and people editing the same board need to see each other.
   somewhere) and is rate limited: an exact email match tells that an account exists.
 - **Account deletion.** `DELETE /me` asks for the password, or a sign-in in the last 15
   minutes for accounts without one. It is refused while the person is the only owner of a
-  project shared with others; projects nobody else is in are deleted with their files.
+  project shared with others, members or people with a grant on one of its boards; projects
+  nobody else is in are deleted with their files.
 - **Presence.** Yjs awareness, schema in `@inkadra/doc-schema` (`PresenceState`): clients
   publish cursor, selection and the element being edited; the server overwrites `user` and
   `readOnly` from the session on every update (`beforeHandleAwareness`), drops malformed
