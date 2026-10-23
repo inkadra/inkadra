@@ -31,9 +31,9 @@ locked down, verifiable, and proven to work behind the common proxies before it 
   native runners (no emulation), without build cache, with an SBOM and BuildKit provenance, then
   joined into one multi-architecture tag and given a GitHub build provenance attestation
   (`gh attestation verify`).
-- **Releases.** A `vX.Y.Z` tag on `main` publishes `X.Y.Z`, `X.Y` and `latest` and creates the
-  GitHub release with the deployment files pinned to that version; a `-suffix` tag is a
-  pre-release. `main` publishes `edge`.
+- **Releases.** The Release workflow tags `vX.Y.Z` and opens the GitHub release; CI on that tag
+  publishes `X.Y.Z`, `X.Y` and `latest` and attaches the deployment files, pinned to that
+  version. A `-suffix` version is a pre-release. `main` publishes `edge`.
 
 **Consequences.** A release takes longer (no cache, two native builds) but is reproducible from
 a clean state and checkable by anyone. Adding a system package to the image (ffmpeg, fonts)

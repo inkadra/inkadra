@@ -410,19 +410,27 @@ jobs:
           sed -i "s/^# INKADRA_TAG=latest /INKADRA_TAG=$VERSION /" "dist/inkadra-$VERSION/.env.example"
           tar -C dist -czf "dist/inkadra-$VERSION-deploy.tar.gz" "inkadra-$VERSION"
           (cd dist && sha256sum "inkadra-$VERSION-deploy.tar.gz" > "inkadra-$VERSION-deploy.tar.gz.sha256")
-      - name: Create the release
+      # The Release workflow creates the release and its notes; a tag pushed by hand gets one here.
+      - name: Attach the files to the release
         env:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ github.ref_name }}
           VERSION: ${{ needs.manifest.outputs.version }}
         run: |
-          flags=()
-          case "$TAG" in *-*) flags+=(--prerelease) ;; esac
-          cat > notes.md <<EOF
+          cat > image.md <<EOF
           Image: \`ghcr.io/${GITHUB_REPOSITORY}:${VERSION}\` (linux/amd64, linux/arm64).
           Verify it with \`gh attestation verify oci://ghcr.io/${GITHUB_REPOSITORY}:${VERSION} --repo ${GITHUB_REPOSITORY}\`.
           Install and upgrade: [docs/self-hosting](https://github.com/${GITHUB_REPOSITORY}/tree/${TAG}/docs/self-hosting).
           EOF
-          gh release create "$TAG" --verify-tag --title "Inkadra $VERSION" --notes-file notes.md \
-            --generate-notes "${flags[@]}" \
+          if ! gh release view "$TAG" >/dev/null 2>&1; then
+            flags=()
+            case "$TAG" in *-*) flags+=(--prerelease) ;; esac
+            gh release create "$TAG" --verify-tag --title "Inkadra $VERSION" --generate-notes "${flags[@]}"
+          fi
+          gh release view "$TAG" --json body --jq .body > notes.md
+          if ! grep -q 'gh attestation verify' notes.md; then
+            { cat image.md; echo; cat notes.md; } > release.md
+            gh release edit "$TAG" --notes-file release.md
+          fi
+          gh release upload "$TAG" --clobber \
             "dist/inkadra-$VERSION-deploy.tar.gz" "dist/inkadra-$VERSION-deploy.tar.gz.sha256"
