@@ -1,7 +1,8 @@
 import type { ProjectRole } from '@inkadra/shared';
 import { and, eq, isNull } from 'drizzle-orm';
 import type { Database } from './db/client.ts';
-import { board, projectMember } from './db/schema.ts';
+import { asset, board, projectMember } from './db/schema.ts';
+import { HttpError } from './http/errors.ts';
 
 export interface Actor {
   id: string;
@@ -41,4 +42,53 @@ export async function boardRole(
     .where(and(eq(board.id, boardId), isNull(board.deletedAt)));
   if (!row) return null;
   return { projectId: row.projectId, role: await projectRole(db, actor, row.projectId) };
+}
+
+/**
+ * Throws unless the actor has at least `needed` on the project. People without any role get
+ * 404, so ids of other people's projects cannot be probed.
+ */
+export async function requireProjectRole(
+  db: Database,
+  actor: Actor,
+  projectId: string,
+  needed: ProjectRole,
+): Promise<ProjectRole> {
+  const role = await projectRole(db, actor, projectId);
+  if (role === null) throw new HttpError('not_found', 'Project not found.');
+  if (!atLeast(role, needed)) throw new HttpError('forbidden', `Needs the ${needed} role.`);
+  return role;
+}
+
+/** Like requireProjectRole, for a board that is not in the trash. */
+export async function requireBoardRole(
+  db: Database,
+  actor: Actor,
+  boardId: string,
+  needed: ProjectRole,
+): Promise<{ board: typeof board.$inferSelect; role: ProjectRole }> {
+  const [row] = await db
+    .select()
+    .from(board)
+    .where(and(eq(board.id, boardId), isNull(board.deletedAt)));
+  if (!row) throw new HttpError('not_found', 'Board not found.');
+  const role = await projectRole(db, actor, row.projectId);
+  if (role === null) throw new HttpError('not_found', 'Board not found.');
+  if (!atLeast(role, needed)) throw new HttpError('forbidden', `Needs the ${needed} role.`);
+  return { board: row, role };
+}
+
+/** Like requireProjectRole, for an asset. */
+export async function requireAssetRole(
+  db: Database,
+  actor: Actor,
+  assetId: string,
+  needed: ProjectRole,
+): Promise<{ asset: typeof asset.$inferSelect; role: ProjectRole }> {
+  const [row] = await db.select().from(asset).where(eq(asset.id, assetId));
+  if (!row) throw new HttpError('not_found', 'Asset not found.');
+  const role = await projectRole(db, actor, row.projectId);
+  if (role === null) throw new HttpError('not_found', 'Asset not found.');
+  if (!atLeast(role, needed)) throw new HttpError('forbidden', `Needs the ${needed} role.`);
+  return { asset: row, role };
 }

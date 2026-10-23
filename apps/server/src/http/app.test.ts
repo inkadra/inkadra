@@ -5,6 +5,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createAuth } from '../auth.ts';
 import { loadConfig } from '../config.ts';
 import { createDatabase, runMigrations } from '../db/client.ts';
+import { testDeps } from '../test-deps.ts';
 import { createApp } from './app.ts';
 
 const url = process.env.DATABASE_URL;
@@ -29,6 +30,7 @@ describe.skipIf(!url)('http api (needs DATABASE_URL)', () => {
       db,
       auth: createAuth(config, db),
       log: pino({ level: 'silent' }),
+      ...testDeps(db, pino({ level: 'silent' })),
     });
   });
 

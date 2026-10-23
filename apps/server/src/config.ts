@@ -15,6 +15,27 @@ const Env = z.object({
   WEB_DIST: z.string().optional(),
   /** Largest file an upload may have: bytes or a size such as `500MB`, `20GB`; 0 = no limit. */
   UPLOAD_MAX_SIZE: z.string().default('20GB').transform(parseSize),
+  /** Where files live: `local` (DATA_DIR/files) or any S3-compatible bucket. */
+  STORAGE_DRIVER: z.enum(['local', 's3']).default('local'),
+  /** Empty for AWS; the MinIO, Garage or R2 address otherwise. */
+  S3_ENDPOINT: z.preprocess((v) => (v === '' ? undefined : v), z.url().optional()),
+  S3_REGION: z.string().min(1).default('us-east-1'),
+  S3_BUCKET: z.string().optional(),
+  S3_ACCESS_KEY_ID: z.string().optional(),
+  S3_SECRET_ACCESS_KEY: z.string().optional(),
+  /** `true` for MinIO and most self-hosted S3 servers. */
+  S3_FORCE_PATH_STYLE: z
+    .enum(['true', 'false'])
+    .default('false')
+    .transform((v) => v === 'true'),
+  /**
+   * Decode HEIC/HEIF photos (iPhone) to make thumbnails. HEVC is covered by patents in some
+   * countries: set to `false` to store HEIC files without previews.
+   */
+  HEIC_PREVIEWS: z
+    .enum(['true', 'false'])
+    .default('true')
+    .transform((v) => v === 'true'),
   /**
    * Which peers may set X-Forwarded-For: `false`, or a comma-separated list of addresses,
    * CIDRs or the presets `loopback`, `linklocal`, `uniquelocal` (private networks, where a
@@ -50,7 +71,14 @@ export function parseSize(value: string, ctx: z.RefinementCtx): number {
 export type Config = z.infer<typeof Env>;
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
-  const parsed = Env.safeParse(env);
+  const parsed = Env.superRefine((c, ctx) => {
+    if (c.STORAGE_DRIVER === 's3' && !c.S3_BUCKET)
+      ctx.addIssue({
+        code: 'custom',
+        path: ['S3_BUCKET'],
+        message: 'Required with STORAGE_DRIVER=s3',
+      });
+  }).safeParse(env);
   if (!parsed.success) {
     const lines = parsed.error.issues.map((i) => `  ${i.path.join('.')}: ${i.message}`);
     throw new Error(`Invalid configuration:\n${lines.join('\n')}\nSee .env.example.`);

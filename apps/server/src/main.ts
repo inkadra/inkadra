@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { mkdir } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import pino from 'pino';
@@ -7,7 +8,9 @@ import { attachCollab, createCollabServer } from './collab.ts';
 import { loadConfig, VERSION } from './config.ts';
 import { createDatabase, runMigrations } from './db/client.ts';
 import { createApp } from './http/app.ts';
-import { createQueues, startWorkers } from './queues.ts';
+import type { Jobs } from './jobs.ts';
+import { createQueues, inlineJobs, startWorkers } from './queues.ts';
+import { createStorage } from './storage.ts';
 
 const COMMANDS = ['web', 'collab', 'worker', 'all', 'migrate'] as const;
 type Command = (typeof COMMANDS)[number];
@@ -35,11 +38,15 @@ async function main() {
 
   const { db, sql } = createDatabase(config.DATABASE_URL);
   const auth = createAuth(config, db);
+  const storage = createStorage(config);
+  const tmpDir = join(config.DATA_DIR, 'tmp');
+  await mkdir(tmpDir, { recursive: true });
+  const media = { db, storage, tmpDir, heic: config.HEIC_PREVIEWS };
   const closers: Array<() => Promise<unknown>> = [() => sql.end({ timeout: 5 })];
 
   if (command === 'worker' || command === 'all') {
     if (!config.REDIS_URL) throw new Error('REDIS_URL is required by the worker.');
-    const workers = startWorkers(config.REDIS_URL, log);
+    const workers = await startWorkers(config.REDIS_URL, log, media);
     closers.unshift(() => workers.close());
     log.info('worker started');
   }
@@ -57,12 +64,11 @@ async function main() {
 
   if (command === 'web' || command === 'all') {
     let pingQueue: (() => Promise<boolean>) | undefined;
+    let jobs: Jobs;
     if (config.REDIS_URL) {
       const queues = createQueues(config.REDIS_URL);
-      closers.unshift(async () => {
-        await queues.maintenance.close();
-        queues.connection.disconnect();
-      });
+      jobs = queues.jobs;
+      closers.unshift(() => queues.close());
       pingQueue = async () => {
         try {
           return (await queues.connection.ping()) === 'PONG';
@@ -70,6 +76,9 @@ async function main() {
           return false;
         }
       };
+    } else {
+      log.warn('REDIS_URL is not set: processing uploads inside the web process');
+      jobs = inlineJobs(media, log);
     }
     const webDist = config.WEB_DIST ?? join(here, '..', 'web');
     const app = await createApp({
@@ -77,6 +86,8 @@ async function main() {
       db,
       auth,
       log,
+      storage,
+      jobs,
       pingQueue,
     });
     if (collab) {
