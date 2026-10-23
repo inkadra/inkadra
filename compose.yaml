@@ -21,6 +21,7 @@ services:
       INSTANCE_NAME: ${INSTANCE_NAME:-Inkadra}
       REGISTRATION: ${REGISTRATION:-invite}
       LOG_LEVEL: ${LOG_LEVEL:-info}
+      TRUST_PROXY: ${TRUST_PROXY:-loopback,linklocal,uniquelocal}
     volumes:
       - inkadra-data:/data
     depends_on:
