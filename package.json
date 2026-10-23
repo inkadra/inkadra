@@ -17,7 +17,7 @@
     "openapi": "pnpm --filter @inkadra/shared openapi",
     "mock": "pnpm --filter @inkadra/shared mock",
     "db:generate": "pnpm --filter @inkadra/server db:generate",
-    "licenses": "node scripts/check-licenses.mjs"
+    "check:licenses": "node scripts/check-licenses.mjs"
   },
   "devDependencies": {
     "@biomejs/biome": "2.6.2",

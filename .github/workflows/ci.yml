@@ -55,7 +55,7 @@ jobs:
       - name: Unit and integration tests
         run: pnpm turbo run test
       - name: Licences of production dependencies
-        run: pnpm licenses
+        run: pnpm check:licenses
 
   e2e:
     name: End-to-end (Playwright)
