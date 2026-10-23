@@ -16,7 +16,7 @@ import { type Peer, uniquePeople, usePeers } from './presence.ts';
 import { ShareDialog } from './ShareDialog.tsx';
 import './board.css';
 
-const canEdit = (role: ProjectRole | undefined) => role === 'owner' || role === 'editor';
+const canEdit = (role: ProjectRole | null | undefined) => role === 'owner' || role === 'editor';
 
 export type BoardView = 'storyboard' | 'shotlist' | 'canvas';
 const VIEWS: Array<{ view: BoardView; icon: IconName }> = [
@@ -210,6 +210,7 @@ function BoardScreen({
       <StoryboardView
         store={conn.store}
         projectId={projectId}
+        boardId={boardId}
         userId={user.id}
         readOnly={!editable}
       />
@@ -228,7 +229,7 @@ function BoardScreen({
         boardId={boardId}
         userId={user.id}
         boards={boards}
-        canEdit={canEdit(detail?.myRole ?? projectRole ?? undefined)}
+        canEdit={canEdit(detail?.myRole ?? projectRole)}
         onOpenBoard={openBoard}
       />
       {shareDialog}

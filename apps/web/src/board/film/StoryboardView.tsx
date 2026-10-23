@@ -38,11 +38,13 @@ export function useStoryboard(store: BoardStore) {
 export function StoryboardView({
   store,
   projectId,
+  boardId,
   userId,
   readOnly,
 }: {
   store: BoardStore;
   projectId: string;
+  boardId: string;
   userId: string;
   readOnly: boolean;
 }) {
@@ -182,6 +184,7 @@ export function StoryboardView({
             label={labels.get(current.id) ?? ''}
             boardAspect={boardAspect}
             projectId={projectId}
+            boardId={boardId}
             readOnly={readOnly}
             onClose={() => setSelected(null)}
             onDraw={() => setDrawing(current.id)}

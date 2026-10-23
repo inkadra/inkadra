@@ -1652,6 +1652,7 @@ export function Canvas({
               label={labels.get(panelFrame.id) ?? ''}
               boardAspect={boardAspect}
               projectId={projectId}
+              boardId={boardId}
               readOnly={readOnly}
               onClose={() => setFramePanel(null)}
               onDraw={() => setDrawing(panelFrame.id)}
