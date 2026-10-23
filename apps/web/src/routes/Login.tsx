@@ -8,7 +8,10 @@ import './login.css';
 
 /** Only paths inside the app, so a crafted link cannot send people elsewhere after sign-in. */
 export function safeNext(value: string | null): string {
-  return value?.startsWith('/') && !value.startsWith('//') ? value : '/';
+  if (!value?.startsWith('/') || value.startsWith('//')) return '/';
+  // Backslashes and control characters can turn a path into another site in some browsers.
+  // biome-ignore lint/suspicious/noControlCharactersInRegex: rejecting them is the point
+  return /[\\\u0000-\u001f\u007f]/.test(value) ? '/' : value;
 }
 
 const PROVIDER_ERRORS: Record<string, string> = {
@@ -48,7 +51,11 @@ export function Login() {
 
         {providerError && (
           <p className="login__error login__error--box" role="alert">
-            {t(PROVIDER_ERRORS[providerError] ?? 'auth.errors.provider')}
+            {t(
+              Object.hasOwn(PROVIDER_ERRORS, providerError)
+                ? (PROVIDER_ERRORS[providerError] as string)
+                : 'auth.errors.provider',
+            )}
           </p>
         )}
 
