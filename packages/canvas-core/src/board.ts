@@ -429,16 +429,29 @@ export function pasteElements(
       const id = fresh.get(e.id) ?? newElementId();
       const copiedParent = e.parent === null ? undefined : fresh.get(e.parent);
       const onCanvas = copiedParent === undefined;
+      const x = onCanvas ? Math.round(at.x + (e.parent === null ? e.x - minX : 0)) : e.x;
+      const y = onCanvas ? Math.round(at.y + (e.parent === null ? e.y - minY : 0)) : e.y;
       const copy: Element = {
         ...e,
         id,
         createdBy: opts.userId,
         createdAt: Date.now(),
         parent: copiedParent ?? null,
-        x: onCanvas ? Math.round(at.x + (e.parent === null ? e.x - minX : 0)) : e.x,
-        y: onCanvas ? Math.round(at.y + (e.parent === null ? e.y - minY : 0)) : e.y,
+        x,
+        y,
         z: onCanvas ? (keys[placed.indexOf(e)] ?? keyAtEnd(all, null)) : e.z,
       };
+      if (copy.type === 'arrow') {
+        // Ends move with the arrow; an attached end follows the copy of its card when the
+        // card was copied too, else the original card.
+        const end = (p: typeof copy.from) => {
+          const elementId = p.elementId && (fresh.get(p.elementId) ?? p.elementId);
+          const moved = { x: p.x + x - e.x, y: p.y + y - e.y };
+          return elementId ? { ...moved, elementId } : moved;
+        };
+        copy.from = end(copy.from);
+        copy.to = end(copy.to);
+      }
       const map = addElement(doc, copy);
       const body = data.bodies[e.id];
       if (body) {
