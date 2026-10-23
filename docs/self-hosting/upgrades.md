@@ -27,6 +27,25 @@ there.
 Going back to an older version after its migrations ran is not supported: restore the backup
 taken before the upgrade instead.
 
+## Data folder owner
+
+Inkadra runs as uid 1000. Versions after 0.1 write to `/data` as soon as they start, so a host
+folder in `INKADRA_DATA` that belongs to another user, for example one created with `mkdir` as
+root, stops them with "cannot write to /data".
+
+The `compose.yaml` of the release handles this by itself: the container starts as root, gives
+the folder to uid 1000 if the folder or one of its entries belongs to someone else, and then
+runs as uid 1000 with no capabilities. The change of owner happens once, on the first start
+that needs it. Take the new `compose.yaml` (it adds `user` and `cap_add` to the `inkadra`
+service) and run `docker compose up -d`.
+
+If you keep an older `compose.yaml`, or run the container as uid 1000 on purpose, give the
+folder to uid 1000 yourself before upgrading:
+
+```sh
+sudo chown -R 1000:1000 /path/to/inkadra/data
+```
+
 ## Verifying the image
 
 Every published image comes with a signed build provenance attestation, made by GitHub Actions

@@ -47,13 +47,16 @@ COPY --from=build /out/package.json ./package.json
 COPY --from=build /src/apps/server/dist ./dist
 COPY --from=build /src/apps/server/drizzle ./drizzle
 COPY --from=build /src/apps/server/scripts/healthcheck.mjs ./healthcheck.mjs
+COPY --from=build --chmod=755 /src/apps/server/scripts/docker-entrypoint.sh ./docker-entrypoint.sh
 COPY --from=build /src/apps/web/dist ./web
 # Upload parts and worker scratch files can be large: keep them on the data volume, not in /tmp.
 RUN mkdir -p /data/tmp && chown -R node:node /data
+# Non-root by default. compose.yaml starts the entrypoint as root instead, so it can give a host
+# folder mounted on /data to node before dropping to it.
 USER node
 VOLUME ["/data"]
 EXPOSE 3000 3001
 HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
   CMD ["node", "/app/healthcheck.mjs"]
-ENTRYPOINT ["/usr/bin/tini", "--", "node", "/app/dist/main.js"]
+ENTRYPOINT ["/usr/bin/tini", "--", "/app/docker-entrypoint.sh"]
 CMD ["all"]
