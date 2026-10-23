@@ -17,6 +17,11 @@ import {
   CommentThread,
   CreateComment,
   ElementRef,
+  GuestComment,
+  GuestCommentThread,
+  GuestCreateComment,
+  GuestUpdateComment,
+  ReplyQuery,
   UpdateComment,
 } from './comments.ts';
 import { ApiError, Id, PageQuery, page, z } from './common.ts';
@@ -51,7 +56,14 @@ import {
   SetProjectMember,
   UpdateProject,
 } from './projects.ts';
-import { BoardReviews, ElementReview, ElementReviewEvent, SetElementReview } from './reviews.ts';
+import {
+  BoardReviews,
+  ElementReview,
+  ElementReviewEvent,
+  GuestElementReview,
+  ReviewHistoryQuery,
+  SetElementReview,
+} from './reviews.ts';
 import { SearchQuery, SearchResult, TagCount } from './search.ts';
 import {
   AcceptedInvitation,
@@ -789,6 +801,7 @@ registry.registerPath({
 // Comments -------------------------------------------------------------------
 
 const commentParams = z.object({ commentId: Id });
+const tooMany = { 429: { description: 'Too many requests', ...json(ApiError) } };
 const realtime =
   ' Open boards are told with the stateless collab message `{"type":"comments"}` (BoardNotice ' +
   'in @inkadra/doc-schema) and fetch again.';
@@ -798,8 +811,12 @@ registry.registerPath({
   path: v1('/boards/{boardId}/comments'),
   tags: ['Comments'],
   security: secured,
-  summary: 'Comment threads of a board and its cards, newest activity first.',
-  description: 'Needs viewer. Each thread comes with all its replies.',
+  summary: 'Comment threads of a board and its cards, newest first.',
+  description:
+    'Needs viewer. Threads are ordered by when they were started (newest first, then by id), ' +
+    'so the cursor never skips or repeats a thread while people reply. Each thread comes with ' +
+    'its latest replies and `replyCount`; earlier replies come from ' +
+    '`GET /comments/{commentId}/replies`.',
   request: { params: idParam('boardId'), query: CommentQuery },
   responses: { 200: { description: 'Threads', ...json(page(CommentThread)) }, ...errors },
 });
@@ -809,6 +826,7 @@ registry.registerPath({
   tags: ['Comments'],
   security: secured,
   summary: 'Open and resolved threads per card, for the badges on the canvas.',
+  description: 'Needs viewer.',
   request: { params: idParam('boardId') },
   responses: { 200: { description: 'Counts', ...json(CommentCounts) }, ...errors },
 });
@@ -820,10 +838,20 @@ registry.registerPath({
   summary: 'Start a thread on the board or a card, or reply to one.',
   description:
     'Needs commenter. Mentions of people who cannot read the board are dropped; the others, ' +
-    'the authors of the thread and the creator of the card are notified.' +
+    'the authors of the thread and the creator of the card are notified. A reply must belong ' +
+    'to a thread of the same board.' +
     realtime,
   request: { params: idParam('boardId'), body: json(CreateComment) },
-  responses: { 201: { description: 'Created', ...json(CommentSchema) }, ...errors },
+  responses: { 201: { description: 'Created', ...json(CommentSchema) }, ...errors, ...tooMany },
+});
+registry.registerPath({
+  method: 'get',
+  path: v1('/comments/{commentId}/replies'),
+  tags: ['Comments'],
+  security: secured,
+  summary: 'Every reply of a thread, oldest first. Needs viewer.',
+  request: { params: commentParams, query: ReplyQuery },
+  responses: { 200: { description: 'Replies', ...json(page(CommentSchema)) }, ...errors },
 });
 registry.registerPath({
   method: 'patch',
@@ -890,7 +918,8 @@ registry.registerPath({
   summary: 'Set the review status of a card. Needs commenter.',
   description:
     'Every change is kept in the history. The creator of the card and whoever asked for the ' +
-    'review are notified. The card must exist in the stored board document.',
+    'review are notified. The card must exist in the stored board document.' +
+    ' Open boards are told with the stateless collab message `{"type":"review"}`.',
   request: { params: elementParams, body: json(SetElementReview) },
   responses: { 200: { description: 'Set', ...json(ElementReview) }, ...errors },
 });
@@ -900,7 +929,7 @@ registry.registerPath({
   tags: ['Reviews'],
   security: secured,
   summary: 'Every change of the review status of a card, newest first. Needs viewer.',
-  request: { params: elementParams, query: PageQuery },
+  request: { params: elementParams, query: ReviewHistoryQuery },
   responses: { 200: { description: 'History', ...json(page(ElementReviewEvent)) }, ...errors },
 });
 
@@ -913,8 +942,9 @@ registry.registerPath({
   security: secured,
   summary: 'Notifications of the signed-in person, newest first.',
   description:
-    'Notifications about boards the person can no longer open are left out. They are kept ' +
-    '90 days.',
+    'Notifications about boards the person can no longer open are left out, checked with the ' +
+    'same rules as the board itself; a page can therefore be short or empty with a ' +
+    '`nextCursor`. They are kept 90 days.',
   request: { query: NotificationQuery },
   responses: {
     200: { description: 'Notifications', ...json(page(Notification)) },
@@ -927,6 +957,7 @@ registry.registerPath({
   tags: ['Notifications'],
   security: secured,
   summary: 'Number for the badge. Cheap enough to poll every minute.',
+  description: 'Counts only what the list would show: the same access filter applies.',
   responses: { 200: { description: 'Count', ...json(UnreadCount) }, 401: errors[401] },
 });
 registry.registerPath({
@@ -994,7 +1025,10 @@ registry.registerPath({
   tags: ['Share links'],
   security: secured,
   summary: 'Create a link for people without an account. Needs editor.',
-  description: 'Each person can create 50 share links an hour.',
+  description:
+    'Each person can create 50 share links an hour. The link acts for its creator: guests see ' +
+    'only boards where the creator has at least editor at the time of each request, and the ' +
+    'link is `suspended` while the creator lacks it on the board of the link.',
   request: { params: idParam('boardId'), body: json(CreateShareLink) },
   responses: {
     201: { description: 'Created', ...json(ShareLink) },
@@ -1040,22 +1074,31 @@ registry.registerComponent('securitySchemes', 'guest', {
   in: 'cookie',
   name: 'inkadra.guest',
   description:
-    'Guest session of one share link, set by POST /guest/by-token/{token}/session with ' +
-    '`Path=/api/v1/guest/links/{linkId}`, HttpOnly and SameSite=Lax. Over HTTPS its name ' +
-    'carries the `__Secure-` prefix.',
+    'Guest session of one share link, set by POST /guest/links/{linkId}/session with ' +
+    '`Path=/api/v1/guest/links/{linkId}`, HttpOnly, SameSite=Lax and Max-Age of 30 days, ' +
+    'renewed while the guest is active. Over HTTPS its name carries the `__Secure-` prefix. ' +
+    'Write requests with this cookie must come from the instance itself: `Origin` (or else ' +
+    '`Sec-Fetch-Site: same-origin`) is checked against PUBLIC_URL, otherwise 403.',
 });
 const guestErrors = {
   400: errors[400],
-  401: { description: 'No guest session (details: GuestDenied)', ...json(ApiError) },
+  401: { description: 'No guest session, or it expired (details: GuestDenied)', ...json(ApiError) },
   403: {
-    description: 'Link expired or revoked, password changed, or role too low (GuestDenied)',
+    description:
+      'Link expired, revoked or suspended, password changed, role too low, or a cross-site ' +
+      'write (GuestDenied)',
     ...json(ApiError),
   },
-  404: errors[404],
+  404: {
+    description: 'Not found, or not visible to guests of this link (hidden cards included)',
+    ...json(ApiError),
+  },
 };
+const guestWriteErrors = { ...guestErrors, ...tooMany };
 registry.register('GuestDenied', GuestDenied);
 const guestBoardParams = z.object({ linkId: Id, boardId: Id });
 const guestElementParams = guestBoardParams.extend({ elementId: ElementRef });
+const guestCommentParams = z.object({ linkId: Id, commentId: Id });
 
 registry.registerPath({
   method: 'get',
@@ -1063,28 +1106,33 @@ registry.registerPath({
   tags: ['Guests'],
   security: [{}],
   summary: 'What a share link is for, shown before entering a name or password. Rate limited.',
+  description:
+    'Revoked, expired and suspended links answer 403 with GuestDenied only. While a password ' +
+    'is needed, the board, the sender, the role and the expiry are left out.',
   request: { params: shareTokenParam },
   responses: {
     200: { description: 'Preview', ...json(ShareLinkPreview) },
+    403: { description: 'Link expired, revoked or suspended (GuestDenied)', ...json(ApiError) },
     404: errors[404],
-    429: { description: 'Too many requests', ...json(ApiError) },
+    ...tooMany,
   },
 });
 registry.registerPath({
   method: 'post',
-  path: v1('/guest/by-token/{token}/session'),
+  path: v1('/guest/links/{linkId}/session'),
   tags: ['Guests'],
   security: [{}, ...guest],
-  summary: 'Open the link as a guest: checks the password and sets the guest cookie.',
+  summary: 'Open the link as a guest: checks the token and password, sets the guest cookie.',
   description:
-    'If the browser still has the cookie of an earlier visit to the same link, the guest ' +
-    'stays the same person (comments and picks stay theirs). Wrong passwords are rate limited ' +
-    'per link and address.',
-  request: { params: shareTokenParam, body: json(CreateGuestSession) },
+    'The token is in the body and the path is under the cookie path, so the browser sends ' +
+    'back the cookie of an earlier visit: if it belongs to a guest of this link, even with an ' +
+    'expired session, that guest is reused (comments and picks stay theirs) and the cookie ' +
+    'token is replaced. Otherwise a new guest is created. A token of another link is a 404. ' +
+    'Rate limited per link and address: wrong passwords, and new guests without a cookie.',
+  request: { params: linkParams, body: json(CreateGuestSession) },
   responses: {
     200: { description: 'Guest session', ...json(GuestSession) },
-    ...guestErrors,
-    429: { description: 'Too many requests', ...json(ApiError) },
+    ...guestWriteErrors,
   },
 });
 registry.registerPath({
@@ -1103,14 +1151,14 @@ registry.registerPath({
   security: guest,
   summary: 'Set the name of the guest.',
   request: { params: linkParams, body: json(UpdateGuestSession) },
-  responses: { 200: { description: 'Updated', ...json(GuestSession) }, ...guestErrors },
+  responses: { 200: { description: 'Updated', ...json(GuestSession) }, ...guestWriteErrors },
 });
 registry.registerPath({
   method: 'delete',
   path: v1('/guest/links/{linkId}/session'),
   tags: ['Guests'],
   security: guest,
-  summary: 'Leave: clears the guest cookie.',
+  summary: 'Leave: ends the session and clears the guest cookie.',
   request: { params: linkParams },
   responses: { 204: { description: 'Left' } },
 });
@@ -1123,8 +1171,9 @@ registry.registerPath({
   description:
     'Rendered by the server from the stored document: cards hidden from guests and their ' +
     'children are left out, and so are arrows attached to them and board cards of boards ' +
-    'outside the link. Files are listed only as guest URLs. Send `If-None-Match` with the last ' +
-    '`version` to poll cheaply (304).',
+    'outside the link. Reviews, comment counts, picks and files are filtered the same way. ' +
+    'Files are listed only as guest URLs. Send `If-None-Match` with the last `version` to ' +
+    'poll cheaply (304).',
   request: { params: guestBoardParams },
   responses: {
     200: { description: 'Snapshot', ...json(GuestBoardSnapshot) },
@@ -1138,6 +1187,9 @@ registry.registerPath({
   tags: ['Guests'],
   security: guest,
   summary: 'A WebP thumbnail of a file shown on one of the boards of the link.',
+  description:
+    'Only for files referenced by an element visible to guests on a board of the link, or ' +
+    'the cover of such a board; checked on every request.',
   request: { params: z.object({ linkId: Id, assetId: Id, size: ThumbnailSize }) },
   responses: {
     200: { description: 'WebP image', content: { 'image/webp': { schema: z.string() } } },
@@ -1150,6 +1202,9 @@ registry.registerPath({
   tags: ['Guests'],
   security: guest,
   summary: 'The original file, only when the link allows downloads. Always an attachment.',
+  description:
+    'Only for files referenced by an element visible to guests on a board of the link (board ' +
+    'covers are never served as originals); checked on every request.',
   request: { params: z.object({ linkId: Id, assetId: Id }) },
   responses: {
     200: { description: 'File' },
@@ -1162,9 +1217,25 @@ registry.registerPath({
   path: v1('/guest/links/{linkId}/boards/{boardId}/comments'),
   tags: ['Guests'],
   security: guest,
-  summary: 'Threads visible to guests (`everyone`). For guest_comment and guest_approve.',
+  summary: 'Threads this guest can read. For guest_comment and guest_approve.',
+  description:
+    '`everyone` threads that are either for every link (written by the team) or for this ' +
+    'link, about the board or a card visible to guests; replies written by guests of other ' +
+    'links are left out. Same order and cursor as the team list.',
   request: { params: guestBoardParams, query: CommentQuery },
-  responses: { 200: { description: 'Threads', ...json(page(CommentThread)) }, ...guestErrors },
+  responses: {
+    200: { description: 'Threads', ...json(page(GuestCommentThread)) },
+    ...guestErrors,
+  },
+});
+registry.registerPath({
+  method: 'get',
+  path: v1('/guest/links/{linkId}/comments/{commentId}/replies'),
+  tags: ['Guests'],
+  security: guest,
+  summary: 'Every reply of a thread this guest can read, oldest first.',
+  request: { params: guestCommentParams, query: ReplyQuery },
+  responses: { 200: { description: 'Replies', ...json(page(GuestComment)) }, ...guestErrors },
 });
 registry.registerPath({
   method: 'post',
@@ -1172,26 +1243,30 @@ registry.registerPath({
   tags: ['Guests'],
   security: guest,
   summary: 'Comment as a guest. Needs a name; mentions are not available to guests.',
-  request: { params: guestBoardParams, body: json(CreateComment) },
-  responses: { 201: { description: 'Created', ...json(CommentSchema) }, ...guestErrors },
+  description:
+    'The thread is `everyone` and belongs to this link: guests of other links never see it. ' +
+    'A card hidden from guests, or a reply to a thread this guest cannot read (a `team` ' +
+    'thread, or one of another link), is a 404. Rate limited per guest and per link.',
+  request: { params: guestBoardParams, body: json(GuestCreateComment) },
+  responses: { 201: { description: 'Created', ...json(GuestComment) }, ...guestWriteErrors },
 });
 registry.registerPath({
   method: 'patch',
   path: v1('/guest/links/{linkId}/comments/{commentId}'),
   tags: ['Guests'],
   security: guest,
-  summary: 'Edit a comment this guest wrote.',
-  request: { params: z.object({ linkId: Id, commentId: Id }), body: json(UpdateComment) },
-  responses: { 200: { description: 'Updated', ...json(CommentSchema) }, ...guestErrors },
+  summary: 'Edit a comment this guest wrote, on a board the guest can still open.',
+  request: { params: guestCommentParams, body: json(GuestUpdateComment) },
+  responses: { 200: { description: 'Updated', ...json(GuestComment) }, ...guestWriteErrors },
 });
 registry.registerPath({
   method: 'delete',
   path: v1('/guest/links/{linkId}/comments/{commentId}'),
   tags: ['Guests'],
   security: guest,
-  summary: 'Delete a comment this guest wrote.',
-  request: { params: z.object({ linkId: Id, commentId: Id }) },
-  responses: { 204: { description: 'Deleted' }, ...guestErrors },
+  summary: 'Delete a comment this guest wrote, on a board the guest can still open.',
+  request: { params: guestCommentParams },
+  responses: { 204: { description: 'Deleted' }, ...guestWriteErrors },
 });
 registry.registerPath({
   method: 'put',
@@ -1199,8 +1274,9 @@ registry.registerPath({
   tags: ['Guests'],
   security: guest,
   summary: 'Approve a card or ask for changes. For guest_approve; needs a name.',
+  description: 'A card hidden from guests is a 404.',
   request: { params: guestElementParams, body: json(SetElementReview) },
-  responses: { 200: { description: 'Set', ...json(ElementReview) }, ...guestErrors },
+  responses: { 200: { description: 'Set', ...json(GuestElementReview) }, ...guestWriteErrors },
 });
 registry.registerPath({
   method: 'put',
@@ -1208,8 +1284,9 @@ registry.registerPath({
   tags: ['Guests'],
   security: guest,
   summary: 'Pick, reject or star a picture, when the link has proofing. Needs a name.',
+  description: 'A card hidden from guests is a 404.',
   request: { params: guestElementParams, body: json(SetPick) },
-  responses: { 200: { description: 'Saved', ...json(GuestPick) }, ...guestErrors },
+  responses: { 200: { description: 'Saved', ...json(GuestPick) }, ...guestWriteErrors },
 });
 
 // Versions -------------------------------------------------------------------
@@ -1231,8 +1308,11 @@ registry.registerPath({
   tags: ['Versions'],
   security: secured,
   summary: 'Save the current state of the board under a name. Needs editor.',
+  description:
+    'A board keeps at most 100 named versions (409 beyond; delete or let one go first), and ' +
+    'each person can save 20 an hour.',
   request: { params: idParam('boardId'), body: json(CreateBoardVersion) },
-  responses: { 201: { description: 'Saved', ...json(BoardVersion) }, ...errors },
+  responses: { 201: { description: 'Saved', ...json(BoardVersion) }, ...errors, ...tooMany },
 });
 registry.registerPath({
   method: 'patch',
@@ -1248,7 +1328,10 @@ registry.registerPath({
   path: v1('/boards/{boardId}/versions/{versionId}'),
   tags: ['Versions'],
   security: secured,
-  summary: 'Delete a named version. Needs editor.',
+  summary: 'Delete a version of any kind. Needs editor.',
+  description:
+    'Automatic and restore versions also go away by themselves with retention; deleting one ' +
+    'only does it sooner.',
   request: { params: versionParams },
   responses: { 204: { description: 'Deleted' }, ...errors },
 });
@@ -1280,7 +1363,8 @@ registry.registerPath({
     'The current state is saved first as a `restore` version. The content of the version is ' +
     'then written on top of the live document, so open boards follow without a reload ' +
     '(they also get the stateless collab message `{"type":"restored"}`). Comments, reviews ' +
-    'and picks are not touched.',
+    'and picks are not touched. Cards present both now and in the version keep their current ' +
+    '`guestHidden`, so a restore never shows guests a card hidden since.',
   request: { params: versionParams },
   responses: { 200: { description: 'Restored', ...json(RestoredBoardVersion) }, ...errors },
 });

@@ -1,5 +1,5 @@
 {
-  "id": "89e789f4-799f-4d84-8b7e-8e7e92855aed",
+  "id": "9f6624cf-fecb-4248-ac0c-aff7d538b709",
   "prevId": "ce0b5718-e0cd-496f-80a8-0455f8c68422",
   "version": "7",
   "dialect": "postgresql",
@@ -976,7 +976,13 @@
             {
               "expression": "created_at",
               "isExpression": false,
-              "asc": true,
+              "asc": false,
+              "nulls": "last"
+            },
+            {
+              "expression": "id",
+              "isExpression": false,
+              "asc": false,
               "nulls": "last"
             }
           ],
@@ -996,6 +1002,22 @@
             }
           ],
           "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "board_version_created_by_idx": {
+          "name": "board_version_created_by_idx",
+          "columns": [
+            {
+              "expression": "created_by",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "where": "\"board_version\".\"created_by\" is not null",
           "concurrently": false,
           "method": "btree",
           "with": {}
@@ -1032,7 +1054,12 @@
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "policies": {},
-      "checkConstraints": {},
+      "checkConstraints": {
+        "board_version_named_ck": {
+          "name": "board_version_named_ck",
+          "value": "\"board_version\".\"kind\" <> 'named' or \"board_version\".\"name\" is not null"
+        }
+      },
       "isRLSEnabled": false
     },
     "public.comment": {
@@ -1082,6 +1109,12 @@
           "primaryKey": false,
           "notNull": false
         },
+        "share_link_id": {
+          "name": "share_link_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
         "body": {
           "name": "body",
           "type": "text",
@@ -1126,15 +1159,15 @@
           "primaryKey": false,
           "notNull": false
         },
-        "last_activity_at": {
-          "name": "last_activity_at",
+        "created_at": {
+          "name": "created_at",
           "type": "timestamp with time zone",
           "primaryKey": false,
           "notNull": true,
           "default": "now()"
         },
-        "created_at": {
-          "name": "created_at",
+        "updated_at": {
+          "name": "updated_at",
           "type": "timestamp with time zone",
           "primaryKey": false,
           "notNull": true,
@@ -1154,8 +1187,8 @@
         }
       },
       "indexes": {
-        "comment_board_idx": {
-          "name": "comment_board_idx",
+        "comment_board_element_idx": {
+          "name": "comment_board_element_idx",
           "columns": [
             {
               "expression": "board_id",
@@ -1175,23 +1208,8 @@
           "method": "btree",
           "with": {}
         },
-        "comment_thread_idx": {
-          "name": "comment_thread_idx",
-          "columns": [
-            {
-              "expression": "thread_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "comment_activity_idx": {
-          "name": "comment_activity_idx",
+        "comment_threads_idx": {
+          "name": "comment_threads_idx",
           "columns": [
             {
               "expression": "board_id",
@@ -1200,13 +1218,96 @@
               "nulls": "last"
             },
             {
-              "expression": "last_activity_at",
+              "expression": "created_at",
+              "isExpression": false,
+              "asc": false,
+              "nulls": "last"
+            },
+            {
+              "expression": "id",
+              "isExpression": false,
+              "asc": false,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "where": "\"comment\".\"thread_id\" is null",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "comment_replies_idx": {
+          "name": "comment_replies_idx",
+          "columns": [
+            {
+              "expression": "thread_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "created_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "id",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
             }
           ],
           "isUnique": false,
+          "where": "\"comment\".\"thread_id\" is not null",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "comment_share_link_idx": {
+          "name": "comment_share_link_idx",
+          "columns": [
+            {
+              "expression": "share_link_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "where": "\"comment\".\"share_link_id\" is not null",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "comment_author_idx": {
+          "name": "comment_author_idx",
+          "columns": [
+            {
+              "expression": "author_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "where": "\"comment\".\"author_id\" is not null",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "comment_resolved_by_idx": {
+          "name": "comment_resolved_by_idx",
+          "columns": [
+            {
+              "expression": "resolved_by",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "where": "\"comment\".\"resolved_by\" is not null",
           "concurrently": false,
           "method": "btree",
           "with": {}
@@ -1265,6 +1366,19 @@
           "onDelete": "set null",
           "onUpdate": "no action"
         },
+        "comment_share_link_id_share_link_id_fk": {
+          "name": "comment_share_link_id_share_link_id_fk",
+          "tableFrom": "comment",
+          "tableTo": "share_link",
+          "columnsFrom": [
+            "share_link_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
         "comment_resolved_by_user_id_fk": {
           "name": "comment_resolved_by_user_id_fk",
           "tableFrom": "comment",
@@ -1291,24 +1405,48 @@
           "onDelete": "set null",
           "onUpdate": "no action"
         },
-        "comment_thread_id_comment_id_fk": {
-          "name": "comment_thread_id_comment_id_fk",
+        "comment_thread_id_board_id_comment_id_board_id_fk": {
+          "name": "comment_thread_id_board_id_comment_id_board_id_fk",
           "tableFrom": "comment",
           "tableTo": "comment",
           "columnsFrom": [
-            "thread_id"
+            "thread_id",
+            "board_id"
           ],
           "columnsTo": [
-            "id"
+            "id",
+            "board_id"
           ],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
+      "uniqueConstraints": {
+        "comment_id_board_uq": {
+          "name": "comment_id_board_uq",
+          "nullsNotDistinct": false,
+          "columns": [
+            "id",
+            "board_id"
+          ]
+        }
+      },
       "policies": {},
-      "checkConstraints": {},
+      "checkConstraints": {
+        "comment_one_author_ck": {
+          "name": "comment_one_author_ck",
+          "value": "num_nonnulls(\"comment\".\"author_id\", \"comment\".\"author_guest_id\") <= 1"
+        },
+        "comment_guest_link_ck": {
+          "name": "comment_guest_link_ck",
+          "value": "\"comment\".\"author_guest_id\" is null or \"comment\".\"share_link_id\" is not null"
+        },
+        "comment_team_no_link_ck": {
+          "name": "comment_team_no_link_ck",
+          "value": "\"comment\".\"visibility\" = 'everyone' or \"comment\".\"share_link_id\" is null"
+        }
+      },
       "isRLSEnabled": false
     },
     "public.element_review": {
@@ -1357,6 +1495,12 @@
           "primaryKey": false,
           "notNull": false
         },
+        "share_link_id": {
+          "name": "share_link_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
         "requested_by": {
           "name": "requested_by",
           "type": "uuid",
@@ -1372,17 +1516,34 @@
         }
       },
       "indexes": {
-        "element_review_project_idx": {
-          "name": "element_review_project_idx",
+        "element_review_changed_by_idx": {
+          "name": "element_review_changed_by_idx",
           "columns": [
             {
-              "expression": "project_id",
+              "expression": "changed_by",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
             }
           ],
           "isUnique": false,
+          "where": "\"element_review\".\"changed_by\" is not null",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "element_review_requested_by_idx": {
+          "name": "element_review_requested_by_idx",
+          "columns": [
+            {
+              "expression": "requested_by",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "where": "\"element_review\".\"requested_by\" is not null",
           "concurrently": false,
           "method": "btree",
           "with": {}
@@ -1441,6 +1602,19 @@
           "onDelete": "set null",
           "onUpdate": "no action"
         },
+        "element_review_share_link_id_share_link_id_fk": {
+          "name": "element_review_share_link_id_share_link_id_fk",
+          "tableFrom": "element_review",
+          "tableTo": "share_link",
+          "columnsFrom": [
+            "share_link_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        },
         "element_review_requested_by_user_id_fk": {
           "name": "element_review_requested_by_user_id_fk",
           "tableFrom": "element_review",
@@ -1466,7 +1640,12 @@
       },
       "uniqueConstraints": {},
       "policies": {},
-      "checkConstraints": {},
+      "checkConstraints": {
+        "element_review_one_author_ck": {
+          "name": "element_review_one_author_ck",
+          "value": "num_nonnulls(\"element_review\".\"changed_by\", \"element_review\".\"changed_by_guest\") <= 1"
+        }
+      },
       "isRLSEnabled": false
     },
     "public.element_review_event": {
@@ -1522,6 +1701,12 @@
           "primaryKey": false,
           "notNull": false
         },
+        "share_link_id": {
+          "name": "share_link_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
         "created_at": {
           "name": "created_at",
           "type": "timestamp with time zone",
@@ -1549,11 +1734,33 @@
             {
               "expression": "created_at",
               "isExpression": false,
+              "asc": false,
+              "nulls": "last"
+            },
+            {
+              "expression": "id",
+              "isExpression": false,
+              "asc": false,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "element_review_event_user_idx": {
+          "name": "element_review_event_user_idx",
+          "columns": [
+            {
+              "expression": "user_id",
+              "isExpression": false,
               "asc": true,
               "nulls": "last"
             }
           ],
           "isUnique": false,
+          "where": "\"element_review_event\".\"user_id\" is not null",
           "concurrently": false,
           "method": "btree",
           "with": {}
@@ -1598,12 +1805,30 @@
           ],
           "onDelete": "set null",
           "onUpdate": "no action"
+        },
+        "element_review_event_share_link_id_share_link_id_fk": {
+          "name": "element_review_event_share_link_id_share_link_id_fk",
+          "tableFrom": "element_review_event",
+          "tableTo": "share_link",
+          "columnsFrom": [
+            "share_link_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "policies": {},
-      "checkConstraints": {},
+      "checkConstraints": {
+        "element_review_event_one_author_ck": {
+          "name": "element_review_event_one_author_ck",
+          "value": "num_nonnulls(\"element_review_event\".\"user_id\", \"element_review_event\".\"guest_id\") <= 1"
+        }
+      },
       "isRLSEnabled": false
     },
     "public.instance_setting": {
@@ -1888,12 +2113,6 @@
           "primaryKey": false,
           "notNull": false
         },
-        "excerpt": {
-          "name": "excerpt",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
         "read_at": {
           "name": "read_at",
           "type": "timestamp with time zone",
@@ -1927,7 +2146,13 @@
             {
               "expression": "created_at",
               "isExpression": false,
-              "asc": true,
+              "asc": false,
+              "nulls": "last"
+            },
+            {
+              "expression": "id",
+              "isExpression": false,
+              "asc": false,
               "nulls": "last"
             }
           ],
@@ -1948,6 +2173,53 @@
           ],
           "isUnique": false,
           "where": "\"notification\".\"read_at\" is null",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "notification_email_idx": {
+          "name": "notification_email_idx",
+          "columns": [
+            {
+              "expression": "created_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "where": "\"notification\".\"emailed_at\" is null and \"notification\".\"read_at\" is null",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "notification_created_idx": {
+          "name": "notification_created_idx",
+          "columns": [
+            {
+              "expression": "created_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "notification_actor_idx": {
+          "name": "notification_actor_idx",
+          "columns": [
+            {
+              "expression": "actor_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "where": "\"notification\".\"actor_id\" is not null",
           "concurrently": false,
           "method": "btree",
           "with": {}
@@ -2503,7 +2775,7 @@
           "name": "token_hash",
           "type": "text",
           "primaryKey": false,
-          "notNull": true
+          "notNull": false
         },
         "authenticated_at": {
           "name": "authenticated_at",
@@ -2511,6 +2783,12 @@
           "primaryKey": false,
           "notNull": true,
           "default": "now()"
+        },
+        "session_expires_at": {
+          "name": "session_expires_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
         },
         "last_seen_at": {
           "name": "last_seen_at",
@@ -2566,6 +2844,14 @@
           "nullsNotDistinct": false,
           "columns": [
             "token_hash"
+          ]
+        },
+        "share_guest_id_link_uq": {
+          "name": "share_guest_id_link_uq",
+          "nullsNotDistinct": false,
+          "columns": [
+            "id",
+            "share_link_id"
           ]
         }
       },
@@ -2691,6 +2977,13 @@
           "primaryKey": false,
           "notNull": true,
           "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
         }
       },
       "indexes": {
@@ -2720,6 +3013,22 @@
             }
           ],
           "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "share_link_created_by_idx": {
+          "name": "share_link_created_by_idx",
+          "columns": [
+            {
+              "expression": "created_by",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "where": "\"share_link\".\"created_by\" is not null",
           "concurrently": false,
           "method": "btree",
           "with": {}
@@ -2852,19 +3161,6 @@
         }
       },
       "foreignKeys": {
-        "share_pick_guest_id_share_guest_id_fk": {
-          "name": "share_pick_guest_id_share_guest_id_fk",
-          "tableFrom": "share_pick",
-          "tableTo": "share_guest",
-          "columnsFrom": [
-            "guest_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
         "share_pick_share_link_id_share_link_id_fk": {
           "name": "share_pick_share_link_id_share_link_id_fk",
           "tableFrom": "share_pick",
@@ -2903,6 +3199,21 @@
           ],
           "onDelete": "set null",
           "onUpdate": "no action"
+        },
+        "share_pick_guest_id_share_link_id_share_guest_id_share_link_id_fk": {
+          "name": "share_pick_guest_id_share_link_id_share_guest_id_share_link_id_fk",
+          "tableFrom": "share_pick",
+          "tableTo": "share_guest",
+          "columnsFrom": [
+            "guest_id",
+            "share_link_id"
+          ],
+          "columnsTo": [
+            "id",
+            "share_link_id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {
@@ -2921,6 +3232,10 @@
         "share_pick_stars_ck": {
           "name": "share_pick_stars_ck",
           "value": "\"share_pick\".\"stars\" between 1 and 5"
+        },
+        "share_pick_value_ck": {
+          "name": "share_pick_value_ck",
+          "value": "\"share_pick\".\"pick\" is not null or \"share_pick\".\"stars\" is not null"
         }
       },
       "isRLSEnabled": false

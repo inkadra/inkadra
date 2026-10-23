@@ -131,6 +131,23 @@ describe('board operations', () => {
     expect(el.type === 'todo' && el.items[0]?.text).toBe('Sopralluogo');
   });
 
+  it('keeps cards hidden from guests hidden through duplicate, copy and cut', () => {
+    const doc = setup();
+    const col = createElement(doc, 'column', { x: 0, y: 0 }, { title: 'Interno' }, opts);
+    updateElement(doc, col.id, { guestHidden: true });
+    const note = createElement(doc, 'note', { x: 0, y: 0 }, { parent: col.id }, opts);
+    updateElement(doc, note.id, { guestHidden: true });
+    const hidden = (d: Y.Doc) => listElements(d).filter((e) => e.guestHidden === true);
+    duplicateElements(doc, [col.id], { x: 20, y: 20 }, opts);
+    expect(hidden(doc)).toHaveLength(4);
+    const data = JSON.parse(JSON.stringify(copyElements(doc, [col.id])));
+    deleteElements(doc, [col.id, note.id]);
+    const other = setup();
+    pasteElements(other, data, { x: 0, y: 0 }, opts);
+    expect(hidden(other)).toHaveLength(2);
+    expect(validateBoardDoc(other)).toEqual([]);
+  });
+
   it('edits to-do items', () => {
     const doc = setup();
     const a = createElement(doc, 'todo', { x: 0, y: 0 }, { items: [] }, opts);

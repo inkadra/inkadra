@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MPL-2.0
-import { Author, ElementRef } from './comments.ts';
+import { Author, ElementRef, ListLimit } from './comments.ts';
 import { Cursor, Id, Timestamp, z } from './common.ts';
 import { ReviewStatus } from './reviews.ts';
 
@@ -14,7 +14,8 @@ export const NotificationType = z
       '`mention`: someone mentioned you in a comment. `reply`: a reply in a thread you wrote ' +
       'in. `comment`: a new thread on a card you created. `review`: the review status of a ' +
       'card you created, or asked a review for, changed. `invitation_accepted`: someone ' +
-      'accepted your invitation. Clients show types they do not know as a plain line.',
+      'accepted your invitation. Open: clients show types they do not know as a plain line ' +
+      'with the actor, the board and the time.',
   });
 export type NotificationType = z.infer<typeof NotificationType>;
 
@@ -29,9 +30,15 @@ export const Notification = z
     boardTitle: z.string().nullable(),
     elementId: ElementRef.nullable(),
     commentId: Id.nullable().openapi({ description: 'For mention, reply and comment.' }),
-    excerpt: z.string().max(280).nullable().openapi({
-      description: 'Start of the comment, with mentions already written as names.',
-    }),
+    excerpt: z
+      .string()
+      .max(280)
+      .nullable()
+      .openapi({
+        description:
+          'Start of the comment as it is now, with mentions written as names; null once the ' +
+          'comment is deleted.',
+      }),
     reviewStatus: ReviewStatus.nullable().openapi({ description: 'For review.' }),
     readAt: Timestamp.nullable(),
     createdAt: Timestamp,
@@ -42,14 +49,24 @@ export type Notification = z.infer<typeof Notification>;
 export const NotificationQuery = z
   .object({
     unread: z.enum(['true', 'false']).optional().openapi({ description: 'Only unread ones.' }),
-    cursor: Cursor.optional(),
-    limit: z.coerce.number().int().min(1).max(100).default(30),
+    cursor: Cursor.optional().openapi({
+      description:
+        'Opaque, by creation time and id. Notifications about boards the person can no longer ' +
+        'open are left out after paging, so a page can be short or even empty while ' +
+        '`nextCursor` is not null: keep following it.',
+    }),
+    limit: ListLimit,
   })
   .openapi('NotificationQuery');
 export type NotificationQuery = z.infer<typeof NotificationQuery>;
 
 export const UnreadCount = z
-  .object({ unread: z.int().min(0).openapi({ description: 'Capped at 1000.' }) })
+  .object({
+    unread: z.int().min(0).openapi({
+      description:
+        'Unread notifications the list would show, with the same access filter. Capped at 1000.',
+    }),
+  })
   .openapi('UnreadCount');
 export type UnreadCount = z.infer<typeof UnreadCount>;
 

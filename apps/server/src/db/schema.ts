@@ -12,6 +12,7 @@ import {
   primaryKey,
   text,
   timestamp,
+  unique,
   uniqueIndex,
   uuid,
 } from 'drizzle-orm/pg-core';
@@ -364,9 +365,14 @@ export const assetVariant = pgTable(
 
 /**
  * Comments on a board (`element_id` null) or one of its cards. A reply points to the first
- * comment of its thread; replies have no replies. The author is an account, a guest of a share
- * link, or nobody once the account is deleted. `mentions` holds the user ids written as
- * `@{id}` in the body that could read the board when it was saved.
+ * comment of its thread on the same board; replies have no replies. The author is an account,
+ * a guest of a share link, or nobody once the account is deleted. `mentions` holds the user ids
+ * written as `@{id}` in the body that could read the board when it was saved.
+ *
+ * `share_link_id` is the audience among guests: set on everything a guest writes (their link)
+ * and on `everyone` threads the team limits to one link. Guests read `everyone` threads whose
+ * link is null or theirs, and replies whose link is null or theirs. It cascades: a comment
+ * never outlives its link, so it can never fall back to "every link".
  */
 export const comment = pgTable(
   'comment',
@@ -384,6 +390,7 @@ export const comment = pgTable(
     authorGuestId: uuid('author_guest_id').references(() => shareGuest.id, {
       onDelete: 'set null',
     }),
+    shareLinkId: uuid('share_link_id').references(() => shareLink.id, { onDelete: 'cascade' }),
     body: text('body').notNull(),
     mentions: uuid('mentions').array().notNull().default(sql`'{}'::uuid[]`),
     visibility: text('visibility', { enum: ['team', 'everyone'] })
@@ -396,23 +403,42 @@ export const comment = pgTable(
     resolvedByGuest: uuid('resolved_by_guest').references(() => shareGuest.id, {
       onDelete: 'set null',
     }),
-    /** Thread starts: the last reply or edit, to list the liveliest threads first. */
-    lastActivityAt: timestamp('last_activity_at', { withTimezone: true }).notNull().defaultNow(),
     createdAt: createdAt(),
+    /** Any change of the row (edit, resolve, reopen, delete); part of the guest snapshot ETag. */
+    updatedAt: updatedAt(),
     editedAt: timestamp('edited_at', { withTimezone: true }),
     deletedAt: timestamp('deleted_at', { withTimezone: true }),
   },
   (t) => [
-    foreignKey({ columns: [t.threadId], foreignColumns: [t.id] }).onDelete('cascade'),
-    index('comment_board_idx').on(t.boardId, t.elementId),
-    index('comment_thread_idx').on(t.threadId),
-    index('comment_activity_idx').on(t.boardId, t.lastActivityAt),
+    unique('comment_id_board_uq').on(t.id, t.boardId),
+    // A reply belongs to a thread of the same board.
+    foreignKey({ columns: [t.threadId, t.boardId], foreignColumns: [t.id, t.boardId] }).onDelete(
+      'cascade',
+    ),
+    index('comment_board_element_idx').on(t.boardId, t.elementId),
+    // Thread lists: keyset on (created_at, id), newest first; a thread start never moves.
+    index('comment_threads_idx')
+      .on(t.boardId, t.createdAt.desc(), t.id.desc())
+      .where(sql`${t.threadId} is null`),
+    index('comment_replies_idx')
+      .on(t.threadId, t.createdAt, t.id)
+      .where(sql`${t.threadId} is not null`),
+    index('comment_share_link_idx').on(t.shareLinkId).where(sql`${t.shareLinkId} is not null`),
+    index('comment_author_idx').on(t.authorId).where(sql`${t.authorId} is not null`),
+    index('comment_resolved_by_idx').on(t.resolvedBy).where(sql`${t.resolvedBy} is not null`),
+    check('comment_one_author_ck', sql`num_nonnulls(${t.authorId}, ${t.authorGuestId}) <= 1`),
+    check('comment_guest_link_ck', sql`${t.authorGuestId} is null or ${t.shareLinkId} is not null`),
+    check('comment_team_no_link_ck', sql`${t.visibility} = 'everyone' or ${t.shareLinkId} is null`),
   ],
 );
 
 const reviewStatusEnum = ['none', 'in_review', 'approved', 'changes_requested'] as const;
 
-/** Current review status of a card; the history is in element_review_event. */
+/**
+ * Current review status of a card; the history is in element_review_event. Clearing a review
+ * keeps the row with `none`, so the latest `changed_at` of a board always moves (guest ETag).
+ * `share_link_id` is the link of the guest who made the change, if a guest did.
+ */
 export const elementReview = pgTable(
   'element_review',
   {
@@ -429,13 +455,21 @@ export const elementReview = pgTable(
     changedByGuest: uuid('changed_by_guest').references(() => shareGuest.id, {
       onDelete: 'set null',
     }),
+    shareLinkId: uuid('share_link_id').references(() => shareLink.id, { onDelete: 'set null' }),
     /** Who last set `in_review`: told about the decision. */
     requestedBy: uuid('requested_by').references(() => user.id, { onDelete: 'set null' }),
     changedAt: timestamp('changed_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
     primaryKey({ columns: [t.boardId, t.elementId] }),
-    index('element_review_project_idx').on(t.projectId),
+    index('element_review_changed_by_idx').on(t.changedBy).where(sql`${t.changedBy} is not null`),
+    index('element_review_requested_by_idx')
+      .on(t.requestedBy)
+      .where(sql`${t.requestedBy} is not null`),
+    check(
+      'element_review_one_author_ck',
+      sql`num_nonnulls(${t.changedBy}, ${t.changedByGuest}) <= 1`,
+    ),
   ],
 );
 
@@ -453,12 +487,27 @@ export const elementReviewEvent = pgTable(
     note: text('note'),
     userId: uuid('user_id').references(() => user.id, { onDelete: 'set null' }),
     guestId: uuid('guest_id').references(() => shareGuest.id, { onDelete: 'set null' }),
+    /** Link of the guest who made the change, if a guest did. */
+    shareLinkId: uuid('share_link_id').references(() => shareLink.id, { onDelete: 'set null' }),
     createdAt: createdAt(),
   },
-  (t) => [index('element_review_event_element_idx').on(t.boardId, t.elementId, t.createdAt)],
+  (t) => [
+    index('element_review_event_element_idx').on(
+      t.boardId,
+      t.elementId,
+      t.createdAt.desc(),
+      t.id.desc(),
+    ),
+    index('element_review_event_user_idx').on(t.userId).where(sql`${t.userId} is not null`),
+    check('element_review_event_one_author_ck', sql`num_nonnulls(${t.userId}, ${t.guestId}) <= 1`),
+  ],
 );
 
-/** In-app notifications; email is sent from these rows according to the preference. */
+/**
+ * In-app notifications; email is sent from these rows according to the preference, after
+ * checking again that the person can still open the board. The excerpt is not stored: it is
+ * rendered from the comment as it is when the notification is read or emailed.
+ */
 export const notification = pgTable(
   'notification',
   {
@@ -476,15 +525,21 @@ export const notification = pgTable(
     elementId: text('element_id'),
     commentId: uuid('comment_id').references(() => comment.id, { onDelete: 'cascade' }),
     reviewStatus: text('review_status', { enum: reviewStatusEnum }),
-    excerpt: text('excerpt'),
     readAt: timestamp('read_at', { withTimezone: true }),
     /** Set once the notification went out by email, alone or in a digest. */
     emailedAt: timestamp('emailed_at', { withTimezone: true }),
     createdAt: createdAt(),
   },
   (t) => [
-    index('notification_user_idx').on(t.userId, t.createdAt),
+    index('notification_user_idx').on(t.userId, t.createdAt.desc(), t.id.desc()),
     index('notification_unread_idx').on(t.userId).where(sql`${t.readAt} is null`),
+    // The email job: unread notifications not emailed yet, oldest first.
+    index('notification_email_idx')
+      .on(t.createdAt)
+      .where(sql`${t.emailedAt} is null and ${t.readAt} is null`),
+    // Retention: notifications are removed after 90 days.
+    index('notification_created_idx').on(t.createdAt),
+    index('notification_actor_idx').on(t.actorId).where(sql`${t.actorId} is not null`),
   ],
 );
 
@@ -502,7 +557,9 @@ export const notificationPreference = pgTable('notification_preference', {
 /**
  * Links for guests without an account. The token is looked up by its SHA-256 and kept sealed
  * (like link invitations) so managers can copy it again; the password only as a hash. Guest
- * sessions opened before `sessions_valid_after` (a password change) must enter it again.
+ * sessions opened before `sessions_valid_after` (a password change) must enter it again. A link
+ * acts for `created_by`: it works only while that person has at least editor on the board, and
+ * shows only sub-boards where they have it (checked on every request, decision 0013).
  */
 export const shareLink = pgTable(
   'share_link',
@@ -528,19 +585,27 @@ export const shareLink = pgTable(
     createdBy: uuid('created_by').references(() => user.id, { onDelete: 'set null' }),
     expiresAt: timestamp('expires_at', { withTimezone: true }),
     revokedAt: timestamp('revoked_at', { withTimezone: true }),
+    /** Sessions opened or resumed, not polls. */
     viewCount: integer('view_count').notNull().default(0),
     lastUsedAt: timestamp('last_used_at', { withTimezone: true }),
     createdAt: createdAt(),
+    /** Any change of the options; part of the guest snapshot ETag. */
+    updatedAt: updatedAt(),
   },
   (t) => [
     index('share_link_board_idx').on(t.boardId),
     index('share_link_project_idx').on(t.projectId),
+    index('share_link_created_by_idx').on(t.createdBy).where(sql`${t.createdBy} is not null`),
   ],
 );
 
 /**
  * A guest of a share link: the person behind one browser, with the name they typed. The cookie
- * token is looked up by its SHA-256 and replaced each time the guest opens the link again.
+ * token is looked up by its SHA-256 and replaced each time the guest opens the link again; it
+ * is null after the guest leaves. The session lasts 30 days after the last request
+ * (`session_expires_at`, moved forward at most once an hour) and never beyond the link expiry.
+ * Rows are never deleted while their link exists: retention clears `name` once the link has
+ * been revoked or expired for 90 days, so totals and authorship stay.
  */
 export const shareGuest = pgTable(
   'share_guest',
@@ -550,21 +615,23 @@ export const shareGuest = pgTable(
       .notNull()
       .references(() => shareLink.id, { onDelete: 'cascade' }),
     name: text('name'),
-    tokenHash: text('token_hash').notNull().unique(),
+    tokenHash: text('token_hash').unique(),
     authenticatedAt: timestamp('authenticated_at', { withTimezone: true }).notNull().defaultNow(),
+    sessionExpiresAt: timestamp('session_expires_at', { withTimezone: true }).notNull(),
     lastSeenAt: timestamp('last_seen_at', { withTimezone: true }).notNull().defaultNow(),
     createdAt: createdAt(),
   },
-  (t) => [index('share_guest_link_idx').on(t.shareLinkId)],
+  (t) => [
+    index('share_guest_link_idx').on(t.shareLinkId),
+    unique('share_guest_id_link_uq').on(t.id, t.shareLinkId),
+  ],
 );
 
 /** Photo proofing: what each guest picked, rejected or starred. */
 export const sharePick = pgTable(
   'share_pick',
   {
-    guestId: uuid('guest_id')
-      .notNull()
-      .references(() => shareGuest.id, { onDelete: 'cascade' }),
+    guestId: uuid('guest_id').notNull(),
     shareLinkId: uuid('share_link_id')
       .notNull()
       .references(() => shareLink.id, { onDelete: 'cascade' }),
@@ -580,8 +647,14 @@ export const sharePick = pgTable(
   },
   (t) => [
     primaryKey({ columns: [t.guestId, t.boardId, t.elementId] }),
+    // The guest belongs to the link of the pick.
+    foreignKey({
+      columns: [t.guestId, t.shareLinkId],
+      foreignColumns: [shareGuest.id, shareGuest.shareLinkId],
+    }).onDelete('cascade'),
     index('share_pick_link_idx').on(t.shareLinkId),
     check('share_pick_stars_ck', sql`${t.stars} between 1 and 5`),
+    check('share_pick_value_ck', sql`${t.pick} is not null or ${t.stars} is not null`),
   ],
 );
 
@@ -605,7 +678,9 @@ export const boardVersion = pgTable(
     expiresAt: timestamp('expires_at', { withTimezone: true }),
   },
   (t) => [
-    index('board_version_board_idx').on(t.boardId, t.createdAt),
+    index('board_version_board_idx').on(t.boardId, t.createdAt.desc(), t.id.desc()),
     index('board_version_expires_idx').on(t.expiresAt),
+    index('board_version_created_by_idx').on(t.createdBy).where(sql`${t.createdBy} is not null`),
+    check('board_version_named_ck', sql`${t.kind} <> 'named' or ${t.name} is not null`),
   ],
 );

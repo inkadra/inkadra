@@ -104,7 +104,7 @@ describe('board document', () => {
     expect(Element.safeParse({ ...color, tags: tooMany }).success).toBe(false);
   });
 
-  it('keeps the guest visibility of any element without a version change', () => {
+  it('keeps the guest visibility of any element', () => {
     const doc = createBoardDoc(boardId);
     const column = { ...base(), type: 'column' as const, title: 'Interno', guestHidden: true };
     const note = { ...base(), type: 'note' as const, parent: column.id };
@@ -113,11 +113,20 @@ describe('board document', () => {
     expect(readElement(roots(doc).elements.get(column.id)!)).toEqual(column);
     expect(validateBoardDoc(doc)).toEqual([]);
     expect(Element.safeParse({ ...note, guestHidden: 'yes' }).success).toBe(false);
-    // A build that does not know a field yet still accepts the element and keeps the field.
-    const later = new Y.Map<unknown>(Object.entries({ ...base(), type: 'note', later: 1 }));
-    roots(doc).elements.set('later_el_0001', later);
-    expect(readElement(later)).not.toBeNull();
-    expect(later.get('later')).toBe(1);
+  });
+
+  it('upgrades a version 2 document to 3 without touching its elements', () => {
+    const doc = createBoardDoc(boardId);
+    roots(doc).meta.set('schemaVersion', 2);
+    const note = { ...base(), type: 'note' as const, tags: ['Notte'] };
+    const column = { ...base(), type: 'column' as const, title: 'Scelte' };
+    addElement(doc, note);
+    addElement(doc, column);
+    const before = [...roots(doc).elements.values()].map((m) => readElement(m));
+    expect(migrateBoardDoc(doc, boardId)).toEqual([3]);
+    expect(getSchemaVersion(doc)).toBe(3);
+    expect([...roots(doc).elements.values()].map((m) => readElement(m))).toEqual(before);
+    expect(validateBoardDoc(doc)).toEqual([]);
   });
 
   it('stores scenes with frames and their pen strokes', () => {
@@ -228,8 +237,8 @@ describe('board document', () => {
     expect(getSchemaVersion(doc)).toBe(1);
     const before = [...roots(doc).elements.values()].map((m) => readElement(m));
     expect(before.every(Boolean)).toBe(true);
-    expect(migrateBoardDoc(doc, boardId)).toEqual([2]);
-    expect(getSchemaVersion(doc)).toBe(2);
+    expect(migrateBoardDoc(doc, boardId)).toEqual([2, 3]);
+    expect(getSchemaVersion(doc)).toBe(3);
     expect([...roots(doc).elements.values()].map((m) => readElement(m))).toEqual(before);
     const note = roots(doc).elements.get('note_v1_00001')!;
     expect((note.get('body') as Y.XmlFragment).toString()).toContain('Luce al neon');

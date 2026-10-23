@@ -5,11 +5,18 @@ import {
   CreateComment,
   CreateGuestSession,
   CreateShareLink,
+  GuestComment,
+  GuestCreateComment,
   GuestElement,
+  GuestElementReview,
   MarkAllRead,
   mentionedIds,
+  NotificationQuery,
+  ReviewHistoryQuery,
+  renderMentions,
   SetElementReview,
   SetPick,
+  ShareLinkPreview,
   UpdateShareLink,
 } from './index.ts';
 import { buildOpenApiDocument } from './openapi.ts';
@@ -32,8 +39,66 @@ describe('review and sharing contracts', () => {
     ).toBe(false);
   });
 
-  it('lists open threads by default', () => {
+  it('writes mentions as names for guests', () => {
+    const names = new Map([[userId, 'Giulia']]);
+    const other = '0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a11';
+    expect(renderMentions(`Ciao @{${userId.toUpperCase()}} e @{${other}}`, names)).toBe(
+      'Ciao @Giulia e @…',
+    );
+  });
+
+  it('lists open threads by default, with one page size for every new list', () => {
     expect(CommentQuery.parse({})).toMatchObject({ scope: 'all', status: 'open', limit: 30 });
+    expect(ReviewHistoryQuery.parse({})).toEqual({ limit: 30 });
+    expect(NotificationQuery.parse({})).toEqual({ limit: 30 });
+    expect(CommentQuery.safeParse({ limit: 101 }).success).toBe(false);
+  });
+
+  it('gives guests no ids, avatars, notes or visibility', () => {
+    const author = { kind: 'team' as const, name: 'Giulia', isYou: false };
+    const comment = GuestComment.parse({
+      id: userId,
+      boardId: userId,
+      elementId: null,
+      parentId: null,
+      author: { ...author, user: { id: userId, image: 'https://x/a.png' } },
+      body: 'Ciao @Giulia',
+      mentions: [{ id: userId }],
+      visibility: 'team',
+      shareLinkId: userId,
+      pin: null,
+      createdAt: '2026-11-02T09:30:00.000Z',
+      editedAt: null,
+      deletedAt: null,
+      canEdit: false,
+      canDelete: false,
+    });
+    expect(comment.author).toEqual(author);
+    for (const key of ['mentions', 'visibility', 'shareLinkId'])
+      expect(comment).not.toHaveProperty(key);
+    const review = GuestElementReview.parse({
+      elementId: 'V1StGXR8_Z5jdHi6B-myT',
+      status: 'approved',
+      note: null,
+      changedBy: { kind: 'guest', name: null, isYou: false },
+      changedAt: '2026-11-02T09:30:00.000Z',
+    });
+    expect(review.changedBy).not.toHaveProperty('user');
+    expect(GuestCreateComment.parse({ body: 'ok', visibility: 'team' })).toEqual({ body: 'ok' });
+  });
+
+  it('previews a link with a password without saying what it is', () => {
+    const preview = {
+      linkId: userId,
+      instanceName: 'Studio',
+      needsPassword: true,
+      boardTitle: null,
+      sharedBy: null,
+      role: null,
+      expiresAt: null,
+    };
+    expect(ShareLinkPreview.parse(preview)).toEqual(preview);
+    expect(ShareLinkPreview.shape).not.toHaveProperty('status');
   });
 
   it('knows only the four review statuses', () => {
@@ -53,9 +118,11 @@ describe('review and sharing contracts', () => {
     expect(UpdateShareLink.parse({ password: null })).toEqual({ password: null });
   });
 
-  it('lets guests come in without a name and needs something to pick', () => {
-    expect(CreateGuestSession.parse({})).toEqual({});
-    expect(CreateGuestSession.safeParse({ name: ' ' }).success).toBe(false);
+  it('lets guests come in with the token, without a name, and needs something to pick', () => {
+    const token = 'k'.repeat(43);
+    expect(CreateGuestSession.parse({ token })).toEqual({ token });
+    expect(CreateGuestSession.safeParse({}).success).toBe(false);
+    expect(CreateGuestSession.safeParse({ token, name: ' ' }).success).toBe(false);
     expect(SetPick.safeParse({}).success).toBe(false);
     expect(SetPick.safeParse({ pick: null }).success).toBe(true);
     expect(SetPick.safeParse({ stars: 6 }).success).toBe(false);
@@ -68,9 +135,14 @@ describe('review and sharing contracts', () => {
   });
 
   it('documents the new paths', () => {
-    const paths = Object.keys(buildOpenApiDocument().paths ?? {});
+    const doc = buildOpenApiDocument();
+    const paths = Object.keys(doc.paths ?? {});
+    expect(paths).not.toContain('/api/v1/guest/by-token/{token}/session');
+    expect(doc.paths?.['/api/v1/guest/links/{linkId}/session']?.post).toBeDefined();
     for (const p of [
       '/api/v1/boards/{boardId}/comments',
+      '/api/v1/comments/{commentId}/replies',
+      '/api/v1/guest/links/{linkId}/comments/{commentId}/replies',
       '/api/v1/boards/{boardId}/elements/{elementId}/review',
       '/api/v1/me/notifications',
       '/api/v1/boards/{boardId}/share-links',

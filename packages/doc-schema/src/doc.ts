@@ -3,7 +3,7 @@ import * as Y from 'yjs';
 import { AspectRatio, Element, type ElementType } from './elements.ts';
 
 /** Bump when the shape of the board document changes, and add a migration below. */
-export const CURRENT_SCHEMA_VERSION = 2;
+export const CURRENT_SCHEMA_VERSION = 3;
 
 export const DOC_NAME_PREFIX = 'board:';
 
@@ -60,6 +60,10 @@ const migrations: Record<number, Migration> = {
   // so version 1 documents are valid as they are; the bump keeps older servers from loading
   // documents with element types they do not know.
   1: () => {},
+  // 3: `guestHidden` on every element (decision 0013). Additive, so version 2 documents are
+  // valid as they are; the bump keeps builds that do not know the field from copying or
+  // recreating hidden cards without it, which would show them to guests.
+  2: () => {},
 };
 
 export function getBoardAspect(doc: Y.Doc): AspectRatio | null {
