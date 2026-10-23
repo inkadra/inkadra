@@ -699,7 +699,7 @@
               "clipper",
               "mobile"
             ],
-            "description": "Official apps that can ask for a token through /authorize. `clipper` redirects to `https://<extension id>.chromiumapp.org/...`, `mobile` to `inkadra://...`."
+            "description": "Official apps that can ask for a token through /authorize, each with exact redirect addresses: `clipper` → `https://<id>.chromiumapp.org/auth` for the official extension ids (plus CLIPPER_EXTENSION_IDS for self-built ones), `mobile` → `inkadra://auth`."
           },
           "redirectUri": {
             "type": "string",
@@ -765,7 +765,7 @@
               "clipper",
               "mobile"
             ],
-            "description": "Official apps that can ask for a token through /authorize. `clipper` redirects to `https://<extension id>.chromiumapp.org/...`, `mobile` to `inkadra://...`."
+            "description": "Official apps that can ask for a token through /authorize, each with exact redirect addresses: `clipper` → `https://<id>.chromiumapp.org/auth` for the official extension ids (plus CLIPPER_EXTENSION_IDS for self-built ones), `mobile` → `inkadra://auth`."
           },
           "code": {
             "type": "string",
@@ -1405,7 +1405,7 @@
               "null"
             ],
             "format": "uri",
-            "description": "Link to open the invitation. Present for the people who manage it; null when the invitation can no longer be used."
+            "description": "Link to open the invitation. For `link` invitations, present for the people who manage it while it can be used. For `email` invitations only in the answer that creates or resends it: each send makes a new link and the previous one stops working."
           },
           "emailSent": {
             "type": "boolean",
@@ -2779,7 +2779,7 @@
           }
         ],
         "summary": "Allow an official app to act as the signed-in person; called by /authorize.",
-        "description": "Apps open `<server>/authorize?client_id=<clipper|mobile>&redirect_uri=…&state=…&code_challenge=…&code_challenge_method=S256` in a browser. Once the person allows it, the page sends this request and follows `redirectTo`; the app then exchanges the code.",
+        "description": "Apps open `<server>/authorize?client_id=<clipper|mobile>&redirect_uri=…&state=…&code_challenge=…&code_challenge_method=S256&device_name=…` in a browser. The page shows which app and device ask for access; once the person allows it, it sends this request and follows `redirectTo`, and the app exchanges the code. The redirect address must be one of the exact addresses allowed for the client (see AppClient).",
         "requestBody": {
           "content": {
             "application/json": {
@@ -2909,6 +2909,7 @@
           }
         ],
         "summary": "People to share with: those who share a project with you, or an exact email.",
+        "description": "Only for people who can share (editor or owner of at least one project or board). An exact email match confirms that the account exists, so the endpoint is rate limited (30 searches a minute).",
         "parameters": [
           {
             "schema": {
@@ -2945,6 +2946,26 @@
           },
           "401": {
             "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests",
             "content": {
               "application/json": {
                 "schema": {

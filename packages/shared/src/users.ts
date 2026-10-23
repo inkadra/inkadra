@@ -62,8 +62,9 @@ export type DeleteMeBlocked = z.infer<typeof DeleteMeBlocked>;
 
 export const AppClient = z.enum(['clipper', 'mobile']).openapi({
   description:
-    'Official apps that can ask for a token through /authorize. `clipper` redirects to ' +
-    '`https://<extension id>.chromiumapp.org/...`, `mobile` to `inkadra://...`.',
+    'Official apps that can ask for a token through /authorize, each with exact redirect ' +
+    'addresses: `clipper` → `https://<id>.chromiumapp.org/auth` for the official extension ids ' +
+    '(plus CLIPPER_EXTENSION_IDS for self-built ones), `mobile` → `inkadra://auth`.',
 });
 export type AppClient = z.infer<typeof AppClient>;
 
