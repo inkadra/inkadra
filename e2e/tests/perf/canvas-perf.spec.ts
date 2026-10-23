@@ -101,6 +101,8 @@ test('a board with 1000 elements opens fast and pans smoothly', async ({ page, b
   // regression without failing on one slow sample. Every sample is kept in the results.
   const openSamples: number[] = [];
   for (let i = 0; i < 3; i++) {
+    // Same path every time: no saved viewport, so each open fits the board like a first visit.
+    if (i > 0) await page.evaluate(() => localStorage.clear());
     const started = Date.now();
     await page.goto(`/p/${seeded.projectId}`);
     await expect(page.getByRole('status').getByText('Sincronizzato')).toBeVisible({
@@ -109,7 +111,7 @@ test('a board with 1000 elements opens fast and pans smoothly', async ({ page, b
     await expect(page.locator('[data-el]').first()).toBeVisible();
     openSamples.push(Date.now() - started);
   }
-  const openMs = [...openSamples].sort((x, y) => x - y)[1] ?? Number.POSITIVE_INFINITY;
+  const openMs = [...openSamples].sort((a, b) => a - b)[1] ?? Number.POSITIVE_INFINITY;
   const rendered = await page.locator('[data-el]').count();
 
   // Let images and measurements settle before timing frames.
