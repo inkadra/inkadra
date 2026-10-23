@@ -271,7 +271,8 @@
       "failed": "Failed",
       "cancelled": "Cancelled",
       "retry": "Retry",
-      "offline": "Waiting for network"
+      "offline": "Waiting for network",
+      "reconnecting": "Reconnecting…"
     },
     "palette": {
       "title": "Commands",
