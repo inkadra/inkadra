@@ -10,11 +10,24 @@ import * as Y from 'yjs';
  * way the web app writes it: 1000 elements, half of them images when the server takes uploads.
  */
 
-export const perfUser = {
+export interface Account {
+  name: string;
+  email: string;
+  password: string;
+}
+
+export const perfUser: Account = {
   name: 'Giulia Bianchi',
   email: 'giulia@example.com',
   password: 'correct-horse-battery',
 };
+
+export interface SeedOptions {
+  total?: number;
+  account?: Account;
+  /** Name of the project whose root board is filled. */
+  name?: string;
+}
 
 export interface Seeded {
   projectId: string;
@@ -24,16 +37,22 @@ export interface Seeded {
   images: 'uploaded' | 'unavailable';
 }
 
-async function signIn(base: string): Promise<string> {
+/**
+ * Signs in. Creates the account only on an instance without users (its first-run setup),
+ * never on one that already has them.
+ */
+async function signIn(base: string, account: Account): Promise<string> {
   const headers = { 'content-type': 'application/json', origin: base };
-  const instance = (await (await fetch(`${base}/api/v1/instance`)).json()) as {
-    setupRequired: boolean;
-  };
+  const info = await fetch(`${base}/api/v1/instance`);
+  if (!info.ok) throw new Error(`${base} does not answer as an Inkadra instance (${info.status})`);
+  const instance = (await info.json()) as { setupRequired: boolean };
   const path = instance.setupRequired ? 'sign-up/email' : 'sign-in/email';
   const res = await fetch(`${base}/api/auth/${path}`, {
     method: 'POST',
     headers,
-    body: JSON.stringify(perfUser),
+    body: JSON.stringify(
+      instance.setupRequired ? account : { email: account.email, password: account.password },
+    ),
   });
   if (!res.ok) throw new Error(`Sign in failed: ${res.status} ${await res.text()}`);
   const cookies = res.headers.getSetCookie().map((c) => c.split(';')[0]);
@@ -112,13 +131,16 @@ async function upload(base: string, cookie: string, projectId: string, i: number
     : null;
 }
 
-export async function seedPerfBoard(base: string, total = 1000): Promise<Seeded> {
-  const cookie = await signIn(base);
+export async function seedPerfBoard(base: string, options: SeedOptions = {}): Promise<Seeded> {
+  const { total = 1000, account = perfUser } = options;
+  const name = options.name ?? `Carico ${new Date().toISOString().slice(11, 19)}`;
+  const cookie = await signIn(base, account);
   const res = await fetch(`${base}/api/v1/projects`, {
     method: 'POST',
     headers: { cookie, 'content-type': 'application/json', origin: base },
-    body: JSON.stringify({ name: `Carico ${new Date().toISOString().slice(11, 19)}` }),
+    body: JSON.stringify({ name }),
   });
+  if (!res.ok) throw new Error(`Project creation failed: ${res.status} ${await res.text()}`);
   const project = (await res.json()) as { id: string; rootBoardId: string };
 
   // 50 distinct images, reused by over 500 cards, as on a real moodboard with repeated references.
