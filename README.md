@@ -47,7 +47,7 @@ pnpm dev     # API on :3000, web app on http://localhost:5173
 | ---------------------- | ---------------------------------------------------------------------- |
 | `apps/web`             | Desktop web app (React, Vite)                                          |
 | `apps/server`          | API, auth, collaboration and background jobs: one image, several roles |
-| `apps/clipper`         | Browser extension (planned)                                            |
+| `apps/clipper`         | Browser extension for Chrome, Edge, Brave and Arc                      |
 | `apps/mobile`          | Android and iOS app (planned)                                          |
 | `packages/shared`      | API contract: Zod schemas and the generated OpenAPI document           |
 | `packages/doc-schema`  | Versioned schema of the collaborative board documents (Yjs)            |
