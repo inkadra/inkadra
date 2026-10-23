@@ -159,7 +159,8 @@
     "selected_other": "{{count}} selected",
     "empty": {
       "title": "Empty board",
-      "body": "Double-click for a note, drop files or use the bar below. / opens the commands."
+      "body": "Double-click for a note, drop files or use the bar below. / opens the commands.",
+      "templates": "Or start from a template"
     },
     "types": {
       "note": "Note",
@@ -169,11 +170,16 @@
       "todo": "To-do",
       "color": "Colour",
       "column": "Column",
-      "board": "Board"
+      "board": "Board",
+      "scene": "Scene",
+      "frame": "Frame",
+      "arrow": "Arrow",
+      "storyboard": "Storyboard"
     },
     "tools": {
       "select": "Select",
-      "hand": "Hand"
+      "hand": "Hand",
+      "arrow": "Arrow"
     },
     "note": {
       "placeholder": "Write…",
@@ -251,7 +257,11 @@
       "delete": "Delete",
       "more": "More actions",
       "newNote": "New note here",
-      "newColumn": "New column here"
+      "newColumn": "New column here",
+      "tags": "Tags…",
+      "viewImage": "Open image",
+      "details": "Frame details",
+      "draw": "Draw"
     },
     "zoom": {
       "label": "Zoom",
@@ -297,7 +307,220 @@
     "errors": {
       "boardCreate": "The board could not be created.",
       "upload": "Uploading {{name}} failed.",
-      "tooBig": "{{name}} is larger than the allowed maximum."
+      "tooBig": "{{name}} is larger than the allowed maximum.",
+      "storyboardCreate": "The storyboard could not be created."
+    },
+    "arrow": {
+      "label": "Arrow label",
+      "placeholder": "Label",
+      "dashed": "Dashed line",
+      "heads": "Arrow heads"
+    },
+    "video": {
+      "play": "Play",
+      "noPoster": "Video"
+    }
+  },
+  "tags": {
+    "title": "Tags",
+    "add": "Add a tag",
+    "placeholder": "New tag and Enter",
+    "remove": "Remove the tag {{tag}}",
+    "max": "At most {{count}} tags",
+    "suggested": "Used in the project",
+    "done": "Done"
+  },
+  "viewer": {
+    "title": "Image",
+    "close": "Close",
+    "exif": "Shooting data",
+    "noExif": "No shooting data",
+    "palette": "Palette",
+    "copied": "{{hex}} copied",
+    "copyHex": "Copy {{hex}}",
+    "addColors": "Add the colours to the board",
+    "download": "Download the original",
+    "size": "Size",
+    "file": "File",
+    "fields": {
+      "camera": "Camera",
+      "lens": "Lens",
+      "focal": "Focal length",
+      "aperture": "Aperture",
+      "shutter": "Shutter",
+      "iso": "ISO",
+      "taken": "Taken on"
+    }
+  },
+  "search": {
+    "title": "Search",
+    "placeholder": "Search projects, boards, notes, frames…",
+    "none": "Nothing found for “{{q}}”",
+    "hint": "Type at least two letters, or #tag",
+    "error": "Search is not available",
+    "loading": "Searching…",
+    "kinds": {
+      "project": "Project",
+      "board": "Board",
+      "element": "Element"
+    },
+    "inProject": "in {{project}}"
+  },
+  "templates": {
+    "moodboard": {
+      "name": "Moodboard",
+      "body": "References, colours, light and locations",
+      "refs": "References",
+      "light": "Light",
+      "locations": "Locations",
+      "palette": "Palette"
+    },
+    "storyboard": {
+      "name": "Storyboard",
+      "body": "One scene with three frames",
+      "scene": "Opening"
+    },
+    "production": {
+      "name": "Production",
+      "body": "To do, in progress, done",
+      "todo": "To do",
+      "doing": "In progress",
+      "done": "Done"
+    }
+  },
+  "film": {
+    "views": {
+      "label": "View",
+      "storyboard": "Storyboard",
+      "shotlist": "Shot list",
+      "canvas": "Canvas"
+    },
+    "aspect": {
+      "label": "Aspect ratio",
+      "board": "Storyboard aspect ratio ({{ratio}})"
+    },
+    "total_one": "{{count}} frame · {{duration}}",
+    "total_other": "{{count}} frames · {{duration}}",
+    "loose": "No scene",
+    "empty": {
+      "title": "Empty storyboard",
+      "body": "Add a scene, then draw or upload its frames."
+    },
+    "scene": {
+      "add": "New scene",
+      "number": "Number",
+      "title": "Title",
+      "untitled": "Untitled scene",
+      "heading": "Scene {{number}}",
+      "setting": "Interior or exterior",
+      "time": "Time of day",
+      "location": "Location",
+      "synopsis": "Synopsis",
+      "delete": "Delete the scene",
+      "settings": {
+        "int": "INT.",
+        "ext": "EXT.",
+        "int-ext": "INT./EXT."
+      },
+      "times": {
+        "day": "DAY",
+        "night": "NIGHT",
+        "dawn": "DAWN",
+        "dusk": "DUSK"
+      },
+      "collapse": "Collapse the scene",
+      "expand": "Expand the scene"
+    },
+    "frame": {
+      "add": "New frame",
+      "details": "Details",
+      "label": "Number",
+      "labelAuto": "Automatic ({{label}})",
+      "action": "Action",
+      "dialogue": "Dialogue",
+      "audio": "Sound",
+      "notes": "Director’s notes",
+      "location": "Location",
+      "cast": "Cast",
+      "castHint": "Separated by commas",
+      "lens": "Lens",
+      "duration": "Duration (s)",
+      "shot": "Shot size",
+      "angle": "Angle",
+      "movement": "Movement",
+      "status": "Status",
+      "picture": "Picture",
+      "upload": "Upload a picture",
+      "removePicture": "Remove the picture",
+      "draw": "Draw",
+      "custom": "Other…",
+      "none": "—",
+      "delete": "Delete the frame",
+      "close": "Close the details",
+      "actionPlaceholder": "What happens in the shot"
+    },
+    "shot": {
+      "ews": "Extreme wide",
+      "ws": "Wide",
+      "fs": "Full",
+      "ms": "Medium",
+      "mcu": "Medium close-up",
+      "cu": "Close-up",
+      "ecu": "Extreme close-up",
+      "insert": "Insert"
+    },
+    "angle": {
+      "eye": "Eye level",
+      "high": "High angle",
+      "low": "Low angle",
+      "overhead": "Overhead",
+      "dutch": "Dutch",
+      "pov": "POV",
+      "ots": "Over the shoulder"
+    },
+    "movement": {
+      "static": "Static",
+      "pan": "Pan",
+      "tilt": "Tilt",
+      "dolly": "Dolly",
+      "truck": "Truck",
+      "crane": "Crane",
+      "handheld": "Handheld",
+      "steadicam": "Steadicam",
+      "drone": "Drone",
+      "zoom": "Zoom"
+    },
+    "status": {
+      "draft": "Draft",
+      "todo": "To shoot",
+      "ready": "Ready",
+      "shot": "Shot",
+      "retake": "Retake"
+    },
+    "pen": {
+      "title": "Drawing of frame {{label}}",
+      "pencil": "Pencil",
+      "brush": "Brush",
+      "marker": "Marker",
+      "eraser": "Eraser",
+      "color": "Colour {{color}}",
+      "width": "Width",
+      "undo": "Undo",
+      "redo": "Redo",
+      "clear": "Clear all",
+      "done": "Done",
+      "prev": "Previous frame",
+      "next": "Next frame",
+      "full": "Too many strokes: erase a few."
+    },
+    "list": {
+      "filter": "Filter the frames",
+      "allStatuses": "All statuses",
+      "export": "Export CSV",
+      "empty": "No frames",
+      "picture": "Picture",
+      "scene": "Scene",
+      "noMatch": "No frame matches the filter"
     }
   }
 }

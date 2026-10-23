@@ -1,4 +1,4 @@
-import { canvasElements, childrenOf, listElements } from '@inkadra/canvas-core';
+import { canvasElements, childrenOf, isContainer, listElements } from '@inkadra/canvas-core';
 import { type Element, readElement, roots, UNSORTED } from '@inkadra/doc-schema';
 import * as Y from 'yjs';
 
@@ -9,7 +9,7 @@ export interface Snapshot {
   byId: ReadonlyMap<string, Element>;
   /** Elements on the canvas, in drawing order. */
   canvas: readonly Element[];
-  /** Children of each column, top to bottom. */
+  /** Children of each column and scene, top to bottom. */
   columns: ReadonlyMap<string, readonly Element[]>;
   unsorted: readonly Element[];
 }
@@ -85,7 +85,7 @@ export class BoardStore {
     const all = [...byId.values()];
     const columns = new Map<string, Element[]>();
     for (const el of all) {
-      if (el.type === 'column') columns.set(el.id, childrenOf(all, el.id));
+      if (isContainer(el)) columns.set(el.id, childrenOf(all, el.id));
     }
     this.snapshot = {
       byId,
@@ -136,7 +136,10 @@ function estimateHeight(el: Element): number {
     case 'image':
       return Math.round(el.w * 0.75);
     case 'column':
+    case 'scene':
       return 120;
+    case 'frame':
+      return Math.round(el.w * 0.56) + 48;
     case 'color':
       return el.w;
     case 'board':
