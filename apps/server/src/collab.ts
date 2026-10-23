@@ -28,6 +28,12 @@ interface Context {
   user: PresenceUser;
 }
 
+/** Sent to a client when its role on an open board changes between editing and reading. */
+export interface AccessMessage {
+  type: 'access';
+  readOnly: boolean;
+}
+
 /** How often open connections are checked against the current roles (decision 0011). */
 export const ACCESS_RECHECK_MS = 30_000;
 
@@ -107,7 +113,14 @@ export function createCollabServer(deps: {
             log.info({ boardId: ctx.boardId }, 'collab connection closed: access removed');
             connection.close({ code: 4403, reason: 'Forbidden' });
           } else {
-            connection.readOnly = !atLeast(access.role, 'editor');
+            const readOnly = !atLeast(access.role, 'editor');
+            if (readOnly !== connection.readOnly) {
+              connection.readOnly = readOnly;
+              // Tell the client, so the editor follows instead of dropping what someone types.
+              connection.sendStateless(
+                JSON.stringify({ type: 'access', readOnly } satisfies AccessMessage),
+              );
+            }
           }
         } catch (err) {
           log.warn({ err }, 'collab access check failed');

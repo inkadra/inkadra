@@ -369,6 +369,10 @@
       "label_one": "{{count}} persona sulla board",
       "label_other": "{{count}} persone sulla board",
       "viewing": "{{name}} (sola lettura)"
+    },
+    "access": {
+      "readOnly": "Il tuo ruolo è cambiato: ora puoi solo guardare questa board.",
+      "editable": "Il tuo ruolo è cambiato: ora puoi modificare questa board."
     }
   },
   "tags": {

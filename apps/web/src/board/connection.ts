@@ -22,6 +22,8 @@ export interface BoardConnection {
   provider: HocuspocusProvider;
   status: ConnectionStatus;
   readOnly: boolean;
+  /** When the server last changed our access while the board was open. */
+  accessChangedAt: number | null;
 }
 
 function collabUrl(): string {
@@ -39,6 +41,7 @@ export function useBoardConnection(boardId: string): BoardConnection | null {
     let state: Omit<BoardConnection, 'store' | 'provider'> = {
       status: 'connecting',
       readOnly: false,
+      accessChangedAt: null,
     };
     const provider = new HocuspocusProvider({
       url: collabUrl(),
@@ -48,6 +51,14 @@ export function useBoardConnection(boardId: string): BoardConnection | null {
       onDisconnect: () => {
         if (state.status !== 'denied' && state.status !== 'signedOut')
           update({ status: 'offline' });
+      },
+      // The server says when the role changes between editing and reading (decision 0011).
+      onStateless: ({ payload }) => {
+        try {
+          const msg = JSON.parse(payload) as { type?: string; readOnly?: unknown };
+          if (msg.type === 'access' && typeof msg.readOnly === 'boolean')
+            update({ readOnly: msg.readOnly, accessChangedAt: Date.now() });
+        } catch {}
       },
       onClose: ({ event }) => {
         const status = CLOSE_REASONS[event.reason];

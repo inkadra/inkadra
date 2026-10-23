@@ -294,6 +294,10 @@ describe.skipIf(!url)('collab (needs DATABASE_URL)', () => {
   it('closes the connection when access is removed and applies a lower role', async () => {
     const editor = connect(as('editor'));
     await editor.synced;
+    const notices: unknown[] = [];
+    editor.provider.on('stateless', ({ payload }: { payload: string }) =>
+      notices.push(JSON.parse(payload)),
+    );
     // Demoted to viewer: within a recheck the connection turns read-only.
     await app.inject({
       method: 'PUT',
@@ -308,6 +312,8 @@ describe.skipIf(!url)('collab (needs DATABASE_URL)', () => {
     const check = connect(as('owner'));
     await check.synced;
     expect(roots(check.doc).elements.has(forged.id)).toBe(false);
+    // The client was told, so its editor turns read-only too.
+    expect(notices).toEqual([{ type: 'access', readOnly: true }]);
 
     const closed = new Promise<boolean>((resolve) => {
       editor.provider.on('close', () => resolve(true));
@@ -321,6 +327,33 @@ describe.skipIf(!url)('collab (needs DATABASE_URL)', () => {
     expect(await closed).toBe(true);
     editor.close();
     check.close();
+  });
+
+  it('lets a promoted viewer edit without reconnecting', async () => {
+    const viewer = connect(as('viewer'));
+    await viewer.synced;
+    const notices: unknown[] = [];
+    viewer.provider.on('stateless', ({ payload }: { payload: string }) =>
+      notices.push(JSON.parse(payload)),
+    );
+    const setRole = (role: string) =>
+      app.inject({
+        method: 'PUT',
+        url: `/api/v1/projects/${projectId}/members/${people.viewer?.id}`,
+        headers: as('owner'),
+        payload: { role },
+      });
+    await setRole('editor');
+    await expect
+      .poll(() => notices, { timeout: 5000 })
+      .toEqual([{ type: 'access', readOnly: false }]);
+    const added = column('After promotion');
+    addElement(viewer.doc, added);
+    const check = connect(as('owner'));
+    await check.synced;
+    await expect.poll(() => roots(check.doc).elements.has(added.id), { timeout: 5000 }).toBe(true);
+    await setRole('viewer');
+    for (const c of [viewer, check]) c.close();
   });
 
   it('merges ten people editing the same board at once', async () => {

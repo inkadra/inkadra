@@ -96,24 +96,38 @@ test('people on the board see each other, and a viewer cannot edit', async ({ pa
   await other.context().close();
 });
 
-test('the owner raises the role, and the person can edit', async ({ page, browser }) => {
+test('a role change reaches a board that is already open', async ({ page, browser }) => {
+  // The collab server checks open connections every 30 seconds.
+  test.setTimeout(120_000);
+  const other = await newPage(browser);
+  await signIn(other, guest);
+  await openProject(other);
+  await expect(other.getByRole('status').getByText('Sola lettura')).toBeVisible();
+
   await signIn(page, admin);
   await openProject(page);
   await page.getByRole('button', { name: 'Condividi' }).click();
   const dialog = page.getByRole('dialog');
-  await dialog.getByRole('combobox', { name: `Ruolo di ${guest.name}` }).selectOption('editor');
-  await expect(dialog.getByRole('combobox', { name: `Ruolo di ${guest.name}` })).toHaveValue(
-    'editor',
-  );
+  const role = dialog.getByRole('combobox', { name: `Ruolo di ${guest.name}` });
+  await role.selectOption('editor');
+  await expect(role).toHaveValue('editor');
 
-  const other = await newPage(browser);
-  await signIn(other, guest);
-  await openProject(other);
+  // Without a reload, the person is told and can write.
+  await expect(other.getByText('ora puoi modificare questa board')).toBeVisible({
+    timeout: 45_000,
+  });
   await expect(other.getByRole('status').getByText('Sincronizzato')).toBeVisible();
   await other.getByTestId('canvas').dblclick({ position: { x: 300, y: 600 } });
   await other.keyboard.type('Nota di Paolo');
   await other.keyboard.press('Escape');
   await expect(page.locator('[data-type="note"]', { hasText: 'Nota di Paolo' })).toBeVisible();
+
+  // And back: the open board turns read-only again, with a notice.
+  await role.selectOption('viewer');
+  await expect(other.getByText('ora puoi solo guardare questa board')).toBeVisible({
+    timeout: 45_000,
+  });
+  await expect(other.getByRole('status').getByText('Sola lettura')).toBeVisible();
   await other.context().close();
 });
 
