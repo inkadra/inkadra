@@ -5,7 +5,7 @@ import { Board, BoardDetail, CreateBoard, UpdateBoard } from './boards.ts';
 import { ClipRequest, ClipResult } from './clip.ts';
 import { ApiError, Id, PageQuery, page, z } from './common.ts';
 import { API_PREFIX, AUTH_PREFIX } from './constants.ts';
-import { Health, Instance } from './instance.ts';
+import { Diagnostics, Health, Instance } from './instance.ts';
 import {
   CreateProject,
   Project,
@@ -62,6 +62,24 @@ registry.registerPath({
   tags: ['Instance'],
   summary: 'Public information the login screen and the apps need before signing in.',
   responses: { 200: { description: 'Instance', ...json(Instance) } },
+});
+
+registry.registerPath({
+  method: 'get',
+  path: v1('/diagnostics'),
+  tags: ['Instance'],
+  summary: 'Installation self-check: proxy, URL, database, queue and storage.',
+  description:
+    'Open to anyone while the instance has no accounts, so the person installing it can check ' +
+    'the setup before signing up; `expected` and `actual` are then always null. Afterwards ' +
+    'administrators only. Rate limited.',
+  security: [{}, ...secured],
+  responses: {
+    200: { description: 'Diagnostics', ...json(Diagnostics) },
+    401: errors[401],
+    403: errors[403],
+    429: { description: 'Too many requests', ...json(ApiError) },
+  },
 });
 
 // Auth (Better Auth) ----------------------------------------------------------
