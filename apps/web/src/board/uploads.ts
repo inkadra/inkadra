@@ -40,6 +40,8 @@ function patch(key: string, change: Partial<UploadItem>) {
 export interface StartUpload {
   file: File;
   projectId: string;
+  /** The board the file goes on: people with access to some boards only upload there. */
+  boardId: string;
   /** Called once, as soon as the server has created the asset (before the bytes arrive). */
   onAsset: (assetId: string) => void;
   onFailed?: (assetId: string | null) => void;
@@ -68,7 +70,7 @@ if (typeof window !== 'undefined') {
  * project resumes that upload (or leaves it running) instead of starting a second one, and
  * calls no `onAsset` again: its card already exists.
  */
-export function startUpload({ file, projectId, onAsset, onFailed }: StartUpload): string {
+export function startUpload({ file, projectId, boardId, onAsset, onFailed }: StartUpload): string {
   const fingerprint = [projectId, file.name, file.size, file.lastModified].join('|');
   const existing = items.find(
     (i) => i.fingerprint === fingerprint && i.state !== 'done' && i.state !== 'cancelled',
@@ -113,7 +115,12 @@ export function startUpload({ file, projectId, onAsset, onFailed }: StartUpload)
     },
     storeFingerprintForResuming: true,
     removeFingerprintOnSuccess: true,
-    metadata: { projectId, filename: file.name, filetype: file.type || 'application/octet-stream' },
+    metadata: {
+      projectId,
+      boardId,
+      filename: file.name,
+      filetype: file.type || 'application/octet-stream',
+    },
     onAfterResponse: (_req, res) => announce(res.getHeader('Inkadra-Asset-Id') ?? null),
     onProgress: (sent) => patch(key, { sent, reconnecting: false }),
     onSuccess: () => {

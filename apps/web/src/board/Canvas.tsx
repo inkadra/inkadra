@@ -94,6 +94,8 @@ import { DrawingEditor } from './film/DrawingEditor.tsx';
 import { FramePanel } from './film/FramePanel.tsx';
 import { fillLinkPreview, webUrl } from './links.ts';
 import { fillFragment, isEmpty } from './note.tsx';
+import { PresenceLayer } from './PresenceLayer.tsx';
+import { type Peer, useLocalPresence } from './presence.ts';
 import { commandFor, isTyping } from './shortcuts.ts';
 import { LOCAL } from './store.ts';
 import { TagPopover } from './tags.tsx';
@@ -172,6 +174,7 @@ export interface CanvasProps {
   userId: string;
   boards: Board[] | null;
   canEdit: boolean;
+  peers: Peer[];
   onOpenBoard: (boardId: string) => void;
 }
 
@@ -182,6 +185,7 @@ export function Canvas({
   userId,
   boards,
   canEdit,
+  peers,
   onOpenBoard,
 }: CanvasProps) {
   const { t } = useTranslation();
@@ -327,6 +331,12 @@ export function Canvas({
     if (bounds) setViewport(fitRect(bounds, size.w, size.h));
   }, [conn.status, size, snap, liveRect, setViewport]);
 
+  // Others see where we point, what we selected and which card we write in.
+  const presence = useLocalPresence(conn.provider);
+  useEffect(() => {
+    presence.selection([...selection], editing);
+  }, [presence, selection, editing]);
+
   // Drop selection entries that were deleted (here or by someone else).
   useEffect(() => {
     setSelection((sel) => {
@@ -443,6 +453,7 @@ export function Canvas({
           startUpload({
             file,
             projectId,
+            boardId,
             onAsset: (assetId) => {
               // Resuming an upload from an earlier attempt: its card is already on the board.
               const card = listElements(doc).find(
@@ -463,7 +474,7 @@ export function Canvas({
           });
         });
     },
-    [readOnly, projectId, doc, userId, store, select, t, instance],
+    [readOnly, projectId, boardId, doc, userId, store, select, t, instance],
   );
 
   const addText = useCallback(
@@ -474,7 +485,7 @@ export function Canvas({
       if (/^https?:\/\/\S+$/i.test(trimmed)) {
         const el = createElement(doc, 'link', at, { url: trimmed }, opts);
         select([el.id]);
-        void fillLinkPreview(doc, el.id, projectId, trimmed);
+        void fillLinkPreview(doc, el.id, projectId, boardId, trimmed);
         return;
       }
       const el = createElement(doc, 'note', at, {}, opts);
@@ -484,7 +495,7 @@ export function Canvas({
       }, LOCAL);
       select([el.id]);
     },
-    [readOnly, userId, doc, store, select, projectId],
+    [readOnly, userId, doc, store, select, projectId, boardId],
   );
 
   const removeSelection = useCallback(() => {
@@ -695,6 +706,7 @@ export function Canvas({
   function onPointerMove(e: ReactPointerEvent<HTMLDivElement>) {
     const p = screenPoint(e);
     lastPointer.current = p;
+    presence.cursor(screenToWorld(vp.current, p));
     const g = gesture.current;
     if (!g) return;
     const v = vp.current;
@@ -1398,6 +1410,13 @@ export function Canvas({
   const rectOf = useCallback((el: Element) => store.rectOf(el), [store, sizeVersion]);
   const draggingNested = overlay.ghost ? new Set([overlay.ghost.element.id]) : undefined;
   /** Cards with a selection outline or handles, their own or a nested card's. */
+  /** Where a card someone else selected sits on the board; nested cards show their column. */
+  const peerRect = (id: string) => {
+    let el = snap.byId.get(id);
+    if (el?.parent) el = snap.byId.get(el.parent);
+    return el ? store.rectOf(el) : null;
+  };
+
   const drawsOutline = (el: Element) =>
     selection.has(el.id) ||
     !!overlay.moving?.has(el.id) ||
@@ -1415,6 +1434,7 @@ export function Canvas({
         ].join(' ')}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
+        onPointerLeave={() => presence.cursor(null)}
         onPointerUp={onPointerUp}
         onPointerCancel={onPointerUp}
         onDoubleClick={onDoubleClick}
@@ -1448,6 +1468,7 @@ export function Canvas({
               zoom={drawsOutline(el) ? viewport.zoom : undefined}
             />
           ))}
+          <PresenceLayer peers={peers} zoom={viewport.zoom} rectOf={peerRect} />
           {overlay.ghost && (
             <div
               className="canvas__ghost"
@@ -1687,7 +1708,7 @@ export function Canvas({
               );
               setLinkDraft(null);
               select([el.id]);
-              void fillLinkPreview(doc, el.id, projectId, url);
+              void fillLinkPreview(doc, el.id, projectId, boardId, url);
             }}
           />
         )}

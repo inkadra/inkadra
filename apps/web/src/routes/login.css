@@ -59,3 +59,113 @@
   font-size: 11px;
   color: var(--ink-text-muted);
 }
+.login__form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.login__providers {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.login__provider {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  height: 40px;
+  border-radius: 8px;
+  border: 1px solid var(--ink-border-default);
+  background: var(--ink-surface-1);
+  color: var(--ink-text-primary);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+}
+.login__provider:hover {
+  background: var(--ink-surface-2);
+}
+.login__provider:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+.login__shield {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linejoin: round;
+}
+.login__or {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 12px;
+  color: var(--ink-text-muted);
+}
+.login__or span {
+  flex: 1;
+  height: 1px;
+  background: var(--ink-border-default);
+}
+.login__switch {
+  align-self: center;
+  border: 0;
+  background: none;
+  padding: 2px 4px;
+  font: inherit;
+  font-size: 12px;
+  color: var(--ink-text-secondary);
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.login__switch:hover {
+  color: var(--ink-text-primary);
+}
+.login__switch:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.login__check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--ink-text-secondary);
+}
+.login__error--box {
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: var(--ink-danger-bg);
+  border: 1px solid var(--ink-danger-border);
+}
+.login__sent {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  text-align: center;
+}
+.login__sent p {
+  margin: 0;
+}
+.login__sent-title {
+  font-size: 15px;
+  font-weight: 600;
+}
+.login__invite {
+  padding: 14px 16px;
+  border-radius: 10px;
+  background: var(--ink-surface-1);
+  border: 1px solid var(--ink-border-subtle);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  text-align: center;
+}
+.login__invite p {
+  margin: 0;
+}

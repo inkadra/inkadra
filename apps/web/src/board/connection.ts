@@ -5,7 +5,17 @@ import { useEffect, useState } from 'react';
 import * as Y from 'yjs';
 import { BoardStore } from './store.ts';
 
-export type ConnectionStatus = 'connecting' | 'synced' | 'offline' | 'denied';
+/**
+ * `denied`: no access to this board (refused, or removed while open). `signedOut`: the
+ * session or token ended while the board was open.
+ */
+export type ConnectionStatus = 'connecting' | 'synced' | 'offline' | 'denied' | 'signedOut';
+
+/** Reasons the collab server gives when it closes a board (decision 0011). */
+const CLOSE_REASONS: Record<string, ConnectionStatus> = {
+  Unauthorized: 'signedOut',
+  Forbidden: 'denied',
+};
 
 export interface BoardConnection {
   store: BoardStore;
@@ -35,7 +45,14 @@ export function useBoardConnection(boardId: string): BoardConnection | null {
       name: boardDocName(boardId),
       document: doc,
       onSynced: () => update({ status: 'synced' }),
-      onDisconnect: () => update({ status: 'offline' }),
+      onDisconnect: () => {
+        if (state.status !== 'denied' && state.status !== 'signedOut')
+          update({ status: 'offline' });
+      },
+      onClose: ({ event }) => {
+        const status = CLOSE_REASONS[event.reason];
+        if (status) update({ status });
+      },
       onAuthenticated: ({ scope }) => update({ readOnly: scope === 'readonly' }),
       onAuthenticationFailed: () => update({ status: 'denied' }),
     });

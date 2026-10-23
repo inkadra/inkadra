@@ -1,0 +1,164 @@
+/* Share dialog on a board. */
+
+.ink-dialog:has(.share) {
+  width: min(540px, calc(100vw - 32px));
+  padding: 18px 20px 20px;
+}
+.share {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.share__close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+}
+.share__lead {
+  margin: -6px 0 2px;
+  font-size: 12px;
+}
+.share__invite {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.share__field {
+  flex: 1;
+  min-width: 220px;
+  display: flex;
+  align-items: center;
+  height: 36px;
+  padding: 0 4px 0 10px;
+  border-radius: 8px;
+  background: var(--ink-surface-1);
+  border: 1px solid var(--ink-border-default);
+}
+.share__field:focus-within {
+  border-color: var(--ink-accent-primary);
+}
+.share__input {
+  flex: 1;
+  min-width: 0;
+  height: 34px;
+  border: 0;
+  background: transparent;
+  color: var(--ink-text-primary);
+  font: inherit;
+  font-size: 13px;
+  outline: none;
+}
+.share__select {
+  height: 28px;
+  padding: 0 6px;
+  border-radius: 6px;
+  border: 0;
+  background: transparent;
+  color: var(--ink-text-secondary);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+}
+.share__select:hover,
+.share__select:focus-visible {
+  background: var(--ink-surface-2);
+  color: var(--ink-text-primary);
+}
+.share__status {
+  flex-basis: 100%;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--ink-text-secondary);
+}
+.share__error {
+  margin: 0;
+  font-size: 12px;
+  color: var(--ink-danger-fg);
+}
+.share__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 320px;
+  overflow-y: auto;
+}
+.share__row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 48px;
+}
+.share__who {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.share__name {
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.share__sub {
+  font-size: 11px;
+  color: var(--ink-text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.share__role {
+  font-size: 12px;
+  color: var(--ink-text-secondary);
+  padding: 0 6px;
+}
+.share__spacer {
+  width: 28px;
+  flex: none;
+}
+.share__row--pending .share__name {
+  color: var(--ink-text-secondary);
+}
+.share__pending-avatar {
+  width: 30px;
+  height: 30px;
+  flex: none;
+  border-radius: 50%;
+  border: 1px dashed var(--ink-border-strong);
+  display: grid;
+  place-items: center;
+  color: var(--ink-text-muted);
+}
+.share__link {
+  border-top: 1px solid var(--ink-border-subtle);
+  padding-top: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.share__link-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.share__url {
+  flex: 1;
+  min-width: 200px;
+  height: 36px;
+  padding: 0 10px;
+  border-radius: 8px;
+  background: var(--ink-surface-1);
+  border: 1px solid var(--ink-border-subtle);
+  color: var(--ink-text-secondary);
+  font-size: 12px;
+}
+.share__note {
+  margin: 0;
+  font-size: 12px;
+}

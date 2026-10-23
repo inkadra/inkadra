@@ -14,7 +14,7 @@ function greetingKey(hour: number) {
 export function Home() {
   const { t, i18n } = useTranslation();
   const { user } = useSession();
-  const { projects, openNewProject } = useProjects();
+  const { projects, shared, openNewProject } = useProjects();
   const navigate = useNavigate();
   const now = new Date();
   const firstName = user?.name.split(' ')[0] ?? '';
@@ -60,7 +60,7 @@ export function Home() {
                 ))}
             </div>
           )}
-          {projects && projects.length === 0 && (
+          {projects && projects.length === 0 && (shared?.length ?? 0) === 0 && (
             <EmptyState
               icon="board"
               title={t('home.noProjects')}
@@ -75,6 +75,31 @@ export function Home() {
           )}
         </div>
       </div>
+
+      {shared && shared.length > 0 && (
+        <div style={{ marginTop: 40 }}>
+          <span className="ink-label">{t('home.shared')}</span>
+          <div className="home__recent" style={{ marginTop: 12 }}>
+            {shared.map((b) => (
+              <a
+                key={b.id}
+                href={`/p/${b.projectId}/b/${b.id}`}
+                className="ink-card home__card"
+                onClick={(e) => {
+                  e.preventDefault();
+                  navigate(`/p/${b.projectId}/b/${b.id}`);
+                }}
+              >
+                <span className="home__cover" />
+                <span className="home__meta">
+                  <span className="home__name">{b.title}</span>
+                  <span className="ink-muted home__when">{t(`roles.${b.myRole}`)}</span>
+                </span>
+              </a>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

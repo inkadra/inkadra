@@ -22,9 +22,48 @@
       "invalid": "Wrong email or password.",
       "closed": "Registration is closed. Ask your administrator for an invitation.",
       "password": "The password needs at least 10 characters.",
-      "generic": "Something went wrong. Try again."
+      "generic": "Something went wrong. Try again.",
+      "domain": "This Google account is not from an allowed domain.",
+      "inviteEmail": "The invitation is for another address: use the email it was sent to.",
+      "rateLimited": "Too many attempts: wait a minute.",
+      "provider": "Sign-in did not work. Try again or use another method."
     },
-    "diagnostics": "Setup problems? Open the diagnostics"
+    "diagnostics": "Setup problems? Open the diagnostics",
+    "signUp": "Create account",
+    "signUpTitle": "Create your account",
+    "createAccount": "No account yet? Create one",
+    "haveAccount": "Already have an account? Sign in",
+    "google": "Continue with Google",
+    "oidc": "Continue with {{name}}",
+    "or": "or",
+    "usePassword": "Use your password",
+    "useLink": "Get a link by email",
+    "link": {
+      "send": "Email me a link",
+      "sentTitle": "Check your inbox",
+      "sentBody": "If {{email}} can sign in, a link valid for 15 minutes is on its way.",
+      "again": "Use another address"
+    },
+    "reset": {
+      "ask": "Forgot your password?",
+      "needEmail": "Type your email first",
+      "sent": "If the address has an account, it will get a link to choose a new password.",
+      "title": "Choose a new password",
+      "save": "Save password",
+      "done": "Password changed. You can sign in now.",
+      "invalid": "The link is not valid or has expired. Ask for another one on the sign-in page."
+    },
+    "twoFactor": {
+      "body": "Type the 6-digit code from your authenticator app.",
+      "backupBody": "Type one of the backup codes you saved. Each code works once.",
+      "code": "Code",
+      "backupCode": "Backup code",
+      "trust": "Don’t ask again on this device for 30 days",
+      "verify": "Verify",
+      "invalid": "That code is not valid. Try again.",
+      "useBackup": "Use a backup code",
+      "useApp": "Use the authenticator app"
+    }
   },
   "nav": {
     "modules": "Modules",
@@ -49,7 +88,8 @@
     "theme": {
       "toDark": "Switch to dark theme",
       "toLight": "Switch to light theme"
-    }
+    },
+    "shared": "Shared with you"
   },
   "home": {
     "greeting": {
@@ -61,7 +101,8 @@
     "recent": "Recent",
     "noProjects": "No projects yet",
     "noProjectsBody": "Create your first project: a film, a shoot, a client.",
-    "noPinned": "Nothing pinned"
+    "noPinned": "Nothing pinned",
+    "shared": "Shared with you"
   },
   "project": {
     "dialogTitle": "New project",
@@ -298,7 +339,8 @@
       "synced": "Synced",
       "offline": "Offline · changes stay here",
       "denied": "Access denied",
-      "readOnly": "Read only"
+      "readOnly": "Read only",
+      "signedOut": "Signed out"
     },
     "denied": {
       "title": "You cannot open this board",
@@ -318,6 +360,15 @@
     },
     "video": {
       "play": "Play"
+    },
+    "signedOut": {
+      "title": "Session ended",
+      "body": "You signed out or your sign-in expired. Sign in again to continue."
+    },
+    "peers": {
+      "label_one": "{{count}} person on the board",
+      "label_other": "{{count}} people on the board",
+      "viewing": "{{name}} (view only)"
     }
   },
   "tags": {
@@ -519,6 +570,181 @@
       "picture": "Picture",
       "scene": "Scene",
       "noMatch": "No frame matches the filter"
+    }
+  },
+  "roles": {
+    "owner": "Owner",
+    "editor": "Editor",
+    "commenter": "Commenter",
+    "viewer": "Viewer"
+  },
+  "share": {
+    "open": "Share",
+    "title": "Share “{{title}}”",
+    "close": "Close",
+    "inherits_one": "People you invite also see the board inside this one.",
+    "inherits_other": "People you invite also see the {{count}} boards inside this one.",
+    "wholeProject": "People you invite here join the whole project.",
+    "thisBoard": "People you invite see this board only.",
+    "people": "People with access",
+    "you": "{{name}} (you)",
+    "member": "Project member",
+    "fromProject": "From the project",
+    "inherited": "Inherited from {{board}}",
+    "custom": "Custom here · {{role}} in the project",
+    "onlyHere": "From this board down only",
+    "roleOf": "Role of {{name}}",
+    "remove": "Remove access for {{name}}",
+    "pending": "Invitation pending · {{role}} · sent {{when}}",
+    "resend": "Resend",
+    "cancelInvite": "Cancel the invitation to {{email}}",
+    "inviteLabel": "Email or name",
+    "invitePlaceholder": "Email, or the name of someone with an account",
+    "invitePlaceholderNoEmail": "Email (you get a link to pass on) or name",
+    "inviteRole": "Role of the invitation",
+    "invite": "Invite",
+    "added": "{{name}} has access now.",
+    "sent": "Invitation sent to {{email}}.",
+    "noEmail": "This instance sends no email: copy the link and send it to {{email}}.",
+    "copy": "Copy link",
+    "copied": "Copied",
+    "readOnly": "Only editors and owners can invite people or change roles.",
+    "link": {
+      "title": "Invitation link",
+      "body": "Whoever opens the link joins with the chosen role, even without an account (they make one then).",
+      "active_one": "{{role}} · expires on {{date}} · used {{count}} time",
+      "active_other": "{{role}} · expires on {{date}} · used {{count}} times",
+      "role": "Role for people using the link",
+      "expires": "Link expiry",
+      "days_one": "{{count}} day",
+      "days_other": "{{count}} days",
+      "create": "Create link",
+      "revoke": "Turn off"
+    },
+    "errors": {
+      "load": "Could not load who has access. Try again.",
+      "rateLimited": "Too many invitations in a short time: try again later.",
+      "forbidden": "You cannot give a role higher than yours, nor change people with more access than you.",
+      "address": "Type an email address or pick someone from the list.",
+      "generic": "Something went wrong. Try again."
+    }
+  },
+  "join": {
+    "invitedBy": "{{name}} invites you {{what}}",
+    "invited": "You are invited {{what}}",
+    "board": "to the board “{{board}}” of {{project}}",
+    "project": "to the project {{project}}",
+    "instance": "to {{instance}}",
+    "as": "as {{role}}",
+    "signedInAs": "Signed in as {{name}} ({{email}})",
+    "accept": "Accept the invitation",
+    "otherAccount": "Use another account",
+    "used": "This invitation has been used already.",
+    "missing": "This invitation does not exist. Check the link or ask for another one.",
+    "home": "Go to home",
+    "status": {
+      "expired": "This invitation has expired. Ask the person who sent it for a new one.",
+      "used": "This invitation has been used already.",
+      "revoked": "This invitation was cancelled."
+    }
+  },
+  "authorize": {
+    "clients": {
+      "clipper": "Inkadra Clipper",
+      "mobile": "Inkadra app"
+    },
+    "asks": "asks to access your account on {{instance}}",
+    "what": "The app can see and change what you can see and change. You can revoke it any time in Settings.",
+    "allow": "Allow",
+    "deny": "Cancel",
+    "cancelled": "No access given. You can close this page.",
+    "invalid": "This request is not valid. Try again from the app.",
+    "failed": "Authorization failed: the app is not an official one or the request has expired."
+  },
+  "settings": {
+    "title": "Account",
+    "lead": "Your profile, how you sign in and the apps you connected.",
+    "save": "Save",
+    "saved": "Saved.",
+    "profile": {
+      "title": "Profile",
+      "language": "Language",
+      "languages": {
+        "it": "Italiano",
+        "en": "English"
+      }
+    },
+    "methods": {
+      "title": "Sign-in methods",
+      "body": "Connect Google or your studio’s provider to sign in without a password.",
+      "linked": "Connected",
+      "notLinked": "Not connected",
+      "link": "Connect",
+      "unlink": "Disconnect",
+      "last": "It is the only way you sign in: add another one first."
+    },
+    "password": {
+      "title": "Password",
+      "body": "Changing it signs out your other sessions.",
+      "current": "Current password",
+      "new": "New password",
+      "change": "Change password",
+      "changed": "Password changed. Your other sessions were signed out."
+    },
+    "twoFactor": {
+      "title": "Two-step verification",
+      "on": "On: signing in also asks for a code from your app.",
+      "off": "Add a code from an authenticator app (1Password, Google Authenticator, Aegis…).",
+      "needsPassword": "Your account needs a password for this. If you sign in with Google or your studio’s provider, two-step verification is handled there.",
+      "enable": "Turn on",
+      "disable": "Turn off",
+      "scan": "Scan the code with your authenticator app, then type the 6-digit code.",
+      "manual": "Or enter this key:",
+      "backup": "Keep these backup codes somewhere safe: each one lets you in once if you lose your phone.",
+      "confirm": "Confirm and turn on",
+      "enabled": "Two-step verification is on.",
+      "disabled": "Two-step verification is off."
+    },
+    "sessions": {
+      "title": "Sessions",
+      "body": "The devices you are signed in on.",
+      "this": "This device",
+      "since": "Last active {{when}}",
+      "end": "Sign out",
+      "endOthers": "Sign out of all other devices",
+      "unknown": "Unknown device",
+      "browser": "Browser"
+    },
+    "tokens": {
+      "title": "Apps and tokens",
+      "body": "The clipper, the mobile app and scripts sign in with a personal token. Revoke it if you lose a device.",
+      "none": "No tokens.",
+      "manual": "made by hand",
+      "clients": {
+        "clipper": "Clipper",
+        "mobile": "Mobile app"
+      },
+      "used": "used on {{when}}",
+      "unused": "never used",
+      "revoke": "Revoke",
+      "name": "Token name",
+      "namePlaceholder": "Backup script",
+      "create": "Create token",
+      "copyNow": "Token “{{name}}” created. Copy it now: you won’t see it again.",
+      "done": "Done"
+    },
+    "delete": {
+      "title": "Delete account",
+      "body": "Deletes the account and the projects nobody else is in. This cannot be undone.",
+      "open": "Delete account…",
+      "confirmTitle": "Delete the account?",
+      "confirmBody": "Projects where you are alone are deleted with all their files. In shared projects the work stays, without you.",
+      "fresh": "For safety, you must have signed in during the last 15 minutes: sign out and back in if needed.",
+      "blocked": "You are the only owner of these shared projects: make someone else owner first.",
+      "confirm": "Delete for good"
+    },
+    "errors": {
+      "password": "The password is not right."
     }
   }
 }

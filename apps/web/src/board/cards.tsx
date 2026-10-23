@@ -19,7 +19,7 @@ import { FramePicture } from './film/FramePicture.tsx';
 import { useSlugline } from './film/StoryboardView.tsx';
 import { webUrl } from './links.ts';
 import { useMeasure } from './measure.ts';
-import { NoteBody, NoteEditor } from './note.tsx';
+import { NoteBody, NoteEditor, useFragment } from './note.tsx';
 import { LOCAL } from './store.ts';
 import { TagList } from './tags.tsx';
 import { localPreview, useUploadProgress } from './uploads.ts';
@@ -211,6 +211,8 @@ function NoteCard({ element, editing }: { element: Of<'note'>; editing: boolean 
   const { store, setEditing, setNoteEditor } = useBoard();
   const { t } = useTranslation();
   const body = store.map(element.id)?.get('body');
+  // Follows the text here too: a note someone else just created is empty until they type.
+  useFragment(body instanceof Y.XmlFragment ? body : null);
   if (!(body instanceof Y.XmlFragment)) return null;
   if (editing) {
     return (

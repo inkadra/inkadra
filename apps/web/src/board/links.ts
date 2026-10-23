@@ -26,11 +26,12 @@ export async function fillLinkPreview(
   doc: Y.Doc,
   elementId: string,
   projectId: string,
+  boardId: string,
   url: string,
 ) {
   let preview: LinkPreview;
   try {
-    preview = await api.post<LinkPreview>('/link-previews', { projectId, url });
+    preview = await api.post<LinkPreview>('/link-previews', { projectId, boardId, url });
   } catch {
     return;
   }
