@@ -61,13 +61,19 @@ fail() {
 echo "== $proxy ($mode)"
 compose up -d --quiet-pull --wait --wait-timeout 180
 
-# The proxy may need a moment to get its certificate and find the upstream.
-for _ in $(seq 1 60); do
-  curl -ksf -o /dev/null "$url/api/v1/health" && break
+c() { curl -ks --http1.1 --max-time 20 "$@"; }
+ws() {
+  c -i -N --max-time 5 -H "Origin: $url" -H 'Connection: Upgrade' -H 'Upgrade: websocket' \
+    -H 'Sec-WebSocket-Version: 13' -H "Sec-WebSocket-Key: $(openssl rand -base64 16)" "$@" \
+    "$url/collab" || true
+}
+
+# The proxy may need a moment to get its certificate and find the upstreams: Traefik adds the
+# collab route only once that container reports healthy.
+for _ in $(seq 1 90); do
+  if curl -ksf -o /dev/null "$url/api/v1/health" && [[ $(ws | head -n1) == *" 101"* ]]; then break; fi
   sleep 1
 done
-
-c() { curl -ks --http1.1 --max-time 20 "$@"; }
 
 status=$(curl -s -o /dev/null -w '%{http_code} %{redirect_url}' "http://$domain/boards?x=1")
 [[ $status =~ ^30[1278]\ https://$domain/boards\?x=1$ ]] && pass "HTTP redirects to HTTPS" ||
@@ -106,9 +112,7 @@ else
   fail "client address forwarded: expected $gateway in $(compose logs --no-color inkadra | grep ip-check | tail -1)"
 fi
 
-upgrade=$(c -i -N --max-time 5 -b "$work/cookies" -H "Origin: $url" \
-  -H 'Connection: Upgrade' -H 'Upgrade: websocket' -H 'Sec-WebSocket-Version: 13' \
-  -H "Sec-WebSocket-Key: $(openssl rand -base64 16)" "$url/collab" || true)
+upgrade=$(ws -b "$work/cookies")
 [[ $(head -n1 <<<"$upgrade") == *" 101"* ]] && pass "WebSocket upgrade on /collab" ||
   fail "WebSocket upgrade (got: $(head -n1 <<<"$upgrade"))"
 
