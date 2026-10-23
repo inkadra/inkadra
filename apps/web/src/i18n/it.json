@@ -293,7 +293,8 @@
     },
     "errors": {
       "boardCreate": "Non è stato possibile creare la board.",
-      "upload": "Caricamento di {{name}} non riuscito."
+      "upload": "Caricamento di {{name}} non riuscito.",
+      "tooBig": "{{name}} supera la dimensione massima consentita."
     }
   }
 }

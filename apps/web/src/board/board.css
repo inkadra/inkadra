@@ -8,7 +8,6 @@
   user-select: none;
   -webkit-user-select: none;
   background-color: var(--ink-bg-canvas);
-  background-image: radial-gradient(circle, var(--ink-canvas-dot) 1px, transparent 1.5px);
   outline: none;
   --shadow-float: 0 8px 24px rgb(0 0 0 / 0.35);
 }
@@ -19,11 +18,24 @@
   cursor: grabbing;
 }
 
+.canvas__dots {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: calc(100% + 64px);
+  height: calc(100% + 64px);
+  background-image: radial-gradient(circle, var(--ink-canvas-dot) 1px, transparent 1.5px);
+  background-position: 0 0;
+  pointer-events: none;
+}
 .canvas__world {
   position: absolute;
   left: 0;
   top: 0;
   transform-origin: 0 0;
+}
+.canvas--moving .canvas__dots,
+.canvas--moving .canvas__world {
   will-change: transform;
 }
 
@@ -40,7 +52,6 @@
 }
 .card--free {
   position: absolute;
-  contain: layout style;
 }
 .card--nested {
   position: relative;
@@ -672,6 +683,7 @@
   width: 150px;
 }
 .minimap {
+  position: relative;
   display: block;
   padding: 0;
   border: 1px solid var(--ink-border-default);
@@ -687,9 +699,14 @@
   fill: var(--ink-surface-3);
 }
 .minimap__view {
-  fill: color-mix(in srgb, var(--ink-accent-primary) 8%, transparent);
-  stroke: var(--ink-accent-primary);
-  stroke-width: 1.5;
+  position: absolute;
+  left: 0;
+  top: 0;
+  box-sizing: border-box;
+  background: color-mix(in srgb, var(--ink-accent-primary) 8%, transparent);
+  border: 1.5px solid var(--ink-accent-primary);
+  pointer-events: none;
+  will-change: transform;
 }
 .zoom {
   margin: 0;
@@ -956,4 +973,13 @@
   .canvas__ghost {
     transform: none;
   }
+}
+
+/* Far zoom: text and controls are not drawn, only the card shapes, images and swatches.
+   A hairline border vanishes at this scale, so plain cards are filled with its colour. */
+.canvas__world--far .card--free > :not(.card__media, .card__swatch) {
+  visibility: hidden;
+}
+.canvas__world--far .card--free:not([class*="card--tint-"]) {
+  background: var(--ink-border-default);
 }

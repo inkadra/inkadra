@@ -59,6 +59,39 @@ test('sign out, wrong password, sign in again', async ({ page }) => {
   await expect(page.getByRole('heading', { name: /Giulia$/ })).toBeVisible();
 });
 
+test('the board takes notes and columns, with undo', async ({ page }) => {
+  await signIn(page);
+  await page.getByRole('link', { name: 'Ultima corsa' }).first().click();
+  await expect(page.getByRole('status').getByText('Sincronizzato')).toBeVisible();
+  await expect(page.getByText('Board vuota')).toBeVisible();
+  const canvas = page.getByTestId('canvas');
+
+  // A double click starts a note; what is typed right away lands in it.
+  await canvas.dblclick({ position: { x: 300, y: 250 } });
+  await page.keyboard.type('Sopralluogo al porto');
+  await page.keyboard.press('Escape');
+  const note = page.locator('[data-type="note"]');
+  await expect(note).toHaveText('Sopralluogo al porto');
+
+  // Shortcuts add a column and select everything; Delete removes both, undo brings them back.
+  await page.keyboard.press('Escape');
+  await page.keyboard.press('c');
+  // A new column asks for its title first.
+  await page.keyboard.type('Location');
+  await page.keyboard.press('Escape');
+  await expect(page.locator('[data-type="column"]')).toContainText('Location');
+  await page.keyboard.press('ControlOrMeta+a');
+  await page.keyboard.press('Delete');
+  await expect(page.locator('[data-el]')).toHaveCount(0);
+  await page.keyboard.press('ControlOrMeta+z');
+  await expect(note).toHaveText('Sopralluogo al porto');
+  await expect(page.locator('[data-type="column"]')).toHaveCount(1);
+
+  // The board is the shared document: a reload shows the same content.
+  await page.reload();
+  await expect(page.locator('[data-type="note"]')).toHaveText('Sopralluogo al porto');
+});
+
 async function signIn(page: import('@playwright/test').Page) {
   await page.goto('/login');
   await page.getByLabel('Email').fill(admin.email);

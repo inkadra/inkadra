@@ -51,6 +51,7 @@ import {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import * as Y from 'yjs';
+import { useSession } from '../lib/session.tsx';
 import { createBoard } from './boards.ts';
 import { Card } from './cards.tsx';
 import {
@@ -70,6 +71,7 @@ import {
 import { decodeClipboard, encodeClipboard } from './clipboard.ts';
 import type { BoardConnection } from './connection.ts';
 import { BoardContext, type BoardContextValue } from './context.ts';
+import { fillLinkPreview } from './links.ts';
 import { fillFragment, isEmpty } from './note.tsx';
 import { commandFor, isTyping } from './shortcuts.ts';
 import { LOCAL } from './store.ts';
@@ -80,6 +82,35 @@ const DRAG_THRESHOLD = 3;
 const SNAP_PX = 6;
 /** Extra world around the screen that stays rendered, so short pans show no gaps. */
 const OVERSCAN_PX = 400;
+/** Below this zoom, text is too small to read: cards are drawn as plain shapes. */
+const FAR_ZOOM = 0.3;
+const DOT_GRID = 22;
+
+/** On-screen spacing of the background dots: the grid doubles as you zoom out, never denser than 16px. */
+function dotSpacing(zoom: number): number {
+  let step = DOT_GRID * zoom;
+  while (step < 16) step *= 2;
+  return step;
+}
+/**
+ * The dotted background, moved with a transform: panning repaints nothing, the dots are
+ * redrawn only when the zoom changes their spacing.
+ */
+function Dots({ viewport }: { viewport: Viewport }) {
+  const step = dotSpacing(viewport.zoom);
+  const mod = (n: number) => ((n % step) + step) % step;
+  const x = mod(-viewport.x * viewport.zoom) - step;
+  const y = mod(-viewport.y * viewport.zoom) - step;
+  return (
+    <div
+      className="canvas__dots"
+      aria-hidden="true"
+      style={{ backgroundSize: `${step}px ${step}px`, transform: `translate(${x}px, ${y}px)` }}
+    />
+  );
+}
+/** How long the world stays on its own compositor layer after the viewport last moved. */
+const SETTLE_MS = 160;
 
 type Gesture =
   | { kind: 'pan'; last: Point }
@@ -129,6 +160,7 @@ export function Canvas({
   onOpenBoard,
 }: CanvasProps) {
   const { t } = useTranslation();
+  const { instance } = useSession();
   const { store } = conn;
   const doc = store.doc;
   const readOnly = conn.readOnly || !canEdit;
@@ -143,6 +175,7 @@ export function Canvas({
     () => loadViewport(boardId) ?? { x: -40, y: -40, zoom: 1 },
   );
   const vp = useRef(viewport);
+  const settleTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const fitted = useRef(loadViewport(boardId) !== null);
   const [selection, setSelection] = useState<ReadonlySet<string>>(EMPTY_SET);
   const [editing, setEditingState] = useState<string | null>(null);
@@ -174,6 +207,14 @@ export function Canvas({
       vp.current = value;
       setViewportState(value);
       saveViewport(boardId, value);
+      // While the view moves the world and the dots are composited, so a pan only shifts pixels; once it
+      // settles the layer goes away and the cards are drawn sharp at the new zoom.
+      rootRef.current?.classList.add('canvas--moving');
+      clearTimeout(settleTimer.current);
+      settleTimer.current = setTimeout(
+        () => rootRef.current?.classList.remove('canvas--moving'),
+        SETTLE_MS,
+      );
     },
     [boardId],
   );
@@ -310,25 +351,32 @@ export function Canvas({
   const uploadFiles = useCallback(
     (files: File[], at: Point) => {
       if (readOnly) return;
-      files.forEach((file, i) => {
-        const pos = { x: at.x + i * 24, y: at.y + i * 24 };
-        const type = file.type.startsWith('image/') ? 'image' : 'file';
-        startUpload({
-          file,
-          projectId,
-          onAsset: (assetId) => {
-            const el = createElement(doc, type, pos, { assetId }, { userId, origin: LOCAL });
-            store.undo.stopCapturing();
-            if (i === 0) select([el.id]);
-          },
-          onFailed: (assetId) => {
-            if (!assetId)
-              setToast({ text: t('board.errors.upload', { name: file.name }), undo: false });
-          },
+      const max = instance?.limits.uploadMaxBytes ?? 0;
+      const tooBig = max > 0 ? files.filter((f) => f.size > max) : [];
+      if (tooBig.length > 0) {
+        setToast({ text: t('board.errors.tooBig', { name: tooBig[0]?.name }), undo: false });
+      }
+      files
+        .filter((f) => !tooBig.includes(f))
+        .forEach((file, i) => {
+          const pos = { x: at.x + i * 24, y: at.y + i * 24 };
+          const type = file.type.startsWith('image/') ? 'image' : 'file';
+          startUpload({
+            file,
+            projectId,
+            onAsset: (assetId) => {
+              const el = createElement(doc, type, pos, { assetId }, { userId, origin: LOCAL });
+              store.undo.stopCapturing();
+              if (i === 0) select([el.id]);
+            },
+            onFailed: (assetId) => {
+              if (!assetId)
+                setToast({ text: t('board.errors.upload', { name: file.name }), undo: false });
+            },
+          });
         });
-      });
     },
-    [readOnly, projectId, doc, userId, store, select, t],
+    [readOnly, projectId, doc, userId, store, select, t, instance],
   );
 
   const addText = useCallback(
@@ -339,6 +387,7 @@ export function Canvas({
       if (/^https?:\/\/\S+$/i.test(trimmed)) {
         const el = createElement(doc, 'link', at, { url: trimmed }, opts);
         select([el.id]);
+        void fillLinkPreview(doc, el.id, projectId, trimmed);
         return;
       }
       const el = createElement(doc, 'note', at, {}, opts);
@@ -348,7 +397,7 @@ export function Canvas({
       }, LOCAL);
       select([el.id]);
     },
-    [readOnly, userId, doc, store, select],
+    [readOnly, userId, doc, store, select, projectId],
   );
 
   const removeSelection = useCallback(() => {
@@ -733,6 +782,8 @@ export function Canvas({
     return () => el.removeEventListener('wheel', onWheel);
   }, [setViewport]);
 
+  useEffect(() => () => clearTimeout(settleTimer.current), []);
+
   // Keyboard --------------------------------------------------------------------
   const keyHandler = useRef<(e: KeyboardEvent) => void>(() => {});
   keyHandler.current = (e: KeyboardEvent) => {
@@ -1021,7 +1072,14 @@ export function Canvas({
     doc,
   ]);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: sizeVersion invalidates measured heights
+  const rectOf = useCallback((el: Element) => store.rectOf(el), [store, sizeVersion]);
   const draggingNested = overlay.ghost ? new Set([overlay.ghost.element.id]) : undefined;
+  /** Cards with a selection outline or handles, their own or a nested card's. */
+  const drawsOutline = (el: Element) =>
+    selection.has(el.id) ||
+    !!overlay.moving?.has(el.id) ||
+    (el.type === 'column' && !!snap.columns.get(el.id)?.some((c) => selection.has(c.id)));
 
   return (
     <BoardContext.Provider value={ctx}>
@@ -1032,10 +1090,6 @@ export function Canvas({
           tool === 'hand' || spaceDown.current ? 'canvas--hand' : '',
           gesture.current?.kind === 'pan' ? 'canvas--panning' : '',
         ].join(' ')}
-        style={{
-          backgroundSize: `${22 * viewport.zoom}px ${22 * viewport.zoom}px`,
-          backgroundPosition: `${-viewport.x * viewport.zoom}px ${-viewport.y * viewport.zoom}px`,
-        }}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
@@ -1049,11 +1103,13 @@ export function Canvas({
         aria-label={t('board.canvas')}
         role="application"
       >
+        <Dots viewport={viewport} />
         <div
-          className="canvas__world"
+          className={
+            viewport.zoom < FAR_ZOOM ? 'canvas__world canvas__world--far' : 'canvas__world'
+          }
           style={{
             transform: `translate(${-viewport.x * viewport.zoom}px, ${-viewport.y * viewport.zoom}px) scale(${viewport.zoom})`,
-            ['--zoom' as string]: viewport.zoom,
           }}
         >
           {visible.map((el) => (
@@ -1066,12 +1122,18 @@ export function Canvas({
               childrenOf={el.type === 'column' ? snap.columns.get(el.id) : undefined}
               selection={el.type === 'column' ? selection : undefined}
               draggingIds={el.type === 'column' ? draggingNested : undefined}
+              zoom={drawsOutline(el) ? viewport.zoom : undefined}
             />
           ))}
           {overlay.ghost && (
             <div
               className="canvas__ghost"
-              style={{ left: overlay.ghost.x, top: overlay.ghost.y, width: overlay.ghost.w }}
+              style={{
+                left: overlay.ghost.x,
+                top: overlay.ghost.y,
+                width: overlay.ghost.w,
+                ['--zoom' as string]: viewport.zoom,
+              }}
             >
               <Card element={overlay.ghost.element} nested selected />
             </div>
@@ -1082,8 +1144,18 @@ export function Canvas({
               className={`canvas__guide canvas__guide--${g.axis}`}
               style={
                 g.axis === 'x'
-                  ? { left: g.at, top: g.from, height: g.to - g.from }
-                  : { top: g.at, left: g.from, width: g.to - g.from }
+                  ? {
+                      left: g.at,
+                      top: g.from,
+                      height: g.to - g.from,
+                      ['--zoom' as string]: viewport.zoom,
+                    }
+                  : {
+                      top: g.at,
+                      left: g.from,
+                      width: g.to - g.from,
+                      ['--zoom' as string]: viewport.zoom,
+                    }
               }
             />
           ))}
@@ -1155,7 +1227,7 @@ export function Canvas({
         <div className="canvas__corner" data-chrome>
           <Minimap
             elements={snap.canvas}
-            rectOf={(el) => store.rectOf(el)}
+            rectOf={rectOf}
             viewport={viewport}
             size={size}
             onJump={(p) => setViewport(centerOn(vp.current, p, size.w, size.h))}
@@ -1178,6 +1250,7 @@ export function Canvas({
               );
               setLinkDraft(null);
               select([el.id]);
+              void fillLinkPreview(doc, el.id, projectId, url);
             }}
           />
         )}

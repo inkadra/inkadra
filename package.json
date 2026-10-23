@@ -14,6 +14,7 @@
     "typecheck": "turbo run typecheck",
     "test": "turbo run test",
     "test:e2e": "pnpm --filter @inkadra/e2e e2e",
+    "test:perf": "pnpm --filter @inkadra/e2e e2e:perf",
     "openapi": "pnpm --filter @inkadra/shared openapi",
     "mock": "pnpm --filter @inkadra/shared mock",
     "db:generate": "pnpm --filter @inkadra/server db:generate",
