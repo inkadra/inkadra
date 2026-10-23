@@ -132,7 +132,9 @@ export function ShareDialog({
             const own = isRoot
               ? e.source.kind === 'project'
               : e.source.kind === 'board' && e.source.boardId === board.id;
-            const editable = canManage && !me && rank(e.role) <= rank(myRole);
+            // Project members (root board) are managed by owners only, as on the server.
+            const editable =
+              canManage && !me && rank(e.role) <= rank(myRole) && (!isRoot || myRole === 'owner');
             return (
               <li key={e.user.id} className="share__row">
                 <Avatar name={e.user.name} size={30} />
@@ -289,10 +291,9 @@ function InviteForm({
 
   useEffect(() => {
     const q = query.trim();
-    if (q.length < 2 || EMAIL.test(q)) {
-      setFound([]);
-      return;
-    }
+    // Results of the previous text must never be picked for the new one.
+    setFound([]);
+    if (q.length < 2 || EMAIL.test(q)) return;
     const timer = setTimeout(() => {
       api
         .get<{ items: Person[] }>(`/users/search?q=${encodeURIComponent(q)}`)
@@ -307,7 +308,7 @@ function InviteForm({
     const typed = query.trim();
     const email = EMAIL.test(typed)
       ? typed
-      : (found.find((p) => p.name.toLowerCase() === typed.toLowerCase()) ?? found[0])?.email;
+      : found.find((p) => p.name.toLowerCase() === typed.toLowerCase())?.email;
     if (!email) {
       setStatus(t('share.errors.address'));
       return;

@@ -329,6 +329,12 @@ describe.skipIf(!url)('sharing, invitations, tokens and accounts (needs DATABASE
     ).toEqual([[projectId, 'commenter']]);
     const used = await call(null, 'GET', `/api/v1/invitations/by-token/${claimed.token}`);
     expect(used.body.status).toBe('used');
+    // Back on the link after signing up elsewhere (Google, OIDC): it leads to the project,
+    // without counting another use; other accounts still cannot use it.
+    const back = await call('newbie', 'POST', forwarded);
+    expect(back.status).toBe(200);
+    expect(back.body).toEqual({ projectId, boardId: null });
+    expect((await call('outsider', 'POST', forwarded)).status).toBe(404);
   });
 
   it('gives the role straight away to people who have an account', async () => {

@@ -1,5 +1,5 @@
 import { Button, Logo, TextField, Wordmark } from '@inkadra/ui';
-import { type FormEvent, useState } from 'react';
+import { type FormEvent, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useSearchParams } from 'react-router';
 import { authApi } from '../lib/api.ts';
@@ -9,7 +9,11 @@ import './login.css';
 export function ResetPassword() {
   const { t } = useTranslation();
   const [params] = useSearchParams();
-  const token = params.get('token');
+  const [token] = useState(() => params.get('token'));
+  // Out of the address bar and the history once read.
+  useEffect(() => {
+    if (token) window.history.replaceState(window.history.state, '', window.location.pathname);
+  }, [token]);
   const [password, setPassword] = useState('');
   const [state, setState] = useState<'idle' | 'busy' | 'done' | 'error'>('idle');
   const [error, setError] = useState<string | null>(null);

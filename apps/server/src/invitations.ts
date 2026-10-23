@@ -70,9 +70,22 @@ export async function acceptInvitation(
       .from(invitation)
       .where(eq(invitation.id, invitationId))
       .for('update');
-    if (!row || invitationStatus(row) !== 'valid')
-      throw new HttpError('not_found', 'This invitation can no longer be used.');
+    if (!row) throw new HttpError('not_found', 'This invitation can no longer be used.');
     const [me] = await tx.select({ email: user.email }).from(user).where(eq(user.id, userId));
+    const db2 = tx as unknown as Database;
+    // An account created through Google, OIDC or an email link already used its email
+    // invitation; coming back to the link then just leads to what it was for.
+    if (
+      invitationStatus(row) === 'used' &&
+      row.kind === 'email' &&
+      me &&
+      invitedAddressMatches(row, me.email) &&
+      row.role &&
+      (await hasInvitedRole(db2, row, userId))
+    )
+      return { projectId: row.projectId, boardId: row.boardId };
+    if (invitationStatus(row) !== 'valid')
+      throw new HttpError('not_found', 'This invitation can no longer be used.');
     if (!me || !invitedAddressMatches(row, me.email))
       throw new HttpError(
         'forbidden',
@@ -85,7 +98,6 @@ export async function acceptInvitation(
       .update(invitation)
       .set({ uses: sql`${invitation.uses} + 1` })
       .where(eq(invitation.id, row.id));
-    const db2 = tx as unknown as Database;
     if (row.role && row.boardId) {
       const access = await boardAccess(db2, { id: userId }, row.boardId);
       if (!access) throw new HttpError('not_found', 'The board of this invitation was deleted.');
@@ -110,6 +122,16 @@ export async function acceptInvitation(
     }
     return { projectId: row.projectId, boardId: row.boardId };
   });
+}
+
+async function hasInvitedRole(db: Database, row: InvitationRow, userId: string) {
+  if (!row.role) return false;
+  if (row.boardId) {
+    const access = await boardAccess(db, { id: userId }, row.boardId);
+    return access !== null && atLeast(access.role, row.role);
+  }
+  if (row.projectId) return atLeast(await projectRole(db, { id: userId }, row.projectId), row.role);
+  return false;
 }
 
 /** Names shown on an invitation: project and board. */

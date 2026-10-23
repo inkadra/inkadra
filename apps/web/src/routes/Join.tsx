@@ -71,6 +71,18 @@ export function Join() {
     }
   }, [token, t]);
 
+  // Back from Google, OIDC or an email link: the new account already used the invitation,
+  // and accepting it again leads to the board (the server answers 404 otherwise).
+  const [checkingUsed, setCheckingUsed] = useState(false);
+  useEffect(() => {
+    if (!user || preview?.status !== 'used' || !preview.email) return;
+    setCheckingUsed(true);
+    api
+      .post<AcceptedInvitation>(`/invitations/by-token/${encodeURIComponent(token)}/accept`, {})
+      .then((done) => window.location.assign(targetPath(done)))
+      .catch(() => setCheckingUsed(false));
+  }, [user, preview, token]);
+
   const what = preview
     ? preview.boardTitle && preview.projectName
       ? t('join.board', { board: preview.boardTitle, project: preview.projectName })
@@ -82,7 +94,7 @@ export function Join() {
   let body: React.ReactNode;
   if (missing) {
     body = <p className="login__error login__error--box">{t('join.missing')}</p>;
-  } else if (!preview) {
+  } else if (!preview || checkingUsed) {
     body = null;
   } else if (preview.status !== 'valid') {
     body = <p className="login__error login__error--box">{t(`join.status.${preview.status}`)}</p>;
