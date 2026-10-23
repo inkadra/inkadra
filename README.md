@@ -12,18 +12,21 @@ canvas, running on your own server.
 
 ## Run it
 
-You need Docker with Compose and a reverse proxy that serves HTTPS.
+You need Docker with Compose and a domain for Inkadra. A reverse proxy for HTTPS is included
+if you do not have one.
 
 ```sh
 mkdir inkadra && cd inkadra
-curl -O https://raw.githubusercontent.com/inkadra/inkadra/main/compose.yaml
-curl -o .env https://raw.githubusercontent.com/inkadra/inkadra/main/.env.example
+curl -fsSLO https://raw.githubusercontent.com/inkadra/inkadra/main/compose.yaml
+curl -fsSL -o .env https://raw.githubusercontent.com/inkadra/inkadra/main/.env.example
 # edit .env: PUBLIC_URL, AUTH_SECRET, POSTGRES_PASSWORD
 docker compose up -d
 ```
 
 Open `PUBLIC_URL` in a browser: the first account you create becomes the administrator.
-See [docs/self-hosting.md](docs/self-hosting.md) for proxies, split mode and upgrades.
+[docs/self-hosting](docs/self-hosting) covers reverse proxies (Caddy, Traefik, Nginx, Nginx
+Proxy Manager, Pangolin), storage on host folders or S3, split mode, upgrades and
+troubleshooting. Images are published for amd64 and arm64 as `ghcr.io/inkadra/inkadra`.
 
 ## Develop
 
