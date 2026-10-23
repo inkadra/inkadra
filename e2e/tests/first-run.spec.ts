@@ -66,8 +66,9 @@ test('the board takes notes and columns, with undo', async ({ page }) => {
   await expect(page.getByText('Board vuota')).toBeVisible();
   const canvas = page.getByTestId('canvas');
 
-  // A double click starts a note; what is typed right away lands in it.
+  // A double click starts a note and puts the cursor in it.
   await canvas.dblclick({ position: { x: 300, y: 250 } });
+  await expect(page.locator('[data-type="note"] [contenteditable="true"]')).toBeFocused();
   await page.keyboard.type('Sopralluogo al porto');
   await page.keyboard.press('Escape');
   const note = page.locator('[data-type="note"]');
@@ -103,6 +104,22 @@ test('the board takes notes and columns, with undo', async ({ page }) => {
   await expect(page.getByText('Board vuota')).toBeVisible();
   await page.getByRole('banner').getByRole('link', { name: 'Ultima corsa' }).click();
   await expect(page.locator('[data-type="board"]')).toContainText('Sopralluoghi');
+});
+
+test('keys typed while the new note is not focused still land in it', async ({ page }) => {
+  await signIn(page);
+  await page.getByRole('link', { name: 'Ultima corsa' }).first().click();
+  await expect(page.getByRole('status').getByText('Sincronizzato')).toBeVisible();
+  await page.getByTestId('canvas').dblclick({ position: { x: 900, y: 120 } });
+  const editor = page.locator('[data-type="note"] [contenteditable="true"]');
+  await expect(editor).toBeFocused();
+  // The gap between creating the note and its editor taking focus, made deterministic.
+  await editor.evaluate((el) => (el as HTMLElement).blur());
+  await page.keyboard.type('Casting comparse');
+  await page.keyboard.press('Escape');
+  await expect(page.locator('[data-type="note"]', { hasText: 'Casting comparse' })).toHaveText(
+    'Casting comparse',
+  );
 });
 
 async function signIn(page: import('@playwright/test').Page) {

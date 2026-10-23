@@ -244,6 +244,8 @@ export function Canvas({
     setEditorVersion((n) => n + 1);
     if (!editor) return;
     editor.on('transaction', () => setEditorVersion((n) => n + 1));
+    // Focus now rather than on the editor's own deferred autofocus, so no key falls in between.
+    editor.commands.focus('end');
     if (pendingText.current) editor.commands.insertContent(pendingText.current);
     pendingText.current = null;
   }, []);
@@ -806,6 +808,21 @@ export function Canvas({
       !e.ctrlKey
     ) {
       pendingText.current += e.key;
+      e.preventDefault();
+      return;
+    }
+    const editor = noteEditor.current;
+    if (
+      e.type === 'keydown' &&
+      editor &&
+      editingRef.current &&
+      !isTyping(e.target) &&
+      e.key.length === 1 &&
+      !e.metaKey &&
+      !e.ctrlKey
+    ) {
+      // A key typed while the note being edited is not focused (yet): it belongs to the note.
+      editor.chain().focus('end').insertContent(e.key).run();
       e.preventDefault();
       return;
     }
