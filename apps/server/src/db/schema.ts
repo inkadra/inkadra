@@ -2,6 +2,7 @@ import { sql } from 'drizzle-orm';
 import {
   bigint,
   boolean,
+  check,
   customType,
   foreignKey,
   index,
@@ -357,4 +358,254 @@ export const assetVariant = pgTable(
     storageKey: text('storage_key').notNull(),
   },
   (t) => [primaryKey({ columns: [t.assetId, t.size] })],
+);
+
+// Review and sharing (docs/decisions/0013) -------------------------------------
+
+/**
+ * Comments on a board (`element_id` null) or one of its cards. A reply points to the first
+ * comment of its thread; replies have no replies. The author is an account, a guest of a share
+ * link, or nobody once the account is deleted. `mentions` holds the user ids written as
+ * `@{id}` in the body that could read the board when it was saved.
+ */
+export const comment = pgTable(
+  'comment',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    projectId: uuid('project_id')
+      .notNull()
+      .references(() => project.id, { onDelete: 'cascade' }),
+    boardId: uuid('board_id')
+      .notNull()
+      .references(() => board.id, { onDelete: 'cascade' }),
+    elementId: text('element_id'),
+    threadId: uuid('thread_id'),
+    authorId: uuid('author_id').references(() => user.id, { onDelete: 'set null' }),
+    authorGuestId: uuid('author_guest_id').references(() => shareGuest.id, {
+      onDelete: 'set null',
+    }),
+    body: text('body').notNull(),
+    mentions: uuid('mentions').array().notNull().default(sql`'{}'::uuid[]`),
+    visibility: text('visibility', { enum: ['team', 'everyone'] })
+      .notNull()
+      .default('team'),
+    pin: jsonb('pin').$type<{ x: number; y: number }>(),
+    /** Thread starts only. */
+    resolvedAt: timestamp('resolved_at', { withTimezone: true }),
+    resolvedBy: uuid('resolved_by').references(() => user.id, { onDelete: 'set null' }),
+    resolvedByGuest: uuid('resolved_by_guest').references(() => shareGuest.id, {
+      onDelete: 'set null',
+    }),
+    /** Thread starts: the last reply or edit, to list the liveliest threads first. */
+    lastActivityAt: timestamp('last_activity_at', { withTimezone: true }).notNull().defaultNow(),
+    createdAt: createdAt(),
+    editedAt: timestamp('edited_at', { withTimezone: true }),
+    deletedAt: timestamp('deleted_at', { withTimezone: true }),
+  },
+  (t) => [
+    foreignKey({ columns: [t.threadId], foreignColumns: [t.id] }).onDelete('cascade'),
+    index('comment_board_idx').on(t.boardId, t.elementId),
+    index('comment_thread_idx').on(t.threadId),
+    index('comment_activity_idx').on(t.boardId, t.lastActivityAt),
+  ],
+);
+
+const reviewStatusEnum = ['none', 'in_review', 'approved', 'changes_requested'] as const;
+
+/** Current review status of a card; the history is in element_review_event. */
+export const elementReview = pgTable(
+  'element_review',
+  {
+    boardId: uuid('board_id')
+      .notNull()
+      .references(() => board.id, { onDelete: 'cascade' }),
+    elementId: text('element_id').notNull(),
+    projectId: uuid('project_id')
+      .notNull()
+      .references(() => project.id, { onDelete: 'cascade' }),
+    status: text('status', { enum: reviewStatusEnum }).notNull(),
+    note: text('note'),
+    changedBy: uuid('changed_by').references(() => user.id, { onDelete: 'set null' }),
+    changedByGuest: uuid('changed_by_guest').references(() => shareGuest.id, {
+      onDelete: 'set null',
+    }),
+    /** Who last set `in_review`: told about the decision. */
+    requestedBy: uuid('requested_by').references(() => user.id, { onDelete: 'set null' }),
+    changedAt: timestamp('changed_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.boardId, t.elementId] }),
+    index('element_review_project_idx').on(t.projectId),
+  ],
+);
+
+/** Every change of a review status, never edited. */
+export const elementReviewEvent = pgTable(
+  'element_review_event',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    boardId: uuid('board_id')
+      .notNull()
+      .references(() => board.id, { onDelete: 'cascade' }),
+    elementId: text('element_id').notNull(),
+    previous: text('previous', { enum: reviewStatusEnum }).notNull(),
+    status: text('status', { enum: reviewStatusEnum }).notNull(),
+    note: text('note'),
+    userId: uuid('user_id').references(() => user.id, { onDelete: 'set null' }),
+    guestId: uuid('guest_id').references(() => shareGuest.id, { onDelete: 'set null' }),
+    createdAt: createdAt(),
+  },
+  (t) => [index('element_review_event_element_idx').on(t.boardId, t.elementId, t.createdAt)],
+);
+
+/** In-app notifications; email is sent from these rows according to the preference. */
+export const notification = pgTable(
+  'notification',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => user.id, { onDelete: 'cascade' }),
+    type: text('type', {
+      enum: ['mention', 'reply', 'comment', 'review', 'invitation_accepted'],
+    }).notNull(),
+    actorId: uuid('actor_id').references(() => user.id, { onDelete: 'set null' }),
+    actorGuestId: uuid('actor_guest_id').references(() => shareGuest.id, { onDelete: 'set null' }),
+    projectId: uuid('project_id').references(() => project.id, { onDelete: 'cascade' }),
+    boardId: uuid('board_id').references(() => board.id, { onDelete: 'cascade' }),
+    elementId: text('element_id'),
+    commentId: uuid('comment_id').references(() => comment.id, { onDelete: 'cascade' }),
+    reviewStatus: text('review_status', { enum: reviewStatusEnum }),
+    excerpt: text('excerpt'),
+    readAt: timestamp('read_at', { withTimezone: true }),
+    /** Set once the notification went out by email, alone or in a digest. */
+    emailedAt: timestamp('emailed_at', { withTimezone: true }),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    index('notification_user_idx').on(t.userId, t.createdAt),
+    index('notification_unread_idx').on(t.userId).where(sql`${t.readAt} is null`),
+  ],
+);
+
+export const notificationPreference = pgTable('notification_preference', {
+  userId: uuid('user_id')
+    .primaryKey()
+    .references(() => user.id, { onDelete: 'cascade' }),
+  email: text('email', { enum: ['immediate', 'daily', 'off'] })
+    .notNull()
+    .default('immediate'),
+  lastDigestAt: timestamp('last_digest_at', { withTimezone: true }),
+  updatedAt: updatedAt(),
+});
+
+/**
+ * Links for guests without an account. The token is looked up by its SHA-256 and kept sealed
+ * (like link invitations) so managers can copy it again; the password only as a hash. Guest
+ * sessions opened before `sessions_valid_after` (a password change) must enter it again.
+ */
+export const shareLink = pgTable(
+  'share_link',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    projectId: uuid('project_id')
+      .notNull()
+      .references(() => project.id, { onDelete: 'cascade' }),
+    boardId: uuid('board_id')
+      .notNull()
+      .references(() => board.id, { onDelete: 'cascade' }),
+    role: text('role', { enum: ['guest_view', 'guest_comment', 'guest_approve'] }).notNull(),
+    includeSubBoards: boolean('include_sub_boards').notNull().default(true),
+    label: text('label'),
+    tokenHash: text('token_hash').notNull().unique(),
+    tokenSealed: text('token_sealed').notNull(),
+    passwordHash: text('password_hash'),
+    sessionsValidAfter: timestamp('sessions_valid_after', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    allowDownload: boolean('allow_download').notNull().default(false),
+    proofing: boolean('proofing').notNull().default(false),
+    createdBy: uuid('created_by').references(() => user.id, { onDelete: 'set null' }),
+    expiresAt: timestamp('expires_at', { withTimezone: true }),
+    revokedAt: timestamp('revoked_at', { withTimezone: true }),
+    viewCount: integer('view_count').notNull().default(0),
+    lastUsedAt: timestamp('last_used_at', { withTimezone: true }),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    index('share_link_board_idx').on(t.boardId),
+    index('share_link_project_idx').on(t.projectId),
+  ],
+);
+
+/**
+ * A guest of a share link: the person behind one browser, with the name they typed. The cookie
+ * token is looked up by its SHA-256 and replaced each time the guest opens the link again.
+ */
+export const shareGuest = pgTable(
+  'share_guest',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    shareLinkId: uuid('share_link_id')
+      .notNull()
+      .references(() => shareLink.id, { onDelete: 'cascade' }),
+    name: text('name'),
+    tokenHash: text('token_hash').notNull().unique(),
+    authenticatedAt: timestamp('authenticated_at', { withTimezone: true }).notNull().defaultNow(),
+    lastSeenAt: timestamp('last_seen_at', { withTimezone: true }).notNull().defaultNow(),
+    createdAt: createdAt(),
+  },
+  (t) => [index('share_guest_link_idx').on(t.shareLinkId)],
+);
+
+/** Photo proofing: what each guest picked, rejected or starred. */
+export const sharePick = pgTable(
+  'share_pick',
+  {
+    guestId: uuid('guest_id')
+      .notNull()
+      .references(() => shareGuest.id, { onDelete: 'cascade' }),
+    shareLinkId: uuid('share_link_id')
+      .notNull()
+      .references(() => shareLink.id, { onDelete: 'cascade' }),
+    boardId: uuid('board_id')
+      .notNull()
+      .references(() => board.id, { onDelete: 'cascade' }),
+    elementId: text('element_id').notNull(),
+    /** The picture the card showed when it was picked. */
+    assetId: uuid('asset_id').references(() => asset.id, { onDelete: 'set null' }),
+    pick: text('pick', { enum: ['picked', 'rejected'] }),
+    stars: integer('stars'),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.guestId, t.boardId, t.elementId] }),
+    index('share_pick_link_idx').on(t.shareLinkId),
+    check('share_pick_stars_ck', sql`${t.stars} between 1 and 5`),
+  ],
+);
+
+/** Saved states of a board document: a full Yjs update each (docs/decisions/0013). */
+export const boardVersion = pgTable(
+  'board_version',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    boardId: uuid('board_id')
+      .notNull()
+      .references(() => board.id, { onDelete: 'cascade' }),
+    kind: text('kind', { enum: ['auto', 'named', 'restore'] }).notNull(),
+    name: text('name'),
+    state: bytea('state').notNull(),
+    schemaVersion: integer('schema_version').notNull(),
+    size: integer('size').notNull(),
+    elementCount: integer('element_count').notNull(),
+    createdBy: uuid('created_by').references(() => user.id, { onDelete: 'set null' }),
+    createdAt: createdAt(),
+    /** Retention removes the version after this; null for named versions. */
+    expiresAt: timestamp('expires_at', { withTimezone: true }),
+  },
+  (t) => [
+    index('board_version_board_idx').on(t.boardId, t.createdAt),
+    index('board_version_expires_idx').on(t.expiresAt),
+  ],
 );

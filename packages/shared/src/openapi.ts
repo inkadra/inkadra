@@ -1,11 +1,49 @@
 // SPDX-License-Identifier: MPL-2.0
 import { OpenAPIRegistry, OpenApiGeneratorV31 } from '@asteasolutions/zod-to-openapi';
-import { Asset, CreateLinkPreview, LinkPreview, UploadMetadata, VariantParams } from './assets.ts';
+import {
+  Asset,
+  CreateLinkPreview,
+  LinkPreview,
+  ThumbnailSize,
+  UploadMetadata,
+  VariantParams,
+} from './assets.ts';
 import { Board, BoardDetail, CreateBoard, UpdateBoard } from './boards.ts';
 import { ClipRequest, ClipResult } from './clip.ts';
+import {
+  CommentCounts,
+  CommentQuery,
+  Comment as CommentSchema,
+  CommentThread,
+  CreateComment,
+  ElementRef,
+  UpdateComment,
+} from './comments.ts';
 import { ApiError, Id, PageQuery, page, z } from './common.ts';
 import { API_PREFIX, AUTH_PREFIX } from './constants.ts';
+import {
+  CreateGuestSession,
+  CreateShareLink,
+  GuestBoardSnapshot,
+  GuestDenied,
+  GuestPick,
+  GuestSession,
+  SetPick,
+  ShareLink,
+  ShareLinkPicks,
+  ShareLinkPreview,
+  UpdateGuestSession,
+  UpdateShareLink,
+} from './guests.ts';
 import { Diagnostics, Health, Instance } from './instance.ts';
+import {
+  MarkAllRead,
+  Notification,
+  NotificationPreferences,
+  NotificationQuery,
+  UnreadCount,
+  UpdateNotificationPreferences,
+} from './notifications.ts';
 import {
   CreateProject,
   Project,
@@ -13,6 +51,7 @@ import {
   SetProjectMember,
   UpdateProject,
 } from './projects.ts';
+import { BoardReviews, ElementReview, ElementReviewEvent, SetElementReview } from './reviews.ts';
 import { SearchQuery, SearchResult, TagCount } from './search.ts';
 import {
   AcceptedInvitation,
@@ -40,8 +79,15 @@ import {
   UpdateMe,
   User,
 } from './users.ts';
+import {
+  BoardVersion,
+  BoardVersionQuery,
+  CreateBoardVersion,
+  RestoredBoardVersion,
+  UpdateBoardVersion,
+} from './versions.ts';
 
-export const API_VERSION = '0.3.0';
+export const API_VERSION = '0.4.0';
 
 const registry = new OpenAPIRegistry();
 
@@ -740,6 +786,505 @@ registry.registerPath({
   },
 });
 
+// Comments -------------------------------------------------------------------
+
+const commentParams = z.object({ commentId: Id });
+const realtime =
+  ' Open boards are told with the stateless collab message `{"type":"comments"}` (BoardNotice ' +
+  'in @inkadra/doc-schema) and fetch again.';
+
+registry.registerPath({
+  method: 'get',
+  path: v1('/boards/{boardId}/comments'),
+  tags: ['Comments'],
+  security: secured,
+  summary: 'Comment threads of a board and its cards, newest activity first.',
+  description: 'Needs viewer. Each thread comes with all its replies.',
+  request: { params: idParam('boardId'), query: CommentQuery },
+  responses: { 200: { description: 'Threads', ...json(page(CommentThread)) }, ...errors },
+});
+registry.registerPath({
+  method: 'get',
+  path: v1('/boards/{boardId}/comment-counts'),
+  tags: ['Comments'],
+  security: secured,
+  summary: 'Open and resolved threads per card, for the badges on the canvas.',
+  request: { params: idParam('boardId') },
+  responses: { 200: { description: 'Counts', ...json(CommentCounts) }, ...errors },
+});
+registry.registerPath({
+  method: 'post',
+  path: v1('/boards/{boardId}/comments'),
+  tags: ['Comments'],
+  security: secured,
+  summary: 'Start a thread on the board or a card, or reply to one.',
+  description:
+    'Needs commenter. Mentions of people who cannot read the board are dropped; the others, ' +
+    'the authors of the thread and the creator of the card are notified.' +
+    realtime,
+  request: { params: idParam('boardId'), body: json(CreateComment) },
+  responses: { 201: { description: 'Created', ...json(CommentSchema) }, ...errors },
+});
+registry.registerPath({
+  method: 'patch',
+  path: v1('/comments/{commentId}'),
+  tags: ['Comments'],
+  security: secured,
+  summary: 'Edit your own comment.',
+  description: 'Newly mentioned people are notified; people already mentioned are not.',
+  request: { params: commentParams, body: json(UpdateComment) },
+  responses: { 200: { description: 'Updated', ...json(CommentSchema) }, ...errors },
+});
+registry.registerPath({
+  method: 'delete',
+  path: v1('/comments/{commentId}'),
+  tags: ['Comments'],
+  security: secured,
+  summary: 'Delete a comment: your own, or any as editor or owner of the board.',
+  description:
+    'A thread start with replies stays as an empty placeholder (`deletedAt`); anything else ' +
+    'is removed.',
+  request: { params: commentParams },
+  responses: { 204: { description: 'Deleted' }, ...errors },
+});
+registry.registerPath({
+  method: 'post',
+  path: v1('/comments/{commentId}/resolve'),
+  tags: ['Comments'],
+  security: secured,
+  summary: 'Mark a thread resolved. Needs commenter; only for the first comment of a thread.',
+  request: { params: commentParams },
+  responses: { 200: { description: 'Resolved', ...json(CommentThread) }, ...errors },
+});
+registry.registerPath({
+  method: 'post',
+  path: v1('/comments/{commentId}/reopen'),
+  tags: ['Comments'],
+  security: secured,
+  summary: 'Open a resolved thread again. Needs commenter.',
+  request: { params: commentParams },
+  responses: { 200: { description: 'Reopened', ...json(CommentThread) }, ...errors },
+});
+
+// Reviews --------------------------------------------------------------------
+
+const elementParams = z.object({ boardId: Id, elementId: ElementRef });
+
+registry.registerPath({
+  method: 'get',
+  path: v1('/boards/{boardId}/reviews'),
+  tags: ['Reviews'],
+  security: secured,
+  summary: 'Review status of the cards of a board (cards still `none` are left out).',
+  description:
+    'Needs viewer. Open boards are told about changes with the stateless collab message ' +
+    '`{"type":"review"}`.',
+  request: { params: idParam('boardId') },
+  responses: { 200: { description: 'Reviews', ...json(BoardReviews) }, ...errors },
+});
+registry.registerPath({
+  method: 'put',
+  path: v1('/boards/{boardId}/elements/{elementId}/review'),
+  tags: ['Reviews'],
+  security: secured,
+  summary: 'Set the review status of a card. Needs commenter.',
+  description:
+    'Every change is kept in the history. The creator of the card and whoever asked for the ' +
+    'review are notified. The card must exist in the stored board document.',
+  request: { params: elementParams, body: json(SetElementReview) },
+  responses: { 200: { description: 'Set', ...json(ElementReview) }, ...errors },
+});
+registry.registerPath({
+  method: 'get',
+  path: v1('/boards/{boardId}/elements/{elementId}/review/history'),
+  tags: ['Reviews'],
+  security: secured,
+  summary: 'Every change of the review status of a card, newest first. Needs viewer.',
+  request: { params: elementParams, query: PageQuery },
+  responses: { 200: { description: 'History', ...json(page(ElementReviewEvent)) }, ...errors },
+});
+
+// Notifications --------------------------------------------------------------
+
+registry.registerPath({
+  method: 'get',
+  path: v1('/me/notifications'),
+  tags: ['Notifications'],
+  security: secured,
+  summary: 'Notifications of the signed-in person, newest first.',
+  description:
+    'Notifications about boards the person can no longer open are left out. They are kept ' +
+    '90 days.',
+  request: { query: NotificationQuery },
+  responses: {
+    200: { description: 'Notifications', ...json(page(Notification)) },
+    401: errors[401],
+  },
+});
+registry.registerPath({
+  method: 'get',
+  path: v1('/me/notifications/unread-count'),
+  tags: ['Notifications'],
+  security: secured,
+  summary: 'Number for the badge. Cheap enough to poll every minute.',
+  responses: { 200: { description: 'Count', ...json(UnreadCount) }, 401: errors[401] },
+});
+registry.registerPath({
+  method: 'post',
+  path: v1('/me/notifications/{notificationId}/read'),
+  tags: ['Notifications'],
+  security: secured,
+  request: { params: idParam('notificationId') },
+  responses: { 204: { description: 'Marked read' }, ...errors },
+});
+registry.registerPath({
+  method: 'post',
+  path: v1('/me/notifications/{notificationId}/unread'),
+  tags: ['Notifications'],
+  security: secured,
+  request: { params: idParam('notificationId') },
+  responses: { 204: { description: 'Marked unread' }, ...errors },
+});
+registry.registerPath({
+  method: 'post',
+  path: v1('/me/notifications/read-all'),
+  tags: ['Notifications'],
+  security: secured,
+  request: { body: json(MarkAllRead) },
+  responses: { 200: { description: 'Marked read', ...json(UnreadCount) }, ...errors },
+});
+registry.registerPath({
+  method: 'get',
+  path: v1('/me/notification-preferences'),
+  tags: ['Notifications'],
+  security: secured,
+  responses: {
+    200: { description: 'Preferences', ...json(NotificationPreferences) },
+    401: errors[401],
+  },
+});
+registry.registerPath({
+  method: 'patch',
+  path: v1('/me/notification-preferences'),
+  tags: ['Notifications'],
+  security: secured,
+  request: { body: json(UpdateNotificationPreferences) },
+  responses: { 200: { description: 'Updated', ...json(NotificationPreferences) }, ...errors },
+});
+
+// Share links (managed by editors and owners) ---------------------------------
+
+const linkParams = z.object({ linkId: Id });
+
+registry.registerPath({
+  method: 'get',
+  path: v1('/boards/{boardId}/share-links'),
+  tags: ['Share links'],
+  security: secured,
+  summary: 'Share links of a board, revoked and expired ones included. Needs editor.',
+  request: { params: idParam('boardId') },
+  responses: {
+    200: { description: 'Links', ...json(z.object({ items: z.array(ShareLink) })) },
+    ...errors,
+  },
+});
+registry.registerPath({
+  method: 'post',
+  path: v1('/boards/{boardId}/share-links'),
+  tags: ['Share links'],
+  security: secured,
+  summary: 'Create a link for people without an account. Needs editor.',
+  description: 'Each person can create 50 share links an hour.',
+  request: { params: idParam('boardId'), body: json(CreateShareLink) },
+  responses: {
+    201: { description: 'Created', ...json(ShareLink) },
+    ...errors,
+    429: { description: 'Too many requests', ...json(ApiError) },
+  },
+});
+registry.registerPath({
+  method: 'patch',
+  path: v1('/share-links/{linkId}'),
+  tags: ['Share links'],
+  security: secured,
+  summary: 'Change a link. Needs editor on its board; takes effect for open guest pages at once.',
+  request: { params: linkParams, body: json(UpdateShareLink) },
+  responses: { 200: { description: 'Updated', ...json(ShareLink) }, ...errors },
+});
+registry.registerPath({
+  method: 'delete',
+  path: v1('/share-links/{linkId}'),
+  tags: ['Share links'],
+  security: secured,
+  summary: 'Revoke a link. It stops working at once; comments and picks of its guests stay.',
+  request: { params: linkParams },
+  responses: { 204: { description: 'Revoked' }, ...errors },
+});
+registry.registerPath({
+  method: 'get',
+  path: v1('/share-links/{linkId}/picks'),
+  tags: ['Share links'],
+  security: secured,
+  summary: 'Proofing results: picks, rejections and stars of every guest of the link.',
+  description: 'Needs editor on the board of the link.',
+  request: { params: linkParams },
+  responses: { 200: { description: 'Picks', ...json(ShareLinkPicks) }, ...errors },
+});
+
+// Guests (no account: share link and guest cookie) ------------------------------
+
+const shareTokenParam = z.object({ token: z.string().min(16).max(128) });
+const guest: Array<Record<string, string[]>> = [{ guest: [] }];
+registry.registerComponent('securitySchemes', 'guest', {
+  type: 'apiKey',
+  in: 'cookie',
+  name: 'inkadra.guest',
+  description:
+    'Guest session of one share link, set by POST /guest/by-token/{token}/session with ' +
+    '`Path=/api/v1/guest/links/{linkId}`, HttpOnly and SameSite=Lax. Over HTTPS its name ' +
+    'carries the `__Secure-` prefix.',
+});
+const guestErrors = {
+  400: errors[400],
+  401: { description: 'No guest session (details: GuestDenied)', ...json(ApiError) },
+  403: {
+    description: 'Link expired or revoked, password changed, or role too low (GuestDenied)',
+    ...json(ApiError),
+  },
+  404: errors[404],
+};
+registry.register('GuestDenied', GuestDenied);
+const guestBoardParams = z.object({ linkId: Id, boardId: Id });
+const guestElementParams = guestBoardParams.extend({ elementId: ElementRef });
+
+registry.registerPath({
+  method: 'get',
+  path: v1('/guest/by-token/{token}'),
+  tags: ['Guests'],
+  security: [{}],
+  summary: 'What a share link is for, shown before entering a name or password. Rate limited.',
+  request: { params: shareTokenParam },
+  responses: {
+    200: { description: 'Preview', ...json(ShareLinkPreview) },
+    404: errors[404],
+    429: { description: 'Too many requests', ...json(ApiError) },
+  },
+});
+registry.registerPath({
+  method: 'post',
+  path: v1('/guest/by-token/{token}/session'),
+  tags: ['Guests'],
+  security: [{}, ...guest],
+  summary: 'Open the link as a guest: checks the password and sets the guest cookie.',
+  description:
+    'If the browser still has the cookie of an earlier visit to the same link, the guest ' +
+    'stays the same person (comments and picks stay theirs). Wrong passwords are rate limited ' +
+    'per link and address.',
+  request: { params: shareTokenParam, body: json(CreateGuestSession) },
+  responses: {
+    200: { description: 'Guest session', ...json(GuestSession) },
+    ...guestErrors,
+    429: { description: 'Too many requests', ...json(ApiError) },
+  },
+});
+registry.registerPath({
+  method: 'get',
+  path: v1('/guest/links/{linkId}/session'),
+  tags: ['Guests'],
+  security: guest,
+  summary: 'The guest session and the boards it can open.',
+  request: { params: linkParams },
+  responses: { 200: { description: 'Guest session', ...json(GuestSession) }, ...guestErrors },
+});
+registry.registerPath({
+  method: 'patch',
+  path: v1('/guest/links/{linkId}/session'),
+  tags: ['Guests'],
+  security: guest,
+  summary: 'Set the name of the guest.',
+  request: { params: linkParams, body: json(UpdateGuestSession) },
+  responses: { 200: { description: 'Updated', ...json(GuestSession) }, ...guestErrors },
+});
+registry.registerPath({
+  method: 'delete',
+  path: v1('/guest/links/{linkId}/session'),
+  tags: ['Guests'],
+  security: guest,
+  summary: 'Leave: clears the guest cookie.',
+  request: { params: linkParams },
+  responses: { 204: { description: 'Left' } },
+});
+registry.registerPath({
+  method: 'get',
+  path: v1('/guest/links/{linkId}/boards/{boardId}'),
+  tags: ['Guests'],
+  security: guest,
+  summary: 'Read-only snapshot of a board, filtered for guests.',
+  description:
+    'Rendered by the server from the stored document: cards hidden from guests and their ' +
+    'children are left out, and so are arrows attached to them and board cards of boards ' +
+    'outside the link. Files are listed only as guest URLs. Send `If-None-Match` with the last ' +
+    '`version` to poll cheaply (304).',
+  request: { params: guestBoardParams },
+  responses: {
+    200: { description: 'Snapshot', ...json(GuestBoardSnapshot) },
+    304: { description: 'Not changed since If-None-Match' },
+    ...guestErrors,
+  },
+});
+registry.registerPath({
+  method: 'get',
+  path: v1('/guest/links/{linkId}/assets/{assetId}/variants/{size}'),
+  tags: ['Guests'],
+  security: guest,
+  summary: 'A WebP thumbnail of a file shown on one of the boards of the link.',
+  request: { params: z.object({ linkId: Id, assetId: Id, size: ThumbnailSize }) },
+  responses: {
+    200: { description: 'WebP image', content: { 'image/webp': { schema: z.string() } } },
+    ...guestErrors,
+  },
+});
+registry.registerPath({
+  method: 'get',
+  path: v1('/guest/links/{linkId}/assets/{assetId}/file'),
+  tags: ['Guests'],
+  security: guest,
+  summary: 'The original file, only when the link allows downloads. Always an attachment.',
+  request: { params: z.object({ linkId: Id, assetId: Id }) },
+  responses: {
+    200: { description: 'File' },
+    206: { description: 'Part of the file' },
+    ...guestErrors,
+  },
+});
+registry.registerPath({
+  method: 'get',
+  path: v1('/guest/links/{linkId}/boards/{boardId}/comments'),
+  tags: ['Guests'],
+  security: guest,
+  summary: 'Threads visible to guests (`everyone`). For guest_comment and guest_approve.',
+  request: { params: guestBoardParams, query: CommentQuery },
+  responses: { 200: { description: 'Threads', ...json(page(CommentThread)) }, ...guestErrors },
+});
+registry.registerPath({
+  method: 'post',
+  path: v1('/guest/links/{linkId}/boards/{boardId}/comments'),
+  tags: ['Guests'],
+  security: guest,
+  summary: 'Comment as a guest. Needs a name; mentions are not available to guests.',
+  request: { params: guestBoardParams, body: json(CreateComment) },
+  responses: { 201: { description: 'Created', ...json(CommentSchema) }, ...guestErrors },
+});
+registry.registerPath({
+  method: 'patch',
+  path: v1('/guest/links/{linkId}/comments/{commentId}'),
+  tags: ['Guests'],
+  security: guest,
+  summary: 'Edit a comment this guest wrote.',
+  request: { params: z.object({ linkId: Id, commentId: Id }), body: json(UpdateComment) },
+  responses: { 200: { description: 'Updated', ...json(CommentSchema) }, ...guestErrors },
+});
+registry.registerPath({
+  method: 'delete',
+  path: v1('/guest/links/{linkId}/comments/{commentId}'),
+  tags: ['Guests'],
+  security: guest,
+  summary: 'Delete a comment this guest wrote.',
+  request: { params: z.object({ linkId: Id, commentId: Id }) },
+  responses: { 204: { description: 'Deleted' }, ...guestErrors },
+});
+registry.registerPath({
+  method: 'put',
+  path: v1('/guest/links/{linkId}/boards/{boardId}/elements/{elementId}/review'),
+  tags: ['Guests'],
+  security: guest,
+  summary: 'Approve a card or ask for changes. For guest_approve; needs a name.',
+  request: { params: guestElementParams, body: json(SetElementReview) },
+  responses: { 200: { description: 'Set', ...json(ElementReview) }, ...guestErrors },
+});
+registry.registerPath({
+  method: 'put',
+  path: v1('/guest/links/{linkId}/boards/{boardId}/elements/{elementId}/pick'),
+  tags: ['Guests'],
+  security: guest,
+  summary: 'Pick, reject or star a picture, when the link has proofing. Needs a name.',
+  request: { params: guestElementParams, body: json(SetPick) },
+  responses: { 200: { description: 'Saved', ...json(GuestPick) }, ...guestErrors },
+});
+
+// Versions -------------------------------------------------------------------
+
+const versionParams = z.object({ boardId: Id, versionId: Id });
+
+registry.registerPath({
+  method: 'get',
+  path: v1('/boards/{boardId}/versions'),
+  tags: ['Versions'],
+  security: secured,
+  summary: 'Saved versions of a board, newest first. Needs editor.',
+  request: { params: idParam('boardId'), query: BoardVersionQuery },
+  responses: { 200: { description: 'Versions', ...json(page(BoardVersion)) }, ...errors },
+});
+registry.registerPath({
+  method: 'post',
+  path: v1('/boards/{boardId}/versions'),
+  tags: ['Versions'],
+  security: secured,
+  summary: 'Save the current state of the board under a name. Needs editor.',
+  request: { params: idParam('boardId'), body: json(CreateBoardVersion) },
+  responses: { 201: { description: 'Saved', ...json(BoardVersion) }, ...errors },
+});
+registry.registerPath({
+  method: 'patch',
+  path: v1('/boards/{boardId}/versions/{versionId}'),
+  tags: ['Versions'],
+  security: secured,
+  summary: 'Rename a version, or name an automatic one so it is kept.',
+  request: { params: versionParams, body: json(UpdateBoardVersion) },
+  responses: { 200: { description: 'Updated', ...json(BoardVersion) }, ...errors },
+});
+registry.registerPath({
+  method: 'delete',
+  path: v1('/boards/{boardId}/versions/{versionId}'),
+  tags: ['Versions'],
+  security: secured,
+  summary: 'Delete a named version. Needs editor.',
+  request: { params: versionParams },
+  responses: { 204: { description: 'Deleted' }, ...errors },
+});
+registry.registerPath({
+  method: 'get',
+  path: v1('/boards/{boardId}/versions/{versionId}/state'),
+  tags: ['Versions'],
+  security: secured,
+  summary: 'The version as a Yjs update, to preview it read-only in the editor.',
+  description:
+    'Migrated to the current document schema. Apply it to an empty Y.Doc; it never syncs with ' +
+    'the live board.',
+  request: { params: versionParams },
+  responses: {
+    200: {
+      description: 'Yjs update',
+      content: { 'application/octet-stream': { schema: z.string().openapi({ format: 'binary' }) } },
+    },
+    ...errors,
+  },
+});
+registry.registerPath({
+  method: 'post',
+  path: v1('/boards/{boardId}/versions/{versionId}/restore'),
+  tags: ['Versions'],
+  security: secured,
+  summary: 'Bring the board back to a version, as a new change. Needs editor.',
+  description:
+    'The current state is saved first as a `restore` version. The content of the version is ' +
+    'then written on top of the live document, so open boards follow without a reload ' +
+    '(they also get the stateless collab message `{"type":"restored"}`). Comments, reviews ' +
+    'and picks are not touched.',
+  request: { params: versionParams },
+  responses: { 200: { description: 'Restored', ...json(RestoredBoardVersion) }, ...errors },
+});
+
 // Clip -----------------------------------------------------------------------
 
 registry.registerPath({
@@ -791,6 +1336,12 @@ export function buildOpenApiDocument() {
       { name: 'Sharing' },
       { name: 'Assets' },
       { name: 'Search' },
+      { name: 'Comments' },
+      { name: 'Reviews' },
+      { name: 'Notifications' },
+      { name: 'Share links' },
+      { name: 'Guests' },
+      { name: 'Versions' },
       { name: 'Clip' },
     ],
   });
