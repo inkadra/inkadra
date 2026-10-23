@@ -331,6 +331,16 @@ export function Canvas({
     if (bounds) setViewport(fitRect(bounds, size.w, size.h));
   }, [conn.status, size, snap, liveRect, setViewport]);
 
+  // A role change while the board is open: leave the note being written and say why.
+  useEffect(() => {
+    if (conn.accessChangedAt === null) return;
+    if (conn.readOnly) setEditing(null);
+    setToast({
+      text: t(conn.readOnly ? 'board.access.readOnly' : 'board.access.editable'),
+      undo: false,
+    });
+  }, [conn.accessChangedAt, conn.readOnly, setEditing, t]);
+
   // Others see where we point, what we selected and which card we write in.
   const presence = useLocalPresence(conn.provider);
   useEffect(() => {

@@ -25,7 +25,9 @@ in without cookies; and people editing the same board need to see each other.
   project are readable by anyone with a role on one of its boards (ids are random UUIDs).
 - **Revocation.** The collab server checks each open connection again at most every 30
   seconds: a revoked or expired token or session closes it (`Unauthorized`), a lost role
-  closes it (`Forbidden`), a lower one makes it read-only.
+  closes it (`Forbidden`), a lower one makes it read-only. A change between editing and
+  reading is also sent to the client as a stateless message
+  `{"type":"access","readOnly":true|false}`, so the editor follows without a reload.
 - **Invitations.** `invitation` rows target a project, a board or (administrators) the
   instance alone. `email` invitations are single use, `link` invitations work until they
   expire (1 to 90 days) or are revoked. Inviting the address of an existing account gives the

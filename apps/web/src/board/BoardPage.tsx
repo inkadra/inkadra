@@ -95,15 +95,18 @@ function BoardScreen({
   const [view, setView] = useBoardView(kind);
   const [sharing, setSharing] = useState(false);
 
+  // Read again when the server changes our access, so the role shown and checked is current.
+  const accessVersion = conn?.accessChangedAt;
   useEffect(() => {
     let alive = true;
+    void accessVersion;
     fetchBoard(boardId)
       .then((d) => alive && setDetail(d))
       .catch(() => alive && setDetail(null));
     return () => {
       alive = false;
     };
-  }, [boardId]);
+  }, [boardId, accessVersion]);
 
   const openBoard = useCallback(
     (id: string) => navigate(boardPath(projectId, id, rootBoardId)),
