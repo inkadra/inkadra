@@ -7,11 +7,17 @@ import * as Y from 'yjs';
 import { createAuth } from '../auth.ts';
 import { loadConfig } from '../config.ts';
 import { createDatabase, runMigrations } from '../db/client.ts';
-import { boardDoc, boardElementIndex } from '../db/schema.ts';
+import { boardDoc, boardElementIndex, boardGrant, user } from '../db/schema.ts';
 import { createApp } from '../http/app.ts';
 import { containsPattern, snippet } from '../http/search-routes.ts';
 import { testDeps } from '../test-deps.ts';
-import { backfillIndex, entriesFor, fragmentText, writeBoardIndex } from './index-doc.ts';
+import {
+  autoFrameLabels,
+  backfillIndex,
+  entriesFor,
+  fragmentText,
+  writeBoardIndex,
+} from './index-doc.ts';
 
 const base = (parent: string | null = null) => ({
   id: newElementId(),
@@ -70,6 +76,24 @@ describe('index entries', () => {
     );
   });
 
+  it('gives frames without a label the shot number the storyboard shows', () => {
+    const scene = { ...base(), type: 'scene' as const, number: '12', title: '' };
+    const frame = (z: string, label?: string) => ({
+      ...base(scene.id),
+      z,
+      type: 'frame' as const,
+      ...(label ? { label } : {}),
+    });
+    const a = frame('a0');
+    const b = frame('a1', 'X');
+    const c = frame('a2');
+    const loose = { ...frame('a3'), parent: null };
+    const labels = autoFrameLabels([c, scene, b, a, loose]);
+    expect(labels.get(a.id)).toBe('12A');
+    expect(labels.get(c.id)).toBe('12C');
+    expect(labels.has(loose.id)).toBe(false);
+  });
+
   it('extracts plain text from rich text', () => {
     const f = new Y.Doc().getXmlFragment('x');
     const p = new Y.XmlElement('paragraph');
@@ -103,7 +127,11 @@ describe.skipIf(!url)('search (needs DATABASE_URL)', () => {
   const log = pino({ level: 'silent' });
   const { db, sql: client } = createDatabase(config.DATABASE_URL, 4);
   let app: Awaited<ReturnType<typeof createApp>>;
-  const cookies: Record<'owner' | 'stranger', string> = { owner: '', stranger: '' };
+  const cookies: Record<'owner' | 'stranger' | 'guest', string> = {
+    owner: '',
+    stranger: '',
+    guest: '',
+  };
   let projectId = '';
   let boardId = '';
 
@@ -187,6 +215,44 @@ describe.skipIf(!url)('search (needs DATABASE_URL)', () => {
   it('shows nothing of projects the caller is not in', async () => {
     expect((await get('stranger', '/api/v1/search?q=binar')).body.items).toEqual([]);
     expect((await get('stranger', '/api/v1/search?tag=notte')).body.items).toEqual([]);
+  });
+
+  it('shows a guest only the boards they were given', async () => {
+    // A second board of the project the guest has no grant on.
+    const other = await app.inject({
+      method: 'POST',
+      url: `/api/v1/projects/${projectId}/boards`,
+      headers: { cookie: cookies.owner },
+      payload: {
+        parentBoardId: (await get('owner', `/api/v1/boards/${boardId}`)).body.parentBoardId,
+        title: 'Altro binario',
+      },
+    });
+    const otherId = other.json().id as string;
+    const doc = storyboard(otherId);
+    await db.transaction((tx) => writeBoardIndex(tx, otherId, doc));
+    const [guest] = await db
+      .select({ id: user.id })
+      .from(user)
+      .where(eq(user.email, 'guest@example.com'));
+    await db.insert(boardGrant).values({ boardId, userId: guest!.id, role: 'viewer' });
+
+    const res = await get('guest', '/api/v1/search?q=binar');
+    const boards = new Set(res.body.items.map((h: { boardId: string | null }) => h.boardId));
+    expect(boards).toEqual(new Set([boardId]));
+    expect(res.body.items.some((h: { kind: string }) => h.kind === 'project')).toBe(false);
+    expect((await get('owner', '/api/v1/search?q=85mm')).body.items).toHaveLength(2);
+    expect((await get('guest', '/api/v1/search?q=85mm')).body.items).toHaveLength(1);
+    expect((await get('guest', `/api/v1/projects/${projectId}/tags`)).body.items).toEqual([
+      { tag: 'notte', count: 2 },
+      { tag: 'neon', count: 1 },
+    ]);
+    await db.delete(boardElementIndex).where(eq(boardElementIndex.boardId, otherId));
+    await app.inject({
+      method: 'DELETE',
+      url: `/api/v1/boards/${otherId}`,
+      headers: { cookie: cookies.owner },
+    });
   });
 
   it('indexes boards stored before the index existed', async () => {

@@ -48,8 +48,37 @@ function uuidOrNull(id: string | undefined): string | null {
   return id && UUID.test(id) ? id : null;
 }
 
+/** A, B, … Z, AA: the same letters as frameLetter in @inkadra/canvas-core. */
+function letter(n: number): string {
+  let s = '';
+  for (let i = n; i >= 0; i = Math.floor(i / 26) - 1) s = String.fromCharCode(65 + (i % 26)) + s;
+  return s;
+}
+
+/**
+ * Shot numbers that frames without a label show (scene number + letter, in order), as the
+ * storyboard computes them, so a search finds "4C" too.
+ */
+export function autoFrameLabels(elements: readonly Element[]): Map<string, string> {
+  const scenes = new Map<string, string>();
+  for (const el of elements) if (el.type === 'scene') scenes.set(el.id, el.number);
+  const byScene = new Map<string, Element[]>();
+  for (const el of elements) {
+    if (el.type !== 'frame' || !el.parent || !scenes.has(el.parent)) continue;
+    byScene.set(el.parent, [...(byScene.get(el.parent) ?? []), el]);
+  }
+  const labels = new Map<string, string>();
+  for (const [sceneId, frames] of byScene) {
+    frames.sort((a, b) => (a.z < b.z ? -1 : a.z > b.z ? 1 : a.id < b.id ? -1 : 1));
+    frames.forEach((f, i) => {
+      labels.set(f.id, `${scenes.get(sceneId)}${letter(i)}`);
+    });
+  }
+  return labels;
+}
+
 /** What search sees of one element. Rich text comes from the note body. */
-export function entryFor(el: Element, body: string): IndexEntry {
+export function entryFor(el: Element, body: string, autoLabel?: string): IndexEntry {
   const base = {
     elementId: el.id,
     type: el.type,
@@ -103,9 +132,9 @@ export function entryFor(el: Element, body: string): IndexEntry {
     case 'frame':
       return {
         ...base,
-        title: el.label ?? '',
+        title: el.label ?? autoLabel ?? '',
         text: join(
-          el.label,
+          el.label ?? autoLabel,
           el.action,
           el.shot,
           el.angle,
@@ -132,14 +161,16 @@ export function entryFor(el: Element, body: string): IndexEntry {
 
 /** Entries for every valid element of a document. Elements a newer client wrote are skipped. */
 export function entriesFor(doc: Y.Doc): IndexEntry[] {
-  const out: IndexEntry[] = [];
+  const read: Array<{ el: Element; map: Y.Map<unknown> }> = [];
   for (const map of roots(doc).elements.values()) {
     const el = readElement(map);
-    if (!el) continue;
-    const body = map.get('body');
-    out.push(entryFor(el, body instanceof Y.XmlFragment ? fragmentText(body) : ''));
+    if (el) read.push({ el, map });
   }
-  return out;
+  const labels = autoFrameLabels(read.map((r) => r.el));
+  return read.map(({ el, map }) => {
+    const body = map.get('body');
+    return entryFor(el, body instanceof Y.XmlFragment ? fragmentText(body) : '', labels.get(el.id));
+  });
 }
 
 type Tx = Parameters<Parameters<Database['transaction']>[0]>[0];

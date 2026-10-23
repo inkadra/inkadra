@@ -1,10 +1,20 @@
-import { API_PREFIX, Id, type SearchHit, SearchQuery, type TagCount, z } from '@inkadra/shared';
-import { sql } from 'drizzle-orm';
+import {
+  API_PREFIX,
+  Id,
+  type ProjectRole,
+  type SearchHit,
+  SearchQuery,
+  type TagCount,
+  z,
+} from '@inkadra/shared';
+import { and, eq, inArray, isNull, sql } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
-import { requireProjectRole } from '../access.ts';
+import { type Actor, effectiveRoles } from '../access.ts';
 import type { Auth } from '../auth.ts';
 import type { Database } from '../db/client.ts';
+import { board, boardGrant, projectMember } from '../db/schema.ts';
 import { requireActor } from './auth-routes.ts';
+import { HttpError } from './errors.ts';
 
 interface Deps {
   db: Database;
@@ -31,24 +41,88 @@ export function snippet(text: string, q: string | undefined): string | null {
 
 type Row = Record<string, unknown>;
 
+interface Readable {
+  /** Boards the person can open, with the same rule as everywhere else (decision 0011). */
+  boardIds: string[];
+  /** Projects whose root board the person can open: those show up as project results. */
+  projectIds: string[];
+}
+
+/**
+ * What the person may find: boards of projects they are a member of, and the subtrees of the
+ * boards they were given, minus the boards a grant closes. Trashed boards are left out.
+ */
+export async function readableBoards(
+  db: Database,
+  actor: Pick<Actor, 'id'>,
+  onlyProject?: string,
+): Promise<Readable> {
+  const scope = (col: typeof projectMember.projectId | typeof board.projectId) =>
+    onlyProject ? eq(col, onlyProject) : undefined;
+  const [memberships, grantRows] = await Promise.all([
+    db
+      .select({ projectId: projectMember.projectId, role: projectMember.role })
+      .from(projectMember)
+      .where(and(eq(projectMember.userId, actor.id), scope(projectMember.projectId))),
+    db
+      .select({ boardId: boardGrant.boardId, role: boardGrant.role, projectId: board.projectId })
+      .from(boardGrant)
+      .innerJoin(board, eq(board.id, boardGrant.boardId))
+      .where(and(eq(boardGrant.userId, actor.id), isNull(board.deletedAt), scope(board.projectId))),
+  ]);
+  const projectRoles = new Map<string, ProjectRole>(memberships.map((m) => [m.projectId, m.role]));
+  const grants = new Map<string, Map<string, ProjectRole>>();
+  for (const g of grantRows) {
+    const map = grants.get(g.projectId) ?? new Map<string, ProjectRole>();
+    map.set(g.boardId, g.role);
+    grants.set(g.projectId, map);
+  }
+  const projects = [...new Set([...projectRoles.keys(), ...grants.keys()])];
+  if (projects.length === 0) return { boardIds: [], projectIds: [] };
+  const boards = await db
+    .select({ id: board.id, parentBoardId: board.parentBoardId, projectId: board.projectId })
+    .from(board)
+    .where(and(inArray(board.projectId, projects), isNull(board.deletedAt)));
+  const byProject = new Map<string, typeof boards>();
+  for (const b of boards) byProject.set(b.projectId, [...(byProject.get(b.projectId) ?? []), b]);
+  const boardIds: string[] = [];
+  const projectIds: string[] = [];
+  for (const projectId of projects) {
+    const tree = byProject.get(projectId) ?? [];
+    const roles = effectiveRoles(
+      tree,
+      grants.get(projectId) ?? new Map(),
+      projectRoles.get(projectId) ?? null,
+    );
+    for (const b of tree) {
+      if (!roles.get(b.id)?.role) continue;
+      boardIds.push(b.id);
+      if (b.parentBoardId === null) projectIds.push(projectId);
+    }
+  }
+  return { boardIds, projectIds };
+}
+
+const uuids = (ids: string[]) => sql`${`{${ids.join(',')}}`}::uuid[]`;
+
 export function registerSearchRoutes(app: FastifyInstance, { db, auth }: Deps) {
   const v1 = (path: string) => `${API_PREFIX}${path}`;
 
   app.get(v1('/search'), async (req) => {
-    const actor = await requireActor(auth, req);
+    const actor = await requireActor(auth, req, db);
     const query = SearchQuery.parse(req.query ?? {});
+    const readable = await readableBoards(db, actor, query.projectId);
+    if (readable.boardIds.length === 0) return { items: [] };
+    const boardIn = uuids(readable.boardIds);
     const q = query.q && query.q.length > 0 ? query.q : undefined;
     const tag = query.tag?.toLowerCase();
     const like = q ? containsPattern(q) : null;
-    const project = query.projectId ? sql`and p.id = ${query.projectId}` : sql``;
-    // Only projects the caller is a member of; trashed boards never show up.
-    const member = sql`join project_member pm on pm.project_id = p.id and pm.user_id = ${actor.id}`;
     const hits: SearchHit[] = [];
 
-    if (q && !tag && !query.type) {
+    if (q && !tag && !query.type && readable.projectIds.length > 0) {
       const projects = await db.execute<Row>(sql`
-        select p.id, p.name from project p ${member}
-        where p.name ilike ${like} ${project}
+        select p.id, p.name from project p
+        where p.id = any(${uuids(readable.projectIds)}) and p.name ilike ${like}
         order by word_similarity(${q}, p.name) desc, p.name
         limit ${query.limit}`);
       for (const r of projects) {
@@ -69,9 +143,9 @@ export function registerSearchRoutes(app: FastifyInstance, { db, auth }: Deps) {
       }
       const boards = await db.execute<Row>(sql`
         select b.id, b.title, b.kind, b.cover_asset_id, p.id as project_id, p.name
-        from board b join project p on p.id = b.project_id ${member}
-        where b.deleted_at is null and b.parent_board_id is not null
-          and b.title ilike ${like} ${project}
+        from board b join project p on p.id = b.project_id
+        where b.id = any(${boardIn}) and b.parent_board_id is not null
+          and b.title ilike ${like}
         order by word_similarity(${q}, b.title) desc, b.title
         limit ${query.limit}`);
       for (const r of boards) {
@@ -97,8 +171,8 @@ export function registerSearchRoutes(app: FastifyInstance, { db, auth }: Deps) {
              b.title as board_title, b.kind as board_kind, p.id as project_id, p.name
       from board_element_index i
       join board b on b.id = i.board_id
-      join project p on p.id = i.project_id ${member}
-      where b.deleted_at is null ${project}
+      join project p on p.id = i.project_id
+      where i.board_id = any(${boardIn})
         ${like ? sql`and i.text ilike ${like}` : sql``}
         ${tag ? sql`and i.tags @> array[${tag}]::text[]` : sql``}
         ${query.type ? sql`and i.type = ${query.type}` : sql``}
@@ -125,15 +199,16 @@ export function registerSearchRoutes(app: FastifyInstance, { db, auth }: Deps) {
   });
 
   app.get(v1('/projects/:projectId/tags'), async (req) => {
-    const actor = await requireActor(auth, req);
+    const actor = await requireActor(auth, req, db);
     const { projectId } = ProjectParams.parse(req.params);
-    await requireProjectRole(db, actor, projectId, 'viewer');
+    const { boardIds } = await readableBoards(db, actor, projectId);
+    // Same answer as for a project that does not exist, so ids cannot be probed.
+    if (boardIds.length === 0) throw new HttpError('not_found', 'Project not found.');
     const rows = await db.execute<{ tag: string; count: string }>(sql`
       select t.tag, count(*) as count
       from board_element_index i
-      join board b on b.id = i.board_id and b.deleted_at is null
       cross join lateral unnest(i.tags) as t(tag)
-      where i.project_id = ${projectId}
+      where i.board_id = any(${uuids(boardIds)})
       group by t.tag
       order by count(*) desc, t.tag
       limit 500`);
