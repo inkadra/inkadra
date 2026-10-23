@@ -334,6 +334,11 @@ describe.skipIf(!url)('sharing, invitations, tokens and accounts (needs DATABASE
     const back = await call('newbie', 'POST', forwarded);
     expect(back.status).toBe(200);
     expect(back.body).toEqual({ projectId, boardId: null });
+    const [row] = await db
+      .select({ uses: invitationTable.uses })
+      .from(invitationTable)
+      .where(eq(invitationTable.id, invitation.id));
+    expect(row?.uses).toBe(1);
     expect((await call('outsider', 'POST', forwarded)).status).toBe(404);
   });
 
