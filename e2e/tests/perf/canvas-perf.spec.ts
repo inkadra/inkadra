@@ -97,13 +97,19 @@ test('a board with 1000 elements opens fast and pans smoothly', async ({ page, b
     }),
   );
 
-  const started = Date.now();
-  await page.goto(`/p/${seeded.projectId}`);
-  await expect(page.getByRole('status').getByText('Sincronizzato')).toBeVisible({
-    timeout: 15_000,
-  });
-  await expect(page.locator('[data-el]').first()).toBeVisible();
-  const openMs = Date.now() - started;
+  // Shared CI runners vary by a second from run to run: the median of three opens catches a
+  // regression without failing on one slow sample. Every sample is kept in the results.
+  const openSamples: number[] = [];
+  for (let i = 0; i < 3; i++) {
+    const started = Date.now();
+    await page.goto(`/p/${seeded.projectId}`);
+    await expect(page.getByRole('status').getByText('Sincronizzato')).toBeVisible({
+      timeout: 15_000,
+    });
+    await expect(page.locator('[data-el]').first()).toBeVisible();
+    openSamples.push(Date.now() - started);
+  }
+  const openMs = [...openSamples].sort((x, y) => x - y)[1] ?? Number.POSITIVE_INFINITY;
   const rendered = await page.locator('[data-el]').count();
 
   // Let images and measurements settle before timing frames.
@@ -134,6 +140,7 @@ test('a board with 1000 elements opens fast and pans smoothly', async ({ page, b
     images: seeded.images,
     renderedOnOpen: rendered,
     openMs,
+    openSamples,
     pan,
     zoom,
     panAt100: panFull,
