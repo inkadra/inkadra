@@ -25,12 +25,14 @@ INKADRA_DATA=/mnt/tank/inkadra/data
 POSTGRES_DATA=/mnt/tank/inkadra/postgres
 ```
 
-The containers run as fixed, unprivileged users, so the folders must belong to them:
+The containers run as fixed, unprivileged users. Inkadra runs as uid 1000 and, with
+`compose.yaml`, gives its data folder to that user when it starts. The Postgres folder must
+belong to uid 70 beforehand:
 
 ```sh
 mkdir -p /mnt/tank/inkadra/data /mnt/tank/inkadra/postgres
-chown -R 1000:1000 /mnt/tank/inkadra/data      # Inkadra runs as uid 1000
 chown -R 70:70 /mnt/tank/inkadra/postgres      # postgres:16-alpine runs as uid 70
+chown -R 1000:1000 /mnt/tank/inkadra/data      # optional with compose.yaml, needed without it
 ```
 
 On TrueNAS SCALE, create a dataset per folder (for example `apps/inkadra/data` and

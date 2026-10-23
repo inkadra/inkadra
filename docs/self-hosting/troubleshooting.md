@@ -15,8 +15,10 @@ and names the one that is not otherwise.
 missing or wrong. `PUBLIC_URL` must be a full address without a path, `AUTH_SECRET` at least 32
 characters.
 
-**"permission denied" on `/data`.** A host folder in `INKADRA_DATA` must belong to uid 1000;
-for `POSTGRES_DATA`, uid 70. See [Storage](storage.md#a-folder-on-the-host).
+**"cannot write to /data" or "permission denied" on `/data`.** A host folder in `INKADRA_DATA`
+must belong to uid 1000. The `compose.yaml` of the current release fixes that at startup; with
+an older one, or a container started as uid 1000 directly, run the `chown` the error shows. For
+`POSTGRES_DATA` the owner is uid 70. See [Storage](storage.md#a-folder-on-the-host).
 
 **The page loads but sign-in fails or loops back to the login.** `PUBLIC_URL` does not match the
 address in the browser (scheme, host or port), or the proxy does not send

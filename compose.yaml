@@ -31,13 +31,18 @@ services:
       UPLOAD_MAX_SIZE: ${UPLOAD_MAX_SIZE:-20GB}
       HEIC_PREVIEWS: ${HEIC_PREVIEWS:-true}
     volumes:
-      # A named volume by default. Set INKADRA_DATA to a host folder (owned by uid 1000) to
-      # keep uploads on a disk or dataset of your choice.
+      # A named volume by default. Set INKADRA_DATA to a host folder to keep uploads on a disk
+      # or dataset of your choice: at startup it is given to uid 1000, the user Inkadra runs as.
       - ${INKADRA_DATA:-inkadra-data}:/data
     read_only: true
     tmpfs:
       - /tmp
+    # The entrypoint starts as root only to give /data to uid 1000 when needed, then switches
+    # to that user, which drops these capabilities too. Remove user and cap_add to start as
+    # uid 1000 directly: the data folder must then already belong to it.
+    user: "0:0"
     cap_drop: [ALL]
+    cap_add: [CHOWN, DAC_OVERRIDE, SETGID, SETUID]
     security_opt: ["no-new-privileges:true"]
     depends_on:
       postgres:

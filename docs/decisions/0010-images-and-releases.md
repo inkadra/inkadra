@@ -11,7 +11,11 @@ locked down, verifiable, and proven to work behind the common proxies before it 
   and yarn are removed. Compose runs it with a read-only root filesystem, no capabilities and
   `no-new-privileges`; it writes only to `/data`, and `TMPDIR` points at `/data/tmp` because
   upload parts can be larger than a RAM-backed `/tmp`. One health check script serves every
-  role, reading the role from the main process's arguments.
+  role, reading the role from the main process's arguments. The image's default user is
+  `node`; `compose.yaml` instead starts the entrypoint as root with `CHOWN`, `DAC_OVERRIDE`,
+  `SETUID` and `SETGID`, so that it can give a host folder on `/data` to uid 1000 (only when
+  the folder or one of its entries belongs to another user), then `setpriv` switches to
+  `node` and every capability is gone. Upgrades must not need a manual `chown`.
 - **Production dependencies only.** `.pnpmfile.cjs` drops the optional peers that Better Auth
   declares (React, Vite, Vitest, drizzle-kit…): without it pnpm linked them from the workspace
   into the server's production install, which more than doubled `node_modules`.
