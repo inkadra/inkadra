@@ -1,17 +1,53 @@
 import type { Board, BoardDetail, ProjectRole } from '@inkadra/shared';
-import { EmptyState } from '@inkadra/ui';
+import { EmptyState, Icon, type IconName } from '@inkadra/ui';
 import { Fragment, type MouseEvent, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate, useParams } from 'react-router';
+import { useNavigate, useParams, useSearchParams } from 'react-router';
 import { useHeaderContent } from '../lib/header.tsx';
 import { useSession } from '../lib/session.tsx';
 import { useProjects } from '../routes/AppLayout.tsx';
 import { fetchBoard, useProjectBoards } from './boards.ts';
 import { Canvas } from './Canvas.tsx';
 import { type ConnectionStatus, useBoardConnection } from './connection.ts';
+import { ShotList } from './film/ShotList.tsx';
+import { StoryboardView } from './film/StoryboardView.tsx';
+import './film/film.css';
 import './board.css';
 
 const canEdit = (role: ProjectRole | undefined) => role === 'owner' || role === 'editor';
+
+export type BoardView = 'storyboard' | 'shotlist' | 'canvas';
+const VIEWS: Array<{ view: BoardView; icon: IconName }> = [
+  { view: 'storyboard', icon: 'storyboard' },
+  { view: 'shotlist', icon: 'shotlist' },
+  { view: 'canvas', icon: 'board' },
+];
+
+/** Storyboards open on the storyboard; `?view=` picks another view of the same board. */
+export function useBoardView(kind: Board['kind'] | undefined): [BoardView, (v: BoardView) => void] {
+  const [params, setParams] = useSearchParams();
+  const asked = params.get('view');
+  const view: BoardView =
+    kind !== 'storyboard'
+      ? 'canvas'
+      : asked === 'shotlist' || asked === 'canvas'
+        ? asked
+        : 'storyboard';
+  const setView = useCallback(
+    (v: BoardView) =>
+      setParams(
+        (p) => {
+          const next = new URLSearchParams(p);
+          if (v === 'storyboard') next.delete('view');
+          else next.set('view', v);
+          return next;
+        },
+        { replace: true },
+      ),
+    [setParams],
+  );
+  return [view, setView];
+}
 
 export const boardPath = (projectId: string, boardId: string, rootBoardId?: string) =>
   boardId === rootBoardId ? `/p/${projectId}` : `/p/${projectId}/b/${boardId}`;
@@ -54,6 +90,8 @@ function BoardScreen({
   const { items: boards } = useProjectBoards(projectId);
   const conn = useBoardConnection(boardId);
   const [detail, setDetail] = useState<BoardDetail | null>(null);
+  const kind = detail?.kind ?? boards?.find((b) => b.id === boardId)?.kind;
+  const [view, setView] = useBoardView(kind);
 
   useEffect(() => {
     let alive = true;
@@ -105,11 +143,28 @@ function BoardScreen({
             </Fragment>
           ))}
         </nav>
+        {kind === 'storyboard' && (
+          <div className="view-tabs" role="tablist" aria-label={t('film.views.label')}>
+            {VIEWS.map((v) => (
+              <button
+                key={v.view}
+                type="button"
+                role="tab"
+                aria-selected={view === v.view}
+                className="view-tabs__tab"
+                onClick={() => setView(v.view)}
+              >
+                <Icon name={v.icon} size={14} />
+                {t(`film.views.${v.view}`)}
+              </button>
+            ))}
+          </div>
+        )}
         <span className="ink-header__spacer" />
         {conn && <SyncStatus status={conn.status} readOnly={conn.readOnly} />}
       </>
     ),
-    [crumbs, t, projectId, rootBoardId, openBoard, conn],
+    [crumbs, t, projectId, rootBoardId, openBoard, conn, kind, view, setView],
   );
   useHeaderContent(header);
 
@@ -121,6 +176,22 @@ function BoardScreen({
           {t('board.denied.body')}
         </EmptyState>
       </div>
+    );
+  }
+  const editable = !conn.readOnly && canEdit(detail?.myRole ?? projectRole);
+  if (view === 'storyboard') {
+    return (
+      <StoryboardView
+        store={conn.store}
+        projectId={projectId}
+        userId={user.id}
+        readOnly={!editable}
+      />
+    );
+  }
+  if (view === 'shotlist') {
+    return (
+      <ShotList store={conn.store} boardTitle={crumbs.at(-1)?.title ?? ''} readOnly={!editable} />
     );
   }
   return (

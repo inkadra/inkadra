@@ -1,4 +1,4 @@
-import type { Board, BoardDetail } from '@inkadra/shared';
+import type { Board, BoardDetail, BoardKind } from '@inkadra/shared';
 import { useEffect, useSyncExternalStore } from 'react';
 import { api } from '../lib/api.ts';
 
@@ -52,8 +52,13 @@ export async function createBoard(
   projectId: string,
   parentBoardId: string,
   title: string,
+  kind: BoardKind = 'board',
 ): Promise<Board> {
-  const board = await api.post<Board>(`/projects/${projectId}/boards`, { parentBoardId, title });
+  const board = await api.post<Board>(`/projects/${projectId}/boards`, {
+    parentBoardId,
+    title,
+    kind,
+  });
   const current = cache.get(projectId)?.items ?? [];
   cache.set(projectId, { items: [...current, board], error: false });
   emit();

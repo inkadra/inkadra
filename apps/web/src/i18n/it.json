@@ -159,7 +159,8 @@
     "selected_other": "{{count}} selezionati",
     "empty": {
       "title": "Board vuota",
-      "body": "Doppio clic per una nota, trascina file o usa la barra in basso. / apre i comandi."
+      "body": "Doppio clic per una nota, trascina file o usa la barra in basso. / apre i comandi.",
+      "templates": "Oppure parti da un modello"
     },
     "types": {
       "note": "Nota",
@@ -169,11 +170,16 @@
       "todo": "To-do",
       "color": "Colore",
       "column": "Colonna",
-      "board": "Board"
+      "board": "Board",
+      "scene": "Scena",
+      "frame": "Inquadratura",
+      "arrow": "Freccia",
+      "storyboard": "Storyboard"
     },
     "tools": {
       "select": "Seleziona",
-      "hand": "Mano"
+      "hand": "Mano",
+      "arrow": "Freccia"
     },
     "note": {
       "placeholder": "Scrivi…",
@@ -251,7 +257,11 @@
       "delete": "Elimina",
       "more": "Altre azioni",
       "newNote": "Nuova nota qui",
-      "newColumn": "Nuova colonna qui"
+      "newColumn": "Nuova colonna qui",
+      "tags": "Tag…",
+      "viewImage": "Apri immagine",
+      "details": "Dettagli inquadratura",
+      "draw": "Disegna"
     },
     "zoom": {
       "label": "Zoom",
@@ -297,7 +307,220 @@
     "errors": {
       "boardCreate": "Non è stato possibile creare la board.",
       "upload": "Caricamento di {{name}} non riuscito.",
-      "tooBig": "{{name}} supera la dimensione massima consentita."
+      "tooBig": "{{name}} supera la dimensione massima consentita.",
+      "storyboardCreate": "Non è stato possibile creare lo storyboard."
+    },
+    "arrow": {
+      "label": "Etichetta della freccia",
+      "placeholder": "Etichetta",
+      "dashed": "Linea tratteggiata",
+      "heads": "Punte della freccia"
+    },
+    "video": {
+      "play": "Riproduci",
+      "noPoster": "Video"
+    }
+  },
+  "tags": {
+    "title": "Tag",
+    "add": "Aggiungi un tag",
+    "placeholder": "Nuovo tag e Invio",
+    "remove": "Togli il tag {{tag}}",
+    "max": "Al massimo {{count}} tag",
+    "suggested": "Usati nel progetto",
+    "done": "Fatto"
+  },
+  "viewer": {
+    "title": "Immagine",
+    "close": "Chiudi",
+    "exif": "Dati di scatto",
+    "noExif": "Nessun dato di scatto",
+    "palette": "Palette",
+    "copied": "{{hex}} copiato",
+    "copyHex": "Copia {{hex}}",
+    "addColors": "Aggiungi i colori alla board",
+    "download": "Scarica l’originale",
+    "size": "Dimensioni",
+    "file": "File",
+    "fields": {
+      "camera": "Fotocamera",
+      "lens": "Obiettivo",
+      "focal": "Focale",
+      "aperture": "Diaframma",
+      "shutter": "Tempo",
+      "iso": "ISO",
+      "taken": "Scattata il"
+    }
+  },
+  "search": {
+    "title": "Cerca",
+    "placeholder": "Cerca progetti, board, note, inquadrature…",
+    "none": "Nessun risultato per “{{q}}”",
+    "hint": "Scrivi almeno due lettere, oppure #tag",
+    "error": "Ricerca non disponibile",
+    "loading": "Ricerca…",
+    "kinds": {
+      "project": "Progetto",
+      "board": "Board",
+      "element": "Elemento"
+    },
+    "inProject": "in {{project}}"
+  },
+  "templates": {
+    "moodboard": {
+      "name": "Moodboard",
+      "body": "Riferimenti, colori, luce e location",
+      "refs": "Riferimenti",
+      "light": "Luce",
+      "locations": "Location",
+      "palette": "Palette"
+    },
+    "storyboard": {
+      "name": "Storyboard",
+      "body": "Una scena con tre inquadrature",
+      "scene": "Apertura"
+    },
+    "production": {
+      "name": "Produzione",
+      "body": "Da fare, in corso, fatto",
+      "todo": "Da fare",
+      "doing": "In corso",
+      "done": "Fatto"
+    }
+  },
+  "film": {
+    "views": {
+      "label": "Vista",
+      "storyboard": "Storyboard",
+      "shotlist": "Shot list",
+      "canvas": "Lavagna"
+    },
+    "aspect": {
+      "label": "Formato",
+      "board": "Formato dello storyboard ({{ratio}})"
+    },
+    "total_one": "{{count}} inquadratura · {{duration}}",
+    "total_other": "{{count}} inquadrature · {{duration}}",
+    "loose": "Senza scena",
+    "empty": {
+      "title": "Storyboard vuoto",
+      "body": "Aggiungi una scena e disegna o carica le inquadrature."
+    },
+    "scene": {
+      "add": "Nuova scena",
+      "number": "Numero",
+      "title": "Titolo",
+      "untitled": "Scena senza titolo",
+      "heading": "Scena {{number}}",
+      "setting": "Interno o esterno",
+      "time": "Momento",
+      "location": "Luogo",
+      "synopsis": "Sinossi",
+      "delete": "Elimina la scena",
+      "settings": {
+        "int": "INT.",
+        "ext": "EST.",
+        "int-ext": "INT./EST."
+      },
+      "times": {
+        "day": "GIORNO",
+        "night": "NOTTE",
+        "dawn": "ALBA",
+        "dusk": "TRAMONTO"
+      },
+      "collapse": "Comprimi la scena",
+      "expand": "Espandi la scena"
+    },
+    "frame": {
+      "add": "Nuova inquadratura",
+      "details": "Dettagli",
+      "label": "Numero",
+      "labelAuto": "Automatico ({{label}})",
+      "action": "Azione",
+      "dialogue": "Dialogo",
+      "audio": "Audio",
+      "notes": "Note di regia",
+      "location": "Luogo",
+      "cast": "Personaggi",
+      "castHint": "Separati da virgole",
+      "lens": "Obiettivo",
+      "duration": "Durata (s)",
+      "shot": "Campo",
+      "angle": "Angolazione",
+      "movement": "Movimento",
+      "status": "Stato",
+      "picture": "Immagine",
+      "upload": "Carica un’immagine",
+      "removePicture": "Togli l’immagine",
+      "draw": "Disegna",
+      "custom": "Altro…",
+      "none": "—",
+      "delete": "Elimina l’inquadratura",
+      "close": "Chiudi i dettagli",
+      "actionPlaceholder": "Cosa succede nell’inquadratura"
+    },
+    "shot": {
+      "ews": "Campo lunghissimo",
+      "ws": "Campo lungo",
+      "fs": "Figura intera",
+      "ms": "Mezza figura",
+      "mcu": "Mezzo primo piano",
+      "cu": "Primo piano",
+      "ecu": "Primissimo piano",
+      "insert": "Dettaglio"
+    },
+    "angle": {
+      "eye": "Altezza occhi",
+      "high": "Dall’alto",
+      "low": "Dal basso",
+      "overhead": "Zenitale",
+      "dutch": "Inclinata",
+      "pov": "Soggettiva",
+      "ots": "Di spalla"
+    },
+    "movement": {
+      "static": "Fissa",
+      "pan": "Panoramica",
+      "tilt": "Tilt",
+      "dolly": "Carrello",
+      "truck": "Carrello laterale",
+      "crane": "Gru",
+      "handheld": "A mano",
+      "steadicam": "Steadicam",
+      "drone": "Drone",
+      "zoom": "Zoom"
+    },
+    "status": {
+      "draft": "Bozza",
+      "todo": "Da girare",
+      "ready": "Pronta",
+      "shot": "Girata",
+      "retake": "Da rifare"
+    },
+    "pen": {
+      "title": "Disegno dell’inquadratura {{label}}",
+      "pencil": "Matita",
+      "brush": "Pennello",
+      "marker": "Evidenziatore",
+      "eraser": "Gomma",
+      "color": "Colore {{color}}",
+      "width": "Spessore",
+      "undo": "Annulla",
+      "redo": "Ripeti",
+      "clear": "Cancella tutto",
+      "done": "Fatto",
+      "prev": "Inquadratura precedente",
+      "next": "Inquadratura successiva",
+      "full": "Troppi tratti: cancellane qualcuno."
+    },
+    "list": {
+      "filter": "Filtra le inquadrature",
+      "allStatuses": "Tutti gli stati",
+      "export": "Esporta CSV",
+      "empty": "Nessuna inquadratura",
+      "picture": "Immagine",
+      "scene": "Scena",
+      "noMatch": "Nessuna inquadratura corrisponde al filtro"
     }
   }
 }

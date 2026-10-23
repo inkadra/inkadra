@@ -142,6 +142,26 @@ const paths = {
       <path d="M4 16V4h12" />
     </>
   ),
+  pen: <path d="M4 20l1-5L16 4l4 4L9 19zM13.5 6.5l4 4" />,
+  arrow: <path d="M5 19L19 5M10 5h9v9" />,
+  tag: (
+    <>
+      <path d="M3 12V4h8l9 9-8 8z" />
+      <circle cx="7.5" cy="8.5" r="1.2" />
+    </>
+  ),
+  play: <path d="M8 5v14l11-7z" />,
+  eraser: <path d="M9 20h11M4 15l9-11 7 6-8 10H8zM9 9l6 5" />,
+  frame: (
+    <>
+      <rect x="3" y="6" width="18" height="12" rx="1.5" />
+      <path d="M3 10h18" />
+    </>
+  ),
+  scene: <path d="M4 9h16v11H4zM4 9l2-5 3 4 3-4 3 4 3-4 2 5" />,
+  download: <path d="M12 4v12M7 11l5 5 5-5M4 20h16" />,
+  undo: <path d="M9 7L4 12l5 5M4 12h11a5 5 0 0 1 0 10h-2" />,
+  table: <path d="M4 5h16v14H4zM4 10h16M4 15h16M10 5v14" />,
 } as const;
 
 export type IconName = keyof typeof paths;
