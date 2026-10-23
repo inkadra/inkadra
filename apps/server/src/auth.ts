@@ -13,7 +13,7 @@ import { actionMail, type Mailer } from './mailer.ts';
 /** Internal header carrying the client address from the HTTP layer to Better Auth. */
 export const CLIENT_IP_HEADER = 'x-inkadra-client-ip';
 
-/** Provider id of the generic OIDC provider in Better Auth (`/api/auth/oauth2/callback/oidc`). */
+/** Provider id of the generic OIDC provider in Better Auth (`/api/auth/callback/oidc`). */
 export const OIDC_PROVIDER_ID = 'oidc';
 
 export async function countUsers(db: Database): Promise<number> {

@@ -30,7 +30,7 @@ export const Instance = z
       emailPassword: z.boolean(),
       google: z.boolean(),
       oidc: z.array(z.object({ id: z.string(), name: z.string() })).openapi({
-        description: 'Sign in with `POST /api/auth/sign-in/oauth2` and `providerId: id`.',
+        description: 'Sign in with `POST /api/auth/sign-in/social` and `provider: id`.',
       }),
       magicLink: z.boolean().openapi({
         description: 'Sign-in links by email. Needs SMTP, so it is false without it.',

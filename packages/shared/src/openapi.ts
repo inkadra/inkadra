@@ -161,34 +161,19 @@ registry.registerPath({
   method: 'post',
   path: `${AUTH_PREFIX}/sign-in/social`,
   tags: ['Auth'],
-  summary: 'Start Google sign-in (`provider: "google"`), when Instance.auth.google is true.',
+  summary:
+    'Start sign-in with Google (`provider: "google"`, when Instance.auth.google is true) or an ' +
+    'OIDC provider (`provider`: an id from Instance.auth.oidc).',
   description:
-    'Answers with the Google address to open (`url`); Google sends the person back to ' +
-    '`/api/auth/callback/google`, which sets the session cookie and redirects to `callbackURL`. ' +
+    'Answers with the provider address to open (`url`); the provider sends the person back to ' +
+    '`/api/auth/callback/{provider}`, which sets the session cookie and redirects to ' +
+    '`callbackURL`. ' +
     'Accounts with the same verified email are linked. In `invite` mode a new person needs an ' +
     'invitation claimed first (see POST /invitations/by-token/{token}/claim).',
   request: {
     body: json(
       z.object({
-        provider: z.literal('google'),
-        callbackURL: z.string().optional(),
-        errorCallbackURL: z.string().optional(),
-      }),
-    ),
-  },
-  responses: {
-    200: { description: 'Where to send the browser', ...json(z.object({ url: z.url() })) },
-  },
-});
-registry.registerPath({
-  method: 'post',
-  path: `${AUTH_PREFIX}/sign-in/oauth2`,
-  tags: ['Auth'],
-  summary: 'Start sign-in with a generic OIDC provider listed in Instance.auth.oidc.',
-  request: {
-    body: json(
-      z.object({
-        providerId: z.string(),
+        provider: z.string().openapi({ example: 'google' }),
         callbackURL: z.string().optional(),
         errorCallbackURL: z.string().optional(),
       }),
