@@ -1,5 +1,6 @@
 import { createElement, listElements, type NewElement } from '@inkadra/canvas-core';
 import { boardDocName, roots, UNSORTED } from '@inkadra/doc-schema';
+import type { Logger } from 'pino';
 import * as Y from 'yjs';
 import type { CollabServer } from './collab.ts';
 
@@ -27,22 +28,42 @@ export interface AddCard {
   columnId?: string;
   userId: string;
   card: NewCard;
+  /** Epoch ms: past it the card is not written (queued edits whose sender stopped waiting). */
+  expiresAt?: number;
 }
 
-export type AddCardResult = { ok: true; elementId: string } | { ok: false; reason: 'column' };
+export type AddCardResult =
+  | { ok: true; elementId: string }
+  | { ok: false; reason: 'column' | 'expired' };
 
 export interface BoardWriter {
   addCard(input: AddCard): Promise<AddCardResult>;
 }
 
-/** Transaction origin of edits made by the server. */
-export const SERVER_ORIGIN = 'inkadra-server';
+/** The new element, fields type-checked against its own card type. */
+function create(doc: Y.Doc, card: NewCard, parent: string, userId: string) {
+  const at = { x: 0, y: 0 };
+  const opts = { userId };
+  switch (card.type) {
+    case 'note':
+      return createElement(doc, 'note', at, { ...card.fields, parent }, opts);
+    case 'image':
+      return createElement(doc, 'image', at, { ...card.fields, parent }, opts);
+    case 'file':
+      return createElement(doc, 'file', at, { ...card.fields, parent }, opts);
+    case 'link':
+      return createElement(doc, 'link', at, { ...card.fields, parent }, opts);
+  }
+}
 
 /**
  * Adds the card at the bottom of its column, or of "Non ordinati", in one transaction.
- * Pure Yjs: the caller decides where the document lives.
+ * Pure Yjs: the caller decides where the document lives. Inside a direct connection the
+ * transaction is nested in the connection's, whose origin (`source: 'local'`) it keeps.
  */
 export function placeCard(doc: Y.Doc, input: Omit<AddCard, 'boardId'>): AddCardResult {
+  if (input.expiresAt !== undefined && Date.now() > input.expiresAt)
+    return { ok: false, reason: 'expired' };
   const parent = input.columnId ?? UNSORTED;
   if (input.columnId) {
     const column = listElements(doc).find((e) => e.id === input.columnId);
@@ -51,17 +72,10 @@ export function placeCard(doc: Y.Doc, input: Omit<AddCard, 'boardId'>): AddCardR
   const { card } = input;
   let elementId = '';
   doc.transact(() => {
-    const el = createElement(
-      doc,
-      card.type,
-      { x: 0, y: 0 },
-      { ...card.fields, parent } as NewElement,
-      { userId: input.userId, origin: SERVER_ORIGIN },
-    );
-    elementId = el.id;
-    const body = roots(doc).elements.get(el.id)?.get('body');
+    elementId = create(doc, card, parent, input.userId).id;
+    const body = roots(doc).elements.get(elementId)?.get('body');
     if (card.body && body instanceof Y.XmlFragment) fillNote(body, card.body);
-  }, SERVER_ORIGIN);
+  });
   return { ok: true, elementId };
 }
 
@@ -99,10 +113,16 @@ function fillNote(fragment: Y.XmlFragment, blocks: NoteBlock[]) {
 }
 
 /**
- * Writes through a collaboration server in the same process (`all`, `collab`). Disconnecting
- * stores the document and rebuilds its search index straight away.
+ * Writes through a collaboration server in the same process (`all`, `collab`).
+ *
+ * Once the transaction is applied the card is in the live document: open boards already show
+ * it, so the clip has succeeded whatever happens next. The connection then closes like a
+ * browser tab: the document is stored after the usual debounce, which also rebuilds its search
+ * index, and a store that fails keeps the document in memory for the next one, as for edits
+ * from the web app. (Closing with an immediate store would unload the document even when that
+ * store fails, losing the card.)
  */
-export function directBoardWriter(collab: CollabServer): BoardWriter {
+export function directBoardWriter(collab: CollabServer, log?: Logger): BoardWriter {
   return {
     async addCard({ boardId, ...input }) {
       const connection = await collab.hocuspocus.openDirectConnection(boardDocName(boardId));
@@ -112,7 +132,11 @@ export function directBoardWriter(collab: CollabServer): BoardWriter {
           result = placeCard(doc, input);
         });
       } finally {
-        await connection.disconnect();
+        try {
+          await connection.disconnect({ unloadImmediately: false });
+        } catch (err) {
+          log?.error({ err, boardId }, 'direct connection not closed cleanly');
+        }
       }
       return result;
     },

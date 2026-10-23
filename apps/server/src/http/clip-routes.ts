@@ -18,11 +18,18 @@ import type { Database } from '../db/client.ts';
 import { asset } from '../db/schema.ts';
 import type { Jobs } from '../jobs.ts';
 import { sniffImage } from '../media/heic.ts';
+import { CardOutcomeUnknown } from '../queues.ts';
 import { FetchRefused, type SafeResponse, safeFetch } from '../safe-fetch.ts';
 import { originalKey, type Storage } from '../storage.ts';
 import { requireActor } from './auth-routes.ts';
 import { HttpError } from './errors.ts';
-import { type FetchDeps, pagePreview, RateLimiter, saveFetchedImage } from './link-previews.ts';
+import {
+  type FetchDeps,
+  PAGE_MAX_BYTES,
+  pagePreview,
+  RateLimiter,
+  saveFetchedImage,
+} from './link-previews.ts';
 import { cleanMime, kindOf } from './uploads.ts';
 
 interface Deps {
@@ -90,12 +97,13 @@ async function readHead(path: string): Promise<Buffer> {
 }
 
 /**
- * Reads a multipart clip: fields, and at most one file into `dir`. When `boardId` comes
- * before the file, `check` runs first, so a file nobody may add is not stored at all.
+ * Reads a multipart clip: fields, and at most one file into the folder `dir()` makes.
+ * `boardId` must come before the file, and `check` runs before a byte of it is written, so a
+ * file nobody may add to the board is never stored.
  */
 async function readForm(
   req: FastifyRequest,
-  dir: string,
+  dir: () => Promise<string>,
   check: (boardId: string) => Promise<unknown>,
 ): Promise<{ input: ClipFields; file: TempFile | null }> {
   const fields: Record<string, string> = {};
@@ -107,16 +115,17 @@ async function readForm(
         part.file.resume();
         throw new HttpError('bad_request', 'Send one file, in the "file" part.');
       }
-      if (fields.boardId) await check(fields.boardId);
-      const path = join(dir, 'file');
+      if (!fields.boardId) {
+        part.file.resume();
+        throw new HttpError('bad_request', 'Send the boardId field before the file.');
+      }
+      await check(fields.boardId);
+      const path = join(await dir(), 'file');
       // Over UPLOAD_MAX_SIZE the stream fails with a 413.
       await pipeline(part.file, createWriteStream(path));
-      file = {
-        path,
-        filename: (part.filename || 'file').slice(0, 255),
-        mime: part.mimetype,
-        size: (await stat(path)).size,
-      };
+      const size = (await stat(path)).size;
+      if (size === 0) throw new HttpError('bad_request', 'The file is empty.');
+      file = { path, filename: (part.filename || 'file').slice(0, 255), mime: part.mimetype, size };
       continue;
     }
     const value = typeof part.value === 'string' ? part.value : '';
@@ -139,7 +148,13 @@ export async function registerClipRoutes(app: FastifyInstance, deps: Deps) {
   /** A file sent with the clip, stored as the upload pipeline stores one. */
   async function storeFile(
     file: TempFile,
-    ctx: { projectId: string; actor: Actor; sourceUrl?: string; created: string[] },
+    ctx: {
+      projectId: string;
+      actor: Actor;
+      sourceUrl?: string;
+      created: string[];
+      log: FastifyBaseLogger;
+    },
   ) {
     // Like an upload, the declared type is a hint; the first bytes tell images apart.
     const sniffed = sniffImage(await readHead(file.path));
@@ -149,15 +164,24 @@ export async function registerClipRoutes(app: FastifyInstance, deps: Deps) {
     const key = originalKey(id);
     ctx.created.push(id);
     // Through the upload store, which streams large files to the bucket in parts.
-    await storage.uploads.create(
-      new Upload({
-        id: key,
-        size: file.size,
-        offset: 0,
-        metadata: { filename: file.filename, filetype: mime },
-      }),
-    );
-    await storage.uploads.write(createReadStream(file.path), key, 0);
+    try {
+      await storage.uploads.create(
+        new Upload({
+          id: key,
+          size: file.size,
+          offset: 0,
+          metadata: { filename: file.filename, filetype: mime },
+        }),
+      );
+      const offset = await storage.uploads.write(createReadStream(file.path), key, 0);
+      if (offset !== file.size) throw new Error(`Stored ${offset} of ${file.size} bytes`);
+    } catch (err) {
+      // Aborts the bucket's multipart upload too, whose parts deleting the key would leave.
+      await storage.uploads
+        .remove(key)
+        .catch((e) => ctx.log.warn({ err: e, key }, 'unfinished clip file not removed'));
+      throw err;
+    }
     await db.insert(asset).values({
       id,
       projectId: ctx.projectId,
@@ -183,24 +207,31 @@ export async function registerClipRoutes(app: FastifyInstance, deps: Deps) {
     try {
       fetched = await safeFetch(url, {
         accept: ['image/', 'text/html', 'application/xhtml+xml'],
-        maxBytes: imageMax,
+        // Pages are read whole and parsed: as small as for link previews.
+        maxBytes: (type) => (type.startsWith('image/') ? imageMax : PAGE_MAX_BYTES),
         allowAddresses: fetchDeps.allowAddresses,
       });
     } catch (err) {
-      if (!(err instanceof FetchRefused)) throw err;
-      // The link is worth keeping even when its page cannot be read.
+      // Refused, unreachable, cut off: the link is worth keeping even when it cannot be read.
       ctx.log.info({ err, url }, 'clip saved without a preview');
     }
     if (fetched?.contentType.startsWith('image/')) {
-      const id = await saveFetchedImage(fetchDeps, fetched, {
-        ...owner,
-        sourceUrl: input.sourceUrl ?? url,
-      });
-      ctx.created.push(id);
-      return {
-        card: { type: 'image', fields: { assetId: id, caption: input.note } },
-        assetId: id,
-      };
+      try {
+        const id = await saveFetchedImage(fetchDeps, fetched, {
+          ...owner,
+          sourceUrl: input.sourceUrl ?? url,
+        });
+        ctx.created.push(id);
+        return {
+          card: { type: 'image', fields: { assetId: id, caption: input.note } },
+          assetId: id,
+        };
+      } catch (err) {
+        // Not an image after all (its first bytes say so): a plain link card.
+        if (!(err instanceof FetchRefused)) throw err;
+        ctx.log.info({ err, url }, 'clipped address is not an image');
+        fetched = null;
+      }
     }
     const preview = fetched ? await pagePreview(fetchDeps, fetched, owner, ctx.log) : null;
     if (preview?.imageAssetId) ctx.created.push(preview.imageAssetId);
@@ -219,6 +250,15 @@ export async function registerClipRoutes(app: FastifyInstance, deps: Deps) {
     };
   }
 
+  /**
+   * Assets of a clip whose card is (or may be) on the board. Never fails: if the queue is
+   * down, the upload purge queues assets still pending a day later.
+   */
+  async function process(ids: string[], log: FastifyBaseLogger) {
+    for (const id of ids)
+      await jobs.processAsset(id).catch((err) => log.error({ err, id }, 'clip asset not queued'));
+  }
+
   /** Assets of a clip that did not make it onto the board. */
   async function discard(ids: string[], log: FastifyBaseLogger) {
     try {
@@ -233,10 +273,12 @@ export async function registerClipRoutes(app: FastifyInstance, deps: Deps) {
     // Only this route takes forms.
     await scope.register(multipart, {
       limits: {
-        files: 1,
+        // One more than allowed, so a second file gets the 400 below rather than a 413.
+        files: 2,
         fields: 40,
         fieldSize: 25_000,
-        ...(deps.uploadMaxSize > 0 ? { fileSize: deps.uploadMaxSize } : {}),
+        // Left out, the limit would default to Fastify's 1 MiB bodyLimit.
+        fileSize: deps.uploadMaxSize > 0 ? deps.uploadMaxSize : Number.POSITIVE_INFINITY,
       },
     });
 
@@ -258,15 +300,23 @@ export async function registerClipRoutes(app: FastifyInstance, deps: Deps) {
         return access;
       };
 
-      const dir = await mkdtemp(join(deps.tmpDir ?? tmpdir(), 'clip-'));
+      // Made only when a file arrives.
+      let dir: Promise<string> | undefined;
+      const makeDir = () => {
+        dir ??= mkdtemp(join(deps.tmpDir ?? tmpdir(), 'clip-'));
+        return dir;
+      };
       const created: string[] = [];
       try {
         const { input, file } = req.isMultipart()
-          ? await readForm(req, dir, (id) => check(ClipFields.shape.boardId.parse(id)))
+          ? await readForm(req, makeDir, (id) => check(ClipFields.shape.boardId.parse(id)))
           : { input: ClipRequest.parse(req.body), file: null };
         const text = input.text?.trim() ? input.text : undefined;
         if (!file && !input.url && !text)
           throw new HttpError('bad_request', 'Send a url, a text or a file.');
+        // Kept on the asset and shown as a link: nothing but web addresses.
+        if (input.sourceUrl && !isWebUrl(input.sourceUrl))
+          throw new HttpError('bad_request', 'sourceUrl must be an http or https address.');
         const access = await check(input.boardId);
         const ctx = { projectId: access.board.projectId, actor, created, log: req.log };
 
@@ -293,20 +343,39 @@ export async function registerClipRoutes(app: FastifyInstance, deps: Deps) {
         }
         card.fields.tags = normaliseTags(input.tags);
 
-        const placed = await boards.addCard({
-          boardId: input.boardId,
-          columnId: input.columnId,
-          userId: actor.id,
-          card,
-        });
-        if (!placed.ok) throw new HttpError('bad_request', 'The column is not on this board.');
-        // On the board now: from here the assets are the card's.
-        for (const id of created.splice(0)) await jobs.processAsset(id);
+        let placed: Awaited<ReturnType<BoardWriter['addCard']>>;
+        try {
+          placed = await boards.addCard({
+            boardId: input.boardId,
+            columnId: input.columnId,
+            userId: actor.id,
+            card,
+          });
+        } catch (err) {
+          if (!(err instanceof CardOutcomeUnknown)) throw err;
+          // The card may be on the board: its assets must stay. Unused, they cost only space.
+          await process(created.splice(0), req.log);
+          req.log.error({ err, boardId: input.boardId }, 'clip outcome unknown');
+          throw new HttpError(
+            'internal',
+            'The board did not confirm the clip in time: check it before trying again.',
+          );
+        }
+        if (!placed.ok)
+          throw placed.reason === 'column'
+            ? new HttpError('bad_request', 'The column is not on this board.')
+            : new HttpError('internal', 'The board could not be reached in time: try again.');
+        // On the board now: from here the assets are the card's, and the clip has succeeded.
+        await process(created.splice(0), req.log);
         const body: ClipResult = { boardId: input.boardId, elementId: placed.elementId, assetId };
         return reply.status(201).send(body);
       } finally {
         if (created.length > 0) await discard(created, req.log);
-        await rm(dir, { recursive: true, force: true });
+        if (dir)
+          await dir.then(
+            (d) => rm(d, { recursive: true, force: true }),
+            () => {},
+          );
       }
     });
   });

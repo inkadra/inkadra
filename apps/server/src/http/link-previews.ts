@@ -7,11 +7,11 @@ import type { Auth } from '../auth.ts';
 import type { Database } from '../db/client.ts';
 import { asset } from '../db/schema.ts';
 import type { Jobs } from '../jobs.ts';
+import { sniffImage } from '../media/heic.ts';
 import { FetchRefused, type SafeResponse, safeFetch } from '../safe-fetch.ts';
 import { originalKey, type Storage } from '../storage.ts';
 import { requireActor } from './auth-routes.ts';
 import { HttpError } from './errors.ts';
-import { cleanMime } from './uploads.ts';
 
 interface Deps {
   db: Database;
@@ -98,6 +98,9 @@ export class RateLimiter {
   }
 }
 
+/** Largest page read for a preview: its head is all that is needed. */
+export const PAGE_MAX_BYTES = 1024 * 1024;
+
 export interface FetchDeps {
   db: Database;
   storage: Storage;
@@ -114,20 +117,26 @@ export function nameFromUrl(url: string, fallback: string): string {
   }
 }
 
-/** Copies a fetched image into the project as a new asset. The caller queues its processing. */
+/**
+ * Copies a fetched image into the project as a new asset. The caller queues its processing.
+ * Like an upload, the declared type is a hint: a body whose first bytes are not an image is
+ * refused with FetchRefused.
+ */
 export async function saveFetchedImage(
   deps: Pick<FetchDeps, 'db' | 'storage'>,
   image: SafeResponse,
   opts: { projectId: string; actorId: string; sourceUrl: string },
 ): Promise<string> {
+  const mime = sniffImage(image.body.subarray(0, 256));
+  if (!mime) throw new FetchRefused('The address does not hold an image.');
   const id = randomUUID();
   const filename = nameFromUrl(image.url, 'image');
-  await deps.storage.write(originalKey(id), image.body, image.contentType);
+  await deps.storage.write(originalKey(id), image.body, mime);
   await deps.db.insert(asset).values({
     id,
     projectId: opts.projectId,
     kind: 'image',
-    mime: cleanMime(image.contentType, filename),
+    mime,
     filename,
     size: image.body.length,
     storageKey: originalKey(id),
@@ -188,7 +197,7 @@ export function registerLinkPreviews(app: FastifyInstance, deps: Deps) {
     try {
       page = await safeFetch(input.url, {
         accept: ['text/html', 'application/xhtml+xml'],
-        maxBytes: 1024 * 1024,
+        maxBytes: PAGE_MAX_BYTES,
         allowAddresses,
       });
     } catch (err) {

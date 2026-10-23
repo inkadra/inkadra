@@ -71,7 +71,7 @@ async function main() {
     if (command === 'collab') {
       // In split mode the web role sends its board edits (clips) through the queue.
       if (config.REDIS_URL) {
-        const boardWorker = startBoardWorker(config.REDIS_URL, directBoardWriter(server), log);
+        const boardWorker = startBoardWorker(config.REDIS_URL, directBoardWriter(server, log), log);
         closers.unshift(() => boardWorker.close());
       } else log.warn('REDIS_URL is not set: clips from a separate web role cannot reach boards');
       await server.listen(config.COLLAB_PORT);
@@ -98,7 +98,7 @@ async function main() {
       jobs = inlineJobs(media, log);
     }
     let boards: BoardWriter | undefined;
-    if (collab) boards = directBoardWriter(collab);
+    if (collab) boards = directBoardWriter(collab, log);
     else if (config.REDIS_URL) {
       const queued = queuedBoardWriter(config.REDIS_URL);
       boards = queued.writer;

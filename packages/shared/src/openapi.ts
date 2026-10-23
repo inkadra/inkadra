@@ -748,6 +748,9 @@ registry.registerPath({
   tags: ['Clip'],
   security: secured,
   summary: 'Save an image, a link or a text to a board, from the clipper or the share sheet.',
+  description:
+    'As a form, `boardId` must come before `file`: access is checked before the file is ' +
+    'stored, and a file sent first is refused with 400.',
   request: {
     body: {
       content: {
