@@ -6,7 +6,7 @@ import { type Ref, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Card, NOTE_COLORS } from './cards.tsx';
 import { isMac } from './shortcuts.ts';
-import { cancelUpload, useUploads } from './uploads.ts';
+import { cancelUpload, retryUpload, useUploads } from './uploads.ts';
 
 export type ToolType = 'note' | 'image' | 'link' | 'todo' | 'column' | 'board' | 'color';
 export const TOOL_MIME = 'application/x-inkadra-tool';
@@ -534,7 +534,12 @@ export function UploadPanel() {
                 ? `${Math.round((u.sent / (u.size || 1)) * 100)}%`
                 : t(`board.uploads.${u.state}`)}
             </span>
-            {u.state === 'uploading' && (
+            {u.state === 'failed' && (
+              <button type="button" className="uploads__cancel" onClick={() => retryUpload(u.key)}>
+                {t('board.uploads.retry')}
+              </button>
+            )}
+            {u.state !== 'done' && u.state !== 'cancelled' && (
               <button type="button" className="uploads__cancel" onClick={() => cancelUpload(u.key)}>
                 {t('board.uploads.cancel')}
               </button>

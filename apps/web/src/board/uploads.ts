@@ -7,7 +7,10 @@ export interface UploadItem {
   name: string;
   size: number;
   sent: number;
-  state: 'uploading' | 'done' | 'failed' | 'cancelled';
+  /** `offline`: paused while the browser has no network, resumes by itself when it is back. */
+  state: 'uploading' | 'offline' | 'done' | 'failed' | 'cancelled';
+  /** Same file, same project: adding it again resumes this upload instead of starting another. */
+  fingerprint: string;
   assetId: string | null;
   /** Object URL of the local file, shown by image cards until the server has a preview. */
   preview: string | null;
@@ -17,6 +20,7 @@ export interface UploadItem {
 const CHUNK = 50 * 1024 * 1024;
 
 let items: UploadItem[] = [];
+/** Uploads that can still go on: running, paused offline or failed (for "Riprova"). */
 const uploads = new Map<string, Upload>();
 const listeners = new Set<() => void>();
 let seq = 0;
@@ -39,8 +43,38 @@ export interface StartUpload {
   onFailed?: (assetId: string | null) => void;
 }
 
-/** Resumable upload over tus; an interrupted upload resumes, also after a reload. */
+const online = () => typeof navigator === 'undefined' || navigator.onLine !== false;
+
+if (typeof window !== 'undefined') {
+  // Offline: pause, rather than wait on requests that may hang or fail one by one.
+  window.addEventListener('offline', () => {
+    for (const item of items) {
+      if (item.state !== 'uploading') continue;
+      void uploads.get(item.key)?.abort();
+      patch(item.key, { state: 'offline' });
+    }
+  });
+  // Back online: every paused upload goes on from where the server stopped.
+  window.addEventListener('online', () => {
+    for (const item of items) if (item.state === 'offline') retryUpload(item.key);
+  });
+}
+
+/**
+ * Resumable upload over tus; an interrupted upload resumes, also after a reload. Returns the
+ * key of the upload in the panel. Adding a file that is already in the panel for the same
+ * project resumes that upload (or leaves it running) instead of starting a second one, and
+ * calls no `onAsset` again: its card already exists.
+ */
 export function startUpload({ file, projectId, onAsset, onFailed }: StartUpload): string {
+  const fingerprint = [projectId, file.name, file.size, file.lastModified].join('|');
+  const existing = items.find(
+    (i) => i.fingerprint === fingerprint && i.state !== 'done' && i.state !== 'cancelled',
+  );
+  if (existing) {
+    if (existing.state !== 'uploading') retryUpload(existing.key);
+    return existing.key;
+  }
   seq += 1;
   const key = `u${seq}`;
   const isImage = file.type.startsWith('image/');
@@ -50,6 +84,7 @@ export function startUpload({ file, projectId, onAsset, onFailed }: StartUpload)
     size: file.size,
     sent: 0,
     state: 'uploading',
+    fingerprint,
     assetId: null,
     preview: isImage ? URL.createObjectURL(file) : null,
   });
@@ -64,7 +99,13 @@ export function startUpload({ file, projectId, onAsset, onFailed }: StartUpload)
   const upload = new Upload(file, {
     endpoint: `${API_PREFIX}/uploads`,
     chunkSize: CHUNK,
-    retryDelays: [0, 1000, 3000, 5000, 10000, 20000],
+    retryDelays: [0, 1000, 3000, 5000, 10000, 20000, 30000, 60000],
+    // Offline, retrying only burns attempts: the upload pauses and resumes on "online".
+    onShouldRetry: (err) => {
+      if (!online()) return false;
+      const status = err.originalResponse?.getStatus() ?? 0;
+      return status < 400 || status >= 500 || status === 409 || status === 423;
+    },
     storeFingerprintForResuming: true,
     removeFingerprintOnSuccess: true,
     metadata: { projectId, filename: file.name, filetype: file.type || 'application/octet-stream' },
@@ -76,8 +117,11 @@ export function startUpload({ file, projectId, onAsset, onFailed }: StartUpload)
       setTimeout(() => dismiss(key), 4000);
     },
     onError: () => {
+      if (!online()) {
+        patch(key, { state: 'offline' });
+        return;
+      }
       patch(key, { state: 'failed' });
-      uploads.delete(key);
       onFailed?.(items.find((i) => i.key === key)?.assetId ?? null);
     },
   });
@@ -91,6 +135,14 @@ export function startUpload({ file, projectId, onAsset, onFailed }: StartUpload)
     })
     .catch(() => upload.start());
   return key;
+}
+
+/** Starts a paused or failed upload again; tus asks the server how much it already has. */
+export function retryUpload(key: string) {
+  const upload = uploads.get(key);
+  if (!upload) return;
+  patch(key, { state: 'uploading' });
+  upload.start();
 }
 
 export function cancelUpload(key: string) {
@@ -134,7 +186,7 @@ export function localPreview(assetId: string): string | null {
 export function useUploadProgress(assetId: string | undefined): number | null {
   return useSyncExternalStore(subscribe, () => {
     const item = assetId ? items.find((i) => i.assetId === assetId) : undefined;
-    if (item?.state !== 'uploading') return null;
+    if (item?.state !== 'uploading' && item?.state !== 'offline') return null;
     return item.size ? item.sent / item.size : 0;
   });
 }
