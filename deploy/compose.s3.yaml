@@ -1,0 +1,17 @@
+# Files in an S3-compatible bucket you already have (AWS S3, Cloudflare R2, Backblaze B2,
+# Garage, SeaweedFS, a MinIO server…) instead of the data volume:
+#   docker compose -f compose.yaml -f deploy/compose.s3.yaml up -d
+# Set S3_BUCKET, S3_ACCESS_KEY_ID and S3_SECRET_ACCESS_KEY in .env, plus S3_ENDPOINT for
+# anything that is not AWS. The bucket must exist and stay private.
+# The data volume is still mounted: Inkadra keeps temporary upload chunks there.
+
+services:
+  inkadra:
+    environment:
+      STORAGE_DRIVER: s3
+      S3_ENDPOINT: ${S3_ENDPOINT:-}
+      S3_REGION: ${S3_REGION:-us-east-1}
+      S3_BUCKET: ${S3_BUCKET:?set S3_BUCKET in .env}
+      S3_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID:?set S3_ACCESS_KEY_ID in .env}
+      S3_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY:?set S3_SECRET_ACCESS_KEY in .env}
+      S3_FORCE_PATH_STYLE: ${S3_FORCE_PATH_STYLE:-false}

@@ -1,0 +1,58 @@
+# Files in a bundled S3-compatible store (RustFS, Apache-2.0) instead of the data volume:
+#   docker compose -f compose.yaml -f deploy/compose.rustfs.yaml up -d
+# Set S3_ACCESS_KEY_ID and S3_SECRET_ACCESS_KEY in .env (any random values, they are only
+# shared by Inkadra and RustFS). Nothing is published on the host: only Inkadra reaches it.
+# Upstream MinIO no longer publishes container images; RustFS speaks the same API.
+
+services:
+  inkadra:
+    environment:
+      STORAGE_DRIVER: s3
+      S3_ENDPOINT: http://rustfs:9000
+      S3_REGION: us-east-1
+      S3_BUCKET: ${S3_BUCKET:-inkadra}
+      S3_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID:?set S3_ACCESS_KEY_ID in .env}
+      S3_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY:?set S3_SECRET_ACCESS_KEY in .env}
+      S3_FORCE_PATH_STYLE: "true"
+    depends_on:
+      rustfs-bucket:
+        condition: service_completed_successfully
+
+  rustfs:
+    image: rustfs/rustfs:1.0.3
+    restart: unless-stopped
+    environment:
+      RUSTFS_ACCESS_KEY: ${S3_ACCESS_KEY_ID:?set S3_ACCESS_KEY_ID in .env}
+      RUSTFS_SECRET_KEY: ${S3_SECRET_ACCESS_KEY:?set S3_SECRET_ACCESS_KEY in .env}
+      RUSTFS_VOLUMES: /data
+    volumes:
+      # A host folder here must be owned by uid 10001, the rustfs user of the image.
+      - ${RUSTFS_DATA:-rustfs-data}:/data
+    security_opt: ["no-new-privileges:true"]
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:9000/health >/dev/null || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+
+  # Creates the bucket once, then exits. curl signs the request itself (AWS SigV4).
+  rustfs-bucket:
+    image: curlimages/curl:8.17.0
+    restart: "no"
+    environment:
+      S3_BUCKET: ${S3_BUCKET:-inkadra}
+      S3_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID}
+      S3_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY}
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        auth="--aws-sigv4 aws:amz:us-east-1:s3 --user $$S3_ACCESS_KEY_ID:$$S3_SECRET_ACCESS_KEY"
+        url="http://rustfs:9000/$$S3_BUCKET"
+        if curl -fs -o /dev/null -I $$auth "$$url"; then echo "bucket $$S3_BUCKET exists"; exit 0; fi
+        curl -fsS -X PUT $$auth "$$url" && echo "bucket $$S3_BUCKET created"
+    depends_on:
+      rustfs:
+        condition: service_healthy
+
+volumes:
+  rustfs-data:
