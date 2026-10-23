@@ -1,0 +1,153 @@
+import * as Y from 'yjs';
+import { Element, type ElementType } from './elements.ts';
+
+/** Bump when the shape of the board document changes, and add a migration below. */
+export const CURRENT_SCHEMA_VERSION = 1;
+
+export const DOC_NAME_PREFIX = 'board:';
+
+/** Name of the Hocuspocus document for a board. */
+export function boardDocName(boardId: string): string {
+  return `${DOC_NAME_PREFIX}${boardId}`;
+}
+
+export function parseBoardDocName(name: string): string | null {
+  if (!name.startsWith(DOC_NAME_PREFIX)) return null;
+  const id = name.slice(DOC_NAME_PREFIX.length);
+  return /^[0-9a-f-]{36}$/i.test(id) ? id : null;
+}
+
+/** Root types of a board document. Nothing else may be stored at the root. */
+export function roots(doc: Y.Doc) {
+  return {
+    meta: doc.getMap<unknown>('meta'),
+    elements: doc.getMap<Y.Map<unknown>>('elements'),
+  };
+}
+
+export function getSchemaVersion(doc: Y.Doc): number {
+  const v = roots(doc).meta.get('schemaVersion');
+  return typeof v === 'number' ? v : 0;
+}
+
+export function initBoardDoc(doc: Y.Doc, boardId: string): void {
+  const { meta } = roots(doc);
+  doc.transact(() => {
+    meta.set('schemaVersion', CURRENT_SCHEMA_VERSION);
+    meta.set('boardId', boardId);
+  });
+}
+
+export function createBoardDoc(boardId: string): Y.Doc {
+  const doc = new Y.Doc();
+  initBoardDoc(doc, boardId);
+  return doc;
+}
+
+type Migration = (doc: Y.Doc) => void;
+
+/**
+ * migrations[n] upgrades a document from version n to n + 1.
+ * Version 0 is an empty document that was never initialised.
+ */
+const migrations: Record<number, Migration> = {};
+
+export class SchemaTooNewError extends Error {
+  constructor(readonly version: number) {
+    super(
+      `Board document version ${version} is newer than this build (${CURRENT_SCHEMA_VERSION}).`,
+    );
+  }
+}
+
+/** Upgrades the document in place. Returns the versions it went through. */
+export function migrateBoardDoc(doc: Y.Doc, boardId: string): number[] {
+  let version = getSchemaVersion(doc);
+  if (version > CURRENT_SCHEMA_VERSION) throw new SchemaTooNewError(version);
+  const steps: number[] = [];
+  if (version === 0) {
+    initBoardDoc(doc, boardId);
+    return [CURRENT_SCHEMA_VERSION];
+  }
+  while (version < CURRENT_SCHEMA_VERSION) {
+    const step = migrations[version];
+    if (!step) throw new Error(`Missing board document migration from version ${version}.`);
+    doc.transact(() => {
+      step(doc);
+      roots(doc).meta.set('schemaVersion', version + 1);
+    });
+    version += 1;
+    steps.push(version);
+  }
+  return steps;
+}
+
+const ID_ALPHABET = 'ModuleSymbhasOwnPr-0123456789ABCDEFGHNRVfgctiUvz_KqYTJkLxpZXIjQW';
+
+export function newElementId(size = 21): string {
+  const bytes = crypto.getRandomValues(new Uint8Array(size));
+  let id = '';
+  for (const b of bytes) id += ID_ALPHABET[b & 63];
+  return id;
+}
+
+/** Adds an element; rich text for notes is created empty under `body`. */
+export function addElement(doc: Y.Doc, element: Element): Y.Map<unknown> {
+  const parsed = Element.parse(element);
+  const map = new Y.Map<unknown>();
+  doc.transact(() => {
+    for (const [key, value] of Object.entries(parsed)) {
+      if (value === undefined) continue;
+      map.set(key, key === 'items' ? Y.Array.from((value as object[]).map(toYMap)) : value);
+    }
+    if (parsed.type === 'note') map.set('body', new Y.XmlFragment());
+    roots(doc).elements.set(parsed.id, map);
+  });
+  return map;
+}
+
+function toYMap(value: object): Y.Map<unknown> {
+  return new Y.Map(Object.entries(value));
+}
+
+/** Plain JSON view of an element (without rich text), or null if it does not validate. */
+export function readElement(map: Y.Map<unknown>): Element | null {
+  const plain: Record<string, unknown> = {};
+  for (const [key, value] of map.entries()) {
+    if (value instanceof Y.XmlFragment) continue;
+    plain[key] = value instanceof Y.AbstractType ? value.toJSON() : value;
+  }
+  const result = Element.safeParse(plain);
+  return result.success ? result.data : null;
+}
+
+export interface ValidationIssue {
+  elementId: string;
+  message: string;
+}
+
+/** Checks every element; used by the server before persisting and by tests. */
+export function validateBoardDoc(doc: Y.Doc): ValidationIssue[] {
+  const issues: ValidationIssue[] = [];
+  const { elements } = roots(doc);
+  for (const [id, map] of elements.entries()) {
+    const element = readElement(map);
+    if (!element) issues.push({ elementId: id, message: 'Element does not match the schema.' });
+    else if (element.id !== id) issues.push({ elementId: id, message: 'Key and id differ.' });
+  }
+  for (const name of doc.share.keys()) {
+    if (name !== 'meta' && name !== 'elements') {
+      issues.push({ elementId: '', message: `Unknown root type "${name}".` });
+    }
+  }
+  return issues;
+}
+
+export function countByType(doc: Y.Doc): Partial<Record<ElementType, number>> {
+  const counts: Partial<Record<ElementType, number>> = {};
+  for (const map of roots(doc).elements.values()) {
+    const type = map.get('type') as ElementType;
+    counts[type] = (counts[type] ?? 0) + 1;
+  }
+  return counts;
+}
