@@ -104,6 +104,22 @@ describe('board document', () => {
     expect(Element.safeParse({ ...color, tags: tooMany }).success).toBe(false);
   });
 
+  it('keeps the guest visibility of any element without a version change', () => {
+    const doc = createBoardDoc(boardId);
+    const column = { ...base(), type: 'column' as const, title: 'Interno', guestHidden: true };
+    const note = { ...base(), type: 'note' as const, parent: column.id };
+    addElement(doc, column);
+    addElement(doc, note);
+    expect(readElement(roots(doc).elements.get(column.id)!)).toEqual(column);
+    expect(validateBoardDoc(doc)).toEqual([]);
+    expect(Element.safeParse({ ...note, guestHidden: 'yes' }).success).toBe(false);
+    // A build that does not know a field yet still accepts the element and keeps the field.
+    const later = new Y.Map<unknown>(Object.entries({ ...base(), type: 'note', later: 1 }));
+    roots(doc).elements.set('later_el_0001', later);
+    expect(readElement(later)).not.toBeNull();
+    expect(later.get('later')).toBe(1);
+  });
+
   it('stores scenes with frames and their pen strokes', () => {
     const doc = createBoardDoc(boardId);
     const scene = {

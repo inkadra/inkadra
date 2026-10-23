@@ -44,6 +44,13 @@ const Base = z.object({
     .describe('Column element id, UNSORTED, or null when placed on the canvas.'),
   locked: z.boolean().optional(),
   tags: z.array(Tag).max(MAX_TAGS).optional().describe('Free labels, used by search and filters.'),
+  guestHidden: z
+    .boolean()
+    .optional()
+    .describe(
+      'True: left out of what guests of share links see, with everything inside it (a column, ' +
+        'a scene) and, for a board card, the board it opens. Omitted = shown.',
+    ),
   createdBy: z.string().nullable(),
   createdAt: z.number().int(),
 });
