@@ -1,17 +1,22 @@
 # Inkadra, all-in-one. Put it behind your reverse proxy (HTTPS) and set PUBLIC_URL in .env.
-# The proxy must forward WebSocket upgrades on /collab. See docs/self-hosting.md.
+# The proxy must forward WebSocket upgrades on /collab. See docs/self-hosting.
+#
+# Variants, added with -f (see docs/self-hosting/compose.md):
+#   deploy/compose.split.yaml          web, collab and worker as separate containers
+#   deploy/compose.s3.yaml             files in an S3-compatible bucket you already have
+#   deploy/compose.rustfs.yaml         files in a bundled S3-compatible store (RustFS)
+#   deploy/proxy/<name>/compose.yaml   a reverse proxy in the same stack: caddy, traefik, nginx
 
 name: inkadra
 
 services:
   inkadra:
-    image: ghcr.io/inkadra/inkadra:${INKADRA_TAG:-latest}
+    image: ${INKADRA_IMAGE:-ghcr.io/inkadra/inkadra}:${INKADRA_TAG:-latest}
     command: all
-    init: true
     restart: unless-stopped
     ports:
       # Only this machine can reach the port: point your reverse proxy at it, or set
-      # INKADRA_BIND=0.0.0.0 if the proxy runs on another host (see docs/self-hosting.md).
+      # INKADRA_BIND=0.0.0.0 if the proxy runs on another host (see docs/self-hosting).
       - "${INKADRA_BIND:-127.0.0.1}:${INKADRA_PORT:-3000}:3000"
     environment:
       PUBLIC_URL: ${PUBLIC_URL:?set PUBLIC_URL in .env}
@@ -22,8 +27,18 @@ services:
       REGISTRATION: ${REGISTRATION:-invite}
       LOG_LEVEL: ${LOG_LEVEL:-info}
       TRUST_PROXY: ${TRUST_PROXY:-loopback,linklocal,uniquelocal}
+      STORAGE_DRIVER: ${STORAGE_DRIVER:-local}
+      UPLOAD_MAX_SIZE: ${UPLOAD_MAX_SIZE:-20GB}
+      HEIC_PREVIEWS: ${HEIC_PREVIEWS:-true}
     volumes:
-      - inkadra-data:/data
+      # A named volume by default. Set INKADRA_DATA to a host folder (owned by uid 1000) to
+      # keep uploads on a disk or dataset of your choice.
+      - ${INKADRA_DATA:-inkadra-data}:/data
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
     depends_on:
       postgres:
         condition: service_healthy
@@ -38,7 +53,9 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
       POSTGRES_DB: inkadra
     volumes:
-      - postgres-data:/var/lib/postgresql/data
+      # A host folder here must be owned by uid 70, the postgres user of the alpine image.
+      - ${POSTGRES_DATA:-postgres-data}:/var/lib/postgresql/data
+    security_opt: ["no-new-privileges:true"]
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U inkadra -d inkadra"]
       interval: 5s
@@ -50,7 +67,8 @@ services:
     restart: unless-stopped
     command: ["valkey-server", "--appendonly", "yes"]
     volumes:
-      - valkey-data:/data
+      - ${VALKEY_DATA:-valkey-data}:/data
+    security_opt: ["no-new-privileges:true"]
     healthcheck:
       test: ["CMD", "valkey-cli", "ping"]
       interval: 5s
