@@ -2,6 +2,7 @@
   "name": "@inkadra/canvas-core",
   "version": "0.1.0",
   "private": true,
+  "description": "Rendering-independent board logic shared by the web and mobile apps.",
   "license": "MPL-2.0",
   "type": "module",
   "exports": {
@@ -10,6 +11,11 @@
   "scripts": {
     "typecheck": "tsc -p tsconfig.json",
     "test": "vitest run"
+  },
+  "dependencies": {
+    "@inkadra/doc-schema": "workspace:*",
+    "fractional-indexing": "^3.2.0",
+    "yjs": "^13.6.0"
   },
   "devDependencies": {
     "typescript": "^5.9.0",

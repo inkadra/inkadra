@@ -12,13 +12,25 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@hocuspocus/provider": "^4.7.1",
+    "@inkadra/canvas-core": "workspace:*",
+    "@inkadra/doc-schema": "workspace:*",
     "@inkadra/shared": "workspace:*",
     "@inkadra/ui": "workspace:*",
+    "@tiptap/core": "^3.32.0",
+    "@tiptap/extension-collaboration": "^3.32.0",
+    "@tiptap/extensions": "^3.32.0",
+    "@tiptap/pm": "^3.32.0",
+    "@tiptap/react": "^3.32.0",
+    "@tiptap/starter-kit": "^3.32.0",
+    "@tiptap/y-tiptap": "^3.0.10",
     "i18next": "^26.5.0",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
     "react-i18next": "^17.1.0",
-    "react-router": "^8.5.0"
+    "react-router": "^8.5.0",
+    "tus-js-client": "^4.3.1",
+    "yjs": "^13.6.0"
   },
   "devDependencies": {
     "@types/react": "^19.3.0",

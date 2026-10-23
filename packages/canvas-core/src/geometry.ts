@@ -1,8 +1,5 @@
 // SPDX-License-Identifier: MPL-2.0
-/**
- * Rendering-independent canvas math, shared by the web canvas and the mobile app.
- * The web canvas thread grows this package in wave 1.
- */
+/** Rendering-independent canvas math, shared by the web canvas and the mobile app. */
 
 export interface Point {
   x: number;
@@ -68,4 +65,72 @@ export function boundsOf(rects: Rect[]): Rect | null {
     maxY = Math.max(maxY, r.y + r.h);
   }
   return { x: minX, y: minY, w: maxX - minX, h: maxY - minY };
+}
+
+/** Rectangle spanned by two corners, in any order (marquee selection). */
+export function rectFromPoints(a: Point, b: Point): Rect {
+  return {
+    x: Math.min(a.x, b.x),
+    y: Math.min(a.y, b.y),
+    w: Math.abs(a.x - b.x),
+    h: Math.abs(a.y - b.y),
+  };
+}
+
+export function containsPoint(r: Rect, p: Point): boolean {
+  return p.x >= r.x && p.x <= r.x + r.w && p.y >= r.y && p.y <= r.y + r.h;
+}
+
+/** True when `inner` lies completely inside `outer`. */
+export function containsRect(outer: Rect, inner: Rect): boolean {
+  return (
+    inner.x >= outer.x &&
+    inner.y >= outer.y &&
+    inner.x + inner.w <= outer.x + outer.w &&
+    inner.y + inner.h <= outer.y + outer.h
+  );
+}
+
+export function inflate(r: Rect, by: number): Rect {
+  return { x: r.x - by, y: r.y - by, w: r.w + by * 2, h: r.h + by * 2 };
+}
+
+/** The part of the world visible through a viewport of the given screen size. */
+export function visibleWorld(v: Viewport, width: number, height: number): Rect {
+  return { x: v.x, y: v.y, w: width / v.zoom, h: height / v.zoom };
+}
+
+/** Viewport that shows `r` centred in a screen of the given size, leaving `padding` pixels. */
+export function fitRect(
+  r: Rect,
+  width: number,
+  height: number,
+  padding = 48,
+  maxZoom = 1,
+): Viewport {
+  const zoom = clampZoom(
+    Math.min(
+      maxZoom,
+      (width - padding * 2) / Math.max(r.w, 1),
+      (height - padding * 2) / Math.max(r.h, 1),
+    ),
+  );
+  return {
+    zoom,
+    x: r.x + r.w / 2 - width / 2 / zoom,
+    y: r.y + r.h / 2 - height / 2 / zoom,
+  };
+}
+
+/** Viewport centred on a world point, keeping the zoom. */
+export function centerOn(v: Viewport, p: Point, width: number, height: number): Viewport {
+  return { zoom: v.zoom, x: p.x - width / 2 / v.zoom, y: p.y - height / 2 / v.zoom };
+}
+
+/** Zoom steps used by the zoom menu and the + / − keys. */
+export const ZOOM_STEPS = [0.25, 0.5, 0.75, 1, 1.5, 2, 3, 4];
+
+export function nextZoomStep(zoom: number, direction: 1 | -1): number {
+  if (direction > 0) return ZOOM_STEPS.find((z) => z > zoom + 1e-6) ?? MAX_ZOOM;
+  return [...ZOOM_STEPS].reverse().find((z) => z < zoom - 1e-6) ?? MIN_ZOOM;
 }

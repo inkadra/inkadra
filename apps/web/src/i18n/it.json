@@ -68,8 +68,7 @@
     "name": "Nome del progetto",
     "namePlaceholder": "Ultima corsa",
     "create": "Crea progetto",
-    "cancel": "Annulla",
-    "boardSoon": "Il canvas arriva nella prossima versione."
+    "cancel": "Annulla"
   },
   "notFound": {
     "title": "Pagina non trovata",
@@ -144,6 +143,157 @@
       "admin": "Solo gli amministratori possono vedere la diagnostica. Accedi con un account amministratore.",
       "rateLimited": "Troppi controlli: aspetta un minuto.",
       "generic": "Impossibile eseguire i controlli. Riprova."
+    }
+  },
+  "board": {
+    "canvas": "Canvas della board",
+    "toolbar": "Aggiungi",
+    "contextBar": "Azioni sulla selezione",
+    "minimap": "Minimappa: clicca per spostarti",
+    "dropFiles": "Rilascia per caricare",
+    "undo": "Annulla",
+    "locked": "Bloccato",
+    "deleted_one": "Eliminato 1 elemento",
+    "deleted_other": "Eliminati {{count}} elementi",
+    "selected_one": "1 selezionato",
+    "selected_other": "{{count}} selezionati",
+    "empty": {
+      "title": "Board vuota",
+      "body": "Doppio clic per una nota, trascina file o usa la barra in basso. / apre i comandi."
+    },
+    "types": {
+      "note": "Nota",
+      "image": "Immagine",
+      "link": "Link",
+      "file": "File",
+      "todo": "To-do",
+      "color": "Colore",
+      "column": "Colonna",
+      "board": "Board"
+    },
+    "tools": {
+      "select": "Seleziona",
+      "hand": "Mano"
+    },
+    "note": {
+      "placeholder": "Scrivi…",
+      "label": "Testo della nota",
+      "empty": "Nota vuota"
+    },
+    "image": {
+      "processing": "Elaborazione…",
+      "failed": "Anteprima non disponibile"
+    },
+    "file": {
+      "loading": "File",
+      "uploading": "Caricamento {{percent}}%",
+      "missing": "File non trovato"
+    },
+    "todo": {
+      "title": "Titolo della lista",
+      "titlePlaceholder": "Titolo",
+      "item": "Voce",
+      "add": "Aggiungi una voce"
+    },
+    "color": {
+      "pick": "Scegli il colore",
+      "label": "Nome del colore",
+      "labelPlaceholder": "Nome"
+    },
+    "board": {
+      "untitled": "Nuova board",
+      "unknown": "Board",
+      "title": "Titolo della board"
+    },
+    "column": {
+      "title": "Titolo della colonna",
+      "titlePlaceholder": "Titolo",
+      "untitled": "Senza titolo",
+      "empty": "Trascina qui le card",
+      "collapse": "Comprimi la colonna",
+      "expand": "Espandi la colonna"
+    },
+    "link": {
+      "label": "Indirizzo del link",
+      "placeholder": "Incolla un link e premi Invio"
+    },
+    "format": {
+      "bold": "Grassetto",
+      "italic": "Corsivo",
+      "heading": "Titolo",
+      "list": "Elenco puntato"
+    },
+    "colors": {
+      "none": "Nessun colore",
+      "blue": "Blu",
+      "orange": "Arancio",
+      "purple": "Viola",
+      "green": "Verde"
+    },
+    "align": {
+      "left": "Allinea a sinistra",
+      "center": "Centra",
+      "right": "Allinea a destra",
+      "top": "Allinea in alto",
+      "middle": "Allinea al centro",
+      "bottom": "Allinea in basso",
+      "distribute": "Distribuisci",
+      "group": "Raggruppa in colonna"
+    },
+    "menu": {
+      "open": "Apri",
+      "duplicate": "Duplica",
+      "lock": "Blocca posizione",
+      "unlock": "Sblocca",
+      "front": "Porta in primo piano",
+      "back": "Porta in fondo",
+      "toUnsorted": "Sposta in Non ordinati",
+      "delete": "Elimina",
+      "more": "Altre azioni",
+      "newNote": "Nuova nota qui",
+      "newColumn": "Nuova colonna qui"
+    },
+    "zoom": {
+      "label": "Zoom",
+      "in": "Ingrandisci",
+      "out": "Riduci",
+      "reset": "Zoom al 100%",
+      "fit": "Adatta alla vista",
+      "selection": "Zoom alla selezione"
+    },
+    "unsorted": {
+      "empty": "Niente da smistare. Qui arriva ciò che salvi dal browser o dal telefono."
+    },
+    "uploads": {
+      "title": "Caricamenti",
+      "cancel": "Annulla",
+      "done": "Fatto",
+      "failed": "Non riuscito",
+      "cancelled": "Annullato"
+    },
+    "palette": {
+      "title": "Comandi",
+      "placeholder": "Cerca un comando…",
+      "add": "Aggiungi: {{type}}",
+      "unsorted": "Mostra o nascondi Non ordinati",
+      "undo": "Annulla",
+      "redo": "Ripeti",
+      "none": "Nessun comando"
+    },
+    "status": {
+      "connecting": "Connessione…",
+      "synced": "Sincronizzato",
+      "offline": "Offline · le modifiche restano qui",
+      "denied": "Accesso negato",
+      "readOnly": "Sola lettura"
+    },
+    "denied": {
+      "title": "Non puoi aprire questa board",
+      "body": "Chiedi l’accesso a chi gestisce il progetto."
+    },
+    "errors": {
+      "boardCreate": "Non è stato possibile creare la board.",
+      "upload": "Caricamento di {{name}} non riuscito."
     }
   }
 }
