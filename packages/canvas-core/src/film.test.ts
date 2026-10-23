@@ -1,5 +1,11 @@
 // SPDX-License-Identifier: MPL-2.0
-import { createBoardDoc, Element, MAX_STROKE_POINTS, STROKE_GRID } from '@inkadra/doc-schema';
+import {
+  createBoardDoc,
+  Element,
+  MAX_STROKE_POINTS,
+  roots,
+  STROKE_GRID,
+} from '@inkadra/doc-schema';
 import { describe, expect, it } from 'vitest';
 import * as Y from 'yjs';
 import { listElements, updateElement } from './board.ts';
@@ -19,6 +25,7 @@ import {
   strokeHit,
   totalDurationMs,
 } from './film.ts';
+import { applyTemplate } from './templates.ts';
 
 const opts = { userId: null };
 const boardId = '0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10';
@@ -113,5 +120,32 @@ describe('pen strokes', () => {
     // Plain field writes leave the drawing alone.
     updateElement(doc, frame.id, { lens: '85mm' });
     expect(read().strokes).toHaveLength(0);
+  });
+});
+
+describe('templates', () => {
+  it('adds each template in one undo step', () => {
+    const labels = {
+      moodboard: { refs: 'Refs', light: 'Light', locations: 'Locations', palette: 'Palette' },
+      storyboard: { scene: 'Opening' },
+      production: { todo: 'To do', doing: 'Doing', done: 'Done' },
+    };
+    const doc = createBoardDoc(boardId);
+    const undo = new Y.UndoManager(roots(doc).elements, { trackedOrigins: new Set(['t']) });
+    const mood = applyTemplate(doc, 'moodboard', { x: 0, y: 0 }, labels, {
+      userId: 'u',
+      origin: 't',
+    });
+    expect(mood).toHaveLength(4);
+    expect(listElements(doc).filter((e) => e.type === 'color')).toHaveLength(4);
+    const story = applyTemplate(doc, 'storyboard', { x: 0, y: 600 }, labels, {
+      userId: 'u',
+      origin: 't',
+    });
+    const [group] = storyboardOf(listElements(doc));
+    expect(group?.scene?.id).toBe(story[0]);
+    expect(group?.frames).toHaveLength(3);
+    undo.undo();
+    expect(listElements(doc).filter((e) => e.type === 'frame')).toHaveLength(0);
   });
 });

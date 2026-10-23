@@ -83,22 +83,25 @@ export function formatDuration(ms: number): string {
 
 type Opts = { userId: string | null; origin?: unknown };
 
-/** A new scene to the right of the others on the canvas, numbered after the last one. */
+/**
+ * A new scene numbered after the last one, at `at` or else to the right of the other scenes
+ * on the canvas.
+ */
 export function addScene(
   doc: Y.Doc,
-  fields: Partial<Omit<SceneElement, 'id' | 'type'>>,
+  fields: Partial<Omit<SceneElement, 'id' | 'type' | 'x' | 'y'>>,
   opts: Opts,
+  at?: Point,
 ): SceneElement {
   const all = listElements(doc);
   const scenes = all.filter((e): e is SceneElement => e.type === 'scene');
   const right = scenes.reduce((m, s) => Math.max(m, s.x + s.w), -Infinity);
   const last = scenes.sort(byZ).at(-1);
   const lastNumber = Number.parseInt(last?.number ?? '0', 10);
-  const at = { x: Number.isFinite(right) ? right + 40 : 0, y: 0 };
   return createElement(
     doc,
     'scene',
-    at,
+    at ?? { x: Number.isFinite(right) ? right + 40 : 0, y: 0 },
     {
       number:
         fields.number ?? String(Number.isFinite(lastNumber) ? lastNumber + 1 : scenes.length + 1),
@@ -241,11 +244,12 @@ export function encodeStroke(points: Point[]): number[] {
     (p, i) => i === 0 || p.x !== grid[i - 1]?.x || p.y !== grid[i - 1]?.y,
   );
   if (deduped.length === 1) deduped.push({ ...(deduped[0] as Point) });
-  let tolerance = 2;
-  let out = simplify(deduped, tolerance);
-  while (out.length > MAX_STROKE_POINTS) {
-    tolerance *= 2;
-    out = simplify(deduped, tolerance);
+  let out = simplify(deduped, 2);
+  // Still too long (a scribble): keep evenly spaced points, first and last included.
+  if (out.length > MAX_STROKE_POINTS) {
+    const step = (out.length - 1) / (MAX_STROKE_POINTS - 1);
+    const all = out;
+    out = Array.from({ length: MAX_STROKE_POINTS }, (_, i) => all[Math.round(i * step)] as Point);
   }
   return out.flatMap((p) => [p.x, p.y]);
 }
