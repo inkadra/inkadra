@@ -1,3 +1,4 @@
+import { execFileSync } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -11,6 +12,7 @@ import { asset, assetVariant, project } from '../db/schema.ts';
 import { originalKey, readAll } from '../storage.ts';
 import { testDeps } from '../test-deps.ts';
 import { processAsset, variantWidths } from './process.ts';
+import { mediaTools, resetMediaTools, sniffVideo } from './video.ts';
 
 const url = process.env.DATABASE_URL;
 const migrationsFolder = fileURLToPath(new URL('../../drizzle', import.meta.url));
@@ -45,7 +47,12 @@ describe.skipIf(!url)('processAsset (needs DATABASE_URL)', () => {
     await db.insert(asset).values({
       id,
       projectId,
-      kind: mime.startsWith('image/') || filename.endsWith('.heic') ? 'image' : 'file',
+      kind:
+        mime.startsWith('image/') || filename.endsWith('.heic')
+          ? 'image'
+          : mime.startsWith('video/') || mime === 'application/vnd.apple.mpegurl'
+            ? 'video'
+            : 'file',
       mime,
       filename,
       size: body.length,
@@ -144,5 +151,69 @@ describe.skipIf(!url)('processAsset (needs DATABASE_URL)', () => {
       .toBuffer();
     const id = await upload(png.subarray(0, 40), 'image/png', 'broken.png');
     await expect(processAsset(deps, id)).rejects.toThrow();
+  });
+
+  describe('videos', async () => {
+    const tools = await mediaTools();
+    // A 2 s, 640x360 clip with a red frame after 0.1 s, so the poster is not the first frame.
+    const clip = () => {
+      const out = join(root, `clip-${randomUUID()}.mp4`);
+      execFileSync(tools.ffmpeg ?? 'ffmpeg', [
+        '-v',
+        'error',
+        '-f',
+        'lavfi',
+        '-i',
+        'color=c=black:s=640x360:r=24:d=0.1',
+        '-f',
+        'lavfi',
+        '-i',
+        'color=c=red:s=640x360:r=24:d=1.9',
+        '-filter_complex',
+        '[0][1]concat=n=2:v=1',
+        '-pix_fmt',
+        'yuv420p',
+        out,
+      ]);
+      return readFileSync(out);
+    };
+
+    it.skipIf(!tools.ffmpeg)('makes a poster and reads the duration with ffmpeg', async () => {
+      const id = await upload(clip(), 'video/mp4', 'take-4C.mp4');
+      await processAsset(deps, id);
+      const { row, variants } = await load(id);
+      expect(row).toMatchObject({ status: 'ready', kind: 'video', mime: 'video/mp4' });
+      expect([row?.width, row?.height]).toEqual([640, 360]);
+      expect(row?.durationMs).toBeGreaterThan(1900);
+      expect(row?.durationMs).toBeLessThan(2200);
+      expect(variants.map((v) => v.size)).toEqual(['256', '512']);
+      expect(row?.palette?.[0]).toMatch(/^#[EF][0-9A-F]/);
+    });
+
+    it('never hands playlists to ffmpeg', async () => {
+      const playlist = Buffer.from('#EXTM3U\n#EXTINF:1,\nfile:///etc/passwd\n');
+      expect(sniffVideo(playlist)).toBeNull();
+      const id = await upload(playlist, 'application/vnd.apple.mpegurl', 'evil.m3u8');
+      await processAsset(deps, id);
+      const { row, variants } = await load(id);
+      expect(row?.status).toBe('ready');
+      expect(variants).toHaveLength(0);
+    });
+
+    it.skipIf(!tools.ffmpeg)('stores videos without poster when ffmpeg is missing', async () => {
+      const body = clip();
+      process.env.FFMPEG_PATH = '/nonexistent/ffmpeg';
+      resetMediaTools();
+      try {
+        const id = await upload(body, 'video/mp4', 'no-tools.mp4');
+        await processAsset(deps, id);
+        const { row, variants } = await load(id);
+        expect(row?.status).toBe('ready');
+        expect(variants).toHaveLength(0);
+      } finally {
+        delete process.env.FFMPEG_PATH;
+        resetMediaTools();
+      }
+    });
   });
 });
