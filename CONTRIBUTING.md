@@ -65,6 +65,12 @@ Documents are migrated when the collaboration server loads them. The schema free
 - Fill in the template. For screens, attach before/after screenshots in dark and light theme.
 - Every pull request needs green CI (lint, types, tests, end-to-end, secret scan, licences,
   image build) and an approving review from someone who did not write it.
+- Sign off every commit (`git commit -s`) to certify the
+  [Developer Certificate of Origin](https://developercertificate.org). Commits without a
+  `Signed-off-by` line cannot be merged.
+- Licences differ by folder: `apps/server` and `apps/web` are AGPL-3.0, everything in
+  `packages/` is MPL-2.0 and starts each file with `SPDX-License-Identifier: MPL-2.0`. A
+  package never imports from an app ([decision 0008](docs/decisions/0008-licences-per-component.md)).
 - Commits: imperative mood, short subject (`Add project list endpoint`), body when the why is
   not obvious. Maintainers squash or merge; history on `main` stays linear.
 

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MPL-2.0
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { dark, light } from './tokens.ts';

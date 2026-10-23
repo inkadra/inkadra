@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MPL-2.0
 import { FractionalIndex, Id, Timestamp, z } from './common.ts';
 import { ProjectRole } from './projects.ts';
 

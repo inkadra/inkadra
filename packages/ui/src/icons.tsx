@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MPL-2.0
 import type { SVGProps } from 'react';
 
 /** Line icons from the design reference: 24 grid, 1.6 stroke, round caps. */

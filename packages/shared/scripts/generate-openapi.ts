@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MPL-2.0
 import { readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { buildOpenApiDocument } from '../src/openapi.ts';

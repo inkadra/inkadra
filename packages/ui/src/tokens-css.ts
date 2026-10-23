@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MPL-2.0
 import { dark, light } from './tokens.ts';
 
 const vars = (tokens: Record<string, string>, indent: string) =>
@@ -7,7 +8,8 @@ const vars = (tokens: Record<string, string>, indent: string) =>
 
 /** Source of tokens.css. `pnpm --filter @inkadra/ui tokens` writes it; a test checks it is current. */
 export function tokensCss(): string {
-  return `/* Generated from tokens.ts with \`pnpm --filter @inkadra/ui tokens\`. Do not edit by hand. */
+  return `/* SPDX-License-Identifier: MPL-2.0 */
+/* Generated from tokens.ts with \`pnpm --filter @inkadra/ui tokens\`. Do not edit by hand. */
 
 :root,
 :root[data-theme='dark'] {

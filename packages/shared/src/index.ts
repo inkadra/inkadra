@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MPL-2.0
 export * from './assets.ts';
 export * from './boards.ts';
 export * from './clip.ts';

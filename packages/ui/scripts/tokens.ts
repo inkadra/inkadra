@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MPL-2.0
 import { writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { tokensCss } from '../src/tokens-css.ts';

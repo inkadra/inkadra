@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MPL-2.0
 /**
  * Rendering-independent canvas math, shared by the web canvas and the mobile app.
  * The web canvas thread grows this package in wave 1.

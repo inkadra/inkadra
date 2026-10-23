@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MPL-2.0
 /**
  * Design tokens, from the "Fondamenta" page of the design reference.
  * styles.css exposes them as CSS custom properties (--ink-*); keep both in sync.
