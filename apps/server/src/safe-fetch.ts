@@ -71,7 +71,8 @@ export function isPublicAddress(address: string): boolean {
 export class FetchRefused extends Error {}
 
 export interface SafeFetchOptions {
-  maxBytes: number;
+  /** Largest body accepted, or a limit per content type (a page needs far less than an image). */
+  maxBytes: number | ((contentType: string) => number);
   timeoutMs?: number;
   maxRedirects?: number;
   /** Accept only these content types (prefix match). */
@@ -161,8 +162,10 @@ function once(url: URL, opts: SafeFetchOptions, deadline: number) {
             res.resume();
             return reject(new FetchRefused(`Unexpected content type ${contentType || 'none'}.`));
           }
+          const maxBytes =
+            typeof opts.maxBytes === 'function' ? opts.maxBytes(contentType) : opts.maxBytes;
           const length = Number(res.headers['content-length'] ?? 0);
-          if (length > opts.maxBytes) {
+          if (length > maxBytes) {
             res.destroy();
             return reject(new FetchRefused('The response is too large.'));
           }
@@ -170,7 +173,7 @@ function once(url: URL, opts: SafeFetchOptions, deadline: number) {
           let size = 0;
           res.on('data', (chunk: Buffer) => {
             size += chunk.length;
-            if (size > opts.maxBytes) {
+            if (size > maxBytes) {
               res.destroy();
               reject(new FetchRefused('The response is too large.'));
               return;
@@ -178,7 +181,8 @@ function once(url: URL, opts: SafeFetchOptions, deadline: number) {
             chunks.push(chunk);
           });
           res.on('end', () => resolve({ status, contentType, body: Buffer.concat(chunks) }));
-          res.on('error', reject);
+          // A connection cut mid-body: as unreadable as one that never answered.
+          res.on('error', (err) => reject(new FetchRefused(`Could not fetch: ${err.message}`)));
         },
       );
       const tooLong = () => req.destroy(new FetchRefused('The page took too long to answer.'));

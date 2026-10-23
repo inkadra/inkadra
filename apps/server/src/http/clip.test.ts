@@ -1,5 +1,6 @@
+import { readdirSync } from 'node:fs';
 import { createServer, type Server } from 'node:http';
-import type { AddressInfo } from 'node:net';
+import { type AddressInfo, createServer as createNetServer, type Socket } from 'node:net';
 import { fileURLToPath } from 'node:url';
 import { HocuspocusProvider, HocuspocusProviderWebsocket } from '@hocuspocus/provider';
 import {
@@ -11,6 +12,7 @@ import {
   roots,
   UNSORTED,
 } from '@inkadra/doc-schema';
+import { Queue, QueueEvents } from 'bullmq';
 import { and, eq, sql } from 'drizzle-orm';
 import pino from 'pino';
 import sharp from 'sharp';
@@ -18,12 +20,18 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import WebSocket from 'ws';
 import * as Y from 'yjs';
 import { createAuth } from '../auth.ts';
-import { directBoardWriter } from '../board-writer.ts';
+import { type BoardWriter, directBoardWriter } from '../board-writer.ts';
 import { attachCollab, createCollabServer } from '../collab.ts';
 import { loadConfig } from '../config.ts';
 import { createDatabase, runMigrations } from '../db/client.ts';
 import { asset, boardElementIndex } from '../db/schema.ts';
-import { queuedBoardWriter, startBoardWorker } from '../queues.ts';
+import {
+  CardOutcomeUnknown,
+  createRedis,
+  QUEUES,
+  queuedBoardWriter,
+  startBoardWorker,
+} from '../queues.ts';
 import { fragmentText } from '../search/index-doc.ts';
 import { testDeps } from '../test-deps.ts';
 import { issueToken } from '../tokens.ts';
@@ -34,14 +42,15 @@ const redisUrl = process.env.REDIS_URL;
 const migrationsFolder = fileURLToPath(new URL('../../drizzle', import.meta.url));
 
 describe.skipIf(!url)('clip (needs DATABASE_URL)', () => {
-  const config = loadConfig({
+  const env = {
     NODE_ENV: 'test',
     PUBLIC_URL: 'http://localhost:3000',
     DATABASE_URL: url ?? 'postgres://unused',
     AUTH_SECRET: 'test-secret-test-secret-test-secret-0123',
     REGISTRATION: 'open',
     UPLOAD_MAX_SIZE: '1MB',
-  });
+  };
+  const config = loadConfig(env);
   const log = pino({ level: 'silent' });
   const { db, sql: client } = createDatabase(config.DATABASE_URL, 4);
   const auth = createAuth(config, db);
@@ -55,6 +64,8 @@ describe.skipIf(!url)('clip (needs DATABASE_URL)', () => {
   let projectId = '';
   let token = '';
   let png = Buffer.alloc(0);
+  /** Requests that reached the site's /secret page, which no clip may fetch. */
+  let secretHits = 0;
   const people: Record<string, { cookie: string; id: string }> = {};
   const open: Array<{ close(): void }> = [];
 
@@ -75,12 +86,13 @@ describe.skipIf(!url)('clip (needs DATABASE_URL)', () => {
   async function clip(
     body: Record<string, unknown> | FormData,
     auth: { cookie?: string; token?: string } = { token },
+    at = base,
   ) {
     const headers: Record<string, string> = {};
     if (auth.cookie) headers.cookie = auth.cookie;
     if (auth.token) headers.authorization = `Bearer ${auth.token}`;
     if (!(body instanceof FormData)) headers['content-type'] = 'application/json';
-    const res = await fetch(`http://${base}/api/v1/clip`, {
+    const res = await fetch(`http://${at}/api/v1/clip`, {
       method: 'POST',
       headers,
       body: body instanceof FormData ? body : JSON.stringify(body),
@@ -150,6 +162,41 @@ describe.skipIf(!url)('clip (needs DATABASE_URL)', () => {
     }
   }
 
+  /** Another app on the same database and collaboration server, with its own settings. */
+  async function otherApp(opts: { env?: Record<string, string>; boards?: BoardWriter }) {
+    const other = await createApp({
+      config: loadConfig({ ...env, ...opts.env }),
+      db,
+      auth,
+      log,
+      ...deps,
+      boards: opts.boards ?? directBoardWriter(collab),
+      tmpDir: deps.root,
+      allowAddresses: ['127.0.0.1'],
+    });
+    await other.listen({ host: '127.0.0.1', port: 0 });
+    return { app: other, base: `127.0.0.1:${(other.server.address() as AddressInfo).port}` };
+  }
+
+  const tempDirs = () => readdirSync(deps.root).filter((name) => name.startsWith('clip-'));
+  const projectAssets = async () =>
+    (await db.select({ id: asset.id }).from(asset).where(eq(asset.projectId, projectId))).length;
+
+  /** Text of every note on the board, as stored. */
+  async function boardTexts() {
+    const connection = await collab.hocuspocus.openDirectConnection(boardDocName(boardId));
+    try {
+      const texts: string[] = [];
+      for (const map of connection.document?.getMap<Y.Map<unknown>>('elements').values() ?? []) {
+        const body = map.get('body');
+        if (body instanceof Y.XmlFragment) texts.push(fragmentText(body));
+      }
+      return texts;
+    } finally {
+      await connection.disconnect();
+    }
+  }
+
   const indexRow = async (elementId: string) =>
     (
       await db
@@ -207,6 +254,29 @@ describe.skipIf(!url)('clip (needs DATABASE_URL)', () => {
       } else if (req.url === '/cover.png' || req.url === '/still') {
         res.setHeader('content-type', 'image/png');
         res.end(png);
+      } else if (req.url === '/secret') {
+        secretHits += 1;
+        res.setHeader('content-type', 'text/html');
+        res.end('<title>Internal</title>');
+      } else if (req.url === '/to-private') {
+        res.statusCode = 302;
+        res.setHeader(
+          'location',
+          `http://localhost:${(site.address() as AddressInfo).port}/secret`,
+        );
+        res.end();
+      } else if (req.url === '/huge') {
+        // Over the 1 MB a page may have, though well under the image limit.
+        res.setHeader('content-type', 'text/html');
+        res.end(`<title>Enorme</title>${'x'.repeat(2 * 1024 * 1024)}`);
+      } else if (req.url === '/fake.png') {
+        res.setHeader('content-type', 'image/png');
+        res.end('<html><title>Not a picture</title></html>');
+      } else if (req.url === '/cut') {
+        res.setHeader('content-type', 'text/html');
+        res.setHeader('content-length', '100000');
+        res.write('<title>Interrotta</title>');
+        setTimeout(() => res.socket?.destroy(), 20);
       } else {
         res.statusCode = 404;
         res.end();
@@ -422,30 +492,220 @@ describe.skipIf(!url)('clip (needs DATABASE_URL)', () => {
     live.close();
   });
 
-  it.skipIf(!redisUrl)('goes through the queue when collab runs on its own', async () => {
-    const prefix = `inkadra-test-${process.pid}`;
-    const worker = startBoardWorker(redisUrl ?? '', directBoardWriter(collab), log, { prefix });
-    const queued = queuedBoardWriter(redisUrl ?? '', { prefix });
-    try {
-      const placed = await queued.writer.addCard({
-        boardId,
-        userId: people.owner?.id ?? '',
-        card: { type: 'note', fields: {}, body: [{ kind: 'paragraph', text: 'Dalla coda' }] },
-      });
-      expect(placed.ok).toBe(true);
-      if (!placed.ok) return;
-      expect((await boardElement(placed.elementId)).text).toBe('Dalla coda');
-      expect(
-        await queued.writer.addCard({
-          boardId,
-          columnId: 'not-a-column-0001',
-          userId: people.owner?.id ?? '',
-          card: { type: 'note', fields: {} },
-        }),
-      ).toEqual({ ok: false, reason: 'column' });
-    } finally {
-      await queued.close();
-      await worker.close();
+  it('keeps a link card with the bare address when the page cannot be read', async () => {
+    const port = (site.address() as AddressInfo).port;
+    for (const page of [
+      // Private, directly or through a redirect: never fetched.
+      `http://localhost:${port}/secret`,
+      `${siteUrl}/to-private`,
+      // Over 1 MB of HTML, an image that is not one, a connection cut mid-page.
+      `${siteUrl}/huge`,
+      `${siteUrl}/fake.png`,
+      `${siteUrl}/cut`,
+    ]) {
+      const res = await clip({ boardId, url: page });
+      expect(res.status, page).toBe(201);
+      expect(res.json.assetId, page).toBeNull();
+      const { element } = await boardElement(res.json.elementId);
+      expect(element, page).toMatchObject({ type: 'link', url: page });
+      expect((element as Extract<Element, { type: 'link' }>).title, page).toBeUndefined();
     }
+    expect(secretHits).toBe(0);
+  });
+
+  it('refuses a sourceUrl that is not a web address', async () => {
+    for (const sourceUrl of ['javascript:alert(1)', 'file:///etc/passwd', 'data:text/html,x']) {
+      const res = await clip({ boardId, text: 'Citazione', sourceUrl });
+      expect(res.status, sourceUrl).toBe(400);
+    }
+  });
+
+  it('refuses a board in the trash', async () => {
+    const created = await app.inject({
+      method: 'POST',
+      url: `/api/v1/projects/${projectId}/boards`,
+      headers: { cookie: people.owner?.cookie ?? '' },
+      payload: { parentBoardId: boardId, title: 'Scartata' },
+    });
+    const trashed = created.json().id as string;
+    await app.inject({
+      method: 'DELETE',
+      url: `/api/v1/boards/${trashed}`,
+      headers: { cookie: people.owner?.cookie ?? '' },
+    });
+    expect((await clip({ boardId: trashed, text: 'Nel cestino' })).status).toBe(404);
+    const sent = await clip(form({ boardId: trashed }, [png, 'x.png', 'image/png']));
+    expect(sent.status).toBe(404);
+    expect(tempDirs()).toEqual([]);
+  });
+
+  it('needs boardId before the file, and stores nothing it may not keep', async () => {
+    const before = await projectAssets();
+    // The file first: refused before a byte of it is written, whoever sends it.
+    const fileFirst = new FormData();
+    fileFirst.append('file', new Blob([png], { type: 'image/png' }), 'x.png');
+    fileFirst.append('boardId', boardId);
+    const early = await clip(fileFirst);
+    expect(early.status).toBe(400);
+    expect(early.json.error.message).toMatch(/boardId/);
+    // A viewer, in the right order: refused before the file is written.
+    const viewer = await clip(form({ boardId }, [png, 'x.png', 'image/png']), {
+      cookie: people.viewer?.cookie,
+    });
+    expect(viewer.status).toBe(403);
+    // Too large, empty, two files.
+    const big = await clip(
+      form({ boardId }, [Buffer.alloc(1024 * 1024 + 1, 1), 'big.bin', 'application/octet-stream']),
+    );
+    expect(big.status).toBe(413);
+    const empty = await clip(form({ boardId }, [Buffer.alloc(0), 'empty.txt', 'text/plain']));
+    expect(empty.status).toBe(400);
+    const two = form({ boardId }, [png, 'a.png', 'image/png']);
+    two.append('file', new Blob([png], { type: 'image/png' }), 'b.png');
+    expect((await clip(two)).status).toBe(400);
+    await deps.jobs.idle();
+    expect(await projectAssets()).toBe(before);
+    await expect.poll(tempDirs).toEqual([]);
+  });
+
+  it('removes the temporary file once a sent file is stored', async () => {
+    const res = await clip(form({ boardId }, [png, 'tmp.png', 'image/png']));
+    expect(res.status).toBe(201);
+    await expect.poll(tempDirs).toEqual([]);
+  });
+
+  it('takes files of any size with UPLOAD_MAX_SIZE=0', async () => {
+    const other = await otherApp({ env: { UPLOAD_MAX_SIZE: '0' } });
+    try {
+      // Over Fastify's 1 MiB body limit, which multipart would otherwise fall back to.
+      const big = Buffer.alloc(3 * 1024 * 1024, 7);
+      const res = await clip(
+        form({ boardId }, [big, 'scan.bin', 'application/octet-stream']),
+        { token },
+        other.base,
+      );
+      expect(res.status).toBe(201);
+      const [row] = await db.select().from(asset).where(eq(asset.id, res.json.assetId));
+      expect(row).toMatchObject({ kind: 'file', size: big.length });
+    } finally {
+      await other.app.close();
+    }
+  });
+
+  it('keeps the files when the board may have the card but did not confirm it', async () => {
+    const unsure: BoardWriter = {
+      async addCard() {
+        throw new CardOutcomeUnknown('no answer');
+      },
+    };
+    const other = await otherApp({ boards: unsure });
+    try {
+      const res = await clip(
+        form({ boardId }, [png, 'forse.png', 'image/png']),
+        { token },
+        other.base,
+      );
+      expect(res.status).toBe(500);
+      expect(res.json.error.message).toMatch(/check/);
+      const rows = await db.select().from(asset).where(eq(asset.filename, 'forse.png'));
+      expect(rows.length).toBe(1);
+    } finally {
+      await other.app.close();
+    }
+  });
+
+  describe.skipIf(!redisUrl)('when collab runs on its own (needs REDIS_URL)', () => {
+    const prefix = `inkadra-test-${process.pid}`;
+    const userId = () => people.owner?.id ?? '';
+
+    it('goes through the queue', async () => {
+      const worker = startBoardWorker(redisUrl ?? '', directBoardWriter(collab), log, { prefix });
+      const queued = queuedBoardWriter(redisUrl ?? '', { prefix });
+      try {
+        const placed = await queued.writer.addCard({
+          boardId,
+          userId: userId(),
+          card: { type: 'note', fields: {}, body: [{ kind: 'paragraph', text: 'Dalla coda' }] },
+        });
+        expect(placed.ok).toBe(true);
+        if (!placed.ok) return;
+        expect((await boardElement(placed.elementId)).text).toBe('Dalla coda');
+        expect(
+          await queued.writer.addCard({
+            boardId,
+            columnId: 'not-a-column-0001',
+            userId: userId(),
+            card: { type: 'note', fields: {} },
+          }),
+        ).toEqual({ ok: false, reason: 'column' });
+      } finally {
+        await queued.close();
+        await worker.close();
+      }
+    });
+
+    it('never applies a card after telling the sender it timed out', async () => {
+      // No worker: collab is down or busy.
+      const queued = queuedBoardWriter(redisUrl ?? '', { prefix, timeoutMs: 300, graceMs: 300 });
+      const connection = createRedis(redisUrl ?? '');
+      const queue = new Queue(QUEUES.collab, { connection, prefix });
+      const events = new QueueEvents(QUEUES.collab, {
+        connection: createRedis(redisUrl ?? ''),
+        prefix,
+      });
+      let worker: ReturnType<typeof startBoardWorker> | undefined;
+      try {
+        expect(
+          await queued.writer.addCard({
+            boardId,
+            userId: userId(),
+            card: { type: 'note', fields: {}, body: [{ kind: 'paragraph', text: 'Troppo tardi' }] },
+          }),
+        ).toEqual({ ok: false, reason: 'expired' });
+        // A job that outlived its deadline, as if its removal had failed: refused on arrival.
+        const stale = await queue.add('add-card', {
+          boardId,
+          userId: userId(),
+          card: { type: 'note', fields: {}, body: [{ kind: 'paragraph', text: 'Scaduta' }] },
+          expiresAt: Date.now() - 1,
+        });
+        // collab comes back.
+        worker = startBoardWorker(redisUrl ?? '', directBoardWriter(collab), log, { prefix });
+        expect(await stale.waitUntilFinished(events, 5000)).toEqual({
+          ok: false,
+          reason: 'expired',
+        });
+        const texts = await boardTexts();
+        expect(texts).not.toContain('Troppo tardi');
+        expect(texts).not.toContain('Scaduta');
+      } finally {
+        await worker?.close();
+        await queued.close();
+        await Promise.all([queue.close(), events.close()]);
+        connection.disconnect();
+      }
+    });
+
+    it('gives up instead of hanging when the queue does not answer', async () => {
+      // Accepts connections and never says a word, like a Valkey that is stuck.
+      const sockets: Socket[] = [];
+      const silent = createNetServer((socket) => {
+        sockets.push(socket);
+      });
+      await new Promise<void>((resolve) => silent.listen(0, '127.0.0.1', resolve));
+      const port = (silent.address() as AddressInfo).port;
+      const queued = queuedBoardWriter(`redis://127.0.0.1:${port}`, { prefix, timeoutMs: 300 });
+      try {
+        const started = Date.now();
+        await expect(
+          queued.writer.addCard({ boardId, userId: userId(), card: { type: 'note', fields: {} } }),
+        ).rejects.toThrow(/unreachable/);
+        expect(Date.now() - started).toBeLessThan(2000);
+      } finally {
+        for (const socket of sockets) socket.destroy();
+        silent.close();
+        void queued.close().catch(() => {});
+      }
+    });
   });
 });
