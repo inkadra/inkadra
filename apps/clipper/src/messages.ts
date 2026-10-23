@@ -71,7 +71,9 @@ export function createRouter(handlers: Handlers, options: RouterOptions) {
     sender: chrome.runtime.MessageSender,
     sendResponse: (reply: Reply<unknown>) => void,
   ): boolean => {
+    // Only the clipper's own pages (popup, options): not scripts it injects into web pages.
     if (sender.id !== options.extensionId) return false;
+    if (!sender.url?.startsWith(`chrome-extension://${options.extensionId}/`)) return false;
     if (!isMessage(message) || !Object.hasOwn(handlers, message.type)) {
       sendResponse({ ok: false, error: { kind: 'bad_request', message: 'Unknown message.' } });
       return false;

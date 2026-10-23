@@ -109,7 +109,12 @@ export async function connect(serverUrl: string): Promise<Connection> {
   };
   const previous = await getConnection();
   // Switching server: the boards remembered for the old one mean nothing here.
-  if (previous && previous.serverUrl !== serverUrl) await clearConnection();
+  if (previous && previous.serverUrl !== serverUrl) {
+    await clearConnection();
+    const oldOrigin = new URL(previous.serverUrl).origin;
+    if (oldOrigin !== new URL(serverUrl).origin)
+      await chrome.permissions.remove({ origins: [`${oldOrigin}/*`] }).catch(() => {});
+  }
   await setConnection(connection);
   return connection;
 }

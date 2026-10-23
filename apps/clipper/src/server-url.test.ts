@@ -24,4 +24,12 @@ describe('parseServerUrl', () => {
     expect(parseServerUrl('https://user:pass@example.com')).toBeNull();
     expect(parseServerUrl('https://exa mple.com')).toBeNull();
   });
+
+  it('accepts plain http only on this computer and the local network', () => {
+    expect(parseServerUrl('http://localhost:5173')?.base).toBe('http://localhost:5173');
+    expect(parseServerUrl('http://nas.lan')?.base).toBe('http://nas.lan');
+    expect(parseServerUrl('http://10.0.0.2')?.base).toBe('http://10.0.0.2');
+    expect(parseServerUrl('http://inkadra.example.com')).toBeNull();
+    expect(parseServerUrl('http://172.32.0.1')).toBeNull();
+  });
 });

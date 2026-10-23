@@ -11,11 +11,22 @@ export type PageImage = { dataUrl: string } | { tooLarge: true } | { failed: str
  * saved. Cross-origin images without CORS fail here and are tried from the extension instead.
  */
 export async function readImageInPage(srcUrl: string, maxBytes: number): Promise<PageImage> {
+  // Results travel back as a message: larger pictures are fetched by the extension instead.
+  const pageLimit = 32 * 1024 * 1024;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 30_000);
   try {
-    const res = await fetch(srcUrl, { credentials: 'include' });
+    const res = await fetch(srcUrl, { credentials: 'include', signal: controller.signal });
     if (!res.ok) return { failed: `HTTP ${res.status}` };
+    // A login page served instead of the picture (expired session) is not an image.
+    if (!(res.headers.get('content-type') ?? '').startsWith('image/'))
+      return { failed: 'not an image' };
+    const length = Number(res.headers.get('content-length') ?? 0);
+    if (maxBytes > 0 && length > maxBytes) return { tooLarge: true };
+    if (length > pageLimit) return { failed: 'too large to read in the page' };
     const blob = await res.blob();
     if (maxBytes > 0 && blob.size > maxBytes) return { tooLarge: true };
+    if (blob.size > pageLimit) return { failed: 'too large to read in the page' };
     const dataUrl = await new Promise<string>((resolve, reject) => {
       const reader = new FileReader();
       reader.onload = () => resolve(String(reader.result));
@@ -25,6 +36,8 @@ export async function readImageInPage(srcUrl: string, maxBytes: number): Promise
     return { dataUrl };
   } catch (err) {
     return { failed: err instanceof Error ? err.message : String(err) };
+  } finally {
+    clearTimeout(timer);
   }
 }
 
