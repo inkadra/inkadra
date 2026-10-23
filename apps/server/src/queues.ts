@@ -1,7 +1,8 @@
-import { Queue, Worker } from 'bullmq';
+import { Queue, QueueEvents, Worker } from 'bullmq';
 import { and, eq, lt } from 'drizzle-orm';
 import IORedis from 'ioredis';
 import type { Logger } from 'pino';
+import type { AddCard, AddCardResult, BoardWriter } from './board-writer.ts';
 import type { Database } from './db/client.ts';
 import { asset } from './db/schema.ts';
 import type { Jobs } from './jobs.ts';
@@ -19,6 +20,8 @@ export const QUEUES = {
   email: 'email',
   /** Housekeeping: trash purge, upload cleanup, backups (wave 3). */
   maintenance: 'maintenance',
+  /** Cards the web role adds to board documents, applied by `inkadra collab` (split mode). */
+  collab: 'collab',
 } as const;
 
 export type JobPayloads = {
@@ -26,6 +29,7 @@ export type JobPayloads = {
   'maintenance:delete-files': { keys: string[] };
   'maintenance:purge-uploads': Record<string, never>;
   'media:process': { assetId: string };
+  'collab:add-card': AddCard;
 };
 
 const ATTEMPTS = { attempts: 3, backoff: { type: 'exponential', delay: 10_000 } } as const;
@@ -147,6 +151,65 @@ export async function startWorkers(
   return {
     async close() {
       await Promise.all([maintenance.close(), media.close(), scheduler.close(), queues.close()]);
+      connection.disconnect();
+    },
+  };
+}
+
+/** How long the web role waits for the collaboration server to apply a card. */
+const ADD_CARD_TIMEOUT_MS = 10_000;
+
+/**
+ * Board edits from a web role that has no collaboration server of its own: they go through
+ * the `collab` queue to the one that has the document open (decision 0013).
+ */
+export function queuedBoardWriter(url: string, opts: { prefix?: string } = {}) {
+  const connection = createRedis(url);
+  const queue = new Queue(QUEUES.collab, { connection, prefix: opts.prefix });
+  // QueueEvents blocks on its connection: it needs one of its own.
+  const events = new QueueEvents(QUEUES.collab, {
+    connection: createRedis(url),
+    prefix: opts.prefix,
+  });
+  const writer: BoardWriter = {
+    async addCard(input) {
+      await events.waitUntilReady();
+      // Not retried: a late retry could add the card after the client was told it failed.
+      const job = await queue.add('add-card', input, KEEP);
+      return (await job.waitUntilFinished(events, ADD_CARD_TIMEOUT_MS)) as AddCardResult;
+    },
+  };
+  return {
+    writer,
+    async close() {
+      await Promise.all([queue.close(), events.close()]);
+      connection.disconnect();
+    },
+  };
+}
+
+/** Run by `inkadra collab`: applies the cards queued by web roles to the live documents. */
+export function startBoardWorker(
+  url: string,
+  writer: BoardWriter,
+  log: Logger,
+  opts: { prefix?: string } = {},
+) {
+  const connection = createRedis(url);
+  const worker = new Worker(
+    QUEUES.collab,
+    async (job) => {
+      if (job.name !== 'add-card') throw new Error(`Unknown job ${job.name}`);
+      return writer.addCard(job.data as JobPayloads['collab:add-card']);
+    },
+    { connection, concurrency: 4, prefix: opts.prefix },
+  );
+  worker.on('failed', (job, err) =>
+    log.error({ queue: worker.name, job: job?.id, err }, 'job failed'),
+  );
+  return {
+    async close() {
+      await worker.close();
       connection.disconnect();
     },
   };

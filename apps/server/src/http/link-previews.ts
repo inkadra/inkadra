@@ -1,13 +1,13 @@
 import { randomUUID } from 'node:crypto';
 import { API_PREFIX, CreateLinkPreview, type LinkPreview } from '@inkadra/shared';
-import type { FastifyInstance } from 'fastify';
+import type { FastifyBaseLogger, FastifyInstance } from 'fastify';
 import { Parser } from 'htmlparser2';
 import { requireWriteAccess } from '../access.ts';
 import type { Auth } from '../auth.ts';
 import type { Database } from '../db/client.ts';
 import { asset } from '../db/schema.ts';
 import type { Jobs } from '../jobs.ts';
-import { FetchRefused, safeFetch } from '../safe-fetch.ts';
+import { FetchRefused, type SafeResponse, safeFetch } from '../safe-fetch.ts';
 import { originalKey, type Storage } from '../storage.ts';
 import { requireActor } from './auth-routes.ts';
 import { HttpError } from './errors.ts';
@@ -98,6 +98,79 @@ export class RateLimiter {
   }
 }
 
+export interface FetchDeps {
+  db: Database;
+  storage: Storage;
+  allowAddresses: string[];
+}
+
+/** Last part of the path of an address, decoded, for the name of a fetched file. */
+export function nameFromUrl(url: string, fallback: string): string {
+  const last = new URL(url).pathname.split('/').pop() ?? '';
+  try {
+    return (decodeURIComponent(last) || fallback).slice(0, 255);
+  } catch {
+    return (last || fallback).slice(0, 255);
+  }
+}
+
+/** Copies a fetched image into the project as a new asset. The caller queues its processing. */
+export async function saveFetchedImage(
+  deps: Pick<FetchDeps, 'db' | 'storage'>,
+  image: SafeResponse,
+  opts: { projectId: string; actorId: string; sourceUrl: string },
+): Promise<string> {
+  const id = randomUUID();
+  const filename = nameFromUrl(image.url, 'image');
+  await deps.storage.write(originalKey(id), image.body, image.contentType);
+  await deps.db.insert(asset).values({
+    id,
+    projectId: opts.projectId,
+    kind: 'image',
+    mime: cleanMime(image.contentType, filename),
+    filename,
+    size: image.body.length,
+    storageKey: originalKey(id),
+    sourceUrl: opts.sourceUrl,
+    createdBy: opts.actorId,
+  });
+  return id;
+}
+
+/**
+ * Title, description and site of a fetched page, with a copy of its image when it has one.
+ * The caller queues the processing of `imageAssetId`.
+ */
+export async function pagePreview(
+  deps: FetchDeps,
+  page: SafeResponse,
+  opts: { projectId: string; actorId: string },
+  log: FastifyBaseLogger,
+): Promise<LinkPreview> {
+  const meta = readPageMeta(page.body.toString('utf8'), page.url);
+  let imageAssetId: string | null = null;
+  if (meta.image) {
+    try {
+      const image = await safeFetch(meta.image, {
+        accept: ['image/'],
+        maxBytes: 10 * 1024 * 1024,
+        allowAddresses: deps.allowAddresses,
+      });
+      imageAssetId = await saveFetchedImage(deps, image, { ...opts, sourceUrl: page.url });
+    } catch (err) {
+      // A preview without its image is still useful.
+      log.info({ err, image: meta.image }, 'link preview image skipped');
+    }
+  }
+  return {
+    url: page.url,
+    title: meta.title,
+    description: meta.description,
+    siteName: meta.siteName,
+    imageAssetId,
+  };
+}
+
 export function registerLinkPreviews(app: FastifyInstance, deps: Deps) {
   const { db, auth, storage, jobs } = deps;
   // A few previews a minute per person: each one makes the server fetch two URLs.
@@ -122,47 +195,13 @@ export function registerLinkPreviews(app: FastifyInstance, deps: Deps) {
       if (err instanceof FetchRefused) throw new HttpError('bad_request', err.message);
       throw err;
     }
-    const meta = readPageMeta(page.body.toString('utf8'), page.url);
-
-    let imageAssetId: string | null = null;
-    if (meta.image) {
-      try {
-        const image = await safeFetch(meta.image, {
-          accept: ['image/'],
-          maxBytes: 10 * 1024 * 1024,
-          allowAddresses,
-        });
-        const id = randomUUID();
-        const filename = decodeURIComponent(
-          new URL(image.url).pathname.split('/').pop() || 'preview',
-        );
-        await storage.write(originalKey(id), image.body, image.contentType);
-        await db.insert(asset).values({
-          id,
-          projectId: input.projectId,
-          kind: 'image',
-          mime: cleanMime(image.contentType, filename),
-          filename: filename.slice(0, 255),
-          size: image.body.length,
-          storageKey: originalKey(id),
-          sourceUrl: page.url,
-          createdBy: actor.id,
-        });
-        await jobs.processAsset(id);
-        imageAssetId = id;
-      } catch (err) {
-        // A preview without its image is still useful.
-        req.log.info({ err, image: meta.image }, 'link preview image skipped');
-      }
-    }
-
-    const body: LinkPreview = {
-      url: page.url,
-      title: meta.title,
-      description: meta.description,
-      siteName: meta.siteName,
-      imageAssetId,
-    };
+    const body = await pagePreview(
+      { db, storage, allowAddresses },
+      page,
+      { projectId: input.projectId, actorId: actor.id },
+      req.log,
+    );
+    if (body.imageAssetId) await jobs.processAsset(body.imageAssetId);
     return body;
   });
 }

@@ -4,13 +4,20 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import pino from 'pino';
 import { createAuth } from './auth.ts';
+import { type BoardWriter, directBoardWriter } from './board-writer.ts';
 import { attachCollab, createCollabServer } from './collab.ts';
 import { loadConfig, VERSION } from './config.ts';
 import { createDatabase, runMigrations } from './db/client.ts';
 import { createApp } from './http/app.ts';
 import type { Jobs } from './jobs.ts';
 import { createMailer } from './mailer.ts';
-import { createQueues, inlineJobs, startWorkers } from './queues.ts';
+import {
+  createQueues,
+  inlineJobs,
+  queuedBoardWriter,
+  startBoardWorker,
+  startWorkers,
+} from './queues.ts';
 import { startIndexBackfill } from './search/index-doc.ts';
 import { createStorage } from './storage.ts';
 
@@ -62,6 +69,11 @@ async function main() {
     const backfill = startIndexBackfill(db, log);
     closers.unshift(async () => backfill.stop());
     if (command === 'collab') {
+      // In split mode the web role sends its board edits (clips) through the queue.
+      if (config.REDIS_URL) {
+        const boardWorker = startBoardWorker(config.REDIS_URL, directBoardWriter(server), log);
+        closers.unshift(() => boardWorker.close());
+      } else log.warn('REDIS_URL is not set: clips from a separate web role cannot reach boards');
       await server.listen(config.COLLAB_PORT);
       log.info({ port: config.COLLAB_PORT }, 'collab listening');
     }
@@ -85,6 +97,13 @@ async function main() {
       log.warn('REDIS_URL is not set: processing uploads inside the web process');
       jobs = inlineJobs(media, log);
     }
+    let boards: BoardWriter | undefined;
+    if (collab) boards = directBoardWriter(collab);
+    else if (config.REDIS_URL) {
+      const queued = queuedBoardWriter(config.REDIS_URL);
+      boards = queued.writer;
+      closers.unshift(() => queued.close());
+    }
     const webDist = config.WEB_DIST ?? join(here, '..', 'web');
     const app = await createApp({
       config: { ...config, WEB_DIST: webDist },
@@ -95,6 +114,8 @@ async function main() {
       jobs,
       mailer,
       pingQueue,
+      boards,
+      tmpDir,
     });
     if (collab) {
       attachCollab(app.server, collab);

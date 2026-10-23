@@ -17,3 +17,4 @@ in order. An accepted decision is never rewritten: a later one supersedes it.
 | [0010](0010-images-and-releases.md)      | How images are built, checked and released               |
 | [0011](0011-collaboration-and-access.md) | Roles per board, invitations, app tokens, presence       |
 | [0012](0012-storyboards-and-search.md)   | Shot lists in the board document, a search index         |
+| [0013](0013-server-side-board-edits.md)  | Clips: cards the server adds where the board is live     |
