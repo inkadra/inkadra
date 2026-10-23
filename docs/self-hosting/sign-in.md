@@ -35,9 +35,9 @@ configured, copy the link and send it yourself.
    GOOGLE_ALLOWED_DOMAINS=studio.it
    ```
 
-People who already have an account with a password can add Google from **Settings →
-Account**; signing in with Google with the same address does not link it by itself, so an
-account cannot be taken over by someone who controls a Google account with your address.
+People who already have an account can also add Google from **Settings → Account**.
+Signing in with Google with the same address links it to the existing account, because Google
+verifies its addresses; an OIDC provider is linked that way only with `OIDC_TRUST_EMAIL=true`.
 
 ## An OpenID Connect provider
 
