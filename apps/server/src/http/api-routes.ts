@@ -14,6 +14,7 @@ import { type Config, VERSION } from '../config.ts';
 import type { Database } from '../db/client.ts';
 import { user } from '../db/schema.ts';
 import type { Mailer } from '../mailer.ts';
+import { mediaTools } from '../media/video.ts';
 import { requireActor } from './auth-routes.ts';
 import { HttpError } from './errors.ts';
 
@@ -82,7 +83,8 @@ export function registerApiRoutes(app: FastifyInstance, deps: Deps) {
         email: deps.mailer.enabled,
       },
       collabPath: COLLAB_PATH,
-      media: { videoPosters: false, rawPreviews: false },
+      // The web role runs the same image as the worker, so it sees the same tools.
+      media: { videoPosters: (await mediaTools()).ffmpeg !== null, rawPreviews: false },
       limits: { uploadMaxBytes: config.UPLOAD_MAX_SIZE },
       serverTime: new Date().toISOString(),
     };

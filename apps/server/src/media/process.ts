@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { readFile } from 'node:fs/promises';
+import { mkdir, readFile, rm } from 'node:fs/promises';
 import { join } from 'node:path';
 import { pipeline } from 'node:stream/promises';
 import { ThumbnailSize } from '@inkadra/shared';
@@ -11,6 +11,7 @@ import { readAll, type Storage, variantKey } from '../storage.ts';
 import { readExif } from './exif.ts';
 import { decodeHeic, sniffImage } from './heic.ts';
 import { palette } from './palette.ts';
+import { extractPoster, mediaTools, probeVideo, sniffVideo } from './video.ts';
 
 export interface MediaDeps {
   db: Database;
@@ -46,7 +47,8 @@ async function sha256(storage: Storage, key: string) {
 
 /**
  * Turns an uploaded original into a ready asset: checksum always; for images also the real
- * type, dimensions, EXIF without location, palette and WebP thumbnails without metadata.
+ * type, dimensions, EXIF without location, palette and WebP thumbnails without metadata; for
+ * videos, when ffmpeg is installed, the duration and thumbnails of a poster frame.
  * Safe to run twice: variants are overwritten.
  */
 export async function processAsset(deps: MediaDeps, assetId: string) {
@@ -56,17 +58,38 @@ export async function processAsset(deps: MediaDeps, assetId: string) {
   await db.update(asset).set({ status: 'processing' }).where(eq(asset.id, assetId));
 
   const digest = await sha256(storage, row.storageKey);
-  const sniffed = sniffImage(
-    await readAll(await storage.read(row.storageKey, { start: 0, end: 63 })),
-  );
+  const head = await readAll(await storage.read(row.storageKey, { start: 0, end: 255 }));
+  const sniffed = sniffImage(head);
   // SVG is rasterised only when it was declared as such: it cannot be sniffed safely.
-  if (!sniffed && !(row.kind === 'image' && row.mime === 'image/svg+xml')) {
+  const svg = !sniffed && row.kind === 'image' && row.mime === 'image/svg+xml';
+  const video = !sniffed && !svg && row.kind === 'video' ? sniffVideo(head) : null;
+  const tools = video ? await mediaTools() : null;
+  if (!sniffed && !svg && !(video && tools?.ffmpeg)) {
     await db.update(asset).set({ sha256: digest, status: 'ready' }).where(eq(asset.id, assetId));
     return { variants: 0 };
   }
 
   const copy = await storage.localCopy(row.storageKey, join(deps.tmpDir, assetId));
+  const posterPath = join(deps.tmpDir, `${assetId}.poster.png`);
   try {
+    if (video && tools?.ffmpeg) {
+      await mkdir(deps.tmpDir, { recursive: true });
+      const { durationMs } = tools.ffprobe
+        ? await probeVideo(tools.ffprobe, copy.path).catch(() => ({ durationMs: null }))
+        : { durationMs: null };
+      await extractPoster(tools.ffmpeg, copy.path, posterPath, durationMs);
+      const result = await thumbnails(deps, assetId, sharp(posterPath, { failOn: 'error' }));
+      await save(db, assetId, result.variants, {
+        sha256: digest,
+        width: result.width,
+        height: result.height,
+        durationMs,
+        palette: result.palette,
+        status: 'ready',
+      });
+      return { variants: result.variants.length };
+    }
+
     let mime = sniffed ?? row.mime;
     let input: Sharp;
     if (mime === 'image/heic') {
@@ -85,48 +108,58 @@ export async function processAsset(deps: MediaDeps, assetId: string) {
       mime = (meta.format && SHARP_MIME[meta.format]) ?? mime;
     }
 
-    // Orientation is applied to the pixels, so the variants need no EXIF to display upright.
-    const upright = input.rotate();
-    const { data: pixels, info } = await upright.raw().toBuffer({ resolveWithObject: true });
-    const raw = { width: info.width, height: info.height, channels: info.channels };
-    const base = () => sharp(pixels, { raw });
     const exif = await readExif(copy.path);
-
-    const colours = await base().resize(64, 64, { fit: 'inside' }).removeAlpha().raw().toBuffer();
-
-    const variants: Array<typeof assetVariant.$inferInsert> = [];
-    for (const width of variantWidths(info.width)) {
-      const { data, info: out } = await base()
-        .resize({ width, withoutEnlargement: true })
-        .webp({ quality: 80, effort: 4 })
-        .toBuffer({ resolveWithObject: true });
-      const size = String(width) as ThumbnailSize;
-      const key = variantKey(assetId, size);
-      await storage.write(key, data, 'image/webp');
-      variants.push({ assetId, size, width: out.width, height: out.height, storageKey: key });
-    }
-
-    await db.transaction(async (tx) => {
-      await tx.delete(assetVariant).where(eq(assetVariant.assetId, assetId));
-      if (variants.length > 0) await tx.insert(assetVariant).values(variants);
-      await tx
-        .update(asset)
-        .set({
-          sha256: digest,
-          mime,
-          kind: 'image',
-          width: info.width,
-          height: info.height,
-          exif,
-          palette: palette(colours),
-          status: 'ready',
-        })
-        .where(eq(asset.id, assetId));
+    const result = await thumbnails(deps, assetId, input);
+    await save(db, assetId, result.variants, {
+      sha256: digest,
+      mime,
+      kind: 'image',
+      width: result.width,
+      height: result.height,
+      exif,
+      palette: result.palette,
+      status: 'ready',
     });
-    return { variants: variants.length };
+    return { variants: result.variants.length };
   } finally {
     await copy.done();
+    await rm(posterPath, { force: true });
   }
+}
+
+/** WebP thumbnails and dominant colours of a picture, upright. */
+async function thumbnails(deps: MediaDeps, assetId: string, input: Sharp) {
+  // Orientation is applied to the pixels, so the variants need no EXIF to display upright.
+  const { data: pixels, info } = await input.rotate().raw().toBuffer({ resolveWithObject: true });
+  const raw = { width: info.width, height: info.height, channels: info.channels };
+  const base = () => sharp(pixels, { raw });
+  const colours = await base().resize(64, 64, { fit: 'inside' }).removeAlpha().raw().toBuffer();
+
+  const variants: Array<typeof assetVariant.$inferInsert> = [];
+  for (const width of variantWidths(info.width)) {
+    const { data, info: out } = await base()
+      .resize({ width, withoutEnlargement: true })
+      .webp({ quality: 80, effort: 4 })
+      .toBuffer({ resolveWithObject: true });
+    const size = String(width) as ThumbnailSize;
+    const key = variantKey(assetId, size);
+    await deps.storage.write(key, data, 'image/webp');
+    variants.push({ assetId, size, width: out.width, height: out.height, storageKey: key });
+  }
+  return { variants, width: info.width, height: info.height, palette: palette(colours) };
+}
+
+async function save(
+  db: Database,
+  assetId: string,
+  variants: Array<typeof assetVariant.$inferInsert>,
+  fields: Partial<typeof asset.$inferInsert>,
+) {
+  await db.transaction(async (tx) => {
+    await tx.delete(assetVariant).where(eq(assetVariant.assetId, assetId));
+    if (variants.length > 0) await tx.insert(assetVariant).values(variants);
+    await tx.update(asset).set(fields).where(eq(asset.id, assetId));
+  });
 }
 
 /** Called when the last retry failed. */

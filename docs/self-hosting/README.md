@@ -102,6 +102,11 @@ switches to uid 1000, which drops them. Each role has its own health check.
 | `edge`        | The latest commit of `main`: for testing, not for real work |
 | `sha-1a2b3c4` | One commit                                                  |
 
+Every tag also exists with the suffix `-media` (`0.2.0-media`, `latest-media`, `edge-media`…):
+the same image plus ffmpeg, a few hundred MB larger. With it, videos get a poster thumbnail on the
+board and their duration. Without it they upload and play the same, with a generic card. Set
+`INKADRA_TAG=latest-media` (or the version you pin, with `-media`) to use it.
+
 ## Compose variants
 
 `compose.yaml` is the all-in-one setup. Other files in `deploy/` change it when added with `-f`
