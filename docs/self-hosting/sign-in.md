@@ -85,3 +85,15 @@ someone else yet: keep the backup codes.
 They sign in through the browser (`/authorize`) and get a token that shows in **Settings →
 Account → Apps and tokens**, where it can be revoked. Self-built clippers need their
 extension id in `CLIPPER_EXTENSION_IDS`.
+
+A clipper built from source or loaded unpacked has its own extension id, shown in its
+settings page under **Extension you built yourself**. Add it, comma-separated if there are
+several, and restart:
+
+```sh
+CLIPPER_EXTENSION_IDS=abcdefghijklmnopabcdefghijklmnop
+```
+
+Without it the `/authorize` page refuses the request: only the redirect address
+`https://<id>.chromiumapp.org/auth` of an allowed id receives a code. See
+[apps/clipper](../../apps/clipper/README.md) to build and load the extension.
