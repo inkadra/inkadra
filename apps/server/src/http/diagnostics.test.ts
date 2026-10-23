@@ -98,6 +98,10 @@ describe.skipIf(!url)('diagnostics (needs DATABASE_URL)', () => {
       expected: 'https://inkadra.example.com',
       actual: 'https://inkadra.example.com',
     });
+    expect(check(body, 'proxy_trusted')).toMatchObject({
+      expected: `TRUST_PROXY includes ${body.request.peerAddress}`,
+      actual: 'TRUST_PROXY=127.0.0.1',
+    });
     expect(check(body, 'data_dir_writable')?.actual).toBe(deps.root);
   });
 

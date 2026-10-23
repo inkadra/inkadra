@@ -83,8 +83,8 @@ export function registerDiagnostics(app: FastifyInstance, deps: Deps) {
       add(
         'proxy_trusted',
         request.proxyTrusted ? 'ok' : 'warning',
-        request.peerAddress,
-        String(config.TRUST_PROXY),
+        `TRUST_PROXY includes ${request.peerAddress}`,
+        `TRUST_PROXY=${String(config.TRUST_PROXY)}`,
       );
     }
 
