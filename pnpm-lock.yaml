@@ -186,7 +186,7 @@ importers:
         specifier: ^4.3.1
         version: 4.3.1
       uqr:
-        specifier: 0.1.2
+        specifier: ^0.1.2
         version: 0.1.2
       yjs:
         specifier: ^13.6.0
