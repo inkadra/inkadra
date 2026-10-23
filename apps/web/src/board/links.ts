@@ -5,6 +5,20 @@ import { api } from '../lib/api.ts';
 import { LOCAL } from './store.ts';
 
 /**
+ * The address as a web link, or null. Link cards come from the shared document, which any
+ * editor writes without going through the server: only http and https become links.
+ */
+export function webUrl(url: string | undefined): string | null {
+  if (!url) return null;
+  try {
+    const parsed = new URL(url);
+    return parsed.protocol === 'http:' || parsed.protocol === 'https:' ? parsed.href : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Asks the server for the title, description and image of a link and fills in the card.
  * A failure leaves the card as it is: it still shows the address.
  */

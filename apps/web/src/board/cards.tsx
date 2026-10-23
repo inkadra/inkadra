@@ -7,6 +7,7 @@ import * as Y from 'yjs';
 import { pickVariant, useAsset } from './assets.ts';
 import { renameBoard } from './boards.ts';
 import { useBoard } from './context.ts';
+import { webUrl } from './links.ts';
 import { useMeasure } from './measure.ts';
 import { NoteBody, NoteEditor } from './note.tsx';
 import { LOCAL } from './store.ts';
@@ -245,6 +246,7 @@ function LinkCard({ element, width }: { element: Of<'link'>; width: number }) {
   const image = useAsset(element.imageAssetId);
   const ready = image && image !== 'missing' ? image : null;
   const src = ready ? pickVariant(ready, width * scale * (window.devicePixelRatio || 1)) : '';
+  const href = webUrl(element.url);
   return (
     <>
       {src && (
@@ -255,16 +257,20 @@ function LinkCard({ element, width }: { element: Of<'link'>; width: number }) {
       <div className="card__pad card__link">
         <span className="card__title">{element.title || shortUrl(element.url)}</span>
         {element.description && <span className="card__desc">{element.description}</span>}
-        <a
-          className="card__host"
-          href={element.url}
-          target="_blank"
-          rel="noopener noreferrer nofollow"
-          data-no-drag
-        >
-          <Icon name="link" size={12} />
-          {hostOf(element.url)}
-        </a>
+        {href ? (
+          <a
+            className="card__host"
+            href={href}
+            target="_blank"
+            rel="noopener noreferrer nofollow"
+            data-no-drag
+          >
+            <Icon name="link" size={12} />
+            {hostOf(element.url)}
+          </a>
+        ) : (
+          <span className="card__host">{element.url}</span>
+        )}
       </div>
     </>
   );
