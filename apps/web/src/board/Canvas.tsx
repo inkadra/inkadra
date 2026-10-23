@@ -735,7 +735,10 @@ export function Canvas({
   }
 
   function onDoubleClick(e: ReactMouseEvent<HTMLDivElement>) {
-    const target = e.target as HTMLElement;
+    // Pointer capture retargets the click to the canvas itself: look at what is under it.
+    const target =
+      (document.elementFromPoint(e.clientX, e.clientY) as HTMLElement | null) ??
+      (e.target as HTMLElement);
     const elNode = target.closest<HTMLElement>('[data-el]');
     if (!elNode) {
       if (target.closest('[data-chrome]') || readOnly) return;

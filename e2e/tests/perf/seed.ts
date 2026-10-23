@@ -121,12 +121,24 @@ export async function seedPerfBoard(base: string, total = 1000): Promise<Seeded>
   });
   const project = (await res.json()) as { id: string; rootBoardId: string };
 
-  // 50 distinct images, reused by 500 cards, as on a real moodboard with repeated references.
+  // 50 distinct images, reused by over 500 cards, as on a real moodboard with repeated references.
   const assets: string[] = [];
   for (let i = 0; i < 50; i++) {
     const id = await upload(base, cookie, project.id, i);
     if (!id) break;
     assets.push(id);
+  }
+  // Thumbnails are made in the background: wait for them, the test times a board in use.
+  const deadline = Date.now() + 60_000;
+  for (const id of assets) {
+    for (;;) {
+      const asset = (await (
+        await fetch(`${base}/api/v1/assets/${id}`, { headers: { cookie } })
+      ).json()) as { status: string };
+      if (asset.status === 'ready' || asset.status === 'failed') break;
+      if (Date.now() > deadline) throw new Error(`Asset ${id} still ${asset.status}`);
+      await new Promise((r) => setTimeout(r, 200));
+    }
   }
 
   const doc = new Y.Doc();
@@ -165,7 +177,7 @@ export async function seedPerfBoard(base: string, total = 1000): Promise<Seeded>
     for (let i = 0; placed < total; i++) {
       const at = next();
       const kind = i % 10;
-      if (kind < 5) {
+      if (kind < 6) {
         const assetId = assets[i % Math.max(assets.length, 1)];
         if (assetId) {
           createElement(doc, 'image', at, { assetId }, opts);
@@ -174,9 +186,9 @@ export async function seedPerfBoard(base: string, total = 1000): Promise<Seeded>
           createElement(doc, 'color', at, { hex: '#808086', label: `Colore ${i}` }, opts);
           count('color');
         }
-      } else if (kind < 8) {
+      } else if (kind < 9) {
         note(at, `Nota ${i}: sopralluogo, luce e casting della scena ${i % 30}.`);
-      } else if (kind === 8) {
+      } else if (i % 20 === 9) {
         createElement(
           doc,
           'todo',
