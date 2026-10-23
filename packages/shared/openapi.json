@@ -213,7 +213,7 @@
                     "name"
                   ]
                 },
-                "description": "Sign in with `POST /api/auth/sign-in/oauth2` and `providerId: id`."
+                "description": "Sign in with `POST /api/auth/sign-in/social` and `provider: id`."
               },
               "magicLink": {
                 "type": "boolean",
@@ -2320,8 +2320,8 @@
         "tags": [
           "Auth"
         ],
-        "summary": "Start Google sign-in (`provider: \"google\"`), when Instance.auth.google is true.",
-        "description": "Answers with the Google address to open (`url`); Google sends the person back to `/api/auth/callback/google`, which sets the session cookie and redirects to `callbackURL`. Accounts with the same verified email are linked. In `invite` mode a new person needs an invitation claimed first (see POST /invitations/by-token/{token}/claim).",
+        "summary": "Start sign-in with Google (`provider: \"google\"`, when Instance.auth.google is true) or an OIDC provider (`provider`: an id from Instance.auth.oidc).",
+        "description": "Answers with the provider address to open (`url`); the provider sends the person back to `/api/auth/callback/{provider}`, which sets the session cookie and redirects to `callbackURL`. Accounts with the same verified email are linked. In `invite` mode a new person needs an invitation claimed first (see POST /invitations/by-token/{token}/claim).",
         "requestBody": {
           "content": {
             "application/json": {
@@ -2330,9 +2330,7 @@
                 "properties": {
                   "provider": {
                     "type": "string",
-                    "enum": [
-                      "google"
-                    ]
+                    "example": "google"
                   },
                   "callbackURL": {
                     "type": "string"
@@ -2343,58 +2341,6 @@
                 },
                 "required": [
                   "provider"
-                ]
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Where to send the browser",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "url": {
-                      "type": "string",
-                      "format": "uri"
-                    }
-                  },
-                  "required": [
-                    "url"
-                  ]
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/auth/sign-in/oauth2": {
-      "post": {
-        "tags": [
-          "Auth"
-        ],
-        "summary": "Start sign-in with a generic OIDC provider listed in Instance.auth.oidc.",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "providerId": {
-                    "type": "string"
-                  },
-                  "callbackURL": {
-                    "type": "string"
-                  },
-                  "errorCallbackURL": {
-                    "type": "string"
-                  }
-                },
-                "required": [
-                  "providerId"
                 ]
               }
             }

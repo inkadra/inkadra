@@ -42,7 +42,7 @@ account cannot be taken over by someone who controls a Google account with your 
 ## An OpenID Connect provider
 
 In your provider, create an application (client) of type _confidential_ / _web_ with:
-- redirect URI `https://<your PUBLIC_URL host>/api/auth/oauth2/callback/oidc`;
+- redirect URI `https://<your PUBLIC_URL host>/api/auth/callback/oidc`;
 - scopes `openid email profile`;
 - authorization code flow (PKCE is used and can be required).
 
