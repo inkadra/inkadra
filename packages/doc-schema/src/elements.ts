@@ -49,7 +49,9 @@ const Base = z.object({
     .optional()
     .describe(
       'True: left out of what guests of share links see, with everything inside it (a column, ' +
-        'a scene) and, for a board card, the board it opens. Omitted = shown.',
+        'a scene) and, for a board card, the board it opens. Omitted = shown. Copies keep the ' +
+        'flag of the element itself, not the hiding inherited from a container: a card copied ' +
+        'out of a hidden column is shown unless it is hidden too (since version 3).',
     ),
   createdBy: z.string().nullable(),
   createdAt: z.number().int(),

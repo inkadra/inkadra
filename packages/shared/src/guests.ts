@@ -3,7 +3,7 @@ import { ThumbnailSize } from './assets.ts';
 import { BoardKind } from './boards.ts';
 import { CommentCount, ElementRef } from './comments.ts';
 import { Id, Timestamp, z } from './common.ts';
-import { ElementReview } from './reviews.ts';
+import { GuestElementReview } from './reviews.ts';
 import { UserSummary } from './users.ts';
 
 /**
@@ -11,16 +11,26 @@ import { UserSummary } from './users.ts';
  * board document: the server renders a filtered, read-only snapshot over REST, leaves out the
  * cards hidden from guests (`guestHidden` in @inkadra/doc-schema) and serves pictures only as
  * thumbnails, and originals only when the link allows downloads.
+ *
+ * A link acts for the person who created it: guests see only boards where that person has, at
+ * the time of each request, at least editor (checked with apps/server/src/access.ts). If they
+ * lose it on the board of the link, or their account is deleted, the link is `suspended`.
  */
 
 export const GuestRole = z.enum(['guest_view', 'guest_comment', 'guest_approve']).openapi({
   description:
     '`guest_view`: look. `guest_comment`: also read and write comments visible to everyone. ' +
-    '`guest_approve`: also set the review status of cards.',
+    '`guest_approve`: also set the review status of cards. Open in answers: clients treat a ' +
+    'role they do not know like `guest_view`.',
 });
 export type GuestRole = z.infer<typeof GuestRole>;
 
-export const ShareLinkStatus = z.enum(['active', 'expired', 'revoked']);
+export const ShareLinkStatus = z.enum(['active', 'expired', 'revoked', 'suspended']).openapi({
+  description:
+    '`suspended`: the person who created the link no longer has editor on its board, or their ' +
+    'account was deleted; it works again if they get the role back. Open: clients treat a ' +
+    'status they do not know as not working.',
+});
 export type ShareLinkStatus = z.infer<typeof ShareLinkStatus>;
 
 export const ShareLink = z
@@ -31,7 +41,9 @@ export const ShareLink = z
     boardTitle: z.string(),
     includeSubBoards: z.boolean().openapi({
       description:
-        'Guests can also open the sub-boards whose board card is not hidden from guests.',
+        'Guests can also open sub-boards: those reached from the board of the link through ' +
+        'board cards visible to guests, on boards guests can see, that are not in the trash ' +
+        'and where the creator of the link has at least editor at the time of the request.',
     }),
     role: GuestRole,
     label: z.string().nullable().openapi({ description: 'Who the link is for, e.g. "Cliente".' }),
@@ -49,7 +61,9 @@ export const ShareLink = z
     expiresAt: Timestamp.nullable().openapi({ description: 'Null: until revoked.' }),
     revokedAt: Timestamp.nullable(),
     guestCount: z.int().min(0).openapi({ description: 'Guests who opened it.' }),
-    viewCount: z.int().min(0).openapi({ description: 'Boards shown through it.' }),
+    viewCount: z.int().min(0).openapi({
+      description: 'Times a guest session was opened or resumed (polls are not counted).',
+    }),
     lastUsedAt: Timestamp.nullable(),
   })
   .openapi('ShareLink');
@@ -92,17 +106,24 @@ export type UpdateShareLink = z.infer<typeof UpdateShareLink>;
 
 // What guests see ---------------------------------------------------------------
 
-/** What someone opening a share link sees before entering a name or a password. */
+/**
+ * What someone opening a share link sees before entering a name or a password. Revoked,
+ * expired and suspended links answer 403 with GuestDenied instead; a link with a password
+ * shows only what is needed to ask for it.
+ */
 export const ShareLinkPreview = z
   .object({
-    linkId: Id,
+    linkId: Id.openapi({ description: 'For POST /guest/links/{linkId}/session.' }),
     instanceName: z.string(),
-    boardTitle: z.string(),
-    sharedBy: z.string().nullable().openapi({ description: 'Name of the person who shared.' }),
-    role: GuestRole,
     needsPassword: z.boolean(),
-    status: ShareLinkStatus,
-    expiresAt: Timestamp.nullable(),
+    boardTitle: z.string().nullable().openapi({ description: 'Null while a password is needed.' }),
+    sharedBy: z.string().nullable().openapi({
+      description: 'Name of the person who shared. Null while a password is needed.',
+    }),
+    role: GuestRole.nullable().openapi({ description: 'Null while a password is needed.' }),
+    expiresAt: Timestamp.nullable().openapi({
+      description: 'Null without expiry, and while a password is needed.',
+    }),
   })
   .openapi('ShareLinkPreview');
 export type ShareLinkPreview = z.infer<typeof ShareLinkPreview>;
@@ -113,20 +134,30 @@ export type ShareLinkPreview = z.infer<typeof ShareLinkPreview>;
  */
 export const GuestDenied = z
   .object({
-    reason: z.enum([
-      'no_session',
-      'password_required',
-      'wrong_password',
-      'expired',
-      'revoked',
-      'name_required',
-    ]),
+    reason: z
+      .enum([
+        'no_session',
+        'password_required',
+        'wrong_password',
+        'expired',
+        'revoked',
+        'unavailable',
+        'name_required',
+      ])
+      .openapi({
+        description:
+          '`no_session`: no guest cookie, or its session expired; open the link again. ' +
+          '`unavailable`: the link is suspended (the guest is not told why). Open: clients ' +
+          'show a reason they do not know as a generic error.',
+      }),
   })
   .openapi('GuestDenied');
 export type GuestDenied = z.infer<typeof GuestDenied>;
 
+/** Opening a link: the token travels in the body, so the guest cookie of the link is sent. */
 export const CreateGuestSession = z
   .object({
+    token: z.string().min(16).max(128).openapi({ description: 'Token of the link URL.' }),
     name: z
       .string()
       .trim()
@@ -156,7 +187,14 @@ export const GuestBoard = z
     }),
     kind: BoardKind,
     title: z.string(),
-    coverUrl: z.string().nullable().openapi({ description: 'Guest thumbnail path, 512 px.' }),
+    coverUrl: z
+      .string()
+      .nullable()
+      .openapi({
+        description:
+          'Guest variant path (512 px) of the board cover. Covers of the boards of the link are ' +
+          'served as thumbnails only, never as originals, even when no visible card shows them.',
+      }),
   })
   .openapi('GuestBoard');
 export type GuestBoard = z.infer<typeof GuestBoard>;
@@ -173,6 +211,11 @@ export const GuestSession = z
     allowDownload: z.boolean(),
     proofing: z.boolean(),
     linkExpiresAt: Timestamp.nullable(),
+    sessionExpiresAt: Timestamp.openapi({
+      description:
+        '30 days after the last request, never after the link expires. After that, or after ' +
+        'a password change, the page opens the link again with POST …/session.',
+    }),
   })
   .openapi('GuestSession');
 export type GuestSession = z.infer<typeof GuestSession>;
@@ -253,15 +296,25 @@ export const GuestBoardSnapshot = z
       description: 'From the board of the link to the parent; empty for the board of the link.',
     }),
     elements: z.array(GuestElement),
-    assets: z.array(GuestAsset).openapi({ description: 'Files the elements refer to.' }),
-    reviews: z.array(ElementReview).openapi({ description: 'Cards with a review status.' }),
+    assets: z.array(GuestAsset).openapi({
+      description: 'Files the visible elements refer to, and nothing else.',
+    }),
+    reviews: z.array(GuestElementReview).openapi({
+      description: 'Visible cards with a review status, shown to every guest role.',
+    }),
     commentCounts: z.array(CommentCount).openapi({
       description:
-        'Threads visible to guests, per card. Empty for `guest_view`, who cannot read comments.',
+        'Threads this guest can read, per visible card and for the board (null). Empty for ' +
+        '`guest_view`, who cannot read comments.',
     }),
-    picks: z.array(GuestPick).openapi({ description: 'This guest’s picks on the board.' }),
+    picks: z.array(GuestPick).openapi({
+      description: 'This guest’s picks on visible cards of the board.',
+    }),
     version: z.string().openapi({
-      description: 'Changes when the snapshot would change; also sent as ETag.',
+      description:
+        'Changes whenever anything in this answer would change: the document, the link and ' +
+        'its options, the boards the guest can open, the files and their thumbnails, the ' +
+        'reviews, the comments this guest can read and this guest’s picks. Also sent as ETag.',
     }),
     generatedAt: Timestamp,
   })
@@ -322,3 +375,6 @@ export type ShareLinkPicks = z.infer<typeof ShareLinkPicks>;
 
 /** Cookie that keeps a guest session, scoped to the path of its link. */
 export const GUEST_COOKIE = 'inkadra.guest';
+
+/** Days a guest session lasts after its last request (sliding), capped by the link expiry. */
+export const GUEST_SESSION_DAYS = 30;

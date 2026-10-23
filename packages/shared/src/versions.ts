@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: MPL-2.0
+import { ListLimit } from './comments.ts';
 import { Cursor, Id, Timestamp, z } from './common.ts';
 import { UserSummary } from './users.ts';
 
@@ -8,11 +9,16 @@ import { UserSummary } from './users.ts';
  * change, so open boards follow and nothing of the current state is lost: it is saved first
  * as a `restore` version.
  */
+
+/** Named versions a board keeps at most; delete one to save another. */
+export const MAX_NAMED_VERSIONS = 100;
+
 export const BoardVersionKind = z.enum(['auto', 'named', 'restore']).openapi({
   description:
     '`auto`: taken by the server while the board is edited, removed by retention. `named`: ' +
     'saved by someone with a name, kept until deleted. `restore`: the state just before a ' +
-    'restore, kept like an automatic one.',
+    'restore, kept like an automatic one. Open: clients show a kind they do not know like ' +
+    '`auto`.',
 });
 export type BoardVersionKind = z.infer<typeof BoardVersionKind>;
 
@@ -38,7 +44,7 @@ export const BoardVersionQuery = z
   .object({
     kind: BoardVersionKind.optional(),
     cursor: Cursor.optional(),
-    limit: z.coerce.number().int().min(1).max(100).default(50),
+    limit: ListLimit,
   })
   .openapi('BoardVersionQuery');
 

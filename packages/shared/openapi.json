@@ -78,7 +78,7 @@
         "type": "apiKey",
         "in": "cookie",
         "name": "inkadra.guest",
-        "description": "Guest session of one share link, set by POST /guest/by-token/{token}/session with `Path=/api/v1/guest/links/{linkId}`, HttpOnly and SameSite=Lax. Over HTTPS its name carries the `__Secure-` prefix."
+        "description": "Guest session of one share link, set by POST /guest/links/{linkId}/session with `Path=/api/v1/guest/links/{linkId}`, HttpOnly, SameSite=Lax and Max-Age of 30 days, renewed while the guest is active. Over HTTPS its name carries the `__Secure-` prefix. Write requests with this cookie must come from the instance itself: `Origin` (or else `Sec-Fetch-Site: same-origin`) is checked against PUBLIC_URL, otherwise 403."
       }
     },
     "schemas": {
@@ -153,8 +153,10 @@
               "wrong_password",
               "expired",
               "revoked",
+              "unavailable",
               "name_required"
-            ]
+            ],
+            "description": "`no_session`: no guest cookie, or its session expired; open the link again. `unavailable`: the link is suspended (the guest is not told why). Open: clients show a reason they do not know as a generic error."
           }
         },
         "required": [
@@ -2075,6 +2077,11 @@
                 "format": "date-time",
                 "example": "2026-11-02T09:30:00.000Z"
               },
+              "replyCount": {
+                "type": "integer",
+                "minimum": 0,
+                "description": "Replies the caller can see."
+              },
               "resolvedBy": {
                 "$ref": "#/components/schemas/Author"
               },
@@ -2083,15 +2090,39 @@
                 "items": {
                   "$ref": "#/components/schemas/Comment"
                 },
-                "description": "Oldest first. Replies have no replies."
+                "maxItems": 50,
+                "description": "The latest 50 replies, oldest first; replies have no replies. When `replyCount` is larger, the earlier ones come from the replies endpoint."
               }
             },
             "required": [
               "resolvedAt",
+              "replyCount",
               "resolvedBy",
               "replies"
             ]
           }
+        ]
+      },
+      "CommentPin": {
+        "type": [
+          "object",
+          "null"
+        ],
+        "properties": {
+          "x": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "y": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          }
+        },
+        "required": [
+          "x",
+          "y"
         ]
       },
       "Author": {
@@ -2161,29 +2192,8 @@
             ],
             "description": "The account was deleted; the comment stays without an author."
           }
-        ]
-      },
-      "CommentPin": {
-        "type": [
-          "object",
-          "null"
         ],
-        "properties": {
-          "x": {
-            "type": "number",
-            "minimum": 0,
-            "maximum": 1
-          },
-          "y": {
-            "type": "number",
-            "minimum": 0,
-            "maximum": 1
-          }
-        },
-        "required": [
-          "x",
-          "y"
-        ]
+        "description": "Open union: clients show a `kind` they do not know like `deleted` (no author shown)."
       },
       "Comment": {
         "type": "object",
@@ -2216,28 +2226,6 @@
             "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10",
             "description": "Thread the comment replies to; null for the first comment of a thread."
           },
-          "author": {
-            "$ref": "#/components/schemas/Author"
-          },
-          "body": {
-            "type": "string",
-            "description": "Empty once deleted."
-          },
-          "mentions": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/UserSummary"
-            },
-            "description": "People mentioned in `body`, to render `@{id}` with their name."
-          },
-          "visibility": {
-            "type": "string",
-            "enum": [
-              "team",
-              "everyone"
-            ],
-            "description": "`team`: people with a role on the board. `everyone`: also the guests of share links that may read comments. Guests always write `everyone`; replies take the visibility of their thread."
-          },
           "pin": {
             "$ref": "#/components/schemas/CommentPin"
           },
@@ -2263,6 +2251,37 @@
             "example": "2026-11-02T09:30:00.000Z",
             "description": "Set when a thread start is deleted while it has replies: it stays as a placeholder."
           },
+          "author": {
+            "$ref": "#/components/schemas/Author"
+          },
+          "body": {
+            "type": "string",
+            "description": "Empty once deleted."
+          },
+          "mentions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/UserSummary"
+            },
+            "description": "People mentioned in `body`. Clients render `@{id}` as a mention only for ids listed here and show any other `@{…}` as typed."
+          },
+          "visibility": {
+            "type": "string",
+            "enum": [
+              "team",
+              "everyone"
+            ],
+            "description": "`team` (default): people with a role on the board. `everyone`: also the guests of share links that may read comments, limited to one link by `shareLinkId`. Threads written by guests are always `everyone` and belong to the guest’s link. Replies take the visibility and the link of their thread."
+          },
+          "shareLinkId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid",
+            "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10",
+            "description": "With `everyone`: the only link whose guests see the thread (a thread written by a guest, or one the team limited to a link). Null: every link that may read comments, or a `team` thread. A reply carries the link of the guest who wrote it, or null."
+          },
           "canEdit": {
             "type": "boolean",
             "description": "The caller wrote it."
@@ -2277,14 +2296,15 @@
           "boardId",
           "elementId",
           "parentId",
-          "author",
-          "body",
-          "mentions",
-          "visibility",
           "pin",
           "createdAt",
           "editedAt",
           "deletedAt",
+          "author",
+          "body",
+          "mentions",
+          "visibility",
+          "shareLinkId",
           "canEdit",
           "canDelete"
         ]
@@ -2358,7 +2378,13 @@
               "team",
               "everyone"
             ],
-            "description": "Default `team`. Ignored for replies and for guests."
+            "description": "Default `team`. Ignored for replies."
+          },
+          "shareLinkId": {
+            "type": "string",
+            "format": "uuid",
+            "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10",
+            "description": "Only with `everyone`: show the thread to the guests of this link only. The link must be active and include the board. Ignored for replies."
           },
           "pin": {
             "$ref": "#/components/schemas/CommentPin"
@@ -2414,7 +2440,7 @@
               "approved",
               "changes_requested"
             ],
-            "description": "`none`: never reviewed, or the review was cleared. `in_review`: waiting for a decision. `approved` and `changes_requested`: the decision."
+            "description": "`none`: never reviewed, or the review was cleared. `in_review`: waiting for a decision. `approved` and `changes_requested`: the decision. Open in answers: clients show a status they do not know like `in_review`, without actions."
           },
           "note": {
             "type": [
@@ -2451,7 +2477,7 @@
               "approved",
               "changes_requested"
             ],
-            "description": "`none`: never reviewed, or the review was cleared. `in_review`: waiting for a decision. `approved` and `changes_requested`: the decision."
+            "description": "`none`: never reviewed, or the review was cleared. `in_review`: waiting for a decision. `approved` and `changes_requested`: the decision. Open in answers: clients show a status they do not know like `in_review`, without actions."
           },
           "note": {
             "type": "string",
@@ -2470,6 +2496,11 @@
           {
             "type": "object",
             "properties": {
+              "id": {
+                "type": "string",
+                "format": "uuid",
+                "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10"
+              },
               "previous": {
                 "type": "string",
                 "enum": [
@@ -2478,10 +2509,11 @@
                   "approved",
                   "changes_requested"
                 ],
-                "description": "`none`: never reviewed, or the review was cleared. `in_review`: waiting for a decision. `approved` and `changes_requested`: the decision."
+                "description": "`none`: never reviewed, or the review was cleared. `in_review`: waiting for a decision. `approved` and `changes_requested`: the decision. Open in answers: clients show a status they do not know like `in_review`, without actions."
               }
             },
             "required": [
+              "id",
               "previous"
             ]
           }
@@ -2504,7 +2536,7 @@
               "review",
               "invitation_accepted"
             ],
-            "description": "`mention`: someone mentioned you in a comment. `reply`: a reply in a thread you wrote in. `comment`: a new thread on a card you created. `review`: the review status of a card you created, or asked a review for, changed. `invitation_accepted`: someone accepted your invitation. Clients show types they do not know as a plain line."
+            "description": "`mention`: someone mentioned you in a comment. `reply`: a reply in a thread you wrote in. `comment`: a new thread on a card you created. `review`: the review status of a card you created, or asked a review for, changed. `invitation_accepted`: someone accepted your invitation. Open: clients show types they do not know as a plain line with the actor, the board and the time."
           },
           "actor": {
             "allOf": [
@@ -2568,7 +2600,7 @@
               "null"
             ],
             "maxLength": 280,
-            "description": "Start of the comment, with mentions already written as names."
+            "description": "Start of the comment as it is now, with mentions written as names; null once the comment is deleted."
           },
           "reviewStatus": {
             "type": [
@@ -2620,7 +2652,7 @@
           "unread": {
             "type": "integer",
             "minimum": 0,
-            "description": "Capped at 1000."
+            "description": "Unread notifications the list would show, with the same access filter. Capped at 1000."
           }
         },
         "required": [
@@ -2692,7 +2724,7 @@
           },
           "includeSubBoards": {
             "type": "boolean",
-            "description": "Guests can also open the sub-boards whose board card is not hidden from guests."
+            "description": "Guests can also open sub-boards: those reached from the board of the link through board cards visible to guests, on boards guests can see, that are not in the trash and where the creator of the link has at least editor at the time of the request."
           },
           "role": {
             "type": "string",
@@ -2701,7 +2733,7 @@
               "guest_comment",
               "guest_approve"
             ],
-            "description": "`guest_view`: look. `guest_comment`: also read and write comments visible to everyone. `guest_approve`: also set the review status of cards."
+            "description": "`guest_view`: look. `guest_comment`: also read and write comments visible to everyone. `guest_approve`: also set the review status of cards. Open in answers: clients treat a role they do not know like `guest_view`."
           },
           "label": {
             "type": [
@@ -2734,8 +2766,10 @@
             "enum": [
               "active",
               "expired",
-              "revoked"
-            ]
+              "revoked",
+              "suspended"
+            ],
+            "description": "`suspended`: the person who created the link no longer has editor on its board, or their account was deleted; it works again if they get the role back. Open: clients treat a status they do not know as not working."
           },
           "createdBy": {
             "allOf": [
@@ -2780,7 +2814,7 @@
           "viewCount": {
             "type": "integer",
             "minimum": 0,
-            "description": "Boards shown through it."
+            "description": "Times a guest session was opened or resumed (polls are not counted)."
           },
           "lastUsedAt": {
             "type": [
@@ -2824,7 +2858,7 @@
               "guest_approve"
             ],
             "default": "guest_view",
-            "description": "`guest_view`: look. `guest_comment`: also read and write comments visible to everyone. `guest_approve`: also set the review status of cards."
+            "description": "`guest_view`: look. `guest_comment`: also read and write comments visible to everyone. `guest_approve`: also set the review status of cards. Open in answers: clients treat a role they do not know like `guest_view`."
           },
           "includeSubBoards": {
             "type": "boolean",
@@ -2867,7 +2901,7 @@
               "guest_comment",
               "guest_approve"
             ],
-            "description": "`guest_view`: look. `guest_comment`: also read and write comments visible to everyone. `guest_approve`: also set the review status of cards."
+            "description": "`guest_view`: look. `guest_comment`: also read and write comments visible to everyone. `guest_approve`: also set the review status of cards. Open in answers: clients treat a role they do not know like `guest_view`."
           },
           "includeSubBoards": {
             "type": "boolean"
@@ -3064,40 +3098,41 @@
           "linkId": {
             "type": "string",
             "format": "uuid",
-            "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10"
+            "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10",
+            "description": "For POST /guest/links/{linkId}/session."
           },
           "instanceName": {
             "type": "string"
           },
+          "needsPassword": {
+            "type": "boolean"
+          },
           "boardTitle": {
-            "type": "string"
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Null while a password is needed."
           },
           "sharedBy": {
             "type": [
               "string",
               "null"
             ],
-            "description": "Name of the person who shared."
+            "description": "Name of the person who shared. Null while a password is needed."
           },
           "role": {
-            "type": "string",
+            "type": [
+              "string",
+              "null"
+            ],
             "enum": [
               "guest_view",
               "guest_comment",
-              "guest_approve"
+              "guest_approve",
+              null
             ],
-            "description": "`guest_view`: look. `guest_comment`: also read and write comments visible to everyone. `guest_approve`: also set the review status of cards."
-          },
-          "needsPassword": {
-            "type": "boolean"
-          },
-          "status": {
-            "type": "string",
-            "enum": [
-              "active",
-              "expired",
-              "revoked"
-            ]
+            "description": "Null while a password is needed."
           },
           "expiresAt": {
             "type": [
@@ -3105,17 +3140,17 @@
               "null"
             ],
             "format": "date-time",
-            "example": "2026-11-02T09:30:00.000Z"
+            "example": "2026-11-02T09:30:00.000Z",
+            "description": "Null without expiry, and while a password is needed."
           }
         },
         "required": [
           "linkId",
           "instanceName",
+          "needsPassword",
           "boardTitle",
           "sharedBy",
           "role",
-          "needsPassword",
-          "status",
           "expiresAt"
         ]
       },
@@ -3154,7 +3189,7 @@
               "guest_comment",
               "guest_approve"
             ],
-            "description": "`guest_view`: look. `guest_comment`: also read and write comments visible to everyone. `guest_approve`: also set the review status of cards."
+            "description": "`guest_view`: look. `guest_comment`: also read and write comments visible to everyone. `guest_approve`: also set the review status of cards. Open in answers: clients treat a role they do not know like `guest_view`."
           },
           "boardId": {
             "type": "string",
@@ -3182,6 +3217,12 @@
             ],
             "format": "date-time",
             "example": "2026-11-02T09:30:00.000Z"
+          },
+          "sessionExpiresAt": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-11-02T09:30:00.000Z",
+            "description": "30 days after the last request, never after the link expires. After that, or after a password change, the page opens the link again with POST …/session."
           }
         },
         "required": [
@@ -3192,7 +3233,8 @@
           "boards",
           "allowDownload",
           "proofing",
-          "linkExpiresAt"
+          "linkExpiresAt",
+          "sessionExpiresAt"
         ]
       },
       "GuestBoard": {
@@ -3227,7 +3269,7 @@
               "string",
               "null"
             ],
-            "description": "Guest thumbnail path, 512 px."
+            "description": "Guest variant path (512 px) of the board cover. Covers of the boards of the link are served as thumbnails only, never as originals, even when no visible card shows them."
           }
         },
         "required": [
@@ -3241,6 +3283,12 @@
       "CreateGuestSession": {
         "type": "object",
         "properties": {
+          "token": {
+            "type": "string",
+            "minLength": 16,
+            "maxLength": 128,
+            "description": "Token of the link URL."
+          },
           "name": {
             "type": "string",
             "minLength": 1,
@@ -3251,7 +3299,10 @@
             "type": "string",
             "maxLength": 128
           }
-        }
+        },
+        "required": [
+          "token"
+        ]
       },
       "UpdateGuestSession": {
         "type": "object",
@@ -3323,32 +3374,32 @@
             "items": {
               "$ref": "#/components/schemas/GuestAsset"
             },
-            "description": "Files the elements refer to."
+            "description": "Files the visible elements refer to, and nothing else."
           },
           "reviews": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/ElementReview"
+              "$ref": "#/components/schemas/GuestElementReview"
             },
-            "description": "Cards with a review status."
+            "description": "Visible cards with a review status, shown to every guest role."
           },
           "commentCounts": {
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/CommentCount"
             },
-            "description": "Threads visible to guests, per card. Empty for `guest_view`, who cannot read comments."
+            "description": "Threads this guest can read, per visible card and for the board (null). Empty for `guest_view`, who cannot read comments."
           },
           "picks": {
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/GuestPick"
             },
-            "description": "This guest’s picks on the board."
+            "description": "This guest’s picks on visible cards of the board."
           },
           "version": {
             "type": "string",
-            "description": "Changes when the snapshot would change; also sent as ETag."
+            "description": "Changes whenever anything in this answer would change: the document, the link and its options, the boards the guest can open, the files and their thumbnails, the reviews, the comments this guest can read and this guest’s picks. Also sent as ETag."
           },
           "generatedAt": {
             "type": "string",
@@ -3504,6 +3555,79 @@
           "url"
         ]
       },
+      "GuestElementReview": {
+        "type": "object",
+        "properties": {
+          "elementId": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{8,64}$",
+            "description": "Element id in the board document.",
+            "example": "V1StGXR8_Z5jdHi6B-myT"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "none",
+              "in_review",
+              "approved",
+              "changes_requested"
+            ],
+            "description": "`none`: never reviewed, or the review was cleared. `in_review`: waiting for a decision. `approved` and `changes_requested`: the decision. Open in answers: clients show a status they do not know like `in_review`, without actions."
+          },
+          "note": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Only when a guest of this link made the change; null otherwise."
+          },
+          "changedBy": {
+            "$ref": "#/components/schemas/GuestAuthor"
+          },
+          "changedAt": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-11-02T09:30:00.000Z"
+          }
+        },
+        "required": [
+          "elementId",
+          "status",
+          "note",
+          "changedBy",
+          "changedAt"
+        ]
+      },
+      "GuestAuthor": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "team",
+              "guest",
+              "deleted"
+            ],
+            "description": "`team`: someone with an account. `guest`: a guest of a share link. `deleted`: the account was deleted. Open: clients show values they do not know like `deleted`."
+          },
+          "name": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Current name of the account, or the name a guest of the same link typed. Null for `deleted` and for guests of other links, who are never named."
+          },
+          "isYou": {
+            "type": "boolean",
+            "description": "The guest asking wrote it."
+          }
+        },
+        "required": [
+          "kind",
+          "name",
+          "isYou"
+        ]
+      },
       "GuestPick": {
         "type": "object",
         "properties": {
@@ -3549,6 +3673,188 @@
           "pick",
           "stars",
           "updatedAt"
+        ]
+      },
+      "GuestCommentThread": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/GuestComment"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "resolvedAt": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "format": "date-time",
+                "example": "2026-11-02T09:30:00.000Z"
+              },
+              "replyCount": {
+                "type": "integer",
+                "minimum": 0,
+                "description": "Replies the caller can see."
+              },
+              "resolvedBy": {
+                "allOf": [
+                  {
+                    "$ref": "#/components/schemas/GuestAuthor"
+                  },
+                  {
+                    "type": [
+                      "object",
+                      "null"
+                    ]
+                  }
+                ]
+              },
+              "replies": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/GuestComment"
+                },
+                "maxItems": 50,
+                "description": "The latest 50 replies, oldest first; replies have no replies. When `replyCount` is larger, the earlier ones come from the replies endpoint."
+              }
+            },
+            "required": [
+              "resolvedAt",
+              "replyCount",
+              "resolvedBy",
+              "replies"
+            ]
+          }
+        ]
+      },
+      "GuestComment": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10"
+          },
+          "boardId": {
+            "type": "string",
+            "format": "uuid",
+            "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10"
+          },
+          "elementId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^[A-Za-z0-9_-]{8,64}$",
+            "description": "Card the comment is about; null for a comment on the whole board. The card may since have been removed from the document: clients show such threads as about a removed card.",
+            "example": "V1StGXR8_Z5jdHi6B-myT"
+          },
+          "parentId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid",
+            "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10",
+            "description": "Thread the comment replies to; null for the first comment of a thread."
+          },
+          "pin": {
+            "$ref": "#/components/schemas/CommentPin"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-11-02T09:30:00.000Z"
+          },
+          "editedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "example": "2026-11-02T09:30:00.000Z"
+          },
+          "deletedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "example": "2026-11-02T09:30:00.000Z",
+            "description": "Set when a thread start is deleted while it has replies: it stays as a placeholder."
+          },
+          "author": {
+            "$ref": "#/components/schemas/GuestAuthor"
+          },
+          "body": {
+            "type": "string",
+            "description": "Empty once deleted. Mentions are already written as `@Name`, with no ids; a deleted account becomes `@…`."
+          },
+          "canEdit": {
+            "type": "boolean",
+            "description": "This guest wrote it."
+          },
+          "canDelete": {
+            "type": "boolean",
+            "description": "This guest wrote it."
+          }
+        },
+        "required": [
+          "id",
+          "boardId",
+          "elementId",
+          "parentId",
+          "pin",
+          "createdAt",
+          "editedAt",
+          "deletedAt",
+          "author",
+          "body",
+          "canEdit",
+          "canDelete"
+        ]
+      },
+      "GuestCreateComment": {
+        "type": "object",
+        "properties": {
+          "elementId": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{8,64}$",
+            "description": "Omit for a comment on the board.",
+            "example": "V1StGXR8_Z5jdHi6B-myT"
+          },
+          "parentId": {
+            "type": "string",
+            "format": "uuid",
+            "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10",
+            "description": "Reply to a thread this guest can see (its first comment); any other thread is a 404."
+          },
+          "body": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 5000,
+            "description": "Plain text. Guests cannot mention: `@{…}` is kept as typed and is no mention."
+          },
+          "pin": {
+            "$ref": "#/components/schemas/CommentPin"
+          }
+        },
+        "required": [
+          "body"
+        ]
+      },
+      "GuestUpdateComment": {
+        "type": "object",
+        "properties": {
+          "body": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 5000,
+            "description": "Plain text. Guests cannot mention: `@{…}` is kept as typed and is no mention."
+          }
+        },
+        "required": [
+          "body"
         ]
       },
       "SetPick": {
@@ -3597,7 +3903,7 @@
               "named",
               "restore"
             ],
-            "description": "`auto`: taken by the server while the board is edited, removed by retention. `named`: saved by someone with a name, kept until deleted. `restore`: the state just before a restore, kept like an automatic one."
+            "description": "`auto`: taken by the server while the board is edited, removed by retention. `named`: saved by someone with a name, kept until deleted. `restore`: the state just before a restore, kept like an automatic one. Open: clients show a kind they do not know like `auto`."
           },
           "name": {
             "type": [
@@ -7567,8 +7873,8 @@
             "bearer": []
           }
         ],
-        "summary": "Comment threads of a board and its cards, newest activity first.",
-        "description": "Needs viewer. Each thread comes with all its replies.",
+        "summary": "Comment threads of a board and its cards, newest first.",
+        "description": "Needs viewer. Threads are ordered by when they were started (newest first, then by id), so the cursor never skips or repeats a thread while people reply. Each thread comes with its latest replies and `replyCount`; earlier replies come from `GET /comments/{commentId}/replies`.",
         "parameters": [
           {
             "schema": {
@@ -7626,9 +7932,11 @@
             "schema": {
               "type": "string",
               "minLength": 1,
-              "maxLength": 512
+              "maxLength": 512,
+              "description": "Opaque. Threads are ordered by when they were started, newest first, with the id as a tie-breaker, so replies, edits and resolutions never move a thread between pages. A thread started after the first page appears only when the list is fetched again from the start."
             },
             "required": false,
+            "description": "Opaque. Threads are ordered by when they were started, newest first, with the id as a tie-breaker, so replies, edits and resolutions never move a thread between pages. A thread started after the first page appears only when the list is fetched again from the start.",
             "name": "cursor",
             "in": "query"
           },
@@ -7730,7 +8038,7 @@
           }
         ],
         "summary": "Start a thread on the board or a card, or reply to one.",
-        "description": "Needs commenter. Mentions of people who cannot read the board are dropped; the others, the authors of the thread and the creator of the card are notified. Open boards are told with the stateless collab message `{\"type\":\"comments\"}` (BoardNotice in @inkadra/doc-schema) and fetch again.",
+        "description": "Needs commenter. Mentions of people who cannot read the board are dropped; the others, the authors of the thread and the creator of the card are notified. A reply must belong to a thread of the same board. Open boards are told with the stateless collab message `{\"type\":\"comments\"}` (BoardNotice in @inkadra/doc-schema) and fetch again.",
         "parameters": [
           {
             "schema": {
@@ -7802,6 +8110,16 @@
                 }
               }
             }
+          },
+          "429": {
+            "description": "Too many requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         }
       }
@@ -7820,6 +8138,7 @@
           }
         ],
         "summary": "Open and resolved threads per card, for the badges on the canvas.",
+        "description": "Needs viewer.",
         "parameters": [
           {
             "schema": {
@@ -7839,6 +8158,129 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/CommentCounts"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/comments/{commentId}/replies": {
+      "get": {
+        "tags": [
+          "Comments"
+        ],
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Every reply of a thread, oldest first. Needs viewer.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10"
+            },
+            "required": true,
+            "name": "commentId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 512,
+              "description": "Opaque. Replies oldest first, by creation time and then id."
+            },
+            "required": false,
+            "description": "Opaque. Replies oldest first, by creation time and then id.",
+            "name": "cursor",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 30
+            },
+            "required": false,
+            "name": "limit",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Replies",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Comment"
+                      }
+                    },
+                    "nextCursor": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "minLength": 1,
+                      "maxLength": 512
+                    }
+                  },
+                  "required": [
+                    "items",
+                    "nextCursor"
+                  ]
                 }
               }
             }
@@ -8303,7 +8745,7 @@
           }
         ],
         "summary": "Set the review status of a card. Needs commenter.",
-        "description": "Every change is kept in the history. The creator of the card and whoever asked for the review are notified. The card must exist in the stored board document.",
+        "description": "Every change is kept in the history. The creator of the card and whoever asked for the review are notified. The card must exist in the stored board document. Open boards are told with the stateless collab message `{\"type\":\"review\"}`.",
         "parameters": [
           {
             "schema": {
@@ -8442,8 +8884,8 @@
             "schema": {
               "type": "integer",
               "minimum": 1,
-              "maximum": 200,
-              "default": 50
+              "maximum": 100,
+              "default": 30
             },
             "required": false,
             "name": "limit",
@@ -8538,7 +8980,7 @@
           }
         ],
         "summary": "Notifications of the signed-in person, newest first.",
-        "description": "Notifications about boards the person can no longer open are left out. They are kept 90 days.",
+        "description": "Notifications about boards the person can no longer open are left out, checked with the same rules as the board itself; a page can therefore be short or empty with a `nextCursor`. They are kept 90 days.",
         "parameters": [
           {
             "schema": {
@@ -8558,9 +9000,11 @@
             "schema": {
               "type": "string",
               "minLength": 1,
-              "maxLength": 512
+              "maxLength": 512,
+              "description": "Opaque, by creation time and id. Notifications about boards the person can no longer open are left out after paging, so a page can be short or even empty while `nextCursor` is not null: keep following it."
             },
             "required": false,
+            "description": "Opaque, by creation time and id. Notifications about boards the person can no longer open are left out after paging, so a page can be short or even empty while `nextCursor` is not null: keep following it.",
             "name": "cursor",
             "in": "query"
           },
@@ -8634,6 +9078,7 @@
           }
         ],
         "summary": "Number for the badge. Cheap enough to poll every minute.",
+        "description": "Counts only what the list would show: the same access filter applies.",
         "responses": {
           "200": {
             "description": "Count",
@@ -9092,7 +9537,7 @@
           }
         ],
         "summary": "Create a link for people without an account. Needs editor.",
-        "description": "Each person can create 50 share links an hour.",
+        "description": "Each person can create 50 share links an hour. The link acts for its creator: guests see only boards where the creator has at least editor at the time of each request, and the link is `suspended` while the creator lacks it on the board of the link.",
         "parameters": [
           {
             "schema": {
@@ -9428,6 +9873,7 @@
           {}
         ],
         "summary": "What a share link is for, shown before entering a name or password. Rate limited.",
+        "description": "Revoked, expired and suspended links answer 403 with GuestDenied only. While a password is needed, the board, the sender, the role and the expiry are left out.",
         "parameters": [
           {
             "schema": {
@@ -9447,6 +9893,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ShareLinkPreview"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Link expired, revoked or suspended (GuestDenied)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
                 }
               }
             }
@@ -9474,7 +9930,7 @@
         }
       }
     },
-    "/api/v1/guest/by-token/{token}/session": {
+    "/api/v1/guest/links/{linkId}/session": {
       "post": {
         "tags": [
           "Guests"
@@ -9485,17 +9941,17 @@
             "guest": []
           }
         ],
-        "summary": "Open the link as a guest: checks the password and sets the guest cookie.",
-        "description": "If the browser still has the cookie of an earlier visit to the same link, the guest stays the same person (comments and picks stay theirs). Wrong passwords are rate limited per link and address.",
+        "summary": "Open the link as a guest: checks the token and password, sets the guest cookie.",
+        "description": "The token is in the body and the path is under the cookie path, so the browser sends back the cookie of an earlier visit: if it belongs to a guest of this link, even with an expired session, that guest is reused (comments and picks stay theirs) and the cookie token is replaced. Otherwise a new guest is created. A token of another link is a 404. Rate limited per link and address: wrong passwords, and new guests without a cookie.",
         "parameters": [
           {
             "schema": {
               "type": "string",
-              "minLength": 16,
-              "maxLength": 128
+              "format": "uuid",
+              "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10"
             },
             "required": true,
-            "name": "token",
+            "name": "linkId",
             "in": "path"
           }
         ],
@@ -9530,7 +9986,7 @@
             }
           },
           "401": {
-            "description": "No guest session (details: GuestDenied)",
+            "description": "No guest session, or it expired (details: GuestDenied)",
             "content": {
               "application/json": {
                 "schema": {
@@ -9540,7 +9996,7 @@
             }
           },
           "403": {
-            "description": "Link expired or revoked, password changed, or role too low (GuestDenied)",
+            "description": "Link expired, revoked or suspended, password changed, role too low, or a cross-site write (GuestDenied)",
             "content": {
               "application/json": {
                 "schema": {
@@ -9550,7 +10006,7 @@
             }
           },
           "404": {
-            "description": "Not found",
+            "description": "Not found, or not visible to guests of this link (hidden cards included)",
             "content": {
               "application/json": {
                 "schema": {
@@ -9570,9 +10026,7 @@
             }
           }
         }
-      }
-    },
-    "/api/v1/guest/links/{linkId}/session": {
+      },
       "get": {
         "tags": [
           "Guests"
@@ -9617,7 +10071,7 @@
             }
           },
           "401": {
-            "description": "No guest session (details: GuestDenied)",
+            "description": "No guest session, or it expired (details: GuestDenied)",
             "content": {
               "application/json": {
                 "schema": {
@@ -9627,7 +10081,7 @@
             }
           },
           "403": {
-            "description": "Link expired or revoked, password changed, or role too low (GuestDenied)",
+            "description": "Link expired, revoked or suspended, password changed, role too low, or a cross-site write (GuestDenied)",
             "content": {
               "application/json": {
                 "schema": {
@@ -9637,7 +10091,7 @@
             }
           },
           "404": {
-            "description": "Not found",
+            "description": "Not found, or not visible to guests of this link (hidden cards included)",
             "content": {
               "application/json": {
                 "schema": {
@@ -9701,7 +10155,7 @@
             }
           },
           "401": {
-            "description": "No guest session (details: GuestDenied)",
+            "description": "No guest session, or it expired (details: GuestDenied)",
             "content": {
               "application/json": {
                 "schema": {
@@ -9711,7 +10165,7 @@
             }
           },
           "403": {
-            "description": "Link expired or revoked, password changed, or role too low (GuestDenied)",
+            "description": "Link expired, revoked or suspended, password changed, role too low, or a cross-site write (GuestDenied)",
             "content": {
               "application/json": {
                 "schema": {
@@ -9721,7 +10175,17 @@
             }
           },
           "404": {
-            "description": "Not found",
+            "description": "Not found, or not visible to guests of this link (hidden cards included)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests",
             "content": {
               "application/json": {
                 "schema": {
@@ -9741,7 +10205,7 @@
             "guest": []
           }
         ],
-        "summary": "Leave: clears the guest cookie.",
+        "summary": "Leave: ends the session and clears the guest cookie.",
         "parameters": [
           {
             "schema": {
@@ -9772,7 +10236,7 @@
           }
         ],
         "summary": "Read-only snapshot of a board, filtered for guests.",
-        "description": "Rendered by the server from the stored document: cards hidden from guests and their children are left out, and so are arrows attached to them and board cards of boards outside the link. Files are listed only as guest URLs. Send `If-None-Match` with the last `version` to poll cheaply (304).",
+        "description": "Rendered by the server from the stored document: cards hidden from guests and their children are left out, and so are arrows attached to them and board cards of boards outside the link. Reviews, comment counts, picks and files are filtered the same way. Files are listed only as guest URLs. Send `If-None-Match` with the last `version` to poll cheaply (304).",
         "parameters": [
           {
             "schema": {
@@ -9820,7 +10284,7 @@
             }
           },
           "401": {
-            "description": "No guest session (details: GuestDenied)",
+            "description": "No guest session, or it expired (details: GuestDenied)",
             "content": {
               "application/json": {
                 "schema": {
@@ -9830,7 +10294,7 @@
             }
           },
           "403": {
-            "description": "Link expired or revoked, password changed, or role too low (GuestDenied)",
+            "description": "Link expired, revoked or suspended, password changed, role too low, or a cross-site write (GuestDenied)",
             "content": {
               "application/json": {
                 "schema": {
@@ -9840,7 +10304,7 @@
             }
           },
           "404": {
-            "description": "Not found",
+            "description": "Not found, or not visible to guests of this link (hidden cards included)",
             "content": {
               "application/json": {
                 "schema": {
@@ -9863,6 +10327,7 @@
           }
         ],
         "summary": "A WebP thumbnail of a file shown on one of the boards of the link.",
+        "description": "Only for files referenced by an element visible to guests on a board of the link, or the cover of such a board; checked on every request.",
         "parameters": [
           {
             "schema": {
@@ -9921,7 +10386,7 @@
             }
           },
           "401": {
-            "description": "No guest session (details: GuestDenied)",
+            "description": "No guest session, or it expired (details: GuestDenied)",
             "content": {
               "application/json": {
                 "schema": {
@@ -9931,7 +10396,7 @@
             }
           },
           "403": {
-            "description": "Link expired or revoked, password changed, or role too low (GuestDenied)",
+            "description": "Link expired, revoked or suspended, password changed, role too low, or a cross-site write (GuestDenied)",
             "content": {
               "application/json": {
                 "schema": {
@@ -9941,7 +10406,7 @@
             }
           },
           "404": {
-            "description": "Not found",
+            "description": "Not found, or not visible to guests of this link (hidden cards included)",
             "content": {
               "application/json": {
                 "schema": {
@@ -9964,6 +10429,7 @@
           }
         ],
         "summary": "The original file, only when the link allows downloads. Always an attachment.",
+        "description": "Only for files referenced by an element visible to guests on a board of the link (board covers are never served as originals); checked on every request.",
         "parameters": [
           {
             "schema": {
@@ -10004,7 +10470,7 @@
             }
           },
           "401": {
-            "description": "No guest session (details: GuestDenied)",
+            "description": "No guest session, or it expired (details: GuestDenied)",
             "content": {
               "application/json": {
                 "schema": {
@@ -10014,7 +10480,7 @@
             }
           },
           "403": {
-            "description": "Link expired or revoked, password changed, or role too low (GuestDenied)",
+            "description": "Link expired, revoked or suspended, password changed, role too low, or a cross-site write (GuestDenied)",
             "content": {
               "application/json": {
                 "schema": {
@@ -10024,7 +10490,7 @@
             }
           },
           "404": {
-            "description": "Not found",
+            "description": "Not found, or not visible to guests of this link (hidden cards included)",
             "content": {
               "application/json": {
                 "schema": {
@@ -10046,7 +10512,8 @@
             "guest": []
           }
         ],
-        "summary": "Threads visible to guests (`everyone`). For guest_comment and guest_approve.",
+        "summary": "Threads this guest can read. For guest_comment and guest_approve.",
+        "description": "`everyone` threads that are either for every link (written by the team) or for this link, about the board or a card visible to guests; replies written by guests of other links are left out. Same order and cursor as the team list.",
         "parameters": [
           {
             "schema": {
@@ -10114,9 +10581,11 @@
             "schema": {
               "type": "string",
               "minLength": 1,
-              "maxLength": 512
+              "maxLength": 512,
+              "description": "Opaque. Threads are ordered by when they were started, newest first, with the id as a tie-breaker, so replies, edits and resolutions never move a thread between pages. A thread started after the first page appears only when the list is fetched again from the start."
             },
             "required": false,
+            "description": "Opaque. Threads are ordered by when they were started, newest first, with the id as a tie-breaker, so replies, edits and resolutions never move a thread between pages. A thread started after the first page appears only when the list is fetched again from the start.",
             "name": "cursor",
             "in": "query"
           },
@@ -10143,7 +10612,7 @@
                     "items": {
                       "type": "array",
                       "items": {
-                        "$ref": "#/components/schemas/CommentThread"
+                        "$ref": "#/components/schemas/GuestCommentThread"
                       }
                     },
                     "nextCursor": {
@@ -10174,7 +10643,7 @@
             }
           },
           "401": {
-            "description": "No guest session (details: GuestDenied)",
+            "description": "No guest session, or it expired (details: GuestDenied)",
             "content": {
               "application/json": {
                 "schema": {
@@ -10184,7 +10653,7 @@
             }
           },
           "403": {
-            "description": "Link expired or revoked, password changed, or role too low (GuestDenied)",
+            "description": "Link expired, revoked or suspended, password changed, role too low, or a cross-site write (GuestDenied)",
             "content": {
               "application/json": {
                 "schema": {
@@ -10194,7 +10663,7 @@
             }
           },
           "404": {
-            "description": "Not found",
+            "description": "Not found, or not visible to guests of this link (hidden cards included)",
             "content": {
               "application/json": {
                 "schema": {
@@ -10215,6 +10684,7 @@
           }
         ],
         "summary": "Comment as a guest. Needs a name; mentions are not available to guests.",
+        "description": "The thread is `everyone` and belongs to this link: guests of other links never see it. A card hidden from guests, or a reply to a thread this guest cannot read (a `team` thread, or one of another link), is a 404. Rate limited per guest and per link.",
         "parameters": [
           {
             "schema": {
@@ -10241,7 +10711,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/CreateComment"
+                "$ref": "#/components/schemas/GuestCreateComment"
               }
             }
           }
@@ -10252,7 +10722,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Comment"
+                  "$ref": "#/components/schemas/GuestComment"
                 }
               }
             }
@@ -10268,7 +10738,7 @@
             }
           },
           "401": {
-            "description": "No guest session (details: GuestDenied)",
+            "description": "No guest session, or it expired (details: GuestDenied)",
             "content": {
               "application/json": {
                 "schema": {
@@ -10278,7 +10748,7 @@
             }
           },
           "403": {
-            "description": "Link expired or revoked, password changed, or role too low (GuestDenied)",
+            "description": "Link expired, revoked or suspended, password changed, role too low, or a cross-site write (GuestDenied)",
             "content": {
               "application/json": {
                 "schema": {
@@ -10288,7 +10758,147 @@
             }
           },
           "404": {
-            "description": "Not found",
+            "description": "Not found, or not visible to guests of this link (hidden cards included)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/guest/links/{linkId}/comments/{commentId}/replies": {
+      "get": {
+        "tags": [
+          "Guests"
+        ],
+        "security": [
+          {
+            "guest": []
+          }
+        ],
+        "summary": "Every reply of a thread this guest can read, oldest first.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10"
+            },
+            "required": true,
+            "name": "linkId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10"
+            },
+            "required": true,
+            "name": "commentId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 512,
+              "description": "Opaque. Replies oldest first, by creation time and then id."
+            },
+            "required": false,
+            "description": "Opaque. Replies oldest first, by creation time and then id.",
+            "name": "cursor",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 30
+            },
+            "required": false,
+            "name": "limit",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Replies",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/GuestComment"
+                      }
+                    },
+                    "nextCursor": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "minLength": 1,
+                      "maxLength": 512
+                    }
+                  },
+                  "required": [
+                    "items",
+                    "nextCursor"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No guest session, or it expired (details: GuestDenied)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Link expired, revoked or suspended, password changed, role too low, or a cross-site write (GuestDenied)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found, or not visible to guests of this link (hidden cards included)",
             "content": {
               "application/json": {
                 "schema": {
@@ -10310,7 +10920,7 @@
             "guest": []
           }
         ],
-        "summary": "Edit a comment this guest wrote.",
+        "summary": "Edit a comment this guest wrote, on a board the guest can still open.",
         "parameters": [
           {
             "schema": {
@@ -10337,7 +10947,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/UpdateComment"
+                "$ref": "#/components/schemas/GuestUpdateComment"
               }
             }
           }
@@ -10348,7 +10958,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Comment"
+                  "$ref": "#/components/schemas/GuestComment"
                 }
               }
             }
@@ -10364,7 +10974,7 @@
             }
           },
           "401": {
-            "description": "No guest session (details: GuestDenied)",
+            "description": "No guest session, or it expired (details: GuestDenied)",
             "content": {
               "application/json": {
                 "schema": {
@@ -10374,7 +10984,7 @@
             }
           },
           "403": {
-            "description": "Link expired or revoked, password changed, or role too low (GuestDenied)",
+            "description": "Link expired, revoked or suspended, password changed, role too low, or a cross-site write (GuestDenied)",
             "content": {
               "application/json": {
                 "schema": {
@@ -10384,7 +10994,17 @@
             }
           },
           "404": {
-            "description": "Not found",
+            "description": "Not found, or not visible to guests of this link (hidden cards included)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests",
             "content": {
               "application/json": {
                 "schema": {
@@ -10404,7 +11024,7 @@
             "guest": []
           }
         ],
-        "summary": "Delete a comment this guest wrote.",
+        "summary": "Delete a comment this guest wrote, on a board the guest can still open.",
         "parameters": [
           {
             "schema": {
@@ -10442,7 +11062,7 @@
             }
           },
           "401": {
-            "description": "No guest session (details: GuestDenied)",
+            "description": "No guest session, or it expired (details: GuestDenied)",
             "content": {
               "application/json": {
                 "schema": {
@@ -10452,7 +11072,7 @@
             }
           },
           "403": {
-            "description": "Link expired or revoked, password changed, or role too low (GuestDenied)",
+            "description": "Link expired, revoked or suspended, password changed, role too low, or a cross-site write (GuestDenied)",
             "content": {
               "application/json": {
                 "schema": {
@@ -10462,7 +11082,17 @@
             }
           },
           "404": {
-            "description": "Not found",
+            "description": "Not found, or not visible to guests of this link (hidden cards included)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests",
             "content": {
               "application/json": {
                 "schema": {
@@ -10485,6 +11115,7 @@
           }
         ],
         "summary": "Approve a card or ask for changes. For guest_approve; needs a name.",
+        "description": "A card hidden from guests is a 404.",
         "parameters": [
           {
             "schema": {
@@ -10534,7 +11165,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ElementReview"
+                  "$ref": "#/components/schemas/GuestElementReview"
                 }
               }
             }
@@ -10550,7 +11181,7 @@
             }
           },
           "401": {
-            "description": "No guest session (details: GuestDenied)",
+            "description": "No guest session, or it expired (details: GuestDenied)",
             "content": {
               "application/json": {
                 "schema": {
@@ -10560,7 +11191,7 @@
             }
           },
           "403": {
-            "description": "Link expired or revoked, password changed, or role too low (GuestDenied)",
+            "description": "Link expired, revoked or suspended, password changed, role too low, or a cross-site write (GuestDenied)",
             "content": {
               "application/json": {
                 "schema": {
@@ -10570,7 +11201,17 @@
             }
           },
           "404": {
-            "description": "Not found",
+            "description": "Not found, or not visible to guests of this link (hidden cards included)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests",
             "content": {
               "application/json": {
                 "schema": {
@@ -10593,6 +11234,7 @@
           }
         ],
         "summary": "Pick, reject or star a picture, when the link has proofing. Needs a name.",
+        "description": "A card hidden from guests is a 404.",
         "parameters": [
           {
             "schema": {
@@ -10658,7 +11300,7 @@
             }
           },
           "401": {
-            "description": "No guest session (details: GuestDenied)",
+            "description": "No guest session, or it expired (details: GuestDenied)",
             "content": {
               "application/json": {
                 "schema": {
@@ -10668,7 +11310,7 @@
             }
           },
           "403": {
-            "description": "Link expired or revoked, password changed, or role too low (GuestDenied)",
+            "description": "Link expired, revoked or suspended, password changed, role too low, or a cross-site write (GuestDenied)",
             "content": {
               "application/json": {
                 "schema": {
@@ -10678,7 +11320,17 @@
             }
           },
           "404": {
-            "description": "Not found",
+            "description": "Not found, or not visible to guests of this link (hidden cards included)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests",
             "content": {
               "application/json": {
                 "schema": {
@@ -10723,10 +11375,10 @@
                 "named",
                 "restore"
               ],
-              "description": "`auto`: taken by the server while the board is edited, removed by retention. `named`: saved by someone with a name, kept until deleted. `restore`: the state just before a restore, kept like an automatic one."
+              "description": "`auto`: taken by the server while the board is edited, removed by retention. `named`: saved by someone with a name, kept until deleted. `restore`: the state just before a restore, kept like an automatic one. Open: clients show a kind they do not know like `auto`."
             },
             "required": false,
-            "description": "`auto`: taken by the server while the board is edited, removed by retention. `named`: saved by someone with a name, kept until deleted. `restore`: the state just before a restore, kept like an automatic one.",
+            "description": "`auto`: taken by the server while the board is edited, removed by retention. `named`: saved by someone with a name, kept until deleted. `restore`: the state just before a restore, kept like an automatic one. Open: clients show a kind they do not know like `auto`.",
             "name": "kind",
             "in": "query"
           },
@@ -10745,7 +11397,7 @@
               "type": "integer",
               "minimum": 1,
               "maximum": 100,
-              "default": 50
+              "default": 30
             },
             "required": false,
             "name": "limit",
@@ -10838,6 +11490,7 @@
           }
         ],
         "summary": "Save the current state of the board under a name. Needs editor.",
+        "description": "A board keeps at most 100 named versions (409 beyond; delete or let one go first), and each person can save 20 an hour.",
         "parameters": [
           {
             "schema": {
@@ -10902,6 +11555,16 @@
           },
           "404": {
             "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests",
             "content": {
               "application/json": {
                 "schema": {
@@ -11023,7 +11686,8 @@
             "bearer": []
           }
         ],
-        "summary": "Delete a named version. Needs editor.",
+        "summary": "Delete a version of any kind. Needs editor.",
+        "description": "Automatic and restore versions also go away by themselves with retention; deleting one only does it sooner.",
         "parameters": [
           {
             "schema": {
@@ -11199,7 +11863,7 @@
           }
         ],
         "summary": "Bring the board back to a version, as a new change. Needs editor.",
-        "description": "The current state is saved first as a `restore` version. The content of the version is then written on top of the live document, so open boards follow without a reload (they also get the stateless collab message `{\"type\":\"restored\"}`). Comments, reviews and picks are not touched.",
+        "description": "The current state is saved first as a `restore` version. The content of the version is then written on top of the live document, so open boards follow without a reload (they also get the stateless collab message `{\"type\":\"restored\"}`). Comments, reviews and picks are not touched. Cards present both now and in the version keep their current `guestHidden`, so a restore never shows guests a card hidden since.",
         "parameters": [
           {
             "schema": {
