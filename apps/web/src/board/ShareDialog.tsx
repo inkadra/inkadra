@@ -294,13 +294,17 @@ function InviteForm({
     // Results of the previous text must never be picked for the new one.
     setFound([]);
     if (q.length < 2 || EMAIL.test(q)) return;
+    let current = true;
     const timer = setTimeout(() => {
       api
         .get<{ items: Person[] }>(`/users/search?q=${encodeURIComponent(q)}`)
-        .then((r) => setFound(r.items))
-        .catch(() => setFound([]));
+        .then((r) => current && setFound(r.items))
+        .catch(() => current && setFound([]));
     }, 250);
-    return () => clearTimeout(timer);
+    return () => {
+      current = false;
+      clearTimeout(timer);
+    };
   }, [query]);
 
   async function submit(e: FormEvent) {
