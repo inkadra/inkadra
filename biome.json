@@ -6,7 +6,13 @@
     "useIgnoreFile": true
   },
   "files": {
-    "includes": ["**", "!**/openapi.json", "!**/drizzle/meta", "!**/ui/src/tokens.css"]
+    "includes": [
+      "**",
+      "!pnpm-lock.yaml",
+      "!**/openapi.json",
+      "!**/drizzle/meta",
+      "!**/ui/src/tokens.css"
+    ]
   },
   "formatter": {
     "enabled": true,
