@@ -90,6 +90,19 @@ test('the board takes notes and columns, with undo', async ({ page }) => {
   // The board is the shared document: a reload shows the same content.
   await page.reload();
   await expect(page.locator('[data-type="note"]')).toHaveText('Sopralluogo al porto');
+
+  // A board inside the board: open it, then go back through the breadcrumb.
+  await page.keyboard.press('b');
+  const sub = page.locator('[data-type="board"]');
+  await expect(sub).toHaveCount(1);
+  await page.keyboard.type('Sopralluoghi');
+  await page.keyboard.press('Escape');
+  await expect(sub).toContainText('Sopralluoghi');
+  await sub.dblclick();
+  await expect(page).toHaveURL(/\/p\/[0-9a-f-]{36}\/b\/[0-9a-f-]{36}$/);
+  await expect(page.getByText('Board vuota')).toBeVisible();
+  await page.getByRole('banner').getByRole('link', { name: 'Ultima corsa' }).click();
+  await expect(page.locator('[data-type="board"]')).toContainText('Sopralluoghi');
 });
 
 async function signIn(page: import('@playwright/test').Page) {
