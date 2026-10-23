@@ -745,6 +745,9 @@ registry.registerPath({
   tags: ['Search'],
   security: secured,
   summary: 'Tags used on the cards of a project, most used first.',
+  description:
+    'Counts only the boards the caller can read, with the same rule as /search: when board ' +
+    'grants limit someone to some boards of a project, tags of the other boards stay hidden.',
   request: { params: idParam('projectId') },
   responses: {
     200: { description: 'Tags', ...json(z.object({ items: z.array(TagCount) })) },

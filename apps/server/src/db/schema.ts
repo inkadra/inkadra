@@ -283,7 +283,7 @@ export const boardDoc = pgTable('board_doc', {
 
 /**
  * Searchable view of the elements of each board, rebuilt from the Yjs document whenever it is
- * stored (docs/decisions/0011). Never edited directly: the document is the source.
+ * stored (docs/decisions/0012). Never edited directly: the document is the source.
  */
 export const boardElementIndex = pgTable(
   'board_element_index',

@@ -126,7 +126,7 @@ export function addElement(doc: Y.Doc, element: Element): Y.Map<unknown> {
     if (parsed.type === 'note') map.set('body', new Y.XmlFragment());
     // Created with the frame, so two people drawing on a new frame add to the same array
     // instead of each replacing the field with their own.
-    if (parsed.type === 'frame' && !map.has('strokes')) map.set('strokes', new Y.Array());
+    if (parsed.type === 'frame' && !parsed.strokes) map.set('strokes', new Y.Array());
     roots(doc).elements.set(parsed.id, map);
   });
   return map;
