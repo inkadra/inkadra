@@ -61,6 +61,11 @@ export type Asset = z.infer<typeof Asset>;
 export const UploadMetadata = z
   .object({
     projectId: Id,
+    boardId: Id.optional().openapi({
+      description:
+        'Board the file goes to. People who can edit that board but are not editors of the ' +
+        'whole project (board grants) must send it.',
+    }),
     filename: z.string().min(1).max(255),
     filetype: z.string().min(1).max(255),
   })
@@ -73,6 +78,7 @@ export const VariantParams = z.object({ assetId: Id, size: ThumbnailSize });
 export const CreateLinkPreview = z
   .object({
     projectId: Id.openapi({ description: 'Project that will own the preview image asset.' }),
+    boardId: Id.optional().openapi({ description: 'As in UploadMetadata.' }),
     url: z.url({ protocol: /^https?$/ }),
   })
   .openapi('CreateLinkPreview');

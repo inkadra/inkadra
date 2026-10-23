@@ -45,6 +45,7 @@ export const user = pgTable('user', {
     .notNull()
     .default('member'),
   locale: text('locale'),
+  twoFactorEnabled: boolean('two_factor_enabled').notNull().default(false),
   createdAt: createdAt(),
   updatedAt: updatedAt(),
 });
@@ -99,6 +100,45 @@ export const verification = pgTable(
     updatedAt: updatedAt(),
   },
   (t) => [index('verification_identifier_idx').on(t.identifier)],
+);
+
+/** TOTP secret and backup codes (Better Auth two-factor plugin; both stored encrypted). */
+export const twoFactor = pgTable(
+  'two_factor',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    secret: text('secret').notNull(),
+    backupCodes: text('backup_codes').notNull(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => user.id, { onDelete: 'cascade' }),
+    verified: boolean('verified').notNull().default(true),
+    failedVerificationCount: integer('failed_verification_count').notNull().default(0),
+    lockedUntil: timestamp('locked_until', { withTimezone: true }),
+  },
+  (t) => [index('two_factor_user_idx').on(t.userId), index('two_factor_secret_idx').on(t.secret)],
+);
+
+/**
+ * Bearer tokens for the browser clipper, the mobile app and scripts. Only a SHA-256 of the
+ * token is kept.
+ */
+export const personalToken = pgTable(
+  'personal_token',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => user.id, { onDelete: 'cascade' }),
+    name: text('name').notNull(),
+    client: text('client', { enum: ['clipper', 'mobile'] }),
+    tokenHash: text('token_hash').notNull().unique(),
+    prefix: text('prefix').notNull(),
+    lastUsedAt: timestamp('last_used_at', { withTimezone: true }),
+    expiresAt: timestamp('expires_at', { withTimezone: true }),
+    createdAt: createdAt(),
+  },
+  (t) => [index('personal_token_user_idx').on(t.userId)],
 );
 
 // Instance -------------------------------------------------------------------
@@ -188,9 +228,43 @@ export const boardGrant = pgTable(
       .notNull()
       .references(() => user.id, { onDelete: 'cascade' }),
     role: text('role', { enum: roleEnum }).notNull(),
+    grantedBy: uuid('granted_by').references(() => user.id, { onDelete: 'set null' }),
     createdAt: createdAt(),
   },
-  (t) => [primaryKey({ columns: [t.boardId, t.userId] })],
+  (t) => [
+    primaryKey({ columns: [t.boardId, t.userId] }),
+    index('board_grant_user_idx').on(t.userId),
+  ],
+);
+
+/**
+ * Invitations to a project, a board or (from administrators) the instance alone. The token is
+ * looked up by its SHA-256; `tokenSealed` keeps it encrypted with a key derived from
+ * AUTH_SECRET, so the people who manage the invitation can copy its link again.
+ */
+export const invitation = pgTable(
+  'invitation',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    kind: text('kind', { enum: ['email', 'link'] }).notNull(),
+    tokenHash: text('token_hash').notNull().unique(),
+    tokenSealed: text('token_sealed').notNull(),
+    email: text('email'),
+    projectId: uuid('project_id').references(() => project.id, { onDelete: 'cascade' }),
+    boardId: uuid('board_id').references(() => board.id, { onDelete: 'cascade' }),
+    role: text('role', { enum: roleEnum }),
+    invitedBy: uuid('invited_by').references(() => user.id, { onDelete: 'set null' }),
+    uses: integer('uses').notNull().default(0),
+    maxUses: integer('max_uses'),
+    expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+    lastSentAt: timestamp('last_sent_at', { withTimezone: true }),
+    revokedAt: timestamp('revoked_at', { withTimezone: true }),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    index('invitation_project_idx').on(t.projectId),
+    index('invitation_board_idx').on(t.boardId),
+  ],
 );
 
 /** Latest Yjs state of a board (a full update, compacted on store). */

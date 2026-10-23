@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "Inkadra API",
-    "version": "0.1.0",
+    "version": "0.3.0",
     "license": {
       "name": "AGPL-3.0-only",
       "identifier": "AGPL-3.0-only"
@@ -31,6 +31,9 @@
       "name": "Boards"
     },
     {
+      "name": "Sharing"
+    },
+    {
       "name": "Assets"
     },
     {
@@ -48,10 +51,39 @@
       "bearer": {
         "type": "http",
         "scheme": "bearer",
-        "description": "Personal or app token (browser clipper, mobile app). Available from wave 2."
+        "description": "Personal or app token (browser clipper, mobile app, scripts): `ink_…`. Also accepted by the collab WebSocket as the Hocuspocus `token`."
       }
     },
     "schemas": {
+      "DeleteMeBlocked": {
+        "type": "object",
+        "properties": {
+          "soleOwnerOf": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "format": "uuid",
+                  "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10"
+                },
+                "name": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id",
+                "name"
+              ]
+            },
+            "description": "Projects shared with other people where this account is the only owner: make someone else owner first. Projects nobody else is in are deleted with the account."
+          }
+        },
+        "required": [
+          "soleOwnerOf"
+        ]
+      },
       "UploadMetadata": {
         "type": "object",
         "properties": {
@@ -59,6 +91,12 @@
             "type": "string",
             "format": "uuid",
             "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10"
+          },
+          "boardId": {
+            "type": "string",
+            "format": "uuid",
+            "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10",
+            "description": "Board the file goes to. People who can edit that board but are not editors of the whole project (board grants) must send it."
           },
           "filename": {
             "type": "string",
@@ -171,13 +209,24 @@
                     "id",
                     "name"
                   ]
-                }
+                },
+                "description": "Sign in with `POST /api/auth/sign-in/oauth2` and `providerId: id`."
+              },
+              "magicLink": {
+                "type": "boolean",
+                "description": "Sign-in links by email. Needs SMTP, so it is false without it."
+              },
+              "email": {
+                "type": "boolean",
+                "description": "The instance can send email (invitations, sign-in links)."
               }
             },
             "required": [
               "emailPassword",
               "google",
-              "oidc"
+              "oidc",
+              "magicLink",
+              "email"
             ]
           },
           "collabPath": {
@@ -426,6 +475,9 @@
             ],
             "maxLength": 16
           },
+          "twoFactorEnabled": {
+            "type": "boolean"
+          },
           "createdAt": {
             "type": "string",
             "format": "date-time",
@@ -439,6 +491,7 @@
           "image",
           "role",
           "locale",
+          "twoFactorEnabled",
           "createdAt"
         ]
       },
@@ -510,6 +563,278 @@
             "maxLength": 16
           }
         }
+      },
+      "DeleteMe": {
+        "type": "object",
+        "properties": {
+          "password": {
+            "type": "string",
+            "maxLength": 128,
+            "description": "Required when the account has a password. Accounts that only sign in with Google or OIDC must have signed in during the last 15 minutes instead."
+          }
+        }
+      },
+      "PersonalToken": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10"
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80
+          },
+          "client": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "enum": [
+              "clipper",
+              "mobile",
+              null
+            ],
+            "description": "Null for tokens made by hand."
+          },
+          "prefix": {
+            "type": "string",
+            "description": "First characters, to recognise the token."
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-11-02T09:30:00.000Z"
+          },
+          "lastUsedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "example": "2026-11-02T09:30:00.000Z"
+          },
+          "expiresAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "example": "2026-11-02T09:30:00.000Z"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "client",
+          "prefix",
+          "createdAt",
+          "lastUsedAt",
+          "expiresAt"
+        ]
+      },
+      "CreatedPersonalToken": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/PersonalToken"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "token": {
+                "type": "string",
+                "description": "Shown only once. Send it as `Authorization: Bearer <token>`.",
+                "example": "ink_8Qd2…"
+              }
+            },
+            "required": [
+              "token"
+            ]
+          }
+        ]
+      },
+      "CreatePersonalToken": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80
+          },
+          "expiresInDays": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 1,
+            "maximum": 3650,
+            "default": null
+          }
+        },
+        "required": [
+          "name"
+        ]
+      },
+      "AppAuthorizationRedirect": {
+        "type": "object",
+        "properties": {
+          "redirectTo": {
+            "type": "string",
+            "format": "uri",
+            "description": "redirectUri with `code` (valid 2 minutes, once) and `state` added."
+          }
+        },
+        "required": [
+          "redirectTo"
+        ]
+      },
+      "CreateAppAuthorization": {
+        "type": "object",
+        "properties": {
+          "clientId": {
+            "type": "string",
+            "enum": [
+              "clipper",
+              "mobile"
+            ],
+            "description": "Official apps that can ask for a token through /authorize. `clipper` redirects to `https://<extension id>.chromiumapp.org/...`, `mobile` to `inkadra://...`."
+          },
+          "redirectUri": {
+            "type": "string",
+            "format": "uri"
+          },
+          "codeChallenge": {
+            "type": "string",
+            "minLength": 43,
+            "maxLength": 128,
+            "pattern": "^[A-Za-z0-9_-]+$"
+          },
+          "codeChallengeMethod": {
+            "type": "string",
+            "enum": [
+              "S256"
+            ]
+          },
+          "state": {
+            "type": "string",
+            "maxLength": 512
+          },
+          "deviceName": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80
+          }
+        },
+        "required": [
+          "clientId",
+          "redirectUri",
+          "codeChallenge",
+          "codeChallengeMethod"
+        ]
+      },
+      "AppToken": {
+        "type": "object",
+        "properties": {
+          "token": {
+            "type": "string",
+            "description": "Send it as `Authorization: Bearer <token>`."
+          },
+          "tokenId": {
+            "type": "string",
+            "format": "uuid",
+            "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10"
+          },
+          "user": {
+            "$ref": "#/components/schemas/User"
+          }
+        },
+        "required": [
+          "token",
+          "tokenId",
+          "user"
+        ]
+      },
+      "ExchangeAppCode": {
+        "type": "object",
+        "properties": {
+          "clientId": {
+            "type": "string",
+            "enum": [
+              "clipper",
+              "mobile"
+            ],
+            "description": "Official apps that can ask for a token through /authorize. `clipper` redirects to `https://<extension id>.chromiumapp.org/...`, `mobile` to `inkadra://...`."
+          },
+          "code": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256
+          },
+          "codeVerifier": {
+            "type": "string",
+            "minLength": 43,
+            "maxLength": 128,
+            "pattern": "^[A-Za-z0-9_-]+$"
+          },
+          "redirectUri": {
+            "type": "string",
+            "format": "uri"
+          }
+        },
+        "required": [
+          "clientId",
+          "code",
+          "codeVerifier",
+          "redirectUri"
+        ]
+      },
+      "Person": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/UserSummary"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "email": {
+                "type": "string",
+                "format": "email"
+              }
+            },
+            "required": [
+              "email"
+            ]
+          }
+        ]
+      },
+      "UserSummary": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10"
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120
+          },
+          "image": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uri"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "image"
+        ]
       },
       "Project": {
         "type": "object",
@@ -671,33 +996,6 @@
           "user",
           "role",
           "addedAt"
-        ]
-      },
-      "UserSummary": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string",
-            "format": "uuid",
-            "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10"
-          },
-          "name": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 120
-          },
-          "image": {
-            "type": [
-              "string",
-              "null"
-            ],
-            "format": "uri"
-          }
-        },
-        "required": [
-          "id",
-          "name",
-          "image"
         ]
       },
       "SetProjectMember": {
@@ -902,6 +1200,435 @@
             "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10"
           }
         }
+      },
+      "BoardAccess": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BoardAccessEntry"
+            }
+          },
+          "canManage": {
+            "type": "boolean",
+            "description": "True for editors and owners: they can invite and change grants."
+          }
+        },
+        "required": [
+          "items",
+          "canManage"
+        ]
+      },
+      "BoardAccessEntry": {
+        "type": "object",
+        "properties": {
+          "user": {
+            "$ref": "#/components/schemas/Person"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "owner",
+              "editor",
+              "commenter",
+              "viewer"
+            ],
+            "description": "Effective role on this board."
+          },
+          "source": {
+            "$ref": "#/components/schemas/AccessSource"
+          },
+          "projectRole": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "enum": [
+              "owner",
+              "editor",
+              "commenter",
+              "viewer",
+              null
+            ],
+            "description": "Role on the project, or null for people who only have board grants."
+          }
+        },
+        "required": [
+          "user",
+          "role",
+          "source",
+          "projectRole"
+        ]
+      },
+      "AccessSource": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "project"
+                ]
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "board"
+                ]
+              },
+              "boardId": {
+                "type": "string",
+                "format": "uuid",
+                "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10"
+              },
+              "boardTitle": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "kind",
+              "boardId",
+              "boardTitle"
+            ]
+          }
+        ]
+      },
+      "SetBoardGrant": {
+        "type": "object",
+        "properties": {
+          "role": {
+            "type": "string",
+            "enum": [
+              "owner",
+              "editor",
+              "commenter",
+              "viewer"
+            ]
+          }
+        },
+        "required": [
+          "role"
+        ]
+      },
+      "Invitation": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "email",
+              "link"
+            ],
+            "description": "`email`: sent to one address, usable once. `link`: a link to copy, usable by several people until it expires or is revoked."
+          },
+          "email": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "email"
+          },
+          "projectId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid",
+            "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10",
+            "description": "Null for an invitation to the instance only (administrators)."
+          },
+          "boardId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid",
+            "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10",
+            "description": "Set when the invitation gives a role on one board and its sub-boards."
+          },
+          "role": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "enum": [
+              "owner",
+              "editor",
+              "commenter",
+              "viewer",
+              null
+            ]
+          },
+          "invitedBy": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/UserSummary"
+              },
+              {
+                "type": [
+                  "object",
+                  "null"
+                ]
+              }
+            ]
+          },
+          "uses": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "maxUses": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 1,
+            "description": "Null: until it expires."
+          },
+          "url": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uri",
+            "description": "Link to open the invitation. Present for the people who manage it; null when the invitation can no longer be used."
+          },
+          "emailSent": {
+            "type": "boolean",
+            "description": "False when the instance has no SMTP: share `url` some other way."
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-11-02T09:30:00.000Z"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-11-02T09:30:00.000Z"
+          },
+          "lastSentAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "example": "2026-11-02T09:30:00.000Z"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "email",
+          "projectId",
+          "boardId",
+          "role",
+          "invitedBy",
+          "uses",
+          "maxUses",
+          "url",
+          "emailSent",
+          "createdAt",
+          "expiresAt",
+          "lastSentAt"
+        ]
+      },
+      "InvitationResult": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "status": {
+                "type": "string",
+                "enum": [
+                  "added"
+                ]
+              },
+              "entry": {
+                "$ref": "#/components/schemas/BoardAccessEntry"
+              }
+            },
+            "required": [
+              "status",
+              "entry"
+            ]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "status": {
+                "type": "string",
+                "enum": [
+                  "invited"
+                ]
+              },
+              "invitation": {
+                "$ref": "#/components/schemas/Invitation"
+              }
+            },
+            "required": [
+              "status",
+              "invitation"
+            ]
+          }
+        ]
+      },
+      "CreateInvitation": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "email",
+              "link"
+            ],
+            "default": "email",
+            "description": "`email`: sent to one address, usable once. `link`: a link to copy, usable by several people until it expires or is revoked."
+          },
+          "email": {
+            "type": "string",
+            "maxLength": 254,
+            "format": "email",
+            "description": "Required for `email`."
+          },
+          "projectId": {
+            "type": "string",
+            "format": "uuid",
+            "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10"
+          },
+          "boardId": {
+            "type": "string",
+            "format": "uuid",
+            "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10",
+            "description": "Invite to this board (and what is inside it) instead of the whole project."
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "owner",
+              "editor",
+              "commenter",
+              "viewer"
+            ],
+            "description": "Required with projectId or boardId. At most the role of the person inviting."
+          },
+          "expiresInDays": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 90,
+            "default": 7
+          }
+        }
+      },
+      "InvitationPreview": {
+        "type": "object",
+        "properties": {
+          "instanceName": {
+            "type": "string"
+          },
+          "invitedBy": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Name of the person who invited."
+          },
+          "projectName": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "boardTitle": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "role": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "enum": [
+              "owner",
+              "editor",
+              "commenter",
+              "viewer",
+              null
+            ]
+          },
+          "email": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "email"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "valid",
+              "expired",
+              "used",
+              "revoked"
+            ]
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-11-02T09:30:00.000Z"
+          }
+        },
+        "required": [
+          "instanceName",
+          "invitedBy",
+          "projectName",
+          "boardTitle",
+          "role",
+          "email",
+          "status",
+          "expiresAt"
+        ]
+      },
+      "AcceptedInvitation": {
+        "type": "object",
+        "properties": {
+          "projectId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid",
+            "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10"
+          },
+          "boardId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid",
+            "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10"
+          }
+        },
+        "required": [
+          "projectId",
+          "boardId"
+        ]
       },
       "Asset": {
         "type": "object",
@@ -1117,6 +1844,12 @@
             "format": "uuid",
             "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10",
             "description": "Project that will own the preview image asset."
+          },
+          "boardId": {
+            "type": "string",
+            "format": "uuid",
+            "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10",
+            "description": "As in UploadMetadata."
           },
           "url": {
             "type": "string",
@@ -1431,6 +2164,202 @@
         }
       }
     },
+    "/api/auth/sign-in/social": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Start Google sign-in (`provider: \"google\"`), when Instance.auth.google is true.",
+        "description": "Answers with the Google address to open (`url`); Google sends the person back to `/api/auth/callback/google`, which sets the session cookie and redirects to `callbackURL`. Accounts with the same verified email are linked. In `invite` mode a new person needs an invitation claimed first (see POST /invitations/by-token/{token}/claim).",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "provider": {
+                    "type": "string",
+                    "enum": [
+                      "google"
+                    ]
+                  },
+                  "callbackURL": {
+                    "type": "string"
+                  },
+                  "errorCallbackURL": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "provider"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Where to send the browser",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "url": {
+                      "type": "string",
+                      "format": "uri"
+                    }
+                  },
+                  "required": [
+                    "url"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/sign-in/oauth2": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Start sign-in with a generic OIDC provider listed in Instance.auth.oidc.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "providerId": {
+                    "type": "string"
+                  },
+                  "callbackURL": {
+                    "type": "string"
+                  },
+                  "errorCallbackURL": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "providerId"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Where to send the browser",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "url": {
+                      "type": "string",
+                      "format": "uri"
+                    }
+                  },
+                  "required": [
+                    "url"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/sign-in/magic-link": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Email a sign-in link, when Instance.auth.magicLink is true. Valid 15 minutes.",
+        "description": "Always answers 200, whether or not the address has an account, so addresses cannot be probed. Without an account and outside `open` registration no email is sent.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "email": {
+                    "type": "string",
+                    "format": "email"
+                  },
+                  "callbackURL": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "email"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Accepted"
+          }
+        }
+      }
+    },
+    "/api/auth/two-factor/verify-totp": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Second step of a sign-in when the account has two-factor authentication.",
+        "description": "Sign-in answers `{ twoFactorRedirect: true }` instead of a session for these accounts. Send the 6-digit code from the authenticator app here, or a backup code to `/two-factor/verify-backup-code` (`{ code }`). Enable with `/two-factor/enable` (`{ password }`, answers `totpURI` and `backupCodes`), then confirm with a first code here; disable with `/two-factor/disable` (`{ password }`).",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "code": {
+                    "type": "string",
+                    "minLength": 6,
+                    "maxLength": 6
+                  },
+                  "trustDevice": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "code"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Session"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Wrong credentials",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/auth/get-session": {
       "get": {
         "tags": [
@@ -1561,6 +2490,461 @@
           },
           "404": {
             "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Users"
+        ],
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "summary": "Delete the account, its sessions and tokens, and the projects nobody else is in.",
+        "description": "Not available with a bearer token. Cards and files the person added to shared projects stay, without an author.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeleteMe"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Deleted"
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Sole owner of shared projects (details: DeleteMeBlocked)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/me/tokens": {
+      "get": {
+        "tags": [
+          "Users"
+        ],
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "summary": "Personal and app tokens of the signed-in person.",
+        "responses": {
+          "200": {
+            "description": "Tokens",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/PersonalToken"
+                      }
+                    }
+                  },
+                  "required": [
+                    "items"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Users"
+        ],
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "summary": "Create a personal token, for scripts or a self-built app.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreatePersonalToken"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreatedPersonalToken"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/me/tokens/{tokenId}": {
+      "delete": {
+        "tags": [
+          "Users"
+        ],
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Revoke a token. A token can revoke itself (sign out of the app).",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10"
+            },
+            "required": true,
+            "name": "tokenId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Revoked"
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/app-authorizations": {
+      "post": {
+        "tags": [
+          "Users"
+        ],
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "summary": "Allow an official app to act as the signed-in person; called by /authorize.",
+        "description": "Apps open `<server>/authorize?client_id=<clipper|mobile>&redirect_uri=…&state=…&code_challenge=…&code_challenge_method=S256` in a browser. Once the person allows it, the page sends this request and follows `redirectTo`; the app then exchanges the code.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateAppAuthorization"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Redirect",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AppAuthorizationRedirect"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/app-authorizations/token": {
+      "post": {
+        "tags": [
+          "Users"
+        ],
+        "security": [
+          {}
+        ],
+        "summary": "Exchange an authorization code and its PKCE verifier for an app token.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExchangeAppCode"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AppToken"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Unknown, used or expired code, or wrong verifier",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/users/search": {
+      "get": {
+        "tags": [
+          "Users"
+        ],
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "People to share with: those who share a project with you, or an exact email.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 254
+            },
+            "required": true,
+            "name": "q",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "At most 10 people",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Person"
+                      }
+                    }
+                  },
+                  "required": [
+                    "items"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
             "content": {
               "application/json": {
                 "schema": {
@@ -2078,6 +3462,8 @@
             "bearer": []
           }
         ],
+        "summary": "Add a member or change a role.",
+        "description": "Editors can add people as editor, commenter or viewer. Changing the role of an existing member, and anything about owners, is for owners. A project always keeps one owner.",
         "parameters": [
           {
             "schema": {
@@ -2613,6 +3999,832 @@
         "responses": {
           "204": {
             "description": "Deleted"
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/shared-boards": {
+      "get": {
+        "tags": [
+          "Boards"
+        ],
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Boards shared with you in projects you are not a member of.",
+        "description": "Only the top board of each shared subtree. Their projects are not listed by GET /projects; GET /projects/{projectId}/boards answers with the boards you can open.",
+        "responses": {
+          "200": {
+            "description": "Boards",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Board"
+                      }
+                    }
+                  },
+                  "required": [
+                    "items"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/boards/{boardId}/access": {
+      "get": {
+        "tags": [
+          "Sharing"
+        ],
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Everyone who can open the board, with their effective role and where it comes from.",
+        "description": "Roles come down from the project to its boards. A grant on a board replaces the inherited role (higher or lower) for that board and its sub-boards; the nearest grant wins. Needs at least viewer.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10"
+            },
+            "required": true,
+            "name": "boardId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Access",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BoardAccess"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/boards/{boardId}/grants/{userId}": {
+      "put": {
+        "tags": [
+          "Sharing"
+        ],
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Give someone a role on this board and its sub-boards.",
+        "description": "Needs editor on the board; the role can be at most your own, and you cannot change the access of someone whose role here is higher than yours. Not for the root board: use project members.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10"
+            },
+            "required": true,
+            "name": "boardId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10"
+            },
+            "required": true,
+            "name": "userId",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetBoardGrant"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Granted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BoardAccessEntry"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Sharing"
+        ],
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Remove a grant: the person goes back to the inherited role, or loses access.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10"
+            },
+            "required": true,
+            "name": "boardId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10"
+            },
+            "required": true,
+            "name": "userId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Removed"
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/invitations": {
+      "get": {
+        "tags": [
+          "Sharing"
+        ],
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Invitations still usable, for a project or a board (editors), or all (admins).",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10"
+            },
+            "required": false,
+            "name": "projectId",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10"
+            },
+            "required": false,
+            "name": "boardId",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Invitations",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Invitation"
+                      }
+                    }
+                  },
+                  "required": [
+                    "items"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Sharing"
+        ],
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Invite someone to a project or a board, or (admins) to the instance.",
+        "description": "With the address of an existing account the role is given straight away. Otherwise an invitation is created and, when SMTP is configured, emailed. Signing up through an invitation works even when registration is `invite`.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateInvitation"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Existing account: role given",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvitationResult"
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "Invitation created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvitationResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/invitations/{invitationId}/resend": {
+      "post": {
+        "tags": [
+          "Sharing"
+        ],
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Send an email invitation again and push its expiry back.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10"
+            },
+            "required": true,
+            "name": "invitationId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Sent",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Invitation"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/invitations/{invitationId}": {
+      "delete": {
+        "tags": [
+          "Sharing"
+        ],
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Revoke an invitation. Its link stops working at once.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10"
+            },
+            "required": true,
+            "name": "invitationId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Revoked"
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/invitations/by-token/{token}": {
+      "get": {
+        "tags": [
+          "Sharing"
+        ],
+        "security": [
+          {}
+        ],
+        "summary": "What an invitation link is for, shown before signing in. Rate limited.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 16,
+              "maxLength": 128
+            },
+            "required": true,
+            "name": "token",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Preview",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvitationPreview"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/invitations/by-token/{token}/claim": {
+      "post": {
+        "tags": [
+          "Sharing"
+        ],
+        "security": [
+          {}
+        ],
+        "summary": "Remember the invitation in this browser, so the next sign-up can use it.",
+        "description": "Sets a short-lived cookie. A sign-up (email, Google or OIDC) while it is set is allowed in `invite` mode and accepts the invitation once the account exists.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 16,
+              "maxLength": 128
+            },
+            "required": true,
+            "name": "token",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Claimed"
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/invitations/by-token/{token}/accept": {
+      "post": {
+        "tags": [
+          "Sharing"
+        ],
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Accept an invitation with the signed-in account.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 16,
+              "maxLength": 128
+            },
+            "required": true,
+            "name": "token",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Accepted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AcceptedInvitation"
+                }
+              }
+            }
           },
           "400": {
             "description": "Invalid request",
