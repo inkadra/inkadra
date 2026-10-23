@@ -13,7 +13,7 @@ import {
 import { and, asc, count, desc, eq, gt, isNotNull, isNull, or } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
 import { generateKeyBetween } from 'fractional-indexing';
-import { type Actor, requireProjectRole } from '../access.ts';
+import { type Actor, atLeast, higher, requireProjectRole } from '../access.ts';
 import type { Auth } from '../auth.ts';
 import type { Database } from '../db/client.ts';
 import { asset, assetVariant, board, project, projectMember, user } from '../db/schema.ts';
@@ -102,8 +102,8 @@ async function lockMembers(tx: Tx, projectId: string, actorId: string, needed: P
     .from(projectMember)
     .where(and(eq(projectMember.projectId, projectId), eq(projectMember.userId, actorId)));
   if (!me) throw new HttpError('not_found', 'Project not found.');
-  if (needed === 'owner' && me.role !== 'owner')
-    throw new HttpError('forbidden', 'Needs the owner role.');
+  if (!atLeast(me.role, needed)) throw new HttpError('forbidden', `Needs the ${needed} role.`);
+  return me.role;
 }
 
 async function ownerCount(db: Pick<Database, 'select'>, projectId: string) {
@@ -119,7 +119,7 @@ export function registerProjectRoutes(app: FastifyInstance, deps: Deps) {
   const v1 = (path: string) => `${API_PREFIX}${path}`;
 
   app.get(v1('/projects'), async (req) => {
-    const actor = await requireActor(auth, req);
+    const actor = await requireActor(auth, req, db);
     const query = ListQuery.parse(req.query ?? {});
     const after = query.cursor ? decodeCursor(query.cursor) : null;
     const rows = await db
@@ -153,7 +153,7 @@ export function registerProjectRoutes(app: FastifyInstance, deps: Deps) {
   });
 
   app.post(v1('/projects'), async (req, reply) => {
-    const actor = await requireActor(auth, req);
+    const actor = await requireActor(auth, req, db);
     const input = CreateProject.parse(req.body);
     const created = await db.transaction(async (tx) => {
       const [last] = await tx
@@ -184,13 +184,13 @@ export function registerProjectRoutes(app: FastifyInstance, deps: Deps) {
   });
 
   app.get(v1('/projects/:projectId'), async (req) => {
-    const actor = await requireActor(auth, req);
+    const actor = await requireActor(auth, req, db);
     const { projectId } = ProjectParams.parse(req.params);
     return loadProject(db, actor, projectId);
   });
 
   app.patch(v1('/projects/:projectId'), async (req) => {
-    const actor = await requireActor(auth, req);
+    const actor = await requireActor(auth, req, db);
     const { projectId } = ProjectParams.parse(req.params);
     const patch = UpdateProject.parse(req.body ?? {});
     // Archiving hides the project from everyone, so it is the owner's call.
@@ -223,7 +223,7 @@ export function registerProjectRoutes(app: FastifyInstance, deps: Deps) {
   });
 
   app.delete(v1('/projects/:projectId'), async (req, reply) => {
-    const actor = await requireActor(auth, req);
+    const actor = await requireActor(auth, req, db);
     const { projectId } = ProjectParams.parse(req.params);
     await requireProjectRole(db, actor, projectId, 'owner');
     const keys = await db.transaction(async (tx) => {
@@ -247,25 +247,28 @@ export function registerProjectRoutes(app: FastifyInstance, deps: Deps) {
   // Members --------------------------------------------------------------------
 
   app.get(v1('/projects/:projectId/members'), async (req) => {
-    const actor = await requireActor(auth, req);
+    const actor = await requireActor(auth, req, db);
     const { projectId } = ProjectParams.parse(req.params);
     await requireProjectRole(db, actor, projectId, 'viewer');
     return { items: await listMembers(db, projectId) };
   });
 
   app.put(v1('/projects/:projectId/members/:userId'), async (req) => {
-    const actor = await requireActor(auth, req);
+    const actor = await requireActor(auth, req, db);
     const { projectId, userId } = MemberParams.parse(req.params);
     const { role } = SetProjectMember.parse(req.body);
-    await requireProjectRole(db, actor, projectId, 'owner');
+    // Editors add people (up to editor); everything else about members is for owners.
+    await requireProjectRole(db, actor, projectId, 'editor');
     const [target] = await db.select({ id: user.id }).from(user).where(eq(user.id, userId));
     if (!target) throw new HttpError('not_found', 'User not found.');
     await db.transaction(async (tx) => {
-      await lockMembers(tx, projectId, actor.id, 'owner');
+      const mine = await lockMembers(tx, projectId, actor.id, 'editor');
       const [current] = await tx
         .select({ role: projectMember.role })
         .from(projectMember)
         .where(and(eq(projectMember.projectId, projectId), eq(projectMember.userId, userId)));
+      if (mine !== 'owner' && (current || higher(role, mine)))
+        throw new HttpError('forbidden', 'Needs the owner role.');
       if (current?.role === 'owner' && role !== 'owner' && (await ownerCount(tx, projectId)) < 2)
         throw new HttpError('conflict', 'A project needs at least one owner.');
       await tx
@@ -282,7 +285,7 @@ export function registerProjectRoutes(app: FastifyInstance, deps: Deps) {
   });
 
   app.delete(v1('/projects/:projectId/members/:userId'), async (req, reply) => {
-    const actor = await requireActor(auth, req);
+    const actor = await requireActor(auth, req, db);
     const { projectId, userId } = MemberParams.parse(req.params);
     // Anyone can leave a project; removing someone else is for owners.
     await requireProjectRole(db, actor, projectId, userId === actor.id ? 'viewer' : 'owner');

@@ -11,7 +11,14 @@ import {
 import { and, asc, desc, eq, inArray, isNull, sql } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
 import { generateKeyBetween } from 'fractional-indexing';
-import { requireBoardRole, requireProjectRole } from '../access.ts';
+import {
+  type BoardAccess,
+  effectiveRole,
+  effectiveRoles,
+  projectGrants,
+  projectRole,
+  requireBoardRole,
+} from '../access.ts';
 import type { Auth } from '../auth.ts';
 import type { Database } from '../db/client.ts';
 import { asset, board } from '../db/schema.ts';
@@ -55,18 +62,13 @@ async function subtreeIds(db: Pick<Database, 'execute'>, boardId: string): Promi
   return rows.map((r) => r.id);
 }
 
-/** From the project root down to the board's parent. */
-async function breadcrumb(db: Database, row: typeof board.$inferSelect) {
-  if (!row.parentBoardId) return [];
-  const rows = await db.execute<{ id: string; title: string; depth: number }>(sql`
-    with recursive up as (
-      select id, title, parent_board_id, 0 as depth from board where id = ${row.parentBoardId}
-      union all
-      select b.id, b.title, b.parent_board_id, up.depth + 1
-      from board b join up on b.id = up.parent_board_id
-    )
-    select id, title, depth from up order by depth desc`);
-  return rows.map((r) => ({ id: r.id, title: r.title }));
+/** From the first board the person can open down to the board's parent. */
+function breadcrumb(access: BoardAccess) {
+  const ids = access.chain.map((c) => c.id);
+  return access.chain
+    .slice(1)
+    .filter((_, i) => effectiveRole(ids.slice(i + 1), access.grants, access.projectRole).role)
+    .reverse();
 }
 
 async function lastChildPosition(db: Pick<Database, 'select'>, parentBoardId: string) {
@@ -79,38 +81,39 @@ async function lastChildPosition(db: Pick<Database, 'select'>, parentBoardId: st
   return last?.position ?? null;
 }
 
-async function requireParent(db: Database, projectId: string, parentBoardId: string) {
-  const [parent] = await db
-    .select({ id: board.id })
-    .from(board)
-    .where(
-      and(eq(board.id, parentBoardId), eq(board.projectId, projectId), isNull(board.deletedAt)),
-    );
-  if (!parent) throw new HttpError('bad_request', 'The parent board is not in this project.');
-}
-
 export function registerBoardRoutes(app: FastifyInstance, deps: Deps) {
   const { db, auth } = deps;
   const v1 = (path: string) => `${API_PREFIX}${path}`;
 
   app.get(v1('/projects/:projectId/boards'), async (req) => {
-    const actor = await requireActor(auth, req);
+    const actor = await requireActor(auth, req, db);
     const { projectId } = ProjectParams.parse(req.params);
-    const role = await requireProjectRole(db, actor, projectId, 'viewer');
+    const [pRole, grants] = await Promise.all([
+      projectRole(db, actor, projectId),
+      projectGrants(db, actor, projectId),
+    ]);
+    if (!pRole && grants.size === 0) throw new HttpError('not_found', 'Project not found.');
     const rows = await db
       .select()
       .from(board)
       .where(and(eq(board.projectId, projectId), isNull(board.deletedAt)))
       .orderBy(asc(board.position), asc(board.id));
-    return { items: rows.map((r) => toBoard(r, role)) };
+    const roles = effectiveRoles(rows, grants, pRole);
+    // People with grants only get the subtrees they can open.
+    const items = rows.flatMap((r) => {
+      const role = roles.get(r.id)?.role;
+      return role ? [toBoard(r, role)] : [];
+    });
+    return { items };
   });
 
   app.post(v1('/projects/:projectId/boards'), async (req, reply) => {
-    const actor = await requireActor(auth, req);
+    const actor = await requireActor(auth, req, db);
     const { projectId } = ProjectParams.parse(req.params);
     const input = CreateBoard.parse(req.body);
-    const role = await requireProjectRole(db, actor, projectId, 'editor');
-    await requireParent(db, projectId, input.parentBoardId);
+    const parent = await requireBoardRole(db, actor, input.parentBoardId, 'editor');
+    if (parent.board.projectId !== projectId)
+      throw new HttpError('bad_request', 'The parent board is not in this project.');
     const row = await db.transaction(async (tx) => {
       const position = generateKeyBetween(await lastChildPosition(tx, input.parentBoardId), null);
       const [created] = await tx
@@ -127,19 +130,23 @@ export function registerBoardRoutes(app: FastifyInstance, deps: Deps) {
       if (!created) throw new Error('Board insert returned nothing');
       return created;
     });
-    return reply.status(201).send(toBoard(row, role));
+    // A new board inherits from its parent, so the parent's role applies.
+    return reply.status(201).send(toBoard(row, parent.role));
   });
 
   app.get(v1('/boards/:boardId'), async (req) => {
-    const actor = await requireActor(auth, req);
+    const actor = await requireActor(auth, req, db);
     const { boardId } = BoardParams.parse(req.params);
-    const { board: row, role } = await requireBoardRole(db, actor, boardId, 'viewer');
-    const body: BoardDetail = { ...toBoard(row, role), breadcrumb: await breadcrumb(db, row) };
+    const access = await requireBoardRole(db, actor, boardId, 'viewer');
+    const body: BoardDetail = {
+      ...toBoard(access.board, access.role),
+      breadcrumb: breadcrumb(access),
+    };
     return body;
   });
 
   app.patch(v1('/boards/:boardId'), async (req) => {
-    const actor = await requireActor(auth, req);
+    const actor = await requireActor(auth, req, db);
     const { boardId } = BoardParams.parse(req.params);
     const patch = UpdateBoard.parse(req.body ?? {});
     const { board: current, role } = await requireBoardRole(db, actor, boardId, 'editor');
@@ -160,7 +167,9 @@ export function registerBoardRoutes(app: FastifyInstance, deps: Deps) {
     if (patch.parentBoardId !== undefined && patch.parentBoardId !== current.parentBoardId) {
       if (current.parentBoardId === null)
         throw new HttpError('bad_request', 'The root board cannot be moved.');
-      await requireParent(db, current.projectId, patch.parentBoardId);
+      const target = await requireBoardRole(db, actor, patch.parentBoardId, 'editor');
+      if (target.board.projectId !== current.projectId)
+        throw new HttpError('bad_request', 'The parent board is not in this project.');
       if ((await subtreeIds(db, boardId)).includes(patch.parentBoardId))
         throw new HttpError('bad_request', 'A board cannot move inside itself.');
       set.parentBoardId = patch.parentBoardId;
@@ -174,7 +183,7 @@ export function registerBoardRoutes(app: FastifyInstance, deps: Deps) {
   });
 
   app.delete(v1('/boards/:boardId'), async (req, reply) => {
-    const actor = await requireActor(auth, req);
+    const actor = await requireActor(auth, req, db);
     const { boardId } = BoardParams.parse(req.params);
     const { board: current } = await requireBoardRole(db, actor, boardId, 'editor');
     if (current.parentBoardId === null)

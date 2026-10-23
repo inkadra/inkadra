@@ -10,6 +10,7 @@ Inkadra runs on any machine with Docker: a VPS, a home server, a NAS. You need
 | ------------------------------------- | ------------------------------------------------------- |
 | This page                             | Installing, the image and its roles, compose variants   |
 | [Configuration](configuration.md)     | Every setting in `.env`                                 |
+| [Sign-in](sign-in.md)                 | Google, OIDC, email, invitations, two-factor            |
 | [Reverse proxy](reverse-proxy.md)     | Caddy, Traefik, Nginx, Nginx Proxy Manager, Pangolin    |
 | [Storage](storage.md)                 | Where files go: volume, host folder, S3, bundled RustFS |
 | [Upgrades](upgrades.md)               | Versions, updating, verifying images                    |

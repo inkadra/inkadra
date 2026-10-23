@@ -321,15 +321,18 @@ describe.skipIf(!url)('projects, boards, uploads and assets (needs DATABASE_URL)
     expect(thumb.headers['cache-control']).toContain('immutable');
     expect((await sharp(thumb.rawPayload).metadata()).width).toBe(256);
 
-    const file = await call('viewer', 'GET', ready.url);
+    // Viewers look at images through thumbnails and never download originals.
+    expect((await call('viewer', 'GET', ready.url)).statusCode).toBe(403);
+    expect((await call('viewer', 'GET', `${ready.url}?download=1`)).statusCode).toBe(403);
+    const file = await call('owner', 'GET', ready.url);
     expect(file.headers['content-type']).toBe('image/jpeg');
     expect(file.rawPayload.equals(jpeg)).toBe(true);
-    const part = await call('viewer', 'GET', ready.url, undefined, { range: 'bytes=10-19' });
+    const part = await call('owner', 'GET', ready.url, undefined, { range: 'bytes=10-19' });
     expect(part.statusCode).toBe(206);
     expect(part.headers['content-range']).toBe(`bytes 10-19/${jpeg.length}`);
     expect(part.rawPayload.equals(jpeg.subarray(10, 20))).toBe(true);
     expect(
-      (await call('viewer', 'GET', ready.url, undefined, { range: 'bytes=99999999-' })).statusCode,
+      (await call('owner', 'GET', ready.url, undefined, { range: 'bytes=99999999-' })).statusCode,
     ).toBe(416);
     expect((await call('stranger', 'GET', ready.url)).statusCode).toBe(404);
   });

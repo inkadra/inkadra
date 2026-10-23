@@ -101,7 +101,7 @@ export function registerAssetRoutes(app: FastifyInstance, deps: Deps) {
   const { db, auth, storage } = deps;
 
   app.get(v1('/assets/:assetId'), async (req) => {
-    const actor = await requireActor(auth, req);
+    const actor = await requireActor(auth, req, db);
     const { assetId } = AssetParams.parse(req.params);
     const { asset: row } = await requireAssetRole(db, actor, assetId, 'viewer');
     const variants = await db
@@ -113,11 +113,24 @@ export function registerAssetRoutes(app: FastifyInstance, deps: Deps) {
   });
 
   app.get(v1('/assets/:assetId/file'), async (req, reply) => {
-    const actor = await requireActor(auth, req);
+    const actor = await requireActor(auth, req, db);
     const { assetId } = AssetParams.parse(req.params);
     const { download } = FileQuery.parse(req.query ?? {});
-    const { asset: row } = await requireAssetRole(db, actor, assetId, 'viewer');
+    const { asset: row, role } = await requireAssetRole(db, actor, assetId, 'viewer');
     if (row.status === 'pending') throw new HttpError('not_found', 'The upload is not finished.');
+    // Viewers do not download originals (decision 0011): images have thumbnails to look at;
+    // video, audio and PDF stream because there is nothing else to show.
+    if (role === 'viewer') {
+      if (download) throw new HttpError('forbidden', 'Viewers cannot download originals.');
+      if (row.kind === 'image') {
+        const [variant] = await db
+          .select({ size: assetVariant.size })
+          .from(assetVariant)
+          .where(eq(assetVariant.assetId, assetId))
+          .limit(1);
+        if (variant) throw new HttpError('forbidden', 'Viewers see images through thumbnails.');
+      }
+    }
     const etag = row.sha256 ?? row.id;
     fileHeaders(reply, etag);
     if (req.headers['if-none-match'] === `"${etag}"`) return reply.status(304).send();
@@ -145,7 +158,7 @@ export function registerAssetRoutes(app: FastifyInstance, deps: Deps) {
   });
 
   app.get(v1('/assets/:assetId/variants/:size'), async (req, reply) => {
-    const actor = await requireActor(auth, req);
+    const actor = await requireActor(auth, req, db);
     const { assetId, size } = VariantParams.parse(req.params);
     await requireAssetRole(db, actor, assetId, 'viewer');
     const [variant] = await db

@@ -52,6 +52,25 @@ These change `compose.yaml` itself, not the server.
 | `ACME_EMAIL`              |                           | Contact for Let's Encrypt, for the bundled Traefik                             |
 | `NGINX_CERTS`             | `./certs`                 | Folder with `fullchain.pem` and `privkey.pem`, for the bundled Nginx           |
 
+## Sign-in and email
+
+Step by step in [Sign-in](sign-in.md). Every variable is optional.
+
+| Variable                 | Default                | Meaning                                                                           |
+| ------------------------ | ---------------------- | --------------------------------------------------------------------------------- |
+| `GOOGLE_CLIENT_ID`       |                        | OAuth client of type "Web application" in Google Cloud. Shows the Google button   |
+| `GOOGLE_CLIENT_SECRET`   |                        | Its secret                                                                        |
+| `GOOGLE_ALLOWED_DOMAINS` | any                    | Comma-separated domains whose Google accounts may sign in, e.g. `studio.it`       |
+| `OIDC_NAME`              | `SSO`                  | Label of the button of your OpenID Connect provider                               |
+| `OIDC_DISCOVERY_URL`     |                        | Its `.well-known/openid-configuration` address                                    |
+| `OIDC_CLIENT_ID`         |                        | Client id given by the provider                                                   |
+| `OIDC_CLIENT_SECRET`     |                        | Client secret given by the provider                                               |
+| `OIDC_SCOPES`            | `openid email profile` | Scopes to ask for                                                                 |
+| `OIDC_TRUST_EMAIL`       | `false`                | `true` links OIDC sign-ins to existing accounts with the same email               |
+| `SMTP_URL`               |                        | `smtp://user:password@host:587` or `smtps://…:465`. Turns on email                |
+| `MAIL_FROM`              |                        | Sender, e.g. `Inkadra <inkadra@example.com>`. Required with `SMTP_URL`            |
+| `CLIPPER_EXTENSION_IDS`  |                        | Ids of self-built browser clippers allowed to sign in. The official one always is |
+
 ## TRUST_PROXY
 
 Behind a proxy, every request reaches Inkadra from the proxy's address. The proxy puts the

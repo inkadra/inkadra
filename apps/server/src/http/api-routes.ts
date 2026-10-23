@@ -9,10 +9,11 @@ import {
 import { eq, sql } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
 import type { Auth } from '../auth.ts';
-import { countUsers } from '../auth.ts';
+import { countUsers, OIDC_PROVIDER_ID } from '../auth.ts';
 import { type Config, VERSION } from '../config.ts';
 import type { Database } from '../db/client.ts';
 import { user } from '../db/schema.ts';
+import type { Mailer } from '../mailer.ts';
 import { requireActor } from './auth-routes.ts';
 import { HttpError } from './errors.ts';
 
@@ -20,12 +21,13 @@ interface Deps {
   config: Config;
   db: Database;
   auth: Auth;
+  mailer: Mailer;
   pingQueue?: () => Promise<boolean>;
 }
 
 export const iso = (d: Date) => d.toISOString();
 
-function toUser(row: typeof user.$inferSelect): User {
+export function toUser(row: typeof user.$inferSelect): User {
   return {
     id: row.id,
     email: row.email,
@@ -69,7 +71,16 @@ export function registerApiRoutes(app: FastifyInstance, deps: Deps) {
       publicUrl: config.PUBLIC_URL,
       setupRequired: users === 0,
       registration: users === 0 ? 'first-user' : config.REGISTRATION,
-      auth: { emailPassword: true, google: false, oidc: [], magicLink: false, email: false },
+      auth: {
+        emailPassword: true,
+        google: Boolean(config.GOOGLE_CLIENT_ID && config.GOOGLE_CLIENT_SECRET),
+        oidc:
+          config.OIDC_CLIENT_ID && config.OIDC_DISCOVERY_URL
+            ? [{ id: OIDC_PROVIDER_ID, name: config.OIDC_NAME }]
+            : [],
+        magicLink: deps.mailer.enabled,
+        email: deps.mailer.enabled,
+      },
       collabPath: COLLAB_PATH,
       media: { videoPosters: false, rawPreviews: false },
       limits: { uploadMaxBytes: config.UPLOAD_MAX_SIZE },
@@ -79,14 +90,14 @@ export function registerApiRoutes(app: FastifyInstance, deps: Deps) {
   });
 
   app.get(v1('/me'), async (req) => {
-    const actor = await requireActor(auth, req);
+    const actor = await requireActor(auth, req, db);
     const [row] = await db.select().from(user).where(eq(user.id, actor.id));
     if (!row) throw new HttpError('unauthorized', 'Sign in to continue.');
     return toUser(row);
   });
 
   app.patch(v1('/me'), async (req) => {
-    const actor = await requireActor(auth, req);
+    const actor = await requireActor(auth, req, db);
     const patch = UpdateMe.parse(req.body ?? {});
     const [row] =
       Object.keys(patch).length === 0
