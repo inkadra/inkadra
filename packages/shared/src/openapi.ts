@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MPL-2.0
 import { OpenAPIRegistry, OpenApiGeneratorV31 } from '@asteasolutions/zod-to-openapi';
-import { Asset, UploadMetadata } from './assets.ts';
+import { Asset, CreateLinkPreview, LinkPreview, UploadMetadata, VariantParams } from './assets.ts';
 import { Board, BoardDetail, CreateBoard, UpdateBoard } from './boards.ts';
 import { ClipRequest, ClipResult } from './clip.ts';
 import { ApiError, Id, PageQuery, page, z } from './common.ts';
@@ -271,8 +271,10 @@ registry.registerPath({
   summary: 'Start a resumable upload (tus 1.0). Continue with PATCH on the Location returned.',
   description:
     'tus creation endpoint. Send `Tus-Resumable: 1.0.0`, `Upload-Length` and `Upload-Metadata` ' +
-    'with the base64 encoded fields of UploadMetadata. When the upload completes the response ' +
-    'carries `Inkadra-Asset-Id`.',
+    'with the base64 encoded fields of UploadMetadata. Every response about the upload, ' +
+    'including this one, carries `Inkadra-Asset-Id`: the asset exists from the start with ' +
+    'status `pending` and is processed once the last byte arrives. Needs `editor` on the ' +
+    'project. Uploads left unfinished are removed after 24 hours.',
   request: {
     headers: z.object({
       'Tus-Resumable': z.literal('1.0.0'),
@@ -280,7 +282,39 @@ registry.registerPath({
       'Upload-Metadata': z.string().openapi({ description: 'tus metadata, see UploadMetadata' }),
     }),
   },
-  responses: { 201: { description: 'Upload created; Location header points to it' }, ...errors },
+  responses: {
+    201: { description: 'Upload created; Location header points to it' },
+    ...errors,
+    413: { description: 'Larger than the instance limit (see Instance.limits)' },
+  },
+});
+const uploadParams = z.object({ uploadId: Id });
+registry.registerPath({
+  method: 'head',
+  path: v1('/uploads/{uploadId}'),
+  tags: ['Assets'],
+  security: secured,
+  summary: 'Offset of a resumable upload (tus 1.0), to resume after an interruption.',
+  request: { params: uploadParams },
+  responses: { 200: { description: '`Upload-Offset` and `Upload-Length` headers' }, ...errors },
+});
+registry.registerPath({
+  method: 'patch',
+  path: v1('/uploads/{uploadId}'),
+  tags: ['Assets'],
+  security: secured,
+  summary: 'Append bytes at `Upload-Offset` (tus 1.0, `application/offset+octet-stream`).',
+  request: { params: uploadParams },
+  responses: { 204: { description: 'Bytes stored; new `Upload-Offset` header' }, ...errors },
+});
+registry.registerPath({
+  method: 'delete',
+  path: v1('/uploads/{uploadId}'),
+  tags: ['Assets'],
+  security: secured,
+  summary: 'Cancel an unfinished upload (tus termination extension).',
+  request: { params: uploadParams },
+  responses: { 204: { description: 'Cancelled' }, ...errors },
 });
 registry.register('UploadMetadata', UploadMetadata);
 registry.registerPath({
@@ -290,6 +324,53 @@ registry.registerPath({
   security: secured,
   request: { params: idParam('assetId') },
   responses: { 200: { description: 'Asset', ...json(Asset) }, ...errors },
+});
+registry.registerPath({
+  method: 'get',
+  path: v1('/assets/{assetId}/file'),
+  tags: ['Assets'],
+  security: secured,
+  summary: 'The original file. Supports `Range`; `?download=1` asks the browser to save it.',
+  description:
+    'Types a browser could run as a page (HTML, SVG, XML) are always sent as attachments, ' +
+    'with a sandbox Content-Security-Policy.',
+  request: {
+    params: idParam('assetId'),
+    query: z.object({ download: z.enum(['1']).optional() }),
+  },
+  responses: {
+    200: { description: 'File' },
+    206: { description: 'Part of the file' },
+    ...errors,
+  },
+});
+registry.registerPath({
+  method: 'get',
+  path: v1('/assets/{assetId}/variants/{size}'),
+  tags: ['Assets'],
+  security: secured,
+  summary: 'A WebP thumbnail, without any metadata of the original.',
+  request: { params: VariantParams },
+  responses: {
+    200: { description: 'WebP image', content: { 'image/webp': { schema: z.string() } } },
+    ...errors,
+  },
+});
+registry.registerPath({
+  method: 'post',
+  path: v1('/link-previews'),
+  tags: ['Assets'],
+  security: secured,
+  summary: 'Read title, description and image of a public web page, for a link card.',
+  description:
+    'The server fetches the page itself, only over http(s) on public addresses, with a size ' +
+    'and time limit. Needs `editor` on the project. The image becomes an asset of the project.',
+  request: { body: json(CreateLinkPreview) },
+  responses: {
+    200: { description: 'Preview', ...json(LinkPreview) },
+    ...errors,
+    400: { description: 'Invalid address, or the page could not be fetched', ...json(ApiError) },
+  },
 });
 
 // Clip -----------------------------------------------------------------------

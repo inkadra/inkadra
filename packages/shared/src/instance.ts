@@ -32,6 +32,12 @@ export const Instance = z
       oidc: z.array(z.object({ id: z.string(), name: z.string() })),
     }),
     collabPath: z.string().openapi({ example: '/collab' }),
+    limits: z.object({
+      uploadMaxBytes: z
+        .int()
+        .min(0)
+        .openapi({ description: 'Largest file an upload may have; 0 means no limit.' }),
+    }),
     serverTime: Timestamp,
   })
   .openapi('Instance');
