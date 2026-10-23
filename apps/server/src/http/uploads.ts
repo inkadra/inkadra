@@ -2,6 +2,7 @@ import { AsyncLocalStorage } from 'node:async_hooks';
 import { randomUUID } from 'node:crypto';
 import { API_PREFIX, type AssetKind, Id, UploadMetadata } from '@inkadra/shared';
 import { Server as TusServer } from '@tus/server';
+import type { DataStore } from '@tus/utils';
 import { eq } from 'drizzle-orm';
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { type Actor, requireAssetRole, requireWriteAccess } from '../access.ts';
@@ -50,12 +51,31 @@ function tusError(status: number, message: string) {
   return { status_code: status, body: message };
 }
 
+/**
+ * The upload store, with the pending asset of a cancelled upload removed in the same step.
+ * tus writes the 204 right after `remove` returns, so deleting the row any later would let a
+ * client that asks for the asset straight away still find it.
+ */
+function removingAssets(store: DataStore, db: Database): DataStore {
+  return new Proxy(store, {
+    get(target, prop) {
+      if (prop === 'remove')
+        return async (id: string) => {
+          await target.remove(id);
+          await db.delete(asset).where(eq(asset.id, id.slice('originals/'.length)));
+        };
+      const value = Reflect.get(target, prop, target);
+      return typeof value === 'function' ? value.bind(target) : value;
+    },
+  });
+}
+
 export function registerUploads(app: FastifyInstance, deps: Deps) {
   const { db, auth, storage, jobs } = deps;
 
   const tus = new TusServer({
     path: UPLOADS_PATH,
-    datastore: storage.uploads,
+    datastore: removingAssets(storage.uploads, db),
     relativeLocation: true,
     // Finished uploads are assets: they are deleted with their board or project, not here.
     disableTerminationForFinishedUploads: true,
@@ -133,9 +153,6 @@ export function registerUploads(app: FastifyInstance, deps: Deps) {
     reply.raw.setHeader(ASSET_ID_HEADER, assetId);
     reply.hijack();
     await context.run({ actor, assetId }, () => tus.handle(req.raw, reply.raw));
-    // A cancelled upload takes its pending asset with it.
-    if (req.method === 'DELETE' && reply.raw.statusCode === 204)
-      await db.delete(asset).where(eq(asset.id, assetId));
   }
 
   const methods = ['POST', 'OPTIONS'] as const;
