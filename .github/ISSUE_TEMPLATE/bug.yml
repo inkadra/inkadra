@@ -1,0 +1,36 @@
+name: Bug
+description: Something does not work as it should
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you did, what you expected, what happened instead.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Open a board
+        2. …
+  - type: input
+    id: version
+    attributes:
+      label: Inkadra version
+      description: Shown on the sign-in screen, or the image tag you run.
+    validations:
+      required: true
+  - type: textarea
+    id: setup
+    attributes:
+      label: Setup
+      description: Browser or app, operating system, reverse proxy, all-in-one or split mode.
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs
+      description: Relevant container logs. Remove addresses, emails and anything secret.
+      render: text
