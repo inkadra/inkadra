@@ -6,7 +6,7 @@ import type { CollabServer } from './collab.ts';
 /**
  * Cards the server adds to a board document on someone's behalf (the clipper, the share
  * sheet). The edit runs where the document is live, so open boards see it at once, and is
- * stored and indexed like an edit from the web app (decision 0013).
+ * stored and indexed like an edit from the web app (decision 0014).
  */
 
 /** A paragraph of a note: quoted, plain, or a link whose text is `text`. */

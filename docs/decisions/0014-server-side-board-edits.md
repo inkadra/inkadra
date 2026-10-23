@@ -1,4 +1,4 @@
-# 0013 · Cards the server adds to boards: the clip endpoint
+# 0014 · Cards the server adds to boards: the clip endpoint
 
 Accepted, 2026-10.
 

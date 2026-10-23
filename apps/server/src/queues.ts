@@ -161,7 +161,7 @@ const ADD_CARD_TIMEOUT_MS = 10_000;
 
 /**
  * Board edits from a web role that has no collaboration server of its own: they go through
- * the `collab` queue to the one that has the document open (decision 0013).
+ * the `collab` queue to the one that has the document open (decision 0014).
  */
 export function queuedBoardWriter(url: string, opts: { prefix?: string } = {}) {
   const connection = createRedis(url);
