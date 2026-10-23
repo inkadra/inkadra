@@ -317,8 +317,7 @@
       "heads": "Punte della freccia"
     },
     "video": {
-      "play": "Riproduci",
-      "noPoster": "Video"
+      "play": "Riproduci"
     }
   },
   "tags": {
@@ -341,7 +340,6 @@
     "addColors": "Aggiungi i colori alla board",
     "download": "Scarica l’originale",
     "size": "Dimensioni",
-    "file": "File",
     "fields": {
       "camera": "Fotocamera",
       "lens": "Obiettivo",

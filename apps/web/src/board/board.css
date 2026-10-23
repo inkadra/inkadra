@@ -1203,6 +1203,10 @@
   white-space: nowrap;
   cursor: pointer;
 }
+.arrows__label .card__inline-input {
+  width: auto;
+  text-align: center;
+}
 .arrows__label.is-selected {
   border-color: var(--ink-accent-primary);
 }

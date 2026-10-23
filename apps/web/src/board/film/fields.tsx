@@ -50,10 +50,9 @@ export function TextField({
           id={id}
           key={value}
           className="ink-input"
-          type={type ?? 'text'}
+          // Text with a decimal keypad: a number field would refuse "2,5" in some locales.
+          type="text"
           inputMode={type === 'number' ? 'decimal' : undefined}
-          min={type === 'number' ? 0 : undefined}
-          step={type === 'number' ? 0.5 : undefined}
           defaultValue={value}
           readOnly={readOnly}
           placeholder={placeholder}

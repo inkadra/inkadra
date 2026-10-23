@@ -1,0 +1,123 @@
+import { expect, type Page, test } from '@playwright/test';
+
+// Runs after first-run.spec.ts, on the same instance: the administrator and the project exist.
+test.describe.configure({ mode: 'serial' });
+
+const admin = { email: 'giulia@example.com', password: 'correct-horse-battery' };
+
+async function openProject(page: Page) {
+  await page.goto('/login');
+  await page.getByLabel('Email').fill(admin.email);
+  await page.getByLabel('Password').fill(admin.password);
+  await page.getByRole('button', { name: 'Accedi' }).click();
+  await expect(page.getByRole('heading', { name: /Giulia$/ })).toBeVisible();
+  await page.getByRole('link', { name: 'Ultima corsa' }).first().click();
+  await expect(page.getByRole('status').getByText('Sincronizzato')).toBeVisible();
+}
+
+test('a storyboard holds scenes and frames, the shot list shows the same frames', async ({
+  page,
+}) => {
+  await openProject(page);
+  await page.keyboard.press('s');
+  const card = page.locator('[data-type="board"]', { hasText: 'Storyboard' });
+  await expect(card).toHaveCount(1);
+  await page.keyboard.type('Binario 21');
+  await page.keyboard.press('Escape');
+  await expect(card).toContainText('Binario 21');
+  await card.dblclick();
+  await expect(page.getByRole('tab', { name: 'Storyboard' })).toHaveAttribute(
+    'aria-selected',
+    'true',
+  );
+  await expect(page.getByText('Storyboard vuoto')).toBeVisible();
+
+  await page.getByRole('button', { name: 'Nuova scena' }).first().click();
+  const scene = page.getByRole('region', { name: 'Scena 1' });
+  await scene.getByLabel('Luogo', { exact: true }).fill('Stazione');
+  await scene.getByLabel('Luogo', { exact: true }).press('Enter');
+  await scene.getByLabel('Interno o esterno').selectOption('ext');
+  await scene.getByLabel('Momento', { exact: true }).selectOption('night');
+
+  await scene.getByRole('button', { name: 'Nuova inquadratura' }).last().click();
+  const panel = page.getByRole('complementary', { name: 'Dettagli' });
+  await expect(panel.getByText('1A')).toBeVisible();
+  await panel
+    .getByLabel('Azione', { exact: true })
+    .fill('Il treno entra, il neon le taglia il viso');
+  await panel.getByLabel('Campo', { exact: true }).selectOption('cu');
+  await panel.getByLabel('Durata (s)').fill('4,5');
+  await panel.getByLabel('Durata (s)').press('Enter');
+  await expect(page.getByText('1 inquadratura · 0:05').first()).toBeVisible();
+
+  // The pen: one line is one stroke in the frame.
+  await panel.getByRole('button', { name: 'Disegna' }).click();
+  const pen = page.getByRole('dialog', { name: /Disegno dell’inquadratura 1A/ });
+  const area = pen.locator('.pen__area');
+  const box = await area.boundingBox();
+  if (!box) throw new Error('no drawing area');
+  await page.mouse.move(box.x + box.width * 0.2, box.y + box.height * 0.5);
+  await page.mouse.down();
+  for (let i = 1; i <= 10; i++) {
+    await page.mouse.move(box.x + box.width * (0.2 + i * 0.05), box.y + box.height * 0.5);
+  }
+  await page.mouse.up();
+  await expect(area.locator('.frame-pic__ink path')).toHaveCount(1);
+  await page.keyboard.press('ControlOrMeta+z');
+  await expect(area.locator('.frame-pic__ink path')).toHaveCount(0);
+  await page.keyboard.press('ControlOrMeta+Shift+z');
+  await expect(area.locator('.frame-pic__ink path')).toHaveCount(1);
+  await pen.getByRole('button', { name: 'Fatto' }).click();
+  await expect(page.locator('.story__tile .frame-pic__ink path')).toHaveCount(1);
+
+  await page.getByRole('tab', { name: 'Shot list' }).click();
+  await expect(page).toHaveURL(/view=shotlist/);
+  const row = page.getByRole('row', { name: /1A/ });
+  await expect(row.getByLabel('Azione', { exact: true })).toHaveValue(/Il treno entra/);
+  await expect(row.getByLabel('Campo', { exact: true })).toHaveValue('cu');
+  await expect(page.locator('.shots__scene')).toContainText('EST. STAZIONE – NOTTE');
+
+  // The same frame is a card on the canvas view of the board.
+  await page.getByRole('tab', { name: 'Lavagna' }).click();
+  await expect(page.locator('[data-type="scene"]')).toContainText('EST. STAZIONE');
+  await expect(page.locator('[data-type="frame"]')).toContainText('1A');
+});
+
+test('search finds the frame and opens it where it is', async ({ page }) => {
+  await openProject(page);
+  // The index is written when the collaboration server stores the board, a few seconds later.
+  await expect(async () => {
+    await page.keyboard.press('ControlOrMeta+k');
+    const dialog = page.getByRole('dialog', { name: 'Cerca' });
+    await dialog.getByRole('combobox').fill('neon');
+    await expect(dialog.getByRole('option', { name: /1A/ })).toBeVisible({ timeout: 2_000 });
+  }).toPass({ timeout: 30_000 });
+  await page.getByRole('option', { name: /1A/ }).click();
+  await expect(page).toHaveURL(/view=canvas/);
+  await expect(page.locator('[data-type="frame"].is-selected')).toBeVisible();
+});
+
+test('arrows join two cards and keep a label', async ({ page }) => {
+  await openProject(page);
+  const canvas = page.getByTestId('canvas');
+  const notes = page.locator('[data-type="note"]');
+  const first = notes.filter({ hasText: 'Sopralluogo al porto' });
+  const second = notes.filter({ hasText: 'Casting comparse' });
+  const a = await first.boundingBox();
+  const b = await second.boundingBox();
+  if (!a || !b) throw new Error('notes missing');
+  await page.keyboard.press('a');
+  await page.mouse.move(a.x + a.width / 2, a.y + a.height / 2);
+  await page.mouse.down();
+  await page.mouse.move((a.x + b.x) / 2, (a.y + b.y) / 2, { steps: 5 });
+  await page.mouse.move(b.x + b.width / 2, b.y + b.height / 2, { steps: 5 });
+  await page.mouse.up();
+  const arrow = canvas.locator('g[data-type="arrow"]');
+  await expect(arrow).toHaveCount(1);
+  await arrow.locator('.arrows__hit').dblclick({ force: true });
+  await page.getByLabel('Etichetta della freccia').fill('poi');
+  await page.keyboard.press('Enter');
+  await expect(canvas.locator('.arrows__label')).toHaveText('poi');
+  await page.reload();
+  await expect(page.locator('.arrows__label')).toHaveText('poi');
+});

@@ -38,7 +38,8 @@
   width: 100%;
   overflow: hidden;
   border-radius: 6px;
-  background: var(--ink-surface-2);
+  /* Paper in both themes: frames are drawn in dark pencil, as on a printed storyboard. */
+  background: #ececea;
 }
 .frame-pic > img {
   position: absolute;
@@ -59,7 +60,7 @@
   inset: 0;
   display: grid;
   place-items: center;
-  color: var(--ink-text-muted);
+  color: #a3a3a0;
 }
 
 /* Status chips -------------------------------------------------------------------- */
@@ -201,19 +202,23 @@ select.film-status {
   padding: 0 6px;
   font-size: 12px;
 }
-.story__scene-number {
-  width: 3.5em;
+.story__scene-head .card__inline-input {
+  display: inline-block;
+  width: auto;
+}
+.story__scene-head .story__scene-number {
+  width: 3em;
   font-weight: 600;
   font-size: 15px;
 }
-.story__scene-location {
-  width: 14em;
+.story__scene-head .story__scene-location {
+  width: 12em;
   text-transform: uppercase;
   font-weight: 500;
 }
-.story__scene-title {
+.story__scene-head .story__scene-title {
   flex: 1;
-  min-width: 10em;
+  min-width: 8em;
   font-weight: 600;
 }
 .story__scene-meta {
@@ -427,7 +432,10 @@ select.film-status {
   color: var(--ink-text-muted);
 }
 .shots__pic-col {
-  width: 120px;
+  width: 112px;
+}
+.shots__pic-col .frame-pic {
+  width: 96px;
 }
 .shots__label {
   font-weight: 600;
@@ -440,7 +448,7 @@ select.film-status {
 .shots__table select {
   height: 26px;
   font-size: 12px;
-  min-width: 96px;
+  min-width: 132px;
 }
 .shots__cell {
   width: 100%;

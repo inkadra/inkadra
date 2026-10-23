@@ -317,8 +317,7 @@
       "heads": "Arrow heads"
     },
     "video": {
-      "play": "Play",
-      "noPoster": "Video"
+      "play": "Play"
     }
   },
   "tags": {
@@ -341,7 +340,6 @@
     "addColors": "Add the colours to the board",
     "download": "Download the original",
     "size": "Size",
-    "file": "File",
     "fields": {
       "camera": "Camera",
       "lens": "Lens",

@@ -19,8 +19,8 @@ import { PEN_COLORS, PENS, type PenTool, pathOf, VIEW_W } from './strokes.ts';
 
 const TOOLS: Array<{ tool: PenTool; icon: IconName; key: string }> = [
   { tool: 'pencil', icon: 'pen', key: 'P' },
-  { tool: 'brush', icon: 'color', key: 'B' },
-  { tool: 'marker', icon: 'heading', key: 'M' },
+  { tool: 'brush', icon: 'brush', key: 'B' },
+  { tool: 'marker', icon: 'marker', key: 'M' },
   { tool: 'eraser', icon: 'eraser', key: 'E' },
 ];
 const ERASER_RADIUS = 0.012;
