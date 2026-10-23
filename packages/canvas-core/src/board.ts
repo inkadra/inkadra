@@ -30,6 +30,9 @@ export const DEFAULT_WIDTH: Record<ElementType, number> = {
   color: 120,
   column: 260,
   board: 140,
+  scene: 260,
+  frame: 240,
+  arrow: 1,
 };
 
 export const MIN_WIDTH = 80;

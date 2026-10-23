@@ -13,6 +13,7 @@ import {
   SetProjectMember,
   UpdateProject,
 } from './projects.ts';
+import { SearchQuery, SearchResult, TagCount } from './search.ts';
 import {
   AcceptedInvitation,
   BoardAccess,
@@ -723,6 +724,34 @@ registry.registerPath({
   },
 });
 
+// Search ---------------------------------------------------------------------
+
+registry.registerPath({
+  method: 'get',
+  path: v1('/search'),
+  tags: ['Search'],
+  security: secured,
+  summary: 'Find projects, boards and cards the caller can open.',
+  description:
+    'Matches parts of words without case, in titles, notes, captions, to-dos, shot data, tags ' +
+    'and file names. Only boards the caller can read are searched. Card content comes from an ' +
+    'index of the board documents, updated a few seconds after each edit.',
+  request: { query: SearchQuery },
+  responses: { 200: { description: 'Results, best first', ...json(SearchResult) }, ...errors },
+});
+registry.registerPath({
+  method: 'get',
+  path: v1('/projects/{projectId}/tags'),
+  tags: ['Search'],
+  security: secured,
+  summary: 'Tags used on the cards of a project, most used first.',
+  request: { params: idParam('projectId') },
+  responses: {
+    200: { description: 'Tags', ...json(z.object({ items: z.array(TagCount) })) },
+    ...errors,
+  },
+});
+
 // Clip -----------------------------------------------------------------------
 
 registry.registerPath({
@@ -770,6 +799,7 @@ export function buildOpenApiDocument() {
       { name: 'Boards' },
       { name: 'Sharing' },
       { name: 'Assets' },
+      { name: 'Search' },
       { name: 'Clip' },
     ],
   });

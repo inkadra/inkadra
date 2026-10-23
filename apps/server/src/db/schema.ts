@@ -277,7 +277,43 @@ export const boardDoc = pgTable('board_doc', {
   schemaVersion: integer('schema_version').notNull(),
   size: integer('size').notNull(),
   updatedAt: updatedAt(),
+  /** When board_element_index was last rebuilt from `state`; null = never (backfill). */
+  indexedAt: timestamp('indexed_at', { withTimezone: true }),
 });
+
+/**
+ * Searchable view of the elements of each board, rebuilt from the Yjs document whenever it is
+ * stored (docs/decisions/0011). Never edited directly: the document is the source.
+ */
+export const boardElementIndex = pgTable(
+  'board_element_index',
+  {
+    boardId: uuid('board_id')
+      .notNull()
+      .references(() => board.id, { onDelete: 'cascade' }),
+    elementId: text('element_id').notNull(),
+    projectId: uuid('project_id')
+      .notNull()
+      .references(() => project.id, { onDelete: 'cascade' }),
+    type: text('type').notNull(),
+    /** Short label for results: title, shot label, file name. */
+    title: text('title').notNull().default(''),
+    /** Every searchable text of the element, title included, one space apart. */
+    text: text('text').notNull().default(''),
+    /** Lower case. */
+    tags: text('tags').array().notNull().default(sql`'{}'::text[]`),
+    assetId: uuid('asset_id'),
+    /** A few plain fields for views across boards (frames: label, scene, status). */
+    data: jsonb('data').$type<Record<string, unknown>>(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.boardId, t.elementId] }),
+    index('board_element_index_project_idx').on(t.projectId),
+    index('board_element_index_text_idx').using('gin', t.text.op('gin_trgm_ops')),
+    index('board_element_index_tags_idx').using('gin', t.tags),
+  ],
+);
 
 // Files ----------------------------------------------------------------------
 

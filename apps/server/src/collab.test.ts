@@ -1,7 +1,14 @@
 import type { AddressInfo } from 'node:net';
 import { fileURLToPath } from 'node:url';
 import { HocuspocusProvider, HocuspocusProviderWebsocket } from '@hocuspocus/provider';
-import { addElement, boardDocName, newElementId, readElement, roots } from '@inkadra/doc-schema';
+import {
+  addElement,
+  boardDocName,
+  CURRENT_SCHEMA_VERSION,
+  newElementId,
+  readElement,
+  roots,
+} from '@inkadra/doc-schema';
 import { eq, sql } from 'drizzle-orm';
 import pino from 'pino';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -92,7 +99,7 @@ describe.skipIf(!url)('collab (needs DATABASE_URL)', () => {
     await Promise.all(
       [a, b].map((c) => new Promise<void>((resolve) => c.provider.on('synced', () => resolve()))),
     );
-    expect(roots(a.doc).meta.get('schemaVersion')).toBe(1);
+    expect(roots(a.doc).meta.get('schemaVersion')).toBe(CURRENT_SCHEMA_VERSION);
 
     const id = newElementId();
     addElement(a.doc, {

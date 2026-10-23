@@ -1,12 +1,14 @@
 // SPDX-License-Identifier: MPL-2.0
 import { describe, expect, it } from 'vitest';
 import * as Y from 'yjs';
+import { BOARD_V1 } from './board-v1.fixture.ts';
 import {
   addElement,
   boardDocName,
   CURRENT_SCHEMA_VERSION,
   createBoardDoc,
   Element,
+  getBoardAspect,
   getSchemaVersion,
   migrateBoardDoc,
   newElementId,
@@ -14,6 +16,8 @@ import {
   readElement,
   roots,
   SchemaTooNewError,
+  STROKE_GRID,
+  setBoardAspect,
   UNSORTED,
   validateBoardDoc,
 } from './index.ts';
@@ -89,5 +93,132 @@ describe('board document', () => {
     expect(link('http://example.com')).toBe(true);
     expect(link('javascript:alert(1)')).toBe(false);
     expect(link('data:text/html,<script>alert(1)</script>')).toBe(false);
+  });
+
+  it('keeps tags on any element', () => {
+    const doc = createBoardDoc(boardId);
+    const color = { ...base(), type: 'color' as const, hex: '#C9A36A', tags: ['Notte', 'Sodio'] };
+    addElement(doc, color);
+    expect(readElement(roots(doc).elements.get(color.id)!)).toEqual(color);
+    const tooMany = Array.from({ length: 21 }, (_, i) => `t${i}`);
+    expect(Element.safeParse({ ...color, tags: tooMany }).success).toBe(false);
+  });
+
+  it('stores scenes with frames and their pen strokes', () => {
+    const doc = createBoardDoc(boardId);
+    const scene = {
+      ...base(),
+      type: 'scene' as const,
+      number: '4',
+      title: 'Il binario',
+      setting: 'ext' as const,
+      time: 'night' as const,
+    };
+    const frame = {
+      ...base(),
+      type: 'frame' as const,
+      parent: scene.id,
+      shot: 'cu',
+      lens: '85mm',
+      movement: 'static',
+      durationMs: 4000,
+      status: 'retake' as const,
+      cast: ['Antonio'],
+      strokes: [
+        {
+          id: newElementId(),
+          tool: 'pencil' as const,
+          color: '#EDEDED',
+          width: 4,
+          points: [0, 0, 2048, 4096],
+        },
+      ],
+    };
+    addElement(doc, scene);
+    const map = addElement(doc, frame);
+    expect(map.get('strokes')).toBeInstanceOf(Y.Array);
+    expect(readElement(roots(doc).elements.get(frame.id)!)).toEqual(frame);
+    expect(validateBoardDoc(doc)).toEqual([]);
+
+    // Two people drawing at once keep both strokes.
+    const other = new Y.Doc();
+    Y.applyUpdate(other, Y.encodeStateAsUpdate(doc));
+    const stroke = (x: number) => ({
+      id: newElementId(),
+      tool: 'brush',
+      color: '#3B7CF6',
+      width: 8,
+      points: [x, 0, x, 10],
+    });
+    (map.get('strokes') as Y.Array<object>).push([stroke(1)]);
+    (roots(other).elements.get(frame.id)!.get('strokes') as Y.Array<object>).push([stroke(2)]);
+    Y.applyUpdate(other, Y.encodeStateAsUpdate(doc));
+    Y.applyUpdate(doc, Y.encodeStateAsUpdate(other));
+    expect(
+      (readElement(roots(doc).elements.get(frame.id)!) as { strokes: unknown[] }).strokes,
+    ).toHaveLength(3);
+  });
+
+  it('bounds pen strokes', () => {
+    const stroke = (points: number[]) =>
+      Element.safeParse({
+        ...base(),
+        type: 'frame',
+        strokes: [{ id: newElementId(), tool: 'pencil', color: '#EDEDED', width: 4, points }],
+      }).success;
+    expect(stroke([0, 0, STROKE_GRID, STROKE_GRID])).toBe(true);
+    expect(stroke([0, 0, 0.5, 1])).toBe(false);
+    expect(stroke([0, 0, STROKE_GRID + 1, 0])).toBe(false);
+    expect(stroke([0, 0, 1])).toBe(false);
+    expect(stroke(Array.from({ length: 2050 }, () => 1))).toBe(false);
+  });
+
+  it('stores arrows attached to cards or free', () => {
+    const doc = createBoardDoc(boardId);
+    const arrow = {
+      ...base(),
+      type: 'arrow' as const,
+      from: { elementId: newElementId(), x: 10, y: 20 },
+      to: { x: 300, y: 40 },
+      label: 'controcampo',
+      line: 'dashed' as const,
+    };
+    addElement(doc, arrow);
+    expect(readElement(roots(doc).elements.get(arrow.id)!)).toEqual(arrow);
+  });
+
+  it('keeps the aspect ratio of the board in meta', () => {
+    const doc = createBoardDoc(boardId);
+    expect(getBoardAspect(doc)).toBeNull();
+    setBoardAspect(doc, '2.39');
+    expect(getBoardAspect(doc)).toBe('2.39');
+    roots(doc).meta.set('aspect', '7:5');
+    expect(getBoardAspect(doc)).toBeNull();
+    expect(validateBoardDoc(doc)).toHaveLength(1);
+  });
+
+  it('upgrades a version 1 document without touching its elements', () => {
+    const update = Uint8Array.from(atob(BOARD_V1), (c) => c.charCodeAt(0));
+    const doc = new Y.Doc();
+    Y.applyUpdate(doc, update);
+    expect(getSchemaVersion(doc)).toBe(1);
+    const before = [...roots(doc).elements.values()].map((m) => readElement(m));
+    expect(before.every(Boolean)).toBe(true);
+    expect(migrateBoardDoc(doc, boardId)).toEqual([2]);
+    expect(getSchemaVersion(doc)).toBe(2);
+    expect([...roots(doc).elements.values()].map((m) => readElement(m))).toEqual(before);
+    const note = roots(doc).elements.get('note_v1_00001')!;
+    expect((note.get('body') as Y.XmlFragment).toString()).toContain('Luce al neon');
+    expect(validateBoardDoc(doc)).toEqual([]);
+  });
+
+  it('skips element types it does not know without removing them', () => {
+    const doc = createBoardDoc(boardId);
+    const future = new Y.Map<unknown>(Object.entries({ ...base(), type: 'hologram' }));
+    roots(doc).elements.set('future_el_0001', future);
+    expect(readElement(future)).toBeNull();
+    const copy = new Y.Doc();
+    Y.applyUpdate(copy, Y.encodeStateAsUpdate(doc));
+    expect(roots(copy).elements.get('future_el_0001')?.get('type')).toBe('hologram');
   });
 });

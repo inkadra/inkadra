@@ -16,3 +16,4 @@ in order. An accepted decision is never rewritten: a later one supersedes it.
 | [0009](0009-files-and-media.md)          | Files: tus uploads, immutable storage, worker thumbnails |
 | [0010](0010-images-and-releases.md)      | How images are built, checked and released               |
 | [0011](0011-collaboration-and-access.md) | Roles per board, invitations, app tokens, presence       |
+| [0012](0012-storyboards-and-search.md)   | Shot lists in the board document, a search index         |

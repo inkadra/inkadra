@@ -40,6 +40,16 @@ export const Instance = z
       }),
     }),
     collabPath: z.string().openapi({ example: '/collab' }),
+    media: z
+      .object({
+        videoPosters: z.boolean().openapi({
+          description: 'The worker has ffmpeg: videos get poster thumbnails and a duration.',
+        }),
+        rawPreviews: z.boolean().openapi({
+          description: 'The worker can decode camera RAW files into thumbnails.',
+        }),
+      })
+      .openapi({ description: 'Media tools available on this server (image tag `-media`).' }),
     limits: z.object({
       uploadMaxBytes: z
         .int()

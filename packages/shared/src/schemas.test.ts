@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MPL-2.0
 import { describe, expect, it } from 'vitest';
-import { ClipRequest, CreateProject } from './index.ts';
+import { ClipRequest, CreateProject, SearchQuery } from './index.ts';
 import { buildOpenApiDocument } from './openapi.ts';
 
 describe('contracts', () => {
@@ -15,9 +15,17 @@ describe('contracts', () => {
     expect(ClipRequest.safeParse({ boardId, text: 'ciao' }).success).toBe(true);
   });
 
+  it('searches by words, by tag or both', () => {
+    expect(SearchQuery.safeParse({}).success).toBe(false);
+    expect(SearchQuery.safeParse({ q: '  ' }).success).toBe(false);
+    expect(SearchQuery.parse({ q: 'binario' }).limit).toBe(20);
+    expect(SearchQuery.safeParse({ tag: 'notte', limit: '5' }).success).toBe(true);
+  });
+
   it('builds an OpenAPI 3.1 document with every path', () => {
     const doc = buildOpenApiDocument();
     expect(doc.openapi).toBe('3.1.0');
     expect(Object.keys(doc.paths ?? {})).toContain('/api/v1/projects/{projectId}/boards');
+    expect(Object.keys(doc.paths ?? {})).toContain('/api/v1/search');
   });
 });
