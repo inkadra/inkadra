@@ -74,6 +74,12 @@ CREATE TABLE "board_grant" (
 	CONSTRAINT "board_grant_board_id_user_id_pk" PRIMARY KEY("board_id","user_id")
 );
 --> statement-breakpoint
+CREATE TABLE "instance_setting" (
+	"key" text PRIMARY KEY NOT NULL,
+	"value" jsonb NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+--> statement-breakpoint
 CREATE TABLE "project" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"name" text NOT NULL,

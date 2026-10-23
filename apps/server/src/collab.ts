@@ -16,8 +16,14 @@ interface Context {
   boardId: string;
 }
 
-export function createCollabServer(deps: { db: Database; auth: Auth; log: Logger }) {
+export function createCollabServer(deps: {
+  db: Database;
+  auth: Auth;
+  log: Logger;
+  publicUrl: string;
+}) {
   const { db, auth, log } = deps;
+  const allowedOrigin = new URL(deps.publicUrl).origin;
 
   return new Server<Context>({
     name: 'inkadra-collab',
@@ -30,6 +36,9 @@ export function createCollabServer(deps: { db: Database; auth: Auth; log: Logger
     async onAuthenticate({ documentName, requestHeaders, connectionConfig }) {
       const boardId = parseBoardDocName(documentName);
       if (!boardId) throw new Error('Unknown document');
+      // Browsers always send Origin on WebSocket upgrades; native apps send none.
+      const origin = requestHeaders.get('origin');
+      if (origin && origin !== allowedOrigin) throw new Error('Origin not allowed');
       const session = await auth.api.getSession({ headers: requestHeaders });
       if (!session) throw new Error('Not signed in');
       const actor: Actor = {

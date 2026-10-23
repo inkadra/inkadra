@@ -10,7 +10,9 @@ services:
     init: true
     restart: unless-stopped
     ports:
-      - "${INKADRA_PORT:-3000}:3000"
+      # Only this machine can reach the port: point your reverse proxy at it, or set
+      # INKADRA_BIND=0.0.0.0 if the proxy runs on another host (see docs/self-hosting.md).
+      - "${INKADRA_BIND:-127.0.0.1}:${INKADRA_PORT:-3000}:3000"
     environment:
       PUBLIC_URL: ${PUBLIC_URL:?set PUBLIC_URL in .env}
       AUTH_SECRET: ${AUTH_SECRET:?set AUTH_SECRET in .env}

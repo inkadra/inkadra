@@ -14,16 +14,16 @@ It needs Postgres 16 and Valkey 8 (or Redis 7). `compose.yaml` runs all three.
 
 ## Configuration
 
-| Variable        | Required            | Meaning                                                                         |
-| --------------- | ------------------- | ------------------------------------------------------------------------------- |
-| `PUBLIC_URL`    | yes                 | Address people use, as served by your proxy, e.g. `https://inkadra.example.com` |
-| `AUTH_SECRET`   | yes                 | At least 32 random characters: `openssl rand -hex 32`                           |
-| `DATABASE_URL`  | yes                 | Postgres connection string                                                      |
-| `REDIS_URL`     | for `worker`, `all` | Valkey or Redis connection string                                               |
-| `INSTANCE_NAME` | no                  | Name shown in the app (default `Inkadra`)                                       |
-| `REGISTRATION`  | no                  | `invite` (default) or `open`                                                    |
-| `TRUST_PROXY`   | no                  | `true` (default) to read the client address from `X-Forwarded-For`              |
-| `LOG_LEVEL`     | no                  | `info` (default), `debug`, `warn`…                                              |
+| Variable        | Required            | Meaning                                                                                                                               |
+| --------------- | ------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| `PUBLIC_URL`    | yes                 | Address people use, as served by your proxy, e.g. `https://inkadra.example.com`                                                       |
+| `AUTH_SECRET`   | yes                 | At least 32 random characters: `openssl rand -hex 32`                                                                                 |
+| `DATABASE_URL`  | yes                 | Postgres connection string                                                                                                            |
+| `REDIS_URL`     | for `worker`, `all` | Valkey or Redis connection string                                                                                                     |
+| `INSTANCE_NAME` | no                  | Name shown in the app (default `Inkadra`)                                                                                             |
+| `REGISTRATION`  | no                  | `invite` (default) or `open`                                                                                                          |
+| `TRUST_PROXY`   | no                  | Peers allowed to set `X-Forwarded-For`: addresses, CIDRs or `loopback`, `linklocal`, `uniquelocal` (default: all three). Never `true` |
+| `LOG_LEVEL`     | no                  | `info` (default), `debug`, `warn`…                                                                                                    |
 
 The first account created on a new instance becomes its administrator. After that, sign-up is
 closed unless `REGISTRATION=open`.
@@ -31,7 +31,10 @@ closed unless `REGISTRATION=open`.
 ## Reverse proxy
 
 Serve Inkadra on its own (sub)domain over HTTPS, proxy everything to port 3000 and allow
-WebSocket upgrades on `/collab`. Uploads can be large: disable the request body limit or raise
+WebSocket upgrades on `/collab`. Compose publishes the port on `127.0.0.1` only, so nobody can
+skip the proxy; if your proxy runs on another machine set `INKADRA_BIND=0.0.0.0` and limit
+`TRUST_PROXY` to that machine's address, otherwise clients could fake their address and
+dodge sign-in rate limits. Uploads can be large: disable the request body limit or raise
 it to at least a few GB, and raise read timeouts to several minutes.
 
 Caddy:

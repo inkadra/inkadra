@@ -1,5 +1,5 @@
 import type { ProjectRole } from '@inkadra/shared';
-import { and, eq } from 'drizzle-orm';
+import { and, eq, isNull } from 'drizzle-orm';
 import type { Database } from './db/client.ts';
 import { board, projectMember } from './db/schema.ts';
 
@@ -38,7 +38,7 @@ export async function boardRole(
   const [row] = await db
     .select({ projectId: board.projectId })
     .from(board)
-    .where(eq(board.id, boardId));
+    .where(and(eq(board.id, boardId), isNull(board.deletedAt)));
   if (!row) return null;
   return { projectId: row.projectId, role: await projectRole(db, actor, row.projectId) };
 }
