@@ -21,6 +21,8 @@ import {
   account,
   asset,
   assetVariant,
+  board,
+  boardGrant,
   personalToken,
   project,
   projectMember,
@@ -215,7 +217,13 @@ export function registerAccountRoutes(app: FastifyInstance, deps: Deps) {
               ne(projectMember.userId, userId),
             ),
           );
-        if ((others?.n ?? 0) === 0) alone.push(p.id);
+        // People with a board grant count too: the project is shared with them.
+        const [guests] = await tx
+          .select({ n: count() })
+          .from(boardGrant)
+          .innerJoin(board, eq(board.id, boardGrant.boardId))
+          .where(and(eq(board.projectId, p.id), ne(boardGrant.userId, userId)));
+        if ((others?.n ?? 0) + (guests?.n ?? 0) === 0) alone.push(p.id);
         else if ((owners?.n ?? 0) === 0) soleOwnerOf.push(p);
       }
       if (soleOwnerOf.length > 0)

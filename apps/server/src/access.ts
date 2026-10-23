@@ -171,7 +171,9 @@ export async function projectGrants(
     .select({ boardId: boardGrant.boardId, role: boardGrant.role })
     .from(boardGrant)
     .innerJoin(board, eq(board.id, boardGrant.boardId))
-    .where(and(eq(boardGrant.userId, actor.id), eq(board.projectId, projectId)));
+    .where(
+      and(eq(boardGrant.userId, actor.id), eq(board.projectId, projectId), isNull(board.deletedAt)),
+    );
   return new Map(rows.map((r) => [r.boardId, r.role]));
 }
 
@@ -252,8 +254,12 @@ export async function requireAssetRole(
 ): Promise<{ asset: typeof asset.$inferSelect; role: ProjectRole }> {
   const [row] = await db.select().from(asset).where(eq(asset.id, assetId));
   if (!row) throw new HttpError('not_found', 'Asset not found.');
-  const role =
-    (await projectRole(db, actor, row.projectId)) ?? (await bestGrant(db, actor, row.projectId));
+  // Assets are not tied to a board: the best of the project role and the board grants counts.
+  const [member, grant] = await Promise.all([
+    projectRole(db, actor, row.projectId),
+    bestGrant(db, actor, row.projectId),
+  ]);
+  const role = member && grant ? (higher(grant, member) ? grant : member) : (member ?? grant);
   if (role === null) throw new HttpError('not_found', 'Asset not found.');
   if (!atLeast(role, needed)) throw new HttpError('forbidden', `Needs the ${needed} role.`);
   return { asset: row, role };

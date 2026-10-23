@@ -10,17 +10,19 @@ import {
   validateBoardDoc,
 } from '@inkadra/doc-schema';
 import { COLLAB_PATH } from '@inkadra/shared';
-import { eq } from 'drizzle-orm';
+import { and, eq, gt, isNull, or } from 'drizzle-orm';
 import type { Logger } from 'pino';
 import * as Y from 'yjs';
 import { type Actor, atLeast, boardRole } from './access.ts';
 import type { Auth } from './auth.ts';
 import type { Database } from './db/client.ts';
-import { boardDoc, user } from './db/schema.ts';
+import { boardDoc, personalToken, session, user } from './db/schema.ts';
 import { actorFromToken, isToken } from './tokens.ts';
 
 interface Context {
   actor: Actor;
+  /** Browser sign-ins: the session behind the cookie, checked again like the role. */
+  sessionId: string | null;
   boardId: string;
   user: PresenceUser;
 }
@@ -41,24 +43,64 @@ export function createCollabServer(deps: {
   const owners = new Map<string, string>();
   const ownerKey = (documentName: string, clientId: number) => `${documentName}#${clientId}`;
 
-  async function signedIn(token: string, headers: Headers): Promise<Actor | null> {
+  async function signedIn(
+    token: string,
+    headers: Headers,
+  ): Promise<{ actor: Actor; sessionId: string | null } | null> {
     // Native apps and the clipper send their token; browsers send the session cookie.
-    if (isToken(token)) return actorFromToken(db, token);
+    if (isToken(token)) {
+      const actor = await actorFromToken(db, token);
+      return actor && { actor, sessionId: null };
+    }
     const session = await auth.api.getSession({ headers });
     if (!session) return null;
     return {
-      id: session.user.id,
-      role: (session.user as { role?: string }).role === 'admin' ? 'admin' : 'member',
+      actor: {
+        id: session.user.id,
+        role: (session.user as { role?: string }).role === 'admin' ? 'admin' : 'member',
+      },
+      sessionId: session.session.id,
     };
   }
 
-  /** Closes connections that lost their role and updates read-only on the others. */
+  /** Whether the token or session a connection signed in with is still valid. */
+  async function stillSignedIn(ctx: Context, now: Date): Promise<boolean> {
+    if (ctx.actor.tokenId) {
+      const [row] = await db
+        .select({ id: personalToken.id })
+        .from(personalToken)
+        .where(
+          and(
+            eq(personalToken.id, ctx.actor.tokenId),
+            or(isNull(personalToken.expiresAt), gt(personalToken.expiresAt, now)),
+          ),
+        );
+      return !!row;
+    }
+    if (!ctx.sessionId) return false;
+    const [row] = await db
+      .select({ id: session.id })
+      .from(session)
+      .where(and(eq(session.id, ctx.sessionId), gt(session.expiresAt, now)));
+    return !!row;
+  }
+
+  /**
+   * Closes connections whose token or session ended (4401) or that lost their role (4403), and
+   * updates read-only on the others.
+   */
   async function recheck(server: Server<Context>) {
+    const now = new Date();
     for (const document of server.hocuspocus.documents.values()) {
       for (const connection of document.getConnections() as Array<Connection<Context>>) {
         const ctx = connection.context;
         if (!ctx?.actor) continue;
         try {
+          if (!(await stillSignedIn(ctx, now))) {
+            log.info({ boardId: ctx.boardId }, 'collab connection closed: signed out');
+            connection.close({ code: 4401, reason: 'Unauthorized' });
+            continue;
+          }
           const access = await boardRole(db, ctx.actor, ctx.boardId);
           if (!access?.role) {
             log.info({ boardId: ctx.boardId }, 'collab connection closed: access removed');
@@ -98,8 +140,9 @@ export function createCollabServer(deps: {
       // Browsers always send Origin on WebSocket upgrades; native apps send none.
       const origin = requestHeaders.get('origin');
       if (origin && origin !== allowedOrigin) throw new Error('Origin not allowed');
-      const actor = await signedIn(token, requestHeaders);
-      if (!actor) throw new Error('Not signed in');
+      const signed = await signedIn(token, requestHeaders);
+      if (!signed) throw new Error('Not signed in');
+      const { actor } = signed;
       const access = await boardRole(db, actor, boardId);
       if (!access?.role) throw new Error('Not allowed');
       const [me] = await db
@@ -109,6 +152,7 @@ export function createCollabServer(deps: {
       connectionConfig.readOnly = !atLeast(access.role, 'editor');
       return {
         actor,
+        sessionId: signed.sessionId,
         boardId,
         user: { id: actor.id, name: me?.name ?? '', image: me?.image ?? null },
       } satisfies Context;

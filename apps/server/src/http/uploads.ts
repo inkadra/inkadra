@@ -124,8 +124,10 @@ export function registerUploads(app: FastifyInstance, deps: Deps) {
       const { uploadId } = req.params as { uploadId?: string };
       if (!uploadId || !Id.safeParse(uploadId).success)
         return sendError(reply, 'not_found', 'Upload not found.');
-      // Only people who can edit the project may resume, read or cancel its uploads.
-      await requireAssetRole(db, actor, uploadId, 'editor');
+      // Only the person who started an upload may resume, read or cancel it, while they can
+      // still add files to the project.
+      const { asset: row } = await requireAssetRole(db, actor, uploadId, 'editor');
+      if (row.createdBy !== actor.id) return sendError(reply, 'not_found', 'Upload not found.');
       assetId = uploadId;
     }
     reply.raw.setHeader(ASSET_ID_HEADER, assetId);

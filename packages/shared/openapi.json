@@ -821,8 +821,12 @@
             "type": "object",
             "properties": {
               "email": {
-                "type": "string",
-                "format": "email"
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "format": "email",
+                "description": "Shown to the people who can share (editors and owners); null for the others, who see names only."
               }
             },
             "required": [

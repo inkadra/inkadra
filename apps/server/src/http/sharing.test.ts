@@ -233,6 +233,14 @@ describe.skipIf(!url)('sharing, invitations, tokens and accounts (needs DATABASE
       [as.viewer.id]: ['viewer', 'project'],
       [as.guest.id]: ['editor', 'board'],
     });
+    // Addresses only for the people who share.
+    expect(access.body.items.every((e: { user: { email: null } }) => e.user.email === null)).toBe(
+      true,
+    );
+    const managed = await call('editor', 'GET', `/api/v1/boards/${mood}/access`);
+    expect(managed.body.items.map((e: { user: { email: string } }) => e.user.email)).toContain(
+      as.viewer.email,
+    );
   });
 
   it('keeps grants within the role of the person sharing', async () => {
@@ -303,6 +311,17 @@ describe.skipIf(!url)('sharing, invitations, tokens and accounts (needs DATABASE
     expect((await claim(invitation.url)).status).toBe(404);
 
     const claimed = await claim(resent.body.url);
+    // The link is for that address: no other account can accept it or sign up with it.
+    const intruder = await call({ cookie: claimed.cookie }, 'POST', '/api/auth/sign-up/email', {
+      email: 'intruder@example.com',
+      password: PASSWORD,
+      name: 'Intruder',
+    });
+    expect(intruder.status).toBe(403);
+    expect(intruder.body.code).toBe('INVITATION_EMAIL_MISMATCH');
+    const forwarded = `/api/v1/invitations/by-token/${claimed.token}/accept`;
+    expect((await call('outsider', 'POST', forwarded)).status).toBe(403);
+
     expect((await signUp('newbie', claimed.cookie)).status).toBe(200);
     const projects = await call('newbie', 'GET', '/api/v1/projects');
     expect(
@@ -466,6 +485,21 @@ describe.skipIf(!url)('sharing, invitations, tokens and accounts (needs DATABASE
     ]);
 
     const solo = await call('newbie', 'POST', '/api/v1/projects', { name: 'Solo' });
+    // A project shared only through a board counts as shared.
+    const lent = await call('newbie', 'POST', '/api/v1/projects', { name: 'Prestito' });
+    const lentBoard = await call('newbie', 'POST', `/api/v1/projects/${lent.body.id}/boards`, {
+      parentBoardId: lent.body.rootBoardId,
+      title: 'Sopralluoghi',
+    });
+    const grant = `/api/v1/boards/${lentBoard.body.id}/grants/${as.outsider.id}`;
+    expect((await call('newbie', 'PUT', grant, { role: 'viewer' })).status).toBe(200);
+    const withGuest = await call('newbie', 'DELETE', '/api/v1/me', { password: PASSWORD });
+    expect(withGuest.status).toBe(409);
+    expect(withGuest.body.error.details.soleOwnerOf).toEqual([
+      { id: lent.body.id, name: 'Prestito' },
+    ]);
+    expect((await call('newbie', 'DELETE', grant)).status).toBe(204);
+
     expect(
       (await call('newbie', 'DELETE', '/api/v1/me', { password: 'wrong-password-123' })).status,
     ).toBe(403);

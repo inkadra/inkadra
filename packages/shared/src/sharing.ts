@@ -3,8 +3,17 @@ import { Id, Timestamp, z } from './common.ts';
 import { ProjectRole } from './projects.ts';
 import { UserSummary } from './users.ts';
 
-/** A person as shown to people who manage access: the email helps tell namesakes apart. */
-export const Person = UserSummary.extend({ email: z.email() }).openapi('Person');
+/** A person as shown on access lists: the email helps tell namesakes apart. */
+export const Person = UserSummary.extend({
+  email: z
+    .email()
+    .nullable()
+    .openapi({
+      description:
+        'Shown to the people who can share (editors and owners); null for the others, who see ' +
+        'names only.',
+    }),
+}).openapi('Person');
 export type Person = z.infer<typeof Person>;
 
 /**
