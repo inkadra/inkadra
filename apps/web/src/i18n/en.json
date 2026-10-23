@@ -1,0 +1,77 @@
+{
+  "app": {
+    "name": "Inkadra",
+    "tagline": "From idea to frame.",
+    "footer": "Open source · AGPL-3.0 · v{{version}}"
+  },
+  "auth": {
+    "subtitle": "Sign in to your studio’s space",
+    "email": "Email",
+    "emailPlaceholder": "name@studio.com",
+    "password": "Password",
+    "signIn": "Sign in",
+    "signingIn": "Signing in…",
+    "inviteOnly": "Invite only · ask your administrator for access",
+    "setupTitle": "Create the administrator account",
+    "setupSubtitle": "This is the first visit to this instance: the first account administers it.",
+    "name": "Name",
+    "passwordHint": "At least 10 characters",
+    "createAdmin": "Create account and sign in",
+    "signOut": "Sign out",
+    "errors": {
+      "invalid": "Wrong email or password.",
+      "closed": "Registration is closed. Ask your administrator for an invitation.",
+      "password": "The password needs at least 10 characters.",
+      "generic": "Something went wrong. Try again."
+    }
+  },
+  "nav": {
+    "modules": "Modules",
+    "navigation": "Navigation",
+    "home": "Home",
+    "board": "Boards",
+    "storyboard": "Storyboard",
+    "shotlist": "Shot list",
+    "schedule": "Shooting schedule",
+    "clients": "Clients",
+    "inbox": "Inbox",
+    "search": "Search",
+    "settings": "Settings",
+    "assigned": "Assigned to me",
+    "unsorted": "Unsorted",
+    "projects": "Projects",
+    "pinned": "Pinned",
+    "archive": "Archive",
+    "newProject": "New project",
+    "breadcrumb": "Breadcrumb",
+    "synced": "Synced",
+    "theme": {
+      "toDark": "Switch to dark theme",
+      "toLight": "Switch to light theme"
+    }
+  },
+  "home": {
+    "greeting": {
+      "morning": "Good morning, {{name}}",
+      "afternoon": "Good afternoon, {{name}}",
+      "evening": "Good evening, {{name}}"
+    },
+    "searchHint": "to search or create",
+    "recent": "Recent",
+    "noProjects": "No projects yet",
+    "noProjectsBody": "Create your first project: a film, a shoot, a client.",
+    "noPinned": "Nothing pinned"
+  },
+  "project": {
+    "dialogTitle": "New project",
+    "name": "Project name",
+    "namePlaceholder": "Last run",
+    "create": "Create project",
+    "cancel": "Cancel",
+    "boardSoon": "The canvas arrives in the next version."
+  },
+  "notFound": {
+    "title": "Page not found",
+    "back": "Back to home"
+  }
+}

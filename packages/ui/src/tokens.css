@@ -1,0 +1,127 @@
+/* Generated from tokens.ts with `pnpm --filter @inkadra/ui tokens`. Do not edit by hand. */
+
+:root,
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --ink-bg-rail: #0E0E10;
+  --ink-bg-app: #141416;
+  --ink-bg-panel: #121214;
+  --ink-bg-canvas: #161616;
+  --ink-surface-1: #1C1C1F;
+  --ink-surface-2: #26262A;
+  --ink-surface-3: #2A2A2E;
+  --ink-surface-float: #1F1F23;
+  --ink-border-subtle: #1C1C1F;
+  --ink-border-muted: #232327;
+  --ink-border-default: #2A2A2E;
+  --ink-border-strong: #34343A;
+  --ink-canvas-dot: #2E2E2E;
+  --ink-text-primary: #EDEDED;
+  --ink-text-secondary: #9A9A9A;
+  --ink-text-muted: #808086;
+  --ink-text-icon: #C8C8CC;
+  --ink-text-nav: #A8A8AE;
+  --ink-accent-primary: #3B7CF6;
+  --ink-accent-button: #2563EB;
+  --ink-accent-button-hover: #4E8AF8;
+  --ink-accent-button-active: #2F6AE0;
+  --ink-on-accent: #FFFFFF;
+  --ink-accent-soft-bg: #1E2A44;
+  --ink-accent-soft-fg: #9DB8F2;
+  --ink-status-ok: #46A758;
+  --ink-status-warn: #F2B08A;
+  --ink-status-danger: #E5484D;
+  --ink-danger-bg: #2A1A1B;
+  --ink-danger-border: #3A2326;
+  --ink-danger-fg: #F2A9AC;
+  --ink-tag-blue: #9DB8F2;
+  --ink-tag-orange: #F2B08A;
+  --ink-tag-purple: #C3B2F2;
+  --ink-tag-green: #9FE0B4;
+  --ink-logo-tile: #EDEDED;
+  --ink-logo-ink: #0E0E10;
+}
+
+:root[data-theme='light'] {
+  color-scheme: light;
+  --ink-bg-rail: #EFEFEC;
+  --ink-bg-app: #EFEFEC;
+  --ink-bg-panel: #FAFAF8;
+  --ink-bg-canvas: #FAFAF8;
+  --ink-surface-1: #FFFFFF;
+  --ink-surface-2: #F6F6F4;
+  --ink-surface-3: #E4E4E0;
+  --ink-surface-float: #FFFFFF;
+  --ink-border-subtle: #FFFFFF;
+  --ink-border-muted: #E8E8E4;
+  --ink-border-default: #E4E4E0;
+  --ink-border-strong: #D9D9D5;
+  --ink-canvas-dot: #DCDCD8;
+  --ink-text-primary: #161616;
+  --ink-text-secondary: #5E5E5A;
+  --ink-text-muted: #8A8A86;
+  --ink-text-icon: #383836;
+  --ink-text-nav: #4A4A47;
+  --ink-accent-primary: #3B7CF6;
+  --ink-accent-button: #2563EB;
+  --ink-accent-button-hover: #3B7CF6;
+  --ink-accent-button-active: #1D4FC4;
+  --ink-on-accent: #FFFFFF;
+  --ink-accent-soft-bg: #E6EDFB;
+  --ink-accent-soft-fg: #2F5AAE;
+  --ink-status-ok: #23743F;
+  --ink-status-warn: #A5521F;
+  --ink-status-danger: #C8343A;
+  --ink-danger-bg: #FBEAEA;
+  --ink-danger-border: #F2CFD0;
+  --ink-danger-fg: #A1262B;
+  --ink-tag-blue: #2F5AAE;
+  --ink-tag-orange: #A5521F;
+  --ink-tag-purple: #5B3FB0;
+  --ink-tag-green: #23743F;
+  --ink-logo-tile: #161616;
+  --ink-logo-ink: #FAFAF8;
+}
+
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme]) {
+    color-scheme: light;
+    --ink-bg-rail: #EFEFEC;
+    --ink-bg-app: #EFEFEC;
+    --ink-bg-panel: #FAFAF8;
+    --ink-bg-canvas: #FAFAF8;
+    --ink-surface-1: #FFFFFF;
+    --ink-surface-2: #F6F6F4;
+    --ink-surface-3: #E4E4E0;
+    --ink-surface-float: #FFFFFF;
+    --ink-border-subtle: #FFFFFF;
+    --ink-border-muted: #E8E8E4;
+    --ink-border-default: #E4E4E0;
+    --ink-border-strong: #D9D9D5;
+    --ink-canvas-dot: #DCDCD8;
+    --ink-text-primary: #161616;
+    --ink-text-secondary: #5E5E5A;
+    --ink-text-muted: #8A8A86;
+    --ink-text-icon: #383836;
+    --ink-text-nav: #4A4A47;
+    --ink-accent-primary: #3B7CF6;
+    --ink-accent-button: #2563EB;
+    --ink-accent-button-hover: #3B7CF6;
+    --ink-accent-button-active: #1D4FC4;
+    --ink-on-accent: #FFFFFF;
+    --ink-accent-soft-bg: #E6EDFB;
+    --ink-accent-soft-fg: #2F5AAE;
+    --ink-status-ok: #23743F;
+    --ink-status-warn: #A5521F;
+    --ink-status-danger: #C8343A;
+    --ink-danger-bg: #FBEAEA;
+    --ink-danger-border: #F2CFD0;
+    --ink-danger-fg: #A1262B;
+    --ink-tag-blue: #2F5AAE;
+    --ink-tag-orange: #A5521F;
+    --ink-tag-purple: #5B3FB0;
+    --ink-tag-green: #23743F;
+    --ink-logo-tile: #161616;
+    --ink-logo-ink: #FAFAF8;
+  }
+}

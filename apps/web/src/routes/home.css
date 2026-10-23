@@ -1,0 +1,33 @@
+.home__recent {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 12px;
+}
+.home__card {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-radius: 10px;
+  transition: border-color 120ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.home__card:hover {
+  border-color: var(--ink-border-strong);
+}
+.home__cover {
+  height: 128px;
+  background-color: var(--ink-bg-canvas);
+  background-image: radial-gradient(circle, var(--ink-canvas-dot) 1px, transparent 1.5px);
+  background-size: 22px 22px;
+}
+.home__meta {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 12px 12px;
+}
+.home__name {
+  font-weight: 600;
+}
+.home__when {
+  font-size: 11px;
+}
