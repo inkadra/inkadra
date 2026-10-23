@@ -6,5 +6,6 @@ export * from './common.ts';
 export * from './constants.ts';
 export * from './instance.ts';
 export * from './projects.ts';
+export * from './search.ts';
 export * from './sharing.ts';
 export * from './users.ts';

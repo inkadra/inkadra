@@ -42,7 +42,8 @@ export const Asset = z
     variants: z.array(AssetVariant).openapi({
       description:
         'WebP thumbnails, smallest first, empty until `status` is `ready`. Sizes wider than ' +
-        'the original are skipped.',
+        'the original are skipped. For videos they show a poster frame, when the server has ' +
+        'ffmpeg (Instance.media.videoPosters); otherwise videos have none.',
     }),
     exif: z.record(z.string(), z.unknown()).nullable().openapi({
       description: 'Camera and exposure data. Location (GPS) fields are never stored.',

@@ -37,6 +37,9 @@
       "name": "Assets"
     },
     {
+      "name": "Search"
+    },
+    {
       "name": "Clip"
     }
   ],
@@ -233,6 +236,24 @@
             "type": "string",
             "example": "/collab"
           },
+          "media": {
+            "type": "object",
+            "properties": {
+              "videoPosters": {
+                "type": "boolean",
+                "description": "The worker has ffmpeg: videos get poster thumbnails and a duration."
+              },
+              "rawPreviews": {
+                "type": "boolean",
+                "description": "The worker can decode camera RAW files into thumbnails."
+              }
+            },
+            "required": [
+              "videoPosters",
+              "rawPreviews"
+            ],
+            "description": "Media tools available on this server (image tag `-media`)."
+          },
           "limits": {
             "type": "object",
             "properties": {
@@ -260,6 +281,7 @@
           "registration",
           "auth",
           "collabPath",
+          "media",
           "limits",
           "serverTime"
         ]
@@ -1706,7 +1728,7 @@
             "items": {
               "$ref": "#/components/schemas/AssetVariant"
             },
-            "description": "WebP thumbnails, smallest first, empty until `status` is `ready`. Sizes wider than the original are skipped."
+            "description": "WebP thumbnails, smallest first, empty until `status` is `ready`. Sizes wider than the original are skipped. For videos they show a poster frame, when the server has ffmpeg (Instance.media.videoPosters); otherwise videos have none."
           },
           "exif": {
             "type": [
@@ -1859,6 +1881,135 @@
         "required": [
           "projectId",
           "url"
+        ]
+      },
+      "SearchResult": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SearchHit"
+            }
+          }
+        },
+        "required": [
+          "items"
+        ]
+      },
+      "SearchHit": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "project",
+              "board",
+              "element"
+            ]
+          },
+          "projectId": {
+            "type": "string",
+            "format": "uuid",
+            "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10"
+          },
+          "projectName": {
+            "type": "string"
+          },
+          "boardId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid",
+            "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10"
+          },
+          "boardTitle": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "boardKind": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "enum": [
+              "board",
+              "storyboard",
+              null
+            ]
+          },
+          "elementId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "elementType": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Element type from @inkadra/doc-schema. Clients show types they do not know as plain results."
+          },
+          "title": {
+            "type": "string",
+            "description": "Best short label: name, title, shot or file."
+          },
+          "snippet": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Text around the match."
+          },
+          "assetId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid",
+            "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10",
+            "description": "Picture to show next to the result."
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "kind",
+          "projectId",
+          "projectName",
+          "boardId",
+          "boardTitle",
+          "boardKind",
+          "elementId",
+          "elementType",
+          "title",
+          "snippet",
+          "assetId",
+          "tags"
+        ]
+      },
+      "TagCount": {
+        "type": "object",
+        "properties": {
+          "tag": {
+            "type": "string"
+          },
+          "count": {
+            "type": "integer",
+            "minimum": 1
+          }
+        },
+        "required": [
+          "tag",
+          "count"
         ]
       },
       "ClipResult": {
@@ -5499,6 +5650,225 @@
           },
           "400": {
             "description": "Invalid address, or the page could not be fetched",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/search": {
+      "get": {
+        "tags": [
+          "Search"
+        ],
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Find projects, boards and cards the caller can open.",
+        "description": "Matches parts of words without case, in titles, notes, captions, to-dos, shot data, tags and file names. Only boards the caller can read are searched. Card content comes from an index of the board documents, updated a few seconds after each edit.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "maxLength": 200,
+              "description": "Words to find in titles, notes, captions, shot data and file names."
+            },
+            "required": false,
+            "description": "Words to find in titles, notes, captions, shot data and file names.",
+            "name": "q",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10",
+              "description": "Search one project only."
+            },
+            "required": false,
+            "description": "Search one project only.",
+            "name": "projectId",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 40,
+              "description": "Only cards with this tag (compared without case)."
+            },
+            "required": false,
+            "description": "Only cards with this tag (compared without case).",
+            "name": "tag",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "maxLength": 20,
+              "description": "Only cards of this element type, e.g. `frame` or `image`."
+            },
+            "required": false,
+            "description": "Only cards of this element type, e.g. `frame` or `image`.",
+            "name": "type",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 50,
+              "default": 20
+            },
+            "required": false,
+            "name": "limit",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Results, best first",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SearchResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/projects/{projectId}/tags": {
+      "get": {
+        "tags": [
+          "Search"
+        ],
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Tags used on the cards of a project, most used first.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10"
+            },
+            "required": true,
+            "name": "projectId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Tags",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/TagCount"
+                      }
+                    }
+                  },
+                  "required": [
+                    "items"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
             "content": {
               "application/json": {
                 "schema": {

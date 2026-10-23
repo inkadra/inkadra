@@ -85,7 +85,9 @@ selects the role:
 | `worker`        | Background jobs (thumbnails, email, maintenance)                    |
 | `migrate`       | Apply database migrations and exit (`web` and `all` do it on start) |
 
-It needs Postgres 16 and Valkey 8 (or Redis 7); `compose.yaml` runs both. The server runs as
+It needs Postgres 16 and Valkey 8 (or Redis 7); `compose.yaml` runs both. With your own
+Postgres, the `pg_trgm` extension must be available (it is in the standard `contrib` package
+and in the official images); a migration creates it as the database owner. The server runs as
 user `node` (uid 1000) with a read-only root filesystem and no Linux capabilities; it writes
 only to `/data`. `compose.yaml` starts the container as root with four capabilities, only so
 that it can give `/data` to uid 1000 when a host folder belongs to someone else; it then

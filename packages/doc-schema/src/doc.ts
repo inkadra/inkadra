@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MPL-2.0
 import * as Y from 'yjs';
-import { Element, type ElementType } from './elements.ts';
+import { AspectRatio, Element, type ElementType } from './elements.ts';
 
 /** Bump when the shape of the board document changes, and add a migration below. */
-export const CURRENT_SCHEMA_VERSION = 1;
+export const CURRENT_SCHEMA_VERSION = 2;
 
 export const DOC_NAME_PREFIX = 'board:';
 
@@ -18,7 +18,11 @@ export function parseBoardDocName(name: string): string | null {
   return /^[0-9a-f-]{36}$/i.test(id) ? id : null;
 }
 
-/** Root types of a board document. Nothing else may be stored at the root. */
+/**
+ * Root types of a board document. Nothing else may be stored at the root.
+ * `meta` holds `schemaVersion`, `boardId` and, from version 2, `aspect` (the AspectRatio of
+ * a storyboard's frames).
+ */
 export function roots(doc: Y.Doc) {
   return {
     meta: doc.getMap<unknown>('meta'),
@@ -51,7 +55,25 @@ type Migration = (doc: Y.Doc) => void;
  * migrations[n] upgrades a document from version n to n + 1.
  * Version 0 is an empty document that was never initialised.
  */
-const migrations: Record<number, Migration> = {};
+const migrations: Record<number, Migration> = {
+  // 2: scene, frame and arrow elements, `tags` on every element, `meta.aspect`. All additive,
+  // so version 1 documents are valid as they are; the bump keeps older servers from loading
+  // documents with element types they do not know.
+  1: () => {},
+};
+
+export function getBoardAspect(doc: Y.Doc): AspectRatio | null {
+  const parsed = AspectRatio.safeParse(roots(doc).meta.get('aspect'));
+  return parsed.success ? parsed.data : null;
+}
+
+export function setBoardAspect(doc: Y.Doc, aspect: AspectRatio | null, origin?: unknown): void {
+  const { meta } = roots(doc);
+  doc.transact(() => {
+    if (aspect === null) meta.delete('aspect');
+    else meta.set('aspect', AspectRatio.parse(aspect));
+  }, origin);
+}
 
 export class SchemaTooNewError extends Error {
   constructor(readonly version: number) {
@@ -99,7 +121,7 @@ export function addElement(doc: Y.Doc, element: Element): Y.Map<unknown> {
   doc.transact(() => {
     for (const [key, value] of Object.entries(parsed)) {
       if (value === undefined) continue;
-      map.set(key, key === 'items' ? Y.Array.from((value as object[]).map(toYMap)) : value);
+      map.set(key, toYValue(key, value));
     }
     if (parsed.type === 'note') map.set('body', new Y.XmlFragment());
     roots(doc).elements.set(parsed.id, map);
@@ -109,6 +131,17 @@ export function addElement(doc: Y.Doc, element: Element): Y.Map<unknown> {
 
 function toYMap(value: object): Y.Map<unknown> {
   return new Y.Map(Object.entries(value));
+}
+
+/**
+ * To-do items are Y.Maps in a Y.Array so two people can tick different items; pen strokes are
+ * plain objects in a Y.Array so two people can draw on the same frame. Everything else is a
+ * plain value that a write replaces.
+ */
+function toYValue(key: string, value: unknown): unknown {
+  if (key === 'items') return Y.Array.from((value as object[]).map(toYMap));
+  if (key === 'strokes') return Y.Array.from(value as object[]);
+  return value;
 }
 
 /** Plain JSON view of an element (without rich text), or null if it does not validate. */
@@ -135,6 +168,10 @@ export function validateBoardDoc(doc: Y.Doc): ValidationIssue[] {
     const element = readElement(map);
     if (!element) issues.push({ elementId: id, message: 'Element does not match the schema.' });
     else if (element.id !== id) issues.push({ elementId: id, message: 'Key and id differ.' });
+  }
+  const aspect = roots(doc).meta.get('aspect');
+  if (aspect !== undefined && !AspectRatio.safeParse(aspect).success) {
+    issues.push({ elementId: '', message: 'meta.aspect is not a known aspect ratio.' });
   }
   for (const name of doc.share.keys()) {
     if (name !== 'meta' && name !== 'elements') {
