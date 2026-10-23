@@ -1,0 +1,77 @@
+{
+  "app": {
+    "name": "Inkadra",
+    "tagline": "Dall’idea all’inquadratura.",
+    "footer": "Open source · AGPL-3.0 · v{{version}}"
+  },
+  "auth": {
+    "subtitle": "Accedi allo spazio del tuo studio",
+    "email": "Email",
+    "emailPlaceholder": "nome@studio.it",
+    "password": "Password",
+    "signIn": "Accedi",
+    "signingIn": "Accesso…",
+    "inviteOnly": "Solo su invito · chiedi l’accesso all’amministratore",
+    "setupTitle": "Crea l’account amministratore",
+    "setupSubtitle": "È il primo accesso a questa istanza: il primo account la amministra.",
+    "name": "Nome",
+    "passwordHint": "Almeno 10 caratteri",
+    "createAdmin": "Crea account e accedi",
+    "signOut": "Esci",
+    "errors": {
+      "invalid": "Email o password non corrette.",
+      "closed": "La registrazione è chiusa. Chiedi un invito all’amministratore.",
+      "password": "La password deve avere almeno 10 caratteri.",
+      "generic": "Qualcosa è andato storto. Riprova."
+    }
+  },
+  "nav": {
+    "modules": "Moduli",
+    "navigation": "Navigazione",
+    "home": "Home",
+    "board": "Board",
+    "storyboard": "Storyboard",
+    "shotlist": "Shotlist",
+    "schedule": "Piano riprese",
+    "clients": "Clienti",
+    "inbox": "Inbox",
+    "search": "Cerca",
+    "settings": "Impostazioni",
+    "assigned": "Assegnati a me",
+    "unsorted": "Non ordinati",
+    "projects": "Progetti",
+    "pinned": "Fissati",
+    "archive": "Archivio",
+    "newProject": "Nuovo progetto",
+    "breadcrumb": "Percorso",
+    "synced": "Sincronizzato",
+    "theme": {
+      "toDark": "Passa al tema scuro",
+      "toLight": "Passa al tema chiaro"
+    }
+  },
+  "home": {
+    "greeting": {
+      "morning": "Buongiorno, {{name}}",
+      "afternoon": "Buon pomeriggio, {{name}}",
+      "evening": "Buonasera, {{name}}"
+    },
+    "searchHint": "per cercare o creare",
+    "recent": "Recenti",
+    "noProjects": "Nessun progetto",
+    "noProjectsBody": "Crea il primo progetto: un film, uno shooting, un cliente.",
+    "noPinned": "Niente di fissato"
+  },
+  "project": {
+    "dialogTitle": "Nuovo progetto",
+    "name": "Nome del progetto",
+    "namePlaceholder": "Ultima corsa",
+    "create": "Crea progetto",
+    "cancel": "Annulla",
+    "boardSoon": "Il canvas arriva nella prossima versione."
+  },
+  "notFound": {
+    "title": "Pagina non trovata",
+    "back": "Torna alla home"
+  }
+}

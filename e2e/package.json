@@ -1,0 +1,16 @@
+{
+  "name": "@inkadra/e2e",
+  "version": "0.1.0",
+  "private": true,
+  "license": "AGPL-3.0-only",
+  "type": "module",
+  "scripts": {
+    "e2e": "playwright test",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.56.1",
+    "@types/node": "^22.18.0",
+    "typescript": "^5.9.0"
+  }
+}
