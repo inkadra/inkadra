@@ -50,7 +50,8 @@ CREATE TABLE "element_review" (
 	"share_link_id" uuid,
 	"requested_by" uuid,
 	"changed_at" timestamp with time zone DEFAULT now() NOT NULL,
-	CONSTRAINT "element_review_source_ck" CHECK (("element_review"."share_link_id" is null and "element_review"."changed_by_guest" is null) or ("element_review"."share_link_id" is not null and "element_review"."changed_by_guest" is not null and "element_review"."changed_by" is null and "element_review"."requested_by" is null))
+	CONSTRAINT "element_review_uq" UNIQUE NULLS NOT DISTINCT("board_id","element_id","share_link_id"),
+	CONSTRAINT "element_review_source_ck" CHECK (("element_review"."share_link_id" is null and "element_review"."changed_by_guest" is null) or ("element_review"."share_link_id" is not null and "element_review"."changed_by_guest" is not null and "element_review"."changed_by" is null and "element_review"."requested_by" is null and "element_review"."status" <> 'in_review'))
 );
 --> statement-breakpoint
 CREATE TABLE "element_review_event" (
@@ -178,13 +179,13 @@ CREATE INDEX "board_version_board_idx" ON "board_version" USING btree ("board_id
 CREATE INDEX "board_version_expires_idx" ON "board_version" USING btree ("expires_at");--> statement-breakpoint
 CREATE INDEX "board_version_created_by_idx" ON "board_version" USING btree ("created_by") WHERE "board_version"."created_by" is not null;--> statement-breakpoint
 CREATE INDEX "comment_board_element_idx" ON "comment" USING btree ("board_id","element_id");--> statement-breakpoint
+CREATE INDEX "comment_project_idx" ON "comment" USING btree ("project_id");--> statement-breakpoint
 CREATE INDEX "comment_threads_idx" ON "comment" USING btree ("board_id","created_at" DESC NULLS LAST,"id" DESC NULLS LAST) WHERE "comment"."thread_id" is null;--> statement-breakpoint
 CREATE INDEX "comment_replies_idx" ON "comment" USING btree ("thread_id","created_at","id") WHERE "comment"."thread_id" is not null;--> statement-breakpoint
 CREATE INDEX "comment_share_link_idx" ON "comment" USING btree ("share_link_id") WHERE "comment"."share_link_id" is not null;--> statement-breakpoint
 CREATE INDEX "comment_author_idx" ON "comment" USING btree ("author_id") WHERE "comment"."author_id" is not null;--> statement-breakpoint
 CREATE INDEX "comment_resolved_by_idx" ON "comment" USING btree ("resolved_by") WHERE "comment"."resolved_by" is not null;--> statement-breakpoint
-CREATE UNIQUE INDEX "element_review_team_uq" ON "element_review" USING btree ("board_id","element_id") WHERE "element_review"."share_link_id" is null;--> statement-breakpoint
-CREATE UNIQUE INDEX "element_review_link_uq" ON "element_review" USING btree ("board_id","element_id","share_link_id") WHERE "element_review"."share_link_id" is not null;--> statement-breakpoint
+CREATE INDEX "element_review_project_idx" ON "element_review" USING btree ("project_id");--> statement-breakpoint
 CREATE INDEX "element_review_share_link_idx" ON "element_review" USING btree ("share_link_id") WHERE "element_review"."share_link_id" is not null;--> statement-breakpoint
 CREATE INDEX "element_review_changed_by_idx" ON "element_review" USING btree ("changed_by") WHERE "element_review"."changed_by" is not null;--> statement-breakpoint
 CREATE INDEX "element_review_requested_by_idx" ON "element_review" USING btree ("requested_by") WHERE "element_review"."requested_by" is not null;--> statement-breakpoint
@@ -196,9 +197,11 @@ CREATE INDEX "notification_unread_idx" ON "notification" USING btree ("user_id")
 CREATE INDEX "notification_email_idx" ON "notification" USING btree ("created_at") WHERE "notification"."emailed_at" is null and "notification"."read_at" is null;--> statement-breakpoint
 CREATE INDEX "notification_created_idx" ON "notification" USING btree ("created_at");--> statement-breakpoint
 CREATE INDEX "notification_actor_idx" ON "notification" USING btree ("actor_id") WHERE "notification"."actor_id" is not null;--> statement-breakpoint
+CREATE INDEX "notification_actor_guest_idx" ON "notification" USING btree ("actor_guest_id") WHERE "notification"."actor_guest_id" is not null;--> statement-breakpoint
 CREATE INDEX "notification_comment_idx" ON "notification" USING btree ("comment_id") WHERE "notification"."comment_id" is not null;--> statement-breakpoint
 CREATE INDEX "share_guest_link_idx" ON "share_guest" USING btree ("share_link_id");--> statement-breakpoint
 CREATE INDEX "share_link_board_idx" ON "share_link" USING btree ("board_id");--> statement-breakpoint
 CREATE INDEX "share_link_project_idx" ON "share_link" USING btree ("project_id");--> statement-breakpoint
 CREATE INDEX "share_link_created_by_idx" ON "share_link" USING btree ("created_by") WHERE "share_link"."created_by" is not null;--> statement-breakpoint
-CREATE INDEX "share_pick_link_idx" ON "share_pick" USING btree ("share_link_id");
+CREATE INDEX "share_pick_link_idx" ON "share_pick" USING btree ("share_link_id");--> statement-breakpoint
+CREATE INDEX "share_pick_board_idx" ON "share_pick" USING btree ("board_id");
