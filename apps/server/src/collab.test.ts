@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import type { AddressInfo } from 'node:net';
 import { fileURLToPath } from 'node:url';
 import { HocuspocusProvider, HocuspocusProviderWebsocket } from '@hocuspocus/provider';
@@ -10,17 +11,21 @@ import {
   readPresence,
   roots,
 } from '@inkadra/doc-schema';
+import { Queue, QueueEvents } from 'bullmq';
 import { eq, sql } from 'drizzle-orm';
 import pino from 'pino';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import WebSocket from 'ws';
 import * as Y from 'yjs';
 import { createAuth } from './auth.ts';
+import { directBoardNotifier, NOTICE_TTL_MS } from './board-notices.ts';
+import { directBoardWriter } from './board-writer.ts';
 import { attachCollab, createCollabServer } from './collab.ts';
 import { loadConfig } from './config.ts';
 import { createDatabase, runMigrations } from './db/client.ts';
 import { boardDoc, boardElementIndex } from './db/schema.ts';
 import { createApp } from './http/app.ts';
+import { createRedis, QUEUES, queuedBoardNotifier, startBoardWorker } from './queues.ts';
 import { testDeps } from './test-deps.ts';
 
 const url = process.env.DATABASE_URL;
@@ -412,4 +417,85 @@ describe.skipIf(!url)('collab (needs DATABASE_URL)', () => {
       )
       .toBe(expected);
   });
+  for (const mode of ['direct', 'split'] as const) {
+    it.skipIf(mode === 'split' && !process.env.REDIS_URL)(
+      `delivers comment/review notices to read-only clients in ${mode} mode`,
+      async () => {
+        const viewer = connect(as('viewer'));
+        await viewer.synced;
+        const received: unknown[] = [];
+        viewer.provider.on('stateless', ({ payload }: { payload: string }) =>
+          received.push(JSON.parse(payload)),
+        );
+        const redisUrl = process.env.REDIS_URL ?? '';
+        const prefix = `inkadra-notices-${randomUUID()}`;
+        const queued =
+          mode === 'split' ? queuedBoardNotifier(redisUrl, log, { prefix }) : undefined;
+        const worker =
+          mode === 'split'
+            ? startBoardWorker(redisUrl, directBoardWriter(collab), log, {
+                prefix,
+                notices: directBoardNotifier(collab),
+              })
+            : undefined;
+        const web = await createApp({
+          config,
+          db,
+          auth,
+          log,
+          ...testDeps(db, log),
+          notices: queued?.notifier ?? directBoardNotifier(collab),
+        });
+        try {
+          const created = await web.inject({
+            method: 'POST',
+            url: `/api/v1/boards/${boardId}/comments`,
+            headers: as('owner'),
+            payload: { body: `A comment through ${mode}` },
+          });
+          expect(created.statusCode).toBe(201);
+          const elementId = roots(viewer.doc).elements.keys().next().value as string;
+          const reviewed = await web.inject({
+            method: 'PUT',
+            url: `/api/v1/boards/${boardId}/elements/${elementId}/review`,
+            headers: as('owner'),
+            payload: { status: mode === 'direct' ? 'approved' : 'changes_requested' },
+          });
+          expect(reviewed.statusCode, reviewed.body).toBe(200);
+          await expect
+            .poll(() => received, { timeout: 5000 })
+            .toEqual([
+              { type: 'comments', elementId: null, threadId: created.json().id },
+              { type: 'review', elementId },
+            ]);
+          if (mode === 'split') {
+            const connection = createRedis(redisUrl);
+            const queue = new Queue(QUEUES.collab, { connection, prefix });
+            const events = new QueueEvents(QUEUES.collab, {
+              connection: createRedis(redisUrl),
+              prefix,
+            });
+            try {
+              await events.waitUntilReady();
+              const stale = await queue.add('notice', {
+                boardId,
+                notice: { type: 'review', elementId },
+                sentAt: Date.now() - NOTICE_TTL_MS - 1000,
+              });
+              expect(await stale.waitUntilFinished(events, 5000)).toEqual({ sent: false });
+              expect(received).toHaveLength(2);
+            } finally {
+              await Promise.all([queue.close(), events.close()]);
+              connection.disconnect();
+            }
+          }
+        } finally {
+          await web.close();
+          await queued?.close();
+          await worker?.close();
+          viewer.close();
+        }
+      },
+    );
+  }
 });

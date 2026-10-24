@@ -1,12 +1,16 @@
+import type { BoardNotice } from '@inkadra/doc-schema';
 import { Queue, QueueEvents, Worker } from 'bullmq';
 import { and, eq, lt } from 'drizzle-orm';
 import IORedis from 'ioredis';
 import type { Logger } from 'pino';
+import { type BoardNotifier, NOTICE_TTL_MS } from './board-notices.ts';
 import type { AddCard, AddCardResult, BoardWriter } from './board-writer.ts';
 import type { Database } from './db/client.ts';
 import { asset } from './db/schema.ts';
 import type { Jobs } from './jobs.ts';
+import { type Mailer, noMailer } from './mailer.ts';
 import { type MediaDeps, markFailed, processAsset } from './media/process.ts';
+import { purgeNotifications, sendDigests, sendImmediateEmails } from './notifications.ts';
 import { type Storage, UPLOAD_EXPIRY_MS } from './storage.ts';
 import {
   applyVersionRetention,
@@ -44,6 +48,13 @@ export type JobPayloads = {
   'collab:save-version': SaveVersion & { expiresAt: number };
   'collab:restore-version': RestoreVersion & { expiresAt: number };
   'maintenance:version-retention': Record<string, never>;
+  /** A stateless message for the open clients of a board (comments, reviews). */
+  'collab:notice': { boardId: string; notice: BoardNotice; sentAt: number };
+  'maintenance:purge-notifications': Record<string, never>;
+  /** Grouped `immediate` notification emails, every minute. */
+  'email:notifications': Record<string, never>;
+  /** `daily` digests, checked every hour. */
+  'email:digest': Record<string, never>;
 };
 
 const ATTEMPTS = { attempts: 3, backoff: { type: 'exponential', delay: 10_000 } } as const;
@@ -120,10 +131,18 @@ export async function purgeUploads(db: Database, storage: Storage, jobs: Jobs) {
 export async function startWorkers(
   url: string,
   log: Logger,
-  deps: MediaDeps & { db: Database; storage: Storage },
+  deps: MediaDeps & {
+    db: Database;
+    storage: Storage;
+    /** Notification emails; off without it. */
+    mailer?: Mailer;
+    publicUrl?: string;
+    instanceName?: string;
+  },
+  opts: { prefix?: string } = {},
 ) {
   const connection = createRedis(url);
-  const queues = createQueues(url);
+  const queues = createQueues(url, opts);
 
   const maintenance = new Worker(
     QUEUES.maintenance,
@@ -136,9 +155,10 @@ export async function startWorkers(
       }
       if (job.name === 'purge-uploads') return purgeUploads(deps.db, deps.storage, queues.jobs);
       if (job.name === 'version-retention') return applyVersionRetention(deps.db);
+      if (job.name === 'purge-notifications') return purgeNotifications(deps.db);
       throw new Error(`Unknown job ${job.name}`);
     },
-    { connection, concurrency: 2 },
+    { connection, concurrency: 2, prefix: opts.prefix },
   );
 
   // Image work is CPU and memory heavy: two at a time keeps a small server responsive.
@@ -149,7 +169,7 @@ export async function startWorkers(
       const { assetId } = job.data as JobPayloads['media:process'];
       return processAsset(deps, assetId);
     },
-    { connection, concurrency: 2 },
+    { connection, concurrency: 2, prefix: opts.prefix },
   );
   media.on('failed', (job) => {
     if (job && job.attemptsMade >= (job.opts.attempts ?? 1))
@@ -158,7 +178,26 @@ export async function startWorkers(
       );
   });
 
-  const scheduler = new Queue(QUEUES.maintenance, { connection });
+  // Notification emails check access again when they are sent. One at a time, so a slow SMTP
+  // server cannot have two runs pick the same person.
+  const mailDeps = {
+    db: deps.db,
+    mailer: deps.mailer ?? noMailer,
+    log,
+    publicUrl: deps.publicUrl ?? '',
+    instanceName: deps.instanceName ?? 'Inkadra',
+  };
+  const email = new Worker(
+    QUEUES.email,
+    async (job) => {
+      if (job.name === 'notifications') return sendImmediateEmails(mailDeps);
+      if (job.name === 'digest') return sendDigests(mailDeps);
+      throw new Error(`Unknown job ${job.name}`);
+    },
+    { connection, concurrency: 1, prefix: opts.prefix },
+  );
+
+  const scheduler = new Queue(QUEUES.maintenance, { connection, prefix: opts.prefix });
   await scheduler.upsertJobScheduler(
     'purge-uploads',
     { every: 60 * 60 * 1000 },
@@ -169,13 +208,37 @@ export async function startWorkers(
     { every: 60 * 60 * 1000 },
     { name: 'version-retention', data: {}, opts: KEEP },
   );
+  await scheduler.upsertJobScheduler(
+    'purge-notifications',
+    { every: 24 * 60 * 60 * 1000 },
+    { name: 'purge-notifications', data: {}, opts: KEEP },
+  );
+  const mailScheduler = new Queue(QUEUES.email, { connection, prefix: opts.prefix });
+  const QUIET = { removeOnComplete: { age: 600, count: 100 }, removeOnFail: { age: 86400 } };
+  await mailScheduler.upsertJobScheduler(
+    'notifications',
+    { every: 60 * 1000 },
+    { name: 'notifications', data: {}, opts: QUIET },
+  );
+  await mailScheduler.upsertJobScheduler(
+    'digest',
+    { every: 60 * 60 * 1000 },
+    { name: 'digest', data: {}, opts: QUIET },
+  );
 
-  for (const w of [maintenance, media]) {
+  for (const w of [maintenance, media, email]) {
     w.on('failed', (job, err) => log.error({ queue: w.name, job: job?.id, err }, 'job failed'));
   }
   return {
     async close() {
-      await Promise.all([maintenance.close(), media.close(), scheduler.close(), queues.close()]);
+      await Promise.all([
+        maintenance.close(),
+        media.close(),
+        email.close(),
+        scheduler.close(),
+        mailScheduler.close(),
+        queues.close(),
+      ]);
       connection.disconnect();
     },
   };
@@ -304,19 +367,25 @@ export function queuedBoardWriter(
 type CollabJob = 'add-card' | 'save-version' | 'restore-version';
 
 /**
- * Run by `inkadra collab`: applies the edits queued by web roles to the live documents.
- * Without `versions`, version jobs fail.
+ * Run by `inkadra collab`: applies the edits queued by web roles to the live documents, and
+ * passes their notices on to open boards. Without `versions`, version jobs fail.
  */
 export function startBoardWorker(
   url: string,
   writer: BoardWriter,
   log: Logger,
-  opts: { prefix?: string; versions?: VersionWriter } = {},
+  opts: { prefix?: string; versions?: VersionWriter; notices?: BoardNotifier } = {},
 ) {
   const connection = createRedis(url);
   const worker = new Worker(
     QUEUES.collab,
     async (job) => {
+      if (job.name === 'notice') {
+        const { boardId, notice, sentAt } = job.data as JobPayloads['collab:notice'];
+        if (Date.now() - sentAt > NOTICE_TTL_MS) return { sent: false };
+        opts.notices?.notify(boardId, notice);
+        return { sent: true };
+      }
       const name = job.name as CollabJob;
       const input = job.data as { expiresAt: number };
       // Checked again inside the write; this one spares opening the document.
@@ -368,6 +437,35 @@ export function inlineJobs(deps: MediaDeps, log: Logger): Jobs & { idle(): Promi
     },
     async idle() {
       while (running.size > 0) await Promise.all(running);
+    },
+  };
+}
+
+/**
+ * From a web role without a collaboration server of its own (split mode): a `notice` job on the
+ * `collab` queue, which `inkadra collab` turns into the message (decision 0014). Not retried
+ * and dropped once stale: the next change or a reload brings clients up to date anyway.
+ */
+export function queuedBoardNotifier(url: string, log: Logger, opts: { prefix?: string } = {}) {
+  const connection = createRedis(url);
+  const queue = new Queue(QUEUES.collab, { connection, prefix: opts.prefix });
+  const notifier: BoardNotifier = {
+    notify(boardId, notice) {
+      const adding = queue.add(
+        'notice',
+        { boardId, notice, sentAt: Date.now() },
+        { attempts: 1, removeOnComplete: true, removeOnFail: { age: 3600 } },
+      );
+      within(adding, ENQUEUE_TIMEOUT_MS, 'The collaboration queue is unreachable.').catch((err) =>
+        log.warn({ err, boardId }, 'board notice not queued'),
+      );
+    },
+  };
+  return {
+    notifier,
+    async close() {
+      await queue.close();
+      connection.disconnect();
     },
   };
 }

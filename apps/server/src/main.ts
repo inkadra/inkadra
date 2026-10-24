@@ -4,6 +4,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import pino from 'pino';
 import { createAuth } from './auth.ts';
+import { type BoardNotifier, directBoardNotifier } from './board-notices.ts';
 import { type BoardWriter, directBoardWriter } from './board-writer.ts';
 import { attachCollab, createCollabServer } from './collab.ts';
 import { loadConfig, VERSION } from './config.ts';
@@ -15,6 +16,7 @@ import { createMailer } from './mailer.ts';
 import {
   createQueues,
   inlineJobs,
+  queuedBoardNotifier,
   queuedBoardWriter,
   startBoardWorker,
   startWorkers,
@@ -58,7 +60,12 @@ async function main() {
 
   if (command === 'worker' || command === 'all') {
     if (!config.REDIS_URL) throw new Error('REDIS_URL is required by the worker.');
-    const workers = await startWorkers(config.REDIS_URL, log, media);
+    const workers = await startWorkers(config.REDIS_URL, log, {
+      ...media,
+      mailer,
+      publicUrl: config.PUBLIC_URL,
+      instanceName: config.INSTANCE_NAME,
+    });
     closers.unshift(() => workers.close());
     log.info('worker started');
   }
@@ -79,6 +86,7 @@ async function main() {
           log,
           {
             versions: directVersionWriter(server, db, log),
+            notices: directBoardNotifier(server),
           },
         );
         closers.unshift(() => boardWorker.close());
@@ -111,14 +119,19 @@ async function main() {
     if (swept > 0) log.info({ swept }, 'removed stale clip folders');
     let boards: BoardWriter | undefined;
     let versions: VersionWriter | undefined;
+    let notices: BoardNotifier | undefined;
     if (collab) {
       boards = directBoardWriter(collab, log);
       versions = directVersionWriter(collab, db, log);
+      notices = directBoardNotifier(collab);
     } else if (config.REDIS_URL) {
       const queued = queuedBoardWriter(config.REDIS_URL);
       boards = queued.writer;
       versions = queued.versions;
       closers.unshift(() => queued.close());
+      const queuedNotices = queuedBoardNotifier(config.REDIS_URL, log);
+      notices = queuedNotices.notifier;
+      closers.unshift(() => queuedNotices.close());
     }
     const webDist = config.WEB_DIST ?? join(here, '..', 'web');
     const app = await createApp({
@@ -132,6 +145,7 @@ async function main() {
       pingQueue,
       boards,
       versions,
+      notices,
       tmpDir,
     });
     if (collab) {

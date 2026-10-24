@@ -24,6 +24,47 @@ const it = {
     'Se non sei stato tu, ignora questa email: la password resta quella di prima.',
   ],
   resetAction: 'Scegli una nuova password',
+  someone: 'Qualcuno',
+  guestName: (name: string) => `${name} (ospite)`,
+  reviewStatuses: {
+    none: 'nessuno',
+    in_review: 'in revisione',
+    approved: 'approvato',
+    changes_requested: 'modifiche richieste',
+  } as Record<string, string>,
+  notificationLine: (
+    type: string,
+    who: string,
+    where: string,
+    excerpt: string | null,
+    status: string | null,
+  ) => {
+    const said = excerpt ? `: «${excerpt}»` : '';
+    switch (type) {
+      case 'mention':
+        return `${who} ti ha menzionato su "${where}"${said}`;
+      case 'reply':
+        return `${who} ha risposto su "${where}"${said}`;
+      case 'comment':
+        return `${who} ha commentato una tua scheda su "${where}"${said}`;
+      case 'review':
+        return `${who} ha cambiato la revisione di una scheda su "${where}": ${it.reviewStatuses[status ?? ''] ?? status ?? ''}`;
+      case 'invitation_accepted':
+        return where
+          ? `${who} ha accettato il tuo invito su "${where}"`
+          : `${who} ha accettato il tuo invito`;
+      default:
+        return `${who}: "${where}"`;
+    }
+  },
+  notificationSubject: (count: number, instance: string) =>
+    count === 1 ? `Una novità su ${instance}` : `${count} novità su ${instance}`,
+  digestSubject: (instance: string) => `Il riepilogo di oggi su ${instance}`,
+  andMore: (count: number) =>
+    count === 1 ? "E un'altra notifica." : `E altre ${count} notifiche.`,
+  notificationSettings: (url: string) =>
+    `Scegli quando ricevere queste email nelle impostazioni: ${url}`,
+  notificationAction: 'Apri Inkadra',
 };
 
 type Texts = typeof it;
@@ -50,6 +91,40 @@ const en: Texts = {
     'If it was not you, ignore this email: your password stays the same.',
   ],
   resetAction: 'Choose a new password',
+  someone: 'Someone',
+  guestName: (name) => `${name} (guest)`,
+  reviewStatuses: {
+    none: 'none',
+    in_review: 'in review',
+    approved: 'approved',
+    changes_requested: 'changes requested',
+  },
+  notificationLine: (type, who, where, excerpt, status) => {
+    const said = excerpt ? `: “${excerpt}”` : '';
+    switch (type) {
+      case 'mention':
+        return `${who} mentioned you on "${where}"${said}`;
+      case 'reply':
+        return `${who} replied on "${where}"${said}`;
+      case 'comment':
+        return `${who} commented on one of your cards on "${where}"${said}`;
+      case 'review':
+        return `${who} changed the review of a card on "${where}": ${en.reviewStatuses[status ?? ''] ?? status ?? ''}`;
+      case 'invitation_accepted':
+        return where
+          ? `${who} accepted your invitation to "${where}"`
+          : `${who} accepted your invitation`;
+      default:
+        return `${who}: "${where}"`;
+    }
+  },
+  notificationSubject: (count, instance) =>
+    count === 1 ? `Something new on ${instance}` : `${count} new things on ${instance}`,
+  digestSubject: (instance) => `Today on ${instance}`,
+  andMore: (count) =>
+    count === 1 ? 'And one more notification.' : `And ${count} more notifications.`,
+  notificationSettings: (url) => `Choose when you get these emails in your settings: ${url}`,
+  notificationAction: 'Open Inkadra',
 };
 
 export function mailText(who: { locale?: string | null }): Texts {
