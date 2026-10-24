@@ -2,7 +2,7 @@ import type { ProjectRole } from '@inkadra/shared';
 import { and, eq, inArray, isNull, sql } from 'drizzle-orm';
 import { visibleBoardCard } from './board-content.ts';
 import type { Database } from './db/client.ts';
-import { asset, board, boardGrant, projectMember } from './db/schema.ts';
+import { asset, board, boardGrant, notification, projectMember } from './db/schema.ts';
 import { HttpError } from './http/errors.ts';
 
 export interface Actor {
@@ -339,6 +339,64 @@ export async function boardRoles(
     if (role) out.set(boardId, role);
   }
   return out;
+}
+
+/** SQL equivalent of visibility/boardRoles: every granted role permits reading. */
+export function notificationAccess(userId: string) {
+  return sql`(
+    (${notification.boardId} is not null and exists (
+      with recursive up as (
+        select b.id, b.parent_board_id, b.project_id from board b
+        where b.id = ${notification.boardId} and b.deleted_at is null
+        union all
+        select b.id, b.parent_board_id, up.project_id from board b
+        join up on b.id = up.parent_board_id
+      )
+      select 1 from up where
+        exists (select 1 from board_grant g where g.board_id = up.id and g.user_id = ${userId})
+        or exists (select 1 from project_member m
+          where m.project_id = up.project_id and m.user_id = ${userId})
+    )) or (${notification.boardId} is null and (
+      ${notification.projectId} is null
+      or exists (select 1 from project_member m
+        where m.project_id = ${notification.projectId} and m.user_id = ${userId})
+      or exists (select 1 from board_grant g join board b on b.id = g.board_id
+        where b.project_id = ${notification.projectId} and b.deleted_at is null
+          and g.user_id = ${userId})
+    ))
+  )`;
+}
+
+/** Effective roles of many people on one board, without a query per mention/recipient. */
+export async function boardRolesForPeople(
+  db: Pick<Database, 'execute'>,
+  boardId: string,
+  userIds: readonly string[],
+): Promise<Map<string, ProjectRole>> {
+  const ids = [...new Set(userIds)];
+  if (ids.length === 0) return new Map();
+  const rows = await db.execute<{ user_id: string; role: ProjectRole | null }>(sql`
+    with recursive up as (
+      select b.id, b.parent_board_id, b.project_id, 0 as depth
+      from board b where b.id = ${boardId} and b.deleted_at is null
+      union all
+      select p.id, p.parent_board_id, up.project_id, up.depth + 1
+      from board p join up on p.id = up.parent_board_id
+    ), people as (
+      select unnest(array[${sql.join(
+        ids.map((id) => sql`${id}::uuid`),
+        sql`, `,
+      )}]) as id
+    )
+    select people.id as user_id,
+      coalesce(
+        (select g.role from up join board_grant g on g.board_id = up.id
+         where g.user_id = people.id order by up.depth limit 1),
+        (select m.role from project_member m where m.user_id = people.id
+         and m.project_id = (select project_id from up limit 1))
+      ) as role
+    from people`);
+  return new Map(rows.flatMap((r) => (r.role ? [[r.user_id, r.role]] : [])));
 }
 
 /** Whether an active link can reach a board through visible cards and its creator's access. */

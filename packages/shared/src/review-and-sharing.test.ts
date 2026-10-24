@@ -28,6 +28,10 @@ describe('review and sharing contracts', () => {
   it('reads mentions from a comment body once each', () => {
     const body = `Ciao @{${userId}} e @{${userId.toUpperCase()}}, guarda @{non-un-id}`;
     expect(mentionedIds(body)).toEqual([userId]);
+    const junk = Array.from({ length: 25 }, (_, i) => `@{${String(i).padStart(36, 'a')}}`).join(
+      ' ',
+    );
+    expect(mentionedIds(`${junk} @{${userId}}`)).toEqual([userId]);
     expect(CreateComment.safeParse({ body: '   ' }).success).toBe(false);
     expect(CreateComment.safeParse({ body: 'x'.repeat(5001) }).success).toBe(false);
     expect(CreateComment.safeParse({ elementId: 'bad id!', body: 'ok' }).success).toBe(false);

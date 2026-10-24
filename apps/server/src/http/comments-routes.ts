@@ -34,7 +34,7 @@ import {
   atLeast,
   type BoardAccess,
   boardAccess,
-  boardRole,
+  boardRolesForPeople,
   linkIncludesBoard,
 } from '../access.ts';
 import type { Auth } from '../auth.ts';
@@ -42,7 +42,7 @@ import { storedElement } from '../board-content.ts';
 import { type BoardNotifier, noNotices } from '../board-notices.ts';
 import type { Database } from '../db/client.ts';
 import { comment, shareLink } from '../db/schema.ts';
-import { notify, Recipients } from '../notifications.ts';
+import { afterCommit, notify, Recipients } from '../notifications.ts';
 import { iso } from './api-routes.ts';
 import { requireActor } from './auth-routes.ts';
 import { authorOf, loadPeople, type People } from './authors.ts';
@@ -77,27 +77,23 @@ const canWrite = (v: Viewer) => atLeast(v.role, 'commenter');
 
 /** The mentions of a body that name people who can read the board. */
 async function readableMentions(db: Database, boardId: string, body: string): Promise<string[]> {
-  const ids = mentionedIds(body).filter((id) => Id.safeParse(id).success);
-  const kept: string[] = [];
-  for (const id of ids) if ((await boardRole(db, { id }, boardId))?.role) kept.push(id);
-  return kept;
+  const ids = mentionedIds(body);
+  const roles = await boardRolesForPeople(db, boardId, ids);
+  return ids.filter((id) => roles.has(id));
 }
 
 async function peopleOf(db: Database, rows: Row[]) {
-  const people = await loadPeople(
+  const boardId = rows[0]?.boardId;
+  if (boardId) {
+    const ids = rows.flatMap((r) => r.mentions);
+    const roles = await boardRolesForPeople(db, boardId, ids);
+    for (const row of rows) row.mentions = row.mentions.filter((id) => roles.has(id));
+  }
+  return loadPeople(
     db,
     rows.flatMap((r) => [r.authorId, r.resolvedBy, ...r.mentions]),
     rows.map((r) => r.authorGuestId),
   );
-  // A mention stops being rendered once that person can no longer read this board.
-  const boardId = rows[0]?.boardId;
-  if (boardId)
-    for (const id of new Set(rows.flatMap((r) => r.mentions))) {
-      if (!(await boardRole(db, { id }, boardId))?.role) {
-        for (const row of rows) row.mentions = row.mentions.filter((m) => m !== id);
-      }
-    }
-  return people;
 }
 
 export function toComment(row: Row, people: People, viewer: Viewer): Comment {
@@ -181,6 +177,11 @@ async function checkAudience(db: Database, access: BoardAccess, linkId: string) 
     .from(shareLink)
     .where(and(eq(shareLink.id, linkId), eq(shareLink.projectId, access.board.projectId)));
   if (!link) throw new HttpError('bad_request', 'The link does not include this board.');
+  if (link.role === 'guest_view')
+    throw new HttpError('bad_request', 'The link cannot read comments.');
+  const stop = access.chain.findIndex((b) => b.id === link.boardId);
+  if (stop < 0 || (stop > 0 && !link.includeSubBoards))
+    throw new HttpError('bad_request', 'The link does not include this board.');
   const working =
     !link.revokedAt &&
     (!link.expiresAt || link.expiresAt > new Date()) &&
@@ -285,6 +286,8 @@ export function registerCommentRoutes(app: FastifyInstance, deps: Deps) {
     const elementId = thread ? thread.elementId : (input.elementId ?? null);
     if (!thread && elementId && !(await storedElement(db, boardId, elementId)))
       throw new HttpError('not_found', 'Card not found.');
+    if (input.pin && thread)
+      throw new HttpError('bad_request', 'Only the first comment of a thread can be pinned.');
     if (input.pin && !elementId) throw new HttpError('bad_request', 'Only a card can be pinned.');
     // Replies take the visibility of their thread; a reply of the team carries no link.
     const visibility = thread ? thread.visibility : (input.visibility ?? 'team');
@@ -325,35 +328,38 @@ export function registerCommentRoutes(app: FastifyInstance, deps: Deps) {
       return created;
     });
 
-    const recipients = new Recipients(actor.id);
-    for (const id of mentions) recipients.add(id, 'mention');
-    if (thread) {
-      const writers = await db
-        .selectDistinct({ id: comment.authorId })
-        .from(comment)
-        .where(
-          and(
-            or(eq(comment.id, thread.id), eq(comment.threadId, thread.id)),
-            isNotNull(comment.authorId),
-          ),
-        );
-      for (const w of writers) recipients.add(w.id, 'reply');
-    } else if (elementId) {
-      const card = await storedElement(db, boardId, elementId);
-      recipients.add(card?.createdBy, 'comment');
-    }
-    await notify(
-      db,
-      {
-        actor: { userId: actor.id },
-        projectId: access.board.projectId,
-        boardId,
-        elementId,
-        commentId: row.id,
-      },
-      recipients,
-    );
-    tell(row);
+    await afterCommit(req.log, async () => {
+      const recipients = new Recipients(actor.id);
+      for (const id of mentions) recipients.add(id, 'mention');
+      if (thread) {
+        const writers = await db
+          .selectDistinct({ id: comment.authorId })
+          .from(comment)
+          .where(
+            and(
+              or(eq(comment.id, thread.id), eq(comment.threadId, thread.id)),
+              isNotNull(comment.authorId),
+              isNull(comment.deletedAt),
+            ),
+          );
+        for (const w of writers) recipients.add(w.id, 'reply');
+      } else if (elementId) {
+        const card = await storedElement(db, boardId, elementId);
+        recipients.add(card?.createdBy, 'comment');
+      }
+      await notify(
+        db,
+        {
+          actor: { userId: actor.id },
+          projectId: access.board.projectId,
+          boardId,
+          elementId,
+          commentId: row.id,
+        },
+        recipients,
+      );
+    });
+    await afterCommit(req.log, () => tell(row));
     return reply.status(201).send(toComment(row, await peopleOf(db, [row]), viewer));
   });
 
@@ -392,6 +398,8 @@ export function registerCommentRoutes(app: FastifyInstance, deps: Deps) {
     if (row.authorId !== actor.id)
       throw new HttpError('forbidden', 'Only the author can edit a comment.');
     requireWriter(viewer);
+    if (!limiter.take(actor.id))
+      throw new HttpError('rate_limited', 'Too many comment writes: wait a minute.');
     const mentions = await readableMentions(db, row.boardId, input.body);
     const [updated] = await db
       .update(comment)
@@ -399,21 +407,23 @@ export function registerCommentRoutes(app: FastifyInstance, deps: Deps) {
       .where(eq(comment.id, row.id))
       .returning();
     if (!updated) throw new HttpError('not_found', 'Comment not found.');
-    // Only people mentioned for the first time hear about the edit.
-    const recipients = new Recipients(actor.id);
-    for (const id of mentions) if (!row.mentions.includes(id)) recipients.add(id, 'mention');
-    await notify(
-      db,
-      {
-        actor: { userId: actor.id },
-        projectId: access.board.projectId,
-        boardId: row.boardId,
-        elementId: row.elementId,
-        commentId: row.id,
-      },
-      recipients,
-    );
-    tell(updated);
+    await afterCommit(req.log, async () => {
+      // Only people mentioned for the first time hear about the edit.
+      const recipients = new Recipients(actor.id);
+      for (const id of mentions) if (!row.mentions.includes(id)) recipients.add(id, 'mention');
+      await notify(
+        db,
+        {
+          actor: { userId: actor.id },
+          projectId: access.board.projectId,
+          boardId: row.boardId,
+          elementId: row.elementId,
+          commentId: row.id,
+        },
+        recipients,
+      );
+    });
+    await afterCommit(req.log, () => tell(updated));
     return toComment(updated, await peopleOf(db, [updated]), viewer);
   });
 
@@ -458,7 +468,7 @@ export function registerCommentRoutes(app: FastifyInstance, deps: Deps) {
           .delete(comment)
           .where(and(eq(comment.id, row.threadId), isNotNull(comment.deletedAt)));
     });
-    tell(row);
+    await afterCommit(req.log, () => tell(row));
     return reply.status(204).send();
   });
 
@@ -468,6 +478,7 @@ export function registerCommentRoutes(app: FastifyInstance, deps: Deps) {
       const { commentId } = CommentParams.parse(req.params);
       const { row, viewer } = await readableComment(actor, commentId);
       requireWriter(viewer);
+      if (row.deletedAt) throw new HttpError('not_found', 'Comment not found.');
       if (row.threadId)
         throw new HttpError('bad_request', 'Only the first comment of a thread can be resolved.');
       const resolve = action === 'resolve';
@@ -480,11 +491,23 @@ export function registerCommentRoutes(app: FastifyInstance, deps: Deps) {
               ? { resolvedAt: new Date(), resolvedBy: actor.id }
               : { resolvedAt: null, resolvedBy: null },
           )
-          .where(eq(comment.id, row.id))
+          .where(
+            and(
+              eq(comment.id, row.id),
+              isNull(comment.deletedAt),
+              resolve ? isNull(comment.resolvedAt) : isNotNull(comment.resolvedAt),
+            ),
+          )
           .returning();
-        if (!updated) throw new HttpError('not_found', 'Comment not found.');
-        current = updated;
-        tell(current);
+        if (updated) {
+          current = updated;
+          await afterCommit(req.log, () => tell(current));
+        } else {
+          // Another resolver won. Return its attribution instead of overwriting it.
+          const fresh = await readableComment(actor, commentId);
+          if (fresh.row.deletedAt) throw new HttpError('not_found', 'Comment not found.');
+          current = fresh.row;
+        }
       }
       const [thread] = await toThreads(db, [current], viewer);
       return thread;

@@ -270,7 +270,10 @@ export type CommentCounts = z.infer<typeof CommentCounts>;
 /** Turns `@{id}` mentions in a comment body into the ids they mention, without duplicates. */
 export function mentionedIds(body: string): string[] {
   const ids = new Set<string>();
-  for (const m of body.matchAll(/@\{([0-9a-f-]{36})\}/gi)) ids.add((m[1] as string).toLowerCase());
+  for (const m of body.matchAll(/@\{([0-9a-f-]{36})\}/gi)) {
+    const id = (m[1] as string).toLowerCase();
+    if (Id.safeParse(id).success) ids.add(id);
+  }
   return [...ids].slice(0, MAX_MENTIONS);
 }
 
