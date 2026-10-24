@@ -3,17 +3,17 @@ import { Button, Logo, TextField, Wordmark } from '@inkadra/ui';
 import { type FormEvent, type ReactNode, useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router';
-import { setAssetLoader } from '../board/assets.ts';
+import { resetAssetCache, setAssetLoader } from '../board/assets.ts';
 import { guestApi } from './api.ts';
 import { GuestBoardScreen } from './GuestBoard.tsx';
-import { failureOf, type Stop } from './model.ts';
+import { failureOf, onNoSession, type Stop } from './model.ts';
 import '../routes/login.css';
 import './guest.css';
 
 type Gate =
   | { kind: 'loading' }
   | { kind: 'stop'; stop: Stop }
-  | { kind: 'password'; preview: ShareLinkPreview; wrong: boolean; changed: boolean }
+  | { kind: 'password'; preview: ShareLinkPreview; changed: boolean }
   | { kind: 'ready'; preview: ShareLinkPreview; session: GuestSession };
 
 /** Keeps the page out of search engines and away from every account endpoint. */
@@ -22,12 +22,18 @@ function useGuestDocument() {
     const meta = document.createElement('meta');
     meta.name = 'robots';
     meta.content = 'noindex, nofollow';
-    document.head.append(meta);
+    // The server sends Referrer-Policy too; this holds if a proxy drops the header.
+    const referrer = document.createElement('meta');
+    referrer.name = 'referrer';
+    referrer.content = 'no-referrer';
+    document.head.append(meta, referrer);
     // Files come from the snapshot; anything else is not for guests.
     setAssetLoader(async () => null);
     return () => {
       meta.remove();
+      referrer.remove();
       setAssetLoader(null);
+      resetAssetCache();
     };
   }, []);
 }
@@ -40,6 +46,8 @@ export function GuestPage() {
   const { t } = useTranslation();
   const { token = '' } = useParams();
   const [gate, setGate] = useState<Gate>({ kind: 'loading' });
+  // When the page last opened the link again because the server did not know the session.
+  const reopened = useRef<number | null>(null);
   useGuestDocument();
 
   const start = useCallback(async () => {
@@ -57,7 +65,7 @@ export function GuestPage() {
         const session = await guestApi.session(preview.linkId);
         setGate({ kind: 'ready', preview, session });
       } catch {
-        setGate({ kind: 'password', preview, wrong: false, changed: false });
+        setGate({ kind: 'password', preview, changed: false });
       }
       return;
     }
@@ -66,8 +74,7 @@ export function GuestPage() {
       setGate({ kind: 'ready', preview, session });
     } catch (err) {
       const f = failureOf(err);
-      if (f.kind === 'password')
-        setGate({ kind: 'password', preview, wrong: false, changed: false });
+      if (f.kind === 'password') setGate({ kind: 'password', preview, changed: false });
       else setGate({ kind: 'stop', stop: f.kind === 'stop' ? f.stop : 'error' });
     }
   }, [token]);
@@ -98,10 +105,8 @@ export function GuestPage() {
       <PasswordForm
         token={token}
         preview={gate.preview}
-        wrong={gate.wrong}
         changed={gate.changed}
         onOpened={(session) => setGate({ kind: 'ready', preview: gate.preview, session })}
-        onWrong={() => setGate({ ...gate, wrong: true, changed: false })}
         onStop={(stop) => setGate({ kind: 'stop', stop })}
       />
     );
@@ -113,12 +118,15 @@ export function GuestPage() {
       session={gate.session}
       onSession={(session) => setGate({ ...gate, session })}
       onStop={(stop) => {
-        if (stop === 'no_session') void start();
-        else setGate({ kind: 'stop', stop });
+        if (stop !== 'no_session') setGate({ kind: 'stop', stop });
+        else if (onNoSession(reopened.current, Date.now(), navigator.cookieEnabled) === 'cookies')
+          setGate({ kind: 'stop', stop: 'cookies' });
+        else {
+          reopened.current = Date.now();
+          void start();
+        }
       }}
-      onPasswordChanged={() =>
-        setGate({ kind: 'password', preview: gate.preview, wrong: false, changed: true })
-      }
+      onPasswordChanged={() => setGate({ kind: 'password', preview: gate.preview, changed: true })}
     />
   );
 }
@@ -149,7 +157,7 @@ function StopScreen({ stop }: { stop: Stop }) {
   return (
     <GateCard heading={t(`guest.stop.${stop}.title`)}>
       <p className="guest-gate__text">{t(`guest.stop.${stop}.body`)}</p>
-      {(stop === 'rate_limited' || stop === 'error') && (
+      {(stop === 'rate_limited' || stop === 'error' || stop === 'cookies') && (
         <Button variant="secondary" onClick={() => window.location.reload()}>
           {t('guest.retry')}
         </Button>
@@ -161,30 +169,28 @@ function StopScreen({ stop }: { stop: Stop }) {
 function PasswordForm({
   token,
   preview,
-  wrong,
   changed,
   onOpened,
-  onWrong,
   onStop,
 }: {
   token: string;
   preview: ShareLinkPreview;
-  wrong: boolean;
   changed: boolean;
   onOpened: (session: GuestSession) => void;
-  onWrong: () => void;
   onStop: (stop: Stop) => void;
 }) {
   const { t } = useTranslation();
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Each failed attempt clears the field and puts the cursor back in it.
+  const [attempts, setAttempts] = useState(0);
   const field = useRef<HTMLDivElement>(null);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: refocus after every attempt
   useEffect(() => {
-    if (wrong) setPassword('');
     field.current?.querySelector('input')?.focus();
-  }, [wrong]);
+  }, [attempts]);
 
   async function submit(e: FormEvent) {
     e.preventDefault();
@@ -193,13 +199,24 @@ function PasswordForm({
     setError(null);
     try {
       onOpened(await guestApi.open(preview.linkId, { token, password }));
+      return;
     } catch (err) {
       const f = failureOf(err);
-      if (f.kind === 'password') onWrong();
-      else if (f.kind === 'stop' && f.stop === 'rate_limited')
-        setError(t('guest.password.tooMany'));
-      else if (f.kind === 'stop') onStop(f.stop);
-      else setError(t('guest.errors.generic'));
+      if (f.kind === 'stop' && f.stop !== 'rate_limited') {
+        onStop(f.stop);
+        return;
+      }
+      setError(
+        f.kind === 'password'
+          ? t('guest.password.wrong')
+          : f.kind === 'stop'
+            ? t('guest.password.tooMany')
+            : f.kind === 'transient'
+              ? t('guest.errors.offline')
+              : t('guest.errors.generic'),
+      );
+      if (f.kind === 'password' || f.kind === 'stop') setPassword('');
+      setAttempts((n) => n + 1);
     } finally {
       setBusy(false);
     }
@@ -217,10 +234,12 @@ function PasswordForm({
           <TextField
             label={t('guest.password.label')}
             type="password"
-            autoComplete="off"
+            // Not the password of an account: keeps browsers from filling in or saving the
+            // site's login password here.
+            autoComplete="new-password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            error={wrong ? t('guest.password.wrong') : error}
+            error={error}
           />
         </div>
         <Button type="submit" variant="primary" size="lg" block disabled={busy || !password}>

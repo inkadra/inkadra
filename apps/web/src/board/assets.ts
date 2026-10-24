@@ -27,19 +27,37 @@ export function setAssetLoader(next: Loader | null) {
   loader = next ?? accountLoader;
 }
 
+// Bumped by resetAssetCache, so answers of a loader set before do not land in the new cache.
+let generation = 0;
+
+/**
+ * Forgets every file known so far, with the loader that fetched them. The guest page calls it
+ * when it closes: its files have guest URLs and must not show up in the team's app.
+ */
+export function resetAssetCache() {
+  generation += 1;
+  cache.clear();
+  inflight.clear();
+}
+
 async function load(id: string): Promise<void> {
+  const at = generation;
+  let value: Asset | 'missing';
   try {
-    const asset = await loader(id);
-    cache.set(id, asset ?? 'missing');
+    value = (await loader(id)) ?? 'missing';
   } catch {
-    cache.set(id, 'missing');
+    value = 'missing';
   }
+  if (at !== generation) return;
+  cache.set(id, value);
   notify(id);
 }
 
 function fetchOnce(id: string) {
   if (inflight.has(id)) return;
-  const p = load(id).finally(() => inflight.delete(id));
+  const p = load(id).finally(() => {
+    if (inflight.get(id) === p) inflight.delete(id);
+  });
   inflight.set(id, p);
 }
 

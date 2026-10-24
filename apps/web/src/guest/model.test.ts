@@ -1,15 +1,25 @@
-import type { GuestBoard, GuestElementReview, GuestPick } from '@inkadra/shared';
+import type {
+  GuestBoard,
+  GuestBoardSnapshot,
+  GuestElementReview,
+  GuestPick,
+} from '@inkadra/shared';
 import { describe, expect, it } from 'vitest';
 import { RequestError } from '../lib/api.ts';
 import {
   boardPath,
   boardTree,
+  COOKIE_CHECK_MS,
   canWithdraw,
   cardLabel,
   failureOf,
   isPicture,
   knownRole,
+  needsSession,
+  onNoSession,
+  retryAfterMs,
   rightsOf,
+  SESSION_REFRESH_MS,
   shownStatus,
   togglePick,
   toggleStars,
@@ -33,8 +43,71 @@ describe('guest failures', () => {
 
   it('shows a reason it does not know as a generic error', () => {
     expect(failureOf(denied(403, 'something_new'))).toEqual({ kind: 'stop', stop: 'error' });
-    expect(failureOf(new Error('offline'))).toEqual({ kind: 'stop', stop: 'error' });
     expect(failureOf(denied(400))).toEqual({ kind: 'other' });
+  });
+
+  it('treats no answer and server errors as temporary', () => {
+    expect(failureOf(new TypeError('Failed to fetch'))).toEqual({ kind: 'transient' });
+    expect(failureOf(denied(500))).toEqual({ kind: 'transient' });
+    expect(failureOf(denied(503))).toEqual({ kind: 'transient' });
+  });
+});
+
+describe('Retry-After', () => {
+  it('reads seconds and HTTP dates', () => {
+    const now = Date.parse('2026-10-24T10:00:00Z');
+    expect(retryAfterMs('30', now)).toBe(30_000);
+    expect(retryAfterMs('Sat, 24 Oct 2026 10:01:00 GMT', now)).toBe(60_000);
+    expect(retryAfterMs('Sat, 24 Oct 2026 09:00:00 GMT', now)).toBe(0);
+    expect(retryAfterMs(null, now)).toBeUndefined();
+    expect(retryAfterMs('soon', now)).toBeUndefined();
+  });
+});
+
+describe('lost session', () => {
+  it('opens the link again once, then asks for cookies', () => {
+    expect(onNoSession(null, 1000)).toBe('reopen');
+    expect(onNoSession(1000, 1000 + COOKIE_CHECK_MS - 1)).toBe('cookies');
+    // A session that lasted, then expired, is opened again.
+    expect(onNoSession(1000, 1000 + COOKIE_CHECK_MS)).toBe('reopen');
+    expect(onNoSession(null, 1000, false)).toBe('cookies');
+  });
+});
+
+describe('session refresh', () => {
+  const board: GuestBoard = {
+    id: 'b1',
+    parentBoardId: null,
+    kind: 'board',
+    title: 'Set',
+    coverUrl: null,
+  } as GuestBoard;
+  const snap = (version: string, title = 'Set', elements: unknown[] = []) =>
+    ({
+      board: { ...board, title, aspect: null },
+      breadcrumb: [],
+      elements,
+      assets: [],
+      reviews: [],
+      commentCounts: [],
+      picks: [],
+      version,
+      generatedAt: version,
+    }) as unknown as GuestBoardSnapshot;
+  const session = { boards: [board] };
+
+  it('asks only when the link may have changed', () => {
+    const now = 10_000;
+    // Content changed: the snapshot explains the new version.
+    expect(needsSession(snap('1'), snap('2', 'Set', [{ id: 'e' }]), session, now, now)).toBe(false);
+    // Same content, new version: something outside the snapshot moved, like the link.
+    expect(needsSession(snap('1'), snap('2'), session, now, now)).toBe(true);
+    // The board no longer matches the session.
+    expect(needsSession(snap('1'), snap('2', 'Nuovo titolo'), session, now, now)).toBe(true);
+    // And at least once a minute while the board changes.
+    expect(
+      needsSession(snap('1'), snap('2', 'Set', [{ id: 'e' }]), session, 0, SESSION_REFRESH_MS),
+    ).toBe(true);
   });
 });
 

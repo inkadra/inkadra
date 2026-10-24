@@ -782,6 +782,10 @@
         "title": "Troppe richieste",
         "body": "Aspetta qualche minuto e riprova."
       },
+      "cookies": {
+        "title": "Servono i cookie",
+        "body": "Per aprire questo board il browser deve conservare un cookie tecnico di questo sito. Consenti i cookie per questo sito nelle impostazioni del browser e riprova."
+      },
       "error": {
         "title": "Qualcosa è andato storto",
         "body": "Non è stato possibile aprire il board. Riprova tra poco."
@@ -799,7 +803,8 @@
     "errors": {
       "generic": "Qualcosa è andato storto. Riprova.",
       "rateLimited": "Troppe azioni in poco tempo: aspetta un momento.",
-      "notFound": "Questa card non è più disponibile."
+      "notFound": "Questa card non è più disponibile.",
+      "offline": "Connessione persa: riprova tra poco."
     },
     "name": {
       "title": "Come ti chiami?",
@@ -880,7 +885,8 @@
       "open": "Apri in grande",
       "close": "Chiudi",
       "noPreview": "Anteprima non disponibile."
-    }
+    },
+    "offline": "Connessione persa, riprovo…"
   },
   "join": {
     "invitedBy": "{{name}} ti invita {{what}}",

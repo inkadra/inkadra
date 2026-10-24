@@ -329,6 +329,28 @@ test('a guest opens the link, comments and picks a picture', async ({ browser })
   await expect(page.getByText('Solo per il team: rifare il tramonto')).toHaveCount(0);
   await expectNoTeamUi(page);
 
+  // A dropped connection keeps the board and the text being typed, and the page recovers.
+  await page.getByLabel('Card', { exact: true }).selectOption('');
+  await expect(page.getByRole('heading', { name: 'Commenti sul board' })).toBeVisible();
+  const draft = page.getByLabel('Scrivi un commento');
+  await draft.fill('Bozza da non perdere');
+  let dropped = 0;
+  const snapshotUrl = /\/api\/v1\/guest\/links\/[^/]+\/boards\/[^/?]+$/;
+  await context.route(snapshotUrl, (route) => {
+    if (dropped++ === 0) return route.abort('internetdisconnected');
+    return route.continue();
+  });
+  const lost = page.locator('.guest__header').getByRole('status');
+  await expect(lost).toHaveText('Connessione persa, riprovo…', { timeout: 15_000 });
+  await expect(cards).toHaveCount(3);
+  await expect(draft).toHaveValue('Bozza da non perdere');
+  await expect(lost).toHaveCount(0, { timeout: 30_000 });
+  expect(dropped).toBeGreaterThan(1);
+  await context.unroute(snapshotUrl);
+  await expect(cards).toHaveCount(3);
+  await expect(draft).toHaveValue('Bozza da non perdere');
+  await draft.fill('');
+
   expect(guestCalls.length).toBeGreaterThan(0);
   expect(accountCalls).toEqual([]);
   await context.close();
