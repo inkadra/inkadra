@@ -2,7 +2,7 @@
  * The service worker, built by pwa/plugin.ts into /sw.js with this build's file list.
  * It keeps the build's scripts, styles and fonts, and an offline page for navigations; the
  * API, sign-in, uploads, user files and the collaboration socket never pass through it.
- * Rules in routing.ts; why it is written by hand in docs/decisions/0013-installable-web-app.md.
+ * Rules in routing.ts; why it is written by hand in docs/decisions/0015-installable-web-app.md.
  */
 import { OFFLINE_PAGE, route } from './routing.ts';
 

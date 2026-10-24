@@ -1,4 +1,4 @@
-# 0013 · An installable web app with a hand-written service worker
+# 0015 · An installable web app with a hand-written service worker
 
 Accepted, 2026-10.
 
