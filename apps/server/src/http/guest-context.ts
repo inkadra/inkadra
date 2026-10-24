@@ -138,7 +138,10 @@ export function createGuestAuth(deps: { config: Config; db: Database; docs: DocV
     if (guest.authenticatedAt < link.sessionsValidAfter)
       throw guestDenied('forbidden', 'password_required', 'The password of this link changed.');
     let current = guest;
-    if (now.getTime() - guest.lastSeenAt.getTime() >= SLIDE_MS) {
+    if (
+      now.getTime() - guest.lastSeenAt.getTime() >= SLIDE_MS ||
+      (link.expiresAt && guest.sessionExpiresAt > link.expiresAt)
+    ) {
       const until = sessionEnd(link, now);
       const [slid] = await db
         .update(shareGuest)
