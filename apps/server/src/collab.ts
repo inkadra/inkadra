@@ -226,6 +226,7 @@ export function createCollabServer(deps: {
       if (issues.length > 0) log.warn({ boardId, issues: issues.slice(0, 10) }, 'invalid elements');
       const state = Y.encodeStateAsUpdate(document);
       const schemaVersion = document.getMap('meta').get('schemaVersion') as number;
+      const elementCount = document.getMap('elements').size;
       await db
         .insert(boardDoc)
         .values({ boardId, state, schemaVersion, size: state.byteLength })
@@ -248,7 +249,6 @@ export function createCollabServer(deps: {
       }
       // Decision 0013: an automatic version when the last one is more than an hour old.
       try {
-        const elementCount = document.getMap('elements').size;
         const snap = { state, schemaVersion, elementCount };
         await takeAutoVersion(db, boardId, snap, deps.now?.() ?? new Date());
       } catch (err) {
