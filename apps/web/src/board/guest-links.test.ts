@@ -4,6 +4,7 @@ import {
   canChangeScope,
   csvCell,
   draftOf,
+  namesText,
   patchOf,
   pickedFileNames,
   pickedWithoutName,
@@ -119,6 +120,12 @@ describe('proofing export', () => {
   it('lists the picked file names once', () => {
     expect(pickedFileNames(picks)).toEqual(['DSC_001.jpg']);
     expect(pickedWithoutName(picks)).toBe(1);
+  });
+
+  it('keeps each name on one line of the text file', () => {
+    expect(namesText(['a.jpg', 'b\r\nc.jpg', 'd\ne\u2028f.jpg'])).toBe(
+      'a.jpg\r\nb c.jpg\r\nd e f.jpg\r\n',
+    );
   });
 
   it('writes CSV cells that are never formulas', () => {

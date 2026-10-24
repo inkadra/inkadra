@@ -86,6 +86,11 @@ export function pickedFileNames(picks: ShareLinkPicks): string[] {
   return [...names];
 }
 
+/** The names as a text file, one per line: a line break inside a name cannot add a line. */
+export function namesText(names: readonly string[]): string {
+  return names.map((n) => `${n.replace(/[\r\n\u0085\u2028\u2029]+/g, ' ')}\r\n`).join('');
+}
+
 /** Picked cards whose file has no name (a file removed since, for example). */
 export function pickedWithoutName(picks: ShareLinkPicks): number {
   return picks.items.filter((i) => i.picked > 0 && !i.filename).length;
