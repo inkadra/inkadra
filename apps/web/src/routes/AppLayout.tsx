@@ -32,6 +32,7 @@ import { api, authApi } from '../lib/api.ts';
 import { HeaderContext } from '../lib/header.tsx';
 import { useSession } from '../lib/session.tsx';
 import { useTheme } from '../lib/theme.ts';
+import { NotificationBell } from '../notifications/Notifications.tsx';
 import { NewProjectDialog } from './NewProjectDialog.tsx';
 import { SearchDialog } from './SearchDialog.tsx';
 
@@ -280,6 +281,7 @@ export function AppLayout() {
           </span>
         </>
       )}
+      <NotificationBell />
     </Header>
   );
 

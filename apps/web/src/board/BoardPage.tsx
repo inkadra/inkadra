@@ -16,6 +16,7 @@ import { useSession } from '../lib/session.tsx';
 import { useProjects } from '../routes/AppLayout.tsx';
 import { boardPath, fetchBoard, useProjectBoards } from './boards.ts';
 import { Canvas } from './Canvas.tsx';
+import { CommentsButton } from './CommentsPanel.tsx';
 import { ContextMenu } from './chrome.tsx';
 import { type ConnectionStatus, useBoardConnection } from './connection.ts';
 import { ShotList } from './film/ShotList.tsx';
@@ -25,6 +26,7 @@ import { type VersionPreview, VersionsDialog } from './VersionsDialog.tsx';
 import './film/film.css';
 import { type Peer, uniquePeople, usePeers } from './presence.ts';
 import { ShareDialog } from './ShareDialog.tsx';
+import { useBoardReviews } from './use-board-reviews.ts';
 import './board.css';
 
 const canEdit = (role: ProjectRole | null | undefined) => role === 'owner' || role === 'editor';
@@ -152,6 +154,7 @@ function BoardScreen({
     (id: string) => navigate(boardPath(projectId, id, rootBoardId)),
     [navigate, projectId, rootBoardId],
   );
+  useBoardReviews(boardId, conn, detail?.myRole ?? projectRole);
 
   const crumbs = useMemo(
     () => breadcrumb(boardId, rootBoardId, projectName, detail, boards),
@@ -238,6 +241,7 @@ function BoardScreen({
             {t('share.open')}
           </Button>
         )}
+        <CommentsButton />
       </>
     ),
     [

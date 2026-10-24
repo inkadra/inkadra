@@ -16,6 +16,7 @@ import { ASPECT_RATIOS, type AspectRatio, SHOT_SIZES, setBoardAspect } from '@in
 import { Button, EmptyState, Icon, IconButton } from '@inkadra/ui';
 import { type DragEvent, memo, useMemo, useState, useSyncExternalStore } from 'react';
 import { useTranslation } from 'react-i18next';
+import { CardReview } from '../CardReview.tsx';
 import { GuestVisibility, GuestVisibilityIcon, toggleGuestHidden } from '../guest-visibility.tsx';
 import { type BoardStore, LOCAL } from '../store.ts';
 import { aspectLabel, useBoardAspect } from './aspect.ts';
@@ -459,6 +460,7 @@ const FrameTile = memo(function FrameTile({
         )}
         <StatusChip status={frame.status} />
       </div>
+      <CardReview elementId={frame.id} />
       {frame.action && <p className="story__tile-action">{frame.action}</p>}
     </li>
   );

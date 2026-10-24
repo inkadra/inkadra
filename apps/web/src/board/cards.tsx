@@ -13,6 +13,7 @@ import { useTranslation } from 'react-i18next';
 import * as Y from 'yjs';
 import { pickVariant, useAsset } from './assets.ts';
 import { renameBoard } from './boards.ts';
+import { CardReview } from './CardReview.tsx';
 import { useBoard } from './context.ts';
 import { useBoardAspect } from './film/aspect.ts';
 import { FramePicture } from './film/FramePicture.tsx';
@@ -120,6 +121,7 @@ export const Card = memo(function Card({
           <Icon name="lock" size={12} />
         </span>
       )}
+      <CardReview elementId={element.id} />
       {selected && !nested && !element.locked && !readOnly && (
         <>
           <span className="card__handle card__handle--w" data-handle="w" aria-hidden="true" />

@@ -97,6 +97,7 @@ import { fillLinkPreview, webUrl } from './links.ts';
 import { fillFragment, isEmpty } from './note.tsx';
 import { PresenceLayer } from './PresenceLayer.tsx';
 import { type Peer, useLocalPresence } from './presence.ts';
+import { openComments } from './review-store.ts';
 import { commandFor, isTyping } from './shortcuts.ts';
 import { LOCAL } from './store.ts';
 import { TagPopover } from './tags.tsx';
@@ -1383,6 +1384,9 @@ export function Canvas({
               : [{ label: t('board.menu.draw'), action: () => setDrawing(single.id) }]),
           ]
         : []),
+      ...(single && single.type !== 'arrow'
+        ? [{ label: t('comments.open'), action: () => openComments({ elementId: single.id }) }]
+        : []),
       ...(readOnly
         ? []
         : [
@@ -1601,6 +1605,11 @@ export function Canvas({
             elements={selectedEls}
             editor={editing ? noteEditor.current : null}
             readOnly={readOnly}
+            onComments={
+              selectedEls.length === 1 && selectedEls[0] && selectedEls[0].type !== 'arrow'
+                ? openComments.bind(null, { elementId: selectedEls[0].id })
+                : undefined
+            }
             onAlign={align}
             onGroup={groupIntoColumn}
             onLock={toggleLock}
