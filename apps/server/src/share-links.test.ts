@@ -155,6 +155,16 @@ describe('guest view of a board document', () => {
     });
   });
 
+  it('hides children whose container is malformed', () => {
+    const malformed = doc([
+      { ...base, id: id('parent'), type: 'column', title: 'Parent', x: 0, y: 0, parent: null },
+      { ...base, id: id('child'), type: 'image', assetId: 'a1', x: 0, y: 0, parent: id('parent') },
+    ]);
+    roots(malformed).elements.get(id('parent'))!.set('guestHidden', 'invalid');
+    expect(viewOf(malformed).visible).toEqual([]);
+    malformed.destroy();
+  });
+
   it('knows which cards are pictures', () => {
     const byId = (n: string) => shown.find((e) => e.id === id(n)) as Element;
     expect(pictureAssetId(byId('img'))).toBe('a1');

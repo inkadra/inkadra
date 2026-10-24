@@ -20,13 +20,14 @@ import {
 } from '@inkadra/shared';
 import { verifyPassword } from 'better-auth/crypto';
 import { and, count, eq, gt, inArray, isNull, or, sql } from 'drizzle-orm';
-import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
+import type { FastifyInstance, FastifyReply } from 'fastify';
 import { guestCan } from '../access.ts';
 import type { Config } from '../config.ts';
 import type { Database } from '../db/client.ts';
 import {
   asset,
   assetVariant,
+  boardDoc,
   elementReview,
   elementReviewEvent,
   shareGuest,
@@ -45,11 +46,11 @@ import {
 import type { Storage } from '../storage.ts';
 import { iso } from './api-routes.ts';
 import { contentDisposition, fileHeaders, parseRange } from './assets-routes.ts';
-import { checkSameOrigin } from './csrf.ts';
-import { HttpError, sendError } from './errors.ts';
+import { HttpError } from './errors.ts';
 import {
   type GuestCommentEvent,
   guestCommentCounts,
+  guestCommentVersion,
   registerGuestCommentRoutes,
 } from './guest-comments.ts';
 import {
@@ -96,6 +97,7 @@ function afterGuestWrite(_event: GuestEvent): void {}
 /** Failed attempts per key in a sliding window; successes are not counted. */
 class Failures {
   private hits = new Map<string, number[]>();
+  private pending = new Map<string, number>();
   constructor(
     private readonly max: number,
     private readonly windowMs: number,
@@ -105,15 +107,24 @@ class Failures {
     return (this.hits.get(key) ?? []).filter((t) => now - t < this.windowMs);
   }
   blocked(key: string) {
-    return this.recent(key).length >= this.max;
+    return this.recent(key).length + (this.pending.get(key) ?? 0) >= this.max;
   }
-  fail(key: string) {
-    if (this.hits.size > 10_000) this.hits.clear();
-    this.hits.set(key, [...this.recent(key), Date.now()]);
+  begin(key: string) {
+    if (this.blocked(key)) return false;
+    this.pending.set(key, (this.pending.get(key) ?? 0) + 1);
+    return true;
+  }
+  finish(key: string, failed: boolean) {
+    const pending = (this.pending.get(key) ?? 1) - 1;
+    if (pending) this.pending.set(key, pending);
+    else this.pending.delete(key);
+    if (failed) {
+      if (this.hits.size > 10_000) this.hits.clear();
+      this.hits.set(key, [...this.recent(key), Date.now()]);
+    }
   }
 }
 
-const UNSAFE = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
 /** New guests a link accepts in a day, whatever the address (decision 0013). */
 const NEW_GUESTS_PER_DAY = 500;
 
@@ -279,7 +290,7 @@ export async function registerGuestRoutes(app: FastifyInstance, deps: Deps) {
     const ids = shown.map((e) => e.id);
     const visible = new Set(ids);
     const assetIds = [...new Set(shown.flatMap(elementAssetIds))];
-    const [boards, assets, reviews, commentCounts, picks] = await Promise.all([
+    const [boards, assets, reviews, commentCounts, picks, commentsVersion] = await Promise.all([
       guestBoards(ctx),
       guestAssets(ctx, assetIds),
       reviewRows(ctx, boardId),
@@ -288,6 +299,7 @@ export async function registerGuestRoutes(app: FastifyInstance, deps: Deps) {
         .select()
         .from(sharePick)
         .where(and(eq(sharePick.guestId, ctx.guest.id), eq(sharePick.boardId, boardId))),
+      guestCan(ctx.link, 'read_comments') ? guestCommentVersion(db, ctx, boardId, ids) : null,
     ]);
     const breadcrumb: Array<{ id: string; title: string }> = [];
     for (let at = top.parentBoardId; at; at = ctx.boards.get(at)?.parentBoardId ?? null) {
@@ -317,9 +329,34 @@ export async function registerGuestRoutes(app: FastifyInstance, deps: Deps) {
           updatedAt: iso(p.updatedAt),
         })),
     };
-    // Everything in the answer is in the hash, so a poll is a 304 exactly when nothing moved.
+    // Guests poll this to learn when to refetch comments too. Count-only changes miss edits
+    // and replies; withdrawn reviews and changes to the link must also move the version.
     const version = createHash('sha256')
       .update(JSON.stringify(body))
+      .update(
+        JSON.stringify({
+          document: await db
+            .select({ updatedAt: boardDoc.updatedAt })
+            .from(boardDoc)
+            .where(eq(boardDoc.boardId, boardId)),
+          link: ctx.link.updatedAt,
+          boards: [...ctx.boards.values()].map(({ row }) => ({
+            id: row.id,
+            updatedAt: row.updatedAt,
+          })),
+          covers: await guestAssets(ctx, [
+            ...new Set(
+              [...ctx.boards.values()].flatMap(({ row }) =>
+                row.coverAssetId ? [row.coverAssetId] : [],
+              ),
+            ),
+          ]),
+          commentsVersion,
+          reviews: reviews
+            .filter(({ r }) => visible.has(r.elementId))
+            .sort((a, b) => a.r.id.localeCompare(b.r.id)),
+        }),
+      )
       .digest('base64url')
       .slice(0, 32);
     return { body, version };
@@ -350,12 +387,6 @@ export async function registerGuestRoutes(app: FastifyInstance, deps: Deps) {
   }
 
   await app.register(async (scope) => {
-    // Cross-site writes are refused before anything else (decision 0013), with or without a
-    // guest cookie, opening a session included.
-    scope.addHook('onRequest', async (req: FastifyRequest, reply: FastifyReply) => {
-      if (UNSAFE.has(req.method) && !checkSameOrigin(req, config.PUBLIC_URL))
-        return sendError(reply, 'forbidden', 'Cross-site request refused.');
-    });
     // The token must not leak to the sites of link cards nor into search engines.
     scope.addHook('onSend', async (_req, reply) => {
       reply.header('referrer-policy', 'no-referrer');
@@ -405,36 +436,52 @@ export async function registerGuestRoutes(app: FastifyInstance, deps: Deps) {
           throw new HttpError('rate_limited', 'Too many wrong passwords: try again later.');
         if (!input.password)
           throw guestDenied('forbidden', 'password_required', 'This link needs a password.');
-        if (!(await verifyPassword({ hash: link.passwordHash, password: input.password }))) {
-          wrongPasswords.fail(key);
+        // Reserve before the asynchronous hash check: simultaneous wrong passwords must
+        // not all pass the limit while earlier checks are still running.
+        if (!wrongPasswords.begin(key))
+          throw new HttpError('rate_limited', 'Too many wrong passwords: try again later.');
+        let valid = false;
+        try {
+          valid = await verifyPassword({ hash: link.passwordHash, password: input.password });
+        } finally {
+          wrongPasswords.finish(key, !valid);
+        }
+        if (!valid) {
           throw guestDenied('forbidden', 'wrong_password', 'Wrong password.');
         }
       }
       const returning = await guests.cookieGuest(req, link.id);
-      if (!returning) {
-        if (!newGuests.take(`${link.id}|${req.ip}`))
-          throw new HttpError('rate_limited', 'Too many new guests: try again later.');
-        const [today] = await db
-          .select({ n: count() })
-          .from(shareGuest)
-          .where(
-            and(
-              eq(shareGuest.shareLinkId, link.id),
-              gt(shareGuest.createdAt, sql`now() - interval '1 day'`),
-            ),
-          );
-        if ((today?.n ?? 0) >= NEW_GUESTS_PER_DAY)
-          throw new HttpError('rate_limited', 'Too many new guests today: try again tomorrow.');
-      }
-      const guest = await guests.startSession(reply, link, returning, input.name);
-      await db
-        .update(shareLink)
-        .set({
-          viewCount: sql`${shareLink.viewCount} + 1`,
-          lastUsedAt: new Date(),
-          updatedAt: sql`${shareLink.updatedAt}`,
-        })
-        .where(eq(shareLink.id, link.id));
+      if (!returning && !newGuests.take(`${link.id}|${req.ip}`))
+        throw new HttpError('rate_limited', 'Too many new guests: try again later.');
+      const guest = await db.transaction(async (tx) => {
+        // Enforce the daily link-wide cap even for concurrent requests on different workers.
+        await tx.execute(
+          sql`select pg_advisory_xact_lock(hashtext(${`guest-sessions:${link.id}`}))`,
+        );
+        if (!returning) {
+          const [today] = await tx
+            .select({ n: count() })
+            .from(shareGuest)
+            .where(
+              and(
+                eq(shareGuest.shareLinkId, link.id),
+                gt(shareGuest.createdAt, sql`now() - interval '1 day'`),
+              ),
+            );
+          if ((today?.n ?? 0) >= NEW_GUESTS_PER_DAY)
+            throw new HttpError('rate_limited', 'Too many new guests today: try again tomorrow.');
+        }
+        const guest = await guests.startSession(reply, link, returning, input.name, tx);
+        await tx
+          .update(shareLink)
+          .set({
+            viewCount: sql`${shareLink.viewCount} + 1`,
+            lastUsedAt: new Date(),
+            updatedAt: sql`${shareLink.updatedAt}`,
+          })
+          .where(eq(shareLink.id, link.id));
+        return guest;
+      });
       return toSession({ link, guest, boards: resolved.boards, shown: new Map() });
     });
 
@@ -482,7 +529,8 @@ export async function registerGuestRoutes(app: FastifyInstance, deps: Deps) {
       const reachable = await reachableAssets(ctx);
       if (!reachable.shown.has(assetId) && !reachable.covers.has(assetId))
         throw new HttpError('not_found', 'Asset not found.');
-      await projectAsset(ctx, assetId);
+      if ((await projectAsset(ctx, assetId)).status !== 'ready')
+        throw new HttpError('not_found', 'The picture is not ready.');
       const [variant] = await db
         .select()
         .from(assetVariant)

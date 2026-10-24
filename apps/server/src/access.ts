@@ -449,12 +449,18 @@ export async function rolesOnProjectBoards(
   projectId: string,
 ): Promise<{ boards: Array<typeof board.$inferSelect>; roles: Map<string, Effective> }> {
   const [boards, grants, pRole] = await Promise.all([
+    db.select().from(board).where(eq(board.projectId, projectId)),
     db
-      .select()
-      .from(board)
-      .where(and(eq(board.projectId, projectId), isNull(board.deletedAt))),
-    projectGrants(db, { id: userId }, projectId),
+      .select({ boardId: boardGrant.boardId, role: boardGrant.role })
+      .from(boardGrant)
+      .innerJoin(board, eq(board.id, boardGrant.boardId))
+      .where(and(eq(boardGrant.userId, userId), eq(board.projectId, projectId))),
     projectRole(db, { id: userId }, projectId),
   ]);
-  return { boards, roles: effectiveRoles(boards, grants, pRole) };
+  // Keep ancestors in the role calculation even when trashed: boardAccess uses their grants
+  // too. Only the returned boards can be opened by guests.
+  return {
+    boards: boards.filter((b) => b.deletedAt === null),
+    roles: effectiveRoles(boards, new Map(grants.map((g) => [g.boardId, g.role])), pRole),
+  };
 }

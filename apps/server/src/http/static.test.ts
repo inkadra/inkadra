@@ -22,6 +22,7 @@ describe('web app files', () => {
     WEB_DIST: dist,
   });
   let app: Awaited<ReturnType<typeof createApp>>;
+  const logs: string[] = [];
 
   beforeAll(async () => {
     mkdirSync(join(dist, 'assets'), { recursive: true });
@@ -36,7 +37,14 @@ describe('web app files', () => {
       config,
       db,
       auth: createAuth(config, db),
-      log: pino({ level: 'silent' }),
+      log: pino(
+        { level: 'info' },
+        {
+          write: (line) => {
+            logs.push(line);
+          },
+        },
+      ),
       ...deps,
     });
   });
@@ -88,5 +96,14 @@ describe('web app files', () => {
     expect(page.statusCode).toBe(200);
     expect(page.headers['referrer-policy']).toBe('no-referrer');
     expect(page.headers['x-robots-tag']).toBe('noindex, nofollow');
+  });
+
+  it('redacts guest page and preview tokens from request logs', async () => {
+    await app.inject('/s/private-link');
+    // Invalid short token: validation rejects it before reaching the unavailable database.
+    expect((await app.inject('/api/v1/guest/by-token/private-link')).statusCode).toBe(400);
+    expect(logs.join('')).not.toContain('private-link');
+    expect(logs.join('')).toContain('/s/[redacted]');
+    expect(logs.join('')).toContain('/api/v1/guest/by-token/[redacted]');
   });
 });

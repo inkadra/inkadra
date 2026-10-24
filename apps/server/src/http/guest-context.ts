@@ -94,6 +94,7 @@ export function createGuestAuth(deps: { config: Config; db: Database; docs: DocV
     link: ShareLinkRow,
     guest: GuestRow | null,
     name: string | undefined,
+    writer: Pick<Database, 'update' | 'insert'> = db,
   ): Promise<GuestRow> {
     const now = new Date();
     const token = newSecret('', 32);
@@ -106,8 +107,8 @@ export function createGuestAuth(deps: { config: Config; db: Database; docs: DocV
       ...(name ? { name } : {}),
     };
     const [row] = guest
-      ? await db.update(shareGuest).set(values).where(eq(shareGuest.id, guest.id)).returning()
-      : await db
+      ? await writer.update(shareGuest).set(values).where(eq(shareGuest.id, guest.id)).returning()
+      : await writer
           .insert(shareGuest)
           .values({ shareLinkId: link.id, ...values })
           .returning();

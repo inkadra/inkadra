@@ -7,11 +7,11 @@ import {
   toGuestElement,
 } from '@inkadra/doc-schema';
 import type { ShareLinkStatus } from '@inkadra/shared';
-import { eq } from 'drizzle-orm';
+import { and, eq, inArray, isNotNull, lte, or } from 'drizzle-orm';
 import * as Y from 'yjs';
 import { atLeast, rolesOnProjectBoards } from './access.ts';
 import type { Database } from './db/client.ts';
-import { type board, boardDoc, type shareLink } from './db/schema.ts';
+import { type board, boardDoc, shareGuest, shareLink } from './db/schema.ts';
 
 /**
  * Share links for guests without an account (decision 0013): what a link may show, decided at
@@ -26,6 +26,19 @@ export function storedStatus(row: ShareLinkRow, now = new Date()): ShareLinkStat
   if (row.revokedAt) return 'revoked';
   if (row.expiresAt && row.expiresAt <= now) return 'expired';
   return 'active';
+}
+
+/** Retain authors and totals, but clear personal names 90 days after a link stopped. */
+export async function clearExpiredGuestNames(db: Database, now = new Date()) {
+  const cutoff = new Date(now.getTime() - 90 * 86_400_000);
+  const stopped = db
+    .select({ id: shareLink.id })
+    .from(shareLink)
+    .where(or(lte(shareLink.revokedAt, cutoff), lte(shareLink.expiresAt, cutoff)));
+  await db
+    .update(shareGuest)
+    .set({ name: null })
+    .where(and(isNotNull(shareGuest.name), inArray(shareGuest.shareLinkId, stopped)));
 }
 
 /** A board guests of a link can open, and the board they reach it from. */
@@ -111,11 +124,9 @@ export function viewOf(doc: Y.Doc): BoardView {
   const lookup = (id: string) => {
     const map = elements.get(id);
     if (!map) return undefined;
-    const parent = map.get('parent');
-    return {
-      guestHidden: map.get('guestHidden') === true,
-      parent: typeof parent === 'string' ? parent : null,
-    };
+    const el = readElement(map);
+    // Invalid containers cannot establish a visible chain, just like missing containers.
+    return el?.id === id ? el : undefined;
   };
   const visible: Element[] = [];
   const bodies = new Map<string, Record<string, unknown>>();

@@ -11,6 +11,7 @@ import type { Jobs } from './jobs.ts';
 import { type Mailer, noMailer } from './mailer.ts';
 import { type MediaDeps, markFailed, processAsset } from './media/process.ts';
 import { purgeNotifications, sendDigests, sendImmediateEmails } from './notifications.ts';
+import { clearExpiredGuestNames } from './share-links.ts';
 import { type Storage, UPLOAD_EXPIRY_MS } from './storage.ts';
 import {
   applyVersionRetention,
