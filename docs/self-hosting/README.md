@@ -87,7 +87,7 @@ page and reloads by itself when the network is back. After you upgrade Inkadra, 
 tabs show _New version available — Update_; until someone presses it they keep running the
 version they started with. The service worker that does this never stores API responses,
 files, sign-in pages or anything tied to an account: see
-[decision 0013](../decisions/0013-installable-web-app.md). A proxy in front of Inkadra must
+[decision 0015](../decisions/0015-installable-web-app.md). A proxy in front of Inkadra must
 serve `/sw.js` and `/manifest.webmanifest` as it receives them (the examples in `deploy/proxy`
 do); if it adds a `Content-Security-Policy`, it needs `worker-src 'self'` and
 `manifest-src 'self'`.
