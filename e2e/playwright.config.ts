@@ -8,6 +8,8 @@ import { defineConfig, devices } from '@playwright/test';
  * run `pnpm build` first. CI provides both as services.
  */
 const port = Number(process.env.E2E_PORT ?? 3100);
+// Lets setOffline() and routes reach the service worker's own requests, as a real outage would.
+process.env.PW_EXPERIMENTAL_SERVICE_WORKER_NETWORK_EVENTS ??= '1';
 const baseURL = `http://localhost:${port}`;
 
 export default defineConfig({
@@ -36,7 +38,12 @@ export default defineConfig({
       // Load tests, run on their own with `pnpm test:perf`.
       name: 'perf',
       testDir: './tests/perf',
-      use: { ...devices['Desktop Chrome'], viewport: { width: 1440, height: 900 } },
+      use: {
+        ...devices['Desktop Chrome'],
+        viewport: { width: 1440, height: 900 },
+        // Timings measure the app; the worker's first install would compete with it.
+        serviceWorkers: 'block',
+      },
     },
   ],
   webServer: {

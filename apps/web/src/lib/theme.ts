@@ -1,3 +1,4 @@
+import { dark, light } from '@inkadra/ui/tokens';
 import { useCallback, useEffect, useState } from 'react';
 
 export type Theme = 'dark' | 'light';
@@ -27,6 +28,13 @@ export function useTheme() {
     mq.addEventListener('change', onChange);
     return () => mq.removeEventListener('change', onChange);
   }, []);
+
+  // The window colour of the installed app (and of mobile browsers) follows the theme in use.
+  useEffect(() => {
+    const colour = (theme === 'dark' ? dark : light)['bg-rail'];
+    for (const meta of document.querySelectorAll('meta[name="theme-color"]'))
+      meta.setAttribute('content', colour);
+  }, [theme]);
 
   const toggle = useCallback(() => {
     setTheme((current) => {

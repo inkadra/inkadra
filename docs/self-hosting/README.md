@@ -73,6 +73,25 @@ docker compose -f compose.yaml -f deploy/compose.split.yaml config > stack.yaml
 or run it with an `.env` that has placeholders and fill them in the manager's environment
 editor. On TrueNAS, keep the data on a dataset: see [Storage](storage.md#a-folder-on-the-host).
 
+## Installing as an app
+
+People can install Inkadra from the browser as an app with its own window and icon: in Chrome
+and Edge with the install button in the address bar, on Android with _Add to home screen_, in
+Safari on iPhone and iPad with _Share → Add to Home Screen_, in Safari on the Mac with
+_File → Add to Dock_. There is nothing to configure on the server, but the browser only offers it
+over **HTTPS** with a valid certificate (or on `localhost`): on plain HTTP the app keeps working
+in the browser, without the install option, the offline page and the update prompt.
+
+The app is the same web app, so it needs the server: without a connection it shows an offline
+page and reloads by itself when the network is back. After you upgrade Inkadra, open apps and
+tabs show _New version available — Update_; until someone presses it they keep running the
+version they started with. The service worker that does this never stores API responses,
+files, sign-in pages or anything tied to an account: see
+[decision 0013](../decisions/0013-installable-web-app.md). A proxy in front of Inkadra must
+serve `/sw.js` and `/manifest.webmanifest` as it receives them (the examples in `deploy/proxy`
+do); if it adds a `Content-Security-Policy`, it needs `worker-src 'self'` and
+`manifest-src 'self'`.
+
 ## The image
 
 One image, `ghcr.io/inkadra/inkadra`, built for `linux/amd64` and `linux/arm64`. Its command
