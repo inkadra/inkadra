@@ -47,6 +47,7 @@ type CommentRow = typeof comment.$inferSelect;
 /** What a guest write tells the team about; see afterGuestWrite in guest-routes.ts. */
 export type GuestCommentEvent = {
   kind: 'comment';
+  projectId: string;
   action: 'created' | 'edited' | 'deleted';
   boardId: string;
   elementId: string | null;
@@ -229,7 +230,7 @@ export function registerGuestCommentRoutes(
   deps: {
     db: Database;
     guests: GuestAuth;
-    afterWrite: (event: GuestCommentEvent) => void;
+    afterWrite: (event: GuestCommentEvent) => Promise<void>;
   },
 ) {
   const { db, guests, afterWrite } = deps;
@@ -428,8 +429,9 @@ export function registerGuestCommentRoutes(
       })
       .returning();
     if (!row) throw new Error('Comment insert returned nothing');
-    afterWrite({
+    await afterWrite({
       kind: 'comment',
+      projectId: ctx.link.projectId,
       action: 'created',
       boardId,
       elementId,
@@ -454,8 +456,9 @@ export function registerGuestCommentRoutes(
       .where(eq(comment.id, row.id))
       .returning();
     if (!updated) throw new HttpError('not_found', 'Comment not found.');
-    afterWrite({
+    await afterWrite({
       kind: 'comment',
+      projectId: ctx.link.projectId,
       action: 'edited',
       boardId: row.boardId,
       elementId: row.elementId,
@@ -500,8 +503,9 @@ export function registerGuestCommentRoutes(
           .where(eq(comment.id, row.id));
       else await tx.delete(comment).where(eq(comment.id, row.id));
     });
-    afterWrite({
+    await afterWrite({
       kind: 'comment',
+      projectId: ctx.link.projectId,
       action: 'deleted',
       boardId: row.boardId,
       elementId: row.elementId,
