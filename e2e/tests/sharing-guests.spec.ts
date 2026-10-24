@@ -170,19 +170,85 @@ async function openGuestLinks(page: Page) {
   return dialog;
 }
 
+/**
+ * A guest page and what it asks the server: only the guest API and static files of the same
+ * origin, never the account API nor the collaboration socket.
+ */
 async function guestPage(browser: Browser) {
   const context = await browser.newContext({ locale: 'it-IT', colorScheme: 'dark' });
   const page = await context.newPage();
+  const origin = new URL(test.info().project.use.baseURL as string).origin;
+  const guestCalls: string[] = [];
   const accountCalls: string[] = [];
   page.on('request', (r) => {
-    const path = new URL(r.url()).pathname;
-    if (path.startsWith('/api/') && !path.startsWith('/api/v1/guest/')) accountCalls.push(path);
+    const url = new URL(r.url());
+    if (url.protocol === 'data:' || url.protocol === 'blob:') return;
+    const path = url.pathname;
+    if (url.origin !== origin) accountCalls.push(r.url());
+    else if (path.startsWith('/api/v1/guest/')) guestCalls.push(path);
+    else if (path.startsWith('/api/') || path.startsWith('/collab')) accountCalls.push(path);
   });
-  return { page, context, accountCalls };
+  page.on('websocket', (ws) => accountCalls.push(ws.url()));
+  return { page, context, guestCalls, accountCalls };
+}
+
+/** None of the team's review, comment, version or notification controls on the guest page. */
+async function expectNoTeamUi(page: Page) {
+  for (const selector of [
+    '.card-review',
+    '.comment-pin',
+    '.comment-pin-target',
+    '[data-guest-hidden]',
+  ]) {
+    await expect(page.locator(selector)).toHaveCount(0);
+  }
+  for (const name of [
+    /^Commenti:/,
+    /discussion[ei] apert[ae]: apri i commenti$/,
+    'Commenti e revisione',
+    /^Notifiche/,
+    'Menu della board',
+    'Versioni della board',
+    'Nascondi agli ospiti',
+    'Mostra agli ospiti',
+  ]) {
+    await expect(page.getByRole('button', { name })).toHaveCount(0);
+  }
+  await expect(page.getByRole('complementary', { name: 'Commenti', exact: true })).toHaveCount(0);
+  // Neither the selection's toolbar nor the card's menu offers them.
+  const card = page.locator(`[data-el="${seeded.second}"]`);
+  await card.click();
+  await card.click({ button: 'right' });
+  for (const name of ['Commenti e revisione', 'Nascondi agli ospiti', 'Mostra agli ospiti']) {
+    await expect(page.getByRole('menuitem', { name })).toHaveCount(0);
+    await expect(page.getByRole('button', { name })).toHaveCount(0);
+  }
+  await page.keyboard.press('Escape');
 }
 
 test('an editor creates a password link with comments and proofing', async ({ page, baseURL }) => {
   seeded = await seed(page, baseURL as string);
+  // Team review data on a card, that the guest page must not show with the team's controls.
+  // Reviews check the card in the stored document, written a moment later.
+  const board = `/api/v1/boards/${seeded.project.rootBoardId}`;
+  const headers = { origin: baseURL as string };
+  await expect
+    .poll(
+      async () =>
+        (
+          await page.request.put(`${board}/elements/${seeded.second}/review`, {
+            headers,
+            data: { status: 'changes_requested' },
+          })
+        ).ok(),
+      { timeout: 15_000 },
+    )
+    .toBe(true);
+  const teamComment = await page.request.post(`${board}/comments`, {
+    headers,
+    data: { elementId: seeded.second, body: 'Solo per il team: rifare il tramonto' },
+  });
+  expect(teamComment.ok()).toBe(true);
   const dialog = await openGuestLinks(page);
   await expect(dialog.getByText('Nessun link per ospiti.')).toBeVisible();
   await dialog.getByRole('button', { name: 'Nuovo link per ospiti' }).click();
@@ -201,7 +267,7 @@ test('an editor creates a password link with comments and proofing', async ({ pa
 });
 
 test('a guest opens the link, comments and picks a picture', async ({ browser }) => {
-  const { page, context, accountCalls } = await guestPage(browser);
+  const { page, context, guestCalls, accountCalls } = await guestPage(browser);
   await page.goto(guestUrl);
   await expect(page.getByRole('heading', { name: 'Board protetto da password' })).toBeVisible();
   await expect(page.locator('meta[name="robots"]')).toHaveAttribute('content', /noindex/);
@@ -260,7 +326,10 @@ test('a guest opens the link, comments and picks a picture', async ({ browser })
   await expect(
     page.locator(`[data-el="${seeded.first}"]`).getByRole('button', { name: 'Scelgo' }),
   ).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.getByText('Solo per il team: rifare il tramonto')).toHaveCount(0);
+  await expectNoTeamUi(page);
 
+  expect(guestCalls.length).toBeGreaterThan(0);
   expect(accountCalls).toEqual([]);
   await context.close();
 });
@@ -294,6 +363,19 @@ test('the team sees the comment and the picks', async ({ page, baseURL }) => {
   expect(text.trim()).toBe('scatto-alba.png');
   await dialog.getByRole('button', { name: 'Torna ai link' }).click();
   await expect(dialog.getByRole('button', { name: 'Nuovo link per ospiti' })).toBeVisible();
+
+  // The comment is in the comments panel too, marked as a guest's, next to the team's thread.
+  await page.keyboard.press('Escape');
+  await expect(dialog).toBeHidden();
+  await page.getByRole('button', { name: 'Commenti: 2 discussioni aperte' }).click();
+  const comments = page.getByRole('complementary', { name: 'Commenti' });
+  const author = comments
+    .locator('.comment-item')
+    .filter({ hasText: 'Bellissima la luce della prima.' })
+    .locator('.comment-author');
+  await expect(author).toContainText('Marta Rossi');
+  await expect(author.getByText('Ospite', { exact: true })).toBeVisible();
+  await expect(comments.getByText('Solo per il team: rifare il tramonto')).toBeVisible();
 });
 
 test('revoking the link shows the guest that it was turned off', async ({
@@ -344,6 +426,7 @@ test('a guest of an approval link approves a card and withdraws the decision', a
   await guest.page.goto(url);
   await expect(guest.page.locator('[data-el]')).toHaveCount(3, { timeout: 20_000 });
   await expect(guest.page.getByText('Ospite · può approvare')).toBeVisible();
+  await expectNoTeamUi(guest.page);
   // No proofing on this link: no picks on the cards.
   await expect(guest.page.getByRole('button', { name: 'Scelgo' })).toHaveCount(0);
   await guest.page.getByLabel('Card', { exact: true }).selectOption({ label: 'Benvenuti sul set' });
@@ -358,6 +441,7 @@ test('a guest of an approval link approves a card and withdraws the decision', a
   await expect(panel.getByText('Decisione ritirata.')).toBeVisible();
   await expect(panel.getByText('Nessuna decisione')).toBeVisible();
   await expect(panel.getByRole('button', { name: 'Ritira la mia decisione' })).toHaveCount(0);
+  expect(guest.guestCalls.length).toBeGreaterThan(0);
   expect(guest.accountCalls).toEqual([]);
   await guest.context.close();
 });
