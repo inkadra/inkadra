@@ -12,15 +12,17 @@ import { useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router';
 import { api } from '../lib/api.ts';
 import type { BoardConnection } from './connection.ts';
-import { findThread, mergeThreads, type Page } from './review-model.ts';
+import { findThread, mergeThreads, type Page, refreshOlderReplies } from './review-model.ts';
 import {
-  changedScopes,
+  addOlderReplies,
   getReviews,
   openComments,
   pinsByElement,
+  queueCommentScopes,
   refreshReviews,
   resetReviews,
   setReviews,
+  takeCommentScopes,
   useReviews,
 } from './review-store.ts';
 
@@ -73,7 +75,8 @@ export function useBoardReviews(
     let done = false;
     const key = `${boardId}:${accessVersion ?? ''}`;
     void commentsRevision;
-    const scopes = loadedFor.current === key ? changedScopes() : 'all';
+    const queued = takeCommentScopes();
+    const scopes = loadedFor.current === key ? queued : 'all';
     loadedFor.current = key;
     async function threads(query: string) {
       const all: CommentThread[] = [];
@@ -88,22 +91,27 @@ export function useBoardReviews(
       return all;
     }
     // Threads also carry the pins, so they are paged once per board, never once per card.
-    const fetched =
+    const fetched = (
       scopes === 'all'
         ? threads('')
         : Promise.all(
             [...scopes].map((id) =>
               threads(id === null ? '&scope=board' : `&elementId=${encodeURIComponent(id)}`),
             ),
-          ).then((lists) => mergeThreads(getReviews().threads, lists.flat(), scopes));
+          ).then((lists) => mergeThreads(getReviews().threads, lists.flat(), scopes))
+    ).then(async (all) => ({
+      all,
+      olderReplies: await refreshOlderReplies(all, getReviews().olderReplies, scopes, fetchReplies),
+    }));
     Promise.all([api.get<CommentCounts>(`/boards/${boardId}/comment-counts`), fetched])
-      .then(([counts, all]) => {
+      .then(([counts, { all, olderReplies }]) => {
         if (!alive) return;
         done = true;
         setReviews({
           counts: new Map(counts.items.map((c) => [c.elementId, c])),
           threads: all,
           pins: pinsByElement(all),
+          olderReplies,
           status: 'ready',
         });
       })
@@ -115,8 +123,8 @@ export function useBoardReviews(
       });
     return () => {
       alive = false;
-      // Cut short by a newer change: what this fetch was for is fetched again with everything.
-      if (!done) loadedFor.current = null;
+      // Cut short by a newer change: keep what this fetch was for in the next one.
+      if (!done) queueCommentScopes(scopes);
     };
   }, [boardId, synced, accessVersion, commentsRevision]);
 
@@ -197,9 +205,7 @@ export function useBoardReviews(
         if (!alive) return;
         const elementId = threads.find((t) => t.id === found?.threadId)?.elementId;
         if (found?.older) {
-          const older = new Map(getReviews().olderReplies);
-          older.set(found.threadId, found.older);
-          setReviews({ olderReplies: older });
+          addOlderReplies(found.threadId, found.older.items, found.older.cursor);
         }
         openComments({
           threadId: found?.threadId ?? linked,

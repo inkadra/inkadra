@@ -186,9 +186,31 @@ test('comments, mentions, review status and notifications between two people', a
   await panel.getByLabel('Card per stato di revisione').selectOption('changes_requested');
   await expect(panel.getByText('Nessuna card con questo stato.')).toBeVisible();
 
+  // Drafts are kept per scope, and double Escape in the new-thread composer discards without
+  // closing the panel (and resets its warning on blur).
+  const composer = otherPanel.getByRole('combobox', { name: 'Commento' });
+  await composer.fill('Bozza da scartare');
+  await composer.press('Escape');
+  await expect(otherPanel.getByText('Premi di nuovo Esc per scartare il testo.')).toBeVisible();
+  await composer.evaluate((el: HTMLElement) => el.blur());
+  await expect(otherPanel.getByText('Premi di nuovo Esc per scartare il testo.')).toHaveCount(0);
+  await composer.focus();
+  await composer.press('Escape');
+  await expect(otherPanel.getByText('Premi di nuovo Esc per scartare il testo.')).toBeVisible();
+  await composer.press('Escape');
+  await expect(otherPanel).toBeVisible();
+  await expect(composer).toHaveValue('');
+
+  await composer.fill('Qui il riflesso');
+  await otherPanel.getByRole('button', { name: 'Tutte le discussioni' }).click();
+  await expect(otherPanel.getByRole('combobox', { name: 'Commento' })).toHaveValue('');
+  await otherCard.getByRole('button', { name: /Revisione: Approvata/ }).click();
+  await expect(otherPanel.getByRole('combobox', { name: 'Commento' })).toHaveValue(
+    'Qui il riflesso',
+  );
+
   // A comment on a point of the card, placed with the keyboard, keeps the text already written,
   // and shows a numbered pin to the owner.
-  await otherPanel.getByRole('combobox', { name: 'Commento' }).fill('Qui il riflesso');
   await otherPanel.getByRole('button', { name: 'Commenta un punto della card' }).press('Enter');
   const pinTarget = otherCard.getByRole('button', { name: /Scegli il punto/ });
   await expect(pinTarget).toBeFocused();
@@ -328,10 +350,21 @@ test('replies page in, and the board loads comment data once for all its cards',
   await panel.getByRole('button', { name: 'Chiudi i commenti' }).click();
   await expect(panel).toHaveCount(0);
 
-  // A link to an old reply finds its thread through the replies pages and shows the reply.
+  // A link to an old reply finds its thread through the replies pages and shows the reply;
+  // editing that older reply refreshes it in place.
+  await page.route('**/api/v1/comments/reply-1', async (route) => {
+    const body = (route.request().postDataJSON() as { body: string }).body;
+    replies[0] = { ...replies[0]!, body };
+    await route.fulfill({ json: replies[0] });
+  });
   await page.goto(`/p/${project.id}?thread=reply-1`);
   await expect(panelOf(page).locator('.comment-thread')).toBeFocused();
-  await expect(panelOf(page).locator('[data-comment="reply-1"]')).toBeInViewport();
+  const oldReply = panelOf(page).locator('[data-comment="reply-1"]');
+  await expect(oldReply).toBeInViewport();
+  await oldReply.getByRole('button', { name: 'Modifica' }).click();
+  await oldReply.getByRole('combobox', { name: 'Commento' }).fill('Risposta 1 aggiornata');
+  await oldReply.getByRole('button', { name: 'Salva' }).click();
+  await expect(oldReply.locator('.comment-body')).toHaveText('Risposta 1 aggiornata');
 });
 
 test('the bell polls once a minute and on focus, and keeps paging short pages', async ({

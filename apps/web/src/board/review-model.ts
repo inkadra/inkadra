@@ -117,6 +117,44 @@ export async function findThread(
 }
 
 /**
+ * Refreshes the older replies already shown for threads in `scopes`, and drops threads that were
+ * removed or whose replies now all fit inline.
+ */
+export async function refreshOlderReplies(
+  threads: readonly CommentThread[],
+  current: ReadonlyMap<string, { items: readonly Comment[]; cursor: string | null }>,
+  scopes: ReadonlySet<string | null> | 'all',
+  replies: (threadId: string, cursor: string | null) => Promise<Page<Comment>>,
+): Promise<Map<string, { items: Comment[]; cursor: string | null }>> {
+  const next = new Map<string, { items: Comment[]; cursor: string | null }>();
+  if (current.size === 0) return next;
+  const byId = new Map(threads.map((t) => [t.id, t]));
+  await Promise.all(
+    [...current].map(async ([threadId, prev]) => {
+      const thread = byId.get(threadId);
+      if (!thread || thread.replyCount <= thread.replies.length) return;
+      if (scopes !== 'all' && !scopes.has(thread.elementId)) {
+        next.set(threadId, { items: [...prev.items], cursor: prev.cursor });
+        return;
+      }
+      const items: Comment[] = [];
+      let cursor: string | null = null;
+      do {
+        const p = await replies(threadId, cursor);
+        items.push(...p.items);
+        cursor = p.nextCursor;
+        if (p.items.length === 0) break;
+      } while (
+        cursor &&
+        (prev.cursor === null || (cursor !== prev.cursor && items.length < prev.items.length))
+      );
+      next.set(threadId, { items, cursor });
+    }),
+  );
+  return next;
+}
+
+/**
  * Threads after fetching again the ones of some cards (null: the board): the threads of those
  * cards are replaced by the fetched ones, the rest stay, newest first as the server sends them.
  */

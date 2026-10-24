@@ -1,6 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-import type { CommentThread } from '@inkadra/shared';
-import { describe, expect, it, vi } from 'vitest';
+import { addElement, createBoardDoc, type Element } from '@inkadra/doc-schema';
+import type { Comment, CommentThread } from '@inkadra/shared';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type * as Y from 'yjs';
+import { cardLabelOf } from './CommentsPanel.tsx';
+import { fillFragment } from './note.tsx';
 import {
   authorName,
   commentParts,
@@ -11,14 +15,29 @@ import {
   mentionQuery,
   mergeReplies,
   mergeThreads,
+  refreshOlderReplies,
   reviewKey,
 } from './review-model.ts';
-import { pinsByElement } from './review-store.ts';
+import {
+  addOlderReplies,
+  getDraft,
+  getReviews,
+  pinsByElement,
+  queueCommentScopes,
+  resetReviews,
+  saveDraft,
+  takeCommentScopes,
+} from './review-store.ts';
+import { BoardStore } from './store.ts';
 
 const giulia = { id: '0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10', name: 'Giulia Bianchi', image: null };
 const anna = { id: '0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a12', name: 'Anna', image: null };
 const annaMaria = { id: '0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a13', name: 'Anna Maria', image: null };
 const stranger = '0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a11';
+
+beforeEach(() => {
+  resetReviews();
+});
 
 describe('mentions', () => {
   it('shows names only for the ids the server listed, and anything else as typed', () => {
@@ -93,6 +112,103 @@ it('pages the replies of the notified card only to find an older reply', async (
   get.mockClear();
   expect(await findThread([thread], 't', null, get)).toEqual({ threadId: 't' });
   expect(get).not.toHaveBeenCalled();
+});
+
+it('refreshes older replies for the fetched scopes and drops obsolete ones', async () => {
+  const reply = (id: string, body: string, createdAt: string) =>
+    ({ id, body, createdAt }) as unknown as Comment;
+  addOlderReplies('t1', [reply('r1', 'prima', '2026-10-24T10:00:00Z')], 'earlier');
+  addOlderReplies('t2', [reply('r2', 'altra', '2026-10-24T10:00:00Z')], null);
+  addOlderReplies('t3', [reply('r3', 'corta', '2026-10-24T10:00:00Z')], null);
+
+  const threads = [
+    { id: 't1', elementId: 'card-a', replyCount: 52, replies: new Array(50) },
+    { id: 't2', elementId: 'card-b', replyCount: 52, replies: new Array(50) },
+    { id: 't3', elementId: 'card-a', replyCount: 1, replies: [reply('r3', 'corta', '')] },
+  ] as unknown as CommentThread[];
+
+  const get = vi.fn().mockResolvedValueOnce({
+    items: [reply('r1', 'modificata', '2026-10-24T10:00:00Z')],
+    nextCursor: 'earlier',
+  });
+  const updated = await refreshOlderReplies(
+    threads,
+    getReviews().olderReplies,
+    new Set(['card-a']),
+    get,
+  );
+  expect(get).toHaveBeenCalledTimes(1);
+  expect(get).toHaveBeenCalledWith('t1', null);
+  expect(updated.get('t1')?.items.map((r) => r.body)).toEqual(['modificata']);
+  expect(updated.get('t2')?.items.map((r) => r.body)).toEqual(['altra']);
+  expect(updated.has('t3')).toBe(false);
+});
+
+it('queues interrupted card scopes with newer notices instead of refetching everything', () => {
+  expect(takeCommentScopes()).toBe('all');
+  queueCommentScopes('card-a');
+  const first = takeCommentScopes();
+  expect(first).toEqual(new Set(['card-a']));
+
+  // A notice for card-b arrives while card-a is in flight; card-a is re-queued on cleanup.
+  queueCommentScopes('card-b');
+  queueCommentScopes(first);
+  expect(takeCommentScopes()).toEqual(new Set(['card-b', 'card-a']));
+
+  // An interrupted full fetch stays a full fetch even if a card notice arrived meanwhile.
+  queueCommentScopes('card-a');
+  queueCommentScopes('all');
+  queueCommentScopes('card-b');
+  expect(takeCommentScopes()).toBe('all');
+});
+
+it('keeps separate drafts for each card and for the board', () => {
+  saveDraft({ elementId: 'card-a', text: 'bozza A', picked: [anna], visibility: 'team' });
+  saveDraft({ elementId: null, text: 'bozza board', picked: [], visibility: 'everyone' });
+  // Opening card-b mounts an empty composer that clears only card-b's own scope.
+  saveDraft(null, 'card-b');
+
+  expect(getDraft('card-a')?.text).toBe('bozza A');
+  expect(getDraft(null)?.text).toBe('bozza board');
+  expect(getDraft('card-b')).toBeNull();
+
+  saveDraft(null, 'card-a');
+  expect(getDraft('card-a')).toBeNull();
+  expect(getDraft(null)?.text).toBe('bozza board');
+});
+
+it('reads updated note text without waiting for the card object to change', () => {
+  const doc = createBoardDoc('board');
+  const noteId = '0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a20';
+  addElement(doc, {
+    id: noteId,
+    type: 'note',
+    x: 0,
+    y: 0,
+    w: 200,
+    z: 'a0',
+    parent: null,
+    color: 'none',
+    locked: false,
+    tags: [],
+    createdBy: giulia.id,
+    createdAt: 1,
+  });
+  const store = new BoardStore(doc);
+  const body = store.map(noteId)?.get('body') as Y.XmlFragment;
+  fillFragment(body, 'Prima riga');
+  const cache = new WeakMap<Element, string>();
+  const cardBefore = store.getSnapshot().byId.get(noteId);
+
+  expect(cardLabelOf(store.getSnapshot(), store, cache, (k) => k, noteId)).toBe('Prima riga');
+
+  body.delete(0, body.length);
+  fillFragment(body, 'Testo aggiornato');
+
+  // Rich-text edits keep the same element object in the snapshot, yet the label updates.
+  expect(store.getSnapshot().byId.get(noteId)).toBe(cardBefore);
+  expect(cardLabelOf(store.getSnapshot(), store, cache, (k) => k, noteId)).toBe('Testo aggiornato');
+  store.destroy();
 });
 
 it('replaces only the threads of the cards fetched again, newest first', () => {
