@@ -42,12 +42,12 @@ import {
 } from '../invitations.ts';
 import { mailText } from '../mail-texts.ts';
 import { actionMail, type Mailer } from '../mailer.ts';
+import { addressBucket, RateLimiter } from '../rate-limits.ts';
 import { newSecret, sealer, sha256 } from '../secrets.ts';
 import { iso } from './api-routes.ts';
 import { requireActor } from './auth-routes.ts';
 import { toBoard } from './boards-routes.ts';
 import { HttpError } from './errors.ts';
-import { RateLimiter } from './link-previews.ts';
 
 interface Deps {
   config: Config;
@@ -518,7 +518,7 @@ export function registerSharingRoutes(app: FastifyInstance, deps: Deps) {
   });
 
   app.get(v1('/invitations/by-token/:token'), async (req) => {
-    if (!previewLimiter.take(req.ip))
+    if (!previewLimiter.take(addressBucket(req.ip)))
       throw new HttpError('rate_limited', 'Too many requests: wait a minute.');
     const { token } = TokenParams.parse(req.params);
     const row = await findInvitation(db, token);
@@ -539,7 +539,7 @@ export function registerSharingRoutes(app: FastifyInstance, deps: Deps) {
   });
 
   app.post(v1('/invitations/by-token/:token/claim'), async (req, reply) => {
-    if (!previewLimiter.take(req.ip))
+    if (!previewLimiter.take(addressBucket(req.ip)))
       throw new HttpError('rate_limited', 'Too many requests: wait a minute.');
     const { token } = TokenParams.parse(req.params);
     const row = await findInvitation(db, token);

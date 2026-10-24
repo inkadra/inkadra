@@ -16,36 +16,50 @@ describe('per-process rate limits', () => {
     expect(addressBucket('fe80::1%eth0')).toBe(addressBucket('fe80::2%eth1'));
   });
 
-  it('keeps a live budget after 10,000 keys and recovers expired capacity', () => {
+  it('lets new clients in when the table is full, evicting unblocked keys first', () => {
     const now = vi.spyOn(Date, 'now').mockReturnValue(100_000);
-    const limiter = new RateLimiter(1, 2000);
+    const limiter = new RateLimiter(2, 60_000);
+    expect(limiter.take('attacker')).toBe(true);
+    expect(limiter.take('attacker')).toBe(true);
     for (let i = 0; i < 9999; i++) expect(limiter.take(String(i))).toBe(true);
-    now.mockReturnValue(101_500);
-    expect(limiter.take('live')).toBe(true);
-    expect(limiter.take('overflow')).toBe(false);
-    expect(limiter.take('0')).toBe(false);
-    now.mockReturnValue(102_501);
-    expect(limiter.take('overflow')).toBe(true);
-    expect(limiter.take('0')).toBe(true);
-    expect(limiter.take('live')).toBe(false);
+    now.mockReturnValue(101_000);
+    // A table filled by one client never locks out a new one.
+    expect(limiter.take('fresh')).toBe(true);
+    // The blocked key keeps its budget: the least recently used unblocked key went instead.
+    expect(limiter.take('attacker')).toBe(false);
+    expect(limiter.take('9998')).toBe(true);
+    now.mockReturnValue(161_001);
+    expect(limiter.take('attacker')).toBe(true);
+  });
+
+  it('still admits a new key when every slot is blocked', () => {
+    vi.spyOn(Date, 'now').mockReturnValue(100_000);
+    const limiter = new RateLimiter(1, 60_000);
+    for (let i = 0; i < 10_000; i++) expect(limiter.take(String(i))).toBe(true);
+    expect(limiter.take('fresh')).toBe(true);
+    expect(limiter.take('fresh')).toBe(false);
+    expect(limiter.take('9999')).toBe(false);
   });
 
   it('retains wrong-password counters and pending checks under capacity pressure', () => {
     const now = vi.spyOn(Date, 'now').mockReturnValue(100_000);
-    const failures = new Failures(1, 1000);
+    const failures = new Failures(2, 1000);
     expect(failures.begin('pending')).toBe(true);
-    for (let i = 0; i < 9999; i++) {
+    expect(failures.begin('guessing')).toBe(true);
+    failures.finish('guessing', true);
+    expect(failures.begin('guessing')).toBe(true);
+    failures.finish('guessing', true);
+    for (let i = 0; i < 9998; i++) {
       expect(failures.begin(String(i))).toBe(true);
       failures.finish(String(i), true);
     }
-    expect(failures.begin('overflow')).toBe(false);
-    expect(failures.blocked('0')).toBe(true);
-    now.mockReturnValue(101_001);
+    // Full table: a correct password from a new client still gets a check.
     expect(failures.begin('overflow')).toBe(true);
-    expect(failures.blocked('pending')).toBe(true);
+    failures.finish('overflow', false);
+    expect(failures.blocked('guessing')).toBe(true);
+    expect(failures.blocked('pending')).toBe(false);
     failures.finish('pending', false);
-    expect(failures.begin('pending')).toBe(true);
-    failures.finish('pending', true);
-    expect(failures.blocked('pending')).toBe(true);
+    now.mockReturnValue(101_001);
+    expect(failures.blocked('guessing')).toBe(false);
   });
 });

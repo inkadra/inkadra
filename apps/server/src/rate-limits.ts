@@ -27,10 +27,14 @@ export function addressBucket(address: string): string {
 
 const MAX_KEYS = 10_000;
 
-/** Per-process sliding windows. Capacity pressure removes only expired entries. */
+/**
+ * Per-process sliding windows with a memory bound. When every slot is taken, expired entries go
+ * first, then the least recently used keys that are not blocked, and only then blocked ones: a
+ * client filling the table can never lock out everyone else, and blocked keys keep their
+ * budget unless an attacker pays for ten thousand blocked keys at once.
+ */
 export class RateLimiter {
   protected hits = new Map<string, number[]>();
-  private nextSweep = 0;
   constructor(
     protected readonly max: number,
     protected readonly windowMs: number,
@@ -41,21 +45,38 @@ export class RateLimiter {
   protected inFlight(_key: string) {
     return false;
   }
+  protected isBlocked(key: string) {
+    return this.recent(key).length >= this.max;
+  }
+  /** Moves a key to the most recently used end of the table. */
+  protected store(key: string, times: number[]) {
+    this.hits.delete(key);
+    this.hits.set(key, times);
+  }
   protected room(key: string) {
-    if (this.hits.size >= MAX_KEYS && Date.now() >= this.nextSweep) {
-      for (const [k, times] of this.hits) {
-        if (!this.inFlight(k) && Date.now() - (times.at(-1) ?? 0) >= this.windowMs)
-          this.hits.delete(k);
-      }
-      this.nextSweep = Date.now() + 1000;
+    if (this.hits.has(key) || this.hits.size < MAX_KEYS) return true;
+    const now = Date.now();
+    for (const [k, times] of this.hits) {
+      if (!this.inFlight(k) && now - (times.at(-1) ?? 0) >= this.windowMs) this.hits.delete(k);
     }
-    // Fail closed for new keys while all slots are live; never reset an attacker's budget.
-    return this.hits.has(key) || this.hits.size < MAX_KEYS;
+    if (this.hits.size < MAX_KEYS) return true;
+    let blockedVictim: string | undefined;
+    for (const k of this.hits.keys()) {
+      if (this.inFlight(k)) continue;
+      if (!this.isBlocked(k)) {
+        this.hits.delete(k);
+        return true;
+      }
+      blockedVictim ??= k;
+    }
+    if (blockedVictim === undefined) return false;
+    this.hits.delete(blockedVictim);
+    return true;
   }
   take(key: string) {
     const recent = this.recent(key);
     if (recent.length >= this.max || !this.room(key)) return false;
-    this.hits.set(key, [...recent, Date.now()]);
+    this.store(key, [...recent, Date.now()]);
     return true;
   }
 }
@@ -66,13 +87,16 @@ export class Failures extends RateLimiter {
   protected override inFlight(key: string) {
     return this.pending.has(key);
   }
+  protected override isBlocked(key: string) {
+    return this.recent(key).length + (this.pending.get(key) ?? 0) >= this.max;
+  }
   blocked(key: string) {
-    return this.recent(key).length + (this.pending.get(key) ?? 0) >= this.max || !this.room(key);
+    return this.isBlocked(key) || !this.room(key);
   }
   begin(key: string) {
     if (this.blocked(key)) return false;
     // Reserve a slot too, so concurrent new keys cannot exceed the memory bound.
-    this.hits.set(key, this.recent(key));
+    this.store(key, this.recent(key));
     this.pending.set(key, (this.pending.get(key) ?? 0) + 1);
     return true;
   }
@@ -82,7 +106,7 @@ export class Failures extends RateLimiter {
     else this.pending.delete(key);
     const recent = this.recent(key);
     if (failed) recent.push(Date.now());
-    if (recent.length || pending) this.hits.set(key, recent);
+    if (recent.length || pending) this.store(key, recent);
     else this.hits.delete(key);
   }
 }

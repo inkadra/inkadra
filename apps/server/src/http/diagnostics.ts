@@ -6,10 +6,10 @@ import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { type Auth, countUsers } from '../auth.ts';
 import { type Config, VERSION } from '../config.ts';
 import type { Database } from '../db/client.ts';
+import { addressBucket, RateLimiter } from '../rate-limits.ts';
 import type { Storage } from '../storage.ts';
 import { requireActor } from './auth-routes.ts';
 import { HttpError } from './errors.ts';
-import { RateLimiter } from './link-previews.ts';
 
 interface Deps {
   config: Config;
@@ -42,7 +42,7 @@ export function registerDiagnostics(app: FastifyInstance, deps: Deps) {
   const limiter = new RateLimiter(10, 60_000);
 
   app.get(`${API_PREFIX}/diagnostics`, async (req) => {
-    if (!limiter.take(req.ip))
+    if (!limiter.take(addressBucket(req.ip)))
       throw new HttpError('rate_limited', 'Too many checks: wait a minute.');
     const setup = (await countUsers(db)) === 0;
     if (!setup) {
