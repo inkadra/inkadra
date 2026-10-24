@@ -16,6 +16,7 @@ import { ASPECT_RATIOS, type AspectRatio, SHOT_SIZES, setBoardAspect } from '@in
 import { Button, EmptyState, Icon, IconButton } from '@inkadra/ui';
 import { type DragEvent, memo, useMemo, useState, useSyncExternalStore } from 'react';
 import { useTranslation } from 'react-i18next';
+import { GuestVisibility, GuestVisibilityIcon, toggleGuestHidden } from '../guest-visibility.tsx';
 import { type BoardStore, LOCAL } from '../store.ts';
 import { aspectLabel, useBoardAspect } from './aspect.ts';
 import { DrawingEditor } from './DrawingEditor.tsx';
@@ -138,6 +139,7 @@ export function StoryboardView({
                 <FrameTile
                   key={f.id}
                   frame={f}
+                  store={store}
                   label={labels.get(f.id) ?? ''}
                   boardAspect={boardAspect}
                   selected={f.id === selected}
@@ -341,8 +343,18 @@ function SceneSection({
         <span className="story__scene-meta">
           {t('film.total', { count: frames.length, duration })}
         </span>
+        <GuestVisibility store={store} id={scene.id} />
         {!readOnly && (
           <>
+            <button
+              type="button"
+              className="ink-iconbtn"
+              aria-label={t(scene.guestHidden ? 'guestVisibility.show' : 'guestVisibility.hide')}
+              title={t(scene.guestHidden ? 'guestVisibility.show' : 'guestVisibility.hide')}
+              onClick={() => toggleGuestHidden(store, [scene.id])}
+            >
+              <GuestVisibilityIcon />
+            </button>
             <IconButton icon="plus" label={t('film.frame.add')} onClick={onAddFrame} />
             <IconButton
               icon="trash"
@@ -381,6 +393,7 @@ function SceneSection({
 
 const FrameTile = memo(function FrameTile({
   frame,
+  store,
   label,
   boardAspect,
   selected,
@@ -392,6 +405,7 @@ const FrameTile = memo(function FrameTile({
   onDrop,
 }: {
   frame: FrameElement;
+  store: BoardStore;
   label: string;
   boardAspect: AspectRatio;
   selected: boolean;
@@ -418,6 +432,7 @@ const FrameTile = memo(function FrameTile({
       }}
       onDrop={onDrop}
     >
+      <GuestVisibility store={store} id={frame.id} />
       <button
         type="button"
         className="story__tile-pic"

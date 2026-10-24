@@ -1,6 +1,14 @@
 import type { Board, BoardDetail, ProjectRole } from '@inkadra/shared';
-import { Avatar, Button, EmptyState, Icon, type IconName } from '@inkadra/ui';
-import { Fragment, type MouseEvent, useCallback, useEffect, useMemo, useState } from 'react';
+import { Avatar, Button, EmptyState, Icon, IconButton, type IconName } from '@inkadra/ui';
+import {
+  Fragment,
+  type MouseEvent,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams, useSearchParams } from 'react-router';
 import { useHeaderContent } from '../lib/header.tsx';
@@ -8,9 +16,12 @@ import { useSession } from '../lib/session.tsx';
 import { useProjects } from '../routes/AppLayout.tsx';
 import { boardPath, fetchBoard, useProjectBoards } from './boards.ts';
 import { Canvas } from './Canvas.tsx';
+import { ContextMenu } from './chrome.tsx';
 import { type ConnectionStatus, useBoardConnection } from './connection.ts';
 import { ShotList } from './film/ShotList.tsx';
 import { StoryboardView } from './film/StoryboardView.tsx';
+import { RestoredToast } from './RestoredToast.tsx';
+import { type VersionPreview, VersionsDialog } from './VersionsDialog.tsx';
 import './film/film.css';
 import { type Peer, uniquePeople, usePeers } from './presence.ts';
 import { ShareDialog } from './ShareDialog.tsx';
@@ -94,6 +105,29 @@ function BoardScreen({
   const kind = detail?.kind ?? boards?.find((b) => b.id === boardId)?.kind;
   const [view, setView] = useBoardView(kind);
   const [sharing, setSharing] = useState(false);
+  const [versionsOpen, setVersionsOpen] = useState(false);
+  const [headerMenu, setHeaderMenu] = useState(false);
+  const [preview, setPreview] = useState<VersionPreview | null>(null);
+  const previewStore = preview?.store;
+  useEffect(
+    () => () => {
+      previewStore?.destroy();
+      previewStore?.doc.destroy();
+    },
+    [previewStore],
+  );
+  const editable = !!conn && !conn.readOnly && canEdit(detail?.myRole ?? projectRole);
+  useEffect(() => {
+    if (!editable) {
+      setVersionsOpen(false);
+      setPreview(null);
+    }
+  }, [editable]);
+  const headerMenuAnchor = useRef<HTMLDivElement>(null);
+  const closeHeaderMenu = useCallback(() => {
+    setHeaderMenu(false);
+    document.getElementById('board-header-menu')?.focus();
+  }, []);
 
   // Read again when the server changes our access, so the role shown and checked is current.
   const accessVersion = conn?.accessChangedAt;
@@ -168,6 +202,25 @@ function BoardScreen({
         <span className="ink-header__spacer" />
         {conn && <SyncStatus status={conn.status} readOnly={conn.readOnly} />}
         {conn && <Peers provider={conn.provider} />}
+        {editable && (
+          <div className="board-header-menu" ref={headerMenuAnchor}>
+            <IconButton
+              id="board-header-menu"
+              icon="more"
+              label={t('versions.boardMenu')}
+              aria-haspopup="menu"
+              aria-expanded={headerMenu}
+              onClick={() => setHeaderMenu((v) => !v)}
+            />
+            {headerMenu && (
+              <ContextMenu
+                onClose={closeHeaderMenu}
+                anchor={headerMenuAnchor}
+                items={[{ label: t('versions.title'), action: () => setVersionsOpen(true) }]}
+              />
+            )}
+          </div>
+        )}
         {detail && (
           <Button
             variant={
@@ -181,7 +234,21 @@ function BoardScreen({
         )}
       </>
     ),
-    [crumbs, t, projectId, rootBoardId, openBoard, conn, kind, view, setView, detail],
+    [
+      crumbs,
+      t,
+      projectId,
+      rootBoardId,
+      openBoard,
+      conn,
+      kind,
+      view,
+      setView,
+      detail,
+      editable,
+      headerMenu,
+      closeHeaderMenu,
+    ],
   );
   useHeaderContent(header);
 
@@ -204,36 +271,71 @@ function BoardScreen({
       </div>
     );
   }
-  const editable = !conn.readOnly && canEdit(detail?.myRole ?? projectRole);
-  if (view === 'storyboard') {
-    return (
-      <StoryboardView
-        store={conn.store}
-        projectId={projectId}
-        boardId={boardId}
-        userId={user.id}
-        readOnly={!editable}
-      />
-    );
-  }
-  if (view === 'shotlist') {
-    return (
-      <ShotList store={conn.store} boardTitle={crumbs.at(-1)?.title ?? ''} readOnly={!editable} />
-    );
-  }
+  const versions = editable && (
+    <VersionsDialog
+      open={versionsOpen}
+      boardId={boardId}
+      onClose={() => setVersionsOpen(false)}
+      preview={preview}
+      onPreview={(value) => {
+        setPreview(value);
+        if (!value)
+          requestAnimationFrame(() => document.getElementById('board-header-menu')?.focus());
+      }}
+      onRestored={() => {
+        conn.store.undo.clear();
+      }}
+    />
+  );
+  const content = preview ? (
+    <Canvas
+      key={preview.version.id}
+      conn={{ ...conn, store: preview.store, readOnly: true }}
+      preview
+      projectId={projectId}
+      boardId={boardId}
+      userId={user.id}
+      boards={boards}
+      canEdit={false}
+      peers={[]}
+      onOpenBoard={() => {}}
+    />
+  ) : view === 'storyboard' ? (
+    <StoryboardView
+      store={conn.store}
+      projectId={projectId}
+      boardId={boardId}
+      userId={user.id}
+      readOnly={!editable}
+    />
+  ) : view === 'shotlist' ? (
+    <ShotList store={conn.store} boardTitle={crumbs.at(-1)?.title ?? ''} readOnly={!editable} />
+  ) : (
+    <BoardCanvas
+      conn={conn}
+      projectId={projectId}
+      boardId={boardId}
+      userId={user.id}
+      boards={boards}
+      canEdit={canEdit(detail?.myRole ?? projectRole)}
+      onOpenBoard={openBoard}
+    />
+  );
   return (
-    <>
-      <BoardCanvas
-        conn={conn}
-        projectId={projectId}
-        boardId={boardId}
-        userId={user.id}
-        boards={boards}
-        canEdit={canEdit(detail?.myRole ?? projectRole)}
-        onOpenBoard={openBoard}
-      />
+    <div
+      className={preview ? 'board-preview' : undefined}
+      style={preview ? undefined : { display: 'contents' }}
+    >
+      {versions}
+      {content}
       {shareDialog}
-    </>
+      <RestoredToast
+        provider={conn.provider}
+        boardId={boardId}
+        store={conn.store}
+        canList={editable}
+      />
+    </div>
   );
 }
 

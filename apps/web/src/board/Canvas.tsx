@@ -92,6 +92,7 @@ import { BoardContext, type BoardContextValue } from './context.ts';
 import { useBoardAspect } from './film/aspect.ts';
 import { DrawingEditor } from './film/DrawingEditor.tsx';
 import { FramePanel } from './film/FramePanel.tsx';
+import { toggleGuestHidden } from './guest-visibility.tsx';
 import { fillLinkPreview, webUrl } from './links.ts';
 import { fillFragment, isEmpty } from './note.tsx';
 import { PresenceLayer } from './PresenceLayer.tsx';
@@ -174,6 +175,7 @@ export interface CanvasProps {
   userId: string;
   boards: Board[] | null;
   canEdit: boolean;
+  preview?: boolean;
   peers: Peer[];
   onOpenBoard: (boardId: string) => void;
 }
@@ -185,6 +187,7 @@ export function Canvas({
   userId,
   boards,
   canEdit,
+  preview = false,
   peers,
   onOpenBoard,
 }: CanvasProps) {
@@ -228,11 +231,11 @@ export function Canvas({
   const pendingImageAt = useRef<Point | null>(null);
   const [size, setSize] = useState({ w: 0, h: 0 });
   const [viewport, setViewportState] = useState<Viewport>(
-    () => loadViewport(boardId) ?? { x: -40, y: -40, zoom: 1 },
+    () => (preview ? null : loadViewport(boardId)) ?? { x: -40, y: -40, zoom: 1 },
   );
   const vp = useRef(viewport);
   const settleTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
-  const fitted = useRef(loadViewport(boardId) !== null);
+  const fitted = useRef(!preview && loadViewport(boardId) !== null);
   const [selection, setSelection] = useState<ReadonlySet<string>>(EMPTY_SET);
   const [editing, setEditingState] = useState<string | null>(null);
   const [tool, setTool] = useState<CanvasTool>('select');
@@ -269,7 +272,7 @@ export function Canvas({
       const value = typeof next === 'function' ? next(vp.current) : next;
       vp.current = value;
       setViewportState(value);
-      saveViewport(boardId, value);
+      if (!preview) saveViewport(boardId, value);
       // While the view moves the world and the dots are composited, so a pan only shifts pixels; once it
       // settles the layer goes away and the cards are drawn sharp at the new zoom.
       rootRef.current?.classList.add('canvas--moving');
@@ -279,7 +282,7 @@ export function Canvas({
         SETTLE_MS,
       );
     },
-    [boardId],
+    [boardId, preview],
   );
 
   const editingRef = useRef<string | null>(null);
@@ -342,7 +345,7 @@ export function Canvas({
   }, [conn.accessChangedAt, conn.readOnly, setEditing, t]);
 
   // Others see where we point, what we selected and which card we write in.
-  const presence = useLocalPresence(conn.provider);
+  const presence = useLocalPresence(preview ? null : conn.provider);
   useEffect(() => {
     presence.selection([...selection], editing);
   }, [presence, selection, editing]);
@@ -976,6 +979,7 @@ export function Canvas({
   // Keyboard --------------------------------------------------------------------
   const keyHandler = useRef<(e: KeyboardEvent) => void>(() => {});
   keyHandler.current = (e: KeyboardEvent) => {
+    if (document.activeElement?.closest('dialog[open]')) return;
     if (e.key === ' ' && !isTyping(e.target)) {
       spaceDown.current = e.type === 'keydown';
       if (e.type === 'keydown') e.preventDefault();
@@ -1110,6 +1114,7 @@ export function Canvas({
   // Clipboard ---------------------------------------------------------------------
   const clipHandler = useRef<(e: ClipboardEvent) => void>(() => {});
   clipHandler.current = (e: ClipboardEvent) => {
+    if (document.activeElement?.closest('dialog[open]')) return;
     if (isTyping(e.target) || !e.clipboardData) return;
     if (e.type === 'copy' || e.type === 'cut') {
       if (selection.size === 0) return;
@@ -1315,7 +1320,7 @@ export function Canvas({
   // A search result links to ?el=<id>: select that card and bring it into view, once.
   const focusId = params.get('el');
   useEffect(() => {
-    if (!focusId || conn.status !== 'synced' || size.w === 0) return;
+    if (preview || !focusId || conn.status !== 'synced' || size.w === 0) return;
     const el = snap.byId.get(focusId);
     setParams(
       (p) => {
@@ -1334,7 +1339,7 @@ export function Canvas({
       setViewport(centerOn(vp.current, { x: r.x + r.w / 2, y: r.y + r.h / 2 }, size.w, size.h));
     }
     if (el.parent === UNSORTED) setUnsortedOpen(true);
-  }, [focusId, conn.status, size, snap, liveRect, select, setParams, setViewport]);
+  }, [preview, focusId, conn.status, size, snap, liveRect, select, setParams, setViewport]);
 
   const menuItems = useMemo<MenuItem[]>(() => {
     if (!menu) return [];
@@ -1374,6 +1379,18 @@ export function Canvas({
       ...(readOnly
         ? []
         : [
+            ...(selectedEls.some((e) => e.type !== 'arrow')
+              ? [
+                  {
+                    label: t(
+                      selectedEls.filter((e) => e.type !== 'arrow').every((e) => e.guestHidden)
+                        ? 'guestVisibility.show'
+                        : 'guestVisibility.hide',
+                    ),
+                    action: () => toggleGuestHidden(store, [...selection]),
+                  },
+                ]
+              : []),
             {
               label: t('board.menu.tags'),
               action: () => setTagging({ x: menu.x, y: menu.y, ids: [...selection] }),
@@ -1411,6 +1428,7 @@ export function Canvas({
     add,
     duplicate,
     toggleLock,
+    store,
     removeSelection,
     openElement,
     doc,
@@ -1579,6 +1597,7 @@ export function Canvas({
             onAlign={align}
             onGroup={groupIntoColumn}
             onLock={toggleLock}
+            onGuestHidden={() => toggleGuestHidden(store, [...selection])}
             onDelete={removeSelection}
             onDuplicate={duplicate}
             onMore={(x, y) => setMenu({ x, y, at: screenToWorld(vp.current, { x, y }) })}

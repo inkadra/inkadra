@@ -12,7 +12,7 @@ export class RequestError extends Error {
   }
 }
 
-async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
+async function request<T>(path: string, init: RequestInit = {}, binary = false): Promise<T> {
   const res = await fetch(path, {
     credentials: 'same-origin',
     ...init,
@@ -21,6 +21,7 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
       ...init.headers,
     },
   });
+  if (res.ok && binary) return new Uint8Array(await res.arrayBuffer()) as T;
   const text = await res.text();
   const body = text ? JSON.parse(text) : null;
   if (!res.ok) {
@@ -37,6 +38,7 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
 }
 
 export const api = {
+  bytes: (path: string) => request<Uint8Array>(`${API_PREFIX}${path}`, {}, true),
   get: <T>(path: string) => request<T>(`${API_PREFIX}${path}`),
   post: <T>(path: string, body: unknown) =>
     request<T>(`${API_PREFIX}${path}`, { method: 'POST', body: JSON.stringify(body) }),

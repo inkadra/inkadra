@@ -63,20 +63,20 @@ const CURSOR_EVERY_MS = 50;
  * Publishes this client's pointer, selection and editing state. The pointer is sent at most
  * every 50 ms; the server adds who we are.
  */
-export function useLocalPresence(provider: HocuspocusProvider) {
+export function useLocalPresence(provider: HocuspocusProvider | null) {
   const publisher = useMemo(() => {
     const state: LocalPresence = { cursor: null, selection: [], editing: null };
     let timer: ReturnType<typeof setTimeout> | undefined;
     let lastSent = 0;
     const flush = () => {
       lastSent = Date.now();
-      provider.awareness?.setLocalState({ ...state });
+      provider?.awareness?.setLocalState({ ...state });
     };
     return {
       flush,
       stop() {
         clearTimeout(timer);
-        provider.awareness?.setLocalState(null);
+        provider?.awareness?.setLocalState(null);
       },
       cursor(at: { x: number; y: number } | null) {
         state.cursor = at;
