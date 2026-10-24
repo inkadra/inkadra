@@ -33,10 +33,7 @@ export const AUTO_VERSION_EVERY_MS = HOUR;
 export const HOURLY_KEEP_MS = 48 * HOUR;
 /** The newest automatic version of each day (UTC) is kept this long. */
 export const DAILY_KEEP_MS = 30 * DAY;
-/**
- * The state a restore replaced. Not thinned like automatic versions: it is the way back from a
- * restore, so it stays as long as the longest-kept automatic one.
- */
+/** Restore backups follow the same retention as automatic versions. */
 export const RESTORE_KEEP_MS = DAILY_KEEP_MS;
 
 type Tx = Parameters<Parameters<Database['transaction']>[0]>[0];
@@ -61,6 +58,19 @@ async function lockBoard(tx: Tx, boardId: string) {
 }
 
 const startOfUtcDay = (at: Date) => new Date(Math.floor(at.getTime() / DAY) * DAY);
+
+async function expireEarlierVersions(tx: Tx, boardId: string, kind: 'auto' | 'restore', now: Date) {
+  await tx
+    .update(boardVersion)
+    .set({ expiresAt: sql`${boardVersion.createdAt} + interval '48 hours'` })
+    .where(
+      and(
+        eq(boardVersion.boardId, boardId),
+        eq(boardVersion.kind, kind),
+        gte(boardVersion.createdAt, startOfUtcDay(now)),
+      ),
+    );
+}
 
 /**
  * Called by the collaboration server each time it stores a document: takes an automatic
@@ -88,16 +98,7 @@ export async function takeAutoVersion(
       )
       .limit(1);
     if (recent) return null;
-    await tx
-      .update(boardVersion)
-      .set({ expiresAt: sql`${boardVersion.createdAt} + interval '48 hours'` })
-      .where(
-        and(
-          eq(boardVersion.boardId, boardId),
-          eq(boardVersion.kind, 'auto'),
-          gte(boardVersion.createdAt, startOfUtcDay(now)),
-        ),
-      );
+    await expireEarlierVersions(tx, boardId, 'auto', now);
     const [row] = await tx
       .insert(boardVersion)
       .values({
@@ -120,9 +121,9 @@ const stateColumns = (snap: VersionState) => ({
 });
 
 /**
- * Retention, run hourly by the worker: automatic versions are kept 48 hours, and the newest
- * of each day (UTC) 30 days; restore versions 30 days; named versions until someone deletes
- * them. Keepers are worked out again on every run, so a day whose kept version was named or
+ * Retention, run hourly by the worker: automatic and restore versions are kept 48 hours,
+ * then the newest of each kind per day (UTC) 30 days; named versions until deleted.
+ * Keepers are worked out again on every run, so a day whose kept version was named or
  * deleted keeps its next newest one, as long as that one is still within its 48 hours.
  */
 export async function applyVersionRetention(db: Database, now = new Date()) {
@@ -130,13 +131,13 @@ export async function applyVersionRetention(db: Database, now = new Date()) {
     with ranked as (
       select id, created_at + case
           when row_number() over (
-            partition by board_id, (created_at at time zone 'UTC')::date
+            partition by board_id, kind, (created_at at time zone 'UTC')::date
             order by created_at desc, id desc
           ) = 1 then interval '30 days'
           else interval '48 hours'
         end as expires
       from board_version
-      where kind = 'auto'
+      where kind in ('auto', 'restore')
     )
     update board_version v set expires_at = r.expires
     from ranked r
@@ -151,13 +152,14 @@ export async function applyVersionRetention(db: Database, now = new Date()) {
 /** Saves a named version, unless the board already has the most it may keep. */
 export async function insertNamedVersion(
   db: Database,
-  input: { boardId: string; name: string; userId: string },
+  input: SaveVersion,
   snap: VersionState,
-): Promise<{ ok: true; versionId: string } | { ok: false; reason: 'limit' }> {
+): Promise<SaveVersionResult> {
   return db.transaction(async (tx) => {
     await lockBoard(tx, input.boardId);
     if ((await countNamed(tx, input.boardId)) >= MAX_NAMED_VERSIONS)
       return { ok: false, reason: 'limit' } as const;
+    if (expired(input.expiresAt)) return { ok: false, reason: 'expired' } as const;
     const [row] = await tx
       .insert(boardVersion)
       .values({
@@ -327,7 +329,7 @@ export function directVersionWriter(
       const live = collab.hocuspocus.documents.get(boardDocName(boardId));
       const snap = snapshot(live ?? (await storedDoc(db, boardId)));
       if (expired(expiresAt)) return { ok: false, reason: 'expired' };
-      return insertNamedVersion(db, { boardId, name, userId }, snap);
+      return insertNamedVersion(db, { boardId, name, userId, expiresAt }, snap);
     },
 
     async restore({ boardId, versionId, userId, expiresAt }) {
@@ -350,29 +352,36 @@ export function directVersionWriter(
         const doc = connection.document;
         if (!doc) throw new Error('direct connection closed');
         // Saved before anything changes, so the board can always go back.
-        const before = snapshot(doc);
+        let before = snapshot(doc);
         const backupId = await insertBackup(db, boardId, userId, before);
         let written = false;
-        let after: VersionState | null = null;
-        await connection.transact((live) => {
-          if (expired(expiresAt)) return;
-          // Edits that arrived while the backup was being saved belong in it too.
-          if (!sameVector(Y.encodeStateVector(live), Y.encodeStateVectorFromUpdate(before.state)))
-            after = snapshot(live);
-          writeVersionOver(live, old);
-          written = true;
-        });
+        while (!written && !expired(expiresAt)) {
+          let changed: VersionState | null = null;
+          await connection.transact((live) => {
+            if (expired(expiresAt)) return;
+            const current = snapshot(live);
+            // A state vector misses deletion-only edits. Compare full updates, including
+            // their delete sets, and persist every intervening edit before replacing it.
+            if (!Buffer.from(current.state).equals(before.state)) {
+              changed = current;
+              return;
+            }
+            writeVersionOver(live, old);
+            written = true;
+          });
+          if (changed) {
+            before = changed;
+            const updated = await db
+              .update(boardVersion)
+              .set(stateColumns(before))
+              .where(eq(boardVersion.id, backupId))
+              .returning({ id: boardVersion.id });
+            if (updated.length === 0) throw new Error('Restore backup was deleted');
+          }
+        }
         if (!written) {
           await db.delete(boardVersion).where(eq(boardVersion.id, backupId));
           return { ok: false, reason: 'expired' };
-        }
-        if (after) {
-          const late: VersionState = after;
-          await db
-            .update(boardVersion)
-            .set(stateColumns(late))
-            .where(eq(boardVersion.id, backupId))
-            .catch((err) => log?.error({ err, boardId }, 'restore backup not updated'));
         }
         const notice: BoardNotice = { type: 'restored', versionId };
         doc.broadcastStateless(JSON.stringify(notice));
@@ -388,25 +397,23 @@ export function directVersionWriter(
   };
 }
 
-function sameVector(a: Uint8Array, b: Uint8Array) {
-  const x = Y.decodeStateVector(a);
-  const y = Y.decodeStateVector(b);
-  return x.size === y.size && [...x].every(([client, clock]) => y.get(client) === clock);
-}
-
 async function insertBackup(db: Database, boardId: string, userId: string, snap: VersionState) {
   const now = new Date();
-  const [row] = await db
-    .insert(boardVersion)
-    .values({
-      boardId,
-      kind: 'restore',
-      createdBy: userId,
-      ...stateColumns(snap),
-      createdAt: now,
-      expiresAt: new Date(now.getTime() + RESTORE_KEEP_MS),
-    })
-    .returning({ id: boardVersion.id });
-  if (!row) throw new Error('Version insert returned nothing');
-  return row.id;
+  return db.transaction(async (tx) => {
+    await lockBoard(tx, boardId);
+    await expireEarlierVersions(tx, boardId, 'restore', now);
+    const [row] = await tx
+      .insert(boardVersion)
+      .values({
+        boardId,
+        kind: 'restore',
+        createdBy: userId,
+        ...stateColumns(snap),
+        createdAt: now,
+        expiresAt: new Date(now.getTime() + RESTORE_KEEP_MS),
+      })
+      .returning({ id: boardVersion.id });
+    if (!row) throw new Error('Version insert returned nothing');
+    return row.id;
+  });
 }

@@ -12,7 +12,7 @@ import {
 import type { BoardVersion } from '@inkadra/shared';
 import { and, eq, sql } from 'drizzle-orm';
 import pino from 'pino';
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import WebSocket from 'ws';
 import * as Y from 'yjs';
 import { createAuth } from '../auth.ts';
@@ -322,6 +322,48 @@ describe.skipIf(!url)('board versions (needs DATABASE_URL)', () => {
   });
 
   describe('retention', () => {
+    it('thins restore backups like automatic versions and keeps a named backup', async () => {
+      await clearBoard(boardId);
+      const now = new Date('2026-10-24T12:30:00.000Z');
+      const early = await insertVersion({
+        kind: 'restore',
+        createdAt: new Date('2026-10-20T08:00:00.000Z'),
+      });
+      const late = await insertVersion({
+        kind: 'restore',
+        createdAt: new Date('2026-10-20T09:00:00.000Z'),
+      });
+      const recent = await insertVersion({
+        kind: 'restore',
+        createdAt: new Date('2026-10-24T08:00:00.000Z'),
+      });
+      const newest = await insertVersion({
+        kind: 'restore',
+        createdAt: new Date('2026-10-24T09:00:00.000Z'),
+      });
+      const auto = await insertVersion({ createdAt: new Date('2026-10-20T10:00:00.000Z') });
+      const named = await insertVersion({
+        kind: 'restore',
+        createdAt: new Date('2026-09-01T08:00:00.000Z'),
+      });
+      expect(
+        (
+          await request('PATCH', `/boards/${boardId}/versions/${named.id}`, 'owner', {
+            name: 'Keep this backup',
+          })
+        ).statusCode,
+      ).toBe(200);
+      await applyVersionRetention(db, now);
+      expect((await versionsOf(boardId)).map((v) => v.id)).toEqual([
+        named.id,
+        late.id,
+        auto.id,
+        recent.id,
+        newest.id,
+      ]);
+      expect((await versionsOf(boardId)).some((v) => v.id === early.id)).toBe(false);
+    });
+
     it('keeps automatic versions hourly for 48 hours, then the newest of each day for 30 days', async () => {
       await clearBoard(boardId);
       const now = new Date('2026-10-24T12:30:00.000Z');
@@ -484,6 +526,42 @@ describe.skipIf(!url)('board versions (needs DATABASE_URL)', () => {
   });
 
   describe('saving named versions', () => {
+    it('refuses a queued save that expires while waiting for the board lock', async () => {
+      await clearBoard(boardId);
+      let release = () => {};
+      let locked = () => {};
+      const ready = new Promise<void>((resolve) => {
+        locked = resolve;
+      });
+      const hold = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      const transaction = db.transaction(async (tx) => {
+        await tx.execute(
+          sql`select pg_advisory_xact_lock(hashtext(${`board_version:${boardId}`}))`,
+        );
+        locked();
+        await hold;
+      });
+      try {
+        await ready;
+        const saving = versions.save({
+          boardId,
+          name: 'Expired while waiting',
+          userId: people.editor?.id ?? '',
+          expiresAt: Date.now() + 100,
+        });
+        await new Promise((resolve) => setTimeout(resolve, 150));
+        release();
+        await transaction;
+        expect(await saving).toEqual({ ok: false, reason: 'expired' });
+        expect((await versionsOf(boardId)).filter((v) => v.kind === 'named')).toEqual([]);
+      } finally {
+        release();
+        await transaction;
+      }
+    });
+
     it('saves what is live on the board, even before it is stored', async () => {
       await clearBoard(boardId);
       const connection = await collab.hocuspocus.openDirectConnection(boardDocName(boardId));
@@ -705,6 +783,77 @@ describe.skipIf(!url)('board versions (needs DATABASE_URL)', () => {
   }
 
   describe('restore', () => {
+    for (const change of ['edit', 'delete'] as const) {
+      it(`backs up a concurrent ${change} before replacing the live state`, async () => {
+        const version = await changedBoard(boardId);
+        const openDirect = collab.hocuspocus.openDirectConnection.bind(collab.hocuspocus);
+        const opening = vi.spyOn(collab.hocuspocus, 'openDirectConnection');
+        opening.mockImplementationOnce(async (...args) => {
+          const connection = await openDirect(...args);
+          const transact = connection.transact.bind(connection);
+          vi.spyOn(connection, 'transact').mockImplementationOnce(async (callback) =>
+            transact((live) => {
+              if (change === 'delete') roots(live).elements.delete('restore4');
+              else roots(live).elements.get('restore4')?.set('x', 123);
+              return callback(live);
+            }),
+          );
+          return connection;
+        });
+        try {
+          const result = await versions.restore({
+            boardId,
+            versionId: version.id,
+            userId: people.editor?.id ?? '',
+          });
+          expect(result.ok).toBe(true);
+          if (!result.ok) throw new Error('restore failed');
+          const state = await request(
+            'GET',
+            `/boards/${boardId}/versions/${result.backupId}/state`,
+            'editor',
+          );
+          const backup = new Y.Doc();
+          Y.applyUpdate(backup, state.rawPayload);
+          if (change === 'delete') expect(elementOf(backup, 'restore4')).toBeNull();
+          else expect(elementOf(backup, 'restore4')?.x).toBe(123);
+          expectRestored(await read(boardId, (doc) => doc));
+        } finally {
+          opening.mockRestore();
+        }
+      });
+    }
+
+    it('leaves the live board alone if persisting a concurrent edit in the backup fails', async () => {
+      const version = await changedBoard(boardId);
+      const openDirect = collab.hocuspocus.openDirectConnection.bind(collab.hocuspocus);
+      const opening = vi.spyOn(collab.hocuspocus, 'openDirectConnection');
+      opening.mockImplementationOnce(async (...args) => {
+        const connection = await openDirect(...args);
+        const transact = connection.transact.bind(connection);
+        vi.spyOn(connection, 'transact').mockImplementationOnce(async (callback) =>
+          transact((live) => {
+            roots(live).elements.get('restore4')?.set('x', 456);
+            return callback(live);
+          }),
+        );
+        return connection;
+      });
+      const updating = vi.spyOn(db, 'update').mockImplementationOnce(() => {
+        throw new Error('Backup write failed');
+      });
+      try {
+        await expect(
+          versions.restore({ boardId, versionId: version.id, userId: people.editor?.id ?? '' }),
+        ).rejects.toThrow('Backup write failed');
+        expect(await read(boardId, (doc) => elementOf(doc, 'restore4')?.x)).toBe(456);
+        expect(await read(boardId, (doc) => roots(doc).elements.has('restore1'))).toBe(false);
+      } finally {
+        updating.mockRestore();
+        opening.mockRestore();
+      }
+    });
+
     it('writes the version over the live board, saves what it replaced and tells open boards', async () => {
       const version = await changedBoard(boardId);
       const [review] = await db
