@@ -85,6 +85,18 @@ body=$(c "$url/api/v1/health")
 type=$(c -o /dev/null -w '%{content_type}' "$url/")
 [[ $type == text/html* ]] && pass "web app served" || fail "web app (got: $type)"
 
+# Installing the app: the manifest with its own type, and the service worker revalidated.
+type=$(c -o /dev/null -w '%{content_type}' "$url/manifest.webmanifest")
+[[ $type == application/manifest+json* ]] && pass "web app manifest served" ||
+  fail "web app manifest (got: $type)"
+headers=$(c -D - -o /dev/null "$url/sw.js" | tr -d '\r')
+if grep -qi '^content-type: \(application\|text\)/javascript' <<<"$headers" &&
+  grep -qi '^cache-control: no-cache' <<<"$headers"; then
+  pass "service worker served, not cached"
+else
+  fail "service worker (headers: $(tr '\n' ' ' <<<"$headers"))"
+fi
+
 body=$(c "$url/api/v1/instance")
 [[ $body == *"\"publicUrl\":\"$url\""* ]] && pass "instance reports PUBLIC_URL" ||
   fail "instance (got: $body)"

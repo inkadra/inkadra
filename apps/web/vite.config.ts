@@ -1,10 +1,11 @@
 import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vite';
+import { pwa } from './pwa/plugin.ts';
 
 const api = process.env.INKADRA_DEV_API ?? 'http://localhost:3000';
 
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(), pwa()],
   server: {
     port: 5173,
     proxy: {

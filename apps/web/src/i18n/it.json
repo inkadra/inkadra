@@ -750,5 +750,15 @@
     "errors": {
       "password": "La password non è corretta."
     }
+  },
+  "pwa": {
+    "updateAvailable": "Nuova versione disponibile",
+    "update": "Aggiorna",
+    "later": "Più tardi",
+    "offline": {
+      "title": "Sei offline",
+      "body": "Inkadra non raggiunge il server. Controlla la connessione: la pagina si ricarica da sola quando torna la rete.",
+      "retry": "Riprova"
+    }
   }
 }

@@ -750,5 +750,15 @@
     "errors": {
       "password": "The password is not right."
     }
+  },
+  "pwa": {
+    "updateAvailable": "New version available",
+    "update": "Update",
+    "later": "Later",
+    "offline": {
+      "title": "You are offline",
+      "body": "Inkadra cannot reach the server. Check your connection: the page reloads by itself when the network is back.",
+      "retry": "Try again"
+    }
   }
 }

@@ -4,6 +4,8 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { createBrowserRouter, Outlet, RouterProvider } from 'react-router';
 import { SessionProvider, useSession } from './lib/session.tsx';
+import { registerServiceWorker } from './pwa/register.ts';
+import { UpdatePrompt } from './pwa/UpdatePrompt.tsx';
 import { AppLayout } from './routes/AppLayout.tsx';
 import { Authorize } from './routes/Authorize.tsx';
 import { Diagnostics } from './routes/Diagnostics.tsx';
@@ -52,6 +54,8 @@ createRoot(root).render(
   <StrictMode>
     <SessionProvider>
       <RouterProvider router={router} />
+      <UpdatePrompt />
     </SessionProvider>
   </StrictMode>,
 );
+registerServiceWorker();
