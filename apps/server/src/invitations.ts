@@ -52,7 +52,13 @@ export async function invitationFromCookie(
 export function readCookie(header: string | null | undefined, name: string): string | null {
   for (const part of (header ?? '').split(';')) {
     const [k, ...v] = part.trim().split('=');
-    if (k === name) return decodeURIComponent(v.join('='));
+    if (k === name) {
+      try {
+        return decodeURIComponent(v.join('='));
+      } catch {
+        return null;
+      }
+    }
   }
   return null;
 }

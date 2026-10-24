@@ -19,7 +19,7 @@ import {
   z,
 } from '@inkadra/shared';
 import { verifyPassword } from 'better-auth/crypto';
-import { and, count, eq, gt, inArray, isNull, or, sql } from 'drizzle-orm';
+import { and, count, eq, getTableColumns, gt, inArray, isNull, or, sql } from 'drizzle-orm';
 import type { FastifyInstance, FastifyReply } from 'fastify';
 import { guestCan } from '../access.ts';
 import type { Config } from '../config.ts';
@@ -35,6 +35,7 @@ import {
   sharePick,
   user,
 } from '../db/schema.ts';
+import { addressBucket, Failures } from '../rate-limits.ts';
 import { safeEqual, sha256 } from '../secrets.ts';
 import {
   type DocViews,
@@ -94,37 +95,6 @@ type GuestEvent =
  */
 function afterGuestWrite(_event: GuestEvent): void {}
 
-/** Failed attempts per key in a sliding window; successes are not counted. */
-class Failures {
-  private hits = new Map<string, number[]>();
-  private pending = new Map<string, number>();
-  constructor(
-    private readonly max: number,
-    private readonly windowMs: number,
-  ) {}
-  private recent(key: string) {
-    const now = Date.now();
-    return (this.hits.get(key) ?? []).filter((t) => now - t < this.windowMs);
-  }
-  blocked(key: string) {
-    return this.recent(key).length + (this.pending.get(key) ?? 0) >= this.max;
-  }
-  begin(key: string) {
-    if (this.blocked(key)) return false;
-    this.pending.set(key, (this.pending.get(key) ?? 0) + 1);
-    return true;
-  }
-  finish(key: string, failed: boolean) {
-    const pending = (this.pending.get(key) ?? 1) - 1;
-    if (pending) this.pending.set(key, pending);
-    else this.pending.delete(key);
-    if (failed) {
-      if (this.hits.size > 10_000) this.hits.clear();
-      this.hits.set(key, [...this.recent(key), Date.now()]);
-    }
-  }
-}
-
 /** New guests a link accepts in a day, whatever the address (decision 0013). */
 const NEW_GUESTS_PER_DAY = 500;
 
@@ -141,6 +111,7 @@ export async function registerGuestRoutes(app: FastifyInstance, deps: Deps) {
   const guests = createGuestAuth({ config, db, docs });
   const previews = new RateLimiter(60, 60_000);
   const wrongPasswords = new Failures(10, 15 * 60_000);
+  const linkPasswords = new Failures(100, 15 * 60_000);
   const newGuests = new RateLimiter(10, 60 * 60_000);
   const v1 = (path: string) => `${API_PREFIX}${path}`;
   const assetPath = (linkId: string, assetId: string) => `${guestPath(linkId)}/assets/${assetId}`;
@@ -285,7 +256,8 @@ export async function registerGuestRoutes(app: FastifyInstance, deps: Deps) {
 
   async function snapshot(ctx: GuestContext, boardId: string) {
     const top = guests.requireBoard(ctx, boardId);
-    const view = await docs.get(db, boardId);
+    const view = ctx.views.get(boardId);
+    if (!view) throw new HttpError('not_found', 'Board not found.');
     const shown = await guests.shown(ctx, boardId);
     const ids = shown.map((e) => e.id);
     const visible = new Set(ids);
@@ -362,15 +334,6 @@ export async function registerGuestRoutes(app: FastifyInstance, deps: Deps) {
     return { body, version };
   }
 
-  /** Files guests may fetch: shown by a visible element of a link board, or a cover. */
-  async function reachableAssets(ctx: GuestContext) {
-    const shown = new Set<string>();
-    for (const boardId of ctx.boards.keys())
-      for (const el of await guests.shown(ctx, boardId))
-        for (const id of elementAssetIds(el)) shown.add(id);
-    return { shown, covers: await covers(ctx) };
-  }
-
   async function projectAsset(ctx: GuestContext, assetId: string) {
     const [row] = await db
       .select()
@@ -395,7 +358,7 @@ export async function registerGuestRoutes(app: FastifyInstance, deps: Deps) {
     });
 
     scope.get(v1('/guest/by-token/:token'), async (req) => {
-      if (!previews.take(req.ip))
+      if (!previews.take(addressBucket(req.ip)))
         throw new HttpError('rate_limited', 'Too many requests: wait a minute.');
       const { token } = TokenParams.parse(req.params);
       const [link] = await db
@@ -431,27 +394,32 @@ export async function registerGuestRoutes(app: FastifyInstance, deps: Deps) {
       const resolved = await resolveLink(db, docs, link);
       if (resolved.status !== 'active') throw linkStopped(resolved.status);
       if (link.passwordHash) {
-        const key = `${link.id}|${req.ip}`;
-        if (wrongPasswords.blocked(key))
+        const key = `${link.id}|${addressBucket(req.ip)}`;
+        if (wrongPasswords.blocked(key) || linkPasswords.blocked(link.id))
           throw new HttpError('rate_limited', 'Too many wrong passwords: try again later.');
         if (!input.password)
           throw guestDenied('forbidden', 'password_required', 'This link needs a password.');
         // Reserve before the asynchronous hash check: simultaneous wrong passwords must
         // not all pass the limit while earlier checks are still running.
-        if (!wrongPasswords.begin(key))
+        if (!linkPasswords.begin(link.id))
           throw new HttpError('rate_limited', 'Too many wrong passwords: try again later.');
+        if (!wrongPasswords.begin(key)) {
+          linkPasswords.finish(link.id, false);
+          throw new HttpError('rate_limited', 'Too many wrong passwords: try again later.');
+        }
         let valid = false;
         try {
           valid = await verifyPassword({ hash: link.passwordHash, password: input.password });
         } finally {
           wrongPasswords.finish(key, !valid);
+          linkPasswords.finish(link.id, !valid);
         }
         if (!valid) {
           throw guestDenied('forbidden', 'wrong_password', 'Wrong password.');
         }
       }
       const returning = await guests.cookieGuest(req, link.id);
-      if (!returning && !newGuests.take(`${link.id}|${req.ip}`))
+      if (!returning && !newGuests.take(`${link.id}|${addressBucket(req.ip)}`))
         throw new HttpError('rate_limited', 'Too many new guests: try again later.');
       const guest = await db.transaction(async (tx) => {
         // Enforce the daily link-wide cap even for concurrent requests on different workers.
@@ -482,7 +450,7 @@ export async function registerGuestRoutes(app: FastifyInstance, deps: Deps) {
           .where(eq(shareLink.id, link.id));
         return guest;
       });
-      return toSession({ link, guest, boards: resolved.boards, shown: new Map() });
+      return toSession({ link, guest, ...resolved });
     });
 
     scope.get(v1('/guest/links/:linkId/session'), async (req, reply) => {
@@ -526,17 +494,19 @@ export async function registerGuestRoutes(app: FastifyInstance, deps: Deps) {
     scope.get(v1('/guest/links/:linkId/assets/:assetId/variants/:size'), async (req, reply) => {
       const { linkId, assetId, size } = VariantParams.parse(req.params);
       const ctx = await guests.requireGuest(req, reply, linkId);
-      const reachable = await reachableAssets(ctx);
+      const reachable = ctx.assets;
       if (!reachable.shown.has(assetId) && !reachable.covers.has(assetId))
         throw new HttpError('not_found', 'Asset not found.');
       if ((await projectAsset(ctx, assetId)).status !== 'ready')
         throw new HttpError('not_found', 'The picture is not ready.');
       const [variant] = await db
-        .select()
+        .select({ ...getTableColumns(assetVariant), revision: sql<string>`xmin::text` })
         .from(assetVariant)
         .where(and(eq(assetVariant.assetId, assetId), eq(assetVariant.size, size)));
       if (!variant) throw new HttpError('not_found', 'No such variant.');
-      const etag = `${assetId}-${size}`;
+      const etag = createHash('sha256')
+        .update(`${assetId}-${size}-${variant.storageKey}-${variant.revision}`)
+        .digest('hex');
       guestFileHeaders(reply, etag);
       if (matchesEtag(req.headers['if-none-match'], etag)) return reply.status(304).send();
       reply.header('content-type', 'image/webp');
@@ -547,8 +517,7 @@ export async function registerGuestRoutes(app: FastifyInstance, deps: Deps) {
       const { linkId, assetId } = AssetParams.parse(req.params);
       const ctx = await guests.requireGuest(req, reply, linkId);
       // Covers are thumbnails only: they never make an original reachable.
-      if (!(await reachableAssets(ctx)).shown.has(assetId))
-        throw new HttpError('not_found', 'Asset not found.');
+      if (!ctx.assets.shown.has(assetId)) throw new HttpError('not_found', 'Asset not found.');
       if (!ctx.link.allowDownload)
         throw new HttpError('forbidden', 'This link does not allow downloads.');
       const row = await projectAsset(ctx, assetId);

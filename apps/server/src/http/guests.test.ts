@@ -3,7 +3,7 @@ import { fileURLToPath } from 'node:url';
 import { addElement, createBoardDoc, type Element, roots } from '@inkadra/doc-schema';
 import { and, eq, sql } from 'drizzle-orm';
 import pino from 'pino';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import * as Y from 'yjs';
 import { createAuth } from '../auth.ts';
 import { loadConfig } from '../config.ts';
@@ -22,7 +22,7 @@ import {
   shareGuest,
   shareLink,
 } from '../db/schema.ts';
-import { clearExpiredGuestNames } from '../share-links.ts';
+import { clearExpiredGuestNames, DocViews, resolveLink } from '../share-links.ts';
 import { testDeps } from '../test-deps.ts';
 import { issueToken } from '../tokens.ts';
 import { createApp } from './app.ts';
@@ -446,6 +446,44 @@ describe.skipIf(!url)('guest share links (needs DATABASE_URL)', () => {
     expect(preview.body.error.details).toEqual({ reason: 'revoked' });
   });
 
+  it('reserves scope changes for the creator or an owner but lets co-editors revoke', async () => {
+    const link = await createLink('editor', B.A);
+    const path = `/api/v1/share-links/${link.id}`;
+    for (const input of [
+      { includeSubBoards: true },
+      { allowDownload: true },
+      { role: 'guest_approve' },
+      { password: null },
+      { password: 'new-password' },
+      { expiresAt: null },
+      { expiresAt: new Date(Date.now() + 86_400_000).toISOString() },
+      { proofing: true },
+    ])
+      expect((await call('editor2', 'PATCH', path, input)).status).toBe(403);
+    expect((await call('editor2', 'PATCH', path, { label: 'Client' })).status).toBe(200);
+    expect((await call('editor', 'PATCH', path, { includeSubBoards: true })).status).toBe(200);
+    expect((await call('owner', 'PATCH', path, { allowDownload: true })).status).toBe(200);
+    expect((await call('editor2', 'DELETE', path)).status).toBe(204);
+  });
+
+  it('applies the same 365-day maximum to expiry updates and creation', async () => {
+    const link = await createLink('editor', B.A);
+    expect(
+      (
+        await call('editor', 'PATCH', `/api/v1/share-links/${link.id}`, {
+          expiresAt: new Date(Date.now() + 366 * 86_400_000).toISOString(),
+        })
+      ).status,
+    ).toBe(400);
+    expect(
+      (
+        await call('editor', 'POST', `/api/v1/boards/${B.A}/share-links`, {
+          expiresInDays: 366,
+        })
+      ).status,
+    ).toBe(400);
+  });
+
   it('limits each person to 50 new links an hour', async () => {
     await db.insert(shareLink).values(
       Array.from({ length: 49 }, (_, i) => ({
@@ -649,16 +687,86 @@ describe.skipIf(!url)('guest share links (needs DATABASE_URL)', () => {
       Date.now() + 29 * 86_400_000,
     );
     expect(slid.cookies[0]).toMatch(/Max-Age=259\d{4}/);
-    // Shortening the link caps the existing session and cookie immediately, within the hour.
+    // Shortening the link caps the server session immediately, within the hour.
     const shortened = new Date(Date.now() + 3600_000).toISOString();
     await call('editor', 'PATCH', `/api/v1/share-links/${fresh.id}`, { expiresAt: shortened });
     const capped = await call({ cookie: o.cookie }, 'GET', g(fresh, '/session'));
     expect(capped.body.sessionExpiresAt).toBe(shortened);
-    expect(capped.cookies[0]).toMatch(/Max-Age=(3599|3600)(;|$)/);
+    expect(capped.cookies).toEqual([]);
     const [stored] = await db.select().from(shareGuest).where(eq(shareGuest.id, o.body.guest.id));
     expect(stored?.sessionExpiresAt.toISOString()).toBe(shortened);
     expect((await call({ cookie: o.cookie }, 'GET', g(fresh, '/session'))).cookies).toEqual([]);
   });
+
+  it('extends capped active sessions immediately while preserving the guest cookie', async () => {
+    const link = await createLink('editor', B.A, { expiresInDays: 1 });
+    const opened = await open(link, { name: 'Returning' });
+    expect(opened.cookies[0]).toMatch(/Max-Age=2592000/);
+    const extended = new Date(Date.now() + 3 * 86_400_000).toISOString();
+    expect(
+      (await call('editor', 'PATCH', `/api/v1/share-links/${link.id}`, { expiresAt: extended }))
+        .status,
+    ).toBe(200);
+    const [stored] = await db
+      .select()
+      .from(shareGuest)
+      .where(eq(shareGuest.id, opened.body.guest.id));
+    expect(stored?.sessionExpiresAt.toISOString()).toBe(extended);
+    const resumed = await call({ cookie: opened.cookie }, 'GET', g(link, '/session'));
+    expect(resumed.status).toBe(200);
+    expect(resumed.body.guest.id).toBe(opened.body.guest.id);
+    expect(resumed.body.sessionExpiresAt).toBe(extended);
+    // Removing the cap restores the remainder of the idle timeout; no new guest is created.
+    await call('editor', 'PATCH', `/api/v1/share-links/${link.id}`, { expiresAt: null });
+    const uncapped = await call({ cookie: opened.cookie }, 'GET', g(link, '/session'));
+    expect(new Date(uncapped.body.sessionExpiresAt).getTime()).toBeGreaterThan(
+      Date.now() + 29 * 86_400_000,
+    );
+    // An inactive session must never be revived by extending a link.
+    await db
+      .update(shareGuest)
+      .set({ sessionExpiresAt: new Date(Date.now() - 1000) })
+      .where(eq(shareGuest.id, opened.body.guest.id));
+    await call('editor', 'PATCH', `/api/v1/share-links/${link.id}`, { expiresAt: extended });
+    expect((await call({ cookie: opened.cookie }, 'GET', g(link, '/session'))).status).toBe(401);
+  });
+
+  it('treats malformed cookies as absent and does not reveal whether a link id exists', async () => {
+    for (const link of [linkC, { id: '00000000-0000-4000-8000-000000000001', token: '' }]) {
+      const absent = await call(null, 'GET', g(link, '/session'));
+      const malformed = await call({ cookie: 'inkadra.guest=%E0' }, 'GET', g(link, '/session'));
+      expect(absent.status).toBe(401);
+      expect(malformed.status).toBe(401);
+      expect(malformed.body).toEqual(absent.body);
+    }
+  });
+
+  it('shares password budgets across IPv6 /64s and independently across all addresses', async () => {
+    const link = await createLink('editor', B.A, { password: 'secret-password' });
+    for (let i = 0; i < 10; i++)
+      expect(
+        (await open(link, { password: 'wrong-password', ip: `2001:db8:1:1::${i + 1}` })).status,
+      ).toBe(403);
+    expect(
+      (await open(link, { password: 'secret-password', ip: '2001:db8:1:1::ffff' })).status,
+    ).toBe(429);
+    // A different /64 still has a budget until the independent link-wide cap is reached.
+    expect((await open(link, { password: 'secret-password', ip: '2001:db8:1:2::1' })).status).toBe(
+      200,
+    );
+    for (let batch = 0; batch < 18; batch++) {
+      const attempts = await Promise.all(
+        Array.from({ length: 5 }, (_, i) =>
+          open(link, {
+            password: 'wrong-password',
+            ip: `10.80.${batch}.${i + 1}`,
+          }),
+        ),
+      );
+      expect(attempts.every((r) => r.status === 403)).toBe(true);
+    }
+    expect((await open(link, { password: 'secret-password', ip: '10.81.0.1' })).status).toBe(429);
+  }, 60_000);
 
   it('asks for the password, limits wrong ones and ends sessions when it changes', async () => {
     const link = await createLink('editor', B.A, { password: 'segreto-1' });
@@ -1101,6 +1209,67 @@ describe.skipIf(!url)('guest share links (needs DATABASE_URL)', () => {
     );
   });
 
+  it('reuses reachable boards and assets until documents or creator access change', async () => {
+    const [row] = await db.select().from(shareLink).where(eq(shareLink.id, linkC.id));
+    if (!row) throw new Error('Missing link');
+    const docs = new DocViews();
+    const first = await resolveLink(db, docs, row);
+    const get = vi.spyOn(docs, 'get');
+    const select = vi.spyOn(db, 'select');
+    try {
+      const warm = await resolveLink(db, docs, row);
+      expect(warm.status).toBe('active');
+      if (warm.status !== 'active' || first.status !== 'active') throw new Error('Inactive link');
+      expect(warm.assets).toBe(first.assets);
+      expect(warm.boards).toBe(first.boards);
+      expect(get).not.toHaveBeenCalled();
+      expect(select).toHaveBeenCalledTimes(4); // Three access queries plus batched doc stamps.
+      expect(warm.assets.shown.has(X.x6)).toBe(true);
+      await saveDoc(B.A1, [
+        { ...el, id: E.sub, type: 'image', assetId: X.x6, parent: null, guestHidden: true },
+      ]);
+      const changed = await resolveLink(db, docs, row);
+      if (changed.status !== 'active') throw new Error('Inactive link');
+      expect(changed.assets.shown.has(X.x6)).toBe(false);
+      expect(
+        (await call({ cookie: carla }, 'GET', g(linkC, `/assets/${X.x6}/variants/512`))).status,
+      ).toBe(404);
+      const restricted = await resolveLink(db, docs, { ...row, includeSubBoards: false });
+      if (restricted.status !== 'active') throw new Error('Inactive link');
+      expect(restricted.boards.size).toBe(1);
+    } finally {
+      get.mockRestore();
+      select.mockRestore();
+      await saveDoc(B.A1, [
+        { ...el, id: E.sub, type: 'image', assetId: X.x6, parent: null },
+        { ...el, id: E.card3, type: 'board', boardId: B.A3, parent: null, guestHidden: true },
+      ]);
+    }
+  });
+
+  it('invalidates variant ETags after regeneration, including overwrites of the same key', async () => {
+    const path = g(linkC, `/assets/${X.x1}/variants/256`);
+    const first = await call({ cookie: carla }, 'GET', path);
+    const etag = first.headers.get('etag') ?? '';
+    expect(
+      (await call({ cookie: carla }, 'GET', path, undefined, { 'if-none-match': etag })).status,
+    ).toBe(304);
+    // Regeneration replaces the variant row, even when the storage key is unchanged.
+    await db
+      .update(assetVariant)
+      .set({ width: 255 })
+      .where(and(eq(assetVariant.assetId, X.x1), eq(assetVariant.size, '256')));
+    const regenerated = await call({ cookie: carla }, 'GET', path, undefined, {
+      'if-none-match': etag,
+    });
+    expect(regenerated.status).toBe(200);
+    expect(regenerated.headers.get('etag')).not.toBe(etag);
+    await db
+      .update(assetVariant)
+      .set({ width: 256 })
+      .where(and(eq(assetVariant.assetId, X.x1), eq(assetVariant.size, '256')));
+  });
+
   it('serves originals as attachments when the link allows downloads', async () => {
     const link = await createLink('editor', B.A, { allowDownload: true });
     const o = await open(link);
@@ -1141,6 +1310,17 @@ describe.skipIf(!url)('guest share links (needs DATABASE_URL)', () => {
   });
 
   // Comments -----------------------------------------------------------------------------
+
+  it('rejects comment, review and pick writes with another link guest cookie', async () => {
+    for (const [suffix, input] of [
+      [`/boards/${B.A}/comments`, { body: 'Foreign guest' }],
+      [`/boards/${B.A}/elements/${E.img}/review`, { status: 'approved' }],
+      [`/boards/${B.A}/elements/${E.img}/pick`, { pick: 'picked' }],
+    ] as const) {
+      const method = suffix.endsWith('/comments') ? 'POST' : 'PUT';
+      expect((await call({ cookie: carla }, method, g(linkA, suffix), input)).status).toBe(401);
+    }
+  });
 
   it('shows guests only the threads of everyone, of their link and on visible cards', async () => {
     const at = (min: number) => new Date(Date.now() - min * 60_000);
@@ -1263,6 +1443,19 @@ describe.skipIf(!url)('guest share links (needs DATABASE_URL)', () => {
     expect(
       (await call({ cookie: carla }, 'GET', g(linkC, `/boards/${B.A3}/comments`))).status,
     ).toBe(404);
+
+    for (const at of [
+      '2026-01-01T00:00:00.000Zjunk',
+      '2026-02-30T00:00:00.000000Z',
+      '2026-01-01T25:00:00.000000Z',
+      '2026-01-01T00:00:00.000000Z|extra',
+    ]) {
+      const cursor = Buffer.from(`${at}|${t1}`).toString('base64url');
+      expect(
+        (await call({ cookie: carla }, 'GET', g(linkC, `/boards/${B.A}/comments?cursor=${cursor}`)))
+          .status,
+      ).toBe(400);
+    }
 
     // Replies of readable threads only.
     const replies = await call({ cookie: carla }, 'GET', g(linkC, `/comments/${t1}/replies`));
