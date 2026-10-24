@@ -9,7 +9,7 @@ import {
   z,
 } from '@inkadra/shared';
 import { hashPassword } from 'better-auth/crypto';
-import { and, asc, count, desc, eq, gt, inArray, sql } from 'drizzle-orm';
+import { and, asc, count, desc, eq, gt, inArray, isNotNull, sql } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
 import { type Actor, requireBoardRole } from '../access.ts';
 import type { Auth } from '../auth.ts';
@@ -167,6 +167,18 @@ export function registerShareLinkRoutes(app: FastifyInstance, deps: Deps) {
     const input = UpdateShareLink.parse(req.body ?? {});
     const row = await managedLink(actor, linkId);
     if (row.revokedAt) throw new HttpError('conflict', 'A revoked link cannot be changed.');
+    const changesScope = [
+      'role',
+      'includeSubBoards',
+      'allowDownload',
+      'proofing',
+      'password',
+      'expiresAt',
+    ].some((key) => key in input);
+    if (changesScope && actor.id !== row.createdBy)
+      await requireBoardRole(db, actor, row.boardId, 'owner');
+    if (input.expiresAt && new Date(input.expiresAt).getTime() > Date.now() + 365 * 86_400_000)
+      throw new HttpError('bad_request', 'Share links may expire at most 365 days from now.');
     const patch: Partial<typeof shareLink.$inferInsert> = {};
     if (input.role !== undefined) patch.role = input.role;
     if (input.includeSubBoards !== undefined) patch.includeSubBoards = input.includeSubBoards;
@@ -182,11 +194,31 @@ export function registerShareLinkRoutes(app: FastifyInstance, deps: Deps) {
       patch.sessionsValidAfter = new Date();
     }
     if (Object.keys(patch).length === 0) return toShareLink(row);
-    const [updated] = await db
-      .update(shareLink)
-      .set(patch)
-      .where(eq(shareLink.id, row.id))
-      .returning();
+    const updated = await db.transaction(async (tx) => {
+      const [saved] = await tx
+        .update(shareLink)
+        .set(patch)
+        .where(eq(shareLink.id, row.id))
+        .returning();
+      if (input.expiresAt !== undefined) {
+        // Recompute active sessions immediately when either extending or shortening expiry.
+        // The browser cookie lasts 30 days independently; the server always checks this cap.
+        const cap = patch.expiresAt ?? new Date(Date.now() + 30 * 86_400_000);
+        await tx
+          .update(shareGuest)
+          .set({
+            sessionExpiresAt: sql`least(${shareGuest.lastSeenAt} + interval '30 days', ${cap.toISOString()}::timestamptz)`,
+          })
+          .where(
+            and(
+              eq(shareGuest.shareLinkId, row.id),
+              isNotNull(shareGuest.tokenHash),
+              gt(shareGuest.sessionExpiresAt, new Date()),
+            ),
+          );
+      }
+      return saved;
+    });
     return toShareLink(updated ?? row);
   });
 

@@ -11,7 +11,7 @@ import { newSecret, sha256 } from '../secrets.ts';
 import {
   type DocViews,
   type LinkBoard,
-  linkElements,
+  type LinkContents,
   resolveLink,
   type ShareLinkRow,
 } from '../share-links.ts';
@@ -21,12 +21,9 @@ import { RateLimiter } from './link-previews.ts';
 export type GuestRow = typeof shareGuest.$inferSelect;
 
 /** A guest request that passed every check of decision 0013, with what the link shows now. */
-export interface GuestContext {
+export interface GuestContext extends LinkContents {
   link: ShareLinkRow;
   guest: GuestRow;
-  boards: Map<string, LinkBoard>;
-  /** Per request: elements guests see on each board of the link. */
-  shown: Map<string, Element[]>;
 }
 
 const DAY = 86_400_000;
@@ -57,13 +54,12 @@ export function createGuestAuth(deps: { config: Config; db: Database; docs: DocV
   const cookieName = secure ? `__Secure-${GUEST_COOKIE}` : GUEST_COOKIE;
   const writes = new RateLimiter(60, 60_000);
 
-  /** Never beyond the link's expiry. */
+  /** Server expiry is capped by the link; the cookie survives extensions of that cap. */
   const sessionEnd = (link: ShareLinkRow, now: Date) =>
     new Date(Math.min(now.getTime() + SESSION_MS, link.expiresAt?.getTime() ?? Infinity));
 
-  function setCookie(reply: FastifyReply, linkId: string, token: string | null, until?: Date) {
-    const maxAge =
-      token && until ? Math.max(0, Math.floor((until.getTime() - Date.now()) / 1000)) : 0;
+  function setCookie(reply: FastifyReply, linkId: string, token: string | null) {
+    const maxAge = token ? Math.floor(SESSION_MS / 1000) : 0;
     const parts = [
       `${cookieName}=${token ?? ''}`,
       `Path=${guestPath(linkId)}`,
@@ -113,7 +109,7 @@ export function createGuestAuth(deps: { config: Config; db: Database; docs: DocV
           .values({ shareLinkId: link.id, ...values })
           .returning();
     if (!row) throw new Error('Guest not saved');
-    setCookie(reply, link.id, token, until);
+    setCookie(reply, link.id, token);
     return row;
   }
 
@@ -126,10 +122,10 @@ export function createGuestAuth(deps: { config: Config; db: Database; docs: DocV
     reply: FastifyReply,
     linkId: string,
   ): Promise<GuestContext> {
-    const [link] = await db.select().from(shareLink).where(eq(shareLink.id, linkId));
-    if (!link) throw new HttpError('not_found', 'Share link not found.');
-    const guest = await cookieGuest(req, link.id);
+    const guest = await cookieGuest(req, linkId);
     if (!guest) throw guestDenied('unauthorized', 'no_session', 'Open the link again to continue.');
+    const [link] = await db.select().from(shareLink).where(eq(shareLink.id, linkId));
+    if (!link) throw guestDenied('unauthorized', 'no_session', 'Open the link again to continue.');
     const now = new Date();
     const resolved = await resolveLink(db, docs, link, now);
     if (resolved.status !== 'active') throw linkStopped(resolved.status);
@@ -150,18 +146,14 @@ export function createGuestAuth(deps: { config: Config; db: Database; docs: DocV
         .returning();
       current = slid ?? guest;
       const token = cookieToken(req);
-      if (token) setCookie(reply, link.id, token, until);
+      if (token) setCookie(reply, link.id, token);
     }
-    return { link, guest: current, boards: resolved.boards, shown: new Map() };
+    return { link, guest: current, ...resolved };
   }
 
   /** Elements guests see on a board of the link. */
   async function shown(ctx: GuestContext, boardId: string): Promise<Element[]> {
-    const known = ctx.shown.get(boardId);
-    if (known) return known;
-    const elements = linkElements(await docs.get(db, boardId), ctx.boards);
-    ctx.shown.set(boardId, elements);
-    return elements;
+    return ctx.shown.get(boardId) ?? [];
   }
 
   /** A visible element of a board of the link, else 404 (hidden cards included). */

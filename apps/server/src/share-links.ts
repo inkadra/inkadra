@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import {
   type Element,
   getBoardAspect,
@@ -48,13 +49,17 @@ export interface LinkBoard {
   parentBoardId: string | null;
 }
 
+export interface LinkContents {
+  /** In the order guests reach them, the board of the link first. */
+  boards: Map<string, LinkBoard>;
+  views: Map<string, BoardView>;
+  shown: Map<string, Element[]>;
+  assets: { shown: Set<string>; covers: Set<string> };
+}
+
 export type ResolvedLink =
   | { status: Exclude<ShareLinkStatus, 'active'> }
-  | {
-      status: 'active';
-      /** In the order guests reach them, the board of the link first. */
-      boards: Map<string, LinkBoard>;
-    };
+  | ({ status: 'active' } & LinkContents);
 
 /**
  * Whether a link works now and which boards its guests can open (fail-closed): the board of
@@ -88,11 +93,54 @@ export async function resolveLink(
     return false;
   };
 
+  // One metadata query for the project, rather than one per board per thumbnail. Roles
+  // and board metadata remain fresh on every request, including trash, covers and grants.
+  const stamps = await db
+    .select({ id: boardDoc.boardId, at: boardDoc.updatedAt })
+    .from(boardDoc)
+    .where(
+      inArray(
+        boardDoc.boardId,
+        boards.map((b) => b.id),
+      ),
+    );
+  const stampById = new Map(stamps.map((r) => [r.id, r.at.getTime()]));
+  const key = createHash('sha256')
+    .update(
+      JSON.stringify({
+        link: [
+          link.id,
+          link.createdBy,
+          link.boardId,
+          link.includeSubBoards,
+          link.role,
+          link.allowDownload,
+          link.proofing,
+          link.expiresAt,
+          link.sessionsValidAfter,
+        ],
+        boards: [...boards].sort((a, b) => a.id.localeCompare(b.id)),
+        roles: [...roles].sort(([a], [b]) => a.localeCompare(b)),
+        stamps: [...stampById].sort(([a], [b]) => a.localeCompare(b)),
+      }),
+    )
+    .digest('hex');
+  const cached = docs.linkContents(key);
+  if (cached) return { status: 'active', ...cached };
+  const views = new Map<string, BoardView>();
+  const viewFor = async (id: string) => {
+    const known = views.get(id);
+    if (known) return known;
+    const view = await docs.get(db, id, stampById.get(id) ?? null);
+    views.set(id, view);
+    return view;
+  };
+
   const included = new Map<string, LinkBoard>([[top.id, { row: top, parentBoardId: null }]]);
   if (link.includeSubBoards) {
     const queue = [top.id];
     for (let next = queue.shift(); next; next = queue.shift()) {
-      const view = await docs.get(db, next);
+      const view = await viewFor(next);
       for (const el of view.visible) {
         if (el.type !== 'board' || included.has(el.boardId)) continue;
         const row = byId.get(el.boardId);
@@ -102,7 +150,17 @@ export async function resolveLink(
       }
     }
   }
-  return { status: 'active', boards: included };
+  const shown = new Map<string, Element[]>();
+  const assets = { shown: new Set<string>(), covers: new Set<string>() };
+  for (const [id, { row }] of included) {
+    const elements = linkElements(await viewFor(id), included);
+    shown.set(id, elements);
+    for (const el of elements) for (const assetId of elementAssetIds(el)) assets.shown.add(assetId);
+    if (row.coverAssetId) assets.covers.add(row.coverAssetId);
+  }
+  const contents = { boards: included, views, shown, assets };
+  docs.rememberLink(key, contents);
+  return { status: 'active', ...contents };
 }
 
 // Board documents as guests see them -----------------------------------------------
@@ -148,15 +206,36 @@ export function viewOf(doc: Y.Doc): BoardView {
  */
 export class DocViews {
   private cache = new Map<string, { stamp: number; view: BoardView }>();
+  private links = new Map<string, LinkContents>();
   constructor(private readonly max = 200) {}
 
-  async get(db: Database, boardId: string): Promise<BoardView> {
-    const [meta] = await db
-      .select({ updatedAt: boardDoc.updatedAt })
-      .from(boardDoc)
-      .where(eq(boardDoc.boardId, boardId));
-    if (!meta) return EMPTY_VIEW;
-    const stamp = meta.updatedAt.getTime();
+  linkContents(key: string) {
+    const known = this.links.get(key);
+    if (known) {
+      this.links.delete(key);
+      this.links.set(key, known);
+    }
+    return known;
+  }
+
+  rememberLink(key: string, contents: LinkContents) {
+    this.links.set(key, contents);
+    if (this.links.size > this.max) {
+      const oldest = this.links.keys().next().value;
+      if (oldest) this.links.delete(oldest);
+    }
+  }
+
+  async get(db: Database, boardId: string, knownStamp?: number | null): Promise<BoardView> {
+    let stamp = knownStamp;
+    if (stamp === undefined) {
+      const [meta] = await db
+        .select({ updatedAt: boardDoc.updatedAt })
+        .from(boardDoc)
+        .where(eq(boardDoc.boardId, boardId));
+      stamp = meta?.updatedAt.getTime() ?? null;
+    }
+    if (stamp === null) return EMPTY_VIEW;
     const known = this.cache.get(boardId);
     if (known?.stamp === stamp) return known.view;
     const [row] = await db

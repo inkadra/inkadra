@@ -98,6 +98,8 @@ must say who decided and when.
   containers is broken (a parent that no longer exists, after a column was deleted while a card
   moved into it) or circular counts as hidden; only `unsorted` and the canvas end a chain as
   shown.
+  Guest snapshots use the stored document: visibility changes appear after the collaboration
+  store debounce has persisted them.
   Hiding inherited from a container does not travel: a card copied out of a hidden column is
   shown unless it is hidden itself, so the editor must show which cards guests see.
   **The document schema goes to version 3** for this field, with an empty migration from 2.
@@ -106,8 +108,12 @@ must say who decided and when.
   showing it to guests. With the bump such builds stop at `SchemaTooNewError` and reload.
 - **Guest share links** (`share_link`) point to a board, optionally with its sub-boards, with a
   role `guest_view`, `guest_comment` or `guest_approve`, an optional password, an optional
-  expiry, `allowDownload` and `proofing`. Editors and owners create, change and revoke them
-  (50 an hour per person). A guest (`share_guest`) is one browser with the name it typed,
+  expiry, `allowDownload` and `proofing`. Editors and owners create them (50 an hour per
+  person). Only the creator or an owner of the board may change scope: `includeSubBoards`,
+  `allowDownload`, `role`, `proofing`, password or expiry. Other editors may relabel and
+  revoke existing links, and may copy their URLs; to share with their own authority they
+  create a new link. Changing expiry is capped at 365 days from now, like creation. A guest
+  (`share_guest`) is one browser with the name it typed,
   asked before the first comment, review or pick. Links are revoked, not deleted, so comments
   and picks of their guests keep an author.
 - **A link acts for its creator, checked at every request.** A link can never show more than
@@ -118,6 +124,13 @@ must say who decided and when.
   role comes back). Sub-boards are included only where the creator has at least editor, so a
   grant that lowers the creator to viewer on a sub-board, or an owner restricting it, takes it
   out of the link at once. Another editor who wants to keep sharing creates a new link.
+- **Reachability caching.** Board views and the sets of reachable boards and assets are
+  reused by a bounded per-process cache, keyed by link options, current creator roles, board
+  metadata (including covers and ancestry) and stored document `updated_at` stamps. Every
+  request still checks the link, session and fresh access metadata; a warm thumbnail request
+  batches document stamps in one query and does not traverse or decode each board again.
+  Variant ETags include the storage key and database row revision, so regenerating thumbnails
+  invalidates them even when storage overwrites the same key.
 - **What guests can open** is decided fail-closed. The board of the link, and with
   `includeSubBoards` each descendant board that is (a) reached from a board guests can open
   through a board card visible to guests, (b) not in the trash, and (c) one where the creator
@@ -242,15 +255,24 @@ must say who decided and when.
   so each link has its own session and the cookie is never sent to the rest of the API. Its
   token is random and stored as a SHA-256. A session lasts 30 days after the last request
   (sliding: `session_expires_at` moves forward at most once an hour, and the cookie's Max-Age
-  is renewed with it), never beyond the link expiry; leaving clears the token. Every guest
+  is renewed with it). The server session is capped by the link expiry; the cookie keeps its
+  30-day lifetime so an extended expiry does not lose the guest's identity. Changing a link's
+  expiry immediately recomputes active sessions from their last-seen time and the new cap,
+  without reviving inactive sessions. Leaving clears the token. Every guest
   request checks the link again: revoked, expired or suspended links stop at once, a password
   change invalidates sessions opened before it (`sessions_valid_after`), and the role, the
   options and the boards are those of the link and of its creator's access at that moment.
-- **Rate limits** (per client address unless stated): previews 60 a minute; wrong passwords 10
-  per 15 minutes per link and address; new guests (session opened without a usable cookie) 10
-  an hour per link and address and 500 a day per link; guest writes 60 a minute per guest;
+- **Rate limits** (per process and client address unless stated; IPv6 addresses share a /64
+  bucket, and IPv4-mapped IPv6 shares its IPv4 bucket): previews 60 a minute; wrong passwords
+  10 per 15 minutes per link and address, plus 100 per 15 minutes per link across all addresses;
+  new guests (session opened without a usable cookie) 10 an hour per link and address and
+  500 a day per link; guest writes 60 a minute per guest;
   guest comments also 30 an hour per guest and 300 an hour per link. Above them the answer is
-  429. `view_count` counts sessions opened or resumed, not polls, so polling writes nothing.
+  429. In-memory counters retain live budgets under capacity pressure, removing only expired
+  entries and refusing new keys while full; they reset on process restart. The 500 new guests
+  per day per link and 50 links per hour per person use Postgres across processes. Guest names
+  are anonymised by their own hourly maintenance job, independently of upload purging.
+  `view_count` counts sessions opened or resumed, not polls, so polling writes nothing.
 - **Cross-site requests.** SameSite=Lax does not protect against sibling subdomains, which are
   common when self-hosting, and today only Better Auth's `trustedOrigins` checks the origin,
   on `/api/auth`. The check: the request must carry an `Origin` equal to the origin of

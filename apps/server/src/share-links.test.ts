@@ -233,9 +233,9 @@ describe('guest rules', () => {
       db: {} as Database,
       docs: new DocViews(),
     });
-    auth.setCookie(reply, 'link-1', 'tok', new Date(Date.now() + 3600_000));
+    auth.setCookie(reply, 'link-1', 'tok');
     expect(headers['set-cookie']).toMatch(
-      /^__Secure-inkadra\.guest=tok; Path=\/api\/v1\/guest\/links\/link-1; HttpOnly; SameSite=Lax; Max-Age=(3599|3600); Secure$/,
+      /^__Secure-inkadra\.guest=tok; Path=\/api\/v1\/guest\/links\/link-1; HttpOnly; SameSite=Lax; Max-Age=2592000; Secure$/,
     );
   });
 });

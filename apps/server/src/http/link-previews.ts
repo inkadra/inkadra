@@ -9,10 +9,13 @@ import { asset } from '../db/schema.ts';
 import type { Jobs } from '../jobs.ts';
 import { sniffImage } from '../media/heic.ts';
 import { ENQUEUE_TIMEOUT_MS, within } from '../queues.ts';
+import { RateLimiter } from '../rate-limits.ts';
 import { FetchRefused, type SafeResponse, safeFetch } from '../safe-fetch.ts';
 import { originalKey, type Storage } from '../storage.ts';
 import { requireActor } from './auth-routes.ts';
 import { HttpError } from './errors.ts';
+
+export { RateLimiter } from '../rate-limits.ts';
 
 interface Deps {
   db: Database;
@@ -79,24 +82,6 @@ export function readPageMeta(html: string, pageUrl: string): PageMeta {
     siteName: clip(first('og:site_name', 'application-name'), 200),
     image,
   };
-}
-
-/** At most `max` calls per key in a sliding window. */
-export class RateLimiter {
-  private hits = new Map<string, number[]>();
-  constructor(
-    private readonly max: number,
-    private readonly windowMs: number,
-  ) {}
-  take(key: string) {
-    const now = Date.now();
-    const recent = (this.hits.get(key) ?? []).filter((t) => now - t < this.windowMs);
-    if (recent.length >= this.max) return false;
-    recent.push(now);
-    this.hits.set(key, recent);
-    if (this.hits.size > 10_000) this.hits.clear();
-    return true;
-  }
 }
 
 /** Largest page read for a preview: its head is all that is needed. */

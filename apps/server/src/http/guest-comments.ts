@@ -89,8 +89,16 @@ const cursorKey = sql<string>`to_char(${comment.createdAt} at time zone 'UTC', '
 const encodeCursor = (key: string, id: string) => Buffer.from(`${key}|${id}`).toString('base64url');
 
 function decodeCursor(cursor: string): { at: string; id: string } {
-  const [at, id] = Buffer.from(cursor, 'base64url').toString().split('|');
-  if (!at || !id || !Id.safeParse(id).success || Number.isNaN(Date.parse(at)))
+  const [at, id, extra] = Buffer.from(cursor, 'base64url').toString().split('|');
+  if (
+    !at ||
+    !id ||
+    extra !== undefined ||
+    !Id.safeParse(id).success ||
+    !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{6}Z$/.test(at) ||
+    Number.isNaN(Date.parse(at)) ||
+    new Date(at).toISOString().slice(0, 19) !== at.slice(0, 19)
+  )
     throw new HttpError('bad_request', 'Invalid cursor.');
   return { at, id };
 }

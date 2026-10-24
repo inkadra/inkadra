@@ -44,6 +44,7 @@ export type JobPayloads = {
   'maintenance:ping': { at: number };
   'maintenance:delete-files': { keys: string[] };
   'maintenance:purge-uploads': Record<string, never>;
+  'maintenance:anonymise-guests': Record<string, never>;
   'media:process': { assetId: string };
   'collab:add-card': AddCard & { expiresAt: number };
   'collab:save-version': SaveVersion & { expiresAt: number };
@@ -157,6 +158,7 @@ export async function startWorkers(
       if (job.name === 'purge-uploads') return purgeUploads(deps.db, deps.storage, queues.jobs);
       if (job.name === 'version-retention') return applyVersionRetention(deps.db);
       if (job.name === 'purge-notifications') return purgeNotifications(deps.db);
+      if (job.name === 'anonymise-guests') return clearExpiredGuestNames(deps.db);
       throw new Error(`Unknown job ${job.name}`);
     },
     { connection, concurrency: 2, prefix: opts.prefix },
@@ -225,6 +227,12 @@ export async function startWorkers(
     'digest',
     { every: 60 * 60 * 1000 },
     { name: 'digest', data: {}, opts: QUIET },
+  );
+
+  await scheduler.upsertJobScheduler(
+    'anonymise-guests',
+    { every: 60 * 60 * 1000 },
+    { name: 'anonymise-guests', data: {}, opts: KEEP },
   );
 
   for (const w of [maintenance, media, email]) {
