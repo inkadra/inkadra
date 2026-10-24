@@ -761,5 +761,54 @@
       "body": "Inkadra cannot reach the server. Check your connection: the page reloads by itself when the network is back.",
       "retry": "Try again"
     }
+  },
+  "versions": {
+    "title": "Board versions",
+    "boardMenu": "Board menu",
+    "description": "Automatic versions are kept for 30 days. Named versions stay until you delete them.",
+    "name": "Version name",
+    "save": "Save version",
+    "rename": "Rename",
+    "keep": "Give a name",
+    "cancel": "Cancel",
+    "reload": "Reload list",
+    "loading": "Loading versions…",
+    "empty": "No saved versions yet.",
+    "preview": "Preview",
+    "restore": "Restore",
+    "delete": "Delete",
+    "close": "Close",
+    "more": "Load more versions",
+    "automaticAuthor": "System",
+    "elements_one": "{{count}} element",
+    "elements_other": "{{count}} elements",
+    "kind": {
+      "auto": "Automatic",
+      "named": "Named",
+      "restore": "Before restore"
+    },
+    "banner": "Preview of the version from {{date}}",
+    "readOnly": "Read only",
+    "restoreTitle": "Restore this version?",
+    "restoreBody": "The current state is saved as a version first, then the board returns to this version for every collaborator. Offline edits inside note text, checklists and drawings that the version replaces will be lost. Comments and reviews do not change, and elements on the board now keep their guest visibility.",
+    "deleteTitle": "Delete this version?",
+    "deleteBody": "The saved version will be deleted. The current board stays unchanged.",
+    "restored": "The board was restored to {{version}}.",
+    "restoredGeneric": "The board was restored to a saved version.",
+    "errors": {
+      "rateLimited": "You have reached the save or restore limit. Wait before trying again.",
+      "forbidden": "Only editors and owners can manage versions.",
+      "notFound": "This version is no longer available. Reload the list.",
+      "limit": "A board keeps at most 100 named versions: delete one before saving another.",
+      "tooNew": "This version was saved by a newer Inkadra: reload the page.",
+      "unconfirmed": "The server did not confirm the action. Reload the list and check the board before trying again.",
+      "generic": "Could not complete the action. Check your connection and try again."
+    }
+  },
+  "guestVisibility": {
+    "hide": "Hide from guests",
+    "show": "Show to guests",
+    "hidden": "Hidden from guests",
+    "inherited": "Hidden from guests through its container"
   }
 }

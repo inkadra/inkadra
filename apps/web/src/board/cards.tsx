@@ -17,6 +17,7 @@ import { useBoard } from './context.ts';
 import { useBoardAspect } from './film/aspect.ts';
 import { FramePicture } from './film/FramePicture.tsx';
 import { useSlugline } from './film/StoryboardView.tsx';
+import { GuestVisibility } from './guest-visibility.tsx';
 import { webUrl } from './links.ts';
 import { useMeasure } from './measure.ts';
 import { NoteBody, NoteEditor, useFragment } from './note.tsx';
@@ -113,6 +114,7 @@ export const Card = memo(function Card({
           <TagList tags={element.tags} />
         </div>
       )}
+      {!isContainer(element) && <GuestVisibility store={store} id={element.id} />}
       {element.locked && (
         <span className="card__lock" title={t('board.locked')}>
           <Icon name="lock" size={12} />
@@ -621,6 +623,7 @@ function ColumnCard({
           </span>
         )}
         <span className="column__count">{items.length}</span>
+        <GuestVisibility store={store} id={element.id} />
         <button
           type="button"
           className="column__toggle"

@@ -14,6 +14,7 @@ import {
 import { Button, EmptyState } from '@inkadra/ui';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { GuestVisibility } from '../guest-visibility.tsx';
 import { type BoardStore, LOCAL } from '../store.ts';
 import { useBoardAspect } from './aspect.ts';
 import { FramePicture } from './FramePicture.tsx';
@@ -176,6 +177,7 @@ export function ShotList({
                     {g.scene ? (
                       <>
                         <span className="shots__scene-number">{g.scene.number}</span>
+                        <GuestVisibility store={store} id={g.scene.id} />
                         {slugline(g.scene)}
                         {g.scene.title && (
                           <span className="shots__scene-title">{g.scene.title}</span>
@@ -203,7 +205,9 @@ export function ShotList({
                         pixels={240}
                       />
                     </td>
-                    <td className="shots__label">{labels.get(f.id)}</td>
+                    <td className="shots__label">
+                      {labels.get(f.id)} <GuestVisibility store={store} id={f.id} />
+                    </td>
                     <td>
                       <PresetField
                         compact

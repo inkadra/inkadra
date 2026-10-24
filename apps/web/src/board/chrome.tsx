@@ -2,9 +2,18 @@ import type { Point, Rect, Viewport } from '@inkadra/canvas-core';
 import type { Element } from '@inkadra/doc-schema';
 import { Icon, type IconName, KeyCap } from '@inkadra/ui';
 import type { Editor } from '@tiptap/react';
-import { type ReactNode, type Ref, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  type ReactNode,
+  type Ref,
+  type RefObject,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { Card, NOTE_COLORS } from './cards.tsx';
+import { GuestVisibilityIcon } from './guest-visibility.tsx';
 import { isMac } from './shortcuts.ts';
 import { cancelUpload, retryUpload, useUploads } from './uploads.ts';
 
@@ -162,6 +171,7 @@ export function ContextBar({
   onAlign,
   onGroup,
   onLock,
+  onGuestHidden,
   onDelete,
   onDuplicate,
   onMore,
@@ -176,6 +186,7 @@ export function ContextBar({
   onAlign: (how: 'left' | 'center' | 'right' | 'top' | 'middle' | 'bottom' | 'distribute') => void;
   onGroup: () => void;
   onLock: () => void;
+  onGuestHidden: () => void;
   onDelete: () => void;
   onDuplicate: () => void;
   onMore: (x: number, y: number) => void;
@@ -189,6 +200,8 @@ export function ContextBar({
   const free = elements.filter((e) => e.parent === null);
   const notes = elements.filter((e) => e.type === 'note');
   const locked = elements.some((e) => e.locked);
+  const hideable = elements.filter((e) => e.type !== 'arrow');
+  const guestHidden = hideable.length > 0 && hideable.every((e) => e.guestHidden);
   const top = box.y - 44 < 8 ? box.y + box.h + 8 : box.y - 44;
   return (
     <div
@@ -287,6 +300,19 @@ export function ContextBar({
         onClick={onLock}
         active={locked}
       />
+      {hideable.length > 0 && (
+        <button
+          type="button"
+          className={`ctxbar__btn${guestHidden ? ' is-active' : ''}`}
+          aria-label={t(guestHidden ? 'guestVisibility.show' : 'guestVisibility.hide')}
+          title={t(guestHidden ? 'guestVisibility.show' : 'guestVisibility.hide')}
+          aria-pressed={guestHidden}
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={onGuestHidden}
+        >
+          <GuestVisibilityIcon />
+        </button>
+      )}
       {extra}
       <BarButton
         icon="tag"
@@ -322,27 +348,32 @@ export function ContextMenu({
   y,
   items,
   onClose,
+  anchor,
 }: {
-  x: number;
-  y: number;
+  /** Viewport position; without it the menu is placed by the stylesheet of its container. */
+  x?: number;
+  y?: number;
   items: MenuItem[];
   onClose: () => void;
+  /** The button that toggles the menu: pressing it is left to the button. */
+  anchor?: RefObject<HTMLElement | null>;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
     ref.current?.querySelector<HTMLButtonElement>('[role="menuitem"]')?.focus();
     const away = (e: PointerEvent) => {
-      if (!ref.current?.contains(e.target as Node)) onClose();
+      const target = e.target as Node;
+      if (!ref.current?.contains(target) && !anchor?.current?.contains(target)) onClose();
     };
     document.addEventListener('pointerdown', away, true);
     return () => document.removeEventListener('pointerdown', away, true);
-  }, [onClose]);
+  }, [onClose, anchor]);
   return (
     <div
       ref={ref}
       className="menu"
       role="menu"
-      style={{ left: x, top: y }}
+      style={x === undefined ? undefined : { left: x, top: y }}
       data-chrome
       onKeyDown={(e) => {
         if (e.key === 'Escape') onClose();

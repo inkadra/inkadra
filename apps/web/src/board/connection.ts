@@ -1,5 +1,5 @@
 import { HocuspocusProvider } from '@hocuspocus/provider';
-import { boardDocName } from '@inkadra/doc-schema';
+import { boardDocName, readBoardNotice } from '@inkadra/doc-schema';
 import { COLLAB_PATH } from '@inkadra/shared/constants';
 import { useEffect, useState } from 'react';
 import * as Y from 'yjs';
@@ -64,11 +64,8 @@ export function useBoardConnection(boardId: string): BoardConnection | null {
       },
       // The server says when the role changes between editing and reading (decision 0011).
       onStateless: ({ payload }) => {
-        try {
-          const msg = JSON.parse(payload) as { type?: string; readOnly?: unknown };
-          if (msg.type === 'access' && typeof msg.readOnly === 'boolean')
-            update({ readOnly: msg.readOnly, accessChangedAt: Date.now() });
-        } catch {}
+        const msg = readBoardNotice(payload);
+        if (msg?.type === 'access') update({ readOnly: msg.readOnly, accessChangedAt: Date.now() });
       },
       onClose: ({ event }) => {
         const status = CLOSE_REASONS[event.reason];

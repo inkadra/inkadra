@@ -761,5 +761,54 @@
       "body": "Inkadra non raggiunge il server. Controlla la connessione: la pagina si ricarica da sola quando torna la rete.",
       "retry": "Riprova"
     }
+  },
+  "versions": {
+    "title": "Versioni della board",
+    "boardMenu": "Menu della board",
+    "description": "Le versioni automatiche vengono conservate per 30 giorni. Le versioni con un nome restano finché non le elimini.",
+    "name": "Nome della versione",
+    "save": "Salva versione",
+    "rename": "Rinomina",
+    "keep": "Assegna un nome",
+    "cancel": "Annulla",
+    "reload": "Ricarica elenco",
+    "loading": "Caricamento delle versioni…",
+    "empty": "Non ci sono ancora versioni salvate.",
+    "preview": "Anteprima",
+    "restore": "Ripristina",
+    "delete": "Elimina",
+    "close": "Chiudi",
+    "more": "Carica altre versioni",
+    "automaticAuthor": "Sistema",
+    "elements_one": "{{count}} elemento",
+    "elements_other": "{{count}} elementi",
+    "kind": {
+      "auto": "Automatica",
+      "named": "Con nome",
+      "restore": "Prima del ripristino"
+    },
+    "banner": "Anteprima della versione del {{date}}",
+    "readOnly": "Sola lettura",
+    "restoreTitle": "Ripristinare questa versione?",
+    "restoreBody": "Lo stato attuale viene prima salvato come versione, poi la board torna a questa versione per tutti i collaboratori. Le modifiche offline dentro testi delle note, checklist e disegni che la versione sostituisce andranno perse. Commenti e revisioni non cambiano, e gli elementi presenti oggi mantengono la loro visibilità per gli ospiti.",
+    "deleteTitle": "Eliminare questa versione?",
+    "deleteBody": "La versione salvata verrà eliminata. La board attuale non cambia.",
+    "restored": "La board è stata ripristinata a {{version}}.",
+    "restoredGeneric": "La board è stata ripristinata a una versione salvata.",
+    "errors": {
+      "rateLimited": "Hai raggiunto il limite di salvataggi o ripristini. Attendi prima di riprovare.",
+      "forbidden": "Solo editor e proprietari possono gestire le versioni.",
+      "notFound": "Questa versione non è più disponibile. Ricarica l’elenco.",
+      "limit": "Una board conserva al massimo 100 versioni con nome: eliminane una prima di salvarne un’altra.",
+      "tooNew": "Questa versione è stata salvata da una versione più recente di Inkadra: aggiorna la pagina.",
+      "unconfirmed": "Il server non ha confermato l’operazione. Ricarica l’elenco e controlla la board prima di riprovare.",
+      "generic": "Non è stato possibile completare l’operazione. Controlla la connessione e riprova."
+    }
+  },
+  "guestVisibility": {
+    "hide": "Nascondi agli ospiti",
+    "show": "Mostra agli ospiti",
+    "hidden": "Nascosto agli ospiti",
+    "inherited": "Nascosto agli ospiti tramite il contenitore"
   }
 }
