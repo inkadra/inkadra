@@ -156,14 +156,14 @@ describe.skipIf(!url)('search (needs DATABASE_URL)', () => {
     const project = await app.inject({
       method: 'POST',
       url: '/api/v1/projects',
-      headers: { cookie: cookies.owner },
+      headers: { cookie: cookies.owner, origin: config.PUBLIC_URL },
       payload: { name: 'Ultima corsa' },
     });
     projectId = project.json().id;
     const created = await app.inject({
       method: 'POST',
       url: `/api/v1/projects/${projectId}/boards`,
-      headers: { cookie: cookies.owner },
+      headers: { cookie: cookies.owner, origin: config.PUBLIC_URL },
       payload: { parentBoardId: project.json().rootBoardId, kind: 'storyboard', title: 'Binario' },
     });
     boardId = created.json().id;
@@ -222,7 +222,7 @@ describe.skipIf(!url)('search (needs DATABASE_URL)', () => {
     const other = await app.inject({
       method: 'POST',
       url: `/api/v1/projects/${projectId}/boards`,
-      headers: { cookie: cookies.owner },
+      headers: { cookie: cookies.owner, origin: config.PUBLIC_URL },
       payload: {
         parentBoardId: (await get('owner', `/api/v1/boards/${boardId}`)).body.parentBoardId,
         title: 'Altro binario',
@@ -251,7 +251,7 @@ describe.skipIf(!url)('search (needs DATABASE_URL)', () => {
     await app.inject({
       method: 'DELETE',
       url: `/api/v1/boards/${otherId}`,
-      headers: { cookie: cookies.owner },
+      headers: { cookie: cookies.owner, origin: config.PUBLIC_URL },
     });
   });
 
@@ -267,7 +267,7 @@ describe.skipIf(!url)('search (needs DATABASE_URL)', () => {
     await app.inject({
       method: 'DELETE',
       url: `/api/v1/boards/${boardId}`,
-      headers: { cookie: cookies.owner },
+      headers: { cookie: cookies.owner, origin: config.PUBLIC_URL },
     });
     expect((await get('owner', '/api/v1/search?q=binar')).body.items).toEqual([]);
     expect((await get('owner', `/api/v1/projects/${projectId}/tags`)).body.items).toEqual([]);
