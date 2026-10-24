@@ -3,6 +3,7 @@ import {
   type ButtonHTMLAttributes,
   type InputHTMLAttributes,
   type ReactNode,
+  type SyntheticEvent,
   useEffect,
   useId,
   useRef,
@@ -208,11 +209,15 @@ export function Dialog({
   open,
   title,
   onClose,
+  onCancel,
   children,
 }: {
   open: boolean;
   title: string;
+  /** Runs whenever the dialog has closed, also after Escape. */
   onClose: () => void;
+  /** Runs on Escape before the dialog closes; `preventDefault()` asks the browser to keep it open. */
+  onCancel?: (event: SyntheticEvent<HTMLDialogElement>) => void;
   children: ReactNode;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
@@ -224,7 +229,13 @@ export function Dialog({
     if (!open && el.open) el.close();
   }, [open]);
   return (
-    <dialog ref={ref} className="ink-dialog" aria-labelledby={titleId} onClose={onClose}>
+    <dialog
+      ref={ref}
+      className="ink-dialog"
+      aria-labelledby={titleId}
+      onClose={onClose}
+      onCancel={onCancel}
+    >
       <h2 id={titleId} className="ink-dialog__title">
         {title}
       </h2>
