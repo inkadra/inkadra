@@ -38,10 +38,15 @@ const precached = new Set(__PRECACHE__);
 worker.addEventListener('install', (event) => {
   // The browser sends the API and the collaboration socket straight to the network, without
   // waking the worker. Where it cannot, the fetch handler below leaves them alone.
-  if (event.addRoutes) event.waitUntil(event.addRoutes(SERVER_ROUTES).catch(() => {}));
   // A new version waits until the page asks for it (the "new version" prompt), so an open
   // board never switches code under the user's hands.
   event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll([...precached])));
+  // After the precache, so a browser that throws here still installs a complete worker.
+  try {
+    if (event.addRoutes) event.waitUntil(event.addRoutes(SERVER_ROUTES).catch(() => {}));
+  } catch {
+    // The fetch handler covers it.
+  }
 });
 
 worker.addEventListener('activate', (event) => {
