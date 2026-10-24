@@ -39,10 +39,10 @@ export function createRedis(url: string) {
   return new IORedis(url, { maxRetriesPerRequest: null, lazyConnect: true });
 }
 
-export function createQueues(url: string) {
+export function createQueues(url: string, opts: { prefix?: string } = {}) {
   const connection = createRedis(url);
-  const media = new Queue(QUEUES.media, { connection });
-  const maintenance = new Queue(QUEUES.maintenance, { connection });
+  const media = new Queue(QUEUES.media, { connection, prefix: opts.prefix });
+  const maintenance = new Queue(QUEUES.maintenance, { connection, prefix: opts.prefix });
   const jobs: Jobs = {
     async processAsset(assetId) {
       // The job id makes a second enqueue of the same asset a no-op while the first is waiting.
@@ -177,7 +177,14 @@ const unknownIfStalled = (err: unknown) =>
     ? new CardOutcomeUnknown('The collaboration server stopped while adding the card.')
     : err;
 
-function within<T>(promise: Promise<T>, ms: number, message: string): Promise<T> {
+/**
+ * How long a request waits to queue background work. A queue that went away after connecting
+ * never fails an add: it waits for the connection to come back.
+ */
+export const ENQUEUE_TIMEOUT_MS = 2_000;
+
+/** `promise`, or a rejection with `message` after `ms`. The work itself is not stopped. */
+export function within<T>(promise: Promise<T>, ms: number, message: string): Promise<T> {
   let timer: NodeJS.Timeout | undefined;
   const timeout = new Promise<never>((_, reject) => {
     timer = setTimeout(() => reject(new Error(message)), Math.max(1, ms));
@@ -212,16 +219,19 @@ export function queuedBoardWriter(
     async addCard(input) {
       const expiresAt = Date.now() + timeoutMs;
       const left = () => expiresAt - Date.now();
-      // With Valkey down these would wait forever. A job added after the deadline is refused
-      // by the worker, so giving up here cannot lead to a late card.
-      const job = await within(
-        events
-          .waitUntilReady()
-          .then(() =>
-            queue.add('add-card', { ...input, expiresAt }, { attempts: 1, ...ADD_CARD_KEEP }),
-          ),
-        left(),
-        'The collaboration queue is unreachable.',
+      // With Valkey down these would wait forever. A job added after the deadline is removed
+      // as soon as the add lands, and refused by the worker if it runs first: giving up here
+      // cannot lead to a late card.
+      const adding = events
+        .waitUntilReady()
+        .then(() =>
+          queue.add('add-card', { ...input, expiresAt }, { attempts: 1, ...ADD_CARD_KEEP }),
+        );
+      const job = await within(adding, left(), 'The collaboration queue is unreachable.').catch(
+        (err) => {
+          adding.then((late) => late.remove()).catch(() => {});
+          throw err;
+        },
       );
       try {
         return (await job.waitUntilFinished(events, Math.max(1, left()))) as AddCardResult;
