@@ -4,12 +4,13 @@ import {
   boardDocName,
   createBoardDoc,
   getSchemaVersion,
+  hiddenFromGuests,
   migrateBoardDoc,
   roots,
   SchemaTooNewError,
 } from '@inkadra/doc-schema';
 import { MAX_NAMED_VERSIONS } from '@inkadra/shared';
-import { and, eq, gt, gte, inArray, lte, sql } from 'drizzle-orm';
+import { and, desc, eq, gt, gte, inArray, lte, sql } from 'drizzle-orm';
 import type { Logger } from 'pino';
 import * as Y from 'yjs';
 import type { CollabServer } from './collab.ts';
@@ -35,6 +36,9 @@ export const HOURLY_KEEP_MS = 48 * HOUR;
 export const DAILY_KEEP_MS = 30 * DAY;
 /** Restore backups follow the same retention as automatic versions. */
 export const RESTORE_KEEP_MS = DAILY_KEEP_MS;
+/** Bound direct restores too, including boards edited during every backup write. */
+const RESTORE_TIMEOUT_MS = 10_000;
+const MAX_RESTORE_ATTEMPTS = 10;
 
 type Tx = Parameters<Parameters<Database['transaction']>[0]>[0];
 
@@ -73,21 +77,21 @@ async function expireEarlierVersions(tx: Tx, boardId: string, kind: 'auto' | 're
 }
 
 /**
- * Called by the collaboration server each time it stores a document: takes an automatic
+ * Called by the collaboration server when an automatic version may be due: takes a version
  * version unless the board has one from the last hour. The newest automatic version of a day
  * is the one kept for 30 days, so the earlier ones of the same day go back to 48 hours.
- * Returns the new version's id, or null when none was due.
+ * Returns the latest automatic version's time, so the caller can skip checks for an hour.
  */
 export async function takeAutoVersion(
   db: Database,
   boardId: string,
   snap: VersionState,
   now: Date,
-): Promise<string | null> {
+): Promise<Date> {
   return db.transaction(async (tx) => {
     await lockBoard(tx, boardId);
     const [recent] = await tx
-      .select({ id: boardVersion.id })
+      .select({ createdAt: boardVersion.createdAt })
       .from(boardVersion)
       .where(
         and(
@@ -96,20 +100,18 @@ export async function takeAutoVersion(
           gt(boardVersion.createdAt, new Date(now.getTime() - AUTO_VERSION_EVERY_MS)),
         ),
       )
+      .orderBy(desc(boardVersion.createdAt))
       .limit(1);
-    if (recent) return null;
+    if (recent) return recent.createdAt;
     await expireEarlierVersions(tx, boardId, 'auto', now);
-    const [row] = await tx
-      .insert(boardVersion)
-      .values({
-        boardId,
-        kind: 'auto',
-        ...stateColumns(snap),
-        createdAt: now,
-        expiresAt: new Date(now.getTime() + DAILY_KEEP_MS),
-      })
-      .returning({ id: boardVersion.id });
-    return row?.id ?? null;
+    await tx.insert(boardVersion).values({
+      boardId,
+      kind: 'auto',
+      ...stateColumns(snap),
+      createdAt: now,
+      expiresAt: new Date(now.getTime() + DAILY_KEEP_MS),
+    });
+    return now;
   });
 }
 
@@ -141,7 +143,8 @@ export async function applyVersionRetention(db: Database, now = new Date()) {
     )
     update board_version v set expires_at = r.expires
     from ranked r
-    where v.id = r.id and v.expires_at is distinct from r.expires`);
+    where v.id = r.id and v.kind in ('auto', 'restore')
+      and v.expires_at is distinct from r.expires`);
   const removed = await db
     .delete(boardVersion)
     .where(and(inArray(boardVersion.kind, ['auto', 'restore']), lte(boardVersion.expiresAt, now)))
@@ -237,16 +240,27 @@ function same(a: unknown, b: unknown): boolean {
  * version are removed, elements only in the version are added back, and fields that differ
  * are set, so the CRDT history goes on and concurrent edits still merge. Fields left alone
  * are not touched, so a card edited since only changes where it differs.
+ * Nested note text, checklist items and strokes are replaced wholesale when different:
+ * offline edits inside the replaced Yjs types do not merge into their replacements.
  *
- * Cards present in both keep their current `guestHidden` (decision 0013): a restore never
- * shows guests a card that was hidden since the version was taken. Cards brought back keep
+ * Cards present in both keep their current hiding, including containers (decision 0013):
+ * a restore never shows guests a card hidden since the version was taken. Cards brought back keep
  * the flag they had in the version. Comments, reviews and picks live in Postgres and are not
  * touched.
  */
 export function writeVersionOver(live: Y.Doc, version: Y.Doc): void {
   const now = roots(live);
   const then = roots(version);
+  const lookup = (id: string) => {
+    const map = now.elements.get(id);
+    return map
+      ? { guestHidden: map.get(GUEST_HIDDEN) === true, parent: map.get('parent') as string | null }
+      : undefined;
+  };
   live.transact(() => {
+    const hidden = [...now.elements.keys()].filter(
+      (id) => then.elements.has(id) && hiddenFromGuests(id, lookup),
+    );
     for (const id of [...now.elements.keys()]) if (!then.elements.has(id)) now.elements.delete(id);
     for (const [id, source] of then.elements.entries()) {
       const target = now.elements.get(id);
@@ -261,6 +275,8 @@ export function writeVersionOver(live: Y.Doc, version: Y.Doc): void {
         target.set(key, value instanceof Y.AbstractType ? value.clone() : value);
       }
     }
+    for (const id of hidden)
+      if (!hiddenFromGuests(id, lookup)) now.elements.get(id)?.set(GUEST_HIDDEN, true);
     const aspect = then.meta.get('aspect');
     if (!same(now.meta.get('aspect'), aspect)) {
       if (aspect === undefined) now.meta.delete('aspect');
@@ -332,7 +348,7 @@ export function directVersionWriter(
       return insertNamedVersion(db, { boardId, name, userId, expiresAt }, snap);
     },
 
-    async restore({ boardId, versionId, userId, expiresAt }) {
+    async restore({ boardId, versionId, userId, expiresAt = Date.now() + RESTORE_TIMEOUT_MS }) {
       const [row] = await db
         .select({ state: boardVersion.state })
         .from(boardVersion)
@@ -348,14 +364,19 @@ export function directVersionWriter(
       if (expired(expiresAt)) return { ok: false, reason: 'expired' };
 
       const connection = await collab.hocuspocus.openDirectConnection(boardDocName(boardId));
+      let backupId: string | undefined;
+      let written = false;
       try {
         const doc = connection.document;
         if (!doc) throw new Error('direct connection closed');
         // Saved before anything changes, so the board can always go back.
         let before = snapshot(doc);
-        const backupId = await insertBackup(db, boardId, userId, before);
-        let written = false;
-        while (!written && !expired(expiresAt)) {
+        backupId = await insertBackup(db, boardId, userId, before);
+        for (
+          let attempt = 0;
+          !written && !expired(expiresAt) && attempt < MAX_RESTORE_ATTEMPTS;
+          attempt += 1
+        ) {
           let changed: VersionState | null = null;
           await connection.transact((live) => {
             if (expired(expiresAt)) return;
@@ -380,13 +401,19 @@ export function directVersionWriter(
           }
         }
         if (!written) {
-          await db.delete(boardVersion).where(eq(boardVersion.id, backupId));
           return { ok: false, reason: 'expired' };
         }
         const notice: BoardNotice = { type: 'restored', versionId };
         doc.broadcastStateless(JSON.stringify(notice));
         return { ok: true, backupId };
       } finally {
+        if (backupId && !written) {
+          try {
+            await db.delete(boardVersion).where(eq(boardVersion.id, backupId));
+          } catch (err) {
+            log?.error({ err, boardId, backupId }, 'failed restore backup not removed');
+          }
+        }
         try {
           await connection.disconnect({ unloadImmediately: false });
         } catch (err) {

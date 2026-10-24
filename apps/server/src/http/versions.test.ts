@@ -19,10 +19,11 @@ import { createAuth } from '../auth.ts';
 import { attachCollab, createCollabServer } from '../collab.ts';
 import { loadConfig } from '../config.ts';
 import { createDatabase, runMigrations } from '../db/client.ts';
-import { board, boardVersion, elementReview } from '../db/schema.ts';
+import { board, boardDoc, boardVersion, elementReview } from '../db/schema.ts';
 import { queuedBoardWriter, startBoardWorker } from '../queues.ts';
 import { fragmentText } from '../search/index-doc.ts';
 import { testDeps } from '../test-deps.ts';
+import * as versionStorage from '../versions.ts';
 import {
   applyVersionRetention,
   DAILY_KEEP_MS,
@@ -272,6 +273,74 @@ describe.skipIf(!url)('board versions (needs DATABASE_URL)', () => {
   });
 
   describe('automatic versions', () => {
+    it('seeds a fresh process from the DB time and skips checks until that version is an hour old', async () => {
+      await clearBoard(boardId);
+      const t0 = Date.parse('2026-10-22T08:00:00.000Z');
+      await insertVersion({ createdAt: new Date(t0) });
+      let now = new Date(t0 + HOUR / 2);
+      const fresh = createCollabServer({
+        db,
+        auth,
+        log,
+        publicUrl: config.PUBLIC_URL,
+        now: () => now,
+      });
+      const taking = vi.spyOn(versionStorage, 'takeAutoVersion');
+      async function store(id: string) {
+        const connection = await fresh.hocuspocus.openDirectConnection(boardDocName(boardId));
+        await connection.transact((doc) => addElement(doc, note(id)));
+        await connection.disconnect();
+      }
+      try {
+        await store('cache001');
+        expect(taking).toHaveBeenCalledTimes(1);
+        now = new Date(t0 + HOUR - 1);
+        const transactions = vi.spyOn(db, 'transaction');
+        try {
+          await store('cache002');
+          expect(taking).toHaveBeenCalledTimes(1);
+          // Only search indexing transacts; automatic versioning performs no DB work.
+          expect(transactions).toHaveBeenCalledTimes(1);
+        } finally {
+          transactions.mockRestore();
+        }
+        now = new Date(t0 + HOUR);
+        await store('cache003');
+        expect(taking).toHaveBeenCalledTimes(2);
+        expect((await versionsOf(boardId)).map((v) => v.createdAt.getTime())).toEqual([
+          t0,
+          t0 + HOUR,
+        ]);
+      } finally {
+        taking.mockRestore();
+        await fresh.destroy();
+      }
+    });
+
+    it('stores the board successfully even if automatic versioning fails, then retries', async () => {
+      await clearBoard(boardId);
+      clock = new Date(Date.now() + 2 * HOUR);
+      const taking = vi
+        .spyOn(versionStorage, 'takeAutoVersion')
+        .mockRejectedValueOnce(new Error('Version failed'));
+      try {
+        await expect(
+          edit(boardId, (doc) => addElement(doc, note('safe0001'))),
+        ).resolves.toBeUndefined();
+        expect(taking).toHaveBeenCalledTimes(1);
+        const [row] = await db.select().from(boardDoc).where(eq(boardDoc.boardId, boardId));
+        const stored = new Y.Doc();
+        Y.applyUpdate(stored, row!.state);
+        expect(roots(stored).elements.has('safe0001')).toBe(true);
+        expect((await versionsOf(boardId)).filter((v) => v.kind === 'auto')).toEqual([]);
+        await edit(boardId, (doc) => addElement(doc, note('safe0002')));
+        expect(taking).toHaveBeenCalledTimes(2);
+        expect((await versionsOf(boardId)).filter((v) => v.kind === 'auto')).toHaveLength(1);
+      } finally {
+        taking.mockRestore();
+      }
+    });
+
     it('are taken when the board is stored and the last one is over an hour old', async () => {
       await clearBoard(boardId);
       const autos = async () =>
@@ -322,6 +391,53 @@ describe.skipIf(!url)('board versions (needs DATABASE_URL)', () => {
   });
 
   describe('retention', () => {
+    it('does not set an expiry when a version is named while retention waits for its row lock', async () => {
+      await clearBoard(boardId);
+      const now = new Date();
+      const auto = await insertVersion({ createdAt: new Date(now.getTime() - HOUR) });
+      let release = () => {};
+      let locked = (_pid: number) => {};
+      const ready = new Promise<number>((resolve) => {
+        locked = resolve;
+      });
+      const hold = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      const naming = db.transaction(async (tx) => {
+        await tx
+          .update(boardVersion)
+          .set({ kind: 'named', name: 'Keep', expiresAt: null })
+          .where(eq(boardVersion.id, auto.id));
+        const [row] = await tx.execute(sql`select pg_backend_pid() as pid`);
+        locked(Number(row!.pid));
+        await hold;
+      });
+      let retention: Promise<unknown> | undefined;
+      try {
+        const pid = await ready;
+        retention = applyVersionRetention(db, now);
+        await expect
+          .poll(async () => {
+            const rows = await db.execute(sql`
+            select 1 from pg_stat_activity
+            where ${pid} = any(pg_blocking_pids(pid))
+              and query like '%update board_version v set expires_at%'
+          `);
+            return rows.length;
+          })
+          .toBe(1);
+        release();
+        await naming;
+        await retention;
+        const [row] = await db.select().from(boardVersion).where(eq(boardVersion.id, auto.id));
+        expect(row).toMatchObject({ kind: 'named', name: 'Keep', expiresAt: null });
+      } finally {
+        release();
+        await naming;
+        await retention;
+      }
+    });
+
     it('thins restore backups like automatic versions and keeps a named backup', async () => {
       await clearBoard(boardId);
       const now = new Date('2026-10-24T12:30:00.000Z');
@@ -709,6 +825,11 @@ describe.skipIf(!url)('board versions (needs DATABASE_URL)', () => {
         `/boards/${boardId}/versions/${saved.json().id}/state`,
         'editor',
       );
+      const [savedRow] = await db
+        .select()
+        .from(boardVersion)
+        .where(eq(boardVersion.id, saved.json().id));
+      expect(res.rawPayload).toEqual(Buffer.from(savedRow!.state));
       expect(res.statusCode).toBe(200);
       expect(res.headers['content-type']).toBe('application/octet-stream');
       const doc = new Y.Doc();
@@ -783,6 +904,96 @@ describe.skipIf(!url)('board versions (needs DATABASE_URL)', () => {
   }
 
   describe('restore', () => {
+    it('limits restores to ten per hour per board across editors', async () => {
+      const version = await insertVersion({ createdAt: new Date() });
+      const other = await insertVersion({ boardId: subBoardId, createdAt: new Date() });
+      const restore = vi
+        .fn<typeof versions.restore>()
+        .mockResolvedValue({ ok: false, reason: 'expired' });
+      const limited = await createApp({
+        config,
+        db,
+        auth,
+        log,
+        ...deps,
+        versions: { ...versions, restore },
+      });
+      try {
+        for (let i = 0; i < 10; i += 1)
+          expect(
+            (
+              await request(
+                'POST',
+                `/boards/${boardId}/versions/${version.id}/restore`,
+                i % 2 ? 'owner' : 'editor',
+                undefined,
+                limited,
+              )
+            ).statusCode,
+          ).toBe(500);
+        expect(
+          (
+            await request(
+              'POST',
+              `/boards/${boardId}/versions/${version.id}/restore`,
+              'owner',
+              undefined,
+              limited,
+            )
+          ).statusCode,
+        ).toBe(429);
+        expect(restore).toHaveBeenCalledTimes(10);
+        expect(
+          (
+            await request(
+              'POST',
+              `/boards/${subBoardId}/versions/${other.id}/restore`,
+              'owner',
+              undefined,
+              limited,
+            )
+          ).statusCode,
+        ).toBe(500);
+        expect(restore).toHaveBeenCalledTimes(11);
+      } finally {
+        await limited.close();
+      }
+    });
+
+    it('bounds direct restores on a continuously edited board and removes the unused backup', async () => {
+      const version = await changedBoard(boardId);
+      const before = (await versionsOf(boardId)).map((v) => v.id);
+      const openDirect = collab.hocuspocus.openDirectConnection.bind(collab.hocuspocus);
+      const opening = vi.spyOn(collab.hocuspocus, 'openDirectConnection');
+      let attempts = 0;
+      opening.mockImplementationOnce(async (...args) => {
+        const connection = await openDirect(...args);
+        const transact = connection.transact.bind(connection);
+        vi.spyOn(connection, 'transact').mockImplementation(async (callback) =>
+          transact((live) => {
+            roots(live).elements.get('restore4')?.set('x', ++attempts);
+            return callback(live);
+          }),
+        );
+        return connection;
+      });
+      try {
+        expect(
+          await versions.restore({
+            boardId,
+            versionId: version.id,
+            userId: people.editor?.id ?? '',
+          }),
+        ).toEqual({ ok: false, reason: 'expired' });
+        expect(attempts).toBeGreaterThan(1);
+        expect(attempts).toBeLessThanOrEqual(10);
+        expect((await versionsOf(boardId)).map((v) => v.id)).toEqual(before);
+        expect(await read(boardId, (doc) => roots(doc).elements.has('restore4'))).toBe(true);
+      } finally {
+        opening.mockRestore();
+      }
+    });
+
     for (const change of ['edit', 'delete'] as const) {
       it(`backs up a concurrent ${change} before replacing the live state`, async () => {
         const version = await changedBoard(boardId);
@@ -846,10 +1057,30 @@ describe.skipIf(!url)('board versions (needs DATABASE_URL)', () => {
         await expect(
           versions.restore({ boardId, versionId: version.id, userId: people.editor?.id ?? '' }),
         ).rejects.toThrow('Backup write failed');
+        expect((await versionsOf(boardId)).filter((v) => v.kind === 'restore')).toEqual([]);
         expect(await read(boardId, (doc) => elementOf(doc, 'restore4')?.x)).toBe(456);
         expect(await read(boardId, (doc) => roots(doc).elements.has('restore1'))).toBe(false);
       } finally {
         updating.mockRestore();
+        opening.mockRestore();
+      }
+    });
+
+    it('removes the backup if the direct connection transaction fails', async () => {
+      const version = await changedBoard(boardId);
+      const openDirect = collab.hocuspocus.openDirectConnection.bind(collab.hocuspocus);
+      const opening = vi.spyOn(collab.hocuspocus, 'openDirectConnection');
+      opening.mockImplementationOnce(async (...args) => {
+        const connection = await openDirect(...args);
+        vi.spyOn(connection, 'transact').mockRejectedValueOnce(new Error('Connection failed'));
+        return connection;
+      });
+      try {
+        await expect(
+          versions.restore({ boardId, versionId: version.id, userId: people.editor?.id ?? '' }),
+        ).rejects.toThrow('Connection failed');
+        expect((await versionsOf(boardId)).filter((v) => v.kind === 'restore')).toEqual([]);
+      } finally {
         opening.mockRestore();
       }
     });

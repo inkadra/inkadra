@@ -19,7 +19,7 @@ import type { Database } from './db/client.ts';
 import { board, boardDoc, personalToken, session, user } from './db/schema.ts';
 import { writeBoardIndex } from './search/index-doc.ts';
 import { actorFromToken, isToken } from './tokens.ts';
-import { takeAutoVersion } from './versions.ts';
+import { AUTO_VERSION_EVERY_MS, takeAutoVersion } from './versions.ts';
 
 interface Context {
   actor: Actor;
@@ -51,6 +51,8 @@ export function createCollabServer(deps: {
   const allowedOrigin = new URL(deps.publicUrl).origin;
   /** Yjs client ids each socket has published presence for, per document. */
   const owners = new Map<string, string>();
+  // Seed lazily from the authoritative transaction, including after a process restart.
+  const lastAutoAt = new Map<string, number>();
   const ownerKey = (documentName: string, clientId: number) => `${documentName}#${clientId}`;
 
   async function signedIn(
@@ -249,8 +251,15 @@ export function createCollabServer(deps: {
       }
       // Decision 0013: an automatic version when the last one is more than an hour old.
       try {
-        const snap = { state, schemaVersion, elementCount };
-        await takeAutoVersion(db, boardId, snap, deps.now?.() ?? new Date());
+        const now = deps.now?.() ?? new Date();
+        const last = lastAutoAt.get(boardId);
+        const elapsed = last === undefined ? Infinity : now.getTime() - last;
+        // Recheck the database if the clock moves backwards.
+        if (elapsed < 0 || elapsed >= AUTO_VERSION_EVERY_MS) {
+          const snap = { state, schemaVersion, elementCount };
+          const takenAt = await takeAutoVersion(db, boardId, snap, now);
+          lastAutoAt.set(boardId, takenAt.getTime());
+        }
       } catch (err) {
         log.error({ err, boardId }, 'automatic board version not saved');
       }
