@@ -30,12 +30,12 @@ import {
   verification,
 } from '../db/schema.ts';
 import type { Jobs } from '../jobs.ts';
+import { addressBucket, RateLimiter } from '../rate-limits.ts';
 import { newSecret, pkceChallenge, safeEqual, sha256 } from '../secrets.ts';
 import { issueToken, toPersonalToken } from '../tokens.ts';
 import { toUser } from './api-routes.ts';
 import { requireActor, requireSession, toHeaders } from './auth-routes.ts';
 import { HttpError } from './errors.ts';
-import { RateLimiter } from './link-previews.ts';
 
 interface Deps {
   config: Config;
@@ -145,7 +145,7 @@ export function registerAccountRoutes(app: FastifyInstance, deps: Deps) {
   });
 
   app.post(v1('/app-authorizations/token'), async (req) => {
-    if (!exchangeLimiter.take(req.ip))
+    if (!exchangeLimiter.take(addressBucket(req.ip)))
       throw new HttpError('rate_limited', 'Too many requests: wait a minute.');
     const input = ExchangeAppCode.parse(req.body ?? {});
     // Deleting it first makes the code single use even with concurrent requests.
