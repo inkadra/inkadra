@@ -96,7 +96,8 @@ describe.skipIf(!url)('board versions (needs DATABASE_URL)', () => {
     return on.inject({
       method,
       url: `/api/v1${path}`,
-      headers: as ? { cookie: cookie(as) } : {},
+      // Same-origin like the web app (decision 0013 refuses cross-site cookie writes).
+      headers: as ? { cookie: cookie(as), origin: config.PUBLIC_URL } : {},
       ...(payload === undefined ? {} : { payload: payload as object }),
     });
   }
