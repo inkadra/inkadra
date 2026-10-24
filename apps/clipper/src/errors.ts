@@ -15,7 +15,9 @@ export type ErrorKind =
   | 'permission_denied'
   | 'no_board'
   | 'bad_request'
-  | 'server';
+  | 'server'
+  /** A clip the server failed to confirm: the card may be on the board all the same. */
+  | 'clip_unconfirmed';
 
 export class ClipperError extends Error {
   readonly kind: ErrorKind;

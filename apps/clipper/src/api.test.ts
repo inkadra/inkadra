@@ -111,12 +111,24 @@ describe('InkadraApi', () => {
     [400, 'payload_too_large', 'too_large'],
     [429, 'rate_limited', 'rate_limited'],
     [400, 'bad_request', 'bad_request'],
-    [500, 'internal', 'server'],
+    [500, 'internal', 'clip_unconfirmed'],
+    [502, 'bad_gateway', 'clip_unconfirmed'],
   ])('maps HTTP %i (%s) to %s', async (status, code, kind) => {
     const fetchImpl = mockFetch(status, { error: { code, message: 'Nope.' } });
     const err = await failure(client(fetchImpl).clip({ boardId: BOARD, text: 'x' }));
     expect(err.kind).toBe(kind);
     expect(err.message).toBe('Nope.');
+  });
+
+  it('asks to check the board after a server error on a clip, and only there', async () => {
+    const message = 'The board did not confirm the clip in time: check it before trying again.';
+    const fetchImpl = mockFetch(500, { error: { code: 'internal', message } });
+    const sent = await failure(
+      client(fetchImpl).clipFile({ boardId: BOARD }, new Blob(['x']), 'x.txt'),
+    );
+    expect(sent.kind).toBe('clip_unconfirmed');
+    expect(sent.message).toBe(message);
+    expect((await failure(client(fetchImpl).projects())).kind).toBe('server');
   });
 
   it('maps a proxy page without JSON by status', async () => {

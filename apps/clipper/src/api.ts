@@ -86,7 +86,7 @@ export class InkadraApi {
   }
 
   clip(body: ClipRequest): Promise<ClipResult> {
-    return this.request<ClipResult>('POST', '/clip', { json: body });
+    return this.sendClip({ json: body });
   }
 
   clipFile(fields: ClipFileFields, file: Blob, filename: string): Promise<ClipResult> {
@@ -95,7 +95,21 @@ export class InkadraApi {
       if (value !== undefined) form.append(key, value);
     // The file goes last so a streaming parser has the fields before the bytes.
     form.append('file', file, filename);
-    return this.request<ClipResult>('POST', '/clip', { form });
+    return this.sendClip({ form });
+  }
+
+  /**
+   * A server error on a clip does not mean the card is missing: the server may have written it
+   * and failed to say so. Retried blindly, it would be saved twice.
+   */
+  private async sendClip(options: { json?: ClipRequest; form?: FormData }): Promise<ClipResult> {
+    try {
+      return await this.request<ClipResult>('POST', '/clip', options);
+    } catch (err) {
+      if (err instanceof ClipperError && err.kind === 'server')
+        throw new ClipperError('clip_unconfirmed', err.message);
+      throw err;
+    }
   }
 
   private async request<T>(
