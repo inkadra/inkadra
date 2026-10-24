@@ -1,6 +1,12 @@
 // SPDX-License-Identifier: MPL-2.0
 import { describe, expect, it } from 'vitest';
-import { hiddenFromGuests, UNSORTED } from './index.ts';
+import {
+  Element,
+  GUEST_ELEMENT_FIELDS,
+  hiddenFromGuests,
+  toGuestElement,
+  UNSORTED,
+} from './index.ts';
 
 describe('guest visibility', () => {
   const elements: Record<string, { guestHidden?: boolean; parent: string | null }> = {
@@ -33,5 +39,59 @@ describe('guest visibility', () => {
     expect(hiddenFromGuests('orphan', lookup)).toBe(true);
     expect(hiddenFromGuests('loopA', lookup)).toBe(true);
     expect(hiddenFromGuests('missing', lookup)).toBe(true);
+  });
+});
+
+describe('guest element fields', () => {
+  // Fields guests never receive; every other field must be listed in GUEST_ELEMENT_FIELDS, so
+  // a field added to an element needs a decision before guests see it.
+  const omitted: Record<string, readonly string[]> = {
+    common: ['tags', 'locked', 'guestHidden'],
+    frame: ['status', 'notes'],
+  };
+
+  it('decides for every field of every element type', () => {
+    for (const option of Element.options) {
+      const type = option.shape.type.value;
+      const allowed: readonly string[] = GUEST_ELEMENT_FIELDS[type];
+      const left = [...(omitted.common ?? []), ...(omitted[type] ?? [])];
+      for (const key of Object.keys(option.shape)) {
+        expect(allowed.includes(key) !== left.includes(key), `${type}.${key}`).toBe(true);
+      }
+      for (const key of allowed) expect(Object.keys(option.shape)).toContain(key);
+    }
+  });
+
+  it('drops tags, locks and production fields, and the author', () => {
+    const frame = Element.parse({
+      id: 'V1StGXR8_Z5jdHi6B-myT',
+      type: 'frame',
+      x: 0,
+      y: 0,
+      w: 320,
+      z: 'a0',
+      parent: null,
+      locked: true,
+      tags: ['cliente difficile'],
+      createdBy: 'user-1',
+      createdAt: 1,
+      action: 'Lei apre la porta',
+      notes: 'Rifare con più luce',
+      status: 'retake',
+    });
+    const guest = toGuestElement(frame);
+    expect(guest).toEqual({
+      id: 'V1StGXR8_Z5jdHi6B-myT',
+      type: 'frame',
+      x: 0,
+      y: 0,
+      w: 320,
+      z: 'a0',
+      parent: null,
+      createdBy: null,
+      createdAt: 1,
+      action: 'Lei apre la porta',
+    });
+    expect(Element.parse(guest)).toEqual(guest);
   });
 });

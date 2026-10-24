@@ -387,9 +387,8 @@ export const comment = pgTable(
     elementId: text('element_id'),
     threadId: uuid('thread_id'),
     authorId: uuid('author_id').references(() => user.id, { onDelete: 'set null' }),
-    authorGuestId: uuid('author_guest_id').references(() => shareGuest.id, {
-      onDelete: 'set null',
-    }),
+    /** A guest of `share_link_id` (composite foreign key). */
+    authorGuestId: uuid('author_guest_id'),
     shareLinkId: uuid('share_link_id').references(() => shareLink.id, { onDelete: 'cascade' }),
     body: text('body').notNull(),
     mentions: uuid('mentions').array().notNull().default(sql`'{}'::uuid[]`),
@@ -397,12 +396,9 @@ export const comment = pgTable(
       .notNull()
       .default('team'),
     pin: jsonb('pin').$type<{ x: number; y: number }>(),
-    /** Thread starts only. */
+    /** Thread starts only. Only the team resolves, so there is no guest column. */
     resolvedAt: timestamp('resolved_at', { withTimezone: true }),
     resolvedBy: uuid('resolved_by').references(() => user.id, { onDelete: 'set null' }),
-    resolvedByGuest: uuid('resolved_by_guest').references(() => shareGuest.id, {
-      onDelete: 'set null',
-    }),
     createdAt: createdAt(),
     /** Any change of the row (edit, resolve, reopen, delete); part of the guest snapshot ETag. */
     updatedAt: updatedAt(),
@@ -415,6 +411,12 @@ export const comment = pgTable(
     foreignKey({ columns: [t.threadId, t.boardId], foreignColumns: [t.id, t.boardId] }).onDelete(
       'cascade',
     ),
+    // A guest author belongs to the link of the comment. Guests go only with their link.
+    foreignKey({
+      name: 'comment_author_guest_fk',
+      columns: [t.authorGuestId, t.shareLinkId],
+      foreignColumns: [shareGuest.id, shareGuest.shareLinkId],
+    }).onDelete('cascade'),
     index('comment_board_element_idx').on(t.boardId, t.elementId),
     // Thread lists: keyset on (created_at, id), newest first; a thread start never moves.
     index('comment_threads_idx')
@@ -435,13 +437,18 @@ export const comment = pgTable(
 const reviewStatusEnum = ['none', 'in_review', 'approved', 'changes_requested'] as const;
 
 /**
- * Current review status of a card; the history is in element_review_event. Clearing a review
- * keeps the row with `none`, so the latest `changed_at` of a board always moves (guest ETag).
- * `share_link_id` is the link of the guest who made the change, if a guest did.
+ * Review status of a card, one row per source (decision 0013): the team's status
+ * (`share_link_id` null, set by accounts) and, for each link whose guests reviewed the card,
+ * the latest decision of a guest of that link. Decisions of one link are never shown to guests
+ * of another: a guest sees the more recent of the team row and their own link's row; the team
+ * sees the most recent row of all. A link row with `none` is a withdrawn decision and shows
+ * nothing, so the team status shows through. Clearing keeps the row with `none`, so the latest
+ * `changed_at` always moves (guest ETag). Link rows go with their link.
  */
 export const elementReview = pgTable(
   'element_review',
   {
+    id: uuid('id').primaryKey().defaultRandom(),
     boardId: uuid('board_id')
       .notNull()
       .references(() => board.id, { onDelete: 'cascade' }),
@@ -451,29 +458,43 @@ export const elementReview = pgTable(
       .references(() => project.id, { onDelete: 'cascade' }),
     status: text('status', { enum: reviewStatusEnum }).notNull(),
     note: text('note'),
+    /** Team rows: the account that made the change. */
     changedBy: uuid('changed_by').references(() => user.id, { onDelete: 'set null' }),
-    changedByGuest: uuid('changed_by_guest').references(() => shareGuest.id, {
-      onDelete: 'set null',
-    }),
-    shareLinkId: uuid('share_link_id').references(() => shareLink.id, { onDelete: 'set null' }),
-    /** Who last set `in_review`: told about the decision. */
+    /** Link rows: the guest of `share_link_id` who made the change (composite foreign key). */
+    changedByGuest: uuid('changed_by_guest'),
+    shareLinkId: uuid('share_link_id').references(() => shareLink.id, { onDelete: 'cascade' }),
+    /** Team rows: who last set `in_review`, told about later decisions. */
     requestedBy: uuid('requested_by').references(() => user.id, { onDelete: 'set null' }),
     changedAt: timestamp('changed_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
-    primaryKey({ columns: [t.boardId, t.elementId] }),
+    uniqueIndex('element_review_team_uq')
+      .on(t.boardId, t.elementId)
+      .where(sql`${t.shareLinkId} is null`),
+    uniqueIndex('element_review_link_uq')
+      .on(t.boardId, t.elementId, t.shareLinkId)
+      .where(sql`${t.shareLinkId} is not null`),
+    foreignKey({
+      name: 'element_review_guest_fk',
+      columns: [t.changedByGuest, t.shareLinkId],
+      foreignColumns: [shareGuest.id, shareGuest.shareLinkId],
+    }).onDelete('cascade'),
+    index('element_review_share_link_idx')
+      .on(t.shareLinkId)
+      .where(sql`${t.shareLinkId} is not null`),
     index('element_review_changed_by_idx').on(t.changedBy).where(sql`${t.changedBy} is not null`),
     index('element_review_requested_by_idx')
       .on(t.requestedBy)
       .where(sql`${t.requestedBy} is not null`),
+    // A team row has no guest; a link row has its guest and no account.
     check(
-      'element_review_one_author_ck',
-      sql`num_nonnulls(${t.changedBy}, ${t.changedByGuest}) <= 1`,
+      'element_review_source_ck',
+      sql`(${t.shareLinkId} is null and ${t.changedByGuest} is null) or (${t.shareLinkId} is not null and ${t.changedByGuest} is not null and ${t.changedBy} is null and ${t.requestedBy} is null)`,
     ),
   ],
 );
 
-/** Every change of a review status, never edited. */
+/** Every change of a review status, of the team or of one link, never edited. */
 export const elementReviewEvent = pgTable(
   'element_review_event',
   {
@@ -486,9 +507,13 @@ export const elementReviewEvent = pgTable(
     status: text('status', { enum: reviewStatusEnum }).notNull(),
     note: text('note'),
     userId: uuid('user_id').references(() => user.id, { onDelete: 'set null' }),
-    guestId: uuid('guest_id').references(() => shareGuest.id, { onDelete: 'set null' }),
-    /** Link of the guest who made the change, if a guest did. */
-    shareLinkId: uuid('share_link_id').references(() => shareLink.id, { onDelete: 'set null' }),
+    /** A guest of `share_link_id` (composite foreign key). */
+    guestId: uuid('guest_id'),
+    /**
+     * The source the change belongs to: null for the team, else the link of the guest. It
+     * cascades, so a guest's decision can never turn into one of the team.
+     */
+    shareLinkId: uuid('share_link_id').references(() => shareLink.id, { onDelete: 'cascade' }),
     createdAt: createdAt(),
   },
   (t) => [
@@ -498,8 +523,19 @@ export const elementReviewEvent = pgTable(
       t.createdAt.desc(),
       t.id.desc(),
     ),
+    foreignKey({
+      name: 'element_review_event_guest_fk',
+      columns: [t.guestId, t.shareLinkId],
+      foreignColumns: [shareGuest.id, shareGuest.shareLinkId],
+    }).onDelete('cascade'),
+    index('element_review_event_share_link_idx')
+      .on(t.shareLinkId)
+      .where(sql`${t.shareLinkId} is not null`),
     index('element_review_event_user_idx').on(t.userId).where(sql`${t.userId} is not null`),
-    check('element_review_event_one_author_ck', sql`num_nonnulls(${t.userId}, ${t.guestId}) <= 1`),
+    check(
+      'element_review_event_source_ck',
+      sql`(${t.shareLinkId} is null and ${t.guestId} is null) or (${t.shareLinkId} is not null and ${t.guestId} is not null and ${t.userId} is null)`,
+    ),
   ],
 );
 
@@ -540,6 +576,8 @@ export const notification = pgTable(
     // Retention: notifications are removed after 90 days.
     index('notification_created_idx').on(t.createdAt),
     index('notification_actor_idx').on(t.actorId).where(sql`${t.actorId} is not null`),
+    // Comments are hard-deleted and cascade here.
+    index('notification_comment_idx').on(t.commentId).where(sql`${t.commentId} is not null`),
   ],
 );
 
@@ -649,6 +687,7 @@ export const sharePick = pgTable(
     primaryKey({ columns: [t.guestId, t.boardId, t.elementId] }),
     // The guest belongs to the link of the pick.
     foreignKey({
+      name: 'share_pick_guest_fk',
       columns: [t.guestId, t.shareLinkId],
       foreignColumns: [shareGuest.id, shareGuest.shareLinkId],
     }).onDelete('cascade'),

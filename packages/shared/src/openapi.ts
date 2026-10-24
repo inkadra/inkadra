@@ -61,6 +61,7 @@ import {
   ElementReview,
   ElementReviewEvent,
   GuestElementReview,
+  GuestSetElementReview,
   ReviewHistoryQuery,
   SetElementReview,
 } from './reviews.ts';
@@ -905,7 +906,9 @@ registry.registerPath({
   security: secured,
   summary: 'Review status of the cards of a board (cards still `none` are left out).',
   description:
-    'Needs viewer. Open boards are told about changes with the stateless collab message ' +
+    'Needs viewer. For each card, the most recent change among the team’s status and the ' +
+    'decisions of guests of every link, with who made it (a withdrawn guest decision does ' +
+    'not count). Open boards are told about changes with the stateless collab message ' +
     '`{"type":"review"}`.',
   request: { params: idParam('boardId') },
   responses: { 200: { description: 'Reviews', ...json(BoardReviews) }, ...errors },
@@ -915,9 +918,11 @@ registry.registerPath({
   path: v1('/boards/{boardId}/elements/{elementId}/review'),
   tags: ['Reviews'],
   security: secured,
-  summary: 'Set the review status of a card. Needs commenter.',
+  summary: 'Set the team’s review status of a card. Needs commenter.',
   description:
-    'Every change is kept in the history. The creator of the card and whoever asked for the ' +
+    'Every change is kept in the history. It replaces the team’s status only: decisions of ' +
+    'guests stay in the history and on their link, and a more recent change wins on each ' +
+    'link. The creator of the card and whoever asked for the ' +
     'review are notified. The card must exist in the stored board document.' +
     ' Open boards are told with the stateless collab message `{"type":"review"}`.',
   request: { params: elementParams, body: json(SetElementReview) },
@@ -929,6 +934,7 @@ registry.registerPath({
   tags: ['Reviews'],
   security: secured,
   summary: 'Every change of the review status of a card, newest first. Needs viewer.',
+  description: 'Changes of the team’s status and of the decisions of every link.',
   request: { params: elementParams, query: ReviewHistoryQuery },
   responses: { 200: { description: 'History', ...json(page(ElementReviewEvent)) }, ...errors },
 });
@@ -1077,8 +1083,10 @@ registry.registerComponent('securitySchemes', 'guest', {
     'Guest session of one share link, set by POST /guest/links/{linkId}/session with ' +
     '`Path=/api/v1/guest/links/{linkId}`, HttpOnly, SameSite=Lax and Max-Age of 30 days, ' +
     'renewed while the guest is active. Over HTTPS its name carries the `__Secure-` prefix. ' +
-    'Write requests with this cookie must come from the instance itself: `Origin` (or else ' +
-    '`Sec-Fetch-Site: same-origin`) is checked against PUBLIC_URL, otherwise 403.',
+    'Every write request under /api/v1/guest/, with or without this cookie (opening a ' +
+    'session included), must come from the instance itself: `Origin` must equal the origin ' +
+    'of PUBLIC_URL or, without `Origin`, `Sec-Fetch-Site` must be `same-origin`; otherwise ' +
+    '403.',
 });
 const guestErrors = {
   400: errors[400],
@@ -1128,7 +1136,9 @@ registry.registerPath({
     'back the cookie of an earlier visit: if it belongs to a guest of this link, even with an ' +
     'expired session, that guest is reused (comments and picks stay theirs) and the cookie ' +
     'token is replaced. Otherwise a new guest is created. A token of another link is a 404. ' +
-    'Rate limited per link and address: wrong passwords, and new guests without a cookie.',
+    'Rate limited per link and address: wrong passwords, and new guests without a cookie. ' +
+    'Like every guest write, a cross-site request is a 403 even without a cookie, so another ' +
+    'site cannot open a session in the visitor’s browser.',
   request: { params: linkParams, body: json(CreateGuestSession) },
   responses: {
     200: { description: 'Guest session', ...json(GuestSession) },
@@ -1160,7 +1170,7 @@ registry.registerPath({
   security: guest,
   summary: 'Leave: ends the session and clears the guest cookie.',
   request: { params: linkParams },
-  responses: { 204: { description: 'Left' } },
+  responses: { 204: { description: 'Left' }, ...guestErrors },
 });
 registry.registerPath({
   method: 'get',
@@ -1273,10 +1283,25 @@ registry.registerPath({
   path: v1('/guest/links/{linkId}/boards/{boardId}/elements/{elementId}/review'),
   tags: ['Guests'],
   security: guest,
-  summary: 'Approve a card or ask for changes. For guest_approve; needs a name.',
-  description: 'A card hidden from guests is a 404.',
-  request: { params: guestElementParams, body: json(SetElementReview) },
-  responses: { 200: { description: 'Set', ...json(GuestElementReview) }, ...guestWriteErrors },
+  summary: 'Approve a card or ask for changes, or withdraw your decision. For guest_approve.',
+  description:
+    'Needs a name. Sets the decision of this link: guests of other links never see it, and ' +
+    'it replaces the decision of any other guest of this link. `in_review` and unknown values ' +
+    'are a 400. `none` withdraws a decision and is allowed only when the status this guest ' +
+    'sees was set by them, otherwise 403. The answer is what the guest sees afterwards: after ' +
+    'a withdrawal, the team’s status (or `none` by this guest when the team never set one). ' +
+    'A card hidden from guests is a 404.',
+  request: { params: guestElementParams, body: json(GuestSetElementReview) },
+  responses: {
+    200: { description: 'Set', ...json(GuestElementReview) },
+    ...guestWriteErrors,
+    403: {
+      description:
+        'As for every guest request, or `none` sent when the status this guest sees was not ' +
+        'set by them',
+      ...json(ApiError),
+    },
+  },
 });
 registry.registerPath({
   method: 'put',
@@ -1284,7 +1309,9 @@ registry.registerPath({
   tags: ['Guests'],
   security: guest,
   summary: 'Pick, reject or star a picture, when the link has proofing. Needs a name.',
-  description: 'A card hidden from guests is a 404.',
+  description:
+    'Pictures are image cards and storyboard frames with a picture. Any other card is a 400; ' +
+    'a card hidden from guests is a 404.',
   request: { params: guestElementParams, body: json(SetPick) },
   responses: { 200: { description: 'Saved', ...json(GuestPick) }, ...guestWriteErrors },
 });
@@ -1319,7 +1346,7 @@ registry.registerPath({
   path: v1('/boards/{boardId}/versions/{versionId}'),
   tags: ['Versions'],
   security: secured,
-  summary: 'Rename a version, or name an automatic one so it is kept.',
+  summary: 'Rename a version, or name an automatic one so it is kept. Needs editor.',
   request: { params: versionParams, body: json(UpdateBoardVersion) },
   responses: { 200: { description: 'Updated', ...json(BoardVersion) }, ...errors },
 });
@@ -1340,7 +1367,7 @@ registry.registerPath({
   path: v1('/boards/{boardId}/versions/{versionId}/state'),
   tags: ['Versions'],
   security: secured,
-  summary: 'The version as a Yjs update, to preview it read-only in the editor.',
+  summary: 'The version as a Yjs update, to preview it read-only in the editor. Needs editor.',
   description:
     'Migrated to the current document schema. Apply it to an empty Y.Doc; it never syncs with ' +
     'the live board.',
@@ -1361,7 +1388,8 @@ registry.registerPath({
   summary: 'Bring the board back to a version, as a new change. Needs editor.',
   description:
     'The current state is saved first as a `restore` version. The content of the version is ' +
-    'then written on top of the live document, so open boards follow without a reload ' +
+    'then written on top of the live document where it is live, as clips are (decision ' +
+    '0014), so open boards follow without a reload ' +
     '(they also get the stateless collab message `{"type":"restored"}`). Comments, reviews ' +
     'and picks are not touched. Cards present both now and in the version keep their current ' +
     '`guestHidden`, so a restore never shows guests a card hidden since.',

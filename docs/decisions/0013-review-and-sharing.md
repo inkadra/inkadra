@@ -16,10 +16,12 @@ must say who decided and when.
   (element id of the document). A thread is its first comment plus replies, one level deep; a
   reply always belongs to a thread of the same board (composite foreign key). Viewers read,
   commenters and above write; you edit your own comments, you delete your own or, as editor or
-  owner, anyone's; any commenter resolves and reopens a thread. A deleted thread start with
-  replies stays as an empty placeholder. Comments about a card that was later removed stay,
-  shown as about a removed card. A card may be commented at a point (`pin`, 0–1 relative to
-  the card).
+  owner, anyone's; any commenter of the team resolves and reopens a thread (guests cannot, so
+  `comment` has no guest column for it). A deleted thread start with replies stays as an empty
+  placeholder. Comments about a card that was later removed stay, and the team list shows
+  them as about a removed card; guests no longer see them, because a card missing from the
+  document counts as hidden (the check fails closed, see below). A card may be commented at a
+  point (`pin`, 0–1 relative to the card).
   The document was rejected for comments: commenters cannot write it, Yjs cannot enforce who
   edits or deletes a comment, tombstones would grow every board, guests cannot receive it, and
   notifications need a server-side event anyway.
@@ -42,23 +44,51 @@ must say who decided and when.
   links. Guests read `everyone` threads whose link is null or theirs, and within them only the
   replies whose link is null or theirs. The team can also start an `everyone` thread for one
   link. The column cascades with the link, so a guest comment can never fall back to "every
-  link". The same `share_link_id` is recorded on reviews and review events made by guests.
+  link", and a composite foreign key `(author_guest_id, share_link_id)` to `share_guest`
+  makes the database check that a guest writes on their own link. Review decisions are kept
+  per link the same way (below).
 - **Real time without a second channel.** After a change the server sends a stateless message
   on the board's collab connection, like `access` in decision 0011: `comments`, `review` and
   `restored` (`BoardNotice` in `@inkadra/doc-schema`). It only says what changed; clients fetch
   over REST, so the permission rules stay in one place. Guests have no WebSocket: they poll the
   snapshot with `If-None-Match`.
-- **Review status lives in Postgres**, not in the document: `element_review` holds the current
-  status of a card (`none`, `in_review`, `approved`, `changes_requested`, with a short note) and
-  `element_review_event` every change with its author (account or guest). Commenters and above,
-  and guests of `guest_approve` links, set it. Keeping it out of the document means a guest can
-  approve through the API without any write access to the document, an editor cannot rewrite an
-  approval by editing a field, old clients cannot drop it, and the history is an append-only
-  table. A copy in the document was considered and rejected: two sources of truth, and the copy
-  would be forgeable by any editor. The cost is one request per board (`GET /reviews`) and no
-  statuses offline; restoring a version leaves reviews as they are. Review status is separate
-  from the production status of storyboard frames (`draft` … `retake`), which stays in the
-  document. Clearing a review keeps the row with `none`, so its change time moves.
+- **Review status lives in Postgres**, not in the document. `element_review` holds, for each
+  card, one row per source: the **team's status** (`share_link_id` null: `none`, `in_review`,
+  `approved` or `changes_requested`, with a short note, set by commenters and above) and, for
+  each link whose guests reviewed the card, the **latest decision of a guest of that link**
+  (`approved` or `changes_requested`, set by guests of `guest_approve` links). Two partial
+  unique indexes keep one team row and one row per link; a check and a composite foreign key
+  `(changed_by_guest, share_link_id)` to `share_guest` make a link row always carry a guest of
+  that link and no account. `element_review_event` keeps every change with its author and
+  source; its `share_link_id` cascades with the link (never set null), so a guest's decision
+  can never turn into one of the team. Link rows and their events go with their link, which
+  only happens with its board, since links are revoked, not deleted.
+  - **What each person sees.** Review decisions made by guests of one link are never shown to
+    guests of another link, not even without a name. A guest sees the more recent of the
+    team's status and their own link's decision (the team's on a tie); another link's
+    decision is invisible to them, so they see the team's status underneath. Team members see
+    everything with who did it: `GET /reviews` gives for each card the most recent change
+    among the team's status and the decisions of every link, and the history lists the
+    changes of every source (`changedBy` of kind `guest` carries its `shareLinkId`). A link row
+    with `none` is a withdrawn decision and counts for nobody, so the team's status shows
+    through. The answer shapes (`ElementReview`, `GuestElementReview`, `BoardReviews`) do not
+    depend on this: it is a rule of how the server fills them.
+  - **What guests may send** (`GuestSetElementReview`): `approved` or `changes_requested`, which
+    replaces the decision of any guest of the same link, or `none` to withdraw. `none` is
+    allowed only when the status this guest currently sees on the card was set by them
+    (`changedBy.isYou`), otherwise 403: a guest never clears the team's status nor another
+    guest's decision. `in_review` means nothing from a guest (only accounts are told about
+    decisions) and is a 400, like any other value. The answer is what the guest sees
+    afterwards. A team change replaces only the team's status.
+  - Keeping reviews out of the document means a guest can approve through the API without any
+    write access to the document, an editor cannot rewrite an approval by editing a field, old
+    clients cannot drop it, and the history is an append-only table. A copy in the document
+    was considered and rejected: two sources of truth, and the copy would be forgeable by any
+    editor. The cost is one request per board (`GET /reviews`) and no statuses offline;
+    restoring a version leaves reviews as they are. Review status is separate from the
+    production status of storyboard frames (`draft` … `retake`), which stays in the document.
+    Clearing a review keeps the row with `none`, so its change time moves. `requested_by`
+    (who last set `in_review`, told about later decisions) is on the team row only.
 - **"Hidden from guests" is an element field in the document** (`guestHidden`, optional
   boolean). Editors toggle it while arranging a board, and it travels with the card through
   copies, duplicates, cut and paste, versions and restores (`readElement` and the clipboard
@@ -101,14 +131,16 @@ must say who decided and when.
   one exception to "only files referenced by a visible element": they are served as
   thumbnails only, never as originals.
 - **Guest-facing shapes are separate from team shapes.** Guests get `GuestComment`,
-  `GuestCommentThread`, `GuestElementReview` and `GuestAuthor` (`team`, `guest` or `deleted`
-  with a name only, and `isYou`): no user ids, no avatars, no mention ids (bodies come with
-  mentions written as `@Name`), no visibility or audience fields, and no review note unless a
-  guest of the same link wrote it. Guests of other links appear without a name. The mobile app
-  and the extension will pin these shapes, so they are defined now.
+  `GuestCommentThread`, `GuestElementReview`, `GuestSetElementReview` and `GuestAuthor`
+  (`team`, `guest` or `deleted` with a name only, and `isYou`): no user ids, no avatars, no
+  mention ids (bodies come with mentions written as `@Name`), no visibility or audience
+  fields, and no review note unless a guest of the same link wrote it. Guests of other links
+  never appear in anything a guest receives: their comments, replies and review decisions are
+  left out. The mobile app and the extension will pin these shapes, so they are defined now.
 - **Photo proofing.** On links with `proofing`, guests pick or reject a picture and give it 1 to
   5 stars (`share_pick`, one row per guest and card, with the asset shown at the time; the
-  guest must belong to the link of the pick). The people who manage the link see the totals
+  guest must belong to the link of the pick). Pictures are image cards and storyboard frames
+  with a picture; a pick on any other visible card is a 400 (a hidden one is a 404). The people who manage the link see the totals
   per card and each guest's choice (`GET /share-links/{id}/picks`); exporting the list of file
   names is done in the browser.
 - **Board versions live in Postgres** (`board_version`, a full Yjs update in `bytea`, like
@@ -122,7 +154,10 @@ must say who decided and when.
   any kind; automatic and restore versions would go away with retention anyway. **Restore**
   saves the current state as a `restore` version, then writes the old content on top of the
   live document as a normal change (elements added, changed and removed), so CRDT history
-  goes on, open boards follow and offline edits still merge. Cards present both now and in
+  goes on, open boards follow and offline edits still merge. It is a server-side edit like a
+  clip and uses the mechanism of decision 0014: the change is made where the document is live
+  (a Hocuspocus direct connection, or in split mode a job on the `collab` queue with a
+  deadline), never by writing `board_doc` directly. Cards present both now and in
   the version keep their current `guestHidden`, so a restore never shows guests a card hidden
   since the version was taken. Preview downloads the version as a Yjs update and renders it
   read-only in the editor; the server renders nothing. Editors and owners list, save, preview
@@ -161,8 +196,22 @@ must say who decided and when.
 - **No document, no WebSocket.** The collab server accepts only sessions and tokens of
   accounts; a guest cookie is never a credential there. Guests get a snapshot rendered by the
   server from the stored document: hidden elements and their children are left out, arrows
-  attached to them are dropped, board cards pointing outside the link are dropped, `createdBy`
-  is always null and note rich text is converted to ProseMirror JSON.
+  attached to them are dropped, board cards pointing outside the link are dropped, and note
+  rich text is converted to ProseMirror JSON (`body`).
+- **Element fields guests receive** are an allow list, `GUEST_ELEMENT_FIELDS` in
+  `@inkadra/doc-schema` (`toGuestElement`), with a test that fails when an element gains a
+  field nobody decided about:
+  - every type: `id`, `type`, `x`, `y`, `w`, `h`, `z`, `parent`, `createdAt`, and `createdBy`
+    always null;
+  - `note`: `color` (and `body`); `image`: `assetId`, `caption`; `link`: `url`, `title`,
+    `description`, `imageAssetId`; `file`: `assetId`; `todo`: `title`, `items`; `color`:
+    `hex`, `label`; `column`: `title`, `collapsed`; `board`: `boardId`; `scene`: `number`,
+    `title`, `setting`, `time`, `location`, `synopsis`, `collapsed`; `frame`: `label`,
+    `assetId`, `aspect`, `action`, `shot`, `angle`, `movement`, `lens`, `durationMs`, `audio`,
+    `dialogue`, `location`, `cast`, `strokes`; `arrow`: `from`, `to`, `label`, `line`,
+    `heads`.
+  - Never sent: `tags` (free internal labels), `locked` (editing state), `guestHidden`, and
+    on frames `status` (the production status) and `notes` (the director's notes).
 - **Files only through the link.** Guest file URLs live under
   `/api/v1/guest/links/{linkId}/assets/…`, and the server answers only for files referenced by
   an element visible on one of the link's boards, or the cover of one of them (thumbnails
@@ -199,15 +248,20 @@ must say who decided and when.
   an hour per link and address and 500 a day per link; guest writes 60 a minute per guest;
   guest comments also 30 an hour per guest and 300 an hour per link. Above them the answer is
   429. `view_count` counts sessions opened or resumed, not polls, so polling writes nothing.
-- **Cross-site requests (all cookie-authenticated writes).** SameSite=Lax does not protect
-  against sibling subdomains, which are common when self-hosting, and today only Better Auth's
-  `trustedOrigins` checks the origin, on `/api/auth`. The rule for the whole of `/api/v1`, for
-  account sessions and guest sessions alike: a request with an unsafe method (POST, PUT, PATCH,
-  DELETE) authenticated by a cookie must carry an `Origin` equal to the origin of `PUBLIC_URL`;
-  without `Origin`, it must carry `Sec-Fetch-Site: same-origin`; anything else is a 403 before
-  the handler runs. Requests authenticated by a bearer token (extension, mobile app) are not
-  affected. This is a contract for the implementation; it lands with the first endpoint of this
-  wave and covers the existing account endpoints at the same time.
+- **Cross-site requests.** SameSite=Lax does not protect against sibling subdomains, which are
+  common when self-hosting, and today only Better Auth's `trustedOrigins` checks the origin,
+  on `/api/auth`. The check: the request must carry an `Origin` equal to the origin of
+  `PUBLIC_URL`; without `Origin`, it must carry `Sec-Fetch-Site: same-origin`; anything else is
+  a 403 before the handler runs. It applies to:
+  - **every** request with an unsafe method (POST, PUT, PATCH, DELETE) under
+    `/api/v1/guest/`, with or without a guest cookie. Opening a session
+    (`POST …/session`) is included: otherwise another site could open a guest session, with a
+    name it chooses, in the visitor's browser (login CSRF). Leaving (`DELETE …/session`) is
+    included too;
+  - every other request with an unsafe method under `/api/v1` authenticated by an account
+    session cookie. Requests authenticated by a bearer token (extension, mobile app) are not
+    affected. This is a contract for the implementation; it lands with the first endpoint of this
+    wave and covers the existing account endpoints at the same time.
 - **The guest page** sends `Referrer-Policy: no-referrer` and `noindex`, so the token does not
   leak to the sites of link cards or into search engines.
 - **Separate from roles.** Guest roles are not project roles and never appear on access lists.
@@ -229,8 +283,9 @@ follow stateless notices for changes. Rendering guest snapshots costs a document
 change of the board, so snapshots are cached by their `version` (the ETag). It covers
 everything in the answer: the document `updated_at`, the link's `updated_at`, the set of boards
 the guest can open with their titles, covers and the creator's access, the files and the
-readiness of their thumbnails, the latest change and the number of the board's reviews and of
-the comments this guest can read, and the latest change and number of this guest's picks; a
+readiness of their thumbnails, the latest change and the number of the review rows this guest
+can see (the team's and their link's, `none` included, so a withdrawal moves it) and of the
+comments this guest can read, and the latest change and number of this guest's picks; a
 poll answers 304 only when none of them moved. Anything that ever cleans up unused files must
 also look inside board versions, because a restore can bring a file back. Builds older than
 document version 3 can no longer open boards saved by newer ones and reload.
@@ -238,8 +293,12 @@ document version 3 can no longer open boards saved by newer ones and reload.
 **Defaults the product owner may revisit.**
 - Review status is shown to every guest role, `guest_view` included, in the guest-safe shape.
 - Comments are `team` by default; `everyone` is a deliberate choice.
-- Guests of another link appear without a name; guest review notes are shown only to the same
-  link.
+- Review decisions, comments and names of one link's guests are never shown to guests of
+  another link; guest review notes are shown only to the same link.
+- A guest may withdraw a decision only while the status they see is one they set; the team's
+  status then shows through again.
+- Guests receive the element fields listed above: frames without the production `status` and
+  the director's `notes`, and no element with its `tags`.
 - Inline replies: the latest 50; lists 30 by default, 100 at most.
 - A suspended link cannot be handed over to another editor; they create a new link.
 - Guest sessions last 30 days after the last request; the rate limits above.

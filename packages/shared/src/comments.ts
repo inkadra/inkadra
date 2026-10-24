@@ -66,7 +66,7 @@ export const GuestAuthor = z
       .openapi({
         description:
           'Current name of the account, or the name a guest of the same link typed. Null for ' +
-          '`deleted` and for guests of other links, who are never named.',
+          '`deleted`. Guests of other links never appear in what a guest receives.',
       }),
     isYou: z.boolean().openapi({ description: 'The guest asking wrote it.' }),
   })

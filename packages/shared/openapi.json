@@ -78,7 +78,7 @@
         "type": "apiKey",
         "in": "cookie",
         "name": "inkadra.guest",
-        "description": "Guest session of one share link, set by POST /guest/links/{linkId}/session with `Path=/api/v1/guest/links/{linkId}`, HttpOnly, SameSite=Lax and Max-Age of 30 days, renewed while the guest is active. Over HTTPS its name carries the `__Secure-` prefix. Write requests with this cookie must come from the instance itself: `Origin` (or else `Sec-Fetch-Site: same-origin`) is checked against PUBLIC_URL, otherwise 403."
+        "description": "Guest session of one share link, set by POST /guest/links/{linkId}/session with `Path=/api/v1/guest/links/{linkId}`, HttpOnly, SameSite=Lax and Max-Age of 30 days, renewed while the guest is active. Over HTTPS its name carries the `__Secure-` prefix. Every write request under /api/v1/guest/, with or without this cookie (opening a session included), must come from the instance itself: `Origin` must equal the origin of PUBLIC_URL or, without `Origin`, `Sec-Fetch-Site` must be `same-origin`; otherwise 403."
       }
     },
     "schemas": {
@@ -2509,7 +2509,7 @@
                   "approved",
                   "changes_requested"
                 ],
-                "description": "`none`: never reviewed, or the review was cleared. `in_review`: waiting for a decision. `approved` and `changes_requested`: the decision. Open in answers: clients show a status they do not know like `in_review`, without actions."
+                "description": "The status of the same source before the change: the team’s status, or the decision of the link of the guest who made it."
               }
             },
             "required": [
@@ -2517,7 +2517,8 @@
               "previous"
             ]
           }
-        ]
+        ],
+        "description": "One change of the team’s status or of the decision of one link; `changedBy` says which (a guest carries their `shareLinkId`)."
       },
       "Notification": {
         "type": "object",
@@ -3381,7 +3382,7 @@
             "items": {
               "$ref": "#/components/schemas/GuestElementReview"
             },
-            "description": "Visible cards with a review status, shown to every guest role."
+            "description": "Visible cards whose status, as this guest sees it, is not `none`: the more recent of the team’s status and the decision of this link. Shown to every guest role."
           },
           "commentCounts": {
             "type": "array",
@@ -3399,7 +3400,7 @@
           },
           "version": {
             "type": "string",
-            "description": "Changes whenever anything in this answer would change: the document, the link and its options, the boards the guest can open, the files and their thumbnails, the reviews, the comments this guest can read and this guest’s picks. Also sent as ETag."
+            "description": "Changes whenever anything in this answer would change: the document, the link and its options, the boards the guest can open, the files and their thumbnails, the reviews this guest can see (the team’s and this link’s), the comments this guest can read and this guest’s picks. Also sent as ETag."
           },
           "generatedAt": {
             "type": "string",
@@ -3442,7 +3443,8 @@
           "id",
           "type"
         ],
-        "additionalProperties": {}
+        "additionalProperties": {},
+        "description": "Only the fields guests receive for its type (GUEST_ELEMENT_FIELDS in @inkadra/doc-schema, decision 0013): never `tags`, `locked` or `guestHidden`, and on frames never `status` or `notes`. `createdBy` is always null."
       },
       "GuestAsset": {
         "type": "object",
@@ -3596,7 +3598,8 @@
           "note",
           "changedBy",
           "changedAt"
-        ]
+        ],
+        "description": "The more recent of the team’s status and the decision of a guest of this link. Decisions made on other links are never shown."
       },
       "GuestAuthor": {
         "type": "object",
@@ -3615,7 +3618,7 @@
               "string",
               "null"
             ],
-            "description": "Current name of the account, or the name a guest of the same link typed. Null for `deleted` and for guests of other links, who are never named."
+            "description": "Current name of the account, or the name a guest of the same link typed. Null for `deleted`. Guests of other links never appear in what a guest receives."
           },
           "isYou": {
             "type": "boolean",
@@ -3855,6 +3858,28 @@
         },
         "required": [
           "body"
+        ]
+      },
+      "GuestSetElementReview": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "approved",
+              "changes_requested",
+              "none"
+            ],
+            "description": "`approved` or `changes_requested`: the decision of this link, replacing the one of any guest of the link. `none`: withdraw your own decision, only when the status you see was set by you (`changedBy.isYou`), otherwise 403; the team’s status shows through again. Other values are a 400."
+          },
+          "note": {
+            "type": "string",
+            "maxLength": 500,
+            "description": "Shown to the team and to guests of this link. Not kept with `none`."
+          }
+        },
+        "required": [
+          "status"
         ]
       },
       "SetPick": {
@@ -8664,7 +8689,7 @@
           }
         ],
         "summary": "Review status of the cards of a board (cards still `none` are left out).",
-        "description": "Needs viewer. Open boards are told about changes with the stateless collab message `{\"type\":\"review\"}`.",
+        "description": "Needs viewer. For each card, the most recent change among the team’s status and the decisions of guests of every link, with who made it (a withdrawn guest decision does not count). Open boards are told about changes with the stateless collab message `{\"type\":\"review\"}`.",
         "parameters": [
           {
             "schema": {
@@ -8744,8 +8769,8 @@
             "bearer": []
           }
         ],
-        "summary": "Set the review status of a card. Needs commenter.",
-        "description": "Every change is kept in the history. The creator of the card and whoever asked for the review are notified. The card must exist in the stored board document. Open boards are told with the stateless collab message `{\"type\":\"review\"}`.",
+        "summary": "Set the team’s review status of a card. Needs commenter.",
+        "description": "Every change is kept in the history. It replaces the team’s status only: decisions of guests stay in the history and on their link, and a more recent change wins on each link. The creator of the card and whoever asked for the review are notified. The card must exist in the stored board document. Open boards are told with the stateless collab message `{\"type\":\"review\"}`.",
         "parameters": [
           {
             "schema": {
@@ -8847,6 +8872,7 @@
           }
         ],
         "summary": "Every change of the review status of a card, newest first. Needs viewer.",
+        "description": "Changes of the team’s status and of the decisions of every link.",
         "parameters": [
           {
             "schema": {
@@ -9942,7 +9968,7 @@
           }
         ],
         "summary": "Open the link as a guest: checks the token and password, sets the guest cookie.",
-        "description": "The token is in the body and the path is under the cookie path, so the browser sends back the cookie of an earlier visit: if it belongs to a guest of this link, even with an expired session, that guest is reused (comments and picks stay theirs) and the cookie token is replaced. Otherwise a new guest is created. A token of another link is a 404. Rate limited per link and address: wrong passwords, and new guests without a cookie.",
+        "description": "The token is in the body and the path is under the cookie path, so the browser sends back the cookie of an earlier visit: if it belongs to a guest of this link, even with an expired session, that guest is reused (comments and picks stay theirs) and the cookie token is replaced. Otherwise a new guest is created. A token of another link is a 404. Rate limited per link and address: wrong passwords, and new guests without a cookie. Like every guest write, a cross-site request is a 403 even without a cookie, so another site cannot open a session in the visitor’s browser.",
         "parameters": [
           {
             "schema": {
@@ -10221,6 +10247,46 @@
         "responses": {
           "204": {
             "description": "Left"
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No guest session, or it expired (details: GuestDenied)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Link expired, revoked or suspended, password changed, role too low, or a cross-site write (GuestDenied)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found, or not visible to guests of this link (hidden cards included)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         }
       }
@@ -11114,8 +11180,8 @@
             "guest": []
           }
         ],
-        "summary": "Approve a card or ask for changes. For guest_approve; needs a name.",
-        "description": "A card hidden from guests is a 404.",
+        "summary": "Approve a card or ask for changes, or withdraw your decision. For guest_approve.",
+        "description": "Needs a name. Sets the decision of this link: guests of other links never see it, and it replaces the decision of any other guest of this link. `in_review` and unknown values are a 400. `none` withdraws a decision and is allowed only when the status this guest sees was set by them, otherwise 403. The answer is what the guest sees afterwards: after a withdrawal, the team’s status (or `none` by this guest when the team never set one). A card hidden from guests is a 404.",
         "parameters": [
           {
             "schema": {
@@ -11154,7 +11220,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/SetElementReview"
+                "$ref": "#/components/schemas/GuestSetElementReview"
               }
             }
           }
@@ -11191,7 +11257,7 @@
             }
           },
           "403": {
-            "description": "Link expired, revoked or suspended, password changed, role too low, or a cross-site write (GuestDenied)",
+            "description": "As for every guest request, or `none` sent when the status this guest sees was not set by them",
             "content": {
               "application/json": {
                 "schema": {
@@ -11234,7 +11300,7 @@
           }
         ],
         "summary": "Pick, reject or star a picture, when the link has proofing. Needs a name.",
-        "description": "A card hidden from guests is a 404.",
+        "description": "Pictures are image cards and storyboard frames with a picture. Any other card is a 400; a card hidden from guests is a 404.",
         "parameters": [
           {
             "schema": {
@@ -11589,7 +11655,7 @@
             "bearer": []
           }
         ],
-        "summary": "Rename a version, or name an automatic one so it is kept.",
+        "summary": "Rename a version, or name an automatic one so it is kept. Needs editor.",
         "parameters": [
           {
             "schema": {
@@ -11770,7 +11836,7 @@
             "bearer": []
           }
         ],
-        "summary": "The version as a Yjs update, to preview it read-only in the editor.",
+        "summary": "The version as a Yjs update, to preview it read-only in the editor. Needs editor.",
         "description": "Migrated to the current document schema. Apply it to an empty Y.Doc; it never syncs with the live board.",
         "parameters": [
           {
@@ -11863,7 +11929,7 @@
           }
         ],
         "summary": "Bring the board back to a version, as a new change. Needs editor.",
-        "description": "The current state is saved first as a `restore` version. The content of the version is then written on top of the live document, so open boards follow without a reload (they also get the stateless collab message `{\"type\":\"restored\"}`). Comments, reviews and picks are not touched. Cards present both now and in the version keep their current `guestHidden`, so a restore never shows guests a card hidden since.",
+        "description": "The current state is saved first as a `restore` version. The content of the version is then written on top of the live document where it is live, as clips are (decision 0014), so open boards follow without a reload (they also get the stateless collab message `{\"type\":\"restored\"}`). Comments, reviews and picks are not touched. Cards present both now and in the version keep their current `guestHidden`, so a restore never shows guests a card hidden since.",
         "parameters": [
           {
             "schema": {
