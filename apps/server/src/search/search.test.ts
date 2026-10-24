@@ -136,7 +136,11 @@ describe.skipIf(!url)('search (needs DATABASE_URL)', () => {
   let boardId = '';
 
   const get = async (who: keyof typeof cookies, path: string) => {
-    const res = await app.inject({ method: 'GET', url: path, headers: { cookie: cookies[who] } });
+    const res = await app.inject({
+      method: 'GET',
+      url: path,
+      headers: { cookie: cookies[who], origin: config.PUBLIC_URL },
+    });
     return { status: res.statusCode, body: res.json() };
   };
 

@@ -121,37 +121,42 @@ export function registerShareLinkRoutes(app: FastifyInstance, deps: Deps) {
     const { boardId } = BoardParams.parse(req.params);
     const input = CreateShareLink.parse(req.body ?? {});
     const access = await requireBoardRole(db, actor, boardId, 'editor');
-    const [recent] = await db
-      .select({ n: count() })
-      .from(shareLink)
-      .where(
-        and(
-          eq(shareLink.createdBy, actor.id),
-          gt(shareLink.createdAt, sql`now() - interval '1 hour'`),
-        ),
-      );
-    if ((recent?.n ?? 0) >= LINKS_PER_HOUR)
-      throw new HttpError('rate_limited', 'Too many share links in the last hour.');
     const token = newSecret('', 32);
-    const [row] = await db
-      .insert(shareLink)
-      .values({
-        projectId: access.board.projectId,
-        boardId,
-        role: input.role,
-        includeSubBoards: input.includeSubBoards,
-        label: input.label ?? null,
-        tokenHash: sha256(token),
-        tokenSealed: seal.seal(token),
-        passwordHash: input.password ? await hashPassword(input.password) : null,
-        allowDownload: input.allowDownload,
-        proofing: input.proofing,
-        createdBy: actor.id,
-        expiresAt: input.expiresInDays
-          ? new Date(Date.now() + input.expiresInDays * 86_400_000)
-          : null,
-      })
-      .returning();
+    const passwordHash = input.password ? await hashPassword(input.password) : null;
+    const [row] = await db.transaction(async (tx) => {
+      // Serialize the count and insert across all web processes, not only this instance.
+      await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${`share-links:${actor.id}`}))`);
+      const [recent] = await tx
+        .select({ n: count() })
+        .from(shareLink)
+        .where(
+          and(
+            eq(shareLink.createdBy, actor.id),
+            gt(shareLink.createdAt, sql`now() - interval '1 hour'`),
+          ),
+        );
+      if ((recent?.n ?? 0) >= LINKS_PER_HOUR)
+        throw new HttpError('rate_limited', 'Too many share links in the last hour.');
+      return tx
+        .insert(shareLink)
+        .values({
+          projectId: access.board.projectId,
+          boardId,
+          role: input.role,
+          includeSubBoards: input.includeSubBoards,
+          label: input.label ?? null,
+          tokenHash: sha256(token),
+          tokenSealed: seal.seal(token),
+          passwordHash,
+          allowDownload: input.allowDownload,
+          proofing: input.proofing,
+          createdBy: actor.id,
+          expiresAt: input.expiresInDays
+            ? new Date(Date.now() + input.expiresInDays * 86_400_000)
+            : null,
+        })
+        .returning();
+    });
     if (!row) throw new Error('Share link insert returned nothing');
     return reply.status(201).send(await toShareLink(row, token));
   });

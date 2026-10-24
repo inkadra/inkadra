@@ -116,6 +116,36 @@ export async function guestCommentCounts(
   return rows.sort((a, b) => (a.elementId ?? '').localeCompare(b.elementId ?? ''));
 }
 
+/** Includes edits and replies, even when the thread counts in the snapshot stay the same. */
+export async function guestCommentVersion(
+  db: Database,
+  ctx: GuestContext,
+  boardId: string,
+  visibleIds: string[],
+) {
+  const threads = db
+    .select({ id: comment.id })
+    .from(comment)
+    .where(readableThreads(ctx.link.id, boardId, visibleIds));
+  return db
+    .select({
+      id: comment.id,
+      updatedAt: sql<string>`${comment.updatedAt}::text`,
+      userName: user.name,
+      guestName: shareGuest.name,
+    })
+    .from(comment)
+    .leftJoin(user, eq(user.id, comment.authorId))
+    .leftJoin(shareGuest, eq(shareGuest.id, comment.authorGuestId))
+    .where(
+      and(
+        or(inArray(comment.id, threads), inArray(comment.threadId, threads)),
+        replyOfLink(ctx.link.id),
+      ),
+    )
+    .orderBy(asc(comment.id));
+}
+
 /** Names guests may see on a page of comments. */
 async function namesFor(db: Database, ctx: GuestContext, boardId: string, rows: CommentRow[]) {
   const userIds = new Set<string>();

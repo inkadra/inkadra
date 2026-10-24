@@ -22,7 +22,9 @@ import {
   shareGuest,
   shareLink,
 } from '../db/schema.ts';
+import { clearExpiredGuestNames } from '../share-links.ts';
 import { testDeps } from '../test-deps.ts';
+import { issueToken } from '../tokens.ts';
 import { createApp } from './app.ts';
 
 const url = process.env.DATABASE_URL;
@@ -446,7 +448,7 @@ describe.skipIf(!url)('guest share links (needs DATABASE_URL)', () => {
 
   it('limits each person to 50 new links an hour', async () => {
     await db.insert(shareLink).values(
-      Array.from({ length: 50 }, (_, i) => ({
+      Array.from({ length: 49 }, (_, i) => ({
         projectId: P,
         boardId: B.A3,
         role: 'guest_view' as const,
@@ -455,9 +457,61 @@ describe.skipIf(!url)('guest share links (needs DATABASE_URL)', () => {
         createdBy: as.editor2.id,
       })),
     );
+    const raced = await Promise.all(
+      Array.from({ length: 2 }, () =>
+        call('editor2', 'POST', `/api/v1/boards/${B.A3}/share-links`, {}),
+      ),
+    );
+    expect(raced.map((r) => r.status).sort()).toEqual([201, 429]);
     const res = await call('editor2', 'POST', `/api/v1/boards/${B.A3}/share-links`, {});
     expect(res.status).toBe(429);
     await db.delete(shareLink).where(eq(shareLink.boardId, B.A3));
+  });
+
+  it('checks origins on account cookie writes while allowing bearer clients', async () => {
+    for (const extra of [
+      { origin: 'http://evil.localhost:3000' },
+      { origin: 'null' },
+      { origin: undefined },
+      { origin: undefined, 'sec-fetch-site': 'same-site' },
+    ]) {
+      expect((await call('owner', 'PATCH', '/api/v1/me', {}, extra)).status).toBe(403);
+      expect(
+        (await call('owner', 'POST', '/api/v1/me/tokens', { name: 'blocked' }, extra)).status,
+      ).toBe(403);
+    }
+    expect(
+      (
+        await call(
+          'owner',
+          'PATCH',
+          '/api/v1/me',
+          {},
+          {
+            origin: undefined,
+            'sec-fetch-site': 'same-origin',
+          },
+        )
+      ).status,
+    ).toBe(200);
+    const { token } = await issueToken(db, as.owner.id, { name: 'CSRF bearer test' });
+    expect(
+      (
+        await call(
+          null,
+          'PATCH',
+          '/api/v1/me',
+          {},
+          {
+            origin: undefined,
+            authorization: `Bearer ${token}`,
+          },
+        )
+      ).status,
+    ).toBe(200);
+    expect(
+      (await call(null, 'POST', '/api/v1/guest/unknown', {}, { origin: undefined })).status,
+    ).toBe(403);
   });
 
   // Opening a link ------------------------------------------------------------------
@@ -608,7 +662,11 @@ describe.skipIf(!url)('guest share links (needs DATABASE_URL)', () => {
     expect(wrong.body.error.details).toEqual({ reason: 'wrong_password' });
     const ok = await open(link, { password: 'segreto-1', name: 'Ugo' });
     expect(ok.status).toBe(200);
-    for (let i = 0; i < 9; i++) await open(link, { password: 'sbagliata', ip: where });
+    const simultaneous = await Promise.all(
+      Array.from({ length: 12 }, () => open(link, { password: 'sbagliata', ip: where })),
+    );
+    expect(simultaneous.filter((r) => r.status === 403)).toHaveLength(9);
+    expect(simultaneous.filter((r) => r.status === 429)).toHaveLength(3);
     // Blocked for this address, even with the right password; others still get in.
     expect((await open(link, { password: 'segreto-1', ip: where })).status).toBe(429);
     expect((await open(link, { password: 'segreto-1', ip: '10.20.0.2' })).status).toBe(200);
@@ -632,6 +690,47 @@ describe.skipIf(!url)('guest share links (needs DATABASE_URL)', () => {
     for (let i = 0; i < 10; i++) expect((await open(link, { ip: '10.30.0.1' })).status).toBe(200);
     expect((await open(link, { ip: '10.30.0.1' })).status).toBe(429);
     expect((await open(link, { ip: '10.30.0.2' })).status).toBe(200);
+  });
+
+  it('enforces the daily guest cap under concurrent session opens', async () => {
+    const link = await createLink('owner', B.A2);
+    await db
+      .insert(shareGuest)
+      .values(
+        Array.from({ length: 499 }, () => ({ shareLinkId: link.id, sessionExpiresAt: new Date() })),
+      );
+    const results = await Promise.all([open(link), open(link)]);
+    expect(results.map((r) => r.status).sort()).toEqual([200, 429]);
+    const returning = results.find((r) => r.status === 200)!;
+    expect((await open(link, { cookie: returning.cookie })).status).toBe(200);
+    expect(
+      (await db.select().from(shareGuest).where(eq(shareGuest.shareLinkId, link.id))).length,
+    ).toBe(500);
+    await call('owner', 'DELETE', `/api/v1/share-links/${link.id}`);
+  });
+
+  it('clears names after 90 days of expiry or revocation, retaining guest rows', async () => {
+    const old = new Date(Date.now() - 91 * 86_400_000);
+    const recent = new Date(Date.now() - 89 * 86_400_000);
+    const expired = await createLink('owner', B.A2);
+    const revoked = await createLink('owner', B.A2);
+    const fresh = await createLink('owner', B.A2);
+    const active = await createLink('owner', B.A2);
+    for (const link of [expired, revoked, fresh, active]) await open(link, { name: 'Client' });
+    await db.update(shareLink).set({ expiresAt: old }).where(eq(shareLink.id, expired.id));
+    await db.update(shareLink).set({ revokedAt: old }).where(eq(shareLink.id, revoked.id));
+    await db.update(shareLink).set({ expiresAt: recent }).where(eq(shareLink.id, fresh.id));
+    await clearExpiredGuestNames(db);
+    for (const [link, name] of [
+      [expired, null],
+      [revoked, null],
+      [fresh, 'Client'],
+      [active, 'Client'],
+    ] as const) {
+      const [guest] = await db.select().from(shareGuest).where(eq(shareGuest.shareLinkId, link.id));
+      expect(guest).toBeDefined();
+      expect(guest!.name).toBe(name);
+    }
   });
 
   it('refuses cross-site guest writes, opening and leaving a session included', async () => {
@@ -773,24 +872,28 @@ describe.skipIf(!url)('guest share links (needs DATABASE_URL)', () => {
 
   it('answers 304 to a poll while nothing guests see changed', async () => {
     const first = await call({ cookie: carla }, 'GET', g(linkC, `/boards/${B.A}`));
-    const etag = first.headers.get('etag') as string;
+    let etag = first.headers.get('etag') as string;
     const same = await call({ cookie: carla }, 'GET', g(linkC, `/boards/${B.A}`), undefined, {
       'if-none-match': etag,
     });
     expect(same.status).toBe(304);
-    // A change to a hidden card is not visible: still 304.
+    // Any stored document change moves the version, including a hidden card (ADR 0013).
     await saveDoc(
       B.A,
       boardOfLinkElements().map((e) => (e.id === E.hidnote ? { ...e, x: 50 } : e)),
       noteText,
     );
-    expect(
-      (
-        await call({ cookie: carla }, 'GET', g(linkC, `/boards/${B.A}`), undefined, {
-          'if-none-match': etag,
-        })
-      ).status,
-    ).toBe(304);
+    const hiddenChange = await call(
+      { cookie: carla },
+      'GET',
+      g(linkC, `/boards/${B.A}`),
+      undefined,
+      {
+        'if-none-match': etag,
+      },
+    );
+    expect(hiddenChange.status).toBe(200);
+    etag = hiddenChange.headers.get('etag') as string;
     // A visible change, and a new comment guests can read, each move the version.
     await saveDoc(
       B.A,
@@ -821,6 +924,93 @@ describe.skipIf(!url)('guest share links (needs DATABASE_URL)', () => {
     expect(v.body.commentCounts).toEqual([]);
     await db.delete(comment).where(eq(comment.body, 'Nuovo'));
     await saveDoc(B.A, boardOfLinkElements(), noteText);
+  });
+
+  it('invalidates snapshot polls for comment activity, withdrawals, covers and link options', async () => {
+    const path = g(linkC, `/boards/${B.A}`);
+    const poll = (etag?: string) =>
+      call({ cookie: carla }, 'GET', path, undefined, etag ? { 'if-none-match': etag } : {});
+    const [thread] = await db
+      .insert(comment)
+      .values({
+        projectId: P,
+        boardId: B.A,
+        elementId: E.note,
+        authorId: as.owner.id,
+        body: 'Initial',
+        visibility: 'everyone',
+      })
+      .returning();
+    let etag = (await poll()).headers.get('etag') as string;
+    const changed = async () => {
+      const res = await poll(etag);
+      expect(res.status).toBe(200);
+      etag = res.headers.get('etag') as string;
+      expect((await poll(etag)).status).toBe(304);
+    };
+    await db.update(comment).set({ body: 'Edited' }).where(eq(comment.id, thread!.id));
+    await changed();
+    await db.insert(comment).values({
+      projectId: P,
+      boardId: B.A,
+      elementId: E.note,
+      threadId: thread!.id,
+      authorId: as.owner.id,
+      body: 'Reply',
+      visibility: 'everyone',
+    });
+    await changed();
+    // Replies assigned to another link are invisible and must not invalidate this poll.
+    await db.insert(comment).values({
+      projectId: P,
+      boardId: B.A,
+      elementId: E.note,
+      threadId: thread!.id,
+      shareLinkId: linkA.id,
+      authorId: as.owner.id,
+      body: 'Other client',
+      visibility: 'everyone',
+    });
+    expect((await poll(etag)).status).toBe(304);
+    await db.insert(elementReview).values({
+      projectId: P,
+      boardId: B.A,
+      elementId: E.note,
+      shareLinkId: linkC.id,
+      changedByGuest: (
+        await db.select().from(shareGuest).where(eq(shareGuest.shareLinkId, linkC.id))
+      )[0]!.id,
+      status: 'none',
+    });
+    await changed();
+    await db.insert(assetVariant).values({
+      assetId: X.cover,
+      size: '1024',
+      width: 1024,
+      height: 80,
+      storageKey: 'cover-1024.webp',
+    });
+    await changed();
+    await call('editor', 'PATCH', `/api/v1/share-links/${linkC.id}`, { label: 'Updated client' });
+    await changed();
+    await db.delete(comment).where(eq(comment.id, thread!.id));
+    await db
+      .delete(elementReview)
+      .where(and(eq(elementReview.boardId, B.A), eq(elementReview.elementId, E.note)));
+  });
+
+  it('keeps restrictive grants on trashed ancestors in the creator access calculation', async () => {
+    await db
+      .insert(boardGrant)
+      .values({ boardId: B.R, userId: as.editor.id, role: 'viewer', grantedBy: as.owner.id });
+    await db.update(board).set({ deletedAt: new Date() }).where(eq(board.id, B.R));
+    const denied = await call(null, 'GET', `/api/v1/guest/by-token/${linkC.token}`);
+    expect(denied.status).toBe(403);
+    expect(denied.body.error.details).toEqual({ reason: 'unavailable' });
+    await db.update(board).set({ deletedAt: null }).where(eq(board.id, B.R));
+    await db
+      .delete(boardGrant)
+      .where(and(eq(boardGrant.boardId, B.R), eq(boardGrant.userId, as.editor.id)));
   });
 
   it('follows the creator: sub-boards they lose and links they can no longer edit', async () => {
@@ -875,6 +1065,11 @@ describe.skipIf(!url)('guest share links (needs DATABASE_URL)', () => {
     expect(thumb.headers.get('content-security-policy')).toContain('sandbox');
     expect(thumb.headers.get('referrer-policy')).toBe('no-referrer');
     expect(thumb.headers.get('cache-control')).toBe('private, no-cache');
+    await db.update(asset).set({ status: 'pending' }).where(eq(asset.id, X.x1));
+    expect(
+      (await call({ cookie: carla }, 'GET', g(linkC, `/assets/${X.x1}/variants/256`))).status,
+    ).toBe(404);
+    await db.update(asset).set({ status: 'ready' }).where(eq(asset.id, X.x1));
     // Visible on a sub-board, and the cover of a sub-board.
     expect(
       (await call({ cookie: carla }, 'GET', g(linkC, `/assets/${X.x6}/variants/512`))).status,
