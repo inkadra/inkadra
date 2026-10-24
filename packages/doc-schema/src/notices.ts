@@ -24,11 +24,18 @@ export const ReviewNotice = z.object({ type: z.literal('review'), elementId: Ele
 /** The board was brought back to a saved version; the content arrives as a normal update. */
 export const RestoredNotice = z.object({ type: z.literal('restored'), versionId: z.uuid() });
 
+/**
+ * A saved version of the board was created, renamed or deleted, so open version lists fetch
+ * again. Clients that do not know this type ignore it, as any other (see readBoardNotice).
+ */
+export const VersionsNotice = z.object({ type: z.literal('versions'), versionId: z.uuid() });
+
 export const BoardNotice = z.discriminatedUnion('type', [
   AccessNotice,
   CommentsNotice,
   ReviewNotice,
   RestoredNotice,
+  VersionsNotice,
 ]);
 export type BoardNotice = z.infer<typeof BoardNotice>;
 

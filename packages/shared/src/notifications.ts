@@ -30,6 +30,14 @@ export const Notification = z
     boardTitle: z.string().nullable(),
     elementId: ElementRef.nullable(),
     commentId: Id.nullable().openapi({ description: 'For mention, reply and comment.' }),
+    threadId: Id.nullable()
+      .optional()
+      .openapi({
+        description:
+          'First comment of the thread of `commentId` (the same id for a thread start), to open ' +
+          'the thread without paging through replies. Null without `commentId`. Missing from ' +
+          'servers before API 0.5.0.',
+      }),
     excerpt: z
       .string()
       .max(280)

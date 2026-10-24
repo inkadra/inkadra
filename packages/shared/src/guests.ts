@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MPL-2.0
-import { ThumbnailSize } from './assets.ts';
+import { AssetVariant, ThumbnailSize } from './assets.ts';
 import { BoardKind } from './boards.ts';
 import { CommentCount, ElementRef } from './comments.ts';
 import { Id, Timestamp, z } from './common.ts';
@@ -204,6 +204,15 @@ export const GuestSession = z
     linkId: Id,
     guest: z.object({ id: Id, name: z.string().nullable() }),
     role: GuestRole,
+    sharedBy: z
+      .string()
+      .nullable()
+      .optional()
+      .openapi({
+        description:
+          'Name of the person who shared, as in ShareLinkPreview, for pages opened with a ' +
+          'password. Missing from servers before API 0.5.0.',
+      }),
     boardId: Id.openapi({ description: 'Board of the link.' }),
     boards: z.array(GuestBoard).openapi({
       description: 'Every board the guest can open; build the tree from parentBoardId.',
@@ -360,6 +369,14 @@ export const PickSummary = z
     elementId: ElementRef,
     assetId: Id.nullable(),
     filename: z.string().nullable().openapi({ description: 'To find the file in a folder.' }),
+    variants: z
+      .array(AssetVariant)
+      .optional()
+      .openapi({
+        description:
+          'Thumbnails of `assetId`, as in Asset.variants (team paths, smallest first); empty ' +
+          'without a picture or until they are ready. Missing from servers before API 0.5.0.',
+      }),
     picked: z.int().min(0),
     rejected: z.int().min(0),
     starsAverage: z.number().min(1).max(5).nullable(),

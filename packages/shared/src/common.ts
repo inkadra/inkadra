@@ -54,4 +54,19 @@ export const ApiError = z
   .openapi('ApiError');
 export type ApiError = z.infer<typeof ApiError>;
 
+/**
+ * `details` of a 500 when the server cannot tell whether a change it handed to the board was
+ * made (decision 0016). Without it, a 500 means the change was not made and can be retried.
+ */
+export const OutcomeUnknown = z
+  .object({
+    reason: z.literal('outcome_unknown').openapi({
+      description:
+        'The board did not confirm the change in time: it may or may not be there. Check ' +
+        'before trying again.',
+    }),
+  })
+  .openapi('OutcomeUnknown');
+export type OutcomeUnknown = z.infer<typeof OutcomeUnknown>;
+
 export { z };
