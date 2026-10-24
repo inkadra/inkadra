@@ -124,10 +124,16 @@ function BoardScreen({
     }
   }, [editable]);
   const headerMenuAnchor = useRef<HTMLDivElement>(null);
-  const closeHeaderMenu = useCallback(() => {
+  // An outside click leaves focus where the person clicked; Escape and a chosen item return it.
+  const closeHeaderMenu = useCallback((reason: 'escape' | 'outside' | 'item') => {
     setHeaderMenu(false);
-    document.getElementById('board-header-menu')?.focus();
+    if (reason !== 'outside') document.getElementById('board-header-menu')?.focus();
   }, []);
+  const showPreview = useCallback((value: VersionPreview | null) => {
+    setPreview(value);
+    if (!value) requestAnimationFrame(() => document.getElementById('board-header-menu')?.focus());
+  }, []);
+  const clearUndo = useCallback(() => conn?.store.undo.clear(), [conn]);
 
   // Read again when the server changes our access, so the role shown and checked is current.
   const accessVersion = conn?.accessChangedAt;
@@ -277,14 +283,8 @@ function BoardScreen({
       boardId={boardId}
       onClose={() => setVersionsOpen(false)}
       preview={preview}
-      onPreview={(value) => {
-        setPreview(value);
-        if (!value)
-          requestAnimationFrame(() => document.getElementById('board-header-menu')?.focus());
-      }}
-      onRestored={() => {
-        conn.store.undo.clear();
-      }}
+      onPreview={showPreview}
+      onRestored={clearUndo}
     />
   );
   const content = preview ? (

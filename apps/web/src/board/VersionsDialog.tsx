@@ -1,10 +1,17 @@
 import type { BoardVersion, RestoredBoardVersion } from '@inkadra/shared';
 import { Button, Dialog, DialogActions, TextField } from '@inkadra/ui';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { type SyntheticEvent, useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api } from '../lib/api.ts';
+import { isTyping } from './shortcuts.ts';
 import type { BoardStore } from './store.ts';
-import { groupVersions, type VersionAction, versionError, versionStore } from './versions.ts';
+import {
+  groupVersions,
+  mergeVersions,
+  type VersionAction,
+  versionError,
+  versionStore,
+} from './versions.ts';
 import './versions.css';
 
 type VersionPage = { items: BoardVersion[]; nextCursor: string | null };
@@ -36,10 +43,13 @@ export function VersionsDialog({
     action: 'restore' | 'delete';
   } | null>(null);
   const [confirmError, setConfirmError] = useState<string | null>(null);
-  const [restorePreview, setRestorePreview] = useState(false);
   const alive = useRef(true);
   const generation = useRef(0);
   const locked = useRef(false);
+  const confirmOpen = useRef(false);
+  confirmOpen.current = confirm !== null;
+  const bannerFocused = useRef<string | null>(null);
+  const banner = useRef<HTMLElement>(null);
   useEffect(() => {
     alive.current = true;
     return () => {
@@ -68,6 +78,41 @@ export function VersionsDialog({
   useEffect(() => {
     if (open) void load();
   }, [open, load]);
+  const merge = (changed: BoardVersion[], removed: string[] = []) =>
+    setPage((p) => p && { ...p, items: mergeVersions(p.items, changed, removed) });
+  // The versions dialog is modal until its own effect closes it: focus the banner only afterwards.
+  const previewId = preview?.version.id ?? null;
+  useEffect(() => {
+    if (!previewId) bannerFocused.current = null;
+    if (!previewId || open || bannerFocused.current === previewId) return;
+    bannerFocused.current = previewId;
+    const frame = requestAnimationFrame(() => banner.current?.focus());
+    return () => cancelAnimationFrame(frame);
+  }, [previewId, open]);
+  // Escape leaves the preview when nothing else on the page takes it.
+  const leavePreview = previewId !== null && !open && confirm === null;
+  useEffect(() => {
+    if (!leavePreview) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape' || e.defaultPrevented || isTyping(e.target)) return;
+      if (document.querySelector('dialog[open], [role="menu"]')) return;
+      onPreview(null);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [leavePreview, onPreview]);
+  // While a request runs, Escape must not close a dialog whose result is still pending.
+  const holdWhileBusy = (e: SyntheticEvent<HTMLDialogElement>) => {
+    if (locked.current) e.preventDefault();
+  };
+  const closeConfirm = () => {
+    setConfirm(null);
+    setConfirmError(null);
+  };
+  const openConfirm = (version: BoardVersion, action: 'restore' | 'delete') => {
+    setConfirmError(null);
+    setConfirm({ version, action });
+  };
   // Every action is single-flight, including rapid double clicks before React renders.
   async function run(kind: VersionAction, action: () => Promise<void>, confirmation = false) {
     if (locked.current) return;
@@ -78,7 +123,9 @@ export function VersionsDialog({
     try {
       await action();
     } catch (err) {
-      if (alive.current) (confirmation ? setConfirmError : setError)(fail(err, kind));
+      // The browser may still have closed the confirmation: then the error belongs to the list.
+      if (alive.current)
+        (confirmation && confirmOpen.current ? setConfirmError : setError)(fail(err, kind));
     } finally {
       locked.current = false;
       if (alive.current) setBusy(false);
@@ -93,13 +140,7 @@ export function VersionsDialog({
     v.name ?? t(`versions.kind.${v.kind === 'restore' ? 'restore' : 'auto'}`);
   return (
     <>
-      <Dialog
-        open={open}
-        title={t('versions.title')}
-        onClose={() => {
-          if (!busy) onClose();
-        }}
-      >
+      <Dialog open={open} title={t('versions.title')} onCancel={holdWhileBusy} onClose={onClose}>
         <div className="versions" aria-busy={busy}>
           <p className="ink-muted">{t('versions.description')}</p>
           <form
@@ -108,17 +149,19 @@ export function VersionsDialog({
               e.preventDefault();
               if (!name.trim()) return;
               void run(editing ? 'rename' : 'save', async () => {
-                if (editing) await api.patch(`${base}/${editing.id}`, { name: name.trim() });
-                else await api.post(base, { name: name.trim() });
+                const saved = editing
+                  ? await api.patch<BoardVersion>(`${base}/${editing.id}`, { name: name.trim() })
+                  : await api.post<BoardVersion>(base, { name: name.trim() });
                 if (!alive.current) return;
                 setName('');
                 setEditing(null);
-                await load();
+                if (page) merge([saved]);
+                else await load();
               });
             }}
           >
             <TextField
-              label={editing ? t('versions.rename') : t('versions.name')}
+              label={editing ? t('versions.renameField') : t('versions.name')}
               value={name}
               maxLength={120}
               required
@@ -126,7 +169,7 @@ export function VersionsDialog({
               onChange={(e) => setName(e.target.value)}
             />
             <Button type="submit" variant="primary" disabled={busy || !name.trim()}>
-              {t(editing ? 'versions.rename' : 'versions.save')}
+              {t(editing ? 'versions.renameSubmit' : 'versions.save')}
             </Button>
             {editing && (
               <Button
@@ -201,16 +244,10 @@ export function VersionsDialog({
                         >
                           {t(v.kind === 'named' ? 'versions.rename' : 'versions.keep')}
                         </Button>
-                        <Button
-                          disabled={busy}
-                          onClick={() => setConfirm({ version: v, action: 'restore' })}
-                        >
+                        <Button disabled={busy} onClick={() => openConfirm(v, 'restore')}>
                           {t('versions.restore')}
                         </Button>
-                        <Button
-                          disabled={busy}
-                          onClick={() => setConfirm({ version: v, action: 'delete' })}
-                        >
+                        <Button disabled={busy} onClick={() => openConfirm(v, 'delete')}>
                           {t('versions.delete')}
                         </Button>
                       </div>
@@ -225,17 +262,19 @@ export function VersionsDialog({
               disabled={busy}
               onClick={() =>
                 void run('read', async () => {
+                  // A reload started meanwhile replaces the list: this page is then stale.
+                  const token = generation.current;
                   const next = await api.get<VersionPage>(
                     `${base}?cursor=${encodeURIComponent(page.nextCursor ?? '')}`,
                   );
-                  if (alive.current)
-                    setPage({
-                      items: [
-                        ...page.items,
-                        ...next.items.filter((v) => !page.items.some((old) => old.id === v.id)),
-                      ],
-                      nextCursor: next.nextCursor,
-                    });
+                  if (alive.current && token === generation.current)
+                    setPage(
+                      (p) =>
+                        p && {
+                          items: mergeVersions(p.items, next.items),
+                          nextCursor: next.nextCursor,
+                        },
+                    );
                 })
               }
             >
@@ -251,26 +290,12 @@ export function VersionsDialog({
       </Dialog>
       {preview && (
         <section className="version-banner" aria-label={t('versions.preview')}>
-          <strong
-            tabIndex={-1}
-            ref={(el) => {
-              if (el && !el.dataset.focused) {
-                el.dataset.focused = 'true';
-                el.focus();
-              }
-            }}
-          >
+          <strong tabIndex={-1} ref={banner}>
             {t('versions.banner', { date: date(preview.version) })}
           </strong>
           {preview.version.name && <span>{preview.version.name}</span>}
           <span className="ink-muted">{t('versions.readOnly')}</span>
-          <Button
-            variant="primary"
-            onClick={() => {
-              setRestorePreview(true);
-              setConfirm({ version: preview.version, action: 'restore' });
-            }}
-          >
+          <Button variant="primary" onClick={() => openConfirm(preview.version, 'restore')}>
             {t('versions.restore')}
           </Button>
           <Button onClick={() => onPreview(null)}>{t('versions.close')}</Button>
@@ -279,26 +304,14 @@ export function VersionsDialog({
       <Dialog
         open={confirm !== null}
         title={t(confirm?.action === 'delete' ? 'versions.deleteTitle' : 'versions.restoreTitle')}
-        onClose={() => {
-          if (!busy) {
-            setConfirm(null);
-            setConfirmError(null);
-            setRestorePreview(false);
-          }
-        }}
+        onCancel={holdWhileBusy}
+        onClose={closeConfirm}
       >
         <p>{confirm && title(confirm.version)}</p>
         <p>{t(confirm?.action === 'delete' ? 'versions.deleteBody' : 'versions.restoreBody')}</p>
         {confirmError && <p role="alert">{confirmError}</p>}
         <DialogActions>
-          <Button
-            disabled={busy}
-            onClick={() => {
-              setConfirm(null);
-              setConfirmError(null);
-              setRestorePreview(false);
-            }}
-          >
+          <Button disabled={busy} onClick={closeConfirm}>
             {t('versions.cancel')}
           </Button>
           <Button
@@ -309,20 +322,24 @@ export function VersionsDialog({
                 confirm?.action ?? 'restore',
                 async () => {
                   if (!confirm) return;
-                  if (confirm.action === 'delete')
-                    await api.delete(`${base}/${confirm.version.id}`);
-                  else {
-                    await api.post<RestoredBoardVersion>(
-                      `${base}/${confirm.version.id}/restore`,
+                  const { version, action } = confirm;
+                  if (action === 'delete') {
+                    await api.delete(`${base}/${version.id}`);
+                    if (!alive.current) return;
+                    merge([], [version.id]);
+                  } else {
+                    const result = await api.post<RestoredBoardVersion>(
+                      `${base}/${version.id}/restore`,
                       {},
                     );
                     onRestored();
+                    if (!alive.current) return;
+                    merge([result.restored, result.backup]);
                   }
-                  if (!alive.current) return;
-                  setConfirm(null);
-                  setRestorePreview(false);
-                  if (restorePreview) onPreview(null);
-                  await load();
+                  closeConfirm();
+                  // A preview of the old board, or of a deleted version, is stale now.
+                  if (preview && (action === 'restore' || preview.version.id === version.id))
+                    onPreview(null);
                 },
                 true,
               )

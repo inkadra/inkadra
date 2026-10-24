@@ -1,5 +1,5 @@
 import { updateElements } from '@inkadra/canvas-core';
-import { hiddenFromGuests } from '@inkadra/doc-schema';
+import { type Element, hiddenFromGuests } from '@inkadra/doc-schema';
 import { useSyncExternalStore } from 'react';
 import { useTranslation } from 'react-i18next';
 import { type BoardStore, LOCAL } from './store.ts';
@@ -19,18 +19,28 @@ export function toggleGuestHidden(store: BoardStore, ids: readonly string[]) {
   store.undo.stopCapturing();
 }
 
+type Hideable = Pick<Element, 'id' | 'parent' | 'guestHidden'>;
+
+/** Elements on the canvas read their own flag; only children subscribe to their containers. */
+export function GuestVisibility({ store, element }: { store: BoardStore; element: Hideable }) {
+  if (element.parent === null) return <GuestMark state={element.guestHidden ? 'hidden' : null} />;
+  return <NestedGuestVisibility store={store} id={element.id} />;
+}
+
 /** A primitive subscription only re-renders an indicator when its effective visibility changes. */
-export function GuestVisibility({ store, id }: { store: BoardStore; id: string }) {
-  const { t } = useTranslation();
+function NestedGuestVisibility({ store, id }: { store: BoardStore; id: string }) {
   const state = useSyncExternalStore(store.subscribe, () => {
     const byId = store.getSnapshot().byId;
     const el = byId.get(id);
     if (!el) return null;
     if (el.guestHidden) return 'hidden';
-    // Most elements sit on the canvas: skip the walk up the containers for them.
-    if (el.parent === null) return null;
     return hiddenFromGuests(id, (key) => byId.get(key)) ? 'inherited' : null;
   });
+  return <GuestMark state={state} />;
+}
+
+function GuestMark({ state }: { state: 'hidden' | 'inherited' | null }) {
+  const { t } = useTranslation();
   if (!state) return null;
   const label = t(`guestVisibility.${state}`);
   return (

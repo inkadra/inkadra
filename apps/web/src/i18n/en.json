@@ -769,6 +769,8 @@
     "name": "Version name",
     "save": "Save version",
     "rename": "Rename",
+    "renameField": "New version name",
+    "renameSubmit": "Save new name",
     "keep": "Give a name",
     "cancel": "Cancel",
     "reload": "Reload list",

@@ -33,6 +33,24 @@ export function groupVersions(items: BoardVersion[]): Array<{ day: Date; items: 
   return [...groups.values()];
 }
 
+/**
+ * Applies a local change to the pages already loaded, in the server's order (newest first, then
+ * id), so a save, rename or delete never drops the versions loaded with "load more".
+ */
+export function mergeVersions(
+  items: readonly BoardVersion[],
+  changed: readonly BoardVersion[],
+  removed: readonly string[] = [],
+): BoardVersion[] {
+  const byId = new Map(items.map((v) => [v.id, v]));
+  for (const v of changed) byId.set(v.id, v);
+  for (const id of removed) byId.delete(id);
+  return [...byId.values()].sort(
+    (a, b) =>
+      Date.parse(b.createdAt) - Date.parse(a.createdAt) || (a.id < b.id ? 1 : a.id > b.id ? -1 : 0),
+  );
+}
+
 export type VersionAction = 'read' | 'preview' | 'save' | 'rename' | 'delete' | 'restore';
 export type VersionErrorKey =
   | 'rateLimited'
