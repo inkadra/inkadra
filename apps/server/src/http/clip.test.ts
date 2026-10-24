@@ -153,7 +153,7 @@ describe.skipIf(!url)('clip (needs DATABASE_URL)', () => {
     at = base,
   ) {
     const headers: Record<string, string> = {};
-    if (auth.cookie) headers.cookie = auth.cookie;
+    if (auth.cookie) Object.assign(headers, { cookie: auth.cookie, origin: config.PUBLIC_URL });
     if (auth.token) headers.authorization = `Bearer ${auth.token}`;
     if (!(body instanceof FormData)) headers['content-type'] = 'application/json';
     const res = await fetch(`http://${at}/api/v1/clip`, {
@@ -296,7 +296,7 @@ describe.skipIf(!url)('clip (needs DATABASE_URL)', () => {
     const project = await app.inject({
       method: 'POST',
       url: '/api/v1/projects',
-      headers: { cookie: people.owner?.cookie ?? '' },
+      headers: { cookie: people.owner?.cookie ?? '', origin: config.PUBLIC_URL },
       payload: { name: 'Clip' },
     });
     boardId = project.json().rootBoardId;
@@ -304,7 +304,7 @@ describe.skipIf(!url)('clip (needs DATABASE_URL)', () => {
     await app.inject({
       method: 'PUT',
       url: `/api/v1/projects/${projectId}/members/${people.viewer?.id}`,
-      headers: { cookie: people.owner?.cookie ?? '' },
+      headers: { cookie: people.owner?.cookie ?? '', origin: config.PUBLIC_URL },
       payload: { role: 'viewer' },
     });
     token = (await issueToken(db, people.owner?.id ?? '', { name: 'Clipper', expiresAt: null }))
@@ -457,7 +457,7 @@ describe.skipIf(!url)('clip (needs DATABASE_URL)', () => {
     await deps.jobs.idle();
     const detail = await app.inject({
       url: `/api/v1/assets/${res.json.assetId}`,
-      headers: { cookie: people.owner?.cookie ?? '' },
+      headers: { cookie: people.owner?.cookie ?? '', origin: config.PUBLIC_URL },
     });
     expect(detail.json()).toMatchObject({
       status: 'ready',
@@ -468,7 +468,7 @@ describe.skipIf(!url)('clip (needs DATABASE_URL)', () => {
     });
     expect(detail.json().variants.length).toBeGreaterThan(0);
     const file = await fetch(`http://${base}/api/v1/assets/${res.json.assetId}/file`, {
-      headers: { cookie: people.owner?.cookie ?? '' },
+      headers: { cookie: people.owner?.cookie ?? '', origin: config.PUBLIC_URL },
     });
     expect(Buffer.from(await file.arrayBuffer()).equals(png)).toBe(true);
   });
@@ -593,14 +593,14 @@ describe.skipIf(!url)('clip (needs DATABASE_URL)', () => {
     const created = await app.inject({
       method: 'POST',
       url: `/api/v1/projects/${projectId}/boards`,
-      headers: { cookie: people.owner?.cookie ?? '' },
+      headers: { cookie: people.owner?.cookie ?? '', origin: config.PUBLIC_URL },
       payload: { parentBoardId: boardId, title: 'Scartata' },
     });
     const trashed = created.json().id as string;
     await app.inject({
       method: 'DELETE',
       url: `/api/v1/boards/${trashed}`,
-      headers: { cookie: people.owner?.cookie ?? '' },
+      headers: { cookie: people.owner?.cookie ?? '', origin: config.PUBLIC_URL },
     });
     expect((await clip({ boardId: trashed, text: 'Nel cestino' })).status).toBe(404);
     const sent = await clip(form({ boardId: trashed }, [png, 'x.png', 'image/png']));

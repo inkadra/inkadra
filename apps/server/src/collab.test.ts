@@ -77,7 +77,7 @@ describe.skipIf(!url)('collab (needs DATABASE_URL)', () => {
     };
   }
 
-  const as = (name: string) => ({ cookie: people[name]?.cookie ?? '' });
+  const as = (name: string) => ({ cookie: people[name]?.cookie ?? '', origin: config.PUBLIC_URL });
 
   beforeAll(async () => {
     await runMigrations(config.DATABASE_URL, migrationsFolder);

@@ -18,6 +18,7 @@ import { registerAssetRoutes } from './assets-routes.ts';
 import { registerAuthRoutes } from './auth-routes.ts';
 import { registerBoardRoutes } from './boards-routes.ts';
 import { registerClipRoutes } from './clip-routes.ts';
+import { registerCsrfCheck } from './csrf.ts';
 import { registerDiagnostics } from './diagnostics.ts';
 import { errorHandler, sendError } from './errors.ts';
 import { registerLinkPreviews } from './link-previews.ts';
@@ -64,6 +65,8 @@ export async function createApp(deps: AppDeps) {
     reply.header('x-frame-options', 'DENY');
   });
 
+  // Before every route: cross-site writes stop here (decision 0013).
+  registerCsrfCheck(app, config.PUBLIC_URL);
   registerAuthRoutes(app, deps.auth, config.PUBLIC_URL);
   const mailer = deps.mailer ?? noMailer;
   registerApiRoutes(app, { ...deps, mailer });

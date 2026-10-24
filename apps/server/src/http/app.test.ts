@@ -89,7 +89,7 @@ describe.skipIf(!url)('http api (needs DATABASE_URL)', () => {
     const res = await app.inject({
       method: 'PATCH',
       url: '/api/v1/me',
-      headers: { cookie },
+      headers: { cookie, origin: config.PUBLIC_URL },
       payload: {},
     });
     expect(res.statusCode).toBe(200);
@@ -105,7 +105,10 @@ describe.skipIf(!url)('http api (needs DATABASE_URL)', () => {
   });
 
   it('returns the signed-in user', async () => {
-    const res = await app.inject({ url: '/api/v1/me', headers: { cookie } });
+    const res = await app.inject({
+      url: '/api/v1/me',
+      headers: { cookie, origin: config.PUBLIC_URL },
+    });
     expect(res.json()).toMatchObject({ role: 'admin' });
   });
 
@@ -114,13 +117,16 @@ describe.skipIf(!url)('http api (needs DATABASE_URL)', () => {
       const res = await app.inject({
         method: 'POST',
         url: '/api/v1/projects',
-        headers: { cookie },
+        headers: { cookie, origin: config.PUBLIC_URL },
         payload: { name },
       });
       expect(res.statusCode).toBe(201);
       expect(res.json()).toMatchObject({ name, myRole: 'owner' });
     }
-    const list = await app.inject({ url: '/api/v1/projects', headers: { cookie } });
+    const list = await app.inject({
+      url: '/api/v1/projects',
+      headers: { cookie, origin: config.PUBLIC_URL },
+    });
     expect(list.json().items.map((p: { name: string }) => p.name)).toEqual([
       'Ultima corsa',
       'Spot Alpi 2027',
@@ -131,7 +137,7 @@ describe.skipIf(!url)('http api (needs DATABASE_URL)', () => {
     const res = await app.inject({
       method: 'POST',
       url: '/api/v1/projects',
-      headers: { cookie },
+      headers: { cookie, origin: config.PUBLIC_URL },
       payload: { name: ' ' },
     });
     expect(res.statusCode).toBe(400);

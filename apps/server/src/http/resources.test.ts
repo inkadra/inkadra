@@ -59,6 +59,7 @@ describe.skipIf(!url)('projects, boards, uploads and assets (needs DATABASE_URL)
       method,
       headers: {
         cookie: as[who].cookie,
+        origin: config.PUBLIC_URL,
         ...(body !== undefined && !Buffer.isBuffer(payload)
           ? { 'content-type': 'application/json' }
           : {}),
