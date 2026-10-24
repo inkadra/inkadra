@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
-import { createBoardDoc, roots } from '@inkadra/doc-schema';
+import { boardDocName, createBoardDoc, roots } from '@inkadra/doc-schema';
 import { type Comment, type CommentThread, INLINE_REPLIES } from '@inkadra/shared';
 import { Queue, QueueEvents } from 'bullmq';
 import { and, eq, sql } from 'drizzle-orm';
@@ -10,6 +10,9 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vites
 import * as Y from 'yjs';
 import { boardAccess, boardRoles, boardRolesForPeople } from '../access.ts';
 import { createAuth } from '../auth.ts';
+import { directBoardReader, storedElement } from '../board-content.ts';
+import { directBoardWriter } from '../board-writer.ts';
+import { createCollabServer } from '../collab.ts';
 import { loadConfig } from '../config.ts';
 import { createDatabase, runMigrations } from '../db/client.ts';
 import {
@@ -27,7 +30,7 @@ import {
   shareGuest,
   shareLink,
 } from '../db/schema.ts';
-import { acceptInvitation } from '../invitations.ts';
+import { acceptInvitation, INVITATION_COOKIE } from '../invitations.ts';
 import { memoryMailer, noMailer } from '../mailer.ts';
 import * as notifications from '../notifications.ts';
 import {
@@ -36,7 +39,14 @@ import {
   sendDigests,
   sendImmediateEmails,
 } from '../notifications.ts';
-import { createRedis, QUEUES, startWorkers } from '../queues.ts';
+import {
+  createRedis,
+  QUEUES,
+  queuedBoardWriter,
+  startBoardWorker,
+  startWorkers,
+} from '../queues.ts';
+import { sha256 } from '../secrets.ts';
 import { testDeps } from '../test-deps.ts';
 import { issueToken } from '../tokens.ts';
 import { createApp } from './app.ts';
@@ -57,6 +67,8 @@ describe.skipIf(!url)('team comments, reviews and notifications', () => {
   const { db, sql: client } = createDatabase(config.DATABASE_URL, 4);
   const auth = createAuth(config, db);
   const deps = testDeps(db, log);
+  const collab = createCollabServer({ db, auth, log, publicUrl: config.PUBLIC_URL });
+  const boardReader = directBoardReader(collab, db);
   const notices = { notify: vi.fn() };
   const people = {} as Record<Who, { id: string; cookie: string }>;
   let app: Awaited<ReturnType<typeof createApp>>;
@@ -162,7 +174,7 @@ describe.skipIf(!url)('team comments, reviews and notifications', () => {
       fileURLToPath(new URL('../../drizzle', import.meta.url)),
     );
     await db.execute(sql`truncate table "user", project, instance_setting cascade`);
-    app = await createApp({ config, db, auth, log, ...deps, notices });
+    app = await createApp({ config, db, auth, log, ...deps, notices, boardReader });
     for (const who of roles) {
       const res = await app.inject({
         method: 'POST',
@@ -180,7 +192,7 @@ describe.skipIf(!url)('team comments, reviews and notifications', () => {
   beforeEach(async () => {
     await app.close();
     await db.execute(sql`truncate project, notification, notification_preference cascade`);
-    app = await createApp({ config, db, auth, log, ...deps, notices });
+    app = await createApp({ config, db, auth, log, ...deps, notices, boardReader });
     notices.notify.mockReset();
     projectId = randomUUID();
     root = randomUUID();
@@ -213,6 +225,7 @@ describe.skipIf(!url)('team comments, reviews and notifications', () => {
   afterAll(async () => {
     await app?.close();
     await deps.jobs.idle();
+    await collab.destroy();
     await client.end();
   });
 
@@ -1214,6 +1227,189 @@ describe.skipIf(!url)('team comments, reviews and notifications', () => {
       ]);
       connection.disconnect();
     }
+  });
+
+  it.each(['direct', ...(process.env.REDIS_URL ? ['queued'] : [])])(
+    'uses %s live cards before persistence without weakening board permissions',
+    async (mode) => {
+      const prefix = `issue39-${randomUUID()}`;
+      const queued =
+        mode === 'queued' ? queuedBoardWriter(process.env.REDIS_URL as string, { prefix }) : null;
+      const worker = queued
+        ? startBoardWorker(process.env.REDIS_URL as string, directBoardWriter(collab), log, {
+            prefix,
+            reader: boardReader,
+          })
+        : null;
+      if (queued) {
+        await app.close();
+        app = await createApp({
+          config,
+          db,
+          auth,
+          log,
+          ...deps,
+          notices,
+          boardReader: queued.reader,
+        });
+      }
+      const connection = await collab.hocuspocus.openDirectConnection(boardDocName(root));
+      try {
+        const doc = connection.document;
+        if (!doc) throw new Error('Missing live document');
+        const fresh = 'fresh-card';
+        const map = new Y.Map<unknown>();
+        roots(doc).elements.set(fresh, map);
+        map.set('createdBy', people.owner.id);
+        map.set('type', 'note');
+        expect(await storedElement(db, root, fresh)).toBeNull();
+        // The stored document still contains only the original cards.
+        const path = `/boards/${root}/elements/${fresh}/review`;
+        for (const who of ['commenter', 'editor'] as const) {
+          expect(
+            (
+              await call(who, 'POST', `/boards/${root}/comments`, {
+                body: 'New card',
+                elementId: fresh,
+              })
+            ).statusCode,
+          ).toBe(201);
+          expect((await call(who, 'PUT', path, { status: 'approved' })).statusCode).toBe(200);
+        }
+        for (const [who, status] of [
+          ['viewer', 403],
+          ['outsider', 404],
+        ] as const) {
+          expect(
+            (
+              await call(who, 'POST', `/boards/${root}/comments`, {
+                body: 'Denied',
+                elementId: fresh,
+              })
+            ).statusCode,
+          ).toBe(status);
+          expect((await call(who, 'PUT', path, { status: 'approved' })).statusCode).toBe(status);
+        }
+        roots(doc).elements.delete(card);
+        for (const id of ['missing-card', card]) {
+          expect(
+            (
+              await call('editor', 'POST', `/boards/${root}/comments`, {
+                body: 'Missing',
+                elementId: id,
+              })
+            ).statusCode,
+          ).toBe(404);
+          expect(
+            (
+              await call('editor', 'PUT', `/boards/${root}/elements/${id}/review`, {
+                status: 'approved',
+              })
+            ).statusCode,
+          ).toBe(404);
+        }
+        expect(
+          (
+            await call('owner', 'POST', `/boards/${child}/comments`, {
+              body: 'Wrong board',
+              elementId: fresh,
+            })
+          ).statusCode,
+        ).toBe(404);
+        expect(await db.select().from(notification)).toEqual(
+          expect.arrayContaining([
+            expect.objectContaining({ userId: people.owner.id, type: 'comment', elementId: fresh }),
+          ]),
+        );
+      } finally {
+        await connection.disconnect();
+        await worker?.close();
+        await queued?.close();
+      }
+    },
+  );
+
+  it.each(['project', 'board', 'registration'] as const)(
+    'serializes reusable %s invitation acceptance and retries',
+    async (target) => {
+      const [inv] = await db
+        .insert(invitation)
+        .values({
+          kind: 'link',
+          projectId: target === 'registration' ? null : projectId,
+          boardId: target === 'board' ? root : null,
+          role: target === 'registration' ? null : 'commenter',
+          invitedBy: people.owner.id,
+          tokenHash: randomUUID(),
+          tokenSealed: 'test-only',
+          maxUses: null,
+          expiresAt: new Date(Date.now() + 86400000),
+        })
+        .returning();
+      if (!inv) throw new Error('Missing invitation');
+      await Promise.all(
+        Array.from({ length: 4 }, () => acceptInvitation(db, inv.id, people.outsider.id)),
+      );
+      await acceptInvitation(db, inv.id, people.outsider.id);
+      expect(await db.select().from(notification)).toHaveLength(1);
+      expect((await db.select().from(invitation).where(eq(invitation.id, inv.id)))[0]?.uses).toBe(
+        5,
+      );
+      // A different recipient still redeems the reusable link (upgrading their viewer role).
+      await acceptInvitation(db, inv.id, people.viewer.id);
+      expect(await db.select().from(notification)).toHaveLength(2);
+      expect((await db.select().from(invitation).where(eq(invitation.id, inv.id)))[0]?.uses).toBe(
+        6,
+      );
+      // Another invitation to the same target is a different acceptance.
+      const [second] = await db
+        .insert(invitation)
+        .values({
+          ...inv,
+          id: randomUUID(),
+          tokenHash: randomUUID(),
+          uses: 0,
+        })
+        .returning();
+      if (!second) throw new Error('Missing second invitation');
+      await acceptInvitation(db, second.id, people.outsider.id);
+      expect(await db.select().from(notification)).toHaveLength(3);
+      await acceptInvitation(db, second.id, people.owner.id);
+      expect(await db.select().from(notification)).toHaveLength(3);
+    },
+  );
+
+  it('deduplicates a reusable link redeemed by sign-up and then the accept endpoint', async () => {
+    const token = randomUUID();
+    await db.insert(invitation).values({
+      kind: 'link',
+      projectId,
+      role: 'commenter',
+      invitedBy: people.owner.id,
+      tokenHash: sha256(token),
+      tokenSealed: 'test-only',
+      maxUses: null,
+      expiresAt: new Date(Date.now() + 86400000),
+    });
+    const signedUp = await app.inject({
+      method: 'POST',
+      url: '/api/auth/sign-up/email',
+      headers: { origin: config.PUBLIC_URL, cookie: `${INVITATION_COOKIE}=${token}` },
+      payload: {
+        email: `${randomUUID()}@example.com`,
+        name: 'New member',
+        password: 'correct-horse-battery',
+      },
+    });
+    expect(signedUp.statusCode, signedUp.body).toBe(200);
+    const cookie = String(signedUp.headers['set-cookie']).split(';')[0] ?? '';
+    const accepted = await app.inject({
+      method: 'POST',
+      url: `/api/v1/invitations/by-token/${token}/accept`,
+      headers: { origin: config.PUBLIC_URL, cookie },
+    });
+    expect(accepted.statusCode, accepted.body).toBe(200);
+    expect(await db.select().from(notification)).toHaveLength(1);
   });
 
   it('notifies inviters once for email acceptance and never the actor', async () => {

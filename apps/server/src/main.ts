@@ -1,9 +1,11 @@
 #!/usr/bin/env node
+
 import { mkdir } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import pino from 'pino';
 import { createAuth } from './auth.ts';
+import { type BoardReader, directBoardReader } from './board-content.ts';
 import { type BoardNotifier, directBoardNotifier } from './board-notices.ts';
 import { type BoardWriter, directBoardWriter } from './board-writer.ts';
 import { attachCollab, createCollabServer } from './collab.ts';
@@ -87,6 +89,7 @@ async function main() {
           {
             versions: directVersionWriter(server, db, log),
             notices: directBoardNotifier(server),
+            reader: directBoardReader(server, db),
           },
         );
         closers.unshift(() => boardWorker.close());
@@ -118,15 +121,18 @@ async function main() {
     const swept = await sweepClipTemp(tmpDir);
     if (swept > 0) log.info({ swept }, 'removed stale clip folders');
     let boards: BoardWriter | undefined;
+    let boardReader: BoardReader | undefined;
     let versions: VersionWriter | undefined;
     let notices: BoardNotifier | undefined;
     if (collab) {
       boards = directBoardWriter(collab, log);
+      boardReader = directBoardReader(collab, db);
       versions = directVersionWriter(collab, db, log);
       notices = directBoardNotifier(collab);
     } else if (config.REDIS_URL) {
       const queued = queuedBoardWriter(config.REDIS_URL);
       boards = queued.writer;
+      boardReader = queued.reader;
       versions = queued.versions;
       closers.unshift(() => queued.close());
       const queuedNotices = queuedBoardNotifier(config.REDIS_URL, log);
@@ -144,6 +150,7 @@ async function main() {
       mailer,
       pingQueue,
       boards,
+      boardReader,
       versions,
       notices,
       tmpDir,
