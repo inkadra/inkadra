@@ -649,6 +649,15 @@ describe.skipIf(!url)('guest share links (needs DATABASE_URL)', () => {
       Date.now() + 29 * 86_400_000,
     );
     expect(slid.cookies[0]).toMatch(/Max-Age=259\d{4}/);
+    // Shortening the link caps the existing session and cookie immediately, within the hour.
+    const shortened = new Date(Date.now() + 3600_000).toISOString();
+    await call('editor', 'PATCH', `/api/v1/share-links/${fresh.id}`, { expiresAt: shortened });
+    const capped = await call({ cookie: o.cookie }, 'GET', g(fresh, '/session'));
+    expect(capped.body.sessionExpiresAt).toBe(shortened);
+    expect(capped.cookies[0]).toMatch(/Max-Age=(3599|3600)(;|$)/);
+    const [stored] = await db.select().from(shareGuest).where(eq(shareGuest.id, o.body.guest.id));
+    expect(stored?.sessionExpiresAt.toISOString()).toBe(shortened);
+    expect((await call({ cookie: o.cookie }, 'GET', g(fresh, '/session'))).cookies).toEqual([]);
   });
 
   it('asks for the password, limits wrong ones and ends sessions when it changes', async () => {
