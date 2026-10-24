@@ -1,4 +1,5 @@
 import { hiddenFromGuests, roots } from '@inkadra/doc-schema';
+import { Id } from '@inkadra/shared';
 import { eq } from 'drizzle-orm';
 import * as Y from 'yjs';
 import type { Database } from './db/client.ts';
@@ -27,9 +28,12 @@ export async function storedElement(
   try {
     Y.applyUpdate(doc, row.state);
     const map = roots(doc).elements.get(elementId);
-    if (!map) return null;
+    if (!(map instanceof Y.Map)) return null;
     const createdBy = map.get('createdBy');
-    return { createdBy: typeof createdBy === 'string' ? createdBy : null };
+    return {
+      createdBy:
+        typeof createdBy === 'string' && Id.safeParse(createdBy).success ? createdBy : null,
+    };
   } finally {
     doc.destroy();
   }
@@ -51,10 +55,11 @@ export async function visibleBoardCard(
     Y.applyUpdate(doc, row.state);
     const { elements } = roots(doc);
     for (const [id, el] of elements) {
+      if (!(el instanceof Y.Map)) continue;
       if (el.get('type') !== 'board' || el.get('boardId') !== childId) continue;
       const hidden = hiddenFromGuests(id, (key) => {
         const node = elements.get(key);
-        if (!node) return undefined;
+        if (!(node instanceof Y.Map)) return undefined;
         const parent = node.get('parent');
         // Invalid containers are hidden, never treated as the canvas.
         if (parent !== null && typeof parent !== 'string') return undefined;

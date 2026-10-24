@@ -393,6 +393,15 @@ describe.skipIf(!url)('team comments, reviews and notifications', () => {
     expect(shown.items[0]?.mentions.some((m) => m.id === people.viewer.id)).toBe(false);
   });
 
+  it('keeps malformed mention tokens as text and ignores non-account card authorship', async () => {
+    await store(root, [{ id: card, createdBy: 'external-import-author' }]);
+    const body = '@{------------------------------------} @{aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa}';
+    const created = await create('commenter', { elementId: card, body });
+    expect(created.body).toBe(body);
+    expect(created.mentions).toEqual([]);
+    expect(await db.select().from(notification)).toEqual([]);
+  });
+
   it('counts board/card threads, resolves idempotently, keeps tombstones and removed-card history', async () => {
     const thread = await create('commenter', { elementId: card });
     await create('editor');
