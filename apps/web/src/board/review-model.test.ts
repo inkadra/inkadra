@@ -11,6 +11,7 @@ import {
   editableText,
   encodeMentions,
   findThread,
+  findThreadDirect,
   groupByDay,
   mentionQuery,
   mergeReplies,
@@ -112,6 +113,55 @@ it('pages the replies of the notified card only to find an older reply', async (
   get.mockClear();
   expect(await findThread([thread], 't', null, get)).toEqual({ threadId: 't' });
   expect(get).not.toHaveBeenCalled();
+});
+
+it('opens a thread directly from its start, an inline reply, or an older page', async () => {
+  const reply = (id: string) => ({ id, body: '', createdAt: '2026-10-24T10:00:00Z' }) as Comment;
+  const thread = {
+    id: 't',
+    elementId: 'card',
+    replyCount: 52,
+    replies: [reply('r1'), reply('r2')],
+  } as unknown as CommentThread;
+
+  // The start names itself, and an inline reply is there: no paging.
+  const none = vi.fn();
+  expect(await findThreadDirect([thread], 't', 't', none)).toEqual({ threadId: 't' });
+  expect(await findThreadDirect([thread], 't', 'r2', none)).toEqual({ threadId: 't' });
+  expect(none).not.toHaveBeenCalled();
+
+  // A reply of an older page is found by paging oldest first; the pages read come back.
+  const get = vi
+    .fn()
+    .mockResolvedValueOnce({ items: [reply('r3')], nextCursor: 'next' })
+    .mockResolvedValueOnce({ items: [reply('r4'), reply('r5')], nextCursor: null });
+  expect(await findThreadDirect([thread], 't', 'r5', get)).toEqual({
+    threadId: 't',
+    older: { items: [reply('r3'), reply('r4'), reply('r5')], cursor: null },
+  });
+  expect(get.mock.calls).toEqual([
+    ['t', null],
+    ['t', 'next'],
+  ]);
+
+  // A thread the list does not know, and one where the comment is not inline and there are no
+  // older pages, are returned null without paging.
+  const other = vi.fn();
+  expect(await findThreadDirect([thread], 'nope', 'x', other)).toBeNull();
+  expect(other).not.toHaveBeenCalled();
+  const full = {
+    id: 'f',
+    elementId: 'card',
+    replyCount: 1,
+    replies: [reply('r1')],
+  } as unknown as CommentThread;
+  expect(await findThreadDirect([full], 'f', 'x', other)).toBeNull();
+  expect(other).not.toHaveBeenCalled();
+
+  // A comment that is not in the older pages either (deleted) is not there.
+  const missing = vi.fn().mockResolvedValue({ items: [reply('r3')], nextCursor: null });
+  expect(await findThreadDirect([thread], 't', 'gone', missing)).toBeNull();
+  expect(missing).toHaveBeenCalledTimes(1);
 });
 
 it('refreshes older replies for the fetched scopes and drops obsolete ones', async () => {

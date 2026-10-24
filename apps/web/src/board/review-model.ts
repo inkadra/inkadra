@@ -117,6 +117,36 @@ export async function findThread(
 }
 
 /**
+ * The thread whose start is `threadId`, to open a specific comment without scanning the other
+ * threads. The comment may be the start, one of the inline replies, or an older reply, fetched
+ * by paging the thread's replies oldest first; the pages read come back, so the reply can be
+ * shown. Null when the thread is not in `threads`.
+ */
+export async function findThreadDirect(
+  threads: readonly CommentThread[],
+  threadId: string,
+  commentId: string | null,
+  replies: (threadId: string, cursor: string | null) => Promise<Page<Comment>>,
+): Promise<FoundThread | null> {
+  const thread = threads.find((t) => t.id === threadId);
+  if (!thread) return null;
+  if (commentId === null || commentId === thread.id) return { threadId: thread.id };
+  if (thread.replies.some((reply) => reply.id === commentId)) return { threadId: thread.id };
+  if (thread.replyCount <= thread.replies.length) return null;
+  const items: Comment[] = [];
+  let cursor: string | null = null;
+  do {
+    const p = await replies(thread.id, cursor);
+    items.push(...p.items);
+    cursor = p.nextCursor;
+    if (p.items.some((reply) => reply.id === commentId)) {
+      return { threadId: thread.id, older: { items, cursor } };
+    }
+  } while (cursor);
+  return null;
+}
+
+/**
  * Refreshes the older replies already shown for threads in `scopes`, and drops threads that were
  * removed or whose replies now all fit inline.
  */

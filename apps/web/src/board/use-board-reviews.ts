@@ -12,7 +12,13 @@ import { useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router';
 import { api } from '../lib/api.ts';
 import type { BoardConnection } from './connection.ts';
-import { findThread, mergeThreads, type Page, refreshOlderReplies } from './review-model.ts';
+import {
+  findThread,
+  findThreadDirect,
+  mergeThreads,
+  type Page,
+  refreshOlderReplies,
+} from './review-model.ts';
 import {
   addOlderReplies,
   getReviews,
@@ -182,10 +188,13 @@ export function useBoardReviews(
     };
   }, [provider]);
 
-  // A notification links to ?thread=<comment id>&el=<card>; the comment may be a reply of an
-  // older page, which is fetched so it can be shown.
+  // A notification links to ?thread=<thread start>&el=<card>, and &comment=<comment> when the
+  // comment is a reply; the comment may be of an older page, which is fetched so it can be
+  // shown. Older servers and thread starts link the comment itself: those are found by
+  // scanning the threads.
   const [params, setParams] = useSearchParams();
   const linked = params.get('thread');
+  const linkedComment = params.get('comment');
   // The canvas takes `el` out of the address once it has selected the card: keep it per link.
   const linkedElement = useRef<{ thread: string | null; el: string | null }>({
     thread: null,
@@ -199,7 +208,16 @@ export function useBoardReviews(
     if (!linked || !ready) return;
     let alive = true;
     const { threads } = getReviews();
-    findThread(threads, linked, linkedElement.current.el, fetchReplies)
+    const commentId = linkedComment || linked;
+    // The thread of the reply is known: open it without scanning the other threads, and fall
+    // back to the scan when it is not in the list (a stale list, a renamed link).
+    const find = linkedComment
+      ? findThreadDirect(threads, linked, commentId, fetchReplies).then(
+          (found) =>
+            found ?? findThread(threads, commentId, linkedElement.current.el, fetchReplies),
+        )
+      : findThread(threads, linked, linkedElement.current.el, fetchReplies);
+    find
       .catch(() => null)
       .then((found) => {
         if (!alive) return;
@@ -209,13 +227,14 @@ export function useBoardReviews(
         }
         openComments({
           threadId: found?.threadId ?? linked,
-          commentId: linked,
+          commentId,
           ...(elementId ? { elementId } : {}),
         });
         setParams(
           (p) => {
             const next = new URLSearchParams(p);
             next.delete('thread');
+            next.delete('comment');
             return next;
           },
           { replace: true },
@@ -224,5 +243,5 @@ export function useBoardReviews(
     return () => {
       alive = false;
     };
-  }, [linked, ready, setParams]);
+  }, [linked, linkedComment, ready, setParams]);
 }
