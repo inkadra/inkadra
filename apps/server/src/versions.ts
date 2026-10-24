@@ -395,9 +395,10 @@ export function directVersionWriter(
             const updated = await db
               .update(boardVersion)
               .set(stateColumns(before))
-              .where(eq(boardVersion.id, backupId))
+              // Only while it is still the backup: once someone names it, it is theirs.
+              .where(and(eq(boardVersion.id, backupId), eq(boardVersion.kind, 'restore')))
               .returning({ id: boardVersion.id });
-            if (updated.length === 0) throw new Error('Restore backup was deleted');
+            if (updated.length === 0) throw new Error('Restore backup was deleted or named meanwhile');
           }
         }
         if (!written) {
@@ -409,7 +410,9 @@ export function directVersionWriter(
       } finally {
         if (backupId && !written) {
           try {
-            await db.delete(boardVersion).where(eq(boardVersion.id, backupId));
+            await db
+              .delete(boardVersion)
+              .where(and(eq(boardVersion.id, backupId), eq(boardVersion.kind, 'restore')));
           } catch (err) {
             log?.error({ err, boardId, backupId }, 'failed restore backup not removed');
           }
