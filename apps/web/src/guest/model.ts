@@ -1,5 +1,6 @@
 import type {
   GuestBoard,
+  GuestBoardSnapshot,
   GuestElementReview,
   GuestPick,
   GuestRole,
@@ -21,6 +22,7 @@ export type Stop =
   | 'unavailable'
   | 'no_session'
   | 'rate_limited'
+  | 'cookies'
   | 'error';
 
 /** What a failed guest request means for the page. */
@@ -28,10 +30,12 @@ export type Failure =
   | { kind: 'stop'; stop: Stop }
   | { kind: 'password'; wrong: boolean }
   | { kind: 'name' }
+  | { kind: 'transient' }
   | { kind: 'other' };
 
 export function failureOf(err: unknown): Failure {
-  if (!(err instanceof RequestError)) return { kind: 'stop', stop: 'error' };
+  // No answer (offline, Wi-Fi drop, a laptop waking up) or a server error: try again later.
+  if (!(err instanceof RequestError) || err.status >= 500) return { kind: 'transient' };
   if (err.status === 429) return { kind: 'stop', stop: 'rate_limited' };
   const reason = (err.details as { reason?: unknown } | undefined)?.reason;
   switch (reason) {
@@ -51,6 +55,64 @@ export function failureOf(err: unknown): Failure {
   // An unknown reason of a 401 or 403 is a generic error (decision 0013, open enums).
   if (err.status === 401 || err.status === 403) return { kind: 'stop', stop: 'error' };
   return { kind: 'other' };
+}
+
+/** Milliseconds a `Retry-After` header asks to wait (seconds or an HTTP date), if any. */
+export function retryAfterMs(
+  header: string | null | undefined,
+  now = Date.now(),
+): number | undefined {
+  if (!header) return undefined;
+  const value = header.trim();
+  if (/^\d+$/.test(value)) return Number(value) * 1000;
+  const at = Date.parse(value);
+  return Number.isNaN(at) ? undefined : Math.max(0, at - now);
+}
+
+/** How long after reopening the link a new `no_session` means the cookie was not kept. */
+export const COOKIE_CHECK_MS = 60_000;
+
+/**
+ * What to do when the server no longer knows the guest's session: open the link again once,
+ * but if that just happened the browser does not keep the cookie, and opening again would only
+ * create another guest.
+ */
+export function onNoSession(
+  lastReopen: number | null,
+  now: number,
+  cookiesEnabled = true,
+): 'reopen' | 'cookies' {
+  if (!cookiesEnabled) return 'cookies';
+  return lastReopen !== null && now - lastReopen < COOKIE_CHECK_MS ? 'cookies' : 'reopen';
+}
+
+/** How often the session (options, role and boards of the link) is asked again at most. */
+export const SESSION_REFRESH_MS = 60_000;
+
+/**
+ * Whether a new snapshot calls for asking the session again. Changes to the link are not in
+ * the snapshot, but they move its version: a new version with the same content, a board that
+ * no longer matches the session, or a session older than a minute.
+ */
+export function needsSession(
+  prev: GuestBoardSnapshot | null,
+  next: GuestBoardSnapshot,
+  session: { boards: readonly GuestBoard[] },
+  lastAsked: number,
+  now: number,
+): boolean {
+  if (now - lastAsked >= SESSION_REFRESH_MS) return true;
+  const known = session.boards.find((b) => b.id === next.board.id);
+  if (
+    !known ||
+    known.title !== next.board.title ||
+    known.kind !== next.board.kind ||
+    known.parentBoardId !== next.board.parentBoardId
+  )
+    return true;
+  if (!prev || prev.board.id !== next.board.id) return false;
+  const content = ({ version: _v, generatedAt: _g, ...rest }: GuestBoardSnapshot) => rest;
+  return JSON.stringify(content(prev)) === JSON.stringify(content(next));
 }
 
 /** Roles the page does not know count as `guest_view`. */

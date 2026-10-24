@@ -27,19 +27,30 @@ import { CardExtrasContext, GuestModeContext } from '../board/context.ts';
 import { BoardStore } from '../board/store.ts';
 import { NoSessionProvider } from '../lib/session.tsx';
 import { type GuestActions, GuestActionsContext } from './actions.ts';
-import { guestApi } from './api.ts';
+import { GuestRequestError, guestApi } from './api.ts';
 import { GuestCardExtras } from './GuestCardExtras.tsx';
 import { GuestPanel } from './GuestPanel.tsx';
 import { GuestViewer } from './GuestViewer.tsx';
 import { toAsset } from './guest-assets.ts';
 import { createGuestDoc, syncGuestDoc } from './guest-doc.ts';
-import { failureOf, isPicture, type Rights, rightsOf, type Stop } from './model.ts';
+import {
+  failureOf,
+  isPicture,
+  needsSession,
+  type Rights,
+  retryAfterMs,
+  rightsOf,
+  type Stop,
+} from './model.ts';
 import { NameDialog } from './NameDialog.tsx';
+import { createPoller, type Poller, type PollOutcome } from './poller.ts';
 import '../board/board.css';
 import '../board/film/film.css';
 
 /** How often an open guest page asks whether the board changed (a 304 when it did not). */
 const POLL_MS = 5000;
+/** Longest wait between two requests after failures. */
+const POLL_MAX_MS = 60_000;
 
 const asBoards = (session: GuestSession): Board[] =>
   session.boards.map((b) => ({
@@ -97,7 +108,11 @@ export function GuestBoardScreen({
   const [viewing, setViewing] = useState<string | null>(null);
   const [naming, setNaming] = useState<{ next: () => unknown } | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [offline, setOffline] = useState(false);
   const version = useRef<string | undefined>(undefined);
+  const snapshotRef = useRef<GuestBoardSnapshot | null>(null);
+  const sessionAsked = useRef(Date.now());
+  const poller = useRef<Poller | null>(null);
   const sessionRef = useRef(session);
   sessionRef.current = session;
   // The page's callbacks change with each of its renders; polling must not restart for that.
@@ -118,41 +133,73 @@ export function GuestBoardScreen({
         return null;
       }
       if (f.kind === 'name') return t('guest.name.required');
+      if (f.kind === 'transient') return t('guest.errors.offline');
       return t('guest.errors.generic');
     },
     [t],
   );
 
-  const load = useCallback(async () => {
-    try {
-      const next = await guestApi.snapshot(linkId, boardId, version.current);
-      if (!next) return;
-      version.current = next.version;
-      setSnapshot(next);
-      // Options, role and boards of the link may have changed with it.
-      guestApi
-        .session(linkId)
-        .then((s) => {
-          const was = sessionRef.current;
-          if (JSON.stringify(s) !== JSON.stringify(was)) handlers.current.onSession(s);
-        })
-        .catch(() => {});
-    } catch (err) {
-      const f = failureOf(err);
-      // A board that left the link: back to the board of the link.
-      if (f.kind === 'stop' && f.stop === 'not_found' && boardId !== session.boardId) {
-        setParams({}, { replace: true });
-        return;
+  const load = useCallback(
+    async (signal: AbortSignal): Promise<PollOutcome> => {
+      try {
+        const next = await guestApi.snapshot(linkId, boardId, version.current, signal);
+        // A board left meanwhile: its answer must not land on the new one.
+        if (signal.aborted) return { kind: 'done' };
+        setOffline(false);
+        if (!next) return { kind: 'ok' };
+        const prev = snapshotRef.current;
+        version.current = next.version;
+        snapshotRef.current = next;
+        setSnapshot(next);
+        // Options, role and boards of the link may have changed with it.
+        const now = Date.now();
+        if (needsSession(prev, next, sessionRef.current, sessionAsked.current, now)) {
+          sessionAsked.current = now;
+          guestApi
+            .session(linkId, signal)
+            .then((s) => {
+              if (signal.aborted) return;
+              const was = sessionRef.current;
+              if (JSON.stringify(s) !== JSON.stringify(was)) handlers.current.onSession(s);
+            })
+            .catch(() => {});
+        }
+        return { kind: 'ok' };
+      } catch (err) {
+        if (signal.aborted) return { kind: 'done' };
+        const f = failureOf(err);
+        if (f.kind === 'transient') {
+          setOffline(true);
+          return { kind: 'retry' };
+        }
+        if (f.kind === 'stop' && f.stop === 'rate_limited') {
+          const after = err instanceof GuestRequestError ? retryAfterMs(err.retryAfter) : undefined;
+          return after === undefined ? { kind: 'retry' } : { kind: 'retry', after };
+        }
+        // A board that left the link: back to the board of the link.
+        if (f.kind === 'stop' && f.stop === 'not_found' && boardId !== session.boardId) {
+          setParams({}, { replace: true });
+          return { kind: 'done' };
+        }
+        if (f.kind === 'stop' && f.stop === 'not_found') {
+          handlers.current.onStop('unavailable');
+          return { kind: 'done' };
+        }
+        if (f.kind === 'stop' || f.kind === 'password') {
+          fail(err);
+          return { kind: 'done' };
+        }
+        return { kind: 'retry' };
       }
-      if (f.kind === 'stop' && f.stop === 'not_found') handlers.current.onStop('unavailable');
-      else fail(err);
-    }
-  }, [linkId, boardId, session.boardId, fail, setParams]);
+    },
+    [linkId, boardId, session.boardId, fail, setParams],
+  );
 
   // A new board starts from nothing.
   // biome-ignore lint/correctness/useExhaustiveDependencies: reset when the board changes
   useEffect(() => {
     version.current = undefined;
+    snapshotRef.current = null;
     setSnapshot(null);
     setLoaded(null);
     setSelected(null);
@@ -160,24 +207,24 @@ export function GuestBoardScreen({
   }, [boardId]);
 
   useEffect(() => {
-    void load();
-    let timer: ReturnType<typeof setInterval> | undefined;
-    const startPolling = () => {
-      clearInterval(timer);
-      timer = setInterval(() => {
-        if (document.visibilityState === 'visible') void load();
-      }, POLL_MS);
-    };
-    const onVisible = () => {
-      if (document.visibilityState === 'visible') void load();
-    };
-    startPolling();
+    const p = createPoller({
+      run: load,
+      interval: POLL_MS,
+      max: POLL_MAX_MS,
+      hidden: () => document.hidden,
+    });
+    poller.current = p;
+    p.start();
+    const onVisible = () => p.poke();
     document.addEventListener('visibilitychange', onVisible);
     window.addEventListener('focus', onVisible);
+    window.addEventListener('online', onVisible);
     return () => {
-      clearInterval(timer);
+      p.stop();
+      if (poller.current === p) poller.current = null;
       document.removeEventListener('visibilitychange', onVisible);
       window.removeEventListener('focus', onVisible);
+      window.removeEventListener('online', onVisible);
     };
   }, [load]);
 
@@ -208,7 +255,7 @@ export function GuestBoardScreen({
     else setNaming({ next: action });
   }, []);
 
-  const refresh = useCallback(() => void load(), [load]);
+  const refresh = useCallback(() => poller.current?.poke({ force: true }), []);
 
   const pick = useCallback(
     async (elementId: string, body: SetPick) => {
@@ -225,7 +272,7 @@ export function GuestBoardScreen({
               }
             : s,
         );
-        void load();
+        refresh();
       } catch (err) {
         if (failureOf(err).kind === 'name') setNaming({ next: () => pick(elementId, body) });
         else {
@@ -234,7 +281,7 @@ export function GuestBoardScreen({
         }
       }
     },
-    [linkId, boardId, load, fail],
+    [linkId, boardId, refresh, fail],
   );
 
   const review = useCallback(
@@ -252,7 +299,7 @@ export function GuestBoardScreen({
               }
             : s,
         );
-        void load();
+        refresh();
         return true;
       } catch (err) {
         if (failureOf(err).kind === 'name') {
@@ -264,7 +311,7 @@ export function GuestBoardScreen({
         return false;
       }
     },
-    [linkId, boardId, load, fail],
+    [linkId, boardId, refresh, fail],
   );
 
   const elements = useMemo(
@@ -385,6 +432,11 @@ export function GuestBoardScreen({
             ))}
           </nav>
           <span className="guest__spacer" />
+          {offline && (
+            <span className="guest__offline" role="status">
+              {t('guest.offline')}
+            </span>
+          )}
           {preview.sharedBy && (
             <span className="guest__shared ink-muted">
               {t('guest.sharedBy', { name: preview.sharedBy })}

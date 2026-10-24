@@ -19,6 +19,19 @@ import { RequestError } from '../lib/api.ts';
  * here.
  */
 
+/** A failed guest request, with the wait the server asked for when it sent `Retry-After`. */
+export class GuestRequestError extends RequestError {
+  constructor(
+    status: number,
+    code: string,
+    message: string,
+    details: unknown,
+    readonly retryAfter: string | null,
+  ) {
+    super(status, code, message, details);
+  }
+}
+
 async function send<T>(path: string, init: RequestInit = {}): Promise<T> {
   const res = await fetch(`${API_PREFIX}/guest${path}`, {
     credentials: 'same-origin',
@@ -40,11 +53,12 @@ async function send<T>(path: string, init: RequestInit = {}): Promise<T> {
   if (!res.ok) {
     const err = (body as { error?: { code?: string; message?: string; details?: unknown } } | null)
       ?.error;
-    throw new RequestError(
+    throw new GuestRequestError(
       res.status,
       err?.code ?? 'unknown',
       err?.message ?? res.statusText,
       err?.details,
+      res.headers.get('retry-after'),
     );
   }
   return body as T;
@@ -67,23 +81,33 @@ export const guestApi = {
   open: (linkId: string, body: { token: string; name?: string; password?: string }) =>
     send<GuestSession>(`/links/${linkId}/session`, json('POST', body)),
 
-  session: (linkId: string) => send<GuestSession>(`/links/${linkId}/session`),
+  session: (linkId: string, signal?: AbortSignal) =>
+    send<GuestSession>(`/links/${linkId}/session`, signal ? { signal } : {}),
 
   setName: (linkId: string, name: string) =>
     send<GuestSession>(`/links/${linkId}/session`, json('PATCH', { name })),
 
   /** The snapshot, or null when it has not changed since `version` (304). */
-  snapshot: (linkId: string, boardId: string, version?: string) =>
+  snapshot: (linkId: string, boardId: string, version?: string, signal?: AbortSignal) =>
     send<GuestBoardSnapshot | null>(`/links/${linkId}/boards/${boardId}`, {
       method: 'GET',
       headers: version ? { 'if-none-match': `"${version}"` } : {},
+      ...(signal ? { signal } : {}),
     }),
 
-  threads: (linkId: string, boardId: string, query: { elementId?: string; scope?: string }) => {
+  threads: (
+    linkId: string,
+    boardId: string,
+    query: { elementId?: string; scope?: string },
+    signal?: AbortSignal,
+  ) => {
     const params = new URLSearchParams({ status: 'all', limit: '100' });
     if (query.elementId) params.set('elementId', query.elementId);
     if (query.scope) params.set('scope', query.scope);
-    return send<Page<GuestCommentThread>>(`/links/${linkId}/boards/${boardId}/comments?${params}`);
+    return send<Page<GuestCommentThread>>(
+      `/links/${linkId}/boards/${boardId}/comments?${params}`,
+      signal ? { signal } : {},
+    );
   },
 
   replies: (linkId: string, commentId: string, cursor?: string) => {

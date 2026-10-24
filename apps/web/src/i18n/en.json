@@ -782,6 +782,10 @@
         "title": "Too many requests",
         "body": "Wait a few minutes and try again."
       },
+      "cookies": {
+        "title": "Cookies are needed",
+        "body": "To open this board, your browser must keep a technical cookie from this site. Allow cookies for this site in your browser settings and try again."
+      },
       "error": {
         "title": "Something went wrong",
         "body": "The board could not be opened. Try again shortly."
@@ -799,7 +803,8 @@
     "errors": {
       "generic": "Something went wrong. Try again.",
       "rateLimited": "Too many actions in a short time: wait a moment.",
-      "notFound": "This card is no longer available."
+      "notFound": "This card is no longer available.",
+      "offline": "Connection lost: try again in a moment."
     },
     "name": {
       "title": "What is your name?",
@@ -880,7 +885,8 @@
       "open": "View large",
       "close": "Close",
       "noPreview": "No preview available."
-    }
+    },
+    "offline": "Connection lost, retrying…"
   },
   "join": {
     "invitedBy": "{{name}} invites you {{what}}",

@@ -1,9 +1,14 @@
 import type { GuestAuthor, GuestComment, GuestCommentThread } from '@inkadra/shared';
 import { Button } from '@inkadra/ui';
-import { useCallback, useEffect, useId, useState } from 'react';
+import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useGuestActions } from './actions.ts';
 import { guestApi } from './api.ts';
+import { failureOf } from './model.ts';
+import { backoff } from './poller.ts';
+
+const RETRY_MS = 5000;
+const RETRY_MAX_MS = 60_000;
 
 /**
  * Comments visible to everyone, as a guest sees them: threads about the board or one card,
@@ -15,28 +20,57 @@ export function GuestComments({ elementId }: { elementId: string | null }) {
   const { linkId, boardId, version } = actions;
   const [threads, setThreads] = useState<GuestCommentThread[] | null>(null);
   const [failed, setFailed] = useState(false);
+  // Failed attempts in a row without an answer; the threads already shown stay.
+  const [retries, setRetries] = useState(0);
+  const latest = useRef<AbortController | null>(null);
   const headingId = useId();
 
   const load = useCallback(async () => {
+    latest.current?.abort();
+    const current = new AbortController();
+    latest.current = current;
     try {
       const page = await guestApi.threads(
         linkId,
         boardId,
         elementId ? { elementId } : { scope: 'board' },
+        current.signal,
       );
+      if (current.signal.aborted) return;
       setThreads(page.items);
       setFailed(false);
+      setRetries(0);
     } catch (err) {
+      if (current.signal.aborted) return;
+      if (failureOf(err).kind === 'transient') {
+        setRetries((n) => n + 1);
+        return;
+      }
       actions.fail(err);
       setFailed(true);
     }
   }, [linkId, boardId, elementId, actions.fail]);
+
+  // Another card or board: the threads shown belong to the one before.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: reset when the subject changes
+  useEffect(() => {
+    setThreads(null);
+    setRetries(0);
+  }, [linkId, boardId, elementId]);
 
   // The snapshot's version moves with every comment this guest can read.
   // biome-ignore lint/correctness/useExhaustiveDependencies: reload when the board changed
   useEffect(() => {
     void load();
   }, [load, version]);
+
+  useEffect(() => () => latest.current?.abort(), []);
+
+  useEffect(() => {
+    if (retries === 0) return;
+    const timer = setTimeout(() => void load(), backoff(retries, RETRY_MS, RETRY_MAX_MS));
+    return () => clearTimeout(timer);
+  }, [retries, load]);
 
   const after = async () => {
     await load();
@@ -56,7 +90,13 @@ export function GuestComments({ elementId }: { elementId: string | null }) {
         }
         onDone={after}
       />
-      {failed && <p className="guest-panel__error">{t('guest.comments.loadFailed')}</p>}
+      {retries > 0 ? (
+        <p className="ink-muted guest-panel__hint" role="status">
+          {t('guest.offline')}
+        </p>
+      ) : (
+        failed && <p className="guest-panel__error">{t('guest.comments.loadFailed')}</p>
+      )}
       {threads && threads.length === 0 && (
         <p className="ink-muted guest-panel__hint">{t('guest.comments.none')}</p>
       )}
