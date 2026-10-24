@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 import { Icon, type IconName } from '@inkadra/ui';
-import { memo } from 'react';
+import { memo, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { type KnownReviewStatus, reviewKey } from './review-model.ts';
-import { openComments, placePin, useReviews } from './review-store.ts';
+import { openComments, useReviews } from './review-store.ts';
 import './review.css';
 
 const STATUS_ICONS: Record<KnownReviewStatus, IconName> = {
@@ -30,16 +30,27 @@ export function ReviewChip({ status, compact = false }: { status: string; compac
 /**
  * What a card shows of its comments and review: nothing until there is something to show. It
  * reads the board's shared data through selectors, so it never fetches nor re-renders others.
+ * Pins are fractions of the card on the canvas, so other views (`withPins` false) show only
+ * the badges; nothing shows while a version is previewed.
  */
-export const CardReview = memo(function CardReview({ elementId }: { elementId: string }) {
+export const CardReview = memo(function CardReview({
+  elementId,
+  withPins = true,
+}: {
+  elementId: string;
+  withPins?: boolean;
+}) {
   const { t } = useTranslation();
+  const hidden = useReviews((s) => s.preview);
   const count = useReviews((s) => s.counts.get(elementId));
   const review = useReviews((s) => s.reviews.get(elementId));
-  const pins = useReviews((s) => s.pins.get(elementId));
-  const placing = useReviews((s) => s.pinTarget === elementId);
+  const allPins = useReviews((s) => s.pins.get(elementId));
+  const pinTarget = useReviews((s) => s.pinTarget === elementId);
+  const pins = withPins ? allPins : undefined;
+  const placing = withPins && pinTarget;
   const open = count?.open ?? 0;
   const status = review && review.status !== 'none' ? review.status : null;
-  if (!open && !status && !pins && !placing) return null;
+  if (hidden || (!open && !status && !pins && !placing)) return null;
   return (
     <>
       {(open > 0 || status) && (
@@ -84,36 +95,48 @@ export const CardReview = memo(function CardReview({ elementId }: { elementId: s
           </button>
         ) : null,
       )}
-      {placing && (
-        <button
-          type="button"
-          className="comment-pin-target"
-          ref={(node) => node?.focus()}
-          data-no-drag
-          aria-label={t('comments.pinPlace')}
-          onKeyDown={(e) => {
-            if (e.key === 'Escape') {
-              e.stopPropagation();
-              placePin(null);
-              openComments({ elementId });
-            }
-          }}
-          onClick={(e) => {
-            const rect = e.currentTarget.getBoundingClientRect();
-            // Enter or Space click with no position: the centre of the card.
-            const pin =
-              e.detail === 0
-                ? { x: 0.5, y: 0.5 }
-                : {
-                    x: Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width)),
-                    y: Math.max(0, Math.min(1, (e.clientY - rect.top) / rect.height)),
-                  };
-            openComments({ elementId, pin });
-          }}
-        >
-          <span>{t('comments.pinPlace')}</span>
-        </button>
-      )}
+      {placing && <PinTarget elementId={elementId} />}
     </>
   );
 });
+
+/** Covers the card while the point of a new pinned comment is chosen. */
+function PinTarget({ elementId }: { elementId: string }) {
+  const { t } = useTranslation();
+  const ref = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    ref.current?.focus();
+  }, []);
+  return (
+    <button
+      ref={ref}
+      type="button"
+      className="comment-pin-target"
+      data-no-drag
+      aria-label={t('comments.pinPlace')}
+      onKeyDown={(e) => {
+        // Keys chosen here are not board shortcuts (Enter would edit the card).
+        e.stopPropagation();
+        if (e.key === 'Escape') {
+          e.preventDefault();
+          openComments({ elementId });
+        }
+      }}
+      onKeyUp={(e) => e.stopPropagation()}
+      onClick={(e) => {
+        const rect = e.currentTarget.getBoundingClientRect();
+        // Enter or Space click with no position: the centre of the card.
+        const pin =
+          e.detail === 0
+            ? { x: 0.5, y: 0.5 }
+            : {
+                x: Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width)),
+                y: Math.max(0, Math.min(1, (e.clientY - rect.top) / rect.height)),
+              };
+        openComments({ elementId, pin });
+      }}
+    >
+      <span>{t('comments.pinPlace')}</span>
+    </button>
+  );
+}

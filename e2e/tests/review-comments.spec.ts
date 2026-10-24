@@ -124,12 +124,37 @@ test('comments, mentions, review status and notifications between two people', a
   await expect(thread).toBeFocused();
   await expect(card).toHaveClass(/is-selected/);
 
-  // A reply reaches the director live.
+  // A comment arriving while the owner types leaves their focus and text where they were.
   await thread.getByRole('button', { name: 'Rispondi' }).click();
-  await thread.getByRole('combobox', { name: 'Commento' }).fill('Fatto, controllo sul monitor');
-  await thread.getByRole('combobox', { name: 'Commento' }).press('ControlOrMeta+Enter');
+  const reply = thread.getByRole('combobox', { name: 'Commento' });
+  await reply.pressSequentially('Fatto, controllo');
+  const elsewhere = await api<{ id: string }>(
+    other,
+    `/boards/${project.rootBoardId}/comments`,
+    'POST',
+    { body: 'Nota sulla board' },
+  );
+  await expect(page.getByRole('button', { name: 'Commenti: 2 discussioni aperte' })).toBeVisible();
+  await expect(panel.getByRole('status').filter({ hasText: 'nuovo commento' })).toHaveCount(0);
+  await expect(reply).toBeFocused();
+  await expect(reply).toHaveValue('Fatto, controllo');
+  await api(other, `/comments/${elsewhere.id}`, 'DELETE');
+  await expect(page.getByRole('button', { name: 'Commenti: 1 discussione aperta' })).toBeVisible();
+  await expect(reply).toBeFocused();
+
+  // Escape keeps a draft: the first press only warns.
+  await reply.press('Escape');
+  await expect(thread.getByText('Premi di nuovo Esc per scartare il testo.')).toBeVisible();
+  await expect(reply).toHaveValue('Fatto, controllo');
+
+  // A reply reaches the director live.
+  await reply.pressSequentially(' sul monitor');
+  await reply.press('ControlOrMeta+Enter');
   await expect(otherPanel.locator('.comment-replies')).toContainText(
     'Fatto, controllo sul monitor',
+  );
+  await expect(otherPanel.getByRole('status').filter({ hasText: 'nuovo commento' })).toHaveText(
+    'È arrivato un nuovo commento.',
   );
 
   // The director resolves; the owner's open list empties and the badge goes away.
@@ -161,13 +186,17 @@ test('comments, mentions, review status and notifications between two people', a
   await panel.getByLabel('Card per stato di revisione').selectOption('changes_requested');
   await expect(panel.getByText('Nessuna card con questo stato.')).toBeVisible();
 
-  // A comment on a point of the card shows a numbered pin to the owner.
-  await otherPanel.getByRole('button', { name: 'Commenta un punto della card' }).click();
-  await otherCard
-    .getByRole('button', { name: /Scegli il punto/ })
-    .click({ position: { x: 20, y: 20 } });
-  await expect(otherPanel.getByText('Su un punto della card')).toBeVisible();
+  // A comment on a point of the card, placed with the keyboard, keeps the text already written,
+  // and shows a numbered pin to the owner.
   await otherPanel.getByRole('combobox', { name: 'Commento' }).fill('Qui il riflesso');
+  await otherPanel.getByRole('button', { name: 'Commenta un punto della card' }).press('Enter');
+  const pinTarget = otherCard.getByRole('button', { name: /Scegli il punto/ });
+  await expect(pinTarget).toBeFocused();
+  await other.keyboard.press('Enter');
+  await expect(otherPanel.getByText('Su un punto della card')).toBeVisible();
+  const pinned = otherPanel.getByRole('combobox', { name: 'Commento' });
+  await expect(pinned).toBeFocused();
+  await expect(pinned).toHaveValue('Qui il riflesso');
   await otherPanel.getByRole('button', { name: 'Commenta', exact: true }).click();
   await expect(card.getByRole('button', { name: 'Apri il commento sul punto 1' })).toBeVisible();
 
@@ -206,19 +235,21 @@ test('comments, mentions, review status and notifications between two people', a
 
 test('the email notification preference is saved', async ({ page }) => {
   await signIn(page);
-  await page.getByRole('button', { name: 'Impostazioni' }).click();
-  const section = page.locator('section', {
-    has: page.getByRole('heading', { name: 'Notifiche email' }),
-  });
-  await expect(section.getByRole('radio', { name: /^Subito/ })).toBeChecked();
-  await section.getByRole('radio', { name: 'Un riepilogo al giorno' }).check();
-  await section.getByRole('button', { name: 'Salva' }).click();
-  await expect(section.getByText('Salvato.')).toBeVisible();
-  await page.reload();
-  await expect(section.getByRole('radio', { name: 'Un riepilogo al giorno' })).toBeChecked();
-  await section.getByRole('radio', { name: /^Subito/ }).check();
-  await section.getByRole('button', { name: 'Salva' }).click();
-  await expect(section.getByText('Salvato.')).toBeVisible();
+  try {
+    await page.getByRole('button', { name: 'Impostazioni' }).click();
+    const section = page.locator('section', {
+      has: page.getByRole('heading', { name: 'Notifiche email' }),
+    });
+    await expect(section.getByRole('radio', { name: /^Subito/ })).toBeChecked();
+    await section.getByRole('radio', { name: 'Un riepilogo al giorno' }).check();
+    await section.getByRole('button', { name: 'Salva' }).click();
+    await expect(section.getByText('Salvato.')).toBeVisible();
+    await page.reload();
+    await expect(section.getByRole('radio', { name: 'Un riepilogo al giorno' })).toBeChecked();
+  } finally {
+    // The preference is the administrator's own: the next run starts from the default again.
+    await api(page, '/me/notification-preferences', 'PATCH', { email: 'immediate' });
+  }
 });
 
 test('replies page in, and the board loads comment data once for all its cards', async ({
@@ -297,9 +328,10 @@ test('replies page in, and the board loads comment data once for all its cards',
   await panel.getByRole('button', { name: 'Chiudi i commenti' }).click();
   await expect(panel).toHaveCount(0);
 
-  // A link to an old reply finds its thread through the replies pages.
+  // A link to an old reply finds its thread through the replies pages and shows the reply.
   await page.goto(`/p/${project.id}?thread=reply-1`);
   await expect(panelOf(page).locator('.comment-thread')).toBeFocused();
+  await expect(panelOf(page).locator('[data-comment="reply-1"]')).toBeInViewport();
 });
 
 test('the bell polls once a minute and on focus, and keeps paging short pages', async ({
@@ -353,6 +385,28 @@ test('the bell polls once a minute and on focus, and keeps paging short pages', 
   await expect(list.getByText('ha fatto qualcosa')).toBeVisible();
   await expect(list.getByText('Attività futura')).toBeVisible();
   await expect(list.getByRole('heading', { name: 'Oggi' })).toBeVisible();
+
+  // Marking one read changes the count without reloading the list or moving focus.
+  let firstPages = 0;
+  page.on('request', (r) => {
+    if (new URL(r.url()).pathname === '/api/v1/me/notifications') firstPages++;
+  });
+  await page.route('**/api/v1/me/notifications/future/read', (route) =>
+    route.fulfill({ status: 204 }),
+  );
+  await page.unroute('**/api/v1/me/notifications/unread-count');
+  await page.route('**/api/v1/me/notifications/unread-count', (route) =>
+    route.fulfill({ json: { unread: 0 } }),
+  );
+  const markRead = list.getByRole('button', { name: 'Segna come letta' });
+  await markRead.focus();
+  await markRead.press('Enter');
+  await expect(page.getByRole('button', { name: 'Notifiche: 0 non lette' })).toBeVisible();
+  await expect(list.getByText('Attività futura')).toBeVisible();
+  await expect(list.getByRole('button', { name: 'Mostra altre' })).toHaveCount(0);
+  expect(firstPages).toBe(0);
+  // Its own button leads nowhere (an unknown type), so focus stays in the list.
+  await expect(list).toBeFocused();
   await list.press('Escape');
-  await expect(bell).toBeFocused();
+  await expect(page.getByRole('button', { name: 'Notifiche: 0 non lette' })).toBeFocused();
 });

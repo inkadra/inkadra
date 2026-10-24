@@ -10,6 +10,7 @@ import {
   groupByDay,
   mentionQuery,
   mergeReplies,
+  mergeThreads,
   reviewKey,
 } from './review-model.ts';
 import { pinsByElement } from './review-store.ts';
@@ -33,6 +34,14 @@ describe('mentions', () => {
     expect(encodeMentions('@Anna Maria e @Anna, non @Paolo', [anna, annaMaria])).toBe(
       `@{${annaMaria.id}} e @{${anna.id}}, non @Paolo`,
     );
+  });
+
+  it('encodes whole names only', () => {
+    expect(encodeMentions('@Annalisa, x@Anna e @Anna.', [anna])).toBe(
+      `@Annalisa, x@Anna e @{${anna.id}}.`,
+    );
+    const dotted = { ...anna, name: 'A.(B)' };
+    expect(encodeMentions('@A.(B) @AX(B)', [dotted])).toBe(`@{${anna.id}} @AX(B)`);
   });
 
   it('gives back the body it was edited from', () => {
@@ -73,14 +82,36 @@ it('pages the replies of the notified card only to find an older reply', async (
     .mockResolvedValueOnce({ items: [{ id: 'old' }], nextCursor: null });
   expect(await findThread([thread], 'old', 'other-card', get)).toBeNull();
   expect(get).not.toHaveBeenCalled();
-  expect(await findThread([thread], 'old', 'card', get)).toBe('t');
+  expect(await findThread([thread], 'old', 'card', get)).toEqual({
+    threadId: 't',
+    older: { items: [{ id: 'old' }], cursor: null },
+  });
   expect(get.mock.calls).toEqual([
     ['t', null],
     ['t', 'next'],
   ]);
   get.mockClear();
-  expect(await findThread([thread], 't', null, get)).toBe('t');
+  expect(await findThread([thread], 't', null, get)).toEqual({ threadId: 't' });
   expect(get).not.toHaveBeenCalled();
+});
+
+it('replaces only the threads of the cards fetched again, newest first', () => {
+  const t = (id: string, elementId: string | null, createdAt: string, body = '') =>
+    ({ id, elementId, createdAt, body }) as unknown as CommentThread;
+  const current = [
+    t('c', 'card', '2026-10-24T12:00:00Z'),
+    t('b', null, '2026-10-24T11:00:00Z'),
+    t('a', 'card', '2026-10-24T10:00:00Z'),
+    t('x', 'other', '2026-10-24T09:00:00Z'),
+  ];
+  const fetched = [
+    t('d', 'card', '2026-10-24T13:00:00Z'),
+    t('a', 'card', '2026-10-24T10:00:00Z', 'edited'),
+  ];
+  const merged = mergeThreads(current, fetched, new Set(['card']));
+  expect(merged.map((x) => x.id)).toEqual(['d', 'b', 'a', 'x']);
+  expect(merged.find((x) => x.id === 'a')?.body).toBe('edited');
+  expect(mergeThreads(current, [], new Set([null])).map((x) => x.id)).toEqual(['c', 'a', 'x']);
 });
 
 it('numbers the pins of a card by age and leaves out resolved threads', () => {

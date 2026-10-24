@@ -154,7 +154,10 @@ function BoardScreen({
     (id: string) => navigate(boardPath(projectId, id, rootBoardId)),
     [navigate, projectId, rootBoardId],
   );
-  useBoardReviews(boardId, conn, detail?.myRole ?? projectRole);
+  useBoardReviews(boardId, conn, detail?.myRole ?? projectRole, {
+    preview: !!preview,
+    canvas: view === 'canvas',
+  });
 
   const crumbs = useMemo(
     () => breadcrumb(boardId, rootBoardId, projectName, detail, boards),

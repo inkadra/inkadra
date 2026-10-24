@@ -1384,7 +1384,7 @@ export function Canvas({
               : [{ label: t('board.menu.draw'), action: () => setDrawing(single.id) }]),
           ]
         : []),
-      ...(single && single.type !== 'arrow'
+      ...(single && single.type !== 'arrow' && !preview
         ? [{ label: t('comments.open'), action: () => openComments({ elementId: single.id }) }]
         : []),
       ...(readOnly
@@ -1435,6 +1435,7 @@ export function Canvas({
     selection,
     selectedEls,
     readOnly,
+    preview,
     t,
     add,
     duplicate,
@@ -1606,7 +1607,10 @@ export function Canvas({
             editor={editing ? noteEditor.current : null}
             readOnly={readOnly}
             onComments={
-              selectedEls.length === 1 && selectedEls[0] && selectedEls[0].type !== 'arrow'
+              !preview &&
+              selectedEls.length === 1 &&
+              selectedEls[0] &&
+              selectedEls[0].type !== 'arrow'
                 ? openComments.bind(null, { elementId: selectedEls[0].id })
                 : undefined
             }

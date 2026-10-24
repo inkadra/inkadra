@@ -57,7 +57,12 @@ export function encodeMentions(text: string, picked: readonly UserSummary[]): st
   const people = [...new Map(picked.map((p) => [p.id, p])).values()].sort(
     (a, b) => b.name.length - a.name.length,
   );
-  for (const person of people) result = result.split(`@${person.name}`).join(`@{${person.id}}`);
+  for (const person of people) {
+    // Whole names only: `@Anna` is not taken out of `@Annalisa` nor of `x@Anna`.
+    const name = person.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const pattern = new RegExp(`(?<![\\p{L}\\p{N}])@${name}(?![\\p{L}\\p{N}])`, 'gu');
+    result = result.replace(pattern, () => `@{${person.id}}`);
+  }
   return result;
 }
 
@@ -73,31 +78,59 @@ export function mergeReplies<T extends { id: string; createdAt: string }>(...pag
   );
 }
 
+export interface FoundThread {
+  threadId: string;
+  /** Older replies fetched to find the comment, with the cursor of the page after them. */
+  older?: { items: Comment[]; cursor: string | null };
+}
+
 /**
  * The thread a comment id belongs to. A notification may point to a reply older than the ones
- * sent inline, so the threads with more replies (of the card, when known) are paged.
+ * sent inline, so the threads with more replies (of the card, when known) are paged; the pages
+ * read come back, so the reply can be shown.
  */
 export async function findThread(
   threads: readonly CommentThread[],
   commentId: string,
   elementId: string | null,
   replies: (threadId: string, cursor: string | null) => Promise<Page<Comment>>,
-): Promise<string | null> {
+): Promise<FoundThread | null> {
   const direct = threads.find(
     (thread) => thread.id === commentId || thread.replies.some((reply) => reply.id === commentId),
   );
-  if (direct) return direct.id;
+  if (direct) return { threadId: direct.id };
   for (const thread of threads) {
     if (elementId !== null && thread.elementId !== elementId) continue;
     if (thread.replyCount <= thread.replies.length) continue;
+    const items: Comment[] = [];
     let cursor: string | null = null;
     do {
       const p = await replies(thread.id, cursor);
-      if (p.items.some((reply) => reply.id === commentId)) return thread.id;
+      items.push(...p.items);
       cursor = p.nextCursor;
+      if (p.items.some((reply) => reply.id === commentId)) {
+        return { threadId: thread.id, older: { items, cursor } };
+      }
     } while (cursor);
   }
   return null;
+}
+
+/**
+ * Threads after fetching again the ones of some cards (null: the board): the threads of those
+ * cards are replaced by the fetched ones, the rest stay, newest first as the server sends them.
+ */
+export function mergeThreads(
+  current: readonly CommentThread[],
+  fetched: readonly CommentThread[],
+  scopes: ReadonlySet<string | null>,
+): CommentThread[] {
+  const byId = new Map<string, CommentThread>();
+  for (const thread of current) if (!scopes.has(thread.elementId)) byId.set(thread.id, thread);
+  for (const thread of fetched) byId.set(thread.id, thread);
+  return [...byId.values()].sort(
+    (a, b) => b.createdAt.localeCompare(a.createdAt) || b.id.localeCompare(a.id),
+  );
 }
 
 /** Notifications grouped by the local day they arrived on, newest first as the server sends. */

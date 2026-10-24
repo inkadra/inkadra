@@ -19,6 +19,8 @@ export function NotificationBell() {
   const bell = useRef<HTMLButtonElement>(null);
 
   const count = useCallback(async () => {
+    // A hidden tab does not poll; it asks again when it is shown.
+    if (document.visibilityState === 'hidden') return;
     try {
       const result = await api.get<UnreadCount>('/me/notifications/unread-count');
       setUnread(result.unread);
@@ -32,9 +34,11 @@ export function NotificationBell() {
     const timer = setInterval(() => void count(), POLL_MS);
     const onFocus = () => void count();
     window.addEventListener('focus', onFocus);
+    document.addEventListener('visibilitychange', onFocus);
     return () => {
       clearInterval(timer);
       window.removeEventListener('focus', onFocus);
+      document.removeEventListener('visibilitychange', onFocus);
     };
   }, [count]);
 
@@ -42,6 +46,7 @@ export function NotificationBell() {
     setOpen(false);
     bell.current?.focus();
   }, []);
+  const dismiss = useCallback(() => setOpen(false), []);
 
   return (
     <div className="notification-bell">
@@ -63,12 +68,7 @@ export function NotificationBell() {
         )}
       </button>
       {open && (
-        <NotificationList
-          bell={bell}
-          onClose={close}
-          onNavigate={() => setOpen(false)}
-          onCount={count}
-        />
+        <NotificationList bell={bell} onClose={close} onNavigate={dismiss} onCount={count} />
       )}
     </div>
   );
@@ -109,16 +109,20 @@ function NotificationList({
     }
   }, []);
 
+  // The first page loads once: a new unread count must not drop the pages already shown.
   useEffect(() => {
     void load(null);
     panel.current?.focus();
+  }, [load]);
+
+  useEffect(() => {
     const away = (e: PointerEvent) => {
       const target = e.target as Node;
       if (!panel.current?.contains(target) && !bell.current?.contains(target)) onNavigate();
     };
     document.addEventListener('pointerdown', away);
     return () => document.removeEventListener('pointerdown', away);
-  }, [load, bell, onNavigate]);
+  }, [bell, onNavigate]);
 
   const markRead = async (id: string) => {
     await api.post(`/me/notifications/${id}/read`, {});
@@ -161,11 +165,11 @@ function NotificationList({
       role="dialog"
       aria-labelledby="notifications-title"
       onKeyDown={(e) => {
-        if (e.key === 'Escape') {
-          e.stopPropagation();
-          onClose();
-        }
+        // Keys pressed here are not board shortcuts.
+        e.stopPropagation();
+        if (e.key === 'Escape') onClose();
       }}
+      onKeyUp={(e) => e.stopPropagation()}
     >
       <header className="notifications__head">
         <h2 id="notifications-title">{t('notifications.title')}</h2>
@@ -224,7 +228,16 @@ function NotificationList({
                     <IconButton
                       icon="check"
                       label={t('notifications.read')}
-                      onClick={() => void markRead(n.id).catch(() => setActionError(true))}
+                      onClick={(e) => {
+                        // The button goes away once read: focus stays on the notification.
+                        const open = e.currentTarget
+                          .closest('li')
+                          ?.querySelector<HTMLButtonElement>('.notification__open');
+                        void markRead(n.id).then(
+                          () => (open && !open.disabled ? open : panel.current)?.focus(),
+                          () => setActionError(true),
+                        );
+                      }}
                     />
                   )}
                 </li>

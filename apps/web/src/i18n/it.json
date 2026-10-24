@@ -697,6 +697,7 @@
     "pinPlace": "Scegli il punto da commentare (Invio: centro, Esc: annulla)",
     "pinOpen": "Apri il commento sul punto {{number}}",
     "pinNumber": "Punto {{number}}",
+    "pinsOnCanvas": "I punti si vedono solo nella vista Lavagna, che si apre per sceglierne uno.",
     "cardCount_one": "{{count}} discussione aperta: apri i commenti",
     "cardCount_other": "{{count}} discussioni aperte: apri i commenti",
     "visibilityLabel": "Chi la vede",
@@ -733,7 +734,10 @@
     "mentions": "Persone da menzionare",
     "tooLong": "Il commento supera i {{max}} caratteri.",
     "error": "Operazione non riuscita. Riprova.",
-    "rateLimited": "Troppi commenti in poco tempo: aspetta un minuto."
+    "rateLimited": "Troppi commenti in poco tempo: aspetta un minuto.",
+    "escapeAgain": "Premi di nuovo Esc per scartare il testo.",
+    "arrived_one": "È arrivato un nuovo commento.",
+    "arrived_other": "Sono arrivati {{count}} nuovi commenti."
   },
   "review": {
     "title": "Revisione",
@@ -752,8 +756,9 @@
     "history": "Cronologia",
     "noHistory": "Nessun cambio di stato finora.",
     "historyError": "Non riesco a caricare la cronologia.",
+    "loadError": "Non riesco a caricare lo stato di revisione.",
     "moreHistory": "Mostra cambi precedenti",
-    "to": "diventa",
+    "to": "passa a",
     "filter": "Card per stato di revisione",
     "filterNone": "Nessun filtro",
     "filtered": "Card con lo stato scelto",
@@ -786,7 +791,7 @@
     "emailHint": "Menzioni, risposte e revisioni anche per email, se il server può inviarle.",
     "emailLabel": "Invia email",
     "frequency": {
-      "immediate": "Subito (più notifiche in un’email)",
+      "immediate": "Subito (le notifiche ravvicinate arrivano in un’unica email)",
       "daily": "Un riepilogo al giorno",
       "off": "Mai"
     },

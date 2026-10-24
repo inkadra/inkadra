@@ -8,12 +8,13 @@ import type {
   CommentThread,
   ProjectRole,
 } from '@inkadra/shared';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router';
 import { api } from '../lib/api.ts';
 import type { BoardConnection } from './connection.ts';
-import { findThread, type Page } from './review-model.ts';
+import { findThread, mergeThreads, type Page } from './review-model.ts';
 import {
+  changedScopes,
   getReviews,
   openComments,
   pinsByElement,
@@ -38,6 +39,7 @@ export function useBoardReviews(
   boardId: string,
   conn: BoardConnection | null,
   role: ProjectRole | null,
+  view: { preview: boolean; canvas: boolean },
 ) {
   useEffect(() => {
     resetReviews({ boardId });
@@ -48,32 +50,56 @@ export function useBoardReviews(
     setReviews({ conn, role });
   }, [conn, role]);
 
+  // A version preview shows no comments: they are about the live board.
+  const { preview, canvas } = view;
+  useEffect(() => {
+    setReviews({ preview, canvas, ...(preview ? { target: null, pinTarget: null } : {}) });
+  }, [preview, canvas]);
+
   const synced = conn?.status === 'synced';
   const accessVersion = conn?.accessChangedAt;
   const commentsRevision = useReviews((s) => s.commentsRevision);
   const reviewsRevision = useReviews((s) => s.reviewsRevision);
+  // Everything is fetched when the board opens, the connection comes back or access changes;
+  // a notice or a local change then only fetches the threads of the card it is about.
+  const loadedFor = useRef<string | null>(null);
 
   useEffect(() => {
-    if (!synced) return;
+    if (!synced) {
+      loadedFor.current = null;
+      return;
+    }
     let alive = true;
-    void accessVersion;
+    let done = false;
+    const key = `${boardId}:${accessVersion ?? ''}`;
     void commentsRevision;
-    // Threads also carry the pins, so they are paged once per board, never once per card.
-    async function threads() {
+    const scopes = loadedFor.current === key ? changedScopes() : 'all';
+    loadedFor.current = key;
+    async function threads(query: string) {
       const all: CommentThread[] = [];
       let cursor: string | null = null;
       do {
         const p: Page<CommentThread> = await api.get(
-          `/boards/${boardId}/comments?status=all&limit=100${page(cursor)}`,
+          `/boards/${boardId}/comments?status=all&limit=100${query}${page(cursor)}`,
         );
         all.push(...p.items);
         cursor = p.nextCursor;
       } while (cursor && alive);
       return all;
     }
-    Promise.all([api.get<CommentCounts>(`/boards/${boardId}/comment-counts`), threads()])
+    // Threads also carry the pins, so they are paged once per board, never once per card.
+    const fetched =
+      scopes === 'all'
+        ? threads('')
+        : Promise.all(
+            [...scopes].map((id) =>
+              threads(id === null ? '&scope=board' : `&elementId=${encodeURIComponent(id)}`),
+            ),
+          ).then((lists) => mergeThreads(getReviews().threads, lists.flat(), scopes));
+    Promise.all([api.get<CommentCounts>(`/boards/${boardId}/comment-counts`), fetched])
       .then(([counts, all]) => {
         if (!alive) return;
+        done = true;
         setReviews({
           counts: new Map(counts.items.map((c) => [c.elementId, c])),
           threads: all,
@@ -82,10 +108,15 @@ export function useBoardReviews(
         });
       })
       .catch(() => {
-        if (alive) setReviews({ status: 'error' });
+        if (!alive) return;
+        // The next change fetches everything again.
+        loadedFor.current = null;
+        setReviews({ status: 'error' });
       });
     return () => {
       alive = false;
+      // Cut short by a newer change: what this fetch was for is fetched again with everything.
+      if (!done) loadedFor.current = null;
     };
   }, [boardId, synced, accessVersion, commentsRevision]);
 
@@ -97,10 +128,14 @@ export function useBoardReviews(
     api
       .get<BoardReviews>(`/boards/${boardId}/reviews`)
       .then((r) => {
-        if (alive) setReviews({ reviews: new Map(r.items.map((item) => [item.elementId, item])) });
+        if (!alive) return;
+        setReviews({
+          reviews: new Map(r.items.map((item) => [item.elementId, item])),
+          reviewsStatus: 'ready',
+        });
       })
       .catch(() => {
-        if (alive) setReviews({ status: 'error' });
+        if (alive) setReviews({ reviewsStatus: 'error' });
       });
     return () => {
       alive = false;
@@ -130,7 +165,7 @@ export function useBoardReviews(
     if (!provider) return;
     const onNotice = ({ payload }: { payload: string }) => {
       const notice = readBoardNotice(payload);
-      if (notice?.type === 'comments') refreshReviews('comments');
+      if (notice?.type === 'comments') refreshReviews('comments', notice.elementId);
       if (notice?.type === 'review') refreshReviews('reviews');
     };
     provider.on('stateless', onNotice);
@@ -139,20 +174,38 @@ export function useBoardReviews(
     };
   }, [provider]);
 
-  // A notification links to ?thread=<comment id>, which may be a reply of an older page.
+  // A notification links to ?thread=<comment id>&el=<card>; the comment may be a reply of an
+  // older page, which is fetched so it can be shown.
   const [params, setParams] = useSearchParams();
   const linked = params.get('thread');
+  // The canvas takes `el` out of the address once it has selected the card: keep it per link.
+  const linkedElement = useRef<{ thread: string | null; el: string | null }>({
+    thread: null,
+    el: null,
+  });
+  if (linkedElement.current.thread !== linked) {
+    linkedElement.current = { thread: linked, el: params.get('el') };
+  }
   const ready = useReviews((s) => s.status !== 'loading');
   useEffect(() => {
     if (!linked || !ready) return;
     let alive = true;
     const { threads } = getReviews();
-    findThread(threads, linked, null, fetchReplies)
+    findThread(threads, linked, linkedElement.current.el, fetchReplies)
       .catch(() => null)
-      .then((threadId) => {
+      .then((found) => {
         if (!alive) return;
-        const elementId = threads.find((t) => t.id === threadId)?.elementId;
-        openComments({ threadId: threadId ?? linked, ...(elementId ? { elementId } : {}) });
+        const elementId = threads.find((t) => t.id === found?.threadId)?.elementId;
+        if (found?.older) {
+          const older = new Map(getReviews().olderReplies);
+          older.set(found.threadId, found.older);
+          setReviews({ olderReplies: older });
+        }
+        openComments({
+          threadId: found?.threadId ?? linked,
+          commentId: linked,
+          ...(elementId ? { elementId } : {}),
+        });
         setParams(
           (p) => {
             const next = new URLSearchParams(p);
