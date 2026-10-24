@@ -9,6 +9,7 @@ import Fastify, {
 } from 'fastify';
 import type { Logger } from 'pino';
 import type { Auth } from '../auth.ts';
+import type { BoardReader } from '../board-content.ts';
 import type { BoardNotifier } from '../board-notices.ts';
 import type { BoardWriter } from '../board-writer.ts';
 import type { Config } from '../config.ts';
@@ -51,6 +52,8 @@ export interface AppDeps {
   pingQueue?: () => Promise<boolean>;
   /** Adds cards to board documents for the clip endpoint; without it clips are refused. */
   boards?: BoardWriter;
+  /** Reads live cards after the route has authorized the board. */
+  boardReader?: BoardReader;
   /** Named saves and restores of board versions; without it both are refused. */
   versions?: VersionWriter;
   /** Tells open boards about comment and review changes; without it nothing is sent. */

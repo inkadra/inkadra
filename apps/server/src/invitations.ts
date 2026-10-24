@@ -135,14 +135,25 @@ export async function acceptInvitation(
           });
     }
     // The person who invited hears about it (decision 0013), unless they used their own link.
-    if (row.invitedBy && row.invitedBy !== userId)
-      await tx.insert(notification).values({
-        userId: row.invitedBy,
-        type: 'invitation_accepted',
-        actorId: userId,
-        projectId: row.projectId,
-        boardId: row.boardId,
-      });
+    if (row.invitedBy && row.invitedBy !== userId) {
+      // Both the sign-up hook and the accept endpoint can redeem a reusable link.
+      // Use the existing notification primary key to deduplicate this invitation/person
+      // pair atomically, without conflating different links to the same board/project.
+      // Notifications live 90 days, at least as long as a link can remain valid.
+      const key = sha256(JSON.stringify(['invitation_accepted', row.id, userId]));
+      const id = `${key.slice(0, 8)}-${key.slice(8, 12)}-8${key.slice(13, 16)}-a${key.slice(17, 20)}-${key.slice(20, 32)}`;
+      await tx
+        .insert(notification)
+        .values({
+          id,
+          userId: row.invitedBy,
+          type: 'invitation_accepted',
+          actorId: userId,
+          projectId: row.projectId,
+          boardId: row.boardId,
+        })
+        .onConflictDoNothing({ target: notification.id });
+    }
     return { projectId: row.projectId, boardId: row.boardId };
   });
 }

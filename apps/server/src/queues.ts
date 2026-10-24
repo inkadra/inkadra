@@ -3,6 +3,7 @@ import { Queue, QueueEvents, Worker } from 'bullmq';
 import { and, eq, lt } from 'drizzle-orm';
 import IORedis from 'ioredis';
 import type { Logger } from 'pino';
+import type { BoardReader, StoredElement } from './board-content.ts';
 import { type BoardNotifier, NOTICE_TTL_MS } from './board-notices.ts';
 import type { AddCard, AddCardResult, BoardWriter } from './board-writer.ts';
 import type { Database } from './db/client.ts';
@@ -46,6 +47,7 @@ export type JobPayloads = {
   'maintenance:purge-uploads': Record<string, never>;
   'maintenance:anonymise-guests': Record<string, never>;
   'media:process': { assetId: string };
+  'collab:read-element': { boardId: string; elementId: string; expiresAt: number };
   'collab:add-card': AddCard & { expiresAt: number };
   'collab:save-version': SaveVersion & { expiresAt: number };
   'collab:restore-version': RestoreVersion & { expiresAt: number };
@@ -366,6 +368,16 @@ export function queuedBoardWriter(
   return {
     writer,
     versions,
+    reader: {
+      async element(boardId: string, elementId: string) {
+        const result = await run<{ element: StoredElement | null }>('read-element', {
+          boardId,
+          elementId,
+        });
+        if ('ok' in result) throw new Error('The collaboration read expired.');
+        return result.element;
+      },
+    } satisfies BoardReader,
     async close() {
       await Promise.all([queue.close(), events.close()]);
       connection.disconnect();
@@ -373,7 +385,7 @@ export function queuedBoardWriter(
   };
 }
 
-type CollabJob = 'add-card' | 'save-version' | 'restore-version';
+type CollabJob = 'read-element' | 'add-card' | 'save-version' | 'restore-version';
 
 /**
  * Run by `inkadra collab`: applies the edits queued by web roles to the live documents, and
@@ -383,7 +395,12 @@ export function startBoardWorker(
   url: string,
   writer: BoardWriter,
   log: Logger,
-  opts: { prefix?: string; versions?: VersionWriter; notices?: BoardNotifier } = {},
+  opts: {
+    prefix?: string;
+    versions?: VersionWriter;
+    notices?: BoardNotifier;
+    reader?: BoardReader;
+  } = {},
 ) {
   const connection = createRedis(url);
   const worker = new Worker(
@@ -399,6 +416,10 @@ export function startBoardWorker(
       const input = job.data as { expiresAt: number };
       // Checked again inside the write; this one spares opening the document.
       if (Date.now() > input.expiresAt) return { ok: false, reason: 'expired' };
+      if (name === 'read-element' && opts.reader) {
+        const { boardId, elementId } = job.data as JobPayloads['collab:read-element'];
+        return { element: await opts.reader.element(boardId, elementId) };
+      }
       if (name === 'add-card') return writer.addCard(job.data as JobPayloads['collab:add-card']);
       if (name === 'save-version' && opts.versions)
         return opts.versions.save(job.data as JobPayloads['collab:save-version']);

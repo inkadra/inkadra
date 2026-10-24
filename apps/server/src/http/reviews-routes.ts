@@ -13,7 +13,7 @@ import { and, desc, eq, getTableColumns, isNull, ne, or } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
 import { requireBoardRole } from '../access.ts';
 import type { Auth } from '../auth.ts';
-import { storedElement } from '../board-content.ts';
+import { type BoardReader, storedElement } from '../board-content.ts';
 import { type BoardNotifier, noNotices } from '../board-notices.ts';
 import type { Database } from '../db/client.ts';
 import { elementReview, elementReviewEvent } from '../db/schema.ts';
@@ -29,6 +29,7 @@ interface Deps {
   db: Database;
   auth: Auth;
   notices?: BoardNotifier;
+  boardReader?: BoardReader;
 }
 
 const BoardParams = z.object({ boardId: Id });
@@ -54,8 +55,11 @@ const peopleOf = (db: Database, rows: ReviewRow[]) =>
   );
 
 export function registerReviewRoutes(app: FastifyInstance, deps: Deps) {
-  const { db, auth } = deps;
+  const { db, auth, boardReader } = deps;
   const notices = deps.notices ?? noNotices;
+  const readElement = boardReader
+    ? (boardId: string, elementId: string) => boardReader.element(boardId, elementId)
+    : (boardId: string, elementId: string) => storedElement(db, boardId, elementId);
   const v1 = (path: string) => `${API_PREFIX}${path}`;
   const limiter = new RateLimiter(30, 60_000);
 
@@ -91,7 +95,7 @@ export function registerReviewRoutes(app: FastifyInstance, deps: Deps) {
     const access = await requireBoardRole(db, actor, boardId, 'commenter');
     if (!limiter.take(actor.id))
       throw new HttpError('rate_limited', 'Too many review writes: wait a minute.');
-    const card = await storedElement(db, boardId, elementId);
+    const card = await readElement(boardId, elementId);
     if (!card) throw new HttpError('not_found', 'Card not found.');
     const note = input.note ? input.note : null;
     const teamRow = and(
