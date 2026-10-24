@@ -1,5 +1,7 @@
+import { cpSync, existsSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { defineConfig, devices } from '@playwright/test';
 
 /**
@@ -11,6 +13,15 @@ const port = Number(process.env.E2E_PORT ?? 3100);
 // Lets setOffline() and routes reach the service worker's own requests, as a real outage would.
 process.env.PW_EXPERIMENTAL_SERVICE_WORKER_NETWORK_EVENTS ??= '1';
 const baseURL = `http://localhost:${port}`;
+// The server serves a copy of the web build, so a test can change it (pwa.spec.ts deploys a
+// new /sw.js) without touching apps/web/dist. Workers load this file too; only the runner copies.
+const webDist = join(tmpdir(), `inkadra-e2e-web-${port}`);
+process.env.E2E_WEB_DIST = webDist;
+const builtWeb = fileURLToPath(new URL('../apps/web/dist', import.meta.url));
+if (!process.env.TEST_WORKER_INDEX && existsSync(builtWeb)) {
+  rmSync(webDist, { recursive: true, force: true });
+  cpSync(builtWeb, webDist, { recursive: true });
+}
 
 export default defineConfig({
   testDir: './tests',
@@ -58,7 +69,7 @@ export default defineConfig({
         process.env.DATABASE_URL ?? 'postgres://inkadra:inkadra@localhost:5432/inkadra_e2e',
       REDIS_URL: process.env.REDIS_URL ?? 'redis://localhost:6379',
       AUTH_SECRET: 'e2e-only-secret-e2e-only-secret-e2e-only',
-      WEB_DIST: '../apps/web/dist',
+      WEB_DIST: webDist,
       // Uploaded files; the default /data only exists in the image.
       DATA_DIR: process.env.E2E_DATA_DIR ?? join(tmpdir(), 'inkadra-e2e'),
       INKADRA_VERSION: '0.1.0-e2e',

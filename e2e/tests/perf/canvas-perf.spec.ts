@@ -6,6 +6,11 @@ import { seedPerfBoard } from './seed.ts';
 /**
  * Gate 0.2: a board with 1000 elements, 500 of them images, opens in under two seconds and
  * stays smooth while panning and zooming. The numbers land in e2e/perf-results.json.
+ *
+ * The perf project blocks service workers (playwright.config.ts). The worker's first install
+ * downloads the whole build while the board opens, which would make the timings depend on
+ * when it happens to run; and controlled or not, the API, the image variants and /collab
+ * never pass through it (static routes, decision 0015), so the numbers are the app's own.
  */
 
 const OPEN_LIMIT_MS = Number(process.env.PERF_OPEN_LIMIT_MS ?? 2000);
