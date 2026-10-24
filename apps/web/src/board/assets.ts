@@ -15,10 +15,22 @@ function notify(id: string) {
   for (const l of listeners.get(id) ?? []) l();
 }
 
+type Loader = (id: string) => Promise<Asset | null>;
+const accountLoader: Loader = (id) => api.get<Asset>(`/assets/${id}`);
+let loader = accountLoader;
+
+/**
+ * Where metadata of files not primed yet comes from. The guest page of a share link primes
+ * its files from the snapshot and must never call the account API, so it sets its own.
+ */
+export function setAssetLoader(next: Loader | null) {
+  loader = next ?? accountLoader;
+}
+
 async function load(id: string): Promise<void> {
   try {
-    const asset = await api.get<Asset>(`/assets/${id}`);
-    cache.set(id, asset);
+    const asset = await loader(id);
+    cache.set(id, asset ?? 'missing');
   } catch {
     cache.set(id, 'missing');
   }

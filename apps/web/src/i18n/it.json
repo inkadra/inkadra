@@ -631,6 +631,255 @@
       "forbidden": "Non puoi dare un ruolo più alto del tuo, né cambiare chi ha più accesso di te.",
       "address": "Scrivi un indirizzo email o scegli una persona dall’elenco.",
       "generic": "Qualcosa è andato storto. Riprova."
+    },
+    "tabs": "Condivisione",
+    "tab": {
+      "people": "Persone",
+      "guests": "Link per ospiti"
+    }
+  },
+  "guestLinks": {
+    "lead": "Per chi non ha un account: vede il board senza poterlo modificare, e solo le card non nascoste agli ospiti. Il link vale finché hai il ruolo di editor qui.",
+    "none": "Nessun link per ospiti.",
+    "list": "Link per ospiti",
+    "new": "Nuovo link per ospiti",
+    "role": "Chi apre il link",
+    "expiry": "Scadenza",
+    "never": "Nessuna scadenza",
+    "label": "Per chi è (facoltativo)",
+    "labelPlaceholder": "Es. Cliente",
+    "includeSubBoards_one": "Anche il sotto-board raggiungibile da qui",
+    "includeSubBoards_other": "Anche i sotto-board raggiungibili da qui",
+    "allowDownload": "Permetti di scaricare gli originali",
+    "allowDownloadHint": "Altrimenti gli ospiti vedono solo le anteprime.",
+    "proofing": "Selezione foto",
+    "proofingHint": "Gli ospiti scelgono, scartano e danno da 1 a 5 stelle alle immagini.",
+    "usePassword": "Proteggi con una password",
+    "password": "Password",
+    "passwordShort": "La password deve avere almeno {{min}} caratteri.",
+    "cancel": "Annulla",
+    "create": "Crea link per ospiti",
+    "save": "Salva",
+    "edit": "Modifica",
+    "editTitle": "Modifica il link",
+    "results": "Risultati",
+    "revoke": "Revoca",
+    "revokeTitle": "Revoca il link",
+    "revokeBody": "Il link smetterà subito di funzionare per tutti. Commenti e scelte degli ospiti restano.",
+    "revokeConfirm": "Revoca il link",
+    "scopeOnly": "Solo chi ha creato il link o un proprietario può cambiarne le opzioni. Puoi cambiare l’etichetta o revocarlo.",
+    "keepExpiry": "Lascia com’è",
+    "fromNow_one": "Tra {{count}} giorno",
+    "fromNow_other": "Tra {{count}} giorni",
+    "passwordKeep": "Lascia la password attuale",
+    "passwordNone": "Nessuna password",
+    "passwordChange": "Cambia la password",
+    "passwordAdd": "Aggiungi una password",
+    "passwordRemove": "Togli la password",
+    "newPassword": "Nuova password",
+    "passwordChangeHint": "Chi ha già aperto il link dovrà inserire la nuova password.",
+    "roles": {
+      "guest_view": "Può vedere",
+      "guest_comment": "Può commentare",
+      "guest_approve": "Può approvare"
+    },
+    "facts": {
+      "password": "con password",
+      "download": "download permesso",
+      "proofing": "selezione foto",
+      "subBoards": "con i sotto-board",
+      "expires": "scade il {{date}}",
+      "expired": "scaduto il {{date}}",
+      "noExpiry": "senza scadenza"
+    },
+    "createdBy": "Creato da {{name}}",
+    "usage_one": "aperto {{count}} volta · ospiti: {{guests}}",
+    "usage_other": "aperto {{count}} volte · ospiti: {{guests}}",
+    "lastUsed": "ultimo uso {{date}}",
+    "neverUsed": "mai usato",
+    "status": {
+      "active": "Attivo",
+      "expired": "Scaduto",
+      "revoked": "Revocato",
+      "suspended": "Sospeso",
+      "unknown": "Non attivo"
+    },
+    "suspendedWhy": "Sospeso: chi l’ha creato non è più editor di questo board. Torna a funzionare se riottiene il ruolo; altrimenti crea un nuovo link.",
+    "revokedOn": "Revocato il {{date}}.",
+    "url": "Link per ospiti “{{name}}”",
+    "errors": {
+      "rateLimited": "Troppi link creati in poco tempo: riprova tra un po’.",
+      "forbidden": "Non puoi fare questa modifica: solo chi ha creato il link o un proprietario può cambiarne le opzioni.",
+      "revoked": "Questo link è stato revocato e non si può più cambiare.",
+      "invalid": "Controlla i valori inseriti.",
+      "generic": "Qualcosa è andato storto. Riprova."
+    },
+    "picks": {
+      "back": "Torna ai link",
+      "title": "Selezione · {{name}}",
+      "summary_one": "Ospiti: {{guests}} · {{count}} immagine con almeno una scelta",
+      "summary_other": "Ospiti: {{guests}} · {{count}} immagini con almeno una scelta",
+      "exportNames": "Scarica i nomi delle scelte (.txt)",
+      "exportCsv": "Scarica la tabella (.csv)",
+      "file": "File",
+      "pickedCount": "Scelta",
+      "rejectedCount": "Scartata",
+      "starsAverage": "Stelle (media)",
+      "starsCount": "Voti",
+      "anonymous": "Ospite {{n}}",
+      "picked": "sceglie",
+      "rejected": "scarta",
+      "stars_one": "{{count}} stella",
+      "stars_other": "{{count}} stelle",
+      "unnamed_one": "{{count}} immagine scelta non ha più un nome file e non è nell’elenco.",
+      "unnamed_other": "{{count}} immagini scelte non hanno più un nome file e non sono nell’elenco.",
+      "none": "Nessun ospite ha ancora scelto o votato.",
+      "list": "Risultati per immagine",
+      "noName": "Immagine senza nome",
+      "totals": "Scelta da {{picked}} · scartata da {{rejected}}",
+      "average_one": "{{value}} stelle ({{count}} voto)",
+      "average_other": "{{value}} stelle ({{count}} voti)",
+      "byGuest": "{{name}}: {{choice}}"
+    }
+  },
+  "guest": {
+    "loading": "Apertura del board…",
+    "retry": "Riprova",
+    "cancel": "Annulla",
+    "download": "Scarica l’originale",
+    "breadcrumb": "Board condivisi",
+    "sharedBy": "Condiviso da {{name}}",
+    "panel": "Dettagli e commenti",
+    "boards": "Board di questo link",
+    "emptyBoard": "Questo board è vuoto.",
+    "roles": {
+      "view": "Ospite · può vedere",
+      "comment": "Ospite · può commentare",
+      "approve": "Ospite · può approvare"
+    },
+    "stop": {
+      "not_found": {
+        "title": "Link non trovato",
+        "body": "Controlla di aver copiato il link per intero, o chiedi un nuovo link a chi te l’ha mandato."
+      },
+      "expired": {
+        "title": "Link scaduto",
+        "body": "Questo link non è più valido. Chiedi un nuovo link a chi te l’ha mandato."
+      },
+      "revoked": {
+        "title": "Link disattivato",
+        "body": "Chi ha condiviso il board ha disattivato questo link. Chiedi un nuovo link se ti serve ancora."
+      },
+      "unavailable": {
+        "title": "Link non disponibile",
+        "body": "Questo link al momento non funziona. Chiedi a chi te l’ha mandato di controllarlo."
+      },
+      "no_session": {
+        "title": "Sessione scaduta",
+        "body": "Apri di nuovo il link per continuare."
+      },
+      "rate_limited": {
+        "title": "Troppe richieste",
+        "body": "Aspetta qualche minuto e riprova."
+      },
+      "error": {
+        "title": "Qualcosa è andato storto",
+        "body": "Non è stato possibile aprire il board. Riprova tra poco."
+      }
+    },
+    "password": {
+      "title": "Board protetto da password",
+      "body": "Inserisci la password che ti hanno dato per aprire il board su {{instance}}.",
+      "changed": "La password di questo link è cambiata: inserisci quella nuova.",
+      "label": "Password",
+      "wrong": "Password non corretta.",
+      "open": "Apri il board",
+      "tooMany": "Troppi tentativi: riprova più tardi."
+    },
+    "errors": {
+      "generic": "Qualcosa è andato storto. Riprova.",
+      "rateLimited": "Troppe azioni in poco tempo: aspetta un momento.",
+      "notFound": "Questa card non è più disponibile."
+    },
+    "name": {
+      "title": "Come ti chiami?",
+      "body": "Il tuo nome comparirà accanto ai tuoi commenti, approvazioni e scelte, segnato come ospite. Lo vedono le persone che ti hanno condiviso il board.",
+      "label": "Il tuo nome",
+      "save": "Continua",
+      "empty": "Scrivi il tuo nome.",
+      "required": "Prima inserisci il tuo nome."
+    },
+    "you": {
+      "named": "Sei {{name}} (ospite)",
+      "anonymous": "Stai guardando come ospite.",
+      "rename": "Cambia nome",
+      "setName": "Inserisci il nome"
+    },
+    "card": {
+      "choose": "Card",
+      "none": "Tutto il board",
+      "hint": "Seleziona una card sul board, o sceglila qui sopra, per vederne i dettagli."
+    },
+    "pick": {
+      "label": "La tua scelta",
+      "title": "Selezione",
+      "stars": "Stelle",
+      "star_one": "{{count}} stella",
+      "star_other": "{{count}} stelle",
+      "picked": "Scelgo",
+      "rejected": "Scarto",
+      "summary": "Hai scelto {{picked}} e scartato {{rejected}} immagini in questo board."
+    },
+    "review": {
+      "title": "Approvazione",
+      "status": {
+        "none": "Nessuna decisione",
+        "in_review": "In revisione",
+        "approved": "Approvata",
+        "changes_requested": "Modifiche richieste"
+      },
+      "by": "da {{name}}",
+      "byYou": "da te",
+      "note": "Nota (facoltativa)",
+      "approve": "Approva",
+      "requestChanges": "Chiedi modifiche",
+      "withdraw": "Ritira la mia decisione",
+      "done": {
+        "approved": "Card approvata.",
+        "changes_requested": "Modifiche richieste.",
+        "none": "Decisione ritirata."
+      }
+    },
+    "comments": {
+      "onCard": "Commenti sulla card",
+      "onBoard": "Commenti sul board",
+      "new": "Scrivi un commento",
+      "send": "Commenta",
+      "loadFailed": "Impossibile caricare i commenti.",
+      "none": "Ancora nessun commento.",
+      "resolved": "Risolto",
+      "moreReplies_one": "Altra {{count}} risposta non mostrata.",
+      "moreReplies_other": "Altre {{count}} risposte non mostrate.",
+      "count_one": "{{count}} commento",
+      "count_other": "{{count}} commenti",
+      "you": "{{name}} (tu)",
+      "team": "Team",
+      "guest": "{{name}} (ospite)",
+      "aGuest": "Un ospite",
+      "deleted": "Account eliminato",
+      "edit": "Modifica",
+      "save": "Salva",
+      "removed": "Commento eliminato.",
+      "edited": "(modificato)",
+      "deleteConfirm": "Eliminare il commento?",
+      "delete": "Elimina",
+      "reply": "Rispondi",
+      "replyLabel": "Scrivi una risposta"
+    },
+    "viewer": {
+      "open": "Apri in grande",
+      "close": "Chiudi",
+      "noPreview": "Anteprima non disponibile."
     }
   },
   "join": {

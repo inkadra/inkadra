@@ -8,13 +8,21 @@ import {
 } from '@inkadra/canvas-core';
 import type { Element } from '@inkadra/doc-schema';
 import { Icon } from '@inkadra/ui';
-import { type CSSProperties, type KeyboardEvent, memo, useEffect, useRef, useState } from 'react';
+import {
+  type CSSProperties,
+  type KeyboardEvent,
+  memo,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import * as Y from 'yjs';
 import { pickVariant, useAsset } from './assets.ts';
 import { renameBoard } from './boards.ts';
 import { CardReview } from './CardReview.tsx';
-import { useBoard } from './context.ts';
+import { CardExtrasContext, GuestModeContext, useBoard } from './context.ts';
 import { useBoardAspect } from './film/aspect.ts';
 import { FramePicture } from './film/FramePicture.tsx';
 import { useSlugline } from './film/StoryboardView.tsx';
@@ -65,6 +73,7 @@ export const Card = memo(function Card({
   zoom,
 }: CardProps) {
   const { store, editing, readOnly } = useBoard();
+  const extras = useContext(CardExtrasContext);
   const { t } = useTranslation();
   const measure = useMeasure(store, element.id, !nested);
   const isEditing = editing === element.id;
@@ -116,6 +125,7 @@ export const Card = memo(function Card({
         </div>
       )}
       {!isContainer(element) && <GuestVisibility store={store} element={element} />}
+      {extras?.(element)}
       {element.locked && (
         <span className="card__lock" title={t('board.locked')}>
           <Icon name="lock" size={12} />
@@ -183,6 +193,7 @@ function CardBody({
 
 function FrameCard({ element, width }: { element: Of<'frame'>; width: number }) {
   const { store, scale, frameLabels } = useBoard();
+  const guest = useContext(GuestModeContext);
   const { t } = useTranslation();
   const boardAspect = useBoardAspect(store.doc);
   const label = frameLabels.get(element.id) ?? element.label ?? '';
@@ -199,9 +210,11 @@ function FrameCard({ element, width }: { element: Of<'frame'>; width: number }) 
       </div>
       <div className="card__pad card__frame-meta">
         <span className="card__title">{label}</span>
-        <span className={`film-chip film-status--${element.status ?? 'draft'}`}>
-          {t(`film.status.${element.status ?? 'draft'}`)}
-        </span>
+        {!guest && (
+          <span className={`film-chip film-status--${element.status ?? 'draft'}`}>
+            {t(`film.status.${element.status ?? 'draft'}`)}
+          </span>
+        )}
         {element.durationMs !== undefined && (
           <span className="card__desc">{formatDuration(element.durationMs)}</span>
         )}
@@ -384,12 +397,16 @@ function FileCard({ element, width }: { element: Of<'file'>; width: number }) {
         {ext || <Icon name="file" size={14} />}
       </span>
       <span className="card__file-meta">
-        <span className="card__title">{ready?.filename ?? t('board.file.loading')}</span>
+        <span className="card__title">
+          {ready ? ready.filename || t('board.types.file') : t('board.file.loading')}
+        </span>
         <span className="card__desc">
           {progress !== null
             ? t('board.file.uploading', { percent: Math.round(progress * 100) })
             : ready
-              ? formatSize(ready.size)
+              ? ready.size > 0
+                ? formatSize(ready.size)
+                : ''
               : asset === 'missing'
                 ? t('board.file.missing')
                 : ''}

@@ -23,10 +23,18 @@ function Root() {
 }
 
 const loadBoard = async () => ({ Component: (await import('./board/BoardPage.tsx')).BoardPage });
+const loadGuest = async () => ({ Component: (await import('./guest/GuestPage.tsx')).GuestPage });
 
 const router = createBrowserRouter([
+  // The guest page of a share link (decision 0013): outside the account session, which it
+  // never loads. The path is the one the server puts in ShareLink.url.
+  { path: '/s/:token', lazy: loadGuest },
   {
-    element: <Root />,
+    element: (
+      <SessionProvider>
+        <Root />
+      </SessionProvider>
+    ),
     children: [
       { path: '/login', element: <Login /> },
       { path: '/diagnostics', element: <Diagnostics /> },
@@ -52,10 +60,8 @@ const root = document.getElementById('root');
 if (!root) throw new Error('Missing #root');
 createRoot(root).render(
   <StrictMode>
-    <SessionProvider>
-      <RouterProvider router={router} />
-      <UpdatePrompt />
-    </SessionProvider>
+    <RouterProvider router={router} />
+    <UpdatePrompt />
   </StrictMode>,
 );
 registerServiceWorker();

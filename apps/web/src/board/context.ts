@@ -1,6 +1,7 @@
+import type { Element } from '@inkadra/doc-schema';
 import type { Board } from '@inkadra/shared';
 import type { Editor } from '@tiptap/react';
-import { createContext, useContext } from 'react';
+import { createContext, type ReactNode, useContext } from 'react';
 import type { BoardStore } from './store.ts';
 
 export interface BoardContextValue {
@@ -23,8 +24,18 @@ export interface BoardContextValue {
 
 export const BoardContext = createContext<BoardContextValue | null>(null);
 
+/**
+ * True on the guest page of a share link: guests do not receive internal fields (decision
+ * 0013), so cards leave out what would otherwise show as a default, such as a frame's
+ * production status.
+ */
+export const GuestModeContext = createContext(false);
+
 export function useBoard(): BoardContextValue {
   const ctx = useContext(BoardContext);
   if (!ctx) throw new Error('useBoard outside BoardContext');
   return ctx;
 }
+
+/** Extra controls a page draws on each card, such as the picks of the guest page. */
+export const CardExtrasContext = createContext<((element: Element) => ReactNode) | null>(null);

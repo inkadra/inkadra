@@ -631,6 +631,255 @@
       "forbidden": "You cannot give a role higher than yours, nor change people with more access than you.",
       "address": "Type an email address or pick someone from the list.",
       "generic": "Something went wrong. Try again."
+    },
+    "tabs": "Sharing",
+    "tab": {
+      "people": "People",
+      "guests": "Guest links"
+    }
+  },
+  "guestLinks": {
+    "lead": "For people without an account: they see the board without changing it, and only the cards not hidden from guests. The link works while you are an editor here.",
+    "none": "No guest links.",
+    "list": "Guest links",
+    "new": "New guest link",
+    "role": "Who opens the link",
+    "expiry": "Expiry",
+    "never": "No expiry",
+    "label": "Who it is for (optional)",
+    "labelPlaceholder": "E.g. Client",
+    "includeSubBoards_one": "Also the sub-board reached from here",
+    "includeSubBoards_other": "Also the sub-boards reached from here",
+    "allowDownload": "Allow downloading originals",
+    "allowDownloadHint": "Otherwise guests see previews only.",
+    "proofing": "Photo proofing",
+    "proofingHint": "Guests pick, reject and give pictures 1 to 5 stars.",
+    "usePassword": "Protect with a password",
+    "password": "Password",
+    "passwordShort": "The password needs at least {{min}} characters.",
+    "cancel": "Cancel",
+    "create": "Create guest link",
+    "save": "Save",
+    "edit": "Edit",
+    "editTitle": "Edit the link",
+    "results": "Results",
+    "revoke": "Revoke",
+    "revokeTitle": "Revoke the link",
+    "revokeBody": "The link stops working for everyone at once. Guests’ comments and picks stay.",
+    "revokeConfirm": "Revoke the link",
+    "scopeOnly": "Only the person who created the link or an owner can change its options. You can change its label or revoke it.",
+    "keepExpiry": "Leave as it is",
+    "fromNow_one": "In {{count}} day",
+    "fromNow_other": "In {{count}} days",
+    "passwordKeep": "Keep the current password",
+    "passwordNone": "No password",
+    "passwordChange": "Change the password",
+    "passwordAdd": "Add a password",
+    "passwordRemove": "Remove the password",
+    "newPassword": "New password",
+    "passwordChangeHint": "Whoever opened the link before must enter the new password.",
+    "roles": {
+      "guest_view": "Can view",
+      "guest_comment": "Can comment",
+      "guest_approve": "Can approve"
+    },
+    "facts": {
+      "password": "password",
+      "download": "downloads allowed",
+      "proofing": "photo proofing",
+      "subBoards": "with sub-boards",
+      "expires": "expires on {{date}}",
+      "expired": "expired on {{date}}",
+      "noExpiry": "no expiry"
+    },
+    "createdBy": "Created by {{name}}",
+    "usage_one": "opened {{count}} time · guests: {{guests}}",
+    "usage_other": "opened {{count}} times · guests: {{guests}}",
+    "lastUsed": "last used {{date}}",
+    "neverUsed": "never used",
+    "status": {
+      "active": "Active",
+      "expired": "Expired",
+      "revoked": "Revoked",
+      "suspended": "Suspended",
+      "unknown": "Not active"
+    },
+    "suspendedWhy": "Suspended: whoever created it is no longer an editor of this board. It works again if they get the role back; otherwise create a new link.",
+    "revokedOn": "Revoked on {{date}}.",
+    "url": "Guest link “{{name}}”",
+    "errors": {
+      "rateLimited": "Too many links created in a short time: try again in a while.",
+      "forbidden": "You cannot make this change: only the person who created the link or an owner can change its options.",
+      "revoked": "This link was revoked and can no longer be changed.",
+      "invalid": "Check the values you entered.",
+      "generic": "Something went wrong. Try again."
+    },
+    "picks": {
+      "back": "Back to the links",
+      "title": "Proofing · {{name}}",
+      "summary_one": "Guests: {{guests}} · {{count}} picture with at least one choice",
+      "summary_other": "Guests: {{guests}} · {{count}} pictures with at least one choice",
+      "exportNames": "Download names of picks (.txt)",
+      "exportCsv": "Download the table (.csv)",
+      "file": "File",
+      "pickedCount": "Picked",
+      "rejectedCount": "Rejected",
+      "starsAverage": "Stars (average)",
+      "starsCount": "Ratings",
+      "anonymous": "Guest {{n}}",
+      "picked": "picks",
+      "rejected": "rejects",
+      "stars_one": "{{count}} star",
+      "stars_other": "{{count}} stars",
+      "unnamed_one": "{{count}} picked picture no longer has a file name and is not in the list.",
+      "unnamed_other": "{{count}} picked pictures no longer have a file name and are not in the list.",
+      "none": "No guest has picked or rated yet.",
+      "list": "Results per picture",
+      "noName": "Picture without a name",
+      "totals": "Picked by {{picked}} · rejected by {{rejected}}",
+      "average_one": "{{value}} stars ({{count}} rating)",
+      "average_other": "{{value}} stars ({{count}} ratings)",
+      "byGuest": "{{name}}: {{choice}}"
+    }
+  },
+  "guest": {
+    "loading": "Opening the board…",
+    "retry": "Try again",
+    "cancel": "Cancel",
+    "download": "Download the original",
+    "breadcrumb": "Shared boards",
+    "sharedBy": "Shared by {{name}}",
+    "panel": "Details and comments",
+    "boards": "Boards of this link",
+    "emptyBoard": "This board is empty.",
+    "roles": {
+      "view": "Guest · can view",
+      "comment": "Guest · can comment",
+      "approve": "Guest · can approve"
+    },
+    "stop": {
+      "not_found": {
+        "title": "Link not found",
+        "body": "Check that you copied the whole link, or ask whoever sent it for a new one."
+      },
+      "expired": {
+        "title": "Link expired",
+        "body": "This link no longer works. Ask whoever sent it for a new one."
+      },
+      "revoked": {
+        "title": "Link turned off",
+        "body": "The person who shared the board turned this link off. Ask for a new link if you still need it."
+      },
+      "unavailable": {
+        "title": "Link unavailable",
+        "body": "This link does not work at the moment. Ask whoever sent it to check it."
+      },
+      "no_session": {
+        "title": "Session expired",
+        "body": "Open the link again to continue."
+      },
+      "rate_limited": {
+        "title": "Too many requests",
+        "body": "Wait a few minutes and try again."
+      },
+      "error": {
+        "title": "Something went wrong",
+        "body": "The board could not be opened. Try again shortly."
+      }
+    },
+    "password": {
+      "title": "Password-protected board",
+      "body": "Enter the password you were given to open the board on {{instance}}.",
+      "changed": "The password of this link changed: enter the new one.",
+      "label": "Password",
+      "wrong": "Wrong password.",
+      "open": "Open the board",
+      "tooMany": "Too many attempts: try again later."
+    },
+    "errors": {
+      "generic": "Something went wrong. Try again.",
+      "rateLimited": "Too many actions in a short time: wait a moment.",
+      "notFound": "This card is no longer available."
+    },
+    "name": {
+      "title": "What is your name?",
+      "body": "Your name will appear next to your comments, approvals and picks, marked as a guest. The people who shared the board see it.",
+      "label": "Your name",
+      "save": "Continue",
+      "empty": "Enter your name.",
+      "required": "Enter your name first."
+    },
+    "you": {
+      "named": "You are {{name}} (guest)",
+      "anonymous": "You are viewing as a guest.",
+      "rename": "Change name",
+      "setName": "Enter your name"
+    },
+    "card": {
+      "choose": "Card",
+      "none": "Whole board",
+      "hint": "Select a card on the board, or choose it above, to see its details."
+    },
+    "pick": {
+      "label": "Your choice",
+      "title": "Selection",
+      "stars": "Stars",
+      "star_one": "{{count}} star",
+      "star_other": "{{count}} stars",
+      "picked": "Pick",
+      "rejected": "Reject",
+      "summary": "You picked {{picked}} and rejected {{rejected}} pictures on this board."
+    },
+    "review": {
+      "title": "Approval",
+      "status": {
+        "none": "No decision",
+        "in_review": "In review",
+        "approved": "Approved",
+        "changes_requested": "Changes requested"
+      },
+      "by": "by {{name}}",
+      "byYou": "by you",
+      "note": "Note (optional)",
+      "approve": "Approve",
+      "requestChanges": "Request changes",
+      "withdraw": "Withdraw my decision",
+      "done": {
+        "approved": "Card approved.",
+        "changes_requested": "Changes requested.",
+        "none": "Decision withdrawn."
+      }
+    },
+    "comments": {
+      "onCard": "Comments on the card",
+      "onBoard": "Comments on the board",
+      "new": "Write a comment",
+      "send": "Comment",
+      "loadFailed": "Comments could not be loaded.",
+      "none": "No comments yet.",
+      "resolved": "Resolved",
+      "moreReplies_one": "{{count}} more reply not shown.",
+      "moreReplies_other": "{{count}} more replies not shown.",
+      "count_one": "{{count}} comment",
+      "count_other": "{{count}} comments",
+      "you": "{{name}} (you)",
+      "team": "Team",
+      "guest": "{{name}} (guest)",
+      "aGuest": "A guest",
+      "deleted": "Deleted account",
+      "edit": "Edit",
+      "save": "Save",
+      "removed": "Comment deleted.",
+      "edited": "(edited)",
+      "deleteConfirm": "Delete the comment?",
+      "delete": "Delete",
+      "reply": "Reply",
+      "replyLabel": "Write a reply"
+    },
+    "viewer": {
+      "open": "View large",
+      "close": "Close",
+      "noPreview": "No preview available."
     }
   },
   "join": {
