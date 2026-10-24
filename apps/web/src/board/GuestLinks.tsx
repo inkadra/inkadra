@@ -16,6 +16,7 @@ import {
   GUEST_ROLES,
   type LinkDraft,
   MIN_PASSWORD,
+  namesText,
   patchOf,
   pickedFileNames,
   pickedWithoutName,
@@ -809,11 +810,7 @@ function PicksView({ link, onBack }: { link: ShareLink; onBack: () => void }) {
               icon="download"
               disabled={names.length === 0}
               onClick={() =>
-                saveFile(
-                  `${base}-scelte.txt`,
-                  `${names.join('\r\n')}\r\n`,
-                  'text/plain;charset=utf-8',
-                )
+                saveFile(`${base}-scelte.txt`, namesText(names), 'text/plain;charset=utf-8')
               }
             >
               {t('guestLinks.picks.exportNames')}
