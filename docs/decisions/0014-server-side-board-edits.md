@@ -21,17 +21,28 @@ stores its copy of an open document.
   next one, as for edits made in the web app. Nothing after that point (storing, queueing
   the processing of its files) can turn the answer into an error or delete the card's files.
   (Closing with an immediate store would unload the document even when that store fails.)
+- **Queueing the clip's own background work is bounded too.** A Valkey that goes away after
+  the connection was made does not fail an add, it holds it until it is back. So queueing the
+  processing of the clip's files, and the removal of the files of a clip that failed, waits
+  at most 2 seconds: the answer (201, or the error) is sent either way. Files left
+  unprocessed are queued by the hourly upload purge, and a late add of the same asset is a
+  no-op thanks to its job id. Files whose removal could not be queued are removed by the web
+  role itself, since their rows are already gone and nothing else would find them. Link
+  previews queue their image the same way.
 - **A card never appears after the client was told it failed.** The job carries a deadline
   (`expiresAt`, the end of the 10 seconds) that `inkadra collab` checks right before writing,
   so a job that is late (collab slow, restarting or down, or Valkey slow to take the job) is
   refused. The job is not retried, and the worker has `maxStalledCount: 0`, so a stalled job
   fails rather than runs twice. When the wait ends, the web role removes a job that has not
   started; one already running gets 5 more seconds to answer. Adding the job is bounded by the
-  same deadline, so a Valkey that does not answer cannot hang the request. If collab still
+  same deadline, so a Valkey that does not answer cannot hang the request; if the add lands
+  after the web role gave up, the job is removed as soon as it does. If collab still
   does not answer, or a job stalls, the card may or may not be on the board: the client gets
   a 500 asking to check the board, and the clip's files are kept and processed (unused, they
-  only take space). This relies on the clocks of `web` and `collab` agreeing within seconds,
-  which NTP gives; removing the late job covers the rest. Failed jobs, which hold what the
+  only take space). The clipper shows that answer, and any other server error on a clip, as
+  "check the board before trying again" rather than a plain retry. This relies on the clocks
+  of `web` and `collab` agreeing within seconds, which NTP gives; removing late jobs covers
+  the rest. Failed jobs, which hold what the
   person wrote, are kept for an hour.
 - The card goes at the bottom of "Non ordinati" (`parent: unsorted`), or of the column given
   as `columnId`, with a fractional `z` after its last sibling, `createdBy` the person and
@@ -41,7 +52,10 @@ stores its copy of an open document.
 - What becomes what: a file is stored through the upload store (so large files stream to the
   bucket in parts), sniffed from its first bytes like uploads, and becomes an image card or a
   file card. In a form, `boardId` must come before the `file` part (400 otherwise): access is
-  checked before a byte of the file is written, without buffering it. An empty file is
+  checked before a byte of the file is written, without buffering it, and a refused file is
+  read to the end and dropped so the answer is not held up. Temporary folders a crash left
+  behind are removed when the web role starts. Empty form fields, `tags` included, count as
+  missing. An empty file is
   refused; a file that cannot be stored whole is removed from the store, which also aborts a
   multipart upload to a bucket. A `url` alone is fetched once with the link-preview rules
   (decision 0009): an image (at most `UPLOAD_MAX_SIZE` and 50 MB, since it is held in memory)
