@@ -11,6 +11,7 @@ import type { Database } from '../db/client.ts';
 import type { Jobs } from '../jobs.ts';
 import { type Mailer, noMailer } from '../mailer.ts';
 import type { Storage } from '../storage.ts';
+import type { VersionWriter } from '../versions.ts';
 import { registerAccountRoutes } from './account-routes.ts';
 import { registerApiRoutes } from './api-routes.ts';
 import { registerAssetRoutes } from './assets-routes.ts';
@@ -24,6 +25,7 @@ import { registerProjectRoutes } from './projects-routes.ts';
 import { registerSearchRoutes } from './search-routes.ts';
 import { registerSharingRoutes } from './sharing-routes.ts';
 import { registerUploads } from './uploads.ts';
+import { registerVersionRoutes } from './versions-routes.ts';
 
 export interface AppDeps {
   config: Config;
@@ -37,6 +39,8 @@ export interface AppDeps {
   pingQueue?: () => Promise<boolean>;
   /** Adds cards to board documents for the clip endpoint; without it clips are refused. */
   boards?: BoardWriter;
+  /** Named saves and restores of board versions; without it both are refused. */
+  versions?: VersionWriter;
   /** Scratch space for files received in one piece (clips). */
   tmpDir?: string;
   /** Tests only: addresses link previews may fetch besides public ones. */
@@ -67,6 +71,7 @@ export async function createApp(deps: AppDeps) {
   registerSharingRoutes(app, { ...deps, mailer });
   registerProjectRoutes(app, deps);
   registerBoardRoutes(app, deps);
+  registerVersionRoutes(app, deps);
   registerAssetRoutes(app, deps);
   registerSearchRoutes(app, deps);
   registerLinkPreviews(app, deps);
