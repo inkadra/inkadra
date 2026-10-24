@@ -134,8 +134,10 @@ const idParam = (name: string) => z.object({ [name]: Id });
 const outcome = {
   500: {
     description:
-      'Not made, or, with details OutcomeUnknown (`outcome_unknown`), not confirmed in time: ' +
-      'it may be there, so check before trying again',
+      'The change may or may not have been made. OutcomeUnknown (`outcome_unknown`) explicitly ' +
+      'reports uncertainty. A missing or unrecognized details.reason also means the outcome ' +
+      'is unknown, including on legacy servers. Reconcile state before retrying; never infer ' +
+      'that a retry is safe from the absence of a recognized reason.',
     ...json(ApiError),
   },
 };
@@ -1366,7 +1368,7 @@ registry.registerPath({
   description:
     'A board keeps at most 100 named versions (409 beyond; delete or let one go first), and ' +
     'each person can save 20 an hour. Open boards are told with the stateless collab ' +
-    'message `{"type":"versions"}`.',
+    'message `{"type":"versions","versionId":"0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10"}`.',
   request: { params: idParam('boardId'), body: json(CreateBoardVersion) },
   responses: {
     201: { description: 'Saved', ...json(BoardVersion) },
@@ -1391,7 +1393,8 @@ registry.registerPath({
   tags: ['Versions'],
   security: secured,
   summary: 'Rename a version, or name an automatic one so it is kept. Needs editor.',
-  description: 'Open boards are told with the stateless collab message `{"type":"versions"}`.',
+  description:
+    'Open boards are told with the stateless collab message `{"type":"versions","versionId":"0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10"}`.',
   request: { params: versionParams, body: json(UpdateBoardVersion) },
   responses: {
     200: { description: 'Updated', ...json(BoardVersion) },
@@ -1410,7 +1413,7 @@ registry.registerPath({
   description:
     'Automatic and restore versions also go away by themselves with retention; deleting one ' +
     'only does it sooner. Open boards are told with the stateless collab message ' +
-    '`{"type":"versions"}`.',
+    '`{"type":"versions","versionId":"0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10"}`.',
   request: { params: versionParams },
   responses: { 204: { description: 'Deleted' }, ...errors },
 });

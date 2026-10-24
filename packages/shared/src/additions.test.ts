@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: MPL-2.0
+import { readBoardNotice } from '@inkadra/doc-schema';
 import { describe, expect, it } from 'vitest';
 import {
   ApiError,
@@ -156,6 +157,51 @@ describe('contract additions of API 0.5.0', () => {
     expect(ApiError.parse(unknown)).toEqual(unknown);
     expect(OutcomeUnknown.safeParse(unknown.error.details).success).toBe(true);
     expect(OutcomeUnknown.safeParse(undefined).success).toBe(false);
+  });
+
+  it.each([
+    { code: 'internal', message: 'Could not create the card' },
+    { code: 'internal', message: 'Could not save the version' },
+    { code: 'internal', message: 'Could not restore the version' },
+    { code: 'internal', message: 'Unknown', details: { reason: 'future_reason' } },
+    { code: 'internal', message: 'Unknown', details: null },
+    { code: 'internal', message: 'Unknown', details: { reason: 42 } },
+  ])('accepts legacy and unknown errors without promising a safe retry: %j', (error) => {
+    expect(ApiError.parse({ error })).toEqual({ error });
+    expect(OutcomeUnknown.safeParse(error.details).success).toBe(false);
+    // A failed reason parse must not imply certain failure. Every affected operation
+    // documents the same conservative fallback for clients of older servers.
+    const paths = buildOpenApiDocument().paths;
+    for (const path of [
+      '/api/v1/clip',
+      '/api/v1/boards/{boardId}/versions',
+      '/api/v1/boards/{boardId}/versions/{versionId}/restore',
+    ]) {
+      const response = paths?.[path]?.post?.responses?.['500'];
+      expect(response).toHaveProperty('description');
+      if (!response || !('description' in response)) throw new Error('Missing 500 response');
+      expect(response.description).toContain(
+        'A missing or unrecognized details.reason also means the outcome is unknown',
+      );
+      expect(response.description).toContain('Reconcile state before retrying');
+    }
+  });
+
+  it('provides parseable versions notice examples for save, rename and delete', () => {
+    const paths = buildOpenApiDocument().paths;
+    for (const [path, method] of [
+      ['/api/v1/boards/{boardId}/versions', 'post'],
+      ['/api/v1/boards/{boardId}/versions/{versionId}', 'patch'],
+      ['/api/v1/boards/{boardId}/versions/{versionId}', 'delete'],
+    ] as const) {
+      const description = paths?.[path]?.[method]?.description ?? '';
+      const examples = [...description.matchAll(/`(\{"type":"versions"[^`]*\})`/g)];
+      expect(examples).toHaveLength(1);
+      for (const [, payload] of examples) {
+        if (!payload) throw new Error('Missing notice payload');
+        expect(readBoardNotice(payload)).toEqual({ type: 'versions', versionId: id });
+      }
+    }
   });
 
   it('documents the new paths and answers', () => {

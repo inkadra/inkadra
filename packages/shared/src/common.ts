@@ -56,7 +56,9 @@ export type ApiError = z.infer<typeof ApiError>;
 
 /**
  * `details` of a 500 when the server cannot tell whether a change it handed to the board was
- * made (decision 0016). Without it, a 500 means the change was not made and can be retried.
+ * made (decisions 0016 and 0017). A missing or unrecognized reason also leaves the outcome
+ * unknown: legacy servers omit details even when the change may have been made. Clients
+ * must reconcile state before retrying; failing to parse OutcomeUnknown is not proof of failure.
  */
 export const OutcomeUnknown = z
   .object({

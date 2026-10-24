@@ -22,6 +22,7 @@
     "zod": "^4.6.0"
   },
   "devDependencies": {
+    "@inkadra/doc-schema": "workspace:*",
     "@stoplight/prism-cli": "^5.16.0",
     "@types/node": "^22.18.0",
     "tsx": "^4.23.0",
