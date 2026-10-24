@@ -8,10 +8,11 @@ import type {
   ProjectRole,
 } from '@inkadra/shared';
 import { Avatar, Button, Dialog, Icon, IconButton } from '@inkadra/ui';
-import { type FormEvent, useCallback, useEffect, useId, useState } from 'react';
+import { type FormEvent, type KeyboardEvent, useCallback, useEffect, useId, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api, RequestError } from '../lib/api.ts';
 import { useSession } from '../lib/session.tsx';
+import { GuestLinks } from './GuestLinks.tsx';
 import './share.css';
 
 const ROLES: ProjectRole[] = ['viewer', 'commenter', 'editor', 'owner'];
@@ -43,6 +44,11 @@ export function ShareDialog({
   const myRole = board.myRole;
   const canManage = access?.canManage ?? false;
   const choices = ROLES.filter((r) => rank(r) <= rank(myRole));
+  // Editors and owners also share with people without an account (decision 0013).
+  const canShareGuests = myRole === 'owner' || myRole === 'editor';
+  const [tab, setTab] = useState<ShareTab>('people');
+  const tabsId = useId();
+  const shownTab = canShareGuests ? tab : 'people';
 
   const load = useCallback(async () => {
     const a = await api.get<BoardAccess>(`/boards/${board.id}/access`);
@@ -99,116 +105,192 @@ export function ShareDialog({
           className="share__close"
           onClick={onClose}
         />
-        <p className="share__lead ink-muted">
-          {isRoot
-            ? t('share.wholeProject')
-            : subBoards > 0
-              ? t('share.inherits', { count: subBoards })
-              : t('share.thisBoard')}
-        </p>
+        {canShareGuests && <ShareTabs id={tabsId} tab={shownTab} onTab={setTab} />}
+        {shownTab === 'guests' ? (
+          <div
+            className="share__panel"
+            role="tabpanel"
+            id={`${tabsId}-guests`}
+            aria-labelledby={`${tabsId}-tab-guests`}
+          >
+            <GuestLinks board={board} userId={user?.id} subBoards={subBoards} />
+          </div>
+        ) : (
+          <div
+            className="share__panel"
+            {...(canShareGuests
+              ? {
+                  role: 'tabpanel',
+                  id: `${tabsId}-people`,
+                  'aria-labelledby': `${tabsId}-tab-people`,
+                }
+              : {})}
+          >
+            <p className="share__lead ink-muted">
+              {isRoot
+                ? t('share.wholeProject')
+                : subBoards > 0
+                  ? t('share.inherits', { count: subBoards })
+                  : t('share.thisBoard')}
+            </p>
 
-        {canManage && (
-          <InviteForm
-            boardId={board.id}
-            choices={choices}
-            canEmail={instance?.auth.email ?? false}
-            onDone={async (text) => {
-              await load();
-              return text;
-            }}
-            onError={fail}
-          />
-        )}
+            {canManage && (
+              <InviteForm
+                boardId={board.id}
+                choices={choices}
+                canEmail={instance?.auth.email ?? false}
+                onDone={async (text) => {
+                  await load();
+                  return text;
+                }}
+                onError={fail}
+              />
+            )}
 
-        {error && (
-          <p className="share__error" role="alert">
-            {error}
-          </p>
-        )}
+            {error && (
+              <p className="share__error" role="alert">
+                {error}
+              </p>
+            )}
 
-        <ul className="share__list" aria-label={t('share.people')}>
-          {access?.items.map((e) => {
-            const me = e.user.id === user?.id;
-            const own = isRoot
-              ? e.source.kind === 'project'
-              : e.source.kind === 'board' && e.source.boardId === board.id;
-            // Project members (root board) are managed by owners only, as on the server.
-            const editable =
-              canManage && !me && rank(e.role) <= rank(myRole) && (!isRoot || myRole === 'owner');
-            return (
-              <li key={e.user.id} className="share__row">
-                <Avatar name={e.user.name} size={30} />
-                <span className="share__who">
-                  <span className="share__name">
-                    {me ? t('share.you', { name: e.user.name }) : e.user.name}
+            <ul className="share__list" aria-label={t('share.people')}>
+              {access?.items.map((e) => {
+                const me = e.user.id === user?.id;
+                const own = isRoot
+                  ? e.source.kind === 'project'
+                  : e.source.kind === 'board' && e.source.boardId === board.id;
+                // Project members (root board) are managed by owners only, as on the server.
+                const editable =
+                  canManage &&
+                  !me &&
+                  rank(e.role) <= rank(myRole) &&
+                  (!isRoot || myRole === 'owner');
+                return (
+                  <li key={e.user.id} className="share__row">
+                    <Avatar name={e.user.name} size={30} />
+                    <span className="share__who">
+                      <span className="share__name">
+                        {me ? t('share.you', { name: e.user.name }) : e.user.name}
+                      </span>
+                      <span className="share__sub">{sourceText(t, e, board.id, isRoot)}</span>
+                    </span>
+                    {editable ? (
+                      <RoleSelect
+                        value={e.role}
+                        choices={choices}
+                        label={t('share.roleOf', { name: e.user.name })}
+                        onChange={(role) => run(() => setRole(e, role))()}
+                      />
+                    ) : (
+                      <span className="share__role">{t(`roles.${e.role}`)}</span>
+                    )}
+                    {editable && own ? (
+                      <IconButton
+                        icon="close"
+                        label={t('share.remove', { name: e.user.name })}
+                        onClick={run(() => remove(e))}
+                      />
+                    ) : (
+                      <span className="share__spacer" />
+                    )}
+                  </li>
+                );
+              })}
+              {emailInvites.map((i) => (
+                <li key={i.id} className="share__row share__row--pending">
+                  <span className="share__pending-avatar" aria-hidden="true">
+                    <Icon name="mail" size={14} />
                   </span>
-                  <span className="share__sub">{sourceText(t, e, board.id, isRoot)}</span>
-                </span>
-                {editable ? (
-                  <RoleSelect
-                    value={e.role}
-                    choices={choices}
-                    label={t('share.roleOf', { name: e.user.name })}
-                    onChange={(role) => run(() => setRole(e, role))()}
-                  />
-                ) : (
-                  <span className="share__role">{t(`roles.${e.role}`)}</span>
-                )}
-                {editable && own ? (
+                  <span className="share__who">
+                    <span className="share__name">{i.email}</span>
+                    <span className="share__sub">
+                      {t('share.pending', {
+                        role: i.role ? t(`roles.${i.role}`) : '',
+                        when: relative(i.lastSentAt ?? i.createdAt),
+                      })}
+                    </span>
+                  </span>
+                  {i.emailSent && (
+                    <Button
+                      variant="ghost"
+                      onClick={run(() => api.post(`/invitations/${i.id}/resend`, {}))}
+                    >
+                      {t('share.resend')}
+                    </Button>
+                  )}
                   <IconButton
                     icon="close"
-                    label={t('share.remove', { name: e.user.name })}
-                    onClick={run(() => remove(e))}
+                    label={t('share.cancelInvite', { email: i.email })}
+                    onClick={run(() => api.delete(`/invitations/${i.id}`))}
                   />
-                ) : (
-                  <span className="share__spacer" />
-                )}
-              </li>
-            );
-          })}
-          {emailInvites.map((i) => (
-            <li key={i.id} className="share__row share__row--pending">
-              <span className="share__pending-avatar" aria-hidden="true">
-                <Icon name="mail" size={14} />
-              </span>
-              <span className="share__who">
-                <span className="share__name">{i.email}</span>
-                <span className="share__sub">
-                  {t('share.pending', {
-                    role: i.role ? t(`roles.${i.role}`) : '',
-                    when: relative(i.lastSentAt ?? i.createdAt),
-                  })}
-                </span>
-              </span>
-              {i.emailSent && (
-                <Button
-                  variant="ghost"
-                  onClick={run(() => api.post(`/invitations/${i.id}/resend`, {}))}
-                >
-                  {t('share.resend')}
-                </Button>
-              )}
-              <IconButton
-                icon="close"
-                label={t('share.cancelInvite', { email: i.email })}
-                onClick={run(() => api.delete(`/invitations/${i.id}`))}
-              />
-            </li>
-          ))}
-        </ul>
+                </li>
+              ))}
+            </ul>
 
-        {canManage && (
-          <LinkSection
-            boardId={board.id}
-            link={link ?? null}
-            choices={choices}
-            onChange={load}
-            onError={fail}
-          />
+            {canManage && (
+              <LinkSection
+                boardId={board.id}
+                link={link ?? null}
+                choices={choices}
+                onChange={load}
+                onError={fail}
+              />
+            )}
+            {access && !canManage && <p className="share__note ink-muted">{t('share.readOnly')}</p>}
+          </div>
         )}
-        {access && !canManage && <p className="share__note ink-muted">{t('share.readOnly')}</p>}
       </div>
     </Dialog>
+  );
+}
+
+type ShareTab = 'people' | 'guests';
+const TABS: ShareTab[] = ['people', 'guests'];
+
+/** People with a role, or links for guests without an account. */
+function ShareTabs({
+  id,
+  tab,
+  onTab,
+}: {
+  id: string;
+  tab: ShareTab;
+  onTab: (tab: ShareTab) => void;
+}) {
+  const { t } = useTranslation();
+  const onKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
+    if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight' && e.key !== 'Home' && e.key !== 'End')
+      return;
+    e.preventDefault();
+    const at = TABS.indexOf(tab);
+    const next =
+      e.key === 'Home'
+        ? TABS[0]
+        : e.key === 'End'
+          ? TABS[TABS.length - 1]
+          : TABS[(at + (e.key === 'ArrowRight' ? 1 : TABS.length - 1)) % TABS.length];
+    if (!next) return;
+    onTab(next);
+    document.getElementById(`${id}-tab-${next}`)?.focus();
+  };
+  return (
+    <div className="share__tabs" role="tablist" aria-label={t('share.tabs')} onKeyDown={onKeyDown}>
+      {TABS.map((value) => (
+        <button
+          key={value}
+          id={`${id}-tab-${value}`}
+          type="button"
+          role="tab"
+          className="share__tab"
+          aria-selected={tab === value}
+          aria-controls={`${id}-${value}`}
+          tabIndex={tab === value ? 0 : -1}
+          onClick={() => onTab(value)}
+        >
+          {t(`share.tab.${value}`)}
+        </button>
+      ))}
+    </div>
   );
 }
 

@@ -40,6 +40,21 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   );
 }
 
+const NO_SESSION: SessionState = {
+  instance: null,
+  user: null,
+  loading: false,
+  refresh: async () => {},
+};
+
+/**
+ * For pages used without an account, such as the guest page of a share link: components that
+ * read the session see nobody signed in, and nothing asks the server for one.
+ */
+export function NoSessionProvider({ children }: { children: ReactNode }) {
+  return <SessionContext.Provider value={NO_SESSION}>{children}</SessionContext.Provider>;
+}
+
 export function useSession(): SessionState {
   const ctx = useContext(SessionContext);
   if (!ctx) throw new Error('useSession outside SessionProvider');

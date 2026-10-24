@@ -179,6 +179,10 @@ export interface CanvasProps {
   preview?: boolean;
   peers: Peer[];
   onOpenBoard: (boardId: string) => void;
+  /** Told whenever the selection changes. */
+  onSelectionChange?: (ids: ReadonlySet<string>) => void;
+  /** Opens an image, file or frame in a view of the page's own; return false for the default. */
+  onOpen?: (el: Element) => boolean;
 }
 
 /**
@@ -198,6 +202,8 @@ export function Canvas({
   preview = false,
   peers,
   onOpenBoard,
+  onSelectionChange,
+  onOpen,
 }: CanvasProps) {
   const { t } = useTranslation();
   const { instance } = useSession();
@@ -357,6 +363,10 @@ export function Canvas({
   useEffect(() => {
     presence.selection([...selection], editing);
   }, [presence, selection, editing]);
+
+  useEffect(() => {
+    onSelectionChange?.(selection);
+  }, [selection, onSelectionChange]);
 
   // Drop selection entries that were deleted (here or by someone else).
   useEffect(() => {
@@ -620,6 +630,7 @@ export function Canvas({
   const openElement = useCallback(
     (el: Element) => {
       if (el.type === 'board') onOpenBoard(el.boardId);
+      else if (onOpen?.(el)) return;
       else if (el.type === 'link') {
         const href = webUrl(el.url);
         if (href) window.open(href, '_blank', 'noopener,noreferrer');
@@ -633,7 +644,7 @@ export function Canvas({
         setEditing(el.id);
       }
     },
-    [onOpenBoard, readOnly, select, setEditing],
+    [onOpenBoard, onOpen, readOnly, select, setEditing],
   );
 
   // Pointer gestures ----------------------------------------------------------
@@ -1374,11 +1385,11 @@ export function Canvas({
         ? [{ label: t('board.menu.open'), action: () => openElement(single) }]
         : []),
       ...(single && (single.type === 'image' || single.type === 'file')
-        ? [{ label: t('board.menu.viewImage'), action: () => setViewing(single.id) }]
+        ? [{ label: t('board.menu.viewImage'), action: () => openElement(single) }]
         : []),
       ...(single?.type === 'frame'
         ? [
-            { label: t('board.menu.details'), action: () => setFramePanel(single.id) },
+            { label: t('board.menu.details'), action: () => openElement(single) },
             ...(readOnly
               ? []
               : [{ label: t('board.menu.draw'), action: () => setDrawing(single.id) }]),
