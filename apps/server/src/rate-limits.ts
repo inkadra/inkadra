@@ -26,6 +26,7 @@ export function addressBucket(address: string): string {
 }
 
 const MAX_KEYS = 10_000;
+const EVICTION_SCAN = 64;
 
 /**
  * Per-process sliding windows with a memory bound. When every slot is taken, expired entries go
@@ -45,8 +46,14 @@ export class RateLimiter {
   protected inFlight(_key: string) {
     return false;
   }
+  /** Hits of a key inside the window, without allocating. */
+  protected count(key: string, now = Date.now()) {
+    let n = 0;
+    for (const t of this.hits.get(key) ?? []) if (now - t < this.windowMs) n++;
+    return n;
+  }
   protected isBlocked(key: string) {
-    return this.recent(key).length >= this.max;
+    return this.count(key) >= this.max;
   }
   /** Moves a key to the most recently used end of the table. */
   protected store(key: string, times: number[]) {
@@ -55,27 +62,39 @@ export class RateLimiter {
   }
   protected room(key: string) {
     if (this.hits.has(key) || this.hits.size < MAX_KEYS) return true;
+    // Only the least recently used end is looked at, so a flood costs a bounded amount of work
+    // per request: expired entries found there go, then an unblocked key, then a blocked one.
     const now = Date.now();
+    let unblocked: string | undefined;
+    let blocked: string | undefined;
+    let looked = 0;
     for (const [k, times] of this.hits) {
-      if (!this.inFlight(k) && now - (times.at(-1) ?? 0) >= this.windowMs) this.hits.delete(k);
+      if (looked++ >= EVICTION_SCAN) break;
+      if (this.inFlight(k)) continue;
+      if (now - (times.at(-1) ?? 0) >= this.windowMs) {
+        this.hits.delete(k);
+        continue;
+      }
+      if (this.isBlocked(k)) blocked ??= k;
+      else {
+        unblocked = k;
+        break;
+      }
     }
     if (this.hits.size < MAX_KEYS) return true;
-    let blockedVictim: string | undefined;
-    for (const k of this.hits.keys()) {
-      if (this.inFlight(k)) continue;
-      if (!this.isBlocked(k)) {
-        this.hits.delete(k);
-        return true;
-      }
-      blockedVictim ??= k;
-    }
-    if (blockedVictim === undefined) return false;
-    this.hits.delete(blockedVictim);
+    const victim = unblocked ?? blocked;
+    if (victim === undefined) return false;
+    this.hits.delete(victim);
     return true;
   }
   take(key: string) {
     const recent = this.recent(key);
-    if (recent.length >= this.max || !this.room(key)) return false;
+    if (recent.length >= this.max) {
+      // A key still being refused stays away from the eviction end of the table.
+      this.store(key, recent);
+      return false;
+    }
+    if (!this.room(key)) return false;
     this.store(key, [...recent, Date.now()]);
     return true;
   }
@@ -88,7 +107,7 @@ export class Failures extends RateLimiter {
     return this.pending.has(key);
   }
   protected override isBlocked(key: string) {
-    return this.recent(key).length + (this.pending.get(key) ?? 0) >= this.max;
+    return this.count(key) + (this.pending.get(key) ?? 0) >= this.max;
   }
   blocked(key: string) {
     return this.isBlocked(key) || !this.room(key);

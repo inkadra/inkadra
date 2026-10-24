@@ -41,6 +41,15 @@ describe('per-process rate limits', () => {
     expect(limiter.take('9999')).toBe(false);
   });
 
+  it('bounds the work per request when a flood fills the table', () => {
+    vi.spyOn(Date, 'now').mockReturnValue(100_000);
+    const limiter = new RateLimiter(1, 60_000);
+    for (let i = 0; i < 10_000; i++) limiter.take(String(i));
+    const started = performance.now();
+    for (let i = 0; i < 20_000; i++) limiter.take(`flood-${i}`);
+    expect(performance.now() - started).toBeLessThan(1000);
+  });
+
   it('retains wrong-password counters and pending checks under capacity pressure', () => {
     const now = vi.spyOn(Date, 'now').mockReturnValue(100_000);
     const failures = new Failures(2, 1000);
