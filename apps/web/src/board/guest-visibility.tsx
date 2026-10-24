@@ -1,7 +1,8 @@
 import { updateElements } from '@inkadra/canvas-core';
 import { type Element, hiddenFromGuests } from '@inkadra/doc-schema';
-import { useSyncExternalStore } from 'react';
+import { useContext, useSyncExternalStore } from 'react';
 import { useTranslation } from 'react-i18next';
+import { GuestModeContext } from './context.ts';
 import { type BoardStore, LOCAL } from './store.ts';
 
 /** Only explicit flags change: inherited hiding is never copied onto children. */
@@ -23,6 +24,8 @@ type Hideable = Pick<Element, 'id' | 'parent' | 'guestHidden'>;
 
 /** Elements on the canvas read their own flag; only children subscribe to their containers. */
 export function GuestVisibility({ store, element }: { store: BoardStore; element: Hideable }) {
+  const guest = useContext(GuestModeContext);
+  if (guest) return null;
   if (element.parent === null) return <GuestMark state={element.guestHidden ? 'hidden' : null} />;
   return <NestedGuestVisibility store={store} id={element.id} />;
 }
