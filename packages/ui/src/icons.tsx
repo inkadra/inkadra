@@ -3,6 +3,15 @@ import type { SVGProps } from 'react';
 
 /** Line icons from the design reference: 24 grid, 1.6 stroke, round caps. */
 const paths = {
+  comment: <path d="M4 4h16v12H9l-5 4zM8 8h8M8 12h5" />,
+  bell: <path d="M5 17h14l-2-3V9a5 5 0 0 0-10 0v5zM10 20h4M12 2v2" />,
+  clock: (
+    <>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 6v6l4 2" />
+    </>
+  ),
+  check: <path d="M5 12l4 4L19 6" />,
   home: <path d="M4 11l8-7 8 7v9H4z" />,
   board: <path d="M4 4h16v16H4zM9 4v16M15 9h5" />,
   storyboard: (

@@ -6,6 +6,7 @@ import { encode } from 'uqr';
 import { LOCALES } from '../i18n/index.ts';
 import { type AuthSession, api, authApi, RequestError } from '../lib/api.ts';
 import { useSession } from '../lib/session.tsx';
+import { EmailNotifications } from '../notifications/Notifications.tsx';
 import { GoogleG } from './SignInOptions.tsx';
 import './settings.css';
 
@@ -24,6 +25,7 @@ export function Settings() {
       <h1 className="settings__title">{t('settings.title')}</h1>
       <p className="ink-muted settings__lead">{t('settings.lead')}</p>
       <Profile />
+      <EmailNotifications />
       <SignInMethods accounts={accounts} onChange={loadAccounts} />
       {hasPassword && <ChangePassword />}
       <TwoFactor hasPassword={hasPassword} />

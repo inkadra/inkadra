@@ -14,6 +14,7 @@ import {
 import { Button, EmptyState } from '@inkadra/ui';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { CardReview } from '../CardReview.tsx';
 import { GuestVisibility } from '../guest-visibility.tsx';
 import { type BoardStore, LOCAL } from '../store.ts';
 import { useBoardAspect } from './aspect.ts';
@@ -204,6 +205,7 @@ export function ShotList({
                         strokes={f.strokes}
                         pixels={240}
                       />
+                      <CardReview elementId={f.id} />
                     </td>
                     <td className="shots__label">
                       {labels.get(f.id)} <GuestVisibility store={store} element={f} />

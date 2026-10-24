@@ -178,8 +178,10 @@ export function ContextBar({
   onColor,
   onTags,
   extra,
+  onComments,
 }: {
   box: Rect;
+  onComments?: (() => void) | undefined;
   elements: Element[];
   editor: Editor | null;
   readOnly: boolean;
@@ -196,7 +198,19 @@ export function ContextBar({
   extra?: ReactNode;
 }) {
   const { t } = useTranslation();
-  if (readOnly || elements.length === 0) return null;
+  if (elements.length === 0 || (readOnly && !onComments)) return null;
+  if (readOnly && onComments)
+    return (
+      <div
+        className="ctxbar"
+        role="toolbar"
+        aria-label={t('board.contextBar')}
+        style={{ left: Math.max(8, box.x), top: box.y - 44 < 8 ? box.y + box.h + 8 : box.y - 44 }}
+        data-chrome
+      >
+        <BarButton icon="comment" label={t('comments.open')} onClick={onComments} />
+      </div>
+    );
   const free = elements.filter((e) => e.parent === null);
   const notes = elements.filter((e) => e.type === 'note');
   const locked = elements.some((e) => e.locked);
@@ -211,6 +225,7 @@ export function ContextBar({
       style={{ left: Math.max(8, box.x), top }}
       data-chrome
     >
+      {onComments && <BarButton icon="comment" label={t('comments.open')} onClick={onComments} />}
       {editor && (
         <>
           <BarButton
