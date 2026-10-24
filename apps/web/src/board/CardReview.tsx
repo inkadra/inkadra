@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 import { Icon, type IconName } from '@inkadra/ui';
-import { memo, useEffect, useRef } from 'react';
+import { memo, useContext, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
+import { GuestModeContext } from './context.ts';
 import { type KnownReviewStatus, reviewKey } from './review-model.ts';
 import { openComments, useReviews } from './review-store.ts';
 import './review.css';
@@ -31,7 +32,8 @@ export function ReviewChip({ status, compact = false }: { status: string; compac
  * What a card shows of its comments and review: nothing until there is something to show. It
  * reads the board's shared data through selectors, so it never fetches nor re-renders others.
  * Pins are fractions of the card on the canvas, so other views (`withPins` false) show only
- * the badges; nothing shows while a version is previewed.
+ * the badges; nothing shows while a version is previewed nor on the guest page, which has its
+ * own review controls.
  */
 export const CardReview = memo(function CardReview({
   elementId,
@@ -41,7 +43,8 @@ export const CardReview = memo(function CardReview({
   withPins?: boolean;
 }) {
   const { t } = useTranslation();
-  const hidden = useReviews((s) => s.preview);
+  const guest = useContext(GuestModeContext);
+  const hidden = useReviews((s) => s.preview) || guest;
   const count = useReviews((s) => s.counts.get(elementId));
   const review = useReviews((s) => s.reviews.get(elementId));
   const allPins = useReviews((s) => s.pins.get(elementId));
