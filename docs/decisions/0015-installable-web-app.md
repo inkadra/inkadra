@@ -12,7 +12,7 @@ what they offer is caching strategies we do not want, and their generated worker
 to read in a review.
 
 **Decision.**
-- The worker is about seventy lines of our own code (`apps/web/src/pwa/sw.ts`); which requests
+- The worker is under a hundred lines of our own code (`apps/web/src/pwa/sw.ts`); which requests
   it answers is one pure function (`routing.ts`) with its own tests. A small Vite plugin
   (`apps/web/pwa/plugin.ts`) builds it into `/sw.js` with the list of the build's files, and
   writes the manifest, the offline page and the icons. No new dependency.
@@ -23,12 +23,21 @@ to read in a review.
 - Everything else goes to the network as if there were no worker: `/api/*` (including
   `/api/auth/*` and its OAuth callbacks, user files under `/api/v1/assets` and tus uploads),
   `/collab`, any other origin, anything other than `GET`, range requests and requests with an
-  `Authorization` header. Navigation preload stays off, so an OAuth callback is requested
-  exactly once.
+  `Authorization` header. Where the browser has the Service Worker Static Routing API
+  (Chromium 123 and later), the worker registers `/api` and `/collab` as network routes when it
+  installs, so the browser does not even start it for them; elsewhere its fetch handler leaves
+  them alone. Navigation preload stays off, so an OAuth callback is requested exactly once.
 - A new version installs in the background and waits. The page shows _New version available —
-  Update_; pressing it activates the new worker and reloads. Activation deletes the caches of
-  older versions. Until then an open board keeps the code and the lazily loaded chunks of the
-  version it started with, even after the server has been upgraded.
+  Update_; pressing it activates the new worker and reloads. If the open board has changes the
+  server has not confirmed, or an upload is running or paused, the update waits for them and
+  says so: nothing is stored locally, so a reload would lose them. A tab opened after the
+  upgrade already runs the new version (the worker tells it which build files it holds), so it
+  gets no prompt and activates the new worker without reloading. Activation deletes the caches
+  of older versions.
+- Until then a tab keeps the code and the lazily loaded chunks of the version it started with,
+  even after the server has been upgraded. This holds per tab, not per browser: once another
+  tab activates the new version, the old cache is gone and this tab's chunks that were not
+  loaded yet fail; it gets a prompt to reload.
 - The worker is registered only by production builds and only in secure contexts (HTTPS or
   `localhost`). The manifest's colours come from the design tokens; the window colour follows
   the theme in use. The icons are drawn at build time from the shapes of `favicon.svg`.
@@ -37,4 +46,8 @@ to read in a review.
 offline page. Working offline on a board needs a local copy of documents and files, which is
 a separate decision. Instances served over plain HTTP do not get the worker or the install
 option. A reverse proxy or a future Content-Security-Policy must allow `worker-src 'self'` and
-`manifest-src 'self'`; the server sets none today.
+`manifest-src 'self'`, and the inline `<script>` and `<style>` of `offline.html` and the inline
+theme script of `index.html` (with `'unsafe-inline'` or their hashes); the server sets none
+today. The canvas performance test blocks service workers, so its timings do not include the
+worker: it measures the app, and the worker's own cost is small next to it (it answers only
+build files, from a cache, and never sees the API or the image variants).

@@ -1,19 +1,28 @@
 import { Icon } from '@inkadra/ui';
 import { useTranslation } from 'react-i18next';
-import { dismissUpdate, useUpdate } from './register.ts';
+import { applyUpdate, dismissUpdate, useUpdate } from './register.ts';
 import './pwa.css';
 
-/** "New version available — Update": small, out of the way, never blocking. */
+/**
+ * "New version available — Update": small, out of the way, never blocking. While the board
+ * is saving or an upload runs, the update waits for them and says so.
+ */
 export function UpdatePrompt() {
   const { t } = useTranslation();
   const update = useUpdate();
   if (!update) return null;
   return (
     <div className="pwa-update" role="status">
-      <span>{t('pwa.updateAvailable')}</span>
-      <button type="button" className="pwa-update__action" onClick={update}>
-        {t('pwa.update')}
-      </button>
+      {update.deferred ? (
+        <span>{t('pwa.updateWhenSaved')}</span>
+      ) : (
+        <>
+          <span>{t('pwa.updateAvailable')}</span>
+          <button type="button" className="pwa-update__action" onClick={applyUpdate}>
+            {t('pwa.update')}
+          </button>
+        </>
+      )}
       <button
         type="button"
         className="pwa-update__close"

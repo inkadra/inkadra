@@ -3,6 +3,7 @@ import { boardDocName } from '@inkadra/doc-schema';
 import { COLLAB_PATH } from '@inkadra/shared/constants';
 import { useEffect, useState } from 'react';
 import * as Y from 'yjs';
+import { setBusy } from '../pwa/busy.ts';
 import { BoardStore } from './store.ts';
 
 /**
@@ -43,11 +44,20 @@ export function useBoardConnection(boardId: string): BoardConnection | null {
       readOnly: false,
       accessChangedAt: null,
     };
+    // Changes the server has not confirmed yet: a reload for a new version waits for them.
+    const busy = {};
+    let unsynced = 0;
+    const hold = () =>
+      setBusy(busy, unsynced > 0 || state.status === 'connecting' || state.status === 'offline');
     const provider = new HocuspocusProvider({
       url: collabUrl(),
       name: boardDocName(boardId),
       document: doc,
       onSynced: () => update({ status: 'synced' }),
+      onUnsyncedChanges: ({ number }) => {
+        unsynced = number;
+        hold();
+      },
       onDisconnect: () => {
         if (state.status !== 'denied' && state.status !== 'signedOut')
           update({ status: 'offline' });
@@ -69,10 +79,12 @@ export function useBoardConnection(boardId: string): BoardConnection | null {
     });
     function update(patch: Partial<typeof state>) {
       state = { ...state, ...patch };
+      hold();
       setConn({ store, provider, ...state });
     }
     update({});
     return () => {
+      setBusy(busy, false);
       provider.destroy();
       store.destroy();
       doc.destroy();
