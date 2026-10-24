@@ -194,5 +194,8 @@
   },
   "error_server": {
     "message": "Qualcosa non ha funzionato sul server: riprova."
+  },
+  "error_clip_unconfirmed": {
+    "message": "Controlla la board prima di riprovare."
   }
 }

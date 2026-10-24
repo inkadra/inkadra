@@ -194,5 +194,8 @@
   },
   "error_server": {
     "message": "Something went wrong on the server: try again."
+  },
+  "error_clip_unconfirmed": {
+    "message": "Check the board before trying again."
   }
 }
