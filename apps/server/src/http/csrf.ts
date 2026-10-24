@@ -1,9 +1,8 @@
 import { API_PREFIX } from '@inkadra/shared';
 import type { FastifyInstance, FastifyRequest } from 'fastify';
-import { bearerToken } from '../tokens.ts';
 import { sendError } from './errors.ts';
 
-const UNSAFE = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
+const SAFE = new Set(['GET', 'HEAD', 'OPTIONS']);
 const GUEST_PREFIX = `${API_PREFIX}/guest/`;
 /** Better Auth's session cookie (`cookiePrefix: 'inkadra'`), with `__Secure-` over HTTPS. */
 const SESSION_COOKIE = /(?:^|;\s*)(?:__Secure-)?inkadra\.session_token=/;
@@ -11,15 +10,16 @@ const SESSION_COOKIE = /(?:^|;\s*)(?:__Secure-)?inkadra\.session_token=/;
 /**
  * Whether a write needs to come from the instance itself (decision 0013): every write under
  * /api/v1/guest/, with or without a guest cookie, and every other write under /api/v1 sent
- * with an account session cookie. Requests with a bearer token (extension, mobile app) carry
- * no ambient credential, so they are not affected.
+ * with an account session cookie. Bearer requests without a session cookie carry no ambient
+ * credential; a Bearer header never exempts a request that also has a session cookie.
  */
-export function needsSameOrigin(req: Pick<FastifyRequest, 'method' | 'url' | 'headers'>) {
-  if (!UNSAFE.has(req.method)) return false;
-  const path = req.url.split('?')[0] ?? '';
+export function needsSameOrigin(req: Pick<FastifyRequest, 'method' | 'routeOptions' | 'headers'>) {
+  if (SAFE.has(req.method)) return false;
+  // The router decodes URL escapes before matching. Inspect its route, never the raw URL.
+  // Unmatched paths have no API handler and must remain 404s.
+  const path = req.routeOptions.url ?? '';
   if (path.startsWith(GUEST_PREFIX)) return true;
-  if (!path.startsWith(`${API_PREFIX}/`)) return false;
-  if (bearerToken(req.headers.authorization)) return false;
+  if (path !== API_PREFIX && !path.startsWith(`${API_PREFIX}/`)) return false;
   return SESSION_COOKIE.test(req.headers.cookie ?? '');
 }
 

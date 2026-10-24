@@ -447,10 +447,18 @@ export function inlineJobs(deps: MediaDeps, log: Logger): Jobs & { idle(): Promi
  * and dropped once stale: the next change or a reload brings clients up to date anyway.
  */
 export function queuedBoardNotifier(url: string, log: Logger, opts: { prefix?: string } = {}) {
-  const connection = createRedis(url);
+  const connection = new IORedis(url, {
+    maxRetriesPerRequest: 1,
+    lazyConnect: true,
+    enableOfflineQueue: false,
+  });
   const queue = new Queue(QUEUES.collab, { connection, prefix: opts.prefix });
   const notifier: BoardNotifier = {
     notify(boardId, notice) {
+      if (connection.status !== 'ready') {
+        log.warn({ boardId }, 'board notice dropped: Redis is not ready');
+        return;
+      }
       const adding = queue.add(
         'notice',
         { boardId, notice, sentAt: Date.now() },

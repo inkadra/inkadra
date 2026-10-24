@@ -17,12 +17,13 @@ import { storedElement } from '../board-content.ts';
 import { type BoardNotifier, noNotices } from '../board-notices.ts';
 import type { Database } from '../db/client.ts';
 import { elementReview, elementReviewEvent } from '../db/schema.ts';
-import { notify, Recipients } from '../notifications.ts';
+import { afterCommit, notify, Recipients } from '../notifications.ts';
 import { iso } from './api-routes.ts';
 import { requireActor } from './auth-routes.ts';
 import { authorOf, loadPeople, type People } from './authors.ts';
 import { HttpError } from './errors.ts';
 import { afterCursor, atText, decodeCursor, pageOf } from './keyset.ts';
+import { RateLimiter } from './link-previews.ts';
 
 interface Deps {
   db: Database;
@@ -56,6 +57,7 @@ export function registerReviewRoutes(app: FastifyInstance, deps: Deps) {
   const { db, auth } = deps;
   const notices = deps.notices ?? noNotices;
   const v1 = (path: string) => `${API_PREFIX}${path}`;
+  const limiter = new RateLimiter(30, 60_000);
 
   app.get(v1('/boards/:boardId/reviews'), async (req) => {
     const actor = await requireActor(auth, req, db);
@@ -87,6 +89,8 @@ export function registerReviewRoutes(app: FastifyInstance, deps: Deps) {
     const { boardId, elementId } = ElementParams.parse(req.params);
     const input = SetElementReview.parse(req.body);
     const access = await requireBoardRole(db, actor, boardId, 'commenter');
+    if (!limiter.take(actor.id))
+      throw new HttpError('rate_limited', 'Too many review writes: wait a minute.');
     const card = await storedElement(db, boardId, elementId);
     if (!card) throw new HttpError('not_found', 'Card not found.');
     const note = input.note ? input.note : null;
@@ -97,14 +101,13 @@ export function registerReviewRoutes(app: FastifyInstance, deps: Deps) {
     );
     const result = await db.transaction(async (tx) => {
       // The team row exists from the first change on; lock it so changes queue up.
-      const inserted = await tx
+      await tx
         .insert(elementReview)
         .values({ boardId, elementId, projectId: access.board.projectId, status: 'none' })
-        .onConflictDoNothing()
-        .returning({ id: elementReview.id });
+        .onConflictDoNothing();
       const [current] = await tx.select().from(elementReview).where(teamRow).for('update');
       if (!current) throw new Error('Team review row missing');
-      if (inserted.length === 0 && current.status === input.status && current.note === note)
+      if (current.status === input.status && current.note === note)
         return { row: current, previous: current.status, requestedBy: current.requestedBy };
       const [row] = await tx
         .update(elementReview)
@@ -130,19 +133,23 @@ export function registerReviewRoutes(app: FastifyInstance, deps: Deps) {
       return { row, previous: current.status, requestedBy: current.requestedBy, changed: true };
     });
     if ('changed' in result) {
-      if (result.previous !== input.status)
-        await notify(
-          db,
-          {
-            actor: { userId: actor.id },
-            projectId: access.board.projectId,
-            boardId,
-            elementId,
-            reviewStatus: input.status,
-          },
-          new Recipients(actor.id).add(card.createdBy, 'review').add(result.requestedBy, 'review'),
-        );
-      notices.notify(boardId, { type: 'review', elementId });
+      await afterCommit(req.log, async () => {
+        if (result.previous !== input.status)
+          await notify(
+            db,
+            {
+              actor: { userId: actor.id },
+              projectId: access.board.projectId,
+              boardId,
+              elementId,
+              reviewStatus: input.status,
+            },
+            new Recipients(actor.id)
+              .add(card.createdBy, 'review')
+              .add(result.requestedBy, 'review'),
+          );
+      });
+      await afterCommit(req.log, () => notices.notify(boardId, { type: 'review', elementId }));
     }
     return toElementReview(result.row, await peopleOf(db, [result.row]));
   });

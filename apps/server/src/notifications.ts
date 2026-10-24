@@ -6,7 +6,7 @@ import {
 } from '@inkadra/shared';
 import { and, asc, eq, getTableColumns, gt, inArray, isNull, lt, or, sql } from 'drizzle-orm';
 import type { Logger } from 'pino';
-import { boardRole, boardRoles, touchesProject } from './access.ts';
+import { boardRoles, boardRolesForPeople, touchesProject } from './access.ts';
 import type { Database } from './db/client.ts';
 import {
   board,
@@ -18,6 +18,7 @@ import {
 } from './db/schema.ts';
 import { authorOf, loadPeople } from './http/authors.ts';
 import { afterCursor, atText, type Keyset } from './http/keyset.ts';
+import { RateLimiter } from './http/link-previews.ts';
 import { mailText } from './mail-texts.ts';
 import { actionMail, type Mailer } from './mailer.ts';
 
@@ -35,6 +36,17 @@ export const NOTIFICATION_RETENTION_DAYS = 90;
 /** Email of `immediate` waits this long after the first unread one, to group what follows. */
 export const EMAIL_GROUP_DELAY_MS = 3 * 60_000;
 const MAX_PER_EMAIL = 50;
+// Like the write limiters, per process. Bound amplification from large threads as well as edits.
+const fanoutLimiters = new WeakMap<Database, RateLimiter>();
+
+/** Post-commit effects are best effort: never invite a retry of a write already saved. */
+export async function afterCommit(log: Pick<Logger, 'error'>, work: () => unknown) {
+  try {
+    await work();
+  } catch (err) {
+    log.error({ err }, 'post-commit notification failed');
+  }
+}
 const EXCERPT_LENGTH = 280;
 const iso = (d: Date) => d.toISOString();
 
@@ -93,11 +105,19 @@ export async function notify(
   recipients: Recipients,
 ): Promise<number> {
   const values: Array<typeof notification.$inferInsert> = [];
+  let limiter = fanoutLimiters.get(db);
+  if (!limiter) {
+    limiter = new RateLimiter(300, 60_000);
+    fanoutLimiters.set(db, limiter);
+  }
+  const roles = event.boardId
+    ? await boardRolesForPeople(db, event.boardId, [...recipients.types.keys()])
+    : null;
+  const actorKey = event.actor.userId ?? event.actor.guestId;
   for (const [userId, type] of recipients.types) {
-    const visible = await visibility(db, userId, [
-      { boardId: event.boardId, projectId: event.projectId },
-    ]);
-    if (!visible({ boardId: event.boardId, projectId: event.projectId })) continue;
+    const visible = roles ? roles.has(userId) : (await visibility(db, userId, [event]))(event);
+    if (!visible) continue;
+    if (actorKey && !limiter.take(actorKey)) break;
     values.push({
       userId,
       type,
@@ -162,16 +182,15 @@ export async function renderNotifications(
   );
   const names = new Map([...people.users].map(([id, u]) => [id, u.name]));
   const readableNames = new Map<string, Map<string, string>>();
-  for (const c of comments) {
-    let allowed = readableNames.get(c.boardId);
-    if (!allowed) {
-      allowed = new Map();
-      readableNames.set(c.boardId, allowed);
-    }
-    for (const id of c.mentions) {
-      if (names.has(id) && (await boardRole(db, { id }, c.boardId))?.role)
-        allowed.set(id, names.get(id) as string);
-    }
+  for (const boardId of new Set(comments.map((c) => c.boardId))) {
+    const ids = comments.filter((c) => c.boardId === boardId).flatMap((c) => c.mentions);
+    const roles = await boardRolesForPeople(db, boardId, ids);
+    readableNames.set(
+      boardId,
+      new Map(
+        [...roles.keys()].flatMap((id) => (names.has(id) ? [[id, names.get(id) as string]] : [])),
+      ),
+    );
   }
   const byComment = new Map(comments.map((c) => [c.id, c]));
   const titles = new Map(boards.map((b) => [b.id, b.title]));
@@ -237,6 +256,20 @@ function mailLine(texts: ReturnType<typeof mailText>, n: Notification): string {
   return texts.notificationLine(n.type, who, where, n.excerpt, n.reviewStatus);
 }
 
+/** Hidden mail is handled once, even if access comes back later. Keep the in-app row. */
+async function skipHiddenMail(
+  db: Database,
+  rows: NotificationRow[],
+  visible: (row: NotificationRow) => boolean,
+) {
+  const ids = rows.filter((r) => !visible(r)).map((r) => r.id);
+  if (ids.length)
+    await db
+      .update(notification)
+      .set({ emailedAt: new Date() })
+      .where(and(inArray(notification.id, ids), isNull(notification.emailedAt)));
+}
+
 /**
  * Sends one email with the pending notifications of a person, after checking again that they
  * can open each board. The rows are claimed before sending, so two workers never send them
@@ -255,6 +288,7 @@ async function sendTo(
     .where(eq(notificationPreference.userId, userId));
   if ((preference?.email ?? 'immediate') !== kind) return false;
   const visible = await visibility(db, userId, pending);
+  await skipHiddenMail(db, pending, visible);
   const shown = pending.filter(visible);
   if (shown.length === 0) return false;
   const now = new Date();
@@ -282,9 +316,8 @@ async function sendTo(
       .where(eq(user.id, userId));
     if (!me) return false;
     const texts = mailText(me);
-    const items = await renderNotifications(db, rows.slice(0, MAX_PER_EMAIL));
+    const items = await renderNotifications(db, rows);
     const lines = items.map((n) => mailLine(texts, n));
-    if (rows.length > MAX_PER_EMAIL) lines.push(texts.andMore(rows.length - MAX_PER_EMAIL));
     lines.push(texts.notificationSettings(`${deps.publicUrl}/settings`));
     const first = items[0];
     const sameBoard = first?.boardId && items.every((n) => n.boardId === first.boardId);
@@ -346,6 +379,7 @@ async function pendingByPerson(db: Database, kind: 'immediate' | 'daily', since:
         .orderBy(asc(notification.createdAt), asc(notification.id))
         .limit(500);
       const visible = await visibility(db, userId, rows);
+      await skipHiddenMail(db, rows, visible);
       kept.push(...rows.filter(visible).slice(0, MAX_PER_EMAIL - kept.length));
       const last = rows.at(-1);
       cursor = rows.length === 500 && last ? { at: last.at, id: last.id } : null;
@@ -407,19 +441,23 @@ export async function sendDigests(deps: NotificationMailDeps, now = new Date()) 
       )
       .returning({ userId: notificationPreference.userId });
     if (claimed.length === 0) continue;
+    let delivered = false;
     try {
-      if (await sendTo(deps, userId, pending, 'daily')) sent += 1;
+      delivered = await sendTo(deps, userId, pending, 'daily');
+      if (delivered) sent += 1;
     } catch (err) {
-      await deps.db
-        .update(notificationPreference)
-        .set({ lastDigestAt: null })
-        .where(
-          and(
-            eq(notificationPreference.userId, userId),
-            eq(notificationPreference.lastDigestAt, now),
-          ),
-        );
       deps.log.error({ err }, 'notification digest not sent');
+    } finally {
+      if (!delivered)
+        await deps.db
+          .update(notificationPreference)
+          .set({ lastDigestAt: null })
+          .where(
+            and(
+              eq(notificationPreference.userId, userId),
+              eq(notificationPreference.lastDigestAt, now),
+            ),
+          );
     }
   }
   return { sent };
@@ -427,9 +465,24 @@ export async function sendDigests(deps: NotificationMailDeps, now = new Date()) 
 
 /** Retention: notifications go after 90 days. */
 export async function purgeNotifications(db: Database, now = new Date()) {
-  const removed = await db
-    .delete(notification)
-    .where(lt(notification.createdAt, new Date(+now - NOTIFICATION_RETENTION_DAYS * 86_400_000)))
-    .returning({ id: notification.id });
-  return { removed: removed.length };
+  const cutoff = new Date(+now - NOTIFICATION_RETENTION_DAYS * 86_400_000);
+  let removed = 0;
+  let count: number;
+  do {
+    const result = await db
+      .delete(notification)
+      .where(
+        inArray(
+          notification.id,
+          db
+            .select({ id: notification.id })
+            .from(notification)
+            .where(lt(notification.createdAt, cutoff))
+            .limit(1000),
+        ),
+      );
+    count = result.count;
+    removed += count;
+  } while (count === 1000);
+  return { removed };
 }

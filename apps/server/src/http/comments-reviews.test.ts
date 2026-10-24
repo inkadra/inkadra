@@ -8,7 +8,7 @@ import type { HTTPMethods } from 'fastify';
 import pino from 'pino';
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import * as Y from 'yjs';
-import { boardAccess, boardRoles } from '../access.ts';
+import { boardAccess, boardRoles, boardRolesForPeople } from '../access.ts';
 import { createAuth } from '../auth.ts';
 import { loadConfig } from '../config.ts';
 import { createDatabase, runMigrations } from '../db/client.ts';
@@ -21,6 +21,7 @@ import {
   elementReviewEvent,
   invitation,
   notification,
+  notificationPreference,
   project,
   projectMember,
   shareGuest,
@@ -28,6 +29,7 @@ import {
 } from '../db/schema.ts';
 import { acceptInvitation } from '../invitations.ts';
 import { memoryMailer, noMailer } from '../mailer.ts';
+import * as notifications from '../notifications.ts';
 import {
   EMAIL_GROUP_DELAY_MS,
   purgeNotifications,
@@ -179,7 +181,7 @@ describe.skipIf(!url)('team comments, reviews and notifications', () => {
     await app.close();
     await db.execute(sql`truncate project, notification, notification_preference cascade`);
     app = await createApp({ config, db, auth, log, ...deps, notices });
-    notices.notify.mockClear();
+    notices.notify.mockReset();
     projectId = randomUUID();
     root = randomUUID();
     child = randomUUID();
@@ -238,6 +240,123 @@ describe.skipIf(!url)('team comments, reviews and notifications', () => {
     expect((await call(who, 'DELETE', `/comments/${thread.id}`)).statusCode).toBe(
       outsider ? 404 : writer ? 204 : 403,
     );
+  });
+
+  it('forbids a commenter deleting another writer’s comment', async () => {
+    const other = await create('editor');
+    expect((await call('commenter', 'DELETE', `/comments/${other.id}`)).statusCode).toBe(403);
+    expect((await list()).items[0]?.id).toBe(other.id);
+  });
+
+  it('rejects pins on replies and resolving deleted placeholders', async () => {
+    const thread = await create('commenter', { elementId: card });
+    expect(
+      (
+        await call('editor', 'POST', `/boards/${root}/comments`, {
+          parentId: thread.id,
+          body: 'Pin',
+          pin: { x: 0, y: 0 },
+        })
+      ).statusCode,
+    ).toBe(400);
+    await create('editor', { parentId: thread.id });
+    await call('commenter', 'DELETE', `/comments/${thread.id}`);
+    for (const action of ['resolve', 'reopen'])
+      expect((await call('editor', 'POST', `/comments/${thread.id}/${action}`)).statusCode).toBe(
+        404,
+      );
+  });
+
+  it('preserves the first concurrent resolver and emits one notice', async () => {
+    const thread = await create();
+    notices.notify.mockClear();
+    const results = await Promise.all(
+      ['editor', 'owner'].map((who) => call(who as Who, 'POST', `/comments/${thread.id}/resolve`)),
+    );
+    expect(results.map((r) => r.statusCode)).toEqual([200, 200]);
+    expect(results[0]?.json().resolvedBy).toEqual(results[1]?.json().resolvedBy);
+    expect(results[0]?.json().resolvedAt).toBe(results[1]?.json().resolvedAt);
+    expect(notices.notify).toHaveBeenCalledTimes(1);
+  });
+
+  it('notifies living thread writers, prioritizes mentions, and excludes the actor and deleted authors', async () => {
+    const thread = await create('owner');
+    await create('editor', { parentId: thread.id });
+    const reply = await create('commenter', {
+      parentId: thread.id,
+      body: `Hi @{${people.editor.id}}`,
+    });
+    const recipients = async (id: string) =>
+      (await db.select().from(notification).where(eq(notification.commentId, id)))
+        .map((n) => [n.userId, n.type])
+        .sort();
+    expect(await recipients(reply.id)).toEqual(
+      [
+        [people.owner.id, 'reply'],
+        [people.editor.id, 'mention'],
+      ].sort(),
+    );
+    await call('owner', 'DELETE', `/comments/${thread.id}`);
+    const later = await create('editor', { parentId: thread.id });
+    expect(await recipients(later.id)).toEqual([[people.commenter.id, 'reply']]);
+  });
+
+  it('limits creation and edits together and review writes per person', async () => {
+    const thread = await create();
+    for (let i = 0; i < 29; i++)
+      expect(
+        (await call('commenter', 'PATCH', `/comments/${thread.id}`, { body: `Edit ${i}` }))
+          .statusCode,
+      ).toBe(200);
+    expect(
+      (await call('commenter', 'PATCH', `/comments/${thread.id}`, { body: 'Over limit' }))
+        .statusCode,
+    ).toBe(429);
+    expect(
+      (await call('commenter', 'POST', `/boards/${root}/comments`, { body: 'Over limit' }))
+        .statusCode,
+    ).toBe(429);
+    expect(
+      (await call('editor', 'POST', `/boards/${root}/comments`, { body: 'Other person' }))
+        .statusCode,
+    ).toBe(201);
+    for (let i = 0; i < 30; i++)
+      expect(
+        (
+          await call('commenter', 'PUT', reviewPath(), {
+            status: i % 2 ? 'approved' : 'changes_requested',
+          })
+        ).statusCode,
+      ).toBe(200);
+    expect((await call('commenter', 'PUT', reviewPath(), { status: 'none' })).statusCode).toBe(429);
+    expect((await call('editor', 'PUT', reviewPath(), { status: 'none' })).statusCode).toBe(200);
+  });
+
+  it('keeps committed comments, edits and reviews successful when notifications or notices fail', async () => {
+    const failing = vi
+      .spyOn(notifications, 'notify')
+      .mockRejectedValue(new Error('Notification unavailable'));
+    notices.notify.mockImplementation(() => {
+      throw new Error('Notice unavailable');
+    });
+    try {
+      const thread = await create('commenter', { body: `Saved @{${people.owner.id}}` });
+      expect(await db.select().from(comment)).toHaveLength(1);
+      expect(
+        (
+          await call('commenter', 'PATCH', `/comments/${thread.id}`, {
+            body: `Edited @{${people.editor.id}}`,
+          })
+        ).statusCode,
+      ).toBe(200);
+      expect(
+        (await call('commenter', 'PUT', reviewPath(), { status: 'approved' })).statusCode,
+      ).toBe(200);
+      expect((await db.select().from(elementReview))[0]?.status).toBe('approved');
+      expect(failing).toHaveBeenCalledTimes(3);
+    } finally {
+      failing.mockRestore();
+    }
   });
 
   it('requires authentication for every new endpoint', async () => {
@@ -352,6 +471,23 @@ describe.skipIf(!url)('team comments, reviews and notifications', () => {
       projectId: (await db.select().from(board).where(eq(board.id, foreign)))[0]?.projectId,
     });
     expect((await make({ shareLinkId: foreignLink.id })).statusCode).toBe(400);
+  });
+
+  it('rejects view-only and unrelated same-project audience links with precise errors', async () => {
+    const view = await link(root, { role: 'guest_view' });
+    const unrelated = await link(child);
+    for (const [shareLinkId, message] of [
+      [view.id, 'The link cannot read comments.'],
+      [unrelated.id, 'The link does not include this board.'],
+    ]) {
+      const result = await call('commenter', 'POST', `/boards/${root}/comments`, {
+        body: 'Audience',
+        visibility: 'everyone',
+        shareLinkId,
+      });
+      expect(result.statusCode).toBe(400);
+      expect(result.body).toContain(message);
+    }
   });
 
   it('renders only readable mentions, deduplicates recipients and uses the current body', async () => {
@@ -646,6 +782,28 @@ describe.skipIf(!url)('team comments, reviews and notifications', () => {
     expect(notices.notify).toHaveBeenCalledWith(root, { type: 'review', elementId: card });
   });
 
+  it('skips initial none review events and notifies the card author and requester once each', async () => {
+    expect((await call('commenter', 'PUT', reviewPath(), { status: 'none' })).statusCode).toBe(200);
+    expect(await db.select().from(elementReviewEvent)).toEqual([]);
+    expect(notices.notify).not.toHaveBeenCalled();
+    await call('commenter', 'PUT', reviewPath(), { status: 'in_review' });
+    await call('editor', 'PUT', reviewPath(), { status: 'approved' });
+    const rows = await db
+      .select()
+      .from(notification)
+      .where(eq(notification.reviewStatus, 'approved'));
+    expect(rows.map((n) => [n.userId, n.type]).sort()).toEqual(
+      [
+        [people.owner.id, 'review'],
+        [people.commenter.id, 'review'],
+      ].sort(),
+    );
+    await call('editor', 'PUT', reviewPath(), { status: 'approved' });
+    expect(
+      await db.select().from(notification).where(eq(notification.reviewStatus, 'approved')),
+    ).toHaveLength(2);
+  });
+
   it('compares review timestamps at full precision and prefers team on an exact tie', async () => {
     const l = await link();
     const g = await guest(l.id);
@@ -735,12 +893,85 @@ describe.skipIf(!url)('team comments, reviews and notifications', () => {
     expect((await call('viewer', 'GET', '/me/notifications')).json().items).toEqual([]);
   });
 
+  it('marks only accessible board, project and instance rows read in one update', async () => {
+    await db
+      .insert(boardGrant)
+      .values({ boardId: child, userId: people.outsider.id, role: 'viewer' });
+    const visible = await Promise.all([
+      addNotification('outsider', child),
+      addNotification('outsider', null),
+      addNotification('outsider', null, { projectId: null }),
+    ]);
+    const hidden = await addNotification('outsider', root);
+    const later = await addNotification('outsider', child, {
+      createdAt: new Date(Date.now() + 86400000),
+    });
+    const update = vi.spyOn(db, 'update');
+    try {
+      expect((await call('outsider', 'POST', '/me/notifications/read-all')).statusCode).toBe(200);
+      expect(update).toHaveBeenCalledTimes(1);
+    } finally {
+      update.mockRestore();
+    }
+    const rows = await db.select().from(notification);
+    for (const row of rows) expect(row.readAt !== null).toBe(visible.some((n) => n.id === row.id));
+    expect(rows.find((r) => r.id === hidden.id)?.readAt).toBeNull();
+    expect(rows.find((r) => r.id === later.id)?.readAt).toBeNull();
+    await db.update(board).set({ deletedAt: new Date() }).where(eq(board.id, child));
+    await call('outsider', 'POST', '/me/notifications/read-all', {
+      before: new Date(Date.now() + 2 * 86400000).toISOString(),
+    });
+    expect(
+      (await db.select().from(notification).where(eq(notification.id, later.id)))[0]?.readAt,
+    ).toBeNull();
+  });
+
+  it('bounds notification fan-out per actor without failing writes', async () => {
+    const l = await link();
+    const g = await guest(l.id);
+    const recipients = new notifications.Recipients(null);
+    for (const who of roles.filter((r) => r !== 'outsider'))
+      recipients.add(people[who].id, 'reply');
+    let count = 0;
+    for (let i = 0; i < 80; i++)
+      count += await notifications.notify(
+        db,
+        {
+          actor: { guestId: g.id },
+          projectId,
+          boardId: root,
+        },
+        recipients,
+      );
+    expect(count).toBe(300);
+    expect(await db.select().from(notification)).toHaveLength(300);
+    // Another actor has an independent budget.
+    expect(
+      await notifications.notify(
+        db,
+        { actor: { userId: people.outsider.id }, projectId, boardId: root },
+        recipients,
+      ),
+    ).toBe(4);
+  });
+
   it('matches batched access to boardAccess for project roles and closest grants', async () => {
     await db.insert(boardGrant).values([
       { boardId: root, userId: people.outsider.id, role: 'commenter' },
       { boardId: child, userId: people.outsider.id, role: 'viewer' },
       { boardId: child, userId: people.owner.id, role: 'viewer' },
     ]);
+    for (const id of [root, child, foreign]) {
+      const batched = await boardRolesForPeople(
+        db,
+        id,
+        roles.map((who) => people[who].id),
+      );
+      for (const who of roles)
+        expect(batched.get(people[who].id) ?? null).toBe(
+          (await boardAccess(db, people[who], id))?.role ?? null,
+        );
+    }
     for (const who of roles) {
       const batched = await boardRoles(db, people[who], [root, child, foreign, randomUUID()]);
       for (const id of [root, child, foreign])
@@ -816,6 +1047,81 @@ describe.skipIf(!url)('team comments, reviews and notifications', () => {
     expect(mailer.sent).toHaveLength(1);
     expect(mailer.sent[0]?.text).toContain('Root');
     expect(mailer.sent[0]?.text).not.toContain('Foreign');
+    const hidden = await db.select().from(notification).where(eq(notification.boardId, foreign));
+    expect(hidden).toHaveLength(501);
+    expect(hidden.every((n) => n.emailedAt !== null)).toBe(true);
+    expect(
+      await sendImmediateEmails({
+        db,
+        log,
+        mailer,
+        publicUrl: config.PUBLIC_URL,
+        instanceName: 'Studio',
+      }),
+    ).toEqual({ sent: 0 });
+  });
+
+  it.each(['immediate', 'daily'] as const)(
+    'starts %s email after re-enabling, without the off backlog',
+    async (email) => {
+      const mailer = memoryMailer();
+      const mailDeps = { db, log, mailer, publicUrl: config.PUBLIC_URL, instanceName: 'Studio' };
+      const beforeOff = await addNotification('owner');
+      await call('owner', 'PATCH', '/me/notification-preferences', { email: 'off' });
+      const duringOff = await addNotification('owner');
+      await call('owner', 'PATCH', '/me/notification-preferences', { email });
+      const fresh = await addNotification('owner');
+      const send = email === 'daily' ? sendDigests : sendImmediateEmails;
+      expect(await send(mailDeps, new Date(Date.now() + EMAIL_GROUP_DELAY_MS + 1000))).toEqual({
+        sent: 1,
+      });
+      expect(mailer.sent).toHaveLength(1);
+      expect(mailer.sent[0]?.text.match(/Root/g) ?? []).toHaveLength(1);
+      const old = await db
+        .select()
+        .from(notification)
+        .where(sql`${notification.id} in (${beforeOff.id}, ${duringOff.id})`);
+      expect(old.every((n) => n.emailedAt !== null && n.readAt === null)).toBe(true);
+      expect(
+        (await db.select().from(notification).where(eq(notification.id, fresh.id)))[0]?.emailedAt,
+      ).not.toBeNull();
+      expect((await call('owner', 'GET', '/me/notifications')).json().items).toHaveLength(3);
+    },
+  );
+
+  it('releases a digest claim when the rows become read before sending', async () => {
+    const mailer = memoryMailer();
+    await call('owner', 'PATCH', '/me/notification-preferences', { email: 'daily' });
+    const pending = await addNotification('owner');
+    const execute = db.execute.bind(db);
+    let accessChecks = 0;
+    const race = vi.spyOn(db, 'execute').mockImplementation((async (
+      ...args: Parameters<typeof db.execute>
+    ) => {
+      const result = await execute(...args);
+      if (++accessChecks === 2) {
+        // Access is checked once while collecting mail and again immediately before sending.
+        await db
+          .update(notification)
+          .set({ readAt: new Date() })
+          .where(eq(notification.id, pending.id));
+      }
+      return result;
+    }) as typeof db.execute);
+    try {
+      expect(
+        await sendDigests({
+          db,
+          log,
+          mailer,
+          publicUrl: config.PUBLIC_URL,
+          instanceName: 'Studio',
+        }),
+      ).toEqual({ sent: 0 });
+      expect((await db.select().from(notificationPreference))[0]?.lastDigestAt).toBeNull();
+    } finally {
+      race.mockRestore();
+    }
   });
 
   it('sends unread daily digests once a day, retries failures and purges only after 90 days', async () => {
@@ -842,7 +1148,14 @@ describe.skipIf(!url)('team comments, reviews and notifications', () => {
       createdAt: new Date(Date.now() - 91 * 86400000),
     });
     await addNotification('owner', root, { createdAt: new Date(Date.now() - 89 * 86400000) });
-    expect(await purgeNotifications(db)).toEqual({ removed: 1 });
+    await db.insert(notification).values(
+      Array.from({ length: 1001 }, () => ({
+        userId: people.owner.id,
+        type: 'review' as const,
+        createdAt: new Date(Date.now() - 91 * 86400000),
+      })),
+    );
+    expect(await purgeNotifications(db)).toEqual({ removed: 1002 });
     expect(await db.select().from(notification).where(eq(notification.id, expired.id))).toEqual([]);
   });
 
@@ -971,7 +1284,6 @@ describe.skipIf(!url)('team comments, reviews and notifications', () => {
           method: 'POST',
           url: `/api/v1/boards/${root}/comments`,
           headers: {
-            cookie: people.owner.cookie,
             authorization: `Bearer ${token.token}`,
             origin: 'http://other.example',
           },
@@ -985,7 +1297,6 @@ describe.skipIf(!url)('team comments, reviews and notifications', () => {
           method: 'POST',
           url: `/api/v1/boards/${root}/comments`,
           headers: {
-            cookie: people.owner.cookie,
             authorization: 'Bearer invalid',
             origin: 'http://other.example',
           },

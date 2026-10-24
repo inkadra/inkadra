@@ -60,8 +60,6 @@ const it = {
   notificationSubject: (count: number, instance: string) =>
     count === 1 ? `Una novità su ${instance}` : `${count} novità su ${instance}`,
   digestSubject: (instance: string) => `Il riepilogo di oggi su ${instance}`,
-  andMore: (count: number) =>
-    count === 1 ? "E un'altra notifica." : `E altre ${count} notifiche.`,
   notificationSettings: (url: string) =>
     `Scegli quando ricevere queste email nelle impostazioni: ${url}`,
   notificationAction: 'Apri Inkadra',
@@ -121,8 +119,6 @@ const en: Texts = {
   notificationSubject: (count, instance) =>
     count === 1 ? `Something new on ${instance}` : `${count} new things on ${instance}`,
   digestSubject: (instance) => `Today on ${instance}`,
-  andMore: (count) =>
-    count === 1 ? 'And one more notification.' : `And ${count} more notifications.`,
   notificationSettings: (url) => `Choose when you get these emails in your settings: ${url}`,
   notificationAction: 'Open Inkadra',
 };

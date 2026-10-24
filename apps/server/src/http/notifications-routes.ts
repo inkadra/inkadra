@@ -8,8 +8,9 @@ import {
   UpdateNotificationPreferences,
   z,
 } from '@inkadra/shared';
-import { and, desc, eq, getTableColumns, inArray, isNull, lte } from 'drizzle-orm';
+import { and, desc, eq, getTableColumns, isNull, lte, sql } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
+import { notificationAccess } from '../access.ts';
 import type { Auth } from '../auth.ts';
 import type { Database } from '../db/client.ts';
 import { notification, notificationPreference } from '../db/schema.ts';
@@ -84,23 +85,17 @@ export function registerNotificationRoutes(app: FastifyInstance, deps: Deps) {
     const actor = await requireActor(auth, req, db);
     const input = MarkAllRead.parse(req.body ?? {});
     const before = input.before ? new Date(input.before) : new Date();
-    const pending = await db
-      .select()
-      .from(notification)
+    await db
+      .update(notification)
+      .set({ readAt: new Date() })
       .where(
         and(
           eq(notification.userId, actor.id),
           isNull(notification.readAt),
           lte(notification.createdAt, before),
+          notificationAccess(actor.id),
         ),
       );
-    const visible = await visibility(db, actor.id, pending);
-    const ids = pending.filter(visible).map((n) => n.id);
-    if (ids.length > 0)
-      await db
-        .update(notification)
-        .set({ readAt: new Date() })
-        .where(and(eq(notification.userId, actor.id), inArray(notification.id, ids)));
     const body: UnreadCount = { unread: await unreadCount(db, actor.id) };
     return body;
   });
@@ -121,14 +116,35 @@ export function registerNotificationRoutes(app: FastifyInstance, deps: Deps) {
   app.patch(v1('/me/notification-preferences'), async (req) => {
     const actor = await requireActor(auth, req, db);
     const patch = UpdateNotificationPreferences.parse(req.body ?? {});
-    if (patch.email)
-      await db
-        .insert(notificationPreference)
-        .values({ userId: actor.id, email: patch.email })
-        .onConflictDoUpdate({
-          target: notificationPreference.userId,
-          set: { email: patch.email, updatedAt: new Date() },
-        });
+    if (patch.email) {
+      const email = patch.email;
+      await db.transaction(async (tx) => {
+        await tx.insert(notificationPreference).values({ userId: actor.id }).onConflictDoNothing();
+        const [previous] = await tx
+          .select()
+          .from(notificationPreference)
+          .where(eq(notificationPreference.userId, actor.id))
+          .for('update');
+        if (previous?.email === email) return;
+        if (previous?.email === 'off' && email !== 'off') {
+          // The preference lock serializes switches; only future notifications become mail.
+          await tx
+            .update(notification)
+            .set({ emailedAt: sql`now()` })
+            .where(
+              and(
+                eq(notification.userId, actor.id),
+                isNull(notification.emailedAt),
+                lte(notification.createdAt, sql`now()`),
+              ),
+            );
+        }
+        await tx
+          .update(notificationPreference)
+          .set({ email, updatedAt: new Date() })
+          .where(eq(notificationPreference.userId, actor.id));
+      });
+    }
     return preferences(actor.id);
   });
 }
