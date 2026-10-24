@@ -221,6 +221,10 @@ select.film-status {
   min-width: 8em;
   font-weight: 600;
 }
+.story__scene .ink-iconbtn[aria-pressed="true"] {
+  background: var(--ink-surface-3);
+  color: var(--ink-text-primary);
+}
 .story__scene-meta {
   font-size: 12px;
   color: var(--ink-text-muted);

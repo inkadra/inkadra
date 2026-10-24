@@ -343,14 +343,15 @@ function SceneSection({
         <span className="story__scene-meta">
           {t('film.total', { count: frames.length, duration })}
         </span>
-        <GuestVisibility store={store} id={scene.id} />
+        <GuestVisibility store={store} element={scene} />
         {!readOnly && (
           <>
             <button
               type="button"
               className="ink-iconbtn"
-              aria-label={t(scene.guestHidden ? 'guestVisibility.show' : 'guestVisibility.hide')}
-              title={t(scene.guestHidden ? 'guestVisibility.show' : 'guestVisibility.hide')}
+              aria-label={t('guestVisibility.hide')}
+              title={t('guestVisibility.hide')}
+              aria-pressed={!!scene.guestHidden}
               onClick={() => toggleGuestHidden(store, [scene.id])}
             >
               <GuestVisibilityIcon />
@@ -432,7 +433,7 @@ const FrameTile = memo(function FrameTile({
       }}
       onDrop={onDrop}
     >
-      <GuestVisibility store={store} id={frame.id} />
+      <GuestVisibility store={store} element={frame} />
       <button
         type="button"
         className="story__tile-pic"

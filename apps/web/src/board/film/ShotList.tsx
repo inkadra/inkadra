@@ -177,7 +177,7 @@ export function ShotList({
                     {g.scene ? (
                       <>
                         <span className="shots__scene-number">{g.scene.number}</span>
-                        <GuestVisibility store={store} id={g.scene.id} />
+                        <GuestVisibility store={store} element={g.scene} />
                         {slugline(g.scene)}
                         {g.scene.title && (
                           <span className="shots__scene-title">{g.scene.title}</span>
@@ -206,7 +206,7 @@ export function ShotList({
                       />
                     </td>
                     <td className="shots__label">
-                      {labels.get(f.id)} <GuestVisibility store={store} id={f.id} />
+                      {labels.get(f.id)} <GuestVisibility store={store} element={f} />
                     </td>
                     <td>
                       <PresetField

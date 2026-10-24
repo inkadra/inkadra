@@ -180,6 +180,13 @@ export interface CanvasProps {
   onOpenBoard: (boardId: string) => void;
 }
 
+/**
+ * Keys belong to an open dialog, also to a modal one whose focused button was disabled
+ * while a request runs: then Escape reaches the dialog instead of the canvas.
+ */
+const insideDialog = () =>
+  !!document.activeElement?.closest('dialog[open]') || !!document.querySelector('dialog:modal');
+
 export function Canvas({
   conn,
   projectId,
@@ -979,7 +986,7 @@ export function Canvas({
   // Keyboard --------------------------------------------------------------------
   const keyHandler = useRef<(e: KeyboardEvent) => void>(() => {});
   keyHandler.current = (e: KeyboardEvent) => {
-    if (document.activeElement?.closest('dialog[open]')) return;
+    if (insideDialog()) return;
     if (e.key === ' ' && !isTyping(e.target)) {
       spaceDown.current = e.type === 'keydown';
       if (e.type === 'keydown') e.preventDefault();
@@ -1114,7 +1121,7 @@ export function Canvas({
   // Clipboard ---------------------------------------------------------------------
   const clipHandler = useRef<(e: ClipboardEvent) => void>(() => {});
   clipHandler.current = (e: ClipboardEvent) => {
-    if (document.activeElement?.closest('dialog[open]')) return;
+    if (insideDialog()) return;
     if (isTyping(e.target) || !e.clipboardData) return;
     if (e.type === 'copy' || e.type === 'cut') {
       if (selection.size === 0) return;

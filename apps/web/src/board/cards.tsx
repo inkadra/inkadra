@@ -114,7 +114,7 @@ export const Card = memo(function Card({
           <TagList tags={element.tags} />
         </div>
       )}
-      {!isContainer(element) && <GuestVisibility store={store} id={element.id} />}
+      {!isContainer(element) && <GuestVisibility store={store} element={element} />}
       {element.locked && (
         <span className="card__lock" title={t('board.locked')}>
           <Icon name="lock" size={12} />
@@ -623,7 +623,7 @@ function ColumnCard({
           </span>
         )}
         <span className="column__count">{items.length}</span>
-        <GuestVisibility store={store} id={element.id} />
+        <GuestVisibility store={store} element={element} />
         <button
           type="button"
           className="column__toggle"

@@ -304,8 +304,8 @@ export function ContextBar({
         <button
           type="button"
           className={`ctxbar__btn${guestHidden ? ' is-active' : ''}`}
-          aria-label={t(guestHidden ? 'guestVisibility.show' : 'guestVisibility.hide')}
-          title={t(guestHidden ? 'guestVisibility.show' : 'guestVisibility.hide')}
+          aria-label={t('guestVisibility.hide')}
+          title={t('guestVisibility.hide')}
           aria-pressed={guestHidden}
           onMouseDown={(e) => e.preventDefault()}
           onClick={onGuestHidden}
@@ -354,7 +354,8 @@ export function ContextMenu({
   x?: number;
   y?: number;
   items: MenuItem[];
-  onClose: () => void;
+  /** Why the menu closes, so a caller can return focus only when the keyboard was used. */
+  onClose: (reason: 'escape' | 'outside' | 'item') => void;
   /** The button that toggles the menu: pressing it is left to the button. */
   anchor?: RefObject<HTMLElement | null>;
 }) {
@@ -363,7 +364,7 @@ export function ContextMenu({
     ref.current?.querySelector<HTMLButtonElement>('[role="menuitem"]')?.focus();
     const away = (e: PointerEvent) => {
       const target = e.target as Node;
-      if (!ref.current?.contains(target) && !anchor?.current?.contains(target)) onClose();
+      if (!ref.current?.contains(target) && !anchor?.current?.contains(target)) onClose('outside');
     };
     document.addEventListener('pointerdown', away, true);
     return () => document.removeEventListener('pointerdown', away, true);
@@ -376,7 +377,7 @@ export function ContextMenu({
       style={x === undefined ? undefined : { left: x, top: y }}
       data-chrome
       onKeyDown={(e) => {
-        if (e.key === 'Escape') onClose();
+        if (e.key === 'Escape') onClose('escape');
         if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
           e.preventDefault();
           const all = [...(ref.current?.querySelectorAll<HTMLElement>('[role="menuitem"]') ?? [])];
@@ -396,7 +397,7 @@ export function ContextMenu({
             role="menuitem"
             className={`menu__item${item.danger ? ' is-danger' : ''}`}
             onClick={() => {
-              onClose();
+              onClose('item');
               item.action();
             }}
           >

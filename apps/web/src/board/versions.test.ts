@@ -4,7 +4,7 @@ import type { BoardVersion } from '@inkadra/shared';
 import { describe, expect, it } from 'vitest';
 import * as Y from 'yjs';
 import { RequestError } from '../lib/api.ts';
-import { groupVersions, versionError, versionStore } from './versions.ts';
+import { groupVersions, mergeVersions, versionError, versionStore } from './versions.ts';
 
 const boardId = '0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10';
 describe('version previews', () => {
@@ -45,6 +45,21 @@ it('groups local calendar days without losing order or unknown version kinds', (
     [first, second],
     [third],
   ]);
+});
+
+it('merges local changes into every loaded page in server order', () => {
+  const make = (id: string, hour: number, name: string | null = null) =>
+    ({ id, createdAt: new Date(2026, 9, 24, hour).toISOString(), name }) as BoardVersion;
+  const loaded = [make('d', 12), make('c', 11), make('b', 10), make('a', 10)];
+  const saved = make('e', 13, 'New');
+  const renamed = make('a', 10, 'Kept');
+  expect(mergeVersions(loaded, [renamed, saved], ['c'])).toEqual([
+    saved,
+    loaded[0],
+    loaded[2],
+    renamed,
+  ]);
+  expect(loaded.map((v) => v.id)).toEqual(['d', 'c', 'b', 'a']);
 });
 
 it('explains each failure for the action that caused it', () => {
