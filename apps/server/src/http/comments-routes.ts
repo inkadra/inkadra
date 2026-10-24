@@ -77,7 +77,7 @@ const canWrite = (v: Viewer) => atLeast(v.role, 'commenter');
 
 /** The mentions of a body that name people who can read the board. */
 async function readableMentions(db: Database, boardId: string, body: string): Promise<string[]> {
-  const ids = mentionedIds(body);
+  const ids = mentionedIds(body).filter((id) => Id.safeParse(id).success);
   const kept: string[] = [];
   for (const id of ids) if ((await boardRole(db, { id }, boardId))?.role) kept.push(id);
   return kept;
