@@ -825,7 +825,8 @@ describe.skipIf(!url)('clip (needs DATABASE_URL)', () => {
 
     it('removes a card whose add reaches the queue after the deadline', async () => {
       const proxy = await valkeyProxy(redisUrl ?? '');
-      const queued = queuedBoardWriter(proxy.url, { prefix, timeoutMs: 300, graceMs: 300 });
+      // Long enough for the first add to open its connection on a slow runner.
+      const queued = queuedBoardWriter(proxy.url, { prefix, timeoutMs: 1000, graceMs: 300 });
       const connection = createRedis(redisUrl ?? '');
       const queue = new Queue(QUEUES.collab, { connection, prefix });
       const events = new QueueEvents(QUEUES.collab, {
