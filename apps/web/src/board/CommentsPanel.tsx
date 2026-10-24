@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-import type { Element } from '@inkadra/doc-schema';
+import { type Element, roots } from '@inkadra/doc-schema';
 import {
   type Author,
   type Comment,
@@ -18,6 +18,7 @@ import {
   useEffect,
   useId,
   useMemo,
+  useReducer,
   useRef,
   useState,
   useSyncExternalStore,
@@ -41,6 +42,7 @@ import {
   REVIEW_STATUSES,
 } from './review-model.ts';
 import {
+  addOlderReplies,
   type CommentTarget,
   canComment,
   closeComments,
@@ -86,8 +88,8 @@ export function CommentsButton() {
 }
 
 /**
- * What a card is called in the panel: its label, title or caption, else its type. Labels are
- * kept per element object, so a remote edit only works out again the card it changed.
+ * What a card is called in the panel: its label, title or caption, else its type. Labels of
+ * non-note cards are kept per element object; note labels read the live Y.XmlFragment body.
  */
 function useCardLabel(store: BoardStore | undefined) {
   const { t } = useTranslation();
@@ -95,24 +97,44 @@ function useCardLabel(store: BoardStore | undefined) {
     store?.subscribe ?? noSubscribe,
     store?.getSnapshot ?? noSnapshot,
   );
+  const [bodyRevision, bumpBody] = useReducer((n: number) => n + 1, 0);
+  useEffect(() => {
+    if (!store) return;
+    const { elements } = roots(store.doc);
+    const onEvents = (events: Array<Y.YEvent<Y.AbstractType<unknown>>>) => {
+      if (events.some((e) => e.path[1] === 'body')) bumpBody();
+    };
+    elements.observeDeep(onEvents);
+    return () => elements.unobserveDeep(onEvents);
+  }, [store]);
   const cache = useRef(new WeakMap<Element, string>());
   return useMemo(() => {
+    void bodyRevision;
     const labels = cache.current;
     return {
       exists: (id: string) => !!snap?.byId.get(id),
       elements: () => (snap ? [...snap.byId.values()] : []),
-      label: (id: string | null) => {
-        if (id === null) return t('comments.board');
-        const card = snap?.byId.get(id) as (Element & Record<string, unknown>) | undefined;
-        if (!card) return t('comments.removed');
-        const known = labels.get(card);
-        if (known !== undefined) return known;
-        const label = cardLabel(card, store, t);
-        labels.set(card, label);
-        return label;
-      },
+      label: (id: string | null) => cardLabelOf(snap, store, labels, t, id),
     };
-  }, [snap, store, t]);
+  }, [snap, store, t, bodyRevision]);
+}
+
+export function cardLabelOf(
+  snap: ReturnType<BoardStore['getSnapshot']> | null,
+  store: BoardStore | undefined,
+  cache: WeakMap<Element, string>,
+  t: (key: string) => string,
+  id: string | null,
+): string {
+  if (id === null) return t('comments.board');
+  const card = snap?.byId.get(id) as (Element & Record<string, unknown>) | undefined;
+  if (!card) return t('comments.removed');
+  if (card.type === 'note') return cardLabel(card, store, t);
+  const known = cache.get(card);
+  if (known !== undefined) return known;
+  const label = cardLabel(card, store, t);
+  cache.set(card, label);
+  return label;
 }
 
 function cardLabel(
@@ -409,7 +431,7 @@ function CommentsPanel() {
         )}
       </div>
       {writable && !removed ? (
-        <NewThread elementId={elementId} onJump={jump} />
+        <NewThread key={elementId ?? ''} elementId={elementId} onJump={jump} />
       ) : (
         !writable && <p className="comments-panel__foot ink-muted">{t('comments.readOnly')}</p>
       )}
@@ -534,14 +556,11 @@ const Thread = memo(function Thread({
 }) {
   const { t } = useTranslation();
   const [replying, setReplying] = useState(false);
-  // Older replies: the ones a notification link fetched, then the pages asked for here.
-  const preloaded = useReviews((s) => s.olderReplies.get(thread.id));
-  const [older, setOlder] = useState<Comment[]>([]);
-  const [cursor, setCursor] = useState<string | null | undefined>(undefined);
-  const nextCursor = cursor === undefined ? (preloaded?.cursor ?? null) : cursor;
+  // Older replies fetched by a notification link or by paging here, kept and refreshed in the store.
+  const older = useReviews((s) => s.olderReplies.get(thread.id));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(false);
-  const replies = mergeReplies([...(preloaded?.items ?? [])], older, thread.replies);
+  const replies = mergeReplies([...(older?.items ?? [])], thread.replies);
   const hidden = thread.replyCount - replies.length;
 
   const run = async (action: () => Promise<unknown>) => {
@@ -600,9 +619,8 @@ const Thread = memo(function Thread({
             setBusy(true);
             setError(false);
             try {
-              const p = await fetchReplies(thread.id, nextCursor);
-              setOlder((items) => mergeReplies(items, p.items));
-              setCursor(p.nextCursor);
+              const p = await fetchReplies(thread.id, older?.cursor ?? null);
+              addOlderReplies(thread.id, p.items, p.nextCursor);
             } catch {
               setError(true);
             } finally {
@@ -817,7 +835,7 @@ function Composer({
   onSend: (body: string) => Promise<void>;
   submitLabel: string;
   initial?: Comment;
-  /** Keeps the text of a new thread while the panel closes, e.g. to place a pin. */
+  /** Keeps the text of a new thread while the panel closes or switches scope. */
   draft?: { elementId: string | null; visibility: CommentVisibility };
   onCancel?: () => void;
   autoFocus?: boolean;
@@ -836,7 +854,10 @@ function Composer({
   const draftVisibility = draft?.visibility;
   useEffect(() => {
     if (draftVisibility === undefined || draftScope === undefined) return;
-    saveDraft(text ? { elementId: draftScope, text, picked, visibility: draftVisibility } : null);
+    saveDraft(
+      text ? { elementId: draftScope, text, picked, visibility: draftVisibility } : null,
+      draftScope,
+    );
   }, [text, picked, draftScope, draftVisibility]);
   const [caret, setCaret] = useState(0);
   const [active, setActive] = useState(0);
@@ -892,7 +913,7 @@ function Composer({
       await onSend(body);
       setText('');
       setPicked([]);
-      if (draft) saveDraft(null);
+      if (draft) saveDraft(null, draft.elementId);
     } catch (err) {
       setError(
         t(
@@ -925,6 +946,7 @@ function Composer({
           placeholder={t('comments.placeholder')}
           value={text}
           readOnly={busy}
+          onBlur={() => setArmed(false)}
           onSelect={(e) => setCaret(e.currentTarget.selectionStart)}
           onChange={(e) => {
             setText(e.target.value);
@@ -956,9 +978,11 @@ function Composer({
                 return;
               }
               if (changed) {
+                e.preventDefault();
                 setText('');
                 setPicked([]);
-                if (draft) saveDraft(null);
+                setArmed(false);
+                if (draft) saveDraft(null, draft.elementId);
               }
               if (onCancel) {
                 e.preventDefault();
