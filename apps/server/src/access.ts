@@ -1,5 +1,6 @@
 import type { ProjectRole } from '@inkadra/shared';
 import { and, eq, inArray, isNull, sql } from 'drizzle-orm';
+import { visibleBoardCard } from './board-content.ts';
 import type { Database } from './db/client.ts';
 import { asset, board, boardGrant, projectMember } from './db/schema.ts';
 import { HttpError } from './http/errors.ts';
@@ -280,4 +281,81 @@ async function bestGrant(
   let best: ProjectRole | null = null;
   for (const r of rows) if (!best || higher(r.role, best)) best = r.role;
   return best;
+}
+
+/**
+ * The person's effective role on each of the given boards that is not in the trash, with the
+ * same rule as boardAccess, in one query. Boards without a role are left out. For lists that
+ * must leave out what the person can no longer open (notifications).
+ */
+export async function boardRoles(
+  db: Pick<Database, 'execute'>,
+  actor: Pick<Actor, 'id'>,
+  boardIds: readonly string[],
+): Promise<Map<string, ProjectRole>> {
+  const ids = [...new Set(boardIds)];
+  if (ids.length === 0) return new Map();
+  const rows = await db.execute<{
+    start: string;
+    id: string;
+    grant_role: ProjectRole | null;
+    project_role: ProjectRole | null;
+  }>(sql`
+    with recursive up as (
+      select b.id as start, b.id, b.parent_board_id, b.project_id, 0 as depth
+      from board b
+      where b.id in (${sql.join(
+        ids.map((id) => sql`${id}::uuid`),
+        sql`, `,
+      )}) and b.deleted_at is null
+      union all
+      select up.start, p.id, p.parent_board_id, up.project_id, up.depth + 1
+      from board p join up on p.id = up.parent_board_id
+    )
+    select up.start, up.id, g.role as grant_role, m.role as project_role
+    from up
+    left join board_grant g on g.board_id = up.id and g.user_id = ${actor.id}
+    left join project_member m on m.project_id = up.project_id and m.user_id = ${actor.id}
+    order by up.start, up.depth`);
+  type Chain = {
+    chain: string[];
+    grants: Map<string, ProjectRole>;
+    projectRole: ProjectRole | null;
+  };
+  const chains = new Map<string, Chain>();
+  for (const r of rows) {
+    const entry: Chain = chains.get(r.start) ?? {
+      chain: [],
+      grants: new Map(),
+      projectRole: r.project_role,
+    };
+    entry.chain.push(r.id);
+    if (r.grant_role) entry.grants.set(r.id, r.grant_role);
+    chains.set(r.start, entry);
+  }
+  const out = new Map<string, ProjectRole>();
+  for (const [boardId, c] of chains) {
+    const { role } = effectiveRole(c.chain, c.grants, c.projectRole);
+    if (role) out.set(boardId, role);
+  }
+  return out;
+}
+
+/** Whether an active link can reach a board through visible cards and its creator's access. */
+export async function linkIncludesBoard(
+  db: Database,
+  link: { boardId: string; includeSubBoards: boolean; createdBy: string | null },
+  access: BoardAccess,
+): Promise<boolean> {
+  if (!link.createdBy) return false;
+  const stop = access.chain.findIndex((b) => b.id === link.boardId);
+  if (stop < 0 || (stop > 0 && !link.includeSubBoards)) return false;
+  for (let i = 0; i <= stop; i++) {
+    const id = access.chain[i]?.id;
+    if (!id || !atLeast((await boardRole(db, { id: link.createdBy }, id))?.role ?? null, 'editor'))
+      return false;
+    const child = access.chain[i - 1]?.id;
+    if (child && !(await visibleBoardCard(db, id, child))) return false;
+  }
+  return true;
 }

@@ -5,6 +5,7 @@ import { API_PREFIX, AUTH_PREFIX, COLLAB_PATH } from '@inkadra/shared';
 import Fastify, { type FastifyBaseLogger, type FastifyServerOptions } from 'fastify';
 import type { Logger } from 'pino';
 import type { Auth } from '../auth.ts';
+import type { BoardNotifier } from '../board-notices.ts';
 import type { BoardWriter } from '../board-writer.ts';
 import type { Config } from '../config.ts';
 import type { Database } from '../db/client.ts';
@@ -18,11 +19,14 @@ import { registerAssetRoutes } from './assets-routes.ts';
 import { registerAuthRoutes } from './auth-routes.ts';
 import { registerBoardRoutes } from './boards-routes.ts';
 import { registerClipRoutes } from './clip-routes.ts';
+import { registerCommentRoutes } from './comments-routes.ts';
 import { registerCsrfCheck } from './csrf.ts';
 import { registerDiagnostics } from './diagnostics.ts';
 import { errorHandler, sendError } from './errors.ts';
 import { registerLinkPreviews } from './link-previews.ts';
+import { registerNotificationRoutes } from './notifications-routes.ts';
 import { registerProjectRoutes } from './projects-routes.ts';
+import { registerReviewRoutes } from './reviews-routes.ts';
 import { registerSearchRoutes } from './search-routes.ts';
 import { registerSharingRoutes } from './sharing-routes.ts';
 import { registerUploads } from './uploads.ts';
@@ -42,6 +46,8 @@ export interface AppDeps {
   boards?: BoardWriter;
   /** Named saves and restores of board versions; without it both are refused. */
   versions?: VersionWriter;
+  /** Tells open boards about comment and review changes; without it nothing is sent. */
+  notices?: BoardNotifier;
   /** Scratch space for files received in one piece (clips). */
   tmpDir?: string;
   /** Tests only: addresses link previews may fetch besides public ones. */
@@ -79,6 +85,9 @@ export async function createApp(deps: AppDeps) {
   registerSearchRoutes(app, deps);
   registerLinkPreviews(app, deps);
   registerDiagnostics(app, deps);
+  registerCommentRoutes(app, deps);
+  registerReviewRoutes(app, deps);
+  registerNotificationRoutes(app, deps);
   registerUploads(app, { ...deps, uploadMaxSize: config.UPLOAD_MAX_SIZE });
   await registerClipRoutes(app, { ...deps, uploadMaxSize: config.UPLOAD_MAX_SIZE });
 

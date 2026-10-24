@@ -2,7 +2,15 @@ import type { AcceptedInvitation, InvitationPreview } from '@inkadra/shared';
 import { and, eq, isNull, sql } from 'drizzle-orm';
 import { atLeast, boardAccess, projectRole } from './access.ts';
 import type { Database } from './db/client.ts';
-import { board, boardGrant, invitation, project, projectMember, user } from './db/schema.ts';
+import {
+  board,
+  boardGrant,
+  invitation,
+  notification,
+  project,
+  projectMember,
+  user,
+} from './db/schema.ts';
 import { HttpError } from './http/errors.ts';
 import { sha256 } from './secrets.ts';
 
@@ -120,6 +128,15 @@ export async function acceptInvitation(
             set: { role: row.role },
           });
     }
+    // The person who invited hears about it (decision 0013), unless they used their own link.
+    if (row.invitedBy && row.invitedBy !== userId)
+      await tx.insert(notification).values({
+        userId: row.invitedBy,
+        type: 'invitation_accepted',
+        actorId: userId,
+        projectId: row.projectId,
+        boardId: row.boardId,
+      });
     return { projectId: row.projectId, boardId: row.boardId };
   });
 }
