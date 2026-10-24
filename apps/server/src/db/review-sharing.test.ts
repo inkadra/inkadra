@@ -6,6 +6,8 @@ import {
   board,
   boardVersion,
   comment,
+  elementReview,
+  elementReviewEvent,
   project,
   shareGuest,
   shareLink,
@@ -29,6 +31,7 @@ async function failure(query: Promise<unknown>): Promise<string | undefined> {
 
 const CHECK = '23514';
 const FOREIGN_KEY = '23503';
+const UNIQUE = '23505';
 
 describe.skipIf(!url)('review and sharing tables (needs DATABASE_URL)', () => {
   const { db, sql: client } = createDatabase(url ?? 'postgres://unused', 2);
@@ -114,6 +117,83 @@ describe.skipIf(!url)('review and sharing tables (needs DATABASE_URL)', () => {
       .values(thread({ authorGuestId: guestA, shareLinkId: linkA, visibility: 'everyone' }))
       .returning({ id: comment.id });
     expect(ok?.id).toBeDefined();
+  });
+
+  it('ties a guest author to the link of the comment', async () => {
+    expect(
+      await failure(
+        db
+          .insert(comment)
+          .values(thread({ authorGuestId: guestA, shareLinkId: linkB, visibility: 'everyone' })),
+      ),
+    ).toBe(FOREIGN_KEY);
+  });
+
+  it('keeps one team status and one decision per link, each from its own source', async () => {
+    const elementId = 'V1StGXR8_Z5jdHi6B-rev1';
+    const row = { boardId: boardA, projectId, elementId };
+    await db.insert(elementReview).values({ ...row, status: 'in_review', changedBy: userId });
+    expect(
+      await failure(
+        db.insert(elementReview).values({ ...row, status: 'approved', changedBy: userId }),
+      ),
+    ).toBe(UNIQUE);
+    // A guest decision needs its link, the guest must belong to it, and no account is set.
+    expect(
+      await failure(
+        db.insert(elementReview).values({ ...row, status: 'approved', changedByGuest: guestA }),
+      ),
+    ).toBe(CHECK);
+    expect(
+      await failure(
+        db
+          .insert(elementReview)
+          .values({ ...row, status: 'approved', changedByGuest: guestA, shareLinkId: linkB }),
+      ),
+    ).toBe(FOREIGN_KEY);
+    expect(
+      await failure(
+        db.insert(elementReview).values({
+          ...row,
+          status: 'approved',
+          changedByGuest: guestA,
+          shareLinkId: linkA,
+          requestedBy: userId,
+        }),
+      ),
+    ).toBe(CHECK);
+    expect(
+      await failure(
+        db.insert(elementReview).values({ ...row, status: 'approved', shareLinkId: linkA }),
+      ),
+    ).toBe(CHECK);
+    await db
+      .insert(elementReview)
+      .values({ ...row, status: 'approved', changedByGuest: guestA, shareLinkId: linkA });
+    expect(
+      await failure(
+        db
+          .insert(elementReview)
+          .values({ ...row, status: 'none', changedByGuest: guestA, shareLinkId: linkA }),
+      ),
+    ).toBe(UNIQUE);
+
+    const event = {
+      boardId: boardA,
+      elementId,
+      previous: 'none' as const,
+      status: 'approved' as const,
+    };
+    expect(await failure(db.insert(elementReviewEvent).values({ ...event, guestId: guestA }))).toBe(
+      CHECK,
+    );
+    expect(
+      await failure(
+        db.insert(elementReviewEvent).values({ ...event, guestId: guestA, shareLinkId: linkB }),
+      ),
+    ).toBe(FOREIGN_KEY);
+    await db.insert(elementReviewEvent).values({ ...event, guestId: guestA, shareLinkId: linkA });
+    await db.insert(elementReviewEvent).values({ ...event, userId });
   });
 
   it('allows replies only to a thread of the same board', async () => {

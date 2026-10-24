@@ -28,7 +28,6 @@ CREATE TABLE "comment" (
 	"pin" jsonb,
 	"resolved_at" timestamp with time zone,
 	"resolved_by" uuid,
-	"resolved_by_guest" uuid,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"edited_at" timestamp with time zone,
@@ -40,6 +39,7 @@ CREATE TABLE "comment" (
 );
 --> statement-breakpoint
 CREATE TABLE "element_review" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"board_id" uuid NOT NULL,
 	"element_id" text NOT NULL,
 	"project_id" uuid NOT NULL,
@@ -50,8 +50,7 @@ CREATE TABLE "element_review" (
 	"share_link_id" uuid,
 	"requested_by" uuid,
 	"changed_at" timestamp with time zone DEFAULT now() NOT NULL,
-	CONSTRAINT "element_review_board_id_element_id_pk" PRIMARY KEY("board_id","element_id"),
-	CONSTRAINT "element_review_one_author_ck" CHECK (num_nonnulls("element_review"."changed_by", "element_review"."changed_by_guest") <= 1)
+	CONSTRAINT "element_review_source_ck" CHECK (("element_review"."share_link_id" is null and "element_review"."changed_by_guest" is null) or ("element_review"."share_link_id" is not null and "element_review"."changed_by_guest" is not null and "element_review"."changed_by" is null and "element_review"."requested_by" is null))
 );
 --> statement-breakpoint
 CREATE TABLE "element_review_event" (
@@ -65,7 +64,7 @@ CREATE TABLE "element_review_event" (
 	"guest_id" uuid,
 	"share_link_id" uuid,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
-	CONSTRAINT "element_review_event_one_author_ck" CHECK (num_nonnulls("element_review_event"."user_id", "element_review_event"."guest_id") <= 1)
+	CONSTRAINT "element_review_event_source_ck" CHECK (("element_review_event"."share_link_id" is null and "element_review_event"."guest_id" is null) or ("element_review_event"."share_link_id" is not null and "element_review_event"."guest_id" is not null and "element_review_event"."user_id" is null))
 );
 --> statement-breakpoint
 CREATE TABLE "notification" (
@@ -146,21 +145,20 @@ ALTER TABLE "board_version" ADD CONSTRAINT "board_version_created_by_user_id_fk"
 ALTER TABLE "comment" ADD CONSTRAINT "comment_project_id_project_id_fk" FOREIGN KEY ("project_id") REFERENCES "public"."project"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "comment" ADD CONSTRAINT "comment_board_id_board_id_fk" FOREIGN KEY ("board_id") REFERENCES "public"."board"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "comment" ADD CONSTRAINT "comment_author_id_user_id_fk" FOREIGN KEY ("author_id") REFERENCES "public"."user"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "comment" ADD CONSTRAINT "comment_author_guest_id_share_guest_id_fk" FOREIGN KEY ("author_guest_id") REFERENCES "public"."share_guest"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "comment" ADD CONSTRAINT "comment_share_link_id_share_link_id_fk" FOREIGN KEY ("share_link_id") REFERENCES "public"."share_link"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "comment" ADD CONSTRAINT "comment_resolved_by_user_id_fk" FOREIGN KEY ("resolved_by") REFERENCES "public"."user"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "comment" ADD CONSTRAINT "comment_resolved_by_guest_share_guest_id_fk" FOREIGN KEY ("resolved_by_guest") REFERENCES "public"."share_guest"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "comment" ADD CONSTRAINT "comment_thread_id_board_id_comment_id_board_id_fk" FOREIGN KEY ("thread_id","board_id") REFERENCES "public"."comment"("id","board_id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "comment" ADD CONSTRAINT "comment_author_guest_fk" FOREIGN KEY ("author_guest_id","share_link_id") REFERENCES "public"."share_guest"("id","share_link_id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "element_review" ADD CONSTRAINT "element_review_board_id_board_id_fk" FOREIGN KEY ("board_id") REFERENCES "public"."board"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "element_review" ADD CONSTRAINT "element_review_project_id_project_id_fk" FOREIGN KEY ("project_id") REFERENCES "public"."project"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "element_review" ADD CONSTRAINT "element_review_changed_by_user_id_fk" FOREIGN KEY ("changed_by") REFERENCES "public"."user"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "element_review" ADD CONSTRAINT "element_review_changed_by_guest_share_guest_id_fk" FOREIGN KEY ("changed_by_guest") REFERENCES "public"."share_guest"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "element_review" ADD CONSTRAINT "element_review_share_link_id_share_link_id_fk" FOREIGN KEY ("share_link_id") REFERENCES "public"."share_link"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "element_review" ADD CONSTRAINT "element_review_share_link_id_share_link_id_fk" FOREIGN KEY ("share_link_id") REFERENCES "public"."share_link"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "element_review" ADD CONSTRAINT "element_review_requested_by_user_id_fk" FOREIGN KEY ("requested_by") REFERENCES "public"."user"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "element_review" ADD CONSTRAINT "element_review_guest_fk" FOREIGN KEY ("changed_by_guest","share_link_id") REFERENCES "public"."share_guest"("id","share_link_id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "element_review_event" ADD CONSTRAINT "element_review_event_board_id_board_id_fk" FOREIGN KEY ("board_id") REFERENCES "public"."board"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "element_review_event" ADD CONSTRAINT "element_review_event_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "element_review_event" ADD CONSTRAINT "element_review_event_guest_id_share_guest_id_fk" FOREIGN KEY ("guest_id") REFERENCES "public"."share_guest"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "element_review_event" ADD CONSTRAINT "element_review_event_share_link_id_share_link_id_fk" FOREIGN KEY ("share_link_id") REFERENCES "public"."share_link"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "element_review_event" ADD CONSTRAINT "element_review_event_share_link_id_share_link_id_fk" FOREIGN KEY ("share_link_id") REFERENCES "public"."share_link"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "element_review_event" ADD CONSTRAINT "element_review_event_guest_fk" FOREIGN KEY ("guest_id","share_link_id") REFERENCES "public"."share_guest"("id","share_link_id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "notification" ADD CONSTRAINT "notification_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "notification" ADD CONSTRAINT "notification_actor_id_user_id_fk" FOREIGN KEY ("actor_id") REFERENCES "public"."user"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "notification" ADD CONSTRAINT "notification_actor_guest_id_share_guest_id_fk" FOREIGN KEY ("actor_guest_id") REFERENCES "public"."share_guest"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
@@ -175,7 +173,7 @@ ALTER TABLE "share_link" ADD CONSTRAINT "share_link_created_by_user_id_fk" FOREI
 ALTER TABLE "share_pick" ADD CONSTRAINT "share_pick_share_link_id_share_link_id_fk" FOREIGN KEY ("share_link_id") REFERENCES "public"."share_link"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "share_pick" ADD CONSTRAINT "share_pick_board_id_board_id_fk" FOREIGN KEY ("board_id") REFERENCES "public"."board"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "share_pick" ADD CONSTRAINT "share_pick_asset_id_asset_id_fk" FOREIGN KEY ("asset_id") REFERENCES "public"."asset"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "share_pick" ADD CONSTRAINT "share_pick_guest_id_share_link_id_share_guest_id_share_link_id_fk" FOREIGN KEY ("guest_id","share_link_id") REFERENCES "public"."share_guest"("id","share_link_id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "share_pick" ADD CONSTRAINT "share_pick_guest_fk" FOREIGN KEY ("guest_id","share_link_id") REFERENCES "public"."share_guest"("id","share_link_id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 CREATE INDEX "board_version_board_idx" ON "board_version" USING btree ("board_id","created_at" DESC NULLS LAST,"id" DESC NULLS LAST);--> statement-breakpoint
 CREATE INDEX "board_version_expires_idx" ON "board_version" USING btree ("expires_at");--> statement-breakpoint
 CREATE INDEX "board_version_created_by_idx" ON "board_version" USING btree ("created_by") WHERE "board_version"."created_by" is not null;--> statement-breakpoint
@@ -185,15 +183,20 @@ CREATE INDEX "comment_replies_idx" ON "comment" USING btree ("thread_id","create
 CREATE INDEX "comment_share_link_idx" ON "comment" USING btree ("share_link_id") WHERE "comment"."share_link_id" is not null;--> statement-breakpoint
 CREATE INDEX "comment_author_idx" ON "comment" USING btree ("author_id") WHERE "comment"."author_id" is not null;--> statement-breakpoint
 CREATE INDEX "comment_resolved_by_idx" ON "comment" USING btree ("resolved_by") WHERE "comment"."resolved_by" is not null;--> statement-breakpoint
+CREATE UNIQUE INDEX "element_review_team_uq" ON "element_review" USING btree ("board_id","element_id") WHERE "element_review"."share_link_id" is null;--> statement-breakpoint
+CREATE UNIQUE INDEX "element_review_link_uq" ON "element_review" USING btree ("board_id","element_id","share_link_id") WHERE "element_review"."share_link_id" is not null;--> statement-breakpoint
+CREATE INDEX "element_review_share_link_idx" ON "element_review" USING btree ("share_link_id") WHERE "element_review"."share_link_id" is not null;--> statement-breakpoint
 CREATE INDEX "element_review_changed_by_idx" ON "element_review" USING btree ("changed_by") WHERE "element_review"."changed_by" is not null;--> statement-breakpoint
 CREATE INDEX "element_review_requested_by_idx" ON "element_review" USING btree ("requested_by") WHERE "element_review"."requested_by" is not null;--> statement-breakpoint
 CREATE INDEX "element_review_event_element_idx" ON "element_review_event" USING btree ("board_id","element_id","created_at" DESC NULLS LAST,"id" DESC NULLS LAST);--> statement-breakpoint
+CREATE INDEX "element_review_event_share_link_idx" ON "element_review_event" USING btree ("share_link_id") WHERE "element_review_event"."share_link_id" is not null;--> statement-breakpoint
 CREATE INDEX "element_review_event_user_idx" ON "element_review_event" USING btree ("user_id") WHERE "element_review_event"."user_id" is not null;--> statement-breakpoint
 CREATE INDEX "notification_user_idx" ON "notification" USING btree ("user_id","created_at" DESC NULLS LAST,"id" DESC NULLS LAST);--> statement-breakpoint
 CREATE INDEX "notification_unread_idx" ON "notification" USING btree ("user_id") WHERE "notification"."read_at" is null;--> statement-breakpoint
 CREATE INDEX "notification_email_idx" ON "notification" USING btree ("created_at") WHERE "notification"."emailed_at" is null and "notification"."read_at" is null;--> statement-breakpoint
 CREATE INDEX "notification_created_idx" ON "notification" USING btree ("created_at");--> statement-breakpoint
 CREATE INDEX "notification_actor_idx" ON "notification" USING btree ("actor_id") WHERE "notification"."actor_id" is not null;--> statement-breakpoint
+CREATE INDEX "notification_comment_idx" ON "notification" USING btree ("comment_id") WHERE "notification"."comment_id" is not null;--> statement-breakpoint
 CREATE INDEX "share_guest_link_idx" ON "share_guest" USING btree ("share_link_id");--> statement-breakpoint
 CREATE INDEX "share_link_board_idx" ON "share_link" USING btree ("board_id");--> statement-breakpoint
 CREATE INDEX "share_link_project_idx" ON "share_link" USING btree ("project_id");--> statement-breakpoint

@@ -9,6 +9,7 @@ import {
   GuestCreateComment,
   GuestElement,
   GuestElementReview,
+  GuestSetElementReview,
   MarkAllRead,
   mentionedIds,
   NotificationQuery,
@@ -80,7 +81,7 @@ describe('review and sharing contracts', () => {
       elementId: 'V1StGXR8_Z5jdHi6B-myT',
       status: 'approved',
       note: null,
-      changedBy: { kind: 'guest', name: null, isYou: false },
+      changedBy: { kind: 'guest', name: 'Cliente', isYou: false },
       changedAt: '2026-11-02T09:30:00.000Z',
     });
     expect(review.changedBy).not.toHaveProperty('user');
@@ -103,7 +104,25 @@ describe('review and sharing contracts', () => {
 
   it('knows only the four review statuses', () => {
     expect(SetElementReview.safeParse({ status: 'approved' }).success).toBe(true);
+    expect(SetElementReview.safeParse({ status: 'in_review' }).success).toBe(true);
     expect(SetElementReview.safeParse({ status: 'maybe' }).success).toBe(false);
+  });
+
+  it('lets guests decide or withdraw, never ask for review', () => {
+    for (const status of ['approved', 'changes_requested', 'none'])
+      expect(GuestSetElementReview.safeParse({ status }).success).toBe(true);
+    for (const status of ['in_review', 'maybe'])
+      expect(GuestSetElementReview.safeParse({ status }).success).toBe(false);
+    expect(
+      GuestSetElementReview.safeParse({ status: 'approved', note: 'x'.repeat(501) }).success,
+    ).toBe(false);
+    const doc = buildOpenApiDocument();
+    const put =
+      doc.paths?.['/api/v1/guest/links/{linkId}/boards/{boardId}/elements/{elementId}/review']?.put;
+    expect(JSON.stringify(put?.requestBody)).toContain(
+      '#/components/schemas/GuestSetElementReview',
+    );
+    expect(put?.responses).toHaveProperty('403');
   });
 
   it('makes view-only links without expiry, downloads or proofing by default', () => {
@@ -129,7 +148,7 @@ describe('review and sharing contracts', () => {
     expect(MarkAllRead.parse({})).toEqual({});
   });
 
-  it('passes element fields through to guests', () => {
+  it('accepts guest elements as the server cuts them down', () => {
     const el = { id: 'V1StGXR8_Z5jdHi6B-myT', type: 'image', assetId: userId, x: 1 };
     expect(GuestElement.parse(el)).toEqual(el);
   });

@@ -258,8 +258,10 @@ export type GuestAsset = z.infer<typeof GuestAsset>;
 
 /**
  * An element of the board document as a guest sees it: the plain view of @inkadra/doc-schema
- * (parse it with `Element`), with `createdBy` always null, the rich text of notes in `body`
- * and no `guestHidden` element, nor any child of one.
+ * (parse it with `Element`) cut down to the fields of `GUEST_ELEMENT_FIELDS` there
+ * (`toGuestElement`), so no `tags`, `locked` or `guestHidden`, and on frames no production
+ * `status` nor director's `notes`; `createdBy` is always null, the rich text of notes is in
+ * `body`, and no `guestHidden` element, nor any child of one, is sent.
  */
 export const GuestElement = z
   .object({
@@ -270,7 +272,12 @@ export const GuestElement = z
     }),
   })
   .catchall(z.unknown())
-  .openapi('GuestElement');
+  .openapi('GuestElement', {
+    description:
+      'Only the fields guests receive for its type (GUEST_ELEMENT_FIELDS in ' +
+      '@inkadra/doc-schema, decision 0013): never `tags`, `locked` or `guestHidden`, and on ' +
+      'frames never `status` or `notes`. `createdBy` is always null.',
+  });
 export type GuestElement = z.infer<typeof GuestElement>;
 
 export const PickValue = z.enum(['picked', 'rejected']);
@@ -300,7 +307,9 @@ export const GuestBoardSnapshot = z
       description: 'Files the visible elements refer to, and nothing else.',
     }),
     reviews: z.array(GuestElementReview).openapi({
-      description: 'Visible cards with a review status, shown to every guest role.',
+      description:
+        'Visible cards whose status, as this guest sees it, is not `none`: the more recent of ' +
+        'the team’s status and the decision of this link. Shown to every guest role.',
     }),
     commentCounts: z.array(CommentCount).openapi({
       description:
@@ -314,7 +323,8 @@ export const GuestBoardSnapshot = z
       description:
         'Changes whenever anything in this answer would change: the document, the link and ' +
         'its options, the boards the guest can open, the files and their thumbnails, the ' +
-        'reviews, the comments this guest can read and this guest’s picks. Also sent as ETag.',
+        'reviews this guest can see (the team’s and this link’s), the comments this guest can ' +
+        'read and this guest’s picks. Also sent as ETag.',
     }),
     generatedAt: Timestamp,
   })
