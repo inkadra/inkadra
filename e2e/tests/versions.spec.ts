@@ -95,7 +95,23 @@ test('named versions preview an isolated read-only canvas and restore every open
   browser,
   baseURL,
 }) => {
-  const { project } = await seed(page, baseURL!);
+  const { project, note } = await seed(page, baseURL!);
+  // A comment on a card: its badge belongs to the live board, never to a preview.
+  await expect
+    .poll(
+      async () =>
+        (
+          await page.request.post(`/api/v1/boards/${project.rootBoardId}/comments`, {
+            headers: { origin: baseURL! },
+            data: { body: 'Da rivedere', elementId: note.id },
+          })
+        ).ok(),
+      { timeout: 15_000 },
+    )
+    .toBe(true);
+  const badge = page.locator(`[data-el="${note.id}"] .card-review`);
+  await expect(badge).toBeVisible();
+  const commentsButton = page.getByRole('button', { name: /^Commenti:/ });
   const secondContext = await browser.newContext({ locale: 'it-IT' });
   const other = await secondContext.newPage();
   try {
@@ -135,6 +151,10 @@ test('named versions preview an isolated read-only canvas and restore every open
     await previewVersion();
     await expect(page.locator('[data-el]')).toHaveCount(4);
     await expect(page.getByText('New live note')).toHaveCount(0);
+    await expect(page.locator('.card-review, .comment-pin')).toHaveCount(0);
+    await expect(commentsButton).toHaveCount(0);
+    await page.locator(`[data-el="${note.id}"]`).click();
+    await expect(page.getByRole('button', { name: 'Commenti e revisione' })).toHaveCount(0);
     await expect(page.locator('[contenteditable="true"]')).toHaveCount(0);
     await page.getByTestId('canvas').dblclick({ position: { x: 950, y: 500 } });
     await page.keyboard.press('n');
@@ -145,6 +165,8 @@ test('named versions preview an isolated read-only canvas and restore every open
     await expect(banner).toHaveCount(0);
     await expect(page.getByText('New live note')).toBeVisible();
     await expect(page.getByRole('button', { name: 'Menu della board', exact: true })).toBeFocused();
+    await expect(badge).toBeVisible();
+    await expect(commentsButton).toBeVisible();
     await previewVersion();
     await banner.getByRole('button', { name: 'Ripristina', exact: true }).click();
     const confirm = page.getByRole('dialog', { name: 'Ripristinare questa versione?' });

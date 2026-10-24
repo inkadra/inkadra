@@ -1,8 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 import type {
+  Comment,
   CommentCount,
   CommentPin,
   CommentThread,
+  CommentVisibility,
   ElementReview,
   ProjectRole,
   UserSummary,
@@ -17,8 +19,10 @@ import type { BoardConnection } from './connection.ts';
  */
 export interface CommentTarget {
   elementId?: string;
-  /** A thread, or a reply of it, to bring into view. */
+  /** A thread to bring into view. */
   threadId?: string;
+  /** A comment of that thread (a reply, maybe of an older page) to bring into view. */
+  commentId?: string;
   pin?: CommentPin;
 }
 
@@ -32,6 +36,13 @@ export interface ReviewsState {
   pins: ReadonlyMap<string, readonly CommentThread[]>;
   people: readonly UserSummary[];
   status: 'loading' | 'ready' | 'error';
+  reviewsStatus: 'loading' | 'ready' | 'error';
+  /** Older replies already fetched, by thread: a notification may link to one of them. */
+  olderReplies: ReadonlyMap<string, { items: readonly Comment[]; cursor: string | null }>;
+  /** A version of the board is being previewed: comments belong to the live board only. */
+  preview: boolean;
+  /** The canvas is shown (not the storyboard or shot list): the only view with pins. */
+  canvas: boolean;
   /** The comments panel is open on this target; null when closed. */
   target: CommentTarget | null;
   /** Card waiting for the point of a new pinned comment. */
@@ -50,6 +61,10 @@ const EMPTY: ReviewsState = {
   pins: new Map(),
   people: [],
   status: 'loading',
+  reviewsStatus: 'loading',
+  olderReplies: new Map(),
+  preview: false,
+  canvas: true,
   target: null,
   pinTarget: null,
   commentsRevision: 0,
@@ -69,6 +84,12 @@ export function setReviews(patch: Partial<ReviewsState>) {
 }
 
 export function resetReviews(patch: Partial<ReviewsState> = {}) {
+  clearTimeout(timers.comments);
+  clearTimeout(timers.reviews);
+  timers.comments = undefined;
+  timers.reviews = undefined;
+  pendingScopes = null;
+  draft = null;
   state = { ...EMPTY, ...patch };
   for (const listener of listeners) listener();
 }
@@ -107,13 +128,54 @@ const timers: Record<'comments' | 'reviews', ReturnType<typeof setTimeout> | und
   reviews: undefined,
 };
 
-/** Fetches again shortly; bursts of notices and local changes make a single request. */
-export function refreshReviews(what: 'comments' | 'reviews') {
+/** Cards (null: the board) whose threads changed since the last fetch; 'all' for everything. */
+export type CommentScopes = ReadonlySet<string | null> | 'all';
+let pendingScopes: Set<string | null> | 'all' | null = null;
+let lastScopes: CommentScopes = 'all';
+
+/** What the latest comments revision has to fetch again. */
+export function changedScopes(): CommentScopes {
+  return lastScopes;
+}
+
+/**
+ * Fetches again shortly; bursts of notices and local changes make a single request. With an
+ * element id (null for the board) only the threads of that card are fetched again.
+ */
+export function refreshReviews(what: 'comments' | 'reviews', elementId?: string | null) {
+  if (what === 'comments') {
+    if (elementId === undefined) pendingScopes = 'all';
+    else if (pendingScopes !== 'all') {
+      pendingScopes ??= new Set();
+      pendingScopes.add(elementId);
+    }
+  }
   clearTimeout(timers[what]);
   timers[what] = setTimeout(() => {
-    if (what === 'comments') setReviews({ commentsRevision: state.commentsRevision + 1 });
-    else setReviews({ reviewsRevision: state.reviewsRevision + 1 });
+    timers[what] = undefined;
+    if (what === 'comments') {
+      lastScopes = pendingScopes ?? 'all';
+      pendingScopes = null;
+      setReviews({ commentsRevision: state.commentsRevision + 1 });
+    } else setReviews({ reviewsRevision: state.reviewsRevision + 1 });
   }, 100);
+}
+
+/** Text of the new comment being written, kept while the panel closes to place a pin. */
+export interface CommentDraft {
+  elementId: string | null;
+  text: string;
+  picked: readonly UserSummary[];
+  visibility: CommentVisibility;
+}
+let draft: CommentDraft | null = null;
+
+export function getDraft(elementId: string | null): CommentDraft | null {
+  return draft?.elementId === elementId ? draft : null;
+}
+
+export function saveDraft(next: CommentDraft | null) {
+  draft = next;
 }
 
 /** Open threads with a point, by card, oldest first so their numbers stay put. */

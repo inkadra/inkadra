@@ -697,6 +697,7 @@
     "pinPlace": "Choose the point to comment on (Enter: centre, Esc: cancel)",
     "pinOpen": "Open the comment at point {{number}}",
     "pinNumber": "Point {{number}}",
+    "pinsOnCanvas": "Points only show in the Canvas view, which opens to choose one.",
     "cardCount_one": "{{count}} open thread: open comments",
     "cardCount_other": "{{count}} open threads: open comments",
     "visibilityLabel": "Who sees it",
@@ -733,7 +734,10 @@
     "mentions": "People to mention",
     "tooLong": "The comment is longer than {{max}} characters.",
     "error": "That did not work. Try again.",
-    "rateLimited": "Too many comments in a short time: wait a minute."
+    "rateLimited": "Too many comments in a short time: wait a minute.",
+    "escapeAgain": "Press Esc again to discard the text.",
+    "arrived_one": "A new comment arrived.",
+    "arrived_other": "{{count}} new comments arrived."
   },
   "review": {
     "title": "Review",
@@ -752,8 +756,9 @@
     "history": "History",
     "noHistory": "No status changes yet.",
     "historyError": "Could not load the history.",
+    "loadError": "Could not load the review status.",
     "moreHistory": "Show earlier changes",
-    "to": "becomes",
+    "to": "changes to",
     "filter": "Cards by review status",
     "filterNone": "No filter",
     "filtered": "Cards with the chosen status",
@@ -786,7 +791,7 @@
     "emailHint": "Mentions, replies and reviews by email too, when the server can send it.",
     "emailLabel": "Send email",
     "frequency": {
-      "immediate": "Right away (several notifications in one email)",
+      "immediate": "Right away (notifications close together arrive in one email)",
       "daily": "One digest a day",
       "off": "Never"
     },

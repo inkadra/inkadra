@@ -6,14 +6,18 @@ import {
   type CommentThread,
   type CommentVisibility,
   MAX_COMMENT_LENGTH,
+  type UserSummary,
 } from '@inkadra/shared';
 import { Button, Icon, IconButton } from '@inkadra/ui';
 import {
   type FormEvent,
   type KeyboardEvent,
+  memo,
   type ReactNode,
+  useCallback,
   useEffect,
   useId,
+  useMemo,
   useRef,
   useState,
   useSyncExternalStore,
@@ -37,12 +41,15 @@ import {
   REVIEW_STATUSES,
 } from './review-model.ts';
 import {
+  type CommentTarget,
   canComment,
   closeComments,
+  getDraft,
   getReviews,
   openComments,
   placePin,
   refreshReviews,
+  saveDraft,
   useReviews,
 } from './review-store.ts';
 import type { BoardStore } from './store.ts';
@@ -57,18 +64,20 @@ export function CommentsButton() {
   const boardId = useReviews((s) => s.boardId);
   const counts = useReviews((s) => s.counts);
   const isOpen = useReviews((s) => s.target !== null);
-  if (!boardId) return null;
+  const preview = useReviews((s) => s.preview);
+  if (!boardId || preview) return null;
   let open = 0;
   for (const c of counts.values()) open += c.open;
   return (
     <>
       <Button
         icon="comment"
+        className="comments-button"
         aria-expanded={isOpen}
         aria-label={t('comments.button', { count: open })}
         onClick={() => (isOpen ? closeComments() : openComments())}
       >
-        {t('comments.title')}
+        <span className="comments-button__label">{t('comments.title')}</span>
         {open > 0 && <span className="review-count">{open}</span>}
       </Button>
       {isOpen && createPortal(<CommentsPanel key={boardId} />, document.body)}
@@ -76,32 +85,51 @@ export function CommentsButton() {
   );
 }
 
-/** What a card is called in the panel: its label, title or caption, else its type. */
+/**
+ * What a card is called in the panel: its label, title or caption, else its type. Labels are
+ * kept per element object, so a remote edit only works out again the card it changed.
+ */
 function useCardLabel(store: BoardStore | undefined) {
   const { t } = useTranslation();
   const snap = useSyncExternalStore(
     store?.subscribe ?? noSubscribe,
     store?.getSnapshot ?? noSnapshot,
   );
-  return {
-    exists: (id: string) => !!snap?.byId.get(id),
-    elements: snap ? [...snap.byId.values()] : [],
-    label: (id: string | null) => {
-      if (id === null) return t('comments.board');
-      const card = snap?.byId.get(id) as (Element & Record<string, unknown>) | undefined;
-      if (!card) return t('comments.removed');
-      const body = card.type === 'note' ? store?.map(id)?.get('body') : undefined;
-      if (body instanceof Y.XmlFragment) {
-        const text = plainText(body).trim().split('\n')[0]?.slice(0, 80);
-        if (text) return text;
-      }
-      for (const key of ['label', 'title', 'caption', 'name'] as const) {
-        const value = card[key];
-        if (typeof value === 'string' && value.trim()) return value.trim();
-      }
-      return t(`board.types.${card.type}`);
-    },
-  };
+  const cache = useRef(new WeakMap<Element, string>());
+  return useMemo(() => {
+    const labels = cache.current;
+    return {
+      exists: (id: string) => !!snap?.byId.get(id),
+      elements: () => (snap ? [...snap.byId.values()] : []),
+      label: (id: string | null) => {
+        if (id === null) return t('comments.board');
+        const card = snap?.byId.get(id) as (Element & Record<string, unknown>) | undefined;
+        if (!card) return t('comments.removed');
+        const known = labels.get(card);
+        if (known !== undefined) return known;
+        const label = cardLabel(card, store, t);
+        labels.set(card, label);
+        return label;
+      },
+    };
+  }, [snap, store, t]);
+}
+
+function cardLabel(
+  card: Element & Record<string, unknown>,
+  store: BoardStore | undefined,
+  t: (key: string) => string,
+): string {
+  const body = card.type === 'note' ? store?.map(card.id)?.get('body') : undefined;
+  if (body instanceof Y.XmlFragment) {
+    const text = plainText(body).trim().split('\n')[0]?.slice(0, 80);
+    if (text) return text;
+  }
+  for (const key of ['label', 'title', 'caption', 'name'] as const) {
+    const value = card[key];
+    if (typeof value === 'string' && value.trim()) return value.trim();
+  }
+  return t(`board.types.${card.type}`);
 }
 const noSubscribe = () => () => {};
 const noSnapshot = () => null;
@@ -111,6 +139,7 @@ function CommentsPanel() {
   const target = useReviews((s) => s.target);
   const threads = useReviews((s) => s.threads);
   const status = useReviews((s) => s.status);
+  const reviewsStatus = useReviews((s) => s.reviewsStatus);
   const reviews = useReviews((s) => s.reviews);
   const pins = useReviews((s) => s.pins);
   const role = useReviews((s) => s.role);
@@ -125,11 +154,16 @@ function CommentsPanel() {
   const elementId = target?.elementId;
   const focusThread = target?.threadId;
 
-  // Focus moves into the panel and back where it was when the panel closes.
+  // Focus moves into the panel, or to the composer once a pin is placed, and back where it was
+  // when the panel closes; not when it closes to place a pin, which takes focus itself.
   useEffect(() => {
     const previous = document.activeElement;
-    ref.current?.focus();
+    const composer = getReviews().target?.pin
+      ? ref.current?.querySelector<HTMLTextAreaElement>('.comments-panel__composer textarea')
+      : null;
+    (composer ?? ref.current)?.focus();
     return () => {
+      if (getReviews().pinTarget) return;
       if (previous instanceof HTMLElement && previous.isConnected) previous.focus();
     };
   }, []);
@@ -138,48 +172,87 @@ function CommentsPanel() {
     if (focusThread) setFilter('all');
   }, [focusThread]);
 
-  // A linked thread is brought into view once it is in the list.
+  // A linked thread is brought into view once it is in the list, once per opening: later
+  // refreshes must not take focus away from someone typing.
+  const focusedFor = useRef<CommentTarget | null>(null);
   useEffect(() => {
     void threads;
-    if (!focusThread) return;
-    const node = [...(ref.current?.querySelectorAll<HTMLElement>('[data-thread]') ?? [])].find(
-      (n) =>
-        n.dataset.thread === focusThread ||
-        n.querySelector(`[data-comment="${CSS.escape(focusThread)}"]`),
+    if (!target?.threadId || focusedFor.current === target) return;
+    const node = ref.current?.querySelector<HTMLElement>(
+      `[data-thread="${CSS.escape(target.threadId)}"]`,
     );
     if (!node) return;
-    node.scrollIntoView({ block: 'nearest' });
-    node.focus();
-  }, [focusThread, threads]);
+    focusedFor.current = target;
+    const comment = target.commentId
+      ? node.querySelector<HTMLElement>(`[data-comment="${CSS.escape(target.commentId)}"]`)
+      : null;
+    node.focus({ preventScroll: true });
+    (comment ?? node).scrollIntoView({ block: 'nearest' });
+  }, [target, threads]);
 
-  const jump = (id: string) =>
-    setParams((p) => {
-      const next = new URLSearchParams(p);
-      next.set('el', id);
-      next.set('view', 'canvas');
-      return next;
-    });
+  // Comments from other people that arrive while the panel is open are announced, counted
+  // since it opened so each arrival changes the text read out.
+  const { user } = useSession();
+  const [arrived, setArrived] = useState(0);
+  const seen = useRef<{ scope: string | undefined; ids: Set<string> } | null>(null);
+  useEffect(() => {
+    if (status !== 'ready') return;
+    const last = seen.current;
+    const before = last && last.scope === elementId ? last.ids : null;
+    const ids = new Set<string>();
+    let fresh = 0;
+    for (const thread of threads) {
+      if (elementId && thread.elementId !== elementId) continue;
+      for (const comment of [thread, ...thread.replies]) {
+        ids.add(comment.id);
+        const mine = comment.author.kind === 'user' && comment.author.user.id === user?.id;
+        if (before && !before.has(comment.id) && !mine) fresh++;
+      }
+    }
+    seen.current = { scope: elementId, ids };
+    if (fresh > 0) setArrived((n) => n + fresh);
+  }, [threads, status, user?.id, elementId]);
+
+  const jump = useCallback(
+    (id: string) =>
+      setParams((p) => {
+        const next = new URLSearchParams(p);
+        next.set('el', id);
+        next.set('view', 'canvas');
+        return next;
+      }),
+    [setParams],
+  );
+  const onJump = useCallback(
+    (thread: CommentThread) => {
+      if (!thread.elementId) return;
+      jump(thread.elementId);
+      openComments({ elementId: thread.elementId, threadId: thread.id });
+    },
+    [jump],
+  );
 
   const shownThreads = threads.filter(
     (thread) =>
       (!elementId || thread.elementId === elementId) &&
       (filter === 'all' || (filter === 'resolved') === !!thread.resolvedAt),
   );
-  const focusIndex = shownThreads.findIndex(
-    (thread) => thread.id === focusThread || thread.replies.some((r) => r.id === focusThread),
-  );
+  const focusIndex = shownThreads.findIndex((thread) => thread.id === focusThread);
   const visible = shownThreads.slice(0, Math.max(limit, focusIndex + 1));
   const removed = !!elementId && !cards.exists(elementId);
   const byStatus = reviewFilter
-    ? cards.elements.filter(
-        (el) => el.type !== 'arrow' && (reviews.get(el.id)?.status ?? 'none') === reviewFilter,
-      )
+    ? cards
+        .elements()
+        .filter(
+          (el) => el.type !== 'arrow' && (reviews.get(el.id)?.status ?? 'none') === reviewFilter,
+        )
     : [];
 
   const onKeyDown = (e: KeyboardEvent) => {
     // Keys typed here are not board shortcuts.
     e.stopPropagation();
     const inDialog = (e.target as HTMLElement).closest('dialog');
+    // A composer with text handles Escape itself, so a draft is never lost to it.
     if (e.key === 'Escape' && !e.defaultPrevented && !inDialog) closeComments();
   };
 
@@ -284,15 +357,23 @@ function CommentsPanel() {
             <button
               type="button"
               className="review-link"
-              onClick={() => {
-                refreshReviews('comments');
-                refreshReviews('reviews');
-              }}
+              onClick={() => refreshReviews('comments')}
             >
               {t('comments.retry')}
             </button>
           </p>
         )}
+        {reviewsStatus === 'error' && (
+          <p role="alert" className="review-error">
+            {t('review.loadError')}{' '}
+            <button type="button" className="review-link" onClick={() => refreshReviews('reviews')}>
+              {t('comments.retry')}
+            </button>
+          </p>
+        )}
+        <p role="status" className="review-hidden">
+          {arrived > 0 ? t('comments.arrived', { count: arrived }) : ''}
+        </p>
         {status === 'loading' && (
           <p role="status" className="ink-muted">
             {t('comments.loading')}
@@ -316,14 +397,8 @@ function CommentsPanel() {
                   : 0
               }
               showTarget={!elementId}
-              onJump={
-                thread.elementId && cards.exists(thread.elementId)
-                  ? () => {
-                      jump(thread.elementId as string);
-                      openComments({ elementId: thread.elementId as string, threadId: thread.id });
-                    }
-                  : undefined
-              }
+              canJump={!!thread.elementId && cards.exists(thread.elementId)}
+              onJump={onJump}
             />
           ))}
         </div>
@@ -334,7 +409,7 @@ function CommentsPanel() {
         )}
       </div>
       {writable && !removed ? (
-        <NewThread elementId={elementId} />
+        <NewThread elementId={elementId} onJump={jump} />
       ) : (
         !writable && <p className="comments-panel__foot ink-muted">{t('comments.readOnly')}</p>
       )}
@@ -342,11 +417,21 @@ function CommentsPanel() {
   );
 }
 
-function NewThread({ elementId }: { elementId: string | undefined }) {
+function NewThread({
+  elementId,
+  onJump,
+}: {
+  elementId: string | undefined;
+  onJump: (id: string) => void;
+}) {
   const { t } = useTranslation();
   const pin = useReviews((s) => s.target?.pin);
   const boardId = useReviews((s) => s.boardId);
-  const [visibility, setVisibility] = useState<CommentVisibility>('team');
+  const canvas = useReviews((s) => s.canvas);
+  const draftKey = elementId ?? null;
+  const [visibility, setVisibility] = useState<CommentVisibility>(
+    () => getDraft(draftKey)?.visibility ?? 'team',
+  );
   const id = useId();
   return (
     <div className="comments-panel__composer">
@@ -361,14 +446,26 @@ function NewThread({ elementId }: { elementId: string | undefined }) {
           ) : null}
           <Button
             variant="ghost"
-            onClick={() => (pin ? openComments({ elementId }) : placePin(elementId))}
+            aria-describedby={!pin && !canvas ? `${id}-pins` : undefined}
+            onClick={() => {
+              if (pin) return openComments({ elementId });
+              // Points are placed and shown on the canvas only, where the card has one shape.
+              if (!canvas) onJump(elementId);
+              placePin(elementId);
+            }}
           >
             {t(pin ? 'comments.pinRemove' : 'comments.pinAdd')}
           </Button>
+          {!pin && !canvas && (
+            <span id={`${id}-pins`} className="ink-muted comment-hint">
+              {t('comments.pinsOnCanvas')}
+            </span>
+          )}
         </div>
       )}
       <Composer
-        key={`${elementId ?? 'board'}:${pin ? `${pin.x},${pin.y}` : ''}`}
+        key={draftKey ?? 'board'}
+        draft={{ elementId: draftKey, visibility }}
         submitLabel={t('comments.send')}
         onSend={async (body) => {
           await api.post(`/boards/${boardId}/comments`, {
@@ -377,7 +474,7 @@ function NewThread({ elementId }: { elementId: string | undefined }) {
             ...(elementId ? { elementId } : {}),
             ...(pin ? { pin } : {}),
           });
-          refreshReviews('comments');
+          refreshReviews('comments', draftKey);
           if (pin && elementId) openComments({ elementId });
         }}
       >
@@ -418,12 +515,13 @@ function AuthorLine({ author, at, edited }: { author: Author; at: string; edited
   );
 }
 
-function Thread({
+const Thread = memo(function Thread({
   thread,
   writable,
   targetLabel,
   pinNumber,
   showTarget,
+  canJump,
   onJump,
 }: {
   thread: CommentThread;
@@ -431,15 +529,19 @@ function Thread({
   targetLabel: string;
   pinNumber: number;
   showTarget: boolean;
-  onJump: (() => void) | undefined;
+  canJump: boolean;
+  onJump: (thread: CommentThread) => void;
 }) {
   const { t } = useTranslation();
   const [replying, setReplying] = useState(false);
+  // Older replies: the ones a notification link fetched, then the pages asked for here.
+  const preloaded = useReviews((s) => s.olderReplies.get(thread.id));
   const [older, setOlder] = useState<Comment[]>([]);
-  const [cursor, setCursor] = useState<string | null>(null);
+  const [cursor, setCursor] = useState<string | null | undefined>(undefined);
+  const nextCursor = cursor === undefined ? (preloaded?.cursor ?? null) : cursor;
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(false);
-  const replies = mergeReplies(older, thread.replies);
+  const replies = mergeReplies([...(preloaded?.items ?? [])], older, thread.replies);
   const hidden = thread.replyCount - replies.length;
 
   const run = async (action: () => Promise<unknown>) => {
@@ -447,7 +549,7 @@ function Thread({
     setBusy(true);
     try {
       await action();
-      refreshReviews('comments');
+      refreshReviews('comments', thread.elementId);
     } catch {
       setError(true);
     } finally {
@@ -464,11 +566,11 @@ function Thread({
     >
       <div className="review-row">
         {showTarget &&
-          (onJump ? (
+          (canJump ? (
             <button
               type="button"
               className="review-link"
-              onClick={onJump}
+              onClick={() => onJump(thread)}
               aria-label={t('comments.jumpTo', { card: targetLabel })}
             >
               {targetLabel}
@@ -489,7 +591,7 @@ function Thread({
         </span>
         {thread.shareLinkId && <span className="review-tag">{t('comments.oneLink')}</span>}
       </div>
-      <CommentItem comment={thread} writable={writable} />
+      <CommentItem comment={thread} elementId={thread.elementId} writable={writable} />
       {hidden > 0 && (
         <Button
           variant="ghost"
@@ -498,7 +600,7 @@ function Thread({
             setBusy(true);
             setError(false);
             try {
-              const p = await fetchReplies(thread.id, cursor);
+              const p = await fetchReplies(thread.id, nextCursor);
               setOlder((items) => mergeReplies(items, p.items));
               setCursor(p.nextCursor);
             } catch {
@@ -514,7 +616,12 @@ function Thread({
       {replies.length > 0 && (
         <div className="comment-replies">
           {replies.map((reply) => (
-            <CommentItem key={reply.id} comment={reply} writable={writable} />
+            <CommentItem
+              key={reply.id}
+              comment={reply}
+              elementId={thread.elementId}
+              writable={writable}
+            />
           ))}
         </div>
       )}
@@ -559,7 +666,7 @@ function Thread({
             const { boardId } = getReviews();
             await api.post(`/boards/${boardId}/comments`, { body, parentId: thread.id });
             setReplying(false);
-            refreshReviews('comments');
+            refreshReviews('comments', thread.elementId);
           }}
         />
       )}
@@ -570,9 +677,17 @@ function Thread({
       )}
     </article>
   );
-}
+});
 
-function CommentItem({ comment, writable }: { comment: Comment; writable: boolean }) {
+function CommentItem({
+  comment,
+  elementId,
+  writable,
+}: {
+  comment: Comment;
+  elementId: string | null;
+  writable: boolean;
+}) {
   const { t } = useTranslation();
   const { user } = useSession();
   const [editing, setEditing] = useState(false);
@@ -599,7 +714,7 @@ function CommentItem({ comment, writable }: { comment: Comment; writable: boolea
           onSend={async (body) => {
             await api.patch(`/comments/${comment.id}`, { body });
             setEditing(false);
-            refreshReviews('comments');
+            refreshReviews('comments', elementId);
           }}
         />
       ) : comment.deletedAt ? (
@@ -665,7 +780,7 @@ function CommentItem({ comment, writable }: { comment: Comment; writable: boolea
                 try {
                   await api.delete(`/comments/${comment.id}`);
                   setConfirming(false);
-                  refreshReviews('comments');
+                  refreshReviews('comments', elementId);
                 } catch {
                   setError(true);
                 } finally {
@@ -694,6 +809,7 @@ function Composer({
   onSend,
   submitLabel,
   initial,
+  draft,
   onCancel,
   autoFocus,
   children,
@@ -701,6 +817,8 @@ function Composer({
   onSend: (body: string) => Promise<void>;
   submitLabel: string;
   initial?: Comment;
+  /** Keeps the text of a new thread while the panel closes, e.g. to place a pin. */
+  draft?: { elementId: string | null; visibility: CommentVisibility };
   onCancel?: () => void;
   autoFocus?: boolean;
   children?: ReactNode;
@@ -708,8 +826,18 @@ function Composer({
   const { t } = useTranslation();
   const { user } = useSession();
   const people = useReviews((s) => s.people);
-  const [text, setText] = useState(() => (initial ? editableText(initial) : ''));
-  const [picked, setPicked] = useState(() => initial?.mentions ?? []);
+  const saved = draft ? getDraft(draft.elementId) : null;
+  const [text, setText] = useState(() => saved?.text ?? (initial ? editableText(initial) : ''));
+  const [picked, setPicked] = useState<readonly UserSummary[]>(
+    () => saved?.picked ?? initial?.mentions ?? [],
+  );
+  const [armed, setArmed] = useState(false);
+  const draftScope = draft?.elementId;
+  const draftVisibility = draft?.visibility;
+  useEffect(() => {
+    if (draftVisibility === undefined || draftScope === undefined) return;
+    saveDraft(text ? { elementId: draftScope, text, picked, visibility: draftVisibility } : null);
+  }, [text, picked, draftScope, draftVisibility]);
   const [caret, setCaret] = useState(0);
   const [active, setActive] = useState(0);
   const [dismissed, setDismissed] = useState(false);
@@ -764,6 +892,7 @@ function Composer({
       await onSend(body);
       setText('');
       setPicked([]);
+      if (draft) saveDraft(null);
     } catch (err) {
       setError(
         t(
@@ -802,6 +931,7 @@ function Composer({
             setCaret(e.target.selectionStart);
             setDismissed(false);
             setActive(0);
+            setArmed(false);
           }}
           onKeyDown={(e) => {
             if (listOpen && ['ArrowDown', 'ArrowUp', 'Enter', 'Tab', 'Escape'].includes(e.key)) {
@@ -817,9 +947,23 @@ function Composer({
             } else if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
               e.preventDefault();
               e.currentTarget.form?.requestSubmit();
-            } else if (e.key === 'Escape' && onCancel) {
-              e.preventDefault();
-              onCancel();
+            } else if (e.key === 'Escape') {
+              const changed = text.trim() !== (initial ? editableText(initial) : '').trim();
+              // Text is only thrown away by a second Escape.
+              if (changed && !armed) {
+                e.preventDefault();
+                setArmed(true);
+                return;
+              }
+              if (changed) {
+                setText('');
+                setPicked([]);
+                if (draft) saveDraft(null);
+              }
+              if (onCancel) {
+                e.preventDefault();
+                onCancel();
+              }
             }
           }}
         />
@@ -847,8 +991,12 @@ function Composer({
           </div>
         )}
       </div>
-      <span id={`${id}-hint`} className="ink-muted comment-hint">
-        {tooLong ? t('comments.tooLong', { max: MAX_COMMENT_LENGTH }) : t('comments.mentionHint')}
+      <span id={`${id}-hint`} className="ink-muted comment-hint" aria-live="polite">
+        {tooLong
+          ? t('comments.tooLong', { max: MAX_COMMENT_LENGTH })
+          : armed
+            ? t('comments.escapeAgain')
+            : t('comments.mentionHint')}
       </span>
       {children}
       <div className="review-row">

@@ -460,7 +460,7 @@ const FrameTile = memo(function FrameTile({
         )}
         <StatusChip status={frame.status} />
       </div>
-      <CardReview elementId={frame.id} />
+      <CardReview elementId={frame.id} withPins={false} />
       {frame.action && <p className="story__tile-action">{frame.action}</p>}
     </li>
   );

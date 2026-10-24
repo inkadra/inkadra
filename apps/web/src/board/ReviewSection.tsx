@@ -49,7 +49,8 @@ export function ReviewSection({ elementId }: { elementId: string }) {
         </div>
       )}
       <div className="review-row">
-        {writable && (
+        {/* A status this client does not know is shown without actions. */}
+        {writable && known(current?.status ?? 'none') && (
           <Button
             variant="ghost"
             aria-expanded={editing}

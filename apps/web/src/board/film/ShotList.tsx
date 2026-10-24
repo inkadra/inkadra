@@ -205,7 +205,7 @@ export function ShotList({
                         strokes={f.strokes}
                         pixels={240}
                       />
-                      <CardReview elementId={f.id} />
+                      <CardReview elementId={f.id} withPins={false} />
                     </td>
                     <td className="shots__label">
                       {labels.get(f.id)} <GuestVisibility store={store} element={f} />
