@@ -22,12 +22,15 @@ import { verifyPassword } from 'better-auth/crypto';
 import { and, count, eq, getTableColumns, gt, inArray, isNull, or, sql } from 'drizzle-orm';
 import type { FastifyInstance, FastifyReply } from 'fastify';
 import { guestCan } from '../access.ts';
+import { storedElement } from '../board-content.ts';
+import { type BoardNotifier, noNotices } from '../board-notices.ts';
 import type { Config } from '../config.ts';
 import type { Database } from '../db/client.ts';
 import {
   asset,
   assetVariant,
   boardDoc,
+  comment,
   elementReview,
   elementReviewEvent,
   shareGuest,
@@ -35,6 +38,7 @@ import {
   sharePick,
   user,
 } from '../db/schema.ts';
+import { afterCommit, notify, Recipients } from '../notifications.ts';
 import { addressBucket, Failures } from '../rate-limits.ts';
 import { safeEqual, sha256 } from '../secrets.ts';
 import {
@@ -68,6 +72,7 @@ interface Deps {
   db: Database;
   storage: Storage;
   docs: DocViews;
+  notices?: BoardNotifier;
 }
 
 const TokenParams = z.object({ token: z.string().min(16).max(128) });
@@ -79,21 +84,16 @@ const VariantParams = AssetParams.extend({ size: ThumbnailSize });
 
 type GuestEvent =
   | GuestCommentEvent
-  | { kind: 'review'; boardId: string; elementId: string; status: ReviewStatus; guestId: string };
-
-/**
- * Called after every guest write the team should hear about.
- *
- * TODO(wave-3 notifications): the notification system of decision 0013 is not on main yet.
- * Once it is, call it from here: a guest reply notifies the people who wrote in the thread
- * (`reply`), a new thread on a card notifies its creator (`comment`), a review decision
- * notifies the card's creator and whoever asked for review (`review`), all with
- * `actorGuestId` set to the guest.
- *
- * TODO(wave-3 notices): send the stateless BoardNotice (`comments` with elementId and
- * threadId, or `review` with elementId) to open boards once the collab notice channel lands.
- */
-function afterGuestWrite(_event: GuestEvent): void {}
+  | {
+      kind: 'review';
+      projectId: string;
+      boardId: string;
+      elementId: string;
+      status: ReviewStatus;
+      previous: ReviewStatus;
+      requestedBy: string | null;
+      guestId: string;
+    };
 
 /** New guests a link accepts in a day, whatever the address (decision 0013). */
 const NEW_GUESTS_PER_DAY = 500;
@@ -108,6 +108,59 @@ function matchesEtag(header: string | undefined, version: string) {
 
 export async function registerGuestRoutes(app: FastifyInstance, deps: Deps) {
   const { config, db, storage, docs } = deps;
+  const notices = deps.notices ?? noNotices;
+
+  /** Use the same recipients, access checks and queued email preferences as team writes. */
+  async function afterGuestWrite(event: GuestEvent) {
+    await afterCommit(app.log, async () => {
+      const recipients = new Recipients(null);
+      if (event.kind === 'comment') {
+        // Guests cannot mention; edits and deletions only invalidate the board's comments.
+        if (event.action !== 'created') return;
+        if (event.commentId !== event.threadId) {
+          const writers = await db
+            .selectDistinct({ id: comment.authorId })
+            .from(comment)
+            .where(
+              and(
+                eq(comment.boardId, event.boardId),
+                or(eq(comment.id, event.threadId), eq(comment.threadId, event.threadId)),
+                isNull(comment.deletedAt),
+              ),
+            );
+          for (const writer of writers) recipients.add(writer.id, 'reply');
+        } else if (event.elementId) {
+          const card = await storedElement(db, event.boardId, event.elementId);
+          recipients.add(card?.createdBy, 'comment');
+        }
+      } else {
+        if (event.previous === event.status) return;
+        const card = await storedElement(db, event.boardId, event.elementId);
+        recipients.add(card?.createdBy, 'review').add(event.requestedBy, 'review');
+      }
+      await notify(
+        db,
+        {
+          actor: { guestId: event.guestId },
+          projectId: event.projectId,
+          boardId: event.boardId,
+          elementId: event.elementId,
+          commentId: event.kind === 'comment' ? event.commentId : null,
+          reviewStatus: event.kind === 'review' ? event.status : null,
+        },
+        recipients,
+      );
+    });
+    // The injected notifier delivers in all and split mode, even if notification fanout fails.
+    await afterCommit(app.log, () =>
+      notices.notify(
+        event.boardId,
+        event.kind === 'comment'
+          ? { type: 'comments', elementId: event.elementId, threadId: event.threadId }
+          : { type: 'review', elementId: event.elementId },
+      ),
+    );
+  }
   const guests = createGuestAuth({ config, db, docs });
   const previews = new RateLimiter(60, 60_000);
   const wrongPasswords = new Failures(10, 15 * 60_000);
@@ -554,7 +607,7 @@ export async function registerGuestRoutes(app: FastifyInstance, deps: Deps) {
         await guests.requireElement(ctx, boardId, elementId);
         guests.requireName(ctx);
         guests.takeWrite(ctx);
-        await db.transaction(async (tx) => {
+        const change = await db.transaction(async (tx) => {
           // One decision per link and card at a time.
           await tx.execute(
             sql`select pg_advisory_xact_lock(hashtext(${`review:${boardId}:${elementId}:${linkId}`}))`,
@@ -610,9 +663,15 @@ export async function registerGuestRoutes(app: FastifyInstance, deps: Deps) {
             guestId: ctx.guest.id,
             shareLinkId: linkId,
           });
+          return {
+            previous: own?.status ?? 'none',
+            requestedBy: rows.find((r) => r.shareLinkId === null)?.requestedBy ?? null,
+          };
         });
-        afterGuestWrite({
+        await afterGuestWrite({
           kind: 'review',
+          projectId: ctx.link.projectId,
+          ...change,
           boardId,
           elementId,
           status: input.status,

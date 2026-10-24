@@ -17,11 +17,15 @@ import {
   comment,
   elementReview,
   elementReviewEvent,
+  notification,
   project,
   projectMember,
   shareGuest,
   shareLink,
 } from '../db/schema.ts';
+import { memoryMailer, noMailer } from '../mailer.ts';
+import * as notifications from '../notifications.ts';
+import { EMAIL_GROUP_DELAY_MS, sendDigests, sendImmediateEmails } from '../notifications.ts';
 import { clearExpiredGuestNames, DocViews, resolveLink } from '../share-links.ts';
 import { testDeps } from '../test-deps.ts';
 import { issueToken } from '../tokens.ts';
@@ -66,6 +70,7 @@ describe.skipIf(!url)('guest share links (needs DATABASE_URL)', () => {
   const log = pino({ level: 'silent' });
   const { db, sql: client } = createDatabase(config.DATABASE_URL, 4);
   const deps = testDeps(db, log);
+  const notices = { notify: vi.fn() };
   let app: Awaited<ReturnType<typeof createApp>>;
   let base = '';
 
@@ -274,7 +279,7 @@ describe.skipIf(!url)('guest share links (needs DATABASE_URL)', () => {
     await runMigrations(config.DATABASE_URL, migrationsFolder);
     await db.execute(sql`truncate table "user", project, instance_setting, verification cascade`);
     const auth = createAuth(config, db, {});
-    app = await createApp({ config, db, auth, log, ...deps });
+    app = await createApp({ config, db, auth, log, ...deps, notices });
     await app.listen({ host: '127.0.0.1', port: 0 });
     base = `http://127.0.0.1:${(app.server.address() as AddressInfo).port}`;
     for (const who of ['owner', 'editor', 'editor2', 'commenter', 'viewer', 'outsider'] as const) {
@@ -549,7 +554,256 @@ describe.skipIf(!url)('guest share links (needs DATABASE_URL)', () => {
     ).toBe(200);
     expect(
       (await call(null, 'POST', '/api/v1/guest/unknown', {}, { origin: undefined })).status,
-    ).toBe(403);
+    ).toBe(404);
+  });
+
+  it('rejects encoded cross-site writes on real account, guest and invitation routes', async () => {
+    const { token } = await issueToken(db, as.owner.id, { name: 'Encoded CSRF' });
+    for (const [who, path, payload] of [
+      ['owner', '/%61pi/v1/projects', { name: 'Blocked' }],
+      [null, `/api/v1/%67uest/links/${linkC.id}/session`, { token: linkC.token }],
+      ['owner', `/api/v1/%67uest/links/${linkC.id}/session`, { token: linkC.token }],
+      ['owner', `/api/v1/invitations/by-token/${linkC.token}/accept`, {}],
+      ['owner', `/api/v1/%69nvitations/by-token/${linkC.token}/accept`, {}],
+    ] as const) {
+      for (const origin of [undefined, 'null', 'http://sibling.localhost:3000']) {
+        const res = await call(who, 'POST', path, payload, { origin });
+        expect(res.status, path).toBe(403);
+        expect(res.body.error.message).toBe('Cross-site request refused.');
+      }
+      // A bearer header cannot exempt guest routes or an ambient account cookie.
+      expect(
+        (
+          await call(who, 'POST', path, payload, {
+            origin: undefined,
+            authorization: `Bearer ${token}`,
+          })
+        ).status,
+      ).toBe(403);
+    }
+    expect(
+      (
+        await call(
+          null,
+          'POST',
+          '/%61pi/v1/projects',
+          { name: 'Bearer project' },
+          {
+            origin: undefined,
+            authorization: `Bearer ${token}`,
+          },
+        )
+      ).status,
+    ).toBe(201);
+    expect(
+      (await call('owner', 'POST', '/%61pi/v1/projects', { name: 'Same origin project' })).status,
+    ).toBe(201);
+    // Prove the encoded guest path reaches the real session handler when allowed.
+    expect(
+      (
+        await call(null, 'POST', `/api/v1/%67uest/links/${linkC.id}/session`, {
+          token: linkC.token,
+        })
+      ).status,
+    ).toBe(200);
+  });
+
+  it('notifies team recipients for guest comments and reviews and honors their email preferences', async () => {
+    const boardId = await insertBoard(P, 'Guest notifications', B.R);
+    await saveDoc(boardId, [
+      { ...el, id: E.img, type: 'image', parent: null, assetId: X.x1, createdBy: as.owner.id },
+      { ...el, id: E.note, type: 'note', parent: null, createdBy: as.outsider.id },
+    ]);
+    const link = await createLink('owner', boardId, { role: 'guest_approve', proofing: true });
+    const opened = await open(link, { name: 'Notification Guest' });
+    expect(opened.status).toBe(200);
+    const guestId = opened.body.guest.id as string;
+    const guest = { cookie: opened.cookie };
+    const commentsPath = g(link, `/boards/${boardId}/comments`);
+    const reviewPath = g(link, `/boards/${boardId}/elements/${E.img}/review`);
+    const guestRows = () =>
+      db.select().from(notification).where(eq(notification.actorGuestId, guestId));
+    const noticeCount = () => notices.notify.mock.calls.filter(([id]) => id === boardId).length;
+    const assertRecipients = (
+      rows: Awaited<ReturnType<typeof guestRows>>,
+      type: string,
+      ids: string[],
+    ) => {
+      expect(rows.map((r) => r.userId).sort()).toEqual([...ids].sort());
+      for (const row of rows)
+        expect(row).toMatchObject({
+          type,
+          actorId: null,
+          actorGuestId: guestId,
+          projectId: P,
+          boardId,
+        });
+    };
+    for (const [who, email] of [
+      ['owner', 'immediate'],
+      ['editor', 'daily'],
+      ['commenter', 'off'],
+    ] as const)
+      expect(
+        (await call(who, 'PATCH', '/api/v1/me/notification-preferences', { email })).status,
+      ).toBe(200);
+
+    const created = await call(guest, 'POST', commentsPath, {
+      elementId: E.img,
+      body: `Guest comment @{${as.viewer.id}}`,
+    });
+    expect(created.status).toBe(201);
+    assertRecipients(await guestRows(), 'comment', [as.owner.id]);
+    expect(notices.notify).toHaveBeenCalledWith(boardId, {
+      type: 'comments',
+      elementId: E.img,
+      threadId: created.body.id,
+    });
+    const inbox = await call('owner', 'GET', '/api/v1/me/notifications');
+    expect(
+      inbox.body.items.find((n: { commentId: string }) => n.commentId === created.body.id),
+    ).toMatchObject({
+      actor: { kind: 'guest', guestId, name: 'Notification Guest', shareLinkId: link.id },
+    });
+    expect(
+      (await call(guest, 'PATCH', g(link, `/comments/${created.body.id}`), { body: 'Edited' }))
+        .status,
+    ).toBe(200);
+    expect(await guestRows()).toHaveLength(1);
+    expect((await call(guest, 'DELETE', g(link, `/comments/${created.body.id}`))).status).toBe(204);
+    expect(noticeCount()).toBe(3);
+    // A hard-deleted comment cascades its notification; edits create no new notification.
+    expect(await guestRows()).toHaveLength(0);
+    expect((await call(guest, 'POST', commentsPath, { body: 'Board thread' })).status).toBe(201);
+    expect(
+      (
+        await call(guest, 'POST', commentsPath, {
+          elementId: E.note,
+          body: 'Creator has no access',
+        })
+      ).status,
+    ).toBe(201);
+    expect(await guestRows()).toHaveLength(0);
+
+    // A team thread with repeated writers, a deleted writer, a guest and a former reader.
+    const [thread] = await db
+      .insert(comment)
+      .values({
+        projectId: P,
+        boardId,
+        elementId: E.img,
+        authorId: as.owner.id,
+        visibility: 'everyone',
+        body: 'Team thread',
+      })
+      .returning();
+    if (!thread) throw new Error('Missing thread');
+    await db.insert(comment).values([
+      ...(['owner', 'editor', 'commenter', 'outsider'] as const).map((who) => ({
+        projectId: P,
+        boardId,
+        elementId: E.img,
+        threadId: thread.id,
+        authorId: as[who].id,
+        visibility: 'everyone' as const,
+        body: 'Reply',
+      })),
+      {
+        projectId: P,
+        boardId,
+        elementId: E.img,
+        threadId: thread.id,
+        authorId: as.viewer.id,
+        body: '',
+        deletedAt: new Date(),
+      },
+    ]);
+    const reply = await call(guest, 'POST', commentsPath, {
+      parentId: thread.id,
+      body: `Reply @{${as.viewer.id}}`,
+    });
+    expect(reply.status).toBe(201);
+    assertRecipients(
+      (await guestRows()).filter((r) => r.commentId === reply.body.id),
+      'reply',
+      [as.owner.id, as.editor.id, as.commenter.id],
+    );
+
+    const teamReview = `/api/v1/boards/${boardId}/elements/${E.img}/review`;
+    expect((await call('editor', 'PUT', teamReview, { status: 'in_review' })).status).toBe(200);
+    expect((await call(guest, 'PUT', reviewPath, { status: 'approved' })).status).toBe(200);
+    assertRecipients(
+      (await guestRows()).filter((r) => r.reviewStatus === 'approved'),
+      'review',
+      [as.owner.id, as.editor.id],
+    );
+    expect(notices.notify).toHaveBeenCalledWith(boardId, { type: 'review', elementId: E.img });
+    const beforeRepeat = (await guestRows()).length;
+    expect(
+      (await call(guest, 'PUT', reviewPath, { status: 'approved', note: 'Updated note' })).status,
+    ).toBe(200);
+    expect(await guestRows()).toHaveLength(beforeRepeat);
+    for (const status of ['changes_requested', 'none'] as const) {
+      expect((await call(guest, 'PUT', reviewPath, { status })).status).toBe(200);
+      assertRecipients(
+        (await guestRows()).filter((r) => r.reviewStatus === status),
+        'review',
+        [as.owner.id, as.editor.id],
+      );
+    }
+    const beforePick = (await guestRows()).length;
+    const noticesBeforePick = noticeCount();
+    expect(
+      (
+        await call(guest, 'PUT', g(link, `/boards/${boardId}/elements/${E.img}/pick`), {
+          pick: 'picked',
+        })
+      ).status,
+    ).toBe(200);
+    // ADR 0013 specifies no notification or BoardNotice type for picks.
+    expect(await guestRows()).toHaveLength(beforePick);
+    expect(noticeCount()).toBe(noticesBeforePick);
+
+    const mailer = memoryMailer();
+    const mailDeps = { db, log, mailer, publicUrl: config.PUBLIC_URL, instanceName: 'Inkadra' };
+    const due = new Date(Date.now() + EMAIL_GROUP_DELAY_MS + 1000);
+    expect(await sendImmediateEmails({ ...mailDeps, mailer: noMailer }, due)).toEqual({ sent: 0 });
+    expect(await sendImmediateEmails(mailDeps, due)).toEqual({ sent: 1 });
+    expect(mailer.sent.map((m) => m.to)).toEqual(['owner@example.com']);
+    expect(mailer.sent[0]?.text).toContain('Notification Guest');
+    expect(await sendDigests(mailDeps, due)).toEqual({ sent: 1 });
+    expect(mailer.sent.map((m) => m.to)).toEqual(['owner@example.com', 'editor@example.com']);
+    expect(await sendDigests(mailDeps, due)).toEqual({ sent: 0 });
+
+    // Post-commit failures cannot cause retries of a persisted guest write or suppress notices.
+    const fail = vi
+      .spyOn(notifications, 'notify')
+      .mockRejectedValueOnce(new Error('Fanout failed'));
+    try {
+      const before = noticeCount();
+      expect(
+        (
+          await call(guest, 'POST', commentsPath, {
+            elementId: E.img,
+            body: 'Persist despite fanout failure',
+          })
+        ).status,
+      ).toBe(201);
+      expect(noticeCount()).toBe(before + 1);
+    } finally {
+      fail.mockRestore();
+    }
+    notices.notify.mockImplementationOnce(() => {
+      throw new Error('Notice failed');
+    });
+    expect(
+      (
+        await call(guest, 'POST', commentsPath, {
+          elementId: E.img,
+          body: 'Persist despite notice failure',
+        })
+      ).status,
+    ).toBe(201);
   });
 
   // Opening a link ------------------------------------------------------------------
