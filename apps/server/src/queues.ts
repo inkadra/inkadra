@@ -8,6 +8,14 @@ import { asset } from './db/schema.ts';
 import type { Jobs } from './jobs.ts';
 import { type MediaDeps, markFailed, processAsset } from './media/process.ts';
 import { type Storage, UPLOAD_EXPIRY_MS } from './storage.ts';
+import {
+  applyVersionRetention,
+  type RestoreVersion,
+  type RestoreVersionResult,
+  type SaveVersion,
+  type SaveVersionResult,
+  type VersionWriter,
+} from './versions.ts';
 
 /**
  * Background job queues. Producers live in the web process, consumers in `inkadra worker`.
@@ -20,7 +28,10 @@ export const QUEUES = {
   email: 'email',
   /** Housekeeping: trash purge, upload cleanup, backups (wave 3). */
   maintenance: 'maintenance',
-  /** Cards the web role adds to board documents, applied by `inkadra collab` (split mode). */
+  /**
+   * Cards the web role adds to board documents, named versions and restores, applied by
+   * `inkadra collab` (split mode).
+   */
   collab: 'collab',
 } as const;
 
@@ -30,6 +41,9 @@ export type JobPayloads = {
   'maintenance:purge-uploads': Record<string, never>;
   'media:process': { assetId: string };
   'collab:add-card': AddCard & { expiresAt: number };
+  'collab:save-version': SaveVersion & { expiresAt: number };
+  'collab:restore-version': RestoreVersion & { expiresAt: number };
+  'maintenance:version-retention': Record<string, never>;
 };
 
 const ATTEMPTS = { attempts: 3, backoff: { type: 'exponential', delay: 10_000 } } as const;
@@ -74,6 +88,11 @@ export function createQueues(url: string, opts: { prefix?: string } = {}) {
 /**
  * Removes uploads that never finished and re-queues finished ones that were never processed
  * (for example when Redis was down at the time).
+ *
+ * This is not a cleanup of unused files: a finished upload is kept whether or not a card
+ * shows it. Anything that ever removes files no card uses must also look inside board
+ * versions (`board_version`), because restoring a version brings its cards and their files
+ * back (decision 0013).
  */
 export async function purgeUploads(db: Database, storage: Storage, jobs: Jobs) {
   const stale = await db
@@ -116,6 +135,7 @@ export async function startWorkers(
         return { removed: keys.length };
       }
       if (job.name === 'purge-uploads') return purgeUploads(deps.db, deps.storage, queues.jobs);
+      if (job.name === 'version-retention') return applyVersionRetention(deps.db);
       throw new Error(`Unknown job ${job.name}`);
     },
     { connection, concurrency: 2 },
@@ -143,6 +163,11 @@ export async function startWorkers(
     'purge-uploads',
     { every: 60 * 60 * 1000 },
     { name: 'purge-uploads', data: {}, opts: KEEP },
+  );
+  await scheduler.upsertJobScheduler(
+    'version-retention',
+    { every: 60 * 60 * 1000 },
+    { name: 'version-retention', data: {}, opts: KEEP },
   );
 
   for (const w of [maintenance, media]) {
@@ -174,7 +199,7 @@ const timedOut = (err: unknown) => err instanceof Error && /timed out/.test(err.
 /** A job that stalled may have written its card before its worker stopped answering. */
 const unknownIfStalled = (err: unknown) =>
   err instanceof Error && /stalled/i.test(err.message)
-    ? new CardOutcomeUnknown('The collaboration server stopped while adding the card.')
+    ? new CardOutcomeUnknown('The collaboration server stopped while making the change.')
     : err;
 
 /**
@@ -194,9 +219,10 @@ export function within<T>(promise: Promise<T>, ms: number, message: string): Pro
 
 /**
  * Board edits from a web role that has no collaboration server of its own: they go through
- * the `collab` queue to the one that has the document open (decision 0014).
+ * the `collab` queue to the one that has the document open (decision 0014). Cards, named
+ * versions and restores (decision 0013) share the same rules.
  *
- * A card must never appear after the client was told it failed. The job carries a deadline
+ * An edit must never land after the client was told it failed. The job carries a deadline
  * that the worker checks right before writing, and is neither retried nor re-run when stalled.
  * A job not started by the deadline is removed (and would be refused anyway); one already
  * running gets a short grace to answer, and if it still does not, the outcome is reported as
@@ -215,50 +241,59 @@ export function queuedBoardWriter(
     connection: createRedis(url),
     prefix: opts.prefix,
   });
-  const writer: BoardWriter = {
-    async addCard(input) {
-      const expiresAt = Date.now() + timeoutMs;
-      const left = () => expiresAt - Date.now();
-      // With Valkey down these would wait forever. A job added after the deadline is removed
-      // as soon as the add lands, and refused by the worker if it runs first: giving up here
-      // cannot lead to a late card.
-      const adding = events
-        .waitUntilReady()
-        .then(() =>
-          queue.add('add-card', { ...input, expiresAt }, { attempts: 1, ...ADD_CARD_KEEP }),
-        );
-      const job = await within(adding, left(), 'The collaboration queue is unreachable.').catch(
-        (err) => {
-          adding.then((late) => late.remove()).catch(() => {});
-          throw err;
-        },
+
+  async function run<T>(
+    name: CollabJob,
+    input: object,
+  ): Promise<T | { ok: false; reason: 'expired' }> {
+    const expiresAt = Date.now() + timeoutMs;
+    const left = () => expiresAt - Date.now();
+    // With Valkey down these would wait forever. A job added after the deadline is removed
+    // as soon as the add lands, and refused by the worker if it runs first: giving up here
+    // cannot lead to a late edit.
+    const adding = events
+      .waitUntilReady()
+      .then(() => queue.add(name, { ...input, expiresAt }, { attempts: 1, ...ADD_CARD_KEEP }));
+    const job = await within(adding, left(), 'The collaboration queue is unreachable.').catch(
+      (err) => {
+        adding.then((late) => late.remove()).catch(() => {});
+        throw err;
+      },
+    );
+    try {
+      return (await job.waitUntilFinished(events, Math.max(1, left()))) as T;
+    } catch (err) {
+      if (!timedOut(err)) throw unknownIfStalled(err);
+    }
+    const state = await within(job.getState(), graceMs, 'state').catch(() => 'unknown');
+    if (WAITING.has(state)) {
+      // Past the deadline the worker refuses it anyway; removing it keeps it from running.
+      // Removal fails if a worker took it meanwhile: then it answers below.
+      const removed = await within(job.remove(), graceMs, 'remove').then(
+        () => true,
+        () => false,
       );
-      try {
-        return (await job.waitUntilFinished(events, Math.max(1, left()))) as AddCardResult;
-      } catch (err) {
-        if (!timedOut(err)) throw unknownIfStalled(err);
-      }
-      const state = await within(job.getState(), graceMs, 'state').catch(() => 'unknown');
-      if (WAITING.has(state)) {
-        // Past the deadline the worker refuses it anyway; removing it keeps it from running.
-        // Removal fails if a worker took it meanwhile: then it answers below.
-        const removed = await within(job.remove(), graceMs, 'remove').then(
-          () => true,
-          () => false,
-        );
-        if (removed) return { ok: false, reason: 'expired' };
-      }
-      try {
-        return (await job.waitUntilFinished(events, graceMs)) as AddCardResult;
-      } catch (err) {
-        if (timedOut(err))
-          throw new CardOutcomeUnknown('The collaboration server did not answer in time.');
-        throw unknownIfStalled(err);
-      }
-    },
+      if (removed) return { ok: false, reason: 'expired' };
+    }
+    try {
+      return (await job.waitUntilFinished(events, graceMs)) as T;
+    } catch (err) {
+      if (timedOut(err))
+        throw new CardOutcomeUnknown('The collaboration server did not answer in time.');
+      throw unknownIfStalled(err);
+    }
+  }
+
+  const writer: BoardWriter = {
+    addCard: (input) => run<AddCardResult>('add-card', input),
+  };
+  const versions: VersionWriter = {
+    save: (input) => run<SaveVersionResult>('save-version', input),
+    restore: (input) => run<RestoreVersionResult>('restore-version', input),
   };
   return {
     writer,
+    versions,
     async close() {
       await Promise.all([queue.close(), events.close()]);
       connection.disconnect();
@@ -266,22 +301,32 @@ export function queuedBoardWriter(
   };
 }
 
-/** Run by `inkadra collab`: applies the cards queued by web roles to the live documents. */
+type CollabJob = 'add-card' | 'save-version' | 'restore-version';
+
+/**
+ * Run by `inkadra collab`: applies the edits queued by web roles to the live documents.
+ * Without `versions`, version jobs fail.
+ */
 export function startBoardWorker(
   url: string,
   writer: BoardWriter,
   log: Logger,
-  opts: { prefix?: string } = {},
+  opts: { prefix?: string; versions?: VersionWriter } = {},
 ) {
   const connection = createRedis(url);
   const worker = new Worker(
     QUEUES.collab,
     async (job) => {
-      if (job.name !== 'add-card') throw new Error(`Unknown job ${job.name}`);
-      const input = job.data as JobPayloads['collab:add-card'];
+      const name = job.name as CollabJob;
+      const input = job.data as { expiresAt: number };
       // Checked again inside the write; this one spares opening the document.
       if (Date.now() > input.expiresAt) return { ok: false, reason: 'expired' };
-      return writer.addCard(input);
+      if (name === 'add-card') return writer.addCard(job.data as JobPayloads['collab:add-card']);
+      if (name === 'save-version' && opts.versions)
+        return opts.versions.save(job.data as JobPayloads['collab:save-version']);
+      if (name === 'restore-version' && opts.versions)
+        return opts.versions.restore(job.data as JobPayloads['collab:restore-version']);
+      throw new Error(`Unknown job ${job.name}`);
     },
     // A stalled job (crash, long block) is failed, not re-run: a re-run could add a second card.
     { connection, concurrency: 4, prefix: opts.prefix, maxStalledCount: 0 },

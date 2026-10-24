@@ -21,6 +21,7 @@ import {
 } from './queues.ts';
 import { startIndexBackfill } from './search/index-doc.ts';
 import { createStorage } from './storage.ts';
+import { directVersionWriter, type VersionWriter } from './versions.ts';
 
 const COMMANDS = ['web', 'collab', 'worker', 'all', 'migrate'] as const;
 type Command = (typeof COMMANDS)[number];
@@ -70,9 +71,16 @@ async function main() {
     const backfill = startIndexBackfill(db, log);
     closers.unshift(async () => backfill.stop());
     if (command === 'collab') {
-      // In split mode the web role sends its board edits (clips) through the queue.
+      // In split mode the web role sends its board edits (clips, versions) through the queue.
       if (config.REDIS_URL) {
-        const boardWorker = startBoardWorker(config.REDIS_URL, directBoardWriter(server, log), log);
+        const boardWorker = startBoardWorker(
+          config.REDIS_URL,
+          directBoardWriter(server, log),
+          log,
+          {
+            versions: directVersionWriter(server, db, log),
+          },
+        );
         closers.unshift(() => boardWorker.close());
       } else log.warn('REDIS_URL is not set: clips from a separate web role cannot reach boards');
       await server.listen(config.COLLAB_PORT);
@@ -102,10 +110,14 @@ async function main() {
     const swept = await sweepClipTemp(tmpDir);
     if (swept > 0) log.info({ swept }, 'removed stale clip folders');
     let boards: BoardWriter | undefined;
-    if (collab) boards = directBoardWriter(collab, log);
-    else if (config.REDIS_URL) {
+    let versions: VersionWriter | undefined;
+    if (collab) {
+      boards = directBoardWriter(collab, log);
+      versions = directVersionWriter(collab, db, log);
+    } else if (config.REDIS_URL) {
       const queued = queuedBoardWriter(config.REDIS_URL);
       boards = queued.writer;
+      versions = queued.versions;
       closers.unshift(() => queued.close());
     }
     const webDist = config.WEB_DIST ?? join(here, '..', 'web');
@@ -119,6 +131,7 @@ async function main() {
       mailer,
       pingQueue,
       boards,
+      versions,
       tmpDir,
     });
     if (collab) {

@@ -19,6 +19,7 @@ import type { Database } from './db/client.ts';
 import { board, boardDoc, personalToken, session, user } from './db/schema.ts';
 import { writeBoardIndex } from './search/index-doc.ts';
 import { actorFromToken, isToken } from './tokens.ts';
+import { takeAutoVersion } from './versions.ts';
 
 interface Context {
   actor: Actor;
@@ -43,6 +44,8 @@ export function createCollabServer(deps: {
   log: Logger;
   publicUrl: string;
   recheckMs?: number;
+  /** Clock for automatic versions; tests move it forward. */
+  now?: () => Date;
 }) {
   const { db, auth, log } = deps;
   const allowedOrigin = new URL(deps.publicUrl).origin;
@@ -242,6 +245,14 @@ export function createCollabServer(deps: {
         });
       } catch (err) {
         log.error({ err, boardId }, 'board search index not updated');
+      }
+      // Decision 0013: an automatic version when the last one is more than an hour old.
+      try {
+        const elementCount = document.getMap('elements').size;
+        const snap = { state, schemaVersion, elementCount };
+        await takeAutoVersion(db, boardId, snap, deps.now?.() ?? new Date());
+      } catch (err) {
+        log.error({ err, boardId }, 'automatic board version not saved');
       }
     },
   });
