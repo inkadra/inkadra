@@ -9,6 +9,7 @@ import { attachCollab, createCollabServer } from './collab.ts';
 import { loadConfig, VERSION } from './config.ts';
 import { createDatabase, runMigrations } from './db/client.ts';
 import { createApp } from './http/app.ts';
+import { sweepClipTemp } from './http/clip-routes.ts';
 import type { Jobs } from './jobs.ts';
 import { createMailer } from './mailer.ts';
 import {
@@ -97,6 +98,9 @@ async function main() {
       log.warn('REDIS_URL is not set: processing uploads inside the web process');
       jobs = inlineJobs(media, log);
     }
+    // Left behind by a clip that was being received when the server stopped.
+    const swept = await sweepClipTemp(tmpDir);
+    if (swept > 0) log.info({ swept }, 'removed stale clip folders');
     let boards: BoardWriter | undefined;
     if (collab) boards = directBoardWriter(collab, log);
     else if (config.REDIS_URL) {

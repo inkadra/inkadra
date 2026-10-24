@@ -8,6 +8,7 @@ import type { Database } from '../db/client.ts';
 import { asset } from '../db/schema.ts';
 import type { Jobs } from '../jobs.ts';
 import { sniffImage } from '../media/heic.ts';
+import { ENQUEUE_TIMEOUT_MS, within } from '../queues.ts';
 import { FetchRefused, type SafeResponse, safeFetch } from '../safe-fetch.ts';
 import { originalKey, type Storage } from '../storage.ts';
 import { requireActor } from './auth-routes.ts';
@@ -132,17 +133,23 @@ export async function saveFetchedImage(
   const id = randomUUID();
   const filename = nameFromUrl(image.url, 'image');
   await deps.storage.write(originalKey(id), image.body, mime);
-  await deps.db.insert(asset).values({
-    id,
-    projectId: opts.projectId,
-    kind: 'image',
-    mime,
-    filename,
-    size: image.body.length,
-    storageKey: originalKey(id),
-    sourceUrl: opts.sourceUrl,
-    createdBy: opts.actorId,
-  });
+  try {
+    await deps.db.insert(asset).values({
+      id,
+      projectId: opts.projectId,
+      kind: 'image',
+      mime,
+      filename,
+      size: image.body.length,
+      storageKey: originalKey(id),
+      sourceUrl: opts.sourceUrl,
+      createdBy: opts.actorId,
+    });
+  } catch (err) {
+    // Without its row nothing would ever find the file.
+    await deps.storage.remove([originalKey(id)]).catch(() => {});
+    throw err;
+  }
   return id;
 }
 
@@ -210,7 +217,15 @@ export function registerLinkPreviews(app: FastifyInstance, deps: Deps) {
       { projectId: input.projectId, actorId: actor.id },
       req.log,
     );
-    if (body.imageAssetId) await jobs.processAsset(body.imageAssetId);
+    // The preview stands without thumbnails: the upload purge queues the image later.
+    if (body.imageAssetId)
+      await within(
+        jobs.processAsset(body.imageAssetId),
+        ENQUEUE_TIMEOUT_MS,
+        'The job queue did not answer.',
+      ).catch((err) =>
+        req.log.error({ err, id: body.imageAssetId }, 'link preview image not queued'),
+      );
     return body;
   });
 }

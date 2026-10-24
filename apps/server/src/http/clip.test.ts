@@ -1,6 +1,13 @@
-import { readdirSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readdirSync, utimesSync } from 'node:fs';
 import { createServer, type Server } from 'node:http';
-import { type AddressInfo, createServer as createNetServer, type Socket } from 'node:net';
+import {
+  type AddressInfo,
+  connect as connectTcp,
+  createServer as createNetServer,
+  type Socket,
+} from 'node:net';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { HocuspocusProvider, HocuspocusProviderWebsocket } from '@hocuspocus/provider';
 import {
@@ -25,8 +32,10 @@ import { attachCollab, createCollabServer } from '../collab.ts';
 import { loadConfig } from '../config.ts';
 import { createDatabase, runMigrations } from '../db/client.ts';
 import { asset, boardElementIndex } from '../db/schema.ts';
+import type { Jobs } from '../jobs.ts';
 import {
   CardOutcomeUnknown,
+  createQueues,
   createRedis,
   QUEUES,
   queuedBoardWriter,
@@ -36,10 +45,65 @@ import { fragmentText } from '../search/index-doc.ts';
 import { testDeps } from '../test-deps.ts';
 import { issueToken } from '../tokens.ts';
 import { createApp } from './app.ts';
+import { sweepClipTemp } from './clip-routes.ts';
 
 const url = process.env.DATABASE_URL;
 const redisUrl = process.env.REDIS_URL;
 const migrationsFolder = fileURLToPath(new URL('../../drizzle', import.meta.url));
+
+/**
+ * A TCP proxy to Valkey that can hold its traffic back or go away for good, as Valkey does in
+ * an outage that starts after the connection was made.
+ */
+async function valkeyProxy(target: string) {
+  const to = new URL(target);
+  const sockets = new Set<Socket>();
+  let held: Array<() => void> | null = null;
+  const server = createNetServer((client) => {
+    const upstream = connectTcp(Number(to.port || 6379), to.hostname);
+    for (const [from, into] of [
+      [client, upstream],
+      [upstream, client],
+    ] as const) {
+      sockets.add(from);
+      from.on('data', (chunk) => (held ? held.push(() => into.write(chunk)) : into.write(chunk)));
+      from.on('close', () => into.destroy());
+      from.on('error', () => into.destroy());
+    }
+  });
+  await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const proxied = new URL(target);
+  proxied.hostname = '127.0.0.1';
+  proxied.port = String((server.address() as AddressInfo).port);
+  return {
+    url: proxied.toString(),
+    hold() {
+      held ??= [];
+    },
+    release() {
+      const queued = held ?? [];
+      held = null;
+      for (const send of queued) send();
+    },
+    cut() {
+      server.close();
+      for (const socket of sockets) socket.destroy();
+    },
+  };
+}
+
+describe('sweepClipTemp', () => {
+  it('removes clip folders left for more than an hour, and nothing else', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'inkadra-sweep-'));
+    const old = new Date(Date.now() - 2 * 60 * 60 * 1000);
+    for (const name of ['clip-old', 'clip-new', 'media-old']) mkdirSync(join(dir, name));
+    utimesSync(join(dir, 'clip-old'), old, old);
+    utimesSync(join(dir, 'media-old'), old, old);
+    expect(await sweepClipTemp(dir)).toBe(1);
+    expect(readdirSync(dir).sort()).toEqual(['clip-new', 'media-old']);
+    expect(await sweepClipTemp(join(dir, 'missing'))).toBe(0);
+  });
+});
 
 describe.skipIf(!url)('clip (needs DATABASE_URL)', () => {
   const env = {
@@ -163,13 +227,18 @@ describe.skipIf(!url)('clip (needs DATABASE_URL)', () => {
   }
 
   /** Another app on the same database and collaboration server, with its own settings. */
-  async function otherApp(opts: { env?: Record<string, string>; boards?: BoardWriter }) {
+  async function otherApp(opts: {
+    env?: Record<string, string>;
+    boards?: BoardWriter;
+    jobs?: Jobs;
+  }) {
     const other = await createApp({
       config: loadConfig({ ...env, ...opts.env }),
       db,
       auth,
       log,
       ...deps,
+      jobs: opts.jobs ?? deps.jobs,
       boards: opts.boards ?? directBoardWriter(collab),
       tmpDir: deps.root,
       allowAddresses: ['127.0.0.1'],
@@ -614,6 +683,52 @@ describe.skipIf(!url)('clip (needs DATABASE_URL)', () => {
     }
   });
 
+  it('answers a refused file at once, without reading it first', async () => {
+    const other = await otherApp({ env: { UPLOAD_MAX_SIZE: '0' } });
+    try {
+      // Far more than the socket buffers hold: unread, the sender would wait forever.
+      const big = Buffer.alloc(32 * 1024 * 1024, 7);
+      const started = Date.now();
+      const res = await clip(
+        form({ boardId }, [big, 'grande.bin', 'application/octet-stream']),
+        { cookie: people.viewer?.cookie },
+        other.base,
+      );
+      expect(res.status).toBe(403);
+      expect(Date.now() - started).toBeLessThan(5000);
+      await expect.poll(tempDirs).toEqual([]);
+    } finally {
+      await other.app.close();
+    }
+  });
+
+  it('ignores an empty tags field, as forms send for a blank input', async () => {
+    const res = await clip(form({ boardId, tags: '' }, [png, 'senza-tag.png', 'image/png']));
+    expect(res.status).toBe(201);
+    expect((await boardElement(res.json.elementId)).element?.tags).toBeUndefined();
+  });
+
+  it('answers a link preview when its image cannot be queued', async () => {
+    const down: Jobs = {
+      async processAsset() {
+        throw new Error('queue down');
+      },
+      async deleteFiles() {},
+    };
+    const other = await otherApp({ jobs: down });
+    try {
+      const res = await fetch(`http://${other.base}/api/v1/link-previews`, {
+        method: 'POST',
+        headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' },
+        body: JSON.stringify({ projectId, boardId, url: `${siteUrl}/article` }),
+      });
+      expect(res.status).toBe(200);
+      expect(await res.json()).toMatchObject({ title: 'Sopralluogo al faro' });
+    } finally {
+      await other.app.close();
+    }
+  });
+
   describe.skipIf(!redisUrl)('when collab runs on its own (needs REDIS_URL)', () => {
     const prefix = `inkadra-test-${process.pid}`;
     const userId = () => people.owner?.id ?? '';
@@ -705,6 +820,106 @@ describe.skipIf(!url)('clip (needs DATABASE_URL)', () => {
         for (const socket of sockets) socket.destroy();
         silent.close();
         void queued.close().catch(() => {});
+      }
+    });
+
+    it('removes a card whose add reaches the queue after the deadline', async () => {
+      const proxy = await valkeyProxy(redisUrl ?? '');
+      const queued = queuedBoardWriter(proxy.url, { prefix, timeoutMs: 300, graceMs: 300 });
+      const connection = createRedis(redisUrl ?? '');
+      const queue = new Queue(QUEUES.collab, { connection, prefix });
+      const events = new QueueEvents(QUEUES.collab, {
+        connection: createRedis(redisUrl ?? ''),
+        prefix,
+      });
+      const note = (text: string) => ({
+        boardId,
+        userId: userId(),
+        card: { type: 'note' as const, fields: {}, body: [{ kind: 'paragraph' as const, text }] },
+      });
+      try {
+        // Connected and ready; no worker, so it expires.
+        expect(await queued.writer.addCard(note('Prima'))).toEqual({
+          ok: false,
+          reason: 'expired',
+        });
+        await events.waitUntilReady();
+        proxy.hold();
+        await expect(queued.writer.addCard(note('In ritardo'))).rejects.toThrow(/unreachable/);
+        const added = new Promise<string>((resolve) =>
+          events.on('added', ({ jobId }) => resolve(jobId)),
+        );
+        const removed = new Set<string>();
+        events.on('removed', ({ jobId }) => removed.add(jobId));
+        // Valkey answers again: the add lands late, and is taken back.
+        proxy.release();
+        const jobId = await added;
+        await expect.poll(() => removed.has(jobId)).toBe(true);
+        expect(await queue.getJob(jobId)).toBeUndefined();
+      } finally {
+        proxy.cut();
+        void queued.close().catch(() => {});
+        await Promise.all([queue.close(), events.close()]);
+        connection.disconnect();
+      }
+    });
+
+    it('answers every clip in time when Valkey goes away after the first add', async () => {
+      const proxy = await valkeyProxy(redisUrl ?? '');
+      const queues = createQueues(proxy.url, { prefix });
+      const unsure: BoardWriter = {
+        async addCard() {
+          throw new CardOutcomeUnknown('no answer');
+        },
+      };
+      const failing: BoardWriter = {
+        async addCard() {
+          throw new Error('The collaboration queue is unreachable.');
+        },
+      };
+      const apps = [
+        await otherApp({ jobs: queues.jobs }),
+        await otherApp({ jobs: queues.jobs, boards: unsure }),
+        await otherApp({ jobs: queues.jobs, boards: failing }),
+      ] as const;
+      const timed = async (name: string, at: string) => {
+        const started = Date.now();
+        const res = await clip(form({ boardId }, [png, name, 'image/png']), { token }, at);
+        return { ...res, ms: Date.now() - started };
+      };
+      const rows = async (filename: string) =>
+        (await db.select().from(asset).where(eq(asset.filename, filename))).length;
+      const originals = () => readdirSync(join(deps.root, 'files', 'originals')).length;
+      try {
+        // The first add goes through, so the queue's connection is up when Valkey goes away.
+        expect((await timed('prima.png', apps[0].base)).status).toBe(201);
+        proxy.cut();
+
+        // Written straight to the board: a success, even though its media are not queued.
+        const written = await timed('dopo.png', apps[0].base);
+        expect(written.status).toBe(201);
+        expect(written.ms).toBeLessThan(5000);
+        expect((await boardElement(written.json.elementId)).element?.type).toBe('image');
+        expect(await rows('dopo.png')).toBe(1);
+
+        // Maybe on the board: the answer that says to look before trying again, files kept.
+        const unknown = await timed('forse-coda.png', apps[1].base);
+        expect(unknown.status).toBe(500);
+        expect(unknown.json.error.message).toMatch(/check/);
+        expect(unknown.ms).toBeLessThan(5000);
+        expect(await rows('forse-coda.png')).toBe(1);
+
+        // Not on the board: rows and files go, removed here since the queue cannot take them.
+        const files = originals();
+        const failed = await timed('persa.png', apps[2].base);
+        expect(failed.status).toBe(500);
+        expect(failed.ms).toBeLessThan(5000);
+        expect(await rows('persa.png')).toBe(0);
+        expect(originals()).toBe(files);
+      } finally {
+        for (const other of apps) await other.app.close();
+        queues.connection.disconnect();
+        void queues.close().catch(() => {});
       }
     });
   });

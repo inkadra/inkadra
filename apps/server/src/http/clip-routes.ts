@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { createReadStream, createWriteStream } from 'node:fs';
-import { mkdtemp, open, rm, stat } from 'node:fs/promises';
+import { mkdtemp, open, readdir, rm, stat } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { pipeline } from 'node:stream/promises';
@@ -18,7 +18,7 @@ import type { Database } from '../db/client.ts';
 import { asset } from '../db/schema.ts';
 import type { Jobs } from '../jobs.ts';
 import { sniffImage } from '../media/heic.ts';
-import { CardOutcomeUnknown } from '../queues.ts';
+import { CardOutcomeUnknown, ENQUEUE_TIMEOUT_MS, within } from '../queues.ts';
 import { FetchRefused, type SafeResponse, safeFetch } from '../safe-fetch.ts';
 import { originalKey, type Storage } from '../storage.ts';
 import { requireActor } from './auth-routes.ts';
@@ -85,6 +85,20 @@ export function textNote(text: string, note?: string, source?: string): NoteBloc
   return blocks;
 }
 
+/** Temporary folders of clips are removed by their request; these are left from a crash. */
+export async function sweepClipTemp(dir: string, olderThanMs = 60 * 60 * 1000) {
+  let removed = 0;
+  for (const name of await readdir(dir).catch(() => [])) {
+    if (!name.startsWith('clip-')) continue;
+    const path = join(dir, name);
+    const info = await stat(path).catch(() => null);
+    if (!info?.isDirectory() || Date.now() - info.mtimeMs < olderThanMs) continue;
+    await rm(path, { recursive: true, force: true });
+    removed += 1;
+  }
+  return removed;
+}
+
 async function readHead(path: string): Promise<Buffer> {
   const handle = await open(path, 'r');
   try {
@@ -119,7 +133,13 @@ async function readForm(
         part.file.resume();
         throw new HttpError('bad_request', 'Send the boardId field before the file.');
       }
-      await check(fields.boardId);
+      try {
+        await check(fields.boardId);
+      } catch (err) {
+        // Drained, or the sender would wait on a request nobody reads.
+        part.file.resume();
+        throw err;
+      }
       const path = join(await dir(), 'file');
       // Over UPLOAD_MAX_SIZE the stream fails with a 413.
       await pipeline(part.file, createWriteStream(path));
@@ -129,9 +149,10 @@ async function readForm(
       continue;
     }
     const value = typeof part.value === 'string' ? part.value : '';
-    if (part.fieldname === 'tags' || part.fieldname === 'tags[]') tags.push(value);
     // Forms send empty fields for inputs left blank: they count as missing.
-    else if (value !== '' && !(part.fieldname in fields)) fields[part.fieldname] = value;
+    if (value === '') continue;
+    if (part.fieldname === 'tags' || part.fieldname === 'tags[]') tags.push(value);
+    else if (!(part.fieldname in fields)) fields[part.fieldname] = value;
   }
   const input = ClipFields.parse({ ...fields, ...(tags.length > 0 ? { tags } : {}) });
   return { input, file };
@@ -251,21 +272,37 @@ export async function registerClipRoutes(app: FastifyInstance, deps: Deps) {
   }
 
   /**
-   * Assets of a clip whose card is (or may be) on the board. Never fails: if the queue is
-   * down, the upload purge queues assets still pending a day later.
+   * Assets of a clip whose card is (or may be) on the board. Never fails and never waits more
+   * than a moment: if the queue is down, the upload purge queues assets still pending a day
+   * later, and an add that lands late is a no-op thanks to the job id.
    */
   async function process(ids: string[], log: FastifyBaseLogger) {
-    for (const id of ids)
-      await jobs.processAsset(id).catch((err) => log.error({ err, id }, 'clip asset not queued'));
+    if (ids.length === 0) return;
+    await within(
+      Promise.all(ids.map((id) => jobs.processAsset(id))),
+      ENQUEUE_TIMEOUT_MS,
+      'The job queue did not answer.',
+    ).catch((err) => log.error({ err, ids }, 'clip assets not queued'));
   }
 
-  /** Assets of a clip that did not make it onto the board. */
+  /**
+   * Assets of a clip that did not make it onto the board. With no rows left, nothing would find
+   * their files later: when the queue does not take them, they are removed here.
+   */
   async function discard(ids: string[], log: FastifyBaseLogger) {
+    const keys = ids.map(originalKey);
     try {
       await db.delete(asset).where(inArray(asset.id, ids));
-      await jobs.deleteFiles(ids.map(originalKey));
     } catch (err) {
-      log.error({ err, ids }, 'clip files not removed');
+      // Rows and files stay together: the upload purge treats them like any unused upload.
+      log.error({ err, ids }, 'clip assets not removed');
+      return;
+    }
+    try {
+      await within(jobs.deleteFiles(keys), ENQUEUE_TIMEOUT_MS, 'The job queue did not answer.');
+    } catch (err) {
+      log.warn({ err, ids }, 'clip files not queued for removal: removing them now');
+      await storage.remove(keys).catch((e) => log.error({ err: e, ids }, 'clip files not removed'));
     }
   }
 
