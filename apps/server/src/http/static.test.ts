@@ -80,5 +80,13 @@ describe('web app files', () => {
     expect(page.statusCode).toBe(200);
     expect(page.body).toContain('<title>Inkadra</title>');
     expect((await app.inject('/assets/index-OLD.js')).statusCode).toBe(404);
+    expect(page.headers['referrer-policy']).toBe('strict-origin-when-cross-origin');
+  });
+
+  it('keeps the token of a guest page out of referrers and search engines', async () => {
+    const page = await app.inject('/s/abcdefghijklmnopqrstuvwxyz');
+    expect(page.statusCode).toBe(200);
+    expect(page.headers['referrer-policy']).toBe('no-referrer');
+    expect(page.headers['x-robots-tag']).toBe('noindex, nofollow');
   });
 });

@@ -84,12 +84,12 @@ export function parseRange(header: string | undefined, size: number) {
   return { start, end };
 }
 
-function contentDisposition(kind: 'inline' | 'attachment', filename: string) {
+export function contentDisposition(kind: 'inline' | 'attachment', filename: string) {
   const ascii = filename.replace(/[^\x20-\x7e]|["\\]/g, '_');
   return `${kind}; filename="${ascii}"; filename*=UTF-8''${encodeURIComponent(filename)}`;
 }
 
-function fileHeaders(reply: FastifyReply, etag: string) {
+export function fileHeaders(reply: FastifyReply, etag: string) {
   reply.header('cache-control', IMMUTABLE);
   reply.header('etag', `"${etag}"`);
   // Even an image cannot run anything if a browser is tricked into rendering it as a page.
