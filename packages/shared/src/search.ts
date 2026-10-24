@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MPL-2.0
 import { Id, z } from './common.ts';
+import { ProjectRole } from './projects.ts';
 
 /**
  * Global search over projects, boards and the cards inside them. Card content is read from
@@ -47,6 +48,11 @@ export const SearchHit = z
     snippet: z.string().nullable().openapi({ description: 'Text around the match.' }),
     assetId: Id.nullable().openapi({ description: 'Picture to show next to the result.' }),
     tags: z.array(z.string()),
+    myRole: ProjectRole.optional().openapi({
+      description:
+        'Role of the caller on the board of the result (on the project, for projects), e.g. to ' +
+        'leave out boards a clip cannot go to. Missing from servers before API 0.5.0.',
+    }),
   })
   .openapi('SearchHit');
 export type SearchHit = z.infer<typeof SearchHit>;

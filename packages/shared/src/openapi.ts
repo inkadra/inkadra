@@ -9,7 +9,7 @@ import {
   VariantParams,
 } from './assets.ts';
 import { Board, BoardDetail, CreateBoard, UpdateBoard } from './boards.ts';
-import { ClipRequest, ClipResult } from './clip.ts';
+import { BoardColumns, ClipRequest, ClipResult } from './clip.ts';
 import {
   CommentCounts,
   CommentQuery,
@@ -24,7 +24,7 @@ import {
   ReplyQuery,
   UpdateComment,
 } from './comments.ts';
-import { ApiError, Id, PageQuery, page, z } from './common.ts';
+import { ApiError, Id, OutcomeUnknown, PageQuery, page, z } from './common.ts';
 import { API_PREFIX, AUTH_PREFIX } from './constants.ts';
 import {
   CreateGuestSession,
@@ -94,13 +94,14 @@ import {
 } from './users.ts';
 import {
   BoardVersion,
+  BoardVersionConflict,
   BoardVersionQuery,
   CreateBoardVersion,
   RestoredBoardVersion,
   UpdateBoardVersion,
 } from './versions.ts';
 
-export const API_VERSION = '0.4.0';
+export const API_VERSION = '0.5.0';
 
 const registry = new OpenAPIRegistry();
 
@@ -129,6 +130,16 @@ const errors = {
 const secured: Array<Record<string, string[]>> = [{ session: [] }, { bearer: [] }];
 const v1 = (path: string) => `${API_PREFIX}${path}`;
 const idParam = (name: string) => z.object({ [name]: Id });
+/** A change handed to the board: a 500 may leave it unknown whether it was made. */
+const outcome = {
+  500: {
+    description:
+      'Not made, or, with details OutcomeUnknown (`outcome_unknown`), not confirmed in time: ' +
+      'it may be there, so check before trying again',
+    ...json(ApiError),
+  },
+};
+registry.register('OutcomeUnknown', OutcomeUnknown);
 
 // Instance -------------------------------------------------------------------
 
@@ -534,6 +545,19 @@ registry.registerPath({
     200: { description: 'Boards', ...json(z.object({ items: z.array(Board) })) },
     401: errors[401],
   },
+});
+
+registry.registerPath({
+  method: 'get',
+  path: v1('/boards/{boardId}/columns'),
+  tags: ['Boards'],
+  security: secured,
+  summary: 'Columns of a board, to choose where a clip goes. Needs viewer.',
+  description:
+    'Read from the stored board document, so a column added seconds ago can be missing. ' +
+    'Clipping still needs editor (see SearchHit.myRole and Board.myRole).',
+  request: { params: idParam('boardId') },
+  responses: { 200: { description: 'Columns', ...json(BoardColumns) }, ...errors },
 });
 
 // Sharing --------------------------------------------------------------------
@@ -1319,6 +1343,10 @@ registry.registerPath({
 // Versions -------------------------------------------------------------------
 
 const versionParams = z.object({ boardId: Id, versionId: Id });
+const versionConflict = (what: string) => ({
+  409: { description: `${what} (details: BoardVersionConflict)`, ...json(ApiError) },
+});
+registry.register('BoardVersionConflict', BoardVersionConflict);
 
 registry.registerPath({
   method: 'get',
@@ -1337,9 +1365,25 @@ registry.registerPath({
   summary: 'Save the current state of the board under a name. Needs editor.',
   description:
     'A board keeps at most 100 named versions (409 beyond; delete or let one go first), and ' +
-    'each person can save 20 an hour.',
+    'each person can save 20 an hour. Open boards are told with the stateless collab ' +
+    'message `{"type":"versions"}`.',
   request: { params: idParam('boardId'), body: json(CreateBoardVersion) },
-  responses: { 201: { description: 'Saved', ...json(BoardVersion) }, ...errors, ...tooMany },
+  responses: {
+    201: { description: 'Saved', ...json(BoardVersion) },
+    ...errors,
+    ...versionConflict('The board keeps 100 named versions already (`named_versions_limit`)'),
+    ...tooMany,
+    ...outcome,
+  },
+});
+registry.registerPath({
+  method: 'get',
+  path: v1('/boards/{boardId}/versions/{versionId}'),
+  tags: ['Versions'],
+  security: secured,
+  summary: 'One version of a board, e.g. to name the one just restored. Needs editor.',
+  request: { params: versionParams },
+  responses: { 200: { description: 'Version', ...json(BoardVersion) }, ...errors },
 });
 registry.registerPath({
   method: 'patch',
@@ -1347,8 +1391,15 @@ registry.registerPath({
   tags: ['Versions'],
   security: secured,
   summary: 'Rename a version, or name an automatic one so it is kept. Needs editor.',
+  description: 'Open boards are told with the stateless collab message `{"type":"versions"}`.',
   request: { params: versionParams, body: json(UpdateBoardVersion) },
-  responses: { 200: { description: 'Updated', ...json(BoardVersion) }, ...errors },
+  responses: {
+    200: { description: 'Updated', ...json(BoardVersion) },
+    ...errors,
+    ...versionConflict(
+      'Naming an automatic version while the board keeps 100 named ones (`named_versions_limit`)',
+    ),
+  },
 });
 registry.registerPath({
   method: 'delete',
@@ -1358,7 +1409,8 @@ registry.registerPath({
   summary: 'Delete a version of any kind. Needs editor.',
   description:
     'Automatic and restore versions also go away by themselves with retention; deleting one ' +
-    'only does it sooner.',
+    'only does it sooner. Open boards are told with the stateless collab message ' +
+    '`{"type":"versions"}`.',
   request: { params: versionParams },
   responses: { 204: { description: 'Deleted' }, ...errors },
 });
@@ -1378,6 +1430,7 @@ registry.registerPath({
       content: { 'application/octet-stream': { schema: z.string().openapi({ format: 'binary' }) } },
     },
     ...errors,
+    ...versionConflict('Saved by a newer Inkadra (`newer_schema`)'),
   },
 });
 registry.registerPath({
@@ -1394,7 +1447,13 @@ registry.registerPath({
     'and picks are not touched. Cards present both now and in the version keep their current ' +
     '`guestHidden`, so a restore never shows guests a card hidden since.',
   request: { params: versionParams },
-  responses: { 200: { description: 'Restored', ...json(RestoredBoardVersion) }, ...errors },
+  responses: {
+    200: { description: 'Restored', ...json(RestoredBoardVersion) },
+    ...errors,
+    ...versionConflict('Saved by a newer Inkadra (`newer_schema`)'),
+    ...tooMany,
+    ...outcome,
+  },
 });
 
 // Clip -----------------------------------------------------------------------
@@ -1406,25 +1465,45 @@ registry.registerPath({
   security: secured,
   summary: 'Save an image, a link or a text to a board, from the clipper or the share sheet.',
   description:
-    'As a form, `boardId` must come before `file`: access is checked before the file is ' +
-    'stored, and a file sent first is refused with 400.',
+    'JSON for links and texts, a form (`multipart/form-data`) for a file. The form has the ' +
+    'fields of ClipRequest as text parts, `tags` repeated once per tag (`tags[]` is also ' +
+    'read), and one `file` part. `boardId` must come before `file`: access is checked before ' +
+    'the file is stored, and a file sent first, or a second file, is refused with 400. Empty ' +
+    'fields count as missing. Each person can clip 30 times a minute. With an image file the ' +
+    '`note` becomes the caption.',
   request: {
     body: {
       content: {
         'application/json': { schema: ClipRequest },
         'multipart/form-data': {
           schema: z.object({
-            boardId: Id,
+            boardId: Id.openapi({ description: 'Before `file`.' }),
             columnId: z.string().optional(),
+            url: z.url().optional(),
+            text: z.string().optional(),
             sourceUrl: z.url().optional(),
             note: z.string().optional(),
+            tags: z.array(z.string()).optional().openapi({
+              description: 'One `tags` part per tag.',
+            }),
+            title: z.string().optional(),
             file: z.string().openapi({ format: 'binary' }),
           }),
+          encoding: { tags: { style: 'form', explode: true } },
         },
       },
     },
   },
-  responses: { 201: { description: 'Card created', ...json(ClipResult) }, ...errors },
+  responses: {
+    201: { description: 'Card created', ...json(ClipResult) },
+    ...errors,
+    413: {
+      description: 'File larger than the instance limit (Instance.limits)',
+      ...json(ApiError),
+    },
+    ...tooMany,
+    ...outcome,
+  },
 });
 
 export function buildOpenApiDocument() {

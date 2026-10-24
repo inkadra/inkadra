@@ -15,11 +15,16 @@ describe('board notices', () => {
     expect(readBoardNotice('{"type":"review","elementId":"V1StGXR8_Z5jdHi6B-myT"}')?.type).toBe(
       'review',
     );
+    expect(readBoardNotice(JSON.stringify({ type: 'versions', versionId: threadId }))).toEqual({
+      type: 'versions',
+      versionId: threadId,
+    });
   });
 
   it('ignores malformed and unknown messages', () => {
     expect(readBoardNotice('not json')).toBeNull();
     expect(readBoardNotice('{"type":"fireworks"}')).toBeNull();
     expect(readBoardNotice('{"type":"restored","versionId":"nope"}')).toBeNull();
+    expect(readBoardNotice('{"type":"versions"}')).toBeNull();
   });
 });

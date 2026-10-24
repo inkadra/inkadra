@@ -62,6 +62,20 @@ export const UpdateBoardVersion = z
   .openapi('UpdateBoardVersion');
 export type UpdateBoardVersion = z.infer<typeof UpdateBoardVersion>;
 
+/** `details` of a 409 answer about versions, so clients can tell the two conflicts apart. */
+export const BoardVersionConflict = z
+  .object({
+    reason: z.enum(['named_versions_limit', 'newer_schema']).openapi({
+      description:
+        `\`named_versions_limit\`: the board already keeps ${MAX_NAMED_VERSIONS} named ` +
+        'versions; delete one first. `newer_schema`: the version was saved by a newer ' +
+        'Inkadra and this server cannot read it. Open: clients show a reason they do not know ' +
+        'with the message of the answer.',
+    }),
+  })
+  .openapi('BoardVersionConflict');
+export type BoardVersionConflict = z.infer<typeof BoardVersionConflict>;
+
 export const RestoredBoardVersion = z
   .object({
     restored: BoardVersion,

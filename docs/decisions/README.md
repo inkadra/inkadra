@@ -20,3 +20,4 @@ in order. An accepted decision is never rewritten: a later one supersedes it.
 | [0013](0013-review-and-sharing.md)       | Comments, approvals, guest links and versions            |
 | [0014](0014-server-side-board-edits.md)  | Clips: cards the server adds where the board is live     |
 | [0015](0015-installable-web-app.md)      | Installable web app with a hand-written service worker   |
+| [0016](0016-error-reasons-in-details.md) | Error reasons go in `details`, not in new codes          |

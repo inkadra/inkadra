@@ -27,6 +27,21 @@ export const INLINE_REPLIES = 50;
 export const ListLimit = z.coerce.number().int().min(1).max(100).default(30);
 
 /**
+ * Label of a share link (ShareLink.label), for people with a role on the board who cannot list
+ * the links themselves (listing needs editor). Never sent to guests.
+ */
+const shareLinkLabel = (what: string) =>
+  z
+    .string()
+    .nullable()
+    .optional()
+    .openapi({
+      description:
+        `${what} (ShareLink.label, e.g. "Cliente"), readable by anyone who can read this; ` +
+        'null when there is no link or it has no label. Missing from servers before API 0.5.0.',
+    });
+
+/**
  * Who wrote a comment or changed a review, as people with a role on the board see it: a
  * person with an account, or a guest of a share link, known only by the name they typed.
  */
@@ -38,6 +53,7 @@ export const Author = z
       guestId: Id,
       name: z.string().min(1).max(80),
       shareLinkId: Id,
+      shareLinkLabel: shareLinkLabel('Label of the guest’s link'),
     }),
     z.object({ kind: z.literal('deleted') }).openapi({
       description: 'The account was deleted; the comment stays without an author.',
@@ -142,6 +158,7 @@ export const Comment = z
         'guest, or one the team limited to a link). Null: every link that may read comments, ' +
         'or a `team` thread. A reply carries the link of the guest who wrote it, or null.',
     }),
+    shareLinkLabel: shareLinkLabel('Label of the link in `shareLinkId`'),
     canEdit: z.boolean().openapi({ description: 'The caller wrote it.' }),
     canDelete: z.boolean().openapi({ description: 'The caller wrote it, or is editor or owner.' }),
   })

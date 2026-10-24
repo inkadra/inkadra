@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "Inkadra API",
-    "version": "0.4.0",
+    "version": "0.5.0",
     "license": {
       "name": "AGPL-3.0-only",
       "identifier": "AGPL-3.0-only"
@@ -82,6 +82,21 @@
       }
     },
     "schemas": {
+      "OutcomeUnknown": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "type": "string",
+            "enum": [
+              "outcome_unknown"
+            ],
+            "description": "The board did not confirm the change in time: it may or may not be there. Check before trying again."
+          }
+        },
+        "required": [
+          "reason"
+        ]
+      },
       "DeleteMeBlocked": {
         "type": "object",
         "properties": {
@@ -157,6 +172,22 @@
               "name_required"
             ],
             "description": "`no_session`: no guest cookie, or its session expired; open the link again. `unavailable`: the link is suspended (the guest is not told why). Open: clients show a reason they do not know as a generic error."
+          }
+        },
+        "required": [
+          "reason"
+        ]
+      },
+      "BoardVersionConflict": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "type": "string",
+            "enum": [
+              "named_versions_limit",
+              "newer_schema"
+            ],
+            "description": "`named_versions_limit`: the board already keeps 100 named versions; delete one first. `newer_schema`: the version was saved by a newer Inkadra and this server cannot read it. Open: clients show a reason they do not know with the message of the answer."
           }
         },
         "required": [
@@ -1272,6 +1303,40 @@
           }
         }
       },
+      "BoardColumns": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BoardColumn"
+            },
+            "description": "Columns of the stored board document, left to right and then top to bottom. Without \"Non ordinati\", which is not a column: omit columnId to clip there."
+          }
+        },
+        "required": [
+          "items"
+        ]
+      },
+      "BoardColumn": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{8,64}$",
+            "description": "For ClipRequest.columnId.",
+            "example": "V1StGXR8_Z5jdHi6B-myT"
+          },
+          "title": {
+            "type": "string",
+            "description": "May be empty: clients show a placeholder."
+          }
+        },
+        "required": [
+          "id",
+          "title"
+        ]
+      },
       "BoardAccess": {
         "type": "object",
         "properties": {
@@ -2028,6 +2093,16 @@
             "items": {
               "type": "string"
             }
+          },
+          "myRole": {
+            "type": "string",
+            "enum": [
+              "owner",
+              "editor",
+              "commenter",
+              "viewer"
+            ],
+            "description": "Role of the caller on the board of the result (on the project, for projects), e.g. to leave out boards a clip cannot go to. Missing from servers before API 0.5.0."
           }
         },
         "required": [
@@ -2168,6 +2243,13 @@
                 "type": "string",
                 "format": "uuid",
                 "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10"
+              },
+              "shareLinkLabel": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "Label of the guest’s link (ShareLink.label, e.g. \"Cliente\"), readable by anyone who can read this; null when there is no link or it has no label. Missing from servers before API 0.5.0."
               }
             },
             "required": [
@@ -2281,6 +2363,13 @@
             "format": "uuid",
             "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10",
             "description": "With `everyone`: the only link whose guests see the thread (a thread written by a guest, or one the team limited to a link). Null: every link that may read comments, or a `team` thread. A reply carries the link of the guest who wrote it, or null."
+          },
+          "shareLinkLabel": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Label of the link in `shareLinkId` (ShareLink.label, e.g. \"Cliente\"), readable by anyone who can read this; null when there is no link or it has no label. Missing from servers before API 0.5.0."
           },
           "canEdit": {
             "type": "boolean",
@@ -2594,6 +2683,15 @@
             "format": "uuid",
             "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10",
             "description": "For mention, reply and comment."
+          },
+          "threadId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid",
+            "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10",
+            "description": "First comment of the thread of `commentId` (the same id for a thread start), to open the thread without paging through replies. Null without `commentId`. Missing from servers before API 0.5.0."
           },
           "excerpt": {
             "type": [
@@ -3023,6 +3121,13 @@
             ],
             "description": "To find the file in a folder."
           },
+          "variants": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AssetVariant"
+            },
+            "description": "Thumbnails of `assetId`, as in Asset.variants (team paths, smallest first); empty without a picture or until they are ready. Missing from servers before API 0.5.0."
+          },
           "picked": {
             "type": "integer",
             "minimum": 0
@@ -3191,6 +3296,13 @@
               "guest_approve"
             ],
             "description": "`guest_view`: look. `guest_comment`: also read and write comments visible to everyone. `guest_approve`: also set the review status of cards. Open in answers: clients treat a role they do not know like `guest_view`."
+          },
+          "sharedBy": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Name of the person who shared, as in ShareLinkPreview, for pages opened with a password. Missing from servers before API 0.5.0."
           },
           "boardId": {
             "type": "string",
@@ -4104,6 +4216,11 @@
               "maxLength": 40
             },
             "maxItems": 20
+          },
+          "title": {
+            "type": "string",
+            "maxLength": 500,
+            "description": "Links: the title of the card, instead of the one read from the page (e.g. the tab title). Ignored for texts and files. Servers before API 0.5.0 ignore it."
           }
         },
         "required": [
@@ -6228,6 +6345,87 @@
           },
           "401": {
             "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/boards/{boardId}/columns": {
+      "get": {
+        "tags": [
+          "Boards"
+        ],
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Columns of a board, to choose where a clip goes. Needs viewer.",
+        "description": "Read from the stored board document, so a column added seconds ago can be missing. Clipping still needs editor (see SearchHit.myRole and Board.myRole).",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10"
+            },
+            "required": true,
+            "name": "boardId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Columns",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BoardColumns"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
             "content": {
               "application/json": {
                 "schema": {
@@ -11556,7 +11754,7 @@
           }
         ],
         "summary": "Save the current state of the board under a name. Needs editor.",
-        "description": "A board keeps at most 100 named versions (409 beyond; delete or let one go first), and each person can save 20 an hour.",
+        "description": "A board keeps at most 100 named versions (409 beyond; delete or let one go first), and each person can save 20 an hour. Open boards are told with the stateless collab message `{\"type\":\"versions\"}`.",
         "parameters": [
           {
             "schema": {
@@ -11629,8 +11827,28 @@
               }
             }
           },
+          "409": {
+            "description": "The board keeps 100 named versions already (`named_versions_limit`) (details: BoardVersionConflict)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
           "429": {
             "description": "Too many requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Not made, or, with details OutcomeUnknown (`outcome_unknown`), not confirmed in time: it may be there, so check before trying again",
             "content": {
               "application/json": {
                 "schema": {
@@ -11643,6 +11861,94 @@
       }
     },
     "/api/v1/boards/{boardId}/versions/{versionId}": {
+      "get": {
+        "tags": [
+          "Versions"
+        ],
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "One version of a board, e.g. to name the one just restored. Needs editor.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10"
+            },
+            "required": true,
+            "name": "boardId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10"
+            },
+            "required": true,
+            "name": "versionId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Version",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BoardVersion"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      },
       "patch": {
         "tags": [
           "Versions"
@@ -11656,6 +11962,7 @@
           }
         ],
         "summary": "Rename a version, or name an automatic one so it is kept. Needs editor.",
+        "description": "Open boards are told with the stateless collab message `{\"type\":\"versions\"}`.",
         "parameters": [
           {
             "schema": {
@@ -11737,6 +12044,16 @@
                 }
               }
             }
+          },
+          "409": {
+            "description": "Naming an automatic version while the board keeps 100 named ones (`named_versions_limit`) (details: BoardVersionConflict)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         }
       },
@@ -11753,7 +12070,7 @@
           }
         ],
         "summary": "Delete a version of any kind. Needs editor.",
-        "description": "Automatic and restore versions also go away by themselves with retention; deleting one only does it sooner.",
+        "description": "Automatic and restore versions also go away by themselves with retention; deleting one only does it sooner. Open boards are told with the stateless collab message `{\"type\":\"versions\"}`.",
         "parameters": [
           {
             "schema": {
@@ -11911,6 +12228,16 @@
                 }
               }
             }
+          },
+          "409": {
+            "description": "Saved by a newer Inkadra (`newer_schema`) (details: BoardVersionConflict)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         }
       }
@@ -12002,6 +12329,36 @@
                 }
               }
             }
+          },
+          "409": {
+            "description": "Saved by a newer Inkadra (`newer_schema`) (details: BoardVersionConflict)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Not made, or, with details OutcomeUnknown (`outcome_unknown`), not confirmed in time: it may be there, so check before trying again",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         }
       }
@@ -12020,7 +12377,7 @@
           }
         ],
         "summary": "Save an image, a link or a text to a board, from the clipper or the share sheet.",
-        "description": "As a form, `boardId` must come before `file`: access is checked before the file is stored, and a file sent first is refused with 400.",
+        "description": "JSON for links and texts, a form (`multipart/form-data`) for a file. The form has the fields of ClipRequest as text parts, `tags` repeated once per tag (`tags[]` is also read), and one `file` part. `boardId` must come before `file`: access is checked before the file is stored, and a file sent first, or a second file, is refused with 400. Empty fields count as missing. Each person can clip 30 times a minute. With an image file the `note` becomes the caption.",
         "requestBody": {
           "content": {
             "application/json": {
@@ -12029,15 +12386,29 @@
               }
             },
             "multipart/form-data": {
+              "encoding": {
+                "tags": {
+                  "style": "form",
+                  "explode": true
+                }
+              },
               "schema": {
                 "type": "object",
                 "properties": {
                   "boardId": {
                     "type": "string",
                     "format": "uuid",
-                    "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10"
+                    "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10",
+                    "description": "Before `file`."
                   },
                   "columnId": {
+                    "type": "string"
+                  },
+                  "url": {
+                    "type": "string",
+                    "format": "uri"
+                  },
+                  "text": {
                     "type": "string"
                   },
                   "sourceUrl": {
@@ -12045,6 +12416,16 @@
                     "format": "uri"
                   },
                   "note": {
+                    "type": "string"
+                  },
+                  "tags": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "description": "One `tags` part per tag."
+                  },
+                  "title": {
                     "type": "string"
                   },
                   "file": {
@@ -12103,6 +12484,36 @@
           },
           "404": {
             "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "File larger than the instance limit (Instance.limits)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Not made, or, with details OutcomeUnknown (`outcome_unknown`), not confirmed in time: it may be there, so check before trying again",
             "content": {
               "application/json": {
                 "schema": {
