@@ -398,7 +398,8 @@ export function directVersionWriter(
               // Only while it is still the backup: once someone names it, it is theirs.
               .where(and(eq(boardVersion.id, backupId), eq(boardVersion.kind, 'restore')))
               .returning({ id: boardVersion.id });
-            if (updated.length === 0) throw new Error('Restore backup was deleted or named meanwhile');
+            if (updated.length === 0)
+              throw new Error('Restore backup was deleted or named meanwhile');
           }
         }
         if (!written) {
