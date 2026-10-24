@@ -418,6 +418,7 @@ export const comment = pgTable(
       foreignColumns: [shareGuest.id, shareGuest.shareLinkId],
     }).onDelete('cascade'),
     index('comment_board_element_idx').on(t.boardId, t.elementId),
+    index('comment_project_idx').on(t.projectId),
     // Thread lists: keyset on (created_at, id), newest first; a thread start never moves.
     index('comment_threads_idx')
       .on(t.boardId, t.createdAt.desc(), t.id.desc())
@@ -468,12 +469,10 @@ export const elementReview = pgTable(
     changedAt: timestamp('changed_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
-    uniqueIndex('element_review_team_uq')
-      .on(t.boardId, t.elementId)
-      .where(sql`${t.shareLinkId} is null`),
-    uniqueIndex('element_review_link_uq')
-      .on(t.boardId, t.elementId, t.shareLinkId)
-      .where(sql`${t.shareLinkId} is not null`),
+    // One team row (link null) and one row per link for each card. NULLS NOT DISTINCT makes
+    // the null link count as one value; the index also serves board-wide reads and cascades.
+    unique('element_review_uq').on(t.boardId, t.elementId, t.shareLinkId).nullsNotDistinct(),
+    index('element_review_project_idx').on(t.projectId),
     foreignKey({
       name: 'element_review_guest_fk',
       columns: [t.changedByGuest, t.shareLinkId],
@@ -489,7 +488,7 @@ export const elementReview = pgTable(
     // A team row has no guest; a link row has its guest and no account.
     check(
       'element_review_source_ck',
-      sql`(${t.shareLinkId} is null and ${t.changedByGuest} is null) or (${t.shareLinkId} is not null and ${t.changedByGuest} is not null and ${t.changedBy} is null and ${t.requestedBy} is null)`,
+      sql`(${t.shareLinkId} is null and ${t.changedByGuest} is null) or (${t.shareLinkId} is not null and ${t.changedByGuest} is not null and ${t.changedBy} is null and ${t.requestedBy} is null and ${t.status} <> 'in_review')`,
     ),
   ],
 );
@@ -576,6 +575,9 @@ export const notification = pgTable(
     // Retention: notifications are removed after 90 days.
     index('notification_created_idx').on(t.createdAt),
     index('notification_actor_idx').on(t.actorId).where(sql`${t.actorId} is not null`),
+    index('notification_actor_guest_idx')
+      .on(t.actorGuestId)
+      .where(sql`${t.actorGuestId} is not null`),
     // Comments are hard-deleted and cascade here.
     index('notification_comment_idx').on(t.commentId).where(sql`${t.commentId} is not null`),
   ],
@@ -692,6 +694,7 @@ export const sharePick = pgTable(
       foreignColumns: [shareGuest.id, shareGuest.shareLinkId],
     }).onDelete('cascade'),
     index('share_pick_link_idx').on(t.shareLinkId),
+    index('share_pick_board_idx').on(t.boardId),
     check('share_pick_stars_ck', sql`${t.stars} between 1 and 5`),
     check('share_pick_value_ck', sql`${t.pick} is not null or ${t.stars} is not null`),
   ],

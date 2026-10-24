@@ -1,5 +1,5 @@
 {
-  "id": "5f1fdf93-938f-4447-b9c5-1dbfb115180d",
+  "id": "b6bcb063-54bb-45ca-8456-66627f8fb266",
   "prevId": "ce0b5718-e0cd-496f-80a8-0455f8c68422",
   "version": "7",
   "dialect": "postgresql",
@@ -1202,6 +1202,21 @@
           "method": "btree",
           "with": {}
         },
+        "comment_project_idx": {
+          "name": "comment_project_idx",
+          "columns": [
+            {
+              "expression": "project_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
         "comment_threads_idx": {
           "name": "comment_threads_idx",
           "columns": [
@@ -1506,52 +1521,17 @@
         }
       },
       "indexes": {
-        "element_review_team_uq": {
-          "name": "element_review_team_uq",
+        "element_review_project_idx": {
+          "name": "element_review_project_idx",
           "columns": [
             {
-              "expression": "board_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "element_id",
+              "expression": "project_id",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
             }
           ],
-          "isUnique": true,
-          "where": "\"element_review\".\"share_link_id\" is null",
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "element_review_link_uq": {
-          "name": "element_review_link_uq",
-          "columns": [
-            {
-              "expression": "board_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "element_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "share_link_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "where": "\"element_review\".\"share_link_id\" is not null",
+          "isUnique": false,
           "concurrently": false,
           "method": "btree",
           "with": {}
@@ -1688,12 +1668,22 @@
         }
       },
       "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
+      "uniqueConstraints": {
+        "element_review_uq": {
+          "name": "element_review_uq",
+          "nullsNotDistinct": true,
+          "columns": [
+            "board_id",
+            "element_id",
+            "share_link_id"
+          ]
+        }
+      },
       "policies": {},
       "checkConstraints": {
         "element_review_source_ck": {
           "name": "element_review_source_ck",
-          "value": "(\"element_review\".\"share_link_id\" is null and \"element_review\".\"changed_by_guest\" is null) or (\"element_review\".\"share_link_id\" is not null and \"element_review\".\"changed_by_guest\" is not null and \"element_review\".\"changed_by\" is null and \"element_review\".\"requested_by\" is null)"
+          "value": "(\"element_review\".\"share_link_id\" is null and \"element_review\".\"changed_by_guest\" is null) or (\"element_review\".\"share_link_id\" is not null and \"element_review\".\"changed_by_guest\" is not null and \"element_review\".\"changed_by\" is null and \"element_review\".\"requested_by\" is null and \"element_review\".\"status\" <> 'in_review')"
         }
       },
       "isRLSEnabled": false
@@ -2288,6 +2278,22 @@
           ],
           "isUnique": false,
           "where": "\"notification\".\"actor_id\" is not null",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "notification_actor_guest_idx": {
+          "name": "notification_actor_guest_idx",
+          "columns": [
+            {
+              "expression": "actor_guest_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "where": "\"notification\".\"actor_guest_id\" is not null",
           "concurrently": false,
           "method": "btree",
           "with": {}
@@ -3233,6 +3239,21 @@
           "columns": [
             {
               "expression": "share_link_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "share_pick_board_idx": {
+          "name": "share_pick_board_idx",
+          "columns": [
+            {
+              "expression": "board_id",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
