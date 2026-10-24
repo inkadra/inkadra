@@ -1,4 +1,4 @@
-import { SchemaTooNewError } from '@inkadra/doc-schema';
+import { CURRENT_SCHEMA_VERSION, SchemaTooNewError } from '@inkadra/doc-schema';
 import {
   API_PREFIX,
   type BoardVersion,
@@ -38,6 +38,8 @@ const VersionParams = z.object({ boardId: Id, versionId: Id });
 
 /** Named versions a person may save in an hour. */
 const SAVES_PER_HOUR = 20;
+/** Full-document restore backups are limited per board across all its editors. */
+const RESTORES_PER_HOUR = 10;
 
 /** Columns of a version without its state, with its author and a microsecond cursor key. */
 const listed = (() => {
@@ -104,6 +106,7 @@ export function registerVersionRoutes(app: FastifyInstance, deps: Deps) {
   const { db, auth } = deps;
   const v1 = (path: string) => `${API_PREFIX}${path}`;
   const saves = new RateLimiter(SAVES_PER_HOUR, 60 * 60 * 1000);
+  const restores = new RateLimiter(RESTORES_PER_HOUR, 60 * 60 * 1000);
 
   /** One version of the board, or 404: the id must belong to the board of the path. */
   async function findVersion(boardId: string, versionId: string) {
@@ -213,13 +216,16 @@ export function registerVersionRoutes(app: FastifyInstance, deps: Deps) {
     const { boardId, versionId } = VersionParams.parse(req.params);
     await requireBoardRole(db, actor, boardId, 'editor');
     const [row] = await db
-      .select({ state: boardVersion.state })
+      .select({ state: boardVersion.state, schemaVersion: boardVersion.schemaVersion })
       .from(boardVersion)
       .where(and(eq(boardVersion.id, versionId), eq(boardVersion.boardId, boardId)));
     if (!row) throw new HttpError('not_found', 'Version not found.');
     let update: Uint8Array;
     try {
-      update = Y.encodeStateAsUpdate(versionDoc(row, boardId));
+      update =
+        row.schemaVersion === CURRENT_SCHEMA_VERSION
+          ? row.state
+          : Y.encodeStateAsUpdate(versionDoc(row, boardId));
     } catch (err) {
       if (err instanceof SchemaTooNewError)
         throw new HttpError('conflict', 'This version was saved by a newer Inkadra.');
@@ -237,6 +243,8 @@ export function registerVersionRoutes(app: FastifyInstance, deps: Deps) {
     await requireBoardRole(db, actor, boardId, 'editor');
     const restored = await findVersion(boardId, versionId);
     const versions = writer();
+    if (!restores.take(boardId))
+      throw new HttpError('rate_limited', 'Too many restores of this board: wait a while.');
     let result: Awaited<ReturnType<VersionWriter['restore']>>;
     try {
       result = await versions.restore({ boardId, versionId, userId: actor.id });

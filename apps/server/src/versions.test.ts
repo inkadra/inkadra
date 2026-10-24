@@ -1,4 +1,11 @@
-import { addElement, createBoardDoc, type Element, readElement, roots } from '@inkadra/doc-schema';
+import {
+  addElement,
+  createBoardDoc,
+  type Element,
+  hiddenFromGuests,
+  readElement,
+  roots,
+} from '@inkadra/doc-schema';
 import { describe, expect, it } from 'vitest';
 import * as Y from 'yjs';
 import { fragmentText } from './search/index-doc.ts';
@@ -111,6 +118,78 @@ describe('writeVersionOver', () => {
     writeVersionOver(live, version);
     expect(updates).toBe(0);
   });
+
+  it.each(['note', 'board'] as const)(
+    'keeps a %s hidden after restoring its parent from a hidden column to a visible one',
+    (type) => {
+      const live = createBoardDoc(BOARD);
+      addElement(live, { ...note('visible0'), type: 'column', title: 'Visible' });
+      addElement(live, {
+        ...note('card0000', { parent: 'visible0' }),
+        ...(type === 'board' ? { type, boardId: BOARD } : { type }),
+      });
+      const version = saved(live);
+      addElement(live, {
+        ...note('hidden00', { guestHidden: true }),
+        type: 'column',
+        title: 'Hidden',
+      });
+      roots(live).elements.get('card0000')?.set('parent', 'hidden00');
+      const lookup = (id: string) => element(live, id) ?? undefined;
+      expect(hiddenFromGuests('card0000', lookup)).toBe(true);
+
+      writeVersionOver(live, version);
+      expect(element(live, 'card0000')).toMatchObject({ parent: 'visible0', guestHidden: true });
+      expect(hiddenFromGuests('card0000', lookup)).toBe(true);
+    },
+  );
+
+  it.each(['body', 'items', 'strokes'] as const)(
+    'replaces %s wholesale, discarding edits inside the old nested type from an offline client',
+    (field) => {
+      const live = createBoardDoc(BOARD);
+      const item = { id: 'item0000', text: 'version', done: false };
+      const stroke = {
+        id: 'stroke00',
+        tool: 'pencil' as const,
+        color: '#000000',
+        width: 1,
+        points: [0, 0],
+      };
+      const card = addElement(
+        live,
+        field === 'items'
+          ? { ...note('card0000'), type: 'todo', items: [item] }
+          : field === 'strokes'
+            ? { ...note('card0000'), type: 'frame', strokes: [stroke] }
+            : note('card0000'),
+      );
+      if (field === 'body') write(live, 'card0000', 'version');
+      const version = saved(live);
+      if (field === 'body') write(live, 'card0000', 'current');
+      else if (field === 'items')
+        (card.get(field) as Y.Array<Y.Map<unknown>>).get(0).set('text', 'current');
+      else (card.get(field) as Y.Array<unknown>).push([{ ...stroke, id: 'current0' }]);
+
+      const offline = saved(live);
+      if (field === 'body') write(offline, 'card0000', 'offline');
+      else if (field === 'items')
+        (roots(offline).elements.get('card0000')!.get(field) as Y.Array<Y.Map<unknown>>)
+          .get(0)
+          .set('done', true);
+      else
+        (roots(offline).elements.get('card0000')!.get(field) as Y.Array<unknown>).push([
+          { ...stroke, id: 'offline0' },
+        ]);
+      writeVersionOver(live, version);
+      Y.applyUpdate(live, Y.encodeStateAsUpdate(offline));
+      if (field === 'body') expect(text(live, 'card0000')).toBe('version');
+      else
+        expect((card.get(field) as Y.Array<unknown>).toJSON()).toEqual([
+          field === 'items' ? item : stroke,
+        ]);
+    },
+  );
 
   it('is a normal change: an offline edit made before the restore still merges', () => {
     const live = createBoardDoc(BOARD);

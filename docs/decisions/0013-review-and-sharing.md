@@ -154,11 +154,14 @@ must say who decided and when.
   any kind; automatic and restore versions would go away with retention anyway. **Restore**
   saves the current state as a `restore` version, then writes the old content on top of the
   live document as a normal change (elements added, changed and removed), so CRDT history
-  goes on, open boards follow and offline edits still merge. It is a server-side edit like a
-  clip and uses the mechanism of decision 0014: the change is made where the document is live
+  goes on, open boards follow and offline edits to unchanged fields still merge. Changed note
+  text, checklist items and pen strokes are replaced wholesale: offline edits inside those
+  replaced fields are lost. Restores are limited to 10 per hour per board. It is a server-side
+  edit like a clip and uses the mechanism of decision 0014: the change is made where the document is live
   (a Hocuspocus direct connection, or in split mode a job on the `collab` queue with a
   deadline), never by writing `board_doc` directly. Cards present both now and in
-  the version keep their current `guestHidden`, so a restore never shows guests a card hidden
+  the version keep their current `guestHidden`; cards hidden through a container receive an
+  explicit flag if the restore would expose them, so a restore never shows guests a card hidden
   since the version was taken. Preview downloads the version as a Yjs update and renders it
   read-only in the editor; the server renders nothing. Editors and owners list, save, preview
   and restore.
