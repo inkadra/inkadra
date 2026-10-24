@@ -11754,7 +11754,7 @@
           }
         ],
         "summary": "Save the current state of the board under a name. Needs editor.",
-        "description": "A board keeps at most 100 named versions (409 beyond; delete or let one go first), and each person can save 20 an hour. Open boards are told with the stateless collab message `{\"type\":\"versions\"}`.",
+        "description": "A board keeps at most 100 named versions (409 beyond; delete or let one go first), and each person can save 20 an hour. Open boards are told with the stateless collab message `{\"type\":\"versions\",\"versionId\":\"0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10\"}`.",
         "parameters": [
           {
             "schema": {
@@ -11848,7 +11848,7 @@
             }
           },
           "500": {
-            "description": "Not made, or, with details OutcomeUnknown (`outcome_unknown`), not confirmed in time: it may be there, so check before trying again",
+            "description": "The change may or may not have been made. OutcomeUnknown (`outcome_unknown`) explicitly reports uncertainty. A missing or unrecognized details.reason also means the outcome is unknown, including on legacy servers. Reconcile state before retrying; never infer that a retry is safe from the absence of a recognized reason.",
             "content": {
               "application/json": {
                 "schema": {
@@ -11962,7 +11962,7 @@
           }
         ],
         "summary": "Rename a version, or name an automatic one so it is kept. Needs editor.",
-        "description": "Open boards are told with the stateless collab message `{\"type\":\"versions\"}`.",
+        "description": "Open boards are told with the stateless collab message `{\"type\":\"versions\",\"versionId\":\"0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10\"}`.",
         "parameters": [
           {
             "schema": {
@@ -12070,7 +12070,7 @@
           }
         ],
         "summary": "Delete a version of any kind. Needs editor.",
-        "description": "Automatic and restore versions also go away by themselves with retention; deleting one only does it sooner. Open boards are told with the stateless collab message `{\"type\":\"versions\"}`.",
+        "description": "Automatic and restore versions also go away by themselves with retention; deleting one only does it sooner. Open boards are told with the stateless collab message `{\"type\":\"versions\",\"versionId\":\"0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10\"}`.",
         "parameters": [
           {
             "schema": {
@@ -12351,7 +12351,7 @@
             }
           },
           "500": {
-            "description": "Not made, or, with details OutcomeUnknown (`outcome_unknown`), not confirmed in time: it may be there, so check before trying again",
+            "description": "The change may or may not have been made. OutcomeUnknown (`outcome_unknown`) explicitly reports uncertainty. A missing or unrecognized details.reason also means the outcome is unknown, including on legacy servers. Reconcile state before retrying; never infer that a retry is safe from the absence of a recognized reason.",
             "content": {
               "application/json": {
                 "schema": {
@@ -12513,7 +12513,7 @@
             }
           },
           "500": {
-            "description": "Not made, or, with details OutcomeUnknown (`outcome_unknown`), not confirmed in time: it may be there, so check before trying again",
+            "description": "The change may or may not have been made. OutcomeUnknown (`outcome_unknown`) explicitly reports uncertainty. A missing or unrecognized details.reason also means the outcome is unknown, including on legacy servers. Reconcile state before retrying; never infer that a retry is safe from the absence of a recognized reason.",
             "content": {
               "application/json": {
                 "schema": {
