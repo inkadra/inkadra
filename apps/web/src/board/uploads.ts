@@ -31,10 +31,11 @@ let seq = 0;
 const BUSY = 'uploads';
 
 function changed() {
-  // A reload for a new version waits for running and paused uploads: their File is lost.
+  // A reload for a new version waits for uploads that can still run (running, paused offline,
+  // failed and retryable): their File is in memory only, and reloading would lose it.
   setBusy(
     BUSY,
-    items.some((i) => i.state === 'uploading' || i.state === 'offline'),
+    items.some((i) => i.state === 'uploading' || i.state === 'offline' || i.state === 'failed'),
   );
   for (const l of listeners) l();
 }
