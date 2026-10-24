@@ -11,6 +11,7 @@ import type { Config } from '../config.ts';
 import type { Database } from '../db/client.ts';
 import type { Jobs } from '../jobs.ts';
 import { type Mailer, noMailer } from '../mailer.ts';
+import { DocViews } from '../share-links.ts';
 import type { Storage } from '../storage.ts';
 import type { VersionWriter } from '../versions.ts';
 import { registerAccountRoutes } from './account-routes.ts';
@@ -23,11 +24,13 @@ import { registerCommentRoutes } from './comments-routes.ts';
 import { registerCsrfCheck } from './csrf.ts';
 import { registerDiagnostics } from './diagnostics.ts';
 import { errorHandler, sendError } from './errors.ts';
+import { registerGuestRoutes } from './guest-routes.ts';
 import { registerLinkPreviews } from './link-previews.ts';
 import { registerNotificationRoutes } from './notifications-routes.ts';
 import { registerProjectRoutes } from './projects-routes.ts';
 import { registerReviewRoutes } from './reviews-routes.ts';
 import { registerSearchRoutes } from './search-routes.ts';
+import { GUEST_PAGE_PATH, registerShareLinkRoutes } from './share-links-routes.ts';
 import { registerSharingRoutes } from './sharing-routes.ts';
 import { registerUploads } from './uploads.ts';
 import { registerVersionRoutes } from './versions-routes.ts';
@@ -65,10 +68,15 @@ export async function createApp(deps: AppDeps) {
 
   app.setErrorHandler(errorHandler);
 
-  app.addHook('onSend', async (_req, reply) => {
+  app.addHook('onSend', async (req, reply) => {
     reply.header('x-content-type-options', 'nosniff');
-    reply.header('referrer-policy', 'strict-origin-when-cross-origin');
     reply.header('x-frame-options', 'DENY');
+    // The token of a share link is in the path of its guest page: it must not leak to the
+    // sites of link cards nor into search engines (decision 0013).
+    if (req.url.startsWith(GUEST_PAGE_PATH)) {
+      reply.header('referrer-policy', 'no-referrer');
+      reply.header('x-robots-tag', 'noindex, nofollow');
+    } else reply.header('referrer-policy', 'strict-origin-when-cross-origin');
   });
 
   // Before every route: cross-site writes stop here (decision 0013).
@@ -90,6 +98,10 @@ export async function createApp(deps: AppDeps) {
   registerNotificationRoutes(app, deps);
   registerUploads(app, { ...deps, uploadMaxSize: config.UPLOAD_MAX_SIZE });
   await registerClipRoutes(app, { ...deps, uploadMaxSize: config.UPLOAD_MAX_SIZE });
+  // Share links and their guests (decision 0013) decode stored documents through one cache.
+  const docs = new DocViews();
+  registerShareLinkRoutes(app, { ...deps, docs });
+  await registerGuestRoutes(app, { ...deps, docs });
 
   const webDist = config.WEB_DIST ? resolve(config.WEB_DIST) : undefined;
   if (webDist && existsSync(join(webDist, 'index.html'))) {
