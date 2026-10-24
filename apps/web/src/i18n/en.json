@@ -754,6 +754,7 @@
   "pwa": {
     "updateAvailable": "New version available",
     "update": "Update",
+    "updateWhenSaved": "Updates once your changes are saved and uploads finish",
     "later": "Later",
     "offline": {
       "title": "You are offline",

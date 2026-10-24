@@ -4,7 +4,7 @@
  * API, sign-in, uploads, user files and the collaboration socket never pass through it.
  * Rules in routing.ts; why it is written by hand in docs/decisions/0015-installable-web-app.md.
  */
-import { OFFLINE_PAGE, route } from './routing.ts';
+import { OFFLINE_PAGE, route, SERVER_ROUTES } from './routing.ts';
 
 declare const __PRECACHE__: string[];
 declare const __CACHE_VERSION__: string;
@@ -13,6 +13,10 @@ declare const __CACHE_VERSION__: string;
 interface ExtendableEvent extends Event {
   waitUntil(promise: Promise<unknown>): void;
 }
+/** `addRoutes` is the Static Routing API (Chromium 123 and later). */
+interface InstallEvent extends ExtendableEvent {
+  addRoutes?(rules: typeof SERVER_ROUTES): Promise<void>;
+}
 interface FetchEvent extends ExtendableEvent {
   request: Request;
   respondWith(response: Promise<Response>): void;
@@ -20,7 +24,8 @@ interface FetchEvent extends ExtendableEvent {
 interface Worker {
   location: Location;
   skipWaiting(): Promise<void>;
-  addEventListener(type: 'install' | 'activate', listener: (event: ExtendableEvent) => void): void;
+  addEventListener(type: 'install', listener: (event: InstallEvent) => void): void;
+  addEventListener(type: 'activate', listener: (event: ExtendableEvent) => void): void;
   addEventListener(type: 'fetch', listener: (event: FetchEvent) => void): void;
   addEventListener(type: 'message', listener: (event: MessageEvent) => void): void;
 }
@@ -31,6 +36,9 @@ const CACHE = `${PREFIX}${__CACHE_VERSION__}`;
 const precached = new Set(__PRECACHE__);
 
 worker.addEventListener('install', (event) => {
+  // The browser sends the API and the collaboration socket straight to the network, without
+  // waking the worker. Where it cannot, the fetch handler below leaves them alone.
+  if (event.addRoutes) event.waitUntil(event.addRoutes(SERVER_ROUTES).catch(() => {}));
   // A new version waits until the page asks for it (the "new version" prompt), so an open
   // board never switches code under the user's hands.
   event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll([...precached])));
@@ -50,6 +58,12 @@ worker.addEventListener('activate', (event) => {
 
 worker.addEventListener('message', (event) => {
   if (event.data?.type === 'skip-waiting') void worker.skipWaiting();
+  // Whether a page already runs this version: register.ts sends the build files it loaded.
+  if (event.data?.type === 'has') {
+    const paths: unknown = event.data.paths;
+    const all = Array.isArray(paths) && paths.every((p) => precached.has(p));
+    event.ports[0]?.postMessage(all);
+  }
 });
 
 worker.addEventListener('fetch', (event) => {
@@ -60,12 +74,16 @@ worker.addEventListener('fetch', (event) => {
       caches
         .open(CACHE)
         .then((cache) => cache.match(request))
+        .catch(() => undefined)
         .then((hit) => hit ?? fetch(request)),
     );
   } else if (how === 'navigate') {
     event.respondWith(
       fetch(request).catch(async () => {
-        const page = await caches.open(CACHE).then((cache) => cache.match(OFFLINE_PAGE));
+        const page = await caches
+          .open(CACHE)
+          .then((cache) => cache.match(OFFLINE_PAGE))
+          .catch(() => undefined);
         return page ?? Response.error();
       }),
     );

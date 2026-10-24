@@ -97,6 +97,43 @@ describe('service worker', () => {
     expect(await response?.text()).toBe('cached /offline.html');
   });
 
+  it('passes a server error on a navigation through, without the offline page', async () => {
+    network.mockResolvedValueOnce(new Response('down', { status: 503 }));
+    const response = await get('/p/1', 'navigate');
+    expect(response?.status).toBe(503);
+    expect(await response?.text()).toBe('down');
+  });
+
+  it('falls back to the network when the cache cannot be read', async () => {
+    const open = vi.spyOn(cacheStorage, 'open').mockRejectedValueOnce(new Error('quota'));
+    const response = await get('/assets/index-abc.js');
+    expect(await response?.text()).toBe('from network');
+    open.mockRestore();
+  });
+
+  it('sends the API and the socket straight to the network where routes are supported', async () => {
+    const addRoutes = vi.fn(async () => {});
+    await dispatch('install', { addRoutes });
+    expect(addRoutes).toHaveBeenCalledOnce();
+    const patterns = (
+      addRoutes.mock.calls[0] as unknown as [{ condition: { urlPattern: string } }[]]
+    )[0].map((r) => r.condition.urlPattern);
+    expect(patterns).toEqual(['/api', '/api/*', '/collab', '/collab/*']);
+  });
+
+  it('tells a page whether it already runs this version', async () => {
+    const ask = (paths: unknown) =>
+      new Promise((resolve) => {
+        handlers.get('message')?.({
+          data: { type: 'has', paths },
+          ports: [{ postMessage: resolve }],
+        });
+      });
+    expect(await ask(['/assets/index-abc.js'])).toBe(true);
+    expect(await ask(['/assets/index-abc.js', '/assets/index-old.css'])).toBe(false);
+    expect(await ask('/assets/index-abc.js')).toBe(false);
+  });
+
   it('activates a waiting version only when the page asks', async () => {
     handlers.get('message')?.({ data: { type: 'other' } });
     expect(worker.skipWaiting).not.toHaveBeenCalled();

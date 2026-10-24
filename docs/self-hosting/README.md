@@ -85,12 +85,14 @@ in the browser, without the install option, the offline page and the update prom
 The app is the same web app, so it needs the server: without a connection it shows an offline
 page and reloads by itself when the network is back. After you upgrade Inkadra, open apps and
 tabs show _New version available — Update_; until someone presses it they keep running the
-version they started with. The service worker that does this never stores API responses,
+version they started with. If a board is still saving or an upload is running, the update
+waits for them. The service worker that does this never stores API responses,
 files, sign-in pages or anything tied to an account: see
 [decision 0015](../decisions/0015-installable-web-app.md). A proxy in front of Inkadra must
 serve `/sw.js` and `/manifest.webmanifest` as it receives them (the examples in `deploy/proxy`
-do); if it adds a `Content-Security-Policy`, it needs `worker-src 'self'` and
-`manifest-src 'self'`.
+do); if it adds a `Content-Security-Policy`, it needs `worker-src 'self'`, `manifest-src 'self'`
+and must allow the inline `<script>` and `<style>` of `offline.html` and the inline theme script
+of `index.html` (with `'unsafe-inline'` or their hashes).
 
 ## The image
 

@@ -27,11 +27,21 @@ export interface RequestLike {
 }
 
 /** Paths the worker never touches: the API (and sign-in), files and real-time collaboration. */
+const SERVER_PATHS = ['/api', '/collab'];
+
 function isServerPath(path: string): boolean {
-  return (
-    path === '/api' || path.startsWith('/api/') || path === '/collab' || path.startsWith('/collab/')
-  );
+  return SERVER_PATHS.some((p) => path === p || path.startsWith(`${p}/`));
 }
+
+/**
+ * The same paths as static routes (the Service Worker Static Routing API): where the browser
+ * supports it, these requests go to the network without starting the worker at all.
+ * `route()` keeps the same rule for the browsers that do not.
+ */
+export const SERVER_ROUTES = SERVER_PATHS.flatMap((p) => [p, `${p}/*`]).map((urlPattern) => ({
+  condition: { urlPattern },
+  source: 'network' as const,
+}));
 
 export function route(request: RequestLike, origin: string, precached: ReadonlySet<string>): Route {
   if (request.method !== 'GET') return 'network';

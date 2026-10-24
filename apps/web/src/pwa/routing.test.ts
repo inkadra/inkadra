@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { isPrecached, type RequestLike, route } from './routing.ts';
+import { isPrecached, type RequestLike, route, SERVER_ROUTES } from './routing.ts';
 
 const origin = 'https://inkadra.example.com';
 const precached = new Set(['/offline.html', '/assets/index-Bzm8OgW2.js', '/assets/app-1a2b.css']);
@@ -85,6 +85,39 @@ describe('service worker routing', () => {
     expect(how(request('/assets/index-Bzm8OgW2.js', { headers: ['range'] }))).toBe('network');
     expect(how(request('/assets/app-1a2b.css', { headers: ['authorization'] }))).toBe('network');
     expect(how(request('/', { mode: 'navigate', headers: ['authorization'] }))).toBe('network');
+  });
+});
+
+// The browser's URLPattern (Node 24 has it too): the static routes match what route() skips.
+const Pattern = (
+  globalThis as {
+    URLPattern?: new (input: string, base: string) => { test(url: string): boolean };
+  }
+).URLPattern;
+
+describe.skipIf(!Pattern)('static routes', () => {
+  const routed = (path: string) =>
+    SERVER_ROUTES.some(({ condition }) =>
+      new (Pattern as NonNullable<typeof Pattern>)(condition.urlPattern, `${origin}/sw.js`).test(
+        `${origin}${path}`,
+      ),
+    );
+
+  it('cover exactly the server paths the fetch handler leaves alone', () => {
+    const server = [
+      '/api',
+      '/api/v1/me',
+      '/api/auth/callback/google?code=x&state=y',
+      '/collab',
+      '/collab?token=x',
+      '/collab/board',
+    ];
+    for (const path of server) {
+      expect(routed(path), path).toBe(true);
+      expect(how(request(path)), path).toBe('network');
+    }
+    for (const path of ['/apis', '/collaborate', '/assets/index-Bzm8OgW2.js', '/p/1', '/'])
+      expect(routed(path), path).toBe(false);
   });
 });
 

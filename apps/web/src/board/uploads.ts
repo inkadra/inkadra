@@ -1,6 +1,7 @@
 import { API_PREFIX } from '@inkadra/shared/constants';
 import { useSyncExternalStore } from 'react';
 import { Upload } from 'tus-js-client';
+import { setBusy } from '../pwa/busy.ts';
 
 export interface UploadItem {
   key: string;
@@ -27,14 +28,25 @@ const uploads = new Map<string, Upload>();
 const listeners = new Set<() => void>();
 let seq = 0;
 
+const BUSY = 'uploads';
+
+function changed() {
+  // A reload for a new version waits for running and paused uploads: their File is lost.
+  setBusy(
+    BUSY,
+    items.some((i) => i.state === 'uploading' || i.state === 'offline'),
+  );
+  for (const l of listeners) l();
+}
+
 function emit() {
   items = [...items];
-  for (const l of listeners) l();
+  changed();
 }
 
 function patch(key: string, change: Partial<UploadItem>) {
   items = items.map((i) => (i.key === key ? { ...i, ...change } : i));
-  for (const l of listeners) l();
+  changed();
 }
 
 export interface StartUpload {
@@ -171,7 +183,7 @@ function dismiss(key: string) {
   // Keep the preview while cards may still show it; the browser frees it with the page.
   if (item && item.state !== 'done' && item.preview) URL.revokeObjectURL(item.preview);
   items = items.filter((i) => i.key !== key);
-  for (const l of listeners) l();
+  changed();
 }
 
 function subscribe(l: () => void) {

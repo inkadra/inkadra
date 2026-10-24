@@ -20,9 +20,11 @@ export function pwa(): Plugin {
     apply: 'build',
 
     transformIndexHtml() {
+      // At the end of <head>, so that <meta charset> stays first.
+      const injectTo = 'head' as const;
       return [
-        { tag: 'link', attrs: { rel: 'manifest', href: '/manifest.webmanifest' } },
-        { tag: 'link', attrs: { rel: 'apple-touch-icon', href: `/${ICONS.apple}` } },
+        { tag: 'link', attrs: { rel: 'manifest', href: '/manifest.webmanifest' }, injectTo },
+        { tag: 'link', attrs: { rel: 'apple-touch-icon', href: `/${ICONS.apple}` }, injectTo },
         ...(['dark', 'light'] as const).map((scheme) => ({
           tag: 'meta',
           attrs: {
@@ -30,6 +32,7 @@ export function pwa(): Plugin {
             content: themeColor[scheme],
             media: `(prefers-color-scheme: ${scheme})`,
           },
+          injectTo,
         })),
       ];
     },
