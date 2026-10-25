@@ -1,4 +1,4 @@
-import { createServer, type Server } from 'node:http';
+import { createServer, type Server, type ServerResponse } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { fileURLToPath } from 'node:url';
 import { sql } from 'drizzle-orm';
@@ -384,15 +384,53 @@ describe.skipIf(!url)('projects, boards, uploads and assets (needs DATABASE_URL)
   });
 
   it('cancels an upload and its pending asset', async () => {
+    // A project of its own makes this regression runnable without the preceding tests.
+    const project = await call('owner', 'POST', '/api/v1/projects', { name: 'Cancellation' });
+    expect(project.statusCode).toBe(201);
     const created = await call('owner', 'POST', '/api/v1/uploads', undefined, {
       ...tus,
       'upload-length': '100',
-      'upload-metadata': metadata('clip.mp4', 'video/mp4'),
+      'upload-metadata': metadata('clip.mp4', 'video/mp4', project.json().id),
     });
+    expect(created.statusCode).toBe(201);
     const id = String(created.headers['inkadra-asset-id']);
-    expect(
-      (await call('owner', 'DELETE', `/api/v1/uploads/${id}`, undefined, tus)).statusCode,
-    ).toBe(204);
+    expect((await call('owner', 'GET', `/api/v1/assets/${id}`)).json().status).toBe('pending');
+    let cancellation: ReturnType<typeof call> | undefined;
+    let response: ServerResponse | undefined;
+    try {
+      await db.transaction(async (tx) => {
+        // Hold the row so cleanup cannot finish. Waiting for a real blocked query below
+        // proves the DELETE reached the database, without relying on a sleep or fast SQL.
+        await tx.execute(sql`select id from asset where id = ${id} for update`);
+        const [connection] = await tx.execute<{ pid: number }>(sql`select pg_backend_pid() as pid`);
+        const observe = (_req: unknown, res: ServerResponse) => {
+          response = res;
+        };
+        app.server.once('request', observe);
+        try {
+          cancellation = call('owner', 'DELETE', `/api/v1/uploads/${id}`, undefined, tus);
+          await expect
+            .poll(async () => {
+              const [blocked] = await db.execute<{ count: number }>(sql`
+              select count(*)::int as count from pg_stat_activity
+              where ${connection!.pid} = any(pg_blocking_pids(pid))
+            `);
+              return blocked!.count;
+            })
+            .toBe(1);
+          // Before #24, tus had already ended the 204 response at this point, even though
+          // the asset still existed. Observe the real socket response, not app.inject().
+          expect(response).toBeDefined();
+          expect(response!.writableEnded).toBe(false);
+        } finally {
+          app.server.removeListener('request', observe);
+        }
+      });
+    } finally {
+      // Always release the transaction lock and finish the request, including on failure.
+      await cancellation;
+    }
+    expect((await cancellation)!.statusCode).toBe(204);
     expect((await call('owner', 'GET', `/api/v1/assets/${id}`)).statusCode).toBe(404);
   });
 
