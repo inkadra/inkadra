@@ -16,11 +16,12 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vites
 import WebSocket from 'ws';
 import * as Y from 'yjs';
 import { createAuth } from '../auth.ts';
+import { directBoardNotifier } from '../board-notices.ts';
 import { attachCollab, createCollabServer } from '../collab.ts';
 import { loadConfig } from '../config.ts';
 import { createDatabase, runMigrations } from '../db/client.ts';
 import { board, boardDoc, boardVersion, elementReview } from '../db/schema.ts';
-import { queuedBoardWriter, startBoardWorker } from '../queues.ts';
+import { CardOutcomeUnknown, queuedBoardWriter, startBoardWorker } from '../queues.ts';
 import { fragmentText } from '../search/index-doc.ts';
 import { testDeps } from '../test-deps.ts';
 import * as versionStorage from '../versions.ts';
@@ -237,7 +238,15 @@ describe.skipIf(!url)('board versions (needs DATABASE_URL)', () => {
   beforeAll(async () => {
     await runMigrations(config.DATABASE_URL, migrationsFolder);
     await db.execute(sql`truncate table "user", project, instance_setting cascade`);
-    app = await createApp({ config, db, auth, log, ...deps, versions });
+    app = await createApp({
+      config,
+      db,
+      auth,
+      log,
+      ...deps,
+      versions,
+      notices: directBoardNotifier(collab),
+    });
     attachCollab(app.server, collab);
     await app.listen({ host: '127.0.0.1', port: 0 });
     base = `127.0.0.1:${(app.server.address() as AddressInfo).port}`;
@@ -642,6 +651,93 @@ describe.skipIf(!url)('board versions (needs DATABASE_URL)', () => {
     });
   });
 
+  describe('one version', () => {
+    it('returns the same metadata as the list, and 404 for unknown ids', async () => {
+      await clearBoard(boardId);
+      const named = await insertVersion({
+        kind: 'named',
+        name: 'Single',
+        createdBy: people.editor?.id,
+        createdAt: new Date(),
+        expiresAt: null,
+      });
+      const res = await request('GET', `/boards/${boardId}/versions/${named.id}`, 'editor');
+      expect(res.statusCode).toBe(200);
+      const listed = (await request('GET', `/boards/${boardId}/versions?limit=100`, 'editor'))
+        .json()
+        .items.find((v: BoardVersion) => v.id === named.id);
+      expect(res.json()).toEqual(listed);
+      expect(res.json()).not.toHaveProperty('state');
+      const missing = await request(
+        'GET',
+        `/boards/${boardId}/versions/0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10`,
+        'editor',
+      );
+      expect(missing.statusCode).toBe(404);
+      await request('DELETE', `/boards/${boardId}/versions/${named.id}`, 'editor');
+      expect(
+        (await request('GET', `/boards/${boardId}/versions/${named.id}`, 'editor')).statusCode,
+      ).toBe(404);
+    });
+  });
+
+  describe('unconfirmed changes', () => {
+    it('mark saves and restores the board may have made, and say nothing to open boards', async () => {
+      const version = (await insertVersion({ createdAt: new Date() })).id;
+      const unknown = () => Promise.reject(new CardOutcomeUnknown('stalled'));
+      const notified = vi.fn();
+      const stalled = await createApp({
+        config,
+        db,
+        auth,
+        log,
+        ...deps,
+        versions: { ...versions, save: unknown, restore: unknown },
+        notices: { notify: notified },
+      });
+      try {
+        for (const path of [
+          `/boards/${boardId}/versions`,
+          `/boards/${boardId}/versions/${version}/restore`,
+        ]) {
+          const res = await request('POST', path, 'saver', { name: 'Maybe' }, stalled);
+          expect(res.statusCode, path).toBe(500);
+          expect(res.json().error.details, path).toEqual({ reason: 'outcome_unknown' });
+        }
+        expect(notified).not.toHaveBeenCalled();
+      } finally {
+        await stalled.close();
+      }
+    });
+  });
+
+  describe('notices', () => {
+    it('tells open boards when a version is saved, renamed or deleted', async () => {
+      await clearBoard(subBoardId);
+      const viewer = connect('viewer', subBoardId);
+      await viewer.synced;
+      const saved = await request('POST', `/boards/${subBoardId}/versions`, 'editor', {
+        name: 'Noticed',
+      });
+      expect(saved.statusCode).toBe(201);
+      const id = saved.json().id as string;
+      const notice = { type: 'versions', versionId: id };
+      await until(() => viewer.notices.length === 1);
+      expect(viewer.notices).toEqual([notice]);
+      await request('PATCH', `/boards/${subBoardId}/versions/${id}`, 'editor', { name: 'Again' });
+      await until(() => viewer.notices.length === 2);
+      await request('DELETE', `/boards/${subBoardId}/versions/${id}`, 'editor');
+      await until(() => viewer.notices.length === 3);
+      expect(viewer.notices).toEqual([notice, notice, notice]);
+      // Refused changes say nothing.
+      await request('DELETE', `/boards/${subBoardId}/versions/${id}`, 'editor');
+      await request('PATCH', `/boards/${subBoardId}/versions/${id}`, 'viewer', { name: 'No' });
+      await new Promise((r) => setTimeout(r, 200));
+      expect(viewer.notices).toHaveLength(3);
+      viewer.close();
+    });
+  });
+
   describe('saving named versions', () => {
     it('refuses a queued save that expires while waiting for the board lock', async () => {
       await clearBoard(boardId);
@@ -749,14 +845,13 @@ describe.skipIf(!url)('board versions (needs DATABASE_URL)', () => {
         name: 'One more',
       });
       expect(full.statusCode).toBe(409);
+      expect(full.json().error.details).toEqual({ reason: 'named_versions_limit' });
       // Naming an automatic one would make a 101st.
-      expect(
-        (
-          await request('PATCH', `/boards/${boardId}/versions/${auto.id}`, 'editor', {
-            name: 'Kept',
-          })
-        ).statusCode,
-      ).toBe(409);
+      const naming = await request('PATCH', `/boards/${boardId}/versions/${auto.id}`, 'editor', {
+        name: 'Kept',
+      });
+      expect(naming.statusCode).toBe(409);
+      expect(naming.json().error.details).toEqual({ reason: 'named_versions_limit' });
       // Renaming one that is already named is fine.
       const [first] = await db
         .select()
@@ -863,13 +958,14 @@ describe.skipIf(!url)('board versions (needs DATABASE_URL)', () => {
         schemaVersion: 99,
         state: Y.encodeStateAsUpdate(future),
       });
-      expect(
-        (await request('GET', `/boards/${boardId}/versions/${v99.id}/state`, 'editor')).statusCode,
-      ).toBe(409);
-      expect(
-        (await request('POST', `/boards/${boardId}/versions/${v99.id}/restore`, 'editor'))
-          .statusCode,
-      ).toBe(409);
+      for (const [method, path] of [
+        ['GET', `/boards/${boardId}/versions/${v99.id}/state`],
+        ['POST', `/boards/${boardId}/versions/${v99.id}/restore`],
+      ] as const) {
+        const res = await request(method, path, 'editor');
+        expect(res.statusCode, path).toBe(409);
+        expect(res.json().error.details, path).toEqual({ reason: 'newer_schema' });
+      }
     });
   });
 
@@ -1299,6 +1395,7 @@ describe.skipIf(!url)('board versions (needs DATABASE_URL)', () => {
     const calls = (b: string, v: string): Call[] => [
       ['GET', `/boards/${b}/versions`],
       ['POST', `/boards/${b}/versions`, { name: 'Mine' }],
+      ['GET', `/boards/${b}/versions/${v}`],
       ['PATCH', `/boards/${b}/versions/${v}`, { name: 'Renamed' }],
       ['GET', `/boards/${b}/versions/${v}/state`],
       ['POST', `/boards/${b}/versions/${v}/restore`],

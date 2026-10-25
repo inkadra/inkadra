@@ -15,6 +15,7 @@ import type { FastifyInstance } from 'fastify';
 import * as Y from 'yjs';
 import { requireBoardRole } from '../access.ts';
 import type { Auth } from '../auth.ts';
+import { type BoardNotifier, noNotices } from '../board-notices.ts';
 import type { Database } from '../db/client.ts';
 import { boardVersion, user } from '../db/schema.ts';
 import { CardOutcomeUnknown } from '../queues.ts';
@@ -31,6 +32,7 @@ interface Deps {
   auth: Auth;
   /** Missing when no collaboration server can be reached: saves and restores are refused. */
   versions?: VersionWriter;
+  notices?: BoardNotifier;
 }
 
 const BoardParams = z.object({ boardId: Id });
@@ -103,7 +105,14 @@ function decodeCursor(cursor: string): [string, string] {
 }
 
 export function registerVersionRoutes(app: FastifyInstance, deps: Deps) {
-  const { db, auth } = deps;
+  const { db, auth, notices = noNotices } = deps;
+  const changed = (boardId: string, versionId: string) => {
+    try {
+      notices.notify(boardId, { type: 'versions', versionId });
+    } catch (err) {
+      app.log.warn({ err, boardId, versionId }, 'version notice not sent');
+    }
+  };
   const v1 = (path: string) => `${API_PREFIX}${path}`;
   const saves = new RateLimiter(SAVES_PER_HOUR, 60 * 60 * 1000);
   const restores = new RateLimiter(RESTORES_PER_HOUR, 60 * 60 * 1000);
@@ -154,6 +163,13 @@ export function registerVersionRoutes(app: FastifyInstance, deps: Deps) {
     };
   });
 
+  app.get(v1('/boards/:boardId/versions/:versionId'), async (req) => {
+    const actor = await requireActor(auth, req, db);
+    const { boardId, versionId } = VersionParams.parse(req.params);
+    await requireBoardRole(db, actor, boardId, 'editor');
+    return toVersion(await findVersion(boardId, versionId));
+  });
+
   app.post(v1('/boards/:boardId/versions'), async (req, reply) => {
     const actor = await requireActor(auth, req, db);
     const { boardId } = BoardParams.parse(req.params);
@@ -171,6 +187,7 @@ export function registerVersionRoutes(app: FastifyInstance, deps: Deps) {
       throw new HttpError(
         'internal',
         'The board did not confirm the save in time: check its versions before trying again.',
+        { reason: 'outcome_unknown' },
       );
     }
     if (!saved.ok)
@@ -178,8 +195,10 @@ export function registerVersionRoutes(app: FastifyInstance, deps: Deps) {
         ? new HttpError(
             'conflict',
             `A board keeps at most ${MAX_NAMED_VERSIONS} named versions: delete one first.`,
+            { reason: 'named_versions_limit' },
           )
         : new HttpError('internal', 'The board could not be reached in time: try again.');
+    changed(boardId, saved.versionId);
     return reply.status(201).send(toVersion(await findVersion(boardId, saved.versionId)));
   });
 
@@ -195,7 +214,9 @@ export function registerVersionRoutes(app: FastifyInstance, deps: Deps) {
         : new HttpError(
             'conflict',
             `A board keeps at most ${MAX_NAMED_VERSIONS} named versions: delete one first.`,
+            { reason: 'named_versions_limit' },
           );
+    changed(boardId, versionId);
     return toVersion(await findVersion(boardId, versionId));
   });
 
@@ -208,6 +229,7 @@ export function registerVersionRoutes(app: FastifyInstance, deps: Deps) {
       .where(and(eq(boardVersion.id, versionId), eq(boardVersion.boardId, boardId)))
       .returning({ id: boardVersion.id });
     if (removed.length === 0) throw new HttpError('not_found', 'Version not found.');
+    changed(boardId, versionId);
     return reply.status(204).send();
   });
 
@@ -228,7 +250,9 @@ export function registerVersionRoutes(app: FastifyInstance, deps: Deps) {
           : Y.encodeStateAsUpdate(versionDoc(row, boardId));
     } catch (err) {
       if (err instanceof SchemaTooNewError)
-        throw new HttpError('conflict', 'This version was saved by a newer Inkadra.');
+        throw new HttpError('conflict', 'This version was saved by a newer Inkadra.', {
+          reason: 'newer_schema',
+        });
       throw err;
     }
     return reply
@@ -254,12 +278,15 @@ export function registerVersionRoutes(app: FastifyInstance, deps: Deps) {
       throw new HttpError(
         'internal',
         'The board did not confirm the restore in time: check it before trying again.',
+        { reason: 'outcome_unknown' },
       );
     }
     if (!result.ok) {
       if (result.reason === 'missing') throw new HttpError('not_found', 'Version not found.');
       if (result.reason === 'too_new')
-        throw new HttpError('conflict', 'This version was saved by a newer Inkadra.');
+        throw new HttpError('conflict', 'This version was saved by a newer Inkadra.', {
+          reason: 'newer_schema',
+        });
       throw new HttpError('internal', 'The board could not be reached in time: try again.');
     }
     const body: RestoredBoardVersion = {

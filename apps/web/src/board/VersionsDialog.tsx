@@ -1,3 +1,5 @@
+import type { HocuspocusProvider } from '@hocuspocus/provider';
+import { readBoardNotice } from '@inkadra/doc-schema';
 import type { BoardVersion, RestoredBoardVersion } from '@inkadra/shared';
 import { Button, Dialog, DialogActions, TextField } from '@inkadra/ui';
 import { type SyntheticEvent, useCallback, useEffect, useRef, useState } from 'react';
@@ -20,6 +22,7 @@ export type VersionPreview = { version: BoardVersion; store: BoardStore };
 export function VersionsDialog({
   open,
   boardId,
+  provider,
   onClose,
   preview,
   onPreview,
@@ -27,6 +30,7 @@ export function VersionsDialog({
 }: {
   open: boolean;
   boardId: string;
+  provider: HocuspocusProvider;
   onClose: () => void;
   preview: VersionPreview | null;
   onPreview: (value: VersionPreview | null) => void;
@@ -34,6 +38,9 @@ export function VersionsDialog({
 }) {
   const { t, i18n } = useTranslation();
   const [page, setPage] = useState<VersionPage | null>(null);
+  const [revision, setRevision] = useState(0);
+  const loadedCount = useRef(0);
+  loadedCount.current = page?.items.length ?? 0;
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [name, setName] = useState('');
@@ -67,6 +74,16 @@ export function VersionsDialog({
     const token = ++generation.current;
     try {
       const next = await api.get<VersionPage>(base);
+      // Reconcile all loaded pages, including deletions, without losing "load more" results.
+      const count = loadedCount.current;
+      while (next.nextCursor && next.items.length < count) {
+        if (!alive.current || token !== generation.current) return;
+        const more = await api.get<VersionPage>(
+          `${base}?cursor=${encodeURIComponent(next.nextCursor)}`,
+        );
+        next.items = mergeVersions(next.items, more.items);
+        next.nextCursor = more.nextCursor;
+      }
       if (alive.current && token === generation.current) {
         setPage(next);
         setError(null);
@@ -76,8 +93,23 @@ export function VersionsDialog({
     }
   }, [base, fail]);
   useEffect(() => {
-    if (open) void load();
-  }, [open, load]);
+    void revision;
+    if (open && !busy) void load();
+  }, [open, load, revision, busy]);
+  useEffect(() => {
+    const onNotice = ({ payload }: { payload: string }) => {
+      const notice = readBoardNotice(payload);
+      if (notice?.type === 'versions' || notice?.type === 'restored') {
+        // Invalidate any in-flight list before scheduling a fresh read.
+        generation.current++;
+        setRevision((value) => value + 1);
+      }
+    };
+    provider.on('stateless', onNotice);
+    return () => {
+      provider.off('stateless', onNotice);
+    };
+  }, [provider]);
   const merge = (changed: BoardVersion[], removed: string[] = []) =>
     setPage((p) => p && { ...p, items: mergeVersions(p.items, changed, removed) });
   // The versions dialog is modal until its own effect closes it: focus the banner only afterwards.
@@ -95,11 +127,14 @@ export function VersionsDialog({
     if (!leavePreview) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== 'Escape' || e.defaultPrevented || isTyping(e.target)) return;
-      if (document.querySelector('dialog[open], [role="menu"]')) return;
+      const popups = 'dialog[open], [role="menu"], [role="dialog"], [aria-modal="true"]';
+      if (document.querySelector(popups)) return;
+      if (e.target instanceof Element && e.target.closest(popups)) return;
+      e.preventDefault();
       onPreview(null);
     };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
   }, [leavePreview, onPreview]);
   // While a request runs, Escape must not close a dialog whose result is still pending.
   const holdWhileBusy = (e: SyntheticEvent<HTMLDialogElement>) => {
@@ -117,6 +152,7 @@ export function VersionsDialog({
   async function run(kind: VersionAction, action: () => Promise<void>, confirmation = false) {
     if (locked.current) return;
     locked.current = true;
+    generation.current++;
     setBusy(true);
     setError(null);
     setConfirmError(null);

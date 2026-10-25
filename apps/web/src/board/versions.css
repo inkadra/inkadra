@@ -69,7 +69,9 @@
   height: 100%;
   min-height: 0;
 }
-.board-preview > .canvas {
+.board-preview > .canvas,
+.board-preview > .story,
+.board-preview > .shots {
   position: relative;
   inset: auto;
   flex: 1;

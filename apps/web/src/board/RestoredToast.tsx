@@ -46,28 +46,19 @@ export function RestoredToast({
       if (!canList) return show(generic);
       fallback = setTimeout(() => show(generic), NAME_WAIT_MS);
       try {
-        let cursor: string | null = null;
-        do {
-          const page: { items: BoardVersion[]; nextCursor: string | null } = await api.get(
-            `/boards/${boardId}/versions?limit=100${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ''}`,
-          );
-          if (shown || token !== generation) return;
-          const version = page.items.find((v) => v.id === notice.versionId);
-          if (version) {
-            show(
-              t('versions.restored', {
-                version:
-                  version.name ??
-                  new Date(version.createdAt).toLocaleString(i18n.language, {
-                    dateStyle: 'medium',
-                    timeStyle: 'short',
-                  }),
+        const version = await api.get<BoardVersion>(
+          `/boards/${boardId}/versions/${notice.versionId}`,
+        );
+        show(
+          t('versions.restored', {
+            version:
+              version.name ??
+              new Date(version.createdAt).toLocaleString(i18n.language, {
+                dateStyle: 'medium',
+                timeStyle: 'short',
               }),
-            );
-            return;
-          }
-          cursor = page.nextCursor;
-        } while (cursor);
+          }),
+        );
       } catch {
         /* The restore still succeeded if metadata is no longer accessible. */
       }

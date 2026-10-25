@@ -19,6 +19,7 @@ import { GuestVisibility } from '../guest-visibility.tsx';
 import { type BoardStore, LOCAL } from '../store.ts';
 import { useBoardAspect } from './aspect.ts';
 import { FramePicture } from './FramePicture.tsx';
+import { FrameVisibilityButton } from './FrameVisibilityButton.tsx';
 import {
   blurOnEnter,
   PresetField,
@@ -68,7 +69,7 @@ export function ShotList({
   const shown = groups
     .map((g) => ({ ...g, frames: g.frames.filter(matches) }))
     .filter((g) => g.frames.length > 0);
-  const set = (id: string, patch: Patch) => updateElement(store.doc, id, patch, LOCAL);
+  const set = (id: string, patch: Patch) => !readOnly && updateElement(store.doc, id, patch, LOCAL);
 
   function exportCsv() {
     const head = [
@@ -209,6 +210,7 @@ export function ShotList({
                     </td>
                     <td className="shots__label">
                       {labels.get(f.id)} <GuestVisibility store={store} element={f} />
+                      <FrameVisibilityButton store={store} frame={f} readOnly={readOnly} />
                     </td>
                     <td>
                       <PresetField
