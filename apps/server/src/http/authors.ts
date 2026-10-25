@@ -1,5 +1,6 @@
 import type { Author, UserSummary } from '@inkadra/shared';
 import { eq, inArray } from 'drizzle-orm';
+import { type Actor, boardRoles } from '../access.ts';
 import type { Database } from '../db/client.ts';
 import { shareGuest, shareLink, user } from '../db/schema.ts';
 
@@ -9,6 +10,8 @@ export const MAX_LINK_LABEL = 80;
 /**
  * Accounts, guests and share link labels named in an answer, loaded once for all its rows.
  * Only for answers to people with a role on the board: guests never receive link labels.
+ * A label is kept only when the viewer has a role on the board of its link: someone granted
+ * a sub-board alone does not learn the labels of links shared from a board above it.
  */
 export interface People {
   users: Map<string, UserSummary>;
@@ -31,6 +34,7 @@ export function linkLabel(label: string | null | undefined): string | null {
 
 export async function loadPeople(
   db: Database,
+  viewer: Pick<Actor, 'id'>,
   userIds: Iterable<string | null | undefined>,
   guestIds: Iterable<string | null | undefined> = [],
   linkIds: Iterable<string | null | undefined> = [],
@@ -53,6 +57,7 @@ export async function loadPeople(
             name: shareGuest.name,
             shareLinkId: shareGuest.shareLinkId,
             label: shareLink.label,
+            boardId: shareLink.boardId,
           })
           .from(shareGuest)
           .leftJoin(shareLink, eq(shareLink.id, shareGuest.shareLinkId))
@@ -60,21 +65,29 @@ export async function loadPeople(
     l.length === 0
       ? []
       : db
-          .select({ id: shareLink.id, label: shareLink.label })
+          .select({ id: shareLink.id, label: shareLink.label, boardId: shareLink.boardId })
           .from(shareLink)
           .where(inArray(shareLink.id, l)),
   ]);
+  const labelled = [
+    ...guests.map((r) => ({ id: r.shareLinkId, label: linkLabel(r.label), boardId: r.boardId })),
+    ...links.map((r) => ({ id: r.id, label: linkLabel(r.label), boardId: r.boardId })),
+  ];
+  const named = labelled.flatMap((r) => (r.label && r.boardId ? [r.boardId] : []));
+  const readable = named.length === 0 ? new Map() : await boardRoles(db, viewer, named);
   return {
     users: new Map(users.map((r) => [r.id, r])),
     guests: new Map(guests.map((r) => [r.id, { name: r.name, shareLinkId: r.shareLinkId }])),
-    links: new Map([
-      ...guests.map((r) => [r.shareLinkId, linkLabel(r.label)] as const),
-      ...links.map((r) => [r.id, linkLabel(r.label)] as const),
-    ]),
+    links: new Map(
+      labelled.map((r) => [r.id, r.boardId && readable.has(r.boardId) ? r.label : null]),
+    ),
   };
 }
 
-/** Label of a link for the team; null without a link, once it is gone, or without a label. */
+/**
+ * Label of a link for the team; null without a link, once it is gone, without a label, or
+ * when the viewer has no role on the board of the link.
+ */
 export function labelOf(people: People, linkId: string | null | undefined): string | null {
   return linkId ? (people.links.get(linkId) ?? null) : null;
 }
@@ -82,7 +95,7 @@ export function labelOf(people: People, linkId: string | null | undefined): stri
 /**
  * Who wrote or changed something, as the team sees it. A deleted account, or a guest whose
  * name retention has cleared, has no author to show. A guest comes with the label of their
- * link, which people with a role on the board may read even when they cannot list links.
+ * link, which people with a role on the link's board may read even when they cannot list links.
  */
 export function authorOf(
   people: People,

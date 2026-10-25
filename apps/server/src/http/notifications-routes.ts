@@ -50,7 +50,7 @@ export function registerNotificationRoutes(app: FastifyInstance, deps: Deps) {
     // Filtered after paging, so the cursor stays stable: a page can be short.
     const visible = await visibility(db, actor.id, page.rows);
     return {
-      items: await renderNotifications(db, page.rows.filter(visible)),
+      items: await renderNotifications(db, actor.id, page.rows.filter(visible)),
       nextCursor: page.nextCursor,
     };
   });

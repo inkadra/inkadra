@@ -11,7 +11,7 @@ import {
 } from '@inkadra/shared';
 import { and, desc, eq, getTableColumns, isNull, ne, or } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
-import { requireBoardRole } from '../access.ts';
+import { type Actor, requireBoardRole } from '../access.ts';
 import type { Auth } from '../auth.ts';
 import { type BoardReader, storedElement } from '../board-content.ts';
 import { type BoardNotifier, noNotices } from '../board-notices.ts';
@@ -47,9 +47,10 @@ function toElementReview(row: ReviewRow, people: People): ElementReview {
   };
 }
 
-const peopleOf = (db: Database, rows: ReviewRow[]) =>
+const peopleOf = (db: Database, viewer: Actor, rows: ReviewRow[]) =>
   loadPeople(
     db,
+    viewer,
     rows.map((r) => r.changedBy),
     rows.map((r) => r.changedByGuest),
   );
@@ -83,7 +84,7 @@ export function registerReviewRoutes(app: FastifyInstance, deps: Deps) {
         desc(isNull(elementReview.shareLinkId)),
       );
     const rows = latest.filter((r) => r.status !== 'none');
-    const people = await peopleOf(db, rows);
+    const people = await peopleOf(db, actor, rows);
     const body: BoardReviews = { items: rows.map((r) => toElementReview(r, people)) };
     return body;
   });
@@ -155,7 +156,7 @@ export function registerReviewRoutes(app: FastifyInstance, deps: Deps) {
       });
       await afterCommit(req.log, () => notices.notify(boardId, { type: 'review', elementId }));
     }
-    return toElementReview(result.row, await peopleOf(db, [result.row]));
+    return toElementReview(result.row, await peopleOf(db, actor, [result.row]));
   });
 
   app.get(v1('/boards/:boardId/elements/:elementId/review/history'), async (req) => {
@@ -181,6 +182,7 @@ export function registerReviewRoutes(app: FastifyInstance, deps: Deps) {
     const page = pageOf(rows, q.limit);
     const people = await loadPeople(
       db,
+      actor,
       page.rows.map((r) => r.userId),
       page.rows.map((r) => r.guestId),
     );

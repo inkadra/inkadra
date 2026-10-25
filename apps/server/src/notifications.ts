@@ -140,9 +140,10 @@ function excerpt(body: string, names: ReadonlyMap<string, string>): string {
   return text.length > EXCERPT_LENGTH ? `${text.slice(0, EXCERPT_LENGTH - 1)}…` : text;
 }
 
-/** The answer shape of notification rows, with names and excerpts as they are now. */
+/** The answer shape of a person's notification rows, with names and excerpts as they are now. */
 export async function renderNotifications(
   db: Database,
+  userId: string,
   rows: NotificationRow[],
 ): Promise<Notification[]> {
   if (rows.length === 0) return [];
@@ -178,6 +179,7 @@ export async function renderNotifications(
   ]);
   const people = await loadPeople(
     db,
+    { id: userId },
     [...rows.map((r) => r.actorId), ...comments.flatMap((c) => c.mentions)],
     rows.map((r) => r.actorGuestId),
   );
@@ -319,7 +321,7 @@ async function sendTo(
       .where(eq(user.id, userId));
     if (!me) return false;
     const texts = mailText(me);
-    const items = await renderNotifications(db, rows);
+    const items = await renderNotifications(db, userId, rows);
     const lines = items.map((n) => mailLine(texts, n));
     lines.push(texts.notificationSettings(`${deps.publicUrl}/settings`));
     const first = items[0];

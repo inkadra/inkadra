@@ -887,6 +887,115 @@ describe.skipIf(!url)('team comments, reviews and notifications', () => {
     expect((await call('viewer', 'GET', `/boards/${foreign}/comments`)).statusCode).toBe(404);
   });
 
+  it('names a link only to people with a role on its board, not to those granted a sub-board alone', async () => {
+    // The outsider is granted the sub-board only: no role on the board the link shares from.
+    await db
+      .insert(boardGrant)
+      .values({ boardId: child, userId: people.outsider.id, role: 'commenter' });
+    const above = await link(root, { label: 'Cliente Rossi', includeSubBoards: true });
+    const here = await link(child, { label: 'Cliente Bianchi' });
+    const anna = await guest(above.id, 'Anna');
+    const bea = await guest(here.id, 'Bea');
+    const insert = async (values: Partial<typeof comment.$inferInsert>) => {
+      const [row] = await db
+        .insert(comment)
+        .values({ projectId, boardId: child, body: 'x', visibility: 'everyone', ...values })
+        .returning();
+      if (!row) throw new Error('Missing comment');
+      return row.id;
+    };
+    const byAnna = await insert({ authorGuestId: anna.id, shareLinkId: above.id });
+    const byBea = await insert({ authorGuestId: bea.id, shareLinkId: here.id });
+    const limited = await insert({ authorId: people.owner.id, shareLinkId: above.id });
+    await insert({ threadId: limited, authorGuestId: anna.id, shareLinkId: above.id });
+
+    const threads = async (who: Who) => {
+      const res = await call(who, 'GET', `/boards/${child}/comments?status=all`);
+      expect(res.statusCode, res.body).toBe(200);
+      return new Map(res.json<{ items: CommentThread[] }>().items.map((t) => [t.id, t]));
+    };
+    const outside = await threads('outsider');
+    expect(outside.get(byAnna)).toMatchObject({
+      shareLinkId: above.id,
+      shareLinkLabel: null,
+      author: { kind: 'guest', name: 'Anna', shareLinkId: above.id, shareLinkLabel: null },
+    });
+    expect(outside.get(limited)).toMatchObject({ shareLinkLabel: null });
+    expect(outside.get(limited)?.replies[0]).toMatchObject({
+      shareLinkLabel: null,
+      author: { kind: 'guest', shareLinkLabel: null },
+    });
+    // A link of the sub-board itself is named.
+    expect(outside.get(byBea)).toMatchObject({
+      shareLinkLabel: 'Cliente Bianchi',
+      author: { shareLinkLabel: 'Cliente Bianchi' },
+    });
+    expect(JSON.stringify([...outside.values()])).not.toContain('Cliente Rossi');
+    const replies = await call('outsider', 'GET', `/comments/${limited}/replies`);
+    expect(replies.body).not.toContain('Cliente Rossi');
+    const reply = await call('outsider', 'POST', `/boards/${child}/comments`, {
+      parentId: limited,
+      body: 'Reply',
+    });
+    expect(reply.statusCode, reply.body).toBe(201);
+    expect(reply.body).not.toContain('Cliente Rossi');
+
+    // People with a role on the board of the link read it on the same comments.
+    const inside = await threads('viewer');
+    expect(inside.get(byAnna)).toMatchObject({
+      shareLinkLabel: 'Cliente Rossi',
+      author: { shareLinkLabel: 'Cliente Rossi' },
+    });
+    expect(inside.get(limited)?.replies[0]?.author).toMatchObject({
+      shareLinkLabel: 'Cliente Rossi',
+    });
+
+    // Reviews, their history and notifications follow the same rule.
+    await db.insert(elementReview).values({
+      boardId: child,
+      elementId: 'child-note',
+      projectId,
+      status: 'approved',
+      shareLinkId: above.id,
+      changedByGuest: anna.id,
+    });
+    await db.insert(elementReviewEvent).values({
+      boardId: child,
+      elementId: 'child-note',
+      previous: 'none',
+      status: 'approved',
+      shareLinkId: above.id,
+      guestId: anna.id,
+    });
+    const history = `/boards/${child}/elements/child-note/review/history`;
+    for (const path of [`/boards/${child}/reviews`, history]) {
+      const theirs = await call('outsider', 'GET', path);
+      expect(theirs.json().items[0].changedBy).toMatchObject({
+        kind: 'guest',
+        shareLinkId: above.id,
+        shareLinkLabel: null,
+      });
+      const ours = await call('viewer', 'GET', path);
+      expect(ours.json().items[0].changedBy).toMatchObject({ shareLinkLabel: 'Cliente Rossi' });
+    }
+    for (const who of ['outsider', 'viewer'] as const)
+      await addNotification(who, child, {
+        type: 'comment',
+        actorId: null,
+        actorGuestId: anna.id,
+        commentId: byAnna,
+        reviewStatus: null,
+      });
+    const theirInbox = await call('outsider', 'GET', '/me/notifications');
+    expect(theirInbox.json().items[0].actor).toMatchObject({
+      kind: 'guest',
+      shareLinkLabel: null,
+    });
+    expect(theirInbox.body).not.toContain('Cliente Rossi');
+    const ourInbox = await call('viewer', 'GET', '/me/notifications');
+    expect(ourInbox.json().items[0].actor).toMatchObject({ shareLinkLabel: 'Cliente Rossi' });
+  });
+
   it('pages threads with stable ties/microseconds and returns the latest 50 inline replies', async () => {
     const ids = Array.from(
       { length: 4 },
