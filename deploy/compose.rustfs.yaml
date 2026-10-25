@@ -37,7 +37,7 @@ services:
 
   # Creates the bucket once, then exits. curl signs the request itself (AWS SigV4).
   rustfs-bucket:
-    image: curlimages/curl:8.17.0
+    image: curlimages/curl:8.22.0
     restart: "no"
     environment:
       S3_BUCKET: ${S3_BUCKET:-inkadra}
