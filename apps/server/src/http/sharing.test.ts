@@ -3,7 +3,7 @@ import type { AddressInfo } from 'node:net';
 import { fileURLToPath } from 'node:url';
 import { eq, sql } from 'drizzle-orm';
 import pino from 'pino';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { createAuth } from '../auth.ts';
 import { loadConfig } from '../config.ts';
 import { createDatabase, runMigrations } from '../db/client.ts';
@@ -45,10 +45,13 @@ describe.skipIf(!url)('sharing, invitations, tokens and accounts (needs DATABASE
     AUTH_SECRET: 'test-secret-test-secret-test-secret-0123',
     REGISTRATION: 'invite',
     CLIPPER_EXTENSION_IDS: EXTENSION_ID,
+    GOOGLE_CLIENT_ID: 'test-google-client',
+    GOOGLE_CLIENT_SECRET: 'test-google-secret',
   });
   const log = pino({ level: 'silent' });
   const { db, sql: client } = createDatabase(config.DATABASE_URL, 4);
   const mailer = memoryMailer();
+  let auth: ReturnType<typeof createAuth>;
   let app: Awaited<ReturnType<typeof createApp>>;
   let base = '';
 
@@ -80,12 +83,35 @@ describe.skipIf(!url)('sharing, invitations, tokens and accounts (needs DATABASE
     return {
       status: res.status,
       cookies: res.headers.getSetCookie(),
+      readableHeaders: [...res.headers].filter(([name]) => name !== 'set-cookie'),
       body: text ? JSON.parse(text) : null,
     };
   }
 
   const cookieOf = (cookies: string[], name: string) =>
     cookies.find((c) => c.startsWith(`${name}=`))?.split(';')[0] ?? '';
+
+  async function expectPrivateSession(res: Awaited<ReturnType<typeof call>>) {
+    expect(res.status).toBe(200);
+    // Check keys and actual values without printing credentials if the regression returns.
+    const text = JSON.stringify(res.body);
+    expect(/"token"\s*:/.test(text)).toBe(false);
+    const tokens = await db.select({ token: sessionTable.token }).from(sessionTable);
+    const readable = text + JSON.stringify(res.readableHeaders);
+    expect(tokens.some(({ token }) => readable.includes(token))).toBe(false);
+  }
+
+  async function expectSessionCookie(res: Awaited<ReturnType<typeof call>>) {
+    await expectPrivateSession(res);
+    const cookie = cookieOf(res.cookies, 'inkadra.session_token');
+    expect(Boolean(cookie.split('=')[1])).toBe(true);
+    expect(
+      res.cookies.some((c) => c.startsWith('inkadra.session_token=') && /httponly/i.test(c)),
+    ).toBe(true);
+    expect((await call({ cookie }, 'GET', '/api/v1/me')).status).toBe(200);
+    await expectPrivateSession(await call({ cookie }, 'GET', '/api/auth/get-session'));
+    return cookie;
+  }
 
   async function signUp(who: Who, invitationCookie = '') {
     const email = `${who}@example.com`;
@@ -112,7 +138,7 @@ describe.skipIf(!url)('sharing, invitations, tokens and accounts (needs DATABASE
   beforeAll(async () => {
     await runMigrations(config.DATABASE_URL, migrationsFolder);
     await db.execute(sql`truncate table "user", project, instance_setting, verification cascade`);
-    const auth = createAuth(config, db, { mailer });
+    auth = createAuth(config, db, { mailer });
     // Revocation must be observed on the next request, including with the old cookies.
     expect(auth.options).not.toHaveProperty('session.cookieCache.enabled', true);
     expect(auth.options).not.toHaveProperty('secondaryStorage');
@@ -125,6 +151,72 @@ describe.skipIf(!url)('sharing, invitations, tokens and accounts (needs DATABASE
   afterAll(async () => {
     await app?.close();
     await client.end();
+  });
+
+  it('keeps the current session token out of get-session, including refreshes', async () => {
+    const current = await call('owner', 'GET', '/api/auth/get-session');
+    await expectPrivateSession(current);
+    expect(current.body.user.id).toBe(as.owner.id);
+    expect(current.body.session.id).toBeTypeOf('string');
+    await db
+      .update(sessionTable)
+      .set({ expiresAt: new Date(Date.now() + 28 * 86_400_000) })
+      .where(eq(sessionTable.userId, as.owner.id));
+    await expectSessionCookie(await call('owner', 'GET', '/api/auth/get-session'));
+    expect((await call(null, 'GET', '/api/auth/get-session')).body).toBeNull();
+    // No additional session fields are configured, so this endpoint rejects every update.
+    const update = await call('owner', 'POST', '/api/auth/update-session', {});
+    expect(update.status).toBe(400);
+    expect(/"token"\s*:/.test(JSON.stringify(update.body))).toBe(false);
+  });
+
+  it('keeps social sign-in JSON private and preserves OAuth redirects', async () => {
+    const context = await auth.$context;
+    await context.internalAdapter.updateUser(as.owner.id, { emailVerified: true });
+    const provider = context.socialProviders.find((p) => p.id === 'google');
+    if (!provider) throw new Error('Missing test provider');
+    // Only the external identity provider is stubbed; Better Auth and HTTP are real.
+    const options = provider.options;
+    provider.options = { ...options, verifyIdToken: async () => true };
+    const info = vi.spyOn(provider, 'getUserInfo').mockResolvedValue({
+      user: { email: as.owner.email, name: 'Owner', emailVerified: true },
+      data: { sub: 'test-google-owner' },
+    });
+    const exchange = vi.spyOn(provider, 'validateAuthorizationCode').mockResolvedValue({});
+    try {
+      const signedIn = await expectSessionCookie(
+        await call(null, 'POST', '/api/auth/sign-in/social', {
+          provider: 'google',
+          idToken: { token: 'test-provider-id-token' },
+        }),
+      );
+      expect((await call({ cookie: signedIn }, 'POST', '/api/auth/sign-out', {})).status).toBe(200);
+      const start = await call(null, 'POST', '/api/auth/sign-in/social', {
+        provider: 'google',
+        callbackURL: '/',
+        disableRedirect: true,
+      });
+      await expectPrivateSession(start);
+      const state = new URL(start.body.url).searchParams.get('state') ?? '';
+      const callback = await fetch(
+        `${base}/api/auth/callback/google?code=test&state=${encodeURIComponent(state)}`,
+        {
+          redirect: 'manual',
+          headers: { cookie: start.cookies.map((c) => c.split(';')[0]).join('; ') },
+        },
+      );
+      expect(callback.status).toBe(302);
+      expect(callback.headers.get('location')).toBe('/');
+      const cookie = cookieOf(callback.headers.getSetCookie(), 'inkadra.session_token');
+      expect((await call({ cookie }, 'GET', '/api/v1/me')).status).toBe(200);
+      const internal = await auth.api.getSession({ headers: new Headers({ cookie }) });
+      expect(typeof internal?.session.token).toBe('string');
+      expect((await call({ cookie }, 'POST', '/api/auth/sign-out', {})).status).toBe(200);
+    } finally {
+      provider.options = options;
+      info.mockRestore();
+      exchange.mockRestore();
+    }
   });
 
   it('lets new people sign up only through an invitation', async () => {
@@ -144,7 +236,7 @@ describe.skipIf(!url)('sharing, invitations, tokens and accounts (needs DATABASE
     const claimed = await claim(invitation.url);
     expect(claimed.status).toBe(204);
     for (const who of ['editor', 'viewer', 'guest', 'outsider'] as const)
-      expect((await signUp(who, claimed.cookie)).status).toBe(200);
+      await expectSessionCookie(await signUp(who, claimed.cookie));
   });
 
   it('sets up a project with nested boards', async () => {
@@ -424,6 +516,7 @@ describe.skipIf(!url)('sharing, invitations, tokens and accounts (needs DATABASE
       email: as.owner.email,
       password: PASSWORD,
     });
+    await expectSessionCookie(signIn);
     const other = { cookie: cookieOf(signIn.cookies, 'inkadra.session_token') };
     const listed = await call('owner', 'GET', '/api/v1/me/sessions');
     expect(listed.status).toBe(200);
@@ -632,6 +725,10 @@ describe.skipIf(!url)('sharing, invitations, tokens and accounts (needs DATABASE
     expect((await ask('stranger@example.com')).status).toBe(200);
     expect(mailer.sent.map((m) => m.to)).toEqual([as.editor.email]);
     expect(mailer.sent[0]?.text).toContain('/api/auth/magic-link/verify');
+    const link = new URL(mailer.sent[0]?.text.match(/https?:\/\/\S+/)?.[0] ?? '');
+    // Removing callbackURL selects Better Auth's page-readable JSON response.
+    link.searchParams.delete('callbackURL');
+    await expectSessionCookie(await call(null, 'GET', `${link.pathname}${link.search}`));
   });
 
   it('asks for a code after enabling two-factor authentication', async () => {
@@ -648,6 +745,7 @@ describe.skipIf(!url)('sharing, invitations, tokens and accounts (needs DATABASE
       { code: totp(secret) },
     );
     expect(verified.status).toBe(200);
+    await expectSessionCookie(verified);
     // Turning it on replaces the session.
     as.viewer.cookie = cookieOf(verified.cookies, 'inkadra.session_token');
     expect((await call('viewer', 'GET', '/api/v1/me')).body.twoFactorEnabled).toBe(true);
@@ -657,6 +755,7 @@ describe.skipIf(!url)('sharing, invitations, tokens and accounts (needs DATABASE
       password: PASSWORD,
     });
     expect(signIn.body.twoFactorRedirect).toBe(true);
+    await expectPrivateSession(signIn);
     expect(cookieOf(signIn.cookies, 'inkadra.session_token').split('=')[1] ?? '').toBe('');
     const second = await call(
       { cookie: signIn.cookies.map((c) => c.split(';')[0]).join('; ') },
@@ -665,7 +764,29 @@ describe.skipIf(!url)('sharing, invitations, tokens and accounts (needs DATABASE
       { code: totp(secret) },
     );
     expect(second.status).toBe(200);
-    expect(cookieOf(second.cookies, 'inkadra.session_token').split('=')[1]).toBeTruthy();
+    await expectSessionCookie(second);
+    const again = await call(null, 'POST', '/api/auth/sign-in/email', {
+      email: as.viewer.email,
+      password: PASSWORD,
+    });
+    await expectSessionCookie(
+      await call(
+        { cookie: again.cookies.map((c) => c.split(';')[0]).join('; ') },
+        'POST',
+        '/api/auth/two-factor/verify-backup-code',
+        { code: enabled.body.backupCodes[0] },
+      ),
+    );
+  });
+
+  it('rotates the password session only through its httpOnly cookie', async () => {
+    const changed = await call('guest', 'POST', '/api/auth/change-password', {
+      currentPassword: PASSWORD,
+      newPassword: `${PASSWORD}-changed`,
+      revokeOtherSessions: true,
+    });
+    await expectSessionCookie(changed);
+    expect((await call('guest', 'GET', '/api/v1/me')).status).toBe(401);
   });
 
   it('deletes an account, but not while it is the only owner of a shared project', async () => {

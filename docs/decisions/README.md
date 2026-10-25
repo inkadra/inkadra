@@ -22,3 +22,4 @@ in order. An accepted decision is never rewritten: a later one supersedes it.
 | [0015](0015-installable-web-app.md)         | Installable web app with a hand-written service worker                                 |
 | [0016](0016-error-reasons-in-details.md)    | Error reasons go in `details`, not in new codes                                        |
 | [0017](0017-conservative-error-outcomes.md) | Missing error reasons leave mutation outcomes unknown; supersedes 0016 retry semantics |
+| [0018](0018-cookie-only-auth-responses.md)  | Keep session tokens out of browser-readable auth responses                             |

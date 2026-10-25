@@ -147,6 +147,31 @@ export function createAuth(config: Config, db: Database, deps: AuthDeps = {}) {
       freshAge: 60 * 15,
     },
     plugins: [
+      {
+        id: 'cookie-only-sessions',
+        // Project every HTTP JSON response, after endpoint and two-factor hooks finish.
+        // Better Auth returns both token and session.token (including password rotation).
+        // No web consumer needs either; auth.api calls retain tokens for internal use.
+        // Personal/PKCE tokens live under /api/v1 and do not pass through this plugin.
+        async onResponse(response) {
+          // Redirects may carry a JSON content type despite having no JSON body.
+          if (response.status >= 300 && response.status < 400) return;
+          if (!response.body) return;
+          if (!response.headers.get('content-type')?.includes('application/json')) return;
+          const body = JSON.stringify(await response.json(), (key, value) =>
+            key === 'token' ? undefined : value,
+          );
+          const headers = new Headers(response.headers);
+          headers.delete('content-length');
+          return {
+            response: new Response(body, {
+              status: response.status,
+              statusText: response.statusText,
+              headers,
+            }),
+          };
+        },
+      },
       twoFactor({ issuer: config.INSTANCE_NAME }),
       ...(oidc ? [genericOAuth({ config: [oidc] })] : []),
       ...(email
