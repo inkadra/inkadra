@@ -17,6 +17,7 @@ import {
   mergeThreads,
   refreshOlderReplies,
   reviewKey,
+  shareLinkTag,
 } from './review-model.ts';
 import {
   addOlderReplies,
@@ -91,6 +92,15 @@ it('shows statuses and authors it does not know without breaking', () => {
   );
   expect(authorName(JSON.parse('{"kind":"future"}'))).toBeNull();
   expect(authorName(null)).toBeNull();
+});
+
+it('shows the share link label on the thread tag, falling back to the generic one', () => {
+  expect(shareLinkTag({ shareLinkLabel: 'Fattura Q3' })).toBe('Fattura Q3');
+  expect(shareLinkTag({ shareLinkLabel: '  Bozza  ' })).toBe('Bozza');
+  expect(shareLinkTag({ shareLinkLabel: undefined })).toBeNull();
+  expect(shareLinkTag({ shareLinkLabel: null })).toBeNull();
+  expect(shareLinkTag({ shareLinkLabel: '' })).toBeNull();
+  expect(shareLinkTag({ shareLinkLabel: '   ' })).toBeNull();
 });
 
 it('pages the replies of the notified card only to find an older reply', async () => {
