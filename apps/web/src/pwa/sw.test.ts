@@ -1,4 +1,4 @@
-import { beforeAll, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 // The worker's event handlers, run against small fakes of the service worker globals.
 type Handler = (event: unknown) => void;
@@ -26,21 +26,23 @@ const cacheStorage = {
   keys: async () => [...stores.keys()],
   delete: async (name: string) => stores.delete(name),
 };
-const network = vi.fn(async (_: Request) => new Response('from network'));
+const fromNetwork = async (_: Request) => new Response('from network');
+const network = vi.fn(fromNetwork);
 
 async function dispatch(type: string, data: Record<string, unknown> = {}) {
-  let waited: Promise<unknown> | undefined;
+  // A worker may extend an event more than once (install does); the event waits for all.
+  const waited: Promise<unknown>[] = [];
   let response: Promise<Response> | undefined;
   handlers.get(type)?.({
     ...data,
     waitUntil: (p: Promise<unknown>) => {
-      waited = p;
+      waited.push(p);
     },
     respondWith: (p: Promise<Response>) => {
       response = p;
     },
   });
-  await waited;
+  await Promise.all(waited);
   return response;
 }
 
@@ -51,13 +53,25 @@ const get = (path: string, mode: RequestMode = 'cors') => {
   return dispatch('fetch', { request });
 };
 
-beforeAll(async () => {
+// A fresh worker for each test: its handlers, its caches and the fakes' call history are
+// state, and a test must not rely on an earlier one having installed the worker.
+beforeEach(async () => {
+  handlers.clear();
+  stores.clear();
+  worker.skipWaiting.mockClear();
+  network.mockReset();
+  network.mockImplementation(fromNetwork);
+  vi.resetModules();
   vi.stubGlobal('self', worker);
   vi.stubGlobal('caches', cacheStorage);
   vi.stubGlobal('fetch', network);
   vi.stubGlobal('__PRECACHE__', ['/offline.html', '/assets/index-abc.js']);
   vi.stubGlobal('__CACHE_VERSION__', 'v2');
   await import('./sw.ts');
+});
+afterEach(() => {
+  vi.restoreAllMocks();
+  vi.unstubAllGlobals();
 });
 
 describe('service worker', () => {
@@ -76,6 +90,7 @@ describe('service worker', () => {
   });
 
   it('answers build files from the cache', async () => {
+    await dispatch('install');
     const response = await get('/assets/index-abc.js');
     expect(await response?.text()).toBe('cached /assets/index-abc.js');
     expect(network).not.toHaveBeenCalled();
@@ -92,6 +107,7 @@ describe('service worker', () => {
   });
 
   it('shows the offline page when a navigation cannot reach the server', async () => {
+    await dispatch('install');
     network.mockRejectedValueOnce(new TypeError('Failed to fetch'));
     const response = await get('/p/1', 'navigate');
     expect(await response?.text()).toBe('cached /offline.html');
@@ -105,10 +121,10 @@ describe('service worker', () => {
   });
 
   it('falls back to the network when the cache cannot be read', async () => {
-    const open = vi.spyOn(cacheStorage, 'open').mockRejectedValueOnce(new Error('quota'));
+    await dispatch('install');
+    vi.spyOn(cacheStorage, 'open').mockRejectedValueOnce(new Error('quota'));
     const response = await get('/assets/index-abc.js');
     expect(await response?.text()).toBe('from network');
-    open.mockRestore();
   });
 
   it('sends the API and the socket straight to the network where routes are supported', async () => {
