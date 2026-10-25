@@ -158,7 +158,9 @@ describe.skipIf(!url)('guest share links (needs DATABASE_URL)', () => {
   /** A 429 tells when the limiter that refused it lets the client in again. */
   function expectRetryAfter(res: { status: number; headers: Headers }, min: number, max: number) {
     expect(res.status).toBe(429);
-    const seconds = Number(res.headers.get('retry-after'));
+    const header = res.headers.get('retry-after');
+    expect(header).toMatch(/^\d+$/);
+    const seconds = Number(header);
     expect(seconds).toBeGreaterThanOrEqual(min);
     expect(seconds).toBeLessThanOrEqual(max);
   }
@@ -1028,7 +1030,7 @@ describe.skipIf(!url)('guest share links (needs DATABASE_URL)', () => {
       );
       expect(attempts.every((r) => r.status === 403)).toBe(true);
     }
-    expect((await open(link, { password: 'secret-password', ip: '10.81.0.1' })).status).toBe(429);
+    expectRetryAfter(await open(link, { password: 'secret-password', ip: '10.81.0.1' }), 800, 900);
   }, 60_000);
 
   it('asks for the password, limits wrong ones and ends sessions when it changes', async () => {
@@ -1041,6 +1043,7 @@ describe.skipIf(!url)('guest share links (needs DATABASE_URL)', () => {
     expect(wrong.status).toBe(403);
     expect(wrong.body.error.details).toEqual({ reason: 'wrong_password' });
     expect(missing.body).not.toHaveProperty('sharedBy');
+    expect(wrong.body).not.toHaveProperty('sharedBy');
     const ok = await open(link, { password: 'segreto-1', name: 'Ugo' });
     expect(ok.status).toBe(200);
     // Who shared the link shows only once the password was right.
@@ -1053,6 +1056,7 @@ describe.skipIf(!url)('guest share links (needs DATABASE_URL)', () => {
     );
     expect(simultaneous.filter((r) => r.status === 403)).toHaveLength(9);
     expect(simultaneous.filter((r) => r.status === 429)).toHaveLength(3);
+    for (const res of simultaneous.filter((r) => r.status === 429)) expectRetryAfter(res, 0, 900);
     // Blocked for this address, even with the right password; others still get in.
     expectRetryAfter(await open(link, { password: 'segreto-1', ip: where }), 850, 900);
     expect((await open(link, { password: 'segreto-1', ip: '10.20.0.2' })).status).toBe(200);
@@ -1080,15 +1084,17 @@ describe.skipIf(!url)('guest share links (needs DATABASE_URL)', () => {
 
   it('enforces the daily guest cap under concurrent session opens', async () => {
     const link = await createLink('owner', B.A2);
-    await db
-      .insert(shareGuest)
-      .values(
-        Array.from({ length: 499 }, () => ({ shareLinkId: link.id, sessionExpiresAt: new Date() })),
-      );
+    await db.insert(shareGuest).values(
+      Array.from({ length: 499 }, (_, i) => ({
+        shareLinkId: link.id,
+        sessionExpiresAt: new Date(),
+        createdAt: new Date(Date.now() - (i === 0 ? 23 * 60 * 60_000 : 0)),
+      })),
+    );
     const results = await Promise.all([open(link), open(link)]);
     expect(results.map((r) => r.status).sort()).toEqual([200, 429]);
-    // The oldest of the day's guests frees a place in about a day.
-    expectRetryAfter(results.find((r) => r.status === 429)!, 86_000, 86_400);
+    // The oldest guest is already 23 hours old: the actual release is in one hour.
+    expectRetryAfter(results.find((r) => r.status === 429)!, 3500, 3600);
     const returning = results.find((r) => r.status === 200)!;
     expect((await open(link, { cookie: returning.cookie })).status).toBe(200);
     expect(
@@ -2105,6 +2111,18 @@ describe.skipIf(!url)('guest share links (needs DATABASE_URL)', () => {
       await call('editor', 'GET', `/api/v1/share-links/${linkA.id}/picks`)
     ).body.items.find((i: { elementId: string }) => i.elementId === 'foreign-picture');
     expect(foreign).toMatchObject({ assetId: null, filename: null, variants: [] });
+    // Existing variant rows must not escape while an asset is being reprocessed or failed.
+    try {
+      for (const status of ['pending', 'processing', 'failed'] as const) {
+        await db.update(asset).set({ status }).where(eq(asset.id, X.x1));
+        const notReady = (
+          await call('editor', 'GET', `/api/v1/share-links/${linkA.id}/picks`)
+        ).body.items.find((i: { elementId: string }) => i.elementId === E.img);
+        expect(notReady).toMatchObject({ assetId: X.x1, variants: [] });
+      }
+    } finally {
+      await db.update(asset).set({ status: 'ready' }).where(eq(asset.id, X.x1));
+    }
     await db
       .delete(sharePick)
       .where(and(eq(sharePick.shareLinkId, linkA.id), eq(sharePick.elementId, 'foreign-picture')));
@@ -2120,6 +2138,25 @@ describe.skipIf(!url)('guest share links (needs DATABASE_URL)', () => {
       await call({ cookie: o.cookie }, 'PATCH', g(linkV, '/session'), { name: 'Basta' }),
       50,
       60,
+    );
+  });
+
+  it('reports the link-wide comment limit to a guest with an unused personal budget', async () => {
+    const link = await createLink('editor', B.A, { role: 'guest_comment' });
+    const path = g(link, `/boards/${B.A}/comments`);
+    for (let guest = 0; guest < 10; guest++) {
+      const opened = await open(link, { name: `Guest ${guest}` });
+      expect(opened.status).toBe(200);
+      for (let n = 0; n < 30; n++)
+        expect(
+          (await call({ cookie: opened.cookie }, 'POST', path, { body: `n${n}` })).status,
+        ).toBe(201);
+    }
+    const fresh = await open(link, { name: 'Fresh guest' });
+    expectRetryAfter(
+      await call({ cookie: fresh.cookie }, 'POST', path, { body: 'Over cap' }),
+      3500,
+      3600,
     );
   });
 
