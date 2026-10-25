@@ -278,6 +278,8 @@ test('viewers and commenters get no board menu, no guest hiding and no scene tog
   await expect(
     ownerScene.getByRole('button', { name: 'Nascondi agli ospiti', exact: true }),
   ).toHaveAttribute('aria-pressed', 'false');
+  await ownerScene.getByRole('button', { name: 'Nuova inquadratura' }).last().click();
+  await expect(page.locator('.story__tile')).toHaveCount(1);
   const storyboardUrl = page.url();
 
   const invited = await page.request.post('/api/v1/invitations', {
@@ -319,6 +321,14 @@ test('viewers and commenters get no board menu, no guest hiding and no scene tog
       await expect(other.getByRole('region', { name: 'Scena 1' })).toBeVisible();
       await expect(other.getByRole('button', { name: 'Nascondi agli ospiti' })).toHaveCount(0);
       await expect(other.getByRole('button', { name: 'Menu della board' })).toHaveCount(0);
+      await expect(other.locator('.story__tile')).toHaveCount(1);
+      await other.getByRole('button', { name: 'Comprimi la scena' }).click();
+      await expect(other.locator('.story__tile')).toHaveCount(0);
+      await expect(page.locator('.story__tile')).toHaveCount(1);
+      await other.getByRole('tab', { name: 'Shot list' }).click();
+      await expect(other.getByRole('row', { name: /1A/ })).toBeVisible();
+      await expect(other.getByLabel('Azione', { exact: true })).not.toBeEditable();
+      await expect(other.getByRole('button', { name: 'Nascondi agli ospiti' })).toHaveCount(0);
       await other.goto(`/p/${project.id}`);
       await expect(
         other.getByRole('status').getByText('Sola lettura', { exact: true }),
@@ -443,6 +453,40 @@ test('version failures explain rate limits and let the editor recover', async ({
   await expect(confirm.getByRole('alert')).toHaveCount(0);
   await confirm.getByRole('button', { name: 'Annulla', exact: true }).click();
   await page.unroute('**/versions/*/restore');
+});
+
+test('refreshing versions preserves uncertain save warnings without retrying', async ({
+  page,
+  baseURL,
+}) => {
+  await seed(page, baseURL!);
+  const dialog = await saveVersion(page, 'Before uncertain save');
+  let attempts = 0;
+  const reasons = [undefined, { reason: 'outcome_unknown' }, { reason: 'later' }, 'malformed'];
+  await page.route('**/api/v1/boards/*/versions', async (route) => {
+    if (route.request().method() === 'POST') {
+      const details = reasons[attempts++];
+      return route.fulfill({
+        status: 500,
+        contentType: 'application/json',
+        body: JSON.stringify({ error: { code: 'internal', message: 'Unconfirmed', details } }),
+      });
+    }
+    const response = await route.fetch();
+    const body = await response.json();
+    // The visible metadata proves the refresh has rendered before checking the warning.
+    body.items = body.items.map((v: { name: string | null }) =>
+      v.name === 'Before uncertain save' ? { ...v, name: `Refreshed ${attempts}` } : v,
+    );
+    await route.fulfill({ response, json: body });
+  });
+  for (let i = 1; i <= reasons.length; i++) {
+    await dialog.getByRole('textbox', { name: 'Nome della versione' }).fill(`Uncertain ${i}`);
+    await dialog.getByRole('button', { name: 'Salva versione', exact: true }).click();
+    await expect(dialog.getByText(`Refreshed ${i}`, { exact: true })).toBeVisible();
+    await expect(dialog.getByRole('alert')).toContainText('prima di riprovare');
+    expect(attempts).toBe(i);
+  }
 });
 
 test('the versions panel follows other editors, and leaving a preview keeps the selection', async ({

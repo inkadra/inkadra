@@ -42,6 +42,7 @@ export function VersionsDialog({
   const loadedCount = useRef(0);
   loadedCount.current = page?.items.length ?? 0;
   const [error, setError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [name, setName] = useState('');
   const [editing, setEditing] = useState<BoardVersion | null>(null);
@@ -86,10 +87,11 @@ export function VersionsDialog({
       }
       if (alive.current && token === generation.current) {
         setPage(next);
-        setError(null);
+        // Fresh metadata cannot establish whether an unconfirmed mutation succeeded.
+        setLoadError(null);
       }
     } catch (err) {
-      if (alive.current && token === generation.current) setError(fail(err));
+      if (alive.current && token === generation.current) setLoadError(fail(err));
     }
   }, [base, fail]);
   useEffect(() => {
@@ -219,15 +221,15 @@ export function VersionsDialog({
               </Button>
             )}
           </form>
-          {error && (
+          {(error || loadError) && (
             <p role="alert">
-              {error}{' '}
+              {error ?? loadError}{' '}
               <Button disabled={busy} onClick={() => void load()}>
                 {t('versions.reload')}
               </Button>
             </p>
           )}
-          {!page && !error && <p role="status">{t('versions.loading')}</p>}
+          {!page && !error && !loadError && <p role="status">{t('versions.loading')}</p>}
           {page?.items.length === 0 && <p className="ink-muted">{t('versions.empty')}</p>}
           <div className="versions__list">
             {groupVersions(page?.items ?? []).map((group) => (

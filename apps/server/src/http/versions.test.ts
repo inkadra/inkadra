@@ -1426,9 +1426,10 @@ describe.skipIf(!url)('board versions (needs DATABASE_URL)', () => {
         role: 'viewer',
       });
       try {
-        expect((await request('GET', `/boards/${subBoardId}/versions`, 'editor')).statusCode).toBe(
-          403,
-        );
+        for (const suffix of ['', `/${subVersion}`])
+          expect(
+            (await request('GET', `/boards/${subBoardId}/versions${suffix}`, 'editor')).statusCode,
+          ).toBe(403);
         expect((await request('GET', `/boards/${boardId}/versions`, 'editor')).statusCode).toBe(
           200,
         );
