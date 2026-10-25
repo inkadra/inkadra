@@ -159,6 +159,7 @@ export async function renderNotifications(
             body: comment.body,
             mentions: comment.mentions,
             deletedAt: comment.deletedAt,
+            threadId: comment.threadId,
           })
           .from(comment)
           .where(inArray(comment.id, commentIds)),
@@ -208,6 +209,8 @@ export async function renderNotifications(
       boardTitle: r.boardId ? (titles.get(r.boardId) ?? null) : null,
       elementId: r.elementId,
       commentId: r.commentId,
+      // The thread's start comment: the start itself has no parent, replies point to the start.
+      threadId: c ? (c.threadId ?? c.id) : null,
       excerpt:
         c && !c.deletedAt ? excerpt(c.body, readableNames.get(c.boardId) ?? new Map()) : null,
       reviewStatus: r.reviewStatus,

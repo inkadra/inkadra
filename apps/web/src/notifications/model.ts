@@ -11,7 +11,7 @@ export const KNOWN_TYPES = [
 
 /** Where a notification leads: the board, with the card selected and the thread open. */
 export function notificationPath(
-  item: Pick<Notification, 'projectId' | 'boardId' | 'elementId' | 'commentId'>,
+  item: Pick<Notification, 'projectId' | 'boardId' | 'elementId' | 'commentId' | 'threadId'>,
 ): string | null {
   if (!item.projectId) return null;
   const path = item.boardId ? `/p/${item.projectId}/b/${item.boardId}` : `/p/${item.projectId}`;
@@ -21,7 +21,12 @@ export function notificationPath(
     params.set('el', item.elementId);
     params.set('view', 'canvas');
   }
-  if (item.commentId) params.set('thread', item.commentId);
+  if (item.commentId) {
+    // The thread's start; for a thread start it is the comment itself, so no comment param.
+    const thread = item.threadId ?? item.commentId;
+    params.set('thread', thread);
+    if (thread !== item.commentId) params.set('comment', item.commentId);
+  }
   return params.size ? `${path}?${params}` : path;
 }
 

@@ -622,6 +622,61 @@ describe.skipIf(!url)('team comments, reviews and notifications', () => {
     } else expect(remaining).toEqual([]);
   });
 
+  it('derives thread ids for mention, reply and commentless notifications', async () => {
+    const start = await create('commenter', {
+      elementId: card,
+      body: `Hi @{${people.owner.id}}`,
+    });
+    const reply = await create('owner', { parentId: start.id });
+    await addNotification('editor');
+    const ownerItems = (await call('owner', 'GET', '/me/notifications')).json().items;
+    expect(ownerItems).toHaveLength(1);
+    expect(ownerItems[0]).toMatchObject({
+      type: 'mention',
+      commentId: start.id,
+      threadId: start.id,
+      excerpt: 'Hi @owner',
+    });
+    const commenterItems = (await call('commenter', 'GET', '/me/notifications')).json().items;
+    expect(commenterItems).toHaveLength(1);
+    expect(commenterItems[0]).toMatchObject({
+      type: 'reply',
+      commentId: reply.id,
+      threadId: start.id,
+    });
+    const editorItems = (await call('editor', 'GET', '/me/notifications')).json().items;
+    expect(editorItems).toHaveLength(1);
+    expect(editorItems[0]).toMatchObject({
+      type: 'review',
+      commentId: null,
+      threadId: null,
+    });
+  });
+
+  it('keeps derived thread ids when a start with replies becomes a deleted placeholder', async () => {
+    const start = await create('owner', { body: `Hi @{${people.editor.id}}` });
+    const reply = await create('editor', { parentId: start.id });
+    await call('owner', 'DELETE', `/comments/${start.id}`);
+    const ownerItems = (await call('owner', 'GET', '/me/notifications')).json().items;
+    expect(ownerItems).toHaveLength(1);
+    expect(ownerItems[0]).toMatchObject({
+      type: 'reply',
+      commentId: reply.id,
+      threadId: start.id,
+      excerpt: 'Hello',
+    });
+    const editorItems = (await call('editor', 'GET', '/me/notifications')).json().items;
+    expect(editorItems).toHaveLength(1);
+    expect(editorItems[0]).toMatchObject({
+      type: 'mention',
+      commentId: start.id,
+      threadId: start.id,
+      excerpt: null,
+    });
+    const replyRow = (await db.select().from(comment).where(eq(comment.id, reply.id)))[0];
+    expect(replyRow?.threadId).toBe(start.id);
+  });
+
   it('applies a closest board grant to a downgraded author and retains guest attribution', async () => {
     const thread = await create();
     await db
