@@ -45,7 +45,7 @@ import { comment, shareLink } from '../db/schema.ts';
 import { afterCommit, notify, Recipients } from '../notifications.ts';
 import { iso } from './api-routes.ts';
 import { requireActor } from './auth-routes.ts';
-import { authorOf, loadPeople, type People } from './authors.ts';
+import { authorOf, labelOf, loadPeople, type People } from './authors.ts';
 import { HttpError } from './errors.ts';
 import { afterCursor, atText, decodeCursor, pageOf } from './keyset.ts';
 import { RateLimiter } from './link-previews.ts';
@@ -94,6 +94,7 @@ async function peopleOf(db: Database, rows: Row[]) {
     db,
     rows.flatMap((r) => [r.authorId, r.resolvedBy, ...r.mentions]),
     rows.map((r) => r.authorGuestId),
+    rows.map((r) => r.shareLinkId),
   );
 }
 
@@ -118,6 +119,7 @@ export function toComment(row: Row, people: People, viewer: Viewer): Comment {
         }),
     visibility: row.visibility,
     shareLinkId: row.shareLinkId,
+    shareLinkLabel: labelOf(people, row.shareLinkId),
     canEdit: mine,
     canDelete: !row.deletedAt && (mine || atLeast(viewer.role, 'editor')),
   };

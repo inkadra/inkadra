@@ -32,6 +32,19 @@ export function shareLinkTag(comment: Pick<Comment, 'shareLinkLabel'>): string |
   return label || null;
 }
 
+/**
+ * Text of the tag beside a guest author: “Guest of the “X” link” when the server names their
+ * link, “Guest” otherwise; null for anyone who is not a guest.
+ */
+export function guestTag(
+  author: Author | null | undefined,
+  t: (key: 'comments.guest' | 'comments.guestOfLink', options?: { label: string }) => string,
+): string | null {
+  if (author?.kind !== 'guest') return null;
+  const label = author.shareLinkLabel?.trim();
+  return label ? t('comments.guestOfLink', { label }) : t('comments.guest');
+}
+
 export type BodyPart = { text: string } | { mention: string };
 
 /** Splits a body into text and mentions. Only ids listed in `mentions` become mentions. */

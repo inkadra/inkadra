@@ -16,6 +16,7 @@ import {
   findThread,
   findThreadDirect,
   groupByDay,
+  guestTag,
   mentionQuery,
   mergeReplies,
   mergeThreads,
@@ -116,6 +117,31 @@ it('keeps “only this link” in the tag that names the link, in both languages
   const label = shareLinkTag({ shareLinkLabel: ' Cliente ' });
   expect(i18n.getFixedT('it')('comments.oneLinkNamed', { label })).toBe('Solo il link “Cliente”');
   expect(i18n.getFixedT('en')('comments.oneLinkNamed', { label })).toBe('Only the “Cliente” link');
+});
+
+it('names the link of a guest author when the server sends it, in both languages', async () => {
+  const i18n = i18next.createInstance();
+  await i18n.init({
+    resources: { it: { translation: itMessages }, en: { translation: en } },
+    interpolation: { escapeValue: false },
+  });
+  const guest = { kind: 'guest', guestId: 'g', name: 'Anna', shareLinkId: 'l' } as const;
+  const it_ = i18n.getFixedT('it');
+  const en_ = i18n.getFixedT('en');
+  expect(guestTag({ ...guest, shareLinkLabel: ' Cliente ' }, it_)).toBe(
+    'Ospite del link “Cliente”',
+  );
+  expect(guestTag({ ...guest, shareLinkLabel: 'Cliente' }, en_)).toBe(
+    'Guest of the “Cliente” link',
+  );
+  // No label, a blank one, or a server before the field: the plain guest tag.
+  for (const shareLinkLabel of [null, '   ', undefined]) {
+    expect(guestTag({ ...guest, shareLinkLabel }, it_)).toBe('Ospite');
+    expect(guestTag({ ...guest, shareLinkLabel }, en_)).toBe('Guest');
+  }
+  expect(guestTag({ kind: 'user', user: { id: 'u', name: 'Ugo', image: null } }, it_)).toBeNull();
+  expect(guestTag({ kind: 'deleted' }, it_)).toBeNull();
+  expect(guestTag(JSON.parse('{"kind":"future","shareLinkLabel":"X"}'), it_)).toBeNull();
 });
 
 it('pages the replies of the notified card only to find an older reply', async () => {

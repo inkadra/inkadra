@@ -5,6 +5,7 @@ import { useEffect, useId, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api, RequestError } from '../lib/api.ts';
 import { ReviewChip } from './CardReview.tsx';
+import { GuestTag } from './GuestTag.tsx';
 import { authorName, type Page, REVIEW_STATUSES } from './review-model.ts';
 import { canComment, getReviews, refreshReviews, useReviews } from './review-store.ts';
 
@@ -13,7 +14,7 @@ function Attribution({ author, at }: { author: Author; at: string }) {
   return (
     <span className="comment-author">
       <strong>{authorName(author) ?? t('comments.deletedAuthor')}</strong>
-      {author.kind === 'guest' && <span className="review-tag">{t('comments.guest')}</span>}
+      <GuestTag author={author} />
       <time dateTime={at}>
         {new Date(at).toLocaleString(i18n.language, { dateStyle: 'medium', timeStyle: 'short' })}
       </time>

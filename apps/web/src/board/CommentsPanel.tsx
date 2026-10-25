@@ -30,6 +30,7 @@ import * as Y from 'yjs';
 import { api, RequestError } from '../lib/api.ts';
 import { useSession } from '../lib/session.tsx';
 import { ReviewChip } from './CardReview.tsx';
+import { GuestTag } from './GuestTag.tsx';
 import { plainText } from './note.tsx';
 import { ReviewSection } from './ReviewSection.tsx';
 import {
@@ -529,7 +530,7 @@ function AuthorLine({ author, at, edited }: { author: Author; at: string; edited
   return (
     <div className="comment-author">
       <strong>{authorName(author) ?? t('comments.deletedAuthor')}</strong>
-      {author.kind === 'guest' && <span className="review-tag">{t('comments.guest')}</span>}
+      <GuestTag author={author} />
       <time dateTime={at}>
         {new Date(at).toLocaleString(i18n.language, { dateStyle: 'medium', timeStyle: 'short' })}
       </time>
