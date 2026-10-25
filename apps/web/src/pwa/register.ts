@@ -57,7 +57,8 @@ export function dismissUpdate() {
 
 const reload = () => {
   if (isBusy()) set({ deferred: true });
-  whenIdle(() => window.location.reload());
+  cancel?.();
+  cancel = whenIdle(() => window.location.reload());
 };
 
 /**
@@ -90,14 +91,14 @@ export function registerServiceWorker() {
   const sw = navigator.serviceWorker;
   /** This tab activated the new worker: `requested` to switch to it, `silent` as it runs it. */
   let requested = false;
-  let silent = false;
+  let silent: ServiceWorker | null = null;
 
   sw.addEventListener('controllerchange', () => {
-    if (silent) {
-      silent = false;
-      return;
-    }
-    if (requested) {
+    const activatedSilently = sw.controller === silent;
+    silent = null;
+    if (activatedSilently) return;
+    // Keep the user's choice even if another tab activates before this tab becomes idle.
+    if (requested || update?.deferred) {
       reload();
       return;
     }
@@ -110,7 +111,7 @@ export function registerServiceWorker() {
     if (!sw.controller) return;
     if (await runsVersionOf(waiting)) {
       // Nothing to reload here; tabs on the old version get the prompt from controllerchange.
-      silent = true;
+      silent = waiting;
       waiting.postMessage({ type: 'skip-waiting' });
       return;
     }

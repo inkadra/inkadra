@@ -234,6 +234,9 @@ importers:
       typescript:
         specifier: ^5.9.0
         version: 5.9.3
+      urlpattern-polyfill:
+        specifier: ^10.1.0
+        version: 10.1.0
       vite:
         specifier: ^8.3.0
         version: 8.3.5(@types/node@22.20.5)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1)
@@ -3347,6 +3350,9 @@ packages:
     resolution: {integrity: sha512-oCwdVC7mTuWiPyjLUz/COz5TLk6wgp0RCsN+wHZ2Ekneac9w8uuV0njcbbie2ME+Vs+d6duwmYuR3HgQXs1fOg==}
     engines: {node: '>= 0.4'}
 
+  urlpattern-polyfill@10.1.0:
+    resolution: {integrity: sha512-IGjKp/o0NL3Bso1PymYURCJxMPNAf/ILOpendP9f5B6e1rTJgdgiOvgfoT8VxCAdY+Wisb9uhGaJJf3yZ2V9nw==}
+
   use-sync-external-store@1.7.0:
     resolution: {integrity: sha512-6L+EeigHMQhdaIPNIFUKwfWJSwWFQ8gJbJ2DLOs5sDIegTwR9fRxvnM3uciHKjIZhFz+KAv2emhWMRvDmMcY8A==}
     peerDependencies:
@@ -6351,6 +6357,8 @@ snapshots:
     dependencies:
       punycode: 1.4.1
       qs: 6.16.1
+
+  urlpattern-polyfill@10.1.0: {}
 
   use-sync-external-store@1.7.0(react@19.3.1):
     dependencies:

@@ -1,3 +1,4 @@
+import { URLPattern } from 'urlpattern-polyfill';
 import { describe, expect, it } from 'vitest';
 import { isPrecached, type RequestLike, route, SERVER_ROUTES } from './routing.ts';
 
@@ -88,19 +89,11 @@ describe('service worker routing', () => {
   });
 });
 
-// The browser's URLPattern (Node 24 has it too): the static routes match what route() skips.
-const Pattern = (
-  globalThis as {
-    URLPattern?: new (input: string, base: string) => { test(url: string): boolean };
-  }
-).URLPattern;
-
-describe.skipIf(!Pattern)('static routes', () => {
+// Use the same URLPattern semantics on Node 22, where the native API is absent.
+describe('static routes', () => {
   const routed = (path: string) =>
     SERVER_ROUTES.some(({ condition }) =>
-      new (Pattern as NonNullable<typeof Pattern>)(condition.urlPattern, `${origin}/sw.js`).test(
-        `${origin}${path}`,
-      ),
+      new URLPattern(condition.urlPattern, `${origin}/sw.js`).test(`${origin}${path}`),
     );
 
   it('cover exactly the server paths the fetch handler leaves alone', () => {
