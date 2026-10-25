@@ -23,6 +23,15 @@ export function authorName(author: Author | null | undefined): string | null {
   return null;
 }
 
+/**
+ * Text of the tag on a thread limited to a share link: the link’s label, trimmed, or null when
+ * it is absent, null or empty, so the caller falls back to the generic one-link tag.
+ */
+export function shareLinkTag(comment: Pick<Comment, 'shareLinkLabel'>): string | null {
+  const label = comment.shareLinkLabel?.trim();
+  return label || null;
+}
+
 export type BodyPart = { text: string } | { mention: string };
 
 /** Splits a body into text and mentions. Only ids listed in `mentions` become mentions. */

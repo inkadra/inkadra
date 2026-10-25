@@ -1,8 +1,11 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 import { addElement, createBoardDoc, type Element } from '@inkadra/doc-schema';
 import type { Comment, CommentThread } from '@inkadra/shared';
+import i18next from 'i18next';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type * as Y from 'yjs';
+import en from '../i18n/en.json';
+import itMessages from '../i18n/it.json';
 import { cardLabelOf } from './CommentsPanel.tsx';
 import { fillFragment } from './note.tsx';
 import {
@@ -17,6 +20,7 @@ import {
   mergeThreads,
   refreshOlderReplies,
   reviewKey,
+  shareLinkTag,
 } from './review-model.ts';
 import {
   addOlderReplies,
@@ -91,6 +95,26 @@ it('shows statuses and authors it does not know without breaking', () => {
   );
   expect(authorName(JSON.parse('{"kind":"future"}'))).toBeNull();
   expect(authorName(null)).toBeNull();
+});
+
+it('shows the share link label on the thread tag, falling back to the generic one', () => {
+  expect(shareLinkTag({ shareLinkLabel: 'Fattura Q3' })).toBe('Fattura Q3');
+  expect(shareLinkTag({ shareLinkLabel: '  Bozza  ' })).toBe('Bozza');
+  expect(shareLinkTag({ shareLinkLabel: undefined })).toBeNull();
+  expect(shareLinkTag({ shareLinkLabel: null })).toBeNull();
+  expect(shareLinkTag({ shareLinkLabel: '' })).toBeNull();
+  expect(shareLinkTag({ shareLinkLabel: '   ' })).toBeNull();
+});
+
+it('keeps “only this link” in the tag that names the link, in both languages', async () => {
+  const i18n = i18next.createInstance();
+  await i18n.init({
+    resources: { it: { translation: itMessages }, en: { translation: en } },
+    interpolation: { escapeValue: false },
+  });
+  const label = shareLinkTag({ shareLinkLabel: ' Cliente ' });
+  expect(i18n.getFixedT('it')('comments.oneLinkNamed', { label })).toBe('Solo il link “Cliente”');
+  expect(i18n.getFixedT('en')('comments.oneLinkNamed', { label })).toBe('Only the “Cliente” link');
 });
 
 it('pages the replies of the notified card only to find an older reply', async () => {

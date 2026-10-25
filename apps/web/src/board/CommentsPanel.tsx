@@ -40,6 +40,7 @@ import {
   mentionQuery,
   mergeReplies,
   REVIEW_STATUSES,
+  shareLinkTag,
 } from './review-model.ts';
 import {
   addOlderReplies,
@@ -562,6 +563,10 @@ const Thread = memo(function Thread({
   const [error, setError] = useState(false);
   const replies = mergeReplies([...(older?.items ?? [])], thread.replies);
   const hidden = thread.replyCount - replies.length;
+  const linkLabel = shareLinkTag(thread);
+  const linkTag = linkLabel
+    ? t('comments.oneLinkNamed', { label: linkLabel })
+    : t('comments.oneLink');
 
   const run = async (action: () => Promise<unknown>) => {
     setError(false);
@@ -608,7 +613,11 @@ const Thread = memo(function Thread({
           <Icon name={thread.visibility === 'team' ? 'lock' : 'people'} size={12} />
           {t(`comments.visibility.${thread.visibility === 'team' ? 'team' : 'everyone'}`)}
         </span>
-        {thread.shareLinkId && <span className="review-tag">{t('comments.oneLink')}</span>}
+        {thread.shareLinkId && (
+          <span className="review-tag review-tag--truncate" title={linkTag}>
+            {linkTag}
+          </span>
+        )}
       </div>
       <CommentItem comment={thread} elementId={thread.elementId} writable={writable} />
       {hidden > 0 && (
