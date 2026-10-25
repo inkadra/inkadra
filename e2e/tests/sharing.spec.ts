@@ -138,6 +138,8 @@ test('a role change reaches a board that is already open', async ({ page, browse
   await expect(other.getByText('ora puoi modificare questa board')).toBeVisible({
     timeout: 45_000,
   });
+  // The others see the new role at once, without waiting for the pointer to move.
+  await expect(page.locator(`.peers__one[title="${guest.name}"]`)).toBeVisible();
   await expect(other.getByRole('status').getByText('Sincronizzato')).toBeVisible();
   await other
     .getByTestId('canvas')
@@ -151,6 +153,7 @@ test('a role change reaches a board that is already open', async ({ page, browse
   await expect(other.getByText('ora puoi solo guardare questa board')).toBeVisible({
     timeout: 45_000,
   });
+  await expect(page.locator(`.peers__one[title="${guest.name} (sola lettura)"]`)).toBeVisible();
   await expect(other.getByRole('status').getByText('Sola lettura')).toBeVisible();
   await other.context().close();
 });
@@ -166,4 +169,86 @@ test('account settings make a personal token shown once', async ({ page }) => {
   await page.getByRole('button', { name: 'Fatto' }).click();
   await expect(page.getByText('Script di backup')).toBeVisible();
   await expect(page.getByText('mai usato')).toBeVisible();
+});
+
+test('account settings end another session without handing out its token', async ({
+  page,
+  browser,
+}) => {
+  const other = await newPage(browser);
+  await signIn(other, guest);
+  await signIn(page, guest);
+  const listed = page.waitForResponse((r) => r.url().endsWith('/api/v1/me/sessions'));
+  await page.getByRole('button', { name: 'Impostazioni' }).click();
+  const sessions = await (await listed).json();
+  expect(sessions.items.length).toBeGreaterThan(1);
+  for (const item of sessions.items) expect(item).not.toHaveProperty('token');
+  const end = page.locator('.settings__row').getByRole('button', { name: 'Esci', exact: true });
+  await expect(end).toHaveCount(sessions.items.length - 1);
+  await end.first().click();
+  await expect(end).toHaveCount(sessions.items.length - 2);
+  // One of the guest's other sessions ended: end them all and the second browser is out.
+  await page.getByRole('button', { name: 'Esci da tutti gli altri dispositivi' }).click();
+  expect((await other.request.get('/api/v1/me')).status()).toBe(401);
+  await other.context().close();
+});
+
+test('denying an app on /authorize answers it through the server', async ({ page }) => {
+  await signIn(page, guest);
+  await expect(page).not.toHaveURL(/\/login/);
+  const challenge = 'A'.repeat(43);
+  const query = `client_id=mobile&redirect_uri=${encodeURIComponent('inkadra://auth')}&state=s1&code_challenge=${challenge}&code_challenge_method=S256`;
+  await page.goto(`/authorize?${query}`);
+  const denied = page.waitForResponse((r) => r.url().endsWith('/api/v1/app-authorizations/deny'));
+  await page.getByRole('button', { name: 'Annulla' }).click();
+  const { redirectTo } = await (await denied).json();
+  expect(redirectTo).toBe('inkadra://auth?error=access_denied&state=s1');
+
+  // An address that is not allowed hears nothing.
+  await page.goto(`/authorize?${query.replace('mobile', 'clipper')}`);
+  const refused = page.waitForResponse((r) => r.url().endsWith('/api/v1/app-authorizations/deny'));
+  await page.getByRole('button', { name: 'Annulla' }).click();
+  expect((await refused).status()).toBe(400);
+  await expect(
+    page.getByText('Nessun accesso concesso. Puoi chiudere questa pagina.'),
+  ).toBeVisible();
+});
+
+test('someone with access to one board opens the project address on that board', async ({
+  page,
+  browser,
+  baseURL,
+}) => {
+  await signIn(page, admin);
+  await openProject(page);
+  const projectId = page.url().match(/\/p\/([0-9a-f-]{36})/)?.[1] ?? '';
+  const headers = { origin: baseURL ?? '' };
+  const project = await (await page.request.get(`/api/v1/projects/${projectId}`)).json();
+  const board = await (
+    await page.request.post(`/api/v1/projects/${projectId}/boards`, {
+      headers,
+      data: { parentBoardId: project.rootBoardId, title: 'Costumi' },
+    })
+  ).json();
+  const invited = await page.request.post('/api/v1/invitations', {
+    headers,
+    data: { kind: 'link', boardId: board.id, role: 'viewer' },
+  });
+  expect(invited.status()).toBe(201);
+  const { invitation } = await invited.json();
+
+  const costume = await newPage(browser);
+  await costume.goto(invitation.url);
+  await costume.getByLabel('Nome').fill('Sara Neri');
+  await costume.getByLabel('Email').fill('sara@example.com');
+  await costume.getByLabel('Password').fill('third-horse-battery');
+  await costume.getByRole('button', { name: 'Crea account' }).click();
+  await expect(costume.getByRole('status').getByText('Sola lettura')).toBeVisible();
+
+  await costume.goto(`/p/${projectId}`);
+  await expect(costume).toHaveURL(new RegExp(`/p/${projectId}/b/${board.id}$`));
+  await expect(costume.getByRole('status').getByText('Sola lettura')).toBeVisible();
+  await costume.goto('/p/00000000-0000-4000-8000-000000000000');
+  await expect(costume.getByText('Pagina non trovata')).toBeVisible();
+  await costume.context().close();
 });

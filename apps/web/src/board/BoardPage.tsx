@@ -10,10 +10,11 @@ import {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate, useParams, useSearchParams } from 'react-router';
+import { Navigate, useNavigate, useParams, useSearchParams } from 'react-router';
 import { useHeaderContent } from '../lib/header.tsx';
 import { useSession } from '../lib/session.tsx';
 import { useProjects } from '../routes/AppLayout.tsx';
+import { NotFound } from '../routes/NotFound.tsx';
 import { boardPath, fetchBoard, useProjectBoards } from './boards.ts';
 import { Canvas } from './Canvas.tsx';
 import { CommentsButton } from './CommentsPanel.tsx';
@@ -25,6 +26,7 @@ import { RestoredToast } from './RestoredToast.tsx';
 import { type VersionPreview, VersionsDialog } from './VersionsDialog.tsx';
 import './film/film.css';
 import { type Peer, uniquePeople, usePeers } from './presence.ts';
+import { projectLanding } from './project-landing.ts';
 import { ShareDialog } from './ShareDialog.tsx';
 import { useBoardReviews } from './use-board-reviews.ts';
 import './board.css';
@@ -67,10 +69,16 @@ export function useBoardView(kind: Board['kind'] | undefined): [BoardView, (v: B
 /** /p/:projectId shows the root board, /p/:projectId/b/:boardId a nested one. */
 export function BoardPage() {
   const { projectId, boardId: param } = useParams();
-  const { projects } = useProjects();
+  const { projects, shared } = useProjects();
   const project = projects?.find((p) => p.id === projectId);
+  if (!projectId || !projects) return null;
+  const landing = param ? null : projectLanding(projectId, projects, shared);
+  if (landing?.kind === 'loading') return null;
+  if (landing?.kind === 'notFound') return <NotFound />;
+  if (landing?.kind === 'shared')
+    return <Navigate to={boardPath(projectId, landing.boardId)} replace />;
   const boardId = param ?? project?.rootBoardId;
-  if (!projectId || !projects || !boardId) return null;
+  if (!boardId) return null;
   // People with access to some boards only are not project members: their breadcrumb starts at
   // the top board shared with them.
   return (

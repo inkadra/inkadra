@@ -7,7 +7,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createAuth } from '../auth.ts';
 import { loadConfig } from '../config.ts';
 import { createDatabase, runMigrations } from '../db/client.ts';
-import { invitation as invitationTable, project } from '../db/schema.ts';
+import { invitation as invitationTable, project, session as sessionTable } from '../db/schema.ts';
 import { memoryMailer } from '../mailer.ts';
 import { pkceChallenge } from '../secrets.ts';
 import { testDeps } from '../test-deps.ts';
@@ -396,6 +396,80 @@ describe.skipIf(!url)('sharing, invitations, tokens and accounts (needs DATABASE
     expect(listed.body.items[0].lastUsedAt).not.toBeNull();
     expect((await call(bearer, 'DELETE', `/api/v1/me/tokens/${id}`)).status).toBe(204);
     expect((await call(bearer, 'GET', '/api/v1/me')).status).toBe(401);
+  });
+
+  it('lists sessions without tokens and ends only your own, by id', async () => {
+    const signIn = await call(null, 'POST', '/api/auth/sign-in/email', {
+      email: as.owner.email,
+      password: PASSWORD,
+    });
+    const other = { cookie: cookieOf(signIn.cookies, 'inkadra.session_token') };
+    const listed = await call('owner', 'GET', '/api/v1/me/sessions');
+    expect(listed.status).toBe(200);
+    const tokens = await db.select({ token: sessionTable.token }).from(sessionTable);
+    for (const { token } of tokens) expect(JSON.stringify(listed.body)).not.toContain(token);
+    for (const item of listed.body.items) expect(Object.keys(item)).not.toContain('token');
+    const mine = listed.body.items.find((s: { current: boolean }) => s.current);
+    const second = listed.body.items.find((s: { current: boolean }) => !s.current);
+    expect(mine && second).toBeTruthy();
+    // Better Auth's endpoints that hand out or take session tokens are off.
+    const raw = (method: string, path: string) =>
+      fetch(`${base}${path}`, {
+        method,
+        headers: { origin: config.PUBLIC_URL, cookie: as.owner.cookie },
+        ...(method === 'POST' ? { body: JSON.stringify({ token: 'x' }) } : {}),
+      });
+    expect((await raw('GET', '/api/auth/list-sessions')).status).toBe(404);
+    expect((await raw('POST', '/api/auth/revoke-session')).status).toBe(404);
+
+    // Someone else's session is not found, and tokens cannot end sessions.
+    const theirs = (await call('editor', 'GET', '/api/v1/me/sessions')).body.items[0];
+    expect((await call('owner', 'DELETE', `/api/v1/me/sessions/${theirs.id}`)).status).toBe(404);
+    expect((await call('editor', 'GET', '/api/v1/me')).status).toBe(200);
+    const created = await call('owner', 'POST', '/api/v1/me/tokens', { name: 'Sessions' });
+    const bearer = { bearer: created.body.token };
+    expect((await call(bearer, 'GET', '/api/v1/me/sessions')).status).toBe(403);
+    expect((await call(bearer, 'DELETE', `/api/v1/me/sessions/${second.id}`)).status).toBe(403);
+
+    expect((await call(other, 'GET', '/api/v1/me')).status).toBe(200);
+    expect((await call('owner', 'DELETE', `/api/v1/me/sessions/${second.id}`)).status).toBe(204);
+    expect((await call(other, 'GET', '/api/v1/me')).status).toBe(401);
+    expect((await call('owner', 'GET', '/api/v1/me')).status).toBe(200);
+    expect((await call('owner', 'DELETE', `/api/v1/me/sessions/${second.id}`)).status).toBe(404);
+  });
+
+  it('tells a denied app only on its exact redirect address, with the state', async () => {
+    const redirectUri = `https://${EXTENSION_ID}.chromiumapp.org/auth`;
+    const deny = (body: Record<string, unknown>, who: Who | null = 'editor') =>
+      call(who, 'POST', '/api/v1/app-authorizations/deny', {
+        clientId: 'clipper',
+        redirectUri,
+        state: 'xyz',
+        ...body,
+      });
+    expect((await deny({}, null)).status).toBe(401);
+    for (const bad of [
+      'https://evilevilevilevilevilevilevilevil.chromiumapp.org/auth',
+      `https://${EXTENSION_ID}.chromiumapp.org/other`,
+      'inkadra://auth',
+    ])
+      expect((await deny({ redirectUri: bad })).status).toBe(400);
+    expect((await deny({ clientId: 'mobile' })).status).toBe(400);
+
+    const denied = await deny({});
+    expect(denied.status).toBe(200);
+    const target = new URL(denied.body.redirectTo);
+    expect(target.origin + target.pathname).toBe(redirectUri);
+    expect(Object.fromEntries(target.searchParams)).toEqual({
+      error: 'access_denied',
+      state: 'xyz',
+    });
+    const mobile = new URL(
+      (await deny({ clientId: 'mobile', redirectUri: 'inkadra://auth', state: undefined })).body
+        .redirectTo,
+    );
+    expect(mobile.searchParams.get('error')).toBe('access_denied');
+    expect(mobile.searchParams.has('code')).toBe(false);
   });
 
   it('gives the official apps a token with a PKCE code', async () => {

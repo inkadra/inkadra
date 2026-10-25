@@ -1,10 +1,16 @@
-import type { CreatedPersonalToken, DeleteMeBlocked, PersonalToken, User } from '@inkadra/shared';
+import type {
+  AccountSession,
+  CreatedPersonalToken,
+  DeleteMeBlocked,
+  PersonalToken,
+  User,
+} from '@inkadra/shared';
 import { Button, Dialog, DialogActions, TextField } from '@inkadra/ui';
 import { type FormEvent, type ReactNode, useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { encode } from 'uqr';
 import { LOCALES } from '../i18n/index.ts';
-import { type AuthSession, api, authApi, RequestError } from '../lib/api.ts';
+import { api, authApi, RequestError } from '../lib/api.ts';
 import { useSession } from '../lib/session.tsx';
 import { EmailNotifications } from '../notifications/Notifications.tsx';
 import { GoogleG } from './SignInOptions.tsx';
@@ -402,13 +408,10 @@ function deviceName(ua: string | null, t: (k: string) => string): string {
 
 function Sessions() {
   const { t, i18n } = useTranslation();
-  const [items, setItems] = useState<AuthSession[] | null>(null);
-  const [current, setCurrent] = useState<string | null>(null);
+  const [items, setItems] = useState<AccountSession[] | null>(null);
   const status = useStatus();
   const load = useCallback(async () => {
-    const [list, me] = await Promise.all([authApi.listSessions(), authApi.currentSession()]);
-    setItems(list);
-    setCurrent(me?.session.id ?? null);
+    setItems((await api.get<{ items: AccountSession[] }>('/me/sessions')).items);
   }, []);
   useEffect(() => {
     void load().catch(() => setItems([]));
@@ -425,18 +428,18 @@ function Sessions() {
             <span className="settings__grow">
               {deviceName(s.userAgent, t)}
               <span className="settings__sub">
-                {s.id === current
+                {s.current
                   ? t('settings.sessions.this')
                   : t('settings.sessions.since', { when: when(s.updatedAt) })}
                 {s.ipAddress ? ` · ${s.ipAddress}` : ''}
               </span>
             </span>
-            {s.id !== current && (
+            {!s.current && (
               <Button
                 variant="ghost"
                 onClick={async () => {
                   try {
-                    await authApi.revokeSession(s.token);
+                    await api.delete(`/me/sessions/${s.id}`);
                     await load();
                   } catch (err) {
                     status.fail(err);
