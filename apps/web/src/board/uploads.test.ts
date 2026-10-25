@@ -1,6 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { isBusy, whenIdle } from '../pwa/busy.ts';
-import { cancelUpload, retryUpload, startUpload } from './uploads.ts';
+
+type Busy = typeof import('../pwa/busy.ts');
+type Uploads = typeof import('./uploads.ts');
+let isBusy: Busy['isBusy'];
+let whenIdle: Busy['whenIdle'];
+let cancelUpload: Uploads['cancelUpload'];
+let retryUpload: Uploads['retryUpload'];
+let startUpload: Uploads['startUpload'];
 
 /**
  * A scripted double for `tus-js-client`'s Upload: each `start()` runs the next behaviour in
@@ -35,7 +41,10 @@ const { FakeUpload } = vi.hoisted(() => {
 
 vi.mock('tus-js-client', () => ({ Upload: FakeUpload }));
 
-const pdf = (name: string) => new File(['x'], name, { type: 'application/pdf' });
+// A fixed date, like a file picked twice from disk: `lastModified` is part of the fingerprint
+// and Node's File takes it from the real clock, which fake timers do not stop.
+const pdf = (name: string) =>
+  new File(['x'], name, { type: 'application/pdf', lastModified: 1_700_000_000_000 });
 
 const start = ({ name, onFailed }: { name: string; onFailed?: () => void }) => {
   const key = startUpload({
@@ -52,7 +61,15 @@ const start = ({ name, onFailed }: { name: string; onFailed?: () => void }) => {
   return { key, upload };
 };
 
-beforeEach(() => vi.useFakeTimers());
+// Fresh modules for each test: the uploads panel and the busy reasons are module state, and an
+// upload left running by one test must not hold the guard in the next.
+beforeEach(async () => {
+  vi.useFakeTimers();
+  vi.resetModules();
+  FakeUpload.all = [];
+  ({ isBusy, whenIdle } = await import('../pwa/busy.ts'));
+  ({ cancelUpload, retryUpload, startUpload } = await import('./uploads.ts'));
+});
 afterEach(() => vi.useRealTimers());
 
 /** Lets the tus client act on a mocked response (its callbacks run in a microtask). */
