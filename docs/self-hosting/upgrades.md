@@ -27,6 +27,13 @@ there.
 Going back to an older version after its migrations ran is not supported: restore the backup
 taken before the upgrade instead.
 
+## Upgrading to Valkey 9
+
+`compose.yaml` now runs Valkey 9 instead of 8. Valkey 9 reads the data written by 8, but 8
+cannot read data written by 9, so the step is one-way: back up the `valkey-data` volume (or
+your `VALKEY_DATA` folder) before upgrading, and there is no downgrade. If the volume is lost,
+the queues are rebuilt when the server starts; only jobs that were waiting to run are lost.
+
 ## Data folder owner
 
 Inkadra runs as uid 1000. Versions after 0.1 write to `/data` as soon as they start, so a host

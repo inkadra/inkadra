@@ -38,7 +38,7 @@ jobs:
           --health-cmd "pg_isready -U inkadra" --health-interval 5s --health-timeout 5s --health-retries 20
       # The tests of the queues (split mode) run against it, through REDIS_URL.
       valkey:
-        image: valkey/valkey:8-alpine
+        image: valkey/valkey:9-alpine
         ports: ["6379:6379"]
         options: >-
           --health-cmd "valkey-cli ping" --health-interval 5s --health-timeout 5s --health-retries 20
@@ -83,7 +83,7 @@ jobs:
         options: >-
           --health-cmd "pg_isready -U inkadra" --health-interval 5s --health-timeout 5s --health-retries 20
       valkey:
-        image: valkey/valkey:8-alpine
+        image: valkey/valkey:9-alpine
         ports: ["6379:6379"]
         options: >-
           --health-cmd "valkey-cli ping" --health-interval 5s --health-timeout 5s --health-retries 20
@@ -122,7 +122,7 @@ jobs:
         options: >-
           --health-cmd "pg_isready -U inkadra" --health-interval 5s --health-timeout 5s --health-retries 20
       valkey:
-        image: valkey/valkey:8-alpine
+        image: valkey/valkey:9-alpine
         ports: ["6379:6379"]
         options: >-
           --health-cmd "valkey-cli ping" --health-interval 5s --health-timeout 5s --health-retries 20
