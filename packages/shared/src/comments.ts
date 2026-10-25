@@ -28,7 +28,9 @@ export const ListLimit = z.coerce.number().int().min(1).max(100).default(30);
 
 /**
  * Label of a share link (ShareLink.label), for people with a role on the board who cannot list
- * the links themselves (listing needs editor). Never sent to guests.
+ * the links themselves (listing needs editor). Only for readers with a role on the link's own
+ * board: readers limited to a sub-board cannot see the name of a parent board's link.
+ * Never sent to guests.
  */
 const shareLinkLabel = (what: string) =>
   z
@@ -37,8 +39,10 @@ const shareLinkLabel = (what: string) =>
     .optional()
     .openapi({
       description:
-        `${what} (ShareLink.label, e.g. "Cliente"), readable by anyone who can read this; ` +
-        'null when there is no link or it has no label. Missing from servers before API 0.5.0.',
+        `${what} (ShareLink.label, e.g. "Cliente"), only for readers with a role on the ` +
+        'link’s board; null when there is no link, it has no label, or the reader has no role ' +
+        'on its board (a link made on a parent board, read from a sub-board). Never sent to ' +
+        'guests. Missing from servers before API 0.5.0.',
     });
 
 /**
