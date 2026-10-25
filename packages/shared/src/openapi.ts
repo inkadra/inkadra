@@ -80,6 +80,7 @@ import {
   UserSearchQuery,
 } from './sharing.ts';
 import {
+  AccountSession,
   AppAuthorizationRedirect,
   AppToken,
   CreateAppAuthorization,
@@ -87,6 +88,7 @@ import {
   CreatePersonalToken,
   DeleteMe,
   DeleteMeBlocked,
+  DenyAppAuthorization,
   ExchangeAppCode,
   PersonalToken,
   UpdateMe,
@@ -332,6 +334,27 @@ registry.registerPath({
 registry.register('DeleteMeBlocked', DeleteMeBlocked);
 registry.registerPath({
   method: 'get',
+  path: v1('/me/sessions'),
+  tags: ['Users'],
+  security: [{ session: [] }],
+  summary: 'Browsers signed in to the account, without their tokens.',
+  responses: {
+    200: { description: 'Sessions', ...json(z.object({ items: z.array(AccountSession) })) },
+    401: errors[401],
+    403: errors[403],
+  },
+});
+registry.registerPath({
+  method: 'delete',
+  path: v1('/me/sessions/{sessionId}'),
+  tags: ['Users'],
+  security: [{ session: [] }],
+  summary: 'Sign a browser out of the account. Ending the current session signs out.',
+  request: { params: idParam('sessionId') },
+  responses: { 204: { description: 'Ended' }, ...errors },
+});
+registry.registerPath({
+  method: 'get',
   path: v1('/me/tokens'),
   tags: ['Users'],
   security: [{ session: [] }],
@@ -372,6 +395,18 @@ registry.registerPath({
     'and follows `redirectTo`, and the app exchanges the code. The redirect address must be ' +
     'one of the exact addresses allowed for the client (see AppClient).',
   request: { body: json(CreateAppAuthorization) },
+  responses: { 200: { description: 'Redirect', ...json(AppAuthorizationRedirect) }, ...errors },
+});
+registry.registerPath({
+  method: 'post',
+  path: v1('/app-authorizations/deny'),
+  tags: ['Users'],
+  security: [{ session: [] }],
+  summary: 'Tell an official app that the person denied it; called by /authorize.',
+  description:
+    'Checks the redirect address like `POST /app-authorizations` and answers with it plus ' +
+    '`error=access_denied` and `state` (RFC 6749 §4.1.2.1). No code is issued.',
+  request: { body: json(DenyAppAuthorization) },
   responses: { 200: { description: 'Redirect', ...json(AppAuthorizationRedirect) }, ...errors },
 });
 registry.registerPath({
