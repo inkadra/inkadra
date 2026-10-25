@@ -1,5 +1,5 @@
-import { boardDocName, hiddenFromGuests, roots } from '@inkadra/doc-schema';
-import { Id } from '@inkadra/shared';
+import { boardDocName, hiddenFromGuests, readElement, roots } from '@inkadra/doc-schema';
+import { type BoardColumn, Id } from '@inkadra/shared';
 import { eq } from 'drizzle-orm';
 import * as Y from 'yjs';
 import type { CollabServer } from './collab.ts';
@@ -74,9 +74,38 @@ export async function visibleBoardCard(
   }
 }
 
+/** The columns of a board document, left to right and then top to bottom. */
+export function docColumns(doc: Y.Doc): BoardColumn[] {
+  const columns: Array<BoardColumn & { x: number; y: number }> = [];
+  for (const map of roots(doc).elements.values()) {
+    if (!(map instanceof Y.Map) || map.get('type') !== 'column') continue;
+    const el = readElement(map);
+    if (el?.type === 'column') columns.push({ id: el.id, title: el.title, x: el.x, y: el.y });
+  }
+  columns.sort((a, b) => a.x - b.x || a.y - b.y || (a.id < b.id ? -1 : 1));
+  return columns.map(({ id, title }) => ({ id, title }));
+}
+
+/** The columns of the stored document of a board; none when it has no stored document. */
+export async function storedColumns(db: Database, boardId: string): Promise<BoardColumn[]> {
+  const [row] = await db
+    .select({ state: boardDoc.state })
+    .from(boardDoc)
+    .where(eq(boardDoc.boardId, boardId));
+  if (!row) return [];
+  const doc = new Y.Doc();
+  try {
+    Y.applyUpdate(doc, row.state);
+    return docColumns(doc);
+  } finally {
+    doc.destroy();
+  }
+}
+
 /** Internal reader; callers must authorize the board before looking up its cards. */
 export interface BoardReader {
   element(boardId: string, elementId: string): Promise<StoredElement | null>;
+  columns(boardId: string): Promise<BoardColumn[]>;
 }
 
 /** Read the authoritative live document, including deletions, before using stored state. */
@@ -92,6 +121,10 @@ export function directBoardReader(collab: CollabServer, db: Database): BoardRead
         createdBy:
           typeof createdBy === 'string' && Id.safeParse(createdBy).success ? createdBy : null,
       };
+    },
+    async columns(boardId) {
+      const doc = collab.hocuspocus.documents.get(boardDocName(boardId));
+      return doc ? docColumns(doc) : storedColumns(db, boardId);
     },
   };
 }

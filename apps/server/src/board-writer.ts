@@ -36,6 +36,9 @@ export type AddCardResult =
   | { ok: true; elementId: string }
   | { ok: false; reason: 'column' | 'expired' };
 
+/** The edit certainly did not reach the document: it could not even be opened. */
+export class BoardEditNotStarted extends Error {}
+
 export interface BoardWriter {
   addCard(input: AddCard): Promise<AddCardResult>;
 }
@@ -125,7 +128,11 @@ function fillNote(fragment: Y.XmlFragment, blocks: NoteBlock[]) {
 export function directBoardWriter(collab: CollabServer, log?: Logger): BoardWriter {
   return {
     async addCard({ boardId, ...input }) {
-      const connection = await collab.hocuspocus.openDirectConnection(boardDocName(boardId));
+      const connection = await collab.hocuspocus
+        .openDirectConnection(boardDocName(boardId))
+        .catch((err) => {
+          throw new BoardEditNotStarted('The board document could not be opened.', { cause: err });
+        });
       let result: AddCardResult = { ok: false, reason: 'column' };
       try {
         await connection.transact((doc) => {

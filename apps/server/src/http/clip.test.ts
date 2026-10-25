@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, readdirSync, utimesSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readdirSync, utimesSync, writeFileSync } from 'node:fs';
 import { createServer, type Server } from 'node:http';
 import {
   type AddressInfo,
@@ -27,7 +27,8 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import WebSocket from 'ws';
 import * as Y from 'yjs';
 import { createAuth } from '../auth.ts';
-import { type BoardWriter, directBoardWriter } from '../board-writer.ts';
+import { directBoardReader } from '../board-content.ts';
+import { BoardEditNotStarted, type BoardWriter, directBoardWriter } from '../board-writer.ts';
 import { attachCollab, createCollabServer } from '../collab.ts';
 import { loadConfig } from '../config.ts';
 import { createDatabase, runMigrations } from '../db/client.ts';
@@ -103,6 +104,21 @@ describe('sweepClipTemp', () => {
     expect(readdirSync(dir).sort()).toEqual(['clip-new', 'media-old']);
     expect(await sweepClipTemp(join(dir, 'missing'))).toBe(0);
   });
+
+  it('keeps an old folder whose file is still being received, by another replica', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'inkadra-sweep-'));
+    const old = new Date(Date.now() - 2 * 60 * 60 * 1000);
+    for (const name of ['clip-receiving', 'clip-crashed']) {
+      mkdirSync(join(dir, name));
+      writeFileSync(join(dir, name, 'file'), 'chunk');
+    }
+    // A long upload: the folder was made hours ago, its file grew a moment ago.
+    utimesSync(join(dir, 'clip-receiving'), old, old);
+    utimesSync(join(dir, 'clip-crashed', 'file'), old, old);
+    utimesSync(join(dir, 'clip-crashed'), old, old);
+    expect(await sweepClipTemp(dir)).toBe(1);
+    expect(readdirSync(dir)).toEqual(['clip-receiving']);
+  });
 });
 
 describe.skipIf(!url)('clip (needs DATABASE_URL)', () => {
@@ -166,7 +182,7 @@ describe.skipIf(!url)('clip (needs DATABASE_URL)', () => {
       boardId: string;
       elementId: string;
       assetId: string;
-      error: { message: string };
+      error: { message: string; details?: { reason?: string } };
     };
     return { status: res.status, json: (await res.json()) as Reply };
   }
@@ -286,6 +302,7 @@ describe.skipIf(!url)('clip (needs DATABASE_URL)', () => {
       log,
       ...deps,
       boards: directBoardWriter(collab),
+      boardReader: directBoardReader(collab, db),
       tmpDir: deps.root,
       allowAddresses: ['127.0.0.1'],
     });
@@ -676,6 +693,7 @@ describe.skipIf(!url)('clip (needs DATABASE_URL)', () => {
       );
       expect(res.status).toBe(500);
       expect(res.json.error.message).toMatch(/check/);
+      expect(res.json.error.details).toEqual({ reason: 'outcome_unknown' });
       const rows = await db.select().from(asset).where(eq(asset.filename, 'forse.png'));
       expect(rows.length).toBe(1);
     } finally {
@@ -729,9 +747,261 @@ describe.skipIf(!url)('clip (needs DATABASE_URL)', () => {
     }
   });
 
+  /** GET on the API as one of the people, over a real socket. */
+  async function get(path: string, who?: string) {
+    const headers: Record<string, string> = {};
+    const cookie = who ? people[who]?.cookie : undefined;
+    if (cookie) headers.cookie = cookie;
+    const res = await fetch(`http://${base}/api/v1${path}`, { headers });
+    return { status: res.status, json: (await res.json()) as Record<string, unknown> };
+  }
+
+  /** A board of its own, so the columns of other tests do not get in the way. */
+  async function columnsBoard(title: string) {
+    const res = await app.inject({
+      method: 'POST',
+      url: `/api/v1/projects/${projectId}/boards`,
+      headers: { cookie: people.owner?.cookie ?? '', origin: config.PUBLIC_URL },
+      payload: { parentBoardId: boardId, title },
+    });
+    return res.json().id as string;
+  }
+
+  function column(id: string, title: string, x: number, y: number, parent: string | null = null) {
+    return {
+      id,
+      type: 'column' as const,
+      title,
+      x,
+      y,
+      w: 260,
+      z: 'a0',
+      parent,
+      createdBy: null,
+      createdAt: Date.now(),
+    };
+  }
+
+  it('lists the columns of a live board, left to right then top to bottom', async () => {
+    const board = await columnsBoard('Colonne');
+    const [left, low, high, right] = [
+      newElementId(),
+      newElementId(),
+      newElementId(),
+      newElementId(),
+    ];
+    // Held open, as by a browser: nothing is stored yet, the live document has it all.
+    const connection = await collab.hocuspocus.openDirectConnection(boardDocName(board));
+    try {
+      await connection.transact((doc) => {
+        addElement(doc, column(right, 'Dopo', 900, 0));
+        addElement(doc, column(low, 'Sotto', 300, 500));
+        addElement(doc, column(high, '', 300, 100));
+        addElement(doc, column(left, 'Prima', -200, 40));
+        addElement(doc, {
+          id: newElementId(),
+          type: 'color',
+          hex: '#FF0000',
+          x: 0,
+          y: 0,
+          w: 100,
+          z: 'a1',
+          parent: null,
+          createdBy: null,
+          createdAt: Date.now(),
+        });
+      });
+      const res = await get(`/boards/${board}/columns`, 'owner');
+      expect(res.status).toBe(200);
+      expect(res.json).toEqual({
+        items: [
+          { id: left, title: 'Prima' },
+          { id: high, title: '' },
+          { id: low, title: 'Sotto' },
+          { id: right, title: 'Dopo' },
+        ],
+      });
+      // Each one can be clipped to.
+      const other = await otherApp({});
+      const placed = await clip(
+        { boardId: board, columnId: high, text: 'Qui' },
+        { token },
+        other.base,
+      );
+      await other.app.close();
+      expect(placed.status).toBe(201);
+      const card = connection.document
+        ?.getMap<Y.Map<unknown>>('elements')
+        .get(placed.json.elementId);
+      expect(card?.get('parent')).toBe(high);
+    } finally {
+      await connection.disconnect();
+    }
+    // A board never opened has no columns, and no "Non ordinati" among them.
+    expect((await get(`/boards/${await columnsBoard('Vuota')}/columns`, 'owner')).json).toEqual({
+      items: [],
+    });
+  });
+
+  it('lists columns to viewers and board guests, and to nobody else', async () => {
+    const board = await columnsBoard('Permessi');
+    for (const name of ['boardguest']) if (!people[name]) await signUp(name);
+    const grant = await app.inject({
+      method: 'PUT',
+      url: `/api/v1/boards/${board}/grants/${people.boardguest?.id}`,
+      headers: { cookie: people.owner?.cookie ?? '', origin: config.PUBLIC_URL },
+      payload: { role: 'viewer' },
+    });
+    expect(grant.statusCode).toBe(200);
+    const path = `/boards/${board}/columns`;
+    expect((await get(path, 'owner')).status).toBe(200);
+    expect((await get(path, 'viewer')).status).toBe(200);
+    // Given this board only: its columns, not those of the board above it.
+    expect((await get(path, 'boardguest')).status).toBe(200);
+    expect((await get(`/boards/${boardId}/columns`, 'boardguest')).status).toBe(404);
+    expect((await get(path, 'stranger')).status).toBe(404);
+    expect((await get(path)).status).toBe(401);
+    // A board of another project, to its own owner but not to ours.
+    const theirs = await app.inject({
+      method: 'POST',
+      url: '/api/v1/projects',
+      headers: { cookie: people.stranger?.cookie ?? '', origin: config.PUBLIC_URL },
+      payload: { name: 'Altro' },
+    });
+    const otherBoard = theirs.json().rootBoardId as string;
+    expect((await get(`/boards/${otherBoard}/columns`, 'stranger')).status).toBe(200);
+    expect((await get(`/boards/${otherBoard}/columns`, 'owner')).status).toBe(404);
+  });
+
+  it('tells each person their role in search results', async () => {
+    const owner = await get(`/search?q=${encodeURIComponent('Clip')}`, 'owner');
+    const viewer = await get(`/search?q=${encodeURIComponent('Clip')}`, 'viewer');
+    type Hit = { kind: string; myRole?: string };
+    const roles = (res: { json: Record<string, unknown> }) =>
+      (res.json.items as Hit[]).map((h) => [h.kind, h.myRole]);
+    expect(roles(owner)).toContainEqual(['project', 'owner']);
+    expect(roles(viewer)).toContainEqual(['project', 'viewer']);
+    expect(roles(await get('/search?q=Permessi', 'owner'))).toEqual([['board', 'owner']]);
+    expect(roles(await get('/search?q=Permessi', 'viewer'))).toEqual([['board', 'viewer']]);
+    const cards = await get('/search?q=Qui', 'viewer');
+    expect(roles(cards)).toContainEqual(['element', 'viewer']);
+  });
+
+  it('titles a saved link with the title it is sent, not the page one', async () => {
+    const other = await otherApp({});
+    try {
+      const res = await clip(
+        { boardId, url: `${siteUrl}/article`, title: '  Faro — scheda  ' },
+        { token },
+        other.base,
+      );
+      expect(res.status).toBe(201);
+      expect((await boardElement(res.json.elementId)).element).toMatchObject({
+        type: 'link',
+        title: 'Faro — scheda',
+        description: 'Luce radente alle sei',
+      });
+      // Ignored for anything that is not a link.
+      const text = await clip({ boardId, text: 'Citazione', title: 'No' }, { token }, other.base);
+      expect((await boardElement(text.json.elementId)).element).not.toHaveProperty('title');
+    } finally {
+      await other.app.close();
+    }
+  });
+
+  it('says outcome_unknown only when the clip may be on the board', async () => {
+    const halfway: BoardWriter = {
+      async addCard() {
+        throw new Error('write failed halfway');
+      },
+    };
+    const unopened: BoardWriter = {
+      async addCard() {
+        throw new BoardEditNotStarted('The board document could not be opened.');
+      },
+    };
+    const late: BoardWriter = {
+      async addCard() {
+        return { ok: false, reason: 'expired' };
+      },
+    };
+    const send = async (boards: BoardWriter, name: string) => {
+      const other = await otherApp({ boards });
+      try {
+        const res = await clip(form({ boardId }, [png, name, 'image/png']), { token }, other.base);
+        const rows = await db.select().from(asset).where(eq(asset.filename, name));
+        return { status: res.status, details: res.json.error.details, rows: rows.length };
+      } finally {
+        await other.app.close();
+      }
+    };
+    expect(await send(halfway, 'meta.png')).toEqual({
+      status: 500,
+      details: { reason: 'outcome_unknown' },
+      rows: 1,
+    });
+    // Certainly not on the board: no reason, and its files go.
+    expect(await send(unopened, 'chiusa.png')).toEqual({
+      status: 500,
+      details: undefined,
+      rows: 0,
+    });
+    expect(await send(late, 'tardi.png')).toEqual({ status: 500, details: undefined, rows: 0 });
+  });
+
+  it('answers 429 after 30 clips a minute', async () => {
+    const other = await otherApp({});
+    try {
+      const statuses: number[] = [];
+      // Refused for being empty, but counted: the limit comes before anything else.
+      for (let i = 0; i < 31; i++)
+        statuses.push((await clip({ boardId }, { token }, other.base)).status);
+      expect(statuses.slice(0, 30).every((s) => s === 400)).toBe(true);
+      const last = await clip({ boardId, text: 'Uno di troppo' }, { token }, other.base);
+      expect(last.status).toBe(429);
+      expect(statuses[30]).toBe(429);
+    } finally {
+      await other.app.close();
+    }
+  });
+
   describe.skipIf(!redisUrl)('when collab runs on its own (needs REDIS_URL)', () => {
     const prefix = `inkadra-test-${process.pid}`;
     const userId = () => people.owner?.id ?? '';
+
+    it('lists the live columns through the queue', async () => {
+      const board = await columnsBoard('Colonne in coda');
+      const id = newElementId();
+      const worker = startBoardWorker(redisUrl ?? '', directBoardWriter(collab), log, {
+        prefix,
+        reader: directBoardReader(collab, db),
+      });
+      const queued = queuedBoardWriter(redisUrl ?? '', { prefix });
+      const other = await createApp({
+        config,
+        db,
+        auth,
+        log,
+        ...deps,
+        boardReader: queued.reader,
+      });
+      await other.listen({ host: '127.0.0.1', port: 0 });
+      const connection = await collab.hocuspocus.openDirectConnection(boardDocName(board));
+      try {
+        await connection.transact((doc) => addElement(doc, column(id, 'Appena fatta', 0, 0)));
+        const res = await fetch(
+          `http://127.0.0.1:${(other.server.address() as AddressInfo).port}/api/v1/boards/${board}/columns`,
+          { headers: { cookie: people.viewer?.cookie ?? '' } },
+        );
+        expect(res.status).toBe(200);
+        expect(await res.json()).toEqual({ items: [{ id, title: 'Appena fatta' }] });
+      } finally {
+        await connection.disconnect();
+        await other.close();
+        await queued.close();
+        await worker.close();
+      }
+    });
 
     it('goes through the queue', async () => {
       const worker = startBoardWorker(redisUrl ?? '', directBoardWriter(collab), log, { prefix });
@@ -875,7 +1145,7 @@ describe.skipIf(!url)('clip (needs DATABASE_URL)', () => {
       };
       const failing: BoardWriter = {
         async addCard() {
-          throw new Error('The collaboration queue is unreachable.');
+          throw new BoardEditNotStarted('The collaboration queue is unreachable.');
         },
       };
       const apps = [
@@ -907,6 +1177,7 @@ describe.skipIf(!url)('clip (needs DATABASE_URL)', () => {
         const unknown = await timed('forse-coda.png', apps[1].base);
         expect(unknown.status).toBe(500);
         expect(unknown.json.error.message).toMatch(/check/);
+        expect(unknown.json.error.details).toEqual({ reason: 'outcome_unknown' });
         expect(unknown.ms).toBeLessThan(5000);
         expect(await rows('forse-coda.png')).toBe(1);
 
@@ -914,6 +1185,7 @@ describe.skipIf(!url)('clip (needs DATABASE_URL)', () => {
         const files = originals();
         const failed = await timed('persa.png', apps[2].base);
         expect(failed.status).toBe(500);
+        expect(failed.json.error.details).toBeUndefined();
         expect(failed.ms).toBeLessThan(5000);
         expect(await rows('persa.png')).toBe(0);
         expect(originals()).toBe(files);
