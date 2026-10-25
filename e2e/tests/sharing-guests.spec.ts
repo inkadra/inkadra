@@ -386,7 +386,8 @@ test('the team sees the comment and the picks', async ({ page, baseURL }) => {
   await dialog.getByRole('button', { name: 'Torna ai link' }).click();
   await expect(dialog.getByRole('button', { name: 'Nuovo link per ospiti' })).toBeVisible();
 
-  // The comment is in the comments panel too, marked as a guest's, next to the team's thread.
+  // The comment is in the comments panel too, marked as a guest of the named link, next to the
+  // team's thread.
   await page.keyboard.press('Escape');
   await expect(dialog).toBeHidden();
   await page.getByRole('button', { name: 'Commenti: 2 discussioni aperte' }).click();
@@ -396,7 +397,7 @@ test('the team sees the comment and the picks', async ({ page, baseURL }) => {
     .filter({ hasText: 'Bellissima la luce della prima.' })
     .locator('.comment-author');
   await expect(author).toContainText('Marta Rossi');
-  await expect(author.getByText('Ospite', { exact: true })).toBeVisible();
+  await expect(author.getByText('Ospite del link “Cliente”', { exact: true })).toBeVisible();
   await expect(comments.getByText('Solo per il team: rifare il tramonto')).toBeVisible();
 });
 
