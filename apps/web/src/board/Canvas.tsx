@@ -67,6 +67,7 @@ import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router';
 import * as Y from 'yjs';
 import { useSession } from '../lib/session.tsx';
+import { accessNotices } from './access-notices.ts';
 import { ArrowLayer } from './arrows.tsx';
 import { createBoard } from './boards.ts';
 import { Card } from './cards.tsx';
@@ -350,18 +351,22 @@ export function Canvas({
     if (bounds) setViewport(fitRect(bounds, size.w, size.h));
   }, [conn.status, size, snap, liveRect, setViewport]);
 
-  // A role change while the board is open: leave the note being written and say why.
-  useEffect(() => {
-    if (conn.accessChangedAt === null) return;
-    if (conn.readOnly) setEditing(null);
-    setToast({
-      text: t(conn.readOnly ? 'board.access.readOnly' : 'board.access.editable'),
-      undo: false,
-    });
-  }, [conn.accessChangedAt, conn.readOnly, setEditing, t]);
-
   // Others see where we point, what we selected and which card we write in.
   const presence = useLocalPresence(preview ? null : conn.provider);
+
+  // A role change while the board is open: leave the note being written and say why, and
+  // publish presence again so the server stamps the new role for the others right away.
+  const [nextAccessNotice] = useState(accessNotices);
+  useEffect(() => {
+    const notice = nextAccessNotice(conn);
+    if (!notice) return;
+    if (notice.readOnly) setEditing(null);
+    presence.flush();
+    setToast({
+      text: t(notice.readOnly ? 'board.access.readOnly' : 'board.access.editable'),
+      undo: false,
+    });
+  }, [conn, nextAccessNotice, presence, setEditing, t]);
   useEffect(() => {
     presence.selection([...selection], editing);
   }, [presence, selection, editing]);

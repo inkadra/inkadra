@@ -88,9 +88,6 @@ export const authApi = {
     auth('/request-password-reset', { email, redirectTo: '/reset-password' }),
   resetPassword: (token: string, newPassword: string) =>
     auth('/reset-password', { token, newPassword }),
-  listSessions: () => auth<AuthSession[]>('/list-sessions'),
-  currentSession: () => auth<{ session: AuthSession } | null>('/get-session'),
-  revokeSession: (token: string) => auth('/revoke-session', { token }),
   revokeOtherSessions: () => auth('/revoke-other-sessions', {}),
   listAccounts: () => auth<Array<{ id: string; providerId: string }>>('/list-accounts'),
   unlinkAccount: (providerId: string) => auth('/unlink-account', { providerId }),
@@ -106,13 +103,3 @@ export const authApi = {
     }),
   signOut: () => request(`${AUTH_PREFIX}/sign-out`, { method: 'POST', body: '{}' }),
 };
-
-export interface AuthSession {
-  id: string;
-  token: string;
-  userAgent: string | null;
-  ipAddress: string | null;
-  createdAt: string;
-  updatedAt: string;
-  expiresAt: string;
-}

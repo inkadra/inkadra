@@ -1,4 +1,5 @@
 import {
+  type AccountSession,
   API_PREFIX,
   type AppAuthorizationRedirect,
   type AppClient,
@@ -8,11 +9,12 @@ import {
   CreatePersonalToken,
   DeleteMe,
   type DeleteMeBlocked,
+  DenyAppAuthorization,
   ExchangeAppCode,
   Id,
   z,
 } from '@inkadra/shared';
-import { and, asc, count, eq, inArray, ne } from 'drizzle-orm';
+import { and, asc, count, desc, eq, gt, inArray, ne } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
 import type { Auth } from '../auth.ts';
 import type { Config } from '../config.ts';
@@ -26,6 +28,7 @@ import {
   personalToken,
   project,
   projectMember,
+  session as sessionTable,
   user,
   verification,
 } from '../db/schema.ts';
@@ -45,6 +48,7 @@ interface Deps {
 }
 
 const TokenParams = z.object({ tokenId: Id });
+const SessionParams = z.object({ sessionId: Id });
 const CODE_TTL_MS = 2 * 60_000;
 const FRESH_SIGN_IN_MS = 15 * 60_000;
 const CLIENT_NAMES: Record<AppClient, string> = { clipper: 'Inkadra Clipper', mobile: 'Inkadra' };
@@ -75,6 +79,47 @@ export function registerAccountRoutes(app: FastifyInstance, deps: Deps) {
   const { config, db, auth, jobs } = deps;
   const v1 = (path: string) => `${API_PREFIX}${path}`;
   const exchangeLimiter = new RateLimiter(20, 60_000);
+
+  // Sessions ---------------------------------------------------------------------
+  // Better Auth's /list-sessions hands every session token to the page so it can revoke
+  // them; these routes never send a token, and /list-sessions and /revoke-session are off.
+
+  app.get(v1('/me/sessions'), async (req) => {
+    const session = await requireSession(auth, req);
+    const rows = await db
+      .select({
+        id: sessionTable.id,
+        userAgent: sessionTable.userAgent,
+        ipAddress: sessionTable.ipAddress,
+        createdAt: sessionTable.createdAt,
+        updatedAt: sessionTable.updatedAt,
+        expiresAt: sessionTable.expiresAt,
+      })
+      .from(sessionTable)
+      .where(and(eq(sessionTable.userId, session.user.id), gt(sessionTable.expiresAt, new Date())))
+      .orderBy(desc(sessionTable.updatedAt));
+    const items: AccountSession[] = rows.map((row) => ({
+      ...row,
+      current: row.id === session.session.id,
+      createdAt: row.createdAt.toISOString(),
+      updatedAt: row.updatedAt.toISOString(),
+      expiresAt: row.expiresAt.toISOString(),
+    }));
+    return { items };
+  });
+
+  app.delete(v1('/me/sessions/:sessionId'), async (req, reply) => {
+    const session = await requireSession(auth, req);
+    const { sessionId } = SessionParams.parse(req.params);
+    const [row] = await db
+      .select({ token: sessionTable.token })
+      .from(sessionTable)
+      .where(and(eq(sessionTable.id, sessionId), eq(sessionTable.userId, session.user.id)));
+    if (!row) throw new HttpError('not_found', 'Session not found.');
+    // Through Better Auth, so that any session cache it keeps is cleared too.
+    await (await auth.$context).internalAdapter.deleteSession(row.token);
+    return reply.status(204).send();
+  });
 
   // Tokens -----------------------------------------------------------------------
 
@@ -139,6 +184,20 @@ export function registerAccountRoutes(app: FastifyInstance, deps: Deps) {
     });
     const target = new URL(input.redirectUri);
     target.searchParams.set('code', code);
+    if (input.state !== undefined) target.searchParams.set('state', input.state);
+    const body: AppAuthorizationRedirect = { redirectTo: target.toString() };
+    return body;
+  });
+
+  // Denying is decided here too: the page never builds a redirect itself, and only an
+  // exact allowed address hears about it (RFC 6749 §4.1.2.1).
+  app.post(v1('/app-authorizations/deny'), async (req) => {
+    await requireSession(auth, req);
+    const input = DenyAppAuthorization.parse(req.body ?? {});
+    if (!allowedRedirects(config, input.clientId).includes(input.redirectUri))
+      throw new HttpError('bad_request', 'This redirect address is not allowed for this app.');
+    const target = new URL(input.redirectUri);
+    target.searchParams.set('error', 'access_denied');
     if (input.state !== undefined) target.searchParams.set('state', input.state);
     const body: AppAuthorizationRedirect = { redirectTo: target.toString() };
     return body;

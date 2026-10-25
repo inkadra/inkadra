@@ -7,7 +7,12 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createAuth } from '../auth.ts';
 import { loadConfig } from '../config.ts';
 import { createDatabase, runMigrations } from '../db/client.ts';
-import { invitation as invitationTable, project } from '../db/schema.ts';
+import {
+  invitation as invitationTable,
+  project,
+  session as sessionTable,
+  verification,
+} from '../db/schema.ts';
 import { memoryMailer } from '../mailer.ts';
 import { pkceChallenge } from '../secrets.ts';
 import { testDeps } from '../test-deps.ts';
@@ -108,6 +113,9 @@ describe.skipIf(!url)('sharing, invitations, tokens and accounts (needs DATABASE
     await runMigrations(config.DATABASE_URL, migrationsFolder);
     await db.execute(sql`truncate table "user", project, instance_setting, verification cascade`);
     const auth = createAuth(config, db, { mailer });
+    // Revocation must be observed on the next request, including with the old cookies.
+    expect(auth.options).not.toHaveProperty('session.cookieCache.enabled', true);
+    expect(auth.options).not.toHaveProperty('secondaryStorage');
     app = await createApp({ config, db, auth, log, mailer, ...testDeps(db, log) });
     await app.listen({ host: '127.0.0.1', port: 0 });
     base = `http://127.0.0.1:${(app.server.address() as AddressInfo).port}`;
@@ -209,6 +217,19 @@ describe.skipIf(!url)('sharing, invitations, tokens and accounts (needs DATABASE
     expect(detail.body.breadcrumb).toEqual([{ id: pre, title: 'Pre-produzione' }]);
     expect((await call('guest', 'GET', `/api/v1/boards/${root}`)).status).toBe(404);
     expect((await call('guest', 'GET', `/api/v1/projects/${projectId}`)).status).toBe(404);
+    // AppLayout requests boards even on /p/:id. Its network responses must not disclose
+    // whether an inaccessible project exists.
+    for (const suffix of ['', '/boards']) {
+      const foreign = await call('outsider', 'GET', `/api/v1/projects/${projectId}${suffix}`);
+      const missing = await call(
+        'outsider',
+        'GET',
+        `/api/v1/projects/00000000-0000-4000-8000-000000000000${suffix}`,
+      );
+      expect(foreign.status).toBe(404);
+      expect(missing.status).toBe(foreign.status);
+      expect(missing.body).toEqual(foreign.body);
+    }
     const child = (parentBoardId: string) =>
       call('guest', 'POST', `/api/v1/projects/${projectId}/boards`, {
         parentBoardId,
@@ -396,6 +417,165 @@ describe.skipIf(!url)('sharing, invitations, tokens and accounts (needs DATABASE
     expect(listed.body.items[0].lastUsedAt).not.toBeNull();
     expect((await call(bearer, 'DELETE', `/api/v1/me/tokens/${id}`)).status).toBe(204);
     expect((await call(bearer, 'GET', '/api/v1/me')).status).toBe(401);
+  });
+
+  it('lists sessions without tokens and ends only your own, by id', async () => {
+    const signIn = await call(null, 'POST', '/api/auth/sign-in/email', {
+      email: as.owner.email,
+      password: PASSWORD,
+    });
+    const other = { cookie: cookieOf(signIn.cookies, 'inkadra.session_token') };
+    const listed = await call('owner', 'GET', '/api/v1/me/sessions');
+    expect(listed.status).toBe(200);
+    expect((await call(null, 'GET', '/api/v1/me/sessions')).status).toBe(401);
+    const tokens = await db.select({ token: sessionTable.token }).from(sessionTable);
+    for (const { token } of tokens) expect(JSON.stringify(listed.body)).not.toContain(token);
+    for (const item of listed.body.items) {
+      expect(Object.keys(item).sort()).toEqual([
+        'createdAt',
+        'current',
+        'expiresAt',
+        'id',
+        'ipAddress',
+        'updatedAt',
+        'userAgent',
+      ]);
+      expect(item.id).toMatch(
+        /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/,
+      );
+    }
+    const mine = listed.body.items.find((s: { current: boolean }) => s.current);
+    const second = listed.body.items.find((s: { current: boolean }) => !s.current);
+    expect(mine && second).toBeTruthy();
+    // Better Auth's endpoints that hand out or take session tokens are off.
+    const raw = (method: string, path: string) =>
+      fetch(`${base}${path}`, {
+        method,
+        headers: {
+          origin: config.PUBLIC_URL,
+          cookie: as.owner.cookie,
+          ...(method === 'POST' ? { 'content-type': 'application/json' } : {}),
+        },
+        ...(method === 'POST' ? { body: JSON.stringify({ token: 'x' }) } : {}),
+      });
+    expect((await raw('GET', '/api/auth/list-sessions')).status).toBe(404);
+    expect((await raw('POST', '/api/auth/revoke-session')).status).toBe(404);
+    for (const endpoint of ['list-sessions', 'revoke-session']) {
+      for (const path of [
+        `/api/auth/${endpoint}?x=1`,
+        `/api/auth/${endpoint}/`,
+        `/api/auth//${endpoint}`,
+        `/api/auth/${endpoint.replace('-', '%2D')}`,
+        `/api/auth/${endpoint.toUpperCase()}`,
+        `/api/auth/x/../${endpoint}`,
+        `/api/auth%2F${endpoint}`,
+        `/api/auth/${endpoint};x`,
+      ]) {
+        for (const method of ['GET', 'POST', 'HEAD', 'DELETE', 'PUT', 'OPTIONS']) {
+          const response = await raw(method, path);
+          expect([404, 405], `${method} ${path}`).toContain(response.status);
+          await response.arrayBuffer();
+        }
+      }
+    }
+
+    // Someone else's session is not found, and tokens cannot end sessions.
+    const theirs = (await call('editor', 'GET', '/api/v1/me/sessions')).body.items[0];
+    expect((await call('owner', 'DELETE', `/api/v1/me/sessions/${theirs.id}`)).status).toBe(404);
+    expect((await call('editor', 'GET', '/api/v1/me')).status).toBe(200);
+    const created = await call('owner', 'POST', '/api/v1/me/tokens', { name: 'Sessions' });
+    const bearer = { bearer: created.body.token };
+    expect((await call(bearer, 'GET', '/api/v1/me/sessions')).status).toBe(403);
+    expect((await call(bearer, 'DELETE', `/api/v1/me/sessions/${second.id}`)).status).toBe(403);
+
+    expect((await call(other, 'GET', '/api/v1/me')).status).toBe(200);
+    expect((await call('owner', 'DELETE', `/api/v1/me/sessions/${second.id}`)).status).toBe(204);
+    expect((await call(other, 'GET', '/api/v1/me')).status).toBe(401);
+    expect((await call('owner', 'GET', '/api/v1/me')).status).toBe(200);
+    expect((await call('owner', 'DELETE', `/api/v1/me/sessions/${second.id}`)).status).toBe(404);
+
+    const again = await call(null, 'POST', '/api/auth/sign-in/email', {
+      email: as.owner.email,
+      password: PASSWORD,
+    });
+    const fresh = { cookie: cookieOf(again.cookies, 'inkadra.session_token') };
+    const self = (await call(fresh, 'GET', '/api/v1/me/sessions')).body.items.find(
+      (s: { current: boolean }) => s.current,
+    );
+    expect((await call(fresh, 'DELETE', `/api/v1/me/sessions/${self.id}`)).status).toBe(204);
+    expect((await call(fresh, 'GET', '/api/v1/me')).status).toBe(401);
+    expect((await call('owner', 'POST', '/api/auth/revoke-other-sessions', {})).status).toBe(200);
+    expect((await call('owner', 'GET', '/api/v1/me')).status).toBe(200);
+  });
+
+  it('tells a denied app only on its exact redirect address, with the state', async () => {
+    const redirectUri = `https://${EXTENSION_ID}.chromiumapp.org/auth`;
+    const deny = (body: Record<string, unknown>, who: Who | null = 'editor') =>
+      call(who, 'POST', '/api/v1/app-authorizations/deny', {
+        clientId: 'clipper',
+        redirectUri,
+        state: 'xyz',
+        ...body,
+      });
+    expect((await deny({}, null)).status).toBe(401);
+    for (const bad of [
+      'https://evilevilevilevilevilevilevilevil.chromiumapp.org/auth',
+      `https://${EXTENSION_ID}.chromiumapp.org/other`,
+      'inkadra://auth',
+      `${redirectUri}?state=leaked`,
+      `${redirectUri}#fragment`,
+      `${redirectUri}/../other`,
+      `${redirectUri}.evil.example`,
+      `https://${EXTENSION_ID}.chromiumapp.org@evil.example/auth`,
+    ])
+      expect((await deny({ redirectUri: bad })).status).toBe(400);
+    expect((await deny({ clientId: 'mobile' })).status).toBe(400);
+
+    const token = await call('owner', 'POST', '/api/v1/me/tokens', { name: 'Deny test' });
+    expect(
+      (
+        await call({ bearer: token.body.token }, 'POST', '/api/v1/app-authorizations/deny', {
+          clientId: 'mobile',
+          redirectUri: 'inkadra://auth',
+        })
+      ).status,
+    ).toBe(403);
+    for (const origin of [
+      'https://evil.example',
+      'http://sibling.localhost:3000',
+      'null',
+      undefined,
+    ]) {
+      const response = await fetch(`${base}/api/v1/app-authorizations/deny`, {
+        method: 'POST',
+        headers: {
+          cookie: as.editor.cookie,
+          'content-type': 'application/json',
+          ...(origin === undefined ? {} : { origin }),
+        },
+        body: JSON.stringify({ clientId: 'clipper', redirectUri, state: 'private-state' }),
+      });
+      expect(response.status).toBe(403);
+      expect(response.headers.get('location')).toBeNull();
+      expect(await response.text()).not.toContain('private-state');
+    }
+
+    const before = await db.select().from(verification);
+    const denied = await deny({});
+    expect(await db.select().from(verification)).toEqual(before);
+    expect(denied.status).toBe(200);
+    const target = new URL(denied.body.redirectTo);
+    expect(target.origin + target.pathname).toBe(redirectUri);
+    expect(Object.fromEntries(target.searchParams)).toEqual({
+      error: 'access_denied',
+      state: 'xyz',
+    });
+    const mobile = new URL(
+      (await deny({ clientId: 'mobile', redirectUri: 'inkadra://auth', state: undefined })).body
+        .redirectTo,
+    );
+    expect(mobile.searchParams.get('error')).toBe('access_denied');
+    expect(mobile.searchParams.has('code')).toBe(false);
   });
 
   it('gives the official apps a token with a PKCE code', async () => {

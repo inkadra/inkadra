@@ -98,6 +98,8 @@ export function createAuth(config: Config, db: Database, deps: AuthDeps = {}) {
     basePath: '/api/auth',
     secret: config.AUTH_SECRET,
     trustedOrigins: [config.PUBLIC_URL],
+    // They expose or take session tokens; the account page uses /api/v1/me/sessions instead.
+    disabledPaths: ['/list-sessions', '/revoke-session'],
     database: drizzleAdapter(db, {
       provider: 'pg',
       schema: {

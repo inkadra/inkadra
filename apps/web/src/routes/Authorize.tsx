@@ -11,8 +11,8 @@ const CLIENTS: AppClient[] = ['clipper', 'mobile'];
 
 /**
  * /authorize, opened by the browser clipper or the mobile app (OAuth 2.0 code with PKCE).
- * The person sees which app and device ask, and allows it; the server checks the redirect
- * address against the official ones before handing out a code.
+ * The person sees which app and device ask, and allows or denies it; the server checks the
+ * redirect address against the official ones before answering with a code or an error.
  */
 export function Authorize() {
   const { t } = useTranslation();
@@ -62,6 +62,25 @@ export function Authorize() {
     }
   }
 
+  // The server checks the address and adds `error=access_denied`; if it refuses, nobody
+  // is waiting for an answer and the page only says that no access was given.
+  async function deny() {
+    setBusy(true);
+    setError(null);
+    try {
+      const { redirectTo } = await api.post<AppAuthorizationRedirect>('/app-authorizations/deny', {
+        clientId: request.clientId,
+        redirectUri: request.redirectUri,
+        state: request.state,
+      });
+      setCancelled(true);
+      window.location.assign(redirectTo);
+    } catch {
+      setCancelled(true);
+      setBusy(false);
+    }
+  }
+
   return (
     <div className="login">
       <div className="login__dots" aria-hidden="true" />
@@ -98,7 +117,7 @@ export function Authorize() {
             <Button variant="primary" size="lg" block disabled={busy} onClick={allow}>
               {t('authorize.allow')}
             </Button>
-            <Button variant="ghost" block disabled={busy} onClick={() => setCancelled(true)}>
+            <Button variant="ghost" block disabled={busy} onClick={deny}>
               {t('authorize.deny')}
             </Button>
           </>
