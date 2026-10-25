@@ -58,6 +58,22 @@ export const DeleteMeBlocked = z
   .openapi('DeleteMeBlocked');
 export type DeleteMeBlocked = z.infer<typeof DeleteMeBlocked>;
 
+// Sessions ----------------------------------------------------------------------------
+
+/** A browser signed in to the account. Never carries the session token. */
+export const AccountSession = z
+  .object({
+    id: Id,
+    current: z.boolean().openapi({ description: 'The session making this request.' }),
+    userAgent: z.string().nullable(),
+    ipAddress: z.string().nullable(),
+    createdAt: Timestamp,
+    updatedAt: Timestamp.openapi({ description: 'Last time the session was refreshed.' }),
+    expiresAt: Timestamp,
+  })
+  .openapi('AccountSession');
+export type AccountSession = z.infer<typeof AccountSession>;
+
 // Tokens for the browser clipper, the mobile app and scripts -------------------------
 
 export const AppClient = z.enum(['clipper', 'mobile']).openapi({
@@ -123,6 +139,14 @@ export const AppAuthorizationRedirect = z
   })
   .openapi('AppAuthorizationRedirect');
 export type AppAuthorizationRedirect = z.infer<typeof AppAuthorizationRedirect>;
+
+/** Sent by the /authorize page when the person denies the app. */
+export const DenyAppAuthorization = CreateAppAuthorization.pick({
+  clientId: true,
+  redirectUri: true,
+  state: true,
+}).openapi('DenyAppAuthorization');
+export type DenyAppAuthorization = z.infer<typeof DenyAppAuthorization>;
 
 export const ExchangeAppCode = z
   .object({
