@@ -96,6 +96,27 @@ describe('the reload guard and tus uploads', () => {
     expect(release).toHaveBeenCalledTimes(1);
   });
 
+  it('keeps holding it when the same file is added again to resume a failed upload', async () => {
+    const { key, upload } = start({ name: 'again.pdf' });
+    await flush();
+    expect(isBusy()).toBe(true);
+
+    // Dropping the same file again resumes the failed upload instead of starting another.
+    const again = startUpload({
+      file: pdf('again.pdf'),
+      projectId: 'p1',
+      boardId: 'b1',
+      onAsset: vi.fn(),
+    });
+    expect(again).toBe(key);
+    expect(FakeUpload.all.at(-1)).toBe(upload);
+    expect(upload.starts).toBe(2);
+    expect(isBusy()).toBe(true);
+
+    cancelUpload(key);
+    expect(isBusy()).toBe(false);
+  });
+
   it('keeps holding it while an upload is still running, and releases it on cancel', async () => {
     const key = startUpload({
       file: pdf('running.pdf'),
