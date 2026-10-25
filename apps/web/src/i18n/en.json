@@ -1142,7 +1142,7 @@
   "pwa": {
     "updateAvailable": "New version available",
     "update": "Update",
-    "updateWhenSaved": "Updates once your changes are saved and uploads finish",
+    "updateWhenSaved": "Updates once your changes are saved and uploads finish or are cancelled",
     "later": "Later",
     "offline": {
       "title": "You are offline",

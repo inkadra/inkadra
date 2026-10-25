@@ -5,7 +5,8 @@ import './pwa.css';
 
 /**
  * "New version available — Update": small, out of the way, never blocking. While the board
- * is saving or an upload runs, the update waits for them and says so.
+ * is saving or an upload can still run (also a failed one, until retried or cancelled), the
+ * update waits for them and says so.
  */
 export function UpdatePrompt() {
   const { t } = useTranslation();

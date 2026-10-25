@@ -29,11 +29,11 @@ to read in a review.
   them alone. Navigation preload stays off, so an OAuth callback is requested exactly once.
 - A new version installs in the background and waits. The page shows _New version available —
   Update_; pressing it activates the new worker and reloads. If the open board has changes the
-  server has not confirmed, or an upload is running or paused, the update waits for them and
-  says so: nothing is stored locally, so a reload would lose them. A tab opened after the
-  upgrade already runs the new version (the worker tells it which build files it holds), so it
-  gets no prompt and activates the new worker without reloading. Activation deletes the caches
-  of older versions.
+  server has not confirmed, or an upload is running, paused or failed (it can still be
+  retried until it is cancelled), the update waits for them and says so: nothing is stored
+  locally, so a reload would lose them. A tab opened after the upgrade already runs the new
+  version (the worker tells it which build files it holds), so it gets no prompt and
+  activates the new worker without reloading. Activation deletes the caches of older versions.
 - Until then a tab keeps the code and the lazily loaded chunks of the version it started with,
   even after the server has been upgraded. This holds per tab, not per browser: once another
   tab activates the new version, the old cache is gone and this tab's chunks that were not
