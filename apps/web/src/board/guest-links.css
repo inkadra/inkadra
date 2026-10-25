@@ -235,3 +235,12 @@
   font-size: 12px;
   color: var(--ink-text-secondary);
 }
+
+.guest-picks-item__thumbnail {
+  width: 64px;
+  height: 48px;
+  object-fit: contain;
+  flex-shrink: 0;
+  border-radius: 4px;
+  background: var(--ink-surface-1);
+}
