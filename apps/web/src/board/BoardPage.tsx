@@ -110,6 +110,10 @@ function BoardScreen({
   const [versionsOpen, setVersionsOpen] = useState(false);
   const [headerMenu, setHeaderMenu] = useState(false);
   const [preview, setPreview] = useState<VersionPreview | null>(null);
+  const liveSelection = useRef<ReadonlySet<string>>(new Set());
+  const rememberSelection = useCallback((ids: ReadonlySet<string>) => {
+    liveSelection.current = ids;
+  }, []);
   const previewStore = preview?.store;
   useEffect(
     () => () => {
@@ -287,6 +291,7 @@ function BoardScreen({
   const versions = editable && (
     <VersionsDialog
       open={versionsOpen}
+      provider={conn.provider}
       boardId={boardId}
       onClose={() => setVersionsOpen(false)}
       preview={preview}
@@ -294,40 +299,49 @@ function BoardScreen({
       onRestored={clearUndo}
     />
   );
-  const content = preview ? (
-    <Canvas
-      key={preview.version.id}
-      conn={{ ...conn, store: preview.store, readOnly: true }}
-      preview
-      projectId={projectId}
-      boardId={boardId}
-      userId={user.id}
-      boards={boards}
-      canEdit={false}
-      peers={[]}
-      onOpenBoard={() => {}}
-    />
-  ) : view === 'storyboard' ? (
-    <StoryboardView
-      store={conn.store}
-      projectId={projectId}
-      boardId={boardId}
-      userId={user.id}
-      readOnly={!editable}
-    />
-  ) : view === 'shotlist' ? (
-    <ShotList store={conn.store} boardTitle={crumbs.at(-1)?.title ?? ''} readOnly={!editable} />
-  ) : (
-    <BoardCanvas
-      conn={conn}
-      projectId={projectId}
-      boardId={boardId}
-      userId={user.id}
-      boards={boards}
-      canEdit={canEdit(detail?.myRole ?? projectRole)}
-      onOpenBoard={openBoard}
-    />
-  );
+  const content =
+    view === 'storyboard' ? (
+      <StoryboardView
+        key={preview?.version.id ?? 'live'}
+        store={preview?.store ?? conn.store}
+        projectId={projectId}
+        boardId={boardId}
+        userId={user.id}
+        readOnly={!!preview || !editable}
+      />
+    ) : view === 'shotlist' ? (
+      <ShotList
+        key={preview?.version.id ?? 'live'}
+        store={preview?.store ?? conn.store}
+        boardTitle={crumbs.at(-1)?.title ?? ''}
+        readOnly={!!preview || !editable}
+      />
+    ) : preview ? (
+      <Canvas
+        key={preview.version.id}
+        conn={{ ...conn, store: preview.store, readOnly: true }}
+        preview
+        projectId={projectId}
+        boardId={boardId}
+        userId={user.id}
+        boards={boards}
+        canEdit={false}
+        peers={[]}
+        onOpenBoard={() => {}}
+      />
+    ) : (
+      <BoardCanvas
+        initialSelection={liveSelection.current}
+        onSelectionChange={rememberSelection}
+        conn={conn}
+        projectId={projectId}
+        boardId={boardId}
+        userId={user.id}
+        boards={boards}
+        canEdit={canEdit(detail?.myRole ?? projectRole)}
+        onOpenBoard={openBoard}
+      />
+    );
   return (
     <div
       className={preview ? 'board-preview' : undefined}

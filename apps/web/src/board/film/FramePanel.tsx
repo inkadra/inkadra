@@ -42,7 +42,7 @@ export function FramePanel({
 }) {
   const { t } = useTranslation();
   const fileInput = useRef<HTMLInputElement>(null);
-  const set = (patch: Patch) => updateElement(store.doc, frame.id, patch, LOCAL);
+  const set = (patch: Patch) => !readOnly && updateElement(store.doc, frame.id, patch, LOCAL);
   const text = (v: string) => v.trim() || undefined;
   return (
     <aside className="film-panel" aria-label={t('film.frame.details')} data-chrome data-scroll>

@@ -1,5 +1,5 @@
 import { migrateBoardDoc, SchemaTooNewError } from '@inkadra/doc-schema';
-import type { BoardVersion } from '@inkadra/shared';
+import { type BoardVersion, BoardVersionConflict, OutcomeUnknown } from '@inkadra/shared';
 import * as Y from 'yjs';
 import { RequestError } from '../lib/api.ts';
 import { BoardStore } from './store.ts';
@@ -61,15 +61,22 @@ export type VersionErrorKey =
   | 'unconfirmed'
   | 'generic';
 
-/** Which message explains a failed version request; the 409s of the API differ by action. */
+/** Which message explains a failed version request; legacy 409s without a reason differ by action. */
 export function versionError(err: unknown, action: VersionAction): VersionErrorKey {
   if (err instanceof SchemaTooNewError) return 'tooNew';
   if (!(err instanceof RequestError)) return 'generic';
   if (err.status === 429) return 'rateLimited';
   if (err.status === 403) return 'forbidden';
   if (err.status === 404) return 'notFound';
-  if (err.status === 409) return action === 'save' || action === 'rename' ? 'limit' : 'tooNew';
-  // The board may have applied a save or restore it did not confirm in time.
+  if (err.status === 409) {
+    const conflict = BoardVersionConflict.safeParse(err.details);
+    if (conflict.success)
+      return conflict.data.reason === 'named_versions_limit' ? 'limit' : 'tooNew';
+    return action === 'save' || action === 'rename' ? 'limit' : 'tooNew';
+  }
+  // The board may have applied a save or restore it did not confirm in time. Servers before
+  // decision 0017 send no reason, so a 500 of either stays unconfirmed (never "not done").
+  if (err.status >= 500 && OutcomeUnknown.safeParse(err.details).success) return 'unconfirmed';
   if (err.status >= 500 && (action === 'save' || action === 'restore')) return 'unconfirmed';
   return 'generic';
 }

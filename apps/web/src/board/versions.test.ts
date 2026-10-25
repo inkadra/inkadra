@@ -73,3 +73,27 @@ it('explains each failure for the action that caused it', () => {
   expect(versionError(status(500), 'read')).toBe('generic');
   expect(versionError(new TypeError('offline'), 'save')).toBe('generic');
 });
+
+it('reads the reason of conflicts and unconfirmed changes, and stays careful without one', () => {
+  const failed = (code: number, details?: unknown) => new RequestError(code, 'x', 'x', details);
+  const limit = { reason: 'named_versions_limit' };
+  const newer = { reason: 'newer_schema' };
+  const unknown = { reason: 'outcome_unknown' };
+  expect(versionError(failed(409, limit), 'rename')).toBe('limit');
+  expect(versionError(failed(409, newer), 'preview')).toBe('tooNew');
+  // A reason wins over the action that used to decide.
+  expect(versionError(failed(409, newer), 'save')).toBe('tooNew');
+  expect(versionError(failed(409, limit), 'restore')).toBe('limit');
+  // Unknown reasons fall back to the legacy reading.
+  expect(versionError(failed(409, { reason: 'later' }), 'save')).toBe('limit');
+  expect(versionError(failed(409, { reason: 'later' }), 'restore')).toBe('tooNew');
+  for (const action of ['save', 'restore'] as const) {
+    expect(versionError(failed(500, unknown), action)).toBe('unconfirmed');
+    // Legacy servers omit details and newer ones may send other reasons: still unconfirmed.
+    expect(versionError(failed(500), action)).toBe('unconfirmed');
+    expect(versionError(failed(500, { reason: 'later' }), action)).toBe('unconfirmed');
+    expect(versionError(failed(503, 'not json'), action)).toBe('unconfirmed');
+  }
+  expect(versionError(failed(500, unknown), 'rename')).toBe('unconfirmed');
+  expect(versionError(failed(500), 'delete')).toBe('generic');
+});

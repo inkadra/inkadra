@@ -177,6 +177,7 @@ export interface CanvasProps {
   boards: Board[] | null;
   canEdit: boolean;
   preview?: boolean;
+  initialSelection?: ReadonlySet<string>;
   peers: Peer[];
   onOpenBoard: (boardId: string) => void;
   /** Told whenever the selection changes. */
@@ -200,6 +201,7 @@ export function Canvas({
   boards,
   canEdit,
   preview = false,
+  initialSelection = EMPTY_SET,
   peers,
   onOpenBoard,
   onSelectionChange,
@@ -250,7 +252,7 @@ export function Canvas({
   const vp = useRef(viewport);
   const settleTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const fitted = useRef(!preview && loadViewport(boardId) !== null);
-  const [selection, setSelection] = useState<ReadonlySet<string>>(EMPTY_SET);
+  const [selection, setSelection] = useState<ReadonlySet<string>>(initialSelection);
   const [editing, setEditingState] = useState<string | null>(null);
   const [tool, setTool] = useState<CanvasTool>('select');
   /** Frame whose details panel is open, frame being drawn, image or video in the viewer. */
@@ -999,6 +1001,8 @@ export function Canvas({
   const keyHandler = useRef<(e: KeyboardEvent) => void>(() => {});
   keyHandler.current = (e: KeyboardEvent) => {
     if (insideDialog()) return;
+    // A menu or the version banner already handled this Escape; a preview has nothing to clear.
+    if (e.key === 'Escape' && (e.defaultPrevented || preview)) return;
     if (e.key === ' ' && !isTyping(e.target)) {
       spaceDown.current = e.type === 'keydown';
       if (e.type === 'keydown') e.preventDefault();

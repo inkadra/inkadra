@@ -23,6 +23,7 @@ import { aspectLabel, useBoardAspect } from './aspect.ts';
 import { DrawingEditor } from './DrawingEditor.tsx';
 import { FramePanel } from './FramePanel.tsx';
 import { FramePicture } from './FramePicture.tsx';
+import { FrameVisibilityButton } from './FrameVisibilityButton.tsx';
 import { blurOnEnter, StatusChip, usePresetText } from './fields.tsx';
 
 const FRAME_MIME = 'application/x-inkadra-frame';
@@ -242,6 +243,8 @@ function SceneSection({
 }) {
   const { t } = useTranslation();
   const { scene, frames } = group;
+  const [localCollapsed, setLocalCollapsed] = useState<boolean | null>(null);
+  const collapsed = readOnly ? (localCollapsed ?? !!scene?.collapsed) : !!scene?.collapsed;
   const duration = formatDuration(totalDurationMs(frames));
   if (!scene) {
     return (
@@ -257,7 +260,7 @@ function SceneSection({
     );
   }
   const set = (patch: Partial<Omit<SceneElement, 'id' | 'type'>>) =>
-    updateElement(store.doc, scene.id, patch, LOCAL);
+    !readOnly && updateElement(store.doc, scene.id, patch, LOCAL);
   return (
     <section
       className="story__scene"
@@ -267,9 +270,12 @@ function SceneSection({
         <button
           type="button"
           className="column__toggle"
-          aria-expanded={!scene.collapsed}
-          aria-label={scene.collapsed ? t('film.scene.expand') : t('film.scene.collapse')}
-          onClick={() => set({ collapsed: scene.collapsed ? undefined : true })}
+          aria-expanded={!collapsed}
+          aria-label={collapsed ? t('film.scene.expand') : t('film.scene.collapse')}
+          onClick={() => {
+            if (readOnly) setLocalCollapsed(!collapsed);
+            else set({ collapsed: collapsed ? undefined : true });
+          }}
         >
           <Icon name="chevronDown" size={14} />
         </button>
@@ -369,7 +375,7 @@ function SceneSection({
           </>
         )}
       </header>
-      {!scene.collapsed && (
+      {!collapsed && (
         <>
           {(scene.synopsis || !readOnly) && (
             <textarea
@@ -459,6 +465,7 @@ const FrameTile = memo(function FrameTile({
           <span className="story__tile-duration">{formatDuration(frame.durationMs)}</span>
         )}
         <StatusChip status={frame.status} />
+        <FrameVisibilityButton store={store} frame={frame} readOnly={readOnly} />
       </div>
       <CardReview elementId={frame.id} withPins={false} />
       {frame.action && <p className="story__tile-action">{frame.action}</p>}

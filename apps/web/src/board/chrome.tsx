@@ -392,7 +392,10 @@ export function ContextMenu({
       style={x === undefined ? undefined : { left: x, top: y }}
       data-chrome
       onKeyDown={(e) => {
-        if (e.key === 'Escape') onClose('escape');
+        if (e.key === 'Escape') {
+          e.preventDefault();
+          onClose('escape');
+        }
         if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
           e.preventDefault();
           const all = [...(ref.current?.querySelectorAll<HTMLElement>('[role="menuitem"]') ?? [])];
