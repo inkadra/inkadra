@@ -967,6 +967,7 @@
     "threadLabel": "Discussione su {{card}}",
     "deletedAuthor": "Account eliminato",
     "guest": "Ospite",
+    "guestOfLink": "Ospite del link “{{label}}”",
     "edited": "modificato",
     "resolvedBy": "Risolta da {{name}}",
     "moreReplies_one": "Mostra un’altra risposta",

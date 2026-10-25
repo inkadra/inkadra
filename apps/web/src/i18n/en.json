@@ -967,6 +967,7 @@
     "threadLabel": "Thread on {{card}}",
     "deletedAuthor": "Deleted account",
     "guest": "Guest",
+    "guestOfLink": "Guest of the “{{label}}” link",
     "edited": "edited",
     "resolvedBy": "Resolved by {{name}}",
     "moreReplies_one": "Show one more reply",

@@ -713,6 +713,289 @@ describe.skipIf(!url)('team comments, reviews and notifications', () => {
     expect((await call('editor', 'DELETE', `/comments/${guestThread?.id}`)).statusCode).toBe(204);
   });
 
+  it('names share links to the team on comments, reviews and notifications, never across projects', async () => {
+    const [foreignBoard] = await db.select().from(board).where(eq(board.id, foreign));
+    if (!foreignBoard) throw new Error('Missing foreign board');
+    const named = await link(root, { label: 'Cliente Rossi' });
+    const unnamed = await link(root, { label: null });
+    const other = await link(foreign, {
+      projectId: foreignBoard.projectId,
+      label: 'Altro cliente',
+    });
+    const anna = await guest(named.id, 'Anna');
+    const bruno = await guest(unnamed.id, 'Bruno');
+    const olga = await guest(other.id, 'Olga');
+    const at = (min: number) => new Date(Date.now() - min * 60_000);
+    const insert = async (values: Partial<typeof comment.$inferInsert>) => {
+      const [row] = await db
+        .insert(comment)
+        .values({ projectId, boardId: root, body: 'x', visibility: 'everyone', ...values })
+        .returning();
+      if (!row) throw new Error('Missing comment');
+      return row.id;
+    };
+    const byAnna = await insert({
+      authorGuestId: anna.id,
+      shareLinkId: named.id,
+      createdAt: at(4),
+    });
+    const byBruno = await insert({
+      authorGuestId: bruno.id,
+      shareLinkId: unnamed.id,
+      createdAt: at(3),
+    });
+    const limited = await insert({
+      authorId: people.owner.id,
+      shareLinkId: named.id,
+      createdAt: at(2),
+    });
+    const team = await insert({ authorId: people.owner.id, visibility: 'team', createdAt: at(1) });
+    await insert({ threadId: team, authorId: people.editor.id, visibility: 'team' });
+    await insert({ threadId: limited, authorGuestId: anna.id, shareLinkId: named.id });
+    await db.insert(comment).values({
+      projectId: foreignBoard.projectId,
+      boardId: foreign,
+      authorGuestId: olga.id,
+      shareLinkId: other.id,
+      visibility: 'everyone',
+      body: 'Elsewhere',
+    });
+
+    const threads = async (who: Who = 'viewer') =>
+      new Map((await list(who, '?status=all')).items.map((t) => [t.id, t]));
+    let seen = await threads();
+    expect(seen.get(byAnna)).toMatchObject({
+      shareLinkLabel: 'Cliente Rossi',
+      author: {
+        kind: 'guest',
+        name: 'Anna',
+        shareLinkId: named.id,
+        shareLinkLabel: 'Cliente Rossi',
+      },
+    });
+    expect(seen.get(byBruno)).toMatchObject({
+      shareLinkLabel: null,
+      author: { kind: 'guest', name: 'Bruno', shareLinkLabel: null },
+    });
+    expect(seen.get(limited)).toMatchObject({
+      shareLinkLabel: 'Cliente Rossi',
+      author: { kind: 'user' },
+    });
+    expect(seen.get(limited)?.replies[0]).toMatchObject({
+      shareLinkLabel: 'Cliente Rossi',
+      author: { kind: 'guest', shareLinkLabel: 'Cliente Rossi' },
+    });
+    expect(seen.get(team)).toMatchObject({ shareLinkLabel: null });
+    expect(seen.get(team)?.replies[0]?.shareLinkLabel).toBeNull();
+    expect(JSON.stringify([...seen.values()])).not.toContain('Altro cliente');
+    const replies = await call('commenter', 'GET', `/comments/${limited}/replies`);
+    expect(replies.json().items[0]).toMatchObject({ shareLinkLabel: 'Cliente Rossi' });
+
+    // Created and edited comments carry it too.
+    const reply = await call('commenter', 'POST', `/boards/${root}/comments`, {
+      parentId: limited,
+      body: 'Team reply',
+    });
+    expect(reply.statusCode, reply.body).toBe(201);
+    expect(reply.json().shareLinkLabel).toBeNull();
+    const audience = await create('editor', { visibility: 'everyone', shareLinkId: named.id });
+    expect(audience.shareLinkLabel).toBe('Cliente Rossi');
+    const edited = await call('editor', 'PATCH', `/comments/${audience.id}`, { body: 'Changed' });
+    expect(edited.json().shareLinkLabel).toBe('Cliente Rossi');
+
+    // Reviews and their history name the guest's link.
+    await db.insert(elementReview).values({
+      boardId: root,
+      elementId: card,
+      projectId,
+      status: 'approved',
+      shareLinkId: named.id,
+      changedByGuest: anna.id,
+    });
+    await db.insert(elementReviewEvent).values({
+      boardId: root,
+      elementId: card,
+      previous: 'none',
+      status: 'approved',
+      shareLinkId: named.id,
+      guestId: anna.id,
+    });
+    const guestAuthor = { kind: 'guest', guestId: anna.id, shareLinkLabel: 'Cliente Rossi' };
+    expect((await call('viewer', 'GET', `/boards/${root}/reviews`)).json().items[0]).toMatchObject({
+      changedBy: guestAuthor,
+    });
+    expect((await call('viewer', 'GET', `${reviewPath()}/history`)).json().items[0]).toMatchObject({
+      changedBy: guestAuthor,
+    });
+
+    // Notifications about a guest name their link to the person notified.
+    await addNotification('owner', root, {
+      type: 'comment',
+      actorId: null,
+      actorGuestId: anna.id,
+      commentId: byAnna,
+      reviewStatus: null,
+    });
+    const inbox = (await call('owner', 'GET', '/me/notifications')).json();
+    expect(inbox.items[0].actor).toMatchObject(guestAuthor);
+
+    // Relabelled, overlong and blank labels: what is stored now, trimmed, at most 80 characters.
+    await db.update(shareLink).set({ label: 'Agenzia' }).where(eq(shareLink.id, named.id));
+    seen = await threads('commenter');
+    expect(seen.get(byAnna)).toMatchObject({
+      shareLinkLabel: 'Agenzia',
+      author: { shareLinkLabel: 'Agenzia' },
+    });
+    await db
+      .update(shareLink)
+      .set({ label: `  ${'é'.repeat(79)}🎬🎬  ` })
+      .where(eq(shareLink.id, named.id));
+    const long = (await threads()).get(byAnna)?.shareLinkLabel ?? '';
+    expect([...long]).toHaveLength(80);
+    expect(long).toBe(`${'é'.repeat(79)}🎬`);
+    await db.update(shareLink).set({ label: '   ' }).where(eq(shareLink.id, named.id));
+    expect((await threads()).get(byAnna)?.shareLinkLabel).toBeNull();
+
+    // A revoked link keeps its name; a guest whose name was cleared shows as deleted.
+    await db
+      .update(shareLink)
+      .set({ label: 'Revocato', revokedAt: new Date() })
+      .where(eq(shareLink.id, named.id));
+    await db.update(shareGuest).set({ name: null }).where(eq(shareGuest.id, anna.id));
+    seen = await threads();
+    expect(seen.get(byAnna)).toMatchObject({
+      shareLinkLabel: 'Revocato',
+      author: { kind: 'deleted' },
+    });
+    // A deleted link takes its threads with it; the others keep theirs.
+    await db.delete(shareLink).where(eq(shareLink.id, named.id));
+    seen = await threads();
+    expect(seen.has(byAnna)).toBe(false);
+    expect(seen.get(byBruno)?.shareLinkLabel).toBeNull();
+    expect(JSON.stringify([...seen.values()])).not.toContain('Revocato');
+
+    // Another project: its people see only their own links, and nothing of this board.
+    const outside = await call('outsider', 'GET', `/boards/${root}/comments?status=all`);
+    expect(outside.statusCode).toBe(404);
+    expect(outside.body).not.toContain('Agenzia');
+    const theirs = await call('outsider', 'GET', `/boards/${foreign}/comments?status=all`);
+    expect(theirs.json().items[0]).toMatchObject({
+      shareLinkLabel: 'Altro cliente',
+      author: { shareLinkLabel: 'Altro cliente' },
+    });
+    expect(theirs.body).not.toContain(named.id);
+    expect((await call('viewer', 'GET', `/boards/${foreign}/comments`)).statusCode).toBe(404);
+  });
+
+  it('names a link only to people with a role on its board, not to those granted a sub-board alone', async () => {
+    // The outsider is granted the sub-board only: no role on the board the link shares from.
+    await db
+      .insert(boardGrant)
+      .values({ boardId: child, userId: people.outsider.id, role: 'commenter' });
+    const above = await link(root, { label: 'Cliente Rossi', includeSubBoards: true });
+    const here = await link(child, { label: 'Cliente Bianchi' });
+    const anna = await guest(above.id, 'Anna');
+    const bea = await guest(here.id, 'Bea');
+    const insert = async (values: Partial<typeof comment.$inferInsert>) => {
+      const [row] = await db
+        .insert(comment)
+        .values({ projectId, boardId: child, body: 'x', visibility: 'everyone', ...values })
+        .returning();
+      if (!row) throw new Error('Missing comment');
+      return row.id;
+    };
+    const byAnna = await insert({ authorGuestId: anna.id, shareLinkId: above.id });
+    const byBea = await insert({ authorGuestId: bea.id, shareLinkId: here.id });
+    const limited = await insert({ authorId: people.owner.id, shareLinkId: above.id });
+    await insert({ threadId: limited, authorGuestId: anna.id, shareLinkId: above.id });
+
+    const threads = async (who: Who) => {
+      const res = await call(who, 'GET', `/boards/${child}/comments?status=all`);
+      expect(res.statusCode, res.body).toBe(200);
+      return new Map(res.json<{ items: CommentThread[] }>().items.map((t) => [t.id, t]));
+    };
+    const outside = await threads('outsider');
+    expect(outside.get(byAnna)).toMatchObject({
+      shareLinkId: above.id,
+      shareLinkLabel: null,
+      author: { kind: 'guest', name: 'Anna', shareLinkId: above.id, shareLinkLabel: null },
+    });
+    expect(outside.get(limited)).toMatchObject({ shareLinkLabel: null });
+    expect(outside.get(limited)?.replies[0]).toMatchObject({
+      shareLinkLabel: null,
+      author: { kind: 'guest', shareLinkLabel: null },
+    });
+    // A link of the sub-board itself is named.
+    expect(outside.get(byBea)).toMatchObject({
+      shareLinkLabel: 'Cliente Bianchi',
+      author: { shareLinkLabel: 'Cliente Bianchi' },
+    });
+    expect(JSON.stringify([...outside.values()])).not.toContain('Cliente Rossi');
+    const replies = await call('outsider', 'GET', `/comments/${limited}/replies`);
+    expect(replies.body).not.toContain('Cliente Rossi');
+    const reply = await call('outsider', 'POST', `/boards/${child}/comments`, {
+      parentId: limited,
+      body: 'Reply',
+    });
+    expect(reply.statusCode, reply.body).toBe(201);
+    expect(reply.body).not.toContain('Cliente Rossi');
+
+    // People with a role on the board of the link read it on the same comments.
+    const inside = await threads('viewer');
+    expect(inside.get(byAnna)).toMatchObject({
+      shareLinkLabel: 'Cliente Rossi',
+      author: { shareLinkLabel: 'Cliente Rossi' },
+    });
+    expect(inside.get(limited)?.replies[0]?.author).toMatchObject({
+      shareLinkLabel: 'Cliente Rossi',
+    });
+
+    // Reviews, their history and notifications follow the same rule.
+    await db.insert(elementReview).values({
+      boardId: child,
+      elementId: 'child-note',
+      projectId,
+      status: 'approved',
+      shareLinkId: above.id,
+      changedByGuest: anna.id,
+    });
+    await db.insert(elementReviewEvent).values({
+      boardId: child,
+      elementId: 'child-note',
+      previous: 'none',
+      status: 'approved',
+      shareLinkId: above.id,
+      guestId: anna.id,
+    });
+    const history = `/boards/${child}/elements/child-note/review/history`;
+    for (const path of [`/boards/${child}/reviews`, history]) {
+      const theirs = await call('outsider', 'GET', path);
+      expect(theirs.json().items[0].changedBy).toMatchObject({
+        kind: 'guest',
+        shareLinkId: above.id,
+        shareLinkLabel: null,
+      });
+      const ours = await call('viewer', 'GET', path);
+      expect(ours.json().items[0].changedBy).toMatchObject({ shareLinkLabel: 'Cliente Rossi' });
+    }
+    for (const who of ['outsider', 'viewer'] as const)
+      await addNotification(who, child, {
+        type: 'comment',
+        actorId: null,
+        actorGuestId: anna.id,
+        commentId: byAnna,
+        reviewStatus: null,
+      });
+    const theirInbox = await call('outsider', 'GET', '/me/notifications');
+    expect(theirInbox.json().items[0].actor).toMatchObject({
+      kind: 'guest',
+      shareLinkLabel: null,
+    });
+    expect(theirInbox.body).not.toContain('Cliente Rossi');
+    const ourInbox = await call('viewer', 'GET', '/me/notifications');
+    expect(ourInbox.json().items[0].actor).toMatchObject({ shareLinkLabel: 'Cliente Rossi' });
+  });
+
   it('pages threads with stable ties/microseconds and returns the latest 50 inline replies', async () => {
     const ids = Array.from(
       { length: 4 },

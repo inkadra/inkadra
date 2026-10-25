@@ -45,7 +45,7 @@ import { comment, shareLink } from '../db/schema.ts';
 import { afterCommit, notify, Recipients } from '../notifications.ts';
 import { iso } from './api-routes.ts';
 import { requireActor } from './auth-routes.ts';
-import { authorOf, loadPeople, type People } from './authors.ts';
+import { authorOf, labelOf, loadPeople, type People } from './authors.ts';
 import { HttpError } from './errors.ts';
 import { afterCursor, atText, decodeCursor, pageOf } from './keyset.ts';
 import { RateLimiter } from './link-previews.ts';
@@ -83,7 +83,7 @@ async function readableMentions(db: Database, boardId: string, body: string): Pr
   return ids.filter((id) => roles.has(id));
 }
 
-async function peopleOf(db: Database, rows: Row[]) {
+async function peopleOf(db: Database, rows: Row[], viewer: Viewer) {
   const boardId = rows[0]?.boardId;
   if (boardId) {
     const ids = rows.flatMap((r) => r.mentions);
@@ -92,8 +92,10 @@ async function peopleOf(db: Database, rows: Row[]) {
   }
   return loadPeople(
     db,
+    { id: viewer.actorId },
     rows.flatMap((r) => [r.authorId, r.resolvedBy, ...r.mentions]),
     rows.map((r) => r.authorGuestId),
+    rows.map((r) => r.shareLinkId),
   );
 }
 
@@ -118,6 +120,7 @@ export function toComment(row: Row, people: People, viewer: Viewer): Comment {
         }),
     visibility: row.visibility,
     shareLinkId: row.shareLinkId,
+    shareLinkLabel: labelOf(people, row.shareLinkId),
     canEdit: mine,
     canDelete: !row.deletedAt && (mine || atLeast(viewer.role, 'editor')),
   };
@@ -150,7 +153,7 @@ async function toThreads(db: Database, rows: Row[], viewer: Viewer): Promise<Com
       .groupBy(comment.threadId),
   ]);
   const replyRows = replies.map(({ rank: _, ...r }) => r as Row);
-  const people = await peopleOf(db, [...rows, ...replyRows]);
+  const people = await peopleOf(db, [...rows, ...replyRows], viewer);
   const byThread = new Map<string, Comment[]>();
   for (const r of replyRows) {
     const list = byThread.get(r.threadId ?? '') ?? [];
@@ -363,7 +366,7 @@ export function registerCommentRoutes(app: FastifyInstance, deps: Deps) {
       );
     });
     await afterCommit(req.log, () => tell(row));
-    return reply.status(201).send(toComment(row, await peopleOf(db, [row]), viewer));
+    return reply.status(201).send(toComment(row, await peopleOf(db, [row], viewer), viewer));
   });
 
   app.get(v1('/comments/:commentId/replies'), async (req) => {
@@ -385,7 +388,7 @@ export function registerCommentRoutes(app: FastifyInstance, deps: Deps) {
       .orderBy(asc(comment.createdAt), asc(comment.id))
       .limit(q.limit + 1);
     const page = pageOf(rows, q.limit);
-    const people = await peopleOf(db, page.rows);
+    const people = await peopleOf(db, page.rows, viewer);
     return {
       items: page.rows.map((r) => toComment(r, people, viewer)),
       nextCursor: page.nextCursor,
@@ -427,7 +430,7 @@ export function registerCommentRoutes(app: FastifyInstance, deps: Deps) {
       );
     });
     await afterCommit(req.log, () => tell(updated));
-    return toComment(updated, await peopleOf(db, [updated]), viewer);
+    return toComment(updated, await peopleOf(db, [updated], viewer), viewer);
   });
 
   app.delete(v1('/comments/:commentId'), async (req, reply) => {

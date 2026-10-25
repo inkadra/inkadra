@@ -819,6 +819,84 @@ describe.skipIf(!url)('guest share links (needs DATABASE_URL)', () => {
 
   // Opening a link ------------------------------------------------------------------
 
+  it('never sends share link labels to guests, while the team reads them', async () => {
+    const boardId = await insertBoard(P, 'Link labels', B.R);
+    await saveDoc(boardId, [
+      { ...el, id: E.img, type: 'image', parent: null, assetId: X.x1, createdBy: as.owner.id },
+    ]);
+    const mine = await createLink('owner', boardId, {
+      role: 'guest_approve',
+      proofing: true,
+      label: 'Etichetta Mia',
+    });
+    const theirs = await createLink('owner', boardId, {
+      role: 'guest_comment',
+      label: 'Etichetta Altrui',
+    });
+    const me = await open(mine, { name: 'Gina' });
+    const them = await open(theirs, { name: 'Ugo' });
+    const gina = { cookie: me.cookie };
+    const commentsPath = g(mine, `/boards/${boardId}/comments`);
+    const own = await call(gina, 'POST', commentsPath, { elementId: E.img, body: 'Mio' });
+    expect(own.status).toBe(201);
+    const reply = await call(gina, 'POST', commentsPath, { parentId: own.body.id, body: 'Ancora' });
+    expect(reply.status).toBe(201);
+    expect(
+      (
+        await call({ cookie: them.cookie }, 'POST', g(theirs, `/boards/${boardId}/comments`), {
+          body: 'Suo',
+        })
+      ).status,
+    ).toBe(201);
+    const limited = await call('owner', 'POST', `/api/v1/boards/${boardId}/comments`, {
+      body: 'Per Gina',
+      visibility: 'everyone',
+      shareLinkId: mine.id,
+    });
+    expect(limited.status).toBe(201);
+    expect(limited.body.shareLinkLabel).toBe('Etichetta Mia');
+    const review = await call(gina, 'PUT', g(mine, `/boards/${boardId}/elements/${E.img}/review`), {
+      status: 'approved',
+    });
+    expect(review.status).toBe(200);
+
+    const answers = [
+      own,
+      reply,
+      review,
+      await call(gina, 'GET', `${commentsPath}?status=all`),
+      await call(gina, 'GET', g(mine, `/comments/${own.body.id}/replies`)),
+      await call(gina, 'PATCH', g(mine, `/comments/${own.body.id}`), { body: 'Mio, rivisto' }),
+      await call(gina, 'GET', g(mine, `/boards/${boardId}`)),
+    ];
+    for (const res of answers) {
+      expect(res.status).toBeLessThan(300);
+      expect(res.text).not.toContain('Etichetta');
+      expect(res.text).not.toContain('shareLinkLabel');
+      expect(res.text).not.toContain(theirs.id);
+    }
+    const listed = answers[3]?.body.items as Array<{ body: string }>;
+    expect(listed.map((t) => t.body).sort()).toEqual(['Mio', 'Per Gina']);
+
+    // The team, down to viewers, reads both links by name.
+    const team = await call('viewer', 'GET', `/api/v1/boards/${boardId}/comments?status=all`);
+    const labels = (team.body.items as Array<{ author: { shareLinkLabel?: string | null } }>)
+      .map((t) => t.author.shareLinkLabel)
+      .filter(Boolean)
+      .sort();
+    expect(labels).toEqual(['Etichetta Altrui', 'Etichetta Mia']);
+    const reviews = await call('viewer', 'GET', `/api/v1/boards/${boardId}/reviews`);
+    expect(reviews.body.items[0].changedBy).toMatchObject({
+      kind: 'guest',
+      name: 'Gina',
+      shareLinkLabel: 'Etichetta Mia',
+    });
+    // People of another project see nothing.
+    const outsider = await call('outsider', 'GET', `/api/v1/boards/${boardId}/comments?status=all`);
+    expect(outsider.status).toBe(404);
+    expect(outsider.text).not.toContain('Etichetta');
+  });
+
   it('previews a link, revealing nothing for a password-protected one', async () => {
     const res = await call(null, 'GET', `/api/v1/guest/by-token/${linkC.token}`);
     expect(res.status).toBe(200);
