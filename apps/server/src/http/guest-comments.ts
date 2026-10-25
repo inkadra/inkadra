@@ -411,9 +411,14 @@ export function registerGuestCommentRoutes(
       await guests.requireElement(ctx, boardId, elementId);
     }
     guests.requireName(ctx);
-    guests.takeWrite(ctx);
-    if (!perGuest.take(ctx.guest.id) || !perLink.take(ctx.link.id))
+    guests.takeWrite(ctx, reply);
+    if (!perGuest.take(ctx.guest.id) || !perLink.take(ctx.link.id)) {
+      reply.header(
+        'retry-after',
+        Math.max(perGuest.retryAfterSeconds(ctx.guest.id), perLink.retryAfterSeconds(ctx.link.id)),
+      );
       throw new HttpError('rate_limited', 'Too many comments: try again later.');
+    }
     const [row] = await db
       .insert(comment)
       .values({
@@ -449,7 +454,7 @@ export function registerGuestCommentRoutes(
     const ctx = await guests.requireGuest(req, reply, linkId);
     guests.requireCan(ctx, 'write_comments');
     const row = await ownComment(ctx, commentId);
-    guests.takeWrite(ctx);
+    guests.takeWrite(ctx, reply);
     const [updated] = await db
       .update(comment)
       .set({ body, editedAt: new Date() })
@@ -474,7 +479,7 @@ export function registerGuestCommentRoutes(
     const ctx = await guests.requireGuest(req, reply, linkId);
     guests.requireCan(ctx, 'write_comments');
     const row = await ownComment(ctx, commentId);
-    guests.takeWrite(ctx);
+    guests.takeWrite(ctx, reply);
     await db.transaction(async (tx) => {
       if (row.threadId) {
         await tx.delete(comment).where(eq(comment.id, row.id));

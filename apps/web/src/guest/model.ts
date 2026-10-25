@@ -96,12 +96,13 @@ export const SESSION_REFRESH_MS = 60_000;
  */
 export function needsSession(
   prev: GuestBoardSnapshot | null,
-  next: GuestBoardSnapshot,
+  next: GuestBoardSnapshot | null,
   session: { boards: readonly GuestBoard[] },
   lastAsked: number,
   now: number,
 ): boolean {
   if (now - lastAsked >= SESSION_REFRESH_MS) return true;
+  if (!next) return false;
   const known = session.boards.find((b) => b.id === next.board.id);
   if (
     !known ||

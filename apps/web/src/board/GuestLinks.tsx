@@ -847,7 +847,16 @@ function PicksView({ link, onBack }: { link: ShareLink; onBack: () => void }) {
               {picks.items.map((item) => (
                 <li key={`${item.boardId}/${item.elementId}`} className="guest-picks-item">
                   <span className="guest-picks-item__name">
-                    <Icon name="image" size={14} />
+                    {item.variants?.[0] ? (
+                      <img
+                        className="guest-picks-item__thumbnail"
+                        src={item.variants[0].url}
+                        alt=""
+                        loading="lazy"
+                      />
+                    ) : (
+                      <Icon name="image" size={14} />
+                    )}
                     {item.filename ?? t('guestLinks.picks.noName')}
                   </span>
                   <span className="guest-picks-item__totals">

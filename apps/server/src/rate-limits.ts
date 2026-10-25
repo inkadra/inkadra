@@ -87,6 +87,14 @@ export class RateLimiter {
     this.hits.delete(victim);
     return true;
   }
+  /** Seconds until the completed hits allow another attempt; reservations can finish sooner. */
+  retryAfterSeconds(key: string) {
+    const recent = this.recent(key);
+    const release = recent[recent.length - this.max];
+    return release === undefined
+      ? 0
+      : Math.max(0, Math.ceil((release + this.windowMs - Date.now()) / 1000));
+  }
   take(key: string) {
     const recent = this.recent(key);
     if (recent.length >= this.max) {

@@ -183,9 +183,11 @@ export function createGuestAuth(deps: { config: Config; db: Database; docs: DocV
     },
 
     /** Guest writes: 60 a minute per guest. */
-    takeWrite(ctx: GuestContext) {
-      if (!writes.take(ctx.guest.id))
+    takeWrite(ctx: GuestContext, reply: FastifyReply) {
+      if (!writes.take(ctx.guest.id)) {
+        reply.header('retry-after', writes.retryAfterSeconds(ctx.guest.id));
         throw new HttpError('rate_limited', 'Too many changes: wait a minute.');
+      }
     },
 
     /** A board of the link, else 404. */

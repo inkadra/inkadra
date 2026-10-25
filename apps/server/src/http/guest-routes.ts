@@ -19,7 +19,7 @@ import {
   z,
 } from '@inkadra/shared';
 import { verifyPassword } from 'better-auth/crypto';
-import { and, count, eq, getTableColumns, gt, inArray, isNull, or, sql } from 'drizzle-orm';
+import { and, asc, count, eq, getTableColumns, gt, inArray, isNull, or, sql } from 'drizzle-orm';
 import type { FastifyInstance, FastifyReply } from 'fastify';
 import { guestCan } from '../access.ts';
 import { storedElement } from '../board-content.ts';
@@ -203,7 +203,11 @@ export async function registerGuestRoutes(app: FastifyInstance, deps: Deps) {
   }
 
   async function toSession(ctx: GuestContext): Promise<GuestSession> {
+    const [creator] = ctx.link.createdBy
+      ? await db.select({ name: user.name }).from(user).where(eq(user.id, ctx.link.createdBy))
+      : [];
     return {
+      sharedBy: creator?.name ?? null,
       linkId: ctx.link.id,
       guest: { id: ctx.guest.id, name: ctx.guest.name },
       role: ctx.link.role,
@@ -410,9 +414,11 @@ export async function registerGuestRoutes(app: FastifyInstance, deps: Deps) {
       if (!reply.hasHeader('cache-control')) reply.header('cache-control', 'no-store');
     });
 
-    scope.get(v1('/guest/by-token/:token'), async (req) => {
-      if (!previews.take(addressBucket(req.ip)))
+    scope.get(v1('/guest/by-token/:token'), async (req, reply) => {
+      if (!previews.take(addressBucket(req.ip))) {
+        reply.header('retry-after', previews.retryAfterSeconds(addressBucket(req.ip)));
         throw new HttpError('rate_limited', 'Too many requests: wait a minute.');
+      }
       const { token } = TokenParams.parse(req.params);
       const [link] = await db
         .select()
@@ -448,17 +454,27 @@ export async function registerGuestRoutes(app: FastifyInstance, deps: Deps) {
       if (resolved.status !== 'active') throw linkStopped(resolved.status);
       if (link.passwordHash) {
         const key = `${link.id}|${addressBucket(req.ip)}`;
-        if (wrongPasswords.blocked(key) || linkPasswords.blocked(link.id))
-          throw new HttpError('rate_limited', 'Too many wrong passwords: try again later.');
+        const passwordLimit = () => {
+          // In-flight verifications have no known completion time. With no completed
+          // blocking window, zero allows a retry instead of inventing a 15-minute lockout.
+          reply.header(
+            'retry-after',
+            Math.max(
+              wrongPasswords.retryAfterSeconds(key),
+              linkPasswords.retryAfterSeconds(link.id),
+            ),
+          );
+          return new HttpError('rate_limited', 'Too many wrong passwords: try again later.');
+        };
+        if (wrongPasswords.blocked(key) || linkPasswords.blocked(link.id)) throw passwordLimit();
         if (!input.password)
           throw guestDenied('forbidden', 'password_required', 'This link needs a password.');
         // Reserve before the asynchronous hash check: simultaneous wrong passwords must
         // not all pass the limit while earlier checks are still running.
-        if (!linkPasswords.begin(link.id))
-          throw new HttpError('rate_limited', 'Too many wrong passwords: try again later.');
+        if (!linkPasswords.begin(link.id)) throw passwordLimit();
         if (!wrongPasswords.begin(key)) {
           linkPasswords.finish(link.id, false);
-          throw new HttpError('rate_limited', 'Too many wrong passwords: try again later.');
+          throw passwordLimit();
         }
         let valid = false;
         try {
@@ -472,8 +488,11 @@ export async function registerGuestRoutes(app: FastifyInstance, deps: Deps) {
         }
       }
       const returning = await guests.cookieGuest(req, link.id);
-      if (!returning && !newGuests.take(`${link.id}|${addressBucket(req.ip)}`))
+      const addressKey = `${link.id}|${addressBucket(req.ip)}`;
+      if (!returning && !newGuests.take(addressKey)) {
+        reply.header('retry-after', newGuests.retryAfterSeconds(addressKey));
         throw new HttpError('rate_limited', 'Too many new guests: try again later.');
+      }
       const guest = await db.transaction(async (tx) => {
         // Enforce the daily link-wide cap even for concurrent requests on different workers.
         await tx.execute(
@@ -489,8 +508,24 @@ export async function registerGuestRoutes(app: FastifyInstance, deps: Deps) {
                 gt(shareGuest.createdAt, sql`now() - interval '1 day'`),
               ),
             );
-          if ((today?.n ?? 0) >= NEW_GUESTS_PER_DAY)
-            throw new HttpError('rate_limited', 'Too many new guests today: try again tomorrow.');
+          if ((today?.n ?? 0) >= NEW_GUESTS_PER_DAY) {
+            const [release] = await tx
+              .select({
+                seconds: sql<number>`ceil(extract(epoch from (${shareGuest.createdAt} + interval '1 day' - now())))::integer`,
+              })
+              .from(shareGuest)
+              .where(
+                and(
+                  eq(shareGuest.shareLinkId, link.id),
+                  gt(shareGuest.createdAt, sql`now() - interval '1 day'`),
+                ),
+              )
+              .orderBy(asc(shareGuest.createdAt))
+              .offset((today?.n ?? 0) - NEW_GUESTS_PER_DAY)
+              .limit(1);
+            reply.header('retry-after', Math.max(0, release?.seconds ?? 0));
+            throw new HttpError('rate_limited', 'Too many new guests today: try again later.');
+          }
         }
         const guest = await guests.startSession(reply, link, returning, input.name, tx);
         await tx
@@ -515,7 +550,7 @@ export async function registerGuestRoutes(app: FastifyInstance, deps: Deps) {
       const { linkId } = LinkParams.parse(req.params);
       const { name } = UpdateGuestSession.parse(req.body ?? {});
       const ctx = await guests.requireGuest(req, reply, linkId);
-      guests.takeWrite(ctx);
+      guests.takeWrite(ctx, reply);
       const [guest] = await db
         .update(shareGuest)
         .set({ name })
@@ -606,7 +641,7 @@ export async function registerGuestRoutes(app: FastifyInstance, deps: Deps) {
         guests.requireBoard(ctx, boardId);
         await guests.requireElement(ctx, boardId, elementId);
         guests.requireName(ctx);
-        guests.takeWrite(ctx);
+        guests.takeWrite(ctx, reply);
         const change = await db.transaction(async (tx) => {
           // One decision per link and card at a time.
           await tx.execute(
@@ -699,7 +734,7 @@ export async function registerGuestRoutes(app: FastifyInstance, deps: Deps) {
         const picture = pictureAssetId(el);
         if (!picture) throw new HttpError('bad_request', 'Only pictures can be picked.');
         guests.requireName(ctx);
-        guests.takeWrite(ctx);
+        guests.takeWrite(ctx, reply);
         const key = and(
           eq(sharePick.guestId, ctx.guest.id),
           eq(sharePick.boardId, boardId),

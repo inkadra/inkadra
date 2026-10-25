@@ -71,4 +71,32 @@ describe('per-process rate limits', () => {
     now.mockReturnValue(101_001);
     expect(failures.blocked('guessing')).toBe(false);
   });
+
+  it('tells how long until the oldest blocking hit leaves the window', () => {
+    const now = vi.spyOn(Date, 'now').mockReturnValue(100_000);
+    const limiter = new RateLimiter(2, 60_000);
+    expect(limiter.retryAfterSeconds('a')).toBe(0);
+    limiter.take('a');
+    now.mockReturnValue(110_000);
+    limiter.take('a');
+    expect(limiter.take('a')).toBe(false);
+    // The first hit frees a slot at 160 s.
+    expect(limiter.retryAfterSeconds('a')).toBe(50);
+    now.mockReturnValue(159_500);
+    expect(limiter.retryAfterSeconds('a')).toBe(1);
+    now.mockReturnValue(160_000);
+    expect(limiter.retryAfterSeconds('a')).toBe(0);
+    expect(limiter.take('a')).toBe(true);
+
+    const failures = new Failures(2, 1000);
+    now.mockReturnValue(200_000);
+    failures.begin('k');
+    failures.begin('k');
+    // Only in-flight checks: they may succeed at any moment, so no wait is invented.
+    expect(failures.blocked('k')).toBe(true);
+    expect(failures.retryAfterSeconds('k')).toBe(0);
+    failures.finish('k', true);
+    failures.finish('k', true);
+    expect(failures.retryAfterSeconds('k')).toBe(1);
+  });
 });

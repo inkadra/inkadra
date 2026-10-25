@@ -109,6 +109,12 @@ describe('session refresh', () => {
       needsSession(snap('1'), snap('2', 'Set', [{ id: 'e' }]), session, 0, SESSION_REFRESH_MS),
     ).toBe(true);
   });
+
+  it('asks again on an unchanged board once the last check is a minute old', () => {
+    // A 304 brings no snapshot: a link change seen with an earlier board change must still show.
+    expect(needsSession(snap('2'), null, session, 0, SESSION_REFRESH_MS - 1)).toBe(false);
+    expect(needsSession(snap('2'), null, session, 0, SESSION_REFRESH_MS)).toBe(true);
+  });
 });
 
 describe('guest rights', () => {

@@ -6,15 +6,16 @@ import { useParams } from 'react-router';
 import { resetAssetCache, setAssetLoader } from '../board/assets.ts';
 import { guestApi } from './api.ts';
 import { GuestBoardScreen } from './GuestBoard.tsx';
-import { failureOf, onNoSession, type Stop } from './model.ts';
+import { failureOf, type Stop } from './model.ts';
+import { SessionRecovery } from './session-recovery.ts';
 import '../routes/login.css';
 import './guest.css';
 
 type Gate =
   | { kind: 'loading' }
   | { kind: 'stop'; stop: Stop }
-  | { kind: 'password'; preview: ShareLinkPreview; changed: boolean }
-  | { kind: 'ready'; preview: ShareLinkPreview; session: GuestSession };
+  | { kind: 'password'; preview: ShareLinkPreview; changed: boolean; generation: number }
+  | { kind: 'ready'; preview: ShareLinkPreview; session: GuestSession; generation: number };
 
 /** Keeps the page out of search engines and away from every account endpoint. */
 function useGuestDocument() {
@@ -43,38 +44,49 @@ function useGuestDocument() {
  * preview, the password if the link has one, then the board as a read-only snapshot.
  */
 export function GuestPage() {
-  const { t } = useTranslation();
   const { token = '' } = useParams();
+  return <GuestLinkPage key={token} token={token} />;
+}
+
+function GuestLinkPage({ token }: { token: string }) {
+  const { t } = useTranslation();
   const [gate, setGate] = useState<Gate>({ kind: 'loading' });
-  // When the page last opened the link again because the server did not know the session.
-  const reopened = useRef<number | null>(null);
+  const recovery = useRef(new SessionRecovery());
   useGuestDocument();
 
   const start = useCallback(async () => {
+    // A newer start (a reopen, or a second effect run) makes every answer of this one stale.
+    const generation = recovery.current.begin();
+    const current = () => recovery.current.isCurrent(generation);
     let preview: ShareLinkPreview;
     try {
       preview = await guestApi.preview(token);
     } catch (err) {
+      if (!current()) return;
       const f = failureOf(err);
       setGate({ kind: 'stop', stop: f.kind === 'stop' ? f.stop : 'error' });
       return;
     }
+    if (!current()) return;
     if (preview.needsPassword) {
       // A guest who entered the password before keeps their session until it expires.
       try {
         const session = await guestApi.session(preview.linkId);
-        setGate({ kind: 'ready', preview, session });
+        if (!current()) return;
+        setGate({ kind: 'ready', preview, session, generation });
       } catch {
-        setGate({ kind: 'password', preview, changed: false });
+        if (current()) setGate({ kind: 'password', preview, changed: false, generation });
       }
       return;
     }
     try {
       const session = await guestApi.open(preview.linkId, { token });
-      setGate({ kind: 'ready', preview, session });
+      if (!recovery.current.opened(generation, Date.now())) return;
+      setGate({ kind: 'ready', preview, session, generation });
     } catch (err) {
+      if (!current()) return;
       const f = failureOf(err);
-      if (f.kind === 'password') setGate({ kind: 'password', preview, changed: false });
+      if (f.kind === 'password') setGate({ kind: 'password', preview, changed: false, generation });
       else setGate({ kind: 'stop', stop: f.kind === 'stop' ? f.stop : 'error' });
     }
   }, [token]);
@@ -106,27 +118,45 @@ export function GuestPage() {
         token={token}
         preview={gate.preview}
         changed={gate.changed}
-        onOpened={(session) => setGate({ kind: 'ready', preview: gate.preview, session })}
+        onOpened={(session) => {
+          if (recovery.current.opened(gate.generation, Date.now()))
+            setGate({ kind: 'ready', preview: gate.preview, session, generation: gate.generation });
+        }}
         onStop={(stop) => setGate({ kind: 'stop', stop })}
       />
     );
   }
   return (
     <GuestBoardScreen
-      key={gate.session.guest.id}
+      key={gate.generation}
       preview={gate.preview}
       session={gate.session}
-      onSession={(session) => setGate({ ...gate, session })}
+      onSession={(session) => {
+        if (recovery.current.isCurrent(gate.generation)) setGate({ ...gate, session });
+      }}
       onStop={(stop) => {
-        if (stop !== 'no_session') setGate({ kind: 'stop', stop });
-        else if (onNoSession(reopened.current, Date.now(), navigator.cookieEnabled) === 'cookies')
-          setGate({ kind: 'stop', stop: 'cookies' });
-        else {
-          reopened.current = Date.now();
+        if (!recovery.current.isCurrent(gate.generation)) return;
+        if (stop !== 'no_session') {
+          recovery.current.begin();
+          setGate({ kind: 'stop', stop });
+          return;
+        }
+        const action = recovery.current.noSession(
+          gate.generation,
+          Date.now(),
+          navigator.cookieEnabled,
+        );
+        if (action === 'cookies') setGate({ kind: 'stop', stop: 'cookies' });
+        if (action === 'reopen') {
+          setGate({ kind: 'loading' });
           void start();
         }
       }}
-      onPasswordChanged={() => setGate({ kind: 'password', preview: gate.preview, changed: true })}
+      onPasswordChanged={() => {
+        if (!recovery.current.isCurrent(gate.generation)) return;
+        const generation = recovery.current.begin();
+        setGate({ kind: 'password', preview: gate.preview, changed: true, generation });
+      }}
     />
   );
 }

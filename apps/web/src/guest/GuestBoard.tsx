@@ -146,23 +146,20 @@ export function GuestBoardScreen({
         // A board left meanwhile: its answer must not land on the new one.
         if (signal.aborted) return { kind: 'done' };
         setOffline(false);
-        if (!next) return { kind: 'ok' };
         const prev = snapshotRef.current;
-        version.current = next.version;
-        snapshotRef.current = next;
-        setSnapshot(next);
+        if (next) {
+          version.current = next.version;
+          snapshotRef.current = next;
+          setSnapshot(next);
+        }
         // Options, role and boards of the link may have changed with it.
         const now = Date.now();
         if (needsSession(prev, next, sessionRef.current, sessionAsked.current, now)) {
-          sessionAsked.current = now;
-          guestApi
-            .session(linkId, signal)
-            .then((s) => {
-              if (signal.aborted) return;
-              const was = sessionRef.current;
-              if (JSON.stringify(s) !== JSON.stringify(was)) handlers.current.onSession(s);
-            })
-            .catch(() => {});
+          const s = await guestApi.session(linkId, signal);
+          if (signal.aborted) return { kind: 'done' };
+          sessionAsked.current = Date.now();
+          if (JSON.stringify(s) !== JSON.stringify(sessionRef.current))
+            handlers.current.onSession(s);
         }
         return { kind: 'ok' };
       } catch (err) {
@@ -397,6 +394,7 @@ export function GuestBoardScreen({
   const crumbs = snapshot
     ? [...snapshot.breadcrumb, { id: snapshot.board.id, title: snapshot.board.title }]
     : [];
+  const sharedBy = session.sharedBy === undefined ? preview.sharedBy : session.sharedBy;
   const viewed = viewing ? elements.get(viewing) : undefined;
 
   return (
@@ -437,9 +435,9 @@ export function GuestBoardScreen({
               {t('guest.offline')}
             </span>
           )}
-          {preview.sharedBy && (
+          {sharedBy && (
             <span className="guest__shared ink-muted">
-              {t('guest.sharedBy', { name: preview.sharedBy })}
+              {t('guest.sharedBy', { name: sharedBy })}
             </span>
           )}
           <span className="guest__badge">{t(`guest.roles.${rightsKey(rights)}`)}</span>

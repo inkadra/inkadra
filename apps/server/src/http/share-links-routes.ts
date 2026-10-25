@@ -15,10 +15,19 @@ import { type Actor, requireBoardRole } from '../access.ts';
 import type { Auth } from '../auth.ts';
 import type { Config } from '../config.ts';
 import type { Database } from '../db/client.ts';
-import { asset, board, shareGuest, shareLink, sharePick, user } from '../db/schema.ts';
+import {
+  asset,
+  assetVariant,
+  board,
+  shareGuest,
+  shareLink,
+  sharePick,
+  user,
+} from '../db/schema.ts';
 import { newSecret, sealer, sha256 } from '../secrets.ts';
 import { DocViews, resolveLink, type ShareLinkRow } from '../share-links.ts';
 import { iso } from './api-routes.ts';
+import { variantUrl } from './assets-routes.ts';
 import { requireActor } from './auth-routes.ts';
 import { HttpError } from './errors.ts';
 
@@ -253,11 +262,17 @@ export function registerShareLinkRoutes(app: FastifyInstance, deps: Deps) {
         ? []
         : (
             await db
-              .select({ id: asset.id, filename: asset.filename })
+              .select({ id: asset.id, filename: asset.filename, status: asset.status })
               .from(asset)
-              .where(inArray(asset.id, assetIds))
-          ).map((a) => [a.id, a.filename]),
+              .where(and(inArray(asset.id, assetIds), eq(asset.projectId, row.projectId)))
+          ).map((a) => [a.id, a]),
     );
+    // managedLink already established a board role in this project: the same project
+    // authorizes team asset reads. Never expose paths from corrupt/cross-project picks.
+    const readyIds = [...files.values()].filter((a) => a.status === 'ready').map((a) => a.id);
+    const variants = readyIds.length
+      ? await db.select().from(assetVariant).where(inArray(assetVariant.assetId, readyIds))
+      : [];
     const items = new Map<string, PickSummary>();
     for (const p of picks) {
       const key = `${p.boardId}/${p.elementId}`;
@@ -267,8 +282,17 @@ export function registerShareLinkRoutes(app: FastifyInstance, deps: Deps) {
         item = {
           boardId: p.boardId,
           elementId: p.elementId,
-          assetId: p.assetId,
-          filename: p.assetId ? (files.get(p.assetId) ?? null) : null,
+          assetId: p.assetId && files.has(p.assetId) ? p.assetId : null,
+          filename: p.assetId ? (files.get(p.assetId)?.filename ?? null) : null,
+          variants: variants
+            .filter((v) => v.assetId === p.assetId)
+            .sort((a, b) => Number(a.size) - Number(b.size))
+            .map((v) => ({
+              size: v.size,
+              width: v.width,
+              height: v.height,
+              url: variantUrl(v.assetId, v.size),
+            })),
           picked: 0,
           rejected: 0,
           starsAverage: null,
