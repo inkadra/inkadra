@@ -2249,7 +2249,7 @@
                   "string",
                   "null"
                 ],
-                "description": "Label of the guest’s link (ShareLink.label, e.g. \"Cliente\"), readable by anyone who can read this; null when there is no link or it has no label. Missing from servers before API 0.5.0."
+                "description": "Label of the guest’s link (ShareLink.label, e.g. \"Cliente\"), only for readers with a role on the link’s board; null when there is no link, it has no label, or the reader has no role on its board (a link made on a parent board, read from a sub-board). Never sent to guests. Missing from servers before API 0.5.0."
               }
             },
             "required": [
@@ -2369,7 +2369,7 @@
               "string",
               "null"
             ],
-            "description": "Label of the link in `shareLinkId` (ShareLink.label, e.g. \"Cliente\"), readable by anyone who can read this; null when there is no link or it has no label. Missing from servers before API 0.5.0."
+            "description": "Label of the link in `shareLinkId` (ShareLink.label, e.g. \"Cliente\"), only for readers with a role on the link’s board; null when there is no link, it has no label, or the reader has no role on its board (a link made on a parent board, read from a sub-board). Never sent to guests. Missing from servers before API 0.5.0."
           },
           "canEdit": {
             "type": "boolean",
