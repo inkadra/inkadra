@@ -209,13 +209,10 @@ export function useBoardReviews(
     let alive = true;
     const { threads } = getReviews();
     const commentId = linkedComment || linked;
-    // The thread of the reply is known: open it without scanning the other threads, and fall
-    // back to the scan when it is not in the list (a stale list, a renamed link).
+    // The thread of the reply is known: open it without scanning the other threads. When it is
+    // not in the list, no other thread holds the reply either, so the panel just opens it.
     const find = linkedComment
-      ? findThreadDirect(threads, linked, commentId, fetchReplies).then(
-          (found) =>
-            found ?? findThread(threads, commentId, linkedElement.current.el, fetchReplies),
-        )
+      ? findThreadDirect(threads, linked, commentId, fetchReplies)
       : findThread(threads, linked, linkedElement.current.el, fetchReplies);
     find
       .catch(() => null)

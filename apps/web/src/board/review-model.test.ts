@@ -144,24 +144,27 @@ it('opens a thread directly from its start, an inline reply, or an older page', 
     ['t', 'next'],
   ]);
 
-  // A thread the list does not know, and one where the comment is not inline and there are no
-  // older pages, are returned null without paging.
+  // A thread the list does not know is null, without paging and without looking at the others.
   const other = vi.fn();
-  expect(await findThreadDirect([thread], 'nope', 'x', other)).toBeNull();
+  const sibling = { ...thread, id: 's', replies: [reply('x')] } as CommentThread;
+  expect(await findThreadDirect([sibling, thread], 'nope', 'x', other)).toBeNull();
   expect(other).not.toHaveBeenCalled();
+
+  // A deleted comment still opens the thread the server named: without paging when every reply
+  // is inline, after paging once through the older replies otherwise.
   const full = {
     id: 'f',
     elementId: 'card',
     replyCount: 1,
     replies: [reply('r1')],
   } as unknown as CommentThread;
-  expect(await findThreadDirect([full], 'f', 'x', other)).toBeNull();
+  expect(await findThreadDirect([full], 'f', 'gone', other)).toEqual({ threadId: 'f' });
   expect(other).not.toHaveBeenCalled();
-
-  // A comment that is not in the older pages either (deleted) is not there.
   const missing = vi.fn().mockResolvedValue({ items: [reply('r3')], nextCursor: null });
-  expect(await findThreadDirect([thread], 't', 'gone', missing)).toBeNull();
-  expect(missing).toHaveBeenCalledTimes(1);
+  expect(await findThreadDirect([sibling, thread], 't', 'gone', missing)).toEqual({
+    threadId: 't',
+  });
+  expect(missing.mock.calls).toEqual([['t', null]]);
 });
 
 it('refreshes older replies for the fetched scopes and drops obsolete ones', async () => {

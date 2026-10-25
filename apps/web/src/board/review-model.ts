@@ -120,7 +120,8 @@ export async function findThread(
  * The thread whose start is `threadId`, to open a specific comment without scanning the other
  * threads. The comment may be the start, one of the inline replies, or an older reply, fetched
  * by paging the thread's replies oldest first; the pages read come back, so the reply can be
- * shown. Null when the thread is not in `threads`.
+ * shown. A comment that is no longer there (deleted) still opens its thread, since the server
+ * named it. Null when the thread is not in `threads`.
  */
 export async function findThreadDirect(
   threads: readonly CommentThread[],
@@ -132,7 +133,7 @@ export async function findThreadDirect(
   if (!thread) return null;
   if (commentId === null || commentId === thread.id) return { threadId: thread.id };
   if (thread.replies.some((reply) => reply.id === commentId)) return { threadId: thread.id };
-  if (thread.replyCount <= thread.replies.length) return null;
+  if (thread.replyCount <= thread.replies.length) return { threadId: thread.id };
   const items: Comment[] = [];
   let cursor: string | null = null;
   do {
@@ -143,7 +144,7 @@ export async function findThreadDirect(
       return { threadId: thread.id, older: { items, cursor } };
     }
   } while (cursor);
-  return null;
+  return { threadId: thread.id };
 }
 
 /**
