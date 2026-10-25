@@ -28,12 +28,13 @@ import {
 import { useTranslation } from 'react-i18next';
 import { Navigate, Outlet, useLocation, useNavigate, useSearchParams } from 'react-router';
 import { childBoards, useProjectBoards, useSharedBoards } from '../board/boards.ts';
-import { api, authApi } from '../lib/api.ts';
+import { authApi } from '../lib/api.ts';
 import { HeaderContext } from '../lib/header.tsx';
 import { useSession } from '../lib/session.tsx';
 import { useTheme } from '../lib/theme.ts';
 import { NotificationBell } from '../notifications/Notifications.tsx';
 import { NewProjectDialog } from './NewProjectDialog.tsx';
+import { loadProjects } from './projects.ts';
 import { SearchDialog } from './SearchDialog.tsx';
 
 interface ProjectsState {
@@ -63,8 +64,7 @@ export function AppLayout() {
   const shared = useSharedBoards(!!user);
 
   const load = useCallback(async () => {
-    const page = await api.get<{ items: Project[] }>('/projects');
-    setProjects(page.items);
+    setProjects(await loadProjects());
   }, []);
 
   useEffect(() => {
