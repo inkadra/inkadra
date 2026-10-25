@@ -102,6 +102,7 @@ describe('service worker', () => {
   });
 
   it('fetches navigations from the network, never from the cache', async () => {
+    await dispatch('install');
     const response = await get('/p/1', 'navigate');
     expect(await response?.text()).toBe('from network');
   });
@@ -114,6 +115,7 @@ describe('service worker', () => {
   });
 
   it('passes a server error on a navigation through, without the offline page', async () => {
+    await dispatch('install');
     network.mockResolvedValueOnce(new Response('down', { status: 503 }));
     const response = await get('/p/1', 'navigate');
     expect(response?.status).toBe(503);
@@ -130,6 +132,8 @@ describe('service worker', () => {
   it('sends the API and the socket straight to the network where routes are supported', async () => {
     const addRoutes = vi.fn(async () => {});
     await dispatch('install', { addRoutes });
+    // The routes come on top of the precache, not instead of it.
+    expect(stores.get('inkadra-v2')?.size).toBe(2);
     expect(addRoutes).toHaveBeenCalledOnce();
     const patterns = (
       addRoutes.mock.calls[0] as unknown as [{ condition: { urlPattern: string } }[]]
