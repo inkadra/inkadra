@@ -563,6 +563,10 @@ const Thread = memo(function Thread({
   const [error, setError] = useState(false);
   const replies = mergeReplies([...(older?.items ?? [])], thread.replies);
   const hidden = thread.replyCount - replies.length;
+  const linkLabel = shareLinkTag(thread);
+  const linkTag = linkLabel
+    ? t('comments.oneLinkNamed', { label: linkLabel })
+    : t('comments.oneLink');
 
   const run = async (action: () => Promise<unknown>) => {
     setError(false);
@@ -610,7 +614,9 @@ const Thread = memo(function Thread({
           {t(`comments.visibility.${thread.visibility === 'team' ? 'team' : 'everyone'}`)}
         </span>
         {thread.shareLinkId && (
-          <span className="review-tag">{shareLinkTag(thread) ?? t('comments.oneLink')}</span>
+          <span className="review-tag review-tag--truncate" title={linkTag}>
+            {linkTag}
+          </span>
         )}
       </div>
       <CommentItem comment={thread} elementId={thread.elementId} writable={writable} />

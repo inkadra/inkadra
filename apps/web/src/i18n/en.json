@@ -963,6 +963,7 @@
     "teamHint": "Only people with a role on the board.",
     "everyoneHint": "Also guests of share links that can read comments.",
     "oneLink": "One link only",
+    "oneLinkNamed": "Only the “{{label}}” link",
     "threadLabel": "Thread on {{card}}",
     "deletedAuthor": "Deleted account",
     "guest": "Guest",

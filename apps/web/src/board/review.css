@@ -22,6 +22,13 @@
   white-space: nowrap;
   color: var(--ink-text-secondary);
 }
+/* Text tags from user input (a share link label, up to 80 characters) stay on one line. */
+.review-tag--truncate {
+  display: inline-block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 .review-chip--approved .ink-icon {
   color: var(--ink-status-ok);
 }
