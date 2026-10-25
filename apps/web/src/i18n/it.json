@@ -1141,7 +1141,7 @@
   "pwa": {
     "updateAvailable": "Nuova versione disponibile",
     "update": "Aggiorna",
-    "updateWhenSaved": "Si aggiorna quando le modifiche sono salvate e i caricamenti finiti",
+    "updateWhenSaved": "Si aggiorna quando le modifiche sono salvate e i caricamenti finiti o annullati",
     "later": "Più tardi",
     "offline": {
       "title": "Sei offline",

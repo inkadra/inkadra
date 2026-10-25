@@ -4,7 +4,7 @@ import { isBusy, whenIdle } from './busy.ts';
 /**
  * Registers /sw.js (production builds on secure contexts only) and tells the page when a new
  * version is ready. The new worker waits until the user chooses to update, and the reload
- * waits until the open board is saved and no upload is running (busy.ts).
+ * waits until the open board is saved and no upload can still run (busy.ts).
  */
 
 /** A new version is available; `deferred`: the user asked, and it waits for busy.ts. */
