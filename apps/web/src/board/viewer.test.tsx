@@ -348,4 +348,28 @@ describe('mounted viewer error events', () => {
     expect(container.querySelector('a[download]')).toBeNull();
     expect(container.querySelector('.guest-viewer__stage img')).not.toBeNull();
   });
+
+  it('detects playback stall when a video cannot decode frames after play', async () => {
+    vi.useFakeTimers();
+    try {
+      await render(member());
+      const video = container.querySelector('video');
+      expect(video).not.toBeNull();
+      Object.defineProperty(video, 'paused', { configurable: true, value: false });
+      Object.defineProperty(video, 'currentTime', { configurable: true, value: 0 });
+      Object.defineProperty(video, 'readyState', { configurable: true, value: 0 });
+      Object.defineProperty(video, 'videoWidth', { configurable: true, value: 0 });
+
+      await act(async () => {
+        video?.dispatchEvent(new Event('waiting'));
+        vi.advanceTimersByTime(2100);
+      });
+
+      expect(container.querySelector('.viewer__unplayable')?.textContent).toContain(
+        'Formato non riproducibile',
+      );
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 });

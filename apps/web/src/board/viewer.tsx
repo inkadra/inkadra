@@ -2,7 +2,7 @@ import { createElement, updateElement } from '@inkadra/canvas-core';
 import type { Element } from '@inkadra/doc-schema';
 import type { Asset } from '@inkadra/shared';
 import { Button, IconButton } from '@inkadra/ui';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { pickVariant, useAsset } from './assets.ts';
 import { type BoardStore, LOCAL } from './store.ts';
@@ -52,6 +52,82 @@ export function exifRows(exif: Exif | null, locale: string): Array<{ key: string
 /** MediaError SRC_NOT_SUPPORTED (4) or DECODE (3) */
 export function isUnplayableVideoError(code: number | null | undefined): boolean {
   return !code || code === 3 || code === 4;
+}
+
+/** Monitors playback and media error events to detect unsupported codecs (e.g. ProRes). */
+export function useVideoUnplayable(url: string | null | undefined, assetId: string | undefined) {
+  const [unplayable, setUnplayable] = useState(false);
+  const videoRef = useRef<HTMLVideoElement>(null);
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: resets unplayable state when the element or asset changes
+  useEffect(() => {
+    setUnplayable(false);
+  }, [assetId, url]);
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: re-attaches listeners when the url changes
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    const check = () => {
+      if (video.error && isUnplayableVideoError(video.error.code)) {
+        setUnplayable(true);
+        return;
+      }
+      if (video.networkState === 3 /* NETWORK_NO_SOURCE */) {
+        setUnplayable(true);
+      }
+    };
+
+    // Listen for media errors dispatched by the browser
+    if (video.networkState === 3 /* NETWORK_NO_SOURCE */) {
+      setUnplayable(true);
+    }
+
+    video.addEventListener('error', check);
+
+    let stallTimer: ReturnType<typeof setTimeout> | null = null;
+    const startStallCheck = () => {
+      if (stallTimer) return;
+      stallTimer = setTimeout(() => {
+        if (
+          !video.paused &&
+          video.currentTime === 0 &&
+          (video.readyState < 2 || video.videoWidth === 0)
+        ) {
+          setUnplayable(true);
+        }
+      }, 2000);
+    };
+
+    const clearStallCheck = () => {
+      if (stallTimer) {
+        clearTimeout(stallTimer);
+        stallTimer = null;
+      }
+      if (video.currentTime > 0 || video.readyState >= 2) {
+        setUnplayable(false);
+      }
+    };
+
+    video.addEventListener('play', startStallCheck);
+    video.addEventListener('waiting', startStallCheck);
+    video.addEventListener('stalled', startStallCheck);
+    video.addEventListener('timeupdate', clearStallCheck);
+    video.addEventListener('playing', clearStallCheck);
+
+    return () => {
+      video.removeEventListener('error', check);
+      video.removeEventListener('play', startStallCheck);
+      video.removeEventListener('waiting', startStallCheck);
+      video.removeEventListener('stalled', startStallCheck);
+      video.removeEventListener('timeupdate', clearStallCheck);
+      video.removeEventListener('playing', clearStallCheck);
+      if (stallTimer) clearTimeout(stallTimer);
+    };
+  }, [url]);
+
+  return { videoRef, unplayable, setUnplayable };
 }
 
 /** Shown over the poster when the browser cannot decode a video format (e.g. ProRes). */
@@ -113,12 +189,7 @@ export function MediaViewer({
   const isYoutube = element.type === 'link' && isYoutubeUrl(element.url);
   const ready: Asset | null = asset && asset !== 'missing' ? asset : null;
   const [copied, setCopied] = useState<string | null>(null);
-  const [unplayable, setUnplayable] = useState(false);
-
-  // biome-ignore lint/correctness/useExhaustiveDependencies: resets unplayable state when the element or asset changes
-  useEffect(() => {
-    setUnplayable(false);
-  }, [element.id, ready?.id]);
+  const { videoRef, unplayable, setUnplayable } = useVideoUnplayable(ready?.url, ready?.id);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -191,6 +262,7 @@ export function MediaViewer({
           <>
             {/* biome-ignore lint/a11y/useMediaCaption: people's own footage has no captions */}
             <video
+              ref={videoRef}
               className="viewer__media"
               src={ready.url}
               poster={ready.variants.length > 0 ? pickVariant(ready, wide) : undefined}
