@@ -100,7 +100,7 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 0;
+  padding: 4px 8px 4px 4px;
   border: none;
   background: none;
   color: inherit;
@@ -109,8 +109,21 @@
   cursor: pointer;
   border-radius: 10px;
 }
+.share__person:hover {
+  background: var(--ink-surface-2);
+}
 .share__person[aria-pressed="true"] {
   background: var(--ink-bg-canvas);
+}
+/* Read by screen readers only: what pressing a person does. */
+.share__sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
 }
 .share__who {
   flex: 1;

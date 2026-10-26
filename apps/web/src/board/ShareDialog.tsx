@@ -154,6 +154,9 @@ export function ShareDialog({
               </p>
             )}
 
+            <p id={`${tabsId}-person-hint`} className="share__sr">
+              {t('share.highlightHint')}
+            </p>
             <ul className="share__list" aria-label={t('share.people')}>
               {access?.items.map((e) => {
                 const me = e.user.id === user?.id;
@@ -176,7 +179,7 @@ export function ShareDialog({
                       type="button"
                       className="share__person"
                       aria-pressed={selectedUserId === e.user.id}
-                      aria-label={t('share.highlightRole', { name: e.user.name })}
+                      aria-describedby={`${tabsId}-person-hint`}
                       onClick={() => setSelectedUserId(e.user.id)}
                     >
                       <Avatar name={e.user.name} size={30} />
