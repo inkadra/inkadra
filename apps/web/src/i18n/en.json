@@ -1440,5 +1440,23 @@
       "move": "Move",
       "note": "Note"
     }
+  },
+  "moodboard": {
+    "count_one": "{{count}} reference",
+    "count_other": "{{count}} references",
+    "filter": "Filter by tag",
+    "all": "All tags",
+    "palette": "Board palette",
+    "empty": "Add images, link previews or colors to this board to build your moodboard.",
+    "noMatches": "No references match this tag.",
+    "open": "Open {{name}}",
+    "unavailable": "Preview unavailable",
+    "loading": "Loading preview…",
+    "navigation": "Gallery navigation",
+    "previous": "Previous",
+    "next": "Next",
+    "compare": "Compare A/B",
+    "usedIn": "Used in · this board",
+    "openSource": "Open source"
   }
 }

@@ -175,6 +175,7 @@ export function MediaViewer({
   userId,
   readOnly,
   onClose,
+  gallery,
 }: {
   store: BoardStore;
   element: Extract<Element, { type: 'image' | 'file' | 'link' }>;
@@ -182,21 +183,65 @@ export function MediaViewer({
   userId: string;
   readOnly: boolean;
   onClose: () => void;
+  gallery?: {
+    index: number;
+    total: number;
+    onPrevious: () => void;
+    onNext: () => void;
+    onCompare?: () => void;
+    comparison?: Extract<Element, { type: 'image' | 'link' }>;
+    usedIn: string[];
+  };
 }) {
   const { t, i18n } = useTranslation();
   const assetId = element.type === 'link' ? element.imageAssetId : element.assetId;
   const asset = useAsset(assetId);
   const isYoutube = element.type === 'link' && isYoutubeUrl(element.url);
   const ready: Asset | null = asset && asset !== 'missing' ? asset : null;
+  const comparison = gallery?.comparison;
+  const comparisonAsset = useAsset(
+    comparison?.type === 'link' ? comparison.imageAssetId : comparison?.assetId,
+  );
+  const dialogRef = useRef<HTMLDivElement>(null);
   const [copied, setCopied] = useState<string | null>(null);
   const { videoRef, unplayable, setUnplayable } = useVideoUnplayable(ready?.url, ready?.id);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if ((e.target as HTMLElement | null)?.tagName === 'INPUT') return;
+      const target = e.target as HTMLElement | null;
+      const editing = target?.closest('input, textarea, select, [contenteditable="true"]');
+      if (editing && e.key !== 'Escape') return;
       // The canvas behind listens on window too.
       e.stopImmediatePropagation();
-      if (e.type === 'keydown' && e.key === 'Escape') onClose();
+      if (e.type !== 'keydown') return;
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        onClose();
+      }
+      if (gallery && e.key === 'ArrowLeft') {
+        e.preventDefault();
+        gallery.onPrevious();
+      }
+      if (gallery && e.key === 'ArrowRight') {
+        e.preventDefault();
+        gallery.onNext();
+      }
+      if (gallery && e.key === 'Tab') {
+        const focusable = [
+          ...(dialogRef.current?.querySelectorAll<HTMLElement>(
+            'button:not(:disabled), a[href], input, select, textarea, [tabindex="0"]',
+          ) ?? []),
+        ];
+        const first = focusable[0];
+        const last = focusable.at(-1);
+        if (e.shiftKey && document.activeElement === first) {
+          e.preventDefault();
+          last?.focus();
+        } else if (!e.shiftKey && document.activeElement === last) {
+          e.preventDefault();
+          first?.focus();
+        }
+      }
     };
     window.addEventListener('keydown', onKey, true);
     window.addEventListener('keyup', onKey, true);
@@ -204,7 +249,12 @@ export function MediaViewer({
       window.removeEventListener('keydown', onKey, true);
       window.removeEventListener('keyup', onKey, true);
     };
-  }, [onClose]);
+  }, [onClose, gallery]);
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: focus once on opening, keep focus during navigation
+  useEffect(() => {
+    if (gallery) dialogRef.current?.querySelector<HTMLElement>('button:not(:disabled)')?.focus();
+  }, []);
 
   const rows = exifRows(ready?.exif ?? null, i18n.language);
   const palette = ready?.palette ?? [];
@@ -234,6 +284,7 @@ export function MediaViewer({
 
   return (
     <div
+      ref={dialogRef}
       className="viewer"
       role="dialog"
       aria-modal="true"
@@ -245,9 +296,20 @@ export function MediaViewer({
       data-chrome
     >
       <div
-        className="viewer__stage"
+        className={`viewer__stage${comparison ? ' viewer__stage--compare' : ''}`}
         onPointerDown={(e) => e.target === e.currentTarget && onClose()}
       >
+        {comparison && comparisonAsset && comparisonAsset !== 'missing' && (
+          <img
+            className="viewer__media"
+            src={pickVariant(comparisonAsset, wide)}
+            alt={
+              comparison.type === 'image'
+                ? comparison.caption || comparisonAsset.filename
+                : comparison.title || comparisonAsset.filename
+            }
+          />
+        )}
         {isYoutube ? (
           <div className="viewer__embed">
             <iframe
@@ -296,6 +358,40 @@ export function MediaViewer({
           </span>
           <IconButton icon="close" label={t('viewer.close')} onClick={onClose} />
         </header>
+        {gallery && (
+          <nav className="moodboard__navigation" aria-label={t('moodboard.navigation')}>
+            <Button disabled={gallery.index === 0} onClick={gallery.onPrevious}>
+              {t('moodboard.previous')}
+            </Button>
+            <span role="status">
+              {gallery.index + 1} / {gallery.total}
+            </span>
+            <Button disabled={gallery.index === gallery.total - 1} onClick={gallery.onNext}>
+              {t('moodboard.next')}
+            </Button>
+            {gallery.onCompare && (
+              <button
+                type="button"
+                className="ink-btn ink-btn--secondary"
+                aria-pressed={!!comparison}
+                onClick={gallery.onCompare}
+              >
+                {t('moodboard.compare')}
+              </button>
+            )}
+          </nav>
+        )}
+        {gallery && !ready && (
+          <p role="status">
+            {t(asset === 'missing' ? 'moodboard.unavailable' : 'moodboard.loading')}
+          </p>
+        )}
+        {gallery && gallery.usedIn.length > 0 && (
+          <section>
+            <h3 className="viewer__title">{t('moodboard.usedIn')}</h3>
+            <p>{gallery.usedIn.join(' · ')}</p>
+          </section>
+        )}
         {ready?.width && ready.height && (
           <dl className="viewer__facts">
             <dt>{t('viewer.size')}</dt>
@@ -373,7 +469,7 @@ export function MediaViewer({
             target="_blank"
             rel="noopener noreferrer"
           >
-            {t('viewer.openOnYoutube')}
+            {t(isYoutube ? 'viewer.openOnYoutube' : 'moodboard.openSource')}
           </a>
         ) : (
           ready && (
