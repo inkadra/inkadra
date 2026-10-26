@@ -39,11 +39,6 @@ export function mergeTagCounts(lists: readonly TagCount[][]): TagCount[] {
     .sort((a, b) => b.count - a.count || a.tag.localeCompare(b.tag));
 }
 
-/** Returns all cached tags across known projects. */
-export function getKnownTags(): TagCount[] {
-  return mergeTagCounts([...known.values()]);
-}
-
 /** Loads tags for multiple projects from the API, updating the cache and returning merged counts. */
 export async function loadTagsForProjects(projectIds: readonly string[]): Promise<TagCount[]> {
   const lists = await Promise.all(
@@ -54,7 +49,7 @@ export async function loadTagsForProjects(projectIds: readonly string[]): Promis
           known.set(id, r.items);
           return r.items;
         })
-        .catch(() => known.get(id) ?? []),
+        .catch(() => []),
     ),
   );
   return mergeTagCounts(lists);

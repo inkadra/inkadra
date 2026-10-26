@@ -66,10 +66,24 @@ describe('tag suggestions and merging', () => {
 });
 
 describe('search query parsing', () => {
+  it('preserves a selected multiword tag, including when adding free text', () => {
+    expect(parseQuery('#blue hour', 'blue hour')).toEqual({ tag: 'blue hour' });
+    expect(parseQuery('#blue hour station', 'blue hour')).toEqual({
+      tag: 'blue hour',
+      q: 'station',
+    });
+  });
   it('parses queries with tag and text', () => {
     expect(parseQuery('#notte stazione')).toEqual({ tag: 'notte', q: 'stazione' });
     expect(parseQuery('#notte')).toEqual({ tag: 'notte' });
     expect(parseQuery('stazione')).toEqual({ q: 'stazione' });
     expect(parseQuery('#')).toEqual({});
   });
+});
+
+it('does not offer cached tags when access is revoked', async () => {
+  const get = vi.spyOn(api, 'get').mockResolvedValueOnce({ items: [{ tag: 'private', count: 1 }] });
+  await loadTagsForProjects(['revoked']);
+  get.mockRejectedValueOnce(new Error('Not found'));
+  expect(await loadTagsForProjects(['revoked'])).toEqual([]);
 });

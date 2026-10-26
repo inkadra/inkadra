@@ -273,6 +273,7 @@ describe.skipIf(!url)('search (needs DATABASE_URL)', () => {
   it('shows nothing of projects the caller is not in', async () => {
     expect((await get('stranger', '/api/v1/search?q=binar')).body.items).toEqual([]);
     expect((await get('stranger', '/api/v1/search?tag=notte')).body.items).toEqual([]);
+    expect((await get('stranger', '/api/v1/search?q=not')).body.items).toEqual([]);
   });
 
   it('shows a guest only the boards they were given', async () => {
@@ -301,6 +302,11 @@ describe.skipIf(!url)('search (needs DATABASE_URL)', () => {
     expect(res.body.items.some((h: { kind: string }) => h.kind === 'project')).toBe(false);
     expect((await get('owner', '/api/v1/search?q=85mm')).body.items).toHaveLength(2);
     expect((await get('guest', '/api/v1/search?q=85mm')).body.items).toHaveLength(1);
+    for (const q of ['notte', 'not']) {
+      const tagged = await get('guest', `/api/v1/search?q=${q}`);
+      expect(tagged.body.items).toHaveLength(2);
+      expect(tagged.body.items.every((h: { boardId: string }) => h.boardId === boardId)).toBe(true);
+    }
     expect((await get('guest', `/api/v1/projects/${projectId}/tags`)).body.items).toEqual([
       { tag: 'notte', count: 2 },
       { tag: 'neon', count: 1 },

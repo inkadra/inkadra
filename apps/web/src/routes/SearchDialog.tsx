@@ -1,15 +1,10 @@
-import type { Project, SearchHit, SearchResult, TagCount } from '@inkadra/shared';
+import type { Board, Project, SearchHit, SearchResult, TagCount } from '@inkadra/shared';
 import { Icon, type IconName } from '@inkadra/ui';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router';
 import { boardPath } from '../board/boards.ts';
-import {
-  filterTagSuggestions,
-  getKnownTags,
-  loadTagsForProjects,
-  normaliseTag,
-} from '../board/tags.tsx';
+import { filterTagSuggestions, loadTagsForProjects, normaliseTag } from '../board/tags.tsx';
 import { api } from '../lib/api.ts';
 import { loadProjects } from './projects.ts';
 import './search.css';
@@ -17,8 +12,15 @@ import './search.css';
 const DEBOUNCE_MS = 180;
 
 /** "#luce notte" searches the tag "luce" for "notte"; "notte" searches text only. */
-export function parseQuery(input: string): { q?: string; tag?: string } {
+export function parseQuery(
+  input: string,
+  pickedTag: string | null = null,
+): { q?: string; tag?: string } {
   const text = input.trim();
+  if (pickedTag && (text === `#${pickedTag}` || text.startsWith(`#${pickedTag} `))) {
+    const rest = text.slice(pickedTag.length + 1).trim();
+    return { tag: pickedTag, ...(rest.length >= 2 ? { q: rest } : {}) };
+  }
   const tag = /(^|\s)#(\S+)/.exec(text)?.[2];
   const q = text.replace(/(^|\s)#\S+/, ' ').trim();
   return { ...(q.length >= 2 ? { q } : {}), ...(tag ? { tag } : {}) };
@@ -47,15 +49,17 @@ function iconOf(hit: SearchHit): IconName {
 /** Search across every project the person can open; ⌘K or the search buttons open it. */
 export function SearchDialog({
   projects,
+  shared,
   onClose,
 }: {
   projects: Project[] | null;
+  shared: Board[] | null;
   onClose: () => void;
 }) {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const [allProjects, setAllProjects] = useState<Project[] | null>(projects);
-  const [availableTags, setAvailableTags] = useState<TagCount[]>(() => getKnownTags());
+  const [availableTags, setAvailableTags] = useState<TagCount[]>([]);
   const [pickedTag, setPickedTag] = useState<string | null>(null);
   const [input, setInput] = useState('');
   const [hits, setHits] = useState<SearchHit[] | null>(null);
@@ -74,15 +78,22 @@ export function SearchDialog({
   }, [projects]);
 
   useEffect(() => {
-    if (!allProjects || allProjects.length === 0) return;
+    setAvailableTags([]);
+    const ids = [
+      ...new Set([
+        ...(allProjects ?? []).map((p) => p.id),
+        ...(shared ?? []).map((b) => b.projectId),
+      ]),
+    ];
+    if (ids.length === 0) return;
     let alive = true;
-    loadTagsForProjects(allProjects.map((p) => p.id)).then((tags) => {
+    loadTagsForProjects(ids).then((tags) => {
       if (alive) setAvailableTags(tags);
     });
     return () => {
       alive = false;
     };
-  }, [allProjects]);
+  }, [allProjects, shared]);
 
   const isTagInput = input.trimStart().startsWith('#');
   const rawAfterHash = input.trimStart().slice(1);
@@ -97,40 +108,19 @@ export function SearchDialog({
     setPickedTag(normalised);
     setInput(`#${normalised}`);
     setActive(0);
-    runSearch({ tag: normalised });
   }
 
-  function runSearch(q: { q?: string; tag?: string }) {
-    if (!q.q && !q.tag) {
-      setHits(null);
-      setState('idle');
-      return;
-    }
-    const n = ++seq.current;
-    setState('loading');
-    const params = new URLSearchParams({ ...q, limit: '30' });
-    api
-      .get<SearchResult>(`/search?${params}`)
-      .then((r) => {
-        if (n !== seq.current) return;
-        setHits(r.items);
-        setActive(0);
-        setState('idle');
-      })
-      .catch(() => n === seq.current && setState('error'));
-  }
-
-  const query = parseQuery(input);
+  const query = parseQuery(input, pickedTag);
   const key = JSON.stringify(query);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: `key` stands for `query`
   useEffect(() => {
+    const n = ++seq.current;
     if (!query.q && !query.tag) {
       setHits(null);
       setState('idle');
       return;
     }
-    const n = ++seq.current;
     setState('loading');
     const timer = setTimeout(() => {
       const params = new URLSearchParams({ ...query, limit: '30' });
@@ -188,7 +178,11 @@ export function SearchDialog({
             onChange={(e) => {
               const next = e.target.value;
               setInput(next);
-              if (pickedTag && next.trim() !== `#${pickedTag}`) {
+              if (
+                pickedTag &&
+                next.trim() !== `#${pickedTag}` &&
+                !next.trimStart().startsWith(`#${pickedTag} `)
+              ) {
                 setPickedTag(null);
               }
             }}

@@ -292,7 +292,9 @@ export function AppLayout() {
           <Outlet />
         </AppShell>
       </HeaderContext.Provider>
-      {searching && <SearchDialog projects={projects} onClose={() => setSearching(false)} />}
+      {searching && (
+        <SearchDialog projects={projects} shared={shared} onClose={() => setSearching(false)} />
+      )}
       <NewProjectDialog
         open={creating}
         onClose={() => setCreating(false)}
