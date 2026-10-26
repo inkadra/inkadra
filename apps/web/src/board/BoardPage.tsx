@@ -97,11 +97,13 @@ export function BoardPage() {
 function CurrentCrumb({
   title,
   ariaLabel,
+  maxLength,
   canRename,
   onRename,
 }: {
   title: string;
   ariaLabel?: string;
+  maxLength: number;
   canRename: boolean;
   onRename: (title: string) => void;
 }) {
@@ -122,6 +124,7 @@ function CurrentCrumb({
       <input
         className="crumb crumb--current crumb__input"
         defaultValue={title}
+        maxLength={maxLength}
         // biome-ignore lint/a11y/noAutofocus: opened explicitly by user click to rename
         autoFocus
         onFocus={(e) => {
@@ -285,6 +288,8 @@ function BoardScreen({
                 <CurrentCrumb
                   title={c.title}
                   ariaLabel={c.id === rootBoardId ? t('project.name') : t('board.board.title')}
+                  // The limits of UpdateProject.name and UpdateBoard.title.
+                  maxLength={c.id === rootBoardId ? 120 : 200}
                   canRename={editable && (boardId !== rootBoardId || canEdit(projectRole))}
                   onRename={handleRenameCurrentBoard}
                 />

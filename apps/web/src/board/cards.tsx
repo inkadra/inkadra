@@ -592,18 +592,10 @@ function BoardCard({ element, editing }: { element: Of<'board'>; editing: boolea
             if (value && value !== board.title)
               void renameBoard(projectId, board.id, value).catch(() => {});
           }}
-          onKeyDown={(e) => {
-            if (e.key === 'Escape') {
-              e.preventDefault();
-              e.stopPropagation();
-              // Blur uses the original value, so cancelling cannot issue a PATCH.
-              e.currentTarget.value = board.title;
-              e.currentTarget.blur();
-            } else if (e.key === 'Enter') {
-              e.preventDefault();
-              e.currentTarget.blur();
-            }
-          }}
+          // Escape leaves the field keeping what was typed, like every other card field: a new
+          // board is named by typing and pressing Escape.
+          onKeyDown={blurOnEnter}
+          maxLength={200}
           aria-label={t('board.board.title')}
         />
       ) : (

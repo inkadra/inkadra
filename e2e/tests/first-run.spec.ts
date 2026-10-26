@@ -100,7 +100,8 @@ test('the board takes notes and columns, with undo', async ({ page }) => {
   const sub = page.locator('[data-type="board"]');
   await expect(sub).toHaveCount(1);
   await page.keyboard.type('Sopralluoghi');
-  await page.keyboard.press('Enter');
+  // Escape ends editing and keeps the name, as in every card field.
+  await page.keyboard.press('Escape');
   await expect(sub).toContainText('Sopralluoghi');
   await sub.dblclick();
   await expect(page).toHaveURL(/\/p\/[0-9a-f-]{36}\/b\/[0-9a-f-]{36}$/);
@@ -114,10 +115,10 @@ test('the board takes notes and columns, with undo', async ({ page }) => {
       renames.push(request.postData() ?? '');
     }
   });
-  // Escape cancels a card rename without sending a request.
+  // Leaving a card rename unchanged sends no request.
   await sub.click();
   await page.keyboard.press('F2');
-  await sub.locator('input').fill('Cancelled card rename');
+  await expect(sub.locator('input')).toBeFocused();
   await sub.locator('input').press('Escape');
   await expect(sub.locator('input')).toHaveCount(0);
   await expect(sub).toContainText('Sopralluoghi');
