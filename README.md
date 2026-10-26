@@ -31,9 +31,9 @@
   </picture>
 </p>
 
-Inkadra is a free, open source workspace in the spirit of Milanote, built for people who make
-films and photographs: moodboards, storyboards, shot lists and client review on an infinite
-canvas, running on your own server.
+Inkadra is a free, open source visual workspace for people who make films and photographs:
+moodboards, storyboards, shot lists and client review on an infinite canvas, running on your
+own server.
 
 > [!NOTE]
 > **Early development.** Inkadra is moving fast towards 1.0 and is good for trying out, but
