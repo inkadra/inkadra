@@ -7,7 +7,7 @@ import {
   type ShootingDay,
   type ShootingDayInput,
 } from '@inkadra/shared';
-import { Button } from '@inkadra/ui';
+import { Button, Dialog, DialogActions } from '@inkadra/ui';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api, RequestError } from '../../lib/api.ts';
@@ -253,6 +253,10 @@ function DayEditor({
     }),
   );
   const [selectedShot, setSelectedShot] = useState('');
+  // Deleting a day or a filled block asks first: a misclick must not lose a day's work.
+  const [pendingDelete, setPendingDelete] = useState<
+    { kind: 'day' } | { kind: 'block'; id: string } | null
+  >(null);
   const disabled = readOnly || busy;
   const valid = DaySchema.safeParse(draft).success;
   const conflicts = castConflicts(days.map((item) => (item.id === day.id ? draft : item)));
@@ -428,9 +432,14 @@ function DayEditor({
                   {t('schedule.down')}
                 </Button>
                 <Button
-                  onClick={() =>
-                    update({ blocks: draft.blocks.filter((item) => item.id !== block.id) })
-                  }
+                  onClick={() => {
+                    // An empty block carries nothing to lose: drop it without asking.
+                    if (block.title.trim() || block.shotId) {
+                      setPendingDelete({ kind: 'block', id: block.id });
+                    } else {
+                      update({ blocks: draft.blocks.filter((item) => item.id !== block.id) });
+                    }
+                  }}
                 >
                   {t('schedule.removeBlock')}
                 </Button>
@@ -469,10 +478,47 @@ function DayEditor({
             <Button disabled={!valid} onClick={() => onSave(draft)}>
               {t('schedule.save')}
             </Button>
-            <Button onClick={onDelete}>{t('schedule.deleteDay')}</Button>
+            <Button onClick={() => setPendingDelete({ kind: 'day' })}>
+              {t('schedule.deleteDay')}
+            </Button>
           </div>
         )}
       </fieldset>
+      {/* Outside the fieldset: a disabled fieldset would also disable the dialog buttons. */}
+      <Dialog
+        open={pendingDelete !== null}
+        title={t(
+          pendingDelete?.kind === 'block' ? 'schedule.removeBlockTitle' : 'schedule.deleteDayTitle',
+        )}
+        onClose={() => setPendingDelete(null)}
+      >
+        <p>
+          {pendingDelete?.kind === 'block'
+            ? t('schedule.removeBlockBody')
+            : t('schedule.deleteDayBody', { date: draft.date })}
+        </p>
+        <DialogActions>
+          {/* First focusable element: the native dialog focuses it on open, and Escape closes. */}
+          <Button disabled={disabled} onClick={() => setPendingDelete(null)}>
+            {t('schedule.cancel')}
+          </Button>
+          <Button
+            variant="danger"
+            disabled={disabled}
+            onClick={() => {
+              const target = pendingDelete;
+              setPendingDelete(null);
+              if (target?.kind === 'block') {
+                update({ blocks: draft.blocks.filter((item) => item.id !== target.id) });
+              } else if (target?.kind === 'day') {
+                void onDelete();
+              }
+            }}
+          >
+            {t('schedule.delete')}
+          </Button>
+        </DialogActions>
+      </Dialog>
       {!draft.blocks.length && <p>{t('shells.dropShot')}</p>}
     </section>
   );
