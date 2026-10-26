@@ -46,6 +46,8 @@ interface Readable {
   boardIds: string[];
   /** Projects whose root board the person can open: those show up as project results. */
   projectIds: string[];
+  /** The person's role on each board of `boardIds`, and on each project (its root board). */
+  roles: Map<string, ProjectRole>;
 }
 
 /**
@@ -78,7 +80,7 @@ export async function readableBoards(
     grants.set(g.projectId, map);
   }
   const projects = [...new Set([...projectRoles.keys(), ...grants.keys()])];
-  if (projects.length === 0) return { boardIds: [], projectIds: [] };
+  if (projects.length === 0) return { boardIds: [], projectIds: [], roles: new Map() };
   const boards = await db
     .select({ id: board.id, parentBoardId: board.parentBoardId, projectId: board.projectId })
     .from(board)
@@ -87,6 +89,7 @@ export async function readableBoards(
   for (const b of boards) byProject.set(b.projectId, [...(byProject.get(b.projectId) ?? []), b]);
   const boardIds: string[] = [];
   const projectIds: string[] = [];
+  const out = new Map<string, ProjectRole>();
   for (const projectId of projects) {
     const tree = byProject.get(projectId) ?? [];
     const roles = effectiveRoles(
@@ -95,12 +98,17 @@ export async function readableBoards(
       projectRoles.get(projectId) ?? null,
     );
     for (const b of tree) {
-      if (!roles.get(b.id)?.role) continue;
+      const role = roles.get(b.id)?.role;
+      if (!role) continue;
       boardIds.push(b.id);
-      if (b.parentBoardId === null) projectIds.push(projectId);
+      out.set(b.id, role);
+      if (b.parentBoardId === null) {
+        projectIds.push(projectId);
+        out.set(projectId, role);
+      }
     }
   }
-  return { boardIds, projectIds };
+  return { boardIds, projectIds, roles: out };
 }
 
 const uuids = (ids: string[]) => sql`${`{${ids.join(',')}}`}::uuid[]`;
@@ -119,12 +127,15 @@ export function registerSearchRoutes(app: FastifyInstance, { db, auth }: Deps) {
     const like = q ? containsPattern(q) : null;
     const hits: SearchHit[] = [];
 
-    if (q && !tag && !query.type && readable.projectIds.length > 0) {
-      const projects = await db.execute<Row>(sql`
+    if (q && !tag && !query.type) {
+      const projects =
+        readable.projectIds.length > 0
+          ? await db.execute<Row>(sql`
         select p.id, p.name from project p
         where p.id = any(${uuids(readable.projectIds)}) and p.name ilike ${like}
         order by word_similarity(${q}, p.name) desc, p.name
-        limit ${query.limit}`);
+        limit ${query.limit}`)
+          : [];
       for (const r of projects) {
         hits.push({
           kind: 'project',
@@ -139,6 +150,7 @@ export function registerSearchRoutes(app: FastifyInstance, { db, auth }: Deps) {
           snippet: null,
           assetId: null,
           tags: [],
+          myRole: readable.roles.get(r.id as string),
         });
       }
       const boards = await db.execute<Row>(sql`
@@ -162,6 +174,7 @@ export function registerSearchRoutes(app: FastifyInstance, { db, auth }: Deps) {
           snippet: null,
           assetId: (r.cover_asset_id as string | null) ?? null,
           tags: [],
+          myRole: readable.roles.get(r.id as string),
         });
       }
     }
@@ -193,6 +206,7 @@ export function registerSearchRoutes(app: FastifyInstance, { db, auth }: Deps) {
         snippet: snippet(text, q),
         assetId: (r.asset_id as string | null) ?? null,
         tags: r.tags as string[],
+        myRole: readable.roles.get(r.board_id as string),
       });
     }
     return { items: hits.slice(0, query.limit) };

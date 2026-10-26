@@ -6,19 +6,24 @@ import { join } from 'node:path';
 import { pipeline } from 'node:stream/promises';
 import multipart from '@fastify/multipart';
 import { MAX_TAGS } from '@inkadra/doc-schema';
-import { API_PREFIX, ClipRequest, type ClipResult } from '@inkadra/shared';
+import { API_PREFIX, ClipRequest, type ClipResult, type OutcomeUnknown } from '@inkadra/shared';
 import { Upload } from '@tus/utils';
 import { inArray } from 'drizzle-orm';
 import type { FastifyBaseLogger, FastifyInstance, FastifyRequest } from 'fastify';
 import { z } from 'zod';
 import { type Actor, requireBoardRole } from '../access.ts';
 import type { Auth } from '../auth.ts';
-import type { BoardWriter, NewCard, NoteBlock } from '../board-writer.ts';
+import {
+  BoardEditNotStarted,
+  type BoardWriter,
+  type NewCard,
+  type NoteBlock,
+} from '../board-writer.ts';
 import type { Database } from '../db/client.ts';
 import { asset } from '../db/schema.ts';
 import type { Jobs } from '../jobs.ts';
 import { sniffImage } from '../media/heic.ts';
-import { CardOutcomeUnknown, ENQUEUE_TIMEOUT_MS, within } from '../queues.ts';
+import { ENQUEUE_TIMEOUT_MS, within } from '../queues.ts';
 import { FetchRefused, type SafeResponse, safeFetch } from '../safe-fetch.ts';
 import { originalKey, type Storage } from '../storage.ts';
 import { requireActor } from './auth-routes.ts';
@@ -85,14 +90,23 @@ export function textNote(text: string, note?: string, source?: string): NoteBloc
   return blocks;
 }
 
-/** Temporary folders of clips are removed by their request; these are left from a crash. */
+/**
+ * Temporary folders of clips are removed by their request; these are left from a crash.
+ * Another replica sharing the folder may be receiving a clip into one right now, so a folder
+ * goes only when neither it nor its file changed for `olderThanMs`: a file being received
+ * changes with every chunk, which the folder alone does not show.
+ */
 export async function sweepClipTemp(dir: string, olderThanMs = 60 * 60 * 1000) {
   let removed = 0;
+  const fresh = async (path: string) =>
+    Date.now() - ((await stat(path).catch(() => null))?.mtimeMs ?? 0) < olderThanMs;
   for (const name of await readdir(dir).catch(() => [])) {
     if (!name.startsWith('clip-')) continue;
     const path = join(dir, name);
     const info = await stat(path).catch(() => null);
-    if (!info?.isDirectory() || Date.now() - info.mtimeMs < olderThanMs) continue;
+    if (!info?.isDirectory() || (await fresh(path))) continue;
+    const files = await readdir(path).catch(() => []);
+    if ((await Promise.all(files.map((f) => fresh(join(path, f))))).some(Boolean)) continue;
     await rm(path, { recursive: true, force: true });
     removed += 1;
   }
@@ -261,7 +275,8 @@ export async function registerClipRoutes(app: FastifyInstance, deps: Deps) {
         type: 'link',
         fields: {
           url,
-          title: preview?.title ?? undefined,
+          // Usually the tab's title, which the person saw; the page's own is a fallback.
+          title: input.title?.trim() || (preview?.title ?? undefined),
           // The person's own words come first: they say why the link was saved.
           description: input.note ?? preview?.description ?? undefined,
           imageAssetId: preview?.imageAssetId ?? undefined,
@@ -389,13 +404,18 @@ export async function registerClipRoutes(app: FastifyInstance, deps: Deps) {
             card,
           });
         } catch (err) {
-          if (!(err instanceof CardOutcomeUnknown)) throw err;
-          // The card may be on the board: its assets must stay. Unused, they cost only space.
+          // Not even opened: certainly not on the board, so its files go.
+          if (err instanceof BoardEditNotStarted) throw err;
+          // Anything else may have reached the document (a write that threw halfway, a
+          // collab that did not answer): the card may be on the board and its assets stay.
+          // Unused, they cost only space.
           await process(created.splice(0), req.log);
           req.log.error({ err, boardId: input.boardId }, 'clip outcome unknown');
+          const details: OutcomeUnknown = { reason: 'outcome_unknown' };
           throw new HttpError(
             'internal',
             'The board did not confirm the clip in time: check it before trying again.',
+            details,
           );
         }
         if (!placed.ok)

@@ -1,6 +1,7 @@
 import {
   API_PREFIX,
   type Board,
+  type BoardColumns,
   type BoardDetail,
   CreateBoard,
   Id,
@@ -20,6 +21,7 @@ import {
   requireBoardRole,
 } from '../access.ts';
 import type { Auth } from '../auth.ts';
+import { type BoardReader, storedColumns } from '../board-content.ts';
 import type { Database } from '../db/client.ts';
 import { asset, board } from '../db/schema.ts';
 import { iso } from './api-routes.ts';
@@ -29,6 +31,8 @@ import { HttpError } from './errors.ts';
 interface Deps {
   db: Database;
   auth: Auth;
+  /** Reads the live document; without it, the stored one is read. */
+  boardReader?: BoardReader;
 }
 
 const ProjectParams = z.object({ projectId: Id });
@@ -142,6 +146,21 @@ export function registerBoardRoutes(app: FastifyInstance, deps: Deps) {
       ...toBoard(access.board, access.role),
       breadcrumb: breadcrumb(access),
     };
+    return body;
+  });
+
+  app.get(v1('/boards/:boardId/columns'), async (req) => {
+    const actor = await requireActor(auth, req, db);
+    const { boardId } = BoardParams.parse(req.params);
+    await requireBoardRole(db, actor, boardId, 'viewer');
+    // The live document has the columns added since the last store; the stored one is a
+    // fallback the contract allows, when collab cannot be asked in time.
+    let items = await deps.boardReader?.columns(boardId).catch((err) => {
+      req.log.warn({ err, boardId }, 'live columns not read: using the stored document');
+      return undefined;
+    });
+    items ??= await storedColumns(db, boardId);
+    const body: BoardColumns = { items };
     return body;
   });
 

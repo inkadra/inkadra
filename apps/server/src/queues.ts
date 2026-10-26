@@ -1,11 +1,17 @@
 import type { BoardNotice } from '@inkadra/doc-schema';
+import type { BoardColumn } from '@inkadra/shared';
 import { Queue, QueueEvents, Worker } from 'bullmq';
 import { and, eq, lt } from 'drizzle-orm';
 import IORedis from 'ioredis';
 import type { Logger } from 'pino';
 import type { BoardReader, StoredElement } from './board-content.ts';
 import { type BoardNotifier, NOTICE_TTL_MS } from './board-notices.ts';
-import type { AddCard, AddCardResult, BoardWriter } from './board-writer.ts';
+import {
+  type AddCard,
+  type AddCardResult,
+  BoardEditNotStarted,
+  type BoardWriter,
+} from './board-writer.ts';
 import type { Database } from './db/client.ts';
 import { asset } from './db/schema.ts';
 import type { Jobs } from './jobs.ts';
@@ -48,6 +54,7 @@ export type JobPayloads = {
   'maintenance:anonymise-guests': Record<string, never>;
   'media:process': { assetId: string };
   'collab:read-element': { boardId: string; elementId: string; expiresAt: number };
+  'collab:read-columns': { boardId: string; expiresAt: number };
   'collab:add-card': AddCard & { expiresAt: number };
   'collab:save-version': SaveVersion & { expiresAt: number };
   'collab:restore-version': RestoreVersion & { expiresAt: number };
@@ -322,16 +329,20 @@ export function queuedBoardWriter(
   ): Promise<T | { ok: false; reason: 'expired' }> {
     const expiresAt = Date.now() + timeoutMs;
     const left = () => expiresAt - Date.now();
-    // With Valkey down these would wait forever. A job added after the deadline is removed
-    // as soon as the add lands, and refused by the worker if it runs first: giving up here
-    // cannot lead to a late edit.
-    const adding = events
-      .waitUntilReady()
-      .then(() => queue.add(name, { ...input, expiresAt }, { attempts: 1, ...ADD_CARD_KEEP }));
+    // Readiness alone cannot write. Once add is attempted, a missing acknowledgement may
+    // hide a job already applied by collab: the deadline only prevents future writes.
+    let submitted = false;
+    const adding = events.waitUntilReady().then(() => {
+      if (left() <= 0) throw new BoardEditNotStarted('The collaboration queue is unreachable.');
+      submitted = true;
+      return queue.add(name, { ...input, expiresAt }, { attempts: 1, ...ADD_CARD_KEEP });
+    });
     const job = await within(adding, left(), 'The collaboration queue is unreachable.').catch(
       (err) => {
         adding.then((late) => late.remove()).catch(() => {});
-        throw err;
+        if (submitted)
+          throw new CardOutcomeUnknown('The collaboration queue is unreachable.', { cause: err });
+        throw new BoardEditNotStarted('The collaboration queue is unreachable.', { cause: err });
       },
     );
     try {
@@ -377,6 +388,11 @@ export function queuedBoardWriter(
         if ('ok' in result) throw new Error('The collaboration read expired.');
         return result.element;
       },
+      async columns(boardId: string) {
+        const result = await run<{ columns: BoardColumn[] }>('read-columns', { boardId });
+        if ('ok' in result) throw new Error('The collaboration read expired.');
+        return result.columns;
+      },
     } satisfies BoardReader,
     async close() {
       await Promise.all([queue.close(), events.close()]);
@@ -385,7 +401,7 @@ export function queuedBoardWriter(
   };
 }
 
-type CollabJob = 'read-element' | 'add-card' | 'save-version' | 'restore-version';
+type CollabJob = 'read-element' | 'read-columns' | 'add-card' | 'save-version' | 'restore-version';
 
 /**
  * Run by `inkadra collab`: applies the edits queued by web roles to the live documents, and
@@ -419,6 +435,10 @@ export function startBoardWorker(
       if (name === 'read-element' && opts.reader) {
         const { boardId, elementId } = job.data as JobPayloads['collab:read-element'];
         return { element: await opts.reader.element(boardId, elementId) };
+      }
+      if (name === 'read-columns' && opts.reader) {
+        const { boardId } = job.data as JobPayloads['collab:read-columns'];
+        return { columns: await opts.reader.columns(boardId) };
       }
       if (name === 'add-card') return writer.addCard(job.data as JobPayloads['collab:add-card']);
       if (name === 'save-version' && opts.versions)
