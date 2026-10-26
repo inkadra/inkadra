@@ -66,6 +66,13 @@
       "useApp": "Usa l’app di autenticazione"
     }
   },
+  "mobile": {
+    "navigation": "Navigazione principale",
+    "back": "Indietro",
+    "new": "Nuovo",
+    "profile": "Profilo",
+    "close": "Chiudi navigazione"
+  },
   "nav": {
     "modules": "Moduli",
     "navigation": "Navigazione",

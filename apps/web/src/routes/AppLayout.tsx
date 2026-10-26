@@ -2,6 +2,7 @@ import type { Board, Project } from '@inkadra/shared';
 import {
   AppShell,
   Avatar,
+  Dialog,
   Header,
   Icon,
   IconButton,
@@ -22,6 +23,7 @@ import {
   type ReactNode,
   useContext,
   useEffect,
+  useRef,
   useState,
   useSyncExternalStore,
 } from 'react';
@@ -37,6 +39,7 @@ import {
   NotificationList,
   useUnreadCount,
 } from '../notifications/Notifications.tsx';
+import { MobileNavigation } from './MobileNavigation.tsx';
 import { NewProjectDialog } from './NewProjectDialog.tsx';
 import {
   getCachedProjects,
@@ -45,6 +48,7 @@ import {
   subscribeProjects,
 } from './projects.ts';
 import { SearchDialog } from './SearchDialog.tsx';
+import './mobile-shell.css';
 
 interface ProjectsState {
   projects: Project[] | null;
@@ -66,10 +70,12 @@ export function AppLayout() {
   const navigate = useNavigate();
   const { pathname } = useLocation();
   const projects = useSyncExternalStore(subscribeProjects, getCachedProjects);
+  const [drawerOpen, setDrawerOpen] = useState(false);
   const [creating, setCreating] = useState(false);
   const [headerContent, setHeaderContent] = useState<ReactNode | null>(null);
   const [searching, setSearching] = useState(false);
   const [inboxOpen, setInboxOpen] = useState(false);
+  const mobileInboxButton = useRef<HTMLButtonElement>(null);
   const [unread, refreshUnread] = useUnreadCount();
   const [params, setParams] = useSearchParams();
   const shared = useSharedBoards(!!user);
@@ -77,6 +83,13 @@ export function AppLayout() {
   useEffect(() => {
     if (user) void refreshProjects();
   }, [user]);
+
+  useEffect(() => {
+    const desktop = window.matchMedia('(min-width: 768px)');
+    const closeDrawer = () => setDrawerOpen(false);
+    desktop.addEventListener('change', closeDrawer);
+    return () => desktop.removeEventListener('change', closeDrawer);
+  }, []);
 
   // ⌘K / Ctrl+K opens the search from anywhere, even inside a text field.
   useEffect(() => {
@@ -109,6 +122,7 @@ export function AppLayout() {
 
   const go = (to: string) => (e: MouseEvent) => {
     e.preventDefault();
+    setDrawerOpen(false);
     navigate(to);
   };
 
@@ -141,6 +155,7 @@ export function AppLayout() {
     v: 'canvas' | 'storyboard' | 'shotlist' | 'schedule' | 'review' | 'moodboard',
   ) => {
     if (!projectId) return;
+    setDrawerOpen(false);
     if (v === 'storyboard' && !isStoryboard && storyboardBoard && current?.rootBoardId) {
       navigate(boardPath(projectId, storyboardBoard.id, current.rootBoardId));
       return;
@@ -244,9 +259,19 @@ export function AppLayout() {
         label={t('nav.inbox')}
         badge={unread > 0 ? unread : undefined}
         active={inboxOpen}
-        onClick={() => setInboxOpen((o) => !o)}
+        onClick={() => {
+          setDrawerOpen(false);
+          setInboxOpen((o) => !o);
+        }}
       />
-      <RailButton icon="search" label={t('nav.search')} onClick={() => setSearching(true)} />
+      <RailButton
+        icon="search"
+        label={t('nav.search')}
+        onClick={() => {
+          setDrawerOpen(false);
+          setSearching(true);
+        }}
+      />
       <RailSpacer />
       <RailButton
         icon={theme === 'dark' ? 'sun' : 'moon'}
@@ -279,7 +304,14 @@ export function AppLayout() {
         />
         <span className="ink-nav__name">{instance?.name}</span>
       </div>
-      <button type="button" className="ink-sidebar__search" onClick={() => setSearching(true)}>
+      <button
+        type="button"
+        className="ink-sidebar__search"
+        onClick={() => {
+          setDrawerOpen(false);
+          setSearching(true);
+        }}
+      >
         <Icon name="search" size={14} />
         {t('nav.search')}
         <span style={{ flex: 1 }} />
@@ -297,14 +329,26 @@ export function AppLayout() {
         label={t('nav.inbox')}
         count={unread}
         active={inboxOpen}
-        onClick={() => setInboxOpen((o) => !o)}
+        href="#inbox"
+        onClick={(e) => {
+          e.preventDefault();
+          setDrawerOpen(false);
+          setInboxOpen((o) => !o);
+        }}
       />
       <NavItem icon="assigned" label={t('nav.assigned')} count={0} />
       <NavItem icon="unsorted" label={t('nav.unsorted')} count={0} />
       <SidebarSection
         title={t('nav.projects')}
         action={
-          <IconButton icon="plus" label={t('nav.newProject')} onClick={() => setCreating(true)} />
+          <IconButton
+            icon="plus"
+            label={t('nav.newProject')}
+            onClick={() => {
+              setDrawerOpen(false);
+              setCreating(true);
+            }}
+          />
         }
       />
       {projects?.map((p) => (
@@ -322,35 +366,55 @@ export function AppLayout() {
                 icon="storyboard"
                 label={t('nav.storyboard')}
                 active={currentView === 'storyboard'}
-                onClick={() => showView('storyboard')}
+                href={`${pathname}?view=storyboard`}
+                onClick={(e) => {
+                  e.preventDefault();
+                  showView('storyboard');
+                }}
                 style={{ paddingLeft: 22 }}
               />
               <NavItem
                 icon="shotlist"
                 label={t('nav.shotlist')}
                 active={currentView === 'shotlist'}
-                onClick={() => showView('shotlist')}
+                href={`${pathname}?view=shotlist`}
+                onClick={(e) => {
+                  e.preventDefault();
+                  showView('shotlist');
+                }}
                 style={{ paddingLeft: 22 }}
               />
               <NavItem
                 icon="calendar"
                 label={t('nav.schedule')}
                 active={currentView === 'schedule'}
-                onClick={() => showView('schedule')}
+                href={`${pathname}?view=schedule`}
+                onClick={(e) => {
+                  e.preventDefault();
+                  showView('schedule');
+                }}
                 style={{ paddingLeft: 22 }}
               />
               <NavItem
                 icon="people"
                 label={t('nav.clients')}
                 active={currentView === 'review'}
-                onClick={() => showView('review')}
+                href={`${pathname}?view=review`}
+                onClick={(e) => {
+                  e.preventDefault();
+                  showView('review');
+                }}
                 style={{ paddingLeft: 22 }}
               />
               <NavItem
                 icon="image"
                 label={t('nav.moodboard')}
                 active={currentView === 'moodboard'}
-                onClick={() => showView('moodboard')}
+                href={`${pathname}?view=moodboard`}
+                onClick={(e) => {
+                  e.preventDefault();
+                  showView('moodboard');
+                }}
                 style={{ paddingLeft: 22 }}
               />
               <BoardTree
@@ -394,20 +458,55 @@ export function AppLayout() {
 
   const header = (
     <Header>
-      {headerContent ?? (
-        <>
-          <nav aria-label={t('nav.breadcrumb')} className="ink-header__crumbs">
-            <span style={{ fontWeight: 600 }}>{current?.name ?? t('nav.home')}</span>
-          </nav>
-          <span className="ink-header__spacer" />
-          <span
-            className="ink-muted"
-            style={{ fontSize: 12, display: 'flex', alignItems: 'center', gap: 6 }}
-          >
-            <KeyCap>⌘K</KeyCap>
-            {t('home.searchHint')}
-          </span>
-        </>
+      <div className="mobile-header-actions">
+        {projectId && (
+          <IconButton
+            className="mobile-back"
+            icon="chevronRight"
+            label={t('mobile.back')}
+            onClick={() => navigate(boardId ? `/p/${projectId}` : '/')}
+          />
+        )}
+        <IconButton
+          icon="board"
+          label={t('nav.navigation')}
+          aria-haspopup="dialog"
+          aria-expanded={drawerOpen}
+          onClick={() => setDrawerOpen(true)}
+        />
+      </div>
+      <div className="shell-header-content">
+        {headerContent ?? (
+          <>
+            <nav aria-label={t('nav.breadcrumb')} className="ink-header__crumbs">
+              <span style={{ fontWeight: 600 }}>{current?.name ?? t('nav.home')}</span>
+            </nav>
+            <span className="ink-header__spacer" />
+            <span
+              className="ink-muted"
+              style={{ fontSize: 12, display: 'flex', alignItems: 'center', gap: 6 }}
+            >
+              <KeyCap>⌘K</KeyCap>
+              {t('home.searchHint')}
+            </span>
+          </>
+        )}
+      </div>
+      {projectId && (
+        <select
+          className="mobile-view-switcher"
+          aria-label={t('film.views.label')}
+          value={currentView}
+          onChange={(e) => showView(e.target.value as typeof currentView)}
+        >
+          {(['canvas', 'storyboard', 'shotlist', 'schedule', 'review', 'moodboard'] as const).map(
+            (v) => (
+              <option key={v} value={v}>
+                {t(`film.views.${v}`)}
+              </option>
+            ),
+          )}
+        </select>
       )}
       <NotificationBell unread={unread} onCount={refreshUnread} />
     </Header>
@@ -420,13 +519,61 @@ export function AppLayout() {
           <Outlet />
         </AppShell>
       </HeaderContext.Provider>
+      <MobileNavigation
+        inboxButtonRef={mobileInboxButton}
+        pathname={pathname}
+        inboxOpen={inboxOpen}
+        drawerOpen={drawerOpen}
+        unread={unread}
+        onHome={() => {
+          setInboxOpen(false);
+          navigate('/');
+        }}
+        onProjects={() => {
+          setInboxOpen(false);
+          setDrawerOpen(true);
+        }}
+        onNew={() => {
+          setInboxOpen(false);
+          setCreating(true);
+        }}
+        onInbox={() => setInboxOpen((o) => !o)}
+        onProfile={() => {
+          setInboxOpen(false);
+          navigate('/settings');
+        }}
+      />
+      {drawerOpen && (
+        <div className="mobile-drawer">
+          <Dialog open title={t('nav.navigation')} onClose={() => setDrawerOpen(false)}>
+            <button
+              type="button"
+              className="mobile-drawer__close"
+              onClick={() => setDrawerOpen(false)}
+            >
+              {t('mobile.close')}
+            </button>
+            {sidebar}
+            <button type="button" onClick={toggle}>
+              {theme === 'dark' ? t('nav.theme.toLight') : t('nav.theme.toDark')}
+            </button>
+            <button type="button" onClick={signOut}>
+              {t('auth.signOut')}
+            </button>
+          </Dialog>
+        </div>
+      )}
       {searching && (
         <SearchDialog projects={projects} shared={shared} onClose={() => setSearching(false)} />
       )}
       {inboxOpen && (
         <NotificationList
           fixed
-          onClose={() => setInboxOpen(false)}
+          bell={mobileInboxButton}
+          onClose={() => {
+            setInboxOpen(false);
+            if (window.matchMedia('(max-width: 767px)').matches) mobileInboxButton.current?.focus();
+          }}
           onNavigate={() => setInboxOpen(false)}
           onCount={refreshUnread}
         />
