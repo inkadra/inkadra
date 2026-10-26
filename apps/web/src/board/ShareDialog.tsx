@@ -14,9 +14,8 @@ import { api, RequestError } from '../lib/api.ts';
 import { useSession } from '../lib/session.tsx';
 import { GuestLinks } from './GuestLinks.tsx';
 import './share.css';
+import { linkRoleChoices, rank, roleChoices } from './share-roles.ts';
 
-const ROLES: ProjectRole[] = ['viewer', 'commenter', 'editor', 'owner'];
-const rank = (r: ProjectRole) => ROLES.indexOf(r);
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 /**
@@ -43,7 +42,7 @@ export function ShareDialog({
   const isRoot = board.parentBoardId === null;
   const myRole = board.myRole;
   const canManage = access?.canManage ?? false;
-  const choices = ROLES.filter((r) => rank(r) <= rank(myRole));
+  const choices = roleChoices(myRole);
   // Editors and owners also share with people without an account (decision 0013).
   const canShareGuests = myRole === 'owner' || myRole === 'editor';
   const [tab, setTab] = useState<ShareTab>('people');
@@ -231,7 +230,7 @@ export function ShareDialog({
               <LinkSection
                 boardId={board.id}
                 link={link ?? null}
-                choices={choices}
+                choices={linkRoleChoices(myRole)}
                 onChange={load}
                 onError={fail}
               />

@@ -39,6 +39,7 @@ import {
   type InvitationRow,
   invitationStatus,
   invitationTarget,
+  invitedRole,
 } from '../invitations.ts';
 import { mailText } from '../mail-texts.ts';
 import { actionMail, type Mailer } from '../mailer.ts';
@@ -166,7 +167,7 @@ export function registerSharingRoutes(app: FastifyInstance, deps: Deps) {
       email: row.email,
       projectId: row.projectId,
       boardId: row.boardId,
-      role: row.role,
+      role: invitedRole(row),
       invitedBy: inviter ? { id: inviter.id, name: inviter.name, image: inviter.image } : null,
       uses: row.uses,
       maxUses: row.maxUses,
@@ -530,7 +531,7 @@ export function registerSharingRoutes(app: FastifyInstance, deps: Deps) {
       instanceName: config.INSTANCE_NAME,
       invitedBy: inviter?.name ?? null,
       ...(await invitationTarget(db, row)),
-      role: row.role,
+      role: invitedRole(row),
       email: row.email,
       status: invitationStatus(row),
       expiresAt: iso(row.expiresAt),
