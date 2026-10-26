@@ -1,4 +1,4 @@
-import type { GuestRole, ProjectRole } from '@inkadra/shared';
+import { atLeast, type ProjectRole, PROJECT_ROLE_RANK as rank } from '@inkadra/shared';
 import { and, eq, inArray, isNull, sql } from 'drizzle-orm';
 import { visibleBoardCard } from './board-content.ts';
 import type { Database } from './db/client.ts';
@@ -12,11 +12,7 @@ export interface Actor {
   tokenId?: string;
 }
 
-const rank: Record<ProjectRole, number> = { viewer: 0, commenter: 1, editor: 2, owner: 3 };
-
-export function atLeast(role: ProjectRole | null, needed: ProjectRole): boolean {
-  return role !== null && rank[role] >= rank[needed];
-}
+export { atLeast, type GuestAction, guestCan } from '@inkadra/shared';
 
 export function higher(a: ProjectRole, b: ProjectRole): boolean {
   return rank[a] > rank[b];
@@ -416,26 +412,6 @@ export async function linkIncludesBoard(
     if (child && !(await visibleBoardCard(db, id, child))) return false;
   }
   return true;
-}
-
-// Guests of share links (decision 0013) ------------------------------------------
-
-/**
- * What guests of a share link may do. Guest roles are not project roles and never appear on
- * access lists; whatever their role, a guest only ever reads the filtered snapshot of the
- * boards of their link. Picks need a link with `proofing`, whatever its role.
- */
-export type GuestAction = 'view' | 'read_comments' | 'write_comments' | 'review' | 'pick';
-
-const guestRights: Record<GuestRole, readonly GuestAction[]> = {
-  guest_view: ['view', 'pick'],
-  guest_comment: ['view', 'pick', 'read_comments', 'write_comments'],
-  guest_approve: ['view', 'pick', 'read_comments', 'write_comments', 'review'],
-};
-
-export function guestCan(link: { role: GuestRole; proofing: boolean }, action: GuestAction) {
-  if (action === 'pick' && !link.proofing) return false;
-  return guestRights[link.role].includes(action);
 }
 
 /**

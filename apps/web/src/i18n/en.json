@@ -664,6 +664,17 @@
     "tab": {
       "people": "People",
       "guests": "Guest links"
+    },
+    "matrix": {
+      "title": "Role permissions matrix",
+      "role": "Role",
+      "view": "View",
+      "comment": "Comment",
+      "edit": "Edit",
+      "share": "Share",
+      "download": "Download originals",
+      "yes": "Yes",
+      "no": "No"
     }
   },
   "guestLinks": {
@@ -1089,7 +1100,8 @@
       "assigned": "Assigned to me"
     },
     "readAllYesterday": "You've read everything up to yesterday",
-    "filter": "Inbox filter"
+    "filter": "Inbox filter",
+    "loadedOnly": "Filters apply to loaded notifications. Show more to search older notifications."
   },
   "settings": {
     "title": "Account",

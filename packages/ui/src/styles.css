@@ -331,6 +331,11 @@ select {
   color: var(--ink-text-muted);
 }
 .ink-nav {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  text-align: left;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -344,7 +349,8 @@ select {
   background: var(--ink-surface-1);
   color: var(--ink-text-primary);
 }
-.ink-nav[aria-current="page"] {
+.ink-nav[aria-current="page"],
+.ink-nav[aria-pressed="true"] {
   background: var(--ink-surface-1);
   color: var(--ink-text-primary);
 }

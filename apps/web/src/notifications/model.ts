@@ -48,3 +48,17 @@ export function dayLabel(
     ...(date.getFullYear() === now.getFullYear() ? {} : { year: 'numeric' }),
   });
 }
+
+export type InboxFilter = 'all' | 'mentions' | 'approvals';
+export function filterNotifications<T extends Pick<Notification, 'type'>>(
+  items: T[],
+  filter: InboxFilter,
+): T[] {
+  return items.filter(
+    (item) => filter === 'all' || item.type === (filter === 'mentions' ? 'mention' : 'review'),
+  );
+}
+/** The badge comes from the API total, never from the currently loaded page. */
+export function unreadBadge(unread: number): string | null {
+  return unread > 0 ? (unread > 99 ? '99+' : String(unread)) : null;
+}

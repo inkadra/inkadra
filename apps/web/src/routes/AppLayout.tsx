@@ -330,15 +330,12 @@ export function AppLayout() {
         label={t('nav.inbox')}
         count={unread}
         active={inboxOpen}
-        href="#inbox"
         onClick={(e) => {
           e.preventDefault();
           setDrawerOpen(false);
           setInboxOpen((o) => !o);
         }}
       />
-      <NavItem icon="assigned" label={t('nav.assigned')} count={0} />
-      <NavItem icon="unsorted" label={t('nav.unsorted')} count={0} />
       <SidebarSection
         title={t('nav.projects')}
         action={
@@ -444,16 +441,6 @@ export function AppLayout() {
           ))}
         </>
       )}
-      <SidebarSection title={t('nav.pinned')} />
-      <div className="ink-muted" style={{ padding: '0 8px', fontSize: 12 }}>
-        {t('home.noPinned')}
-      </div>
-      <div className="ink-sidebar__footer">
-        <span
-          style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--ink-status-ok)' }}
-        />
-        {t('nav.synced')}
-      </div>
     </Sidebar>
   );
 
@@ -576,6 +563,7 @@ export function AppLayout() {
             setInboxOpen(false);
             if (window.matchMedia('(width < 768px)').matches) mobileInboxButton.current?.focus();
           }}
+          unread={unread}
           onNavigate={() => setInboxOpen(false)}
           onCount={refreshUnread}
         />

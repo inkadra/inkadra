@@ -99,12 +99,26 @@ export function NavItem({
   count?: number;
   active?: boolean;
 }) {
-  return (
-    <a className="ink-nav" aria-current={active ? 'page' : undefined} {...props}>
+  const content = (
+    <>
       {icon ? <Icon name={icon} /> : leading}
       <span className="ink-nav__name">{label}</span>
       {count !== undefined && <span className="ink-nav__count">{count}</span>}
+    </>
+  );
+  return props.href ? (
+    <a className="ink-nav" aria-current={active ? 'page' : undefined} {...props}>
+      {content}
     </a>
+  ) : (
+    <button
+      className="ink-nav"
+      aria-pressed={active}
+      {...(props as ButtonHTMLAttributes<HTMLButtonElement>)}
+      type="button"
+    >
+      {content}
+    </button>
   );
 }
 

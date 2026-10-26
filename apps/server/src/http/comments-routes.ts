@@ -1,5 +1,6 @@
 import {
   API_PREFIX,
+  CAPABILITY_ROLE,
   type Comment,
   type CommentCounts,
   CommentQuery,
@@ -74,7 +75,7 @@ interface Viewer {
   role: ProjectRole;
 }
 
-const canWrite = (v: Viewer) => atLeast(v.role, 'commenter');
+const canWrite = (v: Viewer) => atLeast(v.role, CAPABILITY_ROLE.comment);
 
 /** The mentions of a body that name people who can read the board. */
 async function readableMentions(db: Database, boardId: string, body: string): Promise<string[]> {
