@@ -107,6 +107,63 @@ test('the board takes notes and columns, with undo', async ({ page }) => {
   await expect(page.getByText('Board vuota')).toBeVisible();
   await page.getByRole('banner').getByRole('link', { name: 'Ultima corsa' }).click();
   await expect(page.locator('[data-type="board"]')).toContainText('Sopralluoghi');
+
+  // Rename via F2 shortcut on single selected board card.
+  await sub.click();
+  await page.keyboard.press('F2');
+  const cardInput = sub.locator('input');
+  await expect(cardInput).toBeVisible();
+  await cardInput.fill('Location Scout');
+  await page.keyboard.press('Enter');
+  await expect(sub).toContainText('Location Scout');
+
+  // Rename via context menu on board card.
+  await sub.click({ button: 'right' });
+  const renameMenu = page.getByRole('menuitem', { name: 'Rinomina' });
+  await expect(renameMenu).toBeVisible();
+  await renameMenu.click();
+  await expect(sub.locator('input')).toBeVisible();
+  await sub.locator('input').fill('Sopralluoghi');
+  await page.keyboard.press('Enter');
+  await expect(sub).toContainText('Sopralluoghi');
+
+  // Rename via breadcrumb click-to-rename.
+  await sub.dblclick();
+  await expect(page).toHaveURL(/\/p\/[0-9a-f-]{36}\/b\/[0-9a-f-]{36}$/);
+  const crumbButton = page.getByRole('banner').getByRole('button', { name: 'Sopralluoghi' });
+  await expect(crumbButton).toBeVisible();
+
+  // Escape cancels without saving.
+  await crumbButton.click();
+  const crumbInput = page.getByRole('banner').getByRole('textbox', { name: 'Titolo della board' });
+  await expect(crumbInput).toBeVisible();
+  await crumbInput.fill('Annullato');
+  await crumbInput.press('Escape');
+  await expect(crumbInput).not.toBeVisible();
+  await expect(
+    page.getByRole('banner').getByRole('button', { name: 'Sopralluoghi' }),
+  ).toBeVisible();
+
+  // Enter saves the new title.
+  await page.getByRole('banner').getByRole('button', { name: 'Sopralluoghi' }).click();
+  const crumbInputSave = page
+    .getByRole('banner')
+    .getByRole('textbox', { name: 'Titolo della board' });
+  await crumbInputSave.fill('Scouting Finale');
+  await crumbInputSave.press('Enter');
+  await expect(crumbInputSave).not.toBeVisible();
+  await expect(
+    page.getByRole('banner').getByRole('button', { name: 'Scouting Finale' }),
+  ).toBeVisible();
+
+  // Root crumb is not a button / not editable.
+  await expect(page.getByRole('banner').getByRole('button', { name: 'Ultima corsa' })).toHaveCount(
+    0,
+  );
+  await page.getByRole('banner').getByRole('link', { name: 'Ultima corsa' }).click();
+
+  // Live title update reflects on parent board card.
+  await expect(page.locator('[data-type="board"]')).toContainText('Scouting Finale');
 });
 
 test('keys typed while the new note is not focused still land in it', async ({ page }) => {

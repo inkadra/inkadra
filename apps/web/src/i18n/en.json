@@ -306,7 +306,8 @@
       "tags": "Tags…",
       "viewImage": "Open image",
       "details": "Frame details",
-      "draw": "Draw"
+      "draw": "Draw",
+      "rename": "Rename"
     },
     "zoom": {
       "label": "Zoom",

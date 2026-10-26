@@ -22,6 +22,7 @@ export type Command =
   | { kind: 'selectAll' }
   | { kind: 'escape' }
   | { kind: 'edit' }
+  | { kind: 'rename' }
   | { kind: 'lock' }
   | { kind: 'front' }
   | { kind: 'back' }
@@ -86,6 +87,9 @@ export function commandFor(e: KeyInput, mac = isMac()): Command | null {
   }
   if (e.shiftKey) return null;
   switch (key) {
+    case 'F2':
+      if (e.metaKey || e.ctrlKey) return null;
+      return { kind: 'rename' };
     case 'v':
       return { kind: 'tool', tool: 'select' };
     case 'h':

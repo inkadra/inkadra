@@ -1087,6 +1087,11 @@ export function Canvas({
       case 'edit':
         if (single) openElement(single);
         break;
+      case 'rename':
+        if (!readOnly && single && single.type === 'board' && !single.locked) {
+          setEditing(single.id);
+        }
+        break;
       case 'lock':
         toggleLock();
         break;
@@ -1392,6 +1397,9 @@ export function Canvas({
     return [
       ...(single && (single.type === 'board' || single.type === 'link')
         ? [{ label: t('board.menu.open'), action: () => openElement(single) }]
+        : []),
+      ...(single && single.type === 'board' && !readOnly && !single.locked
+        ? [{ label: t('board.menu.rename'), shortcut: 'F2', action: () => setEditing(single.id) }]
         : []),
       ...(single && (single.type === 'image' || single.type === 'file')
         ? [{ label: t('board.menu.viewImage'), action: () => openElement(single) }]
