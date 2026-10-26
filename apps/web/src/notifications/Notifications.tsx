@@ -103,15 +103,13 @@ function avatarBg(name: string | null | undefined): string {
   return colors[hash % colors.length] ?? '#8A8A90';
 }
 
-function relativeTime(iso: string): string {
-  const diffMs = Date.now() - new Date(iso).getTime();
-  const mins = Math.floor(diffMs / 60000);
-  if (mins < 1) return 'adesso';
-  if (mins < 60) return `${mins} min`;
-  const hours = Math.floor(mins / 60);
-  if (hours < 24) return `${hours} h`;
-  const days = Math.floor(hours / 24);
-  return `${days} g`;
+function relativeTime(iso: string, language: string): string {
+  const minutes = Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 60000));
+  const formatter = new Intl.RelativeTimeFormat(language, { numeric: 'auto', style: 'short' });
+  if (minutes < 60) return formatter.format(-minutes, 'minute');
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return formatter.format(-hours, 'hour');
+  return formatter.format(-Math.floor(hours / 24), 'day');
 }
 
 type InboxFilter = 'all' | 'mentions' | 'approvals' | 'assigned';
@@ -265,7 +263,11 @@ export function NotificationList({
         )}
       </header>
       {fixed && (
-        <div role="tablist" aria-label="Filtro inbox" className="notifications-filter-tabs">
+        <div
+          role="tablist"
+          aria-label={t('notifications.filter')}
+          className="notifications-filter-tabs"
+        >
           <button
             type="button"
             role="tab"
@@ -273,7 +275,7 @@ export function NotificationList({
             className={`notifications-filter-tab ${filter === 'all' ? 'is-active' : ''}`}
             onClick={() => setFilter('all')}
           >
-            {t('notifications.tabs.all', 'Tutto')}
+            {t('notifications.tabs.all')}
           </button>
           <button
             type="button"
@@ -282,7 +284,7 @@ export function NotificationList({
             className={`notifications-filter-tab ${filter === 'mentions' ? 'is-active' : ''}`}
             onClick={() => setFilter('mentions')}
           >
-            {t('notifications.tabs.mentions', 'Menzioni')}{' '}
+            {t('notifications.tabs.mentions')}{' '}
             {mentionsCount > 0 && <span className="notifications-tab-badge">{mentionsCount}</span>}
           </button>
           <button
@@ -292,7 +294,7 @@ export function NotificationList({
             className={`notifications-filter-tab ${filter === 'approvals' ? 'is-active' : ''}`}
             onClick={() => setFilter('approvals')}
           >
-            {t('notifications.tabs.approvals', 'Approvazioni')}
+            {t('notifications.tabs.approvals')}
           </button>
           <button
             type="button"
@@ -301,7 +303,7 @@ export function NotificationList({
             className={`notifications-filter-tab ${filter === 'assigned' ? 'is-active' : ''}`}
             onClick={() => setFilter('assigned')}
           >
-            {t('notifications.tabs.assigned', 'Assegnati a me')}
+            {t('notifications.tabs.assigned')}
           </button>
         </div>
       )}
@@ -349,7 +351,9 @@ export function NotificationList({
                               .join(' · ')}
                           </span>
                         )}
-                        <time dateTime={n.createdAt}>{relativeTime(n.createdAt)}</time>
+                        <time dateTime={n.createdAt}>
+                          {relativeTime(n.createdAt, i18n.language)}
+                        </time>
                       </div>
                       {n.excerpt && <span className="notification__excerpt">{n.excerpt}</span>}
                     </div>

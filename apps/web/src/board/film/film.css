@@ -2139,3 +2139,65 @@ select.film-status {
 .moodboard-comment-input::placeholder {
   color: #808086;
 }
+
+.film-shell {
+  flex: 1;
+  min-width: 0;
+  padding: 24px;
+  overflow: auto;
+  color: var(--ink-text-primary);
+}
+.film-shell > header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.film-shell__badge {
+  padding: 4px 8px;
+  border: 1px solid currentColor;
+  border-radius: 6px;
+}
+.film-shell__columns {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 24px;
+}
+.film-shell__card,
+.film-shell__drop {
+  padding: 16px;
+  margin: 8px 0;
+  border: 1px solid var(--ink-border-default);
+  border-radius: 8px;
+}
+.film-shell__drop {
+  min-height: 120px;
+  border-style: dashed;
+}
+@media print {
+  .film-shell__print {
+    display: block;
+    color: black;
+    background: white;
+  }
+  .film-shell__print > strong {
+    display: block;
+    font-size: 24pt;
+  }
+}
+
+.film-shell button.film-shell__card {
+  display: block;
+  width: 100%;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  background: var(--ink-surface-1);
+}
+@media (max-width: 720px) {
+  .film-shell__columns {
+    grid-template-columns: 1fr;
+  }
+  .film-shell > header {
+    flex-wrap: wrap;
+  }
+}

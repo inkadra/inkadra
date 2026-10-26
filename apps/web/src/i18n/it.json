@@ -1080,7 +1080,8 @@
       "approvals": "Approvazioni",
       "assigned": "Assegnati a me"
     },
-    "readAllYesterday": "Hai letto tutto fino a ieri"
+    "readAllYesterday": "Hai letto tutto fino a ieri",
+    "filter": "Filtro inbox"
   },
   "settings": {
     "title": "Account",
@@ -1229,5 +1230,37 @@
     "show": "Mostra agli ospiti",
     "hidden": "Nascosto agli ospiti",
     "inherited": "Nascosto agli ospiti tramite il contenitore"
+  },
+  "shells": {
+    "close": "Chiudi",
+    "editOnCanvas": "Modifica sulla board",
+    "demo": "Demo · non salvato",
+    "callSheet": "Foglio di lavorazione",
+    "scheduleUnavailable": "La pianificazione non è ancora collegata a un servizio di salvataggio. Le prove di trascinamento sono locali e si perdono chiudendo la vista. Nessuna data è stata pianificata.",
+    "noShots": "Nessuna inquadratura in questa board.",
+    "draftSlot": "Prova di pianificazione locale",
+    "dropShot": "Trascina qui un’inquadratura per provarne il posizionamento.",
+    "reviewUnavailable": "Demo: invio, decisioni e commenti non sono ancora disponibili. Nessuna revisione viene salvata.",
+    "submitReview": "Invia revisione",
+    "approve": "Approva",
+    "requestChanges": "Richiedi modifiche",
+    "comments": "Commenti",
+    "noComments": "Nessun commento disponibile.",
+    "noReferences": "Nessun riferimento disponibile.",
+    "referencesUnavailable": "La vista dei riferimenti è in preparazione. Le immagini della board restano accessibili nel canvas.",
+    "callSheetUnavailable": "Bozza vuota: date, convocazioni, meteo, contatti e informazioni di sicurezza non sono disponibili. Stampa ed esportazione non sono ancora abilitate.",
+    "print": "Stampa / esporta",
+    "matrix": "Matrice permessi dei ruoli",
+    "role": "Ruolo",
+    "view": "Vedere",
+    "comment": "Commentare",
+    "edit": "Modificare",
+    "share": "Condividere",
+    "download": "Scaricare",
+    "owner": "Proprietario",
+    "editor": "Editor",
+    "commenter": "Commentatore",
+    "viewer": "Lettore",
+    "guest": "Ospite"
   }
 }

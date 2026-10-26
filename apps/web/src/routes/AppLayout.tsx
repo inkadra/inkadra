@@ -141,6 +141,10 @@ export function AppLayout() {
     v: 'canvas' | 'storyboard' | 'shotlist' | 'schedule' | 'review' | 'moodboard',
   ) => {
     if (!projectId) return;
+    if (v === 'storyboard' && !isStoryboard && storyboardBoard && current?.rootBoardId) {
+      navigate(boardPath(projectId, storyboardBoard.id, current.rootBoardId));
+      return;
+    }
     setParams(
       (p) => {
         const next = new URLSearchParams(p);
@@ -183,12 +187,7 @@ export function AppLayout() {
         disabled={!projectId}
         active={!!projectId && currentView === 'storyboard'}
         onClick={() => {
-          if (!projectId) return;
-          if (!isStoryboard && storyboardBoard && current?.rootBoardId) {
-            navigate(boardPath(projectId, storyboardBoard.id, current.rootBoardId));
-          } else {
-            showView('storyboard');
-          }
+          showView('storyboard');
         }}
       />
       <RailButton

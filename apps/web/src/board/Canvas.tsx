@@ -1779,7 +1779,16 @@ export function Canvas({
           />
         )}
         {noteSheet && (
-          <NoteSideSheet element={snap.byId.get(noteSheet)} onClose={() => setNoteSheet(null)} />
+          <NoteSideSheet
+            noteId={noteSheet}
+            store={store}
+            readOnly={readOnly}
+            onClose={() => setNoteSheet(null)}
+            onEditOnCanvas={() => {
+              setEditing(noteSheet);
+              setNoteSheet(null);
+            }}
+          />
         )}
         {panelFrame && (
           <div className="canvas__panel">

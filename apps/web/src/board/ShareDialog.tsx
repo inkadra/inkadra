@@ -24,11 +24,12 @@ const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
  * others see the list.
  */
 function PermissionsMatrix() {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   return (
     <div className="share__matrix-wrapper">
       <button type="button" className="share__matrix-toggle" onClick={() => setOpen((o) => !o)}>
-        <span>Matrice permessi dei ruoli</span>
+        <span>{t('shells.matrix')}</span>
         <svg
           className="ico"
           viewBox="0 0 24 24"
@@ -43,17 +44,17 @@ function PermissionsMatrix() {
           <table className="share__matrix-table">
             <thead>
               <tr>
-                <th style={{ textAlign: 'left' }}>Ruolo</th>
-                <th>Vedere</th>
-                <th>Commentare</th>
-                <th>Modificare</th>
-                <th>Condividere</th>
-                <th>Scaricare</th>
+                <th style={{ textAlign: 'left' }}>{t('shells.role')}</th>
+                <th>{t('shells.view')}</th>
+                <th>{t('shells.comment')}</th>
+                <th>{t('shells.edit')}</th>
+                <th>{t('shells.share')}</th>
+                <th>{t('shells.download')}</th>
               </tr>
             </thead>
             <tbody>
               <tr>
-                <td>Proprietario</td>
+                <td>{t('shells.owner')}</td>
                 <td>●</td>
                 <td>●</td>
                 <td>●</td>
@@ -61,7 +62,7 @@ function PermissionsMatrix() {
                 <td>●</td>
               </tr>
               <tr>
-                <td>Editor</td>
+                <td>{t('shells.editor')}</td>
                 <td>●</td>
                 <td>●</td>
                 <td>●</td>
@@ -69,7 +70,7 @@ function PermissionsMatrix() {
                 <td>●</td>
               </tr>
               <tr className="is-active">
-                <td>Commentatore</td>
+                <td>{t('shells.commenter')}</td>
                 <td>●</td>
                 <td>●</td>
                 <td>—</td>
@@ -77,7 +78,7 @@ function PermissionsMatrix() {
                 <td>●</td>
               </tr>
               <tr>
-                <td>Lettore</td>
+                <td>{t('shells.viewer')}</td>
                 <td>●</td>
                 <td>—</td>
                 <td>—</td>
@@ -85,7 +86,7 @@ function PermissionsMatrix() {
                 <td>—</td>
               </tr>
               <tr>
-                <td>Ospite</td>
+                <td>{t('shells.guest')}</td>
                 <td>●</td>
                 <td>●</td>
                 <td>—</td>
