@@ -2,7 +2,7 @@
 import { frameLabels, storyboardOf } from '@inkadra/canvas-core';
 import type { Element } from '@inkadra/doc-schema';
 import { Button } from '@inkadra/ui';
-import { useRef, useState, useSyncExternalStore } from 'react';
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { useTranslation } from 'react-i18next';
 import { pickVariant, useAsset } from '../assets.ts';
 import type { BoardStore } from '../store.ts';
@@ -75,6 +75,13 @@ export function MoodboardView({
   const media = filtered.filter((el): el is MediaReference => el.type !== 'color');
   const index = media.findIndex((el) => el.id === selected);
   const current = media[index];
+  useEffect(() => {
+    if (selected && !current) {
+      setSelected(null);
+      setCompare(false);
+      opener.current?.focus();
+    }
+  }, [selected, current]);
   const colors = filtered.filter((el) => el.type === 'color');
   const groups = storyboardOf(all);
   const labels = frameLabels(groups);

@@ -208,7 +208,7 @@ export function MediaViewer({
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      const target = e.target as HTMLElement | null;
+      const target = e.target instanceof HTMLElement ? e.target : null;
       const editing = target?.closest('input, textarea, select, [contenteditable="true"]');
       if (editing && e.key !== 'Escape') return;
       // The canvas behind listens on window too.
