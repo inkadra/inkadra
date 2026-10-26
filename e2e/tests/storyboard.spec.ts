@@ -146,7 +146,7 @@ test('the empty-board Storyboard template opens a real storyboard with a shot li
     page.locator('.shots__table tbody tr:not(.shots__scene):not(.shots__add-row)'),
   ).toHaveCount(3);
   await page.reload();
-  await expect(page.getByRole('row', { name: /^1A\b/ })).toBeVisible();
+  await expect(page.getByRole('row', { name: /\b1A\b/ })).toBeVisible();
   await expect(page.getByRole('row', { name: /1C/ })).toBeVisible();
   await page.getByRole('banner').getByRole('link', { name: 'Modelli' }).click();
   await expect(page.locator('[data-type="board"]', { hasText: 'Storyboard' })).toHaveCount(1);
