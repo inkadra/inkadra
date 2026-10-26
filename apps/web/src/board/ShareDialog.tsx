@@ -13,6 +13,7 @@ import { useTranslation } from 'react-i18next';
 import { api, RequestError } from '../lib/api.ts';
 import { useSession } from '../lib/session.tsx';
 import { GuestLinks } from './GuestLinks.tsx';
+import { PermissionsMatrix } from './PermissionsMatrix.tsx';
 import './share.css';
 import { linkRoleChoices, rank, roleChoices } from './share-roles.ts';
 
@@ -23,84 +24,6 @@ const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
  * above, invitations still waiting, and the invitation link. Editors and owners share; the
  * others see the list.
  */
-function PermissionsMatrix() {
-  const { t } = useTranslation();
-  const [open, setOpen] = useState(false);
-  return (
-    <div className="share__matrix-wrapper">
-      <button type="button" className="share__matrix-toggle" onClick={() => setOpen((o) => !o)}>
-        <span>{t('shells.matrix')}</span>
-        <svg
-          className="ico"
-          viewBox="0 0 24 24"
-          aria-hidden="true"
-          style={{ width: 12, height: 12, transform: open ? 'rotate(180deg)' : 'none' }}
-        >
-          <path d="M7 10l5 5 5-5" />
-        </svg>
-      </button>
-      {open && (
-        <div className="share__matrix-card">
-          <table className="share__matrix-table">
-            <thead>
-              <tr>
-                <th style={{ textAlign: 'left' }}>{t('shells.role')}</th>
-                <th>{t('shells.view')}</th>
-                <th>{t('shells.comment')}</th>
-                <th>{t('shells.edit')}</th>
-                <th>{t('shells.share')}</th>
-                <th>{t('shells.download')}</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td>{t('shells.owner')}</td>
-                <td>●</td>
-                <td>●</td>
-                <td>●</td>
-                <td>●</td>
-                <td>●</td>
-              </tr>
-              <tr>
-                <td>{t('shells.editor')}</td>
-                <td>●</td>
-                <td>●</td>
-                <td>●</td>
-                <td>●</td>
-                <td>●</td>
-              </tr>
-              <tr className="is-active">
-                <td>{t('shells.commenter')}</td>
-                <td>●</td>
-                <td>●</td>
-                <td>—</td>
-                <td>—</td>
-                <td>●</td>
-              </tr>
-              <tr>
-                <td>{t('shells.viewer')}</td>
-                <td>●</td>
-                <td>—</td>
-                <td>—</td>
-                <td>—</td>
-                <td>—</td>
-              </tr>
-              <tr>
-                <td>{t('shells.guest')}</td>
-                <td>●</td>
-                <td>●</td>
-                <td>—</td>
-                <td>—</td>
-                <td>PDF</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      )}
-    </div>
-  );
-}
-
 export function ShareDialog({
   open,
   board,
@@ -125,6 +48,7 @@ export function ShareDialog({
   const canShareGuests = myRole === 'owner' || myRole === 'editor';
   const [tab, setTab] = useState<ShareTab>('people');
   const tabsId = useId();
+  const [selectedUserId, setSelectedUserId] = useState<string | undefined>(undefined);
   const shownTab = canShareGuests ? tab : 'people';
 
   const load = useCallback(async () => {
@@ -243,7 +167,11 @@ export function ShareDialog({
                   rank(e.role) <= rank(myRole) &&
                   (!isRoot || myRole === 'owner');
                 return (
-                  <li key={e.user.id} className="share__row">
+                  <li
+                    key={e.user.id}
+                    className="share__row"
+                    onFocus={() => setSelectedUserId(e.user.id)}
+                  >
                     <Avatar name={e.user.name} size={30} />
                     <span className="share__who">
                       <span className="share__name">
@@ -256,7 +184,10 @@ export function ShareDialog({
                         value={e.role}
                         choices={choices}
                         label={t('share.roleOf', { name: e.user.name })}
-                        onChange={(role) => run(() => setRole(e, role))()}
+                        onChange={(role) => {
+                          setSelectedUserId(e.user.id);
+                          void run(() => setRole(e, role))();
+                        }}
                       />
                     ) : (
                       <span className="share__role">{t(`roles.${e.role}`)}</span>
@@ -303,7 +234,11 @@ export function ShareDialog({
                 </li>
               ))}
             </ul>
-            <PermissionsMatrix />
+            <PermissionsMatrix
+              selectedRole={
+                access?.items.find((entry) => entry.user.id === selectedUserId)?.role ?? myRole
+              }
+            />
 
             {canManage && (
               <LinkSection

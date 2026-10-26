@@ -1,5 +1,6 @@
 import {
   API_PREFIX,
+  CAPABILITY_ROLE,
   CreateShareLink,
   Id,
   type PickSummary,
@@ -103,7 +104,7 @@ export function registerShareLinkRoutes(app: FastifyInstance, deps: Deps) {
     const [row] = await db.select().from(shareLink).where(eq(shareLink.id, linkId));
     if (!row) throw new HttpError('not_found', 'Share link not found.');
     try {
-      await requireBoardRole(db, actor, row.boardId, 'editor');
+      await requireBoardRole(db, actor, row.boardId, CAPABILITY_ROLE.share);
     } catch (err) {
       // Without any role on the board, the link does not exist for this person.
       if (err instanceof HttpError && err.code === 'not_found')
@@ -116,7 +117,7 @@ export function registerShareLinkRoutes(app: FastifyInstance, deps: Deps) {
   app.get(v1('/boards/:boardId/share-links'), async (req) => {
     const actor = await requireActor(auth, req, db);
     const { boardId } = BoardParams.parse(req.params);
-    await requireBoardRole(db, actor, boardId, 'editor');
+    await requireBoardRole(db, actor, boardId, CAPABILITY_ROLE.share);
     const rows = await db
       .select()
       .from(shareLink)
@@ -129,7 +130,7 @@ export function registerShareLinkRoutes(app: FastifyInstance, deps: Deps) {
     const actor = await requireActor(auth, req, db);
     const { boardId } = BoardParams.parse(req.params);
     const input = CreateShareLink.parse(req.body ?? {});
-    const access = await requireBoardRole(db, actor, boardId, 'editor');
+    const access = await requireBoardRole(db, actor, boardId, CAPABILITY_ROLE.share);
     const token = newSecret('', 32);
     const passwordHash = input.password ? await hashPassword(input.password) : null;
     const [row] = await db.transaction(async (tx) => {

@@ -24,6 +24,7 @@ import {
   statusOf,
 } from './guest-links.ts';
 import './guest-links.css';
+import { PermissionsMatrix } from './PermissionsMatrix.tsx';
 
 type T = (key: string, opts?: Record<string, unknown>) => string;
 
@@ -339,6 +340,7 @@ function CreateForm({
         checked={allowDownload}
         onChange={setAllowDownload}
       />
+      <PermissionsMatrix guest={{ role, allowDownload, proofing }} />
       <Check
         label={t('guestLinks.proofing')}
         hint={t('guestLinks.proofingHint')}
@@ -682,6 +684,7 @@ function EditForm({
         disabled={!scope}
         onChange={(allowDownload) => set({ allowDownload })}
       />
+      <PermissionsMatrix guest={draft} />
       <Check
         label={t('guestLinks.proofing')}
         checked={draft.proofing}

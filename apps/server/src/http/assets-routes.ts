@@ -1,4 +1,12 @@
-import { API_PREFIX, type Asset, Id, VariantParams, z } from '@inkadra/shared';
+import {
+  API_PREFIX,
+  type Asset,
+  atLeast,
+  CAPABILITY_ROLE,
+  Id,
+  VariantParams,
+  z,
+} from '@inkadra/shared';
 import { asc, eq } from 'drizzle-orm';
 import type { FastifyInstance, FastifyReply } from 'fastify';
 import { requireAssetRole } from '../access.ts';
@@ -120,7 +128,7 @@ export function registerAssetRoutes(app: FastifyInstance, deps: Deps) {
     if (row.status === 'pending') throw new HttpError('not_found', 'The upload is not finished.');
     // Viewers do not download originals (decision 0011): images have thumbnails to look at;
     // video, audio and PDF stream because there is nothing else to show.
-    if (role === 'viewer') {
+    if (!atLeast(role, CAPABILITY_ROLE.download)) {
       if (download) throw new HttpError('forbidden', 'Viewers cannot download originals.');
       if (row.kind === 'image') {
         const [variant] = await db

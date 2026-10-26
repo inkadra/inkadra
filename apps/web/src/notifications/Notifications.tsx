@@ -6,7 +6,14 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router';
 import { authorName, groupByDay, type Page, reviewKey } from '../board/review-model.ts';
 import { api } from '../lib/api.ts';
-import { dayLabel, KNOWN_TYPES, notificationPath } from './model.ts';
+import {
+  dayLabel,
+  filterNotifications,
+  type InboxFilter,
+  KNOWN_TYPES,
+  notificationPath,
+  unreadBadge,
+} from './model.ts';
 import './notifications.css';
 
 const POLL_MS = 60_000;
@@ -75,12 +82,18 @@ export function NotificationBell({
         <Icon name="bell" />
         {unread > 0 && (
           <span className="notification-bell__count" aria-hidden="true">
-            {unread > 99 ? '99+' : unread}
+            {unreadBadge(unread)}
           </span>
         )}
       </button>
       {open && (
-        <NotificationList bell={bell} onClose={close} onNavigate={dismiss} onCount={count} />
+        <NotificationList
+          unread={unread}
+          bell={bell}
+          onClose={close}
+          onNavigate={dismiss}
+          onCount={count}
+        />
       )}
     </div>
   );
@@ -112,15 +125,15 @@ function relativeTime(iso: string, language: string): string {
   return formatter.format(-Math.floor(hours / 24), 'day');
 }
 
-type InboxFilter = 'all' | 'mentions' | 'approvals' | 'assigned';
-
 export function NotificationList({
   bell,
+  unread,
   fixed,
   onClose,
   onNavigate,
   onCount,
 }: {
+  unread: number;
   bell?: RefObject<HTMLButtonElement | null>;
   fixed?: boolean;
   onClose: () => void;
@@ -199,17 +212,9 @@ export function NotificationList({
     return t(`notifications.type.${type}`);
   };
 
-  const filteredItems = items.filter((n) => {
-    if (filter === 'mentions') return n.type === 'mention' || n.type === 'comment';
-    if (filter === 'approvals') return n.type === 'review' || n.reviewStatus !== undefined;
-    // Assignment events are not emitted by the current API yet.
-    if (filter === 'assigned') return ['assignment', 'task'].includes(n.type);
-    return true;
-  });
-  const unreadTotal = items.filter((n) => !n.readAt).length;
-  const mentionsCount = items.filter((n) => n.type === 'mention' || n.type === 'comment').length;
+  const filteredItems = filterNotifications(items, filter);
   const groups = groupByDay(filteredItems, (d) => dayLabel(d, new Date(), i18n.language, t));
-  const anyUnread = items.some((n) => !n.readAt);
+  const anyUnread = unread > 0;
 
   return (
     <div
@@ -228,7 +233,7 @@ export function NotificationList({
       <header className="notifications__head">
         <h2 id="notifications-title" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           {t('notifications.title')}
-          {unreadTotal > 0 && (
+          {unread > 0 && (
             <span
               style={{
                 fontSize: 11,
@@ -239,7 +244,7 @@ export function NotificationList({
                 color: '#FFFFFF',
               }}
             >
-              {unreadTotal}
+              {unreadBadge(unread)}
             </span>
           )}
         </h2>
@@ -284,8 +289,7 @@ export function NotificationList({
             className={`notifications-filter-tab ${filter === 'mentions' ? 'is-active' : ''}`}
             onClick={() => setFilter('mentions')}
           >
-            {t('notifications.tabs.mentions')}{' '}
-            {mentionsCount > 0 && <span className="notifications-tab-badge">{mentionsCount}</span>}
+            {t('notifications.tabs.mentions')}
           </button>
           <button
             type="button"
@@ -296,18 +300,10 @@ export function NotificationList({
           >
             {t('notifications.tabs.approvals')}
           </button>
-          <button
-            type="button"
-            role="tab"
-            aria-selected={filter === 'assigned'}
-            className={`notifications-filter-tab ${filter === 'assigned' ? 'is-active' : ''}`}
-            onClick={() => setFilter('assigned')}
-          >
-            {t('notifications.tabs.assigned')}
-          </button>
         </div>
       )}
-      {state === 'ready' && items.length === 0 && !next && (
+      {fixed && <p className="ink-muted notifications__status">{t('notifications.loadedOnly')}</p>}
+      {state === 'ready' && filteredItems.length === 0 && (
         <p className="notifications__empty">{t('notifications.empty')}</p>
       )}
       {groups.map(([day, list]) => (
@@ -403,19 +399,6 @@ export function NotificationList({
         <Button variant="ghost" onClick={() => void load(next)}>
           {t('notifications.more')}
         </Button>
-      )}
-      {fixed && items.length > 0 && (
-        <div className="notifications-read-banner">
-          <svg
-            className="ico"
-            viewBox="0 0 24 24"
-            aria-hidden="true"
-            style={{ width: 16, height: 16, color: '#9FE0B4' }}
-          >
-            <path d="M5 12l4 4 10-10" />
-          </svg>
-          {t('notifications.readAllYesterday', 'Hai letto tutto fino a ieri')}
-        </div>
       )}
     </div>
   );

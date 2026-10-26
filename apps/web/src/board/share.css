@@ -203,7 +203,7 @@
   font-size: 11px;
 }
 
-.share__matrix-table th {
+.share__matrix-table thead th {
   padding: 4px 6px;
   font-weight: 500;
   color: #808086;
@@ -211,19 +211,21 @@
   border-bottom: 1px solid #26262a;
 }
 
-.share__matrix-table td {
+.share__matrix-table td,
+.share__matrix-table tbody th {
   padding: 5px 6px;
   color: #8a8a90;
   text-align: center;
   border-bottom: 1px solid #1f1f23;
 }
 
-.share__matrix-table tr.is-active td {
+.share__matrix-table tr.is-active td,
+.share__matrix-table tr.is-active th {
   color: #ededed;
   background: #1e2a44;
 }
 
-.share__matrix-table td:first-child {
+.share__matrix-table th:first-child {
   text-align: left;
   font-weight: 500;
   color: #ededed;

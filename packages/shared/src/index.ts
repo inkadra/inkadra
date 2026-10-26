@@ -8,6 +8,7 @@ export * from './constants.ts';
 export * from './guests.ts';
 export * from './instance.ts';
 export * from './notifications.ts';
+export * from './permissions.ts';
 export * from './projects.ts';
 export * from './reviews.ts';
 export * from './search.ts';

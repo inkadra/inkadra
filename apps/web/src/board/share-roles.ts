@@ -1,8 +1,8 @@
-import { InvitationLinkRole, type ProjectRole } from '@inkadra/shared';
+import { InvitationLinkRole, PROJECT_ROLE_RANK, type ProjectRole } from '@inkadra/shared';
 
 const ROLES: ProjectRole[] = ['viewer', 'commenter', 'editor', 'owner'];
 
-export const rank = (r: ProjectRole) => ROLES.indexOf(r);
+export const rank = (r: ProjectRole) => PROJECT_ROLE_RANK[r];
 
 /** Roles someone can give to people and email invitations: at most their own. */
 export function roleChoices(myRole: ProjectRole): ProjectRole[] {

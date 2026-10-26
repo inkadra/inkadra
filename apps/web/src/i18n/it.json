@@ -663,6 +663,17 @@
     "tab": {
       "people": "Persone",
       "guests": "Link per ospiti"
+    },
+    "matrix": {
+      "title": "Matrice permessi dei ruoli",
+      "role": "Ruolo",
+      "view": "Visualizzare",
+      "comment": "Commentare",
+      "edit": "Modificare",
+      "share": "Condividere",
+      "download": "Scaricare originali",
+      "yes": "Sì",
+      "no": "No"
     }
   },
   "guestLinks": {
@@ -1088,7 +1099,8 @@
       "assigned": "Assegnati a me"
     },
     "readAllYesterday": "Hai letto tutto fino a ieri",
-    "filter": "Filtro inbox"
+    "filter": "Filtro inbox",
+    "loadedOnly": "I filtri si applicano alle notifiche caricate. Mostra altro per cercare tra le notifiche precedenti."
   },
   "settings": {
     "title": "Account",
