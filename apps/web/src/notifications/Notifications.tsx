@@ -11,12 +11,9 @@ import './notifications.css';
 
 const POLL_MS = 60_000;
 
-/** Bell of the app header: unread count, checked once a minute and when the window is focused. */
-export function NotificationBell() {
-  const { t } = useTranslation();
+/** Hook to fetch and periodically poll the unread notification count. */
+export function useUnreadCount(): [number, () => Promise<void>] {
   const [unread, setUnread] = useState(0);
-  const [open, setOpen] = useState(false);
-  const bell = useRef<HTMLButtonElement>(null);
 
   const count = useCallback(async () => {
     // A hidden tab does not poll; it asks again when it is shown.
@@ -41,6 +38,16 @@ export function NotificationBell() {
       document.removeEventListener('visibilitychange', onFocus);
     };
   }, [count]);
+
+  return [unread, count];
+}
+
+/** Bell of the app header: unread count, checked once a minute and when the window is focused. */
+export function NotificationBell() {
+  const { t } = useTranslation();
+  const [unread, count] = useUnreadCount();
+  const [open, setOpen] = useState(false);
+  const bell = useRef<HTMLButtonElement>(null);
 
   const close = useCallback(() => {
     setOpen(false);
@@ -74,13 +81,15 @@ export function NotificationBell() {
   );
 }
 
-function NotificationList({
+export function NotificationList({
   bell,
+  fixed,
   onClose,
   onNavigate,
   onCount,
 }: {
-  bell: RefObject<HTMLButtonElement | null>;
+  bell?: RefObject<HTMLButtonElement | null>;
+  fixed?: boolean;
   onClose: () => void;
   onNavigate: () => void;
   onCount: () => Promise<void>;
@@ -118,7 +127,9 @@ function NotificationList({
   useEffect(() => {
     const away = (e: PointerEvent) => {
       const target = e.target as Node;
-      if (!panel.current?.contains(target) && !bell.current?.contains(target)) onNavigate();
+      if (!panel.current?.contains(target) && !bell?.current?.contains(target)) {
+        onNavigate();
+      }
     };
     document.addEventListener('pointerdown', away);
     return () => document.removeEventListener('pointerdown', away);
@@ -160,7 +171,7 @@ function NotificationList({
   return (
     <div
       ref={panel}
-      className="notifications"
+      className={`notifications${fixed ? ' notifications--fixed' : ''}`}
       tabIndex={-1}
       role="dialog"
       aria-labelledby="notifications-title"

@@ -47,23 +47,26 @@ export function useBoardView(kind: Board['kind'] | undefined): [BoardView, (v: B
   const [params, setParams] = useSearchParams();
   const asked = params.get('view');
   const view: BoardView =
-    kind !== 'storyboard'
-      ? 'canvas'
-      : asked === 'shotlist' || asked === 'canvas'
-        ? asked
-        : 'storyboard';
+    asked === 'shotlist' || asked === 'storyboard' || asked === 'canvas'
+      ? asked
+      : kind === 'storyboard'
+        ? 'storyboard'
+        : 'canvas';
   const setView = useCallback(
     (v: BoardView) =>
       setParams(
         (p) => {
           const next = new URLSearchParams(p);
-          if (v === 'storyboard') next.delete('view');
-          else next.set('view', v);
+          if (kind === 'storyboard' ? v === 'storyboard' : v === 'canvas') {
+            next.delete('view');
+          } else {
+            next.set('view', v);
+          }
           return next;
         },
         { replace: true },
       ),
-    [setParams],
+    [kind, setParams],
   );
   return [view, setView];
 }
@@ -328,7 +331,7 @@ function BoardScreen({
             </Fragment>
           ))}
         </nav>
-        {kind === 'storyboard' && (
+        {(kind === 'storyboard' || view === 'storyboard' || view === 'shotlist') && (
           <div className="view-tabs" role="tablist" aria-label={t('film.views.label')}>
             {VIEWS.map((v) => (
               <button
