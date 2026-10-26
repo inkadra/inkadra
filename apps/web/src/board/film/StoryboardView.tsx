@@ -20,6 +20,7 @@ import { CardReview } from '../CardReview.tsx';
 import { GuestVisibility, GuestVisibilityIcon, toggleGuestHidden } from '../guest-visibility.tsx';
 import { type BoardStore, LOCAL } from '../store.ts';
 import { Animatic } from './Animatic.tsx';
+import { estimatedDurationMs } from './animatic.ts';
 import { aspectLabel, useBoardAspect } from './aspect.ts';
 import { DrawingEditor } from './DrawingEditor.tsx';
 import { FramePanel } from './FramePanel.tsx';
@@ -173,7 +174,7 @@ export function StoryboardView({
       </div>
       <div className="story__main">
         {groups.length > 0 && (
-          <SceneList groups={groups} filter={filter} total={total} onFilter={setSceneFilter} />
+          <SceneList groups={groups} filter={filter} onFilter={setSceneFilter} />
         )}
         <div className="story__scroll" data-scroll>
           {mode === 'animatic' && visibleFrames.length > 0 && (
@@ -184,7 +185,29 @@ export function StoryboardView({
               labels={labels}
               boardAspect={boardAspect}
               readOnly={readOnly}
+              suspended={present}
             />
+          )}
+          {mode === 'animatic' && groups.length > 0 && visibleFrames.length === 0 && (
+            <div className="board-state">
+              <EmptyState
+                icon="storyboard"
+                title={t('film.playback.noFrames')}
+                actions={
+                  !readOnly && (
+                    <Button
+                      variant="primary"
+                      icon="plus"
+                      onClick={() => newFrame(filter === LOOSE ? null : filter)}
+                    >
+                      {t('film.frame.add')}
+                    </Button>
+                  )
+                }
+              >
+                {t('film.playback.noFramesBody')}
+              </EmptyState>
+            </div>
           )}
           {groups.length === 0 && (
             <div className="board-state">
@@ -305,16 +328,16 @@ export function StoryboardView({
 function SceneList({
   groups,
   filter,
-  total,
   onFilter,
 }: {
   groups: readonly SceneGroup[];
   filter: string | null;
-  total: number;
   onFilter: (key: string | null) => void;
 }) {
   const { t } = useTranslation();
   const frames = groups.reduce((n, g) => n + g.frames.length, 0);
+  // The same estimate the animatic plays: frames without a duration count one second.
+  const total = estimatedDurationMs(groups.flatMap((g) => g.frames));
   return (
     <nav className="story__sidebar" aria-label={t('film.playback.scenes')} data-scroll>
       <h2 className="story__sidebar-title">{t('film.playback.scenes')}</h2>
@@ -354,7 +377,7 @@ function SceneList({
                 </span>
                 <span className="story__side-count">{count}</span>
                 <span className="story__sr">
-                  {`, ${progress}, ${formatDuration(totalDurationMs(g.frames))}`}
+                  {`, ${progress}, ${formatDuration(estimatedDurationMs(g.frames))}`}
                 </span>
                 <span className="story__side-bar" aria-hidden="true">
                   <span style={{ width: count ? `${(drawn / count) * 100}%` : 0 }} />

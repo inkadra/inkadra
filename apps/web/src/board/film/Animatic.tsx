@@ -4,7 +4,10 @@ import type { AspectRatio } from '@inkadra/doc-schema';
 import { Button, IconButton } from '@inkadra/ui';
 import {
   type KeyboardEvent,
+  memo,
   type PointerEvent,
+  type RefObject,
+  useCallback,
   useEffect,
   useId,
   useMemo,
@@ -12,6 +15,7 @@ import {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
+import { isTyping } from '../shortcuts.ts';
 import { type BoardStore, LOCAL } from '../store.ts';
 import {
   animaticTimeline,
@@ -38,6 +42,7 @@ export function Animatic({
   boardAspect,
   readOnly,
   present = false,
+  suspended = false,
   onClose,
 }: {
   store: BoardStore;
@@ -46,6 +51,8 @@ export function Animatic({
   boardAspect: AspectRatio;
   readOnly: boolean;
   present?: boolean;
+  /** Paused and kept still while something else (the Present dialog) plays. */
+  suspended?: boolean;
   onClose?: () => void;
 }) {
   const { t } = useTranslation();
@@ -58,10 +65,11 @@ export function Animatic({
   const active = entryAt(timeline, time);
   const dialog = useRef<HTMLDialogElement>(null);
   const stage = useRef<HTMLElement>(null);
+  const track = useRef<HTMLFieldSetElement>(null);
   const hintId = useId();
 
   const clamp = (ms: number) => Math.max(0, Math.min(total, ms));
-  const seek = (ms: number) => setPosition(clamp(ms));
+  const seek = useCallback((ms: number) => setPosition(Math.max(0, Math.min(total, ms))), [total]);
   const seekBy = (ms: number) => setPosition((p) => clamp(Math.min(p, total) + ms));
   const toggle = () => {
     if (!total) return;
@@ -86,21 +94,28 @@ export function Animatic({
       setPosition(total);
     }
   }, [playing, position, total]);
+  useEffect(() => {
+    if (suspended) setPlaying(false);
+  }, [suspended]);
 
   useEffect(() => {
     if (!present) return;
     const el = dialog.current;
+    // Focus goes back to whatever opened the presentation once it closes.
+    const opener = document.activeElement;
     if (el && !el.open) el.showModal();
     stage.current?.focus();
     return () => {
       if (el?.open) el.close();
+      if (opener instanceof HTMLElement && opener.isConnected) opener.focus();
     };
   }, [present]);
 
   function onKeyDown(e: KeyboardEvent) {
     if (e.altKey || e.ctrlKey || e.metaKey) return;
-    // Controls keep their own keys: Space presses a button, arrows move a slider.
-    if ((e.target as HTMLElement).closest('button, input, select, [role="slider"]')) return;
+    // Text fields and controls keep their own keys: Space presses a button, arrows move a slider.
+    if (isTyping(e.target)) return;
+    if (e.target instanceof Element && e.target.closest('button, [role="slider"]')) return;
     if (e.key === ' ' || e.key === 'k') toggle();
     else if (e.key === 'ArrowRight' || e.key === 'l') seekBy(SEEK_MS);
     else if (e.key === 'ArrowLeft' || e.key === 'j') seekBy(-SEEK_MS);
@@ -114,9 +129,10 @@ export function Animatic({
       seek(prev && time - active.start < 500 ? prev.start : active.start);
     } else return;
     e.preventDefault();
+    e.stopPropagation();
   }
 
-  const label = (entry: TimelineEntry) => labels.get(entry.frame.id) ?? '';
+  const label = useCallback((entry: TimelineEntry) => labels.get(entry.frame.id) ?? '', [labels]);
   const body = (
     <section
       className={`animatic${present ? ' animatic--present' : ''}`}
@@ -201,16 +217,23 @@ export function Animatic({
         )}
       </div>
       {total > 0 && (
-        <Track
-          store={store}
-          timeline={timeline}
-          total={total}
-          time={time}
-          active={active}
-          label={label}
-          readOnly={readOnly}
-          onSeek={seek}
-        />
+        <fieldset ref={track} className="animatic__track" aria-label={t('film.playback.track')}>
+          <TrackBlocks
+            store={store}
+            track={track}
+            timeline={timeline}
+            total={total}
+            active={active}
+            label={label}
+            readOnly={readOnly}
+            onSeek={seek}
+          />
+          <span
+            className="animatic__playhead"
+            style={{ left: `${(time / total) * 100}%` }}
+            aria-hidden="true"
+          />
+        </fieldset>
       )}
       <p id={hintId} className="animatic__hint">
         {t('film.playback.keyboard')} {t('film.playback.defaultDuration')}
@@ -233,33 +256,40 @@ export function Animatic({
   );
 }
 
-/** Frame blocks as wide as their duration; the edge of a block is a handle for its duration. */
-function Track({
+/**
+ * Frame blocks as wide as their duration; the edge of a block is a handle for its duration.
+ * Memoized apart from the playhead so playback does not re-render every block on each tick.
+ * A drag shows the new duration locally and writes it once, as one undo step, on release.
+ */
+const TrackBlocks = memo(function TrackBlocks({
   store,
+  track,
   timeline,
   total,
-  time,
   active,
   label,
   readOnly,
   onSeek,
 }: {
   store: BoardStore;
+  track: RefObject<HTMLFieldSetElement | null>;
   timeline: readonly TimelineEntry[];
   total: number;
-  time: number;
   active: TimelineEntry | null;
   label: (entry: TimelineEntry) => string;
   readOnly: boolean;
   onSeek: (ms: number) => void;
 }) {
   const { t } = useTranslation();
-  const track = useRef<HTMLFieldSetElement>(null);
   const drag = useRef<{ id: string; x: number; ms: number; msPerPx: number } | null>(null);
+  const [draft, setDraft] = useState<{ id: string; ms: number } | null>(null);
 
   const setDuration = (frame: FrameElement, ms: number) => {
     const next = snapDuration(ms);
-    if (next !== frame.durationMs) updateElement(store.doc, frame.id, { durationMs: next }, LOCAL);
+    if (next === frame.durationMs) return;
+    store.undo.stopCapturing();
+    updateElement(store.doc, frame.id, { durationMs: next }, LOCAL);
+    store.undo.stopCapturing();
   };
 
   function onPointerDown(e: PointerEvent, entry: TimelineEntry) {
@@ -267,8 +297,7 @@ function Track({
     if (!width || e.button !== 0) return;
     e.preventDefault();
     e.stopPropagation();
-    e.currentTarget.setPointerCapture(e.pointerId);
-    store.undo.stopCapturing();
+    e.currentTarget.setPointerCapture?.(e.pointerId);
     drag.current = {
       id: entry.frame.id,
       x: e.clientX,
@@ -279,7 +308,18 @@ function Track({
   function onPointerMove(e: PointerEvent, entry: TimelineEntry) {
     const d = drag.current;
     if (!d || d.id !== entry.frame.id) return;
-    setDuration(entry.frame, d.ms + (e.clientX - d.x) * d.msPerPx);
+    const ms = snapDuration(d.ms + (e.clientX - d.x) * d.msPerPx);
+    if (ms !== draft?.ms) setDraft({ id: d.id, ms });
+  }
+  function onPointerUp(entry: TimelineEntry) {
+    const d = drag.current;
+    drag.current = null;
+    setDraft(null);
+    if (d && draft && d.id === entry.frame.id) setDuration(entry.frame, draft.ms);
+  }
+  function onPointerCancel() {
+    drag.current = null;
+    setDraft(null);
   }
   function onHandleKey(e: KeyboardEvent, entry: TimelineEntry) {
     const length = entry.end - entry.start;
@@ -290,60 +330,47 @@ function Track({
       setDuration(entry.frame, length - step);
     else return;
     e.preventDefault();
-    store.undo.stopCapturing();
+    e.stopPropagation();
   }
 
-  return (
-    <fieldset ref={track} className="animatic__track" aria-label={t('film.playback.track')}>
-      {timeline.map((entry) => {
-        const length = entry.end - entry.start;
-        return (
+  return timeline.map((entry) => {
+    const length = draft?.id === entry.frame.id ? draft.ms : entry.end - entry.start;
+    return (
+      <div
+        key={entry.frame.id}
+        className={`animatic__block${entry === active ? ' is-active' : ''}${entry.frame.durationMs === undefined && draft?.id !== entry.frame.id ? ' is-preview' : ''}`}
+        style={{ flexGrow: length }}
+      >
+        <button
+          type="button"
+          className="animatic__block-seek"
+          aria-current={entry === active ? 'true' : undefined}
+          aria-label={t('film.playback.block', {
+            label: label(entry),
+            duration: timecode(length),
+          })}
+          onClick={() => onSeek(entry.start)}
+        >
+          {label(entry)}
+        </button>
+        {!readOnly && (
           <div
-            key={entry.frame.id}
-            className={`animatic__block${entry === active ? ' is-active' : ''}${entry.frame.durationMs === undefined ? ' is-preview' : ''}`}
-            style={{ flexGrow: length }}
-          >
-            <button
-              type="button"
-              className="animatic__block-seek"
-              aria-current={entry === active ? 'true' : undefined}
-              aria-label={t('film.playback.block', {
-                label: label(entry),
-                duration: timecode(length),
-              })}
-              onClick={() => onSeek(entry.start)}
-            >
-              {label(entry)}
-            </button>
-            {!readOnly && (
-              <div
-                className="animatic__handle"
-                role="slider"
-                tabIndex={0}
-                aria-label={t('film.playback.resize', { label: label(entry) })}
-                aria-valuemin={DURATION_STEP_MS / 1000}
-                aria-valuemax={MAX_DURATION_MS / 1000}
-                aria-valuenow={length / 1000}
-                aria-valuetext={timecode(length)}
-                onPointerDown={(e) => onPointerDown(e, entry)}
-                onPointerMove={(e) => onPointerMove(e, entry)}
-                onPointerUp={() => {
-                  drag.current = null;
-                }}
-                onPointerCancel={() => {
-                  drag.current = null;
-                }}
-                onKeyDown={(e) => onHandleKey(e, entry)}
-              />
-            )}
-          </div>
-        );
-      })}
-      <span
-        className="animatic__playhead"
-        style={{ left: `${(time / total) * 100}%` }}
-        aria-hidden="true"
-      />
-    </fieldset>
-  );
-}
+            className="animatic__handle"
+            role="slider"
+            tabIndex={0}
+            aria-label={t('film.playback.resize', { label: label(entry) })}
+            aria-valuemin={DURATION_STEP_MS / 1000}
+            aria-valuemax={MAX_DURATION_MS / 1000}
+            aria-valuenow={length / 1000}
+            aria-valuetext={timecode(length)}
+            onPointerDown={(e) => onPointerDown(e, entry)}
+            onPointerMove={(e) => onPointerMove(e, entry)}
+            onPointerUp={() => onPointerUp(entry)}
+            onPointerCancel={onPointerCancel}
+            onKeyDown={(e) => onHandleKey(e, entry)}
+          />
+        )}
+      </div>
+    );
+  });
+});

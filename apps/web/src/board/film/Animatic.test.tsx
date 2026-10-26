@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
-import { createElement, type FrameElement } from '@inkadra/canvas-core';
-import { act } from 'react';
+import { addFrame, addScene, createElement, type FrameElement } from '@inkadra/canvas-core';
+import { act, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import * as Y from 'yjs';
@@ -8,7 +8,14 @@ import mockEn from '../../i18n/en.json';
 import mockIt from '../../i18n/it.json';
 import { BoardStore } from '../store.ts';
 import { Animatic } from './Animatic.tsx';
-import { animaticTimeline, entryAt, snapDuration, timecode } from './animatic.ts';
+import {
+  animaticTimeline,
+  entryAt,
+  estimatedDurationMs,
+  snapDuration,
+  timecode,
+} from './animatic.ts';
+import { StoryboardView } from './StoryboardView.tsx';
 
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
@@ -29,6 +36,8 @@ vi.mock('react-i18next', () => ({
 
 const disposals: Array<() => void> = [];
 afterEach(() => {
+  vi.restoreAllMocks();
+  vi.unstubAllGlobals();
   for (const dispose of disposals.splice(0).reverse()) dispose();
 });
 
@@ -67,6 +76,28 @@ async function mount(element: React.ReactNode) {
   return host;
 }
 
+function PresentHost({ store, frames }: { store: BoardStore; frames: FrameElement[] }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <button type="button" className="opener" onClick={() => setOpen(true)}>
+        Present
+      </button>
+      {open && (
+        <Animatic
+          store={store}
+          frames={frames}
+          labels={new Map()}
+          boardAspect="16:9"
+          readOnly
+          present
+          onClose={() => setOpen(false)}
+        />
+      )}
+    </>
+  );
+}
+
 describe('animatic time line', () => {
   it('plays frames in order, one second for a missing duration, skipping zero', () => {
     const { doc } = board();
@@ -81,6 +112,12 @@ describe('animatic time line', () => {
     expect(entryAt(line, 4000)?.frame.id).toBe(b?.id);
     expect(entryAt(line, 7500)?.frame.id).toBe(d?.id);
     expect(entryAt([], 0)).toBeNull();
+  });
+
+  it('estimates the duration the animatic plays', () => {
+    const { doc } = board();
+    expect(estimatedDurationMs(frames(doc, [4000, undefined, 0]))).toBe(5000);
+    expect(estimatedDurationMs([])).toBe(0);
   });
 
   it('formats timecodes and snaps durations', () => {
@@ -142,5 +179,139 @@ describe('Animatic', () => {
     );
     expect(host.querySelectorAll('[role="slider"]')).toHaveLength(0);
     expect(host.querySelectorAll('.animatic__block')).toHaveLength(1);
+  });
+
+  it('writes a dragged duration once, as one undo step', async () => {
+    const { doc, store } = board();
+    const list = frames(doc, [2000, 2000]);
+    const id = list[0]?.id ?? '';
+    const host = await mount(
+      <Animatic
+        store={store}
+        frames={list}
+        labels={new Map()}
+        boardAspect="16:9"
+        readOnly={false}
+      />,
+    );
+    const track = host.querySelector<HTMLElement>('.animatic__track');
+    if (!track) throw new Error('no track');
+    // 4 s over 400 px: 10 ms per pixel.
+    vi.spyOn(track, 'getBoundingClientRect').mockReturnValue({ width: 400 } as DOMRect);
+    const handle = host.querySelector<HTMLElement>('[role="slider"]');
+    if (!handle) throw new Error('no handle');
+    const updates = vi.fn();
+    doc.on('update', updates);
+    const pointer = (type: string, clientX: number) =>
+      handle.dispatchEvent(
+        new PointerEvent(type, { bubbles: true, button: 0, pointerId: 1, clientX }),
+      );
+    await act(async () => {
+      pointer('pointerdown', 100);
+      pointer('pointermove', 150);
+      pointer('pointermove', 200);
+    });
+    expect(handle.getAttribute('aria-valuenow')).toBe('3');
+    expect(updates).not.toHaveBeenCalled();
+    await act(async () => pointer('pointerup', 200));
+    expect(updates).toHaveBeenCalledOnce();
+    const duration = () => (store.getSnapshot().byId.get(id) as FrameElement).durationMs;
+    expect(duration()).toBe(3000);
+    await act(async () => store.undo.undo());
+    expect(duration()).toBe(2000);
+    expect(store.undo.undoStack).toHaveLength(0);
+
+    await act(async () => {
+      pointer('pointerdown', 100);
+      pointer('pointermove', 300);
+      pointer('pointercancel', 300);
+    });
+    expect(duration()).toBe(2000);
+    expect(handle.getAttribute('aria-valuenow')).toBe('2');
+  });
+
+  it('keeps playing at the new speed when the speed changes', async () => {
+    const { doc, store } = board();
+    const list = frames(doc, [5000]);
+    const ticks: FrameRequestCallback[] = [];
+    vi.stubGlobal('requestAnimationFrame', (cb: FrameRequestCallback) => ticks.push(cb));
+    vi.stubGlobal('cancelAnimationFrame', () => {});
+    let now = 0;
+    vi.spyOn(performance, 'now').mockImplementation(() => now);
+    const host = await mount(
+      <Animatic store={store} frames={list} labels={new Map()} boardAspect="16:9" readOnly />,
+    );
+    const time = () => host.querySelector('.animatic__time')?.textContent;
+    const tick = async (at: number) => {
+      const cb = ticks.at(-1);
+      await act(async () => cb?.(at));
+    };
+    const play = [...host.querySelectorAll('button')].find((b) => b.textContent === 'Play');
+    await act(async () => play?.click());
+    await tick(1000);
+    expect(time()).toBe('0:01.0 / 0:05.0');
+    now = 1000;
+    const select = host.querySelector('select');
+    if (!select) throw new Error('no speed');
+    await act(async () => {
+      select.value = '2';
+      select.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+    await tick(1500);
+    expect(time()).toBe('0:02.0 / 0:05.0');
+    expect(host.querySelector('button')?.textContent).toBe('Pause');
+  });
+
+  it('returns focus to the opener when Present closes with Escape', async () => {
+    const { doc, store } = board();
+    const list = frames(doc, [1000]);
+    // happy-dom does not implement the native modal API.
+    vi.spyOn(HTMLDialogElement.prototype, 'showModal').mockImplementation(function (
+      this: HTMLDialogElement,
+    ) {
+      this.open = true;
+    });
+    const host = await mount(<PresentHost store={store} frames={list} />);
+    const opener = host.querySelector<HTMLButtonElement>('.opener');
+    if (!opener) throw new Error('no opener');
+    opener.focus();
+    await act(async () => opener.click());
+    const dialog = host.querySelector('dialog');
+    expect(dialog?.open).toBe(true);
+    expect(document.activeElement).toBe(host.querySelector('.animatic__stage'));
+    await act(async () => {
+      dialog?.dispatchEvent(new Event('cancel', { cancelable: true }));
+    });
+    expect(host.querySelector('dialog')).toBeNull();
+    expect(document.activeElement).toBe(opener);
+  });
+});
+
+describe('StoryboardView animatic', () => {
+  it('offers to add a frame when the filtered scene has none', async () => {
+    const { doc, store } = board();
+    const opts = { userId: null };
+    addScene(doc, { title: 'Full' }, opts);
+    const empty = addScene(doc, { title: 'Empty' }, opts);
+    const full = [...store.getSnapshot().byId.values()].find(
+      (e) => e.type === 'scene' && e.id !== empty.id,
+    );
+    addFrame(doc, full?.id ?? null, null, {}, opts);
+    const host = await mount(
+      <StoryboardView store={store} projectId="p" boardId="b" userId="u" readOnly={false} />,
+    );
+    const button = (text: string) =>
+      [...host.querySelectorAll('button')].find((b) => b.textContent?.includes(text));
+    await act(async () => button('Animatic')?.click());
+    expect(host.querySelector('.animatic')).not.toBeNull();
+    await act(async () => button('Empty')?.click());
+    expect(host.querySelector('.animatic')).toBeNull();
+    expect(host.textContent).toContain('No frames in this scene');
+    const frameCount = () =>
+      [...store.getSnapshot().byId.values()].filter((e) => e.type === 'frame').length;
+    expect(frameCount()).toBe(1);
+    await act(async () => button('New frame')?.click());
+    expect(frameCount()).toBe(2);
+    expect(host.querySelector('.animatic')).not.toBeNull();
   });
 });

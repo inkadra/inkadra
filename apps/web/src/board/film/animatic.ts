@@ -29,6 +29,11 @@ export function animaticTimeline(frames: readonly FrameElement[]): TimelineEntry
   return out;
 }
 
+/** How long the frames play in the animatic: a frame without a duration counts one second. */
+export function estimatedDurationMs(frames: readonly FrameElement[]): number {
+  return animaticTimeline(frames).at(-1)?.end ?? 0;
+}
+
 /** The entry playing at `ms`; the last one once the time line has ended. */
 export function entryAt(timeline: readonly TimelineEntry[], ms: number): TimelineEntry | null {
   return timeline.find((e) => ms < e.end) ?? timeline.at(-1) ?? null;

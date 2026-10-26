@@ -711,7 +711,9 @@
       "resize": "Duration of {{label}}",
       "keyboard": "Keys: Space plays or pauses, arrows move by one second, Page Up and Page Down jump between frames, Home and End go to the start and the end.",
       "empty": "No frames to play: every frame has a zero duration.",
-      "defaultDuration": "Frames without a duration play for one second (striped blocks); drag the edge of a block to set its duration."
+      "defaultDuration": "Frames without a duration play for one second (striped blocks); drag the edge of a block to set its duration.",
+      "noFrames": "No frames in this scene",
+      "noFramesBody": "Add a frame to play it in the animatic."
     }
   },
   "roles": {

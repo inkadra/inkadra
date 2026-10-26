@@ -711,7 +711,9 @@
       "resize": "Durata di {{label}}",
       "keyboard": "Tasti: Spazio riproduce o mette in pausa, le frecce spostano di un secondo, Pag su e Pag giù saltano fra le inquadrature, Home e Fine vanno all’inizio e alla fine.",
       "empty": "Nessuna inquadratura da riprodurre: tutte hanno durata zero.",
-      "defaultDuration": "Le inquadrature senza durata durano un secondo (blocchi a righe); trascina il bordo di un blocco per impostarne la durata."
+      "defaultDuration": "Le inquadrature senza durata durano un secondo (blocchi a righe); trascina il bordo di un blocco per impostarne la durata.",
+      "noFrames": "Nessuna inquadratura in questa scena",
+      "noFramesBody": "Aggiungi un’inquadratura per riprodurla nell’animatic."
     }
   },
   "roles": {
