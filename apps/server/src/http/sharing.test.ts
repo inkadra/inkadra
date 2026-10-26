@@ -489,6 +489,50 @@ describe.skipIf(!url)('sharing, invitations, tokens and accounts (needs DATABASE
     );
   });
 
+  it('caps invitation links at editor; owners are named from the people page', async () => {
+    const own = await call('owner', 'POST', '/api/v1/projects', { name: 'Eredità' });
+    const legacyProject = own.body.id;
+    for (const target of [{ projectId: legacyProject }, { boardId: mood }]) {
+      const res = await call('owner', 'POST', '/api/v1/invitations', {
+        kind: 'link',
+        ...target,
+        role: 'owner',
+      });
+      expect(res.status).toBe(400);
+    }
+
+    // A link made with owner before API 0.6.0 stays, and gives editor.
+    const link = await call('owner', 'POST', '/api/v1/invitations', {
+      kind: 'link',
+      projectId: legacyProject,
+      role: 'editor',
+    });
+    await db
+      .update(invitationTable)
+      .set({ role: 'owner' })
+      .where(eq(invitationTable.id, link.body.invitation.id));
+    const token = link.body.invitation.url.split('/join/')[1];
+    expect((await call(null, 'GET', `/api/v1/invitations/by-token/${token}`)).body.role).toBe(
+      'editor',
+    );
+    const listed = await call('owner', 'GET', `/api/v1/invitations?projectId=${legacyProject}`);
+    expect(listed.body.items).toMatchObject([{ id: link.body.invitation.id, role: 'editor' }]);
+    await call('outsider', 'POST', `/api/v1/invitations/by-token/${token}/accept`);
+    const project = `/api/v1/projects/${legacyProject}`;
+    expect((await call('outsider', 'GET', project)).body.myRole).toBe('editor');
+    const [row] = await db
+      .select({ role: invitationTable.role })
+      .from(invitationTable)
+      .where(eq(invitationTable.id, link.body.invitation.id));
+    expect(row?.role).toBe('owner');
+
+    const promoted = await call('owner', 'PUT', `${project}/members/${as.outsider.id}`, {
+      role: 'owner',
+    });
+    expect(promoted.status).toBe(200);
+    expect((await call('outsider', 'GET', project)).body.myRole).toBe('owner');
+  });
+
   it('searches people only for those who can share', async () => {
     expect((await call('viewer', 'GET', '/api/v1/users/search?q=out')).status).toBe(403);
     const found = await call('editor', 'GET', '/api/v1/users/search?q=out');
