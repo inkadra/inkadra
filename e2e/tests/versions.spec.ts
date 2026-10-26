@@ -665,6 +665,44 @@ test('storyboard and shot list preview a version read-only, and editors hide fra
   await expect(hideTile).toHaveAttribute('aria-pressed', 'false');
 });
 
+test('card badges stay clear of the header of a column and inside other cards', async ({
+  page,
+  baseURL,
+}) => {
+  const { project, column, note } = await seed(page, baseURL!);
+  for (const elementId of [column.id, note.id]) {
+    await expect
+      .poll(
+        async () =>
+          (
+            await page.request.post(`/api/v1/boards/${project.rootBoardId}/comments`, {
+              headers: { origin: baseURL! },
+              data: { body: 'Da rivedere', elementId },
+            })
+          ).ok(),
+        { timeout: 15_000 },
+      )
+      .toBe(true);
+  }
+  const overlaps = (a: { x: number; y: number; width: number; height: number }, b: typeof a) =>
+    a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height;
+  const columnCard = page.locator(`[data-el="${column.id}"]`);
+  const columnBadge = columnCard.locator(':scope > .card-review');
+  await expect(columnBadge).toBeVisible();
+  const badgeBox = (await columnBadge.boundingBox())!;
+  for (const part of ['.column__title', '.column__count', '.column__toggle']) {
+    const box = await columnCard.locator(part).first().boundingBox();
+    expect(box, part).not.toBeNull();
+    expect(overlaps(badgeBox, box!), `${part} is covered by the badges`).toBe(false);
+  }
+  const noteCard = page.locator(`[data-el="${note.id}"]`);
+  await expect(noteCard.locator('.card-review')).toBeVisible();
+  const noteBox = (await noteCard.boundingBox())!;
+  const noteBadge = (await noteCard.locator('.card-review').boundingBox())!;
+  expect(noteBadge.y).toBeGreaterThanOrEqual(noteBox.y);
+  expect(noteBadge.x + noteBadge.width).toBeLessThanOrEqual(noteBox.x + noteBox.width);
+});
+
 test('visible header icon button opens the versions dialog', async ({ page, baseURL }) => {
   await seed(page, baseURL!);
   const headerButton = page.getByRole('button', { name: 'Versioni della board', exact: true });

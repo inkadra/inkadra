@@ -68,6 +68,13 @@
 .card > .guest-visibility ~ .card-review--shifted {
   right: 50px;
 }
+/* Columns and scenes carry their title, count and fold button across the top: the badges
+   hang over the edge there (these cards never clip) instead of covering the header. */
+.card[data-type="column"] > .card-review,
+.card[data-type="scene"] > .card-review {
+  top: -10px;
+  right: 8px;
+}
 .card-review__button {
   display: inline-flex;
   align-items: center;
