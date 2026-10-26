@@ -282,6 +282,23 @@ describe('board document', () => {
     expect(validateBoardDoc(doc)).toEqual([]);
   });
 
+  it('supports approved frame status and keeps backward compatibility', () => {
+    const doc = createBoardDoc(boardId);
+    const mapApproved = addElement(doc, {
+      ...base(),
+      type: 'frame' as const,
+      status: 'approved',
+    });
+    expect(readElement(mapApproved)).toMatchObject({ type: 'frame', status: 'approved' });
+
+    const mapDraft = addElement(doc, {
+      ...base(),
+      type: 'frame' as const,
+    });
+    expect(readElement(mapDraft)).not.toHaveProperty('status');
+    expect(validateBoardDoc(doc)).toEqual([]);
+  });
+
   it('skips element types it does not know without removing them', () => {
     const doc = createBoardDoc(boardId);
     const future = new Y.Map<unknown>(Object.entries({ ...base(), type: 'hologram' }));
