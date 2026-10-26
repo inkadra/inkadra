@@ -6,7 +6,7 @@ import { InkadraApi } from './api.ts';
 import { searchBoards } from './boards.ts';
 import { saveClip } from './clip.ts';
 import { ClipperError } from './errors.ts';
-import { errorText } from './i18n.ts';
+import { errorText, formatBytes } from './i18n.ts';
 
 const boardId = '0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10';
 const result = { boardId, elementId: 'e1', assetId: null };
@@ -112,8 +112,10 @@ describe('clip errors', () => {
     );
     expect(errorText(new ClipperError('rate_limited'))).toBe(messages.error_rate_limited.message);
     expect(errorText(new ClipperError('too_large', undefined, { uploadMaxBytes: 1024 }))).toContain(
-      '1024',
+      '1 KB',
     );
+    expect(formatBytes(52_428_800)).toBe('50 MB');
+    expect(formatBytes(500)).toBe('500 B');
     for (const uploadMaxBytes of [0, undefined]) {
       expect(errorText(new ClipperError('too_large', undefined, { uploadMaxBytes }))).toBe(
         messages.error_too_large.message,

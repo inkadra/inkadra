@@ -202,11 +202,11 @@
     "message": "Untitled column"
   },
   "error_too_large_limit": {
-    "message": "The file is too large. This server’s limit is $LIMIT$ bytes.",
+    "message": "The file is too large. This server’s limit is $LIMIT$.",
     "placeholders": {
       "limit": {
         "content": "$1",
-        "example": "52428800"
+        "example": "50 MB"
       }
     }
   }

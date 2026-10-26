@@ -5,8 +5,19 @@ import { errorMessageKey, serializeError } from './errors.ts';
 export function errorText(err: unknown): string {
   const error = serializeError(err);
   if (error.kind === 'too_large' && error.uploadMaxBytes && error.uploadMaxBytes > 0)
-    return t('error_too_large_limit', String(error.uploadMaxBytes));
+    return t('error_too_large_limit', formatBytes(error.uploadMaxBytes));
   return t(errorMessageKey(error.kind));
+}
+
+/** 52428800 → "50 MB": the limit as people read it, in the browser's number format. */
+export function formatBytes(bytes: number): string {
+  const [value, unit] =
+    bytes >= 1024 * 1024
+      ? [bytes / (1024 * 1024), 'MB']
+      : bytes >= 1024
+        ? [bytes / 1024, 'KB']
+        : [bytes, 'B'];
+  return `${value.toLocaleString(undefined, { maximumFractionDigits: 1 })} ${unit}`;
 }
 
 /** Text from _locales (Italian is the default locale). Falls back to the key when missing. */

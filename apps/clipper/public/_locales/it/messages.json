@@ -202,11 +202,11 @@
     "message": "Colonna senza titolo"
   },
   "error_too_large_limit": {
-    "message": "Il file è troppo grande. Il limite del server è $LIMIT$ byte.",
+    "message": "Il file è troppo grande. Il limite del server è $LIMIT$.",
     "placeholders": {
       "limit": {
         "content": "$1",
-        "example": "52428800"
+        "example": "50 MB"
       }
     }
   }
