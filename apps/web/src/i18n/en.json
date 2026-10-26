@@ -66,6 +66,13 @@
       "useApp": "Use the authenticator app"
     }
   },
+  "mobile": {
+    "navigation": "Main navigation",
+    "back": "Back",
+    "new": "New",
+    "profile": "Profile",
+    "close": "Close navigation"
+  },
   "nav": {
     "modules": "Modules",
     "navigation": "Navigation",
