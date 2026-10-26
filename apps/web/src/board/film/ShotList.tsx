@@ -355,7 +355,9 @@ export function ShotList({
     if (mode !== 'table') return;
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.defaultPrevented) return;
-      if (isTyping(e.target)) return;
+      // Row checkboxes keep the shortcut; real text fields don't.
+      const checkbox = e.target instanceof HTMLInputElement && e.target.type === 'checkbox';
+      if (isTyping(e.target) && !checkbox) return;
       if (insideDialog(e.target)) return;
 
       const hasSelection = visibleSelectedIds.length > 0;

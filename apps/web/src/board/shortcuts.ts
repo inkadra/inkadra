@@ -136,16 +136,6 @@ export function insideDialog(target?: EventTarget | null): boolean {
 /** True when the key belongs to a text field, not to the canvas. */
 export function isTyping(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) return false;
-  if (
-    target instanceof HTMLInputElement &&
-    (target.type === 'checkbox' ||
-      target.type === 'radio' ||
-      target.type === 'button' ||
-      target.type === 'submit' ||
-      target.type === 'reset')
-  ) {
-    return false;
-  }
   return (
     target.isContentEditable ||
     Boolean(target.closest('[contenteditable="true"]')) ||
