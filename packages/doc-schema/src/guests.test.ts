@@ -16,7 +16,9 @@ describe('guest visibility', () => {
     shown: { parent: null },
     shownColumn: { guestHidden: false, parent: null },
     inShownColumn: { parent: 'shownColumn' },
-    unsorted: { parent: UNSORTED },
+    inUnsorted: { parent: UNSORTED },
+    unsortedColumn: { parent: UNSORTED },
+    inUnsortedColumn: { parent: 'unsortedColumn' },
     orphan: { parent: 'deletedColumn' },
     loopA: { parent: 'loopB' },
     loopB: { parent: 'loopA' },
@@ -32,7 +34,11 @@ describe('guest visibility', () => {
   it('shows elements nobody hid', () => {
     expect(hiddenFromGuests('shown', lookup)).toBe(false);
     expect(hiddenFromGuests('inShownColumn', lookup)).toBe(false);
-    expect(hiddenFromGuests('unsorted', lookup)).toBe(false);
+  });
+
+  it('hides cards whose chain of containers reaches the unsorted tray', () => {
+    expect(hiddenFromGuests('inUnsorted', lookup)).toBe(true);
+    expect(hiddenFromGuests('inUnsortedColumn', lookup)).toBe(true);
   });
 
   it('hides elements with a missing or circular parent chain', () => {

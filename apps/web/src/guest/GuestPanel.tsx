@@ -1,6 +1,7 @@
+import { UNSORTED } from '@inkadra/doc-schema';
 import type { GuestBoardSnapshot, GuestElement, GuestSession } from '@inkadra/shared';
 import { Button } from '@inkadra/ui';
-import { useId, useState } from 'react';
+import { useId, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useGuestActions } from './actions.ts';
 import { PickControls, ReviewChip } from './GuestCardExtras.tsx';
@@ -30,8 +31,8 @@ export function GuestPanel({
   const tree = boardTree(session.boards, session.boardId);
   const cardsId = useId();
   const elements = snapshot?.elements ?? [];
-  const cards = elements.filter((e) => LISTED.has(e.type));
-  const shots = shotLabels(elements);
+  const cards = elements.filter((e) => LISTED.has(e.type) && e.parent !== UNSORTED);
+  const shots = useMemo(() => shotLabels(elements), [elements]);
   // Frames take the shot label of the canvas; cards without text of their own are told apart
   // by number: "Immagine 1", "Immagine 2".
   const labels = new Map<string, string>();
