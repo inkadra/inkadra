@@ -127,12 +127,15 @@ export function registerSearchRoutes(app: FastifyInstance, { db, auth }: Deps) {
     const like = q ? containsPattern(q) : null;
     const hits: SearchHit[] = [];
 
-    if (q && !tag && !query.type && readable.projectIds.length > 0) {
-      const projects = await db.execute<Row>(sql`
+    if (q && !tag && !query.type) {
+      const projects =
+        readable.projectIds.length > 0
+          ? await db.execute<Row>(sql`
         select p.id, p.name from project p
         where p.id = any(${uuids(readable.projectIds)}) and p.name ilike ${like}
         order by word_similarity(${q}, p.name) desc, p.name
-        limit ${query.limit}`);
+        limit ${query.limit}`)
+          : [];
       for (const r of projects) {
         hits.push({
           kind: 'project',

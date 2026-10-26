@@ -329,16 +329,19 @@ export function queuedBoardWriter(
   ): Promise<T | { ok: false; reason: 'expired' }> {
     const expiresAt = Date.now() + timeoutMs;
     const left = () => expiresAt - Date.now();
-    // With Valkey down these would wait forever. A job added after the deadline is removed
-    // as soon as the add lands, and refused by the worker if it runs first: giving up here
-    // cannot lead to a late edit.
-    const adding = events
-      .waitUntilReady()
-      .then(() => queue.add(name, { ...input, expiresAt }, { attempts: 1, ...ADD_CARD_KEEP }));
+    // Readiness alone cannot write. Once add is attempted, a missing acknowledgement may
+    // hide a job already applied by collab: the deadline only prevents future writes.
+    let submitted = false;
+    const adding = events.waitUntilReady().then(() => {
+      if (left() <= 0) throw new BoardEditNotStarted('The collaboration queue is unreachable.');
+      submitted = true;
+      return queue.add(name, { ...input, expiresAt }, { attempts: 1, ...ADD_CARD_KEEP });
+    });
     const job = await within(adding, left(), 'The collaboration queue is unreachable.').catch(
       (err) => {
         adding.then((late) => late.remove()).catch(() => {});
-        // Removed when it lands, refused by the worker past the deadline: never applied.
+        if (submitted)
+          throw new CardOutcomeUnknown('The collaboration queue is unreachable.', { cause: err });
         throw new BoardEditNotStarted('The collaboration queue is unreachable.', { cause: err });
       },
     );

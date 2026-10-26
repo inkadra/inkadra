@@ -60,6 +60,7 @@ async function valkeyProxy(target: string) {
   const to = new URL(target);
   const sockets = new Set<Socket>();
   let held: Array<() => void> | null = null;
+  let repliesOnly = false;
   const server = createNetServer((client) => {
     const upstream = connectTcp(Number(to.port || 6379), to.hostname);
     for (const [from, into] of [
@@ -67,7 +68,11 @@ async function valkeyProxy(target: string) {
       [upstream, client],
     ] as const) {
       sockets.add(from);
-      from.on('data', (chunk) => (held ? held.push(() => into.write(chunk)) : into.write(chunk)));
+      from.on('data', (chunk) =>
+        held && (!repliesOnly || from === upstream)
+          ? held.push(() => into.write(chunk))
+          : into.write(chunk),
+      );
       from.on('close', () => into.destroy());
       from.on('error', () => into.destroy());
     }
@@ -79,6 +84,11 @@ async function valkeyProxy(target: string) {
   return {
     url: proxied.toString(),
     hold() {
+      repliesOnly = false;
+      held ??= [];
+    },
+    holdReplies() {
+      repliesOnly = true;
       held ??= [];
     },
     release() {
@@ -118,6 +128,22 @@ describe('sweepClipTemp', () => {
     utimesSync(join(dir, 'clip-crashed'), old, old);
     expect(await sweepClipTemp(dir)).toBe(1);
     expect(readdirSync(dir)).toEqual(['clip-receiving']);
+  });
+
+  it('keeps future timestamps and recent writes despite clock skew between replicas', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'inkadra-sweep-'));
+    const old = new Date(Date.now() - 2 * 60 * 60 * 1000);
+    for (const [name, offset] of [
+      ['clip-ahead', 5000],
+      ['clip-behind', -5000],
+    ] as const) {
+      mkdirSync(join(dir, name));
+      writeFileSync(join(dir, name, 'file'), 'chunk');
+      const modified = new Date(Date.now() + offset);
+      utimesSync(join(dir, name, 'file'), modified, modified);
+      utimesSync(join(dir, name), old, old);
+    }
+    expect(await sweepClipTemp(dir)).toBe(0);
   });
 });
 
@@ -909,6 +935,38 @@ describe.skipIf(!url)('clip (needs DATABASE_URL)', () => {
     }
   });
 
+  it('uses the root board role for project hits and hides ancestors of partial grants', async () => {
+    await signUp('searchpartial');
+    const child = await columnsBoard('Partial role');
+    const grant = async (id: string, role: string) => {
+      const res = await app.inject({
+        method: 'PUT',
+        url: `/api/v1/boards/${id}/grants/${people.searchpartial?.id}`,
+        headers: { cookie: people.owner?.cookie ?? '', origin: config.PUBLIC_URL },
+        payload: { role },
+      });
+      expect(res.statusCode).toBe(200);
+    };
+    await grant(child, 'editor');
+    expect((await get('/search?q=Partial', 'searchpartial')).json.items).toEqual([
+      expect.objectContaining({ kind: 'board', boardId: child, myRole: 'editor' }),
+    ]);
+    expect((await get('/search?q=Clip', 'searchpartial')).json.items).toEqual([]);
+    const membership = await app.inject({
+      method: 'PUT',
+      url: `/api/v1/projects/${projectId}/members/${people.searchpartial?.id}`,
+      headers: { cookie: people.owner?.cookie ?? '', origin: config.PUBLIC_URL },
+      payload: { role: 'commenter' },
+    });
+    expect(membership.statusCode).toBe(200);
+    expect((await get('/search?q=Clip', 'searchpartial')).json.items).toContainEqual(
+      expect.objectContaining({ kind: 'project', projectId, myRole: 'commenter' }),
+    );
+    expect((await get('/search?q=Partial', 'searchpartial')).json.items).toEqual([
+      expect.objectContaining({ kind: 'board', boardId: child, myRole: 'editor' }),
+    ]);
+  });
+
   it('says outcome_unknown only when the clip may be on the board', async () => {
     const halfway: BoardWriter = {
       async addCard() {
@@ -1003,6 +1061,53 @@ describe.skipIf(!url)('clip (needs DATABASE_URL)', () => {
       }
     });
 
+    it('authorizes before queueing columns and removes timed-out reads before falling back', async () => {
+      const readPrefix = `${prefix}-read-fallback`;
+      const board = await columnsBoard('Stored columns');
+      const id = newElementId();
+      const doc = await collab.hocuspocus.openDirectConnection(boardDocName(board));
+      await doc.transact((state) => addElement(state, column(id, 'Stored', 0, 0)));
+      await doc.disconnect();
+      const queued = queuedBoardWriter(redisUrl ?? '', {
+        prefix: readPrefix,
+        timeoutMs: 300,
+        graceMs: 300,
+      });
+      const connection = createRedis(redisUrl ?? '');
+      const queue = new Queue(QUEUES.collab, { connection, prefix: readPrefix });
+      const other = await createApp({ config, db, auth, log, ...deps, boardReader: queued.reader });
+      await other.listen({ host: '127.0.0.1', port: 0 });
+      const path = `http://127.0.0.1:${(other.server.address() as AddressInfo).port}/api/v1/boards/${board}/columns`;
+      try {
+        const denied = await fetch(path, { headers: { cookie: people.stranger?.cookie ?? '' } });
+        expect(denied.status).toBe(404);
+        expect(await queue.getJobCounts('waiting', 'active', 'completed', 'failed')).toEqual({
+          waiting: 0,
+          active: 0,
+          completed: 0,
+          failed: 0,
+        });
+        const started = Date.now();
+        for (let i = 0; i < 3; i++) {
+          const res = await fetch(path, { headers: { cookie: people.viewer?.cookie ?? '' } });
+          expect(res.status).toBe(200);
+          expect(await res.json()).toEqual({ items: [{ id, title: 'Stored' }] });
+        }
+        expect(Date.now() - started).toBeLessThan(4000);
+        expect(await queue.getJobCounts('waiting', 'active', 'completed', 'failed')).toEqual({
+          waiting: 0,
+          active: 0,
+          completed: 0,
+          failed: 0,
+        });
+      } finally {
+        await other.close();
+        await queued.close();
+        await queue.close();
+        connection.disconnect();
+      }
+    });
+
     it('goes through the queue', async () => {
       const worker = startBoardWorker(redisUrl ?? '', directBoardWriter(collab), log, { prefix });
       const queued = queuedBoardWriter(redisUrl ?? '', { prefix });
@@ -1090,6 +1195,50 @@ describe.skipIf(!url)('clip (needs DATABASE_URL)', () => {
         for (const socket of sockets) socket.destroy();
         silent.close();
         void queued.close().catch(() => {});
+      }
+    });
+
+    it('keeps a written card and its file when the enqueue acknowledgement is lost', async () => {
+      const proxy = await valkeyProxy(redisUrl ?? '');
+      const queued = queuedBoardWriter(proxy.url, { prefix, timeoutMs: 1000, graceMs: 300 });
+      const worker = startBoardWorker(redisUrl ?? '', directBoardWriter(collab), log, { prefix });
+      const other = await otherApp({ boards: queued.writer });
+      try {
+        // Establish both connections before losing only server-to-client traffic.
+        expect(
+          (
+            await queued.writer.addCard({
+              boardId,
+              userId: userId(),
+              card: { type: 'note', fields: {} },
+            })
+          ).ok,
+        ).toBe(true);
+        proxy.holdReplies();
+        const res = await clip(
+          form({ boardId }, [png, 'lost-ack.png', 'image/png']),
+          { token },
+          other.base,
+        );
+        const doc = collab.hocuspocus.documents.get(boardDocName(boardId));
+        const written = [...roots(doc!).elements.values()].find(
+          (el) => el.get('type') === 'image' && el.get('assetId'),
+        );
+        expect(written).toBeDefined();
+        expect(res.status).toBe(500);
+        expect(res.json.error.details).toEqual({ reason: 'outcome_unknown' });
+        const [saved] = await db.select().from(asset).where(eq(asset.filename, 'lost-ack.png'));
+        expect(saved).toBeDefined();
+        expect(
+          [...roots(doc!).elements.values()].some((el) => el.get('assetId') === saved?.id),
+        ).toBe(true);
+        expect(await deps.storage.size(saved!.storageKey)).toBe(png.length);
+      } finally {
+        proxy.release();
+        await other.app.close();
+        await queued.close();
+        await worker.close();
+        proxy.cut();
       }
     });
 
