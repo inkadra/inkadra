@@ -281,7 +281,9 @@ const TrackBlocks = memo(function TrackBlocks({
   onSeek: (ms: number) => void;
 }) {
   const { t } = useTranslation();
-  const drag = useRef<{ id: string; x: number; ms: number; msPerPx: number } | null>(null);
+  const drag = useRef<{ id: string; x: number; ms: number; msPerPx: number; last?: number } | null>(
+    null,
+  );
   const [draft, setDraft] = useState<{ id: string; ms: number } | null>(null);
 
   const setDuration = (frame: FrameElement, ms: number) => {
@@ -309,13 +311,14 @@ const TrackBlocks = memo(function TrackBlocks({
     const d = drag.current;
     if (!d || d.id !== entry.frame.id) return;
     const ms = snapDuration(d.ms + (e.clientX - d.x) * d.msPerPx);
+    d.last = ms;
     if (ms !== draft?.ms) setDraft({ id: d.id, ms });
   }
   function onPointerUp(entry: TimelineEntry) {
     const d = drag.current;
     drag.current = null;
     setDraft(null);
-    if (d && draft && d.id === entry.frame.id) setDuration(entry.frame, draft.ms);
+    if (d?.last !== undefined && d.id === entry.frame.id) setDuration(entry.frame, d.last);
   }
   function onPointerCancel() {
     drag.current = null;

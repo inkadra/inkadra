@@ -9,7 +9,6 @@ import {
   type SceneElement,
   type SceneGroup,
   storyboardOf,
-  totalDurationMs,
   updateElement,
 } from '@inkadra/canvas-core';
 import { ASPECT_RATIOS, type AspectRatio, SHOT_SIZES, setBoardAspect } from '@inkadra/doc-schema';
@@ -100,7 +99,7 @@ export function StoryboardView({
     moveFrames(store.doc, [id], sceneId, index, LOCAL);
   }
 
-  const total = totalDurationMs(frames);
+  const total = estimatedDurationMs(frames);
   return (
     <div className={`story story--${mode} story--${size}`}>
       <div className="story__bar" data-chrome>
@@ -424,7 +423,7 @@ function SceneSection({
   const { scene, frames } = group;
   const [localCollapsed, setLocalCollapsed] = useState<boolean | null>(null);
   const collapsed = readOnly ? (localCollapsed ?? !!scene?.collapsed) : !!scene?.collapsed;
-  const duration = formatDuration(totalDurationMs(frames));
+  const duration = formatDuration(estimatedDurationMs(frames));
   if (!scene) {
     return (
       <section className="story__scene">
