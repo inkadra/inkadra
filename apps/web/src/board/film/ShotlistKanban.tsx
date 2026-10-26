@@ -1,44 +1,46 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 import { type FrameElement, formatDuration, updateElement } from '@inkadra/canvas-core';
-import { type AspectRatio, type FrameStatus, SHOT_SIZES } from '@inkadra/doc-schema';
+import { type AspectRatio, SHOT_SIZES } from '@inkadra/doc-schema';
+import { Icon } from '@inkadra/ui';
 import { type DragEvent, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { CardReview } from '../CardReview.tsx';
 import { type BoardStore, LOCAL } from '../store.ts';
 import { FramePicture } from './FramePicture.tsx';
 import { usePresetText } from './fields.tsx';
+import { getFrameKanbanColumn, type KanbanColumnKey } from './film-status.ts';
 
 const FRAME_MIME = 'application/x-inkadra-frame';
 
 export const KANBAN_COLUMNS: Array<{
-  key: FrameStatus;
+  key: KanbanColumnKey;
   labelKey: string;
   dotColor: string;
-  statuses: readonly (FrameStatus | undefined)[];
 }> = [
   {
     key: 'todo',
     labelKey: 'film.status.todo',
-    dotColor: '#8A8A90',
-    statuses: ['draft', 'todo', undefined],
+    dotColor: 'var(--ink-text-muted, #8A8A90)',
   },
   {
     key: 'ready',
     labelKey: 'film.status.ready',
-    dotColor: '#60A5FA',
-    statuses: ['ready'],
+    dotColor: 'var(--ink-tag-blue, #60A5FA)',
   },
   {
     key: 'shot',
     labelKey: 'film.status.shot',
-    dotColor: '#34D399',
-    statuses: ['shot'],
+    dotColor: 'var(--ink-status-ok, #34D399)',
   },
   {
     key: 'retake',
     labelKey: 'film.status.retake',
-    dotColor: '#F87171',
-    statuses: ['retake'],
+    dotColor: 'var(--ink-status-warn, #F87171)',
+  },
+  {
+    key: 'approved',
+    labelKey: 'film.status.approved',
+    dotColor: 'var(--ink-tag-purple, #A78BFA)',
   },
 ];
 
@@ -59,11 +61,12 @@ export function ShotlistKanban({
   selected: string | null;
   onSelect: (id: string | null) => void;
   readOnly: boolean;
-  onAddFrame: (status: FrameStatus) => void;
+  onAddFrame: (status: KanbanColumnKey) => void;
 }) {
   const { t } = useTranslation();
   const presetText = usePresetText();
-  const [dropTarget, setDropTarget] = useState<FrameStatus | null>(null);
+  const [dropTarget, setDropTarget] = useState<KanbanColumnKey | null>(null);
+  const [expandedCols, setExpandedCols] = useState<Set<string>>(new Set());
 
   const onDragStart = (e: DragEvent, id: string) => {
     if (readOnly) return;
@@ -71,27 +74,56 @@ export function ShotlistKanban({
     e.dataTransfer.effectAllowed = 'move';
   };
 
-  const onDragOver = (e: DragEvent, colKey: FrameStatus) => {
+  const onDragOver = (e: DragEvent, colKey: KanbanColumnKey) => {
     if (readOnly) return;
     e.preventDefault();
     e.dataTransfer.dropEffect = 'move';
     if (dropTarget !== colKey) setDropTarget(colKey);
   };
 
-  const onDrop = (e: DragEvent, targetStatus: FrameStatus) => {
+  const moveCard = (id: string, targetCol: KanbanColumnKey) => {
+    if (readOnly) return;
+    store.undo.stopCapturing();
+    if (targetCol === 'approved') {
+      updateElement(store.doc, id, { approved: true }, LOCAL);
+    } else {
+      updateElement(
+        store.doc,
+        id,
+        { status: targetCol === 'todo' ? 'todo' : targetCol, approved: false },
+        LOCAL,
+      );
+    }
+  };
+
+  const onDrop = (e: DragEvent, targetCol: KanbanColumnKey) => {
     if (readOnly) return;
     e.preventDefault();
     setDropTarget(null);
     const id = e.dataTransfer.getData(FRAME_MIME);
     if (!id) return;
-    store.undo.stopCapturing();
-    updateElement(store.doc, id, { status: targetStatus }, LOCAL);
+    moveCard(id, targetCol);
+  };
+
+  const toggleColExpanded = (colKey: string) => {
+    setExpandedCols((prev) => {
+      const next = new Set(prev);
+      if (next.has(colKey)) next.delete(colKey);
+      else next.add(colKey);
+      return next;
+    });
   };
 
   return (
     <div className="kanban">
       {KANBAN_COLUMNS.map((col) => {
-        const colFrames = frames.filter((f) => col.statuses.includes(f.status));
+        const colFrames = frames.filter((f) => getFrameKanbanColumn(f) === col.key);
+
+        const isExpanded = expandedCols.has(col.key);
+        const cardLimit = 10;
+        const visibleFrames =
+          colFrames.length > cardLimit && !isExpanded ? colFrames.slice(0, cardLimit) : colFrames;
+
         return (
           <section
             key={col.key}
@@ -118,7 +150,13 @@ export function ShotlistKanban({
               )}
             </div>
             <div className="kanban__cards">
-              {colFrames.map((f) => {
+              {col.key === 'approved' && colFrames.length === 0 ? (
+                <div className="kanban__empty-col">
+                  <Icon name="check" size={20} />
+                  <span>{t('film.list.approvedHelper')}</span>
+                </div>
+              ) : null}
+              {visibleFrames.map((f) => {
                 const label = labels.get(f.id) ?? '';
                 const lensOrShot = f.lens || presetText('film.shot', SHOT_SIZES, f.shot);
                 const isSelected = selected === f.id;
@@ -128,6 +166,16 @@ export function ShotlistKanban({
                     className={`kanban__card${isSelected ? ' is-selected' : ''}`}
                     draggable={!readOnly}
                     onDragStart={(e) => onDragStart(e, f.id)}
+                    onKeyDown={(e) => {
+                      if (readOnly) return;
+                      if (e.altKey && (e.key === 'ArrowRight' || e.key === 'ArrowLeft')) {
+                        e.preventDefault();
+                        const currentIndex = KANBAN_COLUMNS.findIndex((c) => c.key === col.key);
+                        const delta = e.key === 'ArrowRight' ? 1 : -1;
+                        const nextCol = KANBAN_COLUMNS[currentIndex + delta];
+                        if (nextCol) moveCard(f.id, nextCol.key);
+                      }
+                    }}
                   >
                     <button
                       type="button"
@@ -183,11 +231,45 @@ export function ShotlistKanban({
                       ) : (
                         <span />
                       )}
-                      <CardReview elementId={f.id} withPins={false} />
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        {!readOnly && (
+                          <select
+                            className="kanban__move-select"
+                            aria-label={t('film.list.moveToColumn')}
+                            value=""
+                            onClick={(e) => e.stopPropagation()}
+                            onChange={(e) => {
+                              const val = e.target.value as KanbanColumnKey;
+                              if (val) moveCard(f.id, val);
+                            }}
+                          >
+                            <option value="" disabled>
+                              {t('film.list.moveToColumn')}
+                            </option>
+                            {KANBAN_COLUMNS.map((c) => (
+                              <option key={c.key} value={c.key} disabled={c.key === col.key}>
+                                {t('film.list.moveCard', { column: t(c.labelKey) })}
+                              </option>
+                            ))}
+                          </select>
+                        )}
+                        <CardReview elementId={f.id} withPins={false} />
+                      </div>
                     </div>
                   </article>
                 );
               })}
+              {colFrames.length > cardLimit && (
+                <button
+                  type="button"
+                  className="kanban__collapse-toggle"
+                  onClick={() => toggleColExpanded(col.key)}
+                >
+                  {isExpanded
+                    ? t('film.list.collapseGroup')
+                    : `+ ${colFrames.length - cardLimit} ${t('film.list.moreCards')}`}
+                </button>
+              )}
             </div>
           </section>
         );

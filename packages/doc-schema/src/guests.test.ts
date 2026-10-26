@@ -53,7 +53,7 @@ describe('guest element fields', () => {
   // a field added to an element needs a decision before guests see it.
   const omitted: Record<string, readonly string[]> = {
     common: ['tags', 'locked', 'guestHidden'],
-    frame: ['status', 'notes'],
+    frame: ['status', 'notes', 'approved'],
   };
 
   it('decides for every field of every element type', () => {

@@ -8,6 +8,7 @@ import {
   CURRENT_SCHEMA_VERSION,
   createBoardDoc,
   Element,
+  FrameElement,
   getBoardAspect,
   getSchemaVersion,
   migrateBoardDoc,
@@ -279,6 +280,55 @@ describe('board document', () => {
     expect([...roots(doc).elements.values()].map((m) => readElement(m))).toEqual(before);
     const note = roots(doc).elements.get('note_v1_00001')!;
     expect((note.get('body') as Y.XmlFragment).toString()).toContain('Luce al neon');
+    expect(validateBoardDoc(doc)).toEqual([]);
+  });
+
+  it('supports approved frame flag with bidirectional backward compatibility and Zod stripping', () => {
+    // 1. A frame with the new optional approved field parses with the new schema
+    const doc = createBoardDoc(boardId);
+    const mapApproved = addElement(doc, {
+      ...base(),
+      type: 'frame' as const,
+      status: 'todo',
+      approved: true,
+    });
+    const parsed = readElement(mapApproved);
+    expect(parsed).toMatchObject({ type: 'frame', status: 'todo', approved: true });
+
+    // 2. Proving that an older schema (without approved in FrameElement) still parses the element
+    // because Zod strips unknown keys, whereas an invalid enum value (like status: approved) would fail.
+    const OldFrameElement = FrameElement.omit({ approved: true });
+    const rawFrame = {
+      ...base(),
+      type: 'frame' as const,
+      status: 'todo',
+      approved: true,
+    };
+    const parsedOld = OldFrameElement.safeParse(rawFrame);
+    expect(parsedOld.success).toBe(true);
+    if (parsedOld.success) {
+      expect(parsedOld.data).toMatchObject({ type: 'frame', status: 'todo' });
+      expect(parsedOld.data).not.toHaveProperty('approved');
+    }
+
+    // Proving that if approved were in status enum, an older schema without approved in enum would fail
+    const invalidStatusForOld = OldFrameElement.safeParse({
+      ...rawFrame,
+      status: 'approved',
+    });
+    expect(invalidStatusForOld.success).toBe(false);
+
+    // 3. Old documents (without approved field) parse cleanly with the new schema
+    const mapDraft = addElement(doc, {
+      ...base(),
+      type: 'frame' as const,
+    });
+    const parsedDraft = readElement(mapDraft);
+    expect(parsedDraft).toMatchObject({ type: 'frame' });
+    expect(parsedDraft).not.toHaveProperty('status');
+    expect(parsedDraft).not.toHaveProperty('approved');
+
+    // 4. Server-side board edit validation (ADR 0014) and guest parsing accept it
     expect(validateBoardDoc(doc)).toEqual([]);
   });
 

@@ -123,11 +123,22 @@ export function commandFor(e: KeyInput, mac = isMac()): Command | null {
   return null;
 }
 
+/** True when the key belongs to an open dialog. */
+export function insideDialog(target?: EventTarget | null): boolean {
+  if (typeof document === 'undefined') return false;
+  return (
+    Boolean(document.activeElement?.closest('dialog[open], [role="dialog"]')) ||
+    Boolean(document.querySelector('dialog:modal')) ||
+    (target instanceof HTMLElement && Boolean(target.closest('dialog[open], [role="dialog"]')))
+  );
+}
+
 /** True when the key belongs to a text field, not to the canvas. */
 export function isTyping(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) return false;
   return (
     target.isContentEditable ||
+    Boolean(target.closest('[contenteditable="true"]')) ||
     target.tagName === 'INPUT' ||
     target.tagName === 'TEXTAREA' ||
     target.tagName === 'SELECT'
