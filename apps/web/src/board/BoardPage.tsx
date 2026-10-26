@@ -499,7 +499,14 @@ function BoardScreen({
         readOnly={!!preview || !editable}
       />
     ) : view === 'moodboard' ? (
-      <MoodboardView key="moodboard" projectId={projectId} onClose={() => setView('storyboard')} />
+      <MoodboardView
+        key={preview?.version.id ?? 'live'}
+        store={preview?.store ?? conn.store}
+        projectId={projectId}
+        userId={user.id}
+        readOnly={!!preview || !editable}
+        onClose={() => setView('storyboard')}
+      />
     ) : preview ? (
       <Canvas
         key={preview.version.id}

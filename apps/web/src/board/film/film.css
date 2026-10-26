@@ -2847,3 +2847,93 @@ select.film-status {
 .kanban__collapse-toggle:hover {
   color: var(--ink-text-primary);
 }
+
+/* Board references: CSS columns preserve the same DOM order for keys and viewer. */
+.moodboard__filter {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 16px 0;
+}
+.moodboard__filter select {
+  font: inherit;
+  color: var(--ink-text-primary);
+  background: var(--ink-surface-2);
+  border: 1px solid var(--ink-border-default);
+  border-radius: 6px;
+  padding: 8px;
+}
+.moodboard__gallery {
+  columns: 4 240px;
+  column-gap: 16px;
+}
+.moodboard__card {
+  display: block;
+  width: 100%;
+  break-inside: avoid;
+  margin: 0 0 16px;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid var(--ink-border-default);
+  border-radius: 10px;
+  background: var(--ink-surface-2);
+  color: var(--ink-text-primary);
+  text-align: left;
+  font: inherit;
+}
+button.moodboard__card {
+  cursor: pointer;
+}
+.moodboard__card img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+.moodboard__caption {
+  display: block;
+  padding: 12px;
+  overflow-wrap: anywhere;
+}
+.moodboard__caption small {
+  display: block;
+  color: var(--ink-text-secondary);
+  margin-top: 6px;
+}
+.moodboard__swatch,
+.moodboard__placeholder {
+  display: grid;
+  place-items: center;
+  min-height: 160px;
+}
+.moodboard__palette {
+  margin: 16px 0 24px;
+}
+.moodboard__palette h2 {
+  font-size: 14px;
+}
+.moodboard__palette > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.moodboard__color {
+  min-width: 100px;
+  display: grid;
+  gap: 4px;
+  font-size: 12px;
+}
+.moodboard__color > span:first-child {
+  height: 40px;
+  border-radius: 6px;
+  border: 1px solid var(--ink-border-default);
+}
+.moodboard__navigation {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+.viewer__stage--compare {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 12px;
+}
