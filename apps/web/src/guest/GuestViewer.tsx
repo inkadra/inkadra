@@ -57,7 +57,7 @@ export function GuestViewer({ element, onClose }: { element: GuestElement; onClo
       onClick={(e) => e.target === e.currentTarget && ref.current?.close()}
     >
       <div className="guest-viewer__stage">
-        {asset?.kind === 'video' && asset.downloadUrl ? (
+        {asset?.kind === 'video' && actions.rights.download && asset.downloadUrl ? (
           <>
             {/* biome-ignore lint/a11y/useMediaCaption: people's own footage has no captions */}
             <video

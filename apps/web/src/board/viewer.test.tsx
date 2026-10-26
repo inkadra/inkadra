@@ -1,7 +1,12 @@
+// @vitest-environment happy-dom
 import type { Element } from '@inkadra/doc-schema';
-import type { Asset } from '@inkadra/shared';
+import type { Asset, GuestAsset } from '@inkadra/shared';
+import { act, type ReactNode } from 'react';
+import { createRoot, type Root } from 'react-dom/client';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { type GuestActions, GuestActionsContext } from '../guest/actions.ts';
+import { GuestViewer } from '../guest/GuestViewer.tsx';
 import { isUnplayableVideoError, MediaViewer, VideoUnplayable } from './viewer.tsx';
 
 const mockState = vi.hoisted(() => ({
@@ -159,5 +164,137 @@ describe('MediaViewer video playback', () => {
     expect(html).toContain('poster="https://example.com/poster.jpg"');
 
     vi.unstubAllGlobals();
+  });
+});
+
+describe('mounted viewer error events', () => {
+  let container: HTMLDivElement;
+  let root: Root;
+  const render = (node: ReactNode) => act(async () => root.render(node));
+  const member = (element = fileElement) => (
+    <MediaViewer
+      store={{} as import('./store.ts').BoardStore}
+      element={element}
+      projectId="proj-01"
+      userId="user-01"
+      readOnly={true}
+      onClose={vi.fn()}
+    />
+  );
+  const guestAsset: GuestAsset = {
+    id: videoAsset.id,
+    kind: 'video',
+    mime: videoAsset.mime,
+    filename: videoAsset.filename,
+    size: videoAsset.size,
+    width: videoAsset.width,
+    height: videoAsset.height,
+    durationMs: videoAsset.durationMs,
+    variants: videoAsset.variants,
+    downloadUrl: '/api/v1/guest/links/link/assets/video-prores/file',
+  };
+  const guest = (download: boolean, asset = guestAsset) => (
+    <GuestActionsContext.Provider
+      value={
+        {
+          linkId: 'link',
+          boardId: 'board',
+          guestName: null,
+          version: '1',
+          rights: { download, pick: false, comments: false, review: false },
+          assets: new Map([[asset.id, asset]]),
+          reviews: new Map(),
+          picks: new Map(),
+          counts: new Map(),
+          pick: vi.fn(async () => {}),
+          review: vi.fn(async () => false),
+          withName: vi.fn(),
+          refresh: vi.fn(),
+          fail: vi.fn(() => null),
+          select: vi.fn(),
+          view: vi.fn(),
+          notify: vi.fn(),
+          notice: null,
+        } satisfies GuestActions
+      }
+    >
+      <GuestViewer element={fileElement} onClose={vi.fn()} />
+    </GuestActionsContext.Provider>
+  );
+  const fail = async (code: number) => {
+    const video = container.querySelector('video');
+    expect(video).not.toBeNull();
+    Object.defineProperty(video, 'error', { configurable: true, value: { code } });
+    await act(async () => {
+      video?.dispatchEvent(new Event('error'));
+    });
+  };
+
+  beforeEach(() => {
+    vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
+    mockState.asset = videoAsset;
+    container = document.createElement('div');
+    document.body.append(container);
+    root = createRoot(container);
+  });
+
+  afterEach(async () => {
+    await act(async () => root.unmount());
+    container.remove();
+    vi.unstubAllGlobals();
+  });
+
+  it.each([3, 4])(
+    'shows the member fallback on media error %i and resets for another asset',
+    async (code) => {
+      await render(member());
+      await fail(code);
+      expect(container.querySelector('.viewer__unplayable')?.textContent).toContain(
+        'Formato non riproducibile',
+      );
+      expect(container.querySelector('.viewer__unplayable a')?.getAttribute('href')).toBe(
+        videoAsset.url,
+      );
+      expect(container.querySelector('video')?.style.display).toBe('none');
+      mockState.asset = { ...videoAsset, id: 'other', url: '/other-video' };
+      await render(member({ ...fileElement, assetId: 'other' }));
+      expect(container.querySelector('.viewer__unplayable')).toBeNull();
+      expect(container.querySelector('video')?.style.display).toBe('');
+    },
+  );
+
+  it.each([1, 2])('does not mislabel an abort/network error %i as a codec error', async (code) => {
+    await render(member());
+    await fail(code);
+    expect(container.querySelector('.viewer__unplayable')).toBeNull();
+    expect(container.querySelector('video')?.style.display).toBe('');
+  });
+
+  it('offers only the guest download URL after a codec error, and removes it when rights change', async () => {
+    await render(guest(true));
+    await fail(4);
+    expect(container.querySelector('.guest-viewer__unplayable a')?.getAttribute('href')).toBe(
+      guestAsset.downloadUrl,
+    );
+    expect(container.innerHTML).not.toContain(videoAsset.url);
+    await render(guest(false));
+    expect(container.querySelector('a[download]')).toBeNull();
+    expect(container.innerHTML).not.toContain(guestAsset.downloadUrl);
+    expect(container.querySelector('video')).toBeNull();
+  });
+
+  it('never embeds an original URL for a restricted guest, even with stale asset metadata', async () => {
+    await render(guest(false));
+    expect(container.querySelector('video')).toBeNull();
+    expect(container.innerHTML).not.toContain(guestAsset.downloadUrl);
+    expect(container.querySelector('a[download]')).toBeNull();
+    expect(container.querySelector('.guest-viewer__stage img')).not.toBeNull();
+  });
+
+  it('shows only the poster for the restricted server payload', async () => {
+    await render(guest(false, { ...guestAsset, downloadUrl: null }));
+    expect(container.querySelector('video')).toBeNull();
+    expect(container.querySelector('a[download]')).toBeNull();
+    expect(container.querySelector('.guest-viewer__stage img')).not.toBeNull();
   });
 });
