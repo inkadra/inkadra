@@ -26,6 +26,58 @@ export function useProjectTags(projectId: string): TagCount[] {
   return tags;
 }
 
+/** Merges lists of tag counts across projects, summing counts and ordering by popularity. */
+export function mergeTagCounts(lists: readonly TagCount[][]): TagCount[] {
+  const totals = new Map<string, number>();
+  for (const items of lists) {
+    for (const item of items) {
+      totals.set(item.tag, (totals.get(item.tag) ?? 0) + item.count);
+    }
+  }
+  return [...totals.entries()]
+    .map(([tag, count]) => ({ tag, count }))
+    .sort((a, b) => b.count - a.count || a.tag.localeCompare(b.tag));
+}
+
+/** Returns all cached tags across known projects. */
+export function getKnownTags(): TagCount[] {
+  return mergeTagCounts([...known.values()]);
+}
+
+/** Loads tags for multiple projects from the API, updating the cache and returning merged counts. */
+export async function loadTagsForProjects(projectIds: readonly string[]): Promise<TagCount[]> {
+  const lists = await Promise.all(
+    projectIds.map((id) =>
+      api
+        .get<{ items: TagCount[] }>(`/projects/${id}/tags`)
+        .then((r) => {
+          known.set(id, r.items);
+          return r.items;
+        })
+        .catch(() => known.get(id) ?? []),
+    ),
+  );
+  return mergeTagCounts(lists);
+}
+
+/** Filters and ranks tag suggestions for what was typed after '#'. Most used first when empty. */
+export function filterTagSuggestions(tags: readonly TagCount[], rawTyped: string): TagCount[] {
+  const q = normaliseTag(rawTyped);
+  if (!q) {
+    return [...tags].sort((a, b) => b.count - a.count || a.tag.localeCompare(b.tag)).slice(0, 20);
+  }
+  return tags
+    .filter((t) => t.tag.toLowerCase().includes(q))
+    .sort((a, b) => {
+      const aStarts = a.tag.toLowerCase().startsWith(q);
+      const bStarts = b.tag.toLowerCase().startsWith(q);
+      if (aStarts && !bStarts) return -1;
+      if (!aStarts && bStarts) return 1;
+      return b.count - a.count || a.tag.localeCompare(b.tag);
+    })
+    .slice(0, 20);
+}
+
 /** Tags are compared without case, so they are stored trimmed and in lower case. */
 export function normaliseTag(text: string): string {
   return text.trim().replace(/^#/, '').replace(/\s+/g, ' ').toLowerCase().slice(0, 40);

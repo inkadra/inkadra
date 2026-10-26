@@ -1,10 +1,17 @@
-import type { Project, SearchHit, SearchResult } from '@inkadra/shared';
+import type { Project, SearchHit, SearchResult, TagCount } from '@inkadra/shared';
 import { Icon, type IconName } from '@inkadra/ui';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router';
 import { boardPath } from '../board/boards.ts';
+import {
+  filterTagSuggestions,
+  getKnownTags,
+  loadTagsForProjects,
+  normaliseTag,
+} from '../board/tags.tsx';
 import { api } from '../lib/api.ts';
+import { loadProjects } from './projects.ts';
 import './search.css';
 
 const DEBOUNCE_MS = 180;
@@ -47,11 +54,72 @@ export function SearchDialog({
 }) {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const [allProjects, setAllProjects] = useState<Project[] | null>(projects);
+  const [availableTags, setAvailableTags] = useState<TagCount[]>(() => getKnownTags());
+  const [pickedTag, setPickedTag] = useState<string | null>(null);
   const [input, setInput] = useState('');
   const [hits, setHits] = useState<SearchHit[] | null>(null);
   const [state, setState] = useState<'idle' | 'loading' | 'error'>('idle');
   const [active, setActive] = useState(0);
   const seq = useRef(0);
+
+  useEffect(() => {
+    if (projects) {
+      setAllProjects(projects);
+      return;
+    }
+    loadProjects()
+      .then(setAllProjects)
+      .catch(() => {});
+  }, [projects]);
+
+  useEffect(() => {
+    if (!allProjects || allProjects.length === 0) return;
+    let alive = true;
+    loadTagsForProjects(allProjects.map((p) => p.id)).then((tags) => {
+      if (alive) setAvailableTags(tags);
+    });
+    return () => {
+      alive = false;
+    };
+  }, [allProjects]);
+
+  const isTagInput = input.trimStart().startsWith('#');
+  const rawAfterHash = input.trimStart().slice(1);
+  const hasSpace = rawAfterHash.includes(' ');
+  const tagQuery = normaliseTag(hasSpace ? (rawAfterHash.split(/\s+/)[0] ?? '') : rawAfterHash);
+  const showingSuggestions =
+    isTagInput && !hasSpace && (pickedTag === null || pickedTag.toLowerCase() !== tagQuery);
+  const suggestions = showingSuggestions ? filterTagSuggestions(availableTags, tagQuery) : [];
+
+  function pickTag(tag: string) {
+    const normalised = normaliseTag(tag);
+    setPickedTag(normalised);
+    setInput(`#${normalised}`);
+    setActive(0);
+    runSearch({ tag: normalised });
+  }
+
+  function runSearch(q: { q?: string; tag?: string }) {
+    if (!q.q && !q.tag) {
+      setHits(null);
+      setState('idle');
+      return;
+    }
+    const n = ++seq.current;
+    setState('loading');
+    const params = new URLSearchParams({ ...q, limit: '30' });
+    api
+      .get<SearchResult>(`/search?${params}`)
+      .then((r) => {
+        if (n !== seq.current) return;
+        setHits(r.items);
+        setActive(0);
+        setState('idle');
+      })
+      .catch(() => n === seq.current && setState('error'));
+  }
+
   const query = parseQuery(input);
   const key = JSON.stringify(query);
 
@@ -82,7 +150,7 @@ export function SearchDialog({
   function open(hit: SearchHit | undefined) {
     if (!hit) return;
     onClose();
-    const root = projects?.find((p) => p.id === hit.projectId)?.rootBoardId;
+    const root = allProjects?.find((p) => p.id === hit.projectId)?.rootBoardId;
     if (hit.kind === 'project' || !hit.boardId) {
       navigate(`/p/${hit.projectId}`);
       return;
@@ -115,13 +183,41 @@ export function SearchDialog({
             placeholder={t('search.placeholder')}
             aria-label={t('search.title')}
             role="combobox"
-            aria-expanded={!!hits}
+            aria-expanded={showingSuggestions ? suggestions.length > 0 : !!hits}
             aria-controls="search-results"
-            onChange={(e) => setInput(e.target.value)}
+            onChange={(e) => {
+              const next = e.target.value;
+              setInput(next);
+              if (pickedTag && next.trim() !== `#${pickedTag}`) {
+                setPickedTag(null);
+              }
+            }}
             onKeyDown={(e) => {
+              if (e.key === 'Escape') {
+                onClose();
+                e.preventDefault();
+                return;
+              }
+              if (showingSuggestions) {
+                const count = suggestions.length;
+                if (e.key === 'ArrowDown') {
+                  setActive((a) => Math.min(count - 1, a + 1));
+                  e.preventDefault();
+                } else if (e.key === 'ArrowUp') {
+                  setActive((a) => Math.max(0, a - 1));
+                  e.preventDefault();
+                } else if (e.key === 'Enter') {
+                  if (suggestions[active]) {
+                    pickTag(suggestions[active].tag);
+                  } else if (tagQuery) {
+                    pickTag(tagQuery);
+                  }
+                  e.preventDefault();
+                }
+                return;
+              }
               const count = hits?.length ?? 0;
-              if (e.key === 'Escape') onClose();
-              else if (e.key === 'ArrowDown') setActive((a) => Math.min(count - 1, a + 1));
+              if (e.key === 'ArrowDown') setActive((a) => Math.min(count - 1, a + 1));
               else if (e.key === 'ArrowUp') setActive((a) => Math.max(0, a - 1));
               else if (e.key === 'Enter') open(hits?.[active]);
               else return;
@@ -130,42 +226,71 @@ export function SearchDialog({
           />
         </div>
         <div id="search-results" role="listbox" className="search__list">
-          {!hits && state !== 'error' && (
-            <p className="ink-muted search__note">
-              {state === 'loading' ? t('search.loading') : t('search.hint')}
-            </p>
+          {showingSuggestions ? (
+            <>
+              {suggestions.length === 0 && (
+                <p className="ink-muted search__note">{t('search.noTags')}</p>
+              )}
+              {suggestions.map((s, i) => (
+                <button
+                  key={s.tag}
+                  type="button"
+                  role="option"
+                  aria-selected={i === active}
+                  className="search__item"
+                  onMouseEnter={() => setActive(i)}
+                  onClick={() => pickTag(s.tag)}
+                >
+                  <Icon name="tag" size={16} />
+                  <span className="search__text">
+                    <span className="search__title">#{s.tag}</span>
+                    <span className="search__where">
+                      {t('search.tagCardCount', { count: s.count })}
+                    </span>
+                  </span>
+                </button>
+              ))}
+            </>
+          ) : (
+            <>
+              {!hits && state !== 'error' && (
+                <p className="ink-muted search__note">
+                  {state === 'loading' ? t('search.loading') : t('search.hint')}
+                </p>
+              )}
+              {state === 'error' && <p className="ink-muted search__note">{t('search.error')}</p>}
+              {hits?.length === 0 && (
+                <p className="ink-muted search__note">{t('search.none', { q: input.trim() })}</p>
+              )}
+              {hits?.map((hit, i) => (
+                <button
+                  key={`${hit.kind}-${hit.boardId}-${hit.elementId ?? hit.projectId}`}
+                  type="button"
+                  role="option"
+                  aria-selected={i === active}
+                  className="search__item"
+                  onMouseEnter={() => setActive(i)}
+                  onClick={() => open(hit)}
+                >
+                  <Icon name={iconOf(hit)} size={16} />
+                  <span className="search__text">
+                    <span className="search__title">{hit.title}</span>
+                    {hit.snippet && hit.snippet !== hit.title && (
+                      <span className="search__snippet">{hit.snippet}</span>
+                    )}
+                    <span className="search__where">
+                      {hit.kind === 'project'
+                        ? t('search.kinds.project')
+                        : [hit.boardTitle, t('search.inProject', { project: hit.projectName })]
+                            .filter(Boolean)
+                            .join(' · ')}
+                      {hit.tags.length > 0 && ` · #${hit.tags.join(' #')}`}
+                    </span>
+                  </span>
+                </button>
+              ))}
+            </>
           )}
-          {state === 'error' && <p className="ink-muted search__note">{t('search.error')}</p>}
-          {hits?.length === 0 && (
-            <p className="ink-muted search__note">{t('search.none', { q: input.trim() })}</p>
-          )}
-          {hits?.map((hit, i) => (
-            <button
-              key={`${hit.kind}-${hit.boardId}-${hit.elementId ?? hit.projectId}`}
-              type="button"
-              role="option"
-              aria-selected={i === active}
-              className="search__item"
-              onMouseEnter={() => setActive(i)}
-              onClick={() => open(hit)}
-            >
-              <Icon name={iconOf(hit)} size={16} />
-              <span className="search__text">
-                <span className="search__title">{hit.title}</span>
-                {hit.snippet && hit.snippet !== hit.title && (
-                  <span className="search__snippet">{hit.snippet}</span>
-                )}
-                <span className="search__where">
-                  {hit.kind === 'project'
-                    ? t('search.kinds.project')
-                    : [hit.boardTitle, t('search.inProject', { project: hit.projectName })]
-                        .filter(Boolean)
-                        .join(' · ')}
-                  {hit.tags.length > 0 && ` · #${hit.tags.join(' #')}`}
-                </span>
-              </span>
-            </button>
-          ))}
         </div>
       </dialog>
     </div>

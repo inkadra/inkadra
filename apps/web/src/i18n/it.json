@@ -421,7 +421,11 @@
       "board": "Board",
       "element": "Elemento"
     },
-    "inProject": "in {{project}}"
+    "inProject": "in {{project}}",
+    "tagCardCount_one": "{{count}} scheda",
+    "tagCardCount_other": "{{count}} schede",
+    "tagSuggestions": "Tag suggeriti",
+    "noTags": "Nessun tag corrispondente"
   },
   "templates": {
     "moodboard": {

@@ -9,7 +9,12 @@ import { loadConfig } from '../config.ts';
 import { createDatabase, runMigrations } from '../db/client.ts';
 import { boardDoc, boardElementIndex, boardGrant, user } from '../db/schema.ts';
 import { createApp } from '../http/app.ts';
-import { containsPattern, snippet } from '../http/search-routes.ts';
+import {
+  containsPattern,
+  prefixPattern,
+  searchTagPatterns,
+  snippet,
+} from '../http/search-routes.ts';
 import { testDeps } from '../test-deps.ts';
 import {
   autoFrameLabels,
@@ -124,9 +129,21 @@ describe('index entries', () => {
 
   it('takes % and _ literally and cuts snippets around the match', () => {
     expect(containsPattern('100%_')).toBe('%100\\%\\_%');
+    expect(prefixPattern('100%_')).toBe('100\\%\\_%');
     const long = `${'a '.repeat(100)}binario${' b'.repeat(100)}`;
     expect(snippet(long, 'BINARIO')).toContain('binario');
     expect(snippet('', 'x')).toBeNull();
+  });
+
+  it('builds tag matching words and prefix patterns from a query', () => {
+    expect(searchTagPatterns('#esterno')).toEqual({
+      words: ['esterno'],
+      prefixes: ['esterno%'],
+    });
+    expect(searchTagPatterns('notte 100%_')).toEqual({
+      words: ['notte 100%_', 'notte', '100%_'],
+      prefixes: ['notte 100\\%\\_%', 'notte%', '100\\%\\_%'],
+    });
   });
 });
 
@@ -210,6 +227,26 @@ describe.skipIf(!url)('search (needs DATABASE_URL)', () => {
     expect(note).toMatchObject({ boardId, boardKind: 'storyboard', projectName: 'Ultima corsa' });
     expect((await get('owner', '/api/v1/search?q=ULTIMA')).body.items[0].kind).toBe('project');
     expect((await get('owner', '/api/v1/search?q=85mm')).body.items).toHaveLength(1);
+  });
+
+  it('finds cards by tag name or tag prefix in free-text search (without tag filter)', async () => {
+    // Both frame and color cards have tag 'notte', but color card has 'notte' only in tags, not in text.
+    const exact = await get('owner', '/api/v1/search?q=notte');
+    expect(exact.status).toBe(200);
+    const elementTypes = exact.body.items
+      .filter((h: { kind: string }) => h.kind === 'element')
+      .map((h: { elementType: string }) => h.elementType)
+      .sort();
+    expect(elementTypes).toEqual(['color', 'frame']);
+
+    // Prefix search: 'not' is a prefix of tag 'notte'
+    const prefix = await get('owner', '/api/v1/search?q=not');
+    expect(prefix.status).toBe(200);
+    const prefixTypes = prefix.body.items
+      .filter((h: { kind: string }) => h.kind === 'element')
+      .map((h: { elementType: string }) => h.elementType)
+      .sort();
+    expect(prefixTypes).toEqual(['color', 'frame']);
   });
 
   it('filters by tag and type, and treats % literally', async () => {
