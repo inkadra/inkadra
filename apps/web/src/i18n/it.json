@@ -26,7 +26,8 @@
       "domain": "Questo account Google non appartiene a un dominio consentito.",
       "inviteEmail": "L’invito è per un altro indirizzo: usa l’email a cui è arrivato.",
       "rateLimited": "Troppi tentativi: aspetta un minuto.",
-      "provider": "L’accesso non è riuscito. Riprova o usa un altro metodo."
+      "provider": "L’accesso non è riuscito. Riprova o usa un altro metodo.",
+      "accountNotLinked": "Esiste già un account con questa email. Accedi con la password o con un link via email, poi collega Google (o il provider) da Impostazioni → Metodi di accesso."
     },
     "diagnostics": "Problemi di configurazione? Apri la diagnostica",
     "signUp": "Crea account",

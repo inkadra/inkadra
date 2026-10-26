@@ -26,7 +26,8 @@
       "domain": "This Google account is not from an allowed domain.",
       "inviteEmail": "The invitation is for another address: use the email it was sent to.",
       "rateLimited": "Too many attempts: wait a minute.",
-      "provider": "Sign-in did not work. Try again or use another method."
+      "provider": "Sign-in did not work. Try again or use another method.",
+      "accountNotLinked": "An account with this email already exists. Sign in with your password or an email link, then link Google (or the provider) from Settings → Sign-in methods."
     },
     "diagnostics": "Setup problems? Open the diagnostics",
     "signUp": "Create account",
