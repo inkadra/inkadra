@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "Inkadra API",
-    "version": "0.5.0",
+    "version": "0.6.0",
     "license": {
       "name": "AGPL-3.0-only",
       "identifier": "AGPL-3.0-only"
@@ -1584,7 +1584,8 @@
               "commenter",
               "viewer",
               null
-            ]
+            ],
+            "description": "For `link` invitations at most `editor`, also for links made with `owner` before API 0.6.0: accepting them gives `editor`."
           },
           "invitedBy": {
             "allOf": [
@@ -1736,7 +1737,7 @@
               "commenter",
               "viewer"
             ],
-            "description": "Required with projectId or boardId. At most the role of the person inviting."
+            "description": "Required with projectId or boardId. At most the role of the person inviting. `link` invitations give at most `editor`; servers before API 0.6.0 also accept `owner`."
           },
           "expiresInDays": {
             "type": "integer",
