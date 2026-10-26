@@ -23,7 +23,7 @@ test('a storyboard holds scenes and frames, the shot list shows the same frames'
   const card = page.locator('[data-type="board"]', { hasText: 'Storyboard' });
   await expect(card).toHaveCount(1);
   await page.keyboard.type('Binario 21');
-  await page.keyboard.press('Escape');
+  await page.keyboard.press('Enter');
   await expect(card).toContainText('Binario 21');
   await card.dblclick();
   await expect(page.getByRole('tab', { name: 'Storyboard' })).toHaveAttribute(

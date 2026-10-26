@@ -100,13 +100,28 @@ test('the board takes notes and columns, with undo', async ({ page }) => {
   const sub = page.locator('[data-type="board"]');
   await expect(sub).toHaveCount(1);
   await page.keyboard.type('Sopralluoghi');
-  await page.keyboard.press('Escape');
+  await page.keyboard.press('Enter');
   await expect(sub).toContainText('Sopralluoghi');
   await sub.dblclick();
   await expect(page).toHaveURL(/\/p\/[0-9a-f-]{36}\/b\/[0-9a-f-]{36}$/);
   await expect(page.getByText('Board vuota')).toBeVisible();
   await page.getByRole('banner').getByRole('link', { name: 'Ultima corsa' }).click();
   await expect(page.locator('[data-type="board"]')).toContainText('Sopralluoghi');
+
+  const renames: string[] = [];
+  page.on('request', (request) => {
+    if (request.method() === 'PATCH' && /\/api\/v1\/(boards|projects)\//.test(request.url())) {
+      renames.push(request.postData() ?? '');
+    }
+  });
+  // Escape cancels a card rename without sending a request.
+  await sub.click();
+  await page.keyboard.press('F2');
+  await sub.locator('input').fill('Cancelled card rename');
+  await sub.locator('input').press('Escape');
+  await expect(sub.locator('input')).toHaveCount(0);
+  await expect(sub).toContainText('Sopralluoghi');
+  expect(renames).toHaveLength(0);
 
   // Rename via F2 shortcut on single selected board card.
   await sub.click();
@@ -116,6 +131,7 @@ test('the board takes notes and columns, with undo', async ({ page }) => {
   await cardInput.fill('Location Scout');
   await page.keyboard.press('Enter');
   await expect(sub).toContainText('Location Scout');
+  expect(renames).toHaveLength(1);
 
   // Rename via context menu on board card.
   await sub.click({ button: 'right' });
@@ -155,6 +171,24 @@ test('the board takes notes and columns, with undo', async ({ page }) => {
   await expect(
     page.getByRole('banner').getByRole('button', { name: 'Scouting Finale' }),
   ).toBeVisible();
+
+  expect(renames).toHaveLength(3);
+  // Blur saves once; unchanged/empty values make no requests.
+  const banner = page.getByRole('banner');
+  for (const value of ['', 'Scouting Finale', 'Scouting Blur']) {
+    await banner.getByRole('button', { name: 'Scouting Finale', exact: true }).click();
+    const field = banner.getByRole('textbox', { name: 'Titolo della board' });
+    await field.fill(value);
+    await field.press('Tab');
+    await expect(field).toHaveCount(0);
+  }
+  await expect(banner.getByRole('button', { name: 'Scouting Blur', exact: true })).toBeVisible();
+  expect(renames).toHaveLength(4);
+  await banner.getByRole('button', { name: 'Scouting Blur', exact: true }).click();
+  await banner.getByRole('textbox', { name: 'Titolo della board' }).fill('Scouting Finale');
+  await banner.getByRole('textbox', { name: 'Titolo della board' }).press('Enter');
+  await expect(banner.getByRole('button', { name: 'Scouting Finale', exact: true })).toBeVisible();
+  expect(renames).toHaveLength(5);
 
   // Root crumb is a navigation link (not an inline rename button) while viewing a sub-board.
   await expect(page.getByRole('banner').getByRole('button', { name: 'Ultima corsa' })).toHaveCount(

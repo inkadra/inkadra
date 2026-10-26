@@ -69,3 +69,35 @@ it('deduplicates concurrent refreshProjects calls', async () => {
   expect(res2).toEqual(items);
   expect(getCachedProjects()).toEqual(items);
 });
+
+it('does not let a pending list overwrite a successful rename', async () => {
+  const old = { id: 'race', name: 'Before' } as Project;
+  const renamed = { ...old, name: 'After' };
+  setCachedProjects([old]);
+  let resolve!: (page: unknown) => void;
+  vi.spyOn(api, 'get').mockReturnValueOnce(
+    new Promise((done) => {
+      resolve = done;
+    }),
+  );
+  vi.spyOn(api, 'patch').mockResolvedValueOnce(renamed);
+  const pending = refreshProjects();
+  await renameProject('race', 'After');
+  resolve({ items: [old], nextCursor: null });
+  await pending;
+  expect(getCachedProjects()).toEqual([renamed]);
+});
+
+it('does not repopulate a signed-out session from a pending project request', async () => {
+  let resolve!: (page: unknown) => void;
+  vi.spyOn(api, 'get').mockReturnValueOnce(
+    new Promise((done) => {
+      resolve = done;
+    }),
+  );
+  const pending = refreshProjects();
+  setCachedProjects(null);
+  resolve({ items: [{ id: 'private-project' }], nextCursor: null });
+  await pending;
+  expect(getCachedProjects()).toBeNull();
+});

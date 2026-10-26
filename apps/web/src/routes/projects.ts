@@ -3,6 +3,7 @@ import { refreshBoards, syncRootBoardTitle } from '../board/boards.ts';
 import { api } from '../lib/api.ts';
 
 let cache: Project[] | null = null;
+let revision = 0;
 const listeners = new Set<() => void>();
 let loading: Promise<Project[]> | null = null;
 
@@ -22,12 +23,15 @@ export function getCachedProjects(): Project[] | null {
 }
 
 export function setCachedProjects(projects: Project[] | null): void {
+  revision++;
+  loading = null;
   cache = projects;
   emit();
 }
 
 /** The sidebar and project landing must not mistake later pages for missing membership. */
 export async function loadProjects(): Promise<Project[]> {
+  const startedAt = revision;
   const items: Project[] = [];
   let cursor: string | null = null;
   do {
@@ -37,21 +41,26 @@ export async function loadProjects(): Promise<Project[]> {
     items.push(...page.items);
     cursor = page.nextCursor;
   } while (cursor);
-  cache = items;
-  emit();
+  // A rename or session reset must win over an older list response.
+  if (revision === startedAt) {
+    cache = items;
+    emit();
+  }
   return items;
 }
 
 export async function refreshProjects(): Promise<Project[]> {
   if (loading) return loading;
-  loading = loadProjects().finally(() => {
-    loading = null;
+  const request = loadProjects().finally(() => {
+    if (loading === request) loading = null;
   });
-  return loading;
+  loading = request;
+  return request;
 }
 
 export async function renameProject(projectId: string, name: string): Promise<Project> {
   const project = await api.patch<Project>(`/projects/${projectId}`, { name });
+  revision++;
   if (cache) {
     cache = cache.map((p) => (p.id === projectId ? { ...p, ...project } : p));
   } else {

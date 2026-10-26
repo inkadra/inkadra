@@ -285,7 +285,7 @@ function BoardScreen({
                 <CurrentCrumb
                   title={c.title}
                   ariaLabel={c.id === rootBoardId ? t('project.name') : t('board.board.title')}
-                  canRename={editable}
+                  canRename={editable && (boardId !== rootBoardId || canEdit(projectRole))}
                   onRename={handleRenameCurrentBoard}
                 />
               ) : (
@@ -371,6 +371,8 @@ function BoardScreen({
       headerMenu,
       closeHeaderMenu,
       handleRenameCurrentBoard,
+      boardId,
+      projectRole,
     ],
   );
   useHeaderContent(header);

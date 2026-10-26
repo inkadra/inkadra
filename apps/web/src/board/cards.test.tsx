@@ -9,8 +9,8 @@ const state = vi.hoisted(() => ({
   kind: 'file',
   status: 'ready' as 'ready' | 'missing' | 'loading',
   boards: [
-    { id: 'b1', title: 'Location Scout', kind: 'board' },
-    { id: 'b2', title: 'Storyboard 1', kind: 'storyboard' },
+    { id: 'b1', title: 'Location Scout', kind: 'board', myRole: 'editor' },
+    { id: 'b2', title: 'Storyboard 1', kind: 'storyboard', myRole: 'editor' },
   ],
   projectId: 'p1',
 }));
@@ -113,6 +113,19 @@ describe('board cards', () => {
     expect(html).toContain('Location Scout');
     expect(html).toContain('board.types.board');
     expect(html).not.toContain('<input');
+  });
+
+  it('never offers renaming for read-only, locked or restricted child boards', () => {
+    Object.assign(state, { editing: boardEl.id, readOnly: true });
+    expect(render(boardEl)).not.toContain('<input');
+    state.readOnly = false;
+    expect(render({ ...boardEl, locked: true })).not.toContain('<input');
+    for (const role of ['viewer', 'commenter']) {
+      state.boards[0]!.myRole = role;
+      expect(render(boardEl)).not.toContain('<input');
+    }
+    state.boards[0]!.myRole = 'editor';
+    state.editing = null;
   });
 
   it('renders inline input when editing matches card id', () => {

@@ -271,7 +271,7 @@ test('viewers and commenters get no board menu, no guest hiding and no scene tog
   const storyboard = page.locator('[data-type="board"]', { hasText: 'Storyboard' });
   await expect(storyboard).toHaveCount(1);
   await page.keyboard.type('Scene private');
-  await page.keyboard.press('Escape');
+  await page.keyboard.press('Enter');
   await storyboard.dblclick();
   await page.getByRole('button', { name: 'Nuova scena' }).first().click();
   const ownerScene = page.getByRole('region', { name: 'Scena 1' });
@@ -601,7 +601,7 @@ test('storyboard and shot list preview a version read-only, and editors hide fra
   await page.keyboard.press('s');
   const card = page.locator('[data-type="board"]', { hasText: 'Storyboard' });
   await page.keyboard.type('Preview film');
-  await page.keyboard.press('Escape');
+  await page.keyboard.press('Enter');
   await card.dblclick();
   await page.getByRole('button', { name: 'Nuova scena' }).first().click();
   const scene = page.getByRole('region', { name: 'Scena 1' });
