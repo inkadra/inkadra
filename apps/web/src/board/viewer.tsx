@@ -7,6 +7,7 @@ import { useTranslation } from 'react-i18next';
 import { pickVariant, useAsset } from './assets.ts';
 import { type BoardStore, LOCAL } from './store.ts';
 import { TagEditor } from './tags.tsx';
+import { isYoutubeUrl, youtubeEmbedUrl } from './youtube.ts';
 
 type Exif = Record<string, unknown>;
 
@@ -100,14 +101,16 @@ export function MediaViewer({
   onClose,
 }: {
   store: BoardStore;
-  element: Extract<Element, { type: 'image' | 'file' }>;
+  element: Extract<Element, { type: 'image' | 'file' | 'link' }>;
   projectId: string;
   userId: string;
   readOnly: boolean;
   onClose: () => void;
 }) {
   const { t, i18n } = useTranslation();
-  const asset = useAsset(element.assetId);
+  const assetId = element.type === 'link' ? element.imageAssetId : element.assetId;
+  const asset = useAsset(assetId);
+  const isYoutube = element.type === 'link' && isYoutubeUrl(element.url);
   const ready: Asset | null = asset && asset !== 'missing' ? asset : null;
   const [copied, setCopied] = useState<string | null>(null);
   const [unplayable, setUnplayable] = useState(false);
@@ -163,14 +166,28 @@ export function MediaViewer({
       className="viewer"
       role="dialog"
       aria-modal="true"
-      aria-label={ready?.filename ?? t('viewer.title')}
+      aria-label={
+        element.type === 'link'
+          ? element.title || element.url
+          : (ready?.filename ?? t('viewer.title'))
+      }
       data-chrome
     >
       <div
         className="viewer__stage"
         onPointerDown={(e) => e.target === e.currentTarget && onClose()}
       >
-        {ready?.kind === 'video' ? (
+        {isYoutube ? (
+          <div className="viewer__embed">
+            <iframe
+              className="viewer__iframe"
+              src={youtubeEmbedUrl(element.url) ?? ''}
+              title={element.title || 'YouTube video'}
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+              allowFullScreen
+            />
+          </div>
+        ) : ready?.kind === 'video' ? (
           <>
             {/* biome-ignore lint/a11y/useMediaCaption: people's own footage has no captions */}
             <video
@@ -202,7 +219,9 @@ export function MediaViewer({
       </div>
       <aside className="viewer__side" data-scroll>
         <header className="viewer__head">
-          <span className="viewer__name">{ready?.filename}</span>
+          <span className="viewer__name">
+            {element.type === 'link' ? element.title || element.url : ready?.filename}
+          </span>
           <IconButton icon="close" label={t('viewer.close')} onClick={onClose} />
         </header>
         {ready?.width && ready.height && (
@@ -213,7 +232,12 @@ export function MediaViewer({
             </dd>
           </dl>
         )}
-        {ready?.kind !== 'video' && (
+        {element.type === 'link' && element.description && (
+          <section>
+            <p className="ink-muted viewer__desc">{element.description}</p>
+          </section>
+        )}
+        {element.type !== 'link' && ready?.kind !== 'video' && (
           <section>
             <h3 className="viewer__title">{t('viewer.exif')}</h3>
             {rows.length === 0 ? (
@@ -270,14 +294,25 @@ export function MediaViewer({
             onChange={(tags) => updateElement(store.doc, element.id, { tags }, LOCAL)}
           />
         </section>
-        {ready && (
+        {element.type === 'link' ? (
           <a
             className="ink-btn ink-btn--ghost viewer__download"
-            href={ready.url}
-            download={ready.filename}
+            href={element.url}
+            target="_blank"
+            rel="noopener noreferrer"
           >
-            {t('viewer.download')}
+            {t('viewer.openOnYoutube')}
           </a>
+        ) : (
+          ready && (
+            <a
+              className="ink-btn ink-btn--ghost viewer__download"
+              href={ready.url}
+              download={ready.filename}
+            >
+              {t('viewer.download')}
+            </a>
+          )
         )}
       </aside>
     </div>

@@ -165,6 +165,57 @@ describe('MediaViewer video playback', () => {
 
     vi.unstubAllGlobals();
   });
+
+  it('renders a privacy-friendly YouTube embed iframe for youtube link elements', () => {
+    vi.stubGlobal('window', {
+      innerWidth: 1920,
+      devicePixelRatio: 1,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    });
+
+    const fakeStore = {
+      undo: { stopCapturing: vi.fn() },
+      doc: { transact: vi.fn() },
+    } as unknown as import('./store.ts').BoardStore;
+
+    const youtubeElement: Extract<Element, { type: 'link' }> = {
+      id: 'link-yt',
+      type: 'link',
+      url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+      title: 'Never Gonna Give You Up',
+      description: 'Official music video',
+      x: 0,
+      y: 0,
+      w: 300,
+      z: 'a0',
+      parent: null,
+      createdBy: null,
+      tags: ['music'],
+      createdAt: 0,
+    };
+
+    const html = renderToStaticMarkup(
+      <MediaViewer
+        store={fakeStore}
+        element={youtubeElement}
+        projectId="proj-01"
+        userId="user-01"
+        readOnly={false}
+        onClose={vi.fn()}
+      />,
+    );
+
+    expect(html).toContain('<iframe');
+    expect(html).toContain(
+      'src="https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ?autoplay=1&amp;rel=0"',
+    );
+    expect(html).toContain('Never Gonna Give You Up');
+    expect(html).toContain('Official music video');
+    expect(html).toContain('href="https://www.youtube.com/watch?v=dQw4w9WgXcQ"');
+
+    vi.unstubAllGlobals();
+  });
 });
 
 describe('mounted viewer error events', () => {

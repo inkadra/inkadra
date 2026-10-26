@@ -411,7 +411,8 @@
       "iso": "ISO",
       "taken": "Scattata il"
     },
-    "unplayable": "Formato non riproducibile nel browser"
+    "unplayable": "Formato non riproducibile nel browser",
+    "openOnYoutube": "Apri su YouTube"
   },
   "search": {
     "title": "Cerca",

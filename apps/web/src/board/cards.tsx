@@ -34,6 +34,7 @@ import { NoteBody, NoteEditor, useFragment } from './note.tsx';
 import { LOCAL } from './store.ts';
 import { TagList } from './tags.tsx';
 import { localPreview, useUploadProgress } from './uploads.ts';
+import { isYoutubeUrl } from './youtube.ts';
 
 type Of<T extends Element['type']> = Extract<Element, { type: T }>;
 
@@ -319,13 +320,25 @@ function LinkCard({ element, width }: { element: Of<'link'>; width: number }) {
   const ready = image && image !== 'missing' ? image : null;
   const src = ready ? pickVariant(ready, width * scale * (window.devicePixelRatio || 1)) : '';
   const href = webUrl(element.url);
+  const isYoutube = isYoutubeUrl(element.url);
   return (
     <>
-      {src && (
+      {src ? (
         <div className="card__media card__media--link">
           <img src={src} alt="" draggable={false} decoding="async" />
+          {isYoutube && (
+            <span className="card__play" aria-hidden="true">
+              <Icon name="play" size={16} />
+            </span>
+          )}
         </div>
-      )}
+      ) : isYoutube ? (
+        <div className="card__media card__media--link card__video">
+          <span className="card__play" aria-hidden="true">
+            <Icon name="play" size={16} />
+          </span>
+        </div>
+      ) : null}
       <div className="card__pad card__link">
         <span className="card__title">{element.title || shortUrl(element.url)}</span>
         {element.description && <span className="card__desc">{element.description}</span>}
