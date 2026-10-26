@@ -197,5 +197,17 @@
   },
   "error_clip_unconfirmed": {
     "message": "Controlla la board prima di riprovare."
+  },
+  "column_untitled": {
+    "message": "Colonna senza titolo"
+  },
+  "error_too_large_limit": {
+    "message": "Il file è troppo grande. Il limite del server è $LIMIT$ byte.",
+    "placeholders": {
+      "limit": {
+        "content": "$1",
+        "example": "52428800"
+      }
+    }
   }
 }

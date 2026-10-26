@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: MPL-2.0
 import { parseTags, webUrl } from './clip.ts';
-import { errorMessageKey, serializeError } from './errors.ts';
-import { localize, t } from './i18n.ts';
+import { ColumnPicker } from './columns.ts';
+import { serializeError } from './errors.ts';
+import { errorText, localize, t } from './i18n.ts';
 import { type BoardOption, send } from './messages.ts';
 import type { BoardRef } from './storage.ts';
 import { applyTokens } from './theme.ts';
@@ -16,6 +17,18 @@ const list = $<HTMLUListElement>('board-list');
 const note = $<HTMLTextAreaElement>('note');
 const tags = $<HTMLInputElement>('tags');
 const save = $<HTMLButtonElement>('save');
+const column = $<HTMLSelectElement>('column');
+const columns = new ColumnPicker(
+  (state) => {
+    column.replaceChildren(
+      new Option(t('column_unsorted'), ''),
+      ...state.items.map((item) => new Option(item.title || t('column_untitled'), item.id)),
+    );
+    column.disabled = state.loading || state.items.length === 0;
+    updateSelection();
+  },
+  (boardId) => send('columns', { boardId }),
+);
 const result = $<HTMLElement>('result');
 
 const SECTION_LABELS: Record<BoardOption['section'], string> = {
@@ -26,6 +39,8 @@ const SECTION_LABELS: Record<BoardOption['section'], string> = {
 };
 
 let pageUrl: string | undefined;
+let pageTitle: string | undefined;
+let saving = false;
 let selected: BoardRef | null = null;
 let starting: BoardOption[] = [];
 let found: BoardOption[] = [];
@@ -34,7 +49,7 @@ let searchTimer: ReturnType<typeof setTimeout> | undefined;
 let searchRun = 0;
 
 function updateSelection() {
-  save.disabled = !selected || !pageUrl;
+  save.disabled = saving || columns.loading || !selected || !pageUrl;
   $('selected-board').textContent = selected ? selected.title : t('board_none_selected');
 }
 
@@ -69,7 +84,7 @@ function showError(err: unknown) {
   const reconnect = kind === 'unauthorized' || kind === 'not_connected';
   showResult(
     'error',
-    t(errorMessageKey(kind)),
+    errorText(err),
     reconnect ? { label: t('action_reconnect'), run: openOptions } : undefined,
   );
 }
@@ -137,6 +152,7 @@ function renderBoards() {
     }
     pick.addEventListener('click', () => {
       selected = board;
+      void columns.select(board.id).catch(showError);
       updateSelection();
       renderBoards();
     });
@@ -199,13 +215,16 @@ search.addEventListener('input', () => {
 
 form.addEventListener('submit', async (event) => {
   event.preventDefault();
-  if (!selected || !pageUrl) return;
-  save.disabled = true;
+  if (!selected || !pageUrl || saving || columns.loading) return;
+  saving = true;
+  updateSelection();
   result.hidden = true;
   try {
     const saved = await send('save-page', {
       board: selected,
       url: pageUrl,
+      title: pageTitle,
+      columnId: column.value || undefined,
       note: note.value.trim() || undefined,
       tags: parseTags(tags.value),
     });
@@ -221,6 +240,7 @@ form.addEventListener('submit', async (event) => {
   } catch (err) {
     showError(err);
   } finally {
+    saving = false;
     updateSelection();
   }
 });
@@ -243,11 +263,13 @@ async function start() {
   form.hidden = false;
 
   pageUrl = webUrl(tab?.url);
+  pageTitle = tab?.title;
   $('page-title').textContent = tab?.title || tab?.url || '';
   $('page-url').textContent = pageUrl ? new URL(pageUrl).host : t('page_not_web');
   if (!pageUrl) save.title = t('page_not_web');
 
   selected = status.lastBoard;
+  if (selected) void columns.select(selected.id).catch(showError);
   updateSelection();
   try {
     starting = await send('boards', {});

@@ -2,8 +2,9 @@
 import { InkadraApi } from './api.ts';
 import { childBoards, searchBoards, startingBoards } from './boards.ts';
 import { boardUrl, type ClipContent, type ImageFetcher, saveClip } from './clip.ts';
-import { ClipperError, errorMessageKey, serializeError } from './errors.ts';
-import { t } from './i18n.ts';
+import { ClipperError, serializeError } from './errors.ts';
+import { errorText, t } from './i18n.ts';
+import { whileClipping } from './keep-alive.ts';
 import { createRouter, type Handlers, type SavedClip } from './messages.ts';
 import { type PageToast, readImageInPage, showToastInPage } from './page-scripts.ts';
 import {
@@ -77,29 +78,46 @@ function pageImageFetcher(tabId: number, frameId: number, maxBytes: number): Ima
 async function clipTo(
   board: BoardRef,
   content: ClipContent,
-  options: { note?: string; tags?: string[]; tab?: chrome.tabs.Tab; frameId?: number } = {},
+  options: {
+    columnId?: string;
+    note?: string;
+    tags?: string[];
+    tab?: chrome.tabs.Tab;
+    frameId?: number;
+  } = {},
 ): Promise<SavedClip> {
-  const { api, connection } = await connected();
-  const imageFetchers: ImageFetcher[] = [];
-  if (content.kind === 'image') {
-    if (options.tab?.id !== undefined)
-      imageFetchers.push(
-        pageImageFetcher(options.tab.id, options.frameId ?? 0, connection.uploadMaxBytes),
+  return whileClipping(async () => {
+    const { api, connection } = await connected();
+    const imageFetchers: ImageFetcher[] = [];
+    if (content.kind === 'image') {
+      if (options.tab?.id !== undefined)
+        imageFetchers.push(
+          pageImageFetcher(options.tab.id, options.frameId ?? 0, connection.uploadMaxBytes),
+        );
+      imageFetchers.push(directImageFetcher());
+    }
+    try {
+      const result = await saveClip(
+        { api, imageFetchers, uploadMaxBytes: connection.uploadMaxBytes },
+        { boardId: board.id, columnId: options.columnId, note: options.note, tags: options.tags },
+        content,
       );
-    imageFetchers.push(directImageFetcher());
-  }
-  try {
-    const result = await saveClip(
-      { api, imageFetchers, uploadMaxBytes: connection.uploadMaxBytes },
-      { boardId: board.id, note: options.note, tags: options.tags },
-      content,
-    );
-    await rememberBoard(board);
-    return { board, boardUrl: boardUrl(connection.serverUrl, board), elementId: result.elementId };
-  } catch (err) {
-    await handleFailure(err, board);
-    throw err;
-  }
+      await rememberBoard(board);
+      return {
+        board,
+        boardUrl: boardUrl(connection.serverUrl, board),
+        elementId: result.elementId,
+      };
+    } catch (err) {
+      await handleFailure(err, board);
+      if (err instanceof ClipperError && err.kind === 'too_large')
+        throw new ClipperError(err.kind, err.message, {
+          ...err,
+          uploadMaxBytes: connection.uploadMaxBytes,
+        });
+      throw err;
+    }
+  });
 }
 
 // Feedback for the menus and the shortcut, which have no window of their own ---------------
@@ -154,12 +172,12 @@ async function clipFromPage(
         // Fall through to the toast.
       }
     }
-    await toast(tab, { tone: 'error', text: t(errorMessageKey(kind)) });
+    await toast(tab, { tone: 'error', text: errorText(err) });
   }
 }
 
 function pageContent(tab: chrome.tabs.Tab | undefined): ClipContent | null {
-  return tab?.url ? { kind: 'link', url: tab.url } : null;
+  return tab?.url ? { kind: 'link', url: tab.url, title: tab.title } : null;
 }
 
 // Wiring ------------------------------------------------------------------------------------
@@ -220,8 +238,12 @@ const handlers: Handlers = {
     if (q) return searchBoards(api, q);
     return startingBoards(api, await getRecentBoards());
   },
-  async 'save-page'({ board, url, note, tags }) {
-    return clipTo(toBoardRef(board), { kind: 'link', url }, { note, tags });
+  async columns({ boardId }) {
+    const { api } = await connected();
+    return api.columns(boardId);
+  },
+  async 'save-page'({ board, url, title, columnId, note, tags }) {
+    return clipTo(toBoardRef(board), { kind: 'link', url, title }, { columnId, note, tags });
   },
 };
 

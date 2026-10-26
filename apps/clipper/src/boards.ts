@@ -100,6 +100,7 @@ export async function searchBoards(api: InkadraApi, query: string): Promise<Boar
   const seen = new Set<string>();
   const out: BoardOption[] = [];
   for (const hit of ordered) {
+    if (hit.myRole !== undefined && !CAN_EDIT.has(hit.myRole)) continue;
     if (!hit.boardId || seen.has(hit.boardId)) continue;
     seen.add(hit.boardId);
     out.push({

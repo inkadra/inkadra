@@ -5,7 +5,7 @@ import { ClipperError } from './errors.ts';
 
 /** What can be saved: a link card, a quote (note) or an image. */
 export type ClipContent =
-  | { kind: 'link'; url: string; sourceUrl?: string }
+  | { kind: 'link'; url: string; title?: string; sourceUrl?: string }
   | { kind: 'text'; text: string; sourceUrl?: string }
   | { kind: 'image'; srcUrl: string; sourceUrl?: string };
 
@@ -121,7 +121,12 @@ export async function saveClip(
     if (!url) throw new ClipperError('bad_request', 'Only web pages can be saved as links.');
     // A link saved from its own page needs no sourceUrl.
     const { sourceUrl: _, ...rest } = common;
-    return deps.api.clip({ ...(sourceUrl === url ? rest : common), url });
+    const title = content.title?.trim().slice(0, 500);
+    return deps.api.clip({
+      ...(sourceUrl === url ? rest : common),
+      url,
+      ...(title ? { title } : {}),
+    });
   }
 
   if (content.kind === 'text') {

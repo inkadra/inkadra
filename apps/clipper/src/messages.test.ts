@@ -15,6 +15,7 @@ function handlers(overrides: Partial<Handlers> = {}): Handlers {
       user: { name: 'Ada', email: 'ada@example.com' },
       lastBoard: board,
     })),
+    columns: vi.fn(async () => []),
     boards: vi.fn(async () => []),
     'save-page': vi.fn(async () => ({
       board,

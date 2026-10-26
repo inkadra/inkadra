@@ -1,5 +1,14 @@
 // SPDX-License-Identifier: MPL-2.0
 
+import { errorMessageKey, serializeError } from './errors.ts';
+
+export function errorText(err: unknown): string {
+  const error = serializeError(err);
+  if (error.kind === 'too_large' && error.uploadMaxBytes && error.uploadMaxBytes > 0)
+    return t('error_too_large_limit', String(error.uploadMaxBytes));
+  return t(errorMessageKey(error.kind));
+}
+
 /** Text from _locales (Italian is the default locale). Falls back to the key when missing. */
 export function t(key: string, substitutions?: string | string[]): string {
   return chrome.i18n.getMessage(key, substitutions) || key;

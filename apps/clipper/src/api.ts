@@ -3,6 +3,7 @@ import type {
   ApiError,
   AppToken,
   Board,
+  BoardColumn,
   ClipRequest,
   ClipResult,
   ExchangeAppCode,
@@ -79,6 +80,20 @@ export class InkadraApi {
     return page.items;
   }
 
+  async columns(boardId: string): Promise<BoardColumn[]> {
+    try {
+      const result = await this.request<{ items: BoardColumn[] }>(
+        'GET',
+        `/boards/${encodeURIComponent(boardId)}/columns`,
+      );
+      return result.items;
+    } catch (err) {
+      // Older servers do not implement this endpoint. Do not hide auth/network errors.
+      if (err instanceof ClipperError && [404, 405, 501].includes(err.status ?? 0)) return [];
+      throw err;
+    }
+  }
+
   async search(q: string, limit = 20): Promise<SearchHit[]> {
     const params = new URLSearchParams({ q, limit: String(limit) });
     const result = await this.request<{ items: SearchHit[] }>('GET', `/search?${params}`);
@@ -106,8 +121,11 @@ export class InkadraApi {
     try {
       return await this.request<ClipResult>('POST', '/clip', options);
     } catch (err) {
-      if (err instanceof ClipperError && err.kind === 'server')
-        throw new ClipperError('clip_unconfirmed', err.message);
+      if (
+        err instanceof ClipperError &&
+        (err.kind === 'server' || err.reason === 'outcome_unknown' || err.status === 500)
+      )
+        throw new ClipperError('clip_unconfirmed', err.message, err);
       throw err;
     }
   }
@@ -167,5 +185,16 @@ async function toError(res: Response): Promise<ClipperError> {
     code === 'payload_too_large'
       ? 'too_large'
       : (STATUS_KINDS[res.status] ?? (res.status >= 500 ? 'server' : 'bad_request'));
-  return new ClipperError(kind, payload?.error?.message ?? `HTTP ${res.status}`);
+  const details = payload?.error?.details;
+  const reason =
+    typeof details === 'object' &&
+    details !== null &&
+    'reason' in details &&
+    typeof details.reason === 'string'
+      ? details.reason
+      : undefined;
+  return new ClipperError(kind, payload?.error?.message ?? `HTTP ${res.status}`, {
+    status: res.status,
+    reason,
+  });
 }
