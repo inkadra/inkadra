@@ -195,6 +195,23 @@ it('says so when a section cannot load instead of showing anything made up', asy
   context();
   vi.mocked(api.get).mockRejectedValue(new Error('offline'));
   await render();
-  expect(host.querySelectorAll('[role="alert"]')).toHaveLength(2);
-  expect(host.textContent).not.toContain('home.today.title');
+  expect(host.querySelectorAll('[role="alert"]')).toHaveLength(3);
+  expect(host.querySelector('[aria-labelledby="home-today"] [role="alert"]')).not.toBeNull();
+});
+
+it('keeps the Today card with an error when only the shooting days fail', async () => {
+  context();
+  respond({});
+  const fallback = vi.mocked(api.get).getMockImplementation();
+  vi.mocked(api.get).mockImplementation(async (path: string) => {
+    if (path.startsWith('/me/shooting-days')) throw new Error('offline');
+    return fallback?.(path);
+  });
+  await render();
+  const today = host.querySelector('[aria-labelledby="home-today"]');
+  expect(today?.textContent).toContain('home.today.title');
+  expect(today?.querySelector('[role="alert"]')?.textContent).toBe('home.loadError');
+  expect(host.querySelectorAll('[role="alert"]')).toHaveLength(1);
+  expect(host.textContent).toContain('home.noRecentBoards');
+  expect(host.textContent).not.toContain('home.summary.shooting');
 });

@@ -25,7 +25,15 @@ describe.skipIf(!url)('home overview: recent boards and shooting days (needs DAT
   const { db, sql: client } = createDatabase(config.DATABASE_URL, 4);
   let app: Awaited<ReturnType<typeof createApp>>;
   const people: Record<string, { cookie: string; id: string }> = {};
-  const ids = { project: '', root: '', plan: '', secret: '', archived: '', archivedRoot: '' };
+  const ids = {
+    project: '',
+    root: '',
+    plan: '',
+    scene: '',
+    secret: '',
+    archived: '',
+    archivedRoot: '',
+  };
   const day = (date: string, location: string): ShootingDayInput => ({
     date,
     callTime: '08:00',
@@ -91,6 +99,12 @@ describe.skipIf(!url)('home overview: recent boards and shooting days (needs DAT
       expect(child.statusCode).toBe(201);
       ids[key] = child.json().id;
     }
+    const scene = await request('owner', 'POST', `/projects/${ids.project}/boards`, {
+      parentBoardId: ids.plan,
+      title: 'Scene 4',
+    });
+    expect(scene.statusCode).toBe(201);
+    ids.scene = scene.json().id;
     const archived = (await request('owner', 'POST', '/projects', { name: 'Old' })).json();
     ids.archived = archived.id;
     ids.archivedRoot = archived.rootBoardId;
@@ -111,6 +125,7 @@ describe.skipIf(!url)('home overview: recent boards and shooting days (needs DAT
     for (const [boardId, input] of [
       [ids.plan, day('2026-11-02', 'Station')],
       [ids.secret, day('2026-11-02', 'Studio')],
+      [ids.scene, day('2026-11-03', 'Platform')],
       [ids.root, day('2026-11-20', 'Harbour')],
       [ids.archivedRoot, day('2026-11-02', 'Archive')],
     ] as const) {
@@ -154,8 +169,8 @@ describe.skipIf(!url)('home overview: recent boards and shooting days (needs DAT
       updatedAt: new Date(Date.now() + 60_000),
     });
     const items = await recent('owner');
-    // Casting was created last but Shooting plan after the root; the document edit wins.
-    expect(items.map((b) => b.id)).toEqual([ids.secret, ids.plan, ids.root]);
+    // Scene 4 was created last, then Casting, Shooting plan and the root; the document edit wins.
+    expect(items.map((b) => b.id)).toEqual([ids.secret, ids.scene, ids.plan, ids.root]);
     expect(items[0]).toMatchObject({ projectName: 'Last run', myRole: 'owner', title: 'Casting' });
     expect(Date.parse(items[0]?.editedAt ?? '')).toBeGreaterThan(Date.now());
     expect((await recent('owner', '?limit=1')).map((b) => b.id)).toEqual([ids.secret]);
@@ -164,7 +179,10 @@ describe.skipIf(!url)('home overview: recent boards and shooting days (needs DAT
 
   it('shows people with a grant only the boards they can open', async () => {
     const items = await recent('granted');
-    expect(items.map((b) => [b.id, b.myRole])).toEqual([[ids.plan, 'commenter']]);
+    expect(items.map((b) => [b.id, b.myRole])).toEqual([
+      [ids.scene, 'commenter'],
+      [ids.plan, 'commenter'],
+    ]);
     expect(await recent('stranger')).toEqual([]);
   });
 
@@ -177,7 +195,10 @@ describe.skipIf(!url)('home overview: recent boards and shooting days (needs DAT
         .map((d) => d.location)
         .sort(),
     ).toEqual(['Station', 'Studio']);
-    expect(all.slice(2).map((d) => [d.date, d.location])).toEqual([['2026-11-20', 'Harbour']]);
+    expect(all.slice(2).map((d) => [d.date, d.location])).toEqual([
+      ['2026-11-03', 'Platform'],
+      ['2026-11-20', 'Harbour'],
+    ]);
     expect(all.find((d) => d.location === 'Station')).toMatchObject({
       boardId: ids.plan,
       boardTitle: 'Shooting plan',
@@ -188,11 +209,20 @@ describe.skipIf(!url)('home overview: recent boards and shooting days (needs DAT
     expect((await days('owner', '2026-11-02', '2026-11-02')).map((d) => d.location).sort()).toEqual(
       ['Station', 'Studio'],
     );
-    expect((await days('viewer', '2026-11-01', '2026-11-30')).length).toBe(3);
-    expect((await days('granted', '2026-11-01', '2026-11-30')).map((d) => d.location)).toEqual([
-      'Station',
-    ]);
+    expect((await days('viewer', '2026-11-01', '2026-11-30')).length).toBe(4);
     expect(await days('stranger', '2026-11-01', '2026-11-30')).toEqual([]);
+  });
+
+  it('gives a grant on a sub-board only the days of that board and the boards below it', async () => {
+    const granted = await days('granted', '2026-11-01', '2026-11-30');
+    // The grant on the shooting plan reaches the scene below it, not its siblings or the root.
+    expect(granted.map((d) => [d.boardId, d.location])).toEqual([
+      [ids.plan, 'Station'],
+      [ids.scene, 'Platform'],
+    ]);
+    expect((await days('granted', '2026-11-03', '2026-11-03')).map((d) => d.boardId)).toEqual([
+      ids.scene,
+    ]);
   });
 
   it('leaves out boards in the trash', async () => {

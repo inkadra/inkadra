@@ -90,11 +90,17 @@ export function Home() {
         </div>
       </header>
 
-      {days.length > 0 && (
+      {(days.length > 0 || today.state === 'error') && (
         <section className="ink-card home__today" aria-labelledby="home-today">
           <h2 id="home-today" className="ink-label">
             {t('home.today.title')}
           </h2>
+          {/* Without the card a failed load would read as no shoot today. */}
+          {today.state === 'error' && (
+            <p role="alert" className="ink-muted home__status">
+              {t('home.loadError')}
+            </p>
+          )}
           {days.map((d) => (
             <TodayDay
               key={d.id}
