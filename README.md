@@ -1,14 +1,80 @@
-# Inkadra
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/assets/logo-dark.svg">
+    <img src="docs/assets/logo-light.svg" alt="Inkadra" width="280">
+  </picture>
+</p>
 
-Self-hosted boards for film and photography. From idea to frame.
+<p align="center">
+  <strong>Self-hosted boards for film and photography. From idea to frame.</strong>
+</p>
 
-Inkadra is a free, open source workspace in the spirit of Milanote, built for people who make
-films and photographs: moodboards, storyboards, shot lists and client review on an infinite
-canvas, running on your own server.
+<p align="center">
+  <a href="https://github.com/inkadra/inkadra/actions/workflows/ci.yml"><img src="https://github.com/inkadra/inkadra/actions/workflows/ci.yml/badge.svg?branch=main" alt="CI"></a>
+  <a href="https://github.com/inkadra/inkadra/releases"><img src="https://img.shields.io/github/v/release/inkadra/inkadra?include_prereleases&label=release" alt="Latest release"></a>
+  <a href="https://github.com/inkadra/inkadra/pkgs/container/inkadra"><img src="https://img.shields.io/badge/image-ghcr.io-2563EB" alt="Docker image on ghcr.io"></a>
+  <a href="#licence"><img src="https://img.shields.io/badge/licence-AGPL--3.0%20%2F%20MPL--2.0-808086" alt="Licence: AGPL-3.0 and MPL-2.0"></a>
+</p>
 
-> **Status: early development (0.1).** The foundations are in place: sign-in, the app shell,
-> the API and data contracts, and the Docker image. The canvas arrives in 0.2. Not ready for
-> real work yet.
+<p align="center">
+  <a href="#run-it">Run it</a> ·
+  <a href="docs/self-hosting">Self-hosting guide</a> ·
+  <a href="#develop">Develop</a> ·
+  <a href="CONTRIBUTING.md">Contributing</a> ·
+  <a href="docs/decisions">Decisions</a>
+</p>
+
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/readme/board-dark.png">
+    <img src="docs/screenshots/readme/board-light.png" alt="A moodboard in Inkadra: notes, film stills, a column of references, a colour palette and a checklist on an infinite canvas">
+  </picture>
+</p>
+
+Inkadra is a free, open source visual workspace for people who make films and photographs:
+moodboards, storyboards, shot lists and client review on an infinite canvas, running on your
+own server.
+
+> [!NOTE]
+> **Early development.** Inkadra is moving fast towards 1.0 and is good for trying out, but
+> not yet for work you cannot afford to lose. Releases before 1.0 may change things between
+> minor versions: read the notes in [Upgrades](docs/self-hosting/upgrades.md) before updating.
+
+## What it does
+
+- **Boards on an infinite canvas.** Notes, images, files, links, to-do lists, colour swatches,
+  columns, arrows and boards inside boards. Start from scratch or from a template.
+- **Storyboards and shot lists.** Scenes and frames with shot size, angle, movement, lens,
+  duration, cast and status. Draw on a frame with the pen, or start from a picture. The shot
+  list is the same data as a table you can filter and export to CSV.
+- **Together, live.** Everyone on a board sees changes as they happen. Roles per project and per
+  board, invitations, comments with mentions, review status and notifications.
+- **Client review.** Share a board through a link, with or without comments and picks, and keep
+  some cards for the team only. Named versions let you go back to any earlier state.
+- **Capture from the web.** The [Inkadra Clipper](apps/clipper) extension saves images, quotes
+  and links from Chrome, Edge, Brave and Arc straight onto a board.
+- **Your server, your files.** One Docker image for amd64 and arm64. Files on a volume, a host
+  folder or any S3 storage. Email, Google or your own OIDC provider for sign-in. Installs as an
+  app from the browser.
+
+<table>
+  <tr>
+    <td width="50%">
+      <picture>
+        <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/readme/storyboard-dark.png">
+        <img src="docs/screenshots/readme/storyboard-light.png" alt="A storyboard: two scenes with their frames, shot sizes, durations and status">
+      </picture>
+      <p align="center"><sub>Storyboard: scenes, frames and the data of each shot</sub></p>
+    </td>
+    <td width="50%">
+      <picture>
+        <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/readme/shotlist-dark.png">
+        <img src="docs/screenshots/readme/shotlist-light.png" alt="The shot list of the same storyboard, as a table">
+      </picture>
+      <p align="center"><sub>Shot list: the same frames as a table</sub></p>
+    </td>
+  </tr>
+</table>
 
 ## Run it
 
@@ -24,9 +90,10 @@ docker compose up -d
 ```
 
 Open `PUBLIC_URL` in a browser: the first account you create becomes the administrator.
-[docs/self-hosting](docs/self-hosting) covers reverse proxies (Caddy, Traefik, Nginx, Nginx
-Proxy Manager, Pangolin), storage on host folders or S3, split mode, upgrades and
-troubleshooting. Images are published for amd64 and arm64 as `ghcr.io/inkadra/inkadra`.
+
+The [self-hosting guide](docs/self-hosting) covers reverse proxies (Caddy, Traefik, Nginx,
+Nginx Proxy Manager, Pangolin), sign-in, storage on host folders or S3, split mode, upgrades
+and troubleshooting. Images are published for amd64 and arm64 as `ghcr.io/inkadra/inkadra`.
 
 ## Develop
 
@@ -56,7 +123,8 @@ pnpm dev     # API on :3000, web app on http://localhost:5173
 | `e2e`                  | End-to-end tests (Playwright)                                          |
 
 Read [CONTRIBUTING.md](CONTRIBUTING.md) before opening a pull request, and
-[docs/decisions](docs/decisions) for the reasoning behind the main choices.
+[docs/decisions](docs/decisions) for the reasoning behind the main choices. Security problems
+go through [private advisories](SECURITY.md), not public issues.
 
 ## Licence
 
