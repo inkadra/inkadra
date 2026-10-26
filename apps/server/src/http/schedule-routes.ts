@@ -7,7 +7,7 @@ import {
   UpdateShootingDay,
   z,
 } from '@inkadra/shared';
-import { and, asc, eq, gte, inArray, isNull, lte, or, sql } from 'drizzle-orm';
+import { and, asc, eq, gte, isNull, lte, sql } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
 import { requireBoardRole } from '../access.ts';
 import type { Auth } from '../auth.ts';
@@ -36,11 +36,19 @@ export function registerScheduleRoutes(
   app.get(`${API_PREFIX}/me/shooting-days`, async (req) => {
     const actor = await requireActor(auth, req, db);
     const { from, to } = MyScheduleQuery.parse(req.query ?? {});
-    const granted = sql`(with recursive granted as (
+    // The readable board ids are computed first, so shooting_day is probed through its
+    // (board_id, date) index instead of being scanned across every project's history.
+    const readable = sql`array(
+      with recursive granted as (
         select g.board_id as id from board_grant g where g.user_id = ${actor.id}
         union
         select c.id from board c join granted on c.parent_board_id = granted.id
-      ) select id from granted)`;
+      )
+      select id from granted
+      union
+      select b.id from board b join project_member m on m.project_id = b.project_id
+        where m.user_id = ${actor.id}
+    )`;
     const rows = await db
       .select({ day: shootingDay, boardTitle: board.title, projectName: project.name })
       .from(shootingDay)
@@ -48,13 +56,9 @@ export function registerScheduleRoutes(
       .innerJoin(project, and(eq(project.id, board.projectId), isNull(project.archivedAt)))
       .where(
         and(
+          sql`${shootingDay.boardId} = any(${readable})`,
           gte(shootingDay.date, from),
           lte(shootingDay.date, to),
-          or(
-            sql`exists (select 1 from project_member m
-              where m.project_id = ${board.projectId} and m.user_id = ${actor.id})`,
-            inArray(shootingDay.boardId, granted),
-          ),
         ),
       )
       .orderBy(asc(shootingDay.date), asc(shootingDay.callTime), asc(shootingDay.id));
