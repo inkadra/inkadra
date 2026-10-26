@@ -146,15 +146,23 @@ export function registerBoardRoutes(app: FastifyInstance, deps: Deps) {
     ]);
     if (!pRole && grants.size === 0) throw new HttpError('not_found', 'Project not found.');
     const rows = await db
-      .select()
+      .select({
+        board,
+        editedAt: sql<Date>`greatest(${board.updatedAt}, coalesce(${boardDoc.updatedAt}, ${board.updatedAt}))`,
+      })
       .from(board)
+      .leftJoin(boardDoc, eq(boardDoc.boardId, board.id))
       .where(and(eq(board.projectId, projectId), isNull(board.deletedAt)))
       .orderBy(asc(board.position), asc(board.id));
-    const roles = effectiveRoles(rows, grants, pRole);
+    const roles = effectiveRoles(
+      rows.map((r) => r.board),
+      grants,
+      pRole,
+    );
     // People with grants only get the subtrees they can open.
     const items = rows.flatMap((r) => {
-      const role = roles.get(r.id)?.role;
-      return role ? [toBoard(r, role)] : [];
+      const role = roles.get(r.board.id)?.role;
+      return role ? [{ ...toBoard(r.board, role), editedAt: iso(new Date(r.editedAt)) }] : [];
     });
     return { items };
   });

@@ -4,6 +4,7 @@ import {
   boolean,
   check,
   customType,
+  date,
   foreignKey,
   index,
   integer,
@@ -167,6 +168,11 @@ export const project = pgTable('project', {
     .default('neutral'),
   position: text('position').notNull(),
   archivedAt: timestamp('archived_at', { withTimezone: true }),
+  type: text('type', {
+    enum: ['short_film', 'commercial', 'music_video', 'photo_shoot', 'documentary'],
+  }),
+  shootingStart: date('shooting_start'),
+  shootingEnd: date('shooting_end'),
   createdBy: uuid('created_by').references(() => user.id, { onDelete: 'set null' }),
   createdAt: createdAt(),
   updatedAt: updatedAt(),
@@ -187,6 +193,25 @@ export const projectMember = pgTable(
   (t) => [
     primaryKey({ columns: [t.projectId, t.userId] }),
     index('project_member_user_idx').on(t.userId),
+  ],
+);
+
+export const projectPin = pgTable(
+  'project_pin',
+  {
+    projectId: uuid('project_id')
+      .notNull()
+      .references(() => project.id, { onDelete: 'cascade' }),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => user.id, { onDelete: 'cascade' }),
+  },
+  (t) => [
+    primaryKey({ columns: [t.projectId, t.userId] }),
+    foreignKey({
+      columns: [t.projectId, t.userId],
+      foreignColumns: [projectMember.projectId, projectMember.userId],
+    }).onDelete('cascade'),
   ],
 );
 
