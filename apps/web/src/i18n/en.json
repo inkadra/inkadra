@@ -600,7 +600,8 @@
       "noMatch": "No frame matches the filter",
       "table": "Table",
       "kanban": "Kanban",
-      "addInStatus": "Add in {{status}}"
+      "addInStatus": "Add in {{status}}",
+      "cardAria": "Frame {{label}}"
     }
   },
   "roles": {
