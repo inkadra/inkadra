@@ -216,41 +216,69 @@
         ]
       },
       "ShootingDay": {
-        "allOf": [
-          {
-            "$ref": "#/components/schemas/ShootingDayInput"
+        "type": "object",
+        "properties": {
+          "date": {
+            "type": "string",
+            "format": "date"
           },
-          {
-            "type": "object",
-            "properties": {
-              "id": {
-                "type": "string",
-                "format": "uuid",
-                "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10"
-              },
-              "projectId": {
-                "type": "string",
-                "format": "uuid",
-                "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10"
-              },
-              "boardId": {
-                "type": "string",
-                "format": "uuid",
-                "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10"
-              },
-              "revision": {
-                "type": "integer",
-                "minimum": 1
-              }
-            },
-            "required": [
-              "id",
-              "projectId",
-              "boardId",
-              "revision"
+          "callTime": {
+            "type": "string",
+            "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$"
+          },
+          "wrap": {
+            "type": [
+              "string",
+              "null"
             ],
-            "additionalProperties": false
+            "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$"
+          },
+          "location": {
+            "type": "string",
+            "maxLength": 1000
+          },
+          "notes": {
+            "type": "string",
+            "maxLength": 10000
+          },
+          "blocks": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ScheduleBlock"
+            },
+            "maxItems": 500
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10"
+          },
+          "projectId": {
+            "type": "string",
+            "format": "uuid",
+            "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10"
+          },
+          "boardId": {
+            "type": "string",
+            "format": "uuid",
+            "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10"
+          },
+          "revision": {
+            "type": "integer",
+            "minimum": 1
           }
+        },
+        "required": [
+          "date",
+          "callTime",
+          "wrap",
+          "location",
+          "notes",
+          "blocks",
+          "id",
+          "projectId",
+          "boardId",
+          "revision"
         ]
       },
       "ScheduleBlock": {
@@ -329,6 +357,40 @@
         ],
         "additionalProperties": false
       },
+      "ApiError": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "object",
+            "properties": {
+              "code": {
+                "type": "string",
+                "enum": [
+                  "bad_request",
+                  "unauthorized",
+                  "forbidden",
+                  "not_found",
+                  "conflict",
+                  "payload_too_large",
+                  "rate_limited",
+                  "internal"
+                ]
+              },
+              "message": {
+                "type": "string"
+              },
+              "details": {}
+            },
+            "required": [
+              "code",
+              "message"
+            ]
+          }
+        },
+        "required": [
+          "error"
+        ]
+      },
       "ShootingDayInput": {
         "type": "object",
         "properties": {
@@ -373,58 +435,52 @@
         ],
         "additionalProperties": false
       },
-      "ApiError": {
+      "UpdateShootingDay": {
         "type": "object",
         "properties": {
-          "error": {
-            "type": "object",
-            "properties": {
-              "code": {
-                "type": "string",
-                "enum": [
-                  "bad_request",
-                  "unauthorized",
-                  "forbidden",
-                  "not_found",
-                  "conflict",
-                  "payload_too_large",
-                  "rate_limited",
-                  "internal"
-                ]
-              },
-              "message": {
-                "type": "string"
-              },
-              "details": {}
+          "date": {
+            "type": "string",
+            "format": "date"
+          },
+          "callTime": {
+            "type": "string",
+            "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$"
+          },
+          "wrap": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$"
+          },
+          "location": {
+            "type": "string",
+            "maxLength": 1000
+          },
+          "notes": {
+            "type": "string",
+            "maxLength": 10000
+          },
+          "blocks": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ScheduleBlock"
             },
-            "required": [
-              "code",
-              "message"
-            ]
+            "maxItems": 500
+          },
+          "revision": {
+            "type": "integer",
+            "minimum": 1
           }
         },
         "required": [
-          "error"
-        ]
-      },
-      "UpdateShootingDay": {
-        "allOf": [
-          {
-            "$ref": "#/components/schemas/ShootingDayInput"
-          },
-          {
-            "type": "object",
-            "properties": {
-              "revision": {
-                "type": "integer",
-                "minimum": 1
-              }
-            },
-            "required": [
-              "revision"
-            ],
-            "additionalProperties": false
-          }
+          "date",
+          "callTime",
+          "wrap",
+          "location",
+          "notes",
+          "blocks",
+          "revision"
         ]
       },
       "Health": {

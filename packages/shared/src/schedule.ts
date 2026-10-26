@@ -42,16 +42,22 @@ export const ShootingDayInput = z
   .strict()
   .openapi('ShootingDayInput');
 export type ShootingDayInput = z.infer<typeof ShootingDayInput>;
-export const ShootingDay = ShootingDayInput.extend({
-  id: Id,
-  projectId: Id,
-  boardId: Id,
-  revision: z.number().int().min(1),
-}).openapi('ShootingDay');
+export const ShootingDay = z
+  .object({
+    ...ShootingDayInput.shape,
+    id: Id,
+    projectId: Id,
+    boardId: Id,
+    revision: z.number().int().min(1),
+  })
+  .openapi('ShootingDay');
 export type ShootingDay = z.infer<typeof ShootingDay>;
-export const UpdateShootingDay = ShootingDayInput.extend({
-  revision: z.number().int().min(1),
-}).openapi('UpdateShootingDay');
+export const UpdateShootingDay = z
+  .object({
+    ...ShootingDayInput.shape,
+    revision: z.number().int().min(1),
+  })
+  .openapi('UpdateShootingDay');
 export const Schedule = z
   .object({ items: z.array(ShootingDay), nextCursor: z.null() })
   .openapi('Schedule');
