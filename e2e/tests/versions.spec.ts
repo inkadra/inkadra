@@ -111,6 +111,13 @@ test('named versions preview an isolated read-only canvas and restore every open
     .toBe(true);
   const badge = page.locator(`[data-el="${note.id}"] .card-review`);
   await expect(badge).toBeVisible();
+  const noteBox = await page.locator(`[data-el="${note.id}"]`).boundingBox();
+  const badgeBox = await badge.boundingBox();
+  expect(badgeBox).not.toBeNull();
+  expect(noteBox).not.toBeNull();
+  if (badgeBox && noteBox) {
+    expect(badgeBox.y).toBeGreaterThanOrEqual(noteBox.y);
+  }
   const commentsButton = page.getByRole('button', { name: /^Commenti:/ });
   const secondContext = await browser.newContext({ locale: 'it-IT' });
   const other = await secondContext.newPage();
@@ -321,6 +328,7 @@ test('viewers and commenters get no board menu, no guest hiding and no scene tog
       await expect(other.getByRole('region', { name: 'Scena 1' })).toBeVisible();
       await expect(other.getByRole('button', { name: 'Nascondi agli ospiti' })).toHaveCount(0);
       await expect(other.getByRole('button', { name: 'Menu della board' })).toHaveCount(0);
+      await expect(other.getByRole('button', { name: 'Versioni della board' })).toHaveCount(0);
       await expect(other.locator('.story__tile')).toHaveCount(1);
       await other.getByRole('button', { name: 'Comprimi la scena' }).click();
       await expect(other.locator('.story__tile')).toHaveCount(0);
@@ -335,6 +343,7 @@ test('viewers and commenters get no board menu, no guest hiding and no scene tog
       ).toBeVisible();
       await expect(other.locator('[data-el]')).toHaveCount(4);
       await expect(other.getByRole('button', { name: 'Menu della board' })).toHaveCount(0);
+      await expect(other.getByRole('button', { name: 'Versioni della board' })).toHaveCount(0);
       await other.locator(`[data-el="${note.id}"]`).click();
       await expect(other.getByRole('button', { name: 'Nascondi agli ospiti' })).toHaveCount(0);
       await other.locator(`[data-el="${note.id}"]`).click({ button: 'right' });
@@ -654,4 +663,15 @@ test('storyboard and shot list preview a version read-only, and editors hide fra
   await expect(hideTile).toHaveAttribute('aria-pressed', 'true');
   await hideTile.click();
   await expect(hideTile).toHaveAttribute('aria-pressed', 'false');
+});
+
+test('visible header icon button opens the versions dialog', async ({ page, baseURL }) => {
+  await seed(page, baseURL!);
+  const headerButton = page.getByRole('button', { name: 'Versioni della board', exact: true });
+  await expect(headerButton).toBeVisible();
+  await headerButton.click();
+  const dialog = page.getByRole('dialog', { name: 'Versioni della board', exact: true });
+  await expect(dialog).toBeVisible();
+  await dialog.getByRole('button', { name: 'Chiudi', exact: true }).click();
+  await expect(dialog).toBeHidden();
 });

@@ -38,9 +38,12 @@ export function ReviewChip({ status, compact = false }: { status: string; compac
 export const CardReview = memo(function CardReview({
   elementId,
   withPins = true,
+  shifted = false,
 }: {
   elementId: string;
   withPins?: boolean;
+  /** Move the badges left: the card's lock badge already sits in that corner. */
+  shifted?: boolean;
 }) {
   const { t } = useTranslation();
   const guest = useContext(GuestModeContext);
@@ -57,7 +60,7 @@ export const CardReview = memo(function CardReview({
   return (
     <>
       {(open > 0 || status) && (
-        <div className="card-review" data-no-drag>
+        <div className={`card-review${shifted ? ' card-review--shifted' : ''}`} data-no-drag>
           {status && (
             <button
               type="button"
