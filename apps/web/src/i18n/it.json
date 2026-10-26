@@ -227,6 +227,10 @@
       "label": "Testo della nota",
       "empty": "Nota vuota"
     },
+    "caption": {
+      "label": "Didascalia",
+      "edit": "Modifica didascalia"
+    },
     "image": {
       "processing": "Elaborazione…",
       "failed": "Anteprima non disponibile"

@@ -92,14 +92,13 @@ export function entryFor(el: Element, body: string, autoLabel?: string): IndexEn
       return { ...base, title, text: join(body) };
     }
     case 'image':
+    case 'file':
       return {
         ...base,
         title: el.caption?.slice(0, 80) ?? '',
         text: join(el.caption),
         assetId: uuidOrNull(el.assetId),
       };
-    case 'file':
-      return { ...base, title: '', text: '', assetId: uuidOrNull(el.assetId) };
     case 'link':
       return {
         ...base,
@@ -186,7 +185,7 @@ export async function writeBoardIndex(tx: Tx | Database, boardId: string, doc: Y
     .where(eq(board.id, boardId));
   if (!row) return 0;
   const entries = entriesFor(doc);
-  // File cards have no text of their own: their file name is what people search for.
+  // File cards are searchable by both their file name and their caption.
   const fileIds = entries.flatMap((e) => (e.type === 'file' && e.assetId ? [e.assetId] : []));
   const names = new Map<string, string>();
   if (fileIds.length > 0) {
@@ -199,8 +198,8 @@ export async function writeBoardIndex(tx: Tx | Database, boardId: string, doc: Y
   for (const e of entries) {
     if (e.type === 'file' && e.assetId) {
       const name = names.get(e.assetId) ?? '';
-      e.title = name;
-      e.text = name;
+      e.title = name || e.title;
+      e.text = join(name, e.text);
     }
   }
   await tx.delete(boardElementIndex).where(eq(boardElementIndex.boardId, boardId));

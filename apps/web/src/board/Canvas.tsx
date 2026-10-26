@@ -1396,6 +1396,12 @@ export function Canvas({
       ...(single && (single.type === 'image' || single.type === 'file')
         ? [{ label: t('board.menu.viewImage'), action: () => openElement(single) }]
         : []),
+      ...(single &&
+      (single.type === 'image' || single.type === 'file') &&
+      !readOnly &&
+      !single.locked
+        ? [{ label: t('board.caption.edit'), action: () => setEditing(single.id) }]
+        : []),
       ...(single?.type === 'frame'
         ? [
             { label: t('board.menu.details'), action: () => openElement(single) },
@@ -1464,6 +1470,7 @@ export function Canvas({
     removeSelection,
     openElement,
     doc,
+    setEditing,
   ]);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: sizeVersion invalidates measured heights

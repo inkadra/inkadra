@@ -76,6 +76,23 @@ describe('index entries', () => {
     );
   });
 
+  it('indexes file captions and accepts files without a caption', () => {
+    const doc = createBoardDoc('board');
+    const file = {
+      ...base(),
+      type: 'file' as const,
+      assetId: 'asset-id',
+      caption: 'Observatory schedule',
+    };
+    addElement(doc, file);
+    const old = { ...base(), type: 'file' as const, assetId: 'old-asset' };
+    addElement(doc, old);
+    expect(entriesFor(doc)).toEqual([
+      expect.objectContaining({ elementId: file.id, text: file.caption }),
+      expect.objectContaining({ elementId: old.id, title: '', text: '' }),
+    ]);
+  });
+
   it('gives frames without a label the shot number the storyboard shows', () => {
     const scene = { ...base(), type: 'scene' as const, number: '12', title: '' };
     const frame = (z: string, label?: string) => ({

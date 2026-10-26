@@ -380,7 +380,7 @@ export async function registerClipRoutes(app: FastifyInstance, deps: Deps) {
           card =
             stored.kind === 'image'
               ? { type: 'image', fields: { assetId, caption: input.note } }
-              : { type: 'file', fields: { assetId } };
+              : { type: 'file', fields: { assetId, caption: input.note } };
         } else if (text) {
           card = {
             type: 'note',

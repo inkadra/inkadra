@@ -21,6 +21,7 @@ import { useTranslation } from 'react-i18next';
 import * as Y from 'yjs';
 import { pickVariant, useAsset } from './assets.ts';
 import { renameBoard } from './boards.ts';
+import { CardCaption } from './CardCaption.tsx';
 import { CardReview } from './CardReview.tsx';
 import { CardExtrasContext, GuestModeContext, useBoard } from './context.ts';
 import { useBoardAspect } from './film/aspect.ts';
@@ -294,7 +295,7 @@ function ImageCard({ element, width }: { element: Of<'image'>; width: number }) 
           </span>
         )}
       </div>
-      {element.caption && <div className="card__caption">{element.caption}</div>}
+      <CardCaption element={element} />
     </>
   );
 }
@@ -387,32 +388,36 @@ function FileCard({ element, width }: { element: Of<'file'>; width: number }) {
           )}
         </div>
         <div className="card__caption">{ready.filename}</div>
+        <CardCaption element={element} />
       </>
     );
   }
   const ext = ready?.filename.split('.').pop()?.slice(0, 4).toUpperCase() ?? '';
   return (
-    <div className="card__pad card__file">
-      <span className="card__file-tile" aria-hidden="true">
-        {ext || <Icon name="file" size={14} />}
-      </span>
-      <span className="card__file-meta">
-        <span className="card__title">
-          {ready ? ready.filename || t('board.types.file') : t('board.file.loading')}
+    <>
+      <div className="card__pad card__file">
+        <span className="card__file-tile" aria-hidden="true">
+          {ext || <Icon name="file" size={14} />}
         </span>
-        <span className="card__desc">
-          {progress !== null
-            ? t('board.file.uploading', { percent: Math.round(progress * 100) })
-            : ready
-              ? ready.size > 0
-                ? formatSize(ready.size)
-                : ''
-              : asset === 'missing'
-                ? t('board.file.missing')
-                : ''}
+        <span className="card__file-meta">
+          <span className="card__title">
+            {ready ? ready.filename || t('board.types.file') : t('board.file.loading')}
+          </span>
+          <span className="card__desc">
+            {progress !== null
+              ? t('board.file.uploading', { percent: Math.round(progress * 100) })
+              : ready
+                ? ready.size > 0
+                  ? formatSize(ready.size)
+                  : ''
+                : asset === 'missing'
+                  ? t('board.file.missing')
+                  : ''}
+          </span>
         </span>
-      </span>
-    </div>
+      </div>
+      <CardCaption element={element} />
+    </>
   );
 }
 
