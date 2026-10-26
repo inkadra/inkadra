@@ -227,6 +227,10 @@
       "label": "Note text",
       "empty": "Empty note"
     },
+    "caption": {
+      "label": "Caption",
+      "edit": "Edit caption"
+    },
     "image": {
       "processing": "Processing…",
       "failed": "Preview unavailable"

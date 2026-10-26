@@ -516,15 +516,30 @@ describe.skipIf(!url)('clip (needs DATABASE_URL)', () => {
     expect(Buffer.from(await file.arrayBuffer()).equals(png)).toBe(true);
   });
 
-  it('stores any other file as a file card, found by its name', async () => {
+  it('keeps a PDF note as its caption and finds the file by that caption', async () => {
+    const caption = 'Call sheet for the observatory';
     const pdf = Buffer.from('%PDF-1.4\n% shooting schedule\n');
-    const res = await clip(form({ boardId }, [pdf, 'odg-giorno-3.pdf', 'application/pdf']));
+    const res = await clip(
+      form({ boardId, note: caption }, [pdf, 'schedule.pdf', 'application/pdf']),
+    );
     expect(res.status).toBe(201);
     const { element } = await boardElement(res.json.elementId);
-    expect(element).toMatchObject({ type: 'file', assetId: res.json.assetId });
+    expect(element).toMatchObject({ type: 'file', assetId: res.json.assetId, caption });
     const [row] = await db.select().from(asset).where(eq(asset.id, res.json.assetId));
     expect(row).toMatchObject({ kind: 'file', mime: 'application/pdf', size: pdf.length });
-    expect((await indexRow(res.json.elementId))?.title).toBe('odg-giorno-3.pdf');
+    expect(await indexRow(res.json.elementId)).toMatchObject({
+      title: 'schedule.pdf',
+      text: `schedule.pdf ${caption}`,
+    });
+    const search = await fetch(`http://${base}/api/v1/search?q=observatory`, {
+      headers: { cookie: people.owner?.cookie ?? '', origin: config.PUBLIC_URL },
+    });
+    expect(search.status).toBe(200);
+    expect(((await search.json()) as { items: unknown[] }).items).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ elementId: res.json.elementId, elementType: 'file' }),
+      ]),
+    );
   });
 
   it('puts the card at the bottom of the column it is given', async () => {

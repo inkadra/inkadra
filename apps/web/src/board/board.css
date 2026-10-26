@@ -248,6 +248,16 @@
   padding: 6px 10px;
   font-size: 12px;
 }
+.card__caption-input {
+  display: block;
+  width: 100%;
+  border: 0;
+  border-radius: 0;
+  resize: vertical;
+  background: transparent;
+  color: inherit;
+  font-family: inherit;
+}
 .card__link {
   display: flex;
   flex-direction: column;

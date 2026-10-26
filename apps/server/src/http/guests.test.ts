@@ -264,7 +264,7 @@ describe.skipIf(!url)('guest share links (needs DATABASE_URL)', () => {
         url: 'https://example.com/',
         imageAssetId: X.x4,
       },
-      { ...el, id: E.file, type: 'file', parent: null, assetId: X.x5 },
+      { ...el, id: E.file, type: 'file', parent: null, assetId: X.x5, caption: 'Client contract' },
       { ...el, id: E.foreign, type: 'image', parent: null, assetId: X.xq },
       { ...el, id: E.orphan, type: 'image', parent: 'gone______', assetId: X.x2 },
     ];
@@ -1292,6 +1292,7 @@ describe.skipIf(!url)('guest share links (needs DATABASE_URL)', () => {
       createdAt: 1,
       createdBy: null,
     });
+    expect(byId.get(E.file)).toMatchObject({ type: 'file', caption: 'Client contract' });
     const frame = byId.get(E.frame) as Record<string, unknown>;
     expect(frame.status).toBeUndefined();
     expect(frame.notes).toBeUndefined();
