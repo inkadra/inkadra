@@ -35,9 +35,14 @@ configured, copy the link and send it yourself.
    GOOGLE_ALLOWED_DOMAINS=studio.it
    ```
 
-People who already have an account can also add Google from **Settings → Account**.
-Signing in with Google with the same address links it to the existing account, because Google
-verifies its addresses; an OIDC provider is linked that way only with `OIDC_TRUST_EMAIL=true`.
+People who already have an account can also add Google from **Settings → Sign-in methods**.
+Signing in with Google with the same address links it to the existing account automatically,
+but only when that account's email is verified — otherwise the sign-in is refused and you
+link it yourself from the settings page. An email becomes verified when its owner signs in
+once with a link by email or accepts an invitation sent by email (both need email
+configured); accounts created with Google start verified. An OIDC provider is auto-linked the
+same way when it marks the address as verified (`email_verified`); `OIDC_TRUST_EMAIL=true`
+links even when it does not. The account's email has to be verified either way.
 
 ## An OpenID Connect provider
 
@@ -53,7 +58,8 @@ OIDC_NAME=Authentik
 OIDC_DISCOVERY_URL=https://auth.example.com/application/o/inkadra/.well-known/openid-configuration
 OIDC_CLIENT_ID=…
 OIDC_CLIENT_SECRET=…
-# true only if the provider verifies email addresses: links sign-ins to existing accounts
+# true only if the provider verifies every email address: links sign-ins to existing accounts
+# even without email_verified; the existing account's email must still be verified (see Google)
 OIDC_TRUST_EMAIL=false
 ```
 

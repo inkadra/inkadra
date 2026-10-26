@@ -14,10 +14,16 @@ export function safeNext(value: string | null): string {
   return /[\\\u0000-\u001f\u007f]/.test(value) ? '/' : value;
 }
 
-const PROVIDER_ERRORS: Record<string, string> = {
+/**
+ * Server error codes (?error=…) mapped to i18n keys. The codes come from Better Auth:
+ * APIError codes are upper-case, but the OAuth callback code arrives lower-cased
+ * ("account not linked"), and the lookup is case-sensitive, so each key is kept as sent.
+ */
+export const PROVIDER_ERRORS: Record<string, string> = {
   REGISTRATION_CLOSED: 'auth.errors.closed',
   DOMAIN_NOT_ALLOWED: 'auth.errors.domain',
   INVITATION_EMAIL_MISMATCH: 'auth.errors.inviteEmail',
+  account_not_linked: 'auth.errors.accountNotLinked',
 };
 
 export function Login() {
