@@ -1,4 +1,10 @@
-import type { Point, Rect, Viewport } from '@inkadra/canvas-core';
+import {
+  type Point,
+  type Rect,
+  TEMPLATE_IDS,
+  type TemplateId,
+  type Viewport,
+} from '@inkadra/canvas-core';
 import type { Element } from '@inkadra/doc-schema';
 import { Icon, type IconName, KeyCap } from '@inkadra/ui';
 import type { Editor } from '@tiptap/react';
@@ -647,6 +653,7 @@ export function CommandPalette({
   readOnly,
   onClose,
   onAdd,
+  onTemplate,
   onZoom,
   onUndo,
   onRedo,
@@ -655,6 +662,7 @@ export function CommandPalette({
   readOnly: boolean;
   onClose: () => void;
   onAdd: (type: ToolType) => void;
+  onTemplate: (id: TemplateId) => void;
   onZoom: (to: 'in' | 'out' | 'reset' | 'fit' | 'selection') => void;
   onUndo: () => void;
   onRedo: () => void;
@@ -672,6 +680,13 @@ export function CommandPalette({
           label: t('board.palette.add', { type: t(`board.types.${tl.type}`) }),
           hint: tl.key,
           run: () => onAdd(tl.type),
+        }))),
+    ...(readOnly
+      ? []
+      : TEMPLATE_IDS.map((id) => ({
+          id: `template-${id}`,
+          label: t('board.palette.template', { name: t(`templates.${id}.name`) }),
+          run: () => onTemplate(id),
         }))),
     { id: 'fit', label: t('board.zoom.fit'), hint: '⇧1', run: () => onZoom('fit') },
     {

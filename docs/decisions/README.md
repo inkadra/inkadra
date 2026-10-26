@@ -25,3 +25,4 @@ in order. An accepted decision is never rewritten: a later one supersedes it.
 | [0018](0018-cookie-only-auth-responses.md)    | Keep session tokens out of browser-readable auth responses                             |
 | [0019](0019-invitation-links-up-to-editor.md) | Invitation links give at most the editor role; amends 0011                             |
 | [0020](0020-file-captions.md)                 | Keep captions on file cards                                                            |
+| [0021](0021-templates-on-existing-boards.md)  | Templates on existing boards; Storyboard creates a real storyboard board               |

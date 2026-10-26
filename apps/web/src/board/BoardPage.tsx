@@ -10,7 +10,7 @@ import {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Navigate, useNavigate, useParams, useSearchParams } from 'react-router';
+import { Navigate, useLocation, useNavigate, useParams, useSearchParams } from 'react-router';
 import { useHeaderContent } from '../lib/header.tsx';
 import { useSession } from '../lib/session.tsx';
 import { useProjects } from '../routes/AppLayout.tsx';
@@ -29,6 +29,7 @@ import './film/film.css';
 import { type Peer, uniquePeople, usePeers } from './presence.ts';
 import { projectLanding } from './project-landing.ts';
 import { ShareDialog } from './ShareDialog.tsx';
+import { seedStoryboard } from './templates.ts';
 import { useBoardReviews } from './use-board-reviews.ts';
 import './board.css';
 
@@ -185,6 +186,7 @@ function BoardScreen({
 }) {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const location = useLocation();
   const { user } = useSession();
   const { items: boards } = useProjectBoards(projectId);
   const conn = useBoardConnection(boardId);
@@ -208,6 +210,23 @@ function BoardScreen({
     [previewStore],
   );
   const editable = !!conn && !conn.readOnly && canEdit(detail?.myRole ?? projectRole);
+  useEffect(() => {
+    if (
+      location.state?.template !== 'storyboard' ||
+      kind !== 'storyboard' ||
+      conn?.status !== 'synced' ||
+      !editable ||
+      !user
+    )
+      return;
+    conn.store.undo.stopCapturing();
+    seedStoryboard(conn.store.doc, t('templates.storyboard.scene'), user.id);
+    conn.store.undo.stopCapturing();
+    void navigate(
+      { pathname: location.pathname, search: location.search, hash: location.hash },
+      { replace: true, state: null },
+    );
+  }, [location, kind, conn, editable, user, t, navigate]);
   useEffect(() => {
     if (!editable) {
       setVersionsOpen(false);
@@ -260,7 +279,8 @@ function BoardScreen({
   }, [boardId, accessVersion]);
 
   const openBoard = useCallback(
-    (id: string) => navigate(boardPath(projectId, id, rootBoardId)),
+    (id: string, template?: 'storyboard') =>
+      navigate(boardPath(projectId, id, rootBoardId), { state: template ? { template } : null }),
     [navigate, projectId, rootBoardId],
   );
   useBoardReviews(boardId, conn, detail?.myRole ?? projectRole, {
