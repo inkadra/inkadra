@@ -63,6 +63,8 @@ Documents are migrated when the collaboration server loads them. The schema free
 
 - One topic per pull request; branch from `main`.
 - Fill in the template. For screens, attach before/after screenshots in dark and light theme.
+  The README screenshots come from a sample project: rebuild them with
+  `SHOTS_BASE_URL=… pnpm --filter @inkadra/e2e screenshots` against an empty instance.
 - Every pull request needs green CI (lint, types, tests, end-to-end, secret scan, licences,
   image build) and an approving review from someone who did not write it.
 - Sign off every commit (`git commit -s`) to certify the
