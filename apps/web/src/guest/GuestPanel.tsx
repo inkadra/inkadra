@@ -38,7 +38,12 @@ export function GuestPanel({
   const labels = new Map<string, string>();
   const numbers = new Map<string, number>();
   for (const el of cards) {
-    const own = (el.type === 'frame' ? shots.get(el.id) : undefined) ?? cardLabel(el);
+    const own =
+      (el.type === 'frame'
+        ? typeof el.label === 'string' && el.label.trim()
+          ? el.label.trim()
+          : shots.get(el.id)
+        : undefined) ?? cardLabel(el);
     if (own) labels.set(el.id, own);
     else {
       const n = (numbers.get(el.type) ?? 0) + 1;

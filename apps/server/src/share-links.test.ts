@@ -175,6 +175,51 @@ describe('guest view of a board document', () => {
     expect(pictureAssetId(byId('note'))).toBeNull();
   });
 
+  it('computes frame labels on the full document so hidden frames do not shift guest shot labels', () => {
+    const storyboard = doc([
+      {
+        ...base,
+        id: id('scene1'),
+        type: 'scene',
+        number: '1',
+        title: 'Atrio',
+        x: 0,
+        y: 0,
+        z: 'a0',
+        parent: null,
+      },
+      { ...base, id: id('frameA'), type: 'frame', x: 0, y: 0, z: 'a0', parent: id('scene1') },
+      {
+        ...base,
+        id: id('frameB'),
+        type: 'frame',
+        x: 0,
+        y: 0,
+        z: 'a1',
+        parent: id('scene1'),
+        guestHidden: true,
+      },
+      { ...base, id: id('frameC'), type: 'frame', x: 0, y: 0, z: 'a2', parent: id('scene1') },
+    ]);
+    const sbView = viewOf(storyboard);
+    const visibleIds = sbView.visible.map((e) => e.id);
+    expect(visibleIds).toContain(id('frameA'));
+    expect(visibleIds).not.toContain(id('frameB'));
+    expect(visibleIds).toContain(id('frameC'));
+
+    const frameA = guestElement(
+      sbView,
+      sbView.visible.find((e) => e.id === id('frameA')) as Element,
+    );
+    const frameC = guestElement(
+      sbView,
+      sbView.visible.find((e) => e.id === id('frameC')) as Element,
+    );
+    expect(frameA.label).toBe('1A');
+    expect(frameC.label).toBe('1C');
+    storyboard.destroy();
+  });
+
   it('caches a decoded document while it is not stored again', async () => {
     const state = Y.encodeStateAsUpdate(d);
     let stamp = new Date(1000);

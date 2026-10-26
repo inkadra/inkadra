@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import { frameLabels, storyboardOf } from '@inkadra/canvas-core';
 import {
   type Element,
   getBoardAspect,
@@ -172,9 +173,11 @@ export interface BoardView {
   visible: Element[];
   /** Rich text of the visible notes, as ProseMirror JSON. */
   bodies: Map<string, Record<string, unknown>>;
+  /** Frame shot labels computed on the full document, before hiding or stripping. */
+  labels: Map<string, string>;
 }
 
-const EMPTY_VIEW: BoardView = { aspect: null, visible: [], bodies: new Map() };
+const EMPTY_VIEW: BoardView = { aspect: null, visible: [], bodies: new Map(), labels: new Map() };
 
 /** Reads a document, leaving out what is hidden from guests (fails closed, decision 0013). */
 export function viewOf(doc: Y.Doc): BoardView {
@@ -186,18 +189,22 @@ export function viewOf(doc: Y.Doc): BoardView {
     // Invalid containers cannot establish a visible chain, just like missing containers.
     return el?.id === id ? el : undefined;
   };
+  const all: Element[] = [];
   const visible: Element[] = [];
   const bodies = new Map<string, Record<string, unknown>>();
   for (const [id, map] of elements.entries()) {
     const el = readElement(map);
-    if (!el || el.id !== id || hiddenFromGuests(id, lookup)) continue;
+    if (!el || el.id !== id) continue;
+    all.push(el);
+    if (hiddenFromGuests(id, lookup)) continue;
     visible.push(el);
     const body = map.get('body');
     if (el.type === 'note' && body instanceof Y.XmlFragment) bodies.set(id, proseMirrorJson(body));
   }
   // By id, so the snapshot and its version do not depend on how the document was decoded.
   visible.sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
-  return { aspect: getBoardAspect(doc), visible, bodies };
+  const labels = frameLabels(storyboardOf(all));
+  return { aspect: getBoardAspect(doc), visible, bodies, labels };
 }
 
 /**
@@ -208,7 +215,6 @@ export class DocViews {
   private cache = new Map<string, { stamp: number; view: BoardView }>();
   private links = new Map<string, LinkContents>();
   constructor(private readonly max = 200) {}
-
   linkContents(key: string) {
     const known = this.links.get(key);
     if (known) {
@@ -296,7 +302,8 @@ export function pictureAssetId(el: Element): string | null {
 
 /** An element as guests receive it, with the rich text of notes in `body`. */
 export function guestElement(view: BoardView, el: Element): Record<string, unknown> {
-  const out = toGuestElement(el);
+  const label = el.type === 'frame' ? (view.labels?.get(el.id) ?? el.label) : undefined;
+  const out = toGuestElement(el, label);
   const body = view.bodies.get(el.id);
   if (body) out.body = body;
   return out;
