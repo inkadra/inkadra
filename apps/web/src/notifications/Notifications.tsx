@@ -81,6 +81,36 @@ export function NotificationBell() {
   );
 }
 
+function initials(name: string | null | undefined): string {
+  if (!name) return 'IN';
+  const parts = name.trim().split(/\s+/);
+  if (parts.length >= 2) {
+    return (parts[0][0] + parts[1][0]).toUpperCase();
+  }
+  return name.slice(0, 2).toUpperCase();
+}
+
+function avatarBg(name: string | null | undefined): string {
+  if (!name) return '#8A8A90';
+  const colors = ['#7CC4C9', '#C9B27C', '#D9C6A5', '#F2B08A', '#9DB8F2', '#C3B2F2'];
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) hash = (hash * 31 + name.charCodeAt(i)) >>> 0;
+  return colors[hash % colors.length];
+}
+
+function relativeTime(iso: string): string {
+  const diffMs = Date.now() - new Date(iso).getTime();
+  const mins = Math.floor(diffMs / 60000);
+  if (mins < 1) return 'adesso';
+  if (mins < 60) return `${mins} min`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours} h`;
+  const days = Math.floor(hours / 24);
+  return `${days} g`;
+}
+
+type InboxFilter = 'all' | 'mentions' | 'approvals' | 'assigned';
+
 export function NotificationList({
   bell,
   fixed,
@@ -99,6 +129,7 @@ export function NotificationList({
   const [items, setItems] = useState<Notification[]>([]);
   const [next, setNext] = useState<string | null>(null);
   const [state, setState] = useState<'loading' | 'ready' | 'error'>('loading');
+  const [filter, setFilter] = useState<InboxFilter>('all');
   const [actionError, setActionError] = useState(false);
   const panel = useRef<HTMLDivElement>(null);
   // Marking all as read covers what was listed when the panel opened, not what arrives later.
@@ -165,7 +196,15 @@ export function NotificationList({
     return t(`notifications.type.${type}`);
   };
 
-  const groups = groupByDay(items, (d) => dayLabel(d, new Date(), i18n.language, t));
+  const filteredItems = items.filter((n) => {
+    if (filter === 'mentions') return n.type === 'mention' || n.type === 'comment';
+    if (filter === 'approvals') return n.type === 'review' || n.reviewStatus !== undefined;
+    if (filter === 'assigned') return n.type === 'assignment' || n.type === 'task';
+    return true;
+  });
+  const unreadTotal = items.filter((n) => !n.readAt).length;
+  const mentionsCount = items.filter((n) => n.type === 'mention' || n.type === 'comment').length;
+  const groups = groupByDay(filteredItems, (d) => dayLabel(d, new Date(), i18n.language, t));
   const anyUnread = items.some((n) => !n.readAt);
 
   return (
@@ -183,12 +222,83 @@ export function NotificationList({
       onKeyUp={(e) => e.stopPropagation()}
     >
       <header className="notifications__head">
-        <h2 id="notifications-title">{t('notifications.title')}</h2>
-        <Button variant="ghost" disabled={!anyUnread} onClick={() => void markAll()}>
-          {t('notifications.readAll')}
-        </Button>
-        <IconButton icon="close" label={t('notifications.close')} onClick={onClose} />
+        <h2 id="notifications-title" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          {t('notifications.title')}
+          {unreadTotal > 0 && (
+            <span
+              style={{
+                fontSize: 11,
+                fontWeight: 600,
+                padding: '1px 7px',
+                borderRadius: 99,
+                background: '#2563EB',
+                color: '#FFFFFF',
+              }}
+            >
+              {unreadTotal}
+            </span>
+          )}
+        </h2>
+        {fixed ? (
+          <div style={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+            <IconButton
+              icon="check"
+              label={t('notifications.readAll')}
+              disabled={!anyUnread}
+              onClick={() => void markAll()}
+            />
+            <IconButton icon="close" label={t('notifications.close')} onClick={onClose} />
+          </div>
+        ) : (
+          <>
+            <Button variant="ghost" disabled={!anyUnread} onClick={() => void markAll()}>
+              {t('notifications.readAll')}
+            </Button>
+            <IconButton icon="close" label={t('notifications.close')} onClick={onClose} />
+          </>
+        )}
       </header>
+      {fixed && (
+        <div role="tablist" aria-label="Filtro inbox" className="notifications-filter-tabs">
+          <button
+            type="button"
+            role="tab"
+            aria-selected={filter === 'all'}
+            className={`notifications-filter-tab ${filter === 'all' ? 'is-active' : ''}`}
+            onClick={() => setFilter('all')}
+          >
+            {t('notifications.tabs.all', 'Tutto')}
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={filter === 'mentions'}
+            className={`notifications-filter-tab ${filter === 'mentions' ? 'is-active' : ''}`}
+            onClick={() => setFilter('mentions')}
+          >
+            {t('notifications.tabs.mentions', 'Menzioni')}{' '}
+            {mentionsCount > 0 && <span className="notifications-tab-badge">{mentionsCount}</span>}
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={filter === 'approvals'}
+            className={`notifications-filter-tab ${filter === 'approvals' ? 'is-active' : ''}`}
+            onClick={() => setFilter('approvals')}
+          >
+            {t('notifications.tabs.approvals', 'Approvazioni')}
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={filter === 'assigned'}
+            className={`notifications-filter-tab ${filter === 'assigned' ? 'is-active' : ''}`}
+            onClick={() => setFilter('assigned')}
+          >
+            {t('notifications.tabs.assigned', 'Assegnati a me')}
+          </button>
+        </div>
+      )}
       {state === 'ready' && items.length === 0 && !next && (
         <p className="notifications__empty">{t('notifications.empty')}</p>
       )}
@@ -203,7 +313,7 @@ export function NotificationList({
                 <li key={n.id} className={n.readAt ? 'notification' : 'notification is-unread'}>
                   <button
                     type="button"
-                    className="notification__open"
+                    className={`notification__open ${fixed ? 'notification__open--drawer' : ''}`}
                     disabled={!path}
                     onClick={async () => {
                       setActionError(false);
@@ -214,26 +324,30 @@ export function NotificationList({
                       }
                     }}
                   >
-                    {!n.readAt && (
-                      <span className="notification__dot">
-                        <span>{t('notifications.unread')}</span>
+                    {!n.readAt && <span className="notification__bar" />}
+                    {fixed && (
+                      <span className="notification__av" style={{ background: avatarBg(actor) }}>
+                        {initials(actor)}
                       </span>
                     )}
-                    <span className="notification__line">
-                      {actor && <strong>{actor} </strong>}
-                      {describe(n)}
-                    </span>
-                    {(n.boardTitle || n.projectName) && (
-                      <span className="notification__where">
-                        {[...new Set([n.projectName, n.boardTitle])].filter(Boolean).join(' · ')}
+                    <div className="notification__body">
+                      <span className="notification__line">
+                        {actor && <b>{actor} </b>}
+                        {describe(n)}
                       </span>
-                    )}
-                    {n.excerpt && <span className="notification__excerpt">{n.excerpt}</span>}
-                    <time dateTime={n.createdAt}>
-                      {new Date(n.createdAt).toLocaleTimeString(i18n.language, {
-                        timeStyle: 'short',
-                      })}
-                    </time>
+                      <div className="notification__subline">
+                        {(n.boardTitle || n.projectName) && (
+                          <span className="notification__pill">
+                            {[...new Set([n.projectName, n.boardTitle])]
+                              .filter(Boolean)
+                              .join(' · ')}
+                          </span>
+                        )}
+                        <time dateTime={n.createdAt}>{relativeTime(n.createdAt)}</time>
+                      </div>
+                      {n.excerpt && <span className="notification__excerpt">{n.excerpt}</span>}
+                    </div>
+                    {!n.readAt && <span className="notification__dot" style={{ flex: 'none' }} />}
                   </button>
                   {!n.readAt && (
                     <IconButton
@@ -279,6 +393,19 @@ export function NotificationList({
         <Button variant="ghost" onClick={() => void load(next)}>
           {t('notifications.more')}
         </Button>
+      )}
+      {fixed && items.length > 0 && (
+        <div className="notifications-read-banner">
+          <svg
+            className="ico"
+            viewBox="0 0 24 24"
+            aria-hidden="true"
+            style={{ width: 16, height: 16, color: '#9FE0B4' }}
+          >
+            <path d="M5 12l4 4 10-10" />
+          </svg>
+          {t('notifications.readAllYesterday', 'Hai letto tutto fino a ieri')}
+        </div>
       )}
     </div>
   );

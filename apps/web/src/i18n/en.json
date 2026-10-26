@@ -1073,7 +1073,14 @@
       "daily": "One digest a day",
       "off": "Never"
     },
-    "preferencesError": "Could not read or save the preference."
+    "preferencesError": "Could not read or save the preference.",
+    "tabs": {
+      "all": "All",
+      "mentions": "Mentions",
+      "approvals": "Approvals",
+      "assigned": "Assigned to me"
+    },
+    "readAllYesterday": "You've read everything up to yesterday"
   },
   "settings": {
     "title": "Account",

@@ -1073,7 +1073,14 @@
       "daily": "Un riepilogo al giorno",
       "off": "Mai"
     },
-    "preferencesError": "Non riesco a leggere o salvare la preferenza."
+    "preferencesError": "Non riesco a leggere o salvare la preferenza.",
+    "tabs": {
+      "all": "Tutto",
+      "mentions": "Menzioni",
+      "approvals": "Approvazioni",
+      "assigned": "Assegnati a me"
+    },
+    "readAllYesterday": "Hai letto tutto fino a ieri"
   },
   "settings": {
     "title": "Account",
