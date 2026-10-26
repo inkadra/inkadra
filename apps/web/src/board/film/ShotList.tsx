@@ -2,8 +2,11 @@
 import {
   addFrame,
   addScene,
+  deleteElements,
+  duplicateElements,
   type FrameElement,
   formatDuration,
+  moveFrames,
   totalDurationMs,
   updateElement,
 } from '@inkadra/canvas-core';
@@ -15,7 +18,7 @@ import {
   SHOT_SIZES,
 } from '@inkadra/doc-schema';
 import { Button, EmptyState, Icon } from '@inkadra/ui';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { CardReview } from '../CardReview.tsx';
 import { GuestVisibility } from '../guest-visibility.tsx';
@@ -37,6 +40,13 @@ import { ShotlistKanban } from './ShotlistKanban.tsx';
 import { useSlugline, useStoryboard } from './StoryboardView.tsx';
 
 type Patch = Partial<Omit<FrameElement, 'id' | 'type'>>;
+
+interface ShotGroup {
+  id: string;
+  title: string;
+  scene?: ReturnType<typeof useStoryboard>['groups'][number]['scene'];
+  frames: FrameElement[];
+}
 
 /** The shot list: the same frames as the storyboard, as a table or kanban. */
 export function ShotList({
@@ -62,6 +72,13 @@ export function ShotList({
   const [mode, setMode] = useState<'table' | 'kanban'>('table');
   const [query, setQuery] = useState('');
   const [status, setStatus] = useState<FrameStatus | ''>('');
+  const [selectedScene, setSelectedScene] = useState<string>('');
+  const [selectedLocation, setSelectedLocation] = useState<string>('');
+  const [selectedCast, setSelectedCast] = useState<string>('');
+  const [groupBy, setGroupBy] = useState<'scene' | 'location' | 'status' | 'none'>('scene');
+  const [sortBy, setSortBy] = useState<'manual' | 'label' | 'duration'>('manual');
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [selected, setSelected] = useState<string | null>(null);
   const [drawing, setDrawing] = useState<string | null>(null);
 
@@ -72,12 +89,52 @@ export function ShotList({
   const previousFrame = frames[drawnAt - 1];
   const nextFrame = frames[drawnAt + 1];
 
+  const scenes = useMemo(
+    () => groups.map((g) => g.scene).filter((s): s is NonNullable<typeof s> => Boolean(s)),
+    [groups],
+  );
+
+  const allLocations = useMemo(
+    () =>
+      [
+        ...new Set(frames.map((f) => f.location?.trim()).filter((l): l is string => Boolean(l))),
+      ].sort(),
+    [frames],
+  );
+
+  const allCast = useMemo(
+    () =>
+      [
+        ...new Set(
+          frames
+            .flatMap((f) => f.cast ?? [])
+            .map((c) => c.trim())
+            .filter(Boolean),
+        ),
+      ].sort(),
+    [frames],
+  );
+
   const q = query.trim().toLowerCase();
   const matches = useCallback(
-    (f: FrameElement) =>
-      (!status || (f.status ?? 'draft') === status) &&
-      (!q ||
-        [
+    (f: FrameElement, sceneId?: string | null) => {
+      if (status && (f.status ?? 'draft') !== status) return false;
+      if (selectedScene) {
+        const frameScene = sceneId ?? f.parent ?? null;
+        if (frameScene !== selectedScene) return false;
+      }
+      if (selectedLocation) {
+        if ((f.location ?? '').trim().toLowerCase() !== selectedLocation.toLowerCase()) {
+          return false;
+        }
+      }
+      if (selectedCast) {
+        if (!(f.cast ?? []).some((c) => c.trim().toLowerCase() === selectedCast.toLowerCase())) {
+          return false;
+        }
+      }
+      if (q) {
+        const haystacks = [
           labels.get(f.id),
           f.action,
           f.dialogue,
@@ -89,21 +146,121 @@ export function ShotList({
           presetText('film.movement', SHOT_MOVEMENTS, f.movement),
           ...(f.cast ?? []),
           ...(f.tags ?? []),
-        ].some((v) => v?.toLowerCase().includes(q))),
-    [status, q, labels, presetText],
+        ];
+        if (!haystacks.some((v) => v?.toLowerCase().includes(q))) return false;
+      }
+      return true;
+    },
+    [status, selectedScene, selectedLocation, selectedCast, q, labels, presetText],
   );
 
-  const shown = useMemo(
-    () =>
-      groups
-        .map((g) => ({ ...g, frames: g.frames.filter(matches) }))
-        .filter((g) => g.frames.length > 0),
-    [groups, matches],
+  const sortFrames = useCallback(
+    (items: FrameElement[]) => {
+      if (sortBy === 'manual') return items;
+      return [...items].sort((a, b) => {
+        if (sortBy === 'label') {
+          const la = labels.get(a.id) ?? a.label ?? '';
+          const lb = labels.get(b.id) ?? b.label ?? '';
+          return la.localeCompare(lb, undefined, { numeric: true });
+        }
+        if (sortBy === 'duration') {
+          return (b.durationMs ?? 0) - (a.durationMs ?? 0);
+        }
+        return 0;
+      });
+    },
+    [sortBy, labels],
   );
 
-  const allFilteredFrames = useMemo(() => frames.filter(matches), [frames, matches]);
+  const shownGroups = useMemo<ShotGroup[]>(() => {
+    if (groupBy === 'scene') {
+      return groups
+        .map((g) => ({
+          id: g.scene?.id ?? 'loose',
+          title: g.scene
+            ? `${g.scene.number} ${slugline(g.scene)} ${g.scene.title ?? ''}`.trim()
+            : t('film.loose'),
+          scene: g.scene,
+          frames: sortFrames(g.frames.filter((f) => matches(f, g.scene?.id))),
+        }))
+        .filter((g) => g.frames.length > 0);
+    }
+    const filtered = frames.filter((f) => matches(f));
+    if (groupBy === 'location') {
+      const map = new Map<string, FrameElement[]>();
+      for (const f of filtered) {
+        const loc = f.location?.trim() || t('film.list.noLocation');
+        if (!map.has(loc)) map.set(loc, []);
+        map.get(loc)?.push(f);
+      }
+      return Array.from(map.entries()).map(([loc, grpFrames]) => ({
+        id: `loc-${loc}`,
+        title: loc,
+        frames: sortFrames(grpFrames),
+      }));
+    }
+    if (groupBy === 'status') {
+      const map = new Map<string, FrameElement[]>();
+      for (const f of filtered) {
+        const s = f.status ?? 'draft';
+        if (!map.has(s)) map.set(s, []);
+        map.get(s)?.push(f);
+      }
+      return Array.from(map.entries()).map(([st, grpFrames]) => ({
+        id: `status-${st}`,
+        title: t(`film.status.${st}`),
+        frames: sortFrames(grpFrames),
+      }));
+    }
+    return [
+      {
+        id: 'all',
+        title: t('film.list.allScenes'),
+        frames: sortFrames(filtered),
+      },
+    ];
+  }, [groupBy, groups, frames, matches, sortFrames, slugline, t]);
+
+  const allFilteredFrames = useMemo(() => shownGroups.flatMap((g) => g.frames), [shownGroups]);
+
+  const allVisibleFrameIds = useMemo(() => allFilteredFrames.map((f) => f.id), [allFilteredFrames]);
+  const allSelected =
+    allVisibleFrameIds.length > 0 && allVisibleFrameIds.every((id) => selectedIds.has(id));
+  const someSelected = allVisibleFrameIds.some((id) => selectedIds.has(id));
+
+  const toggleSelectAll = () => {
+    if (allSelected) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(allVisibleFrameIds));
+    }
+  };
+
+  const toggleSelect = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
 
   const set = (id: string, patch: Patch) => !readOnly && updateElement(store.doc, id, patch, LOCAL);
+
+  const addFrameToScene = (sceneId?: string | null) => {
+    if (readOnly) return;
+    store.undo.stopCapturing();
+    let targetSceneId = sceneId;
+    if (!targetSceneId) {
+      targetSceneId = groups[0]?.scene?.id ?? null;
+      if (!targetSceneId) {
+        const s = addScene(store.doc, {}, opts);
+        targetSceneId = s.id;
+      }
+    }
+    const f = addFrame(store.doc, targetSceneId, null, {}, opts);
+    setSelected(f.id);
+  };
 
   const addFrameInStatus = (targetStatus: FrameStatus) => {
     if (readOnly) return;
@@ -122,6 +279,79 @@ export function ShotList({
     );
     setSelected(f.id);
   };
+
+  const bulkChangeStatus = (targetStatus: FrameStatus) => {
+    if (readOnly || selectedIds.size === 0) return;
+    store.undo.stopCapturing();
+    store.doc.transact(() => {
+      for (const id of selectedIds) {
+        updateElement(store.doc, id, { status: targetStatus }, LOCAL);
+      }
+    }, LOCAL);
+  };
+
+  const bulkMoveToScene = (targetSceneId: string) => {
+    if (readOnly || selectedIds.size === 0 || !targetSceneId) return;
+    store.undo.stopCapturing();
+    moveFrames(store.doc, [...selectedIds], targetSceneId, 0, LOCAL);
+  };
+
+  const bulkDelete = () => {
+    if (readOnly || selectedIds.size === 0) return;
+    store.undo.stopCapturing();
+    deleteElements(store.doc, selectedIds, LOCAL);
+    setSelectedIds(new Set());
+    if (selected && selectedIds.has(selected)) setSelected(null);
+  };
+
+  const bulkDuplicate = useCallback(() => {
+    if (readOnly || selectedIds.size === 0) return;
+    store.undo.stopCapturing();
+    const newIds = duplicateElements(store.doc, [...selectedIds], { x: 0, y: 0 }, opts);
+    setSelectedIds(new Set(newIds));
+  }, [readOnly, selectedIds, store, opts]);
+
+  useEffect(() => {
+    if (mode !== 'table') return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'd') {
+        if (selectedIds.size > 0 && !readOnly) {
+          e.preventDefault();
+          bulkDuplicate();
+        }
+      } else if (e.key === 'Escape') {
+        if (selectedIds.size > 0) {
+          e.preventDefault();
+          setSelectedIds(new Set());
+        }
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [mode, selectedIds, readOnly, bulkDuplicate]);
+
+  const toggleCollapse = (groupId: string) => {
+    setCollapsedGroups((prev) => {
+      const next = new Set(prev);
+      if (next.has(groupId)) next.delete(groupId);
+      else next.add(groupId);
+      return next;
+    });
+  };
+
+  const statusCounts = useMemo(() => {
+    const counts = { shot: 0, todo: 0, retake: 0, approved: 0 };
+    for (const f of allFilteredFrames) {
+      const s = f.status;
+      if (s === 'shot') counts.shot++;
+      else if (s === 'retake') counts.retake++;
+      else if (s === 'approved') counts.approved++;
+      else counts.todo++;
+    }
+    return counts;
+  }, [allFilteredFrames]);
+
+  const hasActiveFilters = Boolean(status || selectedScene || selectedLocation || selectedCast);
 
   function exportCsv() {
     const head = [
@@ -163,6 +393,8 @@ export function ShotList({
     downloadCsv(`${boardTitle || 'shotlist'}.csv`, [head, ...rows]);
   }
 
+  const selectedSceneObj = scenes.find((s) => s.id === selectedScene);
+
   return (
     <div className="shots">
       <div className="story__bar" data-chrome>
@@ -188,6 +420,7 @@ export function ShotList({
             {t('film.list.kanban')}
           </button>
         </div>
+
         <input
           className="ink-input shots__filter"
           type="search"
@@ -196,6 +429,54 @@ export function ShotList({
           aria-label={t('film.list.filter')}
           onChange={(e) => setQuery(e.target.value)}
         />
+
+        <select
+          className="ink-input"
+          value={selectedScene}
+          aria-label={t('film.list.groupScene')}
+          onChange={(e) => setSelectedScene(e.target.value)}
+        >
+          <option value="">{t('film.list.allScenes')}</option>
+          {scenes.map((s) => (
+            <option key={s.id} value={s.id}>
+              {s.number ? `${s.number}. ` : ''}
+              {s.title || slugline(s)}
+            </option>
+          ))}
+        </select>
+
+        {allLocations.length > 0 && (
+          <select
+            className="ink-input"
+            value={selectedLocation}
+            aria-label={t('film.list.groupLocation')}
+            onChange={(e) => setSelectedLocation(e.target.value)}
+          >
+            <option value="">{t('film.list.allLocations')}</option>
+            {allLocations.map((l) => (
+              <option key={l} value={l}>
+                {l}
+              </option>
+            ))}
+          </select>
+        )}
+
+        {allCast.length > 0 && (
+          <select
+            className="ink-input"
+            value={selectedCast}
+            aria-label={t('film.frame.cast')}
+            onChange={(e) => setSelectedCast(e.target.value)}
+          >
+            <option value="">{t('film.list.allCast')}</option>
+            {allCast.map((c) => (
+              <option key={c} value={c}>
+                {c}
+              </option>
+            ))}
+          </select>
+        )}
+
         <select
           className="ink-input"
           value={status}
@@ -209,17 +490,119 @@ export function ShotList({
             </option>
           ))}
         </select>
-        <span className="story__total">
-          {t('film.total', {
-            count: frames.length,
-            duration: formatDuration(totalDurationMs(frames)),
-          })}
-        </span>
+
+        <select
+          className="ink-input"
+          value={groupBy}
+          aria-label={t('film.list.groupBy')}
+          onChange={(e) => setGroupBy(e.target.value as 'scene' | 'location' | 'status' | 'none')}
+        >
+          <option value="scene">
+            {t('film.list.groupBy')}: {t('film.list.groupScene')}
+          </option>
+          <option value="location">
+            {t('film.list.groupBy')}: {t('film.list.groupLocation')}
+          </option>
+          <option value="status">
+            {t('film.list.groupBy')}: {t('film.list.groupStatus')}
+          </option>
+          <option value="none">
+            {t('film.list.groupBy')}: {t('film.list.groupNone')}
+          </option>
+        </select>
+
+        <select
+          className="ink-input"
+          value={sortBy}
+          aria-label={t('film.list.sortBy')}
+          onChange={(e) => setSortBy(e.target.value as 'manual' | 'label' | 'duration')}
+        >
+          <option value="manual">
+            {t('film.list.sortBy')}: {t('film.list.sortManual')}
+          </option>
+          <option value="label">
+            {t('film.list.sortBy')}: {t('film.list.sortLabel')}
+          </option>
+          <option value="duration">
+            {t('film.list.sortBy')}: {t('film.list.sortDuration')}
+          </option>
+        </select>
+
         <span className="ink-header__spacer" />
+
+        {!readOnly && (
+          <Button icon="plus" variant="primary" onClick={() => addFrameToScene(null)}>
+            {t('film.list.addShot')}
+          </Button>
+        )}
+
         <Button icon="download" disabled={frames.length === 0} onClick={exportCsv}>
           {t('film.list.export')}
         </Button>
       </div>
+
+      {hasActiveFilters && (
+        <div
+          className="shots__chips"
+          style={{ padding: '6px 20px', borderBottom: '1px solid var(--ink-border-subtle)' }}
+        >
+          {selectedScene && (
+            <span className="shots__chip">
+              {selectedSceneObj
+                ? `${selectedSceneObj.number}. ${selectedSceneObj.title || slugline(selectedSceneObj)}`
+                : t('film.list.groupScene')}
+              <button
+                type="button"
+                className="shots__chip-remove"
+                aria-label={t('film.list.removeFilter')}
+                onClick={() => setSelectedScene('')}
+              >
+                ×
+              </button>
+            </span>
+          )}
+          {selectedLocation && (
+            <span className="shots__chip">
+              {selectedLocation}
+              <button
+                type="button"
+                className="shots__chip-remove"
+                aria-label={t('film.list.removeFilter')}
+                onClick={() => setSelectedLocation('')}
+              >
+                ×
+              </button>
+            </span>
+          )}
+          {selectedCast && (
+            <span className="shots__chip">
+              {selectedCast}
+              <button
+                type="button"
+                className="shots__chip-remove"
+                aria-label={t('film.list.removeFilter')}
+                onClick={() => setSelectedCast('')}
+              >
+                ×
+              </button>
+            </span>
+          )}
+          {status && (
+            <span className="shots__chip">
+              {t(`film.status.${status}`)}
+              <button
+                type="button"
+                className="shots__chip-remove"
+                aria-label={t('film.list.removeFilter')}
+                onClick={() => setStatus('')}
+              >
+                ×
+              </button>
+            </span>
+          )}
+        </div>
+      )}
+
       <div className="story__main">
         <div className="shots__scroll" data-scroll>
           {frames.length === 0 ? (
@@ -228,7 +611,7 @@ export function ShotList({
                 {t('film.empty.body')}
               </EmptyState>
             </div>
-          ) : shown.length === 0 ? (
+          ) : shownGroups.length === 0 ? (
             <p className="ink-muted shots__none">{t('film.list.noMatch')}</p>
           ) : mode === 'kanban' ? (
             <ShotlistKanban
@@ -245,6 +628,21 @@ export function ShotList({
             <table className="shots__table">
               <thead>
                 <tr>
+                  {!readOnly && (
+                    <th className="shots__select-col">
+                      <input
+                        type="checkbox"
+                        className="shots__checkbox"
+                        onClick={(e) => e.stopPropagation()}
+                        checked={allSelected}
+                        ref={(el) => {
+                          if (el) el.indeterminate = someSelected && !allSelected;
+                        }}
+                        onChange={toggleSelectAll}
+                        aria-label={t('film.list.selectAll')}
+                      />
+                    </th>
+                  )}
                   <th className="shots__pic-col">{t('film.list.picture')}</th>
                   <th>{t('film.frame.label')}</th>
                   <th>{t('film.frame.shot')}</th>
@@ -255,146 +653,315 @@ export function ShotList({
                   <th className="shots__wide">{t('film.frame.action')}</th>
                   <th className="shots__wide">{t('film.frame.dialogue')}</th>
                   <th>{t('film.frame.location')}</th>
+                  <th>{t('film.frame.cast')}</th>
                   <th>{t('film.frame.status')}</th>
                 </tr>
               </thead>
-              {shown.map((g) => (
-                <tbody key={g.scene?.id ?? 'loose'}>
-                  <tr className="shots__scene">
-                    <th colSpan={11} scope="rowgroup">
-                      {g.scene ? (
-                        <>
-                          <span className="shots__scene-number">{g.scene.number}</span>
-                          <GuestVisibility store={store} element={g.scene} />
-                          {slugline(g.scene)}
-                          {g.scene.title && (
-                            <span className="shots__scene-title">{g.scene.title}</span>
-                          )}
-                        </>
-                      ) : (
-                        t('film.loose')
-                      )}
-                      <span className="shots__scene-meta">
-                        {t('film.total', {
-                          count: g.frames.length,
-                          duration: formatDuration(totalDurationMs(g.frames)),
-                        })}
-                      </span>
-                    </th>
-                  </tr>
-                  {g.frames.map((f) => (
-                    <tr
-                      key={f.id}
-                      className={selected === f.id ? 'is-selected' : undefined}
-                      onClick={() => setSelected((s) => (s === f.id ? null : f.id))}
-                    >
-                      <td className="shots__pic-col">
-                        <FramePicture
-                          assetId={f.assetId}
-                          aspect={f.aspect}
-                          boardAspect={boardAspect}
-                          strokes={f.strokes}
-                          pixels={240}
-                        />
-                        <CardReview elementId={f.id} withPins={false} />
-                      </td>
-                      <td className="shots__label">
-                        {labels.get(f.id)} <GuestVisibility store={store} element={f} />
-                        <FrameVisibilityButton store={store} frame={f} readOnly={readOnly} />
-                      </td>
-                      <td>
-                        <PresetField
-                          compact
-                          label={t('film.frame.shot')}
-                          value={f.shot}
-                          codes={SHOT_SIZES}
-                          prefix="film.shot"
-                          readOnly={readOnly}
-                          onCommit={(shot) => set(f.id, { shot })}
-                        />
-                      </td>
-                      <td>
-                        <PresetField
-                          compact
-                          label={t('film.frame.angle')}
-                          value={f.angle}
-                          codes={SHOT_ANGLES}
-                          prefix="film.angle"
-                          readOnly={readOnly}
-                          onCommit={(angle) => set(f.id, { angle })}
-                        />
-                      </td>
-                      <td>
-                        <PresetField
-                          compact
-                          label={t('film.frame.movement')}
-                          value={f.movement}
-                          codes={SHOT_MOVEMENTS}
-                          prefix="film.movement"
-                          readOnly={readOnly}
-                          onCommit={(movement) => set(f.id, { movement })}
-                        />
-                      </td>
-                      <td>
-                        <Cell
-                          label={t('film.frame.lens')}
-                          value={f.lens ?? ''}
-                          readOnly={readOnly}
-                          onCommit={(v) => set(f.id, { lens: v.trim().slice(0, 60) || undefined })}
-                        />
-                      </td>
-                      <td>
-                        <Cell
-                          label={t('film.frame.duration')}
-                          value={secondsText(f.durationMs)}
-                          readOnly={readOnly}
-                          narrow
-                          onCommit={(v) => set(f.id, { durationMs: parseSeconds(v) })}
-                        />
-                      </td>
-                      <td className="shots__wide">
-                        <Cell
-                          label={t('film.frame.action')}
-                          value={f.action ?? ''}
-                          readOnly={readOnly}
-                          multiline
-                          onCommit={(v) => set(f.id, { action: v.trim() || undefined })}
-                        />
-                      </td>
-                      <td className="shots__wide">
-                        <Cell
-                          label={t('film.frame.dialogue')}
-                          value={f.dialogue ?? ''}
-                          readOnly={readOnly}
-                          multiline
-                          onCommit={(v) => set(f.id, { dialogue: v.trim() || undefined })}
-                        />
-                      </td>
-                      <td>
-                        <Cell
-                          label={t('film.frame.location')}
-                          value={f.location ?? ''}
-                          readOnly={readOnly}
-                          onCommit={(v) =>
-                            set(f.id, { location: v.trim().slice(0, 200) || undefined })
+              {shownGroups.map((g) => {
+                const isCollapsed = collapsedGroups.has(g.id);
+                const grpCounts = { shot: 0, todo: 0, retake: 0, approved: 0 };
+                for (const f of g.frames) {
+                  const s = f.status;
+                  if (s === 'shot') grpCounts.shot++;
+                  else if (s === 'retake') grpCounts.retake++;
+                  else if (s === 'approved') grpCounts.approved++;
+                  else grpCounts.todo++;
+                }
+
+                return (
+                  <tbody key={g.id}>
+                    <tr className="shots__scene">
+                      <th colSpan={readOnly ? 12 : 13} scope="rowgroup">
+                        <button
+                          type="button"
+                          className="shots__group-toggle"
+                          aria-expanded={!isCollapsed}
+                          aria-label={
+                            isCollapsed ? t('film.list.expandGroup') : t('film.list.collapseGroup')
                           }
-                        />
-                      </td>
-                      <td>
-                        <StatusSelect
-                          value={f.status}
-                          readOnly={readOnly}
-                          label={t('film.frame.status')}
-                          onCommit={(s) => set(f.id, { status: s })}
-                        />
-                      </td>
+                          onClick={() => toggleCollapse(g.id)}
+                        >
+                          {isCollapsed ? '▸' : '▾'}
+                        </button>
+                        {g.scene ? (
+                          <>
+                            <span className="shots__scene-number">{g.scene.number}</span>
+                            <GuestVisibility store={store} element={g.scene} />
+                            {slugline(g.scene)}
+                            {g.scene.title && (
+                              <span className="shots__scene-title">{g.scene.title}</span>
+                            )}
+                          </>
+                        ) : (
+                          <span>{g.title}</span>
+                        )}
+                        <span className="shots__scene-meta">
+                          {t('film.total', {
+                            count: g.frames.length,
+                            duration: formatDuration(totalDurationMs(g.frames)),
+                          })}
+                        </span>
+                        <span className="shots__group-pills">
+                          {grpCounts.shot > 0 && (
+                            <span className="shots__group-pill shots__group-pill--shot">
+                              {grpCounts.shot} {t('film.status.shot').toLowerCase()}
+                            </span>
+                          )}
+                          {grpCounts.todo > 0 && (
+                            <span className="shots__group-pill shots__group-pill--todo">
+                              {grpCounts.todo} {t('film.status.todo').toLowerCase()}
+                            </span>
+                          )}
+                          {grpCounts.retake > 0 && (
+                            <span className="shots__group-pill shots__group-pill--retake">
+                              {grpCounts.retake} {t('film.status.retake').toLowerCase()}
+                            </span>
+                          )}
+                          {grpCounts.approved > 0 && (
+                            <span className="shots__group-pill shots__group-pill--approved">
+                              {grpCounts.approved} {t('film.status.approved').toLowerCase()}
+                            </span>
+                          )}
+                        </span>
+                      </th>
                     </tr>
-                  ))}
-                </tbody>
-              ))}
+                    {!isCollapsed &&
+                      g.frames.map((f) => {
+                        const isSelectedRow = selectedIds.has(f.id);
+                        const label = labels.get(f.id) ?? '';
+                        return (
+                          <tr
+                            key={f.id}
+                            className={
+                              selected === f.id || isSelectedRow ? 'is-selected' : undefined
+                            }
+                            onClick={() => setSelected((s) => (s === f.id ? null : f.id))}
+                          >
+                            {!readOnly && (
+                              <td className="shots__select-col">
+                                <input
+                                  type="checkbox"
+                                  className="shots__checkbox"
+                                  checked={isSelectedRow}
+                                  onChange={() => toggleSelect(f.id)}
+                                  aria-label={t('film.list.selectRow', { label })}
+                                />
+                              </td>
+                            )}
+                            <td className="shots__pic-col">
+                              <FramePicture
+                                assetId={f.assetId}
+                                aspect={f.aspect}
+                                boardAspect={boardAspect}
+                                strokes={f.strokes}
+                                pixels={240}
+                              />
+                              <CardReview elementId={f.id} withPins={false} />
+                            </td>
+                            <td className="shots__label">
+                              {label} <GuestVisibility store={store} element={f} />
+                              <FrameVisibilityButton store={store} frame={f} readOnly={readOnly} />
+                            </td>
+                            <td>
+                              <PresetField
+                                compact
+                                label={t('film.frame.shot')}
+                                value={f.shot}
+                                codes={SHOT_SIZES}
+                                prefix="film.shot"
+                                readOnly={readOnly}
+                                onCommit={(shot) => set(f.id, { shot })}
+                              />
+                            </td>
+                            <td>
+                              <PresetField
+                                compact
+                                label={t('film.frame.angle')}
+                                value={f.angle}
+                                codes={SHOT_ANGLES}
+                                prefix="film.angle"
+                                readOnly={readOnly}
+                                onCommit={(angle) => set(f.id, { angle })}
+                              />
+                            </td>
+                            <td>
+                              <PresetField
+                                compact
+                                label={t('film.frame.movement')}
+                                value={f.movement}
+                                codes={SHOT_MOVEMENTS}
+                                prefix="film.movement"
+                                readOnly={readOnly}
+                                onCommit={(movement) => set(f.id, { movement })}
+                              />
+                            </td>
+                            <td>
+                              <Cell
+                                label={t('film.frame.lens')}
+                                value={f.lens ?? ''}
+                                readOnly={readOnly}
+                                onCommit={(v) =>
+                                  set(f.id, { lens: v.trim().slice(0, 60) || undefined })
+                                }
+                              />
+                            </td>
+                            <td>
+                              <Cell
+                                label={t('film.frame.duration')}
+                                value={secondsText(f.durationMs)}
+                                readOnly={readOnly}
+                                narrow
+                                onCommit={(v) => set(f.id, { durationMs: parseSeconds(v) })}
+                              />
+                            </td>
+                            <td className="shots__wide">
+                              <Cell
+                                label={t('film.frame.action')}
+                                value={f.action ?? ''}
+                                readOnly={readOnly}
+                                multiline
+                                onCommit={(v) => set(f.id, { action: v.trim() || undefined })}
+                              />
+                            </td>
+                            <td className="shots__wide">
+                              <Cell
+                                label={t('film.frame.dialogue')}
+                                value={f.dialogue ?? ''}
+                                readOnly={readOnly}
+                                multiline
+                                onCommit={(v) => set(f.id, { dialogue: v.trim() || undefined })}
+                              />
+                            </td>
+                            <td>
+                              <Cell
+                                label={t('film.frame.location')}
+                                value={f.location ?? ''}
+                                readOnly={readOnly}
+                                onCommit={(v) =>
+                                  set(f.id, {
+                                    location: v.trim().slice(0, 200) || undefined,
+                                  })
+                                }
+                              />
+                            </td>
+                            <td>
+                              <Cell
+                                label={t('film.frame.cast')}
+                                value={(f.cast ?? []).join(', ')}
+                                readOnly={readOnly}
+                                onCommit={(v) => {
+                                  const cast = [
+                                    ...new Set(
+                                      v
+                                        .split(',')
+                                        .map((c) => c.trim().slice(0, 80))
+                                        .filter(Boolean),
+                                    ),
+                                  ].slice(0, 30);
+                                  set(f.id, { cast: cast.length > 0 ? cast : undefined });
+                                }}
+                              />
+                            </td>
+                            <td>
+                              <StatusSelect
+                                value={f.status}
+                                readOnly={readOnly}
+                                label={t('film.frame.status')}
+                                onCommit={(s) => set(f.id, { status: s })}
+                              />
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    {!isCollapsed && !readOnly && (groupBy === 'scene' || !g.scene) && (
+                      <tr className="shots__add-row">
+                        <td colSpan={readOnly ? 12 : 13}>
+                          <button
+                            type="button"
+                            className="shots__add-row-btn"
+                            onClick={() => addFrameToScene(g.scene?.id)}
+                          >
+                            +{' '}
+                            {g.scene
+                              ? t('film.list.addShotInScene', { scene: g.scene.number ?? g.title })
+                              : t('film.list.addShot')}
+                          </button>
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                );
+              })}
             </table>
           )}
         </div>
+
+        {selectedIds.size > 0 && !readOnly && (
+          <div
+            role="toolbar"
+            aria-label={t('film.list.bulkActions')}
+            className="shots__bulk-toolbar"
+          >
+            <b>{t('film.list.selectedCount', { count: selectedIds.size })}</b>
+            <select
+              aria-label={t('film.list.changeStatus')}
+              defaultValue=""
+              onChange={(e) => {
+                const nextStatus = e.target.value as FrameStatus;
+                if (nextStatus) bulkChangeStatus(nextStatus);
+                e.target.value = '';
+              }}
+            >
+              <option value="" disabled>
+                {t('film.list.changeStatus')} ▾
+              </option>
+              {FRAME_STATUSES.map((s) => (
+                <option key={s} value={s}>
+                  {t(`film.status.${s}`)}
+                </option>
+              ))}
+            </select>
+
+            {scenes.length > 0 && (
+              <select
+                aria-label={t('film.list.moveToScene')}
+                defaultValue=""
+                onChange={(e) => {
+                  const sceneId = e.target.value;
+                  if (sceneId) bulkMoveToScene(sceneId);
+                  e.target.value = '';
+                }}
+              >
+                <option value="" disabled>
+                  {t('film.list.moveToScene')} ▾
+                </option>
+                {scenes.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.number ? `${s.number}. ` : ''}
+                    {s.title || slugline(s)}
+                  </option>
+                ))}
+              </select>
+            )}
+
+            <button
+              type="button"
+              className="shots__bulk-btn shots__bulk-btn--danger"
+              onClick={bulkDelete}
+            >
+              {t('film.list.deleteSelected')}
+            </button>
+            <button
+              type="button"
+              className="shots__bulk-close"
+              aria-label={t('film.list.deselectAll')}
+              onClick={() => setSelectedIds(new Set())}
+            >
+              ×
+            </button>
+          </div>
+        )}
+
         {currentFrame && (
           <FramePanel
             store={store}
@@ -409,7 +976,45 @@ export function ShotList({
           />
         )}
       </div>
-      {drawing && drawn && (
+
+      <footer className="shots__footer">
+        <span>
+          <b>{allFilteredFrames.length}</b>{' '}
+          {t('film.list.totalShots', { count: allFilteredFrames.length })}
+        </span>
+        <span>
+          {t('film.list.estimatedDuration')}{' '}
+          <b>{formatDuration(totalDurationMs(allFilteredFrames))}</b>
+        </span>
+        <span className="shots__footer-dots">
+          {statusCounts.shot > 0 && (
+            <span className="shots__footer-dot-item">
+              <span className="shots__footer-dot shots__footer-dot--shot" />
+              {statusCounts.shot} {t('film.status.shot').toLowerCase()}
+            </span>
+          )}
+          {statusCounts.todo > 0 && (
+            <span className="shots__footer-dot-item">
+              <span className="shots__footer-dot shots__footer-dot--todo" />
+              {statusCounts.todo} {t('film.status.todo').toLowerCase()}
+            </span>
+          )}
+          {statusCounts.retake > 0 && (
+            <span className="shots__footer-dot-item">
+              <span className="shots__footer-dot shots__footer-dot--retake" />
+              {statusCounts.retake} {t('film.status.retake').toLowerCase()}
+            </span>
+          )}
+          {statusCounts.approved > 0 && (
+            <span className="shots__footer-dot-item">
+              <span className="shots__footer-dot shots__footer-dot--approved" />
+              {statusCounts.approved} {t('film.status.approved').toLowerCase()}
+            </span>
+          )}
+        </span>
+      </footer>
+
+      {drawn && (
         <DrawingEditor
           store={store}
           frame={drawn}
