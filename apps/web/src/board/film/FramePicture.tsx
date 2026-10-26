@@ -1,6 +1,6 @@
 import type { AspectRatio, Stroke } from '@inkadra/doc-schema';
 import { Icon } from '@inkadra/ui';
-import type { ReactNode } from 'react';
+import { memo, type ReactNode } from 'react';
 import { pickVariant, useAsset } from '../assets.ts';
 import { localPreview } from '../uploads.ts';
 import { frameRatio } from './aspect.ts';
@@ -8,9 +8,10 @@ import { PENS, strokePath, VIEW_W } from './strokes.ts';
 
 /**
  * The picture of a frame: its reference image, if any, under the pen drawing, in the frame's
- * aspect ratio. `children` are drawn on top (the live line while drawing).
+ * aspect ratio. `children` are drawn on top (the live line while drawing). Memoized: the
+ * animatic re-renders on every playback tick, the picture only when the frame changes.
  */
-export function FramePicture({
+export const FramePicture = memo(function FramePicture({
   assetId,
   aspect,
   boardAspect,
@@ -53,7 +54,7 @@ export function FramePicture({
       </svg>
     </div>
   );
-}
+});
 
 export function StrokePath({ stroke, height }: { stroke: Stroke; height: number }) {
   return (

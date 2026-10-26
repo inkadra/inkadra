@@ -681,6 +681,39 @@
       "approvedHelper": "Drag approved shots here",
       "approvedHint": "Also filled from client approvals",
       "selectRow": "Select shot {{label}}"
+    },
+    "playback": {
+      "mode": "View",
+      "grid": "Grid",
+      "sequence": "Sequence",
+      "animatic": "Animatic",
+      "size": "Tile size",
+      "sizes": {
+        "s": "Small tiles",
+        "m": "Medium tiles",
+        "l": "Large tiles"
+      },
+      "present": "Present",
+      "scenes": "Scenes",
+      "allScenes": "All scenes",
+      "drawn": "{{drawn}} of {{total}} drawn",
+      "estimated_one": "{{count}} frame · estimated duration {{duration}}. The bar shows the drawn frames.",
+      "estimated_other": "{{count}} frames · estimated duration {{duration}}. The bar shows the drawn frames.",
+      "play": "Play",
+      "pause": "Pause",
+      "speed": "Speed",
+      "close": "Close presentation",
+      "time": "Timecode",
+      "seek": "Animatic position",
+      "track": "Frames on the time line",
+      "now": "Frame {{label}} at {{time}}",
+      "block": "Go to {{label}}, {{duration}}",
+      "resize": "Duration of {{label}}",
+      "keyboard": "Keys: Space plays or pauses, arrows move by one second, Page Up and Page Down jump between frames, Home and End go to the start and the end.",
+      "empty": "No frames to play: every frame has a zero duration.",
+      "defaultDuration": "Frames without a duration play for one second (striped blocks); drag the edge of a block to set its duration.",
+      "noFrames": "No frames in this scene",
+      "noFramesBody": "Add a frame to play it in the animatic."
     }
   },
   "roles": {
