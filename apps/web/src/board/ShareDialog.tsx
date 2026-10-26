@@ -172,13 +172,21 @@ export function ShareDialog({
                     className="share__row"
                     onFocus={() => setSelectedUserId(e.user.id)}
                   >
-                    <Avatar name={e.user.name} size={30} />
-                    <span className="share__who">
-                      <span className="share__name">
-                        {me ? t('share.you', { name: e.user.name }) : e.user.name}
+                    <button
+                      type="button"
+                      className="share__person"
+                      aria-pressed={selectedUserId === e.user.id}
+                      aria-label={t('share.highlightRole', { name: e.user.name })}
+                      onClick={() => setSelectedUserId(e.user.id)}
+                    >
+                      <Avatar name={e.user.name} size={30} />
+                      <span className="share__who">
+                        <span className="share__name">
+                          {me ? t('share.you', { name: e.user.name }) : e.user.name}
+                        </span>
+                        <span className="share__sub">{sourceText(t, e, board.id, isRoot)}</span>
                       </span>
-                      <span className="share__sub">{sourceText(t, e, board.id, isRoot)}</span>
-                    </span>
+                    </button>
                     {editable ? (
                       <RoleSelect
                         value={e.role}
