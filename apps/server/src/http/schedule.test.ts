@@ -80,7 +80,7 @@ describe.skipIf(!url)('shooting schedule (needs DATABASE_URL)', () => {
     }
     const project = await request('owner', 'POST', '/projects', { name: 'Schedule' });
     expect(project.statusCode).toBe(201);
-    const child = await request('owner', 'POST', '/boards', {
+    const child = await request('owner', 'POST', `/projects/${project.json().id}/boards`, {
       parentBoardId: project.json().rootBoardId,
       title: 'Shooting plan',
     });

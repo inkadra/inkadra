@@ -12,6 +12,7 @@ import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api, RequestError } from '../../lib/api.ts';
 import type { BoardStore } from '../store.ts';
+import { CallSheetModal } from './CallSheetModal.tsx';
 import { useStoryboard } from './StoryboardView.tsx';
 import {
   castConflicts,
@@ -51,6 +52,7 @@ export function resolveDroppedShot(
 
 export function ScheduleView({
   store,
+  projectName,
   boardId = '',
   readOnly = false,
 }: {
@@ -64,6 +66,7 @@ export function ScheduleView({
 }) {
   const { t } = useTranslation();
   const { frames, labels } = useStoryboard(store);
+  const [callSheetOpen, setCallSheetOpen] = useState(false);
   const [days, setDays] = useState<ShootingDay[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -129,6 +132,7 @@ export function ScheduleView({
     <section className="film-shell schedule" aria-label={t('nav.schedule')}>
       <header>
         <h1>{t('nav.schedule')}</h1>
+        <Button onClick={() => setCallSheetOpen(true)}>{t('shells.callSheet')}</Button>
         {!readOnly && (
           <Button
             disabled={busy || loading}
@@ -208,6 +212,9 @@ export function ScheduleView({
             ))}
           </div>
         </div>
+      )}
+      {callSheetOpen && (
+        <CallSheetModal projectName={projectName} onClose={() => setCallSheetOpen(false)} />
       )}
     </section>
   );
