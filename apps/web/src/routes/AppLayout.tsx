@@ -330,7 +330,6 @@ export function AppLayout() {
         label={t('nav.inbox')}
         count={unread}
         active={inboxOpen}
-        href="#inbox"
         onClick={(e) => {
           e.preventDefault();
           setDrawerOpen(false);
