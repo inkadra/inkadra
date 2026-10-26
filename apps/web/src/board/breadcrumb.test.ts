@@ -34,6 +34,13 @@ describe('breadcrumb', () => {
     expect(crumbs).toEqual([{ id: rootId, title: 'Ultima corsa' }]);
   });
 
+  it('reflects updated project name when the root board is renamed', () => {
+    const rootId = 'root-1';
+    const detail = makeDetail(rootId, null, 'Ultima corsa');
+    const crumbs = breadcrumb(rootId, rootId, 'Ultima corsa - Definitivo', detail, null);
+    expect(crumbs).toEqual([{ id: rootId, title: 'Ultima corsa - Definitivo' }]);
+  });
+
   it('builds crumbs from detail and substitutes project name at root', () => {
     const rootId = 'root-1';
     const subId = 'sub-2';
@@ -41,6 +48,17 @@ describe('breadcrumb', () => {
     const crumbs = breadcrumb(subId, rootId, 'Ultima corsa', detail, null);
     expect(crumbs).toEqual([
       { id: rootId, title: 'Ultima corsa' },
+      { id: subId, title: 'Sopralluoghi' },
+    ]);
+  });
+
+  it('reflects updated project name at the root crumb when on child boards', () => {
+    const rootId = 'root-1';
+    const subId = 'sub-2';
+    const detail = makeDetail(subId, rootId, 'Sopralluoghi', [{ id: rootId, title: 'Old root' }]);
+    const crumbs = breadcrumb(subId, rootId, 'Ultima corsa - Definitivo', detail, null);
+    expect(crumbs).toEqual([
+      { id: rootId, title: 'Ultima corsa - Definitivo' },
       { id: subId, title: 'Sopralluoghi' },
     ]);
   });

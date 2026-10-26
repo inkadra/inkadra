@@ -79,6 +79,17 @@ export async function renameBoard(projectId: string, boardId: string, title: str
   return board;
 }
 
+/** Synchronize root board title when project is renamed. */
+export function syncRootBoardTitle(projectId: string, title: string): void {
+  const current = cache.get(projectId)?.items;
+  if (!current) return;
+  cache.set(projectId, {
+    items: current.map((b) => (b.parentBoardId === null ? { ...b, title } : b)),
+    error: false,
+  });
+  emit();
+}
+
 export function fetchBoard(boardId: string): Promise<BoardDetail> {
   return api.get<BoardDetail>(`/boards/${boardId}`);
 }

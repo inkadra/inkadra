@@ -15,6 +15,7 @@ import { useHeaderContent } from '../lib/header.tsx';
 import { useSession } from '../lib/session.tsx';
 import { useProjects } from '../routes/AppLayout.tsx';
 import { NotFound } from '../routes/NotFound.tsx';
+import { renameProject } from '../routes/projects.ts';
 import { boardPath, fetchBoard, renameBoard, useProjectBoards } from './boards.ts';
 import { Canvas } from './Canvas.tsx';
 import { CommentsButton } from './CommentsPanel.tsx';
@@ -95,10 +96,12 @@ export function BoardPage() {
 
 function CurrentCrumb({
   title,
+  ariaLabel,
   canRename,
   onRename,
 }: {
   title: string;
+  ariaLabel?: string;
   canRename: boolean;
   onRename: (title: string) => void;
 }) {
@@ -147,7 +150,7 @@ function CurrentCrumb({
             e.currentTarget.blur();
           }
         }}
-        aria-label={t('board.board.title')}
+        aria-label={ariaLabel ?? t('board.board.title')}
       />
     );
   }
@@ -221,13 +224,23 @@ function BoardScreen({
   const clearUndo = useCallback(() => conn?.store.undo.clear(), [conn]);
   const handleRenameCurrentBoard = useCallback(
     (newTitle: string) => {
-      void renameBoard(projectId, boardId, newTitle)
-        .then((b) => {
-          setDetail((prev) => (prev && prev.id === b.id ? { ...prev, title: b.title } : prev));
-        })
-        .catch(() => {});
+      if (boardId === rootBoardId) {
+        void renameProject(projectId, newTitle)
+          .then((p) => {
+            setDetail((prev) =>
+              prev && prev.id === rootBoardId ? { ...prev, title: p.name } : prev,
+            );
+          })
+          .catch(() => {});
+      } else {
+        void renameBoard(projectId, boardId, newTitle)
+          .then((b) => {
+            setDetail((prev) => (prev && prev.id === b.id ? { ...prev, title: b.title } : prev));
+          })
+          .catch(() => {});
+      }
     },
-    [projectId, boardId],
+    [projectId, boardId, rootBoardId],
   );
 
   // Read again when the server changes our access, so the role shown and checked is current.
@@ -271,7 +284,8 @@ function BoardScreen({
               {i === crumbs.length - 1 ? (
                 <CurrentCrumb
                   title={c.title}
-                  canRename={editable && c.id !== rootBoardId}
+                  ariaLabel={c.id === rootBoardId ? t('project.name') : t('board.board.title')}
+                  canRename={editable}
                   onRename={handleRenameCurrentBoard}
                 />
               ) : (

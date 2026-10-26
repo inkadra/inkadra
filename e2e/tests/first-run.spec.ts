@@ -156,7 +156,7 @@ test('the board takes notes and columns, with undo', async ({ page }) => {
     page.getByRole('banner').getByRole('button', { name: 'Scouting Finale' }),
   ).toBeVisible();
 
-  // Root crumb is not a button / not editable.
+  // Root crumb is a navigation link (not an inline rename button) while viewing a sub-board.
   await expect(page.getByRole('banner').getByRole('button', { name: 'Ultima corsa' })).toHaveCount(
     0,
   );
@@ -164,6 +164,57 @@ test('the board takes notes and columns, with undo', async ({ page }) => {
 
   // Live title update reflects on parent board card.
   await expect(page.locator('[data-type="board"]')).toContainText('Scouting Finale');
+
+  // Rename project via root crumb click-to-rename.
+  const rootCrumb = page.getByRole('banner').getByRole('button', { name: 'Ultima corsa' });
+  await expect(rootCrumb).toBeVisible();
+
+  // Escape cancels without saving.
+  await rootCrumb.click();
+  const rootInput = page.getByRole('banner').getByRole('textbox', { name: 'Nome del progetto' });
+  await expect(rootInput).toBeVisible();
+  await rootInput.fill('Annullato');
+  await rootInput.press('Escape');
+  await expect(rootInput).not.toBeVisible();
+  await expect(
+    page.getByRole('banner').getByRole('button', { name: 'Ultima corsa' }),
+  ).toBeVisible();
+
+  // Enter saves the new project name.
+  await page.getByRole('banner').getByRole('button', { name: 'Ultima corsa' }).click();
+  const rootInputSave = page
+    .getByRole('banner')
+    .getByRole('textbox', { name: 'Nome del progetto' });
+  await rootInputSave.fill('Ultima corsa - Rinomina');
+  await rootInputSave.press('Enter');
+  await expect(rootInputSave).not.toBeVisible();
+  await expect(
+    page.getByRole('banner').getByRole('button', { name: 'Ultima corsa - Rinomina' }),
+  ).toBeVisible();
+
+  // Live title update reflects in the sidebar.
+  await expect(
+    page.locator('.ink-sidebar').getByRole('link', { name: 'Ultima corsa - Rinomina' }),
+  ).toBeVisible();
+
+  // Sub-board breadcrumb root link also reflects the updated project name.
+  await sub.dblclick();
+  await expect(
+    page.getByRole('banner').getByRole('link', { name: 'Ultima corsa - Rinomina' }),
+  ).toBeVisible();
+  await page.getByRole('banner').getByRole('link', { name: 'Ultima corsa - Rinomina' }).click();
+
+  // Rename back to original name so later tests continue cleanly.
+  await page.getByRole('banner').getByRole('button', { name: 'Ultima corsa - Rinomina' }).click();
+  const rootInputRestore = page
+    .getByRole('banner')
+    .getByRole('textbox', { name: 'Nome del progetto' });
+  await rootInputRestore.fill('Ultima corsa');
+  await rootInputRestore.press('Enter');
+  await expect(rootInputRestore).not.toBeVisible();
+  await expect(
+    page.getByRole('banner').getByRole('button', { name: 'Ultima corsa' }),
+  ).toBeVisible();
 });
 
 test('keys typed while the new note is not focused still land in it', async ({ page }) => {

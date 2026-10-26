@@ -20,10 +20,10 @@ import {
   createContext,
   type MouseEvent,
   type ReactNode,
-  useCallback,
   useContext,
   useEffect,
   useState,
+  useSyncExternalStore,
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Navigate, Outlet, useLocation, useNavigate, useSearchParams } from 'react-router';
@@ -34,7 +34,12 @@ import { useSession } from '../lib/session.tsx';
 import { useTheme } from '../lib/theme.ts';
 import { NotificationBell } from '../notifications/Notifications.tsx';
 import { NewProjectDialog } from './NewProjectDialog.tsx';
-import { loadProjects } from './projects.ts';
+import {
+  getCachedProjects,
+  refreshProjects,
+  setCachedProjects,
+  subscribeProjects,
+} from './projects.ts';
 import { SearchDialog } from './SearchDialog.tsx';
 
 interface ProjectsState {
@@ -56,20 +61,16 @@ export function AppLayout() {
   const { theme, toggle } = useTheme();
   const navigate = useNavigate();
   const { pathname } = useLocation();
-  const [projects, setProjects] = useState<Project[] | null>(null);
+  const projects = useSyncExternalStore(subscribeProjects, getCachedProjects);
   const [creating, setCreating] = useState(false);
   const [headerContent, setHeaderContent] = useState<ReactNode | null>(null);
   const [searching, setSearching] = useState(false);
   const [params, setParams] = useSearchParams();
   const shared = useSharedBoards(!!user);
 
-  const load = useCallback(async () => {
-    setProjects(await loadProjects());
-  }, []);
-
   useEffect(() => {
-    if (user) void load();
-  }, [user, load]);
+    if (user) void refreshProjects();
+  }, [user]);
 
   // ⌘K / Ctrl+K opens the search from anywhere, even inside a text field.
   useEffect(() => {
@@ -107,6 +108,7 @@ export function AppLayout() {
 
   async function signOut() {
     await authApi.signOut();
+    setCachedProjects(null);
     await refresh();
   }
 
@@ -298,7 +300,7 @@ export function AppLayout() {
         onClose={() => setCreating(false)}
         onCreated={async (p) => {
           setCreating(false);
-          await load();
+          await refreshProjects();
           navigate(`/p/${p.id}`);
         }}
       />
