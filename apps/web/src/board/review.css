@@ -48,14 +48,32 @@
   font-variant-numeric: tabular-nums;
 }
 
-/* On the cards: small badges over the top edge, so card heights never change. */
+/* On the cards: small badges inside the top-right corner, so card heights never change
+   and cards with `overflow: hidden` (image, link, colour, frame, file) never clip them. */
 .card-review {
   position: absolute;
-  top: -10px;
-  right: 8px;
+  top: 6px;
+  right: 6px;
   z-index: 3;
   display: flex;
   gap: 4px;
+}
+/* Cards that are locked also show the lock badge there; move left so both stay visible. */
+.card-review--shifted {
+  right: 32px;
+}
+.card > .guest-visibility ~ .card-review {
+  right: 28px;
+}
+.card > .guest-visibility ~ .card-review--shifted {
+  right: 50px;
+}
+/* Columns and scenes carry their title, count and fold button across the top: the badges
+   hang over the edge there (these cards never clip) instead of covering the header. */
+.card[data-type="column"] > .card-review,
+.card[data-type="scene"] > .card-review {
+  top: -10px;
+  right: 8px;
 }
 .card-review__button {
   display: inline-flex;
@@ -72,6 +90,7 @@
   line-height: 1;
   font-variant-numeric: tabular-nums;
   cursor: pointer;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
 }
 .card-review__button:hover {
   color: var(--ink-text-primary);

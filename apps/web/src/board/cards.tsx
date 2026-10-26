@@ -132,7 +132,7 @@ export const Card = memo(function Card({
           <Icon name="lock" size={12} />
         </span>
       )}
-      <CardReview elementId={element.id} />
+      <CardReview elementId={element.id} shifted={!!element.locked} />
       {selected && !nested && !element.locked && !readOnly && (
         <>
           <span className="card__handle card__handle--w" data-handle="w" aria-hidden="true" />

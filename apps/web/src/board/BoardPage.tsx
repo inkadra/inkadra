@@ -329,23 +329,30 @@ function BoardScreen({
         {conn && <SyncStatus status={conn.status} readOnly={conn.readOnly} />}
         {conn && <Peers provider={conn.provider} />}
         {editable && (
-          <div className="board-header-menu" ref={headerMenuAnchor}>
+          <>
             <IconButton
-              id="board-header-menu"
-              icon="more"
-              label={t('versions.boardMenu')}
-              aria-haspopup="menu"
-              aria-expanded={headerMenu}
-              onClick={() => setHeaderMenu((v) => !v)}
+              icon="clock"
+              label={t('versions.title')}
+              onClick={() => setVersionsOpen(true)}
             />
-            {headerMenu && (
-              <ContextMenu
-                onClose={closeHeaderMenu}
-                anchor={headerMenuAnchor}
-                items={[{ label: t('versions.title'), action: () => setVersionsOpen(true) }]}
+            <div className="board-header-menu" ref={headerMenuAnchor}>
+              <IconButton
+                id="board-header-menu"
+                icon="more"
+                label={t('versions.boardMenu')}
+                aria-haspopup="menu"
+                aria-expanded={headerMenu}
+                onClick={() => setHeaderMenu((v) => !v)}
               />
-            )}
-          </div>
+              {headerMenu && (
+                <ContextMenu
+                  onClose={closeHeaderMenu}
+                  anchor={headerMenuAnchor}
+                  items={[{ label: t('versions.title'), action: () => setVersionsOpen(true) }]}
+                />
+              )}
+            </div>
+          </>
         )}
         {detail && (
           <Button
