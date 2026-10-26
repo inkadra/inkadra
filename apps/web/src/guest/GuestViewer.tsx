@@ -1,7 +1,8 @@
 import type { GuestElement } from '@inkadra/shared';
 import { IconButton } from '@inkadra/ui';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { isUnplayableVideoError, VideoUnplayable } from '../board/viewer.tsx';
 import { useGuestActions } from './actions.ts';
 import { PickControls, ReviewChip } from './GuestCardExtras.tsx';
 import { guestVariant } from './guest-assets.ts';
@@ -18,6 +19,13 @@ export function GuestViewer({ element, onClose }: { element: GuestElement; onClo
   const actions = useGuestActions();
   const ref = useRef<HTMLDialogElement>(null);
   const asset = actions.assets.get(assetOf(element) ?? '');
+  const [unplayable, setUnplayable] = useState(false);
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: resets unplayable state when the element or asset changes
+  useEffect(() => {
+    setUnplayable(false);
+  }, [element.id, asset?.id]);
+
   const caption =
     typeof element.caption === 'string'
       ? element.caption
@@ -33,6 +41,12 @@ export function GuestViewer({ element, onClose }: { element: GuestElement; onClo
     if (el && !el.open) el.showModal();
   }, []);
 
+  const onVideoError = (e: React.SyntheticEvent<HTMLVideoElement, Event>) => {
+    if (isUnplayableVideoError(e.currentTarget.error?.code)) {
+      setUnplayable(true);
+    }
+  };
+
   return (
     // biome-ignore lint/a11y/useKeyWithClickEvents: Escape closes the native dialog
     <dialog
@@ -43,14 +57,31 @@ export function GuestViewer({ element, onClose }: { element: GuestElement; onClo
       onClick={(e) => e.target === e.currentTarget && ref.current?.close()}
     >
       <div className="guest-viewer__stage">
-        {asset?.kind === 'video' && asset.downloadUrl ? (
-          // biome-ignore lint/a11y/useMediaCaption: people's own footage has no captions
-          <video
-            className="guest-viewer__media"
-            src={asset.downloadUrl}
-            poster={src || undefined}
-            controls
-          />
+        {asset?.kind === 'video' && actions.rights.download && asset.downloadUrl ? (
+          <>
+            {/* biome-ignore lint/a11y/useMediaCaption: people's own footage has no captions */}
+            <video
+              className="guest-viewer__media"
+              src={asset.downloadUrl}
+              poster={src || undefined}
+              controls
+              onError={onVideoError}
+              style={unplayable ? { display: 'none' } : undefined}
+            />
+            {unplayable && (
+              <VideoUnplayable
+                poster={src || undefined}
+                filename={asset.filename || caption || title}
+                downloadUrl={actions.rights.download ? asset.downloadUrl : undefined}
+                downloadLabel={t('guest.download')}
+                message={t('guest.viewer.unplayable')}
+                className="guest-viewer__unplayable"
+                mediaClassName="guest-viewer__media"
+                scrimClassName="guest-viewer__unplayable-scrim"
+                msgClassName="guest-viewer__unplayable-msg"
+              />
+            )}
+          </>
         ) : src ? (
           <img className="guest-viewer__media" src={src} alt={caption || title} />
         ) : (

@@ -407,7 +407,8 @@
       "shutter": "Tempo",
       "iso": "ISO",
       "taken": "Scattata il"
-    }
+    },
+    "unplayable": "Formato non riproducibile nel browser"
   },
   "search": {
     "title": "Cerca",
@@ -888,7 +889,8 @@
     "viewer": {
       "open": "Apri in grande",
       "close": "Chiudi",
-      "noPreview": "Anteprima non disponibile."
+      "noPreview": "Anteprima non disponibile.",
+      "unplayable": "Formato non riproducibile nel browser"
     },
     "offline": "Connessione persa, riprovo…"
   },

@@ -1,6 +1,7 @@
 import type { Asset } from '@inkadra/shared';
-import { useEffect, useSyncExternalStore } from 'react';
-import { api } from '../lib/api.ts';
+import { useCallback, useSyncExternalStore } from 'react';
+import { createPoller, type Poller, type PollOutcome } from '../guest/poller.ts';
+import { api, RequestError } from '../lib/api.ts';
 
 /**
  * Asset metadata shared by every card that shows the same file. Assets still being processed
@@ -8,7 +9,8 @@ import { api } from '../lib/api.ts';
  */
 const cache = new Map<string, Asset | 'missing'>();
 const listeners = new Map<string, Set<() => void>>();
-const inflight = new Map<string, Promise<void>>();
+const inflight = new Map<string, Promise<PollOutcome>>();
+const pollers = new Map<string, Poller>();
 const POLL_MS = 2000;
 
 function notify(id: string) {
@@ -38,65 +40,123 @@ export function resetAssetCache() {
   generation += 1;
   cache.clear();
   inflight.clear();
+  for (const poller of pollers.values()) poller.stop();
+  pollers.clear();
+  for (const id of listeners.keys()) notify(id);
+  // A guest page resets during its cleanup, before its cards unsubscribe. Wait for those
+  // cleanups so leaving a guest page cannot start account requests for its old asset IDs.
+  const at = generation;
+  queueMicrotask(() => {
+    if (at !== generation) return;
+    for (const id of listeners.keys()) startPolling(id);
+  });
 }
 
-async function load(id: string): Promise<void> {
+async function load(id: string): Promise<PollOutcome> {
   const at = generation;
-  let value: Asset | 'missing';
+  let result: Asset | null;
   try {
-    value = (await loader(id)) ?? 'missing';
-  } catch {
-    value = 'missing';
+    result = await loader(id);
+  } catch (err) {
+    if (err instanceof RequestError && err.status === 404) {
+      result = null;
+    } else {
+      return { kind: at === generation ? 'retry' : 'done' };
+    }
   }
-  if (at !== generation) return;
+  if (at !== generation) return { kind: 'done' };
+  const value = result ?? 'missing';
   cache.set(id, value);
   notify(id);
+  return { kind: needsPolling(id) ? 'ok' : 'done' };
 }
 
-function fetchOnce(id: string) {
-  if (inflight.has(id)) return;
+function fetchOnce(id: string): Promise<PollOutcome> {
+  const existing = inflight.get(id);
+  if (existing) return existing;
   const p = load(id).finally(() => {
     if (inflight.get(id) === p) inflight.delete(id);
   });
   inflight.set(id, p);
+  return p;
+}
+
+function needsPolling(id: string): boolean {
+  const value = cache.get(id);
+  return (
+    !value || (value !== 'missing' && (value.status === 'pending' || value.status === 'processing'))
+  );
+}
+
+function suspended(): boolean {
+  return navigator.onLine === false || document.visibilityState === 'hidden';
+}
+
+/** One poller per observed asset, even when several cards show the same file. */
+function startPolling(id: string) {
+  if (pollers.has(id) || !needsPolling(id)) return;
+  const poller = createPoller({
+    run: () => (needsPolling(id) ? fetchOnce(id) : Promise.resolve({ kind: 'done' })),
+    interval: POLL_MS,
+    max: 60_000,
+    hidden: suspended,
+  });
+  pollers.set(id, poller);
+  // Unlike start(), poke also honours the offline/background gate on first mount.
+  poller.poke();
+}
+
+export function refetchPendingOrUnknown() {
+  for (const id of listeners.keys()) {
+    if (needsPolling(id)) pollers.get(id)?.poke();
+  }
+}
+
+function subscribe(id: string, listener: () => void) {
+  if (listeners.size === 0) {
+    window.addEventListener('online', refetchPendingOrUnknown);
+    document.addEventListener('visibilitychange', refetchPendingOrUnknown);
+  }
+  let set = listeners.get(id);
+  if (!set) {
+    set = new Set();
+    listeners.set(id, set);
+  }
+  set.add(listener);
+  startPolling(id);
+  return () => {
+    set.delete(listener);
+    if (set.size === 0) {
+      listeners.delete(id);
+      pollers.get(id)?.stop();
+      pollers.delete(id);
+    }
+    if (listeners.size === 0) {
+      window.removeEventListener('online', refetchPendingOrUnknown);
+      document.removeEventListener('visibilitychange', refetchPendingOrUnknown);
+    }
+  };
 }
 
 export function primeAsset(asset: Asset) {
   cache.set(asset.id, asset);
   notify(asset.id);
+  pollers.get(asset.id)?.stop();
+  pollers.delete(asset.id);
+  if (listeners.has(asset.id)) startPolling(asset.id);
 }
 
+export function getCachedAsset(id: string): Asset | 'missing' | undefined {
+  return cache.get(id);
+}
+
+export { fetchOnce as fetchAsset, load as loadAsset };
+
 export function useAsset(id: string | undefined): Asset | 'missing' | undefined {
-  const value = useSyncExternalStore(
-    (l) => {
-      if (!id) return () => {};
-      let set = listeners.get(id);
-      if (!set) {
-        set = new Set();
-        listeners.set(id, set);
-      }
-      set.add(l);
-      return () => set.delete(l);
-    },
+  return useSyncExternalStore(
+    useCallback((listener) => (id ? subscribe(id, listener) : () => {}), [id]),
     () => (id ? cache.get(id) : undefined),
   );
-
-  // biome-ignore lint/correctness/useExhaustiveDependencies: each new value restarts the poll
-  useEffect(() => {
-    if (!id) return;
-    const current = cache.get(id);
-    if (!current) fetchOnce(id);
-    if (
-      current &&
-      current !== 'missing' &&
-      (current.status === 'pending' || current.status === 'processing')
-    ) {
-      const timer = setTimeout(() => fetchOnce(id), POLL_MS);
-      return () => clearTimeout(timer);
-    }
-  }, [id, value]);
-
-  return value;
 }
 
 const BROWSER_IMAGES = new Set([
