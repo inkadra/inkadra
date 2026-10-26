@@ -41,7 +41,7 @@ export interface Seeded {
  * Signs in. Creates the account only on an instance without users (its first-run setup),
  * never on one that already has them.
  */
-async function signIn(base: string, account: Account): Promise<string> {
+export async function signIn(base: string, account: Account): Promise<string> {
   const headers = { 'content-type': 'application/json', origin: base };
   const info = await fetch(`${base}/api/v1/instance`);
   if (!info.ok) throw new Error(`${base} does not answer as an Inkadra instance (${info.status})`);
@@ -100,8 +100,12 @@ function png(seed: number, w = 96, h = 64): Buffer {
 }
 
 /** Single-request tus upload. Returns the asset id, or null when uploads are not available. */
-async function upload(base: string, cookie: string, projectId: string, i: number) {
-  const body = png(i);
+export async function uploadFile(
+  base: string,
+  cookie: string,
+  projectId: string,
+  file: { body: Buffer; name: string; type: string },
+): Promise<string | null> {
   const meta = (v: string) => Buffer.from(v).toString('base64');
   const create = await fetch(`${base}/api/v1/uploads`, {
     method: 'POST',
@@ -109,8 +113,8 @@ async function upload(base: string, cookie: string, projectId: string, i: number
       cookie,
       origin: base,
       'Tus-Resumable': '1.0.0',
-      'Upload-Length': String(body.length),
-      'Upload-Metadata': `projectId ${meta(projectId)},filename ${meta(`perf-${i}.png`)},filetype ${meta('image/png')}`,
+      'Upload-Length': String(file.body.length),
+      'Upload-Metadata': `projectId ${meta(projectId)},filename ${meta(file.name)},filetype ${meta(file.type)}`,
     },
   });
   const location = create.headers.get('location');
@@ -124,11 +128,71 @@ async function upload(base: string, cookie: string, projectId: string, i: number
       'Upload-Offset': '0',
       'Content-Type': 'application/offset+octet-stream',
     },
-    body: new Uint8Array(body),
+    body: new Uint8Array(file.body),
   });
   return send.ok
     ? (send.headers.get('inkadra-asset-id') ?? create.headers.get('inkadra-asset-id'))
     : null;
+}
+
+/** Waits until the background jobs have made the thumbnails of these assets. */
+export async function waitForAssets(base: string, cookie: string, ids: string[]): Promise<void> {
+  const deadline = Date.now() + 60_000;
+  for (const id of ids) {
+    for (;;) {
+      const asset = (await (
+        await fetch(`${base}/api/v1/assets/${id}`, { headers: { cookie } })
+      ).json()) as { status: string };
+      if (asset.status === 'ready' || asset.status === 'failed') break;
+      if (Date.now() > deadline) throw new Error(`Asset ${id} still ${asset.status}`);
+      await new Promise((r) => setTimeout(r, 200));
+    }
+  }
+}
+
+/** Sends a locally built board document through the collaboration server, as a browser would. */
+export async function pushBoardDoc(
+  base: string,
+  cookie: string,
+  boardId: string,
+  doc: Y.Doc,
+): Promise<void> {
+  class CookieSocket extends WebSocket {
+    constructor(address: string, protocols?: string | string[]) {
+      super(address, protocols, { headers: { cookie, origin: base } });
+    }
+  }
+  const remote = new Y.Doc();
+  const websocketProvider = new HocuspocusProviderWebsocket({
+    url: `${base.replace(/^http/, 'ws')}/collab`,
+    WebSocketPolyfill: CookieSocket,
+  });
+  const provider = new HocuspocusProvider({
+    websocketProvider,
+    name: boardDocName(boardId),
+    document: remote,
+  });
+  provider.attach();
+  await new Promise<void>((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error('Collab sync timed out')), 20_000);
+    provider.on('synced', () => {
+      clearTimeout(timer);
+      resolve();
+    });
+  });
+  Y.applyUpdate(remote, Y.encodeStateAsUpdate(doc));
+  await new Promise<void>((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error('Collab upload timed out')), 20_000);
+    const check = () => {
+      if (!provider.hasUnsyncedChanges) {
+        clearTimeout(timer);
+        resolve();
+      } else setTimeout(check, 100);
+    };
+    check();
+  });
+  provider.destroy();
+  websocketProvider.destroy();
 }
 
 export async function seedPerfBoard(base: string, options: SeedOptions = {}): Promise<Seeded> {
@@ -146,22 +210,13 @@ export async function seedPerfBoard(base: string, options: SeedOptions = {}): Pr
   // 50 distinct images, reused by over 500 cards, as on a real moodboard with repeated references.
   const assets: string[] = [];
   for (let i = 0; i < 50; i++) {
-    const id = await upload(base, cookie, project.id, i);
+    const file = { body: png(i), name: `perf-${i}.png`, type: 'image/png' };
+    const id = await uploadFile(base, cookie, project.id, file);
     if (!id) break;
     assets.push(id);
   }
   // Thumbnails are made in the background: wait for them, the test times a board in use.
-  const deadline = Date.now() + 60_000;
-  for (const id of assets) {
-    for (;;) {
-      const asset = (await (
-        await fetch(`${base}/api/v1/assets/${id}`, { headers: { cookie } })
-      ).json()) as { status: string };
-      if (asset.status === 'ready' || asset.status === 'failed') break;
-      if (Date.now() > deadline) throw new Error(`Asset ${id} still ${asset.status}`);
-      await new Promise((r) => setTimeout(r, 200));
-    }
-  }
+  await waitForAssets(base, cookie, assets);
 
   const doc = new Y.Doc();
   const counts: Record<string, number> = {};
@@ -238,43 +293,7 @@ export async function seedPerfBoard(base: string, options: SeedOptions = {}): Pr
     }
   });
 
-  // Push the document through the collaboration server, as a browser would.
-  class CookieSocket extends WebSocket {
-    constructor(address: string, protocols?: string | string[]) {
-      super(address, protocols, { headers: { cookie, origin: base } });
-    }
-  }
-  const remote = new Y.Doc();
-  const websocketProvider = new HocuspocusProviderWebsocket({
-    url: `${base.replace(/^http/, 'ws')}/collab`,
-    WebSocketPolyfill: CookieSocket,
-  });
-  const provider = new HocuspocusProvider({
-    websocketProvider,
-    name: boardDocName(project.rootBoardId),
-    document: remote,
-  });
-  provider.attach();
-  await new Promise<void>((resolve, reject) => {
-    const timer = setTimeout(() => reject(new Error('Collab sync timed out')), 20_000);
-    provider.on('synced', () => {
-      clearTimeout(timer);
-      resolve();
-    });
-  });
-  Y.applyUpdate(remote, Y.encodeStateAsUpdate(doc));
-  await new Promise<void>((resolve, reject) => {
-    const timer = setTimeout(() => reject(new Error('Collab upload timed out')), 20_000);
-    const check = () => {
-      if (!provider.hasUnsyncedChanges) {
-        clearTimeout(timer);
-        resolve();
-      } else setTimeout(check, 100);
-    };
-    check();
-  });
-  provider.destroy();
-  websocketProvider.destroy();
+  await pushBoardDoc(base, cookie, project.rootBoardId, doc);
 
   return {
     projectId: project.id,
