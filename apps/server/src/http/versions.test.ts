@@ -4,6 +4,7 @@ import { HocuspocusProvider, HocuspocusProviderWebsocket } from '@hocuspocus/pro
 import {
   addElement,
   boardDocName,
+  CURRENT_SCHEMA_VERSION,
   type Element,
   readBoardNotice,
   readElement,
@@ -793,7 +794,7 @@ describe.skipIf(!url)('board versions (needs DATABASE_URL)', () => {
           name: 'Live',
           createdBy: { id: people.editor?.id, name: 'editor' },
           elementCount: 1,
-          docSchemaVersion: 3,
+          docSchemaVersion: CURRENT_SCHEMA_VERSION,
           expiresAt: null,
         });
         const state = await request(
@@ -934,7 +935,7 @@ describe.skipIf(!url)('board versions (needs DATABASE_URL)', () => {
       expect(elementOf(doc, 'preview1')).toMatchObject({ x: 5, guestHidden: true });
       expect(textOf(doc, 'preview1')).toBe('as it was');
       expect(roots(doc).meta.get('aspect')).toBe('4:3');
-      expect(roots(doc).meta.get('schemaVersion')).toBe(3);
+      expect(roots(doc).meta.get('schemaVersion')).toBe(CURRENT_SCHEMA_VERSION);
     });
 
     it('migrates versions saved by an older schema, and refuses ones from a newer build', async () => {
@@ -949,7 +950,7 @@ describe.skipIf(!url)('board versions (needs DATABASE_URL)', () => {
       const res = await request('GET', `/boards/${boardId}/versions/${v2.id}/state`, 'editor');
       const doc = new Y.Doc();
       Y.applyUpdate(doc, res.rawPayload);
-      expect(roots(doc).meta.get('schemaVersion')).toBe(3);
+      expect(roots(doc).meta.get('schemaVersion')).toBe(CURRENT_SCHEMA_VERSION);
 
       const future = new Y.Doc();
       roots(future).meta.set('schemaVersion', 99);

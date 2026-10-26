@@ -77,6 +77,7 @@ export const LinkElement = Base.extend({
 export const FileElement = Base.extend({
   type: z.literal('file'),
   assetId: z.string(),
+  caption: z.string().max(2000).optional(),
 });
 export const TodoItem = z.object({ id: ElementId, text: z.string().max(2000), done: z.boolean() });
 export const TodoElement = Base.extend({

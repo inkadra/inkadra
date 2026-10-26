@@ -62,6 +62,38 @@ describe('guest element fields', () => {
     }
   });
 
+  it('shares file captions like image captions without exposing internal fields', () => {
+    for (const type of ['file', 'image'] as const) {
+      const element = Element.parse({
+        id: 'V1StGXR8_Z5jdHi6B-myT',
+        type,
+        x: 0,
+        y: 0,
+        w: 240,
+        z: 'a0',
+        parent: null,
+        createdBy: 'user-1',
+        createdAt: 1,
+        assetId: 'asset-id',
+        caption: 'Call sheet',
+        tags: ['internal'],
+        locked: true,
+      });
+      const guest = toGuestElement(element);
+      expect(guest).toMatchObject({
+        type,
+        assetId: 'asset-id',
+        caption: 'Call sheet',
+        createdBy: null,
+      });
+      expect(guest).not.toHaveProperty('tags');
+      expect(guest).not.toHaveProperty('locked');
+      expect(Element.parse(guest)).toEqual(guest);
+      const { caption: _caption, ...legacy } = element as typeof element & { caption?: string };
+      expect(toGuestElement(legacy)).not.toHaveProperty('caption');
+    }
+  });
+
   it('drops tags, locks and production fields, and the author', () => {
     const frame = Element.parse({
       id: 'V1StGXR8_Z5jdHi6B-myT',

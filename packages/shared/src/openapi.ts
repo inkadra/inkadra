@@ -1507,7 +1507,7 @@ registry.registerPath({
     'fields of ClipRequest as text parts, `tags` repeated once per tag (`tags[]` is also ' +
     'read), and one `file` part. `boardId` must come before `file`: access is checked before ' +
     'the file is stored, and a file sent first, or a second file, is refused with 400. Empty ' +
-    'fields count as missing. Each person can clip 30 times a minute. With an image file the ' +
+    'fields count as missing. Each person can clip 30 times a minute. With an image or other file the ' +
     '`note` becomes the caption.',
   request: {
     body: {
