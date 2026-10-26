@@ -55,12 +55,20 @@ interface ProjectsState {
   projects: Project[] | null;
   shared: Board[] | null;
   openNewProject: () => void;
+  openSearch: () => void;
+  openInbox: () => void;
+  unread: number;
+  refreshUnread: () => Promise<void>;
 }
 
 const ProjectsContext = createContext<ProjectsState>({
   projects: null,
   shared: null,
   openNewProject: () => {},
+  openSearch: () => {},
+  openInbox: () => {},
+  unread: 0,
+  refreshUnread: async () => {},
 });
 export const useProjects = () => useContext(ProjectsContext);
 
@@ -501,7 +509,17 @@ export function AppLayout() {
   );
 
   return (
-    <ProjectsContext.Provider value={{ projects, shared, openNewProject: () => setCreating(true) }}>
+    <ProjectsContext.Provider
+      value={{
+        projects,
+        shared,
+        openNewProject: () => setCreating(true),
+        openSearch: () => setSearching(true),
+        openInbox: () => setInboxOpen(true),
+        unread,
+        refreshUnread,
+      }}
+    >
       <HeaderContext.Provider value={setHeaderContent}>
         <AppShell rail={rail} sidebar={sidebar} header={header} canvas={!!projectId}>
           <Outlet />
