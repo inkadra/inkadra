@@ -48,7 +48,9 @@ describe('guest view of a board document', () => {
     { ...base, id: id('orphan'), type: 'file', assetId: 'a3', x: 0, y: 0, parent: id('gone') },
     { ...base, id: id('loopa'), type: 'column', title: 'a', x: 0, y: 0, parent: id('loopb') },
     { ...base, id: id('loopb'), type: 'column', title: 'b', x: 0, y: 0, parent: id('loopa') },
-    { ...base, id: id('unsorted'), type: 'note', x: 0, y: 0, parent: 'unsorted' },
+    { ...base, id: id('note'), type: 'note', x: 0, y: 0, parent: null },
+    // Cards waiting in the unsorted tray are the team's triage, not for guests.
+    { ...base, id: id('tray'), type: 'note', x: 0, y: 0, parent: 'unsorted' },
     {
       ...base,
       id: id('frame'),
@@ -96,7 +98,7 @@ describe('guest view of a board document', () => {
     },
   ]);
   // Bold text in the note, the way the Tiptap binding stores marks.
-  const body = roots(d).elements.get(id('unsorted'))?.get('body') as Y.XmlFragment;
+  const body = roots(d).elements.get(id('note'))?.get('body') as Y.XmlFragment;
   const p = new Y.XmlElement('paragraph');
   const text = new Y.XmlText();
   text.insert(0, 'Ciao ');
@@ -108,12 +110,12 @@ describe('guest view of a board document', () => {
   const shown = linkElements(view, new Map([[linked, {}]]));
   const ids = shown.map((e) => e.id).sort();
 
-  it('leaves out hidden cards, their children and broken or circular chains', () => {
+  it('leaves out hidden cards, unsorted cards, their children and broken or circular chains', () => {
     expect(ids).toEqual(
       [
         id('col'),
         id('img'),
-        id('unsorted'),
+        id('note'),
         id('frame'),
         id('drawn'),
         id('cardin'),
@@ -140,7 +142,7 @@ describe('guest view of a board document', () => {
     expect(frame).not.toHaveProperty('status');
     expect(frame).not.toHaveProperty('notes');
     expect(frame.label).toBe('1A');
-    const note = guestElement(view, shown.find((e) => e.id === id('unsorted')) as Element);
+    const note = guestElement(view, shown.find((e) => e.id === id('note')) as Element);
     expect(note.body).toEqual({
       type: 'doc',
       content: [
@@ -170,7 +172,7 @@ describe('guest view of a board document', () => {
     expect(pictureAssetId(byId('img'))).toBe('a1');
     expect(pictureAssetId(byId('frame'))).toBe('a4');
     expect(pictureAssetId(byId('drawn'))).toBeNull();
-    expect(pictureAssetId(byId('unsorted'))).toBeNull();
+    expect(pictureAssetId(byId('note'))).toBeNull();
   });
 
   it('caches a decoded document while it is not stored again', async () => {

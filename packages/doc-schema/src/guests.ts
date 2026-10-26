@@ -3,9 +3,10 @@ import { type Element, type ElementType, UNSORTED } from './elements.ts';
 
 /**
  * True when an element, or one of its containers, is hidden from guests of share links.
- * Fails closed: an element whose chain of containers is broken (a parent that is missing, for
- * example a column deleted while a card moved into it) or circular counts as hidden. Only
- * `UNSORTED` and the canvas (null) end a chain as shown.
+ * The unsorted tray is internal to the board, so an element whose chain of containers reaches
+ * `UNSORTED` counts as hidden, too. Fails closed: an element whose chain is broken (a parent
+ * that is missing, for example a column deleted while a card moved into it) or circular also
+ * counts as hidden. Only the canvas (null) ends a chain as shown.
  */
 export function hiddenFromGuests(
   elementId: string,
@@ -13,7 +14,8 @@ export function hiddenFromGuests(
 ): boolean {
   const seen = new Set<string>();
   let id: string | null = elementId;
-  while (id !== null && id !== UNSORTED) {
+  while (id !== null) {
+    if (id === UNSORTED) return true;
     if (seen.has(id)) return true;
     seen.add(id);
     const el = lookup(id);

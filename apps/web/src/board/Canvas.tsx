@@ -57,6 +57,7 @@ import {
   type MouseEvent as ReactMouseEvent,
   type PointerEvent as ReactPointerEvent,
   useCallback,
+  useContext,
   useEffect,
   useMemo,
   useRef,
@@ -89,7 +90,7 @@ import {
 } from './chrome.tsx';
 import { decodeClipboard, encodeClipboard } from './clipboard.ts';
 import type { BoardConnection } from './connection.ts';
-import { BoardContext, type BoardContextValue } from './context.ts';
+import { BoardContext, type BoardContextValue, GuestModeContext } from './context.ts';
 import { useBoardAspect } from './film/aspect.ts';
 import { DrawingEditor } from './film/DrawingEditor.tsx';
 import { FramePanel } from './film/FramePanel.tsx';
@@ -212,6 +213,7 @@ export function Canvas({
   onOpen,
 }: CanvasProps) {
   const { t } = useTranslation();
+  const guest = useContext(GuestModeContext);
   const { instance } = useSession();
   const { store } = conn;
   const doc = store.doc;
@@ -1830,15 +1832,18 @@ export function Canvas({
           <ContextMenu x={menu.x} y={menu.y} items={menuItems} onClose={() => setMenu(null)} />
         )}
 
-        <UnsortedDrawer
-          ref={unsortedRef}
-          items={snap.unsorted}
-          open={unsortedOpen}
-          onToggle={() => setUnsortedOpen((o) => !o)}
-          selection={selection}
-          dropping={overlay.drop?.kind === 'unsorted'}
-          draggingIds={draggingNested}
-        />
+        {/* Guests don't see the unsorted tray; members and previews still do. */}
+        {!guest && (
+          <UnsortedDrawer
+            ref={unsortedRef}
+            items={snap.unsorted}
+            open={unsortedOpen}
+            onToggle={() => setUnsortedOpen((o) => !o)}
+            selection={selection}
+            dropping={overlay.drop?.kind === 'unsorted'}
+            draggingIds={draggingNested}
+          />
+        )}
         <div className="canvas__corner" data-chrome>
           <Minimap
             elements={visibleCards}
