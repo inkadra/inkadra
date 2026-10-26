@@ -346,7 +346,7 @@ export function ScheduleView({
     setConflictResolved(true);
   };
 
-  const handleDragStart = (e: DragEvent<HTMLDivElement>, code: string) => {
+  const handleDragStart = (e: DragEvent<HTMLButtonElement>, code: string) => {
     e.dataTransfer.setData('text/plain', code);
     e.dataTransfer.effectAllowed = 'copyMove';
   };
@@ -531,7 +531,7 @@ export function ScheduleView({
           <div className="schedule-unplanned__list">
             {unplanned.map((shot, idx) => (
               <div key={shot.code}>
-                {(idx === 0 || unplanned[idx - 1].sceneNum !== shot.sceneNum) && (
+                {(idx === 0 || unplanned[idx - 1]?.sceneNum !== shot.sceneNum) && (
                   <div
                     className="lbl"
                     style={{

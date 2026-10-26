@@ -341,6 +341,8 @@ export function MoodboardView({
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [handlePrev, handleNext, onClose]);
 
+  if (!current || !compareItem) return null;
+
   const copyToClipboard = async (hex: string) => {
     try {
       await navigator.clipboard.writeText(hex);

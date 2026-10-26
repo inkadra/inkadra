@@ -1,4 +1,4 @@
-import type { Element, NoteElement } from '@inkadra/canvas-core';
+import type { Element } from '@inkadra/doc-schema';
 import { useEffect, useState } from 'react';
 import './note-sheet.css';
 
@@ -111,7 +111,8 @@ export function NoteSideSheet({
     setSlashOpen(false);
   };
 
-  const noteTitle = (element as NoteElement)?.title || 'Logline e trattamento';
+  const noteTitle =
+    (element && 'title' in element ? element.title : undefined) || 'Logline e trattamento';
 
   return (
     <aside

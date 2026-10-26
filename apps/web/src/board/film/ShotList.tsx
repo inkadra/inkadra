@@ -69,6 +69,8 @@ export function ShotList({
   const currentFrame = frames.find((f) => f.id === selected) ?? null;
   const drawn = frames.find((f) => f.id === drawing) ?? null;
   const drawnAt = drawn ? frames.indexOf(drawn) : -1;
+  const previousFrame = frames[drawnAt - 1];
+  const nextFrame = frames[drawnAt + 1];
 
   const q = query.trim().toLowerCase();
   const matches = useCallback(
@@ -413,14 +415,10 @@ export function ShotList({
           frame={drawn}
           label={labels.get(drawn.id) ?? ''}
           boardAspect={boardAspect}
-          prevLabel={drawnAt > 0 ? (labels.get(frames[drawnAt - 1].id) ?? null) : null}
-          nextLabel={
-            drawnAt < frames.length - 1 ? (labels.get(frames[drawnAt + 1].id) ?? null) : null
-          }
           readOnly={readOnly}
           onClose={() => setDrawing(null)}
-          onPrev={() => drawnAt > 0 && setDrawing(frames[drawnAt - 1].id)}
-          onNext={() => drawnAt < frames.length - 1 && setDrawing(frames[drawnAt + 1].id)}
+          onPrev={previousFrame ? () => setDrawing(previousFrame.id) : undefined}
+          onNext={nextFrame ? () => setDrawing(nextFrame.id) : undefined}
         />
       )}
     </div>

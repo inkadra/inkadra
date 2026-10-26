@@ -174,14 +174,16 @@ export function ClientReviewView({
   };
 
   const handlePrev = () => {
-    if (activeIndex > 0) setActiveShotCode(shots[activeIndex - 1].code);
+    const previous = shots[activeIndex - 1];
+    if (previous) setActiveShotCode(previous.code);
   };
 
   const handleNext = () => {
-    if (activeIndex < shots.length - 1) setActiveShotCode(shots[activeIndex + 1].code);
+    const next = shots[activeIndex + 1];
+    if (next) setActiveShotCode(next.code);
   };
 
-  const handleSliderClick = (e: MouseEvent<HTMLDivElement>) => {
+  const handleSliderClick = (e: MouseEvent<HTMLButtonElement>) => {
     const rect = e.currentTarget.getBoundingClientRect();
     const x = Math.max(0, Math.min(rect.width, e.clientX - rect.left));
     const percent = Math.round((x / rect.width) * 100);
@@ -207,6 +209,8 @@ export function ClientReviewView({
   const handlePrint = useCallback(() => {
     window.print();
   }, []);
+
+  if (!currentShot) return null;
 
   return (
     <div className="review-view">
@@ -265,7 +269,7 @@ export function ClientReviewView({
         </span>
 
         <button type="button" className="btn" onClick={handlePrint}>
-          <Icon name="export" size={14} />
+          <Icon name="download" size={14} />
           Scarica PDF
         </button>
       </header>

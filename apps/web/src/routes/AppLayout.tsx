@@ -410,7 +410,7 @@ export function AppLayout() {
           </span>
         </>
       )}
-      <NotificationBell />
+      <NotificationBell unread={unread} onCount={refreshUnread} />
     </Header>
   );
 

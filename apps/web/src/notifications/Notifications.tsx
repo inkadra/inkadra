@@ -43,9 +43,14 @@ export function useUnreadCount(): [number, () => Promise<void>] {
 }
 
 /** Bell of the app header: unread count, checked once a minute and when the window is focused. */
-export function NotificationBell() {
+export function NotificationBell({
+  unread,
+  onCount: count,
+}: {
+  unread: number;
+  onCount: () => Promise<void>;
+}) {
   const { t } = useTranslation();
-  const [unread, count] = useUnreadCount();
   const [open, setOpen] = useState(false);
   const bell = useRef<HTMLButtonElement>(null);
 
@@ -85,7 +90,7 @@ function initials(name: string | null | undefined): string {
   if (!name) return 'IN';
   const parts = name.trim().split(/\s+/);
   if (parts.length >= 2) {
-    return (parts[0][0] + parts[1][0]).toUpperCase();
+    return ((parts[0]?.[0] ?? '') + (parts[1]?.[0] ?? '')).toUpperCase();
   }
   return name.slice(0, 2).toUpperCase();
 }
@@ -95,7 +100,7 @@ function avatarBg(name: string | null | undefined): string {
   const colors = ['#7CC4C9', '#C9B27C', '#D9C6A5', '#F2B08A', '#9DB8F2', '#C3B2F2'];
   let hash = 0;
   for (let i = 0; i < name.length; i++) hash = (hash * 31 + name.charCodeAt(i)) >>> 0;
-  return colors[hash % colors.length];
+  return colors[hash % colors.length] ?? '#8A8A90';
 }
 
 function relativeTime(iso: string): string {
@@ -199,7 +204,8 @@ export function NotificationList({
   const filteredItems = items.filter((n) => {
     if (filter === 'mentions') return n.type === 'mention' || n.type === 'comment';
     if (filter === 'approvals') return n.type === 'review' || n.reviewStatus !== undefined;
-    if (filter === 'assigned') return n.type === 'assignment' || n.type === 'task';
+    // Assignment events are not emitted by the current API yet.
+    if (filter === 'assigned') return ['assignment', 'task'].includes(n.type);
     return true;
   });
   const unreadTotal = items.filter((n) => !n.readAt).length;

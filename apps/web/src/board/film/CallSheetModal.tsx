@@ -275,6 +275,8 @@ export function CallSheetModal({
 
   const current = daysData.find((d) => d.num === selectedDay) ?? daysData[0];
 
+  if (!current) return null;
+
   return (
     <div
       className="callsheet-modal-backdrop"
@@ -333,7 +335,7 @@ export function CallSheetModal({
               onClick={handlePrint}
               style={{ marginLeft: 8 }}
             >
-              <Icon name="export" size={14} />
+              <Icon name="download" size={14} />
               Stampa / Esporta
             </button>
             <button
