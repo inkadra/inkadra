@@ -57,6 +57,12 @@ export function ClientReviewView({
       thread.visibility === 'everyone' &&
       (threadFilter === 'all' || (threadFilter === 'resolved') === !!thread.resolvedAt),
   );
+  if (state.preview)
+    return (
+      <section className="film-shell">
+        <p>{t('clientReview.liveOnly')}</p>
+      </section>
+    );
   return (
     <section
       onKeyDown={(e) => e.stopPropagation()}
@@ -139,6 +145,13 @@ export function ClientReviewView({
             key={current.id}
           >
             <h2>{labels.get(current.id)}</h2>
+            <FramePicture
+              assetId={current.assetId}
+              aspect={current.aspect}
+              boardAspect={aspect}
+              strokes={current.strokes}
+              pixels={960}
+            />
             {ready && <ReviewSection elementId={current.id} />}
             <h3>{t('clientReview.guestThreads')}</h3>
             <p>{t('clientReview.audienceHint')}</p>

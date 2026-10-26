@@ -2979,3 +2979,15 @@ button.moodboard__card {
 .client-review__detail {
   min-width: 0;
 }
+.client-review .review-segments > button {
+  border: 1px solid var(--ink-border-default);
+  border-radius: 6px;
+  padding: 6px 10px;
+  background: var(--ink-surface-1);
+  color: var(--ink-text-secondary);
+  cursor: pointer;
+}
+.client-review .review-segments > button[aria-pressed="true"] {
+  background: var(--ink-surface-3);
+  color: var(--ink-text-primary);
+}

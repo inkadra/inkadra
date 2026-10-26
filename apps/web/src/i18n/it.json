@@ -1491,6 +1491,7 @@
       "pending": "In attesa",
       "approved": "Approvati",
       "changes_requested": "Modifiche richieste"
-    }
+    },
+    "liveOnly": "Le review appartengono alla board attuale. Chiudi l’anteprima della versione per leggerle e rispondere."
   }
 }

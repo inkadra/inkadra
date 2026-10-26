@@ -1491,6 +1491,7 @@
       "pending": "Pending",
       "approved": "Approved",
       "changes_requested": "Changes requested"
-    }
+    },
+    "liveOnly": "Reviews belong to the live board. Close the version preview to read and respond."
   }
 }
