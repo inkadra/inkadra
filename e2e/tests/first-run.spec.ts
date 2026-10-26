@@ -192,3 +192,48 @@ async function signIn(page: import('@playwright/test').Page) {
   await page.getByRole('button', { name: 'Accedi' }).click();
   await expect(page.getByRole('heading', { name: /Giulia$/ })).toBeVisible();
 }
+
+test('search from home suggests shared project tags and preserves multiword selections', async ({
+  page,
+}) => {
+  await page.route('**/api/v1/projects', (route) =>
+    route.fulfill({ json: { items: [], nextCursor: null } }),
+  );
+  await page.route('**/api/v1/shared-boards', (route) =>
+    route.fulfill({
+      json: {
+        items: [
+          {
+            id: 'shared-board',
+            projectId: 'shared-project',
+            title: 'Shared board',
+            kind: 'board',
+          },
+        ],
+      },
+    }),
+  );
+  await page.route('**/api/v1/projects/shared-project/tags', (route) =>
+    route.fulfill({
+      json: { items: [{ tag: 'blue hour', count: 2 }] },
+    }),
+  );
+  const queries: URLSearchParams[] = [];
+  await page.route('**/api/v1/search?*', (route) => {
+    queries.push(new URL(route.request().url()).searchParams);
+    return route.fulfill({ json: { items: [] } });
+  });
+  await signIn(page);
+  await page.keyboard.press('ControlOrMeta+k');
+  const input = page.getByRole('combobox');
+  await input.fill('#');
+  await page.getByRole('option', { name: /#blue hour/ }).click();
+  await expect.poll(() => queries.length).toBe(1);
+  expect(queries[0]!.get('tag')).toBe('blue hour');
+  expect(queries[0]!.has('q')).toBe(false);
+  await expect(page.getByRole('option')).toHaveCount(0);
+  await input.fill('#blue hour station');
+  await expect.poll(() => queries.length).toBe(2);
+  expect(queries[1]!.get('tag')).toBe('blue hour');
+  expect(queries[1]!.get('q')).toBe('station');
+});

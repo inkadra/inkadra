@@ -29,6 +29,20 @@ export function containsPattern(q: string): string {
   return `%${q.replace(/[\\%_]/g, (c) => `\\${c}`)}%`;
 }
 
+/** `w` as a prefix LIKE pattern, with % and _ taken literally. */
+export function prefixPattern(w: string): string {
+  return `${w.replace(/[\\%_]/g, (c) => `\\${c}`)}%`;
+}
+
+/** Words to match against element tags (both exact and as prefix). */
+export function searchTagPatterns(q: string): { words: string[]; prefixes: string[] } {
+  const norm = q.trim().toLowerCase().replace(/^#/, '');
+  const rawWords = norm.split(/\s+/).filter(Boolean);
+  const words = [...new Set([norm, ...rawWords])].filter(Boolean);
+  const prefixes = words.map(prefixPattern);
+  return { words, prefixes };
+}
+
 /** About SNIPPET characters of `text` around the first match of `q`. */
 export function snippet(text: string, q: string | undefined): string | null {
   if (!text) return null;
@@ -179,6 +193,23 @@ export function registerSearchRoutes(app: FastifyInstance, { db, auth }: Deps) {
       }
     }
 
+    const tagMatch =
+      q && !tag
+        ? (() => {
+            const { words, prefixes } = searchTagPatterns(q);
+            if (words.length === 0) return null;
+            const wordsArr = sql`array[${sql.join(
+              words.map((w) => sql`${w}`),
+              sql`, `,
+            )}]::text[]`;
+            const prefArr = sql`array[${sql.join(
+              prefixes.map((p) => sql`${p}`),
+              sql`, `,
+            )}]::text[]`;
+            return sql`or i.tags && ${wordsArr} or exists (select 1 from unnest(i.tags) as t where t like any(${prefArr}))`;
+          })()
+        : null;
+
     const elements = await db.execute<Row>(sql`
       select i.board_id, i.element_id, i.type, i.title, i.text, i.tags, i.asset_id,
              b.title as board_title, b.kind as board_kind, p.id as project_id, p.name
@@ -186,10 +217,20 @@ export function registerSearchRoutes(app: FastifyInstance, { db, auth }: Deps) {
       join board b on b.id = i.board_id
       join project p on p.id = i.project_id
       where i.board_id = any(${boardIn})
-        ${like ? sql`and i.text ilike ${like}` : sql``}
+        ${
+          like
+            ? tagMatch
+              ? sql`and (i.text ilike ${like} ${tagMatch})`
+              : sql`and i.text ilike ${like}`
+            : sql``
+        }
         ${tag ? sql`and i.tags @> array[${tag}]::text[]` : sql``}
         ${query.type ? sql`and i.type = ${query.type}` : sql``}
-      order by ${q ? sql`word_similarity(${q}, i.text) desc,` : sql``} i.updated_at desc
+      order by ${
+        q
+          ? sql`greatest(word_similarity(${q}, i.text), word_similarity(${q}, array_to_string(i.tags, ' '))) desc,`
+          : sql``
+      } i.updated_at desc
       limit ${query.limit}`);
     for (const r of elements) {
       const text = r.text as string;

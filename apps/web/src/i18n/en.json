@@ -423,7 +423,11 @@
       "board": "Board",
       "element": "Element"
     },
-    "inProject": "in {{project}}"
+    "inProject": "in {{project}}",
+    "tagCardCount_one": "{{count}} card",
+    "tagCardCount_other": "{{count}} cards",
+    "tagSuggestions": "Suggested tags",
+    "noTags": "No matching tags"
   },
   "templates": {
     "moodboard": {
