@@ -58,7 +58,11 @@ export const Invitation = z
     boardId: Id.nullable().openapi({
       description: 'Set when the invitation gives a role on one board and its sub-boards.',
     }),
-    role: ProjectRole.nullable(),
+    role: ProjectRole.nullable().openapi({
+      description:
+        'For `link` invitations at most `editor`, also for links made with `owner` before API ' +
+        '0.6.0: accepting them gives `editor`.',
+    }),
     invitedBy: UserSummary.nullable(),
     uses: z.int().min(0),
     maxUses: z.int().min(1).nullable().openapi({ description: 'Null: until it expires.' }),
@@ -81,6 +85,13 @@ export const Invitation = z
   .openapi('Invitation');
 export type Invitation = z.infer<typeof Invitation>;
 
+/**
+ * Roles an invitation link can give: everything below owner. Owners are named from the people
+ * of the project (decision 0019).
+ */
+export const InvitationLinkRole = ProjectRole.exclude(['owner']);
+export type InvitationLinkRole = z.infer<typeof InvitationLinkRole>;
+
 export const CreateInvitation = z
   .object({
     kind: InvitationKind.default('email'),
@@ -90,7 +101,10 @@ export const CreateInvitation = z
       description: 'Invite to this board (and what is inside it) instead of the whole project.',
     }),
     role: ProjectRole.optional().openapi({
-      description: 'Required with projectId or boardId. At most the role of the person inviting.',
+      description:
+        'Required with projectId or boardId. At most the role of the person inviting. ' +
+        '`link` invitations give at most `editor`; servers before API ' +
+        '0.6.0 also accept `owner`.',
     }),
     expiresInDays: z.int().min(1).max(90).default(7),
   })
@@ -100,6 +114,10 @@ export const CreateInvitation = z
   })
   .refine((v) => (v.projectId === undefined && v.boardId === undefined) || v.role !== undefined, {
     message: 'Choose a role.',
+    path: ['role'],
+  })
+  .refine((v) => v.kind !== 'link' || InvitationLinkRole.safeParse(v.role ?? 'viewer').success, {
+    message: 'An invitation link gives at most the editor role.',
     path: ['role'],
   })
   .openapi('CreateInvitation');
