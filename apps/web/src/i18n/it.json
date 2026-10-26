@@ -1480,5 +1480,17 @@
     "shot": "Inquadratura",
     "derivedCalls": "Gli orari indicano il primo blocco previsto per ciascun membro del cast. Pickup e trucco non sono registrati.",
     "firstBlock": "Primo blocco previsto"
+  },
+  "clientReview": {
+    "roundsUnavailable": "I round di review non sono ancora supportati. Decisioni e risposte vengono salvate singolarmente.",
+    "progress": "{{approved}} di {{total}} frame approvati",
+    "guestThreads": "Discussioni con il cliente",
+    "audienceHint": "Discussioni condivise con gli ospiti. Le risposte mantengono il pubblico del link originale.",
+    "filters": {
+      "all": "Tutti i frame",
+      "pending": "In attesa",
+      "approved": "Approvati",
+      "changes_requested": "Modifiche richieste"
+    }
   }
 }

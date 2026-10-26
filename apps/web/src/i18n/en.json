@@ -1480,5 +1480,17 @@
     "shot": "Shot",
     "derivedCalls": "Times show the first scheduled block for each cast member. Pickup and makeup calls are not recorded.",
     "firstBlock": "First scheduled block"
+  },
+  "clientReview": {
+    "roundsUnavailable": "Review rounds are not supported yet. Decisions and replies are saved individually.",
+    "progress": "{{approved}} of {{total}} frames approved",
+    "guestThreads": "Client threads",
+    "audienceHint": "Threads shared with guests. Replies keep the original share-link audience.",
+    "filters": {
+      "all": "All frames",
+      "pending": "Pending",
+      "approved": "Approved",
+      "changes_requested": "Changes requested"
+    }
   }
 }
