@@ -125,14 +125,18 @@ export function AppLayout() {
   const isStoryboard = projectBoards?.find((b) => b.id === openBoardId)?.kind === 'storyboard';
   const storyboardBoard = projectBoards?.find((b) => b.kind === 'storyboard');
   const view = params.get('view');
-  const currentView: 'canvas' | 'storyboard' | 'shotlist' | 'schedule' =
-    view === 'shotlist' || view === 'storyboard' || view === 'canvas' || view === 'schedule'
+  const currentView: 'canvas' | 'storyboard' | 'shotlist' | 'schedule' | 'review' =
+    view === 'shotlist' ||
+    view === 'storyboard' ||
+    view === 'canvas' ||
+    view === 'schedule' ||
+    view === 'review'
       ? view
       : isStoryboard
         ? 'storyboard'
         : 'canvas';
 
-  const showView = (v: 'canvas' | 'storyboard' | 'shotlist' | 'schedule') => {
+  const showView = (v: 'canvas' | 'storyboard' | 'shotlist' | 'schedule' | 'review') => {
     if (!projectId) return;
     setParams(
       (p) => {
@@ -216,7 +220,22 @@ export function AppLayout() {
           }
         }}
       />
-      <RailButton icon="people" label={t('nav.clients')} disabled />
+      <RailButton
+        icon="people"
+        label={t('nav.clients')}
+        disabled={!projectId}
+        active={!!projectId && currentView === 'review'}
+        onClick={() => {
+          if (!projectId) return;
+          if (!isStoryboard && storyboardBoard && current?.rootBoardId) {
+            navigate(
+              `${boardPath(projectId, storyboardBoard.id, current.rootBoardId)}?view=review`,
+            );
+          } else {
+            showView('review');
+          }
+        }}
+      />
       <RailSeparator />
       <RailButton
         icon="inbox"

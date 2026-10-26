@@ -460,7 +460,8 @@
       "storyboard": "Storyboard",
       "shotlist": "Shot list",
       "canvas": "Lavagna",
-      "schedule": "Piano riprese"
+      "schedule": "Piano riprese",
+      "review": "Revisione"
     },
     "aspect": {
       "label": "Formato",
