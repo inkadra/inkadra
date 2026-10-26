@@ -1,8 +1,8 @@
 import type { GuestElement } from '@inkadra/shared';
 import { IconButton } from '@inkadra/ui';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { isUnplayableVideoError, VideoUnplayable } from '../board/viewer.tsx';
+import { isUnplayableVideoError, useVideoUnplayable, VideoUnplayable } from '../board/viewer.tsx';
 import { useGuestActions } from './actions.ts';
 import { PickControls, ReviewChip } from './GuestCardExtras.tsx';
 import { guestVariant } from './guest-assets.ts';
@@ -19,12 +19,7 @@ export function GuestViewer({ element, onClose }: { element: GuestElement; onClo
   const actions = useGuestActions();
   const ref = useRef<HTMLDialogElement>(null);
   const asset = actions.assets.get(assetOf(element) ?? '');
-  const [unplayable, setUnplayable] = useState(false);
-
-  // biome-ignore lint/correctness/useExhaustiveDependencies: resets unplayable state when the element or asset changes
-  useEffect(() => {
-    setUnplayable(false);
-  }, [element.id, asset?.id]);
+  const { videoRef, unplayable, setUnplayable } = useVideoUnplayable(asset?.downloadUrl, asset?.id);
 
   const caption =
     typeof element.caption === 'string'
@@ -61,6 +56,7 @@ export function GuestViewer({ element, onClose }: { element: GuestElement; onClo
           <>
             {/* biome-ignore lint/a11y/useMediaCaption: people's own footage has no captions */}
             <video
+              ref={videoRef}
               className="guest-viewer__media"
               src={asset.downloadUrl}
               poster={src || undefined}
