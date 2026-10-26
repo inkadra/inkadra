@@ -699,7 +699,7 @@
     "thisBoard": "Chi inviti vede solo questo board.",
     "people": "Persone con accesso",
     "you": "{{name}} (tu)",
-    "highlightRole": "Evidenzia il ruolo di {{name}}",
+    "highlightHint": "Evidenzia il ruolo di questa persona nella matrice dei permessi",
     "member": "Membro del progetto",
     "fromProject": "Dal progetto",
     "inherited": "Ereditato da {{board}}",

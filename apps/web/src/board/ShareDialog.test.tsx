@@ -2,7 +2,7 @@
 import type { BoardAccess, BoardDetail } from '@inkadra/shared';
 import { act } from 'react';
 import { createRoot } from 'react-dom/client';
-import { beforeEach, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { api } from '../lib/api.ts';
 import { ShareDialog } from './ShareDialog.tsx';
 
@@ -63,6 +63,24 @@ beforeEach(async () => {
     root.render(<ShareDialog open board={board} subBoards={0} onClose={() => {}} />),
   );
 });
+afterEach(() => {
+  act(() => root.unmount());
+  host.remove();
+});
+
+it('names each person row by its visible text and describes the action with a hint', () => {
+  const rows = [...host.querySelectorAll<HTMLButtonElement>('.share__person')];
+  expect(rows).toHaveLength(2);
+  for (const row of rows) {
+    // No aria-label: the accessible name is the visible text (name, "(you)" and source).
+    expect(row.hasAttribute('aria-label')).toBe(false);
+    const hint = document.getElementById(row.getAttribute('aria-describedby') ?? '');
+    expect(hint?.textContent).toBe('share.highlightHint');
+  }
+  expect(rows[0]?.textContent).toContain('Ada Owner');
+  expect(rows[1]?.textContent).toContain('Mia Rossi');
+  expect(rows[1]?.textContent).toContain('share.you');
+});
 
 it('highlights the owner role from the owner row, which cannot be edited', async () => {
   // The matrix starts on the role of the current user.
@@ -72,6 +90,7 @@ it('highlights the owner role from the owner row, which cannot be edited', async
   const ownerRow = [...host.querySelectorAll<HTMLButtonElement>('.share__person')].find((b) =>
     b.textContent?.includes('Ada Owner'),
   );
+  expect(ownerRow?.textContent).toContain('Ada Owner');
   expect(ownerRow?.getAttribute('aria-pressed')).toBe('false');
   await act(async () => ownerRow?.click());
   expect(ownerRow?.getAttribute('aria-pressed')).toBe('true');
