@@ -123,10 +123,12 @@ export function VersionsDialog({
     const frame = requestAnimationFrame(() => banner.current?.focus());
     return () => cancelAnimationFrame(frame);
   }, [previewId, open]);
-  // Escape leaves the preview when nothing else on the page takes it.
-  const leavePreview = previewId !== null && !open && confirm === null;
+  // Escape leaves the preview when nothing else on the page takes it. The listener covers the whole
+  // preview, not only the frames after React committed the panel closed: the browser closes the
+  // panel's dialog as soon as Escape arrives, so a second Escape in that gap must not be lost. An
+  // open panel or confirmation still wins, because the handler leaves a popup's Escape to the popup.
   useEffect(() => {
-    if (!leavePreview) return;
+    if (previewId === null) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== 'Escape' || e.defaultPrevented || isTyping(e.target)) return;
       const popups = 'dialog[open], [role="menu"], [role="dialog"], [aria-modal="true"]';
@@ -137,7 +139,7 @@ export function VersionsDialog({
     };
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
-  }, [leavePreview, onPreview]);
+  }, [previewId, onPreview]);
   // While a request runs, Escape must not close a dialog whose result is still pending.
   const holdWhileBusy = (e: SyntheticEvent<HTMLDialogElement>) => {
     if (locked.current) e.preventDefault();
