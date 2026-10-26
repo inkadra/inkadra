@@ -133,7 +133,7 @@ export function ShotlistKanban({
                       type="button"
                       className="kanban__card-body"
                       onClick={() => onSelect(isSelected ? null : f.id)}
-                      aria-label={`Inquadratura ${label}`}
+                      aria-label={t('film.list.cardAria', { label })}
                       aria-pressed={isSelected}
                     >
                       <div className="kanban__card-head">

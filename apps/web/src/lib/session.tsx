@@ -1,5 +1,6 @@
 import type { Instance, User } from '@inkadra/shared';
 import { createContext, type ReactNode, useCallback, useContext, useEffect, useState } from 'react';
+import i18n, { LOCALES, type Locale } from '../i18n/index.ts';
 import { api, RequestError } from './api.ts';
 
 interface SessionState {
@@ -26,6 +27,12 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     ]);
     setInstance(inst);
     setUser(me);
+    if (me?.locale) {
+      const base = me.locale.slice(0, 2) as Locale;
+      if (LOCALES.includes(base) && i18n.language !== base) {
+        await i18n.changeLanguage(base);
+      }
+    }
     setLoading(false);
   }, []);
 

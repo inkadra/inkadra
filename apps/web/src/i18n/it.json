@@ -593,7 +593,8 @@
       "noMatch": "Nessuna inquadratura corrisponde al filtro",
       "table": "Tabella",
       "kanban": "Kanban",
-      "addInStatus": "Aggiungi in {{status}}"
+      "addInStatus": "Aggiungi in {{status}}",
+      "cardAria": "Inquadratura {{label}}"
     }
   },
   "roles": {
