@@ -71,6 +71,43 @@ describe('board document', () => {
     expect(validateBoardDoc(doc)).toEqual([]);
   });
 
+  it('validates optional file captions with the same limits as images', () => {
+    for (const type of ['file', 'image'] as const) {
+      const element = { ...base(), type, assetId: 'asset-id' };
+      expect(Element.parse(element)).not.toHaveProperty('caption');
+      for (const caption of ['', 'x'.repeat(2000)]) {
+        expect(Element.parse({ ...element, caption })).toHaveProperty('caption', caption);
+      }
+      for (const caption of ['x'.repeat(2001), null, 42]) {
+        expect(Element.safeParse({ ...element, caption }).success).toBe(false);
+      }
+    }
+  });
+
+  it('keeps a file caption through a document round trip', () => {
+    const doc = createBoardDoc(boardId);
+    const file = { ...base(), type: 'file' as const, assetId: 'asset-id', caption: 'Call sheet' };
+    addElement(doc, file);
+    const copy = new Y.Doc();
+    Y.applyUpdate(copy, Y.encodeStateAsUpdate(doc));
+    expect(readElement(roots(copy).elements.get(file.id)!)).toEqual(file);
+    expect(validateBoardDoc(copy)).toEqual([]);
+  });
+
+  it('upgrades a version 3 document without adding captions or changing elements', () => {
+    const doc = createBoardDoc(boardId);
+    roots(doc).meta.set('schemaVersion', 3);
+    const file = { ...base(), type: 'file' as const, assetId: 'asset-id' };
+    addElement(doc, file);
+    const before = roots(doc).elements.toJSON();
+    expect(migrateBoardDoc(doc, boardId)).toEqual([4]);
+    expect(getSchemaVersion(doc)).toBe(4);
+    expect(roots(doc).elements.toJSON()).toEqual(before);
+    expect(readElement(roots(doc).elements.get(file.id)!)).not.toHaveProperty('caption');
+    expect(validateBoardDoc(doc)).toEqual([]);
+    expect(migrateBoardDoc(doc, boardId)).toEqual([]);
+  });
+
   it('syncs between two replicas', () => {
     const a = createBoardDoc(boardId);
     const b = new Y.Doc();
@@ -115,7 +152,7 @@ describe('board document', () => {
     expect(Element.safeParse({ ...note, guestHidden: 'yes' }).success).toBe(false);
   });
 
-  it('upgrades a version 2 document to 3 without touching its elements', () => {
+  it('upgrades a version 2 document to the current version without touching its elements', () => {
     const doc = createBoardDoc(boardId);
     roots(doc).meta.set('schemaVersion', 2);
     const note = { ...base(), type: 'note' as const, tags: ['Notte'] };
@@ -123,8 +160,8 @@ describe('board document', () => {
     addElement(doc, note);
     addElement(doc, column);
     const before = [...roots(doc).elements.values()].map((m) => readElement(m));
-    expect(migrateBoardDoc(doc, boardId)).toEqual([3]);
-    expect(getSchemaVersion(doc)).toBe(3);
+    expect(migrateBoardDoc(doc, boardId)).toEqual([3, 4]);
+    expect(getSchemaVersion(doc)).toBe(4);
     expect([...roots(doc).elements.values()].map((m) => readElement(m))).toEqual(before);
     expect(validateBoardDoc(doc)).toEqual([]);
   });
@@ -237,8 +274,8 @@ describe('board document', () => {
     expect(getSchemaVersion(doc)).toBe(1);
     const before = [...roots(doc).elements.values()].map((m) => readElement(m));
     expect(before.every(Boolean)).toBe(true);
-    expect(migrateBoardDoc(doc, boardId)).toEqual([2, 3]);
-    expect(getSchemaVersion(doc)).toBe(3);
+    expect(migrateBoardDoc(doc, boardId)).toEqual([2, 3, 4]);
+    expect(getSchemaVersion(doc)).toBe(4);
     expect([...roots(doc).elements.values()].map((m) => readElement(m))).toEqual(before);
     const note = roots(doc).elements.get('note_v1_00001')!;
     expect((note.get('body') as Y.XmlFragment).toString()).toContain('Luce al neon');

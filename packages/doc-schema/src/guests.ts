@@ -49,7 +49,7 @@ export const GUEST_ELEMENT_FIELDS = {
   note: [...COMMON_GUEST_FIELDS, 'color'],
   image: [...COMMON_GUEST_FIELDS, 'assetId', 'caption'],
   link: [...COMMON_GUEST_FIELDS, 'url', 'title', 'description', 'imageAssetId'],
-  file: [...COMMON_GUEST_FIELDS, 'assetId'],
+  file: [...COMMON_GUEST_FIELDS, 'assetId', 'caption'],
   todo: [...COMMON_GUEST_FIELDS, 'title', 'items'],
   color: [...COMMON_GUEST_FIELDS, 'hex', 'label'],
   column: [...COMMON_GUEST_FIELDS, 'title', 'collapsed'],
