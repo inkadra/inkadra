@@ -4,13 +4,17 @@ import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { afterEach, expect, it, vi } from 'vitest';
 import * as Y from 'yjs';
+import { api } from '../../lib/api.ts';
 import { NoteSideSheet } from '../NoteSideSheet.tsx';
 import { fillFragment } from '../note.tsx';
 import { BoardStore } from '../store.ts';
 import { ClientReviewView } from './ClientReviewView.tsx';
 import { resolveDroppedShot, ScheduleView, SHOT_DRAG_TYPE } from './ScheduleView.tsx';
 
-vi.mock('react-i18next', () => ({ useTranslation: () => ({ t: (key: string) => key }) }));
+vi.mock('react-i18next', () => {
+  const t = (key: string) => key;
+  return { useTranslation: () => ({ t }) };
+});
 
 const disposals: Array<() => void> = [];
 afterEach(() => {
@@ -131,8 +135,24 @@ it('renders the dropped shot identity and rejects foreign, malformed and read-on
   );
   createElement(doc, 'frame', { x: 100, y: 0 }, { label: '7A' }, { userId: null });
   const payload = JSON.stringify({ boardId: 'board', shotId: frame.id });
+  const day = {
+    id: crypto.randomUUID(),
+    boardId: 'board',
+    projectId: crypto.randomUUID(),
+    revision: 1,
+    date: '2026-11-02',
+    callTime: '08:00',
+    wrap: null,
+    location: '',
+    notes: '',
+    blocks: [],
+  };
+  vi.spyOn(api, 'get').mockResolvedValue({ items: [day], nextCursor: null });
+  const put = vi
+    .spyOn(api, 'put')
+    .mockImplementation(async (_path, input) => ({ ...day, ...(input as object), revision: 2 }));
   const host = await mount(<ScheduleView store={store} boardId="board" />);
-  const drop = host.querySelector('.film-shell__drop');
+  const drop = host.querySelector('.schedule__day');
   const event = new Event('drop', { bubbles: true, cancelable: true });
   Object.defineProperty(event, 'dataTransfer', {
     value: { getData: (type: string) => (type === SHOT_DRAG_TYPE ? payload : '') },
@@ -141,7 +161,9 @@ it('renders the dropped shot identity and rejects foreign, malformed and read-on
     drop?.dispatchEvent(event);
   });
   expect(drop?.textContent).toContain('5D');
-  expect(drop?.textContent).not.toContain('7A');
+  expect(put).toHaveBeenCalledOnce();
+  expect(host.querySelector('.film-shell__badge')).toBeNull();
+  expect(drop?.querySelector('.schedule__block')?.textContent).not.toContain('7A');
   expect(resolveDroppedShot(payload, 'board', [frame.id], true)).toBeNull();
   expect(resolveDroppedShot(payload, 'other-board', [frame.id], false)).toBeNull();
   expect(resolveDroppedShot(payload, 'board', [], false)).toBeNull();
@@ -150,7 +172,9 @@ it('renders the dropped shot identity and rejects foreign, malformed and read-on
   }
   const viewer = await mount(<ScheduleView store={store} boardId="board" readOnly />);
   await act(async () => {
-    viewer.querySelector('.film-shell__drop')?.dispatchEvent(event);
+    viewer.querySelector('.schedule__day')?.dispatchEvent(event);
   });
-  expect(viewer.querySelector('.film-shell__drop')?.textContent).not.toContain('5D');
+  expect(viewer.querySelector('.schedule__day')?.textContent).not.toContain('5D');
+  expect(viewer.querySelector('fieldset')?.disabled).toBe(true);
+  expect(put).toHaveBeenCalledOnce();
 });

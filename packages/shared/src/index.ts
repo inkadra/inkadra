@@ -10,6 +10,7 @@ export * from './instance.ts';
 export * from './notifications.ts';
 export * from './projects.ts';
 export * from './reviews.ts';
+export * from './schedule.ts';
 export * from './search.ts';
 export * from './sharing.ts';
 export * from './users.ts';

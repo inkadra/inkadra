@@ -59,6 +59,9 @@
     },
     {
       "name": "Clip"
+    },
+    {
+      "name": "Schedule"
     }
   ],
   "components": {
@@ -192,6 +195,292 @@
         },
         "required": [
           "reason"
+        ]
+      },
+      "Schedule": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ShootingDay"
+            }
+          },
+          "nextCursor": {
+            "type": "null"
+          }
+        },
+        "required": [
+          "items",
+          "nextCursor"
+        ]
+      },
+      "ShootingDay": {
+        "type": "object",
+        "properties": {
+          "date": {
+            "type": "string",
+            "format": "date"
+          },
+          "callTime": {
+            "type": "string",
+            "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$"
+          },
+          "wrap": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$"
+          },
+          "location": {
+            "type": "string",
+            "maxLength": 1000
+          },
+          "notes": {
+            "type": "string",
+            "maxLength": 10000
+          },
+          "blocks": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ScheduleBlock"
+            },
+            "maxItems": 500
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10"
+          },
+          "projectId": {
+            "type": "string",
+            "format": "uuid",
+            "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10"
+          },
+          "boardId": {
+            "type": "string",
+            "format": "uuid",
+            "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10"
+          },
+          "revision": {
+            "type": "integer",
+            "minimum": 1
+          }
+        },
+        "required": [
+          "date",
+          "callTime",
+          "wrap",
+          "location",
+          "notes",
+          "blocks",
+          "id",
+          "projectId",
+          "boardId",
+          "revision"
+        ]
+      },
+      "ScheduleBlock": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "setup",
+              "shot",
+              "break",
+              "move",
+              "note"
+            ]
+          },
+          "title": {
+            "type": "string",
+            "maxLength": 500
+          },
+          "start": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$",
+            "description": "Local clock time; null follows the previous block."
+          },
+          "duration": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 1440,
+            "description": "Estimated minutes, not shot screen duration."
+          },
+          "shotId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^[A-Za-z0-9_-]{8,64}$",
+            "description": "Element id in the board document.",
+            "example": "V1StGXR8_Z5jdHi6B-myT"
+          },
+          "cast": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 120
+            },
+            "maxItems": 100
+          },
+          "departments": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 120
+            },
+            "maxItems": 100
+          }
+        },
+        "required": [
+          "id",
+          "type",
+          "title",
+          "start",
+          "duration",
+          "shotId",
+          "cast",
+          "departments"
+        ],
+        "additionalProperties": false
+      },
+      "ApiError": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "object",
+            "properties": {
+              "code": {
+                "type": "string",
+                "enum": [
+                  "bad_request",
+                  "unauthorized",
+                  "forbidden",
+                  "not_found",
+                  "conflict",
+                  "payload_too_large",
+                  "rate_limited",
+                  "internal"
+                ]
+              },
+              "message": {
+                "type": "string"
+              },
+              "details": {}
+            },
+            "required": [
+              "code",
+              "message"
+            ]
+          }
+        },
+        "required": [
+          "error"
+        ]
+      },
+      "ShootingDayInput": {
+        "type": "object",
+        "properties": {
+          "date": {
+            "type": "string",
+            "format": "date"
+          },
+          "callTime": {
+            "type": "string",
+            "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$"
+          },
+          "wrap": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$"
+          },
+          "location": {
+            "type": "string",
+            "maxLength": 1000
+          },
+          "notes": {
+            "type": "string",
+            "maxLength": 10000
+          },
+          "blocks": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ScheduleBlock"
+            },
+            "maxItems": 500
+          }
+        },
+        "required": [
+          "date",
+          "callTime",
+          "wrap",
+          "location",
+          "notes",
+          "blocks"
+        ],
+        "additionalProperties": false
+      },
+      "UpdateShootingDay": {
+        "type": "object",
+        "properties": {
+          "date": {
+            "type": "string",
+            "format": "date"
+          },
+          "callTime": {
+            "type": "string",
+            "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$"
+          },
+          "wrap": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$"
+          },
+          "location": {
+            "type": "string",
+            "maxLength": 1000
+          },
+          "notes": {
+            "type": "string",
+            "maxLength": 10000
+          },
+          "blocks": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ScheduleBlock"
+            },
+            "maxItems": 500
+          },
+          "revision": {
+            "type": "integer",
+            "minimum": 1
+          }
+        },
+        "required": [
+          "date",
+          "callTime",
+          "wrap",
+          "location",
+          "notes",
+          "blocks",
+          "revision"
         ]
       },
       "Health": {
@@ -472,40 +761,6 @@
           "status",
           "expected",
           "actual"
-        ]
-      },
-      "ApiError": {
-        "type": "object",
-        "properties": {
-          "error": {
-            "type": "object",
-            "properties": {
-              "code": {
-                "type": "string",
-                "enum": [
-                  "bad_request",
-                  "unauthorized",
-                  "forbidden",
-                  "not_found",
-                  "conflict",
-                  "payload_too_large",
-                  "rate_limited",
-                  "internal"
-                ]
-              },
-              "message": {
-                "type": "string"
-              },
-              "details": {}
-            },
-            "required": [
-              "code",
-              "message"
-            ]
-          }
-        },
-        "required": [
-          "error"
         ]
       },
       "Session": {
@@ -4308,6 +4563,392 @@
     "parameters": {}
   },
   "paths": {
+    "/api/v1/boards/{boardId}/schedule": {
+      "get": {
+        "tags": [
+          "Schedule"
+        ],
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Read shooting days for this board; requires viewer access.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10"
+            },
+            "required": true,
+            "name": "boardId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Shooting days ordered by date and id.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Schedule"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Schedule"
+        ],
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Create a project shooting day anchored to this board; requires editor access.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10"
+            },
+            "required": true,
+            "name": "boardId",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ShootingDayInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ShootingDay"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/boards/{boardId}/schedule/{dayId}": {
+      "put": {
+        "tags": [
+          "Schedule"
+        ],
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Replace a day and its ordered blocks with revision checking; requires editor access.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10"
+            },
+            "required": true,
+            "name": "boardId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10"
+            },
+            "required": true,
+            "name": "dayId",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateShootingDay"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ShootingDay"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Stale revision or removed day. Reload before editing.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Schedule"
+        ],
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Remove a shooting day; requires editor access and its current revision.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10"
+            },
+            "required": true,
+            "name": "boardId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10"
+            },
+            "required": true,
+            "name": "dayId",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "revision": {
+                    "type": "integer",
+                    "minimum": 1
+                  }
+                },
+                "required": [
+                  "revision"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Removed"
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Stale revision or removed day.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/health": {
       "get": {
         "tags": [

@@ -2201,3 +2201,76 @@ select.film-status {
     flex-wrap: wrap;
   }
 }
+
+.schedule__days {
+  display: grid;
+  gap: 20px;
+  min-width: 0;
+  flex: 1;
+}
+.schedule__queue {
+  flex: 0 0 220px;
+}
+.schedule__day {
+  background: var(--ink-surface-1);
+  border: 1px solid var(--ink-border-default);
+  border-radius: 12px;
+  padding: 16px;
+}
+.schedule__day fieldset {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+}
+.schedule__fields {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin: 12px 0;
+}
+.schedule label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+}
+.schedule input,
+.schedule select,
+.schedule textarea {
+  color: inherit;
+  background: var(--ink-surface-1);
+  border: 1px solid var(--ink-border-default);
+  border-radius: 5px;
+  padding: 6px;
+  max-width: 100%;
+}
+.schedule__block {
+  border-left: 3px solid #668bbf;
+  padding: 12px;
+  margin: 16px 0;
+  background: var(--ink-surface-2);
+}
+.schedule__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+@media (max-width: 700px) {
+  .schedule .film-shell__columns {
+    flex-direction: column;
+  }
+  .schedule__queue {
+    flex-basis: auto;
+  }
+}
+
+.schedule .film-shell__columns {
+  grid-template-columns: minmax(180px, 240px) minmax(0, 1fr);
+}
+@media (max-width: 720px) {
+  .schedule .film-shell__columns {
+    grid-template-columns: 1fr;
+  }
+}

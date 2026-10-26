@@ -726,3 +726,27 @@ export const boardVersion = pgTable(
     check('board_version_named_ck', sql`${t.kind} <> 'named' or ${t.name} is not null`),
   ],
 );
+
+// Production planning is separate from storyboard content (decision 0022).
+export const shootingDay = pgTable(
+  'shooting_day',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    projectId: uuid('project_id')
+      .notNull()
+      .references(() => project.id, { onDelete: 'cascade' }),
+    boardId: uuid('board_id')
+      .notNull()
+      .references(() => board.id, { onDelete: 'cascade' }),
+    date: text('date').notNull(),
+    callTime: text('call_time').notNull(),
+    wrap: text('wrap'),
+    location: text('location').notNull(),
+    notes: text('notes').notNull(),
+    blocks: jsonb('blocks').$type<import('@inkadra/shared').ScheduleBlock[]>().notNull(),
+    revision: integer('revision').notNull().default(1),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [index('shooting_day_board_date_idx').on(t.boardId, t.date)],
+);
