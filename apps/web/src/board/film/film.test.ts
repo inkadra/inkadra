@@ -120,17 +120,20 @@ describe('search, tags and viewer', () => {
   });
 });
 
-it('includes schedule and review views in board views', async () => {
+it('includes schedule, review and moodboard views in board views', async () => {
   const { VIEWS } = await import('../BoardPage.tsx');
   expect(VIEWS.map((v) => v.view)).toEqual([
     'storyboard',
     'shotlist',
     'schedule',
     'review',
+    'moodboard',
     'canvas',
   ]);
   const scheduleView = VIEWS.find((v) => v.view === 'schedule');
   expect(scheduleView?.icon).toBe('calendar');
   const reviewView = VIEWS.find((v) => v.view === 'review');
   expect(reviewView?.icon).toBe('people');
+  const moodboardView = VIEWS.find((v) => v.view === 'moodboard');
+  expect(moodboardView?.icon).toBe('image');
 });

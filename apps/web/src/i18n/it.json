@@ -90,7 +90,8 @@
       "toDark": "Passa al tema scuro",
       "toLight": "Passa al tema chiaro"
     },
-    "shared": "Condivisi con te"
+    "shared": "Condivisi con te",
+    "moodboard": "Moodboard"
   },
   "home": {
     "greeting": {
@@ -461,7 +462,8 @@
       "shotlist": "Shot list",
       "canvas": "Lavagna",
       "schedule": "Piano riprese",
-      "review": "Revisione"
+      "review": "Revisione",
+      "moodboard": "Moodboard"
     },
     "aspect": {
       "label": "Formato",

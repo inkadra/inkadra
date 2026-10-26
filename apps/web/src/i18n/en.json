@@ -90,7 +90,8 @@
       "toDark": "Switch to dark theme",
       "toLight": "Switch to light theme"
     },
-    "shared": "Shared with you"
+    "shared": "Shared with you",
+    "moodboard": "Moodboard"
   },
   "home": {
     "greeting": {
@@ -461,7 +462,8 @@
       "shotlist": "Shot list",
       "canvas": "Canvas",
       "schedule": "Schedule",
-      "review": "Review"
+      "review": "Review",
+      "moodboard": "Moodboard"
     },
     "aspect": {
       "label": "Aspect ratio",

@@ -125,18 +125,21 @@ export function AppLayout() {
   const isStoryboard = projectBoards?.find((b) => b.id === openBoardId)?.kind === 'storyboard';
   const storyboardBoard = projectBoards?.find((b) => b.kind === 'storyboard');
   const view = params.get('view');
-  const currentView: 'canvas' | 'storyboard' | 'shotlist' | 'schedule' | 'review' =
+  const currentView: 'canvas' | 'storyboard' | 'shotlist' | 'schedule' | 'review' | 'moodboard' =
     view === 'shotlist' ||
     view === 'storyboard' ||
     view === 'canvas' ||
     view === 'schedule' ||
-    view === 'review'
+    view === 'review' ||
+    view === 'moodboard'
       ? view
       : isStoryboard
         ? 'storyboard'
         : 'canvas';
 
-  const showView = (v: 'canvas' | 'storyboard' | 'shotlist' | 'schedule' | 'review') => {
+  const showView = (
+    v: 'canvas' | 'storyboard' | 'shotlist' | 'schedule' | 'review' | 'moodboard',
+  ) => {
     if (!projectId) return;
     setParams(
       (p) => {
@@ -315,13 +318,50 @@ export function AppLayout() {
             onClick={go(`/p/${p.id}`)}
           />
           {p.id === projectId && (
-            <BoardTree
-              projectId={p.id}
-              parentId={p.rootBoardId}
-              activeId={boardId}
-              depth={1}
-              go={go}
-            />
+            <>
+              <NavItem
+                icon="storyboard"
+                label={t('nav.storyboard')}
+                active={currentView === 'storyboard'}
+                onClick={() => showView('storyboard')}
+                style={{ paddingLeft: 22 }}
+              />
+              <NavItem
+                icon="shotlist"
+                label={t('nav.shotlist')}
+                active={currentView === 'shotlist'}
+                onClick={() => showView('shotlist')}
+                style={{ paddingLeft: 22 }}
+              />
+              <NavItem
+                icon="calendar"
+                label={t('nav.schedule')}
+                active={currentView === 'schedule'}
+                onClick={() => showView('schedule')}
+                style={{ paddingLeft: 22 }}
+              />
+              <NavItem
+                icon="people"
+                label={t('nav.clients')}
+                active={currentView === 'review'}
+                onClick={() => showView('review')}
+                style={{ paddingLeft: 22 }}
+              />
+              <NavItem
+                icon="image"
+                label={t('nav.moodboard')}
+                active={currentView === 'moodboard'}
+                onClick={() => showView('moodboard')}
+                style={{ paddingLeft: 22 }}
+              />
+              <BoardTree
+                projectId={p.id}
+                parentId={p.rootBoardId}
+                activeId={boardId}
+                depth={1}
+                go={go}
+              />
+            </>
           )}
         </div>
       ))}

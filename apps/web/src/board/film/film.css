@@ -1827,3 +1827,315 @@ select.film-status {
   border-top: 1px solid #232327;
   box-sizing: border-box;
 }
+
+/* Moodboard Reference Inspector View --------------------------------------------- */
+
+.moodboard-view {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  background: var(--ink-bg-app, #0e0e10);
+  overflow: hidden;
+}
+
+.moodboard-topbar {
+  height: 52px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 16px;
+  border-bottom: 1px solid #1c1c1f;
+  box-sizing: border-box;
+  flex: none;
+}
+
+.moodboard-body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  position: relative;
+  overflow: hidden;
+}
+
+.moodboard-stage {
+  flex: 1;
+  min-width: 0;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  padding: 16px 20px 14px 20px;
+  box-sizing: border-box;
+  overflow-y: auto;
+  gap: 14px;
+}
+
+.moodboard-nav-btn {
+  position: absolute;
+  top: 45%;
+  transform: translateY(-50%);
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: #141416;
+  border: 1px solid #232327;
+  color: #ededed;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  z-index: 5;
+  transition: background 0.15s ease;
+}
+
+.moodboard-nav-btn:hover {
+  background: #1c1c1f;
+}
+
+.moodboard-nav-btn.is-prev {
+  left: 28px;
+}
+
+.moodboard-nav-btn.is-next {
+  right: 28px;
+}
+
+.moodboard-canvas-wrapper {
+  flex: 1;
+  min-height: 380px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+.moodboard-canvas-art {
+  width: 100%;
+  max-width: 702px;
+  aspect-ratio: 702 / 480;
+  border-radius: 6px;
+  overflow: hidden;
+  position: relative;
+  background: #0a0a0c;
+  border: 1px solid #18181b;
+  transition: transform 0.2s ease;
+}
+
+.moodboard-canvas-art.is-zoom-100 {
+  transform: scale(1.08);
+}
+
+.moodboard-canvas-art.is-zoom-150 {
+  transform: scale(1.22);
+}
+
+.moodboard-svg-base {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.moodboard-split-view {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+.moodboard-split-overlay {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  border-right: 2px solid #ededed;
+}
+
+.moodboard-split-slider {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: ew-resize;
+  z-index: 6;
+  margin: 0;
+}
+
+.moodboard-split-handle {
+  position: absolute;
+  top: calc(50% - 14px);
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #ededed;
+  color: #141414;
+  display: grid;
+  place-items: center;
+  font-size: 12px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+  transform: translateX(-50%);
+  pointer-events: none;
+  z-index: 5;
+}
+
+.moodboard-pin-marker {
+  position: absolute;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #7cc4c9;
+  color: #141414;
+  font-size: 10px;
+  font-weight: 600;
+  display: grid;
+  place-items: center;
+  box-shadow: 0 0 0 3px rgba(124, 196, 201, 0.25);
+  transform: translate(-50%, -50%);
+}
+
+.moodboard-caption-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  max-width: 702px;
+  padding-top: 10px;
+  font-size: 12px;
+}
+
+.moodboard-carousel {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 4px 0;
+  flex: none;
+}
+
+.moodboard-thumb-btn {
+  width: 76px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  overflow: hidden;
+  background: #1e1416;
+  cursor: pointer;
+  flex: none;
+  opacity: 0.55;
+  transition:
+    opacity 0.15s ease,
+    outline 0.15s ease;
+}
+
+.moodboard-thumb-btn:hover {
+  opacity: 0.85;
+}
+
+.moodboard-thumb-btn.is-active {
+  opacity: 1;
+  outline: 2px solid #3b7cf6;
+  outline-offset: 2px;
+}
+
+.moodboard-hints {
+  display: flex;
+  gap: 18px;
+  font-size: 11px;
+  color: #808086;
+  justify-content: center;
+  flex: none;
+}
+
+.moodboard-drawer {
+  width: 322px;
+  flex: none;
+  background: #121214;
+  border-left: 1px solid #1c1c1f;
+  padding: 16px 18px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  overflow-y: auto;
+}
+
+.moodboard-exif-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 5px 0;
+  border-top: 1px solid #1f1f23;
+}
+
+.moodboard-color-swatch-btn {
+  flex: 1;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: #9a9a9a;
+  font:
+    400 10px Inter,
+    sans-serif;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  cursor: pointer;
+  text-align: left;
+}
+
+.moodboard-color-swatch-box {
+  display: block;
+  height: 34px;
+  border-radius: 6px;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+}
+
+.moodboard-copied-toast {
+  position: absolute;
+  left: 120px;
+  top: -14px;
+  font-size: 10px;
+  background: #ededed;
+  color: #141414;
+  padding: 2px 6px;
+  border-radius: 4px;
+  animation: fadeIn 0.15s ease;
+}
+
+.moodboard-comments-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  overflow-y: auto;
+}
+
+.moodboard-comment-input-box {
+  margin-top: auto;
+  height: 32px;
+  border-radius: 8px;
+  border: 1px solid #2a2a2e;
+  background: #141416;
+  color: #ededed;
+  padding: 0 10px;
+  box-sizing: border-box;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.moodboard-comment-input {
+  flex: 1;
+  background: transparent;
+  border: 0;
+  color: #ededed;
+  font:
+    400 12px Inter,
+    sans-serif;
+  outline: none;
+}
+
+.moodboard-comment-input::placeholder {
+  color: #808086;
+}

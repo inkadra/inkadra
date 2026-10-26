@@ -22,6 +22,7 @@ import { CommentsButton } from './CommentsPanel.tsx';
 import { ContextMenu } from './chrome.tsx';
 import { type ConnectionStatus, useBoardConnection } from './connection.ts';
 import { ClientReviewView } from './film/ClientReviewView.tsx';
+import { MoodboardView } from './film/MoodboardView.tsx';
 import { ScheduleView } from './film/ScheduleView.tsx';
 import { ShotList } from './film/ShotList.tsx';
 import { StoryboardView } from './film/StoryboardView.tsx';
@@ -37,12 +38,13 @@ import './board.css';
 
 const canEdit = (role: ProjectRole | null | undefined) => role === 'owner' || role === 'editor';
 
-export type BoardView = 'storyboard' | 'shotlist' | 'schedule' | 'review' | 'canvas';
+export type BoardView = 'storyboard' | 'shotlist' | 'schedule' | 'review' | 'moodboard' | 'canvas';
 export const VIEWS: Array<{ view: BoardView; icon: IconName }> = [
   { view: 'storyboard', icon: 'storyboard' },
   { view: 'shotlist', icon: 'shotlist' },
   { view: 'schedule', icon: 'calendar' },
   { view: 'review', icon: 'people' },
+  { view: 'moodboard', icon: 'image' },
   { view: 'canvas', icon: 'board' },
 ];
 
@@ -55,6 +57,7 @@ export function useBoardView(kind: Board['kind'] | undefined): [BoardView, (v: B
     asked === 'storyboard' ||
     asked === 'schedule' ||
     asked === 'review' ||
+    asked === 'moodboard' ||
     asked === 'canvas'
       ? asked
       : kind === 'storyboard'
@@ -495,6 +498,8 @@ function BoardScreen({
         userId={user.id}
         readOnly={!!preview || !editable}
       />
+    ) : view === 'moodboard' ? (
+      <MoodboardView key="moodboard" projectId={projectId} onClose={() => setView('storyboard')} />
     ) : preview ? (
       <Canvas
         key={preview.version.id}
