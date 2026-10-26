@@ -1,6 +1,7 @@
 import {
   addFrame,
   addScene,
+  applyTemplate,
   DEFAULT_WIDTH,
   inflate,
   intersects,
@@ -8,6 +9,7 @@ import {
   type Point,
   type Rect,
   type TemplateId,
+  type TemplateLabels,
 } from '@inkadra/canvas-core';
 import type * as Y from 'yjs';
 import { LOCAL } from './store.ts';
@@ -32,5 +34,42 @@ export function seedStoryboard(doc: Y.Doc, title: string, userId: string): boole
     const scene = addScene(doc, { number: '1', title }, opts, { x: 0, y: 0 });
     for (let i = 0; i < 3; i++) addFrame(doc, scene.id, null, {}, opts);
   }, LOCAL);
+  return true;
+}
+
+export function templateLabels(t: (key: string) => string): TemplateLabels {
+  return {
+    moodboard: {
+      refs: t('templates.moodboard.refs'),
+      light: t('templates.moodboard.light'),
+      locations: t('templates.moodboard.locations'),
+      palette: t('templates.moodboard.palette'),
+    },
+    storyboard: { scene: t('templates.storyboard.scene') },
+    production: {
+      todo: t('templates.production.todo'),
+      doing: t('templates.production.doing'),
+      done: t('templates.production.done'),
+    },
+  };
+}
+
+/** Templates a new board can be opened with from Home (decision 0021's navigation request). */
+export type StartTemplate = Exclude<TemplateId, 'storyboard'>;
+export const isStartTemplate = (value: unknown): value is StartTemplate =>
+  value === 'moodboard' || value === 'production';
+
+/** Lay out a canvas template on a board that just synced empty, in one undo step. */
+export function seedTemplate(
+  doc: Y.Doc,
+  id: StartTemplate,
+  labels: TemplateLabels,
+  userId: string,
+): boolean {
+  if (listElements(doc).length > 0) return false;
+  doc.transact(
+    () => applyTemplate(doc, id, { x: 80, y: 80 }, labels, { userId, origin: LOCAL }),
+    LOCAL,
+  );
   return true;
 }

@@ -49,6 +49,19 @@ export function useUnreadCount(): [number, () => Promise<void>] {
   return [unread, count];
 }
 
+/** What happened, after the actor's name; unknown types read as a plain line. */
+export function describeNotification(
+  n: Pick<Notification, 'type' | 'reviewStatus'>,
+  t: (key: string, values?: Record<string, string>) => string,
+): string {
+  const type = (KNOWN_TYPES as readonly string[]).includes(n.type) ? n.type : 'unknown';
+  if (type === 'review' && n.reviewStatus)
+    return t('notifications.type.reviewStatus', {
+      status: t(`review.status.${reviewKey(n.reviewStatus)}`),
+    });
+  return t(`notifications.type.${type}`);
+}
+
 /** Bell of the app header: unread count, checked once a minute and when the window is focused. */
 export function NotificationBell({
   unread,
@@ -116,7 +129,7 @@ function avatarBg(name: string | null | undefined): string {
   return colors[hash % colors.length] ?? '#8A8A90';
 }
 
-function relativeTime(iso: string, language: string): string {
+export function relativeTime(iso: string, language: string): string {
   const minutes = Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 60000));
   const formatter = new Intl.RelativeTimeFormat(language, { numeric: 'auto', style: 'short' });
   if (minutes < 60) return formatter.format(-minutes, 'minute');
@@ -201,15 +214,6 @@ export function NotificationList({
     } catch {
       setActionError(true);
     }
-  };
-
-  const describe = (n: Notification) => {
-    const type = (KNOWN_TYPES as readonly string[]).includes(n.type) ? n.type : 'unknown';
-    if (type === 'review' && n.reviewStatus)
-      return t('notifications.type.reviewStatus', {
-        status: t(`review.status.${reviewKey(n.reviewStatus)}`),
-      });
-    return t(`notifications.type.${type}`);
   };
 
   const filteredItems = filterNotifications(items, filter);
@@ -337,7 +341,7 @@ export function NotificationList({
                     <div className="notification__body">
                       <span className="notification__line">
                         {actor && <b>{actor} </b>}
-                        {describe(n)}
+                        {describeNotification(n, t)}
                       </span>
                       <div className="notification__subline">
                         {(n.boardTitle || n.projectName) && (

@@ -4,7 +4,13 @@ import { describe, expect, it, vi } from 'vitest';
 import * as Y from 'yjs';
 import { CommandPalette } from './chrome.tsx';
 import { BoardStore } from './store.ts';
-import { seedStoryboard, templateRect } from './templates.ts';
+import {
+  isStartTemplate,
+  seedStoryboard,
+  seedTemplate,
+  templateLabels,
+  templateRect,
+} from './templates.ts';
 
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
@@ -78,5 +84,28 @@ describe('templates', () => {
       expect(occupied.every((other) => !intersects(rect, other))).toBe(true);
       expect(rect.y).toBeGreaterThan(occupied.at(-1)?.y ?? 0);
     }
+  });
+
+  it('lays out a template requested from Home on an empty board only, in one undo step', () => {
+    expect(['moodboard', 'production'].every(isStartTemplate)).toBe(true);
+    expect(isStartTemplate('storyboard')).toBe(false);
+    expect(isStartTemplate(undefined)).toBe(false);
+    const doc = new Y.Doc();
+    const store = new BoardStore(doc);
+    const labels = templateLabels((key) => key);
+    expect(seedTemplate(doc, 'production', labels, 'filmmaker')).toBe(true);
+    const titles = listElements(doc).map((e) => ('title' in e ? e.title : null));
+    expect(titles).toEqual(
+      expect.arrayContaining([
+        'templates.production.todo',
+        'templates.production.doing',
+        'templates.production.done',
+      ]),
+    );
+    expect(seedTemplate(doc, 'moodboard', labels, 'filmmaker')).toBe(false);
+    store.undo.undo();
+    expect(listElements(doc)).toEqual([]);
+    store.destroy();
+    doc.destroy();
   });
 });

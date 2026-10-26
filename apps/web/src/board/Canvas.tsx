@@ -104,7 +104,7 @@ import { openComments } from './review-store.ts';
 import { commandFor, isTyping } from './shortcuts.ts';
 import { LOCAL } from './store.ts';
 import { TagPopover } from './tags.tsx';
-import { templateRect } from './templates.ts';
+import { templateLabels, templateRect } from './templates.ts';
 import { startUpload } from './uploads.ts';
 import { MediaViewer } from './viewer.tsx';
 import { loadViewport, saveViewport } from './viewport.ts';
@@ -1379,26 +1379,7 @@ export function Canvas({
       return;
     }
     store.undo.stopCapturing();
-    const ids = applyTemplate(
-      doc,
-      id,
-      rect,
-      {
-        moodboard: {
-          refs: t('templates.moodboard.refs'),
-          light: t('templates.moodboard.light'),
-          locations: t('templates.moodboard.locations'),
-          palette: t('templates.moodboard.palette'),
-        },
-        storyboard: { scene: t('templates.storyboard.scene') },
-        production: {
-          todo: t('templates.production.todo'),
-          doing: t('templates.production.doing'),
-          done: t('templates.production.done'),
-        },
-      },
-      { userId, origin: LOCAL },
-    );
+    const ids = applyTemplate(doc, id, rect, templateLabels(t), { userId, origin: LOCAL });
     store.undo.stopCapturing();
     select(ids);
     setViewport(fitRect(rect, size.w, size.h));

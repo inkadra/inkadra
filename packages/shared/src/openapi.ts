@@ -8,7 +8,14 @@ import {
   UploadMetadata,
   VariantParams,
 } from './assets.ts';
-import { Board, BoardDetail, CreateBoard, UpdateBoard } from './boards.ts';
+import {
+  Board,
+  BoardDetail,
+  CreateBoard,
+  RecentBoard,
+  RecentBoardQuery,
+  UpdateBoard,
+} from './boards.ts';
 import { BoardColumns, ClipRequest, ClipResult } from './clip.ts';
 import {
   CommentCounts,
@@ -65,7 +72,14 @@ import {
   ReviewHistoryQuery,
   SetElementReview,
 } from './reviews.ts';
-import { Schedule, ShootingDay, ShootingDayInput, UpdateShootingDay } from './schedule.ts';
+import {
+  MySchedule,
+  MyScheduleQuery,
+  Schedule,
+  ShootingDay,
+  ShootingDayInput,
+  UpdateShootingDay,
+} from './schedule.ts';
 import { SearchQuery, SearchResult, TagCount } from './search.ts';
 import {
   AcceptedInvitation,
@@ -199,6 +213,24 @@ registry.registerPath({
     204: { description: 'Removed' },
     ...errors,
     409: { description: 'Stale revision or removed day.', ...json(ApiError) },
+  },
+});
+
+registry.registerPath({
+  method: 'get',
+  path: v1('/me/shooting-days'),
+  tags: ['Schedule'],
+  security: secured,
+  summary: 'Shooting days of every board you can open, between two local dates.',
+  description:
+    'For the Home: days in projects that are not archived, ordered by date, call time and id. ' +
+    'Each day is checked with the same rule as GET /boards/{boardId}/schedule (viewer on its ' +
+    'board), so days of boards you cannot open are left out. At most 62 days per request.',
+  request: { query: MyScheduleQuery },
+  responses: {
+    200: { description: 'Shooting days', ...json(MySchedule) },
+    400: errors[400],
+    401: errors[401],
   },
 });
 
@@ -624,6 +656,26 @@ registry.registerPath({
   summary: 'Move a board and its sub-boards to the trash. The root board cannot be deleted.',
   request: { params: idParam('boardId') },
   responses: { 204: { description: 'Deleted' }, ...errors },
+});
+
+registry.registerPath({
+  method: 'get',
+  path: v1('/me/recent-boards'),
+  tags: ['Boards'],
+  security: secured,
+  summary: 'Boards you can open, most recently edited first.',
+  description:
+    'For the Home: boards of projects that are not archived, including boards shared with ' +
+    'you, ordered by `editedAt`. Not paged; `limit` caps the list.',
+  request: { query: RecentBoardQuery },
+  responses: {
+    200: {
+      description: 'Boards',
+      ...json(z.object({ items: z.array(RecentBoard), nextCursor: z.null() })),
+    },
+    400: errors[400],
+    401: errors[401],
+  },
 });
 
 registry.registerPath({

@@ -483,6 +483,46 @@
           "revision"
         ]
       },
+      "MySchedule": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PlannedShootingDay"
+            }
+          },
+          "nextCursor": {
+            "type": "null"
+          }
+        },
+        "required": [
+          "items",
+          "nextCursor"
+        ]
+      },
+      "PlannedShootingDay": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ShootingDay"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "boardTitle": {
+                "type": "string"
+              },
+              "projectName": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "boardTitle",
+              "projectName"
+            ]
+          }
+        ]
+      },
       "Health": {
         "type": "object",
         "properties": {
@@ -1633,6 +1673,31 @@
             "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10"
           }
         }
+      },
+      "RecentBoard": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/Board"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "projectName": {
+                "type": "string"
+              },
+              "editedAt": {
+                "type": "string",
+                "format": "date-time",
+                "example": "2026-11-02T09:30:00.000Z",
+                "description": "Last change of the board itself or of its document, whichever is later."
+              }
+            },
+            "required": [
+              "projectName",
+              "editedAt"
+            ]
+          }
+        ]
       },
       "BoardColumns": {
         "type": "object",
@@ -4949,6 +5014,79 @@
         }
       }
     },
+    "/api/v1/me/shooting-days": {
+      "get": {
+        "tags": [
+          "Schedule"
+        ],
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Shooting days of every board you can open, between two local dates.",
+        "description": "For the Home: days in projects that are not archived, ordered by date, call time and id. Each day is checked with the same rule as GET /boards/{boardId}/schedule (viewer on its board), so days of boards you cannot open are left out. At most 62 days per request.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "description": "First local date, included."
+            },
+            "required": true,
+            "description": "First local date, included.",
+            "name": "from",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "description": "Last local date, included."
+            },
+            "required": true,
+            "description": "Last local date, included.",
+            "name": "to",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Shooting days",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MySchedule"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/health": {
       "get": {
         "tags": [
@@ -7214,6 +7352,83 @@
           },
           "404": {
             "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/me/recent-boards": {
+      "get": {
+        "tags": [
+          "Boards"
+        ],
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Boards you can open, most recently edited first.",
+        "description": "For the Home: boards of projects that are not archived, including boards shared with you, ordered by `editedAt`. Not paged; `limit` caps the list.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 50,
+              "default": 12
+            },
+            "required": false,
+            "name": "limit",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Boards",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/RecentBoard"
+                      }
+                    },
+                    "nextCursor": {
+                      "type": "null"
+                    }
+                  },
+                  "required": [
+                    "items",
+                    "nextCursor"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
             "content": {
               "application/json": {
                 "schema": {

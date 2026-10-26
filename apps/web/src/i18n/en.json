@@ -107,11 +107,56 @@
       "evening": "Good evening, {{name}}"
     },
     "searchHint": "to search or create",
-    "recent": "Recent",
+    "recent": "Recent projects",
     "noProjects": "No projects yet",
     "noProjectsBody": "Create your first project: a film, a shoot, a client.",
     "noPinned": "Nothing pinned",
-    "shared": "Shared with you"
+    "shared": "Shared with you",
+    "searchPlaceholder": "Search boards, notes, files…",
+    "summary": {
+      "shootingAt": "shooting today at {{location}}, call at {{time}}",
+      "shooting": "shooting today, call at {{time}}",
+      "unread_one": "{{count}} unread notification",
+      "unread_other": "{{count}} unread notifications"
+    },
+    "today": {
+      "title": "Today",
+      "call": "Call time",
+      "location": "Location",
+      "wrap": "Planned wrap",
+      "openSchedule": "Open schedule"
+    },
+    "recentBoards": "Recent boards",
+    "recentBoardsHint": "by last edit",
+    "noRecentBoards": "No boards yet. Create one or start from a template.",
+    "kind": {
+      "project": "Project board"
+    },
+    "activity": {
+      "title": "Activity",
+      "hint": "last 24 hours",
+      "openInbox": "Open inbox →",
+      "empty": "No activity in the last 24 hours."
+    },
+    "loadError": "This section could not be loaded. Reload the page to try again.",
+    "templates": {
+      "title": "Start from a template",
+      "needsProject": "You need a project you can edit.",
+      "blank": {
+        "name": "Blank board",
+        "body": "Start from scratch"
+      }
+    },
+    "newBoard": {
+      "action": "New board",
+      "title": "New board",
+      "project": "Project",
+      "start": "Start from",
+      "name": "Board name",
+      "namePlaceholder": "Location scouting",
+      "create": "Create board",
+      "error": "The board could not be created. Try again."
+    }
   },
   "project": {
     "dialogTitle": "New project",

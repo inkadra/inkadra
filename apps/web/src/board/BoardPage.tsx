@@ -32,7 +32,7 @@ import './film/film.css';
 import { type Peer, uniquePeople, usePeers } from './presence.ts';
 import { projectLanding } from './project-landing.ts';
 import { ShareDialog } from './ShareDialog.tsx';
-import { seedStoryboard } from './templates.ts';
+import { isStartTemplate, seedStoryboard, seedTemplate, templateLabels } from './templates.ts';
 import { useBoardReviews } from './use-board-reviews.ts';
 import './board.css';
 
@@ -225,16 +225,16 @@ function BoardScreen({
   );
   const editable = !!conn && !conn.readOnly && canEdit(detail?.myRole ?? projectRole);
   useEffect(() => {
-    if (
-      location.state?.template !== 'storyboard' ||
-      kind !== 'storyboard' ||
-      conn?.status !== 'synced' ||
-      !editable ||
-      !user
-    )
-      return;
+    const template: unknown = location.state?.template;
+    const storyboard = template === 'storyboard' && kind === 'storyboard';
+    const canvas = isStartTemplate(template) && kind === 'board';
+    if ((!storyboard && !canvas) || conn?.status !== 'synced' || !editable || !user) return;
     conn.store.undo.stopCapturing();
-    seedStoryboard(conn.store.doc, t('templates.storyboard.scene'), user.id);
+    if (isStartTemplate(template)) {
+      seedTemplate(conn.store.doc, template, templateLabels(t), user.id);
+    } else {
+      seedStoryboard(conn.store.doc, t('templates.storyboard.scene'), user.id);
+    }
     conn.store.undo.stopCapturing();
     void navigate(
       { pathname: location.pathname, search: location.search, hash: location.hash },

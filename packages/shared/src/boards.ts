@@ -51,3 +51,17 @@ export const UpdateBoard = z
   .partial()
   .openapi('UpdateBoard');
 export type UpdateBoard = z.infer<typeof UpdateBoard>;
+
+/** A board on the signed-in person's Home, from every project they can open. */
+export const RecentBoard = Board.extend({
+  projectName: z.string(),
+  editedAt: Timestamp.openapi({
+    description: 'Last change of the board itself or of its document, whichever is later.',
+  }),
+}).openapi('RecentBoard');
+export type RecentBoard = z.infer<typeof RecentBoard>;
+
+export const RecentBoardQuery = z
+  .object({ limit: z.coerce.number().int().min(1).max(50).default(12) })
+  .openapi('RecentBoardQuery');
+export type RecentBoardQuery = z.infer<typeof RecentBoardQuery>;

@@ -1,10 +1,18 @@
-import { API_PREFIX, Id, ShootingDayInput, UpdateShootingDay, z } from '@inkadra/shared';
-import { and, asc, eq, sql } from 'drizzle-orm';
+import {
+  API_PREFIX,
+  Id,
+  MyScheduleQuery,
+  type PlannedShootingDay,
+  ShootingDayInput,
+  UpdateShootingDay,
+  z,
+} from '@inkadra/shared';
+import { and, asc, eq, gte, isNull, lte, sql } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
 import { requireBoardRole } from '../access.ts';
 import type { Auth } from '../auth.ts';
 import type { Database } from '../db/client.ts';
-import { shootingDay } from '../db/schema.ts';
+import { board, project, shootingDay } from '../db/schema.ts';
 import { requireActor } from './auth-routes.ts';
 import { HttpError } from './errors.ts';
 
@@ -21,6 +29,46 @@ export function registerScheduleRoutes(
   app: FastifyInstance,
   { db, auth }: { db: Database; auth: Auth },
 ) {
+  // Decision 0022: a cross-board overview checks every day's board like the board's own list.
+  // Every role permits reading, so a board opens with a project role or a grant on it or on
+  // one of its ancestors (trashed ones included, as in boardAccess); filtering here keeps the
+  // days of boards the person cannot open from being loaded at all.
+  app.get(`${API_PREFIX}/me/shooting-days`, async (req) => {
+    const actor = await requireActor(auth, req, db);
+    const { from, to } = MyScheduleQuery.parse(req.query ?? {});
+    // The readable board ids are computed first, so shooting_day is probed through its
+    // (board_id, date) index instead of being scanned across every project's history.
+    const readable = sql`array(
+      with recursive granted as (
+        select g.board_id as id from board_grant g where g.user_id = ${actor.id}
+        union
+        select c.id from board c join granted on c.parent_board_id = granted.id
+      )
+      select id from granted
+      union
+      select b.id from board b join project_member m on m.project_id = b.project_id
+        where m.user_id = ${actor.id}
+    )`;
+    const rows = await db
+      .select({ day: shootingDay, boardTitle: board.title, projectName: project.name })
+      .from(shootingDay)
+      .innerJoin(board, and(eq(board.id, shootingDay.boardId), isNull(board.deletedAt)))
+      .innerJoin(project, and(eq(project.id, board.projectId), isNull(project.archivedAt)))
+      .where(
+        and(
+          sql`${shootingDay.boardId} = any(${readable})`,
+          gte(shootingDay.date, from),
+          lte(shootingDay.date, to),
+        ),
+      )
+      .orderBy(asc(shootingDay.date), asc(shootingDay.callTime), asc(shootingDay.id));
+    const items: PlannedShootingDay[] = rows.map((r) => ({
+      ...publicDay(r.day),
+      boardTitle: r.boardTitle,
+      projectName: r.projectName,
+    }));
+    return { items, nextCursor: null };
+  });
   const base = `${API_PREFIX}/boards/:boardId/schedule`;
   app.get(base, async (req) => {
     const actor = await requireActor(auth, req, db);

@@ -6,6 +6,8 @@ import {
   CreateBoard,
   Id,
   type ProjectRole,
+  type RecentBoard,
+  RecentBoardQuery,
   UpdateBoard,
   z,
 } from '@inkadra/shared';
@@ -14,6 +16,7 @@ import type { FastifyInstance } from 'fastify';
 import { generateKeyBetween } from 'fractional-indexing';
 import {
   type BoardAccess,
+  boardRoles,
   effectiveRole,
   effectiveRoles,
   projectGrants,
@@ -23,7 +26,7 @@ import {
 import type { Auth } from '../auth.ts';
 import { type BoardReader, storedColumns } from '../board-content.ts';
 import type { Database } from '../db/client.ts';
-import { asset, board } from '../db/schema.ts';
+import { asset, board, boardDoc, project } from '../db/schema.ts';
 import { iso } from './api-routes.ts';
 import { requireActor } from './auth-routes.ts';
 import { HttpError } from './errors.ts';
@@ -88,6 +91,51 @@ async function lastChildPosition(db: Pick<Database, 'select'>, parentBoardId: st
 export function registerBoardRoutes(app: FastifyInstance, deps: Deps) {
   const { db, auth } = deps;
   const v1 = (path: string) => `${API_PREFIX}${path}`;
+
+  app.get(v1('/me/recent-boards'), async (req) => {
+    const actor = await requireActor(auth, req, db);
+    const { limit } = RecentBoardQuery.parse(req.query ?? {});
+    // Document edits move board_doc.updated_at only; renames and moves move the board's own.
+    const editedAt = sql<Date>`greatest(${board.updatedAt}, coalesce(${boardDoc.updatedAt}, ${board.updatedAt}))`;
+    const rows = await db
+      .select({ board, projectName: project.name, editedAt })
+      .from(board)
+      .innerJoin(project, and(eq(project.id, board.projectId), isNull(project.archivedAt)))
+      .leftJoin(boardDoc, eq(boardDoc.boardId, board.id))
+      .where(
+        and(
+          isNull(board.deletedAt),
+          sql`(exists (select 1 from project_member m
+              where m.project_id = ${board.projectId} and m.user_id = ${actor.id})
+            or ${board.id} in (
+              with recursive granted as (
+                select g.board_id as id from board_grant g where g.user_id = ${actor.id}
+                union
+                select c.id from board c join granted on c.parent_board_id = granted.id
+              )
+              select id from granted))`,
+        ),
+      )
+      .orderBy(desc(editedAt), asc(board.id))
+      .limit(limit);
+    // The same rule as opening the board decides the role shown, and leaves out the rest.
+    const roles = await boardRoles(
+      db,
+      actor,
+      rows.map((r) => r.board.id),
+    );
+    const items: RecentBoard[] = [];
+    for (const r of rows) {
+      const role = roles.get(r.board.id);
+      if (!role) continue;
+      items.push({
+        ...toBoard(r.board, role),
+        projectName: r.projectName,
+        editedAt: iso(new Date(r.editedAt)),
+      });
+    }
+    return { items, nextCursor: null };
+  });
 
   app.get(v1('/projects/:projectId/boards'), async (req) => {
     const actor = await requireActor(auth, req, db);
