@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { useGuestActions } from './actions.ts';
 import { PickControls, ReviewChip } from './GuestCardExtras.tsx';
 import { GuestComments } from './GuestComments.tsx';
-import { boardTree, canWithdraw, cardLabel, isPicture, shownStatus } from './model.ts';
+import { boardTree, canWithdraw, cardLabel, isPicture, shotLabels, shownStatus } from './model.ts';
 
 const LISTED = new Set(['note', 'image', 'link', 'file', 'todo', 'color', 'board', 'frame']);
 
@@ -29,12 +29,15 @@ export function GuestPanel({
   const writes = rights.comments || rights.review || rights.pick;
   const tree = boardTree(session.boards, session.boardId);
   const cardsId = useId();
-  const cards = (snapshot?.elements ?? []).filter((e) => LISTED.has(e.type));
-  // Cards without text of their own are told apart by number: "Immagine 1", "Immagine 2".
+  const elements = snapshot?.elements ?? [];
+  const cards = elements.filter((e) => LISTED.has(e.type));
+  const shots = shotLabels(elements);
+  // Frames take the shot label of the canvas; cards without text of their own are told apart
+  // by number: "Immagine 1", "Immagine 2".
   const labels = new Map<string, string>();
   const numbers = new Map<string, number>();
   for (const el of cards) {
-    const own = cardLabel(el);
+    const own = (el.type === 'frame' ? shots.get(el.id) : undefined) ?? cardLabel(el);
     if (own) labels.set(el.id, own);
     else {
       const n = (numbers.get(el.type) ?? 0) + 1;

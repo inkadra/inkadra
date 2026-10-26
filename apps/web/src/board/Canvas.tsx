@@ -1830,15 +1830,18 @@ export function Canvas({
           <ContextMenu x={menu.x} y={menu.y} items={menuItems} onClose={() => setMenu(null)} />
         )}
 
-        <UnsortedDrawer
-          ref={unsortedRef}
-          items={snap.unsorted}
-          open={unsortedOpen}
-          onToggle={() => setUnsortedOpen((o) => !o)}
-          selection={selection}
-          dropping={overlay.drop?.kind === 'unsorted'}
-          draggingIds={draggingNested}
-        />
+        {/* Previews hide the unsorted drawer, like the rest of the chrome. */}
+        {!preview && (
+          <UnsortedDrawer
+            ref={unsortedRef}
+            items={snap.unsorted}
+            open={unsortedOpen}
+            onToggle={() => setUnsortedOpen((o) => !o)}
+            selection={selection}
+            dropping={overlay.drop?.kind === 'unsorted'}
+            draggingIds={draggingNested}
+          />
+        )}
         <div className="canvas__corner" data-chrome>
           <Minimap
             elements={visibleCards}

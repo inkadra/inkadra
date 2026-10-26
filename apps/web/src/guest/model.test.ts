@@ -1,6 +1,7 @@
 import type {
   GuestBoard,
   GuestBoardSnapshot,
+  GuestElement,
   GuestElementReview,
   GuestPick,
 } from '@inkadra/shared';
@@ -20,6 +21,7 @@ import {
   retryAfterMs,
   rightsOf,
   SESSION_REFRESH_MS,
+  shotLabels,
   shownStatus,
   togglePick,
   toggleStars,
@@ -225,5 +227,41 @@ describe('card labels', () => {
     expect(cardLabel({ type: 'image' })).toBeNull();
     expect(cardLabel({ type: 'note', body: {} }, 5)).toBeNull();
     expect(cardLabel({ type: 'link', title: 'x'.repeat(80) }, 10)).toBe(`${'x'.repeat(9)}…`);
+  });
+});
+
+describe('shot labels', () => {
+  const el = (over: Record<string, unknown>): GuestElement =>
+    ({
+      id: 'e0000001',
+      type: 'note',
+      x: 0,
+      y: 0,
+      w: 10,
+      z: '1',
+      parent: null,
+      createdBy: null,
+      createdAt: 0,
+      ...over,
+    }) as GuestElement;
+
+  it('names each frame as the canvas does: scene number plus letter, a number when loose', () => {
+    const labels = shotLabels([
+      el({ id: 's0000001', type: 'scene', number: '2', title: 'Il ponte', z: '1' }),
+      el({ id: 'f0000001', type: 'frame', parent: 's0000001', z: '1' }),
+      el({ id: 'f0000002', type: 'frame', parent: 's0000001', z: '2', label: 'X' }),
+      el({ id: 'f0000003', type: 'frame', parent: null, z: '3' }),
+      el({ id: 'f0000004', type: 'frame', parent: 'unsorted', z: '4' }),
+      { id: 'broken', type: 'frame' } as GuestElement,
+    ]);
+    expect(labels.get('f0000001')).toBe('2A');
+    expect(labels.get('f0000002')).toBe('X');
+    expect(labels.get('f0000003')).toBe('1');
+    expect(labels.get('f0000004')).toBe('2');
+    expect(labels.has('broken')).toBe(false);
+  });
+
+  it('is empty without frames', () => {
+    expect(shotLabels([el({})])).toEqual(new Map());
   });
 });

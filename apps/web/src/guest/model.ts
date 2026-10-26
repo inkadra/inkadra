@@ -1,6 +1,9 @@
+import { frameLabels, storyboardOf } from '@inkadra/canvas-core';
+import { Element } from '@inkadra/doc-schema';
 import type {
   GuestBoard,
   GuestBoardSnapshot,
+  GuestElement,
   GuestElementReview,
   GuestPick,
   GuestRole,
@@ -230,4 +233,15 @@ export function cardLabel(el: Record<string, unknown>, max = 60): string | null 
   if (!text) return null;
   const one = text.replace(/\s+/g, ' ').trim();
   return one.length > max ? `${one.slice(0, max - 1)}…` : one;
+}
+
+/** Shot labels for the storyboard frames, the same rule as the canvas: scene number plus letter. */
+export function shotLabels(elements: readonly GuestElement[]): Map<string, string> {
+  const parsed: Element[] = [];
+  for (const raw of elements) {
+    const { body: _body, ...fields } = raw;
+    const result = Element.safeParse(fields);
+    if (result.success) parsed.push(result.data);
+  }
+  return frameLabels(storyboardOf(parsed));
 }
