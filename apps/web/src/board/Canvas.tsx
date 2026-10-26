@@ -106,6 +106,7 @@ import { templateRect } from './templates.ts';
 import { startUpload } from './uploads.ts';
 import { MediaViewer } from './viewer.tsx';
 import { loadViewport, saveViewport } from './viewport.ts';
+import { isYoutubeUrl } from './youtube.ts';
 
 const DRAG_THRESHOLD = 3;
 const SNAP_PX = 6;
@@ -640,6 +641,10 @@ export function Canvas({
       if (el.type === 'board') onOpenBoard(el.boardId);
       else if (onOpen?.(el)) return;
       else if (el.type === 'link') {
+        if (isYoutubeUrl(el.url)) {
+          setViewing(el.id);
+          return;
+        }
         const href = webUrl(el.url);
         if (href) window.open(href, '_blank', 'noopener,noreferrer');
       } else if (el.type === 'image' || el.type === 'file') {
@@ -1327,7 +1332,12 @@ export function Canvas({
   const panelFrame = frameOf(framePanel);
   const drawnFrame = frameOf(drawing);
   const viewedEl = viewing ? snap.byId.get(viewing) : undefined;
-  const viewed = viewedEl?.type === 'image' || viewedEl?.type === 'file' ? viewedEl : null;
+  const viewed =
+    viewedEl?.type === 'image' ||
+    viewedEl?.type === 'file' ||
+    (viewedEl?.type === 'link' && isYoutubeUrl(viewedEl.url))
+      ? viewedEl
+      : null;
   const closeViewer = useCallback(() => setViewing(null), []);
 
   const addTemplate = async (id: TemplateId) => {

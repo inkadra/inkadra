@@ -411,7 +411,8 @@
       "iso": "ISO",
       "taken": "Taken on"
     },
-    "unplayable": "Format not playable in the browser"
+    "unplayable": "Format not playable in the browser",
+    "openOnYoutube": "Open on YouTube"
   },
   "search": {
     "title": "Search",
