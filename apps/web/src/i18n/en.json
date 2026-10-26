@@ -459,7 +459,8 @@
       "label": "View",
       "storyboard": "Storyboard",
       "shotlist": "Shot list",
-      "canvas": "Canvas"
+      "canvas": "Canvas",
+      "schedule": "Schedule"
     },
     "aspect": {
       "label": "Aspect ratio",

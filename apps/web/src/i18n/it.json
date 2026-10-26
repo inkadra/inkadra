@@ -459,7 +459,8 @@
       "label": "Vista",
       "storyboard": "Storyboard",
       "shotlist": "Shot list",
-      "canvas": "Lavagna"
+      "canvas": "Lavagna",
+      "schedule": "Piano riprese"
     },
     "aspect": {
       "label": "Formato",

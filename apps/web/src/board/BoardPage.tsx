@@ -21,6 +21,7 @@ import { Canvas } from './Canvas.tsx';
 import { CommentsButton } from './CommentsPanel.tsx';
 import { ContextMenu } from './chrome.tsx';
 import { type ConnectionStatus, useBoardConnection } from './connection.ts';
+import { ScheduleView } from './film/ScheduleView.tsx';
 import { ShotList } from './film/ShotList.tsx';
 import { StoryboardView } from './film/StoryboardView.tsx';
 import { RestoredToast } from './RestoredToast.tsx';
@@ -35,10 +36,11 @@ import './board.css';
 
 const canEdit = (role: ProjectRole | null | undefined) => role === 'owner' || role === 'editor';
 
-export type BoardView = 'storyboard' | 'shotlist' | 'canvas';
-const VIEWS: Array<{ view: BoardView; icon: IconName }> = [
+export type BoardView = 'storyboard' | 'shotlist' | 'schedule' | 'canvas';
+export const VIEWS: Array<{ view: BoardView; icon: IconName }> = [
   { view: 'storyboard', icon: 'storyboard' },
   { view: 'shotlist', icon: 'shotlist' },
+  { view: 'schedule', icon: 'calendar' },
   { view: 'canvas', icon: 'board' },
 ];
 
@@ -47,7 +49,7 @@ export function useBoardView(kind: Board['kind'] | undefined): [BoardView, (v: B
   const [params, setParams] = useSearchParams();
   const asked = params.get('view');
   const view: BoardView =
-    asked === 'shotlist' || asked === 'storyboard' || asked === 'canvas'
+    asked === 'shotlist' || asked === 'storyboard' || asked === 'schedule' || asked === 'canvas'
       ? asked
       : kind === 'storyboard'
         ? 'storyboard'
@@ -331,7 +333,10 @@ function BoardScreen({
             </Fragment>
           ))}
         </nav>
-        {(kind === 'storyboard' || view === 'storyboard' || view === 'shotlist') && (
+        {(kind === 'storyboard' ||
+          view === 'storyboard' ||
+          view === 'shotlist' ||
+          view === 'schedule') && (
           <div className="view-tabs" role="tablist" aria-label={t('film.views.label')}>
             {VIEWS.map((v) => (
               <button
@@ -457,6 +462,17 @@ function BoardScreen({
         key={preview?.version.id ?? 'live'}
         store={preview?.store ?? conn.store}
         boardTitle={crumbs.at(-1)?.title ?? ''}
+        projectId={projectId}
+        boardId={boardId}
+        userId={user.id}
+        readOnly={!!preview || !editable}
+      />
+    ) : view === 'schedule' ? (
+      <ScheduleView
+        key={preview?.version.id ?? 'live'}
+        store={preview?.store ?? conn.store}
+        boardTitle={crumbs.at(-1)?.title ?? ''}
+        projectName={projectName}
         projectId={projectId}
         boardId={boardId}
         userId={user.id}

@@ -119,3 +119,10 @@ describe('search, tags and viewer', () => {
     expect(commandFor(key('s'), false)).toEqual({ kind: 'add', type: 'storyboard' });
   });
 });
+
+it('includes schedule view in board views with calendar icon', async () => {
+  const { VIEWS } = await import('../BoardPage.tsx');
+  expect(VIEWS.map((v) => v.view)).toEqual(['storyboard', 'shotlist', 'schedule', 'canvas']);
+  const scheduleView = VIEWS.find((v) => v.view === 'schedule');
+  expect(scheduleView?.icon).toBe('calendar');
+});
