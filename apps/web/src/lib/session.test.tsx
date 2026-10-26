@@ -14,6 +14,12 @@ function respond(me: User) {
   vi.spyOn(api, 'get').mockImplementation(async (path: string) => (path === '/me' ? me : instance));
 }
 
+let latestRefresh: () => Promise<void> = async () => {};
+function Probe() {
+  latestRefresh = useSession().refresh;
+  return null;
+}
+
 async function mount() {
   const host = document.createElement('div');
   document.body.append(host);
@@ -61,11 +67,6 @@ it('ignores an older refresh that finishes after a newer one', async () => {
     calls += 1;
     return calls === 1 ? first : user('en');
   });
-  let refresh: () => Promise<void> = async () => {};
-  const Probe = () => {
-    refresh = useSession().refresh;
-    return null;
-  };
   const host = document.createElement('div');
   document.body.append(host);
   const root = createRoot(host);
@@ -76,7 +77,7 @@ it('ignores an older refresh that finishes after a newer one', async () => {
       </SessionProvider>,
     ),
   );
-  await act(async () => refresh());
+  await act(async () => latestRefresh());
   expect(i18n.language).toBe('en');
   await act(async () => resolveFirst(user('it')));
   expect(i18n.language).toBe('en');
