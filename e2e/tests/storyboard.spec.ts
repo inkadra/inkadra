@@ -83,6 +83,31 @@ test('a storyboard holds scenes and frames, the shot list shows the same frames'
   await expect(page.locator('[data-type="frame"]')).toContainText('1A');
 });
 
+test('a shooting day persists a dropped storyboard shot after reload', async ({ page }) => {
+  await openProject(page);
+  await page.locator('[data-type="board"]', { hasText: 'Binario 21' }).dblclick();
+  await page.getByRole('tab', { name: 'Piano riprese', exact: true }).click();
+  await page.getByRole('button', { name: 'Aggiungi giorno di riprese', exact: true }).click();
+  const day = page.locator('.schedule__day');
+  await expect(day).toHaveCount(1);
+  await day.getByLabel('Data', { exact: true }).fill('2026-11-02');
+  await day.getByLabel('Convocazione', { exact: true }).fill('09:00');
+  await day.getByLabel('Location', { exact: true }).fill('Stazione');
+  await day.getByRole('button', { name: 'Salva giorno', exact: true }).click();
+  await expect(day.getByRole('button', { name: 'Salva giorno', exact: true })).toBeEnabled();
+  const shot = page.locator('.schedule__queue .film-shell__card').first();
+  await expect(shot).toContainText('1A');
+  await shot.dragTo(day);
+  await expect(day.locator('.schedule__block')).toContainText('1A');
+  await expect(page.locator('.schedule__queue .film-shell__card')).toHaveCount(0);
+  await page.reload();
+  await expect(day.getByLabel('Data', { exact: true })).toHaveValue('2026-11-02');
+  await expect(day.getByLabel('Location', { exact: true })).toHaveValue('Stazione');
+  await expect(day.locator('.schedule__block')).toContainText('1A');
+  await expect(day.locator('.schedule__block strong')).toHaveText('09:00 – 09:30');
+  await expect(page.locator('.schedule .film-shell__badge')).toHaveCount(0);
+});
+
 test('search finds the frame and opens it where it is', async ({ page }) => {
   await openProject(page);
   // The index is written when the collaboration server stores the board, a few seconds later.

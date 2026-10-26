@@ -34,6 +34,7 @@ import { registerLinkPreviews } from './link-previews.ts';
 import { registerNotificationRoutes } from './notifications-routes.ts';
 import { registerProjectRoutes } from './projects-routes.ts';
 import { registerReviewRoutes } from './reviews-routes.ts';
+import { registerScheduleRoutes } from './schedule-routes.ts';
 import { registerSearchRoutes } from './search-routes.ts';
 import { GUEST_PAGE_PATH, registerShareLinkRoutes } from './share-links-routes.ts';
 import { registerSharingRoutes } from './sharing-routes.ts';
@@ -117,6 +118,7 @@ export async function createApp(deps: AppDeps) {
   registerDiagnostics(app, deps);
   registerCommentRoutes(app, deps);
   registerReviewRoutes(app, deps);
+  registerScheduleRoutes(app, deps);
   registerNotificationRoutes(app, deps);
   registerUploads(app, { ...deps, uploadMaxSize: config.UPLOAD_MAX_SIZE });
   await registerClipRoutes(app, { ...deps, uploadMaxSize: config.UPLOAD_MAX_SIZE });

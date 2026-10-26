@@ -65,6 +65,7 @@ import {
   ReviewHistoryQuery,
   SetElementReview,
 } from './reviews.ts';
+import { Schedule, ShootingDay, ShootingDayInput, UpdateShootingDay } from './schedule.ts';
 import { SearchQuery, SearchResult, TagCount } from './search.ts';
 import {
   AcceptedInvitation,
@@ -144,6 +145,62 @@ const outcome = {
   },
 };
 registry.register('OutcomeUnknown', OutcomeUnknown);
+
+// Schedule ------------------------------------------------------------------
+const schedulePath = v1('/boards/{boardId}/schedule');
+registry.registerPath({
+  method: 'get',
+  path: schedulePath,
+  tags: ['Schedule'],
+  security: secured,
+  summary: 'Read shooting days for this board; requires viewer access.',
+  request: { params: idParam('boardId') },
+  responses: {
+    200: { description: 'Shooting days ordered by date and id.', ...json(Schedule) },
+    ...errors,
+  },
+});
+registry.registerPath({
+  method: 'post',
+  path: schedulePath,
+  tags: ['Schedule'],
+  security: secured,
+  summary: 'Create a project shooting day anchored to this board; requires editor access.',
+  request: { params: idParam('boardId'), body: json(ShootingDayInput) },
+  responses: { 201: { description: 'Created', ...json(ShootingDay) }, ...errors },
+});
+registry.registerPath({
+  method: 'put',
+  path: `${schedulePath}/{dayId}`,
+  tags: ['Schedule'],
+  security: secured,
+  summary: 'Replace a day and its ordered blocks with revision checking; requires editor access.',
+  request: { params: z.object({ boardId: Id, dayId: Id }), body: json(UpdateShootingDay) },
+  responses: {
+    200: { description: 'Updated', ...json(ShootingDay) },
+    ...errors,
+    409: {
+      description: 'Stale revision or removed day. Reload before editing.',
+      ...json(ApiError),
+    },
+  },
+});
+registry.registerPath({
+  method: 'delete',
+  path: `${schedulePath}/{dayId}`,
+  tags: ['Schedule'],
+  security: secured,
+  summary: 'Remove a shooting day; requires editor access and its current revision.',
+  request: {
+    params: z.object({ boardId: Id, dayId: Id }),
+    body: json(z.object({ revision: z.number().int().min(1) }).strict()),
+  },
+  responses: {
+    204: { description: 'Removed' },
+    ...errors,
+    409: { description: 'Stale revision or removed day.', ...json(ApiError) },
+  },
+});
 
 // Instance -------------------------------------------------------------------
 
@@ -1572,6 +1629,7 @@ export function buildOpenApiDocument() {
       { name: 'Guests' },
       { name: 'Versions' },
       { name: 'Clip' },
+      { name: 'Schedule' },
     ],
   });
 }
