@@ -132,7 +132,9 @@ export function ScheduleView({
     <section className="film-shell schedule" aria-label={t('nav.schedule')}>
       <header>
         <h1>{t('nav.schedule')}</h1>
-        <Button onClick={() => setCallSheetOpen(true)}>{t('shells.callSheet')}</Button>
+        <Button disabled={loading || !!error} onClick={() => setCallSheetOpen(true)}>
+          {t('shells.callSheet')}
+        </Button>
         {!readOnly && (
           <Button
             disabled={busy || loading}
@@ -214,7 +216,12 @@ export function ScheduleView({
         </div>
       )}
       {callSheetOpen && (
-        <CallSheetModal projectName={projectName} onClose={() => setCallSheetOpen(false)} />
+        <CallSheetModal
+          days={days}
+          labels={labels}
+          projectName={projectName}
+          onClose={() => setCallSheetOpen(false)}
+        />
       )}
     </section>
   );

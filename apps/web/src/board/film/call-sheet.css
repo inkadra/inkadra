@@ -1,0 +1,98 @@
+/* biome-ignore-all lint/complexity/noImportantStyles: Print must override application layout and inline ancestor styles. */
+/* Real call sheet: the shared native dialog owns focus and Escape handling. */
+.ink-dialog:has(.call-sheet) {
+  width: min(1100px, 94vw);
+  max-width: 94vw;
+}
+.call-sheet {
+  display: grid;
+  grid-template-columns: 250px minmax(0, 1fr);
+  gap: 24px;
+}
+.call-sheet__controls label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-block: 10px;
+}
+.call-sheet__controls > label {
+  flex-direction: column;
+  align-items: stretch;
+}
+.call-sheet__paper {
+  background: white;
+  color: #141414;
+  padding: 24px;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+.call-sheet__paper header {
+  border-bottom: 2px solid #141414;
+}
+.call-sheet__paper table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.call-sheet__paper th,
+.call-sheet__paper td {
+  text-align: left;
+  vertical-align: top;
+  padding: 6px;
+  border-bottom: 1px solid #ccc;
+}
+.call-sheet__paper p,
+.call-sheet__paper li {
+  white-space: pre-wrap;
+}
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 15mm;
+  }
+  body:has(.call-sheet) {
+    overflow: visible !important;
+  }
+  body:has(.call-sheet) > :not(:has(.call-sheet)) {
+    display: none !important;
+  }
+  body:has(.call-sheet) *:has(.call-sheet) {
+    display: block !important;
+    position: static !important;
+    overflow: visible !important;
+    height: auto !important;
+    max-height: none !important;
+    width: auto !important;
+    max-width: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: 0 !important;
+    background: white !important;
+    box-shadow: none !important;
+    transform: none !important;
+  }
+  body:has(.call-sheet) *:has(.call-sheet) > :not(:has(.call-sheet), .call-sheet),
+  .call-sheet__controls {
+    display: none !important;
+  }
+  .ink-dialog:has(.call-sheet)::backdrop {
+    display: none;
+  }
+  .call-sheet {
+    display: block;
+  }
+  .call-sheet__paper {
+    padding: 0;
+    font-size: 10pt;
+  }
+  .call-sheet__paper thead {
+    display: table-header-group;
+  }
+  .call-sheet__paper tr,
+  .call-sheet__paper li,
+  .call-sheet__paper header {
+    break-inside: avoid;
+  }
+  .call-sheet__paper h4 {
+    break-after: avoid;
+  }
+}

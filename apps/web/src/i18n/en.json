@@ -1381,7 +1381,6 @@
     "noComments": "No comments available.",
     "noReferences": "No references available.",
     "referencesUnavailable": "The reference view is coming soon. Board images remain available on the canvas.",
-    "callSheetUnavailable": "Empty draft: dates, calls, weather, contacts and safety information are unavailable. Printing and export are not enabled yet.",
     "print": "Print / export",
     "matrix": "Role permissions matrix",
     "role": "Role",
@@ -1458,5 +1457,28 @@
     "compare": "Compare A/B",
     "usedIn": "Used in · this board",
     "openSource": "Open source"
+  },
+  "callSheet": {
+    "empty": "No information provided.",
+    "savedOnly": "Uses the saved shooting schedule. Save changes before generating the call sheet.",
+    "include": "Include sections",
+    "schedule": "Scene schedule",
+    "cast": "Cast and times",
+    "location": "Location",
+    "departments": "Department notes",
+    "notes": "Day notes",
+    "weather": "Weather, sunrise and sunset",
+    "map": "Map",
+    "hospital": "Nearest hospital",
+    "contacts": "Contacts",
+    "thumbnails": "Storyboard thumbnails",
+    "unavailable": "not available",
+    "preview": "Call sheet preview",
+    "revision": "Schedule revision {{revision}}",
+    "time": "Time",
+    "description": "Description",
+    "shot": "Shot",
+    "derivedCalls": "Times show the first scheduled block for each cast member. Pickup and makeup calls are not recorded.",
+    "firstBlock": "First scheduled block"
   }
 }
