@@ -457,6 +457,9 @@ function BoardScreen({
         key={preview?.version.id ?? 'live'}
         store={preview?.store ?? conn.store}
         boardTitle={crumbs.at(-1)?.title ?? ''}
+        projectId={projectId}
+        boardId={boardId}
+        userId={user.id}
         readOnly={!!preview || !editable}
       />
     ) : preview ? (

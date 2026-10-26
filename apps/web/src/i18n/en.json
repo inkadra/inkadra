@@ -586,7 +586,10 @@
       "empty": "No frames",
       "picture": "Picture",
       "scene": "Scene",
-      "noMatch": "No frame matches the filter"
+      "noMatch": "No frame matches the filter",
+      "table": "Table",
+      "kanban": "Kanban",
+      "addInStatus": "Add in {{status}}"
     }
   },
   "roles": {

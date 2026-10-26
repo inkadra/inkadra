@@ -587,3 +587,221 @@ select.film-status {
     position: relative;
   }
 }
+
+/* Shot list Kanban view --------------------------------------------------------- */
+
+.kanban {
+  display: flex;
+  gap: 16px;
+  padding: 16px 20px;
+  overflow-x: auto;
+  align-items: flex-start;
+  min-height: calc(100vh - 120px);
+}
+
+.kanban__col {
+  width: 260px;
+  flex: none;
+  background: var(--ink-surface-1);
+  border: 1px solid var(--ink-border-default);
+  border-radius: 12px;
+  padding: 10px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 200px;
+  transition:
+    border-color 0.15s ease,
+    background 0.15s ease;
+}
+
+.kanban__col.is-drop-target {
+  border-color: var(--ink-accent-primary);
+  background: color-mix(in srgb, var(--ink-accent-primary) 6%, var(--ink-surface-1));
+}
+
+.kanban__ch {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 2px 4px 6px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-text-primary);
+}
+
+.kanban__dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex: none;
+}
+
+.kanban__cnt {
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--ink-text-muted);
+}
+
+.kanban__add {
+  margin-left: auto;
+  width: 22px;
+  height: 22px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--ink-text-muted);
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  font-size: 14px;
+  line-height: 1;
+}
+
+.kanban__add:hover:not(:disabled) {
+  background: var(--ink-surface-2);
+  color: var(--ink-text-primary);
+}
+
+.kanban__add:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.kanban__cards {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 60px;
+}
+
+.kanban__card-body {
+  border: 0;
+  background: transparent;
+  padding: 0;
+  margin: 0;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+}
+.kanban__card {
+  background: var(--ink-surface-2);
+  border: 1px solid var(--ink-border-subtle);
+  border-radius: 10px;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  cursor: grab;
+  user-select: none;
+  transition:
+    transform 0.1s ease,
+    border-color 0.1s ease;
+}
+
+.kanban__card:hover {
+  border-color: var(--ink-border-default);
+  background: var(--ink-surface-3);
+}
+
+.kanban__card.is-selected {
+  border-color: var(--ink-accent-primary);
+  box-shadow: 0 0 0 1px var(--ink-accent-primary);
+}
+
+.kanban__card-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.kanban__card-pic {
+  width: 64px;
+  height: 27px;
+  border-radius: 4px;
+  overflow: hidden;
+  flex: none;
+  background: var(--ink-bg-app);
+}
+
+.kanban__card-label {
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--ink-text-primary);
+}
+
+.kanban__card-duration {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--ink-text-muted);
+}
+
+.kanban__card-action {
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--ink-text-secondary);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.kanban__card-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--ink-text-muted);
+}
+
+.kanban__card-pill {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 500;
+  border-radius: 99px;
+  padding: 2px 8px;
+  background: var(--ink-accent-soft-bg);
+  color: var(--ink-accent-soft-fg);
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.kanban__card-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 11px;
+  color: var(--ink-text-muted);
+}
+
+.kanban__cast {
+  display: flex;
+}
+
+.kanban__av {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  font-size: 8px;
+  font-weight: 600;
+  display: grid;
+  place-items: center;
+  background: var(--ink-surface-3);
+  color: var(--ink-text-primary);
+  border: 2px solid var(--ink-surface-2);
+  margin-left: -6px;
+}
+
+.kanban__av:first-child {
+  margin-left: 0;
+}
