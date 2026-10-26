@@ -1,6 +1,6 @@
 import type { Asset } from '@inkadra/shared';
 import { useEffect, useSyncExternalStore } from 'react';
-import { api } from '../lib/api.ts';
+import { api, RequestError } from '../lib/api.ts';
 
 /**
  * Asset metadata shared by every card that shows the same file. Assets still being processed
@@ -16,7 +16,14 @@ function notify(id: string) {
 }
 
 type Loader = (id: string) => Promise<Asset | null>;
-const accountLoader: Loader = (id) => api.get<Asset>(`/assets/${id}`);
+const accountLoader: Loader = async (id) => {
+  try {
+    return await api.get<Asset>(`/assets/${id}`);
+  } catch (err) {
+    if (err instanceof RequestError && err.status === 404) return null;
+    throw err;
+  }
+};
 let loader = accountLoader;
 
 /**
@@ -42,29 +49,59 @@ export function resetAssetCache() {
 
 async function load(id: string): Promise<void> {
   const at = generation;
-  let value: Asset | 'missing';
+  let result: Asset | null;
   try {
-    value = (await loader(id)) ?? 'missing';
-  } catch {
-    value = 'missing';
+    result = await loader(id);
+  } catch (err) {
+    if (err instanceof RequestError && err.status === 404) {
+      result = null;
+    } else {
+      return;
+    }
   }
   if (at !== generation) return;
+  const value = result ?? 'missing';
   cache.set(id, value);
   notify(id);
 }
 
-function fetchOnce(id: string) {
-  if (inflight.has(id)) return;
+function fetchOnce(id: string): Promise<void> {
+  const existing = inflight.get(id);
+  if (existing) return existing;
   const p = load(id).finally(() => {
     if (inflight.get(id) === p) inflight.delete(id);
   });
   inflight.set(id, p);
+  return p;
+}
+
+export function refetchPendingOrUnknown() {
+  for (const [id, val] of cache.entries()) {
+    if (val !== 'missing' && (val.status === 'pending' || val.status === 'processing')) {
+      fetchOnce(id);
+    }
+  }
+  for (const [id, set] of listeners.entries()) {
+    if (set.size > 0 && !cache.has(id)) {
+      fetchOnce(id);
+    }
+  }
+}
+
+if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
+  window.addEventListener('online', refetchPendingOrUnknown);
 }
 
 export function primeAsset(asset: Asset) {
   cache.set(asset.id, asset);
   notify(asset.id);
 }
+
+export function getCachedAsset(id: string): Asset | 'missing' | undefined {
+  return cache.get(id);
+}
+
+export { fetchOnce as fetchAsset, load as loadAsset };
 
 export function useAsset(id: string | undefined): Asset | 'missing' | undefined {
   const value = useSyncExternalStore(
@@ -76,7 +113,10 @@ export function useAsset(id: string | undefined): Asset | 'missing' | undefined 
         listeners.set(id, set);
       }
       set.add(l);
-      return () => set.delete(l);
+      return () => {
+        set.delete(l);
+        if (set.size === 0) listeners.delete(id);
+      };
     },
     () => (id ? cache.get(id) : undefined),
   );
@@ -86,13 +126,12 @@ export function useAsset(id: string | undefined): Asset | 'missing' | undefined 
     if (!id) return;
     const current = cache.get(id);
     if (!current) fetchOnce(id);
-    if (
-      current &&
-      current !== 'missing' &&
-      (current.status === 'pending' || current.status === 'processing')
-    ) {
-      const timer = setTimeout(() => fetchOnce(id), POLL_MS);
-      return () => clearTimeout(timer);
+    const shouldPoll =
+      !current ||
+      (current !== 'missing' && (current.status === 'pending' || current.status === 'processing'));
+    if (shouldPoll) {
+      const timer = setInterval(() => fetchOnce(id), POLL_MS);
+      return () => clearInterval(timer);
     }
   }, [id, value]);
 

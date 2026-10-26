@@ -407,7 +407,8 @@
       "shutter": "Shutter",
       "iso": "ISO",
       "taken": "Taken on"
-    }
+    },
+    "unplayable": "Format not playable in the browser"
   },
   "search": {
     "title": "Search",
@@ -888,7 +889,8 @@
     "viewer": {
       "open": "View large",
       "close": "Close",
-      "noPreview": "No preview available."
+      "noPreview": "No preview available.",
+      "unplayable": "Format not playable in the browser"
     },
     "offline": "Connection lost, retrying…"
   },

@@ -48,6 +48,48 @@ export function exifRows(exif: Exif | null, locale: string): Array<{ key: string
   return rows;
 }
 
+/** MediaError SRC_NOT_SUPPORTED (4) or DECODE (3) */
+export function isUnplayableVideoError(code: number | null | undefined): boolean {
+  return !code || code === 3 || code === 4;
+}
+
+/** Shown over the poster when the browser cannot decode a video format (e.g. ProRes). */
+export function VideoUnplayable({
+  poster,
+  filename,
+  downloadUrl,
+  downloadLabel,
+  message,
+  className = 'viewer__unplayable',
+  mediaClassName = 'viewer__media',
+  scrimClassName = 'viewer__unplayable-scrim',
+  msgClassName = 'viewer__unplayable-msg',
+}: {
+  poster?: string;
+  filename?: string;
+  downloadUrl?: string;
+  downloadLabel: string;
+  message: string;
+  className?: string;
+  mediaClassName?: string;
+  scrimClassName?: string;
+  msgClassName?: string;
+}) {
+  return (
+    <div className={className}>
+      {poster && <img className={mediaClassName} src={poster} alt={filename} />}
+      <div className={scrimClassName}>
+        <p className={msgClassName}>{message}</p>
+        {downloadUrl && (
+          <a className="ink-btn ink-btn--secondary" href={downloadUrl} download={filename ?? ''}>
+            {downloadLabel}
+          </a>
+        )}
+      </div>
+    </div>
+  );
+}
+
 /** Full view of an image or a video, with its shooting data, palette and tags. */
 export function MediaViewer({
   store,
@@ -68,6 +110,12 @@ export function MediaViewer({
   const asset = useAsset(element.assetId);
   const ready: Asset | null = asset && asset !== 'missing' ? asset : null;
   const [copied, setCopied] = useState<string | null>(null);
+  const [unplayable, setUnplayable] = useState(false);
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: resets unplayable state when the element or asset changes
+  useEffect(() => {
+    setUnplayable(false);
+  }, [element.id, ready?.id]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -104,6 +152,12 @@ export function MediaViewer({
     onClose();
   }
 
+  const onVideoError = (e: React.SyntheticEvent<HTMLVideoElement, Event>) => {
+    if (isUnplayableVideoError(e.currentTarget.error?.code)) {
+      setUnplayable(true);
+    }
+  };
+
   return (
     <div
       className="viewer"
@@ -117,14 +171,27 @@ export function MediaViewer({
         onPointerDown={(e) => e.target === e.currentTarget && onClose()}
       >
         {ready?.kind === 'video' ? (
-          // biome-ignore lint/a11y/useMediaCaption: people's own footage has no captions
-          <video
-            className="viewer__media"
-            src={ready.url}
-            poster={ready.variants.length > 0 ? pickVariant(ready, wide) : undefined}
-            controls
-            autoPlay
-          />
+          <>
+            {/* biome-ignore lint/a11y/useMediaCaption: people's own footage has no captions */}
+            <video
+              className="viewer__media"
+              src={ready.url}
+              poster={ready.variants.length > 0 ? pickVariant(ready, wide) : undefined}
+              controls
+              autoPlay
+              onError={onVideoError}
+              style={unplayable ? { display: 'none' } : undefined}
+            />
+            {unplayable && (
+              <VideoUnplayable
+                poster={ready.variants.length > 0 ? pickVariant(ready, wide) : undefined}
+                filename={ready.filename}
+                downloadUrl={ready.url}
+                downloadLabel={t('viewer.download')}
+                message={t('viewer.unplayable')}
+              />
+            )}
+          </>
         ) : ready ? (
           <img
             className="viewer__media"
