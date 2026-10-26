@@ -681,6 +681,37 @@
       "approvedHelper": "Trascina qui le inquadrature approvate",
       "approvedHint": "Si riempie anche dalle approvazioni del cliente",
       "selectRow": "Seleziona inquadratura {{label}}"
+    },
+    "playback": {
+      "mode": "Vista",
+      "grid": "Griglia",
+      "sequence": "Sequenza",
+      "animatic": "Animatic",
+      "size": "Dimensione riquadri",
+      "sizes": {
+        "s": "Riquadri piccoli",
+        "m": "Riquadri medi",
+        "l": "Riquadri grandi"
+      },
+      "present": "Presenta",
+      "scenes": "Scene",
+      "allScenes": "Tutte le scene",
+      "drawn": "{{drawn}} di {{total}} disegnate",
+      "estimated_one": "{{count}} inquadratura · durata stimata {{duration}}. La barra mostra le inquadrature disegnate.",
+      "estimated_other": "{{count}} inquadrature · durata stimata {{duration}}. La barra mostra le inquadrature disegnate.",
+      "play": "Riproduci",
+      "pause": "Pausa",
+      "speed": "Velocità",
+      "close": "Chiudi presentazione",
+      "time": "Timecode",
+      "seek": "Posizione dell’animatic",
+      "track": "Inquadrature sulla timeline",
+      "now": "Inquadratura {{label}} a {{time}}",
+      "block": "Vai a {{label}}, {{duration}}",
+      "resize": "Durata di {{label}}",
+      "keyboard": "Tasti: Spazio riproduce o mette in pausa, le frecce spostano di un secondo, Pag su e Pag giù saltano fra le inquadrature, Home e Fine vanno all’inizio e alla fine.",
+      "empty": "Nessuna inquadratura da riprodurre: tutte hanno durata zero.",
+      "defaultDuration": "Le inquadrature senza durata durano un secondo (blocchi a righe); trascina il bordo di un blocco per impostarne la durata."
     }
   },
   "roles": {

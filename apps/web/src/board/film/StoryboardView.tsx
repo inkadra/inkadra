@@ -19,6 +19,7 @@ import { useTranslation } from 'react-i18next';
 import { CardReview } from '../CardReview.tsx';
 import { GuestVisibility, GuestVisibilityIcon, toggleGuestHidden } from '../guest-visibility.tsx';
 import { type BoardStore, LOCAL } from '../store.ts';
+import { Animatic } from './Animatic.tsx';
 import { aspectLabel, useBoardAspect } from './aspect.ts';
 import { DrawingEditor } from './DrawingEditor.tsx';
 import { FramePanel } from './FramePanel.tsx';
@@ -27,6 +28,15 @@ import { FrameVisibilityButton } from './FrameVisibilityButton.tsx';
 import { blurOnEnter, StatusChip, usePresetText } from './fields.tsx';
 
 const FRAME_MIME = 'application/x-inkadra-frame';
+const STORY_MODES = ['grid', 'sequence', 'animatic'] as const;
+const TILE_SIZES = ['s', 'm', 'l'] as const;
+type StoryMode = (typeof STORY_MODES)[number];
+type TileSize = (typeof TILE_SIZES)[number];
+const LOOSE = 'loose';
+
+const groupKey = (g: SceneGroup) => g.scene?.id ?? LOOSE;
+/** A frame counts as drawn once it has a picture or a pen drawing. */
+const isDrawn = (f: FrameElement) => !!f.assetId || (f.strokes?.length ?? 0) > 0;
 
 /** Scenes and frames of the board, in order, from the live document. */
 export function useStoryboard(store: BoardStore) {
@@ -54,10 +64,18 @@ export function StoryboardView({
   const { t } = useTranslation();
   const boardAspect = useBoardAspect(store.doc);
   const { groups, frames, labels } = useStoryboard(store);
+  const [mode, setMode] = useState<StoryMode>('grid');
+  const [size, setSize] = useState<TileSize>('m');
+  const [sceneFilter, setSceneFilter] = useState<string | null>(null);
+  const [present, setPresent] = useState(false);
   const [selected, setSelected] = useState<string | null>(null);
   const [drawing, setDrawing] = useState<string | null>(null);
   const [drop, setDrop] = useState<{ scene: string; index: number } | null>(null);
   const opts = { userId, origin: LOCAL };
+  // A scene deleted while it is the filter shows every scene again.
+  const filter = groups.some((g) => groupKey(g) === sceneFilter) ? sceneFilter : null;
+  const visible = filter ? groups.filter((g) => groupKey(g) === filter) : groups;
+  const visibleFrames = visible.flatMap((g) => g.frames);
   const current = frames.find((f) => f.id === selected) ?? null;
   const drawn = frames.find((f) => f.id === drawing) ?? null;
   const drawnAt = drawn ? frames.indexOf(drawn) : -1;
@@ -83,8 +101,41 @@ export function StoryboardView({
 
   const total = totalDurationMs(frames);
   return (
-    <div className="story">
+    <div className={`story story--${mode} story--${size}`}>
       <div className="story__bar" data-chrome>
+        <fieldset className="story__modes" aria-label={t('film.playback.mode')}>
+          {STORY_MODES.map((value) => (
+            <button
+              type="button"
+              key={value}
+              className="story__mode"
+              aria-pressed={mode === value}
+              onClick={() => {
+                setMode(value);
+                if (value === 'animatic') setSelected(null);
+              }}
+            >
+              {t(`film.playback.${value}`)}
+            </button>
+          ))}
+        </fieldset>
+        {mode !== 'animatic' && (
+          <fieldset className="story__modes" aria-label={t('film.playback.size')}>
+            {TILE_SIZES.map((value) => (
+              <button
+                type="button"
+                key={value}
+                className="story__mode"
+                aria-pressed={size === value}
+                aria-label={t(`film.playback.sizes.${value}`)}
+                title={t(`film.playback.sizes.${value}`)}
+                onClick={() => setSize(value)}
+              >
+                {value.toUpperCase()}
+              </button>
+            ))}
+          </fieldset>
+        )}
         <label className="story__aspect">
           <span>{t('film.aspect.label')}</span>
           <select
@@ -104,6 +155,16 @@ export function StoryboardView({
           {t('film.total', { count: frames.length, duration: formatDuration(total) })}
         </span>
         <span className="ink-header__spacer" />
+        <Button
+          icon="play"
+          disabled={!visibleFrames.length}
+          onClick={() => {
+            setSelected(null);
+            setPresent(true);
+          }}
+        >
+          {t('film.playback.present')}
+        </Button>
         {!readOnly && (
           <Button icon="plus" onClick={newScene}>
             {t('film.scene.add')}
@@ -111,7 +172,20 @@ export function StoryboardView({
         )}
       </div>
       <div className="story__main">
+        {groups.length > 0 && (
+          <SceneList groups={groups} filter={filter} total={total} onFilter={setSceneFilter} />
+        )}
         <div className="story__scroll" data-scroll>
+          {mode === 'animatic' && visibleFrames.length > 0 && (
+            <Animatic
+              key={filter ?? ''}
+              store={store}
+              frames={visibleFrames}
+              labels={labels}
+              boardAspect={boardAspect}
+              readOnly={readOnly}
+            />
+          )}
           {groups.length === 0 && (
             <div className="board-state">
               <EmptyState
@@ -129,57 +203,58 @@ export function StoryboardView({
               </EmptyState>
             </div>
           )}
-          {groups.map((g) => (
-            <SceneSection
-              key={g.scene?.id ?? 'loose'}
-              group={g}
-              store={store}
-              readOnly={readOnly}
-              onAddFrame={() => newFrame(g.scene?.id ?? null)}
-            >
-              {g.frames.map((f, i) => (
-                <FrameTile
-                  key={f.id}
-                  frame={f}
-                  store={store}
-                  label={labels.get(f.id) ?? ''}
-                  boardAspect={boardAspect}
-                  selected={f.id === selected}
-                  readOnly={readOnly}
-                  dropBefore={!!g.scene && drop?.scene === g.scene.id && drop.index === i}
-                  onSelect={() => setSelected(f.id)}
-                  onDraw={() => setDrawing(f.id)}
-                  onDragOver={(e, after) => {
-                    if (!g.scene || readOnly) return;
-                    e.preventDefault();
-                    const index = after ? i + 1 : i;
-                    if (drop?.scene !== g.scene.id || drop.index !== index)
-                      setDrop({ scene: g.scene.id, index });
-                  }}
-                  onDrop={(e) => g.scene && drop && onDrop(e, g.scene.id, drop.index)}
-                />
-              ))}
-              {!readOnly && (
-                <li className="story__add-item">
-                  <button
-                    type="button"
-                    className={`story__add${g.scene && drop?.scene === g.scene.id && drop.index === g.frames.length ? ' is-drop' : ''}`}
-                    onClick={() => newFrame(g.scene?.id ?? null)}
-                    onDragOver={(e) => {
-                      if (!g.scene) return;
+          {mode !== 'animatic' &&
+            visible.map((g) => (
+              <SceneSection
+                key={g.scene?.id ?? 'loose'}
+                group={g}
+                store={store}
+                readOnly={readOnly}
+                onAddFrame={() => newFrame(g.scene?.id ?? null)}
+              >
+                {g.frames.map((f, i) => (
+                  <FrameTile
+                    key={f.id}
+                    frame={f}
+                    store={store}
+                    label={labels.get(f.id) ?? ''}
+                    boardAspect={boardAspect}
+                    selected={f.id === selected}
+                    readOnly={readOnly}
+                    dropBefore={!!g.scene && drop?.scene === g.scene.id && drop.index === i}
+                    onSelect={() => setSelected(f.id)}
+                    onDraw={() => setDrawing(f.id)}
+                    onDragOver={(e, after) => {
+                      if (!g.scene || readOnly) return;
                       e.preventDefault();
-                      setDrop({ scene: g.scene.id, index: g.frames.length });
+                      const index = after ? i + 1 : i;
+                      if (drop?.scene !== g.scene.id || drop.index !== index)
+                        setDrop({ scene: g.scene.id, index });
                     }}
-                    onDragLeave={() => setDrop(null)}
-                    onDrop={(e) => g.scene && onDrop(e, g.scene.id, g.frames.length)}
-                  >
-                    <Icon name="plus" size={16} />
-                    {t('film.frame.add')}
-                  </button>
-                </li>
-              )}
-            </SceneSection>
-          ))}
+                    onDrop={(e) => g.scene && drop && onDrop(e, g.scene.id, drop.index)}
+                  />
+                ))}
+                {!readOnly && (
+                  <li className="story__add-item">
+                    <button
+                      type="button"
+                      className={`story__add${g.scene && drop?.scene === g.scene.id && drop.index === g.frames.length ? ' is-drop' : ''}`}
+                      onClick={() => newFrame(g.scene?.id ?? null)}
+                      onDragOver={(e) => {
+                        if (!g.scene) return;
+                        e.preventDefault();
+                        setDrop({ scene: g.scene.id, index: g.frames.length });
+                      }}
+                      onDragLeave={() => setDrop(null)}
+                      onDrop={(e) => g.scene && onDrop(e, g.scene.id, g.frames.length)}
+                    >
+                      <Icon name="plus" size={16} />
+                      {t('film.frame.add')}
+                    </button>
+                  </li>
+                )}
+              </SceneSection>
+            ))}
         </div>
         {current && (
           <FramePanel
@@ -195,6 +270,17 @@ export function StoryboardView({
           />
         )}
       </div>
+      {present && (
+        <Animatic
+          store={store}
+          frames={visibleFrames}
+          labels={labels}
+          boardAspect={boardAspect}
+          readOnly={readOnly}
+          present
+          onClose={() => setPresent(false)}
+        />
+      )}
       {drawn && (
         <DrawingEditor
           store={store}
@@ -212,6 +298,76 @@ export function StoryboardView({
         />
       )}
     </div>
+  );
+}
+
+/** Scenes with their frame count and how many are drawn; picking one shows only that scene. */
+function SceneList({
+  groups,
+  filter,
+  total,
+  onFilter,
+}: {
+  groups: readonly SceneGroup[];
+  filter: string | null;
+  total: number;
+  onFilter: (key: string | null) => void;
+}) {
+  const { t } = useTranslation();
+  const frames = groups.reduce((n, g) => n + g.frames.length, 0);
+  return (
+    <nav className="story__sidebar" aria-label={t('film.playback.scenes')} data-scroll>
+      <h2 className="story__sidebar-title">{t('film.playback.scenes')}</h2>
+      <ul>
+        <li>
+          <button
+            type="button"
+            className="story__side-item"
+            aria-pressed={filter === null}
+            onClick={() => onFilter(null)}
+          >
+            <span className="story__side-name">{t('film.playback.allScenes')}</span>
+            <span className="story__side-count">{frames}</span>
+          </button>
+        </li>
+        {groups.map((g) => {
+          const key = groupKey(g);
+          const drawn = g.frames.filter(isDrawn).length;
+          const count = g.frames.length;
+          const progress = t('film.playback.drawn', { drawn, total: count });
+          return (
+            <li key={key}>
+              <button
+                type="button"
+                className="story__side-item"
+                aria-pressed={filter === key}
+                onClick={() => onFilter(filter === key ? null : key)}
+              >
+                <span className="story__side-name">
+                  {g.scene ? (
+                    <>
+                      <strong>{g.scene.number}</strong> {g.scene.title || t('film.scene.untitled')}
+                    </>
+                  ) : (
+                    t('film.loose')
+                  )}
+                </span>
+                <span className="story__side-count">{count}</span>
+                <span className="story__sr">
+                  {`, ${progress}, ${formatDuration(totalDurationMs(g.frames))}`}
+                </span>
+                <span className="story__side-bar" aria-hidden="true">
+                  <span style={{ width: count ? `${(drawn / count) * 100}%` : 0 }} />
+                </span>
+              </button>
+            </li>
+          );
+        })}
+      </ul>
+      <p className="story__side-total">
+        {t('film.playback.estimated', { count: frames, duration: formatDuration(total) })}
+      </p>
+    </nav>
   );
 }
 
