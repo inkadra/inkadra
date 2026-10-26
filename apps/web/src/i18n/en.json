@@ -665,6 +665,7 @@
     "thisBoard": "People you invite see this board only.",
     "people": "People with access",
     "you": "{{name}} (you)",
+    "highlightRole": "Highlight {{name}}’s role",
     "member": "Project member",
     "fromProject": "From the project",
     "inherited": "Inherited from {{board}}",
