@@ -5,6 +5,7 @@ import { normaliseTag } from '../tags.tsx';
 import { exifRows, shutterText } from '../viewer.tsx';
 import { aspectLabel } from './aspect.ts';
 import { parseSeconds, secondsText } from './fields.tsx';
+import { getFrameKanbanColumn, getFrameStatus } from './film-status.ts';
 import { toCsv } from './ShotList.tsx';
 import { KANBAN_COLUMNS } from './ShotlistKanban.tsx';
 import { pathOf } from './strokes.ts';
@@ -66,14 +67,21 @@ describe('film helpers', () => {
   });
 });
 
-it('maps kanban columns to frame statuses', () => {
+it('maps kanban columns and derives frame statuses', () => {
   expect(KANBAN_COLUMNS.map((c) => c.key)).toEqual(['todo', 'ready', 'shot', 'retake', 'approved']);
-  const todoCol = KANBAN_COLUMNS.find((c) => c.key === 'todo');
-  expect(todoCol?.statuses).toContain('draft');
-  expect(todoCol?.statuses).toContain('todo');
-  expect(todoCol?.statuses).toContain(undefined);
-  const approvedCol = KANBAN_COLUMNS.find((c) => c.key === 'approved');
-  expect(approvedCol?.statuses).toContain('approved');
+  expect(getFrameKanbanColumn({ status: 'draft' })).toBe('todo');
+  expect(getFrameKanbanColumn({ status: 'todo' })).toBe('todo');
+  expect(getFrameKanbanColumn({})).toBe('todo');
+  expect(getFrameKanbanColumn({ status: 'ready' })).toBe('ready');
+  expect(getFrameKanbanColumn({ status: 'shot' })).toBe('shot');
+  expect(getFrameKanbanColumn({ status: 'retake' })).toBe('retake');
+  expect(getFrameKanbanColumn({ approved: true })).toBe('approved');
+  expect(getFrameKanbanColumn({ status: 'todo', approved: true })).toBe('approved');
+
+  expect(getFrameStatus({ approved: true })).toBe('approved');
+  expect(getFrameStatus({ status: 'shot', approved: true })).toBe('approved');
+  expect(getFrameStatus({ status: 'shot' })).toBe('shot');
+  expect(getFrameStatus({})).toBe('draft');
 });
 
 describe('search, tags and viewer', () => {

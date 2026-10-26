@@ -100,7 +100,7 @@ import { fillFragment, isEmpty } from './note.tsx';
 import { PresenceLayer } from './PresenceLayer.tsx';
 import { type Peer, useLocalPresence } from './presence.ts';
 import { openComments } from './review-store.ts';
-import { commandFor, isTyping } from './shortcuts.ts';
+import { commandFor, insideDialog, isTyping } from './shortcuts.ts';
 import { LOCAL } from './store.ts';
 import { TagPopover } from './tags.tsx';
 import { templateRect } from './templates.ts';
@@ -189,13 +189,6 @@ export interface CanvasProps {
   /** Opens an image, file or frame in a view of the page's own; return false for the default. */
   onOpen?: (el: Element) => boolean;
 }
-
-/**
- * Keys belong to an open dialog, also to a modal one whose focused button was disabled
- * while a request runs: then Escape reaches the dialog instead of the canvas.
- */
-const insideDialog = () =>
-  !!document.activeElement?.closest('dialog[open]') || !!document.querySelector('dialog:modal');
 
 export function Canvas({
   conn,

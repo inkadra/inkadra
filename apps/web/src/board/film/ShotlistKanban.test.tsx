@@ -27,6 +27,20 @@ vi.mock('react-i18next', () => ({
   }),
 }));
 
+const mockReviews = new Map<string, { status: string; history: unknown[] }>();
+
+vi.mock('../review-store.ts', () => ({
+  useReviews: (selector: (s: unknown) => unknown) =>
+    selector({
+      preview: false,
+      counts: new Map(),
+      reviews: mockReviews,
+      pins: new Map(),
+      pinTarget: null,
+    }),
+  openComments: vi.fn(),
+}));
+
 const disposals: Array<() => void> = [];
 afterEach(() => {
   vi.restoreAllMocks();
@@ -122,4 +136,103 @@ it('renders 5 columns including approved and allows moving cards via menu and ke
       (doc.getMap('elements').get(frame.id) as Y.Map<unknown> | undefined)?.get('status'),
     ).toBe('shot');
   }
+});
+
+it('sets approved: true when moving into approved column, and clears it when moving out', async () => {
+  const { doc, store } = board();
+  const frame = createElement(
+    doc,
+    'frame',
+    { x: 0, y: 0 },
+    { label: '2A', status: 'ready' },
+    { userId: null },
+  );
+  const host = await mount(
+    <ShotlistKanban
+      store={store}
+      frames={[frame as FrameElement]}
+      labels={new Map([[frame.id, '2A']])}
+      boardAspect="16:9"
+      selected={null}
+      onSelect={vi.fn()}
+      readOnly={false}
+      onAddFrame={vi.fn()}
+    />,
+  );
+
+  // Move in: move to approved
+  const moveSelect = host.querySelector<HTMLSelectElement>('.kanban__move-select');
+  expect(moveSelect).not.toBeNull();
+  if (moveSelect) {
+    moveSelect.value = 'approved';
+    moveSelect.dispatchEvent(new Event('change', { bubbles: true }));
+    expect(
+      (doc.getMap('elements').get(frame.id) as Y.Map<unknown> | undefined)?.get('approved'),
+    ).toBe(true);
+  }
+
+  // Simulate updated frame with approved: true
+  const approvedFrame = { ...(frame as FrameElement), approved: true };
+  const hostApproved = await mount(
+    <ShotlistKanban
+      store={store}
+      frames={[approvedFrame]}
+      labels={new Map([[frame.id, '2A']])}
+      boardAspect="16:9"
+      selected={null}
+      onSelect={vi.fn()}
+      readOnly={false}
+      onAddFrame={vi.fn()}
+    />,
+  );
+
+  // Move out: move to todo
+  const moveOutSelect = hostApproved.querySelector<HTMLSelectElement>('.kanban__move-select');
+  expect(moveOutSelect).not.toBeNull();
+  if (moveOutSelect) {
+    moveOutSelect.value = 'todo';
+    moveOutSelect.dispatchEvent(new Event('change', { bubbles: true }));
+    const map = doc.getMap('elements').get(frame.id) as Y.Map<unknown> | undefined;
+    expect(map?.get('status')).toBe('todo');
+    expect(map?.get('approved')).toBe(false);
+  }
+});
+
+it('shows client-review approval as a badge on the card without overriding column', async () => {
+  const { doc, store } = board();
+  const frame = createElement(
+    doc,
+    'frame',
+    { x: 0, y: 0 },
+    { label: '3A', status: 'todo' },
+    { userId: null },
+  );
+
+  // Mark client review as approved in review store
+  mockReviews.set(frame.id, { status: 'approved', history: [] });
+
+  const host = await mount(
+    <ShotlistKanban
+      store={store}
+      frames={[frame as FrameElement]}
+      labels={new Map([[frame.id, '3A']])}
+      boardAspect="16:9"
+      selected={null}
+      onSelect={vi.fn()}
+      readOnly={false}
+      onAddFrame={vi.fn()}
+    />,
+  );
+
+  const sections = host.querySelectorAll('section.kanban__col');
+  // Frame should stay in "todo" (column 0), NOT in "approved" (column 4)
+  const todoCol = sections[0];
+  const approvedCol = sections[4];
+  expect(todoCol?.querySelector('.kanban__card')).not.toBeNull();
+  expect(approvedCol?.querySelector('.kanban__card')).toBeNull();
+
+  // Card should display client review approval badge
+  expect(host.querySelector('.review-chip--approved')).not.toBeNull();
+
+  mockReviews.clear();
 });

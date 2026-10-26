@@ -10,18 +10,13 @@ import {
   totalDurationMs,
   updateElement,
 } from '@inkadra/canvas-core';
-import {
-  FRAME_STATUSES,
-  type FrameStatus,
-  SHOT_ANGLES,
-  SHOT_MOVEMENTS,
-  SHOT_SIZES,
-} from '@inkadra/doc-schema';
+import { SHOT_ANGLES, SHOT_MOVEMENTS, SHOT_SIZES } from '@inkadra/doc-schema';
 import { Button, EmptyState, Icon } from '@inkadra/ui';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { CardReview } from '../CardReview.tsx';
 import { GuestVisibility } from '../guest-visibility.tsx';
+import { insideDialog, isTyping } from '../shortcuts.ts';
 import { type BoardStore, LOCAL } from '../store.ts';
 import { useBoardAspect } from './aspect.ts';
 import { DrawingEditor } from './DrawingEditor.tsx';
@@ -36,6 +31,12 @@ import {
   secondsText,
   usePresetText,
 } from './fields.tsx';
+import {
+  getFrameStatus,
+  type KanbanColumnKey,
+  SHOT_DISPLAY_STATUSES,
+  type ShotDisplayStatus,
+} from './film-status.ts';
 import { ShotlistKanban } from './ShotlistKanban.tsx';
 import { useSlugline, useStoryboard } from './StoryboardView.tsx';
 
@@ -71,7 +72,7 @@ export function ShotList({
   const presetText = usePresetText();
   const [mode, setMode] = useState<'table' | 'kanban'>('table');
   const [query, setQuery] = useState('');
-  const [status, setStatus] = useState<FrameStatus | ''>('');
+  const [status, setStatus] = useState<ShotDisplayStatus | ''>('');
   const [selectedScene, setSelectedScene] = useState<string>('');
   const [selectedLocation, setSelectedLocation] = useState<string>('');
   const [selectedCast, setSelectedCast] = useState<string>('');
@@ -81,6 +82,7 @@ export function ShotList({
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [selected, setSelected] = useState<string | null>(null);
   const [drawing, setDrawing] = useState<string | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   const opts = useMemo(() => ({ userId, origin: LOCAL }), [userId]);
   const currentFrame = frames.find((f) => f.id === selected) ?? null;
@@ -118,7 +120,7 @@ export function ShotList({
   const q = query.trim().toLowerCase();
   const matches = useCallback(
     (f: FrameElement, sceneId?: string | null) => {
-      if (status && (f.status ?? 'draft') !== status) return false;
+      if (status && getFrameStatus(f) !== status) return false;
       if (selectedScene) {
         const frameScene = sceneId ?? f.parent ?? null;
         if (frameScene !== selectedScene) return false;
@@ -202,7 +204,7 @@ export function ShotList({
     if (groupBy === 'status') {
       const map = new Map<string, FrameElement[]>();
       for (const f of filtered) {
-        const s = f.status ?? 'draft';
+        const s = getFrameStatus(f);
         if (!map.has(s)) map.set(s, []);
         map.get(s)?.push(f);
       }
@@ -224,15 +226,47 @@ export function ShotList({
   const allFilteredFrames = useMemo(() => shownGroups.flatMap((g) => g.frames), [shownGroups]);
 
   const allVisibleFrameIds = useMemo(() => allFilteredFrames.map((f) => f.id), [allFilteredFrames]);
+
+  // Prune selection when visible frames change (due to filters, grouping, search, etc.)
+  useEffect(() => {
+    setSelectedIds((prev) => {
+      if (prev.size === 0) return prev;
+      const visibleSet = new Set(allVisibleFrameIds);
+      let changed = false;
+      const next = new Set<string>();
+      for (const id of prev) {
+        if (visibleSet.has(id)) {
+          next.add(id);
+        } else {
+          changed = true;
+        }
+      }
+      return changed ? next : prev;
+    });
+  }, [allVisibleFrameIds]);
+
+  const visibleSelectedIds = useMemo(() => {
+    const visibleSet = new Set(allVisibleFrameIds);
+    return Array.from(selectedIds).filter((id) => visibleSet.has(id));
+  }, [selectedIds, allVisibleFrameIds]);
+
   const allSelected =
     allVisibleFrameIds.length > 0 && allVisibleFrameIds.every((id) => selectedIds.has(id));
   const someSelected = allVisibleFrameIds.some((id) => selectedIds.has(id));
 
   const toggleSelectAll = () => {
     if (allSelected) {
-      setSelectedIds(new Set());
+      setSelectedIds((prev) => {
+        const next = new Set(prev);
+        for (const id of allVisibleFrameIds) next.delete(id);
+        return next;
+      });
     } else {
-      setSelectedIds(new Set(allVisibleFrameIds));
+      setSelectedIds((prev) => {
+        const next = new Set(prev);
+        for (const id of allVisibleFrameIds) next.add(id);
+        return next;
+      });
     }
   };
 
@@ -262,7 +296,7 @@ export function ShotList({
     setSelected(f.id);
   };
 
-  const addFrameInStatus = (targetStatus: FrameStatus) => {
+  const addFrameInStatus = (targetCol: KanbanColumnKey) => {
     if (readOnly) return;
     store.undo.stopCapturing();
     let sceneId = groups[0]?.scene?.id ?? null;
@@ -270,65 +304,81 @@ export function ShotList({
       const s = addScene(store.doc, {}, opts);
       sceneId = s.id;
     }
-    const f = addFrame(
-      store.doc,
-      sceneId,
-      null,
-      { status: targetStatus === 'todo' ? undefined : targetStatus },
-      opts,
-    );
+    const fields =
+      targetCol === 'approved'
+        ? { approved: true }
+        : { status: targetCol === 'todo' ? undefined : targetCol };
+    const f = addFrame(store.doc, sceneId, null, fields, opts);
     setSelected(f.id);
   };
 
-  const bulkChangeStatus = (targetStatus: FrameStatus) => {
-    if (readOnly || selectedIds.size === 0) return;
+  const bulkChangeStatus = (targetStatus: ShotDisplayStatus) => {
+    if (readOnly || visibleSelectedIds.length === 0) return;
     store.undo.stopCapturing();
     store.doc.transact(() => {
-      for (const id of selectedIds) {
-        updateElement(store.doc, id, { status: targetStatus }, LOCAL);
+      for (const id of visibleSelectedIds) {
+        if (targetStatus === 'approved') {
+          updateElement(store.doc, id, { approved: true }, LOCAL);
+        } else {
+          updateElement(store.doc, id, { status: targetStatus, approved: false }, LOCAL);
+        }
       }
     }, LOCAL);
   };
 
   const bulkMoveToScene = (targetSceneId: string) => {
-    if (readOnly || selectedIds.size === 0 || !targetSceneId) return;
+    if (readOnly || visibleSelectedIds.length === 0 || !targetSceneId) return;
     store.undo.stopCapturing();
-    moveFrames(store.doc, [...selectedIds], targetSceneId, 0, LOCAL);
+    moveFrames(store.doc, visibleSelectedIds, targetSceneId, 0, LOCAL);
   };
 
   const bulkDelete = () => {
-    if (readOnly || selectedIds.size === 0) return;
+    if (readOnly || visibleSelectedIds.length === 0) return;
     store.undo.stopCapturing();
-    deleteElements(store.doc, selectedIds, LOCAL);
-    setSelectedIds(new Set());
-    if (selected && selectedIds.has(selected)) setSelected(null);
+    deleteElements(store.doc, new Set(visibleSelectedIds), LOCAL);
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      for (const id of visibleSelectedIds) next.delete(id);
+      return next;
+    });
+    if (selected && visibleSelectedIds.includes(selected)) setSelected(null);
   };
 
   const bulkDuplicate = useCallback(() => {
-    if (readOnly || selectedIds.size === 0) return;
+    if (readOnly || visibleSelectedIds.length === 0) return;
     store.undo.stopCapturing();
-    const newIds = duplicateElements(store.doc, [...selectedIds], { x: 0, y: 0 }, opts);
+    const newIds = duplicateElements(store.doc, visibleSelectedIds, { x: 0, y: 0 }, opts);
     setSelectedIds(new Set(newIds));
-  }, [readOnly, selectedIds, store, opts]);
+  }, [readOnly, visibleSelectedIds, store, opts]);
 
   useEffect(() => {
     if (mode !== 'table') return;
     const onKeyDown = (e: KeyboardEvent) => {
+      if (e.defaultPrevented) return;
+      if (isTyping(e.target)) return;
+      if (insideDialog(e.target)) return;
+
+      const hasSelection = visibleSelectedIds.length > 0;
+      const root = containerRef.current;
+      const hasFocus = Boolean(
+        root && (root.contains(document.activeElement) || root.contains(e.target as Node)),
+      );
+
+      if (!hasSelection || !hasFocus) return;
+
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'd') {
-        if (selectedIds.size > 0 && !readOnly) {
+        if (!readOnly) {
           e.preventDefault();
           bulkDuplicate();
         }
       } else if (e.key === 'Escape') {
-        if (selectedIds.size > 0) {
-          e.preventDefault();
-          setSelectedIds(new Set());
-        }
+        e.preventDefault();
+        setSelectedIds(new Set());
       }
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [mode, selectedIds, readOnly, bulkDuplicate]);
+  }, [mode, visibleSelectedIds, readOnly, bulkDuplicate]);
 
   const toggleCollapse = (groupId: string) => {
     setCollapsedGroups((prev) => {
@@ -342,7 +392,7 @@ export function ShotList({
   const statusCounts = useMemo(() => {
     const counts = { shot: 0, todo: 0, retake: 0, approved: 0 };
     for (const f of allFilteredFrames) {
-      const s = f.status;
+      const s = getFrameStatus(f);
       if (s === 'shot') counts.shot++;
       else if (s === 'retake') counts.retake++;
       else if (s === 'approved') counts.approved++;
@@ -386,7 +436,7 @@ export function ShotList({
         f.location ?? '',
         (f.cast ?? []).join(', '),
         f.notes ?? '',
-        t(`film.status.${f.status ?? 'draft'}`),
+        t(`film.status.${getFrameStatus(f)}`),
         (f.tags ?? []).join(', '),
       ]),
     );
@@ -396,7 +446,7 @@ export function ShotList({
   const selectedSceneObj = scenes.find((s) => s.id === selectedScene);
 
   return (
-    <div className="shots">
+    <div className="shots" ref={containerRef}>
       <div className="story__bar" data-chrome>
         <div className="view-tabs" role="tablist" aria-label={t('film.views.label')}>
           <button
@@ -481,10 +531,10 @@ export function ShotList({
           className="ink-input"
           value={status}
           aria-label={t('film.frame.status')}
-          onChange={(e) => setStatus(e.target.value as FrameStatus | '')}
+          onChange={(e) => setStatus(e.target.value as ShotDisplayStatus | '')}
         >
           <option value="">{t('film.list.allStatuses')}</option>
-          {FRAME_STATUSES.map((s) => (
+          {SHOT_DISPLAY_STATUSES.map((s) => (
             <option key={s} value={s}>
               {t(`film.status.${s}`)}
             </option>
@@ -661,7 +711,7 @@ export function ShotList({
                 const isCollapsed = collapsedGroups.has(g.id);
                 const grpCounts = { shot: 0, todo: 0, retake: 0, approved: 0 };
                 for (const f of g.frames) {
-                  const s = f.status;
+                  const s = getFrameStatus(f);
                   if (s === 'shot') grpCounts.shot++;
                   else if (s === 'retake') grpCounts.retake++;
                   else if (s === 'approved') grpCounts.approved++;
@@ -896,18 +946,18 @@ export function ShotList({
           )}
         </div>
 
-        {selectedIds.size > 0 && !readOnly && (
+        {visibleSelectedIds.length > 0 && !readOnly && (
           <div
             role="toolbar"
             aria-label={t('film.list.bulkActions')}
             className="shots__bulk-toolbar"
           >
-            <b>{t('film.list.selectedCount', { count: selectedIds.size })}</b>
+            <b>{t('film.list.selectedCount', { count: visibleSelectedIds.length })}</b>
             <select
               aria-label={t('film.list.changeStatus')}
               defaultValue=""
               onChange={(e) => {
-                const nextStatus = e.target.value as FrameStatus;
+                const nextStatus = e.target.value as ShotDisplayStatus;
                 if (nextStatus) bulkChangeStatus(nextStatus);
                 e.target.value = '';
               }}
@@ -915,7 +965,7 @@ export function ShotList({
               <option value="" disabled>
                 {t('film.list.changeStatus')} ▾
               </option>
-              {FRAME_STATUSES.map((s) => (
+              {SHOT_DISPLAY_STATUSES.map((s) => (
                 <option key={s} value={s}>
                   {t(`film.status.${s}`)}
                 </option>

@@ -143,3 +143,137 @@ it('supports row multi-selection and bulk actions (change status and delete)', a
   expect(elementsMap.has(f1.id)).toBe(false);
   expect(elementsMap.has(f2.id)).toBe(false);
 });
+
+it('applies bulk actions only to visible rows, prunes selection on filter change, and shows affected count', async () => {
+  const { doc, store } = board();
+  const scene = addScene(doc, { number: '1', title: 'Bar' }, { userId: null });
+  const f1 = addFrame(doc, scene.id, null, { label: '1A', status: 'todo' }, { userId: null });
+  const f2 = addFrame(doc, scene.id, null, { label: '1B', status: 'ready' }, { userId: null });
+
+  const host = await mount(<ShotList store={store} boardTitle="Test Board" readOnly={false} />);
+
+  // Select all visible rows (1A and 1B)
+  const selectAll = host.querySelector<HTMLInputElement>(
+    'th.shots__select-col input[type="checkbox"]',
+  );
+  await act(async () => {
+    selectAll?.click();
+  });
+
+  const toolbar = host.querySelector('.shots__bulk-toolbar');
+  expect(toolbar?.textContent).toContain('2 selected');
+
+  // Filter to show only ready status (frame 1B)
+  const filterSelect = host.querySelector<HTMLSelectElement>('select[aria-label="Status"]');
+  expect(filterSelect).not.toBeNull();
+  await act(async () => {
+    if (filterSelect) {
+      filterSelect.value = 'ready';
+      filterSelect.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+  });
+
+  // Toolbar should now show only 1 selected (the visible one)
+  expect(toolbar?.textContent).toContain('1 selected');
+
+  // Bulk delete should only affect the visible frame 1B, not the hidden frame 1A
+  const deleteBtn = toolbar?.querySelector<HTMLButtonElement>('.shots__bulk-btn--danger');
+  await act(async () => {
+    deleteBtn?.click();
+  });
+
+  const elementsMap = doc.getMap('elements');
+  expect(elementsMap.has(f2.id)).toBe(false);
+  expect(elementsMap.has(f1.id)).toBe(true);
+});
+
+it('guards Cmd+D / Ctrl+D against editable targets, open dialogs, and lack of focus/selection', async () => {
+  const { doc, store } = board();
+  const scene = addScene(doc, { number: '1', title: 'Bar' }, { userId: null });
+  const f1 = addFrame(doc, scene.id, null, { label: '1A', status: 'todo' }, { userId: null });
+
+  const host = await mount(<ShotList store={store} boardTitle="Test Board" readOnly={false} />);
+  const elementsMap = doc.getMap('elements');
+
+  // Case 1: No selection -> Cmd+D should not duplicate
+  const eventNoSelection = new KeyboardEvent('keydown', {
+    key: 'd',
+    metaKey: true,
+    bubbles: true,
+    cancelable: true,
+  });
+  window.dispatchEvent(eventNoSelection);
+  expect(eventNoSelection.defaultPrevented).toBe(false);
+  expect(elementsMap.size).toBe(2); // scene + f1
+
+  // Select frame f1
+  const rowCheckbox = host.querySelector<HTMLInputElement>(
+    'td.shots__select-col input[type="checkbox"]',
+  );
+  await act(async () => {
+    rowCheckbox?.click();
+  });
+
+  // Case 2: Focus is outside the shot list container
+  const outsideBtn = document.createElement('button');
+  document.body.appendChild(outsideBtn);
+  outsideBtn.focus();
+
+  const eventOutside = new KeyboardEvent('keydown', {
+    key: 'd',
+    metaKey: true,
+    bubbles: true,
+    cancelable: true,
+  });
+  window.dispatchEvent(eventOutside);
+  expect(eventOutside.defaultPrevented).toBe(false);
+  expect(elementsMap.size).toBe(2);
+  outsideBtn.remove();
+
+  // Case 3: Focus inside an editable input inside the shot list
+  const searchInput = host.querySelector<HTMLInputElement>('input.shots__filter');
+  expect(searchInput).not.toBeNull();
+  searchInput?.focus();
+
+  const eventInput = new KeyboardEvent('keydown', {
+    key: 'd',
+    metaKey: true,
+    bubbles: true,
+    cancelable: true,
+  });
+  searchInput?.dispatchEvent(eventInput);
+  expect(eventInput.defaultPrevented).toBe(false);
+  expect(elementsMap.size).toBe(2);
+
+  // Case 4: An open dialog is present in document
+  const dialog = document.createElement('dialog');
+  dialog.open = true;
+  document.body.appendChild(dialog);
+  const dialogInput = document.createElement('input');
+  dialog.appendChild(dialogInput);
+  dialogInput.focus();
+
+  const eventDialog = new KeyboardEvent('keydown', {
+    key: 'd',
+    metaKey: true,
+    bubbles: true,
+    cancelable: true,
+  });
+  window.dispatchEvent(eventDialog);
+  expect(eventDialog.defaultPrevented).toBe(false);
+  expect(elementsMap.size).toBe(2);
+  dialog.remove();
+
+  // Case 5: Focus is inside shot list and has selection -> duplicates
+  rowCheckbox?.focus();
+  const eventValid = new KeyboardEvent('keydown', {
+    key: 'd',
+    metaKey: true,
+    bubbles: true,
+    cancelable: true,
+  });
+  rowCheckbox?.dispatchEvent(eventValid);
+  expect(eventValid.defaultPrevented).toBe(true);
+  expect(elementsMap.size).toBe(3); // scene + f1 + duplicated frame
+  expect(elementsMap.has(f1.id)).toBe(true);
+});

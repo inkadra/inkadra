@@ -1,52 +1,46 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 import { type FrameElement, formatDuration, updateElement } from '@inkadra/canvas-core';
-import { type AspectRatio, type FrameStatus, SHOT_SIZES } from '@inkadra/doc-schema';
+import { type AspectRatio, SHOT_SIZES } from '@inkadra/doc-schema';
 import { Icon } from '@inkadra/ui';
 import { type DragEvent, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { CardReview } from '../CardReview.tsx';
-import { useReviews } from '../review-store.ts';
 import { type BoardStore, LOCAL } from '../store.ts';
 import { FramePicture } from './FramePicture.tsx';
 import { usePresetText } from './fields.tsx';
+import { getFrameKanbanColumn, type KanbanColumnKey } from './film-status.ts';
 
 const FRAME_MIME = 'application/x-inkadra-frame';
 
 export const KANBAN_COLUMNS: Array<{
-  key: FrameStatus;
+  key: KanbanColumnKey;
   labelKey: string;
   dotColor: string;
-  statuses: readonly (FrameStatus | undefined)[];
 }> = [
   {
     key: 'todo',
     labelKey: 'film.status.todo',
     dotColor: 'var(--ink-text-muted, #8A8A90)',
-    statuses: ['draft', 'todo', undefined],
   },
   {
     key: 'ready',
     labelKey: 'film.status.ready',
     dotColor: 'var(--ink-tag-blue, #60A5FA)',
-    statuses: ['ready'],
   },
   {
     key: 'shot',
     labelKey: 'film.status.shot',
     dotColor: 'var(--ink-status-ok, #34D399)',
-    statuses: ['shot'],
   },
   {
     key: 'retake',
     labelKey: 'film.status.retake',
     dotColor: 'var(--ink-status-warn, #F87171)',
-    statuses: ['retake'],
   },
   {
     key: 'approved',
     labelKey: 'film.status.approved',
     dotColor: 'var(--ink-tag-purple, #A78BFA)',
-    statuses: ['approved'],
   },
 ];
 
@@ -67,12 +61,11 @@ export function ShotlistKanban({
   selected: string | null;
   onSelect: (id: string | null) => void;
   readOnly: boolean;
-  onAddFrame: (status: FrameStatus) => void;
+  onAddFrame: (status: KanbanColumnKey) => void;
 }) {
   const { t } = useTranslation();
   const presetText = usePresetText();
-  const reviews = useReviews((s) => s.reviews);
-  const [dropTarget, setDropTarget] = useState<FrameStatus | null>(null);
+  const [dropTarget, setDropTarget] = useState<KanbanColumnKey | null>(null);
   const [expandedCols, setExpandedCols] = useState<Set<string>>(new Set());
 
   const onDragStart = (e: DragEvent, id: string) => {
@@ -81,27 +74,35 @@ export function ShotlistKanban({
     e.dataTransfer.effectAllowed = 'move';
   };
 
-  const onDragOver = (e: DragEvent, colKey: FrameStatus) => {
+  const onDragOver = (e: DragEvent, colKey: KanbanColumnKey) => {
     if (readOnly) return;
     e.preventDefault();
     e.dataTransfer.dropEffect = 'move';
     if (dropTarget !== colKey) setDropTarget(colKey);
   };
 
-  const onDrop = (e: DragEvent, targetStatus: FrameStatus) => {
+  const moveCard = (id: string, targetCol: KanbanColumnKey) => {
+    if (readOnly) return;
+    store.undo.stopCapturing();
+    if (targetCol === 'approved') {
+      updateElement(store.doc, id, { approved: true }, LOCAL);
+    } else {
+      updateElement(
+        store.doc,
+        id,
+        { status: targetCol === 'todo' ? 'todo' : targetCol, approved: false },
+        LOCAL,
+      );
+    }
+  };
+
+  const onDrop = (e: DragEvent, targetCol: KanbanColumnKey) => {
     if (readOnly) return;
     e.preventDefault();
     setDropTarget(null);
     const id = e.dataTransfer.getData(FRAME_MIME);
     if (!id) return;
-    store.undo.stopCapturing();
-    updateElement(store.doc, id, { status: targetStatus }, LOCAL);
-  };
-
-  const moveCard = (id: string, targetStatus: FrameStatus) => {
-    if (readOnly) return;
-    store.undo.stopCapturing();
-    updateElement(store.doc, id, { status: targetStatus }, LOCAL);
+    moveCard(id, targetCol);
   };
 
   const toggleColExpanded = (colKey: string) => {
@@ -116,22 +117,7 @@ export function ShotlistKanban({
   return (
     <div className="kanban">
       {KANBAN_COLUMNS.map((col) => {
-        const colFrames = frames.filter((f) => {
-          const isClientApproved = reviews?.get(f.id)?.status === 'approved';
-          if (col.key === 'approved') {
-            return (
-              f.status === 'approved' ||
-              (isClientApproved &&
-                f.status !== 'shot' &&
-                f.status !== 'retake' &&
-                f.status !== 'ready')
-            );
-          }
-          if (isClientApproved && (!f.status || f.status === 'draft' || f.status === 'todo')) {
-            return false;
-          }
-          return col.statuses.includes(f.status);
-        });
+        const colFrames = frames.filter((f) => getFrameKanbanColumn(f) === col.key);
 
         const isExpanded = expandedCols.has(col.key);
         const cardLimit = 10;
@@ -168,7 +154,6 @@ export function ShotlistKanban({
                 <div className="kanban__empty-col">
                   <Icon name="check" size={20} />
                   <span>{t('film.list.approvedHelper')}</span>
-                  <span className="kanban__empty-hint">{t('film.list.approvedHint')}</span>
                 </div>
               ) : null}
               {visibleFrames.map((f) => {
@@ -254,7 +239,7 @@ export function ShotlistKanban({
                             value=""
                             onClick={(e) => e.stopPropagation()}
                             onChange={(e) => {
-                              const val = e.target.value as FrameStatus;
+                              const val = e.target.value as KanbanColumnKey;
                               if (val) moveCard(f.id, val);
                             }}
                           >
