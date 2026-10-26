@@ -227,6 +227,10 @@ export function Dialog({
     if (!el) return;
     if (open && !el.open) el.showModal();
     if (!open && el.open) el.close();
+    // Closing before removal lets the browser restore the element that opened the dialog.
+    return () => {
+      if (el.open) el.close();
+    };
   }, [open]);
   return (
     <dialog

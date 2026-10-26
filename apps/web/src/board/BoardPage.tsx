@@ -21,6 +21,9 @@ import { Canvas } from './Canvas.tsx';
 import { CommentsButton } from './CommentsPanel.tsx';
 import { ContextMenu } from './chrome.tsx';
 import { type ConnectionStatus, useBoardConnection } from './connection.ts';
+import { ClientReviewView } from './film/ClientReviewView.tsx';
+import { MoodboardView } from './film/MoodboardView.tsx';
+import { ScheduleView } from './film/ScheduleView.tsx';
 import { ShotList } from './film/ShotList.tsx';
 import { StoryboardView } from './film/StoryboardView.tsx';
 import { RestoredToast } from './RestoredToast.tsx';
@@ -35,10 +38,13 @@ import './board.css';
 
 const canEdit = (role: ProjectRole | null | undefined) => role === 'owner' || role === 'editor';
 
-export type BoardView = 'storyboard' | 'shotlist' | 'canvas';
-const VIEWS: Array<{ view: BoardView; icon: IconName }> = [
+export type BoardView = 'storyboard' | 'shotlist' | 'schedule' | 'review' | 'moodboard' | 'canvas';
+export const VIEWS: Array<{ view: BoardView; icon: IconName }> = [
   { view: 'storyboard', icon: 'storyboard' },
   { view: 'shotlist', icon: 'shotlist' },
+  { view: 'schedule', icon: 'calendar' },
+  { view: 'review', icon: 'people' },
+  { view: 'moodboard', icon: 'image' },
   { view: 'canvas', icon: 'board' },
 ];
 
@@ -47,23 +53,31 @@ export function useBoardView(kind: Board['kind'] | undefined): [BoardView, (v: B
   const [params, setParams] = useSearchParams();
   const asked = params.get('view');
   const view: BoardView =
-    kind !== 'storyboard'
-      ? 'canvas'
-      : asked === 'shotlist' || asked === 'canvas'
-        ? asked
-        : 'storyboard';
+    asked === 'shotlist' ||
+    asked === 'storyboard' ||
+    asked === 'schedule' ||
+    asked === 'review' ||
+    asked === 'moodboard' ||
+    asked === 'canvas'
+      ? asked
+      : kind === 'storyboard'
+        ? 'storyboard'
+        : 'canvas';
   const setView = useCallback(
     (v: BoardView) =>
       setParams(
         (p) => {
           const next = new URLSearchParams(p);
-          if (v === 'storyboard') next.delete('view');
-          else next.set('view', v);
+          if (kind === 'storyboard' ? v === 'storyboard' : v === 'canvas') {
+            next.delete('view');
+          } else {
+            next.set('view', v);
+          }
           return next;
         },
         { replace: true },
       ),
-    [setParams],
+    [kind, setParams],
   );
   return [view, setView];
 }
@@ -328,7 +342,11 @@ function BoardScreen({
             </Fragment>
           ))}
         </nav>
-        {kind === 'storyboard' && (
+        {(kind === 'storyboard' ||
+          view === 'storyboard' ||
+          view === 'shotlist' ||
+          view === 'schedule' ||
+          view === 'review') && (
           <div className="view-tabs" role="tablist" aria-label={t('film.views.label')}>
             {VIEWS.map((v) => (
               <button
@@ -454,8 +472,34 @@ function BoardScreen({
         key={preview?.version.id ?? 'live'}
         store={preview?.store ?? conn.store}
         boardTitle={crumbs.at(-1)?.title ?? ''}
+        projectId={projectId}
+        boardId={boardId}
+        userId={user.id}
         readOnly={!!preview || !editable}
       />
+    ) : view === 'schedule' ? (
+      <ScheduleView
+        key={preview?.version.id ?? 'live'}
+        store={preview?.store ?? conn.store}
+        boardTitle={crumbs.at(-1)?.title ?? ''}
+        projectName={projectName}
+        projectId={projectId}
+        boardId={boardId}
+        userId={user.id}
+        readOnly={!!preview || !editable}
+      />
+    ) : view === 'review' ? (
+      <ClientReviewView
+        key={preview?.version.id ?? 'live'}
+        store={preview?.store ?? conn.store}
+        projectName={projectName}
+        projectId={projectId}
+        boardId={boardId}
+        userId={user.id}
+        readOnly={!!preview || !editable}
+      />
+    ) : view === 'moodboard' ? (
+      <MoodboardView key="moodboard" projectId={projectId} onClose={() => setView('storyboard')} />
     ) : preview ? (
       <Canvas
         key={preview.version.id}

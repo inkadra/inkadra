@@ -6,6 +6,7 @@ import { exifRows, shutterText } from '../viewer.tsx';
 import { aspectLabel } from './aspect.ts';
 import { parseSeconds, secondsText } from './fields.tsx';
 import { toCsv } from './ShotList.tsx';
+import { KANBAN_COLUMNS } from './ShotlistKanban.tsx';
 import { pathOf } from './strokes.ts';
 
 const key = (k: string) => ({
@@ -65,6 +66,14 @@ describe('film helpers', () => {
   });
 });
 
+it('maps kanban columns to frame statuses', () => {
+  expect(KANBAN_COLUMNS.map((c) => c.key)).toEqual(['todo', 'ready', 'shot', 'retake']);
+  const todoCol = KANBAN_COLUMNS.find((c) => c.key === 'todo');
+  expect(todoCol?.statuses).toContain('draft');
+  expect(todoCol?.statuses).toContain('todo');
+  expect(todoCol?.statuses).toContain(undefined);
+});
+
 describe('search, tags and viewer', () => {
   it('splits a #tag from the words', () => {
     expect(parseQuery('#notte binario')).toEqual({ q: 'binario', tag: 'notte' });
@@ -109,4 +118,22 @@ describe('search, tags and viewer', () => {
     expect(commandFor(key('f'), false)).toEqual({ kind: 'add', type: 'frame' });
     expect(commandFor(key('s'), false)).toEqual({ kind: 'add', type: 'storyboard' });
   });
+});
+
+it('includes schedule, review and moodboard views in board views', async () => {
+  const { VIEWS } = await import('../BoardPage.tsx');
+  expect(VIEWS.map((v) => v.view)).toEqual([
+    'storyboard',
+    'shotlist',
+    'schedule',
+    'review',
+    'moodboard',
+    'canvas',
+  ]);
+  const scheduleView = VIEWS.find((v) => v.view === 'schedule');
+  expect(scheduleView?.icon).toBe('calendar');
+  const reviewView = VIEWS.find((v) => v.view === 'review');
+  expect(reviewView?.icon).toBe('people');
+  const moodboardView = VIEWS.find((v) => v.view === 'moodboard');
+  expect(moodboardView?.icon).toBe('image');
 });

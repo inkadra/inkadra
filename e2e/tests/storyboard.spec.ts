@@ -196,3 +196,56 @@ test('the palette inserts templates on a non-empty board and opens storyboard te
   await expect(canvas.locator('[data-type="column"]')).toHaveCount(3);
   await expect(page.locator('[data-type="board"]', { hasText: 'Storyboard' })).toHaveCount(2);
 });
+
+test('opening a note edits its real document and preserves the canvas editor', async ({ page }) => {
+  await openProject(page);
+  const note = page.locator('[data-type="note"]').filter({ hasText: 'Sopralluogo al porto' });
+  await note.dblclick();
+  const dialog = page.getByRole('dialog', { name: 'Testo della nota', exact: true });
+  const editor = dialog.locator('[contenteditable="true"]');
+  await expect(editor).toContainText('Sopralluogo al porto');
+  await expect(dialog).not.toContainText('Antonio guida');
+  await editor.fill('Sopralluogo al porto — aggiornato');
+  await dialog.getByRole('button', { name: 'Modifica sulla board' }).click();
+  await expect(dialog).not.toBeVisible();
+  await expect(note.locator('[contenteditable="true"]')).toContainText('aggiornato');
+  await page.keyboard.press('Escape');
+  await note.dblclick();
+  await expect(editor).toContainText('Sopralluogo al porto — aggiornato');
+  await page.keyboard.press('Escape');
+  await expect(dialog).not.toBeVisible();
+});
+
+test('shell views use real shots and the call sheet traps and restores focus', async ({ page }) => {
+  await openProject(page);
+  await page.locator('[data-type="board"]', { hasText: 'Binario 21' }).dblclick();
+  await page.getByRole('tab', { name: 'Piano riprese' }).click();
+  const schedule = page.getByRole('region', { name: 'Piano riprese', exact: true });
+  await expect(schedule).toContainText('Il treno entra');
+  const openSheet = schedule.getByRole('button', { name: 'Foglio di lavorazione' });
+  await openSheet.click();
+  const dialog = page.getByRole('dialog', { name: 'Foglio di lavorazione' });
+  const close = dialog.getByRole('button', { name: 'Chiudi', exact: true });
+  await expect(close).toBeFocused();
+  await expect(dialog).toContainText('Demo · non salvato');
+  await expect(dialog).not.toContainText('Ospedale Centrale');
+  // Native dialogs allow the browser chrome in the Tab cycle, but never the page behind.
+  for (const key of ['Tab', 'Shift+Tab']) {
+    for (let step = 0; step < 3; step++) {
+      await page.keyboard.press(key);
+      expect(
+        await dialog.evaluate(
+          (element) =>
+            document.activeElement === document.body || element.contains(document.activeElement),
+        ),
+      ).toBe(true);
+    }
+  }
+  await close.focus();
+  await page.keyboard.press('Escape');
+  await expect(dialog).not.toBeVisible();
+  await expect(openSheet).toBeFocused();
+  await page.getByRole('tab', { name: 'Revisione', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Invia revisione' })).toBeDisabled();
+  await expect(page.getByText('Demo: invio, decisioni e commenti', { exact: false })).toBeVisible();
+});

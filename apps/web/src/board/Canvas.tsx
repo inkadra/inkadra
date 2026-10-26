@@ -95,6 +95,7 @@ import { DrawingEditor } from './film/DrawingEditor.tsx';
 import { FramePanel } from './film/FramePanel.tsx';
 import { toggleGuestHidden } from './guest-visibility.tsx';
 import { fillLinkPreview, webUrl } from './links.ts';
+import { NoteSideSheet } from './NoteSideSheet.tsx';
 import { fillFragment, isEmpty } from './note.tsx';
 import { PresenceLayer } from './PresenceLayer.tsx';
 import { type Peer, useLocalPresence } from './presence.ts';
@@ -260,6 +261,7 @@ export function Canvas({
   const [tool, setTool] = useState<CanvasTool>('select');
   /** Frame whose details panel is open, frame being drawn, image or video in the viewer. */
   const [framePanel, setFramePanel] = useState<string | null>(null);
+  const [noteSheet, setNoteSheet] = useState<string | null>(null);
   const [drawing, setDrawing] = useState<string | null>(null);
   const [viewing, setViewing] = useState<string | null>(null);
   const [tagging, setTagging] = useState<{ x: number; y: number; ids: string[] } | null>(null);
@@ -652,6 +654,9 @@ export function Canvas({
       } else if (el.type === 'frame') {
         select([el.id]);
         setFramePanel(el.id);
+      } else if (el.type === 'note') {
+        select([el.id]);
+        setNoteSheet(el.id);
       } else if (!readOnly) {
         select([el.id]);
         setEditing(el.id);
@@ -1461,6 +1466,9 @@ export function Canvas({
       !single.locked
         ? [{ label: t('board.caption.edit'), action: () => setEditing(single.id) }]
         : []),
+      ...(single?.type === 'note'
+        ? [{ label: t('board.menu.openDoc', 'Apri documento'), action: () => openElement(single) }]
+        : []),
       ...(single?.type === 'frame'
         ? [
             { label: t('board.menu.details'), action: () => openElement(single) },
@@ -1768,6 +1776,18 @@ export function Canvas({
               )
             }
             onClose={() => setTagging(null)}
+          />
+        )}
+        {noteSheet && (
+          <NoteSideSheet
+            noteId={noteSheet}
+            store={store}
+            readOnly={readOnly}
+            onClose={() => setNoteSheet(null)}
+            onEditOnCanvas={() => {
+              setEditing(noteSheet);
+              setNoteSheet(null);
+            }}
           />
         )}
         {panelFrame && (

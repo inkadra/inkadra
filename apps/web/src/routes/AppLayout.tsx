@@ -27,12 +27,16 @@ import {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Navigate, Outlet, useLocation, useNavigate, useSearchParams } from 'react-router';
-import { childBoards, useProjectBoards, useSharedBoards } from '../board/boards.ts';
+import { boardPath, childBoards, useProjectBoards, useSharedBoards } from '../board/boards.ts';
 import { authApi } from '../lib/api.ts';
 import { HeaderContext } from '../lib/header.tsx';
 import { useSession } from '../lib/session.tsx';
 import { useTheme } from '../lib/theme.ts';
-import { NotificationBell } from '../notifications/Notifications.tsx';
+import {
+  NotificationBell,
+  NotificationList,
+  useUnreadCount,
+} from '../notifications/Notifications.tsx';
 import { NewProjectDialog } from './NewProjectDialog.tsx';
 import {
   getCachedProjects,
@@ -65,6 +69,8 @@ export function AppLayout() {
   const [creating, setCreating] = useState(false);
   const [headerContent, setHeaderContent] = useState<ReactNode | null>(null);
   const [searching, setSearching] = useState(false);
+  const [inboxOpen, setInboxOpen] = useState(false);
+  const [unread, refreshUnread] = useUnreadCount();
   const [params, setParams] = useSearchParams();
   const shared = useSharedBoards(!!user);
 
@@ -117,17 +123,43 @@ export function AppLayout() {
   const current = projects?.find((p) => p.id === projectId);
   const openBoardId = boardId ?? current?.rootBoardId;
   const isStoryboard = projectBoards?.find((b) => b.id === openBoardId)?.kind === 'storyboard';
+  const storyboardBoard = projectBoards?.find((b) => b.kind === 'storyboard');
   const view = params.get('view');
-  const showView = (v: 'storyboard' | 'shotlist') =>
+  const currentView: 'canvas' | 'storyboard' | 'shotlist' | 'schedule' | 'review' | 'moodboard' =
+    view === 'shotlist' ||
+    view === 'storyboard' ||
+    view === 'canvas' ||
+    view === 'schedule' ||
+    view === 'review' ||
+    view === 'moodboard'
+      ? view
+      : isStoryboard
+        ? 'storyboard'
+        : 'canvas';
+
+  const showView = (
+    v: 'canvas' | 'storyboard' | 'shotlist' | 'schedule' | 'review' | 'moodboard',
+  ) => {
+    if (!projectId) return;
+    if (v === 'storyboard' && !isStoryboard && storyboardBoard && current?.rootBoardId) {
+      navigate(boardPath(projectId, storyboardBoard.id, current.rootBoardId));
+      return;
+    }
     setParams(
       (p) => {
         const next = new URLSearchParams(p);
-        if (v === 'storyboard') next.delete('view');
-        else next.set('view', v);
+        if (isStoryboard) {
+          if (v === 'storyboard') next.delete('view');
+          else next.set('view', v);
+        } else {
+          if (v === 'canvas') next.delete('view');
+          else next.set('view', v);
+        }
         return next;
       },
       { replace: true },
     );
+  };
 
   const rail = (
     <Rail label={t('nav.modules')}>
@@ -143,26 +175,77 @@ export function AppLayout() {
       <RailButton
         icon="board"
         label={t('nav.board')}
-        active={!!projectId && (!isStoryboard || view === 'canvas')}
+        disabled={!projectId}
+        active={!!projectId && currentView === 'canvas'}
+        onClick={() => {
+          if (projectId) showView('canvas');
+        }}
       />
       <RailButton
         icon="storyboard"
         label={t('nav.storyboard')}
-        disabled={!isStoryboard}
-        active={isStoryboard && !view}
-        onClick={() => showView('storyboard')}
+        disabled={!projectId}
+        active={!!projectId && currentView === 'storyboard'}
+        onClick={() => {
+          showView('storyboard');
+        }}
       />
       <RailButton
         icon="shotlist"
         label={t('nav.shotlist')}
-        disabled={!isStoryboard}
-        active={isStoryboard && view === 'shotlist'}
-        onClick={() => showView('shotlist')}
+        disabled={!projectId}
+        active={!!projectId && currentView === 'shotlist'}
+        onClick={() => {
+          if (!projectId) return;
+          if (!isStoryboard && storyboardBoard && current?.rootBoardId) {
+            navigate(
+              `${boardPath(projectId, storyboardBoard.id, current.rootBoardId)}?view=shotlist`,
+            );
+          } else {
+            showView('shotlist');
+          }
+        }}
       />
-      <RailButton icon="calendar" label={t('nav.schedule')} disabled />
-      <RailButton icon="people" label={t('nav.clients')} disabled />
+      <RailButton
+        icon="calendar"
+        label={t('nav.schedule')}
+        disabled={!projectId}
+        active={!!projectId && currentView === 'schedule'}
+        onClick={() => {
+          if (!projectId) return;
+          if (!isStoryboard && storyboardBoard && current?.rootBoardId) {
+            navigate(
+              `${boardPath(projectId, storyboardBoard.id, current.rootBoardId)}?view=schedule`,
+            );
+          } else {
+            showView('schedule');
+          }
+        }}
+      />
+      <RailButton
+        icon="people"
+        label={t('nav.clients')}
+        disabled={!projectId}
+        active={!!projectId && currentView === 'review'}
+        onClick={() => {
+          if (!projectId) return;
+          if (!isStoryboard && storyboardBoard && current?.rootBoardId) {
+            navigate(
+              `${boardPath(projectId, storyboardBoard.id, current.rootBoardId)}?view=review`,
+            );
+          } else {
+            showView('review');
+          }
+        }}
+      />
       <RailSeparator />
-      <RailButton icon="inbox" label={t('nav.inbox')} disabled />
+      <RailButton
+        icon="inbox"
+        label={t('nav.inbox')}
+        badge={unread > 0 ? unread : undefined}
+        active={inboxOpen}
+        onClick={() => setInboxOpen((o) => !o)}
+      />
       <RailButton icon="search" label={t('nav.search')} onClick={() => setSearching(true)} />
       <RailSpacer />
       <RailButton
@@ -209,7 +292,13 @@ export function AppLayout() {
         active={pathname === '/'}
         onClick={go('/')}
       />
-      <NavItem icon="inbox" label={t('nav.inbox')} count={0} />
+      <NavItem
+        icon="inbox"
+        label={t('nav.inbox')}
+        count={unread}
+        active={inboxOpen}
+        onClick={() => setInboxOpen((o) => !o)}
+      />
       <NavItem icon="assigned" label={t('nav.assigned')} count={0} />
       <NavItem icon="unsorted" label={t('nav.unsorted')} count={0} />
       <SidebarSection
@@ -228,13 +317,50 @@ export function AppLayout() {
             onClick={go(`/p/${p.id}`)}
           />
           {p.id === projectId && (
-            <BoardTree
-              projectId={p.id}
-              parentId={p.rootBoardId}
-              activeId={boardId}
-              depth={1}
-              go={go}
-            />
+            <>
+              <NavItem
+                icon="storyboard"
+                label={t('nav.storyboard')}
+                active={currentView === 'storyboard'}
+                onClick={() => showView('storyboard')}
+                style={{ paddingLeft: 22 }}
+              />
+              <NavItem
+                icon="shotlist"
+                label={t('nav.shotlist')}
+                active={currentView === 'shotlist'}
+                onClick={() => showView('shotlist')}
+                style={{ paddingLeft: 22 }}
+              />
+              <NavItem
+                icon="calendar"
+                label={t('nav.schedule')}
+                active={currentView === 'schedule'}
+                onClick={() => showView('schedule')}
+                style={{ paddingLeft: 22 }}
+              />
+              <NavItem
+                icon="people"
+                label={t('nav.clients')}
+                active={currentView === 'review'}
+                onClick={() => showView('review')}
+                style={{ paddingLeft: 22 }}
+              />
+              <NavItem
+                icon="image"
+                label={t('nav.moodboard')}
+                active={currentView === 'moodboard'}
+                onClick={() => showView('moodboard')}
+                style={{ paddingLeft: 22 }}
+              />
+              <BoardTree
+                projectId={p.id}
+                parentId={p.rootBoardId}
+                activeId={boardId}
+                depth={1}
+                go={go}
+              />
+            </>
           )}
         </div>
       ))}
@@ -283,7 +409,7 @@ export function AppLayout() {
           </span>
         </>
       )}
-      <NotificationBell />
+      <NotificationBell unread={unread} onCount={refreshUnread} />
     </Header>
   );
 
@@ -296,6 +422,14 @@ export function AppLayout() {
       </HeaderContext.Provider>
       {searching && (
         <SearchDialog projects={projects} shared={shared} onClose={() => setSearching(false)} />
+      )}
+      {inboxOpen && (
+        <NotificationList
+          fixed
+          onClose={() => setInboxOpen(false)}
+          onNavigate={() => setInboxOpen(false)}
+          onCount={refreshUnread}
+        />
       )}
       <NewProjectDialog
         open={creating}

@@ -90,7 +90,8 @@
       "toDark": "Switch to dark theme",
       "toLight": "Switch to light theme"
     },
-    "shared": "Shared with you"
+    "shared": "Shared with you",
+    "moodboard": "Moodboard"
   },
   "home": {
     "greeting": {
@@ -459,7 +460,10 @@
       "label": "View",
       "storyboard": "Storyboard",
       "shotlist": "Shot list",
-      "canvas": "Canvas"
+      "canvas": "Canvas",
+      "schedule": "Schedule",
+      "review": "Review",
+      "moodboard": "Moodboard"
     },
     "aspect": {
       "label": "Aspect ratio",
@@ -586,7 +590,10 @@
       "empty": "No frames",
       "picture": "Picture",
       "scene": "Scene",
-      "noMatch": "No frame matches the filter"
+      "noMatch": "No frame matches the filter",
+      "table": "Table",
+      "kanban": "Kanban",
+      "addInStatus": "Add in {{status}}"
     }
   },
   "roles": {
@@ -1066,7 +1073,15 @@
       "daily": "One digest a day",
       "off": "Never"
     },
-    "preferencesError": "Could not read or save the preference."
+    "preferencesError": "Could not read or save the preference.",
+    "tabs": {
+      "all": "All",
+      "mentions": "Mentions",
+      "approvals": "Approvals",
+      "assigned": "Assigned to me"
+    },
+    "readAllYesterday": "You've read everything up to yesterday",
+    "filter": "Inbox filter"
   },
   "settings": {
     "title": "Account",
@@ -1215,5 +1230,37 @@
     "show": "Show to guests",
     "hidden": "Hidden from guests",
     "inherited": "Hidden from guests through its container"
+  },
+  "shells": {
+    "close": "Close",
+    "editOnCanvas": "Edit on board",
+    "demo": "Demo · not saved",
+    "callSheet": "Call sheet",
+    "scheduleUnavailable": "Scheduling is not connected to a save service yet. Drag previews are local and lost when this view closes. No dates have been scheduled.",
+    "noShots": "No shots on this board.",
+    "draftSlot": "Local scheduling preview",
+    "dropShot": "Drag a shot here to preview its placement.",
+    "reviewUnavailable": "Demo: submission, decisions and comments are not available yet. No review is saved.",
+    "submitReview": "Submit review",
+    "approve": "Approve",
+    "requestChanges": "Request changes",
+    "comments": "Comments",
+    "noComments": "No comments available.",
+    "noReferences": "No references available.",
+    "referencesUnavailable": "The reference view is coming soon. Board images remain available on the canvas.",
+    "callSheetUnavailable": "Empty draft: dates, calls, weather, contacts and safety information are unavailable. Printing and export are not enabled yet.",
+    "print": "Print / export",
+    "matrix": "Role permissions matrix",
+    "role": "Role",
+    "view": "View",
+    "comment": "Comment",
+    "edit": "Edit",
+    "share": "Share",
+    "download": "Download",
+    "owner": "Owner",
+    "editor": "Editor",
+    "commenter": "Commenter",
+    "viewer": "Viewer",
+    "guest": "Guest"
   }
 }

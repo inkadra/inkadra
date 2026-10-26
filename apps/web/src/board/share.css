@@ -162,3 +162,69 @@
   margin: 0;
   font-size: 12px;
 }
+
+/* Permissions Matrix matching V2-Permissions.html */
+.share__matrix-wrapper {
+  border-top: 1px solid var(--ink-border-subtle);
+  padding-top: 10px;
+  margin-top: 4px;
+}
+
+.share__matrix-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  background: transparent;
+  border: 0;
+  color: var(--ink-text-secondary);
+  font:
+    500 12px Inter,
+    sans-serif;
+  cursor: pointer;
+  padding: 4px 0;
+}
+
+.share__matrix-toggle:hover {
+  color: var(--ink-text-primary);
+}
+
+.share__matrix-card {
+  margin-top: 8px;
+  background: #1a1a1d;
+  border: 1px solid #26262a;
+  border-radius: 8px;
+  padding: 10px 12px;
+}
+
+.share__matrix-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 11px;
+}
+
+.share__matrix-table th {
+  padding: 4px 6px;
+  font-weight: 500;
+  color: #808086;
+  text-align: center;
+  border-bottom: 1px solid #26262a;
+}
+
+.share__matrix-table td {
+  padding: 5px 6px;
+  color: #8a8a90;
+  text-align: center;
+  border-bottom: 1px solid #1f1f23;
+}
+
+.share__matrix-table tr.is-active td {
+  color: #ededed;
+  background: #1e2a44;
+}
+
+.share__matrix-table td:first-child {
+  text-align: left;
+  font-weight: 500;
+  color: #ededed;
+}

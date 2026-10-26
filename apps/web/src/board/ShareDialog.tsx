@@ -23,6 +23,84 @@ const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
  * above, invitations still waiting, and the invitation link. Editors and owners share; the
  * others see the list.
  */
+function PermissionsMatrix() {
+  const { t } = useTranslation();
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="share__matrix-wrapper">
+      <button type="button" className="share__matrix-toggle" onClick={() => setOpen((o) => !o)}>
+        <span>{t('shells.matrix')}</span>
+        <svg
+          className="ico"
+          viewBox="0 0 24 24"
+          aria-hidden="true"
+          style={{ width: 12, height: 12, transform: open ? 'rotate(180deg)' : 'none' }}
+        >
+          <path d="M7 10l5 5 5-5" />
+        </svg>
+      </button>
+      {open && (
+        <div className="share__matrix-card">
+          <table className="share__matrix-table">
+            <thead>
+              <tr>
+                <th style={{ textAlign: 'left' }}>{t('shells.role')}</th>
+                <th>{t('shells.view')}</th>
+                <th>{t('shells.comment')}</th>
+                <th>{t('shells.edit')}</th>
+                <th>{t('shells.share')}</th>
+                <th>{t('shells.download')}</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>{t('shells.owner')}</td>
+                <td>●</td>
+                <td>●</td>
+                <td>●</td>
+                <td>●</td>
+                <td>●</td>
+              </tr>
+              <tr>
+                <td>{t('shells.editor')}</td>
+                <td>●</td>
+                <td>●</td>
+                <td>●</td>
+                <td>●</td>
+                <td>●</td>
+              </tr>
+              <tr className="is-active">
+                <td>{t('shells.commenter')}</td>
+                <td>●</td>
+                <td>●</td>
+                <td>—</td>
+                <td>—</td>
+                <td>●</td>
+              </tr>
+              <tr>
+                <td>{t('shells.viewer')}</td>
+                <td>●</td>
+                <td>—</td>
+                <td>—</td>
+                <td>—</td>
+                <td>—</td>
+              </tr>
+              <tr>
+                <td>{t('shells.guest')}</td>
+                <td>●</td>
+                <td>●</td>
+                <td>—</td>
+                <td>—</td>
+                <td>PDF</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function ShareDialog({
   open,
   board,
@@ -225,6 +303,7 @@ export function ShareDialog({
                 </li>
               ))}
             </ul>
+            <PermissionsMatrix />
 
             {canManage && (
               <LinkSection
