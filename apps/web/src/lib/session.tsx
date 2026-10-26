@@ -1,5 +1,13 @@
 import type { Instance, User } from '@inkadra/shared';
-import { createContext, type ReactNode, useCallback, useContext, useEffect, useState } from 'react';
+import {
+  createContext,
+  type ReactNode,
+  useCallback,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
 import i18n, { LOCALES, type Locale } from '../i18n/index.ts';
 import { api, RequestError } from './api.ts';
 
@@ -16,8 +24,12 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const [instance, setInstance] = useState<Instance | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const latest = useRef(0);
 
   const refresh = useCallback(async () => {
+    // Only the most recent refresh applies: an older one finishing late must not bring back
+    // the language (or user) it read before a newer save.
+    const call = ++latest.current;
     const [inst, me] = await Promise.all([
       api.get<Instance>('/instance'),
       api.get<User>('/me').catch((err) => {
@@ -25,6 +37,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         throw err;
       }),
     ]);
+    if (call !== latest.current) return;
     setInstance(inst);
     setUser(me);
     if (me?.locale) {

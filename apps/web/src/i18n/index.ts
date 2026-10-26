@@ -23,9 +23,12 @@ void i18n.use(initReactI18next).init({
   returnNull: false,
 });
 
-i18n.on('languageChanged', (lng) => {
-  document.documentElement.lang = lng;
-});
-document.documentElement.lang = i18n.language;
+// Guarded so modules importing i18n also load in Node test runs.
+if (typeof document !== 'undefined') {
+  i18n.on('languageChanged', (lng) => {
+    document.documentElement.lang = lng;
+  });
+  document.documentElement.lang = i18n.language;
+}
 
 export default i18n;

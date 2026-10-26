@@ -5,7 +5,7 @@ import { createRoot } from 'react-dom/client';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import i18n from '../i18n/index.ts';
 import { api } from './api.ts';
-import { SessionProvider } from './session.tsx';
+import { SessionProvider, useSession } from './session.tsx';
 
 const instance = {} as Instance;
 const user = (locale: string | null) => ({ id: 'u1', locale }) as User;
@@ -48,4 +48,40 @@ it('keeps the detected language when the profile has none or an unsupported one'
   respond(user('fr'));
   unmount = await mount();
   expect(i18n.language).toBe('it');
+});
+
+it('ignores an older refresh that finishes after a newer one', async () => {
+  let resolveFirst: (me: User) => void = () => {};
+  const first = new Promise<User>((resolve) => {
+    resolveFirst = resolve;
+  });
+  let calls = 0;
+  vi.spyOn(api, 'get').mockImplementation(async (path: string) => {
+    if (path !== '/me') return instance;
+    calls += 1;
+    return calls === 1 ? first : user('en');
+  });
+  let refresh: () => Promise<void> = async () => {};
+  const Probe = () => {
+    refresh = useSession().refresh;
+    return null;
+  };
+  const host = document.createElement('div');
+  document.body.append(host);
+  const root = createRoot(host);
+  await act(async () =>
+    root.render(
+      <SessionProvider>
+        <Probe />
+      </SessionProvider>,
+    ),
+  );
+  await act(async () => refresh());
+  expect(i18n.language).toBe('en');
+  await act(async () => resolveFirst(user('it')));
+  expect(i18n.language).toBe('en');
+  unmount = () => {
+    act(() => root.unmount());
+    host.remove();
+  };
 });
