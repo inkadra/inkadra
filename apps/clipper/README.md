@@ -6,7 +6,7 @@ an Inkadra board. It talks to the server only through the public API of `@inkadr
 
 What it does:
 - **Toolbar button**: saves the current page as a link card, with a board (recent boards
-  first, then projects and their sub-boards, or search), a note and tags. The board is
+  first, then projects and their sub-boards, or search), a column, a note and tags. The tab title is kept on link cards. The board is
   remembered for next time.
 - **Right-click menus**: on an image, a selection (a note with the quote and its page), a
   link or the page itself. They save to the board last chosen from the toolbar button.
@@ -83,5 +83,42 @@ Until then, the `/authorize` page answers that the app is not one of the officia
 ## Not in this version
 
 Area and full-page screenshots, a "collection mode" that highlights the images of a page,
-choosing a column (the API does not list the columns of a board yet: cards go to "Non
-ordinati"), and Firefox.
+and Firefox.
+
+## Columns, permissions and compatibility
+
+The popup lists `GET /api/v1/boards/{id}/columns` after selecting a board (including the
+remembered board), in the order returned by the server. An empty title is shown as
+"Untitled column". "Unsorted" always omits `columnId`; an empty list or an unsupported
+endpoint (404, 405, 501) leaves only that option. Changing boards resets the column and
+ignores late responses for the previous board. Other errors remain visible. Menus and the
+shortcut still use Unsorted on the last board; the column choice is not persisted.
+
+Search hides board and card hits whose `myRole` is below editor, while missing roles from
+servers before API 0.5.0 remain visible. Page saves send the tab title (up to 500 characters);
+a context-menu link to another page does not inherit the source tab's unrelated title.
+
+Clip errors preserve `details.reason`. `outcome_unknown` and every HTTP 500 (including
+missing, malformed or unknown reasons) ask to check the board before trying again, per
+ADR 0017. There are no automatic clip retries. HTTP 413 reports the upload limit from
+`Instance.limits` cached at connection time when positive, otherwise a generic size error;
+HTTP 429 asks to wait a minute. Both locales use the same messages in popup and menu toasts.
+
+## Long uploads in Chrome MV3
+
+Image reads and multipart uploads run in the service worker, including context-menu saves
+with no popup open. An unresolved fetch or an open message channel alone is insufficient
+to keep an MV3 worker alive. Each user-initiated save is wrapped in `whileClipping`: every
+20 seconds it calls `chrome.runtime.getPlatformInfo()` to reset Chrome's idle timer, using
+Chrome's documented [long-operation waitUntil pattern](https://developer.chrome.com/docs/extensions/develop/migrate/to-service-workers#keep_a_service_worker_alive_until_a_long-running_operation_is_finished).
+The timer starts before reading the connection/image and ends in `finally`, after success
+or failure. Concurrent clips have independent timers. There is no permanent heartbeat,
+additional permission, offscreen page, dependency on the popup, or upload replay.
+
+This prevents idle shutdown during a slow upload; it cannot survive browser exit, extension
+reload or a process crash. Check the board before manually repeating an interrupted save.
+Unit tests exercise the actual background handlers with pending mock fetches beyond 30
+seconds, success/failure cleanup and overlapping saves. For a real-browser check, load the
+unpacked extension, close its worker DevTools (which itself prevents idle shutdown), and save
+an image through the context menu over a connection slow enough to take over 30 seconds.
+Confirm one request/card and that the worker can become idle again after completion.

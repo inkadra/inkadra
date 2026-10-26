@@ -22,20 +22,45 @@ export type ErrorKind =
 export class ClipperError extends Error {
   readonly kind: ErrorKind;
 
-  constructor(kind: ErrorKind, message?: string) {
+  readonly status?: number;
+  readonly reason?: string;
+  readonly uploadMaxBytes?: number;
+
+  constructor(
+    kind: ErrorKind,
+    message?: string,
+    details: {
+      status?: number;
+      reason?: string;
+      uploadMaxBytes?: number;
+    } = {},
+  ) {
     super(message ?? kind);
     this.name = 'ClipperError';
     this.kind = kind;
+    this.status = details.status;
+    this.reason = details.reason;
+    this.uploadMaxBytes = details.uploadMaxBytes;
   }
 }
 
 export interface SerializedError {
   kind: ErrorKind;
   message: string;
+  status?: number;
+  reason?: string;
+  uploadMaxBytes?: number;
 }
 
 export function serializeError(err: unknown): SerializedError {
-  if (err instanceof ClipperError) return { kind: err.kind, message: err.message };
+  if (err instanceof ClipperError)
+    return {
+      kind: err.kind,
+      message: err.message,
+      status: err.status,
+      reason: err.reason,
+      uploadMaxBytes: err.uploadMaxBytes,
+    };
   return { kind: 'server', message: err instanceof Error ? err.message : String(err) };
 }
 

@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: MPL-2.0
+import type { BoardColumn } from '@inkadra/shared';
 import { ClipperError, type SerializedError, serializeError } from './errors.ts';
 import type { BoardRef } from './storage.ts';
 
@@ -28,6 +29,8 @@ export interface SavedClip {
 export interface SavePageInput {
   board: BoardRef;
   url: string;
+  title?: string;
+  columnId?: string;
   note?: string;
   tags?: string[];
 }
@@ -39,6 +42,7 @@ export interface MessageMap {
     request: { query?: string; parent?: BoardRef };
     response: BoardOption[];
   };
+  columns: { request: { boardId: string }; response: BoardColumn[] };
   'save-page': { request: SavePageInput; response: SavedClip };
 }
 
@@ -103,6 +107,6 @@ export async function send<K extends MessageType>(
     | Reply<MessageMap[K]['response']>
     | undefined;
   if (!reply) throw new ClipperError('server', 'No answer from the extension.');
-  if (!reply.ok) throw new ClipperError(reply.error.kind, reply.error.message);
+  if (!reply.ok) throw new ClipperError(reply.error.kind, reply.error.message, reply.error);
   return reply.data;
 }
