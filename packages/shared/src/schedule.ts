@@ -62,3 +62,27 @@ export const Schedule = z
   .object({ items: z.array(ShootingDay), nextCursor: z.null() })
   .openapi('Schedule');
 export type Schedule = z.infer<typeof Schedule>;
+
+/** At most this many calendar days per request across all projects. */
+export const MY_SCHEDULE_MAX_DAYS = 62;
+export const MyScheduleQuery = z
+  .object({
+    from: z.iso.date().openapi({ description: 'First local date, included.' }),
+    to: z.iso.date().openapi({ description: 'Last local date, included.' }),
+  })
+  .refine((q) => q.from <= q.to, 'from must not be after to.')
+  .refine(
+    (q) => (Date.parse(q.to) - Date.parse(q.from)) / 86_400_000 < MY_SCHEDULE_MAX_DAYS,
+    `At most ${MY_SCHEDULE_MAX_DAYS} days.`,
+  )
+  .openapi('MyScheduleQuery');
+export type MyScheduleQuery = z.infer<typeof MyScheduleQuery>;
+export const PlannedShootingDay = ShootingDay.extend({
+  boardTitle: z.string(),
+  projectName: z.string(),
+}).openapi('PlannedShootingDay');
+export type PlannedShootingDay = z.infer<typeof PlannedShootingDay>;
+export const MySchedule = z
+  .object({ items: z.array(PlannedShootingDay), nextCursor: z.null() })
+  .openapi('MySchedule');
+export type MySchedule = z.infer<typeof MySchedule>;

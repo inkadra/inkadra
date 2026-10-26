@@ -1,10 +1,18 @@
-import { API_PREFIX, Id, ShootingDayInput, UpdateShootingDay, z } from '@inkadra/shared';
-import { and, asc, eq, sql } from 'drizzle-orm';
+import {
+  API_PREFIX,
+  Id,
+  MyScheduleQuery,
+  type PlannedShootingDay,
+  ShootingDayInput,
+  UpdateShootingDay,
+  z,
+} from '@inkadra/shared';
+import { and, asc, eq, gte, isNull, lte, sql } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
-import { requireBoardRole } from '../access.ts';
+import { boardRoles, requireBoardRole } from '../access.ts';
 import type { Auth } from '../auth.ts';
 import type { Database } from '../db/client.ts';
-import { shootingDay } from '../db/schema.ts';
+import { board, project, shootingDay } from '../db/schema.ts';
 import { requireActor } from './auth-routes.ts';
 import { HttpError } from './errors.ts';
 
@@ -21,6 +29,36 @@ export function registerScheduleRoutes(
   app: FastifyInstance,
   { db, auth }: { db: Database; auth: Auth },
 ) {
+  // Decision 0022: a cross-board overview checks every day's board like the board's own list.
+  app.get(`${API_PREFIX}/me/shooting-days`, async (req) => {
+    const actor = await requireActor(auth, req, db);
+    const { from, to } = MyScheduleQuery.parse(req.query ?? {});
+    const rows = await db
+      .select({ day: shootingDay, boardTitle: board.title, projectName: project.name })
+      .from(shootingDay)
+      .innerJoin(board, and(eq(board.id, shootingDay.boardId), isNull(board.deletedAt)))
+      .innerJoin(project, and(eq(project.id, shootingDay.projectId), isNull(project.archivedAt)))
+      .where(
+        and(
+          gte(shootingDay.date, from),
+          lte(shootingDay.date, to),
+          sql`(exists (select 1 from project_member m
+              where m.project_id = ${shootingDay.projectId} and m.user_id = ${actor.id})
+            or exists (select 1 from board_grant g join board b on b.id = g.board_id
+              where b.project_id = ${shootingDay.projectId} and g.user_id = ${actor.id}))`,
+        ),
+      )
+      .orderBy(asc(shootingDay.date), asc(shootingDay.callTime), asc(shootingDay.id));
+    const roles = await boardRoles(
+      db,
+      actor,
+      rows.map((r) => r.day.boardId),
+    );
+    const items: PlannedShootingDay[] = rows
+      .filter((r) => roles.has(r.day.boardId))
+      .map((r) => ({ ...publicDay(r.day), boardTitle: r.boardTitle, projectName: r.projectName }));
+    return { items, nextCursor: null };
+  });
   const base = `${API_PREFIX}/boards/:boardId/schedule`;
   app.get(base, async (req) => {
     const actor = await requireActor(auth, req, db);
