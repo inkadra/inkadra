@@ -218,6 +218,75 @@ describe('MediaViewer video playback', () => {
   });
 });
 
+describe('MediaViewer pictures', () => {
+  const gif: Asset = {
+    ...videoAsset,
+    id: 'gif-01',
+    kind: 'image',
+    mime: 'image/gif',
+    filename: 'loop.gif',
+    durationMs: null,
+    url: '/api/v1/assets/gif-01/file',
+    variants: [
+      { size: '256', width: 256, height: 160, url: '/api/v1/assets/gif-01/variants/256' },
+      { size: '512', width: 512, height: 320, url: '/api/v1/assets/gif-01/variants/512' },
+    ],
+  };
+  const picture: Extract<Element, { type: 'image' }> = {
+    ...fileElement,
+    type: 'image',
+    assetId: 'gif-01',
+    caption: 'Il gatto',
+  };
+  const store = {
+    undo: { stopCapturing: vi.fn() },
+    doc: { transact: vi.fn() },
+  } as unknown as import('./store.ts').BoardStore;
+
+  it('shows the poster of a GIF, then its moving variant once loaded', async () => {
+    mockState.asset = gif;
+    const probes: FakeImage[] = [];
+    /** The off-screen picture MovingPicture loads the moving variant with. */
+    class FakeImage {
+      onload: (() => void) | null = null;
+      src = '';
+      constructor() {
+        probes.push(this);
+      }
+    }
+    vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
+    vi.stubGlobal('Image', FakeImage);
+    const container = document.createElement('div');
+    document.body.append(container);
+    const root = createRoot(container);
+    const media = () => container.querySelector('.viewer__media');
+
+    try {
+      await act(async () => {
+        root.render(
+          <MediaViewer
+            store={store}
+            element={picture}
+            projectId="proj-01"
+            userId="user-01"
+            readOnly={false}
+            onClose={vi.fn()}
+          />,
+        );
+      });
+      expect(media()?.getAttribute('src')).toBe('https://example.com/poster.jpg');
+      expect(probes.map((p) => p.src)).toEqual(['/api/v1/assets/gif-01/variants/512?animated=1']);
+
+      await act(async () => probes[0]?.onload?.());
+      expect(media()?.getAttribute('src')).toBe('/api/v1/assets/gif-01/variants/512?animated=1');
+    } finally {
+      await act(async () => root.unmount());
+      container.remove();
+      vi.unstubAllGlobals();
+    }
+  });
+});
+
 describe('mounted viewer error events', () => {
   let container: HTMLDivElement;
   let root: Root;

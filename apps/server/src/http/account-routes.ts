@@ -35,6 +35,7 @@ import {
 import type { Jobs } from '../jobs.ts';
 import { addressBucket, RateLimiter } from '../rate-limits.ts';
 import { newSecret, pkceChallenge, safeEqual, sha256 } from '../secrets.ts';
+import { animatedVariantKey } from '../storage.ts';
 import { issueToken, toPersonalToken } from '../tokens.ts';
 import { toUser } from './api-routes.ts';
 import { requireActor, requireSession, toHeaders } from './auth-routes.ts';
@@ -296,11 +297,18 @@ export function registerAccountRoutes(app: FastifyInstance, deps: Deps) {
           .from(asset)
           .where(inArray(asset.projectId, alone));
         const variants = await tx
-          .select({ key: assetVariant.storageKey })
+          .select({
+            key: assetVariant.storageKey,
+            assetId: assetVariant.assetId,
+            size: assetVariant.size,
+          })
           .from(assetVariant)
           .innerJoin(asset, eq(asset.id, assetVariant.assetId))
           .where(inArray(asset.projectId, alone));
-        files = [...originals, ...variants].map((r) => r.key);
+        files = [
+          ...originals.map((r) => r.key),
+          ...variants.flatMap((r) => [r.key, animatedVariantKey(r.assetId, r.size)]),
+        ];
         await tx.delete(project).where(inArray(project.id, alone));
       }
       // Sessions, accounts, memberships, grants, tokens and two-factor data cascade.

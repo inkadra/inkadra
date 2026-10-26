@@ -9,14 +9,35 @@ import sharp from 'sharp';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createDatabase, runMigrations } from '../db/client.ts';
 import { asset, assetVariant, project } from '../db/schema.ts';
-import { originalKey, readAll } from '../storage.ts';
+import { animatedVariantKey, originalKey, readAll } from '../storage.ts';
 import { testDeps } from '../test-deps.ts';
-import { processAsset, variantWidths } from './process.ts';
+import { ANIMATED_CAPS, processAsset, variantWidths } from './process.ts';
 import { mediaTools, resetMediaTools, sniffVideo } from './video.ts';
 
 const url = process.env.DATABASE_URL;
 const migrationsFolder = fileURLToPath(new URL('../../drizzle', import.meta.url));
 const fixture = (name: string) => readFileSync(new URL(`./fixtures/${name}`, import.meta.url));
+
+/** A tiny animated GIF, generated on the fly: no binary fixture in the repository. */
+async function animatedGif(frames: number, width = 120, height = 80) {
+  const pages = await Promise.all(
+    Array.from({ length: frames }, (_, i) =>
+      sharp({
+        create: {
+          width,
+          height,
+          channels: 4,
+          background: { r: (i * 70) % 256, g: 60, b: 150, alpha: 1 },
+        },
+      })
+        .png()
+        .toBuffer(),
+    ),
+  );
+  return sharp(pages, { join: { animated: true } })
+    .gif({ loop: 0 })
+    .toBuffer();
+}
 
 describe('variantWidths', () => {
   it('never upscales and always gives one thumbnail', () => {
@@ -113,6 +134,37 @@ describe.skipIf(!url)('processAsset (needs DATABASE_URL)', () => {
     const { row, variants } = await load(id);
     expect([row?.width, row?.height]).toEqual([300, 600]);
     expect(variants[0]).toMatchObject({ width: 256, height: 512 });
+  });
+
+  it('writes moving thumbnails beside the posters of an animated GIF', async () => {
+    const id = await upload(await animatedGif(3), 'image/gif', 'loop.gif');
+    const result = await processAsset(deps, id);
+    const { row, variants } = await load(id);
+
+    expect(result).toEqual({ variants: 1, animated: 1 });
+    expect(row).toMatchObject({ status: 'ready', mime: 'image/gif', width: 120, height: 80 });
+    // The poster is the first frame; the moving copy keeps all three.
+    const poster = await sharp(
+      await readAll(await storage.read(variants[0]?.storageKey ?? '')),
+    ).metadata();
+    expect(poster.pages).toBeUndefined();
+    const key = animatedVariantKey(id, '256');
+    expect(await storage.size(key)).toBeGreaterThan(0);
+    const moving = await sharp(await readAll(await storage.read(key))).metadata();
+    expect(moving).toMatchObject({ format: 'webp', pages: 3 });
+  });
+
+  it('falls back to the poster when the animation is past the caps', async () => {
+    const id = await upload(await animatedGif(5), 'image/gif', 'long.gif');
+    expect((await processAsset(deps, id)).animated).toBe(1);
+
+    // Re-running under a cap drops the moving copies the first run wrote.
+    const result = await processAsset(deps, id, { ...ANIMATED_CAPS, maxFrames: 2 });
+    expect(result).toMatchObject({ variants: 1, animated: 0 });
+    expect(await storage.size(animatedVariantKey(id, '256'))).toBeNull();
+    const { row, variants } = await load(id);
+    expect(row?.status).toBe('ready');
+    expect(variants).toHaveLength(1);
   });
 
   it('decodes HEIC photos from iPhones', async () => {

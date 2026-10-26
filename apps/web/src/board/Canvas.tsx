@@ -90,7 +90,7 @@ import {
 } from './chrome.tsx';
 import { decodeClipboard, encodeClipboard } from './clipboard.ts';
 import type { BoardConnection } from './connection.ts';
-import { BoardContext, type BoardContextValue, GuestModeContext } from './context.ts';
+import { BoardContext, type BoardContextValue, GuestModeContext, LARGE_BOARD } from './context.ts';
 import { useBoardAspect } from './film/aspect.ts';
 import { DrawingEditor } from './film/DrawingEditor.tsx';
 import { FramePanel } from './film/FramePanel.tsx';
@@ -1244,6 +1244,7 @@ export function Canvas({
     if (!same) labelsRef.current = next;
     return labelsRef.current;
   }, [snap]);
+  const largeBoard = snap.byId.size > LARGE_BOARD;
   const ctx = useMemo<BoardContextValue>(
     () => ({
       store,
@@ -1253,6 +1254,7 @@ export function Canvas({
       userId,
       boards,
       scale,
+      largeBoard,
       editing,
       setEditing,
       openBoard: onOpenBoard,
@@ -1268,6 +1270,7 @@ export function Canvas({
       userId,
       boards,
       scale,
+      largeBoard,
       editing,
       setEditing,
       onOpenBoard,

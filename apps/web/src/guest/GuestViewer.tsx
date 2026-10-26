@@ -2,6 +2,7 @@ import type { GuestElement } from '@inkadra/shared';
 import { IconButton } from '@inkadra/ui';
 import { useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
+import { MovingPicture, movingVariantUrl } from '../board/moving.tsx';
 import { isUnplayableVideoError, useVideoUnplayable, VideoUnplayable } from '../board/viewer.tsx';
 import { useGuestActions } from './actions.ts';
 import { PickControls, ReviewChip } from './GuestCardExtras.tsx';
@@ -78,8 +79,13 @@ export function GuestViewer({ element, onClose }: { element: GuestElement; onClo
               />
             )}
           </>
-        ) : src ? (
-          <img className="guest-viewer__media" src={src} alt={caption || title} />
+        ) : src && asset ? (
+          <MovingPicture
+            className="guest-viewer__media"
+            poster={src}
+            moving={movingVariantUrl(asset, wide)}
+            alt={caption || title}
+          />
         ) : (
           <p className="ink-muted">{t('guest.viewer.noPreview')}</p>
         )}

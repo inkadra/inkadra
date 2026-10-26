@@ -338,6 +338,68 @@ describe.skipIf(!url)('projects, boards, uploads and assets (needs DATABASE_URL)
     expect((await call('stranger', 'GET', ready.url)).statusCode).toBe(404);
   });
 
+  it('serves the moving variant of a GIF, and only when there is one', async () => {
+    const frames = await Promise.all(
+      [0, 1, 2].map((i) =>
+        sharp({
+          create: {
+            width: 120,
+            height: 80,
+            channels: 4,
+            background: { r: i * 70, g: 40, b: 160, alpha: 1 },
+          },
+        })
+          .png()
+          .toBuffer(),
+      ),
+    );
+    const gif = await sharp(frames, { join: { animated: true } })
+      .gif({ loop: 0 })
+      .toBuffer();
+    const upload = async (body: Buffer, filename: string, filetype: string) => {
+      const created = await call('owner', 'POST', '/api/v1/uploads', body, {
+        ...tus,
+        'upload-length': String(body.length),
+        'upload-metadata': metadata(filename, filetype),
+        'content-type': 'application/offset+octet-stream',
+      });
+      expect(created.statusCode).toBe(201);
+      await deps.jobs.idle();
+      const assetId = String(created.headers['inkadra-asset-id']);
+      return (await call('viewer', 'GET', `/api/v1/assets/${assetId}`)).json();
+    };
+
+    const ready = await upload(gif, 'loop.gif', 'image/gif');
+    expect(ready).toMatchObject({ status: 'ready', mime: 'image/gif' });
+    const poster = ready.variants[0].url as string;
+    const moving = await call('viewer', 'GET', `${poster}?animated=1`);
+    expect(moving.statusCode).toBe(200);
+    expect(moving.headers['content-type']).toBe('image/webp');
+    expect((await sharp(moving.rawPayload).metadata()).pages).toBe(3);
+    // Its own immutable file, never the poster.
+    expect(moving.headers.etag).toContain('animated');
+    expect(
+      (
+        await call('viewer', 'GET', `${poster}?animated=1`, undefined, {
+          'if-none-match': moving.headers.etag ?? '',
+        })
+      ).statusCode,
+    ).toBe(304);
+    const still = await sharp((await call('viewer', 'GET', poster)).rawPayload).metadata();
+    expect(still.pages).toBeUndefined();
+    expect((await call('stranger', 'GET', `${poster}?animated=1`)).statusCode).toBe(404);
+
+    const png = await sharp({
+      create: { width: 120, height: 80, channels: 3, background: '#445566' },
+    })
+      .png()
+      .toBuffer();
+    const flat = await upload(png, 'flat.png', 'image/png');
+    expect((await call('viewer', 'GET', `${flat.variants[0].url}?animated=1`)).statusCode).toBe(
+      404,
+    );
+  });
+
   it('serves anything that could run in a browser as a sandboxed download', async () => {
     const html = Buffer.from('<script>alert(document.cookie)</script>');
     const created = await call('owner', 'POST', '/api/v1/uploads', html, {
