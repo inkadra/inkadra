@@ -20,7 +20,7 @@ import {
 import { useTranslation } from 'react-i18next';
 import * as Y from 'yjs';
 import { pickVariant, useAsset } from './assets.ts';
-import { renameBoard } from './boards.ts';
+import { canRenameBoard, renameBoard } from './boards.ts';
 import { CardCaption } from './CardCaption.tsx';
 import { CardReview } from './CardReview.tsx';
 import { CardExtrasContext, GuestModeContext, useBoard } from './context.ts';
@@ -570,7 +570,7 @@ function ColorCard({ element, editing }: { element: Of<'color'>; editing: boolea
 }
 
 function BoardCard({ element, editing }: { element: Of<'board'>; editing: boolean }) {
-  const { boards, projectId, setEditing } = useBoard();
+  const { boards, projectId, setEditing, readOnly } = useBoard();
   const { t } = useTranslation();
   const board = boards?.find((b) => b.id === element.boardId);
   const title = board?.title ?? t('board.board.unknown');
@@ -579,7 +579,7 @@ function BoardCard({ element, editing }: { element: Of<'board'>; editing: boolea
       <span className="card__board-tile" aria-hidden="true">
         <Icon name={board?.kind === 'storyboard' ? 'storyboard' : 'board'} size={22} />
       </span>
-      {editing && board ? (
+      {editing && board && !readOnly && !element.locked && canRenameBoard(board) ? (
         <input
           className="card__inline-input card__title"
           defaultValue={board.title}
@@ -589,9 +589,13 @@ function BoardCard({ element, editing }: { element: Of<'board'>; editing: boolea
           onBlur={(e) => {
             const value = e.target.value.trim();
             setEditing(null);
-            if (value && value !== board.title) void renameBoard(projectId, board.id, value);
+            if (value && value !== board.title)
+              void renameBoard(projectId, board.id, value).catch(() => {});
           }}
+          // Escape leaves the field keeping what was typed, like every other card field: a new
+          // board is named by typing and pressing Escape.
           onKeyDown={blurOnEnter}
+          maxLength={200}
           aria-label={t('board.board.title')}
         />
       ) : (

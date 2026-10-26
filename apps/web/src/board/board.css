@@ -982,6 +982,34 @@
   color: var(--ink-text-primary);
   font-weight: 600;
 }
+button.crumb {
+  background: none;
+  border: 0;
+  padding: 0;
+  font: inherit;
+  text-align: left;
+}
+button.crumb--editable {
+  cursor: pointer;
+  border-radius: 4px;
+}
+button.crumb--editable:hover,
+button.crumb--editable:focus-visible {
+  color: var(--ink-accent-primary);
+}
+.crumb__input {
+  font: inherit;
+  font-weight: 600;
+  color: var(--ink-text-primary);
+  background: var(--ink-surface-1);
+  border: 1px solid var(--ink-accent-primary);
+  border-radius: 4px;
+  padding: 1px 6px;
+  outline: none;
+  min-width: 60px;
+  overflow: visible;
+  text-overflow: clip;
+}
 .crumb__sep {
   color: var(--ink-border-strong);
 }

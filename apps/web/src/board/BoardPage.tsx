@@ -15,7 +15,8 @@ import { useHeaderContent } from '../lib/header.tsx';
 import { useSession } from '../lib/session.tsx';
 import { useProjects } from '../routes/AppLayout.tsx';
 import { NotFound } from '../routes/NotFound.tsx';
-import { boardPath, fetchBoard, useProjectBoards } from './boards.ts';
+import { renameProject } from '../routes/projects.ts';
+import { boardPath, fetchBoard, renameBoard, useProjectBoards } from './boards.ts';
 import { Canvas } from './Canvas.tsx';
 import { CommentsButton } from './CommentsPanel.tsx';
 import { ContextMenu } from './chrome.tsx';
@@ -93,6 +94,82 @@ export function BoardPage() {
   );
 }
 
+function CurrentCrumb({
+  title,
+  ariaLabel,
+  maxLength,
+  canRename,
+  onRename,
+}: {
+  title: string;
+  ariaLabel?: string;
+  maxLength: number;
+  canRename: boolean;
+  onRename: (title: string) => void;
+}) {
+  const { t } = useTranslation();
+  const [editing, setEditing] = useState(false);
+  const cancelledRef = useRef(false);
+
+  if (!canRename) {
+    return (
+      <span className="crumb crumb--current" aria-current="page">
+        {title}
+      </span>
+    );
+  }
+
+  if (editing) {
+    return (
+      <input
+        className="crumb crumb--current crumb__input"
+        defaultValue={title}
+        maxLength={maxLength}
+        // biome-ignore lint/a11y/noAutofocus: opened explicitly by user click to rename
+        autoFocus
+        onFocus={(e) => {
+          cancelledRef.current = false;
+          e.currentTarget.select();
+        }}
+        onBlur={(e) => {
+          const cancelled = cancelledRef.current;
+          cancelledRef.current = false;
+          setEditing(false);
+          if (cancelled) return;
+          const value = e.target.value.trim();
+          if (value && value !== title) {
+            onRename(value);
+          }
+        }}
+        onKeyDown={(e) => {
+          if (e.key === 'Escape') {
+            e.preventDefault();
+            cancelledRef.current = true;
+            setEditing(false);
+            return;
+          }
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            e.currentTarget.blur();
+          }
+        }}
+        aria-label={ariaLabel ?? t('board.board.title')}
+      />
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      className="crumb crumb--current crumb--editable"
+      aria-current="page"
+      onClick={() => setEditing(true)}
+    >
+      {title}
+    </button>
+  );
+}
+
 function BoardScreen({
   projectId,
   projectName,
@@ -148,6 +225,26 @@ function BoardScreen({
     if (!value) requestAnimationFrame(() => document.getElementById('board-header-menu')?.focus());
   }, []);
   const clearUndo = useCallback(() => conn?.store.undo.clear(), [conn]);
+  const handleRenameCurrentBoard = useCallback(
+    (newTitle: string) => {
+      if (boardId === rootBoardId) {
+        void renameProject(projectId, newTitle)
+          .then((p) => {
+            setDetail((prev) =>
+              prev && prev.id === rootBoardId ? { ...prev, title: p.name } : prev,
+            );
+          })
+          .catch(() => {});
+      } else {
+        void renameBoard(projectId, boardId, newTitle)
+          .then((b) => {
+            setDetail((prev) => (prev && prev.id === b.id ? { ...prev, title: b.title } : prev));
+          })
+          .catch(() => {});
+      }
+    },
+    [projectId, boardId, rootBoardId],
+  );
 
   // Read again when the server changes our access, so the role shown and checked is current.
   const accessVersion = conn?.accessChangedAt;
@@ -188,9 +285,14 @@ function BoardScreen({
                 </span>
               )}
               {i === crumbs.length - 1 ? (
-                <span className="crumb crumb--current" aria-current="page">
-                  {c.title}
-                </span>
+                <CurrentCrumb
+                  title={c.title}
+                  ariaLabel={c.id === rootBoardId ? t('project.name') : t('board.board.title')}
+                  // The limits of UpdateProject.name and UpdateBoard.title.
+                  maxLength={c.id === rootBoardId ? 120 : 200}
+                  canRename={editable && (boardId !== rootBoardId || canEdit(projectRole))}
+                  onRename={handleRenameCurrentBoard}
+                />
               ) : (
                 <a
                   className="crumb"
@@ -273,6 +375,9 @@ function BoardScreen({
       editable,
       headerMenu,
       closeHeaderMenu,
+      handleRenameCurrentBoard,
+      boardId,
+      projectRole,
     ],
   );
   useHeaderContent(header);
@@ -437,14 +542,16 @@ export function breadcrumb(
   detail: BoardDetail | null,
   boards: Board[] | null,
 ): Array<{ id: string; title: string }> {
-  const rootTitle = (id: string, title: string) => (id === rootBoardId ? projectName : title);
+  const byId = new Map((boards ?? []).map((b) => [b.id, b]));
+  const boardTitle = (id: string, fallback: string) => byId.get(id)?.title ?? fallback;
+  const rootTitle = (id: string, title: string) =>
+    id === rootBoardId ? projectName : boardTitle(id, title);
   if (detail) {
     return [...detail.breadcrumb, { id: detail.id, title: detail.title }].map((c) => ({
       id: c.id,
       title: rootTitle(c.id, c.title),
     }));
   }
-  const byId = new Map((boards ?? []).map((b) => [b.id, b]));
   const chain: Array<{ id: string; title: string }> = [];
   let current: string | null = boardId;
   const seen = new Set<string>();

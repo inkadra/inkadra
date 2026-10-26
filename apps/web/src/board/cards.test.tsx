@@ -8,6 +8,11 @@ const state = vi.hoisted(() => ({
   readOnly: false,
   kind: 'file',
   status: 'ready' as 'ready' | 'missing' | 'loading',
+  boards: [
+    { id: 'b1', title: 'Location Scout', kind: 'board', myRole: 'editor' },
+    { id: 'b2', title: 'Storyboard 1', kind: 'storyboard', myRole: 'editor' },
+  ],
+  projectId: 'p1',
 }));
 vi.mock('./context.ts', async (original) => ({
   ...(await original<object>()),
@@ -83,6 +88,53 @@ describe('file card captions', () => {
     expect(render({ ...file, caption: 'Call sheet' })).not.toContain('<textarea');
     state.readOnly = false;
     expect(render({ ...file, caption: 'Call sheet', locked: true })).not.toContain('<textarea');
+    state.editing = null;
+  });
+});
+
+describe('board cards', () => {
+  const boardEl = {
+    id: 'board_card_01',
+    type: 'board' as const,
+    boardId: 'b1',
+    x: 0,
+    y: 0,
+    w: 240,
+    h: 120,
+    z: 'a0',
+    parent: null,
+    createdBy: null,
+    createdAt: 0,
+  };
+
+  it('renders board title when not editing', () => {
+    Object.assign(state, { editing: null, readOnly: false });
+    const html = render(boardEl);
+    expect(html).toContain('Location Scout');
+    expect(html).toContain('board.types.board');
+    expect(html).not.toContain('<input');
+  });
+
+  it('never offers renaming for read-only, locked or restricted child boards', () => {
+    Object.assign(state, { editing: boardEl.id, readOnly: true });
+    expect(render(boardEl)).not.toContain('<input');
+    state.readOnly = false;
+    expect(render({ ...boardEl, locked: true })).not.toContain('<input');
+    for (const role of ['viewer', 'commenter']) {
+      state.boards[0]!.myRole = role;
+      expect(render(boardEl)).not.toContain('<input');
+    }
+    state.boards[0]!.myRole = 'editor';
+    state.editing = null;
+  });
+
+  it('renders inline input when editing matches card id', () => {
+    Object.assign(state, { editing: boardEl.id, readOnly: false });
+    const html = render(boardEl);
+    expect(html).toContain('<input');
+    expect(html).toContain('class="card__inline-input card__title"');
+    expect(html).toContain('value="Location Scout"');
+    expect(html).toContain('aria-label="board.board.title"');
     state.editing = null;
   });
 });

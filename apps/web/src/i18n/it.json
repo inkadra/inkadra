@@ -307,7 +307,8 @@
       "tags": "Tag…",
       "viewImage": "Apri immagine",
       "details": "Dettagli inquadratura",
-      "draw": "Disegna"
+      "draw": "Disegna",
+      "rename": "Rinomina"
     },
     "zoom": {
       "label": "Zoom",

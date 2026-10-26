@@ -68,6 +68,10 @@ export async function createBoard(
   return board;
 }
 
+export function canRenameBoard(board: Pick<Board, 'myRole'> | undefined): boolean {
+  return board?.myRole === 'owner' || board?.myRole === 'editor';
+}
+
 export async function renameBoard(projectId: string, boardId: string, title: string) {
   const board = await api.patch<Board>(`/boards/${boardId}`, { title });
   const current = cache.get(projectId)?.items ?? [];
@@ -77,6 +81,17 @@ export async function renameBoard(projectId: string, boardId: string, title: str
   });
   emit();
   return board;
+}
+
+/** Synchronize root board title when project is renamed. */
+export function syncRootBoardTitle(projectId: string, title: string): void {
+  const current = cache.get(projectId)?.items;
+  if (!current) return;
+  cache.set(projectId, {
+    items: current.map((b) => (b.parentBoardId === null ? { ...b, title } : b)),
+    error: false,
+  });
+  emit();
 }
 
 export function fetchBoard(boardId: string): Promise<BoardDetail> {

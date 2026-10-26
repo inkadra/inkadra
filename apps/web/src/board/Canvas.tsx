@@ -69,7 +69,7 @@ import * as Y from 'yjs';
 import { useSession } from '../lib/session.tsx';
 import { accessNotices } from './access-notices.ts';
 import { ArrowLayer } from './arrows.tsx';
-import { createBoard } from './boards.ts';
+import { canRenameBoard, createBoard } from './boards.ts';
 import { Card } from './cards.tsx';
 import {
   BarButton,
@@ -1087,6 +1087,17 @@ export function Canvas({
       case 'edit':
         if (single) openElement(single);
         break;
+      case 'rename':
+        if (
+          !readOnly &&
+          single &&
+          single.type === 'board' &&
+          !single.locked &&
+          canRenameBoard(boards?.find((b) => b.id === single.boardId))
+        ) {
+          setEditing(single.id);
+        }
+        break;
       case 'lock':
         toggleLock();
         break;
@@ -1393,6 +1404,13 @@ export function Canvas({
       ...(single && (single.type === 'board' || single.type === 'link')
         ? [{ label: t('board.menu.open'), action: () => openElement(single) }]
         : []),
+      ...(single &&
+      single.type === 'board' &&
+      !readOnly &&
+      !single.locked &&
+      canRenameBoard(boards?.find((b) => b.id === single.boardId))
+        ? [{ label: t('board.menu.rename'), shortcut: 'F2', action: () => setEditing(single.id) }]
+        : []),
       ...(single && (single.type === 'image' || single.type === 'file')
         ? [{ label: t('board.menu.viewImage'), action: () => openElement(single) }]
         : []),
@@ -1460,6 +1478,7 @@ export function Canvas({
     menu,
     selection,
     selectedEls,
+    boards,
     readOnly,
     preview,
     t,
