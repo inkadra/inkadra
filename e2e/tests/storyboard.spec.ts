@@ -121,3 +121,78 @@ test('arrows join two cards and keep a label', async ({ page }) => {
   await page.reload();
   await expect(page.locator('.arrows__label')).toHaveText('poi');
 });
+
+test('the empty-board Storyboard template opens a real storyboard with a shot list', async ({
+  page,
+}) => {
+  await openProject(page);
+  await page.keyboard.press('b');
+  await page.getByLabel('Titolo della board').fill('Modelli');
+  await page.getByLabel('Titolo della board').press('Enter');
+  await page.locator('[data-type="board"]', { hasText: 'Modelli' }).dblclick();
+  await expect(page.getByText('Board vuota')).toBeVisible();
+  await page.getByRole('button', { name: /^Storyboard Una board Storyboard/ }).click();
+  await expect(page.getByRole('tab', { name: 'Storyboard', exact: true })).toHaveAttribute(
+    'aria-selected',
+    'true',
+  );
+  await expect(
+    page
+      .getByRole('region', { name: 'Scena 1' })
+      .getByRole('textbox', { name: 'Titolo', exact: true }),
+  ).toHaveValue('Apertura');
+  await page.getByRole('tab', { name: 'Shot list' }).click();
+  await expect(page.locator('.shots__table tbody tr:not(.shots__scene)')).toHaveCount(3);
+  await page.reload();
+  await expect(page.getByRole('row', { name: /^1A\b/ })).toBeVisible();
+  await expect(page.getByRole('row', { name: /1C/ })).toBeVisible();
+  await page.getByRole('banner').getByRole('link', { name: 'Modelli' }).click();
+  await expect(page.locator('[data-type="board"]', { hasText: 'Storyboard' })).toHaveCount(1);
+});
+
+test('the palette inserts templates on a non-empty board and opens storyboard templates', async ({
+  page,
+}) => {
+  await openProject(page);
+  await page.locator('[data-type="board"]', { hasText: 'Modelli' }).dblclick();
+  const canvas = page.getByTestId('canvas');
+  const existing = page.locator('[data-type="board"]', { hasText: 'Storyboard' });
+  await expect(existing).toHaveCount(1);
+  await expect(page.locator('.canvas__templates')).toHaveCount(0);
+
+  await page.keyboard.press('/');
+  const palette = page.getByRole('dialog', { name: 'Comandi' });
+  await palette.getByRole('combobox').fill('modello');
+  await expect(palette.getByRole('option')).toHaveCount(3);
+  await palette.getByRole('option', { name: 'Inserisci modello: Produzione' }).click();
+  await expect(canvas.locator('[data-type="column"]')).toHaveCount(3);
+  await expect(canvas.locator('[data-type="column"]', { hasText: 'Da fare' })).toBeVisible();
+  const occupied = await existing.boundingBox();
+  const columns = await canvas.locator('[data-type="column"]').all();
+  if (!occupied) throw new Error('storyboard card missing');
+  for (const column of columns) {
+    const rect = await column.boundingBox();
+    if (!rect) throw new Error('template column missing');
+    expect(
+      rect.x >= occupied.x + occupied.width ||
+        rect.x + rect.width <= occupied.x ||
+        rect.y >= occupied.y + occupied.height ||
+        rect.y + rect.height <= occupied.y,
+    ).toBe(true);
+  }
+  await page.keyboard.press('ControlOrMeta+z');
+  await expect(canvas.locator('[data-type="column"]')).toHaveCount(0);
+  await expect(existing).toHaveCount(1);
+  await page.keyboard.press('ControlOrMeta+Shift+z');
+  await expect(canvas.locator('[data-type="column"]')).toHaveCount(3);
+
+  await page.keyboard.press('/');
+  await palette.getByRole('combobox').fill('modello: Storyboard');
+  await page.keyboard.press('Enter');
+  await expect(page.getByRole('tab', { name: 'Shot list' })).toBeVisible();
+  await page.getByRole('tab', { name: 'Shot list' }).click();
+  await expect(page.getByRole('row', { name: /1B/ })).toBeVisible();
+  await page.getByRole('banner').getByRole('link', { name: 'Modelli' }).click();
+  await expect(canvas.locator('[data-type="column"]')).toHaveCount(3);
+  await expect(page.locator('[data-type="board"]', { hasText: 'Storyboard' })).toHaveCount(2);
+});

@@ -102,6 +102,7 @@ import { openComments } from './review-store.ts';
 import { commandFor, isTyping } from './shortcuts.ts';
 import { LOCAL } from './store.ts';
 import { TagPopover } from './tags.tsx';
+import { templateRect } from './templates.ts';
 import { startUpload } from './uploads.ts';
 import { MediaViewer } from './viewer.tsx';
 import { loadViewport, saveViewport } from './viewport.ts';
@@ -180,7 +181,7 @@ export interface CanvasProps {
   preview?: boolean;
   initialSelection?: ReadonlySet<string>;
   peers: Peer[];
-  onOpenBoard: (boardId: string) => void;
+  onOpenBoard: (boardId: string, template?: 'storyboard') => void;
   /** Told whenever the selection changes. */
   onSelectionChange?: (ids: ReadonlySet<string>) => void;
   /** Opens an image, file or frame in a view of the page's own; return false for the default. */
@@ -1318,13 +1319,42 @@ export function Canvas({
   const viewed = viewedEl?.type === 'image' || viewedEl?.type === 'file' ? viewedEl : null;
   const closeViewer = useCallback(() => setViewing(null), []);
 
-  const addTemplate = (id: TemplateId) => {
+  const addTemplate = async (id: TemplateId) => {
     if (readOnly) return;
+    const rect = templateRect(
+      id,
+      screenToWorld(vp.current, { x: size.w / 2, y: size.h / 2 }),
+      store.getSnapshot().canvas.map((e) => store.rectOf(e)),
+    );
+    if (id === 'storyboard') {
+      try {
+        const board = await createBoard(
+          projectId,
+          boardId,
+          t('templates.storyboard.name'),
+          'storyboard',
+        );
+        store.undo.stopCapturing();
+        const card = createElement(
+          doc,
+          'board',
+          rect,
+          { boardId: board.id },
+          { userId, origin: LOCAL },
+        );
+        store.undo.stopCapturing();
+        select([card.id]);
+        onOpenBoard(board.id, 'storyboard');
+      } catch {
+        setToast({ text: t('board.errors.storyboardCreate'), undo: false });
+      }
+      return;
+    }
     store.undo.stopCapturing();
     const ids = applyTemplate(
       doc,
       id,
-      center(1000),
+      rect,
       {
         moodboard: {
           refs: t('templates.moodboard.refs'),
@@ -1343,6 +1373,7 @@ export function Canvas({
     );
     store.undo.stopCapturing();
     select(ids);
+    setViewport(fitRect(rect, size.w, size.h));
   };
 
   // A search result links to ?el=<id>: select that card and bring it into view, once.
@@ -1617,7 +1648,7 @@ export function Canvas({
                   key={id}
                   type="button"
                   className="canvas__template"
-                  onClick={() => addTemplate(id)}
+                  onClick={() => void addTemplate(id)}
                 >
                   <span className="canvas__template-name">{t(`templates.${id}.name`)}</span>
                   <span className="ink-muted">{t(`templates.${id}.body`)}</span>
@@ -1794,6 +1825,7 @@ export function Canvas({
             readOnly={readOnly}
             onClose={() => setPalette(false)}
             onAdd={(type) => void add(type)}
+            onTemplate={(id) => void addTemplate(id)}
             onZoom={zoomTo}
             onUndo={() => store.undo.undo()}
             onRedo={() => store.undo.redo()}

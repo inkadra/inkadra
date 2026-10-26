@@ -336,7 +336,8 @@
       "unsorted": "Mostra o nascondi Non ordinati",
       "undo": "Annulla",
       "redo": "Ripeti",
-      "none": "Nessun comando"
+      "none": "Nessun comando",
+      "template": "Inserisci modello: {{name}}"
     },
     "status": {
       "connecting": "Connessione…",
@@ -434,7 +435,7 @@
     },
     "storyboard": {
       "name": "Storyboard",
-      "body": "Una scena con tre inquadrature",
+      "body": "Una board Storyboard con una scena, tre inquadrature e Shot list",
       "scene": "Apertura"
     },
     "production": {

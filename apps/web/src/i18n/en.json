@@ -336,7 +336,8 @@
       "unsorted": "Show or hide Unsorted",
       "undo": "Undo",
       "redo": "Redo",
-      "none": "No commands"
+      "none": "No commands",
+      "template": "Insert template: {{name}}"
     },
     "status": {
       "connecting": "Connecting…",
@@ -434,7 +435,7 @@
     },
     "storyboard": {
       "name": "Storyboard",
-      "body": "One scene with three frames",
+      "body": "A Storyboard board with a scene, three shots and Shot list",
       "scene": "Opening"
     },
     "production": {
