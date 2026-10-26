@@ -23,6 +23,83 @@ const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
  * above, invitations still waiting, and the invitation link. Editors and owners share; the
  * others see the list.
  */
+function PermissionsMatrix() {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="share__matrix-wrapper">
+      <button type="button" className="share__matrix-toggle" onClick={() => setOpen((o) => !o)}>
+        <span>Matrice permessi dei ruoli</span>
+        <svg
+          className="ico"
+          viewBox="0 0 24 24"
+          aria-hidden="true"
+          style={{ width: 12, height: 12, transform: open ? 'rotate(180deg)' : 'none' }}
+        >
+          <path d="M7 10l5 5 5-5" />
+        </svg>
+      </button>
+      {open && (
+        <div className="share__matrix-card">
+          <table className="share__matrix-table">
+            <thead>
+              <tr>
+                <th style={{ textAlign: 'left' }}>Ruolo</th>
+                <th>Vedere</th>
+                <th>Commentare</th>
+                <th>Modificare</th>
+                <th>Condividere</th>
+                <th>Scaricare</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Proprietario</td>
+                <td>●</td>
+                <td>●</td>
+                <td>●</td>
+                <td>●</td>
+                <td>●</td>
+              </tr>
+              <tr>
+                <td>Editor</td>
+                <td>●</td>
+                <td>●</td>
+                <td>●</td>
+                <td>●</td>
+                <td>●</td>
+              </tr>
+              <tr className="is-active">
+                <td>Commentatore</td>
+                <td>●</td>
+                <td>●</td>
+                <td>—</td>
+                <td>—</td>
+                <td>●</td>
+              </tr>
+              <tr>
+                <td>Lettore</td>
+                <td>●</td>
+                <td>—</td>
+                <td>—</td>
+                <td>—</td>
+                <td>—</td>
+              </tr>
+              <tr>
+                <td>Ospite</td>
+                <td>●</td>
+                <td>●</td>
+                <td>—</td>
+                <td>—</td>
+                <td>PDF</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function ShareDialog({
   open,
   board,
@@ -225,6 +302,7 @@ export function ShareDialog({
                 </li>
               ))}
             </ul>
+            <PermissionsMatrix />
 
             {canManage && (
               <LinkSection
