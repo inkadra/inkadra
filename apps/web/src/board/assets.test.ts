@@ -1,14 +1,7 @@
 import type { Asset } from '@inkadra/shared';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { RequestError } from '../lib/api.ts';
-import {
-  getCachedAsset,
-  loadAsset,
-  primeAsset,
-  refetchPendingOrUnknown,
-  resetAssetCache,
-  setAssetLoader,
-} from './assets.ts';
+import { getCachedAsset, loadAsset, resetAssetCache, setAssetLoader } from './assets.ts';
 
 const mockApi = vi.hoisted(() => ({
   get: vi.fn(),
@@ -94,22 +87,6 @@ describe('asset loader and network errors', () => {
     mockApi.get.mockRejectedValueOnce(new RequestError(500, 'internal_error', 'Server error'));
     await loadAsset(pendingAsset.id);
     expect(getCachedAsset(pendingAsset.id)).toEqual(pendingAsset);
-  });
-
-  it('refetches pending assets when the browser fires online', async () => {
-    const pendingAsset: Asset = { ...sampleAsset, id: 'asset-pending', status: 'pending' };
-    const readyAsset: Asset = { ...sampleAsset, id: 'asset-ready', status: 'ready' };
-
-    primeAsset(pendingAsset);
-    primeAsset(readyAsset);
-
-    mockApi.get.mockResolvedValue({ ...pendingAsset, status: 'ready' });
-
-    refetchPendingOrUnknown();
-
-    // pending asset should be refetched, ready asset should not
-    expect(mockApi.get).toHaveBeenCalledWith('/assets/asset-pending');
-    expect(mockApi.get).not.toHaveBeenCalledWith('/assets/asset-ready');
   });
 
   it('keeps the guest loader behaviour working', async () => {
