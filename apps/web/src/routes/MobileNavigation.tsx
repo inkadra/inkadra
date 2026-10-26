@@ -30,7 +30,7 @@ export function MobileNavigation({
     <nav className="mobile-bottom-nav" aria-label={t('mobile.navigation')}>
       <button
         type="button"
-        aria-current={pathname === '/' && !inboxOpen ? 'page' : undefined}
+        aria-current={pathname === '/' && !inboxOpen && !drawerOpen ? 'page' : undefined}
         onClick={onHome}
       >
         <Icon name="home" />
@@ -51,9 +51,9 @@ export function MobileNavigation({
       </button>
       <button
         ref={inboxButtonRef}
-        aria-label={t('nav.inbox')}
-        aria-description={t('notifications.bell', { count: unread })}
+        aria-label={unread > 0 ? t('notifications.bell', { count: unread }) : t('nav.inbox')}
         type="button"
+        aria-haspopup="dialog"
         aria-expanded={inboxOpen}
         onClick={onInbox}
       >
@@ -63,7 +63,9 @@ export function MobileNavigation({
       </button>
       <button
         type="button"
-        aria-current={pathname.startsWith('/settings') ? 'page' : undefined}
+        aria-current={
+          pathname.startsWith('/settings') && !inboxOpen && !drawerOpen ? 'page' : undefined
+        }
         onClick={onProfile}
       >
         <Icon name="settings" />

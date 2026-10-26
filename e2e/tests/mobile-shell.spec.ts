@@ -67,14 +67,14 @@ test('mobile shell gives the canvas full width and keeps shell actions reachable
   await toolbar.getByRole('button', { name: 'Nota', exact: true }).tap();
   await expect(page.locator('[data-type="note"] [contenteditable="true"]')).toBeFocused();
   await page.keyboard.press('Escape');
-  await nav.getByRole('button', { name: 'Inbox', exact: true }).click();
+  await nav.getByRole('button', { name: /^(Inbox|Notifications:)/ }).click();
   await expect(page.locator('.notifications--fixed')).toBeVisible();
   expect((await page.locator('.notifications--fixed').boundingBox())?.width).toBe(390);
-  await nav.getByRole('button', { name: 'Inbox', exact: true }).click();
+  await nav.getByRole('button', { name: /^(Inbox|Notifications:)/ }).click();
   await expect(page.locator('.notifications--fixed')).toBeHidden();
-  await nav.getByRole('button', { name: 'Inbox', exact: true }).click();
+  await nav.getByRole('button', { name: /^(Inbox|Notifications:)/ }).click();
   await page.keyboard.press('Escape');
-  await expect(nav.getByRole('button', { name: 'Inbox', exact: true })).toBeFocused();
+  await expect(nav.getByRole('button', { name: /^(Inbox|Notifications:)/ })).toBeFocused();
   await nav.getByRole('button', { name: 'Nuovo progetto', exact: true }).click();
   await expect(page.getByRole('dialog')).toBeVisible();
   await page.keyboard.press('Escape');

@@ -45,8 +45,22 @@ it('exposes the existing shell actions and announces active and expanded states'
     expect(buttons[0]?.hasAttribute('aria-current')).toBe(false);
     expect(buttons[1]?.getAttribute('aria-expanded')).toBe('true');
     expect(buttons[3]?.getAttribute('aria-expanded')).toBe('true');
-    expect(buttons[4]?.getAttribute('aria-current')).toBe('page');
+    // An open inbox or drawer takes over: no page is announced as current under it.
+    expect(buttons[4]?.hasAttribute('aria-current')).toBe(false);
+    expect(buttons[3]?.getAttribute('aria-haspopup')).toBe('dialog');
     expect(host.querySelector('.mobile-bottom-nav__badge')).toBeNull();
+    await act(async () =>
+      root.render(
+        <MobileNavigation
+          {...actions}
+          pathname="/settings"
+          inboxOpen={false}
+          drawerOpen={false}
+          unread={0}
+        />,
+      ),
+    );
+    expect(buttons[4]?.getAttribute('aria-current')).toBe('page');
   } finally {
     await act(async () => root.unmount());
     host.remove();

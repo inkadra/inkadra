@@ -2,6 +2,7 @@ import type { Board, Project } from '@inkadra/shared';
 import {
   AppShell,
   Avatar,
+  Button,
   Dialog,
   Header,
   Icon,
@@ -546,20 +547,21 @@ export function AppLayout() {
       {drawerOpen && (
         <div className="mobile-drawer">
           <Dialog open title={t('nav.navigation')} onClose={() => setDrawerOpen(false)}>
-            <button
-              type="button"
+            <Button
+              variant="ghost"
+              block
               className="mobile-drawer__close"
               onClick={() => setDrawerOpen(false)}
             >
               {t('mobile.close')}
-            </button>
+            </Button>
             {sidebar}
-            <button type="button" onClick={toggle}>
+            <Button variant="ghost" block onClick={toggle}>
               {theme === 'dark' ? t('nav.theme.toLight') : t('nav.theme.toDark')}
-            </button>
-            <button type="button" onClick={signOut}>
+            </Button>
+            <Button variant="ghost" block onClick={signOut}>
               {t('auth.signOut')}
-            </button>
+            </Button>
           </Dialog>
         </div>
       )}
@@ -572,7 +574,7 @@ export function AppLayout() {
           bell={mobileInboxButton}
           onClose={() => {
             setInboxOpen(false);
-            if (window.matchMedia('(max-width: 767px)').matches) mobileInboxButton.current?.focus();
+            if (window.matchMedia('(width < 768px)').matches) mobileInboxButton.current?.focus();
           }}
           onNavigate={() => setInboxOpen(false)}
           onCount={refreshUnread}
