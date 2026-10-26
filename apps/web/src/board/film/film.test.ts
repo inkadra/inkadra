@@ -67,11 +67,13 @@ describe('film helpers', () => {
 });
 
 it('maps kanban columns to frame statuses', () => {
-  expect(KANBAN_COLUMNS.map((c) => c.key)).toEqual(['todo', 'ready', 'shot', 'retake']);
+  expect(KANBAN_COLUMNS.map((c) => c.key)).toEqual(['todo', 'ready', 'shot', 'retake', 'approved']);
   const todoCol = KANBAN_COLUMNS.find((c) => c.key === 'todo');
   expect(todoCol?.statuses).toContain('draft');
   expect(todoCol?.statuses).toContain('todo');
   expect(todoCol?.statuses).toContain(undefined);
+  const approvedCol = KANBAN_COLUMNS.find((c) => c.key === 'approved');
+  expect(approvedCol?.statuses).toContain('approved');
 });
 
 describe('search, tags and viewer', () => {
