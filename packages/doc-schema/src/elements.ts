@@ -133,7 +133,7 @@ export const SHOT_MOVEMENTS = [
   'drone',
   'zoom',
 ] as const;
-export const FRAME_STATUSES = ['draft', 'todo', 'ready', 'shot', 'retake', 'approved'] as const;
+export const FRAME_STATUSES = ['draft', 'todo', 'ready', 'shot', 'retake'] as const;
 export const FrameStatus = z.enum(FRAME_STATUSES);
 export type FrameStatus = z.infer<typeof FrameStatus>;
 
@@ -185,6 +185,7 @@ export const FrameElement = Base.extend({
   location: z.string().max(200).optional(),
   cast: z.array(z.string().trim().min(1).max(80)).max(30).optional(),
   status: FrameStatus.optional().describe('Omitted = draft.'),
+  approved: z.boolean().optional().describe('Manual approval flag.'),
   strokes: z.array(Stroke).max(MAX_STROKES).optional().describe('Pen drawing, oldest first.'),
 });
 
