@@ -86,6 +86,28 @@ afterEach(() => {
 });
 
 describe('service worker updates across tabs', () => {
+  it.each(['installing', 'waiting'] as const)(
+    'handles late updatefound with an installed worker in %s',
+    async (slot) => {
+      const matching = new Worker(true);
+      registration.installing = slot === 'installing' ? matching : null;
+      registration.waiting = slot === 'waiting' ? matching : null;
+      // Browser state can advance before the page handles updatefound. The statechange
+      // notification has already happened; attaching a listener does not replay it.
+      registration.dispatchEvent(new Event('updatefound'));
+      await flush();
+      expect(matching.postMessage).toHaveBeenCalledWith({ type: 'skip-waiting' });
+      matching.dispatchEvent(new Event('statechange'));
+      await flush();
+      expect(
+        matching.postMessage.mock.calls.filter(([m]) => m.type === 'skip-waiting'),
+      ).toHaveLength(1);
+      activate(matching);
+      expect(register.useUpdate()).toBeNull();
+      expect(reload).not.toHaveBeenCalled();
+    },
+  );
+
   it('keeps a requested update deferred when another tab activates the worker', async () => {
     const waiting = new Worker(false);
     await offer(waiting);

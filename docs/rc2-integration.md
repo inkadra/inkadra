@@ -40,16 +40,63 @@ Original CI failures inspected before integration:
   `Schiarire @Giulia Bianchi er favorep`, instead of the expected phrase. This
   predates integration; its root cause is unconfirmed and no speculative fix is made.
 - PR #173, run 40525640835: PWA test timed out waiting for `controllerchange`.
-  This predates integration; service-worker behavior was not changed here.
+  This predates integration; the lifecycle correction below now covers the missed update notification.
 
 ## Independent review corrections
 
 The independent review of 3c709ee found three P2 defects, corrected before merge:
-
 - Project PATCH now takes advisory lock 10892 before any project-row lock, matching account deletion.
 - Batch tags canonicalize legacy bindings and managed IDs for intersection, additions and removals; unmanaged labels remain intact.
 - Avatars now live in a single account-owned `user_avatar` row, replaced transactionally and cascaded on account removal. Migration 0009 adds bounded normalized image ownership instead of writing untracked versioned files. Failed updates roll back image bytes and metadata together; removal clears both. This supersedes PR169's filesystem storage approach before any deployment.
 
 Regression checks: seven avatar validation/lifecycle tests and four catalog UI tests pass; a Chromium touch-layout fixture verifies zoom stays above the two-row toolbar. Server/web types, changed-file Biome and Drizzle schema freshness pass. New lifecycle route tests use a transactional stand-in; actual FK/cascade/concurrency still need PostgreSQL CI.
 
-The first integration CI passed database/unit checks but failed three browser tests: mobile zoom overlap, notification settings reached through the old Account route, and PWA controllerchange timeout. The first two are corrected; PWA remains under investigation. The mention reorder failure did not recur in this integration run.
+The first integration CI passed database/unit checks but failed three browser tests: mobile zoom overlap, notification settings reached through the old Account route, and PWA controllerchange timeout. All three now have focused corrections; the new CI run remains a merge gate. The mention reorder failure did not recur in this integration run.
+
+
+## PWA lifecycle diagnosis and independent P2 recheck
+
+Run 40529755413 timed out in the quiet same-build activation. Its retained trace shows
+HTTP 200 for the changed worker and every precache resource, no reload or update
+prompt, and the listener installed before the explicit update request. Increasing the
+30-second timeout would not repair the missing activation.
+
+`updatefound` is a notification, not a snapshot of the installing worker's state.
+By the time its callback runs, the worker can already be installed or moved from
+`registration.installing` to `registration.waiting`. The old callback only followed
+`installing` and only reacted to subsequent `statechange` events. Neither a past
+statechange nor a past updatefound notification is replayed. Registration now observes
+both slots and checks the state immediately, once per worker. The worker's caching
+and explicit skip-waiting protocol are unchanged. The CI trace does not record these
+internal lifecycle events, so it cannot independently prove their exact delivery order;
+the isolated reproduction establishes a matching failure mechanism.
+
+The new `pwa-lifecycle.spec.ts` serves real built public files over an ephemeral local
+HTTP fixture, without database, credentials or the application server. It delays the
+page's updatefound callback until the real Chromium worker is installed/waiting.
+With the original registration implementation it times out waiting for controller
+replacement; with the fix it passes (about 0.3 seconds). The fixture also runs in the
+normal e2e suite. Run independently after `pnpm --filter @inkadra/web build` with
+`pnpm --filter @inkadra/e2e exec playwright test --config pwa.config.ts`.
+The integration test now captures the previous controller before deployment and waits
+for its identity to change, avoiding reliance on observing a transient event.
+
+Independent recheck of the three prior P2 fixes found no concrete remaining defect:
+PATCH's advisory lock precedes lockMembers, consistent with account deletion;
+batch tag intersection/add/remove canonicalize both legacy bindings and UUIDs while
+preserving unmanaged labels; avatar replace/remove serialize on the user row and
+atomically update bytes plus metadata, with one primary-keyed row and migration
+0009's ON DELETE CASCADE. Route lifecycle/rollback coverage uses a transactional
+stand-in, so real PostgreSQL concurrency/cascade remains a CI validation boundary.
+
+Follow-up validation: 39 focused web PWA/catalog tests and seven server avatar tests
+pass. A baseline Chromium fixture run fails at controller replacement; the corrected
+build passes. The formatting failure in run 40530996849 was an extra Markdown blank
+line, also corrected. No full local database/e2e stack, deployment or live migration.
+
+Web, server and e2e TypeScript checks, repository-wide Biome CI and diff whitespace
+checks pass on the follow-up. Run 40530996849 (head 1bbd122) subsequently completed:
+e2e, canvas performance, image builds/scans and proxy smoke checks passed; lint/types/unit
+stopped at the Markdown formatting error before types or unit tests ran. This is
+previous-head evidence; new-head CI is pending after push. No GitHub review has yet
+been submitted for this follow-up.

@@ -130,18 +130,15 @@ test('a new version is offered, and applied only when asked', async ({ page }) =
   const prompt = page.getByRole('status').filter({ hasText: 'Nuova versione disponibile' });
 
   // A new worker for the build this page already runs: it takes over quietly, no prompt.
-  const controllerChanged = () =>
-    page.evaluate(
-      () =>
-        new Promise<void>((resolve) =>
-          navigator.serviceWorker.addEventListener('controllerchange', () => resolve(), {
-            once: true,
-          }),
-        ),
-    );
-  const quiet = controllerChanged();
+  // Compare identity rather than waiting for an edge: activation can finish while
+  // deploy() is returning. Acquiring the old controller also arms the check before deploy.
+  const previous = await page.evaluateHandle(() => navigator.serviceWorker.controller);
   await deploy(page, (sw) => `${sw}\n// e2e same build ${Date.now()}\n`);
-  await quiet;
+  await page.waitForFunction(
+    (controller) => navigator.serviceWorker.controller !== controller,
+    previous,
+  );
+  await previous.dispose();
   expect(await hasWaiting(page)).toBe(false);
   await expect(prompt).toHaveCount(0);
 
