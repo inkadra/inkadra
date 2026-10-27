@@ -573,6 +573,26 @@
       "todo": "To do",
       "doing": "In progress",
       "done": "Done"
+    },
+    "brief": {
+      "name": "Brief",
+      "body": "Logline, synopsis and tone",
+      "column": "Brief",
+      "logline": "Logline",
+      "synopsis": "Synopsis",
+      "tone": "Tone"
+    },
+    "locations": {
+      "name": "Locations",
+      "body": "Locations and scouting",
+      "column": "Locations",
+      "location": "Location"
+    },
+    "casting": {
+      "name": "Casting",
+      "body": "Roles and cast",
+      "column": "Casting",
+      "role": "Role"
     }
   },
   "film": {

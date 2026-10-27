@@ -14,11 +14,17 @@ import {
 import type * as Y from 'yjs';
 import { LOCAL } from './store.ts';
 
+/** Notes each setup layout stacks in its single column. */
+const SETUP_NOTES: Partial<Record<TemplateId, number>> = { brief: 3, locations: 1, casting: 1 };
+
 /** Reserve the whole layout, including the four stacked swatches of the moodboard. */
 export function templateRect(id: TemplateId, center: Point, occupied: Rect[]): Rect {
-  const columns = id === 'moodboard' ? 4 : 3;
+  const columns = id === 'moodboard' ? 4 : id === 'production' ? 3 : 1;
   const w = id === 'storyboard' ? DEFAULT_WIDTH.board : columns * (DEFAULT_WIDTH.column + 40) - 40;
-  const rect = { x: center.x - w / 2, y: center.y - 60, w, h: id === 'moodboard' ? 1000 : 120 };
+  const notes = SETUP_NOTES[id];
+  // Column header plus a generous height per note, so later cards never overlap the notes.
+  const h = id === 'moodboard' ? 1000 : notes ? 80 + notes * 120 : 120;
+  const rect = { x: center.x - w / 2, y: center.y - 60, w, h };
   for (;;) {
     const collisions = occupied.filter((r) => intersects(inflate(r, 24), rect));
     if (collisions.length === 0) return rect;
@@ -50,6 +56,20 @@ export function templateLabels(t: (key: string) => string): TemplateLabels {
       todo: t('templates.production.todo'),
       doing: t('templates.production.doing'),
       done: t('templates.production.done'),
+    },
+    brief: {
+      column: t('templates.brief.column'),
+      logline: t('templates.brief.logline'),
+      synopsis: t('templates.brief.synopsis'),
+      tone: t('templates.brief.tone'),
+    },
+    locations: {
+      column: t('templates.locations.column'),
+      location: t('templates.locations.location'),
+    },
+    casting: {
+      column: t('templates.casting.column'),
+      role: t('templates.casting.role'),
     },
   };
 }

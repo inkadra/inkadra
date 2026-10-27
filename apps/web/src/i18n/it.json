@@ -573,6 +573,26 @@
       "todo": "Da fare",
       "doing": "In corso",
       "done": "Fatto"
+    },
+    "brief": {
+      "name": "Brief",
+      "body": "Logline, sinossi e tono",
+      "column": "Brief",
+      "logline": "Logline",
+      "synopsis": "Sinossi",
+      "tone": "Tono"
+    },
+    "locations": {
+      "name": "Location",
+      "body": "Location e sopralluoghi",
+      "column": "Location",
+      "location": "Location"
+    },
+    "casting": {
+      "name": "Casting",
+      "body": "Ruoli e cast",
+      "column": "Casting",
+      "role": "Ruolo"
     }
   },
   "film": {

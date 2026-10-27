@@ -9,6 +9,13 @@ it('creates six boards including root and shares frames between storyboard and s
   const specs = setupBoards('production');
   expect(specs.length + 1).toBe(6);
   expect(specs.filter((s) => s.kind === 'storyboard')).toHaveLength(1);
+  expect(specs).toEqual([
+    { key: 'brief', kind: 'board', seed: 'brief' },
+    { key: 'locations', kind: 'board', seed: 'locations' },
+    { key: 'casting', kind: 'board', seed: 'casting' },
+    { key: 'moodboard', kind: 'board', seed: 'moodboard' },
+    { key: 'storyboard', kind: 'storyboard', seed: 'storyboard' },
+  ]);
   expect(setupBoards('shotlist')).toEqual([
     { key: 'shotlist', kind: 'storyboard', seed: 'storyboard' },
   ]);
