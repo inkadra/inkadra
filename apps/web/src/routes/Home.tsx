@@ -3,13 +3,13 @@ import { Avatar, Button, EmptyState, Icon, type IconName, KeyCap } from '@inkadr
 import { type MouseEvent, type ReactNode, useId, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router';
-import { pickVariant, useAsset } from '../board/assets.ts';
 import { authorName } from '../board/review-model.ts';
 import { api } from '../lib/api.ts';
 import { useSession } from '../lib/session.tsx';
 import { notificationPath } from '../notifications/model.ts';
 import { describeNotification, relativeTime } from '../notifications/Notifications.tsx';
 import { useProjects } from './AppLayout.tsx';
+import { BoardPreview } from './BoardPreview.tsx';
 import {
   editableProjects,
   type Loadable,
@@ -160,7 +160,7 @@ export function Home() {
                   className="ink-card home__card"
                   onClick={go(`/p/${p.id}`)}
                 >
-                  <span className="home__cover" />
+                  <BoardPreview boardId={p.rootBoardId} project={p} />
                   <span className="home__meta">
                     <span className="home__name">{p.name}</span>
                     <span className="ink-muted home__when">
@@ -204,7 +204,7 @@ export function Home() {
                 className="ink-card home__card"
                 onClick={go(`/p/${b.projectId}/b/${b.id}`)}
               >
-                <span className="home__cover" />
+                <BoardPreview boardId={b.id} />
                 <span className="home__meta">
                   <span className="home__name">{b.title}</span>
                   <span className="ink-muted home__when">{t(`roles.${b.myRole}`)}</span>
@@ -349,8 +349,6 @@ function BoardCard({
   const { t, i18n } = useTranslation();
   const labelId = useId();
   const descriptionId = useId();
-  const cover = useAsset(board.coverAssetId ?? undefined);
-  const src = cover && cover !== 'missing' ? pickVariant(cover, 512) : '';
   const root = board.parentBoardId === null;
   return (
     <a
@@ -360,7 +358,7 @@ function BoardCard({
       aria-describedby={descriptionId}
       onClick={go(href)}
     >
-      <span className="home__cover">{src && <img src={src} alt="" />}</span>
+      <BoardPreview boardId={board.id} />
       <span className="home__meta">
         <span className="home__kind ink-muted">
           {t(root ? 'home.kind.project' : `board.types.${board.kind}`)}

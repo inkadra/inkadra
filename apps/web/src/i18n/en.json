@@ -156,6 +156,12 @@
       "namePlaceholder": "Location scouting",
       "create": "Create board",
       "error": "The board could not be created. Try again."
+    },
+    "preview": {
+      "unavailable": "Preview unavailable",
+      "empty": "Empty board",
+      "cards_one": "{{count}} item",
+      "cards_other": "{{count}} items"
     }
   },
   "project": {

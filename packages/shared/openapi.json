@@ -4929,6 +4929,65 @@
         "required": [
           "boardId"
         ]
+      },
+      "BoardPreview": {
+        "type": "object",
+        "properties": {
+          "assetIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid",
+              "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10"
+            },
+            "maxItems": 4
+          },
+          "excerpts": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "maxLength": 160
+            },
+            "maxItems": 3
+          },
+          "elementCount": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "drawing": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string",
+                  "maxLength": 5000
+                },
+                "color": {
+                  "type": "string",
+                  "pattern": "^#[0-9A-F]{6}$/i"
+                },
+                "width": {
+                  "type": "number",
+                  "exclusiveMinimum": 0,
+                  "maximum": 820
+                }
+              },
+              "required": [
+                "path",
+                "color",
+                "width"
+              ]
+            },
+            "maxItems": 32
+          }
+        },
+        "required": [
+          "assetIds",
+          "excerpts",
+          "elementCount",
+          "drawing"
+        ]
       }
     },
     "parameters": {}
@@ -14847,6 +14906,86 @@
           },
           "500": {
             "description": "The change may or may not have been made. OutcomeUnknown (`outcome_unknown`) explicitly reports uncertainty. A missing or unrecognized details.reason also means the outcome is unknown, including on legacy servers. Reconcile state before retrying; never infer that a retry is safe from the absence of a recognized reason.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/boards/{boardId}/preview": {
+      "get": {
+        "tags": [
+          "Boards"
+        ],
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Authorized compact preview of the last persisted board; excludes full document data.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10"
+            },
+            "required": true,
+            "name": "boardId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Board preview",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BoardPreview"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
             "content": {
               "application/json": {
                 "schema": {

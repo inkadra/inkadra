@@ -1,12 +1,14 @@
 import { fileURLToPath } from 'node:url';
+import { roots } from '@inkadra/doc-schema';
 import { MySchedule, RecentBoard, type ShootingDayInput, z } from '@inkadra/shared';
-import { sql } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import pino from 'pino';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import * as Y from 'yjs';
 import { createAuth } from '../auth.ts';
 import { loadConfig } from '../config.ts';
 import { createDatabase, runMigrations } from '../db/client.ts';
-import { boardDoc } from '../db/schema.ts';
+import { asset, board, boardDoc } from '../db/schema.ts';
 import { testDeps } from '../test-deps.ts';
 import { createApp } from './app.ts';
 
@@ -142,6 +144,26 @@ describe.skipIf(!url)('home overview: recent boards and shooting days (needs DAT
     await client.end({ timeout: 1 });
   });
 
+  it('authorizes previews before reading persisted content and supports private revalidation', async () => {
+    expect((await request(null, 'GET', `/boards/${ids.root}/preview`)).statusCode).toBe(401);
+    expect((await request('stranger', 'GET', `/boards/${ids.root}/preview`)).statusCode).toBe(404);
+    expect((await request('granted', 'GET', `/boards/${ids.root}/preview`)).statusCode).toBe(404);
+    const response = await request('owner', 'GET', `/boards/${ids.root}/preview`);
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toEqual({ assetIds: [], excerpts: [], elementCount: 0, drawing: [] });
+    expect(response.headers['cache-control']).toBe('private, no-cache');
+    expect(response.headers.etag).toBeTruthy();
+    const cached = await app.inject({
+      method: 'GET',
+      url: `/api/v1/boards/${ids.root}/preview`,
+      headers: {
+        cookie: people.owner?.cookie ?? '',
+        'if-none-match': String(response.headers.etag),
+      },
+    });
+    expect(cached.statusCode).toBe(304);
+  });
+
   it('requires a signed-in person and validates the query', async () => {
     expect((await request(null, 'GET', '/me/recent-boards')).statusCode).toBe(401);
     expect(
@@ -234,5 +256,67 @@ describe.skipIf(!url)('home overview: recent boards and shooting days (needs DAT
       'Harbour',
     ]);
     expect(await days('granted', '2026-11-01', '2026-11-30')).toEqual([]);
+  });
+  it('projects saved content, excludes foreign covers and refreshes after document edits', async () => {
+    const own = (await request('owner', 'POST', '/projects', { name: 'Preview test' })).json();
+    const other = (
+      await request('stranger', 'POST', '/projects', { name: 'Other project' })
+    ).json();
+    const files = await db
+      .insert(asset)
+      .values([
+        {
+          projectId: own.id,
+          kind: 'image',
+          mime: 'image/jpeg',
+          filename: 'own.jpg',
+          size: 10,
+          storageKey: 'own-preview',
+          status: 'ready',
+        },
+        {
+          projectId: other.id,
+          kind: 'image',
+          mime: 'image/jpeg',
+          filename: 'foreign.jpg',
+          size: 10,
+          storageKey: 'foreign-preview',
+          status: 'ready',
+        },
+      ])
+      .returning();
+    const doc = new Y.Doc();
+    const element = new Y.Map<unknown>();
+    roots(doc).elements.set('image', element);
+    element.set('type', 'image');
+    element.set('assetId', files[0]!.id);
+    element.set('caption', 'Actual saved caption');
+    await db.insert(boardDoc).values({
+      boardId: own.rootBoardId,
+      state: Buffer.from(Y.encodeStateAsUpdate(doc)),
+      schemaVersion: 4,
+      size: Y.encodeStateAsUpdate(doc).byteLength,
+    });
+    // Even an invalid legacy cover reference cannot cross the board's project boundary.
+    await db.update(board).set({ coverAssetId: files[1]!.id }).where(eq(board.id, own.rootBoardId));
+    const before = await request('owner', 'GET', `/boards/${own.rootBoardId}/preview`);
+    expect(before.statusCode).toBe(200);
+    expect(before.json()).toMatchObject({
+      assetIds: [files[0]!.id],
+      excerpts: ['Actual saved caption'],
+      elementCount: 1,
+    });
+    expect(
+      (await request('stranger', 'GET', `/boards/${own.rootBoardId}/preview`)).statusCode,
+    ).toBe(404);
+    element.set('caption', 'Changed saved caption');
+    await db
+      .update(boardDoc)
+      .set({ state: Buffer.from(Y.encodeStateAsUpdate(doc)) })
+      .where(eq(boardDoc.boardId, own.rootBoardId));
+    const after = await request('owner', 'GET', `/boards/${own.rootBoardId}/preview`);
+    expect(after.json().excerpts).toEqual(['Changed saved caption']);
+    expect(after.headers.etag).not.toBe(before.headers.etag);
+    doc.destroy();
   });
 });

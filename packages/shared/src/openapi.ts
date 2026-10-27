@@ -12,6 +12,7 @@ import {
 import {
   Board,
   BoardDetail,
+  BoardPreview,
   CreateBoard,
   RecentBoard,
   RecentBoardQuery,
@@ -1830,3 +1831,13 @@ export function buildOpenApiDocument() {
     ],
   });
 }
+
+registry.registerPath({
+  method: 'get',
+  path: v1('/boards/{boardId}/preview'),
+  tags: ['Boards'],
+  security: secured,
+  summary: 'Authorized compact preview of the last persisted board; excludes full document data.',
+  request: { params: z.object({ boardId: Id }) },
+  responses: { 200: { description: 'Board preview', ...json(BoardPreview) }, ...errors },
+});
