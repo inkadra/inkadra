@@ -156,6 +156,12 @@
       "namePlaceholder": "Sopralluoghi",
       "create": "Crea board",
       "error": "Non riesco a creare la board. Riprova."
+    },
+    "preview": {
+      "unavailable": "Anteprima non disponibile",
+      "empty": "Board vuota",
+      "cards_one": "{{count}} elemento",
+      "cards_other": "{{count}} elementi"
     }
   },
   "project": {

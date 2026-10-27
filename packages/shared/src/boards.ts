@@ -68,3 +68,22 @@ export const RecentBoardQuery = z
   .object({ limit: z.coerce.number().int().min(1).max(50).default(12) })
   .openapi('RecentBoardQuery');
 export type RecentBoardQuery = z.infer<typeof RecentBoardQuery>;
+
+/** Bounded projection of the last persisted document, never a full canvas download. */
+export const BoardPreview = z
+  .object({
+    assetIds: z.array(Id).max(4),
+    excerpts: z.array(z.string().max(160)).max(3),
+    elementCount: z.int().nonnegative(),
+    drawing: z
+      .array(
+        z.object({
+          path: z.string().max(5000),
+          color: z.string().regex(/^#[0-9A-F]{6}$/i),
+          width: z.number().positive().max(820),
+        }),
+      )
+      .max(32),
+  })
+  .openapi('BoardPreview');
+export type BoardPreview = z.infer<typeof BoardPreview>;

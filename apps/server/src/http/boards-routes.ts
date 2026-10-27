@@ -1,5 +1,7 @@
+import { createHash } from 'node:crypto';
 import {
   API_PREFIX,
+  Id as AssetId,
   type Board,
   type BoardColumns,
   type BoardDetail,
@@ -25,6 +27,7 @@ import {
 } from '../access.ts';
 import type { Auth } from '../auth.ts';
 import { type BoardReader, storedColumns } from '../board-content.ts';
+import { projectPreview } from '../board-preview.ts';
 import type { Database } from '../db/client.ts';
 import { asset, board, boardDoc, project } from '../db/schema.ts';
 import { iso } from './api-routes.ts';
@@ -91,6 +94,40 @@ async function lastChildPosition(db: Pick<Database, 'select'>, parentBoardId: st
 export function registerBoardRoutes(app: FastifyInstance, deps: Deps) {
   const { db, auth } = deps;
   const v1 = (path: string) => `${API_PREFIX}${path}`;
+
+  app.get(v1('/boards/:boardId/preview'), async (req, reply) => {
+    const actor = await requireActor(auth, req, db);
+    const { boardId } = BoardParams.parse(req.params);
+    const access = await requireBoardRole(db, actor, boardId, 'viewer');
+    const [row] = await db.select().from(boardDoc).where(eq(boardDoc.boardId, boardId));
+    // Reauthorize every request. Browser revalidation avoids stale previews after edits or revocation.
+    reply.header('cache-control', 'private, no-cache');
+    const preview = projectPreview(row?.state);
+    const [metadata] = await db.select().from(board).where(eq(board.id, boardId));
+    const candidates = [...new Set([metadata?.coverAssetId, ...preview.assetIds])].filter(
+      (id): id is string => AssetId.safeParse(id).success,
+    );
+    // Cover references and imported documents cannot expose files from another project.
+    const files = candidates.length
+      ? await db
+          .select({ id: asset.id })
+          .from(asset)
+          .where(
+            and(
+              inArray(asset.id, candidates),
+              eq(asset.projectId, access.board.projectId),
+              eq(asset.status, 'ready'),
+              inArray(asset.kind, ['image', 'video']),
+            ),
+          )
+      : [];
+    const allowed = new Set(files.map((f) => f.id));
+    const body = { ...preview, assetIds: candidates.filter((id) => allowed.has(id)).slice(0, 4) };
+    const etag = `"${createHash('sha256').update(JSON.stringify(body)).digest('hex')}"`;
+    reply.header('etag', etag);
+    if (req.headers['if-none-match'] === etag) return reply.code(304).send();
+    return body;
+  });
 
   app.get(v1('/me/recent-boards'), async (req) => {
     const actor = await requireActor(auth, req, db);

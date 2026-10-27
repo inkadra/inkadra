@@ -316,3 +316,70 @@ a.home__activity-item:hover {
     margin-left: 0;
   }
 }
+
+.home__preview {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--ink-bg-canvas);
+  background-image: none;
+}
+.home__preview-images {
+  display: flex;
+  position: absolute;
+  inset: 0;
+}
+.home__preview-images img {
+  min-width: 0;
+  flex: 1;
+  width: 0;
+  height: 100%;
+  object-fit: cover;
+}
+.home__preview-text {
+  position: relative;
+  display: grid;
+  gap: 6px;
+  padding: 12px;
+  overflow: hidden;
+}
+.home__preview-text > span {
+  background: var(--ink-surface-1);
+  color: var(--ink-text-primary);
+  padding: 6px;
+  border-radius: 4px;
+  font-size: 11px;
+  max-height: 3em;
+  overflow: hidden;
+}
+.home__preview-summary {
+  position: relative;
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  margin-top: auto;
+  padding: 6px 10px;
+  background: var(--ink-surface-1);
+  color: var(--ink-text-primary);
+  font-size: 11px;
+}
+.home__preview-glyph {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+}
+
+.home__preview.home__cover {
+  display: flex;
+}
+.home__preview .home__preview-images img {
+  width: 0;
+}
+.home__preview-drawing {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}

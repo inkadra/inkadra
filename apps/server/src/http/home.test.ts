@@ -142,6 +142,26 @@ describe.skipIf(!url)('home overview: recent boards and shooting days (needs DAT
     await client.end({ timeout: 1 });
   });
 
+  it('authorizes previews before reading persisted content and supports private revalidation', async () => {
+    expect((await request(null, 'GET', `/boards/${ids.root}/preview`)).statusCode).toBe(401);
+    expect((await request('stranger', 'GET', `/boards/${ids.root}/preview`)).statusCode).toBe(404);
+    expect((await request('granted', 'GET', `/boards/${ids.root}/preview`)).statusCode).toBe(404);
+    const response = await request('owner', 'GET', `/boards/${ids.root}/preview`);
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toEqual({ assetIds: [], excerpts: [], elementCount: 0, drawing: [] });
+    expect(response.headers['cache-control']).toBe('private, no-cache');
+    expect(response.headers.etag).toBeTruthy();
+    const cached = await app.inject({
+      method: 'GET',
+      url: `/api/v1/boards/${ids.root}/preview`,
+      headers: {
+        cookie: people.owner?.cookie ?? '',
+        'if-none-match': String(response.headers.etag),
+      },
+    });
+    expect(cached.statusCode).toBe(304);
+  });
+
   it('requires a signed-in person and validates the query', async () => {
     expect((await request(null, 'GET', '/me/recent-boards')).statusCode).toBe(401);
     expect(
