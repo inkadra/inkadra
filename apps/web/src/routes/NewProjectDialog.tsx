@@ -283,12 +283,14 @@ export function ProjectSetupForm({
         </section>
       )}
       <DialogActions>
-        <span className="ink-muted">
-          {t('onboarding.summary', {
-            boards: 1 + setupBoards(template).length,
-            invitations: invites.length,
-          })}
-        </span>
+        {!created && (
+          <span className="ink-muted">
+            {t('onboarding.summary', {
+              boards: 1 + setupBoards(template).length,
+              invitations: invites.length,
+            })}
+          </span>
+        )}
         <Button variant="ghost" disabled={busy} onClick={onClose}>
           {t('onboarding.skip')}
         </Button>

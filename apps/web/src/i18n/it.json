@@ -150,7 +150,7 @@
     "loadError": "Non riesco a caricare questa sezione. Ricarica la pagina per riprovare.",
     "templates": {
       "title": "Inizia da un modello",
-      "needsProject": "Serve un progetto in cui puoi modificare.",
+      "needsProject": "Serve un progetto che puoi modificare.",
       "blank": {
         "name": "Board vuota",
         "body": "Parti da zero"
@@ -832,10 +832,10 @@
     "open": "Condividi",
     "title": "Condividi “{{title}}”",
     "close": "Chiudi",
-    "inherits_one": "Chi inviti vede anche il sotto-board contenuto qui.",
-    "inherits_other": "Chi inviti vede anche i {{count}} sotto-board contenuti qui.",
+    "inherits_one": "Chi inviti vede anche la sotto-board contenuta qui.",
+    "inherits_other": "Chi inviti vede anche le {{count}} sotto-board contenute qui.",
     "wholeProject": "Chi inviti qui entra in tutto il progetto.",
-    "thisBoard": "Chi inviti vede solo questo board.",
+    "thisBoard": "Chi inviti vede solo questa board.",
     "people": "Persone con accesso",
     "you": "{{name}} (tu)",
     "highlightHint": "Evidenzia il ruolo di questa persona nella matrice dei permessi",
@@ -843,7 +843,7 @@
     "fromProject": "Dal progetto",
     "inherited": "Ereditato da {{board}}",
     "custom": "Personalizzato qui · nel progetto è {{role}}",
-    "onlyHere": "Solo da questo board in giù",
+    "onlyHere": "Solo da questa board in giù",
     "roleOf": "Ruolo di {{name}}",
     "remove": "Togli l’accesso a {{name}}",
     "pending": "Invito in attesa · {{role}} · inviato {{when}}",
@@ -897,7 +897,7 @@
     }
   },
   "guestLinks": {
-    "lead": "Per chi non ha un account: vede il board senza poterlo modificare, e solo le card non nascoste agli ospiti. Il link vale finché hai il ruolo di editor qui.",
+    "lead": "Per chi non ha un account: vede la board senza poterla modificare, e solo le card non nascoste agli ospiti. Il link vale finché hai il ruolo di editor qui.",
     "none": "Nessun link per ospiti.",
     "list": "Link per ospiti",
     "new": "Nuovo link per ospiti",
@@ -906,8 +906,8 @@
     "never": "Nessuna scadenza",
     "label": "Per chi è (facoltativo)",
     "labelPlaceholder": "Es. Cliente",
-    "includeSubBoards_one": "Anche il sotto-board raggiungibile da qui",
-    "includeSubBoards_other": "Anche i sotto-board raggiungibili da qui",
+    "includeSubBoards_one": "Anche la sotto-board raggiungibile da qui",
+    "includeSubBoards_other": "Anche le sotto-board raggiungibili da qui",
     "allowDownload": "Permetti di scaricare gli originali",
     "allowDownloadHint": "Altrimenti gli ospiti vedono solo le anteprime.",
     "proofing": "Selezione foto",
@@ -945,7 +945,7 @@
       "password": "con password",
       "download": "download permesso",
       "proofing": "selezione foto",
-      "subBoards": "con i sotto-board",
+      "subBoards": "con le sotto-board",
       "expires": "scade il {{date}}",
       "expired": "scaduto il {{date}}",
       "noExpiry": "senza scadenza"
@@ -962,7 +962,7 @@
       "suspended": "Sospeso",
       "unknown": "Non attivo"
     },
-    "suspendedWhy": "Sospeso: chi l’ha creato non è più editor di questo board. Torna a funzionare se riottiene il ruolo; altrimenti crea un nuovo link.",
+    "suspendedWhy": "Sospeso: chi l’ha creato non è più editor di questa board. Torna a funzionare se riottiene il ruolo; altrimenti crea un nuovo link.",
     "revokedOn": "Revocato il {{date}}.",
     "url": "Link per ospiti “{{name}}”",
     "errors": {
@@ -1001,7 +1001,7 @@
     }
   },
   "guest": {
-    "loading": "Apertura del board…",
+    "loading": "Apertura della board…",
     "retry": "Riprova",
     "askLink": {
       "button": "Chiedi un nuovo link",
@@ -1010,11 +1010,11 @@
     },
     "cancel": "Annulla",
     "download": "Scarica l’originale",
-    "breadcrumb": "Board condivisi",
+    "breadcrumb": "Board condivise",
     "sharedBy": "Condiviso da {{name}}",
     "panel": "Dettagli e commenti",
     "boards": "Board di questo link",
-    "emptyBoard": "Questo board è vuoto.",
+    "emptyBoard": "Questa board è vuota.",
     "roles": {
       "view": "Ospite · può vedere",
       "comment": "Ospite · può commentare",
@@ -1031,7 +1031,7 @@
       },
       "revoked": {
         "title": "Link disattivato",
-        "body": "Chi ha condiviso il board ha disattivato questo link. Chiedi un nuovo link se ti serve ancora."
+        "body": "Chi ha condiviso la board ha disattivato questo link. Chiedi un nuovo link se ti serve ancora."
       },
       "unavailable": {
         "title": "Link non disponibile",
@@ -1047,20 +1047,20 @@
       },
       "cookies": {
         "title": "Servono i cookie",
-        "body": "Per aprire questo board il browser deve conservare un cookie tecnico di questo sito. Consenti i cookie per questo sito nelle impostazioni del browser e riprova."
+        "body": "Per aprire questa board il browser deve conservare un cookie tecnico di questo sito. Consenti i cookie per questo sito nelle impostazioni del browser e riprova."
       },
       "error": {
         "title": "Qualcosa è andato storto",
-        "body": "Non è stato possibile aprire il board. Riprova tra poco."
+        "body": "Non è stato possibile aprire la board. Riprova tra poco."
       }
     },
     "password": {
-      "title": "Board protetto da password",
-      "body": "Inserisci la password che ti hanno dato per aprire il board su {{instance}}.",
+      "title": "Board protetta da password",
+      "body": "Inserisci la password che ti hanno dato per aprire la board su {{instance}}.",
       "changed": "La password di questo link è cambiata: inserisci quella nuova.",
       "label": "Password",
       "wrong": "Password non corretta.",
-      "open": "Apri il board",
+      "open": "Apri la board",
       "tooMany": "Troppi tentativi: riprova più tardi."
     },
     "errors": {
@@ -1071,7 +1071,7 @@
     },
     "name": {
       "title": "Come ti chiami?",
-      "body": "Il tuo nome comparirà accanto ai tuoi commenti, approvazioni e scelte, segnato come ospite. Lo vedono le persone che ti hanno condiviso il board.",
+      "body": "Il tuo nome comparirà accanto ai tuoi commenti, approvazioni e scelte, segnato come ospite. Lo vedono le persone che ti hanno condiviso la board.",
       "label": "Il tuo nome",
       "save": "Continua",
       "empty": "Scrivi il tuo nome.",
@@ -1085,8 +1085,8 @@
     },
     "card": {
       "choose": "Card",
-      "none": "Tutto il board",
-      "hint": "Seleziona una card sul board, o sceglila qui sopra, per vederne i dettagli."
+      "none": "Tutta la board",
+      "hint": "Seleziona una card sulla board, o sceglila qui sopra, per vederne i dettagli."
     },
     "pick": {
       "label": "La tua scelta",
@@ -1096,7 +1096,7 @@
       "star_other": "{{count}} stelle",
       "picked": "Scelgo",
       "rejected": "Scarto",
-      "summary": "Hai scelto {{picked}} e scartato {{rejected}} immagini in questo board."
+      "summary": "Hai scelto {{picked}} e scartato {{rejected}} immagini in questa board."
     },
     "review": {
       "title": "Approvazione",
@@ -1120,7 +1120,7 @@
     },
     "comments": {
       "onCard": "Commenti sulla card",
-      "onBoard": "Commenti sul board",
+      "onBoard": "Commenti sulla board",
       "new": "Scrivi un commento",
       "send": "Commenta",
       "loadFailed": "Impossibile caricare i commenti.",
@@ -1155,7 +1155,7 @@
   "join": {
     "invitedBy": "{{name}} ti invita {{what}}",
     "invited": "Sei invitato {{what}}",
-    "board": "nel board “{{board}}” di {{project}}",
+    "board": "nella board “{{board}}” di {{project}}",
     "project": "nel progetto {{project}}",
     "instance": "su {{instance}}",
     "as": "come {{role}}",
@@ -1326,7 +1326,7 @@
     "reviewStatus": "Revisione",
     "filter": "Filtro inbox",
     "loadedOnly": "I filtri si applicano alle notifiche caricate. Mostra altro per cercare tra le notifiche precedenti.",
-    "openInBoard": "Apri nel board",
+    "openInBoard": "Apri nella board",
     "markResolved": "Segna come risolto",
     "markReopen": "Riapri",
     "statusOpen": "Aperto",
@@ -1628,17 +1628,17 @@
     "firstBlock": "Primo blocco previsto"
   },
   "clientReview": {
-    "roundsUnavailable": "I round di review non sono ancora supportati. Decisioni e risposte vengono salvate singolarmente.",
-    "progress": "{{approved}} di {{total}} frame approvati",
+    "roundsUnavailable": "Le tornate di revisione non sono ancora disponibili. Decisioni e risposte vengono salvate singolarmente.",
+    "progress": "{{approved}} di {{total}} inquadrature approvate",
     "guestThreads": "Discussioni con il cliente",
     "audienceHint": "Discussioni condivise con gli ospiti. Le risposte mantengono il pubblico del link originale.",
     "filters": {
-      "all": "Tutti i frame",
+      "all": "Tutte le inquadrature",
       "pending": "In attesa",
-      "approved": "Approvati",
+      "approved": "Approvate",
       "changes_requested": "Modifiche richieste"
     },
-    "liveOnly": "Le review appartengono alla board attuale. Chiudi l’anteprima della versione per leggerle e rispondere."
+    "liveOnly": "Le revisioni appartengono alla board attuale. Chiudi l’anteprima della versione per leggerle e rispondere."
   },
   "projectsPage": {
     "counts": "{{active}} attivi · {{archived}} archiviati",
@@ -1706,7 +1706,7 @@
       },
       "pitch": {
         "name": "Pitch cliente",
-        "body": "Un board per la presentazione. Crea un link ospite dal pannello Condividi."
+        "body": "Una board per la presentazione. Crea un link ospite dal pannello Condividi."
       },
       "blank": {
         "name": "Vuoto",
@@ -1732,8 +1732,12 @@
     "invalidEmail": "Inserisci un indirizzo email valido che non sia già nell’elenco.",
     "invalidDates": "La fine delle riprese deve seguire l’inizio.",
     "partialError": "Il progetto esiste già. Riprova per completare board e inviti mancanti, oppure salta e aprilo da Progetti.",
-    "creating": "Creazione e sincronizzazione dei board…",
-    "summary": "Verranno creati {{boards}} board e {{invitations}} inviti",
+    "creating": "Creazione e sincronizzazione delle board…",
+    "boards_one": "{{count}} board",
+    "boards_other": "{{count}} board",
+    "invitations_one": "{{count}} invito",
+    "invitations_other": "{{count}} inviti",
+    "summary": "Verranno creati $t(onboarding.boards, {\"count\": {{boards}} }) e $t(onboarding.invitations, {\"count\": {{invitations}} })",
     "skip": "Salta per ora",
     "inviteResults": "Inviti creati",
     "sent": "Email inviata",

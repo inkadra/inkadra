@@ -76,9 +76,11 @@ it('creates metadata, waits for root sync, then opens the real project', async (
     shootingStart: '2026-11-02',
     shootingEnd: null,
   });
+  expect(host.textContent).toContain('onboarding.summary');
   expect(created).not.toHaveBeenCalled();
   await act(async () => advance());
   expect(created).toHaveBeenCalledWith({ id: 'p', rootBoardId: 'root' });
+  expect(host.textContent).not.toContain('onboarding.summary');
 });
 it('keeps a project and successful invites on failure; retries only missing invitations', async () => {
   await blank();
