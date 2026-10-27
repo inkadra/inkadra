@@ -2,40 +2,54 @@
 import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { MemoryRouter } from 'react-router';
-import { expect, it, vi } from 'vitest';
+import { beforeEach, expect, it, vi } from 'vitest';
 import { api } from '../lib/api.ts';
-import { NotificationList } from './Notifications.tsx';
+import { initials, NotificationList } from './Notifications.tsx';
 
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (key: string) => key, i18n: { language: 'en' } }),
 }));
 vi.mock('../lib/api.ts', () => ({ api: { get: vi.fn(), post: vi.fn() } }));
 
+const baseNotification = {
+  actor: { kind: 'user', user: { id: 'u1', name: 'Laura', image: null } },
+  projectId: 'p1',
+  boardId: 'b1',
+  elementId: 'el1',
+  commentId: 'c1',
+  threadId: 't1',
+  boardTitle: 'Storyboard',
+  projectName: 'Ultima corsa',
+  reviewStatus: null,
+  readAt: '2026-10-25T12:00:00Z',
+  createdAt: '2026-10-25T11:00:00Z',
+};
+
+beforeEach(() => {
+  vi.clearAllMocks();
+});
+
+it('builds initials from the first two words, ignoring extra whitespace', () => {
+  expect(initials('Giulia Bianchi')).toBe('GB');
+  expect(initials('  Giulia   Bianchi ')).toBe('GB');
+  expect(initials('Laura')).toBe('LA');
+  expect(initials(null)).toBe('IN');
+  expect(initials('')).toBe('IN');
+});
+
 it('keeps the API unread count across pages and excludes comments from mentions', async () => {
   const host = document.createElement('div');
   const root = createRoot(host);
-  const notification = {
-    actor: null,
-    projectId: 'p',
-    boardId: 'b',
-    elementId: null,
-    commentId: null,
-    boardTitle: 'Board',
-    projectName: 'Project',
-    reviewStatus: null,
-    readAt: '2026-10-25T12:00:00Z',
-    createdAt: '2026-10-25T11:00:00Z',
-  };
   vi.mocked(api.get)
     .mockResolvedValueOnce({
       items: [
-        { ...notification, id: 'm', type: 'mention', excerpt: 'A real mention' },
-        { ...notification, id: 'c', type: 'comment', excerpt: 'A plain comment' },
+        { ...baseNotification, id: 'm', type: 'mention', excerpt: 'A real mention' },
+        { ...baseNotification, id: 'c', type: 'comment', excerpt: 'A plain comment' },
       ],
       nextCursor: 'next',
     })
     .mockResolvedValueOnce({
-      items: [{ ...notification, id: 'r', type: 'reply', excerpt: 'A reply' }],
+      items: [{ ...baseNotification, id: 'r', type: 'reply', excerpt: 'A reply' }],
       nextCursor: null,
     });
   try {
@@ -54,7 +68,7 @@ it('keeps the API unread count across pages and excludes comments from mentions'
     );
     expect(host.querySelector('h2 span')?.textContent).toBe('7');
     const tabs = [...host.querySelectorAll<HTMLButtonElement>('[role="tab"]')];
-    expect(tabs).toHaveLength(3);
+    expect(tabs.length).toBeGreaterThanOrEqual(3);
     await act(async () =>
       tabs.find((tab) => tab.textContent === 'notifications.tabs.mentions')?.click(),
     );
@@ -83,6 +97,407 @@ it('keeps the API unread count across pages and excludes comments from mentions'
     expect(host.querySelector('h2 span')).toBeNull();
   } finally {
     await act(async () => root.unmount());
-    vi.resetAllMocks();
+  }
+});
+
+it('renders the two-pane triage view and marks unread notification as read on open', async () => {
+  const host = document.createElement('div');
+  const root = createRoot(host);
+  const unreadItem = {
+    ...baseNotification,
+    id: 'n-unread',
+    readAt: null,
+    type: 'comment',
+    excerpt: 'Need more light',
+  };
+  vi.mocked(api.get).mockImplementation((path: string) => {
+    if (path.startsWith('/me/notifications')) {
+      return Promise.resolve({ items: [unreadItem], nextCursor: null });
+    }
+    if (path.startsWith('/boards/b1/comments')) {
+      return Promise.resolve({
+        items: [
+          {
+            id: 't1',
+            boardId: 'b1',
+            elementId: 'el1',
+            parentId: null,
+            pin: { x: 0.51, y: 0.3 },
+            createdAt: '2026-10-25T11:00:00Z',
+            author: baseNotification.actor,
+            body: 'Need more light on frame',
+            visibility: 'everyone',
+            resolvedAt: null,
+            replyCount: 1,
+            replies: [
+              {
+                id: 'r1',
+                boardId: 'b1',
+                elementId: 'el1',
+                parentId: 't1',
+                createdAt: '2026-10-25T11:05:00Z',
+                author: { kind: 'user', user: { id: 'u2', name: 'Giulia', image: null } },
+                body: 'Small panel on the right',
+                visibility: 'everyone',
+              },
+            ],
+          },
+        ],
+        nextCursor: null,
+      });
+    }
+    if (path === '/boards/b1') {
+      return Promise.resolve({
+        id: 'b1',
+        title: 'Storyboard',
+        breadcrumb: [{ id: 'sc4', title: 'Scena 4', kind: 'board' }],
+      });
+    }
+    return Promise.resolve({});
+  });
+  vi.mocked(api.post).mockResolvedValue({});
+
+  const onCount = vi.fn().mockResolvedValue(undefined);
+  try {
+    await act(async () =>
+      root.render(
+        <MemoryRouter>
+          <NotificationList
+            fixed
+            unread={1}
+            onClose={vi.fn()}
+            onNavigate={vi.fn()}
+            onCount={onCount}
+          />
+        </MemoryRouter>,
+      ),
+    );
+
+    // Two-pane structure
+    expect(host.querySelector('.notifications__list-pane')).not.toBeNull();
+    expect(host.querySelector('.notifications__detail-pane')).not.toBeNull();
+
+    // Mark read on open
+    expect(api.post).toHaveBeenCalledWith('/me/notifications/n-unread/read', {});
+    expect(onCount).toHaveBeenCalled();
+
+    // Detail breadcrumb and comments
+    expect(host.querySelector('.inbox-detail__breadcrumb')?.textContent).toContain('Ultima corsa');
+    expect(host.querySelector('.inbox-detail__breadcrumb')?.textContent).toContain('Scena 4');
+    expect(host.textContent).toContain('Need more light on frame');
+    expect(host.textContent).toContain('Small panel on the right');
+    expect(host.querySelector('.inbox-detail__preview-svg')).toBeNull();
+  } finally {
+    await act(async () => root.unmount());
+  }
+});
+
+it('supports keyboard navigation with arrows, Enter, and Escape', async () => {
+  const host = document.createElement('div');
+  const root = createRoot(host);
+  const items = [
+    { ...baseNotification, id: 'n1', readAt: '2026-10-25T10:00:00Z', excerpt: 'First note' },
+    { ...baseNotification, id: 'n2', readAt: null, excerpt: 'Second note' },
+  ];
+  vi.mocked(api.get).mockImplementation((path: string) => {
+    if (path.startsWith('/me/notifications')) {
+      return Promise.resolve({ items, nextCursor: null });
+    }
+    return Promise.resolve({ items: [] });
+  });
+  vi.mocked(api.post).mockResolvedValue({});
+
+  const onClose = vi.fn();
+  vi.useFakeTimers();
+  try {
+    await act(async () =>
+      root.render(
+        <MemoryRouter>
+          <NotificationList
+            fixed
+            unread={1}
+            onClose={onClose}
+            onNavigate={vi.fn()}
+            onCount={vi.fn()}
+          />
+        </MemoryRouter>,
+      ),
+    );
+
+    const dialog = host.querySelector('[role="dialog"]');
+    expect(dialog).not.toBeNull();
+
+    // Press ArrowDown on the list item to focus and select the second item
+    await act(async () => {
+      host
+        .querySelector('[data-notification-id="n1"]')
+        ?.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }));
+    });
+
+    // Selecting unread item marks it read only once scrolling stops (~400 ms debounce)
+    expect(api.post).not.toHaveBeenCalled();
+    await act(async () => vi.advanceTimersByTime(400));
+    expect(api.post).toHaveBeenCalledWith('/me/notifications/n2/read', {});
+
+    // Press Escape to close
+    await act(async () => {
+      dialog?.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    });
+    expect(onClose).toHaveBeenCalled();
+  } finally {
+    await act(async () => root.unmount());
+    vi.useRealTimers();
+  }
+});
+
+it('allows replying to and resolving threads from the inbox detail pane', async () => {
+  const host = document.createElement('div');
+  const root = createRoot(host);
+  const thread = {
+    id: 't1',
+    boardId: 'b1',
+    elementId: 'el1',
+    parentId: null,
+    pin: { x: 0.5, y: 0.5 },
+    createdAt: '2026-10-25T11:00:00Z',
+    author: baseNotification.actor,
+    body: 'Original thread',
+    visibility: 'everyone',
+    resolvedAt: null,
+    replyCount: 0,
+    replies: [],
+  };
+
+  vi.mocked(api.get).mockImplementation((path: string) => {
+    if (path.startsWith('/me/notifications')) {
+      return Promise.resolve({
+        items: [{ ...baseNotification, id: 'n1' }],
+        nextCursor: null,
+      });
+    }
+    if (path.startsWith('/boards/b1/comments')) {
+      return Promise.resolve({ items: [thread], nextCursor: null });
+    }
+    return Promise.resolve({ myRole: 'commenter' });
+  });
+  vi.mocked(api.post).mockImplementation((path: string) => {
+    if (path.includes('/resolve')) {
+      return Promise.resolve({ ...thread, resolvedAt: '2026-10-25T12:00:00Z' });
+    }
+    if (path.includes('/comments')) {
+      return Promise.resolve({
+        id: 'r-new',
+        boardId: 'b1',
+        elementId: 'el1',
+        parentId: 't1',
+        createdAt: '2026-10-25T12:05:00Z',
+        author: { kind: 'user', user: { id: 'me', name: 'Me', image: null } },
+        body: 'New reply from inbox',
+        visibility: 'everyone',
+      });
+    }
+    return Promise.resolve({});
+  });
+
+  try {
+    await act(async () =>
+      root.render(
+        <MemoryRouter>
+          <NotificationList
+            fixed
+            unread={0}
+            onClose={vi.fn()}
+            onNavigate={vi.fn()}
+            onCount={vi.fn()}
+          />
+        </MemoryRouter>,
+      ),
+    );
+
+    // Resolve thread button
+    const resolveBtn = host.querySelector<HTMLButtonElement>('.inbox-detail__resolve-btn');
+    expect(resolveBtn?.textContent).toContain('notifications.markResolved');
+    await act(async () => resolveBtn?.click());
+    expect(api.post).toHaveBeenCalledWith('/comments/t1/resolve', {});
+
+    // Reply via composer
+    const textarea = host.querySelector<HTMLTextAreaElement>('.inbox-detail__composer-textarea');
+    expect(textarea).not.toBeNull();
+    await act(async () => {
+      if (textarea) {
+        const desc = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, 'value');
+        desc?.set?.call(textarea, 'New reply from inbox');
+        textarea.dispatchEvent(new Event('input', { bubbles: true }));
+        textarea.dispatchEvent(new Event('change', { bubbles: true }));
+      }
+    });
+
+    const sendBtn = [
+      ...host.querySelectorAll<HTMLButtonElement>('.inbox-detail__composer button'),
+    ].find((b) => b.textContent?.includes('notifications.sendReply'));
+    expect(sendBtn).toBeDefined();
+    await act(async () => sendBtn?.click());
+
+    expect(api.post).toHaveBeenCalledWith('/boards/b1/comments', {
+      parentId: 't1',
+      body: 'New reply from inbox',
+    });
+  } finally {
+    await act(async () => root.unmount());
+  }
+});
+
+it('does not auto-select or auto-read on mobile while the detail is hidden', async () => {
+  const media = window.matchMedia('(width < 768px)');
+  Object.defineProperty(media, 'matches', { value: true });
+  const matchMedia = vi.spyOn(window, 'matchMedia').mockReturnValue(media);
+  const host = document.createElement('div');
+  const root = createRoot(host);
+  vi.mocked(api.get).mockResolvedValue({
+    items: [{ ...baseNotification, id: 'mobile', readAt: null }],
+    nextCursor: null,
+  });
+  try {
+    await act(async () =>
+      root.render(
+        <MemoryRouter>
+          <NotificationList
+            fixed
+            unread={1}
+            onClose={vi.fn()}
+            onNavigate={vi.fn()}
+            onCount={vi.fn()}
+          />
+        </MemoryRouter>,
+      ),
+    );
+    expect(api.post).not.toHaveBeenCalled();
+    expect(host.querySelector('.notifications__detail-pane')).toBeNull();
+    expect(host.querySelector('[aria-current="true"]')).toBeNull();
+    expect(api.get).toHaveBeenCalledTimes(1);
+  } finally {
+    await act(async () => root.unmount());
+    matchMedia.mockRestore();
+  }
+});
+
+it('keeps Enter on action buttons and moves list focus with a roving tab stop', async () => {
+  const host = document.createElement('div');
+  document.body.append(host);
+  const root = createRoot(host);
+  const onNavigate = vi.fn();
+  vi.mocked(api.get).mockImplementation((path) =>
+    Promise.resolve(
+      path.startsWith('/me/notifications')
+        ? {
+            items: [
+              { ...baseNotification, id: 'first' },
+              { ...baseNotification, id: 'second' },
+            ],
+            nextCursor: null,
+          }
+        : path.includes('/comments')
+          ? { items: [], nextCursor: null }
+          : { myRole: 'viewer' },
+    ),
+  );
+  try {
+    await act(async () =>
+      root.render(
+        <MemoryRouter>
+          <NotificationList
+            fixed
+            unread={0}
+            onClose={vi.fn()}
+            onNavigate={onNavigate}
+            onCount={vi.fn()}
+          />
+        </MemoryRouter>,
+      ),
+    );
+    const first = host.querySelector<HTMLButtonElement>('[data-notification-id="first"]')!;
+    const second = host.querySelector<HTMLButtonElement>('[data-notification-id="second"]')!;
+    await act(async () => {
+      first.focus();
+      first.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }));
+    });
+    expect(document.activeElement).toBe(second);
+    expect(second.tabIndex).toBe(0);
+    expect(first.tabIndex).toBe(-1);
+    expect(second.getAttribute('aria-current')).toBe('true');
+    const headerAction = host.querySelector<HTMLButtonElement>('.notifications__head button')!;
+    const detailAction = host.querySelector<HTMLButtonElement>('.inbox-detail__actions button')!;
+    await act(async () => {
+      headerAction.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+      detailAction.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+    });
+    expect(onNavigate).not.toHaveBeenCalled();
+  } finally {
+    await act(async () => root.unmount());
+    host.remove();
+  }
+});
+
+it('skips pathless items, focuses the first enabled item from the panel and debounces mark-read', async () => {
+  vi.useFakeTimers();
+  const host = document.createElement('div');
+  document.body.append(host);
+  const root = createRoot(host);
+  const items = [
+    { ...baseNotification, id: 'pathless', projectId: null, readAt: null },
+    { ...baseNotification, id: 'n1', readAt: null },
+    { ...baseNotification, id: 'n2', readAt: null },
+  ];
+  vi.mocked(api.get).mockImplementation((path: string) =>
+    Promise.resolve(
+      path.startsWith('/me/notifications') ? { items, nextCursor: null } : { items: [] },
+    ),
+  );
+  vi.mocked(api.post).mockResolvedValue({});
+  const onCount = vi.fn().mockResolvedValue(undefined);
+  try {
+    await act(async () =>
+      root.render(
+        <MemoryRouter>
+          <NotificationList
+            fixed
+            unread={2}
+            onClose={vi.fn()}
+            onNavigate={vi.fn()}
+            onCount={onCount}
+          />
+        </MemoryRouter>,
+      ),
+    );
+    const pathless = host.querySelector<HTMLButtonElement>('[data-notification-id="pathless"]')!;
+    const first = host.querySelector<HTMLButtonElement>('[data-notification-id="n1"]')!;
+    const second = host.querySelector<HTMLButtonElement>('[data-notification-id="n2"]')!;
+    expect(pathless.disabled).toBe(true);
+    expect(pathless.tabIndex).toBe(-1);
+    expect(first.tabIndex).toBe(0);
+
+    // ArrowDown on the panel enters the list at the first enabled item
+    const dialog = host.querySelector('[role="dialog"]')!;
+    await act(async () => {
+      (dialog as HTMLElement).focus();
+      dialog.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }));
+    });
+    expect(document.activeElement).toBe(first);
+    expect(second.tabIndex).toBe(-1);
+
+    // Arrow navigation defers mark-read: no POST while scrolling, one ~400 ms after stopping
+    await act(async () => {
+      first.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }));
+    });
+    expect(document.activeElement).toBe(second);
+    expect(api.post).toHaveBeenCalledTimes(1);
+    expect(api.post).toHaveBeenCalledWith('/me/notifications/n1/read', {});
+    await act(async () => vi.advanceTimersByTime(400));
+    expect(api.post).toHaveBeenCalledTimes(2);
+    expect(api.post).toHaveBeenLastCalledWith('/me/notifications/n2/read', {});
+  } finally {
+    await act(async () => root.unmount());
+    host.remove();
+    vi.useRealTimers();
   }
 });

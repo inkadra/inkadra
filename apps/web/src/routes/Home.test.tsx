@@ -175,6 +175,11 @@ it('shows today’s shooting day, recent boards and the last day of activity', a
   expect(today?.querySelector('a')?.getAttribute('href')).toBe('/p/p1/b/plan?view=schedule');
   const board = host.querySelector<HTMLAnchorElement>('.home__boards a');
   expect(board?.getAttribute('href')).toBe('/p/p1/b/storyboard1');
+  // Project metadata describes the destination; it must not name a different link.
+  const label = document.getElementById(board?.getAttribute('aria-labelledby') ?? '');
+  const description = document.getElementById(board?.getAttribute('aria-describedby') ?? '');
+  expect(label?.textContent).toBe('Scene 4');
+  expect(description?.textContent).toContain('Last run');
   expect(board?.textContent).toContain('board.types.storyboard');
   expect(board?.textContent).toContain('Scene 4');
   const activity = host.querySelectorAll('.home__activity li');
