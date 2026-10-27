@@ -1,4 +1,13 @@
 {
+  "context": {
+    "actions": "Azioni pagina",
+    "copy": "Copia testo selezionato",
+    "selectAll": "Seleziona tutto il testo",
+    "openLink": "Apri link",
+    "back": "Indietro",
+    "copyFailed": "Copia non riuscita. Usa la scorciatoia da tastiera.",
+    "editHint": "Usa Ctrl/⌘+X per tagliare e Ctrl/⌘+V per incollare. L’accesso agli appunti dipende dal browser."
+  },
   "app": {
     "name": "Inkadra",
     "tagline": "Dall’idea all’inquadratura.",
