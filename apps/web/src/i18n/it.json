@@ -1381,7 +1381,6 @@
     "noComments": "Nessun commento disponibile.",
     "noReferences": "Nessun riferimento disponibile.",
     "referencesUnavailable": "La vista dei riferimenti è in preparazione. Le immagini della board restano accessibili nel canvas.",
-    "callSheetUnavailable": "Bozza vuota: date, convocazioni, meteo, contatti e informazioni di sicurezza non sono disponibili. Stampa ed esportazione non sono ancora abilitate.",
     "print": "Stampa / esporta",
     "matrix": "Matrice permessi dei ruoli",
     "role": "Ruolo",
@@ -1458,5 +1457,28 @@
     "compare": "Confronta A/B",
     "usedIn": "Usata in · questa board",
     "openSource": "Apri fonte"
+  },
+  "callSheet": {
+    "empty": "Nessuna informazione inserita.",
+    "savedOnly": "Usa il piano riprese salvato. Salva le modifiche prima di generare il foglio di lavorazione.",
+    "include": "Includi sezioni",
+    "schedule": "Scaletta per scena",
+    "cast": "Cast e orari",
+    "location": "Location",
+    "departments": "Note dei reparti",
+    "notes": "Note della giornata",
+    "weather": "Meteo, alba e tramonto",
+    "map": "Mappa",
+    "hospital": "Ospedale più vicino",
+    "contacts": "Contatti",
+    "thumbnails": "Miniature storyboard",
+    "unavailable": "non disponibile",
+    "preview": "Anteprima foglio di lavorazione",
+    "revision": "Revisione piano {{revision}}",
+    "time": "Ora",
+    "description": "Descrizione",
+    "shot": "Inquadratura",
+    "derivedCalls": "Gli orari indicano il primo blocco previsto per ciascun membro del cast. Pickup e trucco non sono registrati.",
+    "firstBlock": "Primo blocco previsto"
   }
 }
