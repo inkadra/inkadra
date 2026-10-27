@@ -13,10 +13,10 @@ export const Health = z
   .openapi('Health');
 export type Health = z.infer<typeof Health>;
 
-export const RegistrationMode = z.enum(['first-user', 'invite', 'open']).openapi({
+export const RegistrationMode = z.enum(['first-user', 'invite', 'open', 'closed']).openapi({
   description:
     '`first-user`: nobody has an account yet and the first sign-up becomes administrator. ' +
-    '`invite`: only invited people can sign up. `open`: anyone can sign up.',
+    '`invite`: only invited people can sign up. `open`: anyone can sign up. `closed`: no new accounts, including invitations.',
 });
 
 export const Instance = z

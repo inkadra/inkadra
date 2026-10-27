@@ -8,13 +8,17 @@ import type {
 import { Button, Dialog, DialogActions, TextField } from '@inkadra/ui';
 import { type FormEvent, type ReactNode, useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useSearchParams } from 'react-router';
 import { encode } from 'uqr';
 import { LOCALES } from '../i18n/index.ts';
 import { api, authApi, RequestError } from '../lib/api.ts';
 import { useSession } from '../lib/session.tsx';
+import { type ThemePreference, useTheme } from '../lib/theme.ts';
 import { EmailNotifications } from '../notifications/Notifications.tsx';
 import { useInstanceSetupState } from './AppLayout.tsx';
+import { InstanceSettings } from './InstanceSettings.tsx';
 import { InstanceChecklist } from './InstanceSetup.tsx';
+import { SettingsShell } from './SettingsShell.tsx';
 import './projects.css';
 import { GoogleG } from './SignInOptions.tsx';
 import './settings.css';
@@ -23,6 +27,10 @@ import './settings.css';
 export function Settings() {
   const setup = useInstanceSetupState();
   const { t } = useTranslation();
+  const [params] = useSearchParams();
+  const section = params.get('section') ?? 'account';
+  const { user } = useSession();
+  const { preference, choose } = useTheme();
   const [accounts, setAccounts] = useState<Array<{ id: string; providerId: string }> | null>(null);
   const loadAccounts = useCallback(async () => setAccounts(await authApi.listAccounts()), []);
   useEffect(() => {
@@ -31,19 +39,48 @@ export function Settings() {
   const hasPassword = accounts?.some((a) => a.providerId === 'credential') ?? false;
 
   return (
-    <div className="settings">
+    <SettingsShell>
       <h1 className="settings__title">{t('settings.title')}</h1>
       <p className="ink-muted settings__lead">{t('settings.lead')}</p>
       <InstanceChecklist {...setup} />
-      <Profile />
-      <EmailNotifications />
-      <SignInMethods accounts={accounts} onChange={loadAccounts} />
-      {hasPassword && <ChangePassword />}
-      <TwoFactor hasPassword={hasPassword} />
-      <Sessions />
-      <Tokens />
-      <DeleteAccount hasPassword={hasPassword} />
-    </div>
+      {section === 'preferences' ? (
+        <Section title={t('admin.preferences')}>
+          <label className="settings__label">
+            {t('admin.theme')}
+            <select
+              className="ink-input"
+              value={preference}
+              onChange={(e) => choose(e.target.value as ThemePreference)}
+            >
+              {(['system', 'dark', 'light'] as const).map((value) => (
+                <option key={value} value={value}>
+                  {t(`admin.themes.${value}`)}
+                </option>
+              ))}
+            </select>
+          </label>
+        </Section>
+      ) : section === 'notifications' ? (
+        <EmailNotifications />
+      ) : ['instance', 'workspace', 'providers'].includes(section) ? (
+        user?.role === 'admin' ? (
+          <InstanceSettings section={section} />
+        ) : (
+          <p role="alert">{t('admin.forbidden')}</p>
+        )
+      ) : (
+        <>
+          <Profile />
+          <EmailNotifications />
+          <SignInMethods accounts={accounts} onChange={loadAccounts} />
+          {hasPassword && <ChangePassword />}
+          <TwoFactor hasPassword={hasPassword} />
+          <Sessions />
+          <Tokens />
+          <DeleteAccount hasPassword={hasPassword} />
+        </>
+      )}
+    </SettingsShell>
   );
 }
 
@@ -598,7 +635,9 @@ function DeleteAccount({ hasPassword }: { hasPassword: boolean }) {
       await refresh();
     } catch (err) {
       if (err instanceof RequestError && err.status === 409) {
-        setBlocked((err.details as DeleteMeBlocked | undefined)?.soleOwnerOf ?? []);
+        const projects = (err.details as DeleteMeBlocked | undefined)?.soleOwnerOf;
+        if (projects) setBlocked(projects);
+        else status.show(t('admin.lastAdmin'), true);
       } else status.fail(err);
     }
   }

@@ -48,6 +48,7 @@ export const user = pgTable('user', {
     .notNull()
     .default('member'),
   locale: text('locale'),
+  deactivatedAt: timestamp('deactivated_at', { withTimezone: true }),
   twoFactorEnabled: boolean('two_factor_enabled').notNull().default(false),
   createdAt: createdAt(),
   updatedAt: updatedAt(),

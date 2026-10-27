@@ -50,6 +50,12 @@ import {
 } from './guests.ts';
 import { Diagnostics, Health, Instance } from './instance.ts';
 import {
+  InstanceMember,
+  InstanceSettings,
+  UpdateInstanceMember,
+  UpdateInstanceSettings,
+} from './instance-admin.ts';
+import {
   MarkAllRead,
   Notification,
   NotificationPreferences,
@@ -120,7 +126,7 @@ import {
   UpdateBoardVersion,
 } from './versions.ts';
 
-export const API_VERSION = '0.6.0';
+export const API_VERSION = '0.7.0';
 
 const registry = new OpenAPIRegistry();
 
@@ -255,6 +261,53 @@ registry.registerPath({
   tags: ['Instance'],
   summary: 'Public information the login screen and the apps need before signing in.',
   responses: { 200: { description: 'Instance', ...json(Instance) } },
+});
+
+registry.registerPath({
+  method: 'get',
+  path: v1('/instance/settings'),
+  tags: ['Instance'],
+  security: secured,
+  summary: 'Administrator only: instance branding and registration settings.',
+  responses: { 200: { description: 'Settings', ...json(InstanceSettings) }, ...errors },
+});
+registry.registerPath({
+  method: 'patch',
+  path: v1('/instance/settings'),
+  tags: ['Instance'],
+  security: secured,
+  summary: 'Administrator only: persist instance name and registration mode.',
+  request: { body: { required: true, ...json(UpdateInstanceSettings) } },
+  responses: { 200: { description: 'Saved settings', ...json(InstanceSettings) }, ...errors },
+});
+registry.registerPath({
+  method: 'get',
+  path: v1('/instance/members'),
+  tags: ['Instance'],
+  security: secured,
+  summary: 'Administrator only: directory of active and deactivated instance accounts.',
+  responses: {
+    200: { description: 'Members', ...json(z.object({ items: z.array(InstanceMember) })) },
+    ...errors,
+  },
+});
+registry.registerPath({
+  method: 'patch',
+  path: v1('/instance/members/{userId}'),
+  tags: ['Instance'],
+  security: secured,
+  summary: 'Administrator only: change global role or deactivate/reactivate an account.',
+  description:
+    'Deactivation preserves content and memberships, revokes sessions and personal tokens and prevents sign-in. The last active administrator cannot be demoted or deactivated. Invitations never grant administrator privileges.',
+  request: {
+    params: z.object({ userId: Id }),
+    body: { required: true, ...json(UpdateInstanceMember) },
+  },
+  responses: {
+    200: { description: 'Updated', ...json(z.object({ ok: z.literal(true) })) },
+    ...errors,
+    409: { description: 'Last active administrator', ...json(ApiError) },
+  },
 });
 
 registry.registerPath({
@@ -417,7 +470,8 @@ registry.registerPath({
     204: { description: 'Deleted' },
     ...errors,
     409: {
-      description: 'Sole owner of shared projects (details: DeleteMeBlocked)',
+      description:
+        'Sole owner of shared projects (details: DeleteMeBlocked), or last active instance administrator.',
       ...json(ApiError),
     },
   },

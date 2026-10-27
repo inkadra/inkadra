@@ -14,7 +14,7 @@ import {
   Id,
   z,
 } from '@inkadra/shared';
-import { and, asc, count, desc, eq, gt, inArray, ne } from 'drizzle-orm';
+import { and, asc, count, desc, eq, gt, inArray, isNull, ne, sql } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
 import type { Auth } from '../auth.ts';
 import type { Config } from '../config.ts';
@@ -86,7 +86,7 @@ export function registerAccountRoutes(app: FastifyInstance, deps: Deps) {
   // them; these routes never send a token, and /list-sessions and /revoke-session are off.
 
   app.get(v1('/me/sessions'), async (req) => {
-    const session = await requireSession(auth, req);
+    const session = await requireSession(auth, req, db);
     const rows = await db
       .select({
         id: sessionTable.id,
@@ -110,7 +110,7 @@ export function registerAccountRoutes(app: FastifyInstance, deps: Deps) {
   });
 
   app.delete(v1('/me/sessions/:sessionId'), async (req, reply) => {
-    const session = await requireSession(auth, req);
+    const session = await requireSession(auth, req, db);
     const { sessionId } = SessionParams.parse(req.params);
     const [row] = await db
       .select({ token: sessionTable.token })
@@ -125,7 +125,7 @@ export function registerAccountRoutes(app: FastifyInstance, deps: Deps) {
   // Tokens -----------------------------------------------------------------------
 
   app.get(v1('/me/tokens'), async (req) => {
-    const session = await requireSession(auth, req);
+    const session = await requireSession(auth, req, db);
     const rows = await db
       .select()
       .from(personalToken)
@@ -135,7 +135,7 @@ export function registerAccountRoutes(app: FastifyInstance, deps: Deps) {
   });
 
   app.post(v1('/me/tokens'), async (req, reply) => {
-    const session = await requireSession(auth, req);
+    const session = await requireSession(auth, req, db);
     const input = CreatePersonalToken.parse(req.body ?? {});
     const [mine] = await db
       .select({ n: count() })
@@ -166,7 +166,7 @@ export function registerAccountRoutes(app: FastifyInstance, deps: Deps) {
   // Authorization of the official apps (code + PKCE) -----------------------------
 
   app.post(v1('/app-authorizations'), async (req) => {
-    const session = await requireSession(auth, req);
+    const session = await requireSession(auth, req, db);
     const input = CreateAppAuthorization.parse(req.body ?? {});
     if (!allowedRedirects(config, input.clientId).includes(input.redirectUri))
       throw new HttpError('bad_request', 'This redirect address is not allowed for this app.');
@@ -193,7 +193,7 @@ export function registerAccountRoutes(app: FastifyInstance, deps: Deps) {
   // Denying is decided here too: the page never builds a redirect itself, and only an
   // exact allowed address hears about it (RFC 6749 §4.1.2.1).
   app.post(v1('/app-authorizations/deny'), async (req) => {
-    await requireSession(auth, req);
+    await requireSession(auth, req, db);
     const input = DenyAppAuthorization.parse(req.body ?? {});
     if (!allowedRedirects(config, input.clientId).includes(input.redirectUri))
       throw new HttpError('bad_request', 'This redirect address is not allowed for this app.');
@@ -223,7 +223,7 @@ export function registerAccountRoutes(app: FastifyInstance, deps: Deps) {
     )
       throw invalid;
     const [owner] = await db.select().from(user).where(eq(user.id, pending.userId));
-    if (!owner) throw invalid;
+    if (!owner || owner.deactivatedAt) throw invalid;
     const { token, row: issued } = await issueToken(db, owner.id, {
       name: pending.deviceName ?? CLIENT_NAMES[pending.clientId],
       client: pending.clientId,
@@ -235,7 +235,7 @@ export function registerAccountRoutes(app: FastifyInstance, deps: Deps) {
   // Account deletion -----------------------------------------------------------
 
   app.delete(v1('/me'), async (req, reply) => {
-    const session = await requireSession(auth, req);
+    const session = await requireSession(auth, req, db);
     const { password } = DeleteMe.parse(req.body ?? {});
     const userId = session.user.id;
     const [credential] = await db
@@ -254,6 +254,7 @@ export function registerAccountRoutes(app: FastifyInstance, deps: Deps) {
     }
 
     const keys = await db.transaction(async (tx) => {
+      await tx.execute(sql`select pg_advisory_xact_lock(10892)`);
       const owned = await tx
         .select({ id: project.id, name: project.name })
         .from(projectMember)
@@ -290,6 +291,12 @@ export function registerAccountRoutes(app: FastifyInstance, deps: Deps) {
         throw new HttpError('conflict', 'Make someone else owner of these projects first.', {
           soleOwnerOf,
         } satisfies DeleteMeBlocked);
+      const admins = await tx
+        .select({ id: user.id })
+        .from(user)
+        .where(and(eq(user.role, 'admin'), isNull(user.deactivatedAt)));
+      if (admins.length === 1 && admins[0]?.id === userId)
+        throw new HttpError('conflict', 'The instance needs at least one active administrator.');
       let files: string[] = [];
       if (alone.length > 0) {
         const originals = await tx

@@ -55,6 +55,7 @@ export async function actorFromToken(db: Database, token: string): Promise<Actor
     .where(
       and(
         eq(personalToken.tokenHash, sha256(token)),
+        isNull(user.deactivatedAt),
         or(isNull(personalToken.expiresAt), gt(personalToken.expiresAt, now)),
       ),
     );

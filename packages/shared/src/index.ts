@@ -7,6 +7,7 @@ export * from './common.ts';
 export * from './constants.ts';
 export * from './guests.ts';
 export * from './instance.ts';
+export * from './instance-admin.ts';
 export * from './notifications.ts';
 export * from './permissions.ts';
 export * from './projects.ts';

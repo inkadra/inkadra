@@ -24,7 +24,7 @@ const Env = z.object({
   REDIS_URL: z.string().min(1).optional(),
   AUTH_SECRET: z.string().min(32, 'AUTH_SECRET must be at least 32 characters'),
   INSTANCE_NAME: z.string().min(1).default('Inkadra'),
-  REGISTRATION: z.enum(['invite', 'open']).default('invite'),
+  REGISTRATION: z.enum(['invite', 'open', 'closed']).default('invite'),
   HOST: z.string().default('0.0.0.0'),
   PORT: z.coerce.number().int().default(3000),
   COLLAB_PORT: z.coerce.number().int().default(3001),
