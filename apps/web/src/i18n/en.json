@@ -1,4 +1,13 @@
 {
+  "context": {
+    "actions": "Page actions",
+    "copy": "Copy selected text",
+    "selectAll": "Select all text",
+    "openLink": "Open link",
+    "back": "Go back",
+    "copyFailed": "Could not copy. Use the keyboard copy shortcut instead.",
+    "editHint": "Use Ctrl/⌘+X to cut and Ctrl/⌘+V to paste. Clipboard access depends on your browser."
+  },
   "app": {
     "name": "Inkadra",
     "tagline": "From idea to frame.",
