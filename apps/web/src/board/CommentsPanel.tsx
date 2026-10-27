@@ -188,7 +188,7 @@ function CommentsPanel() {
     const place = () => {
       const panel = ref.current;
       const card = document.querySelector<HTMLElement>(`[data-el="${CSS.escape(elementId)}"]`);
-      const floating = !!card && window.innerWidth > 720;
+      const floating = !!card && window.innerWidth >= 768;
       panel?.classList.toggle('comments-panel--element', floating);
       if (panel && card && floating) {
         const position = commentPanelPosition(
