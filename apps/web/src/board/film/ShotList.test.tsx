@@ -94,7 +94,7 @@ it('renders table with Cast column, footer totals and + Shot buttons', async () 
   // Footer totals
   const footer = host.querySelector('.shots__footer');
   expect(footer).not.toBeNull();
-  expect(footer?.textContent).toContain('1 shot');
+  expect(footer?.textContent).toMatch(/\b1 shot(?!s)/);
 
   // + Shot button in header and scene
   const addButtons = host.querySelectorAll('button');
