@@ -506,10 +506,7 @@ export function AppLayout() {
               )}
             </nav>
             <span className="ink-header__spacer" />
-            <span
-              className="ink-muted"
-              style={{ fontSize: 12, display: 'flex', alignItems: 'center', gap: 6 }}
-            >
+            <span className="ink-muted ink-header__search-hint">
               <KeyCap>⌘K</KeyCap>
               {t('home.searchHint')}
             </span>
