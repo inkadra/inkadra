@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-import { Button, EmptyState } from '@inkadra/ui';
-import { useMemo, useRef, useState } from 'react';
+import { Button, Icon } from '@inkadra/ui';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { isRouteErrorResponse, useRouteError } from 'react-router';
 import './error.css';
@@ -12,12 +12,22 @@ function newErrorId(): string {
   return `${hex.slice(0, 4)}-${hex.slice(4)}`;
 }
 
+/**
+ * The page reference for "Copy details": query string and hash are dropped (they can carry
+ * a reset-password token) and the raw share/invitation token after /s/ or /join/ is
+ * redacted, so a copied report can never leak credentials.
+ */
+function redactPage(href: string): string {
+  const bare = href.split(/[#?]/)[0] ?? href;
+  return bare.replace(/\/(s|join)\/[^/]+/g, '/$1/[redacted]');
+}
+
 /** What "Copy details" hands over: enough to report, nothing more. */
 function errorDetails(error: unknown, id: string): string {
   const details: Record<string, unknown> = {
     errorId: id,
     at: new Date().toISOString(),
-    page: window.location.href,
+    page: redactPage(window.location.href),
     userAgent: navigator.userAgent,
   };
   if (isRouteErrorResponse(error)) {
@@ -40,9 +50,13 @@ export function ErrorPage() {
   const { t } = useTranslation();
   const error = useRouteError();
   const [copied, setCopied] = useState(false);
-  // One ID per crash: copies made from the same screen stay consistent.
-  const idRef = useRef(newErrorId());
-  const details = useMemo(() => errorDetails(error, idRef.current), [error]);
+  // One ID per crash, created once: copies made from the same screen stay consistent.
+  const [id] = useState(newErrorId);
+  useEffect(() => {
+    // Log with the ID so the on-screen reference matches what the console captured.
+    console.error(`App error ${id}`, error);
+  }, [error, id]);
+  const details = useMemo(() => errorDetails(error, id), [error, id]);
   const copy = async () => {
     try {
       await navigator.clipboard.writeText(details);
@@ -52,25 +66,29 @@ export function ErrorPage() {
     }
   };
   return (
-    <div className="app-error" role="alert">
-      <EmptyState
-        icon="warning"
-        title={t('appError.title')}
-        actions={
-          <>
-            <Button variant="primary" onClick={() => window.location.reload()}>
-              {t('appError.retry')}
-            </Button>
-            <Button variant="secondary" onClick={() => void copy()}>
-              {copied ? t('appError.copied') : t('appError.copy')}
-            </Button>
-          </>
-        }
-      >
-        {t('appError.body')}
+    <div className="app-error">
+      <div className="ink-empty">
+        <Icon name="warning" />
+        <h1 className="app-error__title">{t('appError.title')}</h1>
+        <p className="app-error__msg" role="alert">
+          {t('appError.body')}
+        </p>
         <p className="app-error__hint">{t('appError.hint')}</p>
-      </EmptyState>
-      <code className="app-error__id">{t('appError.id', { id: idRef.current })}</code>
+        <div className="ink-empty__actions">
+          <Button variant="primary" onClick={() => window.location.reload()}>
+            {t('appError.retry')}
+          </Button>
+          <Button variant="secondary" onClick={() => void copy()}>
+            {copied ? t('appError.copied') : t('appError.copy')}
+          </Button>
+        </div>
+        {copied && (
+          <p className="app-error__hint" role="status">
+            {t('appError.copied')}
+          </p>
+        )}
+      </div>
+      <code className="app-error__id">{t('appError.id', { id })}</code>
     </div>
   );
 }

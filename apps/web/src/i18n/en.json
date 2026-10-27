@@ -171,7 +171,7 @@
   },
   "appError": {
     "title": "Something went wrong",
-    "body": "The page stopped working. Your recent changes are safe on this device.",
+    "body": "The page stopped working. Changes already synced are safe; reload to reconnect.",
     "retry": "Try again",
     "copy": "Copy details",
     "copied": "Details copied",

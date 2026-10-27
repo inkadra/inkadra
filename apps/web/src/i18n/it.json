@@ -171,7 +171,7 @@
   },
   "appError": {
     "title": "Qualcosa non ha funzionato",
-    "body": "La pagina ha smesso di funzionare. Le tue modifiche recenti sono salve su questo dispositivo.",
+    "body": "La pagina ha smesso di funzionare. Le modifiche già sincronizzate sono salve; ricarica per riconnetterti.",
     "retry": "Riprova",
     "copy": "Copia dettagli",
     "copied": "Dettagli copiati",
