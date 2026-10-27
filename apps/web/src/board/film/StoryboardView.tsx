@@ -54,12 +54,14 @@ export function StoryboardView({
   store,
   projectId,
   boardId,
+  boardTitle = '',
   userId,
   readOnly,
 }: {
   store: BoardStore;
   projectId: string;
   boardId: string;
+  boardTitle?: string;
   userId: string;
   readOnly: boolean;
 }) {
@@ -297,7 +299,9 @@ export function StoryboardView({
       {present && (
         <PresentationView
           store={store}
-          boardTitle=""
+          groups={visible}
+          labels={labels}
+          boardTitle={boardTitle}
           readOnly={readOnly}
           onClose={() => setPresent(false)}
         />

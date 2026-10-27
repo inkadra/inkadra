@@ -1775,8 +1775,6 @@
   "present": {
     "title": "Presenta",
     "exit": "Esci",
-    "clientLink": "Link cliente",
-    "watching": "{{name}} sta guardando",
     "prev": "Slide precedente",
     "next": "Slide successiva",
     "slideCounter": "{{current}} / {{total}}",
@@ -1792,10 +1790,12 @@
     "timer": "Tempo",
     "clock": "Ora",
     "nextSlide": "Prossima",
-    "spectators": "Spettatori",
-    "spectatorSlide": "sulla slide {{slide}}",
-    "notesPrivate": "Gli ospiti vedono solo le slide, mai queste note.",
     "noSlides": "Nessuna inquadratura o scheda da presentare",
-    "noNotes": "Nessuna nota per questa slide"
+    "noNotes": "Nessuna nota per questa slide",
+    "audio": "Audio: {{value}}",
+    "slideLabel": "Slide {{n}} · {{label}}",
+    "timerPause": "Pausa",
+    "timerResume": "Riprendi",
+    "timerReset": "Azzera"
   }
 }

@@ -1,15 +1,15 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-import { type FrameElement, frameLabels, storyboardOf } from '@inkadra/canvas-core';
+import type { FrameElement, SceneGroup } from '@inkadra/canvas-core';
 import { SHOT_MOVEMENTS, SHOT_SIZES } from '@inkadra/doc-schema';
-import { Avatar, Button, Icon, IconButton, KeyCap } from '@inkadra/ui';
-import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
+import { Button, Icon, IconButton, KeyCap } from '@inkadra/ui';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Animatic } from './film/Animatic.tsx';
 import { useBoardAspect } from './film/aspect.ts';
 import { FramePicture } from './film/FramePicture.tsx';
 import { usePresetText } from './film/fields.tsx';
-import type { Peer } from './presence.ts';
 import './presentation.css';
+import { isTyping } from './shortcuts.ts';
 import type { BoardStore } from './store.ts';
 
 export interface SlideItem {
@@ -40,20 +40,21 @@ export function formatElapsed(seconds: number): string {
 
 export function PresentationView({
   store,
+  groups,
+  labels,
   boardTitle,
   projectTitle,
-  peers = [],
   readOnly = false,
   onClose,
-  onShareClient,
 }: {
   store: BoardStore;
+  /** Only the scenes the viewer may see and has not filtered out. */
+  groups: readonly SceneGroup[];
+  labels: Map<string, string>;
   boardTitle: string;
   projectTitle?: string;
-  peers?: readonly Peer[];
   readOnly?: boolean;
   onClose: () => void;
-  onShareClient?: () => void;
 }) {
   const { t } = useTranslation();
   const boardAspect = useBoardAspect(store.doc);
@@ -62,33 +63,60 @@ export function PresentationView({
   const [showNotes, setShowNotes] = useState(true);
   const [playingAnimatic, setPlayingAnimatic] = useState(false);
   const [elapsed, setElapsed] = useState(0);
+  const [paused, setPaused] = useState(false);
+  const [fullscreen, setFullscreen] = useState(false);
   const [clock, setClock] = useState(() =>
     new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
   );
-  const rootRef = useRef<HTMLElement>(null);
+  const rootRef = useRef<HTMLDialogElement>(null);
+  // Whatever had focus when the presentation opened gets it back when it closes.
+  const opener = useRef<Element | null>(document.activeElement);
+
+  useEffect(() => {
+    const el = opener.current;
+    return () => {
+      if (el instanceof HTMLElement && el.isConnected) el.focus();
+    };
+  }, []);
 
   // Timer for presentation elapsed time and wall-clock
   useEffect(() => {
     const timer = setInterval(() => {
-      setElapsed((s) => s + 1);
+      if (!paused) setElapsed((s) => s + 1);
       setClock(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
     }, 1000);
     return () => clearInterval(timer);
+  }, [paused]);
+
+  // Modal dialog: the page behind is inert and Tab stays inside.
+  useEffect(() => {
+    if (playingAnimatic) return;
+    const el = rootRef.current;
+    if (el && !el.open) el.showModal();
+    el?.focus();
+    return () => {
+      if (el?.open) el.close();
+    };
+  }, [playingAnimatic]);
+
+  // Leaving the presentation also leaves fullscreen.
+  useEffect(() => {
+    const sync = () => setFullscreen(document.fullscreenElement === rootRef.current);
+    document.addEventListener('fullscreenchange', sync);
+    return () => {
+      document.removeEventListener('fullscreenchange', sync);
+      if (document.fullscreenElement) document.exitFullscreen?.().catch(() => {});
+    };
   }, []);
 
-  // Subscribe to board store elements to build slide items
-  const snap = useSyncExternalStore(store.subscribe, store.getSnapshot);
-  const { slides, frames, labels } = useMemo(() => {
-    const elements = [...snap.byId.values()];
-    const groups = storyboardOf(elements);
-    const labelsMap = frameLabels(groups);
+  const { slides, frames } = useMemo(() => {
     const frameList: FrameElement[] = [];
     const list: SlideItem[] = [];
 
     for (const group of groups) {
       const scene = group.scene;
       const headingParts = [
-        scene ? `SCENA ${scene.number}` : undefined,
+        scene ? t('film.scene.heading', { number: scene.number }).toUpperCase() : undefined,
         scene?.title ? scene.title.toUpperCase() : undefined,
         scene?.setting ? scene.setting.toUpperCase() : undefined,
         scene?.time ? scene.time.toUpperCase() : undefined,
@@ -97,7 +125,7 @@ export function PresentationView({
 
       for (const frame of group.frames) {
         frameList.push(frame);
-        const label = labelsMap.get(frame.id) ?? frame.label ?? String(list.length + 1);
+        const label = labels.get(frame.id) ?? frame.label ?? String(list.length + 1);
         list.push({
           id: frame.id,
           type: 'frame',
@@ -112,11 +140,7 @@ export function PresentationView({
               ? getPreset('film.movements', SHOT_MOVEMENTS, frame.movement)
               : undefined,
             duration: frame.durationMs ? `${Math.round(frame.durationMs / 1000)} s` : undefined,
-            audio: frame.audio
-              ? frame.audio.toLowerCase().startsWith('audio')
-                ? frame.audio
-                : `Audio: ${frame.audio}`
-              : undefined,
+            audio: frame.audio ? t('present.audio', { value: frame.audio }) : undefined,
           },
           notes: frame.notes || scene?.synopsis || '',
           frame,
@@ -124,12 +148,13 @@ export function PresentationView({
       }
     }
 
-    return { slides: list, frames: frameList, labels: labelsMap };
-  }, [snap, getPreset]);
+    return { slides: list, frames: frameList };
+  }, [groups, labels, getPreset, t]);
 
   const total = slides.length;
-  const current = slides[index] ?? null;
-  const nextSlide = slides[index + 1] ?? null;
+  const safeIndex = Math.min(index, Math.max(0, total - 1));
+  const current = slides[safeIndex] ?? null;
+  const nextSlide = slides[safeIndex + 1] ?? null;
 
   const goNext = useCallback(() => {
     setIndex((i) => Math.min(total - 1, i + 1));
@@ -139,43 +164,61 @@ export function PresentationView({
     setIndex((i) => Math.max(0, i - 1));
   }, []);
 
-  // Keyboard navigation: Escape to exit, Arrows/Space to step
+  // Keys are captured here so the board canvas behind never sees them.
   useEffect(() => {
+    if (playingAnimatic) return;
     const onKey = (e: KeyboardEvent) => {
-      if (playingAnimatic) return;
-      if (e.key === 'Escape') {
-        e.preventDefault();
-        onClose();
-      } else if (e.key === 'ArrowRight' || e.key === 'Space') {
-        e.preventDefault();
+      if (e.ctrlKey || e.metaKey || e.altKey) return;
+      if (isTyping(e.target)) return;
+      if (e.key === 'Escape') onClose();
+      else if (e.key === 'ArrowRight' || e.key === ' ' || e.code === 'Space') {
+        // Space presses a focused button instead.
+        if (e.key !== 'ArrowRight' && e.target instanceof Element && e.target.closest('button'))
+          return;
         goNext();
-      } else if (e.key === 'ArrowLeft') {
-        e.preventDefault();
-        goPrev();
-      }
+      } else if (e.key === 'ArrowLeft') goPrev();
+      else return;
+      e.preventDefault();
+      e.stopPropagation();
     };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
+    document.addEventListener('keydown', onKey, true);
+    return () => document.removeEventListener('keydown', onKey, true);
   }, [onClose, goNext, goPrev, playingAnimatic]);
 
-  // Fullscreen toggle
   const toggleFullscreen = () => {
-    if (!document.fullscreenElement) {
-      rootRef.current?.requestFullscreen().catch(() => {});
-    } else {
-      document.exitFullscreen().catch(() => {});
-    }
+    if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+    else rootRef.current?.requestFullscreen().catch(() => {});
   };
 
-  const progressPercent = total > 0 ? ((index + 1) / total) * 100 : 0;
-  const firstWatcher = peers[0];
+  if (playingAnimatic) {
+    return (
+      <Animatic
+        store={store}
+        frames={frames}
+        labels={labels}
+        boardAspect={boardAspect}
+        readOnly={readOnly}
+        present
+        onClose={() => setPlayingAnimatic(false)}
+      />
+    );
+  }
+
+  const progressPercent = total > 0 ? ((safeIndex + 1) / total) * 100 : 0;
+  const slideAria = t('present.slideAria', { current: safeIndex + 1, total });
 
   return (
-    <section ref={rootRef} className="present-view" aria-label={t('present.title', 'Presenta')}>
+    <dialog
+      ref={rootRef}
+      className="present-view"
+      tabIndex={-1}
+      aria-label={t('present.title')}
+      onCancel={(e) => e.preventDefault()}
+    >
       <header className="present-header">
         <button type="button" className="present-header__btn" onClick={onClose}>
           <Icon name="arrow" size={14} style={{ transform: 'rotate(180deg)' }} />
-          <span>{t('present.exit', 'Esci')}</span>
+          <span>{t('present.exit')}</span>
           <KeyCap>Esc</KeyCap>
         </button>
         <span className="present-header__sep">/</span>
@@ -184,31 +227,15 @@ export function PresentationView({
           {boardTitle}
         </span>
         <div className="present-header__spacer" />
-        {firstWatcher && (
-          <span className="present-header__watching">
-            <Avatar name={firstWatcher.user.name} size={20} />
-            <span className="present-header__dot" />
-            <span>{`${firstWatcher.user.name} ${t('present.isWatching', 'sta guardando')}`}</span>
-          </span>
-        )}
-        {onShareClient && (
-          <button type="button" className="present-header__btn" onClick={onShareClient}>
-            <Icon name="link" size={14} />
-            <span>{t('present.clientLink', 'Link cliente')}</span>
-          </button>
-        )}
       </header>
 
       <div className="present-body">
         <main className="present-main">
           {current ? (
-            <section
-              className="present-stage"
-              aria-label={t('present.slideAria', 'Slide {{current}} di {{total}}', {
-                current: index + 1,
-                total,
-              })}
-            >
+            <section className="present-stage" aria-label={slideAria}>
+              <p className="present-sr-only" aria-live="polite">
+                {`${slideAria} · ${current.label}`}
+              </p>
               <div className="present-stage__meta">
                 <span className="present-stage__heading">{current.sceneHeading}</span>
                 {current.location && (
@@ -249,21 +276,21 @@ export function PresentationView({
           ) : (
             <div className="present-empty">
               <Icon name="frame" size={48} />
-              <h2>{t('present.noSlides', 'Nessuna inquadratura o scheda da presentare')}</h2>
-              <Button onClick={onClose}>{t('present.exit', 'Esci')}</Button>
+              <h2>{t('present.noSlides')}</h2>
+              <Button onClick={onClose}>{t('present.exit')}</Button>
             </div>
           )}
 
           <footer className="present-bottom">
             {total > 1 && (
-              <nav className="present-strip" aria-label={t('present.slides', 'Slide')}>
+              <nav className="present-strip" aria-label={t('present.slides')}>
                 {slides.map((s, i) => (
                   <button
                     key={s.id}
                     type="button"
-                    className={`present-thumb${i === index ? ' is-active' : ''}`}
-                    aria-label={`Slide ${i + 1} · ${s.label}`}
-                    aria-current={i === index ? 'true' : undefined}
+                    className={`present-thumb${i === safeIndex ? ' is-active' : ''}`}
+                    aria-label={t('present.slideLabel', { n: i + 1, label: s.label })}
+                    aria-current={i === safeIndex ? 'true' : undefined}
                     onClick={() => setIndex(i)}
                   >
                     <span className="present-thumb__pic">
@@ -291,31 +318,27 @@ export function PresentationView({
               <div className="present-progress__bar" style={{ width: `${progressPercent}%` }} />
             </div>
 
-            <div
-              role="toolbar"
-              className="present-toolbar"
-              aria-label={t('present.toolbar', 'Controlli presentazione')}
-            >
+            <div role="toolbar" className="present-toolbar" aria-label={t('present.toolbar')}>
               <IconButton
                 icon="chevronRight"
                 style={{ transform: 'rotate(180deg)' }}
-                label={t('present.prev', 'Slide precedente')}
-                disabled={index <= 0}
+                label={t('present.prev')}
+                disabled={safeIndex <= 0}
                 onClick={goPrev}
               />
               <span className="present-toolbar__count">
-                {total > 0 ? `${index + 1} / ${total}` : '0 / 0'}
+                {t('present.slideCounter', { current: total > 0 ? safeIndex + 1 : 0, total })}
               </span>
               <IconButton
                 icon="chevronRight"
-                label={t('present.next', 'Slide successiva')}
-                disabled={index >= total - 1}
+                label={t('present.next')}
+                disabled={safeIndex >= total - 1}
                 onClick={goNext}
               />
               <span className="present-toolbar__hint">
                 <KeyCap>←</KeyCap>
                 <KeyCap>→</KeyCap>
-                <span>{t('present.keysHint', 'per cambiare slide')}</span>
+                <span>{t('present.keysHint')}</span>
               </span>
 
               <div style={{ flex: 1 }} />
@@ -327,7 +350,7 @@ export function PresentationView({
                   onClick={() => setPlayingAnimatic(true)}
                 >
                   <Icon name="play" size={14} />
-                  <span>{t('present.playAnimatic', 'Riproduci animatic')}</span>
+                  <span>{t('present.playAnimatic')}</span>
                 </button>
               )}
 
@@ -337,12 +360,12 @@ export function PresentationView({
                 aria-pressed={showNotes}
                 onClick={() => setShowNotes((v) => !v)}
               >
-                <span>{t('present.speakerNotes', 'Note del relatore')}</span>
+                <span>{t('present.speakerNotes')}</span>
               </button>
 
               <IconButton
                 icon="fit"
-                label={t('present.fullscreen', 'Schermo intero')}
+                label={fullscreen ? t('present.exitFullscreen') : t('present.fullscreen')}
                 onClick={toggleFullscreen}
               />
             </div>
@@ -350,41 +373,52 @@ export function PresentationView({
         </main>
 
         {showNotes && (
-          <aside
-            className="present-sidebar"
-            aria-label={t('present.speakerNotes', 'Note del relatore')}
-          >
+          <aside className="present-sidebar" aria-label={t('present.speakerNotes')}>
             <div className="present-sidebar__head">
-              <span className="present-sidebar__title">
-                {t('present.speakerNotes', 'Note del relatore')}
-              </span>
+              <span className="present-sidebar__title">{t('present.speakerNotes')}</span>
               <IconButton
                 icon="close"
-                label={t('present.closeNotes', 'Comprimi pannello')}
+                label={t('present.closeNotes')}
                 onClick={() => setShowNotes(false)}
               />
             </div>
 
             <div className="present-sidebar__timer-box">
               <div>
-                <span className="present-sidebar__label">{t('present.timer', 'Tempo')}</span>
+                <span className="present-sidebar__label">{t('present.timer')}</span>
                 <span className="present-sidebar__clock">{formatElapsed(elapsed)}</span>
+                <button
+                  type="button"
+                  className="present-toolbar__btn"
+                  aria-pressed={paused}
+                  onClick={() => setPaused((v) => !v)}
+                >
+                  {paused ? t('present.timerResume') : t('present.timerPause')}
+                </button>
+                <button
+                  type="button"
+                  className="present-toolbar__btn"
+                  disabled={elapsed === 0}
+                  onClick={() => setElapsed(0)}
+                >
+                  {t('present.timerReset')}
+                </button>
               </div>
               <div style={{ textAlign: 'right' }}>
-                <span className="present-sidebar__label">{t('present.clock', 'Ora')}</span>
-                <span style={{ fontSize: 13, color: '#71717a' }}>{clock}</span>
+                <span className="present-sidebar__label">{t('present.clock')}</span>
+                <span style={{ fontSize: 13, color: 'var(--ink-text-muted)' }}>{clock}</span>
               </div>
             </div>
 
             <div className="present-sidebar__notes">
               <span className="present-sidebar__label">
-                Slide {index + 1} · {current?.label}
+                {t('present.slideLabel', { n: safeIndex + 1, label: current?.label ?? '' })}
               </span>
               {current?.notes ? (
                 <p style={{ margin: 0 }}>{current.notes}</p>
               ) : (
-                <p style={{ margin: 0, color: '#71717a', fontStyle: 'italic' }}>
-                  {t('present.noNotes', 'Nessuna nota per questa slide')}
+                <p style={{ margin: 0, color: 'var(--ink-text-muted)', fontStyle: 'italic' }}>
+                  {t('present.noNotes')}
                 </p>
               )}
             </div>
@@ -392,7 +426,7 @@ export function PresentationView({
             {nextSlide && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 <span className="present-sidebar__label">
-                  {t('present.nextSlide', 'Prossima')} · {nextSlide.label}
+                  {t('present.nextSlide')} · {nextSlide.label}
                 </span>
                 <div className="present-sidebar__preview-pic">
                   {nextSlide.frame && (
@@ -408,48 +442,16 @@ export function PresentationView({
                   )}
                 </div>
                 {nextSlide.specs?.shot && (
-                  <span style={{ fontSize: 12, color: '#71717a' }}>
+                  <span style={{ fontSize: 12, color: 'var(--ink-text-muted)' }}>
                     {nextSlide.specs.shot}
                     {nextSlide.specs.lens ? ` · ${nextSlide.specs.lens}` : ''}
                   </span>
                 )}
               </div>
             )}
-
-            <div style={{ flex: 1 }} />
-
-            <div className="present-sidebar__spectators">
-              <span className="present-sidebar__label">
-                {t('present.spectators', 'Spettatori')} · {peers.length}
-              </span>
-              {peers.map((p) => (
-                <div key={p.user.id} className="present-sidebar__spec-row">
-                  <Avatar name={p.user.name} size={20} />
-                  <span>{p.user.name}</span>
-                  <span className="present-sidebar__spec-status">
-                    {`${t('present.spectatorOn', 'sulla slide')} ${index + 1}`}
-                  </span>
-                </div>
-              ))}
-              <span className="present-sidebar__notice">
-                {t('present.notesPrivate', 'Gli ospiti vedono solo le slide, mai queste note.')}
-              </span>
-            </div>
           </aside>
         )}
       </div>
-
-      {playingAnimatic && (
-        <Animatic
-          store={store}
-          frames={frames}
-          labels={labels}
-          boardAspect={boardAspect}
-          readOnly={readOnly}
-          present
-          onClose={() => setPlayingAnimatic(false)}
-        />
-      )}
-    </section>
+    </dialog>
   );
 }

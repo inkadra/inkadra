@@ -30,7 +30,6 @@ import { StoryboardView } from './film/StoryboardView.tsx';
 import { RestoredToast } from './RestoredToast.tsx';
 import { type VersionPreview, VersionsDialog } from './VersionsDialog.tsx';
 import './film/film.css';
-import { PresentationView } from './PresentationView.tsx';
 import { type Peer, uniquePeople, usePeers } from './presence.ts';
 import { projectLanding } from './project-landing.ts';
 import { ShareDialog } from './ShareDialog.tsx';
@@ -212,7 +211,6 @@ function BoardScreen({
   const [sharing, setSharing] = useState(false);
   const [versionsOpen, setVersionsOpen] = useState(false);
   const [headerMenu, setHeaderMenu] = useState(false);
-  const [presenting, setPresenting] = useState(false);
   const [preview, setPreview] = useState<VersionPreview | null>(null);
   const liveSelection = useRef<ReadonlySet<string>>(new Set());
   const rememberSelection = useCallback((ids: ReadonlySet<string>) => {
@@ -226,8 +224,6 @@ function BoardScreen({
     },
     [previewStore],
   );
-  const { projects } = useProjects();
-  const projectTitle = projects?.find((p) => p.id === projectId)?.name;
   const editable = !!conn && !conn.readOnly && canEdit(detail?.myRole ?? projectRole);
   useEffect(() => {
     const template: unknown = location.state?.template;
@@ -392,10 +388,7 @@ function BoardScreen({
                 <ContextMenu
                   onClose={closeHeaderMenu}
                   anchor={headerMenuAnchor}
-                  items={[
-                    { label: t('versions.title'), action: () => setVersionsOpen(true) },
-                    { label: t('present.title'), action: () => setPresenting(true) },
-                  ]}
+                  items={[{ label: t('versions.title'), action: () => setVersionsOpen(true) }]}
                 />
               )}
             </div>
@@ -469,6 +462,7 @@ function BoardScreen({
         store={preview?.store ?? conn.store}
         projectId={projectId}
         boardId={boardId}
+        boardTitle={crumbs.at(-1)?.title ?? detail?.title ?? ''}
         userId={user.id}
         readOnly={!!preview || !editable}
       />
@@ -548,17 +542,6 @@ function BoardScreen({
       {versions}
       {content}
       {shareDialog}
-      {presenting && (
-        <PresentationView
-          store={conn.store}
-          boardTitle={crumbs.at(-1)?.title ?? detail?.title ?? ''}
-          projectTitle={projectTitle}
-          readOnly={!editable}
-          peers={[]}
-          onClose={() => setPresenting(false)}
-          onShareClient={() => setSharing(true)}
-        />
-      )}
       <RestoredToast
         provider={conn.provider}
         boardId={boardId}
