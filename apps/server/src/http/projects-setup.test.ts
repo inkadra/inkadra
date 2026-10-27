@@ -94,6 +94,34 @@ describe.skipIf(!url)('project setup metadata and personal pins', () => {
       ).statusCode,
     ).toBe(200);
   });
+  it('persists appearance, enforces edit permissions and supports resetting emoji', async () => {
+    const icon = { shape: 'square', color: 'green', emoji: '🎬' };
+    expect((await request('viewer', 'PATCH', `/projects/${projectId}`, { icon })).statusCode).toBe(
+      403,
+    );
+    expect(
+      (await request('stranger', 'PATCH', `/projects/${projectId}`, { icon })).statusCode,
+    ).toBe(404);
+    expect(
+      (await request('owner', 'PATCH', `/projects/${projectId}`, { icon })).json().icon,
+    ).toEqual(icon);
+    expect((await request('viewer', 'GET', `/projects/${projectId}`)).json().icon).toEqual(icon);
+    expect((await request('owner', 'GET', '/projects')).json().items[0].icon).toEqual(icon);
+    expect(
+      (
+        await request('owner', 'PATCH', `/projects/${projectId}`, {
+          icon: { ...icon, emoji: 'not emoji' },
+        })
+      ).statusCode,
+    ).toBe(400);
+    expect(
+      (
+        await request('owner', 'PATCH', `/projects/${projectId}`, {
+          icon: { ...icon, emoji: null },
+        })
+      ).json().icon.emoji,
+    ).toBeNull();
+  });
   it('keeps pins personal and idempotent, with membership checks', async () => {
     expect(
       (await request(null, 'PUT', `/projects/${projectId}/pin`, { pinned: true })).statusCode,
@@ -167,6 +195,11 @@ describe.skipIf(!url)('project setup metadata and personal pins', () => {
     expect((await request('viewer', 'GET', '/instance/storage')).statusCode).toBe(403);
     expect((await request('owner', 'GET', '/instance/storage')).json()).toEqual({
       originalBytes: 0,
+      byType: ['images', 'videos', 'audio', 'documents', 'other'].map((type) => ({
+        type,
+        bytes: 0,
+      })),
+      byProject: [],
     });
   });
   it('returns document edit activity only for boards the caller can access', async () => {

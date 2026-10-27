@@ -1,4 +1,13 @@
 {
+  "context": {
+    "actions": "Page actions",
+    "copy": "Copy selected text",
+    "selectAll": "Select all text",
+    "openLink": "Open link",
+    "back": "Go back",
+    "copyFailed": "Could not copy. Use the keyboard copy shortcut instead.",
+    "editHint": "Use Ctrl/⌘+X to cut and Ctrl/⌘+V to paste. Clipboard access depends on your browser."
+  },
   "app": {
     "name": "Inkadra",
     "tagline": "From idea to frame.",
@@ -156,6 +165,12 @@
       "namePlaceholder": "Location scouting",
       "create": "Create board",
       "error": "The board could not be created. Try again."
+    },
+    "preview": {
+      "unavailable": "Preview unavailable",
+      "empty": "Empty board",
+      "cards_one": "{{count}} item",
+      "cards_other": "{{count}} items"
     }
   },
   "project": {
@@ -250,6 +265,11 @@
     }
   },
   "board": {
+    "toolGroups": {
+      "navigate": "Navigate and connect",
+      "create": "Create content",
+      "organize": "Organize and plan"
+    },
     "canvas": "Board canvas",
     "toolbar": "Add",
     "contextBar": "Selection actions",
@@ -355,6 +375,7 @@
       "group": "Group in a column"
     },
     "menu": {
+      "openDoc": "Open document",
       "open": "Open",
       "duplicate": "Duplicate",
       "lock": "Lock position",
@@ -757,6 +778,8 @@
       "expandGroup": "Expand group",
       "noLocation": "No location",
       "totalShots": "{{count}} shots",
+      "totalShots_one": "{{count}} shot",
+      "totalShots_other": "{{count}} shots",
       "estimatedDuration": "Estimated duration",
       "moveCard": "Move to {{column}}",
       "moveToColumn": "Move card to column",
@@ -1324,6 +1347,13 @@
     "conversationUnavailable": "Conversation not available"
   },
   "settings": {
+    "sectionLead": {
+      "preferences": "Choose how Inkadra looks and behaves for you.",
+      "notifications": "Choose which email notifications you receive.",
+      "workspace": "Manage workspace storage and upload limits.",
+      "instance": "Manage instance branding and registration.",
+      "providers": "Configure the providers available for signing in."
+    },
     "title": "Account",
     "lead": "Your profile, how you sign in and the apps you connected.",
     "save": "Save",
@@ -1334,7 +1364,12 @@
       "languages": {
         "it": "Italiano",
         "en": "English"
-      }
+      },
+      "avatarUpload": "Upload or replace avatar",
+      "avatarRemove": "Remove avatar",
+      "avatarHelp": "JPEG, PNG or WebP, up to 1 MiB.",
+      "avatarInvalid": "Choose a JPEG, PNG or WebP image up to 1 MiB.",
+      "avatarError": "Could not update the avatar. Check the image and try again."
     },
     "methods": {
       "title": "Sign-in methods",
@@ -1794,7 +1829,26 @@
       "dark": "Dark",
       "light": "Light"
     },
-    "smtpRequired": "Resending requires configured SMTP."
+    "smtpRequired": "Resending requires configured SMTP.",
+    "classifications": "Classifications",
+    "storageCharts": {
+      "byType": "Usage by file type",
+      "byProject": "Usage by project",
+      "category": "Category / project",
+      "size": "Original files",
+      "share": "Share",
+      "percentScope": "Each percentage is a share of the total original-file usage above.",
+      "attribution": "Each asset is counted once in its owning project, even when referenced by multiple boards or projects. Projects you cannot access are grouped anonymously.",
+      "unassigned": "Without a project",
+      "restricted": "Restricted projects",
+      "types": {
+        "images": "Images",
+        "videos": "Videos",
+        "audio": "Audio",
+        "documents": "Documents",
+        "other": "Other files"
+      }
+    }
   },
   "trash": {
     "title": "Trash",
@@ -1832,5 +1886,43 @@
     "timerPause": "Pause",
     "timerResume": "Resume",
     "timerReset": "Reset"
+  },
+  "catalogs": {
+    "title": "Classifications",
+    "scope": "Instance-wide project types and tags. Only administrators can manage these shared catalogs. Archived values remain on existing records. Tags outside the catalog remain readable; new selections use active catalog values.",
+    "projectTypes": "Project types",
+    "tags": "Tags",
+    "name": "Name",
+    "archived": "Archived",
+    "up": "Move {{name}} up",
+    "down": "Move {{name}} down",
+    "add": "Add option",
+    "error": "Could not save or load. Another administrator may have changed the catalogs. Reload to get the current configuration.",
+    "reload": "Reload",
+    "tagHelp": "Choose an active shared tag. Administrators manage available values in Settings → Classifications. Existing tags remain readable."
+  },
+  "appearance": {
+    "title": "Project appearance",
+    "options": "Project options: {{name}}",
+    "symbol": "Symbol",
+    "color": "Color",
+    "emoji": "Emoji",
+    "emojiHelp": "Enter one emoji, or clear it to use the selected shape. Emoji keep their native colors.",
+    "invalid": "Use a single emoji.",
+    "reset": "Reset to default",
+    "error": "Could not save project appearance. Check your permissions and try again.",
+    "shapes": {
+      "diamond": "Diamond",
+      "circle": "Circle",
+      "triangle": "Triangle",
+      "square": "Square"
+    },
+    "colors": {
+      "blue": "Blue",
+      "orange": "Orange",
+      "purple": "Purple",
+      "green": "Green",
+      "neutral": "Neutral"
+    }
   }
 }

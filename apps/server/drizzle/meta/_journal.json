@@ -57,6 +57,20 @@
       "when": 1793073723172,
       "tag": "0007_freezing_odin",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1793103565562,
+      "tag": "0008_project_appearance",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1793114589401,
+      "tag": "0009_account_avatars",
+      "breakpoints": true
     }
   ]
 }

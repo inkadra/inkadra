@@ -20,6 +20,7 @@ vi.mock('../lib/session.tsx', () => ({ useSession: () => ({ user: { name: 'Giuli
 vi.mock('./AppLayout.tsx', () => ({ useProjects: vi.fn() }));
 
 const project = {
+  icon: { shape: 'circle', color: 'blue' },
   id: 'p1',
   name: 'Last run',
   rootBoardId: 'root1',
@@ -46,6 +47,8 @@ function respond(data: {
   notifications?: Notification[];
 }) {
   vi.mocked(api.get).mockImplementation(async (path: string) => {
+    if (path.endsWith('/preview'))
+      return { assetIds: [], excerpts: ['Location notes'], elementCount: 2, drawing: [] };
     if (path.startsWith('/me/shooting-days')) return { items: data.days ?? [], nextCursor: null };
     if (path.startsWith('/me/recent-boards')) return { items: data.boards ?? [], nextCursor: null };
     if (path.startsWith('/me/notifications'))

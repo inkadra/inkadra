@@ -125,19 +125,27 @@ export function registerServiceWorker() {
   const follow = (installing: ServiceWorker) => {
     if (followed.has(installing)) return;
     followed.add(installing);
-    installing.addEventListener('statechange', () => {
-      if (installing.state === 'installed') void offerWaiting(installing);
-    });
+    let offered = false;
+    const check = () => {
+      if (installing.state !== 'installed' || offered) return;
+      offered = true;
+      void offerWaiting(installing);
+    };
+    installing.addEventListener('statechange', check);
+    // register() can resolve after the installer reached this state. Events are not replayed.
+    check();
   };
 
   const start = async () => {
     const registration = await sw.register('/sw.js', { scope: '/' });
-    if (registration.waiting) void offerWaiting(registration.waiting);
-    // The navigation's own update check may already be installing a new version.
-    if (registration.installing) follow(registration.installing);
-    registration.addEventListener('updatefound', () => {
+    const observe = () => {
+      // State may advance before updatefound is delivered: the installer can already
+      // be waiting, and its installed statechange is not replayed to new listeners.
+      if (registration.waiting) follow(registration.waiting);
       if (registration.installing) follow(registration.installing);
-    });
+    };
+    registration.addEventListener('updatefound', observe);
+    observe();
     // A board can stay open for days without a navigation, which is when browsers check.
     setInterval(() => void registration.update().catch(() => {}), HOUR);
   };

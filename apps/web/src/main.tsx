@@ -4,6 +4,7 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { createBrowserRouter, Outlet, RouterProvider } from 'react-router';
 import { SessionProvider, useSession } from './lib/session.tsx';
+import { AppContextMenu } from './menus/AppContextMenu.tsx';
 import { registerServiceWorker } from './pwa/register.ts';
 import { UpdatePrompt } from './pwa/UpdatePrompt.tsx';
 import { AppLayout } from './routes/AppLayout.tsx';
@@ -68,7 +69,9 @@ const root = document.getElementById('root');
 if (!root) throw new Error('Missing #root');
 createRoot(root).render(
   <StrictMode>
-    <RouterProvider router={router} />
+    <AppContextMenu>
+      <RouterProvider router={router} />
+    </AppContextMenu>
     <UpdatePrompt />
   </StrictMode>,
 );

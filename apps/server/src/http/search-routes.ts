@@ -1,5 +1,6 @@
 import {
   API_PREFIX,
+  classificationOption,
   Id,
   type ProjectRole,
   type SearchHit,
@@ -11,6 +12,7 @@ import { and, eq, inArray, isNull, sql } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
 import { type Actor, effectiveRoles } from '../access.ts';
 import type { Auth } from '../auth.ts';
+import { readClassifications } from '../classifications.ts';
 import type { Database } from '../db/client.ts';
 import { board, boardGrant, projectMember } from '../db/schema.ts';
 import { requireActor } from './auth-routes.ts';
@@ -137,7 +139,17 @@ export function registerSearchRoutes(app: FastifyInstance, { db, auth }: Deps) {
     if (readable.boardIds.length === 0) return { items: [] };
     const boardIn = uuids(readable.boardIds);
     const q = query.q && query.q.length > 0 ? query.q : undefined;
+    const catalogs = await readClassifications(db);
+    const selectedTag = query.tag
+      ? (classificationOption(catalogs.tags, query.tag) ??
+        catalogs.tags.find((o) => o.label.toLowerCase() === query.tag?.toLowerCase()))
+      : undefined;
     const tag = query.tag?.toLowerCase();
+    const tagBindings = selectedTag
+      ? [selectedTag.id, selectedTag.legacy].filter((v): v is string => !!v)
+      : tag
+        ? [tag]
+        : [];
     const like = q ? containsPattern(q) : null;
     const hits: SearchHit[] = [];
 
@@ -197,6 +209,12 @@ export function registerSearchRoutes(app: FastifyInstance, { db, auth }: Deps) {
       q && !tag
         ? (() => {
             const { words, prefixes } = searchTagPatterns(q);
+            for (const option of catalogs.tags) {
+              if (option.label.toLowerCase().includes(q.toLowerCase().replace(/^#/, ''))) {
+                words.push(option.id);
+                if (option.legacy) words.push(option.legacy);
+              }
+            }
             if (words.length === 0) return null;
             const wordsArr = sql`array[${sql.join(
               words.map((w) => sql`${w}`),
@@ -224,7 +242,14 @@ export function registerSearchRoutes(app: FastifyInstance, { db, auth }: Deps) {
               : sql`and i.text ilike ${like}`
             : sql``
         }
-        ${tag ? sql`and i.tags @> array[${tag}]::text[]` : sql``}
+        ${
+          tag
+            ? sql`and i.tags && array[${sql.join(
+                tagBindings.map((v) => sql`${v}`),
+                sql`, `,
+              )}]::text[]`
+            : sql``
+        }
         ${query.type ? sql`and i.type = ${query.type}` : sql``}
       order by ${
         q

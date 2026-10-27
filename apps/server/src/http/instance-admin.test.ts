@@ -1,12 +1,21 @@
 import { fileURLToPath } from 'node:url';
-import { InstanceMember, InstanceSettings } from '@inkadra/shared';
+import { InstanceMember, InstanceSettings, StorageUsage } from '@inkadra/shared';
 import { eq, sql } from 'drizzle-orm';
 import pino from 'pino';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createAuth } from '../auth.ts';
 import { loadConfig } from '../config.ts';
 import { createDatabase, runMigrations } from '../db/client.ts';
-import { personalToken, projectMember, session, user } from '../db/schema.ts';
+import {
+  asset,
+  assetVariant,
+  boardElementIndex,
+  boardGrant,
+  personalToken,
+  projectMember,
+  session,
+  user,
+} from '../db/schema.ts';
 import { memoryMailer } from '../mailer.ts';
 import { testDeps } from '../test-deps.ts';
 import { issueToken } from '../tokens.ts';
@@ -129,8 +138,114 @@ describe.skipIf(!url)('instance administration', () => {
     });
     expect((await request('admin', 'GET', '/instance/storage')).json()).toEqual({
       originalBytes: 0,
+      byType: ['images', 'videos', 'audio', 'documents', 'other'].map((type) => ({
+        type,
+        bytes: 0,
+      })),
+      byProject: [],
     });
   });
+  it('aggregates original assets once, excludes pending/derived files and hides inaccessible project labels', async () => {
+    const own = (await request('admin', 'POST', '/projects', { name: 'Visible shoot' })).json();
+    const hidden = (await request('second', 'POST', '/projects', { name: 'Private shoot' })).json();
+    const [image] = await db
+      .insert(asset)
+      .values({
+        projectId: own.id,
+        kind: 'image',
+        mime: 'image/jpeg',
+        filename: 'photo.jpg',
+        size: 1000,
+        storageKey: 'test-photo',
+        status: 'ready',
+      })
+      .returning();
+    await db.insert(asset).values([
+      {
+        projectId: hidden.id,
+        kind: 'video',
+        mime: 'video/mp4',
+        filename: 'movie.mp4',
+        size: 3000,
+        storageKey: 'test-video',
+        status: 'processing',
+      },
+      {
+        projectId: own.id,
+        kind: 'file',
+        mime: 'application/pdf',
+        filename: 'failed.pdf',
+        size: 500,
+        storageKey: 'test-failed',
+        status: 'failed',
+      },
+      {
+        projectId: own.id,
+        kind: 'image',
+        mime: 'image/png',
+        filename: 'incomplete.png',
+        size: 9000,
+        storageKey: 'test-pending',
+        status: 'pending',
+      },
+    ]);
+    await db.insert(assetVariant).values({
+      assetId: image!.id,
+      size: '512',
+      width: 512,
+      height: 512,
+      storageKey: 'derived-test',
+    });
+    // Repeated and cross-project references never multiply or reassign the owning asset.
+    await db.insert(boardElementIndex).values([
+      {
+        boardId: own.rootBoardId,
+        projectId: own.id,
+        elementId: 'photo-one',
+        type: 'image',
+        assetId: image!.id,
+      },
+      {
+        boardId: own.rootBoardId,
+        projectId: own.id,
+        elementId: 'photo-two',
+        type: 'image',
+        assetId: image!.id,
+      },
+      {
+        boardId: hidden.rootBoardId,
+        projectId: hidden.id,
+        elementId: 'photo-three',
+        type: 'image',
+        assetId: image!.id,
+      },
+    ]);
+    const response = await request('admin', 'GET', '/instance/storage');
+    expect(response.statusCode).toBe(200);
+    expect(response.headers['cache-control']).toBe('private, no-store');
+    const result = StorageUsage.parse(response.json());
+    expect(result.originalBytes).toBe(4500);
+    expect(result.byType.reduce((sum, row) => sum + row.bytes, 0)).toBe(4500);
+    expect(result.byProject.reduce((sum, row) => sum + row.bytes, 0)).toBe(4500);
+    expect(result.byProject).toEqual([
+      { projectId: null, name: null, scope: 'restricted', bytes: 3000 },
+      { projectId: own.id, name: 'Visible shoot', scope: 'project', bytes: 1500 },
+    ]);
+    expect(JSON.stringify(result)).not.toContain(hidden.id);
+    expect(JSON.stringify(result)).not.toContain('Private shoot');
+    await db
+      .insert(boardGrant)
+      .values({ boardId: hidden.rootBoardId, userId: people.admin!.id, role: 'viewer' });
+    const granted = StorageUsage.parse((await request('admin', 'GET', '/instance/storage')).json());
+    expect(granted.originalBytes).toBe(4500);
+    expect(granted.byProject[0]).toEqual({
+      projectId: hidden.id,
+      name: 'Private shoot',
+      scope: 'project',
+      bytes: 3000,
+    });
+  });
+
   it('validates settings, persists partial overrides and updates public metadata', async () => {
     expect(
       InstanceSettings.parse((await request('admin', 'GET', '/instance/settings')).json()),

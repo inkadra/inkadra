@@ -23,7 +23,6 @@ import {
   intersects,
   isContainer,
   listElements,
-  MIN_WIDTH,
   moveArrows,
   moveIntoParent,
   moveToCanvas,
@@ -32,8 +31,11 @@ import {
   type Point,
   pasteElements,
   type Rect,
+  type ResizeCorner,
+  type ResizeOptions,
   rectFromPoints,
   refreshArrows,
+  resizeFromCorner,
   screenToWorld,
   segmentBox,
   sendToBack,
@@ -103,6 +105,7 @@ import { NoteSideSheet } from './NoteSideSheet.tsx';
 import { fillFragment, isEmpty } from './note.tsx';
 import { PresenceLayer } from './PresenceLayer.tsx';
 import { type Peer, useLocalPresence } from './presence.ts';
+import { canvasElementId, ResizeHandles } from './ResizeHandles.tsx';
 import { openComments } from './review-store.ts';
 import { commandFor, insideDialog, isMac, isTyping } from './shortcuts.ts';
 import { LOCAL } from './store.ts';
@@ -160,7 +163,14 @@ type Gesture =
       clickOnly: string | null;
     }
   | { kind: 'marquee'; start: Point; base: Set<string> }
-  | { kind: 'resize'; id: string; edge: 'e' | 'w'; start: Point; x: number; w: number }
+  | {
+      kind: 'resize';
+      id: string;
+      corner: ResizeCorner;
+      start: Point;
+      rect: Rect;
+      options: ResizeOptions;
+    }
   | { kind: 'arrow'; start: Point; fromId: string | null };
 
 interface Overlay {
@@ -170,7 +180,7 @@ interface Overlay {
   guides?: Guide[];
   marquee?: Rect;
   drop?: { kind: 'column'; id: string; index: number; line: Rect } | { kind: 'unsorted' };
-  resize?: { id: string; x: number; w: number };
+  resize?: Rect & { id: string };
   arrow?: { a: Point; b: Point };
 }
 
@@ -275,7 +285,12 @@ export function Canvas({
     overlayRef.current = o;
     setOverlayState(o);
   }, []);
-  const [menu, setMenu] = useState<{ x: number; y: number; at: Point } | null>(null);
+  const [menu, setMenu] = useState<{
+    x: number;
+    y: number;
+    at: Point;
+    fromToolbar?: boolean;
+  } | null>(null);
   const [palette, setPalette] = useState(false);
   const [linkDraft, setLinkDraft] = useState<{ at: Point } | null>(null);
   const [unsortedOpen, setUnsortedOpen] = useState(false);
@@ -702,8 +717,8 @@ export function Canvas({
   function onPointerDown(e: ReactPointerEvent<HTMLDivElement>) {
     if (e.button === 2) return;
     const target = e.target as HTMLElement;
-    const elNode = target.closest<HTMLElement>('[data-el]');
-    if (!elNode && target.closest('[data-chrome]')) return;
+    const targetId = canvasElementId(target);
+    if (!targetId && target.closest('[data-chrome]')) return;
     setMenu(null);
     const p = screenPoint(e);
     const pan = e.button === 1 || tool === 'hand' || spaceDown.current;
@@ -717,7 +732,7 @@ export function Canvas({
 
     if (tool === 'arrow' && !readOnly) {
       if (editing) setEditing(null);
-      const from = elNode ? snap.byId.get(elNode.dataset.el ?? '') : undefined;
+      const from = targetId ? snap.byId.get(targetId) : undefined;
       const fromId = from && from.parent === null && from.type !== 'arrow' ? from.id : null;
       gesture.current = { kind: 'arrow', start: screenToWorld(vp.current, p), fromId };
       rootRef.current?.setPointerCapture(e.pointerId);
@@ -725,7 +740,7 @@ export function Canvas({
       return;
     }
 
-    if (!elNode) {
+    if (!targetId) {
       if (editing) setEditing(null);
       const base = e.shiftKey ? new Set(selection) : new Set<string>();
       if (!e.shiftKey) setSelection(EMPTY_SET);
@@ -734,7 +749,7 @@ export function Canvas({
       return;
     }
 
-    const id = elNode.dataset.el as string;
+    const id = targetId;
     const el = snap.byId.get(id);
     if (!el) return;
     const interactive = target.closest(
@@ -759,15 +774,30 @@ export function Canvas({
     if (interactive || readOnly) return;
 
     const handle = target.closest<HTMLElement>('[data-handle]')?.dataset.handle;
-    if (handle === 'e' || handle === 'w') {
-      gesture.current = { kind: 'resize', id, edge: handle, start: p, x: el.x, w: el.w };
+    if (handle === 'nw' || handle === 'ne' || handle === 'sw' || handle === 'se') {
+      if (el.locked || el.parent !== null) return;
+      const rect = liveRect(el);
+      const card = rootRef.current?.querySelector<HTMLElement>(
+        `.card[data-el="${CSS.escape(id)}"]`,
+      );
+      const mediaHeight = card?.querySelector<HTMLElement>('.card__media')?.offsetHeight;
+      const options: ResizeOptions =
+        el.type === 'image'
+          ? {
+              aspectRatio: rect.w / (mediaHeight || rect.h),
+              fixedHeight: mediaHeight ? Math.max(0, rect.h - mediaHeight) : 0,
+            }
+          : {};
+      store.undo.stopCapturing();
+      gesture.current = { kind: 'resize', id, corner: handle, start: p, rect, options };
       rootRef.current?.setPointerCapture(e.pointerId);
       e.preventDefault();
       return;
     }
     const ids = [...next].filter((i) => !snap.byId.get(i)?.locked);
     if (!ids.includes(id)) return;
-    const r = elNode.getBoundingClientRect();
+    const r = target.closest<HTMLElement>('[data-el], [data-resize-el]')?.getBoundingClientRect();
+    if (!r) return;
     gesture.current = {
       kind: 'move',
       start: p,
@@ -810,10 +840,16 @@ export function Canvas({
       return;
     }
     if (g.kind === 'resize') {
-      const dx = (p.x - g.start.x) / v.zoom;
-      const w = Math.max(MIN_WIDTH, Math.round(g.edge === 'e' ? g.w + dx : g.w - dx));
-      const x = g.edge === 'e' ? g.x : g.x + (g.w - w);
-      setOverlay({ resize: { id: g.id, x, w } });
+      const rect = resizeFromCorner(
+        g.rect,
+        g.corner,
+        {
+          x: (p.x - g.start.x) / v.zoom,
+          y: (p.y - g.start.y) / v.zoom,
+        },
+        g.options,
+      );
+      setOverlay({ resize: { id: g.id, ...rect } });
       return;
     }
     // Move
@@ -912,7 +948,7 @@ export function Canvas({
     }
     const o = overlayRef.current;
     setOverlay(NO_OVERLAY);
-    if (!g) return;
+    if (!g || (e.type === 'pointercancel' && g.kind === 'resize')) return;
     if (g.kind === 'arrow') {
       const end = toWorld(e.clientX, e.clientY);
       const under = (
@@ -944,11 +980,21 @@ export function Canvas({
       return;
     }
     if (g.kind === 'resize' && o.resize) {
-      const { x, w } = o.resize;
+      const current = store.getSnapshot().byId.get(g.id);
+      if (!current || current.locked || readOnly || current.parent !== null) return;
+      const { x, y, w, h } = o.resize;
       doc.transact(() => {
-        updateElement(doc, g.id, { x, w }, LOCAL);
-        refreshArrows(doc, arrowsOf(), [g.id], cardRect, LOCAL);
+        updateElement(doc, g.id, { x, y, w, h }, LOCAL);
+        // The store updates after this transaction; attached arrows need the new rect now.
+        refreshArrows(
+          doc,
+          arrowsOf(),
+          [g.id],
+          (id) => (id === g.id ? { x, y, w, h } : cardRect(id)),
+          LOCAL,
+        );
       }, LOCAL);
+      store.undo.stopCapturing();
       return;
     }
     if (g.kind !== 'move') return;
@@ -992,23 +1038,23 @@ export function Canvas({
     const target =
       (document.elementFromPoint(e.clientX, e.clientY) as HTMLElement | null) ??
       (e.target as HTMLElement);
-    const elNode = target.closest<HTMLElement>('[data-el]');
-    if (!elNode) {
+    const targetId = canvasElementId(target);
+    if (!targetId) {
       if (target.closest('[data-chrome]') || readOnly) return;
       const at = toWorld(e.clientX, e.clientY);
       void add('note', { x: at.x - 20, y: at.y - 20 });
       return;
     }
-    const el = snap.byId.get(elNode.dataset.el as string);
+    const el = snap.byId.get(targetId);
     if (el && editing !== el.id) openElement(el);
   }
 
   function onContextMenu(e: ReactMouseEvent<HTMLDivElement>) {
     const target = e.target as HTMLElement;
-    if (target.closest('[data-chrome]') && !target.closest('[data-el]')) return;
+    if (target.closest('[data-chrome]') && !canvasElementId(target)) return;
     if (isTyping(target)) return;
     e.preventDefault();
-    const id = target.closest<HTMLElement>('[data-el]')?.dataset.el;
+    const id = canvasElementId(target);
     if (id && !selection.has(id)) select([id]);
     if (!id) setSelection(EMPTY_SET);
     const p = screenPoint(e);
@@ -1479,7 +1525,7 @@ export function Canvas({
     }
     const locked = selectedEls.some((e) => e.locked);
     const single = selectedEls.length === 1 ? selectedEls[0] : undefined;
-    return [
+    const items: MenuItem[] = [
       ...(single && (single.type === 'board' || single.type === 'link')
         ? [{ label: t('board.menu.open'), action: () => openElement(single) }]
         : []),
@@ -1500,7 +1546,7 @@ export function Canvas({
         ? [{ label: t('board.caption.edit'), action: () => setEditing(single.id) }]
         : []),
       ...(single?.type === 'note'
-        ? [{ label: t('board.menu.openDoc', 'Apri documento'), action: () => openElement(single) }]
+        ? [{ label: t('board.menu.openDoc'), action: () => openElement(single) }]
         : []),
       ...(single?.type === 'frame'
         ? [
@@ -1511,7 +1557,13 @@ export function Canvas({
           ]
         : []),
       ...(single && single.type !== 'arrow' && !preview
-        ? [{ label: t('comments.open'), action: () => openComments({ elementId: single.id }) }]
+        ? [
+            {
+              toolbar: true,
+              label: t('comments.open'),
+              action: () => openComments({ elementId: single.id }),
+            },
+          ]
         : []),
       ...(readOnly
         ? []
@@ -1519,6 +1571,7 @@ export function Canvas({
             ...(selectedEls.some((e) => e.type !== 'arrow')
               ? [
                   {
+                    toolbar: true,
                     label: t(
                       selectedEls.filter((e) => e.type !== 'arrow').every((e) => e.guestHidden)
                         ? 'guestVisibility.show'
@@ -1529,11 +1582,13 @@ export function Canvas({
                 ]
               : []),
             {
+              toolbar: true,
               label: t('board.menu.tags'),
               action: () => setTagging({ x: menu.x, y: menu.y, ids: [...selection] }),
             },
-            { label: t('board.menu.duplicate'), shortcut: '⌘D', action: duplicate },
+            { toolbar: true, label: t('board.menu.duplicate'), shortcut: '⌘D', action: duplicate },
             {
+              toolbar: true,
               label: locked ? t('board.menu.unlock') : t('board.menu.lock'),
               shortcut: '⌘L',
               action: toggleLock,
@@ -1552,10 +1607,19 @@ export function Canvas({
               label: t('board.menu.toUnsorted'),
               action: () => moveToUnsorted(doc, [...selection], LOCAL),
             },
-            { divider: true },
-            { label: t('board.menu.delete'), shortcut: '⌫', danger: true, action: removeSelection },
+            ...(menu.fromToolbar ? [] : [{ divider: true as const }]),
+            {
+              toolbar: true,
+              label: t('board.menu.delete'),
+              shortcut: '⌫',
+              danger: true,
+              action: removeSelection,
+            },
           ]),
-    ] as MenuItem[];
+    ];
+    // These flags mark actions actually rendered by ContextBar for the same selection.
+    // Standalone right-click menus keep the complete permission-filtered action list.
+    return menu.fromToolbar ? items.filter((item) => !('toolbar' in item && item.toolbar)) : items;
   }, [
     menu,
     selection,
@@ -1637,6 +1701,17 @@ export function Canvas({
               zoom={drawsOutline(el) ? viewport.zoom : undefined}
             />
           ))}
+          {!readOnly &&
+            !overlay.offset &&
+            visible
+              .filter(
+                (el) =>
+                  selection.has(el.id) && !el.locked && el.parent === null && el.type !== 'arrow',
+              )
+              .map((el) => {
+                const rect = overlay.resize?.id === el.id ? overlay.resize : liveRect(el);
+                return <ResizeHandles key={el.id} id={el.id} rect={rect} zoom={viewport.zoom} />;
+              })}
           <PresenceLayer peers={peers} zoom={viewport.zoom} rectOf={peerRect} />
           {overlay.ghost && (
             <div
@@ -1729,7 +1804,7 @@ export function Canvas({
           </div>
         )}
 
-        {!overlay.offset && !overlay.marquee && selectionBox && !menu && (
+        {!overlay.offset && !overlay.marquee && selectionBox && (
           <ContextBar
             box={selectionBox}
             elements={selectedEls}
@@ -1749,7 +1824,9 @@ export function Canvas({
             onGuestHidden={() => toggleGuestHidden(store, [...selection])}
             onDelete={removeSelection}
             onDuplicate={duplicate}
-            onMore={(x, y) => setMenu({ x, y, at: screenToWorld(vp.current, { x, y }) })}
+            onMore={(x, y) =>
+              setMenu({ x, y, at: screenToWorld(vp.current, { x, y }), fromToolbar: true })
+            }
             onColor={(color) => {
               for (const el of selectedEls) {
                 if (el.type === 'note') updateElement(doc, el.id, { color }, LOCAL);

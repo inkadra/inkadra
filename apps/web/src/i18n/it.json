@@ -1,4 +1,13 @@
 {
+  "context": {
+    "actions": "Azioni pagina",
+    "copy": "Copia testo selezionato",
+    "selectAll": "Seleziona tutto il testo",
+    "openLink": "Apri link",
+    "back": "Indietro",
+    "copyFailed": "Copia non riuscita. Usa la scorciatoia da tastiera.",
+    "editHint": "Usa Ctrl/⌘+X per tagliare e Ctrl/⌘+V per incollare. L’accesso agli appunti dipende dal browser."
+  },
   "app": {
     "name": "Inkadra",
     "tagline": "Dall’idea all’inquadratura.",
@@ -156,6 +165,12 @@
       "namePlaceholder": "Sopralluoghi",
       "create": "Crea board",
       "error": "Non riesco a creare la board. Riprova."
+    },
+    "preview": {
+      "unavailable": "Anteprima non disponibile",
+      "empty": "Board vuota",
+      "cards_one": "{{count}} elemento",
+      "cards_other": "{{count}} elementi"
     }
   },
   "project": {
@@ -250,6 +265,11 @@
     }
   },
   "board": {
+    "toolGroups": {
+      "navigate": "Naviga e collega",
+      "create": "Crea contenuti",
+      "organize": "Organizza e pianifica"
+    },
     "canvas": "Canvas della board",
     "toolbar": "Aggiungi",
     "contextBar": "Azioni sulla selezione",
@@ -355,6 +375,7 @@
       "group": "Raggruppa in colonna"
     },
     "menu": {
+      "openDoc": "Apri documento",
       "open": "Apri",
       "duplicate": "Duplica",
       "lock": "Blocca posizione",
@@ -757,6 +778,8 @@
       "expandGroup": "Espandi gruppo",
       "noLocation": "Nessuna location",
       "totalShots": "{{count}} inquadrature",
+      "totalShots_one": "{{count}} inquadratura",
+      "totalShots_other": "{{count}} inquadrature",
       "estimatedDuration": "Durata stimata",
       "moveCard": "Sposta in {{column}}",
       "moveToColumn": "Sposta card in colonna",
@@ -1324,6 +1347,13 @@
     "conversationUnavailable": "Conversazione non disponibile"
   },
   "settings": {
+    "sectionLead": {
+      "preferences": "Scegli l’aspetto e il comportamento di Inkadra.",
+      "notifications": "Scegli quali notifiche ricevere via email.",
+      "workspace": "Gestisci lo spazio di lavoro e i limiti di caricamento.",
+      "instance": "Gestisci il marchio dell’istanza e le registrazioni.",
+      "providers": "Configura i provider disponibili per accedere."
+    },
     "title": "Account",
     "lead": "Il tuo profilo, come accedi e le app collegate.",
     "save": "Salva",
@@ -1334,7 +1364,12 @@
       "languages": {
         "it": "Italiano",
         "en": "English"
-      }
+      },
+      "avatarUpload": "Carica o sostituisci avatar",
+      "avatarRemove": "Rimuovi avatar",
+      "avatarHelp": "JPEG, PNG o WebP, massimo 1 MiB.",
+      "avatarInvalid": "Scegli un’immagine JPEG, PNG o WebP di massimo 1 MiB.",
+      "avatarError": "Impossibile aggiornare l’avatar. Controlla l’immagine e riprova."
     },
     "methods": {
       "title": "Metodi di accesso",
@@ -1794,7 +1829,26 @@
       "dark": "Scuro",
       "light": "Chiaro"
     },
-    "smtpRequired": "Il reinvio richiede SMTP configurato."
+    "smtpRequired": "Il reinvio richiede SMTP configurato.",
+    "classifications": "Classificazioni",
+    "storageCharts": {
+      "byType": "Utilizzo per tipo di file",
+      "byProject": "Utilizzo per progetto",
+      "category": "Categoria / progetto",
+      "size": "File originali",
+      "share": "Percentuale",
+      "percentScope": "Ogni percentuale è riferita al totale dei file originali indicato sopra.",
+      "attribution": "Ogni asset è conteggiato una sola volta nel progetto proprietario, anche se usato in più board o progetti. I progetti a cui non hai accesso sono raggruppati in forma anonima.",
+      "unassigned": "Senza progetto",
+      "restricted": "Progetti riservati",
+      "types": {
+        "images": "Immagini",
+        "videos": "Video",
+        "audio": "Audio",
+        "documents": "Documenti",
+        "other": "Altri file"
+      }
+    }
   },
   "trash": {
     "title": "Cestino",
@@ -1832,5 +1886,43 @@
     "timerPause": "Pausa",
     "timerResume": "Riprendi",
     "timerReset": "Azzera"
+  },
+  "catalogs": {
+    "title": "Classificazioni",
+    "scope": "Tipi di progetto e tag condivisi in tutta l’istanza, gestiti dagli amministratori. I valori archiviati restano sui dati esistenti. I tag fuori catalogo restano leggibili; le nuove selezioni usano i valori attivi.",
+    "projectTypes": "Tipi di progetto",
+    "tags": "Tag",
+    "name": "Nome",
+    "archived": "Archiviato",
+    "up": "Sposta {{name}} su",
+    "down": "Sposta {{name}} giù",
+    "add": "Aggiungi valore",
+    "error": "Impossibile salvare o caricare. Un altro amministratore potrebbe aver modificato i cataloghi. Ricarica la configurazione attuale.",
+    "reload": "Ricarica",
+    "tagHelp": "Scegli un tag condiviso attivo. Gli amministratori gestiscono i valori in Impostazioni → Classificazioni. I tag esistenti restano leggibili."
+  },
+  "appearance": {
+    "title": "Aspetto del progetto",
+    "options": "Opzioni progetto: {{name}}",
+    "symbol": "Simbolo",
+    "color": "Colore",
+    "emoji": "Emoji",
+    "emojiHelp": "Inserisci un’emoji, oppure svuota il campo per usare la forma selezionata. Le emoji mantengono i propri colori.",
+    "invalid": "Usa una sola emoji.",
+    "reset": "Ripristina predefinito",
+    "error": "Impossibile salvare l’aspetto del progetto. Controlla i permessi e riprova.",
+    "shapes": {
+      "diamond": "Rombo",
+      "circle": "Cerchio",
+      "triangle": "Triangolo",
+      "square": "Quadrato"
+    },
+    "colors": {
+      "blue": "Blu",
+      "orange": "Arancione",
+      "purple": "Viola",
+      "green": "Verde",
+      "neutral": "Neutro"
+    }
   }
 }

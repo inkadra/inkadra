@@ -1,14 +1,16 @@
-import { type Project, ProjectType } from '@inkadra/shared';
+import type { Project } from '@inkadra/shared';
 import { Avatar, Button, ProjectGlyph } from '@inkadra/ui';
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
 import { pickVariant, useAsset } from '../board/assets.ts';
 import { api } from '../lib/api.ts';
+import { useClassifications } from '../lib/classifications.ts';
 import { useSession } from '../lib/session.tsx';
 import { relativeTime } from '../notifications/Notifications.tsx';
 import { useProjects } from './AppLayout.tsx';
-import { refreshProjects } from './projects.ts';
+import { canEditProjectAppearance, ProjectAppearanceDialog } from './ProjectAppearance.tsx';
+import { getCachedProjects, refreshProjects, subscribeProjects } from './projects.ts';
 import {
   archivedProjects,
   filterProjects,
@@ -18,10 +20,26 @@ import {
 import './projects.css';
 
 export function Projects() {
+  const { catalogs, typeLabel } = useClassifications();
   const { t, i18n } = useTranslation();
   const { user } = useSession();
   const { openNewProject } = useProjects();
   const [items, setItems] = useState<ProjectOverview[] | null>(null);
+  useEffect(
+    () =>
+      subscribeProjects(() => {
+        const cached = getCachedProjects();
+        if (cached)
+          setItems(
+            (current) =>
+              current?.map((row) => ({
+                ...row,
+                project: cached.find((p) => p.id === row.project.id) ?? row.project,
+              })) ?? null,
+          );
+      }),
+    [],
+  );
   const [error, setError] = useState(false);
   const [busy, setBusy] = useState(false);
   const [usage, setUsage] = useState<number | null>(null);
@@ -62,13 +80,18 @@ export function Projects() {
       alive = false;
     };
   }, [user?.role]);
-  async function mutate(project: Project, pin: boolean) {
+  async function mutate(project: Project, pin: boolean, type?: string) {
     setBusy(true);
     setError(false);
     try {
-      const updated = pin
-        ? await api.put<Project>(`/projects/${project.id}/pin`, { pinned: !project.pinned })
-        : await api.patch<Project>(`/projects/${project.id}`, { archived: !project.archivedAt });
+      const updated =
+        type !== undefined
+          ? await api.patch<Project>(`/projects/${project.id}`, { type: type || null })
+          : pin
+            ? await api.put<Project>(`/projects/${project.id}/pin`, { pinned: !project.pinned })
+            : await api.patch<Project>(`/projects/${project.id}`, {
+                archived: !project.archivedAt,
+              });
       setItems(
         (current) =>
           current?.map((row) =>
@@ -141,9 +164,9 @@ export function Projects() {
             onChange={(e) => change('type', e.target.value)}
           >
             <option value="all">{t('projectsPage.all')}</option>
-            {ProjectType.options.map((v) => (
+            {catalogs.projectTypes.map(({ id: v }) => (
               <option key={v} value={v}>
-                {t(`onboarding.types.${v}`)}
+                {typeLabel(v)}
               </option>
             ))}
           </select>
@@ -200,7 +223,20 @@ export function Projects() {
       )}
       <div className={`projects-page__items projects-page__items--${view}`}>
         {visible.map((row) => (
-          <ProjectCard key={row.project.id} row={row} busy={busy} mutate={mutate} />
+          <ProjectCard
+            key={row.project.id}
+            row={row}
+            busy={busy}
+            mutate={mutate}
+            onAppearanceSaved={(updated) =>
+              setItems(
+                (current) =>
+                  current?.map((item) =>
+                    item.project.id === updated.id ? { ...item, project: updated } : item,
+                  ) ?? null,
+              )
+            }
+          />
         ))}
       </div>
       {user?.role === 'admin' && (
@@ -222,12 +258,16 @@ function ProjectCard({
   row,
   busy,
   mutate,
+  onAppearanceSaved,
 }: {
   row: ProjectOverview;
+  onAppearanceSaved: (project: Project) => void;
   busy: boolean;
-  mutate: (p: Project, pin: boolean) => Promise<void>;
+  mutate: (p: Project, pin: boolean, type?: string) => Promise<void>;
 }) {
+  const { catalogs, typeLabel } = useClassifications();
   const { t, i18n } = useTranslation();
+  const [appearance, setAppearance] = useState(false);
   const p = row.project;
   const coverId = row.boards.find((b) => b.id === p.rootBoardId)?.coverAssetId;
   const cover = useAsset(coverId ?? undefined);
@@ -243,16 +283,40 @@ function ProjectCard({
         {src ? (
           <img src={src} alt="" />
         ) : (
-          <ProjectGlyph shape={p.icon.shape} color={p.icon.color} />
+          <ProjectGlyph shape={p.icon.shape} color={p.icon.color} emoji={p.icon.emoji} />
         )}
       </Link>
       <div className="project-card__body">
         <div className="project-card__title">
+          <ProjectGlyph {...p.icon} />
           <h2>
             <Link to={`/p/${p.id}`}>{p.name}</Link>
           </h2>
-          {p.type && <span className="project-card__type">{t(`onboarding.types.${p.type}`)}</span>}
+          {p.type && <span className="project-card__type">{typeLabel(p.type)}</span>}
         </div>
+        {(p.myRole === 'owner' || p.myRole === 'editor') && (
+          <label>
+            {t('onboarding.type')}
+            <select
+              className="ink-input"
+              value={p.type ?? ''}
+              disabled={busy}
+              onChange={(e) => void mutate(p, false, e.target.value)}
+            >
+              <option value="">—</option>
+              {p.type && !catalogs.projectTypes.some((o) => o.id === p.type) && (
+                <option value={p.type}>{p.type}</option>
+              )}
+              {catalogs.projectTypes
+                .filter((o) => !o.archived || o.id === p.type)
+                .map((o) => (
+                  <option key={o.id} value={o.id}>
+                    {typeLabel(o.id)}
+                  </option>
+                ))}
+            </select>
+          </label>
+        )}
         <p className="ink-muted">
           {[
             p.shootingStart ? date(p.shootingStart) : null,
@@ -265,14 +329,26 @@ function ProjectCard({
         <div className="project-card__members">
           {row.members.map((m) => (
             <span key={m.user.id} title={m.user.name}>
-              <Avatar name={m.user.name} size={24} />
+              <Avatar image={m.user.image} name={m.user.name} size={24} />
             </span>
           ))}
           <time className="ink-muted" dateTime={row.activity}>
             {relativeTime(row.activity, i18n.language)}
           </time>
         </div>
+        {appearance && (
+          <ProjectAppearanceDialog
+            project={p}
+            onClose={() => setAppearance(false)}
+            onSaved={onAppearanceSaved}
+          />
+        )}
         <div className="project-card__actions">
+          {canEditProjectAppearance(p) && (
+            <Button disabled={busy} onClick={() => setAppearance(true)}>
+              {t('appearance.title')}
+            </Button>
+          )}
           <Link className="ink-btn ink-btn--secondary" to={`/p/${p.id}`}>
             {t('projectsPage.open')}
           </Link>

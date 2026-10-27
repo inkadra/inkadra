@@ -102,7 +102,7 @@ export function Join() {
     body = (
       <>
         <div className="login__invite">
-          <Avatar name={user.name} size={32} />
+          <Avatar image={user.image} name={user.name} size={32} />
           <p>{t('join.signedInAs', { name: user.name, email: user.email })}</p>
         </div>
         {error && (

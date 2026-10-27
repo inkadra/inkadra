@@ -30,6 +30,7 @@ import * as Y from 'yjs';
 import { api, RequestError } from '../lib/api.ts';
 import { useSession } from '../lib/session.tsx';
 import { ReviewChip } from './CardReview.tsx';
+import { commentPanelPosition } from './comment-panel-position.ts';
 import { GuestTag } from './GuestTag.tsx';
 import { plainText } from './note.tsx';
 import { ReviewSection } from './ReviewSection.tsx';
@@ -177,6 +178,40 @@ function CommentsPanel() {
   const ref = useRef<HTMLElement>(null);
   const elementId = target?.elementId;
   const focusThread = target?.threadId;
+
+  // Read the rendered card so every entry point (toolbar, badge, pin, linked thread)
+  // follows pan, zoom and layout changes without storing stale screen coordinates.
+  const canvas = useReviews((s) => s.canvas);
+  useEffect(() => {
+    if (!elementId || !canvas) return;
+    let frame = 0;
+    const place = () => {
+      const panel = ref.current;
+      const card = document.querySelector<HTMLElement>(`[data-el="${CSS.escape(elementId)}"]`);
+      const floating = !!card && window.innerWidth >= 768;
+      panel?.classList.toggle('comments-panel--element', floating);
+      if (panel && card && floating) {
+        const position = commentPanelPosition(
+          card.getBoundingClientRect(),
+          { w: panel.offsetWidth, h: panel.offsetHeight },
+          { w: window.innerWidth, h: window.innerHeight },
+        );
+        panel.style.left = `${position.x}px`;
+        panel.style.top = `${position.y}px`;
+      } else if (panel) {
+        panel.style.removeProperty('left');
+        panel.style.removeProperty('top');
+      }
+      frame = requestAnimationFrame(place);
+    };
+    place();
+    return () => {
+      cancelAnimationFrame(frame);
+      ref.current?.classList.remove('comments-panel--element');
+      ref.current?.style.removeProperty('left');
+      ref.current?.style.removeProperty('top');
+    };
+  }, [elementId, canvas]);
 
   // Focus moves into the panel, or to the composer once a pin is placed, and back where it was
   // when the panel closes; not when it closes to place a pin, which takes focus itself.

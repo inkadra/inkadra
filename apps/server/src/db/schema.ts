@@ -54,6 +54,15 @@ export const user = pgTable('user', {
   updatedAt: updatedAt(),
 });
 
+/** One bounded normalized avatar per account, replaced atomically and cascaded on removal. */
+export const userAvatar = pgTable('user_avatar', {
+  userId: uuid('user_id')
+    .primaryKey()
+    .references(() => user.id, { onDelete: 'cascade' }),
+  version: uuid('version').notNull(),
+  image: bytea('image').notNull(),
+});
+
 export const session = pgTable(
   'session',
   {
@@ -164,14 +173,13 @@ export const project = pgTable('project', {
   iconShape: text('icon_shape', { enum: ['diamond', 'circle', 'triangle', 'square'] })
     .notNull()
     .default('circle'),
+  iconEmoji: text('icon_emoji'),
   iconColor: text('icon_color', { enum: ['blue', 'orange', 'purple', 'green', 'neutral'] })
     .notNull()
     .default('neutral'),
   position: text('position').notNull(),
   archivedAt: timestamp('archived_at', { withTimezone: true }),
-  type: text('type', {
-    enum: ['short_film', 'commercial', 'music_video', 'photo_shoot', 'documentary'],
-  }),
+  type: text('type'),
   shootingStart: date('shooting_start'),
   shootingEnd: date('shooting_end'),
   createdBy: uuid('created_by').references(() => user.id, { onDelete: 'set null' }),

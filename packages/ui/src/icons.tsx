@@ -102,6 +102,13 @@ const paths = {
   hand: (
     <path d="M8 12V6a1.5 1.5 0 0 1 3 0v5M11 11V4.5a1.5 1.5 0 0 1 3 0V11M14 11V6a1.5 1.5 0 0 1 3 0v7c0 4-2.5 7-6 7-2.5 0-4-1.5-5.5-4L4 13a1.5 1.5 0 0 1 2.5-1.5L8 13" />
   ),
+  stickyNote: <path d="M4 3h16v12l-6 6H4zM14 21v-6h6M8 8h8M8 12h5" />,
+  toolColumn: (
+    <>
+      <rect x="5" y="2" width="14" height="20" rx="2" />
+      <path d="M5 7h14M8 11h8M8 15h8M8 19h5" />
+    </>
+  ),
   note: <path d="M5 4h14v16H5zM8 9h8M8 13h8M8 17h5" />,
   link: (
     <path d="M10 14a4 4 0 0 0 6 0l3-3a4 4 0 0 0-6-6l-1 1M14 10a4 4 0 0 0-6 0l-3 3a4 4 0 0 0 6 6l1-1" />

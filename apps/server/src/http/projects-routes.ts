@@ -1,6 +1,8 @@
+import { randomUUID } from 'node:crypto';
 import {
   API_PREFIX,
   CreateProject,
+  defaultProjectIcon,
   Id,
   PageQuery,
   type Project,
@@ -11,11 +13,25 @@ import {
   UpdateProject,
   z,
 } from '@inkadra/shared';
-import { and, asc, count, desc, eq, gt, isNotNull, isNull, or, sum } from 'drizzle-orm';
+import {
+  and,
+  asc,
+  count,
+  desc,
+  eq,
+  gt,
+  inArray,
+  isNotNull,
+  isNull,
+  or,
+  sql,
+  sum,
+} from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
 import { generateKeyBetween } from 'fractional-indexing';
 import { type Actor, atLeast, higher, requireProjectRole } from '../access.ts';
 import type { Auth } from '../auth.ts';
+import { readClassifications, validateProjectType } from '../classifications.ts';
 import type { Database } from '../db/client.ts';
 import {
   asset,
@@ -28,6 +44,7 @@ import {
 } from '../db/schema.ts';
 import type { Jobs } from '../jobs.ts';
 import { animatedVariantKey } from '../storage.ts';
+import { storageUsage } from '../storage-usage.ts';
 import { iso } from './api-routes.ts';
 import { requireActor } from './auth-routes.ts';
 import { HttpError } from './errors.ts';
@@ -51,7 +68,7 @@ export function toProject(
   return {
     id: row.id,
     name: row.name,
-    icon: { shape: row.iconShape, color: row.iconColor },
+    icon: { shape: row.iconShape, color: row.iconColor, emoji: row.iconEmoji },
     rootBoardId,
     position: row.position,
     archivedAt: row.archivedAt ? iso(row.archivedAt) : null,
@@ -137,12 +154,29 @@ export function registerProjectRoutes(app: FastifyInstance, deps: Deps) {
   const { db, auth, jobs } = deps;
   const v1 = (path: string) => `${API_PREFIX}${path}`;
 
-  app.get(v1('/instance/storage'), async (req) => {
+  app.get(v1('/instance/storage'), async (req, reply) => {
     const actor = await requireActor(auth, req, db);
     if (actor.role !== 'admin')
       throw new HttpError('forbidden', 'Only administrators can see instance storage.');
-    const [row] = await db.select({ bytes: sum(asset.size) }).from(asset);
-    return { originalBytes: Number(row?.bytes ?? 0) };
+    reply.header('cache-control', 'private, no-store');
+    // A member/grantee can see the owning project's label. Admin status alone grants no project access.
+    const visible = sql<boolean>`(exists(select 1 from project_member m
+      where m.project_id = ${asset.projectId} and m.user_id = ${actor.id})
+      or exists(select 1 from board_grant g join board b on b.id = g.board_id
+        where b.project_id = ${asset.projectId} and b.deleted_at is null and g.user_id = ${actor.id}))`;
+    const rows = await db
+      .select({
+        mime: asset.mime,
+        bytes: sum(asset.size),
+        projectId: project.id,
+        projectName: project.name,
+        visible,
+      })
+      .from(asset)
+      .leftJoin(project, eq(project.id, asset.projectId))
+      .where(inArray(asset.status, ['processing', 'ready', 'failed']))
+      .groupBy(asset.mime, asset.projectId, project.id, project.name);
+    return storageUsage(rows.map((row) => ({ ...row, bytes: Number(row.bytes ?? 0) })));
   });
 
   app.get(v1('/projects'), async (req) => {
@@ -191,7 +225,11 @@ export function registerProjectRoutes(app: FastifyInstance, deps: Deps) {
     const actor = await requireActor(auth, req, db);
     const input = CreateProject.parse(req.body);
     validateDates(input.shootingStart ?? null, input.shootingEnd ?? null);
+    const id = randomUUID();
+    const icon = input.icon ?? defaultProjectIcon(id);
     const created = await db.transaction(async (tx) => {
+      await tx.execute(sql`select pg_advisory_xact_lock(10892)`);
+      validateProjectType((await readClassifications(tx)).projectTypes, input.type);
       const [last] = await tx
         .select({ position: project.position })
         .from(project)
@@ -200,12 +238,14 @@ export function registerProjectRoutes(app: FastifyInstance, deps: Deps) {
       const [p] = await tx
         .insert(project)
         .values({
+          id,
           name: input.name,
           type: input.type,
           shootingStart: input.shootingStart,
           shootingEnd: input.shootingEnd,
-          iconShape: input.icon?.shape ?? 'circle',
-          iconColor: input.icon?.color ?? 'neutral',
+          iconShape: icon.shape,
+          iconColor: icon.color,
+          iconEmoji: icon.emoji ?? null,
           position: generateKeyBetween(last?.position ?? null, null),
           createdBy: actor.id,
         })
@@ -247,11 +287,14 @@ export function registerProjectRoutes(app: FastifyInstance, deps: Deps) {
     if (patch.icon) {
       set.iconShape = patch.icon.shape;
       set.iconColor = patch.icon.color;
+      set.iconEmoji = patch.icon.emoji ?? null;
     }
     if (patch.position !== undefined) set.position = patch.position;
     if (patch.archived !== undefined) set.archivedAt = patch.archived ? new Date() : null;
     if (Object.keys(set).length > 0) {
       await db.transaction(async (tx) => {
+        // Account deletion takes this global lock before locking project rows too.
+        await tx.execute(sql`select pg_advisory_xact_lock(10892)`);
         await lockMembers(
           tx,
           projectId,
@@ -260,6 +303,7 @@ export function registerProjectRoutes(app: FastifyInstance, deps: Deps) {
         );
         const [current] = await tx.select().from(project).where(eq(project.id, projectId));
         if (!current) throw new HttpError('not_found', 'Project not found.');
+        validateProjectType((await readClassifications(tx)).projectTypes, patch.type, current.type);
         validateDates(
           patch.shootingStart === undefined ? current.shootingStart : patch.shootingStart,
           patch.shootingEnd === undefined ? current.shootingEnd : patch.shootingEnd,

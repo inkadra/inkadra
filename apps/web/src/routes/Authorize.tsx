@@ -105,7 +105,7 @@ export function Authorize() {
               <p className="ink-muted">{t('authorize.asks', { instance: instance?.name ?? '' })}</p>
             </div>
             <div className="login__invite">
-              <Avatar name={user.name} size={28} />
+              <Avatar image={user.image} name={user.name} size={28} />
               <p>{t('join.signedInAs', { name: user.name, email: user.email })}</p>
             </div>
             <p className="login__note">{t('authorize.what')}</p>

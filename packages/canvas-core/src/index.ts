@@ -4,5 +4,6 @@ export * from './board.ts';
 export * from './column.ts';
 export * from './film.ts';
 export * from './geometry.ts';
+export * from './resize.ts';
 export * from './snap.ts';
 export * from './templates.ts';

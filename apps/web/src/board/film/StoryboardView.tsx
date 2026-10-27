@@ -13,7 +13,7 @@ import {
 } from '@inkadra/canvas-core';
 import { ASPECT_RATIOS, type AspectRatio, SHOT_SIZES, setBoardAspect } from '@inkadra/doc-schema';
 import { Button, EmptyState, Icon, IconButton } from '@inkadra/ui';
-import { type DragEvent, memo, useMemo, useState, useSyncExternalStore } from 'react';
+import { type DragEvent, memo, useId, useMemo, useState, useSyncExternalStore } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useRegisterActions } from '../../commands/actions.ts';
 import { CardReview } from '../CardReview.tsx';
@@ -351,62 +351,87 @@ function SceneList({
   onFilter: (key: string | null) => void;
 }) {
   const { t } = useTranslation();
+  const pickerId = useId();
   const frames = groups.reduce((n, g) => n + g.frames.length, 0);
   // The same estimate the animatic plays: frames without a duration count one second.
   const total = estimatedDurationMs(groups.flatMap((g) => g.frames));
   return (
-    <nav className="story__sidebar" aria-label={t('film.playback.scenes')} data-scroll>
-      <h2 className="story__sidebar-title">{t('film.playback.scenes')}</h2>
-      <ul>
-        <li>
-          <button
-            type="button"
-            className="story__side-item"
-            aria-pressed={filter === null}
-            onClick={() => onFilter(null)}
-          >
-            <span className="story__side-name">{t('film.playback.allScenes')}</span>
-            <span className="story__side-count">{frames}</span>
-          </button>
-        </li>
-        {groups.map((g) => {
-          const key = groupKey(g);
-          const drawn = g.frames.filter(isDrawn).length;
-          const count = g.frames.length;
-          const progress = t('film.playback.drawn', { drawn, total: count });
-          return (
-            <li key={key}>
-              <button
-                type="button"
-                className="story__side-item"
-                aria-pressed={filter === key}
-                onClick={() => onFilter(filter === key ? null : key)}
-              >
-                <span className="story__side-name">
-                  {g.scene ? (
-                    <>
-                      <strong>{g.scene.number}</strong> {g.scene.title || t('film.scene.untitled')}
-                    </>
-                  ) : (
-                    t('film.loose')
-                  )}
-                </span>
-                <span className="story__side-count">{count}</span>
-                <span className="story__sr">
-                  {`, ${progress}, ${formatDuration(estimatedDurationMs(g.frames))}`}
-                </span>
-                <span className="story__side-bar" aria-hidden="true">
-                  <span style={{ width: count ? `${(drawn / count) * 100}%` : 0 }} />
-                </span>
-              </button>
-            </li>
-          );
-        })}
-      </ul>
-      <p className="story__side-total">
-        {t('film.playback.estimated', { count: frames, duration: formatDuration(total) })}
-      </p>
-    </nav>
+    <>
+      <label className="story__scene-picker" htmlFor={pickerId}>
+        <span>{t('film.playback.scenes')}</span>
+        <select
+          id={pickerId}
+          className="ink-input"
+          value={filter ?? ''}
+          onChange={(event) => onFilter(event.target.value || null)}
+        >
+          <option value="">
+            {t('film.playback.allScenes')} · {frames}
+          </option>
+          {groups.map((group) => (
+            <option key={groupKey(group)} value={groupKey(group)}>
+              {group.scene
+                ? `${group.scene.number} ${group.scene.title || t('film.scene.untitled')}`
+                : t('film.loose')}{' '}
+              · {group.frames.length}
+            </option>
+          ))}
+        </select>
+      </label>
+      <nav className="story__sidebar" aria-label={t('film.playback.scenes')} data-scroll>
+        <h2 className="story__sidebar-title">{t('film.playback.scenes')}</h2>
+        <ul>
+          <li>
+            <button
+              type="button"
+              className="story__side-item"
+              aria-pressed={filter === null}
+              onClick={() => onFilter(null)}
+            >
+              <span className="story__side-name">{t('film.playback.allScenes')}</span>
+              <span className="story__side-count">{frames}</span>
+            </button>
+          </li>
+          {groups.map((g) => {
+            const key = groupKey(g);
+            const drawn = g.frames.filter(isDrawn).length;
+            const count = g.frames.length;
+            const progress = t('film.playback.drawn', { drawn, total: count });
+            return (
+              <li key={key}>
+                <button
+                  type="button"
+                  className="story__side-item"
+                  aria-pressed={filter === key}
+                  onClick={() => onFilter(filter === key ? null : key)}
+                >
+                  <span className="story__side-name">
+                    {g.scene ? (
+                      <>
+                        <strong>{g.scene.number}</strong>{' '}
+                        {g.scene.title || t('film.scene.untitled')}
+                      </>
+                    ) : (
+                      t('film.loose')
+                    )}
+                  </span>
+                  <span className="story__side-count">{count}</span>
+                  <span className="story__sr">
+                    {`, ${progress}, ${formatDuration(estimatedDurationMs(g.frames))}`}
+                  </span>
+                  <span className="story__side-bar" aria-hidden="true">
+                    <span style={{ width: count ? `${(drawn / count) * 100}%` : 0 }} />
+                  </span>
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+        <p className="story__side-total">
+          {t('film.playback.estimated', { count: frames, duration: formatDuration(total) })}
+        </p>
+      </nav>
+    </>
   );
 }
 

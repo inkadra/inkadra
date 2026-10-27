@@ -4,9 +4,10 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router';
 import { boardPath } from '../board/boards.ts';
-import { filterTagSuggestions, loadTagsForProjects, normaliseTag } from '../board/tags.tsx';
+import { loadTagsForProjects, normaliseTag } from '../board/tags.tsx';
 import { type PaletteAction, rankActions, useContextActions } from '../commands/actions.ts';
 import { api } from '../lib/api.ts';
+import { useClassifications } from '../lib/classifications.ts';
 import { loadProjects } from './projects.ts';
 import './search.css';
 
@@ -59,6 +60,7 @@ export function SearchDialog({
   shared: Board[] | null;
   onClose: () => void;
 }) {
+  const { tagLabel } = useClassifications();
   const { t } = useTranslation();
   const navigate = useNavigate();
   const [allProjects, setAllProjects] = useState<Project[] | null>(projects);
@@ -127,7 +129,9 @@ export function SearchDialog({
   const tagQuery = normaliseTag(hasSpace ? (rawAfterHash.split(/\s+/)[0] ?? '') : rawAfterHash);
   const showingSuggestions =
     isTagInput && !hasSpace && (pickedTag === null || pickedTag.toLowerCase() !== tagQuery);
-  const suggestions = showingSuggestions ? filterTagSuggestions(availableTags, tagQuery) : [];
+  const suggestions = showingSuggestions
+    ? availableTags.filter((s) => tagLabel(s.tag).toLowerCase().includes(tagQuery)).slice(0, 20)
+    : [];
 
   useEffect(() => {
     const count = showingSuggestions ? suggestions.length : resultCount;
@@ -135,7 +139,7 @@ export function SearchDialog({
   }, [resultCount, showingSuggestions, suggestions.length]);
 
   function pickTag(tag: string) {
-    const normalised = normaliseTag(tag);
+    const normalised = normaliseTag(tagLabel(tag));
     setPickedTag(normalised);
     setInput(`#${normalised}`);
     setActive(-1);
@@ -293,7 +297,7 @@ export function SearchDialog({
                 >
                   <Icon name="tag" size={16} />
                   <span className="search__text">
-                    <span className="search__title">#{s.tag}</span>
+                    <span className="search__title">#{tagLabel(s.tag)}</span>
                     <span className="search__where">
                       {t('search.tagCardCount', { count: s.count })}
                     </span>
@@ -327,7 +331,7 @@ export function SearchDialog({
                           : [hit.boardTitle, t('search.inProject', { project: hit.projectName })]
                               .filter(Boolean)
                               .join(' · ')}
-                        {hit.tags.length > 0 && ` · #${hit.tags.join(' #')}`}
+                        {hit.tags.length > 0 && ` · #${hit.tags.map(tagLabel).join(' #')}`}
                       </span>
                     </span>
                   </button>

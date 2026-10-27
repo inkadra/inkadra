@@ -12,11 +12,13 @@ import {
 import {
   Board,
   BoardDetail,
+  BoardPreview,
   CreateBoard,
   RecentBoard,
   RecentBoardQuery,
   UpdateBoard,
 } from './boards.ts';
+import { ClassificationCatalogs } from './classifications.ts';
 import { BoardColumns, ClipRequest, ClipResult } from './clip.ts';
 import {
   CommentCounts,
@@ -52,6 +54,7 @@ import { Diagnostics, Health, Instance } from './instance.ts';
 import {
   InstanceMember,
   InstanceSettings,
+  StorageUsage,
   UpdateInstanceMember,
   UpdateInstanceSettings,
 } from './instance-admin.ts';
@@ -115,6 +118,7 @@ import {
   ExchangeAppCode,
   PersonalToken,
   UpdateMe,
+  UploadAvatar,
   User,
 } from './users.ts';
 import {
@@ -438,6 +442,31 @@ registry.registerPath({
   responses: { 200: { description: 'Session', ...json(Session.nullable()) } },
 });
 
+registry.registerPath({
+  method: 'get',
+  path: v1('/instance/classifications'),
+  tags: ['Instance'],
+  security: secured,
+  responses: {
+    200: { description: 'Instance-wide classification catalogs', ...json(ClassificationCatalogs) },
+    ...errors,
+  },
+});
+registry.registerPath({
+  method: 'put',
+  path: v1('/instance/classifications'),
+  tags: ['Instance'],
+  security: secured,
+  request: { body: json(ClassificationCatalogs) },
+  responses: {
+    200: {
+      description: 'Administrator update; revision prevents lost edits; IDs cannot be removed',
+      ...json(ClassificationCatalogs),
+    },
+    ...errors,
+  },
+});
+
 // Me -------------------------------------------------------------------------
 
 registry.registerPath({
@@ -454,6 +483,36 @@ registry.registerPath({
   security: secured,
   request: { body: json(UpdateMe) },
   responses: { 200: { description: 'Updated', ...json(User) }, ...errors },
+});
+
+registry.registerPath({
+  method: 'put',
+  path: v1('/me/avatar'),
+  tags: ['Users'],
+  security: [{ session: [] }],
+  request: { body: json(UploadAvatar) },
+  responses: { 200: { description: 'Updated avatar', ...json(User) }, ...errors },
+});
+registry.registerPath({
+  method: 'delete',
+  path: v1('/me/avatar'),
+  tags: ['Users'],
+  security: [{ session: [] }],
+  responses: { 200: { description: 'Removed avatar', ...json(User) }, ...errors },
+});
+registry.registerPath({
+  method: 'get',
+  path: v1('/users/{userId}/avatar/{version}'),
+  tags: ['Users'],
+  security: secured,
+  request: { params: z.object({ userId: Id, version: z.uuid() }) },
+  responses: {
+    200: {
+      description: 'Current profile image',
+      content: { 'image/webp': { schema: { type: 'string', format: 'binary' } } },
+    },
+    ...errors,
+  },
 });
 
 registry.registerPath({
@@ -595,7 +654,7 @@ registry.registerPath({
   responses: {
     200: {
       description: 'Original asset usage',
-      ...json(z.object({ originalBytes: z.number().nonnegative() })),
+      ...json(StorageUsage),
     },
     ...errors,
   },
@@ -1773,3 +1832,13 @@ export function buildOpenApiDocument() {
     ],
   });
 }
+
+registry.registerPath({
+  method: 'get',
+  path: v1('/boards/{boardId}/preview'),
+  tags: ['Boards'],
+  security: secured,
+  summary: 'Authorized compact preview of the last persisted board; excludes full document data.',
+  request: { params: z.object({ boardId: Id }) },
+  responses: { 200: { description: 'Board preview', ...json(BoardPreview) }, ...errors },
+});

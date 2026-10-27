@@ -190,6 +190,9 @@
   }
 }
 
+.settings-mobile-nav {
+  display: none;
+}
 .settings-layout {
   display: grid;
   grid-template-columns: 180px minmax(0, 1fr);
@@ -274,5 +277,19 @@
   }
   .settings-nav {
     display: none;
+  }
+  .settings-mobile-nav {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 16px;
+    min-width: 0;
+    border-bottom: 1px solid var(--ink-border-subtle);
+    color: var(--ink-text-secondary);
+    font-size: 12px;
+  }
+  .settings-mobile-nav select {
+    width: 100%;
+    min-height: 44px;
   }
 }

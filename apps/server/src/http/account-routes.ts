@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import {
   type AccountSession,
   API_PREFIX,
@@ -12,10 +13,12 @@ import {
   DenyAppAuthorization,
   ExchangeAppCode,
   Id,
+  UploadAvatar,
   z,
 } from '@inkadra/shared';
 import { and, asc, count, desc, eq, gt, inArray, isNull, ne, sql } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
+import sharp from 'sharp';
 import type { Auth } from '../auth.ts';
 import type { Config } from '../config.ts';
 import type { Database } from '../db/client.ts';
@@ -30,6 +33,7 @@ import {
   projectMember,
   session as sessionTable,
   user,
+  userAvatar,
   verification,
 } from '../db/schema.ts';
 import type { Jobs } from '../jobs.ts';
@@ -76,10 +80,93 @@ interface PendingCode {
   deviceName: string | null;
 }
 
+/** Decode with a pixel budget, strip metadata and emit a fixed-size, static image. */
+export async function normalizeAvatar(bytes: Buffer): Promise<Buffer> {
+  if (bytes.length > 1024 * 1024) throw new HttpError('bad_request', 'Avatar exceeds 1 MiB.');
+  try {
+    const input = sharp(bytes, { limitInputPixels: 16_000_000, animated: false });
+    const meta = await input.metadata();
+    if (!['jpeg', 'png', 'webp'].includes(meta.format ?? '')) throw new Error('format');
+    return await input.rotate().resize(256, 256, { fit: 'cover' }).webp().toBuffer();
+  } catch {
+    throw new HttpError('bad_request', 'Use a valid JPEG, PNG or WebP image up to 1 MiB.');
+  }
+}
+
 export function registerAccountRoutes(app: FastifyInstance, deps: Deps) {
   const { config, db, auth, jobs } = deps;
   const v1 = (path: string) => `${API_PREFIX}${path}`;
   const exchangeLimiter = new RateLimiter(20, 60_000);
+
+  // A normalized avatar belongs to the account row, not project storage. Replacements
+  // are atomic and bounded to one image; failed writes cannot leave orphan objects.
+  app.put(v1('/me/avatar'), async (req) => {
+    const session = await requireSession(auth, req, db);
+    const { data } = UploadAvatar.parse(req.body);
+    const bytes = Buffer.from(data, 'base64');
+    if (bytes.length > 1024 * 1024 || bytes.toString('base64') !== data)
+      throw new HttpError('bad_request', 'Use a JPEG, PNG or WebP image up to 1 MiB.');
+    const image = await normalizeAvatar(bytes);
+    const version = randomUUID();
+    const url = new URL(v1(`/users/${session.user.id}/avatar/${version}`), config.PUBLIC_URL).href;
+    const row = await db.transaction(async (tx) => {
+      // Serialize replace/remove on the account, before touching its avatar row.
+      const [current] = await tx
+        .select({ id: user.id })
+        .from(user)
+        .where(eq(user.id, session.user.id))
+        .for('update');
+      if (!current) throw new HttpError('unauthorized', 'Sign in to continue.');
+      await tx
+        .insert(userAvatar)
+        .values({ userId: session.user.id, version, image })
+        .onConflictDoUpdate({ target: userAvatar.userId, set: { version, image } });
+      const [updated] = await tx
+        .update(user)
+        .set({ image: url, updatedAt: new Date() })
+        .where(eq(user.id, session.user.id))
+        .returning();
+      if (!updated) throw new HttpError('unauthorized', 'Sign in to continue.');
+      return updated;
+    });
+    return toUser(row);
+  });
+  app.delete(v1('/me/avatar'), async (req) => {
+    const session = await requireSession(auth, req, db);
+    const row = await db.transaction(async (tx) => {
+      const [updated] = await tx
+        .update(user)
+        .set({ image: null, updatedAt: new Date() })
+        .where(eq(user.id, session.user.id))
+        .returning();
+      if (!updated) throw new HttpError('unauthorized', 'Sign in to continue.');
+      await tx.delete(userAvatar).where(eq(userAvatar.userId, session.user.id));
+      return updated;
+    });
+    return toUser(row);
+  });
+  app.get(v1('/users/:userId/avatar/:version'), async (req, reply) => {
+    await requireActor(auth, req, db);
+    const params = z.object({ userId: Id, version: z.uuid() }).parse(req.params);
+    const url = new URL(v1(`/users/${params.userId}/avatar/${params.version}`), config.PUBLIC_URL)
+      .href;
+    const [avatar] = await db
+      .select({ image: userAvatar.image })
+      .from(userAvatar)
+      .innerJoin(user, eq(user.id, userAvatar.userId))
+      .where(
+        and(
+          eq(userAvatar.userId, params.userId),
+          eq(userAvatar.version, params.version),
+          eq(user.image, url),
+        ),
+      );
+    if (!avatar) throw new HttpError('not_found', 'Avatar not found.');
+    return reply
+      .type('image/webp')
+      .header('cache-control', 'private, no-cache')
+      .send(Buffer.from(avatar.image));
+  });
 
   // Sessions ---------------------------------------------------------------------
   // Better Auth's /list-sessions hands every session token to the page so it can revoke

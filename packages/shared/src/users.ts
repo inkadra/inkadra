@@ -166,3 +166,14 @@ export const AppToken = z
   })
   .openapi('AppToken');
 export type AppToken = z.infer<typeof AppToken>;
+
+/** JPEG, PNG or WebP, at most 1 MiB before base64 encoding. */
+export const UploadAvatar = z
+  .object({
+    data: z
+      .string()
+      .min(4)
+      .max(1398104)
+      .regex(/^[A-Za-z0-9+/]+={0,2}$/),
+  })
+  .openapi('UploadAvatar');

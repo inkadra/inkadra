@@ -1053,6 +1053,82 @@
           "password"
         ]
       },
+      "ClassificationCatalogs": {
+        "type": "object",
+        "properties": {
+          "revision": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "projectTypes": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 40
+                },
+                "label": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 40
+                },
+                "archived": {
+                  "type": "boolean"
+                },
+                "legacy": {
+                  "type": "string",
+                  "maxLength": 40
+                }
+              },
+              "required": [
+                "id",
+                "label",
+                "archived"
+              ]
+            },
+            "maxItems": 200
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 40
+                },
+                "label": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 40
+                },
+                "archived": {
+                  "type": "boolean"
+                },
+                "legacy": {
+                  "type": "string",
+                  "maxLength": 40
+                }
+              },
+              "required": [
+                "id",
+                "label",
+                "archived"
+              ]
+            },
+            "maxItems": 500
+          }
+        },
+        "required": [
+          "revision",
+          "projectTypes",
+          "tags"
+        ]
+      },
       "UpdateMe": {
         "type": "object",
         "properties": {
@@ -1069,6 +1145,20 @@
             "maxLength": 16
           }
         }
+      },
+      "UploadAvatar": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "string",
+            "minLength": 4,
+            "maxLength": 1398104,
+            "pattern": "^[A-Za-z0-9+/]+={0,2}$"
+          }
+        },
+        "required": [
+          "data"
+        ]
       },
       "DeleteMe": {
         "type": "object",
@@ -1422,6 +1512,87 @@
           "image"
         ]
       },
+      "StorageUsage": {
+        "type": "object",
+        "properties": {
+          "originalBytes": {
+            "type": "number",
+            "minimum": 0
+          },
+          "byType": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "images",
+                    "videos",
+                    "audio",
+                    "documents",
+                    "other"
+                  ]
+                },
+                "bytes": {
+                  "type": "number",
+                  "minimum": 0
+                }
+              },
+              "required": [
+                "type",
+                "bytes"
+              ]
+            }
+          },
+          "byProject": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "projectId": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "format": "uuid",
+                  "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10"
+                },
+                "name": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "scope": {
+                  "type": "string",
+                  "enum": [
+                    "project",
+                    "restricted",
+                    "unassigned"
+                  ]
+                },
+                "bytes": {
+                  "type": "number",
+                  "minimum": 0
+                }
+              },
+              "required": [
+                "projectId",
+                "name",
+                "scope",
+                "bytes"
+              ]
+            }
+          }
+        },
+        "required": [
+          "originalBytes",
+          "byType",
+          "byProject"
+        ],
+        "description": "Completed original uploads (processing, ready or failed), once per asset row. Pending uploads, derived files, database and physical capacity excluded. Attribution uses asset.projectId, independent of references. Inaccessible projects are combined without names or IDs."
+      },
       "Project": {
         "type": "object",
         "properties": {
@@ -1482,14 +1653,8 @@
               "string",
               "null"
             ],
-            "enum": [
-              "short_film",
-              "commercial",
-              "music_video",
-              "photo_shoot",
-              "documentary",
-              null
-            ]
+            "minLength": 1,
+            "maxLength": 40
           },
           "shootingStart": {
             "type": [
@@ -1542,6 +1707,13 @@
               "green",
               "neutral"
             ]
+          },
+          "emoji": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 32
           }
         },
         "required": [
@@ -1576,14 +1748,8 @@
               "string",
               "null"
             ],
-            "enum": [
-              "short_film",
-              "commercial",
-              "music_video",
-              "photo_shoot",
-              "documentary",
-              null
-            ]
+            "minLength": 1,
+            "maxLength": 40
           },
           "shootingStart": {
             "type": [
@@ -1630,14 +1796,8 @@
               "string",
               "null"
             ],
-            "enum": [
-              "short_film",
-              "commercial",
-              "music_video",
-              "photo_shoot",
-              "documentary",
-              null
-            ]
+            "minLength": 1,
+            "maxLength": 40
           },
           "shootingStart": {
             "type": [
@@ -4850,6 +5010,65 @@
         "required": [
           "boardId"
         ]
+      },
+      "BoardPreview": {
+        "type": "object",
+        "properties": {
+          "assetIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid",
+              "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10"
+            },
+            "maxItems": 4
+          },
+          "excerpts": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "maxLength": 160
+            },
+            "maxItems": 3
+          },
+          "elementCount": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "drawing": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string",
+                  "maxLength": 5000
+                },
+                "color": {
+                  "type": "string",
+                  "pattern": "^#[0-9A-F]{6}$/i"
+                },
+                "width": {
+                  "type": "number",
+                  "exclusiveMinimum": 0,
+                  "maximum": 820
+                }
+              },
+              "required": [
+                "path",
+                "color",
+                "width"
+              ]
+            },
+            "maxItems": 32
+          }
+        },
+        "required": [
+          "assetIds",
+          "excerpts",
+          "elementCount",
+          "drawing"
+        ]
       }
     },
     "parameters": {}
@@ -6050,6 +6269,147 @@
         }
       }
     },
+    "/api/v1/instance/classifications": {
+      "get": {
+        "tags": [
+          "Instance"
+        ],
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Instance-wide classification catalogs",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClassificationCatalogs"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Instance"
+        ],
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ClassificationCatalogs"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Administrator update; revision prevents lost edits; IDs cannot be removed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClassificationCatalogs"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/me": {
       "get": {
         "tags": [
@@ -6226,6 +6586,230 @@
           },
           "409": {
             "description": "Sole owner of shared projects (details: DeleteMeBlocked), or last active instance administrator.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/me/avatar": {
+      "put": {
+        "tags": [
+          "Users"
+        ],
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UploadAvatar"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated avatar",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/User"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Users"
+        ],
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Removed avatar",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/User"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/users/{userId}/avatar/{version}": {
+      "get": {
+        "tags": [
+          "Users"
+        ],
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10"
+            },
+            "required": true,
+            "name": "userId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "version",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Current profile image",
+            "content": {
+              "image/webp": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
             "content": {
               "application/json": {
                 "schema": {
@@ -6858,16 +7442,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "properties": {
-                    "originalBytes": {
-                      "type": "number",
-                      "minimum": 0
-                    }
-                  },
-                  "required": [
-                    "originalBytes"
-                  ]
+                  "$ref": "#/components/schemas/StorageUsage"
                 }
               }
             }
@@ -14403,6 +14978,86 @@
           },
           "500": {
             "description": "The change may or may not have been made. OutcomeUnknown (`outcome_unknown`) explicitly reports uncertainty. A missing or unrecognized details.reason also means the outcome is unknown, including on legacy servers. Reconcile state before retrying; never infer that a retry is safe from the absence of a recognized reason.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/boards/{boardId}/preview": {
+      "get": {
+        "tags": [
+          "Boards"
+        ],
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Authorized compact preview of the last persisted board; excludes full document data.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10"
+            },
+            "required": true,
+            "name": "boardId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Board preview",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BoardPreview"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
             "content": {
               "application/json": {
                 "schema": {

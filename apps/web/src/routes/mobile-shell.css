@@ -200,7 +200,8 @@
   }
   .canvas .canvas__corner {
     width: 180px;
-    bottom: 80px;
+    /* The touch toolbar has two rows of 44px targets, plus padding and a gap. */
+    bottom: 128px;
     left: max(12px, env(safe-area-inset-left));
   }
   .canvas__corner .minimap {

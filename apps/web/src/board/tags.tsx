@@ -4,6 +4,7 @@ import { Icon } from '@inkadra/ui';
 import { useEffect, useId, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api } from '../lib/api.ts';
+import { useClassifications } from '../lib/classifications.ts';
 
 /** Tags already used in each project, for suggestions; refreshed when a picker opens. */
 const known = new Map<string, TagCount[]>();
@@ -79,12 +80,13 @@ export function normaliseTag(text: string): string {
 }
 
 export function TagList({ tags }: { tags: readonly string[] | undefined }) {
+  const { tagLabel } = useClassifications();
   if (!tags || tags.length === 0) return null;
   return (
     <span className="tag-list">
       {tags.map((tag) => (
         <span key={tag} className="tag-chip">
-          {tag}
+          {tagLabel(tag)}
         </span>
       ))}
     </span>
@@ -102,15 +104,19 @@ export function TagEditor({
   readOnly: boolean;
   projectId: string;
 }) {
+  const { catalogs, tagLabel, tagOption } = useClassifications();
   const { t } = useTranslation();
   const id = useId();
   const [draft, setDraft] = useState('');
   const used = useProjectTags(projectId);
   const full = tags.length >= MAX_TAGS;
   const add = (text: string) => {
-    const tag = normaliseTag(text);
+    const option =
+      tagOption(text) ?? catalogs.tags.find((o) => o.label.toLowerCase() === normaliseTag(text));
+    const tag = option?.id;
+    if (!option || option.archived) return;
     setDraft('');
-    if (!tag || tags.includes(tag) || full) return;
+    if (!tag || tags.some((value) => (tagOption(value)?.id ?? value) === tag) || full) return;
     onChange([...tags, tag]);
   };
   const remove = (tag: string) => {
@@ -118,20 +124,29 @@ export function TagEditor({
     onChange(next.length > 0 ? next : undefined);
   };
   const q = normaliseTag(draft);
-  const suggestions = used
-    .filter((u) => !tags.includes(u.tag) && (!q || u.tag.includes(q)))
-    .slice(0, 8);
+  const suggestions = catalogs.tags
+    .filter(
+      (o) =>
+        !o.archived &&
+        !tags.some((tag) => tagOption(tag)?.id === o.id) &&
+        (!q || o.label.toLowerCase().includes(q)),
+    )
+    .slice(0, 8)
+    .map((o) => ({
+      tag: o.id,
+      count: used.filter((u) => tagOption(u.tag)?.id === o.id).reduce((n, u) => n + u.count, 0),
+    }));
   return (
     <div className="tag-editor">
       <span className="tag-list">
         {tags.map((tag) => (
           <span key={tag} className="tag-chip">
-            {tag}
+            {tagLabel(tag)}
             {!readOnly && (
               <button
                 type="button"
                 className="tag-chip__remove"
-                aria-label={t('tags.remove', { tag })}
+                aria-label={t('tags.remove', { tag: tagLabel(tag) })}
                 onClick={() => remove(tag)}
               >
                 <Icon name="close" size={10} />
@@ -142,6 +157,7 @@ export function TagEditor({
       </span>
       {!readOnly && (
         <>
+          <p className="ink-muted">{t('catalogs.tagHelp')}</p>
           <input
             id={id}
             className="ink-input"
@@ -165,13 +181,13 @@ export function TagEditor({
               <span className="tag-suggest__title">{t('tags.suggested')}</span>
               {suggestions.map((s) => (
                 <button
-                  key={s.tag}
+                  key={tagLabel(s.tag)}
                   type="button"
                   className="tag-chip tag-chip--button"
                   onMouseDown={(e) => e.preventDefault()}
                   onClick={() => add(s.tag)}
                 >
-                  {s.tag}
+                  {tagLabel(s.tag)}
                   <span className="tag-chip__count">{s.count}</span>
                 </button>
               ))}
@@ -200,8 +216,12 @@ export function TagPopover({
   onClose: () => void;
 }) {
   const { t } = useTranslation();
-  const common = (elements[0]?.tags ?? []).filter((tag) =>
-    elements.every((e) => e.tags?.includes(tag)),
+  const { tagOption } = useClassifications();
+  const canonical = (values: readonly string[]) => [
+    ...new Set(values.map((value) => tagOption(value)?.id ?? value)),
+  ];
+  const common = canonical(elements[0]?.tags ?? []).filter((tag) =>
+    elements.every((e) => canonical(e.tags ?? []).includes(tag)),
   );
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
@@ -222,13 +242,16 @@ export function TagPopover({
           readOnly={false}
           projectId={projectId}
           onChange={(next) => {
-            const after = new Set(next ?? []);
+            const after = new Set(canonical(next ?? []));
             const added = [...after].filter((tag) => !common.includes(tag));
             const removed = common.filter((tag) => !after.has(tag));
             onChange(
               elements.map((e) => {
                 const tags = [
-                  ...new Set([...(e.tags ?? []).filter((x) => !removed.includes(x)), ...added]),
+                  ...new Set([
+                    ...canonical(e.tags ?? []).filter((x) => !removed.includes(x)),
+                    ...added,
+                  ]),
                 ].slice(0, MAX_TAGS);
                 return { id: e.id, tags: tags.length > 0 ? tags : undefined };
               }),

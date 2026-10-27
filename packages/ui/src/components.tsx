@@ -7,6 +7,7 @@ import {
   useEffect,
   useId,
   useRef,
+  useState,
 } from 'react';
 import { Icon, type IconName } from './icons.tsx';
 
@@ -140,7 +141,16 @@ export function KeyCap({ children }: { children: ReactNode }) {
   return <kbd className="ink-kc">{children}</kbd>;
 }
 
-export function Avatar({ name, size = 28 }: { name: string; size?: number }) {
+export function Avatar({
+  name,
+  image,
+  size = 28,
+}: {
+  name: string;
+  image?: string | null;
+  size?: number;
+}) {
+  const [failed, setFailed] = useState<string | null>(null);
   const initials = name
     .split(/\s+/)
     .filter(Boolean)
@@ -153,7 +163,16 @@ export function Avatar({ name, size = 28 }: { name: string; size?: number }) {
       title={name}
       style={{ width: size, height: size, fontSize: Math.max(8, size * 0.36) }}
     >
-      {initials}
+      {image && failed !== image ? (
+        <img
+          src={image}
+          onError={() => setFailed(image)}
+          alt=""
+          style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 'inherit' }}
+        />
+      ) : (
+        initials
+      )}
     </span>
   );
 }
@@ -169,16 +188,61 @@ const glyphColor = {
 export type GlyphShape = 'diamond' | 'circle' | 'triangle' | 'square';
 export type GlyphColor = keyof typeof glyphColor;
 
-/** Project marker: an outlined shape. Colour carries meaning only through the shape pairing. */
-export function ProjectGlyph({ shape, color }: { shape: GlyphShape; color: GlyphColor }) {
+/** Project marker: paired frames echo the logo; names remain the accessible identity. */
+export function ProjectGlyph({
+  shape,
+  color,
+  emoji,
+}: {
+  shape: GlyphShape;
+  color: GlyphColor;
+  emoji?: string | null;
+}) {
+  if (emoji)
+    return (
+      <span
+        aria-hidden="true"
+        style={{
+          display: 'inline-flex',
+          width: 18,
+          height: 18,
+          alignItems: 'center',
+          justifyContent: 'center',
+          flex: 'none',
+          fontSize: 16,
+        }}
+      >
+        {emoji}
+      </span>
+    );
   const stroke = glyphColor[color];
   const common = { fill: 'none', stroke, strokeWidth: 1.6, strokeLinejoin: 'round' as const };
   return (
     <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true" style={{ flex: 'none' }}>
-      {shape === 'diamond' && <path d="M8 1.5l6.5 6.5L8 14.5 1.5 8z" {...common} />}
-      {shape === 'circle' && <circle cx="8" cy="8" r="6" {...common} />}
-      {shape === 'triangle' && <path d="M8 2l6 11H2z" {...common} />}
-      {shape === 'square' && <rect x="2.5" y="2.5" width="11" height="11" rx="2" {...common} />}
+      {shape === 'diamond' && (
+        <>
+          <path d="M8 1.5l6.5 6.5L8 14.5 1.5 8z" {...common} />
+          <path d="M8 5l3 3-3 3-3-3z" {...common} />
+        </>
+      )}
+      {shape === 'circle' && (
+        <>
+          <circle cx="8" cy="8" r="6" {...common} />
+          <circle cx="8" cy="8" r="2.5" {...common} />
+        </>
+      )}
+      {shape === 'triangle' && (
+        <>
+          <path d="M8 2l6 11H2z" {...common} />
+          <path d="M8 7l2 4H6z" {...common} />
+        </>
+      )}
+      {shape === 'square' && (
+        <>
+          <rect x="2.5" y="2.5" width="11" height="11" rx="2" {...common} />
+          <rect x="6" y="6" width="4" height="4" rx="0.5" {...common} />
+        </>
+      )}
     </svg>
   );
 }

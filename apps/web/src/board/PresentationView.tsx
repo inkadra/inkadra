@@ -134,10 +134,10 @@ export function PresentationView({
           location: scene?.location || frame.location,
           action: frame.action || frame.notes || '',
           specs: {
-            shot: frame.shot ? getPreset('film.shots', SHOT_SIZES, frame.shot) : undefined,
+            shot: frame.shot ? getPreset('film.shot', SHOT_SIZES, frame.shot) : undefined,
             lens: frame.lens,
             movement: frame.movement
-              ? getPreset('film.movements', SHOT_MOVEMENTS, frame.movement)
+              ? getPreset('film.movement', SHOT_MOVEMENTS, frame.movement)
               : undefined,
             duration: frame.durationMs ? `${Math.round(frame.durationMs / 1000)} s` : undefined,
             audio: frame.audio ? t('present.audio', { value: frame.audio }) : undefined,
