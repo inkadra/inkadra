@@ -12,7 +12,9 @@ import { listElements, updateElement } from './board.ts';
 import {
   addFrame,
   addScene,
+  addShape,
   addStroke,
+  clearDrawing,
   clearStrokes,
   decodeStroke,
   encodeStroke,
@@ -20,9 +22,12 @@ import {
   frameLabels,
   frameLetter,
   moveFrames,
+  removeShapes,
   removeStrokes,
+  shapeHit,
   storyboardOf,
   strokeHit,
+  toGrid,
   totalDurationMs,
 } from './film.ts';
 import { applyTemplate } from './templates.ts';
@@ -147,5 +152,75 @@ describe('templates', () => {
     expect(group?.frames).toHaveLength(3);
     undo.undo();
     expect(listElements(doc).filter((e) => e.type === 'frame')).toHaveLength(0);
+  });
+});
+
+describe('frame shapes', () => {
+  it('adds shapes and texts over the strokes, merges them and clears the whole drawing', () => {
+    const doc = createBoardDoc(boardId);
+    const frame = addFrame(doc, null, null, {}, opts);
+    const other = new Y.Doc();
+    Y.applyUpdate(other, Y.encodeStateAsUpdate(doc));
+    const box = (kind: 'rect' | 'ellipse' | 'line' | 'arrow') => ({
+      kind,
+      color: '#E5484D',
+      width: 4,
+      x0: toGrid(0.2),
+      y0: toGrid(0.2),
+      x1: toGrid(0.6),
+      y1: toGrid(0.6),
+    });
+    const rect = addShape(doc, frame.id, box('rect'));
+    addShape(other, frame.id, box('arrow'));
+    Y.applyUpdate(doc, Y.encodeStateAsUpdate(other));
+    expect(addShape(doc, frame.id, { ...box('line'), kind: 'text', text: '  ' })).toBeNull();
+    addShape(doc, frame.id, { ...box('line'), kind: 'text', text: 'Treno' });
+    addStroke(doc, frame.id, {
+      tool: 'pencil',
+      color: '#EDEDED',
+      width: 4,
+      points: [0, 0, 10, 10],
+    });
+    const read = () =>
+      Element.parse(listElements(doc).find((e) => e.id === frame.id)) as {
+        shapes?: Parameters<typeof shapeHit>[0][];
+        strokes?: unknown[];
+      };
+    expect(
+      read()
+        .shapes?.map((s) => s.kind)
+        .sort(),
+    ).toEqual(['arrow', 'rect', 'text']);
+    removeShapes(doc, frame.id, [rect ?? '']);
+    expect(read().shapes).toHaveLength(2);
+    clearDrawing(doc, frame.id);
+    expect(read().shapes).toHaveLength(0);
+    expect(read().strokes).toHaveLength(0);
+  });
+
+  it('hits shapes on what they draw', () => {
+    const shape = (kind: 'rect' | 'ellipse' | 'line' | 'text', text?: string) => ({
+      id: 'shape_000001',
+      kind,
+      color: '#E5484D',
+      width: 4,
+      x0: toGrid(0.2),
+      y0: toGrid(0.2),
+      x1: toGrid(0.6),
+      y1: toGrid(0.6),
+      ...(text ? { text } : {}),
+    });
+    // A rectangle on its outline, not inside.
+    expect(shapeHit(shape('rect'), { x: 0.4, y: 0.2 }, 0.01)).toBe(true);
+    expect(shapeHit(shape('rect'), { x: 0.4, y: 0.4 }, 0.01)).toBe(false);
+    // An ellipse on its outline: the left end of its width.
+    expect(shapeHit(shape('ellipse'), { x: 0.2, y: 0.4 }, 0.01)).toBe(true);
+    expect(shapeHit(shape('ellipse'), { x: 0.4, y: 0.4 }, 0.01)).toBe(false);
+    expect(shapeHit(shape('line'), { x: 0.4, y: 0.4 }, 0.01)).toBe(true);
+    expect(shapeHit(shape('line'), { x: 0.4, y: 0.2 }, 0.01)).toBe(false);
+    // A text by its box, above the baseline.
+    const text = { ...shape('text', 'Treno'), width: 40 };
+    expect(shapeHit(text, { x: 0.25, y: 0.19 }, 0.005)).toBe(true);
+    expect(shapeHit(text, { x: 0.25, y: 0.3 }, 0.005)).toBe(false);
   });
 });

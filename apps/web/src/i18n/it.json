@@ -591,7 +591,14 @@
       "none": "—",
       "delete": "Elimina l’inquadratura",
       "close": "Chiudi i dettagli",
-      "actionPlaceholder": "Cosa succede nell’inquadratura"
+      "actionPlaceholder": "Cosa succede nell’inquadratura",
+      "duplicate": "Duplica",
+      "markReady": "Segna come pronta",
+      "comments": "Commenti",
+      "commentsOpen": "Apri i commenti",
+      "commentsNone": "Ancora nessun commento su questa inquadratura.",
+      "commentsCount_one": "{{count}} discussione aperta",
+      "commentsCount_other": "{{count}} discussioni aperte"
     },
     "shot": {
       "ews": "Campo lunghissimo",
@@ -646,7 +653,36 @@
       "done": "Fatto",
       "prev": "Inquadratura precedente",
       "next": "Inquadratura successiva",
-      "full": "Troppi tratti: cancellane qualcuno."
+      "full": "Troppi tratti: cancellane qualcuno.",
+      "shape": "Forme",
+      "text": "Testo",
+      "pan": "Sposta la vista",
+      "shapes": {
+        "rect": "Rettangolo",
+        "ellipse": "Ellisse",
+        "line": "Linea",
+        "arrow": "Freccia"
+      },
+      "textSize": "Dimensione",
+      "textField": "Testo sul disegno",
+      "textPlaceholder": "Scrivi, poi Invio",
+      "fullShapes": "Troppe forme: cancellane qualcuna.",
+      "view": "Vista",
+      "onion": "Onion skin",
+      "onionOf": "Onion skin · {{label}}",
+      "guides": "Guide",
+      "layers": "Livelli",
+      "layerDrawing": "Disegno",
+      "layerReference": "Immagine di riferimento",
+      "items_one": "{{count}} elemento",
+      "items_other": "{{count}} elementi",
+      "reference": "Carica un riferimento",
+      "referenceReplace": "Sostituisci",
+      "opacity": "Opacità {{percent}}%",
+      "zoomIn": "Ingrandisci",
+      "zoomOut": "Riduci",
+      "zoomReset": "Zoom {{percent}}%: torna al 100%",
+      "strip": "Inquadrature della scena"
     },
     "list": {
       "filter": "Filtra le inquadrature",

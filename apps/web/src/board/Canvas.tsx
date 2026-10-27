@@ -1342,6 +1342,11 @@ export function Canvas({
   };
   const panelFrame = frameOf(framePanel);
   const drawnFrame = frameOf(drawing);
+  // Shooting order, for the editor's strip and onion skin; only while a drawing is open.
+  const storyFrames = useMemo(
+    () => (drawing ? storyboardOf([...snap.byId.values()]).flatMap((g) => g.frames) : []),
+    [drawing, snap],
+  );
   const viewedEl = viewing ? snap.byId.get(viewing) : undefined;
   const viewed =
     viewedEl?.type === 'image' ||
@@ -1792,6 +1797,7 @@ export function Canvas({
           <div className="canvas__panel">
             <FramePanel
               store={store}
+              userId={userId}
               frame={panelFrame}
               label={labels.get(panelFrame.id) ?? ''}
               boardAspect={boardAspect}
@@ -1810,6 +1816,12 @@ export function Canvas({
             label={labels.get(drawnFrame.id) ?? ''}
             boardAspect={boardAspect}
             readOnly={readOnly}
+            userId={userId}
+            projectId={projectId}
+            boardId={boardId}
+            frames={storyFrames}
+            labels={labels}
+            onPick={setDrawing}
             onClose={() => setDrawing(null)}
           />
         )}

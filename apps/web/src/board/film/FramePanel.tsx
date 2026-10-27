@@ -1,4 +1,9 @@
-import { deleteElements, type FrameElement, updateElement } from '@inkadra/canvas-core';
+import {
+  deleteElements,
+  duplicateElements,
+  type FrameElement,
+  updateElement,
+} from '@inkadra/canvas-core';
 import {
   ASPECT_RATIOS,
   type AspectRatio,
@@ -7,8 +12,11 @@ import {
   SHOT_SIZES,
 } from '@inkadra/doc-schema';
 import { Button, IconButton } from '@inkadra/ui';
-import { useRef } from 'react';
+import { useContext, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
+import { GuestModeContext } from '../context.ts';
+import { authorName, editableText } from '../review-model.ts';
+import { openComments, useReviews } from '../review-store.ts';
 import { type BoardStore, LOCAL } from '../store.ts';
 import { TagEditor } from '../tags.tsx';
 import { startUpload } from '../uploads.ts';
@@ -27,6 +35,7 @@ export function FramePanel({
   projectId,
   boardId,
   readOnly,
+  userId = null,
   onClose,
   onDraw,
 }: {
@@ -37,6 +46,7 @@ export function FramePanel({
   projectId: string;
   boardId: string;
   readOnly: boolean;
+  userId?: string | null;
   onClose: () => void;
   onDraw: () => void;
 }) {
@@ -64,6 +74,8 @@ export function FramePanel({
             aspect={frame.aspect}
             boardAspect={boardAspect}
             strokes={frame.strokes}
+            shapes={frame.shapes}
+            referenceOpacity={frame.referenceOpacity}
             pixels={640}
           />
           {!readOnly && (
@@ -214,6 +226,39 @@ export function FramePanel({
             onChange={(tags) => set({ tags })}
           />
         </div>
+        <FrameComments elementId={frame.id} />
+        {!readOnly && (
+          <div className="film-panel__actions">
+            <Button
+              icon="copy"
+              onClick={() => {
+                store.undo.stopCapturing();
+                duplicateElements(
+                  store.doc,
+                  [frame.id],
+                  { x: 24, y: 24 },
+                  { userId, origin: LOCAL },
+                );
+                store.undo.stopCapturing();
+              }}
+            >
+              {t('film.frame.duplicate')}
+            </Button>
+            {frame.status !== 'ready' && (
+              <Button
+                icon="check"
+                variant="primary"
+                onClick={() => {
+                  store.undo.stopCapturing();
+                  set({ status: 'ready' });
+                  store.undo.stopCapturing();
+                }}
+              >
+                {t('film.frame.markReady')}
+              </Button>
+            )}
+          </div>
+        )}
         {!readOnly && (
           <Button
             icon="trash"
@@ -248,5 +293,52 @@ export function FramePanel({
         }}
       />
     </aside>
+  );
+}
+
+const PREVIEW_THREADS = 3;
+
+/**
+ * The open comment threads of the frame, newest first, from the board's comments; the full
+ * thread opens in the comments panel. Nothing on the guest page nor while a version is shown.
+ */
+function FrameComments({ elementId }: { elementId: string }) {
+  const { t } = useTranslation();
+  const guest = useContext(GuestModeContext);
+  const available = useReviews((s) => !!s.boardId && !s.preview);
+  const open = useReviews((s) => s.counts.get(elementId)?.open ?? 0);
+  const all = useReviews((s) => s.threads);
+  if (guest || !available) return null;
+  const threads = all
+    .filter((th) => th.elementId === elementId && !th.resolvedAt && !th.deletedAt)
+    .slice(0, PREVIEW_THREADS);
+  return (
+    <section className="film-comments" aria-labelledby={`comments-${elementId}`}>
+      <div className="film-comments__head">
+        <h3 id={`comments-${elementId}`}>{t('film.frame.comments')}</h3>
+        {open > 0 && <span>{t('film.frame.commentsCount', { count: open })}</span>}
+      </div>
+      {threads.length === 0 ? (
+        <p className="film-comments__empty">{t('film.frame.commentsNone')}</p>
+      ) : (
+        <ul>
+          {threads.map((th) => (
+            <li key={th.id}>
+              <button
+                type="button"
+                className="film-comments__thread"
+                onClick={() => openComments({ elementId, threadId: th.id })}
+              >
+                <strong>{authorName(th.author) ?? t('comments.deletedAuthor')}</strong>
+                <span>{editableText(th)}</span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+      <Button variant="ghost" icon="comment" onClick={() => openComments({ elementId })}>
+        {t('film.frame.commentsOpen')}
+      </Button>
+    </section>
   );
 }

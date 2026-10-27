@@ -162,6 +162,41 @@ export const Stroke = z.object({
 });
 export type Stroke = z.infer<typeof Stroke>;
 
+export const MAX_SHAPES = 500;
+export const SHAPE_KINDS = ['rect', 'ellipse', 'line', 'arrow', 'text'] as const;
+
+/**
+ * A shape or a text of a frame drawing, drawn over the strokes. Coordinates are in STROKE_GRID
+ * units like stroke points: the shape spans from (x0, y0) to (x1, y1); a text starts at
+ * (x0, y0) and `width` is its font size, in thousandths of the picture width.
+ */
+export const FrameShape = z.object({
+  id: ElementId,
+  kind: z.enum(SHAPE_KINDS),
+  color: z.string().regex(/^#[0-9A-F]{6}$/),
+  width: z.int().min(1).max(200),
+  x0: GridCoord,
+  y0: GridCoord,
+  x1: GridCoord,
+  y1: GridCoord,
+  text: z.string().max(500).optional(),
+});
+export type FrameShape = z.infer<typeof FrameShape>;
+
+/**
+ * Shapes are read one by one: a shape this client cannot read (a kind added later) is left out
+ * instead of making the whole frame invalid.
+ */
+const FrameShapes = z
+  .array(z.unknown())
+  .max(MAX_SHAPES)
+  .transform((items) =>
+    items.flatMap((item) => {
+      const parsed = FrameShape.safeParse(item);
+      return parsed.success ? [parsed.data] : [];
+    }),
+  );
+
 /** A storyboard frame: a picture (drawn or uploaded) with the data of the shot. */
 export const FrameElement = Base.extend({
   type: z.literal('frame'),
@@ -187,6 +222,15 @@ export const FrameElement = Base.extend({
   status: FrameStatus.optional().describe('Omitted = draft.'),
   approved: z.boolean().optional().describe('Manual approval flag.'),
   strokes: z.array(Stroke).max(MAX_STROKES).optional().describe('Pen drawing, oldest first.'),
+  shapes: FrameShapes.optional().describe(
+    'Shapes and texts over the strokes, oldest first (since version 4; older clients ignore them).',
+  ),
+  referenceOpacity: z
+    .number()
+    .min(0.05)
+    .max(1)
+    .optional()
+    .describe('Opacity of the reference picture under the drawing. Omitted = 1.'),
 });
 
 /** One end of an arrow: attached to an element, or a free point on the canvas. */

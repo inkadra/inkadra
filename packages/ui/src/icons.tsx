@@ -172,6 +172,18 @@ const paths = {
   scene: <path d="M4 9h16v11H4zM4 9l2-5 3 4 3-4 3 4 3-4 2 5" />,
   download: <path d="M12 4v12M7 11l5 5 5-5M4 20h16" />,
   undo: <path d="M9 7L4 12l5 5M4 12h11a5 5 0 0 1 0 10h-2" />,
+  rect: <rect x="4" y="6" width="16" height="12" rx="1" />,
+  ellipse: <ellipse cx="12" cy="12" rx="8" ry="6" />,
+  line: <path d="M5 19L19 5" />,
+  text: <path d="M5 6V4h14v2M12 4v16M9 20h6" />,
+  layers: <path d="M12 3l9 5-9 5-9-5zM3 13l9 5 9-5" />,
+  guides: <path d="M4 4h16v16H4zM9.3 4v16M14.7 4v16M4 9.3h16M4 14.7h16" />,
+  onion: (
+    <>
+      <rect x="3" y="3" width="13" height="13" rx="1.5" strokeDasharray="2 2" />
+      <rect x="8" y="8" width="13" height="13" rx="1.5" />
+    </>
+  ),
   table: <path d="M4 5h16v14H4zM4 10h16M4 15h16M10 5v14" />,
   warning: (
     <>
