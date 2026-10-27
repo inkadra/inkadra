@@ -1,4 +1,5 @@
 // @vitest-environment happy-dom
+import type { Project } from '@inkadra/shared';
 import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { afterEach, expect, it, vi } from 'vitest';
@@ -45,4 +46,17 @@ it('distinguishes an empty board from a failed preview', async () => {
   await act(async () => root.render(<BoardPreview boardId="failed" />));
   expect(host.textContent).toContain('home.preview.unavailable');
   expect(host.textContent).not.toContain('home.preview.empty');
+});
+
+it('preserves customized project emoji in the persisted-preview fallback', async () => {
+  vi.mocked(api.get).mockResolvedValue({
+    assetIds: [],
+    excerpts: [],
+    elementCount: 0,
+    drawing: [],
+  });
+  const project = { icon: { shape: 'diamond', color: 'blue', emoji: '🎬' } } as Project;
+  await act(async () => root.render(<BoardPreview boardId="project" project={project} />));
+  expect(host.querySelector('.home__preview-glyph')?.textContent).toBe('🎬');
+  expect(host.textContent).toContain('home.preview.empty');
 });

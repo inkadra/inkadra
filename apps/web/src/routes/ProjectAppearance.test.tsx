@@ -4,6 +4,7 @@ import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { api } from '../lib/api.ts';
+import { AppContextMenu } from '../menus/AppContextMenu.tsx';
 import { ProjectNavItem } from './ProjectAppearance.tsx';
 import { getCachedProjects, setCachedProjects } from './projects.ts';
 
@@ -30,7 +31,11 @@ afterEach(async () => {
 });
 async function render(p = project) {
   await act(async () =>
-    root.render(<ProjectNavItem project={p} active onClick={(e) => e.preventDefault()} />),
+    root.render(
+      <AppContextMenu>
+        <ProjectNavItem project={p} active onClick={(e) => e.preventDefault()} />
+      </AppContextMenu>,
+    ),
   );
 }
 async function openDialog() {
@@ -51,6 +56,7 @@ it('supports right-click, focuses its action and restores focus on Escape', asyn
   });
   await act(async () => link.dispatchEvent(context));
   expect(context.defaultPrevented).toBe(true);
+  expect(document.querySelector('.app-context-menu')).toBeNull();
   expect(document.activeElement?.getAttribute('role')).toBe('menuitem');
   await act(async () =>
     document.activeElement?.dispatchEvent(
@@ -87,8 +93,10 @@ it.each(['viewer', 'commenter'] as const)('offers no edit actions to %s', async 
   expect(host.querySelector('button')).toBeNull();
   const event = new MouseEvent('contextmenu', { bubbles: true, cancelable: true });
   await act(async () => host.querySelector('a')?.dispatchEvent(event));
-  expect(event.defaultPrevented).toBe(false);
-  expect(document.querySelector('[role="menu"]')).toBeNull();
+  expect(event.defaultPrevented).toBe(true);
+  expect(document.querySelector('.app-context-menu')).not.toBeNull();
+  expect(document.querySelector('.project-navigation__menu')).toBeNull();
+  expect(document.body.textContent).not.toContain('appearance.title');
 });
 it('saves emoji to the server and updates shared cached project identity', async () => {
   const icon = { shape: 'diamond', color: 'blue', emoji: '🎬' };

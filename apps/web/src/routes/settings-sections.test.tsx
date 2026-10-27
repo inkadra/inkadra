@@ -21,6 +21,7 @@ it('identifies all settings pages and localizes headings, descriptions and bread
       'preferences',
       'notifications',
       'workspace',
+      'classifications',
       'instance',
       'providers',
       'members',

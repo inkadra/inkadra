@@ -12,6 +12,8 @@ export function settingsSection(pathname: string, search: string) {
         title: 'admin.notifications',
         lead: 'settings.sectionLead.notifications',
       };
+    case 'classifications':
+      return { id: section, title: 'admin.classifications', lead: 'catalogs.scope' };
     case 'workspace':
       return { id: section, title: 'admin.storage', lead: 'settings.sectionLead.workspace' };
     case 'instance':

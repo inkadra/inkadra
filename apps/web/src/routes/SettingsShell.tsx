@@ -15,7 +15,14 @@ export function SettingsShell({ children }: { children: ReactNode }) {
     location.pathname === '/settings/team'
       ? '/settings/team'
       : section &&
-          ['preferences', 'notifications', 'workspace', 'instance', 'providers'].includes(section)
+          [
+            'preferences',
+            'notifications',
+            'workspace',
+            'classifications',
+            'instance',
+            'providers',
+          ].includes(section)
         ? `/settings?section=${section}`
         : '/settings';
   const item = (key: string, to: string) => (
@@ -43,6 +50,9 @@ export function SettingsShell({ children }: { children: ReactNode }) {
               <optgroup label={t('admin.workspace')}>
                 <option value="/settings/team">{t('admin.members')}</option>
                 <option value="/settings?section=workspace">{t('admin.storage')}</option>
+                <option value="/settings?section=classifications">
+                  {t('admin.classifications')}
+                </option>
               </optgroup>
               <optgroup label={t('admin.instance')}>
                 <option value="/settings?section=instance">{t('admin.branding')}</option>

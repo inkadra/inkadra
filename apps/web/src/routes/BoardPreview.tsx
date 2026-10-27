@@ -36,7 +36,7 @@ export function BoardPreview({ boardId, project }: { boardId: string; project?: 
     <span className="home__cover home__preview">
       {project && (
         <span className="home__preview-glyph" aria-hidden="true">
-          <ProjectGlyph shape={project.icon.shape} color={project.icon.color} />
+          <ProjectGlyph {...project.icon} />
         </span>
       )}
       {preview && preview.assetIds.length > 0 && (

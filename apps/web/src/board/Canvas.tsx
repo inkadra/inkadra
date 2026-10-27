@@ -105,6 +105,7 @@ import { NoteSideSheet } from './NoteSideSheet.tsx';
 import { fillFragment, isEmpty } from './note.tsx';
 import { PresenceLayer } from './PresenceLayer.tsx';
 import { type Peer, useLocalPresence } from './presence.ts';
+import { canvasElementId, ResizeHandles } from './ResizeHandles.tsx';
 import { openComments } from './review-store.ts';
 import { commandFor, insideDialog, isMac, isTyping } from './shortcuts.ts';
 import { LOCAL } from './store.ts';
@@ -716,8 +717,8 @@ export function Canvas({
   function onPointerDown(e: ReactPointerEvent<HTMLDivElement>) {
     if (e.button === 2) return;
     const target = e.target as HTMLElement;
-    const elNode = target.closest<HTMLElement>('[data-el]');
-    if (!elNode && target.closest('[data-chrome]')) return;
+    const targetId = canvasElementId(target);
+    if (!targetId && target.closest('[data-chrome]')) return;
     setMenu(null);
     const p = screenPoint(e);
     const pan = e.button === 1 || tool === 'hand' || spaceDown.current;
@@ -731,7 +732,7 @@ export function Canvas({
 
     if (tool === 'arrow' && !readOnly) {
       if (editing) setEditing(null);
-      const from = elNode ? snap.byId.get(elNode.dataset.el ?? '') : undefined;
+      const from = targetId ? snap.byId.get(targetId) : undefined;
       const fromId = from && from.parent === null && from.type !== 'arrow' ? from.id : null;
       gesture.current = { kind: 'arrow', start: screenToWorld(vp.current, p), fromId };
       rootRef.current?.setPointerCapture(e.pointerId);
@@ -739,7 +740,7 @@ export function Canvas({
       return;
     }
 
-    if (!elNode) {
+    if (!targetId) {
       if (editing) setEditing(null);
       const base = e.shiftKey ? new Set(selection) : new Set<string>();
       if (!e.shiftKey) setSelection(EMPTY_SET);
@@ -748,7 +749,7 @@ export function Canvas({
       return;
     }
 
-    const id = elNode.dataset.el as string;
+    const id = targetId;
     const el = snap.byId.get(id);
     if (!el) return;
     const interactive = target.closest(
@@ -795,7 +796,8 @@ export function Canvas({
     }
     const ids = [...next].filter((i) => !snap.byId.get(i)?.locked);
     if (!ids.includes(id)) return;
-    const r = elNode.getBoundingClientRect();
+    const r = target.closest<HTMLElement>('[data-el], [data-resize-el]')?.getBoundingClientRect();
+    if (!r) return;
     gesture.current = {
       kind: 'move',
       start: p,
@@ -1036,23 +1038,23 @@ export function Canvas({
     const target =
       (document.elementFromPoint(e.clientX, e.clientY) as HTMLElement | null) ??
       (e.target as HTMLElement);
-    const elNode = target.closest<HTMLElement>('[data-el]');
-    if (!elNode) {
+    const targetId = canvasElementId(target);
+    if (!targetId) {
       if (target.closest('[data-chrome]') || readOnly) return;
       const at = toWorld(e.clientX, e.clientY);
       void add('note', { x: at.x - 20, y: at.y - 20 });
       return;
     }
-    const el = snap.byId.get(elNode.dataset.el as string);
+    const el = snap.byId.get(targetId);
     if (el && editing !== el.id) openElement(el);
   }
 
   function onContextMenu(e: ReactMouseEvent<HTMLDivElement>) {
     const target = e.target as HTMLElement;
-    if (target.closest('[data-chrome]') && !target.closest('[data-el]')) return;
+    if (target.closest('[data-chrome]') && !canvasElementId(target)) return;
     if (isTyping(target)) return;
     e.preventDefault();
-    const id = target.closest<HTMLElement>('[data-el]')?.dataset.el;
+    const id = canvasElementId(target);
     if (id && !selection.has(id)) select([id]);
     if (!id) setSelection(EMPTY_SET);
     const p = screenPoint(e);
@@ -1708,29 +1710,7 @@ export function Canvas({
               )
               .map((el) => {
                 const rect = overlay.resize?.id === el.id ? overlay.resize : liveRect(el);
-                return (
-                  <div
-                    key={el.id}
-                    className="canvas__resize-handles"
-                    data-el={el.id}
-                    style={{
-                      left: rect.x,
-                      top: rect.y,
-                      width: rect.w,
-                      height: rect.h,
-                      ['--zoom' as string]: viewport.zoom,
-                    }}
-                  >
-                    {(['nw', 'ne', 'sw', 'se'] as const).map((corner) => (
-                      <span
-                        key={corner}
-                        className={`card__handle card__handle--${corner}`}
-                        data-handle={corner}
-                        aria-hidden="true"
-                      />
-                    ))}
-                  </div>
-                );
+                return <ResizeHandles key={el.id} id={el.id} rect={rect} zoom={viewport.zoom} />;
               })}
           <PresenceLayer peers={peers} zoom={viewport.zoom} rectOf={peerRect} />
           {overlay.ghost && (
