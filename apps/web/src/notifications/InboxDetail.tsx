@@ -28,6 +28,12 @@ export function InboxDetail(props: DetailProps) {
     notificationId?: string;
     threadId?: string;
   }>({ version: 0 });
+  // A stale threadId from the previous notification must never pre-select a thread.
+  const [lastNotificationId, setLastNotificationId] = useState(props.notification?.id);
+  if (lastNotificationId !== props.notification?.id) {
+    setLastNotificationId(props.notification?.id);
+    setRefresh({ version: 0 });
+  }
   const refreshThreadId =
     refresh.notificationId === props.notification?.id ? refresh.threadId : undefined;
   return (
@@ -332,7 +338,7 @@ function InboxDetailContent({
           <div className="inbox-detail__meta">
             {notification.reviewStatus && (
               <span>
-                <span className="inbox-detail__meta-label">{t('notifications.audience')}:</span>
+                <span className="inbox-detail__meta-label">{t('notifications.reviewStatus')}:</span>
                 <span className="inbox-pill inbox-pill--resolved">
                   {t(`review.status.${reviewKey(notification.reviewStatus)}`)}
                 </span>
@@ -351,7 +357,7 @@ function InboxDetailContent({
               </span>
             )}
           </div>
-          {otherThreads.length > 0 && (
+          {notification.elementId && otherThreads.length > 0 && (
             <div className="inbox-detail__other-comments">
               <div className="inbox-detail__other-comments-title">
                 {t('notifications.otherComments')}
@@ -536,7 +542,7 @@ function InboxDetailContent({
                     className="inbox-detail__composer-textarea"
                     value={replyText}
                     onChange={(e) => setReplyText(e.target.value)}
-                    onInput={(e) => setReplyText((e.target as HTMLTextAreaElement).value)}
+                    aria-label={t('comments.reply')}
                     placeholder={t('notifications.replyPlaceholder')}
                     rows={2}
                     onKeyDown={(e) => {

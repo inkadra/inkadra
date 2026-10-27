@@ -1265,7 +1265,7 @@
       "approvals": "Approvals",
       "assigned": "Assigned to me"
     },
-    "readAllYesterday": "You've read everything up to yesterday",
+    "reviewStatus": "Review",
     "filter": "Inbox filter",
     "loadedOnly": "Filters apply to loaded notifications. Show more to search older notifications.",
     "openInBoard": "Open in board",
@@ -1275,7 +1275,6 @@
     "statusResolved": "Resolved",
     "internalNote": "Internal note",
     "visibleToClient": "Visible to client",
-    "audience": "Visibility",
     "otherComments": "Other comments on this frame",
     "noNotificationSelected": "Select a notification to view details",
     "replyPlaceholder": "Reply, @ to mention…",

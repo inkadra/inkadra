@@ -1265,7 +1265,7 @@
       "approvals": "Approvazioni",
       "assigned": "Assegnati a me"
     },
-    "readAllYesterday": "Hai letto tutto fino a ieri",
+    "reviewStatus": "Revisione",
     "filter": "Filtro inbox",
     "loadedOnly": "I filtri si applicano alle notifiche caricate. Mostra altro per cercare tra le notifiche precedenti.",
     "openInBoard": "Apri nel board",
@@ -1275,7 +1275,6 @@
     "statusResolved": "Risolto",
     "internalNote": "Nota interna",
     "visibleToClient": "Visibile al cliente",
-    "audience": "Visibilità",
     "otherComments": "Altri commenti su questo frame",
     "noNotificationSelected": "Seleziona una notifica per visualizzare i dettagli",
     "replyPlaceholder": "Rispondi, @ per menzionare…",

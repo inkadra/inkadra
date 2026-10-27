@@ -19,6 +19,9 @@ import './notifications.css';
 
 const POLL_MS = 60_000;
 
+/** Pathless notifications render disabled: keep them out of selection and keyboard order. */
+const isNavigable = (n: Notification) => Boolean(notificationPath(n));
+
 /** Hook to fetch and periodically poll the unread notification count. */
 export function useUnreadCount(): [number, () => Promise<void>] {
   const [unread, setUnread] = useState(0);
@@ -115,7 +118,7 @@ export function NotificationBell({
 
 export function initials(name: string | null | undefined): string {
   if (!name) return 'IN';
-  const parts = name.trim().split(/\\s+/);
+  const parts = name.trim().split(/\s+/);
   if (parts.length >= 2) {
     return ((parts[0]?.[0] ?? '') + (parts[1]?.[0] ?? '')).toUpperCase();
   }
@@ -219,6 +222,26 @@ export function NotificationList({
     [onCount],
   );
 
+  // Arrow navigation batches reads: only the item where scrolling stops is marked, ~400 ms later.
+  const readTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const clearReadTimer = useCallback(() => {
+    if (readTimer.current) {
+      clearTimeout(readTimer.current);
+      readTimer.current = null;
+    }
+  }, []);
+  const markReadDebounced = useCallback(
+    (id: string) => {
+      clearReadTimer();
+      readTimer.current = setTimeout(() => {
+        readTimer.current = null;
+        void markRead(id).catch(() => setActionError(true));
+      }, 400);
+    },
+    [clearReadTimer, markRead],
+  );
+  useEffect(() => clearReadTimer, [clearReadTimer]);
+
   const markAll = async () => {
     setActionError(false);
     try {
@@ -236,13 +259,13 @@ export function NotificationList({
   const filteredItems = filterNotifications(items, filter);
   const groups = groupByDay(filteredItems, (d) => dayLabel(d, new Date(), i18n.language, t));
   const anyUnread = unread > 0;
-  const tabStopId = filteredItems.some((n) => n.id === focusedId)
-    ? focusedId
-    : filteredItems.some((n) => n.id === selectedId)
-      ? selectedId
-      : filteredItems[0]?.id;
+  // Pathless notifications render disabled: they stay out of the roving tab stop.
+  const tabStopId =
+    [focusedId, selectedId].find(
+      (id) => id !== undefined && filteredItems.some((n) => n.id === id && isNavigable(n)),
+    ) ?? filteredItems.find(isNavigable)?.id;
 
-  // Mark read on open when selecting or when first item loads on desktop
+  // Mark read on open when selecting or when first enabled item loads on desktop
   useEffect(() => {
     if (
       fixed &&
@@ -250,7 +273,7 @@ export function NotificationList({
       filteredItems.length > 0 &&
       (!selectedId || !filteredItems.some((n) => n.id === selectedId))
     ) {
-      const first = filteredItems[0];
+      const first = filteredItems.find(isNavigable);
       if (first) {
         setSelectedId(first.id);
         if (!first.readAt) {
@@ -261,10 +284,15 @@ export function NotificationList({
   }, [fixed, mobile, filteredItems, selectedId, markRead]);
 
   const selectNotification = useCallback(
-    (n: Notification) => {
+    (n: Notification, options?: { deferRead?: boolean }) => {
       setSelectedId(n.id);
       if (!n.readAt) {
-        void markRead(n.id).catch(() => setActionError(true));
+        if (options?.deferRead) {
+          markReadDebounced(n.id);
+        } else {
+          clearReadTimer();
+          void markRead(n.id).catch(() => setActionError(true));
+        }
       }
       if (typeof window !== 'undefined' && window.matchMedia('(width < 768px)').matches) {
         const path = notificationPath(n);
@@ -274,7 +302,7 @@ export function NotificationList({
         }
       }
     },
-    [markRead, onNavigate, navigate],
+    [clearReadTimer, markRead, markReadDebounced, onNavigate, navigate],
   );
 
   const selectedNotification = filteredItems.find((n) => n.id === selectedId) ?? null;
@@ -293,28 +321,40 @@ export function NotificationList({
           onClose();
           return;
         }
+        if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
+        e.preventDefault();
+        // Enter uses the focused button's native click, including detail and action buttons.
         const target = e.target as HTMLElement;
-        if (!target.matches('button[data-notification-id]')) return;
-        if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
-          e.preventDefault();
-          const currentIndex = filteredItems.findIndex(
-            (n) => n.id === target.dataset.notificationId,
-          );
-          const step = e.key === 'ArrowDown' ? 1 : -1;
-          const nextIndex = Math.max(0, Math.min(filteredItems.length - 1, currentIndex + step));
-          const nextItem = filteredItems[nextIndex];
-          if (nextItem) {
-            setFocusedId(nextItem.id);
-            const el = [
-              ...(panel.current?.querySelectorAll<HTMLButtonElement>('[data-notification-id]') ??
-                []),
-            ].find((button) => button.dataset.notificationId === nextItem.id);
-            el?.focus();
-            el?.scrollIntoView({ block: 'nearest' });
-            if (fixed && !mobile) selectNotification(nextItem);
+        let currentIndex: number;
+        if (target === panel.current) {
+          // Focus is on the panel itself: ArrowDown enters the list, ArrowUp enters from the end.
+          currentIndex = e.key === 'ArrowDown' ? -1 : filteredItems.length;
+        } else {
+          if (!target.matches('button[data-notification-id]')) return;
+          currentIndex = filteredItems.findIndex((n) => n.id === target.dataset.notificationId);
+          if (currentIndex === -1) return;
+        }
+        const step = e.key === 'ArrowDown' ? 1 : -1;
+        let nextIndex: number | null = null;
+        for (let i = currentIndex + step; i >= 0 && i < filteredItems.length; i += step) {
+          const candidate = filteredItems[i];
+          if (candidate && isNavigable(candidate)) {
+            nextIndex = i;
+            break;
           }
         }
-        // Enter uses the focused button's native click, including detail and action buttons.
+        const nextItem = nextIndex === null ? undefined : filteredItems[nextIndex];
+        if (nextItem) {
+          setFocusedId(nextItem.id);
+          const buttons =
+            panel.current?.querySelectorAll<HTMLButtonElement>('[data-notification-id]');
+          const el = [...(buttons ?? [])].find(
+            (button) => button.dataset.notificationId === nextItem.id,
+          );
+          el?.focus();
+          el?.scrollIntoView({ block: 'nearest' });
+          if (fixed && !mobile) selectNotification(nextItem, { deferRead: true });
+        }
       }}
       onKeyUp={(e) => e.stopPropagation()}
     >
@@ -503,12 +543,6 @@ export function NotificationList({
             <p role="alert" className="review-error notifications__status">
               {t('notifications.actionError')}
             </p>
-          )}
-          {fixed && (
-            <div className="notifications-read-banner">
-              <Icon name="check" size={16} style={{ color: '#9FE0B4' }} />
-              {t('notifications.readAllYesterday')}
-            </div>
           )}
           {next && state === 'ready' && (
             <Button variant="ghost" onClick={() => void load(next)}>

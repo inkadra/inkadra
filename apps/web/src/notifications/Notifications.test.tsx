@@ -4,7 +4,7 @@ import { createRoot } from 'react-dom/client';
 import { MemoryRouter } from 'react-router';
 import { beforeEach, expect, it, vi } from 'vitest';
 import { api } from '../lib/api.ts';
-import { NotificationList } from './Notifications.tsx';
+import { initials, NotificationList } from './Notifications.tsx';
 
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (key: string) => key, i18n: { language: 'en' } }),
@@ -27,6 +27,14 @@ const baseNotification = {
 
 beforeEach(() => {
   vi.clearAllMocks();
+});
+
+it('builds initials from the first two words, ignoring extra whitespace', () => {
+  expect(initials('Giulia Bianchi')).toBe('GB');
+  expect(initials('  Giulia   Bianchi ')).toBe('GB');
+  expect(initials('Laura')).toBe('LA');
+  expect(initials(null)).toBe('IN');
+  expect(initials('')).toBe('IN');
 });
 
 it('keeps the API unread count across pages and excludes comments from mentions', async () => {
@@ -200,6 +208,7 @@ it('supports keyboard navigation with arrows, Enter, and Escape', async () => {
   vi.mocked(api.post).mockResolvedValue({});
 
   const onClose = vi.fn();
+  vi.useFakeTimers();
   try {
     await act(async () =>
       root.render(
@@ -225,7 +234,9 @@ it('supports keyboard navigation with arrows, Enter, and Escape', async () => {
         ?.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }));
     });
 
-    // Selecting unread item marks it read
+    // Selecting unread item marks it read only once scrolling stops (~400 ms debounce)
+    expect(api.post).not.toHaveBeenCalled();
+    await act(async () => vi.advanceTimersByTime(400));
     expect(api.post).toHaveBeenCalledWith('/me/notifications/n2/read', {});
 
     // Press Escape to close
@@ -235,6 +246,7 @@ it('supports keyboard navigation with arrows, Enter, and Escape', async () => {
     expect(onClose).toHaveBeenCalled();
   } finally {
     await act(async () => root.unmount());
+    vi.useRealTimers();
   }
 });
 
@@ -423,5 +435,69 @@ it('keeps Enter on action buttons and moves list focus with a roving tab stop', 
   } finally {
     await act(async () => root.unmount());
     host.remove();
+  }
+});
+
+it('skips pathless items, focuses the first enabled item from the panel and debounces mark-read', async () => {
+  vi.useFakeTimers();
+  const host = document.createElement('div');
+  document.body.append(host);
+  const root = createRoot(host);
+  const items = [
+    { ...baseNotification, id: 'pathless', projectId: null, readAt: null },
+    { ...baseNotification, id: 'n1', readAt: null },
+    { ...baseNotification, id: 'n2', readAt: null },
+  ];
+  vi.mocked(api.get).mockImplementation((path: string) =>
+    Promise.resolve(
+      path.startsWith('/me/notifications') ? { items, nextCursor: null } : { items: [] },
+    ),
+  );
+  vi.mocked(api.post).mockResolvedValue({});
+  const onCount = vi.fn().mockResolvedValue(undefined);
+  try {
+    await act(async () =>
+      root.render(
+        <MemoryRouter>
+          <NotificationList
+            fixed
+            unread={2}
+            onClose={vi.fn()}
+            onNavigate={vi.fn()}
+            onCount={onCount}
+          />
+        </MemoryRouter>,
+      ),
+    );
+    const pathless = host.querySelector<HTMLButtonElement>('[data-notification-id="pathless"]')!;
+    const first = host.querySelector<HTMLButtonElement>('[data-notification-id="n1"]')!;
+    const second = host.querySelector<HTMLButtonElement>('[data-notification-id="n2"]')!;
+    expect(pathless.disabled).toBe(true);
+    expect(pathless.tabIndex).toBe(-1);
+    expect(first.tabIndex).toBe(0);
+
+    // ArrowDown on the panel enters the list at the first enabled item
+    const dialog = host.querySelector('[role="dialog"]')!;
+    await act(async () => {
+      (dialog as HTMLElement).focus();
+      dialog.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }));
+    });
+    expect(document.activeElement).toBe(first);
+    expect(second.tabIndex).toBe(-1);
+
+    // Arrow navigation defers mark-read: no POST while scrolling, one ~400 ms after stopping
+    await act(async () => {
+      first.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }));
+    });
+    expect(document.activeElement).toBe(second);
+    expect(api.post).toHaveBeenCalledTimes(1);
+    expect(api.post).toHaveBeenCalledWith('/me/notifications/n1/read', {});
+    await act(async () => vi.advanceTimersByTime(400));
+    expect(api.post).toHaveBeenCalledTimes(2);
+    expect(api.post).toHaveBeenLastCalledWith('/me/notifications/n2/read', {});
+  } finally {
+    await act(async () => root.unmount());
+    host.remove();
+    vi.useRealTimers();
   }
 });

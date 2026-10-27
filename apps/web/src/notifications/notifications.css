@@ -169,19 +169,6 @@
   max-width: 170px;
 }
 
-.notifications-read-banner {
-  margin: auto 16px 16px 16px;
-  padding: 12px;
-  border-radius: 10px;
-  border: 1px dashed #26262a;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  font-size: 12px;
-  color: #808086;
-  flex: none;
-}
-
 .notifications {
   position: absolute;
   top: calc(100% + 8px);
@@ -413,23 +400,6 @@
   gap: 14px;
   flex: none;
 }
-.inbox-detail__preview-box {
-  position: relative;
-  width: 100%;
-  aspect-ratio: 2.39;
-  background: #1a1a1d;
-  border-radius: 10px;
-  border: 1px solid #26262a;
-  overflow: hidden;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.inbox-detail__preview-svg {
-  display: block;
-  width: 100%;
-  height: 100%;
-}
 .inbox-detail__pin {
   position: absolute;
   transform: translate(-50%, -50%);
@@ -577,28 +547,6 @@
   display: flex;
   align-items: center;
   gap: 8px;
-}
-.inbox-detail__audience-tabs {
-  display: inline-flex;
-  border-radius: 8px;
-  background: #1c1c1f;
-  padding: 2px;
-  gap: 2px;
-}
-.inbox-detail__audience-tab {
-  padding: 4px 10px;
-  border-radius: 6px;
-  font-size: 11px;
-  font-weight: 500;
-  color: #808086;
-  border: 0;
-  background: transparent;
-  font-family: inherit;
-  cursor: pointer;
-}
-.inbox-detail__audience-tab.is-active {
-  background: #2a2a2e;
-  color: #ededed;
 }
 .inbox-pill {
   font-size: 11px;

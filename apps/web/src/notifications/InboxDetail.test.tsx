@@ -12,13 +12,13 @@ vi.mock('react-i18next', () => ({
 }));
 vi.mock('../lib/api.ts', () => ({ api: { get: vi.fn(), post: vi.fn() } }));
 
-const notification = (id: string) =>
+const notification = (id: string, elementId: string | null = null) =>
   ({
     id,
     boardId: 'b',
     threadId: id,
     commentId: id,
-    elementId: null,
+    elementId,
     createdAt: '2026-10-25T11:00:00Z',
     type: 'comment',
   }) as Notification;
@@ -46,11 +46,15 @@ function deferred<T>() {
 }
 let host: HTMLDivElement;
 let root: ReturnType<typeof createRoot>;
-const render = async (id: string) =>
+const render = async (id: string, elementId: string | null = null) =>
   act(async () =>
     root.render(
       <MemoryRouter>
-        <InboxDetail notification={notification(id)} onNavigate={vi.fn()} onCount={vi.fn()} />
+        <InboxDetail
+          notification={notification(id, elementId)}
+          onNavigate={vi.fn()}
+          onCount={vi.fn()}
+        />
       </MemoryRouter>,
     ),
   );
@@ -210,6 +214,20 @@ it('surfaces failed loads and mutations with retry, and refreshes the detail', a
   expect(host.querySelector('.inbox-detail__thread-messages')?.textContent).toContain('updated');
 });
 
+it('hides "other comments" when the notification is not tied to a frame', async () => {
+  vi.mocked(api.get).mockImplementation((path) =>
+    Promise.resolve(
+      path === '/boards/b'
+        ? { myRole: 'editor' }
+        : { items: [thread('a'), thread('b')], nextCursor: null },
+    ),
+  );
+  await render('a', 'el');
+  expect(host.querySelector('.inbox-detail__other-comments')).not.toBeNull();
+  await render('b');
+  expect(host.querySelector('.inbox-detail__other-comments')).toBeNull();
+});
+
 it('removes loaded A controls while B is pending and refreshes the selected sibling', async () => {
   const pending = deferred<{ items: CommentThread[]; nextCursor: null }>();
   let loading = false;
@@ -220,10 +238,10 @@ it('removes loaded A controls while B is pending and refreshes the selected sibl
         ? pending.promise
         : Promise.resolve({ items: [thread('a'), thread('b')], nextCursor: null }),
   );
-  await render('a');
+  await render('a', 'el');
   expect(host.querySelector('textarea')).not.toBeNull();
   loading = true;
-  await render('b');
+  await render('b', 'el');
   expect(host.querySelector('textarea')).toBeNull();
   expect(host.querySelector('.inbox-detail__resolve-btn')).toBeNull();
   await act(async () => pending.resolve({ items: [thread('a'), thread('b')], nextCursor: null }));
