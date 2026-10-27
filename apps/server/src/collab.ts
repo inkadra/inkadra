@@ -66,10 +66,12 @@ export function createCollabServer(deps: {
     }
     const session = await auth.api.getSession({ headers });
     if (!session) return null;
+    const [owner] = await db.select().from(user).where(eq(user.id, session.user.id));
+    if (!owner || owner.deactivatedAt) return null;
     return {
       actor: {
         id: session.user.id,
-        role: (session.user as { role?: string }).role === 'admin' ? 'admin' : 'member',
+        role: owner.role,
       },
       sessionId: session.session.id,
     };
@@ -108,7 +110,9 @@ export function createCollabServer(deps: {
         const ctx = connection.context;
         if (!ctx?.actor) continue;
         try {
-          if (!(await stillSignedIn(ctx, now))) {
+          const [owner] = await db.select().from(user).where(eq(user.id, ctx.actor.id));
+          if (owner) ctx.actor.role = owner.role;
+          if (!owner || owner.deactivatedAt || !(await stillSignedIn(ctx, now))) {
             log.info({ boardId: ctx.boardId }, 'collab connection closed: signed out');
             connection.close({ code: 4401, reason: 'Unauthorized' });
             continue;

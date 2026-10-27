@@ -1,8 +1,10 @@
 import { AUTH_PREFIX } from '@inkadra/shared';
+import { eq } from 'drizzle-orm';
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import type { Actor } from '../access.ts';
 import { type Auth, CLIENT_IP_HEADER } from '../auth.ts';
 import type { Database } from '../db/client.ts';
+import { user } from '../db/schema.ts';
 import { actorFromToken, bearerToken } from '../tokens.ts';
 import { HttpError } from './errors.ts';
 
@@ -54,15 +56,24 @@ export async function requireActor(auth: Auth, req: FastifyRequest, db: Database
   }
   const session = await auth.api.getSession({ headers: toHeaders(req) });
   if (!session) throw new HttpError('unauthorized', 'Sign in to continue.');
-  const role = (session.user as { role?: string }).role === 'admin' ? 'admin' : 'member';
-  return { id: session.user.id, role };
+  const [owner] = await db
+    .select({ id: user.id, role: user.role, deactivatedAt: user.deactivatedAt })
+    .from(user)
+    .where(eq(user.id, session.user.id));
+  if (!owner || owner.deactivatedAt) throw new HttpError('unauthorized', 'Account deactivated.');
+  return { id: owner.id, role: owner.role };
 }
 
 /** Like requireActor, for account-level actions that a token must not do. */
-export async function requireSession(auth: Auth, req: FastifyRequest) {
+export async function requireSession(auth: Auth, req: FastifyRequest, db: Database) {
   if (bearerToken(req.headers.authorization))
     throw new HttpError('forbidden', 'Not available with a token. Sign in on the web.');
   const session = await auth.api.getSession({ headers: toHeaders(req) });
   if (!session) throw new HttpError('unauthorized', 'Sign in to continue.');
+  const [owner] = await db
+    .select({ deactivatedAt: user.deactivatedAt })
+    .from(user)
+    .where(eq(user.id, session.user.id));
+  if (!owner || owner.deactivatedAt) throw new HttpError('unauthorized', 'Account deactivated.');
   return session;
 }
