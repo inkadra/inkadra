@@ -95,7 +95,7 @@ it('keeps a project and successful invites on failure; retries only missing invi
   };
   vi.mocked(api.post)
     .mockResolvedValueOnce(p)
-    .mockResolvedValueOnce(invitation)
+    .mockResolvedValueOnce({ status: 'invited', invitation })
     .mockRejectedValueOnce(new Error('offline'));
   await act(async () =>
     host
@@ -105,7 +105,10 @@ it('keeps a project and successful invites on failure; retries only missing invi
   await act(async () => advance());
   expect(host.textContent).toContain('onboarding.partialError');
   expect(host.querySelector<HTMLInputElement>('input[readonly]')?.value).toBe(invitation.url);
-  vi.mocked(api.post).mockResolvedValueOnce({ ...invitation, id: 'i2', email: 'two@example.com' });
+  vi.mocked(api.post).mockResolvedValueOnce({
+    status: 'added',
+    entry: { user: { id: 'u2', name: 'Two', email: 'two@example.com' } },
+  });
   await act(async () =>
     host
       .querySelector('form')
@@ -117,6 +120,8 @@ it('keeps a project and successful invites on failure; retries only missing invi
       .mocked(api.post)
       .mock.calls.filter(([, body]) => (body as { email?: string }).email === 'one@example.com'),
   ).toHaveLength(1);
+  expect(host.textContent).toContain('one@example.com · onboarding.copyLink');
+  expect(host.textContent).toContain('share.added');
   await act(async () => button('projectsPage.open')?.click());
   expect(created).toHaveBeenCalledWith(p);
 });

@@ -1,5 +1,5 @@
 import {
-  type Invitation,
+  type InvitationResult,
   type Project,
   type ProjectRole,
   type ProjectType,
@@ -66,7 +66,7 @@ export function ProjectSetupForm({
   const [email, setEmail] = useState('');
   const [role, setRole] = useState<ProjectRole>('editor');
   const [invites, setInvites] = useState<Array<{ email: string; role: ProjectRole }>>([]);
-  const [results, setResults] = useState<Invitation[]>([]);
+  const [results, setResults] = useState<InvitationResult[]>([]);
   const [busy, setBusy] = useState(false);
   const [created, setCreated] = useState<Project | null>(null);
   const [seeding, setSeeding] = useState<number | null>(null);
@@ -75,7 +75,7 @@ export function ProjectSetupForm({
     project: Project | null;
     boards: CreatedSetupBoard[];
     seeded: number;
-    invitations: Invitation[];
+    invitations: InvitationResult[];
   }>({ project: null, boards: [], seeded: 0, invitations: [] });
   useEffect(() => {
     onBusyChange?.(busy);
@@ -100,7 +100,7 @@ export function ProjectSetupForm({
         const invite = invites[i];
         if (!invite) continue;
         p.invitations.push(
-          await api.post<Invitation>('/invitations', {
+          await api.post<InvitationResult>('/invitations', {
             kind: 'email',
             projectId: p.project.id,
             ...invite,
@@ -266,20 +266,27 @@ export function ProjectSetupForm({
       {results.length > 0 && (
         <section aria-label={t('onboarding.inviteResults')}>
           <h2>{t('onboarding.inviteResults')}</h2>
-          {results.map((invite) => (
-            <p key={invite.id}>
-              {invite.email} · {t(invite.emailSent ? 'onboarding.sent' : 'onboarding.copyLink')}{' '}
-              {invite.url && (
-                <input
-                  className="ink-input"
-                  aria-label={t('onboarding.linkFor', { email: invite.email })}
-                  value={invite.url}
-                  readOnly
-                  onFocus={(e) => e.target.select()}
-                />
-              )}
-            </p>
-          ))}
+          {results.map((result) => {
+            if (result.status === 'added') {
+              const { user } = result.entry;
+              return <p key={user.id}>{t('share.added', { name: user.name || user.email })}</p>;
+            }
+            const invite = result.invitation;
+            return (
+              <p key={invite.id}>
+                {invite.email} · {t(invite.emailSent ? 'onboarding.sent' : 'onboarding.copyLink')}{' '}
+                {invite.url && (
+                  <input
+                    className="ink-input"
+                    aria-label={t('onboarding.linkFor', { email: invite.email })}
+                    value={invite.url}
+                    readOnly
+                    onFocus={(e) => e.target.select()}
+                  />
+                )}
+              </p>
+            );
+          })}
         </section>
       )}
       <DialogActions>
