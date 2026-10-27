@@ -28,7 +28,7 @@ import { MoodboardView } from './film/MoodboardView.tsx';
 import { ScheduleView } from './film/ScheduleView.tsx';
 import { ShotList } from './film/ShotList.tsx';
 import { StoryboardView } from './film/StoryboardView.tsx';
-import { EditingLine, editingPeople, onlineCount, SyncStatus } from './header-status.tsx';
+import { boardPeople, EditingLine, editingPeople, SyncStatus } from './header-status.tsx';
 import { RestoredToast } from './RestoredToast.tsx';
 import { type VersionPreview, VersionsDialog } from './VersionsDialog.tsx';
 import {
@@ -41,7 +41,7 @@ import {
   viewIcon,
 } from './views.ts';
 import './film/film.css';
-import { type Peer, uniquePeople, usePeers } from './presence.ts';
+import { type Peer, usePeers } from './presence.ts';
 import { projectLanding } from './project-landing.ts';
 import { ShareDialog } from './ShareDialog.tsx';
 import { isStartTemplate, seedStoryboard, seedTemplate, templateLabels } from './templates.ts';
@@ -338,6 +338,8 @@ function BoardScreen({
   );
   const crumbTitles = useMemo(() => crumbs.map((c) => c.title), [crumbs]);
 
+  const selfId = user?.id ?? null;
+
   const header = useMemo(
     () => (
       <>
@@ -402,7 +404,7 @@ function BoardScreen({
           ))}
         </div>
         <span className="ink-header__spacer" />
-        {conn && <BoardPresence conn={conn} />}
+        {conn && <BoardPresence conn={conn} selfId={selfId} />}
         {editable && (
           <>
             <IconButton
@@ -474,6 +476,7 @@ function BoardScreen({
       handleRenameCurrentBoard,
       boardId,
       projectRole,
+      selfId,
     ],
   );
   useHeaderContent(header);
@@ -613,10 +616,9 @@ const MAX_AVATARS = 5;
  * The connection and the people on the board: how many are online and when our last change
  * was saved, who is writing in which card, and an avatar per person ringed in their colour.
  */
-function BoardPresence({ conn }: { conn: BoardConnection }) {
+function BoardPresence({ conn, selfId }: { conn: BoardConnection; selfId: string | null }) {
   const { t } = useTranslation();
-  const people = uniquePeople(usePeers(conn.provider));
-  const writing = people.filter((p) => p.editing !== null);
+  const { people, online, writing } = boardPeople(usePeers(conn.provider), selfId);
   const shown = people.slice(0, MAX_AVATARS);
   const name = (p: Peer) =>
     p.readOnly ? t('board.peers.viewing', { name: p.user.name }) : p.user.name;
@@ -627,7 +629,7 @@ function BoardPresence({ conn }: { conn: BoardConnection }) {
         readOnly={conn.readOnly}
         pending={conn.pending}
         savedAt={conn.savedAt}
-        online={onlineCount(people)}
+        online={online}
       />
       {writing.length > 0 && <EditingPeople people={writing} store={conn.store} />}
       {people.length > 0 && (

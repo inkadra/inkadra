@@ -1,4 +1,4 @@
-import { HocuspocusProvider } from '@hocuspocus/provider';
+import { HocuspocusProvider, type onUnsyncedChangesParameters } from '@hocuspocus/provider';
 import { boardDocName, readBoardNotice } from '@inkadra/doc-schema';
 import { COLLAB_PATH } from '@inkadra/shared/constants';
 import { useEffect, useState } from 'react';
@@ -36,6 +36,47 @@ function collabUrl(): string {
   return `${scheme}://${window.location.host}${COLLAB_PATH}`;
 }
 
+export interface SaveState {
+  /** The provider's count of changes the server has not confirmed. */
+  pending: number;
+  /** When the server last confirmed a change made here; null until it does. */
+  savedAt: number | null;
+}
+
+/**
+ * Follows what the server has confirmed of the changes made in this tab. The provider's
+ * unsynced count is not enough on its own: every handshake (first connection, reconnection,
+ * forced sync) sets it to one and the server's reply brings it back to zero, edits or not. So
+ * a return to zero is a save only when this tab changed the document since the last save;
+ * edits made offline count, because the reconnection handshake is what sends them.
+ */
+export function watchSaves(
+  provider: HocuspocusProvider,
+  onChange: (state: SaveState) => void,
+  now: () => number = Date.now,
+): () => void {
+  const doc = provider.document;
+  let edited = false;
+  let savedAt: number | null = null;
+  // The provider sends every update it did not apply itself from the server: those are ours.
+  const onUpdate = (_update: Uint8Array, origin: unknown) => {
+    if (origin !== provider) edited = true;
+  };
+  const onUnsynced = ({ number }: onUnsyncedChangesParameters) => {
+    if (number === 0 && edited) {
+      edited = false;
+      savedAt = now();
+    }
+    onChange({ pending: number, savedAt });
+  };
+  doc.on('update', onUpdate);
+  provider.on('unsyncedChanges', onUnsynced);
+  return () => {
+    doc.off('update', onUpdate);
+    provider.off('unsyncedChanges', onUnsynced);
+  };
+}
+
 /** Opens the board document over the collaboration WebSocket; the session cookie signs in. */
 export function useBoardConnection(boardId: string): BoardConnection | null {
   const [conn, setConn] = useState<BoardConnection | null>(null);
@@ -60,13 +101,6 @@ export function useBoardConnection(boardId: string): BoardConnection | null {
       name: boardDocName(boardId),
       document: doc,
       onSynced: () => update({ status: 'synced' }),
-      onUnsyncedChanges: ({ number }) => {
-        unsynced = number;
-        // Back to zero after sending something: the server confirmed it, so that is a save.
-        const savedAt = number === 0 && state.pending > 0 ? Date.now() : state.savedAt;
-        update({ pending: number, savedAt });
-        hold();
-      },
       onDisconnect: () => {
         if (state.status !== 'denied' && state.status !== 'signedOut')
           update({ status: 'offline' });
@@ -88,8 +122,14 @@ export function useBoardConnection(boardId: string): BoardConnection | null {
       hold();
       setConn({ store, provider, ...state });
     }
+    // The provider sends nothing before the socket opens, so no count is missed here.
+    const stopSaves = watchSaves(provider, ({ pending, savedAt }) => {
+      unsynced = pending;
+      update({ pending, savedAt });
+    });
     update({});
     return () => {
+      stopSaves();
       setBusy(busy, false);
       provider.destroy();
       store.destroy();

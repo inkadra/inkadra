@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { ConnectionStatus } from './connection.ts';
-import type { Peer } from './presence.ts';
+import { type Peer, uniquePeople } from './presence.ts';
 
 /** What the header says about the connection: saving, saved when, or why nothing is syncing. */
 export type SyncSummary =
@@ -32,9 +32,34 @@ export function syncSummary(
 /** Where saved changes are shown as a timer; below this the line just says "saved". */
 export const FRESH_SAVE_S = 3;
 
-/** Everyone on the board: each person once, this tab included. */
-export function onlineCount(peers: readonly Peer[]): number {
-  return new Set(peers.map((p) => p.user.id)).size + 1;
+/**
+ * Everyone on the board: each person once, this tab included. Peers are every other tab, and
+ * the server stamps each with its account (guests have no live connection), so other tabs of
+ * the signed-in account are the same person as this one. Without the account id yet, this tab
+ * still counts as one person.
+ */
+export function onlineCount(peers: readonly Peer[], selfId: string | null): number {
+  const ids = new Set(peers.map((p) => p.user.id));
+  if (selfId === null) return ids.size + 1;
+  ids.add(selfId);
+  return ids.size;
+}
+
+export interface BoardPeople {
+  /** One entry per person for the avatars, editors before viewers. */
+  people: Peer[];
+  online: number;
+  /** Every tab writing in a card: a person's idle tab must not hide the one they write in. */
+  writing: Peer[];
+}
+
+/** The people on the board as the header shows them, from every other tab's presence. */
+export function boardPeople(peers: readonly Peer[], selfId: string | null): BoardPeople {
+  return {
+    people: uniquePeople(peers),
+    online: onlineCount(peers, selfId),
+    writing: peers.filter((p) => p.editing !== null),
+  };
 }
 
 export interface Editor {

@@ -1,6 +1,7 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
 import {
+  boardPeople,
   EditingLine,
   editingPeople,
   onlineCount,
@@ -73,8 +74,53 @@ describe('sync summary', () => {
 
 describe('people on the board', () => {
   it('counts each person once, this tab included', () => {
-    expect(onlineCount([])).toBe(1);
-    expect(onlineCount([peer('a', 'Giulia'), peer('a', 'Giulia'), peer('b', 'Anna')])).toBe(3);
+    expect(onlineCount([], 'me')).toBe(1);
+    expect(onlineCount([peer('a', 'Giulia'), peer('a', 'Giulia'), peer('b', 'Anna')], 'me')).toBe(
+      3,
+    );
+  });
+
+  it('counts the other tabs of this account as this person', () => {
+    expect(onlineCount([peer('me', 'Matteo')], 'me')).toBe(1);
+    expect(onlineCount([peer('me', 'Matteo'), peer('me', 'Matteo', 'note-1')], 'me')).toBe(1);
+    expect(onlineCount([peer('me', 'Matteo'), peer('a', 'Giulia')], 'me')).toBe(2);
+  });
+
+  it('still counts this tab before the account is known', () => {
+    expect(onlineCount([], null)).toBe(1);
+    expect(onlineCount([peer('a', 'Giulia'), peer('a', 'Giulia')], null)).toBe(2);
+  });
+
+  it('shows who writes in a card even when their first tab is idle', () => {
+    const label = (id: string) => `card:${id}`;
+    // Giulia has an idle tab and one writing in a note; Anna only views.
+    const tabs = [
+      { ...peer('a', 'Giulia'), clientId: 1 },
+      { ...peer('a', 'Giulia', 'note-1'), clientId: 2 },
+      { ...peer('b', 'Anna', null, true), clientId: 3 },
+    ];
+    const { people, online, writing } = boardPeople(tabs, 'me');
+    expect(online).toBe(3);
+    expect(people.map((p) => p.user.id)).toEqual(['a', 'b']);
+    expect(editingPeople(writing, label)).toEqual([
+      { id: 'a', name: 'Giulia', label: 'card:note-1', color: 'var(--ink-tag-blue)' },
+    ]);
+  });
+
+  it('names one card per person when they write in several tabs', () => {
+    const label = (id: string) => `card:${id}`;
+    const tabs = [
+      { ...peer('me', 'Matteo'), clientId: 1 },
+      { ...peer('me', 'Matteo', 'frame-2'), clientId: 2 },
+      { ...peer('a', 'Giulia', 'note-1'), clientId: 3 },
+      { ...peer('a', 'Giulia', 'note-2'), clientId: 4 },
+    ];
+    const { online, writing } = boardPeople(tabs, 'me');
+    expect(online).toBe(2);
+    expect(editingPeople(writing, label)).toEqual([
+      { id: 'a', name: 'Giulia', label: 'card:note-1', color: 'var(--ink-tag-blue)' },
+      { id: 'me', name: 'Matteo', label: 'card:frame-2', color: 'var(--ink-tag-blue)' },
+    ]);
   });
 
   it('tells who is writing in which card, one line per person', () => {
