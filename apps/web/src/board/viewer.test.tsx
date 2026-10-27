@@ -445,3 +445,113 @@ describe('mounted viewer error events', () => {
     }
   });
 });
+
+describe('MediaViewer gallery enhancements', () => {
+  let container: HTMLDivElement;
+  let root: Root;
+  const render = (node: ReactNode) => act(async () => root.render(node));
+
+  beforeEach(() => {
+    container = document.createElement('div');
+    document.body.appendChild(container);
+    root = createRoot(container);
+    mockState.asset = {
+      id: 'img-1',
+      kind: 'image',
+      filename: 'photo.jpg',
+      url: '/photo.jpg',
+      width: 1920,
+      height: 1080,
+      palette: ['#ff0000', '#00ff00'],
+      variants: [],
+    };
+  });
+
+  afterEach(() => {
+    act(() => root.unmount());
+    container.remove();
+  });
+
+  it('renders gallery controls, navigates with arrows, and renders thumbnail strip', async () => {
+    const onPrev = vi.fn();
+    const onNext = vi.fn();
+    const onSelect = vi.fn();
+
+    await render(
+      <MediaViewer
+        store={{} as import('./store.ts').BoardStore}
+        element={{ id: 'el-1', type: 'image', x: 0, y: 0, w: 100, h: 100, assetId: 'img-1' }}
+        projectId="proj-01"
+        userId="user-01"
+        readOnly={false}
+        onClose={vi.fn()}
+        gallery={{
+          index: 1,
+          total: 3,
+          onPrevious: onPrev,
+          onNext: onNext,
+          onSelect,
+          items: [
+            { id: 'el-0', assetId: 'img-0', filename: 'one.jpg' },
+            { id: 'el-1', assetId: 'img-1', filename: 'two.jpg' },
+            { id: 'el-2', assetId: 'img-2', filename: 'three.jpg' },
+          ],
+          usedIn: ['Storyboard 4C'],
+        }}
+      />,
+    );
+
+    expect(container.querySelector('.viewer__stage-counter')?.textContent).toBe('2 / 3');
+    expect(container.querySelectorAll('.viewer__thumb')).toHaveLength(3);
+    expect(container.querySelector('.viewer__used-chip')?.textContent).toBe('Storyboard 4C');
+
+    const nextBtn = container.querySelector<HTMLButtonElement>('.viewer__stage-nav--next');
+    expect(nextBtn).not.toBeNull();
+    await act(async () => nextBtn?.click());
+    expect(onNext).toHaveBeenCalledTimes(1);
+
+    const firstThumb = container.querySelectorAll<HTMLButtonElement>('.viewer__thumb')[0];
+    await act(async () => firstThumb?.click());
+    expect(onSelect).toHaveBeenCalledWith(0);
+
+    await act(async () => {
+      window.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowLeft' }));
+    });
+    expect(onPrev).toHaveBeenCalledTimes(1);
+  });
+
+  it('toggles zoom on spacebar and supports copy all palette', async () => {
+    let clipboard = '';
+    vi.stubGlobal('navigator', {
+      clipboard: {
+        writeText: vi.fn(async (text: string) => {
+          clipboard = text;
+        }),
+      },
+    });
+
+    await render(
+      <MediaViewer
+        store={{} as import('./store.ts').BoardStore}
+        element={{ id: 'el-1', type: 'image', x: 0, y: 0, w: 100, h: 100, assetId: 'img-1' }}
+        projectId="proj-01"
+        userId="user-01"
+        readOnly={false}
+        onClose={vi.fn()}
+      />,
+    );
+
+    expect(container.querySelector('.viewer__media--contain')).not.toBeNull();
+    expect(container.querySelector('.viewer__media--zoom100')).toBeNull();
+
+    await act(async () => {
+      window.dispatchEvent(new KeyboardEvent('keydown', { key: ' ' }));
+    });
+    expect(container.querySelector('.viewer__media--zoom100')).not.toBeNull();
+
+    const copyAll = container.querySelector<HTMLButtonElement>('.viewer__copy-all-btn');
+    expect(copyAll).not.toBeNull();
+    await act(async () => copyAll?.click());
+    expect(clipboard).toBe('#ff0000 #00ff00');
+  });
+});

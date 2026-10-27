@@ -1347,6 +1347,12 @@ export function Canvas({
     () => (drawing ? storyboardOf([...snap.byId.values()]).flatMap((g) => g.frames) : []),
     [drawing, snap],
   );
+  const viewableElements = useMemo(() => {
+    return [...snap.byId.values()].filter(
+      (el): el is Extract<Element, { type: 'image' | 'file' | 'link' }> =>
+        el.type === 'image' || el.type === 'file' || (el.type === 'link' && isYoutubeUrl(el.url)),
+    );
+  }, [snap]);
   const viewedEl = viewing ? snap.byId.get(viewing) : undefined;
   const viewed =
     viewedEl?.type === 'image' ||
@@ -1354,6 +1360,7 @@ export function Canvas({
     (viewedEl?.type === 'link' && isYoutubeUrl(viewedEl.url))
       ? viewedEl
       : null;
+  const viewedIndex = viewed ? viewableElements.findIndex((el) => el.id === viewed.id) : -1;
   const closeViewer = useCallback(() => setViewing(null), []);
 
   const addTemplate = async (id: TemplateId) => {
@@ -1833,6 +1840,40 @@ export function Canvas({
             userId={userId}
             readOnly={readOnly}
             onClose={closeViewer}
+            gallery={
+              viewableElements.length > 1
+                ? {
+                    index: viewedIndex,
+                    total: viewableElements.length,
+                    onPrevious: () => {
+                      const prev = viewableElements[viewedIndex - 1];
+                      if (prev) setViewing(prev.id);
+                    },
+                    onNext: () => {
+                      const next = viewableElements[viewedIndex + 1];
+                      if (next) setViewing(next.id);
+                    },
+                    onSelect: (idx: number) => {
+                      const target = viewableElements[idx];
+                      if (target) setViewing(target.id);
+                    },
+                    items: viewableElements.map((el) => ({
+                      id: el.id,
+                      assetId: el.type === 'link' ? el.imageAssetId : el.assetId,
+                      filename:
+                        el.type === 'link'
+                          ? el.title || el.url
+                          : el.type === 'image'
+                            ? el.caption
+                            : 'name' in el && typeof el.name === 'string'
+                              ? el.name
+                              : undefined,
+                      type: el.type,
+                    })),
+                    usedIn: [],
+                  }
+                : undefined
+            }
           />
         )}
 

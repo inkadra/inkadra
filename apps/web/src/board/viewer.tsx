@@ -1,11 +1,14 @@
+// SPDX-License-Identifier: AGPL-3.0-only
 import { createElement, updateElement } from '@inkadra/canvas-core';
 import type { Element } from '@inkadra/doc-schema';
 import type { Asset } from '@inkadra/shared';
-import { Button, IconButton } from '@inkadra/ui';
+import { Avatar, Button, IconButton } from '@inkadra/ui';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { pickVariant, useAsset } from './assets.ts';
 import { MovingPicture, movingVariantUrl } from './moving.tsx';
+import { authorName, editableText } from './review-model.ts';
+import { openComments, useReviews } from './review-store.ts';
 import { type BoardStore, LOCAL } from './store.ts';
 import { TagEditor } from './tags.tsx';
 import { isYoutubeUrl, youtubeEmbedUrl } from './youtube.ts';
@@ -60,57 +63,39 @@ export function useVideoUnplayable(url: string | null | undefined, assetId: stri
   const [unplayable, setUnplayable] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: resets unplayable state when the element or asset changes
+  // biome-ignore lint/correctness/useExhaustiveDependencies: reset on new asset
   useEffect(() => {
     setUnplayable(false);
-  }, [assetId, url]);
+  }, [assetId]);
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: re-attaches listeners when the url changes
   useEffect(() => {
     const video = videoRef.current;
-    if (!video) return;
-
-    const check = () => {
-      if (video.error && isUnplayableVideoError(video.error.code)) {
-        setUnplayable(true);
-        return;
-      }
-      if (video.networkState === 3 /* NETWORK_NO_SOURCE */) {
-        setUnplayable(true);
-      }
-    };
-
-    // Listen for media errors dispatched by the browser
-    if (video.networkState === 3 /* NETWORK_NO_SOURCE */) {
-      setUnplayable(true);
-    }
-
-    video.addEventListener('error', check);
+    if (!video || !url) return;
 
     let stallTimer: ReturnType<typeof setTimeout> | null = null;
-    const startStallCheck = () => {
-      if (stallTimer) return;
-      stallTimer = setTimeout(() => {
-        if (
-          !video.paused &&
-          video.currentTime === 0 &&
-          (video.readyState < 2 || video.videoWidth === 0)
-        ) {
-          setUnplayable(true);
-        }
-      }, 2000);
-    };
-
     const clearStallCheck = () => {
       if (stallTimer) {
         clearTimeout(stallTimer);
         stallTimer = null;
       }
-      if (video.currentTime > 0 || video.readyState >= 2) {
-        setUnplayable(false);
+    };
+
+    const startStallCheck = () => {
+      clearStallCheck();
+      stallTimer = setTimeout(() => {
+        if (!video.paused && !video.ended && video.readyState < 2) {
+          setUnplayable(true);
+        }
+      }, 2000);
+    };
+
+    const check = () => {
+      if (isUnplayableVideoError(video.error?.code)) {
+        setUnplayable(true);
       }
     };
 
+    video.addEventListener('error', check);
     video.addEventListener('play', startStallCheck);
     video.addEventListener('waiting', startStallCheck);
     video.addEventListener('stalled', startStallCheck);
@@ -168,6 +153,29 @@ export function VideoUnplayable({
   );
 }
 
+function ThumbnailImage({ assetId, alt }: { assetId?: string; alt?: string }) {
+  const asset = useAsset(assetId);
+  const ready = asset && asset !== 'missing' ? asset : null;
+  if (!ready) {
+    return <span className="viewer__thumb-placeholder" />;
+  }
+  return (
+    <img
+      className="viewer__thumb-img"
+      src={pickVariant(ready, 120) || ready.url}
+      alt={alt ?? ''}
+      loading="lazy"
+    />
+  );
+}
+
+export interface GalleryItem {
+  id: string;
+  assetId?: string;
+  filename?: string;
+  type?: 'image' | 'file' | 'link';
+}
+
 /** Full view of an image or a video, with its shooting data, palette and tags. */
 export function MediaViewer({
   store,
@@ -189,9 +197,11 @@ export function MediaViewer({
     total: number;
     onPrevious: () => void;
     onNext: () => void;
+    onSelect?: (index: number) => void;
     onCompare?: () => void;
     comparison?: Extract<Element, { type: 'image' | 'link' }>;
     usedIn: string[];
+    items?: GalleryItem[];
   };
 }) {
   const { t, i18n } = useTranslation();
@@ -205,7 +215,11 @@ export function MediaViewer({
   );
   const dialogRef = useRef<HTMLDivElement>(null);
   const [copied, setCopied] = useState<string | null>(null);
+  const [zoom100, setZoom100] = useState(false);
   const { videoRef, unplayable, setUnplayable } = useVideoUnplayable(ready?.url, ready?.id);
+
+  const threads = useReviews((s) => s.threads);
+  const elementThreads = threads.filter((th) => th.elementId === element.id);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -226,6 +240,10 @@ export function MediaViewer({
       if (gallery && e.key === 'ArrowRight') {
         e.preventDefault();
         gallery.onNext();
+      }
+      if (e.key === ' ' || e.code === 'Space') {
+        e.preventDefault();
+        setZoom100((z) => !z);
       }
       if (gallery && e.key === 'Tab') {
         const focusable = [
@@ -277,11 +295,22 @@ export function MediaViewer({
     onClose();
   }
 
+  function copyAllPalette() {
+    if (!palette.length) return;
+    void navigator.clipboard?.writeText(palette.join(' '));
+    setCopied('all');
+  }
+
   const onVideoError = (e: React.SyntheticEvent<HTMLVideoElement, Event>) => {
     if (isUnplayableVideoError(e.currentTarget.error?.code)) {
       setUnplayable(true);
     }
   };
+
+  const displayName =
+    element.type === 'link'
+      ? element.title || element.url
+      : (ready?.filename ?? (element.type === 'image' ? element.caption : '') ?? t('viewer.title'));
 
   return (
     <div
@@ -289,111 +318,241 @@ export function MediaViewer({
       className="viewer"
       role="dialog"
       aria-modal="true"
-      aria-label={
-        element.type === 'link'
-          ? element.title || element.url
-          : (ready?.filename ?? t('viewer.title'))
-      }
+      aria-label={displayName}
       data-chrome
     >
-      <div
-        className={`viewer__stage${comparison ? ' viewer__stage--compare' : ''}`}
-        onPointerDown={(e) => e.target === e.currentTarget && onClose()}
-      >
-        {comparison && comparisonAsset && comparisonAsset !== 'missing' && (
-          <img
-            className="viewer__media"
-            src={pickVariant(comparisonAsset, wide)}
-            alt={
-              comparison.type === 'image'
-                ? comparison.caption || comparisonAsset.filename
-                : comparison.title || comparisonAsset.filename
-            }
-          />
-        )}
-        {isYoutube ? (
-          <div className="viewer__embed">
-            <iframe
-              className="viewer__iframe"
-              src={youtubeEmbedUrl(element.url) ?? ''}
-              title={element.title || 'YouTube video'}
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-              allowFullScreen
-            />
-          </div>
-        ) : ready?.kind === 'video' ? (
-          <>
-            {/* biome-ignore lint/a11y/useMediaCaption: people's own footage has no captions */}
-            <video
-              ref={videoRef}
-              className="viewer__media"
-              src={ready.url}
-              poster={ready.variants.length > 0 ? pickVariant(ready, wide) : undefined}
-              controls
-              autoPlay
-              onError={onVideoError}
-              style={unplayable ? { display: 'none' } : undefined}
-            />
-            {unplayable && (
-              <VideoUnplayable
-                poster={ready.variants.length > 0 ? pickVariant(ready, wide) : undefined}
-                filename={ready.filename}
-                downloadUrl={ready.url}
-                downloadLabel={t('viewer.download')}
-                message={t('viewer.unplayable')}
-              />
-            )}
-          </>
-        ) : ready ? (
-          <MovingPicture
-            className="viewer__media"
-            poster={pickVariant(ready, wide) || ready.url}
-            moving={movingVariantUrl(ready, wide)}
-            alt={element.type === 'image' ? (element.caption ?? ready.filename) : ready.filename}
-          />
-        ) : null}
-      </div>
-      <aside className="viewer__side" data-scroll>
-        <header className="viewer__head">
-          <span className="viewer__name">
-            {element.type === 'link' ? element.title || element.url : ready?.filename}
-          </span>
-          <IconButton icon="close" label={t('viewer.close')} onClick={onClose} />
-        </header>
-        {gallery && (
-          <nav className="moodboard__navigation" aria-label={t('moodboard.navigation')}>
-            <Button disabled={gallery.index === 0} onClick={gallery.onPrevious}>
-              {t('moodboard.previous')}
-            </Button>
-            <span role="status">
+      <div className="viewer__stage-container">
+        {/* Stage Top Bar */}
+        <header className="viewer__stage-header">
+          <span className="viewer__stage-title">{displayName}</span>
+          {gallery && (
+            <span className="viewer__stage-counter">
               {gallery.index + 1} / {gallery.total}
             </span>
-            <Button disabled={gallery.index === gallery.total - 1} onClick={gallery.onNext}>
-              {t('moodboard.next')}
-            </Button>
-            {gallery.onCompare && (
+          )}
+          {element.tags?.map((tag) => (
+            <span key={tag} className="viewer__tag-badge">
+              {tag}
+            </span>
+          ))}
+          <div style={{ flex: 1 }} />
+          {gallery?.onCompare && (
+            <button
+              type="button"
+              className={`ink-btn ink-btn--secondary viewer__stage-btn${comparison ? ' is-active' : ''}`}
+              onClick={gallery.onCompare}
+            >
+              {t('moodboard.compare', 'Confronta A/B')}
+            </button>
+          )}
+          <button
+            type="button"
+            className="ink-btn ink-btn--secondary viewer__stage-btn"
+            onClick={() => setZoom100((z) => !z)}
+            title={t('viewer.zoomHelp', 'Spazio per alternare tra adatta e 100%')}
+          >
+            {zoom100 ? t('viewer.zoomFit', 'Adatta') : t('viewer.zoom100', 'Zoom 100%')}
+          </button>
+          {ready?.url && (
+            <a
+              className="ink-btn ink-btn--secondary viewer__stage-btn"
+              href={ready.url}
+              download={ready.filename}
+            >
+              {t('viewer.download', 'Scarica originale')}
+            </a>
+          )}
+          <button
+            type="button"
+            className="ink-btn ink-btn--secondary viewer__stage-btn"
+            onClick={onClose}
+            aria-label={t('viewer.close')}
+          >
+            {t('viewer.close')} <span className="viewer__kbd">esc</span>
+          </button>
+        </header>
+
+        {/* Stage Area */}
+        <div
+          className={`viewer__stage${comparison ? ' viewer__stage--compare' : ''}`}
+          onPointerDown={(e) => e.target === e.currentTarget && onClose()}
+        >
+          {/* Navigation Arrows */}
+          {gallery && (
+            <>
               <button
                 type="button"
-                className="ink-btn ink-btn--secondary"
-                aria-pressed={!!comparison}
-                onClick={gallery.onCompare}
+                className="viewer__stage-nav viewer__stage-nav--prev"
+                disabled={gallery.index === 0}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  gallery.onPrevious();
+                }}
+                aria-label={t('moodboard.previous')}
               >
-                {t('moodboard.compare')}
+                <svg className="viewer__nav-icon" viewBox="0 0 24 24" aria-hidden="true">
+                  <path
+                    d="M15 5l-7 7 7 7"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
               </button>
+              <button
+                type="button"
+                className="viewer__stage-nav viewer__stage-nav--next"
+                disabled={gallery.index === gallery.total - 1}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  gallery.onNext();
+                }}
+                aria-label={t('moodboard.next')}
+              >
+                <svg className="viewer__nav-icon" viewBox="0 0 24 24" aria-hidden="true">
+                  <path
+                    d="M9 5l7 7-7 7"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              </button>
+            </>
+          )}
+
+          <div className={`viewer__media-wrap${zoom100 ? ' is-zoomed' : ''}`}>
+            {comparison && comparisonAsset && comparisonAsset !== 'missing' && (
+              <img
+                className={`viewer__media ${zoom100 ? 'viewer__media--zoom100' : 'viewer__media--contain'}`}
+                src={pickVariant(comparisonAsset, wide)}
+                alt={
+                  comparison.type === 'image'
+                    ? comparison.caption || comparisonAsset.filename
+                    : comparison.title || comparisonAsset.filename
+                }
+              />
             )}
-          </nav>
+            {isYoutube ? (
+              <div className="viewer__embed">
+                <iframe
+                  className="viewer__iframe"
+                  src={youtubeEmbedUrl(element.url) ?? ''}
+                  title={element.title || 'YouTube video'}
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                  allowFullScreen
+                />
+              </div>
+            ) : ready?.kind === 'video' ? (
+              <>
+                {/* biome-ignore lint/a11y/useMediaCaption: people's own footage has no captions */}
+                <video
+                  ref={videoRef}
+                  className={`viewer__media ${zoom100 ? 'viewer__media--zoom100' : 'viewer__media--contain'}`}
+                  src={ready.url}
+                  poster={ready.variants.length > 0 ? pickVariant(ready, wide) : undefined}
+                  controls
+                  autoPlay
+                  onError={onVideoError}
+                  style={unplayable ? { display: 'none' } : undefined}
+                />
+                {unplayable && (
+                  <VideoUnplayable
+                    poster={ready.variants.length > 0 ? pickVariant(ready, wide) : undefined}
+                    filename={ready.filename}
+                    downloadUrl={ready.url}
+                    downloadLabel={t('viewer.download')}
+                    message={t('viewer.unplayable')}
+                  />
+                )}
+              </>
+            ) : ready ? (
+              <button
+                type="button"
+                className="viewer__picture-btn"
+                onClick={() => setZoom100((z) => !z)}
+              >
+                <MovingPicture
+                  className={`viewer__media ${zoom100 ? 'viewer__media--zoom100' : 'viewer__media--contain'}`}
+                  poster={pickVariant(ready, wide) || ready.url}
+                  moving={movingVariantUrl(ready, wide)}
+                  alt={
+                    element.type === 'image' ? (element.caption ?? ready.filename) : ready.filename
+                  }
+                />
+              </button>
+            ) : null}
+          </div>
+
+          {/* Bottom Hints */}
+          <div className="viewer__hints">
+            <span className="viewer__hint">
+              <span className="viewer__hint-kbd">← →</span> {t('viewer.hints.nav', 'per scorrere')}
+            </span>
+            <span className="viewer__hint">
+              <span className="viewer__hint-kbd">spazio</span> {t('viewer.hints.zoom', 'zoom 100%')}
+            </span>
+          </div>
+        </div>
+
+        {/* Thumbnails Strip */}
+        {gallery?.items && gallery.items.length > 1 && (
+          <div
+            className="viewer__thumbnails"
+            role="tablist"
+            aria-label={t('moodboard.thumbnails', 'Miniature')}
+          >
+            {gallery.items.map((item, idx) => (
+              <button
+                key={item.id}
+                type="button"
+                role="tab"
+                aria-selected={idx === gallery.index}
+                className={`viewer__thumb${idx === gallery.index ? ' is-active' : ''}`}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  gallery.onSelect?.(idx);
+                }}
+                title={item.filename || `Item ${idx + 1}`}
+              >
+                <ThumbnailImage assetId={item.assetId} alt={item.filename} />
+                <span className="viewer__thumb-idx">{idx + 1}</span>
+              </button>
+            ))}
+          </div>
         )}
+      </div>
+
+      {/* Sidebar Details */}
+      <aside className="viewer__side" data-scroll>
+        <header className="viewer__head">
+          <span className="viewer__name">{displayName}</span>
+          <IconButton icon="close" label={t('viewer.close')} onClick={onClose} />
+        </header>
+
         {gallery && !ready && (
           <p role="status">
             {t(asset === 'missing' ? 'moodboard.unavailable' : 'moodboard.loading')}
           </p>
         )}
+
         {gallery && gallery.usedIn.length > 0 && (
           <section>
             <h3 className="viewer__title">{t('moodboard.usedIn')}</h3>
-            <p>{gallery.usedIn.join(' · ')}</p>
+            <div className="viewer__used-in">
+              {gallery.usedIn.map((label) => (
+                <span key={label} className="viewer__used-chip">
+                  {label}
+                </span>
+              ))}
+            </div>
           </section>
         )}
+
         {ready?.width && ready.height && (
           <dl className="viewer__facts">
             <dt>{t('viewer.size')}</dt>
@@ -402,11 +561,13 @@ export function MediaViewer({
             </dd>
           </dl>
         )}
+
         {element.type === 'link' && element.description && (
           <section>
             <p className="ink-muted viewer__desc">{element.description}</p>
           </section>
         )}
+
         {element.type !== 'link' && ready?.kind !== 'video' && (
           <section>
             <h3 className="viewer__title">{t('viewer.exif')}</h3>
@@ -424,9 +585,15 @@ export function MediaViewer({
             )}
           </section>
         )}
+
         {palette.length > 0 && (
           <section>
-            <h3 className="viewer__title">{t('viewer.palette')}</h3>
+            <div className="viewer__title-row">
+              <h3 className="viewer__title">{t('viewer.palette')}</h3>
+              <button type="button" className="viewer__copy-all-btn" onClick={copyAllPalette}>
+                {t('viewer.copyAll', 'Copia tutto')}
+              </button>
+            </div>
             <div className="viewer__palette">
               {palette.map((hex) => (
                 <button
@@ -446,7 +613,11 @@ export function MediaViewer({
               ))}
             </div>
             <p className="viewer__copied" role="status">
-              {copied ? t('viewer.copied', { hex: copied }) : ''}
+              {copied === 'all'
+                ? t('viewer.copiedAll', 'Tutti i colori copiati')
+                : copied
+                  ? t('viewer.copied', { hex: copied })
+                  : ''}
             </p>
             {!readOnly && (
               <Button icon="color" onClick={addColors}>
@@ -455,6 +626,7 @@ export function MediaViewer({
             )}
           </section>
         )}
+
         <section>
           <h3 className="viewer__title">{t('tags.title')}</h3>
           <TagEditor
@@ -464,6 +636,45 @@ export function MediaViewer({
             onChange={(tags) => updateElement(store.doc, element.id, { tags }, LOCAL)}
           />
         </section>
+
+        {/* Comments Section */}
+        <section className="viewer__comments-section" aria-label={t('comments.title', 'Commenti')}>
+          <div className="viewer__title-row">
+            <h3 className="viewer__title">
+              {t('comments.title', 'Commenti')}
+              {elementThreads.length > 0 && (
+                <span className="viewer__count-badge">{elementThreads.length}</span>
+              )}
+            </h3>
+            <button
+              type="button"
+              className="viewer__open-comments-btn"
+              onClick={() => openComments({ elementId: element.id })}
+            >
+              {t('comments.open', 'Apri pannello')}
+            </button>
+          </div>
+          {elementThreads.length > 0 ? (
+            <div className="viewer__comments-list">
+              {elementThreads.slice(0, 3).map((th) => {
+                const name =
+                  authorName(th.author) ?? t('comments.deletedAuthor', 'Autore eliminato');
+                return (
+                  <div key={th.id} className="viewer__comment-card">
+                    <Avatar name={name} size={20} />
+                    <div className="viewer__comment-content">
+                      <strong className="viewer__comment-author">{name}</strong>
+                      <p className="viewer__comment-text">{editableText(th)}</p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <p className="ink-muted viewer__none">{t('comments.noComments', 'Nessun commento')}</p>
+          )}
+        </section>
+
         {element.type === 'link' ? (
           <a
             className="ink-btn ink-btn--ghost viewer__download"
