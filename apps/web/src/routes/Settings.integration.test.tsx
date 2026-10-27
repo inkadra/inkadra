@@ -24,10 +24,11 @@ const i18nMock = {
 };
 vi.mock('../lib/session.tsx', () => ({ useSession: () => session }));
 vi.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string) => translations[currentLang]?.[key] ?? key,
-    i18n: i18nMock,
-  }),
+  // Like react-i18next, `t` is bound to the language of the render that returned it.
+  useTranslation: () => {
+    const lng = currentLang;
+    return { t: (key: string) => translations[lng]?.[key] ?? key, i18n: i18nMock };
+  },
 }));
 vi.mock('../i18n/index.ts', () => ({ LOCALES: ['en', 'it'] }));
 vi.mock('../lib/theme.ts', () => ({ useTheme: () => ({ preference: 'system', choose: vi.fn() }) }));

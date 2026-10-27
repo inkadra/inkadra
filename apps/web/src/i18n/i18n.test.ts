@@ -24,10 +24,10 @@ describe('translations', () => {
     );
     await i18n.changeLanguage('it');
     expect(i18n.t('onboarding.summary', { boards: 1, invitations: 1 })).toBe(
-      'Verranno create 1 board e 1 invito',
+      'Verranno creati 1 board e 1 invito',
     );
     expect(i18n.t('onboarding.summary', { boards: 2, invitations: 2 })).toBe(
-      'Verranno create 2 board e 2 inviti',
+      'Verranno creati 2 board e 2 inviti',
     );
   });
 });

@@ -1635,7 +1635,7 @@
     "filters": {
       "all": "Tutte le inquadrature",
       "pending": "In attesa",
-      "approved": "Approvati",
+      "approved": "Approvate",
       "changes_requested": "Modifiche richieste"
     },
     "liveOnly": "Le revisioni appartengono alla board attuale. Chiudi l’anteprima della versione per leggerle e rispondere."
@@ -1737,7 +1737,7 @@
     "boards_other": "{{count}} board",
     "invitations_one": "{{count}} invito",
     "invitations_other": "{{count}} inviti",
-    "summary": "Verranno create $t(onboarding.boards, {\"count\": {{boards}} }) e $t(onboarding.invitations, {\"count\": {{invitations}} })",
+    "summary": "Verranno creati $t(onboarding.boards, {\"count\": {{boards}} }) e $t(onboarding.invitations, {\"count\": {{invitations}} })",
     "skip": "Salta per ora",
     "inviteResults": "Inviti creati",
     "sent": "Email inviata",
