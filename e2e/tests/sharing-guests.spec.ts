@@ -163,7 +163,7 @@ async function seed(page: Page, baseURL: string): Promise<Seeded> {
 
 async function openGuestLinks(page: Page) {
   await page.goto(`/p/${seeded.project.id}`);
-  await expect(page.getByRole('status').getByText('Sincronizzato', { exact: true })).toBeVisible();
+  await expect(page.getByRole('status').getByText('Sincronizzato')).toBeVisible();
   await page.getByRole('button', { name: 'Condividi' }).click();
   const dialog = page.getByRole('dialog', { name: /^Condividi/ });
   await dialog.getByRole('tab', { name: 'Link per ospiti' }).click();

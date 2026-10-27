@@ -145,7 +145,17 @@ export function SyncStatus({
     >
       <span className="sync__dot" aria-hidden="true" />
       <span className="sync__text">
-        {status === 'synced' ? `${t('board.status.online', { count: online })} · ${state}` : state}
+        {status === 'synced' ? (
+          <>
+            <span className="sync__online">{t('board.status.online', { count: online })}</span>
+            <span className="sync__sep" aria-hidden="true">
+              {' · '}
+            </span>
+            <span className="sync__state">{state}</span>
+          </>
+        ) : (
+          <span className="sync__state">{state}</span>
+        )}
       </span>
       <span className="sync__announce" aria-live="polite">
         {announcement}
