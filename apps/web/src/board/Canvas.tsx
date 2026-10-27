@@ -1500,7 +1500,7 @@ export function Canvas({
         ? [{ label: t('board.caption.edit'), action: () => setEditing(single.id) }]
         : []),
       ...(single?.type === 'note'
-        ? [{ label: t('board.menu.openDoc', 'Apri documento'), action: () => openElement(single) }]
+        ? [{ label: t('board.menu.openDoc'), action: () => openElement(single) }]
         : []),
       ...(single?.type === 'frame'
         ? [

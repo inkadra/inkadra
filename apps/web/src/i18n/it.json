@@ -355,6 +355,7 @@
       "group": "Raggruppa in colonna"
     },
     "menu": {
+      "openDoc": "Apri documento",
       "open": "Apri",
       "duplicate": "Duplica",
       "lock": "Blocca posizione",
@@ -757,6 +758,8 @@
       "expandGroup": "Espandi gruppo",
       "noLocation": "Nessuna location",
       "totalShots": "{{count}} inquadrature",
+      "totalShots_one": "{{count}} inquadratura",
+      "totalShots_other": "{{count}} inquadrature",
       "estimatedDuration": "Durata stimata",
       "moveCard": "Sposta in {{column}}",
       "moveToColumn": "Sposta card in colonna",

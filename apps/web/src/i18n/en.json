@@ -355,6 +355,7 @@
       "group": "Group in a column"
     },
     "menu": {
+      "openDoc": "Open document",
       "open": "Open",
       "duplicate": "Duplicate",
       "lock": "Lock position",
@@ -757,6 +758,8 @@
       "expandGroup": "Expand group",
       "noLocation": "No location",
       "totalShots": "{{count}} shots",
+      "totalShots_one": "{{count}} shot",
+      "totalShots_other": "{{count}} shots",
       "estimatedDuration": "Estimated duration",
       "moveCard": "Move to {{column}}",
       "moveToColumn": "Move card to column",
