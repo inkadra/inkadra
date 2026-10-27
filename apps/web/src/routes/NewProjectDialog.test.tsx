@@ -1,5 +1,5 @@
 // @vitest-environment happy-dom
-import type { Project } from '@inkadra/shared';
+import { DEFAULT_CLASSIFICATIONS, type Project } from '@inkadra/shared';
 import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
@@ -11,7 +11,9 @@ vi.mock('react-i18next', () => ({ useTranslation: () => ({ t: (key: string) => k
 vi.mock('../lib/session.tsx', () => ({
   useSession: () => ({ user: { id: 'me' }, instance: { auth: { email: false } } }),
 }));
-vi.mock('../lib/api.ts', () => ({ api: { post: vi.fn() } }));
+vi.mock('../lib/api.ts', () => ({
+  api: { post: vi.fn(), get: vi.fn(async () => structuredClone(DEFAULT_CLASSIFICATIONS)) },
+}));
 vi.mock('../board/boards.ts', () => ({ createBoard: vi.fn() }));
 // Collaboration seeding is covered separately; advance only when this test asks.
 let advance: () => void;
@@ -151,4 +153,28 @@ it('defaults to blank without creating child boards or template content', async 
   expect(api.post).toHaveBeenCalledTimes(1);
   await act(async () => advance());
   expect(created).toHaveBeenCalledWith(project);
+});
+
+it('offers configured active project types using stable identifiers', async () => {
+  const { setClassifications } = await import('../lib/classifications.ts');
+  const custom = { id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', label: 'Feature', archived: false };
+  await act(async () =>
+    setClassifications({
+      revision: 1,
+      tags: [],
+      projectTypes: [custom, { ...custom, id: 'retired', label: 'Retired', archived: true }],
+    }),
+  );
+  expect(host.textContent).toContain('Feature');
+  expect(host.textContent).not.toContain('Retired');
+  await blank();
+  await act(async () => host.querySelector<HTMLInputElement>('input[name="projectType"]')?.click());
+  vi.mocked(api.post).mockResolvedValueOnce({ id: 'p', rootBoardId: 'root' } as Project);
+  await act(async () =>
+    host
+      .querySelector('form')
+      ?.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })),
+  );
+  expect(api.post).toHaveBeenCalledWith('/projects', expect.objectContaining({ type: custom.id }));
+  await act(async () => setClassifications(structuredClone(DEFAULT_CLASSIFICATIONS)));
 });

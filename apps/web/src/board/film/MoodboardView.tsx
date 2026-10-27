@@ -4,6 +4,7 @@ import type { Element } from '@inkadra/doc-schema';
 import { Button } from '@inkadra/ui';
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useClassifications } from '../../lib/classifications.ts';
 import { pickVariant, useAsset } from '../assets.ts';
 import type { BoardStore } from '../store.ts';
 import { normaliseTag } from '../tags.tsx';
@@ -62,6 +63,7 @@ export function MoodboardView({
   readOnly: boolean;
   onClose?: () => void;
 }) {
+  const { tagLabel, tagOption } = useClassifications();
   const { t } = useTranslation();
   const snapshot = useSyncExternalStore(store.subscribe, store.getSnapshot);
   const [tag, setTag] = useState('');
@@ -70,8 +72,14 @@ export function MoodboardView({
   const opener = useRef<HTMLButtonElement | null>(null);
   const all = [...snapshot.byId.values()];
   const references = referencesOf(all);
-  const tags = [...new Set(references.flatMap((el) => (el.tags ?? []).map(normaliseTag)))].sort();
-  const filtered = referencesOf(all, tag);
+  const tags = [
+    ...new Set(
+      references.flatMap((el) => (el.tags ?? []).map((v) => tagOption(v)?.id ?? normaliseTag(v))),
+    ),
+  ].sort();
+  const filtered = referencesOf(all).filter(
+    (el) => !tag || el.tags?.some((v) => (tagOption(v)?.id ?? normaliseTag(v)) === tag),
+  );
   const media = filtered.filter((el): el is MediaReference => el.type !== 'color');
   const index = media.findIndex((el) => el.id === selected);
   const current = media[index];
@@ -112,10 +120,10 @@ export function MoodboardView({
           <option value="">{t('moodboard.all')}</option>
           {tags.map((value) => (
             <option key={value} value={value}>
-              {value}
+              {tagLabel(value)}
             </option>
           ))}
-          {tag && !tags.includes(tag) && <option value={tag}>{tag}</option>}
+          {tag && !tags.includes(tag) && <option value={tag}>{tagLabel(tag)}</option>}
         </select>
       </label>
       {colors.length > 0 && (
@@ -142,7 +150,7 @@ export function MoodboardView({
               <div className="moodboard__swatch" style={{ background: element.hex }} />
               <div className="moodboard__caption">
                 {element.label || element.hex}
-                <small>{(element.tags ?? []).join(' · ')}</small>
+                <small>{(element.tags ?? []).map(tagLabel).join(' · ')}</small>
               </div>
             </article>
           ) : (
@@ -163,7 +171,7 @@ export function MoodboardView({
               <ReferenceImage element={element} />
               <span className="moodboard__caption">
                 {element.type === 'image' ? element.caption : element.title || element.url}
-                <small>{(element.tags ?? []).join(' · ')}</small>
+                <small>{(element.tags ?? []).map(tagLabel).join(' · ')}</small>
               </span>
             </button>
           ),

@@ -1,8 +1,15 @@
-import { type Invitation, type Project, type ProjectRole, ProjectType, z } from '@inkadra/shared';
+import {
+  type Invitation,
+  type Project,
+  type ProjectRole,
+  type ProjectType,
+  z,
+} from '@inkadra/shared';
 import { Button, Dialog, DialogActions, TextField } from '@inkadra/ui';
 import { type FormEvent, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api } from '../lib/api.ts';
+import { useClassifications } from '../lib/classifications.ts';
 import { useSession } from '../lib/session.tsx';
 import { ProjectSetupSeed } from './ProjectSetupSeed.tsx';
 import {
@@ -48,6 +55,7 @@ export function ProjectSetupForm({
   onCreated: (p: Project) => void;
   onBusyChange?: (busy: boolean) => void;
 }) {
+  const { catalogs, typeLabel } = useClassifications();
   const { t } = useTranslation();
   const { user, instance } = useSession();
   const [name, setName] = useState('');
@@ -175,17 +183,19 @@ export function ProjectSetupForm({
         </div>
         <fieldset className="project-setup__choices">
           <legend>{t('onboarding.type')}</legend>
-          {ProjectType.options.map((v) => (
-            <label key={v}>
-              <input
-                type="radio"
-                name="projectType"
-                checked={type === v}
-                onChange={() => setType(v)}
-              />
-              {t(`onboarding.types.${v}`)}
-            </label>
-          ))}
+          {catalogs.projectTypes
+            .filter((o) => !o.archived)
+            .map(({ id: v }) => (
+              <label key={v}>
+                <input
+                  type="radio"
+                  name="projectType"
+                  checked={type === v}
+                  onChange={() => setType(v)}
+                />
+                {typeLabel(v)}
+              </label>
+            ))}
         </fieldset>
         <fieldset className="project-setup__templates">
           <legend>{t('onboarding.template')}</legend>

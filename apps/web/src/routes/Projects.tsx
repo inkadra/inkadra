@@ -1,10 +1,11 @@
-import { type Project, ProjectType } from '@inkadra/shared';
+import type { Project } from '@inkadra/shared';
 import { Avatar, Button, ProjectGlyph } from '@inkadra/ui';
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
 import { pickVariant, useAsset } from '../board/assets.ts';
 import { api } from '../lib/api.ts';
+import { useClassifications } from '../lib/classifications.ts';
 import { useSession } from '../lib/session.tsx';
 import { relativeTime } from '../notifications/Notifications.tsx';
 import { useProjects } from './AppLayout.tsx';
@@ -18,6 +19,7 @@ import {
 import './projects.css';
 
 export function Projects() {
+  const { catalogs, typeLabel } = useClassifications();
   const { t, i18n } = useTranslation();
   const { user } = useSession();
   const { openNewProject } = useProjects();
@@ -62,13 +64,18 @@ export function Projects() {
       alive = false;
     };
   }, [user?.role]);
-  async function mutate(project: Project, pin: boolean) {
+  async function mutate(project: Project, pin: boolean, type?: string) {
     setBusy(true);
     setError(false);
     try {
-      const updated = pin
-        ? await api.put<Project>(`/projects/${project.id}/pin`, { pinned: !project.pinned })
-        : await api.patch<Project>(`/projects/${project.id}`, { archived: !project.archivedAt });
+      const updated =
+        type !== undefined
+          ? await api.patch<Project>(`/projects/${project.id}`, { type: type || null })
+          : pin
+            ? await api.put<Project>(`/projects/${project.id}/pin`, { pinned: !project.pinned })
+            : await api.patch<Project>(`/projects/${project.id}`, {
+                archived: !project.archivedAt,
+              });
       setItems(
         (current) =>
           current?.map((row) =>
@@ -141,9 +148,9 @@ export function Projects() {
             onChange={(e) => change('type', e.target.value)}
           >
             <option value="all">{t('projectsPage.all')}</option>
-            {ProjectType.options.map((v) => (
+            {catalogs.projectTypes.map(({ id: v }) => (
               <option key={v} value={v}>
-                {t(`onboarding.types.${v}`)}
+                {typeLabel(v)}
               </option>
             ))}
           </select>
@@ -225,8 +232,9 @@ function ProjectCard({
 }: {
   row: ProjectOverview;
   busy: boolean;
-  mutate: (p: Project, pin: boolean) => Promise<void>;
+  mutate: (p: Project, pin: boolean, type?: string) => Promise<void>;
 }) {
+  const { catalogs, typeLabel } = useClassifications();
   const { t, i18n } = useTranslation();
   const p = row.project;
   const coverId = row.boards.find((b) => b.id === p.rootBoardId)?.coverAssetId;
@@ -251,8 +259,31 @@ function ProjectCard({
           <h2>
             <Link to={`/p/${p.id}`}>{p.name}</Link>
           </h2>
-          {p.type && <span className="project-card__type">{t(`onboarding.types.${p.type}`)}</span>}
+          {p.type && <span className="project-card__type">{typeLabel(p.type)}</span>}
         </div>
+        {(p.myRole === 'owner' || p.myRole === 'editor') && (
+          <label>
+            {t('onboarding.type')}
+            <select
+              className="ink-input"
+              value={p.type ?? ''}
+              disabled={busy}
+              onChange={(e) => void mutate(p, false, e.target.value)}
+            >
+              <option value="">—</option>
+              {p.type && !catalogs.projectTypes.some((o) => o.id === p.type) && (
+                <option value={p.type}>{p.type}</option>
+              )}
+              {catalogs.projectTypes
+                .filter((o) => !o.archived || o.id === p.type)
+                .map((o) => (
+                  <option key={o.id} value={o.id}>
+                    {typeLabel(o.id)}
+                  </option>
+                ))}
+            </select>
+          </label>
+        )}
         <p className="ink-muted">
           {[
             p.shootingStart ? date(p.shootingStart) : null,

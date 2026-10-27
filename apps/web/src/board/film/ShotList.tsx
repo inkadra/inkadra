@@ -14,6 +14,7 @@ import { SHOT_ANGLES, SHOT_MOVEMENTS, SHOT_SIZES } from '@inkadra/doc-schema';
 import { Button, EmptyState, Icon } from '@inkadra/ui';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useClassifications } from '../../lib/classifications.ts';
 import { CardReview } from '../CardReview.tsx';
 import { GuestVisibility } from '../guest-visibility.tsx';
 import { insideDialog, isTyping } from '../shortcuts.ts';
@@ -65,6 +66,7 @@ export function ShotList({
   userId?: string;
   readOnly: boolean;
 }) {
+  const { tagLabel } = useClassifications();
   const { t } = useTranslation();
   const boardAspect = useBoardAspect(store.doc);
   const { groups, frames, labels } = useStoryboard(store);
@@ -144,13 +146,13 @@ export function ShotList({
           presetText('film.angle', SHOT_ANGLES, f.angle),
           presetText('film.movement', SHOT_MOVEMENTS, f.movement),
           ...(f.cast ?? []),
-          ...(f.tags ?? []),
+          ...(f.tags ?? []).map(tagLabel),
         ];
         if (!haystacks.some((v) => v?.toLowerCase().includes(q))) return false;
       }
       return true;
     },
-    [status, selectedScene, selectedLocation, selectedCast, q, labels, presetText],
+    [status, selectedScene, selectedLocation, selectedCast, q, labels, presetText, tagLabel],
   );
 
   const sortFrames = useCallback(
@@ -436,7 +438,7 @@ export function ShotList({
         (f.cast ?? []).join(', '),
         f.notes ?? '',
         t(`film.status.${getFrameStatus(f)}`),
-        (f.tags ?? []).join(', '),
+        (f.tags ?? []).map(tagLabel).join(', '),
       ]),
     );
     downloadCsv(`${boardTitle || 'shotlist'}.csv`, [head, ...rows]);

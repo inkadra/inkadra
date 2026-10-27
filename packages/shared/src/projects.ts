@@ -13,13 +13,8 @@ export const ProjectIcon = z
   })
   .openapi('ProjectIcon');
 
-export const ProjectType = z.enum([
-  'short_film',
-  'commercial',
-  'music_video',
-  'photo_shoot',
-  'documentary',
-]);
+/** Stable ID in the instance project-type catalog. */
+export const ProjectType = z.string().min(1).max(40);
 export type ProjectType = z.infer<typeof ProjectType>;
 const ShootingDate = z.iso.date();
 

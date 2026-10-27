@@ -1794,7 +1794,8 @@
       "dark": "Dark",
       "light": "Light"
     },
-    "smtpRequired": "Resending requires configured SMTP."
+    "smtpRequired": "Resending requires configured SMTP.",
+    "classifications": "Classifications"
   },
   "trash": {
     "title": "Trash",
@@ -1832,5 +1833,19 @@
     "timerPause": "Pause",
     "timerResume": "Resume",
     "timerReset": "Reset"
+  },
+  "catalogs": {
+    "title": "Classifications",
+    "scope": "Instance-wide project types and tags. Only administrators can manage these shared catalogs. Archived values remain on existing records. Tags outside the catalog remain readable; new selections use active catalog values.",
+    "projectTypes": "Project types",
+    "tags": "Tags",
+    "name": "Name",
+    "archived": "Archived",
+    "up": "Move {{name}} up",
+    "down": "Move {{name}} down",
+    "add": "Add option",
+    "error": "Could not save or load. Another administrator may have changed the catalogs. Reload to get the current configuration.",
+    "reload": "Reload",
+    "tagHelp": "Choose an active shared tag. Administrators manage available values in Settings → Classifications. Existing tags remain readable."
   }
 }

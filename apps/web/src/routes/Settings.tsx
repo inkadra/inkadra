@@ -16,6 +16,7 @@ import { useSession } from '../lib/session.tsx';
 import { type ThemePreference, useTheme } from '../lib/theme.ts';
 import { EmailNotifications } from '../notifications/Notifications.tsx';
 import { useInstanceSetupState } from './AppLayout.tsx';
+import { ClassificationSettings } from './ClassificationSettings.tsx';
 import { InstanceSettings } from './InstanceSettings.tsx';
 import { InstanceChecklist } from './InstanceSetup.tsx';
 import { SettingsShell } from './SettingsShell.tsx';
@@ -62,6 +63,12 @@ export function Settings() {
         </Section>
       ) : section === 'notifications' ? (
         <EmailNotifications />
+      ) : section === 'classifications' ? (
+        user?.role === 'admin' ? (
+          <ClassificationSettings />
+        ) : (
+          <p role="alert">{t('admin.forbidden')}</p>
+        )
       ) : ['instance', 'workspace', 'providers'].includes(section) ? (
         user?.role === 'admin' ? (
           <InstanceSettings section={section} />

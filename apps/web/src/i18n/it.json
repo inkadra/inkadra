@@ -1794,7 +1794,8 @@
       "dark": "Scuro",
       "light": "Chiaro"
     },
-    "smtpRequired": "Il reinvio richiede SMTP configurato."
+    "smtpRequired": "Il reinvio richiede SMTP configurato.",
+    "classifications": "Classificazioni"
   },
   "trash": {
     "title": "Cestino",
@@ -1832,5 +1833,19 @@
     "timerPause": "Pausa",
     "timerResume": "Riprendi",
     "timerReset": "Azzera"
+  },
+  "catalogs": {
+    "title": "Classificazioni",
+    "scope": "Tipi di progetto e tag condivisi in tutta l’istanza, gestiti dagli amministratori. I valori archiviati restano sui dati esistenti. I tag fuori catalogo restano leggibili; le nuove selezioni usano i valori attivi.",
+    "projectTypes": "Tipi di progetto",
+    "tags": "Tag",
+    "name": "Nome",
+    "archived": "Archiviato",
+    "up": "Sposta {{name}} su",
+    "down": "Sposta {{name}} giù",
+    "add": "Aggiungi valore",
+    "error": "Impossibile salvare o caricare. Un altro amministratore potrebbe aver modificato i cataloghi. Ricarica la configurazione attuale.",
+    "reload": "Ricarica",
+    "tagHelp": "Scegli un tag condiviso attivo. Gli amministratori gestiscono i valori in Impostazioni → Classificazioni. I tag esistenti restano leggibili."
   }
 }
