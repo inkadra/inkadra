@@ -11,6 +11,7 @@ import {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Navigate, useLocation, useNavigate, useParams, useSearchParams } from 'react-router';
+import { useRegisterActions } from '../commands/actions.ts';
 import { useHeaderContent } from '../lib/header.tsx';
 import { useSession } from '../lib/session.tsx';
 import { useProjects } from '../routes/AppLayout.tsx';
@@ -225,6 +226,30 @@ function BoardScreen({
     [previewStore],
   );
   const editable = !!conn && !conn.readOnly && canEdit(detail?.myRole ?? projectRole);
+  // The view tabs, and their palette actions, belong to storyboards and the film views.
+  const showViewTabs =
+    kind === 'storyboard' ||
+    view === 'storyboard' ||
+    view === 'shotlist' ||
+    view === 'schedule' ||
+    view === 'review';
+  useRegisterActions(
+    conn?.status !== 'synced'
+      ? []
+      : [
+          ...(showViewTabs
+            ? VIEWS.map(({ view: target }) => ({
+                id: `view-${target}`,
+                label: t(`film.views.${target}`),
+                run: () => setView(target),
+              }))
+            : []),
+          ...(editable
+            ? [{ id: 'versions', label: t('versions.title'), run: () => setVersionsOpen(true) }]
+            : []),
+          ...(detail ? [{ id: 'share', label: t('share.open'), run: () => setSharing(true) }] : []),
+        ],
+  );
   useEffect(() => {
     const template: unknown = location.state?.template;
     const storyboard = template === 'storyboard' && kind === 'storyboard';
@@ -344,11 +369,7 @@ function BoardScreen({
             </Fragment>
           ))}
         </nav>
-        {(kind === 'storyboard' ||
-          view === 'storyboard' ||
-          view === 'shotlist' ||
-          view === 'schedule' ||
-          view === 'review') && (
+        {showViewTabs && (
           <div className="view-tabs" role="tablist" aria-label={t('film.views.label')}>
             {VIEWS.map((v) => (
               <button
@@ -415,7 +436,6 @@ function BoardScreen({
       rootBoardId,
       openBoard,
       conn,
-      kind,
       view,
       setView,
       detail,
@@ -425,6 +445,7 @@ function BoardScreen({
       handleRenameCurrentBoard,
       boardId,
       projectRole,
+      showViewTabs,
     ],
   );
   useHeaderContent(header);
