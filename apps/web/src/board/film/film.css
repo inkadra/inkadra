@@ -2937,3 +2937,57 @@ button.moodboard__card {
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 12px;
 }
+.client-review__progress {
+  display: grid;
+  gap: 8px;
+  margin-block: 16px;
+}
+.client-review__progress progress {
+  width: 100%;
+  accent-color: var(--ink-border-strong);
+}
+.client-review__layout {
+  display: grid;
+  grid-template-columns: minmax(300px, 1fr) minmax(340px, 1fr);
+  gap: 24px;
+  align-items: start;
+}
+.client-review__frames {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 12px;
+}
+.client-review__frame {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid var(--ink-border-default);
+  border-radius: 8px;
+  background: var(--ink-surface-1);
+  color: inherit;
+  text-align: start;
+  cursor: pointer;
+}
+.client-review__frame[aria-pressed="true"] {
+  outline: 2px solid var(--ink-border-strong);
+  outline-offset: 2px;
+}
+.client-review__frame > span {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.client-review__detail {
+  min-width: 0;
+}
+.client-review .review-segments > button {
+  border: 1px solid var(--ink-border-default);
+  border-radius: 6px;
+  padding: 6px 10px;
+  background: var(--ink-surface-1);
+  color: var(--ink-text-secondary);
+  cursor: pointer;
+}
+.client-review .review-segments > button[aria-pressed="true"] {
+  background: var(--ink-surface-3);
+  color: var(--ink-text-primary);
+}

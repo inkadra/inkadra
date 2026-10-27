@@ -1,5 +1,6 @@
 // @vitest-environment happy-dom
 import { createElement } from '@inkadra/canvas-core';
+import type { CommentThread } from '@inkadra/shared';
 import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { afterEach, expect, it, vi } from 'vitest';
@@ -7,17 +8,21 @@ import * as Y from 'yjs';
 import { api } from '../../lib/api.ts';
 import { NoteSideSheet } from '../NoteSideSheet.tsx';
 import { fillFragment } from '../note.tsx';
+import { resetReviews, setReviews } from '../review-store.ts';
 import { BoardStore } from '../store.ts';
 import { ClientReviewView } from './ClientReviewView.tsx';
 import { resolveDroppedShot, ScheduleView, SHOT_DRAG_TYPE } from './ScheduleView.tsx';
 
+vi.mock('../../lib/session.tsx', () => ({ useSession: () => ({ user: null }) }));
+
 vi.mock('react-i18next', () => {
   const t = (key: string) => key;
-  return { useTranslation: () => ({ t }) };
+  return { useTranslation: () => ({ t, i18n: { language: 'en' } }) };
 });
 
 const disposals: Array<() => void> = [];
 afterEach(() => {
+  resetReviews();
   vi.restoreAllMocks();
   for (const dispose of disposals.splice(0).reverse()) dispose();
 });
@@ -104,7 +109,7 @@ it('shows live note content without an editor for read-only access', async () =>
   expect(host.textContent).toContain('Remote update');
 });
 
-it('disables review submission, decisions and comments without claiming a save', async () => {
+it('keeps review rounds unavailable and shows live frames while loading', async () => {
   const { doc, store } = board();
   createElement(
     doc,
@@ -118,9 +123,9 @@ it('disables review submission, decisions and comments without claiming a save',
     (button) => button.textContent === 'shells.submitReview',
   );
   expect(submit?.disabled).toBe(true);
-  expect(host.textContent).toContain('shells.reviewUnavailable');
-  expect([...host.querySelectorAll('button')].every((button) => button.disabled)).toBe(true);
-  expect(host.querySelector('textarea')?.disabled).toBe(true);
+  expect(host.textContent).toContain('clientReview.roundsUnavailable');
+  expect(host.textContent).toContain('comments.loading');
+  expect(host.querySelector('textarea')).toBeNull();
   expect(host.textContent).toContain('Actual shot');
 });
 
@@ -177,4 +182,144 @@ it('renders the dropped shot identity and rejects foreign, malformed and read-on
   expect(viewer.querySelector('.schedule__day')?.textContent).not.toContain('5D');
   expect(viewer.querySelector('fieldset')?.disabled).toBe(true);
   expect(put).toHaveBeenCalledOnce();
+});
+
+it('filters real review decisions, counts approval progress and respects viewer permissions', async () => {
+  const { doc, store } = board();
+  const approved = createElement(
+    doc,
+    'frame',
+    { x: 0, y: 0 },
+    { action: 'Approved shot' },
+    { userId: null },
+  );
+  createElement(doc, 'frame', { x: 100, y: 0 }, { action: 'Pending shot' }, { userId: null });
+  resetReviews({
+    boardId: 'review-board',
+    role: 'viewer',
+    status: 'ready',
+    reviewsStatus: 'ready',
+    reviews: new Map([
+      [
+        approved.id,
+        {
+          elementId: approved.id,
+          status: 'approved',
+          note: null,
+          changedBy: { kind: 'deleted' },
+          changedAt: '2026-10-26T00:00:00Z',
+        },
+      ],
+    ]),
+  });
+  const host = await mount(<ClientReviewView store={store} boardId="review-board" />);
+  expect(host.querySelector('progress')?.value).toBe(1);
+  expect(host.querySelector('progress')?.max).toBe(2);
+  expect(host.textContent).not.toContain('review.change');
+  const pending = [...host.querySelectorAll('button')].find(
+    (b) => b.textContent === 'clientReview.filters.pending',
+  );
+  await act(async () => pending?.click());
+  expect(host.textContent).toContain('Pending shot');
+  expect(host.textContent).not.toContain('Approved shot');
+  await act(async () => setReviews({ reviewsStatus: 'error' }));
+  expect(host.querySelector('progress')).toBeNull();
+  expect(host.textContent).toContain('review.loadError');
+});
+
+it('shows guest-visible threads and uses the existing resolve API only for commenters', async () => {
+  const { doc, store } = board();
+  const frame = createElement(doc, 'frame', { x: 0, y: 0 }, {}, { userId: null });
+  const thread: CommentThread = {
+    id: 'client-thread',
+    boardId: 'review-board',
+    elementId: frame.id,
+    parentId: null,
+    pin: null,
+    createdAt: '2026-10-26T00:00:00Z',
+    editedAt: null,
+    deletedAt: null,
+    author: {
+      kind: 'guest',
+      name: 'Client',
+      guestId: 'guest',
+      shareLinkId: 'link',
+      shareLinkLabel: 'Client link',
+    },
+    body: 'Please brighten this frame',
+    mentions: [],
+    visibility: 'everyone',
+    shareLinkId: 'link',
+    shareLinkLabel: 'Client link',
+    canEdit: false,
+    canDelete: false,
+    resolvedAt: null,
+    resolvedBy: null,
+    replyCount: 0,
+    replies: [],
+  };
+  resetReviews({
+    boardId: 'review-board',
+    role: 'viewer',
+    status: 'ready',
+    reviewsStatus: 'ready',
+    threads: [thread, { ...thread, id: 'internal', body: 'Internal note', visibility: 'team' }],
+  });
+  const host = await mount(<ClientReviewView store={store} boardId="review-board" />);
+  expect(host.textContent).toContain('Please brighten this frame');
+  expect(host.textContent).not.toContain('Internal note');
+  expect(host.textContent).not.toContain('comments.reply');
+  expect(host.textContent).not.toContain('comments.resolve');
+  await act(async () => setReviews({ role: 'commenter' }));
+  expect(host.textContent).toContain('comments.reply');
+  const post = vi.spyOn(api, 'post').mockResolvedValue({});
+  const resolve = [...host.querySelectorAll('button')].find(
+    (b) => b.textContent === 'comments.resolve',
+  );
+  await act(async () => resolve?.click());
+  expect(post).toHaveBeenCalledWith('/comments/client-thread/resolve', {});
+});
+
+it('keeps review threads read-only for viewers', async () => {
+  const { doc, store } = board();
+  const frame = createElement(doc, 'frame', { x: 0, y: 0 }, {}, { userId: null });
+  const thread: CommentThread = {
+    id: 'client-thread',
+    boardId: 'review-board',
+    elementId: frame.id,
+    parentId: null,
+    pin: null,
+    createdAt: '2026-10-26T00:00:00Z',
+    editedAt: null,
+    deletedAt: null,
+    author: {
+      kind: 'guest',
+      name: 'Client',
+      guestId: 'guest',
+      shareLinkId: 'link',
+      shareLinkLabel: 'Client link',
+    },
+    body: 'Please brighten this frame',
+    mentions: [],
+    visibility: 'everyone',
+    shareLinkId: 'link',
+    shareLinkLabel: 'Client link',
+    canEdit: false,
+    canDelete: false,
+    resolvedAt: null,
+    resolvedBy: null,
+    replyCount: 0,
+    replies: [],
+  };
+  resetReviews({
+    boardId: 'review-board',
+    role: 'viewer',
+    status: 'ready',
+    reviewsStatus: 'ready',
+    threads: [thread],
+  });
+  const host = await mount(<ClientReviewView store={store} boardId="review-board" readOnly />);
+  expect(host.textContent).toContain('Please brighten this frame');
+  expect(host.textContent).not.toContain('comments.reply');
+  expect(host.textContent).not.toContain('comments.resolve');
 });

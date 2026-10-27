@@ -539,7 +539,7 @@ function AuthorLine({ author, at, edited }: { author: Author; at: string; edited
   );
 }
 
-const Thread = memo(function Thread({
+export const Thread = memo(function Thread({
   thread,
   writable,
   targetLabel,
