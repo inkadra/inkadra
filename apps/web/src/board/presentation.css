@@ -193,7 +193,11 @@
   flex-direction: column;
   gap: 12px;
   padding: 0 40px 24px;
-  background: linear-gradient(to top, rgba(14, 14, 16, 0.95) 80%, transparent);
+  background: linear-gradient(
+    to top,
+    color-mix(in srgb, var(--ink-bg-canvas) 95%, transparent) 80%,
+    transparent
+  );
   z-index: 10;
 }
 
@@ -220,7 +224,7 @@
   padding: 0;
   cursor: pointer;
   text-align: left;
-  color: var(--ink-text-muted);
+  color: var(--ink-text-secondary);
   transition: opacity 0.15s;
 }
 
@@ -309,7 +313,7 @@
 
 .present-toolbar__hint {
   font-size: 11px;
-  color: var(--ink-text-muted);
+  color: var(--ink-text-secondary);
   display: flex;
   align-items: center;
   gap: 4px;
