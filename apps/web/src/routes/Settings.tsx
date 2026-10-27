@@ -184,7 +184,7 @@ function Profile() {
       await api.patch<User>('/me', { name: name.trim(), locale });
       await i18n.changeLanguage(locale);
       await refresh();
-      status.show(t('settings.saved'));
+      status.show(i18n.t('settings.saved'));
     } catch (err) {
       status.fail(err);
     }
