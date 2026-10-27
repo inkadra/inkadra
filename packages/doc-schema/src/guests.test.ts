@@ -132,4 +132,24 @@ describe('guest element fields', () => {
     });
     expect(Element.parse(guest)).toEqual(guest);
   });
+
+  it('sets a computed shot label on frames when provided', () => {
+    const frame = Element.parse({
+      id: 'V1StGXR8_Z5jdHi6B-myT',
+      type: 'frame',
+      x: 0,
+      y: 0,
+      w: 320,
+      z: 'a0',
+      parent: null,
+      createdBy: 'user-1',
+      createdAt: 1,
+    });
+    const guestWithLabel = toGuestElement(frame, '1C');
+    expect(guestWithLabel.label).toBe('1C');
+    expect(Element.parse(guestWithLabel)).toEqual(guestWithLabel);
+
+    const guestWithoutLabel = toGuestElement(frame);
+    expect(guestWithoutLabel).not.toHaveProperty('label');
+  });
 });

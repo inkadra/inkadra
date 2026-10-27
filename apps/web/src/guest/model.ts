@@ -235,13 +235,38 @@ export function cardLabel(el: Record<string, unknown>, max = 60): string | null 
   return one.length > max ? `${one.slice(0, max - 1)}…` : one;
 }
 
-/** Shot labels for the storyboard frames, the same rule as the canvas: scene number plus letter. */
+/**
+ * Shot labels for storyboard frames. Prefers the server-provided label sent with each frame
+ * (computed on the full document so hidden frames do not shift labels), and falls back to
+ * local computation only when absent.
+ */
 export function shotLabels(elements: readonly GuestElement[]): Map<string, string> {
-  const parsed: Element[] = [];
+  const labels = new Map<string, string>();
+  const missing: GuestElement[] = [];
+
   for (const raw of elements) {
-    const { body: _body, ...fields } = raw;
-    const result = Element.safeParse(fields);
-    if (result.success) parsed.push(result.data);
+    if (raw.type !== 'frame') continue;
+    if (typeof raw.label === 'string' && raw.label.trim() !== '') {
+      labels.set(raw.id, raw.label.trim());
+    } else {
+      missing.push(raw);
+    }
   }
-  return frameLabels(storyboardOf(parsed));
+
+  // Fall back to local computation when server-provided labels are absent.
+  if (missing.length > 0) {
+    const parsed: Element[] = [];
+    for (const raw of elements) {
+      const { body: _body, ...fields } = raw;
+      const result = Element.safeParse(fields);
+      if (result.success) parsed.push(result.data);
+    }
+    const computed = frameLabels(storyboardOf(parsed));
+    for (const raw of missing) {
+      const label = computed.get(raw.id);
+      if (label) labels.set(raw.id, label);
+    }
+  }
+
+  return labels;
 }

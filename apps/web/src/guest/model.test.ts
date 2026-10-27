@@ -264,4 +264,24 @@ describe('shot labels', () => {
   it('is empty without frames', () => {
     expect(shotLabels([el({})])).toEqual(new Map());
   });
+
+  it('uses server-provided labels without shifting when middle frames are hidden', () => {
+    const labels = shotLabels([
+      el({ id: 's0000001', type: 'scene', number: '1', title: 'Atrio', z: '1' }),
+      el({ id: 'f0000001', type: 'frame', parent: 's0000001', z: '1', label: '1A' }),
+      el({ id: 'f0000003', type: 'frame', parent: 's0000001', z: '3', label: '1C' }),
+    ]);
+    expect(labels.get('f0000001')).toBe('1A');
+    expect(labels.get('f0000003')).toBe('1C');
+  });
+
+  it('falls back to local computation when server-provided labels are absent', () => {
+    const labels = shotLabels([
+      el({ id: 's0000001', type: 'scene', number: '1', title: 'Atrio', z: '1' }),
+      el({ id: 'f0000001', type: 'frame', parent: 's0000001', z: '1' }),
+      el({ id: 'f0000003', type: 'frame', parent: 's0000001', z: '3' }),
+    ]);
+    expect(labels.get('f0000001')).toBe('1A');
+    expect(labels.get('f0000003')).toBe('1B');
+  });
 });

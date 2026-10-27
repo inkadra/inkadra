@@ -89,12 +89,17 @@ export const GUEST_ELEMENT_FIELDS = {
 /**
  * An element as guests receive it: only the fields of GUEST_ELEMENT_FIELDS, `createdBy` null.
  * It still parses with `Element`. Whether the element is shown at all is hiddenFromGuests.
+ * When `label` is passed for a frame (computed from the full document before hiding), it sets
+ * the frame's shot label.
  */
-export function toGuestElement(element: Element): Record<string, unknown> {
+export function toGuestElement(element: Element, label?: string): Record<string, unknown> {
   const source = element as Record<string, unknown>;
   const out: Record<string, unknown> = {};
   for (const key of GUEST_ELEMENT_FIELDS[element.type]) {
     if (source[key] !== undefined) out[key] = source[key];
+  }
+  if (element.type === 'frame' && label !== undefined) {
+    out.label = label;
   }
   out.createdBy = null;
   return out;
