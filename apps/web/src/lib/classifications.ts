@@ -1,5 +1,5 @@
 import {
-  type ClassificationCatalogs,
+  ClassificationCatalogs,
   classificationLabel,
   classificationOption,
   DEFAULT_CLASSIFICATIONS,
@@ -19,7 +19,7 @@ export function refreshClassifications() {
   if (!pending)
     pending = api
       .get<ClassificationCatalogs>('/instance/classifications')
-      .then(setClassifications)
+      .then((value) => setClassifications(ClassificationCatalogs.parse(value)))
       .catch(() => {})
       .finally(() => {
         pending = null;
@@ -34,7 +34,11 @@ const subscribe = (listener: () => void) => {
 };
 export function useClassifications() {
   const { t } = useTranslation();
-  const catalogs = useSyncExternalStore(subscribe, () => cache);
+  const catalogs = useSyncExternalStore(
+    subscribe,
+    () => cache,
+    () => DEFAULT_CLASSIFICATIONS,
+  );
   useEffect(() => {
     void refreshClassifications();
     const refresh = () => {

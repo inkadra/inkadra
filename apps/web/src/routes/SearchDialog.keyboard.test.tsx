@@ -1,5 +1,5 @@
 // @vitest-environment happy-dom
-import type { SearchHit } from '@inkadra/shared';
+import { DEFAULT_CLASSIFICATIONS, type SearchHit } from '@inkadra/shared';
 import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { MemoryRouter } from 'react-router';
@@ -17,6 +17,7 @@ vi.mock('../lib/api.ts', async (importOriginal) => ({
 let host: HTMLDivElement;
 let root: Root;
 beforeEach(() => {
+  vi.mocked(api.get).mockResolvedValue(DEFAULT_CLASSIFICATIONS);
   host = document.createElement('div');
   document.body.append(host);
   root = createRoot(host);
