@@ -1,4 +1,4 @@
-import type { Project } from '@inkadra/shared';
+import type { Project, ProjectIcon, z } from '@inkadra/shared';
 import { refreshBoards, syncRootBoardTitle } from '../board/boards.ts';
 import { api } from '../lib/api.ts';
 
@@ -69,5 +69,17 @@ export async function renameProject(projectId: string, name: string): Promise<Pr
   emit();
   syncRootBoardTitle(projectId, project.name);
   void refreshBoards(projectId);
+  return project;
+}
+
+/** A successful appearance write wins over an older in-flight list, as renames do. */
+export async function updateProjectAppearance(
+  projectId: string,
+  icon: z.infer<typeof ProjectIcon>,
+): Promise<Project> {
+  const project = await api.patch<Project>(`/projects/${projectId}`, { icon });
+  revision++;
+  cache = cache ? cache.map((p) => (p.id === projectId ? { ...p, ...project } : p)) : [project];
+  emit();
   return project;
 }

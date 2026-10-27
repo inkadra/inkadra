@@ -1542,6 +1542,13 @@
               "green",
               "neutral"
             ]
+          },
+          "emoji": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 32
           }
         },
         "required": [

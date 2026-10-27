@@ -10,7 +10,6 @@ import {
   KeyCap,
   Logo,
   NavItem,
-  ProjectGlyph,
   Rail,
   RailButton,
   RailSeparator,
@@ -56,6 +55,7 @@ import { useInstanceSetup } from './InstanceSetup.tsx';
 import { MobileNavigation } from './MobileNavigation.tsx';
 import { NewBoardDialog } from './NewBoardDialog.tsx';
 import { NewProjectDialog } from './NewProjectDialog.tsx';
+import { ProjectNavItem } from './ProjectAppearance.tsx';
 import {
   getCachedProjects,
   refreshProjects,
@@ -386,10 +386,8 @@ export function AppLayout() {
       />
       {projects?.map((p) => (
         <div key={p.id}>
-          <NavItem
-            leading={<ProjectGlyph shape={p.icon.shape} color={p.icon.color} />}
-            label={p.name}
-            href={`/p/${p.id}`}
+          <ProjectNavItem
+            project={p}
             active={p.id === projectId && !boardId}
             onClick={go(`/p/${p.id}`)}
           />

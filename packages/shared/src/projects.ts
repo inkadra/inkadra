@@ -10,6 +10,20 @@ export const ProjectIcon = z
   .object({
     shape: z.enum(['diamond', 'circle', 'triangle', 'square']),
     color: z.enum(['blue', 'orange', 'purple', 'green', 'neutral']),
+    emoji: z
+      .string()
+      .max(32)
+      .refine((value) => {
+        const segments = [
+          ...new Intl.Segmenter(undefined, { granularity: 'grapheme' }).segment(value),
+        ];
+        return (
+          segments.length === 1 &&
+          /\p{Extended_Pictographic}|\p{Regional_Indicator}|[#*0-9]\uFE0F?\u20E3/u.test(value)
+        );
+      }, 'Use one emoji.')
+      .nullable()
+      .optional(),
   })
   .openapi('ProjectIcon');
 
@@ -79,3 +93,15 @@ export type ProjectMember = z.infer<typeof ProjectMember>;
 export const SetProjectMember = z.object({ role: ProjectRole }).openapi('SetProjectMember');
 
 export const SetProjectPin = z.object({ pinned: z.boolean() }).openapi('SetProjectPin');
+
+/** Deterministic frame-inspired defaults, independent of names and list ordering. */
+export function defaultProjectIcon(id: string): z.infer<typeof ProjectIcon> {
+  const seed = Number.parseInt(id.replaceAll('-', '').slice(-6), 16) || 0;
+  const shapes = ['diamond', 'triangle', 'square', 'circle'] as const;
+  const colors = ['blue', 'orange', 'purple', 'green'] as const;
+  return {
+    shape: shapes[seed % 4] ?? 'diamond',
+    color: colors[Math.floor(seed / 4) % 4] ?? 'blue',
+    emoji: null,
+  };
+}

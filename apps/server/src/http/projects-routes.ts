@@ -1,6 +1,8 @@
+import { randomUUID } from 'node:crypto';
 import {
   API_PREFIX,
   CreateProject,
+  defaultProjectIcon,
   Id,
   PageQuery,
   type Project,
@@ -51,7 +53,7 @@ export function toProject(
   return {
     id: row.id,
     name: row.name,
-    icon: { shape: row.iconShape, color: row.iconColor },
+    icon: { shape: row.iconShape, color: row.iconColor, emoji: row.iconEmoji },
     rootBoardId,
     position: row.position,
     archivedAt: row.archivedAt ? iso(row.archivedAt) : null,
@@ -191,6 +193,8 @@ export function registerProjectRoutes(app: FastifyInstance, deps: Deps) {
     const actor = await requireActor(auth, req, db);
     const input = CreateProject.parse(req.body);
     validateDates(input.shootingStart ?? null, input.shootingEnd ?? null);
+    const id = randomUUID();
+    const icon = input.icon ?? defaultProjectIcon(id);
     const created = await db.transaction(async (tx) => {
       const [last] = await tx
         .select({ position: project.position })
@@ -200,12 +204,14 @@ export function registerProjectRoutes(app: FastifyInstance, deps: Deps) {
       const [p] = await tx
         .insert(project)
         .values({
+          id,
           name: input.name,
           type: input.type,
           shootingStart: input.shootingStart,
           shootingEnd: input.shootingEnd,
-          iconShape: input.icon?.shape ?? 'circle',
-          iconColor: input.icon?.color ?? 'neutral',
+          iconShape: icon.shape,
+          iconColor: icon.color,
+          iconEmoji: icon.emoji ?? null,
           position: generateKeyBetween(last?.position ?? null, null),
           createdBy: actor.id,
         })
@@ -247,6 +253,7 @@ export function registerProjectRoutes(app: FastifyInstance, deps: Deps) {
     if (patch.icon) {
       set.iconShape = patch.icon.shape;
       set.iconColor = patch.icon.color;
+      set.iconEmoji = patch.icon.emoji ?? null;
     }
     if (patch.position !== undefined) set.position = patch.position;
     if (patch.archived !== undefined) set.archivedAt = patch.archived ? new Date() : null;
