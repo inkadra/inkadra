@@ -1729,7 +1729,7 @@ export function Canvas({
           </div>
         )}
 
-        {!overlay.offset && !overlay.marquee && selectionBox && !menu && (
+        {!overlay.offset && !overlay.marquee && selectionBox && (
           <ContextBar
             box={selectionBox}
             elements={selectedEls}
