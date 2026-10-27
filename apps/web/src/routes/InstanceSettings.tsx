@@ -1,16 +1,17 @@
-import type { InstanceSettings as Settings } from '@inkadra/shared';
+import type { InstanceSettings as Settings, StorageUsage } from '@inkadra/shared';
 import { Button, TextField } from '@inkadra/ui';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
 import { api } from '../lib/api.ts';
 import { useSession } from '../lib/session.tsx';
+import { StorageCharts } from './StorageCharts.tsx';
 
 export function InstanceSettings({ section }: { section: string }) {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const { instance, refresh } = useSession();
   const [settings, setSettings] = useState<Settings | null>(null);
-  const [storage, setStorage] = useState<number | null>(null);
+  const [storage, setStorage] = useState<StorageUsage | null>(null);
   const [error, setError] = useState(false);
   const [saved, setSaved] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -18,12 +19,12 @@ export function InstanceSettings({ section }: { section: string }) {
     let active = true;
     Promise.all([
       api.get<Settings>('/instance/settings'),
-      api.get<{ originalBytes: number }>('/instance/storage'),
+      api.get<StorageUsage>('/instance/storage'),
     ])
       .then(([data, usage]) => {
         if (active) {
           setSettings(data);
-          setStorage(usage.originalBytes);
+          setStorage(usage);
         }
       })
       .catch(() => {
@@ -93,13 +94,11 @@ export function InstanceSettings({ section }: { section: string }) {
       {section === 'workspace' && (
         <section>
           <h2>{t('admin.storage')}</h2>
-          <p>
-            {storage === null
-              ? t('admin.loading')
-              : t('admin.storageBytes', { bytes: storage.toLocaleString(i18n.language) })}
-          </p>
-          <p className="ink-muted">{t('admin.storageHelp')}</p>
-          {storage === 0 && <p>{t('admin.storageEmpty')}</p>}
+          {storage ? (
+            <StorageCharts usage={storage} />
+          ) : (
+            !error && <p role="status">{t('admin.loading')}</p>
+          )}
         </section>
       )}
       {section === 'providers' && (

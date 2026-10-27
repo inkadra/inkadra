@@ -1,0 +1,59 @@
+.storage-usage {
+  max-width: 760px;
+}
+.storage-usage__total {
+  font-size: 2rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.storage-chart {
+  margin-block: 24px;
+}
+.storage-chart table {
+  width: 100%;
+  table-layout: fixed;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.storage-chart caption {
+  text-align: start;
+  color: var(--ink-text-muted);
+  padding-bottom: 10px;
+}
+.storage-chart th,
+.storage-chart td {
+  text-align: end;
+  padding: 10px 4px;
+  vertical-align: top;
+  font-variant-numeric: tabular-nums;
+}
+.storage-chart th:first-child {
+  text-align: start;
+  width: 54%;
+  overflow-wrap: anywhere;
+}
+.storage-chart tbody th {
+  font-weight: 500;
+}
+.storage-chart__track {
+  display: block;
+  height: 10px;
+  border-radius: 3px;
+  background: var(--ink-surface-2);
+  margin-top: 6px;
+  overflow: hidden;
+}
+.storage-chart__track > span {
+  display: block;
+  height: 100%;
+  background: var(--ink-accent-primary);
+  min-width: 0;
+}
+@media (max-width: 480px) {
+  .storage-chart th:first-child {
+    width: 42%;
+  }
+  .storage-chart table {
+    font-size: 12px;
+  }
+}

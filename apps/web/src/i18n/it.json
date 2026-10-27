@@ -1746,7 +1746,7 @@
     "disabled": "Disattivato",
     "loading": "Caricamento…",
     "storageBytes": "{{bytes}} byte di file originali",
-    "storageHelp": "Caricamenti originali dell’intera istanza. Anteprime derivate e capacità fisica non sono incluse.",
+    "storageHelp": "File originali caricati nell’istanza, inclusi quelli in elaborazione o con anteprima fallita. Upload incompleti, anteprime derivate, database e capacità fisica del disco sono esclusi.",
     "storageEmpty": "Nessun file caricato.",
     "password": "Email e password",
     "magicLink": "Link di accesso via email",
@@ -1794,7 +1794,25 @@
       "dark": "Scuro",
       "light": "Chiaro"
     },
-    "smtpRequired": "Il reinvio richiede SMTP configurato."
+    "smtpRequired": "Il reinvio richiede SMTP configurato.",
+    "storageCharts": {
+      "byType": "Utilizzo per tipo di file",
+      "byProject": "Utilizzo per progetto",
+      "category": "Categoria / progetto",
+      "size": "File originali",
+      "share": "Percentuale",
+      "percentScope": "Ogni percentuale è riferita al totale dei file originali indicato sopra.",
+      "attribution": "Ogni asset è conteggiato una sola volta nel progetto proprietario, anche se usato in più board o progetti. I progetti a cui non hai accesso sono raggruppati in forma anonima.",
+      "unassigned": "Senza progetto",
+      "restricted": "Progetti riservati",
+      "types": {
+        "images": "Immagini",
+        "videos": "Video",
+        "audio": "Audio",
+        "documents": "Documenti",
+        "other": "Altri file"
+      }
+    }
   },
   "trash": {
     "title": "Cestino",

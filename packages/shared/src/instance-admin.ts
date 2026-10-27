@@ -34,3 +34,27 @@ export const UpdateInstanceMember = z
   .object({ role: InstanceRole.optional(), active: z.boolean().optional() })
   .strict()
   .openapi('UpdateInstanceMember');
+
+export const StorageUsage = z
+  .object({
+    originalBytes: z.number().nonnegative(),
+    byType: z.array(
+      z.object({
+        type: z.enum(['images', 'videos', 'audio', 'documents', 'other']),
+        bytes: z.number().nonnegative(),
+      }),
+    ),
+    byProject: z.array(
+      z.object({
+        projectId: Id.nullable(),
+        name: z.string().nullable(),
+        scope: z.enum(['project', 'restricted', 'unassigned']),
+        bytes: z.number().nonnegative(),
+      }),
+    ),
+  })
+  .openapi('StorageUsage', {
+    description:
+      'Completed original uploads (processing, ready or failed), once per asset row. Pending uploads, derived files, database and physical capacity excluded. Attribution uses asset.projectId, independent of references. Inaccessible projects are combined without names or IDs.',
+  });
+export type StorageUsage = z.infer<typeof StorageUsage>;

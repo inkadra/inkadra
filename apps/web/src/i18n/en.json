@@ -1746,7 +1746,7 @@
     "disabled": "Disabled",
     "loading": "Loading…",
     "storageBytes": "{{bytes}} bytes of original files",
-    "storageHelp": "Original uploads across the instance. Derived previews and physical storage capacity are not included.",
+    "storageHelp": "Completed original uploads across the instance, including files awaiting processing or whose preview processing failed. Incomplete uploads, derived previews, the database and physical storage capacity are excluded.",
     "storageEmpty": "No uploaded files yet.",
     "password": "Email and password",
     "magicLink": "Email sign-in link",
@@ -1794,7 +1794,25 @@
       "dark": "Dark",
       "light": "Light"
     },
-    "smtpRequired": "Resending requires configured SMTP."
+    "smtpRequired": "Resending requires configured SMTP.",
+    "storageCharts": {
+      "byType": "Usage by file type",
+      "byProject": "Usage by project",
+      "category": "Category / project",
+      "size": "Original files",
+      "share": "Share",
+      "percentScope": "Each percentage is a share of the total original-file usage above.",
+      "attribution": "Each asset is counted once in its owning project, even when referenced by multiple boards or projects. Projects you cannot access are grouped anonymously.",
+      "unassigned": "Without a project",
+      "restricted": "Restricted projects",
+      "types": {
+        "images": "Images",
+        "videos": "Videos",
+        "audio": "Audio",
+        "documents": "Documents",
+        "other": "Other files"
+      }
+    }
   },
   "trash": {
     "title": "Trash",
