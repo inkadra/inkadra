@@ -16,7 +16,7 @@ import { LOCAL } from './store.ts';
 
 /** Reserve the whole layout, including the four stacked swatches of the moodboard. */
 export function templateRect(id: TemplateId, center: Point, occupied: Rect[]): Rect {
-  const columns = id === 'moodboard' ? 4 : 3;
+  const columns = id === 'moodboard' ? 4 : id === 'production' ? 3 : 1;
   const w = id === 'storyboard' ? DEFAULT_WIDTH.board : columns * (DEFAULT_WIDTH.column + 40) - 40;
   const rect = { x: center.x - w / 2, y: center.y - 60, w, h: id === 'moodboard' ? 1000 : 120 };
   for (;;) {
@@ -51,13 +51,31 @@ export function templateLabels(t: (key: string) => string): TemplateLabels {
       doing: t('templates.production.doing'),
       done: t('templates.production.done'),
     },
+    brief: {
+      column: t('templates.brief.column'),
+      logline: t('templates.brief.logline'),
+      synopsis: t('templates.brief.synopsis'),
+      tone: t('templates.brief.tone'),
+    },
+    locations: {
+      column: t('templates.locations.column'),
+      location: t('templates.locations.location'),
+    },
+    casting: {
+      column: t('templates.casting.column'),
+      role: t('templates.casting.role'),
+    },
   };
 }
 
 /** Templates a new board can be opened with from Home (decision 0021's navigation request). */
 export type StartTemplate = Exclude<TemplateId, 'storyboard'>;
 export const isStartTemplate = (value: unknown): value is StartTemplate =>
-  value === 'moodboard' || value === 'production';
+  value === 'moodboard' ||
+  value === 'production' ||
+  value === 'brief' ||
+  value === 'locations' ||
+  value === 'casting';
 
 /** Lay out a canvas template on a board that just synced empty, in one undo step. */
 export function seedTemplate(

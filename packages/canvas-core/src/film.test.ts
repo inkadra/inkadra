@@ -134,6 +134,9 @@ describe('templates', () => {
       moodboard: { refs: 'Refs', light: 'Light', locations: 'Locations', palette: 'Palette' },
       storyboard: { scene: 'Opening' },
       production: { todo: 'To do', doing: 'Doing', done: 'Done' },
+      brief: { column: 'Brief', logline: 'Logline', synopsis: 'Synopsis', tone: 'Tone' },
+      locations: { column: 'Locations', location: 'Location' },
+      casting: { column: 'Casting', role: 'Role' },
     };
     const doc = createBoardDoc(boardId);
     const undo = new Y.UndoManager(roots(doc).elements, { trackedOrigins: new Set(['t']) });

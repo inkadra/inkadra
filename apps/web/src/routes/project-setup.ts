@@ -13,14 +13,14 @@ export type ProjectTemplate = (typeof PROJECT_TEMPLATES)[number];
 export interface SetupBoard {
   key: string;
   kind: 'board' | 'storyboard';
-  seed?: 'production' | 'moodboard' | 'storyboard';
+  seed?: 'production' | 'moodboard' | 'storyboard' | 'brief' | 'locations' | 'casting';
 }
 export const setupBoards = (template: ProjectTemplate): SetupBoard[] => {
   if (template === 'production')
     return [
-      { key: 'brief', kind: 'board', seed: 'production' },
-      { key: 'locations', kind: 'board' },
-      { key: 'casting', kind: 'board' },
+      { key: 'brief', kind: 'board', seed: 'brief' },
+      { key: 'locations', kind: 'board', seed: 'locations' },
+      { key: 'casting', kind: 'board', seed: 'casting' },
       { key: 'moodboard', kind: 'board', seed: 'moodboard' },
       { key: 'storyboard', kind: 'storyboard', seed: 'storyboard' },
     ];

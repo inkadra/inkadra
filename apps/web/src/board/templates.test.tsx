@@ -108,4 +108,58 @@ describe('templates', () => {
     store.destroy();
     doc.destroy();
   });
+
+  it('seeds brief with a column and placeholder notes (Logline, Synopsis, Tone)', () => {
+    const doc = new Y.Doc();
+    const store = new BoardStore(doc);
+    const labels = templateLabels((key) => key);
+    expect(seedTemplate(doc, 'brief', labels, 'filmmaker')).toBe(true);
+    const elements = listElements(doc);
+    const column = elements.find((e) => e.type === 'column');
+    expect(column).toBeDefined();
+    expect(column?.title).toBe('templates.brief.column');
+    const notes = elements.filter((e) => e.type === 'note');
+    expect(notes).toHaveLength(3);
+    expect(notes.every((n) => n.parent === column?.id)).toBe(true);
+    const noteBodies = notes.map((n) => {
+      const body = store.map(n.id)?.get('body');
+      return body instanceof Y.XmlFragment ? body.toString() : '';
+    });
+    expect(noteBodies).toEqual([
+      '<paragraph>templates.brief.logline</paragraph>',
+      '<paragraph>templates.brief.synopsis</paragraph>',
+      '<paragraph>templates.brief.tone</paragraph>',
+    ]);
+    store.undo.undo();
+    expect(listElements(doc)).toEqual([]);
+    store.destroy();
+    doc.destroy();
+  });
+
+  it('seeds locations and casting with a column and one placeholder note each', () => {
+    const labels = templateLabels((key) => key);
+    for (const [tpl, colKey, noteKey] of [
+      ['locations', 'templates.locations.column', 'templates.locations.location'],
+      ['casting', 'templates.casting.column', 'templates.casting.role'],
+    ] as const) {
+      const doc = new Y.Doc();
+      const store = new BoardStore(doc);
+      expect(seedTemplate(doc, tpl, labels, 'filmmaker')).toBe(true);
+      const elements = listElements(doc);
+      const column = elements.find((e) => e.type === 'column');
+      expect(column).toBeDefined();
+      expect(column?.title).toBe(colKey);
+      const notes = elements.filter((e) => e.type === 'note');
+      expect(notes).toHaveLength(1);
+      expect(notes[0]?.parent).toBe(column?.id);
+      const body = store.map(notes[0]!.id)?.get('body');
+      expect(body instanceof Y.XmlFragment ? body.toString() : '').toBe(
+        `<paragraph>${noteKey}</paragraph>`,
+      );
+      store.undo.undo();
+      expect(listElements(doc)).toEqual([]);
+      store.destroy();
+      doc.destroy();
+    }
+  });
 });
