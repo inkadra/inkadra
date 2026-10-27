@@ -1324,6 +1324,13 @@
     "conversationUnavailable": "Conversazione non disponibile"
   },
   "settings": {
+    "sectionLead": {
+      "preferences": "Scegli l’aspetto e il comportamento di Inkadra.",
+      "notifications": "Scegli quali notifiche ricevere via email.",
+      "workspace": "Gestisci lo spazio di lavoro e i limiti di caricamento.",
+      "instance": "Gestisci il marchio dell’istanza e le registrazioni.",
+      "providers": "Configura i provider disponibili per accedere."
+    },
     "title": "Account",
     "lead": "Il tuo profilo, come accedi e le app collegate.",
     "save": "Salva",

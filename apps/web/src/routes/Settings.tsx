@@ -19,6 +19,7 @@ import { useInstanceSetupState } from './AppLayout.tsx';
 import { InstanceSettings } from './InstanceSettings.tsx';
 import { InstanceChecklist } from './InstanceSetup.tsx';
 import { SettingsShell } from './SettingsShell.tsx';
+import { settingsSection } from './settings-sections.ts';
 import './projects.css';
 import { GoogleG } from './SignInOptions.tsx';
 import './settings.css';
@@ -28,7 +29,8 @@ export function Settings() {
   const setup = useInstanceSetupState();
   const { t } = useTranslation();
   const [params] = useSearchParams();
-  const section = params.get('section') ?? 'account';
+  const page = settingsSection('/settings', params.toString());
+  const section = page.id;
   const { user } = useSession();
   const { preference, choose } = useTheme();
   const [accounts, setAccounts] = useState<Array<{ id: string; providerId: string }> | null>(null);
@@ -40,8 +42,8 @@ export function Settings() {
 
   return (
     <SettingsShell>
-      <h1 className="settings__title">{t('settings.title')}</h1>
-      <p className="ink-muted settings__lead">{t('settings.lead')}</p>
+      <h1 className="settings__title">{t(page.title)}</h1>
+      <p className="ink-muted settings__lead">{t(page.lead)}</p>
       <InstanceChecklist {...setup} />
       {section === 'preferences' ? (
         <Section title={t('admin.preferences')}>
