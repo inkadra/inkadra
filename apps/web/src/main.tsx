@@ -9,6 +9,7 @@ import { UpdatePrompt } from './pwa/UpdatePrompt.tsx';
 import { AppLayout } from './routes/AppLayout.tsx';
 import { Authorize } from './routes/Authorize.tsx';
 import { Diagnostics } from './routes/Diagnostics.tsx';
+import { ErrorPage } from './routes/ErrorPage.tsx';
 import { Home } from './routes/Home.tsx';
 import { Join } from './routes/Join.tsx';
 import { Login } from './routes/Login.tsx';
@@ -28,13 +29,14 @@ const loadGuest = async () => ({ Component: (await import('./guest/GuestPage.tsx
 const router = createBrowserRouter([
   // The guest page of a share link (decision 0013): outside the account session, which it
   // never loads. The path is the one the server puts in ShareLink.url.
-  { path: '/s/:token', lazy: loadGuest },
+  { path: '/s/:token', lazy: loadGuest, errorElement: <ErrorPage /> },
   {
     element: (
       <SessionProvider>
         <Root />
       </SessionProvider>
     ),
+    errorElement: <ErrorPage />,
     children: [
       { path: '/login', element: <Login /> },
       { path: '/diagnostics', element: <Diagnostics /> },

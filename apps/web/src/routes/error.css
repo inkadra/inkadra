@@ -1,0 +1,22 @@
+/* App-level error page (issue 109): centered, calm, with the error ID for support. */
+.app-error {
+  display: grid;
+  place-items: center;
+  height: 100%;
+  padding: 32px;
+}
+.app-error .ink-empty {
+  max-width: 380px;
+}
+.app-error__id {
+  margin-top: 12px;
+  padding: 3px 8px;
+  border-radius: 6px;
+  background: var(--ink-surface-1);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+  color: var(--ink-text-secondary);
+}
+.app-error__hint {
+  margin: 2px 0 0;
+}

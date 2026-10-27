@@ -173,6 +173,12 @@ const paths = {
   download: <path d="M12 4v12M7 11l5 5 5-5M4 20h16" />,
   undo: <path d="M9 7L4 12l5 5M4 12h11a5 5 0 0 1 0 10h-2" />,
   table: <path d="M4 5h16v14H4zM4 10h16M4 15h16M10 5v14" />,
+  warning: (
+    <>
+      <path d="M12 4l9 16H3z" />
+      <path d="M12 10v4M12 17v.5" />
+    </>
+  ),
 } as const;
 
 export type IconName = keyof typeof paths;

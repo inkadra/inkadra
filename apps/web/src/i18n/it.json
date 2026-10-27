@@ -169,6 +169,15 @@
     "title": "Pagina non trovata",
     "back": "Torna alla home"
   },
+  "appError": {
+    "title": "Qualcosa non ha funzionato",
+    "body": "La pagina ha smesso di funzionare. Le tue modifiche recenti sono salve su questo dispositivo.",
+    "retry": "Riprova",
+    "copy": "Copia dettagli",
+    "copied": "Dettagli copiati",
+    "id": "ID errore {{id}}",
+    "hint": "Se succede di nuovo, invia i dettagli copiati a chi gestisce questo Inkadra."
+  },
   "diagnostics": {
     "title": "Diagnostica dell’istanza",
     "subtitle": "Controlla proxy, indirizzo pubblico, database e archiviazione.",
@@ -404,7 +413,10 @@
     },
     "denied": {
       "title": "Non puoi aprire questa board",
-      "body": "Chiedi l’accesso a chi gestisce il progetto."
+      "body": "Chiedi l’accesso a chi gestisce il progetto.",
+      "copy": "Copia il link della board",
+      "copied": "Link copiato",
+      "hint": "Invia il link copiato a chi gestisce il progetto: può darti l’accesso."
     },
     "errors": {
       "boardCreate": "Non è stato possibile creare la board.",
@@ -897,6 +909,11 @@
   "guest": {
     "loading": "Apertura del board…",
     "retry": "Riprova",
+    "askLink": {
+      "button": "Chiedi un nuovo link",
+      "copied": "Link copiato",
+      "hint": "Incollalo in un messaggio a chi ti ha condiviso la board: può creartene uno nuovo funzionante."
+    },
     "cancel": "Annulla",
     "download": "Scarica l’originale",
     "breadcrumb": "Board condivisi",
