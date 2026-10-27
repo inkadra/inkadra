@@ -71,7 +71,7 @@ async function seed(page: Page, baseURL: string) {
   socket.destroy();
   doc.destroy();
   await page.goto(`/p/${project.id}`);
-  await expect(page.getByRole('status').getByText('Sincronizzato', { exact: true })).toBeVisible();
+  await expect(page.getByRole('status').getByText('Sincronizzato')).toBeVisible();
   await expect(page.locator('[data-el]')).toHaveCount(3);
   return { project, column, child, note };
 }
@@ -322,9 +322,7 @@ test('viewers and commenters get no board menu, no guest hiding and no scene tog
         expect(changed.ok()).toBe(true);
       }
       await other.goto(storyboardUrl);
-      await expect(
-        other.getByRole('status').getByText('Sola lettura', { exact: true }),
-      ).toBeVisible();
+      await expect(other.getByRole('status').getByText('Sola lettura')).toBeVisible();
       await expect(other.getByRole('region', { name: 'Scena 1' })).toBeVisible();
       await expect(other.getByRole('button', { name: 'Nascondi agli ospiti' })).toHaveCount(0);
       await expect(other.getByRole('button', { name: 'Menu della board' })).toHaveCount(0);
@@ -338,9 +336,7 @@ test('viewers and commenters get no board menu, no guest hiding and no scene tog
       await expect(other.getByLabel('Azione', { exact: true })).not.toBeEditable();
       await expect(other.getByRole('button', { name: 'Nascondi agli ospiti' })).toHaveCount(0);
       await other.goto(`/p/${project.id}`);
-      await expect(
-        other.getByRole('status').getByText('Sola lettura', { exact: true }),
-      ).toBeVisible();
+      await expect(other.getByRole('status').getByText('Sola lettura')).toBeVisible();
       await expect(other.locator('[data-el]')).toHaveCount(4);
       await expect(other.getByRole('button', { name: 'Menu della board' })).toHaveCount(0);
       await expect(other.getByRole('button', { name: 'Versioni della board' })).toHaveCount(0);

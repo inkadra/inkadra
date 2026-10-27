@@ -48,7 +48,7 @@ export function usePeers(provider: HocuspocusProvider): Peer[] {
 }
 
 /** One avatar per person, even with several tabs open; editors before viewers. */
-export function uniquePeople(peers: Peer[]): Peer[] {
+export function uniquePeople(peers: readonly Peer[]): Peer[] {
   const byUser = new Map<string, Peer>();
   for (const p of peers) {
     const seen = byUser.get(p.user.id);

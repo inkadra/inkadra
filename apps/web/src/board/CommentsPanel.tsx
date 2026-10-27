@@ -93,7 +93,7 @@ export function CommentsButton() {
  * What a card is called in the panel: its label, title or caption, else its type. Labels of
  * non-note cards are kept per element object; note labels read the live Y.XmlFragment body.
  */
-function useCardLabel(store: BoardStore | undefined) {
+export function useCardLabel(store: BoardStore | undefined) {
   const { t } = useTranslation();
   const snap = useSyncExternalStore(
     store?.subscribe ?? noSubscribe,

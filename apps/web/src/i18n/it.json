@@ -404,8 +404,14 @@
       "template": "Inserisci modello: {{name}}"
     },
     "status": {
+      "backOnline": "Di nuovo online",
       "connecting": "Connessione…",
-      "synced": "Sincronizzato",
+      "saved": "Sincronizzato",
+      "savedAgo_one": "Sincronizzato {{count}}s fa",
+      "savedAgo_other": "Sincronizzato {{count}}s fa",
+      "saving": "Sincronizzazione…",
+      "online_one": "{{count}} online",
+      "online_other": "{{count}} online",
       "offline": "Offline · le modifiche restano qui",
       "denied": "Accesso negato",
       "readOnly": "Sola lettura",
@@ -441,6 +447,19 @@
       "label_one": "{{count}} persona sulla board",
       "label_other": "{{count}} persone sulla board",
       "viewing": "{{name}} (sola lettura)"
+    },
+    "editing": {
+      "one": "{{name}} sta modificando {{label}}",
+      "more_one": "+{{count}}",
+      "more_other": "+{{count}}"
+    },
+    "export": {
+      "action": "Esporta",
+      "soon": "Esportazione PDF e immagini in arrivo"
+    },
+    "present": {
+      "action": "Presenta",
+      "soon": "Usa il pulsante Presenta nella vista Storyboard"
     },
     "access": {
       "readOnly": "Il tuo ruolo è cambiato: ora puoi solo guardare questa board.",
