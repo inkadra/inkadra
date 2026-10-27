@@ -54,16 +54,20 @@ export function storyboardOf(boards: readonly Board[] | null | undefined): strin
 
 /**
  * What the header offers: the whole list on a storyboard, or while a film view is open so
- * there is a way back. An ordinary board shows no switcher at all.
+ * there is a way back. An ordinary board offers its own two views, canvas and moodboard;
+ * nothing while its kind is still loading.
  */
 export function headerViews(kind: BoardKind | undefined, active: BoardView): BoardView[] {
   const film = kind === 'storyboard' || FILM_VIEWS.includes(active);
-  return film ? [...ALL_VIEWS] : [];
+  if (film) return [...ALL_VIEWS];
+  return kind ? ['canvas', 'moodboard'] : [];
 }
 
 /**
  * Where each view opens. Film views belong to the project's storyboard, so choosing one from
- * an ordinary board opens that board; `boardId: null` means the board that is already open.
+ * an ordinary board opens that board; without a storyboard they open on the project's root
+ * board, so the sidebar and rail always lead to the same place. `boardId: null` means the
+ * board that is already open.
  */
 export function viewDestination(
   view: BoardView,
@@ -73,21 +77,22 @@ export function viewDestination(
     rootBoardId: string | undefined;
   },
   storyboardId: string | null,
-): { boardId: string | null; view: BoardView } {
+): { boardId: string | null; view: BoardView; kind?: BoardKind } {
   const film = FILM_VIEWS.includes(view);
   if (!film || current.kind === 'storyboard') return { boardId: null, view };
-  if (!storyboardId || storyboardId === current.boardId) return { boardId: null, view };
-  return { boardId: storyboardId, view };
+  const target = storyboardId ?? current.rootBoardId;
+  if (!target || target === current.boardId) return { boardId: null, view };
+  return { boardId: target, view, kind: storyboardId ? 'storyboard' : 'board' };
 }
 
 /** The address of a destination, leaving out `?view=` when it is the target board's default. */
 export function viewHref(
   projectId: string,
-  destination: { boardId: string | null; view: BoardView },
+  destination: { boardId: string | null; view: BoardView; kind?: BoardKind },
   current: { boardId: string; rootBoardId: string | undefined; kind: BoardKind | undefined },
 ): string {
   const board = destination.boardId ?? current.boardId;
-  const kind = destination.boardId ? 'storyboard' : current.kind;
+  const kind = destination.boardId ? (destination.kind ?? 'storyboard') : current.kind;
   const path = boardPath(projectId, board, current.rootBoardId);
   return destination.view === defaultView(kind) ? path : `${path}?view=${destination.view}`;
 }
