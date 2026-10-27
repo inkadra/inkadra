@@ -365,6 +365,8 @@ export function ContextBar({
 export type MenuItem =
   | {
       label: string;
+      /** The same permitted action is exposed by a contextual toolbar icon. */
+      toolbar?: boolean;
       shortcut?: string;
       danger?: boolean;
       action?: () => void;
