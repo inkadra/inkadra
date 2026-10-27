@@ -40,11 +40,11 @@ export type CanvasTool = 'select' | 'hand' | 'arrow';
 export const TOOL_MIME = 'application/x-inkadra-tool';
 
 export const TOOLS: Array<{ type: ToolType; icon: IconName; key?: string; menuOnly?: boolean }> = [
-  { type: 'note', icon: 'note', key: 'N' },
+  { type: 'note', icon: 'stickyNote', key: 'N' },
   { type: 'image', icon: 'image', key: 'I' },
   { type: 'link', icon: 'link', key: 'L' },
   { type: 'todo', icon: 'todo', key: 'T' },
-  { type: 'column', icon: 'column', key: 'C' },
+  { type: 'column', icon: 'toolColumn', key: 'C' },
   { type: 'board', icon: 'board', key: 'B' },
   { type: 'color', icon: 'color', key: 'K' },
   { type: 'frame', icon: 'frame', key: 'F' },
@@ -67,37 +67,55 @@ export function Toolbar({
   const { t } = useTranslation();
   return (
     <div className="toolbar" role="toolbar" aria-label={t('board.toolbar')} data-chrome>
-      <ToolButton
-        icon="pointer"
-        label={t('board.tools.select')}
-        keyHint="V"
-        pressed={tool === 'select'}
-        onClick={() => onTool('select')}
-      />
-      <ToolButton
-        icon="hand"
-        label={t('board.tools.hand')}
-        keyHint="H"
-        pressed={tool === 'hand'}
-        onClick={() => onTool('hand')}
-      />
-      <ToolButton
-        icon="arrow"
-        label={t('board.tools.arrow')}
-        keyHint="A"
-        pressed={tool === 'arrow'}
-        onClick={() => onTool(tool === 'arrow' ? 'select' : 'arrow')}
-      />
-      <span className="toolbar__sep" aria-hidden="true" />
-      {TOOLS.filter((tl) => !tl.menuOnly).map((tl) => (
+      <fieldset
+        className="toolbar__group toolbar__group--navigate"
+        aria-label={t('board.toolGroups.navigate')}
+      >
         <ToolButton
-          key={tl.type}
-          icon={tl.icon}
-          label={t(`board.types.${tl.type}`)}
-          keyHint={tl.key ?? ''}
-          onClick={() => onAdd(tl.type)}
-          dragType={tl.type}
+          icon="pointer"
+          label={t('board.tools.select')}
+          keyHint="V"
+          pressed={tool === 'select'}
+          onClick={() => onTool('select')}
         />
+        <ToolButton
+          icon="hand"
+          label={t('board.tools.hand')}
+          keyHint="H"
+          pressed={tool === 'hand'}
+          onClick={() => onTool('hand')}
+        />
+        <ToolButton
+          icon="arrow"
+          label={t('board.tools.arrow')}
+          keyHint="A"
+          pressed={tool === 'arrow'}
+          onClick={() => onTool(tool === 'arrow' ? 'select' : 'arrow')}
+        />
+      </fieldset>
+      {(['create', 'organize'] as const).map((group) => (
+        <fieldset
+          key={group}
+          className={`toolbar__group toolbar__group--${group}`}
+          aria-label={t(`board.toolGroups.${group}`)}
+        >
+          {TOOLS.filter(
+            (tl) =>
+              !tl.menuOnly &&
+              (group === 'create'
+                ? ['note', 'image', 'link', 'todo', 'color'].includes(tl.type)
+                : ['column', 'board', 'frame', 'storyboard'].includes(tl.type)),
+          ).map((tl) => (
+            <ToolButton
+              key={tl.type}
+              icon={tl.icon}
+              label={t(`board.types.${tl.type}`)}
+              keyHint={tl.key ?? ''}
+              onClick={() => onAdd(tl.type)}
+              dragType={tl.type}
+            />
+          ))}
+        </fieldset>
       ))}
     </div>
   );
@@ -118,10 +136,13 @@ function ToolButton({
   onClick: () => void;
   dragType?: ToolType;
 }) {
+  const tooltipId = useId();
   return (
     <button
       type="button"
-      className="toolbar__btn"
+      className={`toolbar__btn toolbar__btn--${dragType ?? icon}`}
+      aria-describedby={tooltipId}
+      aria-keyshortcuts={keyHint}
       aria-label={label}
       aria-pressed={pressed}
       title={`${label} (${keyHint})`}
@@ -133,8 +154,8 @@ function ToolButton({
         e.dataTransfer.effectAllowed = 'copy';
       }}
     >
-      <Icon name={icon} size={16} />
-      <span className="toolbar__tip" aria-hidden="true">
+      <Icon name={icon} size={20} />
+      <span className="toolbar__tip" id={tooltipId} role="tooltip">
         {label}
         <KeyCap>{keyHint}</KeyCap>
       </span>

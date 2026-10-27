@@ -597,9 +597,9 @@
   transform: translateX(-50%);
   display: flex;
   align-items: center;
-  gap: 2px;
-  padding: 4px;
-  border-radius: 12px;
+  gap: 6px;
+  padding: 6px;
+  border-radius: 14px;
   background: var(--ink-surface-1);
   border: 1px solid var(--ink-border-default);
   box-shadow: var(--shadow-float);
@@ -613,8 +613,8 @@
 }
 .toolbar__btn {
   position: relative;
-  width: 30px;
-  height: 30px;
+  width: 40px;
+  height: 40px;
   padding: 0;
   border: 0;
   border-radius: 8px;
@@ -629,8 +629,9 @@
   color: var(--ink-text-primary);
 }
 .toolbar__btn[aria-pressed="true"] {
-  background: var(--ink-surface-3);
-  color: var(--ink-text-primary);
+  background: var(--ink-accent-soft-bg);
+  color: var(--ink-accent-soft-fg);
+  box-shadow: inset 0 0 0 2px currentColor;
 }
 .toolbar__btn[draggable="true"] {
   cursor: grab;
@@ -1900,5 +1901,73 @@ button.crumb--editable:focus-visible {
   /* Narrow desktops: the avatars already say who is here. */
   .board-header-editing {
     display: none;
+  }
+}
+
+/* Tool families use shape, spacing and a restrained accent together. */
+.toolbar__group {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+  display: flex;
+  gap: 2px;
+}
+.toolbar__group + .toolbar__group {
+  border-left: 1px solid var(--ink-border-default);
+  padding-left: 6px;
+}
+.toolbar__group--create .toolbar__btn {
+  background: var(--ink-surface-2);
+}
+.toolbar__group--organize .toolbar__btn {
+  color: var(--ink-accent-soft-fg);
+}
+.toolbar .toolbar__btn--note svg {
+  fill: var(--ink-accent-soft-bg);
+}
+.toolbar .toolbar__btn--color svg {
+  fill: var(--ink-accent-soft-bg);
+}
+.toolbar__btn:focus-visible {
+  outline: 2px solid var(--ink-accent-soft-fg);
+  outline-offset: 2px;
+}
+.toolbar__btn:hover {
+  box-shadow: inset 0 0 0 1px var(--ink-border-default);
+}
+.toolbar__btn[aria-pressed="true"]:hover {
+  box-shadow: inset 0 0 0 2px currentColor;
+}
+.toolbar__btn:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+@media (max-width: 700px), (pointer: coarse) {
+  .toolbar {
+    display: grid;
+    grid-template-columns: repeat(6, 44px);
+    gap: 4px;
+    max-width: calc(100% - 16px);
+  }
+  .toolbar__group {
+    display: contents;
+  }
+  .toolbar__btn {
+    width: 44px;
+    height: 44px;
+  }
+  .toolbar__btn:nth-child(6n + 1) .toolbar__tip {
+    left: 0;
+    transform: none;
+  }
+  .toolbar__group--navigate .toolbar__btn:first-child .toolbar__tip {
+    left: 0;
+    transform: none;
+  }
+  .toolbar__group--organize .toolbar__btn:last-child .toolbar__tip {
+    left: auto;
+    right: 0;
+    transform: none;
   }
 }
