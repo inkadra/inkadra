@@ -85,6 +85,9 @@ export function Login() {
         {!setup && instance?.registration === 'invite' && (
           <p className="login__note login__note--center">{t('auth.inviteOnly')}</p>
         )}
+        {!setup && instance?.registration === 'closed' && (
+          <p className="login__note login__note--center">{t('auth.errors.closed')}</p>
+        )}
         {setup && (
           <p className="login__note login__note--center">
             <Link to="/diagnostics">{t('auth.diagnostics')}</Link>
