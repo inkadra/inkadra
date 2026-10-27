@@ -1771,5 +1771,31 @@
     "restored": "Elemento ripristinato. Puoi annullare questa operazione.",
     "boardLinkOnly": "Il ripristino di una scheda board recupera solo il collegamento, non una sotto-board eliminata.",
     "restoreElement": "Ripristina {{type}} {{id}}"
+  },
+  "present": {
+    "title": "Presenta",
+    "exit": "Esci",
+    "clientLink": "Link cliente",
+    "watching": "{{name}} sta guardando",
+    "prev": "Slide precedente",
+    "next": "Slide successiva",
+    "slideCounter": "{{current}} / {{total}}",
+    "slideAria": "Slide {{current}} di {{total}}",
+    "slides": "Slide",
+    "toolbar": "Controlli presentazione",
+    "keysHint": "per cambiare slide",
+    "playAnimatic": "Riproduci animatic",
+    "speakerNotes": "Note del relatore",
+    "closeNotes": "Comprimi pannello",
+    "fullscreen": "Schermo intero",
+    "exitFullscreen": "Esci da schermo intero",
+    "timer": "Tempo",
+    "clock": "Ora",
+    "nextSlide": "Prossima",
+    "spectators": "Spettatori",
+    "spectatorSlide": "sulla slide {{slide}}",
+    "notesPrivate": "Gli ospiti vedono solo le slide, mai queste note.",
+    "noSlides": "Nessuna inquadratura o scheda da presentare",
+    "noNotes": "Nessuna nota per questa slide"
   }
 }

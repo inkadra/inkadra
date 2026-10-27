@@ -1771,5 +1771,31 @@
     "restored": "Element restored. You can undo this action.",
     "boardLinkOnly": "Restoring a board card recovers its link only, not a deleted sub-board.",
     "restoreElement": "Restore {{type}} {{id}}"
+  },
+  "present": {
+    "title": "Present",
+    "exit": "Exit",
+    "clientLink": "Client link",
+    "watching": "{{name}} is watching",
+    "prev": "Previous slide",
+    "next": "Next slide",
+    "slideCounter": "{{current}} / {{total}}",
+    "slideAria": "Slide {{current}} of {{total}}",
+    "slides": "Slides",
+    "toolbar": "Presentation controls",
+    "keysHint": "to navigate slides",
+    "playAnimatic": "Play animatic",
+    "speakerNotes": "Speaker notes",
+    "closeNotes": "Collapse notes",
+    "fullscreen": "Fullscreen",
+    "exitFullscreen": "Exit fullscreen",
+    "timer": "Time",
+    "clock": "Clock",
+    "nextSlide": "Next",
+    "spectators": "Spectators",
+    "spectatorSlide": "on slide {{slide}}",
+    "notesPrivate": "Guests only see the slides, never these notes.",
+    "noSlides": "No frames or cards to present",
+    "noNotes": "No notes for this slide"
   }
 }

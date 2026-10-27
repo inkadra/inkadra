@@ -17,6 +17,7 @@ import { type DragEvent, memo, useMemo, useState, useSyncExternalStore } from 'r
 import { useTranslation } from 'react-i18next';
 import { CardReview } from '../CardReview.tsx';
 import { GuestVisibility, GuestVisibilityIcon, toggleGuestHidden } from '../guest-visibility.tsx';
+import { PresentationView } from '../PresentationView.tsx';
 import { type BoardStore, LOCAL } from '../store.ts';
 import { Animatic } from './Animatic.tsx';
 import { estimatedDurationMs } from './animatic.ts';
@@ -294,13 +295,10 @@ export function StoryboardView({
         )}
       </div>
       {present && (
-        <Animatic
+        <PresentationView
           store={store}
-          frames={visibleFrames}
-          labels={labels}
-          boardAspect={boardAspect}
+          boardTitle=""
           readOnly={readOnly}
-          present
           onClose={() => setPresent(false)}
         />
       )}
