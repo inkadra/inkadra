@@ -13,15 +13,20 @@ const variants = [
 
 describe('movingVariantUrl', () => {
   it('asks for the moving copy nearest the width, never above the worker cap', () => {
-    const gif = { mime: 'image/gif', variants };
+    const gif = { animated: true, variants };
     expect(movingVariantUrl(gif, 100)).toBe('/variants/256?animated=1');
     expect(movingVariantUrl(gif, 300)).toBe('/variants/512?animated=1');
     expect(movingVariantUrl(gif, 4000)).toBe('/variants/1024?animated=1');
   });
 
-  it('keeps still pictures and pictures without variants on their poster', () => {
-    expect(movingVariantUrl({ mime: 'image/jpeg', variants }, 300)).toBeNull();
-    expect(movingVariantUrl({ mime: 'image/gif', variants: [] }, 300)).toBeNull();
+  it('never asks for a moving copy the server did not make', () => {
+    // A still picture, an animated WebP past the worker caps, or one whose only variants
+    // are wider than the moving copies: no request, no 404.
+    expect(movingVariantUrl({ animated: false, variants }, 300)).toBeNull();
+    expect(movingVariantUrl({ animated: false, variants: [] }, 300)).toBeNull();
+    expect(
+      movingVariantUrl({ animated: true, variants: [{ width: 2048, url: '/variants/2048' }] }, 300),
+    ).toBeNull();
   });
 });
 
@@ -84,6 +89,34 @@ describe('MovingPicture', () => {
 
     await loaded();
     expect(src()).toBe('/variants/256?animated=1');
+  });
+
+  it('keeps playing the loaded variant until the new size has loaded', async () => {
+    await render(picture('/variants/256?animated=1'));
+    await loaded();
+    expect(src()).toBe('/variants/256?animated=1');
+
+    // The card is zoomed: the poster changes size, the moving variant follows.
+    await render(
+      <MovingPicture poster="/variants/512" moving="/variants/512?animated=1" alt="gatto" />,
+    );
+    expect(probes.map((p) => p.src)).toEqual([
+      '/variants/256?animated=1',
+      '/variants/512?animated=1',
+    ]);
+    // Still the old animation: no flash of the new poster.
+    expect(src()).toBe('/variants/256?animated=1');
+
+    await loaded();
+    expect(src()).toBe('/variants/512?animated=1');
+  });
+
+  it('drops the loaded variant when the picture itself changes', async () => {
+    await render(picture('/variants/256?animated=1'));
+    await loaded();
+
+    await render(<MovingPicture poster="/other/256" moving="/other/256?animated=1" alt="cane" />);
+    expect(src()).toBe('/other/256');
   });
 
   it('never asks for the moving variant when motion is reduced', async () => {

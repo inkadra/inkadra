@@ -1,28 +1,28 @@
 import { MOVING_THUMBNAIL_MAX_WIDTH } from '@inkadra/shared';
 import { useEffect, useState, useSyncExternalStore } from 'react';
 
-/** Sources the worker keeps moving thumbnails for. */
-const MOVING_MIME = new Set(['image/gif', 'image/webp']);
-
 const REDUCED_MOTION = '(prefers-reduced-motion: reduce)';
 
 /** Just enough of an asset to pick its moving thumbnail, for members and guests alike. */
 export interface MovingAsset {
-  mime: string;
+  /** The worker wrote moving thumbnails beside the posters (`Asset.animated`). */
+  animated: boolean;
   variants: ReadonlyArray<{ width: number; url: string }>;
 }
 
 /**
  * The moving copy of the thumbnail nearest `pixels`, or null when the source cannot move.
- * The worker only makes them up to `MOVING_THUMBNAIL_MAX_WIDTH` and skips pictures past
- * its caps, so the caller must fall back to the poster when the request fails.
+ * The server says whether the worker made one (`Asset.animated`): asking for it on every
+ * WebP would only fill the log with 404s. The moving copies stop at
+ * `MOVING_THUMBNAIL_MAX_WIDTH`, so the chosen variant is never wider than that; the caller
+ * still falls back to the poster when the request fails.
  */
 export function movingVariantUrl(asset: MovingAsset, pixels: number): string | null {
-  if (!MOVING_MIME.has(asset.mime)) return null;
+  if (!asset.animated) return null;
   const variants = [...asset.variants].sort((a, b) => a.width - b.width);
   const want = Math.min(pixels, MOVING_THUMBNAIL_MAX_WIDTH);
   const fit = variants.find((v) => v.width >= want) ?? variants.at(-1);
-  return fit ? `${fit.url}?animated=1` : null;
+  return fit && fit.width <= MOVING_THUMBNAIL_MAX_WIDTH ? `${fit.url}?animated=1` : null;
 }
 
 const canMatch = () => typeof window !== 'undefined' && typeof window.matchMedia === 'function';
@@ -45,16 +45,18 @@ export function usePrefersReducedMotion(): boolean {
 /**
  * The moving variant once the browser has loaded it, else null. The poster shows while it
  * loads, so a picture without one (a still WebP, or a GIF past the worker caps) never
- * shows a broken frame and never reloads anything.
+ * shows a broken frame and never reloads anything. When the wanted variant changes size
+ * (zoom, viewer), the one already loaded keeps playing until the new one is ready, so the
+ * picture does not fall back to its poster and flicker.
  */
 function useMovingReady(moving: string | null): string | null {
-  const [ready, setReady] = useState<string | null>(null);
+  const [ready, setReady] = useState<{ url: string; asset: string } | null>(null);
   useEffect(() => {
     if (!moving) return;
     let alive = true;
     const probe = new Image();
     probe.onload = () => {
-      if (alive) setReady(moving);
+      if (alive) setReady({ url: moving, asset: movingAsset(moving) });
     };
     probe.src = moving;
     return () => {
@@ -62,8 +64,12 @@ function useMovingReady(moving: string | null): string | null {
       probe.onload = null;
     };
   }, [moving]);
-  return ready === moving ? ready : null;
+  if (!moving) return null;
+  return ready?.asset === movingAsset(moving) ? ready.url : null;
 }
+
+/** The variants of one asset share their path, only the size differs. */
+const movingAsset = (url: string) => url.slice(0, url.lastIndexOf('/'));
 
 /**
  * A picture that shows its moving variant when it has one and motion is welcome, and the
