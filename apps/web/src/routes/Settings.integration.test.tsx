@@ -2,33 +2,20 @@
 import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { MemoryRouter } from 'react-router';
-import { expect, it, vi } from 'vitest';
+import { afterEach, expect, it, vi } from 'vitest';
+import { api } from '../lib/api.ts';
 import { Settings } from './Settings.tsx';
 
 const session = vi.hoisted(() => ({
   user: { role: 'admin', name: 'Editor', email: 'editor@example.test', locale: 'en' },
+  instance: { version: '1.0.0', auth: { google: false, oidc: [] } },
   refresh: vi.fn(),
 }));
-let currentLang = 'en';
-const translations: Record<string, Record<string, string>> = {
-  en: { 'settings.saved': 'Saved.' },
-  it: { 'settings.saved': 'Salvato.' },
-};
-const i18nMock = {
-  get language() {
-    return currentLang;
-  },
-  changeLanguage: vi.fn(async (lng: string) => {
-    currentLang = lng;
-  }),
-};
+const phone = vi.hoisted(() => ({ value: false }));
+const i18nMock = vi.hoisted(() => ({ language: 'en', changeLanguage: vi.fn(async () => {}) }));
 vi.mock('../lib/session.tsx', () => ({ useSession: () => session }));
 vi.mock('react-i18next', () => ({
-  // Like react-i18next, `t` is bound to the language of the render that returned it.
-  useTranslation: () => {
-    const lng = currentLang;
-    return { t: (key: string) => translations[lng]?.[key] ?? key, i18n: i18nMock };
-  },
+  useTranslation: () => ({ t: (key: string) => key, i18n: i18nMock }),
 }));
 vi.mock('../i18n/index.ts', () => ({ LOCALES: ['en', 'it'] }));
 vi.mock('../lib/theme.ts', () => ({ useTheme: () => ({ preference: 'system', choose: vi.fn() }) }));
@@ -37,72 +24,108 @@ vi.mock('../lib/api.ts', () => ({
   authApi: { listAccounts: vi.fn(async () => []) },
   RequestError: class extends Error {},
 }));
-vi.mock('./AppLayout.tsx', () => ({ useInstanceSetupState: () => ({}) }));
-vi.mock('./InstanceSetup.tsx', () => ({ InstanceChecklist: () => null }));
+vi.mock('./AppLayout.tsx', () => ({
+  useInstanceSetupState: () => ({ checks: null, error: false }),
+}));
 vi.mock('../notifications/Notifications.tsx', () => ({
   EmailNotifications: () => <div data-notifications />,
 }));
 vi.mock('./ClassificationSettings.tsx', () => ({
   ClassificationSettings: () => <div data-classifications />,
 }));
+vi.mock('./SettingsHome.tsx', () => ({ SettingsHome: () => <div data-home /> }));
+vi.mock('./settings-ui.tsx', async (original) => ({
+  ...(await original<typeof import('./settings-ui.tsx')>()),
+  useIsPhone: () => phone.value,
+}));
 
-it('keeps email controls only in Notifications and gates the classifications page', async () => {
-  const host = document.createElement('div');
-  const root = createRoot(host);
-  const render = async (section: string) => {
-    await act(async () =>
-      root.render(
-        <MemoryRouter key={section + session.user.role} initialEntries={[`/settings${section}`]}>
-          <Settings />
-        </MemoryRouter>,
-      ),
-    );
-  };
-  try {
-    await render('');
-    expect(host.querySelector('[data-notifications]')).toBeNull();
-    expect(host.textContent).toContain('settings.profile.avatarUpload');
-    await render('?section=notifications');
-    expect(host.querySelectorAll('[data-notifications]')).toHaveLength(1);
-    await render('?section=classifications');
-    expect(host.querySelector('h1')?.textContent).toBe('admin.classifications');
-    expect(host.querySelector('[data-classifications]')).not.toBeNull();
-    session.user.role = 'member';
-    await render('?section=classifications');
+const host = document.createElement('div');
+let root = createRoot(host);
+afterEach(async () => {
+  session.user.role = 'admin';
+  phone.value = false;
+  await act(async () => root.unmount());
+  root = createRoot(host);
+  vi.clearAllMocks();
+});
+const render = (path: string) =>
+  act(async () =>
+    root.render(
+      <MemoryRouter key={path + session.user.role + phone.value} initialEntries={[path]}>
+        <Settings />
+      </MemoryRouter>,
+    ),
+  );
+
+it('opens Account on desktop and the settings home on phones', async () => {
+  await render('/settings');
+  expect(host.querySelector('h1')?.textContent).toBe('admin.account');
+  expect(host.querySelector('input[aria-label="settings.profile.avatarUpload"]')).not.toBeNull();
+  expect(host.querySelector('[data-home]')).toBeNull();
+  expect(host.querySelector('.settings-back')).toBeNull();
+  phone.value = true;
+  await render('/settings');
+  expect(host.querySelector('[data-home]')).not.toBeNull();
+  await render('/settings?section=account');
+  expect(host.querySelector('h1')?.textContent).toBe('admin.account');
+  expect(host.querySelector('.settings-back')?.getAttribute('href')).toBe('/settings');
+});
+
+it('keeps email controls only in Notifications and gates admin pages', async () => {
+  await render('/settings?section=account');
+  expect(host.querySelector('[data-notifications]')).toBeNull();
+  await render('/settings?section=notifications');
+  expect(host.querySelectorAll('[data-notifications]')).toHaveLength(1);
+  await render('/settings?section=classifications');
+  expect(host.querySelector('h1')?.textContent).toBe('admin.classifications');
+  expect(host.querySelector('[data-classifications]')).not.toBeNull();
+  session.user.role = 'member';
+  for (const section of ['classifications', 'registration', 'providers', 'workspace']) {
+    await render(`/settings?section=${section}`);
     expect(host.querySelector('[data-classifications]')).toBeNull();
     expect(host.querySelector('[role="alert"]')?.textContent).toBe('admin.forbidden');
-  } finally {
-    session.user.role = 'admin';
-    await act(async () => root.unmount());
   }
 });
 
-it('renders saved confirmation in the new language after switching language and saving', async () => {
-  currentLang = 'en';
-  const host = document.createElement('div');
-  const root = createRoot(host);
+it('saves the language as soon as it changes, without a save button', async () => {
+  await render('/settings?section=preferences');
+  expect([...host.querySelectorAll('button')].some((b) => b.textContent === 'settings.save')).toBe(
+    false,
+  );
+  const select = host.querySelector<HTMLSelectElement>('select');
+  if (!select) throw new Error('Locale select missing');
+  await act(async () => {
+    select.value = 'it';
+    select.dispatchEvent(new Event('change', { bubbles: true }));
+  });
+  expect(api.patch).toHaveBeenCalledWith('/me', { locale: 'it' });
+  expect(i18nMock.changeLanguage).toHaveBeenCalledWith('it');
+  expect(session.refresh).toHaveBeenCalled();
+});
+
+it('autosaves the profile name after typing stops, never an empty one', async () => {
+  vi.useFakeTimers();
   try {
-    await act(async () =>
-      root.render(
-        <MemoryRouter initialEntries={['/settings']}>
-          <Settings />
-        </MemoryRouter>,
-      ),
-    );
-    const select = host.querySelector<HTMLSelectElement>('form select');
-    if (!select) throw new Error('Locale select missing');
-    await act(async () => {
-      select.value = 'it';
-      select.dispatchEvent(new Event('change', { bubbles: true }));
-    });
-    const form = host.querySelector('form');
-    await act(async () => {
-      form?.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
-    });
-    expect(i18nMock.changeLanguage).toHaveBeenCalledWith('it');
-    const status = host.querySelector('[role="status"]');
-    expect(status?.textContent).toBe('Salvato.');
+    await render('/settings?section=account');
+    const input = host.querySelector<HTMLInputElement>('.settings-input');
+    if (!input) throw new Error('Name input missing');
+    const type = (value: string) =>
+      act(async () => {
+        Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set?.call(
+          input,
+          value,
+        );
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+      });
+    await type('   ');
+    await act(async () => vi.advanceTimersByTime(1000));
+    expect(api.patch).not.toHaveBeenCalled();
+    await type('Editor Two');
+    expect(api.patch).not.toHaveBeenCalled();
+    await act(async () => vi.advanceTimersByTime(1000));
+    expect(api.patch).toHaveBeenCalledWith('/me', { name: 'Editor Two' });
+    expect(api.patch).toHaveBeenCalledTimes(1);
   } finally {
-    await act(async () => root.unmount());
+    vi.useRealTimers();
   }
 });

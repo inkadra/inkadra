@@ -1792,6 +1792,96 @@
     },
     "settingsPending": "Settings, instance setup incomplete"
   },
+  "settingsUi": {
+    "backToProjects": "Back to projects",
+    "profile": "Profile",
+    "diagnostics": "Diagnostics",
+    "on": "On",
+    "off": "Off",
+    "groups": {
+      "instance": "Instance · admin"
+    },
+    "pages": {
+      "access": "Sign-in",
+      "about": "About"
+    },
+    "leads": {
+      "account": "Your profile and how you sign in.",
+      "preferences": "They apply only to you.",
+      "notifications": "Mentions, replies and reviews always reach your Inbox. Choose whether to get them by email too.",
+      "storage": "Original files uploaded to this instance.",
+      "access": "Sign-in methods come from the server configuration; here you see what is active.",
+      "registration": "Who can create a new account.",
+      "about": "Instance name, address, version and setup status."
+    },
+    "autosave": {
+      "idle": "Changes are saved automatically",
+      "saving": "Saving…",
+      "saved": "All changes saved",
+      "error": "Could not save the last change"
+    },
+    "account": {
+      "photo": "Profile photo",
+      "upload": "Upload",
+      "remove": "Remove",
+      "nameHelp": "How others see you in projects and comments",
+      "emailHelp": "Used to sign in and for notifications",
+      "endOthers": "Sign out others",
+      "here": "This device",
+      "newToken": "New token",
+      "allSessions": "Show all {{count}} sessions"
+    },
+    "preferences": {
+      "themeHelp": "System follows your device setting",
+      "languageHelp": "Interface and email language"
+    },
+    "notifications": {
+      "short": {
+        "immediate": "Right away",
+        "daily": "Daily digest",
+        "off": "Never"
+      },
+      "help": {
+        "immediate": "Notifications close together arrive in one email",
+        "daily": "One email a day with everything that happened",
+        "off": "Only the in-app Inbox"
+      }
+    },
+    "members": {
+      "invite": "Invite members",
+      "you": "you",
+      "pending": "Pending",
+      "allStatuses": "All statuses"
+    },
+    "status": {
+      "title": "Instance status"
+    },
+    "storage": {
+      "used": "Space used",
+      "top": "Largest file type"
+    },
+    "access": {
+      "always": "Always available",
+      "disabled": "Disabled by the server",
+      "configured": "Configured",
+      "needsSmtp": "Needs SMTP",
+      "missingSmtp": "SMTP missing",
+      "details": "Details →",
+      "email": "Outgoing email",
+      "smtpOn": "Invitations, password resets and email notifications can be sent."
+    },
+    "registration": {
+      "label": "New accounts",
+      "open": "Anyone who reaches the instance can sign up.",
+      "invite": "Only people with an invitation can create an account.",
+      "closed": "No new accounts, invitations included. Existing accounts and guest links keep working."
+    },
+    "about": {
+      "nameHelp": "Shown in the sidebar, in emails and on the sign-in page",
+      "url": "Public address",
+      "version": "Version"
+    }
+  },
   "admin": {
     "personal": "Personal",
     "account": "Account",
@@ -1933,7 +2023,16 @@
     "add": "Add option",
     "error": "Could not save or load. Another administrator may have changed the catalogs. Reload to get the current configuration.",
     "reload": "Reload",
-    "tagHelp": "Choose an active shared tag. Administrators manage available values in Settings → Classifications. Existing tags remain readable."
+    "tagHelp": "Choose an active shared tag. Administrators manage available values in Settings → Classifications. Existing tags remain readable.",
+    "archive": "Archive",
+    "restore": "Restore",
+    "active_one": "{{count}} active",
+    "active_other": "{{count}} active",
+    "archivedCount_one": "{{count}} archived",
+    "archivedCount_other": "{{count}} archived",
+    "empty": "No values yet.",
+    "unsaved": "Unsaved changes",
+    "discard": "Discard"
   },
   "appearance": {
     "title": "Project appearance",

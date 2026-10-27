@@ -318,11 +318,30 @@
 }
 .notification-frequency label {
   display: flex;
-  align-items: center;
-  gap: 8px;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 11px 12px;
+  border: 1px solid var(--ink-border-default);
+  border-radius: 8px;
   cursor: pointer;
 }
+.notification-frequency label.is-on {
+  border-color: var(--ink-accent-primary);
+  background: var(--ink-accent-soft-bg);
+}
+.notification-frequency label > span {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.notification-frequency label > span > span {
+  color: var(--ink-text-secondary);
+}
+.notification-frequency strong {
+  font-weight: 500;
+}
 .notification-frequency input {
+  margin: 2px 0 0;
   accent-color: var(--ink-accent-primary);
 }
 

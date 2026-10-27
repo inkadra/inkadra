@@ -26,7 +26,7 @@ it('shows storage loading failures as errors, never as zero usage or perpetual l
   await act(async () =>
     root.render(
       <MemoryRouter>
-        <InstanceSettings section="workspace" />
+        <InstanceSettings section="workspace" setup={{ checks: null, error: false }} />
       </MemoryRouter>,
     ),
   );

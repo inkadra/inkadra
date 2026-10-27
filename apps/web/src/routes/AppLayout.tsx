@@ -60,6 +60,7 @@ import {
 } from './projects.ts';
 import { SearchDialog } from './SearchDialog.tsx';
 import { SettingsBreadcrumb } from './SettingsBreadcrumb.tsx';
+import { SaveStatus, SettingsNav } from './SettingsShell.tsx';
 import './mobile-shell.css';
 
 interface ProjectsState {
@@ -183,6 +184,7 @@ export function AppLayout() {
     await refresh();
   }
 
+  const inSettings = pathname.startsWith('/settings');
   const projectId = pathname.startsWith('/p/') ? pathname.split('/')[2] : undefined;
   const boardId = pathname.split('/')[4];
   const current = projects?.find((p) => p.id === projectId);
@@ -444,7 +446,7 @@ export function AppLayout() {
         {headerContent ?? (
           <>
             <nav aria-label={t('nav.breadcrumb')} className="ink-header__crumbs">
-              {pathname === '/settings' || pathname === '/settings/team' ? (
+              {inSettings ? (
                 <SettingsBreadcrumb pathname={pathname} search={search} />
               ) : (
                 <span style={{ fontWeight: 600 }}>
@@ -460,10 +462,14 @@ export function AppLayout() {
               )}
             </nav>
             <span className="ink-header__spacer" />
-            <span className="ink-muted ink-header__search-hint">
-              <KeyCap>⌘K</KeyCap>
-              {t('home.searchHint')}
-            </span>
+            {inSettings ? (
+              <SaveStatus />
+            ) : (
+              <span className="ink-muted ink-header__search-hint">
+                <KeyCap>⌘K</KeyCap>
+                {t('home.searchHint')}
+              </span>
+            )}
           </>
         )}
       </div>
@@ -499,7 +505,20 @@ export function AppLayout() {
         }}
       >
         <HeaderContext.Provider value={setHeaderContent}>
-          <AppShell sidebar={sidebar} header={header} canvas={!!projectId} collapsed={collapsed}>
+          <AppShell
+            sidebar={
+              inSettings ? (
+                <Sidebar label={t('nav.settings')}>
+                  <SettingsNav setup={setup} />
+                </Sidebar>
+              ) : (
+                sidebar
+              )
+            }
+            header={header}
+            canvas={!!projectId}
+            collapsed={collapsed && !inSettings}
+          >
             <Outlet />
           </AppShell>
         </HeaderContext.Provider>

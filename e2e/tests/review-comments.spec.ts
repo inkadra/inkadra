@@ -264,11 +264,15 @@ test('the email notification preference is saved', async ({ page }) => {
       has: page.getByRole('heading', { name: 'Notifiche email' }),
     });
     await expect(section.getByRole('radio', { name: /^Subito/ })).toBeChecked();
-    await section.getByRole('radio', { name: 'Un riepilogo al giorno' }).check();
-    await section.getByRole('button', { name: 'Salva' }).click();
-    await expect(section.getByText('Salvato.')).toBeVisible();
+    // The choice saves itself; the header confirms it.
+    const saved = page.waitForResponse(
+      (r) => r.url().endsWith('/me/notification-preferences') && r.request().method() === 'PATCH',
+    );
+    await section.getByRole('radio', { name: /^Riepilogo giornaliero/ }).check();
+    expect((await saved).ok()).toBe(true);
+    await expect(page.getByRole('status').filter({ hasText: 'Modifiche salvate' })).toBeVisible();
     await page.reload();
-    await expect(section.getByRole('radio', { name: 'Un riepilogo al giorno' })).toBeChecked();
+    await expect(section.getByRole('radio', { name: /^Riepilogo giornaliero/ })).toBeChecked();
   } finally {
     // The preference is the administrator's own: the next run starts from the default again.
     await api(page, '/me/notification-preferences', 'PATCH', { email: 'immediate' });

@@ -1792,6 +1792,96 @@
     },
     "settingsPending": "Impostazioni, configurazione istanza incompleta"
   },
+  "settingsUi": {
+    "backToProjects": "Torna ai progetti",
+    "profile": "Profilo",
+    "diagnostics": "Diagnostica",
+    "on": "Attivo",
+    "off": "Spento",
+    "groups": {
+      "instance": "Istanza · admin"
+    },
+    "pages": {
+      "access": "Accesso e login",
+      "about": "Informazioni"
+    },
+    "leads": {
+      "account": "Il tuo profilo e come accedi.",
+      "preferences": "Valgono solo per te.",
+      "notifications": "Menzioni, risposte e revisioni arrivano sempre nella Inbox. Scegli se riceverle anche per email.",
+      "storage": "File originali caricati nell’istanza.",
+      "access": "I metodi di accesso si configurano sul server; qui vedi cosa è attivo.",
+      "registration": "Chi può creare un nuovo account.",
+      "about": "Nome, indirizzo, versione e stato della configurazione dell’istanza."
+    },
+    "autosave": {
+      "idle": "Modifiche salvate automaticamente",
+      "saving": "Salvataggio…",
+      "saved": "Modifiche salvate",
+      "error": "Impossibile salvare l’ultima modifica"
+    },
+    "account": {
+      "photo": "Foto profilo",
+      "upload": "Carica",
+      "remove": "Rimuovi",
+      "nameHelp": "Come ti vedono gli altri nei progetti e nei commenti",
+      "emailHelp": "Per accedere e ricevere le notifiche",
+      "endOthers": "Esci dagli altri",
+      "here": "Questo dispositivo",
+      "newToken": "Nuovo token",
+      "allSessions": "Mostra tutte le {{count}} sessioni"
+    },
+    "preferences": {
+      "themeHelp": "Sistema segue l’impostazione del dispositivo",
+      "languageHelp": "Lingua dell’interfaccia e delle email"
+    },
+    "notifications": {
+      "short": {
+        "immediate": "Subito",
+        "daily": "Riepilogo giornaliero",
+        "off": "Mai"
+      },
+      "help": {
+        "immediate": "Le notifiche ravvicinate arrivano in un’unica email",
+        "daily": "Una email al giorno con tutto quello che è successo",
+        "off": "Solo la Inbox dell’app"
+      }
+    },
+    "members": {
+      "invite": "Invita membri",
+      "you": "tu",
+      "pending": "In attesa",
+      "allStatuses": "Tutti gli stati"
+    },
+    "status": {
+      "title": "Stato dell’istanza"
+    },
+    "storage": {
+      "used": "Spazio usato",
+      "top": "Tipo di file più pesante"
+    },
+    "access": {
+      "always": "Sempre disponibile",
+      "disabled": "Disattivato dal server",
+      "configured": "Configurato",
+      "needsSmtp": "Richiede SMTP",
+      "missingSmtp": "Manca SMTP",
+      "details": "Dettagli →",
+      "email": "Invio email",
+      "smtpOn": "Inviti, reset della password e notifiche email possono partire."
+    },
+    "registration": {
+      "label": "Nuovi account",
+      "open": "Chiunque raggiunga l’istanza può registrarsi.",
+      "invite": "Solo chi riceve un invito può creare un account.",
+      "closed": "Nessun nuovo account, inviti compresi. Account esistenti e link ospite continuano a funzionare."
+    },
+    "about": {
+      "nameHelp": "Compare nella barra laterale, nelle email e nella pagina di accesso",
+      "url": "Indirizzo pubblico",
+      "version": "Versione"
+    }
+  },
   "admin": {
     "personal": "Personale",
     "account": "Account",
@@ -1933,7 +2023,16 @@
     "add": "Aggiungi valore",
     "error": "Impossibile salvare o caricare. Un altro amministratore potrebbe aver modificato i cataloghi. Ricarica la configurazione attuale.",
     "reload": "Ricarica",
-    "tagHelp": "Scegli un tag condiviso attivo. Gli amministratori gestiscono i valori in Impostazioni → Classificazioni. I tag esistenti restano leggibili."
+    "tagHelp": "Scegli un tag condiviso attivo. Gli amministratori gestiscono i valori in Impostazioni → Classificazioni. I tag esistenti restano leggibili.",
+    "archive": "Archivia",
+    "restore": "Ripristina",
+    "active_one": "{{count}} attivo",
+    "active_other": "{{count}} attivi",
+    "archivedCount_one": "{{count}} archiviato",
+    "archivedCount_other": "{{count}} archiviati",
+    "empty": "Ancora nessun valore.",
+    "unsaved": "Modifiche non salvate",
+    "discard": "Annulla modifiche"
   },
   "appearance": {
     "title": "Aspetto del progetto",

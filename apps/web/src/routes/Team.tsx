@@ -1,22 +1,42 @@
 import type { InstanceMember, Invitation, InvitationResult } from '@inkadra/shared';
-import { Avatar, Button, Dialog, DialogActions, TextField } from '@inkadra/ui';
-import { useCallback, useEffect, useState } from 'react';
+import { Avatar, Button, Dialog, DialogActions, Icon, TextField } from '@inkadra/ui';
+import { type FormEvent, useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api, RequestError } from '../lib/api.ts';
 import { useSession } from '../lib/session.tsx';
+import { useInstanceSetupState } from './AppLayout.tsx';
+import { AccessCard, InstanceStatusCard, RegistrationCard } from './InstanceSettings.tsx';
 import { SettingsShell } from './SettingsShell.tsx';
+import { trackSave } from './settings-save.ts';
+import { Badge, Card } from './settings-ui.tsx';
+
+function relative(value: string, locale: string): string {
+  const seconds = (new Date(value).getTime() - Date.now()) / 1000;
+  const format = new Intl.RelativeTimeFormat(locale, { numeric: 'auto' });
+  for (const [unit, size] of [
+    ['year', 31_536_000],
+    ['month', 2_592_000],
+    ['day', 86_400],
+    ['hour', 3600],
+    ['minute', 60],
+  ] as const) {
+    if (Math.abs(seconds) >= size) return format.format(Math.round(seconds / size), unit);
+  }
+  return format.format(0, 'minute');
+}
 
 export function Team() {
+  const setup = useInstanceSetupState();
   const { user, instance, refresh } = useSession();
   const { t, i18n } = useTranslation();
   const [members, setMembers] = useState<InstanceMember[] | null>(null);
   const [invitations, setInvitations] = useState<Invitation[]>([]);
-  const [email, setEmail] = useState('');
   const [query, setQuery] = useState('');
   const [role, setRole] = useState('all');
+  const [status, setStatus] = useState('all');
   const [error, setError] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
   const [created, setCreated] = useState<Invitation | null>(null);
+  const [inviting, setInviting] = useState(false);
   const [busy, setBusy] = useState(false);
   const [deactivating, setDeactivating] = useState<InstanceMember | null>(null);
   const admin = user?.role === 'admin';
@@ -34,16 +54,20 @@ export function Team() {
   const run = async (action: () => Promise<unknown>) => {
     setBusy(true);
     setError(null);
-    setNotice(null);
     try {
-      await action();
-      await load();
-      await refresh();
-      setNotice(t('settings.saved'));
+      await trackSave(
+        (async () => {
+          await action();
+          await load();
+          await refresh();
+        })(),
+      );
+      return true;
     } catch (e) {
       setError(
         t(e instanceof RequestError && e.status === 409 ? 'admin.conflict' : 'auth.errors.generic'),
       );
+      return false;
     } finally {
       setBusy(false);
     }
@@ -54,219 +78,319 @@ export function Team() {
   const filtered = members?.filter(
     (m) =>
       (role === 'all' || m.role === role) &&
+      (status === 'all' || (status === 'inactive') === !!m.deactivatedAt) &&
       `${m.name} ${m.email}`.toLocaleLowerCase().includes(query.toLocaleLowerCase()),
   );
   const date = (value: string) =>
     new Date(value).toLocaleString(i18n.language, { dateStyle: 'medium', timeStyle: 'short' });
-  return (
-    <SettingsShell>
-      <h1 className="settings__title">{t('admin.members')}</h1>
-      {!admin ? (
+
+  if (!admin)
+    return (
+      <SettingsShell>
         <p role="alert">{t('admin.forbidden')}</p>
-      ) : (
+      </SettingsShell>
+    );
+
+  return (
+    <SettingsShell
+      actions={
+        <Button variant="primary" icon="plus" onClick={() => setInviting(true)}>
+          {t('settingsUi.members.invite')}
+        </Button>
+      }
+      aside={
         <>
-          <p className="ink-muted">{t('admin.teamHelp')}</p>
-          {error && <p role="alert">{error}</p>}
-          {notice && <p role="status">{notice}</p>}
-          <div className="team-tools">
-            <TextField
-              label={t('admin.search')}
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-            />
-            <label className="settings__label">
-              {t('admin.role')}
-              <select className="ink-input" value={role} onChange={(e) => setRole(e.target.value)}>
-                <option value="all">{t('admin.all')}</option>
-                <option value="admin">{t('admin.roles.admin')}</option>
-                <option value="member">{t('admin.roles.member')}</option>
-              </select>
-            </label>
-          </div>
-          {members === null ? (
-            <p role="status">{t('admin.loading')}</p>
-          ) : (
-            <div className="team-table-wrap">
-              <table className="team-table">
-                <caption>{t('admin.membersCount', { count: members.length })}</caption>
-                <thead>
-                  <tr>
-                    {['person', 'role', 'projects', 'lastActive', 'status', 'actions'].map(
-                      (key) => (
-                        <th key={key} scope="col" className={`team-table__${key}`}>
-                          {t(`admin.${key}`)}
-                        </th>
-                      ),
-                    )}
-                  </tr>
-                </thead>
-                <tbody>
-                  {filtered?.map((m) => {
-                    const last = m.role === 'admin' && !m.deactivatedAt && admins <= 1;
-                    return (
-                      <tr key={m.id}>
-                        <th scope="row">
-                          <span className="team-person">
-                            <Avatar name={m.name} image={m.image} size={32} />
-                            <span className="team-person__text">
-                              <span className="team-person__name">{m.name}</span>
-                              <span className="settings__sub">{m.email}</span>
-                            </span>
-                          </span>
-                        </th>
-                        <td>
-                          <select
-                            className="ink-input"
-                            aria-label={t('admin.roleFor', { name: m.name })}
-                            value={m.role}
-                            disabled={busy || last}
-                            title={last ? t('admin.lastAdmin') : undefined}
-                            onChange={(e) => void update(m.id, { role: e.target.value })}
-                          >
-                            <option value="admin">{t('admin.roles.admin')}</option>
-                            <option value="member">{t('admin.roles.member')}</option>
-                          </select>
-                        </td>
-                        <td className="team-table__projects">{m.projectsCount}</td>
-                        <td className="team-table__lastActive">
-                          {m.lastActiveAt ? date(m.lastActiveAt) : t('admin.never')}
-                        </td>
-                        <td>
-                          <span
-                            className={`team-status${m.deactivatedAt ? ' team-status--off' : ''}`}
-                          >
-                            {t(m.deactivatedAt ? 'admin.inactive' : 'admin.active')}
-                          </span>
-                        </td>
-                        <td className="team-table__actions">
-                          <Button
-                            variant="ghost"
-                            disabled={busy || last}
-                            title={last ? t('admin.lastAdmin') : undefined}
-                            onClick={() =>
-                              m.deactivatedAt
-                                ? void update(m.id, { active: true })
-                                : setDeactivating(m)
-                            }
-                          >
-                            {t(m.deactivatedAt ? 'admin.reactivate' : 'admin.deactivate')}
-                          </Button>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-              {filtered?.length === 0 && <p>{t('admin.noMembers')}</p>}
-            </div>
-          )}
-          <p className="ink-muted">{t('admin.activityHelp')}</p>
-          <section className="team-invite">
-            <h2>{t('admin.invite')}</h2>
-            <p className="ink-muted">{t('admin.inviteHelp')}</p>
-            <form
-              className="settings__inline"
-              onSubmit={(e) => {
-                e.preventDefault();
-                void run(async () => {
-                  const result = await api.post<InvitationResult>('/invitations', {
-                    kind: 'email',
-                    email: email.trim(),
-                  });
-                  if (result.status !== 'invited')
-                    throw new Error('Unexpected instance invitation response');
-                  setCreated(result.invitation);
-                  setEmail('');
-                });
-              }}
-            >
-              <TextField
-                label={t('auth.email')}
-                type="email"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-              />
-              <Button type="submit" variant="primary" disabled={busy || !email.trim()}>
-                {t('admin.invite')}
-              </Button>
-            </form>
-            {created && (
-              <div role="status">
-                <p>{t(created.emailSent ? 'admin.inviteSent' : 'admin.shareInvite')}</p>
-                {created.url && (
-                  <TextField label={t('admin.inviteUrl')} readOnly value={created.url} />
-                )}
-              </div>
-            )}
-            <h3>{t('admin.pending')}</h3>
-            {invitations.length === 0 && <p className="ink-muted">{t('admin.noInvitations')}</p>}
-            <ul className="settings__list">
-              {invitations.map((i) => (
-                <li key={i.id} className="settings__row">
-                  <span className="settings__grow">
-                    {i.email ?? t('admin.linkInvite')}
-                    <span className="settings__sub">
-                      {t('admin.expires', { when: date(i.expiresAt) })}
-                    </span>
-                  </span>
-                  {i.kind === 'email' && (
-                    <Button
-                      variant="ghost"
-                      disabled={busy || !instance?.auth.email}
-                      title={!instance?.auth.email ? t('admin.smtpRequired') : undefined}
-                      onClick={() =>
-                        void run(async () =>
-                          setCreated(await api.post<Invitation>(`/invitations/${i.id}/resend`, {})),
-                        )
-                      }
-                    >
-                      {t('admin.resend')}
-                    </Button>
-                  )}
-                  <Button
-                    variant="ghost"
-                    disabled={busy}
-                    onClick={() =>
-                      void run(async () => {
-                        await api.delete(`/invitations/${i.id}`);
-                        setCreated(null);
-                      })
-                    }
-                  >
-                    {t('admin.revoke')}
-                  </Button>
-                </li>
-              ))}
-            </ul>
-          </section>
-          <Dialog
-            open={deactivating !== null}
-            title={t('admin.deactivate')}
-            onClose={() => setDeactivating(null)}
-          >
-            <p>{t('admin.deactivateHelp', { name: deactivating?.name })}</p>
-            <DialogActions>
-              <Button variant="ghost" onClick={() => setDeactivating(null)}>
-                {t('project.cancel')}
-              </Button>
-              <Button
-                variant="danger"
-                disabled={busy}
-                onClick={() => {
-                  if (deactivating) {
-                    const id = deactivating.id;
-                    setDeactivating(null);
-                    void update(id, { active: false });
-                  }
-                }}
-              >
-                {t('admin.deactivate')}
-              </Button>
-            </DialogActions>
-          </Dialog>
+          <InstanceStatusCard setup={setup} storage />
+          <AccessCard />
+          <RegistrationCard />
         </>
+      }
+    >
+      {error && (
+        <p role="alert" className="settings-error">
+          {error}
+        </p>
       )}
+      <div className="team-tools">
+        <label className="team-search">
+          <Icon name="search" size={14} />
+          <input
+            className="ink-input"
+            type="search"
+            aria-label={t('admin.search')}
+            placeholder={t('admin.search')}
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+          />
+        </label>
+        <select
+          className="ink-input team-filter"
+          aria-label={t('admin.role')}
+          value={role}
+          onChange={(e) => setRole(e.target.value)}
+        >
+          <option value="all">{t('admin.all')}</option>
+          <option value="admin">{t('admin.roles.admin')}</option>
+          <option value="member">{t('admin.roles.member')}</option>
+        </select>
+        <select
+          className="ink-input team-filter"
+          aria-label={t('admin.status')}
+          value={status}
+          onChange={(e) => setStatus(e.target.value)}
+        >
+          <option value="all">{t('settingsUi.members.allStatuses')}</option>
+          <option value="active">{t('admin.active')}</option>
+          <option value="inactive">{t('admin.inactive')}</option>
+        </select>
+      </div>
+      {members === null ? (
+        !error && <p role="status">{t('admin.loading')}</p>
+      ) : (
+        <Card className="team-card">
+          <table className="team-table">
+            <caption className="ink-sr-only">
+              {t('admin.membersCount', { count: members.length })}
+            </caption>
+            <thead>
+              <tr>
+                <th scope="col">{t('admin.person')}</th>
+                <th scope="col">{t('admin.role')}</th>
+                <th scope="col" className="team-col--projects">
+                  {t('admin.projects')}
+                </th>
+                <th scope="col" className="team-col--last">
+                  {t('admin.lastActive')}
+                </th>
+                <th scope="col">
+                  <span className="ink-sr-only">{t('admin.actions')}</span>
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {filtered?.map((m) => {
+                const last = m.role === 'admin' && !m.deactivatedAt && admins <= 1;
+                return (
+                  <tr key={m.id} className={m.deactivatedAt ? 'is-inactive' : undefined}>
+                    <th scope="row">
+                      <span className="team-person">
+                        <Avatar name={m.name} image={m.image} size={28} />
+                        <span>
+                          <span className="team-person__name">
+                            {m.name}
+                            {m.id === user?.id && (
+                              <span className="settings-muted">
+                                {' '}
+                                · {t('settingsUi.members.you')}
+                              </span>
+                            )}
+                            {m.deactivatedAt && <Badge>{t('admin.inactive')}</Badge>}
+                          </span>
+                          <span className="settings__sub">{m.email}</span>
+                        </span>
+                      </span>
+                    </th>
+                    <td>
+                      <select
+                        className="ink-input team-role"
+                        aria-label={t('admin.roleFor', { name: m.name })}
+                        value={m.role}
+                        disabled={busy || last}
+                        title={last ? t('admin.lastAdmin') : undefined}
+                        onChange={(e) => void update(m.id, { role: e.target.value })}
+                      >
+                        <option value="admin">{t('admin.roles.admin')}</option>
+                        <option value="member">{t('admin.roles.member')}</option>
+                      </select>
+                    </td>
+                    <td className="team-col--projects">{m.projectsCount}</td>
+                    <td className="team-col--last settings-muted">
+                      {m.lastActiveAt ? (
+                        <time dateTime={m.lastActiveAt} title={date(m.lastActiveAt)}>
+                          {relative(m.lastActiveAt, i18n.language)}
+                        </time>
+                      ) : (
+                        t('admin.never')
+                      )}
+                    </td>
+                    <td className="team-col--actions">
+                      <Button
+                        variant="ghost"
+                        disabled={busy || last}
+                        title={last ? t('admin.lastAdmin') : undefined}
+                        onClick={() =>
+                          m.deactivatedAt ? void update(m.id, { active: true }) : setDeactivating(m)
+                        }
+                      >
+                        {t(m.deactivatedAt ? 'admin.reactivate' : 'admin.deactivate')}
+                      </Button>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+            {invitations.length > 0 && (
+              <tbody className="team-pending">
+                {invitations.map((i) => (
+                  <tr key={i.id}>
+                    <th scope="row" colSpan={4}>
+                      <span className="team-person">
+                        <Badge>{t('settingsUi.members.pending')}</Badge>
+                        <span>
+                          <span className="team-person__name">
+                            {i.email ?? t('admin.linkInvite')}
+                          </span>
+                          <span className="settings__sub">
+                            {t('admin.expires', { when: date(i.expiresAt) })}
+                          </span>
+                        </span>
+                      </span>
+                    </th>
+                    <td className="team-col--actions">
+                      {i.kind === 'email' && (
+                        <Button
+                          variant="ghost"
+                          disabled={busy || !instance?.auth.email}
+                          title={!instance?.auth.email ? t('admin.smtpRequired') : undefined}
+                          onClick={() =>
+                            void run(async () =>
+                              setCreated(
+                                await api.post<Invitation>(`/invitations/${i.id}/resend`, {}),
+                              ),
+                            )
+                          }
+                        >
+                          {t('admin.resend')}
+                        </Button>
+                      )}
+                      <Button
+                        variant="ghost"
+                        disabled={busy}
+                        onClick={() => void run(() => api.delete(`/invitations/${i.id}`))}
+                      >
+                        {t('admin.revoke')}
+                      </Button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            )}
+          </table>
+          {filtered?.length === 0 && <p className="settings-card__empty">{t('admin.noMembers')}</p>}
+          {invitations.length === 0 && (
+            <p className="settings-card__empty settings-muted">{t('admin.noInvitations')}</p>
+          )}
+        </Card>
+      )}
+      <p className="settings-footnote">{t('admin.activityHelp')}</p>
+      <InviteDialog
+        open={inviting || created !== null}
+        created={created}
+        busy={busy}
+        onInvite={(email) =>
+          run(async () => {
+            const result = await api.post<InvitationResult>('/invitations', {
+              kind: 'email',
+              email,
+            });
+            if (result.status !== 'invited')
+              throw new Error('Unexpected instance invitation response');
+            setCreated(result.invitation);
+          })
+        }
+        onClose={() => {
+          setInviting(false);
+          setCreated(null);
+        }}
+      />
+      <Dialog
+        open={deactivating !== null}
+        title={t('admin.deactivate')}
+        onClose={() => setDeactivating(null)}
+      >
+        <p>{t('admin.deactivateHelp', { name: deactivating?.name })}</p>
+        <DialogActions>
+          <Button variant="ghost" onClick={() => setDeactivating(null)}>
+            {t('project.cancel')}
+          </Button>
+          <Button
+            variant="danger"
+            disabled={busy}
+            onClick={() => {
+              if (deactivating) {
+                const id = deactivating.id;
+                setDeactivating(null);
+                void update(id, { active: false });
+              }
+            }}
+          >
+            {t('admin.deactivate')}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </SettingsShell>
+  );
+}
+
+function InviteDialog({
+  open,
+  created,
+  busy,
+  onInvite,
+  onClose,
+}: {
+  open: boolean;
+  created: Invitation | null;
+  busy: boolean;
+  onInvite: (email: string) => Promise<boolean>;
+  onClose: () => void;
+}) {
+  const { t } = useTranslation();
+  const [email, setEmail] = useState('');
+  async function submit(e: FormEvent) {
+    e.preventDefault();
+    if (await onInvite(email.trim())) setEmail('');
+  }
+  return (
+    <Dialog open={open} title={t('settingsUi.members.invite')} onClose={onClose}>
+      {created ? (
+        <div role="status" className="settings-form">
+          <p>{t(created.emailSent ? 'admin.inviteSent' : 'admin.shareInvite')}</p>
+          {created.url && <TextField label={t('admin.inviteUrl')} readOnly value={created.url} />}
+          <DialogActions>
+            {created.url && (
+              <Button
+                icon="copy"
+                onClick={() => navigator.clipboard?.writeText(created.url ?? '').catch(() => {})}
+              >
+                {t('share.copy')}
+              </Button>
+            )}
+            <Button variant="primary" onClick={onClose}>
+              {t('settings.tokens.done')}
+            </Button>
+          </DialogActions>
+        </div>
+      ) : (
+        <form className="settings-form" onSubmit={submit}>
+          <p className="settings-muted">{t('admin.inviteHelp')}</p>
+          <TextField
+            label={t('auth.email')}
+            type="email"
+            required
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+          />
+          <DialogActions>
+            <Button variant="ghost" onClick={onClose}>
+              {t('project.cancel')}
+            </Button>
+            <Button type="submit" variant="primary" disabled={busy || !email.trim()}>
+              {t('admin.invite')}
+            </Button>
+          </DialogActions>
+        </form>
+      )}
+    </Dialog>
   );
 }

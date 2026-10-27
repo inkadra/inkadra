@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router';
 import { authorName, groupByDay, type Page, reviewKey } from '../board/review-model.ts';
 import { api } from '../lib/api.ts';
+import { trackSave } from '../routes/settings-save.ts';
 import { InboxDetail } from './InboxDetail.tsx';
 import {
   dayLabel,
@@ -566,7 +567,6 @@ export function NotificationList({
 export function EmailNotifications() {
   const { t } = useTranslation();
   const [email, setEmail] = useState<NotificationPreferences['email'] | null>(null);
-  const [state, setState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const [loadError, setLoadError] = useState(false);
 
   useEffect(() => {
@@ -584,61 +584,50 @@ export function EmailNotifications() {
     };
   }, []);
 
+  async function choose(value: NotificationPreferences['email']) {
+    const previous = email;
+    setEmail(value);
+    try {
+      await trackSave(api.patch('/me/notification-preferences', { email: value }));
+    } catch {
+      setEmail(previous);
+    }
+  }
+
   return (
-    <section className="settings__section">
-      <div className="settings__head">
-        <h2>{t('notifications.emailTitle')}</h2>
-        <p className="ink-muted">{t('notifications.emailHint')}</p>
-      </div>
-      <div className="settings__body">
+    <section className="settings-card" aria-labelledby="email-notifications-title">
+      <header className="settings-card__head">
+        <div className="settings-card__title">
+          <h2 id="email-notifications-title">{t('notifications.emailTitle')}</h2>
+        </div>
+        <p>{t('notifications.emailHint')}</p>
+      </header>
+      <div className="settings-card__pad">
         {loadError ? (
           <p role="alert">{t('notifications.preferencesError')}</p>
         ) : (
-          <form
-            className="settings__form"
-            onSubmit={async (e) => {
-              e.preventDefault();
-              if (!email) return;
-              setState('saving');
-              try {
-                await api.patch('/me/notification-preferences', { email });
-                setState('saved');
-              } catch {
-                setState('error');
-              }
-            }}
+          <div
+            role="radiogroup"
+            aria-label={t('notifications.emailLabel')}
+            className="notification-frequency"
+            aria-disabled={email === null}
           >
-            <fieldset className="notification-frequency">
-              <legend className="ink-sr-only">{t('notifications.emailLabel')}</legend>
-              {(['immediate', 'daily', 'off'] as const).map((value) => (
-                <label key={value}>
-                  <input
-                    type="radio"
-                    name="email-frequency"
-                    value={value}
-                    checked={email === value}
-                    onChange={() => setEmail(value)}
-                  />
-                  {t(`notifications.frequency.${value}`)}
-                </label>
-              ))}
-            </fieldset>
-            <div className="settings__actions">
-              <Button type="submit" variant="primary" disabled={state === 'saving'}>
-                {t('settings.save')}
-              </Button>
-              {state === 'saved' && (
-                <span role="status" className="settings__saved">
-                  {t('settings.saved')}
+            {(['immediate', 'daily', 'off'] as const).map((value) => (
+              <label key={value} className={email === value ? 'is-on' : undefined}>
+                <input
+                  type="radio"
+                  name="email-frequency"
+                  value={value}
+                  checked={email === value}
+                  onChange={() => void choose(value)}
+                />
+                <span>
+                  <strong>{t(`settingsUi.notifications.short.${value}`)}</strong>
+                  <span>{t(`settingsUi.notifications.help.${value}`)}</span>
                 </span>
-              )}
-              {state === 'error' && (
-                <span role="alert" className="review-error">
-                  {t('notifications.preferencesError')}
-                </span>
-              )}
-            </div>
-          </form>
+              </label>
+            ))}
+          </div>
         )}
       </div>
     </section>

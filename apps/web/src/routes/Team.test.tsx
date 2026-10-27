@@ -14,6 +14,9 @@ vi.mock('../lib/api.ts', () => ({
   api: { get: vi.fn(), patch: vi.fn(), post: vi.fn(), delete: vi.fn() },
   RequestError: class extends Error {},
 }));
+vi.mock('./AppLayout.tsx', () => ({
+  useInstanceSetupState: () => ({ checks: null, error: false }),
+}));
 vi.mock('react-i18next', () => ({ useTranslation: () => ({ t, i18n: { language: 'en' } }) }));
 let host: HTMLDivElement;
 let root: ReturnType<typeof createRoot>;
@@ -46,7 +49,13 @@ beforeEach(() => {
     refresh: vi.fn(async () => {}),
   });
   vi.mocked(api.get).mockImplementation(async (path) =>
-    path === '/instance/members' ? { items: people } : { items: [] },
+    path === '/instance/members'
+      ? { items: people }
+      : path === '/instance/settings'
+        ? { name: 'Inkadra', registration: 'open' }
+        : path === '/instance/storage'
+          ? { originalBytes: 0, byType: [], byProject: [] }
+          : { items: [] },
   );
   host = document.createElement('div');
   document.body.append(host);
@@ -81,7 +90,6 @@ it('renders actual members, direct project counts and pending empty state', asyn
   expect(host.textContent).toContain('bea@example.com');
   expect(host.textContent).toContain('admin.never');
   expect(host.textContent).toContain('admin.noInvitations');
-  expect(host.querySelector('a[aria-current="page"]')?.getAttribute('href')).toBe('/settings/team');
   expect(
     host.querySelector<HTMLSelectElement>('select[aria-label="admin.roleFor"]')?.disabled,
   ).toBe(true);
@@ -150,4 +158,38 @@ it('unwraps the existing invitation result and shows a private link without SMTP
       (input) => input.readOnly && input.value === 'https://studio.example.com/join/private-link',
     ),
   ).toBe(true);
+});
+it('lists pending instance invitations as table rows next to the members', async () => {
+  vi.mocked(api.get).mockImplementation(async (path) =>
+    path === '/instance/members'
+      ? { items: people }
+      : path === '/invitations'
+        ? {
+            items: [
+              {
+                id: 'inv',
+                kind: 'email',
+                email: 'new@example.com',
+                projectId: null,
+                boardId: null,
+                expiresAt: '2026-11-03T12:00:00Z',
+              },
+            ],
+          }
+        : path === '/instance/settings'
+          ? { name: 'Inkadra', registration: 'invite' }
+          : { originalBytes: 0, byType: [], byProject: [] },
+  );
+  await render();
+  const pending = host.querySelector('.team-pending tr');
+  expect(pending?.textContent).toContain('new@example.com');
+  expect(pending?.textContent).toContain('settingsUi.members.pending');
+  expect(host.textContent).not.toContain('admin.noInvitations');
+  const invite = [...host.querySelectorAll('button')].find(
+    (b) => b.textContent === 'settingsUi.members.invite',
+  );
+  expect(invite?.closest('dialog')).toBeNull();
+  expect(host.querySelector('.settings-segmented .is-on')?.textContent).toBe(
+    'admin.registrationModes.invite',
+  );
 });

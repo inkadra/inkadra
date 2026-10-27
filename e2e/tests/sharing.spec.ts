@@ -166,6 +166,7 @@ test('account settings make a personal token shown once', async ({ page }) => {
   await signIn(page, guest);
   await page.getByRole('button', { name: 'Impostazioni' }).click();
   await expect(page.getByRole('heading', { name: 'Account', exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Nuovo token' }).click();
   await page.getByLabel('Nome del token').fill('Script di backup');
   await page.getByRole('button', { name: 'Crea token' }).click();
   await expect(page.getByText('Token “Script di backup” creato.')).toBeVisible();
@@ -187,12 +188,17 @@ test('account settings end another session without handing out its token', async
   const sessions = await (await listed).json();
   expect(sessions.items.length).toBeGreaterThan(1);
   for (const item of sessions.items) expect(item).not.toHaveProperty('token');
-  const end = page.locator('.settings__row').getByRole('button', { name: 'Esci', exact: true });
+  const sessionList = page.locator('section', {
+    has: page.getByRole('heading', { name: 'Sessioni' }),
+  });
+  const more = sessionList.getByRole('button', { name: /^Mostra tutte/ });
+  if (await more.isVisible()) await more.click();
+  const end = sessionList.getByRole('button', { name: 'Esci', exact: true });
   await expect(end).toHaveCount(sessions.items.length - 1);
   await end.first().click();
   await expect(end).toHaveCount(sessions.items.length - 2);
   // One of the guest's other sessions ended: end them all and the second browser is out.
-  await page.getByRole('button', { name: 'Esci da tutti gli altri dispositivi' }).click();
+  await sessionList.getByRole('button', { name: 'Esci dagli altri' }).click();
   expect((await other.request.get('/api/v1/me')).status()).toBe(401);
   await other.context().close();
 });

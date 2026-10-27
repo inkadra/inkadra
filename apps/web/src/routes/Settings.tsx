@@ -3,12 +3,11 @@ import type {
   CreatedPersonalToken,
   DeleteMeBlocked,
   PersonalToken,
-  User,
 } from '@inkadra/shared';
-import { Button, Dialog, DialogActions, TextField } from '@inkadra/ui';
-import { type FormEvent, type ReactNode, useCallback, useEffect, useState } from 'react';
+import { Avatar, Button, Dialog, DialogActions, TextField } from '@inkadra/ui';
+import { type FormEvent, useCallback, useEffect, useId, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useSearchParams } from 'react-router';
+import { useLocation } from 'react-router';
 import { encode } from 'uqr';
 import { LOCALES } from '../i18n/index.ts';
 import { api, authApi, RequestError } from '../lib/api.ts';
@@ -18,102 +17,58 @@ import { EmailNotifications } from '../notifications/Notifications.tsx';
 import { useInstanceSetupState } from './AppLayout.tsx';
 import { ClassificationSettings } from './ClassificationSettings.tsx';
 import { InstanceSettings } from './InstanceSettings.tsx';
-import { InstanceChecklist } from './InstanceSetup.tsx';
+import { SettingsHome } from './SettingsHome.tsx';
 import { SettingsShell } from './SettingsShell.tsx';
-import { settingsSection } from './settings-sections.ts';
+import { trackSave } from './settings-save.ts';
+import { isSettingsHome, settingsSection } from './settings-sections.ts';
+import { AutosaveText, Badge, Card, Row, Segmented, useIsPhone } from './settings-ui.tsx';
 import './projects.css';
 import { GoogleG } from './SignInOptions.tsx';
 import './settings.css';
 
-/** Settings → Account: profile, sign-in methods, two-factor, sessions, apps and deletion. */
+/** Every settings page except Members; plain `/settings` is the home list on phones. */
 export function Settings() {
   const setup = useInstanceSetupState();
   const { t } = useTranslation();
-  const [params] = useSearchParams();
-  const page = settingsSection('/settings', params.toString());
-  const section = page.id;
+  const { pathname, search } = useLocation();
+  const phone = useIsPhone();
   const { user } = useSession();
-  const { preference, choose } = useTheme();
-  const [accounts, setAccounts] = useState<Array<{ id: string; providerId: string }> | null>(null);
-  const loadAccounts = useCallback(async () => setAccounts(await authApi.listAccounts()), []);
-  useEffect(() => {
-    void loadAccounts().catch(() => setAccounts([]));
-  }, [loadAccounts]);
-  const hasPassword = accounts?.some((a) => a.providerId === 'credential') ?? false;
-
-  return (
-    <SettingsShell>
-      <h1 className="settings__title">{t(page.title)}</h1>
-      <p className="ink-muted settings__lead">{t(page.lead)}</p>
-      <InstanceChecklist {...setup} />
-      {section === 'preferences' ? (
-        <Section title={t('admin.preferences')}>
-          <label className="settings__label">
-            {t('admin.theme')}
-            <select
-              className="ink-input"
-              value={preference}
-              onChange={(e) => choose(e.target.value as ThemePreference)}
-            >
-              {(['system', 'dark', 'light'] as const).map((value) => (
-                <option key={value} value={value}>
-                  {t(`admin.themes.${value}`)}
-                </option>
-              ))}
-            </select>
-          </label>
-        </Section>
-      ) : section === 'notifications' ? (
-        <EmailNotifications />
-      ) : section === 'classifications' ? (
-        user?.role === 'admin' ? (
+  if (phone && isSettingsHome(pathname, search)) return <SettingsHome setup={setup} />;
+  const page = settingsSection(pathname, search);
+  if (page.admin && user?.role !== 'admin')
+    return (
+      <SettingsShell page={page}>
+        <p role="alert">{t('admin.forbidden')}</p>
+      </SettingsShell>
+    );
+  switch (page.id) {
+    case 'account':
+      return <Account />;
+    case 'preferences':
+      return (
+        <SettingsShell page={page}>
+          <Preferences />
+        </SettingsShell>
+      );
+    case 'notifications':
+      return (
+        <SettingsShell page={page}>
+          <EmailNotifications />
+        </SettingsShell>
+      );
+    case 'classifications':
+      return (
+        <SettingsShell page={page}>
           <ClassificationSettings />
-        ) : (
-          <p role="alert">{t('admin.forbidden')}</p>
-        )
-      ) : ['instance', 'workspace', 'providers'].includes(section) ? (
-        user?.role === 'admin' ? (
-          <InstanceSettings section={section} />
-        ) : (
-          <p role="alert">{t('admin.forbidden')}</p>
-        )
-      ) : (
-        <>
-          <Profile />
-          <SignInMethods accounts={accounts} onChange={loadAccounts} />
-          {hasPassword && <ChangePassword />}
-          <TwoFactor hasPassword={hasPassword} />
-          <Sessions />
-          <Tokens />
-          <DeleteAccount hasPassword={hasPassword} />
-        </>
-      )}
-    </SettingsShell>
-  );
-}
-
-function Section({
-  title,
-  body,
-  children,
-  danger,
-}: {
-  title: string;
-  body?: ReactNode;
-  children: ReactNode;
-  danger?: boolean;
-}) {
-  return (
-    <section
-      className={danger ? 'settings__section settings__section--danger' : 'settings__section'}
-    >
-      <div className="settings__head">
-        <h2>{title}</h2>
-        {body && <p className="ink-muted">{body}</p>}
-      </div>
-      <div className="settings__body">{children}</div>
-    </section>
-  );
+        </SettingsShell>
+      );
+    default:
+      return (
+        <SettingsShell page={page}>
+          <InstanceSettings section={page.id} setup={setup} />
+        </SettingsShell>
+      );
+  }
 }
 
 function useStatus() {
@@ -144,13 +99,89 @@ function useStatus() {
   return { show, showKey, fail, node, clear: () => setStatus(null) };
 }
 
-function Profile() {
+/** Theme applies instantly on this device; language is saved to the account. */
+export function Preferences() {
   const { t, i18n } = useTranslation();
   const { user, refresh } = useSession();
-  const [name, setName] = useState(user?.name ?? '');
+  const { preference, choose } = useTheme();
+  const languageId = useId();
   const [locale, setLocale] = useState(user?.locale ?? i18n.language);
-  const status = useStatus();
+  async function changeLocale(next: string) {
+    const previous = locale;
+    setLocale(next);
+    try {
+      await trackSave(api.patch('/me', { locale: next }));
+      await i18n.changeLanguage(next);
+      await refresh();
+    } catch {
+      setLocale(previous);
+    }
+  }
+  return (
+    <Card>
+      <div className="settings-rows">
+        <Row label={t('admin.theme')} help={t('settingsUi.preferences.themeHelp')}>
+          <Segmented
+            label={t('admin.theme')}
+            value={preference}
+            onChange={(value: ThemePreference) => choose(value)}
+            options={(['dark', 'light', 'system'] as const).map((value) => ({
+              value,
+              label: t(`admin.themes.${value}`),
+            }))}
+          />
+        </Row>
+        <Row
+          label={t('settings.profile.language')}
+          help={t('settingsUi.preferences.languageHelp')}
+          htmlFor={languageId}
+        >
+          <select
+            id={languageId}
+            className="ink-input settings-input"
+            value={locale}
+            onChange={(e) => void changeLocale(e.target.value)}
+          >
+            {LOCALES.map((l) => (
+              <option key={l} value={l}>
+                {t(`settings.profile.languages.${l}`)}
+              </option>
+            ))}
+          </select>
+        </Row>
+      </div>
+    </Card>
+  );
+}
 
+function Account() {
+  const [accounts, setAccounts] = useState<Array<{ id: string; providerId: string }> | null>(null);
+  const loadAccounts = useCallback(async () => setAccounts(await authApi.listAccounts()), []);
+  useEffect(() => {
+    void loadAccounts().catch(() => setAccounts([]));
+  }, [loadAccounts]);
+  const hasPassword = accounts?.some((a) => a.providerId === 'credential') ?? false;
+  return (
+    <SettingsShell
+      aside={
+        <>
+          <Sessions />
+          <Tokens />
+        </>
+      }
+    >
+      <Profile />
+      <SignInMethods accounts={accounts} hasPassword={hasPassword} onChange={loadAccounts} />
+      <DeleteAccount hasPassword={hasPassword} />
+    </SettingsShell>
+  );
+}
+
+function Profile() {
+  const { t } = useTranslation();
+  const { user, refresh } = useSession();
+  const status = useStatus();
+  const nameId = useId();
   const [avatarBusy, setAvatarBusy] = useState(false);
   async function changeAvatar(file?: File) {
     status.clear();
@@ -163,17 +194,20 @@ function Profile() {
     }
     setAvatarBusy(true);
     try {
-      if (file) {
-        const data = await new Promise<string>((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onerror = reject;
-          reader.onload = () => resolve(String(reader.result).split(',')[1] ?? '');
-          reader.readAsDataURL(file);
-        });
-        await api.put('/me/avatar', { data });
-      } else await api.delete('/me/avatar');
-      await refresh();
-      status.showKey('settings.saved');
+      await trackSave(
+        (async () => {
+          if (file) {
+            const data = await new Promise<string>((resolve, reject) => {
+              const reader = new FileReader();
+              reader.onerror = reject;
+              reader.onload = () => resolve(String(reader.result).split(',')[1] ?? '');
+              reader.readAsDataURL(file);
+            });
+            await api.put('/me/avatar', { data });
+          } else await api.delete('/me/avatar');
+          await refresh();
+        })(),
+      );
     } catch {
       status.show(t('settings.profile.avatarError'), true);
     } finally {
@@ -181,45 +215,22 @@ function Profile() {
     }
   }
 
-  async function save(e: FormEvent) {
-    e.preventDefault();
-    status.clear();
-    try {
-      await api.patch<User>('/me', { name: name.trim(), locale });
-      await i18n.changeLanguage(locale);
-      await refresh();
-      status.showKey('settings.saved');
-    } catch (err) {
-      status.fail(err);
-    }
-  }
-
   return (
-    <Section title={t('settings.profile.title')}>
-      <form className="settings__form" onSubmit={save}>
-        <div className="settings__actions">
-          {user?.image ? (
-            <img
-              src={user.image}
-              alt={user.name}
-              width={64}
-              height={64}
-              style={{ borderRadius: '50%', objectFit: 'cover' }}
-            />
-          ) : (
-            <span role="img" aria-label={user?.name}>
-              {user?.name
-                .split(/\s+/)
-                .slice(0, 2)
-                .map((p) => p[0])
-                .join('')
-                .toUpperCase()}
-            </span>
-          )}
-          <label className="settings__label">
-            {t('settings.profile.avatarUpload')}
+    <Card title={t('settings.profile.title')}>
+      <div className="settings-rows">
+        <Row
+          leading={<Avatar name={user?.name ?? ''} image={user?.image} size={48} />}
+          label={t('settingsUi.account.photo')}
+          help={t('settings.profile.avatarHelp')}
+        >
+          <label
+            className={`ink-btn ink-btn--secondary settings-file${avatarBusy ? ' is-busy' : ''}`}
+          >
+            {t('settingsUi.account.upload')}
             <input
               type="file"
+              className="ink-sr-only"
+              aria-label={t('settings.profile.avatarUpload')}
               accept="image/jpeg,image/png,image/webp"
               disabled={avatarBusy}
               onChange={(e) => {
@@ -229,74 +240,77 @@ function Profile() {
               }}
             />
           </label>
-          <Button
-            type="button"
-            disabled={avatarBusy || !user?.image}
-            onClick={() => void changeAvatar()}
-          >
-            {t('settings.profile.avatarRemove')}
-          </Button>
-        </div>
-        <p>{t('settings.profile.avatarHelp')}</p>
-        <TextField
-          label={t('auth.name')}
-          value={name}
-          required
-          maxLength={120}
-          onChange={(e) => setName(e.target.value)}
-        />
-        <TextField label={t('auth.email')} value={user?.email ?? ''} readOnly />
-        <label className="settings__label">
-          {t('settings.profile.language')}
-          <select className="ink-input" value={locale} onChange={(e) => setLocale(e.target.value)}>
-            {LOCALES.map((l) => (
-              <option key={l} value={l}>
-                {t(`settings.profile.languages.${l}`)}
-              </option>
-            ))}
-          </select>
-        </label>
-        <div className="settings__actions">
-          <Button type="submit" variant="primary" disabled={!name.trim()}>
-            {t('settings.save')}
-          </Button>
-        </div>
-        {status.node}
-      </form>
-    </Section>
+          {user?.image && (
+            <Button variant="ghost" disabled={avatarBusy} onClick={() => void changeAvatar()}>
+              {t('settingsUi.account.remove')}
+            </Button>
+          )}
+        </Row>
+        <Row label={t('auth.name')} help={t('settingsUi.account.nameHelp')} htmlFor={nameId}>
+          <AutosaveText
+            id={nameId}
+            label={t('auth.name')}
+            value={user?.name ?? ''}
+            maxLength={120}
+            save={async (name) => {
+              await api.patch('/me', { name });
+              await refresh();
+            }}
+          />
+        </Row>
+        <Row label={t('auth.email')} help={t('settingsUi.account.emailHelp')}>
+          <span className="settings-value">{user?.email}</span>
+        </Row>
+      </div>
+      {status.node && <div className="settings-card__pad">{status.node}</div>}
+    </Card>
   );
 }
 
 function SignInMethods({
   accounts,
+  hasPassword,
   onChange,
 }: {
   accounts: Array<{ id: string; providerId: string }> | null;
+  hasPassword: boolean;
   onChange: () => Promise<void>;
 }) {
   const { t } = useTranslation();
-  const { instance } = useSession();
+  const { instance, user } = useSession();
   const status = useStatus();
+  const [dialog, setDialog] = useState<'password' | 'twoFactor' | null>(null);
   const providers = [
     ...(instance?.auth.google ? [{ id: 'google', name: 'Google' }] : []),
     ...(instance?.auth.oidc ?? []),
   ];
-  if (providers.length === 0) return null;
   const linked = (id: string) => accounts?.some((a) => a.providerId === id) ?? false;
   const methods = accounts?.length ?? 0;
+  const twoFactor = user?.twoFactorEnabled ?? false;
 
   return (
-    <Section title={t('settings.methods.title')} body={t('settings.methods.body')}>
-      <ul className="settings__list">
+    <Card title={t('settings.methods.title')}>
+      <div className="settings-rows">
+        {hasPassword && (
+          <Row
+            leading={<span className="settings-provider">@</span>}
+            label={t('admin.password')}
+            help={t('settings.password.body')}
+          >
+            <Button onClick={() => setDialog('password')}>{t('settings.password.change')}</Button>
+          </Row>
+        )}
         {providers.map((p) => (
-          <li key={p.id} className="settings__row">
-            <span className="settings__icon">{p.id === 'google' ? <GoogleG /> : p.name[0]}</span>
-            <span className="settings__grow">
-              {p.name}
-              <span className="settings__sub">
-                {linked(p.id) ? t('settings.methods.linked') : t('settings.methods.notLinked')}
+          <Row
+            key={p.id}
+            leading={
+              <span className="settings-provider">
+                {p.id === 'google' ? <GoogleG /> : p.name[0]}
               </span>
-            </span>
+            }
+            label={p.name}
+            help={linked(p.id) ? t('settings.methods.linked') : t('settings.methods.notLinked')}
+          >
             {linked(p.id) ? (
               <Button
                 variant="ghost"
@@ -304,7 +318,7 @@ function SignInMethods({
                 title={methods < 2 ? t('settings.methods.last') : undefined}
                 onClick={async () => {
                   try {
-                    await authApi.unlinkAccount(p.id);
+                    await trackSave(authApi.unlinkAccount(p.id));
                     await onChange();
                   } catch (err) {
                     status.fail(err);
@@ -314,22 +328,64 @@ function SignInMethods({
                 {t('settings.methods.unlink')}
               </Button>
             ) : (
-              <Button onClick={() => authApi.linkSocial(p.id, '/settings').catch(status.fail)}>
+              <Button
+                onClick={() =>
+                  authApi.linkSocial(p.id, '/settings?section=account').catch(status.fail)
+                }
+              >
                 {t('settings.methods.link')}
               </Button>
             )}
-          </li>
+          </Row>
         ))}
-      </ul>
-      {status.node}
-    </Section>
+        <Row
+          leading={<span className="settings-provider">2FA</span>}
+          label={t('settings.twoFactor.title')}
+          help={
+            !hasPassword
+              ? t('settings.twoFactor.needsPassword')
+              : twoFactor
+                ? t('settings.twoFactor.on')
+                : t('settings.twoFactor.off')
+          }
+        >
+          <Badge tone={twoFactor ? 'ok' : 'neutral'}>
+            {t(twoFactor ? 'settingsUi.on' : 'settingsUi.off')}
+          </Badge>
+          {hasPassword && (
+            <Button
+              variant={twoFactor ? 'ghost' : 'secondary'}
+              onClick={() => setDialog('twoFactor')}
+            >
+              {t(twoFactor ? 'settings.twoFactor.disable' : 'settings.twoFactor.enable')}
+            </Button>
+          )}
+        </Row>
+      </div>
+      {status.node && <div className="settings-card__pad">{status.node}</div>}
+      <Dialog
+        open={dialog === 'password'}
+        title={t('settings.password.change')}
+        onClose={() => setDialog(null)}
+      >
+        {dialog === 'password' && <ChangePassword onDone={() => setDialog(null)} />}
+      </Dialog>
+      <Dialog
+        open={dialog === 'twoFactor'}
+        title={t('settings.twoFactor.title')}
+        onClose={() => setDialog(null)}
+      >
+        {dialog === 'twoFactor' && <TwoFactor onDone={() => setDialog(null)} />}
+      </Dialog>
+    </Card>
   );
 }
 
-function ChangePassword() {
+function ChangePassword({ onDone }: { onDone: () => void }) {
   const { t } = useTranslation();
   const [current, setCurrent] = useState('');
   const [next, setNext] = useState('');
+  const [changed, setChanged] = useState(false);
   const status = useStatus();
 
   async function save(e: FormEvent) {
@@ -340,6 +396,7 @@ function ChangePassword() {
       await authApi.changePassword(current, next);
       setCurrent('');
       setNext('');
+      setChanged(true);
       status.show(t('settings.password.changed'));
     } catch (err) {
       status.fail(err);
@@ -347,31 +404,33 @@ function ChangePassword() {
   }
 
   return (
-    <Section title={t('settings.password.title')} body={t('settings.password.body')}>
-      <form className="settings__form" onSubmit={save}>
-        <TextField
-          label={t('settings.password.current')}
-          type="password"
-          autoComplete="current-password"
-          value={current}
-          onChange={(e) => setCurrent(e.target.value)}
-        />
-        <TextField
-          label={t('settings.password.new')}
-          type="password"
-          autoComplete="new-password"
-          placeholder={t('auth.passwordHint')}
-          value={next}
-          onChange={(e) => setNext(e.target.value)}
-        />
-        <div className="settings__actions">
-          <Button type="submit" disabled={!current || !next}>
-            {t('settings.password.change')}
-          </Button>
-        </div>
-        {status.node}
-      </form>
-    </Section>
+    <form className="settings-form" onSubmit={save}>
+      <p className="settings-muted">{t('settings.password.body')}</p>
+      <TextField
+        label={t('settings.password.current')}
+        type="password"
+        autoComplete="current-password"
+        value={current}
+        onChange={(e) => setCurrent(e.target.value)}
+      />
+      <TextField
+        label={t('settings.password.new')}
+        type="password"
+        autoComplete="new-password"
+        placeholder={t('auth.passwordHint')}
+        value={next}
+        onChange={(e) => setNext(e.target.value)}
+      />
+      {status.node}
+      <DialogActions>
+        <Button variant="ghost" onClick={onDone}>
+          {t(changed ? 'settings.tokens.done' : 'project.cancel')}
+        </Button>
+        <Button type="submit" variant="primary" disabled={!current || !next}>
+          {t('settings.password.change')}
+        </Button>
+      </DialogActions>
+    </form>
   );
 }
 
@@ -392,7 +451,7 @@ function QrCode({ text }: { text: string }) {
   );
 }
 
-function TwoFactor({ hasPassword }: { hasPassword: boolean }) {
+function TwoFactor({ onDone }: { onDone: () => void }) {
   const { t } = useTranslation();
   const { user, refresh } = useSession();
   const [password, setPassword] = useState('');
@@ -420,7 +479,7 @@ function TwoFactor({ hasPassword }: { hasPassword: boolean }) {
       await refresh();
       setSetup(null);
       setCode('');
-      status.show(t('settings.twoFactor.enabled'));
+      onDone();
     } catch (err) {
       status.show(
         err instanceof RequestError && err.status === 401
@@ -437,72 +496,69 @@ function TwoFactor({ hasPassword }: { hasPassword: boolean }) {
       await authApi.disableTwoFactor(password);
       setPassword('');
       await refresh();
-      status.show(t('settings.twoFactor.disabled'));
+      onDone();
     } catch (err) {
       status.fail(err);
     }
   }
 
-  return (
-    <Section
-      title={t('settings.twoFactor.title')}
-      body={enabled ? t('settings.twoFactor.on') : t('settings.twoFactor.off')}
-    >
-      {!hasPassword ? (
-        <p className="ink-muted settings__note">{t('settings.twoFactor.needsPassword')}</p>
-      ) : setup ? (
-        <form className="settings__form" onSubmit={confirm}>
-          <p className="settings__note">{t('settings.twoFactor.scan')}</p>
-          <div className="settings__qr-row">
-            <QrCode text={setup.totpURI} />
-            <div className="settings__secret">
-              <span className="ink-muted">{t('settings.twoFactor.manual')}</span>
-              <code>{secret.replace(/(.{4})/g, '$1 ').trim()}</code>
-            </div>
-          </div>
-          <p className="settings__note">{t('settings.twoFactor.backup')}</p>
-          <ul className="settings__codes">
-            {setup.backupCodes.map((c) => (
-              <li key={c}>
-                <code>{c}</code>
-              </li>
-            ))}
-          </ul>
-          <TextField
-            label={t('auth.twoFactor.code')}
-            inputMode="numeric"
-            autoComplete="one-time-code"
-            value={code}
-            onChange={(e) => setCode(e.target.value)}
-          />
-          <div className="settings__actions">
-            <Button variant="ghost" onClick={() => setSetup(null)}>
-              {t('project.cancel')}
-            </Button>
-            <Button type="submit" variant="primary" disabled={code.trim().length < 6}>
-              {t('settings.twoFactor.confirm')}
-            </Button>
-          </div>
-          {status.node}
-        </form>
-      ) : (
-        <form className="settings__form" onSubmit={enabled ? disable : start}>
-          <TextField
-            label={t('settings.password.current')}
-            type="password"
-            autoComplete="current-password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-          />
-          <div className="settings__actions">
-            <Button type="submit" variant={enabled ? 'danger' : 'primary'} disabled={!password}>
-              {enabled ? t('settings.twoFactor.disable') : t('settings.twoFactor.enable')}
-            </Button>
-          </div>
-          {status.node}
-        </form>
-      )}
-    </Section>
+  return setup ? (
+    <form className="settings-form" onSubmit={confirm}>
+      <p>{t('settings.twoFactor.scan')}</p>
+      <div className="settings__qr-row">
+        <QrCode text={setup.totpURI} />
+        <div className="settings__secret">
+          <span className="settings-muted">{t('settings.twoFactor.manual')}</span>
+          <code>{secret.replace(/(.{4})/g, '$1 ').trim()}</code>
+        </div>
+      </div>
+      <p>{t('settings.twoFactor.backup')}</p>
+      <ul className="settings__codes">
+        {setup.backupCodes.map((c) => (
+          <li key={c}>
+            <code>{c}</code>
+          </li>
+        ))}
+      </ul>
+      <TextField
+        label={t('auth.twoFactor.code')}
+        inputMode="numeric"
+        autoComplete="one-time-code"
+        value={code}
+        onChange={(e) => setCode(e.target.value)}
+      />
+      {status.node}
+      <DialogActions>
+        <Button variant="ghost" onClick={onDone}>
+          {t('project.cancel')}
+        </Button>
+        <Button type="submit" variant="primary" disabled={code.trim().length < 6}>
+          {t('settings.twoFactor.confirm')}
+        </Button>
+      </DialogActions>
+    </form>
+  ) : (
+    <form className="settings-form" onSubmit={enabled ? disable : start}>
+      <p className="settings-muted">
+        {enabled ? t('settings.twoFactor.on') : t('settings.twoFactor.off')}
+      </p>
+      <TextField
+        label={t('settings.password.current')}
+        type="password"
+        autoComplete="current-password"
+        value={password}
+        onChange={(e) => setPassword(e.target.value)}
+      />
+      {status.node}
+      <DialogActions>
+        <Button variant="ghost" onClick={onDone}>
+          {t('project.cancel')}
+        </Button>
+        <Button type="submit" variant={enabled ? 'danger' : 'primary'} disabled={!password}>
+          {enabled ? t('settings.twoFactor.disable') : t('settings.twoFactor.enable')}
+        </Button>
+      </DialogActions>
+    </form>
   );
 }
 
@@ -531,12 +587,17 @@ function deviceName(ua: string | null, t: (k: string) => string): string {
   return os ? `${browser} · ${os}` : browser;
 }
 
+/** The current session sorts first; older ones stay one click away. */
+const SESSIONS_SHOWN = 4;
+
 function Sessions() {
   const { t, i18n } = useTranslation();
   const [items, setItems] = useState<AccountSession[] | null>(null);
+  const [all, setAll] = useState(false);
   const status = useStatus();
   const load = useCallback(async () => {
-    setItems((await api.get<{ items: AccountSession[] }>('/me/sessions')).items);
+    const { items } = await api.get<{ items: AccountSession[] }>('/me/sessions');
+    setItems([...items].sort((a, b) => Number(b.current) - Number(a.current)));
   }, []);
   useEffect(() => {
     void load().catch(() => setItems([]));
@@ -546,25 +607,49 @@ function Sessions() {
     new Date(iso).toLocaleString(i18n.language, { dateStyle: 'medium', timeStyle: 'short' });
 
   return (
-    <Section title={t('settings.sessions.title')} body={t('settings.sessions.body')}>
-      <ul className="settings__list">
-        {items?.map((s) => (
-          <li key={s.id} className="settings__row">
-            <span className="settings__grow">
-              {deviceName(s.userAgent, t)}
-              <span className="settings__sub">
-                {s.current
-                  ? t('settings.sessions.this')
-                  : t('settings.sessions.since', { when: when(s.updatedAt) })}
-                {s.ipAddress ? ` · ${s.ipAddress}` : ''}
+    <Card
+      title={t('settings.sessions.title')}
+      body={t('settings.sessions.body')}
+      action={
+        (items?.length ?? 0) > 1 && (
+          <Button
+            variant="ghost"
+            onClick={async () => {
+              try {
+                await trackSave(authApi.revokeOtherSessions());
+                await load();
+              } catch (err) {
+                status.fail(err);
+              }
+            }}
+          >
+            {t('settingsUi.account.endOthers')}
+          </Button>
+        )
+      }
+    >
+      <ul className="settings-list">
+        {(all ? items : items?.slice(0, SESSIONS_SHOWN))?.map((s) => (
+          <li key={s.id}>
+            <span className="settings-list__text">
+              <span className="settings-row__label">{deviceName(s.userAgent, t)}</span>
+              <span className="settings-row__help">
+                {[
+                  !s.current && t('settings.sessions.since', { when: when(s.updatedAt) }),
+                  s.ipAddress,
+                ]
+                  .filter(Boolean)
+                  .join(' · ')}
               </span>
             </span>
-            {!s.current && (
+            {s.current ? (
+              <Badge tone="accent">{t('settingsUi.account.here')}</Badge>
+            ) : (
               <Button
                 variant="ghost"
                 onClick={async () => {
                   try {
-                    await api.delete(`/me/sessions/${s.id}`);
+                    await trackSave(api.delete(`/me/sessions/${s.id}`));
                     await load();
                   } catch (err) {
                     status.fail(err);
@@ -577,24 +662,13 @@ function Sessions() {
           </li>
         ))}
       </ul>
-      {(items?.length ?? 0) > 1 && (
-        <div className="settings__actions">
-          <Button
-            onClick={async () => {
-              try {
-                await authApi.revokeOtherSessions();
-                await load();
-              } catch (err) {
-                status.fail(err);
-              }
-            }}
-          >
-            {t('settings.sessions.endOthers')}
-          </Button>
-        </div>
+      {!all && (items?.length ?? 0) > SESSIONS_SHOWN && (
+        <button type="button" className="settings-list__more" onClick={() => setAll(true)}>
+          {t('settingsUi.account.allSessions', { count: items?.length })}
+        </button>
       )}
-      {status.node}
-    </Section>
+      {status.node && <div className="settings-card__pad">{status.node}</div>}
+    </Card>
   );
 }
 
@@ -602,6 +676,7 @@ function Tokens() {
   const { t, i18n } = useTranslation();
   const [items, setItems] = useState<PersonalToken[] | null>(null);
   const [name, setName] = useState('');
+  const [open, setOpen] = useState(false);
   const [created, setCreated] = useState<CreatedPersonalToken | null>(null);
   const status = useStatus();
   const load = useCallback(async () => {
@@ -616,6 +691,12 @@ function Tokens() {
       month: 'short',
       year: 'numeric',
     });
+  const close = () => {
+    setOpen(false);
+    setCreated(null);
+    setName('');
+    status.clear();
+  };
 
   async function create(e: FormEvent) {
     e.preventDefault();
@@ -630,16 +711,22 @@ function Tokens() {
   }
 
   return (
-    <Section title={t('settings.tokens.title')} body={t('settings.tokens.body')}>
-      <ul className="settings__list">
-        {items?.length === 0 && (
-          <li className="ink-muted settings__note">{t('settings.tokens.none')}</li>
-        )}
+    <Card
+      title={t('settings.tokens.title')}
+      body={t('settings.tokens.body')}
+      action={
+        <Button variant="ghost" icon="plus" onClick={() => setOpen(true)}>
+          {t('settingsUi.account.newToken')}
+        </Button>
+      }
+    >
+      <ul className="settings-list">
+        {items?.length === 0 && <li className="settings-muted">{t('settings.tokens.none')}</li>}
         {items?.map((tk) => (
-          <li key={tk.id} className="settings__row">
-            <span className="settings__grow">
-              {tk.name}
-              <span className="settings__sub">
+          <li key={tk.id}>
+            <span className="settings-list__text">
+              <span className="settings-row__label">{tk.name}</span>
+              <span className="settings-row__help">
                 <code>{tk.prefix}…</code> ·{' '}
                 {tk.client
                   ? t(`settings.tokens.clients.${tk.client}`)
@@ -654,7 +741,7 @@ function Tokens() {
               variant="ghost"
               onClick={async () => {
                 try {
-                  await api.delete(`/me/tokens/${tk.id}`);
+                  await trackSave(api.delete(`/me/tokens/${tk.id}`));
                   await load();
                 } catch (err) {
                   status.fail(err);
@@ -666,38 +753,47 @@ function Tokens() {
           </li>
         ))}
       </ul>
-      {created ? (
-        <div className="settings__created" role="status">
-          <p>{t('settings.tokens.copyNow', { name: created.name })}</p>
-          <code className="settings__token">{created.token}</code>
-          <div className="settings__actions">
-            <Button
-              onClick={() => navigator.clipboard?.writeText(created.token).catch(() => {})}
-              icon="copy"
-            >
-              {t('share.copy')}
-            </Button>
-            <Button variant="ghost" onClick={() => setCreated(null)}>
-              {t('settings.tokens.done')}
-            </Button>
+      {!open && status.node && <div className="settings-card__pad">{status.node}</div>}
+      <Dialog open={open} title={t('settings.tokens.create')} onClose={close}>
+        {created ? (
+          <div className="settings-form" role="status">
+            <p>{t('settings.tokens.copyNow', { name: created.name })}</p>
+            <code className="settings__token">{created.token}</code>
+            <DialogActions>
+              <Button
+                onClick={() => navigator.clipboard?.writeText(created.token).catch(() => {})}
+                icon="copy"
+              >
+                {t('share.copy')}
+              </Button>
+              <Button variant="primary" onClick={close}>
+                {t('settings.tokens.done')}
+              </Button>
+            </DialogActions>
           </div>
-        </div>
-      ) : (
-        <form className="settings__inline" onSubmit={create}>
-          <TextField
-            label={t('settings.tokens.name')}
-            placeholder={t('settings.tokens.namePlaceholder')}
-            maxLength={80}
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-          />
-          <Button type="submit" disabled={!name.trim()}>
-            {t('settings.tokens.create')}
-          </Button>
-        </form>
-      )}
-      {status.node}
-    </Section>
+        ) : (
+          <form className="settings-form" onSubmit={create}>
+            <p className="settings-muted">{t('settings.tokens.body')}</p>
+            <TextField
+              label={t('settings.tokens.name')}
+              placeholder={t('settings.tokens.namePlaceholder')}
+              maxLength={80}
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+            />
+            {status.node}
+            <DialogActions>
+              <Button variant="ghost" onClick={close}>
+                {t('project.cancel')}
+              </Button>
+              <Button type="submit" variant="primary" disabled={!name.trim()}>
+                {t('settings.tokens.create')}
+              </Button>
+            </DialogActions>
+          </form>
+        )}
+      </Dialog>
+    </Card>
   );
 }
 
@@ -726,15 +822,17 @@ function DeleteAccount({ hasPassword }: { hasPassword: boolean }) {
   }
 
   return (
-    <Section title={t('settings.delete.title')} body={t('settings.delete.body')} danger>
-      <div className="settings__actions settings__actions--start">
-        <Button variant="danger" onClick={() => setOpen(true)}>
-          {t('settings.delete.open')}
-        </Button>
+    <Card danger>
+      <div className="settings-rows">
+        <Row label={t('settings.delete.title')} help={t('settings.delete.body')}>
+          <Button variant="danger" onClick={() => setOpen(true)}>
+            {t('settings.delete.open')}
+          </Button>
+        </Row>
       </div>
       <Dialog open={open} title={t('settings.delete.confirmTitle')} onClose={() => setOpen(false)}>
-        <form className="settings__form" onSubmit={remove}>
-          <p className="settings__note">{t('settings.delete.confirmBody')}</p>
+        <form className="settings-form" onSubmit={remove}>
+          <p>{t('settings.delete.confirmBody')}</p>
           {hasPassword ? (
             <TextField
               label={t('settings.password.current')}
@@ -744,7 +842,7 @@ function DeleteAccount({ hasPassword }: { hasPassword: boolean }) {
               onChange={(e) => setPassword(e.target.value)}
             />
           ) : (
-            <p className="ink-muted settings__note">{t('settings.delete.fresh')}</p>
+            <p className="settings-muted">{t('settings.delete.fresh')}</p>
           )}
           {blocked && (
             <div className="settings__status settings__status--error" role="alert">
@@ -769,6 +867,6 @@ function DeleteAccount({ hasPassword }: { hasPassword: boolean }) {
           </DialogActions>
         </form>
       </Dialog>
-    </Section>
+    </Card>
   );
 }
