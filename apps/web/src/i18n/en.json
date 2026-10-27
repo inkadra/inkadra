@@ -1543,6 +1543,7 @@
     "boards_other": "{{count}} boards"
   },
   "onboarding": {
+    "guidedSetup": "Guided setup",
     "pendingEmail": "Add the email address to the invitation list, or clear it to create the project.",
     "title": "Your first project",
     "subtitle": "Choose a starting point and invite your team. You can finish the details later.",

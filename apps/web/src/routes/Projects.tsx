@@ -102,9 +102,12 @@ export function Projects() {
             </p>
           )}
         </div>
-        <Button variant="primary" icon="plus" onClick={openNewProject}>
-          {t('nav.newProject')}
-        </Button>
+        <div>
+          <Link to="/onboarding">{t('onboarding.guidedSetup')}</Link>
+          <Button variant="primary" icon="plus" onClick={openNewProject}>
+            {t('nav.newProject')}
+          </Button>
+        </div>
       </header>
       <div className="projects-page__filters">
         <label>

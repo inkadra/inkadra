@@ -3,6 +3,7 @@ import type { Project } from '@inkadra/shared';
 import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
+import { createBoard } from '../board/boards.ts';
 import { api } from '../lib/api.ts';
 import { ProjectSetupForm } from './NewProjectDialog.tsx';
 
@@ -126,4 +127,28 @@ it('explains why an unadded email blocks project creation', async () => {
   await input('input[type="email"]', '');
   expect(host.textContent).not.toContain('onboarding.pendingEmail');
   expect(button('project.create')?.disabled).toBe(false);
+});
+
+it('defaults to blank without creating child boards or template content', async () => {
+  const choices = host.querySelectorAll<HTMLInputElement>('input[name="projectTemplate"]');
+  expect([...choices].map((choice) => choice.checked)).toEqual([
+    false,
+    false,
+    false,
+    false,
+    false,
+    true,
+  ]);
+  await input('input[maxlength="120"]', 'Blank project');
+  const project = { id: 'p', rootBoardId: 'root' } as Project;
+  vi.mocked(api.post).mockResolvedValueOnce(project);
+  await act(async () =>
+    host
+      .querySelector('form')
+      ?.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })),
+  );
+  expect(createBoard).not.toHaveBeenCalled();
+  expect(api.post).toHaveBeenCalledTimes(1);
+  await act(async () => advance());
+  expect(created).toHaveBeenCalledWith(project);
 });

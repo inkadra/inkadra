@@ -179,9 +179,14 @@ export function Home() {
             icon="board"
             title={t('home.noProjects')}
             actions={
-              <Button variant="primary" icon="plus" onClick={() => navigate('/onboarding')}>
-                {t('nav.newProject')}
-              </Button>
+              <>
+                <Button variant="primary" icon="plus" onClick={openNewProject}>
+                  {t('nav.newProject')}
+                </Button>
+                <Button variant="ghost" onClick={() => navigate('/onboarding')}>
+                  {t('onboarding.guidedSetup')}
+                </Button>
+              </>
             }
           >
             {t('home.noProjectsBody')}

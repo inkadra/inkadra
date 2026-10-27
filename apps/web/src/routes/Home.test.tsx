@@ -217,7 +217,8 @@ it('keeps the Today card with an error when only the shooting days fail', async 
 });
 
 it('keeps the empty Home greeting and opens onboarding only from its CTA', async () => {
-  context({ projects: [], shared: [] });
+  const openNewProject = vi.fn();
+  context({ projects: [], shared: [], openNewProject });
   respond({});
   await act(async () =>
     root.render(
@@ -232,12 +233,18 @@ it('keeps the empty Home greeting and opens onboarding only from its CTA', async
   expect(host.querySelector('h1')?.textContent).toContain('Giulia');
   expect(host.textContent).toContain('home.noProjects');
   expect(host.textContent).not.toContain('Setup destination');
-  const cta =
-    host.querySelector<HTMLButtonElement>('.ink-empty-state button') ??
-    [...host.querySelectorAll<HTMLButtonElement>('button')]
-      .filter((button) => button.textContent === 'nav.newProject')
-      .at(-1);
-  expect(cta).toBeDefined();
-  await act(async () => cta?.click());
+  const buttons = [
+    ...host.querySelectorAll<HTMLButtonElement>(
+      '#home-projects button, [aria-labelledby="home-projects"] button',
+    ),
+  ];
+  const quickCreate = buttons.find((button) => button.textContent === 'nav.newProject');
+  expect(quickCreate).toBeDefined();
+  await act(async () => quickCreate?.click());
+  expect(openNewProject).toHaveBeenCalledOnce();
+  expect(host.textContent).not.toContain('Setup destination');
+  const guided = buttons.find((button) => button.textContent === 'onboarding.guidedSetup');
+  expect(guided).toBeDefined();
+  await act(async () => guided?.click());
   expect(host.textContent).toBe('Setup destination');
 });

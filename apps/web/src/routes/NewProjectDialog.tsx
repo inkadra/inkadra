@@ -54,7 +54,7 @@ export function ProjectSetupForm({
   const [type, setType] = useState<ProjectType | ''>('');
   const [start, setStart] = useState('');
   const [end, setEnd] = useState('');
-  const [template, setTemplate] = useState<ProjectTemplate>('production');
+  const [template, setTemplate] = useState<ProjectTemplate>('blank');
   const [email, setEmail] = useState('');
   const [role, setRole] = useState<ProjectRole>('editor');
   const [invites, setInvites] = useState<Array<{ email: string; role: ProjectRole }>>([]);
