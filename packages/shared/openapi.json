@@ -5019,6 +5019,51 @@
           "boardId"
         ]
       },
+      "BoardCounts": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BoardCount"
+            }
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "description": "Counts of the project boards the caller can open, for the navigation."
+      },
+      "BoardCount": {
+        "type": "object",
+        "properties": {
+          "boardId": {
+            "type": "string",
+            "format": "uuid",
+            "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10"
+          },
+          "elementCount": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "frameCount": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Storyboard frames on the board."
+          },
+          "framesToShoot": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Frames whose status is not `shot` yet."
+          }
+        },
+        "required": [
+          "boardId",
+          "elementCount",
+          "frameCount",
+          "framesToShoot"
+        ]
+      },
       "BoardPreview": {
         "type": "object",
         "properties": {
@@ -14986,6 +15031,86 @@
           },
           "500": {
             "description": "The change may or may not have been made. OutcomeUnknown (`outcome_unknown`) explicitly reports uncertainty. A missing or unrecognized details.reason also means the outcome is unknown, including on legacy servers. Reconcile state before retrying; never infer that a retry is safe from the absence of a recognized reason.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/projects/{projectId}/board-counts": {
+      "get": {
+        "tags": [
+          "Boards"
+        ],
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Element and frame counts of the project boards the caller can open.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10"
+            },
+            "required": true,
+            "name": "projectId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Board counts",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BoardCounts"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
             "content": {
               "application/json": {
                 "schema": {

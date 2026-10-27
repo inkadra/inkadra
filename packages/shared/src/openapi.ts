@@ -11,6 +11,7 @@ import {
 } from './assets.ts';
 import {
   Board,
+  BoardCounts,
   BoardDetail,
   BoardPreview,
   CreateBoard,
@@ -1832,6 +1833,16 @@ export function buildOpenApiDocument() {
     ],
   });
 }
+
+registry.registerPath({
+  method: 'get',
+  path: v1('/projects/{projectId}/board-counts'),
+  tags: ['Boards'],
+  security: secured,
+  summary: 'Element and frame counts of the project boards the caller can open.',
+  request: { params: z.object({ projectId: Id }) },
+  responses: { 200: { description: 'Board counts', ...json(BoardCounts) }, ...errors },
+});
 
 registry.registerPath({
   method: 'get',

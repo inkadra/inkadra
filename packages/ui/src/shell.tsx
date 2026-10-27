@@ -2,22 +2,35 @@
 import type { AnchorHTMLAttributes, ButtonHTMLAttributes, ReactNode } from 'react';
 import { Icon, type IconName } from './icons.tsx';
 
-/** Desktop layout from the design reference: rail 52, sidebar 210, header 48, rounded main panel. */
+/**
+ * Desktop layout: one navigation column (240, or 56 with icons only when collapsed), header 48,
+ * rounded main panel. `rail` is kept for callers that still pass a separate icon rail.
+ */
 export function AppShell({
   rail,
   sidebar,
   header,
   children,
   canvas,
+  collapsed,
 }: {
-  rail: ReactNode;
+  rail?: ReactNode;
   sidebar?: ReactNode;
   header: ReactNode;
   children: ReactNode;
   canvas?: boolean;
+  collapsed?: boolean;
 }) {
+  const className = [
+    'ink-shell',
+    rail ? 'ink-shell--rail' : '',
+    sidebar ? '' : 'ink-shell--no-sidebar',
+    collapsed ? 'ink-shell--collapsed' : '',
+  ]
+    .filter(Boolean)
+    .join(' ');
   return (
-    <div className={sidebar ? 'ink-shell' : 'ink-shell ink-shell--no-sidebar'}>
+    <div className={className}>
       {rail}
       {sidebar}
       {header}
@@ -90,6 +103,7 @@ export function NavItem({
   leading,
   label,
   count,
+  badge,
   active,
   ...props
 }: AnchorHTMLAttributes<HTMLAnchorElement> & {
@@ -97,6 +111,8 @@ export function NavItem({
   leading?: ReactNode;
   label: string;
   count?: number;
+  /** A highlighted number, such as unread notifications; hidden at zero. */
+  badge?: number;
   active?: boolean;
 }) {
   const content = (
@@ -104,15 +120,23 @@ export function NavItem({
       {icon ? <Icon name={icon} /> : leading}
       <span className="ink-nav__name">{label}</span>
       {count !== undefined && <span className="ink-nav__count">{count}</span>}
+      {badge ? (
+        <span className="ink-nav__badge" aria-hidden="true">
+          {badge}
+        </span>
+      ) : null}
     </>
   );
+  // With the column collapsed only the icon shows, so the name moves to the tooltip.
+  const title = props.title ?? label;
   return props.href ? (
-    <a className="ink-nav" aria-current={active ? 'page' : undefined} {...props}>
+    <a className="ink-nav" aria-current={active ? 'page' : undefined} title={title} {...props}>
       {content}
     </a>
   ) : (
     <button
       className="ink-nav"
+      title={title}
       aria-pressed={active}
       {...(props as ButtonHTMLAttributes<HTMLButtonElement>)}
       type="button"

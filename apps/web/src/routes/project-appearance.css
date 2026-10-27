@@ -75,3 +75,7 @@
     min-height: 44px;
   }
 }
+
+.ink-shell--collapsed .project-navigation__options {
+  display: none;
+}

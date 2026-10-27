@@ -1,7 +1,7 @@
 import { roots } from '@inkadra/doc-schema';
 import { describe, expect, it } from 'vitest';
 import * as Y from 'yjs';
-import { projectPreview } from './board-preview.ts';
+import { boardCounts, projectPreview } from './board-preview.ts';
 
 describe('persisted board preview', () => {
   it('handles empty boards and rejects corrupt persisted state', () => {
@@ -76,6 +76,36 @@ describe('persisted board preview', () => {
     expect(preview.drawing).toHaveLength(2);
     expect(preview.drawing[0]?.path).toMatch(/^M0 0 L4096 4096/);
     expect(preview.drawing[1]?.path).toBe('M0 0 H4096 V4096 H0 Z');
+    doc.destroy();
+  });
+});
+
+describe('board counts for the navigation', () => {
+  it('counts elements, frames and frames still to shoot; tolerates bad state', () => {
+    expect(boardCounts()).toEqual({ elementCount: 0, frameCount: 0, framesToShoot: 0 });
+    expect(boardCounts(new Uint8Array([255]))).toEqual({
+      elementCount: 0,
+      frameCount: 0,
+      framesToShoot: 0,
+    });
+    const doc = new Y.Doc();
+    const { elements } = roots(doc);
+    const add = (id: string, type: string, status?: string) => {
+      const map = new Y.Map<unknown>();
+      elements.set(id, map);
+      map.set('type', type);
+      if (status) map.set('status', status);
+    };
+    add('scene', 'scene');
+    add('a', 'frame');
+    add('b', 'frame', 'todo');
+    add('c', 'frame', 'shot');
+    add('note', 'note');
+    expect(boardCounts(Y.encodeStateAsUpdate(doc))).toEqual({
+      elementCount: 5,
+      frameCount: 3,
+      framesToShoot: 2,
+    });
     doc.destroy();
   });
 });

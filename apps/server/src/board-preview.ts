@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import { FrameShape, roots, Stroke } from '@inkadra/doc-schema';
-import type { BoardPreview } from '@inkadra/shared';
+import type { BoardCount, BoardPreview } from '@inkadra/shared';
 import * as Y from 'yjs';
 
 /** Plain text only: React escapes the projection, including user-authored rich text. */
@@ -92,4 +92,34 @@ export function projectPreview(state?: Uint8Array): BoardPreview {
   } finally {
     doc.destroy();
   }
+}
+
+const counts = new Map<string, Omit<BoardCount, 'boardId'>>();
+
+/** Elements and storyboard frames of a stored document, for the navigation counts. */
+export function boardCounts(state?: Uint8Array): Omit<BoardCount, 'boardId'> {
+  const empty = { elementCount: 0, frameCount: 0, framesToShoot: 0 };
+  if (!state) return empty;
+  const key = createHash('sha256').update(state).digest('hex');
+  const cached = counts.get(key);
+  if (cached) return { ...cached };
+  const doc = new Y.Doc();
+  const result = { ...empty };
+  try {
+    Y.applyUpdate(doc, state);
+    for (const el of roots(doc).elements.values()) {
+      if (!(el instanceof Y.Map)) continue;
+      result.elementCount++;
+      if (el.get('type') !== 'frame') continue;
+      result.frameCount++;
+      if (el.get('status') !== 'shot') result.framesToShoot++;
+    }
+  } catch {
+    return empty;
+  } finally {
+    doc.destroy();
+  }
+  if (counts.size >= 256) counts.delete(counts.keys().next().value ?? '');
+  counts.set(key, result);
+  return { ...result };
 }
