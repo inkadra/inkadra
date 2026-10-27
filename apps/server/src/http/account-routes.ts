@@ -33,12 +33,12 @@ import {
   projectMember,
   session as sessionTable,
   user,
+  userAvatar,
   verification,
 } from '../db/schema.ts';
 import type { Jobs } from '../jobs.ts';
 import { addressBucket, RateLimiter } from '../rate-limits.ts';
 import { newSecret, pkceChallenge, safeEqual, sha256 } from '../secrets.ts';
-import type { Storage } from '../storage.ts';
 import { animatedVariantKey } from '../storage.ts';
 import { issueToken, toPersonalToken } from '../tokens.ts';
 import { toUser } from './api-routes.ts';
@@ -46,7 +46,6 @@ import { requireActor, requireSession, toHeaders } from './auth-routes.ts';
 import { HttpError } from './errors.ts';
 
 interface Deps {
-  storage: Storage;
   config: Config;
   db: Database;
   auth: Auth;
@@ -99,7 +98,8 @@ export function registerAccountRoutes(app: FastifyInstance, deps: Deps) {
   const v1 = (path: string) => `${API_PREFIX}${path}`;
   const exchangeLimiter = new RateLimiter(20, 60_000);
 
-  // Account images use independent storage, never project assets or project permissions.
+  // A normalized avatar belongs to the account row, not project storage. Replacements
+  // are atomic and bounded to one image; failed writes cannot leave orphan objects.
   app.put(v1('/me/avatar'), async (req) => {
     const session = await requireSession(auth, req, db);
     const { data } = UploadAvatar.parse(req.body);
@@ -108,41 +108,64 @@ export function registerAccountRoutes(app: FastifyInstance, deps: Deps) {
       throw new HttpError('bad_request', 'Use a JPEG, PNG or WebP image up to 1 MiB.');
     const image = await normalizeAvatar(bytes);
     const version = randomUUID();
-    await deps.storage.write(`avatars/${session.user.id}/${version}.webp`, image, 'image/webp');
     const url = new URL(v1(`/users/${session.user.id}/avatar/${version}`), config.PUBLIC_URL).href;
-    const [row] = await db
-      .update(user)
-      .set({ image: url, updatedAt: new Date() })
-      .where(eq(user.id, session.user.id))
-      .returning();
-    if (!row) throw new HttpError('unauthorized', 'Sign in to continue.');
+    const row = await db.transaction(async (tx) => {
+      // Serialize replace/remove on the account, before touching its avatar row.
+      const [current] = await tx
+        .select({ id: user.id })
+        .from(user)
+        .where(eq(user.id, session.user.id))
+        .for('update');
+      if (!current) throw new HttpError('unauthorized', 'Sign in to continue.');
+      await tx
+        .insert(userAvatar)
+        .values({ userId: session.user.id, version, image })
+        .onConflictDoUpdate({ target: userAvatar.userId, set: { version, image } });
+      const [updated] = await tx
+        .update(user)
+        .set({ image: url, updatedAt: new Date() })
+        .where(eq(user.id, session.user.id))
+        .returning();
+      if (!updated) throw new HttpError('unauthorized', 'Sign in to continue.');
+      return updated;
+    });
     return toUser(row);
   });
   app.delete(v1('/me/avatar'), async (req) => {
     const session = await requireSession(auth, req, db);
-    const [row] = await db
-      .update(user)
-      .set({ image: null, updatedAt: new Date() })
-      .where(eq(user.id, session.user.id))
-      .returning();
-    // Retain old objects for the storage retention policy rather than deleting user data.
-    if (!row) throw new HttpError('unauthorized', 'Sign in to continue.');
+    const row = await db.transaction(async (tx) => {
+      const [updated] = await tx
+        .update(user)
+        .set({ image: null, updatedAt: new Date() })
+        .where(eq(user.id, session.user.id))
+        .returning();
+      if (!updated) throw new HttpError('unauthorized', 'Sign in to continue.');
+      await tx.delete(userAvatar).where(eq(userAvatar.userId, session.user.id));
+      return updated;
+    });
     return toUser(row);
   });
   app.get(v1('/users/:userId/avatar/:version'), async (req, reply) => {
     await requireActor(auth, req, db);
     const params = z.object({ userId: Id, version: z.uuid() }).parse(req.params);
-    const [row] = await db
-      .select({ image: user.image })
-      .from(user)
-      .where(eq(user.id, params.userId));
     const url = new URL(v1(`/users/${params.userId}/avatar/${params.version}`), config.PUBLIC_URL)
       .href;
-    if (row?.image !== url) throw new HttpError('not_found', 'Avatar not found.');
+    const [avatar] = await db
+      .select({ image: userAvatar.image })
+      .from(userAvatar)
+      .innerJoin(user, eq(user.id, userAvatar.userId))
+      .where(
+        and(
+          eq(userAvatar.userId, params.userId),
+          eq(userAvatar.version, params.version),
+          eq(user.image, url),
+        ),
+      );
+    if (!avatar) throw new HttpError('not_found', 'Avatar not found.');
     return reply
       .type('image/webp')
       .header('cache-control', 'private, no-cache')
-      .send(await deps.storage.read(`avatars/${params.userId}/${params.version}.webp`));
+      .send(Buffer.from(avatar.image));
   });
 
   // Sessions ---------------------------------------------------------------------

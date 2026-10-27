@@ -54,6 +54,15 @@ export const user = pgTable('user', {
   updatedAt: updatedAt(),
 });
 
+/** One bounded normalized avatar per account, replaced atomically and cascaded on removal. */
+export const userAvatar = pgTable('user_avatar', {
+  userId: uuid('user_id')
+    .primaryKey()
+    .references(() => user.id, { onDelete: 'cascade' }),
+  version: uuid('version').notNull(),
+  image: bytea('image').notNull(),
+});
+
 export const session = pgTable(
   'session',
   {

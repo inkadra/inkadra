@@ -293,6 +293,8 @@ export function registerProjectRoutes(app: FastifyInstance, deps: Deps) {
     if (patch.archived !== undefined) set.archivedAt = patch.archived ? new Date() : null;
     if (Object.keys(set).length > 0) {
       await db.transaction(async (tx) => {
+        // Account deletion takes this global lock before locking project rows too.
+        await tx.execute(sql`select pg_advisory_xact_lock(10892)`);
         await lockMembers(
           tx,
           projectId,
@@ -301,7 +303,6 @@ export function registerProjectRoutes(app: FastifyInstance, deps: Deps) {
         );
         const [current] = await tx.select().from(project).where(eq(project.id, projectId));
         if (!current) throw new HttpError('not_found', 'Project not found.');
-        await tx.execute(sql`select pg_advisory_xact_lock(10892)`);
         validateProjectType((await readClassifications(tx)).projectTypes, patch.type, current.type);
         validateDates(
           patch.shootingStart === undefined ? current.shootingStart : patch.shootingStart,

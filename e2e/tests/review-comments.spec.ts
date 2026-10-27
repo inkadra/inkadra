@@ -259,6 +259,7 @@ test('the email notification preference is saved', async ({ page }) => {
   await signIn(page);
   try {
     await page.getByRole('button', { name: 'Impostazioni' }).click();
+    await page.getByRole('link', { name: 'Notifiche', exact: true }).click();
     const section = page.locator('section', {
       has: page.getByRole('heading', { name: 'Notifiche email' }),
     });

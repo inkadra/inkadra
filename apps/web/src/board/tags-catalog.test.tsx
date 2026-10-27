@@ -4,7 +4,7 @@ import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { afterEach, expect, it, vi } from 'vitest';
 import { setClassifications } from '../lib/classifications.ts';
-import { TagEditor, TagList } from './tags.tsx';
+import { TagEditor, TagList, TagPopover } from './tags.tsx';
 
 vi.mock('react-i18next', () => ({ useTranslation: () => ({ t: (key: string) => key }) }));
 vi.mock('../lib/api.ts', () => ({
@@ -49,4 +49,54 @@ it('offers active options, stores IDs and prevents duplicate legacy selections',
   );
   expect(host.querySelector('.tag-suggest')).toBeNull();
   expect(host.querySelector('.tag-chip')?.textContent).toContain('Evening');
+});
+
+it('removes a shared managed tag from mixed legacy and UUID selections', async () => {
+  const change = vi.fn();
+  setClassifications(catalog);
+  await act(async () =>
+    root.render(
+      <TagPopover
+        x={0}
+        y={0}
+        projectId="p"
+        elements={[
+          { id: 'a', tags: ['night'] },
+          { id: 'b', tags: [catalog.tags[0]!.id] },
+        ]}
+        onChange={change}
+        onClose={() => {}}
+      />,
+    ),
+  );
+  expect(host.querySelector('.tag-chip')?.textContent).toContain('Evening');
+  await act(async () => host.querySelector<HTMLButtonElement>('.tag-chip__remove')?.click());
+  expect(change).toHaveBeenCalledWith([
+    { id: 'a', tags: undefined },
+    { id: 'b', tags: undefined },
+  ]);
+});
+it('does not duplicate a legacy tag when adding its managed ID to multiple cards', async () => {
+  const change = vi.fn();
+  setClassifications(catalog);
+  await act(async () =>
+    root.render(
+      <TagPopover
+        x={0}
+        y={0}
+        projectId="p"
+        elements={[
+          { id: 'a', tags: ['night', 'unmanaged'] },
+          { id: 'b', tags: [] },
+        ]}
+        onChange={change}
+        onClose={() => {}}
+      />,
+    ),
+  );
+  await act(async () => host.querySelector<HTMLButtonElement>('.tag-suggest button')?.click());
+  expect(change).toHaveBeenCalledWith([
+    { id: 'a', tags: [catalog.tags[0]!.id, 'unmanaged'] },
+    { id: 'b', tags: [catalog.tags[0]!.id] },
+  ]);
 });

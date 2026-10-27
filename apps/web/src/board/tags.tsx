@@ -216,8 +216,12 @@ export function TagPopover({
   onClose: () => void;
 }) {
   const { t } = useTranslation();
-  const common = (elements[0]?.tags ?? []).filter((tag) =>
-    elements.every((e) => e.tags?.includes(tag)),
+  const { tagOption } = useClassifications();
+  const canonical = (values: readonly string[]) => [
+    ...new Set(values.map((value) => tagOption(value)?.id ?? value)),
+  ];
+  const common = canonical(elements[0]?.tags ?? []).filter((tag) =>
+    elements.every((e) => canonical(e.tags ?? []).includes(tag)),
   );
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
@@ -238,13 +242,16 @@ export function TagPopover({
           readOnly={false}
           projectId={projectId}
           onChange={(next) => {
-            const after = new Set(next ?? []);
+            const after = new Set(canonical(next ?? []));
             const added = [...after].filter((tag) => !common.includes(tag));
             const removed = common.filter((tag) => !after.has(tag));
             onChange(
               elements.map((e) => {
                 const tags = [
-                  ...new Set([...(e.tags ?? []).filter((x) => !removed.includes(x)), ...added]),
+                  ...new Set([
+                    ...canonical(e.tags ?? []).filter((x) => !removed.includes(x)),
+                    ...added,
+                  ]),
                 ].slice(0, MAX_TAGS);
                 return { id: e.id, tags: tags.length > 0 ? tags : undefined };
               }),

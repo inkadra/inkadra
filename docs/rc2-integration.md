@@ -41,3 +41,15 @@ Original CI failures inspected before integration:
   predates integration; its root cause is unconfirmed and no speculative fix is made.
 - PR #173, run 40525640835: PWA test timed out waiting for `controllerchange`.
   This predates integration; service-worker behavior was not changed here.
+
+## Independent review corrections
+
+The independent review of 3c709ee found three P2 defects, corrected before merge:
+
+- Project PATCH now takes advisory lock 10892 before any project-row lock, matching account deletion.
+- Batch tags canonicalize legacy bindings and managed IDs for intersection, additions and removals; unmanaged labels remain intact.
+- Avatars now live in a single account-owned `user_avatar` row, replaced transactionally and cascaded on account removal. Migration 0009 adds bounded normalized image ownership instead of writing untracked versioned files. Failed updates roll back image bytes and metadata together; removal clears both. This supersedes PR169's filesystem storage approach before any deployment.
+
+Regression checks: seven avatar validation/lifecycle tests and four catalog UI tests pass; a Chromium touch-layout fixture verifies zoom stays above the two-row toolbar. Server/web types, changed-file Biome and Drizzle schema freshness pass. New lifecycle route tests use a transactional stand-in; actual FK/cascade/concurrency still need PostgreSQL CI.
+
+The first integration CI passed database/unit checks but failed three browser tests: mobile zoom overlap, notification settings reached through the old Account route, and PWA controllerchange timeout. The first two are corrected; PWA remains under investigation. The mention reorder failure did not recur in this integration run.
