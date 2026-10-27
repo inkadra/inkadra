@@ -224,13 +224,26 @@ test('shell views use real shots and the call sheet traps and restores focus', a
   await page.getByRole('tab', { name: 'Piano riprese' }).click();
   const schedule = page.getByRole('region', { name: 'Piano riprese', exact: true });
   await expect(schedule).toContainText('Il treno entra');
+  // The call sheet is generated from the saved shooting days.
+  await schedule.getByRole('button', { name: 'Aggiungi giorno di riprese', exact: true }).click();
+  const day = schedule.locator('.schedule__day').first();
+  await expect(day.getByLabel('Data', { exact: true })).toHaveValue(/^\d{4}-\d{2}-\d{2}$/);
   const openSheet = schedule.getByRole('button', { name: 'Foglio di lavorazione' });
   await openSheet.click();
   const dialog = page.getByRole('dialog', { name: 'Foglio di lavorazione' });
   const close = dialog.getByRole('button', { name: 'Chiudi', exact: true });
-  await expect(close).toBeFocused();
-  await expect(dialog).toContainText('Demo · non salvato');
-  await expect(dialog).not.toContainText('Ospedale Centrale');
+  const daySelect = dialog.getByRole('combobox', { name: 'Data', exact: true });
+  const print = dialog.getByRole('button', { name: 'Stampa / esporta' });
+  await expect(dialog).toBeVisible();
+  await expect(daySelect).toBeEnabled();
+  await expect(daySelect.locator('option')).toHaveCount(1);
+  await expect(print).toBeEnabled();
+  await expect(
+    dialog.getByRole('article', { name: 'Anteprima foglio di lavorazione' }),
+  ).toContainText('Revisione piano');
+  await expect(dialog).not.toContainText('Demo · non salvato');
+  // Focus lands inside the dialog, on its first control, never on the page behind it.
+  expect(await dialog.evaluate((element) => element.contains(document.activeElement))).toBe(true);
   // Native dialogs allow the browser chrome in the Tab cycle, but never the page behind.
   for (const key of ['Tab', 'Shift+Tab']) {
     for (let step = 0; step < 3; step++) {

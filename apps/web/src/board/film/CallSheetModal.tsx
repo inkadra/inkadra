@@ -91,7 +91,10 @@ export function CallSheetModal({ days, labels, projectName, onClose }: CallSheet
               <dt>{t('schedule.wrap')}</dt>
               <dd>
                 {day.wrap
-                  ? clockLabel(clockMinutes(day.wrap) + (day.wrap < day.callTime ? 1440 : 0))
+                  ? clockLabel(
+                      clockMinutes(day.wrap) +
+                        (clockMinutes(day.wrap) < clockMinutes(day.callTime) ? 1440 : 0),
+                    )
                   : empty}
               </dd>
             </dl>
