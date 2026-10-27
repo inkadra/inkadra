@@ -1,5 +1,5 @@
 import type { InstanceMember, Invitation, InvitationResult } from '@inkadra/shared';
-import { Button, Dialog, DialogActions, TextField } from '@inkadra/ui';
+import { Avatar, Button, Dialog, DialogActions, TextField } from '@inkadra/ui';
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api, RequestError } from '../lib/api.ts';
@@ -93,7 +93,7 @@ export function Team() {
                   <tr>
                     {['person', 'role', 'projects', 'lastActive', 'status', 'actions'].map(
                       (key) => (
-                        <th key={key} scope="col">
+                        <th key={key} scope="col" className={`team-table__${key}`}>
                           {t(`admin.${key}`)}
                         </th>
                       ),
@@ -106,8 +106,13 @@ export function Team() {
                     return (
                       <tr key={m.id}>
                         <th scope="row">
-                          {m.name}
-                          <span className="settings__sub">{m.email}</span>
+                          <span className="team-person">
+                            <Avatar name={m.name} image={m.image} size={32} />
+                            <span className="team-person__text">
+                              <span className="team-person__name">{m.name}</span>
+                              <span className="settings__sub">{m.email}</span>
+                            </span>
+                          </span>
                         </th>
                         <td>
                           <select
@@ -122,10 +127,18 @@ export function Team() {
                             <option value="member">{t('admin.roles.member')}</option>
                           </select>
                         </td>
-                        <td>{m.projectsCount}</td>
-                        <td>{m.lastActiveAt ? date(m.lastActiveAt) : t('admin.never')}</td>
-                        <td>{t(m.deactivatedAt ? 'admin.inactive' : 'admin.active')}</td>
+                        <td className="team-table__projects">{m.projectsCount}</td>
+                        <td className="team-table__lastActive">
+                          {m.lastActiveAt ? date(m.lastActiveAt) : t('admin.never')}
+                        </td>
                         <td>
+                          <span
+                            className={`team-status${m.deactivatedAt ? ' team-status--off' : ''}`}
+                          >
+                            {t(m.deactivatedAt ? 'admin.inactive' : 'admin.active')}
+                          </span>
+                        </td>
+                        <td className="team-table__actions">
                           <Button
                             variant="ghost"
                             disabled={busy || last}

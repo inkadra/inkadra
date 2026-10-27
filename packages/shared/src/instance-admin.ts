@@ -17,6 +17,9 @@ export const InstanceMember = z
     id: Id,
     name: z.string(),
     email: z.email(),
+    image: z.url().nullable().optional().openapi({
+      description: 'Avatar address, null without one. Servers before 0.4.0-rc.5 leave it out.',
+    }),
     role: InstanceRole,
     deactivatedAt: Timestamp.nullable(),
     lastActiveAt: Timestamp.nullable().openapi({
