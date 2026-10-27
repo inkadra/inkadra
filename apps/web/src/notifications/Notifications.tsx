@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router';
 import { authorName, groupByDay, type Page, reviewKey } from '../board/review-model.ts';
 import { api } from '../lib/api.ts';
+import { InboxDetail } from './InboxDetail.tsx';
 import {
   dayLabel,
   filterNotifications,
@@ -112,16 +113,16 @@ export function NotificationBell({
   );
 }
 
-function initials(name: string | null | undefined): string {
+export function initials(name: string | null | undefined): string {
   if (!name) return 'IN';
-  const parts = name.trim().split(/\s+/);
+  const parts = name.trim().split(/\\s+/);
   if (parts.length >= 2) {
     return ((parts[0]?.[0] ?? '') + (parts[1]?.[0] ?? '')).toUpperCase();
   }
   return name.slice(0, 2).toUpperCase();
 }
 
-function avatarBg(name: string | null | undefined): string {
+export function avatarBg(name: string | null | undefined): string {
   if (!name) return '#8A8A90';
   const colors = ['#7CC4C9', '#C9B27C', '#D9C6A5', '#F2B08A', '#9DB8F2', '#C3B2F2'];
   let hash = 0;
@@ -160,6 +161,7 @@ export function NotificationList({
   const [state, setState] = useState<'loading' | 'ready' | 'error'>('loading');
   const [filter, setFilter] = useState<InboxFilter>('all');
   const [actionError, setActionError] = useState(false);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const panel = useRef<HTMLDivElement>(null);
   // Marking all as read covers what was listed when the panel opened, not what arrives later.
   const openedAt = useRef(new Date().toISOString());
@@ -170,8 +172,12 @@ export function NotificationList({
       const p = await api.get<Page<Notification>>(
         `/me/notifications${cursor ? `?cursor=${encodeURIComponent(cursor)}` : ''}`,
       );
+      if (!p?.items) {
+        setState('error');
+        return;
+      }
       setItems((list) => (cursor ? [...list, ...p.items] : p.items));
-      setNext(p.nextCursor);
+      setNext(p.nextCursor ?? null);
       setState('ready');
     } catch {
       setState('error');
@@ -195,12 +201,15 @@ export function NotificationList({
     return () => document.removeEventListener('pointerdown', away);
   }, [bell, onNavigate]);
 
-  const markRead = async (id: string) => {
-    await api.post(`/me/notifications/${id}/read`, {});
-    const now = new Date().toISOString();
-    setItems((list) => list.map((n) => (n.id === id ? { ...n, readAt: n.readAt ?? now } : n)));
-    void onCount();
-  };
+  const markRead = useCallback(
+    async (id: string) => {
+      await api.post(`/me/notifications/${id}/read`, {});
+      const now = new Date().toISOString();
+      setItems((list) => list.map((n) => (n.id === id ? { ...n, readAt: n.readAt ?? now } : n)));
+      void onCount();
+    },
+    [onCount],
+  );
 
   const markAll = async () => {
     setActionError(false);
@@ -220,6 +229,42 @@ export function NotificationList({
   const groups = groupByDay(filteredItems, (d) => dayLabel(d, new Date(), i18n.language, t));
   const anyUnread = unread > 0;
 
+  // Mark read on open when selecting or when first item loads on desktop
+  useEffect(() => {
+    if (
+      fixed &&
+      filteredItems.length > 0 &&
+      (!selectedId || !filteredItems.some((n) => n.id === selectedId))
+    ) {
+      const first = filteredItems[0];
+      if (first) {
+        setSelectedId(first.id);
+        if (!first.readAt) {
+          void markRead(first.id).catch(() => setActionError(true));
+        }
+      }
+    }
+  }, [fixed, filteredItems, selectedId, markRead]);
+
+  const selectNotification = useCallback(
+    (n: Notification) => {
+      setSelectedId(n.id);
+      if (!n.readAt) {
+        void markRead(n.id).catch(() => setActionError(true));
+      }
+      if (typeof window !== 'undefined' && window.matchMedia('(max-width: 767px)').matches) {
+        const path = notificationPath(n);
+        if (path) {
+          onNavigate();
+          navigate(path);
+        }
+      }
+    },
+    [markRead, onNavigate, navigate],
+  );
+
+  const selectedNotification = filteredItems.find((n) => n.id === selectedId) ?? null;
+
   return (
     <div
       ref={panel}
@@ -230,179 +275,249 @@ export function NotificationList({
       onKeyDown={(e) => {
         // Keys pressed here are not board shortcuts.
         e.stopPropagation();
-        if (e.key === 'Escape') onClose();
+        if (e.key === 'Escape') {
+          onClose();
+          return;
+        }
+        const target = e.target as HTMLElement;
+        if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') {
+          return;
+        }
+        if (e.key === 'ArrowDown' || e.key === 'Down') {
+          e.preventDefault();
+          const currentIndex = filteredItems.findIndex((n) => n.id === selectedId);
+          const nextIndex = Math.min(filteredItems.length - 1, Math.max(currentIndex, 0) + 1);
+          const nextItem = filteredItems[nextIndex];
+          if (nextItem) {
+            selectNotification(nextItem);
+            const el = panel.current?.querySelector(`[data-notification-id="${nextItem.id}"]`);
+            el?.scrollIntoView({ block: 'nearest' });
+          }
+        } else if (e.key === 'ArrowUp' || e.key === 'Up') {
+          e.preventDefault();
+          const currentIndex = filteredItems.findIndex((n) => n.id === selectedId);
+          const prevIndex = Math.max(0, Math.max(currentIndex, 0) - 1);
+          const prevItem = filteredItems[prevIndex];
+          if (prevItem) {
+            selectNotification(prevItem);
+            const el = panel.current?.querySelector(`[data-notification-id="${prevItem.id}"]`);
+            el?.scrollIntoView({ block: 'nearest' });
+          }
+        } else if (e.key === 'Enter') {
+          const selected = filteredItems.find((n) => n.id === selectedId);
+          if (selected) {
+            const path = notificationPath(selected);
+            if (path && !e.shiftKey) {
+              onNavigate();
+              navigate(path);
+            }
+          }
+        }
       }}
       onKeyUp={(e) => e.stopPropagation()}
     >
-      <header className="notifications__head">
-        <h2 id="notifications-title" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          {t('notifications.title')}
-          {unread > 0 && (
-            <span
-              style={{
-                fontSize: 11,
-                fontWeight: 600,
-                padding: '1px 7px',
-                borderRadius: 99,
-                background: '#2563EB',
-                color: '#FFFFFF',
-              }}
-            >
-              {unreadBadge(unread)}
-            </span>
+      <div className="notifications__list-pane">
+        <header className="notifications__head">
+          <h2 id="notifications-title" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            {fixed ? t('nav.inbox') : t('notifications.title')}
+            {unread > 0 && (
+              <span
+                style={{
+                  fontSize: 11,
+                  fontWeight: 600,
+                  padding: '1px 7px',
+                  borderRadius: 99,
+                  background: '#2563EB',
+                  color: '#FFFFFF',
+                }}
+              >
+                {unreadBadge(unread)}
+              </span>
+            )}
+          </h2>
+          {fixed ? (
+            <div style={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+              <IconButton
+                icon="check"
+                label={t('notifications.readAll')}
+                disabled={!anyUnread}
+                onClick={() => void markAll()}
+              />
+              <IconButton icon="close" label={t('notifications.close')} onClick={onClose} />
+            </div>
+          ) : (
+            <>
+              <Button variant="ghost" disabled={!anyUnread} onClick={() => void markAll()}>
+                {t('notifications.readAll')}
+              </Button>
+              <IconButton icon="close" label={t('notifications.close')} onClick={onClose} />
+            </>
           )}
-        </h2>
-        {fixed ? (
-          <div style={{ display: 'flex', gap: 2, alignItems: 'center' }}>
-            <IconButton
-              icon="check"
-              label={t('notifications.readAll')}
-              disabled={!anyUnread}
-              onClick={() => void markAll()}
-            />
-            <IconButton icon="close" label={t('notifications.close')} onClick={onClose} />
+        </header>
+        {fixed && (
+          <div
+            role="tablist"
+            aria-label={t('notifications.filter')}
+            className="notifications-filter-tabs"
+          >
+            <button
+              type="button"
+              role="tab"
+              aria-selected={filter === 'all'}
+              className={`notifications-filter-tab ${filter === 'all' ? 'is-active' : ''}`}
+              onClick={() => setFilter('all')}
+            >
+              {t('notifications.tabs.all')}
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={filter === 'mentions'}
+              className={`notifications-filter-tab ${filter === 'mentions' ? 'is-active' : ''}`}
+              onClick={() => setFilter('mentions')}
+            >
+              {t('notifications.tabs.mentions')}
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={filter === 'approvals'}
+              className={`notifications-filter-tab ${filter === 'approvals' ? 'is-active' : ''}`}
+              onClick={() => setFilter('approvals')}
+            >
+              {t('notifications.tabs.approvals')}
+            </button>
           </div>
-        ) : (
-          <>
-            <Button variant="ghost" disabled={!anyUnread} onClick={() => void markAll()}>
-              {t('notifications.readAll')}
-            </Button>
-            <IconButton icon="close" label={t('notifications.close')} onClick={onClose} />
-          </>
         )}
-      </header>
-      {fixed && (
-        <div
-          role="tablist"
-          aria-label={t('notifications.filter')}
-          className="notifications-filter-tabs"
-        >
-          <button
-            type="button"
-            role="tab"
-            aria-selected={filter === 'all'}
-            className={`notifications-filter-tab ${filter === 'all' ? 'is-active' : ''}`}
-            onClick={() => setFilter('all')}
-          >
-            {t('notifications.tabs.all')}
-          </button>
-          <button
-            type="button"
-            role="tab"
-            aria-selected={filter === 'mentions'}
-            className={`notifications-filter-tab ${filter === 'mentions' ? 'is-active' : ''}`}
-            onClick={() => setFilter('mentions')}
-          >
-            {t('notifications.tabs.mentions')}
-          </button>
-          <button
-            type="button"
-            role="tab"
-            aria-selected={filter === 'approvals'}
-            className={`notifications-filter-tab ${filter === 'approvals' ? 'is-active' : ''}`}
-            onClick={() => setFilter('approvals')}
-          >
-            {t('notifications.tabs.approvals')}
-          </button>
-        </div>
-      )}
-      {fixed && <p className="ink-muted notifications__status">{t('notifications.loadedOnly')}</p>}
-      {state === 'ready' && filteredItems.length === 0 && (
-        <p className="notifications__empty">{t('notifications.empty')}</p>
-      )}
-      {groups.map(([day, list]) => (
-        <section key={day} aria-label={day}>
-          <h3 className="notifications__day">{day}</h3>
-          <ul className="notifications__list">
-            {list.map((n) => {
-              const path = notificationPath(n);
-              const actor = authorName(n.actor);
-              return (
-                <li key={n.id} className={n.readAt ? 'notification' : 'notification is-unread'}>
-                  <button
-                    type="button"
-                    className={`notification__open ${fixed ? 'notification__open--drawer' : ''}`}
-                    disabled={!path}
-                    onClick={async () => {
-                      setActionError(false);
-                      if (!n.readAt) await markRead(n.id).catch(() => setActionError(true));
-                      if (path) {
-                        onNavigate();
-                        navigate(path);
-                      }
-                    }}
-                  >
-                    {!n.readAt && <span className="notification__bar" />}
-                    {fixed && (
-                      <span className="notification__av" style={{ background: avatarBg(actor) }}>
-                        {initials(actor)}
-                      </span>
-                    )}
-                    <div className="notification__body">
-                      <span className="notification__line">
-                        {actor && <b>{actor} </b>}
-                        {describeNotification(n, t)}
-                      </span>
-                      <div className="notification__subline">
-                        {(n.boardTitle || n.projectName) && (
-                          <span className="notification__pill">
-                            {[...new Set([n.projectName, n.boardTitle])]
-                              .filter(Boolean)
-                              .join(' · ')}
+        {fixed && (
+          <p className="ink-muted notifications__status">{t('notifications.loadedOnly')}</p>
+        )}
+        <div className="notifications__list-container">
+          {state === 'ready' && filteredItems.length === 0 && (
+            <p className="notifications__empty">{t('notifications.empty')}</p>
+          )}
+          {groups.map(([day, list]) => (
+            <section key={day} aria-label={day}>
+              <h3 className="notifications__day">{day}</h3>
+              <ul className="notifications__list">
+                {list.map((n) => {
+                  const path = notificationPath(n);
+                  const actor = authorName(n.actor);
+                  const isSelected = n.id === selectedId;
+                  return (
+                    <li
+                      key={n.id}
+                      className={`notification ${n.readAt ? '' : 'is-unread'} ${
+                        isSelected ? 'is-selected' : ''
+                      }`}
+                    >
+                      <button
+                        type="button"
+                        data-notification-id={n.id}
+                        className={`notification__open ${fixed ? 'notification__open--drawer' : ''}`}
+                        disabled={!path}
+                        onClick={async () => {
+                          setActionError(false);
+                          selectNotification(n);
+                          if (!fixed && path) {
+                            onNavigate();
+                            navigate(path);
+                          }
+                        }}
+                      >
+                        {(!n.readAt || (fixed && isSelected)) && (
+                          <span className="notification__bar" />
+                        )}
+                        {fixed && (
+                          <span
+                            className="notification__av"
+                            style={{ background: avatarBg(actor) }}
+                          >
+                            {initials(actor)}
                           </span>
                         )}
-                        <time dateTime={n.createdAt}>
-                          {relativeTime(n.createdAt, i18n.language)}
-                        </time>
-                      </div>
-                      {n.excerpt && <span className="notification__excerpt">{n.excerpt}</span>}
-                    </div>
-                    {!n.readAt && <span className="notification__dot" style={{ flex: 'none' }} />}
-                  </button>
-                  {!n.readAt && (
-                    <IconButton
-                      icon="check"
-                      label={t('notifications.read')}
-                      onClick={(e) => {
-                        // The button goes away once read: focus stays on the notification.
-                        const open = e.currentTarget
-                          .closest('li')
-                          ?.querySelector<HTMLButtonElement>('.notification__open');
-                        void markRead(n.id).then(
-                          () => (open && !open.disabled ? open : panel.current)?.focus(),
-                          () => setActionError(true),
-                        );
-                      }}
-                    />
-                  )}
-                </li>
-              );
-            })}
-          </ul>
-        </section>
-      ))}
-      {state === 'loading' && (
-        <p role="status" className="ink-muted notifications__status">
-          {t('comments.loading')}
-        </p>
-      )}
-      {state === 'error' && (
-        <p role="alert" className="review-error notifications__status">
-          {t('notifications.error')}{' '}
-          <button type="button" className="review-link" onClick={() => void load(null)}>
-            {t('comments.retry')}
-          </button>
-        </p>
-      )}
-      {actionError && (
-        <p role="alert" className="review-error notifications__status">
-          {t('notifications.actionError')}
-        </p>
-      )}
-      {next && state === 'ready' && (
-        <Button variant="ghost" onClick={() => void load(next)}>
-          {t('notifications.more')}
-        </Button>
+                        <div className="notification__body">
+                          <span className="notification__line">
+                            {actor && <b>{actor} </b>}
+                            {describeNotification(n, t)}
+                          </span>
+                          <div className="notification__subline">
+                            {(n.boardTitle || n.projectName) && (
+                              <span className="notification__pill">
+                                {[...new Set([n.projectName, n.boardTitle])]
+                                  .filter(Boolean)
+                                  .join(' · ')}
+                              </span>
+                            )}
+                            <time dateTime={n.createdAt}>
+                              {relativeTime(n.createdAt, i18n.language)}
+                            </time>
+                          </div>
+                          {n.excerpt && <span className="notification__excerpt">{n.excerpt}</span>}
+                        </div>
+                        {!n.readAt && (
+                          <span className="notification__dot" style={{ flex: 'none' }} />
+                        )}
+                      </button>
+                      {!n.readAt && (
+                        <IconButton
+                          icon="check"
+                          label={t('notifications.read')}
+                          onClick={(e) => {
+                            // The button goes away once read: focus stays on the notification.
+                            const open = e.currentTarget
+                              .closest('li')
+                              ?.querySelector<HTMLButtonElement>('.notification__open');
+                            void markRead(n.id).then(
+                              () => (open && !open.disabled ? open : panel.current)?.focus(),
+                              () => setActionError(true),
+                            );
+                          }}
+                        />
+                      )}
+                    </li>
+                  );
+                })}
+              </ul>
+            </section>
+          ))}
+          {state === 'loading' && (
+            <p role="status" className="ink-muted notifications__status">
+              {t('comments.loading')}
+            </p>
+          )}
+          {state === 'error' && (
+            <p role="alert" className="review-error notifications__status">
+              {t('notifications.error')}{' '}
+              <button type="button" className="review-link" onClick={() => void load(null)}>
+                {t('comments.retry')}
+              </button>
+            </p>
+          )}
+          {actionError && (
+            <p role="alert" className="review-error notifications__status">
+              {t('notifications.actionError')}
+            </p>
+          )}
+          {fixed && (
+            <div className="notifications-read-banner">
+              <Icon name="check" size={16} style={{ color: '#9FE0B4' }} />
+              {t('notifications.readAllYesterday')}
+            </div>
+          )}
+          {next && state === 'ready' && (
+            <Button variant="ghost" onClick={() => void load(next)}>
+              {t('notifications.more')}
+            </Button>
+          )}
+        </div>
+      </div>
+      {fixed && (
+        <InboxDetail
+          notification={selectedNotification}
+          onNavigate={onNavigate}
+          onCount={onCount}
+        />
       )}
     </div>
   );
@@ -454,8 +569,8 @@ export function EmailNotifications() {
               }
             }}
           >
-            <fieldset className="notification-frequency" disabled={email === null}>
-              <legend className="settings__label">{t('notifications.emailLabel')}</legend>
+            <fieldset className="notification-frequency">
+              <legend className="ink-sr-only">{t('notifications.emailLabel')}</legend>
               {(['immediate', 'daily', 'off'] as const).map((value) => (
                 <label key={value}>
                   <input
@@ -463,26 +578,27 @@ export function EmailNotifications() {
                     name="email-frequency"
                     value={value}
                     checked={email === value}
-                    onChange={() => {
-                      setEmail(value);
-                      setState('idle');
-                    }}
+                    onChange={() => setEmail(value)}
                   />
                   {t(`notifications.frequency.${value}`)}
                 </label>
               ))}
             </fieldset>
             <div className="settings__actions">
-              <Button
-                type="submit"
-                variant="primary"
-                disabled={email === null || state === 'saving'}
-              >
+              <Button type="submit" variant="primary" disabled={state === 'saving'}>
                 {t('settings.save')}
               </Button>
+              {state === 'saved' && (
+                <span role="status" className="settings__saved">
+                  {t('settings.saved')}
+                </span>
+              )}
+              {state === 'error' && (
+                <span role="alert" className="review-error">
+                  {t('notifications.preferencesError')}
+                </span>
+              )}
             </div>
-            {state === 'error' && <p role="alert">{t('notifications.preferencesError')}</p>}
-            {state === 'saved' && <p role="status">{t('settings.saved')}</p>}
           </form>
         )}
       </div>
