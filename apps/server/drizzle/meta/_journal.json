@@ -43,6 +43,13 @@
       "when": 1793072262491,
       "tag": "0005_supreme_silver_centurion",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1793073007402,
+      "tag": "0006_projects_onboarding",
+      "breakpoints": true
     }
   ]
 }
