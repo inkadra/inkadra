@@ -7,7 +7,6 @@ import {
   type FrameElement,
   formatDuration,
   moveFrames,
-  totalDurationMs,
   updateElement,
 } from '@inkadra/canvas-core';
 import { SHOT_ANGLES, SHOT_MOVEMENTS, SHOT_SIZES } from '@inkadra/doc-schema';
@@ -19,6 +18,7 @@ import { CardReview } from '../CardReview.tsx';
 import { GuestVisibility } from '../guest-visibility.tsx';
 import { insideDialog, isTyping } from '../shortcuts.ts';
 import { type BoardStore, LOCAL } from '../store.ts';
+import { estimatedDurationMs } from './animatic.ts';
 import { useBoardAspect } from './aspect.ts';
 import { DrawingEditor } from './DrawingEditor.tsx';
 import { FramePanel } from './FramePanel.tsx';
@@ -749,7 +749,7 @@ export function ShotList({
                         <span className="shots__scene-meta">
                           {t('film.total', {
                             count: g.frames.length,
-                            duration: formatDuration(totalDurationMs(g.frames)),
+                            duration: formatDuration(estimatedDurationMs(g.frames)),
                           })}
                         </span>
                         <span className="shots__group-pills">
@@ -1037,7 +1037,7 @@ export function ShotList({
         </span>
         <span>
           {t('film.list.estimatedDuration')}{' '}
-          <b>{formatDuration(totalDurationMs(allFilteredFrames))}</b>
+          <b>{formatDuration(estimatedDurationMs(allFilteredFrames))}</b>
         </span>
         <span className="shots__footer-dots">
           {statusCounts.shot > 0 && (
