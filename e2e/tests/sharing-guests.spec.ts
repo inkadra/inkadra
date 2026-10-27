@@ -269,14 +269,14 @@ test('an editor creates a password link with comments and proofing', async ({ pa
 test('a guest opens the link, comments and picks a picture', async ({ browser }) => {
   const { page, context, guestCalls, accountCalls } = await guestPage(browser);
   await page.goto(guestUrl);
-  await expect(page.getByRole('heading', { name: 'Board protetto da password' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Board protetta da password' })).toBeVisible();
   await expect(page.locator('meta[name="robots"]')).toHaveAttribute('content', /noindex/);
 
   await page.getByLabel('Password').fill('non-questa');
-  await page.getByRole('button', { name: 'Apri il board' }).click();
+  await page.getByRole('button', { name: 'Apri la board' }).click();
   await expect(page.getByText('Password non corretta.')).toBeVisible();
   await page.getByLabel('Password').fill(linkPassword);
-  await page.getByRole('button', { name: 'Apri il board' }).click();
+  await page.getByRole('button', { name: 'Apri la board' }).click();
 
   // The stored document follows the live one after the collaboration store's debounce.
   const cards = page.locator('[data-el]');
@@ -331,7 +331,7 @@ test('a guest opens the link, comments and picks a picture', async ({ browser })
 
   // A dropped connection keeps the board and the text being typed, and the page recovers.
   await page.getByLabel('Card', { exact: true }).selectOption('');
-  await expect(page.getByRole('heading', { name: 'Commenti sul board' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Commenti sulla board' })).toBeVisible();
   const draft = page.getByLabel('Scrivi un commento');
   await draft.fill('Bozza da non perdere');
   let dropped = 0;
@@ -409,7 +409,7 @@ test('revoking the link shows the guest that it was turned off', async ({
   const guest = await guestPage(browser);
   await guest.page.goto(guestUrl);
   await guest.page.getByLabel('Password').fill(linkPassword);
-  await guest.page.getByRole('button', { name: 'Apri il board' }).click();
+  await guest.page.getByRole('button', { name: 'Apri la board' }).click();
   await expect(guest.page.locator('[data-el]')).toHaveCount(3, { timeout: 20_000 });
 
   await login(page, baseURL as string);

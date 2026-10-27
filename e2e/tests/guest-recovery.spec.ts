@@ -97,7 +97,7 @@ test('a password entered again after a minute starts a fresh cookie check', asyn
   const state = await mockGuest(page, true);
   await page.goto('/s/recovery-test-token');
   await page.getByLabel('Password', { exact: true }).fill('test-password');
-  await page.getByRole('button', { name: 'Apri il board' }).click();
+  await page.getByRole('button', { name: 'Apri la board' }).click();
   await expect(page.locator('.guest__header')).toBeVisible();
   state.snapshot = (route) => deny(route, 'password_required');
   await poll(page);
@@ -105,7 +105,7 @@ test('a password entered again after a minute starts a fresh cookie check', asyn
   await page.clock.setFixedTime(epoch + 120_000);
   state.snapshot = (route) => deny(route);
   await page.getByLabel('Password', { exact: true }).fill('new-password');
-  await page.getByRole('button', { name: 'Apri il board' }).click();
+  await page.getByRole('button', { name: 'Apri la board' }).click();
   await expect(page.getByRole('heading', { name: 'Servono i cookie' })).toBeVisible();
   expect(state.opens).toBe(2);
 });
