@@ -77,10 +77,12 @@ describe('view destination', () => {
     expect(viewDestination('shotlist', current, storyboard.id)).toEqual({
       boardId: storyboard.id,
       view: 'shotlist',
+      kind: 'storyboard',
     });
     expect(viewDestination('storyboard', current, storyboard.id)).toEqual({
       boardId: storyboard.id,
       view: 'storyboard',
+      kind: 'storyboard',
     });
   });
 
@@ -102,11 +104,17 @@ describe('view destination', () => {
     });
   });
 
-  it('stays on the board when the project has no storyboard', () => {
+  it('opens film views on the root board when the project has no storyboard', () => {
     expect(viewDestination('shotlist', current, null)).toEqual({
       boardId: null,
       view: 'shotlist',
     });
+    const onChild = { boardId: 'child', kind: 'board' as const, rootBoardId: root.id };
+    const toRoot = viewDestination('storyboard', onChild, null);
+    expect(toRoot).toEqual({ boardId: root.id, view: 'storyboard', kind: 'board' });
+    expect(
+      viewHref('p1', toRoot, { boardId: 'child', rootBoardId: root.id, kind: 'board' }),
+    ).toMatch(/\?view=storyboard$/);
   });
 
   it('builds addresses with and without the view', () => {
