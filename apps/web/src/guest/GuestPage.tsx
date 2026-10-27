@@ -1,12 +1,13 @@
 import type { GuestSession, ShareLinkPreview } from '@inkadra/shared';
-import { Button, Logo, TextField, Wordmark } from '@inkadra/ui';
-import { type FormEvent, type ReactNode, useCallback, useEffect, useRef, useState } from 'react';
+import { Button, TextField } from '@inkadra/ui';
+import { type FormEvent, useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router';
 import { resetAssetCache, setAssetLoader } from '../board/assets.ts';
 import { guestApi } from './api.ts';
 import { GuestBoardScreen } from './GuestBoard.tsx';
 import { failureOf, type Stop } from './model.ts';
+import { GateCard, StopScreen } from './StopScreen.tsx';
 import { SessionRecovery } from './session-recovery.ts';
 import '../routes/login.css';
 import './guest.css';
@@ -158,41 +159,6 @@ function GuestLinkPage({ token }: { token: string }) {
         setGate({ kind: 'password', preview: gate.preview, changed: true, generation });
       }}
     />
-  );
-}
-
-function GateCard({ children, heading }: { children: ReactNode; heading?: string }) {
-  return (
-    <div className="login guest-gate">
-      <div className="login__dots" aria-hidden="true" />
-      <main className="login__card">
-        <div className="login__brand">
-          <Logo size={48} />
-          {heading ? (
-            <h1 className="login__title guest-gate__title">{heading}</h1>
-          ) : (
-            <h1 className="login__title">
-              <Wordmark />
-            </h1>
-          )}
-        </div>
-        {children}
-      </main>
-    </div>
-  );
-}
-
-function StopScreen({ stop }: { stop: Stop }) {
-  const { t } = useTranslation();
-  return (
-    <GateCard heading={t(`guest.stop.${stop}.title`)}>
-      <p className="guest-gate__text">{t(`guest.stop.${stop}.body`)}</p>
-      {(stop === 'rate_limited' || stop === 'error' || stop === 'cookies') && (
-        <Button variant="secondary" onClick={() => window.location.reload()}>
-          {t('guest.retry')}
-        </Button>
-      )}
-    </GateCard>
   );
 }
 

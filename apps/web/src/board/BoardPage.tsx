@@ -21,6 +21,7 @@ import { Canvas } from './Canvas.tsx';
 import { CommentsButton } from './CommentsPanel.tsx';
 import { ContextMenu } from './chrome.tsx';
 import { type ConnectionStatus, useBoardConnection } from './connection.ts';
+import { DeniedState } from './DeniedState.tsx';
 import { ClientReviewView } from './film/ClientReviewView.tsx';
 import { MoodboardView } from './film/MoodboardView.tsx';
 import { ScheduleView } from './film/ScheduleView.tsx';
@@ -438,13 +439,7 @@ function BoardScreen({
     />
   );
   if (conn.status === 'denied') {
-    return (
-      <div className="board-state">
-        <EmptyState icon="lock" title={t('board.denied.title')}>
-          {t('board.denied.body')}
-        </EmptyState>
-      </div>
-    );
+    return <DeniedState />;
   }
   const versions = editable && (
     <VersionsDialog

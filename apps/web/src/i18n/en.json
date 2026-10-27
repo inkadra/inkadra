@@ -169,6 +169,15 @@
     "title": "Page not found",
     "back": "Back to home"
   },
+  "appError": {
+    "title": "Something went wrong",
+    "body": "The page stopped working. Changes already synced are safe; reload to reconnect.",
+    "retry": "Try again",
+    "copy": "Copy details",
+    "copied": "Details copied",
+    "id": "Error ID {{id}}",
+    "hint": "If it happens again, send the copied details to whoever manages this Inkadra."
+  },
   "diagnostics": {
     "title": "Instance diagnostics",
     "subtitle": "Checks the proxy, public address, database and storage.",
@@ -404,7 +413,10 @@
     },
     "denied": {
       "title": "You cannot open this board",
-      "body": "Ask the project's managers for access."
+      "body": "Ask the project's managers for access.",
+      "copy": "Copy board link",
+      "copied": "Link copied",
+      "hint": "Send the copied link to whoever manages the project: they can give you access."
     },
     "errors": {
       "boardCreate": "The board could not be created.",
@@ -897,6 +909,11 @@
   "guest": {
     "loading": "Opening the board…",
     "retry": "Try again",
+    "askLink": {
+      "button": "Ask for a new link",
+      "copied": "Link copied",
+      "hint": "Paste it in a message to whoever shared the board: they can make a new link that works."
+    },
     "cancel": "Cancel",
     "download": "Download the original",
     "breadcrumb": "Shared boards",
