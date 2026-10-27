@@ -30,7 +30,6 @@ import {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Navigate, Outlet, useLocation, useNavigate, useSearchParams } from 'react-router';
-import { appActions } from '../commands/app-actions.ts';
 import { childBoards, useProjectBoards, useSharedBoards } from '../board/boards.ts';
 import {
   ALL_VIEWS,
@@ -42,6 +41,7 @@ import {
   viewDestination,
   viewHref,
 } from '../board/views.ts';
+import { appActions } from '../commands/app-actions.ts';
 import { authApi } from '../lib/api.ts';
 import { HeaderContext } from '../lib/header.tsx';
 import { useSession } from '../lib/session.tsx';

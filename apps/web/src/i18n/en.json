@@ -459,7 +459,7 @@
     },
     "present": {
       "action": "Present",
-      "soon": "Presentation mode is coming"
+      "soon": "Use the Present button in the Storyboard view"
     },
     "access": {
       "readOnly": "Your role changed: you can only view this board now.",
