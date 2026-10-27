@@ -7,7 +7,7 @@ import { useTranslation } from 'react-i18next';
 import { api } from '../lib/api.ts';
 import { isTyping } from './shortcuts.ts';
 import type { BoardStore } from './store.ts';
-import { TrashPanel } from './TrashPanel.tsx';
+import { TrashPanel, type TrashScan } from './TrashPanel.tsx';
 import {
   groupVersions,
   mergeVersions,
@@ -44,6 +44,11 @@ export function VersionsDialog({
   const { t, i18n } = useTranslation();
   const tabsId = useId();
   const [tab, setTab] = useState<'versions' | 'trash'>('versions');
+  // Kept for the dialog session only: closing drops the scan and its elements.
+  const trashScan = useRef<TrashScan | null>(null);
+  useEffect(() => {
+    if (!open) trashScan.current = null;
+  }, [open]);
   const [page, setPage] = useState<VersionPage | null>(null);
   const [revision, setRevision] = useState(0);
   const loadedCount = useRef(0);
@@ -220,7 +225,11 @@ export function VersionsDialog({
           </div>
           <div role="tabpanel" id={`${tabsId}-panel`} aria-labelledby={`${tabsId}-${tab}`}>
             {tab === 'trash' ? (
-              <TrashPanel boardId={boardId} store={store} editable={editable} />
+              // The Dialog keeps its children mounted while closed: mount the panel only while
+              // it is visible, so closing aborts the scan.
+              open && (
+                <TrashPanel boardId={boardId} store={store} editable={editable} cache={trashScan} />
+              )
             ) : (
               <>
                 <p className="ink-muted">{t('versions.description')}</p>

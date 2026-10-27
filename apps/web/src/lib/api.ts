@@ -38,8 +38,10 @@ async function request<T>(path: string, init: RequestInit = {}, binary = false):
 }
 
 export const api = {
-  bytes: (path: string) => request<Uint8Array>(`${API_PREFIX}${path}`, {}, true),
-  get: <T>(path: string) => request<T>(`${API_PREFIX}${path}`),
+  bytes: (path: string, signal?: AbortSignal) =>
+    request<Uint8Array>(`${API_PREFIX}${path}`, signal ? { signal } : {}, true),
+  get: <T>(path: string, signal?: AbortSignal) =>
+    request<T>(`${API_PREFIX}${path}`, signal ? { signal } : {}),
   post: <T>(path: string, body: unknown) =>
     request<T>(`${API_PREFIX}${path}`, { method: 'POST', body: JSON.stringify(body) }),
   put: <T>(path: string, body: unknown) =>

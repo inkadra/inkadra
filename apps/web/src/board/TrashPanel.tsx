@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 import type { BoardVersion } from '@inkadra/shared';
 import { Button } from '@inkadra/ui';
-import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
+import { type MutableRefObject, useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api } from '../lib/api.ts';
 import type { BoardStore } from './store.ts';
@@ -9,60 +9,92 @@ import { collectTrash, restoreTrashItem, type TrashItem } from './trash.ts';
 
 type Page = { items: BoardVersion[]; nextCursor: string | null };
 
+/** A completed scan, kept by the dialog until it closes so tab switches do not rescan. */
+export type TrashScan = { boardId: string; items: TrashItem[] };
+
+/** Snapshots fetched again for restore; a few are kept for consecutive restores. */
+const RECENT = 3;
+
 export function TrashPanel({
   boardId,
   store,
   editable,
+  cache,
 }: {
   boardId: string;
   store: BoardStore;
   editable: boolean;
+  cache?: MutableRefObject<TrashScan | null>;
 }) {
   const { t, i18n } = useTranslation();
   const reload = useRef<HTMLElement>(null);
   const live = useSyncExternalStore(store.subscribe, store.getSnapshot);
-  const [items, setItems] = useState<TrashItem[]>([]);
-  const [loading, setLoading] = useState(true);
+  const cached = cache?.current?.boardId === boardId ? cache.current : null;
+  const [items, setItems] = useState<TrashItem[]>(cached?.items ?? []);
+  const [loading, setLoading] = useState(!cached);
   const [error, setError] = useState(false);
   const [revision, setRevision] = useState(0);
   const [restored, setRestored] = useState(false);
+  const [restoring, setRestoring] = useState(false);
+  const updates = useRef(new Map<string, Uint8Array>());
+  const restoreAbort = useRef<AbortController | null>(null);
+  useEffect(() => () => restoreAbort.current?.abort(), []);
   useEffect(() => {
-    void revision;
-    let active = true;
+    setRestored(false);
+    setError(false);
+    if (revision === 0 && cache?.current?.boardId === boardId) {
+      setItems(cache.current.items);
+      setLoading(false);
+      return;
+    }
+    const abort = new AbortController();
+    const { signal } = abort;
     setItems([]);
     setLoading(true);
-    setError(false);
     const load = async () => {
       const found = new Map<string, TrashItem>();
+      const isLive = (id: string) => store.getSnapshot().byId.has(id);
       const cutoff = Date.now() - 30 * 24 * 60 * 60 * 1000;
       const base = `/boards/${boardId}/versions`;
       let cursor: string | null = null;
-      do {
+      scan: do {
         const page: Page = await api.get<Page>(
           `${base}${cursor ? `?cursor=${encodeURIComponent(cursor)}` : ''}`,
+          signal,
         );
-        if (!active) return;
+        if (signal.aborted) return;
         for (const version of page.items) {
-          if (Date.parse(version.createdAt) < cutoff) return;
-          const update = await api.bytes(`${base}/${version.id}/state`);
-          if (!active) return;
-          collectTrash(found, version, update, boardId);
+          if (Date.parse(version.createdAt) < cutoff) break scan;
+          const update = await api.bytes(`${base}/${version.id}/state`, signal);
+          if (signal.aborted) return;
+          collectTrash(found, version, update, boardId, isLive);
           setItems([...found.values()]);
         }
         cursor = page.nextCursor;
-      } while (active && cursor);
+      } while (cursor);
+      if (cache) cache.current = { boardId, items: [...found.values()] };
     };
     void load()
       .catch(() => {
-        if (active) setError(true);
+        if (!signal.aborted) setError(true);
       })
       .finally(() => {
-        if (active) setLoading(false);
+        if (!signal.aborted) setLoading(false);
       });
-    return () => {
-      active = false;
-    };
-  }, [boardId, revision]);
+    return () => abort.abort();
+  }, [boardId, revision, store, cache]);
+  const snapshot = async (versionId: string, signal: AbortSignal) => {
+    const recent = updates.current;
+    let update = recent.get(versionId);
+    if (update) recent.delete(versionId);
+    else update = await api.bytes(`/boards/${boardId}/versions/${versionId}/state`, signal);
+    recent.set(versionId, update);
+    for (const key of recent.keys()) {
+      if (recent.size <= RECENT) break;
+      recent.delete(key);
+    }
+    return update;
+  };
   const deleted = items.filter(({ element }) => !live.byId.has(element.id));
   return (
     <section ref={reload} aria-label={t('trash.title')}>
@@ -90,17 +122,24 @@ export function TrashPanel({
               {item.element.type === 'board' && <span>{t('trash.boardLinkOnly')}</span>}
             </div>
             <Button
-              disabled={!editable}
+              disabled={!editable || restoring}
               aria-label={t('trash.restoreElement', {
                 type: t(`board.types.${item.element.type}`),
                 id: item.element.id,
               })}
-              onClick={() => {
+              onClick={async () => {
+                const abort = new AbortController();
+                restoreAbort.current = abort;
+                setRestoring(true);
                 try {
-                  setRestored(restoreTrashItem(store, item, boardId));
+                  const update = await snapshot(item.versionId, abort.signal);
+                  if (abort.signal.aborted) return;
+                  setRestored(restoreTrashItem(store, item, update, boardId));
                   reload.current?.querySelector<HTMLButtonElement>('button')?.focus();
                 } catch {
-                  setError(true);
+                  if (!abort.signal.aborted) setError(true);
+                } finally {
+                  if (!abort.signal.aborted) setRestoring(false);
                 }
               }}
             >

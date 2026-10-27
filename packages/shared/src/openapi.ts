@@ -1533,7 +1533,7 @@ registry.registerPath({
   path: v1('/boards/{boardId}/versions'),
   tags: ['Versions'],
   security: secured,
-  summary: 'Saved versions of a board, newest first. Needs viewer.',
+  summary: 'Saved versions of a board, newest first. Needs editor.',
   request: { params: idParam('boardId'), query: BoardVersionQuery },
   responses: { 200: { description: 'Versions', ...json(page(BoardVersion)) }, ...errors },
 });
@@ -1561,7 +1561,7 @@ registry.registerPath({
   path: v1('/boards/{boardId}/versions/{versionId}'),
   tags: ['Versions'],
   security: secured,
-  summary: 'One version of a board, e.g. to name the one just restored. Needs viewer.',
+  summary: 'One version of a board, e.g. to name the one just restored. Needs editor.',
   request: { params: versionParams },
   responses: { 200: { description: 'Version', ...json(BoardVersion) }, ...errors },
 });
@@ -1600,7 +1600,7 @@ registry.registerPath({
   path: v1('/boards/{boardId}/versions/{versionId}/state'),
   tags: ['Versions'],
   security: secured,
-  summary: 'The version as a Yjs update, to preview it read-only in the editor. Needs viewer.',
+  summary: 'The version as a Yjs update, to preview it read-only in the editor. Needs editor.',
   description:
     'Migrated to the current document schema. Apply it to an empty Y.Doc; it never syncs with ' +
     'the live board.',

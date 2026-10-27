@@ -8,7 +8,7 @@ import { BoardStore, LOCAL } from './store.ts';
 import { collectTrash, restoreTrashItem, type TrashItem } from './trash.ts';
 
 const boardId = '0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10';
-const version = { createdAt: new Date().toISOString() } as BoardVersion;
+const version = { id: 'saved', createdAt: new Date().toISOString() } as BoardVersion;
 
 describe('snapshot trash', () => {
   it('keeps the newest state per id and restores rich text, privacy, id and parent in a separate undo step', () => {
@@ -34,14 +34,15 @@ describe('snapshot trash', () => {
     paragraph.insert(0, [new Y.XmlText('Keep this content')]);
     (map.get('body') as Y.XmlFragment).insert(0, [paragraph]);
     const found = new Map<string, TrashItem>();
-    collectTrash(found, version, Y.encodeStateAsUpdate(doc), boardId);
+    const saved = Y.encodeStateAsUpdate(doc);
+    collectTrash(found, version, saved, boardId);
     map.set('x', 999);
     collectTrash(found, version, Y.encodeStateAsUpdate(doc), boardId);
     expect(found.get(note.id)!.element.x).toBe(10);
     roots(doc).elements.delete(note.id);
     doc.transact(() => store.map(column.id)!.set('title', 'Edited'), LOCAL);
     const item = found.get(note.id)!;
-    expect(restoreTrashItem(store, item, boardId)).toBe(true);
+    expect(restoreTrashItem(store, item, saved, boardId)).toBe(true);
     expect(store.getSnapshot().byId.get(note.id)).toMatchObject({
       id: note.id,
       x: 10,
@@ -51,7 +52,7 @@ describe('snapshot trash', () => {
     expect((store.map(note.id)!.get('body') as Y.XmlFragment).toString()).toContain(
       'Keep this content',
     );
-    expect(restoreTrashItem(store, item, boardId)).toBe(false);
+    expect(restoreTrashItem(store, item, saved, boardId)).toBe(false);
     store.undo.undo();
     expect(store.map(note.id)).toBeUndefined();
     expect(store.map(column.id)!.get('title')).toBe('Edited');
@@ -72,9 +73,10 @@ describe('snapshot trash', () => {
       { userId: null },
     );
     const found = new Map<string, TrashItem>();
-    collectTrash(found, version, Y.encodeStateAsUpdate(doc), boardId);
+    const saved = Y.encodeStateAsUpdate(doc);
+    collectTrash(found, version, saved, boardId);
     roots(doc).elements.delete(note.id);
-    restoreTrashItem(store, found.get(note.id)!, boardId);
+    restoreTrashItem(store, found.get(note.id)!, saved, boardId);
     expect(store.getSnapshot().byId.get(note.id)?.parent).toBeNull();
     store.destroy();
     doc.destroy();
@@ -102,14 +104,30 @@ describe('snapshot trash', () => {
       { userId: null },
     );
     const found = new Map<string, TrashItem>();
-    collectTrash(found, version, Y.encodeStateAsUpdate(doc), boardId);
+    const update = Y.encodeStateAsUpdate(doc);
+    collectTrash(found, version, update, boardId);
     for (const element of [todo, frame]) {
       const saved = store.getSnapshot().byId.get(element.id);
       roots(doc).elements.delete(element.id);
-      restoreTrashItem(store, found.get(element.id)!, boardId);
+      restoreTrashItem(store, found.get(element.id)!, update, boardId);
       expect(store.getSnapshot().byId.get(element.id)).toEqual(saved);
     }
     store.destroy();
+    doc.destroy();
+  });
+
+  it('skips elements that are alive in the current document and keeps only the version id', () => {
+    const doc = createBoardDoc(boardId);
+    const kept = createElement(doc, 'note', { x: 0, y: 0 }, {}, { userId: null });
+    const gone = createElement(doc, 'note', { x: 0, y: 0 }, {}, { userId: null });
+    const found = new Map<string, TrashItem>();
+    collectTrash(found, version, Y.encodeStateAsUpdate(doc), boardId, (id) => id === kept.id);
+    expect([...found.keys()]).toEqual([gone.id]);
+    expect(found.get(gone.id)).toEqual({
+      element: expect.objectContaining({ id: gone.id }),
+      savedAt: version.createdAt,
+      versionId: 'saved',
+    });
     doc.destroy();
   });
 });

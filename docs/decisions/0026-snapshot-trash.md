@@ -1,10 +1,13 @@
-# 0024 · Recover deleted elements from saved board versions
+# 0026 · Recover deleted elements from saved board versions
 
 Issue #90 adds a desktop Trash tab to board history without new storage, document roots,
 endpoints or migrations. The client scans existing versions newest first, across pages,
 within the last 30 days. For each element id it retains the most recent saved state and
-shows it only while the id is absent from the live document. Reload rescans history;
-switching away or closing the dialog stops further requests. Requests are sequential.
+shows it only while the id is absent from the live document; ids alive at scan time are
+skipped. Items keep only element metadata and the version id, never the snapshot bytes:
+restore fetches and decodes that version again (a few recent ones are kept). A completed
+scan is reused while the dialog stays open; Reload rescans history. Switching away or
+closing the dialog aborts in-flight requests. Requests are sequential.
 
 This is snapshot recovery, not an audit log: elements created and deleted between saves
 cannot be recovered, and snapshot dates are explicitly labelled “last saved”, never as
@@ -19,13 +22,9 @@ Containers and children restore individually; restore the container first to pre
 child placement. Stop UndoManager capture before and after the LOCAL transaction so each
 restore is one independent undo step, synchronized through the existing collaboration path.
 
-Authenticated board viewers and commenters can now read version metadata and state using
-GET /boards/:boardId/versions, GET /boards/:boardId/versions/:versionId, and the corresponding
-/state route. This intentionally makes historical content readable to current board
-members, under the same effective board grants as the live document. Guest share links
-still have no access to these routes. All version mutations and live element restoration
-continue to require editor. The UI also disables restoration when the connection is
-read-only. Server-side collaboration authorization remains authoritative.
+History and Trash stay editor-only, like the rest of saved versions (decision 0013); the
+UI also disables restoration when the connection is read-only. Letting viewers and
+commenters read history is possible future work and would need its own decision.
 
 Deleted sub-boards are not restored: the current board API has deletion but no trash list
 or restore endpoint. Restoring a board card restores its link only, not a deleted target
