@@ -176,6 +176,7 @@ const EMPTY_SET: ReadonlySet<string> = new Set();
 
 export interface CanvasProps {
   conn: BoardConnection;
+  projectName?: string;
   projectId: string;
   boardId: string;
   userId: string;
@@ -193,6 +194,7 @@ export interface CanvasProps {
 
 export function Canvas({
   conn,
+  projectName,
   projectId,
   boardId,
   userId,
@@ -1537,6 +1539,7 @@ export function Canvas({
     <BoardContext.Provider value={ctx}>
       <div
         ref={rootRef}
+        tabIndex={-1}
         className={[
           'canvas',
           tool === 'hand' || spaceDown.current ? 'canvas--hand' : '',
@@ -1756,6 +1759,17 @@ export function Canvas({
         )}
         {noteSheet && (
           <NoteSideSheet
+            key={noteSheet}
+            projectName={projectName}
+            boardName={boards?.find((board) => board.id === boardId)?.title}
+            onComments={
+              !guest && !preview
+                ? () => {
+                    setNoteSheet(null);
+                    openComments({ elementId: noteSheet });
+                  }
+                : undefined
+            }
             noteId={noteSheet}
             store={store}
             readOnly={readOnly}

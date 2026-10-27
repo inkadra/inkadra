@@ -507,6 +507,7 @@ function BoardScreen({
         key={preview.version.id}
         conn={{ ...conn, store: preview.store, readOnly: true }}
         preview
+        projectName={projectName}
         projectId={projectId}
         boardId={boardId}
         userId={user.id}
@@ -520,6 +521,7 @@ function BoardScreen({
         initialSelection={liveSelection.current}
         onSelectionChange={rememberSelection}
         conn={conn}
+        projectName={projectName}
         projectId={projectId}
         boardId={boardId}
         userId={user.id}

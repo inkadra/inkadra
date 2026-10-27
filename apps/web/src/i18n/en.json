@@ -1383,6 +1383,11 @@
   },
   "shells": {
     "close": "Close",
+    "noteBreadcrumb": "Note location",
+    "noteExpand": "Full page",
+    "noteCollapse": "Restore side sheet",
+    "noteWords_one": "{{count}} word",
+    "noteWords_other": "{{count}} words",
     "editOnCanvas": "Edit on board",
     "demo": "Demo · not saved",
     "callSheet": "Call sheet",
