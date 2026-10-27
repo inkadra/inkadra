@@ -487,7 +487,10 @@ function InboxDetailContent({
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div className="inbox-detail__message-author">
                       <b>{authorName(activeThread.author)}</b>
-                      <time dateTime={activeThread.createdAt} style={{ color: '#808086' }}>
+                      <time
+                        dateTime={activeThread.createdAt}
+                        style={{ color: 'var(--ink-text-muted)' }}
+                      >
                         {relativeTime(activeThread.createdAt, i18n.language)}
                       </time>
                       {activeThread.visibility === 'team' && (
@@ -521,7 +524,10 @@ function InboxDetailContent({
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div className="inbox-detail__message-author">
                           <b>{replyAuthor}</b>
-                          <time dateTime={reply.createdAt} style={{ color: '#808086' }}>
+                          <time
+                            dateTime={reply.createdAt}
+                            style={{ color: 'var(--ink-text-muted)' }}
+                          >
                             {relativeTime(reply.createdAt, i18n.language)}
                           </time>
                           {reply.visibility === 'team' && (
@@ -587,7 +593,7 @@ function InboxDetailContent({
                   </div>
                   <time
                     dateTime={notification.createdAt}
-                    style={{ color: '#808086', fontSize: 12 }}
+                    style={{ color: 'var(--ink-text-muted)', fontSize: 12 }}
                   >
                     {relativeTime(notification.createdAt, i18n.language)}
                   </time>
