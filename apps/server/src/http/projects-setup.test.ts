@@ -195,6 +195,11 @@ describe.skipIf(!url)('project setup metadata and personal pins', () => {
     expect((await request('viewer', 'GET', '/instance/storage')).statusCode).toBe(403);
     expect((await request('owner', 'GET', '/instance/storage')).json()).toEqual({
       originalBytes: 0,
+      byType: ['images', 'videos', 'audio', 'documents', 'other'].map((type) => ({
+        type,
+        bytes: 0,
+      })),
+      byProject: [],
     });
   });
   it('returns document edit activity only for boards the caller can access', async () => {

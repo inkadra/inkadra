@@ -1806,7 +1806,25 @@
       "light": "Chiaro"
     },
     "smtpRequired": "Il reinvio richiede SMTP configurato.",
-    "classifications": "Classificazioni"
+    "classifications": "Classificazioni",
+    "storageCharts": {
+      "byType": "Utilizzo per tipo di file",
+      "byProject": "Utilizzo per progetto",
+      "category": "Categoria / progetto",
+      "size": "File originali",
+      "share": "Percentuale",
+      "percentScope": "Ogni percentuale è riferita al totale dei file originali indicato sopra.",
+      "attribution": "Ogni asset è conteggiato una sola volta nel progetto proprietario, anche se usato in più board o progetti. I progetti a cui non hai accesso sono raggruppati in forma anonima.",
+      "unassigned": "Senza progetto",
+      "restricted": "Progetti riservati",
+      "types": {
+        "images": "Immagini",
+        "videos": "Video",
+        "audio": "Audio",
+        "documents": "Documenti",
+        "other": "Altri file"
+      }
+    }
   },
   "trash": {
     "title": "Cestino",

@@ -54,6 +54,7 @@ import { Diagnostics, Health, Instance } from './instance.ts';
 import {
   InstanceMember,
   InstanceSettings,
+  StorageUsage,
   UpdateInstanceMember,
   UpdateInstanceSettings,
 } from './instance-admin.ts';
@@ -653,7 +654,7 @@ registry.registerPath({
   responses: {
     200: {
       description: 'Original asset usage',
-      ...json(z.object({ originalBytes: z.number().nonnegative() })),
+      ...json(StorageUsage),
     },
     ...errors,
   },
