@@ -1033,8 +1033,7 @@ export function ShotList({
 
       <footer className="shots__footer">
         <span>
-          <b>{allFilteredFrames.length}</b>{' '}
-          {t('film.list.totalShots', { count: allFilteredFrames.length })}
+          <b>{t('film.list.totalShots', { count: allFilteredFrames.length })}</b>
         </span>
         <span>
           {t('film.list.estimatedDuration')}{' '}
