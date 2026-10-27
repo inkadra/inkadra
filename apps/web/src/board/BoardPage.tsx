@@ -307,6 +307,7 @@ function BoardScreen({
     () => breadcrumb(boardId, rootBoardId, projectName, detail, boards),
     [boardId, rootBoardId, projectName, detail, boards],
   );
+  const crumbTitles = useMemo(() => crumbs.map((c) => c.title), [crumbs]);
 
   const header = useMemo(
     () => (
@@ -507,7 +508,7 @@ function BoardScreen({
         key={preview.version.id}
         conn={{ ...conn, store: preview.store, readOnly: true }}
         preview
-        projectName={projectName}
+        breadcrumb={crumbTitles}
         projectId={projectId}
         boardId={boardId}
         userId={user.id}
@@ -521,7 +522,7 @@ function BoardScreen({
         initialSelection={liveSelection.current}
         onSelectionChange={rememberSelection}
         conn={conn}
-        projectName={projectName}
+        breadcrumb={crumbTitles}
         projectId={projectId}
         boardId={boardId}
         userId={user.id}

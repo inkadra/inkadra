@@ -1385,7 +1385,6 @@
     "close": "Chiudi",
     "noteBreadcrumb": "Percorso della nota",
     "noteExpand": "A tutta pagina",
-    "noteCollapse": "Ripristina pannello laterale",
     "noteWords_one": "{{count}} parola",
     "noteWords_other": "{{count}} parole",
     "editOnCanvas": "Modifica sulla board",

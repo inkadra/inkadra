@@ -453,6 +453,7 @@ export function GuestBoardScreen({
                       conn={conn}
                       preview
                       projectId=""
+                      breadcrumb={crumbs.map((c) => c.title)}
                       boardId={boardId}
                       userId=""
                       boards={boards}

@@ -1,8 +1,8 @@
 import { Button } from '@inkadra/ui';
-import { useEffect, useId, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import * as Y from 'yjs';
-import { NoteBody, NoteEditor, plainText, useFragment } from './note.tsx';
+import { NoteBody, NoteEditor, plainText } from './note.tsx';
 import type { BoardStore } from './store.ts';
 import './note-sheet.css';
 
@@ -10,8 +10,7 @@ export function NoteSideSheet({
   noteId,
   store,
   readOnly,
-  projectName,
-  boardName,
+  breadcrumb,
   onClose,
   onEditOnCanvas,
   onComments,
@@ -19,22 +18,18 @@ export function NoteSideSheet({
   noteId: string;
   store: BoardStore;
   readOnly: boolean;
-  projectName?: string;
-  boardName?: string;
+  /** Titles from the project root to the note's board. */
+  breadcrumb: string[];
   onClose: () => void;
   onEditOnCanvas: () => void;
   onComments?: () => void;
 }) {
   const { t } = useTranslation();
   const ref = useRef<HTMLDialogElement>(null);
-  const titleId = useId();
   const [expanded, setExpanded] = useState(false);
   const body = store.map(noteId)?.get('body');
   const fragment = body instanceof Y.XmlFragment ? body : null;
-  useFragment(fragment);
-  const text = fragment ? plainText(fragment).trim() : '';
-  const title = text.split('\n').find((line) => line.trim()) || t('board.note.label');
-  const count = text ? text.split(/\s+/u).length : 0;
+  const count = useWordCount(fragment);
   useEffect(() => {
     const dialog = ref.current;
     if (!dialog) return;
@@ -55,7 +50,7 @@ export function NoteSideSheet({
     <dialog
       ref={ref}
       className={`note-sidesheet${expanded ? ' note-sidesheet--expanded' : ''}`}
-      aria-labelledby={titleId}
+      aria-label={t('board.note.label')}
       data-chrome
       data-scroll
       onClose={onClose}
@@ -67,21 +62,27 @@ export function NoteSideSheet({
     >
       <header className="note-sidesheet__header">
         <nav className="note-sidesheet__breadcrumb" aria-label={t('shells.noteBreadcrumb')}>
-          {[projectName, boardName, title].filter(Boolean).map((part, index) => (
-            // biome-ignore lint/suspicious/noArrayIndexKey: ordered breadcrumb segments
-            <span key={index}>{part}</span>
-          ))}
+          <ol>
+            {breadcrumb.map((part, index) => (
+              // biome-ignore lint/suspicious/noArrayIndexKey: ordered breadcrumb segments
+              <li key={index}>
+                {index > 0 && (
+                  <span className="note-sidesheet__sep" aria-hidden="true">
+                    /
+                  </span>
+                )}
+                {part}
+              </li>
+            ))}
+          </ol>
         </nav>
         <Button aria-pressed={expanded} onClick={() => setExpanded(!expanded)}>
-          {t(expanded ? 'shells.noteCollapse' : 'shells.noteExpand')}
+          {t('shells.noteExpand')}
         </Button>
         <Button onClick={onClose}>{t('shells.close')}</Button>
       </header>
       <div className="note-sidesheet__content">
         <article className="note-sidesheet__doc">
-          <h2 id={titleId} className="note-sidesheet__title">
-            {title}
-          </h2>
           <div className="note-sidesheet__meta-row">
             <span>{t('shells.noteWords', { count })}</span>
             {!readOnly && <Button onClick={onEditOnCanvas}>{t('shells.editOnCanvas')}</Button>}
@@ -97,4 +98,29 @@ export function NoteSideSheet({
       </div>
     </dialog>
   );
+}
+
+/** Words in the note, recounted shortly after typing pauses rather than on every keystroke. */
+function useWordCount(fragment: Y.XmlFragment | null): number {
+  const [count, setCount] = useState(() => (fragment ? countWords(fragment) : 0));
+  useEffect(() => {
+    if (!fragment) return;
+    setCount(countWords(fragment));
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const recount = () => {
+      clearTimeout(timer);
+      timer = setTimeout(() => setCount(countWords(fragment)), 200);
+    };
+    fragment.observeDeep(recount);
+    return () => {
+      clearTimeout(timer);
+      fragment.unobserveDeep(recount);
+    };
+  }, [fragment]);
+  return count;
+}
+
+function countWords(fragment: Y.XmlFragment): number {
+  const text = plainText(fragment).trim();
+  return text ? text.split(/\s+/u).length : 0;
 }

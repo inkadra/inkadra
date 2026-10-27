@@ -44,14 +44,20 @@
   font-size: 12px;
   color: var(--ink-text-secondary);
 }
-.note-sidesheet__breadcrumb span {
+.note-sidesheet__breadcrumb ol {
+  display: flex;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.note-sidesheet__breadcrumb li {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   min-width: 0;
 }
-.note-sidesheet__breadcrumb span + span::before {
-  content: "/";
+.note-sidesheet__sep {
   padding: 0 8px;
 }
 .note-sidesheet__content {
@@ -65,12 +71,6 @@
   max-width: 850px;
   margin: 0 auto;
   overflow-wrap: anywhere;
-}
-.note-sidesheet__title {
-  margin: 0 0 12px;
-  font-size: 30px;
-  line-height: 1.2;
-  letter-spacing: -0.02em;
 }
 .note-sidesheet__meta-row {
   display: flex;
