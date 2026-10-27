@@ -36,8 +36,9 @@ const current = { boardId: root.id, kind: root.kind, rootBoardId: root.id };
 const onStoryboard = { boardId: storyboard.id, kind: storyboard.kind, rootBoardId: root.id };
 
 describe('header views', () => {
-  it('shows no switcher on an ordinary board', () => {
-    expect(headerViews('board', 'canvas')).toEqual([]);
+  it('offers canvas and moodboard on an ordinary board, nothing while the kind loads', () => {
+    expect(headerViews('board', 'canvas')).toEqual(['canvas', 'moodboard']);
+    expect(headerViews('board', 'moodboard')).toEqual(['canvas', 'moodboard']);
     expect(headerViews(undefined, 'moodboard')).toEqual([]);
   });
 

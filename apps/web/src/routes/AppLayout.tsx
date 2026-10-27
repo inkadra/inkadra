@@ -438,17 +438,6 @@ export function AppLayout() {
                 }}
                 style={{ paddingLeft: 22 }}
               />
-              <NavItem
-                icon="image"
-                label={t('nav.moodboard')}
-                active={currentView === 'moodboard'}
-                href={hrefFor('moodboard')}
-                onClick={(e) => {
-                  e.preventDefault();
-                  showView('moodboard');
-                }}
-                style={{ paddingLeft: 22 }}
-              />
               <BoardTree
                 projectId={p.id}
                 parentId={p.rootBoardId}

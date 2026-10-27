@@ -54,11 +54,13 @@ export function storyboardOf(boards: readonly Board[] | null | undefined): strin
 
 /**
  * What the header offers: the whole list on a storyboard, or while a film view is open so
- * there is a way back. An ordinary board shows no switcher at all.
+ * there is a way back. An ordinary board offers its own two views, canvas and moodboard;
+ * nothing while its kind is still loading.
  */
 export function headerViews(kind: BoardKind | undefined, active: BoardView): BoardView[] {
   const film = kind === 'storyboard' || FILM_VIEWS.includes(active);
-  return film ? [...ALL_VIEWS] : [];
+  if (film) return [...ALL_VIEWS];
+  return kind ? ['canvas', 'moodboard'] : [];
 }
 
 /**
