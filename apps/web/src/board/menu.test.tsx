@@ -17,7 +17,11 @@ describe('board header menu', () => {
     );
     expect(html).toContain('role="menuitem"');
     expect(html).toContain('aria-disabled="true"');
-    expect(html).toContain('title="Coming soon"');
+    expect(html).not.toContain('title=');
+    expect(html).toMatch(/aria-describedby="([^"]+)"/);
+    const id = /aria-describedby="([^"]+)"/.exec(html)?.[1];
+    expect(html).toContain(`id="${id}"`);
+    expect(html).not.toContain('disabled=""');
     expect(html).toContain('menu__hint');
     expect(html).toContain('Export');
   });

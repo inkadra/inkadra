@@ -37,6 +37,7 @@ import {
   askedView,
   type BoardView,
   defaultView,
+  isBoardView,
   storyboardOf,
   viewDestination,
   viewHref,
@@ -166,14 +167,18 @@ export function AppLayout() {
   const boardId = pathname.split('/')[4];
   const current = projects?.find((p) => p.id === projectId);
   const openBoardId = boardId ?? current?.rootBoardId;
-  const isStoryboard = projectBoards?.find((b) => b.id === openBoardId)?.kind === 'storyboard';
   const storyboardId = storyboardOf(projectBoards);
-  const openKind: BoardKind | undefined = openBoardId
-    ? isStoryboard
-      ? 'storyboard'
-      : 'board'
-    : undefined;
-  const currentView: BoardView = askedView(params.get('view'), openKind);
+  // Until the project's boards are known the kind is too: no tab is active before that.
+  const openBoard = projectBoards?.find((b) => b.id === openBoardId);
+  const openKind: BoardKind | undefined = openBoard?.kind;
+  const asked = params.get('view');
+  // While the boards load a board with no ?view= has no known default: nothing is active yet.
+  const currentView: BoardView | null =
+    openBoardId && !projectBoards
+      ? isBoardView(asked)
+        ? asked
+        : null
+      : askedView(asked, openKind);
 
   const destination = (v: BoardView) =>
     viewDestination(
@@ -523,7 +528,7 @@ export function AppLayout() {
         <select
           className="mobile-view-switcher"
           aria-label={t('film.views.label')}
-          value={currentView}
+          value={currentView ?? ''}
           onChange={(e) => showView(e.target.value as BoardView)}
         >
           {ALL_VIEWS.map((v) => (

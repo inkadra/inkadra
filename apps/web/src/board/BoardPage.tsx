@@ -375,34 +375,36 @@ function BoardScreen({
             </Fragment>
           ))}
         </nav>
-        <div
-          className="view-tabs"
-          role="tablist"
-          aria-label={t('film.views.label')}
-          onKeyDown={(e) => {
-            // Arrow keys walk the tabs; Enter and Space pick one, as on any button.
-            if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
-            const all = [...e.currentTarget.querySelectorAll<HTMLButtonElement>('[role="tab"]')];
-            const at = all.indexOf(document.activeElement as HTMLButtonElement);
-            e.preventDefault();
-            all[(at + (e.key === 'ArrowRight' ? 1 : -1) + all.length) % all.length]?.focus();
-          }}
-        >
-          {tabs.map((v) => (
-            <button
-              key={v}
-              type="button"
-              role="tab"
-              aria-selected={view === v}
-              tabIndex={view === v ? 0 : -1}
-              className="view-tabs__tab"
-              onClick={() => chooseView(v)}
-            >
-              <Icon name={viewIcon(v)} size={14} />
-              {t(`film.views.${v}`)}
-            </button>
-          ))}
-        </div>
+        {tabs.length > 0 && (
+          <div
+            className="view-tabs"
+            role="tablist"
+            aria-label={t('film.views.label')}
+            onKeyDown={(e) => {
+              // Arrow keys walk the tabs; Enter and Space pick one, as on any button.
+              if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
+              const all = [...e.currentTarget.querySelectorAll<HTMLButtonElement>('[role="tab"]')];
+              const at = all.indexOf(document.activeElement as HTMLButtonElement);
+              e.preventDefault();
+              all[(at + (e.key === 'ArrowRight' ? 1 : -1) + all.length) % all.length]?.focus();
+            }}
+          >
+            {tabs.map((v) => (
+              <button
+                key={v}
+                type="button"
+                role="tab"
+                aria-selected={view === v}
+                tabIndex={view === v ? 0 : -1}
+                className="view-tabs__tab"
+                onClick={() => chooseView(v)}
+              >
+                <Icon name={viewIcon(v)} size={14} />
+                {t(`film.views.${v}`)}
+              </button>
+            ))}
+          </div>
+        )}
         <span className="ink-header__spacer" />
         {conn && <BoardPresence conn={conn} selfId={selfId} />}
         {editable && (
@@ -627,8 +629,7 @@ function BoardPresence({ conn, selfId }: { conn: BoardConnection; selfId: string
       <SyncStatus
         status={conn.status}
         readOnly={conn.readOnly}
-        pending={conn.pending}
-        savedAt={conn.savedAt}
+        saves={conn.saves}
         online={online}
       />
       {writing.length > 0 && <EditingPeople people={writing} store={conn.store} />}

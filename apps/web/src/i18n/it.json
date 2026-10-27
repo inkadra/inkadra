@@ -404,6 +404,7 @@
       "template": "Inserisci modello: {{name}}"
     },
     "status": {
+      "backOnline": "Di nuovo online",
       "connecting": "Connessione…",
       "saved": "Sincronizzato",
       "savedAgo_one": "Sincronizzato {{count}}s fa",

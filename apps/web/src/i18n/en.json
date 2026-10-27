@@ -404,6 +404,7 @@
       "template": "Insert template: {{name}}"
     },
     "status": {
+      "backOnline": "Back online",
       "connecting": "Connecting…",
       "saved": "Saved",
       "savedAgo_one": "Saved {{count}}s ago",

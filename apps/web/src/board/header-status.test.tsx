@@ -1,7 +1,9 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
+import { createSaveStore } from './connection.ts';
 import {
   boardPeople,
+  connectionAnnouncement,
   EditingLine,
   editingPeople,
   onlineCount,
@@ -30,6 +32,12 @@ const peer = (id: string, name: string, editing: string | null = null, readOnly 
   selection: [],
   editing,
 });
+
+const storeOf = (pending: number, savedAt: number | null) => {
+  const store = createSaveStore();
+  store.set({ pending, savedAt });
+  return store;
+};
 
 describe('sync summary', () => {
   it('says when the last change was saved', () => {
@@ -144,8 +152,7 @@ describe('header status', () => {
       <SyncStatus
         status="synced"
         readOnly={false}
-        pending={0}
-        savedAt={Date.now() - 12_000}
+        saves={storeOf(0, Date.now() - 12_000)}
         online={3}
       />,
     );
@@ -156,20 +163,20 @@ describe('header status', () => {
 
   it('says saving, and reads as saved right after a change', () => {
     const saving = renderToStaticMarkup(
-      <SyncStatus status="synced" readOnly={false} pending={2} savedAt={null} online={2} />,
+      <SyncStatus status="synced" readOnly={false} saves={storeOf(2, null)} online={2} />,
     );
     expect(saving).toContain('board.status.saving');
     expect(saving).toContain('sync--saving');
 
     const fresh = renderToStaticMarkup(
-      <SyncStatus status="synced" readOnly={false} pending={0} savedAt={Date.now()} online={2} />,
+      <SyncStatus status="synced" readOnly={false} saves={storeOf(0, Date.now())} online={2} />,
     );
     expect(fresh).toContain('board.status.saved');
   });
 
   it('says who is online only while presence is live', () => {
     const html = renderToStaticMarkup(
-      <SyncStatus status="offline" readOnly={false} pending={1} savedAt={null} online={4} />,
+      <SyncStatus status="offline" readOnly={false} saves={storeOf(1, null)} online={4} />,
     );
     expect(html).toContain('board.status.offline');
     expect(html).not.toContain('board.status.online');
@@ -186,5 +193,24 @@ describe('header status', () => {
     expect(html).toContain('title="board.editing.one(name=Giulia,label=Logline)');
     expect(html).toContain('board.editing.one(name=Anna,label=Script)');
     expect(renderToStaticMarkup(<EditingLine editors={[]} />)).toBe('');
+  });
+});
+
+describe('sync announcements', () => {
+  const t = (key: string) => key;
+
+  it('speaks only when the connection changes', () => {
+    expect(connectionAnnouncement('synced', 'offline', t)).toBe('board.status.offline');
+    expect(connectionAnnouncement('offline', 'synced', t)).toBe('board.status.backOnline');
+    expect(connectionAnnouncement('synced', 'denied', t)).toBe('board.status.denied');
+    expect(connectionAnnouncement('synced', 'synced', t)).toBe('');
+  });
+
+  it('keeps edits out of the live region and hides the visible text', () => {
+    const html = renderToStaticMarkup(
+      <SyncStatus status="synced" readOnly={false} saves={storeOf(2, null)} online={2} />,
+    );
+    expect(html).toMatch(/<span class="sync__text" aria-hidden="true">/);
+    expect(html).toMatch(/<span class="sync__announce" role="status"><\/span>/);
   });
 });

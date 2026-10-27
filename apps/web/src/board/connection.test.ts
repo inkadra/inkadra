@@ -1,7 +1,7 @@
 import { HocuspocusProvider, type HocuspocusProviderWebsocket } from '@hocuspocus/provider';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import * as Y from 'yjs';
-import { type SaveState, watchSaves } from './connection.ts';
+import { createSaveStore, type SaveState, watchSaves } from './connection.ts';
 
 /**
  * The real provider on a socket we drive by hand: the socket opens and closes, and the server's
@@ -173,5 +173,21 @@ describe('saved state from the collaboration provider', () => {
     expect(last()).toEqual({ pending: 1, savedAt: null });
     provider.onMessage(applied());
     expect(last()).toEqual({ pending: 0, savedAt: 1_000 });
+  });
+});
+
+describe('save store', () => {
+  it('notifies subscribers only when pending or savedAt change', () => {
+    const store = createSaveStore();
+    const listener = vi.fn();
+    const stop = store.subscribe(listener);
+    store.set({ pending: 1, savedAt: null });
+    store.set({ pending: 1, savedAt: null });
+    store.set({ pending: 0, savedAt: 5 });
+    expect(listener).toHaveBeenCalledTimes(2);
+    expect(store.get()).toEqual({ pending: 0, savedAt: 5 });
+    stop();
+    store.set({ pending: 3, savedAt: 5 });
+    expect(listener).toHaveBeenCalledTimes(2);
   });
 });

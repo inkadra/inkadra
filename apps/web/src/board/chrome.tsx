@@ -13,6 +13,7 @@ import {
   type Ref,
   type RefObject,
   useEffect,
+  useId,
   useMemo,
   useRef,
   useState,
@@ -391,6 +392,7 @@ export function ContextMenu({
   anchor?: RefObject<HTMLElement | null>;
 }) {
   const ref = useRef<HTMLDivElement>(null);
+  const hintId = useId();
   useEffect(() => {
     ref.current
       ?.querySelector<HTMLButtonElement>('[role="menuitem"]:not([aria-disabled="true"])')
@@ -417,9 +419,8 @@ export function ContextMenu({
         if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
           e.preventDefault();
           const all = [
-            ...(ref.current?.querySelectorAll<HTMLElement>(
-              '[role="menuitem"]:not([aria-disabled="true"])',
-            ) ?? []),
+            // Disabled items stay in the walk so their "coming soon" hint can be found.
+            ...(ref.current?.querySelectorAll<HTMLElement>('[role="menuitem"]') ?? []),
           ];
           const i = all.indexOf(document.activeElement as HTMLElement);
           all[(i + (e.key === 'ArrowDown' ? 1 : -1) + all.length) % all.length]?.focus();
@@ -437,7 +438,7 @@ export function ContextMenu({
             role="menuitem"
             className={`menu__item${item.danger ? ' is-danger' : ''}${item.disabled ? ' is-disabled' : ''}`}
             aria-disabled={item.disabled || undefined}
-            title={item.hint}
+            aria-describedby={item.hint ? `${hintId}-${i}` : undefined}
             onClick={() => {
               if (item.disabled) return;
               onClose('item');
@@ -445,7 +446,11 @@ export function ContextMenu({
             }}
           >
             {item.label}
-            {item.hint && <span className="menu__hint">{item.hint}</span>}
+            {item.hint && (
+              <span id={`${hintId}-${i}`} className="menu__hint" aria-hidden="true">
+                {item.hint}
+              </span>
+            )}
             {item.shortcut && (
               <span className="menu__key">{item.shortcut.replace('⌘', mod())}</span>
             )}

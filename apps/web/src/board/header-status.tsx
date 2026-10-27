@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { useTranslation } from 'react-i18next';
-import type { ConnectionStatus } from './connection.ts';
+import type { ConnectionStatus, SaveStore } from './connection.ts';
 import { type Peer, uniquePeople } from './presence.ts';
 
 /** What the header says about the connection: saving, saved when, or why nothing is syncing. */
@@ -97,15 +97,25 @@ function useNow(active: boolean): number {
   return now;
 }
 
+/** What a screen reader hears when the connection changes; edits and the timer stay silent. */
+export function connectionAnnouncement(
+  from: ConnectionStatus,
+  to: ConnectionStatus,
+  t: (key: string) => string,
+): string {
+  if (from === to) return '';
+  return to === 'synced' ? t('board.status.backOnline') : t(`board.status.${to}`);
+}
+
 /** "3 online · saved 12s ago": the connection, from the collaboration provider's state. */
 export function SyncStatus({
   status,
   readOnly,
-  pending,
-  savedAt,
+  saves,
   online,
-}: SyncInputs & { online: number }) {
+}: Omit<SyncInputs, 'pending' | 'savedAt'> & { saves: SaveStore; online: number }) {
   const { t } = useTranslation();
+  const { pending, savedAt } = useSyncExternalStore(saves.subscribe, saves.get, saves.get);
   const ticking = status === 'synced' && !readOnly && pending === 0 && savedAt !== null;
   const now = useNow(ticking);
   const summary = syncSummary({ status, readOnly, pending, savedAt }, now);
@@ -117,17 +127,18 @@ export function SyncStatus({
       : summary.kind === 'saving'
         ? t('board.status.saving')
         : t(`board.status.${summary.kind}`);
-  // The timer changes every second: it is read where it stands, not announced as a live region.
-  const announcement =
-    summary.kind === 'saved'
-      ? t('board.status.saved')
-      : summary.kind === 'saving'
-        ? t('board.status.saving')
-        : t(`board.status.${summary.kind}`);
+  // Only a change of connection is announced, never an edit or the timer.
+  const last = useRef(status);
+  const [announcement, setAnnouncement] = useState('');
+  useEffect(() => {
+    if (last.current === status) return;
+    setAnnouncement(connectionAnnouncement(last.current, status, t));
+    last.current = status;
+  }, [status, t]);
   return (
     <span className={`sync sync--${summary.kind === 'saved' ? 'synced' : summary.kind}`}>
       <span className="sync__dot" aria-hidden="true" />
-      <span className="sync__text">
+      <span className="sync__text" aria-hidden="true">
         {status === 'synced' ? `${t('board.status.online', { count: online })} · ${state}` : state}
       </span>
       <span className="sync__announce" role="status">

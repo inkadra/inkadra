@@ -22,7 +22,7 @@ import { useSearchParams } from 'react-router';
 import type * as Y from 'yjs';
 import { primeAsset } from '../board/assets.ts';
 import { Canvas } from '../board/Canvas.tsx';
-import type { BoardConnection } from '../board/connection.ts';
+import { type BoardConnection, createSaveStore } from '../board/connection.ts';
 import { CardExtrasContext, GuestModeContext } from '../board/context.ts';
 import { BoardStore } from '../board/store.ts';
 import { NoSessionProvider } from '../lib/session.tsx';
@@ -367,8 +367,7 @@ export function GuestBoardScreen({
             status: 'synced',
             readOnly: true,
             accessChangedAt: null,
-            pending: 0,
-            savedAt: null,
+            saves: createSaveStore(),
           }
         : null,
     [store],

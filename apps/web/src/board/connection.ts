@@ -25,10 +25,8 @@ export interface BoardConnection {
   readOnly: boolean;
   /** When the server last changed our access while the board was open. */
   accessChangedAt: number | null;
-  /** Changes made here that the server has not confirmed yet. */
-  pending: number;
-  /** When the server last confirmed our changes; null until it does. */
-  savedAt: number | null;
+  /** Save progress, kept out of this object so an edit does not re-render the board. */
+  saves: SaveStore;
 }
 
 function collabUrl(): string {
@@ -41,6 +39,30 @@ export interface SaveState {
   pending: number;
   /** When the server last confirmed a change made here; null until it does. */
   savedAt: number | null;
+}
+
+export interface SaveStore {
+  get: () => SaveState;
+  subscribe: (listener: () => void) => () => void;
+  set: (next: SaveState) => void;
+}
+
+/** A tiny external store for `useSyncExternalStore`; it only notifies when a value changes. */
+export function createSaveStore(): SaveStore {
+  let state: SaveState = { pending: 0, savedAt: null };
+  const listeners = new Set<() => void>();
+  return {
+    get: () => state,
+    subscribe: (listener) => {
+      listeners.add(listener);
+      return () => listeners.delete(listener);
+    },
+    set: (next) => {
+      if (next.pending === state.pending && next.savedAt === state.savedAt) return;
+      state = next;
+      for (const l of listeners) l();
+    },
+  };
 }
 
 /**
@@ -84,13 +106,12 @@ export function useBoardConnection(boardId: string): BoardConnection | null {
   useEffect(() => {
     const doc = new Y.Doc();
     const store = new BoardStore(doc);
-    let state: Omit<BoardConnection, 'store' | 'provider'> = {
+    let state: Omit<BoardConnection, 'store' | 'provider' | 'saves'> = {
       status: 'connecting',
       readOnly: false,
       accessChangedAt: null,
-      pending: 0,
-      savedAt: null,
     };
+    const saves = createSaveStore();
     // Changes the server has not confirmed yet: a reload for a new version waits for them.
     const busy = {};
     let unsynced = 0;
@@ -120,12 +141,13 @@ export function useBoardConnection(boardId: string): BoardConnection | null {
     function update(patch: Partial<typeof state>) {
       state = { ...state, ...patch };
       hold();
-      setConn({ store, provider, ...state });
+      setConn({ store, provider, saves, ...state });
     }
     // The provider sends nothing before the socket opens, so no count is missed here.
-    const stopSaves = watchSaves(provider, ({ pending, savedAt }) => {
-      unsynced = pending;
-      update({ pending, savedAt });
+    const stopSaves = watchSaves(provider, (next) => {
+      unsynced = next.pending;
+      saves.set(next);
+      hold();
     });
     update({});
     return () => {

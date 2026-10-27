@@ -36,8 +36,9 @@ const current = { boardId: root.id, kind: root.kind, rootBoardId: root.id };
 const onStoryboard = { boardId: storyboard.id, kind: storyboard.kind, rootBoardId: root.id };
 
 describe('header views', () => {
-  it('gives an ordinary board its own views, canvas first', () => {
-    expect(headerViews('board', 'canvas')).toEqual(['canvas', 'moodboard']);
+  it('shows no switcher on an ordinary board', () => {
+    expect(headerViews('board', 'canvas')).toEqual([]);
+    expect(headerViews(undefined, 'moodboard')).toEqual([]);
   });
 
   it('offers the film views on a storyboard', () => {

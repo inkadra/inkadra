@@ -53,12 +53,12 @@ export function storyboardOf(boards: readonly Board[] | null | undefined): strin
 }
 
 /**
- * What the header offers: the board's own views, plus the film views on a storyboard (or
- * while one of them is open, so there is a way back). Canvas comes first.
+ * What the header offers: the whole list on a storyboard, or while a film view is open so
+ * there is a way back. An ordinary board shows no switcher at all.
  */
 export function headerViews(kind: BoardKind | undefined, active: BoardView): BoardView[] {
   const film = kind === 'storyboard' || FILM_VIEWS.includes(active);
-  return ALL_VIEWS.filter((v) => film || !FILM_VIEWS.includes(v));
+  return film ? [...ALL_VIEWS] : [];
 }
 
 /**
