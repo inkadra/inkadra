@@ -1,6 +1,6 @@
 import type { StorageUsage } from '@inkadra/shared';
-import { useId } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Card } from './settings-ui.tsx';
 import './storage-charts.css';
 
 export function formatStorage(bytes: number, locale: string): string {
@@ -14,6 +14,15 @@ export function storagePercent(bytes: number, total: number, locale: string): st
   return fraction > 0 && fraction < 0.001 ? `<${format.format(0.001)}` : format.format(fraction);
 }
 
+const SWATCHES = [
+  'var(--ink-accent-primary)',
+  'var(--ink-tag-blue)',
+  'var(--ink-tag-purple)',
+  'var(--ink-tag-green)',
+  'var(--ink-tag-orange)',
+  'var(--ink-text-muted)',
+];
+
 function Breakdown({
   title,
   rows,
@@ -24,15 +33,21 @@ function Breakdown({
   total: number;
 }) {
   const { t, i18n } = useTranslation();
-  const id = useId();
+  const sorted = [...rows].sort((a, b) => b.bytes - a.bytes);
+  const width = (bytes: number) => `${total ? (bytes / total) * 100 : 0}%`;
   return (
-    <section className="storage-chart" aria-labelledby={id}>
-      <h3 id={id}>{title}</h3>
+    <Card title={title} className="storage-chart">
+      <div className="storage-chart__stack" aria-hidden="true">
+        {sorted.map((row, i) => (
+          <span
+            key={row.id}
+            style={{ width: width(row.bytes), background: SWATCHES[i % SWATCHES.length] }}
+          />
+        ))}
+      </div>
       <table>
-        <caption className="storage-chart__caption">
-          {t('admin.storageCharts.percentScope')}
-        </caption>
-        <thead>
+        <caption className="ink-sr-only">{t('admin.storageCharts.percentScope')}</caption>
+        <thead className="ink-sr-only">
           <tr>
             <th scope="col">{t('admin.storageCharts.category')}</th>
             <th scope="col">{t('admin.storageCharts.size')}</th>
@@ -40,12 +55,15 @@ function Breakdown({
           </tr>
         </thead>
         <tbody>
-          {rows.map((row) => (
+          {sorted.map((row, i) => (
             <tr key={row.id}>
               <th scope="row">
-                <span>{row.label}</span>
+                <span className="storage-chart__label">
+                  <i style={{ background: SWATCHES[i % SWATCHES.length] }} aria-hidden="true" />
+                  {row.label}
+                </span>
                 <span className="storage-chart__track" aria-hidden="true">
-                  <span style={{ width: `${total ? (row.bytes / total) * 100 : 0}%` }} />
+                  <span style={{ width: width(row.bytes) }} />
                 </span>
               </th>
               <td>{formatStorage(row.bytes, i18n.language)}</td>
@@ -54,30 +72,36 @@ function Breakdown({
           ))}
         </tbody>
       </table>
-    </section>
+    </Card>
   );
 }
 
 export function StorageCharts({ usage }: { usage: StorageUsage }) {
   const { t, i18n } = useTranslation();
+  const projects = usage.byProject.filter((p) => p.scope === 'project').length;
+  const top = [...usage.byType].sort((a, b) => b.bytes - a.bytes)[0];
   return (
     <div className="storage-usage">
-      <p className="storage-usage__total">{formatStorage(usage.originalBytes, i18n.language)}</p>
-      <p className="ink-muted">{t('admin.storageHelp')}</p>
-      <p className="ink-muted">{t('admin.storageCharts.attribution')}</p>
+      <dl className="storage-tiles">
+        <div>
+          <dt>{t('settingsUi.storage.used')}</dt>
+          <dd>{formatStorage(usage.originalBytes, i18n.language)}</dd>
+        </div>
+        <div>
+          <dt>{t('admin.projects')}</dt>
+          <dd>{projects}</dd>
+        </div>
+        <div>
+          <dt>{t('settingsUi.storage.top')}</dt>
+          <dd>{top?.bytes ? t(`admin.storageCharts.types.${top.type}`) : '—'}</dd>
+        </div>
+      </dl>
       {usage.originalBytes === 0 ? (
-        <p>{t('admin.storageEmpty')}</p>
+        <Card>
+          <p className="settings-card__empty">{t('admin.storageEmpty')}</p>
+        </Card>
       ) : (
         <>
-          <Breakdown
-            title={t('admin.storageCharts.byType')}
-            total={usage.originalBytes}
-            rows={usage.byType.map((row) => ({
-              id: row.type,
-              label: t(`admin.storageCharts.types.${row.type}`),
-              bytes: row.bytes,
-            }))}
-          />
           <Breakdown
             title={t('admin.storageCharts.byProject')}
             total={usage.originalBytes}
@@ -90,8 +114,20 @@ export function StorageCharts({ usage }: { usage: StorageUsage }) {
               bytes: row.bytes,
             }))}
           />
+          <Breakdown
+            title={t('admin.storageCharts.byType')}
+            total={usage.originalBytes}
+            rows={usage.byType.map((row) => ({
+              id: row.type,
+              label: t(`admin.storageCharts.types.${row.type}`),
+              bytes: row.bytes,
+            }))}
+          />
         </>
       )}
+      <p className="settings-footnote">
+        {t('admin.storageHelp')} {t('admin.storageCharts.attribution')}
+      </p>
     </div>
   );
 }

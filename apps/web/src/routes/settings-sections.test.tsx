@@ -6,7 +6,7 @@ import { expect, it } from 'vitest';
 import en from '../i18n/en.json';
 import itLocale from '../i18n/it.json';
 import { SettingsBreadcrumb } from './SettingsBreadcrumb.tsx';
-import { settingsSection } from './settings-sections.ts';
+import { GROUP_TITLES, isSettingsHome, settingsSection } from './settings-sections.ts';
 
 it('identifies all settings pages and localizes headings, descriptions and breadcrumbs in both languages', async () => {
   const i18n = i18next.createInstance();
@@ -24,6 +24,7 @@ it('identifies all settings pages and localizes headings, descriptions and bread
       'classifications',
       'instance',
       'providers',
+      'registration',
       'members',
     ]) {
       const pathname = section === 'members' ? '/settings/team' : '/settings';
@@ -41,9 +42,14 @@ it('identifies all settings pages and localizes headings, descriptions and bread
         </I18nextProvider>,
       );
       expect(html).toContain(i18n.t(page.title));
+      expect(html).toContain(i18n.t(GROUP_TITLES[page.group]));
       expect(html).toContain('aria-current="page"');
       expect(html).toContain('href="/settings"');
     }
   }
   expect(settingsSection('/settings', '?section=unknown').id).toBe('account');
+  expect(settingsSection('/settings', '?section=members').id).toBe('account');
+  expect(isSettingsHome('/settings', '')).toBe(true);
+  expect(isSettingsHome('/settings', '?section=account')).toBe(false);
+  expect(isSettingsHome('/settings/team', '')).toBe(false);
 });

@@ -41,9 +41,11 @@ it('renders consistent chart bars with accessible labeled tables and anonymized 
   expect(host.querySelectorAll('table')).toHaveLength(2);
   expect(host.querySelectorAll('caption')).toHaveLength(2);
   expect(host.querySelectorAll('th[scope="row"]')).toHaveLength(4);
-  expect(host.querySelectorAll('.storage-chart__track > span')[0]?.getAttribute('style')).toContain(
-    '25%',
+  const widths = [...host.querySelectorAll('.storage-chart__track > span')].map((bar) =>
+    bar.getAttribute('style'),
   );
+  // Largest first in each breakdown: projects, then file types.
+  expect(widths).toEqual(['width: 75%;', 'width: 25%;', 'width: 75%;', 'width: 25%;']);
   expect(host.textContent).toContain('Shoot');
   expect(host.textContent).toContain('admin.storageCharts.restricted');
   expect(host.textContent?.match(/75%/g)).toHaveLength(2);
