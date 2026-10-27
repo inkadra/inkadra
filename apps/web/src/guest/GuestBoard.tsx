@@ -367,6 +367,8 @@ export function GuestBoardScreen({
             status: 'synced',
             readOnly: true,
             accessChangedAt: null,
+            pending: 0,
+            savedAt: null,
           }
         : null,
     [store],

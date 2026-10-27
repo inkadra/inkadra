@@ -362,7 +362,16 @@ export function ContextBar({
 }
 
 export type MenuItem =
-  | { label: string; shortcut?: string; danger?: boolean; action: () => void; divider?: never }
+  | {
+      label: string;
+      shortcut?: string;
+      danger?: boolean;
+      action?: () => void;
+      /** Not available yet: shown, but it does nothing and says why in `hint`. */
+      disabled?: boolean;
+      hint?: string;
+      divider?: never;
+    }
   | { divider: true };
 
 export function ContextMenu({
@@ -383,7 +392,9 @@ export function ContextMenu({
 }) {
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
-    ref.current?.querySelector<HTMLButtonElement>('[role="menuitem"]')?.focus();
+    ref.current
+      ?.querySelector<HTMLButtonElement>('[role="menuitem"]:not([aria-disabled="true"])')
+      ?.focus();
     const away = (e: PointerEvent) => {
       const target = e.target as Node;
       if (!ref.current?.contains(target) && !anchor?.current?.contains(target)) onClose('outside');
@@ -405,7 +416,11 @@ export function ContextMenu({
         }
         if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
           e.preventDefault();
-          const all = [...(ref.current?.querySelectorAll<HTMLElement>('[role="menuitem"]') ?? [])];
+          const all = [
+            ...(ref.current?.querySelectorAll<HTMLElement>(
+              '[role="menuitem"]:not([aria-disabled="true"])',
+            ) ?? []),
+          ];
           const i = all.indexOf(document.activeElement as HTMLElement);
           all[(i + (e.key === 'ArrowDown' ? 1 : -1) + all.length) % all.length]?.focus();
         }
@@ -420,13 +435,17 @@ export function ContextMenu({
             key={item.label}
             type="button"
             role="menuitem"
-            className={`menu__item${item.danger ? ' is-danger' : ''}`}
+            className={`menu__item${item.danger ? ' is-danger' : ''}${item.disabled ? ' is-disabled' : ''}`}
+            aria-disabled={item.disabled || undefined}
+            title={item.hint}
             onClick={() => {
+              if (item.disabled) return;
               onClose('item');
-              item.action();
+              item.action?.();
             }}
           >
             {item.label}
+            {item.hint && <span className="menu__hint">{item.hint}</span>}
             {item.shortcut && (
               <span className="menu__key">{item.shortcut.replace('⌘', mod())}</span>
             )}

@@ -710,6 +710,19 @@
 .menu__item.is-danger {
   color: var(--ink-danger-fg);
 }
+/* Available later: readable and hoverable, but it neither acts nor takes the focus ring. */
+.menu__item.is-disabled,
+.menu__item.is-disabled:hover {
+  background: transparent;
+  color: var(--ink-text-muted);
+  cursor: default;
+}
+.menu__hint {
+  margin-left: auto;
+  padding-left: 12px;
+  font-size: 10px;
+  color: var(--ink-text-muted);
+}
 .menu__key {
   margin-left: auto;
   font-size: 10px;
@@ -1035,6 +1048,21 @@ button.crumb--editable:focus-visible {
 }
 .sync--denied .sync__dot {
   background: var(--ink-status-danger);
+}
+.sync--saving .sync__dot {
+  background: var(--ink-status-warn);
+}
+/* For screen readers: the state without the timer, so it does not speak every second. */
+.sync__announce {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
 }
 
 .board-state {
@@ -1782,4 +1810,55 @@ button.crumb--editable:focus-visible {
   line-height: 1.4;
   color: var(--ink-text-secondary, #c8c8cc);
   word-break: break-word;
+}
+
+/* Header: connection, people, and the card someone else is writing in ------------ */
+
+/* The header may run out of room before the tabs do: the text lines give way, the tabs stay. */
+.sync {
+  min-width: 0;
+}
+.sync__text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ink-header .view-tabs {
+  /* The switcher gives way before the actions do: it scrolls instead of pushing them out. */
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.ink-header .view-tabs::-webkit-scrollbar {
+  display: none;
+}
+.ink-header .view-tabs__tab {
+  flex: none;
+}
+.board-header-editing {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  max-width: 280px;
+  font-size: 12px;
+  color: var(--ink-text-secondary);
+  white-space: nowrap;
+}
+.board-header-editing__dot {
+  background: var(--peer);
+}
+.board-header-editing__text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.board-header-editing__more {
+  color: var(--ink-text-muted);
+}
+@media (width < 1200px) {
+  /* Narrow desktops: the avatars already say who is here. */
+  .board-header-editing {
+    display: none;
+  }
 }

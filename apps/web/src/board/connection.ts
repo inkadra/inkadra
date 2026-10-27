@@ -25,6 +25,10 @@ export interface BoardConnection {
   readOnly: boolean;
   /** When the server last changed our access while the board was open. */
   accessChangedAt: number | null;
+  /** Changes made here that the server has not confirmed yet. */
+  pending: number;
+  /** When the server last confirmed our changes; null until it does. */
+  savedAt: number | null;
 }
 
 function collabUrl(): string {
@@ -43,6 +47,8 @@ export function useBoardConnection(boardId: string): BoardConnection | null {
       status: 'connecting',
       readOnly: false,
       accessChangedAt: null,
+      pending: 0,
+      savedAt: null,
     };
     // Changes the server has not confirmed yet: a reload for a new version waits for them.
     const busy = {};
@@ -56,6 +62,9 @@ export function useBoardConnection(boardId: string): BoardConnection | null {
       onSynced: () => update({ status: 'synced' }),
       onUnsyncedChanges: ({ number }) => {
         unsynced = number;
+        // Back to zero after sending something: the server confirmed it, so that is a save.
+        const savedAt = number === 0 && state.pending > 0 ? Date.now() : state.savedAt;
+        update({ pending: number, savedAt });
         hold();
       },
       onDisconnect: () => {

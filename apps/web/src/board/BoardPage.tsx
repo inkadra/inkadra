@@ -1,5 +1,5 @@
 import type { Board, BoardDetail, ProjectRole } from '@inkadra/shared';
-import { Avatar, Button, EmptyState, Icon, IconButton, type IconName } from '@inkadra/ui';
+import { Avatar, Button, EmptyState, Icon, IconButton } from '@inkadra/ui';
 import {
   Fragment,
   type MouseEvent,
@@ -19,17 +19,27 @@ import { NotFound } from '../routes/NotFound.tsx';
 import { renameProject } from '../routes/projects.ts';
 import { boardPath, fetchBoard, renameBoard, useProjectBoards } from './boards.ts';
 import { Canvas } from './Canvas.tsx';
-import { CommentsButton } from './CommentsPanel.tsx';
+import { CommentsButton, useCardLabel } from './CommentsPanel.tsx';
 import { ContextMenu } from './chrome.tsx';
-import { type ConnectionStatus, useBoardConnection } from './connection.ts';
+import { type BoardConnection, useBoardConnection } from './connection.ts';
 import { DeniedState } from './DeniedState.tsx';
 import { ClientReviewView } from './film/ClientReviewView.tsx';
 import { MoodboardView } from './film/MoodboardView.tsx';
 import { ScheduleView } from './film/ScheduleView.tsx';
 import { ShotList } from './film/ShotList.tsx';
 import { StoryboardView } from './film/StoryboardView.tsx';
+import { EditingLine, editingPeople, onlineCount, SyncStatus } from './header-status.tsx';
 import { RestoredToast } from './RestoredToast.tsx';
 import { type VersionPreview, VersionsDialog } from './VersionsDialog.tsx';
+import {
+  type BoardView,
+  headerViews,
+  isBoardView,
+  storyboardOf,
+  viewDestination,
+  viewHref,
+  viewIcon,
+} from './views.ts';
 import './film/film.css';
 import { type Peer, uniquePeople, usePeers } from './presence.ts';
 import { projectLanding } from './project-landing.ts';
@@ -40,31 +50,17 @@ import './board.css';
 
 const canEdit = (role: ProjectRole | null | undefined) => role === 'owner' || role === 'editor';
 
-export type BoardView = 'storyboard' | 'shotlist' | 'schedule' | 'review' | 'moodboard' | 'canvas';
-export const VIEWS: Array<{ view: BoardView; icon: IconName }> = [
-  { view: 'storyboard', icon: 'storyboard' },
-  { view: 'shotlist', icon: 'shotlist' },
-  { view: 'schedule', icon: 'calendar' },
-  { view: 'review', icon: 'people' },
-  { view: 'moodboard', icon: 'image' },
-  { view: 'canvas', icon: 'board' },
-];
+export { type BoardView, VIEWS } from './views.ts';
 
 /** Storyboards open on the storyboard; `?view=` picks another view of the same board. */
 export function useBoardView(kind: Board['kind'] | undefined): [BoardView, (v: BoardView) => void] {
   const [params, setParams] = useSearchParams();
   const asked = params.get('view');
-  const view: BoardView =
-    asked === 'shotlist' ||
-    asked === 'storyboard' ||
-    asked === 'schedule' ||
-    asked === 'review' ||
-    asked === 'moodboard' ||
-    asked === 'canvas'
-      ? asked
-      : kind === 'storyboard'
-        ? 'storyboard'
-        : 'canvas';
+  const view: BoardView = isBoardView(asked)
+    ? asked
+    : kind === 'storyboard'
+      ? 'storyboard'
+      : 'canvas';
   const setView = useCallback(
     (v: BoardView) =>
       setParams(
@@ -226,24 +222,32 @@ function BoardScreen({
     [previewStore],
   );
   const editable = !!conn && !conn.readOnly && canEdit(detail?.myRole ?? projectRole);
-  // The view tabs, and their palette actions, belong to storyboards and the film views.
-  const showViewTabs =
-    kind === 'storyboard' ||
-    view === 'storyboard' ||
-    view === 'shotlist' ||
-    view === 'schedule' ||
-    view === 'review';
+  // Film views open on the project's storyboard, as they do from the sidebar and the rail.
+  const storyboardId = useMemo(() => storyboardOf(boards), [boards]);
+  const chooseView = useCallback(
+    (next: BoardView) => {
+      const destination = viewDestination(next, { boardId, kind, rootBoardId }, storyboardId);
+      if (destination.boardId) {
+        navigate(viewHref(projectId, destination, { boardId, rootBoardId, kind }));
+        return;
+      }
+      setView(next);
+    },
+    [boardId, kind, rootBoardId, storyboardId, navigate, projectId, setView],
+  );
+
+  const tabs = useMemo(() => headerViews(kind, view), [kind, view]);
+
+  // The palette offers a view only when the header shows its tab.
   useRegisterActions(
     conn?.status !== 'synced'
       ? []
       : [
-          ...(showViewTabs
-            ? VIEWS.map(({ view: target }) => ({
-                id: `view-${target}`,
-                label: t(`film.views.${target}`),
-                run: () => setView(target),
-              }))
-            : []),
+          ...tabs.map((target) => ({
+            id: `view-${target}`,
+            label: t(`film.views.${target}`),
+            run: () => chooseView(target),
+          })),
           ...(editable
             ? [{ id: 'versions', label: t('versions.title'), run: () => setVersionsOpen(true) }]
             : []),
@@ -369,26 +373,36 @@ function BoardScreen({
             </Fragment>
           ))}
         </nav>
-        {showViewTabs && (
-          <div className="view-tabs" role="tablist" aria-label={t('film.views.label')}>
-            {VIEWS.map((v) => (
-              <button
-                key={v.view}
-                type="button"
-                role="tab"
-                aria-selected={view === v.view}
-                className="view-tabs__tab"
-                onClick={() => setView(v.view)}
-              >
-                <Icon name={v.icon} size={14} />
-                {t(`film.views.${v.view}`)}
-              </button>
-            ))}
-          </div>
-        )}
+        <div
+          className="view-tabs"
+          role="tablist"
+          aria-label={t('film.views.label')}
+          onKeyDown={(e) => {
+            // Arrow keys walk the tabs; Enter and Space pick one, as on any button.
+            if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
+            const all = [...e.currentTarget.querySelectorAll<HTMLButtonElement>('[role="tab"]')];
+            const at = all.indexOf(document.activeElement as HTMLButtonElement);
+            e.preventDefault();
+            all[(at + (e.key === 'ArrowRight' ? 1 : -1) + all.length) % all.length]?.focus();
+          }}
+        >
+          {tabs.map((v) => (
+            <button
+              key={v}
+              type="button"
+              role="tab"
+              aria-selected={view === v}
+              tabIndex={view === v ? 0 : -1}
+              className="view-tabs__tab"
+              onClick={() => chooseView(v)}
+            >
+              <Icon name={viewIcon(v)} size={14} />
+              {t(`film.views.${v}`)}
+            </button>
+          ))}
+        </div>
         <span className="ink-header__spacer" />
-        {conn && <SyncStatus status={conn.status} readOnly={conn.readOnly} />}
-        {conn && <Peers provider={conn.provider} />}
+        {conn && <BoardPresence conn={conn} />}
         {editable && (
           <>
             <IconButton
@@ -409,7 +423,21 @@ function BoardScreen({
                 <ContextMenu
                   onClose={closeHeaderMenu}
                   anchor={headerMenuAnchor}
-                  items={[{ label: t('versions.title'), action: () => setVersionsOpen(true) }]}
+                  items={[
+                    { label: t('versions.title'), action: () => setVersionsOpen(true) },
+                    { divider: true },
+                    // Export is still to come; presenting lives in the Storyboard view.
+                    {
+                      label: t('board.export.action'),
+                      disabled: true,
+                      hint: t('board.export.soon'),
+                    },
+                    {
+                      label: t('board.present.action'),
+                      disabled: true,
+                      hint: t('board.present.soon'),
+                    },
+                  ]}
                 />
               )}
             </div>
@@ -436,8 +464,9 @@ function BoardScreen({
       rootBoardId,
       openBoard,
       conn,
+      tabs,
       view,
-      setView,
+      chooseView,
       detail,
       editable,
       headerMenu,
@@ -445,7 +474,6 @@ function BoardScreen({
       handleRenameCurrentBoard,
       boardId,
       projectRole,
-      showViewTabs,
     ],
   );
   useHeaderContent(header);
@@ -525,7 +553,7 @@ function BoardScreen({
         projectId={projectId}
         userId={user.id}
         readOnly={!!preview || !editable}
-        onClose={() => setView('storyboard')}
+        onClose={() => setView(kind === 'storyboard' ? 'storyboard' : 'canvas')}
       />
     ) : preview ? (
       <Canvas
@@ -581,31 +609,52 @@ function BoardCanvas(props: Omit<Parameters<typeof Canvas>[0], 'peers'>) {
 
 const MAX_AVATARS = 5;
 
-/** Who else has the board open, one avatar per person, ringed in their cursor colour. */
-function Peers({ provider }: { provider: Parameters<typeof usePeers>[0] }) {
+/**
+ * The connection and the people on the board: how many are online and when our last change
+ * was saved, who is writing in which card, and an avatar per person ringed in their colour.
+ */
+function BoardPresence({ conn }: { conn: BoardConnection }) {
   const { t } = useTranslation();
-  const people = uniquePeople(usePeers(provider));
-  if (people.length === 0) return null;
+  const people = uniquePeople(usePeers(conn.provider));
+  const writing = people.filter((p) => p.editing !== null);
   const shown = people.slice(0, MAX_AVATARS);
-  const label = (p: Peer) =>
+  const name = (p: Peer) =>
     p.readOnly ? t('board.peers.viewing', { name: p.user.name }) : p.user.name;
   return (
-    <ul className="peers" aria-label={t('board.peers.label', { count: people.length })}>
-      {shown.map((p) => (
-        <li
-          key={p.user.id}
-          className="peers__one"
-          style={{ ['--peer' as string]: p.color }}
-          title={label(p)}
-        >
-          <Avatar name={p.user.name} size={24} />
-        </li>
-      ))}
-      {people.length > shown.length && (
-        <li className="peers__more">+{people.length - shown.length}</li>
+    <>
+      <SyncStatus
+        status={conn.status}
+        readOnly={conn.readOnly}
+        pending={conn.pending}
+        savedAt={conn.savedAt}
+        online={onlineCount(people)}
+      />
+      {writing.length > 0 && <EditingPeople people={writing} store={conn.store} />}
+      {people.length > 0 && (
+        <ul className="peers" aria-label={t('board.peers.label', { count: people.length })}>
+          {shown.map((p) => (
+            <li
+              key={p.user.id}
+              className="peers__one"
+              style={{ ['--peer' as string]: p.color }}
+              title={name(p)}
+            >
+              <Avatar name={p.user.name} size={24} />
+            </li>
+          ))}
+          {people.length > shown.length && (
+            <li className="peers__more">+{people.length - shown.length}</li>
+          )}
+        </ul>
       )}
-    </ul>
+    </>
   );
+}
+
+/** Who is writing in which card; the card names come from the live board, so this mounts late. */
+function EditingPeople({ people, store }: { people: Peer[]; store: BoardConnection['store'] }) {
+  const { label } = useCardLabel(store);
+  return <EditingLine editors={editingPeople(people, label)} />;
 }
 
 /** How many boards sit somewhere under this one. */
@@ -622,16 +671,6 @@ function countBelow(boardId: string, boards: Board[] | null): number {
     stack.push(...(children.get(id) ?? []));
   }
   return n;
-}
-
-function SyncStatus({ status, readOnly }: { status: ConnectionStatus; readOnly: boolean }) {
-  const { t } = useTranslation();
-  return (
-    <span className={`sync sync--${status}`} role="status">
-      <span className="sync__dot" aria-hidden="true" />
-      {readOnly ? t('board.status.readOnly') : t(`board.status.${status}`)}
-    </span>
-  );
 }
 
 /** Path from the project root to this board; uses the board list when the detail is missing. */

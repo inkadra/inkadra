@@ -405,7 +405,12 @@
     },
     "status": {
       "connecting": "Connecting…",
-      "synced": "Synced",
+      "saved": "Saved",
+      "savedAgo_one": "Saved {{count}}s ago",
+      "savedAgo_other": "Saved {{count}}s ago",
+      "saving": "Saving…",
+      "online_one": "{{count}} online",
+      "online_other": "{{count}} online",
       "offline": "Offline · changes stay here",
       "denied": "Access denied",
       "readOnly": "Read only",
@@ -441,6 +446,19 @@
       "label_one": "{{count}} person on the board",
       "label_other": "{{count}} people on the board",
       "viewing": "{{name}} (view only)"
+    },
+    "editing": {
+      "one": "{{name}} is editing {{label}}",
+      "more_one": "+{{count}} more",
+      "more_other": "+{{count}} more"
+    },
+    "export": {
+      "action": "Export",
+      "soon": "PDF and image export are coming"
+    },
+    "present": {
+      "action": "Present",
+      "soon": "Presentation mode is coming"
     },
     "access": {
       "readOnly": "Your role changed: you can only view this board now.",

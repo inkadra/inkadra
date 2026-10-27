@@ -1,4 +1,4 @@
-import type { Board, Project } from '@inkadra/shared';
+import type { Board, BoardKind, Project } from '@inkadra/shared';
 import {
   AppShell,
   Avatar,
@@ -30,8 +30,17 @@ import {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Navigate, Outlet, useLocation, useNavigate, useSearchParams } from 'react-router';
-import { boardPath, childBoards, useProjectBoards, useSharedBoards } from '../board/boards.ts';
 import { appActions } from '../commands/app-actions.ts';
+import { childBoards, useProjectBoards, useSharedBoards } from '../board/boards.ts';
+import {
+  ALL_VIEWS,
+  askedView,
+  type BoardView,
+  defaultView,
+  storyboardOf,
+  viewDestination,
+  viewHref,
+} from '../board/views.ts';
 import { authApi } from '../lib/api.ts';
 import { HeaderContext } from '../lib/header.tsx';
 import { useSession } from '../lib/session.tsx';
@@ -158,39 +167,44 @@ export function AppLayout() {
   const current = projects?.find((p) => p.id === projectId);
   const openBoardId = boardId ?? current?.rootBoardId;
   const isStoryboard = projectBoards?.find((b) => b.id === openBoardId)?.kind === 'storyboard';
-  const storyboardBoard = projectBoards?.find((b) => b.kind === 'storyboard');
-  const view = params.get('view');
-  const currentView: 'canvas' | 'storyboard' | 'shotlist' | 'schedule' | 'review' | 'moodboard' =
-    view === 'shotlist' ||
-    view === 'storyboard' ||
-    view === 'canvas' ||
-    view === 'schedule' ||
-    view === 'review' ||
-    view === 'moodboard'
-      ? view
-      : isStoryboard
-        ? 'storyboard'
-        : 'canvas';
+  const storyboardId = storyboardOf(projectBoards);
+  const openKind: BoardKind | undefined = openBoardId
+    ? isStoryboard
+      ? 'storyboard'
+      : 'board'
+    : undefined;
+  const currentView: BoardView = askedView(params.get('view'), openKind);
 
-  const showView = (
-    v: 'canvas' | 'storyboard' | 'shotlist' | 'schedule' | 'review' | 'moodboard',
-  ) => {
+  const destination = (v: BoardView) =>
+    viewDestination(
+      v,
+      { boardId: openBoardId, kind: openKind, rootBoardId: current?.rootBoardId },
+      storyboardId,
+    );
+
+  const hrefFor = (v: BoardView) => {
+    if (!projectId) return pathname;
+    return viewHref(projectId, destination(v), {
+      boardId: openBoardId ?? '',
+      rootBoardId: current?.rootBoardId,
+      kind: openKind,
+    });
+  };
+
+  // The header switcher, the rail and the sidebar all open a view the same way.
+  const showView = (v: BoardView) => {
     if (!projectId) return;
     setDrawerOpen(false);
-    if (v === 'storyboard' && !isStoryboard && storyboardBoard && current?.rootBoardId) {
-      navigate(boardPath(projectId, storyboardBoard.id, current.rootBoardId));
+    const target = destination(v);
+    if (target.boardId) {
+      navigate(hrefFor(v));
       return;
     }
     setParams(
       (p) => {
         const next = new URLSearchParams(p);
-        if (isStoryboard) {
-          if (v === 'storyboard') next.delete('view');
-          else next.set('view', v);
-        } else {
-          if (v === 'canvas') next.delete('view');
-          else next.set('view', v);
-        }
+        if (v === defaultView(openKind)) next.delete('view');
+        else next.set('view', v);
         return next;
       },
       { replace: true },
@@ -223,7 +237,7 @@ export function AppLayout() {
         disabled={!projectId}
         active={!!projectId && currentView === 'storyboard'}
         onClick={() => {
-          showView('storyboard');
+          if (projectId) showView('storyboard');
         }}
       />
       <RailButton
@@ -232,14 +246,7 @@ export function AppLayout() {
         disabled={!projectId}
         active={!!projectId && currentView === 'shotlist'}
         onClick={() => {
-          if (!projectId) return;
-          if (!isStoryboard && storyboardBoard && current?.rootBoardId) {
-            navigate(
-              `${boardPath(projectId, storyboardBoard.id, current.rootBoardId)}?view=shotlist`,
-            );
-          } else {
-            showView('shotlist');
-          }
+          if (projectId) showView('shotlist');
         }}
       />
       <RailButton
@@ -248,14 +255,7 @@ export function AppLayout() {
         disabled={!projectId}
         active={!!projectId && currentView === 'schedule'}
         onClick={() => {
-          if (!projectId) return;
-          if (!isStoryboard && storyboardBoard && current?.rootBoardId) {
-            navigate(
-              `${boardPath(projectId, storyboardBoard.id, current.rootBoardId)}?view=schedule`,
-            );
-          } else {
-            showView('schedule');
-          }
+          if (projectId) showView('schedule');
         }}
       />
       <RailButton
@@ -264,14 +264,7 @@ export function AppLayout() {
         disabled={!projectId}
         active={!!projectId && currentView === 'review'}
         onClick={() => {
-          if (!projectId) return;
-          if (!isStoryboard && storyboardBoard && current?.rootBoardId) {
-            navigate(
-              `${boardPath(projectId, storyboardBoard.id, current.rootBoardId)}?view=review`,
-            );
-          } else {
-            showView('review');
-          }
+          if (projectId) showView('review');
         }}
       />
       <RailSeparator />
@@ -401,7 +394,7 @@ export function AppLayout() {
                 icon="storyboard"
                 label={t('nav.storyboard')}
                 active={currentView === 'storyboard'}
-                href={`${pathname}?view=storyboard`}
+                href={hrefFor('storyboard')}
                 onClick={(e) => {
                   e.preventDefault();
                   showView('storyboard');
@@ -412,7 +405,7 @@ export function AppLayout() {
                 icon="shotlist"
                 label={t('nav.shotlist')}
                 active={currentView === 'shotlist'}
-                href={`${pathname}?view=shotlist`}
+                href={hrefFor('shotlist')}
                 onClick={(e) => {
                   e.preventDefault();
                   showView('shotlist');
@@ -423,7 +416,7 @@ export function AppLayout() {
                 icon="calendar"
                 label={t('nav.schedule')}
                 active={currentView === 'schedule'}
-                href={`${pathname}?view=schedule`}
+                href={hrefFor('schedule')}
                 onClick={(e) => {
                   e.preventDefault();
                   showView('schedule');
@@ -434,7 +427,7 @@ export function AppLayout() {
                 icon="people"
                 label={t('nav.clients')}
                 active={currentView === 'review'}
-                href={`${pathname}?view=review`}
+                href={hrefFor('review')}
                 onClick={(e) => {
                   e.preventDefault();
                   showView('review');
@@ -445,7 +438,7 @@ export function AppLayout() {
                 icon="image"
                 label={t('nav.moodboard')}
                 active={currentView === 'moodboard'}
-                href={`${pathname}?view=moodboard`}
+                href={hrefFor('moodboard')}
                 onClick={(e) => {
                   e.preventDefault();
                   showView('moodboard');
@@ -531,15 +524,13 @@ export function AppLayout() {
           className="mobile-view-switcher"
           aria-label={t('film.views.label')}
           value={currentView}
-          onChange={(e) => showView(e.target.value as typeof currentView)}
+          onChange={(e) => showView(e.target.value as BoardView)}
         >
-          {(['canvas', 'storyboard', 'shotlist', 'schedule', 'review', 'moodboard'] as const).map(
-            (v) => (
-              <option key={v} value={v}>
-                {t(`film.views.${v}`)}
-              </option>
-            ),
-          )}
+          {ALL_VIEWS.map((v) => (
+            <option key={v} value={v}>
+              {t(`film.views.${v}`)}
+            </option>
+          ))}
         </select>
       )}
       <NotificationBell unread={unread} onCount={refreshUnread} />

@@ -1,0 +1,144 @@
+import { renderToStaticMarkup } from 'react-dom/server';
+import { describe, expect, it, vi } from 'vitest';
+import {
+  EditingLine,
+  editingPeople,
+  onlineCount,
+  SyncStatus,
+  syncSummary,
+} from './header-status.tsx';
+import type { Peer } from './presence.ts';
+
+vi.mock('react-i18next', () => ({
+  useTranslation: () => ({
+    t: (key: string, values?: Record<string, unknown>) =>
+      values
+        ? `${key}(${Object.entries(values)
+            .map(([k, v]) => `${k}=${v}`)
+            .join(',')})`
+        : key,
+  }),
+}));
+
+const peer = (id: string, name: string, editing: string | null = null, readOnly = false): Peer => ({
+  clientId: 1,
+  color: 'var(--ink-tag-blue)',
+  user: { id, name, image: null },
+  readOnly,
+  cursor: null,
+  selection: [],
+  editing,
+});
+
+describe('sync summary', () => {
+  it('says when the last change was saved', () => {
+    const now = 1_000_000;
+    expect(
+      syncSummary({ status: 'synced', readOnly: false, pending: 0, savedAt: now - 12_000 }, now),
+    ).toEqual({ kind: 'saved', seconds: 12 });
+  });
+
+  it('says it is saving while the server has not confirmed', () => {
+    expect(
+      syncSummary({ status: 'synced', readOnly: false, pending: 3, savedAt: 10 }, 20_000),
+    ).toEqual({ kind: 'saving' });
+  });
+
+  it('is saved with no timer before the first change of the session', () => {
+    expect(
+      syncSummary({ status: 'synced', readOnly: false, pending: 0, savedAt: null }, 20_000),
+    ).toEqual({ kind: 'saved', seconds: null });
+  });
+
+  it('never counts back from a clock that is behind', () => {
+    expect(
+      syncSummary({ status: 'synced', readOnly: false, pending: 0, savedAt: 30_000 }, 20_000),
+    ).toEqual({ kind: 'saved', seconds: 0 });
+  });
+
+  it('reports the connection when it is not synced, and read-only before anything', () => {
+    expect(syncSummary({ status: 'offline', readOnly: false, pending: 2, savedAt: 1 }, 2)).toEqual({
+      kind: 'offline',
+    });
+    expect(
+      syncSummary({ status: 'connecting', readOnly: false, pending: 0, savedAt: null }, 2),
+    ).toEqual({ kind: 'connecting' });
+    expect(
+      syncSummary({ status: 'synced', readOnly: true, pending: 0, savedAt: 5 }, 9_000),
+    ).toEqual({
+      kind: 'readOnly',
+    });
+  });
+});
+
+describe('people on the board', () => {
+  it('counts each person once, this tab included', () => {
+    expect(onlineCount([])).toBe(1);
+    expect(onlineCount([peer('a', 'Giulia'), peer('a', 'Giulia'), peer('b', 'Anna')])).toBe(3);
+  });
+
+  it('tells who is writing in which card, one line per person', () => {
+    const label = (id: string) => `card:${id}`;
+    const people = [
+      peer('b', 'Anna', 'frame-1'),
+      peer('a', 'Giulia', 'note-1'),
+      peer('c', 'Marco', null),
+    ];
+    expect(editingPeople(people, label)).toEqual([
+      { id: 'b', name: 'Anna', label: 'card:frame-1', color: 'var(--ink-tag-blue)' },
+      { id: 'a', name: 'Giulia', label: 'card:note-1', color: 'var(--ink-tag-blue)' },
+    ]);
+    expect(editingPeople([peer('a', 'Giulia'), peer('b', 'Anna', null)], label)).toEqual([]);
+  });
+});
+
+describe('header status', () => {
+  it('shows the online count next to what the connection is doing', () => {
+    const html = renderToStaticMarkup(
+      <SyncStatus
+        status="synced"
+        readOnly={false}
+        pending={0}
+        savedAt={Date.now() - 12_000}
+        online={3}
+      />,
+    );
+    expect(html).toContain('board.status.online(count=3)');
+    expect(html).toContain('board.status.savedAgo(count=12)');
+    expect(html).toContain('sync--synced');
+  });
+
+  it('says saving, and reads as saved right after a change', () => {
+    const saving = renderToStaticMarkup(
+      <SyncStatus status="synced" readOnly={false} pending={2} savedAt={null} online={2} />,
+    );
+    expect(saving).toContain('board.status.saving');
+    expect(saving).toContain('sync--saving');
+
+    const fresh = renderToStaticMarkup(
+      <SyncStatus status="synced" readOnly={false} pending={0} savedAt={Date.now()} online={2} />,
+    );
+    expect(fresh).toContain('board.status.saved');
+  });
+
+  it('says who is online only while presence is live', () => {
+    const html = renderToStaticMarkup(
+      <SyncStatus status="offline" readOnly={false} pending={1} savedAt={null} online={4} />,
+    );
+    expect(html).toContain('board.status.offline');
+    expect(html).not.toContain('board.status.online');
+  });
+
+  it('names the card someone has open, and counts the others', () => {
+    const editors = [
+      { id: 'a', name: 'Giulia', label: 'Logline', color: 'var(--ink-tag-blue)' },
+      { id: 'b', name: 'Anna', label: 'Script', color: 'var(--ink-tag-orange)' },
+    ];
+    const html = renderToStaticMarkup(<EditingLine editors={editors} />);
+    expect(html).toContain('board.editing.one(name=Giulia,label=Logline)');
+    expect(html).toContain('board.editing.more(count=1)');
+    expect(html).toContain('title="board.editing.one(name=Giulia,label=Logline)');
+    expect(html).toContain('board.editing.one(name=Anna,label=Script)');
+    expect(renderToStaticMarkup(<EditingLine editors={[]} />)).toBe('');
+  });
+});
