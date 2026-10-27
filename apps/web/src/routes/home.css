@@ -320,69 +320,64 @@ a.home__activity-item:hover {
 .home__preview {
   position: relative;
   display: flex;
-  flex-direction: column;
   overflow: hidden;
   background: var(--ink-bg-canvas);
   background-image: none;
 }
-.home__preview-images {
-  display: flex;
+.home__preview > img {
   position: absolute;
   inset: 0;
 }
-.home__preview-images img {
-  min-width: 0;
-  flex: 1;
-  width: 0;
-  height: 100%;
-  object-fit: cover;
+/* Without a cover image: the project colour, faded into the card surface. */
+.home__preview.is-tinted {
+  --tint: var(--ink-text-muted);
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--tint) 22%, var(--ink-surface-1)),
+    var(--ink-surface-1) 75%
+  );
 }
-.home__preview-text {
-  position: relative;
-  display: grid;
-  gap: 6px;
-  /* Rows keep their text height; the cover clips the rows that do not fit. */
-  grid-auto-rows: max-content;
-  align-content: start;
-  padding: 12px;
-  overflow: hidden;
+.home__preview[data-tint="blue"] {
+  --tint: var(--ink-tag-blue);
 }
-.home__preview-text > span {
-  background: var(--ink-surface-1);
-  color: var(--ink-text-primary);
-  padding: 6px;
-  border-radius: 4px;
-  font-size: 11px;
-  max-height: 3em;
-  overflow: hidden;
+.home__preview[data-tint="orange"] {
+  --tint: var(--ink-tag-orange);
 }
-.home__preview-summary {
-  position: relative;
-  display: flex;
-  gap: 6px;
-  align-items: center;
-  margin-top: auto;
-  padding: 6px 10px;
-  background: var(--ink-surface-1);
-  color: var(--ink-text-primary);
-  font-size: 11px;
+.home__preview[data-tint="purple"] {
+  --tint: var(--ink-tag-purple);
+}
+.home__preview[data-tint="green"] {
+  --tint: var(--ink-tag-green);
 }
 .home__preview-glyph {
   position: absolute;
-  inset: 0;
+  left: 12px;
+  bottom: 12px;
   display: grid;
   place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--tint) 24%, var(--ink-surface-1));
+  color: var(--tint);
 }
-
-.home__preview.home__cover {
-  display: flex;
+.home__preview-glyph svg {
+  width: 18px;
+  height: 18px;
 }
-.home__preview .home__preview-images img {
-  width: 0;
-}
-.home__preview-drawing {
+.home__preview-summary {
   position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
+  right: 8px;
+  bottom: 8px;
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-size: 11px;
+  color: var(--ink-text-secondary);
+}
+.home__preview > img ~ .home__preview-summary {
+  left: 8px;
+  right: auto;
+  color: #ededed;
+  background: rgb(14 14 16 / 0.72);
+  backdrop-filter: blur(4px);
 }

@@ -19,19 +19,34 @@ afterEach(() => {
   root = createRoot(host);
   vi.clearAllMocks();
 });
-it('shows actual excerpts, media and drawing instead of an empty cover', async () => {
+it('shows one cover image and never overlays board text or drawings', async () => {
   vi.mocked(api.get).mockResolvedValue({
-    assetIds: ['a'],
-    excerpts: ['Location notes <script>'],
+    assetIds: ['a', 'b'],
+    excerpts: ['Location notes'],
     elementCount: 3,
     drawing: [{ path: 'M0 0 L4096 4096', color: '#FF0000', width: 20 }],
   });
   await act(async () => root.render(<BoardPreview boardId="b" />));
-  expect(host.textContent).toContain('Location notes <script>');
-  expect(host.querySelector('script')).toBeNull();
+  expect(host.querySelectorAll('img')).toHaveLength(1);
   expect(host.querySelector('img')?.src).toContain('/image');
-  expect(host.querySelector('path')?.getAttribute('d')).toBe('M0 0 L4096 4096');
+  expect(host.textContent).not.toContain('Location notes');
+  expect(host.querySelector('path')).toBeNull();
+  expect(host.textContent).toContain('home.preview.cards');
   expect(api.get).toHaveBeenCalledWith('/boards/b/preview', expect.any(AbortSignal));
+});
+it('falls back to the project tint when the cover fails to load', async () => {
+  vi.mocked(api.get).mockResolvedValue({
+    assetIds: ['a'],
+    excerpts: [],
+    elementCount: 1,
+    drawing: [],
+  });
+  const project = { icon: { shape: 'circle', color: 'orange', emoji: null } } as Project;
+  await act(async () => root.render(<BoardPreview boardId="b" project={project} />));
+  await act(async () => host.querySelector('img')?.dispatchEvent(new Event('error')));
+  expect(host.querySelector('img')).toBeNull();
+  expect(host.querySelector('.home__preview')?.getAttribute('data-tint')).toBe('orange');
+  expect(host.querySelector('.home__preview-glyph svg')).not.toBeNull();
 });
 it('distinguishes an empty board from a failed preview', async () => {
   vi.mocked(api.get).mockResolvedValue({
