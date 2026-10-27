@@ -464,7 +464,7 @@ describe('MediaViewer gallery enhancements', () => {
       height: 1080,
       palette: ['#ff0000', '#00ff00'],
       variants: [],
-    };
+    } as unknown as import('@inkadra/shared').Asset;
   });
 
   afterEach(() => {
@@ -480,7 +480,17 @@ describe('MediaViewer gallery enhancements', () => {
     await render(
       <MediaViewer
         store={{} as import('./store.ts').BoardStore}
-        element={{ id: 'el-1', type: 'image', x: 0, y: 0, w: 100, h: 100, assetId: 'img-1' }}
+        element={
+          {
+            id: 'el-1',
+            type: 'image',
+            x: 0,
+            y: 0,
+            w: 100,
+            h: 100,
+            assetId: 'img-1',
+          } as unknown as Extract<import('@inkadra/doc-schema').Element, { type: 'image' }>
+        }
         projectId="proj-01"
         userId="user-01"
         readOnly={false}
@@ -533,7 +543,17 @@ describe('MediaViewer gallery enhancements', () => {
     await render(
       <MediaViewer
         store={{} as import('./store.ts').BoardStore}
-        element={{ id: 'el-1', type: 'image', x: 0, y: 0, w: 100, h: 100, assetId: 'img-1' }}
+        element={
+          {
+            id: 'el-1',
+            type: 'image',
+            x: 0,
+            y: 0,
+            w: 100,
+            h: 100,
+            assetId: 'img-1',
+          } as unknown as Extract<import('@inkadra/doc-schema').Element, { type: 'image' }>
+        }
         projectId="proj-01"
         userId="user-01"
         readOnly={false}
