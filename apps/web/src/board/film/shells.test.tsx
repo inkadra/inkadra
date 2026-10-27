@@ -137,6 +137,33 @@ it('shows live note content without an editor for read-only access', async () =>
   expect(host.textContent).toContain('shells.noteWords:4');
 });
 
+it('restores the opener focus when the sheet unmounts', async () => {
+  const { doc, store } = board();
+  const note = createElement(doc, 'note', { x: 0, y: 0 }, {}, { userId: null });
+  const opener = document.createElement('button');
+  document.body.append(opener);
+  disposals.push(() => opener.remove());
+  opener.focus();
+  vi.spyOn(HTMLDialogElement.prototype, 'showModal').mockImplementation(function (
+    this: HTMLDialogElement,
+  ) {
+    this.open = true;
+    this.querySelector('button')?.focus();
+  });
+  await mount(
+    <NoteSideSheet
+      noteId={note.id}
+      store={store}
+      readOnly
+      onClose={vi.fn()}
+      onEditOnCanvas={vi.fn()}
+    />,
+  );
+  expect(document.activeElement).not.toBe(opener);
+  disposals.pop()?.();
+  expect(document.activeElement).toBe(opener);
+});
+
 it('keeps review rounds unavailable and shows live frames while loading', async () => {
   const { doc, store } = board();
   createElement(
