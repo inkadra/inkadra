@@ -25,6 +25,7 @@ const sampleAsset: Asset = {
   width: null,
   height: null,
   durationMs: null,
+  animated: false,
   status: 'ready',
   url: '/api/v1/assets/asset-01/file',
   variants: [],

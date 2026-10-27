@@ -370,7 +370,7 @@ describe.skipIf(!url)('projects, boards, uploads and assets (needs DATABASE_URL)
     };
 
     const ready = await upload(gif, 'loop.gif', 'image/gif');
-    expect(ready).toMatchObject({ status: 'ready', mime: 'image/gif' });
+    expect(ready).toMatchObject({ status: 'ready', mime: 'image/gif', animated: true });
     const poster = ready.variants[0].url as string;
     const moving = await call('viewer', 'GET', `${poster}?animated=1`);
     expect(moving.statusCode).toBe(200);
@@ -395,6 +395,7 @@ describe.skipIf(!url)('projects, boards, uploads and assets (needs DATABASE_URL)
       .png()
       .toBuffer();
     const flat = await upload(png, 'flat.png', 'image/png');
+    expect(flat).toMatchObject({ status: 'ready', mime: 'image/png', animated: false });
     expect((await call('viewer', 'GET', `${flat.variants[0].url}?animated=1`)).statusCode).toBe(
       404,
     );

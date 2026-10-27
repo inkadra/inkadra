@@ -48,6 +48,7 @@ const videoAsset: Asset = {
   width: 3840,
   height: 2160,
   durationMs: 45000,
+  animated: false,
   status: 'ready',
   url: '/api/v1/assets/video-prores/file',
   variants: [
@@ -226,6 +227,7 @@ describe('MediaViewer pictures', () => {
     mime: 'image/gif',
     filename: 'loop.gif',
     durationMs: null,
+    animated: true,
     url: '/api/v1/assets/gif-01/file',
     variants: [
       { size: '256', width: 256, height: 160, url: '/api/v1/assets/gif-01/variants/256' },
@@ -310,6 +312,7 @@ describe('mounted viewer error events', () => {
     width: videoAsset.width,
     height: videoAsset.height,
     durationMs: videoAsset.durationMs,
+    animated: videoAsset.animated,
     variants: videoAsset.variants,
     downloadUrl: '/api/v1/guest/links/link/assets/video-prores/file',
   };

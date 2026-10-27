@@ -2259,6 +2259,10 @@
               "pattern": "^#[0-9A-F]{6}$"
             }
           },
+          "animated": {
+            "type": "boolean",
+            "description": "True when the source moves and the worker wrote moving thumbnails beside the posters: add `?animated=1` to a variant URL up to 1024 px wide to play it. False for still pictures, for videos, and for GIFs past the worker limits."
+          },
           "sourceUrl": {
             "type": [
               "string",
@@ -2288,6 +2292,7 @@
           "variants",
           "exif",
           "palette",
+          "animated",
           "sourceUrl",
           "createdAt"
         ]
@@ -4008,6 +4013,10 @@
               "null"
             ]
           },
+          "animated": {
+            "type": "boolean",
+            "description": "As `Asset.animated`: add `?animated=1` to a variant URL up to 1024 px wide to play the moving copy of a GIF or animated WebP."
+          },
           "variants": {
             "type": "array",
             "items": {
@@ -4032,6 +4041,7 @@
           "width",
           "height",
           "durationMs",
+          "animated",
           "variants",
           "downloadUrl"
         ]
@@ -8839,6 +8849,7 @@
           }
         ],
         "summary": "A WebP thumbnail, without any metadata of the original.",
+        "description": "The poster by default. With `?animated=1`, the moving copy of a GIF or an animated WebP, when `Asset.animated` says the worker wrote one: 404 otherwise.",
         "parameters": [
           {
             "schema": {
@@ -8863,6 +8874,19 @@
             "required": true,
             "name": "size",
             "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "1"
+              ],
+              "description": "Ask for the moving copy of the thumbnail, when the asset has one (`Asset.animated`). The poster comes back when the flag is missing."
+            },
+            "required": false,
+            "description": "Ask for the moving copy of the thumbnail, when the asset has one (`Asset.animated`). The poster comes back when the flag is missing.",
+            "name": "animated",
+            "in": "query"
           }
         ],
         "responses": {
@@ -11725,7 +11749,7 @@
           }
         ],
         "summary": "A WebP thumbnail of a file shown on one of the boards of the link.",
-        "description": "Only for files referenced by an element visible to guests on a board of the link, or the cover of such a board; checked on every request.",
+        "description": "Only for files referenced by an element visible to guests on a board of the link, or the cover of such a board; checked on every request. `?animated=1` asks for the moving copy of a GIF or animated WebP, when `GuestAsset.animated` says there is one.",
         "parameters": [
           {
             "schema": {
@@ -11760,6 +11784,19 @@
             "required": true,
             "name": "size",
             "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "1"
+              ],
+              "description": "Ask for the moving copy of the thumbnail, when the asset has one (`Asset.animated`). The poster comes back when the flag is missing."
+            },
+            "required": false,
+            "description": "Ask for the moving copy of the thumbnail, when the asset has one (`Asset.animated`). The poster comes back when the flag is missing.",
+            "name": "animated",
+            "in": "query"
           }
         ],
         "responses": {

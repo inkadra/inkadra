@@ -1314,6 +1314,7 @@ describe.skipIf(!url)('guest share links (needs DATABASE_URL)', () => {
       width: 100,
       height: 80,
       durationMs: null,
+      animated: false,
       variants: [
         {
           size: '256',

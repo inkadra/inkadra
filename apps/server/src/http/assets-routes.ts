@@ -5,6 +5,7 @@ import {
   CAPABILITY_ROLE,
   Id,
   VariantParams,
+  VariantQuery,
   z,
 } from '@inkadra/shared';
 import { asc, eq } from 'drizzle-orm';
@@ -26,10 +27,6 @@ interface Deps {
 
 const AssetParams = z.object({ assetId: Id });
 const FileQuery = z.object({ download: z.enum(['1']).optional() });
-const VariantQuery = z.object({
-  /** Asks for the moving copy of the thumbnail, when the source moves. */
-  animated: z.enum(['1']).optional(),
-});
 
 const v1 = (path: string) => `${API_PREFIX}${path}`;
 export const fileUrl = (assetId: string) => v1(`/assets/${assetId}/file`);
@@ -73,6 +70,7 @@ export function toAsset(
         : [],
     exif: row.exif ?? null,
     palette: row.palette ?? null,
+    animated: row.animated,
     sourceUrl: row.sourceUrl,
     createdAt: iso(row.createdAt),
   };

@@ -16,6 +16,7 @@ import {
   type ShareLinkPreview,
   ThumbnailSize,
   UpdateGuestSession,
+  VariantQuery,
   z,
 } from '@inkadra/shared';
 import { verifyPassword } from 'better-auth/crypto';
@@ -81,7 +82,6 @@ const BoardParams = z.object({ linkId: Id, boardId: Id });
 const ElementParams = BoardParams.extend({ elementId: ElementRef });
 const AssetParams = z.object({ linkId: Id, assetId: Id });
 const VariantParams = AssetParams.extend({ size: ThumbnailSize });
-const VariantQuery = z.object({ animated: z.enum(['1']).optional() });
 
 type GuestEvent =
   | GuestCommentEvent
@@ -242,6 +242,7 @@ export async function registerGuestRoutes(app: FastifyInstance, deps: Deps) {
         width: row.width,
         height: row.height,
         durationMs: row.durationMs,
+        animated: row.animated,
         variants:
           row.status === 'ready'
             ? variants
