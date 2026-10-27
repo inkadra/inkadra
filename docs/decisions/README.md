@@ -28,3 +28,4 @@ in order. An accepted decision is never rewritten: a later one supersedes it.
 | [0021](0021-templates-on-existing-boards.md)  | Templates on existing boards; Storyboard creates a real storyboard board               |
 | [0022](0022-shooting-schedule.md)             | Shooting schedules in Postgres, storyboard references by id                            |
 | [0023](0023-home-overview.md)                 | Home overview from two read-only lists                                                 |
+| [0026](0026-snapshot-trash.md)                | Restore individual elements from saved versions                                        |

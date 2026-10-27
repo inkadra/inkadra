@@ -446,6 +446,8 @@ function BoardScreen({
     <VersionsDialog
       open={versionsOpen}
       provider={conn.provider}
+      store={conn.store}
+      editable={editable}
       boardId={boardId}
       onClose={() => setVersionsOpen(false)}
       preview={preview}
