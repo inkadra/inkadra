@@ -30,7 +30,8 @@ export function Settings() {
   const { t } = useTranslation();
   const [params] = useSearchParams();
   const page = settingsSection('/settings', params.toString());
-  const section = page.id;
+  // Preserve section dispatch for independent settings extensions (for example PR170).
+  const section = params.get('section') ?? 'account';
   const { user } = useSession();
   const { preference, choose } = useTheme();
   const [accounts, setAccounts] = useState<Array<{ id: string; providerId: string }> | null>(null);
