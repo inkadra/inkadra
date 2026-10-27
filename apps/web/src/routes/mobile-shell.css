@@ -228,7 +228,8 @@
   .ink-header__search-hint {
     display: none;
   }
-  .story__mode {
+  .story__mode,
+  .story__scene .ink-iconbtn {
     min-height: 44px;
     min-width: 44px;
   }
