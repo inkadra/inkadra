@@ -275,7 +275,12 @@ export function Canvas({
     overlayRef.current = o;
     setOverlayState(o);
   }, []);
-  const [menu, setMenu] = useState<{ x: number; y: number; at: Point } | null>(null);
+  const [menu, setMenu] = useState<{
+    x: number;
+    y: number;
+    at: Point;
+    fromToolbar?: boolean;
+  } | null>(null);
   const [palette, setPalette] = useState(false);
   const [linkDraft, setLinkDraft] = useState<{ at: Point } | null>(null);
   const [unsortedOpen, setUnsortedOpen] = useState(false);
@@ -1479,7 +1484,7 @@ export function Canvas({
     }
     const locked = selectedEls.some((e) => e.locked);
     const single = selectedEls.length === 1 ? selectedEls[0] : undefined;
-    return [
+    const items: MenuItem[] = [
       ...(single && (single.type === 'board' || single.type === 'link')
         ? [{ label: t('board.menu.open'), action: () => openElement(single) }]
         : []),
@@ -1511,7 +1516,13 @@ export function Canvas({
           ]
         : []),
       ...(single && single.type !== 'arrow' && !preview
-        ? [{ label: t('comments.open'), action: () => openComments({ elementId: single.id }) }]
+        ? [
+            {
+              toolbar: true,
+              label: t('comments.open'),
+              action: () => openComments({ elementId: single.id }),
+            },
+          ]
         : []),
       ...(readOnly
         ? []
@@ -1519,6 +1530,7 @@ export function Canvas({
             ...(selectedEls.some((e) => e.type !== 'arrow')
               ? [
                   {
+                    toolbar: true,
                     label: t(
                       selectedEls.filter((e) => e.type !== 'arrow').every((e) => e.guestHidden)
                         ? 'guestVisibility.show'
@@ -1529,11 +1541,13 @@ export function Canvas({
                 ]
               : []),
             {
+              toolbar: true,
               label: t('board.menu.tags'),
               action: () => setTagging({ x: menu.x, y: menu.y, ids: [...selection] }),
             },
-            { label: t('board.menu.duplicate'), shortcut: '⌘D', action: duplicate },
+            { toolbar: true, label: t('board.menu.duplicate'), shortcut: '⌘D', action: duplicate },
             {
+              toolbar: true,
               label: locked ? t('board.menu.unlock') : t('board.menu.lock'),
               shortcut: '⌘L',
               action: toggleLock,
@@ -1552,10 +1566,19 @@ export function Canvas({
               label: t('board.menu.toUnsorted'),
               action: () => moveToUnsorted(doc, [...selection], LOCAL),
             },
-            { divider: true },
-            { label: t('board.menu.delete'), shortcut: '⌫', danger: true, action: removeSelection },
+            ...(menu.fromToolbar ? [] : [{ divider: true as const }]),
+            {
+              toolbar: true,
+              label: t('board.menu.delete'),
+              shortcut: '⌫',
+              danger: true,
+              action: removeSelection,
+            },
           ]),
-    ] as MenuItem[];
+    ];
+    // These flags mark actions actually rendered by ContextBar for the same selection.
+    // Standalone right-click menus keep the complete permission-filtered action list.
+    return menu.fromToolbar ? items.filter((item) => !('toolbar' in item && item.toolbar)) : items;
   }, [
     menu,
     selection,
@@ -1749,7 +1772,9 @@ export function Canvas({
             onGuestHidden={() => toggleGuestHidden(store, [...selection])}
             onDelete={removeSelection}
             onDuplicate={duplicate}
-            onMore={(x, y) => setMenu({ x, y, at: screenToWorld(vp.current, { x, y }) })}
+            onMore={(x, y) =>
+              setMenu({ x, y, at: screenToWorld(vp.current, { x, y }), fromToolbar: true })
+            }
             onColor={(color) => {
               for (const el of selectedEls) {
                 if (el.type === 'note') updateElement(doc, el.id, { color }, LOCAL);
