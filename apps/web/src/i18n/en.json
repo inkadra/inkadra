@@ -1510,5 +1510,121 @@
       "changes_requested": "Changes requested"
     },
     "liveOnly": "Reviews belong to the live board. Close the version preview to read and respond."
+  },
+  "projectsPage": {
+    "counts": "{{active}} active · {{archived}} archived",
+    "search": "Search projects",
+    "status": "Status",
+    "all": "All",
+    "active": "Active",
+    "archived": "Archived",
+    "people": "People",
+    "sort": "Sort",
+    "sorts": {
+      "activity": "Last activity",
+      "name": "Name",
+      "created": "Creation date"
+    },
+    "grid": "Grid",
+    "list": "List",
+    "retry": "Retry",
+    "empty": "No projects",
+    "emptyBody": "Create a project or change the search filters.",
+    "storage": "Original files on this instance: {{bytes}} bytes. Excludes previews and database.",
+    "storageError": "Storage usage is unavailable.",
+    "openNamed": "Open {{name}}",
+    "open": "Open",
+    "pin": "Pin to top",
+    "unpin": "Unpin",
+    "archive": "Archive",
+    "unarchive": "Restore",
+    "noDates": "Dates to be confirmed",
+    "boards_one": "{{count}} board",
+    "boards_other": "{{count}} boards"
+  },
+  "onboarding": {
+    "title": "Your first project",
+    "subtitle": "Choose a starting point and invite your team. You can finish the details later.",
+    "type": "Project type",
+    "types": {
+      "short_film": "Short film",
+      "commercial": "Commercial",
+      "music_video": "Music video",
+      "photo_shoot": "Photo shoot",
+      "documentary": "Documentary"
+    },
+    "start": "Shooting start · optional",
+    "end": "Shooting end · optional",
+    "template": "Start from a template",
+    "templates": {
+      "production": {
+        "name": "Film pre-production",
+        "body": "Brief, locations, casting, moodboard and storyboard with a shot list view."
+      },
+      "moodboard": {
+        "name": "Moodboard",
+        "body": "References, light, locations and palette."
+      },
+      "storyboard": {
+        "name": "Storyboard",
+        "body": "One scene and three frames shared with the shot list."
+      },
+      "shotlist": {
+        "name": "Shot list",
+        "body": "The same storyboard frames, in a table view."
+      },
+      "pitch": {
+        "name": "Client pitch",
+        "body": "A presentation board. Create a guest link from the Share panel."
+      },
+      "blank": {
+        "name": "Blank",
+        "body": "A free canvas."
+      }
+    },
+    "boards": {
+      "brief": "Brief",
+      "locations": "Locations",
+      "casting": "Casting",
+      "moodboard": "Moodboard",
+      "storyboard": "Storyboard and shot list",
+      "shotlist": "Shot list and storyboard",
+      "pitch": "Client pitch"
+    },
+    "invite": "Invite your team · optional",
+    "email": "Email",
+    "role": "Role",
+    "add": "Add",
+    "remove": "Remove",
+    "removeNamed": "Remove {{email}}",
+    "noSmtp": "Invitations work without SMTP: copy the links and send them yourself.",
+    "invalidEmail": "Enter a valid email address that is not already in the list.",
+    "invalidDates": "The shooting end must follow the start.",
+    "partialError": "The project already exists. Retry to finish missing boards and invitations, or skip and open it from Projects.",
+    "creating": "Creating and syncing boards…",
+    "summary": "{{boards}} boards and {{invitations}} invitations will be created",
+    "skip": "Skip for now",
+    "inviteResults": "Created invitations",
+    "sent": "Email sent",
+    "copyLink": "Copy the link and send it to your team",
+    "linkFor": "Invitation link for {{email}}",
+    "instanceTitle": "Set up your instance",
+    "adminOnly": "Visible to administrators only.",
+    "checkProgress": "{{done}} of {{total}} ready",
+    "checks": {
+      "providers": "Sign-in",
+      "storage": "Storage",
+      "smtp": "Email and invitations",
+      "domain": "Domain, HTTPS and WebSocket"
+    },
+    "ready": "Ready",
+    "needsSetup": "Needs setup",
+    "tipsTitle": "Good to know",
+    "tips": {
+      "search": "⌘K / Ctrl+K searches projects, boards and commands.",
+      "drag": "Drag files and links onto the canvas.",
+      "phone": "Save to Unsorted from your phone."
+    },
+    "settingsPending": "Settings, instance setup incomplete"
   }
 }

@@ -1,0 +1,246 @@
+.projects-page {
+  max-width: 1600px;
+  padding: 28px 32px;
+  margin: 0 auto;
+}
+.projects-page h1,
+.onboarding-page h1 {
+  margin: 0 0 8px;
+  font-size: 24px;
+}
+.projects-page__head,
+.project-card__title,
+.project-card__members {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.projects-page__filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: end;
+  margin: 24px 0;
+}
+.projects-page__filters label,
+.project-setup__invite-entry label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 12px;
+}
+.projects-page__view {
+  display: flex;
+  gap: 4px;
+  margin-left: auto;
+}
+.projects-page__items {
+  display: grid;
+  gap: 20px;
+}
+.projects-page__items--grid {
+  grid-template-columns: repeat(auto-fill, minmax(285px, 1fr));
+}
+.projects-page__items--list {
+  grid-template-columns: 1fr;
+}
+.project-card {
+  overflow: hidden;
+}
+.project-card__cover {
+  height: 150px;
+  display: grid;
+  place-items: center;
+  background: var(--ink-bg-panel);
+}
+.project-card__cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.project-card__body {
+  padding: 16px;
+}
+.project-card__title h2 {
+  font-size: 16px;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.project-card__title a {
+  color: inherit;
+  text-decoration: none;
+}
+.project-card__type {
+  font-size: 11px;
+  padding: 4px 8px;
+  border-radius: 20px;
+  border: 1px solid var(--ink-border-default);
+}
+.project-card__body p,
+.project-card__members {
+  font-size: 12px;
+}
+.project-card__members {
+  justify-content: start;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.project-card__members time {
+  margin-left: auto;
+}
+.project-card__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 16px;
+}
+.projects-page__empty {
+  text-align: center;
+  padding: 60px 20px;
+}
+.projects-page__storage {
+  margin-top: 28px;
+  font-size: 12px;
+}
+.onboarding-page {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(240px, 1fr);
+  gap: 24px;
+  padding: 32px;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+.onboarding-page__form {
+  padding: 28px;
+}
+.project-setup {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+.project-setup__fields {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+}
+.project-setup__dates {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.project-setup__dates > * {
+  flex: 1;
+  min-width: 140px;
+}
+.project-setup fieldset fieldset {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+}
+.project-setup legend {
+  margin-bottom: 10px;
+  font-size: 13px;
+  font-weight: 600;
+}
+.project-setup__choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.project-setup__choices label {
+  display: inline-flex;
+  gap: 6px;
+  padding: 8px;
+  border: 1px solid var(--ink-border-default);
+  border-radius: 24px;
+  font-size: 12px;
+}
+.project-setup__templates {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+.project-setup__templates label {
+  display: flex;
+  align-items: start;
+  gap: 6px;
+  padding: 16px 10px;
+  cursor: pointer;
+}
+.project-setup__templates label:has(input:checked),
+.project-setup__choices label:has(input:checked) {
+  border-color: var(--ink-accent-primary);
+  background: var(--ink-bg-panel);
+}
+.project-setup__templates strong {
+  font-size: 12px;
+}
+.project-setup__templates small {
+  display: block;
+  margin-top: 8px;
+  line-height: 1.5;
+  font-size: 11px;
+}
+.project-setup__invite-entry {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: end;
+}
+.project-setup__invites ul,
+.instance-checklist ul {
+  list-style: none;
+  padding: 0;
+}
+.project-setup__invites li {
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+.instance-checklist {
+  padding: 20px;
+  margin-bottom: 20px;
+}
+.instance-checklist h2 {
+  font-size: 16px;
+  margin-top: 0;
+}
+.instance-checklist p,
+.instance-checklist li {
+  font-size: 12px;
+  line-height: 1.8;
+}
+.ink-dialog:has(.project-setup) {
+  width: min(780px, calc(100vw - 48px));
+  max-height: calc(100vh - 64px);
+  overflow-y: auto;
+}
+
+.instance-setup-reminder {
+  position: relative;
+}
+.instance-setup-reminder::after {
+  content: "";
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--ink-accent-primary);
+  pointer-events: none;
+}
+
+.projects-page__items--list .project-card {
+  display: grid;
+  grid-template-columns: 180px 1fr;
+}
+.projects-page__items--list .project-card__cover {
+  height: 100%;
+  min-height: 150px;
+}

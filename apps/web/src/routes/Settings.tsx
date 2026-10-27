@@ -13,11 +13,15 @@ import { LOCALES } from '../i18n/index.ts';
 import { api, authApi, RequestError } from '../lib/api.ts';
 import { useSession } from '../lib/session.tsx';
 import { EmailNotifications } from '../notifications/Notifications.tsx';
+import { useInstanceSetupState } from './AppLayout.tsx';
+import { InstanceChecklist } from './InstanceSetup.tsx';
+import './projects.css';
 import { GoogleG } from './SignInOptions.tsx';
 import './settings.css';
 
 /** Settings → Account: profile, sign-in methods, two-factor, sessions, apps and deletion. */
 export function Settings() {
+  const setup = useInstanceSetupState();
   const { t } = useTranslation();
   const [accounts, setAccounts] = useState<Array<{ id: string; providerId: string }> | null>(null);
   const loadAccounts = useCallback(async () => setAccounts(await authApi.listAccounts()), []);
@@ -30,6 +34,7 @@ export function Settings() {
     <div className="settings">
       <h1 className="settings__title">{t('settings.title')}</h1>
       <p className="ink-muted settings__lead">{t('settings.lead')}</p>
+      <InstanceChecklist {...setup} />
       <Profile />
       <EmailNotifications />
       <SignInMethods accounts={accounts} onChange={loadAccounts} />

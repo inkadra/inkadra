@@ -6,6 +6,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createAuth } from '../auth.ts';
 import { loadConfig } from '../config.ts';
 import { createDatabase, runMigrations } from '../db/client.ts';
+import { boardDoc } from '../db/schema.ts';
 import { testDeps } from '../test-deps.ts';
 import { createApp } from './app.ts';
 
@@ -167,5 +168,19 @@ describe.skipIf(!url)('project setup metadata and personal pins', () => {
     expect((await request('owner', 'GET', '/instance/storage')).json()).toEqual({
       originalBytes: 0,
     });
+  });
+  it('returns document edit activity only for boards the caller can access', async () => {
+    const p = (await request('owner', 'POST', '/projects', { name: 'Activity' })).json();
+    await db.insert(boardDoc).values({
+      boardId: p.rootBoardId,
+      state: new Uint8Array([0, 0]),
+      size: 2,
+      schemaVersion: 1,
+      updatedAt: new Date('2027-01-01T12:00:00Z'),
+    });
+    const list = await request('owner', 'GET', `/projects/${p.id}/boards`);
+    expect(list.statusCode).toBe(200);
+    expect(list.json().items[0].editedAt).toBe('2027-01-01T12:00:00.000Z');
+    expect((await request('stranger', 'GET', `/projects/${p.id}/boards`)).statusCode).toBe(404);
   });
 });
