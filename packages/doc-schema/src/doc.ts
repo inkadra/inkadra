@@ -131,9 +131,10 @@ export function addElement(doc: Y.Doc, element: Element): Y.Map<unknown> {
       map.set(key, toYValue(key, value));
     }
     if (parsed.type === 'note') map.set('body', new Y.XmlFragment());
-    // Created with the frame, so two people drawing on a new frame add to the same array
+    // Created with the frame, so two people drawing on a new frame add to the same arrays
     // instead of each replacing the field with their own.
     if (parsed.type === 'frame' && !parsed.strokes) map.set('strokes', new Y.Array());
+    if (parsed.type === 'frame' && !parsed.shapes) map.set('shapes', new Y.Array());
     roots(doc).elements.set(parsed.id, map);
   });
   return map;
@@ -145,12 +146,12 @@ function toYMap(value: object): Y.Map<unknown> {
 
 /**
  * To-do items are Y.Maps in a Y.Array so two people can tick different items; pen strokes are
- * plain objects in a Y.Array so two people can draw on the same frame. Everything else is a
+ * plain objects in a Y.Array (so are frame shapes) so two people can draw on the same frame. Everything else is a
  * plain value that a write replaces.
  */
 function toYValue(key: string, value: unknown): unknown {
   if (key === 'items') return Y.Array.from((value as object[]).map(toYMap));
-  if (key === 'strokes') return Y.Array.from(value as object[]);
+  if (key === 'strokes' || key === 'shapes') return Y.Array.from(value as object[]);
   return value;
 }
 

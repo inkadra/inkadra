@@ -36,7 +36,8 @@ const LOOSE = 'loose';
 
 const groupKey = (g: SceneGroup) => g.scene?.id ?? LOOSE;
 /** A frame counts as drawn once it has a picture or a pen drawing. */
-const isDrawn = (f: FrameElement) => !!f.assetId || (f.strokes?.length ?? 0) > 0;
+const isDrawn = (f: FrameElement) =>
+  !!f.assetId || (f.strokes?.length ?? 0) > 0 || (f.shapes?.length ?? 0) > 0;
 
 /** Scenes and frames of the board, in order, from the live document. */
 export function useStoryboard(store: BoardStore) {
@@ -78,7 +79,6 @@ export function StoryboardView({
   const visibleFrames = visible.flatMap((g) => g.frames);
   const current = frames.find((f) => f.id === selected) ?? null;
   const drawn = frames.find((f) => f.id === drawing) ?? null;
-  const drawnAt = drawn ? frames.indexOf(drawn) : -1;
 
   const newScene = () => {
     store.undo.stopCapturing();
@@ -281,6 +281,7 @@ export function StoryboardView({
         {current && (
           <FramePanel
             store={store}
+            userId={userId}
             frame={current}
             label={labels.get(current.id) ?? ''}
             boardAspect={boardAspect}
@@ -310,13 +311,13 @@ export function StoryboardView({
           label={labels.get(drawn.id) ?? ''}
           boardAspect={boardAspect}
           readOnly={readOnly}
+          userId={userId}
+          projectId={projectId}
+          boardId={boardId}
+          frames={frames}
+          labels={labels}
+          onPick={setDrawing}
           onClose={() => setDrawing(null)}
-          onPrev={drawnAt > 0 ? () => setDrawing(frames[drawnAt - 1]?.id ?? null) : undefined}
-          onNext={
-            drawnAt < frames.length - 1
-              ? () => setDrawing(frames[drawnAt + 1]?.id ?? null)
-              : undefined
-          }
         />
       )}
     </div>
@@ -632,6 +633,8 @@ const FrameTile = memo(function FrameTile({
           aspect={frame.aspect}
           boardAspect={boardAspect}
           strokes={frame.strokes}
+          shapes={frame.shapes}
+          referenceOpacity={frame.referenceOpacity}
           pixels={480}
         />
       </button>

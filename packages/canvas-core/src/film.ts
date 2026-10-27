@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MPL-2.0
 import {
   type Element,
+  type FrameShape,
+  MAX_SHAPES,
   MAX_STROKE_POINTS,
   newElementId,
   roots,
@@ -153,16 +155,26 @@ export function moveFrames(
 
 // Pen strokes ------------------------------------------------------------------
 
-function strokesOf(doc: Y.Doc, frameId: string, create: boolean): Y.Array<Stroke> | null {
+function drawingOf<T>(
+  doc: Y.Doc,
+  frameId: string,
+  key: 'strokes' | 'shapes',
+  create: boolean,
+): Y.Array<T> | null {
   const map = roots(doc).elements.get(frameId);
   if (map?.get('type') !== 'frame') return null;
-  const current = map.get('strokes');
-  if (current instanceof Y.Array) return current as Y.Array<Stroke>;
+  const current = map.get(key);
+  if (current instanceof Y.Array) return current as Y.Array<T>;
   if (!create) return null;
-  const fresh = new Y.Array<Stroke>();
-  map.set('strokes', fresh);
+  const fresh = new Y.Array<T>();
+  map.set(key, fresh);
   return fresh;
 }
+
+const strokesOf = (doc: Y.Doc, frameId: string, create: boolean) =>
+  drawingOf<Stroke>(doc, frameId, 'strokes', create);
+const shapesOf = (doc: Y.Doc, frameId: string, create: boolean) =>
+  drawingOf<FrameShape>(doc, frameId, 'shapes', create);
 
 export function addStroke(
   doc: Y.Doc,
@@ -195,6 +207,51 @@ export function removeStrokes(
 export function clearStrokes(doc: Y.Doc, frameId: string, origin?: unknown): void {
   const strokes = strokesOf(doc, frameId, false);
   if (strokes && strokes.length > 0) doc.transact(() => strokes.delete(0, strokes.length), origin);
+}
+
+/** Adds a shape or a text over the strokes; null when the frame is full or the shape empty. */
+export function addShape(
+  doc: Y.Doc,
+  frameId: string,
+  shape: Omit<FrameShape, 'id'>,
+  origin?: unknown,
+): string | null {
+  if (shape.kind === 'text' && !shape.text?.trim()) return null;
+  const shapes = shapesOf(doc, frameId, true);
+  if (!shapes || shapes.length >= MAX_SHAPES) return null;
+  const id = newElementId();
+  doc.transact(() => shapes.push([{ ...shape, id }]), origin);
+  return id;
+}
+
+export function removeShapes(
+  doc: Y.Doc,
+  frameId: string,
+  ids: Iterable<string>,
+  origin?: unknown,
+): void {
+  const shapes = shapesOf(doc, frameId, false);
+  if (!shapes) return;
+  const doomed = new Set(ids);
+  doc.transact(() => {
+    const list = shapes.toArray();
+    for (let i = list.length - 1; i >= 0; i--)
+      if (doomed.has(list[i]?.id ?? '')) shapes.delete(i, 1);
+  }, origin);
+}
+
+/** Removes every stroke and shape of a frame drawing, as one change. */
+export function clearDrawing(doc: Y.Doc, frameId: string, origin?: unknown): void {
+  doc.transact(() => {
+    clearStrokes(doc, frameId, origin);
+    const shapes = shapesOf(doc, frameId, false);
+    if (shapes && shapes.length > 0) shapes.delete(0, shapes.length);
+  }, origin);
+}
+
+/** A point of the picture (0 to 1) as a STROKE_GRID coordinate. */
+export function toGrid(n: number): number {
+  return Math.round(Math.max(0, Math.min(1, n)) * STROKE_GRID);
 }
 
 function distanceToSegment(p: Point, a: Point, b: Point): number {
@@ -274,4 +331,49 @@ export function strokeHit(stroke: Stroke, p: Point, radius: number): boolean {
     if (distanceToSegment(p, pts[i] as Point, pts[i + 1] as Point) <= reach) return true;
   }
   return pts.length === 1 && Math.hypot(p.x - (pts[0]?.x ?? 0), p.y - (pts[0]?.y ?? 0)) <= reach;
+}
+
+/**
+ * True when `p` (relative to the picture, 0 to 1) is within `radius` of what the shape draws:
+ * the outline of a rectangle or an ellipse, the line of a line or an arrow, the box of a text.
+ * `aspect` is the picture's width divided by its height, to measure in the same units.
+ */
+export function shapeHit(shape: FrameShape, p: Point, radius: number, aspect = 1): boolean {
+  const a = { x: shape.x0 / STROKE_GRID, y: shape.y0 / STROKE_GRID };
+  const b = { x: shape.x1 / STROKE_GRID, y: shape.y1 / STROKE_GRID };
+  const reach = radius + shape.width / 2000;
+  if (shape.kind === 'text') {
+    // Font size in thousandths of the width; a rough box of the text above its baseline.
+    const size = shape.width / 1000;
+    const w = size * 0.6 * (shape.text?.length ?? 0);
+    const h = size * aspect;
+    return (
+      p.x >= a.x - reach && p.x <= a.x + w + reach && p.y >= a.y - h - reach && p.y <= a.y + reach
+    );
+  }
+  if (shape.kind === 'line' || shape.kind === 'arrow') return distanceToSegment(p, a, b) <= reach;
+  const left = Math.min(a.x, b.x);
+  const right = Math.max(a.x, b.x);
+  const top = Math.min(a.y, b.y);
+  const bottom = Math.max(a.y, b.y);
+  if (shape.kind === 'rect') {
+    const corners = [
+      { x: left, y: top },
+      { x: right, y: top },
+      { x: right, y: bottom },
+      { x: left, y: bottom },
+    ];
+    return corners.some((c, i) => distanceToSegment(p, c, corners[(i + 1) % 4] as Point) <= reach);
+  }
+  // Ellipse: the distance from its outline, measured along the ray from the centre.
+  const rx = (right - left) / 2;
+  const ry = (bottom - top) / 2;
+  const cx = left + rx;
+  const cy = top + ry;
+  if (rx === 0 || ry === 0) return distanceToSegment(p, a, b) <= reach;
+  const dx = p.x - cx;
+  const dy = p.y - cy;
+  const k = Math.hypot(dx / rx, dy / ry);
+  if (k === 0) return Math.min(rx, ry) <= reach;
+  return Math.hypot(dx - dx / k, dy - dy / k) <= reach;
 }

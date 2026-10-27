@@ -191,6 +191,8 @@ export function ShotlistKanban({
                             aspect={f.aspect}
                             boardAspect={boardAspect}
                             strokes={f.strokes}
+                            shapes={f.shapes}
+                            referenceOpacity={f.referenceOpacity}
                             pixels={120}
                           />
                         </div>

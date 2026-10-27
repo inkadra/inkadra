@@ -159,6 +159,8 @@ export function Animatic({
                 aspect={active.frame.aspect}
                 boardAspect={boardAspect}
                 strokes={active.frame.strokes}
+                shapes={active.frame.shapes}
+                referenceOpacity={active.frame.referenceOpacity}
                 pixels={present ? 1920 : 1200}
               />
             </div>

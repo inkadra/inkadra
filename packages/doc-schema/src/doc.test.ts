@@ -9,6 +9,7 @@ import {
   createBoardDoc,
   Element,
   FrameElement,
+  type FrameShape,
   getBoardAspect,
   getSchemaVersion,
   migrateBoardDoc,
@@ -200,7 +201,7 @@ describe('board document', () => {
     addElement(doc, scene);
     const map = addElement(doc, frame);
     expect(map.get('strokes')).toBeInstanceOf(Y.Array);
-    expect(readElement(roots(doc).elements.get(frame.id)!)).toEqual(frame);
+    expect(readElement(roots(doc).elements.get(frame.id)!)).toEqual({ ...frame, shapes: [] });
     expect(validateBoardDoc(doc)).toEqual([]);
 
     // Two people drawing at once keep both strokes.
@@ -222,12 +223,65 @@ describe('board document', () => {
     ).toHaveLength(3);
   });
 
-  it('gives every new frame its stroke array, so concurrent first strokes merge', () => {
+  it('gives every new frame its stroke and shape arrays, so concurrent first strokes merge', () => {
     const doc = createBoardDoc(boardId);
     const frame = { ...base(), type: 'frame' as const };
     const map = addElement(doc, frame);
     expect(map.get('strokes')).toBeInstanceOf(Y.Array);
-    expect(readElement(map)).toEqual({ ...frame, strokes: [] });
+    expect(map.get('shapes')).toBeInstanceOf(Y.Array);
+    expect(readElement(map)).toEqual({ ...frame, strokes: [], shapes: [] });
+  });
+
+  const shape = (kind: string, extra: object = {}) => ({
+    id: newElementId(),
+    kind,
+    color: '#E5484D',
+    width: 4,
+    x0: 0,
+    y0: 0,
+    x1: 2048,
+    y1: STROKE_GRID,
+    ...extra,
+  });
+
+  it('stores shapes and texts of a frame drawing, and the reference opacity', () => {
+    const doc = createBoardDoc(boardId);
+    const frame = {
+      ...base(),
+      type: 'frame' as const,
+      referenceOpacity: 0.6,
+      strokes: [],
+      shapes: [shape('rect'), shape('arrow'), shape('text', { text: 'Treno' })] as FrameShape[],
+    };
+    const map = addElement(doc, frame);
+    expect(map.get('shapes')).toBeInstanceOf(Y.Array);
+    expect(readElement(map)).toEqual(frame);
+    expect(validateBoardDoc(doc)).toEqual([]);
+  });
+
+  it('leaves out shapes it cannot read instead of dropping the frame', () => {
+    const parsed = FrameElement.parse({
+      ...base(),
+      type: 'frame',
+      shapes: [shape('rect'), shape('star'), shape('line', { x1: STROKE_GRID + 1 })],
+    });
+    expect(parsed.shapes?.map((s) => s.kind)).toEqual(['rect']);
+  });
+
+  it('keeps frames with shapes readable by clients that predate them', () => {
+    // The frame schema before shapes: Zod drops the keys it does not know.
+    const OldFrame = FrameElement.omit({ shapes: true, referenceOpacity: true });
+    const frame = {
+      ...base(),
+      type: 'frame' as const,
+      referenceOpacity: 0.4,
+      shapes: [shape('ellipse')],
+    };
+    const old = OldFrame.safeParse(frame);
+    expect(old.success).toBe(true);
+    expect(old.data).not.toHaveProperty('shapes');
+    // And frames written before shapes still read.
+    expect(FrameElement.safeParse(old.data).success).toBe(true);
   });
 
   it('bounds pen strokes', () => {

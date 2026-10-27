@@ -87,9 +87,6 @@ export function ShotList({
   const opts = useMemo(() => ({ userId, origin: LOCAL }), [userId]);
   const currentFrame = frames.find((f) => f.id === selected) ?? null;
   const drawn = frames.find((f) => f.id === drawing) ?? null;
-  const drawnAt = drawn ? frames.indexOf(drawn) : -1;
-  const previousFrame = frames[drawnAt - 1];
-  const nextFrame = frames[drawnAt + 1];
 
   const scenes = useMemo(
     () => groups.map((g) => g.scene).filter((s): s is NonNullable<typeof s> => Boolean(s)),
@@ -806,6 +803,8 @@ export function ShotList({
                                 aspect={f.aspect}
                                 boardAspect={boardAspect}
                                 strokes={f.strokes}
+                                shapes={f.shapes}
+                                referenceOpacity={f.referenceOpacity}
                                 pixels={240}
                               />
                               <CardReview elementId={f.id} withPins={false} />
@@ -1017,6 +1016,7 @@ export function ShotList({
         {currentFrame && (
           <FramePanel
             store={store}
+            userId={userId}
             frame={currentFrame}
             label={labels.get(currentFrame.id) ?? ''}
             boardAspect={boardAspect}
@@ -1073,9 +1073,13 @@ export function ShotList({
           label={labels.get(drawn.id) ?? ''}
           boardAspect={boardAspect}
           readOnly={readOnly}
+          userId={userId}
+          projectId={projectId}
+          boardId={boardId}
+          frames={frames}
+          labels={labels}
+          onPick={setDrawing}
           onClose={() => setDrawing(null)}
-          onPrev={previousFrame ? () => setDrawing(previousFrame.id) : undefined}
-          onNext={nextFrame ? () => setDrawing(nextFrame.id) : undefined}
         />
       )}
     </div>

@@ -207,6 +207,8 @@ function FrameCard({ element, width }: { element: Of<'frame'>; width: number }) 
           aspect={element.aspect}
           boardAspect={boardAspect}
           strokes={element.strokes}
+          shapes={element.shapes}
+          referenceOpacity={element.referenceOpacity}
           pixels={width * scale * (window.devicePixelRatio || 1)}
         />
       </div>

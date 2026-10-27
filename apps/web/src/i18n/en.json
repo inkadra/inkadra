@@ -579,7 +579,14 @@
       "none": "—",
       "delete": "Delete the frame",
       "close": "Close the details",
-      "actionPlaceholder": "What happens in the shot"
+      "actionPlaceholder": "What happens in the shot",
+      "duplicate": "Duplicate",
+      "markReady": "Mark as ready",
+      "comments": "Comments",
+      "commentsOpen": "Open the comments",
+      "commentsNone": "No comments on this frame yet.",
+      "commentsCount_one": "{{count}} open thread",
+      "commentsCount_other": "{{count}} open threads"
     },
     "shot": {
       "ews": "Extreme wide",
@@ -634,7 +641,36 @@
       "done": "Done",
       "prev": "Previous frame",
       "next": "Next frame",
-      "full": "Too many strokes: erase a few."
+      "full": "Too many strokes: erase a few.",
+      "shape": "Shapes",
+      "text": "Text",
+      "pan": "Move the view",
+      "shapes": {
+        "rect": "Rectangle",
+        "ellipse": "Ellipse",
+        "line": "Line",
+        "arrow": "Arrow"
+      },
+      "textSize": "Size",
+      "textField": "Text on the drawing",
+      "textPlaceholder": "Type, then Enter",
+      "fullShapes": "Too many shapes: erase a few.",
+      "view": "View",
+      "onion": "Onion skin",
+      "onionOf": "Onion skin · {{label}}",
+      "guides": "Guides",
+      "layers": "Layers",
+      "layerDrawing": "Drawing",
+      "layerReference": "Reference picture",
+      "items_one": "{{count}} item",
+      "items_other": "{{count}} items",
+      "reference": "Upload a reference",
+      "referenceReplace": "Replace",
+      "opacity": "Opacity {{percent}}%",
+      "zoomIn": "Zoom in",
+      "zoomOut": "Zoom out",
+      "zoomReset": "Zoom {{percent}}%: back to 100%",
+      "strip": "Frames of the scene"
     },
     "list": {
       "filter": "Filter the frames",
