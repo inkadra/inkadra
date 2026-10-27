@@ -12,7 +12,17 @@ vi.mock('react-i18next', () => ({
   useTranslation: () => ({
     t: (key: string, params?: Record<string, unknown>) => {
       let node: unknown = mockEn;
-      for (const part of key.split('.')) {
+      const plural = params && 'count' in params ? (params.count === 1 ? '_one' : '_other') : '';
+      const parts = key.split('.');
+      const last = parts.length - 1;
+      for (const [i, part] of parts.entries()) {
+        if (i === last && plural && typeof node === 'object' && node !== null) {
+          const forms = node as Record<string, unknown>;
+          if (`${part}${plural}` in forms) {
+            node = forms[`${part}${plural}`];
+            break;
+          }
+        }
         if (typeof node !== 'object' || node === null || !(part in node)) return key;
         node = (node as Record<string, unknown>)[part];
       }
@@ -84,7 +94,7 @@ it('renders table with Cast column, footer totals and + Shot buttons', async () 
   // Footer totals
   const footer = host.querySelector('.shots__footer');
   expect(footer).not.toBeNull();
-  expect(footer?.textContent).toContain('1 shots');
+  expect(footer?.textContent).toContain('1 shot');
 
   // + Shot button in header and scene
   const addButtons = host.querySelectorAll('button');
@@ -276,4 +286,17 @@ it('guards Cmd+D / Ctrl+D against editable targets, open dialogs, and lack of fo
   expect(eventValid.defaultPrevented).toBe(true);
   expect(elementsMap.size).toBe(3); // scene + f1 + duplicated frame
   expect(elementsMap.has(f1.id)).toBe(true);
+});
+
+it('estimates scene and footer durations like the storyboard (one second per untimed frame)', async () => {
+  const { doc, store } = board();
+  const scene = addScene(doc, { number: '1', title: 'Bar' }, { userId: null });
+  addFrame(doc, scene.id, null, { label: '1A', durationMs: 4_000 }, { userId: null });
+  addFrame(doc, scene.id, null, { label: '1B' }, { userId: null });
+  addFrame(doc, scene.id, null, { label: '1C' }, { userId: null });
+
+  const host = await mount(<ShotList store={store} boardTitle="Test Board" readOnly={false} />);
+
+  expect(host.querySelector('.shots__scene-meta')?.textContent).toContain('0:06');
+  expect(host.querySelector('.shots__footer')?.textContent).toContain('0:06');
 });
