@@ -555,3 +555,12 @@ button.review-link:hover:not(:disabled) {
     white-space: nowrap;
   }
 }
+
+/* Element discussions stay compact beside the rendered card; board/mobile stays a sidebar. */
+.comments-panel--element {
+  right: auto;
+  bottom: auto;
+  height: min(560px, calc(100dvh - 64px));
+  max-height: calc(100dvh - 64px);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
+}
