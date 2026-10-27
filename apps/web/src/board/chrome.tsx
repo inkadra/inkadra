@@ -18,6 +18,7 @@ import {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
+import { addActions, type PaletteAction, rankActions } from '../commands/actions.ts';
 import { Card, NOTE_COLORS } from './cards.tsx';
 import { GuestVisibilityIcon } from './guest-visibility.tsx';
 import { isMac } from './shortcuts.ts';
@@ -37,7 +38,7 @@ export type ToolType =
 export type CanvasTool = 'select' | 'hand' | 'arrow';
 export const TOOL_MIME = 'application/x-inkadra-tool';
 
-const TOOLS: Array<{ type: ToolType; icon: IconName; key?: string; menuOnly?: boolean }> = [
+export const TOOLS: Array<{ type: ToolType; icon: IconName; key?: string; menuOnly?: boolean }> = [
   { type: 'note', icon: 'note', key: 'N' },
   { type: 'image', icon: 'image', key: 'I' },
   { type: 'link', icon: 'link', key: 'L' },
@@ -642,13 +643,6 @@ export function UploadPanel() {
   );
 }
 
-interface PaletteCommand {
-  id: string;
-  label: string;
-  hint?: string;
-  run: () => void;
-}
-
 export function CommandPalette({
   readOnly,
   onClose,
@@ -672,15 +666,14 @@ export function CommandPalette({
   const [query, setQuery] = useState('');
   const [active, setActive] = useState(0);
   const m = mod();
-  const commands: PaletteCommand[] = [
+  const commands: PaletteAction[] = [
     ...(readOnly
       ? []
-      : TOOLS.map((tl) => ({
-          id: `add-${tl.type}`,
-          label: t('board.palette.add', { type: t(`board.types.${tl.type}`) }),
-          hint: tl.key,
-          run: () => onAdd(tl.type),
-        }))),
+      : addActions(
+          TOOLS,
+          (type) => t('board.palette.add', { type: t(`board.types.${type}`) }),
+          onAdd,
+        )),
     ...(readOnly
       ? []
       : TEMPLATE_IDS.map((id) => ({
@@ -704,9 +697,8 @@ export function CommandPalette({
           { id: 'redo', label: t('board.palette.redo'), hint: `${m}⇧Z`, run: onRedo },
         ]),
   ];
-  const q = query.trim().toLowerCase();
-  const shown = q ? commands.filter((c) => c.label.toLowerCase().includes(q)) : commands;
-  const run = (c: PaletteCommand | undefined) => {
+  const shown = rankActions(commands, query);
+  const run = (c: PaletteAction | undefined) => {
     if (!c) return;
     onClose();
     c.run();
@@ -728,13 +720,15 @@ export function CommandPalette({
           role="combobox"
           aria-expanded="true"
           aria-controls="palette-list"
+          aria-activedescendant={shown[active] ? `palette-option-${active}` : undefined}
           onChange={(e) => {
             setQuery(e.target.value);
             setActive(0);
           }}
           onKeyDown={(e) => {
             if (e.key === 'Escape') onClose();
-            else if (e.key === 'ArrowDown') setActive((a) => Math.min(shown.length - 1, a + 1));
+            else if (e.key === 'ArrowDown')
+              setActive((a) => Math.max(0, Math.min(shown.length - 1, a + 1)));
             else if (e.key === 'ArrowUp') setActive((a) => Math.max(0, a - 1));
             else if (e.key === 'Enter') run(shown[active]);
             else return;
@@ -745,6 +739,9 @@ export function CommandPalette({
           {shown.map((c, i) => (
             <button
               key={c.id}
+              id={`palette-option-${i}`}
+              tabIndex={-1}
+              onPointerDown={(e) => e.preventDefault()}
               type="button"
               role="option"
               aria-selected={i === active}

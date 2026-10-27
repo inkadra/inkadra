@@ -1,10 +1,11 @@
 import type { Board, Project, SearchHit, SearchResult, TagCount } from '@inkadra/shared';
-import { Icon, type IconName } from '@inkadra/ui';
-import { useEffect, useRef, useState } from 'react';
+import { Icon, type IconName, KeyCap } from '@inkadra/ui';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router';
 import { boardPath } from '../board/boards.ts';
 import { filterTagSuggestions, loadTagsForProjects, normaliseTag } from '../board/tags.tsx';
+import { type PaletteAction, rankActions, useContextActions } from '../commands/actions.ts';
 import { api } from '../lib/api.ts';
 import { loadProjects } from './projects.ts';
 import './search.css';
@@ -51,7 +52,9 @@ export function SearchDialog({
   projects,
   shared,
   onClose,
+  actions = [],
 }: {
+  actions?: PaletteAction[];
   projects: Project[] | null;
   shared: Board[] | null;
   onClose: () => void;
@@ -64,8 +67,31 @@ export function SearchDialog({
   const [input, setInput] = useState('');
   const [hits, setHits] = useState<SearchHit[] | null>(null);
   const [state, setState] = useState<'idle' | 'loading' | 'error'>('idle');
-  const [active, setActive] = useState(0);
+  // -1 means nothing is selected: Enter then does nothing until a row is picked.
+  const [active, setActive] = useState(-1);
   const seq = useRef(0);
+  const contextual = useContextActions();
+  // Tags filter the server search only; actions match the remaining words.
+  const actionQuery = input.replace(/(^|\s)#\S*/g, ' ');
+  const shownActions = rankActions([...actions, ...contextual], actionQuery);
+  const hitCount = hits?.length ?? 0;
+  const resultCount = hitCount + shownActions.length;
+  function runAction(action: PaletteAction | undefined) {
+    if (!action) return;
+    onClose();
+    action.run();
+  }
+  useEffect(() => {
+    document.getElementById(`search-option-${active}`)?.scrollIntoView?.({ block: 'nearest' });
+  }, [active]);
+  // Read during the first render, before autoFocus moves focus into the field.
+  const [opener] = useState(() => document.activeElement);
+  useEffect(
+    () => () => {
+      if (opener instanceof HTMLElement && opener.isConnected) opener.focus();
+    },
+    [opener],
+  );
 
   useEffect(() => {
     if (projects) {
@@ -103,17 +129,20 @@ export function SearchDialog({
     isTagInput && !hasSpace && (pickedTag === null || pickedTag.toLowerCase() !== tagQuery);
   const suggestions = showingSuggestions ? filterTagSuggestions(availableTags, tagQuery) : [];
 
+  useEffect(() => {
+    const count = showingSuggestions ? suggestions.length : resultCount;
+    setActive((current) => Math.min(current, count - 1));
+  }, [resultCount, showingSuggestions, suggestions.length]);
+
   function pickTag(tag: string) {
     const normalised = normaliseTag(tag);
     setPickedTag(normalised);
     setInput(`#${normalised}`);
-    setActive(0);
+    setActive(-1);
   }
 
-  const query = parseQuery(input, pickedTag);
-  const key = JSON.stringify(query);
+  const query = useMemo(() => parseQuery(input, pickedTag), [input, pickedTag]);
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: `key` stands for `query`
   useEffect(() => {
     const n = ++seq.current;
     if (!query.q && !query.tag) {
@@ -121,6 +150,7 @@ export function SearchDialog({
       setState('idle');
       return;
     }
+    // Earlier results stay listed until the new ones arrive.
     setState('loading');
     const timer = setTimeout(() => {
       const params = new URLSearchParams({ ...query, limit: '30' });
@@ -129,13 +159,13 @@ export function SearchDialog({
         .then((r) => {
           if (n !== seq.current) return;
           setHits(r.items);
-          setActive(0);
+          setActive(r.items.length > 0 ? 0 : -1);
           setState('idle');
         })
         .catch(() => n === seq.current && setState('error'));
     }, DEBOUNCE_MS);
     return () => clearTimeout(timer);
-  }, [key]);
+  }, [query]);
 
   function open(hit: SearchHit | undefined) {
     if (!hit) return;
@@ -173,11 +203,18 @@ export function SearchDialog({
             placeholder={t('search.placeholder')}
             aria-label={t('search.title')}
             role="combobox"
-            aria-expanded={showingSuggestions ? suggestions.length > 0 : !!hits}
+            aria-expanded={true}
+            aria-autocomplete="list"
+            aria-activedescendant={
+              active >= 0 && (showingSuggestions ? suggestions.length : resultCount) > active
+                ? `search-option-${active}`
+                : undefined
+            }
             aria-controls="search-results"
             onChange={(e) => {
               const next = e.target.value;
               setInput(next);
+              setActive(next.trimStart().startsWith('#') ? 0 : -1);
               if (
                 pickedTag &&
                 next.trim() !== `#${pickedTag}` &&
@@ -195,7 +232,7 @@ export function SearchDialog({
               if (showingSuggestions) {
                 const count = suggestions.length;
                 if (e.key === 'ArrowDown') {
-                  setActive((a) => Math.min(count - 1, a + 1));
+                  setActive((a) => Math.max(0, Math.min(count - 1, a + 1)));
                   e.preventDefault();
                 } else if (e.key === 'ArrowUp') {
                   setActive((a) => Math.max(0, a - 1));
@@ -210,23 +247,42 @@ export function SearchDialog({
                 }
                 return;
               }
-              const count = hits?.length ?? 0;
-              if (e.key === 'ArrowDown') setActive((a) => Math.min(count - 1, a + 1));
+              const count = resultCount;
+              if (e.key === 'ArrowDown') setActive((a) => Math.max(0, Math.min(count - 1, a + 1)));
               else if (e.key === 'ArrowUp') setActive((a) => Math.max(0, a - 1));
-              else if (e.key === 'Enter') open(hits?.[active]);
-              else return;
+              else if (e.key === 'Enter') {
+                if (active < 0) return;
+                if (active < hitCount) open(hits?.[active]);
+                else runAction(shownActions[active - hitCount]);
+              } else return;
               e.preventDefault();
             }}
           />
         </div>
-        <div id="search-results" role="listbox" className="search__list">
-          {showingSuggestions ? (
+        <div className="search__list">
+          {showingSuggestions && suggestions.length === 0 && (
+            <p className="ink-muted search__note">{t('search.noTags')}</p>
+          )}
+          {!showingSuggestions && (
             <>
-              {suggestions.length === 0 && (
-                <p className="ink-muted search__note">{t('search.noTags')}</p>
+              {!hits && state !== 'error' && (
+                <p className="ink-muted search__note">
+                  {state === 'loading' ? t('search.loading') : t('search.hint')}
+                </p>
               )}
-              {suggestions.map((s, i) => (
+              {state === 'error' && <p className="ink-muted search__note">{t('search.error')}</p>}
+              {hits?.length === 0 && shownActions.length === 0 && state !== 'loading' && (
+                <p className="ink-muted search__note">{t('search.none', { q: input.trim() })}</p>
+              )}
+            </>
+          )}
+          <div id="search-results" role="listbox" aria-label={t('search.title')}>
+            {showingSuggestions ? (
+              suggestions.map((s, i) => (
                 <button
+                  id={`search-option-${i}`}
+                  tabIndex={-1}
+                  onPointerDown={(e) => e.preventDefault()}
                   key={s.tag}
                   type="button"
                   role="option"
@@ -243,48 +299,68 @@ export function SearchDialog({
                     </span>
                   </span>
                 </button>
-              ))}
-            </>
-          ) : (
-            <>
-              {!hits && state !== 'error' && (
-                <p className="ink-muted search__note">
-                  {state === 'loading' ? t('search.loading') : t('search.hint')}
-                </p>
-              )}
-              {state === 'error' && <p className="ink-muted search__note">{t('search.error')}</p>}
-              {hits?.length === 0 && (
-                <p className="ink-muted search__note">{t('search.none', { q: input.trim() })}</p>
-              )}
-              {hits?.map((hit, i) => (
-                <button
-                  key={`${hit.kind}-${hit.boardId}-${hit.elementId ?? hit.projectId}`}
-                  type="button"
-                  role="option"
-                  aria-selected={i === active}
-                  className="search__item"
-                  onMouseEnter={() => setActive(i)}
-                  onClick={() => open(hit)}
-                >
-                  <Icon name={iconOf(hit)} size={16} />
-                  <span className="search__text">
-                    <span className="search__title">{hit.title}</span>
-                    {hit.snippet && hit.snippet !== hit.title && (
-                      <span className="search__snippet">{hit.snippet}</span>
-                    )}
-                    <span className="search__where">
-                      {hit.kind === 'project'
-                        ? t('search.kinds.project')
-                        : [hit.boardTitle, t('search.inProject', { project: hit.projectName })]
-                            .filter(Boolean)
-                            .join(' · ')}
-                      {hit.tags.length > 0 && ` · #${hit.tags.join(' #')}`}
+              ))
+            ) : (
+              <>
+                {hits?.map((hit, i) => (
+                  <button
+                    id={`search-option-${i}`}
+                    tabIndex={-1}
+                    onPointerDown={(e) => e.preventDefault()}
+                    key={`${hit.kind}-${hit.boardId}-${hit.elementId ?? hit.projectId}`}
+                    type="button"
+                    role="option"
+                    aria-selected={i === active}
+                    className="search__item"
+                    onMouseEnter={() => setActive(i)}
+                    onClick={() => open(hit)}
+                  >
+                    <Icon name={iconOf(hit)} size={16} />
+                    <span className="search__text">
+                      <span className="search__title">{hit.title}</span>
+                      {hit.snippet && hit.snippet !== hit.title && (
+                        <span className="search__snippet">{hit.snippet}</span>
+                      )}
+                      <span className="search__where">
+                        {hit.kind === 'project'
+                          ? t('search.kinds.project')
+                          : [hit.boardTitle, t('search.inProject', { project: hit.projectName })]
+                              .filter(Boolean)
+                              .join(' · ')}
+                        {hit.tags.length > 0 && ` · #${hit.tags.join(' #')}`}
+                      </span>
                     </span>
-                  </span>
-                </button>
-              ))}
-            </>
-          )}
+                  </button>
+                ))}
+                {shownActions.length > 0 && (
+                  // biome-ignore lint/a11y/useSemanticElements: a listbox may only own options and ARIA groups.
+                  <div role="group" aria-label={t('search.actions')}>
+                    <p aria-hidden="true" className="ink-muted search__note">
+                      {t('search.actions')}
+                    </p>
+                    {shownActions.map((action, i) => (
+                      <button
+                        key={action.id}
+                        id={`search-option-${hitCount + i}`}
+                        type="button"
+                        role="option"
+                        tabIndex={-1}
+                        onPointerDown={(e) => e.preventDefault()}
+                        aria-selected={hitCount + i === active}
+                        className="search__item"
+                        onMouseEnter={() => setActive(hitCount + i)}
+                        onClick={() => runAction(action)}
+                      >
+                        <Icon name="arrow" size={16} />
+                        <span className="search__text">{action.label}</span>
+                        {action.hint && <KeyCap>{action.hint}</KeyCap>}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </>
+            )}
+          </div>
         </div>
       </dialog>
     </div>

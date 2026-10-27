@@ -16,7 +16,6 @@ import {
   deleteElements,
   distributeRects,
   dropIndex,
-  duplicateElements,
   fitRect,
   frameLabels,
   type Guide,
@@ -67,6 +66,8 @@ import {
 import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router';
 import * as Y from 'yjs';
+import { addActions, useRegisterActions } from '../commands/actions.ts';
+import { canvasActions, duplicateInStore } from '../commands/board-actions.ts';
 import { useSession } from '../lib/session.tsx';
 import { accessNotices } from './access-notices.ts';
 import { ArrowLayer } from './arrows.tsx';
@@ -81,6 +82,7 @@ import {
   type MenuItem,
   Minimap,
   TOOL_MIME,
+  TOOLS,
   Toast,
   Toolbar,
   type ToolType,
@@ -101,7 +103,7 @@ import { fillFragment, isEmpty } from './note.tsx';
 import { PresenceLayer } from './PresenceLayer.tsx';
 import { type Peer, useLocalPresence } from './presence.ts';
 import { openComments } from './review-store.ts';
-import { commandFor, insideDialog, isTyping } from './shortcuts.ts';
+import { commandFor, insideDialog, isMac, isTyping } from './shortcuts.ts';
 import { LOCAL } from './store.ts';
 import { TagPopover } from './tags.tsx';
 import { templateLabels, templateRect } from './templates.ts';
@@ -552,10 +554,31 @@ export function Canvas({
 
   const duplicate = useCallback(() => {
     if (readOnly || selection.size === 0) return;
-    store.undo.stopCapturing();
-    const ids = duplicateElements(doc, [...selection], { x: 24, y: 24 }, { userId, origin: LOCAL });
-    select(ids);
-  }, [readOnly, selection, store, doc, userId, select]);
+    select(duplicateInStore(store, selection, userId));
+  }, [readOnly, selection, store, userId, select]);
+
+  const onlySelected = selection.size === 1 ? [...selection][0] : undefined;
+  useRegisterActions(
+    canvasActions({
+      readOnly,
+      guest,
+      framePanelOpen: !!framePanel,
+      selection,
+      selectedFrame:
+        onlySelected && snap.byId.get(onlySelected)?.type === 'frame' ? onlySelected : null,
+      add: addActions(
+        TOOLS,
+        (type) => t('board.palette.add', { type: t(`board.types.${type}`) }),
+        (type) => {
+          void add(type);
+        },
+      ),
+      duplicate,
+      store,
+      t,
+      duplicateHint: `${isMac() ? '⌘' : 'Ctrl+'}D`,
+    }),
+  );
 
   const toggleLock = useCallback(() => {
     if (readOnly || selection.size === 0) return;

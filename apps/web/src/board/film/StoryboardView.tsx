@@ -15,6 +15,7 @@ import { ASPECT_RATIOS, type AspectRatio, SHOT_SIZES, setBoardAspect } from '@in
 import { Button, EmptyState, Icon, IconButton } from '@inkadra/ui';
 import { type DragEvent, memo, useMemo, useState, useSyncExternalStore } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useRegisterActions } from '../../commands/actions.ts';
 import { CardReview } from '../CardReview.tsx';
 import { GuestVisibility, GuestVisibilityIcon, toggleGuestHidden } from '../guest-visibility.tsx';
 import { type BoardStore, LOCAL } from '../store.ts';
@@ -89,6 +90,19 @@ export function StoryboardView({
     const f = addFrame(store.doc, sceneId, null, {}, opts);
     setSelected(f.id);
   };
+
+  useRegisterActions(
+    readOnly
+      ? []
+      : [
+          { id: 'add-scene', label: t('film.scene.add'), run: newScene },
+          {
+            id: 'add-frame',
+            label: t('film.frame.add'),
+            run: () => newFrame(current?.parent ?? (filter === LOOSE ? null : filter)),
+          },
+        ],
+  );
 
   function onDrop(e: DragEvent, sceneId: string, index: number) {
     const id = e.dataTransfer.getData(FRAME_MIME);

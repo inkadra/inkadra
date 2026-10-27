@@ -1,9 +1,4 @@
-import {
-  deleteElements,
-  duplicateElements,
-  type FrameElement,
-  updateElement,
-} from '@inkadra/canvas-core';
+import { deleteElements, type FrameElement, updateElement } from '@inkadra/canvas-core';
 import {
   ASPECT_RATIOS,
   type AspectRatio,
@@ -14,6 +9,12 @@ import {
 import { Button, IconButton } from '@inkadra/ui';
 import { useContext, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useRegisterActions } from '../../commands/actions.ts';
+import {
+  duplicateInStore,
+  framePanelActions,
+  setFrameStatus,
+} from '../../commands/board-actions.ts';
 import { GuestModeContext } from '../context.ts';
 import { authorName, editableText } from '../review-model.ts';
 import { openComments, useReviews } from '../review-store.ts';
@@ -51,6 +52,13 @@ export function FramePanel({
   onDraw: () => void;
 }) {
   const { t } = useTranslation();
+  const duplicate = () => {
+    duplicateInStore(store, [frame.id], userId);
+  };
+  const guest = useContext(GuestModeContext);
+  useRegisterActions(
+    framePanelActions({ readOnly: readOnly || guest, store, frameId: frame.id, duplicate, t }),
+  );
   const fileInput = useRef<HTMLInputElement>(null);
   const set = (patch: Patch) => !readOnly && updateElement(store.doc, frame.id, patch, LOCAL);
   const text = (v: string) => v.trim() || undefined;
@@ -62,7 +70,9 @@ export function FramePanel({
           value={frame.status}
           readOnly={readOnly}
           label={t('film.frame.status')}
-          onCommit={(status) => set({ status })}
+          onCommit={(status) => {
+            if (!readOnly) setFrameStatus(store, frame.id, status);
+          }}
         />
         <span className="ink-header__spacer" />
         <IconButton icon="close" label={t('film.frame.close')} onClick={onClose} />
@@ -229,30 +239,14 @@ export function FramePanel({
         <FrameComments elementId={frame.id} />
         {!readOnly && (
           <div className="film-panel__actions">
-            <Button
-              icon="copy"
-              onClick={() => {
-                store.undo.stopCapturing();
-                duplicateElements(
-                  store.doc,
-                  [frame.id],
-                  { x: 24, y: 24 },
-                  { userId, origin: LOCAL },
-                );
-                store.undo.stopCapturing();
-              }}
-            >
+            <Button icon="copy" onClick={duplicate}>
               {t('film.frame.duplicate')}
             </Button>
             {frame.status !== 'ready' && (
               <Button
                 icon="check"
                 variant="primary"
-                onClick={() => {
-                  store.undo.stopCapturing();
-                  set({ status: 'ready' });
-                  store.undo.stopCapturing();
-                }}
+                onClick={() => setFrameStatus(store, frame.id, 'ready')}
               >
                 {t('film.frame.markReady')}
               </Button>

@@ -495,7 +495,8 @@
     "tagCardCount_one": "{{count}} card",
     "tagCardCount_other": "{{count}} cards",
     "tagSuggestions": "Suggested tags",
-    "noTags": "No matching tags"
+    "noTags": "No matching tags",
+    "actions": "Actions"
   },
   "templates": {
     "moodboard": {

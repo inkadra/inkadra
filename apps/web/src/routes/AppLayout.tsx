@@ -31,6 +31,7 @@ import {
 import { useTranslation } from 'react-i18next';
 import { Navigate, Outlet, useLocation, useNavigate, useSearchParams } from 'react-router';
 import { boardPath, childBoards, useProjectBoards, useSharedBoards } from '../board/boards.ts';
+import { appActions } from '../commands/app-actions.ts';
 import { authApi } from '../lib/api.ts';
 import { HeaderContext } from '../lib/header.tsx';
 import { useSession } from '../lib/session.tsx';
@@ -40,8 +41,10 @@ import {
   NotificationList,
   useUnreadCount,
 } from '../notifications/Notifications.tsx';
+import { editableProjects } from './home-data.ts';
 import { useInstanceSetup } from './InstanceSetup.tsx';
 import { MobileNavigation } from './MobileNavigation.tsx';
+import { NewBoardDialog } from './NewBoardDialog.tsx';
 import { NewProjectDialog } from './NewProjectDialog.tsx';
 import {
   getCachedProjects,
@@ -89,6 +92,7 @@ export function AppLayout() {
   const projects = useSyncExternalStore(subscribeProjects, getCachedProjects);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [creating, setCreating] = useState(false);
+  const [creatingBoard, setCreatingBoard] = useState(false);
   const [headerContent, setHeaderContent] = useState<ReactNode | null>(null);
   const [searching, setSearching] = useState(false);
   const [inboxOpen, setInboxOpen] = useState(false);
@@ -606,7 +610,22 @@ export function AppLayout() {
           </div>
         )}
         {searching && (
-          <SearchDialog projects={projects} shared={shared} onClose={() => setSearching(false)} />
+          <SearchDialog
+            projects={projects}
+            shared={shared}
+            onClose={() => setSearching(false)}
+            actions={appActions({
+              t,
+              admin: user.role === 'admin',
+              canCreateBoard: editableProjects(projects).length > 0,
+              theme,
+              navigate,
+              newProject: () => setCreating(true),
+              newBoard: () => setCreatingBoard(true),
+              toggleTheme: toggle,
+              openInbox: () => setInboxOpen(true),
+            })}
+          />
         )}
         {inboxOpen && (
           <NotificationList
@@ -621,6 +640,12 @@ export function AppLayout() {
             onCount={refreshUnread}
           />
         )}
+        <NewBoardDialog
+          open={creatingBoard}
+          projects={editableProjects(projects)}
+          initial="blank"
+          onClose={() => setCreatingBoard(false)}
+        />
         <NewProjectDialog
           open={creating}
           onClose={() => setCreating(false)}
