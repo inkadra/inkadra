@@ -280,7 +280,7 @@ it('shows guest-visible threads and uses the existing resolve API only for comme
   expect(post).toHaveBeenCalledWith('/comments/client-thread/resolve', {});
 });
 
-it('keeps review threads readable but not writable on a read-only board', async () => {
+it('keeps review threads read-only for viewers', async () => {
   const { doc, store } = board();
   const frame = createElement(doc, 'frame', { x: 0, y: 0 }, {}, { userId: null });
   const thread: CommentThread = {
@@ -313,7 +313,7 @@ it('keeps review threads readable but not writable on a read-only board', async 
   };
   resetReviews({
     boardId: 'review-board',
-    role: 'commenter',
+    role: 'viewer',
     status: 'ready',
     reviewsStatus: 'ready',
     threads: [thread],
