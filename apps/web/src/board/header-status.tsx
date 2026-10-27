@@ -136,31 +136,33 @@ export function SyncStatus({
     last.current = status;
   }, [status, t]);
   return (
-    <span
-      className={`sync sync--${summary.kind === 'saved' ? 'synced' : summary.kind}`}
-      data-status={status}
-      // The visible state is a status, but quiet: edits and the timer must not be read out.
-      role="status"
-      aria-live="off"
-    >
-      <span className="sync__dot" aria-hidden="true" />
-      <span className="sync__text">
-        {status === 'synced' ? (
-          <>
-            <span className="sync__online">{t('board.status.online', { count: online })}</span>
-            <span className="sync__sep" aria-hidden="true">
-              {' · '}
-            </span>
+    <>
+      <span
+        className={`sync sync--${summary.kind === 'saved' ? 'synced' : summary.kind}`}
+        data-status={status}
+        // The visible state is a status, but quiet: edits and the timer must not be read out.
+        role="status"
+        aria-live="off"
+      >
+        <span className="sync__dot" aria-hidden="true" />
+        <span className="sync__text">
+          {status === 'synced' ? (
+            <>
+              <span className="sync__online">{t('board.status.online', { count: online })}</span>
+              <span className="sync__sep" aria-hidden="true">
+                {' · '}
+              </span>
+              <span className="sync__state">{state}</span>
+            </>
+          ) : (
             <span className="sync__state">{state}</span>
-          </>
-        ) : (
-          <span className="sync__state">{state}</span>
-        )}
+          )}
+        </span>
       </span>
       <span className="sync__announce" aria-live="polite">
         {announcement}
       </span>
-    </span>
+    </>
   );
 }
 
