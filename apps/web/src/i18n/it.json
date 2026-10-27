@@ -1383,6 +1383,10 @@
   },
   "shells": {
     "close": "Chiudi",
+    "noteBreadcrumb": "Percorso della nota",
+    "noteExpand": "A tutta pagina",
+    "noteWords_one": "{{count}} parola",
+    "noteWords_other": "{{count}} parole",
     "editOnCanvas": "Modifica sulla board",
     "demo": "Demo · non salvato",
     "callSheet": "Foglio di lavorazione",

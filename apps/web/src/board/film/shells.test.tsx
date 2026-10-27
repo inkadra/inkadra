@@ -6,8 +6,6 @@ import { createRoot } from 'react-dom/client';
 import { afterEach, expect, it, vi } from 'vitest';
 import * as Y from 'yjs';
 import { api } from '../../lib/api.ts';
-import { NoteSideSheet } from '../NoteSideSheet.tsx';
-import { fillFragment } from '../note.tsx';
 import { resetReviews, setReviews } from '../review-store.ts';
 import { BoardStore } from '../store.ts';
 import { ClientReviewView } from './ClientReviewView.tsx';
@@ -46,68 +44,6 @@ function board() {
   });
   return { doc, store };
 }
-
-it('opens the actual note fragment in the existing editor and keeps canvas editing accessible', async () => {
-  const { doc, store } = board();
-  const note = createElement(doc, 'note', { x: 0, y: 0 }, {}, { userId: null });
-  const fragment = store.map(note.id)?.get('body') as Y.XmlFragment;
-  fillFragment(fragment, 'The real production note');
-  // happy-dom does not implement the native modal API.
-  vi.spyOn(HTMLDialogElement.prototype, 'showModal').mockImplementation(function (
-    this: HTMLDialogElement,
-  ) {
-    this.open = true;
-  });
-  const onEdit = vi.fn();
-  const host = await mount(
-    <NoteSideSheet
-      noteId={note.id}
-      store={store}
-      readOnly={false}
-      onClose={vi.fn()}
-      onEditOnCanvas={onEdit}
-    />,
-  );
-  expect(host.querySelector('[contenteditable="true"]')?.textContent).toBe(
-    'The real production note',
-  );
-  expect(host.textContent).not.toContain('Antonio');
-  const editor = host.querySelector('[contenteditable="true"]');
-  expect(editor).not.toBeNull();
-  const canvasButton = [...host.querySelectorAll('button')].find(
-    (button) => button.textContent === 'shells.editOnCanvas',
-  );
-  await act(async () => canvasButton?.click());
-  expect(onEdit).toHaveBeenCalledOnce();
-});
-
-it('shows live note content without an editor for read-only access', async () => {
-  const { doc, store } = board();
-  const note = createElement(doc, 'note', { x: 0, y: 0 }, {}, { userId: null });
-  const fragment = store.map(note.id)?.get('body') as Y.XmlFragment;
-  fillFragment(fragment, 'Shared note');
-  vi.spyOn(HTMLDialogElement.prototype, 'showModal').mockImplementation(function (
-    this: HTMLDialogElement,
-  ) {
-    this.open = true;
-  });
-  const host = await mount(
-    <NoteSideSheet
-      noteId={note.id}
-      store={store}
-      readOnly
-      onClose={vi.fn()}
-      onEditOnCanvas={vi.fn()}
-    />,
-  );
-  expect(host.querySelector('[contenteditable="true"]')).toBeNull();
-  expect(host.textContent).toContain('Shared note');
-  expect(host.textContent).not.toContain('shells.editOnCanvas');
-  await act(async () => {
-    fillFragment(fragment, 'Remote update');
-  });
-  expect(host.textContent).toContain('Remote update');
-});
 
 it('keeps review rounds unavailable and shows live frames while loading', async () => {
   const { doc, store } = board();

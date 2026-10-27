@@ -176,6 +176,8 @@ const EMPTY_SET: ReadonlySet<string> = new Set();
 
 export interface CanvasProps {
   conn: BoardConnection;
+  /** Board titles from the project root to this board, shown in the note side sheet. */
+  breadcrumb?: string[];
   projectId: string;
   boardId: string;
   userId: string;
@@ -193,6 +195,7 @@ export interface CanvasProps {
 
 export function Canvas({
   conn,
+  breadcrumb,
   projectId,
   boardId,
   userId,
@@ -306,16 +309,18 @@ export function Canvas({
   const pendingText = useRef<string | null>(null);
 
   const setEditing = useCallback(
-    (id: string | null) => {
+    (id: string | null, keepEmpty = false) => {
       const previous = editingRef.current;
       editingRef.current = id;
       setEditingState(id);
+      // One editor per note: its side sheet and the inline editor share the same document.
+      if (id) setNoteSheet(null);
       if (previous === id) return;
       noteEditor.current = null;
       if (!id) pendingText.current = null;
       // A note left empty disappears, as on paper. Not an undo step of its own.
       const body = previous ? store.map(previous)?.get('body') : null;
-      if (previous && body instanceof Y.XmlFragment && isEmpty(body))
+      if (previous && !keepEmpty && body instanceof Y.XmlFragment && isEmpty(body))
         deleteElements(doc, [previous]);
     },
     [store, doc],
@@ -381,7 +386,8 @@ export function Canvas({
       return new Set([...sel].filter((id) => snap.byId.has(id)));
     });
     if (editing && !snap.byId.has(editing)) setEditing(null);
-  }, [snap, editing, setEditing]);
+    if (noteSheet && !snap.byId.has(noteSheet)) setNoteSheet(null);
+  }, [snap, editing, setEditing, noteSheet]);
 
   const toWorld = useCallback((clientX: number, clientY: number): Point => {
     const r = rootRef.current?.getBoundingClientRect();
@@ -651,6 +657,8 @@ export function Canvas({
         setFramePanel(el.id);
       } else if (el.type === 'note') {
         select([el.id]);
+        // The sheet takes over the note's document: leave inline editing first.
+        setEditing(null, editingRef.current === el.id);
         setNoteSheet(el.id);
       } else if (!readOnly) {
         select([el.id]);
@@ -1540,6 +1548,7 @@ export function Canvas({
     <BoardContext.Provider value={ctx}>
       <div
         ref={rootRef}
+        tabIndex={-1}
         className={[
           'canvas',
           tool === 'hand' || spaceDown.current ? 'canvas--hand' : '',
@@ -1759,6 +1768,16 @@ export function Canvas({
         )}
         {noteSheet && (
           <NoteSideSheet
+            key={noteSheet}
+            breadcrumb={breadcrumb ?? [boards?.find((board) => board.id === boardId)?.title ?? '']}
+            onComments={
+              !guest && !preview
+                ? () => {
+                    setNoteSheet(null);
+                    openComments({ elementId: noteSheet });
+                  }
+                : undefined
+            }
             noteId={noteSheet}
             store={store}
             readOnly={readOnly}

@@ -211,7 +211,12 @@ test('opening a note edits its real document and preserves the canvas editor', a
   await dialog.getByRole('button', { name: 'Modifica sulla board' }).click();
   await expect(dialog).not.toBeVisible();
   await expect(note.locator('[contenteditable="true"]')).toContainText('aggiornato');
+  // Opening a sheet ends inline editing: never two editors on the canvas at once.
+  await page.locator('[data-type="note"]').filter({ hasText: 'Casting comparse' }).dblclick();
+  await expect(editor).toContainText('Casting comparse');
+  await expect(page.locator('[contenteditable="true"]')).toHaveCount(1);
   await page.keyboard.press('Escape');
+  await expect(dialog).not.toBeVisible();
   await note.dblclick();
   await expect(editor).toContainText('Sopralluogo al porto — aggiornato');
   await page.keyboard.press('Escape');
