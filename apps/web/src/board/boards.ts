@@ -83,6 +83,18 @@ export async function renameBoard(projectId: string, boardId: string, title: str
   return board;
 }
 
+/** The image the home and project cards show for this board; null returns to the first image. */
+export async function setBoardCover(projectId: string, boardId: string, assetId: string | null) {
+  const board = await api.patch<Board>(`/boards/${boardId}`, { coverAssetId: assetId });
+  const current = cache.get(projectId)?.items ?? [];
+  cache.set(projectId, {
+    items: current.map((b) => (b.id === boardId ? board : b)),
+    error: false,
+  });
+  emit();
+  return board;
+}
+
 /** Synchronize root board title when project is renamed. */
 export function syncRootBoardTitle(projectId: string, title: string): void {
   const current = cache.get(projectId)?.items;
