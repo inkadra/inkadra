@@ -115,6 +115,7 @@ import {
   ExchangeAppCode,
   PersonalToken,
   UpdateMe,
+  UploadAvatar,
   User,
 } from './users.ts';
 import {
@@ -454,6 +455,36 @@ registry.registerPath({
   security: secured,
   request: { body: json(UpdateMe) },
   responses: { 200: { description: 'Updated', ...json(User) }, ...errors },
+});
+
+registry.registerPath({
+  method: 'put',
+  path: v1('/me/avatar'),
+  tags: ['Users'],
+  security: [{ session: [] }],
+  request: { body: json(UploadAvatar) },
+  responses: { 200: { description: 'Updated avatar', ...json(User) }, ...errors },
+});
+registry.registerPath({
+  method: 'delete',
+  path: v1('/me/avatar'),
+  tags: ['Users'],
+  security: [{ session: [] }],
+  responses: { 200: { description: 'Removed avatar', ...json(User) }, ...errors },
+});
+registry.registerPath({
+  method: 'get',
+  path: v1('/users/{userId}/avatar/{version}'),
+  tags: ['Users'],
+  security: secured,
+  request: { params: z.object({ userId: Id, version: z.uuid() }) },
+  responses: {
+    200: {
+      description: 'Current profile image',
+      content: { 'image/webp': { schema: { type: 'string', format: 'binary' } } },
+    },
+    ...errors,
+  },
 });
 
 registry.registerPath({

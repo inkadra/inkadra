@@ -265,7 +265,7 @@ function ProjectCard({
         <div className="project-card__members">
           {row.members.map((m) => (
             <span key={m.user.id} title={m.user.name}>
-              <Avatar name={m.user.name} size={24} />
+              <Avatar image={m.user.image} name={m.user.name} size={24} />
             </span>
           ))}
           <time className="ink-muted" dateTime={row.activity}>

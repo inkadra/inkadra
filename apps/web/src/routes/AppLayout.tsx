@@ -315,7 +315,7 @@ export function AppLayout() {
       </span>
       <RailButton icon="logout" label={t('auth.signOut')} onClick={signOut} />
       <span style={{ marginTop: 4 }}>
-        <Avatar name={user.name} />
+        <Avatar image={user.image} name={user.name} />
       </span>
     </Rail>
   );

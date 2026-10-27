@@ -182,7 +182,7 @@ export function ShareDialog({
                       aria-describedby={`${tabsId}-person-hint`}
                       onClick={() => setSelectedUserId(e.user.id)}
                     >
-                      <Avatar name={e.user.name} size={30} />
+                      <Avatar image={e.user.image} name={e.user.name} size={30} />
                       <span className="share__who">
                         <span className="share__name">
                           {me ? t('share.you', { name: e.user.name }) : e.user.name}
