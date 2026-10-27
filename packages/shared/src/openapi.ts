@@ -7,6 +7,7 @@ import {
   ThumbnailSize,
   UploadMetadata,
   VariantParams,
+  VariantQuery,
 } from './assets.ts';
 import {
   Board,
@@ -915,7 +916,10 @@ registry.registerPath({
   tags: ['Assets'],
   security: secured,
   summary: 'A WebP thumbnail, without any metadata of the original.',
-  request: { params: VariantParams },
+  description:
+    'The poster by default. With `?animated=1`, the moving copy of a GIF or an animated ' +
+    'WebP, when `Asset.animated` says the worker wrote one: 404 otherwise.',
+  request: { params: VariantParams, query: VariantQuery },
   responses: {
     200: { description: 'WebP image', content: { 'image/webp': { schema: z.string() } } },
     ...errors,
@@ -1369,8 +1373,12 @@ registry.registerPath({
   summary: 'A WebP thumbnail of a file shown on one of the boards of the link.',
   description:
     'Only for files referenced by an element visible to guests on a board of the link, or ' +
-    'the cover of such a board; checked on every request.',
-  request: { params: z.object({ linkId: Id, assetId: Id, size: ThumbnailSize }) },
+    'the cover of such a board; checked on every request. `?animated=1` asks for the moving ' +
+    'copy of a GIF or animated WebP, when `GuestAsset.animated` says there is one.',
+  request: {
+    params: z.object({ linkId: Id, assetId: Id, size: ThumbnailSize }),
+    query: VariantQuery,
+  },
   responses: {
     200: { description: 'WebP image', content: { 'image/webp': { schema: z.string() } } },
     ...guestErrors,

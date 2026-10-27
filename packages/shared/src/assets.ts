@@ -49,6 +49,12 @@ export const Asset = z
       description: 'Camera and exposure data. Location (GPS) fields are never stored.',
     }),
     palette: z.array(z.string().regex(/^#[0-9A-F]{6}$/)).nullable(),
+    animated: z.boolean().openapi({
+      description:
+        'True when the source moves and the worker wrote moving thumbnails beside the ' +
+        'posters: add `?animated=1` to a variant URL up to 1024 px wide to play it. False ' +
+        'for still pictures, for videos, and for GIFs past the worker limits.',
+    }),
     sourceUrl: z.url().nullable(),
     createdAt: Timestamp,
   })
@@ -74,6 +80,23 @@ export const UploadMetadata = z
 export type UploadMetadata = z.infer<typeof UploadMetadata>;
 
 export const VariantParams = z.object({ assetId: Id, size: ThumbnailSize });
+
+/**
+ * Query of the thumbnail routes: `?animated=1` asks for the moving copy of the thumbnail
+ * of a GIF or an animated WebP, at `variants/<size>-animated.webp`. Only ask for it when
+ * the asset says `animated`; otherwise the answer is 404.
+ */
+export const VariantQuery = z.object({
+  animated: z
+    .enum(['1'])
+    .optional()
+    .openapi({
+      description:
+        'Ask for the moving copy of the thumbnail, when the asset has one (`Asset.animated`). ' +
+        'The poster comes back when the flag is missing.',
+    }),
+});
+export type VariantQuery = z.infer<typeof VariantQuery>;
 
 /** Body of POST /api/v1/link-previews. */
 export const CreateLinkPreview = z

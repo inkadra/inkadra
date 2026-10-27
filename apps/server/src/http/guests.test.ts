@@ -28,6 +28,7 @@ import { memoryMailer, noMailer } from '../mailer.ts';
 import * as notifications from '../notifications.ts';
 import { EMAIL_GROUP_DELAY_MS, sendDigests, sendImmediateEmails } from '../notifications.ts';
 import { clearExpiredGuestNames, DocViews, resolveLink } from '../share-links.ts';
+import { animatedVariantKey } from '../storage.ts';
 import { testDeps } from '../test-deps.ts';
 import { issueToken } from '../tokens.ts';
 import { createApp } from './app.ts';
@@ -1313,6 +1314,7 @@ describe.skipIf(!url)('guest share links (needs DATABASE_URL)', () => {
       width: 100,
       height: 80,
       durationMs: null,
+      animated: false,
       variants: [
         {
           size: '256',
@@ -1559,6 +1561,28 @@ describe.skipIf(!url)('guest share links (needs DATABASE_URL)', () => {
       (await call({ cookie: carla }, 'GET', g(linkC, `/assets/${X.x1}/variants/1024`))).status,
     ).toBe(404);
     expect((await call(null, 'GET', g(linkC, `/assets/${X.x1}/variants/256`))).status).toBe(401);
+    // Moving thumbnails have keys of their own: served only when the worker wrote one.
+    await deps.storage.write(
+      animatedVariantKey(X.x1, '256'),
+      Buffer.from('moving-256'),
+      'image/webp',
+    );
+    const moving = await call(
+      { cookie: carla },
+      'GET',
+      g(linkC, `/assets/${X.x1}/variants/256?animated=1`),
+    );
+    expect(moving.status).toBe(200);
+    expect(moving.text).toBe('moving-256');
+    expect(moving.headers.get('content-type')).toBe('image/webp');
+    for (const id of [X.x2, X.x3])
+      expect(
+        (await call({ cookie: carla }, 'GET', g(linkC, `/assets/${id}/variants/256?animated=1`)))
+          .status,
+      ).toBe(404);
+    expect(
+      (await call(null, 'GET', g(linkC, `/assets/${X.x1}/variants/256?animated=1`))).status,
+    ).toBe(401);
     // No originals without allowDownload.
     expect((await call({ cookie: carla }, 'GET', g(linkC, `/assets/${X.x1}/file`))).status).toBe(
       403,

@@ -23,6 +23,7 @@ const asset: Asset = {
   width: null,
   height: null,
   durationMs: null,
+  animated: false,
   status: 'pending',
   url: '/api/v1/assets/upload/file',
   variants: [],

@@ -16,6 +16,7 @@ import {
   type ShareLinkPreview,
   ThumbnailSize,
   UpdateGuestSession,
+  VariantQuery,
   z,
 } from '@inkadra/shared';
 import { verifyPassword } from 'better-auth/crypto';
@@ -48,7 +49,7 @@ import {
   pictureAssetId,
   resolveLink,
 } from '../share-links.ts';
-import type { Storage } from '../storage.ts';
+import { animatedVariantKey, type Storage } from '../storage.ts';
 import { iso } from './api-routes.ts';
 import { contentDisposition, fileHeaders, parseRange } from './assets-routes.ts';
 import { HttpError } from './errors.ts';
@@ -241,6 +242,7 @@ export async function registerGuestRoutes(app: FastifyInstance, deps: Deps) {
         width: row.width,
         height: row.height,
         durationMs: row.durationMs,
+        animated: row.animated,
         variants:
           row.status === 'ready'
             ? variants
@@ -581,12 +583,25 @@ export async function registerGuestRoutes(app: FastifyInstance, deps: Deps) {
 
     scope.get(v1('/guest/links/:linkId/assets/:assetId/variants/:size'), async (req, reply) => {
       const { linkId, assetId, size } = VariantParams.parse(req.params);
+      const { animated } = VariantQuery.parse(req.query ?? {});
       const ctx = await guests.requireGuest(req, reply, linkId);
       const reachable = ctx.assets;
       if (!reachable.shown.has(assetId) && !reachable.covers.has(assetId))
         throw new HttpError('not_found', 'Asset not found.');
       if ((await projectAsset(ctx, assetId)).status !== 'ready')
         throw new HttpError('not_found', 'The picture is not ready.');
+      if (animated) {
+        const key = animatedVariantKey(assetId, size);
+        if ((await storage.size(key)) === null)
+          throw new HttpError('not_found', 'No such variant.');
+        const etag = createHash('sha256')
+          .update(`${assetId}-${size}-animated-${key}`)
+          .digest('hex');
+        guestFileHeaders(reply, etag);
+        if (matchesEtag(req.headers['if-none-match'], etag)) return reply.status(304).send();
+        reply.header('content-type', 'image/webp');
+        return reply.send(await storage.read(key));
+      }
       const [variant] = await db
         .select({ ...getTableColumns(assetVariant), revision: sql<string>`xmin::text` })
         .from(assetVariant)

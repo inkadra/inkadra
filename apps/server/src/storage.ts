@@ -20,7 +20,8 @@ import type { Config } from './config.ts';
  * File storage, on a local volume or an S3-compatible bucket.
  *
  * Keys are relative paths: originals at `originals/<assetId>` (written by the tus store, which
- * names files after the upload id), thumbnails at `variants/<assetId>/<size>.webp`.
+ * names files after the upload id), thumbnails at `variants/<assetId>/<size>.webp`, and the
+ * moving copies of animated pictures at `variants/<assetId>/<size>-animated.webp`.
  * Files never change once written, so they can be cached forever.
  */
 export interface Storage {
@@ -40,6 +41,9 @@ export const UPLOAD_EXPIRY_MS = 24 * 60 * 60 * 1000;
 
 export const originalKey = (assetId: string) => `originals/${assetId}`;
 export const variantKey = (assetId: string, size: string) => `variants/${assetId}/${size}.webp`;
+/** The moving copy of a thumbnail, for GIF and animated WebP sources. Served with `?animated=1`. */
+export const animatedVariantKey = (assetId: string, size: string) =>
+  `variants/${assetId}/${size}-animated.webp`;
 
 const SAFE_KEY = /^[a-z]+(\/[A-Za-z0-9._-]+)+$/;
 function checkKey(key: string) {

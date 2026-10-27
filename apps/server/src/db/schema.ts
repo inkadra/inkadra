@@ -340,6 +340,8 @@ export const asset = pgTable(
       .default('pending'),
     exif: jsonb('exif').$type<Record<string, unknown>>(),
     palette: jsonb('palette').$type<string[]>(),
+    /** The worker wrote moving thumbnails beside the posters (`<size>-animated.webp`). */
+    animated: boolean('animated').notNull().default(false),
     sourceUrl: text('source_url'),
     createdBy: uuid('created_by').references(() => user.id, { onDelete: 'set null' }),
     createdAt: createdAt(),

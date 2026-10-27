@@ -5,6 +5,7 @@ import {
   CAPABILITY_ROLE,
   Id,
   VariantParams,
+  VariantQuery,
   z,
 } from '@inkadra/shared';
 import { asc, eq } from 'drizzle-orm';
@@ -13,7 +14,7 @@ import { requireAssetRole } from '../access.ts';
 import type { Auth } from '../auth.ts';
 import type { Database } from '../db/client.ts';
 import { type asset, assetVariant } from '../db/schema.ts';
-import type { Storage } from '../storage.ts';
+import { animatedVariantKey, type Storage } from '../storage.ts';
 import { iso } from './api-routes.ts';
 import { requireActor } from './auth-routes.ts';
 import { HttpError, sendError } from './errors.ts';
@@ -69,6 +70,7 @@ export function toAsset(
         : [],
     exif: row.exif ?? null,
     palette: row.palette ?? null,
+    animated: row.animated,
     sourceUrl: row.sourceUrl,
     createdAt: iso(row.createdAt),
   };
@@ -168,7 +170,19 @@ export function registerAssetRoutes(app: FastifyInstance, deps: Deps) {
   app.get(v1('/assets/:assetId/variants/:size'), async (req, reply) => {
     const actor = await requireActor(auth, req, db);
     const { assetId, size } = VariantParams.parse(req.params);
+    const { animated } = VariantQuery.parse(req.query ?? {});
     await requireAssetRole(db, actor, assetId, 'viewer');
+    if (animated) {
+      // Moving thumbnails have keys of their own: no row says whether one exists.
+      const key = animatedVariantKey(assetId, size);
+      if ((await storage.size(key)) === null)
+        return sendError(reply, 'not_found', 'This picture does not move.');
+      const etag = `${assetId}-${size}-animated`;
+      fileHeaders(reply, etag);
+      if (req.headers['if-none-match'] === `"${etag}"`) return reply.status(304).send();
+      reply.header('content-type', 'image/webp');
+      return reply.send(await storage.read(key));
+    }
     const [variant] = await db
       .select()
       .from(assetVariant)

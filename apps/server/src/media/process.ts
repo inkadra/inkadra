@@ -2,12 +2,12 @@ import { createHash } from 'node:crypto';
 import { mkdir, readFile, rm } from 'node:fs/promises';
 import { join } from 'node:path';
 import { pipeline } from 'node:stream/promises';
-import { ThumbnailSize } from '@inkadra/shared';
+import { MOVING_THUMBNAIL_MAX_WIDTH, ThumbnailSize } from '@inkadra/shared';
 import { eq } from 'drizzle-orm';
 import sharp, { type Sharp } from 'sharp';
 import type { Database } from '../db/client.ts';
 import { asset, assetVariant } from '../db/schema.ts';
-import { readAll, type Storage, variantKey } from '../storage.ts';
+import { animatedVariantKey, readAll, type Storage, variantKey } from '../storage.ts';
 import { readExif } from './exif.ts';
 import { decodeHeic, sniffImage } from './heic.ts';
 import { palette } from './palette.ts';
@@ -18,7 +18,40 @@ export interface MediaDeps {
   storage: Storage;
   tmpDir: string;
   heic: boolean;
+  /** Where a failed pass of the moving variants is reported; the posters are still saved. */
+  log?: { warn: (fields: Record<string, unknown>, message: string) => void };
 }
+
+/** Limits on the moving variants of a GIF or an animated WebP, beyond which cards stay static. */
+export interface AnimatedCaps {
+  /** Frames decodable at once: a GIF with more is shown as a poster only. */
+  maxFrames: number;
+  /** Widest moving variant; a larger poster in the viewer stays static. */
+  maxWidth: number;
+  /**
+   * Pixels of the whole source (frames × source frame area), unscaled: sharp decodes every
+   * frame at the size of the original before resizing, so 60 frames of 4000×4000 are a
+   * billion pixels even though the variants are small.
+   */
+  maxPixels: number;
+  /** Pixels of one source frame, so a single huge frame is never decoded at all. */
+  maxFramePixels: number;
+  /** Total bytes of the moving variants; past this they are dropped altogether. */
+  maxBytes: number;
+}
+
+/**
+ * Moving WebP thumbnails are cheap while they fit: up to three sizes and an ordinary GIF
+ * length. A long or huge GIF keeps only its poster, and so do animated WebPs like it.
+ */
+export const ANIMATED_CAPS: AnimatedCaps = {
+  maxFrames: 300,
+  maxWidth: MOVING_THUMBNAIL_MAX_WIDTH,
+  maxPixels: 64_000_000,
+  // 4096×4096: one frame of a GIF this big already costs 67 MB of raw pixels.
+  maxFramePixels: 16_777_216,
+  maxBytes: 6 * 1024 * 1024,
+};
 
 const SIZES = ThumbnailSize.options.map(Number).sort((a, b) => a - b);
 
@@ -39,6 +72,28 @@ export function variantWidths(width: number): number[] {
   return fit.length > 0 ? fit : SIZES.slice(0, 1);
 }
 
+/** Every moving variant an asset could have, whatever sizes the posters ended up at. */
+const animatedKeys = (assetId: string) =>
+  ThumbnailSize.options.map((size) => animatedVariantKey(assetId, size));
+
+/**
+ * Whether the moving thumbnails of `meta` are worth making. The caps are on the source
+ * pixels, not on the variants: sharp decodes each frame at full size before resizing it.
+ */
+export function fitsAnimatedCaps(
+  meta: { frames: number; width: number; height: number },
+  caps: AnimatedCaps,
+) {
+  const framePixels = meta.width * meta.height;
+  return (
+    meta.frames > 1 &&
+    framePixels > 0 &&
+    meta.frames <= caps.maxFrames &&
+    framePixels <= caps.maxFramePixels &&
+    meta.frames * framePixels <= caps.maxPixels
+  );
+}
+
 async function sha256(storage: Storage, key: string) {
   const hash = createHash('sha256');
   await pipeline(await storage.read(key), hash);
@@ -49,9 +104,10 @@ async function sha256(storage: Storage, key: string) {
  * Turns an uploaded original into a ready asset: checksum always; for images also the real
  * type, dimensions, EXIF without location, palette and WebP thumbnails without metadata; for
  * videos, when ffmpeg is installed, the duration and thumbnails of a poster frame.
+ * Animated GIFs and animated WebPs also get moving thumbnails, when they fit `caps`.
  * Safe to run twice: variants are overwritten.
  */
-export async function processAsset(deps: MediaDeps, assetId: string) {
+export async function processAsset(deps: MediaDeps, assetId: string, caps = ANIMATED_CAPS) {
   const { db, storage } = deps;
   const [row] = await db.select().from(asset).where(eq(asset.id, assetId));
   if (!row) return { skipped: 'gone' as const };
@@ -65,7 +121,10 @@ export async function processAsset(deps: MediaDeps, assetId: string) {
   const video = !sniffed && !svg && row.kind === 'video' ? sniffVideo(head) : null;
   const tools = video ? await mediaTools() : null;
   if (!sniffed && !svg && !(video && tools?.ffmpeg)) {
-    await db.update(asset).set({ sha256: digest, status: 'ready' }).where(eq(asset.id, assetId));
+    await db
+      .update(asset)
+      .set({ sha256: digest, status: 'ready', animated: false })
+      .where(eq(asset.id, assetId));
     return { variants: 0 };
   }
 
@@ -86,17 +145,23 @@ export async function processAsset(deps: MediaDeps, assetId: string) {
         durationMs,
         palette: result.palette,
         status: 'ready',
+        animated: false,
       });
       return { variants: result.variants.length };
     }
 
     let mime = sniffed ?? row.mime;
     let input: Sharp;
+    // Frames and frame size, for the moving variants: 1 frame for a still picture.
+    let frames = 1;
+    let frameWidth = 0;
+    let frameHeight = 0;
+    let delays: number[] | undefined;
     if (mime === 'image/heic') {
       if (!deps.heic) {
         await db
           .update(asset)
-          .set({ sha256: digest, mime, kind: 'image', status: 'ready' })
+          .set({ sha256: digest, mime, kind: 'image', status: 'ready', animated: false })
           .where(eq(asset.id, assetId));
         return { variants: 0 };
       }
@@ -106,10 +171,26 @@ export async function processAsset(deps: MediaDeps, assetId: string) {
       input = sharp(copy.path, { failOn: 'error', animated: false });
       const meta = await input.metadata();
       mime = (meta.format && SHARP_MIME[meta.format]) ?? mime;
+      frames = meta.pages ?? 1;
+      frameWidth = meta.width ?? 0;
+      frameHeight = meta.height ?? 0;
+      delays = meta.delay;
     }
 
     const exif = await readExif(copy.path);
     const result = await thumbnails(deps, assetId, input);
+    let animated = 0;
+    if (frames > 1 && (mime === 'image/gif' || mime === 'image/webp')) {
+      animated = await animatedThumbnails(deps, assetId, copy.path, result.widths, caps, {
+        frames,
+        width: frameWidth,
+        height: frameHeight,
+        delays,
+      });
+    } else {
+      // A previous run may have made moving copies of a source that no longer moves.
+      await deps.storage.remove(animatedKeys(assetId));
+    }
     await save(db, assetId, result.variants, {
       sha256: digest,
       mime,
@@ -119,8 +200,9 @@ export async function processAsset(deps: MediaDeps, assetId: string) {
       exif,
       palette: result.palette,
       status: 'ready',
+      animated: animated > 0,
     });
-    return { variants: result.variants.length };
+    return { variants: result.variants.length, animated };
   } finally {
     await copy.done();
     await rm(posterPath, { force: true });
@@ -135,8 +217,9 @@ async function thumbnails(deps: MediaDeps, assetId: string, input: Sharp) {
   const base = () => sharp(pixels, { raw });
   const colours = await base().resize(64, 64, { fit: 'inside' }).removeAlpha().raw().toBuffer();
 
+  const widths = variantWidths(info.width);
   const variants: Array<typeof assetVariant.$inferInsert> = [];
-  for (const width of variantWidths(info.width)) {
+  for (const width of widths) {
     const { data, info: out } = await base()
       .resize({ width, withoutEnlargement: true })
       .webp({ quality: 80, effort: 4 })
@@ -146,7 +229,72 @@ async function thumbnails(deps: MediaDeps, assetId: string, input: Sharp) {
     await deps.storage.write(key, data, 'image/webp');
     variants.push({ assetId, size, width: out.width, height: out.height, storageKey: key });
   }
-  return { variants, width: info.width, height: info.height, palette: palette(colours) };
+  return { variants, widths, width: info.width, height: info.height, palette: palette(colours) };
+}
+
+/**
+ * Moving WebP copies of the thumbnails of an animated source, at keys of their own
+ * (`variants/<assetId>/<size>-animated.webp`), never rows: the database has no room for a
+ * second variant at the same size, and whether one exists is derived from these caps.
+ * Returns how many were written; 0 when the source is too long or the result too heavy,
+ * and the posters stay the only variants. A source that does not decode frame by frame is
+ * never an error for the asset: the posters are already saved, and this pass just gives up.
+ */
+async function animatedThumbnails(
+  deps: MediaDeps,
+  assetId: string,
+  source: string,
+  widths: number[],
+  caps: AnimatedCaps,
+  meta: { frames: number; width: number; height: number; delays?: number[] | undefined },
+) {
+  // Whatever a previous run wrote goes: the source may no longer move, or no longer fit.
+  await deps.storage.remove(animatedKeys(assetId));
+  if (!fitsAnimatedCaps(meta, caps)) return 0;
+  const targets = widths
+    .filter((w) => w <= caps.maxWidth)
+    .map((width) => ({ width, key: animatedVariantKey(assetId, String(width)) }));
+  if (targets.length === 0) return 0;
+
+  try {
+    // Every frame is decoded once, at its own size: decoding the source again for each
+    // variant is what the caps above are about, and it would pay that cost three times.
+    const { data: pixels, info } = await sharp(source, { animated: true, failOn: 'none' })
+      .rotate()
+      .raw()
+      .toBuffer({ resolveWithObject: true });
+    const pageHeight = info.pageHeight;
+    if (!pageHeight || pageHeight >= info.height) return 0;
+    const pages = Math.round(info.height / pageHeight);
+    const raw = {
+      width: info.width,
+      height: info.height,
+      // Animated WebPs decode to RGB, GIFs to RGBA: the buffer is as wide as it says.
+      channels: info.channels as 3 | 4,
+      pageHeight,
+    };
+    // Timings are lost in the raw pixels: they come from the metadata of the source.
+    const delay = meta.delays?.length === pages ? meta.delays : undefined;
+
+    const rendered: Array<{ key: string; data: Buffer }> = [];
+    let bytes = 0;
+    for (const target of targets) {
+      const { data } = await sharp(pixels, { raw, animated: true })
+        .resize({ width: target.width, withoutEnlargement: true })
+        .webp({ quality: 80, effort: 4, loop: 0, delay })
+        .toBuffer({ resolveWithObject: true });
+      bytes += data.length;
+      if (bytes > caps.maxBytes) return 0;
+      rendered.push({ key: target.key, data });
+    }
+    for (const r of rendered) await deps.storage.write(r.key, r.data, 'image/webp');
+    return rendered.length;
+  } catch (err) {
+    // A corrupt frame must not cost the asset: the posters are saved, the motion is not.
+    deps.log?.warn({ err, assetId }, 'moving thumbnails failed: keeping the posters');
+    await deps.storage.remove(animatedKeys(assetId));
+    return 0;
+  }
 }
 
 async function save(

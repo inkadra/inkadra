@@ -20,6 +20,16 @@ single small server with a local disk to S3-compatible buckets.
   the first bytes, applies the EXIF orientation, extracts dominant colours and writes WebP
   thumbnails 256, 512, 1024 and 2048 px wide, never wider than the original. Thumbnails carry
   no metadata.
+- GIFs and animated WebPs also get moving WebP copies of the same thumbnails (up to 1024 px
+  wide, 300 frames and 6 MiB in all), at `variants/<assetId>/<size>-animated.webp` and served
+  with `?animated=1` on the thumbnail route, or 404 when there is none. They are not rows of
+  their own: the poster stays the only variant in `asset_variant`, so clients that do not ask
+  for motion keep it, and reduced motion or a large board simply never asks. The caps are on
+  the source pixels (frames × frame area, and one frame on its own), because sharp decodes
+  every frame at full size before resizing it, whatever width the variants end up at. Anything
+  past the caps keeps the poster everywhere. The asset row says `animated`, so clients ask
+  for the moving copy only when there is one; a frame that does not decode drops the moving
+  copies and leaves the posters, never the asset.
 - EXIF is stored from an allow-list of camera and exposure fields; location (GPS) is never
   stored or returned. Originals keep their metadata and are served only to project members;
   guest links (wave 3) must serve thumbnails or a stripped copy.

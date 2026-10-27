@@ -30,6 +30,7 @@ import { useSlugline } from './film/StoryboardView.tsx';
 import { GuestVisibility } from './guest-visibility.tsx';
 import { webUrl } from './links.ts';
 import { useMeasure } from './measure.ts';
+import { MovingPicture, movingVariantUrl } from './moving.tsx';
 import { NoteBody, NoteEditor, useFragment } from './note.tsx';
 import { LOCAL } from './store.ts';
 import { TagList } from './tags.tsx';
@@ -116,6 +117,7 @@ export const Card = memo(function Card({
       <CardBody
         element={element}
         editing={isEditing}
+        selected={selected}
         width={w}
         childrenOf={childrenOf}
         selection={selection}
@@ -147,6 +149,7 @@ export const Card = memo(function Card({
 function CardBody({
   element,
   editing,
+  selected,
   width,
   childrenOf,
   selection,
@@ -154,6 +157,7 @@ function CardBody({
 }: {
   element: Element;
   editing: boolean;
+  selected: boolean;
   width: number;
   childrenOf?: readonly Element[] | undefined;
   selection?: ReadonlySet<string> | undefined;
@@ -163,7 +167,7 @@ function CardBody({
     case 'note':
       return <NoteCard element={element} editing={editing} />;
     case 'image':
-      return <ImageCard element={element} width={width} />;
+      return <ImageCard element={element} width={width} selected={selected} />;
     case 'link':
       return <LinkCard element={element} width={width} />;
     case 'file':
@@ -258,25 +262,43 @@ function NoteCard({ element, editing }: { element: Of<'note'>; editing: boolean 
   );
 }
 
-function ImageCard({ element, width }: { element: Of<'image'>; width: number }) {
-  const { scale } = useBoard();
+function ImageCard({
+  element,
+  width,
+  selected,
+}: {
+  element: Of<'image'>;
+  width: number;
+  selected: boolean;
+}) {
+  const { scale, largeBoard } = useBoard();
   const { t } = useTranslation();
   const asset = useAsset(element.assetId);
   const progress = useUploadProgress(element.assetId);
   const ready = asset && asset !== 'missing' ? asset : null;
+  const [hover, setHover] = useState(false);
   const dpr = typeof window === 'undefined' ? 1 : window.devicePixelRatio || 1;
   const src =
     localPreview(element.assetId) ?? (ready ? pickVariant(ready, width * scale * dpr) : '');
+  // A board with many cards keeps the posters and plays a GIF only on hover or selection.
+  const moving =
+    ready && (!largeBoard || selected || hover)
+      ? movingVariantUrl(ready, width * scale * dpr)
+      : null;
   const ratio = ready?.width && ready.height ? `${ready.width} / ${ready.height}` : '4 / 3';
   return (
     <>
-      <div className="card__media" style={{ aspectRatio: element.h ? undefined : ratio }}>
+      <div
+        className="card__media"
+        style={{ aspectRatio: element.h ? undefined : ratio }}
+        onPointerEnter={() => setHover(true)}
+        onPointerLeave={() => setHover(false)}
+      >
         {src ? (
-          <img
-            src={src}
+          <MovingPicture
+            poster={src}
+            moving={moving}
             alt={element.caption ?? ready?.filename ?? ''}
-            draggable={false}
-            decoding="async"
           />
         ) : (
           <span className="card__media-state">

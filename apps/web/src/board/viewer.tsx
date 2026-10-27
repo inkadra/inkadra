@@ -5,6 +5,7 @@ import { Button, IconButton } from '@inkadra/ui';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { pickVariant, useAsset } from './assets.ts';
+import { MovingPicture, movingVariantUrl } from './moving.tsx';
 import { type BoardStore, LOCAL } from './store.ts';
 import { TagEditor } from './tags.tsx';
 import { isYoutubeUrl, youtubeEmbedUrl } from './youtube.ts';
@@ -344,9 +345,10 @@ export function MediaViewer({
             )}
           </>
         ) : ready ? (
-          <img
+          <MovingPicture
             className="viewer__media"
-            src={pickVariant(ready, wide) || ready.url}
+            poster={pickVariant(ready, wide) || ready.url}
+            moving={movingVariantUrl(ready, wide)}
             alt={element.type === 'image' ? (element.caption ?? ready.filename) : ready.filename}
           />
         ) : null}

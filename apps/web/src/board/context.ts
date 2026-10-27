@@ -14,6 +14,8 @@ export interface BoardContextValue {
   boards: Board[] | null;
   /** Zoom rounded to a power of two, to pick image sizes without re-rendering on every step. */
   scale: number;
+  /** Many cards: pictures keep their poster until they are hovered or selected. */
+  largeBoard: boolean;
   editing: string | null;
   setEditing: (id: string | null) => void;
   openBoard: (boardId: string) => void;
@@ -23,6 +25,12 @@ export interface BoardContextValue {
 }
 
 export const BoardContext = createContext<BoardContextValue | null>(null);
+
+/**
+ * Cards beyond which a board counts as large for pictures: GIFs then keep their poster
+ * until the card is hovered or selected, instead of all playing at once.
+ */
+export const LARGE_BOARD = 60;
 
 /**
  * True on the guest page of a share link: guests do not receive internal fields (decision

@@ -18,6 +18,7 @@ import type { Auth } from '../auth.ts';
 import type { Database } from '../db/client.ts';
 import { asset, assetVariant, board, project, projectMember, user } from '../db/schema.ts';
 import type { Jobs } from '../jobs.ts';
+import { animatedVariantKey } from '../storage.ts';
 import { iso } from './api-routes.ts';
 import { requireActor } from './auth-routes.ts';
 import { HttpError } from './errors.ts';
@@ -232,12 +233,19 @@ export function registerProjectRoutes(app: FastifyInstance, deps: Deps) {
         .from(asset)
         .where(eq(asset.projectId, projectId));
       const variants = await tx
-        .select({ key: assetVariant.storageKey })
+        .select({
+          key: assetVariant.storageKey,
+          assetId: assetVariant.assetId,
+          size: assetVariant.size,
+        })
         .from(assetVariant)
         .innerJoin(asset, eq(asset.id, assetVariant.assetId))
         .where(eq(asset.projectId, projectId));
       await tx.delete(project).where(eq(project.id, projectId));
-      return [...originals, ...variants].map((r) => r.key);
+      return [
+        ...originals.map((r) => r.key),
+        ...variants.flatMap((r) => [r.key, animatedVariantKey(r.assetId, r.size)]),
+      ];
     });
     // Files go after the rows: a failure leaves orphan files, never rows without files.
     if (keys.length > 0) await jobs.deleteFiles(keys);

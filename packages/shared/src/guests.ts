@@ -252,6 +252,11 @@ export const GuestAsset = z
     width: z.int().nullable(),
     height: z.int().nullable(),
     durationMs: z.int().nullable(),
+    animated: z.boolean().openapi({
+      description:
+        'As `Asset.animated`: add `?animated=1` to a variant URL up to 1024 px wide to play ' +
+        'the moving copy of a GIF or animated WebP.',
+    }),
     variants: z.array(GuestAssetVariant).openapi({ description: 'Smallest first.' }),
     downloadUrl: z
       .string()

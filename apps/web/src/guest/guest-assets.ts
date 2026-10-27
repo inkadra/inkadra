@@ -18,6 +18,7 @@ export function toAsset(g: GuestAsset): Asset {
     width: g.width,
     height: g.height,
     durationMs: g.durationMs,
+    animated: g.animated,
     status: 'ready',
     url: g.downloadUrl ?? largest,
     variants: g.variants.map((v) => ({ ...v })),
