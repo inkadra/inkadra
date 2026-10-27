@@ -4,7 +4,14 @@ import { useTranslation } from 'react-i18next';
 import './context-menu.css';
 
 type Entry = { label: string; run: () => void | Promise<void> };
-type OpenMenu = { x: number; y: number; origin: HTMLElement; entries: Entry[]; editing: boolean };
+type OpenMenu = {
+  x: number;
+  y: number;
+  origin: HTMLElement;
+  entries: Entry[];
+  editing: boolean;
+  container: HTMLElement;
+};
 
 /** Last-resort menu: local React handlers (canvas/projects) get first refusal. */
 export function AppContextMenu({ children }: { children: ReactNode }) {
@@ -12,6 +19,7 @@ export function AppContextMenu({ children }: { children: ReactNode }) {
   const [menu, setMenu] = useState<OpenMenu | null>(null);
   const [error, setError] = useState('');
   const ref = useRef<HTMLDivElement>(null);
+  const menuHost = useRef<HTMLElement | null>(null);
   const close = (restore = false) => {
     if (restore && menu?.origin.isConnected) menu.origin.focus({ preventScroll: true });
     setMenu(null);
@@ -22,7 +30,7 @@ export function AppContextMenu({ children }: { children: ReactNode }) {
         setMenu(null);
         return;
       }
-      if (!(event.target instanceof HTMLElement)) return;
+      if (!(event.target instanceof Element)) return;
       event.preventDefault();
       const origin = event.target;
       const field = origin.closest<HTMLInputElement | HTMLTextAreaElement>('input,textarea');
@@ -88,13 +96,17 @@ export function AppContextMenu({ children }: { children: ReactNode }) {
       }));
       const box = origin.getBoundingClientRect();
       setError('');
+      const container = origin.closest<HTMLDialogElement>('dialog[open]') ?? document.body;
+      menuHost.current = container;
       setMenu({
+        container,
         x: event.clientX || box.left,
         y: event.clientY || box.bottom,
         origin:
           origin.closest<HTMLElement>(
             'button,a[href],input,textarea,select,[tabindex],[contenteditable="true"]',
-          ) ?? (document.activeElement instanceof HTMLElement ? document.activeElement : origin),
+          ) ??
+          (document.activeElement instanceof HTMLElement ? document.activeElement : document.body),
         entries: wrapped,
         editing: !!field || !!editor,
       });
@@ -107,7 +119,7 @@ export function AppContextMenu({ children }: { children: ReactNode }) {
         return;
       event.preventDefault();
       // Dispatch through local handlers too; never act on an unrelated selection.
-      const target = event.target instanceof HTMLElement ? event.target : document.body;
+      const target = event.target instanceof Element ? event.target : document.body;
       const box = target.getBoundingClientRect();
       target.dispatchEvent(
         new MouseEvent('contextmenu', {
@@ -143,21 +155,25 @@ export function AppContextMenu({ children }: { children: ReactNode }) {
     window.addEventListener('resize', dismiss);
     window.addEventListener('blur', dismiss);
     document.addEventListener('scroll', dismiss, true);
+    document.addEventListener('close', dismiss, true);
     return () => {
       document.removeEventListener('pointerdown', away, true);
       window.removeEventListener('resize', dismiss);
       window.removeEventListener('blur', dismiss);
       document.removeEventListener('scroll', dismiss, true);
+      document.removeEventListener('close', dismiss, true);
     };
   }, [menu]);
   return (
     <>
       {children}
-      {error && (
-        <div className="app-context-error" role="status">
-          {error}
-        </div>
-      )}
+      {error &&
+        createPortal(
+          <div className="app-context-error" role="status">
+            {error}
+          </div>,
+          menuHost.current?.isConnected ? menuHost.current : document.body,
+        )}
       {menu &&
         createPortal(
           <div
@@ -207,7 +223,7 @@ export function AppContextMenu({ children }: { children: ReactNode }) {
             ))}
             {menu.editing && <p>{t('context.editHint')}</p>}
           </div>,
-          document.body,
+          menu.container,
         )}
     </>
   );
