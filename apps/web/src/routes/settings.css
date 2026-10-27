@@ -249,14 +249,83 @@
 .team-table th,
 .team-table td {
   text-align: left;
-  padding: 12px 8px;
+  vertical-align: middle;
+  padding: 10px 12px;
   border-bottom: 1px solid var(--ink-border-subtle);
+}
+.team-table thead th {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-text-muted);
+  padding-top: 8px;
+  padding-bottom: 8px;
+}
+.team-table tbody tr:hover {
+  background: var(--ink-surface-1);
 }
 .team-table th[scope="row"] {
   font-weight: 500;
+  width: 40%;
 }
 .team-table select {
-  min-width: 95px;
+  min-width: 110px;
+  height: 30px;
+  padding-block: 0;
+  font-size: 12px;
+}
+.team-table td.team-table__projects {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.team-table th.team-table__projects {
+  text-align: right;
+}
+.team-table__lastActive {
+  color: var(--ink-text-secondary);
+  white-space: nowrap;
+}
+.team-table td.team-table__actions {
+  text-align: right;
+}
+.team-table th.team-table__actions {
+  text-align: right;
+}
+.team-person {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+.team-person__text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.team-person__name {
+  color: var(--ink-text-primary);
+  font-size: 13px;
+}
+.team-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+.team-status::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--ink-tag-green);
+}
+.team-status--off {
+  color: var(--ink-text-muted);
+}
+.team-status--off::before {
+  background: var(--ink-text-muted);
 }
 .team-invite {
   border-top: 1px solid var(--ink-border-subtle);

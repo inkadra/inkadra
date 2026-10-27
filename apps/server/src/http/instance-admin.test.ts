@@ -133,6 +133,7 @@ describe.skipIf(!url)('instance administration', () => {
     expect(res.json().items.find((m: InstanceMember) => m.id === people.member?.id)).toMatchObject({
       projectsCount: 1,
       role: 'member',
+      image: null,
       lastActiveAt: '2026-02-01T12:00:00.000Z',
       deactivatedAt: null,
     });
