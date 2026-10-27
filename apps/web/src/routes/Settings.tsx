@@ -20,6 +20,7 @@ import { ClassificationSettings } from './ClassificationSettings.tsx';
 import { InstanceSettings } from './InstanceSettings.tsx';
 import { InstanceChecklist } from './InstanceSetup.tsx';
 import { SettingsShell } from './SettingsShell.tsx';
+import { settingsSection } from './settings-sections.ts';
 import './projects.css';
 import { GoogleG } from './SignInOptions.tsx';
 import './settings.css';
@@ -29,6 +30,8 @@ export function Settings() {
   const setup = useInstanceSetupState();
   const { t } = useTranslation();
   const [params] = useSearchParams();
+  const page = settingsSection('/settings', params.toString());
+  // Preserve section dispatch for independent settings extensions (for example PR170).
   const section = params.get('section') ?? 'account';
   const { user } = useSession();
   const { preference, choose } = useTheme();
@@ -41,8 +44,8 @@ export function Settings() {
 
   return (
     <SettingsShell>
-      <h1 className="settings__title">{t('settings.title')}</h1>
-      <p className="ink-muted settings__lead">{t('settings.lead')}</p>
+      <h1 className="settings__title">{t(page.title)}</h1>
+      <p className="ink-muted settings__lead">{t(page.lead)}</p>
       <InstanceChecklist {...setup} />
       {section === 'preferences' ? (
         <Section title={t('admin.preferences')}>

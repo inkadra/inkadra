@@ -1344,6 +1344,13 @@
     "conversationUnavailable": "Conversation not available"
   },
   "settings": {
+    "sectionLead": {
+      "preferences": "Choose how Inkadra looks and behaves for you.",
+      "notifications": "Choose which email notifications you receive.",
+      "workspace": "Manage workspace storage and upload limits.",
+      "instance": "Manage instance branding and registration.",
+      "providers": "Configure the providers available for signing in."
+    },
     "title": "Account",
     "lead": "Your profile, how you sign in and the apps you connected.",
     "save": "Save",

@@ -63,6 +63,7 @@ import {
   subscribeProjects,
 } from './projects.ts';
 import { SearchDialog } from './SearchDialog.tsx';
+import { SettingsBreadcrumb } from './SettingsBreadcrumb.tsx';
 import './mobile-shell.css';
 
 interface ProjectsState {
@@ -98,7 +99,7 @@ export function AppLayout() {
   const { user, instance, refresh } = useSession();
   const { theme, toggle } = useTheme();
   const navigate = useNavigate();
-  const { pathname } = useLocation();
+  const { pathname, search } = useLocation();
   const projects = useSyncExternalStore(subscribeProjects, getCachedProjects);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [creating, setCreating] = useState(false);
@@ -500,16 +501,20 @@ export function AppLayout() {
         {headerContent ?? (
           <>
             <nav aria-label={t('nav.breadcrumb')} className="ink-header__crumbs">
-              <span style={{ fontWeight: 600 }}>
-                {current?.name ??
-                  t(
-                    pathname === '/projects'
-                      ? 'nav.projects'
-                      : pathname === '/onboarding'
-                        ? 'onboarding.title'
-                        : 'nav.home',
-                  )}
-              </span>
+              {pathname === '/settings' || pathname === '/settings/team' ? (
+                <SettingsBreadcrumb pathname={pathname} search={search} />
+              ) : (
+                <span style={{ fontWeight: 600 }}>
+                  {current?.name ??
+                    t(
+                      pathname === '/projects'
+                        ? 'nav.projects'
+                        : pathname === '/onboarding'
+                          ? 'onboarding.title'
+                          : 'nav.home',
+                    )}
+                </span>
+              )}
             </nav>
             <span className="ink-header__spacer" />
             <span
