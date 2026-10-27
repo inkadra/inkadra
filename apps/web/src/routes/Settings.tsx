@@ -139,6 +139,36 @@ function Profile() {
   const [locale, setLocale] = useState(user?.locale ?? i18n.language);
   const status = useStatus();
 
+  const [avatarBusy, setAvatarBusy] = useState(false);
+  async function changeAvatar(file?: File) {
+    status.clear();
+    if (
+      file &&
+      (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type) || file.size > 1024 * 1024)
+    ) {
+      status.show(t('settings.profile.avatarInvalid'), true);
+      return;
+    }
+    setAvatarBusy(true);
+    try {
+      if (file) {
+        const data = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onerror = reject;
+          reader.onload = () => resolve(String(reader.result).split(',')[1] ?? '');
+          reader.readAsDataURL(file);
+        });
+        await api.put('/me/avatar', { data });
+      } else await api.delete('/me/avatar');
+      await refresh();
+      status.show(t('settings.saved'));
+    } catch {
+      status.show(t('settings.profile.avatarError'), true);
+    } finally {
+      setAvatarBusy(false);
+    }
+  }
+
   async function save(e: FormEvent) {
     e.preventDefault();
     status.clear();
@@ -155,6 +185,47 @@ function Profile() {
   return (
     <Section title={t('settings.profile.title')}>
       <form className="settings__form" onSubmit={save}>
+        <div className="settings__actions">
+          {user?.image ? (
+            <img
+              src={user.image}
+              alt={user.name}
+              width={64}
+              height={64}
+              style={{ borderRadius: '50%', objectFit: 'cover' }}
+            />
+          ) : (
+            <span role="img" aria-label={user?.name}>
+              {user?.name
+                .split(/\s+/)
+                .slice(0, 2)
+                .map((p) => p[0])
+                .join('')
+                .toUpperCase()}
+            </span>
+          )}
+          <label className="settings__label">
+            {t('settings.profile.avatarUpload')}
+            <input
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              disabled={avatarBusy}
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                e.target.value = '';
+                if (file) void changeAvatar(file);
+              }}
+            />
+          </label>
+          <Button
+            type="button"
+            disabled={avatarBusy || !user?.image}
+            onClick={() => void changeAvatar()}
+          >
+            {t('settings.profile.avatarRemove')}
+          </Button>
+        </div>
+        <p>{t('settings.profile.avatarHelp')}</p>
         <TextField
           label={t('auth.name')}
           value={name}

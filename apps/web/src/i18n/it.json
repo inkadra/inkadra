@@ -1334,7 +1334,12 @@
       "languages": {
         "it": "Italiano",
         "en": "English"
-      }
+      },
+      "avatarUpload": "Carica o sostituisci avatar",
+      "avatarRemove": "Rimuovi avatar",
+      "avatarHelp": "JPEG, PNG o WebP, massimo 1 MiB.",
+      "avatarInvalid": "Scegli un’immagine JPEG, PNG o WebP di massimo 1 MiB.",
+      "avatarError": "Impossibile aggiornare l’avatar. Controlla l’immagine e riprova."
     },
     "methods": {
       "title": "Metodi di accesso",

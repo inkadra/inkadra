@@ -1334,7 +1334,12 @@
       "languages": {
         "it": "Italiano",
         "en": "English"
-      }
+      },
+      "avatarUpload": "Upload or replace avatar",
+      "avatarRemove": "Remove avatar",
+      "avatarHelp": "JPEG, PNG or WebP, up to 1 MiB.",
+      "avatarInvalid": "Choose a JPEG, PNG or WebP image up to 1 MiB.",
+      "avatarError": "Could not update the avatar. Check the image and try again."
     },
     "methods": {
       "title": "Sign-in methods",
