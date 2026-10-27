@@ -179,7 +179,7 @@ export async function startWorkers(
     async (job) => {
       if (job.name !== 'process') throw new Error(`Unknown job ${job.name}`);
       const { assetId } = job.data as JobPayloads['media:process'];
-      return processAsset(deps, assetId);
+      return processAsset({ ...deps, log }, assetId);
     },
     { connection, concurrency: 2, prefix: opts.prefix },
   );
@@ -476,7 +476,7 @@ export function inlineJobs(deps: MediaDeps, log: Logger): Jobs & { idle(): Promi
   return {
     async processAsset(assetId) {
       track(
-        processAsset(deps, assetId).catch(async (err) => {
+        processAsset({ ...deps, log }, assetId).catch(async (err) => {
           await markFailed(deps.db, assetId);
           throw err;
         }),

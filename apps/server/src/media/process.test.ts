@@ -11,7 +11,7 @@ import { createDatabase, runMigrations } from '../db/client.ts';
 import { asset, assetVariant, project } from '../db/schema.ts';
 import { animatedVariantKey, originalKey, readAll } from '../storage.ts';
 import { testDeps } from '../test-deps.ts';
-import { ANIMATED_CAPS, processAsset, variantWidths } from './process.ts';
+import { ANIMATED_CAPS, fitsAnimatedCaps, processAsset, variantWidths } from './process.ts';
 import { mediaTools, resetMediaTools, sniffVideo } from './video.ts';
 
 const url = process.env.DATABASE_URL;
@@ -19,7 +19,7 @@ const migrationsFolder = fileURLToPath(new URL('../../drizzle', import.meta.url)
 const fixture = (name: string) => readFileSync(new URL(`./fixtures/${name}`, import.meta.url));
 
 /** A tiny animated GIF, generated on the fly: no binary fixture in the repository. */
-async function animatedGif(frames: number, width = 120, height = 80) {
+async function animatedGif(frames: number, width = 120, height = 80, delay?: number[]) {
   const pages = await Promise.all(
     Array.from({ length: frames }, (_, i) =>
       sharp({
@@ -35,9 +35,76 @@ async function animatedGif(frames: number, width = 120, height = 80) {
     ),
   );
   return sharp(pages, { join: { animated: true } })
-    .gif({ loop: 0 })
+    .gif({ loop: 0, delay })
     .toBuffer();
 }
+
+/** The same frames as an animated WebP, which sharp decodes to RGB rather than RGBA. */
+async function animatedWebp(frames: number, delay: number[]) {
+  const pages = await Promise.all(
+    Array.from({ length: frames }, (_, i) =>
+      sharp({
+        create: {
+          width: 120,
+          height: 80,
+          channels: 3,
+          background: { r: (i * 70) % 256, g: 60, b: 150 },
+        },
+      })
+        .png()
+        .toBuffer(),
+    ),
+  );
+  return sharp(pages, { join: { animated: true } })
+    .webp({ loop: 0, delay })
+    .toBuffer();
+}
+
+/** A still picture, to re-process an asset whose source has stopped moving. */
+async function stillPng(width = 120, height = 80) {
+  return sharp({ create: { width, height, channels: 3, background: '#334455' } })
+    .png()
+    .toBuffer();
+}
+
+/**
+ * The same GIF with a frame that no longer decodes: sharp still reads the metadata and the
+ * poster, and fails when it has to decode every frame. No huge or binary fixture needed.
+ */
+async function brokenAnimation(gif: Buffer) {
+  const decodes = async (body: Buffer, animated: boolean) => {
+    try {
+      const pipeline = sharp(body, { animated, failOn: 'error' });
+      await (animated ? pipeline.rotate().raw() : pipeline.resize({ width: 32 }).webp()).toBuffer();
+      return true;
+    } catch {
+      return false;
+    }
+  };
+  for (let i = 32; i < gif.length; i++) {
+    const body = Buffer.from(gif);
+    body[i] = body[i] === 0xff ? 0x00 : 0xff;
+    if (!(await decodes(body, false))) continue;
+    if (!(await decodes(body, true))) return body;
+  }
+  throw new Error('could not corrupt the animation of this GIF');
+}
+
+describe('fitsAnimatedCaps', () => {
+  it('counts the pixels of the source, not of the scaled variants', () => {
+    // 60 frames of 4000×4000 are 960 MP for sharp, whatever width the variants end up at.
+    expect(fitsAnimatedCaps({ frames: 60, width: 4000, height: 4000 }, ANIMATED_CAPS)).toBe(false);
+    expect(fitsAnimatedCaps({ frames: 3, width: 120, height: 80 }, ANIMATED_CAPS)).toBe(true);
+  });
+
+  it('caps one frame and the frame count too', () => {
+    // 25 MP per frame is past the per-frame cap, though 50 MP in all is not.
+    expect(fitsAnimatedCaps({ frames: 2, width: 5000, height: 5000 }, ANIMATED_CAPS)).toBe(false);
+    expect(fitsAnimatedCaps({ frames: 301, width: 120, height: 80 }, ANIMATED_CAPS)).toBe(false);
+    expect(fitsAnimatedCaps({ frames: 1, width: 120, height: 80 }, ANIMATED_CAPS)).toBe(false);
+    expect(fitsAnimatedCaps({ frames: 3, width: 0, height: 0 }, ANIMATED_CAPS)).toBe(false);
+  });
+});
 
 describe('variantWidths', () => {
   it('never upscales and always gives one thumbnail', () => {
@@ -148,10 +215,69 @@ describe.skipIf(!url)('processAsset (needs DATABASE_URL)', () => {
       await readAll(await storage.read(variants[0]?.storageKey ?? '')),
     ).metadata();
     expect(poster.pages).toBeUndefined();
+    expect(row?.animated).toBe(true);
     const key = animatedVariantKey(id, '256');
     expect(await storage.size(key)).toBeGreaterThan(0);
     const moving = await sharp(await readAll(await storage.read(key))).metadata();
     expect(moving).toMatchObject({ format: 'webp', pages: 3 });
+  });
+
+  it('makes the moving copies of every size from one decode, timings kept', async () => {
+    // Wide enough for 256, 512 and 1024, all below the moving cap.
+    const id = await upload(
+      await animatedGif(3, 1200, 800, [100, 200, 300]),
+      'image/gif',
+      'wide.gif',
+    );
+    expect((await processAsset(deps, id)).animated).toBe(3);
+    for (const size of ['256', '512', '1024']) {
+      const moving = await sharp(
+        await readAll(await storage.read(animatedVariantKey(id, size))),
+      ).metadata();
+      // The raw pixels carry no timings: they must come back from the source metadata.
+      expect(moving).toMatchObject({ format: 'webp', pages: 3, delay: [100, 200, 300] });
+    }
+  });
+
+  it('makes moving thumbnails of an animated WebP too', async () => {
+    const id = await upload(await animatedWebp(3, [80, 90, 100]), 'image/webp', 'loop.webp');
+    expect((await processAsset(deps, id)).animated).toBe(1);
+    expect((await load(id)).row).toMatchObject({ status: 'ready', mime: 'image/webp' });
+    const moving = await sharp(
+      await readAll(await storage.read(animatedVariantKey(id, '256'))),
+    ).metadata();
+    expect(moving).toMatchObject({ format: 'webp', pages: 3, delay: [80, 90, 100] });
+  });
+
+  it('keeps the posters when a frame of the animation does not decode', async () => {
+    const warnings: string[] = [];
+    const id = await upload(await brokenAnimation(await animatedGif(3)), 'image/gif', 'broken.gif');
+    const result = await processAsset(
+      { ...deps, log: { warn: (_fields, message) => warnings.push(message) } },
+      id,
+    );
+    const { row, variants } = await load(id);
+
+    expect(result).toMatchObject({ variants: 1, animated: 0 });
+    expect(row).toMatchObject({ status: 'ready', mime: 'image/gif', animated: false });
+    expect(variants).toHaveLength(1);
+    expect(await storage.size(animatedVariantKey(id, '256'))).toBeNull();
+    expect(warnings).toEqual(['moving thumbnails failed: keeping the posters']);
+  });
+
+  it('removes stale moving copies when the source no longer moves', async () => {
+    const id = await upload(await animatedGif(3), 'image/gif', 'loop.gif');
+    expect((await processAsset(deps, id)).animated).toBe(1);
+    expect(await storage.size(animatedVariantKey(id, '256'))).toBeGreaterThan(0);
+
+    // The same asset is processed again from a still picture.
+    await storage.write(originalKey(id), await stillPng(), 'image/png');
+    const result = await processAsset(deps, id);
+    expect(result).toMatchObject({ variants: 1, animated: 0 });
+    for (const size of ['256', '512', '1024', '2048'])
+      expect(await storage.size(animatedVariantKey(id, size))).toBeNull();
+    expect((await load(id)).row).toMatchObject({ status: 'ready', mime: 'image/png' });
+    expect((await load(id)).row?.animated).toBe(false);
   });
 
   it('falls back to the poster when the animation is past the caps', async () => {
@@ -164,7 +290,24 @@ describe.skipIf(!url)('processAsset (needs DATABASE_URL)', () => {
     expect(await storage.size(animatedVariantKey(id, '256'))).toBeNull();
     const { row, variants } = await load(id);
     expect(row?.status).toBe('ready');
+    expect(row?.animated).toBe(false);
     expect(variants).toHaveLength(1);
+  });
+
+  it('falls back to the poster when the frames are too many pixels, unscaled', async () => {
+    // A small GIF, under a cap its source pixels do not fit: no fixture of a billion pixels.
+    const id = await upload(await animatedGif(3), 'image/gif', 'big.gif');
+    const caps = { ...ANIMATED_CAPS, maxPixels: 3 * 120 * 80 - 1 };
+    expect((await processAsset(deps, id, caps)).animated).toBe(0);
+    expect(await storage.size(animatedVariantKey(id, '256'))).toBeNull();
+    expect((await load(id)).row).toMatchObject({ status: 'ready', animated: false });
+  });
+
+  it('falls back to the poster when one frame is too many pixels', async () => {
+    const id = await upload(await animatedGif(3), 'image/gif', 'tall.gif');
+    const caps = { ...ANIMATED_CAPS, maxFramePixels: 120 * 80 - 1 };
+    expect((await processAsset(deps, id, caps)).animated).toBe(0);
+    expect((await load(id)).row?.animated).toBe(false);
   });
 
   it('decodes HEIC photos from iPhones', async () => {
