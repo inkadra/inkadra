@@ -117,3 +117,13 @@ it('keeps a project and successful invites on failure; retries only missing invi
   await act(async () => button('projectsPage.open')?.click());
   expect(created).toHaveBeenCalledWith(p);
 });
+
+it('explains why an unadded email blocks project creation', async () => {
+  await blank();
+  await input('input[type="email"]', 'team@example.com');
+  expect(host.textContent).toContain('onboarding.pendingEmail');
+  expect(button('project.create')?.disabled).toBe(true);
+  await input('input[type="email"]', '');
+  expect(host.textContent).not.toContain('onboarding.pendingEmail');
+  expect(button('project.create')?.disabled).toBe(false);
+});

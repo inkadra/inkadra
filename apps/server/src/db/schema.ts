@@ -207,7 +207,7 @@ export const projectPin = pgTable(
       .references(() => user.id, { onDelete: 'cascade' }),
   },
   (t) => [
-    primaryKey({ columns: [t.projectId, t.userId] }),
+    primaryKey({ columns: [t.userId, t.projectId] }),
     foreignKey({
       columns: [t.projectId, t.userId],
       foreignColumns: [projectMember.projectId, projectMember.userId],

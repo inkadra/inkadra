@@ -179,7 +179,7 @@ export function Home() {
             icon="board"
             title={t('home.noProjects')}
             actions={
-              <Button variant="primary" icon="plus" onClick={openNewProject}>
+              <Button variant="primary" icon="plus" onClick={() => navigate('/onboarding')}>
                 {t('nav.newProject')}
               </Button>
             }

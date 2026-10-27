@@ -76,3 +76,26 @@ it('uses document edits for last activity and propagates loading failures', asyn
   vi.mocked(api.get).mockRejectedValueOnce(new Error('offline'));
   await expect(projectOverview(row('B').project)).rejects.toThrow('offline');
 });
+
+it('loads four cards concurrently and preserves project order', async () => {
+  const projects = Array.from({ length: 9 }, (_, i) => row(String(i)).project);
+  let active = 0;
+  let peak = 0;
+  vi.spyOn(api, 'get').mockImplementation(async () => {
+    active++;
+    peak = Math.max(peak, active);
+    await new Promise((resolve) => setTimeout(resolve, 1));
+    active--;
+    return { items: [] };
+  });
+  const { projectOverviews } = await import('./projects-overview.ts');
+  const result = await projectOverviews(projects);
+  expect(result.map((item) => item.project)).toEqual(projects);
+  expect(peak).toBe(8); // Two independent requests per card, four cards.
+});
+
+it('propagates overview request failures', async () => {
+  vi.spyOn(api, 'get').mockRejectedValue(new Error('offline'));
+  const { projectOverviews } = await import('./projects-overview.ts');
+  await expect(projectOverviews([row('A').project])).rejects.toThrow('offline');
+});

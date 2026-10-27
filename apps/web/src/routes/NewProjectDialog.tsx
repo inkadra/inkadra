@@ -231,6 +231,7 @@ export function ProjectSetupForm({
               {t('onboarding.add')}
             </Button>
           </div>
+          {email.trim() && <p className="ink-muted">{t('onboarding.pendingEmail')}</p>}
           <ul>
             {invites.map((invite) => (
               <li key={invite.email}>

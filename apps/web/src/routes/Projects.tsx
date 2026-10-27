@@ -13,7 +13,7 @@ import {
   archivedProjects,
   filterProjects,
   type ProjectOverview,
-  projectOverview,
+  projectOverviews,
 } from './projects-overview.ts';
 import './projects.css';
 
@@ -38,9 +38,7 @@ export function Projects() {
     setError(false);
     try {
       const [active, archived] = await Promise.all([refreshProjects(), archivedProjects()]);
-      // Bound concurrency on large instances, rather than requesting every card at once.
-      const result: ProjectOverview[] = [];
-      for (const project of [...active, ...archived]) result.push(await projectOverview(project));
+      const result = await projectOverviews([...active, ...archived]);
       setItems(result);
     } catch {
       setError(true);

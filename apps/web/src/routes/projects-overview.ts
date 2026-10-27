@@ -22,6 +22,22 @@ export async function archivedProjects(): Promise<Project[]> {
   return items;
 }
 
+/** Load up to four project cards at a time, preserving list order. */
+export async function projectOverviews(projects: Project[]): Promise<ProjectOverview[]> {
+  const result: ProjectOverview[] = new Array(projects.length);
+  let next = 0;
+  await Promise.all(
+    Array.from({ length: Math.min(4, projects.length) }, async () => {
+      while (next < projects.length) {
+        const index = next++;
+        const project = projects[index];
+        if (project) result[index] = await projectOverview(project);
+      }
+    }),
+  );
+  return result;
+}
+
 export async function projectOverview(project: Project): Promise<ProjectOverview> {
   const [boards, members] = await Promise.all([
     api.get<{ items: Board[] }>(`/projects/${project.id}/boards`),

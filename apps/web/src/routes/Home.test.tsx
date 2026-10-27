@@ -2,7 +2,7 @@
 import type { Notification, PlannedShootingDay, Project, RecentBoard } from '@inkadra/shared';
 import { act } from 'react';
 import { createRoot } from 'react-dom/client';
-import { MemoryRouter } from 'react-router';
+import { MemoryRouter, Route, Routes } from 'react-router';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { api } from '../lib/api.ts';
 import { useProjects } from './AppLayout.tsx';
@@ -214,4 +214,30 @@ it('keeps the Today card with an error when only the shooting days fail', async 
   expect(host.querySelectorAll('[role="alert"]')).toHaveLength(1);
   expect(host.textContent).toContain('home.noRecentBoards');
   expect(host.textContent).not.toContain('home.summary.shooting');
+});
+
+it('keeps the empty Home greeting and opens onboarding only from its CTA', async () => {
+  context({ projects: [], shared: [] });
+  respond({});
+  await act(async () =>
+    root.render(
+      <MemoryRouter initialEntries={['/']}>
+        <Routes>
+          <Route path="/" element={<Home />} />
+          <Route path="/onboarding" element={<p>Setup destination</p>} />
+        </Routes>
+      </MemoryRouter>,
+    ),
+  );
+  expect(host.querySelector('h1')?.textContent).toContain('Giulia');
+  expect(host.textContent).toContain('home.noProjects');
+  expect(host.textContent).not.toContain('Setup destination');
+  const cta =
+    host.querySelector<HTMLButtonElement>('.ink-empty-state button') ??
+    [...host.querySelectorAll<HTMLButtonElement>('button')]
+      .filter((button) => button.textContent === 'nav.newProject')
+      .at(-1);
+  expect(cta).toBeDefined();
+  await act(async () => cta?.click());
+  expect(host.textContent).toBe('Setup destination');
 });

@@ -102,16 +102,6 @@ export function AppLayout() {
   }, [user]);
 
   useEffect(() => {
-    if (
-      window.matchMedia('(min-width: 768px)').matches &&
-      pathname === '/' &&
-      projects?.length === 0 &&
-      shared?.length === 0
-    )
-      navigate('/onboarding', { replace: true });
-  }, [pathname, projects, shared, navigate]);
-
-  useEffect(() => {
     const desktop = window.matchMedia('(min-width: 768px)');
     const closeDrawer = () => setDrawerOpen(false);
     desktop.addEventListener('change', closeDrawer);

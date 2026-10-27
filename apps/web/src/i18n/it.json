@@ -1543,6 +1543,7 @@
     "boards_other": "{{count}} board"
   },
   "onboarding": {
+    "pendingEmail": "Aggiungi l’indirizzo email alla lista degli inviti, oppure svuota il campo per creare il progetto.",
     "title": "Il tuo primo progetto",
     "subtitle": "Scegli il punto di partenza e invita il team. Puoi completare i dettagli più avanti.",
     "type": "Tipo di progetto",

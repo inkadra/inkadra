@@ -1,7 +1,7 @@
 CREATE TABLE "project_pin" (
 	"project_id" uuid NOT NULL,
 	"user_id" uuid NOT NULL,
-	CONSTRAINT "project_pin_project_id_user_id_pk" PRIMARY KEY("project_id","user_id")
+	CONSTRAINT "project_pin_user_id_project_id_pk" PRIMARY KEY("user_id","project_id")
 );
 --> statement-breakpoint
 ALTER TABLE "project" ADD COLUMN "type" text;--> statement-breakpoint
