@@ -1923,7 +1923,16 @@
     "add": "Add option",
     "error": "Could not save or load. Another administrator may have changed the catalogs. Reload to get the current configuration.",
     "reload": "Reload",
-    "tagHelp": "Choose an active shared tag. Administrators manage available values in Settings → Classifications. Existing tags remain readable."
+    "tagHelp": "Choose an active shared tag. Administrators manage available values in Settings → Classifications. Existing tags remain readable.",
+    "archive": "Archive",
+    "restore": "Restore",
+    "active_one": "{{count}} active",
+    "active_other": "{{count}} active",
+    "archivedCount_one": "{{count}} archived",
+    "archivedCount_other": "{{count}} archived",
+    "empty": "No values yet.",
+    "unsaved": "Unsaved changes",
+    "discard": "Discard"
   },
   "appearance": {
     "title": "Project appearance",
