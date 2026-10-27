@@ -1,4 +1,4 @@
-import type { Notification, PlannedShootingDay, RecentBoard } from '@inkadra/shared';
+import type { Notification, PlannedShootingDay, Project, RecentBoard } from '@inkadra/shared';
 import { Avatar, Button, EmptyState, Icon, type IconName, KeyCap } from '@inkadra/ui';
 import { type MouseEvent, type ReactNode, useId, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -118,7 +118,13 @@ export function Home() {
             {(items) => (
               <div className="home__boards">
                 {items.map((b) => (
-                  <BoardCard key={b.id} board={b} href={boardHref(b.projectId, b.id)} go={go} />
+                  <BoardCard
+                    key={b.id}
+                    board={b}
+                    project={projects?.find((p) => p.id === b.projectId)}
+                    href={boardHref(b.projectId, b.id)}
+                    go={go}
+                  />
                 ))}
               </div>
             )}
@@ -339,10 +345,12 @@ function TodayDay({
 
 function BoardCard({
   board,
+  project,
   href,
   go,
 }: {
   board: RecentBoard;
+  project?: Project;
   href: string;
   go: (to: string) => (e: MouseEvent) => void;
 }) {
@@ -358,7 +366,7 @@ function BoardCard({
       aria-describedby={descriptionId}
       onClick={go(href)}
     >
-      <BoardPreview boardId={board.id} />
+      <BoardPreview boardId={board.id} project={project} />
       <span className="home__meta">
         <span className="home__kind ink-muted">
           {t(root ? 'home.kind.project' : `board.types.${board.kind}`)}

@@ -73,7 +73,7 @@ import { canvasActions, duplicateInStore } from '../commands/board-actions.ts';
 import { useSession } from '../lib/session.tsx';
 import { accessNotices } from './access-notices.ts';
 import { ArrowLayer } from './arrows.tsx';
-import { canRenameBoard, createBoard } from './boards.ts';
+import { canRenameBoard, createBoard, setBoardCover } from './boards.ts';
 import { Card } from './cards.tsx';
 import {
   BarButton,
@@ -1525,6 +1525,21 @@ export function Canvas({
     }
     const locked = selectedEls.some((e) => e.locked);
     const single = selectedEls.length === 1 ? selectedEls[0] : undefined;
+    const coverItem = (assetId: string): MenuItem => {
+      const isCover = boards?.find((b) => b.id === boardId)?.coverAssetId === assetId;
+      return {
+        label: t(isCover ? 'board.menu.removeCover' : 'board.menu.setCover'),
+        action: () =>
+          void setBoardCover(projectId, boardId, isCover ? null : assetId).then(
+            () =>
+              setToast({
+                text: t(isCover ? 'board.menu.coverRemoved' : 'board.menu.coverSet'),
+                undo: false,
+              }),
+            () => setToast({ text: t('board.menu.coverFailed'), undo: false }),
+          ),
+      };
+    };
     const items: MenuItem[] = [
       ...(single && (single.type === 'board' || single.type === 'link')
         ? [{ label: t('board.menu.open'), action: () => openElement(single) }]
@@ -1544,6 +1559,13 @@ export function Canvas({
       !readOnly &&
       !single.locked
         ? [{ label: t('board.caption.edit'), action: () => setEditing(single.id) }]
+        : []),
+      ...(single?.type === 'image' &&
+      single.assetId &&
+      !readOnly &&
+      !preview &&
+      canRenameBoard(boards?.find((b) => b.id === boardId))
+        ? [coverItem(single.assetId)]
         : []),
       ...(single?.type === 'note'
         ? [{ label: t('board.menu.openDoc'), action: () => openElement(single) }]
@@ -1625,6 +1647,8 @@ export function Canvas({
     selection,
     selectedEls,
     boards,
+    boardId,
+    projectId,
     readOnly,
     preview,
     t,

@@ -375,6 +375,11 @@
       "group": "Raggruppa in colonna"
     },
     "menu": {
+      "setCover": "Usa come copertina",
+      "removeCover": "Rimuovi dalla copertina",
+      "coverSet": "Copertina della board aggiornata",
+      "coverRemoved": "Copertina rimossa: si usa la prima immagine",
+      "coverFailed": "Impossibile cambiare la copertina",
       "openDoc": "Apri documento",
       "open": "Apri",
       "duplicate": "Duplica",

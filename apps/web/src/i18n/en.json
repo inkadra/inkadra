@@ -375,6 +375,11 @@
       "group": "Group in a column"
     },
     "menu": {
+      "setCover": "Use as cover",
+      "removeCover": "Remove as cover",
+      "coverSet": "Board cover updated",
+      "coverRemoved": "Cover removed: the first image is used",
+      "coverFailed": "Could not change the cover",
       "openDoc": "Open document",
       "open": "Open",
       "duplicate": "Duplicate",
