@@ -1,6 +1,6 @@
 import type { BoardVersion } from '@inkadra/shared';
 import { Button } from '@inkadra/ui';
-import { useEffect, useState, useSyncExternalStore } from 'react';
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api } from '../lib/api.ts';
 import type { BoardStore } from './store.ts';
@@ -18,6 +18,7 @@ export function TrashPanel({
   editable: boolean;
 }) {
   const { t, i18n } = useTranslation();
+  const reload = useRef<HTMLElement>(null);
   const live = useSyncExternalStore(store.subscribe, store.getSnapshot);
   const [items, setItems] = useState<TrashItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -63,7 +64,7 @@ export function TrashPanel({
   }, [boardId, revision]);
   const deleted = items.filter(({ element }) => !live.byId.has(element.id));
   return (
-    <section aria-label={t('trash.title')}>
+    <section ref={reload} aria-label={t('trash.title')}>
       <p className="ink-muted">{t('trash.description')}</p>
       <Button onClick={() => setRevision((value) => value + 1)} disabled={loading}>
         {t('versions.reload')}
@@ -89,9 +90,14 @@ export function TrashPanel({
             </div>
             <Button
               disabled={!editable}
+              aria-label={t('trash.restoreElement', {
+                type: t(`board.types.${item.element.type}`),
+                id: item.element.id,
+              })}
               onClick={() => {
                 try {
                   setRestored(restoreTrashItem(store, item, boardId));
+                  reload.current?.querySelector<HTMLButtonElement>('button')?.focus();
                 } catch {
                   setError(true);
                 }

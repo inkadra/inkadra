@@ -1677,6 +1677,7 @@
     "empty": "No recoverable elements in the available snapshots.",
     "error": "Could not complete recovery. The list may be partial: try again.",
     "restored": "Element restored. You can undo this action.",
-    "boardLinkOnly": "Restoring a board card recovers its link only, not a deleted sub-board."
+    "boardLinkOnly": "Restoring a board card recovers its link only, not a deleted sub-board.",
+    "restoreElement": "Restore {{type}} {{id}}"
   }
 }

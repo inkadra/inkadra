@@ -1677,6 +1677,7 @@
     "empty": "Nessun elemento recuperabile nei salvataggi disponibili.",
     "error": "Impossibile completare il recupero. L’elenco potrebbe essere parziale: riprova.",
     "restored": "Elemento ripristinato. Puoi annullare questa operazione.",
-    "boardLinkOnly": "Il ripristino di una scheda board recupera solo il collegamento, non una sotto-board eliminata."
+    "boardLinkOnly": "Il ripristino di una scheda board recupera solo il collegamento, non una sotto-board eliminata.",
+    "restoreElement": "Ripristina {{type}} {{id}}"
   }
 }
