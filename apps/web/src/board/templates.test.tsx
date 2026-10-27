@@ -1,4 +1,10 @@
-import { createElement, intersects, listElements, storyboardOf } from '@inkadra/canvas-core';
+import {
+  createElement,
+  intersects,
+  listElements,
+  storyboardOf,
+  TEMPLATE_IDS,
+} from '@inkadra/canvas-core';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
 import * as Y from 'yjs';
@@ -84,6 +90,13 @@ describe('templates', () => {
       expect(occupied.every((other) => !intersects(rect, other))).toBe(true);
       expect(rect.y).toBeGreaterThan(occupied.at(-1)?.y ?? 0);
     }
+  });
+
+  it('reserves room for the setup notes and keeps setup layouts out of the board offers', () => {
+    expect(templateRect('brief', { x: 0, y: 0 }, []).h).toBeGreaterThanOrEqual(3 * 110);
+    expect(templateRect('casting', { x: 0, y: 0 }, []).h).toBeGreaterThan(120);
+    expect(TEMPLATE_IDS).toEqual(['moodboard', 'storyboard', 'production']);
+    expect(['brief', 'locations', 'casting'].some(isStartTemplate)).toBe(false);
   });
 
   it('lays out a template requested from Home on an empty board only, in one undo step', () => {

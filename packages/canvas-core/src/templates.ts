@@ -9,15 +9,10 @@ import type { Point } from './geometry.ts';
  * Starting layouts offered on an empty board. They are plain edits on the document, so they
  * work offline and need nothing from the server; the client passes the translated titles.
  */
-export const TEMPLATE_IDS = [
-  'moodboard',
-  'storyboard',
-  'production',
-  'brief',
-  'locations',
-  'casting',
-] as const;
-export type TemplateId = (typeof TEMPLATE_IDS)[number];
+export const TEMPLATE_IDS = ['moodboard', 'storyboard', 'production'] as const;
+/** Layouts only the project setup seeds (Film pre-production); never offered on a board. */
+export const SETUP_TEMPLATE_IDS = ['brief', 'locations', 'casting'] as const;
+export type TemplateId = (typeof TEMPLATE_IDS)[number] | (typeof SETUP_TEMPLATE_IDS)[number];
 
 export interface TemplateLabels {
   moodboard: { refs: string; light: string; locations: string; palette: string };
