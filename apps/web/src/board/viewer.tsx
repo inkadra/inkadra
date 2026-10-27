@@ -346,10 +346,14 @@ export function MediaViewer({
     onClose();
   }
 
-  function copyAllPalette() {
-    if (!palette.length) return;
-    void navigator.clipboard?.writeText(palette.join(' '));
-    setCopied('all');
+  async function copyAllPalette() {
+    if (!palette.length || !navigator.clipboard?.writeText) return;
+    try {
+      await navigator.clipboard.writeText(palette.join(' '));
+      setCopied('all');
+    } catch {
+      // clipboard write denied or unavailable
+    }
   }
 
   const onVideoError = (e: React.SyntheticEvent<HTMLVideoElement, Event>) => {
@@ -471,7 +475,11 @@ export function MediaViewer({
             {comparison && comparisonAsset && comparisonAsset !== 'missing' && (
               <img
                 className={`viewer__media ${zoom100 ? 'viewer__media--zoom100' : 'viewer__media--contain'}`}
-                src={pickVariant(comparisonAsset, wide)}
+                src={
+                  zoom100
+                    ? comparisonAsset.url
+                    : pickVariant(comparisonAsset, wide) || comparisonAsset.url
+                }
                 alt={
                   comparison.type === 'image'
                     ? comparison.caption || comparisonAsset.filename
@@ -522,7 +530,7 @@ export function MediaViewer({
               >
                 <MovingPicture
                   className={`viewer__media ${zoom100 ? 'viewer__media--zoom100' : 'viewer__media--contain'}`}
-                  poster={pickVariant(ready, wide) || ready.url}
+                  poster={zoom100 ? ready.url : pickVariant(ready, wide) || ready.url}
                   moving={movingVariantUrl(ready, wide)}
                   alt={
                     element.type === 'image' ? (element.caption ?? ready.filename) : ready.filename
@@ -643,9 +651,14 @@ export function MediaViewer({
                   style={{ background: hex }}
                   aria-label={t('viewer.copyHex', { hex })}
                   title={t('viewer.copyHex', { hex })}
-                  onClick={() => {
-                    void navigator.clipboard?.writeText(hex);
-                    setCopied(hex);
+                  onClick={async () => {
+                    if (!navigator.clipboard?.writeText) return;
+                    try {
+                      await navigator.clipboard.writeText(hex);
+                      setCopied(hex);
+                    } catch {
+                      // clipboard write denied or unavailable
+                    }
                   }}
                 >
                   <span className="ink-mono">{hex}</span>
@@ -690,7 +703,10 @@ export function MediaViewer({
                 <button
                   type="button"
                   className="viewer__open-comments-btn"
-                  onClick={() => openComments({ elementId: element.id })}
+                  onClick={() => {
+                    onClose();
+                    openComments({ elementId: element.id });
+                  }}
                 >
                   {t('comments.open')}
                 </button>

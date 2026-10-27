@@ -186,8 +186,11 @@ export function PresentationView({
   }, [onClose, goNext, goPrev, playingAnimatic]);
 
   const toggleFullscreen = () => {
-    if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
-    else rootRef.current?.requestFullscreen().catch(() => {});
+    if (document.fullscreenElement) {
+      document.exitFullscreen?.().catch(() => {});
+    } else {
+      rootRef.current?.requestFullscreen?.().catch(() => {});
+    }
   };
 
   if (playingAnimatic) {
