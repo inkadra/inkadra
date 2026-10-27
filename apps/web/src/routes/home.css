@@ -341,6 +341,9 @@ a.home__activity-item:hover {
   position: relative;
   display: grid;
   gap: 6px;
+  /* Rows keep their text height; the cover clips the rows that do not fit. */
+  grid-auto-rows: max-content;
+  align-content: start;
   padding: 12px;
   overflow: hidden;
 }
