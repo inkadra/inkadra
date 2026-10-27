@@ -5,7 +5,11 @@ import * as Y from 'yjs';
 
 /** Plain text only: React escapes the projection, including user-authored rich text. */
 function plain(value: unknown): string {
-  if (value instanceof Y.XmlText || value instanceof Y.Text) return value.toString();
+  if (value instanceof Y.XmlText || value instanceof Y.Text)
+    return value
+      .toDelta()
+      .map((part: { insert: unknown }) => (typeof part.insert === 'string' ? part.insert : ''))
+      .join('');
   if (value instanceof Y.XmlFragment || value instanceof Y.XmlElement)
     return value.toArray().map(plain).join(' ');
   return typeof value === 'string' ? value : '';
