@@ -250,6 +250,11 @@
     }
   },
   "board": {
+    "toolGroups": {
+      "navigate": "Naviga e collega",
+      "create": "Crea contenuti",
+      "organize": "Organizza e pianifica"
+    },
     "canvas": "Canvas della board",
     "toolbar": "Aggiungi",
     "contextBar": "Azioni sulla selezione",
