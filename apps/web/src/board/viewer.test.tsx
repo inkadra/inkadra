@@ -7,6 +7,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { type GuestActions, GuestActionsContext } from '../guest/actions.ts';
 import { GuestViewer } from '../guest/GuestViewer.tsx';
+import { resetReviews, setReviews } from './review-store.ts';
 import { isUnplayableVideoError, MediaViewer, VideoUnplayable } from './viewer.tsx';
 
 const mockState = vi.hoisted(() => ({
@@ -573,5 +574,174 @@ describe('MediaViewer gallery enhancements', () => {
     expect(copyAll).not.toBeNull();
     await act(async () => copyAll?.click());
     expect(clipboard).toBe('#ff0000 #00ff00');
+  });
+});
+
+describe('MediaViewer keyboard, focus and comments', () => {
+  let container: HTMLDivElement;
+  let root: Root;
+  const render = (node: ReactNode) => act(async () => root.render(node));
+  const element = {
+    id: 'el-1',
+    type: 'image',
+    x: 0,
+    y: 0,
+    w: 100,
+    h: 100,
+    assetId: 'img-1',
+  } as unknown as Extract<import('@inkadra/doc-schema').Element, { type: 'image' }>;
+  const viewer = (props: Partial<React.ComponentProps<typeof MediaViewer>> = {}) => (
+    <MediaViewer
+      store={{} as import('./store.ts').BoardStore}
+      element={element}
+      projectId="proj-01"
+      userId="user-01"
+      readOnly={false}
+      onClose={vi.fn()}
+      {...props}
+    />
+  );
+  const space = (target: EventTarget) =>
+    act(async () => {
+      target.dispatchEvent(
+        new KeyboardEvent('keydown', { key: ' ', code: 'Space', bubbles: true, cancelable: true }),
+      );
+    });
+
+  beforeEach(() => {
+    container = document.createElement('div');
+    document.body.appendChild(container);
+    root = createRoot(container);
+    mockState.asset = {
+      id: 'img-1',
+      kind: 'image',
+      filename: 'photo.jpg',
+      url: '/photo.jpg',
+      palette: [],
+      variants: [],
+    } as unknown as Asset;
+    resetReviews();
+  });
+
+  afterEach(() => {
+    act(() => root.unmount());
+    container.remove();
+    resetReviews();
+  });
+
+  it('leaves Space to a focused button and does not zoom', async () => {
+    await render(viewer());
+    const button = container.querySelector<HTMLButtonElement>(
+      '.viewer__stage-nav, .viewer__copy-all-btn, .viewer__stage-btn',
+    );
+    expect(button).not.toBeNull();
+    button?.focus();
+    let prevented = false;
+    window.addEventListener('keydown', (e) => (prevented = e.defaultPrevented), { once: true });
+    await space(button as HTMLElement);
+    expect(prevented).toBe(false);
+    expect(container.querySelector('.viewer__media--zoom100')).toBeNull();
+  });
+
+  it('leaves Space to the video controls', async () => {
+    mockState.asset = { ...videoAsset } as Asset;
+    await render(viewer());
+    const video = container.querySelector('video') as HTMLVideoElement;
+    expect(video).not.toBeNull();
+    await space(video);
+    expect(container.querySelector('.viewer__media--zoom100')).toBeNull();
+  });
+
+  it('zooms with Space from the stage', async () => {
+    await render(viewer());
+    await space(container.querySelector('.viewer__stage') as HTMLElement);
+    expect(container.querySelector('.viewer__media--zoom100')).not.toBeNull();
+  });
+
+  it('keeps Tab inside the dialog for a single image and restores focus on close', async () => {
+    const opener = document.createElement('button');
+    document.body.appendChild(opener);
+    opener.focus();
+    await render(viewer());
+    const dialog = container.querySelector('[role="dialog"]') as HTMLElement;
+    expect(dialog.contains(document.activeElement)).toBe(true);
+    const focusable = [...dialog.querySelectorAll<HTMLElement>('button:not(:disabled), a[href]')];
+    focusable.at(-1)?.focus();
+    const tab = new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true });
+    await act(async () => {
+      document.activeElement?.dispatchEvent(tab);
+    });
+    expect(tab.defaultPrevented).toBe(true);
+    expect(document.activeElement).toBe(focusable[0]);
+    await act(async () => root.render(<div />));
+    expect(document.activeElement).toBe(opener);
+    opener.remove();
+  });
+
+  describe('comments preview', () => {
+    const thread = (id: string, resolvedAt: string | null) =>
+      ({
+        id,
+        elementId: 'el-1',
+        author: { kind: 'guest', name: 'Anna' },
+        body: `body ${id}`,
+        mentions: [],
+        resolvedAt,
+      }) as unknown as import('@inkadra/shared').CommentThread;
+
+    it('shows loading, then only the open threads', async () => {
+      resetReviews({ boardId: 'b1', status: 'loading', role: 'editor' });
+      await render(viewer());
+      const section = () => container.querySelector('.viewer__comments-section');
+      expect(section()?.textContent).toContain('comments.loading');
+      await act(async () =>
+        setReviews({
+          status: 'ready',
+          threads: [thread('t1', null), thread('t2', '2026-01-01T00:00:00Z')],
+        }),
+      );
+      expect(section()?.querySelectorAll('.viewer__comment-card')).toHaveLength(1);
+      expect(section()?.textContent).toContain('body t1');
+      expect(section()?.textContent).not.toContain('body t2');
+    });
+
+    it('offers the panel only to people who can comment', async () => {
+      resetReviews({ boardId: 'b1', status: 'ready', role: 'viewer' });
+      await render(viewer());
+      expect(container.querySelector('.viewer__open-comments-btn')).toBeNull();
+      await act(async () => setReviews({ role: 'commenter' }));
+      expect(container.querySelector('.viewer__open-comments-btn')).not.toBeNull();
+    });
+  });
+});
+
+describe('viewer translations', () => {
+  it('has every key the viewer uses in both languages', async () => {
+    const [en, it_] = await Promise.all([import('../i18n/en.json'), import('../i18n/it.json')]);
+    const keys = [
+      'viewer.copyAll',
+      'viewer.copiedAll',
+      'viewer.zoomFit',
+      'viewer.zoom100',
+      'viewer.zoomHelp',
+      'viewer.hints.nav',
+      'viewer.hints.zoom',
+      'viewer.keys.esc',
+      'viewer.keys.space',
+      'viewer.thumbnails',
+      'viewer.item',
+      'comments.title',
+      'comments.open',
+      'comments.loading',
+      'comments.loadError',
+      'comments.emptyOpen',
+      'comments.deletedAuthor',
+    ];
+    const get = (o: unknown, k: string) =>
+      k.split('.').reduce<unknown>((a, p) => (a as Record<string, unknown> | undefined)?.[p], o);
+    for (const k of keys) {
+      expect(typeof get(en, k), k).toBe('string');
+      expect(typeof get(it_, k), k).toBe('string');
+    }
   });
 });

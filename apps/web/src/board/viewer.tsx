@@ -2,13 +2,15 @@
 import { createElement, updateElement } from '@inkadra/canvas-core';
 import type { Element } from '@inkadra/doc-schema';
 import type { Asset } from '@inkadra/shared';
-import { Avatar, Button, IconButton } from '@inkadra/ui';
-import { useEffect, useRef, useState } from 'react';
+import { Avatar, Button } from '@inkadra/ui';
+import { memo, useContext, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { pickVariant, useAsset } from './assets.ts';
+import { GuestModeContext } from './context.ts';
 import { MovingPicture, movingVariantUrl } from './moving.tsx';
 import { authorName, editableText } from './review-model.ts';
-import { openComments, useReviews } from './review-store.ts';
+import { canComment, openComments, useReviews } from './review-store.ts';
+import { isTyping } from './shortcuts.ts';
 import { type BoardStore, LOCAL } from './store.ts';
 import { TagEditor } from './tags.tsx';
 import { isYoutubeUrl, youtubeEmbedUrl } from './youtube.ts';
@@ -63,39 +65,57 @@ export function useVideoUnplayable(url: string | null | undefined, assetId: stri
   const [unplayable, setUnplayable] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: reset on new asset
+  // biome-ignore lint/correctness/useExhaustiveDependencies: resets unplayable state when the element or asset changes
   useEffect(() => {
     setUnplayable(false);
-  }, [assetId]);
+  }, [assetId, url]);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: re-attaches listeners when the url changes
   useEffect(() => {
     const video = videoRef.current;
-    if (!video || !url) return;
+    if (!video) return;
 
-    let stallTimer: ReturnType<typeof setTimeout> | null = null;
-    const clearStallCheck = () => {
-      if (stallTimer) {
-        clearTimeout(stallTimer);
-        stallTimer = null;
+    const check = () => {
+      if (video.error && isUnplayableVideoError(video.error.code)) {
+        setUnplayable(true);
+        return;
+      }
+      if (video.networkState === 3 /* NETWORK_NO_SOURCE */) {
+        setUnplayable(true);
       }
     };
 
+    // Listen for media errors dispatched by the browser
+    if (video.networkState === 3 /* NETWORK_NO_SOURCE */) {
+      setUnplayable(true);
+    }
+
+    video.addEventListener('error', check);
+
+    let stallTimer: ReturnType<typeof setTimeout> | null = null;
     const startStallCheck = () => {
-      clearStallCheck();
+      if (stallTimer) return;
       stallTimer = setTimeout(() => {
-        if (!video.paused && !video.ended && video.readyState < 2) {
+        if (
+          !video.paused &&
+          video.currentTime === 0 &&
+          (video.readyState < 2 || video.videoWidth === 0)
+        ) {
           setUnplayable(true);
         }
       }, 2000);
     };
 
-    const check = () => {
-      if (isUnplayableVideoError(video.error?.code)) {
-        setUnplayable(true);
+    const clearStallCheck = () => {
+      if (stallTimer) {
+        clearTimeout(stallTimer);
+        stallTimer = null;
+      }
+      if (video.currentTime > 0 || video.readyState >= 2) {
+        setUnplayable(false);
       }
     };
 
-    video.addEventListener('error', check);
     video.addEventListener('play', startStallCheck);
     video.addEventListener('waiting', startStallCheck);
     video.addEventListener('stalled', startStallCheck);
@@ -153,7 +173,13 @@ export function VideoUnplayable({
   );
 }
 
-function ThumbnailImage({ assetId, alt }: { assetId?: string; alt?: string }) {
+const ThumbnailImage = memo(function ThumbnailImage({
+  assetId,
+  alt,
+}: {
+  assetId?: string;
+  alt?: string;
+}) {
   const asset = useAsset(assetId);
   const ready = asset && asset !== 'missing' ? asset : null;
   if (!ready) {
@@ -167,7 +193,10 @@ function ThumbnailImage({ assetId, alt }: { assetId?: string; alt?: string }) {
       loading="lazy"
     />
   );
-}
+});
+
+/** Thumbnails farther than this from the current item stay empty until it gets close. */
+const THUMB_WINDOW = 10;
 
 export interface GalleryItem {
   id: string;
@@ -218,14 +247,19 @@ export function MediaViewer({
   const [zoom100, setZoom100] = useState(false);
   const { videoRef, unplayable, setUnplayable } = useVideoUnplayable(ready?.url, ready?.id);
 
+  const guestMode = useContext(GuestModeContext);
   const threads = useReviews((s) => s.threads);
-  const elementThreads = threads.filter((th) => th.elementId === element.id);
+  const reviewsReady = useReviews((s) => s.status);
+  const reviewsBoard = useReviews((s) => s.boardId);
+  const reviewsPreview = useReviews((s) => s.preview);
+  const mayComment = useReviews((s) => canComment(s.role));
+  const showComments = !guestMode && !reviewsPreview && reviewsBoard !== null;
+  const elementThreads = threads.filter((th) => th.elementId === element.id && !th.resolvedAt);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const target = e.target instanceof HTMLElement ? e.target : null;
-      const editing = target?.closest('input, textarea, select, [contenteditable="true"]');
-      if (editing && e.key !== 'Escape') return;
+      if (isTyping(e.target) && e.key !== 'Escape') return;
       // The canvas behind listens on window too.
       e.stopImmediatePropagation();
       if (e.type !== 'keydown') return;
@@ -241,14 +275,23 @@ export function MediaViewer({
         e.preventDefault();
         gallery.onNext();
       }
-      if (e.key === ' ' || e.code === 'Space') {
+      // Space belongs to the focused control (buttons, links, video, tabs); it zooms only from
+      // the stage itself or when nothing is focused.
+      if (
+        (e.key === ' ' || e.code === 'Space') &&
+        !e.repeat &&
+        (!target ||
+          target === document.body ||
+          target === dialogRef.current ||
+          target.classList.contains('viewer__stage'))
+      ) {
         e.preventDefault();
         setZoom100((z) => !z);
       }
-      if (gallery && e.key === 'Tab') {
+      if (e.key === 'Tab') {
         const focusable = [
           ...(dialogRef.current?.querySelectorAll<HTMLElement>(
-            'button:not(:disabled), a[href], input, select, textarea, [tabindex="0"]',
+            'button:not(:disabled), a[href], input, select, textarea, video[controls], [tabindex="0"]',
           ) ?? []),
         ];
         const first = focusable[0];
@@ -270,9 +313,17 @@ export function MediaViewer({
     };
   }, [onClose, gallery]);
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: focus once on opening, keep focus during navigation
+  // Focus once on opening, keep it during navigation, give it back to the opener on close.
   useEffect(() => {
-    if (gallery) dialogRef.current?.querySelector<HTMLElement>('button:not(:disabled)')?.focus();
+    const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    dialogRef.current?.querySelector<HTMLElement>('button:not(:disabled)')?.focus();
+    const dialog = dialogRef.current;
+    return () => {
+      // Unless the parent already moved focus elsewhere.
+      const active = document.activeElement;
+      const lost = !active || active === document.body || dialog?.contains(active);
+      if (opener && opener !== document.body && opener.isConnected && lost) opener.focus();
+    };
   }, []);
 
   const rows = exifRows(ready?.exif ?? null, i18n.language);
@@ -342,33 +393,24 @@ export function MediaViewer({
               className={`ink-btn ink-btn--secondary viewer__stage-btn${comparison ? ' is-active' : ''}`}
               onClick={gallery.onCompare}
             >
-              {t('moodboard.compare', 'Confronta A/B')}
+              {t('moodboard.compare')}
             </button>
           )}
           <button
             type="button"
             className="ink-btn ink-btn--secondary viewer__stage-btn"
             onClick={() => setZoom100((z) => !z)}
-            title={t('viewer.zoomHelp', 'Spazio per alternare tra adatta e 100%')}
+            title={t('viewer.zoomHelp')}
+            aria-keyshortcuts="Space"
           >
-            {zoom100 ? t('viewer.zoomFit', 'Adatta') : t('viewer.zoom100', 'Zoom 100%')}
+            {zoom100 ? t('viewer.zoomFit') : t('viewer.zoom100')}
           </button>
-          {ready?.url && (
-            <a
-              className="ink-btn ink-btn--secondary viewer__stage-btn"
-              href={ready.url}
-              download={ready.filename}
-            >
-              {t('viewer.download', 'Scarica originale')}
-            </a>
-          )}
           <button
             type="button"
             className="ink-btn ink-btn--secondary viewer__stage-btn"
             onClick={onClose}
-            aria-label={t('viewer.close')}
           >
-            {t('viewer.close')} <span className="viewer__kbd">esc</span>
+            {t('viewer.close')} <span className="viewer__kbd">{t('viewer.keys.esc')}</span>
           </button>
         </header>
 
@@ -474,6 +516,8 @@ export function MediaViewer({
               <button
                 type="button"
                 className="viewer__picture-btn"
+                title={t('viewer.zoomHelp')}
+                aria-pressed={zoom100}
                 onClick={() => setZoom100((z) => !z)}
               >
                 <MovingPicture
@@ -491,49 +535,45 @@ export function MediaViewer({
           {/* Bottom Hints */}
           <div className="viewer__hints">
             <span className="viewer__hint">
-              <span className="viewer__hint-kbd">← →</span> {t('viewer.hints.nav', 'per scorrere')}
+              <span className="viewer__hint-kbd">← →</span> {t('viewer.hints.nav')}
             </span>
             <span className="viewer__hint">
-              <span className="viewer__hint-kbd">spazio</span> {t('viewer.hints.zoom', 'zoom 100%')}
+              <span className="viewer__hint-kbd">{t('viewer.keys.space')}</span>{' '}
+              {t('viewer.hints.zoom')}
             </span>
           </div>
         </div>
 
         {/* Thumbnails Strip */}
         {gallery?.items && gallery.items.length > 1 && (
-          <div
-            className="viewer__thumbnails"
-            role="tablist"
-            aria-label={t('moodboard.thumbnails', 'Miniature')}
-          >
+          <nav className="viewer__thumbnails" aria-label={t('viewer.thumbnails')}>
             {gallery.items.map((item, idx) => (
               <button
                 key={item.id}
                 type="button"
-                role="tab"
-                aria-selected={idx === gallery.index}
+                aria-current={idx === gallery.index ? 'true' : undefined}
                 className={`viewer__thumb${idx === gallery.index ? ' is-active' : ''}`}
                 onClick={(e) => {
                   e.stopPropagation();
                   gallery.onSelect?.(idx);
                 }}
-                title={item.filename || `Item ${idx + 1}`}
+                title={item.filename || t('viewer.item', { n: idx + 1 })}
+                aria-label={item.filename || t('viewer.item', { n: idx + 1 })}
               >
-                <ThumbnailImage assetId={item.assetId} alt={item.filename} />
+                {Math.abs(idx - gallery.index) <= THUMB_WINDOW ? (
+                  <ThumbnailImage assetId={item.assetId} alt="" />
+                ) : (
+                  <span className="viewer__thumb-placeholder" />
+                )}
                 <span className="viewer__thumb-idx">{idx + 1}</span>
               </button>
             ))}
-          </div>
+          </nav>
         )}
       </div>
 
       {/* Sidebar Details */}
       <aside className="viewer__side" data-scroll>
-        <header className="viewer__head">
-          <span className="viewer__name">{displayName}</span>
-          <IconButton icon="close" label={t('viewer.close')} onClick={onClose} />
-        </header>
-
         {gallery && !ready && (
           <p role="status">
             {t(asset === 'missing' ? 'moodboard.unavailable' : 'moodboard.loading')}
@@ -591,7 +631,7 @@ export function MediaViewer({
             <div className="viewer__title-row">
               <h3 className="viewer__title">{t('viewer.palette')}</h3>
               <button type="button" className="viewer__copy-all-btn" onClick={copyAllPalette}>
-                {t('viewer.copyAll', 'Copia tutto')}
+                {t('viewer.copyAll')}
               </button>
             </div>
             <div className="viewer__palette">
@@ -614,7 +654,7 @@ export function MediaViewer({
             </div>
             <p className="viewer__copied" role="status">
               {copied === 'all'
-                ? t('viewer.copiedAll', 'Tutti i colori copiati')
+                ? t('viewer.copiedAll')
                 : copied
                   ? t('viewer.copied', { hex: copied })
                   : ''}
@@ -637,43 +677,53 @@ export function MediaViewer({
           />
         </section>
 
-        {/* Comments Section */}
-        <section className="viewer__comments-section" aria-label={t('comments.title', 'Commenti')}>
-          <div className="viewer__title-row">
-            <h3 className="viewer__title">
-              {t('comments.title', 'Commenti')}
-              {elementThreads.length > 0 && (
-                <span className="viewer__count-badge">{elementThreads.length}</span>
+        {showComments && (
+          <section className="viewer__comments-section" aria-label={t('comments.title')}>
+            <div className="viewer__title-row">
+              <h3 className="viewer__title">
+                {t('comments.title')}
+                {reviewsReady === 'ready' && elementThreads.length > 0 && (
+                  <span className="viewer__count-badge">{elementThreads.length}</span>
+                )}
+              </h3>
+              {mayComment && (
+                <button
+                  type="button"
+                  className="viewer__open-comments-btn"
+                  onClick={() => openComments({ elementId: element.id })}
+                >
+                  {t('comments.open')}
+                </button>
               )}
-            </h3>
-            <button
-              type="button"
-              className="viewer__open-comments-btn"
-              onClick={() => openComments({ elementId: element.id })}
-            >
-              {t('comments.open', 'Apri pannello')}
-            </button>
-          </div>
-          {elementThreads.length > 0 ? (
-            <div className="viewer__comments-list">
-              {elementThreads.slice(0, 3).map((th) => {
-                const name =
-                  authorName(th.author) ?? t('comments.deletedAuthor', 'Autore eliminato');
-                return (
-                  <div key={th.id} className="viewer__comment-card">
-                    <Avatar name={name} size={20} />
-                    <div className="viewer__comment-content">
-                      <strong className="viewer__comment-author">{name}</strong>
-                      <p className="viewer__comment-text">{editableText(th)}</p>
-                    </div>
-                  </div>
-                );
-              })}
             </div>
-          ) : (
-            <p className="ink-muted viewer__none">{t('comments.noComments', 'Nessun commento')}</p>
-          )}
-        </section>
+            {reviewsReady === 'loading' ? (
+              <p role="status" className="ink-muted viewer__none">
+                {t('comments.loading')}
+              </p>
+            ) : reviewsReady === 'error' ? (
+              <p role="status" className="ink-muted viewer__none">
+                {t('comments.loadError')}
+              </p>
+            ) : elementThreads.length > 0 ? (
+              <div className="viewer__comments-list">
+                {elementThreads.slice(0, 3).map((th) => {
+                  const name = authorName(th.author) ?? t('comments.deletedAuthor');
+                  return (
+                    <div key={th.id} className="viewer__comment-card">
+                      <Avatar name={name} size={20} />
+                      <div className="viewer__comment-content">
+                        <strong className="viewer__comment-author">{name}</strong>
+                        <p className="viewer__comment-text">{editableText(th)}</p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <p className="ink-muted viewer__none">{t('comments.emptyOpen')}</p>
+            )}
+          </section>
+        )}
 
         {element.type === 'link' ? (
           <a

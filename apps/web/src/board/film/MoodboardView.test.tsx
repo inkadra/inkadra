@@ -144,7 +144,7 @@ it('navigates the filtered gallery, compares real references, shows frame reuse 
   expect(dialog()?.querySelectorAll('.viewer__stage img')).toHaveLength(2);
   await key('ArrowRight');
   expect(dialog()?.textContent).toContain('2 / 2');
-  expect(dialog()?.querySelector('.viewer__name')?.textContent).toBe('Second');
+  expect(dialog()?.querySelector('.viewer__stage-title')?.textContent).toBe('Second');
   await key('ArrowRight');
   expect(dialog()?.textContent).toContain('2 / 2');
   await key('ArrowLeft');
