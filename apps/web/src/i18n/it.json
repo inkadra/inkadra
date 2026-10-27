@@ -1933,7 +1933,16 @@
     "add": "Aggiungi valore",
     "error": "Impossibile salvare o caricare. Un altro amministratore potrebbe aver modificato i cataloghi. Ricarica la configurazione attuale.",
     "reload": "Ricarica",
-    "tagHelp": "Scegli un tag condiviso attivo. Gli amministratori gestiscono i valori in Impostazioni → Classificazioni. I tag esistenti restano leggibili."
+    "tagHelp": "Scegli un tag condiviso attivo. Gli amministratori gestiscono i valori in Impostazioni → Classificazioni. I tag esistenti restano leggibili.",
+    "archive": "Archivia",
+    "restore": "Ripristina",
+    "active_one": "{{count}} attivo",
+    "active_other": "{{count}} attivi",
+    "archivedCount_one": "{{count}} archiviato",
+    "archivedCount_other": "{{count}} archiviati",
+    "empty": "Ancora nessun valore.",
+    "unsaved": "Modifiche non salvate",
+    "discard": "Annulla modifiche"
   },
   "appearance": {
     "title": "Aspetto del progetto",
