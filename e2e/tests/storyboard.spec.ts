@@ -11,7 +11,7 @@ async function openProject(page: Page) {
   await page.getByLabel('Password').fill(admin.password);
   await page.getByRole('button', { name: 'Accedi' }).click();
   await expect(page.getByRole('heading', { name: /Giulia$/ })).toBeVisible();
-  await page.getByRole('link', { name: 'Ultima corsa' }).first().click();
+  await page.getByRole('link', { name: 'Ultima corsa', exact: true }).first().click();
   await expect(page.getByRole('status').getByText('Sincronizzato')).toBeVisible();
 }
 

@@ -462,6 +462,7 @@ function BoardScreen({
         store={preview?.store ?? conn.store}
         projectId={projectId}
         boardId={boardId}
+        boardTitle={crumbs.at(-1)?.title ?? detail?.title ?? ''}
         userId={user.id}
         readOnly={!!preview || !editable}
       />
