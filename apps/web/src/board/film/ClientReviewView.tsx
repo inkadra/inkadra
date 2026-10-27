@@ -18,6 +18,7 @@ export function ClientReviewView({
   store,
   projectName,
   boardId,
+  readOnly,
 }: {
   store: BoardStore;
   projectName?: string;
@@ -178,7 +179,7 @@ export function ClientReviewView({
                 <Thread
                   key={thread.id}
                   thread={thread}
-                  writable={canComment(state.role) && !state.preview}
+                  writable={!readOnly && canComment(state.role) && !state.preview}
                   targetLabel={labels.get(current.id) ?? ''}
                   pinNumber={0}
                   showTarget={false}

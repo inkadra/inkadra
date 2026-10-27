@@ -279,3 +279,47 @@ it('shows guest-visible threads and uses the existing resolve API only for comme
   await act(async () => resolve?.click());
   expect(post).toHaveBeenCalledWith('/comments/client-thread/resolve', {});
 });
+
+it('keeps review threads readable but not writable on a read-only board', async () => {
+  const { doc, store } = board();
+  const frame = createElement(doc, 'frame', { x: 0, y: 0 }, {}, { userId: null });
+  const thread: CommentThread = {
+    id: 'client-thread',
+    boardId: 'review-board',
+    elementId: frame.id,
+    parentId: null,
+    pin: null,
+    createdAt: '2026-10-26T00:00:00Z',
+    editedAt: null,
+    deletedAt: null,
+    author: {
+      kind: 'guest',
+      name: 'Client',
+      guestId: 'guest',
+      shareLinkId: 'link',
+      shareLinkLabel: 'Client link',
+    },
+    body: 'Please brighten this frame',
+    mentions: [],
+    visibility: 'everyone',
+    shareLinkId: 'link',
+    shareLinkLabel: 'Client link',
+    canEdit: false,
+    canDelete: false,
+    resolvedAt: null,
+    resolvedBy: null,
+    replyCount: 0,
+    replies: [],
+  };
+  resetReviews({
+    boardId: 'review-board',
+    role: 'commenter',
+    status: 'ready',
+    reviewsStatus: 'ready',
+    threads: [thread],
+  });
+  const host = await mount(<ClientReviewView store={store} boardId="review-board" readOnly />);
+  expect(host.textContent).toContain('Please brighten this frame');
+  expect(host.textContent).not.toContain('comments.reply');
+  expect(host.textContent).not.toContain('comments.resolve');
+});

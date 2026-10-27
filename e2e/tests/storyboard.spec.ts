@@ -261,6 +261,17 @@ test('shell views use real shots and the call sheet traps and restores focus', a
   await expect(dialog).not.toBeVisible();
   await expect(openSheet).toBeFocused();
   await page.getByRole('tab', { name: 'Revisione', exact: true }).click();
-  await expect(page.getByRole('button', { name: 'Invia revisione' })).toBeDisabled();
-  await expect(page.getByText('Demo: invio, decisioni e commenti', { exact: false })).toBeVisible();
+  const review = page.getByRole('region', { name: 'Revisione', exact: true });
+  const submit = review.getByRole('button', { name: 'Invia revisione' });
+  // Review rounds are not supported yet, so the action is disabled and says why.
+  await expect(submit).toBeDisabled();
+  await expect(submit).toHaveAccessibleDescription(
+    'I round di review non sono ancora supportati. Decisioni e risposte vengono salvate singolarmente.',
+  );
+  // The view reads the saved decisions: frames, progress and filters are real.
+  await expect(review.getByRole('button', { name: /1A/ })).toBeVisible();
+  await expect(review.getByRole('progressbar')).toBeVisible();
+  const all = review.getByRole('button', { name: 'Tutti i frame', exact: true });
+  await expect(all).toBeEnabled();
+  await expect(all).toHaveAttribute('aria-pressed', 'true');
 });
