@@ -87,3 +87,20 @@ export const BoardPreview = z
   })
   .openapi('BoardPreview');
 export type BoardPreview = z.infer<typeof BoardPreview>;
+
+export const BoardCount = z
+  .object({
+    boardId: Id,
+    elementCount: z.int().nonnegative(),
+    frameCount: z.int().nonnegative().openapi({ description: 'Storyboard frames on the board.' }),
+    framesToShoot: z
+      .int()
+      .nonnegative()
+      .openapi({ description: 'Frames whose status is not `shot` yet.' }),
+  })
+  .openapi('BoardCount');
+export type BoardCount = z.infer<typeof BoardCount>;
+export const BoardCounts = z.object({ items: z.array(BoardCount) }).openapi('BoardCounts', {
+  description: 'Counts of the project boards the caller can open, for the navigation.',
+});
+export type BoardCounts = z.infer<typeof BoardCounts>;

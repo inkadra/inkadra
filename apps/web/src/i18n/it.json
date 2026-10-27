@@ -107,7 +107,12 @@
       "toLight": "Passa al tema chiaro"
     },
     "shared": "Condivisi con te",
-    "moodboard": "Moodboard"
+    "moodboard": "Moodboard",
+    "collapse": "Riduci la navigazione",
+    "expand": "Espandi la navigazione",
+    "boards": "Board",
+    "toShoot_one": "{{count}} inquadratura da girare",
+    "toShoot_other": "{{count}} inquadrature da girare"
   },
   "home": {
     "greeting": {

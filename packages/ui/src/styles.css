@@ -219,12 +219,21 @@ select {
 
 .ink-shell {
   display: grid;
-  grid-template-columns: 52px 210px minmax(0, 1fr);
+  grid-template-columns: 240px minmax(0, 1fr);
   grid-template-rows: 48px minmax(0, 1fr);
   height: 100%;
   background: var(--ink-bg-rail);
 }
+.ink-shell--collapsed {
+  grid-template-columns: 56px minmax(0, 1fr);
+}
+.ink-shell--rail {
+  grid-template-columns: 52px 210px minmax(0, 1fr);
+}
 .ink-shell--no-sidebar {
+  grid-template-columns: minmax(0, 1fr);
+}
+.ink-shell--rail.ink-shell--no-sidebar {
   grid-template-columns: 52px minmax(0, 1fr);
 }
 
@@ -287,7 +296,10 @@ select {
 .ink-sidebar {
   grid-row: 1 / span 2;
   position: relative;
-  padding: 12px 10px;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  padding: 12px 10px 0;
   border-right: 1px solid var(--ink-border-subtle);
   overflow-y: auto;
 }
@@ -295,9 +307,65 @@ select {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 2px 8px 12px;
+  padding: 2px 4px 12px;
   font-size: 14px;
   font-weight: 600;
+}
+.ink-sidebar__toggle {
+  transform: rotate(180deg);
+}
+.ink-sidebar__toggle.is-collapsed {
+  transform: none;
+}
+.ink-sidebar__search-text {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  justify-content: space-between;
+}
+.ink-sidebar__spacer {
+  flex: 1;
+}
+.ink-sidebar__label {
+  padding: 8px 8px 2px 30px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-text-muted);
+}
+.ink-sidebar__user {
+  position: sticky;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 8px -10px 0;
+  padding: 10px 10px 12px 12px;
+  border-top: 1px solid var(--ink-border-subtle);
+  background: var(--ink-bg-rail);
+}
+.ink-sidebar__who {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1;
+  font-size: 13px;
+  color: var(--ink-text-primary);
+}
+.ink-sidebar__who small,
+.ink-sidebar__who > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ink-sidebar__who small {
+  font-size: 11px;
+  color: var(--ink-text-muted);
+}
+.ink-sidebar__user-actions {
+  display: flex;
+  gap: 2px;
 }
 .ink-sidebar__search {
   display: flex;
@@ -367,6 +435,73 @@ select {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.ink-nav__badge {
+  margin-left: auto;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 5px;
+  border-radius: 99px;
+  background: var(--ink-accent-button);
+  color: var(--ink-on-accent);
+  font-size: 10px;
+  font-weight: 600;
+  display: grid;
+  place-items: center;
+}
+
+.ink-sidebar__modules > .ink-nav {
+  padding-left: 22px;
+}
+
+/* Collapsed: the same column with icons only; names stay as tooltips and accessible names. */
+.ink-shell--collapsed .ink-sidebar {
+  padding: 12px 8px 0;
+  align-items: center;
+  overflow-x: hidden;
+}
+.ink-shell--collapsed .ink-sidebar .ink-nav__name,
+.ink-shell--collapsed .ink-sidebar .ink-nav__count,
+.ink-shell--collapsed .ink-sidebar .ink-sidebar__label,
+.ink-shell--collapsed .ink-sidebar .ink-sidebar__section,
+.ink-shell--collapsed .ink-sidebar .ink-sidebar__who,
+.ink-shell--collapsed .ink-sidebar .ink-sidebar__search-text,
+.ink-shell--collapsed .ink-sidebar .ink-sidebar__collapsible {
+  display: none;
+}
+.ink-shell--collapsed .ink-sidebar .ink-nav,
+.ink-shell--collapsed .ink-sidebar .ink-sidebar__modules > .ink-nav {
+  width: 40px;
+  justify-content: center;
+  padding: 0;
+  position: relative;
+}
+.ink-shell--collapsed .ink-sidebar .ink-nav__badge {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  min-width: 14px;
+  height: 14px;
+  font-size: 9px;
+  padding: 0 3px;
+}
+.ink-shell--collapsed .ink-sidebar .ink-sidebar__search {
+  width: 40px;
+  justify-content: center;
+  padding: 0;
+}
+.ink-shell--collapsed .ink-sidebar .ink-sidebar__workspace {
+  flex-direction: column;
+  padding: 2px 0 12px;
+}
+.ink-shell--collapsed .ink-sidebar .ink-sidebar__user {
+  flex-direction: column;
+  margin: 8px -8px 0;
+  padding: 10px 0 12px;
+}
+.ink-shell--collapsed .ink-sidebar .ink-sidebar__user-actions {
+  flex-direction: column;
 }
 
 .ink-header {

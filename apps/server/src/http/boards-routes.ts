@@ -27,7 +27,7 @@ import {
 } from '../access.ts';
 import type { Auth } from '../auth.ts';
 import { type BoardReader, storedColumns } from '../board-content.ts';
-import { projectPreview } from '../board-preview.ts';
+import { boardCounts, projectPreview } from '../board-preview.ts';
 import type { Database } from '../db/client.ts';
 import { asset, board, boardDoc, project } from '../db/schema.ts';
 import { iso } from './api-routes.ts';
@@ -201,6 +201,33 @@ export function registerBoardRoutes(app: FastifyInstance, deps: Deps) {
       const role = roles.get(r.board.id)?.role;
       return role ? [{ ...toBoard(r.board, role), editedAt: iso(new Date(r.editedAt)) }] : [];
     });
+    return { items };
+  });
+
+  app.get(v1('/projects/:projectId/board-counts'), async (req) => {
+    const actor = await requireActor(auth, req, db);
+    const { projectId } = ProjectParams.parse(req.params);
+    const [pRole, grants] = await Promise.all([
+      projectRole(db, actor, projectId),
+      projectGrants(db, actor, projectId),
+    ]);
+    if (!pRole && grants.size === 0) throw new HttpError('not_found', 'Project not found.');
+    const rows = await db
+      .select({ board, state: boardDoc.state })
+      .from(board)
+      .leftJoin(boardDoc, eq(boardDoc.boardId, board.id))
+      .where(and(eq(board.projectId, projectId), isNull(board.deletedAt)));
+    const roles = effectiveRoles(
+      rows.map((r) => r.board),
+      grants,
+      pRole,
+    );
+    // Same visibility as the board list: only boards the caller can open.
+    const items = rows.flatMap((r) =>
+      roles.get(r.board.id)?.role
+        ? [{ boardId: r.board.id, ...boardCounts(r.state ?? undefined) }]
+        : [],
+    );
     return { items };
   });
 

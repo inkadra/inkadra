@@ -28,7 +28,6 @@ test('mobile shell gives the canvas full width and keeps shell actions reachable
   await page.goto('/');
   const nav = page.getByRole('navigation', { name: 'Navigazione principale', exact: true });
   await expect(nav).toBeVisible();
-  await expect(page.locator('.ink-rail')).toBeHidden();
   await expect(page.locator('.ink-shell > .ink-sidebar')).toBeHidden();
   await nav.getByRole('button', { name: 'Progetti', exact: true }).click();
   const drawer = page.getByRole('dialog', { name: 'Navigazione', exact: true });
@@ -89,7 +88,6 @@ test('mobile shell gives the canvas full width and keeps shell actions reachable
   await expect.poll(async () => (await canvas.boundingBox())?.width).toBe(767);
   await page.setViewportSize({ width: 1440, height: 900 });
   await expect(nav).toBeHidden();
-  await expect(page.locator('.ink-rail')).toBeVisible();
   await expect(page.locator('.ink-shell > .ink-sidebar')).toBeVisible();
-  await expect.poll(async () => (await canvas.boundingBox())?.x).toBeGreaterThanOrEqual(262);
+  await expect.poll(async () => (await canvas.boundingBox())?.x).toBeGreaterThanOrEqual(240);
 });

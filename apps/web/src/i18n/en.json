@@ -107,7 +107,12 @@
       "toLight": "Switch to light theme"
     },
     "shared": "Shared with you",
-    "moodboard": "Moodboard"
+    "moodboard": "Moodboard",
+    "collapse": "Collapse navigation",
+    "expand": "Expand navigation",
+    "boards": "Boards",
+    "toShoot_one": "{{count}} frame to shoot",
+    "toShoot_other": "{{count}} frames to shoot"
   },
   "home": {
     "greeting": {

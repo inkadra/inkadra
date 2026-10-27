@@ -1,4 +1,4 @@
-import type { Board, BoardKind, Project } from '@inkadra/shared';
+import type { Board, BoardCount, BoardKind, Project } from '@inkadra/shared';
 import {
   AppShell,
   Avatar,
@@ -10,10 +10,6 @@ import {
   KeyCap,
   Logo,
   NavItem,
-  Rail,
-  RailButton,
-  RailSeparator,
-  RailSpacer,
   Sidebar,
   SidebarSection,
 } from '@inkadra/ui';
@@ -41,7 +37,7 @@ import {
   viewHref,
 } from '../board/views.ts';
 import { appActions } from '../commands/app-actions.ts';
-import { authApi } from '../lib/api.ts';
+import { api, authApi } from '../lib/api.ts';
 import { HeaderContext } from '../lib/header.tsx';
 import { useSession } from '../lib/session.tsx';
 import { useTheme } from '../lib/theme.ts';
@@ -141,8 +137,31 @@ export function AppLayout() {
     return () => window.removeEventListener('keydown', onKey);
   }, []);
 
+  const [collapsed, setCollapsed] = useState(() => readCollapsed());
+  const toggleCollapsed = () =>
+    setCollapsed((c) => {
+      writeCollapsed(!c);
+      return !c;
+    });
+  // ⌘\ / Ctrl+\ folds the navigation column to its icons and back.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const mac = /Mac|iPhone|iPad/.test(navigator.platform);
+      if ((mac ? e.metaKey : e.ctrlKey) && !e.shiftKey && !e.altKey && e.key === '\\') {
+        e.preventDefault();
+        setCollapsed((c) => {
+          writeCollapsed(!c);
+          return !c;
+        });
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
+
   const pathProject = pathname.startsWith('/p/') ? pathname.split('/')[2] : undefined;
   const { items: projectBoards } = useProjectBoards(pathProject);
+  const counts = useBoardCounts(pathProject, projectBoards);
 
   if (!user)
     return (
@@ -217,135 +236,39 @@ export function AppLayout() {
     );
   };
 
-  const rail = (
-    <Rail label={t('nav.modules')}>
-      <span className="ink-rail__logo">
-        <Logo />
-      </span>
-      <RailButton
-        icon="home"
-        label={t('nav.home')}
-        active={pathname === '/'}
-        onClick={() => navigate('/')}
-      />
-      <RailButton
-        icon="board"
-        label={t('nav.board')}
-        disabled={!projectId}
-        active={!!projectId && currentView === 'canvas'}
-        onClick={() => {
-          if (projectId) showView('canvas');
-        }}
-      />
-      <RailButton
-        icon="storyboard"
-        label={t('nav.storyboard')}
-        disabled={!projectId}
-        active={!!projectId && currentView === 'storyboard'}
-        onClick={() => {
-          if (projectId) showView('storyboard');
-        }}
-      />
-      <RailButton
-        icon="shotlist"
-        label={t('nav.shotlist')}
-        disabled={!projectId}
-        active={!!projectId && currentView === 'shotlist'}
-        onClick={() => {
-          if (projectId) showView('shotlist');
-        }}
-      />
-      <RailButton
-        icon="calendar"
-        label={t('nav.schedule')}
-        disabled={!projectId}
-        active={!!projectId && currentView === 'schedule'}
-        onClick={() => {
-          if (projectId) showView('schedule');
-        }}
-      />
-      <RailButton
-        icon="people"
-        label={t('nav.clients')}
-        disabled={!projectId}
-        active={!!projectId && currentView === 'review'}
-        onClick={() => {
-          if (projectId) showView('review');
-        }}
-      />
-      <RailSeparator />
-      <RailButton
-        icon="inbox"
-        label={t('nav.inbox')}
-        badge={unread > 0 ? unread : undefined}
-        active={inboxOpen}
-        onClick={() => {
-          setDrawerOpen(false);
-          setInboxOpen((o) => !o);
-        }}
-      />
-      <RailButton
-        icon="search"
-        label={t('nav.search')}
-        onClick={() => {
-          setDrawerOpen(false);
-          setSearching(true);
-        }}
-      />
-      <RailSpacer />
-      <RailButton
-        icon={theme === 'dark' ? 'sun' : 'moon'}
-        label={theme === 'dark' ? t('nav.theme.toLight') : t('nav.theme.toDark')}
-        onClick={toggle}
-      />
-      <span
-        className={
-          setup.error || setup.checks?.some((c) => !c.ok) ? 'instance-setup-reminder' : undefined
-        }
-      >
-        <RailButton
-          icon="settings"
-          label={t(
-            setup.error || setup.checks?.some((c) => !c.ok)
-              ? 'onboarding.settingsPending'
-              : 'nav.settings',
-          )}
-          active={pathname.startsWith('/settings')}
-          onClick={() => navigate('/settings')}
-        />
-      </span>
-      <RailButton icon="logout" label={t('auth.signOut')} onClick={signOut} />
-      <span style={{ marginTop: 4 }}>
-        <Avatar image={user.image} name={user.name} />
-      </span>
-    </Rail>
-  );
+  const setupPending = !!(setup.error || setup.checks?.some((c) => !c.ok));
+  const storyboardCounts = storyboardId ? counts.get(storyboardId) : undefined;
 
   const sidebar = (
     <Sidebar label={t('nav.navigation')}>
       <div className="ink-sidebar__workspace">
-        <span
-          style={{
-            width: 18,
-            height: 18,
-            borderRadius: '50%',
-            background: 'var(--ink-text-primary)',
-          }}
+        <Logo />
+        <span className="ink-nav__name" style={{ flex: 1 }}>
+          {instance?.name}
+        </span>
+        <IconButton
+          className={`ink-sidebar__toggle${collapsed ? ' is-collapsed' : ''}`}
+          icon="chevronRight"
+          label={t(collapsed ? 'nav.expand' : 'nav.collapse')}
+          aria-expanded={!collapsed}
+          onClick={toggleCollapsed}
         />
-        <span className="ink-nav__name">{instance?.name}</span>
       </div>
       <button
         type="button"
         className="ink-sidebar__search"
+        aria-label={t('nav.search')}
+        title={t('nav.search')}
         onClick={() => {
           setDrawerOpen(false);
           setSearching(true);
         }}
       >
         <Icon name="search" size={14} />
-        {t('nav.search')}
-        <span style={{ flex: 1 }} />
-        <KeyCap>⌘K</KeyCap>
+        <span className="ink-sidebar__search-text">
+          {t('nav.search')}
+          <KeyCap>⌘K</KeyCap>
+        </span>
       </button>
       <NavItem
         icon="home"
@@ -357,7 +280,7 @@ export function AppLayout() {
       <NavItem
         icon="inbox"
         label={t('nav.inbox')}
-        count={unread}
+        badge={unread}
         active={inboxOpen}
         onClick={(e) => {
           e.preventDefault();
@@ -386,35 +309,40 @@ export function AppLayout() {
         }
       />
       {projects?.map((p) => (
-        <div key={p.id}>
+        <div key={p.id} className={p.id === projectId ? undefined : 'ink-sidebar__collapsible'}>
           <ProjectNavItem
             project={p}
             active={p.id === projectId && !boardId}
             onClick={go(`/p/${p.id}`)}
           />
           {p.id === projectId && (
-            <>
+            <div className="ink-sidebar__modules">
               <NavItem
                 icon="storyboard"
                 label={t('nav.storyboard')}
+                count={storyboardCounts?.frameCount}
                 active={currentView === 'storyboard'}
                 href={hrefFor('storyboard')}
                 onClick={(e) => {
                   e.preventDefault();
                   showView('storyboard');
                 }}
-                style={{ paddingLeft: 22 }}
               />
               <NavItem
                 icon="shotlist"
                 label={t('nav.shotlist')}
+                count={storyboardCounts?.framesToShoot}
+                title={
+                  storyboardCounts
+                    ? `${t('nav.shotlist')} · ${t('nav.toShoot', { count: storyboardCounts.framesToShoot })}`
+                    : undefined
+                }
                 active={currentView === 'shotlist'}
                 href={hrefFor('shotlist')}
                 onClick={(e) => {
                   e.preventDefault();
                   showView('shotlist');
                 }}
-                style={{ paddingLeft: 22 }}
               />
               <NavItem
                 icon="calendar"
@@ -425,7 +353,6 @@ export function AppLayout() {
                   e.preventDefault();
                   showView('schedule');
                 }}
-                style={{ paddingLeft: 22 }}
               />
               <NavItem
                 icon="people"
@@ -436,21 +363,24 @@ export function AppLayout() {
                   e.preventDefault();
                   showView('review');
                 }}
-                style={{ paddingLeft: 22 }}
               />
-              <BoardTree
-                projectId={p.id}
-                parentId={p.rootBoardId}
-                activeId={boardId}
-                depth={1}
-                go={go}
-              />
-            </>
+              <div className="ink-sidebar__collapsible">
+                <div className="ink-sidebar__label">{t('nav.boards')}</div>
+                <BoardTree
+                  projectId={p.id}
+                  parentId={p.rootBoardId}
+                  activeId={boardId}
+                  depth={1}
+                  go={go}
+                  counts={counts}
+                />
+              </div>
+            </div>
           )}
         </div>
       ))}
       {shared && shared.length > 0 && (
-        <>
+        <div className="ink-sidebar__collapsible">
           <SidebarSection title={t('nav.shared')} />
           {shared.map((b) => (
             <NavItem
@@ -462,8 +392,32 @@ export function AppLayout() {
               onClick={go(`/p/${b.projectId}/b/${b.id}`)}
             />
           ))}
-        </>
+        </div>
       )}
+      <span className="ink-sidebar__spacer" />
+      <div className="ink-sidebar__user">
+        <Avatar image={user.image} name={user.name} />
+        <span className="ink-sidebar__who">
+          <span>{user.name}</span>
+          <small>{instance?.name}</small>
+        </span>
+        <span className="ink-sidebar__user-actions">
+          <span className={setupPending ? 'instance-setup-reminder' : undefined}>
+            <IconButton
+              icon="settings"
+              label={t(setupPending ? 'onboarding.settingsPending' : 'nav.settings')}
+              aria-current={pathname.startsWith('/settings') ? 'page' : undefined}
+              onClick={go('/settings')}
+            />
+          </span>
+          <IconButton
+            icon={theme === 'dark' ? 'sun' : 'moon'}
+            label={theme === 'dark' ? t('nav.theme.toLight') : t('nav.theme.toDark')}
+            onClick={toggle}
+          />
+          <IconButton icon="logout" label={t('auth.signOut')} onClick={signOut} />
+        </span>
+      </div>
     </Sidebar>
   );
 
@@ -545,7 +499,7 @@ export function AppLayout() {
         }}
       >
         <HeaderContext.Provider value={setHeaderContent}>
-          <AppShell rail={rail} sidebar={sidebar} header={header} canvas={!!projectId}>
+          <AppShell sidebar={sidebar} header={header} canvas={!!projectId} collapsed={collapsed}>
             <Outlet />
           </AppShell>
         </HeaderContext.Provider>
@@ -585,12 +539,6 @@ export function AppLayout() {
                 {t('mobile.close')}
               </Button>
               {sidebar}
-              <Button variant="ghost" block onClick={toggle}>
-                {theme === 'dark' ? t('nav.theme.toLight') : t('nav.theme.toDark')}
-              </Button>
-              <Button variant="ghost" block onClick={signOut}>
-                {t('auth.signOut')}
-              </Button>
             </Dialog>
           </div>
         )}
@@ -655,12 +603,14 @@ function BoardTree({
   activeId,
   depth,
   go,
+  counts,
 }: {
   projectId: string;
   parentId: string;
   activeId: string | undefined;
   depth: number;
   go: (to: string) => (e: MouseEvent) => void;
+  counts: Map<string, BoardCount>;
 }) {
   const { items } = useProjectBoards(projectId);
   const children = childBoards(items, parentId);
@@ -670,7 +620,9 @@ function BoardTree({
       {children.map((b) => (
         <div key={b.id}>
           <NavItem
+            icon={b.kind === 'storyboard' ? 'storyboard' : 'board'}
             label={b.title}
+            count={counts.get(b.id)?.elementCount || undefined}
             href={`/p/${projectId}/b/${b.id}`}
             active={b.id === activeId}
             onClick={go(`/p/${projectId}/b/${b.id}`)}
@@ -682,9 +634,60 @@ function BoardTree({
             activeId={activeId}
             depth={depth + 1}
             go={go}
+            counts={counts}
           />
         </div>
       ))}
     </>
   );
+}
+
+const COLLAPSED_KEY = 'inkadra.sidebar.collapsed';
+function readCollapsed(): boolean {
+  try {
+    return localStorage.getItem(COLLAPSED_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
+function writeCollapsed(value: boolean) {
+  try {
+    if (value) localStorage.setItem(COLLAPSED_KEY, '1');
+    else localStorage.removeItem(COLLAPSED_KEY);
+  } catch {
+    // Private mode: the choice lasts for this page only.
+  }
+}
+
+/** Element and frame counts of the open project's boards; refreshed when its boards change. */
+function useBoardCounts(
+  projectId: string | undefined,
+  boards: readonly Board[] | null | undefined,
+): Map<string, BoardCount> {
+  const [counts, setCounts] = useState<Map<string, BoardCount>>(new Map());
+  // Any board edit moves its editedAt, so the newest one tells when to count again.
+  const stamp = boards
+    ?.map((b) => b.editedAt ?? '')
+    .sort()
+    .at(-1);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: stamp is the refresh signal.
+  useEffect(() => {
+    if (!projectId) {
+      setCounts(new Map());
+      return;
+    }
+    let live = true;
+    api
+      .get<{ items: BoardCount[] }>(`/projects/${projectId}/board-counts`)
+      .then((r) => {
+        if (live) setCounts(new Map(r.items.map((c) => [c.boardId, c])));
+      })
+      .catch(() => {
+        // Counts are a hint; the navigation works without them.
+      });
+    return () => {
+      live = false;
+    };
+  }, [projectId, stamp, boards?.length]);
+  return counts;
 }
