@@ -271,12 +271,12 @@ test('shell views use real shots and the call sheet traps and restores focus', a
   // Review rounds are not supported yet, so the action is disabled and says why.
   await expect(submit).toBeDisabled();
   await expect(submit).toHaveAccessibleDescription(
-    'I round di review non sono ancora supportati. Decisioni e risposte vengono salvate singolarmente.',
+    'Le tornate di revisione non sono ancora disponibili. Decisioni e risposte vengono salvate singolarmente.',
   );
   // The view reads the saved decisions: frames, progress and filters are real.
   await expect(review.getByRole('button', { name: /1A/ })).toBeVisible();
   await expect(review.getByRole('progressbar')).toBeVisible();
-  const all = review.getByRole('button', { name: 'Tutti i frame', exact: true });
+  const all = review.getByRole('button', { name: 'Tutte le inquadrature', exact: true });
   await expect(all).toBeEnabled();
   await expect(all).toHaveAttribute('aria-pressed', 'true');
 });

@@ -564,7 +564,7 @@
     },
     "storyboard": {
       "name": "Storyboard",
-      "body": "A Storyboard board with a scene, three shots and Shot list",
+      "body": "A storyboard board with a scene, three shots and a shot list",
       "scene": "Opening"
     },
     "production": {
@@ -1733,7 +1733,11 @@
     "invalidDates": "The shooting end must follow the start.",
     "partialError": "The project already exists. Retry to finish missing boards and invitations, or skip and open it from Projects.",
     "creating": "Creating and syncing boards…",
-    "summary": "{{boards}} boards and {{invitations}} invitations will be created",
+    "boards_one": "{{count}} board",
+    "boards_other": "{{count}} boards",
+    "invitations_one": "{{count}} invitation",
+    "invitations_other": "{{count}} invitations",
+    "summary": "$t(onboarding.boards, {\"count\": {{boards}} }) and $t(onboarding.invitations, {\"count\": {{invitations}} }) will be created",
     "skip": "Skip for now",
     "inviteResults": "Created invitations",
     "sent": "Email sent",

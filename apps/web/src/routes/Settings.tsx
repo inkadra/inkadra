@@ -118,8 +118,11 @@ function Section({
 
 function useStatus() {
   const { t } = useTranslation();
-  const [status, setStatus] = useState<{ text: string; error: boolean } | null>(null);
+  const [status, setStatus] = useState<
+    { key: string; error: boolean } | { text: string; error: boolean } | null
+  >(null);
   const show = (text: string, error = false) => setStatus({ text, error });
+  const showKey = (key: string, error = false) => setStatus({ key, error });
   const fail = (err: unknown) =>
     show(
       err instanceof RequestError && (err.status === 400 || err.status === 403) && err.message
@@ -129,15 +132,16 @@ function useStatus() {
           : t('auth.errors.generic'),
       true,
     );
+  const message = status ? ('key' in status ? t(status.key) : status.text) : null;
   const node = status && (
     <p
       className={status.error ? 'settings__status settings__status--error' : 'settings__status'}
       role={status.error ? 'alert' : 'status'}
     >
-      {status.text}
+      {message}
     </p>
   );
-  return { show, fail, node, clear: () => setStatus(null) };
+  return { show, showKey, fail, node, clear: () => setStatus(null) };
 }
 
 function Profile() {
@@ -169,7 +173,7 @@ function Profile() {
         await api.put('/me/avatar', { data });
       } else await api.delete('/me/avatar');
       await refresh();
-      status.show(t('settings.saved'));
+      status.showKey('settings.saved');
     } catch {
       status.show(t('settings.profile.avatarError'), true);
     } finally {
@@ -184,7 +188,7 @@ function Profile() {
       await api.patch<User>('/me', { name: name.trim(), locale });
       await i18n.changeLanguage(locale);
       await refresh();
-      status.show(t('settings.saved'));
+      status.showKey('settings.saved');
     } catch (err) {
       status.fail(err);
     }
