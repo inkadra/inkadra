@@ -62,6 +62,7 @@ import {
   Project,
   ProjectMember,
   SetProjectMember,
+  SetProjectPin,
   UpdateProject,
 } from './projects.ts';
 import {
@@ -531,7 +532,32 @@ registry.registerPath({
   },
 });
 
+registry.registerPath({
+  method: 'get',
+  path: v1('/instance/storage'),
+  tags: ['Instance'],
+  security: secured,
+  summary: 'Administrator-only sum of original asset sizes; excludes derived files and database.',
+  responses: {
+    200: {
+      description: 'Original asset usage',
+      ...json(z.object({ originalBytes: z.number().nonnegative() })),
+    },
+    ...errors,
+  },
+});
+
 // Projects -------------------------------------------------------------------
+
+registry.registerPath({
+  method: 'put',
+  path: v1('/projects/{projectId}/pin'),
+  tags: ['Projects'],
+  security: secured,
+  summary: 'Set the caller’s personal project pin. Requires project membership.',
+  request: { params: idParam('projectId'), body: json(SetProjectPin) },
+  responses: { 200: { description: 'Updated', ...json(Project) }, ...errors },
+});
 
 registry.registerPath({
   method: 'get',

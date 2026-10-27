@@ -1514,5 +1514,123 @@
       "changes_requested": "Modifiche richieste"
     },
     "liveOnly": "Le review appartengono alla board attuale. Chiudi l’anteprima della versione per leggerle e rispondere."
+  },
+  "projectsPage": {
+    "counts": "{{active}} attivi · {{archived}} archiviati",
+    "search": "Cerca progetti",
+    "status": "Stato",
+    "all": "Tutti",
+    "active": "Attivi",
+    "archived": "Archiviati",
+    "people": "Persone",
+    "sort": "Ordina",
+    "sorts": {
+      "activity": "Ultima attività",
+      "name": "Nome",
+      "created": "Data di creazione"
+    },
+    "grid": "Griglia",
+    "list": "Elenco",
+    "retry": "Riprova",
+    "empty": "Nessun progetto",
+    "emptyBody": "Crea un progetto o modifica i filtri di ricerca.",
+    "storage": "File originali nell’istanza: {{bytes}} byte. Esclusi anteprime e database.",
+    "storageError": "Utilizzo dello spazio non disponibile.",
+    "openNamed": "Apri {{name}}",
+    "open": "Apri",
+    "pin": "Fissa in alto",
+    "unpin": "Rimuovi dai fissati",
+    "archive": "Archivia",
+    "unarchive": "Ripristina",
+    "noDates": "Date da definire",
+    "boards_one": "{{count}} board",
+    "boards_other": "{{count}} board"
+  },
+  "onboarding": {
+    "guidedSetup": "Configurazione guidata",
+    "pendingEmail": "Aggiungi l’indirizzo email alla lista degli inviti, oppure svuota il campo per creare il progetto.",
+    "title": "Il tuo primo progetto",
+    "subtitle": "Scegli il punto di partenza e invita il team. Puoi completare i dettagli più avanti.",
+    "type": "Tipo di progetto",
+    "types": {
+      "short_film": "Cortometraggio",
+      "commercial": "Spot",
+      "music_video": "Videoclip",
+      "photo_shoot": "Servizio foto",
+      "documentary": "Documentario"
+    },
+    "start": "Inizio riprese · facoltativo",
+    "end": "Fine riprese · facoltativo",
+    "template": "Parti da un modello",
+    "templates": {
+      "production": {
+        "name": "Pre-produzione film",
+        "body": "Brief, location, casting, moodboard e storyboard con vista shotlist."
+      },
+      "moodboard": {
+        "name": "Moodboard",
+        "body": "Riferimenti, luce, location e palette."
+      },
+      "storyboard": {
+        "name": "Storyboard",
+        "body": "Una scena e tre inquadrature condivise con la shotlist."
+      },
+      "shotlist": {
+        "name": "Shotlist",
+        "body": "Le stesse inquadrature di storyboard, in vista tabella."
+      },
+      "pitch": {
+        "name": "Pitch cliente",
+        "body": "Un board per la presentazione. Crea un link ospite dal pannello Condividi."
+      },
+      "blank": {
+        "name": "Vuoto",
+        "body": "Un canvas libero."
+      }
+    },
+    "boards": {
+      "brief": "Brief",
+      "locations": "Location",
+      "casting": "Casting",
+      "moodboard": "Moodboard",
+      "storyboard": "Storyboard e shotlist",
+      "shotlist": "Shotlist e storyboard",
+      "pitch": "Pitch cliente"
+    },
+    "invite": "Invita il team · facoltativo",
+    "email": "Email",
+    "role": "Ruolo",
+    "add": "Aggiungi",
+    "remove": "Rimuovi",
+    "removeNamed": "Rimuovi {{email}}",
+    "noSmtp": "Senza SMTP gli inviti restano validi: copia i link e inviali tu.",
+    "invalidEmail": "Inserisci un indirizzo email valido che non sia già nell’elenco.",
+    "invalidDates": "La fine delle riprese deve seguire l’inizio.",
+    "partialError": "Il progetto esiste già. Riprova per completare board e inviti mancanti, oppure salta e aprilo da Progetti.",
+    "creating": "Creazione e sincronizzazione dei board…",
+    "summary": "Verranno creati {{boards}} board e {{invitations}} inviti",
+    "skip": "Salta per ora",
+    "inviteResults": "Inviti creati",
+    "sent": "Email inviata",
+    "copyLink": "Copia il link e invialo al team",
+    "linkFor": "Link di invito per {{email}}",
+    "instanceTitle": "Configura l’istanza",
+    "adminOnly": "Visibile solo agli amministratori.",
+    "checkProgress": "{{done}} di {{total}} pronti",
+    "checks": {
+      "providers": "Accesso",
+      "storage": "Archiviazione",
+      "smtp": "Email e inviti",
+      "domain": "Dominio, HTTPS e WebSocket"
+    },
+    "ready": "Pronto",
+    "needsSetup": "Da configurare",
+    "tipsTitle": "Da sapere",
+    "tips": {
+      "search": "⌘K / Ctrl+K cerca progetti, board e comandi.",
+      "drag": "Trascina file e link sul canvas.",
+      "phone": "Dal telefono salva nei Non ordinati."
+    },
+    "settingsPending": "Impostazioni, configurazione istanza incompleta"
   }
 }

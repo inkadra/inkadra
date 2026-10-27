@@ -7,16 +7,25 @@ import {
   type ProjectMember,
   type ProjectRole,
   SetProjectMember,
+  SetProjectPin,
   UpdateProject,
   z,
 } from '@inkadra/shared';
-import { and, asc, count, desc, eq, gt, isNotNull, isNull, or } from 'drizzle-orm';
+import { and, asc, count, desc, eq, gt, isNotNull, isNull, or, sum } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
 import { generateKeyBetween } from 'fractional-indexing';
 import { type Actor, atLeast, higher, requireProjectRole } from '../access.ts';
 import type { Auth } from '../auth.ts';
 import type { Database } from '../db/client.ts';
-import { asset, assetVariant, board, project, projectMember, user } from '../db/schema.ts';
+import {
+  asset,
+  assetVariant,
+  board,
+  project,
+  projectMember,
+  projectPin,
+  user,
+} from '../db/schema.ts';
 import type { Jobs } from '../jobs.ts';
 import { animatedVariantKey } from '../storage.ts';
 import { iso } from './api-routes.ts';
@@ -37,6 +46,7 @@ export function toProject(
   row: typeof project.$inferSelect,
   rootBoardId: string,
   myRole: ProjectRole,
+  pinned = false,
 ): Project {
   return {
     id: row.id,
@@ -48,6 +58,10 @@ export function toProject(
     createdAt: iso(row.createdAt),
     updatedAt: iso(row.updatedAt),
     myRole,
+    type: row.type,
+    shootingStart: row.shootingStart,
+    shootingEnd: row.shootingEnd,
+    pinned,
   };
 }
 
@@ -72,7 +86,11 @@ async function loadProject(db: Database, actor: Actor, projectId: string) {
     .innerJoin(board, and(eq(board.projectId, project.id), isNull(board.parentBoardId)))
     .where(and(eq(projectMember.projectId, projectId), eq(projectMember.userId, actor.id)));
   if (!row) throw new HttpError('not_found', 'Project not found.');
-  return toProject(row.project, row.rootBoardId, row.role);
+  const [pin] = await db
+    .select()
+    .from(projectPin)
+    .where(and(eq(projectPin.projectId, projectId), eq(projectPin.userId, actor.id)));
+  return toProject(row.project, row.rootBoardId, row.role, !!pin);
 }
 
 async function listMembers(db: Database, projectId: string): Promise<ProjectMember[]> {
@@ -119,9 +137,18 @@ export function registerProjectRoutes(app: FastifyInstance, deps: Deps) {
   const { db, auth, jobs } = deps;
   const v1 = (path: string) => `${API_PREFIX}${path}`;
 
+  app.get(v1('/instance/storage'), async (req) => {
+    const actor = await requireActor(auth, req, db);
+    if (actor.role !== 'admin')
+      throw new HttpError('forbidden', 'Only administrators can see instance storage.');
+    const [row] = await db.select({ bytes: sum(asset.size) }).from(asset);
+    return { originalBytes: Number(row?.bytes ?? 0) };
+  });
+
   app.get(v1('/projects'), async (req) => {
     const actor = await requireActor(auth, req, db);
     const query = ListQuery.parse(req.query ?? {});
+    const pins = await db.select().from(projectPin).where(eq(projectPin.userId, actor.id));
     const after = query.cursor ? decodeCursor(query.cursor) : null;
     const rows = await db
       .select({ project, role: projectMember.role, rootBoardId: board.id })
@@ -145,7 +172,14 @@ export function registerProjectRoutes(app: FastifyInstance, deps: Deps) {
     const items = rows.slice(0, query.limit);
     const last = items.at(-1);
     return {
-      items: items.map((r) => toProject(r.project, r.rootBoardId, r.role)),
+      items: items.map((r) =>
+        toProject(
+          r.project,
+          r.rootBoardId,
+          r.role,
+          pins.some((pin) => pin.projectId === r.project.id),
+        ),
+      ),
       nextCursor:
         rows.length > query.limit && last
           ? encodeCursor(last.project.position, last.project.id)
@@ -156,6 +190,7 @@ export function registerProjectRoutes(app: FastifyInstance, deps: Deps) {
   app.post(v1('/projects'), async (req, reply) => {
     const actor = await requireActor(auth, req, db);
     const input = CreateProject.parse(req.body);
+    validateDates(input.shootingStart ?? null, input.shootingEnd ?? null);
     const created = await db.transaction(async (tx) => {
       const [last] = await tx
         .select({ position: project.position })
@@ -166,6 +201,9 @@ export function registerProjectRoutes(app: FastifyInstance, deps: Deps) {
         .insert(project)
         .values({
           name: input.name,
+          type: input.type,
+          shootingStart: input.shootingStart,
+          shootingEnd: input.shootingEnd,
           iconShape: input.icon?.shape ?? 'circle',
           iconColor: input.icon?.color ?? 'neutral',
           position: generateKeyBetween(last?.position ?? null, null),
@@ -202,6 +240,9 @@ export function registerProjectRoutes(app: FastifyInstance, deps: Deps) {
       patch.archived === undefined ? 'editor' : 'owner',
     );
     const set: Partial<typeof project.$inferInsert> = {};
+    if (patch.type !== undefined) set.type = patch.type;
+    if (patch.shootingStart !== undefined) set.shootingStart = patch.shootingStart;
+    if (patch.shootingEnd !== undefined) set.shootingEnd = patch.shootingEnd;
     if (patch.name !== undefined) set.name = patch.name;
     if (patch.icon) {
       set.iconShape = patch.icon.shape;
@@ -211,6 +252,18 @@ export function registerProjectRoutes(app: FastifyInstance, deps: Deps) {
     if (patch.archived !== undefined) set.archivedAt = patch.archived ? new Date() : null;
     if (Object.keys(set).length > 0) {
       await db.transaction(async (tx) => {
+        await lockMembers(
+          tx,
+          projectId,
+          actor.id,
+          patch.archived === undefined ? 'editor' : 'owner',
+        );
+        const [current] = await tx.select().from(project).where(eq(project.id, projectId));
+        if (!current) throw new HttpError('not_found', 'Project not found.');
+        validateDates(
+          patch.shootingStart === undefined ? current.shootingStart : patch.shootingStart,
+          patch.shootingEnd === undefined ? current.shootingEnd : patch.shootingEnd,
+        );
         await tx.update(project).set(set).where(eq(project.id, projectId));
         // The root board carries the project name in breadcrumbs.
         if (set.name)
@@ -220,6 +273,20 @@ export function registerProjectRoutes(app: FastifyInstance, deps: Deps) {
             .where(and(eq(board.projectId, projectId), isNull(board.parentBoardId)));
       });
     }
+    return loadProject(db, actor, projectId);
+  });
+
+  app.put(v1('/projects/:projectId/pin'), async (req) => {
+    const actor = await requireActor(auth, req, db);
+    const { projectId } = ProjectParams.parse(req.params);
+    const { pinned } = SetProjectPin.parse(req.body);
+    await requireProjectRole(db, actor, projectId, 'viewer');
+    if (pinned)
+      await db.insert(projectPin).values({ projectId, userId: actor.id }).onConflictDoNothing();
+    else
+      await db
+        .delete(projectPin)
+        .where(and(eq(projectPin.projectId, projectId), eq(projectPin.userId, actor.id)));
     return loadProject(db, actor, projectId);
   });
 
@@ -312,4 +379,9 @@ export function registerProjectRoutes(app: FastifyInstance, deps: Deps) {
     });
     return reply.status(204).send();
   });
+}
+
+function validateDates(start: string | null, end: string | null) {
+  if (start && end && start > end)
+    throw new HttpError('bad_request', 'Shooting end must follow start.');
 }

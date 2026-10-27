@@ -14,6 +14,8 @@ import { Home } from './routes/Home.tsx';
 import { Join } from './routes/Join.tsx';
 import { Login } from './routes/Login.tsx';
 import { NotFound } from './routes/NotFound.tsx';
+import { Onboarding } from './routes/Onboarding.tsx';
+import { Projects } from './routes/Projects.tsx';
 import { ResetPassword } from './routes/ResetPassword.tsx';
 import { Settings } from './routes/Settings.tsx';
 
@@ -47,6 +49,8 @@ const router = createBrowserRouter([
         element: <AppLayout />,
         children: [
           { index: true, element: <Home /> },
+          { path: 'projects', element: <Projects /> },
+          { path: 'onboarding', element: <Onboarding /> },
           { path: 'settings', element: <Settings /> },
           // The board editor (Yjs, Tiptap, uploads) loads with the first board opened.
           { path: 'p/:projectId', lazy: loadBoard },

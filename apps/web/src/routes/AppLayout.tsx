@@ -40,6 +40,7 @@ import {
   NotificationList,
   useUnreadCount,
 } from '../notifications/Notifications.tsx';
+import { useInstanceSetup } from './InstanceSetup.tsx';
 import { MobileNavigation } from './MobileNavigation.tsx';
 import { NewProjectDialog } from './NewProjectDialog.tsx';
 import {
@@ -72,7 +73,14 @@ const ProjectsContext = createContext<ProjectsState>({
 });
 export const useProjects = () => useContext(ProjectsContext);
 
+const InstanceSetupContext = createContext<ReturnType<typeof useInstanceSetup>>({
+  checks: null,
+  error: false,
+});
+export const useInstanceSetupState = () => useContext(InstanceSetupContext);
+
 export function AppLayout() {
+  const setup = useInstanceSetup();
   const { t } = useTranslation();
   const { user, instance, refresh } = useSession();
   const { theme, toggle } = useTheme();
@@ -287,12 +295,22 @@ export function AppLayout() {
         label={theme === 'dark' ? t('nav.theme.toLight') : t('nav.theme.toDark')}
         onClick={toggle}
       />
-      <RailButton
-        icon="settings"
-        label={t('nav.settings')}
-        active={pathname.startsWith('/settings')}
-        onClick={() => navigate('/settings')}
-      />
+      <span
+        className={
+          setup.error || setup.checks?.some((c) => !c.ok) ? 'instance-setup-reminder' : undefined
+        }
+      >
+        <RailButton
+          icon="settings"
+          label={t(
+            setup.error || setup.checks?.some((c) => !c.ok)
+              ? 'onboarding.settingsPending'
+              : 'nav.settings',
+          )}
+          active={pathname.startsWith('/settings')}
+          onClick={() => navigate('/settings')}
+        />
+      </span>
       <RailButton icon="logout" label={t('auth.signOut')} onClick={signOut} />
       <span style={{ marginTop: 4 }}>
         <Avatar name={user.name} />
@@ -343,6 +361,13 @@ export function AppLayout() {
           setDrawerOpen(false);
           setInboxOpen((o) => !o);
         }}
+      />
+      <NavItem
+        icon="board"
+        label={t('nav.projects')}
+        href="/projects"
+        active={pathname === '/projects'}
+        onClick={go('/projects')}
       />
       <SidebarSection
         title={t('nav.projects')}
@@ -475,7 +500,16 @@ export function AppLayout() {
         {headerContent ?? (
           <>
             <nav aria-label={t('nav.breadcrumb')} className="ink-header__crumbs">
-              <span style={{ fontWeight: 600 }}>{current?.name ?? t('nav.home')}</span>
+              <span style={{ fontWeight: 600 }}>
+                {current?.name ??
+                  t(
+                    pathname === '/projects'
+                      ? 'nav.projects'
+                      : pathname === '/onboarding'
+                        ? 'onboarding.title'
+                        : 'nav.home',
+                  )}
+              </span>
             </nav>
             <span className="ink-header__spacer" />
             <span
@@ -509,93 +543,95 @@ export function AppLayout() {
   );
 
   return (
-    <ProjectsContext.Provider
-      value={{
-        projects,
-        shared,
-        openNewProject: () => setCreating(true),
-        openSearch: () => setSearching(true),
-        openInbox: () => setInboxOpen(true),
-        unread,
-        refreshUnread,
-      }}
-    >
-      <HeaderContext.Provider value={setHeaderContent}>
-        <AppShell rail={rail} sidebar={sidebar} header={header} canvas={!!projectId}>
-          <Outlet />
-        </AppShell>
-      </HeaderContext.Provider>
-      <MobileNavigation
-        inboxButtonRef={mobileInboxButton}
-        pathname={pathname}
-        inboxOpen={inboxOpen}
-        drawerOpen={drawerOpen}
-        unread={unread}
-        onHome={() => {
-          setInboxOpen(false);
-          navigate('/');
+    <InstanceSetupContext.Provider value={setup}>
+      <ProjectsContext.Provider
+        value={{
+          projects,
+          shared,
+          openNewProject: () => setCreating(true),
+          openSearch: () => setSearching(true),
+          openInbox: () => setInboxOpen(true),
+          unread,
+          refreshUnread,
         }}
-        onProjects={() => {
-          setInboxOpen(false);
-          setDrawerOpen(true);
-        }}
-        onNew={() => {
-          setInboxOpen(false);
-          setCreating(true);
-        }}
-        onInbox={() => setInboxOpen((o) => !o)}
-        onProfile={() => {
-          setInboxOpen(false);
-          navigate('/settings');
-        }}
-      />
-      {drawerOpen && (
-        <div className="mobile-drawer">
-          <Dialog open title={t('nav.navigation')} onClose={() => setDrawerOpen(false)}>
-            <Button
-              variant="ghost"
-              block
-              className="mobile-drawer__close"
-              onClick={() => setDrawerOpen(false)}
-            >
-              {t('mobile.close')}
-            </Button>
-            {sidebar}
-            <Button variant="ghost" block onClick={toggle}>
-              {theme === 'dark' ? t('nav.theme.toLight') : t('nav.theme.toDark')}
-            </Button>
-            <Button variant="ghost" block onClick={signOut}>
-              {t('auth.signOut')}
-            </Button>
-          </Dialog>
-        </div>
-      )}
-      {searching && (
-        <SearchDialog projects={projects} shared={shared} onClose={() => setSearching(false)} />
-      )}
-      {inboxOpen && (
-        <NotificationList
-          fixed
-          bell={mobileInboxButton}
-          onClose={() => {
-            setInboxOpen(false);
-            if (window.matchMedia('(width < 768px)').matches) mobileInboxButton.current?.focus();
-          }}
+      >
+        <HeaderContext.Provider value={setHeaderContent}>
+          <AppShell rail={rail} sidebar={sidebar} header={header} canvas={!!projectId}>
+            <Outlet />
+          </AppShell>
+        </HeaderContext.Provider>
+        <MobileNavigation
+          inboxButtonRef={mobileInboxButton}
+          pathname={pathname}
+          inboxOpen={inboxOpen}
+          drawerOpen={drawerOpen}
           unread={unread}
-          onNavigate={() => setInboxOpen(false)}
-          onCount={refreshUnread}
+          onHome={() => {
+            setInboxOpen(false);
+            navigate('/');
+          }}
+          onProjects={() => {
+            setInboxOpen(false);
+            setDrawerOpen(true);
+          }}
+          onNew={() => {
+            setInboxOpen(false);
+            setCreating(true);
+          }}
+          onInbox={() => setInboxOpen((o) => !o)}
+          onProfile={() => {
+            setInboxOpen(false);
+            navigate('/settings');
+          }}
         />
-      )}
-      <NewProjectDialog
-        open={creating}
-        onClose={() => setCreating(false)}
-        onCreated={async (p) => {
-          setCreating(false);
-          await refreshProjects();
-          navigate(`/p/${p.id}`);
-        }}
-      />
-    </ProjectsContext.Provider>
+        {drawerOpen && (
+          <div className="mobile-drawer">
+            <Dialog open title={t('nav.navigation')} onClose={() => setDrawerOpen(false)}>
+              <Button
+                variant="ghost"
+                block
+                className="mobile-drawer__close"
+                onClick={() => setDrawerOpen(false)}
+              >
+                {t('mobile.close')}
+              </Button>
+              {sidebar}
+              <Button variant="ghost" block onClick={toggle}>
+                {theme === 'dark' ? t('nav.theme.toLight') : t('nav.theme.toDark')}
+              </Button>
+              <Button variant="ghost" block onClick={signOut}>
+                {t('auth.signOut')}
+              </Button>
+            </Dialog>
+          </div>
+        )}
+        {searching && (
+          <SearchDialog projects={projects} shared={shared} onClose={() => setSearching(false)} />
+        )}
+        {inboxOpen && (
+          <NotificationList
+            fixed
+            bell={mobileInboxButton}
+            onClose={() => {
+              setInboxOpen(false);
+              if (window.matchMedia('(width < 768px)').matches) mobileInboxButton.current?.focus();
+            }}
+            unread={unread}
+            onNavigate={() => setInboxOpen(false)}
+            onCount={refreshUnread}
+          />
+        )}
+        <NewProjectDialog
+          open={creating}
+          onClose={() => setCreating(false)}
+          onCreated={async (p) => {
+            setCreating(false);
+            await refreshProjects();
+            navigate(`/p/${p.id}`);
+          }}
+        />
+      </ProjectsContext.Provider>
+    </InstanceSetupContext.Provider>
   );
 }
 

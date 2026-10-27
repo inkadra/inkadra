@@ -20,6 +20,9 @@ export const Board = z
     }),
     createdAt: Timestamp,
     updatedAt: Timestamp,
+    editedAt: Timestamp.optional().openapi({
+      description: 'Latest metadata or document change, returned by the project board list.',
+    }),
     myRole: ProjectRole,
   })
   .openapi('Board');
