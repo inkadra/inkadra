@@ -5,6 +5,7 @@ import type { Asset } from '@inkadra/shared';
 import { Avatar, Button } from '@inkadra/ui';
 import { memo, useContext, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useClassifications } from '../lib/classifications.ts';
 import { pickVariant, useAsset } from './assets.ts';
 import { GuestModeContext } from './context.ts';
 import { MovingPicture, movingVariantUrl } from './moving.tsx';
@@ -233,6 +234,7 @@ export function MediaViewer({
     items?: GalleryItem[];
   };
 }) {
+  const { tagLabel } = useClassifications();
   const { t, i18n } = useTranslation();
   const assetId = element.type === 'link' ? element.imageAssetId : element.assetId;
   const asset = useAsset(assetId);
@@ -387,7 +389,7 @@ export function MediaViewer({
           )}
           {element.tags?.map((tag) => (
             <span key={tag} className="viewer__tag-badge">
-              {tag}
+              {tagLabel(tag)}
             </span>
           ))}
           <div style={{ flex: 1 }} />

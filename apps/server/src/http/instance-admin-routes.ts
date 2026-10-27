@@ -1,7 +1,15 @@
-import { API_PREFIX, Id, UpdateInstanceMember, UpdateInstanceSettings, z } from '@inkadra/shared';
+import {
+  API_PREFIX,
+  ClassificationCatalogs,
+  Id,
+  UpdateInstanceMember,
+  UpdateInstanceSettings,
+  z,
+} from '@inkadra/shared';
 import { and, asc, eq, isNull, sql } from 'drizzle-orm';
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import type { Auth } from '../auth.ts';
+import { readClassifications, validateCatalogUpdate } from '../classifications.ts';
 import type { Config } from '../config.ts';
 import type { Database } from '../db/client.ts';
 import { instanceSetting, personalToken, session, user } from '../db/schema.ts';
@@ -18,6 +26,26 @@ export function registerInstanceAdminRoutes(
     if (actor.role !== 'admin') throw new HttpError('forbidden', 'Administrators only.');
     return actor;
   };
+  app.get(`${API_PREFIX}/instance/classifications`, async (req) => {
+    await requireActor(auth, req, db);
+    return readClassifications(db);
+  });
+  app.put(`${API_PREFIX}/instance/classifications`, async (req) => {
+    const actor = await admin(req);
+    const next = ClassificationCatalogs.parse(req.body);
+    return db.transaction(async (tx) => {
+      await tx.execute(sql`select pg_advisory_xact_lock(10892)`);
+      const [currentAdmin] = await tx.select().from(user).where(eq(user.id, actor.id));
+      if (currentAdmin?.role !== 'admin' || currentAdmin.deactivatedAt)
+        throw new HttpError('forbidden', 'Administrators only.');
+      const value = validateCatalogUpdate(await readClassifications(tx), next);
+      await tx
+        .insert(instanceSetting)
+        .values({ key: 'classifications', value })
+        .onConflictDoUpdate({ target: instanceSetting.key, set: { value, updatedAt: new Date() } });
+      return value;
+    });
+  });
   app.get(`${API_PREFIX}/instance/settings`, async (req) => {
     await admin(req);
     return readInstanceSettings(db, config);

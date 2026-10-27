@@ -17,6 +17,7 @@ import {
   RecentBoardQuery,
   UpdateBoard,
 } from './boards.ts';
+import { ClassificationCatalogs } from './classifications.ts';
 import { BoardColumns, ClipRequest, ClipResult } from './clip.ts';
 import {
   CommentCounts,
@@ -437,6 +438,31 @@ registry.registerPath({
   tags: ['Auth'],
   summary: 'Current session, or null.',
   responses: { 200: { description: 'Session', ...json(Session.nullable()) } },
+});
+
+registry.registerPath({
+  method: 'get',
+  path: v1('/instance/classifications'),
+  tags: ['Instance'],
+  security: secured,
+  responses: {
+    200: { description: 'Instance-wide classification catalogs', ...json(ClassificationCatalogs) },
+    ...errors,
+  },
+});
+registry.registerPath({
+  method: 'put',
+  path: v1('/instance/classifications'),
+  tags: ['Instance'],
+  security: secured,
+  request: { body: json(ClassificationCatalogs) },
+  responses: {
+    200: {
+      description: 'Administrator update; revision prevents lost edits; IDs cannot be removed',
+      ...json(ClassificationCatalogs),
+    },
+    ...errors,
+  },
 });
 
 // Me -------------------------------------------------------------------------

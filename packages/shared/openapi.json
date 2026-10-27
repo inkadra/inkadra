@@ -1053,6 +1053,82 @@
           "password"
         ]
       },
+      "ClassificationCatalogs": {
+        "type": "object",
+        "properties": {
+          "revision": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "projectTypes": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 40
+                },
+                "label": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 40
+                },
+                "archived": {
+                  "type": "boolean"
+                },
+                "legacy": {
+                  "type": "string",
+                  "maxLength": 40
+                }
+              },
+              "required": [
+                "id",
+                "label",
+                "archived"
+              ]
+            },
+            "maxItems": 200
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 40
+                },
+                "label": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 40
+                },
+                "archived": {
+                  "type": "boolean"
+                },
+                "legacy": {
+                  "type": "string",
+                  "maxLength": 40
+                }
+              },
+              "required": [
+                "id",
+                "label",
+                "archived"
+              ]
+            },
+            "maxItems": 500
+          }
+        },
+        "required": [
+          "revision",
+          "projectTypes",
+          "tags"
+        ]
+      },
       "UpdateMe": {
         "type": "object",
         "properties": {
@@ -1496,14 +1572,8 @@
               "string",
               "null"
             ],
-            "enum": [
-              "short_film",
-              "commercial",
-              "music_video",
-              "photo_shoot",
-              "documentary",
-              null
-            ]
+            "minLength": 1,
+            "maxLength": 40
           },
           "shootingStart": {
             "type": [
@@ -1590,14 +1660,8 @@
               "string",
               "null"
             ],
-            "enum": [
-              "short_film",
-              "commercial",
-              "music_video",
-              "photo_shoot",
-              "documentary",
-              null
-            ]
+            "minLength": 1,
+            "maxLength": 40
           },
           "shootingStart": {
             "type": [
@@ -1644,14 +1708,8 @@
               "string",
               "null"
             ],
-            "enum": [
-              "short_film",
-              "commercial",
-              "music_video",
-              "photo_shoot",
-              "documentary",
-              null
-            ]
+            "minLength": 1,
+            "maxLength": 40
           },
           "shootingStart": {
             "type": [
@@ -6057,6 +6115,147 @@
                       ]
                     }
                   ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/instance/classifications": {
+      "get": {
+        "tags": [
+          "Instance"
+        ],
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Instance-wide classification catalogs",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClassificationCatalogs"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Instance"
+        ],
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ClassificationCatalogs"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Administrator update; revision prevents lost edits; IDs cannot be removed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClassificationCatalogs"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
                 }
               }
             }

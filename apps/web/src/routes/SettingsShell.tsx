@@ -26,6 +26,7 @@ export function SettingsShell({ children }: { children: ReactNode }) {
             <h2>{t('admin.workspace')}</h2>
             {item('members', '/settings/team')}
             {item('storage', '/settings?section=workspace')}
+            {item('classifications', '/settings?section=classifications')}
             <h2>{t('admin.instance')}</h2>
             {item('branding', '/settings?section=instance')}
             {item('providers', '/settings?section=providers')}

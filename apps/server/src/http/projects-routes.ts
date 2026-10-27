@@ -11,11 +11,12 @@ import {
   UpdateProject,
   z,
 } from '@inkadra/shared';
-import { and, asc, count, desc, eq, gt, isNotNull, isNull, or, sum } from 'drizzle-orm';
+import { and, asc, count, desc, eq, gt, isNotNull, isNull, or, sql, sum } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
 import { generateKeyBetween } from 'fractional-indexing';
 import { type Actor, atLeast, higher, requireProjectRole } from '../access.ts';
 import type { Auth } from '../auth.ts';
+import { readClassifications, validateProjectType } from '../classifications.ts';
 import type { Database } from '../db/client.ts';
 import {
   asset,
@@ -192,6 +193,8 @@ export function registerProjectRoutes(app: FastifyInstance, deps: Deps) {
     const input = CreateProject.parse(req.body);
     validateDates(input.shootingStart ?? null, input.shootingEnd ?? null);
     const created = await db.transaction(async (tx) => {
+      await tx.execute(sql`select pg_advisory_xact_lock(10892)`);
+      validateProjectType((await readClassifications(tx)).projectTypes, input.type);
       const [last] = await tx
         .select({ position: project.position })
         .from(project)
@@ -260,6 +263,8 @@ export function registerProjectRoutes(app: FastifyInstance, deps: Deps) {
         );
         const [current] = await tx.select().from(project).where(eq(project.id, projectId));
         if (!current) throw new HttpError('not_found', 'Project not found.');
+        await tx.execute(sql`select pg_advisory_xact_lock(10892)`);
+        validateProjectType((await readClassifications(tx)).projectTypes, patch.type, current.type);
         validateDates(
           patch.shootingStart === undefined ? current.shootingStart : patch.shootingStart,
           patch.shootingEnd === undefined ? current.shootingEnd : patch.shootingEnd,

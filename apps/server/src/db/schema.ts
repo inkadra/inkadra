@@ -169,9 +169,7 @@ export const project = pgTable('project', {
     .default('neutral'),
   position: text('position').notNull(),
   archivedAt: timestamp('archived_at', { withTimezone: true }),
-  type: text('type', {
-    enum: ['short_film', 'commercial', 'music_video', 'photo_shoot', 'documentary'],
-  }),
+  type: text('type'),
   shootingStart: date('shooting_start'),
   shootingEnd: date('shooting_end'),
   createdBy: uuid('created_by').references(() => user.id, { onDelete: 'set null' }),
