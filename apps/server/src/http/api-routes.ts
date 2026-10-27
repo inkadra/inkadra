@@ -13,6 +13,7 @@ import { countUsers, OIDC_PROVIDER_ID } from '../auth.ts';
 import { type Config, VERSION } from '../config.ts';
 import type { Database } from '../db/client.ts';
 import { user } from '../db/schema.ts';
+import { readInstanceSettings } from '../instance-settings.ts';
 import type { Mailer } from '../mailer.ts';
 import { mediaTools } from '../media/video.ts';
 import { requireActor } from './auth-routes.ts';
@@ -66,12 +67,13 @@ export function registerApiRoutes(app: FastifyInstance, deps: Deps) {
 
   app.get(v1('/instance'), async () => {
     const users = await countUsers(db);
+    const settings = await readInstanceSettings(db, config);
     const body: Instance = {
-      name: config.INSTANCE_NAME,
+      name: settings.name,
       version: VERSION,
       publicUrl: config.PUBLIC_URL,
       setupRequired: users === 0,
-      registration: users === 0 ? 'first-user' : config.REGISTRATION,
+      registration: users === 0 ? 'first-user' : settings.registration,
       auth: {
         emailPassword: true,
         google: Boolean(config.GOOGLE_CLIENT_ID && config.GOOGLE_CLIENT_SECRET),

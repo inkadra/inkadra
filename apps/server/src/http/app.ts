@@ -30,6 +30,7 @@ import { registerCsrfCheck } from './csrf.ts';
 import { registerDiagnostics } from './diagnostics.ts';
 import { errorHandler, sendError } from './errors.ts';
 import { registerGuestRoutes } from './guest-routes.ts';
+import { registerInstanceAdminRoutes } from './instance-admin-routes.ts';
 import { registerLinkPreviews } from './link-previews.ts';
 import { registerNotificationRoutes } from './notifications-routes.ts';
 import { registerProjectRoutes } from './projects-routes.ts';
@@ -108,6 +109,7 @@ export async function createApp(deps: AppDeps) {
   const mailer = deps.mailer ?? noMailer;
   registerApiRoutes(app, { ...deps, mailer });
   registerAccountRoutes(app, deps);
+  registerInstanceAdminRoutes(app, deps);
   registerSharingRoutes(app, { ...deps, mailer });
   registerProjectRoutes(app, deps);
   registerBoardRoutes(app, deps);

@@ -18,6 +18,7 @@ import { Onboarding } from './routes/Onboarding.tsx';
 import { Projects } from './routes/Projects.tsx';
 import { ResetPassword } from './routes/ResetPassword.tsx';
 import { Settings } from './routes/Settings.tsx';
+import { Team } from './routes/Team.tsx';
 
 function Root() {
   const { loading } = useSession();
@@ -52,6 +53,7 @@ const router = createBrowserRouter([
           { path: 'projects', element: <Projects /> },
           { path: 'onboarding', element: <Onboarding /> },
           { path: 'settings', element: <Settings /> },
+          { path: 'settings/team', element: <Team /> },
           // The board editor (Yjs, Tiptap, uploads) loads with the first board opened.
           { path: 'p/:projectId', lazy: loadBoard },
           { path: 'p/:projectId/b/:boardId', lazy: loadBoard },

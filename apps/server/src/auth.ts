@@ -6,6 +6,7 @@ import type { Logger } from 'pino';
 import type { Config } from './config.ts';
 import type { Database } from './db/client.ts';
 import * as schema from './db/schema.ts';
+import { readInstanceSettings } from './instance-settings.ts';
 import { acceptInvitation, invitationFromCookie, invitedAddressMatches } from './invitations.ts';
 import { mailText } from './mail-texts.ts';
 import { actionMail, type Mailer } from './mailer.ts';
@@ -187,7 +188,11 @@ export function createAuth(config: Config, db: Database, deps: AuthDeps = {}) {
                   .where(eq(schema.user.email, to.toLowerCase()));
                 if (!existing) {
                   const invited = await invitationFromCookie(db, ctx?.headers?.get('cookie'));
-                  if (config.REGISTRATION !== 'open' && !invited && (await countUsers(db)) > 0)
+                  const { registration } = await readInstanceSettings(db, config);
+                  if (
+                    (registration === 'closed' || (registration !== 'open' && !invited)) &&
+                    (await countUsers(db)) > 0
+                  )
                     return;
                 }
                 const t = mailText(existing ?? {});
@@ -211,6 +216,18 @@ export function createAuth(config: Config, db: Database, deps: AuthDeps = {}) {
     },
     telemetry: { enabled: false },
     databaseHooks: {
+      session: {
+        create: {
+          before: async (session) => {
+            const [owner] = await db
+              .select()
+              .from(schema.user)
+              .where(eq(schema.user.id, session.userId));
+            if (!owner || owner.deactivatedAt)
+              throw new APIError('FORBIDDEN', { message: 'Account deactivated.' });
+          },
+        },
+      },
       user: {
         create: {
           before: async (user, ctx) => {
@@ -219,9 +236,10 @@ export function createAuth(config: Config, db: Database, deps: AuthDeps = {}) {
             // The first account of an instance is its administrator. After that, sign-up is
             // closed unless REGISTRATION=open or the browser claimed a valid invitation.
             if (await claimSetup(db)) return { data: { ...user, role: 'admin' } };
-            if (config.REGISTRATION !== 'open') {
+            const { registration } = await readInstanceSettings(db, config);
+            if (registration !== 'open') {
               const invited = await invitationFromCookie(db, ctx?.headers?.get('cookie'));
-              if (!invited) {
+              if (!invited || registration === 'closed') {
                 throw new APIError('FORBIDDEN', {
                   code: 'REGISTRATION_CLOSED',
                   message: 'Registration is closed. Ask an administrator for an invitation.',

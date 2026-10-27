@@ -50,6 +50,13 @@
       "when": 1793073007402,
       "tag": "0006_projects_onboarding",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1793073723172,
+      "tag": "0007_freezing_odin",
+      "breakpoints": true
     }
   ]
 }
