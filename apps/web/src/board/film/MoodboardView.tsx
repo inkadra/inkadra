@@ -182,6 +182,13 @@ export function MoodboardView({
             total: media.length,
             onPrevious: () => setSelected(media[index - 1]?.id ?? current.id),
             onNext: () => setSelected(media[index + 1]?.id ?? current.id),
+            onSelect: (i: number) => setSelected(media[i]?.id ?? current.id),
+            items: media.map((m) => ({
+              id: m.id,
+              assetId: m.type === 'link' ? m.imageAssetId : m.assetId,
+              filename: m.type === 'image' ? m.caption : m.title,
+              type: m.type,
+            })),
             onCompare: media.length > 1 ? () => setCompare(!compare) : undefined,
             comparison: compare ? media[(index + 1) % media.length] : undefined,
             usedIn,

@@ -104,7 +104,11 @@ function subscribe(listener: () => void) {
 
 /** The selector must return a value that stays the same object while nothing changed. */
 export function useReviews<T>(select: (s: ReviewsState) => T): T {
-  return useSyncExternalStore(subscribe, () => select(state));
+  return useSyncExternalStore(
+    subscribe,
+    () => select(state),
+    () => select(state),
+  );
 }
 
 export function canComment(role: ProjectRole | null): boolean {

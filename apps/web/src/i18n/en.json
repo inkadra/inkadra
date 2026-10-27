@@ -477,7 +477,22 @@
       "taken": "Taken on"
     },
     "unplayable": "Format not playable in the browser",
-    "openOnYoutube": "Open on YouTube"
+    "openOnYoutube": "Open on YouTube",
+    "copyAll": "Copy all",
+    "copiedAll": "All colours copied",
+    "zoomFit": "Fit",
+    "zoom100": "Zoom 100%",
+    "zoomHelp": "Space toggles between fit and 100%",
+    "hints": {
+      "nav": "to browse",
+      "zoom": "zoom 100%"
+    },
+    "keys": {
+      "esc": "esc",
+      "space": "space"
+    },
+    "thumbnails": "Thumbnails",
+    "item": "Item {{n}}"
   },
   "search": {
     "title": "Search",

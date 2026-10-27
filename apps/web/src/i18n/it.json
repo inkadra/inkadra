@@ -477,7 +477,22 @@
       "taken": "Scattata il"
     },
     "unplayable": "Formato non riproducibile nel browser",
-    "openOnYoutube": "Apri su YouTube"
+    "openOnYoutube": "Apri su YouTube",
+    "copyAll": "Copia tutto",
+    "copiedAll": "Tutti i colori copiati",
+    "zoomFit": "Adatta",
+    "zoom100": "Zoom 100%",
+    "zoomHelp": "Spazio per alternare tra adatta e 100%",
+    "hints": {
+      "nav": "per scorrere",
+      "zoom": "zoom 100%"
+    },
+    "keys": {
+      "esc": "esc",
+      "space": "spazio"
+    },
+    "thumbnails": "Miniature",
+    "item": "Elemento {{n}}"
   },
   "search": {
     "title": "Cerca",

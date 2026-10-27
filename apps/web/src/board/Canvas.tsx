@@ -96,6 +96,7 @@ import { BoardContext, type BoardContextValue, GuestModeContext, LARGE_BOARD } f
 import { useBoardAspect } from './film/aspect.ts';
 import { DrawingEditor } from './film/DrawingEditor.tsx';
 import { FramePanel } from './film/FramePanel.tsx';
+import { viewableInOrder } from './gallery.ts';
 import { toggleGuestHidden } from './guest-visibility.tsx';
 import { fillLinkPreview, webUrl } from './links.ts';
 import { NoteSideSheet } from './NoteSideSheet.tsx';
@@ -1370,6 +1371,12 @@ export function Canvas({
     () => (drawing ? storyboardOf([...snap.byId.values()]).flatMap((g) => g.frames) : []),
     [drawing, snap],
   );
+  const [compareViewer, setCompareViewer] = useState(false);
+  // Only while the viewer is open; in reading order (top to bottom, then left to right).
+  const viewableElements = useMemo(
+    () => (viewing ? viewableInOrder([...snap.byId.values()], guest) : []),
+    [viewing, snap, guest],
+  );
   const viewedEl = viewing ? snap.byId.get(viewing) : undefined;
   const viewed =
     viewedEl?.type === 'image' ||
@@ -1377,7 +1384,18 @@ export function Canvas({
     (viewedEl?.type === 'link' && isYoutubeUrl(viewedEl.url))
       ? viewedEl
       : null;
-  const closeViewer = useCallback(() => setViewing(null), []);
+  const viewedIndex = viewed ? viewableElements.findIndex((el) => el.id === viewed.id) : -1;
+  const compareWith =
+    viewed && viewedIndex >= 0
+      ? viewableElements
+          .slice(viewedIndex + 1)
+          .concat(viewableElements.slice(0, viewedIndex))
+          .find((el): el is Extract<Element, { type: 'image' | 'link' }> => el.type !== 'file')
+      : undefined;
+  const closeViewer = useCallback(() => {
+    setViewing(null);
+    setCompareViewer(false);
+  }, []);
 
   const addTemplate = async (id: TemplateId) => {
     if (readOnly) return;
@@ -1856,6 +1874,42 @@ export function Canvas({
             userId={userId}
             readOnly={readOnly}
             onClose={closeViewer}
+            gallery={
+              viewableElements.length > 1 && viewedIndex >= 0
+                ? {
+                    index: viewedIndex,
+                    total: viewableElements.length,
+                    onPrevious: () => {
+                      const prev = viewableElements[viewedIndex - 1];
+                      if (prev) setViewing(prev.id);
+                    },
+                    onNext: () => {
+                      const next = viewableElements[viewedIndex + 1];
+                      if (next) setViewing(next.id);
+                    },
+                    onSelect: (idx: number) => {
+                      const target = viewableElements[idx];
+                      if (target) setViewing(target.id);
+                    },
+                    items: viewableElements.map((el) => ({
+                      id: el.id,
+                      assetId: el.type === 'link' ? el.imageAssetId : el.assetId,
+                      filename:
+                        el.type === 'link'
+                          ? el.title || el.url
+                          : el.type === 'image'
+                            ? el.caption
+                            : 'name' in el && typeof el.name === 'string'
+                              ? el.name
+                              : undefined,
+                      type: el.type,
+                    })),
+                    onCompare: compareWith ? () => setCompareViewer((c) => !c) : undefined,
+                    comparison: compareViewer ? compareWith : undefined,
+                    usedIn: [],
+                  }
+                : undefined
+            }
           />
         )}
 
