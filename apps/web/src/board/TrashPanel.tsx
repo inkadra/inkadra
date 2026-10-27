@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-only
 import type { BoardVersion } from '@inkadra/shared';
 import { Button } from '@inkadra/ui';
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react';

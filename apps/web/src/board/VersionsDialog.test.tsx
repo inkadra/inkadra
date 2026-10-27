@@ -55,6 +55,8 @@ async function render(open: boolean) {
     root.render(
       <VersionsDialog
         open={open}
+        store={{} as BoardStore}
+        editable={true}
         boardId="board-1"
         provider={{ on: vi.fn(), off: vi.fn() } as unknown as HocuspocusProvider}
         onClose={onClose}

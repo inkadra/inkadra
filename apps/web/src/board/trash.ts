@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-only
 import { isContainer } from '@inkadra/canvas-core';
 import { type Element, roots, UNSORTED } from '@inkadra/doc-schema';
 import type { BoardVersion } from '@inkadra/shared';

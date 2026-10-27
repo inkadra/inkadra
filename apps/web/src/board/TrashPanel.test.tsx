@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-only
 // @vitest-environment happy-dom
 import { createElement } from '@inkadra/canvas-core';
 import { createBoardDoc, roots } from '@inkadra/doc-schema';

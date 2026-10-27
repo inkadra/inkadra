@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-only
 import { createElement } from '@inkadra/canvas-core';
 import { createBoardDoc, roots } from '@inkadra/doc-schema';
 import type { BoardVersion } from '@inkadra/shared';
@@ -103,9 +104,10 @@ describe('snapshot trash', () => {
     const found = new Map<string, TrashItem>();
     collectTrash(found, version, Y.encodeStateAsUpdate(doc), boardId);
     for (const element of [todo, frame]) {
+      const saved = store.getSnapshot().byId.get(element.id);
       roots(doc).elements.delete(element.id);
       restoreTrashItem(store, found.get(element.id)!, boardId);
-      expect(store.getSnapshot().byId.get(element.id)).toEqual(element);
+      expect(store.getSnapshot().byId.get(element.id)).toEqual(saved);
     }
     store.destroy();
     doc.destroy();
