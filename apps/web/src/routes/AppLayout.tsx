@@ -640,12 +640,15 @@ export function AppLayout() {
             onCount={refreshUnread}
           />
         )}
-        <NewBoardDialog
-          open={creatingBoard}
-          projects={editableProjects(projects)}
-          initial="blank"
-          onClose={() => setCreatingBoard(false)}
-        />
+        {/* Mounted only while open: a closed dialog would still leave its fields in the page. */}
+        {creatingBoard && (
+          <NewBoardDialog
+            open
+            projects={editableProjects(projects)}
+            initial="blank"
+            onClose={() => setCreatingBoard(false)}
+          />
+        )}
         <NewProjectDialog
           open={creating}
           onClose={() => setCreating(false)}
