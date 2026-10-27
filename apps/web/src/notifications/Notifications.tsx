@@ -162,6 +162,14 @@ export function NotificationList({
   const [filter, setFilter] = useState<InboxFilter>('all');
   const [actionError, setActionError] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [focusedId, setFocusedId] = useState<string | null>(null);
+  const [mobile, setMobile] = useState(() => window.matchMedia('(width < 768px)').matches);
+  useEffect(() => {
+    const media = window.matchMedia('(width < 768px)');
+    const update = () => setMobile(media.matches);
+    media.addEventListener('change', update);
+    return () => media.removeEventListener('change', update);
+  }, []);
   const panel = useRef<HTMLDivElement>(null);
   // Marking all as read covers what was listed when the panel opened, not what arrives later.
   const openedAt = useRef(new Date().toISOString());
@@ -228,11 +236,17 @@ export function NotificationList({
   const filteredItems = filterNotifications(items, filter);
   const groups = groupByDay(filteredItems, (d) => dayLabel(d, new Date(), i18n.language, t));
   const anyUnread = unread > 0;
+  const tabStopId = filteredItems.some((n) => n.id === focusedId)
+    ? focusedId
+    : filteredItems.some((n) => n.id === selectedId)
+      ? selectedId
+      : filteredItems[0]?.id;
 
   // Mark read on open when selecting or when first item loads on desktop
   useEffect(() => {
     if (
       fixed &&
+      !mobile &&
       filteredItems.length > 0 &&
       (!selectedId || !filteredItems.some((n) => n.id === selectedId))
     ) {
@@ -244,7 +258,7 @@ export function NotificationList({
         }
       }
     }
-  }, [fixed, filteredItems, selectedId, markRead]);
+  }, [fixed, mobile, filteredItems, selectedId, markRead]);
 
   const selectNotification = useCallback(
     (n: Notification) => {
@@ -252,7 +266,7 @@ export function NotificationList({
       if (!n.readAt) {
         void markRead(n.id).catch(() => setActionError(true));
       }
-      if (typeof window !== 'undefined' && window.matchMedia('(max-width: 767px)').matches) {
+      if (typeof window !== 'undefined' && window.matchMedia('(width < 768px)').matches) {
         const path = notificationPath(n);
         if (path) {
           onNavigate();
@@ -280,39 +294,27 @@ export function NotificationList({
           return;
         }
         const target = e.target as HTMLElement;
-        if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') {
-          return;
-        }
-        if (e.key === 'ArrowDown' || e.key === 'Down') {
+        if (!target.matches('button[data-notification-id]')) return;
+        if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
           e.preventDefault();
-          const currentIndex = filteredItems.findIndex((n) => n.id === selectedId);
-          const nextIndex = Math.min(filteredItems.length - 1, Math.max(currentIndex, 0) + 1);
+          const currentIndex = filteredItems.findIndex(
+            (n) => n.id === target.dataset.notificationId,
+          );
+          const step = e.key === 'ArrowDown' ? 1 : -1;
+          const nextIndex = Math.max(0, Math.min(filteredItems.length - 1, currentIndex + step));
           const nextItem = filteredItems[nextIndex];
           if (nextItem) {
-            selectNotification(nextItem);
-            const el = panel.current?.querySelector(`[data-notification-id="${nextItem.id}"]`);
+            setFocusedId(nextItem.id);
+            const el = [
+              ...(panel.current?.querySelectorAll<HTMLButtonElement>('[data-notification-id]') ??
+                []),
+            ].find((button) => button.dataset.notificationId === nextItem.id);
+            el?.focus();
             el?.scrollIntoView({ block: 'nearest' });
-          }
-        } else if (e.key === 'ArrowUp' || e.key === 'Up') {
-          e.preventDefault();
-          const currentIndex = filteredItems.findIndex((n) => n.id === selectedId);
-          const prevIndex = Math.max(0, Math.max(currentIndex, 0) - 1);
-          const prevItem = filteredItems[prevIndex];
-          if (prevItem) {
-            selectNotification(prevItem);
-            const el = panel.current?.querySelector(`[data-notification-id="${prevItem.id}"]`);
-            el?.scrollIntoView({ block: 'nearest' });
-          }
-        } else if (e.key === 'Enter') {
-          const selected = filteredItems.find((n) => n.id === selectedId);
-          if (selected) {
-            const path = notificationPath(selected);
-            if (path && !e.shiftKey) {
-              onNavigate();
-              navigate(path);
-            }
+            if (fixed && !mobile) selectNotification(nextItem);
           }
         }
+        // Enter uses the focused button's native click, including detail and action buttons.
       }}
       onKeyUp={(e) => e.stopPropagation()}
     >
@@ -414,6 +416,9 @@ export function NotificationList({
                       <button
                         type="button"
                         data-notification-id={n.id}
+                        tabIndex={n.id === tabStopId ? 0 : -1}
+                        aria-current={isSelected ? 'true' : undefined}
+                        onFocus={() => setFocusedId(n.id)}
                         className={`notification__open ${fixed ? 'notification__open--drawer' : ''}`}
                         disabled={!path}
                         onClick={async () => {
@@ -512,7 +517,7 @@ export function NotificationList({
           )}
         </div>
       </div>
-      {fixed && (
+      {fixed && !mobile && (
         <InboxDetail
           notification={selectedNotification}
           onNavigate={onNavigate}

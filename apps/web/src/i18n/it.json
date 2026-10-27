@@ -1284,7 +1284,10 @@
     "cardPreview": "Anteprima",
     "pointComment": "Commento sul punto {{number}}",
     "thread": "Discussione",
-    "breadcrumb": "Percorso"
+    "breadcrumb": "Percorso",
+    "boardLabel": "Board",
+    "refresh": "Aggiorna conversazione",
+    "conversationUnavailable": "Conversazione non disponibile"
   },
   "settings": {
     "title": "Account",

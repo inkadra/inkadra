@@ -130,7 +130,7 @@ it('renders the two-pane triage view and marks unread notification as read on op
                 createdAt: '2026-10-25T11:05:00Z',
                 author: { kind: 'user', user: { id: 'u2', name: 'Giulia', image: null } },
                 body: 'Small panel on the right',
-                visibility: 'team',
+                visibility: 'everyone',
               },
             ],
           },
@@ -178,7 +178,7 @@ it('renders the two-pane triage view and marks unread notification as read on op
     expect(host.querySelector('.inbox-detail__breadcrumb')?.textContent).toContain('Scena 4');
     expect(host.textContent).toContain('Need more light on frame');
     expect(host.textContent).toContain('Small panel on the right');
-    expect(host.querySelector('.inbox-detail__pin--active')?.textContent).toBe('1');
+    expect(host.querySelector('.inbox-detail__preview-svg')).toBeNull();
   } finally {
     await act(async () => root.unmount());
   }
@@ -218,9 +218,11 @@ it('supports keyboard navigation with arrows, Enter, and Escape', async () => {
     const dialog = host.querySelector('[role="dialog"]');
     expect(dialog).not.toBeNull();
 
-    // Press ArrowDown to select second item
+    // Press ArrowDown on the list item to focus and select the second item
     await act(async () => {
-      dialog?.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }));
+      host
+        .querySelector('[data-notification-id="n1"]')
+        ?.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }));
     });
 
     // Selecting unread item marks it read
@@ -264,7 +266,7 @@ it('allows replying to and resolving threads from the inbox detail pane', async 
     if (path.startsWith('/boards/b1/comments')) {
       return Promise.resolve({ items: [thread], nextCursor: null });
     }
-    return Promise.resolve({});
+    return Promise.resolve({ myRole: 'commenter' });
   });
   vi.mocked(api.post).mockImplementation((path: string) => {
     if (path.includes('/resolve')) {
@@ -330,5 +332,96 @@ it('allows replying to and resolving threads from the inbox detail pane', async 
     });
   } finally {
     await act(async () => root.unmount());
+  }
+});
+
+it('does not auto-select or auto-read on mobile while the detail is hidden', async () => {
+  const media = window.matchMedia('(width < 768px)');
+  Object.defineProperty(media, 'matches', { value: true });
+  const matchMedia = vi.spyOn(window, 'matchMedia').mockReturnValue(media);
+  const host = document.createElement('div');
+  const root = createRoot(host);
+  vi.mocked(api.get).mockResolvedValue({
+    items: [{ ...baseNotification, id: 'mobile', readAt: null }],
+    nextCursor: null,
+  });
+  try {
+    await act(async () =>
+      root.render(
+        <MemoryRouter>
+          <NotificationList
+            fixed
+            unread={1}
+            onClose={vi.fn()}
+            onNavigate={vi.fn()}
+            onCount={vi.fn()}
+          />
+        </MemoryRouter>,
+      ),
+    );
+    expect(api.post).not.toHaveBeenCalled();
+    expect(host.querySelector('.notifications__detail-pane')).toBeNull();
+    expect(host.querySelector('[aria-current="true"]')).toBeNull();
+    expect(api.get).toHaveBeenCalledTimes(1);
+  } finally {
+    await act(async () => root.unmount());
+    matchMedia.mockRestore();
+  }
+});
+
+it('keeps Enter on action buttons and moves list focus with a roving tab stop', async () => {
+  const host = document.createElement('div');
+  document.body.append(host);
+  const root = createRoot(host);
+  const onNavigate = vi.fn();
+  vi.mocked(api.get).mockImplementation((path) =>
+    Promise.resolve(
+      path.startsWith('/me/notifications')
+        ? {
+            items: [
+              { ...baseNotification, id: 'first' },
+              { ...baseNotification, id: 'second' },
+            ],
+            nextCursor: null,
+          }
+        : path.includes('/comments')
+          ? { items: [], nextCursor: null }
+          : { myRole: 'viewer' },
+    ),
+  );
+  try {
+    await act(async () =>
+      root.render(
+        <MemoryRouter>
+          <NotificationList
+            fixed
+            unread={0}
+            onClose={vi.fn()}
+            onNavigate={onNavigate}
+            onCount={vi.fn()}
+          />
+        </MemoryRouter>,
+      ),
+    );
+    const first = host.querySelector<HTMLButtonElement>('[data-notification-id="first"]')!;
+    const second = host.querySelector<HTMLButtonElement>('[data-notification-id="second"]')!;
+    await act(async () => {
+      first.focus();
+      first.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }));
+    });
+    expect(document.activeElement).toBe(second);
+    expect(second.tabIndex).toBe(0);
+    expect(first.tabIndex).toBe(-1);
+    expect(second.getAttribute('aria-current')).toBe('true');
+    const headerAction = host.querySelector<HTMLButtonElement>('.notifications__head button')!;
+    const detailAction = host.querySelector<HTMLButtonElement>('.inbox-detail__actions button')!;
+    await act(async () => {
+      headerAction.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+      detailAction.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+    });
+    expect(onNavigate).not.toHaveBeenCalled();
+  } finally {
+    await act(async () => root.unmount());
+    host.remove();
   }
 });

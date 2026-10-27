@@ -1,23 +1,57 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 import type { BoardDetail, Comment, CommentThread, Notification } from '@inkadra/shared';
 import { Button, Icon } from '@inkadra/ui';
-import { type FormEvent, useCallback, useEffect, useState } from 'react';
+import { type FormEvent, useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router';
-import { authorName, type Page, reviewKey } from '../board/review-model.ts';
+import {
+  authorName,
+  findThread,
+  mergeReplies,
+  type Page,
+  reviewKey,
+} from '../board/review-model.ts';
+import { canComment } from '../board/review-store.ts';
 import { api } from '../lib/api.ts';
 import { notificationPath } from './model.ts';
 import { avatarBg, describeNotification, initials, relativeTime } from './Notifications.tsx';
 
-export function InboxDetail({
-  notification,
-  onNavigate,
-  onCount: _onCount,
-}: {
+type DetailProps = {
   notification: Notification | null;
   onNavigate: () => void;
   onCount: () => Promise<void>;
-}) {
+};
+
+export function InboxDetail(props: DetailProps) {
+  const [refresh, setRefresh] = useState<{
+    version: number;
+    notificationId?: string;
+    threadId?: string;
+  }>({ version: 0 });
+  const refreshThreadId =
+    refresh.notificationId === props.notification?.id ? refresh.threadId : undefined;
+  return (
+    <InboxDetailContent
+      key={`${props.notification?.id}:${props.notification?.boardId}:${props.notification?.elementId}:${props.notification?.threadId}:${props.notification?.commentId}:${refresh.version}`}
+      refreshThreadId={refreshThreadId}
+      onRefresh={(threadId) =>
+        setRefresh((value) => ({
+          version: value.version + 1,
+          notificationId: props.notification?.id,
+          threadId,
+        }))
+      }
+      {...props}
+    />
+  );
+}
+
+function InboxDetailContent({
+  notification,
+  onNavigate,
+  onRefresh,
+  refreshThreadId,
+}: DetailProps & { onRefresh: (threadId?: string) => void; refreshThreadId?: string }) {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const [boardDetail, setBoardDetail] = useState<BoardDetail | null>(null);
@@ -30,144 +64,173 @@ export function InboxDetail({
   const [nextRepliesCursor, setNextRepliesCursor] = useState<string | null>(null);
   const [olderLoading, setOlderLoading] = useState(false);
 
-  useEffect(() => {
-    let alive = true;
-    if (!notification) {
-      setBoardDetail(null);
-      setThreads([]);
-      setActiveThread(null);
-      return;
-    }
+  const [loadState, setLoadState] = useState<'loading' | 'ready' | 'error'>('loading');
+  const [actionError, setActionError] = useState<null | 'resolve' | 'reply' | 'older'>(null);
+  const [repliesPaged, setRepliesPaged] = useState(false);
+  // A generation also protects requests when switching threads within this notification.
+  const generation = useRef(0);
+  const writable = canComment(boardDetail?.myRole ?? null);
 
+  useEffect(() => {
+    const request = ++generation.current;
+    let alive = true;
+    setBoardDetail(null);
+    setThreads([]);
+    setActiveThread(null);
     setOlderReplies([]);
     setNextRepliesCursor(null);
+    setRepliesPaged(false);
     setReplyText('');
-
-    if (notification.boardId) {
-      const boardPromise = api.get<BoardDetail>(`/boards/${notification.boardId}`);
-      if (boardPromise?.then) {
-        boardPromise
-          .then((b) => {
-            if (alive) setBoardDetail(b);
-          })
-          .catch(() => {
-            if (alive) setBoardDetail(null);
-          });
+    setReplySending(false);
+    setActionBusy(false);
+    setOlderLoading(false);
+    setActionError(null);
+    setLoadState('loading');
+    const current = () => alive && request === generation.current;
+    const load = async () => {
+      if (!notification?.boardId) {
+        if (current()) setLoadState('ready');
+        return;
       }
-
-      const commentsUrl = `/boards/${notification.boardId}/comments?status=all${
-        notification.elementId ? `&elementId=${encodeURIComponent(notification.elementId)}` : ''
-      }`;
-      const commentsPromise = api.get<Page<CommentThread>>(commentsUrl);
-      if (commentsPromise?.then) {
-        commentsPromise
-          .then((p) => {
-            if (!alive || !p?.items) return;
-            setThreads(p.items);
-            let target = p.items.find(
-              (item: CommentThread) =>
-                (notification.threadId && item.id === notification.threadId) ||
-                (notification.commentId &&
-                  (item.id === notification.commentId ||
-                    item.replies.some((r: Comment) => r.id === notification.commentId))),
-            );
-            if (!target && p.items.length > 0) {
-              target = p.items[0];
-            }
-            setActiveThread(target ?? null);
-          })
-          .catch(() => {
-            if (alive) {
-              setThreads([]);
-              setActiveThread(null);
-            }
-          });
+      try {
+        const board = await api.get<BoardDetail>(`/boards/${notification.boardId}`);
+        if (!current()) return;
+        const targetId = refreshThreadId ?? notification.threadId;
+        const loaded: CommentThread[] = [];
+        let cursor: string | null = null;
+        let target: CommentThread | undefined;
+        do {
+          const page: Page<CommentThread> = await api.get(
+            `/boards/${notification.boardId}/comments?status=all${
+              notification.elementId
+                ? `&elementId=${encodeURIComponent(notification.elementId)}`
+                : ''
+            }${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ''}`,
+          );
+          if (!current()) return;
+          loaded.push(...page.items);
+          target = targetId ? loaded.find((thread) => thread.id === targetId) : undefined;
+          cursor = page.nextCursor;
+        } while (cursor && !target);
+        if (!targetId && notification.commentId) {
+          const found = await findThread(
+            loaded,
+            notification.commentId,
+            notification.elementId,
+            (id, replyCursor) =>
+              api.get(
+                `/comments/${id}/replies${replyCursor ? `?cursor=${encodeURIComponent(replyCursor)}` : ''}`,
+              ),
+          );
+          target = loaded.find((thread) => thread.id === found?.threadId);
+          if (!current()) return;
+          if (found?.older) {
+            setOlderReplies(found.older.items);
+            setNextRepliesCursor(found.older.cursor);
+            setRepliesPaged(true);
+          }
+        }
+        setBoardDetail(board);
+        setThreads(loaded);
+        setActiveThread(target && !target.deletedAt ? target : null);
+        setLoadState('ready');
+      } catch {
+        if (current()) setLoadState('error');
       }
-    } else {
-      setBoardDetail(null);
-      setThreads([]);
-      setActiveThread(null);
-    }
-
+    };
+    void load();
     return () => {
       alive = false;
+      generation.current++;
     };
-  }, [notification]);
+  }, [
+    notification?.boardId,
+    notification?.elementId,
+    notification?.threadId,
+    notification?.commentId,
+    refreshThreadId,
+  ]);
 
   const selectThread = useCallback((thread: CommentThread) => {
-    setActiveThread(thread);
+    generation.current++;
+    setActiveThread(thread.deletedAt ? null : thread);
     setOlderReplies([]);
     setNextRepliesCursor(null);
+    setRepliesPaged(false);
     setReplyText('');
+    setReplySending(false);
+    setActionBusy(false);
+    setOlderLoading(false);
+    setActionError(null);
   }, []);
 
   const handleToggleResolve = async () => {
-    if (!activeThread || actionBusy) return;
+    if (!activeThread || actionBusy || !writable || activeThread.deletedAt) return;
+    const request = generation.current;
+    const id = activeThread.id;
     setActionBusy(true);
+    setActionError(null);
     const isResolved = Boolean(activeThread.resolvedAt);
-    const action = isResolved ? 'reopen' : 'resolve';
     try {
-      await api.post(`/comments/${activeThread.id}/${action}`, {});
-      const updatedResolvedAt = isResolved ? null : new Date().toISOString();
-      setActiveThread((prev) => (prev ? { ...prev, resolvedAt: updatedResolvedAt } : null));
-      setThreads((list) =>
-        list.map((th) =>
-          th.id === activeThread.id ? { ...th, resolvedAt: updatedResolvedAt } : th,
-        ),
-      );
+      await api.post(`/comments/${id}/${isResolved ? 'reopen' : 'resolve'}`, {});
+      if (request !== generation.current) return;
+      const resolvedAt = isResolved ? null : new Date().toISOString();
+      setActiveThread((prev) => (prev?.id === id ? { ...prev, resolvedAt } : prev));
+      setThreads((list) => list.map((th) => (th.id === id ? { ...th, resolvedAt } : th)));
     } catch {
-      // Revert on error
+      if (request === generation.current) setActionError('resolve');
     } finally {
-      setActionBusy(false);
+      if (request === generation.current) setActionBusy(false);
     }
   };
 
   const handleLoadOlderReplies = async () => {
     if (!activeThread || olderLoading) return;
+    const request = generation.current;
     setOlderLoading(true);
+    setActionError(null);
     try {
-      const url = `/comments/${activeThread.id}/replies${
-        nextRepliesCursor ? `?cursor=${encodeURIComponent(nextRepliesCursor)}` : ''
-      }`;
-      const res = await api.get<Page<Comment>>(url);
-      setOlderReplies((prev) => [...res.items, ...prev]);
+      const res = await api.get<Page<Comment>>(
+        `/comments/${activeThread.id}/replies${
+          nextRepliesCursor ? `?cursor=${encodeURIComponent(nextRepliesCursor)}` : ''
+        }`,
+      );
+      if (request !== generation.current) return;
+      setOlderReplies((prev) => mergeReplies(prev, res.items));
       setNextRepliesCursor(res.nextCursor);
+      setRepliesPaged(true);
     } catch {
-      // Ignore error
+      if (request === generation.current) setActionError('older');
     } finally {
-      setOlderLoading(false);
+      if (request === generation.current) setOlderLoading(false);
     }
   };
 
   const handleSendReply = async (e?: FormEvent) => {
     e?.preventDefault();
-    if (!replyText.trim() || !notification?.boardId || !activeThread || replySending) return;
+    if (!replyText.trim() || !notification?.boardId || !activeThread || replySending || !writable)
+      return;
+    const request = generation.current;
+    const id = activeThread.id;
     setReplySending(true);
+    setActionError(null);
     try {
       const res = await api.post<Comment>(`/boards/${notification.boardId}/comments`, {
-        parentId: activeThread.id,
+        parentId: id,
         body: replyText.trim(),
       });
-      setActiveThread((prev) => {
-        if (!prev) return null;
-        return {
-          ...prev,
-          replyCount: prev.replyCount + 1,
-          replies: [...prev.replies, res],
-        };
-      });
-      setThreads((list) =>
-        list.map((th) =>
-          th.id === activeThread.id
-            ? { ...th, replyCount: th.replyCount + 1, replies: [...th.replies, res] }
-            : th,
-        ),
-      );
+      if (request !== generation.current) return;
+      const update = (th: CommentThread) =>
+        th.id === id
+          ? { ...th, replyCount: th.replyCount + 1, replies: mergeReplies(th.replies, [res]) }
+          : th;
+      setActiveThread((prev) => (prev ? update(prev) : null));
+      setThreads((list) => list.map(update));
       setReplyText('');
     } catch {
-      // Ignore error
+      if (request === generation.current) setActionError('reply');
     } finally {
-      setReplySending(false);
+      if (request === generation.current) setReplySending(false);
     }
   };
 
@@ -213,7 +276,7 @@ export function InboxDetail({
     ? pinnedThreads.findIndex((pin) => pin.id === activeThread.id)
     : -1;
   const otherThreads = threads.filter((th) => th.id !== activeThread?.id);
-  const allReplies = activeThread ? [...olderReplies, ...activeThread.replies] : [];
+  const allReplies = activeThread ? mergeReplies(olderReplies, activeThread.replies) : [];
   const hiddenReplies = activeThread ? Math.max(0, activeThread.replyCount - allReplies.length) : 0;
   const isResolved = Boolean(activeThread?.resolvedAt);
 
@@ -241,12 +304,15 @@ export function InboxDetail({
           })}
         </nav>
         <div className="inbox-detail__actions">
+          <Button variant="ghost" onClick={() => onRefresh(activeThread?.id)}>
+            {t('notifications.refresh')}
+          </Button>
           {p && (
             <Button variant="ghost" onClick={handleOpenInBoard}>
               {t('notifications.openInBoard')}
             </Button>
           )}
-          {activeThread && (
+          {activeThread && writable && !activeThread.deletedAt && (
             <button
               type="button"
               className={`ink-button inbox-detail__resolve-btn ${
@@ -263,50 +329,6 @@ export function InboxDetail({
       </header>
       <div className="inbox-detail__body">
         <section aria-label={t('notifications.cardPreview')} className="inbox-detail__card-section">
-          <div className="inbox-detail__preview-box">
-            <svg
-              role="img"
-              aria-label={notification.boardTitle ?? 'Frame preview'}
-              viewBox="0 0 240 100"
-              className="inbox-detail__preview-svg"
-            >
-              <defs>
-                <radialGradient id="inbox-neon" cx="0.78" cy="0.3" r="0.6">
-                  <stop offset="0" stopColor="#3B7CF6" stopOpacity="0.25" />
-                  <stop offset="1" stopColor="#3B7CF6" stopOpacity="0" />
-                </radialGradient>
-              </defs>
-              <rect width="240" height="100" fill="url(#inbox-neon)" />
-              <path
-                d="M40 85 Q80 40 120 50 Q160 60 200 85"
-                fill="none"
-                stroke="#333338"
-                strokeWidth="1.2"
-                strokeDasharray="4 4"
-              />
-              <circle cx="120" cy="50" r="14" fill="none" stroke="#44444c" strokeWidth="1.2" />
-            </svg>
-            {pinnedThreads.map((pinned, idx) => {
-              const isActive = activeThread?.id === pinned.id;
-              return (
-                <button
-                  key={pinned.id}
-                  type="button"
-                  className={`inbox-detail__pin ${
-                    isActive ? 'inbox-detail__pin--active' : 'inbox-detail__pin--inactive'
-                  }`}
-                  style={{
-                    left: `${(pinned.pin?.x ?? 0 * 100).toFixed(1)}%`,
-                    top: `${(pinned.pin?.y ?? 0 * 100).toFixed(1)}%`,
-                  }}
-                  aria-label={t('notifications.pointComment', { number: idx + 1 })}
-                  onClick={() => selectThread(pinned)}
-                >
-                  {idx + 1}
-                </button>
-              );
-            })}
-          </div>
           <div className="inbox-detail__meta">
             {notification.reviewStatus && (
               <span>
@@ -324,7 +346,7 @@ export function InboxDetail({
             )}
             {notification.boardTitle && (
               <span>
-                <span className="inbox-detail__meta-label">Board:</span>
+                <span className="inbox-detail__meta-label">{t('notifications.boardLabel')}:</span>
                 {notification.boardTitle}
               </span>
             )}
@@ -389,8 +411,38 @@ export function InboxDetail({
           aria-label={t('notifications.conversation')}
           className="inbox-detail__conversation"
         >
-          {activeThread ? (
+          {loadState === 'loading' ? (
+            <p role="status">{t('comments.loading')}</p>
+          ) : loadState === 'error' ? (
+            <p role="alert">
+              {t('notifications.error')}{' '}
+              <Button onClick={() => onRefresh(activeThread?.id)}>{t('comments.retry')}</Button>
+            </p>
+          ) : activeThread ? (
             <>
+              {actionError && (
+                <p role="alert">
+                  {t('notifications.actionError')}{' '}
+                  <Button
+                    onClick={() =>
+                      void (actionError === 'resolve'
+                        ? handleToggleResolve()
+                        : actionError === 'reply'
+                          ? handleSendReply()
+                          : handleLoadOlderReplies())
+                    }
+                  >
+                    {t('comments.retry')}
+                  </Button>
+                </p>
+              )}
+              <p>
+                {t(
+                  activeThread.visibility === 'everyone'
+                    ? 'notifications.visibleToClient'
+                    : 'notifications.internalNote',
+                )}
+              </p>
               <div className="inbox-detail__thread-header">
                 {activePinIndex >= 0 && (
                   <span
@@ -441,7 +493,7 @@ export function InboxDetail({
                     <p className="inbox-detail__message-body">{activeThread.body}</p>
                   </div>
                 </div>
-                {hiddenReplies > 0 && (
+                {hiddenReplies > 0 && (!repliesPaged || nextRepliesCursor) && (
                   <Button
                     variant="ghost"
                     onClick={() => void handleLoadOlderReplies()}
@@ -478,61 +530,40 @@ export function InboxDetail({
                   );
                 })}
               </div>
-              <form className="inbox-detail__composer" onSubmit={(e) => void handleSendReply(e)}>
-                <textarea
-                  className="inbox-detail__composer-textarea"
-                  value={replyText}
-                  onChange={(e) => setReplyText(e.target.value)}
-                  onInput={(e) => setReplyText((e.target as HTMLTextAreaElement).value)}
-                  placeholder={t('notifications.replyPlaceholder')}
-                  rows={2}
-                  onKeyDown={(e) => {
-                    if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
-                      e.preventDefault();
-                      void handleSendReply();
-                    }
-                  }}
-                />
-                <div className="inbox-detail__composer-footer">
-                  <div
-                    className="inbox-detail__audience-tabs"
-                    role="tablist"
-                    aria-label={t('notifications.audience')}
-                  >
-                    <button
-                      type="button"
-                      role="tab"
-                      aria-selected={activeThread.visibility === 'everyone'}
-                      className={`inbox-detail__audience-tab ${
-                        activeThread.visibility === 'everyone' ? 'is-active' : ''
-                      }`}
+              {writable && (
+                <form className="inbox-detail__composer" onSubmit={(e) => void handleSendReply(e)}>
+                  <textarea
+                    className="inbox-detail__composer-textarea"
+                    value={replyText}
+                    onChange={(e) => setReplyText(e.target.value)}
+                    onInput={(e) => setReplyText((e.target as HTMLTextAreaElement).value)}
+                    placeholder={t('notifications.replyPlaceholder')}
+                    rows={2}
+                    onKeyDown={(e) => {
+                      if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+                        e.preventDefault();
+                        void handleSendReply();
+                      }
+                    }}
+                  />
+                  <div className="inbox-detail__composer-footer">
+                    <div style={{ flex: 1 }} />
+                    <Button
+                      variant="primary"
+                      disabled={!replyText.trim() || replySending}
+                      onClick={() => void handleSendReply()}
                     >
-                      {t('notifications.visibleToClient')}
-                    </button>
-                    <button
-                      type="button"
-                      role="tab"
-                      aria-selected={activeThread.visibility === 'team'}
-                      className={`inbox-detail__audience-tab ${
-                        activeThread.visibility === 'team' ? 'is-active' : ''
-                      }`}
-                    >
-                      {t('notifications.internalNote')}
-                    </button>
+                      {t('notifications.sendReply')}
+                    </Button>
                   </div>
-                  <div style={{ flex: 1 }} />
-                  <Button
-                    variant="primary"
-                    disabled={!replyText.trim() || replySending}
-                    onClick={() => void handleSendReply()}
-                  >
-                    {t('notifications.sendReply')}
-                  </Button>
-                </div>
-              </form>
+                </form>
+              )}
             </>
           ) : (
             <div className="inbox-detail__card-only">
+              {(notification.threadId || notification.commentId) && (
+                <p role="status">{t('notifications.conversationUnavailable')}</p>
+              )}
               <div className="inbox-detail__card-only-header">
                 <span
                   className="notification__av"
