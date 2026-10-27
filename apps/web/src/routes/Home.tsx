@@ -1,6 +1,6 @@
 import type { Notification, PlannedShootingDay, RecentBoard } from '@inkadra/shared';
 import { Avatar, Button, EmptyState, Icon, type IconName, KeyCap } from '@inkadra/ui';
-import { type MouseEvent, type ReactNode, useMemo, useState } from 'react';
+import { type MouseEvent, type ReactNode, useId, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router';
 import { pickVariant, useAsset } from '../board/assets.ts';
@@ -347,18 +347,28 @@ function BoardCard({
   go: (to: string) => (e: MouseEvent) => void;
 }) {
   const { t, i18n } = useTranslation();
+  const labelId = useId();
+  const descriptionId = useId();
   const cover = useAsset(board.coverAssetId ?? undefined);
   const src = cover && cover !== 'missing' ? pickVariant(cover, 512) : '';
   const root = board.parentBoardId === null;
   return (
-    <a href={href} className="ink-card home__card" onClick={go(href)}>
+    <a
+      href={href}
+      className="ink-card home__card"
+      aria-labelledby={labelId}
+      aria-describedby={descriptionId}
+      onClick={go(href)}
+    >
       <span className="home__cover">{src && <img src={src} alt="" />}</span>
       <span className="home__meta">
         <span className="home__kind ink-muted">
           {t(root ? 'home.kind.project' : `board.types.${board.kind}`)}
         </span>
-        <span className="home__name">{board.title}</span>
-        <span className="ink-muted home__when">
+        <span id={labelId} className="home__name">
+          {board.title}
+        </span>
+        <span id={descriptionId} className="ink-muted home__when">
           {[root ? null : board.projectName, relativeTime(board.editedAt, i18n.language)]
             .filter(Boolean)
             .join(' · ')}
