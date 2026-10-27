@@ -124,22 +124,46 @@
   color: var(--ink-text-primary);
 }
 
+.canvas__resize-handles {
+  position: absolute;
+  pointer-events: none;
+  z-index: 6;
+}
 .card__handle {
   position: absolute;
-  top: 50%;
-  width: calc(8px / var(--zoom, 1));
-  height: calc(22px / var(--zoom, 1));
-  transform: translateY(-50%);
-  border-radius: calc(3px / var(--zoom, 1));
+  width: calc(24px / var(--zoom, 1));
+  height: calc(24px / var(--zoom, 1));
+  transform: translate(-50%, -50%);
+  pointer-events: auto;
+  touch-action: none;
+}
+.card__handle::after {
+  content: "";
+  position: absolute;
+  inset: calc(8px / var(--zoom, 1));
+  border-radius: calc(2px / var(--zoom, 1));
   background: #ffffff;
-  border: calc(1.5px / var(--zoom, 1)) solid var(--ink-accent-primary);
-  cursor: ew-resize;
+  border: calc(1px / var(--zoom, 1)) solid var(--ink-accent-primary);
 }
-.card__handle--w {
-  left: calc(-5px / var(--zoom, 1));
+.card__handle--nw {
+  left: 0;
+  top: 0;
+  cursor: nwse-resize;
 }
-.card__handle--e {
-  right: calc(-5px / var(--zoom, 1));
+.card__handle--ne {
+  left: 100%;
+  top: 0;
+  cursor: nesw-resize;
+}
+.card__handle--sw {
+  left: 0;
+  top: 100%;
+  cursor: nesw-resize;
+}
+.card__handle--se {
+  left: 100%;
+  top: 100%;
+  cursor: nwse-resize;
 }
 
 /* Notes */
@@ -215,6 +239,22 @@
   object-fit: cover;
   pointer-events: none;
 }
+/* Explicit image geometry reserves the remaining height for the media, including captions. */
+.card--image {
+  display: flex;
+  flex-direction: column;
+}
+.card--image > .card__media {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+.card--image > :not(.card__media) {
+  flex-shrink: 0;
+}
+.card--image .card__media img {
+  object-fit: contain;
+}
+
 .card__media--link {
   aspect-ratio: 1.91 / 1;
 }

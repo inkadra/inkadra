@@ -50,8 +50,8 @@ interface CardProps {
   nested?: boolean;
   /** The source of a drag that shows a ghost elsewhere. */
   dimmed?: boolean;
-  /** Width override while resizing. */
-  resize?: { x: number; w: number } | undefined;
+  /** Geometry override while resizing. */
+  resize?: { x: number; y: number; w: number; h: number } | undefined;
   /** Children of a column. */
   childrenOf?: readonly Element[] | undefined;
   selection?: ReadonlySet<string>;
@@ -75,7 +75,7 @@ export const Card = memo(function Card({
   draggingIds,
   zoom,
 }: CardProps) {
-  const { store, editing, readOnly } = useBoard();
+  const { store, editing } = useBoard();
   const extras = useContext(CardExtrasContext);
   const { t } = useTranslation();
   const measure = useMeasure(store, element.id, !nested);
@@ -85,9 +85,9 @@ export const Card = memo(function Card({
     ? {}
     : {
         left: resize?.x ?? element.x,
-        top: element.y,
+        top: resize?.y ?? element.y,
         width: w,
-        height: element.h,
+        height: resize?.h ?? element.h,
         transform: offset ? `translate(${offset.dx}px, ${offset.dy}px)` : undefined,
       };
   if (zoom !== undefined) (style as Record<string, unknown>)['--zoom'] = zoom;
@@ -136,12 +136,6 @@ export const Card = memo(function Card({
         </span>
       )}
       <CardReview elementId={element.id} shifted={!!element.locked} />
-      {selected && !nested && !element.locked && !readOnly && (
-        <>
-          <span className="card__handle card__handle--w" data-handle="w" aria-hidden="true" />
-          <span className="card__handle card__handle--e" data-handle="e" aria-hidden="true" />
-        </>
-      )}
     </div>
   );
 });

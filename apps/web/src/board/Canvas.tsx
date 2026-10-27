@@ -23,7 +23,6 @@ import {
   intersects,
   isContainer,
   listElements,
-  MIN_WIDTH,
   moveArrows,
   moveIntoParent,
   moveToCanvas,
@@ -32,8 +31,11 @@ import {
   type Point,
   pasteElements,
   type Rect,
+  type ResizeCorner,
+  type ResizeOptions,
   rectFromPoints,
   refreshArrows,
+  resizeFromCorner,
   screenToWorld,
   segmentBox,
   sendToBack,
@@ -160,7 +162,14 @@ type Gesture =
       clickOnly: string | null;
     }
   | { kind: 'marquee'; start: Point; base: Set<string> }
-  | { kind: 'resize'; id: string; edge: 'e' | 'w'; start: Point; x: number; w: number }
+  | {
+      kind: 'resize';
+      id: string;
+      corner: ResizeCorner;
+      start: Point;
+      rect: Rect;
+      options: ResizeOptions;
+    }
   | { kind: 'arrow'; start: Point; fromId: string | null };
 
 interface Overlay {
@@ -170,7 +179,7 @@ interface Overlay {
   guides?: Guide[];
   marquee?: Rect;
   drop?: { kind: 'column'; id: string; index: number; line: Rect } | { kind: 'unsorted' };
-  resize?: { id: string; x: number; w: number };
+  resize?: Rect & { id: string };
   arrow?: { a: Point; b: Point };
 }
 
@@ -764,8 +773,22 @@ export function Canvas({
     if (interactive || readOnly) return;
 
     const handle = target.closest<HTMLElement>('[data-handle]')?.dataset.handle;
-    if (handle === 'e' || handle === 'w') {
-      gesture.current = { kind: 'resize', id, edge: handle, start: p, x: el.x, w: el.w };
+    if (handle === 'nw' || handle === 'ne' || handle === 'sw' || handle === 'se') {
+      if (el.locked || el.parent !== null) return;
+      const rect = liveRect(el);
+      const card = rootRef.current?.querySelector<HTMLElement>(
+        `.card[data-el="${CSS.escape(id)}"]`,
+      );
+      const mediaHeight = card?.querySelector<HTMLElement>('.card__media')?.offsetHeight;
+      const options: ResizeOptions =
+        el.type === 'image'
+          ? {
+              aspectRatio: rect.w / (mediaHeight || rect.h),
+              fixedHeight: mediaHeight ? Math.max(0, rect.h - mediaHeight) : 0,
+            }
+          : {};
+      store.undo.stopCapturing();
+      gesture.current = { kind: 'resize', id, corner: handle, start: p, rect, options };
       rootRef.current?.setPointerCapture(e.pointerId);
       e.preventDefault();
       return;
@@ -815,10 +838,16 @@ export function Canvas({
       return;
     }
     if (g.kind === 'resize') {
-      const dx = (p.x - g.start.x) / v.zoom;
-      const w = Math.max(MIN_WIDTH, Math.round(g.edge === 'e' ? g.w + dx : g.w - dx));
-      const x = g.edge === 'e' ? g.x : g.x + (g.w - w);
-      setOverlay({ resize: { id: g.id, x, w } });
+      const rect = resizeFromCorner(
+        g.rect,
+        g.corner,
+        {
+          x: (p.x - g.start.x) / v.zoom,
+          y: (p.y - g.start.y) / v.zoom,
+        },
+        g.options,
+      );
+      setOverlay({ resize: { id: g.id, ...rect } });
       return;
     }
     // Move
@@ -917,7 +946,7 @@ export function Canvas({
     }
     const o = overlayRef.current;
     setOverlay(NO_OVERLAY);
-    if (!g) return;
+    if (!g || (e.type === 'pointercancel' && g.kind === 'resize')) return;
     if (g.kind === 'arrow') {
       const end = toWorld(e.clientX, e.clientY);
       const under = (
@@ -949,11 +978,21 @@ export function Canvas({
       return;
     }
     if (g.kind === 'resize' && o.resize) {
-      const { x, w } = o.resize;
+      const current = store.getSnapshot().byId.get(g.id);
+      if (!current || current.locked || readOnly || current.parent !== null) return;
+      const { x, y, w, h } = o.resize;
       doc.transact(() => {
-        updateElement(doc, g.id, { x, w }, LOCAL);
-        refreshArrows(doc, arrowsOf(), [g.id], cardRect, LOCAL);
+        updateElement(doc, g.id, { x, y, w, h }, LOCAL);
+        // The store updates after this transaction; attached arrows need the new rect now.
+        refreshArrows(
+          doc,
+          arrowsOf(),
+          [g.id],
+          (id) => (id === g.id ? { x, y, w, h } : cardRect(id)),
+          LOCAL,
+        );
       }, LOCAL);
+      store.undo.stopCapturing();
       return;
     }
     if (g.kind !== 'move') return;
@@ -1660,6 +1699,39 @@ export function Canvas({
               zoom={drawsOutline(el) ? viewport.zoom : undefined}
             />
           ))}
+          {!readOnly &&
+            !overlay.offset &&
+            visible
+              .filter(
+                (el) =>
+                  selection.has(el.id) && !el.locked && el.parent === null && el.type !== 'arrow',
+              )
+              .map((el) => {
+                const rect = overlay.resize?.id === el.id ? overlay.resize : liveRect(el);
+                return (
+                  <div
+                    key={el.id}
+                    className="canvas__resize-handles"
+                    data-el={el.id}
+                    style={{
+                      left: rect.x,
+                      top: rect.y,
+                      width: rect.w,
+                      height: rect.h,
+                      ['--zoom' as string]: viewport.zoom,
+                    }}
+                  >
+                    {(['nw', 'ne', 'sw', 'se'] as const).map((corner) => (
+                      <span
+                        key={corner}
+                        className={`card__handle card__handle--${corner}`}
+                        data-handle={corner}
+                        aria-hidden="true"
+                      />
+                    ))}
+                  </div>
+                );
+              })}
           <PresenceLayer peers={peers} zoom={viewport.zoom} rectOf={peerRect} />
           {overlay.ghost && (
             <div
