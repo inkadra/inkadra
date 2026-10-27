@@ -1668,5 +1668,15 @@
       "phone": "Dal telefono salva nei Non ordinati."
     },
     "settingsPending": "Impostazioni, configurazione istanza incompleta"
+  },
+  "trash": {
+    "title": "Cestino",
+    "versions": "Versioni",
+    "description": "Elementi presenti nei salvataggi degli ultimi 30 giorni e assenti dalla board attuale. Le modifiche tra due salvataggi potrebbero non essere recuperabili. La data indica l’ultimo salvataggio disponibile, non la cancellazione. Ripristina prima il contenitore per mantenere la posizione dei figli.",
+    "savedAt": "Ultimo salvataggio: {{date}}",
+    "empty": "Nessun elemento recuperabile nei salvataggi disponibili.",
+    "error": "Impossibile completare il recupero. L’elenco potrebbe essere parziale: riprova.",
+    "restored": "Elemento ripristinato. Puoi annullare questa operazione.",
+    "boardLinkOnly": "Il ripristino di una scheda board recupera solo il collegamento, non una sotto-board eliminata."
   }
 }

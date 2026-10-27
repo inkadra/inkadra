@@ -368,7 +368,7 @@ function BoardScreen({
         <span className="ink-header__spacer" />
         {conn && <SyncStatus status={conn.status} readOnly={conn.readOnly} />}
         {conn && <Peers provider={conn.provider} />}
-        {editable && (
+        {conn && (
           <>
             <IconButton
               icon="clock"
@@ -442,10 +442,12 @@ function BoardScreen({
   if (conn.status === 'denied') {
     return <DeniedState />;
   }
-  const versions = editable && (
+  const versions = (
     <VersionsDialog
       open={versionsOpen}
       provider={conn.provider}
+      store={conn.store}
+      editable={editable}
       boardId={boardId}
       onClose={() => setVersionsOpen(false)}
       preview={preview}

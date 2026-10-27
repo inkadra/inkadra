@@ -13060,7 +13060,7 @@
             "bearer": []
           }
         ],
-        "summary": "Saved versions of a board, newest first. Needs editor.",
+        "summary": "Saved versions of a board, newest first. Needs viewer.",
         "parameters": [
           {
             "schema": {
@@ -13314,7 +13314,7 @@
             "bearer": []
           }
         ],
-        "summary": "One version of a board, e.g. to name the one just restored. Needs editor.",
+        "summary": "One version of a board, e.g. to name the one just restored. Needs viewer.",
         "parameters": [
           {
             "schema": {
@@ -13594,7 +13594,7 @@
             "bearer": []
           }
         ],
-        "summary": "The version as a Yjs update, to preview it read-only in the editor. Needs editor.",
+        "summary": "The version as a Yjs update, to preview it read-only in the editor. Needs viewer.",
         "description": "Migrated to the current document schema. Apply it to an empty Y.Doc; it never syncs with the live board.",
         "parameters": [
           {

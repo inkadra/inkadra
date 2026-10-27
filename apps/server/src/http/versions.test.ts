@@ -1403,12 +1403,16 @@ describe.skipIf(!url)('board versions (needs DATABASE_URL)', () => {
       ['DELETE', `/boards/${b}/versions/${v}`],
     ];
 
-    it('needs editor: commenters and viewers get 403, outsiders 404, anonymous 401', async () => {
+    it('lets viewers read but requires editor for mutations; rejects outsiders and anonymous', async () => {
       for (const [method, path, payload] of calls(boardId, version)) {
         expect((await request(method, path, null, payload)).statusCode, path).toBe(401);
         expect((await request(method, path, 'stranger', payload)).statusCode, path).toBe(404);
-        expect((await request(method, path, 'viewer', payload)).statusCode, path).toBe(403);
-        expect((await request(method, path, 'commenter', payload)).statusCode, path).toBe(403);
+        expect((await request(method, path, 'viewer', payload)).statusCode, path).toBe(
+          method === 'GET' ? 200 : 403,
+        );
+        expect((await request(method, path, 'commenter', payload)).statusCode, path).toBe(
+          method === 'GET' ? 200 : 403,
+        );
       }
     });
 
@@ -1422,7 +1426,7 @@ describe.skipIf(!url)('board versions (needs DATABASE_URL)', () => {
       }
     });
 
-    it('follows board grants: an editor lowered to viewer on a sub-board loses it there', async () => {
+    it('follows board grants: an editor lowered to viewer on a sub-board retains only read access', async () => {
       await request('PUT', `/boards/${subBoardId}/grants/${people.editor?.id}`, 'owner', {
         role: 'viewer',
       });
@@ -1430,7 +1434,11 @@ describe.skipIf(!url)('board versions (needs DATABASE_URL)', () => {
         for (const suffix of ['', `/${subVersion}`])
           expect(
             (await request('GET', `/boards/${subBoardId}/versions${suffix}`, 'editor')).statusCode,
-          ).toBe(403);
+          ).toBe(200);
+        expect(
+          (await request('POST', `/boards/${subBoardId}/versions`, 'editor', { name: 'No' }))
+            .statusCode,
+        ).toBe(403);
         expect((await request('GET', `/boards/${boardId}/versions`, 'editor')).statusCode).toBe(
           200,
         );

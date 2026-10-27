@@ -25,7 +25,7 @@ import { requireActor } from './auth-routes.ts';
 import { HttpError } from './errors.ts';
 import { RateLimiter } from './link-previews.ts';
 
-/** Saved versions of a board (decision 0013). Editors and owners do everything here. */
+/** Saved versions of a board (decision 0013). Members may read; editors and owners may mutate. */
 
 interface Deps {
   db: Database;
@@ -138,7 +138,7 @@ export function registerVersionRoutes(app: FastifyInstance, deps: Deps) {
     const actor = await requireActor(auth, req, db);
     const { boardId } = BoardParams.parse(req.params);
     const query = BoardVersionQuery.parse(req.query);
-    await requireBoardRole(db, actor, boardId, 'editor');
+    await requireBoardRole(db, actor, boardId, 'viewer');
     const after = query.cursor ? decodeCursor(query.cursor) : null;
     const rows = await db
       .select(listed)
@@ -166,7 +166,7 @@ export function registerVersionRoutes(app: FastifyInstance, deps: Deps) {
   app.get(v1('/boards/:boardId/versions/:versionId'), async (req) => {
     const actor = await requireActor(auth, req, db);
     const { boardId, versionId } = VersionParams.parse(req.params);
-    await requireBoardRole(db, actor, boardId, 'editor');
+    await requireBoardRole(db, actor, boardId, 'viewer');
     return toVersion(await findVersion(boardId, versionId));
   });
 
@@ -236,7 +236,7 @@ export function registerVersionRoutes(app: FastifyInstance, deps: Deps) {
   app.get(v1('/boards/:boardId/versions/:versionId/state'), async (req, reply) => {
     const actor = await requireActor(auth, req, db);
     const { boardId, versionId } = VersionParams.parse(req.params);
-    await requireBoardRole(db, actor, boardId, 'editor');
+    await requireBoardRole(db, actor, boardId, 'viewer');
     const [row] = await db
       .select({ state: boardVersion.state, schemaVersion: boardVersion.schemaVersion })
       .from(boardVersion)

@@ -109,3 +109,24 @@
 .card > .guest-visibility + .card__lock {
   right: 28px;
 }
+.versions__tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+.versions__tabs [aria-selected="true"] {
+  background: var(--ink-surface-1);
+  border-color: var(--ink-text-muted);
+}
+.versions__trash-list {
+  list-style: none;
+  padding: 0;
+  max-height: 52vh;
+  overflow: auto;
+}
+.versions__trash-list .versions__item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}

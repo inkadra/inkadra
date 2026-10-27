@@ -1668,5 +1668,15 @@
       "phone": "Save to Unsorted from your phone."
     },
     "settingsPending": "Settings, instance setup incomplete"
+  },
+  "trash": {
+    "title": "Trash",
+    "versions": "Versions",
+    "description": "Elements found in snapshots from the last 30 days and absent from the current board. Changes between snapshots may not be recoverable. Dates show the last available snapshot, not deletion time. Restore containers first to keep their children’s placement.",
+    "savedAt": "Last saved: {{date}}",
+    "empty": "No recoverable elements in the available snapshots.",
+    "error": "Could not complete recovery. The list may be partial: try again.",
+    "restored": "Element restored. You can undo this action.",
+    "boardLinkOnly": "Restoring a board card recovers its link only, not a deleted sub-board."
   }
 }
