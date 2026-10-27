@@ -95,11 +95,14 @@ export function Settings() {
 function Section({
   title,
   body,
+  aside,
   children,
   danger,
 }: {
   title: string;
   body?: ReactNode;
+  /** Shown under the title, in the left column (the avatar of the profile). */
+  aside?: ReactNode;
   children: ReactNode;
   danger?: boolean;
 }) {
@@ -110,6 +113,7 @@ function Section({
       <div className="settings__head">
         <h2>{title}</h2>
         {body && <p className="ink-muted">{body}</p>}
+        {aside}
       </div>
       <div className="settings__body">{children}</div>
     </section>
@@ -195,19 +199,14 @@ function Profile() {
   }
 
   return (
-    <Section title={t('settings.profile.title')}>
-      <form className="settings__form" onSubmit={save}>
-        <div className="settings__actions">
+    <Section
+      title={t('settings.profile.title')}
+      aside={
+        <div className="settings__avatar">
           {user?.image ? (
-            <img
-              src={user.image}
-              alt={user.name}
-              width={64}
-              height={64}
-              style={{ borderRadius: '50%', objectFit: 'cover' }}
-            />
+            <img className="settings__avatar-image" src={user.image} alt={user.name} />
           ) : (
-            <span role="img" aria-label={user?.name}>
+            <span className="settings__avatar-image" role="img" aria-label={user?.name}>
               {user?.name
                 .split(/\s+/)
                 .slice(0, 2)
@@ -216,9 +215,12 @@ function Profile() {
                 .toUpperCase()}
             </span>
           )}
-          <label className="settings__label">
+          <label
+            className={`ink-btn ink-btn--secondary settings__avatar-upload${avatarBusy ? ' is-disabled' : ''}`}
+          >
             {t('settings.profile.avatarUpload')}
             <input
+              className="settings__file"
               type="file"
               accept="image/jpeg,image/png,image/webp"
               disabled={avatarBusy}
@@ -229,15 +231,16 @@ function Profile() {
               }}
             />
           </label>
-          <Button
-            type="button"
-            disabled={avatarBusy || !user?.image}
-            onClick={() => void changeAvatar()}
-          >
-            {t('settings.profile.avatarRemove')}
-          </Button>
+          {user?.image && (
+            <Button variant="ghost" disabled={avatarBusy} onClick={() => void changeAvatar()}>
+              {t('settings.profile.avatarRemove')}
+            </Button>
+          )}
+          <p className="ink-muted">{t('settings.profile.avatarHelp')}</p>
         </div>
-        <p>{t('settings.profile.avatarHelp')}</p>
+      }
+    >
+      <form className="settings__form" onSubmit={save}>
         <TextField
           label={t('auth.name')}
           value={name}
