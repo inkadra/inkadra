@@ -1852,5 +1852,29 @@
     "error": "Could not save or load. Another administrator may have changed the catalogs. Reload to get the current configuration.",
     "reload": "Reload",
     "tagHelp": "Choose an active shared tag. Administrators manage available values in Settings → Classifications. Existing tags remain readable."
+  },
+  "appearance": {
+    "title": "Project appearance",
+    "options": "Project options: {{name}}",
+    "symbol": "Symbol",
+    "color": "Color",
+    "emoji": "Emoji",
+    "emojiHelp": "Enter one emoji, or clear it to use the selected shape. Emoji keep their native colors.",
+    "invalid": "Use a single emoji.",
+    "reset": "Reset to default",
+    "error": "Could not save project appearance. Check your permissions and try again.",
+    "shapes": {
+      "diamond": "Diamond",
+      "circle": "Circle",
+      "triangle": "Triangle",
+      "square": "Square"
+    },
+    "colors": {
+      "blue": "Blue",
+      "orange": "Orange",
+      "purple": "Purple",
+      "green": "Green",
+      "neutral": "Neutral"
+    }
   }
 }

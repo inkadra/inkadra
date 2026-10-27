@@ -9,6 +9,7 @@ import {
   renameProject,
   setCachedProjects,
   subscribeProjects,
+  updateProjectAppearance,
 } from './projects.ts';
 
 afterEach(() => {
@@ -100,4 +101,23 @@ it('does not repopulate a signed-out session from a pending project request', as
   resolve({ items: [{ id: 'private-project' }], nextCursor: null });
   await pending;
   expect(getCachedProjects()).toBeNull();
+});
+
+it('does not let an older project list overwrite saved appearance', async () => {
+  const old = { id: 'appearance-race', icon: { shape: 'circle', color: 'neutral' } } as Project;
+  const icon = { shape: 'square' as const, color: 'green' as const, emoji: '🎬' };
+  const updated = { ...old, icon };
+  setCachedProjects([old]);
+  let resolve!: (page: unknown) => void;
+  vi.spyOn(api, 'get').mockReturnValueOnce(
+    new Promise((done) => {
+      resolve = done;
+    }),
+  );
+  vi.spyOn(api, 'patch').mockResolvedValueOnce(updated);
+  const pending = refreshProjects();
+  await updateProjectAppearance(old.id, icon);
+  resolve({ items: [old], nextCursor: null });
+  await pending;
+  expect(getCachedProjects()).toEqual([updated]);
 });

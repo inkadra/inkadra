@@ -164,6 +164,7 @@ export const project = pgTable('project', {
   iconShape: text('icon_shape', { enum: ['diamond', 'circle', 'triangle', 'square'] })
     .notNull()
     .default('circle'),
+  iconEmoji: text('icon_emoji'),
   iconColor: text('icon_color', { enum: ['blue', 'orange', 'purple', 'green', 'neutral'] })
     .notNull()
     .default('neutral'),

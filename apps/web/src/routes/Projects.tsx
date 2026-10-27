@@ -9,7 +9,8 @@ import { useClassifications } from '../lib/classifications.ts';
 import { useSession } from '../lib/session.tsx';
 import { relativeTime } from '../notifications/Notifications.tsx';
 import { useProjects } from './AppLayout.tsx';
-import { refreshProjects } from './projects.ts';
+import { canEditProjectAppearance, ProjectAppearanceDialog } from './ProjectAppearance.tsx';
+import { getCachedProjects, refreshProjects, subscribeProjects } from './projects.ts';
 import {
   archivedProjects,
   filterProjects,
@@ -24,6 +25,21 @@ export function Projects() {
   const { user } = useSession();
   const { openNewProject } = useProjects();
   const [items, setItems] = useState<ProjectOverview[] | null>(null);
+  useEffect(
+    () =>
+      subscribeProjects(() => {
+        const cached = getCachedProjects();
+        if (cached)
+          setItems(
+            (current) =>
+              current?.map((row) => ({
+                ...row,
+                project: cached.find((p) => p.id === row.project.id) ?? row.project,
+              })) ?? null,
+          );
+      }),
+    [],
+  );
   const [error, setError] = useState(false);
   const [busy, setBusy] = useState(false);
   const [usage, setUsage] = useState<number | null>(null);
@@ -207,7 +223,20 @@ export function Projects() {
       )}
       <div className={`projects-page__items projects-page__items--${view}`}>
         {visible.map((row) => (
-          <ProjectCard key={row.project.id} row={row} busy={busy} mutate={mutate} />
+          <ProjectCard
+            key={row.project.id}
+            row={row}
+            busy={busy}
+            mutate={mutate}
+            onAppearanceSaved={(updated) =>
+              setItems(
+                (current) =>
+                  current?.map((item) =>
+                    item.project.id === updated.id ? { ...item, project: updated } : item,
+                  ) ?? null,
+              )
+            }
+          />
         ))}
       </div>
       {user?.role === 'admin' && (
@@ -229,13 +258,16 @@ function ProjectCard({
   row,
   busy,
   mutate,
+  onAppearanceSaved,
 }: {
   row: ProjectOverview;
+  onAppearanceSaved: (project: Project) => void;
   busy: boolean;
   mutate: (p: Project, pin: boolean, type?: string) => Promise<void>;
 }) {
   const { catalogs, typeLabel } = useClassifications();
   const { t, i18n } = useTranslation();
+  const [appearance, setAppearance] = useState(false);
   const p = row.project;
   const coverId = row.boards.find((b) => b.id === p.rootBoardId)?.coverAssetId;
   const cover = useAsset(coverId ?? undefined);
@@ -251,11 +283,12 @@ function ProjectCard({
         {src ? (
           <img src={src} alt="" />
         ) : (
-          <ProjectGlyph shape={p.icon.shape} color={p.icon.color} />
+          <ProjectGlyph shape={p.icon.shape} color={p.icon.color} emoji={p.icon.emoji} />
         )}
       </Link>
       <div className="project-card__body">
         <div className="project-card__title">
+          <ProjectGlyph {...p.icon} />
           <h2>
             <Link to={`/p/${p.id}`}>{p.name}</Link>
           </h2>
@@ -303,7 +336,19 @@ function ProjectCard({
             {relativeTime(row.activity, i18n.language)}
           </time>
         </div>
+        {appearance && (
+          <ProjectAppearanceDialog
+            project={p}
+            onClose={() => setAppearance(false)}
+            onSaved={onAppearanceSaved}
+          />
+        )}
         <div className="project-card__actions">
+          {canEditProjectAppearance(p) && (
+            <Button disabled={busy} onClick={() => setAppearance(true)}>
+              {t('appearance.title')}
+            </Button>
+          )}
           <Link className="ink-btn ink-btn--secondary" to={`/p/${p.id}`}>
             {t('projectsPage.open')}
           </Link>

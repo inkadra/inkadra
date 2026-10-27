@@ -1852,5 +1852,29 @@
     "error": "Impossibile salvare o caricare. Un altro amministratore potrebbe aver modificato i cataloghi. Ricarica la configurazione attuale.",
     "reload": "Ricarica",
     "tagHelp": "Scegli un tag condiviso attivo. Gli amministratori gestiscono i valori in Impostazioni → Classificazioni. I tag esistenti restano leggibili."
+  },
+  "appearance": {
+    "title": "Aspetto del progetto",
+    "options": "Opzioni progetto: {{name}}",
+    "symbol": "Simbolo",
+    "color": "Colore",
+    "emoji": "Emoji",
+    "emojiHelp": "Inserisci un’emoji, oppure svuota il campo per usare la forma selezionata. Le emoji mantengono i propri colori.",
+    "invalid": "Usa una sola emoji.",
+    "reset": "Ripristina predefinito",
+    "error": "Impossibile salvare l’aspetto del progetto. Controlla i permessi e riprova.",
+    "shapes": {
+      "diamond": "Rombo",
+      "circle": "Cerchio",
+      "triangle": "Triangolo",
+      "square": "Quadrato"
+    },
+    "colors": {
+      "blue": "Blu",
+      "orange": "Arancione",
+      "purple": "Viola",
+      "green": "Verde",
+      "neutral": "Neutro"
+    }
   }
 }

@@ -188,16 +188,61 @@ const glyphColor = {
 export type GlyphShape = 'diamond' | 'circle' | 'triangle' | 'square';
 export type GlyphColor = keyof typeof glyphColor;
 
-/** Project marker: an outlined shape. Colour carries meaning only through the shape pairing. */
-export function ProjectGlyph({ shape, color }: { shape: GlyphShape; color: GlyphColor }) {
+/** Project marker: paired frames echo the logo; names remain the accessible identity. */
+export function ProjectGlyph({
+  shape,
+  color,
+  emoji,
+}: {
+  shape: GlyphShape;
+  color: GlyphColor;
+  emoji?: string | null;
+}) {
+  if (emoji)
+    return (
+      <span
+        aria-hidden="true"
+        style={{
+          display: 'inline-flex',
+          width: 18,
+          height: 18,
+          alignItems: 'center',
+          justifyContent: 'center',
+          flex: 'none',
+          fontSize: 16,
+        }}
+      >
+        {emoji}
+      </span>
+    );
   const stroke = glyphColor[color];
   const common = { fill: 'none', stroke, strokeWidth: 1.6, strokeLinejoin: 'round' as const };
   return (
     <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true" style={{ flex: 'none' }}>
-      {shape === 'diamond' && <path d="M8 1.5l6.5 6.5L8 14.5 1.5 8z" {...common} />}
-      {shape === 'circle' && <circle cx="8" cy="8" r="6" {...common} />}
-      {shape === 'triangle' && <path d="M8 2l6 11H2z" {...common} />}
-      {shape === 'square' && <rect x="2.5" y="2.5" width="11" height="11" rx="2" {...common} />}
+      {shape === 'diamond' && (
+        <>
+          <path d="M8 1.5l6.5 6.5L8 14.5 1.5 8z" {...common} />
+          <path d="M8 5l3 3-3 3-3-3z" {...common} />
+        </>
+      )}
+      {shape === 'circle' && (
+        <>
+          <circle cx="8" cy="8" r="6" {...common} />
+          <circle cx="8" cy="8" r="2.5" {...common} />
+        </>
+      )}
+      {shape === 'triangle' && (
+        <>
+          <path d="M8 2l6 11H2z" {...common} />
+          <path d="M8 7l2 4H6z" {...common} />
+        </>
+      )}
+      {shape === 'square' && (
+        <>
+          <rect x="2.5" y="2.5" width="11" height="11" rx="2" {...common} />
+          <rect x="6" y="6" width="4" height="4" rx="0.5" {...common} />
+        </>
+      )}
     </svg>
   );
 }
