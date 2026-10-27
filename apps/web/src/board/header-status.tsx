@@ -136,12 +136,18 @@ export function SyncStatus({
     last.current = status;
   }, [status, t]);
   return (
-    <span className={`sync sync--${summary.kind === 'saved' ? 'synced' : summary.kind}`}>
+    <span
+      className={`sync sync--${summary.kind === 'saved' ? 'synced' : summary.kind}`}
+      data-status={status}
+      // The visible state is a status, but quiet: edits and the timer must not be read out.
+      role="status"
+      aria-live="off"
+    >
       <span className="sync__dot" aria-hidden="true" />
-      <span className="sync__text" aria-hidden="true">
+      <span className="sync__text">
         {status === 'synced' ? `${t('board.status.online', { count: online })} · ${state}` : state}
       </span>
-      <span className="sync__announce" role="status">
+      <span className="sync__announce" aria-live="polite">
         {announcement}
       </span>
     </span>

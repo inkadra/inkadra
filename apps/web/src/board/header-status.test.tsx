@@ -206,11 +206,11 @@ describe('sync announcements', () => {
     expect(connectionAnnouncement('synced', 'synced', t)).toBe('');
   });
 
-  it('keeps edits out of the live region and hides the visible text', () => {
+  it('keeps the visible state quiet and announces nothing while saving', () => {
     const html = renderToStaticMarkup(
       <SyncStatus status="synced" readOnly={false} saves={storeOf(2, null)} online={2} />,
     );
-    expect(html).toMatch(/<span class="sync__text" aria-hidden="true">/);
-    expect(html).toMatch(/<span class="sync__announce" role="status"><\/span>/);
+    expect(html).toMatch(/role="status" aria-live="off"/);
+    expect(html).toMatch(/<span class="sync__announce" aria-live="polite"><\/span>/);
   });
 });
