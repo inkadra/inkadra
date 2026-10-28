@@ -4,6 +4,7 @@ import {
   askedView,
   headerViews,
   isBoardView,
+  pickerViews,
   storyboardOf,
   VIEWS,
   viewDestination,
@@ -49,8 +50,14 @@ describe('header views', () => {
       'shotlist',
       'schedule',
       'review',
-      'moodboard',
     ]);
+    expect(headerViews('storyboard', 'moodboard')).toContain('moodboard');
+  });
+
+  it('leaves the moodboard out of the phone picker on a storyboard only', () => {
+    expect(pickerViews('storyboard', 'storyboard')).not.toContain('moodboard');
+    expect(pickerViews('board', 'canvas')).toHaveLength(6);
+    expect(pickerViews(undefined, null)).toHaveLength(6);
   });
 
   it('keeps the film views reachable while one of them is open', () => {

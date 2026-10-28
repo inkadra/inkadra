@@ -1,5 +1,5 @@
 import type { Notification, PlannedShootingDay, Project, RecentBoard } from '@inkadra/shared';
-import { Avatar, Button, EmptyState, Icon, type IconName, KeyCap } from '@inkadra/ui';
+import { Avatar, Button, EmptyState, Icon, type IconName } from '@inkadra/ui';
 import { type MouseEvent, type ReactNode, useId, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router';
@@ -14,6 +14,8 @@ import {
   editableProjects,
   type Loadable,
   localDate,
+  RECENT_BOARDS,
+  RECENT_PROJECTS,
   useActivity,
   useRecentBoards,
   useShootingDays,
@@ -37,8 +39,7 @@ const CHOICE_ICONS: Record<StartChoice, IconName> = {
 export function Home() {
   const { t, i18n } = useTranslation();
   const { user } = useSession();
-  const { projects, shared, openNewProject, openSearch, openInbox, unread, refreshUnread } =
-    useProjects();
+  const { projects, shared, openNewProject, openInbox, unread, refreshUnread } = useProjects();
   const navigate = useNavigate();
   const now = new Date();
   const firstName = user?.name.split(' ')[0] ?? '';
@@ -55,6 +56,16 @@ export function Home() {
   const rootOf = (projectId: string) => projects?.find((p) => p.id === projectId)?.rootBoardId;
   const boardHref = (projectId: string, boardId: string) =>
     boardId === rootOf(projectId) ? `/p/${projectId}` : `/p/${projectId}/b/${boardId}`;
+
+  const recentProjects = useMemo(
+    () =>
+      [...(projects ?? [])]
+        .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
+        .slice(0, RECENT_PROJECTS),
+    [projects],
+  );
+  // A project's own board is already its card under Recent projects.
+  const boards = withoutRoots(recent, recentProjects);
 
   const summary = [
     now.toLocaleDateString(i18n.language, { weekday: 'long', day: 'numeric', month: 'long' }),
@@ -74,19 +85,6 @@ export function Home() {
         <div className="home__title">
           <h1>{t(greetingKey(now.getHours()), { name: firstName })}</h1>
           <p className="ink-muted">{summary.join(' · ')}</p>
-        </div>
-        <div className="home__actions">
-          <button type="button" className="home__search" onClick={openSearch}>
-            <Icon name="search" size={14} />
-            <span>{t('home.searchPlaceholder')}</span>
-            <KeyCap>⌘K</KeyCap>
-          </button>
-          <Button icon="plus" disabled={writable.length === 0} onClick={() => setNewBoard('blank')}>
-            {t('home.newBoard.action')}
-          </Button>
-          <Button variant="primary" icon="plus" onClick={openNewProject}>
-            {t('nav.newProject')}
-          </Button>
         </div>
       </header>
 
@@ -114,7 +112,7 @@ export function Home() {
 
       <div className="home__columns">
         <Section id="home-recent" title={t('home.recentBoards')} hint={t('home.recentBoardsHint')}>
-          <LoadState list={recent} empty={t('home.noRecentBoards')}>
+          <LoadState list={boards} empty={t('home.noRecentBoards')}>
             {(items) => (
               <div className="home__boards">
                 {items.map((b) => (
@@ -154,30 +152,27 @@ export function Home() {
       </div>
 
       <Section id="home-projects" title={t('home.recent')}>
-        {projects && projects.length > 0 && (
+        {recentProjects.length > 0 && (
           <div className="home__recent">
-            {[...projects]
-              .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
-              .slice(0, 8)
-              .map((p) => (
-                <a
-                  key={p.id}
-                  href={`/p/${p.id}`}
-                  className="ink-card home__card"
-                  onClick={go(`/p/${p.id}`)}
-                >
-                  <BoardPreview boardId={p.rootBoardId} project={p} />
-                  <span className="home__meta">
-                    <span className="home__name">{p.name}</span>
-                    <span className="ink-muted home__when">
-                      {new Date(p.updatedAt).toLocaleDateString(i18n.language, {
-                        day: 'numeric',
-                        month: 'short',
-                      })}
-                    </span>
+            {recentProjects.map((p) => (
+              <a
+                key={p.id}
+                href={`/p/${p.id}`}
+                className="ink-card home__card"
+                onClick={go(`/p/${p.id}`)}
+              >
+                <BoardPreview boardId={p.rootBoardId} project={p} />
+                <span className="home__meta">
+                  <span className="home__name">{p.name}</span>
+                  <span className="ink-muted home__when">
+                    {new Date(p.updatedAt).toLocaleDateString(i18n.language, {
+                      day: 'numeric',
+                      month: 'short',
+                    })}
                   </span>
-                </a>
-              ))}
+                </span>
+              </a>
+            ))}
           </div>
         )}
         {projects && projects.length === 0 && (shared?.length ?? 0) === 0 && (
@@ -280,6 +275,19 @@ function Section({
       {children}
     </section>
   );
+}
+
+/** Recent boards without the root boards of the projects listed under Recent projects. */
+export function withoutRoots(
+  recent: Loadable<RecentBoard>,
+  projects: readonly Project[],
+): Loadable<RecentBoard> {
+  if (recent.state !== 'ready') return recent;
+  const roots = new Set(projects.map((p) => p.rootBoardId));
+  return {
+    state: 'ready',
+    items: recent.items.filter((b) => !roots.has(b.id)).slice(0, RECENT_BOARDS),
+  };
 }
 
 /** A section's list, or its loading, error and empty states; never placeholder items. */

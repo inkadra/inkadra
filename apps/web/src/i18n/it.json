@@ -111,8 +111,12 @@
     "collapse": "Riduci la navigazione",
     "expand": "Espandi la navigazione",
     "boards": "Board",
-    "toShoot_one": "{{count}} inquadratura da girare",
-    "toShoot_other": "{{count}} inquadrature da girare"
+    "shots_one": "{{count}} inquadratura",
+    "shots_other": "{{count}} inquadrature",
+    "toShoot_one": "{{left}} di {{count}} inquadratura ancora da girare",
+    "toShoot_other": "{{left}} di {{count}} inquadrature ancora da girare",
+    "items_one": "{{count}} elemento nella board",
+    "items_other": "{{count}} elementi nella board"
   },
   "home": {
     "greeting": {
@@ -120,13 +124,11 @@
       "afternoon": "Buon pomeriggio, {{name}}",
       "evening": "Buonasera, {{name}}"
     },
-    "searchHint": "per cercare o creare",
     "recent": "Progetti recenti",
     "noProjects": "Nessun progetto",
     "noProjectsBody": "Crea il primo progetto: un film, uno shooting, un cliente.",
     "noPinned": "Niente di fissato",
     "shared": "Condivisi con te",
-    "searchPlaceholder": "Cerca board, note, file…",
     "summary": {
       "shootingAt": "oggi si gira a {{location}}, convocazione alle {{time}}",
       "shooting": "oggi si gira, convocazione alle {{time}}",

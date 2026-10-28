@@ -397,10 +397,13 @@ function BoardScreen({
                 aria-selected={view === v}
                 tabIndex={view === v ? 0 : -1}
                 className="view-tabs__tab"
+                // On narrow desktops only the open tab keeps its name: the rest say it on hover.
+                aria-label={t(`film.views.${v}`)}
+                title={t(`film.views.${v}`)}
                 onClick={() => chooseView(v)}
               >
                 <Icon name={viewIcon(v)} size={14} />
-                {t(`film.views.${v}`)}
+                <span className="view-tabs__label">{t(`film.views.${v}`)}</span>
               </button>
             ))}
           </div>

@@ -27,11 +27,12 @@ import { useTranslation } from 'react-i18next';
 import { Navigate, Outlet, useLocation, useNavigate, useSearchParams } from 'react-router';
 import { childBoards, useProjectBoards, useSharedBoards } from '../board/boards.ts';
 import {
-  ALL_VIEWS,
   askedView,
   type BoardView,
   defaultView,
   isBoardView,
+  isFilmView,
+  pickerViews,
   storyboardOf,
   viewDestination,
   viewHref,
@@ -240,6 +241,13 @@ export function AppLayout() {
 
   const setupPending = !!(setup.error || setup.checks?.some((c) => !c.ok));
   const storyboardCounts = storyboardId ? counts.get(storyboardId) : undefined;
+  // One row is current at a time: a film view lights its module row, the storyboard's own
+  // canvas lights the Storyboard row (the board is not listed again under Boards), and the
+  // project row is current only on the root board's own views.
+  const filmView = isFilmView(currentView);
+  const filmRowActive = (v: BoardView) =>
+    currentView === v ||
+    (v === 'storyboard' && !filmView && !!storyboardId && openBoardId === storyboardId);
 
   const sidebar = (
     <Sidebar label={t('nav.navigation')}>
@@ -314,7 +322,7 @@ export function AppLayout() {
         <div key={p.id} className={p.id === projectId ? undefined : 'ink-sidebar__collapsible'}>
           <ProjectNavItem
             project={p}
-            active={p.id === projectId && !boardId}
+            active={p.id === projectId && !boardId && !filmView}
             onClick={go(`/p/${p.id}`)}
           />
           {p.id === projectId && (
@@ -323,7 +331,12 @@ export function AppLayout() {
                 icon="storyboard"
                 label={t('nav.storyboard')}
                 count={storyboardCounts?.frameCount}
-                active={currentView === 'storyboard'}
+                title={
+                  storyboardCounts
+                    ? `${t('nav.storyboard')} · ${t('nav.shots', { count: storyboardCounts.frameCount })}`
+                    : undefined
+                }
+                active={filmRowActive('storyboard')}
                 href={hrefFor('storyboard')}
                 onClick={(e) => {
                   e.preventDefault();
@@ -336,10 +349,10 @@ export function AppLayout() {
                 count={storyboardCounts?.framesToShoot}
                 title={
                   storyboardCounts
-                    ? `${t('nav.shotlist')} · ${t('nav.toShoot', { count: storyboardCounts.framesToShoot })}`
+                    ? `${t('nav.shotlist')} · ${t('nav.toShoot', { count: storyboardCounts.frameCount, left: storyboardCounts.framesToShoot })}`
                     : undefined
                 }
-                active={currentView === 'shotlist'}
+                active={filmRowActive('shotlist')}
                 href={hrefFor('shotlist')}
                 onClick={(e) => {
                   e.preventDefault();
@@ -349,7 +362,7 @@ export function AppLayout() {
               <NavItem
                 icon="calendar"
                 label={t('nav.schedule')}
-                active={currentView === 'schedule'}
+                active={filmRowActive('schedule')}
                 href={hrefFor('schedule')}
                 onClick={(e) => {
                   e.preventDefault();
@@ -359,7 +372,7 @@ export function AppLayout() {
               <NavItem
                 icon="people"
                 label={t('nav.clients')}
-                active={currentView === 'review'}
+                active={filmRowActive('review')}
                 href={hrefFor('review')}
                 onClick={(e) => {
                   e.preventDefault();
@@ -372,6 +385,7 @@ export function AppLayout() {
                   projectId={p.id}
                   parentId={p.rootBoardId}
                   activeId={boardId}
+                  hiddenId={storyboardId}
                   depth={1}
                   go={go}
                   counts={counts}
@@ -462,13 +476,21 @@ export function AppLayout() {
               )}
             </nav>
             <span className="ink-header__spacer" />
-            {inSettings ? (
-              <SaveStatus />
-            ) : (
-              <span className="ink-muted ink-header__search-hint">
-                <KeyCap>⌘K</KeyCap>
-                {t('home.searchHint')}
-              </span>
+            {inSettings && <SaveStatus />}
+            {/* Home creates from here only; search stays in the sidebar and on ⌘K. */}
+            {pathname === '/' && (
+              <div className="home-header-actions">
+                <Button
+                  icon="plus"
+                  disabled={editableProjects(projects).length === 0}
+                  onClick={() => setCreatingBoard(true)}
+                >
+                  {t('home.newBoard.action')}
+                </Button>
+                <Button variant="primary" icon="plus" onClick={() => setCreating(true)}>
+                  {t('nav.newProject')}
+                </Button>
+              </div>
             )}
           </>
         )}
@@ -480,7 +502,7 @@ export function AppLayout() {
           value={currentView ?? ''}
           onChange={(e) => showView(e.target.value as BoardView)}
         >
-          {ALL_VIEWS.map((v) => (
+          {pickerViews(openKind, currentView).map((v) => (
             <option key={v} value={v}>
               {t(`film.views.${v}`)}
             </option>
@@ -620,6 +642,7 @@ function BoardTree({
   projectId,
   parentId,
   activeId,
+  hiddenId,
   depth,
   go,
   counts,
@@ -627,36 +650,48 @@ function BoardTree({
   projectId: string;
   parentId: string;
   activeId: string | undefined;
+  /** The storyboard, already listed as the Storyboard module: its sub-boards take its place. */
+  hiddenId: string | null;
   depth: number;
   go: (to: string) => (e: MouseEvent) => void;
   counts: Map<string, BoardCount>;
 }) {
+  const { t } = useTranslation();
   const { items } = useProjectBoards(projectId);
   const children = childBoards(items, parentId);
   if (children.length === 0 || depth > 4) return null;
   return (
     <>
-      {children.map((b) => (
-        <div key={b.id}>
-          <NavItem
-            icon={b.kind === 'storyboard' ? 'storyboard' : 'board'}
-            label={b.title}
-            count={counts.get(b.id)?.elementCount || undefined}
-            href={`/p/${projectId}/b/${b.id}`}
-            active={b.id === activeId}
-            onClick={go(`/p/${projectId}/b/${b.id}`)}
-            style={{ paddingLeft: 8 + depth * 14 }}
-          />
+      {children.map((b) => {
+        const below = (
           <BoardTree
             projectId={projectId}
             parentId={b.id}
             activeId={activeId}
-            depth={depth + 1}
+            hiddenId={hiddenId}
+            depth={b.id === hiddenId ? depth : depth + 1}
             go={go}
             counts={counts}
           />
-        </div>
-      ))}
+        );
+        if (b.id === hiddenId) return <div key={b.id}>{below}</div>;
+        const size = counts.get(b.id)?.elementCount || undefined;
+        return (
+          <div key={b.id}>
+            <NavItem
+              icon={b.kind === 'storyboard' ? 'storyboard' : 'board'}
+              label={b.title}
+              count={size}
+              title={size ? `${b.title} · ${t('nav.items', { count: size })}` : undefined}
+              href={`/p/${projectId}/b/${b.id}`}
+              active={b.id === activeId}
+              onClick={go(`/p/${projectId}/b/${b.id}`)}
+              style={{ paddingLeft: 8 + depth * 14 }}
+            />
+            {below}
+          </div>
+        );
+      })}
     </>
   );
 }

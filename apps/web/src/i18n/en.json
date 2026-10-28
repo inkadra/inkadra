@@ -111,8 +111,12 @@
     "collapse": "Collapse navigation",
     "expand": "Expand navigation",
     "boards": "Boards",
-    "toShoot_one": "{{count}} frame to shoot",
-    "toShoot_other": "{{count}} frames to shoot"
+    "shots_one": "{{count}} shot",
+    "shots_other": "{{count}} shots",
+    "toShoot_one": "{{left}} of {{count}} shot still to shoot",
+    "toShoot_other": "{{left}} of {{count}} shots still to shoot",
+    "items_one": "{{count}} item on the board",
+    "items_other": "{{count}} items on the board"
   },
   "home": {
     "greeting": {
@@ -120,13 +124,11 @@
       "afternoon": "Good afternoon, {{name}}",
       "evening": "Good evening, {{name}}"
     },
-    "searchHint": "to search or create",
     "recent": "Recent projects",
     "noProjects": "No projects yet",
     "noProjectsBody": "Create your first project: a film, a shoot, a client.",
     "noPinned": "Nothing pinned",
     "shared": "Shared with you",
-    "searchPlaceholder": "Search boards, notes, files…",
     "summary": {
       "shootingAt": "shooting today at {{location}}, call at {{time}}",
       "shooting": "shooting today, call at {{time}}",

@@ -1897,10 +1897,29 @@ button.crumb--editable:focus-visible {
 .board-header-editing__more {
   color: var(--ink-text-muted);
 }
+@media (width < 1600px) {
+  /* Laptops: the tabs that are not open show their icon, with the name in the tooltip. */
+  .ink-header .view-tabs__tab:not([aria-selected="true"]) {
+    padding: 0 7px;
+  }
+  .ink-header .view-tabs__tab:not([aria-selected="true"]) .view-tabs__label {
+    display: none;
+  }
+}
 @media (width < 1200px) {
   /* Narrow desktops: the avatars already say who is here. */
   .board-header-editing {
     display: none;
+  }
+  /* The connection keeps its dot; the words move to the tooltip. */
+  /* Hidden from sight only: screen readers still get the status. */
+  .sync__text {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
   }
 }
 
