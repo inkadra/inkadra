@@ -78,6 +78,20 @@ const render = () =>
     ),
   );
 
+it('opens the shared New project dialog with the chosen template', async () => {
+  const openNewProject = vi.fn();
+  context({ openNewProject });
+  respond({});
+  await render();
+  const moodboard = [...host.querySelectorAll<HTMLButtonElement>('.home__template')].find(
+    (b) => b.querySelector('.home__name')?.textContent === 'onboarding.templates.moodboard.name',
+  );
+  await act(async () => moodboard?.click());
+  expect(openNewProject).toHaveBeenCalledExactlyOnceWith('moodboard');
+  // Home mounts no dialog of its own: the app header's one is reused.
+  expect(host.querySelector('dialog')).toBeNull();
+});
+
 it('shows clean empty states and no Today card without data', async () => {
   context({ projects: [{ ...project, myRole: 'viewer' }] });
   respond({});
@@ -86,10 +100,14 @@ it('shows clean empty states and no Today card without data', async () => {
   expect(text).not.toContain('home.today.title');
   expect(text).toContain('home.noRecentBoards');
   expect(text).toContain('home.activity.empty');
-  expect(text).toContain('home.templates.needsProject');
+  // The project templates of New project: they need no project to start from.
   const templates = host.querySelectorAll<HTMLButtonElement>('.home__template');
-  expect(templates).toHaveLength(4);
-  expect([...templates].every((b) => b.disabled)).toBe(true);
+  expect([...templates].map((b) => b.querySelector('.home__name')?.textContent)).toEqual(
+    ['production', 'moodboard', 'storyboard', 'shotlist', 'pitch', 'blank'].map(
+      (c) => `onboarding.templates.${c}.name`,
+    ),
+  );
+  expect([...templates].every((b) => !b.disabled)).toBe(true);
   expect(vi.mocked(api.get).mock.calls.map(([path]) => path)).toEqual(
     expect.arrayContaining([
       expect.stringMatching(/^\/me\/shooting-days\?from=(\d{4}-\d\d-\d\d)&to=\1$/),

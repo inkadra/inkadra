@@ -185,3 +185,14 @@ it('offers configured active project types using stable identifiers', async () =
   expect(api.post).toHaveBeenCalledWith('/projects', expect.objectContaining({ type: custom.id }));
   await act(async () => setClassifications(structuredClone(DEFAULT_CLASSIFICATIONS)));
 });
+it('starts from the template picked on Home', async () => {
+  // A new form: the template is only where it starts.
+  await act(async () => root.unmount());
+  root = createRoot(host);
+  await act(async () =>
+    root.render(<ProjectSetupForm template="moodboard" onClose={close} onCreated={created} />),
+  );
+  const checked = host.querySelector<HTMLInputElement>('input[name="projectTemplate"]:checked');
+  const radios = [...host.querySelectorAll<HTMLInputElement>('input[name="projectTemplate"]')];
+  expect(radios.indexOf(checked as HTMLInputElement)).toBe(1);
+});

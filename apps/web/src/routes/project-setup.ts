@@ -10,6 +10,12 @@ export const PROJECT_TEMPLATES = [
   'blank',
 ] as const;
 export type ProjectTemplate = (typeof PROJECT_TEMPLATES)[number];
+/**
+ * The guided setup's title, shared by the page and the header breadcrumb: only a user without
+ * projects gets the welcome one, and none while the projects are loading.
+ */
+export const onboardingTitle = (projects: readonly Project[] | null | undefined) =>
+  projects ? (projects.length === 0 ? 'onboarding.firstTitle' : 'onboarding.title') : null;
 export interface SetupBoard {
   key: string;
   kind: 'board' | 'storyboard';

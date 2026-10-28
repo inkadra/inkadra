@@ -23,10 +23,13 @@ import './projects.css';
 
 export function NewProjectDialog({
   open,
+  template,
   onClose,
   onCreated,
 }: {
   open: boolean;
+  /** Preselected, as when opened from a template on Home. */
+  template?: ProjectTemplate;
   onClose: () => void;
   onCreated: (p: Project) => void;
 }) {
@@ -41,16 +44,25 @@ export function NewProjectDialog({
         if (busy) e.preventDefault();
       }}
     >
-      {open && <ProjectSetupForm onClose={onClose} onCreated={onCreated} onBusyChange={setBusy} />}
+      {open && (
+        <ProjectSetupForm
+          template={template}
+          onClose={onClose}
+          onCreated={onCreated}
+          onBusyChange={setBusy}
+        />
+      )}
     </Dialog>
   );
 }
 
 export function ProjectSetupForm({
+  template: initialTemplate = 'blank',
   onClose,
   onCreated,
   onBusyChange,
 }: {
+  template?: ProjectTemplate;
   onClose: () => void;
   onCreated: (p: Project) => void;
   onBusyChange?: (busy: boolean) => void;
@@ -62,7 +74,7 @@ export function ProjectSetupForm({
   const [type, setType] = useState<ProjectType | ''>('');
   const [start, setStart] = useState('');
   const [end, setEnd] = useState('');
-  const [template, setTemplate] = useState<ProjectTemplate>('blank');
+  const [template, setTemplate] = useState<ProjectTemplate>(initialTemplate);
   const [email, setEmail] = useState('');
   const [role, setRole] = useState<ProjectRole>('editor');
   const [invites, setInvites] = useState<Array<{ email: string; role: ProjectRole }>>([]);

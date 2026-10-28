@@ -157,7 +157,6 @@
     "loadError": "Non riesco a caricare questa sezione. Ricarica la pagina per riprovare.",
     "templates": {
       "title": "Inizia da un modello",
-      "needsProject": "Serve un progetto che puoi modificare.",
       "blank": {
         "name": "Board vuota",
         "body": "Parti da zero"
@@ -1730,13 +1729,17 @@
     "unarchive": "Ripristina",
     "noDates": "Date da definire",
     "boards_one": "{{count}} board",
-    "boards_other": "{{count}} board"
+    "boards_other": "{{count}} board",
+    "pinned": "Fissato",
+    "saveError": "Non è stato possibile salvare la modifica. Riprova."
   },
   "onboarding": {
     "guidedSetup": "Configurazione guidata",
     "pendingEmail": "Aggiungi l’indirizzo email alla lista degli inviti, oppure svuota il campo per creare il progetto.",
-    "title": "Il tuo primo progetto",
-    "subtitle": "Scegli il punto di partenza e invita il team. Puoi completare i dettagli più avanti.",
+    "title": "Nuovo progetto",
+    "firstTitle": "Il tuo primo progetto",
+    "subtitle": "Scegli un modello, le date e invita il team. Potrai cambiare tutto dopo.",
+    "firstSubtitle": "Scegli il punto di partenza e invita il team. Puoi completare i dettagli più avanti.",
     "type": "Tipo di progetto",
     "types": {
       "short_film": "Cortometraggio",

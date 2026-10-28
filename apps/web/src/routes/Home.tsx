@@ -1,6 +1,6 @@
 import type { Notification, PlannedShootingDay, Project, RecentBoard } from '@inkadra/shared';
 import { Avatar, Button, EmptyState, Icon, type IconName } from '@inkadra/ui';
-import { type MouseEvent, type ReactNode, useId, useMemo, useState } from 'react';
+import { type MouseEvent, type ReactNode, useId, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router';
 import { authorName } from '../board/review-model.ts';
@@ -11,7 +11,6 @@ import { describeNotification, relativeTime } from '../notifications/Notificatio
 import { useProjects } from './AppLayout.tsx';
 import { BoardPreview } from './BoardPreview.tsx';
 import {
-  editableProjects,
   type Loadable,
   localDate,
   RECENT_BOARDS,
@@ -20,7 +19,7 @@ import {
   useRecentBoards,
   useShootingDays,
 } from './home-data.ts';
-import { choiceKey, NewBoardDialog, START_CHOICES, type StartChoice } from './NewBoardDialog.tsx';
+import { PROJECT_TEMPLATES, type ProjectTemplate } from './project-setup.ts';
 import './home.css';
 
 function greetingKey(hour: number) {
@@ -29,10 +28,12 @@ function greetingKey(hour: number) {
   return 'home.greeting.evening';
 }
 
-const CHOICE_ICONS: Record<StartChoice, IconName> = {
-  production: 'column',
+const TEMPLATE_ICONS: Record<ProjectTemplate, IconName> = {
+  production: 'scene',
   moodboard: 'image',
   storyboard: 'storyboard',
+  shotlist: 'shotlist',
+  pitch: 'board',
   blank: 'plus',
 };
 
@@ -46,8 +47,6 @@ export function Home() {
   const today = useShootingDays(localDate(now));
   const recent = useRecentBoards();
   const activity = useActivity(now);
-  const writable = useMemo(() => editableProjects(projects), [projects]);
-  const [newBoard, setNewBoard] = useState<StartChoice | null>(null);
   const days = today.state === 'ready' ? today.items : [];
   const go = (to: string) => (e: MouseEvent) => {
     e.preventDefault();
@@ -181,7 +180,7 @@ export function Home() {
             title={t('home.noProjects')}
             actions={
               <>
-                <Button variant="primary" icon="plus" onClick={openNewProject}>
+                <Button variant="primary" icon="plus" onClick={() => openNewProject()}>
                   {t('nav.newProject')}
                 </Button>
                 <Button variant="ghost" onClick={() => navigate('/onboarding')}>
@@ -216,36 +215,25 @@ export function Home() {
         </Section>
       )}
 
-      <Section
-        id="home-templates"
-        title={t('home.templates.title')}
-        hint={writable.length === 0 ? t('home.templates.needsProject') : undefined}
-      >
+      <Section id="home-templates" title={t('home.templates.title')}>
         <div className="home__templates">
-          {START_CHOICES.map((c) => (
+          {PROJECT_TEMPLATES.map((c) => (
             <button
               key={c}
               type="button"
               className="ink-card home__template"
-              disabled={writable.length === 0}
-              onClick={() => setNewBoard(c)}
+              // The same templates and form as New project and the guided setup.
+              onClick={() => openNewProject(c)}
             >
               <span className="home__template-icon" aria-hidden="true">
-                <Icon name={CHOICE_ICONS[c]} size={16} />
+                <Icon name={TEMPLATE_ICONS[c]} size={16} />
               </span>
-              <span className="home__name">{t(choiceKey(c, 'name'))}</span>
-              <span className="ink-muted home__when">{t(choiceKey(c, 'body'))}</span>
+              <span className="home__name">{t(`onboarding.templates.${c}.name`)}</span>
+              <span className="ink-muted home__when">{t(`onboarding.templates.${c}.body`)}</span>
             </button>
           ))}
         </div>
       </Section>
-
-      <NewBoardDialog
-        open={newBoard !== null}
-        projects={writable}
-        initial={newBoard ?? 'blank'}
-        onClose={() => setNewBoard(null)}
-      />
     </div>
   );
 }

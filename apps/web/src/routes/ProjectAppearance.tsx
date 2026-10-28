@@ -1,6 +1,6 @@
 import { defaultProjectIcon, type Project, ProjectIcon, type z } from '@inkadra/shared';
 import { Button, Dialog, DialogActions, NavItem, ProjectGlyph, TextField } from '@inkadra/ui';
-import { type MouseEvent, useEffect, useRef, useState } from 'react';
+import { type KeyboardEvent, type MouseEvent, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { updateProjectAppearance } from './projects.ts';
@@ -10,30 +10,42 @@ type Appearance = z.infer<typeof ProjectIcon>;
 export const canEditProjectAppearance = (project: Pick<Project, 'myRole'>) =>
   project.myRole === 'owner' || project.myRole === 'editor';
 
-/** Local project action menu; the later application-wide menu can reuse the dialog/action. */
-export function ProjectNavItem({
-  project,
-  active,
-  onClick,
-}: {
-  project: Project;
-  active: boolean;
-  onClick: (event: MouseEvent<HTMLAnchorElement>) => void;
-}) {
+export interface ProjectMenuItem {
+  label: string;
+  action: () => void;
+  disabled?: boolean;
+}
+
+/**
+ * The ⋯ menu of a project, shared by the sidebar and the Projects page: project appearance
+ * for editors, then the caller's own actions. Returns the trigger, the right-click handlers
+ * and the layer (menu and dialog) so each place keeps its own markup.
+ */
+export function useProjectMenu(
+  project: Project,
+  extra: ProjectMenuItem[] = [],
+  onSaved?: (project: Project) => void,
+) {
   const { t } = useTranslation();
   const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
   const [editing, setEditing] = useState(false);
   const opener = useRef<HTMLElement | null>(null);
-  const item = useRef<HTMLButtonElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
-  const editable = canEditProjectAppearance(project);
+  const items: ProjectMenuItem[] = [
+    ...(canEditProjectAppearance(project)
+      ? [{ label: t('appearance.title'), action: () => setEditing(true) }]
+      : []),
+    ...extra,
+  ];
+  const enabled = items.length > 0;
   const close = () => {
     setMenu(null);
     opener.current?.focus();
   };
   useEffect(() => {
     if (!menu) return;
-    item.current?.focus();
+    menuRef.current?.querySelector<HTMLButtonElement>('[role="menuitem"]:not(:disabled)')?.focus();
     const dismiss = (event: PointerEvent) => {
       if (
         !menuRef.current?.contains(event.target as Node) &&
@@ -44,55 +56,62 @@ export function ProjectNavItem({
     document.addEventListener('pointerdown', dismiss);
     return () => document.removeEventListener('pointerdown', dismiss);
   }, [menu]);
-  const open = (target: HTMLElement, x?: number, y?: number) => {
-    opener.current = target;
-    const rect = target.getBoundingClientRect();
+  /** Opens at `anchor`; focus returns to `focus` when the menu or its dialog closes. */
+  const open = (anchor: HTMLElement, focus: HTMLElement | null, x?: number, y?: number) => {
+    opener.current = focus;
+    const rect = anchor.getBoundingClientRect();
     setMenu({
       x: Math.max(8, Math.min(x ?? rect.left, window.innerWidth - 240)),
-      y: Math.max(8, Math.min(y ?? rect.bottom, window.innerHeight - 100)),
+      y: Math.max(8, Math.min(y ?? rect.bottom, window.innerHeight - 48 - items.length * 40)),
     });
   };
-  return (
-    <div className="project-navigation">
-      <NavItem
-        leading={<ProjectGlyph {...project.icon} />}
-        label={project.name}
-        href={`/p/${project.id}`}
-        active={active}
-        onClick={onClick}
-        onContextMenu={
-          editable
-            ? (event) => {
-                event.preventDefault();
-                open(event.currentTarget, event.clientX, event.clientY);
-              }
-            : undefined
-        }
-        onKeyDown={
-          editable
-            ? (event) => {
-                if (event.key === 'ContextMenu' || (event.shiftKey && event.key === 'F10')) {
-                  event.preventDefault();
-                  open(event.currentTarget);
-                }
-              }
-            : undefined
-        }
-      />
-      {editable && (
-        <button
-          type="button"
-          className="project-navigation__options"
-          aria-label={t('appearance.options', { name: project.name })}
-          aria-haspopup="menu"
-          aria-expanded={!!menu}
-          onClick={(event) => (menu ? close() : open(event.currentTarget))}
-        >
-          ⋯
-        </button>
-      )}
+  // The target can be a whole card that holds the menu's own dialogs: events from those, or
+  // from anything portalled out of it, keep their native behaviour.
+  const fromTarget = (event: MouseEvent<HTMLElement> | KeyboardEvent<HTMLElement>) => {
+    const target = event.target as Element;
+    if (!event.currentTarget.contains(target)) return false;
+    const dialog = target.closest('dialog');
+    return !dialog || dialog.contains(event.currentTarget);
+  };
+  // A card itself takes no focus: return it to the link under the event, else to the ⋯ button.
+  const focusFor = (event: MouseEvent<HTMLElement> | KeyboardEvent<HTMLElement>) =>
+    (event.target as Element).closest<HTMLElement>('a[href], button') ??
+    (event.currentTarget.matches('a[href], button, [tabindex]') ? event.currentTarget : null) ??
+    triggerRef.current;
+  const targetProps = enabled
+    ? {
+        onContextMenu: (event: MouseEvent<HTMLElement>) => {
+          if (!fromTarget(event)) return;
+          event.preventDefault();
+          open(event.currentTarget, focusFor(event), event.clientX, event.clientY);
+        },
+        onKeyDown: (event: KeyboardEvent<HTMLElement>) => {
+          if (!fromTarget(event)) return;
+          if (event.key === 'ContextMenu' || (event.shiftKey && event.key === 'F10')) {
+            event.preventDefault();
+            open(event.currentTarget, focusFor(event));
+          }
+        },
+      }
+    : {};
+  const trigger = (className: string) =>
+    enabled && (
+      <button
+        ref={triggerRef}
+        type="button"
+        className={className}
+        aria-label={t('appearance.options', { name: project.name })}
+        aria-haspopup="menu"
+        aria-expanded={!!menu}
+        onClick={(event) => (menu ? close() : open(event.currentTarget, event.currentTarget))}
+      >
+        ⋯
+      </button>
+    );
+  const layer = (
+    <>
       {menu &&
-        editable &&
+        enabled &&
         createPortal(
           <div
             ref={menuRef}
@@ -109,33 +128,77 @@ export function ProjectNavItem({
                 close();
               } else if (['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) {
                 event.preventDefault();
-                item.current?.focus();
+                const all = [
+                  ...(menuRef.current?.querySelectorAll<HTMLButtonElement>(
+                    '[role="menuitem"]:not(:disabled)',
+                  ) ?? []),
+                ];
+                const i = all.indexOf(document.activeElement as HTMLButtonElement);
+                const next =
+                  event.key === 'Home'
+                    ? 0
+                    : event.key === 'End'
+                      ? all.length - 1
+                      : (i + (event.key === 'ArrowDown' ? 1 : -1) + all.length) % all.length;
+                all[next]?.focus();
               }
             }}
           >
-            <button
-              ref={item}
-              type="button"
-              role="menuitem"
-              onClick={() => {
-                setMenu(null);
-                setEditing(true);
-              }}
-            >
-              {t('appearance.title')}
-            </button>
+            {items.map((item) => (
+              <button
+                key={item.label}
+                type="button"
+                role="menuitem"
+                disabled={item.disabled}
+                onClick={() => {
+                  close();
+                  item.action();
+                }}
+              >
+                {item.label}
+              </button>
+            ))}
           </div>,
           opener.current?.closest('dialog') ?? document.body,
         )}
       {editing && (
         <ProjectAppearanceDialog
           project={project}
+          onSaved={onSaved}
           onClose={() => {
             setEditing(false);
             opener.current?.focus();
           }}
         />
       )}
+    </>
+  );
+  return { trigger, targetProps, layer };
+}
+
+/** A project in the sidebar, with its ⋯ menu. */
+export function ProjectNavItem({
+  project,
+  active,
+  onClick,
+}: {
+  project: Project;
+  active: boolean;
+  onClick: (event: MouseEvent<HTMLAnchorElement>) => void;
+}) {
+  const { trigger, targetProps, layer } = useProjectMenu(project);
+  return (
+    <div className="project-navigation">
+      <NavItem
+        leading={<ProjectGlyph {...project.icon} />}
+        label={project.name}
+        href={`/p/${project.id}`}
+        active={active}
+        onClick={onClick}
+        {...targetProps}
+      />
+      {trigger('project-navigation__options')}
+      {layer}
     </div>
   );
 }
