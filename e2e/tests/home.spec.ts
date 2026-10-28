@@ -59,11 +59,17 @@ test('home shows today’s shooting day and starts a board from a template', asy
   await expect(todayCard).toContainText('Stazione Centrale');
   await expect(todayCard).toContainText('18:30');
   await expect(main.getByText(/oggi si gira a Stazione Centrale/)).toBeVisible();
+  // The project's own board shows as the project, not again among the recent boards.
+  await expect(
+    main
+      .getByRole('region', { name: 'Progetti recenti' })
+      .getByRole('link', { name: /Home overview/ }),
+  ).toBeVisible();
   await expect(
     main
       .getByRole('region', { name: 'Board recenti' })
       .getByRole('link', { name: /Home overview/ }),
-  ).toBeVisible();
+  ).toHaveCount(0);
 
   await main
     .getByRole('region', { name: 'Inizia da un modello' })
