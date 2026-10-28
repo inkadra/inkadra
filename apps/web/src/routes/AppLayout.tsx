@@ -489,7 +489,7 @@ export function AppLayout() {
               <div className="home-header-actions">
                 <Button
                   icon="plus"
-                  disabled={editableProjects(projects).length === 0}
+                  disabled={writable.length === 0}
                   onClick={() => {
                     setBoardProject(undefined);
                     setCreatingBoard(true);
@@ -622,6 +622,10 @@ export function AppLayout() {
                     ? t('mobile.newBoardIn', { project: here.name })
                     : t('home.newBoard.action')}
                 </Button>
+                {/* Phones have no Esc and a tap outside does not close the sheet. */}
+                <Button variant="ghost" block onClick={() => setNewSheet(false)}>
+                  {t('mobile.close')}
+                </Button>
               </div>
             </Dialog>
           </div>
@@ -634,7 +638,7 @@ export function AppLayout() {
             actions={appActions({
               t,
               admin: user.role === 'admin',
-              canCreateBoard: editableProjects(projects).length > 0,
+              canCreateBoard: writable.length > 0,
               theme,
               navigate,
               newProject: () => setCreating(true),

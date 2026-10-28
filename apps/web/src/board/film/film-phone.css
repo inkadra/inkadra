@@ -58,8 +58,12 @@
   }
   :is(.story, .shots) > .story__bar .story__mode {
     flex: 1;
+    min-width: 0;
     min-height: 44px;
     padding: 0 6px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
   :is(.story, .shots) > .story__bar .ink-header__spacer {
     display: none;
