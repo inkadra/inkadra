@@ -1958,8 +1958,9 @@ button.crumb--editable:focus-visible {
 }
 .toolbar__btn:not([aria-pressed="true"]):hover,
 .toolbar__btn:not([aria-pressed="true"]):active {
-  background: var(--kind-bg);
-  color: var(--kind-fg);
+  /* Buttons without a kind (the pen editor's) keep the plain hover. */
+  background: var(--kind-bg, var(--ink-surface-2));
+  color: var(--kind-fg, var(--ink-text-primary));
 }
 .toolbar__btn[aria-pressed="true"] {
   color: var(--ink-accent-soft-fg);
