@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { createAuth } from './auth.ts';
 import { loadConfig } from './config.ts';
 import { createDatabase } from './db/client.ts';
@@ -143,6 +143,31 @@ it('accepts verified OIDC email claims including Cognito string true and rejects
     for (const email_verified of [false, 'false', undefined, 1])
       expect(() => map({ email: 'member@example.com', email_verified })).toThrow();
     expect(() => map({ email: 'member@elsewhere.com', email_verified: true })).toThrow();
+  } finally {
+    auth.closeSecurity();
+    await sql.end();
+  }
+});
+
+it('preserves the provider authorization URL before any session exists', async () => {
+  const { db, sql } = createDatabase(config.DATABASE_URL);
+  const auth = createAuth(
+    { ...config, GOOGLE_CLIENT_ID: 'test', GOOGLE_CLIENT_SECRET: 'test' },
+    db,
+  );
+  vi.spyOn((await auth.$context).internalAdapter, 'createVerificationValue').mockResolvedValue(
+    {} as never,
+  );
+  try {
+    const response = await auth.handler(
+      new Request('https://example.com/api/auth/sign-in/social', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ provider: 'google', callbackURL: '/' }),
+      }),
+    );
+    expect(response.status).toBe(200);
+    expect(Object.keys((await response.json()) as object)).toContain('url');
   } finally {
     auth.closeSecurity();
     await sql.end();

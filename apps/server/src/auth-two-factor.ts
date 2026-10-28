@@ -18,7 +18,18 @@ export function hardenedTwoFactor(issuer: string) {
     (ctx.path?.startsWith('/callback/') ?? false);
   hook.handler = createAuthMiddleware(async (ctx) => {
     const needsChallenge = ctx.context.newSession?.user.twoFactorEnabled;
-    const result = await upstream(ctx);
+    // A nested Better Call middleware returns an envelope when returnHeaders is true.
+    // Forward its cookies separately and return only its body to the outer hook.
+    const result = (await upstream({ ...ctx, returnHeaders: true })) as unknown as {
+      headers?: Headers;
+      response: Awaited<ReturnType<typeof upstream>>;
+    };
+    if (result.headers) {
+      for (const [name, value] of result.headers)
+        if (name !== 'set-cookie') ctx.setHeader(name, value);
+      for (const cookie of result.headers.getSetCookie())
+        ctx.responseHeaders.append('set-cookie', cookie);
+    }
     if (
       needsChallenge &&
       !ctx.context.newSession &&
@@ -35,7 +46,7 @@ export function hardenedTwoFactor(issuer: string) {
       ctx.context.responseHeaders?.delete('location');
       throw ctx.redirect(`/login?twoFactor=true&next=${encodeURIComponent(next)}`);
     }
-    return result;
+    return result.response;
   });
   return plugin;
 }
