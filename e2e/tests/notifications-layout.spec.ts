@@ -86,9 +86,10 @@ for (const theme of ['light', 'dark']) {
       await render(page, theme);
       await expect(page.locator('.notifications')).toHaveCSS('position', 'fixed');
       expect(await page.locator('.notifications').boundingBox()).toEqual({
-        x: 52,
+        // From the collapsed rail to the right edge, over the header.
+        x: 56,
         y: 0,
-        width: width - 52,
+        width: width - 56,
         height: 900,
       });
       await expect(page.locator('.notifications__detail-pane')).toBeVisible();
@@ -110,10 +111,11 @@ for (const theme of ['light', 'dark']) {
     await page.setViewportSize({ width: 390, height: 844 });
     await render(page, theme);
     expect(await page.locator('.notifications').boundingBox()).toEqual({
+      // Between the phone header and the bottom navigation.
       x: 0,
-      y: 0,
+      y: 56,
       width: 390,
-      height: 780,
+      height: 844 - 56 - 64,
     });
     await expect(page.locator('.notifications__detail-pane')).toBeHidden();
     expect((await page.locator('.notifications__list-pane').boundingBox())?.width).toBe(390);
