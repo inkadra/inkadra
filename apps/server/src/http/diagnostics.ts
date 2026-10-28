@@ -8,7 +8,7 @@ import { type Config, VERSION } from '../config.ts';
 import type { Database } from '../db/client.ts';
 import { addressBucket, RateLimiter } from '../rate-limits.ts';
 import type { Storage } from '../storage.ts';
-import { requireActor } from './auth-routes.ts';
+import { requireSession } from './auth-routes.ts';
 import { HttpError } from './errors.ts';
 
 interface Deps {
@@ -46,7 +46,7 @@ export function registerDiagnostics(app: FastifyInstance, deps: Deps) {
       throw new HttpError('rate_limited', 'Too many checks: wait a minute.');
     const setup = (await countUsers(db)) === 0;
     if (!setup) {
-      const actor = await requireActor(auth, req, db);
+      const { user: actor } = await requireSession(auth, req, db);
       if (actor.role !== 'admin')
         throw new HttpError('forbidden', 'Only administrators can see the diagnostics.');
     }

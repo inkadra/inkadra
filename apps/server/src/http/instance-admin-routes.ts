@@ -14,7 +14,7 @@ import type { Config } from '../config.ts';
 import type { Database } from '../db/client.ts';
 import { instanceSetting, personalToken, session, user } from '../db/schema.ts';
 import { readInstanceSettings } from '../instance-settings.ts';
-import { requireActor } from './auth-routes.ts';
+import { requireActor, requireSession } from './auth-routes.ts';
 import { HttpError } from './errors.ts';
 
 export function registerInstanceAdminRoutes(
@@ -22,7 +22,7 @@ export function registerInstanceAdminRoutes(
   { db, auth, config }: { db: Database; auth: Auth; config: Config },
 ) {
   const admin = async (req: FastifyRequest) => {
-    const actor = await requireActor(auth, req, db);
+    const { user: actor } = await requireSession(auth, req, db);
     if (actor.role !== 'admin') throw new HttpError('forbidden', 'Administrators only.');
     return actor;
   };

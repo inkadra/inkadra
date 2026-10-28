@@ -64,7 +64,7 @@ export function SignInOptions({
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [sent, setSent] = useState(false);
-  const [twoFactor, setTwoFactor] = useState(false);
+  const [twoFactor, setTwoFactor] = useState(() => new URLSearchParams(window.location.search).get('twoFactor') === 'true');
   const [withPassword, setWithPassword] = useState(!auth?.magicLink || signUp);
   const providers = (auth?.google ? 1 : 0) + (auth?.oidc.length ?? 0);
 

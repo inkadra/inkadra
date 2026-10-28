@@ -1,3 +1,4 @@
+import { securityHeaders } from './security-headers.ts';
 import { existsSync } from 'node:fs';
 import { join, resolve, sep } from 'node:path';
 import fastifyStatic from '@fastify/static';
@@ -93,6 +94,7 @@ export async function createApp(deps: AppDeps) {
   app.setErrorHandler(errorHandler);
 
   app.addHook('onSend', async (req, reply) => {
+    for (const [name, value] of Object.entries(securityHeaders(config))) reply.header(name, value);
     reply.header('x-content-type-options', 'nosniff');
     reply.header('x-frame-options', 'DENY');
     // The token of a share link is in the path of its guest page: it must not leak to the

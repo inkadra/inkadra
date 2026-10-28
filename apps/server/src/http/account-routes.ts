@@ -36,6 +36,7 @@ import {
   userAvatar,
   verification,
 } from '../db/schema.ts';
+import { securityNotification, type Mailer } from '../mailer.ts';
 import type { Jobs } from '../jobs.ts';
 import { addressBucket, RateLimiter } from '../rate-limits.ts';
 import { newSecret, pkceChallenge, safeEqual, sha256 } from '../secrets.ts';
@@ -50,6 +51,7 @@ interface Deps {
   db: Database;
   auth: Auth;
   jobs: Jobs;
+  mailer?: Mailer;
 }
 
 const TokenParams = z.object({ tokenId: Id });
@@ -223,6 +225,8 @@ export function registerAccountRoutes(app: FastifyInstance, deps: Deps) {
 
   app.post(v1('/me/tokens'), async (req, reply) => {
     const session = await requireSession(auth, req, db);
+    if (Date.now() - new Date(session.session.createdAt).getTime() >= FRESH_SIGN_IN_MS)
+      throw new HttpError('forbidden', 'Sign in again to continue.');
     const input = CreatePersonalToken.parse(req.body ?? {});
     const [mine] = await db
       .select({ n: count() })
@@ -231,10 +235,9 @@ export function registerAccountRoutes(app: FastifyInstance, deps: Deps) {
     if ((mine?.n ?? 0) >= 100) throw new HttpError('conflict', 'Too many tokens: revoke some.');
     const { token, row } = await issueToken(db, session.user.id, {
       name: input.name,
-      expiresAt: input.expiresInDays
-        ? new Date(Date.now() + input.expiresInDays * 86_400_000)
-        : null,
+      expiresAt: new Date(Date.now() + (input.expiresInDays ?? 90) * 86_400_000),
     });
+    securityNotification(deps.mailer, session.user, 'token', req.log);
     const body: CreatedPersonalToken = { ...toPersonalToken(row), token };
     return reply.status(201).send(body);
   });
@@ -254,6 +257,8 @@ export function registerAccountRoutes(app: FastifyInstance, deps: Deps) {
 
   app.post(v1('/app-authorizations'), async (req) => {
     const session = await requireSession(auth, req, db);
+    if (Date.now() - new Date(session.session.createdAt).getTime() >= FRESH_SIGN_IN_MS)
+      throw new HttpError('forbidden', 'Sign in again to continue.');
     const input = CreateAppAuthorization.parse(req.body ?? {});
     if (!allowedRedirects(config, input.clientId).includes(input.redirectUri))
       throw new HttpError('bad_request', 'This redirect address is not allowed for this app.');
@@ -315,6 +320,7 @@ export function registerAccountRoutes(app: FastifyInstance, deps: Deps) {
       name: pending.deviceName ?? CLIENT_NAMES[pending.clientId],
       client: pending.clientId,
     });
+    securityNotification(deps.mailer, owner, 'token', req.log);
     const body: AppToken = { token, tokenId: issued.id, user: toUser(owner) };
     return body;
   });
