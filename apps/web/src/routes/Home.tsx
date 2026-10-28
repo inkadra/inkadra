@@ -1,5 +1,5 @@
 import type { Notification, PlannedShootingDay, Project, RecentBoard } from '@inkadra/shared';
-import { Avatar, Icon, type IconName, ProjectGlyph } from '@inkadra/ui';
+import { Avatar, Icon, type IconName, kindStyle, ProjectGlyph } from '@inkadra/ui';
 import { type MouseEvent, type ReactNode, useId, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router';
@@ -203,7 +203,12 @@ export function Home() {
               // The same templates and form as New project and the guided setup.
               onClick={() => openNewProject(c)}
             >
-              <span className="home__template-icon" data-kind={c} aria-hidden="true">
+              <span
+                className="home__template-icon"
+                data-kind={c}
+                style={kindStyle(c)}
+                aria-hidden="true"
+              >
                 <Icon name={TEMPLATE_ICONS[c]} size={16} />
               </span>
               <span className="home__name">{t(`onboarding.templates.${c}.name`)}</span>
@@ -329,7 +334,12 @@ function BoardCard({
     >
       <BoardPreview boardId={board.id} project={project} />
       <span className="home__meta">
-        <span id={kindId} className="home__kind" data-kind={board.kind}>
+        <span
+          id={kindId}
+          className="home__kind"
+          data-kind={board.kind}
+          style={kindStyle(board.kind)}
+        >
           {t(`board.types.${board.kind}`)}
         </span>
         <span id={labelId} className="home__name">

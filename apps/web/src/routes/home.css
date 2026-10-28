@@ -253,7 +253,14 @@ a.home__activity-item:hover {
   display: flex;
   align-items: flex-start;
   gap: 10px;
+  padding: 12px 16px;
+  border: 1px solid var(--ink-border-default);
+  border-radius: 8px;
   cursor: pointer;
+}
+.home-new__choice:has(input:checked) {
+  border-color: var(--ink-accent-soft-fg);
+  background: var(--ink-accent-soft-bg);
 }
 .home-new__choice input {
   margin-top: 3px;
@@ -412,17 +419,9 @@ a.home__activity-item:hover {
   color: var(--ink-text-secondary);
   background: var(--ink-surface-2);
 }
-.home [data-kind="storyboard"] {
-  color: var(--ink-tag-purple);
-  background: var(--ink-tag-purple-bg);
-}
-.home [data-kind="moodboard"] {
-  color: var(--ink-tag-orange);
-  background: var(--ink-tag-orange-bg);
-}
-.home [data-kind="shotlist"] {
-  color: var(--ink-tag-green);
-  background: var(--ink-tag-green-bg);
+.home [data-kind] {
+  color: var(--kind-fg);
+  background: var(--kind-bg);
 }
 .home__when svg {
   width: 12px;

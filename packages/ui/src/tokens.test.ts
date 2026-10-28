@@ -25,8 +25,17 @@ describe('tokens', () => {
       return (x + 0.05) / (y + 0.05);
     };
     for (const theme of [light, dark]) {
-      for (const name of ['tag-teal', 'tag-yellow', 'tag-red', 'tag-pink'] as const) {
+      for (const name of [
+        'tag-orange',
+        'tag-purple',
+        'tag-green',
+        'tag-teal',
+        'tag-yellow',
+        'tag-red',
+        'tag-pink',
+      ] as const) {
         expect(ratio(theme[name], theme['surface-1'])).toBeGreaterThanOrEqual(3);
+        expect(ratio(theme[name], theme[`${name}-bg`])).toBeGreaterThanOrEqual(3);
       }
     }
     expect(ratio(dark['on-accent'], dark['accent-button'])).toBeGreaterThan(4.5);

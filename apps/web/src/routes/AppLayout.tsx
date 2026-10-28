@@ -36,6 +36,7 @@ import {
   storyboardOf,
   viewDestination,
   viewHref,
+  viewIcon,
 } from '../board/views.ts';
 import { appActions } from '../commands/app-actions.ts';
 import { api, authApi } from '../lib/api.ts';
@@ -352,6 +353,7 @@ export function AppLayout() {
             <div className="ink-sidebar__modules">
               <NavItem
                 icon="storyboard"
+                contentKind="storyboard"
                 label={t('nav.storyboard')}
                 count={storyboardCounts?.frameCount}
                 title={
@@ -368,6 +370,7 @@ export function AppLayout() {
               />
               <NavItem
                 icon="shotlist"
+                contentKind="shotlist"
                 label={t('nav.shotlist')}
                 count={storyboardCounts?.framesToShoot}
                 title={
@@ -384,6 +387,7 @@ export function AppLayout() {
               />
               <NavItem
                 icon="calendar"
+                contentKind="schedule"
                 label={t('nav.schedule')}
                 active={filmRowActive('schedule')}
                 href={hrefFor('schedule')}
@@ -394,6 +398,7 @@ export function AppLayout() {
               />
               <NavItem
                 icon="people"
+                contentKind="review"
                 label={t('nav.clients')}
                 active={filmRowActive('review')}
                 href={hrefFor('review')}
@@ -519,18 +524,25 @@ export function AppLayout() {
         )}
       </div>
       {projectId && (
-        <select
-          className="mobile-view-switcher"
-          aria-label={t('film.views.label')}
-          value={currentView ?? ''}
-          onChange={(e) => showView(e.target.value as BoardView)}
-        >
-          {pickerViews(openKind, currentView).map((v) => (
-            <option key={v} value={v}>
-              {t(`film.views.${v}`)}
-            </option>
-          ))}
-        </select>
+        <div className="mobile-view-picker">
+          <Icon
+            name={viewIcon(currentView ?? defaultView(openKind))}
+            contentKind={currentView ?? defaultView(openKind)}
+            size={18}
+          />
+          <select
+            className="mobile-view-switcher"
+            aria-label={t('film.views.label')}
+            value={currentView ?? ''}
+            onChange={(e) => showView(e.target.value as BoardView)}
+          >
+            {pickerViews(openKind, currentView).map((v) => (
+              <option key={v} value={v}>
+                {t(`film.views.${v}`)}
+              </option>
+            ))}
+          </select>
+        </div>
       )}
       <NotificationBell
         unread={unread}
@@ -760,6 +772,7 @@ function BoardTree({
           <div key={b.id}>
             <NavItem
               icon={b.kind === 'storyboard' ? 'storyboard' : 'board'}
+              contentKind={b.kind}
               label={b.title}
               count={size}
               title={size ? `${b.title} · ${t('nav.items', { count: size })}` : undefined}

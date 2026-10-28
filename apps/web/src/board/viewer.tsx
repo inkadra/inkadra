@@ -2,7 +2,7 @@
 import { createElement, updateElement } from '@inkadra/canvas-core';
 import type { Element } from '@inkadra/doc-schema';
 import type { Asset } from '@inkadra/shared';
-import { Avatar, Button } from '@inkadra/ui';
+import { Avatar, Button, Icon } from '@inkadra/ui';
 import { memo, useContext, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useClassifications } from '../lib/classifications.ts';
@@ -392,14 +392,18 @@ export function MediaViewer({
               {tagLabel(tag)}
             </span>
           ))}
-          <div style={{ flex: 1 }} />
+          <div className="viewer__header-spacer" />
           {gallery?.onCompare && (
             <button
               type="button"
               className={`ink-btn ink-btn--secondary viewer__stage-btn${comparison ? ' is-active' : ''}`}
+              aria-label={t('moodboard.compare')}
               onClick={gallery.onCompare}
             >
-              {t('moodboard.compare')}
+              <span className="viewer__action-icon" aria-hidden="true">
+                <Icon name="column" size={18} />
+              </span>
+              <span className="viewer__action-label">{t('moodboard.compare')}</span>
             </button>
           )}
           <button
@@ -407,16 +411,27 @@ export function MediaViewer({
             className="ink-btn ink-btn--secondary viewer__stage-btn"
             onClick={() => setZoom100((z) => !z)}
             title={t('viewer.zoomHelp')}
+            aria-label={zoom100 ? t('viewer.zoomFit') : t('viewer.zoom100')}
             aria-keyshortcuts="Space"
           >
-            {zoom100 ? t('viewer.zoomFit') : t('viewer.zoom100')}
+            <span className="viewer__action-icon" aria-hidden="true">
+              <Icon name="fit" size={18} />
+            </span>
+            <span className="viewer__action-label">
+              {zoom100 ? t('viewer.zoomFit') : t('viewer.zoom100')}
+            </span>
           </button>
           <button
             type="button"
             className="ink-btn ink-btn--secondary viewer__stage-btn"
             onClick={onClose}
+            aria-label={t('viewer.close')}
           >
-            {t('viewer.close')} <span className="viewer__kbd">{t('viewer.keys.esc')}</span>
+            <span className="viewer__action-icon" aria-hidden="true">
+              <Icon name="close" size={18} />
+            </span>
+            <span className="viewer__action-label">{t('viewer.close')}</span>{' '}
+            <span className="viewer__kbd">{t('viewer.keys.esc')}</span>
           </button>
         </header>
 
@@ -473,7 +488,9 @@ export function MediaViewer({
             </>
           )}
 
-          <div className={`viewer__media-wrap${zoom100 ? ' is-zoomed' : ''}`}>
+          <div
+            className={`viewer__media-wrap${isYoutube ? ' viewer__media-wrap--embed' : ''}${zoom100 ? ' is-zoomed' : ''}`}
+          >
             {comparison && comparisonAsset && comparisonAsset !== 'missing' && (
               <img
                 className={`viewer__media ${zoom100 ? 'viewer__media--zoom100' : 'viewer__media--contain'}`}
@@ -527,6 +544,7 @@ export function MediaViewer({
                 type="button"
                 className="viewer__picture-btn"
                 title={t('viewer.zoomHelp')}
+                aria-label={zoom100 ? t('viewer.zoomFit') : t('viewer.zoom100')}
                 aria-pressed={zoom100}
                 onClick={() => setZoom100((z) => !z)}
               >

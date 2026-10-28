@@ -42,7 +42,7 @@ export default defineConfig({
   projects: [
     {
       name: 'chromium',
-      testIgnore: '**/perf/**',
+      testIgnore: ['**/perf/**'],
       use: { ...devices['Desktop Chrome'], viewport: { width: 1440, height: 900 } },
     },
     {
@@ -57,25 +57,32 @@ export default defineConfig({
       },
     },
   ],
-  webServer: {
-    command: 'node ../apps/server/dist/main.js all',
-    url: `${baseURL}/api/v1/health`,
-    reuseExistingServer: false,
-    timeout: 60_000,
-    env: {
-      NODE_ENV: 'development',
-      AUTH_RATE_LIMITS: 'off',
-      PORT: String(port),
-      PUBLIC_URL: baseURL,
-      DATABASE_URL:
-        process.env.DATABASE_URL ?? 'postgres://inkadra:inkadra@localhost:5432/inkadra_e2e',
-      REDIS_URL: process.env.REDIS_URL ?? 'redis://localhost:6379',
-      AUTH_SECRET: 'e2e-only-secret-e2e-only-secret-e2e-only',
-      WEB_DIST: webDist,
-      // Uploaded files; the default /data only exists in the image.
-      DATA_DIR: process.env.E2E_DATA_DIR ?? join(tmpdir(), 'inkadra-e2e'),
-      INKADRA_VERSION: '0.1.0-e2e',
-      LOG_LEVEL: 'warn',
+  webServer: [
+    {
+      command: 'pnpm --filter @inkadra/web exec vite --host 127.0.0.1 --port 5179 --strictPort',
+      url: 'http://127.0.0.1:5179',
+      timeout: 60_000,
     },
-  },
+    {
+      command: 'node ../apps/server/dist/main.js all',
+      url: `${baseURL}/api/v1/health`,
+      reuseExistingServer: false,
+      timeout: 60_000,
+      env: {
+        NODE_ENV: 'development',
+        AUTH_RATE_LIMITS: 'off',
+        PORT: String(port),
+        PUBLIC_URL: baseURL,
+        DATABASE_URL:
+          process.env.DATABASE_URL ?? 'postgres://inkadra:inkadra@localhost:5432/inkadra_e2e',
+        REDIS_URL: process.env.REDIS_URL ?? 'redis://localhost:6379',
+        AUTH_SECRET: 'e2e-only-secret-e2e-only-secret-e2e-only',
+        WEB_DIST: webDist,
+        // Uploaded files; the default /data only exists in the image.
+        DATA_DIR: process.env.E2E_DATA_DIR ?? join(tmpdir(), 'inkadra-e2e'),
+        INKADRA_VERSION: '0.1.0-e2e',
+        LOG_LEVEL: 'warn',
+      },
+    },
+  ],
 });

@@ -633,7 +633,11 @@ function BoardCard({ element, editing }: { element: Of<'board'>; editing: boolea
   return (
     <div className="card__board">
       <span className="card__board-tile" aria-hidden="true">
-        <Icon name={board?.kind === 'storyboard' ? 'storyboard' : 'board'} size={22} />
+        <Icon
+          name={board?.kind === 'storyboard' ? 'storyboard' : 'board'}
+          contentKind={board?.kind ?? 'board'}
+          size={22}
+        />
       </span>
       {editing && board && !readOnly && !element.locked && canRenameBoard(board) ? (
         <input
