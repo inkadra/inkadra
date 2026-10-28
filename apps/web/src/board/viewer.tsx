@@ -397,8 +397,7 @@ export function MediaViewer({
             <button
               type="button"
               className={`ink-btn ink-btn--secondary viewer__stage-btn${comparison ? ' is-active' : ''}`}
-              aria-label=<span className="viewer__action-icon" aria-hidden="true">◫</span>
-              <span className="viewer__action-label">{t('moodboard.compare')}</span>
+              aria-label={t('moodboard.compare')}
               onClick={gallery.onCompare}
             >
               <span className="viewer__action-icon" aria-hidden="true">◫</span>

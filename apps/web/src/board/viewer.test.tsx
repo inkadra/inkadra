@@ -204,6 +204,7 @@ describe('MediaViewer video playback', () => {
         projectId="proj-01"
         userId="user-01"
         readOnly={false}
+        gallery={{ index: 3, total: 5, onPrevious: vi.fn(), onNext: vi.fn(), onCompare: vi.fn(), usedIn: [] }}
         onClose={vi.fn()}
       />,
     );
@@ -213,6 +214,7 @@ describe('MediaViewer video playback', () => {
     expect(html).toContain('viewer__action-icon');
     expect(html).toContain('viewer__action-label');
     expect(html).toContain('aria-label="Chiudi"');
+    expect(html).toContain('aria-label="moodboard.compare"');
     expect(html).toContain('aria-label="viewer.zoom100"');
     expect(html).toContain(
       'src="https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ?autoplay=1&amp;rel=0"',
