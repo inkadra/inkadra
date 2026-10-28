@@ -470,17 +470,39 @@ export function Canvas({
   const center = useCallback(
     (w = 240): Point => {
       const c = screenToWorld(vp.current, { x: size.w / 2, y: size.h / 2 });
-      const at = { x: c.x - w / 2, y: c.y - 60 };
-      const rects = store.getSnapshot().canvas.map((e) => store.rectOf(e));
+      const start = { x: c.x - w / 2, y: c.y - 60 };
+      const rects = store.getSnapshot().canvas.map(liveRect);
+      const free = (x: number, y: number) =>
+        !rects.some((r) => intersects(inflate(r, 12), { x, y, w, h: 120 }));
+      // Down and to the right first, as cards cascade…
       for (let i = 0; i < 12; i++) {
-        const probe = { x: at.x, y: at.y, w, h: 120 };
-        if (!rects.some((r) => intersects(inflate(r, 12), probe))) break;
-        at.x += 32;
-        at.y += 32;
+        const at = { x: start.x + i * 32, y: start.y + i * 32 };
+        if (free(at.x, at.y)) return at;
       }
-      return at;
+      // …then the nearest free spot in growing rings, so a crowded middle never stacks cards.
+      for (let ring = 1; ring <= 40; ring++) {
+        let best: Point | undefined;
+        let bestDistance = Number.POSITIVE_INFINITY;
+        for (let i = -ring; i <= ring; i++) {
+          for (const [dx, dy] of [
+            [i, -ring],
+            [i, ring],
+            [-ring, i],
+            [ring, i],
+          ] as const) {
+            const at = { x: start.x + dx * 32, y: start.y + dy * 32 };
+            const distance = dx * dx + dy * dy;
+            if (distance < bestDistance && free(at.x, at.y)) {
+              best = at;
+              bestDistance = distance;
+            }
+          }
+        }
+        if (best) return best;
+      }
+      return start;
     },
-    [size, store],
+    [size, store, liveRect],
   );
 
   // Edits ---------------------------------------------------------------------
