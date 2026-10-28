@@ -391,6 +391,24 @@ export function Canvas({
     autoFit.current = { view, until: performance.now() + REFIT_MS };
   }, [conn.status, size, snap, liveRect, setViewport, fitView]);
 
+  // Any touch, click or key on the board ends the first-visit fit: a card growing under the
+  // pointer while someone writes must not zoom the view away.
+  useEffect(() => {
+    const root = rootRef.current;
+    if (!root) return;
+    const stop = () => {
+      autoFit.current = null;
+    };
+    root.addEventListener('pointerdown', stop, true);
+    root.addEventListener('keydown', stop, true);
+    root.addEventListener('wheel', stop, { capture: true, passive: true });
+    return () => {
+      root.removeEventListener('pointerdown', stop, true);
+      root.removeEventListener('keydown', stop, true);
+      root.removeEventListener('wheel', stop, true);
+    };
+  }, []);
+
   // Columns and scenes are only as tall as estimated until they are drawn and measured: fit again as
   // their heights arrive, unless the view has been moved since.
   // biome-ignore lint/correctness/useExhaustiveDependencies: sizeVersion invalidates measured heights
