@@ -174,6 +174,11 @@ test('account settings make a personal token shown once', async ({ page }) => {
   await page.getByRole('button', { name: 'Fatto' }).click();
   await expect(page.getByText('Script di backup')).toBeVisible();
   await expect(page.getByText('mai usato')).toBeVisible();
+  // Settings are a window over the page: Escape closes them and nothing else.
+  await page.keyboard.press('Escape');
+  await expect(page.locator('dialog.settings-window')).toBeHidden();
+  await expect(page).not.toHaveURL(/\/settings/);
+  await expect(page.getByRole('button', { name: 'Impostazioni', exact: true })).toBeFocused();
 });
 
 test('account settings end another session without handing out its token', async ({

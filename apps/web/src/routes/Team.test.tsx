@@ -189,7 +189,7 @@ it('lists pending instance invitations as table rows next to the members', async
     (b) => b.textContent === 'settingsUi.members.invite',
   );
   expect(invite?.closest('dialog')).toBeNull();
-  expect(host.querySelector('.settings-segmented .is-on')?.textContent).toBe(
-    'admin.registrationModes.invite',
-  );
+  // Registration and instance status live in their own sections, not beside the table.
+  expect(host.querySelector('.settings-segmented')).toBeNull();
+  expect(host.querySelector('aside')).toBeNull();
 });

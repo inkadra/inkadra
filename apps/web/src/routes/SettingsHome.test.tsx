@@ -59,7 +59,8 @@ const render = () =>
 
 it('shows grouped rows with current values, inline theme and sign out', async () => {
   await render();
-  expect(host.querySelector('h1')?.textContent).toBe('settingsUi.profile');
+  // The window header carries the title; the list starts with the person.
+  expect(host.querySelector('h1')).toBeNull();
   expect(host.querySelector('.settings-home__me')?.getAttribute('href')).toBe(
     '/settings?section=account',
   );

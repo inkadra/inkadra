@@ -34,3 +34,4 @@ in order. An accepted decision is never rewritten: a later one supersedes it.
 | [0025](0025-instance-administration.md)         | 0025 · Instance settings and member administration                                     |
 | [0027](0027-project-identity-palette.md)        | 0027 · Extend project identity without changing existing defaults                      |
 | [0028](0028-authentication-hardening.md)        | 0028 — Authentication hardening                                                        |
+| [0029](0029-settings-window.md)                 | Settings open as a window over the current page                                        |

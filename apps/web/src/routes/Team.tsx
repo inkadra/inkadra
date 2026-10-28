@@ -4,8 +4,6 @@ import { type FormEvent, useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api, RequestError } from '../lib/api.ts';
 import { useSession } from '../lib/session.tsx';
-import { useInstanceSetupState } from './AppLayout.tsx';
-import { AccessCard, InstanceStatusCard, RegistrationCard } from './InstanceSettings.tsx';
 import { SettingsShell } from './SettingsShell.tsx';
 import { trackSave } from './settings-save.ts';
 import { Badge, Card } from './settings-ui.tsx';
@@ -26,7 +24,6 @@ function relative(value: string, locale: string): string {
 }
 
 export function Team() {
-  const setup = useInstanceSetupState();
   const { user, instance, refresh } = useSession();
   const { t, i18n } = useTranslation();
   const [members, setMembers] = useState<InstanceMember[] | null>(null);
@@ -97,13 +94,6 @@ export function Team() {
         <Button variant="primary" icon="plus" onClick={() => setInviting(true)}>
           {t('settingsUi.members.invite')}
         </Button>
-      }
-      aside={
-        <>
-          <InstanceStatusCard setup={setup} storage />
-          <AccessCard />
-          <RegistrationCard />
-        </>
       }
     >
       {error && (

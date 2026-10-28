@@ -8,7 +8,7 @@ import { useSession } from '../lib/session.tsx';
 import { type ThemePreference, useTheme } from '../lib/theme.ts';
 import { useInstanceSettings, useStorageUsage } from './InstanceSettings.tsx';
 import { setCachedProjects } from './projects.ts';
-import { setupAttention } from './SettingsShell.tsx';
+import { DiagnosticsLink, setupAttention } from './SettingsShell.tsx';
 import { formatStorage } from './StorageCharts.tsx';
 import { GROUP_TITLES, SETTINGS_PAGES } from './settings-sections.ts';
 import { Segmented } from './settings-ui.tsx';
@@ -125,7 +125,6 @@ export function SettingsHome({ setup }: { setup: Setup }) {
   const admin = user?.role === 'admin';
   return (
     <div className="settings-home">
-      <h1 className="settings-home__title">{t('settingsUi.profile')}</h1>
       <Link to={href('account')} className="settings-home__me">
         <Avatar name={user?.name ?? ''} image={user?.image} size={44} />
         <span className="settings-home__label">
@@ -166,7 +165,7 @@ export function SettingsHome({ setup }: { setup: Setup }) {
       </button>
       <p className="settings-home__version">
         Inkadra {instance?.version} · AGPL-3.0 ·{' '}
-        <Link to="/diagnostics">{t('settingsUi.diagnostics')}</Link>
+        <DiagnosticsLink>{t('settingsUi.diagnostics')}</DiagnosticsLink>
       </p>
     </div>
   );
