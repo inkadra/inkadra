@@ -140,7 +140,9 @@ it('navigates the filtered gallery, compares real references, shows frame reuse 
   expect(dialog()?.querySelector('[data-tags-readonly="true"]')).not.toBeNull();
   expect(dialog()?.textContent).not.toContain('viewer.addColors');
   const buttons = () => [...(dialog()?.querySelectorAll('button') ?? [])];
-  await click(buttons().find((button) => button.getAttribute('aria-label') === 'moodboard.compare') ?? null);
+  await click(
+    buttons().find((button) => button.getAttribute('aria-label') === 'moodboard.compare') ?? null,
+  );
   expect(dialog()?.querySelectorAll('.viewer__stage img')).toHaveLength(2);
   await key('ArrowRight');
   expect(dialog()?.textContent).toContain('2 / 2');
