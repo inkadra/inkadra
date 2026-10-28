@@ -591,6 +591,18 @@ select {
   gap: 8px;
   margin-top: 16px;
 }
+/* Inside a .phone-sheet wrapper a dialog rises from the bottom edge on phones. */
+@media (width < 768px) {
+  .phone-sheet .ink-dialog {
+    margin: auto 0 0;
+    width: 100vw;
+    max-width: 100vw;
+    box-sizing: border-box;
+    border-radius: 16px 16px 0 0;
+    padding: 16px max(16px, env(safe-area-inset-right)) max(16px, env(safe-area-inset-bottom))
+      max(16px, env(safe-area-inset-left));
+  }
+}
 
 @media (prefers-reduced-motion: reduce) {
   .ink-btn,

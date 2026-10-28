@@ -80,6 +80,8 @@
     "back": "Back",
     "new": "New",
     "profile": "Profile",
+    "createTitle": "Create",
+    "newBoardIn": "New board in {{project}}",
     "close": "Close navigation"
   },
   "nav": {
@@ -143,6 +145,7 @@
       "openSchedule": "Open schedule"
     },
     "recentBoards": "Recent boards",
+    "continue": "Continue",
     "recentBoardsHint": "by last edit",
     "noRecentBoards": "No boards yet. Create one or start from a template.",
     "kind": {
@@ -607,6 +610,10 @@
     }
   },
   "film": {
+    "viewOptions": {
+      "title": "View options",
+      "done": "Done"
+    },
     "views": {
       "label": "View",
       "storyboard": "Storyboard",

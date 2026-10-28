@@ -1,0 +1,109 @@
+/* Storyboard and Shot list on a phone: one row of controls before the first frame or row. */
+
+.view-options__inline {
+  display: contents;
+}
+.view-options__toggle {
+  display: none;
+}
+.view-options {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 12px;
+}
+.view-options .ink-input,
+.view-options .ink-btn,
+.view-options .story__mode {
+  min-height: 44px;
+}
+.view-options .story__aspect {
+  justify-content: space-between;
+}
+.view-options .story__modes {
+  display: flex;
+}
+.view-options .story__mode {
+  flex: 1;
+}
+
+@media (width < 768px) {
+  .story__bar.story__bar {
+    flex-wrap: nowrap;
+    gap: 6px;
+    padding: 6px 12px;
+  }
+  .story__bar .view-options__inline {
+    display: none;
+  }
+  .story__bar .view-options__toggle {
+    display: inline-grid;
+    flex: none;
+    width: 44px;
+    height: 44px;
+  }
+  .story__bar .film-compact-btn {
+    flex: none;
+    width: 44px;
+    min-height: 44px;
+    padding: 0;
+    justify-content: center;
+  }
+  .story__bar .film-compact-btn__label {
+    display: none;
+  }
+  .story__bar .story__modes {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+  .story__bar .story__mode {
+    flex: 1;
+    min-height: 44px;
+    padding: 0 6px;
+  }
+  .story__bar .ink-header__spacer {
+    display: none;
+  }
+
+  /* The scene picker is a single 44 px row under the bar. */
+  .story__main .story__scene-picker {
+    padding: 6px 12px;
+  }
+  .story__scene-picker > span {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  /* Shot list: icon tabs, the search, View options and Add shot. */
+  .shots .story__bar .view-tabs {
+    flex: none;
+  }
+  .shots .story__bar .view-tabs__tab {
+    min-width: 44px;
+    min-height: 44px;
+    justify-content: center;
+  }
+  .shots__mode-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+  .shots .story__bar .shots__filter {
+    flex: 1 1 auto;
+    width: 0;
+    min-width: 0;
+    min-height: 44px;
+  }
+  .shots .shots__chips {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+}

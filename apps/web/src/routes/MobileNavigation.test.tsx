@@ -25,6 +25,7 @@ it('exposes the existing shell actions and announces active and expanded states'
           pathname="/"
           inboxOpen={false}
           drawerOpen={false}
+          newOpen={false}
           unread={3}
         />,
       ),
@@ -33,18 +34,27 @@ it('exposes the existing shell actions and announces active and expanded states'
     expect(buttons).toHaveLength(5);
     expect(buttons[0]?.getAttribute('aria-current')).toBe('page');
     expect(buttons[1]?.getAttribute('aria-haspopup')).toBe('dialog');
-    expect(buttons[2]?.getAttribute('aria-label')).toBe('nav.newProject');
+    expect(buttons[2]?.getAttribute('aria-haspopup')).toBe('dialog');
+    expect(buttons[2]?.getAttribute('aria-expanded')).toBe('false');
     expect(buttons[3]?.textContent).toContain('3');
     for (const button of buttons) button.click();
     for (const action of Object.values(actions)) expect(action).toHaveBeenCalledOnce();
     await act(async () =>
       root.render(
-        <MobileNavigation {...actions} pathname="/settings" inboxOpen drawerOpen unread={0} />,
+        <MobileNavigation
+          {...actions}
+          pathname="/settings"
+          inboxOpen
+          drawerOpen
+          newOpen
+          unread={0}
+        />,
       ),
     );
     expect(buttons[0]?.hasAttribute('aria-current')).toBe(false);
     expect(buttons[1]?.getAttribute('aria-expanded')).toBe('true');
     expect(buttons[3]?.getAttribute('aria-expanded')).toBe('true');
+    expect(buttons[2]?.getAttribute('aria-expanded')).toBe('true');
     // An open inbox or drawer takes over: no page is announced as current under it.
     expect(buttons[4]?.hasAttribute('aria-current')).toBe(false);
     expect(buttons[3]?.getAttribute('aria-haspopup')).toBe('dialog');
@@ -56,6 +66,7 @@ it('exposes the existing shell actions and announces active and expanded states'
           pathname="/settings"
           inboxOpen={false}
           drawerOpen={false}
+          newOpen={false}
           unread={0}
         />,
       ),

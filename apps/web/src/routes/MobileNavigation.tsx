@@ -7,6 +7,7 @@ export function MobileNavigation({
   pathname,
   inboxOpen,
   drawerOpen,
+  newOpen,
   unread,
   onHome,
   onProjects,
@@ -18,6 +19,7 @@ export function MobileNavigation({
   pathname: string;
   inboxOpen: boolean;
   drawerOpen: boolean;
+  newOpen: boolean;
   unread: number;
   onHome: () => void;
   onProjects: () => void;
@@ -43,7 +45,8 @@ export function MobileNavigation({
       <button
         type="button"
         className="mobile-bottom-nav__new"
-        aria-label={t('nav.newProject')}
+        aria-haspopup="dialog"
+        aria-expanded={newOpen}
         onClick={onNew}
       >
         <Icon name="plus" />
@@ -68,7 +71,7 @@ export function MobileNavigation({
         }
         onClick={onProfile}
       >
-        <Icon name="settings" />
+        <Icon name="user" />
         {t('mobile.profile')}
       </button>
     </nav>

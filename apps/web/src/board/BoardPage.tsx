@@ -456,9 +456,11 @@ function BoardScreen({
               detail.myRole === 'owner' || detail.myRole === 'editor' ? 'primary' : 'secondary'
             }
             icon="people"
+            className="board-share"
+            aria-label={t('share.open')}
             onClick={() => setSharing(true)}
           >
-            {t('share.open')}
+            <span className="board-share__label">{t('share.open')}</span>
           </Button>
         )}
         <CommentsButton />
