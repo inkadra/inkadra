@@ -100,3 +100,34 @@ it('checks verified provider domain claims for linked profiles too', async () =>
     await sql.end();
   }
 });
+
+it('accepts verified OIDC email claims including Cognito string true and rejects other claims', async () => {
+  const { db, sql } = createDatabase(config.DATABASE_URL);
+  const auth = createAuth(
+    {
+      ...config,
+      OIDC_CLIENT_ID: 'test',
+      OIDC_CLIENT_SECRET: 'test',
+      OIDC_DISCOVERY_URL: 'https://issuer.example/.well-known/openid-configuration',
+      OIDC_ALLOWED_DOMAINS: ['example.com'],
+    },
+    db,
+  );
+  try {
+    const plugin = auth.options.plugins?.find((p) => p.id === 'generic-oauth') as unknown as {
+      options: {
+        config: Array<{ mapProfileToUser: (profile: Record<string, unknown>) => unknown }>;
+      };
+    };
+    const map = plugin.options.config[0]?.mapProfileToUser;
+    if (!map) throw new Error('Missing OIDC mapping');
+    for (const email_verified of [true, 'true'])
+      expect(map({ email: 'member@example.com', email_verified })).toEqual({});
+    for (const email_verified of [false, 'false', undefined, 1])
+      expect(() => map({ email: 'member@example.com', email_verified })).toThrow();
+    expect(() => map({ email: 'member@elsewhere.com', email_verified: true })).toThrow();
+  } finally {
+    auth.closeSecurity();
+    await sql.end();
+  }
+});

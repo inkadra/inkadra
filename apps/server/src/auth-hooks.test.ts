@@ -47,3 +47,16 @@ it('increments account and source budgets only on password 401 responses', async
   expect(budgets.take).toHaveBeenCalledWith(`login:${user.email}:192.0.2.1`, 10, 900);
   expect(budgets.take).toHaveBeenCalledWith(`account:${user.email}`, 50, 3600);
 });
+
+it('applies the TOTP budget to the authenticated user across sessions', async () => {
+  const context = {
+    session: { user, session: { id: 'session' } },
+    createAuthCookie: () => ({ name: 'two_factor' }),
+    secret: 'test',
+  };
+  await auth.options.hooks?.before?.({
+    ...ctx('/two-factor/verify-totp', context),
+    getSignedCookie: async () => null,
+  } as never);
+  expect(budgets.take).toHaveBeenCalledWith('totp:member', 10, 300);
+});
