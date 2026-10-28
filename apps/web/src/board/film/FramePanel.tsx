@@ -7,7 +7,7 @@ import {
   SHOT_SIZES,
 } from '@inkadra/doc-schema';
 import { Button, IconButton } from '@inkadra/ui';
-import { useContext, useRef } from 'react';
+import { useContext, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useRegisterActions } from '../../commands/actions.ts';
 import {
@@ -37,6 +37,8 @@ export function FramePanel({
   boardId,
   readOnly,
   userId = null,
+  id,
+  takeFocus = false,
   onClose,
   onDraw,
 }: {
@@ -48,6 +50,9 @@ export function FramePanel({
   boardId: string;
   readOnly: boolean;
   userId?: string | null;
+  id?: string;
+  /** Move focus into the panel when it opens, for a panel that covers what opened it. */
+  takeFocus?: boolean;
   onClose: () => void;
   onDraw: () => void;
 }) {
@@ -62,8 +67,21 @@ export function FramePanel({
   const fileInput = useRef<HTMLInputElement>(null);
   const set = (patch: Patch) => !readOnly && updateElement(store.doc, frame.id, patch, LOCAL);
   const text = (v: string) => v.trim() || undefined;
+  const panel = useRef<HTMLElement>(null);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: refocus when another frame opens
+  useEffect(() => {
+    if (takeFocus) panel.current?.focus();
+  }, [takeFocus, frame.id]);
   return (
-    <aside className="film-panel" aria-label={t('film.frame.details')} data-chrome data-scroll>
+    <aside
+      ref={panel}
+      id={id}
+      className="film-panel"
+      aria-label={t('film.frame.details')}
+      tabIndex={takeFocus ? -1 : undefined}
+      data-chrome
+      data-scroll
+    >
       <header className="film-panel__head">
         <span className="film-panel__label">{label}</span>
         <StatusSelect

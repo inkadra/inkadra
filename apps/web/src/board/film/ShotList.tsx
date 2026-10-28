@@ -14,6 +14,7 @@ import { Button, EmptyState, Icon } from '@inkadra/ui';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useClassifications } from '../../lib/classifications.ts';
+import { useIsPhone } from '../../lib/phone.ts';
 import { CardReview } from '../CardReview.tsx';
 import { GuestVisibility } from '../guest-visibility.tsx';
 import { insideDialog, isTyping } from '../shortcuts.ts';
@@ -28,6 +29,7 @@ import {
   blurOnEnter,
   PresetField,
   parseSeconds,
+  StatusChip,
   StatusSelect,
   secondsText,
   usePresetText,
@@ -73,6 +75,7 @@ export function ShotList({
   const { groups, frames, labels } = useStoryboard(store);
   const slugline = useSlugline();
   const presetText = usePresetText();
+  const phone = useIsPhone();
   const [mode, setMode] = useState<'table' | 'kanban'>('table');
   const [query, setQuery] = useState('');
   const [status, setStatus] = useState<ShotDisplayStatus | ''>('');
@@ -89,6 +92,17 @@ export function ShotList({
 
   const opts = useMemo(() => ({ userId, origin: LOCAL }), [userId]);
   const currentFrame = frames.find((f) => f.id === selected) ?? null;
+  // The shot card that opened the frame panel on a phone, to give focus back when it closes.
+  const cardOrigin = useRef<string | null>(null);
+  useEffect(() => {
+    const origin = cardOrigin.current;
+    if (selected === origin) return;
+    cardOrigin.current = null;
+    if (selected !== null || !origin) return;
+    containerRef.current
+      ?.querySelector<HTMLElement>(`[data-shot-card="${CSS.escape(origin)}"]`)
+      ?.focus();
+  }, [selected]);
   const drawn = frames.find((f) => f.id === drawing) ?? null;
 
   const scenes = useMemo(
@@ -555,6 +569,184 @@ export function ShotList({
     </Button>
   );
 
+  const groupHeading = (g: ShotGroup, isCollapsed: boolean) => {
+    const grpCounts = { shot: 0, todo: 0, retake: 0, approved: 0 };
+    for (const f of g.frames) {
+      const s = getFrameStatus(f);
+      if (s === 'shot') grpCounts.shot++;
+      else if (s === 'retake') grpCounts.retake++;
+      else if (s === 'approved') grpCounts.approved++;
+      else grpCounts.todo++;
+    }
+    return (
+      <>
+        <button
+          type="button"
+          className="shots__group-toggle"
+          aria-expanded={!isCollapsed}
+          aria-label={isCollapsed ? t('film.list.expandGroup') : t('film.list.collapseGroup')}
+          onClick={() => toggleCollapse(g.id)}
+        >
+          {isCollapsed ? '▸' : '▾'}
+        </button>
+        {g.scene ? (
+          <>
+            <span className="shots__scene-number">{g.scene.number}</span>
+            <GuestVisibility store={store} element={g.scene} />
+            {slugline(g.scene)}
+            {g.scene.title && <span className="shots__scene-title">{g.scene.title}</span>}
+          </>
+        ) : (
+          <span>{g.title}</span>
+        )}
+        <span className="shots__scene-meta">
+          {t('film.total', {
+            count: g.frames.length,
+            duration: formatDuration(estimatedDurationMs(g.frames)),
+          })}
+        </span>
+        <span className="shots__group-pills">
+          {grpCounts.shot > 0 && (
+            <span className="shots__group-pill shots__group-pill--shot">
+              {grpCounts.shot} {t('film.status.shot').toLowerCase()}
+            </span>
+          )}
+          {grpCounts.todo > 0 && (
+            <span className="shots__group-pill shots__group-pill--todo">
+              {grpCounts.todo} {t('film.status.todo').toLowerCase()}
+            </span>
+          )}
+          {grpCounts.retake > 0 && (
+            <span className="shots__group-pill shots__group-pill--retake">
+              {grpCounts.retake} {t('film.status.retake').toLowerCase()}
+            </span>
+          )}
+          {grpCounts.approved > 0 && (
+            <span className="shots__group-pill shots__group-pill--approved">
+              {grpCounts.approved} {t('film.status.approved').toLowerCase()}
+            </span>
+          )}
+        </span>
+      </>
+    );
+  };
+
+  const canAddInGroup = (g: ShotGroup) => !readOnly && (groupBy === 'scene' || !g.scene);
+  const addShotButton = (g: ShotGroup) => (
+    <button
+      type="button"
+      className="shots__add-row-btn"
+      onClick={() => addFrameToScene(g.scene?.id)}
+    >
+      +{' '}
+      {g.scene
+        ? t('film.list.addShotInScene', { scene: g.scene.number ?? g.title })
+        : t('film.list.addShot')}
+    </button>
+  );
+
+  // On a phone each shot is a card; its other fields are edited in the frame panel.
+  const shotCards = (
+    <div className="shot-cards">
+      {!readOnly && allVisibleFrameIds.length > 0 && (
+        <label className="shot-cards__select-all">
+          <span className="shot-cards__select-all-box">
+            <input
+              type="checkbox"
+              className="shots__checkbox"
+              checked={allSelected}
+              ref={(el) => {
+                if (el) el.indeterminate = someSelected && !allSelected;
+              }}
+              onChange={toggleSelectAll}
+            />
+          </span>
+          {t('film.list.selectAll')}
+        </label>
+      )}
+      {shownGroups.map((g) => {
+        const isCollapsed = collapsedGroups.has(g.id);
+        return (
+          <section key={g.id} className="shot-cards__group">
+            <h3 className="shot-cards__scene">{groupHeading(g, isCollapsed)}</h3>
+            {!isCollapsed && (
+              <ul className="shot-cards__list">
+                {g.frames.map((f) => {
+                  const label = labels.get(f.id) ?? '';
+                  const isOpen = selected === f.id;
+                  const isChecked = selectedIds.has(f.id);
+                  const meta = [
+                    presetText('film.shot', SHOT_SIZES, f.shot),
+                    f.lens,
+                    f.durationMs !== undefined ? `${secondsText(f.durationMs)}s` : '',
+                  ].filter(Boolean);
+                  return (
+                    <li
+                      key={f.id}
+                      className={`shot-card${isOpen || isChecked ? ' is-selected' : ''}`}
+                    >
+                      {!readOnly && (
+                        <label className="shot-card__check">
+                          <input
+                            type="checkbox"
+                            className="shots__checkbox"
+                            checked={isChecked}
+                            onChange={() => toggleSelect(f.id)}
+                            aria-label={t('film.list.selectRow', { label })}
+                          />
+                        </label>
+                      )}
+                      <button
+                        type="button"
+                        className="shot-card__body"
+                        data-shot-card={f.id}
+                        aria-expanded={isOpen}
+                        aria-controls={isOpen ? 'shot-frame-panel' : undefined}
+                        onClick={() => {
+                          cardOrigin.current = isOpen ? null : f.id;
+                          setSelected(isOpen ? null : f.id);
+                        }}
+                      >
+                        <span className="shot-card__pic">
+                          <FramePicture
+                            assetId={f.assetId}
+                            aspect={f.aspect}
+                            boardAspect={boardAspect}
+                            strokes={f.strokes}
+                            shapes={f.shapes}
+                            referenceOpacity={f.referenceOpacity}
+                            pixels={240}
+                          />
+                        </span>
+                        <span className="shot-card__text">
+                          <span className="shot-card__head">
+                            <b className="shot-card__label">{label}</b>
+                            <StatusChip status={getFrameStatus(f)} />
+                          </span>
+                          {meta.length > 0 && (
+                            <span className="shot-card__meta">{meta.join(' · ')}</span>
+                          )}
+                          {f.action && <span className="shot-card__action">{f.action}</span>}
+                        </span>
+                      </button>
+                      <span className="shot-card__marks">
+                        <GuestVisibility store={store} element={f} />
+                        <CardReview elementId={f.id} withPins={false} />
+                      </span>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+            {!isCollapsed && canAddInGroup(g) && (
+              <div className="shot-cards__add">{addShotButton(g)}</div>
+            )}
+          </section>
+        );
+      })}
+    </div>
+  );
+
   return (
     <div className="shots" ref={containerRef}>
       <div className="story__bar" data-chrome>
@@ -697,6 +889,8 @@ export function ShotList({
               readOnly={readOnly}
               onAddFrame={addFrameInStatus}
             />
+          ) : phone ? (
+            shotCards
           ) : (
             <table className="shots__table">
               <thead>
@@ -732,70 +926,12 @@ export function ShotList({
               </thead>
               {shownGroups.map((g) => {
                 const isCollapsed = collapsedGroups.has(g.id);
-                const grpCounts = { shot: 0, todo: 0, retake: 0, approved: 0 };
-                for (const f of g.frames) {
-                  const s = getFrameStatus(f);
-                  if (s === 'shot') grpCounts.shot++;
-                  else if (s === 'retake') grpCounts.retake++;
-                  else if (s === 'approved') grpCounts.approved++;
-                  else grpCounts.todo++;
-                }
 
                 return (
                   <tbody key={g.id}>
                     <tr className="shots__scene">
                       <th colSpan={readOnly ? 12 : 13} scope="rowgroup">
-                        <button
-                          type="button"
-                          className="shots__group-toggle"
-                          aria-expanded={!isCollapsed}
-                          aria-label={
-                            isCollapsed ? t('film.list.expandGroup') : t('film.list.collapseGroup')
-                          }
-                          onClick={() => toggleCollapse(g.id)}
-                        >
-                          {isCollapsed ? '▸' : '▾'}
-                        </button>
-                        {g.scene ? (
-                          <>
-                            <span className="shots__scene-number">{g.scene.number}</span>
-                            <GuestVisibility store={store} element={g.scene} />
-                            {slugline(g.scene)}
-                            {g.scene.title && (
-                              <span className="shots__scene-title">{g.scene.title}</span>
-                            )}
-                          </>
-                        ) : (
-                          <span>{g.title}</span>
-                        )}
-                        <span className="shots__scene-meta">
-                          {t('film.total', {
-                            count: g.frames.length,
-                            duration: formatDuration(estimatedDurationMs(g.frames)),
-                          })}
-                        </span>
-                        <span className="shots__group-pills">
-                          {grpCounts.shot > 0 && (
-                            <span className="shots__group-pill shots__group-pill--shot">
-                              {grpCounts.shot} {t('film.status.shot').toLowerCase()}
-                            </span>
-                          )}
-                          {grpCounts.todo > 0 && (
-                            <span className="shots__group-pill shots__group-pill--todo">
-                              {grpCounts.todo} {t('film.status.todo').toLowerCase()}
-                            </span>
-                          )}
-                          {grpCounts.retake > 0 && (
-                            <span className="shots__group-pill shots__group-pill--retake">
-                              {grpCounts.retake} {t('film.status.retake').toLowerCase()}
-                            </span>
-                          )}
-                          {grpCounts.approved > 0 && (
-                            <span className="shots__group-pill shots__group-pill--approved">
-                              {grpCounts.approved} {t('film.status.approved').toLowerCase()}
-                            </span>
-                          )}
-                        </span>
+                        {groupHeading(g, isCollapsed)}
                       </th>
                     </tr>
                     {!isCollapsed &&
@@ -951,20 +1087,9 @@ export function ShotList({
                           </tr>
                         );
                       })}
-                    {!isCollapsed && !readOnly && (groupBy === 'scene' || !g.scene) && (
+                    {!isCollapsed && canAddInGroup(g) && (
                       <tr className="shots__add-row">
-                        <td colSpan={readOnly ? 12 : 13}>
-                          <button
-                            type="button"
-                            className="shots__add-row-btn"
-                            onClick={() => addFrameToScene(g.scene?.id)}
-                          >
-                            +{' '}
-                            {g.scene
-                              ? t('film.list.addShotInScene', { scene: g.scene.number ?? g.title })
-                              : t('film.list.addShot')}
-                          </button>
-                        </td>
+                        <td colSpan={readOnly ? 12 : 13}>{addShotButton(g)}</td>
                       </tr>
                     )}
                   </tbody>
@@ -974,7 +1099,8 @@ export function ShotList({
           )}
         </div>
 
-        {visibleSelectedIds.length > 0 && !readOnly && (
+        {/* On a phone the open frame panel covers the list, and the toolbar would cover it. */}
+        {visibleSelectedIds.length > 0 && !readOnly && !(phone && currentFrame) && (
           <div
             role="toolbar"
             aria-label={t('film.list.bulkActions')}
@@ -1050,6 +1176,8 @@ export function ShotList({
             projectId={projectId}
             boardId={boardId}
             readOnly={readOnly}
+            id="shot-frame-panel"
+            takeFocus={phone && cardOrigin.current === currentFrame.id}
             onClose={() => setSelected(null)}
             onDraw={() => setDrawing(currentFrame.id)}
           />
