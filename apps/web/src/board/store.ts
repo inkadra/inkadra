@@ -118,6 +118,7 @@ export class BoardStore {
 
   /** Height of an element on the canvas, measured or estimated. */
   heightOf(el: Element): number {
+    if (el.type === 'link') return this.heights.get(el.id) ?? estimateHeight(el);
     return el.h ?? this.heights.get(el.id) ?? estimateHeight(el);
   }
 

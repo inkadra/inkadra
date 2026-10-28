@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { API_PREFIX, CreateLinkPreview, type LinkPreview } from '@inkadra/shared';
+import { API_PREFIX, CreateLinkPreview, type LinkPreview, youtubeVideoId } from '@inkadra/shared';
 import type { FastifyBaseLogger, FastifyInstance } from 'fastify';
 import { Parser } from 'htmlparser2';
 import { requireWriteAccess } from '../access.ts';
@@ -84,6 +84,44 @@ export function readPageMeta(html: string, pageUrl: string): PageMeta {
   };
 }
 
+/** Provider metadata never bypasses safeFetch's network and response limits. */
+export async function videoPageMeta(
+  url: string,
+  allowAddresses: string[],
+): Promise<PageMeta | null> {
+  const id = youtubeVideoId(url);
+  let endpoint: string;
+  if (id)
+    endpoint = `https://www.youtube.com/oembed?url=${encodeURIComponent(`https://www.youtube.com/watch?v=${id}`)}&format=json`;
+  else {
+    const parsed = new URL(url);
+    if (!/^(www\.)?vimeo\.com$/.test(parsed.hostname) || !/^\/\d+\/?$/.test(parsed.pathname))
+      return null;
+    endpoint = `https://vimeo.com/api/oembed.json?url=${encodeURIComponent(url)}`;
+  }
+  try {
+    const response = await safeFetch(endpoint, {
+      accept: ['application/json'],
+      maxBytes: 64 * 1024,
+      allowAddresses,
+    });
+    const data = JSON.parse(response.body.toString('utf8'));
+    if (typeof data.title !== 'string' || !data.title.trim()) return null;
+    return {
+      title: clip(data.title, 500),
+      description: typeof data.author_name === 'string' ? clip(data.author_name, 2000) : null,
+      siteName: id ? 'YouTube' : 'Vimeo',
+      image: id
+        ? `https://i.ytimg.com/vi/${id}/maxresdefault.jpg`
+        : typeof data.thumbnail_url === 'string'
+          ? data.thumbnail_url
+          : null,
+    };
+  } catch {
+    return null;
+  }
+}
+
 /** Largest page read for a preview: its head is all that is needed. */
 export const PAGE_MAX_BYTES = 1024 * 1024;
 
@@ -148,11 +186,19 @@ export async function pagePreview(
   opts: { projectId: string; actorId: string },
   log: FastifyBaseLogger,
 ): Promise<LinkPreview> {
-  const meta = readPageMeta(page.body.toString('utf8'), page.url);
+  const meta =
+    (await videoPageMeta(page.url, deps.allowAddresses)) ??
+    readPageMeta(page.body.toString('utf8'), page.url);
   let imageAssetId: string | null = null;
-  if (meta.image) {
+  const videoId = youtubeVideoId(page.url);
+  const images = [
+    meta.image,
+    ...(videoId ? [`https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`] : []),
+  ];
+  for (const imageUrl of images) {
+    if (!imageUrl || imageAssetId) continue;
     try {
-      const image = await safeFetch(meta.image, {
+      const image = await safeFetch(imageUrl, {
         accept: ['image/'],
         maxBytes: 10 * 1024 * 1024,
         allowAddresses: deps.allowAddresses,
@@ -190,6 +236,7 @@ export function registerLinkPreviews(app: FastifyInstance, deps: Deps) {
       page = await safeFetch(input.url, {
         accept: ['text/html', 'application/xhtml+xml'],
         maxBytes: PAGE_MAX_BYTES,
+        truncate: true,
         allowAddresses,
       });
     } catch (err) {

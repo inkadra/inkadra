@@ -73,6 +73,8 @@ export class FetchRefused extends Error {}
 export interface SafeFetchOptions {
   /** Largest body accepted, or a limit per content type (a page needs far less than an image). */
   maxBytes: number | ((contentType: string) => number);
+  /** Return a bounded prefix for selected content types instead of rejecting oversized bodies. */
+  truncate?: boolean | ((contentType: string) => boolean);
   timeoutMs?: number;
   maxRedirects?: number;
   /** Accept only these content types (prefix match). */
@@ -85,6 +87,7 @@ export interface SafeResponse {
   url: string;
   contentType: string;
   body: Buffer;
+  truncated?: boolean;
 }
 
 const allowed = (address: string, extra: string[]) =>
@@ -127,77 +130,89 @@ function checkUrl(raw: string, extra: string[]): URL {
 }
 
 function once(url: URL, opts: SafeFetchOptions, deadline: number) {
-  return new Promise<{ status: number; location?: string; contentType: string; body: Buffer }>(
-    (resolve, reject) => {
-      const lib = url.protocol === 'https:' ? https : http;
-      const req = lib.request(
-        url,
-        {
-          method: 'GET',
-          lookup: checkedLookup(opts.allowAddresses ?? []),
-          headers: {
-            'user-agent': 'InkadraLinkPreview/1.0 (+https://github.com/inkadra/inkadra)',
-            accept: opts.accept.map((a) => `${a}*`).join(', '),
-            'accept-encoding': 'identity',
-          },
-          timeout: Math.max(1, deadline - Date.now()),
+  return new Promise<{
+    status: number;
+    location?: string;
+    contentType: string;
+    body: Buffer;
+    truncated?: boolean;
+  }>((resolve, reject) => {
+    const lib = url.protocol === 'https:' ? https : http;
+    const req = lib.request(
+      url,
+      {
+        method: 'GET',
+        lookup: checkedLookup(opts.allowAddresses ?? []),
+        headers: {
+          'user-agent': 'InkadraLinkPreview/1.0 (+https://github.com/inkadra/inkadra)',
+          accept: opts.accept.map((a) => `${a}*`).join(', '),
+          'accept-encoding': 'identity',
         },
-        (res) => {
-          const status = res.statusCode ?? 0;
-          const contentType = String(res.headers['content-type'] ?? '').toLowerCase();
-          if (status >= 300 && status < 400) {
-            res.resume();
-            return resolve({
-              status,
-              location: res.headers.location,
-              contentType,
-              body: Buffer.alloc(0),
-            });
-          }
-          if (status !== 200) {
-            res.resume();
-            return reject(new FetchRefused(`The page answered ${status}.`));
-          }
-          if (!opts.accept.some((a) => contentType.startsWith(a))) {
-            res.resume();
-            return reject(new FetchRefused(`Unexpected content type ${contentType || 'none'}.`));
-          }
-          const maxBytes =
-            typeof opts.maxBytes === 'function' ? opts.maxBytes(contentType) : opts.maxBytes;
-          const length = Number(res.headers['content-length'] ?? 0);
-          if (length > maxBytes) {
-            res.destroy();
-            return reject(new FetchRefused('The response is too large.'));
-          }
-          const chunks: Buffer[] = [];
-          let size = 0;
-          res.on('data', (chunk: Buffer) => {
-            size += chunk.length;
-            if (size > maxBytes) {
-              res.destroy();
-              reject(new FetchRefused('The response is too large.'));
-              return;
-            }
-            chunks.push(chunk);
+        timeout: Math.max(1, deadline - Date.now()),
+      },
+      (res) => {
+        const status = res.statusCode ?? 0;
+        const contentType = String(res.headers['content-type'] ?? '').toLowerCase();
+        if (status >= 300 && status < 400) {
+          res.resume();
+          return resolve({
+            status,
+            location: res.headers.location,
+            contentType,
+            body: Buffer.alloc(0),
           });
-          res.on('end', () => resolve({ status, contentType, body: Buffer.concat(chunks) }));
-          // A connection cut mid-body: as unreadable as one that never answered.
-          res.on('error', (err) => reject(new FetchRefused(`Could not fetch: ${err.message}`)));
-        },
-      );
-      const tooLong = () => req.destroy(new FetchRefused('The page took too long to answer.'));
-      req.on('timeout', tooLong);
-      // The socket timeout above only covers silence; this one covers slow trickles too.
-      const timer = setTimeout(tooLong, Math.max(1, deadline - Date.now()));
-      req.on('close', () => clearTimeout(timer));
-      req.on('error', (err) =>
-        reject(
-          err instanceof FetchRefused ? err : new FetchRefused(`Could not fetch: ${err.message}`),
-        ),
-      );
-      req.end();
-    },
-  );
+        }
+        if (status !== 200) {
+          res.resume();
+          return reject(new FetchRefused(`The page answered ${status}.`));
+        }
+        if (!opts.accept.some((a) => contentType.startsWith(a))) {
+          res.resume();
+          return reject(new FetchRefused(`Unexpected content type ${contentType || 'none'}.`));
+        }
+        const maxBytes =
+          typeof opts.maxBytes === 'function' ? opts.maxBytes(contentType) : opts.maxBytes;
+        const truncate =
+          typeof opts.truncate === 'function' ? opts.truncate(contentType) : opts.truncate;
+        const length = Number(res.headers['content-length'] ?? 0);
+        if (length > maxBytes && !truncate) {
+          res.destroy();
+          return reject(new FetchRefused('The response is too large.'));
+        }
+        const chunks: Buffer[] = [];
+        let size = 0;
+        res.on('data', (chunk: Buffer) => {
+          if (size + chunk.length > maxBytes && truncate) {
+            chunks.push(chunk.subarray(0, maxBytes - size));
+            resolve({ status, contentType, body: Buffer.concat(chunks), truncated: true });
+            res.destroy();
+            return;
+          }
+          size += chunk.length;
+          if (size > maxBytes) {
+            res.destroy();
+            reject(new FetchRefused('The response is too large.'));
+            return;
+          }
+          chunks.push(chunk);
+        });
+        res.on('end', () => resolve({ status, contentType, body: Buffer.concat(chunks) }));
+        // A connection cut mid-body: as unreadable as one that never answered.
+        res.on('error', (err) => reject(new FetchRefused(`Could not fetch: ${err.message}`)));
+      },
+    );
+    const tooLong = () => req.destroy(new FetchRefused('The page took too long to answer.'));
+    req.on('timeout', tooLong);
+    // The socket timeout above only covers silence; this one covers slow trickles too.
+    const timer = setTimeout(tooLong, Math.max(1, deadline - Date.now()));
+    req.on('close', () => clearTimeout(timer));
+    req.on('error', (err) =>
+      reject(
+        err instanceof FetchRefused ? err : new FetchRefused(`Could not fetch: ${err.message}`),
+      ),
+    );
+    req.end();
+  });
 }
 
 export async function safeFetch(raw: string, opts: SafeFetchOptions): Promise<SafeResponse> {
@@ -207,7 +222,12 @@ export async function safeFetch(raw: string, opts: SafeFetchOptions): Promise<Sa
   for (let hop = 0; ; hop++) {
     const res = await once(url, opts, deadline);
     if (res.status < 300 || res.status >= 400)
-      return { url: url.toString(), contentType: res.contentType, body: res.body };
+      return {
+        url: url.toString(),
+        contentType: res.contentType,
+        body: res.body,
+        truncated: res.truncated ?? false,
+      };
     if (hop >= maxRedirects) throw new FetchRefused('Too many redirects.');
     if (!res.location) throw new FetchRefused('Redirect without a location.');
     url = checkUrl(new URL(res.location, url).toString(), opts.allowAddresses ?? []);

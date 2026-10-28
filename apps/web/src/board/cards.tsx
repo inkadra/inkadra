@@ -87,7 +87,7 @@ export const Card = memo(function Card({
         left: resize?.x ?? element.x,
         top: resize?.y ?? element.y,
         width: w,
-        height: resize?.h ?? element.h,
+        height: element.type === 'link' ? undefined : (resize?.h ?? element.h),
         transform: offset ? `translate(${offset.dx}px, ${offset.dy}px)` : undefined,
       };
   if (zoom !== undefined) (style as Record<string, unknown>)['--zoom'] = zoom;
@@ -333,7 +333,8 @@ function shortUrl(url: string): string {
 }
 
 function LinkCard({ element, width }: { element: Of<'link'>; width: number }) {
-  const { scale } = useBoard();
+  const { t } = useTranslation();
+  const { scale, openElement } = useBoard();
   const image = useAsset(element.imageAssetId);
   const ready = image && image !== 'missing' ? image : null;
   const src = ready ? pickVariant(ready, width * scale * (window.devicePixelRatio || 1)) : '';
@@ -345,16 +346,40 @@ function LinkCard({ element, width }: { element: Of<'link'>; width: number }) {
         <div className="card__media card__media--link">
           <img src={src} alt="" draggable={false} decoding="async" />
           {isYoutube && (
-            <span className="card__play" aria-hidden="true">
+            <button
+              type="button"
+              className="card__play"
+              data-no-drag
+              data-play-link={element.id}
+              onClick={(event) => {
+                event.stopPropagation();
+                openElement?.(element);
+              }}
+              aria-label={t('board.menu.playLink', {
+                title: element.title || (href ? new URL(href).hostname : element.url),
+              })}
+            >
               <Icon name="play" size={16} />
-            </span>
+            </button>
           )}
         </div>
       ) : isYoutube ? (
         <div className="card__media card__media--link card__video">
-          <span className="card__play" aria-hidden="true">
+          <button
+            type="button"
+            className="card__play"
+            data-no-drag
+            data-play-link={element.id}
+            onClick={(event) => {
+              event.stopPropagation();
+              openElement?.(element);
+            }}
+            aria-label={t('board.menu.playLink', {
+              title: element.title || (href ? new URL(href).hostname : element.url),
+            })}
+          >
             <Icon name="play" size={16} />
-          </span>
+          </button>
         </div>
       ) : null}
       <div className="card__pad card__link">

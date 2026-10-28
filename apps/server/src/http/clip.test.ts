@@ -625,8 +625,7 @@ describe.skipIf(!url)('clip (needs DATABASE_URL)', () => {
       // Private, directly or through a redirect: never fetched.
       `http://localhost:${port}/secret`,
       `${siteUrl}/to-private`,
-      // Over 1 MB of HTML, an image that is not one, a connection cut mid-page.
-      `${siteUrl}/huge`,
+      // An image that is not one, a connection cut mid-page.
       `${siteUrl}/fake.png`,
       `${siteUrl}/cut`,
     ]) {
@@ -638,6 +637,14 @@ describe.skipIf(!url)('clip (needs DATABASE_URL)', () => {
       expect((element as Extract<Element, { type: 'link' }>).title, page).toBeUndefined();
     }
     expect(secretHits).toBe(0);
+  });
+
+  it('reads the title from the start of a page over 1 MB', async () => {
+    const page = `${siteUrl}/huge`;
+    const res = await clip({ boardId, url: page });
+    expect(res.status).toBe(201);
+    const { element } = await boardElement(res.json.elementId);
+    expect(element).toMatchObject({ type: 'link', url: page, title: 'Enorme' });
   });
 
   it('refuses a sourceUrl that is not a web address', async () => {

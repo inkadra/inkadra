@@ -144,3 +144,8 @@ export function isTyping(target: EventTarget | null): boolean {
     target.tagName === 'SELECT'
   );
 }
+
+/** Space belongs to focused controls; only the canvas background starts panning. */
+export function canSpacePan(target: EventTarget | null): boolean {
+  return !isTyping(target) && !(target instanceof Element && target.closest('button'));
+}

@@ -33,16 +33,17 @@ export async function fillLinkPreview(
   try {
     preview = await api.post<LinkPreview>('/link-previews', { projectId, boardId, url });
   } catch {
-    return;
+    return false;
   }
   updateElement(
     doc,
     elementId,
     {
-      title: preview.title?.slice(0, 500) || undefined,
-      description: preview.description?.slice(0, 2000) || undefined,
-      imageAssetId: preview.imageAssetId ?? undefined,
+      ...(preview.title?.trim() ? { title: preview.title.slice(0, 500) } : {}),
+      ...(preview.description?.trim() ? { description: preview.description.slice(0, 2000) } : {}),
+      ...(preview.imageAssetId ? { imageAssetId: preview.imageAssetId } : {}),
     },
     LOCAL,
   );
+  return true;
 }

@@ -18,3 +18,5 @@ export * from './search.ts';
 export * from './sharing.ts';
 export * from './users.ts';
 export * from './versions.ts';
+
+export { youtubeVideoId } from './youtube.ts';

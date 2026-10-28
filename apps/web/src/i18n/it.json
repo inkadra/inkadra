@@ -388,6 +388,9 @@
       "group": "Raggruppa in colonna"
     },
     "menu": {
+      "playLink": "Riproduci {{title}}",
+      "refreshPreviewFailed": "Impossibile aggiornare l’anteprima. Riprova più tardi.",
+      "refreshPreview": "Aggiorna anteprima",
       "setCover": "Usa come copertina",
       "removeCover": "Rimuovi dalla copertina",
       "coverSet": "Copertina della board aggiornata",

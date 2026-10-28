@@ -7,6 +7,7 @@ export type ResizeCorner = 'nw' | 'ne' | 'sw' | 'se';
 export interface ResizeOptions {
   /** Width / height of the scalable content (images); omitted for free resizing. */
   aspectRatio?: number;
+  widthOnly?: boolean;
   /** Caption/border height outside the aspect-constrained content. */
   fixedHeight?: number;
 }
@@ -16,7 +17,7 @@ export function resizeFromCorner(
   rect: Rect,
   corner: ResizeCorner,
   delta: Point,
-  { aspectRatio, fixedHeight = 0 }: ResizeOptions = {},
+  { aspectRatio, fixedHeight = 0, widthOnly = false }: ResizeOptions = {},
 ): Rect {
   const west = corner.endsWith('w');
   const north = corner.startsWith('n');
@@ -33,11 +34,11 @@ export function resizeFromCorner(
     h = w / aspectRatio + fixedHeight;
   } else {
     w = Math.max(MIN_WIDTH, Math.round(desiredW));
-    h = Math.max(40, Math.round(desiredH));
+    h = widthOnly ? rect.h : Math.max(40, Math.round(desiredH));
   }
   return {
     x: west ? rect.x + rect.w - w : rect.x,
-    y: north ? rect.y + rect.h - h : rect.y,
+    y: north && !widthOnly ? rect.y + rect.h - h : rect.y,
     w,
     h,
   };

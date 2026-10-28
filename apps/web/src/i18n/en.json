@@ -388,6 +388,9 @@
       "group": "Group in a column"
     },
     "menu": {
+      "playLink": "Play {{title}}",
+      "refreshPreviewFailed": "Could not refresh preview. Please try again later.",
+      "refreshPreview": "Refresh preview",
       "setCover": "Use as cover",
       "removeCover": "Remove as cover",
       "coverSet": "Board cover updated",
