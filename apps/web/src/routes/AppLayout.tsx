@@ -19,6 +19,7 @@ import {
   type ReactNode,
   useContext,
   useEffect,
+  useMemo,
   useRef,
   useState,
   useSyncExternalStore,
@@ -26,9 +27,11 @@ import {
 import { useTranslation } from 'react-i18next';
 import {
   createPath,
+  UNSAFE_DataRouterContext as DataRouterContext,
   type Location,
   UNSAFE_LocationContext as LocationContext,
   Navigate,
+  UNSAFE_NavigationContext as NavigationContext,
   useLocation,
   useNavigate,
   useNavigationType,
@@ -109,8 +112,8 @@ const HOME: Location = { pathname: '/', search: '', hash: '', state: null, key: 
 /**
  * Settings open as a window over the page underneath, which stays mounted: a board keeps its
  * connection and scroll. The page is the last one shown before settings opened, or Home when
- * a settings URL is loaded directly; it renders with its own location so nothing in it reacts
- * to the settings URL (decision 0028). `depth` counts the history entries settings added.
+ * a settings URL is loaded directly (decision 0029). History entry positions distinguish Back
+ * from Forward; the underlay also isolates navigation, including data-router navigation.
  */
 function useSettingsOverlay(home: ReactNode) {
   const location = useLocation();
@@ -119,13 +122,26 @@ function useSettingsOverlay(home: ReactNode) {
   const open = isSettingsPath(location.pathname);
   const page = useRef<{ element: ReactNode; location: Location } | null>(null);
   if (!open) page.current = { element: outlet, location };
-  const depth = useRef(0);
-  // biome-ignore lint/correctness/useExhaustiveDependencies: counts navigations, keyed by entry.
-  useEffect(() => {
-    if (!open) depth.current = 0;
-    else if (navigationType === 'PUSH') depth.current += 1;
-    else if (navigationType === 'POP') depth.current = Math.max(0, depth.current - 1);
-  }, [location.key]);
+  const history = useRef({
+    entries: new Map<string, { position: number; base: number }>(),
+    current: { position: 0, base: 0 },
+    key: '',
+  });
+  // Remember entry positions rather than counting POPs: a POP can also be Forward.
+  const tracker = history.current;
+  if (tracker.key !== location.key) {
+    const known = tracker.entries.get(location.key);
+    const position =
+      navigationType === 'PUSH' ? tracker.current.position + 1 : tracker.current.position;
+    const entry = known ?? {
+      position,
+      base: open ? tracker.current.base : position,
+    };
+    tracker.entries.set(location.key, entry);
+    tracker.current = entry;
+    tracker.key = location.key;
+  }
+  const depth = tracker.current.position - tracker.current.base;
   const below = open ? (page.current ?? { element: home, location: HOME }) : null;
   return {
     open,
@@ -138,6 +154,59 @@ function useSettingsOverlay(home: ReactNode) {
   };
 }
 
+/**
+ * Keep these providers mounted even when settings are closed, so existing async callbacks
+ * use the same guarded navigator. Data routes bypass NavigationContext in useNavigateStable.
+ * Drop underlay navigations while covered: stale effects must never change the modal URL.
+ */
+function UnderlayNavigation({ open, children }: { open: boolean; children: ReactNode }) {
+  const blocked = useRef(open);
+  blocked.current = open;
+  const navigation = useContext(NavigationContext);
+  const data = useContext(DataRouterContext);
+  const guardedNavigation = useMemo(
+    () => ({
+      ...navigation,
+      navigator: {
+        ...navigation.navigator,
+        push: (...args: Parameters<typeof navigation.navigator.push>) => {
+          if (!blocked.current) navigation.navigator.push(...args);
+        },
+        replace: (...args: Parameters<typeof navigation.navigator.replace>) => {
+          if (!blocked.current) navigation.navigator.replace(...args);
+        },
+        go: (delta: number) => {
+          if (!blocked.current) navigation.navigator.go(delta);
+        },
+      },
+    }),
+    [navigation],
+  );
+  const guardedData = useMemo(
+    () =>
+      data && {
+        ...data,
+        // Preserve the live router getters (notably state) rather than copying a snapshot.
+        router: new Proxy(data.router, {
+          get(target, property, receiver) {
+            if (property === 'navigate')
+              return ((...args: Parameters<typeof target.navigate>) =>
+                blocked.current
+                  ? Promise.resolve()
+                  : target.navigate(...args)) as typeof target.navigate;
+            return Reflect.get(target, property, receiver);
+          },
+        }),
+      },
+    [data],
+  );
+  return (
+    <NavigationContext.Provider value={guardedNavigation}>
+      <DataRouterContext.Provider value={guardedData}>{children}</DataRouterContext.Provider>
+    </NavigationContext.Provider>
+  );
+}
+
 export function AppLayout({ home }: { home?: ReactNode }) {
   const setup = useInstanceSetup();
   const { t } = useTranslation();
@@ -146,6 +215,14 @@ export function AppLayout({ home }: { home?: ReactNode }) {
   const navigate = useNavigate();
   const url = useLocation();
   const overlay = useSettingsOverlay(home);
+  const afterSettings = useRef<string | null>(null);
+  useEffect(() => {
+    if (overlay.open || !afterSettings.current) return;
+    const destination = afterSettings.current;
+    afterSettings.current = null;
+    void navigate(destination);
+  }, [overlay.open, navigate]);
+
   // Everything in the shell follows the page under the settings window, not the settings URL.
   const { pathname, search } = overlay.location;
   const projects = useSyncExternalStore(subscribeProjects, getCachedProjects);
@@ -251,7 +328,7 @@ export function AppLayout({ home }: { home?: ReactNode }) {
 
   const inSettings = overlay.open;
   const closeSettings = () => {
-    if (overlay.depth.current > 0) navigate(-overlay.depth.current);
+    if (overlay.depth > 0) navigate(-overlay.depth);
     else navigate(createPath(overlay.location), { replace: true });
   };
   const writable = editableProjects(projects);
@@ -611,11 +688,13 @@ export function AppLayout({ home }: { home?: ReactNode }) {
             collapsed={inboxOpen || collapsed}
           >
             <div style={{ display: inboxOpen ? 'none' : 'contents' }}>
-              <LocationContext.Provider
-                value={{ location: overlay.location, navigationType: overlay.navigationType }}
-              >
-                {overlay.content}
-              </LocationContext.Provider>
+              <UnderlayNavigation open={overlay.open}>
+                <LocationContext.Provider
+                  value={{ location: overlay.location, navigationType: overlay.navigationType }}
+                >
+                  {overlay.content}
+                </LocationContext.Provider>
+              </UnderlayNavigation>
             </div>
             {inboxOpen && (
               <NotificationList
@@ -666,8 +745,12 @@ export function AppLayout({ home }: { home?: ReactNode }) {
           <SettingsWindow
             setup={setup}
             onClose={closeSettings}
+            onDiagnostics={() => {
+              afterSettings.current = '/diagnostics';
+              closeSettings();
+            }}
             onBack={() =>
-              overlay.depth.current > 1 ? navigate(-1) : navigate('/settings', { replace: true })
+              overlay.depth > 1 ? navigate(-1) : navigate('/settings', { replace: true })
             }
           >
             {overlay.settings}

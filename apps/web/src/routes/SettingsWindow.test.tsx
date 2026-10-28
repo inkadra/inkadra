@@ -55,9 +55,10 @@ it('frames a page with the navigation, its title and the save status', async () 
   expect(dialog.open).toBe(true);
   expect(dialog.getAttribute('aria-labelledby')).toBe(dialog.querySelector('h2')?.id);
   expect(dialog.querySelector('h2')?.textContent).toBe('admin.preferences');
-  // Focus starts on the open page in the navigation.
+  // Focus starts on the heading, leaving the selected navigation item neutral.
   expect(document.activeElement?.textContent).toBe('admin.preferences');
-  expect(document.activeElement?.getAttribute('aria-current')).toBe('page');
+  expect(document.activeElement).toBe(dialog.querySelector('h2'));
+  expect(document.body.style.overflow).toBe('hidden');
   expect(dialog.querySelector('.settings-nav')).not.toBeNull();
   expect(dialog.querySelector('.settings-save')).not.toBeNull();
   expect(dialog.querySelector('[data-content]')).not.toBeNull();
@@ -127,4 +128,14 @@ it('on phones lists the pages first, then shows one page with a way back', async
   );
   expect(onBack).toHaveBeenCalledTimes(1);
   expect(page.classList.contains('settings-window--wide')).toBe(false);
+});
+
+it('restores the body scroll style on close', async () => {
+  document.body.style.overflow = 'auto';
+  await render('/settings');
+  expect(document.body.style.overflow).toBe('hidden');
+  await act(async () => root.unmount());
+  root = createRoot(host);
+  expect(document.body.style.overflow).toBe('auto');
+  document.body.style.overflow = '';
 });

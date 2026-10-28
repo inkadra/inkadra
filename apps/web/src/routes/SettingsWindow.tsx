@@ -46,12 +46,14 @@ export function SettingsWindow({
   setup,
   onClose,
   onBack,
+  onDiagnostics,
   children,
 }: {
   setup: Setup;
   onClose: () => void;
   /** Phones: from a page back to the list of pages. */
   onBack: () => void;
+  onDiagnostics?: () => void;
   children: ReactNode;
 }) {
   const { t } = useTranslation();
@@ -73,10 +75,11 @@ export function SettingsWindow({
     if (!el) return;
     const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     if (!el.open) el.showModal();
-    // Start on the open page rather than the first field: the search stays one Tab away.
-    el.querySelector<HTMLElement>('.settings-nav [aria-current="page"]')?.focus();
-    if (!el.contains(document.activeElement)) el.focus();
+    const overflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    el.querySelector<HTMLElement>('h2')?.focus();
     return () => {
+      document.body.style.overflow = overflow;
       closingSelf.current = true;
       if (el.open) el.close();
       closingSelf.current = false;
@@ -121,7 +124,7 @@ export function SettingsWindow({
       }}
     >
       <div className="settings-window__frame">
-        {!phone && <SettingsNav setup={setup} members={members} />}
+        {!phone && <SettingsNav setup={setup} members={members} onDiagnostics={onDiagnostics} />}
         <section className="settings-window__main">
           <header className="settings-window__head">
             {phone && !list && (
@@ -132,7 +135,9 @@ export function SettingsWindow({
                 onClick={onBack}
               />
             )}
-            <h2 id={titleId}>{list ? t('settingsUi.profile') : t(page.title)}</h2>
+            <h2 id={titleId} tabIndex={-1}>
+              {list ? t('settingsUi.profile') : t(page.title)}
+            </h2>
             {!list && autosaves(page.id) && <SaveStatus />}
             <IconButton icon="close" label={t('settingsUi.close')} onClick={onClose} />
           </header>

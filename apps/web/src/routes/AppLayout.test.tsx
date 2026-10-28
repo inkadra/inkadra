@@ -1,7 +1,16 @@
 // @vitest-environment happy-dom
 import { act, StrictMode, useEffect } from 'react';
 import { createRoot } from 'react-dom/client';
-import { MemoryRouter, Route, Routes, useLocation } from 'react-router';
+import {
+  createMemoryRouter,
+  MemoryRouter,
+  Route,
+  RouterProvider,
+  Routes,
+  useLocation,
+  useNavigate,
+  useSearchParams,
+} from 'react-router';
 import { expect, it, vi } from 'vitest';
 import { AppLayout } from './AppLayout.tsx';
 
@@ -170,3 +179,144 @@ it('shows Home under a settings URL loaded directly and closes with Escape', asy
     await unmount();
   }
 });
+
+// Capture callbacks before settings opens, just like delayed board sync / ?el= cleanup.
+let backgroundNavigate: ReturnType<typeof useNavigate>;
+let backgroundSetParams: ReturnType<typeof useSearchParams>[1];
+let disconnects = 0;
+function DataPage() {
+  const location = useLocation();
+  backgroundNavigate = useNavigate();
+  [, backgroundSetParams] = useSearchParams();
+  useEffect(() => {
+    mounts.page += 1;
+    return () => {
+      disconnects += 1;
+    };
+  }, []);
+  return <output data-page>{location.pathname + location.search}</output>;
+}
+
+async function mountData(path = '/projects?el=pending') {
+  localStorage.clear();
+  mounts.page = 0;
+  disconnects = 0;
+  const router = createMemoryRouter(
+    [
+      {
+        element: <AppLayout />,
+        children: [
+          { path: 'projects', element: <DataPage /> },
+          { path: 'settings', element: <Where /> },
+          { path: 'diagnostics', element: <output data-diagnostics /> },
+        ],
+      },
+    ],
+    { initialEntries: [path] },
+  );
+  const host = document.createElement('div');
+  document.body.append(host);
+  const root = createRoot(host);
+  await act(async () => root.render(<RouterProvider router={router} />));
+  const close = () =>
+    act(async () =>
+      host.querySelector<HTMLButtonElement>('[aria-label="settingsUi.close"]')?.click(),
+    );
+  return {
+    router,
+    host,
+    close,
+    unmount: async () => {
+      await act(async () => root.unmount());
+      router.dispose();
+      host.remove();
+    },
+  };
+}
+
+it('isolates captured data-router navigation while keeping the background mounted', async () => {
+  const { router, host, close, unmount } = await mountData();
+  try {
+    const navigate = backgroundNavigate;
+    const setParams = backgroundSetParams;
+    await act(async () => router.navigate('/settings?section=account'));
+    for (const attempt of [
+      () => setParams({}, { replace: true }),
+      () => navigate('?view=shotlist', { replace: true }),
+      () => navigate('.'),
+      () => navigate(-1),
+      () => navigate('/diagnostics'),
+    ]) {
+      await act(async () => {
+        await attempt();
+      });
+      expect(router.state.location.pathname + router.state.location.search).toBe(
+        '/settings?section=account',
+      );
+    }
+    expect(host.querySelector('[data-page]')?.textContent).toBe('/projects?el=pending');
+    expect(mounts.page).toBe(1);
+    expect(disconnects).toBe(0);
+    await close();
+    expect(router.state.location.pathname + router.state.location.search).toBe(
+      '/projects?el=pending',
+    );
+    expect(disconnects).toBe(0);
+    await act(async () => backgroundNavigate('?view=shotlist', { replace: true }));
+    expect(router.state.location.search).toBe('?view=shotlist');
+  } finally {
+    await unmount();
+  }
+});
+
+it('closes after browser Back and Forward without replacing the settings entry', async () => {
+  const { router, close, unmount } = await mountData();
+  try {
+    await act(async () => router.navigate('/settings'));
+    await act(async () => router.navigate(-1));
+    await act(async () => router.navigate(1));
+    await close();
+    expect(router.state.location.pathname).toBe('/projects');
+    await act(async () => router.navigate(1));
+    expect(router.state.location.pathname).toBe('/settings');
+  } finally {
+    await unmount();
+  }
+});
+
+it('tracks phone list and section positions through Back, Forward and replacement', async () => {
+  const { router, close, unmount } = await mountData();
+  try {
+    await act(async () => router.navigate('/settings'));
+    await act(async () => router.navigate('/settings?section=account'));
+    await act(async () => router.navigate(-1));
+    await act(async () => router.navigate(1));
+    await act(async () => router.navigate('/settings?section=preferences', { replace: true }));
+    await close();
+    expect(router.state.location.pathname).toBe('/projects');
+    await act(async () => router.navigate(1));
+    expect(router.state.location.pathname + router.state.location.search).toBe('/settings');
+  } finally {
+    await unmount();
+  }
+});
+
+it.each([1, 2])(
+  'leaves %s settings entries for Diagnostics so Back returns to the background',
+  async (entries) => {
+    const { router, host, unmount } = await mountData();
+    try {
+      await act(async () => router.navigate('/settings'));
+      if (entries > 1) await act(async () => router.navigate('/settings?section=account'));
+      await act(async () =>
+        host.querySelector<HTMLAnchorElement>('.settings-nav__footer a')?.click(),
+      );
+      expect(router.state.location.pathname).toBe('/diagnostics');
+      await act(async () => router.navigate(-1));
+      expect(router.state.location.pathname).toBe('/projects');
+      expect(host.querySelector('dialog.settings-window')).toBeNull();
+    } finally {
+      await unmount();
+    }
+  },
+);

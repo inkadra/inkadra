@@ -98,8 +98,11 @@ test('mobile shell gives the canvas full width and keeps shell actions reachable
   await sheet.getByRole('button', { name: 'Nuovo progetto', exact: true }).click();
   await expect(page.getByRole('dialog')).toBeVisible();
   await page.keyboard.press('Escape');
+  // A DOM marker survives only if opening settings keeps this canvas instance mounted.
+  await canvas.evaluate((el) => el.setAttribute('data-settings-mount-probe', 'alive'));
   await nav.getByRole('button', { name: 'Profilo', exact: true }).click();
   await expect(page).toHaveURL('/settings');
+  await expect(canvas).toHaveAttribute('data-settings-mount-probe', 'alive');
   // Settings slide up as a full-screen sheet: the list first, then one page with a way back.
   const settings = page.locator('dialog.settings-window');
   await expect(settings.getByRole('heading', { name: 'Profilo', exact: true })).toBeVisible();
@@ -112,6 +115,7 @@ test('mobile shell gives the canvas full width and keeps shell actions reachable
   // Closing returns to the board, which stayed open underneath.
   await settings.getByRole('button', { name: 'Chiudi impostazioni', exact: true }).click();
   await expect(settings).toBeHidden();
+  await expect(canvas).toHaveAttribute('data-settings-mount-probe', 'alive');
   await expect(page).toHaveURL(new RegExp(`/p/${project.id}`));
   await expect(canvas).toBeVisible();
   await page.goto(`/p/${project.id}`);

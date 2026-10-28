@@ -1,4 +1,4 @@
-import { Icon } from '@inkadra/ui';
+import { Icon, type IconName } from '@inkadra/ui';
 import { type ReactNode, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useLocation } from 'react-router';
@@ -15,6 +15,18 @@ import './settings.css';
 
 type Setup = { checks: Array<{ id: string; ok: boolean }> | null; error: boolean };
 
+const SECTION_ICONS: Record<string, IconName> = {
+  account: 'user',
+  preferences: 'settings',
+  notifications: 'bell',
+  members: 'people',
+  workspace: 'archive',
+  classifications: 'tag',
+  providers: 'lock',
+  registration: 'mail',
+  instance: 'settings',
+};
+
 /** Which page the instance checklist sends an admin to when a check fails. */
 export function setupAttention(setup: Setup, page: string): boolean {
   const failing = (ids: string[]) => setup.checks?.some((c) => ids.includes(c.id) && !c.ok);
@@ -28,7 +40,15 @@ export function setupAttention(setup: Setup, page: string): boolean {
  * the person may open, grouped. Moving between pages replaces the history entry, so the
  * browser's Back closes the window instead of walking through every page visited.
  */
-export function SettingsNav({ setup, members }: { setup: Setup; members?: number | null }) {
+export function SettingsNav({
+  setup,
+  members,
+  onDiagnostics,
+}: {
+  setup: Setup;
+  members?: number | null;
+  onDiagnostics?: () => void;
+}) {
   const { t } = useTranslation();
   const { user, instance } = useSession();
   const { pathname, search } = useLocation();
@@ -76,6 +96,7 @@ export function SettingsNav({ setup, members }: { setup: Setup; members?: number
                         title: t('onboarding.settingsPending'),
                       })}
                     >
+                      <Icon name={SECTION_ICONS[p.id] ?? 'settings'} size={16} />
                       <span className="settings-nav__label">{t(p.title)}</span>
                       {p.id === 'members' && members != null && (
                         <span className="settings-nav__count">{members}</span>
@@ -97,7 +118,25 @@ export function SettingsNav({ setup, members }: { setup: Setup; members?: number
           Inkadra {instance?.version}
           {instance?.name && ` · ${instance.name}`}
         </span>
-        <Link to="/diagnostics">{t('settingsUi.diagnostics')}</Link>
+        <Link
+          to="/diagnostics"
+          replace
+          onClick={(event) => {
+            if (
+              onDiagnostics &&
+              !event.metaKey &&
+              !event.ctrlKey &&
+              !event.shiftKey &&
+              !event.altKey &&
+              event.button === 0
+            ) {
+              event.preventDefault();
+              onDiagnostics();
+            }
+          }}
+        >
+          {t('settingsUi.diagnostics')}
+        </Link>
       </footer>
     </nav>
   );
