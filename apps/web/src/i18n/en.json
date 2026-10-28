@@ -1730,7 +1730,8 @@
     "noDates": "Dates to be confirmed",
     "boards_one": "{{count}} board",
     "boards_other": "{{count}} boards",
-    "pinned": "Pinned"
+    "pinned": "Pinned",
+    "saveError": "The change could not be saved. Try again."
   },
   "onboarding": {
     "guidedSetup": "Guided setup",

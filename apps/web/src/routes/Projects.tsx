@@ -88,7 +88,8 @@ export function Projects() {
           row.project.id === updated.id ? { ...row, project: updated } : row,
         ) ?? null,
     );
-  async function mutate(project: Project, change: Change) {
+  /** Resolves to whether the change was saved. */
+  async function mutate(project: Project, change: Change): Promise<boolean> {
     setBusy(true);
     setError(false);
     try {
@@ -101,8 +102,10 @@ export function Projects() {
             );
       replace(updated);
       await refreshProjects();
+      return true;
     } catch {
       setError(true);
+      return false;
     } finally {
       setBusy(false);
     }
@@ -133,7 +136,7 @@ export function Projects() {
           <Link className="ink-btn ink-btn--ghost" to="/onboarding">
             {t('onboarding.guidedSetup')}
           </Link>
-          <Button variant="primary" icon="plus" onClick={openNewProject}>
+          <Button variant="primary" icon="plus" onClick={() => openNewProject()}>
             {t('nav.newProject')}
           </Button>
         </div>
@@ -266,7 +269,7 @@ function ProjectCard({
   row: ProjectOverview;
   onAppearanceSaved: (project: Project) => void;
   busy: boolean;
-  mutate: (p: Project, change: Change) => Promise<void>;
+  mutate: (p: Project, change: Change) => Promise<boolean>;
 }) {
   const { typeLabel } = useClassifications();
   const { t, i18n } = useTranslation();
@@ -364,21 +367,33 @@ function ProjectTypeDialog({
 }: {
   project: Project;
   onClose: () => void;
-  onSave: (type: string | null) => Promise<void>;
+  /** Resolves to whether the type was saved; on failure the dialog stays open. */
+  onSave: (type: string | null) => Promise<boolean>;
 }) {
   const { catalogs, typeLabel } = useClassifications();
   const { t } = useTranslation();
   const [type, setType] = useState(project.type ?? '');
   const [busy, setBusy] = useState(false);
+  const [error, setError] = useState(false);
   async function submit(e: FormEvent) {
     e.preventDefault();
+    if (busy) return;
     setBusy(true);
-    await onSave(type || null);
+    setError(false);
+    const saved = await onSave(type || null);
     setBusy(false);
-    onClose();
+    if (saved) onClose();
+    else setError(true);
   }
   return (
-    <Dialog open title={`${t('onboarding.type')} · ${project.name}`} onClose={onClose}>
+    <Dialog
+      open
+      title={`${t('onboarding.type')} · ${project.name}`}
+      onClose={onClose}
+      onCancel={(e) => {
+        if (busy) e.preventDefault();
+      }}
+    >
       <form className="settings__form" onSubmit={submit}>
         <label className="project-type-field">
           {t('onboarding.type')}
@@ -401,6 +416,7 @@ function ProjectTypeDialog({
               ))}
           </select>
         </label>
+        {error && <p role="alert">{t('projectsPage.saveError')}</p>}
         <DialogActions>
           <Button disabled={busy} onClick={onClose}>
             {t('project.cancel')}

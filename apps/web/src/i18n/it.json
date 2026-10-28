@@ -1730,7 +1730,8 @@
     "noDates": "Date da definire",
     "boards_one": "{{count}} board",
     "boards_other": "{{count}} board",
-    "pinned": "Fissato"
+    "pinned": "Fissato",
+    "saveError": "Non è stato possibile salvare la modifica. Riprova."
   },
   "onboarding": {
     "guidedSetup": "Configurazione guidata",

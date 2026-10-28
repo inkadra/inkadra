@@ -53,6 +53,7 @@ import { MobileNavigation } from './MobileNavigation.tsx';
 import { NewBoardDialog } from './NewBoardDialog.tsx';
 import { NewProjectDialog } from './NewProjectDialog.tsx';
 import { ProjectNavItem } from './ProjectAppearance.tsx';
+import { onboardingTitle, type ProjectTemplate } from './project-setup.ts';
 import {
   getCachedProjects,
   refreshProjects,
@@ -67,7 +68,8 @@ import './mobile-shell.css';
 interface ProjectsState {
   projects: Project[] | null;
   shared: Board[] | null;
-  openNewProject: () => void;
+  /** Opens New project, optionally with a template already chosen. */
+  openNewProject: (template?: ProjectTemplate) => void;
   openSearch: () => void;
   openInbox: () => void;
   unread: number;
@@ -100,7 +102,8 @@ export function AppLayout() {
   const { pathname, search } = useLocation();
   const projects = useSyncExternalStore(subscribeProjects, getCachedProjects);
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const [creating, setCreating] = useState(false);
+  // A template when New project opens with one preselected, as from Home.
+  const [creating, setCreating] = useState<boolean | ProjectTemplate>(false);
   const [creatingBoard, setCreatingBoard] = useState(false);
   const [headerContent, setHeaderContent] = useState<ReactNode | null>(null);
   const [searching, setSearching] = useState(false);
@@ -189,6 +192,8 @@ export function AppLayout() {
   const projectId = pathname.startsWith('/p/') ? pathname.split('/')[2] : undefined;
   const boardId = pathname.split('/')[4];
   const current = projects?.find((p) => p.id === projectId);
+  // The same title as the guided setup page.
+  const onboardingCrumb = onboardingTitle(projects);
   const openBoardId = boardId ?? current?.rootBoardId;
   const storyboardId = storyboardOf(projectBoards);
   // Until the project's boards are known the kind is too: no tab is active before that.
@@ -465,13 +470,9 @@ export function AppLayout() {
               ) : (
                 <span style={{ fontWeight: 600 }}>
                   {current?.name ??
-                    t(
-                      pathname === '/projects'
-                        ? 'nav.projects'
-                        : pathname === '/onboarding'
-                          ? 'onboarding.title'
-                          : 'nav.home',
-                    )}
+                    (pathname === '/onboarding'
+                      ? onboardingCrumb && t(onboardingCrumb)
+                      : t(pathname === '/projects' ? 'nav.projects' : 'nav.home'))}
                 </span>
               )}
             </nav>
@@ -519,7 +520,7 @@ export function AppLayout() {
         value={{
           projects,
           shared,
-          openNewProject: () => setCreating(true),
+          openNewProject: (template) => setCreating(template ?? true),
           openSearch: () => setSearching(true),
           openInbox: () => setInboxOpen(true),
           unread,
@@ -624,7 +625,8 @@ export function AppLayout() {
           />
         )}
         <NewProjectDialog
-          open={creating}
+          open={creating !== false}
+          template={typeof creating === 'string' ? creating : undefined}
           onClose={() => setCreating(false)}
           onCreated={async (p) => {
             setCreating(false);

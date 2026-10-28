@@ -103,3 +103,46 @@ it('offers the People filter only when someone else is on a project', async () =
   await render([member('me', 'Giulia'), member('andrea', 'Andrea')]);
   expect(host.textContent).toContain('projectsPage.people');
 });
+
+it('returns focus to the title link when the keyboard menu closes', async () => {
+  await render([member('me', 'Giulia')]);
+  const link = host.querySelector<HTMLAnchorElement>('.project-card h2 a');
+  link?.focus();
+  await act(async () =>
+    link?.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'F10', shiftKey: true, bubbles: true }),
+    ),
+  );
+  const menu = document.querySelector<HTMLElement>('[role="menu"]');
+  expect(menu).not.toBeNull();
+  await act(async () =>
+    document.activeElement?.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }),
+    ),
+  );
+  expect(document.querySelector('[role="menu"]')).toBeNull();
+  expect(document.activeElement).toBe(link);
+});
+
+it('keeps the Project type dialog open with an error when saving fails', async () => {
+  await render([member('me', 'Giulia')]);
+  await act(async () => host.querySelector<HTMLButtonElement>('.project-card__options')?.click());
+  await act(async () =>
+    [...document.querySelectorAll<HTMLButtonElement>('[role="menuitem"]')]
+      .find((item) => item.textContent === 'onboarding.type')
+      ?.click(),
+  );
+  const dialog = host.querySelector('dialog');
+  expect(dialog).not.toBeNull();
+  // A right-click in the dialog is the browser's, not the card's project menu.
+  const select = dialog?.querySelector('select');
+  const event = new MouseEvent('contextmenu', { bubbles: true, cancelable: true });
+  await act(async () => select?.dispatchEvent(event));
+  expect(event.defaultPrevented).toBe(false);
+  expect(document.querySelector('[role="menu"]')).toBeNull();
+  vi.mocked(api.patch).mockRejectedValue(new Error('offline'));
+  await act(async () => dialog?.querySelector('form')?.requestSubmit());
+  expect(api.patch).toHaveBeenCalledWith('/projects/p1', { type: 'short_film' });
+  expect(host.querySelector('dialog')).not.toBeNull();
+  expect(dialog?.querySelector('[role="alert"]')?.textContent).toBe('projectsPage.saveError');
+});

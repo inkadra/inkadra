@@ -30,6 +30,7 @@ export function useProjectMenu(
   const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
   const [editing, setEditing] = useState(false);
   const opener = useRef<HTMLElement | null>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const items: ProjectMenuItem[] = [
     ...(canEditProjectAppearance(project)
@@ -55,24 +56,40 @@ export function useProjectMenu(
     document.addEventListener('pointerdown', dismiss);
     return () => document.removeEventListener('pointerdown', dismiss);
   }, [menu]);
-  const open = (target: HTMLElement, x?: number, y?: number) => {
-    opener.current = target;
-    const rect = target.getBoundingClientRect();
+  /** Opens at `anchor`; focus returns to `focus` when the menu or its dialog closes. */
+  const open = (anchor: HTMLElement, focus: HTMLElement | null, x?: number, y?: number) => {
+    opener.current = focus;
+    const rect = anchor.getBoundingClientRect();
     setMenu({
       x: Math.max(8, Math.min(x ?? rect.left, window.innerWidth - 240)),
       y: Math.max(8, Math.min(y ?? rect.bottom, window.innerHeight - 48 - items.length * 40)),
     });
   };
+  // The target can be a whole card that holds the menu's own dialogs: events from those, or
+  // from anything portalled out of it, keep their native behaviour.
+  const fromTarget = (event: MouseEvent<HTMLElement> | KeyboardEvent<HTMLElement>) => {
+    const target = event.target as Element;
+    if (!event.currentTarget.contains(target)) return false;
+    const dialog = target.closest('dialog');
+    return !dialog || dialog.contains(event.currentTarget);
+  };
+  // A card itself takes no focus: return it to the link under the event, else to the ⋯ button.
+  const focusFor = (event: MouseEvent<HTMLElement> | KeyboardEvent<HTMLElement>) =>
+    (event.target as Element).closest<HTMLElement>('a[href], button') ??
+    (event.currentTarget.matches('a[href], button, [tabindex]') ? event.currentTarget : null) ??
+    triggerRef.current;
   const targetProps = enabled
     ? {
         onContextMenu: (event: MouseEvent<HTMLElement>) => {
+          if (!fromTarget(event)) return;
           event.preventDefault();
-          open(event.currentTarget, event.clientX, event.clientY);
+          open(event.currentTarget, focusFor(event), event.clientX, event.clientY);
         },
         onKeyDown: (event: KeyboardEvent<HTMLElement>) => {
+          if (!fromTarget(event)) return;
           if (event.key === 'ContextMenu' || (event.shiftKey && event.key === 'F10')) {
             event.preventDefault();
-            open(event.currentTarget);
+            open(event.currentTarget, focusFor(event));
           }
         },
       }
@@ -80,12 +97,13 @@ export function useProjectMenu(
   const trigger = (className: string) =>
     enabled && (
       <button
+        ref={triggerRef}
         type="button"
         className={className}
         aria-label={t('appearance.options', { name: project.name })}
         aria-haspopup="menu"
         aria-expanded={!!menu}
-        onClick={(event) => (menu ? close() : open(event.currentTarget))}
+        onClick={(event) => (menu ? close() : open(event.currentTarget, event.currentTarget))}
       >
         ⋯
       </button>

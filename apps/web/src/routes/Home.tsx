@@ -1,6 +1,6 @@
 import type { Notification, PlannedShootingDay, Project, RecentBoard } from '@inkadra/shared';
 import { Avatar, Button, EmptyState, Icon, type IconName } from '@inkadra/ui';
-import { type MouseEvent, type ReactNode, useId, useMemo, useState } from 'react';
+import { type MouseEvent, type ReactNode, useId, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router';
 import { authorName } from '../board/review-model.ts';
@@ -11,7 +11,6 @@ import { describeNotification, relativeTime } from '../notifications/Notificatio
 import { useProjects } from './AppLayout.tsx';
 import { BoardPreview } from './BoardPreview.tsx';
 import {
-  editableProjects,
   type Loadable,
   localDate,
   RECENT_BOARDS,
@@ -20,10 +19,7 @@ import {
   useRecentBoards,
   useShootingDays,
 } from './home-data.ts';
-import { NewBoardDialog, type StartChoice } from './NewBoardDialog.tsx';
-import { NewProjectDialog } from './NewProjectDialog.tsx';
 import { PROJECT_TEMPLATES, type ProjectTemplate } from './project-setup.ts';
-import { refreshProjects } from './projects.ts';
 import './home.css';
 
 function greetingKey(hour: number) {
@@ -51,10 +47,6 @@ export function Home() {
   const today = useShootingDays(localDate(now));
   const recent = useRecentBoards();
   const activity = useActivity(now);
-  const writable = useMemo(() => editableProjects(projects), [projects]);
-  const [newBoard, setNewBoard] = useState<StartChoice | null>(null);
-  // The same templates and form as New project and the guided setup.
-  const [newProject, setNewProject] = useState<ProjectTemplate | null>(null);
   const days = today.state === 'ready' ? today.items : [];
   const go = (to: string) => (e: MouseEvent) => {
     e.preventDefault();
@@ -188,7 +180,7 @@ export function Home() {
             title={t('home.noProjects')}
             actions={
               <>
-                <Button variant="primary" icon="plus" onClick={openNewProject}>
+                <Button variant="primary" icon="plus" onClick={() => openNewProject()}>
                   {t('nav.newProject')}
                 </Button>
                 <Button variant="ghost" onClick={() => navigate('/onboarding')}>
@@ -230,7 +222,8 @@ export function Home() {
               key={c}
               type="button"
               className="ink-card home__template"
-              onClick={() => setNewProject(c)}
+              // The same templates and form as New project and the guided setup.
+              onClick={() => openNewProject(c)}
             >
               <span className="home__template-icon" aria-hidden="true">
                 <Icon name={TEMPLATE_ICONS[c]} size={16} />
@@ -241,23 +234,6 @@ export function Home() {
           ))}
         </div>
       </Section>
-
-      <NewBoardDialog
-        open={newBoard !== null}
-        projects={writable}
-        initial={newBoard ?? 'blank'}
-        onClose={() => setNewBoard(null)}
-      />
-      <NewProjectDialog
-        open={newProject !== null}
-        template={newProject ?? undefined}
-        onClose={() => setNewProject(null)}
-        onCreated={async (p) => {
-          setNewProject(null);
-          await refreshProjects();
-          navigate(`/p/${p.id}`);
-        }}
-      />
     </div>
   );
 }

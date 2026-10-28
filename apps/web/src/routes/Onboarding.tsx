@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router';
 import { useInstanceSetupState, useProjects } from './AppLayout.tsx';
 import { InstanceChecklist } from './InstanceSetup.tsx';
 import { ProjectSetupForm } from './NewProjectDialog.tsx';
+import { onboardingTitle } from './project-setup.ts';
 import { refreshProjects } from './projects.ts';
 
 export function Onboarding() {
@@ -11,12 +12,16 @@ export function Onboarding() {
   const setup = useInstanceSetupState();
   // The same form as New project: only a first project gets the welcome title.
   const { projects } = useProjects();
-  const first = projects?.length === 0;
+  const title = onboardingTitle(projects);
+  const first = title === 'onboarding.firstTitle';
   return (
     <div className="onboarding-page">
       <section className="ink-card onboarding-page__form">
-        <h1>{t(first ? 'onboarding.firstTitle' : 'onboarding.title')}</h1>
-        <p className="ink-muted">{t(first ? 'onboarding.firstSubtitle' : 'onboarding.subtitle')}</p>
+        {/* Empty while loading, so a first-time user never sees the other title first. */}
+        <h1>{title && t(title)}</h1>
+        <p className="ink-muted">
+          {title && t(first ? 'onboarding.firstSubtitle' : 'onboarding.subtitle')}
+        </p>
         <ProjectSetupForm
           onClose={() => navigate('/projects')}
           onCreated={async (p) => {
