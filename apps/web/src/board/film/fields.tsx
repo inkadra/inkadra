@@ -1,6 +1,7 @@
 import { FRAME_STATUSES, type FrameStatus } from '@inkadra/doc-schema';
 import { type KeyboardEvent, useId, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import type { ShotDisplayStatus } from './film-status.ts';
 
 /**
  * Inputs that write on blur, like the fields inside cards. They remount when the value
@@ -200,7 +201,7 @@ export function StatusSelect({
   );
 }
 
-export function StatusChip({ status }: { status: FrameStatus | undefined }) {
+export function StatusChip({ status }: { status: ShotDisplayStatus | undefined }) {
   const { t } = useTranslation();
   const s = status ?? 'draft';
   return <span className={`film-chip film-status--${s}`}>{t(`film.status.${s}`)}</span>;

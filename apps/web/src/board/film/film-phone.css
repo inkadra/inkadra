@@ -130,8 +130,23 @@
   font-weight: 600;
 }
 .shot-cards__scene .shots__group-toggle {
-  min-width: 32px;
-  min-height: 32px;
+  min-width: 44px;
+  min-height: 44px;
+}
+.shot-cards__select-all {
+  display: flex;
+  align-items: center;
+  align-self: flex-start;
+  min-height: 44px;
+  padding-right: 12px;
+  font-size: 13px;
+  cursor: pointer;
+}
+/* Lines the checkbox up with the ones in the cards' 44 px column. */
+.shot-cards__select-all-box {
+  display: grid;
+  place-items: center;
+  width: 45px;
 }
 .shot-cards__scene .shots__scene-meta {
   margin-left: 8px;
@@ -220,7 +235,11 @@
   font-size: 13px;
   line-height: 1.35;
 }
-/* Guest and review marks sit in the bottom corner, outside the card's button. */
+/* Guest and review marks sit in the bottom corner, outside the card's button; the card keeps
+   a strip free for them below the text so they never cover the action. */
+.shot-card:has(.shot-card__marks:not(:empty)) .shot-card__body {
+  padding-bottom: 36px;
+}
 .shot-card__marks {
   position: absolute;
   right: 8px;

@@ -321,6 +321,7 @@ it('shows each shot as a card on a phone and edits it in the frame panel', async
     { label: '4C', shot: 'cu', lens: '85mm', durationMs: 4000, action: 'Neon on half his face' },
     { userId: null },
   );
+  addFrame(doc, scene.id, null, { label: '4D', status: 'shot', approved: true }, { userId: null });
 
   const host = await mount(<ShotList store={store} boardTitle="Test Board" readOnly={false} />);
 
@@ -332,15 +333,42 @@ it('shows each shot as a card on a phone and edits it in the frame panel', async
   expect(card?.querySelector('.shot-card__meta')?.textContent).toBe('Close-up · 85mm · 4s');
   expect(card?.querySelector('.shot-card__action')?.textContent).toBe('Neon on half his face');
   expect(card?.querySelector('.film-chip')).not.toBeNull();
+  // The chip counts an approved shot as approved, like the scene pills and the footer.
+  expect(host.querySelectorAll('.shot-card')[1]?.querySelector('.film-chip')?.textContent).toBe(
+    'Approved',
+  );
 
   // Scene heading, selection checkbox and "Add shot in scene" stay.
   expect(host.querySelector('.shot-cards__scene')?.textContent).toContain('4');
   expect(card?.querySelector('input[aria-label="Select shot 4C"]')).not.toBeNull();
   expect(host.querySelector('.shot-cards__add button')?.textContent).toContain('4');
 
-  // Tapping the card opens the frame panel with every field.
+  // "Select all" is reachable without the table header.
+  const selectAll = host.querySelector<HTMLInputElement>('.shot-cards__select-all input');
   await act(async () => {
-    card?.querySelector<HTMLButtonElement>('.shot-card__body')?.click();
+    selectAll?.click();
   });
-  expect(host.querySelector('.film-panel')).not.toBeNull();
+  expect(card?.querySelector<HTMLInputElement>('input[aria-label="Select shot 4C"]')?.checked).toBe(
+    true,
+  );
+  await act(async () => {
+    selectAll?.click();
+  });
+
+  // Tapping the card opens the frame panel with every field and moves focus into it;
+  // closing it gives focus back to the card.
+  const body = card?.querySelector<HTMLButtonElement>('.shot-card__body');
+  await act(async () => {
+    body?.click();
+  });
+  const panel = host.querySelector<HTMLElement>('.film-panel');
+  expect(panel).not.toBeNull();
+  expect(body?.getAttribute('aria-expanded')).toBe('true');
+  expect(body?.getAttribute('aria-controls')).toBe(panel?.id);
+  expect(document.activeElement).toBe(panel);
+  await act(async () => {
+    panel?.querySelector<HTMLButtonElement>('button[aria-label="Close the details"]')?.click();
+  });
+  expect(host.querySelector('.film-panel')).toBeNull();
+  expect(document.activeElement).toBe(body);
 });

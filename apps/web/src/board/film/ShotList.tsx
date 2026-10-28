@@ -92,6 +92,17 @@ export function ShotList({
 
   const opts = useMemo(() => ({ userId, origin: LOCAL }), [userId]);
   const currentFrame = frames.find((f) => f.id === selected) ?? null;
+  // The shot card that opened the frame panel on a phone, to give focus back when it closes.
+  const cardOrigin = useRef<string | null>(null);
+  useEffect(() => {
+    const origin = cardOrigin.current;
+    if (selected === origin) return;
+    cardOrigin.current = null;
+    if (selected !== null || !origin) return;
+    containerRef.current
+      ?.querySelector<HTMLElement>(`[data-shot-card="${CSS.escape(origin)}"]`)
+      ?.focus();
+  }, [selected]);
   const drawn = frames.find((f) => f.id === drawing) ?? null;
 
   const scenes = useMemo(
@@ -637,6 +648,22 @@ export function ShotList({
   // On a phone each shot is a card; its other fields are edited in the frame panel.
   const shotCards = (
     <div className="shot-cards">
+      {!readOnly && allVisibleFrameIds.length > 0 && (
+        <label className="shot-cards__select-all">
+          <span className="shot-cards__select-all-box">
+            <input
+              type="checkbox"
+              className="shots__checkbox"
+              checked={allSelected}
+              ref={(el) => {
+                if (el) el.indeterminate = someSelected && !allSelected;
+              }}
+              onChange={toggleSelectAll}
+            />
+          </span>
+          {t('film.list.selectAll')}
+        </label>
+      )}
       {shownGroups.map((g) => {
         const isCollapsed = collapsedGroups.has(g.id);
         return (
@@ -672,8 +699,13 @@ export function ShotList({
                       <button
                         type="button"
                         className="shot-card__body"
-                        aria-pressed={isOpen}
-                        onClick={() => setSelected(isOpen ? null : f.id)}
+                        data-shot-card={f.id}
+                        aria-expanded={isOpen}
+                        aria-controls={isOpen ? 'shot-frame-panel' : undefined}
+                        onClick={() => {
+                          cardOrigin.current = isOpen ? null : f.id;
+                          setSelected(isOpen ? null : f.id);
+                        }}
                       >
                         <span className="shot-card__pic">
                           <FramePicture
@@ -689,7 +721,7 @@ export function ShotList({
                         <span className="shot-card__text">
                           <span className="shot-card__head">
                             <b className="shot-card__label">{label}</b>
-                            <StatusChip status={f.status} />
+                            <StatusChip status={getFrameStatus(f)} />
                           </span>
                           {meta.length > 0 && (
                             <span className="shot-card__meta">{meta.join(' · ')}</span>
@@ -1067,7 +1099,8 @@ export function ShotList({
           )}
         </div>
 
-        {visibleSelectedIds.length > 0 && !readOnly && (
+        {/* On a phone the open frame panel covers the list, and the toolbar would cover it. */}
+        {visibleSelectedIds.length > 0 && !readOnly && !(phone && currentFrame) && (
           <div
             role="toolbar"
             aria-label={t('film.list.bulkActions')}
@@ -1143,6 +1176,8 @@ export function ShotList({
             projectId={projectId}
             boardId={boardId}
             readOnly={readOnly}
+            id="shot-frame-panel"
+            takeFocus={phone && cardOrigin.current === currentFrame.id}
             onClose={() => setSelected(null)}
             onDraw={() => setDrawing(currentFrame.id)}
           />

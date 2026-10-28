@@ -95,6 +95,10 @@
   background: color-mix(in srgb, var(--ink-tag-orange) 16%, transparent);
   color: var(--ink-tag-orange);
 }
+.film-status--approved {
+  background: var(--ink-tag-purple);
+  color: var(--ink-on-accent);
+}
 select.film-status {
   width: auto;
   height: 24px;
