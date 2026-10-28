@@ -393,7 +393,10 @@ a.home__activity-item:hover {
   color: var(--ink-tag-orange);
 }
 .home__today {
-  border-color: var(--ink-tag-orange);
+  border-color: color-mix(in srgb, var(--ink-tag-orange) 35%, var(--ink-border-default));
+}
+.home__today > .home__more {
+  align-self: flex-start;
 }
 .home__today-chip {
   align-self: flex-start;

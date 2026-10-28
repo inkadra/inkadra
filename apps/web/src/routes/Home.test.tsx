@@ -280,3 +280,32 @@ it('shows root boards among the four recent boards without guessing kinds from t
     host.querySelector('[aria-labelledby="home-recent"] .home__more')?.getAttribute('href'),
   ).toBe('/projects');
 });
+
+it('shows one shooting day in the Today card and the others on request', async () => {
+  vi.useFakeTimers({ now: new Date(2026, 9, 26, 9, 0), toFake: ['Date'] });
+  context();
+  const day = (id: string, boardTitle: string): PlannedShootingDay => ({
+    id,
+    projectId: 'p1',
+    boardId: `plan-${id}`,
+    date: '2026-10-26',
+    callTime: '18:30',
+    wrap: null,
+    location: 'Central station',
+    notes: '',
+    blocks: [],
+    revision: 1,
+    boardTitle,
+    projectName: 'Last run',
+  });
+  respond({ days: [day('d1', 'Plan A'), day('d2', 'Plan B'), day('d3', 'Plan C')] });
+  await render();
+  const card = () => host.querySelector('.home__today') as HTMLElement;
+  expect(card().textContent).toContain('Plan A');
+  expect(card().textContent).not.toContain('Plan B');
+  const more = card().querySelector('button.home__more') as HTMLButtonElement;
+  expect(more.textContent).toBe('home.today.moreDays {"count":2}');
+  await act(async () => more.click());
+  expect(card().textContent).toContain('Plan B');
+  expect(card().textContent).toContain('Plan C');
+});

@@ -142,7 +142,10 @@
       "call": "Convocazione",
       "location": "Location",
       "wrap": "Fine prevista",
-      "openSchedule": "Apri piano riprese"
+      "openSchedule": "Apri piano riprese",
+      "moreDays_one": "+{{count}} altra giornata oggi",
+      "moreDays_other": "+{{count}} altre giornate oggi",
+      "fewerDays": "Mostra meno"
     },
     "allBoards": "Vedi tutti i board →",
     "recentBoards": "Recenti",

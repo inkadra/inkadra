@@ -1,6 +1,6 @@
 import type { Notification, PlannedShootingDay, Project, RecentBoard } from '@inkadra/shared';
 import { Avatar, Icon, type IconName, ProjectGlyph } from '@inkadra/ui';
-import { type MouseEvent, type ReactNode, useId } from 'react';
+import { type MouseEvent, type ReactNode, useId, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router';
 import { authorName } from '../board/review-model.ts';
@@ -47,6 +47,9 @@ export function Home() {
   const recent = useRecentBoards();
   const activity = useActivity(now);
   const days = today.state === 'ready' ? today.items : [];
+  // Several days on the same date would stretch the card: show the first, the rest on request.
+  const [allDays, setAllDays] = useState(false);
+  const shownDays = allDays ? days : days.slice(0, 1);
   const go = (to: string) => (e: MouseEvent) => {
     e.preventDefault();
     navigate(to);
@@ -96,7 +99,7 @@ export function Home() {
                 {t('home.loadError')}
               </p>
             )}
-            {days.map((d) => (
+            {shownDays.map((d) => (
               <TodayDay
                 key={d.id}
                 day={d}
@@ -104,6 +107,13 @@ export function Home() {
                 go={go}
               />
             ))}
+            {days.length > 1 && (
+              <button type="button" className="home__more" onClick={() => setAllDays((v) => !v)}>
+                {allDays
+                  ? t('home.today.fewerDays')
+                  : t('home.today.moreDays', { count: days.length - 1 })}
+              </button>
+            )}
           </section>
         )}
       </header>
