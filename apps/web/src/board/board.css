@@ -1912,8 +1912,14 @@ button.crumb--editable:focus-visible {
     display: none;
   }
   /* The connection keeps its dot; the words move to the tooltip. */
+  /* Hidden from sight only: screen readers still get the status. */
   .sync__text {
-    display: none;
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
   }
 }
 

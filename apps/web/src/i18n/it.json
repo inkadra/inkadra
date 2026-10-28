@@ -113,8 +113,8 @@
     "boards": "Board",
     "shots_one": "{{count}} inquadratura",
     "shots_other": "{{count}} inquadrature",
-    "toShoot_one": "{{count}} di {{total}} inquadrature ancora da girare",
-    "toShoot_other": "{{count}} di {{total}} inquadrature ancora da girare",
+    "toShoot_one": "{{left}} di {{count}} inquadratura ancora da girare",
+    "toShoot_other": "{{left}} di {{count}} inquadrature ancora da girare",
     "items_one": "{{count}} elemento nella board",
     "items_other": "{{count}} elementi nella board"
   },

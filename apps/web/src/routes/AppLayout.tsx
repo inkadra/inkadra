@@ -349,7 +349,7 @@ export function AppLayout() {
                 count={storyboardCounts?.framesToShoot}
                 title={
                   storyboardCounts
-                    ? `${t('nav.shotlist')} · ${t('nav.toShoot', { count: storyboardCounts.framesToShoot, total: storyboardCounts.frameCount })}`
+                    ? `${t('nav.shotlist')} · ${t('nav.toShoot', { count: storyboardCounts.frameCount, left: storyboardCounts.framesToShoot })}`
                     : undefined
                 }
                 active={filmRowActive('shotlist')}

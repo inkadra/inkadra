@@ -14,6 +14,8 @@ import {
   editableProjects,
   type Loadable,
   localDate,
+  RECENT_BOARDS,
+  RECENT_PROJECTS,
   useActivity,
   useRecentBoards,
   useShootingDays,
@@ -56,7 +58,10 @@ export function Home() {
     boardId === rootOf(projectId) ? `/p/${projectId}` : `/p/${projectId}/b/${boardId}`;
 
   const recentProjects = useMemo(
-    () => [...(projects ?? [])].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)).slice(0, 8),
+    () =>
+      [...(projects ?? [])]
+        .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
+        .slice(0, RECENT_PROJECTS),
     [projects],
   );
   // A project's own board is already its card under Recent projects.
@@ -272,7 +277,6 @@ function Section({
   );
 }
 
-/** A section's list, or its loading, error and empty states; never placeholder items. */
 /** Recent boards without the root boards of the projects listed under Recent projects. */
 export function withoutRoots(
   recent: Loadable<RecentBoard>,
@@ -280,9 +284,13 @@ export function withoutRoots(
 ): Loadable<RecentBoard> {
   if (recent.state !== 'ready') return recent;
   const roots = new Set(projects.map((p) => p.rootBoardId));
-  return { state: 'ready', items: recent.items.filter((b) => !roots.has(b.id)) };
+  return {
+    state: 'ready',
+    items: recent.items.filter((b) => !roots.has(b.id)).slice(0, RECENT_BOARDS),
+  };
 }
 
+/** A section's list, or its loading, error and empty states; never placeholder items. */
 function LoadState<T>({
   list,
   empty,

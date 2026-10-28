@@ -113,8 +113,8 @@
     "boards": "Boards",
     "shots_one": "{{count}} shot",
     "shots_other": "{{count}} shots",
-    "toShoot_one": "{{count}} of {{total}} shots still to shoot",
-    "toShoot_other": "{{count}} of {{total}} shots still to shoot",
+    "toShoot_one": "{{left}} of {{count}} shot still to shoot",
+    "toShoot_other": "{{left}} of {{count}} shots still to shoot",
     "items_one": "{{count}} item on the board",
     "items_other": "{{count}} items on the board"
   },

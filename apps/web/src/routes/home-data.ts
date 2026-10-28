@@ -16,6 +16,7 @@ export type Loadable<T> =
   | { state: 'ready'; items: T[] };
 
 export const RECENT_BOARDS = 6;
+export const RECENT_PROJECTS = 8;
 export const ACTIVITY_ITEMS = 5;
 const DAY_MS = 86_400_000;
 
@@ -64,7 +65,8 @@ function useList<T>(path: string, pick: (body: unknown) => T[]): Loadable<T> {
 
 export function useRecentBoards(): Loadable<RecentBoard> {
   return useList(
-    `/me/recent-boards?limit=${RECENT_BOARDS}`,
+    // Room for the root boards that Home leaves out, since they show under Recent projects.
+    `/me/recent-boards?limit=${RECENT_BOARDS + RECENT_PROJECTS}`,
     (body) => (body as { items: RecentBoard[] }).items,
   );
 }
