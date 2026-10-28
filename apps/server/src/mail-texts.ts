@@ -3,8 +3,13 @@
  * The web app has its own catalogues; emails are rendered on the server, so they live here.
  */
 const it = {
-  securitySubjects: { password: 'Password modificata', twoFactor: 'Autenticazione a due fattori disabilitata', token: 'Token di accesso creato' },
-  securityNotice: "Le impostazioni di sicurezza del tuo account sono cambiate. Se non sei stato tu, contatta subito l’amministratore.",
+  securitySubjects: {
+    password: 'Password modificata',
+    twoFactor: 'Autenticazione a due fattori disabilitata',
+    token: 'Token di accesso creato',
+  },
+  securityNotice:
+    'Le impostazioni di sicurezza del tuo account sono cambiate. Se non sei stato tu, contatta subito l’amministratore.',
   inviteSubject: (who: string, what: string) => `${who} ti ha invitato su ${what}`,
   inviteLines: (who: string, what: string, role: string | null, instance: string) => [
     role
@@ -70,8 +75,13 @@ const it = {
 type Texts = typeof it;
 
 const en: Texts = {
-  securitySubjects: { password: 'Password changed', twoFactor: 'Two-factor authentication disabled', token: 'Access token created' },
-  securityNotice: 'Your account security settings changed. If this was not you, contact your administrator immediately.', 
+  securitySubjects: {
+    password: 'Password changed',
+    twoFactor: 'Two-factor authentication disabled',
+    token: 'Access token created',
+  },
+  securityNotice:
+    'Your account security settings changed. If this was not you, contact your administrator immediately.',
   inviteSubject: (who, what) => `${who} invited you to ${what}`,
   inviteLines: (who, what, role, instance) => [
     role

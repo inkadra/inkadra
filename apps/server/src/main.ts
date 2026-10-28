@@ -58,7 +58,10 @@ async function main() {
   const tmpDir = join(config.DATA_DIR, 'tmp');
   await mkdir(tmpDir, { recursive: true });
   const media = { db, storage, tmpDir, heic: config.HEIC_PREVIEWS };
-  const closers: Array<() => Promise<unknown>> = [async () => auth.closeSecurity(), () => sql.end({ timeout: 5 })];
+  const closers: Array<() => Promise<unknown>> = [
+    async () => auth.closeSecurity(),
+    () => sql.end({ timeout: 5 }),
+  ];
 
   if (command === 'worker' || command === 'all') {
     if (!config.REDIS_URL) throw new Error('REDIS_URL is required by the worker.');

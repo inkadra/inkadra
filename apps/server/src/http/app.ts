@@ -1,4 +1,3 @@
-import { securityHeaders } from './security-headers.ts';
 import { existsSync } from 'node:fs';
 import { join, resolve, sep } from 'node:path';
 import fastifyStatic from '@fastify/static';
@@ -38,6 +37,7 @@ import { registerProjectRoutes } from './projects-routes.ts';
 import { registerReviewRoutes } from './reviews-routes.ts';
 import { registerScheduleRoutes } from './schedule-routes.ts';
 import { registerSearchRoutes } from './search-routes.ts';
+import { securityHeaders } from './security-headers.ts';
 import { GUEST_PAGE_PATH, registerShareLinkRoutes } from './share-links-routes.ts';
 import { registerSharingRoutes } from './sharing-routes.ts';
 import { registerUploads } from './uploads.ts';

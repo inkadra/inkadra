@@ -1,6 +1,6 @@
 import { APIError, betterAuth } from 'better-auth';
-import { createAuthMiddleware } from 'better-auth/api';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
+import { createAuthMiddleware } from 'better-auth/api';
 import { genericOAuth, magicLink } from 'better-auth/plugins';
 import { and, count, eq, lt, sql } from 'drizzle-orm';
 import type { Logger } from 'pino';
@@ -12,7 +12,7 @@ import * as schema from './db/schema.ts';
 import { readInstanceSettings } from './instance-settings.ts';
 import { acceptInvitation, invitationFromCookie, invitedAddressMatches } from './invitations.ts';
 import { mailText } from './mail-texts.ts';
-import { actionMail, type Mailer, sendDetached, securityNotification } from './mailer.ts';
+import { actionMail, type Mailer, securityNotification, sendDetached } from './mailer.ts';
 
 /** Internal header carrying the client address from the HTTP layer to Better Auth. */
 export const CLIENT_IP_HEADER = 'x-inkadra-client-ip';
@@ -70,8 +70,14 @@ export function createAuth(config: Config, db: Database, deps: AuthDeps = {}) {
           clientSecret: config.GOOGLE_CLIENT_SECRET,
           prompt: 'select_account' as const,
           mapProfileToUser: (profile: { email: string; hd?: string }) => {
-            if (allowedDomains.length && (!profile.hd || !allowedDomains.includes(profile.hd.toLowerCase())))
-              throw new APIError('FORBIDDEN', { code: 'DOMAIN_NOT_ALLOWED', message: 'Domain not allowed.' });
+            if (
+              allowedDomains.length &&
+              (!profile.hd || !allowedDomains.includes(profile.hd.toLowerCase()))
+            )
+              throw new APIError('FORBIDDEN', {
+                code: 'DOMAIN_NOT_ALLOWED',
+                message: 'Domain not allowed.',
+              });
             return {};
           },
           // Google enforces a single hosted domain itself; several are checked below.
@@ -90,11 +96,28 @@ export function createAuth(config: Config, db: Database, deps: AuthDeps = {}) {
           pkce: true,
           requireIdTokenVerification: true,
           mapProfileToUser: (profile: { email?: string | null; [key: string]: unknown }) => {
-            const isGoogle = new URL(config.OIDC_DISCOVERY_URL ?? '').hostname === 'accounts.google.com';
-            const domains = (config.OIDC_ALLOWED_DOMAINS.length ? config.OIDC_ALLOWED_DOMAINS : isGoogle ? allowedDomains : []).map((d) => d.toLowerCase());
-            const domain = isGoogle ? typeof profile.hd === 'string' ? profile.hd.toLowerCase() : '' : domainOf(profile.email ?? '');
-            if (domains.length && (!domains.includes(domain) || (!isGoogle && profile.email_verified !== true)))
-              throw new APIError('FORBIDDEN', { code: 'DOMAIN_NOT_ALLOWED', message: 'Domain not allowed.' });
+            const isGoogle =
+              new URL(config.OIDC_DISCOVERY_URL ?? '').hostname === 'accounts.google.com';
+            const domains = (
+              config.OIDC_ALLOWED_DOMAINS.length
+                ? config.OIDC_ALLOWED_DOMAINS
+                : isGoogle
+                  ? allowedDomains
+                  : []
+            ).map((d) => d.toLowerCase());
+            const domain = isGoogle
+              ? typeof profile.hd === 'string'
+                ? profile.hd.toLowerCase()
+                : ''
+              : domainOf(profile.email ?? '');
+            if (
+              domains.length &&
+              (!domains.includes(domain) || (!isGoogle && profile.email_verified !== true))
+            )
+              throw new APIError('FORBIDDEN', {
+                code: 'DOMAIN_NOT_ALLOWED',
+                message: 'Domain not allowed.',
+              });
             return {};
           },
         }
@@ -112,7 +135,11 @@ export function createAuth(config: Config, db: Database, deps: AuthDeps = {}) {
 
   const security = authSecurity(config);
   const revokeTokens = async (user: { id: string; email: string; locale?: string | null }) => {
-    await db.delete(schema.personalToken).where(and(eq(schema.personalToken.userId, user.id), sql`${schema.personalToken.client} is null`));
+    await db
+      .delete(schema.personalToken)
+      .where(
+        and(eq(schema.personalToken.userId, user.id), sql`${schema.personalToken.client} is null`),
+      );
     securityNotification(mailer, user, 'password', deps.log);
   };
   const auth = betterAuth({
@@ -137,16 +164,24 @@ export function createAuth(config: Config, db: Database, deps: AuthDeps = {}) {
           const { registration } = await readInstanceSettings(db, config);
           const invitation = await invitationFromCookie(db, ctx.headers?.get('cookie'));
           if (registration !== 'open' && (registration === 'closed' || !invitation))
-            throw new APIError('FORBIDDEN', { code: 'REGISTRATION_CLOSED', message: 'Registration is closed. Ask an administrator for an invitation.' });
+            throw new APIError('FORBIDDEN', {
+              code: 'REGISTRATION_CLOSED',
+              message: 'Registration is closed. Ask an administrator for an invitation.',
+            });
         }
-        const address = typeof ctx.body?.email === 'string' ? ctx.body.email.trim().toLowerCase() : '';
+        const address =
+          typeof ctx.body?.email === 'string' ? ctx.body.email.trim().toLowerCase() : '';
         if (ctx.path === '/sign-in/email' && address && config.NODE_ENV !== 'test') {
           if (!(await security.take(`login:${address}`, 10, 900)))
-            throw new APIError('TOO_MANY_REQUESTS', { message: 'Too many attempts. Try again later.' });
+            throw new APIError('TOO_MANY_REQUESTS', {
+              message: 'Too many attempts. Try again later.',
+            });
         }
         if (['/sign-in/magic-link', '/request-password-reset'].includes(ctx.path) && address) {
           if (!(await security.take(`mail:${address}`, 3, 900)))
-            throw new APIError('TOO_MANY_REQUESTS', { message: 'Too many attempts. Try again later.' });
+            throw new APIError('TOO_MANY_REQUESTS', {
+              message: 'Too many attempts. Try again later.',
+            });
         }
       }),
       after: createAuthMiddleware(async (ctx) => {
@@ -187,7 +222,8 @@ export function createAuth(config: Config, db: Database, deps: AuthDeps = {}) {
         ? {
             sendResetPassword: async ({ user, url }) => {
               const t = mailText(user as { locale?: string | null });
-              sendDetached(mailer,
+              sendDetached(
+                mailer,
                 actionMail(user.email, t.resetSubject, t.resetLines(config.INSTANCE_NAME), {
                   label: t.resetAction,
                   url,
@@ -264,7 +300,8 @@ export function createAuth(config: Config, db: Database, deps: AuthDeps = {}) {
                     return;
                 }
                 const t = mailText(existing ?? {});
-                sendDetached(mailer,
+                sendDetached(
+                  mailer,
                   actionMail(to, t.magicSubject(config.INSTANCE_NAME), t.magicLines, {
                     label: t.magicAction,
                     url,

@@ -36,8 +36,8 @@ import {
   userAvatar,
   verification,
 } from '../db/schema.ts';
-import { securityNotification, type Mailer } from '../mailer.ts';
 import type { Jobs } from '../jobs.ts';
+import { type Mailer, securityNotification } from '../mailer.ts';
 import { addressBucket, RateLimiter } from '../rate-limits.ts';
 import { newSecret, pkceChallenge, safeEqual, sha256 } from '../secrets.ts';
 import { animatedVariantKey } from '../storage.ts';

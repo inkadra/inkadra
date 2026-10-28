@@ -545,7 +545,9 @@ describe.skipIf(!url)('sharing, invitations, tokens and accounts (needs DATABASE
     const { token, id } = created.body;
     expect(token).toMatch(/^ink_/);
     const bearer = { bearer: token };
-    expect(new Date(created.body.expiresAt).getTime() - Date.now()).toBeGreaterThan(89 * 86_400_000);
+    expect(new Date(created.body.expiresAt).getTime() - Date.now()).toBeGreaterThan(
+      89 * 86_400_000,
+    );
     expect((await call(bearer, 'GET', '/api/v1/instance/members')).status).toBe(403);
     expect((await call(bearer, 'GET', '/api/v1/diagnostics')).status).toBe(403);
     expect((await call(bearer, 'GET', '/api/v1/me')).body.id).toBe(as.owner.id);
@@ -559,12 +561,20 @@ describe.skipIf(!url)('sharing, invitations, tokens and accounts (needs DATABASE
   });
 
   it('requires a fresh cookie session to create tokens and app authorizations', async () => {
-    await db.update(sessionTable).set({ createdAt: new Date(Date.now() - 16 * 60_000) }).where(eq(sessionTable.userId, as.owner.id));
+    await db
+      .update(sessionTable)
+      .set({ createdAt: new Date(Date.now() - 16 * 60_000) })
+      .where(eq(sessionTable.userId, as.owner.id));
     try {
-      expect((await call('owner', 'POST', '/api/v1/me/tokens', { name: 'Stale' })).status).toBe(403);
+      expect((await call('owner', 'POST', '/api/v1/me/tokens', { name: 'Stale' })).status).toBe(
+        403,
+      );
       expect((await call('owner', 'POST', '/api/v1/app-authorizations', {})).status).toBe(403);
     } finally {
-      await db.update(sessionTable).set({ createdAt: new Date() }).where(eq(sessionTable.userId, as.owner.id));
+      await db
+        .update(sessionTable)
+        .set({ createdAt: new Date() })
+        .where(eq(sessionTable.userId, as.owner.id));
     }
   });
 
@@ -808,15 +818,25 @@ describe.skipIf(!url)('sharing, invitations, tokens and accounts (needs DATABASE
     expect((await call('viewer', 'GET', '/api/v1/me')).body.twoFactorEnabled).toBe(true);
 
     mailer.sent.length = 0;
-    const magic = await call(null, 'POST', '/api/auth/sign-in/magic-link', { email: as.viewer.email });
+    const magic = await call(null, 'POST', '/api/auth/sign-in/magic-link', {
+      email: as.viewer.email,
+    });
     expect(magic.status).toBe(200);
     const link = new URL(mailer.sent[0]?.text.match(/https?:\/\/\S+/)?.[0] ?? '');
     const response = await fetch(`${base}${link.pathname}${link.search}`, { redirect: 'manual' });
     expect(response.status).toBe(302);
     expect(response.headers.get('location')).toBe('/login?twoFactor=true');
-    const challenge = response.headers.getSetCookie().map((c) => c.split(';')[0]).join('; ');
+    const challenge = response.headers
+      .getSetCookie()
+      .map((c) => c.split(';')[0])
+      .join('; ');
     expect((await call({ cookie: challenge }, 'GET', '/api/v1/me')).status).toBe(401);
-    const completed = await call({ cookie: challenge }, 'POST', '/api/auth/two-factor/verify-totp', { code: totp(secret) });
+    const completed = await call(
+      { cookie: challenge },
+      'POST',
+      '/api/auth/two-factor/verify-totp',
+      { code: totp(secret) },
+    );
     await expectSessionCookie(completed);
 
     const signIn = await call(null, 'POST', '/api/auth/sign-in/email', {
@@ -849,7 +869,9 @@ describe.skipIf(!url)('sharing, invitations, tokens and accounts (needs DATABASE
   });
 
   it('rotates the password session only through its httpOnly cookie', async () => {
-    const issued = await call('guest', 'POST', '/api/v1/me/tokens', { name: 'Before password change' });
+    const issued = await call('guest', 'POST', '/api/v1/me/tokens', {
+      name: 'Before password change',
+    });
     expect(issued.status).toBe(201);
     const changed = await call('guest', 'POST', '/api/auth/change-password', {
       currentPassword: PASSWORD,
@@ -858,7 +880,9 @@ describe.skipIf(!url)('sharing, invitations, tokens and accounts (needs DATABASE
     });
     await expectSessionCookie(changed);
     expect((await call({ bearer: issued.body.token }, 'GET', '/api/v1/me')).status).toBe(401);
-    expect(mailer.sent.some((m) => m.to === as.guest.email && m.subject === 'Password modificata')).toBe(true);
+    expect(
+      mailer.sent.some((m) => m.to === as.guest.email && m.subject === 'Password modificata'),
+    ).toBe(true);
     expect((await call('guest', 'GET', '/api/v1/me')).status).toBe(401);
   });
 

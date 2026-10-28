@@ -1,14 +1,14 @@
 import { randomUUID } from 'node:crypto';
-import { user } from '../db/schema.ts';
-import type { Auth } from '../auth.ts';
 import { createServer, type Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { fileURLToPath } from 'node:url';
 import pino from 'pino';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
+import type { Auth } from '../auth.ts';
 import { createAuth } from '../auth.ts';
 import { loadConfig } from '../config.ts';
 import { createDatabase, runMigrations } from '../db/client.ts';
+import { user } from '../db/schema.ts';
 import { testDeps } from '../test-deps.ts';
 import { createApp } from './app.ts';
 
@@ -115,29 +115,48 @@ describe.skipIf(!url)('sign-in providers (needs DATABASE_URL)', () => {
   });
   it.each(['google', 'oidc'])('requires a second factor after the %s callback', async (id) => {
     const email = `${randomUUID()}@studio.example.com`;
-    const [owner] = await db.insert(user).values({ name: 'Second factor', email, emailVerified: true, twoFactorEnabled: true }).returning();
+    const [owner] = await db
+      .insert(user)
+      .values({ name: 'Second factor', email, emailVerified: true, twoFactorEnabled: true })
+      .returning();
     if (!owner) throw new Error('Missing fixture');
     const context = await auth.$context;
     const provider = context.socialProviders.find((p) => p.id === id);
     if (!provider) throw new Error('Missing provider');
     const info = vi.spyOn(provider, 'getUserInfo').mockResolvedValue({
-      user: { id: owner.id, email, name: owner.name, emailVerified: true }, data: { sub: owner.id },
+      user: { email, name: owner.name, emailVerified: true },
+      data: { sub: owner.id },
     });
     const exchange = vi.spyOn(provider, 'validateAuthorizationCode').mockResolvedValue({});
     try {
-      const start = await app.inject({ method: 'POST', url: '/api/auth/sign-in/social', headers: { origin: 'https://inkadra.example.com' }, payload: { provider: id, callbackURL: '/' } });
+      const start = await app.inject({
+        method: 'POST',
+        url: '/api/auth/sign-in/social',
+        headers: { origin: 'https://inkadra.example.com' },
+        payload: { provider: id, callbackURL: '/' },
+      });
       const state = new URL(start.json().url).searchParams.get('state');
       const cookie = start.cookies.map((c) => `${c.name}=${c.value}`).join('; ');
-      const callback = await app.inject({ url: `/api/auth/callback/${id}?code=test&state=${state}`, headers: { cookie } });
+      const callback = await app.inject({
+        url: `/api/auth/callback/${id}?code=test&state=${state}`,
+        headers: { cookie },
+      });
       expect(callback.statusCode).toBe(302);
       expect(callback.headers.location).toBe('/login?twoFactor=true');
       const challenge = callback.cookies.map((c) => `${c.name}=${c.value}`).join('; ');
       expect(callback.cookies.some((c) => c.name.endsWith('two_factor') && c.value)).toBe(true);
       const session = await auth.api.getSession({ headers: new Headers({ cookie: challenge }) });
       expect(session).toBeNull();
-      const invalid = await app.inject({ method: 'POST', url: '/api/auth/two-factor/verify-totp', headers: { cookie: challenge, origin: 'https://inkadra.example.com' }, payload: { code: '000000' } });
+      const invalid = await app.inject({
+        method: 'POST',
+        url: '/api/auth/two-factor/verify-totp',
+        headers: { cookie: challenge, origin: 'https://inkadra.example.com' },
+        payload: { code: '000000' },
+      });
       expect(invalid.statusCode).toBeGreaterThanOrEqual(400);
-    } finally { info.mockRestore(); exchange.mockRestore(); }
+    } finally {
+      info.mockRestore();
+      exchange.mockRestore();
+    }
   });
-
 });
