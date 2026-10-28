@@ -6,7 +6,7 @@ import {
   type Viewport,
 } from '@inkadra/canvas-core';
 import type { Element } from '@inkadra/doc-schema';
-import { Icon, type IconName, KeyCap } from '@inkadra/ui';
+import { Icon, type IconName, KeyCap, kindStyle } from '@inkadra/ui';
 import type { Editor } from '@tiptap/react';
 import {
   type ReactNode,
@@ -141,6 +141,9 @@ function ToolButton({
     <button
       type="button"
       className={`toolbar__btn toolbar__btn--${dragType ?? icon}`}
+      style={kindStyle(
+        dragType ?? (icon === 'pointer' ? 'select' : icon === 'hand' ? 'hand' : 'arrow'),
+      )}
       aria-describedby={tooltipId}
       aria-keyshortcuts={keyHint}
       aria-label={label}

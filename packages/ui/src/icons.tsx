@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: MPL-2.0
+
 import type { SVGProps } from 'react';
+import { type ContentKind, kindStyle } from './kind-color.ts';
 
 /** Line icons from the design reference: 24 grid, 1.6 stroke, round caps. */
 const paths = {
@@ -212,15 +214,19 @@ export const ICON_NAMES = Object.keys(paths) as IconName[];
 export function Icon({
   name,
   size,
+  contentKind,
   ...props
-}: { name: IconName; size?: number } & SVGProps<SVGSVGElement>) {
+}: { name: IconName; size?: number; contentKind?: ContentKind } & SVGProps<SVGSVGElement>) {
   return (
     <svg
-      className="ink-icon"
+      className={`ink-icon${contentKind ? ' ink-icon--kind' : ''}`}
       viewBox="0 0 24 24"
       aria-hidden="true"
       focusable="false"
-      style={size ? { width: size, height: size } : undefined}
+      style={{
+        ...(size ? { width: size, height: size } : {}),
+        ...(contentKind ? { ...kindStyle(contentKind), color: 'var(--kind-fg)' } : {}),
+      }}
       {...props}
     >
       {paths[name]}

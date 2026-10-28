@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MPL-2.0
 import type { AnchorHTMLAttributes, ButtonHTMLAttributes, ReactNode } from 'react';
 import { Icon, type IconName } from './icons.tsx';
+import type { ContentKind } from './kind-color.ts';
 
 /**
  * Desktop layout: one navigation column (240, or 56 with icons only when collapsed), header 48,
@@ -100,6 +101,7 @@ export function SidebarSection({ title, action }: { title: string; action?: Reac
 
 export function NavItem({
   icon,
+  contentKind,
   leading,
   label,
   count,
@@ -108,6 +110,7 @@ export function NavItem({
   ...props
 }: AnchorHTMLAttributes<HTMLAnchorElement> & {
   icon?: IconName;
+  contentKind?: ContentKind;
   leading?: ReactNode;
   label: string;
   count?: number;
@@ -117,7 +120,7 @@ export function NavItem({
 }) {
   const content = (
     <>
-      {icon ? <Icon name={icon} /> : leading}
+      {icon ? <Icon name={icon} contentKind={contentKind} /> : leading}
       <span className="ink-nav__name">{label}</span>
       {count !== undefined && <span className="ink-nav__count">{count}</span>}
       {badge ? (

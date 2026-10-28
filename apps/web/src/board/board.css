@@ -635,7 +635,7 @@
   border: 0;
   border-radius: 8px;
   background: transparent;
-  color: var(--ink-text-secondary);
+  color: var(--kind-fg, var(--ink-text-secondary));
   display: grid;
   place-items: center;
   cursor: pointer;
@@ -1955,14 +1955,13 @@ button.crumb--editable:focus-visible {
 .toolbar__group--create .toolbar__btn {
   background: var(--ink-surface-2);
 }
-.toolbar__group--organize .toolbar__btn {
+.toolbar__btn:not([aria-pressed="true"]):hover,
+.toolbar__btn:not([aria-pressed="true"]):active {
+  background: var(--kind-bg);
+  color: var(--kind-fg);
+}
+.toolbar__btn[aria-pressed="true"] {
   color: var(--ink-accent-soft-fg);
-}
-.toolbar .toolbar__btn--note svg {
-  fill: var(--ink-accent-soft-bg);
-}
-.toolbar .toolbar__btn--color svg {
-  fill: var(--ink-accent-soft-bg);
 }
 .toolbar__btn:focus-visible {
   outline: 2px solid var(--ink-accent-soft-fg);

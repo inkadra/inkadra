@@ -412,17 +412,13 @@ a.home__activity-item:hover {
   color: var(--ink-text-secondary);
   background: var(--ink-surface-2);
 }
-.home [data-kind="storyboard"] {
-  color: var(--ink-tag-purple);
-  background: var(--ink-tag-purple-bg);
+.home [data-kind] {
+  color: var(--kind-fg);
+  background: var(--kind-bg);
 }
-.home [data-kind="moodboard"] {
-  color: var(--ink-tag-orange);
-  background: var(--ink-tag-orange-bg);
-}
-.home [data-kind="shotlist"] {
-  color: var(--ink-tag-green);
-  background: var(--ink-tag-green-bg);
+.home-new__choice:has(input:checked) {
+  border-color: var(--kind-fg);
+  background: var(--kind-bg);
 }
 .home__when svg {
   width: 12px;

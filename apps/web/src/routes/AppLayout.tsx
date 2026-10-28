@@ -352,6 +352,7 @@ export function AppLayout() {
             <div className="ink-sidebar__modules">
               <NavItem
                 icon="storyboard"
+                contentKind="storyboard"
                 label={t('nav.storyboard')}
                 count={storyboardCounts?.frameCount}
                 title={
@@ -368,6 +369,7 @@ export function AppLayout() {
               />
               <NavItem
                 icon="shotlist"
+                contentKind="shotlist"
                 label={t('nav.shotlist')}
                 count={storyboardCounts?.framesToShoot}
                 title={
@@ -384,6 +386,7 @@ export function AppLayout() {
               />
               <NavItem
                 icon="calendar"
+                contentKind="schedule"
                 label={t('nav.schedule')}
                 active={filmRowActive('schedule')}
                 href={hrefFor('schedule')}
@@ -394,6 +397,7 @@ export function AppLayout() {
               />
               <NavItem
                 icon="people"
+                contentKind="review"
                 label={t('nav.clients')}
                 active={filmRowActive('review')}
                 href={hrefFor('review')}
@@ -760,6 +764,7 @@ function BoardTree({
           <div key={b.id}>
             <NavItem
               icon={b.kind === 'storyboard' ? 'storyboard' : 'board'}
+              contentKind={b.kind}
               label={b.title}
               count={size}
               title={size ? `${b.title} · ${t('nav.items', { count: size })}` : undefined}
