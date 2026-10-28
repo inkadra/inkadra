@@ -34,7 +34,6 @@ export function ClientReviewView({
   boardId,
 }: {
   store: BoardStore;
-  projectName?: string;
   projectId?: string;
   boardId?: string;
   userId?: string;
@@ -54,14 +53,11 @@ export function ClientReviewView({
   const ready =
     !!boardId && state.boardId === boardId && !state.preview && state.reviewsStatus === 'ready';
   const statusOf = (elementId: string) => state.reviews.get(elementId)?.status ?? 'none';
+  const matchesPending = (status: string) =>
+    status !== 'approved' && status !== 'changes_requested';
   const matches = (elementId: string) => {
     const status = statusOf(elementId);
-    return (
-      filter === 'all' ||
-      (filter === 'pending'
-        ? status !== 'approved' && status !== 'changes_requested'
-        : status === filter)
-    );
+    return filter === 'all' || (filter === 'pending' ? matchesPending(status) : status === filter);
   };
   const visible = frames.filter((f) => !ready || matches(f.id));
   const currentIndex = Math.max(
@@ -177,7 +173,18 @@ export function ClientReviewView({
               />
               <span className="client-review__frame-meta">
                 <strong>{labels.get(frame.id)}</strong>
-                {ready && <ReviewChip status={statusOf(frame.id)} compact />}
+                {ready && (
+                  <ReviewChip
+                    status={statusOf(frame.id)}
+                    compact
+                    // "Pending" groups the open statuses, as the filter above does.
+                    label={
+                      matchesPending(statusOf(frame.id))
+                        ? t('clientReview.filters.pending')
+                        : undefined
+                    }
+                  />
+                )}
               </span>
               {frame.action && <span className="client-review__frame-action">{frame.action}</span>}
             </button>

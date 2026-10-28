@@ -545,7 +545,6 @@ function BoardScreen({
       <ClientReviewView
         key={preview?.version.id ?? 'live'}
         store={preview?.store ?? conn.store}
-        projectName={projectName}
         projectId={projectId}
         boardId={boardId}
         userId={user.id}

@@ -771,10 +771,19 @@ select.film-status {
 
 /* Shot list --------------------------------------------------------------------------- */
 
-/* Filters shrink before the toolbar wraps, so Sort stays on the row at laptop widths. */
+/* The toolbar wraps by default. It stays on one row, with the filters shrinking first, only
+   when the shot list itself (not the viewport: the sidebar and side panels take their share)
+   is wide enough for every control at its minimum width. */
+.shots {
+  container: shots / inline-size;
+}
 .shots > .story__bar {
   gap: 8px;
-  flex-wrap: nowrap;
+}
+@container shots (min-width: 1200px) {
+  .shots > .story__bar {
+    flex-wrap: nowrap;
+  }
 }
 .shots > .story__bar > .view-tabs,
 .shots > .story__bar > .ink-btn {
@@ -796,11 +805,6 @@ select.film-status {
   flex: 0 1 200px;
   width: 200px;
   min-width: 120px;
-}
-@media (max-width: 1100px) {
-  .shots > .story__bar {
-    flex-wrap: wrap;
-  }
 }
 .shots__scroll {
   flex: 1;
@@ -2470,6 +2474,31 @@ select.film-status {
   background: var(--ink-danger-bg);
   color: var(--ink-danger-fg);
   font-size: 12px;
+}
+.schedule__notice {
+  margin: 0;
+  padding: 8px 20px;
+  border-bottom: 1px solid var(--ink-border-subtle);
+  background: var(--ink-bg-panel);
+  color: var(--ink-text-secondary);
+  font-size: 12px;
+}
+.schedule__notice[hidden] {
+  display: none;
+}
+.schedule__stale {
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid var(--ink-danger-border);
+  border-radius: 8px;
+  background: var(--ink-danger-bg);
+  color: var(--ink-danger-fg);
+  font-size: 12px;
+}
+.schedule__stale > p {
+  margin: 0;
+  line-height: 1.45;
 }
 .schedule__hint {
   margin: 0;

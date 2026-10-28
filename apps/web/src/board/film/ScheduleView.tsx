@@ -58,6 +58,9 @@ function inputOf(day: ShootingDay): ShootingDayInput {
   return { date, callTime, wrap, location, notes, blocks };
 }
 
+const sameInput = (a: ShootingDayInput, b: ShootingDayInput) =>
+  JSON.stringify(a) === JSON.stringify(b);
+
 /** The day after the last shooting day, or today for the first one. */
 function nextDate(days: readonly ShootingDay[]): string {
   const last = days.at(-1)?.date;
@@ -105,10 +108,12 @@ export function ScheduleView({
 }) {
   const { t } = useTranslation();
   const slugline = useSlugline();
+  const dayLabel = useDayLabel();
   const { groups, frames, labels } = useStoryboard(store);
   const [callSheetOpen, setCallSheetOpen] = useState(false);
   const [days, setDays] = useState<ShootingDay[]>([]);
-  // Unsaved edits per day; a new revision from the server replaces them.
+  // Unsaved edits per day, with the revision they started from. A draft is never dropped when
+  // the server has a newer revision: it is flagged as stale until the user picks a version.
   const [drafts, setDrafts] = useState<
     Record<string, { revision: number; draft: ShootingDayInput }>
   >({});
@@ -117,6 +122,7 @@ export function ScheduleView({
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const [refresh, setRefresh] = useState(0);
+  const [notice, setNotice] = useState('');
   const path = `/boards/${boardId}/schedule`;
 
   // Shooting days are saved over the API, not in the live board: they are fetched again when
@@ -129,7 +135,32 @@ export function ScheduleView({
         .get<Schedule>(path)
         .then((data) => {
           if (!active) return;
-          setDays([...data.items].sort(byDate));
+          // A GET that started before a save can answer after it: keep the newer revision.
+          setDays((current) =>
+            data.items
+              .map((item) => {
+                const mine = current.find((day) => day.id === item.id);
+                return mine && mine.revision > item.revision ? mine : item;
+              })
+              .sort(byDate),
+          );
+          // A stale draft that already matches the server copy has nothing left to keep.
+          setDrafts((current) => {
+            const next = { ...current };
+            let changed = false;
+            for (const item of data.items) {
+              const saved = next[item.id];
+              if (
+                saved &&
+                saved.revision !== item.revision &&
+                sameInput(saved.draft, inputOf(item))
+              ) {
+                delete next[item.id];
+                changed = true;
+              }
+            }
+            return changed ? next : current;
+          });
           if (initial) setError('');
         })
         .catch(() => {
@@ -156,8 +187,9 @@ export function ScheduleView({
         const saved = drafts[day.id];
         return {
           day,
-          dirty: saved?.revision === day.revision,
-          draft: saved?.revision === day.revision ? saved.draft : inputOf(day),
+          dirty: !!saved,
+          stale: !!saved && saved.revision !== day.revision,
+          draft: saved ? saved.draft : inputOf(day),
         };
       }),
     [days, drafts],
@@ -172,6 +204,18 @@ export function ScheduleView({
   );
   const active = drafted[activeIndex];
   const disabled = readOnly || busy;
+  const dayName = (index: number) => {
+    const day = drafted[index];
+    return [t('schedule.dayNumber', { n: index + 1 }), day && dayLabel(day.draft.date)]
+      .filter(Boolean)
+      .join(' · ');
+  };
+
+  useEffect(() => {
+    if (!notice) return;
+    const timer = window.setTimeout(() => setNotice(''), 4000);
+    return () => window.clearTimeout(timer);
+  }, [notice]);
 
   async function write(action: () => Promise<void>) {
     if (busy || readOnly) return;
@@ -189,6 +233,17 @@ export function ScheduleView({
   }
   const setDraft = (day: ShootingDay, draft: ShootingDayInput) =>
     setDrafts((current) => ({ ...current, [day.id]: { revision: day.revision, draft } }));
+  const dropDraft = (day: ShootingDay) =>
+    setDrafts((current) => {
+      const { [day.id]: _, ...rest } = current;
+      return rest;
+    });
+  // "Keep mine": the draft is rebased on the server revision, so the next save replaces it.
+  const keepDraft = (day: ShootingDay) =>
+    setDrafts((current) => {
+      const saved = current[day.id];
+      return saved ? { ...current, [day.id]: { ...saved, revision: day.revision } } : current;
+    });
   const save = (day: ShootingDay, draft: ShootingDayInput) =>
     write(async () => {
       const saved = await api.put<ShootingDay>(`${path}/${day.id}`, {
@@ -196,6 +251,12 @@ export function ScheduleView({
         revision: day.revision,
       });
       setDays((current) => current.map((item) => (item.id === day.id ? saved : item)).sort(byDate));
+      // Edits typed while the request was running stay, on top of the saved revision.
+      setDrafts((current) => {
+        const { [day.id]: entry, ...rest } = current;
+        if (!entry || entry.draft === draft) return rest;
+        return { ...rest, [day.id]: { ...entry, revision: saved.revision } };
+      });
     });
   const addDay = () =>
     write(async () => {
@@ -210,14 +271,26 @@ export function ScheduleView({
       setDays((current) => [...current, day].sort(byDate));
       setSelection({ day: day.id, block: null });
     });
-  const addShot = (day: ShootingDay, draft: ShootingDayInput, shotId: string) => {
-    if (disabled || scheduled.has(shotId) || !DaySchema.safeParse(draft).success) return;
+  const addShot = (index: number, shotId: string) => {
+    const target = drafted[index];
+    if (!target || disabled || scheduled.has(shotId)) return;
+    const { day, draft, stale } = target;
+    if (stale) {
+      setError(t('schedule.staleBlocked', { day: dayName(index) }));
+      return;
+    }
+    if (!DaySchema.safeParse(draft).success) {
+      setError(t('schedule.invalidBlocked', { day: dayName(index) }));
+      return;
+    }
     const frame = frames.find((item) => item.id === shotId);
     if (!frame) return;
     const block = { ...newScheduleBlock('shot', shotId), cast: frame.cast ?? [] };
     const next = { ...draft, blocks: [...draft.blocks, block] };
     setDraft(day, next);
     setSelection({ day: day.id, block: block.id });
+    // The day may be off-screen (phones stack the columns): say where the shot went.
+    setNotice(t('schedule.addedTo', { shot: labels.get(shotId) ?? '', day: dayName(index) }));
     void save(day, next);
   };
   const shotTitle = (shotId: string) => {
@@ -255,6 +328,9 @@ export function ScheduleView({
           {error}
         </p>
       )}
+      <p role="status" className="schedule__notice" hidden={!notice}>
+        {notice}
+      </p>
       {loading ? (
         <div className="board-state">
           <p role="status" className="ink-muted">
@@ -295,7 +371,7 @@ export function ScheduleView({
                       label={labels.get(frame.id) ?? ''}
                       boardId={boardId}
                       disabled={disabled || !active}
-                      onAdd={() => active && addShot(active.day, active.draft, frame.id)}
+                      onAdd={() => addShot(activeIndex, frame.id)}
                     />
                   ))}
                 </section>
@@ -321,12 +397,13 @@ export function ScheduleView({
               </div>
             ) : (
               <div className="schedule__days">
-                {drafted.map(({ day, draft, dirty }, index) => (
+                {drafted.map(({ day, draft, dirty, stale }, index) => (
                   <DayColumn
                     key={day.id}
                     draft={draft}
                     index={index}
                     dirty={dirty}
+                    stale={stale}
                     selected={day.id === active?.day.id}
                     selectedBlock={day.id === active?.day.id ? selection.block : null}
                     conflicts={conflicts}
@@ -340,7 +417,7 @@ export function ScheduleView({
                         frames.map((frame) => frame.id),
                         disabled,
                       );
-                      if (id) addShot(day, draft, id);
+                      if (id) addShot(index, id);
                     }}
                   />
                 ))}
@@ -353,6 +430,7 @@ export function ScheduleView({
               day={active.day}
               draft={active.draft}
               dirty={active.dirty}
+              stale={active.stale}
               index={activeIndex}
               blockId={selection.block}
               conflicts={conflicts}
@@ -362,6 +440,8 @@ export function ScheduleView({
               onChange={(draft) => setDraft(active.day, draft)}
               onSelectBlock={(block) => setSelection({ day: active.day.id, block })}
               onSave={() => save(active.day, active.draft)}
+              onReload={() => dropDraft(active.day)}
+              onKeep={() => keepDraft(active.day)}
               onDelete={() =>
                 write(async () => {
                   const { day } = active;
@@ -429,6 +509,7 @@ function DayColumn({
   draft,
   index,
   dirty,
+  stale,
   selected,
   selectedBlock,
   conflicts,
@@ -440,6 +521,7 @@ function DayColumn({
   draft: ShootingDayInput;
   index: number;
   dirty: boolean;
+  stale: boolean;
   selected: boolean;
   selectedBlock: string | null;
   conflicts: Set<string>;
@@ -460,7 +542,10 @@ function DayColumn({
         event.preventDefault();
         setOver(true);
       }}
-      onDragLeave={() => setOver(false)}
+      onDragLeave={(event) => {
+        // Moving over a child fires dragleave on the column too: only leaving it counts.
+        if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setOver(false);
+      }}
       onDrop={(event) => {
         event.preventDefault();
         setOver(false);
@@ -478,6 +563,7 @@ function DayColumn({
           {[t('schedule.dayNumber', { n: index + 1 }), draft.location].filter(Boolean).join(' · ')}
           {dirty && ` · ${t('schedule.unsaved')}`}
         </span>
+        {stale && <span className="schedule__flag">{t('schedule.staleFlag')}</span>}
       </button>
       <ol className="schedule__timeline">
         <li className="schedule__marker">
@@ -533,6 +619,7 @@ function DayInspector({
   day,
   draft,
   dirty,
+  stale,
   index,
   blockId,
   conflicts,
@@ -542,11 +629,14 @@ function DayInspector({
   onChange,
   onSelectBlock,
   onSave,
+  onReload,
+  onKeep,
   onDelete,
 }: {
   day: ShootingDay;
   draft: ShootingDayInput;
   dirty: boolean;
+  stale: boolean;
   index: number;
   blockId: string | null;
   conflicts: Set<string>;
@@ -556,6 +646,8 @@ function DayInspector({
   onChange: (draft: ShootingDayInput) => void;
   onSelectBlock: (block: string | null) => void;
   onSave: () => Promise<void>;
+  onReload: () => void;
+  onKeep: () => void;
   onDelete: () => Promise<void>;
 }) {
   const { t } = useTranslation();
@@ -601,6 +693,19 @@ function DayInspector({
           </div>
         </dl>
       </header>
+      {stale && !readOnly && (
+        <div role="alert" className="schedule__stale">
+          <p>{t('schedule.staleBody')}</p>
+          <div className="schedule__actions">
+            <Button disabled={busy} onClick={onReload}>
+              {t('schedule.staleReload')}
+            </Button>
+            <Button variant="primary" disabled={busy} onClick={onKeep}>
+              {t('schedule.staleKeep')}
+            </Button>
+          </div>
+        </div>
+      )}
       <fieldset disabled={disabled}>
         <legend className="ink-sr-only">{t('schedule.day', { date: draft.date })}</legend>
         <div className="schedule__fields">
@@ -777,7 +882,7 @@ function DayInspector({
         )}
         {!readOnly && (
           <div className="schedule__save">
-            <Button variant="primary" block disabled={!valid} onClick={() => onSave()}>
+            <Button variant="primary" block disabled={!valid || stale} onClick={() => onSave()}>
               {t('schedule.save')}
             </Button>
             {dirty && <span className="schedule__hint">{t('schedule.unsaved')}</span>}

@@ -1573,7 +1573,7 @@
     "addDay": "Aggiungi giorno di riprese",
     "loadError": "Impossibile caricare il piano riprese.",
     "saveError": "Salvataggio non riuscito. La bozza è ancora qui. Controlla il piano prima di riprovare.",
-    "conflict": "Questo giorno è stato modificato o rimosso. Il piano è stato aggiornato: controllalo prima di modificarlo ancora.",
+    "conflict": "Questo giorno è stato modificato altrove o rimosso. Il piano è stato aggiornato e le tue modifiche sono conservate: scegli quale versione tenere.",
     "loading": "Caricamento piano…",
     "queue": "Inquadrature da pianificare",
     "empty": "Nessun giorno di riprese.",
@@ -1632,7 +1632,14 @@
     "blocks": "Blocchi",
     "block": "Blocco selezionato",
     "blockHint": "Seleziona un blocco nel giorno per modificarlo.",
-    "noBlocks": "Ancora nessun blocco. Aggiungine uno o trascina un’inquadratura sul giorno."
+    "noBlocks": "Ancora nessun blocco. Aggiungine uno o trascina un’inquadratura sul giorno.",
+    "staleFlag": "Modificato altrove",
+    "staleBody": "Questo giorno è stato modificato altrove mentre lo stavi modificando. Le tue modifiche sono conservate qui: ricarica la versione salvata, oppure tieni la tua e salvala sopra l’altra.",
+    "staleReload": "Ricarica la versione salvata",
+    "staleKeep": "Tieni la mia",
+    "staleBlocked": "{{day}} è stato modificato altrove: scegli quale versione tenere prima di aggiungere inquadrature.",
+    "invalidBlocked": "{{day}} ha una bozza non valida: correggila nell’ispettore prima di aggiungere inquadrature.",
+    "addedTo": "{{shot}} aggiunta a {{day}}."
   },
   "moodboard": {
     "count_one": "{{count}} riferimento",

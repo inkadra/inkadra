@@ -1573,7 +1573,7 @@
     "addDay": "Add shooting day",
     "loadError": "Could not load the schedule.",
     "saveError": "Could not save. Your draft is still here. Check the schedule before retrying.",
-    "conflict": "This day changed or was removed. The schedule has been refreshed: check it before editing again.",
+    "conflict": "This day changed elsewhere or was removed. The schedule has been refreshed and your edits are kept: choose which version to keep.",
     "loading": "Loading schedule…",
     "queue": "Unscheduled shots",
     "empty": "No shooting days yet.",
@@ -1632,7 +1632,14 @@
     "blocks": "Blocks",
     "block": "Selected block",
     "blockHint": "Select a block in the day to edit it.",
-    "noBlocks": "No blocks yet. Add one, or drop a shot on the day."
+    "noBlocks": "No blocks yet. Add one, or drop a shot on the day.",
+    "staleFlag": "Changed elsewhere",
+    "staleBody": "This day changed elsewhere while you were editing it. Your edits are kept here: reload the saved version, or keep yours and save it over the other one.",
+    "staleReload": "Reload saved version",
+    "staleKeep": "Keep mine",
+    "staleBlocked": "{{day}} changed elsewhere: choose which version to keep before adding shots.",
+    "invalidBlocked": "{{day}} has an invalid draft: fix it in the inspector before adding shots.",
+    "addedTo": "{{shot}} added to {{day}}."
   },
   "moodboard": {
     "count_one": "{{count}} reference",
