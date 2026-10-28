@@ -12,9 +12,8 @@ describe('authentication budgets', () => {
         AUTH_SECRET: 'test-secret-test-secret-test-secret',
       }),
     );
-    expect(await store.take('login:person@example.com', 2, 900)).toBe(true);
-    expect(await store.take('login:person@example.com', 2, 900)).toBe(true);
-    expect(await store.take('login:person@example.com', 2, 900)).toBe(false);
+    const attempts = await Promise.all(Array.from({ length: 12 }, () => store.take('login:person@example.com', 2, 900)));
+    expect(attempts.filter(Boolean)).toHaveLength(2);
     await store.storage.delete('login:person@example.com');
     expect(await store.take('login:person@example.com', 2, 900)).toBe(true);
     store.close();
