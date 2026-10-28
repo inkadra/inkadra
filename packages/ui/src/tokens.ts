@@ -51,8 +51,8 @@ export const dark = {
   'tag-teal-bg': '#203937',
   'tag-yellow': '#EBCF7A',
   'tag-yellow-bg': '#3B3320',
-  'tag-red': '#F2A3A6',
-  'tag-red-bg': '#40272B',
+  'tag-red': '#F68186',
+  'tag-red-bg': '#412327',
   'tag-pink': '#F2A8CF',
   'tag-pink-bg': '#402638',
 } as const;
@@ -105,8 +105,8 @@ export const light: Record<ColorToken, string> = {
   'tag-teal-bg': '#E4F2F0',
   'tag-yellow': '#856400',
   'tag-yellow-bg': '#F7F0D8',
-  'tag-red': '#B0353B',
-  'tag-red-bg': '#F8E8EA',
+  'tag-red': '#A55C5F',
+  'tag-red-bg': '#F6E7E8',
   'tag-pink': '#A3326C',
   'tag-pink-bg': '#F8E7F0',
 };

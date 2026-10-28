@@ -2085,7 +2085,7 @@
     "symbol": "Symbol",
     "color": "Color",
     "emoji": "Emoji",
-    "emojiHelp": "Emoji keep their own colours.",
+    "emojiHelp": "Enter one emoji, or clear it to use the selected shape. Emoji keep their native colors.",
     "invalid": "Use a single emoji.",
     "reset": "Reset to default",
     "error": "Could not save project appearance. Check your permissions and try again.",
@@ -2109,9 +2109,6 @@
       "yellow": "Yellow",
       "red": "Red",
       "pink": "Pink"
-    },
-    "pasteEmoji": "Paste another emoji",
-    "sidebarPreview": "In the sidebar",
-    "close": "Close"
+    }
   }
 }
