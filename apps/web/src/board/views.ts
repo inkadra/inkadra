@@ -28,6 +28,10 @@ export const ALL_VIEWS: readonly BoardView[] = [
   'moodboard',
 ];
 
+export function isFilmView(view: BoardView | null): boolean {
+  return view !== null && FILM_VIEWS.includes(view);
+}
+
 export function isBoardView(value: string | null): value is BoardView {
   return ALL_VIEWS.includes(value as BoardView);
 }
@@ -53,14 +57,23 @@ export function storyboardOf(boards: readonly Board[] | null | undefined): strin
 }
 
 /**
- * What the header offers: the whole list on a storyboard, or while a film view is open so
- * there is a way back. An ordinary board offers its own two views, canvas and moodboard;
- * nothing while its kind is still loading.
+ * What the header offers: canvas and the film views on a storyboard, or while a film view is
+ * open so there is a way back. An ordinary board offers its own two views, canvas and
+ * moodboard; nothing while its kind is still loading. A storyboard has no moodboard tab: its
+ * pictures live in the frames, and references get a board of their own. An address that asks
+ * for the moodboard still shows its tab, so the open view always has one.
  */
 export function headerViews(kind: BoardKind | undefined, active: BoardView): BoardView[] {
   const film = kind === 'storyboard' || FILM_VIEWS.includes(active);
-  if (film) return [...ALL_VIEWS];
-  return kind ? ['canvas', 'moodboard'] : [];
+  if (!film) return kind ? ['canvas', 'moodboard'] : [];
+  return pickerViews(kind, active);
+}
+
+/** The phone's view picker: every view, but no moodboard on a storyboard, as in the header. */
+export function pickerViews(kind: BoardKind | undefined, active: BoardView | null): BoardView[] {
+  return ALL_VIEWS.filter(
+    (v) => v !== 'moodboard' || kind !== 'storyboard' || active === 'moodboard',
+  );
 }
 
 /**

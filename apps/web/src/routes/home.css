@@ -21,34 +21,6 @@
 .home__title p::first-letter {
   text-transform: uppercase;
 }
-.home__actions {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
-}
-.home__search {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  min-width: 260px;
-  height: 32px;
-  padding: 0 8px 0 10px;
-  border-radius: 8px;
-  border: 1px solid var(--ink-border-default);
-  background: var(--ink-surface-1);
-  color: var(--ink-text-muted);
-  font: inherit;
-  font-size: 13px;
-  cursor: text;
-}
-.home__search span {
-  flex: 1;
-  text-align: left;
-}
-.home__search:hover {
-  border-color: var(--ink-border-strong);
-}
 .home__section {
   margin-top: 36px;
   min-width: 0;
@@ -307,10 +279,6 @@ a.home__activity-item:hover {
   }
   .home__columns {
     grid-template-columns: minmax(0, 1fr);
-  }
-  .home__search {
-    min-width: 0;
-    flex: 1 1 100%;
   }
   .home__day-open {
     margin-left: 0;

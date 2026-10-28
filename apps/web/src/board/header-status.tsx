@@ -140,6 +140,10 @@ export function SyncStatus({
       <span
         className={`sync sync--${summary.kind === 'saved' ? 'synced' : summary.kind}`}
         data-status={status}
+        // Where the header is short only the dot shows; the words stay in the tooltip.
+        title={
+          status === 'synced' ? `${t('board.status.online', { count: online })} · ${state}` : state
+        }
         // The visible state is a status, but quiet: edits and the timer must not be read out.
         role="status"
         aria-live="off"

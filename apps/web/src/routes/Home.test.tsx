@@ -6,7 +6,7 @@ import { MemoryRouter, Route, Routes } from 'react-router';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { api } from '../lib/api.ts';
 import { useProjects } from './AppLayout.tsx';
-import { Home } from './Home.tsx';
+import { Home, withoutRoots } from './Home.tsx';
 
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
@@ -255,4 +255,15 @@ it('keeps the empty Home greeting and opens onboarding only from its CTA', async
   expect(guided).toBeDefined();
   await act(async () => guided?.click());
   expect(host.textContent).toBe('Setup destination');
+});
+
+it('leaves out of recent boards the root boards already shown as recent projects', () => {
+  const root = { id: 'root1', projectId: 'p1', title: 'Last run' } as RecentBoard;
+  const child = { id: 'b2', projectId: 'p1', title: 'Moodboard' } as RecentBoard;
+  const other = { id: 'root9', projectId: 'p9', title: 'Elsewhere' } as RecentBoard;
+  expect(withoutRoots({ state: 'ready', items: [root, child, other] }, [project])).toEqual({
+    state: 'ready',
+    items: [child, other],
+  });
+  expect(withoutRoots({ state: 'loading' }, [project])).toEqual({ state: 'loading' });
 });

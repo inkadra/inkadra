@@ -216,18 +216,14 @@
   }
 }
 
-.ink-header__search-hint {
+.home-header-actions {
   display: flex;
   align-items: center;
-  gap: 6px;
-  font-size: 12px;
+  gap: 8px;
 }
 
-/* A phone has no keyboard shortcut to advertise, and fingers need 44 px targets. */
+/* Fingers need 44 px targets. */
 @media (width < 768px) {
-  .ink-header__search-hint {
-    display: none;
-  }
   .story__mode,
   .story__scene .ink-iconbtn {
     min-height: 44px;
