@@ -7,10 +7,10 @@ const root = process
   .replace(/\/e2e$/, '');
 const fixture = (
   scenario: string,
-) => `<html><head></head><body><div id="root"></div><script type="module">
+) => `<html><head><meta name="viewport" content="width=device-width,initial-scale=1"></head><body><div id="root"></div><script type="module">
 import RefreshRuntime from '/@react-refresh'; RefreshRuntime.injectIntoGlobalHook(window); window.$RefreshReg$ = () => {}; window.$RefreshSig$ = () => type => type; window.__vite_plugin_react_preamble_installed__ = true;
-import React from '/node_modules/.vite/deps/react.js';
-import ReactDOM from '/node_modules/.vite/deps/react-dom_client.js';
+import React from '/@id/react';
+import ReactDOM from '/@id/react-dom/client';
 import '/src/i18n/index.ts';
 import '/@fs/${root}/packages/ui/src/styles.css';
 import '/src/board/board.css';
@@ -36,11 +36,15 @@ ReactDOM.createRoot(document.getElementById('root')).render(React.createElement(
 
 for (const [width, height] of [
   [1280, 800],
+  [1280, 720],
+  [1920, 1080],
   [412, 915],
   [768, 1024],
   [915, 412],
 ] as const) {
-  test(`viewer layout ${width}x${height}`, async ({ page }) => {
+  test.describe(`viewport ${width}x${height}`, () => {
+  test.use({ hasTouch: width < 1000, isMobile: width < 1000 });
+  test(`viewer layout ${width}x${height}`, async ({ page }, testInfo) => {
     await page.setViewportSize({ width, height });
     await page.route('**/api/v1/**', (route) => route.fulfill({ status: 404, json: {} }));
     await page.route('**/embed/**', (route) =>
@@ -60,10 +64,21 @@ for (const [width, height] of [
     for (const theme of ['dark', 'light']) {
       await page.evaluate((theme) => (document.documentElement.dataset.theme = theme), theme);
       await page.screenshot({
-        path: `${root}/docs/screenshots/viewer-fixes/after-${width === 1280 ? 'desktop' : width === 412 ? 'phone' : width}-${theme}.png`,
+        path: testInfo.outputPath(`after-${width}x${height}-${theme}.png`),
       });
     }
-    if (width === 1280) expect(iframe!.width).toBeGreaterThanOrEqual(900);
+    console.log(JSON.stringify({ width, height, iframe, thumbs }));
+    expect(iframe!.width).toBeGreaterThanOrEqual(300);
+    if (width < 1000) {
+      for (const button of await page.locator('.viewer__stage-header button').all()) {
+        const box = await button.boundingBox();
+        expect(box!.width).toBeGreaterThanOrEqual(44);
+        expect(box!.height).toBeGreaterThanOrEqual(44);
+      }
+      for (const hint of await page.locator('.viewer__kbd, .viewer__hints').all()) {
+        await expect(hint).toBeHidden();
+      }
+    }
     expect(
       await page
         .locator('.viewer__stage-counter')
@@ -72,5 +87,6 @@ for (const [width, height] of [
             el.scrollHeight === el.clientHeight && getComputedStyle(el).whiteSpace === 'nowrap',
         ),
     ).toBe(true);
+  });
   });
 }

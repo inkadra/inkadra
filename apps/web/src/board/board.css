@@ -1359,6 +1359,7 @@ button.crumb--editable:focus-visible {
   display: grid;
   place-items: center;
   padding: 24px;
+  padding-bottom: calc(24px + var(--viewer-thumbs-h, 0px));
   min-width: 0;
 }
 .viewer__media {
@@ -1397,7 +1398,7 @@ button.crumb--editable:focus-visible {
   max-width: 320px;
 }
 .viewer__embed {
-  width: min(100%, calc((100cqh - var(--viewer-thumbs-h, 0px)) * 16 / 9));
+  width: min(100%, calc(100cqh * 16 / 9));
   flex: none;
   aspect-ratio: 16 / 9;
   display: flex;
@@ -1608,6 +1609,8 @@ button.crumb--editable:focus-visible {
   white-space: nowrap;
 }
 .viewer__stage-counter {
+  flex-shrink: 0;
+  white-space: nowrap;
   font-size: 12px;
   color: var(--ink-text-muted, #808086);
 }
@@ -1637,6 +1640,49 @@ button.crumb--editable:focus-visible {
   max-width: 100%;
   max-height: calc(100vh - 160px);
 }
+
+.viewer__media-wrap--embed {
+  width: 100%;
+  height: 100%;
+  max-height: 100%;
+}
+.viewer__header-spacer {
+  flex: 1;
+}
+.viewer__action-icon {
+  display: none;
+}
+@container (max-width: 767px) {
+  .viewer__stage-header {
+    gap: 8px;
+    padding-inline: 12px;
+  }
+  .viewer__stage-title {
+    flex: 1;
+    min-width: 0;
+    max-width: none;
+  }
+  .viewer__header-spacer,
+  .viewer__stage-header .viewer__tag-badge,
+  .viewer__action-label,
+  .viewer__kbd {
+    display: none;
+  }
+  .viewer__stage-btn {
+    flex: none;
+    width: 32px;
+    padding: 0;
+  }
+  .viewer__action-icon {
+    display: inline;
+    font-size: 18px;
+  }
+}
+
+.viewer__stage-container:has(.viewer__thumbnails) .viewer__stage {
+  --viewer-thumbs-h: 98px;
+}
+
 .viewer__media-wrap.is-zoomed {
   max-width: none;
   max-height: none;
@@ -1982,6 +2028,16 @@ button.crumb--editable:focus-visible {
   opacity: 0.45;
   cursor: default;
 }
+@media (pointer: coarse) {
+  .viewer__hints,
+  .viewer__kbd {
+    display: none;
+  }
+  .viewer__stage-btn {
+    min-width: 44px;
+    height: 44px;
+  }
+}
 @media (max-width: 700px), (pointer: coarse) {
   .toolbar {
     display: grid;
@@ -2018,66 +2074,4 @@ button.card__play {
   pointer-events: auto;
   cursor: pointer;
   border: 0;
-}
-
-.viewer__media-wrap--embed {
-  width: 100%;
-  height: 100%;
-  max-height: 100%;
-}
-.viewer__stage-counter {
-  flex-shrink: 0;
-  white-space: nowrap;
-}
-.viewer__header-spacer {
-  flex: 1;
-}
-.viewer__action-icon {
-  display: none;
-}
-@container (max-width: 767px) {
-  .viewer__stage-header {
-    gap: 8px;
-    padding-inline: 12px;
-  }
-  .viewer__stage-title {
-    flex: 1;
-    min-width: 0;
-    max-width: none;
-  }
-  .viewer__header-spacer,
-  .viewer__stage-header .viewer__tag-badge,
-  .viewer__action-label,
-  .viewer__kbd {
-    display: none;
-  }
-  .viewer__stage-btn {
-    flex: none;
-    width: 32px;
-    padding: 0;
-  }
-  .viewer__action-icon {
-    display: inline;
-    font-size: 18px;
-  }
-}
-
-.viewer__stage-container:has(.viewer__thumbnails) .viewer__stage {
-  --viewer-thumbs-h: 148px;
-}
-.viewer__media-wrap--embed {
-  padding-bottom: var(--viewer-thumbs-h, 0px);
-  box-sizing: border-box;
-}
-@media (hover: none) and (pointer: coarse) {
-  .viewer__hints,
-  .viewer__kbd {
-    display: none;
-  }
-}
-@media (pointer: coarse) {
-  .viewer__stage-btn {
-    min-width: 44px;
-    height: 44px;
-  }
 }

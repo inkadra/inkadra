@@ -625,7 +625,7 @@ export function MediaViewer({
           <dl className="viewer__facts">
             <dt>{t('viewer.size')}</dt>
             <dd>
-              {ready.width} <Icon name="close" size={18} /> {ready.height}
+              {ready.width} × {ready.height}
             </dd>
           </dl>
         )}

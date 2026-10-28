@@ -42,7 +42,7 @@ export default defineConfig({
   projects: [
     {
       name: 'chromium',
-      testIgnore: ['**/perf/**', '**/viewer-layout.spec.ts'],
+      testIgnore: ['**/perf/**'],
       use: { ...devices['Desktop Chrome'], viewport: { width: 1440, height: 900 } },
     },
     {
@@ -57,7 +57,11 @@ export default defineConfig({
       },
     },
   ],
-  webServer: {
+  webServer: [{
+    command: 'pnpm --filter @inkadra/web exec vite --host 127.0.0.1 --port 5179 --strictPort',
+    url: 'http://127.0.0.1:5179',
+    timeout: 60_000,
+  }, {
     command: 'node ../apps/server/dist/main.js all',
     url: `${baseURL}/api/v1/health`,
     reuseExistingServer: false,
@@ -75,5 +79,5 @@ export default defineConfig({
       INKADRA_VERSION: '0.1.0-e2e',
       LOG_LEVEL: 'warn',
     },
-  },
+  }],
 });
