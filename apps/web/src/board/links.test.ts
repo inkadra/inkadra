@@ -31,7 +31,15 @@ it('refreshes a bare card with server metadata', async () => {
 it('preserves existing content when refreshing fails', async () => {
   vi.mocked(api.post).mockRejectedValue(new Error('rate limited'));
   const doc = new Y.Doc();
-  await fillLinkPreview(doc, 'card', 'project', 'board', 'https://example.com');
+  expect(await fillLinkPreview(doc, 'card', 'project', 'board', 'https://example.com')).toBe(false);
   expect(updateElement).not.toHaveBeenCalled();
+  doc.destroy();
+});
+
+it('omits empty fields so a successful refresh preserves good metadata', async () => {
+  vi.mocked(api.post).mockResolvedValue({ title: '  ', description: null, imageAssetId: null });
+  const doc = new Y.Doc();
+  expect(await fillLinkPreview(doc, 'card', 'project', 'board', 'https://example.com')).toBe(true);
+  expect(updateElement).toHaveBeenCalledWith(doc, 'card', {}, expect.anything());
   doc.destroy();
 });

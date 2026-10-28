@@ -864,7 +864,7 @@ export function Canvas({
               aspectRatio: rect.w / (mediaHeight || rect.h),
               fixedHeight: mediaHeight ? Math.max(0, rect.h - mediaHeight) : 0,
             }
-          : {};
+          : { widthOnly: el.type === 'link' };
       store.undo.stopCapturing();
       gesture.current = { kind: 'resize', id, corner: handle, start: p, rect, options };
       rootRef.current?.setPointerCapture(e.pointerId);
@@ -1061,7 +1061,7 @@ export function Canvas({
       if (!current || current.locked || readOnly || current.parent !== null) return;
       const { x, y, w, h } = o.resize;
       doc.transact(() => {
-        updateElement(doc, g.id, { x, y, w, h }, LOCAL);
+        updateElement(doc, g.id, current.type === 'link' ? { x, w } : { x, y, w, h }, LOCAL);
         // The store updates after this transaction; attached arrows need the new rect now.
         refreshArrows(
           doc,
@@ -1169,7 +1169,7 @@ export function Canvas({
     if (insideDialog()) return;
     // A menu or the version banner already handled this Escape; a preview has nothing to clear.
     if (e.key === 'Escape' && (e.defaultPrevented || preview)) return;
-    if (e.key === ' ' && !isTyping(e.target)) {
+    if (e.key === ' ' && !isTyping(e.target) && !(e.target instanceof Element && e.target.closest('button'))) {
       spaceDown.current = e.type === 'keydown';
       if (e.type === 'keydown') e.preventDefault();
       return;
@@ -1624,7 +1624,9 @@ export function Canvas({
         ? [
             {
               label: t('board.menu.refreshPreview'),
-              action: () => void fillLinkPreview(doc, single.id, projectId, boardId, single.url),
+              action: () => void fillLinkPreview(doc, single.id, projectId, boardId, single.url).then((ok) => {
+                if (!ok) setToast({ text: t('board.menu.refreshPreviewFailed'), undo: false });
+              }),
             },
           ]
         : []),

@@ -190,10 +190,11 @@ export async function pagePreview(
     (await videoPageMeta(page.url, deps.allowAddresses)) ??
     readPageMeta(page.body.toString('utf8'), page.url);
   let imageAssetId: string | null = null;
+  const videoId = youtubeVideoId(page.url);
   const images = [
     meta.image,
-    ...(youtubeVideoId(page.url)
-      ? [`https://i.ytimg.com/vi/${youtubeVideoId(page.url)}/hqdefault.jpg`]
+    ...(videoId
+      ? [`https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`]
       : []),
   ];
   for (const imageUrl of images) {
