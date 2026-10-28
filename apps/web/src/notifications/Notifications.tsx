@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 import type { Notification, NotificationPreferences, UnreadCount } from '@inkadra/shared';
 import { Button, Icon, IconButton } from '@inkadra/ui';
-import { type RefObject, useCallback, useEffect, useRef, useState } from 'react';
+import { type RefObject, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router';
 import { authorName, groupByDay, type Page, reviewKey } from '../board/review-model.ts';
@@ -54,6 +54,72 @@ export function useUnreadCount(): [number, () => Promise<void>] {
   return [unread, count];
 }
 
+export interface NotificationFeed {
+  items: Notification[];
+  next: string | null;
+  state: 'loading' | 'ready' | 'error';
+  load: (cursor: string | null) => Promise<void>;
+  markRead: (id: string) => Promise<void>;
+  /** Marks read what was created up to `before`; later arrivals stay unread. */
+  markAll: (before: string) => Promise<void>;
+}
+
+/**
+ * The loaded notifications and their read state, refreshing the unread count after each change.
+ * The app shell keeps one feed for the bell and the Inbox: the bell is a quick peek of the same
+ * list, so reading a notification in one shows it read in the other.
+ */
+export function useNotificationFeed(onCount: () => Promise<void>): NotificationFeed {
+  const [items, setItems] = useState<Notification[]>([]);
+  const [next, setNext] = useState<string | null>(null);
+  const [state, setState] = useState<NotificationFeed['state']>('loading');
+
+  const load = useCallback(async (cursor: string | null) => {
+    setState('loading');
+    try {
+      const p = await api.get<Page<Notification>>(
+        `/me/notifications${cursor ? `?cursor=${encodeURIComponent(cursor)}` : ''}`,
+      );
+      if (!p?.items) {
+        setState('error');
+        return;
+      }
+      setItems((list) => (cursor ? [...list, ...p.items] : p.items));
+      setNext(p.nextCursor ?? null);
+      setState('ready');
+    } catch {
+      setState('error');
+    }
+  }, []);
+
+  const markRead = useCallback(
+    async (id: string) => {
+      await api.post(`/me/notifications/${id}/read`, {});
+      const now = new Date().toISOString();
+      setItems((list) => list.map((n) => (n.id === id ? { ...n, readAt: n.readAt ?? now } : n)));
+      void onCount();
+    },
+    [onCount],
+  );
+
+  const markAll = useCallback(
+    async (before: string) => {
+      await api.post('/me/notifications/read-all', { before });
+      const now = new Date().toISOString();
+      setItems((list) =>
+        list.map((n) => (n.readAt || n.createdAt > before ? n : { ...n, readAt: now })),
+      );
+      void onCount();
+    },
+    [onCount],
+  );
+
+  return useMemo(
+    () => ({ items, next, state, load, markRead, markAll }),
+    [items, next, state, load, markRead, markAll],
+  );
+}
+
 /** What happened, after the actor's name; unknown types read as a plain line. */
 export function describeNotification(
   n: Pick<Notification, 'type' | 'reviewStatus'>,
@@ -71,9 +137,14 @@ export function describeNotification(
 export function NotificationBell({
   unread,
   onCount: count,
+  feed,
+  onOpenInbox,
 }: {
   unread: number;
   onCount: () => Promise<void>;
+  feed?: NotificationFeed;
+  /** Opens the full Inbox; the bell shows the same list. */
+  onOpenInbox: () => void;
 }) {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
@@ -92,7 +163,7 @@ export function NotificationBell({
         type="button"
         className="ink-iconbtn notification-bell__button"
         aria-label={t('notifications.bell', { count: unread })}
-        title={t('notifications.title')}
+        title={t('nav.inbox')}
         aria-expanded={open}
         aria-haspopup="dialog"
         onClick={() => (open ? close() : setOpen(true))}
@@ -111,6 +182,11 @@ export function NotificationBell({
           onClose={close}
           onNavigate={dismiss}
           onCount={count}
+          feed={feed}
+          onOpenInbox={() => {
+            setOpen(false);
+            onOpenInbox();
+          }}
         />
       )}
     </div>
@@ -150,6 +226,8 @@ export function NotificationList({
   onClose,
   onNavigate,
   onCount,
+  feed,
+  onOpenInbox,
 }: {
   unread: number;
   bell?: RefObject<HTMLButtonElement | null>;
@@ -157,12 +235,15 @@ export function NotificationList({
   onClose: () => void;
   onNavigate: () => void;
   onCount: () => Promise<void>;
+  /** Shared with the bell by the app shell; without it the list keeps its own. */
+  feed?: NotificationFeed;
+  /** Bell only: leaves the peek for the full Inbox. */
+  onOpenInbox?: () => void;
 }) {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
-  const [items, setItems] = useState<Notification[]>([]);
-  const [next, setNext] = useState<string | null>(null);
-  const [state, setState] = useState<'loading' | 'ready' | 'error'>('loading');
+  const ownFeed = useNotificationFeed(onCount);
+  const { items, next, state, load, markRead, markAll: readAll } = feed ?? ownFeed;
   const [filter, setFilter] = useState<InboxFilter>('all');
   const [actionError, setActionError] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -178,25 +259,7 @@ export function NotificationList({
   // Marking all as read covers what was listed when the panel opened, not what arrives later.
   const openedAt = useRef(new Date().toISOString());
 
-  const load = useCallback(async (cursor: string | null) => {
-    setState('loading');
-    try {
-      const p = await api.get<Page<Notification>>(
-        `/me/notifications${cursor ? `?cursor=${encodeURIComponent(cursor)}` : ''}`,
-      );
-      if (!p?.items) {
-        setState('error');
-        return;
-      }
-      setItems((list) => (cursor ? [...list, ...p.items] : p.items));
-      setNext(p.nextCursor ?? null);
-      setState('ready');
-    } catch {
-      setState('error');
-    }
-  }, []);
-
-  // The first page loads once: a new unread count must not drop the pages already shown.
+  // The first page loads when the panel opens: a new unread count must not drop the pages already shown.
   useEffect(() => {
     void load(null);
     panel.current?.focus();
@@ -212,16 +275,6 @@ export function NotificationList({
     document.addEventListener('pointerdown', away);
     return () => document.removeEventListener('pointerdown', away);
   }, [bell, onNavigate]);
-
-  const markRead = useCallback(
-    async (id: string) => {
-      await api.post(`/me/notifications/${id}/read`, {});
-      const now = new Date().toISOString();
-      setItems((list) => list.map((n) => (n.id === id ? { ...n, readAt: n.readAt ?? now } : n)));
-      void onCount();
-    },
-    [onCount],
-  );
 
   // Arrow navigation batches reads: only the item where scrolling stops is marked, ~400 ms later.
   const readTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -246,12 +299,7 @@ export function NotificationList({
   const markAll = async () => {
     setActionError(false);
     try {
-      await api.post('/me/notifications/read-all', { before: openedAt.current });
-      const now = new Date().toISOString();
-      setItems((list) =>
-        list.map((n) => (n.readAt || n.createdAt > openedAt.current ? n : { ...n, readAt: now })),
-      );
-      void onCount();
+      await readAll(openedAt.current);
     } catch {
       setActionError(true);
     }
@@ -362,7 +410,7 @@ export function NotificationList({
       <div className="notifications__list-pane">
         <header className="notifications__head">
           <h2 id="notifications-title" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            {fixed ? t('nav.inbox') : t('notifications.title')}
+            {t('nav.inbox')}
             {unread > 0 && (
               <span
                 style={{
@@ -460,7 +508,7 @@ export function NotificationList({
                         tabIndex={n.id === tabStopId ? 0 : -1}
                         aria-current={isSelected ? 'true' : undefined}
                         onFocus={() => setFocusedId(n.id)}
-                        className={`notification__open ${fixed ? 'notification__open--drawer' : ''}`}
+                        className="notification__open notification__open--drawer"
                         disabled={!path}
                         onClick={async () => {
                           setActionError(false);
@@ -474,14 +522,9 @@ export function NotificationList({
                         {(!n.readAt || (fixed && isSelected)) && (
                           <span className="notification__bar" />
                         )}
-                        {fixed && (
-                          <span
-                            className="notification__av"
-                            style={{ background: avatarBg(actor) }}
-                          >
-                            {initials(actor)}
-                          </span>
-                        )}
+                        <span className="notification__av" style={{ background: avatarBg(actor) }}>
+                          {initials(actor)}
+                        </span>
                         <div className="notification__body">
                           <span className="notification__line">
                             {actor && <b>{actor} </b>}
@@ -551,6 +594,13 @@ export function NotificationList({
             </Button>
           )}
         </div>
+        {onOpenInbox && (
+          <footer className="notifications__foot">
+            <button type="button" className="review-link" onClick={onOpenInbox}>
+              {t('notifications.openInbox')}
+            </button>
+          </footer>
+        )}
       </div>
       {fixed && !mobile && (
         <InboxDetail

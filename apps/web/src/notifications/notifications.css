@@ -672,3 +672,12 @@
     border-right: 0;
   }
 }
+
+/* The bell is a peek of the Inbox: the full list is one click away. */
+.notifications__foot {
+  display: flex;
+  justify-content: center;
+  padding: 8px 8px 0;
+  border-top: 1px solid var(--ink-border-default);
+  margin-top: 8px;
+}

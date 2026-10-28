@@ -110,10 +110,10 @@ test('comments, mentions, review status and notifications between two people', a
 
   // And is notified; the notification opens the thread on the card.
   await page.evaluate(() => window.dispatchEvent(new Event('focus')));
-  const bell = page.getByRole('button', { name: /^Notifiche: [1-9]\d* non lett/ });
+  const bell = page.getByRole('button', { name: /^Inbox: [1-9]\d* non lett/ });
   await expect(bell).toBeVisible();
   await bell.click();
-  const list = page.getByRole('dialog', { name: 'Notifiche' });
+  const list = page.getByRole('dialog', { name: /^Inbox/ });
   const mention = list
     .getByRole('button', { name: /Luca Regista ti ha menzionato/ })
     .filter({ hasText: projectName });
@@ -227,7 +227,7 @@ test('comments, mentions, review status and notifications between two people', a
   await expect(panel).toHaveCount(0);
   await bell.click();
   await list.getByRole('button', { name: 'Segna tutte come lette' }).click();
-  await expect(page.getByRole('button', { name: 'Notifiche: 0 non lette' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Inbox: 0 non lette' })).toBeVisible();
   await list.press('Escape');
 
   // As a viewer the director can read the comments but not write.
@@ -409,16 +409,16 @@ test('the bell polls once a minute and on focus, and keeps paging short pages', 
     route.fulfill({ json: { items: [], nextCursor: 'next' } }),
   );
   await signIn(page);
-  await expect(page.getByRole('button', { name: 'Notifiche: 1 non letta' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Inbox: 1 non letta' })).toBeVisible();
   const first = polls;
   await page.evaluate(() => window.dispatchEvent(new Event('focus')));
   await expect.poll(() => polls).toBe(first + 1);
   await page.clock.fastForward(60_000);
   await expect.poll(() => polls).toBe(first + 2);
 
-  const bell = page.getByRole('button', { name: 'Notifiche: 1 non letta' });
+  const bell = page.getByRole('button', { name: 'Inbox: 1 non letta' });
   await bell.click();
-  const list = page.getByRole('dialog', { name: 'Notifiche' });
+  const list = page.getByRole('dialog', { name: /^Inbox/ });
   await list.getByRole('button', { name: 'Mostra altre' }).click();
   await expect(list.getByText('ha fatto qualcosa')).toBeVisible();
   await expect(list.getByText('Attività futura')).toBeVisible();
@@ -439,12 +439,12 @@ test('the bell polls once a minute and on focus, and keeps paging short pages', 
   const markRead = list.getByRole('button', { name: 'Segna come letta' });
   await markRead.focus();
   await markRead.press('Enter');
-  await expect(page.getByRole('button', { name: 'Notifiche: 0 non lette' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Inbox: 0 non lette' })).toBeVisible();
   await expect(list.getByText('Attività futura')).toBeVisible();
   await expect(list.getByRole('button', { name: 'Mostra altre' })).toHaveCount(0);
   expect(firstPages).toBe(0);
   // Its own button leads nowhere (an unknown type), so focus stays in the list.
   await expect(list).toBeFocused();
   await list.press('Escape');
-  await expect(page.getByRole('button', { name: 'Notifiche: 0 non lette' })).toBeFocused();
+  await expect(page.getByRole('button', { name: 'Inbox: 0 non lette' })).toBeFocused();
 });

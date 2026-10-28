@@ -1325,8 +1325,8 @@
   },
   "notifications": {
     "title": "Notifiche",
-    "bell_one": "Notifiche: {{count}} non letta",
-    "bell_other": "Notifiche: {{count}} non lette",
+    "bell_one": "Inbox: {{count}} non letta",
+    "bell_other": "Inbox: {{count}} non lette",
     "close": "Chiudi le notifiche",
     "readAll": "Segna tutte come lette",
     "read": "Segna come letta",
@@ -1363,6 +1363,7 @@
     },
     "reviewStatus": "Revisione",
     "filter": "Filtro inbox",
+    "openInbox": "Apri inbox",
     "loadedOnly": "I filtri si applicano alle notifiche caricate. Mostra altro per cercare tra le notifiche precedenti.",
     "openInBoard": "Apri nella board",
     "markResolved": "Segna come risolto",

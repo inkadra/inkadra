@@ -4,7 +4,12 @@ import { createRoot } from 'react-dom/client';
 import { MemoryRouter } from 'react-router';
 import { beforeEach, expect, it, vi } from 'vitest';
 import { api } from '../lib/api.ts';
-import { initials, NotificationList } from './Notifications.tsx';
+import {
+  initials,
+  NotificationBell,
+  NotificationList,
+  useNotificationFeed,
+} from './Notifications.tsx';
 
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (key: string) => key, i18n: { language: 'en' } }),
@@ -499,5 +504,74 @@ it('skips pathless items, focuses the first enabled item from the panel and debo
     await act(async () => root.unmount());
     host.remove();
     vi.useRealTimers();
+  }
+});
+
+const count = async () => {};
+
+/** The app shell's wiring: one feed for the bell and the Inbox. */
+function Shell({ inbox, onOpenInbox }: { inbox: boolean; onOpenInbox: () => void }) {
+  const feed = useNotificationFeed(count);
+  return (
+    <>
+      <NotificationBell unread={1} onCount={count} feed={feed} onOpenInbox={onOpenInbox} />
+      {inbox && (
+        <NotificationList
+          fixed
+          unread={1}
+          onClose={() => {}}
+          onNavigate={() => {}}
+          onCount={count}
+          feed={feed}
+        />
+      )}
+    </>
+  );
+}
+
+it('shows the bell as a peek of the Inbox: same title, same read state, Open inbox at the bottom', async () => {
+  const host = document.createElement('div');
+  document.body.append(host);
+  const root = createRoot(host);
+  const onOpenInbox = vi.fn();
+  vi.mocked(api.get).mockResolvedValue({
+    items: [{ ...baseNotification, id: 'n1', type: 'mention', readAt: null, excerpt: 'Hi' }],
+    nextCursor: null,
+  });
+  vi.mocked(api.post).mockResolvedValue({});
+  const render = (inbox: boolean) =>
+    root.render(
+      <MemoryRouter>
+        <Shell inbox={inbox} onOpenInbox={onOpenInbox} />
+      </MemoryRouter>,
+    );
+  try {
+    await act(async () => render(false));
+    await act(async () =>
+      host.querySelector<HTMLButtonElement>('.notification-bell__button')?.click(),
+    );
+    expect(host.querySelector('#notifications-title')?.textContent).toContain('nav.inbox');
+    expect(host.querySelector('.notification.is-unread')).not.toBeNull();
+    // Read in the peek…
+    await act(async () =>
+      host
+        .querySelector<HTMLButtonElement>('.notification button[aria-label="notifications.read"]')
+        ?.click(),
+    );
+    expect(api.post).toHaveBeenCalledWith('/me/notifications/n1/read', {});
+    const open = [...host.querySelectorAll('button')].find(
+      (b) => b.textContent === 'notifications.openInbox',
+    );
+    await act(async () => open?.click());
+    expect(onOpenInbox).toHaveBeenCalled();
+    expect(host.querySelector('.notification-bell .notifications')).toBeNull();
+    // …and the Inbox lists the same item, already read, without another fetch before it reloads.
+    vi.mocked(api.get).mockReturnValue(new Promise(() => {}));
+    await act(async () => render(true));
+    expect(host.querySelector('.notifications--fixed .notification')).not.toBeNull();
+    expect(host.querySelector('.notifications--fixed .notification.is-unread')).toBeNull();
+  } finally {
+    await act(async () => root.unmount());
+    host.remove();
   }
 });

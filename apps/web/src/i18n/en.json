@@ -1325,8 +1325,8 @@
   },
   "notifications": {
     "title": "Notifications",
-    "bell_one": "Notifications: {{count}} unread",
-    "bell_other": "Notifications: {{count}} unread",
+    "bell_one": "Inbox: {{count}} unread",
+    "bell_other": "Inbox: {{count}} unread",
     "close": "Close notifications",
     "readAll": "Mark all as read",
     "read": "Mark as read",
@@ -1363,6 +1363,7 @@
     },
     "reviewStatus": "Review",
     "filter": "Inbox filter",
+    "openInbox": "Open inbox",
     "loadedOnly": "Filters apply to loaded notifications. Show more to search older notifications.",
     "openInBoard": "Open in board",
     "markResolved": "Mark as resolved",

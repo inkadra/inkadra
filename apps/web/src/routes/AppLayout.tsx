@@ -45,6 +45,7 @@ import { useTheme } from '../lib/theme.ts';
 import {
   NotificationBell,
   NotificationList,
+  useNotificationFeed,
   useUnreadCount,
 } from '../notifications/Notifications.tsx';
 import { editableProjects } from './home-data.ts';
@@ -113,6 +114,8 @@ export function AppLayout() {
   const [inboxOpen, setInboxOpen] = useState(false);
   const mobileInboxButton = useRef<HTMLButtonElement>(null);
   const [unread, refreshUnread] = useUnreadCount();
+  // One list behind the bell and the Inbox.
+  const notifications = useNotificationFeed(refreshUnread);
   const [params, setParams] = useSearchParams();
   const shared = useSharedBoards(!!user);
 
@@ -519,7 +522,12 @@ export function AppLayout() {
           ))}
         </select>
       )}
-      <NotificationBell unread={unread} onCount={refreshUnread} />
+      <NotificationBell
+        unread={unread}
+        onCount={refreshUnread}
+        feed={notifications}
+        onOpenInbox={() => setInboxOpen(true)}
+      />
     </Header>
   );
 
@@ -662,6 +670,7 @@ export function AppLayout() {
             unread={unread}
             onNavigate={() => setInboxOpen(false)}
             onCount={refreshUnread}
+            feed={notifications}
           />
         )}
         {/* Mounted only while open: a closed dialog would still leave its fields in the page. */}
