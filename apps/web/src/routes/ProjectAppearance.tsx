@@ -14,6 +14,19 @@ import { useTranslation } from 'react-i18next';
 import { updateProjectAppearance } from './projects.ts';
 import './project-appearance.css';
 
+/** Swatches in hue order, neutral last; the contract lists colours in the order they were added. */
+export const COLOR_ORDER = [
+  'blue',
+  'teal',
+  'green',
+  'yellow',
+  'orange',
+  'red',
+  'pink',
+  'purple',
+  'neutral',
+] as const satisfies readonly z.infer<typeof ProjectIcon>['color'][];
+
 type Appearance = z.infer<typeof ProjectIcon>;
 export const canEditProjectAppearance = (project: Pick<Project, 'myRole'>) =>
   project.myRole === 'owner' || project.myRole === 'editor';
@@ -361,7 +374,7 @@ export function ProjectAppearanceDialog({
                   aria-label={t('appearance.color')}
                   onKeyDown={radioKeys}
                 >
-                  {ProjectIcon.shape.color.options.map((color) => (
+                  {COLOR_ORDER.map((color) => (
                     <button
                       type="button"
                       role="radio"

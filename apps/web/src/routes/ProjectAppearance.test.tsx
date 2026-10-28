@@ -172,11 +172,17 @@ it('offers eight shapes and nine colours with arrow selection and saves new iden
   });
   expect(shapes[4]?.getAttribute('aria-checked')).toBe('true');
   expect(document.activeElement).toBe(shapes[4]);
-  await act(async () => colors[8]?.click());
+  await act(async () => colors[6]?.click());
   await act(async () =>
     host
       .querySelector('form')
       ?.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })),
   );
   expect(patch).toHaveBeenCalledWith(`/projects/${project.id}`, { icon });
+});
+
+it('offers every contract colour exactly once, in hue order', async () => {
+  const { COLOR_ORDER } = await import('./ProjectAppearance.tsx');
+  const { ProjectIcon } = await import('@inkadra/shared');
+  expect([...COLOR_ORDER].sort()).toEqual([...ProjectIcon.shape.color.options].sort());
 });
