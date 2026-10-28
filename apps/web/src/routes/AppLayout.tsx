@@ -565,9 +565,27 @@ export function AppLayout() {
             }
             header={header}
             canvas={!!projectId}
-            collapsed={collapsed && !inSettings}
+            collapsed={inboxOpen || (collapsed && !inSettings)}
           >
-            <Outlet />
+            <div hidden={inboxOpen}>
+              <Outlet />
+            </div>
+            {inboxOpen && (
+              <NotificationList
+                fixed
+                bell={mobileInboxButton}
+                onClose={() => {
+                  setInboxOpen(false);
+                  if (window.matchMedia('(width < 768px)').matches)
+                    mobileInboxButton.current?.focus();
+                  else inboxOpener.current?.focus();
+                }}
+                unread={unread}
+                onNavigate={() => setInboxOpen(false)}
+                onCount={refreshUnread}
+                feed={notifications}
+              />
+            )}
           </AppShell>
         </HeaderContext.Provider>
         <MobileNavigation
@@ -665,21 +683,6 @@ export function AppLayout() {
               toggleTheme: toggle,
               openInbox: () => setInboxOpen(true),
             })}
-          />
-        )}
-        {inboxOpen && (
-          <NotificationList
-            fixed
-            bell={mobileInboxButton}
-            onClose={() => {
-              setInboxOpen(false);
-              if (window.matchMedia('(width < 768px)').matches) mobileInboxButton.current?.focus();
-              else inboxOpener.current?.focus();
-            }}
-            unread={unread}
-            onNavigate={() => setInboxOpen(false)}
-            onCount={refreshUnread}
-            feed={notifications}
           />
         )}
         {/* Mounted only while open: a closed dialog would still leave its fields in the page. */}

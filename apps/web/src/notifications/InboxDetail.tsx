@@ -268,12 +268,10 @@ function InboxDetailContent({
     notification.projectName,
     ...(boardDetail?.breadcrumb?.map((b) => b.title) ?? []),
     notification.boardTitle,
-    notification.elementId
-      ? notification.elementId.length > 8
-        ? notification.elementId.slice(0, 6)
-        : notification.elementId
-      : null,
-  ].filter((item): item is string => Boolean(item));
+    notification.elementId ? t('notifications.cardFallback') : null,
+  ]
+    .filter((item): item is string => Boolean(item))
+    .filter((item, index, list) => index === 0 || item !== list[index - 1]);
 
   const pinnedThreads = threads.filter(
     (th) => th.pin && th.pin.x >= 0 && th.pin.x <= 1 && th.pin.y >= 0 && th.pin.y <= 1,
@@ -296,7 +294,10 @@ function InboxDetailContent({
           {breadcrumbs.map((crumb, idx) => {
             const isLast = idx === breadcrumbs.length - 1;
             return (
-              <span key={crumb} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+              <span
+                key={breadcrumbs.slice(0, idx + 1).join('/')}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
+              >
                 {idx > 0 && <span className="inbox-detail__breadcrumb-sep">/</span>}
                 <span
                   className={
@@ -335,6 +336,13 @@ function InboxDetailContent({
       </header>
       <div className="inbox-detail__body">
         <section aria-label={t('notifications.cardPreview')} className="inbox-detail__card-section">
+          <div className="inbox-detail__preview-fallback">
+            <Icon name="board" size={32} />
+            <p>{t('notifications.previewUnavailable')}</p>
+            <Button variant="ghost" onClick={handleOpenInBoard}>
+              {t('notifications.openInBoard')}
+            </Button>
+          </div>
           <div className="inbox-detail__meta">
             {notification.reviewStatus && (
               <span>
@@ -347,7 +355,7 @@ function InboxDetailContent({
             {notification.elementId && (
               <span>
                 <span className="inbox-detail__meta-label">{t('notifications.cardPreview')}:</span>
-                {notification.elementId}
+                {t('notifications.cardFallback')}
               </span>
             )}
             {notification.boardTitle && (
@@ -442,14 +450,16 @@ function InboxDetailContent({
                   </Button>
                 </p>
               )}
-              <p>
-                {t(
-                  activeThread.visibility === 'everyone'
-                    ? 'notifications.visibleToClient'
-                    : 'notifications.internalNote',
-                )}
-              </p>
               <div className="inbox-detail__thread-header">
+                {!writable && (
+                  <span className="inbox-pill">
+                    {t(
+                      activeThread.visibility === 'everyone'
+                        ? 'notifications.visibleToClient'
+                        : 'notifications.internalNote',
+                    )}
+                  </span>
+                )}
                 {activePinIndex >= 0 && (
                   <span
                     className="inbox-detail__pin inbox-detail__pin--active"
@@ -559,6 +569,14 @@ function InboxDetailContent({
                     }}
                   />
                   <div className="inbox-detail__composer-footer">
+                    <p>
+                      {t(
+                        activeThread.visibility === 'everyone'
+                          ? 'notifications.visibleToClient'
+                          : 'notifications.internalNote',
+                      )}
+                    </p>
+
                     <div style={{ flex: 1 }} />
                     <Button
                       variant="primary"

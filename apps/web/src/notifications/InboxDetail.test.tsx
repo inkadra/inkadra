@@ -252,3 +252,46 @@ it('removes loaded A controls while B is pending and refreshes the selected sibl
   await act(async () => button('notifications.refresh')?.click());
   expect(host.querySelector('.inbox-detail__thread-messages')?.textContent).toContain('message a');
 });
+
+it('uses a readable card fallback and keeps inherited visibility inside the composer', async () => {
+  vi.mocked(api.get).mockImplementation(async (path) => {
+    if (path === '/boards/b') return { id: 'b', myRole: 'owner', breadcrumb: [] };
+    return { items: [thread('t')], nextCursor: null };
+  });
+  await render('t', 'opaque-card-id');
+  expect(host.querySelector('.inbox-detail__breadcrumb')?.textContent).toContain(
+    'notifications.cardFallback',
+  );
+  expect(host.textContent).not.toContain('opaque-card-id');
+  expect(host.querySelector('.inbox-detail__composer')?.textContent).toContain(
+    'notifications.visibleToClient',
+  );
+  expect(host.querySelector('.inbox-detail__preview-fallback')?.textContent).toContain(
+    'notifications.previewUnavailable',
+  );
+});
+
+it('does not repeat the project root in the breadcrumb', async () => {
+  vi.mocked(api.get).mockImplementation(async (path) => {
+    if (path === '/boards/b') return { id: 'b', breadcrumb: [{ title: 'Project' }] };
+    return { items: [], nextCursor: null };
+  });
+  await act(async () =>
+    root.render(
+      <MemoryRouter>
+        <InboxDetail
+          notification={{
+            ...notification('t', 'opaque'),
+            projectName: 'Project',
+            boardTitle: 'Board',
+          }}
+          onNavigate={vi.fn()}
+          onCount={vi.fn()}
+        />
+      </MemoryRouter>,
+    ),
+  );
+  const breadcrumb = host.querySelector('.inbox-detail__breadcrumb')?.textContent ?? '';
+  expect(breadcrumb.match(/Project/g)).toHaveLength(1);
+  expect(breadcrumb).not.toContain('opaque');
+});

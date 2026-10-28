@@ -178,6 +178,8 @@ it('renders the two-pane triage view and marks unread notification as read on op
       ),
     );
 
+    expect(host.textContent).not.toContain('notifications.loadedOnly');
+
     // Two-pane structure
     expect(host.querySelector('.notifications__list-pane')).not.toBeNull();
     expect(host.querySelector('.notifications__detail-pane')).not.toBeNull();

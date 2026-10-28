@@ -247,12 +247,8 @@ export function initials(name: string | null | undefined): string {
   return name.slice(0, 2).toUpperCase();
 }
 
-export function avatarBg(name: string | null | undefined): string {
-  if (!name) return '#8A8A90';
-  const colors = ['#7CC4C9', '#C9B27C', '#D9C6A5', '#F2B08A', '#9DB8F2', '#C3B2F2'];
-  let hash = 0;
-  for (let i = 0; i < name.length; i++) hash = (hash * 31 + name.charCodeAt(i)) >>> 0;
-  return colors[hash % colors.length] ?? '#8A8A90';
+export function avatarBg(_name: string | null | undefined): string {
+  return 'var(--ink-surface-3)';
 }
 
 export function relativeTime(iso: string, language: string): string {
@@ -465,8 +461,8 @@ export function NotificationList({
                   fontWeight: 600,
                   padding: '1px 7px',
                   borderRadius: 99,
-                  background: '#2563EB',
-                  color: '#FFFFFF',
+                  background: 'var(--ink-accent-primary)',
+                  color: 'var(--ink-on-accent)',
                 }}
               >
                 {unreadBadge(unread)}
@@ -527,8 +523,8 @@ export function NotificationList({
             </button>
           </div>
         )}
-        {fixed && (
-          <p className="ink-muted notifications__status">{t('notifications.loadedOnly')}</p>
+        {fixed && filter !== 'all' && next && (
+          <p className="notifications__helper">{t('notifications.loadedOnly')}</p>
         )}
         <div className="notifications__list-container">
           {state === 'ready' && filteredItems.length === 0 && (
