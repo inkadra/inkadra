@@ -13,7 +13,7 @@ import { useTranslation } from 'react-i18next';
 import { useLocation } from 'react-router';
 import { api } from '../lib/api.ts';
 import { useSession } from '../lib/session.tsx';
-import { SaveStatus, SettingsNav } from './SettingsShell.tsx';
+import { DiagnosticsContext, SaveStatus, SettingsNav } from './SettingsShell.tsx';
 import { autosaves, isSettingsHome, settingsSection } from './settings-sections.ts';
 import { useIsPhone } from './settings-ui.tsx';
 import './settings.css';
@@ -123,8 +123,9 @@ export function SettingsWindow({
         pressedBackdrop.current = false;
       }}
     >
+      <DiagnosticsContext.Provider value={onDiagnostics}>
       <div className="settings-window__frame">
-        {!phone && <SettingsNav setup={setup} members={members} onDiagnostics={onDiagnostics} />}
+        {!phone && <SettingsNav setup={setup} members={members} />}
         <section className="settings-window__main">
           <header className="settings-window__head">
             {phone && !list && (
@@ -146,6 +147,7 @@ export function SettingsWindow({
           </div>
         </section>
       </div>
+      </DiagnosticsContext.Provider>
     </dialog>
   );
 }

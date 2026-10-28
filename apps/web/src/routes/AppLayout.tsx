@@ -215,6 +215,11 @@ export function AppLayout({ home }: { home?: ReactNode }) {
   const navigate = useNavigate();
   const url = useLocation();
   const overlay = useSettingsOverlay(home);
+  // A stable value, so the page underneath does not re-render on every layout render.
+  const underlayLocation = useMemo(
+    () => ({ location: overlay.location, navigationType: overlay.navigationType }),
+    [overlay.location, overlay.navigationType],
+  );
   const afterSettings = useRef<string | null>(null);
   useEffect(() => {
     if (overlay.open || !afterSettings.current) return;
@@ -689,9 +694,7 @@ export function AppLayout({ home }: { home?: ReactNode }) {
           >
             <div style={{ display: inboxOpen ? 'none' : 'contents' }}>
               <UnderlayNavigation open={overlay.open}>
-                <LocationContext.Provider
-                  value={{ location: overlay.location, navigationType: overlay.navigationType }}
-                >
+                <LocationContext.Provider value={underlayLocation}>
                   {overlay.content}
                 </LocationContext.Provider>
               </UnderlayNavigation>

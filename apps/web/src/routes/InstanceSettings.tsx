@@ -1,12 +1,12 @@
 import type { InstanceSettings as Settings, StorageUsage } from '@inkadra/shared';
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router';
 import { api } from '../lib/api.ts';
 import { useSession } from '../lib/session.tsx';
 import { formatStorage, StorageCharts } from './StorageCharts.tsx';
 import { trackSave } from './settings-save.ts';
 import { AutosaveText, Badge, Card, Row, Segmented } from './settings-ui.tsx';
+import { DiagnosticsLink } from './SettingsShell.tsx';
 
 type Setup = { checks: Array<{ id: string; ok: boolean }> | null; error: boolean };
 type Registration = Settings['registration'];
@@ -107,9 +107,9 @@ function InstanceStatus({ setup }: { setup: Setup }) {
           </Row>
         )}
         <Row label={t('settingsUi.diagnostics')} help={t('settingsUi.about.diagnosticsHelp')}>
-          <Link className="ink-btn ink-btn--secondary" to="/diagnostics">
+          <DiagnosticsLink className="ink-btn ink-btn--secondary">
             {t('settingsUi.about.openDiagnostics')}
-          </Link>
+          </DiagnosticsLink>
         </Row>
       </div>
     </Card>

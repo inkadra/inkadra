@@ -49,6 +49,10 @@
   padding: 0 12px 0 28px;
   border-bottom: 1px solid var(--ink-border-muted);
 }
+.settings-window__head h2:focus {
+  /* Focused by code on open, not a control: no ring. */
+  outline: none;
+}
 .settings-window__head h2 {
   flex: 1;
   min-width: 0;

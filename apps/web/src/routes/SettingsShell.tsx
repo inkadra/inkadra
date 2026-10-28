@@ -1,5 +1,5 @@
 import { Icon, type IconName } from '@inkadra/ui';
-import { type ReactNode, useEffect, useState } from 'react';
+import { createContext, type ReactNode, useContext, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useLocation } from 'react-router';
 import { useSession } from '../lib/session.tsx';
@@ -43,11 +43,9 @@ export function setupAttention(setup: Setup, page: string): boolean {
 export function SettingsNav({
   setup,
   members,
-  onDiagnostics,
 }: {
   setup: Setup;
   members?: number | null;
-  onDiagnostics?: () => void;
 }) {
   const { t } = useTranslation();
   const { user, instance } = useSession();
@@ -118,25 +116,7 @@ export function SettingsNav({
           Inkadra {instance?.version}
           {instance?.name && ` · ${instance.name}`}
         </span>
-        <Link
-          to="/diagnostics"
-          replace
-          onClick={(event) => {
-            if (
-              onDiagnostics &&
-              !event.metaKey &&
-              !event.ctrlKey &&
-              !event.shiftKey &&
-              !event.altKey &&
-              event.button === 0
-            ) {
-              event.preventDefault();
-              onDiagnostics();
-            }
-          }}
-        >
-          {t('settingsUi.diagnostics')}
-        </Link>
+        <DiagnosticsLink>{t('settingsUi.diagnostics')}</DiagnosticsLink>
       </footer>
     </nav>
   );
@@ -189,5 +169,35 @@ export function SettingsShell({
       </div>
       {children}
     </div>
+  );
+}
+
+/** How the settings window opens Diagnostics, so it can keep its place in the history. */
+export const DiagnosticsContext = createContext<(() => void) | undefined>(undefined);
+
+/** A link to Diagnostics that goes through the settings window when there is one. */
+export function DiagnosticsLink({ className, children }: { className?: string; children: ReactNode }) {
+  const onDiagnostics = useContext(DiagnosticsContext);
+  return (
+    <Link
+      className={className}
+      to="/diagnostics"
+      replace={!!onDiagnostics}
+      onClick={(event) => {
+        if (
+          onDiagnostics &&
+          !event.metaKey &&
+          !event.ctrlKey &&
+          !event.shiftKey &&
+          !event.altKey &&
+          event.button === 0
+        ) {
+          event.preventDefault();
+          onDiagnostics();
+        }
+      }}
+    >
+      {children}
+    </Link>
   );
 }
