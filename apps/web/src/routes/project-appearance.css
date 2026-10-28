@@ -154,7 +154,7 @@
 .project-appearance__swatches button:focus-visible,
 .project-appearance__emojis button:focus-visible,
 .project-appearance__tabs button:focus-visible {
-  outline: 2px solid var(--ink-accent-primary);
+  outline: 2px solid color-mix(in srgb, var(--ink-accent-primary) 25%, transparent);
   outline-offset: 3px;
 }
 .project-appearance__swatches {
@@ -169,11 +169,11 @@
   border: 6px solid var(--ink-surface-1);
   border-radius: 50%;
   background: var(--swatch);
+  color: var(--swatch);
   cursor: pointer;
 }
 .project-appearance__swatches [aria-checked="true"] {
-  outline: 2px solid var(--ink-accent-primary);
-  outline-offset: -4px;
+  box-shadow: inset 0 0 0 2px currentColor;
 }
 .project-appearance__emojis {
   display: grid;

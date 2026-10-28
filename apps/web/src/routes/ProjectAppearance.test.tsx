@@ -104,7 +104,6 @@ it('saves emoji to the server and updates shared cached project identity', async
   await render();
   await openDialog();
   await act(async () => host.querySelector<HTMLButtonElement>('#appearance-tab-emoji')?.click());
-  await act(async () => host.querySelector<HTMLButtonElement>('#appearance-tab-emoji')?.click());
   await act(async () => {
     const input = host.querySelector<HTMLInputElement>('input[maxlength="32"]')!;
     Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set?.call(input, '🎬');
@@ -218,4 +217,18 @@ it('disables saving an empty emoji choice', async () => {
   await openDialog();
   await act(async () => host.querySelector<HTMLButtonElement>('#appearance-tab-emoji')?.click());
   expect(host.querySelector<HTMLButtonElement>('button[type="submit"]')?.disabled).toBe(true);
+  expect(host.querySelector('[role="alert"]')).toBeNull();
+  expect(host.textContent).toContain('appearance.chooseEmoji');
+});
+
+it('saves from Symbol with an invalid emoji by clearing it', async () => {
+  const patch = vi.spyOn(api, 'patch').mockResolvedValue(project);
+  await render({ ...project, icon: { ...project.icon, emoji: 'invalid' } });
+  await openDialog();
+  expect(document.activeElement?.id).toBe('appearance-tab-emoji');
+  expect(host.querySelector('[role="alert"]')).not.toBeNull();
+  await act(async () => host.querySelector<HTMLButtonElement>('#appearance-tab-symbol')?.click());
+  expect(host.querySelector('[role="alert"]')).toBeNull();
+  await act(async () => host.querySelector('form')?.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })));
+  expect(patch).toHaveBeenCalledWith(`/projects/${project.id}`, { icon: { ...project.icon, emoji: null } });
 });

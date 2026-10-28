@@ -147,7 +147,6 @@
       "moreDays_other": "+{{count}} more shooting days today",
       "fewerDays": "Show less"
     },
-    "allBoards": "View all boards →",
     "recentBoards": "Recent boards",
     "continue": "Continue",
     "recentBoardsHint": "by last edit",
@@ -184,7 +183,8 @@
       "empty": "Empty board",
       "cards_one": "{{count}} item",
       "cards_other": "{{count}} items"
-    }
+    },
+    "allProjects": "All projects →"
   },
   "project": {
     "dialogTitle": "New project",
@@ -2117,6 +2117,7 @@
     },
     "pasteEmoji": "Paste another emoji",
     "sidebarPreview": "In the sidebar",
-    "close": "Close"
+    "close": "Close",
+    "chooseEmoji": "Choose an emoji"
   }
 }

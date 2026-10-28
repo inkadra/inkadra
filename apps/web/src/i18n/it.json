@@ -147,10 +147,9 @@
       "moreDays_other": "+{{count}} altre giornate oggi",
       "fewerDays": "Mostra meno"
     },
-    "allBoards": "Vedi tutti i board →",
     "recentBoards": "Recenti",
     "continue": "Continua",
-    "recentBoardsHint": "ordinati per ultima modifica",
+    "recentBoardsHint": "ordinate per ultima modifica",
     "noRecentBoards": "Ancora nessuna board. Creane una o parti da un modello.",
     "kind": {
       "project": "Board del progetto"
@@ -184,7 +183,8 @@
       "empty": "Board vuota",
       "cards_one": "{{count}} elemento",
       "cards_other": "{{count}} elementi"
-    }
+    },
+    "allProjects": "Tutti i progetti →"
   },
   "project": {
     "dialogTitle": "Nuovo progetto",
@@ -2115,8 +2115,9 @@
       "red": "Rosso",
       "pink": "Rosa"
     },
-    "pasteEmoji": "Incolla un'altra emoji",
+    "pasteEmoji": "Incolla un’emoji",
     "sidebarPreview": "Nella barra laterale",
-    "close": "Chiudi"
+    "close": "Chiudi",
+    "chooseEmoji": "Scegli un’emoji"
   }
 }

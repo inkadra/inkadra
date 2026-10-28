@@ -239,17 +239,18 @@ export function ProjectAppearanceDialog({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(false);
   const allowed = canEditProjectAppearance(project);
+  useEffect(() => {
+    document.querySelector<HTMLElement>('.project-appearance [role="tab"][aria-selected="true"]')?.focus();
+  }, []);
   const disabled = busy || !allowed;
-  const valid = ProjectIcon.safeParse(icon).success && (tab !== 'emoji' || !!icon.emoji?.trim());
+  const payload = { ...icon, emoji: tab === 'symbol' ? null : icon.emoji };
+  const valid = ProjectIcon.safeParse(payload).success && (tab !== 'emoji' || !!icon.emoji?.trim());
   async function save() {
     if (!allowed || !valid || busy) return;
     setBusy(true);
     setError(false);
     try {
-      const updated = await updateProjectAppearance(project.id, {
-        ...icon,
-        emoji: tab === 'symbol' ? null : icon.emoji,
-      });
+      const updated = await updateProjectAppearance(project.id, payload);
       onSaved?.(updated);
       onClose();
     } catch {
@@ -460,7 +461,8 @@ export function ProjectAppearanceDialog({
             />
             <p className="ink-muted">{t('appearance.emojiHelp')}</p>
           </div>
-          {!valid && <p role="alert">{t('appearance.invalid')}</p>}
+          {tab === 'emoji' && !icon.emoji?.trim() && <p className="ink-muted">{t('appearance.chooseEmoji')}</p>}
+          {tab === 'emoji' && !!icon.emoji?.trim() && !valid && <p role="alert">{t('appearance.invalid')}</p>}
           {error && <p role="alert">{t('appearance.error')}</p>}
           <DialogActions>
             <Button
