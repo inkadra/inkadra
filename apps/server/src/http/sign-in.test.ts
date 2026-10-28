@@ -129,12 +129,26 @@ describe.skipIf(!url)('sign-in providers (needs DATABASE_URL)', () => {
       data: { sub: owner.id },
     });
     const exchange = vi.spyOn(provider, 'validateAuthorizationCode').mockResolvedValue({});
+    const originalOptions = provider.options;
     try {
+      if (id === 'google') {
+        provider.options = { ...originalOptions, verifyIdToken: async () => true };
+        const direct = await app.inject({
+          method: 'POST',
+          url: '/api/auth/sign-in/social',
+          headers: { origin: 'https://inkadra.example.com' },
+          payload: { provider: id, idToken: { token: 'test-id-token' } },
+        });
+        expect(direct.statusCode).toBe(200);
+        expect(direct.json().twoFactorRedirect).toBe(true);
+        const cookie = direct.cookies.map((c) => `${c.name}=${c.value}`).join('; ');
+        expect(await auth.api.getSession({ headers: new Headers({ cookie }) })).toBeNull();
+      }
       const start = await app.inject({
         method: 'POST',
         url: '/api/auth/sign-in/social',
         headers: { origin: 'https://inkadra.example.com' },
-        payload: { provider: id, callbackURL: '/' },
+        payload: { provider: id, callbackURL: '/authorize?client_id=mobile' },
       });
       const state = new URL(start.json().url).searchParams.get('state');
       const cookie = start.cookies.map((c) => `${c.name}=${c.value}`).join('; ');
@@ -143,7 +157,9 @@ describe.skipIf(!url)('sign-in providers (needs DATABASE_URL)', () => {
         headers: { cookie },
       });
       expect(callback.statusCode).toBe(302);
-      expect(callback.headers.location).toBe('/login?twoFactor=true');
+      expect(callback.headers.location).toBe(
+        '/login?twoFactor=true&next=%2Fauthorize%3Fclient_id%3Dmobile',
+      );
       const challenge = callback.cookies.map((c) => `${c.name}=${c.value}`).join('; ');
       expect(callback.cookies.some((c) => c.name.endsWith('two_factor') && c.value)).toBe(true);
       const session = await auth.api.getSession({ headers: new Headers({ cookie: challenge }) });
@@ -156,6 +172,7 @@ describe.skipIf(!url)('sign-in providers (needs DATABASE_URL)', () => {
       });
       expect(invalid.statusCode).toBeGreaterThanOrEqual(400);
     } finally {
+      provider.options = originalOptions;
       info.mockRestore();
       exchange.mockRestore();
     }
