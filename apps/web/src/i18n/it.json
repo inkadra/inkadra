@@ -1324,10 +1324,9 @@
     "filteredEmpty": "Nessuna card con questo stato."
   },
   "notifications": {
-    "title": "Notifiche",
     "bell_one": "Inbox: {{count}} non letta",
     "bell_other": "Inbox: {{count}} non lette",
-    "close": "Chiudi le notifiche",
+    "close": "Chiudi la Inbox",
     "readAll": "Segna tutte come lette",
     "read": "Segna come letta",
     "unread": "Non letta",

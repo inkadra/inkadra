@@ -113,7 +113,7 @@ test('comments, mentions, review status and notifications between two people', a
   const bell = page.getByRole('button', { name: /^Inbox: [1-9]\d* non lett/ });
   await expect(bell).toBeVisible();
   await bell.click();
-  const list = page.getByRole('dialog', { name: /^Inbox/ });
+  const list = page.getByRole('dialog', { name: 'Inbox', exact: true });
   const mention = list
     .getByRole('button', { name: /Luca Regista ti ha menzionato/ })
     .filter({ hasText: projectName });
@@ -418,7 +418,7 @@ test('the bell polls once a minute and on focus, and keeps paging short pages', 
 
   const bell = page.getByRole('button', { name: 'Inbox: 1 non letta' });
   await bell.click();
-  const list = page.getByRole('dialog', { name: /^Inbox/ });
+  const list = page.getByRole('dialog', { name: 'Inbox', exact: true });
   await list.getByRole('button', { name: 'Mostra altre' }).click();
   await expect(list.getByText('ha fatto qualcosa')).toBeVisible();
   await expect(list.getByText('Attività futura')).toBeVisible();
@@ -447,4 +447,14 @@ test('the bell polls once a minute and on focus, and keeps paging short pages', 
   await expect(list).toBeFocused();
   await list.press('Escape');
   await expect(page.getByRole('button', { name: 'Inbox: 0 non lette' })).toBeFocused();
+  // "Open inbox" keeps the pages shown in the peek, and closing the Inbox goes back to the bell.
+  const readBell = page.getByRole('button', { name: 'Inbox: 0 non lette' });
+  await readBell.click();
+  await expect(list.getByText('Attività futura')).toBeVisible();
+  await list.getByRole('button', { name: 'Apri inbox' }).click();
+  await expect(list).toHaveClass(/notifications--fixed/);
+  await expect(list.getByText('Attività futura')).toBeVisible();
+  await list.press('Escape');
+  await expect(list).toHaveCount(0);
+  await expect(readBell).toBeFocused();
 });

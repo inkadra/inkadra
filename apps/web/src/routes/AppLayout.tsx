@@ -113,6 +113,11 @@ export function AppLayout() {
   const [searching, setSearching] = useState(false);
   const [inboxOpen, setInboxOpen] = useState(false);
   const mobileInboxButton = useRef<HTMLButtonElement>(null);
+  // The bell's "Open inbox" leaves the peek: closing the Inbox goes back to the bell.
+  const inboxOpener = useRef<HTMLElement | null>(null);
+  useEffect(() => {
+    if (!inboxOpen) inboxOpener.current = null;
+  }, [inboxOpen]);
   const [unread, refreshUnread] = useUnreadCount();
   // One list behind the bell and the Inbox.
   const notifications = useNotificationFeed(refreshUnread);
@@ -526,7 +531,10 @@ export function AppLayout() {
         unread={unread}
         onCount={refreshUnread}
         feed={notifications}
-        onOpenInbox={() => setInboxOpen(true)}
+        onOpenInbox={(opener) => {
+          inboxOpener.current = opener;
+          setInboxOpen(true);
+        }}
       />
     </Header>
   );
@@ -666,6 +674,7 @@ export function AppLayout() {
             onClose={() => {
               setInboxOpen(false);
               if (window.matchMedia('(width < 768px)').matches) mobileInboxButton.current?.focus();
+              else inboxOpener.current?.focus();
             }}
             unread={unread}
             onNavigate={() => setInboxOpen(false)}

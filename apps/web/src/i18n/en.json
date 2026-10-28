@@ -1324,10 +1324,9 @@
     "filteredEmpty": "No cards with this status."
   },
   "notifications": {
-    "title": "Notifications",
     "bell_one": "Inbox: {{count}} unread",
     "bell_other": "Inbox: {{count}} unread",
-    "close": "Close notifications",
+    "close": "Close the Inbox",
     "readAll": "Mark all as read",
     "read": "Mark as read",
     "unread": "Unread",
