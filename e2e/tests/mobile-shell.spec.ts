@@ -100,6 +100,20 @@ test('mobile shell gives the canvas full width and keeps shell actions reachable
   await page.keyboard.press('Escape');
   await nav.getByRole('button', { name: 'Profilo', exact: true }).click();
   await expect(page).toHaveURL('/settings');
+  // Settings slide up as a full-screen sheet: the list first, then one page with a way back.
+  const settings = page.locator('dialog.settings-window');
+  await expect(settings.getByRole('heading', { name: 'Profilo', exact: true })).toBeVisible();
+  expect((await settings.boundingBox())?.width).toBe(390);
+  await settings.getByRole('link', { name: /^Notifiche email/ }).click();
+  await expect(page).toHaveURL('/settings?section=notifications');
+  await expect(settings.getByRole('heading', { name: 'Notifiche', exact: true })).toBeVisible();
+  await settings.getByRole('button', { name: 'Indietro', exact: true }).click();
+  await expect(page).toHaveURL('/settings');
+  // Closing returns to the board, which stayed open underneath.
+  await settings.getByRole('button', { name: 'Chiudi impostazioni', exact: true }).click();
+  await expect(settings).toBeHidden();
+  await expect(page).toHaveURL(new RegExp(`/p/${project.id}`));
+  await expect(canvas).toBeVisible();
   await page.goto(`/p/${project.id}`);
   await page.getByRole('button', { name: 'Indietro', exact: true }).click();
   await expect(page).toHaveURL('/');

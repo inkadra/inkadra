@@ -1843,7 +1843,6 @@
     "settingsPending": "Settings, instance setup incomplete"
   },
   "settingsUi": {
-    "backToProjects": "Back to projects",
     "profile": "Profile",
     "diagnostics": "Diagnostics",
     "on": "On",
@@ -1865,9 +1864,9 @@
       "about": "Instance name, address, version and setup status."
     },
     "autosave": {
-      "idle": "Changes are saved automatically",
+      "idle": "Autosave on",
       "saving": "Saving…",
-      "saved": "All changes saved",
+      "saved": "Saved",
       "error": "Could not save the last change"
     },
     "account": {
@@ -1916,7 +1915,6 @@
       "configured": "Configured",
       "needsSmtp": "Needs SMTP",
       "missingSmtp": "SMTP missing",
-      "details": "Details →",
       "email": "Outgoing email",
       "smtpOn": "Invitations, password resets and email notifications can be sent."
     },
@@ -1929,8 +1927,15 @@
     "about": {
       "nameHelp": "Shown in the sidebar, in emails and on the sign-in page",
       "url": "Public address",
-      "version": "Version"
-    }
+      "version": "Version",
+      "identity": "Instance",
+      "diagnosticsHelp": "Network, proxy and service checks, useful when something does not work",
+      "openDiagnostics": "Open"
+    },
+    "search": "Search settings",
+    "noResults": "No settings found",
+    "close": "Close settings",
+    "dangerZone": "Danger zone"
   },
   "admin": {
     "personal": "Personal",

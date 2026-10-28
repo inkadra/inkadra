@@ -125,7 +125,6 @@ export function SettingsHome({ setup }: { setup: Setup }) {
   const admin = user?.role === 'admin';
   return (
     <div className="settings-home">
-      <h1 className="settings-home__title">{t('settingsUi.profile')}</h1>
       <Link to={href('account')} className="settings-home__me">
         <Avatar name={user?.name ?? ''} image={user?.image} size={44} />
         <span className="settings-home__label">

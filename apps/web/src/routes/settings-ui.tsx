@@ -29,7 +29,7 @@ export function Card({
       {title && (
         <header className="settings-card__head">
           <div className="settings-card__title">
-            <h2 id={id}>{title}</h2>
+            <h3 id={id}>{title}</h3>
             {action}
           </div>
           {body && <p>{body}</p>}

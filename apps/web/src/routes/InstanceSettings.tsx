@@ -65,9 +65,9 @@ function LoadError() {
   return <p role="alert">{t('auth.errors.generic')}</p>;
 }
 
-export function InstanceStatusCard({ setup, storage }: { setup: Setup; storage?: boolean }) {
+/** The setup checklist as rows of the Informazioni page, with storage use and diagnostics. */
+function InstanceStatus({ setup }: { setup: Setup }) {
   const { t, i18n } = useTranslation();
-  const { instance } = useSession();
   const { usage } = useStorageUsage();
   const done = setup.checks?.filter((c) => c.ok).length ?? 0;
   return (
@@ -81,34 +81,36 @@ export function InstanceStatusCard({ setup, storage }: { setup: Setup; storage?:
         )
       }
     >
-      <div className="settings-card__pad">
+      <div className="settings-rows">
         {setup.error ? (
-          <p role="alert">{t('home.loadError')}</p>
+          <p role="alert" className="settings-card__empty">
+            {t('home.loadError')}
+          </p>
         ) : !setup.checks ? (
-          <p role="status" className="settings-muted">
+          <p role="status" className="settings-card__empty settings-muted">
             {t('admin.loading')}
           </p>
         ) : (
-          <ul className="settings-checks">
-            {setup.checks.map((c) => (
-              <li key={c.id}>
-                <span>{t(`onboarding.checks.${c.id}`)}</span>
-                <span className={c.ok ? 'settings-dot is-ok' : 'settings-dot is-warn'}>
-                  {t(c.ok ? 'onboarding.ready' : 'onboarding.needsSetup')}
-                </span>
-              </li>
-            ))}
-          </ul>
+          setup.checks.map((c) => (
+            <Row key={c.id} label={t(`onboarding.checks.${c.id}`)}>
+              <Badge tone={c.ok ? 'ok' : 'warn'}>
+                {t(c.ok ? 'onboarding.ready' : 'onboarding.needsSetup')}
+              </Badge>
+            </Row>
+          ))
         )}
-        {storage && usage && (
-          <p className="settings-checks__storage">
-            <span>{t('admin.storage')}</span>
-            <span>{formatStorage(usage.originalBytes, i18n.language)}</span>
-          </p>
+        {usage && (
+          <Row label={t('admin.storage')}>
+            <span className="settings-value">
+              {formatStorage(usage.originalBytes, i18n.language)}
+            </span>
+          </Row>
         )}
-        <p className="settings-muted settings-card__foot">
-          Inkadra {instance?.version} · <Link to="/diagnostics">{t('settingsUi.diagnostics')}</Link>
-        </p>
+        <Row label={t('settingsUi.diagnostics')} help={t('settingsUi.about.diagnosticsHelp')}>
+          <Link className="ink-btn ink-btn--secondary" to="/diagnostics">
+            {t('settingsUi.about.openDiagnostics')}
+          </Link>
+        </Row>
       </div>
     </Card>
   );
@@ -169,36 +171,6 @@ function providerRows(
   ];
 }
 
-export function AccessCard() {
-  const { t } = useTranslation();
-  const { instance } = useSession();
-  return (
-    <Card
-      title={t('settingsUi.pages.access')}
-      action={
-        <Link className="settings-card__link" to="/settings?section=providers">
-          {t('settingsUi.access.details')}
-        </Link>
-      }
-    >
-      <div className="settings-rows">
-        {providerRows(instance, t).map((p) => (
-          <Row
-            key={p.id + p.name}
-            leading={<ProviderIcon id={p.id} />}
-            label={p.name}
-            help={p.on || typeof p.help !== 'string' ? undefined : p.help}
-          >
-            <Badge tone={p.on ? 'ok' : 'neutral'}>
-              {t(p.on ? 'settingsUi.on' : 'settingsUi.off')}
-            </Badge>
-          </Row>
-        ))}
-      </div>
-    </Card>
-  );
-}
-
 function RegistrationControl({
   value,
   onChange,
@@ -217,25 +189,6 @@ function RegistrationControl({
         label: t(`admin.registrationModes.${mode}`),
       }))}
     />
-  );
-}
-
-export function RegistrationCard() {
-  const { t } = useTranslation();
-  const { settings, save } = useInstanceSettings();
-  if (!settings) return null;
-  return (
-    <Card title={t('admin.registration')}>
-      <div className="settings-card__pad">
-        <RegistrationControl
-          value={settings.registration}
-          onChange={(registration) => void save({ registration }).catch(() => {})}
-        />
-        <p className="settings-muted settings-card__foot">
-          {t(`settingsUi.registration.${settings.registration}`)}
-        </p>
-      </div>
-    </Card>
   );
 }
 
@@ -262,7 +215,7 @@ function AccessPage() {
   const { instance } = useSession();
   return (
     <>
-      <Card>
+      <Card title={t('settings.methods.title')}>
         <div className="settings-rows">
           {providerRows(instance, t).map((p) => (
             <Row
@@ -317,7 +270,7 @@ function InstancePage({ section, setup }: { section: string; setup: Setup }) {
 
   if (section === 'registration')
     return (
-      <Card>
+      <Card title={t('admin.registration')}>
         <div className="settings-rows">
           <Row label={t('settingsUi.registration.label')} help={t('admin.registrationHelp')}>
             <RegistrationControl
@@ -335,7 +288,7 @@ function InstancePage({ section, setup }: { section: string; setup: Setup }) {
 
   return (
     <>
-      <Card>
+      <Card title={t('settingsUi.about.identity')}>
         <div className="settings-rows">
           <Row
             label={t('admin.instanceName')}
@@ -358,7 +311,7 @@ function InstancePage({ section, setup }: { section: string; setup: Setup }) {
           </Row>
         </div>
       </Card>
-      <InstanceStatusCard setup={setup} storage />
+      <InstanceStatus setup={setup} />
     </>
   );
 }

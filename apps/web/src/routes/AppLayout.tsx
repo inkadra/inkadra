@@ -24,7 +24,17 @@ import {
   useSyncExternalStore,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Navigate, Outlet, useLocation, useNavigate, useSearchParams } from 'react-router';
+import {
+  createPath,
+  type Location,
+  Navigate,
+  UNSAFE_LocationContext as LocationContext,
+  useLocation,
+  useNavigate,
+  useNavigationType,
+  useOutlet,
+  useSearchParams,
+} from 'react-router';
 import { childBoards, useProjectBoards, useSharedBoards } from '../board/boards.ts';
 import {
   askedView,
@@ -62,8 +72,8 @@ import {
   subscribeProjects,
 } from './projects.ts';
 import { SearchDialog } from './SearchDialog.tsx';
-import { SettingsBreadcrumb } from './SettingsBreadcrumb.tsx';
-import { SaveStatus, SettingsNav } from './SettingsShell.tsx';
+import { SettingsWindow } from './SettingsWindow.tsx';
+import { isSettingsPath } from './settings-sections.ts';
 import './mobile-shell.css';
 
 interface ProjectsState {
@@ -94,13 +104,50 @@ const InstanceSetupContext = createContext<ReturnType<typeof useInstanceSetup>>(
 });
 export const useInstanceSetupState = () => useContext(InstanceSetupContext);
 
-export function AppLayout() {
+const HOME: Location = { pathname: '/', search: '', hash: '', state: null, key: 'default' };
+
+/**
+ * Settings open as a window over the page underneath, which stays mounted: a board keeps its
+ * connection and scroll. The page is the last one shown before settings opened, or Home when
+ * a settings URL is loaded directly; it renders with its own location so nothing in it reacts
+ * to the settings URL. `depth` counts the history entries settings added, for closing.
+ */
+function useSettingsOverlay(home: ReactNode) {
+  const location = useLocation();
+  const navigationType = useNavigationType();
+  const outlet = useOutlet();
+  const open = isSettingsPath(location.pathname);
+  const page = useRef<{ element: ReactNode; location: Location } | null>(null);
+  if (!open) page.current = { element: outlet, location };
+  const depth = useRef(0);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: counts navigations, keyed by entry.
+  useEffect(() => {
+    if (!open) depth.current = 0;
+    else if (navigationType === 'PUSH') depth.current += 1;
+    else if (navigationType === 'POP') depth.current = Math.max(0, depth.current - 1);
+  }, [location.key]);
+  const below = open ? (page.current ?? { element: home, location: HOME }) : null;
+  return {
+    open,
+    /** The settings page itself, for the window. */
+    settings: open ? outlet : null,
+    location: below?.location ?? location,
+    content: below?.element ?? outlet,
+    navigationType,
+    depth,
+  };
+}
+
+export function AppLayout({ home }: { home?: ReactNode }) {
   const setup = useInstanceSetup();
   const { t } = useTranslation();
   const { user, instance, refresh } = useSession();
   const { theme, toggle } = useTheme();
   const navigate = useNavigate();
-  const { pathname, search } = useLocation();
+  const here = useLocation();
+  const overlay = useSettingsOverlay(home);
+  // Everything in the shell follows the page under the settings window, not the settings URL.
+  const { pathname, search } = overlay.location;
   const projects = useSyncExternalStore(subscribeProjects, getCachedProjects);
   const [drawerOpen, setDrawerOpen] = useState(false);
   // A template when New project opens with one preselected, as from Home.
@@ -124,7 +171,7 @@ export function AppLayout() {
   const [unread, refreshUnread] = useUnreadCount();
   // One list behind the bell and the Inbox.
   const notifications = useNotificationFeed(refreshUnread);
-  const [params, setParams] = useSearchParams();
+  const [, setParams] = useSearchParams();
   const shared = useSharedBoards(!!user);
 
   useEffect(() => {
@@ -185,7 +232,9 @@ export function AppLayout() {
   if (!user)
     return (
       <Navigate
-        to={pathname === '/' ? '/login' : `/login?next=${encodeURIComponent(pathname)}`}
+        to={
+          here.pathname === '/' ? '/login' : `/login?next=${encodeURIComponent(here.pathname)}`
+        }
         replace
       />
     );
@@ -202,7 +251,11 @@ export function AppLayout() {
     await refresh();
   }
 
-  const inSettings = pathname.startsWith('/settings');
+  const inSettings = overlay.open;
+  const closeSettings = () => {
+    if (overlay.depth.current > 0) navigate(-overlay.depth.current);
+    else navigate(createPath(overlay.location), { replace: true });
+  };
   const writable = editableProjects(projects);
   const projectId = pathname.startsWith('/p/') ? pathname.split('/')[2] : undefined;
   const boardId = pathname.split('/')[4];
@@ -216,7 +269,7 @@ export function AppLayout() {
   // Until the project's boards are known the kind is too: no tab is active before that.
   const openBoard = projectBoards?.find((b) => b.id === openBoardId);
   const openKind: BoardKind | undefined = openBoard?.kind;
-  const asked = params.get('view');
+  const asked = new URLSearchParams(search).get('view');
   // While the boards load a board with no ?view= has no known default: nothing is active yet.
   const currentView: BoardView | null =
     openBoardId && !projectBoards
@@ -445,7 +498,7 @@ export function AppLayout() {
             <IconButton
               icon="settings"
               label={t(setupPending ? 'onboarding.settingsPending' : 'nav.settings')}
-              aria-current={pathname.startsWith('/settings') ? 'page' : undefined}
+              aria-current={inSettings ? 'page' : undefined}
               onClick={go('/settings')}
             />
           </span>
@@ -483,19 +536,14 @@ export function AppLayout() {
         {headerContent ?? (
           <>
             <nav aria-label={t('nav.breadcrumb')} className="ink-header__crumbs">
-              {inSettings ? (
-                <SettingsBreadcrumb pathname={pathname} search={search} />
-              ) : (
-                <span style={{ fontWeight: 600 }}>
-                  {current?.name ??
-                    (pathname === '/onboarding'
-                      ? onboardingCrumb && t(onboardingCrumb)
-                      : t(pathname === '/projects' ? 'nav.projects' : 'nav.home'))}
-                </span>
-              )}
+              <span style={{ fontWeight: 600 }}>
+                {current?.name ??
+                  (pathname === '/onboarding'
+                    ? onboardingCrumb && t(onboardingCrumb)
+                    : t(pathname === '/projects' ? 'nav.projects' : 'nav.home'))}
+              </span>
             </nav>
             <span className="ink-header__spacer" />
-            {inSettings && <SaveStatus />}
             {/* Home creates from here only; search stays in the sidebar and on ⌘K. */}
             {pathname === '/' && (
               <div className="home-header-actions">
@@ -559,21 +607,17 @@ export function AppLayout() {
       >
         <HeaderContext.Provider value={setHeaderContent}>
           <AppShell
-            sidebar={
-              inSettings ? (
-                <Sidebar label={t('nav.settings')}>
-                  <SettingsNav setup={setup} />
-                </Sidebar>
-              ) : (
-                sidebar
-              )
-            }
+            sidebar={sidebar}
             header={header}
             canvas={!!projectId}
-            collapsed={(inboxOpen || collapsed) && !inSettings}
+            collapsed={inboxOpen || collapsed}
           >
             <div style={{ display: inboxOpen ? 'none' : 'contents' }}>
-              <Outlet />
+              <LocationContext.Provider
+                value={{ location: overlay.location, navigationType: overlay.navigationType }}
+              >
+                {overlay.content}
+              </LocationContext.Provider>
             </div>
             {inboxOpen && (
               <NotificationList
@@ -597,7 +641,7 @@ export function AppLayout() {
         </HeaderContext.Provider>
         <MobileNavigation
           inboxButtonRef={mobileInboxButton}
-          pathname={pathname}
+          pathname={here.pathname}
           inboxOpen={inboxOpen}
           drawerOpen={drawerOpen}
           newOpen={newSheet}
@@ -620,6 +664,17 @@ export function AppLayout() {
             navigate('/settings');
           }}
         />
+        {overlay.settings && (
+          <SettingsWindow
+            setup={setup}
+            onClose={closeSettings}
+            onBack={() =>
+              overlay.depth.current > 1 ? navigate(-1) : navigate('/settings', { replace: true })
+            }
+          >
+            {overlay.settings}
+          </SettingsWindow>
+        )}
         {drawerOpen && (
           <div className="mobile-drawer">
             <Dialog open title={t('nav.navigation')} onClose={() => setDrawerOpen(false)}>

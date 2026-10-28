@@ -162,16 +162,11 @@ function Account() {
   }, [loadAccounts]);
   const hasPassword = accounts?.some((a) => a.providerId === 'credential') ?? false;
   return (
-    <SettingsShell
-      aside={
-        <>
-          <Sessions />
-          <Tokens />
-        </>
-      }
-    >
+    <SettingsShell>
       <Profile />
       <SignInMethods accounts={accounts} hasPassword={hasPassword} onChange={loadAccounts} />
+      <Sessions />
+      <Tokens />
       <DeleteAccount hasPassword={hasPassword} />
     </SettingsShell>
   );
@@ -822,7 +817,7 @@ function DeleteAccount({ hasPassword }: { hasPassword: boolean }) {
   }
 
   return (
-    <Card danger>
+    <Card danger title={t('settingsUi.dangerZone')}>
       <div className="settings-rows">
         <Row label={t('settings.delete.title')} help={t('settings.delete.body')}>
           <Button variant="danger" onClick={() => setOpen(true)}>

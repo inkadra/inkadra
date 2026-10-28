@@ -57,18 +57,32 @@ const render = (path: string) =>
     ),
   );
 
+const lead = () => host.querySelector('.settings__lead')?.textContent;
+
 it('opens Account on desktop and the settings home on phones', async () => {
   await render('/settings');
-  expect(host.querySelector('h1')?.textContent).toBe('admin.account');
+  expect(lead()).toBe('settingsUi.leads.account');
   expect(host.querySelector('input[aria-label="settings.profile.avatarUpload"]')).not.toBeNull();
   expect(host.querySelector('[data-home]')).toBeNull();
-  expect(host.querySelector('.settings-back')).toBeNull();
   phone.value = true;
   await render('/settings');
   expect(host.querySelector('[data-home]')).not.toBeNull();
   await render('/settings?section=account');
-  expect(host.querySelector('h1')?.textContent).toBe('admin.account');
-  expect(host.querySelector('.settings-back')?.getAttribute('href')).toBe('/settings');
+  expect(lead()).toBe('settingsUi.leads.account');
+});
+
+it('lays Account out as one column of groups, ending with the danger zone', async () => {
+  await render('/settings?section=account');
+  expect(host.querySelector('aside')).toBeNull();
+  const groups = [...host.querySelectorAll('.settings-card h3')].map((h) => h.textContent);
+  expect(groups).toEqual([
+    'settings.profile.title',
+    'settings.methods.title',
+    'settings.sessions.title',
+    'settings.tokens.title',
+    'settingsUi.dangerZone',
+  ]);
+  expect(host.querySelector('.settings-card--danger h3')?.textContent).toBe('settingsUi.dangerZone');
 });
 
 it('keeps email controls only in Notifications and gates admin pages', async () => {
@@ -77,7 +91,7 @@ it('keeps email controls only in Notifications and gates admin pages', async () 
   await render('/settings?section=notifications');
   expect(host.querySelectorAll('[data-notifications]')).toHaveLength(1);
   await render('/settings?section=classifications');
-  expect(host.querySelector('h1')?.textContent).toBe('admin.classifications');
+  expect(lead()).toBe('catalogs.scope');
   expect(host.querySelector('[data-classifications]')).not.toBeNull();
   session.user.role = 'member';
   for (const section of ['classifications', 'registration', 'providers', 'workspace']) {

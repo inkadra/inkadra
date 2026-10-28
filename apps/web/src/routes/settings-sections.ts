@@ -105,6 +105,16 @@ export function settingsSection(pathname: string, search: string): SettingsPage 
   );
 }
 
+/** Settings open as a window over the page underneath; these are the URLs that open it. */
+export function isSettingsPath(pathname: string): boolean {
+  return pathname === '/settings' || pathname === '/settings/team';
+}
+
+/** Pages whose changes save themselves; the window header reports their progress. */
+export function autosaves(id: string): boolean {
+  return id !== 'workspace' && id !== 'providers';
+}
+
 /** Plain `/settings` is the phone settings home; every page has an explicit section. */
 export function isSettingsHome(pathname: string, search: string): boolean {
   return pathname === '/settings' && !new URLSearchParams(search).get('section');
