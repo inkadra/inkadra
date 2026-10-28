@@ -45,7 +45,7 @@ function board() {
   return { doc, store };
 }
 
-it('keeps review rounds unavailable and shows live frames while loading', async () => {
+it('shows live frames while loading, without the review rounds that do not exist yet', async () => {
   const { doc, store } = board();
   createElement(
     doc,
@@ -55,14 +55,24 @@ it('keeps review rounds unavailable and shows live frames while loading', async 
     { userId: null },
   );
   const host = await mount(<ClientReviewView store={store} />);
-  const submit = [...host.querySelectorAll('button')].find(
-    (button) => button.textContent === 'shells.submitReview',
-  );
-  expect(submit?.disabled).toBe(true);
-  expect(host.textContent).toContain('clientReview.roundsUnavailable');
+  expect(host.textContent).not.toContain('submitReview');
+  expect(host.textContent).not.toContain('roundsUnavailable');
   expect(host.textContent).toContain('comments.loading');
   expect(host.querySelector('textarea')).toBeNull();
   expect(host.textContent).toContain('Actual shot');
+});
+
+it('offers the first shooting day from the empty schedule, with no manual reload', async () => {
+  const { store } = board();
+  vi.spyOn(api, 'get').mockResolvedValue({ items: [], nextCursor: null });
+  const host = await mount(<ScheduleView store={store} boardId="board" />);
+  const labels = [...host.querySelectorAll('button')].map((b) => b.textContent);
+  expect(host.textContent).toContain('schedule.emptyTitle');
+  expect(labels.filter((label) => label === 'schedule.addDay')).toHaveLength(1);
+  expect(host.textContent).not.toContain('schedule.reload');
+  const viewer = await mount(<ScheduleView store={store} boardId="board" readOnly />);
+  expect(viewer.textContent).toContain('schedule.emptyReadOnly');
+  expect(viewer.textContent).not.toContain('schedule.addDay');
 });
 
 it('renders the dropped shot identity and rejects foreign, malformed and read-only drops', async () => {

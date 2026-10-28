@@ -3,7 +3,10 @@ import { useTranslation } from 'react-i18next';
 import { GuestVisibilityIcon, toggleGuestHidden } from '../guest-visibility.tsx';
 import type { BoardStore } from '../store.ts';
 
-/** Only editors of the live board can change a frame's explicit visibility. */
+/**
+ * Only editors of the live board can change a frame's explicit visibility. The toggle shows on
+ * hidden frames, and on hover or focus of its card or row (`.guest-toggle` in film.css).
+ */
 export function FrameVisibilityButton({
   store,
   frame,
@@ -18,7 +21,7 @@ export function FrameVisibilityButton({
   return (
     <button
       type="button"
-      className="ink-iconbtn"
+      className="ink-iconbtn guest-toggle"
       aria-label={t('guestVisibility.hide')}
       title={t('guestVisibility.hide')}
       aria-pressed={!!frame.guestHidden}

@@ -782,7 +782,7 @@
       "kanban": "Kanban",
       "addInStatus": "Add in {{status}}",
       "cardAria": "Frame {{label}}",
-      "addShot": "+ Shot",
+      "addShot": "Shot",
       "addShotInScene": "Add shot in scene {{scene}}",
       "selectedCount": "{{count}} selected",
       "selectAll": "Select all",
@@ -1548,9 +1548,7 @@
     "scheduleUnavailable": "Scheduling is not connected to a save service yet. Drag previews are local and lost when this view closes. No dates have been scheduled.",
     "noShots": "No shots on this board.",
     "draftSlot": "Local scheduling preview",
-    "dropShot": "Drag a shot here to preview its placement.",
     "reviewUnavailable": "Demo: submission, decisions and comments are not available yet. No review is saved.",
-    "submitReview": "Submit review",
     "approve": "Approve",
     "requestChanges": "Request changes",
     "comments": "Comments",
@@ -1573,10 +1571,9 @@
   },
   "schedule": {
     "addDay": "Add shooting day",
-    "reload": "Reload schedule",
     "loadError": "Could not load the schedule.",
     "saveError": "Could not save. Your draft is still here. Check the schedule before retrying.",
-    "conflict": "This day changed or was removed. Reload the schedule before editing again.",
+    "conflict": "This day changed or was removed. The schedule has been refreshed: check it before editing again.",
     "loading": "Loading schedule…",
     "queue": "Unscheduled shots",
     "empty": "No shooting days yet.",
@@ -1600,8 +1597,6 @@
     "removeBlockTitle": "Remove this block?",
     "removeBlockBody": "The block, with its title and shots, will be removed from this day. This cannot be undone.",
     "addBlock": "Add block",
-    "selectShot": "Select shot",
-    "addShot": "Add shot",
     "save": "Save day",
     "deleteDay": "Delete day",
     "deleteDayTitle": "Delete this shooting day?",
@@ -1614,7 +1609,30 @@
       "break": "Break",
       "move": "Move",
       "note": "Note"
-    }
+    },
+    "days_one": "{{count}} shooting day",
+    "days_other": "{{count}} shooting days",
+    "scheduledShots": "{{scheduled}} of {{total}} shots scheduled",
+    "conflicts_one": "{{count}} block with a cast conflict",
+    "conflicts_other": "{{count}} blocks with cast conflicts",
+    "allScheduled": "Every shot is on a shooting day.",
+    "queueHint": "Drag a shot onto a day, or click it to add it to the selected day.",
+    "queueReadOnly": "Shots that are not on a shooting day yet.",
+    "emptyTitle": "No shooting days yet",
+    "emptyBody": "Add the first shooting day, then drag shots from the list onto it.",
+    "emptyReadOnly": "Shooting days appear here once the team plans them.",
+    "dayNumber": "Day {{n}}",
+    "unsaved": "Unsaved changes",
+    "callRow": "Crew call",
+    "wrapRow": "Wrap",
+    "castFlag": "Cast conflict",
+    "dropHint": "Drop a shot here",
+    "inspector": "Shooting day details",
+    "planned": "Planned",
+    "blocks": "Blocks",
+    "block": "Selected block",
+    "blockHint": "Select a block in the day to edit it.",
+    "noBlocks": "No blocks yet. Add one, or drop a shot on the day."
   },
   "moodboard": {
     "count_one": "{{count}} reference",
@@ -1658,7 +1676,6 @@
     "firstBlock": "First scheduled block"
   },
   "clientReview": {
-    "roundsUnavailable": "Review rounds are not supported yet. Decisions and replies are saved individually.",
     "progress": "{{approved}} of {{total}} frames approved",
     "guestThreads": "Client threads",
     "audienceHint": "Threads shared with guests. Replies keep the original share-link audience.",
@@ -1668,7 +1685,12 @@
       "approved": "Approved",
       "changes_requested": "Changes requested"
     },
-    "liveOnly": "Reviews belong to the live board. Close the version preview to read and respond."
+    "liveOnly": "Reviews belong to the live board. Close the version preview to read and respond.",
+    "previous": "Previous frame",
+    "next": "Next frame",
+    "position": "{{index}} of {{total}}",
+    "yourDecision": "Your decision",
+    "breakdown": "{{changes}} with changes · {{pending}} pending"
   },
   "projectsPage": {
     "counts": "{{active}} active · {{archived}} archived",

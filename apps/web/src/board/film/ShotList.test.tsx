@@ -63,7 +63,7 @@ function board() {
   return { doc, store };
 }
 
-it('renders table with Cast column, footer totals and + Shot buttons', async () => {
+it('renders table with Cast column, footer totals and add-shot buttons', async () => {
   const { doc, store } = board();
   const scene = addScene(doc, { number: '1', title: 'Bar' }, { userId: null });
   addFrame(
@@ -96,10 +96,11 @@ it('renders table with Cast column, footer totals and + Shot buttons', async () 
   expect(footer).not.toBeNull();
   expect(footer?.textContent).toMatch(/\b1 shot(?!s)/);
 
-  // + Shot button in header and scene
+  // The toolbar button carries a plus icon, so its label has no "+" of its own.
   const addButtons = host.querySelectorAll('button');
   const addBtnTexts = Array.from(addButtons).map((b) => b.textContent?.trim());
-  expect(addBtnTexts).toContain('+ Shot');
+  expect(addBtnTexts).toContain('Shot');
+  expect(addBtnTexts).not.toContain('+ Shot');
 });
 
 it('supports row multi-selection and bulk actions (change status and delete)', async () => {

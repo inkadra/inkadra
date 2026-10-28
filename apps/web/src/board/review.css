@@ -564,3 +564,31 @@ button.review-link:hover:not(:disabled) {
   max-height: calc(100dvh - 64px);
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
 }
+
+/* In the review section and the review view, chips match the film status chips. */
+.review-section .review-chip,
+.client-review .review-chip {
+  height: 18px;
+  padding: 0 6px;
+  border-color: transparent;
+  background: var(--ink-surface-3);
+  font-weight: 500;
+}
+.review-section .review-chip--in_review,
+.client-review .review-chip--in_review {
+  background: var(--ink-accent-soft-bg);
+  color: var(--ink-accent-soft-fg);
+}
+.review-section .review-chip--approved,
+.client-review .review-chip--approved {
+  background: color-mix(in srgb, var(--ink-status-ok) 16%, transparent);
+  color: var(--ink-status-ok);
+}
+.review-section .review-chip--changes_requested,
+.client-review .review-chip--changes_requested {
+  background: color-mix(in srgb, var(--ink-status-warn) 16%, transparent);
+  color: var(--ink-status-warn);
+}
+.review-section .review-statuses .review-chip {
+  background: transparent;
+}

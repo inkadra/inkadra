@@ -53,7 +53,7 @@ export function ReviewSection({ elementId }: { elementId: string }) {
         {/* A status this client does not know is shown without actions. */}
         {writable && known(current?.status ?? 'none') && (
           <Button
-            variant="ghost"
+            icon="pen"
             aria-expanded={editing}
             onClick={() => {
               if (!editing) setStatus(known(current?.status) ? current.status : 'in_review');
@@ -65,6 +65,7 @@ export function ReviewSection({ elementId }: { elementId: string }) {
         )}
         <Button
           variant="ghost"
+          icon="clock"
           aria-expanded={history}
           aria-controls={`${id}-history`}
           onClick={() => setHistory((v) => !v)}

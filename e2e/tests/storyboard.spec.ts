@@ -231,8 +231,9 @@ test('shell views use real shots and the call sheet traps and restores focus', a
   await expect(schedule).toContainText('Il treno entra');
   // The call sheet is generated from the saved shooting days.
   await schedule.getByRole('button', { name: 'Aggiungi giorno di riprese', exact: true }).click();
-  const day = schedule.locator('.schedule__day').first();
-  await expect(day.getByLabel('Data', { exact: true })).toHaveValue(/^\d{4}-\d{2}-\d{2}$/);
+  await expect(schedule.locator('.schedule__day').first()).toBeVisible();
+  const inspector = schedule.getByRole('complementary', { name: 'Dettagli del giorno di riprese' });
+  await expect(inspector.getByLabel('Data', { exact: true })).toHaveValue(/^\d{4}-\d{2}-\d{2}$/);
   const openSheet = schedule.getByRole('button', { name: 'Foglio di lavorazione' });
   await openSheet.click();
   const dialog = page.getByRole('dialog', { name: 'Foglio di lavorazione' });
@@ -267,12 +268,8 @@ test('shell views use real shots and the call sheet traps and restores focus', a
   await expect(openSheet).toBeFocused();
   await page.getByRole('tab', { name: 'Revisione', exact: true }).click();
   const review = page.getByRole('region', { name: 'Revisione', exact: true });
-  const submit = review.getByRole('button', { name: 'Invia revisione' });
-  // Review rounds are not supported yet, so the action is disabled and says why.
-  await expect(submit).toBeDisabled();
-  await expect(submit).toHaveAccessibleDescription(
-    'Le tornate di revisione non sono ancora disponibili. Decisioni e risposte vengono salvate singolarmente.',
-  );
+  // Review rounds do not exist yet, so the view shows no submit action for them.
+  await expect(review.getByRole('button', { name: 'Invia revisione' })).toHaveCount(0);
   // The view reads the saved decisions: frames, progress and filters are real.
   await expect(review.getByRole('button', { name: /1A/ })).toBeVisible();
   await expect(review.getByRole('progressbar')).toBeVisible();

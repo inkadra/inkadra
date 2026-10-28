@@ -782,7 +782,7 @@
       "kanban": "Kanban",
       "addInStatus": "Aggiungi in {{status}}",
       "cardAria": "Inquadratura {{label}}",
-      "addShot": "+ Inquadratura",
+      "addShot": "Inquadratura",
       "addShotInScene": "Aggiungi inquadratura nella scena {{scene}}",
       "selectedCount": "{{count}} selezionate",
       "selectAll": "Seleziona tutte",
@@ -1548,9 +1548,7 @@
     "scheduleUnavailable": "La pianificazione non è ancora collegata a un servizio di salvataggio. Le prove di trascinamento sono locali e si perdono chiudendo la vista. Nessuna data è stata pianificata.",
     "noShots": "Nessuna inquadratura in questa board.",
     "draftSlot": "Prova di pianificazione locale",
-    "dropShot": "Trascina qui un’inquadratura per provarne il posizionamento.",
     "reviewUnavailable": "Demo: invio, decisioni e commenti non sono ancora disponibili. Nessuna revisione viene salvata.",
-    "submitReview": "Invia revisione",
     "approve": "Approva",
     "requestChanges": "Richiedi modifiche",
     "comments": "Commenti",
@@ -1573,10 +1571,9 @@
   },
   "schedule": {
     "addDay": "Aggiungi giorno di riprese",
-    "reload": "Ricarica piano",
     "loadError": "Impossibile caricare il piano riprese.",
     "saveError": "Salvataggio non riuscito. La bozza è ancora qui. Controlla il piano prima di riprovare.",
-    "conflict": "Questo giorno è stato modificato o rimosso. Ricarica il piano prima di modificarlo ancora.",
+    "conflict": "Questo giorno è stato modificato o rimosso. Il piano è stato aggiornato: controllalo prima di modificarlo ancora.",
     "loading": "Caricamento piano…",
     "queue": "Inquadrature da pianificare",
     "empty": "Nessun giorno di riprese.",
@@ -1600,8 +1597,6 @@
     "removeBlockTitle": "Rimuovere questo blocco?",
     "removeBlockBody": "Il blocco, con titolo e inquadrature, verrà rimosso da questo giorno. L’operazione non può essere annullata.",
     "addBlock": "Aggiungi blocco",
-    "selectShot": "Seleziona inquadratura",
-    "addShot": "Aggiungi inquadratura",
     "save": "Salva giorno",
     "deleteDay": "Elimina giorno",
     "deleteDayTitle": "Eliminare questo giorno di riprese?",
@@ -1614,7 +1609,30 @@
       "break": "Pausa",
       "move": "Spostamento",
       "note": "Nota"
-    }
+    },
+    "days_one": "{{count}} giorno di riprese",
+    "days_other": "{{count}} giorni di riprese",
+    "scheduledShots": "{{scheduled}} di {{total}} inquadrature pianificate",
+    "conflicts_one": "{{count}} blocco con conflitto di cast",
+    "conflicts_other": "{{count}} blocchi con conflitti di cast",
+    "allScheduled": "Tutte le inquadrature sono in un giorno di riprese.",
+    "queueHint": "Trascina un’inquadratura su un giorno, oppure fai clic per aggiungerla al giorno selezionato.",
+    "queueReadOnly": "Inquadrature non ancora in un giorno di riprese.",
+    "emptyTitle": "Nessun giorno di riprese",
+    "emptyBody": "Aggiungi il primo giorno di riprese, poi trascinaci le inquadrature dall’elenco.",
+    "emptyReadOnly": "I giorni di riprese compaiono qui quando il team li pianifica.",
+    "dayNumber": "Giorno {{n}}",
+    "unsaved": "Modifiche non salvate",
+    "callRow": "Convocazione troupe",
+    "wrapRow": "Fine riprese",
+    "castFlag": "Conflitto di cast",
+    "dropHint": "Trascina qui un’inquadratura",
+    "inspector": "Dettagli del giorno di riprese",
+    "planned": "Pianificato",
+    "blocks": "Blocchi",
+    "block": "Blocco selezionato",
+    "blockHint": "Seleziona un blocco nel giorno per modificarlo.",
+    "noBlocks": "Ancora nessun blocco. Aggiungine uno o trascina un’inquadratura sul giorno."
   },
   "moodboard": {
     "count_one": "{{count}} riferimento",
@@ -1658,7 +1676,6 @@
     "firstBlock": "Primo blocco previsto"
   },
   "clientReview": {
-    "roundsUnavailable": "Le tornate di revisione non sono ancora disponibili. Decisioni e risposte vengono salvate singolarmente.",
     "progress": "{{approved}} di {{total}} inquadrature approvate",
     "guestThreads": "Discussioni con il cliente",
     "audienceHint": "Discussioni condivise con gli ospiti. Le risposte mantengono il pubblico del link originale.",
@@ -1668,7 +1685,12 @@
       "approved": "Approvate",
       "changes_requested": "Modifiche richieste"
     },
-    "liveOnly": "Le revisioni appartengono alla board attuale. Chiudi l’anteprima della versione per leggerle e rispondere."
+    "liveOnly": "Le revisioni appartengono alla board attuale. Chiudi l’anteprima della versione per leggerle e rispondere.",
+    "previous": "Inquadratura precedente",
+    "next": "Inquadratura successiva",
+    "position": "{{index}} di {{total}}",
+    "yourDecision": "La tua decisione",
+    "breakdown": "{{changes}} con modifiche · {{pending}} in attesa"
   },
   "projectsPage": {
     "counts": "{{active}} attivi · {{archived}} archiviati",
