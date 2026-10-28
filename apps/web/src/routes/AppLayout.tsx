@@ -144,7 +144,7 @@ export function AppLayout({ home }: { home?: ReactNode }) {
   const { user, instance, refresh } = useSession();
   const { theme, toggle } = useTheme();
   const navigate = useNavigate();
-  const here = useLocation();
+  const url = useLocation();
   const overlay = useSettingsOverlay(home);
   // Everything in the shell follows the page under the settings window, not the settings URL.
   const { pathname, search } = overlay.location;
@@ -233,7 +233,7 @@ export function AppLayout({ home }: { home?: ReactNode }) {
     return (
       <Navigate
         to={
-          here.pathname === '/' ? '/login' : `/login?next=${encodeURIComponent(here.pathname)}`
+          url.pathname === '/' ? '/login' : `/login?next=${encodeURIComponent(url.pathname)}`
         }
         replace
       />
@@ -641,7 +641,7 @@ export function AppLayout({ home }: { home?: ReactNode }) {
         </HeaderContext.Provider>
         <MobileNavigation
           inboxButtonRef={mobileInboxButton}
-          pathname={here.pathname}
+          pathname={url.pathname}
           inboxOpen={inboxOpen}
           drawerOpen={drawerOpen}
           newOpen={newSheet}

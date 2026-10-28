@@ -82,6 +82,7 @@ export function SettingsWindow({
   const own = (e: SyntheticEvent) => e.target === e.currentTarget;
 
   return (
+    // biome-ignore lint/a11y/useKeyWithClickEvents: the backdrop's keyboard path is Escape (onCancel).
     <dialog
       ref={ref}
       className={[
