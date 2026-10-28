@@ -2006,3 +2006,12 @@ button.crumb--editable:focus-visible {
     transform: none;
   }
 }
+
+.card--link .card__media--link:has(.card__play) {
+  aspect-ratio: 16 / 9;
+}
+button.card__play {
+  pointer-events: auto;
+  cursor: pointer;
+  border: 0;
+}

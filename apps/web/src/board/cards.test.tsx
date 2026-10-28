@@ -158,3 +158,16 @@ describe('scene headers', () => {
     );
   });
 });
+
+describe('video link cards', () => {
+  it('fits content even for existing cards with an explicit oversized height and exposes a play button', () => {
+    state.editing = null;
+    vi.stubGlobal('window', { devicePixelRatio: 1 });
+    const html = render({ ...file, type: 'link', url: 'https://youtu.be/yMnFHFf43Qg', h: 800 });
+    expect(html).not.toContain('height:800');
+    expect(html).toContain('data-play-link="file_caption_01"');
+    expect(html).toContain('<button');
+    expect(html).toContain('aria-label="board.menu.open"');
+    vi.unstubAllGlobals();
+  });
+});

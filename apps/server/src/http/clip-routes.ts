@@ -242,7 +242,8 @@ export async function registerClipRoutes(app: FastifyInstance, deps: Deps) {
     try {
       fetched = await safeFetch(url, {
         accept: ['image/', 'text/html', 'application/xhtml+xml'],
-        // Pages are read whole and parsed: as small as for link previews.
+        // Only HTML may be truncated; images must remain complete.
+        truncate: (type) => !type.startsWith('image/'),
         maxBytes: (type) => (type.startsWith('image/') ? imageMax : PAGE_MAX_BYTES),
         allowAddresses: fetchDeps.allowAddresses,
       });

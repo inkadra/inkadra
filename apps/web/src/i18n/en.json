@@ -384,6 +384,7 @@
       "group": "Group in a column"
     },
     "menu": {
+      "refreshPreview": "Refresh preview",
       "setCover": "Use as cover",
       "removeCover": "Remove as cover",
       "coverSet": "Board cover updated",

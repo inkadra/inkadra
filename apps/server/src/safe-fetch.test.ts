@@ -1,6 +1,7 @@
 import { createServer } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { readPageMeta } from './http/link-previews.ts';
 import { FetchRefused, isPublicAddress, safeFetch } from './safe-fetch.ts';
 
 describe('isPublicAddress', () => {
@@ -45,6 +46,11 @@ describe('safeFetch', () => {
       res.writeHead(302, { location: 'http://169.254.169.254/latest/meta-data/' }).end();
     } else if (req.url === '/big') {
       res.writeHead(200, { 'content-type': 'text/html' }).end('x'.repeat(5000));
+    } else if (req.url === '/large-head') {
+      const body = `<meta property="og:title" content="Large video page">${' '.repeat(1600000)}`;
+      res
+        .writeHead(200, { 'content-type': 'text/html', 'content-length': Buffer.byteLength(body) })
+        .end(body);
     } else if (req.url === '/slow') {
       res.writeHead(200, { 'content-type': 'text/html' });
       const timer = setInterval(() => res.write('.'), 50);
@@ -86,12 +92,33 @@ describe('safeFetch', () => {
     ).rejects.toThrow(/public address/);
   });
 
+  it('returns exactly the bounded prefix for oversized HTML with and without content-length', async () => {
+    for (const [path, maxBytes] of [
+      ['/big', 1024],
+      ['/large-head', 1024 * 1024],
+    ] as const) {
+      const result = await safeFetch(`http://127.0.0.1:${port}${path}`, {
+        ...html,
+        maxBytes,
+        truncate: true,
+        allowAddresses: ['127.0.0.1'],
+      });
+      expect(result.truncated).toBe(true);
+      expect(result.body.length).toBe(maxBytes);
+      if (path === '/large-head')
+        expect(readPageMeta(result.body.toString(), result.url).title).toBe('Large video page');
+    }
+  });
+
   it('enforces size, time and type limits', async () => {
     const local = { ...html, allowAddresses: ['127.0.0.1'] };
     expect((await safeFetch(`http://127.0.0.1:${port}/`, local)).body.toString()).toBe(
       '<title>ok</title>',
     );
     await expect(safeFetch(`http://127.0.0.1:${port}/big`, local)).rejects.toThrow(/too large/);
+    await expect(
+      safeFetch(`http://127.0.0.1:${port}/big`, { ...local, truncate: () => false }),
+    ).rejects.toThrow(/too large/);
     await expect(
       safeFetch(`http://127.0.0.1:${port}/slow`, { ...local, maxBytes: 1e6, timeoutMs: 300 }),
     ).rejects.toThrow(/too long/);

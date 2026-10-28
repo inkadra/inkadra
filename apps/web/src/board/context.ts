@@ -18,6 +18,7 @@ export interface BoardContextValue {
   largeBoard: boolean;
   editing: string | null;
   setEditing: (id: string | null) => void;
+  openElement?: (element: Element) => void;
   openBoard: (boardId: string) => void;
   setNoteEditor: (editor: Editor | null) => void;
   /** Shot number of each frame, from the scenes it sits in. */

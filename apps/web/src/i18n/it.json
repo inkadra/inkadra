@@ -384,6 +384,7 @@
       "group": "Raggruppa in colonna"
     },
     "menu": {
+      "refreshPreview": "Aggiorna anteprima",
       "setCover": "Usa come copertina",
       "removeCover": "Rimuovi dalla copertina",
       "coverSet": "Copertina della board aggiornata",

@@ -793,6 +793,7 @@ export function Canvas({
   function onPointerDown(e: ReactPointerEvent<HTMLDivElement>) {
     if (e.button === 2) return;
     const target = e.target as HTMLElement;
+    if (target.closest('[data-play-link]')) return;
     const targetId = canvasElementId(target);
     if (!targetId && target.closest('[data-chrome]')) return;
     setMenu(null);
@@ -1412,6 +1413,7 @@ export function Canvas({
       editing,
       setEditing,
       openBoard: onOpenBoard,
+      openElement,
       setNoteEditor,
       frameLabels: labels,
     }),
@@ -1429,6 +1431,7 @@ export function Canvas({
       setEditing,
       onOpenBoard,
       setNoteEditor,
+      openElement,
     ],
   );
 
@@ -1617,6 +1620,14 @@ export function Canvas({
       };
     };
     const items: MenuItem[] = [
+      ...(single?.type === 'link' && !readOnly && !single.locked
+        ? [
+            {
+              label: t('board.menu.refreshPreview'),
+              action: () => void fillLinkPreview(doc, single.id, projectId, boardId, single.url),
+            },
+          ]
+        : []),
       ...(single && (single.type === 'board' || single.type === 'link')
         ? [{ label: t('board.menu.open'), action: () => openElement(single) }]
         : []),
