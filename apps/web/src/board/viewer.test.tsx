@@ -204,7 +204,14 @@ describe('MediaViewer video playback', () => {
         projectId="proj-01"
         userId="user-01"
         readOnly={false}
-        gallery={{ index: 3, total: 5, onPrevious: vi.fn(), onNext: vi.fn(), onCompare: vi.fn(), usedIn: [] }}
+        gallery={{
+          index: 3,
+          total: 5,
+          onPrevious: vi.fn(),
+          onNext: vi.fn(),
+          onCompare: vi.fn(),
+          usedIn: [],
+        }}
         onClose={vi.fn()}
       />,
     );

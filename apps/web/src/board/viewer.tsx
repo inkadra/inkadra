@@ -400,7 +400,9 @@ export function MediaViewer({
               aria-label={t('moodboard.compare')}
               onClick={gallery.onCompare}
             >
-              <span className="viewer__action-icon" aria-hidden="true">◫</span>
+              <span className="viewer__action-icon" aria-hidden="true">
+                ◫
+              </span>
               <span className="viewer__action-label">{t('moodboard.compare')}</span>
             </button>
           )}
@@ -412,8 +414,12 @@ export function MediaViewer({
             aria-label={zoom100 ? t('viewer.zoomFit') : t('viewer.zoom100')}
             aria-keyshortcuts="Space"
           >
-            <span className="viewer__action-icon" aria-hidden="true">⌕</span>
-            <span className="viewer__action-label">{zoom100 ? t('viewer.zoomFit') : t('viewer.zoom100')}</span>
+            <span className="viewer__action-icon" aria-hidden="true">
+              ⌕
+            </span>
+            <span className="viewer__action-label">
+              {zoom100 ? t('viewer.zoomFit') : t('viewer.zoom100')}
+            </span>
           </button>
           <button
             type="button"
@@ -421,8 +427,11 @@ export function MediaViewer({
             onClick={onClose}
             aria-label={t('viewer.close')}
           >
-            <span className="viewer__action-icon" aria-hidden="true">×</span>
-            <span className="viewer__action-label">{t('viewer.close')}</span> <span className="viewer__kbd">{t('viewer.keys.esc')}</span>
+            <span className="viewer__action-icon" aria-hidden="true">
+              ×
+            </span>
+            <span className="viewer__action-label">{t('viewer.close')}</span>{' '}
+            <span className="viewer__kbd">{t('viewer.keys.esc')}</span>
           </button>
         </header>
 
@@ -479,7 +488,9 @@ export function MediaViewer({
             </>
           )}
 
-          <div className={`viewer__media-wrap${isYoutube ? ' viewer__media-wrap--embed' : ''}${zoom100 ? ' is-zoomed' : ''}`}>
+          <div
+            className={`viewer__media-wrap${isYoutube ? ' viewer__media-wrap--embed' : ''}${zoom100 ? ' is-zoomed' : ''}`}
+          >
             {comparison && comparisonAsset && comparisonAsset !== 'missing' && (
               <img
                 className={`viewer__media ${zoom100 ? 'viewer__media--zoom100' : 'viewer__media--contain'}`}
@@ -533,7 +544,7 @@ export function MediaViewer({
                 type="button"
                 className="viewer__picture-btn"
                 title={t('viewer.zoomHelp')}
-            aria-label={zoom100 ? t('viewer.zoomFit') : t('viewer.zoom100')}
+                aria-label={zoom100 ? t('viewer.zoomFit') : t('viewer.zoom100')}
                 aria-pressed={zoom100}
                 onClick={() => setZoom100((z) => !z)}
               >
