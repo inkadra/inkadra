@@ -24,6 +24,11 @@ describe('tokens', () => {
       const [x, y] = [lum(a), lum(b)].sort((p, q) => q - p) as [number, number];
       return (x + 0.05) / (y + 0.05);
     };
+    for (const theme of [light, dark]) {
+      for (const name of ['tag-teal', 'tag-yellow', 'tag-red', 'tag-pink'] as const) {
+        expect(ratio(theme[name], theme['surface-1'])).toBeGreaterThanOrEqual(3);
+      }
+    }
     expect(ratio(dark['on-accent'], dark['accent-button'])).toBeGreaterThan(4.5);
     expect(ratio(dark['text-muted'], dark['bg-app'])).toBeGreaterThan(4.5);
     expect(ratio(light['text-secondary'], light['bg-panel'])).toBeGreaterThan(4.5);

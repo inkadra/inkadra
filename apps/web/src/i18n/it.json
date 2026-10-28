@@ -2085,7 +2085,7 @@
     "symbol": "Simbolo",
     "color": "Colore",
     "emoji": "Emoji",
-    "emojiHelp": "Inserisci un’emoji, oppure svuota il campo per usare la forma selezionata. Le emoji mantengono i propri colori.",
+    "emojiHelp": "Le emoji mantengono i propri colori.",
     "invalid": "Usa una sola emoji.",
     "reset": "Ripristina predefinito",
     "error": "Impossibile salvare l’aspetto del progetto. Controlla i permessi e riprova.",
@@ -2093,14 +2093,25 @@
       "diamond": "Rombo",
       "circle": "Cerchio",
       "triangle": "Triangolo",
-      "square": "Quadrato"
+      "square": "Quadrato",
+      "hexagon": "Esagono",
+      "star": "Stella",
+      "pentagon": "Pentagono",
+      "cross": "Croce"
     },
     "colors": {
       "blue": "Blu",
       "orange": "Arancione",
       "purple": "Viola",
       "green": "Verde",
-      "neutral": "Neutro"
-    }
+      "neutral": "Neutro",
+      "teal": "Petrolio",
+      "yellow": "Giallo",
+      "red": "Rosso",
+      "pink": "Rosa"
+    },
+    "pasteEmoji": "Incolla un'altra emoji",
+    "sidebarPreview": "Nella barra laterale",
+    "close": "Chiudi"
   }
 }

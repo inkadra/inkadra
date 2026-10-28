@@ -170,11 +170,15 @@ const roleEnum = ['owner', 'editor', 'commenter', 'viewer'] as const;
 export const project = pgTable('project', {
   id: uuid('id').primaryKey().defaultRandom(),
   name: text('name').notNull(),
-  iconShape: text('icon_shape', { enum: ['diamond', 'circle', 'triangle', 'square'] })
+  iconShape: text('icon_shape', {
+    enum: ['diamond', 'circle', 'triangle', 'square', 'hexagon', 'star', 'pentagon', 'cross'],
+  })
     .notNull()
     .default('circle'),
   iconEmoji: text('icon_emoji'),
-  iconColor: text('icon_color', { enum: ['blue', 'orange', 'purple', 'green', 'neutral'] })
+  iconColor: text('icon_color', {
+    enum: ['blue', 'orange', 'purple', 'green', 'neutral', 'teal', 'yellow', 'red', 'pink'],
+  })
     .notNull()
     .default('neutral'),
   position: text('position').notNull(),

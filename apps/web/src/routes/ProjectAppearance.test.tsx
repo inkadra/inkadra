@@ -103,6 +103,7 @@ it('saves emoji to the server and updates shared cached project identity', async
   const patch = vi.spyOn(api, 'patch').mockResolvedValue({ ...project, icon });
   await render();
   await openDialog();
+  await act(async () => host.querySelector<HTMLButtonElement>('#appearance-tab-emoji')?.click());
   await act(async () => {
     const input = host.querySelector<HTMLInputElement>('input[maxlength="32"]')!;
     Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set?.call(input, '🎬');
@@ -149,4 +150,33 @@ it('keeps the context menu inside the active mobile navigation dialog', async ()
     host.querySelector<HTMLButtonElement>('.project-navigation__options')?.click(),
   );
   expect(host.querySelector('dialog [role="menu"]')).not.toBeNull();
+});
+
+it('offers eight shapes and nine colours with arrow selection and saves new identity', async () => {
+  const icon = { shape: 'hexagon', color: 'pink', emoji: null };
+  const patch = vi.spyOn(api, 'patch').mockResolvedValue({ ...project, icon });
+  await render();
+  await openDialog();
+  const shapes = host.querySelectorAll<HTMLButtonElement>(
+    '.project-appearance__choices [role="radio"]',
+  );
+  const colors = host.querySelectorAll<HTMLButtonElement>(
+    '.project-appearance__swatches [role="radio"]',
+  );
+  expect(shapes).toHaveLength(8);
+  expect(colors).toHaveLength(9);
+  await act(async () => shapes[3]?.click());
+  await act(async () => {
+    shapes[3]?.focus();
+    shapes[3]?.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
+  });
+  expect(shapes[4]?.getAttribute('aria-checked')).toBe('true');
+  expect(document.activeElement).toBe(shapes[4]);
+  await act(async () => colors[8]?.click());
+  await act(async () =>
+    host
+      .querySelector('form')
+      ?.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })),
+  );
+  expect(patch).toHaveBeenCalledWith(`/projects/${project.id}`, { icon });
 });

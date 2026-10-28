@@ -95,7 +95,7 @@ describe.skipIf(!url)('project setup metadata and personal pins', () => {
     ).toBe(200);
   });
   it('persists appearance, enforces edit permissions and supports resetting emoji', async () => {
-    const icon = { shape: 'square', color: 'green', emoji: '🎬' };
+    const icon = { shape: 'hexagon', color: 'pink', emoji: '🎬' };
     expect((await request('viewer', 'PATCH', `/projects/${projectId}`, { icon })).statusCode).toBe(
       403,
     );
@@ -106,6 +106,15 @@ describe.skipIf(!url)('project setup metadata and personal pins', () => {
       (await request('owner', 'PATCH', `/projects/${projectId}`, { icon })).json().icon,
     ).toEqual(icon);
     expect((await request('viewer', 'GET', `/projects/${projectId}`)).json().icon).toEqual(icon);
+    for (const shape of ['hexagon', 'star', 'pentagon', 'cross']) {
+      for (const color of ['teal', 'yellow', 'red', 'pink']) {
+        const next = { shape, color, emoji: null };
+        expect(
+          (await request('owner', 'PATCH', `/projects/${projectId}`, { icon: next })).json().icon,
+        ).toEqual(next);
+      }
+    }
+    await request('owner', 'PATCH', `/projects/${projectId}`, { icon });
     expect((await request('owner', 'GET', '/projects')).json().items[0].icon).toEqual(icon);
     expect(
       (

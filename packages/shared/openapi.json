@@ -1703,7 +1703,11 @@
               "diamond",
               "circle",
               "triangle",
-              "square"
+              "square",
+              "hexagon",
+              "star",
+              "pentagon",
+              "cross"
             ]
           },
           "color": {
@@ -1713,7 +1717,11 @@
               "orange",
               "purple",
               "green",
-              "neutral"
+              "neutral",
+              "teal",
+              "yellow",
+              "red",
+              "pink"
             ]
           },
           "emoji": {
