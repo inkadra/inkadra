@@ -11,15 +11,23 @@ export interface CallSheetModalProps {
   days: ShootingDay[];
   labels: ReadonlyMap<string, string>;
   projectName?: string;
+  /** The day shown first, usually the one selected in the schedule. */
+  initialDayId?: string;
   onClose: () => void;
 }
 const sections = ['schedule', 'cast', 'location', 'departments', 'notes'] as const;
 type Section = (typeof sections)[number];
 const unavailable = ['weather', 'map', 'hospital', 'contacts', 'thumbnails'] as const;
 
-export function CallSheetModal({ days, labels, projectName, onClose }: CallSheetModalProps) {
+export function CallSheetModal({
+  days,
+  labels,
+  projectName,
+  initialDayId,
+  onClose,
+}: CallSheetModalProps) {
   const { t } = useTranslation();
-  const [dayId, setDayId] = useState(days[0]?.id ?? '');
+  const [dayId, setDayId] = useState(initialDayId ?? days[0]?.id ?? '');
   const [included, setIncluded] = useState<Record<Section, boolean>>({
     schedule: true,
     cast: true,

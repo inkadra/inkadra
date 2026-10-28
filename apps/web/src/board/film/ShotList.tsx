@@ -812,7 +812,10 @@ export function ShotList({
                               <CardReview elementId={f.id} withPins={false} />
                             </td>
                             <td className="shots__label">
-                              {label} <GuestVisibility store={store} element={f} />
+                              {label}{' '}
+                              {(readOnly || !f.guestHidden) && (
+                                <GuestVisibility store={store} element={f} />
+                              )}
                               <FrameVisibilityButton store={store} frame={f} readOnly={readOnly} />
                             </td>
                             <td>

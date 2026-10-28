@@ -12,7 +12,7 @@ vi.mock('react-i18next', () => {
   // The date is interpolated so the test can see the day named in the dialog.
   const t = (key: string, options?: { date?: string }) =>
     options?.date ? `${key}:${options.date}` : key;
-  return { useTranslation: () => ({ t }) };
+  return { useTranslation: () => ({ t, i18n: { language: 'en' } }) };
 });
 
 const disposals: Array<() => void> = [];
@@ -125,8 +125,14 @@ it('asks before removing a block with content but drops empty blocks directly', 
   vi.spyOn(api, 'get').mockResolvedValue({ items: [day], nextCursor: null });
   const host = await mount(<ScheduleView store={store} boardId="board" />);
   const articles = () => [...host.querySelectorAll('.schedule__block')];
+  // A block is edited in the inspector once it is selected in its day.
   const removeIn = async (article: Element | undefined) => {
-    const target = article ? button(article, 'schedule.removeBlock') : undefined;
+    await act(async () =>
+      article?.querySelector<HTMLButtonElement>('.schedule__block-select')?.click(),
+    );
+    const inspector = host.querySelector('.schedule__inspector');
+    const target = inspector ? button(inspector, 'schedule.removeBlock') : undefined;
+    expect(target).toBeDefined();
     await act(async () => target?.click());
   };
   expect(articles()).toHaveLength(2);

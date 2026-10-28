@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-import type { FrameElement } from '@inkadra/canvas-core';
+import { type FrameElement, formatDuration } from '@inkadra/canvas-core';
 import {
   ShootingDayInput as DaySchema,
   type Schedule,
@@ -7,13 +7,13 @@ import {
   type ShootingDay,
   type ShootingDayInput,
 } from '@inkadra/shared';
-import { Button, Dialog, DialogActions } from '@inkadra/ui';
-import { useEffect, useState } from 'react';
+import { Button, Dialog, DialogActions, EmptyState } from '@inkadra/ui';
+import { type CSSProperties, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api, RequestError } from '../../lib/api.ts';
 import type { BoardStore } from '../store.ts';
 import { CallSheetModal } from './CallSheetModal.tsx';
-import { useStoryboard } from './StoryboardView.tsx';
+import { useSlugline, useStoryboard } from './StoryboardView.tsx';
 import {
   castConflicts,
   clockLabel,
@@ -50,6 +50,48 @@ export function resolveDroppedShot(
   }
 }
 
+const byDate = (a: ShootingDay, b: ShootingDay) =>
+  a.date.localeCompare(b.date) || a.id.localeCompare(b.id);
+
+function inputOf(day: ShootingDay): ShootingDayInput {
+  const { date, callTime, wrap, location, notes, blocks } = day;
+  return { date, callTime, wrap, location, notes, blocks };
+}
+
+const sameInput = (a: ShootingDayInput, b: ShootingDayInput) =>
+  JSON.stringify(a) === JSON.stringify(b);
+
+/** The day after the last shooting day, or today for the first one. */
+function nextDate(days: readonly ShootingDay[]): string {
+  const last = days.at(-1)?.date;
+  const time = last ? Date.parse(`${last}T00:00:00Z`) : Number.NaN;
+  if (Number.isNaN(time)) return new Date().toLocaleDateString('en-CA');
+  return new Date(time + 86_400_000).toISOString().slice(0, 10);
+}
+
+function useDayLabel() {
+  const { i18n } = useTranslation();
+  return (date: string) => {
+    const time = Date.parse(`${date}T00:00:00Z`);
+    if (Number.isNaN(time)) return date;
+    return new Intl.DateTimeFormat(i18n.language, {
+      weekday: 'short',
+      day: 'numeric',
+      month: 'short',
+      timeZone: 'UTC',
+    }).format(time);
+  };
+}
+
+/** Minutes as "1h 30" or "45 min". */
+function minutesLabel(minutes: number): string {
+  if (minutes < 60) return `${minutes} min`;
+  const rest = minutes % 60;
+  return `${Math.floor(minutes / 60)}h${rest ? ` ${String(rest).padStart(2, '0')}` : ''}`;
+}
+
+type Selection = { day: string | null; block: string | null };
+
 export function ScheduleView({
   store,
   projectName,
@@ -65,37 +107,115 @@ export function ScheduleView({
   readOnly?: boolean;
 }) {
   const { t } = useTranslation();
-  const { frames, labels } = useStoryboard(store);
+  const slugline = useSlugline();
+  const dayLabel = useDayLabel();
+  const { groups, frames, labels } = useStoryboard(store);
   const [callSheetOpen, setCallSheetOpen] = useState(false);
   const [days, setDays] = useState<ShootingDay[]>([]);
+  // Unsaved edits per day, with the revision they started from. A draft is never dropped when
+  // the server has a newer revision: it is flagged as stale until the user picks a version.
+  const [drafts, setDrafts] = useState<
+    Record<string, { revision: number; draft: ShootingDayInput }>
+  >({});
+  const [selection, setSelection] = useState<Selection>({ day: null, block: null });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
-  const [generation, setGeneration] = useState(0);
+  const [refresh, setRefresh] = useState(0);
+  const [notice, setNotice] = useState('');
   const path = `/boards/${boardId}/schedule`;
+
+  // Shooting days are saved over the API, not in the live board: they are fetched again when
+  // the tab comes back into view and after a conflict, so there is no manual reload.
   useEffect(() => {
-    void generation; // Explicit reload invalidates the fetched snapshot.
     let active = true;
-    setLoading(true);
-    setDays([]);
-    api
-      .get<Schedule>(path)
-      .then((data) => {
-        if (active) {
-          setDays(data.items);
-          setError('');
-        }
-      })
-      .catch(() => {
-        if (active) setError(t('schedule.loadError'));
-      })
-      .finally(() => {
-        if (active) setLoading(false);
-      });
+    const fetchDays = (initial: boolean) => {
+      if (initial) setLoading(true);
+      api
+        .get<Schedule>(path)
+        .then((data) => {
+          if (!active) return;
+          // A GET that started before a save can answer after it: keep the newer revision.
+          setDays((current) =>
+            data.items
+              .map((item) => {
+                const mine = current.find((day) => day.id === item.id);
+                return mine && mine.revision > item.revision ? mine : item;
+              })
+              .sort(byDate),
+          );
+          // A stale draft that already matches the server copy has nothing left to keep.
+          setDrafts((current) => {
+            const next = { ...current };
+            let changed = false;
+            for (const item of data.items) {
+              const saved = next[item.id];
+              if (
+                saved &&
+                saved.revision !== item.revision &&
+                sameInput(saved.draft, inputOf(item))
+              ) {
+                delete next[item.id];
+                changed = true;
+              }
+            }
+            return changed ? next : current;
+          });
+          if (initial) setError('');
+        })
+        .catch(() => {
+          if (active && initial) setError(t('schedule.loadError'));
+        })
+        .finally(() => {
+          if (active && initial) setLoading(false);
+        });
+    };
+    fetchDays(refresh === 0);
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') fetchDays(false);
+    };
+    document.addEventListener('visibilitychange', onVisible);
     return () => {
       active = false;
+      document.removeEventListener('visibilitychange', onVisible);
     };
-  }, [path, generation, t]);
+  }, [path, refresh, t]);
+
+  const drafted = useMemo(
+    () =>
+      days.map((day) => {
+        const saved = drafts[day.id];
+        return {
+          day,
+          dirty: !!saved,
+          stale: !!saved && saved.revision !== day.revision,
+          draft: saved ? saved.draft : inputOf(day),
+        };
+      }),
+    [days, drafts],
+  );
+  const conflicts = useMemo(() => castConflicts(drafted.map((d) => d.draft)), [drafted]);
+  const scheduled = new Set(
+    drafted.flatMap((d) => d.draft.blocks.map((block) => block.shotId).filter(Boolean)),
+  );
+  const activeIndex = Math.max(
+    0,
+    drafted.findIndex((d) => d.day.id === selection.day),
+  );
+  const active = drafted[activeIndex];
+  const disabled = readOnly || busy;
+  const dayName = (index: number) => {
+    const day = drafted[index];
+    return [t('schedule.dayNumber', { n: index + 1 }), day && dayLabel(day.draft.date)]
+      .filter(Boolean)
+      .join(' · ');
+  };
+
+  useEffect(() => {
+    if (!notice) return;
+    const timer = window.setTimeout(() => setNotice(''), 4000);
+    return () => window.clearTimeout(timer);
+  }, [notice]);
 
   async function write(action: () => Promise<void>) {
     if (busy || readOnly) return;
@@ -104,115 +224,234 @@ export function ScheduleView({
     try {
       await action();
     } catch (err) {
-      setError(
-        t(
-          err instanceof RequestError && err.status === 409
-            ? 'schedule.conflict'
-            : 'schedule.saveError',
-        ),
-      );
+      const conflict = err instanceof RequestError && err.status === 409;
+      setError(t(conflict ? 'schedule.conflict' : 'schedule.saveError'));
+      if (conflict) setRefresh((n) => n + 1);
     } finally {
       setBusy(false);
     }
   }
+  const setDraft = (day: ShootingDay, draft: ShootingDayInput) =>
+    setDrafts((current) => ({ ...current, [day.id]: { revision: day.revision, draft } }));
+  const dropDraft = (day: ShootingDay) =>
+    setDrafts((current) => {
+      const { [day.id]: _, ...rest } = current;
+      return rest;
+    });
+  // "Keep mine": the draft is rebased on the server revision, so the next save replaces it.
+  const keepDraft = (day: ShootingDay) =>
+    setDrafts((current) => {
+      const saved = current[day.id];
+      return saved ? { ...current, [day.id]: { ...saved, revision: day.revision } } : current;
+    });
   const save = (day: ShootingDay, draft: ShootingDayInput) =>
     write(async () => {
       const saved = await api.put<ShootingDay>(`${path}/${day.id}`, {
         ...draft,
         revision: day.revision,
       });
-      setDays((current) =>
-        current
-          .map((item) => (item.id === day.id ? saved : item))
-          .sort((a, b) => a.date.localeCompare(b.date) || a.id.localeCompare(b.id)),
-      );
+      setDays((current) => current.map((item) => (item.id === day.id ? saved : item)).sort(byDate));
+      // Edits typed while the request was running stay, on top of the saved revision.
+      setDrafts((current) => {
+        const { [day.id]: entry, ...rest } = current;
+        if (!entry || entry.draft === draft) return rest;
+        return { ...rest, [day.id]: { ...entry, revision: saved.revision } };
+      });
     });
-  const scheduled = new Set(days.flatMap((day) => day.blocks.map((block) => block.shotId)));
+  const addDay = () =>
+    write(async () => {
+      const day = await api.post<ShootingDay>(path, {
+        date: nextDate(days),
+        callTime: '08:00',
+        wrap: null,
+        location: '',
+        notes: '',
+        blocks: [],
+      });
+      setDays((current) => [...current, day].sort(byDate));
+      setSelection({ day: day.id, block: null });
+    });
+  const addShot = (index: number, shotId: string) => {
+    const target = drafted[index];
+    if (!target || disabled || scheduled.has(shotId)) return;
+    const { day, draft, stale } = target;
+    if (stale) {
+      setError(t('schedule.staleBlocked', { day: dayName(index) }));
+      return;
+    }
+    if (!DaySchema.safeParse(draft).success) {
+      setError(t('schedule.invalidBlocked', { day: dayName(index) }));
+      return;
+    }
+    const frame = frames.find((item) => item.id === shotId);
+    if (!frame) return;
+    const block = { ...newScheduleBlock('shot', shotId), cast: frame.cast ?? [] };
+    const next = { ...draft, blocks: [...draft.blocks, block] };
+    setDraft(day, next);
+    setSelection({ day: day.id, block: block.id });
+    // The day may be off-screen (phones stack the columns): say where the shot went.
+    setNotice(t('schedule.addedTo', { shot: labels.get(shotId) ?? '', day: dayName(index) }));
+    void save(day, next);
+  };
+  const shotTitle = (shotId: string) => {
+    const frame = frames.find((item) => item.id === shotId);
+    const label = labels.get(shotId) ?? t('schedule.missingShot');
+    return frame?.action ? `${label} · ${frame.action}` : label;
+  };
+  const unscheduled = frames.filter((frame) => !scheduled.has(frame.id));
+
   return (
-    <section className="film-shell schedule" aria-label={t('nav.schedule')}>
-      <header>
-        <h1>{t('nav.schedule')}</h1>
-        <Button disabled={loading || !!error} onClick={() => setCallSheetOpen(true)}>
+    <section className="schedule" aria-label={t('nav.schedule')}>
+      <div className="story__bar" data-chrome>
+        <span className="story__total">
+          {t('schedule.days', { count: days.length })} ·{' '}
+          {t('schedule.scheduledShots', { scheduled: scheduled.size, total: frames.length })}
+        </span>
+        {conflicts.size > 0 && (
+          <span className="schedule__flag">
+            {t('schedule.conflicts', { count: conflicts.size })}
+          </span>
+        )}
+        <span className="ink-header__spacer" />
+        <Button icon="file" disabled={loading || !!error} onClick={() => setCallSheetOpen(true)}>
           {t('shells.callSheet')}
         </Button>
-        {!readOnly && (
-          <Button
-            disabled={busy || loading}
-            onClick={() =>
-              write(async () => {
-                const day = await api.post<ShootingDay>(path, {
-                  date: new Date().toLocaleDateString('en-CA'),
-                  callTime: '08:00',
-                  wrap: null,
-                  location: '',
-                  notes: '',
-                  blocks: [],
-                });
-                setDays((current) => [...current, day]);
-              })
-            }
-          >
+        {/* With no days the empty state carries the same action. */}
+        {!readOnly && days.length > 0 && (
+          <Button variant="primary" icon="plus" disabled={busy || loading} onClick={addDay}>
             {t('schedule.addDay')}
           </Button>
         )}
-        <Button disabled={busy} onClick={() => setGeneration((g) => g + 1)}>
-          {t('schedule.reload')}
-        </Button>
-      </header>
-      {error && <p role="alert">{error}</p>}
+      </div>
+      {error && (
+        <p role="alert" className="schedule__error">
+          {error}
+        </p>
+      )}
+      <p role="status" className="schedule__notice" hidden={!notice}>
+        {notice}
+      </p>
       {loading ? (
-        <p role="status">{t('schedule.loading')}</p>
+        <div className="board-state">
+          <p role="status" className="ink-muted">
+            {t('schedule.loading')}
+          </p>
+        </div>
       ) : (
-        <div className="film-shell__columns">
-          <section className="schedule__queue" aria-label={t('schedule.queue')}>
-            <h2>{t('schedule.queue')}</h2>
-            {frames
-              .filter((frame) => !scheduled.has(frame.id))
-              .map((frame) => (
-                <button
-                  type="button"
-                  disabled={readOnly || busy}
-                  key={frame.id}
-                  className="film-shell__card"
-                  draggable={!readOnly && !busy}
-                  onDragStart={(event) => {
-                    if (readOnly || busy) {
-                      event.preventDefault();
-                      return;
-                    }
-                    event.dataTransfer.setData(
-                      SHOT_DRAG_TYPE,
-                      JSON.stringify({ boardId, shotId: frame.id }),
-                    );
-                  }}
+        <div className="story__main">
+          <aside className="schedule__queue" aria-label={t('schedule.queue')} data-scroll>
+            <h2 className="story__sidebar-title">
+              {t('schedule.queue')} <span>{unscheduled.length}</span>
+            </h2>
+            {!frames.length ? (
+              <p className="schedule__hint">{t('shells.noShots')}</p>
+            ) : !unscheduled.length ? (
+              <p className="schedule__hint">{t('schedule.allScheduled')}</p>
+            ) : (
+              <p className="schedule__hint">
+                {t(readOnly ? 'schedule.queueReadOnly' : 'schedule.queueHint')}
+              </p>
+            )}
+            {groups.map((group) => {
+              const items = group.frames.filter((frame) => !scheduled.has(frame.id));
+              if (!items.length) return null;
+              return (
+                <section key={group.scene?.id ?? 'loose'} className="schedule__scene">
+                  <h3 className="schedule__scene-title">
+                    {group.scene
+                      ? [group.scene.number, group.scene.title || slugline(group.scene)]
+                          .filter(Boolean)
+                          .join(' · ')
+                      : t('film.loose')}
+                  </h3>
+                  {items.map((frame) => (
+                    <QueueShot
+                      key={frame.id}
+                      frame={frame}
+                      label={labels.get(frame.id) ?? ''}
+                      boardId={boardId}
+                      disabled={disabled || !active}
+                      onAdd={() => addShot(activeIndex, frame.id)}
+                    />
+                  ))}
+                </section>
+              );
+            })}
+          </aside>
+          <div className="schedule__board" data-scroll>
+            {!days.length ? (
+              <div className="board-state">
+                <EmptyState
+                  icon="calendar"
+                  title={t('schedule.emptyTitle')}
+                  actions={
+                    !readOnly && (
+                      <Button variant="primary" icon="plus" disabled={busy} onClick={addDay}>
+                        {t('schedule.addDay')}
+                      </Button>
+                    )
+                  }
                 >
-                  {labels.get(frame.id)} · {frame.action}
-                </button>
-              ))}
-            {!frames.length && <p>{t('shells.noShots')}</p>}
-          </section>
-          <div className="schedule__days">
-            {!days.length && <p>{t('schedule.empty')}</p>}
-            {days.map((day) => (
-              <DayEditor
-                key={`${day.id}:${day.revision}`}
-                day={day}
-                days={days}
-                frames={frames}
-                labels={labels}
-                boardId={boardId}
-                readOnly={readOnly}
-                busy={busy}
-                onSave={(draft) => save(day, draft)}
-                onDelete={() =>
-                  write(async () => {
-                    await api.delete(`${path}/${day.id}`, { revision: day.revision });
-                    setDays((current) => current.filter((item) => item.id !== day.id));
-                  })
-                }
-              />
-            ))}
+                  {t(readOnly ? 'schedule.emptyReadOnly' : 'schedule.emptyBody')}
+                </EmptyState>
+              </div>
+            ) : (
+              <div className="schedule__days">
+                {drafted.map(({ day, draft, dirty, stale }, index) => (
+                  <DayColumn
+                    key={day.id}
+                    draft={draft}
+                    index={index}
+                    dirty={dirty}
+                    stale={stale}
+                    selected={day.id === active?.day.id}
+                    selectedBlock={day.id === active?.day.id ? selection.block : null}
+                    conflicts={conflicts}
+                    shotTitle={shotTitle}
+                    readOnly={readOnly}
+                    onSelect={(block) => setSelection({ day: day.id, block })}
+                    onDrop={(payload) => {
+                      const id = resolveDroppedShot(
+                        payload,
+                        boardId,
+                        frames.map((frame) => frame.id),
+                        disabled,
+                      );
+                      if (id) addShot(index, id);
+                    }}
+                  />
+                ))}
+              </div>
+            )}
           </div>
+          {active && (
+            <DayInspector
+              key={active.day.id}
+              day={active.day}
+              draft={active.draft}
+              dirty={active.dirty}
+              stale={active.stale}
+              index={activeIndex}
+              blockId={selection.block}
+              conflicts={conflicts}
+              shotTitle={shotTitle}
+              readOnly={readOnly}
+              busy={busy}
+              onChange={(draft) => setDraft(active.day, draft)}
+              onSelectBlock={(block) => setSelection({ day: active.day.id, block })}
+              onSave={() => save(active.day, active.draft)}
+              onReload={() => dropDraft(active.day)}
+              onKeep={() => keepDraft(active.day)}
+              onDelete={() =>
+                write(async () => {
+                  const { day } = active;
+                  await api.delete(`${path}/${day.id}`, { revision: day.revision });
+                  setDays((current) => current.filter((item) => item.id !== day.id));
+                  setSelection({ day: null, block: null });
+                })
+              }
+            />
+          )}
         </div>
       )}
       {callSheetOpen && (
@@ -220,6 +459,7 @@ export function ScheduleView({
           days={days}
           labels={labels}
           projectName={projectName}
+          initialDayId={active?.day.id}
           onClose={() => setCallSheetOpen(false)}
         />
       )}
@@ -227,97 +467,252 @@ export function ScheduleView({
   );
 }
 
-function DayEditor({
-  day,
-  days,
-  frames,
-  labels,
+/** A shot waiting for a day: drag it onto a day, or click it to add it to the selected day. */
+function QueueShot({
+  frame,
+  label,
   boardId,
+  disabled,
+  onAdd,
+}: {
+  frame: FrameElement;
+  label: string;
+  boardId: string;
+  disabled: boolean;
+  onAdd: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      disabled={disabled}
+      className="schedule__shot"
+      draggable={!disabled}
+      onClick={onAdd}
+      onDragStart={(event) => {
+        if (disabled) {
+          event.preventDefault();
+          return;
+        }
+        event.dataTransfer.setData(SHOT_DRAG_TYPE, JSON.stringify({ boardId, shotId: frame.id }));
+      }}
+    >
+      <span className="schedule__shot-label">{label}</span>
+      {frame.action && <span className="schedule__shot-action">{frame.action}</span>}
+      {frame.durationMs !== undefined && (
+        <span className="schedule__shot-meta">{formatDuration(frame.durationMs)}</span>
+      )}
+    </button>
+  );
+}
+
+function DayColumn({
+  draft,
+  index,
+  dirty,
+  stale,
+  selected,
+  selectedBlock,
+  conflicts,
+  shotTitle,
+  readOnly,
+  onSelect,
+  onDrop,
+}: {
+  draft: ShootingDayInput;
+  index: number;
+  dirty: boolean;
+  stale: boolean;
+  selected: boolean;
+  selectedBlock: string | null;
+  conflicts: Set<string>;
+  shotTitle: (shotId: string) => string;
+  readOnly: boolean;
+  onSelect: (block: string | null) => void;
+  onDrop: (payload: string) => void;
+}) {
+  const { t } = useTranslation();
+  const dayLabel = useDayLabel();
+  const [over, setOver] = useState(false);
+  return (
+    <section
+      className={`schedule__day${selected ? ' is-selected' : ''}${over ? ' is-drop' : ''}`}
+      aria-label={t('schedule.day', { date: draft.date })}
+      onDragOver={(event) => {
+        if (readOnly) return;
+        event.preventDefault();
+        setOver(true);
+      }}
+      onDragLeave={(event) => {
+        // Moving over a child fires dragleave on the column too: only leaving it counts.
+        if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setOver(false);
+      }}
+      onDrop={(event) => {
+        event.preventDefault();
+        setOver(false);
+        onDrop(event.dataTransfer.getData(SHOT_DRAG_TYPE));
+      }}
+    >
+      <button
+        type="button"
+        className="schedule__day-head"
+        aria-pressed={selected && !selectedBlock}
+        onClick={() => onSelect(null)}
+      >
+        <span className="schedule__day-date">{dayLabel(draft.date)}</span>
+        <span className="schedule__day-sub">
+          {[t('schedule.dayNumber', { n: index + 1 }), draft.location].filter(Boolean).join(' · ')}
+          {dirty && ` · ${t('schedule.unsaved')}`}
+        </span>
+        {stale && <span className="schedule__flag">{t('schedule.staleFlag')}</span>}
+      </button>
+      <ol className="schedule__timeline">
+        <li className="schedule__marker">
+          {draft.callTime} {t('schedule.callRow')}
+        </li>
+        {scheduleTimes(draft).map(({ block, start, end }) => (
+          <li
+            key={block.id}
+            className={`schedule__block schedule__block--${block.type}${conflicts.has(block.id) ? ' has-conflict' : ''}${selectedBlock === block.id ? ' is-selected' : ''}`}
+            style={{ '--block-span': Math.min(block.duration, 240) } as CSSProperties}
+          >
+            <button
+              type="button"
+              className="schedule__block-select"
+              aria-pressed={selectedBlock === block.id}
+              onClick={() => onSelect(block.id)}
+            >
+              <strong>
+                {clockLabel(start)} – {clockLabel(end)}
+              </strong>
+              <span className="schedule__block-title">
+                {block.shotId
+                  ? shotTitle(block.shotId)
+                  : block.title || t(`schedule.types.${block.type}`)}
+              </span>
+              <span className="schedule__block-meta">
+                {[
+                  t(`schedule.types.${block.type}`),
+                  minutesLabel(block.duration),
+                  block.cast.join(', '),
+                ]
+                  .filter(Boolean)
+                  .join(' · ')}
+              </span>
+              {conflicts.has(block.id) && (
+                <span className="schedule__flag">{t('schedule.castFlag')}</span>
+              )}
+            </button>
+          </li>
+        ))}
+        {draft.wrap && (
+          <li className="schedule__marker">
+            {draft.wrap} {t('schedule.wrapRow')}
+          </li>
+        )}
+      </ol>
+      {!readOnly && <p className="schedule__drop">{t('schedule.dropHint')}</p>}
+    </section>
+  );
+}
+
+function DayInspector({
+  day,
+  draft,
+  dirty,
+  stale,
+  index,
+  blockId,
+  conflicts,
+  shotTitle,
   readOnly,
   busy,
+  onChange,
+  onSelectBlock,
   onSave,
+  onReload,
+  onKeep,
   onDelete,
 }: {
   day: ShootingDay;
-  days: ShootingDay[];
-  frames: FrameElement[];
-  labels: Map<string, string>;
-  boardId: string;
+  draft: ShootingDayInput;
+  dirty: boolean;
+  stale: boolean;
+  index: number;
+  blockId: string | null;
+  conflicts: Set<string>;
+  shotTitle: (shotId: string) => string;
   readOnly: boolean;
   busy: boolean;
-  onSave: (draft: ShootingDayInput) => Promise<void>;
+  onChange: (draft: ShootingDayInput) => void;
+  onSelectBlock: (block: string | null) => void;
+  onSave: () => Promise<void>;
+  onReload: () => void;
+  onKeep: () => void;
   onDelete: () => Promise<void>;
 }) {
   const { t } = useTranslation();
-  const [draft, setDraft] = useState<ShootingDayInput>(() =>
-    DaySchema.parse({
-      date: day.date,
-      callTime: day.callTime,
-      wrap: day.wrap,
-      location: day.location,
-      notes: day.notes,
-      blocks: day.blocks,
-    }),
-  );
-  const [selectedShot, setSelectedShot] = useState('');
+  const dayLabel = useDayLabel();
   // Deleting a day or a filled block asks first: a misclick must not lose a day's work.
   const [pendingDelete, setPendingDelete] = useState<
     { kind: 'day' } | { kind: 'block'; id: string } | null
   >(null);
   const disabled = readOnly || busy;
   const valid = DaySchema.safeParse(draft).success;
-  const conflicts = castConflicts(days.map((item) => (item.id === day.id ? draft : item)));
-  const update = (patch: Partial<ShootingDayInput>) =>
-    setDraft((current) => ({ ...current, ...patch }));
+  const slots = scheduleTimes(draft);
+  const planned = slots.reduce((sum, slot) => sum + slot.block.duration, 0);
+  const blockIndex = draft.blocks.findIndex((block) => block.id === blockId);
+  const block = draft.blocks[blockIndex];
+  const update = (patch: Partial<ShootingDayInput>) => onChange({ ...draft, ...patch });
   const blockUpdate = (id: string, patch: Partial<ScheduleBlock>) =>
     update({
-      blocks: draft.blocks.map((block) => (block.id === id ? { ...block, ...patch } : block)),
+      blocks: draft.blocks.map((item) => (item.id === id ? { ...item, ...patch } : item)),
     });
-  const addShot = (shotId: string) => {
-    if (
-      disabled ||
-      !valid ||
-      days.some((item) => item.blocks.some((block) => block.shotId === shotId)) ||
-      draft.blocks.some((block) => block.shotId === shotId)
-    )
-      return;
-    const frame = frames.find((item) => item.id === shotId);
-    if (!frame) return;
-    const block = { ...newScheduleBlock('shot', shotId), cast: frame.cast ?? [] };
-    const next = { ...draft, blocks: [...draft.blocks, block] };
-    setDraft(next);
-    void onSave(next);
+  const removeBlock = (id: string) => {
+    update({ blocks: draft.blocks.filter((item) => item.id !== id) });
+    onSelectBlock(null);
   };
-  const move = (index: number, offset: number) => {
+  const move = (offset: number) => {
     const blocks = [...draft.blocks];
-    const [block] = blocks.splice(index, 1);
-    if (block) blocks.splice(index + offset, 0, block);
+    const [moved] = blocks.splice(blockIndex, 1);
+    if (moved) blocks.splice(blockIndex + offset, 0, moved);
     update({ blocks });
   };
   return (
-    <section
-      className="schedule__day"
-      aria-label={t('schedule.day', { date: day.date })}
-      onDragOver={(event) => {
-        if (!disabled) event.preventDefault();
-      }}
-      onDrop={(event) => {
-        event.preventDefault();
-        const id = resolveDroppedShot(
-          event.dataTransfer.getData(SHOT_DRAG_TYPE),
-          boardId,
-          frames.map((frame) => frame.id),
-          disabled,
-        );
-        if (id) addShot(id);
-      }}
-    >
-      <h2>{t('schedule.day', { date: draft.date })}</h2>
+    <aside className="schedule__inspector" aria-label={t('schedule.inspector')} data-scroll>
+      <header className="schedule__inspector-head">
+        <span className="story__sidebar-title">{t('schedule.dayNumber', { n: index + 1 })}</span>
+        <h2>{dayLabel(draft.date)}</h2>
+        <dl className="schedule__stats">
+          <div>
+            <dt>{t('schedule.planned')}</dt>
+            <dd>{minutesLabel(planned)}</dd>
+          </div>
+          <div>
+            <dt>{t('schedule.blocks')}</dt>
+            <dd>{draft.blocks.length}</dd>
+          </div>
+        </dl>
+      </header>
+      {stale && !readOnly && (
+        <div role="alert" className="schedule__stale">
+          <p>{t('schedule.staleBody')}</p>
+          <div className="schedule__actions">
+            <Button disabled={busy} onClick={onReload}>
+              {t('schedule.staleReload')}
+            </Button>
+            <Button variant="primary" disabled={busy} onClick={onKeep}>
+              {t('schedule.staleKeep')}
+            </Button>
+          </div>
+        </div>
+      )}
       <fieldset disabled={disabled}>
+        <legend className="ink-sr-only">{t('schedule.day', { date: draft.date })}</legend>
         <div className="schedule__fields">
           <label>
             {t('schedule.date')}
             <input
+              className="ink-input"
               type="date"
               required
               value={draft.date}
@@ -327,6 +722,7 @@ function DayEditor({
           <label>
             {t('schedule.callTime')}
             <input
+              className="ink-input"
               type="time"
               required
               value={draft.callTime}
@@ -336,6 +732,7 @@ function DayEditor({
           <label>
             {t('schedule.wrap')}
             <input
+              className="ink-input"
               type="time"
               value={draft.wrap ?? ''}
               onChange={(e) => update({ wrap: e.target.value || null })}
@@ -344,35 +741,32 @@ function DayEditor({
           <label>
             {t('schedule.location')}
             <input
+              className="ink-input"
               maxLength={1000}
               value={draft.location}
               onChange={(e) => update({ location: e.target.value })}
             />
           </label>
         </div>
-        <label>
+        <label className="schedule__wide">
           {t('schedule.notes')}
           <textarea
+            className="ink-input"
+            rows={2}
             maxLength={10000}
             value={draft.notes}
             onChange={(e) => update({ notes: e.target.value })}
           />
         </label>
-        {scheduleTimes(draft).map(({ block, start, end }, index) => (
-          <article key={block.id} className="schedule__block">
-            <strong>
-              {clockLabel(start)} – {clockLabel(end)}
-            </strong>
-            {block.shotId && (
-              <p>
-                {labels.get(block.shotId) ?? t('schedule.missingShot')} ·{' '}
-                {frames.find((frame) => frame.id === block.shotId)?.action}
-              </p>
-            )}
+        <h3 className="story__sidebar-title">{t('schedule.block')}</h3>
+        {block ? (
+          <div className="schedule__block-editor" key={block.id}>
+            {block.shotId && <p className="schedule__block-shot">{shotTitle(block.shotId)}</p>}
             <div className="schedule__fields">
               <label>
                 {t('schedule.type')}
                 <select
+                  className="ink-input"
                   value={block.type}
                   onChange={(e) =>
                     blockUpdate(block.id, { type: e.target.value as ScheduleBlock['type'] })
@@ -388,6 +782,7 @@ function DayEditor({
               <label>
                 {t('schedule.title')}
                 <input
+                  className="ink-input"
                   maxLength={500}
                   value={block.title}
                   onChange={(e) => blockUpdate(block.id, { title: e.target.value })}
@@ -396,6 +791,7 @@ function DayEditor({
               <label>
                 {t('schedule.start')}
                 <input
+                  className="ink-input"
                   type="time"
                   value={block.start ?? ''}
                   onChange={(e) => blockUpdate(block.id, { start: e.target.value || null })}
@@ -404,6 +800,7 @@ function DayEditor({
               <label>
                 {t('schedule.duration')}
                 <input
+                  className="ink-input"
                   type="number"
                   min={1}
                   max={1440}
@@ -414,6 +811,7 @@ function DayEditor({
               <label>
                 {t('schedule.cast')}
                 <input
+                  className="ink-input"
                   defaultValue={block.cast.join(', ')}
                   onBlur={(e) => blockUpdate(block.id, { cast: textList(e.target.value) })}
                 />
@@ -421,30 +819,37 @@ function DayEditor({
               <label>
                 {t('schedule.departments')}
                 <input
+                  className="ink-input"
                   defaultValue={block.departments.join(', ')}
                   onBlur={(e) => blockUpdate(block.id, { departments: textList(e.target.value) })}
                 />
               </label>
             </div>
-            {conflicts.has(block.id) && <p role="status">{t('schedule.castConflict')}</p>}
+            {conflicts.has(block.id) && (
+              <p role="status" className="schedule__error">
+                {t('schedule.castConflict')}
+              </p>
+            )}
             {!readOnly && (
               <div className="schedule__actions">
-                <Button disabled={busy || index === 0} onClick={() => move(index, -1)}>
+                <Button variant="ghost" disabled={blockIndex === 0} onClick={() => move(-1)}>
                   {t('schedule.up')}
                 </Button>
                 <Button
-                  disabled={busy || index === draft.blocks.length - 1}
-                  onClick={() => move(index, 1)}
+                  variant="ghost"
+                  disabled={blockIndex === draft.blocks.length - 1}
+                  onClick={() => move(1)}
                 >
                   {t('schedule.down')}
                 </Button>
                 <Button
+                  variant="ghost"
                   onClick={() => {
                     // An empty block carries nothing to lose: drop it without asking.
                     if (block.title.trim() || block.shotId) {
                       setPendingDelete({ kind: 'block', id: block.id });
                     } else {
-                      update({ blocks: draft.blocks.filter((item) => item.id !== block.id) });
+                      removeBlock(block.id);
                     }
                   }}
                 >
@@ -452,42 +857,35 @@ function DayEditor({
                 </Button>
               </div>
             )}
-          </article>
-        ))}
+          </div>
+        ) : (
+          <p className="schedule__hint">
+            {t(draft.blocks.length ? 'schedule.blockHint' : 'schedule.noBlocks')}
+          </p>
+        )}
         {!readOnly && (
           <div className="schedule__actions">
             <Button
-              onClick={() => update({ blocks: [...draft.blocks, newScheduleBlock('setup')] })}
+              icon="plus"
+              onClick={() => {
+                const next = newScheduleBlock('setup');
+                update({ blocks: [...draft.blocks, next] });
+                onSelectBlock(next.id);
+              }}
             >
               {t('schedule.addBlock')}
             </Button>
-            <select
-              aria-label={t('schedule.selectShot')}
-              value={selectedShot}
-              onChange={(e) => setSelectedShot(e.target.value)}
-            >
-              <option value="">{t('schedule.selectShot')}</option>
-              {frames
-                .filter(
-                  (frame) =>
-                    !days.some((item) => item.blocks.some((block) => block.shotId === frame.id)) &&
-                    !draft.blocks.some((block) => block.shotId === frame.id),
-                )
-                .map((frame) => (
-                  <option key={frame.id} value={frame.id}>
-                    {labels.get(frame.id)} · {frame.action}
-                  </option>
-                ))}
-            </select>
-            <Button disabled={!selectedShot || !valid} onClick={() => addShot(selectedShot)}>
-              {t('schedule.addShot')}
-            </Button>
-            <Button disabled={!valid} onClick={() => onSave(draft)}>
-              {t('schedule.save')}
-            </Button>
-            <Button onClick={() => setPendingDelete({ kind: 'day' })}>
+            <Button variant="ghost" icon="trash" onClick={() => setPendingDelete({ kind: 'day' })}>
               {t('schedule.deleteDay')}
             </Button>
+          </div>
+        )}
+        {!readOnly && (
+          <div className="schedule__save">
+            <Button variant="primary" block disabled={!valid || stale} onClick={() => onSave()}>
+              {t('schedule.save')}
+            </Button>
+            {dirty && <span className="schedule__hint">{t('schedule.unsaved')}</span>}
           </div>
         )}
       </fieldset>
@@ -502,7 +900,7 @@ function DayEditor({
         <p>
           {pendingDelete?.kind === 'block'
             ? t('schedule.removeBlockBody')
-            : t('schedule.deleteDayBody', { date: draft.date })}
+            : t('schedule.deleteDayBody', { date: day.date })}
         </p>
         <DialogActions>
           {/* First focusable element: the native dialog focuses it on open, and Escape closes. */}
@@ -515,18 +913,14 @@ function DayEditor({
             onClick={() => {
               const target = pendingDelete;
               setPendingDelete(null);
-              if (target?.kind === 'block') {
-                update({ blocks: draft.blocks.filter((item) => item.id !== target.id) });
-              } else if (target?.kind === 'day') {
-                void onDelete();
-              }
+              if (target?.kind === 'block') removeBlock(target.id);
+              else if (target?.kind === 'day') void onDelete();
             }}
           >
             {t('schedule.delete')}
           </Button>
         </DialogActions>
       </Dialog>
-      {!draft.blocks.length && <p>{t('shells.dropShot')}</p>}
-    </section>
+    </aside>
   );
 }

@@ -15,14 +15,23 @@ const STATUS_ICONS: Record<KnownReviewStatus, IconName> = {
 };
 
 /** Review status with an icon and a word, so it never depends on colour. */
-export function ReviewChip({ status, compact = false }: { status: string; compact?: boolean }) {
+export function ReviewChip({
+  status,
+  compact = false,
+  label,
+}: {
+  status: string;
+  compact?: boolean;
+  /** Replaces the status name, e.g. a view that groups statuses under its own filter name. */
+  label?: string;
+}) {
   const { t } = useTranslation();
   const key = reviewKey(status);
   return (
     <span className={`review-chip review-chip--${key}`}>
       <Icon name={STATUS_ICONS[key]} size={12} />
       <span className={compact ? 'review-chip__label--compact' : undefined}>
-        {t(`review.status.${key}`)}
+        {label ?? t(`review.status.${key}`)}
       </span>
     </span>
   );
