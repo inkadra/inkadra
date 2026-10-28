@@ -25,6 +25,12 @@ test('mobile shell gives the canvas full width and keeps shell actions reachable
   });
   expect(response.ok()).toBe(true);
   const project = await response.json();
+  // Something waiting in Unsorted, so its chip shows on the canvas.
+  const clip = await page.request.post('/api/v1/clip', {
+    headers: { origin: baseURL! },
+    data: { boardId: project.rootBoardId, text: 'To place later' },
+  });
+  expect(clip.ok()).toBe(true);
   await page.goto('/');
   const nav = page.getByRole('navigation', { name: 'Navigazione principale', exact: true });
   await expect(nav).toBeVisible();

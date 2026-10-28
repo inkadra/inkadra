@@ -608,7 +608,11 @@ export function ZoomControls({
   );
 }
 
-/** "Non ordinati": what arrives from the clipper, the phone or other boards, still to place. */
+/**
+ * "Non ordinati": what arrives from the clipper, the phone or other boards, still to place.
+ * Shown only while something waits there, while it is open (the command palette opens it) or
+ * while cards are dragged, so they can be dropped on it.
+ */
 export function UnsortedDrawer({
   ref,
   items,
@@ -616,6 +620,7 @@ export function UnsortedDrawer({
   onToggle,
   selection,
   dropping,
+  dragging,
   draggingIds,
 }: {
   ref: Ref<HTMLDivElement>;
@@ -624,9 +629,11 @@ export function UnsortedDrawer({
   onToggle: () => void;
   selection: ReadonlySet<string>;
   dropping: boolean;
+  dragging: boolean;
   draggingIds: ReadonlySet<string> | undefined;
 }) {
   const { t } = useTranslation();
+  if (items.length === 0 && !open && !dragging) return null;
   return (
     <div ref={ref} className={`unsorted${dropping ? ' is-dropping' : ''}`} data-chrome>
       {open && (

@@ -147,6 +147,9 @@ function Dots({ viewport }: { viewport: Viewport }) {
     />
   );
 }
+/** How long after the first fit measured heights may still fit the board again. */
+const REFIT_MS = 2000;
+
 /** How long the world stays on its own compositor layer after the viewport last moved. */
 const SETTLE_MS = 160;
 
@@ -365,13 +368,64 @@ export function Canvas({
     return () => ro.disconnect();
   }, []);
 
+  /** Viewport fitting a rect in the part of the canvas above the toolbar, which floats over it. */
+  const fitView = useCallback(
+    (r: Rect, padding?: number, maxZoom?: number) => {
+      const root = rootRef.current?.getBoundingClientRect();
+      const bar = rootRef.current?.querySelector('.toolbar')?.getBoundingClientRect();
+      const below = root && bar?.height ? Math.max(0, root.bottom - bar.top) : 0;
+      return fitRect(r, size.w, size.h - below, padding, maxZoom);
+    },
+    [size],
+  );
+
   // First visit: fit the content once the document has arrived.
+  const autoFit = useRef<{ view: Viewport; until: number } | null>(null);
   useEffect(() => {
     if (fitted.current || conn.status !== 'synced' || size.w === 0) return;
     fitted.current = true;
     const bounds = boundsOf(snap.canvas.map(liveRect));
-    if (bounds) setViewport(fitRect(bounds, size.w, size.h));
-  }, [conn.status, size, snap, liveRect, setViewport]);
+    if (!bounds) return;
+    const view = fitView(bounds);
+    setViewport(view);
+    autoFit.current = { view, until: performance.now() + REFIT_MS };
+  }, [conn.status, size, snap, liveRect, setViewport, fitView]);
+
+  // Any touch, click or key on the board ends the first-visit fit: a card growing under the
+  // pointer while someone writes must not zoom the view away.
+  useEffect(() => {
+    const root = rootRef.current;
+    if (!root) return;
+    const stop = () => {
+      autoFit.current = null;
+    };
+    root.addEventListener('pointerdown', stop, true);
+    root.addEventListener('keydown', stop, true);
+    root.addEventListener('wheel', stop, { capture: true, passive: true });
+    return () => {
+      root.removeEventListener('pointerdown', stop, true);
+      root.removeEventListener('keydown', stop, true);
+      root.removeEventListener('wheel', stop, true);
+    };
+  }, []);
+
+  // Columns and scenes are only as tall as estimated until they are drawn and measured: fit again as
+  // their heights arrive, unless the view has been moved since.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: sizeVersion invalidates measured heights
+  useEffect(() => {
+    const fit = autoFit.current;
+    if (!fit) return;
+    if (vp.current !== fit.view || performance.now() > fit.until) {
+      autoFit.current = null;
+      return;
+    }
+    const bounds = boundsOf(store.getSnapshot().canvas.map(liveRect));
+    if (!bounds) return;
+    const view = fitView(bounds);
+    if (view.x === fit.view.x && view.y === fit.view.y && view.zoom === fit.view.zoom) return;
+    setViewport(view);
+    autoFit.current = { view, until: fit.until };
+  }, [sizeVersion, store, liveRect, setViewport, fitView]);
 
   // Others see where we point, what we selected and which card we write in.
   const presence = useLocalPresence(preview ? null : conn.provider);
@@ -416,17 +470,39 @@ export function Canvas({
   const center = useCallback(
     (w = 240): Point => {
       const c = screenToWorld(vp.current, { x: size.w / 2, y: size.h / 2 });
-      const at = { x: c.x - w / 2, y: c.y - 60 };
-      const rects = store.getSnapshot().canvas.map((e) => store.rectOf(e));
+      const start = { x: c.x - w / 2, y: c.y - 60 };
+      const rects = store.getSnapshot().canvas.map(liveRect);
+      const free = (x: number, y: number) =>
+        !rects.some((r) => intersects(inflate(r, 12), { x, y, w, h: 120 }));
+      // Down and to the right first, as cards cascade…
       for (let i = 0; i < 12; i++) {
-        const probe = { x: at.x, y: at.y, w, h: 120 };
-        if (!rects.some((r) => intersects(inflate(r, 12), probe))) break;
-        at.x += 32;
-        at.y += 32;
+        const at = { x: start.x + i * 32, y: start.y + i * 32 };
+        if (free(at.x, at.y)) return at;
       }
-      return at;
+      // …then the nearest free spot in growing rings, so a crowded middle never stacks cards.
+      for (let ring = 1; ring <= 40; ring++) {
+        let best: Point | undefined;
+        let bestDistance = Number.POSITIVE_INFINITY;
+        for (let i = -ring; i <= ring; i++) {
+          for (const [dx, dy] of [
+            [i, -ring],
+            [i, ring],
+            [-ring, i],
+            [ring, i],
+          ] as const) {
+            const at = { x: start.x + dx * 32, y: start.y + dy * 32 };
+            const distance = dx * dx + dy * dy;
+            if (distance < bestDistance && free(at.x, at.y)) {
+              best = at;
+              bestDistance = distance;
+            }
+          }
+        }
+        if (best) return best;
+      }
+      return start;
     },
-    [size, store],
+    [size, store, liveRect],
   );
 
   // Edits ---------------------------------------------------------------------
@@ -672,10 +748,10 @@ export function Canvas({
             ? [...selection].map((id) => snap.byId.get(id)).filter((e) => e?.parent === null)
             : snap.canvas;
         const bounds = boundsOf(els.filter((e) => e !== undefined).map(liveRect));
-        if (bounds) setViewport(fitRect(bounds, size.w, size.h, 64, to === 'selection' ? 2 : 1));
+        if (bounds) setViewport(fitView(bounds, 64, to === 'selection' ? 2 : 1));
       }
     },
-    [size, selection, snap, liveRect, setViewport],
+    [size, selection, snap, liveRect, setViewport, fitView],
   );
 
   const openElement = useCallback(
@@ -2027,6 +2103,7 @@ export function Canvas({
             onToggle={() => setUnsortedOpen((o) => !o)}
             selection={selection}
             dropping={overlay.drop?.kind === 'unsorted'}
+            dragging={overlay.moving !== undefined}
             draggingIds={draggingNested}
           />
         )}

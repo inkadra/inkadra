@@ -138,3 +138,23 @@ describe('board cards', () => {
     state.editing = null;
   });
 });
+
+describe('scene headers', () => {
+  it('keeps the slugline on its own line and the scene title under it', () => {
+    Object.assign(state, { editing: null, readOnly: false });
+    const html = render({
+      ...file,
+      id: 'scene_01',
+      type: 'scene',
+      number: '4',
+      title: 'The platform',
+      setting: 'ext',
+      location: 'Central station',
+      time: 'night',
+    });
+    expect(html).toContain('column__title--scene');
+    expect(html).toMatch(
+      /<span class="column__slug">film\.scene\.settings\.ext CENTRAL STATION – film\.scene\.times\.night<\/span><span class="column__name">The platform<\/span>/,
+    );
+  });
+});

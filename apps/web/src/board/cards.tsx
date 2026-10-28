@@ -675,9 +675,17 @@ function ColumnCard({
             onKeyDown={blurOnEnter}
             aria-label={t('board.column.title')}
           />
+        ) : scene && slugline(scene) ? (
+          // The slugline keeps one line; the scene's own title sits under it, quieter.
+          <span
+            className="column__title column__title--scene"
+            title={[slugline(scene), element.title].filter(Boolean).join(' · ')}
+          >
+            <span className="column__slug">{slugline(scene)}</span>
+            {element.title && <span className="column__name">{element.title}</span>}
+          </span>
         ) : (
           <span className="column__title">
-            {scene && slugline(scene) && <span className="column__slug">{slugline(scene)}</span>}
             {element.title || (scene ? '' : t('board.column.untitled'))}
           </span>
         )}
