@@ -39,7 +39,7 @@ for (const [width, height] of [
   [412, 915],
   [768, 1024],
   [915, 412],
-]) {
+] as const) {
   test(`viewer layout ${width}x${height}`, async ({ page }) => {
     await page.setViewportSize({ width, height });
     await page.route('**/api/v1/**', (route) => route.fulfill({ status: 404, json: {} }));

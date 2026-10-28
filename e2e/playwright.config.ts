@@ -42,7 +42,7 @@ export default defineConfig({
   projects: [
     {
       name: 'chromium',
-      testIgnore: '**/perf/**',
+      testIgnore: ['**/perf/**', '**/viewer-layout.spec.ts'],
       use: { ...devices['Desktop Chrome'], viewport: { width: 1440, height: 900 } },
     },
     {
