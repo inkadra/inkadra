@@ -6,7 +6,7 @@ import {
   type Viewport,
 } from '@inkadra/canvas-core';
 import type { Element } from '@inkadra/doc-schema';
-import { Icon, type IconName, KeyCap, kindStyle } from '@inkadra/ui';
+import { type ContentKind, Icon, type IconName, KeyCap, kindStyle } from '@inkadra/ui';
 import type { Editor } from '@tiptap/react';
 import {
   type ReactNode,
@@ -73,6 +73,7 @@ export function Toolbar({
       >
         <ToolButton
           icon="pointer"
+          kind="select"
           label={t('board.tools.select')}
           keyHint="V"
           pressed={tool === 'select'}
@@ -80,6 +81,7 @@ export function Toolbar({
         />
         <ToolButton
           icon="hand"
+          kind="hand"
           label={t('board.tools.hand')}
           keyHint="H"
           pressed={tool === 'hand'}
@@ -87,6 +89,7 @@ export function Toolbar({
         />
         <ToolButton
           icon="arrow"
+          kind="arrow"
           label={t('board.tools.arrow')}
           keyHint="A"
           pressed={tool === 'arrow'}
@@ -108,6 +111,7 @@ export function Toolbar({
           ).map((tl) => (
             <ToolButton
               key={tl.type}
+              kind={tl.type}
               icon={tl.icon}
               label={t(`board.types.${tl.type}`)}
               keyHint={tl.key ?? ''}
@@ -122,6 +126,7 @@ export function Toolbar({
 }
 
 function ToolButton({
+  kind,
   icon,
   label,
   keyHint,
@@ -129,6 +134,7 @@ function ToolButton({
   onClick,
   dragType,
 }: {
+  kind: ContentKind;
   icon: IconName;
   label: string;
   keyHint: string;
@@ -141,9 +147,7 @@ function ToolButton({
     <button
       type="button"
       className={`toolbar__btn toolbar__btn--${dragType ?? icon}`}
-      style={kindStyle(
-        dragType ?? (icon === 'pointer' ? 'select' : icon === 'hand' ? 'hand' : 'arrow'),
-      )}
+      style={kindStyle(kind)}
       aria-describedby={tooltipId}
       aria-keyshortcuts={keyHint}
       aria-label={label}

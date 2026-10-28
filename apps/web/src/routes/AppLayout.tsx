@@ -36,6 +36,7 @@ import {
   storyboardOf,
   viewDestination,
   viewHref,
+  viewIcon,
 } from '../board/views.ts';
 import { appActions } from '../commands/app-actions.ts';
 import { api, authApi } from '../lib/api.ts';
@@ -523,18 +524,25 @@ export function AppLayout() {
         )}
       </div>
       {projectId && (
-        <select
-          className="mobile-view-switcher"
-          aria-label={t('film.views.label')}
-          value={currentView ?? ''}
-          onChange={(e) => showView(e.target.value as BoardView)}
-        >
-          {pickerViews(openKind, currentView).map((v) => (
-            <option key={v} value={v}>
-              {t(`film.views.${v}`)}
-            </option>
-          ))}
-        </select>
+        <div className="mobile-view-picker">
+          <Icon
+            name={viewIcon(currentView ?? defaultView(openKind))}
+            contentKind={currentView ?? defaultView(openKind)}
+            size={18}
+          />
+          <select
+            className="mobile-view-switcher"
+            aria-label={t('film.views.label')}
+            value={currentView ?? ''}
+            onChange={(e) => showView(e.target.value as BoardView)}
+          >
+            {pickerViews(openKind, currentView).map((v) => (
+              <option key={v} value={v}>
+                {t(`film.views.${v}`)}
+              </option>
+            ))}
+          </select>
+        </div>
       )}
       <NotificationBell
         unread={unread}

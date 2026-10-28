@@ -215,6 +215,7 @@ export function Icon({
   name,
   size,
   contentKind,
+  style,
   ...props
 }: { name: IconName; size?: number; contentKind?: ContentKind } & SVGProps<SVGSVGElement>) {
   return (
@@ -226,6 +227,7 @@ export function Icon({
       style={{
         ...(size ? { width: size, height: size } : {}),
         ...(contentKind ? { ...kindStyle(contentKind), color: 'var(--kind-fg)' } : {}),
+        ...style,
       }}
       {...props}
     >

@@ -1952,8 +1952,9 @@ button.crumb--editable:focus-visible {
   border-left: 1px solid var(--ink-border-default);
   padding-left: 6px;
 }
-.toolbar__group--create .toolbar__btn {
-  background: var(--ink-surface-2);
+.toolbar__group--create .toolbar__btn,
+.toolbar__group--organize .toolbar__btn {
+  background: var(--kind-bg);
 }
 .toolbar__btn:not([aria-pressed="true"]):hover,
 .toolbar__btn:not([aria-pressed="true"]):active {
@@ -2013,4 +2014,9 @@ button.card__play {
   pointer-events: auto;
   cursor: pointer;
   border: 0;
+}
+
+.toolbar__group--navigate .toolbar__btn:not([aria-pressed="true"]):hover,
+.toolbar__group--navigate .toolbar__btn:not([aria-pressed="true"]):active {
+  color: var(--ink-text-primary);
 }

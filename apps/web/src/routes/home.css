@@ -416,9 +416,14 @@ a.home__activity-item:hover {
   color: var(--kind-fg);
   background: var(--kind-bg);
 }
+.home-new__choice {
+  padding: 12px 16px;
+  border: 1px solid var(--ink-border-default);
+  border-radius: 8px;
+}
 .home-new__choice:has(input:checked) {
-  border-color: var(--kind-fg);
-  background: var(--kind-bg);
+  border-color: var(--ink-accent-soft-fg);
+  background: var(--ink-accent-soft-bg);
 }
 .home__when svg {
   width: 12px;
