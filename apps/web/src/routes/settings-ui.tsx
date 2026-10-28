@@ -1,21 +1,7 @@
-import { type ReactNode, useEffect, useId, useRef, useState, useSyncExternalStore } from 'react';
+import { type ReactNode, useEffect, useId, useRef, useState } from 'react';
 import { trackSave } from './settings-save.ts';
 
-/** Matches the mobile shell breakpoint in mobile-shell.css. */
-const PHONE = '(width < 768px)';
-
-export function useIsPhone(): boolean {
-  return useSyncExternalStore(
-    (listener) => {
-      if (typeof window === 'undefined' || !window.matchMedia) return () => {};
-      const query = window.matchMedia(PHONE);
-      query.addEventListener('change', listener);
-      return () => query.removeEventListener('change', listener);
-    },
-    () => (typeof window !== 'undefined' && window.matchMedia?.(PHONE).matches) || false,
-    () => false,
-  );
-}
+export { useIsPhone } from '../lib/phone.ts';
 
 export function Card({
   title,

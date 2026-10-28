@@ -301,3 +301,46 @@ it('estimates scene and footer durations like the storyboard (one second per unt
   expect(host.querySelector('.shots__scene-meta')?.textContent).toContain('0:06');
   expect(host.querySelector('.shots__footer')?.textContent).toContain('0:06');
 });
+
+it('shows each shot as a card on a phone and edits it in the frame panel', async () => {
+  vi.spyOn(window, 'matchMedia').mockImplementation(
+    (query: string) =>
+      ({
+        matches: query === '(width < 768px)',
+        media: query,
+        addEventListener: () => {},
+        removeEventListener: () => {},
+      }) as unknown as MediaQueryList,
+  );
+  const { doc, store } = board();
+  const scene = addScene(doc, { number: '4', title: 'Bar' }, { userId: null });
+  addFrame(
+    doc,
+    scene.id,
+    null,
+    { label: '4C', shot: 'cu', lens: '85mm', durationMs: 4000, action: 'Neon on half his face' },
+    { userId: null },
+  );
+
+  const host = await mount(<ShotList store={store} boardTitle="Test Board" readOnly={false} />);
+
+  // No wide table and no inline field editors: one card with the shot's summary.
+  expect(host.querySelector('.shots__table')).toBeNull();
+  expect(host.querySelector('input[aria-label="Lens"]')).toBeNull();
+  const card = host.querySelector('.shot-card');
+  expect(card?.querySelector('.shot-card__label')?.textContent).toBe('4C');
+  expect(card?.querySelector('.shot-card__meta')?.textContent).toBe('Close-up · 85mm · 4s');
+  expect(card?.querySelector('.shot-card__action')?.textContent).toBe('Neon on half his face');
+  expect(card?.querySelector('.film-chip')).not.toBeNull();
+
+  // Scene heading, selection checkbox and "Add shot in scene" stay.
+  expect(host.querySelector('.shot-cards__scene')?.textContent).toContain('4');
+  expect(card?.querySelector('input[aria-label="Select shot 4C"]')).not.toBeNull();
+  expect(host.querySelector('.shot-cards__add button')?.textContent).toContain('4');
+
+  // Tapping the card opens the frame panel with every field.
+  await act(async () => {
+    card?.querySelector<HTMLButtonElement>('.shot-card__body')?.click();
+  });
+  expect(host.querySelector('.film-panel')).not.toBeNull();
+});
