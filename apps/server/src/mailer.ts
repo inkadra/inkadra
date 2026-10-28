@@ -69,12 +69,12 @@ export function actionMail(
 }
 
 /** SMTP never delays an auth response; delivery errors cannot expose account existence. */
-export function sendDetached(mailer: Mailer | undefined, mail: Mail, log?: Logger) {
+export function sendDetached(mailer: Mailer | undefined, mail: Mail, log?: Pick<Logger, 'warn'>) {
   if (!mailer?.enabled) return;
   void Promise.resolve().then(() => mailer.send(mail)).catch(() => log?.warn('security email delivery failed'));
 }
 
-export function securityNotification(mailer: Mailer | undefined, user: { email: string; locale?: string | null }, event: 'password' | 'twoFactor' | 'token', log?: Logger) {
+export function securityNotification(mailer: Mailer | undefined, user: { email: string; locale?: string | null }, event: 'password' | 'twoFactor' | 'token', log?: Pick<Logger, 'warn'>) {
   const t = mailText(user);
   sendDetached(mailer, { to: user.email, subject: t.securitySubjects[event], text: t.securityNotice }, log);
 }

@@ -39,8 +39,15 @@ export function authSecurity(config: Config) {
         );
         return Number(n) <= max;
       }
-      const n = Number(await storage.get(id) ?? 0) + 1;
-      await storage.set(id, String(n), seconds);
+      const now = Date.now();
+      const entry = memory.get(id);
+      const active = entry && entry.until > now ? entry : undefined;
+      if (!active && memory.size >= 10_000) {
+        for (const [key, value] of memory) if (value.until <= now) memory.delete(key);
+        if (memory.size >= 10_000) return false;
+      }
+      const n = Number(active?.value ?? 0) + 1;
+      memory.set(id, { value: String(n), until: active?.until ?? now + seconds * 1000 });
       return n <= max;
     },
     close() { redis?.disconnect(); },

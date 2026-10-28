@@ -1,8 +1,11 @@
+import { randomUUID } from 'node:crypto';
+import { user } from '../db/schema.ts';
+import type { Auth } from '../auth.ts';
 import { createServer, type Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { fileURLToPath } from 'node:url';
 import pino from 'pino';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { createAuth } from '../auth.ts';
 import { loadConfig } from '../config.ts';
 import { createDatabase, runMigrations } from '../db/client.ts';
@@ -17,6 +20,8 @@ describe.skipIf(!url)('sign-in providers (needs DATABASE_URL)', () => {
   let issuer: Server;
   let issuerUrl = '';
   let app: Awaited<ReturnType<typeof createApp>>;
+  let auth: Auth;
+  let db: ReturnType<typeof createDatabase>['db'];
   let close = async () => {};
 
   beforeAll(async () => {
@@ -54,9 +59,11 @@ describe.skipIf(!url)('sign-in providers (needs DATABASE_URL)', () => {
       OIDC_CLIENT_SECRET: 'oidc-secret',
     });
     const log = pino({ level: 'silent' });
-    const { db, sql: client } = createDatabase(config.DATABASE_URL, 2);
+    const { db: database, sql: client } = createDatabase(config.DATABASE_URL, 2);
     await runMigrations(config.DATABASE_URL, migrationsFolder);
-    app = await createApp({ config, db, auth: createAuth(config, db), log, ...testDeps(db, log) });
+    db = database;
+    auth = createAuth(config, db);
+    app = await createApp({ config, db, auth, log, ...testDeps(db, log) });
     close = async () => {
       await app.close();
       await client.end();
@@ -106,4 +113,31 @@ describe.skipIf(!url)('sign-in providers (needs DATABASE_URL)', () => {
     expect(to.searchParams.get('code_challenge_method')).toBe('S256');
     expect(to.searchParams.get('scope')).toContain('openid');
   });
+  it.each(['google', 'oidc'])('requires a second factor after the %s callback', async (id) => {
+    const email = `${randomUUID()}@studio.example.com`;
+    const [owner] = await db.insert(user).values({ name: 'Second factor', email, emailVerified: true, twoFactorEnabled: true }).returning();
+    if (!owner) throw new Error('Missing fixture');
+    const context = await auth.$context;
+    const provider = context.socialProviders.find((p) => p.id === id);
+    if (!provider) throw new Error('Missing provider');
+    const info = vi.spyOn(provider, 'getUserInfo').mockResolvedValue({
+      user: { id: owner.id, email, name: owner.name, emailVerified: true }, data: { sub: owner.id },
+    });
+    const exchange = vi.spyOn(provider, 'validateAuthorizationCode').mockResolvedValue({});
+    try {
+      const start = await app.inject({ method: 'POST', url: '/api/auth/sign-in/social', headers: { origin: 'https://inkadra.example.com' }, payload: { provider: id, callbackURL: '/' } });
+      const state = new URL(start.json().url).searchParams.get('state');
+      const cookie = start.cookies.map((c) => `${c.name}=${c.value}`).join('; ');
+      const callback = await app.inject({ url: `/api/auth/callback/${id}?code=test&state=${state}`, headers: { cookie } });
+      expect(callback.statusCode).toBe(302);
+      expect(callback.headers.location).toBe('/login?twoFactor=true');
+      const challenge = callback.cookies.map((c) => `${c.name}=${c.value}`).join('; ');
+      expect(callback.cookies.some((c) => c.name.endsWith('two_factor') && c.value)).toBe(true);
+      const session = await auth.api.getSession({ headers: new Headers({ cookie: challenge }) });
+      expect(session).toBeNull();
+      const invalid = await app.inject({ method: 'POST', url: '/api/auth/two-factor/verify-totp', headers: { cookie: challenge, origin: 'https://inkadra.example.com' }, payload: { code: '000000' } });
+      expect(invalid.statusCode).toBeGreaterThanOrEqual(400);
+    } finally { info.mockRestore(); exchange.mockRestore(); }
+  });
+
 });

@@ -5,9 +5,10 @@ import { twoFactor } from 'better-auth/plugins';
 export function hardenedTwoFactor(issuer: string) {
   const plugin = twoFactor({ issuer });
   const hook = plugin.hooks.after[0];
+  if (!hook) throw new Error('Better Auth two-factor hook is missing.');
   const upstream = hook.handler;
-  hook.matcher = (ctx) => ['/sign-in/email', '/sign-in/username', '/sign-in/phone-number', '/magic-link/verify'].includes(ctx.path)
-    || ctx.path.startsWith('/callback/') || ctx.path.startsWith('/oauth2/callback/');
+  hook.matcher = (ctx) => ['/sign-in/email', '/sign-in/username', '/sign-in/phone-number', '/sign-in/social', '/magic-link/verify'].includes(ctx.path ?? '')
+    || ctx.path?.startsWith('/callback/') || ctx.path?.startsWith('/oauth2/callback/');
   hook.handler = createAuthMiddleware(async (ctx) => {
     const needsChallenge = ctx.context.newSession?.user.twoFactorEnabled;
     const result = await upstream(ctx);

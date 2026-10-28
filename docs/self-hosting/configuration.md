@@ -94,3 +94,25 @@ in the same Docker network. Change it when the proxy connects from somewhere els
   `TRUST_PROXY=loopback,linklocal,uniquelocal,100.64.0.0/10`.
 
 Never use `true`: it trusts everyone, so any client could choose its address.
+
+## Authentication and browser hardening
+
+Production authentication requires `REDIS_URL` (the existing Valkey instance). IP, account
+and recipient budgets persist across processes and restarts; unavailable Valkey fails closed.
+Tests use isolated memory budgets and disable IP/account throttling; recipient limits remain.
+Email delivery runs outside the request's awaited SMTP path. Delivery is best effort: process
+termination can lose pending messages, and delivery failures are logged without credentials.
+
+| Variable | Default | Meaning |
+| --- | --- | --- |
+| `CSP_ENFORCE` | `false` | Send CSP in report-only mode; `true` enforces it. Validate your media and integrations first. |
+| `HSTS_ENABLED` | `false` | Opt into one-year HSTS, only when `PUBLIC_URL` uses HTTPS. |
+| `OIDC_ALLOWED_DOMAINS` | any | Allowed verified email domains for OIDC. Google issuers use the verified `hd` claim and fall back to `GOOGLE_ALLOWED_DOMAINS`. |
+
+Magic links and Google/OIDC callbacks require the same second factor as password sign-in.
+After a browser callback the challenge opens at `/login?twoFactor=true`; no full session is
+retained until verification. Existing trusted-device cookies retain Better Auth semantics.
+Personal token and app authorization creation need a cookie session younger than 15 minutes.
+Personal tokens default to 90 days, including an omitted or null expiry; explicit lifetimes
+retain the existing API maximum of 3650 days. Password changes/reset revoke non-app personal
+tokens; reset also revokes every browser session. App tokens retain their existing lifecycle.
