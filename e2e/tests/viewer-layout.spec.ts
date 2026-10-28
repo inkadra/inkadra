@@ -43,50 +43,50 @@ for (const [width, height] of [
   [915, 412],
 ] as const) {
   test.describe(`viewport ${width}x${height}`, () => {
-  test.use({ hasTouch: width < 1000, isMobile: width < 1000 });
-  test(`viewer layout ${width}x${height}`, async ({ page }, testInfo) => {
-    await page.setViewportSize({ width, height });
-    await page.route('**/api/v1/**', (route) => route.fulfill({ status: 404, json: {} }));
-    await page.route('**/embed/**', (route) =>
-      route.fulfill({ body: '<body></body>', contentType: 'text/html' }),
-    );
-    await page.route('**/__shot', (route) =>
-      route.fulfill({ body: fixture('yt'), contentType: 'text/html' }),
-    );
-    await page.goto('http://127.0.0.1:5179/__shot');
-    const iframe = await page.locator('.viewer__iframe').boundingBox();
-    const thumbs = await page.locator('.viewer__thumbnails').boundingBox();
-    const title = await page.locator('.viewer__stage-title').boundingBox();
-    const close = await page.locator('.viewer__stage-header button').last().boundingBox();
-    expect(title?.width).toBeGreaterThan(0);
-    expect(close!.x + close!.width).toBeLessThanOrEqual(width);
-    expect(iframe!.y + iframe!.height).toBeLessThanOrEqual(thumbs!.y);
-    for (const theme of ['dark', 'light']) {
-      await page.evaluate((theme) => (document.documentElement.dataset.theme = theme), theme);
-      await page.screenshot({
-        path: testInfo.outputPath(`after-${width}x${height}-${theme}.png`),
-      });
-    }
-    console.log(JSON.stringify({ width, height, iframe, thumbs }));
-    expect(iframe!.width).toBeGreaterThanOrEqual(300);
-    if (width < 1000) {
-      for (const button of await page.locator('.viewer__stage-header button').all()) {
-        const box = await button.boundingBox();
-        expect(box!.width).toBeGreaterThanOrEqual(44);
-        expect(box!.height).toBeGreaterThanOrEqual(44);
+    test.use({ hasTouch: width < 1000, isMobile: width < 1000 });
+    test(`viewer layout ${width}x${height}`, async ({ page }, testInfo) => {
+      await page.setViewportSize({ width, height });
+      await page.route('**/api/v1/**', (route) => route.fulfill({ status: 404, json: {} }));
+      await page.route('**/embed/**', (route) =>
+        route.fulfill({ body: '<body></body>', contentType: 'text/html' }),
+      );
+      await page.route('**/__shot', (route) =>
+        route.fulfill({ body: fixture('yt'), contentType: 'text/html' }),
+      );
+      await page.goto('http://127.0.0.1:5179/__shot');
+      const iframe = await page.locator('.viewer__iframe').boundingBox();
+      const thumbs = await page.locator('.viewer__thumbnails').boundingBox();
+      const title = await page.locator('.viewer__stage-title').boundingBox();
+      const close = await page.locator('.viewer__stage-header button').last().boundingBox();
+      expect(title?.width).toBeGreaterThan(0);
+      expect(close!.x + close!.width).toBeLessThanOrEqual(width);
+      expect(iframe!.y + iframe!.height).toBeLessThanOrEqual(thumbs!.y);
+      for (const theme of ['dark', 'light']) {
+        await page.evaluate((theme) => (document.documentElement.dataset.theme = theme), theme);
+        await page.screenshot({
+          path: testInfo.outputPath(`after-${width}x${height}-${theme}.png`),
+        });
       }
-      for (const hint of await page.locator('.viewer__kbd, .viewer__hints').all()) {
-        await expect(hint).toBeHidden();
+      console.log(JSON.stringify({ width, height, iframe, thumbs }));
+      expect(iframe!.width).toBeGreaterThanOrEqual(300);
+      if (width < 1000) {
+        for (const button of await page.locator('.viewer__stage-header button').all()) {
+          const box = await button.boundingBox();
+          expect(box!.width).toBeGreaterThanOrEqual(44);
+          expect(box!.height).toBeGreaterThanOrEqual(44);
+        }
+        for (const hint of await page.locator('.viewer__kbd, .viewer__hints').all()) {
+          await expect(hint).toBeHidden();
+        }
       }
-    }
-    expect(
-      await page
-        .locator('.viewer__stage-counter')
-        .evaluate(
-          (el) =>
-            el.scrollHeight === el.clientHeight && getComputedStyle(el).whiteSpace === 'nowrap',
-        ),
-    ).toBe(true);
-  });
+      expect(
+        await page
+          .locator('.viewer__stage-counter')
+          .evaluate(
+            (el) =>
+              el.scrollHeight === el.clientHeight && getComputedStyle(el).whiteSpace === 'nowrap',
+          ),
+      ).toBe(true);
+    });
   });
 }
