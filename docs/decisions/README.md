@@ -29,3 +29,4 @@ in order. An accepted decision is never rewritten: a later one supersedes it.
 | [0022](0022-shooting-schedule.md)             | Shooting schedules in Postgres, storyboard references by id                            |
 | [0023](0023-home-overview.md)                 | Home overview from two read-only lists                                                 |
 | [0026](0026-snapshot-trash.md)                | Restore individual elements from saved versions                                        |
+| [0029](0029-settings-window.md)               | Settings open as a window over the current page                                        |

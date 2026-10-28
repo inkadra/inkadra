@@ -19,12 +19,25 @@ import {
   type ReactNode,
   useContext,
   useEffect,
+  useMemo,
   useRef,
   useState,
   useSyncExternalStore,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Navigate, Outlet, useLocation, useNavigate, useSearchParams } from 'react-router';
+import {
+  createPath,
+  UNSAFE_DataRouterContext as DataRouterContext,
+  type Location,
+  UNSAFE_LocationContext as LocationContext,
+  Navigate,
+  UNSAFE_NavigationContext as NavigationContext,
+  useLocation,
+  useNavigate,
+  useNavigationType,
+  useOutlet,
+  useSearchParams,
+} from 'react-router';
 import { childBoards, useProjectBoards, useSharedBoards } from '../board/boards.ts';
 import {
   askedView,
@@ -63,8 +76,8 @@ import {
   subscribeProjects,
 } from './projects.ts';
 import { SearchDialog } from './SearchDialog.tsx';
-import { SettingsBreadcrumb } from './SettingsBreadcrumb.tsx';
-import { SaveStatus, SettingsNav } from './SettingsShell.tsx';
+import { SettingsWindow } from './SettingsWindow.tsx';
+import { isSettingsPath } from './settings-sections.ts';
 import './mobile-shell.css';
 
 interface ProjectsState {
@@ -95,13 +108,129 @@ const InstanceSetupContext = createContext<ReturnType<typeof useInstanceSetup>>(
 });
 export const useInstanceSetupState = () => useContext(InstanceSetupContext);
 
-export function AppLayout() {
+const HOME: Location = { pathname: '/', search: '', hash: '', state: null, key: 'default' };
+
+/**
+ * Settings open as a window over the page underneath, which stays mounted: a board keeps its
+ * connection and scroll. The page is the last one shown before settings opened, or Home when
+ * a settings URL is loaded directly (decision 0029). History entry positions distinguish Back
+ * from Forward; the underlay also isolates navigation, including data-router navigation.
+ */
+function useSettingsOverlay(home: ReactNode) {
+  const location = useLocation();
+  const navigationType = useNavigationType();
+  const outlet = useOutlet();
+  const open = isSettingsPath(location.pathname);
+  const page = useRef<{ element: ReactNode; location: Location } | null>(null);
+  if (!open) page.current = { element: outlet, location };
+  const history = useRef({
+    entries: new Map<string, { position: number; base: number }>(),
+    current: { position: 0, base: 0 },
+    key: '',
+  });
+  // Remember entry positions rather than counting POPs: a POP can also be Forward.
+  const tracker = history.current;
+  if (tracker.key !== location.key) {
+    const known = tracker.entries.get(location.key);
+    const position =
+      navigationType === 'PUSH' ? tracker.current.position + 1 : tracker.current.position;
+    const entry = known ?? {
+      position,
+      base: open ? tracker.current.base : position,
+    };
+    tracker.entries.set(location.key, entry);
+    tracker.current = entry;
+    tracker.key = location.key;
+  }
+  const depth = tracker.current.position - tracker.current.base;
+  const below = open ? (page.current ?? { element: home, location: HOME }) : null;
+  return {
+    open,
+    /** The settings page itself, for the window. */
+    settings: open ? outlet : null,
+    location: below?.location ?? location,
+    content: below?.element ?? outlet,
+    navigationType,
+    depth,
+  };
+}
+
+/**
+ * Keep these providers mounted even when settings are closed, so existing async callbacks
+ * use the same guarded navigator. Data routes bypass NavigationContext in useNavigateStable.
+ * Drop underlay navigations while covered: stale effects must never change the modal URL.
+ */
+function UnderlayNavigation({ open, children }: { open: boolean; children: ReactNode }) {
+  const blocked = useRef(open);
+  blocked.current = open;
+  const navigation = useContext(NavigationContext);
+  const data = useContext(DataRouterContext);
+  const guardedNavigation = useMemo(
+    () => ({
+      ...navigation,
+      navigator: {
+        ...navigation.navigator,
+        push: (...args: Parameters<typeof navigation.navigator.push>) => {
+          if (!blocked.current) navigation.navigator.push(...args);
+        },
+        replace: (...args: Parameters<typeof navigation.navigator.replace>) => {
+          if (!blocked.current) navigation.navigator.replace(...args);
+        },
+        go: (delta: number) => {
+          if (!blocked.current) navigation.navigator.go(delta);
+        },
+      },
+    }),
+    [navigation],
+  );
+  const guardedData = useMemo(
+    () =>
+      data && {
+        ...data,
+        // Preserve the live router getters (notably state) rather than copying a snapshot.
+        router: new Proxy(data.router, {
+          get(target, property, receiver) {
+            if (property === 'navigate')
+              return ((...args: Parameters<typeof target.navigate>) =>
+                blocked.current
+                  ? Promise.resolve()
+                  : target.navigate(...args)) as typeof target.navigate;
+            return Reflect.get(target, property, receiver);
+          },
+        }),
+      },
+    [data],
+  );
+  return (
+    <NavigationContext.Provider value={guardedNavigation}>
+      <DataRouterContext.Provider value={guardedData}>{children}</DataRouterContext.Provider>
+    </NavigationContext.Provider>
+  );
+}
+
+export function AppLayout({ home }: { home?: ReactNode }) {
   const setup = useInstanceSetup();
   const { t } = useTranslation();
   const { user, instance, refresh } = useSession();
   const { theme, toggle } = useTheme();
   const navigate = useNavigate();
-  const { pathname, search } = useLocation();
+  const url = useLocation();
+  const overlay = useSettingsOverlay(home);
+  // A stable value, so the page underneath does not re-render on every layout render.
+  const underlayLocation = useMemo(
+    () => ({ location: overlay.location, navigationType: overlay.navigationType }),
+    [overlay.location, overlay.navigationType],
+  );
+  const afterSettings = useRef<string | null>(null);
+  useEffect(() => {
+    if (overlay.open || !afterSettings.current) return;
+    const destination = afterSettings.current;
+    afterSettings.current = null;
+    void navigate(destination);
+  }, [overlay.open, navigate]);
+
+  // Everything in the shell follows the page under the settings window, not the settings URL.
+  const { pathname, search } = overlay.location;
   const projects = useSyncExternalStore(subscribeProjects, getCachedProjects);
   const [drawerOpen, setDrawerOpen] = useState(false);
   // A template when New project opens with one preselected, as from Home.
@@ -125,7 +254,7 @@ export function AppLayout() {
   const [unread, refreshUnread] = useUnreadCount();
   // One list behind the bell and the Inbox.
   const notifications = useNotificationFeed(refreshUnread);
-  const [params, setParams] = useSearchParams();
+  const [, setParams] = useSearchParams();
   const shared = useSharedBoards(!!user);
 
   useEffect(() => {
@@ -186,7 +315,7 @@ export function AppLayout() {
   if (!user)
     return (
       <Navigate
-        to={pathname === '/' ? '/login' : `/login?next=${encodeURIComponent(pathname)}`}
+        to={url.pathname === '/' ? '/login' : `/login?next=${encodeURIComponent(url.pathname)}`}
         replace
       />
     );
@@ -203,7 +332,11 @@ export function AppLayout() {
     await refresh();
   }
 
-  const inSettings = pathname.startsWith('/settings');
+  const inSettings = overlay.open;
+  const closeSettings = () => {
+    if (overlay.depth > 0) navigate(-overlay.depth);
+    else navigate(createPath(overlay.location), { replace: true });
+  };
   const writable = editableProjects(projects);
   const projectId = pathname.startsWith('/p/') ? pathname.split('/')[2] : undefined;
   const boardId = pathname.split('/')[4];
@@ -217,7 +350,7 @@ export function AppLayout() {
   // Until the project's boards are known the kind is too: no tab is active before that.
   const openBoard = projectBoards?.find((b) => b.id === openBoardId);
   const openKind: BoardKind | undefined = openBoard?.kind;
-  const asked = params.get('view');
+  const asked = new URLSearchParams(search).get('view');
   // While the boards load a board with no ?view= has no known default: nothing is active yet.
   const currentView: BoardView | null =
     openBoardId && !projectBoards
@@ -450,7 +583,7 @@ export function AppLayout() {
             <IconButton
               icon="settings"
               label={t(setupPending ? 'onboarding.settingsPending' : 'nav.settings')}
-              aria-current={pathname.startsWith('/settings') ? 'page' : undefined}
+              aria-current={inSettings ? 'page' : undefined}
               onClick={go('/settings')}
             />
           </span>
@@ -488,19 +621,14 @@ export function AppLayout() {
         {headerContent ?? (
           <>
             <nav aria-label={t('nav.breadcrumb')} className="ink-header__crumbs">
-              {inSettings ? (
-                <SettingsBreadcrumb pathname={pathname} search={search} />
-              ) : (
-                <span style={{ fontWeight: 600 }}>
-                  {current?.name ??
-                    (pathname === '/onboarding'
-                      ? onboardingCrumb && t(onboardingCrumb)
-                      : t(pathname === '/projects' ? 'nav.projects' : 'nav.home'))}
-                </span>
-              )}
+              <span style={{ fontWeight: 600 }}>
+                {current?.name ??
+                  (pathname === '/onboarding'
+                    ? onboardingCrumb && t(onboardingCrumb)
+                    : t(pathname === '/projects' ? 'nav.projects' : 'nav.home'))}
+              </span>
             </nav>
             <span className="ink-header__spacer" />
-            {inSettings && <SaveStatus />}
             {/* Home creates from here only; search stays in the sidebar and on ⌘K. */}
             {pathname === '/' && (
               <div className="home-header-actions">
@@ -571,21 +699,17 @@ export function AppLayout() {
       >
         <HeaderContext.Provider value={setHeaderContent}>
           <AppShell
-            sidebar={
-              inSettings ? (
-                <Sidebar label={t('nav.settings')}>
-                  <SettingsNav setup={setup} />
-                </Sidebar>
-              ) : (
-                sidebar
-              )
-            }
+            sidebar={sidebar}
             header={header}
             canvas={!!projectId}
-            collapsed={(inboxOpen || collapsed) && !inSettings}
+            collapsed={inboxOpen || collapsed}
           >
             <div style={{ display: inboxOpen ? 'none' : 'contents' }}>
-              <Outlet />
+              <UnderlayNavigation open={overlay.open}>
+                <LocationContext.Provider value={underlayLocation}>
+                  {overlay.content}
+                </LocationContext.Provider>
+              </UnderlayNavigation>
             </div>
             {inboxOpen && (
               <NotificationList
@@ -609,7 +733,7 @@ export function AppLayout() {
         </HeaderContext.Provider>
         <MobileNavigation
           inboxButtonRef={mobileInboxButton}
-          pathname={pathname}
+          pathname={url.pathname}
           inboxOpen={inboxOpen}
           drawerOpen={drawerOpen}
           newOpen={newSheet}
@@ -632,6 +756,21 @@ export function AppLayout() {
             navigate('/settings');
           }}
         />
+        {overlay.settings && (
+          <SettingsWindow
+            setup={setup}
+            onClose={closeSettings}
+            onDiagnostics={() => {
+              afterSettings.current = '/diagnostics';
+              closeSettings();
+            }}
+            onBack={() =>
+              overlay.depth > 1 ? navigate(-1) : navigate('/settings', { replace: true })
+            }
+          >
+            {overlay.settings}
+          </SettingsWindow>
+        )}
         {drawerOpen && (
           <div className="mobile-drawer">
             <Dialog open title={t('nav.navigation')} onClose={() => setDrawerOpen(false)}>

@@ -1843,7 +1843,6 @@
     "settingsPending": "Impostazioni, configurazione istanza incompleta"
   },
   "settingsUi": {
-    "backToProjects": "Torna ai progetti",
     "profile": "Profilo",
     "diagnostics": "Diagnostica",
     "on": "Attivo",
@@ -1865,9 +1864,9 @@
       "about": "Nome, indirizzo, versione e stato della configurazione dell’istanza."
     },
     "autosave": {
-      "idle": "Modifiche salvate automaticamente",
+      "idle": "Salvataggio automatico",
       "saving": "Salvataggio…",
-      "saved": "Modifiche salvate",
+      "saved": "Salvato",
       "error": "Impossibile salvare l’ultima modifica"
     },
     "account": {
@@ -1916,7 +1915,6 @@
       "configured": "Configurato",
       "needsSmtp": "Richiede SMTP",
       "missingSmtp": "Manca SMTP",
-      "details": "Dettagli →",
       "email": "Invio email",
       "smtpOn": "Inviti, reset della password e notifiche email possono partire."
     },
@@ -1929,8 +1927,15 @@
     "about": {
       "nameHelp": "Compare nella barra laterale, nelle email e nella pagina di accesso",
       "url": "Indirizzo pubblico",
-      "version": "Versione"
-    }
+      "version": "Versione",
+      "identity": "Istanza",
+      "diagnosticsHelp": "Controlli di rete, proxy e servizi, utili quando qualcosa non funziona",
+      "openDiagnostics": "Apri"
+    },
+    "search": "Cerca nelle impostazioni",
+    "noResults": "Nessuna impostazione trovata",
+    "close": "Chiudi impostazioni",
+    "dangerZone": "Zona sensibile"
   },
   "admin": {
     "personal": "Personale",

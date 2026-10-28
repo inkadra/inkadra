@@ -48,7 +48,8 @@ const router = createBrowserRouter([
       { path: '/authorize', element: <Authorize /> },
       { path: '/reset-password', element: <ResetPassword /> },
       {
-        element: <AppLayout />,
+        // Settings open as a window over the current page, or over Home on a direct load.
+        element: <AppLayout home={<Home />} />,
         children: [
           { index: true, element: <Home /> },
           { path: 'projects', element: <Projects /> },

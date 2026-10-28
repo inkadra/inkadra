@@ -270,7 +270,7 @@ test('the email notification preference is saved', async ({ page }) => {
     );
     await section.getByRole('radio', { name: /^Riepilogo giornaliero/ }).check();
     expect((await saved).ok()).toBe(true);
-    await expect(page.getByRole('status').filter({ hasText: 'Modifiche salvate' })).toBeVisible();
+    await expect(page.getByRole('status').filter({ hasText: 'Salvato' })).toBeVisible();
     await page.reload();
     await expect(section.getByRole('radio', { name: /^Riepilogo giornaliero/ })).toBeChecked();
   } finally {
