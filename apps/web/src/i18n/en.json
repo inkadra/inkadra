@@ -147,7 +147,6 @@
       "moreDays_other": "+{{count}} more shooting days today",
       "fewerDays": "Show less"
     },
-    "allProjects": "All projects →",
     "recentBoards": "Recent boards",
     "continue": "Continue",
     "recentBoardsHint": "by last edit",
@@ -184,7 +183,8 @@
       "empty": "Empty board",
       "cards_one": "{{count}} item",
       "cards_other": "{{count}} items"
-    }
+    },
+    "allProjects": "All projects →"
   },
   "project": {
     "dialogTitle": "New project",
@@ -2090,7 +2090,7 @@
     "symbol": "Symbol",
     "color": "Color",
     "emoji": "Emoji",
-    "emojiHelp": "Enter one emoji, or clear it to use the selected shape. Emoji keep their native colors.",
+    "emojiHelp": "Emoji keep their own colours.",
     "invalid": "Use a single emoji.",
     "reset": "Reset to default",
     "error": "Could not save project appearance. Check your permissions and try again.",
@@ -2114,6 +2114,10 @@
       "yellow": "Yellow",
       "red": "Red",
       "pink": "Pink"
-    }
+    },
+    "pasteEmoji": "Paste another emoji",
+    "sidebarPreview": "In the sidebar",
+    "close": "Close",
+    "chooseEmoji": "Choose an emoji"
   }
 }
