@@ -21,7 +21,9 @@ test('first visit asks to create the administrator', async ({ page }) => {
   await page.getByLabel('Password').fill(admin.password);
   await page.getByRole('button', { name: 'Crea account e accedi' }).click();
   await expect(page.getByRole('heading', { name: /Giulia$/ })).toBeVisible();
-  await expect(page.getByText('Nessun progetto')).toBeVisible();
+  await expect(
+    page.getByText('Ancora nessuna board. Creane una o parti da un modello.'),
+  ).toBeVisible();
 });
 
 test('the shell creates a project and lists it', async ({ page }) => {
