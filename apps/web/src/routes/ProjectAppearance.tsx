@@ -1,10 +1,31 @@
+/* biome-ignore-all lint/a11y/useSemanticElements: Custom radio tiles implement roving focus and arrow selection. */
 import { defaultProjectIcon, type Project, ProjectIcon, type z } from '@inkadra/shared';
 import { Button, Dialog, DialogActions, NavItem, ProjectGlyph, TextField } from '@inkadra/ui';
-import { type KeyboardEvent, type MouseEvent, useEffect, useRef, useState } from 'react';
+import {
+  type CSSProperties,
+  type KeyboardEvent,
+  type MouseEvent,
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { updateProjectAppearance } from './projects.ts';
 import './project-appearance.css';
+
+/** Swatches in hue order, neutral last; the contract lists colours in the order they were added. */
+export const COLOR_ORDER = [
+  'blue',
+  'teal',
+  'green',
+  'yellow',
+  'orange',
+  'red',
+  'pink',
+  'purple',
+  'neutral',
+] as const satisfies readonly z.infer<typeof ProjectIcon>['color'][];
 
 type Appearance = z.infer<typeof ProjectIcon>;
 export const canEditProjectAppearance = (project: Pick<Project, 'myRole'>) =>
@@ -214,16 +235,21 @@ export function ProjectAppearanceDialog({
 }) {
   const { t } = useTranslation();
   const [icon, setIcon] = useState<Appearance>({ ...project.icon });
+  const [tab, setTab] = useState<'symbol' | 'emoji'>(project.icon.emoji ? 'emoji' : 'symbol');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(false);
   const allowed = canEditProjectAppearance(project);
-  const valid = ProjectIcon.safeParse(icon).success;
+  const disabled = busy || !allowed;
+  const valid = ProjectIcon.safeParse(icon).success && (tab !== 'emoji' || !!icon.emoji?.trim());
   async function save() {
     if (!allowed || !valid || busy) return;
     setBusy(true);
     setError(false);
     try {
-      const updated = await updateProjectAppearance(project.id, icon);
+      const updated = await updateProjectAppearance(project.id, {
+        ...icon,
+        emoji: tab === 'symbol' ? null : icon.emoji,
+      });
       onSaved?.(updated);
       onClose();
     } catch {
@@ -233,81 +259,252 @@ export function ProjectAppearanceDialog({
     }
   }
   return (
-    <Dialog
-      open
-      title={`${t('appearance.title')} · ${project.name}`}
-      onClose={onClose}
-      onCancel={(event) => {
-        if (busy) event.preventDefault();
-      }}
-    >
-      <form
-        className="settings__form"
-        onSubmit={(event) => {
-          event.preventDefault();
-          void save();
+    <div className="phone-sheet project-appearance">
+      <Dialog
+        open
+        title={t('appearance.title')}
+        onClose={onClose}
+        onCancel={(event) => {
+          if (busy) event.preventDefault();
         }}
       >
-        <div className="project-appearance__preview">
-          <ProjectGlyph {...icon} />
-          <span>{project.name}</span>
-        </div>
-        <fieldset disabled={busy || !allowed}>
-          <legend>{t('appearance.symbol')}</legend>
-          <div className="project-appearance__choices">
-            {ProjectIcon.shape.shape.options.map((shape) => (
-              <label key={shape}>
-                <input
-                  type="radio"
-                  name="projectShape"
-                  value={shape}
-                  checked={!icon.emoji && icon.shape === shape}
-                  onChange={() => setIcon({ ...icon, shape, emoji: null })}
-                />
-                <ProjectGlyph shape={shape} color={icon.color} />
-                {t(`appearance.shapes.${shape}`)}
-              </label>
+        <form
+          className="settings__form"
+          onSubmit={(event) => {
+            event.preventDefault();
+            void save();
+          }}
+        >
+          <button
+            type="button"
+            className="project-appearance__close"
+            aria-label={t('appearance.close')}
+            disabled={busy}
+            onClick={onClose}
+          >
+            ×
+          </button>
+          <div
+            className="project-appearance__preview"
+            style={
+              {
+                '--project-bg':
+                  icon.color === 'neutral'
+                    ? 'var(--ink-surface-1)'
+                    : `var(--ink-tag-${icon.color}-bg)`,
+              } as CSSProperties
+            }
+          >
+            <div className="project-appearance__tile">
+              <ProjectGlyph {...icon} />
+            </div>
+            <div>
+              <strong>{project.name}</strong>
+              <div className="ink-muted">{t('appearance.sidebarPreview')}</div>
+              <div className="project-appearance__sidebar">
+                <ProjectGlyph {...icon} />
+                {project.name}
+              </div>
+            </div>
+          </div>
+          <div
+            className="project-appearance__tabs"
+            role="tablist"
+            aria-label={t('appearance.title')}
+          >
+            {(['symbol', 'emoji'] as const).map((value) => (
+              <button
+                type="button"
+                key={value}
+                role="tab"
+                id={`appearance-tab-${value}`}
+                aria-selected={tab === value}
+                aria-controls={`appearance-panel-${value}`}
+                tabIndex={tab === value ? 0 : -1}
+                disabled={disabled}
+                onClick={() => {
+                  setTab(value);
+                }}
+                onKeyDown={(event) => {
+                  if (['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) {
+                    event.preventDefault();
+                    const next =
+                      event.key === 'Home'
+                        ? 'symbol'
+                        : event.key === 'End'
+                          ? 'emoji'
+                          : value === 'symbol'
+                            ? 'emoji'
+                            : 'symbol';
+                    setTab(next);
+
+                    document.getElementById(`appearance-tab-${next}`)?.focus();
+                  }
+                }}
+              >
+                {t(`appearance.${value}`)}
+              </button>
             ))}
           </div>
-          <label className="settings__label">
-            {t('appearance.color')}
-            <select
-              className="ink-input"
-              value={icon.color}
-              onChange={(event) =>
-                setIcon({ ...icon, color: event.target.value as Appearance['color'] })
-              }
+          <div
+            role="tabpanel"
+            id="appearance-panel-symbol"
+            aria-labelledby="appearance-tab-symbol"
+            hidden={tab !== 'symbol'}
+          >
+            <div
+              className="project-appearance__choices"
+              role="radiogroup"
+              aria-label={t('appearance.symbol')}
+              onKeyDown={radioKeys}
             >
-              {ProjectIcon.shape.color.options.map((color) => (
-                <option key={color} value={color}>
-                  {t(`appearance.colors.${color}`)}
-                </option>
+              {ProjectIcon.shape.shape.options.map((shape) => (
+                <button
+                  type="button"
+                  role="radio"
+                  aria-checked={icon.shape === shape}
+                  tabIndex={icon.shape === shape ? 0 : -1}
+                  disabled={disabled}
+                  key={shape}
+                  onClick={() => setIcon({ ...icon, shape })}
+                >
+                  <ProjectGlyph shape={shape} color={icon.color} />
+                  <span>{t(`appearance.shapes.${shape}`)}</span>
+                </button>
               ))}
-            </select>
-          </label>
-          <TextField
-            label={t('appearance.emoji')}
-            value={icon.emoji ?? ''}
-            maxLength={32}
-            placeholder="🎬"
-            onChange={(event) => setIcon({ ...icon, emoji: event.target.value || null })}
-          />
-          <p className="ink-muted">{t('appearance.emojiHelp')}</p>
+            </div>
+            <div className="project-appearance__color-label">
+              {t('appearance.color')} · {t(`appearance.colors.${icon.color}`)}
+            </div>
+            <div
+              className="project-appearance__swatches"
+              role="radiogroup"
+              aria-label={t('appearance.color')}
+              onKeyDown={radioKeys}
+            >
+              {COLOR_ORDER.map((color) => (
+                <button
+                  type="button"
+                  role="radio"
+                  aria-label={t(`appearance.colors.${color}`)}
+                  aria-checked={icon.color === color}
+                  tabIndex={icon.color === color ? 0 : -1}
+                  disabled={disabled}
+                  key={color}
+                  style={
+                    {
+                      '--swatch':
+                        color === 'neutral' ? 'var(--ink-text-muted)' : `var(--ink-tag-${color})`,
+                    } as CSSProperties
+                  }
+                  onClick={() => setIcon({ ...icon, color })}
+                />
+              ))}
+            </div>
+          </div>
+          <div
+            role="tabpanel"
+            id="appearance-panel-emoji"
+            aria-labelledby="appearance-tab-emoji"
+            hidden={tab !== 'emoji'}
+          >
+            <div
+              className="project-appearance__emojis"
+              role="radiogroup"
+              aria-label={t('appearance.emoji')}
+              onKeyDown={radioKeys}
+            >
+              {[
+                '🎬',
+                '🎥',
+                '📷',
+                '🎞️',
+                '🎭',
+                '🎨',
+                '💡',
+                '🎙️',
+                '🌆',
+                '🏔️',
+                '🌊',
+                '🚗',
+                '👗',
+                '🍝',
+                '⭐',
+                '🔥',
+              ].map((emoji, index, all) => (
+                <button
+                  type="button"
+                  role="radio"
+                  aria-label={emoji}
+                  aria-checked={icon.emoji === emoji}
+                  tabIndex={
+                    icon.emoji === emoji || (!all.includes(icon.emoji ?? '') && index === 0)
+                      ? 0
+                      : -1
+                  }
+                  disabled={disabled}
+                  key={emoji}
+                  onClick={() => setIcon({ ...icon, emoji })}
+                >
+                  {emoji}
+                </button>
+              ))}
+            </div>
+            <TextField
+              label={t('appearance.pasteEmoji')}
+              disabled={disabled}
+              value={icon.emoji ?? ''}
+              maxLength={32}
+              placeholder="🎬"
+              onChange={(event) => setIcon({ ...icon, emoji: event.target.value || null })}
+            />
+            <p className="ink-muted">{t('appearance.emojiHelp')}</p>
+          </div>
           {!valid && <p role="alert">{t('appearance.invalid')}</p>}
-          <Button type="button" onClick={() => setIcon(defaultProjectIcon(project.id))}>
-            {t('appearance.reset')}
-          </Button>
-        </fieldset>
-        {error && <p role="alert">{t('appearance.error')}</p>}
-        <DialogActions>
-          <Button type="button" disabled={busy} onClick={onClose}>
-            {t('project.cancel')}
-          </Button>
-          <Button type="submit" variant="primary" disabled={busy || !allowed || !valid}>
-            {t('settings.save')}
-          </Button>
-        </DialogActions>
-      </form>
-    </Dialog>
+          {error && <p role="alert">{t('appearance.error')}</p>}
+          <DialogActions>
+            <Button
+              type="button"
+              variant="ghost"
+              className="project-appearance__reset"
+              disabled={disabled}
+              onClick={() => {
+                setIcon(defaultProjectIcon(project.id));
+                setTab('symbol');
+              }}
+            >
+              {t('appearance.reset')}
+            </Button>
+            <Button type="button" disabled={busy} onClick={onClose}>
+              {t('project.cancel')}
+            </Button>
+            <Button type="submit" variant="primary" disabled={busy || !allowed || !valid}>
+              {t('settings.save')}
+            </Button>
+          </DialogActions>
+        </form>
+      </Dialog>
+    </div>
   );
+}
+
+/** Roving focus and selection for every tile/swatches group. */
+function radioKeys(event: KeyboardEvent<HTMLDivElement>) {
+  if (!['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End'].includes(event.key))
+    return;
+  const items = [
+    ...event.currentTarget.querySelectorAll<HTMLButtonElement>('[role="radio"]:not(:disabled)'),
+  ];
+  if (!items.length) return;
+  event.preventDefault();
+  const current = items.indexOf(document.activeElement as HTMLButtonElement);
+  const next =
+    event.key === 'Home'
+      ? 0
+      : event.key === 'End'
+        ? items.length - 1
+        : (current + (['ArrowLeft', 'ArrowUp'].includes(event.key) ? -1 : 1) + items.length) %
+          items.length;
+  items[next]?.focus();
+  items[next]?.click();
 }
