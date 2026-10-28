@@ -2,7 +2,7 @@
 import { createElement, updateElement } from '@inkadra/canvas-core';
 import type { Element } from '@inkadra/doc-schema';
 import type { Asset } from '@inkadra/shared';
-import { Avatar, Button } from '@inkadra/ui';
+import { Avatar, Button, Icon } from '@inkadra/ui';
 import { memo, useContext, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useClassifications } from '../lib/classifications.ts';
@@ -401,7 +401,7 @@ export function MediaViewer({
               onClick={gallery.onCompare}
             >
               <span className="viewer__action-icon" aria-hidden="true">
-                ◫
+                <Icon name="column" size={18} />
               </span>
               <span className="viewer__action-label">{t('moodboard.compare')}</span>
             </button>
@@ -415,7 +415,7 @@ export function MediaViewer({
             aria-keyshortcuts="Space"
           >
             <span className="viewer__action-icon" aria-hidden="true">
-              ⌕
+              <Icon name="fit" size={18} />
             </span>
             <span className="viewer__action-label">
               {zoom100 ? t('viewer.zoomFit') : t('viewer.zoom100')}
@@ -428,7 +428,7 @@ export function MediaViewer({
             aria-label={t('viewer.close')}
           >
             <span className="viewer__action-icon" aria-hidden="true">
-              ×
+              <Icon name="close" size={18} />
             </span>
             <span className="viewer__action-label">{t('viewer.close')}</span>{' '}
             <span className="viewer__kbd">{t('viewer.keys.esc')}</span>
@@ -625,7 +625,7 @@ export function MediaViewer({
           <dl className="viewer__facts">
             <dt>{t('viewer.size')}</dt>
             <dd>
-              {ready.width} × {ready.height}
+              {ready.width} <Icon name="close" size={18} /> {ready.height}
             </dd>
           </dl>
         )}
