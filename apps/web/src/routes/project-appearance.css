@@ -172,8 +172,9 @@
   color: var(--swatch);
   cursor: pointer;
 }
+/* The surface-coloured border leaves a gap; the ring outside it marks the choice. */
 .project-appearance__swatches [aria-checked="true"] {
-  box-shadow: inset 0 0 0 2px currentColor;
+  box-shadow: 0 0 0 2px var(--swatch);
 }
 .project-appearance__emojis {
   display: grid;
