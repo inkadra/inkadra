@@ -142,9 +142,13 @@
       "call": "Convocazione",
       "location": "Location",
       "wrap": "Fine prevista",
-      "openSchedule": "Apri piano riprese"
+      "openSchedule": "Apri piano riprese",
+      "moreDays_one": "+{{count}} altra giornata oggi",
+      "moreDays_other": "+{{count}} altre giornate oggi",
+      "fewerDays": "Mostra meno"
     },
-    "recentBoards": "Board recenti",
+    "allProjects": "Tutti i progetti →",
+    "recentBoards": "Recenti",
     "continue": "Continua",
     "recentBoardsHint": "ordinate per ultima modifica",
     "noRecentBoards": "Ancora nessuna board. Creane una o parti da un modello.",

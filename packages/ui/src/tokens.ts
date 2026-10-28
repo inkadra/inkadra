@@ -43,6 +43,10 @@ export const dark = {
   'tag-green': '#9FE0B4',
   'logo-tile': '#EDEDED',
   'logo-ink': '#0E0E10',
+  'tag-blue-bg': '#1E2A44',
+  'tag-orange-bg': '#35271F',
+  'tag-purple-bg': '#2D2540',
+  'tag-green-bg': '#20362A',
 } as const;
 
 export type ColorToken = keyof typeof dark;
@@ -85,6 +89,10 @@ export const light: Record<ColorToken, string> = {
   'tag-green': '#23743F',
   'logo-tile': '#161616',
   'logo-ink': '#FAFAF8',
+  'tag-blue-bg': '#E6EDFB',
+  'tag-orange-bg': '#FAEDE4',
+  'tag-purple-bg': '#EFEAF9',
+  'tag-green-bg': '#E7F3EB',
 };
 
 export const space = { 1: 4, 2: 8, 3: 12, 4: 16, 6: 24, 8: 32, 12: 48 } as const;

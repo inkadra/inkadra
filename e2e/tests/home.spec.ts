@@ -29,10 +29,11 @@ async function signIn(page: Page) {
 
 test('home shows today’s shooting day and starts from templates', async ({ page }) => {
   const origin = await signIn(page);
+  const projectName = `Home overview ${Date.now()}`;
   const project = await (
     await page.request.post('/api/v1/projects', {
       headers: { origin },
-      data: { name: 'Home overview' },
+      data: { name: projectName },
     })
   ).json();
   // The browser's calendar date, as Home asks for it.
@@ -59,17 +60,27 @@ test('home shows today’s shooting day and starts from templates', async ({ pag
   await expect(todayCard).toContainText('Stazione Centrale');
   await expect(todayCard).toContainText('18:30');
   await expect(main.getByText(/oggi si gira a Stazione Centrale/)).toBeVisible();
-  // The project's own board shows as the project, not again among the recent boards.
+  await expect(main.getByRole('region', { name: 'Progetti recenti' })).toHaveCount(0);
   await expect(
     main
-      .getByRole('region', { name: 'Progetti recenti' })
-      .getByRole('link', { name: /Home overview/ }),
+      .getByRole('region', { name: 'Recenti', exact: true })
+      .getByRole('link', { name: projectName, exact: true }),
   ).toBeVisible();
-  await expect(
-    main
-      .getByRole('region', { name: 'Board recenti' })
-      .getByRole('link', { name: /Home overview/ }),
-  ).toHaveCount(0);
+  expect(await main.locator('.home__boards > a').count()).toBeLessThanOrEqual(4);
+
+  if (process.env.HOME_SCREENSHOTS) {
+    for (const theme of ['light', 'dark']) {
+      await page.evaluate((value) => {
+        localStorage.setItem('inkadra.theme', value);
+        window.dispatchEvent(new Event('inkadra-theme-change'));
+      }, theme);
+      await expect(page.locator('html')).toHaveAttribute('data-theme', theme);
+      await page.screenshot({
+        path: `/tmp/inkadra-review/home-after-${theme}.png`,
+        fullPage: true,
+      });
+    }
+  }
 
   // The same templates and form as New project and the guided setup.
   await main
@@ -84,7 +95,7 @@ test('home shows today’s shooting day and starts from templates', async ({ pag
   // Board layouts stay in New board.
   await page.getByRole('button', { name: 'Nuova board' }).click();
   const board = page.getByRole('dialog', { name: 'Nuova board' });
-  await board.getByLabel('Progetto').selectOption({ label: 'Home overview' });
+  await board.getByLabel('Progetto').selectOption({ label: projectName });
   await board.getByRole('radio', { name: /Produzione/ }).check();
   await expect(board.getByLabel('Nome della board')).toHaveValue('Produzione');
   await board.getByRole('button', { name: 'Crea board' }).click();
@@ -94,8 +105,10 @@ test('home shows today’s shooting day and starts from templates', async ({ pag
 
   await page.goto('/');
   await expect(
-    main.getByRole('region', { name: 'Board recenti' }).getByRole('link', { name: /Produzione/ }),
+    main
+      .getByRole('region', { name: 'Recenti', exact: true })
+      .getByRole('link', { name: /Produzione/ }),
   ).toBeVisible();
-  await todayCard.getByRole('link', { name: 'Apri piano riprese' }).click();
+  await todayCard.locator(`a[href="/p/${project.id}?view=schedule"]`).click();
   await expect(page).toHaveURL(new RegExp(`/p/${project.id}\\?view=schedule$`));
 });

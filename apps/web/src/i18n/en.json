@@ -142,8 +142,12 @@
       "call": "Call time",
       "location": "Location",
       "wrap": "Planned wrap",
-      "openSchedule": "Open schedule"
+      "openSchedule": "Open schedule",
+      "moreDays_one": "+{{count}} more shooting day today",
+      "moreDays_other": "+{{count}} more shooting days today",
+      "fewerDays": "Show less"
     },
+    "allProjects": "All projects →",
     "recentBoards": "Recent boards",
     "continue": "Continue",
     "recentBoardsHint": "by last edit",

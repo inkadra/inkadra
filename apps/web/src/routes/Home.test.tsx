@@ -2,11 +2,11 @@
 import type { Notification, PlannedShootingDay, Project, RecentBoard } from '@inkadra/shared';
 import { act } from 'react';
 import { createRoot } from 'react-dom/client';
-import { MemoryRouter, Route, Routes } from 'react-router';
+import { MemoryRouter } from 'react-router';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { api } from '../lib/api.ts';
 import { useProjects } from './AppLayout.tsx';
-import { Home, withoutRoots } from './Home.tsx';
+import { Home } from './Home.tsx';
 
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
@@ -198,9 +198,13 @@ it('shows today’s shooting day, recent boards and the last day of activity', a
   expect(board?.getAttribute('href')).toBe('/p/p1/b/storyboard1');
   // Project metadata describes the destination; it must not name a different link.
   const label = document.getElementById(board?.getAttribute('aria-labelledby') ?? '');
-  const description = document.getElementById(board?.getAttribute('aria-describedby') ?? '');
+  const description = (board?.getAttribute('aria-describedby') ?? '')
+    .split(' ')
+    .map((id) => document.getElementById(id)?.textContent)
+    .join(' ');
   expect(label?.textContent).toBe('Scene 4');
-  expect(description?.textContent).toContain('Last run');
+  expect(description).toContain('board.types.storyboard');
+  expect(description).toContain('Last run');
   expect(board?.textContent).toContain('board.types.storyboard');
   expect(board?.textContent).toContain('Scene 4');
   const activity = host.querySelectorAll('.home__activity li');
@@ -242,46 +246,81 @@ it('keeps the Today card with an error when only the shooting days fail', async 
   expect(host.textContent).not.toContain('home.summary.shooting');
 });
 
-it('keeps the empty Home greeting and opens onboarding only from its CTA', async () => {
-  const openNewProject = vi.fn();
-  context({ projects: [], shared: [], openNewProject });
+it('keeps the empty Home greeting and templates without a redundant projects section', async () => {
+  context({ projects: [], shared: [] });
   respond({});
-  await act(async () =>
-    root.render(
-      <MemoryRouter initialEntries={['/']}>
-        <Routes>
-          <Route path="/" element={<Home />} />
-          <Route path="/onboarding" element={<p>Setup destination</p>} />
-        </Routes>
-      </MemoryRouter>,
-    ),
-  );
+  await render();
   expect(host.querySelector('h1')?.textContent).toContain('Giulia');
-  expect(host.textContent).toContain('home.noProjects');
-  expect(host.textContent).not.toContain('Setup destination');
-  const buttons = [
-    ...host.querySelectorAll<HTMLButtonElement>(
-      '#home-projects button, [aria-labelledby="home-projects"] button',
-    ),
-  ];
-  const quickCreate = buttons.find((button) => button.textContent === 'nav.newProject');
-  expect(quickCreate).toBeDefined();
-  await act(async () => quickCreate?.click());
-  expect(openNewProject).toHaveBeenCalledOnce();
-  expect(host.textContent).not.toContain('Setup destination');
-  const guided = buttons.find((button) => button.textContent === 'onboarding.guidedSetup');
-  expect(guided).toBeDefined();
-  await act(async () => guided?.click());
-  expect(host.textContent).toBe('Setup destination');
+  expect(host.querySelector('[aria-labelledby="home-projects"]')).toBeNull();
+  expect(host.querySelectorAll('.home__template')).toHaveLength(6);
 });
 
-it('leaves out of recent boards the root boards already shown as recent projects', () => {
-  const root = { id: 'root1', projectId: 'p1', title: 'Last run' } as RecentBoard;
-  const child = { id: 'b2', projectId: 'p1', title: 'Moodboard' } as RecentBoard;
-  const other = { id: 'root9', projectId: 'p9', title: 'Elsewhere' } as RecentBoard;
-  expect(withoutRoots({ state: 'ready', items: [root, child, other] }, [project])).toEqual({
-    state: 'ready',
-    items: [child, other],
+it('shows root boards among the four recent boards without guessing kinds from titles', async () => {
+  context();
+  respond({
+    boards: Array.from(
+      { length: 6 },
+      (_, index) =>
+        ({
+          id: index === 0 ? project.rootBoardId : `b${index}`,
+          projectId: project.id,
+          parentBoardId: index === 0 ? null : project.rootBoardId,
+          title: index === 0 ? 'Moodboard' : `Board ${index}`,
+          kind: index === 1 ? 'storyboard' : 'board',
+          projectName: project.name,
+          editedAt: project.updatedAt,
+        }) as RecentBoard,
+    ),
   });
-  expect(withoutRoots({ state: 'loading' }, [project])).toEqual({ state: 'loading' });
+  await render();
+  const cards = host.querySelectorAll('.home__boards > a');
+  expect(cards).toHaveLength(4);
+  expect(cards[0]?.getAttribute('href')).toBe('/p/p1');
+  expect(cards[0]?.querySelector('.home__kind')?.textContent).toBe('board.types.board');
+  expect(cards[1]?.querySelector('.home__kind')?.getAttribute('data-kind')).toBe('storyboard');
+  expect(host.querySelector('.home__preview')?.getAttribute('data-tint')).toBe('blue');
+  expect(host.querySelector('[aria-labelledby="home-projects"]')).toBeNull();
+  expect(
+    host.querySelector('[aria-labelledby="home-recent"] .home__more')?.getAttribute('href'),
+  ).toBe('/projects');
+});
+
+it('shows one shooting day in the Today card and the others on request', async () => {
+  vi.useFakeTimers({ now: new Date(2026, 9, 26, 9, 0), toFake: ['Date'] });
+  context();
+  const day = (id: string, boardTitle: string): PlannedShootingDay => ({
+    id,
+    projectId: 'p1',
+    boardId: `plan-${id}`,
+    date: '2026-10-26',
+    callTime: '18:30',
+    wrap: null,
+    location: 'Central station',
+    notes: '',
+    blocks: [],
+    revision: 1,
+    boardTitle,
+    projectName: 'Last run',
+  });
+  respond({ days: [day('d1', 'Plan A'), day('d2', 'Plan B'), day('d3', 'Plan C')] });
+  await render();
+  const card = () => host.querySelector('.home__today') as HTMLElement;
+  expect(card().textContent).toContain('Plan A');
+  expect(card().textContent).not.toContain('Plan B');
+  const more = card().querySelector('button.home__more') as HTMLButtonElement;
+  expect(more.textContent).toBe('home.today.moreDays {"count":2}');
+  expect(more.getAttribute('aria-expanded')).toBe('false');
+  await act(async () => more.click());
+  expect(card().textContent).toContain('Plan B');
+  expect(card().textContent).toContain('Plan C');
+});
+
+it('links to all projects only for people who have projects', async () => {
+  context({ projects: [] });
+  respond({});
+  await render();
+  expect(host.querySelector('a[href="/projects"]')).toBeNull();
+  context();
+  await render();
+  expect(host.querySelector('a[href="/projects"]')?.textContent).toBe('home.allProjects');
 });

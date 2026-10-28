@@ -41,6 +41,10 @@
   --ink-tag-green: #9FE0B4;
   --ink-logo-tile: #EDEDED;
   --ink-logo-ink: #0E0E10;
+  --ink-tag-blue-bg: #1E2A44;
+  --ink-tag-orange-bg: #35271F;
+  --ink-tag-purple-bg: #2D2540;
+  --ink-tag-green-bg: #20362A;
 }
 
 :root[data-theme='light'] {
@@ -82,6 +86,10 @@
   --ink-tag-green: #23743F;
   --ink-logo-tile: #161616;
   --ink-logo-ink: #FAFAF8;
+  --ink-tag-blue-bg: #E6EDFB;
+  --ink-tag-orange-bg: #FAEDE4;
+  --ink-tag-purple-bg: #EFEAF9;
+  --ink-tag-green-bg: #E7F3EB;
 }
 
 @media (prefers-color-scheme: light) {
@@ -124,5 +132,9 @@
     --ink-tag-green: #23743F;
     --ink-logo-tile: #161616;
     --ink-logo-ink: #FAFAF8;
+    --ink-tag-blue-bg: #E6EDFB;
+    --ink-tag-orange-bg: #FAEDE4;
+    --ink-tag-purple-bg: #EFEAF9;
+    --ink-tag-green-bg: #E7F3EB;
   }
 }
