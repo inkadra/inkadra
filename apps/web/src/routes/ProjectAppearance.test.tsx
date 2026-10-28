@@ -229,6 +229,12 @@ it('saves from Symbol with an invalid emoji by clearing it', async () => {
   expect(host.querySelector('[role="alert"]')).not.toBeNull();
   await act(async () => host.querySelector<HTMLButtonElement>('#appearance-tab-symbol')?.click());
   expect(host.querySelector('[role="alert"]')).toBeNull();
-  await act(async () => host.querySelector('form')?.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })));
-  expect(patch).toHaveBeenCalledWith(`/projects/${project.id}`, { icon: { ...project.icon, emoji: null } });
+  await act(async () =>
+    host
+      .querySelector('form')
+      ?.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })),
+  );
+  expect(patch).toHaveBeenCalledWith(`/projects/${project.id}`, {
+    icon: { ...project.icon, emoji: null },
+  });
 });
