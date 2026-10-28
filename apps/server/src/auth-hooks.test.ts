@@ -60,3 +60,8 @@ it('applies the TOTP budget to the authenticated user across sessions', async ()
   } as never);
   expect(budgets.consume).toHaveBeenCalledWith('totp:member', 10, 300);
 });
+
+it('clears second-factor budgets after verification within an existing session', async () => {
+  await auth.options.hooks?.after?.(ctx('/two-factor/verify-totp', { session: { user } }) as never);
+  expect(budgets.storage.delete).toHaveBeenCalledWith('totp:member');
+});

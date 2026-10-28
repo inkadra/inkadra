@@ -249,13 +249,9 @@ export function createAuth(config: Config, db: Database, deps: AuthDeps = {}) {
               await security.storage.delete(`account:${address}`);
             }
           }
-          if (
-            enabled &&
-            ok &&
-            ctx.path.startsWith('/two-factor/verify-') &&
-            ctx.context.newSession
-          ) {
-            const user = ctx.context.newSession.user;
+          const verifiedUser = ctx.context.newSession?.user ?? ctx.context.session?.user;
+          if (enabled && ok && ctx.path.startsWith('/two-factor/verify-') && verifiedUser) {
+            const user = verifiedUser;
             await security.storage.delete(`login:${user.email.toLowerCase()}:${ip}`);
             await security.storage.delete(`account:${user.email.toLowerCase()}`);
             await security.storage.delete(`totp:${user.id}`);
