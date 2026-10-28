@@ -2098,14 +2098,22 @@
       "diamond": "Rombo",
       "circle": "Cerchio",
       "triangle": "Triangolo",
-      "square": "Quadrato"
+      "square": "Quadrato",
+      "hexagon": "Esagono",
+      "star": "Stella",
+      "pentagon": "Pentagono",
+      "cross": "Croce"
     },
     "colors": {
       "blue": "Blu",
       "orange": "Arancione",
       "purple": "Viola",
       "green": "Verde",
-      "neutral": "Neutro"
+      "neutral": "Neutro",
+      "teal": "Petrolio",
+      "yellow": "Giallo",
+      "red": "Rosso",
+      "pink": "Rosa"
     }
   }
 }

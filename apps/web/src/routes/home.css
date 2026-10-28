@@ -448,3 +448,16 @@ a.home__activity-item:hover {
     flex-wrap: wrap;
   }
 }
+
+.home__preview[data-tint="teal"] {
+  --tint: var(--ink-tag-teal);
+}
+.home__preview[data-tint="yellow"] {
+  --tint: var(--ink-tag-yellow);
+}
+.home__preview[data-tint="red"] {
+  --tint: var(--ink-tag-red);
+}
+.home__preview[data-tint="pink"] {
+  --tint: var(--ink-tag-pink);
+}

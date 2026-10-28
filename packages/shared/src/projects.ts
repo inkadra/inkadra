@@ -8,8 +8,27 @@ export type ProjectRole = z.infer<typeof ProjectRole>;
 
 export const ProjectIcon = z
   .object({
-    shape: z.enum(['diamond', 'circle', 'triangle', 'square']),
-    color: z.enum(['blue', 'orange', 'purple', 'green', 'neutral']),
+    shape: z.enum([
+      'diamond',
+      'circle',
+      'triangle',
+      'square',
+      'hexagon',
+      'star',
+      'pentagon',
+      'cross',
+    ]),
+    color: z.enum([
+      'blue',
+      'orange',
+      'purple',
+      'green',
+      'neutral',
+      'teal',
+      'yellow',
+      'red',
+      'pink',
+    ]),
     emoji: z
       .string()
       .max(32)

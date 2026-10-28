@@ -2098,14 +2098,22 @@
       "diamond": "Diamond",
       "circle": "Circle",
       "triangle": "Triangle",
-      "square": "Square"
+      "square": "Square",
+      "hexagon": "Hexagon",
+      "star": "Star",
+      "pentagon": "Pentagon",
+      "cross": "Cross"
     },
     "colors": {
       "blue": "Blue",
       "orange": "Orange",
       "purple": "Purple",
       "green": "Green",
-      "neutral": "Neutral"
+      "neutral": "Neutral",
+      "teal": "Teal",
+      "yellow": "Yellow",
+      "red": "Red",
+      "pink": "Pink"
     }
   }
 }

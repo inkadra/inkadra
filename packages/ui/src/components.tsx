@@ -183,9 +183,21 @@ const glyphColor = {
   purple: 'var(--ink-tag-purple)',
   green: 'var(--ink-tag-green)',
   neutral: 'var(--ink-text-muted)',
+  teal: 'var(--ink-tag-teal)',
+  yellow: 'var(--ink-tag-yellow)',
+  red: 'var(--ink-tag-red)',
+  pink: 'var(--ink-tag-pink)',
 } as const;
 
-export type GlyphShape = 'diamond' | 'circle' | 'triangle' | 'square';
+export type GlyphShape =
+  | 'diamond'
+  | 'circle'
+  | 'triangle'
+  | 'square'
+  | 'hexagon'
+  | 'star'
+  | 'pentagon'
+  | 'cross';
 export type GlyphColor = keyof typeof glyphColor;
 
 /** Project marker: paired frames echo the logo; names remain the accessible identity. */
@@ -215,7 +227,13 @@ export function ProjectGlyph({
         {emoji}
       </span>
     );
-  const stroke = glyphColor[color];
+  const stroke = glyphColor[color] ?? glyphColor.neutral;
+  if (
+    !['diamond', 'circle', 'triangle', 'square', 'hexagon', 'star', 'pentagon', 'cross'].includes(
+      shape,
+    )
+  )
+    shape = 'circle';
   const common = { fill: 'none', stroke, strokeWidth: 1.6, strokeLinejoin: 'round' as const };
   return (
     <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true" style={{ flex: 'none' }}>
@@ -241,6 +259,33 @@ export function ProjectGlyph({
         <>
           <rect x="2.5" y="2.5" width="11" height="11" rx="2" {...common} />
           <rect x="6" y="6" width="4" height="4" rx="0.5" {...common} />
+        </>
+      )}
+      {shape === 'hexagon' && (
+        <>
+          <path d="M8 1.5l5.6 3.25v6.5L8 14.5l-5.6-3.25v-6.5z" {...common} />
+          <path d="M8 5.4l2.25 1.3v2.6L8 10.6 5.75 9.3V6.7z" {...common} />
+        </>
+      )}
+      {shape === 'star' && (
+        <>
+          <path
+            d="M8 1.5l1.9 4.1 4.5.5-3.35 3 .95 4.4L8 11.3l-4 2.2.95-4.4-3.35-3 4.5-.5z"
+            {...common}
+          />
+          <circle cx="8" cy="8.2" r="1.6" {...common} />
+        </>
+      )}
+      {shape === 'pentagon' && (
+        <>
+          <path d="M8 1.6l6.3 4.6-2.4 7.4H4.1L1.7 6.2z" {...common} />
+          <path d="M8 5.6l2.5 1.8-.95 2.9h-3.1l-.95-2.9z" {...common} />
+        </>
+      )}
+      {shape === 'cross' && (
+        <>
+          <path d="M6 1.8h4v4.2h4.2v4H10v4.2H6V10H1.8V6H6z" {...common} />
+          <rect x="6.9" y="6.9" width="2.2" height="2.2" {...common} />
         </>
       )}
     </svg>
