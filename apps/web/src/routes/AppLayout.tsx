@@ -27,8 +27,8 @@ import { useTranslation } from 'react-i18next';
 import {
   createPath,
   type Location,
-  Navigate,
   UNSAFE_LocationContext as LocationContext,
+  Navigate,
   useLocation,
   useNavigate,
   useNavigationType,
@@ -232,9 +232,7 @@ export function AppLayout({ home }: { home?: ReactNode }) {
   if (!user)
     return (
       <Navigate
-        to={
-          url.pathname === '/' ? '/login' : `/login?next=${encodeURIComponent(url.pathname)}`
-        }
+        to={url.pathname === '/' ? '/login' : `/login?next=${encodeURIComponent(url.pathname)}`}
         replace
       />
     );

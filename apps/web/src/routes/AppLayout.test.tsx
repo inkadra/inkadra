@@ -1,7 +1,6 @@
 // @vitest-environment happy-dom
-import { act } from 'react';
+import { act, useEffect } from 'react';
 import { createRoot } from 'react-dom/client';
-import { useEffect } from 'react';
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router';
 import { expect, it, vi } from 'vitest';
 import { AppLayout } from './AppLayout.tsx';

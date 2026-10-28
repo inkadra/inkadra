@@ -67,9 +67,7 @@ it('frames a page with the navigation, its title and the save status', async () 
 it('widens for Members and counts the active ones', async () => {
   const dialog = await render('/settings/team');
   expect(dialog.classList.contains('settings-window--wide')).toBe(true);
-  expect(dialog.querySelector('[aria-current="page"] .settings-nav__count')?.textContent).toBe(
-    '2',
-  );
+  expect(dialog.querySelector('[aria-current="page"] .settings-nav__count')?.textContent).toBe('2');
 });
 
 it('closes on Escape, the close button and a backdrop click, never from inside', async () => {

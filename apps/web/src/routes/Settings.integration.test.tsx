@@ -82,7 +82,9 @@ it('lays Account out as one column of groups, ending with the danger zone', asyn
     'settings.tokens.title',
     'settingsUi.dangerZone',
   ]);
-  expect(host.querySelector('.settings-card--danger h3')?.textContent).toBe('settingsUi.dangerZone');
+  expect(host.querySelector('.settings-card--danger h3')?.textContent).toBe(
+    'settingsUi.dangerZone',
+  );
 });
 
 it('keeps email controls only in Notifications and gates admin pages', async () => {
