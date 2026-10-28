@@ -209,6 +209,11 @@ describe('MediaViewer video playback', () => {
     );
 
     expect(html).toContain('<iframe');
+    expect(html).toContain('viewer__media-wrap--embed');
+    expect(html).toContain('viewer__action-icon');
+    expect(html).toContain('viewer__action-label');
+    expect(html).toContain('aria-label="Chiudi"');
+    expect(html).toContain('aria-label="viewer.zoom100"');
     expect(html).toContain(
       'src="https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ?autoplay=1&amp;rel=0"',
     );

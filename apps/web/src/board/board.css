@@ -2041,8 +2041,8 @@ button.card__play {
 }
 @media (max-width: 767px) {
   .viewer__stage-header {
-    gap: var(--ink-space-2);
-    padding-inline: var(--ink-space-3);
+    gap: 8px;
+    padding-inline: 12px;
   }
   .viewer__stage-title {
     flex: 1;
@@ -2062,6 +2062,6 @@ button.card__play {
   }
   .viewer__action-icon {
     display: inline;
-    font-size: var(--ink-font-size-lg);
+    font-size: 18px;
   }
 }
