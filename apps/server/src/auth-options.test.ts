@@ -48,7 +48,15 @@ describe('auth security regressions', () => {
 
 it('keeps session lookup and sign-out available when the limiter is down', async () => {
   const { db, sql } = createDatabase(config.DATABASE_URL);
-  const auth = createAuth({ ...config, REDIS_URL: 'redis://127.0.0.1:1' }, db);
+  const auth = createAuth(
+    {
+      ...config,
+      NODE_ENV: 'production',
+      AUTH_RATE_LIMITS: 'off',
+      REDIS_URL: 'redis://127.0.0.1:1',
+    },
+    db,
+  );
   const call = (path: string, method = 'GET', body?: unknown) =>
     auth.handler(
       new Request(`https://example.com/api/auth${path}`, {
@@ -68,6 +76,14 @@ it('keeps session lookup and sign-out available when the limiter is down', async
         })
       ).status,
     ).toBe(503);
+    for (const path of [
+      '/sign-in/magic-link',
+      '/request-password-reset',
+      '/two-factor/verify-totp',
+    ])
+      expect(
+        (await call(path, 'POST', { email: 'person@example.com', code: '000000' })).status,
+      ).toBe(503);
   } finally {
     auth.closeSecurity();
     await sql.end();

@@ -58,5 +58,5 @@ it('applies the TOTP budget to the authenticated user across sessions', async ()
     ...ctx('/two-factor/verify-totp', context),
     getSignedCookie: async () => null,
   } as never);
-  expect(budgets.take).toHaveBeenCalledWith('totp:member', 10, 300);
+  expect(budgets.consume).toHaveBeenCalledWith('totp:member', 10, 300);
 });

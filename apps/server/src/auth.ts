@@ -179,6 +179,8 @@ export function createAuth(config: Config, db: Database, deps: AuthDeps = {}) {
         }
         const sensitive =
           ctx.path.startsWith('/sign-in/') ||
+          ctx.path.startsWith('/callback/') ||
+          ctx.path === '/magic-link/verify' ||
           ctx.path.startsWith('/two-factor/') ||
           ctx.path === '/request-password-reset' ||
           ctx.path === '/reset-password';
@@ -213,8 +215,13 @@ export function createAuth(config: Config, db: Database, deps: AuthDeps = {}) {
               ? await ctx.context.internalAdapter.findVerificationValue(challenge)
               : null;
             const userId = session?.user.id ?? record?.value;
-            if (userId && !(await security.take(`totp:${userId}`, 10, 300)))
-              throw new APIError('TOO_MANY_REQUESTS', { message: 'Too many attempts.' });
+            if (userId) {
+              const result = await security.consume(`totp:${userId}`, 10, 300);
+              if (!result.allowed) {
+                ctx.setHeader('retry-after', String(result.retryAfter));
+                throw new APIError('TOO_MANY_REQUESTS', { message: 'Too many attempts.' });
+              }
+            }
           }
         } catch (err) {
           if (err instanceof APIError) throw err;
