@@ -28,40 +28,40 @@
 }
 
 @media (width < 768px) {
-  .story__bar.story__bar {
+  :is(.story, .shots) > .story__bar {
     flex-wrap: nowrap;
     gap: 6px;
     padding: 6px 12px;
   }
-  .story__bar .view-options__inline {
+  :is(.story, .shots) > .story__bar .view-options__inline {
     display: none;
   }
-  .story__bar .view-options__toggle {
+  :is(.story, .shots) > .story__bar .view-options__toggle {
     display: inline-grid;
     flex: none;
     width: 44px;
     height: 44px;
   }
-  .story__bar .film-compact-btn {
+  :is(.story, .shots) > .story__bar .film-compact-btn {
     flex: none;
     width: 44px;
     min-height: 44px;
     padding: 0;
     justify-content: center;
   }
-  .story__bar .film-compact-btn__label {
+  :is(.story, .shots) > .story__bar .film-compact-btn__label {
     display: none;
   }
-  .story__bar .story__modes {
+  :is(.story, .shots) > .story__bar .story__modes {
     flex: 1 1 auto;
     min-width: 0;
   }
-  .story__bar .story__mode {
+  :is(.story, .shots) > .story__bar .story__mode {
     flex: 1;
     min-height: 44px;
     padding: 0 6px;
   }
-  .story__bar .ink-header__spacer {
+  :is(.story, .shots) > .story__bar .ink-header__spacer {
     display: none;
   }
 

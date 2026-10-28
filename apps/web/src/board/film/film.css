@@ -786,10 +786,12 @@ select.film-status {
   }
 }
 .shots > .story__bar > .view-tabs,
-.shots > .story__bar > .ink-btn {
+.shots > .story__bar > .ink-btn,
+.shots > .story__bar > .view-options__inline > .ink-btn {
   flex: none;
 }
-.shots > .story__bar > select.ink-input {
+.shots > .story__bar > select.ink-input,
+.shots > .story__bar > .view-options__inline > select.ink-input {
   flex: 0 1 auto;
   min-width: 96px;
   max-width: 180px;
