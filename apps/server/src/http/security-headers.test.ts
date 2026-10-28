@@ -28,6 +28,8 @@ describe('browser security policy', () => {
         HSTS_ENABLED: 'true',
         STORAGE_DRIVER: 's3',
         S3_BUCKET: 'media',
+        S3_FORCE_PATH_STYLE: 'true',
+        CSP_REPORT_URI: 'https://reports.example/csp',
         S3_ENDPOINT: 'https://objects.example',
       }),
     );
@@ -35,6 +37,17 @@ describe('browser security policy', () => {
       "connect-src 'self' wss://inkadra.example:8443 https://objects.example",
     );
     expect(h['strict-transport-security']).toBe('max-age=31536000');
+    expect(h['content-security-policy']).toContain('report-uri https://reports.example/csp');
+    expect(
+      securityHeaders(
+        config({
+          STORAGE_DRIVER: 's3',
+          S3_BUCKET: 'media',
+          S3_ENDPOINT: 'https://objects.example:9000',
+          S3_FORCE_PATH_STYLE: 'false',
+        }),
+      )['content-security-policy-report-only'],
+    ).toContain('https://media.objects.example:9000');
   });
   it('never sends HSTS or upgrades insecure requests on local HTTP', () => {
     const h = securityHeaders(

@@ -3,7 +3,7 @@ import { authSecurity } from './auth-security.ts';
 import { loadConfig } from './config.ts';
 
 describe('authentication budgets', () => {
-  it('reserves account attempts before concurrent password checks and releases on success', async () => {
+  it('atomically limits concurrent increments and releases on success', async () => {
     const store = authSecurity(
       loadConfig({
         NODE_ENV: 'test',

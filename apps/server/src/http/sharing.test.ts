@@ -9,6 +9,7 @@ import { loadConfig } from '../config.ts';
 import { createDatabase, runMigrations } from '../db/client.ts';
 import {
   invitation as invitationTable,
+  personalToken,
   project,
   session as sessionTable,
   verification,
@@ -940,6 +941,10 @@ describe.skipIf(!url)('sharing, invitations, tokens and accounts (needs DATABASE
       name: 'Before reset',
     });
     expect(token.status).toBe(201);
+    await db
+      .update(personalToken)
+      .set({ client: 'mobile' })
+      .where(eq(personalToken.id, token.body.id));
     mailer.sent.length = 0;
     expect(
       (

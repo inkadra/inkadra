@@ -61,6 +61,7 @@ export function pwa(): Plugin {
       const offline = bundle[OFFLINE_PAGE.slice(1)];
       const version = createHash('sha256')
         .update(precache.join('\n'))
+        .update(offlineScript)
         .update(offline?.type === 'asset' ? offline.source : '')
         .digest('hex')
         .slice(0, 16);

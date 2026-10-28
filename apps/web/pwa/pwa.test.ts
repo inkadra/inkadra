@@ -32,8 +32,9 @@ describe('offline page', () => {
     expect(html).toContain('<html lang="it">');
   });
 
-  it('needs nothing from the server', () => {
-    expect(html).not.toMatch(/(src|href)=/);
+  it('uses only the precached external script under enforced CSP', () => {
+    expect(html).toContain('<script src="/offline.js"></script>');
+    expect(html).not.toContain('<script>');
   });
 });
 
