@@ -223,6 +223,13 @@ describe.skipIf(!url)('sharing, invitations, tokens and accounts (needs DATABASE
     const closed = await signUp('editor');
     expect(closed.status).toBe(403);
     expect(closed.body.code).toBe('REGISTRATION_CLOSED');
+    const existing = await call(null, 'POST', '/api/auth/sign-up/email', {
+      email: as.owner.email,
+      password: PASSWORD,
+      name: 'Probe',
+    });
+    expect(existing.status).toBe(closed.status);
+    expect(existing.body.code).toBe(closed.body.code);
 
     // Only administrators invite to the instance alone.
     const link = await call('owner', 'POST', '/api/v1/invitations', { kind: 'link' });
@@ -798,6 +805,18 @@ describe.skipIf(!url)('sharing, invitations, tokens and accounts (needs DATABASE
     await expectSessionCookie(await call(null, 'GET', `${link.pathname}${link.search}`));
   });
 
+  it('shares the recipient email budget across magic links and password resets', async () => {
+    for (const email of [as.outsider.email, 'unregistered-budget@example.com']) {
+      const magic = () =>
+        call(null, 'POST', '/api/auth/sign-in/magic-link', { email: email.toUpperCase() });
+      const reset = () => call(null, 'POST', '/api/auth/request-password-reset', { email });
+      expect((await magic()).status).toBe(200);
+      expect((await reset()).status).toBe(200);
+      expect((await magic()).status).toBe(200);
+      expect((await reset()).status).toBe(429);
+    }
+  });
+
   it('asks for a code after enabling two-factor authentication', async () => {
     const enabled = await call('viewer', 'POST', '/api/auth/two-factor/enable', {
       password: PASSWORD,
@@ -866,6 +885,15 @@ describe.skipIf(!url)('sharing, invitations, tokens and accounts (needs DATABASE
         { code: enabled.body.backupCodes[0] },
       ),
     );
+    mailer.sent.length = 0;
+    const disabled = await call('viewer', 'POST', '/api/auth/two-factor/disable', {
+      password: PASSWORD,
+    });
+    expect(disabled.status).toBe(200);
+    expect(mailer.sent.some((m) => m.subject === 'Autenticazione a due fattori disabilitata')).toBe(
+      true,
+    );
+    as.viewer.cookie = cookieOf(disabled.cookies, 'inkadra.session_token');
   });
 
   it('rotates the password session only through its httpOnly cookie', async () => {
@@ -885,12 +913,24 @@ describe.skipIf(!url)('sharing, invitations, tokens and accounts (needs DATABASE
     ).toBe(true);
     expect((await call('guest', 'GET', '/api/v1/me')).status).toBe(401);
     const changedCookie = cookieOf(changed.cookies, 'inkadra.session_token');
-    const token = await call({ cookie: changedCookie }, 'POST', '/api/v1/me/tokens', { name: 'Before reset' });
+    const token = await call({ cookie: changedCookie }, 'POST', '/api/v1/me/tokens', {
+      name: 'Before reset',
+    });
     expect(token.status).toBe(201);
     mailer.sent.length = 0;
-    expect((await call(null, 'POST', '/api/auth/request-password-reset', { email: as.guest.email, redirectTo: '/login' })).status).toBe(200);
+    expect(
+      (
+        await call(null, 'POST', '/api/auth/request-password-reset', {
+          email: as.guest.email,
+          redirectTo: '/login',
+        })
+      ).status,
+    ).toBe(200);
     const resetUrl = new URL(mailer.sent[0]?.text.match(/https?:\/\/\S+/)?.[0] ?? '');
-    const reset = await call(null, 'POST', '/api/auth/reset-password', { token: resetUrl.pathname.split('/').pop(), newPassword: `${PASSWORD}-reset` });
+    const reset = await call(null, 'POST', '/api/auth/reset-password', {
+      token: resetUrl.pathname.split('/').pop(),
+      newPassword: `${PASSWORD}-reset`,
+    });
     expect(reset.status).toBe(200);
     expect((await call({ cookie: changedCookie }, 'GET', '/api/v1/me')).status).toBe(401);
     expect((await call({ bearer: token.body.token }, 'GET', '/api/v1/me')).status).toBe(401);

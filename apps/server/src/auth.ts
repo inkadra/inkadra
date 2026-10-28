@@ -171,8 +171,15 @@ export function createAuth(config: Config, db: Database, deps: AuthDeps = {}) {
         }
         if (ctx.path === '/sign-up/email') {
           const invitation = await invitationFromCookie(db, ctx.headers?.get('cookie'));
-          if (invitation && typeof ctx.body?.email === 'string' && !invitedAddressMatches(invitation, ctx.body.email))
-            throw new APIError('FORBIDDEN', { code: 'INVITATION_EMAIL_MISMATCH', message: 'Use the invited email address.' });
+          if (
+            invitation &&
+            typeof ctx.body?.email === 'string' &&
+            !invitedAddressMatches(invitation, ctx.body.email)
+          )
+            throw new APIError('FORBIDDEN', {
+              code: 'INVITATION_EMAIL_MISMATCH',
+              message: 'Use the invited email address.',
+            });
         }
         const address =
           typeof ctx.body?.email === 'string' ? ctx.body.email.trim().toLowerCase() : '';
