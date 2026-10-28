@@ -402,7 +402,7 @@ function BoardScreen({
                 title={t(`film.views.${v}`)}
                 onClick={() => chooseView(v)}
               >
-                <Icon name={viewIcon(v)} size={14} />
+                <Icon name={viewIcon(v)} contentKind={v} size={14} />
                 <span className="view-tabs__label">{t(`film.views.${v}`)}</span>
               </button>
             ))}

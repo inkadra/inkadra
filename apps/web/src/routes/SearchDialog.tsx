@@ -319,7 +319,11 @@ export function SearchDialog({
                     onMouseEnter={() => setActive(i)}
                     onClick={() => open(hit)}
                   >
-                    <Icon name={iconOf(hit)} size={16} />
+                    <Icon
+                      name={iconOf(hit)}
+                      contentKind={hit.kind === 'board' ? (hit.boardKind ?? 'board') : undefined}
+                      size={16}
+                    />
                     <span className="search__text">
                       <span className="search__title">{hit.title}</span>
                       {hit.snippet && hit.snippet !== hit.title && (
