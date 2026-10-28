@@ -355,7 +355,9 @@ function LinkCard({ element, width }: { element: Of<'link'>; width: number }) {
                 event.stopPropagation();
                 openElement?.(element);
               }}
-              aria-label={t('board.menu.playLink', { title: element.title || (href ? new URL(href).hostname : element.url) })}
+              aria-label={t('board.menu.playLink', {
+                title: element.title || (href ? new URL(href).hostname : element.url),
+              })}
             >
               <Icon name="play" size={16} />
             </button>
@@ -372,7 +374,9 @@ function LinkCard({ element, width }: { element: Of<'link'>; width: number }) {
               event.stopPropagation();
               openElement?.(element);
             }}
-            aria-label={t('board.menu.playLink', { title: element.title || (href ? new URL(href).hostname : element.url) })}
+            aria-label={t('board.menu.playLink', {
+              title: element.title || (href ? new URL(href).hostname : element.url),
+            })}
           >
             <Icon name="play" size={16} />
           </button>

@@ -193,9 +193,7 @@ export async function pagePreview(
   const videoId = youtubeVideoId(page.url);
   const images = [
     meta.image,
-    ...(videoId
-      ? [`https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`]
-      : []),
+    ...(videoId ? [`https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`] : []),
   ];
   for (const imageUrl of images) {
     if (!imageUrl || imageAssetId) continue;

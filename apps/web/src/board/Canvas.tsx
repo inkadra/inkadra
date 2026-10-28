@@ -107,7 +107,7 @@ import { PresenceLayer } from './PresenceLayer.tsx';
 import { type Peer, useLocalPresence } from './presence.ts';
 import { canvasElementId, ResizeHandles } from './ResizeHandles.tsx';
 import { openComments } from './review-store.ts';
-import { commandFor, insideDialog, isMac, isTyping } from './shortcuts.ts';
+import { canSpacePan, commandFor, insideDialog, isMac, isTyping } from './shortcuts.ts';
 import { LOCAL } from './store.ts';
 import { TagPopover } from './tags.tsx';
 import { templateLabels, templateRect } from './templates.ts';
@@ -1169,7 +1169,7 @@ export function Canvas({
     if (insideDialog()) return;
     // A menu or the version banner already handled this Escape; a preview has nothing to clear.
     if (e.key === 'Escape' && (e.defaultPrevented || preview)) return;
-    if (e.key === ' ' && !isTyping(e.target) && !(e.target instanceof Element && e.target.closest('button'))) {
+    if (e.key === ' ' && canSpacePan(e.target)) {
       spaceDown.current = e.type === 'keydown';
       if (e.type === 'keydown') e.preventDefault();
       return;
@@ -1624,9 +1624,10 @@ export function Canvas({
         ? [
             {
               label: t('board.menu.refreshPreview'),
-              action: () => void fillLinkPreview(doc, single.id, projectId, boardId, single.url).then((ok) => {
-                if (!ok) setToast({ text: t('board.menu.refreshPreviewFailed'), undo: false });
-              }),
+              action: () =>
+                void fillLinkPreview(doc, single.id, projectId, boardId, single.url).then((ok) => {
+                  if (!ok) setToast({ text: t('board.menu.refreshPreviewFailed'), undo: false });
+                }),
             },
           ]
         : []),

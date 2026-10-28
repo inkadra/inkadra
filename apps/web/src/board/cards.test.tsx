@@ -167,7 +167,7 @@ describe('video link cards', () => {
     expect(html).not.toContain('height:800');
     expect(html).toContain('data-play-link="file_caption_01"');
     expect(html).toContain('<button');
-    expect(html).toContain('aria-label="board.menu.open"');
+    expect(html).toContain('aria-label="board.menu.playLink"');
     vi.unstubAllGlobals();
   });
 });

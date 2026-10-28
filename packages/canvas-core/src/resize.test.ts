@@ -81,11 +81,14 @@ describe('corner resize', () => {
   });
 });
 
-it.each(['nw', 'ne', 'sw', 'se'] as const)('keeps a width-only card top fixed from %s', (corner) => {
-  const rect = { x: 20, y: 30, w: 320, h: 180 };
-  const next = resizeFromCorner(rect, corner, { x: 50, y: -200 }, { widthOnly: true });
-  expect(next.y).toBe(30);
-  expect(next.h).toBe(180);
-  expect(next.w).toBe(corner.endsWith('w') ? 270 : 370);
-  expect(next.x + next.w).toBe(corner.endsWith('w') ? 340 : 390);
-});
+it.each(['nw', 'ne', 'sw', 'se'] as const)(
+  'keeps a width-only card top fixed from %s',
+  (corner) => {
+    const rect = { x: 20, y: 30, w: 320, h: 180 };
+    const next = resizeFromCorner(rect, corner, { x: 50, y: -200 }, { widthOnly: true });
+    expect(next.y).toBe(30);
+    expect(next.h).toBe(180);
+    expect(next.w).toBe(corner.endsWith('w') ? 270 : 370);
+    expect(next.x + next.w).toBe(corner.endsWith('w') ? 340 : 390);
+  },
+);
