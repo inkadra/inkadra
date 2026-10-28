@@ -110,7 +110,7 @@ const HOME: Location = { pathname: '/', search: '', hash: '', state: null, key: 
  * Settings open as a window over the page underneath, which stays mounted: a board keeps its
  * connection and scroll. The page is the last one shown before settings opened, or Home when
  * a settings URL is loaded directly; it renders with its own location so nothing in it reacts
- * to the settings URL. `depth` counts the history entries settings added, for closing.
+ * to the settings URL (decision 0028). `depth` counts the history entries settings added.
  */
 function useSettingsOverlay(home: ReactNode) {
   const location = useLocation();
