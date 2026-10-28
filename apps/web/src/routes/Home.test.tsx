@@ -198,9 +198,13 @@ it('shows today’s shooting day, recent boards and the last day of activity', a
   expect(board?.getAttribute('href')).toBe('/p/p1/b/storyboard1');
   // Project metadata describes the destination; it must not name a different link.
   const label = document.getElementById(board?.getAttribute('aria-labelledby') ?? '');
-  const description = document.getElementById(board?.getAttribute('aria-describedby') ?? '');
+  const description = (board?.getAttribute('aria-describedby') ?? '')
+    .split(' ')
+    .map((id) => document.getElementById(id)?.textContent)
+    .join(' ');
   expect(label?.textContent).toBe('Scene 4');
-  expect(description?.textContent).toContain('Last run');
+  expect(description).toContain('board.types.storyboard');
+  expect(description).toContain('Last run');
   expect(board?.textContent).toContain('board.types.storyboard');
   expect(board?.textContent).toContain('Scene 4');
   const activity = host.querySelectorAll('.home__activity li');
@@ -305,7 +309,18 @@ it('shows one shooting day in the Today card and the others on request', async (
   expect(card().textContent).not.toContain('Plan B');
   const more = card().querySelector('button.home__more') as HTMLButtonElement;
   expect(more.textContent).toBe('home.today.moreDays {"count":2}');
+  expect(more.getAttribute('aria-expanded')).toBe('false');
   await act(async () => more.click());
   expect(card().textContent).toContain('Plan B');
   expect(card().textContent).toContain('Plan C');
+});
+
+it('links to all projects only for people who have projects', async () => {
+  context({ projects: [] });
+  respond({});
+  await render();
+  expect(host.querySelector('a[href="/projects"]')).toBeNull();
+  context();
+  await render();
+  expect(host.querySelector('a[href="/projects"]')?.textContent).toBe('home.allProjects');
 });

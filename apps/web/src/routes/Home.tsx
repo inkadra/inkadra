@@ -108,7 +108,12 @@ export function Home() {
               />
             ))}
             {days.length > 1 && (
-              <button type="button" className="home__more" onClick={() => setAllDays((v) => !v)}>
+              <button
+                type="button"
+                className="home__more"
+                aria-expanded={allDays}
+                onClick={() => setAllDays((v) => !v)}
+              >
                 {allDays
                   ? t('home.today.fewerDays')
                   : t('home.today.moreDays', { count: days.length - 1 })}
@@ -121,9 +126,12 @@ export function Home() {
         id="home-recent"
         title={t('home.recentBoards')}
         action={
-          <a className="home__more" href="/projects" onClick={go('/projects')}>
-            {t('home.allBoards')}
-          </a>
+          // Guests with shared boards only have no projects page to go to.
+          projects && projects.length > 0 ? (
+            <a className="home__more" href="/projects" onClick={go('/projects')}>
+              {t('home.allProjects')}
+            </a>
+          ) : undefined
         }
         hint={t('home.recentBoardsHint')}
       >
@@ -309,18 +317,19 @@ function BoardCard({
 }) {
   const { t, i18n } = useTranslation();
   const labelId = useId();
+  const kindId = useId();
   const descriptionId = useId();
   return (
     <a
       href={href}
       className="ink-card home__card"
       aria-labelledby={labelId}
-      aria-describedby={descriptionId}
+      aria-describedby={`${kindId} ${descriptionId}`}
       onClick={go(href)}
     >
       <BoardPreview boardId={board.id} project={project} />
       <span className="home__meta">
-        <span className="home__kind" data-kind={board.kind}>
+        <span id={kindId} className="home__kind" data-kind={board.kind}>
           {t(`board.types.${board.kind}`)}
         </span>
         <span id={labelId} className="home__name">
