@@ -100,7 +100,7 @@ export function watchSaves(
 }
 
 /** Opens the board document over the collaboration WebSocket; the session cookie signs in. */
-export function useBoardConnection(boardId: string): BoardConnection | null {
+export function useBoardConnection(boardId: string, trackBusy = true): BoardConnection | null {
   const [conn, setConn] = useState<BoardConnection | null>(null);
 
   useEffect(() => {
@@ -116,6 +116,7 @@ export function useBoardConnection(boardId: string): BoardConnection | null {
     const busy = {};
     let unsynced = 0;
     const hold = () =>
+      trackBusy &&
       setBusy(busy, unsynced > 0 || state.status === 'connecting' || state.status === 'offline');
     const provider = new HocuspocusProvider({
       url: collabUrl(),
@@ -158,7 +159,7 @@ export function useBoardConnection(boardId: string): BoardConnection | null {
       doc.destroy();
       setConn(null);
     };
-  }, [boardId]);
+  }, [boardId, trackBusy]);
 
   return conn;
 }

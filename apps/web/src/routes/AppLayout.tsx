@@ -283,6 +283,7 @@ export function AppLayout() {
           icon="chevronRight"
           label={t(collapsed ? 'nav.expand' : 'nav.collapse')}
           aria-expanded={!(collapsed || inboxOpen)}
+          disabled={inboxOpen}
           onClick={toggleCollapsed}
         />
       </div>
@@ -583,7 +584,10 @@ export function AppLayout() {
                     inboxOpener.current = mobileInboxButton.current;
                 }}
                 unread={unread}
-                onNavigate={() => setInboxOpen(false)}
+                onNavigate={() => {
+                  inboxOpener.current = null;
+                  setInboxOpen(false);
+                }}
                 onCount={refreshUnread}
                 feed={notifications}
               />

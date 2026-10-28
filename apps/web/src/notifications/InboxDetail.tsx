@@ -13,7 +13,10 @@ import {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router';
+import * as Y from 'yjs';
+import { pickVariant, useAsset } from '../board/assets.ts';
 import { useBoardConnection } from '../board/connection.ts';
+import { plainText, useFragment } from '../board/note.tsx';
 import {
   authorName,
   findThread,
@@ -35,7 +38,7 @@ type DetailProps = {
 export function InboxDetail(props: DetailProps) {
   return props.notification?.boardId && props.notification.elementId ? (
     <ConnectedInboxDetail
-      key={props.notification.id}
+      key={props.notification.boardId}
       {...props}
       boardId={props.notification.boardId}
     />
@@ -46,7 +49,7 @@ export function InboxDetail(props: DetailProps) {
 
 function ConnectedInboxDetail(props: DetailProps & { boardId: string }) {
   // Only observe the selected document. Never write through this connection.
-  const conn = useBoardConnection(props.boardId);
+  const conn = useBoardConnection(props.boardId, false);
   const snapshot = useSyncExternalStore(
     conn?.store.subscribe ?? (() => () => {}),
     conn?.store.getSnapshot ?? (() => null),
@@ -56,10 +59,28 @@ function ConnectedInboxDetail(props: DetailProps & { boardId: string }) {
     element?.type === 'frame' && snapshot
       ? frameLabels(storyboardOf([...snapshot.byId.values()])).get(element.id)
       : undefined;
-  return <InboxDetailWithElement {...props} element={element} elementLabel={label} />;
+  const body = element?.type === 'note' ? conn?.store.map(element.id)?.get('body') : null;
+  const fragment = body instanceof Y.XmlFragment ? body : null;
+  useFragment(fragment);
+  return (
+    <InboxDetailWithElement
+      {...props}
+      element={element}
+      elementLabel={label}
+      syncing={!conn || conn.status === 'connecting'}
+      excerpt={fragment ? plainText(fragment).slice(0, 240) : undefined}
+    />
+  );
 }
 
-function InboxDetailWithElement(props: DetailProps & { element?: Element; elementLabel?: string }) {
+function InboxDetailWithElement(
+  props: DetailProps & {
+    element?: Element;
+    elementLabel?: string;
+    syncing?: boolean;
+    excerpt?: string;
+  },
+) {
   const [refresh, setRefresh] = useState<{
     version: number;
     notificationId?: string;
@@ -96,8 +117,12 @@ function InboxDetailContent({
   refreshThreadId,
   element,
   elementLabel,
+  syncing,
+  excerpt,
 }: DetailProps & {
   element?: Element;
+  syncing?: boolean;
+  excerpt?: string;
   elementLabel?: string;
   onRefresh: (threadId?: string) => void;
   refreshThreadId?: string;
@@ -293,6 +318,16 @@ function InboxDetailContent({
     }
   };
 
+  const previewAssetId =
+    element &&
+    ('assetId' in element
+      ? element.assetId
+      : 'imageAssetId' in element
+        ? element.imageAssetId
+        : undefined);
+  const asset = useAsset(previewAssetId);
+  const [failedSrc, setFailedSrc] = useState('');
+  const src = asset && asset !== 'missing' ? pickVariant(asset, 512) : '';
   if (!notification) {
     return (
       <aside
@@ -403,11 +438,28 @@ function InboxDetailContent({
           >
             {element ? (
               <div className="inbox-detail__preview">
-                {assetId && (
-                  <img
-                    src={`/api/v1/assets/${encodeURIComponent(assetId)}/variants/512`}
-                    alt={cardTitle ?? ''}
-                  />
+                {element.type === 'file' ? (
+                  <p>
+                    <Icon name="file" size={32} />
+                    {asset && asset !== 'missing' ? asset.filename : cardTitle}
+                  </p>
+                ) : src && failedSrc !== src ? (
+                  <img src={src} alt={cardTitle ?? ''} onError={() => setFailedSrc(src)} />
+                ) : (
+                  <div>
+                    <strong>{cardTitle}</strong>
+                    <p>
+                      {excerpt ??
+                        (element.type === 'todo'
+                          ? element.items
+                              .map((item) => item.text)
+                              .join(' · ')
+                              .slice(0, 240)
+                          : element.type === 'frame'
+                            ? element.action
+                            : '')}
+                    </p>
+                  </div>
                 )}
                 {assetId && activePinIndex >= 0 && activeThread?.pin && (
                   <span
@@ -424,7 +476,7 @@ function InboxDetailContent({
             ) : (
               <div className="inbox-detail__preview-fallback">
                 <Icon name="board" size={32} />
-                <p>{t('notifications.previewUnavailable')}</p>
+                <p>{t(syncing ? 'common.loading' : 'notifications.previewUnavailable')}</p>
                 <Button variant="ghost" onClick={handleOpenInBoard}>
                   {t('notifications.openInBoard')}
                 </Button>

@@ -7,6 +7,7 @@ import { createRoot } from 'react-dom/client';
 import { MemoryRouter } from 'react-router';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import * as Y from 'yjs';
+import { primeAsset, resetAssetCache } from '../board/assets.ts';
 import { useBoardConnection } from '../board/connection.ts';
 import { BoardStore } from '../board/store.ts';
 import { api } from '../lib/api.ts';
@@ -274,7 +275,7 @@ it('omits a generic card title and keeps inherited visibility inside the compose
     'notifications.visibleToClient',
   );
   expect(host.querySelector('.inbox-detail__preview-fallback')?.textContent).toContain(
-    'notifications.previewUnavailable',
+    'common.loading',
   );
 });
 
@@ -316,6 +317,12 @@ it('reads the selected frame label, thumbnail and shot metadata from the board',
   const map = roots(doc).elements.get(frame.id);
   map?.set('label', '4C');
   map?.set('assetId', 'picture');
+  primeAsset({
+    id: 'picture',
+    mime: 'image/png',
+    url: '/original.png',
+    variants: [],
+  } as unknown as import('@inkadra/shared').Asset);
   map?.set('lens', '35mm');
   const store = new BoardStore(doc);
   vi.mocked(useBoardConnection).mockReturnValue({ store } as ReturnType<typeof useBoardConnection>);
@@ -326,14 +333,14 @@ it('reads the selected frame label, thumbnail and shot metadata from the board',
   );
   await render('frame-comment', frame.id);
   expect(host.querySelector('.inbox-detail__breadcrumb')?.textContent).toContain('4C');
-  expect(host.querySelector('img')?.getAttribute('src')).toBe(
-    '/api/v1/assets/picture/variants/512',
-  );
+  expect(host.querySelector('img')?.getAttribute('src')).toBe('/original.png');
   expect(host.querySelector('.inbox-detail__meta')?.textContent).toContain('35mm');
   const pin = host.querySelector<HTMLElement>('.inbox-detail__preview .inbox-detail__pin');
   expect(pin?.style.left).toBe('25%');
   expect(pin?.style.top).toBe('75%');
   await act(async () => root.unmount());
+  await act(async () => {});
+  resetAssetCache();
   store.destroy();
   doc.destroy();
 });
