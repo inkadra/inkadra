@@ -40,13 +40,7 @@ export function setupAttention(setup: Setup, page: string): boolean {
  * the person may open, grouped. Moving between pages replaces the history entry, so the
  * browser's Back closes the window instead of walking through every page visited.
  */
-export function SettingsNav({
-  setup,
-  members,
-}: {
-  setup: Setup;
-  members?: number | null;
-}) {
+export function SettingsNav({ setup, members }: { setup: Setup; members?: number | null }) {
   const { t } = useTranslation();
   const { user, instance } = useSession();
   const { pathname, search } = useLocation();
@@ -176,7 +170,13 @@ export function SettingsShell({
 export const DiagnosticsContext = createContext<(() => void) | undefined>(undefined);
 
 /** A link to Diagnostics that goes through the settings window when there is one. */
-export function DiagnosticsLink({ className, children }: { className?: string; children: ReactNode }) {
+export function DiagnosticsLink({
+  className,
+  children,
+}: {
+  className?: string;
+  children: ReactNode;
+}) {
   const onDiagnostics = useContext(DiagnosticsContext);
   return (
     <Link

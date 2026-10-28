@@ -124,29 +124,29 @@ export function SettingsWindow({
       }}
     >
       <DiagnosticsContext.Provider value={onDiagnostics}>
-      <div className="settings-window__frame">
-        {!phone && <SettingsNav setup={setup} members={members} />}
-        <section className="settings-window__main">
-          <header className="settings-window__head">
-            {phone && !list && (
-              <IconButton
-                className="settings-window__back"
-                icon="chevronRight"
-                label={t('mobile.back')}
-                onClick={onBack}
-              />
-            )}
-            <h2 id={titleId} tabIndex={-1}>
-              {list ? t('settingsUi.profile') : t(page.title)}
-            </h2>
-            {!list && autosaves(page.id) && <SaveStatus />}
-            <IconButton icon="close" label={t('settingsUi.close')} onClick={onClose} />
-          </header>
-          <div className="settings-window__body" key={list ? 'list' : page.id}>
-            {children}
-          </div>
-        </section>
-      </div>
+        <div className="settings-window__frame">
+          {!phone && <SettingsNav setup={setup} members={members} />}
+          <section className="settings-window__main">
+            <header className="settings-window__head">
+              {phone && !list && (
+                <IconButton
+                  className="settings-window__back"
+                  icon="chevronRight"
+                  label={t('mobile.back')}
+                  onClick={onBack}
+                />
+              )}
+              <h2 id={titleId} tabIndex={-1}>
+                {list ? t('settingsUi.profile') : t(page.title)}
+              </h2>
+              {!list && autosaves(page.id) && <SaveStatus />}
+              <IconButton icon="close" label={t('settingsUi.close')} onClick={onClose} />
+            </header>
+            <div className="settings-window__body" key={list ? 'list' : page.id}>
+              {children}
+            </div>
+          </section>
+        </div>
       </DiagnosticsContext.Provider>
     </dialog>
   );
