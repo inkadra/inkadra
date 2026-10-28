@@ -60,6 +60,7 @@ export function SettingsWindow({
   const phone = useIsPhone();
   const ref = useRef<HTMLDialogElement>(null);
   const pressedBackdrop = useRef(false);
+  const closingSelf = useRef(false);
   const titleId = useId();
   const members = useMemberCount(user?.role === 'admin');
   const list = phone && isSettingsHome(pathname, search);
@@ -73,7 +74,9 @@ export function SettingsWindow({
     const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     if (!el.open) el.showModal();
     return () => {
+      closingSelf.current = true;
       if (el.open) el.close();
+      closingSelf.current = false;
       if (opener?.isConnected) opener.focus();
     };
   }, []);
@@ -100,9 +103,10 @@ export function SettingsWindow({
         onClose();
       }}
       onClose={(e) => {
-        // Only when the browser closed it anyway (a repeated Escape cannot be cancelled). The
-        // event is queued: after a close-and-reopen (React's strict mode) the window is open.
-        if (own(e) && !e.currentTarget.open) onClose();
+        // Only when the browser closed it anyway (a repeated Escape cannot be cancelled), never
+        // for the window's own close on unmount or in strict mode's close-and-reopen; browsers
+        // queue the event, so by then the window may be open again.
+        if (own(e) && !closingSelf.current && !e.currentTarget.open) onClose();
       }}
       onPointerDown={(e) => {
         pressedBackdrop.current = own(e);
