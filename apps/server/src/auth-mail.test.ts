@@ -4,8 +4,16 @@ import { sendDetached } from './mailer.ts';
 
 it('does not await SMTP and handles delivery failures', async () => {
   const log = { warn: vi.fn() };
-  const send = vi.fn(async () => { throw new Error('SMTP unavailable'); });
-  expect(sendDetached({ enabled: true, send }, { to: 'test@example.com', subject: 'Test', text: 'Test' }, log)).toBeUndefined();
+  const send = vi.fn(async () => {
+    throw new Error('SMTP unavailable');
+  });
+  expect(
+    sendDetached(
+      { enabled: true, send },
+      { to: 'test@example.com', subject: 'Test', text: 'Test' },
+      log,
+    ),
+  ).toBeUndefined();
   await vi.waitFor(() => expect(log.warn).toHaveBeenCalledWith('security email delivery failed'));
 });
 

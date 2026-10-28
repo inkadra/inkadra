@@ -57,6 +57,7 @@ describe.skipIf(!url)('sign-in providers (needs DATABASE_URL)', () => {
       OIDC_DISCOVERY_URL: `${issuerUrl}/.well-known/openid-configuration`,
       OIDC_CLIENT_ID: 'inkadra',
       OIDC_CLIENT_SECRET: 'oidc-secret',
+      OIDC_TRUST_EMAIL: 'true',
     });
     const log = pino({ level: 'silent' });
     const { db: database, sql: client } = createDatabase(config.DATABASE_URL, 2);

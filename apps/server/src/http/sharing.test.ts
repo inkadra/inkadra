@@ -884,6 +884,17 @@ describe.skipIf(!url)('sharing, invitations, tokens and accounts (needs DATABASE
       mailer.sent.some((m) => m.to === as.guest.email && m.subject === 'Password modificata'),
     ).toBe(true);
     expect((await call('guest', 'GET', '/api/v1/me')).status).toBe(401);
+    const changedCookie = cookieOf(changed.cookies, 'inkadra.session_token');
+    const token = await call({ cookie: changedCookie }, 'POST', '/api/v1/me/tokens', { name: 'Before reset' });
+    expect(token.status).toBe(201);
+    mailer.sent.length = 0;
+    expect((await call(null, 'POST', '/api/auth/request-password-reset', { email: as.guest.email, redirectTo: '/login' })).status).toBe(200);
+    const resetUrl = new URL(mailer.sent[0]?.text.match(/https?:\/\/\S+/)?.[0] ?? '');
+    const reset = await call(null, 'POST', '/api/auth/reset-password', { token: resetUrl.pathname.split('/').pop(), newPassword: `${PASSWORD}-reset` });
+    expect(reset.status).toBe(200);
+    expect((await call({ cookie: changedCookie }, 'GET', '/api/v1/me')).status).toBe(401);
+    expect((await call({ bearer: token.body.token }, 'GET', '/api/v1/me')).status).toBe(401);
+    expect(mailer.sent.some((m) => m.subject === 'Password modificata')).toBe(true);
   });
 
   it('deletes an account, but not while it is the only owner of a shared project', async () => {

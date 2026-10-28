@@ -90,8 +90,8 @@ The default trusts loopback and private networks, which covers a proxy on the sa
 in the same Docker network. Change it when the proxy connects from somewhere else:
 - a proxy on another machine of your LAN: its address, e.g. `TRUST_PROXY=192.168.1.10`;
 - a proxy that reaches Inkadra over Tailscale, for example Pangolin on a VPS targeting the
-  server's Tailscale address: add the Tailscale range,
-  `TRUST_PROXY=loopback,linklocal,uniquelocal,100.64.0.0/10`.
+  server's Tailscale address: trust only that proxy's exact tailnet address,
+  for example `TRUST_PROXY=100.100.10.20`.
 
 Never use `true`: it trusts everyone, so any client could choose its address.
 
