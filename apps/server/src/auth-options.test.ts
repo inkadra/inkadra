@@ -56,6 +56,7 @@ it('keeps session lookup and sign-out available when the limiter is down', async
       REDIS_URL: 'redis://127.0.0.1:1',
     },
     db,
+    { mailer: { enabled: true, send: async () => {} } },
   );
   const call = (path: string, method = 'GET', body?: unknown) =>
     auth.handler(
