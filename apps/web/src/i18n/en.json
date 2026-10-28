@@ -1382,11 +1382,13 @@
     "conversation": "Conversation",
     "cardPreview": "Preview",
     "pointComment": "Comment on point {{number}}",
-    "thread": "Thread",
+    "thread": "Comment",
     "breadcrumb": "Breadcrumb",
     "boardLabel": "Board",
     "refresh": "Refresh conversation",
-    "conversationUnavailable": "Conversation not available"
+    "conversationUnavailable": "Conversation not available",
+    "cardFallback": "Card",
+    "previewUnavailable": "Open the board to view this card."
   },
   "settings": {
     "sectionLead": {
