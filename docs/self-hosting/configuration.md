@@ -98,21 +98,28 @@ Never use `true`: it trusts everyone, so any client could choose its address.
 ## Authentication and browser hardening
 
 Production authentication requires `REDIS_URL` (the existing Valkey instance). IP, account
-and recipient budgets persist across processes and restarts; unavailable Valkey fails closed.
-Tests use isolated memory budgets and disable IP/account throttling; recipient limits remain.
+and recipient budgets persist across processes and restarts. **Breaking change: every production
+role that creates auth, including `web`, refuses to start without REDIS_URL.** Unavailable Valkey
+returns 503 for sign-in/reset/2FA while session lookup and sign-out remain available.
+Tests use Valkey when REDIS_URL is set; otherwise they use bounded memory. E2e uses
+NODE_ENV=development and AUTH_RATE_LIMITS=off; production always ignores this override.
 Email delivery runs outside the request's awaited SMTP path. Delivery is best effort: process
 termination can lose pending messages, and delivery failures are logged without credentials.
 
-| Variable | Default | Meaning |
-| --- | --- | --- |
-| `CSP_ENFORCE` | `false` | Send CSP in report-only mode; `true` enforces it. Validate your media and integrations first. |
-| `HSTS_ENABLED` | `false` | Opt into one-year HSTS, only when `PUBLIC_URL` uses HTTPS. |
-| `OIDC_ALLOWED_DOMAINS` | any | Allowed verified email domains for OIDC. Google issuers use the verified `hd` claim and fall back to `GOOGLE_ALLOWED_DOMAINS`. |
+| Variable               | Default | Meaning                                                                                                                        |
+| ---------------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| `CSP_ENFORCE`          | `false` | Send CSP in report-only mode; `true` enforces it. Validate your media and integrations first.                                  |
+| `CSP_REPORT_URI`       | unset   | Optional absolute report-uri destination for CSP violation reports.                                                            |
+| `HSTS_ENABLED`         | `false` | Opt into one-year HSTS, only when `PUBLIC_URL` uses HTTPS.                                                                     |
+| `OIDC_ALLOWED_DOMAINS` | any     | Allowed verified email domains for OIDC. Google issuers use the verified `hd` claim and fall back to `GOOGLE_ALLOWED_DOMAINS`. |
 
 Magic links and Google/OIDC callbacks require the same second factor as password sign-in.
 After a browser callback the challenge opens at `/login?twoFactor=true`; no full session is
 retained until verification. Existing trusted-device cookies retain Better Auth semantics.
 Personal token and app authorization creation need a cookie session younger than 15 minutes.
 Personal tokens default to 90 days, including an omitted or null expiry; explicit lifetimes
-retain the existing API maximum of 3650 days. Password changes/reset revoke non-app personal
-tokens; reset also revokes every browser session. App tokens retain their existing lifecycle.
+retain the existing API maximum of 3650 days. Password changes revoke non-app personal
+tokens; resets revoke all tokens (including app tokens) and every browser session.
+Google domain restrictions require `hd` even for linked users. Generic OIDC allowlists accept
+`email_verified` as boolean `true` or string `"true"` (Cognito). Open registration and valid
+invitations can still reveal existing accounts during sign-up.

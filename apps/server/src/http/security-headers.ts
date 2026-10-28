@@ -6,7 +6,11 @@ export function securityHeaders(config: Config): Record<string, string> {
   const storage =
     config.STORAGE_DRIVER === 's3'
       ? config.S3_ENDPOINT
-        ? new URL(config.S3_ENDPOINT).origin
+        ? (() => {
+            const url = new URL(config.S3_ENDPOINT);
+            if (!config.S3_FORCE_PATH_STYLE) url.hostname = `${config.S3_BUCKET}.${url.hostname}`;
+            return url.origin;
+          })()
         : `https://${config.S3_BUCKET}.s3.${config.S3_REGION}.amazonaws.com`
       : '';
   const policy = [
@@ -24,6 +28,7 @@ export function securityHeaders(config: Config): Record<string, string> {
     "base-uri 'self'",
     "form-action 'self'",
     "frame-ancestors 'none'",
+    ...(config.CSP_REPORT_URI ? [`report-uri ${config.CSP_REPORT_URI}`] : []),
     ...(publicUrl.protocol === 'https:' ? ['upgrade-insecure-requests'] : []),
   ].join('; ');
   const youtube = '(self "https://www.youtube-nocookie.com")';

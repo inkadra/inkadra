@@ -40,6 +40,7 @@ function totp(base32: string, at = Date.now()) {
 describe.skipIf(!url)('sharing, invitations, tokens and accounts (needs DATABASE_URL)', () => {
   const config = loadConfig({
     NODE_ENV: 'test',
+    REDIS_URL: process.env.REDIS_URL,
     PUBLIC_URL: 'http://localhost:3000',
     DATABASE_URL: url ?? 'postgres://unused',
     AUTH_SECRET: 'test-secret-test-secret-test-secret-0123',
@@ -150,6 +151,7 @@ describe.skipIf(!url)('sharing, invitations, tokens and accounts (needs DATABASE
 
   afterAll(async () => {
     await app?.close();
+    auth?.closeSecurity();
     await client.end();
   });
 
@@ -792,13 +794,30 @@ describe.skipIf(!url)('sharing, invitations, tokens and accounts (needs DATABASE
     ]);
   });
 
+  it('counts only failed passwords and leaves another source able to sign in', async () => {
+    const attempt = (ip: string, password: string) =>
+      auth.handler(
+        new Request(`${config.PUBLIC_URL}/api/auth/sign-in/email`, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json', 'x-inkadra-client-ip': ip },
+          body: JSON.stringify({ email: as.editor.email, password }),
+        }),
+      );
+    for (let i = 0; i < 10; i++)
+      expect((await attempt('192.0.2.121', 'wrong-password')).status).toBe(401);
+    expect((await attempt('192.0.2.121', PASSWORD)).status).toBe(429);
+    expect((await attempt('192.0.2.122', PASSWORD)).status).toBe(200);
+  });
+
   it('emails sign-in links only to people who may sign in', async () => {
     mailer.sent.length = 0;
     const ask = (email: string) => call(null, 'POST', '/api/auth/sign-in/magic-link', { email });
     expect((await ask(as.editor.email)).status).toBe(200);
     expect((await ask('stranger@example.com')).status).toBe(200);
+    await vi.waitFor(() => expect(mailer.sent.length).toBeGreaterThan(0));
     expect(mailer.sent.map((m) => m.to)).toEqual([as.editor.email]);
     expect(mailer.sent[0]?.text).toContain('/api/auth/magic-link/verify');
+    await vi.waitFor(() => expect(mailer.sent.length).toBeGreaterThan(0));
     const link = new URL(mailer.sent[0]?.text.match(/https?:\/\/\S+/)?.[0] ?? '');
     // Removing callbackURL selects Better Auth's page-readable JSON response.
     link.searchParams.delete('callbackURL');
@@ -806,15 +825,18 @@ describe.skipIf(!url)('sharing, invitations, tokens and accounts (needs DATABASE
   });
 
   it('shares the recipient email budget across magic links and password resets', async () => {
-    for (const email of [as.outsider.email, 'unregistered-budget@example.com']) {
-      const magic = () =>
-        call(null, 'POST', '/api/auth/sign-in/magic-link', { email: email.toUpperCase() });
-      const reset = () => call(null, 'POST', '/api/auth/request-password-reset', { email });
-      expect((await magic()).status).toBe(200);
-      expect((await reset()).status).toBe(200);
-      expect((await magic()).status).toBe(200);
-      expect((await reset()).status).toBe(429);
+    const email = as.outsider.email;
+    mailer.sent.length = 0;
+    for (let i = 0; i < 4; i++) {
+      expect((await call(null, 'POST', '/api/auth/sign-in/magic-link', { email })).status).toBe(
+        200,
+      );
+      await vi.waitFor(() => expect(mailer.sent.length).toBe(Math.min(i + 1, 3)));
     }
+    expect((await call(null, 'POST', '/api/auth/request-password-reset', { email })).status).toBe(
+      200,
+    );
+    expect(mailer.sent).toHaveLength(3);
   });
 
   it('asks for a code after enabling two-factor authentication', async () => {
@@ -841,10 +863,11 @@ describe.skipIf(!url)('sharing, invitations, tokens and accounts (needs DATABASE
       email: as.viewer.email,
     });
     expect(magic.status).toBe(200);
+    await vi.waitFor(() => expect(mailer.sent.length).toBeGreaterThan(0));
     const link = new URL(mailer.sent[0]?.text.match(/https?:\/\/\S+/)?.[0] ?? '');
     const response = await fetch(`${base}${link.pathname}${link.search}`, { redirect: 'manual' });
     expect(response.status).toBe(302);
-    expect(response.headers.get('location')).toBe('/login?twoFactor=true');
+    expect(response.headers.get('location')).toBe('/login?twoFactor=true&next=%2F');
     const challenge = response.headers
       .getSetCookie()
       .map((c) => c.split(';')[0])

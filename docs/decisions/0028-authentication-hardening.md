@@ -16,24 +16,35 @@ redirect to the existing login challenge after the provisional session is delete
 social ID-token sign-in, too. Integration regressions must cover Google, OIDC and magic links;
 upgrades must preserve this wrapper's assumptions.
 
-Use an atomic Valkey counter through Better Auth's custom rate-limit storage, plus separate
-normalized-address budgets. Reserve account attempts before password verification and release
-on successful sign-in; concurrent failures cannot pass an unreserved budget. No account lookup
-is used by this limit. Hash all Redis keys and expire budgets. Keep sessions and verification
-records in Postgres: introducing a secondary session cache would undermine direct revocation.
-Production requires the existing REDIS_URL; tests remain isolated in memory. Before sign-up,
-reject closed registration before Better Auth's user lookup, except initial setup/invitations.
+Use atomic Valkey budgets with hashed keys and expiring counters. Before password checks,
+read failure counts; only 401 responses increment them. Limit each account/IP pair to ten
+failures per 15 minutes, with a wide account ceiling of 50 failures/hour against distributed
+attacks. The ceiling can still be abused to deny access temporarily; pairing the tighter
+limit with IP avoids allowing one anonymous attacker ten requests to block every source.
+Concurrent failures can overshoot a read budget; the separate 30 requests/minute per-IP,
+per-endpoint burst bound limits that race. NAT users share the burst budget; configure
+TRUST_PROXY correctly. Successful passwords clear counters only without 2FA; clear after
+successful second-factor verification otherwise. TOTP attempts also have a per-user budget.
 
-Bound auth email requests per normalized recipient before account lookup and detach SMTP
-from the response. This is deliberately best effort, not a durable mail queue: a process
-crash may lose delivery. Hash magic-link tokens at rest. Disable unused access-token and user
+Keep sessions and verification records in Postgres. Production, including the web role,
+requires REDIS_URL at startup. Limiter failures return 503 only for sign-in, reset and 2FA;
+session lookup and sign-out remain available. Tests use Valkey whenever REDIS_URL is set,
+otherwise bounded memory with eviction. E2e explicitly uses NODE_ENV=development and
+AUTH_RATE_LIMITS=off; production ignores that switch. Integration security tests keep limits on.
+Before sign-up reject closed registration before user lookup, except setup/invitations.
+Open registration and valid invitations still reveal existing accounts at sign-up.
+
+Count recipient budgets only in actual mail delivery callbacks (three per 15 minutes),
+shared across reset and magic links. This can deny mail to a recipient temporarily and is
+accepted for small teams. Detach magic-link lookup and SMTP from the response; process
+crashes may lose pending delivery. Hash magic-link tokens at rest. Disable unused access-token and user
 update endpoints; account editing and normalized avatar upload remain in the validated API.
 Domain restrictions run on verified provider profiles, including existing linked users.
-Google requires its hosted-domain claim, generic OIDC a verified email and explicit allowlist.
+Google requires its hosted-domain claim even for linked accounts; generic OIDC requires a verified email (boolean true or the string "true", including Cognito) when a domain allowlist is configured.
 
 Require recent cookie sessions for PAT/app authorization issuance; admin operations reject
 PATs. Default personal tokens to 90 days while preserving the existing explicit maximum.
-Password reset revokes browser sessions; reset and password changes revoke non-app tokens.
+Password reset revokes browser sessions; reset revokes all tokens including app-bound tokens; password changes revoke non-app tokens.
 Send localized notifications for token creation, password changes and disabling two-factor.
 
 Start CSP in report-only mode with an explicit enforcement switch. Externalize the theme
@@ -46,5 +57,7 @@ No API, DB or board-schema contract changes are needed. Null PAT expiry now rece
 secure default, without changing the shared input schema. Removing public version fields
 requires a separate contract PR and is deferred. Existing non-expiring tokens remain until
 revoked. Clients creating tokens from old sessions must sign in again. Browser callbacks
-currently return to login after 2FA, so a deep-link destination may be lost. Report-only CSP
+return to login after 2FA with the original same-origin destination preserved. Report-only CSP
 does not block resources; operators must validate and explicitly enable enforcement.
+
+Non-admin classification reads continue accepting PATs; admin mutations and diagnostics require cookies. Reauthentication errors use the existing forbidden code with details.reason=reauth_required (ADR 0016).

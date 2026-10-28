@@ -226,7 +226,7 @@ export function registerAccountRoutes(app: FastifyInstance, deps: Deps) {
   app.post(v1('/me/tokens'), async (req, reply) => {
     const session = await requireSession(auth, req, db);
     if (Date.now() - new Date(session.session.createdAt).getTime() >= FRESH_SIGN_IN_MS)
-      throw new HttpError('forbidden', 'Sign in again to continue.');
+      throw new HttpError('forbidden', 'Sign in again to continue.', { reason: 'reauth_required' });
     const input = CreatePersonalToken.parse(req.body ?? {});
     const [mine] = await db
       .select({ n: count() })
@@ -258,7 +258,7 @@ export function registerAccountRoutes(app: FastifyInstance, deps: Deps) {
   app.post(v1('/app-authorizations'), async (req) => {
     const session = await requireSession(auth, req, db);
     if (Date.now() - new Date(session.session.createdAt).getTime() >= FRESH_SIGN_IN_MS)
-      throw new HttpError('forbidden', 'Sign in again to continue.');
+      throw new HttpError('forbidden', 'Sign in again to continue.', { reason: 'reauth_required' });
     const input = CreateAppAuthorization.parse(req.body ?? {});
     if (!allowedRedirects(config, input.clientId).includes(input.redirectUri))
       throw new HttpError('bad_request', 'This redirect address is not allowed for this app.');

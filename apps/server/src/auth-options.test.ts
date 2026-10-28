@@ -36,7 +36,6 @@ describe('auth security regressions', () => {
         '/magic-link/verify',
         '/callback/google',
         '/callback/oidc',
-        '/oauth2/callback/oidc',
         '/sign-in/social',
       ])
         expect(hook.matcher({ path } as Parameters<typeof hook.matcher>[0]), path).toBe(true);
@@ -45,4 +44,59 @@ describe('auth security regressions', () => {
       await sql.end();
     }
   });
+});
+
+it('keeps session lookup and sign-out available when the limiter is down', async () => {
+  const { db, sql } = createDatabase(config.DATABASE_URL);
+  const auth = createAuth({ ...config, REDIS_URL: 'redis://127.0.0.1:1' }, db);
+  const call = (path: string, method = 'GET', body?: unknown) =>
+    auth.handler(
+      new Request(`https://example.com/api/auth${path}`, {
+        method,
+        headers: { 'content-type': 'application/json' },
+        ...(body ? { body: JSON.stringify(body) } : {}),
+      }),
+    );
+  try {
+    expect((await call('/get-session')).status).toBe(200);
+    expect((await call('/sign-out', 'POST', {})).status).toBe(200);
+    expect(
+      (
+        await call('/sign-in/email', 'POST', {
+          email: 'person@example.com',
+          password: 'correct-password',
+        })
+      ).status,
+    ).toBe(503);
+  } finally {
+    auth.closeSecurity();
+    await sql.end();
+  }
+});
+
+it('checks verified provider domain claims for linked profiles too', async () => {
+  const { db, sql } = createDatabase(config.DATABASE_URL);
+  const auth = createAuth(
+    {
+      ...config,
+      GOOGLE_CLIENT_ID: 'test',
+      GOOGLE_CLIENT_SECRET: 'test',
+      GOOGLE_ALLOWED_DOMAINS: ['example.com'],
+    },
+    db,
+  );
+  try {
+    const google = auth.options.socialProviders?.google;
+    if (!google || typeof google === 'function' || !google.mapProfileToUser)
+      throw new Error('Missing Google mapping');
+    const profile = { email: 'member@example.com' } as Parameters<
+      typeof google.mapProfileToUser
+    >[0];
+    expect(() => google.mapProfileToUser?.(profile)).toThrow();
+    expect(google.mapProfileToUser({ ...profile, hd: 'example.com' })).toEqual({});
+    expect(auth.options.disabledPaths).toContain('/refresh-token');
+  } finally {
+    auth.closeSecurity();
+    await sql.end();
+  }
 });

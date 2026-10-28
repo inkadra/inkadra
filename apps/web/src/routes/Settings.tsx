@@ -80,11 +80,14 @@ function useStatus() {
   const showKey = (key: string, error = false) => setStatus({ key, error });
   const fail = (err: unknown) =>
     show(
-      err instanceof RequestError && (err.status === 400 || err.status === 403) && err.message
-        ? err.message
-        : err instanceof RequestError && err.status === 401
-          ? t('settings.errors.password')
-          : t('auth.errors.generic'),
+      err instanceof RequestError &&
+        (err.details as { reason?: string })?.reason === 'reauth_required'
+        ? t('auth.errors.reauthRequired')
+        : err instanceof RequestError && (err.status === 400 || err.status === 403) && err.message
+          ? err.message
+          : err instanceof RequestError && err.status === 401
+            ? t('settings.errors.password')
+            : t('auth.errors.generic'),
       true,
     );
   const message = status ? ('key' in status ? t(status.key) : status.text) : null;

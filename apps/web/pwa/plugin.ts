@@ -5,7 +5,7 @@ import { dark } from '@inkadra/ui/tokens';
 import { build, type Plugin } from 'vite';
 import { isPrecached, OFFLINE_PAGE } from '../src/pwa/routing.ts';
 import { iconPng } from './icons.ts';
-import { ICONS, offlinePage, themeColor, webManifest } from './pages.ts';
+import { ICONS, offlinePage, offlineScript, themeColor, webManifest } from './pages.ts';
 
 const file = (path: string) => fileURLToPath(new URL(path, import.meta.url));
 const json = (path: string) => JSON.parse(readFileSync(file(path), 'utf8'));
@@ -45,6 +45,7 @@ export function pwa(): Plugin {
         this.emitFile({ type: 'asset', fileName, source });
 
       emit('manifest.webmanifest', `${JSON.stringify(webManifest(it), null, 2)}\n`);
+      emit('offline.js', offlineScript);
       emit(OFFLINE_PAGE.slice(1), offlinePage({ it, en }));
       emit(ICONS.any192, iconPng({ size: 192, ...colours }));
       emit(ICONS.any512, iconPng({ size: 512, ...colours }));

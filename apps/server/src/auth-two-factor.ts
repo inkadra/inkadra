@@ -15,8 +15,7 @@ export function hardenedTwoFactor(issuer: string) {
       '/sign-in/social',
       '/magic-link/verify',
     ].includes(ctx.path ?? '') ||
-    ctx.path?.startsWith('/callback/') ||
-    (ctx.path?.startsWith('/oauth2/callback/') ?? false);
+    (ctx.path?.startsWith('/callback/') ?? false);
   hook.handler = createAuthMiddleware(async (ctx) => {
     const needsChallenge = ctx.context.newSession?.user.twoFactorEnabled;
     const result = await upstream(ctx);
@@ -26,8 +25,15 @@ export function hardenedTwoFactor(issuer: string) {
       (ctx.path.includes('/callback/') || ctx.path === '/magic-link/verify')
     ) {
       // OAuth and email links are browser navigations, rather than JSON sign-ins.
+      const location = ctx.context.responseHeaders?.get('location');
+      const base = new URL(ctx.context.baseURL);
+      const destination = location ? new URL(location, base) : null;
+      const next =
+        destination?.origin === base.origin
+          ? destination.pathname + destination.search + destination.hash
+          : '/';
       ctx.context.responseHeaders?.delete('location');
-      throw ctx.redirect('/login?twoFactor=true');
+      throw ctx.redirect(`/login?twoFactor=true&next=${encodeURIComponent(next)}`);
     }
     return result;
   });

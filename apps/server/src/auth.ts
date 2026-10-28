@@ -1,6 +1,6 @@
 import { APIError, betterAuth } from 'better-auth';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
-import { createAuthMiddleware } from 'better-auth/api';
+import { createAuthMiddleware, getSessionFromCtx } from 'better-auth/api';
 import { genericOAuth, magicLink } from 'better-auth/plugins';
 import { and, count, eq, lt, sql } from 'drizzle-orm';
 import type { Logger } from 'pino';
@@ -112,7 +112,8 @@ export function createAuth(config: Config, db: Database, deps: AuthDeps = {}) {
               : domainOf(profile.email ?? '');
             if (
               domains.length &&
-              (!domains.includes(domain) || (!isGoogle && profile.email_verified !== true))
+              (!domains.includes(domain) ||
+                (!isGoogle && profile.email_verified !== true && profile.email_verified !== 'true'))
             )
               throw new APIError('FORBIDDEN', {
                 code: 'DOMAIN_NOT_ALLOWED',
@@ -134,35 +135,31 @@ export function createAuth(config: Config, db: Database, deps: AuthDeps = {}) {
   const trusted = ['google', ...(oidc && config.OIDC_TRUST_EMAIL ? [OIDC_PROVIDER_ID] : [])];
 
   const security = authSecurity(config);
-  const revokeTokens = async (user: { id: string; email: string; locale?: string | null }) => {
+  const revokeTokens = async (
+    user: { id: string; email: string; locale?: string | null },
+    all = false,
+  ) => {
     await db
       .delete(schema.personalToken)
       .where(
-        and(eq(schema.personalToken.userId, user.id), sql`${schema.personalToken.client} is null`),
+        and(
+          eq(schema.personalToken.userId, user.id),
+          all ? undefined : sql`${schema.personalToken.client} is null`,
+        ),
       );
     securityNotification(mailer, user, 'password', deps.log);
   };
   const auth = betterAuth({
-    rateLimit: {
-      enabled: config.NODE_ENV !== 'test',
-      customStorage: {
-        async consume(key, rule) {
-          const allowed = await security.take(`ip:${key}`, rule.max, rule.window);
-          return { allowed, retryAfter: allowed ? null : rule.window };
-        },
-      },
-      customRules: {
-        '/sign-in/email': { window: 900, max: 10 },
-        '/sign-in/magic-link': { window: 300, max: 3 },
-        '/two-factor/*': { window: 300, max: 10 },
-        '/request-password-reset': { window: 900, max: 3 },
-      },
-    },
+    // Scope availability failures to credential entry, never session lookup/sign-out.
+    rateLimit: { enabled: false },
     hooks: {
       before: createAuthMiddleware(async (ctx) => {
+        const invitation =
+          ctx.path === '/sign-up/email'
+            ? await invitationFromCookie(db, ctx.headers?.get('cookie'))
+            : null;
         if (ctx.path === '/sign-up/email' && (await countUsers(db)) > 0) {
           const { registration } = await readInstanceSettings(db, config);
-          const invitation = await invitationFromCookie(db, ctx.headers?.get('cookie'));
           if (registration !== 'open' && (registration === 'closed' || !invitation))
             throw new APIError('FORBIDDEN', {
               code: 'REGISTRATION_CLOSED',
@@ -170,7 +167,6 @@ export function createAuth(config: Config, db: Database, deps: AuthDeps = {}) {
             });
         }
         if (ctx.path === '/sign-up/email') {
-          const invitation = await invitationFromCookie(db, ctx.headers?.get('cookie'));
           if (
             invitation &&
             typeof ctx.body?.email === 'string' &&
@@ -181,25 +177,85 @@ export function createAuth(config: Config, db: Database, deps: AuthDeps = {}) {
               message: 'Use the invited email address.',
             });
         }
+        const sensitive =
+          ctx.path.startsWith('/sign-in/') ||
+          ctx.path.startsWith('/two-factor/') ||
+          ctx.path === '/request-password-reset' ||
+          ctx.path === '/reset-password';
+        if (!sensitive || (config.NODE_ENV !== 'production' && config.AUTH_RATE_LIMITS === 'off'))
+          return;
         const address =
           typeof ctx.body?.email === 'string' ? ctx.body.email.trim().toLowerCase() : '';
-        if (ctx.path === '/sign-in/email' && address && config.NODE_ENV !== 'test') {
-          if (!(await security.take(`login:${address}`, 10, 900)))
-            throw new APIError('TOO_MANY_REQUESTS', {
-              message: 'Too many attempts. Try again later.',
-            });
-        }
-        if (['/sign-in/magic-link', '/request-password-reset'].includes(ctx.path) && address) {
-          if (!(await security.take(`mail:${address}`, 3, 900)))
-            throw new APIError('TOO_MANY_REQUESTS', {
-              message: 'Too many attempts. Try again later.',
-            });
+        const ip = ctx.headers?.get(CLIENT_IP_HEADER) ?? 'unknown';
+        try {
+          const burst = await security.consume(`ip:${ip}:${ctx.path}`, 30, 60);
+          if (!burst.allowed) {
+            ctx.setHeader('retry-after', String(burst.retryAfter));
+            throw new APIError('TOO_MANY_REQUESTS', { message: 'Too many attempts.' });
+          }
+          if (ctx.path === '/sign-in/email' && address) {
+            for (const [id, max, seconds] of [
+              [`login:${address}:${ip}`, 10, 900],
+              [`account:${address}`, 50, 3600],
+            ] as const) {
+              const result = await security.check(id, max, seconds);
+              if (!result.allowed) {
+                ctx.setHeader('retry-after', String(result.retryAfter));
+                throw new APIError('TOO_MANY_REQUESTS', { message: 'Too many attempts.' });
+              }
+            }
+          }
+          if (ctx.path.startsWith('/two-factor/verify-')) {
+            const session = await getSessionFromCtx(ctx);
+            const cookie = ctx.context.createAuthCookie('two_factor');
+            const challenge = await ctx.getSignedCookie(cookie.name, ctx.context.secret);
+            const record = challenge
+              ? await ctx.context.internalAdapter.findVerificationValue(challenge)
+              : null;
+            const userId = session?.user.id ?? record?.value;
+            if (userId && !(await security.take(`totp:${userId}`, 10, 300)))
+              throw new APIError('TOO_MANY_REQUESTS', { message: 'Too many attempts.' });
+          }
+        } catch (err) {
+          if (err instanceof APIError) throw err;
+          throw new APIError('SERVICE_UNAVAILABLE', {
+            message: 'Authentication temporarily unavailable.',
+          });
         }
       }),
       after: createAuthMiddleware(async (ctx) => {
         const ok = !(ctx.context.returned instanceof APIError);
-        if (ctx.path === '/sign-in/email' && ctx.context.newSession && config.NODE_ENV !== 'test')
-          await security.storage.delete(`login:${ctx.body.email.trim().toLowerCase()}`);
+        const address =
+          typeof ctx.body?.email === 'string' ? ctx.body.email.trim().toLowerCase() : '';
+        const ip = ctx.headers?.get(CLIENT_IP_HEADER) ?? 'unknown';
+        try {
+          const enabled = config.NODE_ENV === 'production' || config.AUTH_RATE_LIMITS !== 'off';
+          if (enabled && ctx.path === '/sign-in/email' && address) {
+            if (
+              ctx.context.returned instanceof APIError &&
+              ctx.context.returned.status === 'UNAUTHORIZED'
+            ) {
+              await security.take(`login:${address}:${ip}`, 10, 900);
+              await security.take(`account:${address}`, 50, 3600);
+            } else if (ctx.context.newSession && !ctx.context.newSession.user.twoFactorEnabled) {
+              await security.storage.delete(`login:${address}:${ip}`);
+              await security.storage.delete(`account:${address}`);
+            }
+          }
+          if (
+            enabled &&
+            ok &&
+            ctx.path.startsWith('/two-factor/verify-') &&
+            ctx.context.newSession
+          ) {
+            const user = ctx.context.newSession.user;
+            await security.storage.delete(`login:${user.email.toLowerCase()}:${ip}`);
+            await security.storage.delete(`account:${user.email.toLowerCase()}`);
+            await security.storage.delete(`totp:${user.id}`);
+          }
+        } catch {
+          deps.log?.warn('auth failure budget unavailable');
+        }
         if (ctx.path === '/change-password' && ok && ctx.context.session)
           await revokeTokens(ctx.context.session.user);
         if (ctx.path === '/two-factor/disable' && ok && ctx.context.session)
@@ -212,7 +268,13 @@ export function createAuth(config: Config, db: Database, deps: AuthDeps = {}) {
     secret: config.AUTH_SECRET,
     trustedOrigins: [config.PUBLIC_URL],
     // They expose or take session tokens; the account page uses /api/v1/me/sessions instead.
-    disabledPaths: ['/list-sessions', '/revoke-session', '/update-user', '/get-access-token'],
+    disabledPaths: [
+      '/list-sessions',
+      '/revoke-session',
+      '/update-user',
+      '/get-access-token',
+      '/refresh-token',
+    ],
     database: drizzleAdapter(db, {
       provider: 'pg',
       schema: {
@@ -226,7 +288,7 @@ export function createAuth(config: Config, db: Database, deps: AuthDeps = {}) {
     emailAndPassword: {
       enabled: true,
       revokeSessionsOnPasswordReset: true,
-      onPasswordReset: async ({ user }) => revokeTokens(user),
+      onPasswordReset: async ({ user }) => revokeTokens(user, true),
       minPasswordLength: 10,
       maxPasswordLength: 128,
       autoSignIn: true,
@@ -234,6 +296,7 @@ export function createAuth(config: Config, db: Database, deps: AuthDeps = {}) {
         ? {
             sendResetPassword: async ({ user, url }) => {
               const t = mailText(user as { locale?: string | null });
+              if (!(await security.take(`mail:${user.email.toLowerCase()}`, 3, 900))) return;
               sendDetached(
                 mailer,
                 actionMail(user.email, t.resetSubject, t.resetLines(config.INSTANCE_NAME), {
@@ -297,30 +360,32 @@ export function createAuth(config: Config, db: Database, deps: AuthDeps = {}) {
               storeToken: 'hashed',
               expiresIn: 60 * 15,
               sendMagicLink: async ({ email: to, url }, ctx) => {
-                // Without an account, only send a link when the person could sign up anyway,
-                // and always answer the same, so addresses cannot be probed.
-                const [existing] = await db
-                  .select({ locale: schema.user.locale })
-                  .from(schema.user)
-                  .where(eq(schema.user.email, to.toLowerCase()));
-                if (!existing) {
-                  const invited = await invitationFromCookie(db, ctx?.headers?.get('cookie'));
-                  const { registration } = await readInstanceSettings(db, config);
-                  if (
-                    (registration === 'closed' || (registration !== 'open' && !invited)) &&
-                    (await countUsers(db)) > 0
-                  )
-                    return;
-                }
-                const t = mailText(existing ?? {});
-                sendDetached(
-                  mailer,
-                  actionMail(to, t.magicSubject(config.INSTANCE_NAME), t.magicLines, {
-                    label: t.magicAction,
-                    url,
-                  }),
-                  deps.log,
-                );
+                // Detach lookup as well as SMTP to avoid disclosing account existence by latency.
+                void (async () => {
+                  const [existing] = await db
+                    .select({ locale: schema.user.locale })
+                    .from(schema.user)
+                    .where(eq(schema.user.email, to.toLowerCase()));
+                  if (!existing) {
+                    const invited = await invitationFromCookie(db, ctx?.headers?.get('cookie'));
+                    const { registration } = await readInstanceSettings(db, config);
+                    if (
+                      (registration === 'closed' || (registration !== 'open' && !invited)) &&
+                      (await countUsers(db)) > 0
+                    )
+                      return;
+                  }
+                  if (!(await security.take(`mail:${to.toLowerCase()}`, 3, 900))) return;
+                  const t = mailText(existing ?? {});
+                  sendDetached(
+                    mailer,
+                    actionMail(to, t.magicSubject(config.INSTANCE_NAME), t.magicLines, {
+                      label: t.magicAction,
+                      url,
+                    }),
+                    deps.log,
+                  );
+                })().catch(() => deps.log?.warn('magic link delivery failed'));
               },
             }),
           ]

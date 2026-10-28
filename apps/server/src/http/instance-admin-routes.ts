@@ -14,7 +14,7 @@ import type { Config } from '../config.ts';
 import type { Database } from '../db/client.ts';
 import { instanceSetting, personalToken, session, user } from '../db/schema.ts';
 import { readInstanceSettings } from '../instance-settings.ts';
-import { requireSession } from './auth-routes.ts';
+import { requireActor, requireSession } from './auth-routes.ts';
 import { HttpError } from './errors.ts';
 
 export function registerInstanceAdminRoutes(
@@ -27,7 +27,7 @@ export function registerInstanceAdminRoutes(
     return actor;
   };
   app.get(`${API_PREFIX}/instance/classifications`, async (req) => {
-    await requireSession(auth, req, db);
+    await requireActor(auth, req, db);
     return readClassifications(db);
   });
   app.put(`${API_PREFIX}/instance/classifications`, async (req) => {

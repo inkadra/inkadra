@@ -28,6 +28,7 @@
     "createAdmin": "Crea account e accedi",
     "signOut": "Esci",
     "errors": {
+      "reauthRequired": "Accedi di nuovo per continuare.",
       "invalid": "Email o password non corrette.",
       "closed": "La registrazione è chiusa. Chiedi un invito all’amministratore.",
       "password": "La password deve avere almeno 10 caratteri.",

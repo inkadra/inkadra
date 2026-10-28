@@ -9,6 +9,10 @@ import { errorHandler, HttpError } from './errors.ts';
 import { registerInstanceAdminRoutes } from './instance-admin-routes.ts';
 
 vi.mock('./auth-routes.ts', () => ({
+  requireActor: async (_auth: unknown, req: { headers: Record<string, string> }) => {
+    if (!req.headers.role) throw new HttpError('unauthorized', 'Sign in.');
+    return { id: 'admin', role: req.headers.role };
+  },
   requireSession: async (_auth: unknown, req: { headers: Record<string, string> }) => {
     if (!req.headers.role) throw new HttpError('unauthorized', 'Sign in.');
     return { user: { id: 'admin', role: req.headers.role } };
