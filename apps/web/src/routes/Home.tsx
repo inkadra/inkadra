@@ -20,7 +20,10 @@ import {
   useRecentBoards,
   useShootingDays,
 } from './home-data.ts';
-import { choiceKey, NewBoardDialog, START_CHOICES, type StartChoice } from './NewBoardDialog.tsx';
+import { NewBoardDialog, type StartChoice } from './NewBoardDialog.tsx';
+import { NewProjectDialog } from './NewProjectDialog.tsx';
+import { PROJECT_TEMPLATES, type ProjectTemplate } from './project-setup.ts';
+import { refreshProjects } from './projects.ts';
 import './home.css';
 
 function greetingKey(hour: number) {
@@ -29,10 +32,12 @@ function greetingKey(hour: number) {
   return 'home.greeting.evening';
 }
 
-const CHOICE_ICONS: Record<StartChoice, IconName> = {
-  production: 'column',
+const TEMPLATE_ICONS: Record<ProjectTemplate, IconName> = {
+  production: 'scene',
   moodboard: 'image',
   storyboard: 'storyboard',
+  shotlist: 'shotlist',
+  pitch: 'board',
   blank: 'plus',
 };
 
@@ -48,6 +53,8 @@ export function Home() {
   const activity = useActivity(now);
   const writable = useMemo(() => editableProjects(projects), [projects]);
   const [newBoard, setNewBoard] = useState<StartChoice | null>(null);
+  // The same templates and form as New project and the guided setup.
+  const [newProject, setNewProject] = useState<ProjectTemplate | null>(null);
   const days = today.state === 'ready' ? today.items : [];
   const go = (to: string) => (e: MouseEvent) => {
     e.preventDefault();
@@ -216,25 +223,20 @@ export function Home() {
         </Section>
       )}
 
-      <Section
-        id="home-templates"
-        title={t('home.templates.title')}
-        hint={writable.length === 0 ? t('home.templates.needsProject') : undefined}
-      >
+      <Section id="home-templates" title={t('home.templates.title')}>
         <div className="home__templates">
-          {START_CHOICES.map((c) => (
+          {PROJECT_TEMPLATES.map((c) => (
             <button
               key={c}
               type="button"
               className="ink-card home__template"
-              disabled={writable.length === 0}
-              onClick={() => setNewBoard(c)}
+              onClick={() => setNewProject(c)}
             >
               <span className="home__template-icon" aria-hidden="true">
-                <Icon name={CHOICE_ICONS[c]} size={16} />
+                <Icon name={TEMPLATE_ICONS[c]} size={16} />
               </span>
-              <span className="home__name">{t(choiceKey(c, 'name'))}</span>
-              <span className="ink-muted home__when">{t(choiceKey(c, 'body'))}</span>
+              <span className="home__name">{t(`onboarding.templates.${c}.name`)}</span>
+              <span className="ink-muted home__when">{t(`onboarding.templates.${c}.body`)}</span>
             </button>
           ))}
         </div>
@@ -245,6 +247,16 @@ export function Home() {
         projects={writable}
         initial={newBoard ?? 'blank'}
         onClose={() => setNewBoard(null)}
+      />
+      <NewProjectDialog
+        open={newProject !== null}
+        template={newProject ?? undefined}
+        onClose={() => setNewProject(null)}
+        onCreated={async (p) => {
+          setNewProject(null);
+          await refreshProjects();
+          navigate(`/p/${p.id}`);
+        }}
       />
     </div>
   );

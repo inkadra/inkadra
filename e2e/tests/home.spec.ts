@@ -27,7 +27,7 @@ async function signIn(page: Page) {
   return origin;
 }
 
-test('home shows today’s shooting day and starts a board from a template', async ({ page }) => {
+test('home shows today’s shooting day and starts from templates', async ({ page }) => {
   const origin = await signIn(page);
   const project = await (
     await page.request.post('/api/v1/projects', {
@@ -71,14 +71,23 @@ test('home shows today’s shooting day and starts a board from a template', asy
       .getByRole('link', { name: /Home overview/ }),
   ).toHaveCount(0);
 
+  // The same templates and form as New project and the guided setup.
   await main
     .getByRole('region', { name: 'Inizia da un modello' })
-    .getByRole('button', { name: /Produzione/ })
+    .getByRole('button', { name: /Moodboard/ })
     .click();
-  const dialog = page.getByRole('dialog', { name: 'Nuova board' });
-  await dialog.getByLabel('Progetto').selectOption({ label: 'Home overview' });
-  await expect(dialog.getByLabel('Nome della board')).toHaveValue('Produzione');
-  await dialog.getByRole('button', { name: 'Crea board' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Nuovo progetto' });
+  await expect(dialog.getByRole('radio', { name: /Moodboard/ })).toBeChecked();
+  await dialog.getByRole('button', { name: 'Salta per ora' }).click();
+  await expect(dialog).toBeHidden();
+
+  // Board layouts stay in New board.
+  await page.getByRole('button', { name: 'Nuova board' }).click();
+  const board = page.getByRole('dialog', { name: 'Nuova board' });
+  await board.getByLabel('Progetto').selectOption({ label: 'Home overview' });
+  await board.getByRole('radio', { name: /Produzione/ }).check();
+  await expect(board.getByLabel('Nome della board')).toHaveValue('Produzione');
+  await board.getByRole('button', { name: 'Crea board' }).click();
   await expect(page).toHaveURL(new RegExp(`/p/${project.id}/b/[0-9a-f-]{36}$`));
   await expect(page.getByRole('status').getByText('Sincronizzato')).toBeVisible();
   await expect(page.locator('[data-type="column"]')).toHaveCount(3);

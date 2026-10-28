@@ -1,15 +1,15 @@
 import type { Project } from '@inkadra/shared';
-import { Avatar, Button, ProjectGlyph } from '@inkadra/ui';
-import { useCallback, useEffect, useState } from 'react';
+import { Avatar, Button, Dialog, DialogActions } from '@inkadra/ui';
+import { type FormEvent, useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
-import { pickVariant, useAsset } from '../board/assets.ts';
 import { api } from '../lib/api.ts';
 import { useClassifications } from '../lib/classifications.ts';
 import { useSession } from '../lib/session.tsx';
 import { relativeTime } from '../notifications/Notifications.tsx';
 import { useProjects } from './AppLayout.tsx';
-import { canEditProjectAppearance, ProjectAppearanceDialog } from './ProjectAppearance.tsx';
+import { BoardPreview } from './BoardPreview.tsx';
+import { useProjectMenu } from './ProjectAppearance.tsx';
 import { getCachedProjects, refreshProjects, subscribeProjects } from './projects.ts';
 import {
   archivedProjects,
@@ -17,6 +17,7 @@ import {
   type ProjectOverview,
   projectOverviews,
 } from './projects-overview.ts';
+import './home.css';
 import './projects.css';
 
 export function Projects() {
@@ -80,24 +81,25 @@ export function Projects() {
       alive = false;
     };
   }, [user?.role]);
-  async function mutate(project: Project, pin: boolean, type?: string) {
+  const replace = (updated: Project) =>
+    setItems(
+      (current) =>
+        current?.map((row) =>
+          row.project.id === updated.id ? { ...row, project: updated } : row,
+        ) ?? null,
+    );
+  async function mutate(project: Project, change: Change) {
     setBusy(true);
     setError(false);
     try {
       const updated =
-        type !== undefined
-          ? await api.patch<Project>(`/projects/${project.id}`, { type: type || null })
-          : pin
-            ? await api.put<Project>(`/projects/${project.id}/pin`, { pinned: !project.pinned })
-            : await api.patch<Project>(`/projects/${project.id}`, {
-                archived: !project.archivedAt,
-              });
-      setItems(
-        (current) =>
-          current?.map((row) =>
-            row.project.id === updated.id ? { ...row, project: updated } : row,
-          ) ?? null,
-      );
+        change === 'pin'
+          ? await api.put<Project>(`/projects/${project.id}/pin`, { pinned: !project.pinned })
+          : await api.patch<Project>(
+              `/projects/${project.id}`,
+              change === 'archive' ? { archived: !project.archivedAt } : change,
+            );
+      replace(updated);
       await refreshProjects();
     } catch {
       setError(true);
@@ -108,6 +110,8 @@ export function Projects() {
   const people = new Map(
     items?.flatMap((row) => row.members.map((m) => [m.user.id, m.user] as const)),
   );
+  // Filtering by people means nothing while the person works alone.
+  const others = [...people.keys()].some((id) => id !== user?.id);
   const visible = filterProjects(items ?? [], query);
   const change = (key: keyof typeof query, value: string) =>
     setQuery((q) => ({ ...q, [key]: value }));
@@ -125,8 +129,10 @@ export function Projects() {
             </p>
           )}
         </div>
-        <div>
-          <Link to="/onboarding">{t('onboarding.guidedSetup')}</Link>
+        <div className="projects-page__actions">
+          <Link className="ink-btn ink-btn--ghost" to="/onboarding">
+            {t('onboarding.guidedSetup')}
+          </Link>
           <Button variant="primary" icon="plus" onClick={openNewProject}>
             {t('nav.newProject')}
           </Button>
@@ -171,21 +177,23 @@ export function Projects() {
             ))}
           </select>
         </label>
-        <label>
-          {t('projectsPage.people')}
-          <select
-            className="ink-input"
-            value={query.person}
-            onChange={(e) => change('person', e.target.value)}
-          >
-            <option value="all">{t('projectsPage.all')}</option>
-            {[...people].map(([id, person]) => (
-              <option key={id} value={id}>
-                {person.name}
-              </option>
-            ))}
-          </select>
-        </label>
+        {others && (
+          <label>
+            {t('projectsPage.people')}
+            <select
+              className="ink-input"
+              value={query.person}
+              onChange={(e) => change('person', e.target.value)}
+            >
+              <option value="all">{t('projectsPage.all')}</option>
+              {[...people].map(([id, person]) => (
+                <option key={id} value={id}>
+                  {person.name}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
         <label>
           {t('projectsPage.sort')}
           <select
@@ -202,7 +210,7 @@ export function Projects() {
         </label>
         <div className="projects-page__view">
           {['grid', 'list'].map((v) => (
-            <Button key={v} aria-pressed={view === v} onClick={() => setView(v)}>
+            <Button key={v} variant="ghost" aria-pressed={view === v} onClick={() => setView(v)}>
               {t(`projectsPage.${v}`)}
             </Button>
           ))}
@@ -228,14 +236,7 @@ export function Projects() {
             row={row}
             busy={busy}
             mutate={mutate}
-            onAppearanceSaved={(updated) =>
-              setItems(
-                (current) =>
-                  current?.map((item) =>
-                    item.project.id === updated.id ? { ...item, project: updated } : item,
-                  ) ?? null,
-              )
-            }
+            onAppearanceSaved={replace}
           />
         ))}
       </div>
@@ -254,6 +255,8 @@ export function Projects() {
   );
 }
 
+type Change = 'pin' | 'archive' | { type: string | null };
+
 function ProjectCard({
   row,
   busy,
@@ -263,106 +266,150 @@ function ProjectCard({
   row: ProjectOverview;
   onAppearanceSaved: (project: Project) => void;
   busy: boolean;
-  mutate: (p: Project, pin: boolean, type?: string) => Promise<void>;
+  mutate: (p: Project, change: Change) => Promise<void>;
 }) {
-  const { catalogs, typeLabel } = useClassifications();
+  const { typeLabel } = useClassifications();
   const { t, i18n } = useTranslation();
-  const [appearance, setAppearance] = useState(false);
+  const [typing, setTyping] = useState(false);
   const p = row.project;
-  const coverId = row.boards.find((b) => b.id === p.rootBoardId)?.coverAssetId;
-  const cover = useAsset(coverId ?? undefined);
-  const src = cover && cover !== 'missing' ? pickVariant(cover, 512) : '';
-  const date = (value: string) => new Date(`${value}T12:00:00`).toLocaleDateString(i18n.language);
+  const editor = p.myRole === 'owner' || p.myRole === 'editor';
+  // The actions the sidebar menu has for the same project, plus the ones of this page.
+  const { trigger, targetProps, layer } = useProjectMenu(
+    p,
+    [
+      {
+        label: t(p.pinned ? 'projectsPage.unpin' : 'projectsPage.pin'),
+        disabled: busy,
+        action: () => void mutate(p, 'pin'),
+      },
+      ...(editor
+        ? [{ label: t('onboarding.type'), disabled: busy, action: () => setTyping(true) }]
+        : []),
+      ...(p.myRole === 'owner'
+        ? [
+            {
+              label: t(p.archivedAt ? 'projectsPage.unarchive' : 'projectsPage.archive'),
+              disabled: busy,
+              action: () => void mutate(p, 'archive'),
+            },
+          ]
+        : []),
+    ],
+    onAppearanceSaved,
+  );
+  const date = (value: string) =>
+    new Date(`${value}T12:00:00`).toLocaleDateString(i18n.language, {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+    });
+  const dates =
+    [p.shootingStart, p.shootingEnd]
+      .filter((d): d is string => !!d)
+      .map(date)
+      .join(' – ') || t('projectsPage.noDates');
   return (
-    <article className="ink-card project-card">
+    <article className="ink-card home__card project-card" {...targetProps}>
       <Link
         to={`/p/${p.id}`}
         className="project-card__cover"
         aria-label={t('projectsPage.openNamed', { name: p.name })}
+        tabIndex={-1}
       >
-        {src ? (
-          <img src={src} alt="" />
-        ) : (
-          <ProjectGlyph shape={p.icon.shape} color={p.icon.color} emoji={p.icon.emoji} />
-        )}
+        <BoardPreview boardId={p.rootBoardId} project={p} />
       </Link>
-      <div className="project-card__body">
+      {(p.pinned || p.archivedAt) && (
+        <span className="project-card__badge">
+          {t(p.archivedAt ? 'projectsPage.archived' : 'projectsPage.pinned')}
+        </span>
+      )}
+      {trigger('project-card__options')}
+      <div className="home__meta project-card__meta">
         <div className="project-card__title">
-          <ProjectGlyph {...p.icon} />
-          <h2>
+          <h2 className="home__name">
             <Link to={`/p/${p.id}`}>{p.name}</Link>
           </h2>
           {p.type && <span className="project-card__type">{typeLabel(p.type)}</span>}
         </div>
-        {(p.myRole === 'owner' || p.myRole === 'editor') && (
-          <label>
-            {t('onboarding.type')}
-            <select
-              className="ink-input"
-              value={p.type ?? ''}
-              disabled={busy}
-              onChange={(e) => void mutate(p, false, e.target.value)}
-            >
-              <option value="">—</option>
-              {p.type && !catalogs.projectTypes.some((o) => o.id === p.type) && (
-                <option value={p.type}>{p.type}</option>
-              )}
-              {catalogs.projectTypes
-                .filter((o) => !o.archived || o.id === p.type)
-                .map((o) => (
-                  <option key={o.id} value={o.id}>
-                    {typeLabel(o.id)}
-                  </option>
-                ))}
-            </select>
-          </label>
-        )}
-        <p className="ink-muted">
-          {[
-            p.shootingStart ? date(p.shootingStart) : null,
-            p.shootingEnd ? date(p.shootingEnd) : null,
-          ]
-            .filter(Boolean)
-            .join(' – ') || t('projectsPage.noDates')}{' '}
-          · {t('projectsPage.boards', { count: row.boards.length })}
-        </p>
+        <span className="ink-muted home__when">
+          {dates} · {t('projectsPage.boards', { count: row.boards.length })}
+        </span>
         <div className="project-card__members">
           {row.members.map((m) => (
             <span key={m.user.id} title={m.user.name}>
-              <Avatar image={m.user.image} name={m.user.name} size={24} />
+              <Avatar image={m.user.image} name={m.user.name} size={20} />
             </span>
           ))}
-          <time className="ink-muted" dateTime={row.activity}>
+          <time className="ink-muted home__when" dateTime={row.activity}>
             {relativeTime(row.activity, i18n.language)}
           </time>
         </div>
-        {appearance && (
-          <ProjectAppearanceDialog
-            project={p}
-            onClose={() => setAppearance(false)}
-            onSaved={onAppearanceSaved}
-          />
-        )}
-        <div className="project-card__actions">
-          {canEditProjectAppearance(p) && (
-            <Button disabled={busy} onClick={() => setAppearance(true)}>
-              {t('appearance.title')}
-            </Button>
-          )}
-          <Link className="ink-btn ink-btn--secondary" to={`/p/${p.id}`}>
-            {t('projectsPage.open')}
-          </Link>
-          <Button disabled={busy} aria-pressed={!!p.pinned} onClick={() => void mutate(p, true)}>
-            {t(p.pinned ? 'projectsPage.unpin' : 'projectsPage.pin')}
-          </Button>
-          {p.myRole === 'owner' && (
-            <Button disabled={busy} onClick={() => void mutate(p, false)}>
-              {t(p.archivedAt ? 'projectsPage.unarchive' : 'projectsPage.archive')}
-            </Button>
-          )}
-        </div>
-        {p.archivedAt && <span className="ink-muted">{t('projectsPage.archived')}</span>}
       </div>
+      {layer}
+      {typing && (
+        <ProjectTypeDialog
+          project={p}
+          onClose={() => setTyping(false)}
+          onSave={(type) => mutate(p, { type })}
+        />
+      )}
     </article>
+  );
+}
+
+function ProjectTypeDialog({
+  project,
+  onClose,
+  onSave,
+}: {
+  project: Project;
+  onClose: () => void;
+  onSave: (type: string | null) => Promise<void>;
+}) {
+  const { catalogs, typeLabel } = useClassifications();
+  const { t } = useTranslation();
+  const [type, setType] = useState(project.type ?? '');
+  const [busy, setBusy] = useState(false);
+  async function submit(e: FormEvent) {
+    e.preventDefault();
+    setBusy(true);
+    await onSave(type || null);
+    setBusy(false);
+    onClose();
+  }
+  return (
+    <Dialog open title={`${t('onboarding.type')} · ${project.name}`} onClose={onClose}>
+      <form className="settings__form" onSubmit={submit}>
+        <label className="project-type-field">
+          {t('onboarding.type')}
+          <select
+            className="ink-input"
+            value={type}
+            disabled={busy}
+            onChange={(e) => setType(e.target.value)}
+          >
+            <option value="">—</option>
+            {project.type && !catalogs.projectTypes.some((o) => o.id === project.type) && (
+              <option value={project.type}>{project.type}</option>
+            )}
+            {catalogs.projectTypes
+              .filter((o) => !o.archived || o.id === project.type)
+              .map((o) => (
+                <option key={o.id} value={o.id}>
+                  {typeLabel(o.id)}
+                </option>
+              ))}
+          </select>
+        </label>
+        <DialogActions>
+          <Button disabled={busy} onClick={onClose}>
+            {t('project.cancel')}
+          </Button>
+          <Button type="submit" variant="primary" disabled={busy}>
+            {t('settings.save')}
+          </Button>
+        </DialogActions>
+      </form>
+    </Dialog>
   );
 }

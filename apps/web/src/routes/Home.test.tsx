@@ -86,10 +86,14 @@ it('shows clean empty states and no Today card without data', async () => {
   expect(text).not.toContain('home.today.title');
   expect(text).toContain('home.noRecentBoards');
   expect(text).toContain('home.activity.empty');
-  expect(text).toContain('home.templates.needsProject');
+  // The project templates of New project: they need no project to start from.
   const templates = host.querySelectorAll<HTMLButtonElement>('.home__template');
-  expect(templates).toHaveLength(4);
-  expect([...templates].every((b) => b.disabled)).toBe(true);
+  expect([...templates].map((b) => b.querySelector('.home__name')?.textContent)).toEqual(
+    ['production', 'moodboard', 'storyboard', 'shotlist', 'pitch', 'blank'].map(
+      (c) => `onboarding.templates.${c}.name`,
+    ),
+  );
+  expect([...templates].every((b) => !b.disabled)).toBe(true);
   expect(vi.mocked(api.get).mock.calls.map(([path]) => path)).toEqual(
     expect.arrayContaining([
       expect.stringMatching(/^\/me\/shooting-days\?from=(\d{4}-\d\d-\d\d)&to=\1$/),

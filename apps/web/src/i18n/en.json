@@ -157,7 +157,6 @@
     "loadError": "This section could not be loaded. Reload the page to try again.",
     "templates": {
       "title": "Start from a template",
-      "needsProject": "You need a project you can edit.",
       "blank": {
         "name": "Blank board",
         "body": "Start from scratch"
@@ -1730,13 +1729,16 @@
     "unarchive": "Restore",
     "noDates": "Dates to be confirmed",
     "boards_one": "{{count}} board",
-    "boards_other": "{{count}} boards"
+    "boards_other": "{{count}} boards",
+    "pinned": "Pinned"
   },
   "onboarding": {
     "guidedSetup": "Guided setup",
     "pendingEmail": "Add the email address to the invitation list, or clear it to create the project.",
-    "title": "Your first project",
-    "subtitle": "Choose a starting point and invite your team. You can finish the details later.",
+    "title": "New project",
+    "firstTitle": "Your first project",
+    "subtitle": "Choose a template, set the dates and invite your team. You can change everything later.",
+    "firstSubtitle": "Choose a starting point and invite your team. You can finish the details later.",
     "type": "Project type",
     "types": {
       "short_film": "Short film",
