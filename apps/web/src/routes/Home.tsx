@@ -1,20 +1,19 @@
 import type { Notification, PlannedShootingDay, Project, RecentBoard } from '@inkadra/shared';
-import { Avatar, Button, EmptyState, Icon, type IconName } from '@inkadra/ui';
-import { type MouseEvent, type ReactNode, useId, useMemo } from 'react';
+import { Avatar, Icon, type IconName, ProjectGlyph } from '@inkadra/ui';
+import { type MouseEvent, type ReactNode, useId } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router';
 import { authorName } from '../board/review-model.ts';
 import { api } from '../lib/api.ts';
 import { useSession } from '../lib/session.tsx';
 import { notificationPath } from '../notifications/model.ts';
-import { describeNotification, relativeTime } from '../notifications/Notifications.tsx';
+import { avatarBg, describeNotification, relativeTime } from '../notifications/Notifications.tsx';
 import { useProjects } from './AppLayout.tsx';
 import { BoardPreview } from './BoardPreview.tsx';
 import {
   type Loadable,
   localDate,
   RECENT_BOARDS,
-  RECENT_PROJECTS,
   useActivity,
   useRecentBoards,
   useShootingDays,
@@ -56,15 +55,8 @@ export function Home() {
   const boardHref = (projectId: string, boardId: string) =>
     boardId === rootOf(projectId) ? `/p/${projectId}` : `/p/${projectId}/b/${boardId}`;
 
-  const recentProjects = useMemo(
-    () =>
-      [...(projects ?? [])]
-        .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
-        .slice(0, RECENT_PROJECTS),
-    [projects],
-  );
-  // A project's own board is already its card under Recent projects.
-  const boards = withoutRoots(recent, recentProjects);
+  const boards =
+    recent.state === 'ready' ? { ...recent, items: recent.items.slice(0, RECENT_BOARDS) } : recent;
 
   const summary = [
     now.toLocaleDateString(i18n.language, { weekday: 'long', day: 'numeric', month: 'long' }),
@@ -83,127 +75,85 @@ export function Home() {
       <header className="home__head">
         <div className="home__title">
           <h1>{t(greetingKey(now.getHours()), { name: firstName })}</h1>
-          <p className="ink-muted">{summary.join(' · ')}</p>
-        </div>
-      </header>
-
-      {(days.length > 0 || today.state === 'error') && (
-        <section className="ink-card home__today" aria-labelledby="home-today">
-          <h2 id="home-today" className="ink-label">
-            {t('home.today.title')}
-          </h2>
-          {/* Without the card a failed load would read as no shoot today. */}
-          {today.state === 'error' && (
-            <p role="alert" className="ink-muted home__status">
-              {t('home.loadError')}
-            </p>
-          )}
-          {days.map((d) => (
-            <TodayDay
-              key={d.id}
-              day={d}
-              href={`${boardHref(d.projectId, d.boardId)}?view=schedule`}
-              go={go}
-            />
-          ))}
-        </section>
-      )}
-
-      <div className="home__columns">
-        <Section
-          id="home-recent"
-          title={
-            <>
-              {/* On a phone the row reads as where to pick up again, as in the mockup. */}
-              <span className="home__title-wide">{t('home.recentBoards')}</span>
-              <span className="home__title-phone">{t('home.continue')}</span>
-            </>
-          }
-          hint={t('home.recentBoardsHint')}
-        >
-          <LoadState list={boards} empty={t('home.noRecentBoards')}>
-            {(items) => (
-              <div className="home__boards">
-                {items.map((b) => (
-                  <BoardCard
-                    key={b.id}
-                    board={b}
-                    project={projects?.find((p) => p.id === b.projectId)}
-                    href={boardHref(b.projectId, b.id)}
-                    go={go}
-                  />
-                ))}
-              </div>
-            )}
-          </LoadState>
-        </Section>
-
-        <Section
-          id="home-activity"
-          title={t('home.activity.title')}
-          hint={t('home.activity.hint')}
-          action={
-            <button type="button" className="home__more" onClick={openInbox}>
-              {t('home.activity.openInbox')}
-            </button>
-          }
-        >
-          <LoadState list={activity} empty={t('home.activity.empty')}>
-            {(items) => (
-              <ul className="home__activity">
-                {items.map((n) => (
-                  <ActivityItem key={n.id} item={n} onRead={refreshUnread} />
-                ))}
-              </ul>
-            )}
-          </LoadState>
-        </Section>
-      </div>
-
-      <Section id="home-projects" title={t('home.recent')}>
-        {recentProjects.length > 0 && (
-          <div className="home__recent">
-            {recentProjects.map((p) => (
-              <a
-                key={p.id}
-                href={`/p/${p.id}`}
-                className="ink-card home__card"
-                onClick={go(`/p/${p.id}`)}
-              >
-                <BoardPreview boardId={p.rootBoardId} project={p} />
-                <span className="home__meta">
-                  <span className="home__name">{p.name}</span>
-                  <span className="ink-muted home__when">
-                    {new Date(p.updatedAt).toLocaleDateString(i18n.language, {
-                      day: 'numeric',
-                      month: 'short',
-                    })}
-                  </span>
-                </span>
-              </a>
+          <p className="ink-muted">
+            {summary.map((part, index) => (
+              <span key={part} className={first && index === 1 ? 'home__shooting' : undefined}>
+                {index > 0 && ' · '}
+                {part}
+              </span>
             ))}
-          </div>
+          </p>
+        </div>
+
+        {(days.length > 0 || today.state === 'error') && (
+          <section className="ink-card home__today" aria-labelledby="home-today">
+            <h2 id="home-today" className="ink-label home__today-chip">
+              {t('home.today.title')}
+            </h2>
+            {/* Without the card a failed load would read as no shoot today. */}
+            {today.state === 'error' && (
+              <p role="alert" className="ink-muted home__status">
+                {t('home.loadError')}
+              </p>
+            )}
+            {days.map((d) => (
+              <TodayDay
+                key={d.id}
+                day={d}
+                href={`${boardHref(d.projectId, d.boardId)}?view=schedule`}
+                go={go}
+              />
+            ))}
+          </section>
         )}
-        {projects && projects.length === 0 && (shared?.length ?? 0) === 0 && (
-          <EmptyState
-            icon="board"
-            title={t('home.noProjects')}
-            actions={
-              <>
-                <Button variant="primary" icon="plus" onClick={() => openNewProject()}>
-                  {t('nav.newProject')}
-                </Button>
-                <Button variant="ghost" onClick={() => navigate('/onboarding')}>
-                  {t('onboarding.guidedSetup')}
-                </Button>
-              </>
-            }
-          >
-            {t('home.noProjectsBody')}
-          </EmptyState>
-        )}
+      </header>
+      <Section
+        id="home-recent"
+        title={t('home.recentBoards')}
+        action={
+          <a className="home__more" href="/projects" onClick={go('/projects')}>
+            {t('home.allBoards')}
+          </a>
+        }
+        hint={t('home.recentBoardsHint')}
+      >
+        <LoadState list={boards} empty={t('home.noRecentBoards')}>
+          {(items) => (
+            <div className="home__boards">
+              {items.map((b) => (
+                <BoardCard
+                  key={b.id}
+                  board={b}
+                  project={projects?.find((p) => p.id === b.projectId)}
+                  href={boardHref(b.projectId, b.id)}
+                  go={go}
+                />
+              ))}
+            </div>
+          )}
+        </LoadState>
       </Section>
 
+      <Section
+        id="home-activity"
+        title={t('home.activity.title')}
+        hint={t('home.activity.hint')}
+        action={
+          <button type="button" className="home__more" onClick={openInbox}>
+            {t('home.activity.openInbox')}
+          </button>
+        }
+      >
+        <LoadState list={activity} empty={t('home.activity.empty')}>
+          {(items) => (
+            <ul className="home__activity">
+              {items.map((n) => (
+                <ActivityItem key={n.id} item={n} onRead={refreshUnread} />
+              ))}
+            </ul>
+          )}
+        </LoadState>
+      </Section>
       {shared && shared.length > 0 && (
         <Section id="home-shared" title={t('home.shared')}>
           <div className="home__recent">
@@ -235,7 +185,7 @@ export function Home() {
               // The same templates and form as New project and the guided setup.
               onClick={() => openNewProject(c)}
             >
-              <span className="home__template-icon" aria-hidden="true">
+              <span className="home__template-icon" data-kind={c} aria-hidden="true">
                 <Icon name={TEMPLATE_ICONS[c]} size={16} />
               </span>
               <span className="home__name">{t(`onboarding.templates.${c}.name`)}</span>
@@ -273,19 +223,6 @@ function Section({
       {children}
     </section>
   );
-}
-
-/** Recent boards without the root boards of the projects listed under Recent projects. */
-export function withoutRoots(
-  recent: Loadable<RecentBoard>,
-  projects: readonly Project[],
-): Loadable<RecentBoard> {
-  if (recent.state !== 'ready') return recent;
-  const roots = new Set(projects.map((p) => p.rootBoardId));
-  return {
-    state: 'ready',
-    items: recent.items.filter((b) => !roots.has(b.id)).slice(0, RECENT_BOARDS),
-  };
 }
 
 /** A section's list, or its loading, error and empty states; never placeholder items. */
@@ -363,7 +300,6 @@ function BoardCard({
   const { t, i18n } = useTranslation();
   const labelId = useId();
   const descriptionId = useId();
-  const root = board.parentBoardId === null;
   return (
     <a
       href={href}
@@ -374,16 +310,15 @@ function BoardCard({
     >
       <BoardPreview boardId={board.id} project={project} />
       <span className="home__meta">
-        <span className="home__kind ink-muted">
-          {t(root ? 'home.kind.project' : `board.types.${board.kind}`)}
+        <span className="home__kind" data-kind={board.kind}>
+          {t(`board.types.${board.kind}`)}
         </span>
         <span id={labelId} className="home__name">
           {board.title}
         </span>
         <span id={descriptionId} className="ink-muted home__when">
-          {[root ? null : board.projectName, relativeTime(board.editedAt, i18n.language)]
-            .filter(Boolean)
-            .join(' · ')}
+          {project && <ProjectGlyph {...project.icon} />}
+          {board.projectName} · {relativeTime(board.editedAt, i18n.language)}
         </span>
       </span>
     </a>
@@ -398,9 +333,11 @@ function ActivityItem({ item, onRead }: { item: Notification; onRead: () => Prom
   const where = [...new Set([item.projectName, item.boardTitle])].filter(Boolean).join(' · ');
   const body = (
     <>
-      <Avatar name={actor ?? 'Inkadra'} size={24} />
+      <span className="home__avatar" style={{ background: avatarBg(actor) }}>
+        <Avatar name={actor ?? 'Inkadra'} size={24} />
+      </span>
       <span className="home__activity-body">
-        <span>
+        <span className={item.reviewStatus === 'approved' ? 'home__approved' : undefined}>
           {actor && <b>{actor} </b>}
           {describeNotification(item, t)}
         </span>

@@ -496,6 +496,7 @@ export function AppLayout() {
             {pathname === '/' && (
               <div className="home-header-actions">
                 <Button
+                  variant="primary"
                   icon="plus"
                   disabled={writable.length === 0}
                   onClick={() => {
@@ -505,7 +506,7 @@ export function AppLayout() {
                 >
                   {t('home.newBoard.action')}
                 </Button>
-                <Button variant="primary" icon="plus" onClick={() => setCreating(true)}>
+                <Button variant="secondary" onClick={() => setCreating(true)}>
                   {t('nav.newProject')}
                 </Button>
               </div>
