@@ -73,6 +73,9 @@ export function SettingsWindow({
     if (!el) return;
     const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     if (!el.open) el.showModal();
+    // Start on the open page rather than the first field: the search stays one Tab away.
+    el.querySelector<HTMLElement>('.settings-nav [aria-current="page"]')?.focus();
+    if (!el.contains(document.activeElement)) el.focus();
     return () => {
       closingSelf.current = true;
       if (el.open) el.close();
@@ -97,6 +100,7 @@ export function SettingsWindow({
         .join(' ')}
       aria-labelledby={titleId}
       aria-modal="true"
+      tabIndex={-1}
       onCancel={(e) => {
         if (!own(e)) return;
         e.preventDefault();

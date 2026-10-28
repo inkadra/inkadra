@@ -55,6 +55,9 @@ it('frames a page with the navigation, its title and the save status', async () 
   expect(dialog.open).toBe(true);
   expect(dialog.getAttribute('aria-labelledby')).toBe(dialog.querySelector('h2')?.id);
   expect(dialog.querySelector('h2')?.textContent).toBe('admin.preferences');
+  // Focus starts on the open page in the navigation.
+  expect(document.activeElement?.textContent).toBe('admin.preferences');
+  expect(document.activeElement?.getAttribute('aria-current')).toBe('page');
   expect(dialog.querySelector('.settings-nav')).not.toBeNull();
   expect(dialog.querySelector('.settings-save')).not.toBeNull();
   expect(dialog.querySelector('[data-content]')).not.toBeNull();
