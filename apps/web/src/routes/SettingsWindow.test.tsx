@@ -97,6 +97,19 @@ it('closes on Escape, the close button and a backdrop click, never from inside',
   expect(onClose).toHaveBeenCalledTimes(3);
 });
 
+it('stays open through a close and reopen, as in strict mode, but follows a forced close', async () => {
+  const dialog = await render('/settings');
+  await act(async () => {
+    dialog.dispatchEvent(new Event('close'));
+  });
+  expect(onClose).not.toHaveBeenCalled();
+  await act(async () => {
+    dialog.close();
+    dialog.dispatchEvent(new Event('close'));
+  });
+  expect(onClose).toHaveBeenCalled();
+});
+
 it('on phones lists the pages first, then shows one page with a way back', async () => {
   phone.value = true;
   const list = await render('/settings');

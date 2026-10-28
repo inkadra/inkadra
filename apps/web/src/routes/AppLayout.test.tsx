@@ -1,5 +1,5 @@
 // @vitest-environment happy-dom
-import { act, useEffect } from 'react';
+import { act, StrictMode, useEffect } from 'react';
 import { createRoot } from 'react-dom/client';
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router';
 import { expect, it, vi } from 'vitest';
@@ -101,16 +101,19 @@ async function mount(path: string) {
   document.body.append(host);
   const root = createRoot(host);
   await act(async () =>
+    // Strict mode, as in the app: the window must survive its effects running twice.
     root.render(
-      <MemoryRouter initialEntries={[path]}>
-        <Routes>
-          <Route element={<AppLayout home={<output data-home>home</output>} />}>
-            <Route index element={<output data-index />} />
-            <Route path="projects" element={<Page />} />
-            <Route path="settings" element={<Where />} />
-          </Route>
-        </Routes>
-      </MemoryRouter>,
+      <StrictMode>
+        <MemoryRouter initialEntries={[path]}>
+          <Routes>
+            <Route element={<AppLayout home={<output data-home>home</output>} />}>
+              <Route index element={<output data-index />} />
+              <Route path="projects" element={<Page />} />
+              <Route path="settings" element={<Where />} />
+            </Route>
+          </Routes>
+        </MemoryRouter>
+      </StrictMode>,
     ),
   );
   const button = (label: string) =>
@@ -137,11 +140,12 @@ it('opens settings as a window over the page, which stays mounted, and closes ba
     expect(dialog?.querySelector('[data-settings]')?.textContent).toBe('/settings');
     // The page underneath keeps its own URL and is not remounted.
     expect(host.querySelector('[data-page]')?.textContent).toBe('/projects');
-    expect(mounts.page).toBe(1);
+    expect(mounts.page).toBe(2);
     await act(async () => button('settingsUi.close')?.click());
     expect(host.querySelector('dialog.settings-window')).toBeNull();
     expect(host.querySelector('[data-page]')?.textContent).toBe('/projects');
-    expect(mounts.page).toBe(1);
+    // Strict mode mounts twice up front; opening and closing settings adds nothing.
+    expect(mounts.page).toBe(2);
     expect(document.activeElement).toBe(trigger);
   } finally {
     await unmount();

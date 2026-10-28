@@ -100,8 +100,9 @@ export function SettingsWindow({
         onClose();
       }}
       onClose={(e) => {
-        // Only when the browser closed it anyway (a repeated Escape cannot be cancelled).
-        if (own(e)) onClose();
+        // Only when the browser closed it anyway (a repeated Escape cannot be cancelled). The
+        // event is queued: after a close-and-reopen (React's strict mode) the window is open.
+        if (own(e) && !e.currentTarget.open) onClose();
       }}
       onPointerDown={(e) => {
         pressedBackdrop.current = own(e);
