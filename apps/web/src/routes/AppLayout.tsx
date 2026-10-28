@@ -45,6 +45,7 @@ import { useTheme } from '../lib/theme.ts';
 import {
   NotificationBell,
   NotificationList,
+  useNotificationFeed,
   useUnreadCount,
 } from '../notifications/Notifications.tsx';
 import { editableProjects } from './home-data.ts';
@@ -112,7 +113,14 @@ export function AppLayout() {
   const [searching, setSearching] = useState(false);
   const [inboxOpen, setInboxOpen] = useState(false);
   const mobileInboxButton = useRef<HTMLButtonElement>(null);
+  // The bell's "Open inbox" leaves the peek: closing the Inbox goes back to the bell.
+  const inboxOpener = useRef<HTMLElement | null>(null);
+  useEffect(() => {
+    if (!inboxOpen) inboxOpener.current = null;
+  }, [inboxOpen]);
   const [unread, refreshUnread] = useUnreadCount();
+  // One list behind the bell and the Inbox.
+  const notifications = useNotificationFeed(refreshUnread);
   const [params, setParams] = useSearchParams();
   const shared = useSharedBoards(!!user);
 
@@ -519,7 +527,15 @@ export function AppLayout() {
           ))}
         </select>
       )}
-      <NotificationBell unread={unread} onCount={refreshUnread} />
+      <NotificationBell
+        unread={unread}
+        onCount={refreshUnread}
+        feed={notifications}
+        onOpenInbox={(opener) => {
+          inboxOpener.current = opener;
+          setInboxOpen(true);
+        }}
+      />
     </Header>
   );
 
@@ -658,10 +674,12 @@ export function AppLayout() {
             onClose={() => {
               setInboxOpen(false);
               if (window.matchMedia('(width < 768px)').matches) mobileInboxButton.current?.focus();
+              else inboxOpener.current?.focus();
             }}
             unread={unread}
             onNavigate={() => setInboxOpen(false)}
             onCount={refreshUnread}
+            feed={notifications}
           />
         )}
         {/* Mounted only while open: a closed dialog would still leave its fields in the page. */}

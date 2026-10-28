@@ -206,7 +206,7 @@ async function expectNoTeamUi(page: Page) {
     /^Commenti:/,
     /discussion[ei] apert[ae]: apri i commenti$/,
     'Commenti e revisione',
-    /^Notifiche/,
+    /^(Notifiche|Inbox:)/,
     'Menu della board',
     'Versioni della board',
     'Nascondi agli ospiti',

@@ -4,7 +4,12 @@ import { createRoot } from 'react-dom/client';
 import { MemoryRouter } from 'react-router';
 import { beforeEach, expect, it, vi } from 'vitest';
 import { api } from '../lib/api.ts';
-import { initials, NotificationList } from './Notifications.tsx';
+import {
+  initials,
+  NotificationBell,
+  NotificationList,
+  useNotificationFeed,
+} from './Notifications.tsx';
 
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (key: string) => key, i18n: { language: 'en' } }),
@@ -499,5 +504,167 @@ it('skips pathless items, focuses the first enabled item from the panel and debo
     await act(async () => root.unmount());
     host.remove();
     vi.useRealTimers();
+  }
+});
+
+const count = async () => {};
+
+/** The app shell's wiring: one feed for the bell and the Inbox. */
+function Shell({ inbox, onOpenInbox }: { inbox: boolean; onOpenInbox: () => void }) {
+  const feed = useNotificationFeed(count);
+  return (
+    <>
+      <NotificationBell unread={1} onCount={count} feed={feed} onOpenInbox={onOpenInbox} />
+      {inbox && (
+        <NotificationList
+          fixed
+          unread={1}
+          onClose={() => {}}
+          onNavigate={() => {}}
+          onCount={count}
+          feed={feed}
+        />
+      )}
+    </>
+  );
+}
+
+it('shows the bell as a peek of the Inbox: same title, same read state, Open inbox at the bottom', async () => {
+  const host = document.createElement('div');
+  document.body.append(host);
+  const root = createRoot(host);
+  const onOpenInbox = vi.fn();
+  vi.mocked(api.get).mockResolvedValue({
+    items: [{ ...baseNotification, id: 'n1', type: 'mention', readAt: null, excerpt: 'Hi' }],
+    nextCursor: null,
+  });
+  vi.mocked(api.post).mockResolvedValue({});
+  const render = (inbox: boolean) =>
+    root.render(
+      <MemoryRouter>
+        <Shell inbox={inbox} onOpenInbox={onOpenInbox} />
+      </MemoryRouter>,
+    );
+  try {
+    await act(async () => render(false));
+    await act(async () =>
+      host.querySelector<HTMLButtonElement>('.notification-bell__button')?.click(),
+    );
+    expect(host.querySelector('#notifications-title')?.textContent).toContain('nav.inbox');
+    expect(host.querySelector('.notification.is-unread')).not.toBeNull();
+    // Read in the peek…
+    await act(async () =>
+      host
+        .querySelector<HTMLButtonElement>('.notification button[aria-label="notifications.read"]')
+        ?.click(),
+    );
+    expect(api.post).toHaveBeenCalledWith('/me/notifications/n1/read', {});
+    const open = [...host.querySelectorAll('button')].find(
+      (b) => b.textContent === 'notifications.openInbox',
+    );
+    await act(async () => open?.click());
+    expect(onOpenInbox).toHaveBeenCalled();
+    expect(host.querySelector('.notification-bell .notifications')).toBeNull();
+    // …and the Inbox lists the same item, already read, without another fetch before it reloads.
+    vi.mocked(api.get).mockReturnValue(new Promise(() => {}));
+    await act(async () => render(true));
+    expect(host.querySelector('.notifications--fixed .notification')).not.toBeNull();
+    expect(host.querySelector('.notifications--fixed .notification.is-unread')).toBeNull();
+  } finally {
+    await act(async () => root.unmount());
+    host.remove();
+  }
+});
+
+type Feed = ReturnType<typeof useNotificationFeed>;
+
+function FeedProbe({ into }: { into: { feed: Feed | null } }) {
+  into.feed = useNotificationFeed(count);
+  return null;
+}
+
+/** Renders the shared feed alone and hands it back after each render. */
+async function mountFeed() {
+  const host = document.createElement('div');
+  const root = createRoot(host);
+  const ref: { feed: Feed | null } = { feed: null };
+  await act(async () => root.render(<FeedProbe into={ref} />));
+  return {
+    feed: () => ref.feed as Feed,
+    unmount: () => act(async () => root.unmount()),
+  };
+}
+
+const deferred = <T,>() => {
+  let resolve!: (value: T) => void;
+  const promise = new Promise<T>((r) => {
+    resolve = r;
+  });
+  return { promise, resolve };
+};
+
+it('drops a stale first-page response and keeps a newer local read', async () => {
+  const unreadItem = { ...baseNotification, id: 'n1', type: 'mention', readAt: null };
+  const first = deferred<unknown>();
+  const second = deferred<unknown>();
+  vi.mocked(api.get).mockReturnValueOnce(first.promise).mockReturnValueOnce(second.promise);
+  vi.mocked(api.post).mockResolvedValue({});
+  const { feed, unmount } = await mountFeed();
+  try {
+    let a!: Promise<void>;
+    let b!: Promise<void>;
+    act(() => {
+      a = feed().load(null);
+      b = feed().load(null);
+    });
+    // The newer load answers first; the item is then read here.
+    await act(async () => {
+      second.resolve({ items: [unreadItem], nextCursor: null });
+      await b;
+    });
+    await act(async () => feed().markRead('n1'));
+    expect(feed().items[0]?.readAt).not.toBeNull();
+    // The older load lands last, from before the read: it is ignored.
+    await act(async () => {
+      first.resolve({ items: [unreadItem, { ...unreadItem, id: 'old' }], nextCursor: null });
+      await a;
+    });
+    expect(feed().items.map((n) => n.id)).toEqual(['n1']);
+    expect(feed().items[0]?.readAt).not.toBeNull();
+    // A later reload fetched before the server saw the read does not bring it back as unread.
+    vi.mocked(api.get).mockResolvedValueOnce({ items: [unreadItem], nextCursor: null });
+    await act(async () => feed().load(null));
+    expect(feed().items[0]?.readAt).not.toBeNull();
+  } finally {
+    await unmount();
+  }
+});
+
+it('keeps the pages loaded with Show more when the first page reloads', async () => {
+  const at = (id: string, createdAt: string) => ({
+    ...baseNotification,
+    id,
+    type: 'mention',
+    createdAt,
+  });
+  const page1 = [at('a', '2026-10-25T12:00:00Z'), at('b', '2026-10-25T11:00:00Z')];
+  const page2 = [at('c', '2026-10-25T10:00:00Z'), at('d', '2026-10-25T09:00:00Z')];
+  vi.mocked(api.get)
+    .mockResolvedValueOnce({ items: page1, nextCursor: 'p2' })
+    .mockResolvedValueOnce({ items: page2, nextCursor: 'p3' })
+    .mockResolvedValueOnce({
+      items: [at('new', '2026-10-25T13:00:00Z'), page1[0]],
+      nextCursor: 'x',
+    });
+  const { feed, unmount } = await mountFeed();
+  try {
+    await act(async () => feed().load(null));
+    await act(async () => feed().load('p2'));
+    await act(async () => feed().load(null));
+    expect(feed().items.map((n) => n.id)).toEqual(['new', 'a', 'b', 'c', 'd']);
+    // "Show more" continues after the last page already shown.
+    expect(feed().next).toBe('p3');
+  } finally {
+    await unmount();
   }
 });
