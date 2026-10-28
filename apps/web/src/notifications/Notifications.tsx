@@ -247,8 +247,11 @@ export function initials(name: string | null | undefined): string {
   return name.slice(0, 2).toUpperCase();
 }
 
-export function avatarBg(_name: string | null | undefined): string {
-  return 'var(--ink-surface-3)';
+export function avatarBg(name: string | null | undefined): string {
+  const colors = ['blue', 'green', 'orange', 'purple'];
+  let hash = 0;
+  for (const char of name ?? '') hash = (hash * 31 + char.charCodeAt(0)) >>> 0;
+  return `color-mix(in srgb, var(--ink-tag-${colors[hash % colors.length]}) 18%, var(--ink-bg-panel))`;
 }
 
 export function relativeTime(iso: string, language: string): string {

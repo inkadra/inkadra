@@ -39,20 +39,20 @@
   border-radius: 12px;
   background: var(--ink-surface-float);
   color: var(--ink-text-primary);
-  box-shadow: 0 12px 32px var(--ink-border-subtle);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
   outline: none;
 }
 
 /* Keep the viewport layout after the bell popover defaults. */
 .notifications--fixed {
-  position: absolute;
+  position: fixed;
   top: 0;
   bottom: 0;
   left: 56px;
   right: 0;
   width: auto;
-  max-height: 100dvh;
-  height: 100dvh;
+  max-height: none;
+  height: auto;
   border-radius: 0;
   border: 0;
   background: var(--ink-bg-panel);
@@ -654,7 +654,7 @@
   .notifications--fixed {
     left: 0;
     right: 0;
-    top: env(safe-area-inset-top);
+    top: calc(56px + env(safe-area-inset-top));
     bottom: calc(64px + env(safe-area-inset-bottom));
     width: auto;
     height: auto;
@@ -682,11 +682,10 @@
 }
 
 /* The Inbox owns the shell content while the navigation becomes an icon rail. */
-.ink-shell:has(.notifications--fixed) {
-  position: relative;
-}
-.ink-shell:has(.notifications--fixed) > .ink-header {
-  visibility: hidden;
+@media (min-width: 768px) {
+  .ink-shell:has(.notifications--fixed) > .ink-header {
+    visibility: hidden;
+  }
 }
 .notification__open.notification__open--drawer {
   flex-direction: row;
@@ -724,4 +723,21 @@
   border-radius: 12px;
   background: var(--ink-bg-app);
   color: var(--ink-text-muted);
+}
+
+.ink-shell:not(.ink-shell--collapsed):has(.notifications--fixed) .notifications--fixed {
+  left: 240px;
+}
+.inbox-detail__preview {
+  position: relative;
+}
+.inbox-detail__preview img {
+  display: block;
+  width: 100%;
+  border-radius: 12px;
+}
+@media (max-width: 767px) {
+  .ink-shell:has(.notifications--fixed) .notifications--fixed {
+    left: 0;
+  }
 }

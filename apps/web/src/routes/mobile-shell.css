@@ -188,7 +188,7 @@
   .notifications--fixed {
     left: 0;
     right: 0;
-    top: env(safe-area-inset-top);
+    top: calc(56px + env(safe-area-inset-top));
     bottom: calc(64px + env(safe-area-inset-bottom));
     width: auto;
     height: auto;

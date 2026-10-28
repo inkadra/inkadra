@@ -1,9 +1,19 @@
 // SPDX-License-Identifier: AGPL-3.0-only
+import { frameLabels, storyboardOf } from '@inkadra/canvas-core';
+import type { Element } from '@inkadra/doc-schema';
 import type { BoardDetail, Comment, CommentThread, Notification } from '@inkadra/shared';
 import { Button, Icon } from '@inkadra/ui';
-import { type FormEvent, useCallback, useEffect, useRef, useState } from 'react';
+import {
+  type FormEvent,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router';
+import { useBoardConnection } from '../board/connection.ts';
 import {
   authorName,
   findThread,
@@ -23,6 +33,33 @@ type DetailProps = {
 };
 
 export function InboxDetail(props: DetailProps) {
+  return props.notification?.boardId && props.notification.elementId ? (
+    <ConnectedInboxDetail
+      key={props.notification.id}
+      {...props}
+      boardId={props.notification.boardId}
+    />
+  ) : (
+    <InboxDetailWithElement {...props} />
+  );
+}
+
+function ConnectedInboxDetail(props: DetailProps & { boardId: string }) {
+  // Only observe the selected document. Never write through this connection.
+  const conn = useBoardConnection(props.boardId);
+  const snapshot = useSyncExternalStore(
+    conn?.store.subscribe ?? (() => () => {}),
+    conn?.store.getSnapshot ?? (() => null),
+  );
+  const element = snapshot?.byId.get(props.notification?.elementId ?? '');
+  const label =
+    element?.type === 'frame' && snapshot
+      ? frameLabels(storyboardOf([...snapshot.byId.values()])).get(element.id)
+      : undefined;
+  return <InboxDetailWithElement {...props} element={element} elementLabel={label} />;
+}
+
+function InboxDetailWithElement(props: DetailProps & { element?: Element; elementLabel?: string }) {
   const [refresh, setRefresh] = useState<{
     version: number;
     notificationId?: string;
@@ -57,7 +94,14 @@ function InboxDetailContent({
   onNavigate,
   onRefresh,
   refreshThreadId,
-}: DetailProps & { onRefresh: (threadId?: string) => void; refreshThreadId?: string }) {
+  element,
+  elementLabel,
+}: DetailProps & {
+  element?: Element;
+  elementLabel?: string;
+  onRefresh: (threadId?: string) => void;
+  refreshThreadId?: string;
+}) {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const [boardDetail, setBoardDetail] = useState<BoardDetail | null>(null);
@@ -264,11 +308,28 @@ function InboxDetailContent({
   }
 
   const p = notificationPath(notification);
+  const cardTitle =
+    elementLabel ||
+    (element &&
+      ('title' in element
+        ? element.title
+        : 'label' in element
+          ? element.label
+          : 'caption' in element
+            ? element.caption
+            : undefined));
+  const assetId =
+    element &&
+    ('assetId' in element
+      ? element.assetId
+      : 'imageAssetId' in element
+        ? element.imageAssetId
+        : undefined);
   const breadcrumbs = [
     notification.projectName,
     ...(boardDetail?.breadcrumb?.map((b) => b.title) ?? []),
     notification.boardTitle,
-    notification.elementId ? t('notifications.cardFallback') : null,
+    cardTitle,
   ]
     .filter((item): item is string => Boolean(item))
     .filter((item, index, list) => index === 0 || item !== list[index - 1]);
@@ -335,92 +396,127 @@ function InboxDetailContent({
         </div>
       </header>
       <div className="inbox-detail__body">
-        <section aria-label={t('notifications.cardPreview')} className="inbox-detail__card-section">
-          <div className="inbox-detail__preview-fallback">
-            <Icon name="board" size={32} />
-            <p>{t('notifications.previewUnavailable')}</p>
-            <Button variant="ghost" onClick={handleOpenInBoard}>
-              {t('notifications.openInBoard')}
-            </Button>
-          </div>
-          <div className="inbox-detail__meta">
-            {notification.reviewStatus && (
-              <span>
-                <span className="inbox-detail__meta-label">{t('notifications.reviewStatus')}:</span>
-                <span className="inbox-pill inbox-pill--resolved">
-                  {t(`review.status.${reviewKey(notification.reviewStatus)}`)}
-                </span>
-              </span>
-            )}
-            {notification.elementId && (
-              <span>
-                <span className="inbox-detail__meta-label">{t('notifications.cardPreview')}:</span>
-                {t('notifications.cardFallback')}
-              </span>
-            )}
-            {notification.boardTitle && (
-              <span>
-                <span className="inbox-detail__meta-label">{t('notifications.boardLabel')}:</span>
-                {notification.boardTitle}
-              </span>
-            )}
-          </div>
-          {notification.elementId && otherThreads.length > 0 && (
-            <div className="inbox-detail__other-comments">
-              <div className="inbox-detail__other-comments-title">
-                {t('notifications.otherComments')}
-              </div>
-              {otherThreads.map((other) => {
-                const pinIdx = pinnedThreads.findIndex((pin) => pin.id === other.id);
-                const author = authorName(other.author);
-                return (
-                  <button
-                    key={other.id}
-                    type="button"
-                    className="inbox-detail__other-item"
-                    onClick={() => selectThread(other)}
+        {notification.elementId && (
+          <section
+            aria-label={t('notifications.cardPreview')}
+            className="inbox-detail__card-section"
+          >
+            {element ? (
+              <div className="inbox-detail__preview">
+                {assetId && (
+                  <img
+                    src={`/api/v1/assets/${encodeURIComponent(assetId)}/variants/512`}
+                    alt={cardTitle ?? ''}
+                  />
+                )}
+                {assetId && activePinIndex >= 0 && activeThread?.pin && (
+                  <span
+                    className="inbox-detail__pin inbox-detail__pin--active"
+                    style={{
+                      left: `${activeThread.pin.x * 100}%`,
+                      top: `${activeThread.pin.y * 100}%`,
+                    }}
                   >
-                    {pinIdx >= 0 && (
-                      <span
-                        className="inbox-detail__pin inbox-detail__pin--inactive"
-                        style={{ position: 'static', transform: 'none', flex: 'none' }}
-                      >
-                        {pinIdx + 1}
-                      </span>
-                    )}
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontWeight: 600 }}>
-                        {author}
-                        {other.visibility === 'team' && (
-                          <span
-                            className="inbox-pill inbox-pill--internal"
-                            style={{ marginLeft: 6 }}
-                          >
-                            {t('notifications.internalNote')}
-                          </span>
-                        )}
-                      </div>
-                      <p className="inbox-detail__other-excerpt">
-                        {other.body || t('comments.deleted')}
-                      </p>
-                    </div>
-                    <span
-                      className={`inbox-pill ${
-                        other.resolvedAt ? 'inbox-pill--resolved' : 'inbox-pill--open'
-                      }`}
-                    >
-                      {t(
-                        other.resolvedAt
-                          ? 'notifications.statusResolved'
-                          : 'notifications.statusOpen',
-                      )}
-                    </span>
-                  </button>
-                );
-              })}
+                    {activePinIndex + 1}
+                  </span>
+                )}
+              </div>
+            ) : (
+              <div className="inbox-detail__preview-fallback">
+                <Icon name="board" size={32} />
+                <p>{t('notifications.previewUnavailable')}</p>
+                <Button variant="ghost" onClick={handleOpenInBoard}>
+                  {t('notifications.openInBoard')}
+                </Button>
+              </div>
+            )}
+            <div className="inbox-detail__meta">
+              {notification.reviewStatus && (
+                <span>
+                  <span className="inbox-detail__meta-label">
+                    {t('notifications.reviewStatus')}:
+                  </span>
+                  <span className="inbox-pill inbox-pill--resolved">
+                    {t(`review.status.${reviewKey(notification.reviewStatus)}`)}
+                  </span>
+                </span>
+              )}
+              {cardTitle && (
+                <span>
+                  <span className="inbox-detail__meta-label">
+                    {t('notifications.cardPreview')}:
+                  </span>
+                  {cardTitle}
+                </span>
+              )}
+              {element?.type === 'frame' &&
+                (['shot', 'angle', 'movement', 'lens', 'location'] as const).map((field) =>
+                  element[field] ? <span key={field}>{element[field]}</span> : null,
+                )}
+              {notification.boardTitle && (
+                <span>
+                  <span className="inbox-detail__meta-label">{t('notifications.boardLabel')}:</span>
+                  {notification.boardTitle}
+                </span>
+              )}
             </div>
-          )}
-        </section>
+            {notification.elementId && otherThreads.length > 0 && (
+              <div className="inbox-detail__other-comments">
+                <div className="inbox-detail__other-comments-title">
+                  {t('notifications.otherComments')}
+                </div>
+                {otherThreads.map((other) => {
+                  const pinIdx = pinnedThreads.findIndex((pin) => pin.id === other.id);
+                  const author = authorName(other.author);
+                  return (
+                    <button
+                      key={other.id}
+                      type="button"
+                      className="inbox-detail__other-item"
+                      onClick={() => selectThread(other)}
+                    >
+                      {pinIdx >= 0 && (
+                        <span
+                          className="inbox-detail__pin inbox-detail__pin--inactive"
+                          style={{ position: 'static', transform: 'none', flex: 'none' }}
+                        >
+                          {pinIdx + 1}
+                        </span>
+                      )}
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontWeight: 600 }}>
+                          {author}
+                          {other.visibility === 'team' && (
+                            <span
+                              className="inbox-pill inbox-pill--internal"
+                              style={{ marginLeft: 6 }}
+                            >
+                              {t('notifications.internalNote')}
+                            </span>
+                          )}
+                        </div>
+                        <p className="inbox-detail__other-excerpt">
+                          {other.body || t('comments.deleted')}
+                        </p>
+                      </div>
+                      <span
+                        className={`inbox-pill ${
+                          other.resolvedAt ? 'inbox-pill--resolved' : 'inbox-pill--open'
+                        }`}
+                      >
+                        {t(
+                          other.resolvedAt
+                            ? 'notifications.statusResolved'
+                            : 'notifications.statusOpen',
+                        )}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </section>
+        )}
         <section
           aria-label={t('notifications.conversation')}
           className="inbox-detail__conversation"

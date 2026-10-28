@@ -1,15 +1,22 @@
 // @vitest-environment happy-dom
+
+import { addFrame } from '@inkadra/canvas-core';
 import type { Comment, CommentThread, Notification } from '@inkadra/shared';
 import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { MemoryRouter } from 'react-router';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
+import * as Y from 'yjs';
+import { useBoardConnection } from '../board/connection.ts';
+import { BoardStore } from '../board/store.ts';
 import { api } from '../lib/api.ts';
 import { InboxDetail } from './InboxDetail.tsx';
 
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (key: string) => key, i18n: { language: 'en' } }),
 }));
+vi.mock('../board/connection.ts', () => ({ useBoardConnection: vi.fn(() => null) }));
+
 vi.mock('../lib/api.ts', () => ({ api: { get: vi.fn(), post: vi.fn() } }));
 
 const notification = (id: string, elementId: string | null = null) =>
@@ -253,13 +260,13 @@ it('removes loaded A controls while B is pending and refreshes the selected sibl
   expect(host.querySelector('.inbox-detail__thread-messages')?.textContent).toContain('message a');
 });
 
-it('uses a readable card fallback and keeps inherited visibility inside the composer', async () => {
+it('omits a generic card title and keeps inherited visibility inside the composer', async () => {
   vi.mocked(api.get).mockImplementation(async (path) => {
     if (path === '/boards/b') return { id: 'b', myRole: 'owner', breadcrumb: [] };
     return { items: [thread('t')], nextCursor: null };
   });
   await render('t', 'opaque-card-id');
-  expect(host.querySelector('.inbox-detail__breadcrumb')?.textContent).toContain(
+  expect(host.querySelector('.inbox-detail__breadcrumb')?.textContent).not.toContain(
     'notifications.cardFallback',
   );
   expect(host.textContent).not.toContain('opaque-card-id');
@@ -294,4 +301,39 @@ it('does not repeat the project root in the breadcrumb', async () => {
   const breadcrumb = host.querySelector('.inbox-detail__breadcrumb')?.textContent ?? '';
   expect(breadcrumb.match(/Project/g)).toHaveLength(1);
   expect(breadcrumb).not.toContain('opaque');
+});
+
+it('omits the card section for board-level notifications', async () => {
+  vi.mocked(api.get).mockResolvedValue({ items: [], nextCursor: null });
+  await render('board-comment');
+  expect(host.querySelector('.inbox-detail__card-section')).toBeNull();
+});
+
+it('reads the selected frame label, thumbnail and shot metadata from the board', async () => {
+  const doc = new Y.Doc();
+  const frame = addFrame(doc, null, null, { x: 0, y: 0 }, { userId: 'u' });
+  const { roots } = await import('@inkadra/doc-schema');
+  const map = roots(doc).elements.get(frame.id);
+  map?.set('label', '4C');
+  map?.set('assetId', 'picture');
+  map?.set('lens', '35mm');
+  const store = new BoardStore(doc);
+  vi.mocked(useBoardConnection).mockReturnValue({ store } as ReturnType<typeof useBoardConnection>);
+  vi.mocked(api.get).mockImplementation(async (path) =>
+    path === '/boards/b'
+      ? { myRole: 'viewer' }
+      : { items: [thread('frame-comment', { pin: { x: 0.25, y: 0.75 } })], nextCursor: null },
+  );
+  await render('frame-comment', frame.id);
+  expect(host.querySelector('.inbox-detail__breadcrumb')?.textContent).toContain('4C');
+  expect(host.querySelector('img')?.getAttribute('src')).toBe(
+    '/api/v1/assets/picture/variants/512',
+  );
+  expect(host.querySelector('.inbox-detail__meta')?.textContent).toContain('35mm');
+  const pin = host.querySelector<HTMLElement>('.inbox-detail__preview .inbox-detail__pin');
+  expect(pin?.style.left).toBe('25%');
+  expect(pin?.style.top).toBe('75%');
+  await act(async () => root.unmount());
+  store.destroy();
+  doc.destroy();
 });

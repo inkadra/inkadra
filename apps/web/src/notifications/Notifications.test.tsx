@@ -14,6 +14,8 @@ import {
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (key: string) => key, i18n: { language: 'en' } }),
 }));
+vi.mock('../board/connection.ts', () => ({ useBoardConnection: vi.fn(() => null) }));
+
 vi.mock('../lib/api.ts', () => ({ api: { get: vi.fn(), post: vi.fn() } }));
 
 const baseNotification = {
@@ -669,4 +671,31 @@ it('keeps the pages loaded with Show more when the first page reloads', async ()
   } finally {
     await unmount();
   }
+});
+
+it('shows the filter helper only for an active filter when more pages exist', async () => {
+  const host = document.createElement('div');
+  const root = createRoot(host);
+  vi.mocked(api.get).mockResolvedValue({ items: [], nextCursor: 'more' });
+  await act(async () =>
+    root.render(
+      <MemoryRouter>
+        <NotificationList
+          fixed
+          unread={0}
+          onClose={vi.fn()}
+          onNavigate={vi.fn()}
+          onCount={vi.fn()}
+        />
+      </MemoryRouter>,
+    ),
+  );
+  expect(host.textContent).not.toContain('notifications.loadedOnly');
+  await act(async () =>
+    [...host.querySelectorAll('button')]
+      .find((b) => b.textContent === 'notifications.tabs.mentions')
+      ?.click(),
+  );
+  expect(host.textContent).toContain('notifications.loadedOnly');
+  await act(async () => root.unmount());
 });

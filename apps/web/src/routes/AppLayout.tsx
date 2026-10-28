@@ -116,7 +116,10 @@ export function AppLayout() {
   // The bell's "Open inbox" leaves the peek: closing the Inbox goes back to the bell.
   const inboxOpener = useRef<HTMLElement | null>(null);
   useEffect(() => {
-    if (!inboxOpen) inboxOpener.current = null;
+    if (!inboxOpen && inboxOpener.current) {
+      inboxOpener.current.focus();
+      inboxOpener.current = null;
+    }
   }, [inboxOpen]);
   const [unread, refreshUnread] = useUnreadCount();
   // One list behind the bell and the Inbox.
@@ -279,7 +282,7 @@ export function AppLayout() {
           className={`ink-sidebar__toggle${collapsed ? ' is-collapsed' : ''}`}
           icon="chevronRight"
           label={t(collapsed ? 'nav.expand' : 'nav.collapse')}
-          aria-expanded={!collapsed}
+          aria-expanded={!(collapsed || inboxOpen)}
           onClick={toggleCollapsed}
         />
       </div>
@@ -565,9 +568,9 @@ export function AppLayout() {
             }
             header={header}
             canvas={!!projectId}
-            collapsed={inboxOpen || (collapsed && !inSettings)}
+            collapsed={(inboxOpen || collapsed) && !inSettings}
           >
-            <div hidden={inboxOpen}>
+            <div style={{ display: inboxOpen ? 'none' : 'contents' }}>
               <Outlet />
             </div>
             {inboxOpen && (
@@ -577,8 +580,7 @@ export function AppLayout() {
                 onClose={() => {
                   setInboxOpen(false);
                   if (window.matchMedia('(width < 768px)').matches)
-                    mobileInboxButton.current?.focus();
-                  else inboxOpener.current?.focus();
+                    inboxOpener.current = mobileInboxButton.current;
                 }}
                 unread={unread}
                 onNavigate={() => setInboxOpen(false)}
