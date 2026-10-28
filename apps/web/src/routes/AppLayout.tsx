@@ -105,6 +105,9 @@ export function AppLayout() {
   // A template when New project opens with one preselected, as from Home.
   const [creating, setCreating] = useState<boolean | ProjectTemplate>(false);
   const [creatingBoard, setCreatingBoard] = useState(false);
+  // The project a new board goes into when it starts from inside that project.
+  const [boardProject, setBoardProject] = useState<string | undefined>();
+  const [newSheet, setNewSheet] = useState(false);
   const [headerContent, setHeaderContent] = useState<ReactNode | null>(null);
   const [searching, setSearching] = useState(false);
   const [inboxOpen, setInboxOpen] = useState(false);
@@ -189,11 +192,14 @@ export function AppLayout() {
   }
 
   const inSettings = pathname.startsWith('/settings');
+  const writable = editableProjects(projects);
   const projectId = pathname.startsWith('/p/') ? pathname.split('/')[2] : undefined;
   const boardId = pathname.split('/')[4];
   const current = projects?.find((p) => p.id === projectId);
   // The same title as the guided setup page.
   const onboardingCrumb = onboardingTitle(projects);
+  // Inside a project the bottom bar's New adds the board there, when the person may.
+  const here = writable.find((p) => p.id === projectId);
   const openBoardId = boardId ?? current?.rootBoardId;
   const storyboardId = storyboardOf(projectBoards);
   // Until the project's boards are known the kind is too: no tab is active before that.
@@ -483,8 +489,11 @@ export function AppLayout() {
               <div className="home-header-actions">
                 <Button
                   icon="plus"
-                  disabled={editableProjects(projects).length === 0}
-                  onClick={() => setCreatingBoard(true)}
+                  disabled={writable.length === 0}
+                  onClick={() => {
+                    setBoardProject(undefined);
+                    setCreatingBoard(true);
+                  }}
                 >
                   {t('home.newBoard.action')}
                 </Button>
@@ -550,6 +559,7 @@ export function AppLayout() {
           pathname={pathname}
           inboxOpen={inboxOpen}
           drawerOpen={drawerOpen}
+          newOpen={newSheet}
           unread={unread}
           onHome={() => {
             setInboxOpen(false);
@@ -561,7 +571,7 @@ export function AppLayout() {
           }}
           onNew={() => {
             setInboxOpen(false);
-            setCreating(true);
+            setNewSheet(true);
           }}
           onInbox={() => setInboxOpen((o) => !o)}
           onProfile={() => {
@@ -584,6 +594,42 @@ export function AppLayout() {
             </Dialog>
           </div>
         )}
+        {newSheet && (
+          <div className="phone-sheet">
+            <Dialog open title={t('mobile.createTitle')} onClose={() => setNewSheet(false)}>
+              <div className="mobile-new-sheet__actions">
+                <Button
+                  block
+                  icon="plus"
+                  onClick={() => {
+                    setNewSheet(false);
+                    setCreating(true);
+                  }}
+                >
+                  {t('nav.newProject')}
+                </Button>
+                <Button
+                  block
+                  icon="board"
+                  disabled={writable.length === 0}
+                  onClick={() => {
+                    setNewSheet(false);
+                    setBoardProject(here?.id);
+                    setCreatingBoard(true);
+                  }}
+                >
+                  {here
+                    ? t('mobile.newBoardIn', { project: here.name })
+                    : t('home.newBoard.action')}
+                </Button>
+                {/* Phones have no Esc and a tap outside does not close the sheet. */}
+                <Button variant="ghost" block onClick={() => setNewSheet(false)}>
+                  {t('mobile.close')}
+                </Button>
+              </div>
+            </Dialog>
+          </div>
+        )}
         {searching && (
           <SearchDialog
             projects={projects}
@@ -592,11 +638,14 @@ export function AppLayout() {
             actions={appActions({
               t,
               admin: user.role === 'admin',
-              canCreateBoard: editableProjects(projects).length > 0,
+              canCreateBoard: writable.length > 0,
               theme,
               navigate,
               newProject: () => setCreating(true),
-              newBoard: () => setCreatingBoard(true),
+              newBoard: () => {
+                setBoardProject(undefined);
+                setCreatingBoard(true);
+              },
               toggleTheme: toggle,
               openInbox: () => setInboxOpen(true),
             })}
@@ -619,8 +668,9 @@ export function AppLayout() {
         {creatingBoard && (
           <NewBoardDialog
             open
-            projects={editableProjects(projects)}
+            projects={writable}
             initial="blank"
+            initialProject={boardProject}
             onClose={() => setCreatingBoard(false)}
           />
         )}

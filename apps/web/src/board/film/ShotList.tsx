@@ -40,6 +40,7 @@ import {
 } from './film-status.ts';
 import { ShotlistKanban } from './ShotlistKanban.tsx';
 import { useSlugline, useStoryboard } from './StoryboardView.tsx';
+import { ViewOptions } from './ViewOptions.tsx';
 
 type Patch = Partial<Omit<FrameElement, 'id' | 'type'>>;
 
@@ -446,6 +447,114 @@ export function ShotList({
 
   const selectedSceneObj = scenes.find((s) => s.id === selectedScene);
 
+  // Filters, grouping, sorting and export sit in the bar; on a phone they fold into View options.
+  const filterControls = (
+    <>
+      <select
+        className="ink-input"
+        value={selectedScene}
+        aria-label={t('film.list.groupScene')}
+        onChange={(e) => setSelectedScene(e.target.value)}
+      >
+        <option value="">{t('film.list.allScenes')}</option>
+        {scenes.map((s) => (
+          <option key={s.id} value={s.id}>
+            {s.number ? `${s.number}. ` : ''}
+            {s.title || slugline(s)}
+          </option>
+        ))}
+      </select>
+
+      {allLocations.length > 0 && (
+        <select
+          className="ink-input"
+          value={selectedLocation}
+          aria-label={t('film.list.groupLocation')}
+          onChange={(e) => setSelectedLocation(e.target.value)}
+        >
+          <option value="">{t('film.list.allLocations')}</option>
+          {allLocations.map((l) => (
+            <option key={l} value={l}>
+              {l}
+            </option>
+          ))}
+        </select>
+      )}
+
+      {allCast.length > 0 && (
+        <select
+          className="ink-input"
+          value={selectedCast}
+          aria-label={t('film.frame.cast')}
+          onChange={(e) => setSelectedCast(e.target.value)}
+        >
+          <option value="">{t('film.list.allCast')}</option>
+          {allCast.map((c) => (
+            <option key={c} value={c}>
+              {c}
+            </option>
+          ))}
+        </select>
+      )}
+
+      <select
+        className="ink-input"
+        value={status}
+        aria-label={t('film.frame.status')}
+        onChange={(e) => setStatus(e.target.value as ShotDisplayStatus | '')}
+      >
+        <option value="">{t('film.list.allStatuses')}</option>
+        {SHOT_DISPLAY_STATUSES.map((s) => (
+          <option key={s} value={s}>
+            {t(`film.status.${s}`)}
+          </option>
+        ))}
+      </select>
+
+      <select
+        className="ink-input"
+        value={groupBy}
+        aria-label={t('film.list.groupBy')}
+        onChange={(e) => setGroupBy(e.target.value as 'scene' | 'location' | 'status' | 'none')}
+      >
+        <option value="scene">
+          {t('film.list.groupBy')}: {t('film.list.groupScene')}
+        </option>
+        <option value="location">
+          {t('film.list.groupBy')}: {t('film.list.groupLocation')}
+        </option>
+        <option value="status">
+          {t('film.list.groupBy')}: {t('film.list.groupStatus')}
+        </option>
+        <option value="none">
+          {t('film.list.groupBy')}: {t('film.list.groupNone')}
+        </option>
+      </select>
+
+      <select
+        className="ink-input"
+        value={sortBy}
+        aria-label={t('film.list.sortBy')}
+        onChange={(e) => setSortBy(e.target.value as 'manual' | 'label' | 'duration')}
+      >
+        <option value="manual">
+          {t('film.list.sortBy')}: {t('film.list.sortManual')}
+        </option>
+        <option value="label">
+          {t('film.list.sortBy')}: {t('film.list.sortLabel')}
+        </option>
+        <option value="duration">
+          {t('film.list.sortBy')}: {t('film.list.sortDuration')}
+        </option>
+      </select>
+    </>
+  );
+  const exportButton = (
+    <Button icon="download" disabled={frames.length === 0} onClick={exportCsv}>
+      {t('film.list.export')}
+    </Button>
+  );
+
   return (
     <div className="shots" ref={containerRef}>
       <div className="story__bar" data-chrome>
@@ -458,7 +567,7 @@ export function ShotList({
             onClick={() => setMode('table')}
           >
             <Icon name="shotlist" size={14} />
-            {t('film.list.table')}
+            <span className="shots__mode-label">{t('film.list.table')}</span>
           </button>
           <button
             type="button"
@@ -468,7 +577,7 @@ export function ShotList({
             onClick={() => setMode('kanban')}
           >
             <Icon name="board" size={14} />
-            {t('film.list.kanban')}
+            <span className="shots__mode-label">{t('film.list.kanban')}</span>
           </button>
         </div>
 
@@ -481,115 +590,28 @@ export function ShotList({
           onChange={(e) => setQuery(e.target.value)}
         />
 
-        <select
-          className="ink-input"
-          value={selectedScene}
-          aria-label={t('film.list.groupScene')}
-          onChange={(e) => setSelectedScene(e.target.value)}
-        >
-          <option value="">{t('film.list.allScenes')}</option>
-          {scenes.map((s) => (
-            <option key={s.id} value={s.id}>
-              {s.number ? `${s.number}. ` : ''}
-              {s.title || slugline(s)}
-            </option>
-          ))}
-        </select>
-
-        {allLocations.length > 0 && (
-          <select
-            className="ink-input"
-            value={selectedLocation}
-            aria-label={t('film.list.groupLocation')}
-            onChange={(e) => setSelectedLocation(e.target.value)}
-          >
-            <option value="">{t('film.list.allLocations')}</option>
-            {allLocations.map((l) => (
-              <option key={l} value={l}>
-                {l}
-              </option>
-            ))}
-          </select>
-        )}
-
-        {allCast.length > 0 && (
-          <select
-            className="ink-input"
-            value={selectedCast}
-            aria-label={t('film.frame.cast')}
-            onChange={(e) => setSelectedCast(e.target.value)}
-          >
-            <option value="">{t('film.list.allCast')}</option>
-            {allCast.map((c) => (
-              <option key={c} value={c}>
-                {c}
-              </option>
-            ))}
-          </select>
-        )}
-
-        <select
-          className="ink-input"
-          value={status}
-          aria-label={t('film.frame.status')}
-          onChange={(e) => setStatus(e.target.value as ShotDisplayStatus | '')}
-        >
-          <option value="">{t('film.list.allStatuses')}</option>
-          {SHOT_DISPLAY_STATUSES.map((s) => (
-            <option key={s} value={s}>
-              {t(`film.status.${s}`)}
-            </option>
-          ))}
-        </select>
-
-        <select
-          className="ink-input"
-          value={groupBy}
-          aria-label={t('film.list.groupBy')}
-          onChange={(e) => setGroupBy(e.target.value as 'scene' | 'location' | 'status' | 'none')}
-        >
-          <option value="scene">
-            {t('film.list.groupBy')}: {t('film.list.groupScene')}
-          </option>
-          <option value="location">
-            {t('film.list.groupBy')}: {t('film.list.groupLocation')}
-          </option>
-          <option value="status">
-            {t('film.list.groupBy')}: {t('film.list.groupStatus')}
-          </option>
-          <option value="none">
-            {t('film.list.groupBy')}: {t('film.list.groupNone')}
-          </option>
-        </select>
-
-        <select
-          className="ink-input"
-          value={sortBy}
-          aria-label={t('film.list.sortBy')}
-          onChange={(e) => setSortBy(e.target.value as 'manual' | 'label' | 'duration')}
-        >
-          <option value="manual">
-            {t('film.list.sortBy')}: {t('film.list.sortManual')}
-          </option>
-          <option value="label">
-            {t('film.list.sortBy')}: {t('film.list.sortLabel')}
-          </option>
-          <option value="duration">
-            {t('film.list.sortBy')}: {t('film.list.sortDuration')}
-          </option>
-        </select>
+        <div className="view-options__inline">{filterControls}</div>
 
         <span className="ink-header__spacer" />
 
+        <ViewOptions>
+          {filterControls}
+          {exportButton}
+        </ViewOptions>
+
         {!readOnly && (
-          <Button icon="plus" variant="primary" onClick={() => addFrameToScene(null)}>
-            {t('film.list.addShot')}
+          <Button
+            icon="plus"
+            variant="primary"
+            className="film-compact-btn"
+            aria-label={t('film.list.addShot')}
+            onClick={() => addFrameToScene(null)}
+          >
+            <span className="film-compact-btn__label">{t('film.list.addShot')}</span>
           </Button>
         )}
 
-        <Button icon="download" disabled={frames.length === 0} onClick={exportCsv}>
-          {t('film.list.export')}
-        </Button>
+        <div className="view-options__inline">{exportButton}</div>
       </div>
 
       {hasActiveFilters && (

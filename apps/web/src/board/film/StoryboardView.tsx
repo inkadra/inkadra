@@ -28,6 +28,7 @@ import { FramePanel } from './FramePanel.tsx';
 import { FramePicture } from './FramePicture.tsx';
 import { FrameVisibilityButton } from './FrameVisibilityButton.tsx';
 import { blurOnEnter, StatusChip, usePresetText } from './fields.tsx';
+import { ViewOptions } from './ViewOptions.tsx';
 
 const FRAME_MIME = 'application/x-inkadra-frame';
 const STORY_MODES = ['grid', 'sequence', 'animatic'] as const;
@@ -117,6 +118,46 @@ export function StoryboardView({
   }
 
   const total = estimatedDurationMs(frames);
+  // Size, aspect and total sit in the bar; on a phone they fold into View options.
+  const sizeControl = mode !== 'animatic' && (
+    <fieldset className="story__modes" aria-label={t('film.playback.size')}>
+      {TILE_SIZES.map((value) => (
+        <button
+          type="button"
+          key={value}
+          className="story__mode"
+          aria-pressed={size === value}
+          aria-label={t(`film.playback.sizes.${value}`)}
+          title={t(`film.playback.sizes.${value}`)}
+          onClick={() => setSize(value)}
+        >
+          {value.toUpperCase()}
+        </button>
+      ))}
+    </fieldset>
+  );
+  const aspectControl = (
+    <label className="story__aspect">
+      <span>{t('film.aspect.label')}</span>
+      <select
+        className="ink-input"
+        value={boardAspect}
+        disabled={readOnly}
+        onChange={(e) => setBoardAspect(store.doc, e.target.value as AspectRatio, LOCAL)}
+      >
+        {ASPECT_RATIOS.map((r) => (
+          <option key={r} value={r}>
+            {aspectLabel(r)}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
+  const totalLabel = (
+    <span className="story__total">
+      {t('film.total', { count: frames.length, duration: formatDuration(total) })}
+    </span>
+  );
   return (
     <div className={`story story--${mode} story--${size}`}>
       <div className="story__bar" data-chrome>
@@ -136,55 +177,37 @@ export function StoryboardView({
             </button>
           ))}
         </fieldset>
-        {mode !== 'animatic' && (
-          <fieldset className="story__modes" aria-label={t('film.playback.size')}>
-            {TILE_SIZES.map((value) => (
-              <button
-                type="button"
-                key={value}
-                className="story__mode"
-                aria-pressed={size === value}
-                aria-label={t(`film.playback.sizes.${value}`)}
-                title={t(`film.playback.sizes.${value}`)}
-                onClick={() => setSize(value)}
-              >
-                {value.toUpperCase()}
-              </button>
-            ))}
-          </fieldset>
-        )}
-        <label className="story__aspect">
-          <span>{t('film.aspect.label')}</span>
-          <select
-            className="ink-input"
-            value={boardAspect}
-            disabled={readOnly}
-            onChange={(e) => setBoardAspect(store.doc, e.target.value as AspectRatio, LOCAL)}
-          >
-            {ASPECT_RATIOS.map((r) => (
-              <option key={r} value={r}>
-                {aspectLabel(r)}
-              </option>
-            ))}
-          </select>
-        </label>
-        <span className="story__total">
-          {t('film.total', { count: frames.length, duration: formatDuration(total) })}
-        </span>
+        <div className="view-options__inline">
+          {sizeControl}
+          {aspectControl}
+          {totalLabel}
+        </div>
         <span className="ink-header__spacer" />
+        <ViewOptions>
+          {sizeControl}
+          {aspectControl}
+          {totalLabel}
+        </ViewOptions>
         <Button
           icon="play"
+          className="film-compact-btn"
+          aria-label={t('film.playback.present')}
           disabled={!visibleFrames.length}
           onClick={() => {
             setSelected(null);
             setPresent(true);
           }}
         >
-          {t('film.playback.present')}
+          <span className="film-compact-btn__label">{t('film.playback.present')}</span>
         </Button>
         {!readOnly && (
-          <Button icon="plus" onClick={newScene}>
-            {t('film.scene.add')}
+          <Button
+            icon="plus"
+            className="film-compact-btn"
+            aria-label={t('film.scene.add')}
+            onClick={newScene}
+          >
+            <span className="film-compact-btn__label">{t('film.scene.add')}</span>
           </Button>
         )}
       </div>

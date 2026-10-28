@@ -19,12 +19,15 @@ export function NewBoardDialog({
   open,
   projects,
   initial,
+  initialProject,
   onClose,
 }: {
   open: boolean;
   /** Projects where the person can add a board, most recent first. */
   projects: Project[];
   initial: StartChoice;
+  /** Preselected project, e.g. the one open behind the dialog; else the last one picked. */
+  initialProject?: string;
   onClose: () => void;
 }) {
   const { t } = useTranslation();
@@ -43,7 +46,11 @@ export function NewBoardDialog({
     setChoice(initial);
     setTitle(initial === 'blank' ? '' : t(choiceKey(initial, 'name')));
     setProject((current) =>
-      projects.some((p) => p.id === current) ? current : (projects[0]?.id ?? ''),
+      initialProject && projects.some((p) => p.id === initialProject)
+        ? initialProject
+        : projects.some((p) => p.id === current)
+          ? current
+          : (projects[0]?.id ?? ''),
     );
     setError(null);
   }, [open, initial]);

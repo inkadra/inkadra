@@ -110,7 +110,17 @@ export function Home() {
       )}
 
       <div className="home__columns">
-        <Section id="home-recent" title={t('home.recentBoards')} hint={t('home.recentBoardsHint')}>
+        <Section
+          id="home-recent"
+          title={
+            <>
+              {/* On a phone the row reads as where to pick up again, as in the mockup. */}
+              <span className="home__title-wide">{t('home.recentBoards')}</span>
+              <span className="home__title-phone">{t('home.continue')}</span>
+            </>
+          }
+          hint={t('home.recentBoardsHint')}
+        >
           <LoadState list={boards} empty={t('home.noRecentBoards')}>
             {(items) => (
               <div className="home__boards">
@@ -246,7 +256,7 @@ function Section({
   children,
 }: {
   id: string;
-  title: string;
+  title: ReactNode;
   hint?: string;
   action?: ReactNode;
   children: ReactNode;

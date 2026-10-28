@@ -283,6 +283,56 @@ a.home__activity-item:hover {
   .home__day-open {
     margin-left: 0;
   }
+  /* Recent boards: one row that scrolls sideways instead of a tall stack of cards. */
+  .home__boards {
+    grid-template-columns: none;
+    grid-auto-flow: column;
+    grid-auto-columns: 168px;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scroll-snap-type: x mandatory;
+    scroll-padding-inline: 16px;
+    scrollbar-width: none;
+    margin: 0 -16px;
+    padding: 0 16px 4px;
+  }
+  .home__boards > .home__card {
+    scroll-snap-align: start;
+  }
+  .home__boards .home__cover {
+    height: 88px;
+  }
+  /* Projects and shared boards: compact rows, as the mockup's project list. */
+  .home__recent {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 8px;
+  }
+  .home__recent > .home__card {
+    flex-direction: row;
+    align-items: center;
+    min-height: 56px;
+  }
+  .home__recent .home__cover {
+    flex: none;
+    width: 56px;
+    height: 56px;
+  }
+  .home__recent .home__preview-summary {
+    display: none;
+  }
+  .home__recent .home__meta {
+    min-width: 0;
+    padding: 8px 12px;
+  }
+  #home-recent ~ .home__hint,
+  .home__title-wide {
+    display: none;
+  }
+}
+@media (width >= 768px) {
+  .home__title-phone {
+    display: none;
+  }
 }
 
 .home__preview {
