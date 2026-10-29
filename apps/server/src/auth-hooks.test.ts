@@ -30,6 +30,7 @@ const auth = createAuth(
 const user = { id: 'member', email: 'member@example.com', twoFactorEnabled: true };
 const ctx = (path: string, context: object = {}) => ({
   path,
+  request: new Request(`https://example.com/api/auth${path}`),
   body: { email: user.email },
   headers: new Headers({ 'x-inkadra-client-ip': '192.0.2.1' }),
   context,
@@ -135,9 +136,39 @@ it('does not reserve an account attempt after source rejection', async () => {
   budgets.consume.mockResolvedValueOnce({ allowed: true, retryAfter: 0 });
   budgets.consume.mockResolvedValueOnce({ allowed: true, retryAfter: 0 });
   budgets.consume.mockResolvedValueOnce({ allowed: false, retryAfter: 900 });
-  await expect(
-    auth.options.hooks?.before?.(ctx('/sign-in/email') as never),
-  ).rejects.toMatchObject({ status: 'TOO_MANY_REQUESTS' });
+  await expect(auth.options.hooks?.before?.(ctx('/sign-in/email') as never)).rejects.toMatchObject({
+    status: 'TOO_MANY_REQUESTS',
+  });
   expect(budgets.refund).toHaveBeenCalledWith(`login:${user.email}:192.0.2.0/24`);
   expect(budgets.consume).not.toHaveBeenCalledWith(`account:${user.email}`, 50, 3600);
+});
+
+it('detaches reset delivery budgets and keys them by recipient and source', async () => {
+  const send = vi.fn(async () => {});
+  const configured = createAuth(
+    loadConfig({
+      NODE_ENV: 'test',
+      PUBLIC_URL: 'https://example.com',
+      DATABASE_URL: 'unused',
+      AUTH_SECRET: 'test-secret-test-secret-test-secret',
+    }),
+    {} as Database,
+    { mailer: { enabled: true, send } },
+  );
+  let release = (_allowed: boolean) => {};
+  budgets.take.mockImplementationOnce(
+    () =>
+      new Promise<boolean>((resolve) => {
+        release = resolve;
+      }),
+  );
+  await configured.options.emailAndPassword?.sendResetPassword?.(
+    { user: user as never, url: 'https://example.com/reset', token: 'test' },
+    new Request('https://example.com', { headers: { 'x-inkadra-client-ip': '192.0.2.1' } }),
+  );
+  expect(send).not.toHaveBeenCalled();
+  expect(budgets.take).toHaveBeenCalledWith(`mail:${user.email}:192.0.2.0/24`, 3, 900);
+  release(true);
+  await vi.waitFor(() => expect(send).toHaveBeenCalledOnce());
+  expect(budgets.take).toHaveBeenCalledWith(`mail:${user.email}`, 10, 3600);
 });

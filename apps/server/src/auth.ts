@@ -194,6 +194,8 @@ export function createAuth(config: Config, db: Database, deps: AuthDeps = {}) {
           ctx.path.startsWith('/two-factor/') ||
           ctx.path === '/request-password-reset' ||
           ctx.path === '/reset-password';
+        // Internal auth.api calls (for example /api/v1 session checks) are not HTTP auth traffic.
+        if (!ctx.request) return;
         if (config.NODE_ENV !== 'production' && config.AUTH_RATE_LIMITS === 'off') return;
         const address =
           typeof ctx.body?.email === 'string' ? ctx.body.email.trim().toLowerCase() : '';
@@ -439,11 +441,12 @@ export function createAuth(config: Config, db: Database, deps: AuthDeps = {}) {
             {
               matcher: (ctx) =>
                 Boolean(ctx.context.newSession) &&
-                (ctx.path.startsWith('/sign-in/') ||
-                  ctx.path.startsWith('/sign-up/') ||
-                  ctx.path.startsWith('/callback/') ||
+                Boolean(ctx.path) &&
+                ((ctx.path ?? '').startsWith('/sign-in/') ||
+                  (ctx.path ?? '').startsWith('/sign-up/') ||
+                  (ctx.path ?? '').startsWith('/callback/') ||
                   ctx.path === '/magic-link/verify' ||
-                  ctx.path.startsWith('/two-factor/verify-')),
+                  (ctx.path ?? '').startsWith('/two-factor/verify-')),
               handler: createAuthMiddleware(async (ctx) => {
                 const user = ctx.context.newSession?.user;
                 // Runs after the upstream two-factor hook has removed provisional sessions.

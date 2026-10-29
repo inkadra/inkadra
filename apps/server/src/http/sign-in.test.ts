@@ -142,6 +142,7 @@ describe.skipIf(!url)('sign-in providers (needs DATABASE_URL)', () => {
         });
         expect(direct.statusCode).toBe(200);
         expect(direct.json().twoFactorRedirect).toBe(true);
+        expect(direct.cookies.some((c) => c.name === '__Host-inkadra.known-device')).toBe(false);
         const cookie = direct.cookies.map((c) => `${c.name}=${c.value}`).join('; ');
         expect(await auth.api.getSession({ headers: new Headers({ cookie }) })).toBeNull();
       }
@@ -158,6 +159,7 @@ describe.skipIf(!url)('sign-in providers (needs DATABASE_URL)', () => {
         headers: { cookie },
       });
       expect(callback.statusCode).toBe(302);
+      expect(callback.cookies.some((c) => c.name === '__Host-inkadra.known-device')).toBe(false);
       expect(callback.headers.location).toBe(
         '/login?twoFactor=true&next=%2Fauthorize%3Fclient_id%3Dmobile',
       );

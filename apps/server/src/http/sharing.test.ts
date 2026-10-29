@@ -70,12 +70,14 @@ describe.skipIf(!url)('sharing, invitations, tokens and accounts (needs DATABASE
     method: string,
     path: string,
     payload?: unknown,
+    source = '127.0.0.1',
   ) {
     const auth = who === null ? {} : typeof who === 'string' ? { cookie: as[who].cookie } : who;
     const res = await fetch(`${base}${path}`, {
       method,
       headers: {
         origin: config.PUBLIC_URL,
+        'x-forwarded-for': source,
         ...(auth.cookie ? { cookie: auth.cookie } : {}),
         ...('bearer' in auth && auth.bearer ? { authorization: `Bearer ${auth.bearer}` } : {}),
         ...(payload !== undefined ? { 'content-type': 'application/json' } : {}),
@@ -118,11 +120,15 @@ describe.skipIf(!url)('sharing, invitations, tokens and accounts (needs DATABASE
 
   async function signUp(who: Who, invitationCookie = '') {
     const email = `${who}@example.com`;
-    const res = await call({ cookie: invitationCookie }, 'POST', '/api/auth/sign-up/email', {
-      email,
-      password: PASSWORD,
-      name: who[0]?.toUpperCase() + who.slice(1),
-    });
+    // Independent people on separate source networks; keep production limits enabled.
+    const source = `192.0.${['owner', 'editor', 'viewer', 'guest', 'outsider', 'newbie'].indexOf(who)}.1`;
+    const res = await call(
+      { cookie: invitationCookie },
+      'POST',
+      '/api/auth/sign-up/email',
+      { email, password: PASSWORD, name: who[0]?.toUpperCase() + who.slice(1) },
+      source,
+    );
     if (res.status === 200)
       as[who] = {
         cookie: cookieOf(res.cookies, 'inkadra.session_token'),
@@ -624,6 +630,7 @@ describe.skipIf(!url)('sharing, invitations, tokens and accounts (needs DATABASE
         method,
         headers: {
           origin: config.PUBLIC_URL,
+        'x-forwarded-for': source,
           cookie: as.owner.cookie,
           ...(method === 'POST' ? { 'content-type': 'application/json' } : {}),
         },
@@ -886,6 +893,7 @@ describe.skipIf(!url)('sharing, invitations, tokens and accounts (needs DATABASE
       { code: totp(secret) },
     );
     await expectSessionCookie(completed);
+    expect(cookieOf(completed.cookies, '__Host-inkadra.known-device')).not.toBe('');
 
     const signIn = await call(null, 'POST', '/api/auth/sign-in/email', {
       email: as.viewer.email,
@@ -893,6 +901,7 @@ describe.skipIf(!url)('sharing, invitations, tokens and accounts (needs DATABASE
     });
     expect(signIn.status).toBe(200);
     expect(signIn.body.twoFactorRedirect).toBe(true);
+    expect(cookieOf(signIn.cookies, '__Host-inkadra.known-device')).toBe('');
     await expectPrivateSession(signIn);
     expect(cookieOf(signIn.cookies, 'inkadra.session_token').split('=')[1] ?? '').toBe('');
     const second = await call(
