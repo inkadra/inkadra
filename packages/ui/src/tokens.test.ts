@@ -144,14 +144,16 @@ describe('tokens', () => {
     ),
   ];
   // biome-ignore format: one toolbar, left to right (Board and Storyboard are in the Canvas menu)
-  const toolbar: ToolKind[] = ['select', 'hand', 'arrow', 'note', 'image', 'link', 'todo', 'color', 'column', 'frame', 'canvasMenu'];
+  const toolbar: ToolKind[] = ['select', 'hand', 'arrow', 'note', 'image', 'link', 'todo', 'color', 'column', 'frame'];
   const themes = [
     ['light', light],
     ['dark', dark],
   ] as const;
 
+  // Olive colour is the exception (decision 0033): the light theme leaves it 0.12 from green.
+  const floor = (tool: ColorToken) => (tool === 'tool-color' ? 0.11 : 0.13);
   it('keeps tool colours far from canvas types, accent and danger', () => {
-    expect(toolTokens).toHaveLength(4);
+    expect(toolTokens).toHaveLength(5);
     const others: ColorToken[] = [
       ...kindTokens,
       'accent-primary',
@@ -165,7 +167,7 @@ describe('tokens', () => {
           expect(
             distance(theme[tool], theme[other]),
             `${name} ${tool} / ${other}`,
-          ).toBeGreaterThanOrEqual(0.13);
+          ).toBeGreaterThanOrEqual(floor(tool));
   });
 
   it('keeps tool colours apart from each other, more so on the toolbar', () => {

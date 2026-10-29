@@ -63,6 +63,8 @@
   --ink-tool-link-bg: #1C3125;
   --ink-tool-todo: #E53BF6;
   --ink-tool-todo-bg: #342535;
+  --ink-tool-color: #8B9E0F;
+  --ink-tool-color-bg: #2A2E19;
 }
 
 :root[data-theme='light'] {
@@ -124,6 +126,8 @@
   --ink-tool-link-bg: #E6F4EB;
   --ink-tool-todo: #BF22C7;
   --ink-tool-todo-bg: #F8ECF8;
+  --ink-tool-color: #867713;
+  --ink-tool-color-bg: #F3F1E2;
 }
 
 @media (prefers-color-scheme: light) {
@@ -186,5 +190,7 @@
     --ink-tool-link-bg: #E6F4EB;
     --ink-tool-todo: #BF22C7;
     --ink-tool-todo-bg: #F8ECF8;
+    --ink-tool-color: #867713;
+    --ink-tool-color-bg: #F3F1E2;
   }
 }

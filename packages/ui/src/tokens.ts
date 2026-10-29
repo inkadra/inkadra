@@ -65,6 +65,8 @@ export const dark = {
   'tool-link-bg': '#1C3125',
   'tool-todo': '#E53BF6',
   'tool-todo-bg': '#342535',
+  'tool-color': '#8B9E0F',
+  'tool-color-bg': '#2A2E19',
 } as const;
 
 export type ColorToken = keyof typeof dark;
@@ -119,7 +121,8 @@ export const light: Record<ColorToken, string> = {
   'tag-red-bg': '#F6E7E8',
   'tag-pink': '#A82965',
   'tag-pink-bg': '#FAE7ED',
-  // Darker than the canvas-type colours, which sit at OKLCH L 0.45–0.55 (todo: lighter, vivid).
+  // Darker than the canvas-type colours, which sit at OKLCH L 0.45–0.55; to-do and colour sit
+  // above them (vivid orchid, olive).
   'tool-note': '#513500',
   'tool-note-bg': '#F8EFE2',
   'tool-image': '#093E6F',
@@ -128,6 +131,8 @@ export const light: Record<ColorToken, string> = {
   'tool-link-bg': '#E6F4EB',
   'tool-todo': '#BF22C7',
   'tool-todo-bg': '#F8ECF8',
+  'tool-color': '#867713',
+  'tool-color-bg': '#F3F1E2',
 };
 
 export const space = { 1: 4, 2: 8, 3: 12, 4: 16, 6: 24, 8: 32, 12: 48 } as const;

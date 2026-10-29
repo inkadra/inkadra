@@ -11,14 +11,13 @@ export const toolColor = {
   image: 'image',
   link: 'link',
   todo: 'todo',
-  // A fifth colour cannot stay 0.12 OKLab from the canvas types in the light theme.
-  color: null,
+  // Olive: in the light theme only 0.12 OKLab from the canvas green (decision 0033).
+  color: 'color',
   column: null,
   frame: null,
   select: null,
   hand: null,
   arrow: null,
-  canvasMenu: null,
 } as const;
 export type ToolKind = keyof typeof toolColor;
 export function toolStyle(tool: ToolKind): CSSProperties {

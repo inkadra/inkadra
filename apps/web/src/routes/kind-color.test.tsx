@@ -41,7 +41,11 @@ it('keeps canvas tools off the canvas-type colours', () => {
     '--kind-fg': 'var(--ink-text-secondary)',
     '--kind-bg': 'var(--ink-surface-2)',
   });
-  expect(toolStyle('color')).toEqual(toolStyle('column'));
+  expect(toolStyle('color')).toEqual({
+    '--kind-fg': 'var(--ink-tool-color)',
+    '--kind-bg': 'var(--ink-tool-color-bg)',
+  });
+  expect(toolStyle('column')).toEqual(toolStyle('select'));
   for (const kind of Object.keys(toolColor)) expect(Object.hasOwn(kindColor, kind)).toBe(false);
 });
 it('colours only the sidebar icon and preserves the active row', () => {

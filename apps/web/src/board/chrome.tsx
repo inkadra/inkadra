@@ -31,7 +31,6 @@ import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { addActions, type PaletteAction, rankActions } from '../commands/actions.ts';
 import {
-  CANVAS_KEYS,
   CANVAS_TEMPLATES,
   type CanvasTemplate,
   canvasTemplateIcon,
@@ -61,7 +60,7 @@ export const TOOLS: Array<{ type: ToolType; icon: IconName; key?: string; menuOn
   { type: 'image', icon: 'image', key: 'I' },
   { type: 'link', icon: 'link', key: 'L' },
   { type: 'todo', icon: 'todo', key: 'T' },
-  { type: 'column', icon: 'toolColumn', key: 'C' },
+  { type: 'column', icon: 'splitPanel', key: 'C' },
   // Board and Storyboard are inserted from the Canvas menu; their keys and palette entries stay.
   { type: 'board', icon: 'board', key: 'B', menuOnly: true },
   { type: 'color', icon: 'color', key: 'K' },
@@ -140,28 +139,34 @@ export function Toolbar({
               dragType={tl.type}
             />
           ))}
-          {group === 'organize' && <CanvasMenuButton onCanvas={onCanvas} />}
         </fieldset>
       ))}
+      <fieldset
+        className="toolbar__group toolbar__group--canvas"
+        aria-label={t('board.canvasMenu.hint')}
+      >
+        <CanvasMenuButton onCanvas={onCanvas} />
+      </fieldset>
     </div>
   );
 }
 
 /**
- * The last tool: a menu of the canvas types to insert, each in its content-kind colour. The
- * menu sits outside the bar, which scrolls sideways on phones and would clip it.
+ * The primary action at the end of the bar: a menu of the canvas types to insert, each in its
+ * content-kind colour. The menu sits outside the bar, which scrolls sideways on phones.
  */
 function CanvasMenuButton({ onCanvas }: { onCanvas: (template: CanvasTemplate) => void }) {
   const { t } = useTranslation();
   const tooltipId = useId();
   const button = useRef<HTMLButtonElement>(null);
-  const [at, setAt] = useState<{ left: number; bottom: number } | null>(null);
+  const [at, setAt] = useState<{ right: number; bottom: number } | null>(null);
   const label = t('board.canvasMenu.label');
+  // Above the button, its right edge on the button's.
   const open = () => {
     const rect = button.current?.getBoundingClientRect();
     if (!rect) return;
     setAt({
-      left: Math.max(8, Math.min(rect.left, window.innerWidth - 8 - 230)),
+      right: Math.max(8, document.documentElement.clientWidth - rect.right),
       bottom: window.innerHeight - rect.top + 8,
     });
   };
@@ -171,7 +176,6 @@ function CanvasMenuButton({ onCanvas }: { onCanvas: (template: CanvasTemplate) =
         ref={button}
         type="button"
         className="toolbar__btn toolbar__btn--canvas"
-        style={toolStyle('canvasMenu')}
         aria-haspopup="menu"
         aria-expanded={!!at}
         aria-describedby={tooltipId}
@@ -185,8 +189,9 @@ function CanvasMenuButton({ onCanvas }: { onCanvas: (template: CanvasTemplate) =
           }
         }}
       >
-        <Icon name="plus" size={20} />
-        <Icon name="chevronDown" size={12} />
+        <Icon name="plus" size={18} />
+        <span className="toolbar__label">{label}</span>
+        <Icon name="caretDown" size={10} />
         <span className="toolbar__tip" id={tooltipId} role="tooltip">
           {t('board.canvasMenu.hint')}
         </span>
@@ -196,13 +201,12 @@ function CanvasMenuButton({ onCanvas }: { onCanvas: (template: CanvasTemplate) =
           <ContextMenu
             label={label}
             className="menu--canvas"
-            style={{ left: at.left, bottom: at.bottom }}
+            style={{ right: at.right, bottom: at.bottom }}
             anchor={button}
             items={CANVAS_TEMPLATES.map((template) => ({
               label: canvasTemplateLabel(template, t),
               icon: canvasTemplateIcon(template),
               kind: template,
-              shortcut: CANVAS_KEYS[template],
               action: () => onCanvas(template),
             }))}
             onClose={(reason) => {

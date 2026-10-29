@@ -29,11 +29,16 @@ export const CANVAS_TEMPLATES: readonly CanvasTemplate[] = [
   ...laidOut.filter((t) => setupBoards(t).length > 1),
 ];
 
+/** The Canvas menu's icons: a page, tiles, frames, a list and a shooting calendar. */
+const CANVAS_ICONS: Partial<Record<CanvasTemplate, IconName>> = {
+  board: 'page',
+  moodboard: 'tiles',
+  storyboard: 'storyboard',
+  shotlist: 'shotlist',
+  production: 'calendar',
+};
 export const canvasTemplateIcon = (t: CanvasTemplate): IconName =>
-  t === 'board' ? 'board' : TEMPLATE_ICONS[t];
-
-/** The canvas shortcuts kept from the Board and Storyboard buttons the menu replaced. */
-export const CANVAS_KEYS: Partial<Record<CanvasTemplate, string>> = { board: 'B', storyboard: 'S' };
+  CANVAS_ICONS[t] ?? (t === 'board' ? 'page' : TEMPLATE_ICONS[t]);
 
 export const canvasTemplateLabel = (t: CanvasTemplate, translate: (key: string) => string) =>
   t === 'board' ? translate('board.types.board') : translate(`onboarding.templates.${t}.name`);

@@ -1,8 +1,9 @@
 // @vitest-environment happy-dom
 
-import { kindColor, toolColor } from '@inkadra/ui';
+import { Icon, type IconName, kindColor, toolColor } from '@inkadra/ui';
 import { act } from 'react';
 import { createRoot } from 'react-dom/client';
+import { renderToStaticMarkup } from 'react-dom/server';
 import { expect, it, vi } from 'vitest';
 import { CANVAS_TEMPLATES } from './canvas-templates.ts';
 import { TOOLS, Toolbar } from './chrome.tsx';
@@ -38,11 +39,17 @@ it('groups tools with described tooltips while preserving actions and pressed mo
     // Board and Storyboard moved into the Canvas menu.
     expect(host.querySelector('.toolbar__btn--board')).toBeNull();
     expect(host.querySelector('.toolbar__btn--storyboard')).toBeNull();
-    expect(host.querySelectorAll('fieldset')).toHaveLength(3);
-    expect(host.querySelectorAll('button')).toHaveLength(11);
-    expect([...host.querySelectorAll('button')].at(-1)?.className).toContain(
-      'toolbar__btn--canvas',
+    expect(host.querySelector('.toolbar__btn--color')?.getAttribute('style')).toContain(
+      '--kind-fg: var(--ink-tool-color)',
     );
+    expect(host.querySelectorAll('fieldset')).toHaveLength(4);
+    expect(host.querySelectorAll('button')).toHaveLength(11);
+    // The primary action closes the bar, in its own group after a divider, with its label.
+    const canvas = [...host.querySelectorAll('button')].at(-1)!;
+    expect(canvas.className).toContain('toolbar__btn--canvas');
+    expect(canvas.closest('fieldset')?.className).toContain('toolbar__group--canvas');
+    expect(canvas.querySelector('.toolbar__label')?.textContent).toBe('board.canvasMenu.label');
+    expect(canvas.getAttribute('style')).toBeNull();
     for (const button of host.querySelectorAll('button')) {
       expect(
         host
@@ -76,12 +83,22 @@ it('opens the Canvas menu of canvas types, walks it with the keyboard and insert
     expect(menu.getAttribute('aria-label')).toBe('board.canvasMenu.label');
     const items = [...menu.querySelectorAll<HTMLElement>('[role="menuitem"]')];
     expect(items.map((i) => i.textContent)).toEqual([
-      'board.types.boardB',
+      'board.types.board',
       'onboarding.templates.moodboard.name',
-      'onboarding.templates.storyboard.nameS',
+      'onboarding.templates.storyboard.name',
       'onboarding.templates.shotlist.name',
       'onboarding.templates.production.name',
     ]);
+    // No shortcut hints in the menu (B and S still work on the canvas).
+    expect(menu.querySelector('.menu__key')).toBeNull();
+    expect(items.map((i) => i.querySelector('.menu__tile svg')?.innerHTML)).toEqual(
+      ['page', 'tiles', 'storyboard', 'shotlist', 'calendar'].map(
+        (name) =>
+          renderToStaticMarkup(<Icon name={name as IconName} />).match(
+            /<svg[^>]*>(.*)<\/svg>/,
+          )?.[1],
+      ),
+    );
     // Each canvas type carries its content-kind colour; Board stays neutral.
     const tiles = items.map((i) => i.querySelector('.menu__tile')?.getAttribute('style') ?? '');
     expect(tiles[0]).toContain('--kind-fg: var(--ink-text-secondary)');

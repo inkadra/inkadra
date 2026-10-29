@@ -111,6 +111,27 @@ const paths = {
     <path d="M8 12V6a1.5 1.5 0 0 1 3 0v5M11 11V4.5a1.5 1.5 0 0 1 3 0V11M14 11V6a1.5 1.5 0 0 1 3 0v7c0 4-2.5 7-6 7-2.5 0-4-1.5-5.5-4L4 13a1.5 1.5 0 0 1 2.5-1.5L8 13" />
   ),
   stickyNote: <path d="M4 3h16v12l-6 6H4zM14 21v-6h6M8 8h8M8 12h5" />,
+  splitPanel: (
+    <>
+      <rect x="3" y="4" width="18" height="16" rx="2" />
+      <path d="M10 4v16" />
+    </>
+  ),
+  page: (
+    <>
+      <rect x="5" y="3" width="14" height="18" rx="2" />
+      <path d="M9 8h6M9 12h6M9 16h4" />
+    </>
+  ),
+  tiles: (
+    <>
+      <rect x="3" y="3" width="8" height="10" rx="1.5" />
+      <rect x="13" y="3" width="8" height="6" rx="1.5" />
+      <rect x="13" y="11" width="8" height="10" rx="1.5" />
+      <rect x="3" y="15" width="8" height="6" rx="1.5" />
+    </>
+  ),
+  caretDown: <path d="M8 10h8l-4 5z" fill="currentColor" stroke="none" />,
   toolColumn: (
     <>
       <rect x="5" y="2" width="14" height="20" rx="2" />
