@@ -3,7 +3,7 @@ import { expect, it } from 'vitest';
 import { distance, luminance } from './oklab.ts';
 import { dark, light } from './tokens.ts';
 
-it('keeps every identity stroke legible and red perceptually separate from danger, orange and pink', () => {
+it('keeps every identity stroke legible and red, orange and pink perceptually separate from danger', () => {
   for (const theme of [light, dark]) {
     for (const [name, value] of Object.entries(theme)) {
       if (!name.startsWith('tag-') || name.endsWith('-bg')) continue;
@@ -14,7 +14,9 @@ it('keeps every identity stroke legible and red perceptually separate from dange
         if (status !== 'status-danger' && !status.startsWith('danger-')) continue;
         const delta = distance(value, color);
         expect(Number.isFinite(delta)).toBe(true);
-        if (name === 'tag-red') expect(delta, status).toBeGreaterThanOrEqual(0.08);
+        // Red, and the warm hues next to it (orange marks retakes, pink reviews), never read as an error.
+        if (name === 'tag-red' || name === 'tag-orange' || name === 'tag-pink')
+          expect(delta, `${name} / ${status}`).toBeGreaterThanOrEqual(0.08);
       }
     }
     for (const other of ['tag-orange', 'tag-pink'] as const)

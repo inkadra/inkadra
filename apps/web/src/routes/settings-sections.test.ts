@@ -111,12 +111,88 @@ it('finds settings by the words of every language, naming them in the interface 
   expect(found('language')).toEqual([['preferences', 'Lingua']]);
 });
 
+/** Each setting, [English, Italian]: search shows the keyword at the same index in the UI language. */
+const KEYWORD_PAIRS: Record<string, [string, string][]> = {
+  account: [
+    ['Name', 'Nome'],
+    ['Email', 'Email'],
+    ['Profile photo', 'Foto profilo'],
+    ['Password', 'Password'],
+    ['Two-step verification (2FA)', 'Verifica in due passaggi (2FA)'],
+    ['Backup codes', 'Codici di riserva'],
+    ['Sign-in methods', 'Metodi di accesso'],
+    ['Sessions', 'Sessioni'],
+    ['Devices', 'Dispositivi'],
+    ['Apps and tokens', 'App e token'],
+    ['Delete account', 'Elimina account'],
+  ],
+  preferences: [
+    ['Theme', 'Tema'],
+    ['Dark theme', 'Tema scuro'],
+    ['Light theme', 'Tema chiaro'],
+    ['Language', 'Lingua'],
+  ],
+  notifications: [
+    ['Email notifications', 'Notifiche email'],
+    ['Mentions', 'Menzioni'],
+    ['Replies', 'Risposte'],
+    ['Reviews', 'Revisioni'],
+    ['Daily digest', 'Riepilogo giornaliero'],
+    ['Inbox', 'Inbox'],
+  ],
+  members: [
+    ['Invite members', 'Invita membri'],
+    ['Invitations', 'Inviti'],
+    ['Invitation link', 'Link di invito'],
+    ['Role', 'Ruolo'],
+    ['Administrators', 'Amministratori'],
+    ['Deactivate account', 'Disattiva account'],
+    ['Reactivate account', 'Riattiva account'],
+    ['People', 'Persone'],
+  ],
+  workspace: [
+    ['Space used', 'Spazio usato'],
+    ['Uploaded files', 'File caricati'],
+    ['Storage', 'Archiviazione'],
+  ],
+  classifications: [
+    ['Project types', 'Tipi di progetto'],
+    ['Tags', 'Tag'],
+    ['Catalogs', 'Cataloghi'],
+  ],
+  providers: [
+    ['Google', 'Google'],
+    ['OIDC', 'OIDC'],
+    ['Single sign-on (SSO)', 'Single sign-on (SSO)'],
+    ['Email sign-in link', 'Link di accesso via email'],
+    ['Email and password', 'Email e password'],
+    ['SMTP', 'SMTP'],
+    ['Outgoing email', 'Invio email'],
+  ],
+  registration: [
+    ['New accounts', 'Nuovi account'],
+    ['Open registration', 'Registrazione aperta'],
+    ['Invitation only', 'Solo su invito'],
+    ['Closed registration', 'Registrazione chiusa'],
+  ],
+  instance: [
+    ['Instance name', 'Nome dell’istanza'],
+    ['Public address', 'Indirizzo pubblico'],
+    ['Version', 'Versione'],
+    ['Diagnostics', 'Diagnostica'],
+    ['Instance status', 'Stato dell’istanza'],
+  ],
+};
+
 it('lists the same settings in the same order in every language', () => {
   const keywords = (locale: typeof en, page: string) =>
-    (locale.settingsUi.keywords as Record<string, string>)[page]?.split(',') ?? [];
-  for (const page of SETTINGS_PAGES) {
-    const id = page.keywords.replace('settingsUi.keywords.', '');
-    expect(keywords(itLocale, id).length, id).toBe(keywords(en, id).length);
-    expect(keywords(en, id).length, id).toBeGreaterThan(0);
+    (locale.settingsUi.keywords as Record<string, string>)[page]?.split(',').map((k) => k.trim()) ??
+    [];
+  expect(Object.keys(KEYWORD_PAIRS).sort()).toEqual(
+    SETTINGS_PAGES.map((page) => page.keywords.replace('settingsUi.keywords.', '')).sort(),
+  );
+  for (const [id, pairs] of Object.entries(KEYWORD_PAIRS)) {
+    expect(keywords(en, id), id).toEqual(pairs.map(([english]) => english));
+    expect(keywords(itLocale, id), id).toEqual(pairs.map(([, italian]) => italian));
   }
 });

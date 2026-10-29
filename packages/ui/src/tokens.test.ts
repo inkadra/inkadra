@@ -2,7 +2,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { type ContentKind, kindColor } from './kind-color.ts';
-import { distance } from './oklab.ts';
+import { contrast, distance } from './oklab.ts';
 import { type ColorToken, dark, light } from './tokens.ts';
 import { tokensCss } from './tokens-css.ts';
 
@@ -99,7 +99,37 @@ describe('tokens', () => {
     ] as const)
       palette.forEach((a, i) => {
         for (const b of palette.slice(i + 1))
-          expect(distance(theme[a], theme[b]), `${name} ${a} / ${b}`).toBeGreaterThanOrEqual(0.08);
+          expect(distance(theme[a], theme[b]), `${name} ${a} / ${b}`).toBeGreaterThanOrEqual(0.085);
       });
+  });
+
+  /** `color-mix(in srgb, fg p%, bg)`, as the film status chips draw their tint. */
+  const mix = (fg: string, bg: string, p: number) =>
+    `#${[1, 3, 5]
+      .map((i) => {
+        const channel = (c: string) => Number.parseInt(c.slice(i, i + 2), 16);
+        return Math.round(channel(fg) * p + channel(bg) * (1 - p))
+          .toString(16)
+          .padStart(2, '0');
+      })
+      .join('')}`;
+
+  it('keeps film status chips and pills at 4.5:1 (film.css)', () => {
+    for (const [name, theme] of [
+      ['light', light],
+      ['dark', dark],
+    ] as const) {
+      // .film-status--draft / --shot / --retake: the hue on a 12% tint of itself over surface-1.
+      for (const tag of ['tag-purple', 'tag-green', 'tag-orange'] as const)
+        expect(
+          contrast(theme[tag], mix(theme[tag], theme['surface-1'], 0.12)),
+          `${name} ${tag} chip`,
+        ).toBeGreaterThanOrEqual(4.5);
+      // .film-status--approved and .shots__group-pill--approved.
+      expect(
+        contrast(theme['tag-purple-bg'], theme['tag-purple']),
+        `${name} approved`,
+      ).toBeGreaterThanOrEqual(4.5);
+    }
   });
 });
