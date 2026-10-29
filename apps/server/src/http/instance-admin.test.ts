@@ -282,12 +282,33 @@ describe.skipIf(!url)('instance administration', () => {
         set: { value: { requireAdminTwoFactor: true } },
       });
     try {
-      for (const path of ['/projects', '/instance/settings', '/me/tokens']) {
+      for (const path of ['/projects', '/instance/settings']) {
         const response = await request('admin', 'GET', path);
         expect(response.statusCode).toBe(403);
         expect(response.json().error.details.reason).toBe('admin_two_factor_required');
       }
       expect((await request('admin', 'GET', '/me')).statusCode).toBe(200);
+      expect(
+        (await request('admin', 'POST', '/me/tokens', { name: 'Blocked creation' })).statusCode,
+      ).toBe(403);
+      const sessionsList = await request('admin', 'GET', '/me/sessions');
+      expect(sessionsList.statusCode).toBe(200);
+      expect(sessionsList.json().items.length).toBeGreaterThan(0);
+      const ownSessions = await db
+        .select()
+        .from(session)
+        .where(eq(session.userId, people.admin!.id));
+      expect(
+        sessionsList
+          .json()
+          .items.every((row: { id: string }) => ownSessions.some((own) => own.id === row.id)),
+      ).toBe(true);
+      expect(JSON.stringify(sessionsList.json())).not.toContain('"token":');
+      const tokensList = await request('admin', 'GET', '/me/tokens');
+      expect(tokensList.statusCode).toBe(200);
+      expect(tokensList.json().items.map((row: { id: string }) => row.id)).toContain(token.row.id);
+      expect(JSON.stringify(tokensList.json())).not.toContain(token.token);
+
       expect((await request('member', 'GET', '/projects')).statusCode).toBe(200);
       expect(
         (
@@ -318,6 +339,12 @@ describe.skipIf(!url)('instance administration', () => {
         .from(session)
         .where(eq(session.userId, people.member!.id));
       const memberToken = await issueToken(db, people.member!.id, { name: 'Other owner' });
+      const ownTokensAfterRevocation = await request('admin', 'GET', '/me/tokens');
+      expect(ownTokensAfterRevocation.statusCode).toBe(200);
+      expect(
+        ownTokensAfterRevocation.json().items.map((row: { id: string }) => row.id),
+      ).not.toContain(memberToken.row.id);
+
       expect(
         (await request('admin', 'DELETE', `/me/sessions/${memberSession!.id}`)).statusCode,
       ).toBe(404);
@@ -494,13 +521,70 @@ describe.skipIf(!url)('instance administration', () => {
     ).toBe(200);
     expect(
       (await request('admin', 'PATCH', '/instance/settings', { registration: 'invite' })).json(),
-    ).toEqual({ name: 'Studio', registration: 'invite' });
+    ).toEqual({ name: 'Studio', registration: 'invite', requireAdminTwoFactor: false });
     expect((await app.inject('/api/v1/instance')).json()).toMatchObject({
       name: 'Studio',
       registration: 'invite',
     });
     expect((await signUp('blocked')).statusCode).toBe(403);
   });
+  it('refuses policy activation by an administrator without verified two-factor authentication', async () => {
+    const [previous] = await db
+      .select()
+      .from(instanceSetting)
+      .where(eq(instanceSetting.key, 'administration'));
+    try {
+      const rejected = await request('admin', 'PATCH', '/instance/settings', {
+        requireAdminTwoFactor: true,
+      });
+      expect(rejected.statusCode).toBe(403);
+      expect(rejected.json().error.details.reason).toBe(
+        'admin_two_factor_enrollment_required_to_enable',
+      );
+      expect(
+        (await request('admin', 'GET', '/instance/settings')).json().requireAdminTwoFactor,
+      ).toBe(false);
+    } finally {
+      await db
+        .update(instanceSetting)
+        .set({ value: previous?.value ?? {} })
+        .where(eq(instanceSetting.key, 'administration'));
+    }
+  });
+
+  it('defaults the enrollment policy off, validates it and preserves it across partial writes', async () => {
+    expect((await request('admin', 'GET', '/instance/settings')).json().requireAdminTwoFactor).toBe(
+      false,
+    );
+    expect(
+      (await request('admin', 'PATCH', '/instance/settings', { requireAdminTwoFactor: 'true' }))
+        .statusCode,
+    ).toBe(400);
+    const [previous] = await db
+      .select()
+      .from(instanceSetting)
+      .where(eq(instanceSetting.key, 'administration'));
+    // Enroll the fixture administrator so this also remains valid with auth enforcement applied.
+    await db.update(user).set({ twoFactorEnabled: true }).where(eq(user.id, people.admin!.id));
+    try {
+      expect(
+        (
+          await request('admin', 'PATCH', '/instance/settings', { requireAdminTwoFactor: true })
+        ).json().requireAdminTwoFactor,
+      ).toBe(true);
+      expect(
+        (await request('admin', 'PATCH', '/instance/settings', { name: 'Studio' })).json()
+          .requireAdminTwoFactor,
+      ).toBe(true);
+    } finally {
+      await db
+        .update(instanceSetting)
+        .set({ value: previous?.value ?? {} })
+        .where(eq(instanceSetting.key, 'administration'));
+      await db.update(user).set({ twoFactorEnabled: false }).where(eq(user.id, people.admin!.id));
+    }
+  });
+
   it('reuses address-bound instance invitations; closed blocks even a claimed invite', async () => {
     const invite = await request('admin', 'POST', '/invitations', {
       kind: 'email',

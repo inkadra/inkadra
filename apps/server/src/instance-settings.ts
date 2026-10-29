@@ -16,6 +16,7 @@ export async function readInstanceSettings(
   return InstanceSettings.parse({
     name: config.INSTANCE_NAME,
     registration: config.REGISTRATION,
+    requireAdminTwoFactor: false,
     ...row?.value,
   });
 }

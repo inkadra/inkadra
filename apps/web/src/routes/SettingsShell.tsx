@@ -44,7 +44,7 @@ export function setupAttention(setup: Setup, page: string): boolean {
  */
 export function SettingsNav({ setup, members }: { setup: Setup; members?: number | null }) {
   const { t } = useTranslation();
-  const { user, instance } = useSession();
+  const { user, instance, version } = useSession();
   const { pathname, search } = useLocation();
   const [query, setQuery] = useState('');
   const current = settingsSection(pathname, search).id;
@@ -106,7 +106,7 @@ export function SettingsNav({ setup, members }: { setup: Setup; members?: number
       </div>
       <footer className="settings-nav__footer">
         <span>
-          Inkadra {instance?.version}
+          Inkadra {version}
           {instance?.name && ` · ${instance.name}`}
         </span>
         <DiagnosticsLink>{t('settingsUi.diagnostics')}</DiagnosticsLink>

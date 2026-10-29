@@ -9,6 +9,7 @@
     "editHint": "Use Ctrl/⌘+X to cut and Ctrl/⌘+V to paste. Clipboard access depends on your browser."
   },
   "app": {
+    "publicFooter": "Inkadra · AGPL-3.0",
     "name": "Inkadra",
     "tagline": "From idea to frame.",
     "footer": "Open source · AGPL-3.0 · v{{version}}"
@@ -1953,6 +1954,9 @@
     "dangerZone": "Danger zone"
   },
   "admin": {
+    "requireAdminTwoFactor": "Require two-step verification for administrators",
+    "requireAdminTwoFactorHelp": "Administrators must set up two-step verification to use the instance. Keep recovery codes before enabling this requirement.",
+    "requireAdminTwoFactorEnrollFirst": "First set up and verify your two-step authentication in Account. Only an already enrolled administrator can enable this requirement.",
     "personal": "Personal",
     "account": "Account",
     "preferences": "Preferences",

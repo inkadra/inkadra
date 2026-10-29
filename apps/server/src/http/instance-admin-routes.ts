@@ -58,6 +58,14 @@ export function registerInstanceAdminRoutes(
       const [current] = await tx.select().from(user).where(eq(user.id, actor.id));
       if (current?.role !== 'admin' || current.deactivatedAt)
         throw new HttpError('forbidden', 'Administrators only.');
+      if (patch.requireAdminTwoFactor === true && !current.twoFactorEnabled)
+        throw new HttpError(
+          'forbidden',
+          'Enroll in two-step verification before enabling this policy.',
+          {
+            reason: 'admin_two_factor_enrollment_required_to_enable',
+          },
+        );
       const settings = { ...(await readInstanceSettings(tx, config)), ...patch };
       await tx
         .insert(instanceSetting)

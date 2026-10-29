@@ -8,7 +8,8 @@ import { Settings } from './Settings.tsx';
 
 const session = vi.hoisted(() => ({
   user: { role: 'admin', name: 'Editor', email: 'editor@example.test', locale: 'en' },
-  instance: { version: '1.0.0', auth: { google: false, oidc: [] } },
+  version: '1.0.0',
+  instance: { auth: { google: false, oidc: [] } },
   refresh: vi.fn(),
 }));
 const phone = vi.hoisted(() => ({ value: false }));

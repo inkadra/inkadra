@@ -15,6 +15,7 @@ interface SessionState {
   instance: Instance | null;
   user: User | null;
   loading: boolean;
+  version?: string;
   enrollmentRequired?: boolean;
   refresh: () => Promise<void>;
 }
@@ -26,6 +27,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [enrollmentRequired, setEnrollmentRequired] = useState(false);
+  const [version, setVersion] = useState<string>();
   const latest = useRef(0);
 
   const refresh = useCallback(async () => {
@@ -39,18 +41,22 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         throw err;
       }),
     ]);
+    // One authenticated probe supplies the version and the enrollment decision. Missing
+    // metadata must not prevent startup; only the explicit policy denial gates the workspace.
     let required = false;
-    if (me?.role === 'admin' && !me.twoFactorEnabled) {
-      await api.get('/instance/settings').catch((err) => {
-        required =
-          err instanceof RequestError &&
-          err.status === 403 &&
-          (err.details as { reason?: string } | undefined)?.reason === 'admin_two_factor_required';
-        if (!required) throw err;
-      });
-    }
+    const identity = me
+      ? await api.get<{ version: string }>('/instance/version').catch((err) => {
+          required =
+            err instanceof RequestError &&
+            err.status === 403 &&
+            (err.details as { reason?: string } | undefined)?.reason ===
+              'admin_two_factor_required';
+          return null;
+        })
+      : null;
     if (call !== latest.current) return;
     setEnrollmentRequired(required);
+    setVersion(identity?.version);
     setInstance(inst);
     setUser(me);
     if (me?.locale) {
@@ -67,7 +73,9 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   }, [refresh]);
 
   return (
-    <SessionContext.Provider value={{ instance, user, loading, refresh, enrollmentRequired }}>
+    <SessionContext.Provider
+      value={{ instance, user, loading, refresh, enrollmentRequired, version }}
+    >
       {children}
     </SessionContext.Provider>
   );

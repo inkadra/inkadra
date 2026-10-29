@@ -163,5 +163,13 @@ only clears attempt budgets and is not this override.
 
 Provider-only accounts need a sign-in less than 15 minutes old to enable/disable 2FA,
 retrieve the TOTP URI or read/regenerate backup codes. Password accounts still confirm
-their password. While enrollment is required, signing out and revoking the other sessions
-remain available; revocation does not allow creating or reading other credentials.
+their password. While enrollment is required, signing out, listing and revoking owned
+sessions and tokens remain available. These read-only lists never expose session tokens
+or token secrets; they do not allow reading or revoking another account’s credentials.
+
+## Public instance metadata in 0.4.2
+
+`GET /api/v1/health` and `GET /api/v1/instance` no longer return `version`. Integrations
+must tolerate its absence. Signed-in clients can use `GET /api/v1/instance/version`;
+administrator diagnostics retain their version field. This is an intentional security
+change to v1 in 0.4.2 (issue #225).

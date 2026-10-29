@@ -176,7 +176,7 @@ export function registerAccountRoutes(app: FastifyInstance, deps: Deps) {
   // them; these routes never send a token, and /list-sessions and /revoke-session are off.
 
   app.get(v1('/me/sessions'), async (req) => {
-    const session = await requireSession(auth, req, db);
+    const session = await requireSession(auth, req, db, true);
     const rows = await db
       .select({
         id: sessionTable.id,
@@ -215,7 +215,7 @@ export function registerAccountRoutes(app: FastifyInstance, deps: Deps) {
   // Tokens -----------------------------------------------------------------------
 
   app.get(v1('/me/tokens'), async (req) => {
-    const session = await requireSession(auth, req, db);
+    const session = await requireSession(auth, req, db, true);
     const rows = await db
       .select()
       .from(personalToken)

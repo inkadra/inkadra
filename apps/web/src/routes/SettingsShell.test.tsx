@@ -8,7 +8,8 @@ import { trackSave } from './settings-save.ts';
 
 const session = vi.hoisted(() => ({
   user: { role: 'admin' },
-  instance: { version: '1.2.3', name: 'Studio' },
+  version: '1.2.3',
+  instance: { name: 'Studio' },
 }));
 vi.mock('../lib/session.tsx', () => ({ useSession: () => session }));
 vi.mock('react-i18next', () => ({ useTranslation: () => ({ t: (key: string) => key }) }));

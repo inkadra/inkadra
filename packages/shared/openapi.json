@@ -523,6 +523,17 @@
           }
         ]
       },
+      "InstanceVersion": {
+        "type": "object",
+        "properties": {
+          "version": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "version"
+        ]
+      },
       "Health": {
         "type": "object",
         "properties": {
@@ -532,9 +543,6 @@
               "ok",
               "degraded"
             ]
-          },
-          "version": {
-            "type": "string"
           },
           "checks": {
             "type": "object",
@@ -563,7 +571,6 @@
         },
         "required": [
           "status",
-          "version",
           "checks"
         ]
       },
@@ -571,9 +578,6 @@
         "type": "object",
         "properties": {
           "name": {
-            "type": "string"
-          },
-          "version": {
             "type": "string"
           },
           "publicUrl": {
@@ -681,7 +685,6 @@
         },
         "required": [
           "name",
-          "version",
           "publicUrl",
           "setupRequired",
           "registration",
@@ -707,11 +710,16 @@
               "invite",
               "closed"
             ]
+          },
+          "requireAdminTwoFactor": {
+            "type": "boolean",
+            "description": "Require administrators to enroll in two-step verification before using the instance. Defaults to false on older installations."
           }
         },
         "required": [
           "name",
-          "registration"
+          "registration",
+          "requireAdminTwoFactor"
         ]
       },
       "UpdateInstanceSettings": {
@@ -729,6 +737,9 @@
               "invite",
               "closed"
             ]
+          },
+          "requireAdminTwoFactor": {
+            "type": "boolean"
           }
         },
         "additionalProperties": false
@@ -5583,6 +5594,74 @@
           },
           "401": {
             "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/instance/version": {
+      "get": {
+        "tags": [
+          "Instance"
+        ],
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Software version for signed-in users.",
+        "responses": {
+          "200": {
+            "description": "Version",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InstanceVersion"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
             "content": {
               "application/json": {
                 "schema": {

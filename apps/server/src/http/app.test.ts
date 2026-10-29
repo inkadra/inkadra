@@ -51,6 +51,9 @@ describe.skipIf(!url)('http api (needs DATABASE_URL)', () => {
     const res = await app.inject('/api/v1/health');
     expect(res.statusCode).toBe(200);
     expect(res.json().checks.database).toBe('ok');
+    expect(res.json()).not.toHaveProperty('version');
+    expect((await app.inject('/api/v1/instance')).json()).not.toHaveProperty('version');
+    expect((await app.inject('/api/v1/instance/version')).statusCode).toBe(401);
   });
 
   it('asks for setup until the first account exists', async () => {
@@ -77,6 +80,12 @@ describe.skipIf(!url)('http api (needs DATABASE_URL)', () => {
       payload: { email: first.json().user.email, password: 'correct-horse-battery' },
     });
     cookie = String(signIn.headers['set-cookie']).split(';')[0] ?? '';
+  });
+
+  it('discloses the version only after authentication', async () => {
+    const response = await app.inject({ url: '/api/v1/instance/version', headers: { cookie } });
+    expect(response.statusCode).toBe(200);
+    expect(response.json().version).toEqual(expect.any(String));
   });
 
   it('closes registration after the first account', async () => {

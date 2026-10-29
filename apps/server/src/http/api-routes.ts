@@ -59,7 +59,6 @@ export function registerApiRoutes(app: FastifyInstance, deps: Deps) {
     const ok = database === 'ok' && queue !== 'error';
     const body: Health = {
       status: ok ? 'ok' : 'degraded',
-      version: VERSION,
       checks: { database, queue },
     };
     return reply.status(ok ? 200 : 503).send(body);
@@ -70,7 +69,6 @@ export function registerApiRoutes(app: FastifyInstance, deps: Deps) {
     const settings = await readInstanceSettings(db, config);
     const body: Instance = {
       name: settings.name,
-      version: VERSION,
       publicUrl: config.PUBLIC_URL,
       setupRequired: users === 0,
       registration: users === 0 ? 'first-user' : settings.registration,
@@ -91,6 +89,11 @@ export function registerApiRoutes(app: FastifyInstance, deps: Deps) {
       serverTime: new Date().toISOString(),
     };
     return body;
+  });
+
+  app.get(v1('/instance/version'), async (req) => {
+    await requireActor(auth, req, db);
+    return { version: VERSION };
   });
 
   app.get(v1('/me'), async (req) => {
