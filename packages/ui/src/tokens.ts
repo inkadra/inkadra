@@ -55,6 +55,16 @@ export const dark = {
   'tag-red-bg': '#412327',
   'tag-pink': '#FF91CC',
   'tag-pink-bg': '#422533',
+  // Canvas tools (tool-color.ts): hues between the canvas-type colours, far from them and
+  // from the accent; the tile behind each icon takes the same hue.
+  'tool-note': '#FEDD4D',
+  'tool-note-bg': '#302B16',
+  'tool-image': '#01A7D6',
+  'tool-image-bg': '#172F39',
+  'tool-link': '#00A768',
+  'tool-link-bg': '#1C3125',
+  'tool-todo': '#E53BF6',
+  'tool-todo-bg': '#342535',
 } as const;
 
 export type ColorToken = keyof typeof dark;
@@ -109,6 +119,15 @@ export const light: Record<ColorToken, string> = {
   'tag-red-bg': '#F6E7E8',
   'tag-pink': '#A82965',
   'tag-pink-bg': '#FAE7ED',
+  // Darker than the canvas-type colours, which sit at OKLCH L 0.45–0.55 (todo: lighter, vivid).
+  'tool-note': '#513500',
+  'tool-note-bg': '#F8EFE2',
+  'tool-image': '#093E6F',
+  'tool-image-bg': '#E7F1FE',
+  'tool-link': '#07492C',
+  'tool-link-bg': '#E6F4EB',
+  'tool-todo': '#BF22C7',
+  'tool-todo-bg': '#F8ECF8',
 };
 
 export const space = { 1: 4, 2: 8, 3: 12, 4: 16, 6: 24, 8: 32, 12: 48 } as const;

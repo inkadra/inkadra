@@ -5,6 +5,7 @@ import { type ContentKind, kindColor } from './kind-color.ts';
 import { contrast, distance } from './oklab.ts';
 import { type ColorToken, dark, light } from './tokens.ts';
 import { tokensCss } from './tokens-css.ts';
+import { type ToolKind, toolColor } from './tool-color.ts';
 
 describe('tokens', () => {
   it('tokens.css matches tokens.ts', () => {
@@ -51,15 +52,14 @@ describe('tokens', () => {
     return color ? `tag-${color}` : 'text-secondary';
   };
   const kindTokens = [...new Set((Object.keys(kindColor) as ContentKind[]).map(kindToken))];
-  /** Kinds shown side by side: project sidebar modules, then the board toolbar. */
+  /** Kinds shown side by side: project sidebar modules, then the toolbar's Canvas menu. */
   const neighbours: ContentKind[][] = [
     ['storyboard', 'shotlist', 'schedule', 'review'],
-    // biome-ignore format: one toolbar, left to right
-    ['select', 'hand', 'arrow', 'note', 'image', 'link', 'todo', 'color', 'column', 'board', 'frame', 'storyboard'],
+    ['board', 'moodboard', 'storyboard', 'shotlist', 'production'],
   ];
-
   it('keeps every pair of content-kind colours apart, more so for neighbours', () => {
-    expect(kindTokens).toHaveLength(7);
+    // Purple, green, orange, teal, pink and neutral: canvas types only (decision of 0.4.2).
+    expect(kindTokens).toHaveLength(6);
     for (const [name, theme] of [
       ['light', light],
       ['dark', dark],
@@ -131,5 +131,67 @@ describe('tokens', () => {
         `${name} approved`,
       ).toBeGreaterThanOrEqual(4.5);
     }
+  });
+
+  /** The colour a canvas tool is drawn with, as a token. */
+  const toolToken = (tool: ToolKind): ColorToken => {
+    const color = toolColor[tool];
+    return color ? `tool-${color}` : 'text-secondary';
+  };
+  const toolTokens = [
+    ...new Set(
+      (Object.values(toolColor).filter(Boolean) as string[]).map((c) => `tool-${c}` as ColorToken),
+    ),
+  ];
+  // biome-ignore format: one toolbar, left to right (Board and Storyboard are in the Canvas menu)
+  const toolbar: ToolKind[] = ['select', 'hand', 'arrow', 'note', 'image', 'link', 'todo', 'color', 'column', 'frame', 'canvasMenu'];
+  const themes = [
+    ['light', light],
+    ['dark', dark],
+  ] as const;
+
+  it('keeps tool colours far from canvas types, accent and danger', () => {
+    expect(toolTokens).toHaveLength(4);
+    const others: ColorToken[] = [
+      ...kindTokens,
+      'accent-primary',
+      'accent-soft-fg',
+      'danger-fg',
+      'status-danger',
+    ];
+    for (const [name, theme] of themes)
+      for (const tool of toolTokens)
+        for (const other of others)
+          expect(
+            distance(theme[tool], theme[other]),
+            `${name} ${tool} / ${other}`,
+          ).toBeGreaterThanOrEqual(0.13);
+  });
+
+  it('keeps tool colours apart from each other, more so on the toolbar', () => {
+    for (const [name, theme] of themes) {
+      toolTokens.forEach((a, i) => {
+        for (const b of toolTokens.slice(i + 1))
+          expect(distance(theme[a], theme[b]), `${name} ${a} / ${b}`).toBeGreaterThanOrEqual(0.1);
+      });
+      toolbar.slice(1).forEach((tool, i) => {
+        const [a, b] = [toolToken(toolbar[i] as ToolKind), toolToken(tool)];
+        if (a !== b)
+          expect(distance(theme[a], theme[b]), `${name} ${a} / ${b}`).toBeGreaterThanOrEqual(0.12);
+      });
+    }
+  });
+
+  it('keeps tool icons readable on the toolbar and on their own tile', () => {
+    for (const [name, theme] of themes)
+      for (const tool of toolTokens) {
+        expect(contrast(theme[tool], theme['surface-1']), `${name} ${tool}`).toBeGreaterThanOrEqual(
+          4.5,
+        );
+        expect(
+          contrast(theme[tool], theme[`${tool}-bg` as ColorToken]),
+          `${name} ${tool} tile`,
+        ).toBeGreaterThanOrEqual(3);
+      }
   });
 });

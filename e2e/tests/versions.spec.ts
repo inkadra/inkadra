@@ -280,13 +280,14 @@ test('viewers and commenters get no board menu, no guest hiding and no scene tog
   await page.keyboard.type('Scene private');
   await page.keyboard.press('Escape');
   await storyboard.dblclick();
-  await page.getByRole('button', { name: 'Nuova scena' }).first().click();
+  // The Storyboard template: one scene with three frames.
   const ownerScene = page.getByRole('region', { name: 'Scena 1' });
+  await expect(ownerScene.locator('.story__tile')).toHaveCount(3);
   await expect(
-    ownerScene.getByRole('button', { name: 'Nascondi agli ospiti', exact: true }),
+    ownerScene.locator('header').getByRole('button', { name: 'Nascondi agli ospiti', exact: true }),
   ).toHaveAttribute('aria-pressed', 'false');
   await ownerScene.getByRole('button', { name: 'Nuova inquadratura' }).last().click();
-  await expect(page.locator('.story__tile')).toHaveCount(1);
+  await expect(page.locator('.story__tile')).toHaveCount(4);
   const storyboardUrl = page.url();
 
   const invited = await page.request.post('/api/v1/invitations', {
@@ -327,13 +328,13 @@ test('viewers and commenters get no board menu, no guest hiding and no scene tog
       await expect(other.getByRole('button', { name: 'Nascondi agli ospiti' })).toHaveCount(0);
       await expect(other.getByRole('button', { name: 'Menu della board' })).toHaveCount(0);
       await expect(other.getByRole('button', { name: 'Versioni della board' })).toHaveCount(0);
-      await expect(other.locator('.story__tile')).toHaveCount(1);
+      await expect(other.locator('.story__tile')).toHaveCount(4);
       await other.getByRole('button', { name: 'Comprimi la scena' }).click();
       await expect(other.locator('.story__tile')).toHaveCount(0);
-      await expect(page.locator('.story__tile')).toHaveCount(1);
+      await expect(page.locator('.story__tile')).toHaveCount(4);
       await other.getByRole('tab', { name: 'Shot list' }).click();
-      await expect(other.getByRole('row', { name: /1A/ })).toBeVisible();
-      await expect(other.getByLabel('Azione', { exact: true })).not.toBeEditable();
+      await expect(other.getByRole('row', { name: /^1A / })).toBeVisible();
+      await expect(other.getByLabel('Azione', { exact: true }).first()).not.toBeEditable();
       await expect(other.getByRole('button', { name: 'Nascondi agli ospiti' })).toHaveCount(0);
       await other.goto(`/p/${project.id}`);
       await expect(other.getByRole('status').getByText('Sola lettura')).toBeVisible();
@@ -612,8 +613,8 @@ test('storyboard and shot list preview a version read-only, and editors hide fra
   await page.keyboard.type('Preview film');
   await page.keyboard.press('Escape');
   await card.dblclick();
-  await page.getByRole('button', { name: 'Nuova scena' }).first().click();
   const scene = page.getByRole('region', { name: 'Scena 1' });
+  await expect(scene.locator('.story__tile')).toHaveCount(3);
   await scene.getByRole('button', { name: 'Nuova inquadratura' }).last().click();
   const panel = page.getByRole('complementary', { name: 'Dettagli' });
   const action = panel.getByLabel('Azione', { exact: true });
@@ -644,7 +645,7 @@ test('storyboard and shot list preview a version read-only, and editors hide fra
   await expect(page.locator('.story__tile-action')).toHaveCount(0);
   await page.getByRole('tab', { name: 'Shot list' }).click();
   await expect(banner).toBeVisible();
-  const row = page.getByRole('row', { name: /1A/ });
+  const row = page.getByRole('row', { name: /1D/ });
   await expect(row.getByLabel('Azione', { exact: true })).toHaveValue('Azione salvata');
   await expect(row.getByLabel('Azione', { exact: true })).not.toBeEditable();
   await expect(page.getByRole('button', { name: 'Nascondi agli ospiti' })).toHaveCount(0);
@@ -657,7 +658,7 @@ test('storyboard and shot list preview a version read-only, and editors hide fra
   await expect(hideRow).toHaveAttribute('aria-pressed', 'true');
   await page.getByRole('tab', { name: 'Storyboard' }).click();
   // The live scene was never folded.
-  const tile = page.locator('.story__tile');
+  const tile = page.locator('.story__tile').filter({ hasText: 'Azione dal vivo' });
   await expect(tile.locator('.story__tile-action')).toHaveText('Azione dal vivo');
   const hideTile = tile.getByRole('button', { name: 'Nascondi agli ospiti', exact: true });
   await expect(hideTile).toHaveAttribute('aria-pressed', 'true');

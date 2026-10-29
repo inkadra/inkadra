@@ -77,6 +77,7 @@ import {
 } from './projects.ts';
 import { SearchDialog } from './SearchDialog.tsx';
 import { SettingsWindow } from './SettingsWindow.tsx';
+import { SeedQueue } from './seed-queue.tsx';
 import { isSettingsPath } from './settings-sections.ts';
 import './mobile-shell.css';
 
@@ -873,6 +874,7 @@ export function AppLayout({ home }: { home?: ReactNode }) {
             navigate(`/p/${p.id}`);
           }}
         />
+        <SeedQueue />
       </ProjectsContext.Provider>
     </InstanceSetupContext.Provider>
   );

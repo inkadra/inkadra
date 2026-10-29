@@ -272,6 +272,10 @@ test('appearance tabs fit their content and keep validation outside the panel', 
   await page.getByRole('menuitem', { name: 'Project appearance' }).click();
   const dialog = page.locator('.project-appearance .ink-dialog');
   const symbolHeight = (await dialog.boundingBox())!.height;
+  // The Symbol tab sets the height: no empty area under the swatches (236px in 0.4.1).
+  const swatches = (await dialog.locator('.project-appearance__swatches').boundingBox())!;
+  const actions = (await dialog.locator('.ink-dialog__actions').boundingBox())!;
+  expect(actions.y - (swatches.y + swatches.height)).toBeLessThan(100);
   await page.getByRole('tab', { name: 'Emoji', exact: true }).click();
   expect((await dialog.boundingBox())!.height).toBe(symbolHeight);
   const panel = page.locator('#appearance-panel-emoji');

@@ -55,6 +55,14 @@
   --ink-tag-red-bg: #412327;
   --ink-tag-pink: #FF91CC;
   --ink-tag-pink-bg: #422533;
+  --ink-tool-note: #FEDD4D;
+  --ink-tool-note-bg: #302B16;
+  --ink-tool-image: #01A7D6;
+  --ink-tool-image-bg: #172F39;
+  --ink-tool-link: #00A768;
+  --ink-tool-link-bg: #1C3125;
+  --ink-tool-todo: #E53BF6;
+  --ink-tool-todo-bg: #342535;
 }
 
 :root[data-theme='light'] {
@@ -108,6 +116,14 @@
   --ink-tag-red-bg: #F6E7E8;
   --ink-tag-pink: #A82965;
   --ink-tag-pink-bg: #FAE7ED;
+  --ink-tool-note: #513500;
+  --ink-tool-note-bg: #F8EFE2;
+  --ink-tool-image: #093E6F;
+  --ink-tool-image-bg: #E7F1FE;
+  --ink-tool-link: #07492C;
+  --ink-tool-link-bg: #E6F4EB;
+  --ink-tool-todo: #BF22C7;
+  --ink-tool-todo-bg: #F8ECF8;
 }
 
 @media (prefers-color-scheme: light) {
@@ -162,5 +178,13 @@
     --ink-tag-red-bg: #F6E7E8;
     --ink-tag-pink: #A82965;
     --ink-tag-pink-bg: #FAE7ED;
+    --ink-tool-note: #513500;
+    --ink-tool-note-bg: #F8EFE2;
+    --ink-tool-image: #093E6F;
+    --ink-tool-image-bg: #E7F1FE;
+    --ink-tool-link: #07492C;
+    --ink-tool-link-bg: #E6F4EB;
+    --ink-tool-todo: #BF22C7;
+    --ink-tool-todo-bg: #F8ECF8;
   }
 }

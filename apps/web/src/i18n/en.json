@@ -280,6 +280,10 @@
     }
   },
   "board": {
+    "canvasMenu": {
+      "label": "Canvas",
+      "hint": "Insert a canvas"
+    },
     "toolGroups": {
       "navigate": "Navigate and connect",
       "create": "Create content",
