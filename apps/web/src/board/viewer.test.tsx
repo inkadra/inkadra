@@ -217,6 +217,7 @@ describe('MediaViewer video playback', () => {
     );
 
     expect(html).toContain('<iframe');
+    expect(html).not.toContain('web-share');
     expect(html).toContain('viewer__media-wrap--embed');
     expect(html).toContain('viewer__action-icon');
     expect(html).toContain('viewer__action-label');

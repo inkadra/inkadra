@@ -191,7 +191,7 @@ test('Inbox restores canvas geometry, opener focus and total shot count', async 
   await inbox.click();
   await page.keyboard.press('Escape');
   await expect.soft(inbox).toBeFocused();
-  await expect.poll(async () => (await corner.boundingBox())?.x, { soft: true }).toBe(before!.x);
+  await expect.poll(async () => (await corner.boundingBox())?.x).toBe(before!.x);
   expect.soft((await toolbar.boundingBox())!.x).toBe(barBefore!.x);
   const shots = page.locator('.ink-sidebar .ink-nav').filter({ hasText: 'Shot list' });
   await expect.soft(shots).toContainText('7');
