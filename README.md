@@ -82,6 +82,15 @@ own server.
       <p align="center"><sub>Shot list: the same frames as a table</sub></p>
     </td>
   </tr>
+  <tr>
+    <td colspan="2">
+      <picture>
+        <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/readme/home-dark.png">
+        <img src="docs/screenshots/readme/home-light.png" alt="Home: today's shooting day, the recent boards with their kind colours, activity and templates">
+      </picture>
+      <p align="center"><sub>Home: today's shoot, recent boards and what changed</sub></p>
+    </td>
+  </tr>
 </table>
 
 ## Run it

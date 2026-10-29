@@ -14,7 +14,8 @@ import { pushBoardDoc, signIn, uploadFile, waitForAssets } from '../tests/perf/s
  *
  *   SHOTS_BASE_URL=http://localhost:3200 pnpm --filter @inkadra/e2e screenshots
  *
- * SHOTS_CHANNEL=chrome uses the installed Chrome instead of Playwright's Chromium.
+ * SHOTS_CHANNEL=chrome uses the installed Chrome instead of Playwright's Chromium, and
+ * SHOTS_ARGS adds browser flags (`--disable-gpu` where there is no desktop, as over SSH).
  *
  * The pictures on the boards are drawn here, so the screenshots carry no third-party images.
  */
@@ -161,13 +162,14 @@ function note(doc: Y.Doc, at: { x: number; y: number }, lines: string[], w?: num
 }
 
 async function main() {
-  const browser = await chromium.launch(
-    process.env.CHROMIUM_PATH
+  const browser = await chromium.launch({
+    ...(process.env.CHROMIUM_PATH
       ? { executablePath: process.env.CHROMIUM_PATH }
       : process.env.SHOTS_CHANNEL
         ? { channel: process.env.SHOTS_CHANNEL }
-        : {},
-  );
+        : {}),
+    args: process.env.SHOTS_ARGS?.split(' ').filter(Boolean) ?? [],
+  });
   const pictures = await renderStills(browser);
   const cookie = await signIn(base, account);
   const project = await api<{ id: string; rootBoardId: string }>(cookie, '/projects', {
