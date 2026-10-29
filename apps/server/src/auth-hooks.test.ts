@@ -11,7 +11,10 @@ const budgets = vi.hoisted(() => ({
   storage: { delete: vi.fn(async () => {}) },
   close: vi.fn(),
 }));
-vi.mock('./auth-security.ts', () => ({ authSecurity: () => budgets }));
+vi.mock('./auth-security.ts', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('./auth-security.ts')>()),
+  authSecurity: () => budgets,
+}));
 afterEach(() => vi.clearAllMocks());
 const auth = createAuth(
   loadConfig({
