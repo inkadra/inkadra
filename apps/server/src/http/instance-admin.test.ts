@@ -4,6 +4,7 @@ import { InstanceMember, InstanceSettings, StorageUsage } from '@inkadra/shared'
 import { eq, sql } from 'drizzle-orm';
 import pino from 'pino';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { disableAdminTwoFactor } from '../admin-two-factor.ts';
 import { createAuth } from '../auth.ts';
 import { loadConfig } from '../config.ts';
 import { createDatabase, runMigrations } from '../db/client.ts';
@@ -17,6 +18,7 @@ import {
   personalToken,
   projectMember,
   session,
+  twoFactor,
   user,
 } from '../db/schema.ts';
 import { memoryMailer } from '../mailer.ts';
@@ -268,6 +270,10 @@ describe.skipIf(!url)('instance administration', () => {
 
   it('enforces enrollment for session, token and account endpoints, and unlocks after enrollment', async () => {
     const token = await issueToken(db, people.admin!.id, { name: 'Enrollment regression' });
+    const [previousSettings] = await db
+      .select()
+      .from(instanceSetting)
+      .where(eq(instanceSetting.key, 'administration'));
     await db
       .insert(instanceSetting)
       .values({ key: 'administration', value: { requireAdminTwoFactor: true } })
@@ -291,11 +297,43 @@ describe.skipIf(!url)('instance administration', () => {
           })
         ).statusCode,
       ).toBe(403);
+      const beforeSessions = await db
+        .select()
+        .from(session)
+        .where(eq(session.userId, people.admin!.id));
+      expect((await signIn('admin')).statusCode).toBe(200);
+      const afterSessions = await db
+        .select()
+        .from(session)
+        .where(eq(session.userId, people.admin!.id));
+      const otherSession = afterSessions.find(
+        (row) => !beforeSessions.some((old) => old.id === row.id),
+      )!;
+      expect((await request('admin', 'DELETE', `/me/sessions/${otherSession.id}`)).statusCode).toBe(
+        204,
+      );
+      expect((await request('admin', 'DELETE', `/me/tokens/${token.row.id}`)).statusCode).toBe(204);
+      const [memberSession] = await db
+        .select()
+        .from(session)
+        .where(eq(session.userId, people.member!.id));
+      const memberToken = await issueToken(db, people.member!.id, { name: 'Other owner' });
+      expect(
+        (await request('admin', 'DELETE', `/me/sessions/${memberSession!.id}`)).statusCode,
+      ).toBe(404);
+      expect(
+        (await request('admin', 'DELETE', `/me/tokens/${memberToken.row.id}`)).statusCode,
+      ).toBe(404);
+      await db.delete(personalToken).where(eq(personalToken.id, memberToken.row.id));
+
       await db.update(user).set({ twoFactorEnabled: true }).where(eq(user.id, people.admin!.id));
       expect((await request('admin', 'GET', '/projects')).statusCode).toBe(200);
       expect((await request('admin', 'GET', '/instance/settings')).statusCode).toBe(200);
     } finally {
-      await db.delete(instanceSetting).where(eq(instanceSetting.key, 'administration'));
+      await db
+        .update(instanceSetting)
+        .set({ value: previousSettings?.value ?? {} })
+        .where(eq(instanceSetting.key, 'administration'));
       await db.update(user).set({ twoFactorEnabled: false }).where(eq(user.id, people.admin!.id));
       await db.delete(personalToken).where(eq(personalToken.id, token.row.id));
     }
@@ -318,6 +356,10 @@ describe.skipIf(!url)('instance administration', () => {
     const cookie = String(registered.headers['set-cookie']).split(';')[0] ?? '';
     await db.delete(account).where(eq(account.userId, id));
     await db.update(user).set({ role: 'admin' }).where(eq(user.id, id));
+    const [previousSettings] = await db
+      .select()
+      .from(instanceSetting)
+      .where(eq(instanceSetting.key, 'administration'));
     await db
       .insert(instanceSetting)
       .values({ key: 'administration', value: { requireAdminTwoFactor: true } })
@@ -349,9 +391,95 @@ describe.skipIf(!url)('instance administration', () => {
       expect(
         (await app.inject({ url: '/api/v1/projects', headers: { cookie: newCookie } })).statusCode,
       ).toBe(200);
+      const [beforeRecovery] = await db.select().from(twoFactor).where(eq(twoFactor.userId, id));
+      await db
+        .update(session)
+        .set({ createdAt: new Date(Date.now() - 16 * 60_000) })
+        .where(eq(session.userId, id));
+      const recoveryPaths = ['/two-factor/get-totp-uri', '/two-factor/generate-backup-codes'];
+      const recoveryStatuses = [];
+      for (const path of recoveryPaths)
+        recoveryStatuses.push(
+          (
+            await app.inject({
+              method: 'POST',
+              url: `/api/auth${path}`,
+              headers: { cookie: newCookie, origin: config.PUBLIC_URL },
+              payload: {},
+            })
+          ).statusCode,
+        );
+      expect(recoveryStatuses).toEqual([403, 403]);
+      const [afterRecovery] = await db.select().from(twoFactor).where(eq(twoFactor.userId, id));
+      expect(afterRecovery?.backupCodes).toBe(beforeRecovery?.backupCodes);
+      await db.update(session).set({ createdAt: new Date() }).where(eq(session.userId, id));
+      for (const path of recoveryPaths)
+        expect(
+          (
+            await app.inject({
+              method: 'POST',
+              url: `/api/auth${path}`,
+              headers: { cookie: newCookie, origin: config.PUBLIC_URL },
+              payload: {},
+            })
+          ).statusCode,
+        ).toBe(200);
     } finally {
-      await db.delete(instanceSetting).where(eq(instanceSetting.key, 'administration'));
+      await db
+        .update(instanceSetting)
+        .set({ value: previousSettings?.value ?? {} })
+        .where(eq(instanceSetting.key, 'administration'));
       await db.update(user).set({ role: 'member' }).where(eq(user.id, id));
+    }
+  });
+
+  it('can disable the administrator requirement locally without losing unrelated settings', async () => {
+    const [previous] = await db
+      .select()
+      .from(instanceSetting)
+      .where(eq(instanceSetting.key, 'administration'));
+    await db
+      .insert(instanceSetting)
+      .values({
+        key: 'administration',
+        value: {
+          name: 'Recovery studio',
+          registration: 'invite',
+          requireAdminTwoFactor: true,
+          retained: 'yes',
+        },
+      })
+      .onConflictDoUpdate({
+        target: instanceSetting.key,
+        set: {
+          value: {
+            name: 'Recovery studio',
+            registration: 'invite',
+            requireAdminTwoFactor: true,
+            retained: 'yes',
+          },
+        },
+      });
+    try {
+      expect((await request('admin', 'GET', '/projects')).statusCode).toBe(403);
+      await disableAdminTwoFactor(db);
+      const [saved] = await db
+        .select()
+        .from(instanceSetting)
+        .where(eq(instanceSetting.key, 'administration'));
+      expect(saved?.value).toEqual({
+        name: 'Recovery studio',
+        registration: 'invite',
+        requireAdminTwoFactor: false,
+        retained: 'yes',
+      });
+      expect((await request('admin', 'GET', '/projects')).statusCode).toBe(200);
+      await disableAdminTwoFactor(db);
+    } finally {
+      await db
+        .update(instanceSetting)
+        .set({ value: previous?.value ?? {} })
+        .where(eq(instanceSetting.key, 'administration'));
     }
   });
 

@@ -4,6 +4,7 @@ import { mkdir } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import pino from 'pino';
+import { disableAdminTwoFactor } from './admin-two-factor.ts';
 import { createAuth } from './auth.ts';
 import { authSecurity, authSource } from './auth-security.ts';
 import { type BoardReader, directBoardReader } from './board-content.ts';
@@ -28,7 +29,7 @@ import { startIndexBackfill } from './search/index-doc.ts';
 import { createStorage } from './storage.ts';
 import { directVersionWriter, type VersionWriter } from './versions.ts';
 
-const COMMANDS = ['web', 'collab', 'worker', 'all', 'migrate', 'unlock-auth'] as const;
+const COMMANDS = ['web', 'collab', 'worker', 'all', 'migrate', 'unlock-auth', 'admin-2fa'] as const;
 type Command = (typeof COMMANDS)[number];
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -64,6 +65,20 @@ async function main() {
       log.info('Authentication account budgets cleared');
     } finally {
       security.close();
+    }
+    return;
+  }
+
+  // Requires access to the host and configured database; never exposed over HTTP.
+  if (command === 'admin-2fa') {
+    if (process.argv[3] !== 'off' || process.argv[4] !== undefined)
+      throw new Error('Usage: inkadra admin-2fa off');
+    const { db, sql } = createDatabase(config.DATABASE_URL);
+    try {
+      await disableAdminTwoFactor(db);
+      log.info('Administrator two-step enrollment requirement disabled');
+    } finally {
+      await sql.end({ timeout: 5 });
     }
     return;
   }

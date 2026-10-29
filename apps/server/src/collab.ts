@@ -63,14 +63,14 @@ export function createCollabServer(deps: {
     // Native apps and the clipper send their token; browsers send the session cookie.
     if (isToken(token)) {
       const actor = await actorFromToken(db, token);
-      return actor && !(await adminEnrollmentRequired(db, actor.id))
+      return actor && !(await adminEnrollmentRequired(db, actor))
         ? { actor, sessionId: null }
         : null;
     }
     const session = await auth.api.getSession({ headers });
     if (!session) return null;
     const [owner] = await db.select().from(user).where(eq(user.id, session.user.id));
-    if (!owner || owner.deactivatedAt || (await adminEnrollmentRequired(db, owner.id))) return null;
+    if (!owner || owner.deactivatedAt || (await adminEnrollmentRequired(db, owner))) return null;
     return {
       actor: {
         id: session.user.id,
@@ -82,7 +82,6 @@ export function createCollabServer(deps: {
 
   /** Whether the token or session a connection signed in with is still valid. */
   async function stillSignedIn(ctx: Context, now: Date): Promise<boolean> {
-    if (await adminEnrollmentRequired(db, ctx.actor.id)) return false;
     if (ctx.actor.tokenId) {
       const [row] = await db
         .select({ id: personalToken.id })
@@ -116,7 +115,12 @@ export function createCollabServer(deps: {
         try {
           const [owner] = await db.select().from(user).where(eq(user.id, ctx.actor.id));
           if (owner) ctx.actor.role = owner.role;
-          if (!owner || owner.deactivatedAt || !(await stillSignedIn(ctx, now))) {
+          if (
+            !owner ||
+            owner.deactivatedAt ||
+            (await adminEnrollmentRequired(db, owner)) ||
+            !(await stillSignedIn(ctx, now))
+          ) {
             log.info({ boardId: ctx.boardId }, 'collab connection closed: signed out');
             connection.close({ code: 4401, reason: 'Unauthorized' });
             continue;

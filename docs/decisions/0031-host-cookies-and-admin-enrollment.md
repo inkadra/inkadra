@@ -30,3 +30,15 @@ TOTP verification remains mandatory before `twoFactorEnabled` becomes true. Admi
 should enroll before activation and retain backup codes.
 Existing sockets are closed at the next access recheck. Custom mobile URI schemes remain
 an acknowledged risk pending verified HTTPS links; PKCE alone cannot verify app ownership.
+
+## Review follow-up
+
+Provider-only sessions authorize sensitive 2FA operations only within `FRESH_SIGN_IN_MS`
+(15 minutes from the original sign-in), not merely because a session is still valid.
+Credential accounts retain upstream password confirmation. This covers secret retrieval,
+backup-code viewing/regeneration and enabling/disabling 2FA.
+
+Activation requires an already enrolled administrator (validated in the contract PR).
+A host-only `admin-2fa off` command disables the policy atomically in the existing JSON
+row while preserving all other settings. It has no HTTP equivalent. Signing out and
+revoking owned sessions/tokens remain possible during mandatory enrollment.

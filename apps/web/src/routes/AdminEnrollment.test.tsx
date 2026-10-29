@@ -4,7 +4,10 @@ import { createRoot } from 'react-dom/client';
 import { expect, it, vi } from 'vitest';
 import { AdminEnrollment } from './AdminEnrollment.tsx';
 
-const state = vi.hoisted(() => ({ enrollmentRequired: false }));
+const state = vi.hoisted(() => ({ enrollmentRequired: false, refresh: vi.fn(async () => {}) }));
+const signOut = vi.hoisted(() => vi.fn(async () => {}));
+vi.mock('../lib/api.ts', () => ({ authApi: { signOut } }));
+vi.mock('./projects.ts', () => ({ setCachedProjects: vi.fn() }));
 vi.mock('../lib/theme.ts', () => ({ useTheme: () => ({}) }));
 vi.mock('../lib/session.tsx', () => ({ useSession: () => state }));
 vi.mock('react-i18next', () => ({ useTranslation: () => ({ t: (key: string) => key }) }));
@@ -26,6 +29,13 @@ it('replaces all protected content with enrollment until the administrator has v
       'settings.twoFactor.requiredAdmin',
     );
     expect(host.querySelector('form')?.getAttribute('aria-label')).toBe('Enroll');
+    const logout = [...host.querySelectorAll('button')].find(
+      (button) => button.textContent === 'auth.signOut',
+    );
+    expect(logout).toBeDefined();
+    await act(async () => logout!.click());
+    expect(signOut).toHaveBeenCalledOnce();
+    expect(state.refresh).toHaveBeenCalledOnce();
     state.enrollmentRequired = false;
     await act(async () =>
       root.render(

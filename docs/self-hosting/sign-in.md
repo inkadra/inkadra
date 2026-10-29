@@ -151,3 +151,17 @@ Better Auth, but cannot use product APIs, administrator APIs, tokens or collabor
 They see an enrollment banner instead of the workspace. Keep backup codes for recovery. Accounts without a credential password enroll using their
 authenticated provider session; accounts with a password must confirm it. Bootstrap stays available on an empty instance; an existing
 policy applies to the first administrator immediately after signup.
+
+### Emergency policy override and recent sign-in
+
+Enable the requirement only after enrolling the administrator who activates it. If nobody
+can get past enrollment, an operator can run `inkadra admin-2fa off` with the instance's
+database configuration (in Docker: `docker compose exec web node dist/main.js admin-2fa off`,
+or service `inkadra` in all-in-one mode). This disables only the policy and preserves other
+settings and all personal second factors. Reload the browser afterwards. `unlock-auth`
+only clears attempt budgets and is not this override.
+
+Provider-only accounts need a sign-in less than 15 minutes old to enable/disable 2FA,
+retrieve the TOTP URI or read/regenerate backup codes. Password accounts still confirm
+their password. While enrollment is required, signing out and revoking an owned session or
+token remain available; revocation does not allow creating or reading other credentials.

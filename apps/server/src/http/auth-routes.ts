@@ -58,31 +58,45 @@ export async function requireActor(
   if (token) {
     const actor = await actorFromToken(db, token);
     if (!actor) throw new HttpError('unauthorized', 'The token is not valid any more.');
-    if (!enrollment) await enforceAdminTwoFactor(db, actor.id);
+    if (!enrollment) await enforceAdminTwoFactor(db, actor);
     return actor;
   }
   const session = await auth.api.getSession({ headers: toHeaders(req) });
   if (!session) throw new HttpError('unauthorized', 'Sign in to continue.');
   const [owner] = await db
-    .select({ id: user.id, role: user.role, deactivatedAt: user.deactivatedAt })
+    .select({
+      id: user.id,
+      role: user.role,
+      deactivatedAt: user.deactivatedAt,
+      twoFactorEnabled: user.twoFactorEnabled,
+    })
     .from(user)
     .where(eq(user.id, session.user.id));
   if (!owner || owner.deactivatedAt) throw new HttpError('unauthorized', 'Account deactivated.');
-  if (!enrollment) await enforceAdminTwoFactor(db, owner.id);
+  if (!enrollment) await enforceAdminTwoFactor(db, owner);
   return { id: owner.id, role: owner.role };
 }
 
 /** Like requireActor, for account-level actions that a token must not do. */
-export async function requireSession(auth: Auth, req: FastifyRequest, db: Database) {
+export async function requireSession(
+  auth: Auth,
+  req: FastifyRequest,
+  db: Database,
+  enrollment = false,
+) {
   if (bearerToken(req.headers.authorization))
     throw new HttpError('forbidden', 'Not available with a token. Sign in on the web.');
   const session = await auth.api.getSession({ headers: toHeaders(req) });
   if (!session) throw new HttpError('unauthorized', 'Sign in to continue.');
   const [owner] = await db
-    .select({ deactivatedAt: user.deactivatedAt })
+    .select({
+      role: user.role,
+      deactivatedAt: user.deactivatedAt,
+      twoFactorEnabled: user.twoFactorEnabled,
+    })
     .from(user)
     .where(eq(user.id, session.user.id));
   if (!owner || owner.deactivatedAt) throw new HttpError('unauthorized', 'Account deactivated.');
-  await enforceAdminTwoFactor(db, session.user.id);
+  if (!enrollment) await enforceAdminTwoFactor(db, owner);
   return session;
 }

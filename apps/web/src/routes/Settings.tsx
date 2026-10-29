@@ -81,7 +81,8 @@ function useStatus() {
   const fail = (err: unknown) =>
     show(
       err instanceof RequestError &&
-        (err.details as { reason?: string })?.reason === 'reauth_required'
+        (err.code === 'REAUTH_REQUIRED' ||
+          (err.details as { reason?: string })?.reason === 'reauth_required')
         ? t('auth.errors.reauthRequired')
         : err instanceof RequestError && (err.status === 400 || err.status === 403) && err.message
           ? err.message

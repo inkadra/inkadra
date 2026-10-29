@@ -44,7 +44,7 @@ export async function findInvitation(db: Database, token: string): Promise<Invit
 export async function invitationFromCookie(
   db: Database,
   cookieHeader: string | null | undefined,
-  publicUrl = 'http://localhost',
+  publicUrl: string,
 ): Promise<InvitationRow | null> {
   const token = readCookie(cookieHeader, invitationCookieName(publicUrl));
   if (!token) return null;
