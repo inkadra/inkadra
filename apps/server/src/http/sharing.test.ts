@@ -630,7 +630,6 @@ describe.skipIf(!url)('sharing, invitations, tokens and accounts (needs DATABASE
         method,
         headers: {
           origin: config.PUBLIC_URL,
-        'x-forwarded-for': source,
           cookie: as.owner.cookie,
           ...(method === 'POST' ? { 'content-type': 'application/json' } : {}),
         },

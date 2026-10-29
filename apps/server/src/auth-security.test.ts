@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { authSecurity, authSource } from './auth-security.ts';
 import { loadConfig } from './config.ts';
 
@@ -92,7 +92,38 @@ it.skipIf(!process.env.REDIS_URL)(
   },
 );
 
-it('bounds concurrent reservations and refunds without erasing other failures', async () => {
+it.each(['memory', ...(process.env.REDIS_URL ? ['valkey'] : [])])(
+  'bounds concurrent reservations and refunds with %s',
+  async (backend) => {
+    const store = authSecurity(
+      loadConfig({
+        NODE_ENV: 'test',
+        REDIS_URL: backend === 'valkey' ? process.env.REDIS_URL : undefined,
+        PUBLIC_URL: 'https://example.com',
+        DATABASE_URL: 'unused',
+        AUTH_SECRET: 'test-secret-test-secret-test-secret',
+      }),
+    );
+    await store.ready();
+    const id = `account:${crypto.randomUUID()}`;
+    const results = await Promise.all(
+      Array.from({ length: 100 }, async () => {
+        const result = await store.consume(id, 50, 3600);
+        if (!result.allowed) await store.refund(id);
+        return result.allowed;
+      }),
+    );
+    expect(results.filter(Boolean)).toHaveLength(50);
+    expect((await store.check(id, 50, 3600)).allowed).toBe(false);
+    await store.refund(id);
+    expect((await store.consume(id, 50, 3600)).allowed).toBe(true);
+    await store.storage.delete(id);
+    store.close();
+  },
+);
+
+it('rate-limits storage error logs without serializing driver details', () => {
+  const error = vi.spyOn(console, 'error').mockImplementation(() => {});
   const store = authSecurity(
     loadConfig({
       NODE_ENV: 'test',
@@ -101,17 +132,17 @@ it('bounds concurrent reservations and refunds without erasing other failures', 
       AUTH_SECRET: 'test-secret-test-secret-test-secret',
     }),
   );
-  const id = `account:${crypto.randomUUID()}`;
-  const results = await Promise.all(
-    Array.from({ length: 100 }, async () => {
-      const result = await store.consume(id, 50, 3600);
-      if (!result.allowed) await store.refund(id);
-      return result.allowed;
-    }),
-  );
-  expect(results.filter(Boolean)).toHaveLength(50);
-  expect((await store.check(id, 50, 3600)).allowed).toBe(false);
-  await store.refund(id);
-  expect((await store.consume(id, 50, 3600)).allowed).toBe(true);
-  store.close();
+  vi.useFakeTimers();
+  try {
+    for (let i = 0; i < 10; i++) store.reportError();
+    expect(error).toHaveBeenCalledTimes(1);
+    vi.advanceTimersByTime(60_000);
+    store.reportError();
+    expect(error).toHaveBeenCalledTimes(2);
+    expect(error).toHaveBeenLastCalledWith('Authentication rate-limit storage unavailable');
+  } finally {
+    store.close();
+    vi.useRealTimers();
+    error.mockRestore();
+  }
 });

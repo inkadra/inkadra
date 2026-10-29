@@ -118,7 +118,10 @@ it('uses a device budget instead of the exhausted account budget', async () => {
   const token = knownDevices('test-secret-test-secret-test-secret').issue(user);
   await auth.options.hooks?.before?.({
     ...ctx('/sign-in/email'),
-    getCookie: (name: string) => (name === DEVICE_COOKIE ? token : undefined),
+    headers: new Headers({
+      'x-inkadra-client-ip': '192.0.2.1',
+      cookie: `${DEVICE_COOKIE}=${token}`,
+    }),
   } as never);
   expect(budgets.consume).not.toHaveBeenCalledWith(`account:${user.email}`, 50, 3600);
   expect(budgets.consume).toHaveBeenCalledWith(expect.stringMatching(/^device:member:/), 5, 900);
