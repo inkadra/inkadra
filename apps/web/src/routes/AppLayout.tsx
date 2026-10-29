@@ -451,6 +451,7 @@ export function AppLayout({ home }: { home?: ReactNode }) {
         active={inboxOpen}
         onClick={(e) => {
           e.preventDefault();
+          inboxOpener.current = e.currentTarget;
           setDrawerOpen(false);
           setInboxOpen((o) => !o);
         }}
@@ -505,7 +506,7 @@ export function AppLayout({ home }: { home?: ReactNode }) {
                 icon="shotlist"
                 contentKind="shotlist"
                 label={t('nav.shotlist')}
-                count={storyboardCounts?.framesToShoot}
+                count={storyboardCounts?.frameCount}
                 title={
                   storyboardCounts
                     ? `${t('nav.shotlist')} · ${t('nav.toShoot', { count: storyboardCounts.frameCount, left: storyboardCounts.framesToShoot })}`
@@ -704,7 +705,16 @@ export function AppLayout({ home }: { home?: ReactNode }) {
             canvas={!!projectId}
             collapsed={inboxOpen || collapsed}
           >
-            <div style={{ display: inboxOpen ? 'none' : 'contents' }}>
+            {/* Keep layout observable while Inbox covers the board, including sidebar resizes. */}
+            <div
+              inert={inboxOpen}
+              aria-hidden={inboxOpen || undefined}
+              style={{
+                visibility: inboxOpen ? 'hidden' : 'visible',
+                position: 'relative',
+                height: '100%',
+              }}
+            >
               <UnderlayNavigation open={overlay.open}>
                 <LocationContext.Provider value={underlayLocation}>
                   {overlay.content}

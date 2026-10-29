@@ -217,6 +217,7 @@ describe('MediaViewer video playback', () => {
     );
 
     expect(html).toContain('<iframe');
+    expect(html).not.toContain('web-share');
     expect(html).toContain('viewer__media-wrap--embed');
     expect(html).toContain('viewer__action-icon');
     expect(html).toContain('viewer__action-label');
@@ -678,7 +679,7 @@ describe('MediaViewer keyboard, focus and comments', () => {
     opener.focus();
     await render(viewer());
     const dialog = container.querySelector('[role="dialog"]') as HTMLElement;
-    expect(dialog.contains(document.activeElement)).toBe(true);
+    expect(document.activeElement).toBe(dialog);
     const focusable = [...dialog.querySelectorAll<HTMLElement>('button:not(:disabled), a[href]')];
     focusable.at(-1)?.focus();
     const tab = new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true });
@@ -686,6 +687,13 @@ describe('MediaViewer keyboard, focus and comments', () => {
       document.activeElement?.dispatchEvent(tab);
     });
     expect(tab.defaultPrevented).toBe(true);
+    expect(document.activeElement).toBe(focusable[0]);
+    const field = document.createElement('textarea');
+    dialog.append(field);
+    field.focus();
+    const fieldTab = new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true });
+    await act(async () => field.dispatchEvent(fieldTab));
+    expect(fieldTab.defaultPrevented).toBe(true);
     expect(document.activeElement).toBe(focusable[0]);
     await act(async () => root.render(<div />));
     expect(document.activeElement).toBe(opener);

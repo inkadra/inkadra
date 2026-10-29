@@ -8,12 +8,16 @@ import { api } from '../lib/api.ts';
 import { Projects } from './Projects.tsx';
 import { projectOverviews } from './projects-overview.ts';
 
+const session = vi.hoisted(() => ({ role: 'member' }));
 vi.mock('react-i18next', () => ({
-  useTranslation: () => ({ t: (key: string) => key, i18n: { language: 'en' } }),
+  useTranslation: () => ({
+    t: (key: string, values?: { bytes?: string }) => values?.bytes ?? key,
+    i18n: { language: 'en' },
+  }),
 }));
 vi.mock('../lib/api.ts', () => ({ api: { get: vi.fn(), put: vi.fn(), patch: vi.fn() } }));
 vi.mock('../lib/session.tsx', () => ({
-  useSession: () => ({ user: { id: 'me', role: 'member' } }),
+  useSession: () => ({ user: { id: 'me', role: session.role } }),
 }));
 vi.mock('./AppLayout.tsx', () => ({ useProjects: () => ({ openNewProject: vi.fn() }) }));
 vi.mock('./BoardPreview.tsx', () => ({
@@ -145,4 +149,15 @@ it('keeps the Project type dialog open with an error when saving fails', async (
   expect(api.patch).toHaveBeenCalledWith('/projects/p1', { type: 'short_film' });
   expect(host.querySelector('dialog')).not.toBeNull();
   expect(dialog?.querySelector('[role="alert"]')?.textContent).toBe('projectsPage.saveError');
+});
+
+it('formats admin storage in decimal units', async () => {
+  session.role = 'admin';
+  vi.mocked(api.get).mockResolvedValue({ originalBytes: 11_193_874_222, items: [] });
+  try {
+    await render([]);
+    expect(host.querySelector('.projects-page__storage')?.textContent).toBe('11.19 GB');
+  } finally {
+    session.role = 'member';
+  }
 });

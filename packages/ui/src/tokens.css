@@ -4,6 +4,8 @@
 :root,
 :root[data-theme='dark'] {
   color-scheme: dark;
+  --ink-layer-viewer: 1000;
+  --ink-layer-notification: 1100;
   --ink-bg-rail: #0E0E10;
   --ink-bg-app: #141416;
   --ink-bg-panel: #121214;

@@ -519,6 +519,7 @@
     "done": "Fatto"
   },
   "viewer": {
+    "info": "Info",
     "title": "Immagine",
     "close": "Chiudi",
     "exif": "Dati di scatto",
@@ -1736,7 +1737,7 @@
     "retry": "Riprova",
     "empty": "Nessun progetto",
     "emptyBody": "Crea un progetto o modifica i filtri di ricerca.",
-    "storage": "File originali nell’istanza: {{bytes}} byte. Esclusi anteprime e database.",
+    "storage": "File originali nell’istanza: {{bytes}}. Esclusi anteprime e database.",
     "storageError": "Utilizzo dello spazio non disponibile.",
     "openNamed": "Apri {{name}}",
     "open": "Apri",

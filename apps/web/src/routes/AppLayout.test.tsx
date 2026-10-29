@@ -49,7 +49,7 @@ vi.mock('../notifications/Notifications.tsx', () => ({
 }));
 
 it.each(['/projects', '/'])(
-  'preserves the outlet layout and restores bell focus at %s',
+  'preserves the outlet layout and restores sidebar Inbox focus at %s',
   async (path) => {
     localStorage.clear();
     const host = document.createElement('div');
@@ -68,11 +68,17 @@ it.each(['/projects', '/'])(
         ),
       );
       const wrapper = host.querySelector('[data-testid="outlet"]')?.parentElement;
-      expect(wrapper?.style.display).toBe('contents');
+      expect(wrapper?.style.visibility).toBe('visible');
+      expect(wrapper?.style.position).toBe('relative');
+      expect(wrapper?.style.height).toBe('100%');
       expect(wrapper?.hidden).toBe(false);
-      const bell = [...host.querySelectorAll('button')].find((b) => b.textContent === 'Bell');
+      const bell = [...host.querySelectorAll<HTMLElement>('a, button')].find((b) =>
+        b.textContent?.includes('nav.inbox'),
+      );
       await act(async () => bell?.click());
-      expect(wrapper?.style.display).toBe('none');
+      expect(wrapper?.style.visibility).toBe('hidden');
+      expect(wrapper?.hasAttribute('inert')).toBe(true);
+      expect(wrapper?.getAttribute('aria-hidden')).toBe('true');
       const shell = host.querySelector('.ink-shell');
       expect(shell?.classList.contains('ink-shell--collapsed')).toBe(true);
       expect(host.querySelector('.ink-sidebar__toggle')?.getAttribute('aria-expanded')).toBe(
@@ -81,7 +87,9 @@ it.each(['/projects', '/'])(
       await act(async () =>
         [...host.querySelectorAll('button')].find((b) => b.textContent === 'Close inbox')?.click(),
       );
-      expect(wrapper?.style.display).toBe('contents');
+      expect(wrapper?.style.visibility).toBe('visible');
+      expect(wrapper?.style.position).toBe('relative');
+      expect(wrapper?.style.height).toBe('100%');
       expect(document.activeElement).toBe(bell);
     } finally {
       await act(async () => root.unmount());
