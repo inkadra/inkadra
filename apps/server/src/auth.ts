@@ -137,11 +137,19 @@ export function createAuth(config: Config, db: Database, deps: AuthDeps = {}) {
 
   const security = authSecurity(config, deps.log);
   const devices = knownDevices(config.AUTH_SECRET);
-  // Better Auth copies context between hooks; keep reservations on that context.
+  // Hooks receive shallow copies of the endpoint context but share ctx.context; reservations
+  // made before the password check live there until the after hook settles them.
   type BudgetContext = { inkadraReservations?: string[] };
   const mailBudget = async (address: string, ip: string) =>
     (await security.take(`mail:${address}:${authSource(ip)}`, 3, 900)) &&
     (await security.take(`mail:${address}`, 10, 3600));
+  // Headers set on a before-hook context are dropped when the hook throws; attach them here.
+  const tooManyAttempts = (retryAfter: number) =>
+    new APIError(
+      'TOO_MANY_REQUESTS',
+      { message: 'Too many attempts.' },
+      { 'retry-after': String(Math.max(1, retryAfter)) },
+    );
   const revokeTokens = async (
     user: { id: string; email: string; locale?: string | null },
     all = false,
@@ -203,8 +211,7 @@ export function createAuth(config: Config, db: Database, deps: AuthDeps = {}) {
         try {
           const generic = await security.consume(`generic:${authSource(ip)}`, 100, 10);
           if (!generic.allowed) {
-            ctx.setHeader('retry-after', String(generic.retryAfter));
-            throw new APIError('TOO_MANY_REQUESTS', { message: 'Too many attempts.' });
+            throw tooManyAttempts(generic.retryAfter);
           }
           if (!sensitive) return;
           const strict =
@@ -216,8 +223,7 @@ export function createAuth(config: Config, db: Database, deps: AuthDeps = {}) {
             strict ? 10 : 60,
           );
           if (!burst.allowed) {
-            ctx.setHeader('retry-after', String(burst.retryAfter));
-            throw new APIError('TOO_MANY_REQUESTS', { message: 'Too many attempts.' });
+            throw tooManyAttempts(burst.retryAfter);
           }
           if (ctx.path === '/sign-in/email' && address) {
             const device = devices.verify(ctx.getCookie(DEVICE_COOKIE) ?? undefined, address);
@@ -234,8 +240,7 @@ export function createAuth(config: Config, db: Database, deps: AuthDeps = {}) {
               if (!result.allowed) {
                 await Promise.all(held.map((key) => security.refund(key)));
                 delete (ctx.context as BudgetContext).inkadraReservations;
-                ctx.setHeader('retry-after', String(result.retryAfter));
-                throw new APIError('TOO_MANY_REQUESTS', { message: 'Too many attempts.' });
+                throw tooManyAttempts(result.retryAfter);
               }
             }
           }
@@ -250,8 +255,7 @@ export function createAuth(config: Config, db: Database, deps: AuthDeps = {}) {
             if (userId) {
               const result = await security.consume(`totp:${userId}`, 10, 300);
               if (!result.allowed) {
-                ctx.setHeader('retry-after', String(result.retryAfter));
-                throw new APIError('TOO_MANY_REQUESTS', { message: 'Too many attempts.' });
+                throw tooManyAttempts(result.retryAfter);
               }
             }
           }
