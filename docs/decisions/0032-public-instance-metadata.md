@@ -36,7 +36,7 @@ public version-field removal.
 
 ## Maintainer approval — 2026-10-29
 
-Eccezione di contratto **approvata dal maintainer il 2026-10-29**: remove `version` from
+Contract exception **approved by the maintainer on 2026-10-29**: remove `version` from
 `GET /api/v1/health` and `GET /api/v1/instance` in v1 **without a deprecation period**.
 This explicit approval is limited to these public software-version fields. Operators must
 update monitors and dashboards that read the version from `/health`; the public health

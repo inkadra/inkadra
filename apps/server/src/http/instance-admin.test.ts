@@ -1,12 +1,15 @@
+import { createHmac } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { InstanceMember, InstanceSettings, StorageUsage } from '@inkadra/shared';
 import { eq, sql } from 'drizzle-orm';
 import pino from 'pino';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { disableAdminTwoFactor } from '../admin-two-factor.ts';
 import { createAuth } from '../auth.ts';
 import { loadConfig } from '../config.ts';
 import { createDatabase, runMigrations } from '../db/client.ts';
 import {
+  account,
   asset,
   assetVariant,
   boardElementIndex,
@@ -15,12 +18,27 @@ import {
   personalToken,
   projectMember,
   session,
+  twoFactor,
   user,
 } from '../db/schema.ts';
 import { memoryMailer } from '../mailer.ts';
 import { testDeps } from '../test-deps.ts';
 import { issueToken } from '../tokens.ts';
 import { createApp } from './app.ts';
+
+/** RFC 6238 code (SHA-1, 30 s, 6 digits) for a base32 secret, as authenticator apps do. */
+function totp(base32: string, at = Date.now()) {
+  const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+  let bits = '';
+  for (const c of base32.replace(/=+$/, '').toUpperCase())
+    bits += alphabet.indexOf(c).toString(2).padStart(5, '0');
+  const key = Buffer.from(bits.match(/.{8}/g)?.map((b) => Number.parseInt(b, 2)) ?? []);
+  const counter = Buffer.alloc(8);
+  counter.writeBigUInt64BE(BigInt(Math.floor(at / 30_000)));
+  const mac = createHmac('sha1', key).update(counter).digest();
+  const offset = (mac.at(-1) ?? 0) & 0xf;
+  return String((mac.readUInt32BE(offset) & 0x7fffffff) % 1_000_000).padStart(6, '0');
+}
 
 const url = process.env.DATABASE_URL;
 describe.skipIf(!url)('instance administration', () => {
@@ -248,6 +266,248 @@ describe.skipIf(!url)('instance administration', () => {
       scope: 'project',
       bytes: 3000,
     });
+  });
+
+  it('enforces enrollment for session, token and account endpoints, and unlocks after enrollment', async () => {
+    const token = await issueToken(db, people.admin!.id, { name: 'Enrollment regression' });
+    const [previousSettings] = await db
+      .select()
+      .from(instanceSetting)
+      .where(eq(instanceSetting.key, 'administration'));
+    await db
+      .insert(instanceSetting)
+      .values({ key: 'administration', value: { requireAdminTwoFactor: true } })
+      .onConflictDoUpdate({
+        target: instanceSetting.key,
+        set: { value: { requireAdminTwoFactor: true } },
+      });
+    try {
+      for (const path of ['/projects', '/instance/settings']) {
+        const response = await request('admin', 'GET', path);
+        expect(response.statusCode).toBe(403);
+        expect(response.json().error.details.reason).toBe('admin_two_factor_required');
+      }
+      expect((await request('admin', 'GET', '/me')).statusCode).toBe(200);
+      expect(
+        (await request('admin', 'POST', '/me/tokens', { name: 'Blocked creation' })).statusCode,
+      ).toBe(403);
+      const sessionsList = await request('admin', 'GET', '/me/sessions');
+      expect(sessionsList.statusCode).toBe(200);
+      expect(sessionsList.json().items.length).toBeGreaterThan(0);
+      const ownSessions = await db
+        .select()
+        .from(session)
+        .where(eq(session.userId, people.admin!.id));
+      expect(
+        sessionsList
+          .json()
+          .items.every((row: { id: string }) => ownSessions.some((own) => own.id === row.id)),
+      ).toBe(true);
+      expect(JSON.stringify(sessionsList.json())).not.toContain('"token":');
+      const tokensList = await request('admin', 'GET', '/me/tokens');
+      expect(tokensList.statusCode).toBe(200);
+      expect(tokensList.json().items.map((row: { id: string }) => row.id)).toContain(token.row.id);
+      expect(JSON.stringify(tokensList.json())).not.toContain(token.token);
+
+      expect((await request('member', 'GET', '/projects')).statusCode).toBe(200);
+      expect(
+        (
+          await app.inject({
+            url: '/api/v1/projects',
+            headers: { authorization: `Bearer ${token.token}` },
+          })
+        ).statusCode,
+      ).toBe(403);
+      const beforeSessions = await db
+        .select()
+        .from(session)
+        .where(eq(session.userId, people.admin!.id));
+      expect((await signIn('admin')).statusCode).toBe(200);
+      const afterSessions = await db
+        .select()
+        .from(session)
+        .where(eq(session.userId, people.admin!.id));
+      const otherSession = afterSessions.find(
+        (row) => !beforeSessions.some((old) => old.id === row.id),
+      )!;
+      expect((await request('admin', 'DELETE', `/me/sessions/${otherSession.id}`)).statusCode).toBe(
+        204,
+      );
+      expect((await request('admin', 'DELETE', `/me/tokens/${token.row.id}`)).statusCode).toBe(204);
+      const [memberSession] = await db
+        .select()
+        .from(session)
+        .where(eq(session.userId, people.member!.id));
+      const memberToken = await issueToken(db, people.member!.id, { name: 'Other owner' });
+      const ownTokensAfterRevocation = await request('admin', 'GET', '/me/tokens');
+      expect(ownTokensAfterRevocation.statusCode).toBe(200);
+      expect(
+        ownTokensAfterRevocation.json().items.map((row: { id: string }) => row.id),
+      ).not.toContain(memberToken.row.id);
+
+      expect(
+        (await request('admin', 'DELETE', `/me/sessions/${memberSession!.id}`)).statusCode,
+      ).toBe(404);
+      expect(
+        (await request('admin', 'DELETE', `/me/tokens/${memberToken.row.id}`)).statusCode,
+      ).toBe(404);
+      await db.delete(personalToken).where(eq(personalToken.id, memberToken.row.id));
+
+      await db.update(user).set({ twoFactorEnabled: true }).where(eq(user.id, people.admin!.id));
+      expect((await request('admin', 'GET', '/projects')).statusCode).toBe(200);
+      expect((await request('admin', 'GET', '/instance/settings')).statusCode).toBe(200);
+    } finally {
+      await db
+        .update(instanceSetting)
+        .set({ value: previousSettings?.value ?? {} })
+        .where(eq(instanceSetting.key, 'administration'));
+      await db.update(user).set({ twoFactorEnabled: false }).where(eq(user.id, people.admin!.id));
+      await db.delete(personalToken).where(eq(personalToken.id, token.row.id));
+    }
+  });
+
+  it('lets a passwordless administrator enroll and unlocks only after a verified TOTP', async () => {
+    expect(
+      (
+        await app.inject({
+          method: 'POST',
+          url: '/api/auth/two-factor/enable',
+          headers: { cookie: people.admin!.cookie, origin: config.PUBLIC_URL },
+          payload: {},
+        })
+      ).statusCode,
+    ).toBe(400);
+    const registered = await signUp('passwordless');
+    expect(registered.statusCode).toBe(200);
+    const id = registered.json().user.id;
+    const cookie = String(registered.headers['set-cookie']).split(';')[0] ?? '';
+    await db.delete(account).where(eq(account.userId, id));
+    await db.update(user).set({ role: 'admin' }).where(eq(user.id, id));
+    const [previousSettings] = await db
+      .select()
+      .from(instanceSetting)
+      .where(eq(instanceSetting.key, 'administration'));
+    await db
+      .insert(instanceSetting)
+      .values({ key: 'administration', value: { requireAdminTwoFactor: true } })
+      .onConflictDoUpdate({
+        target: instanceSetting.key,
+        set: { value: { requireAdminTwoFactor: true } },
+      });
+    try {
+      const headers = { cookie, origin: config.PUBLIC_URL };
+      expect((await app.inject({ url: '/api/v1/projects', headers })).statusCode).toBe(403);
+      const enabled = await app.inject({
+        method: 'POST',
+        url: '/api/auth/two-factor/enable',
+        headers,
+        payload: {},
+      });
+      expect(enabled.statusCode).toBe(200);
+      expect(enabled.json().backupCodes.length).toBeGreaterThan(0);
+      expect((await app.inject({ url: '/api/v1/projects', headers })).statusCode).toBe(403);
+      const secret = new URL(enabled.json().totpURI).searchParams.get('secret') ?? '';
+      const verified = await app.inject({
+        method: 'POST',
+        url: '/api/auth/two-factor/verify-totp',
+        headers,
+        payload: { code: totp(secret) },
+      });
+      expect(verified.statusCode).toBe(200);
+      const newCookie = String(verified.headers['set-cookie']).split(';')[0] ?? '';
+      expect(
+        (await app.inject({ url: '/api/v1/projects', headers: { cookie: newCookie } })).statusCode,
+      ).toBe(200);
+      const [beforeRecovery] = await db.select().from(twoFactor).where(eq(twoFactor.userId, id));
+      await db
+        .update(session)
+        .set({ createdAt: new Date(Date.now() - 16 * 60_000) })
+        .where(eq(session.userId, id));
+      const recoveryPaths = ['/two-factor/get-totp-uri', '/two-factor/generate-backup-codes'];
+      const recoveryStatuses = [];
+      for (const path of recoveryPaths)
+        recoveryStatuses.push(
+          (
+            await app.inject({
+              method: 'POST',
+              url: `/api/auth${path}`,
+              headers: { cookie: newCookie, origin: config.PUBLIC_URL },
+              payload: {},
+            })
+          ).statusCode,
+        );
+      expect(recoveryStatuses).toEqual([403, 403]);
+      const [afterRecovery] = await db.select().from(twoFactor).where(eq(twoFactor.userId, id));
+      expect(afterRecovery?.backupCodes).toBe(beforeRecovery?.backupCodes);
+      await db.update(session).set({ createdAt: new Date() }).where(eq(session.userId, id));
+      for (const path of recoveryPaths)
+        expect(
+          (
+            await app.inject({
+              method: 'POST',
+              url: `/api/auth${path}`,
+              headers: { cookie: newCookie, origin: config.PUBLIC_URL },
+              payload: {},
+            })
+          ).statusCode,
+        ).toBe(200);
+    } finally {
+      await db
+        .update(instanceSetting)
+        .set({ value: previousSettings?.value ?? {} })
+        .where(eq(instanceSetting.key, 'administration'));
+      await db.update(user).set({ role: 'member' }).where(eq(user.id, id));
+    }
+  });
+
+  it('can disable the administrator requirement locally without losing unrelated settings', async () => {
+    const [previous] = await db
+      .select()
+      .from(instanceSetting)
+      .where(eq(instanceSetting.key, 'administration'));
+    await db
+      .insert(instanceSetting)
+      .values({
+        key: 'administration',
+        value: {
+          name: 'Recovery studio',
+          registration: 'invite',
+          requireAdminTwoFactor: true,
+          retained: 'yes',
+        },
+      })
+      .onConflictDoUpdate({
+        target: instanceSetting.key,
+        set: {
+          value: {
+            name: 'Recovery studio',
+            registration: 'invite',
+            requireAdminTwoFactor: true,
+            retained: 'yes',
+          },
+        },
+      });
+    try {
+      expect((await request('admin', 'GET', '/projects')).statusCode).toBe(403);
+      await disableAdminTwoFactor(db);
+      const [saved] = await db
+        .select()
+        .from(instanceSetting)
+        .where(eq(instanceSetting.key, 'administration'));
+      expect(saved?.value).toEqual({
+        name: 'Recovery studio',
+        registration: 'invite',
+        requireAdminTwoFactor: false,
+        retained: 'yes',
+      });
+      expect((await request('admin', 'GET', '/projects')).statusCode).toBe(200);
+      await disableAdminTwoFactor(db);
+    } finally {
+      await db
+        .update(instanceSetting)
+        .set({ value: previous?.value ?? {} })
+        .where(eq(instanceSetting.key, 'administration'));
+    }
   });
 
   it('validates settings, persists partial overrides and updates public metadata', async () => {

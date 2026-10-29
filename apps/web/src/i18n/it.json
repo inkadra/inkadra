@@ -1439,6 +1439,8 @@
       "changed": "Password cambiata. Le altre sessioni sono state chiuse."
     },
     "twoFactor": {
+      "passwordless": "Gli account senza password possono usare la sessione del provider per configurare la verifica in due passaggi.",
+      "requiredAdmin": "Per continuare come amministratore, configura la verifica in due passaggi. Conserva i codici di recupero.",
       "title": "Verifica in due passaggi",
       "on": "Attiva: all’accesso chiediamo anche un codice dall’app.",
       "off": "Aggiungi un codice da un’app di autenticazione (1Password, Google Authenticator, Aegis…).",

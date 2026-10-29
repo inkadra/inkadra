@@ -559,6 +559,10 @@ test('the versions panel follows other editors, and leaving a preview keeps the 
     await page.keyboard.press('Escape');
     await expect(again).toBeHidden();
     await expect(banner).toBeVisible();
+    // Dialog visibility changes before its focus restoration finishes. Wait until the
+    // closed dialog no longer owns focus, otherwise its Escape can swallow this key.
+    await expect(page.locator('dialog[open], [role="menu"]')).toHaveCount(0);
+    await expect(menuButton).toBeFocused();
     await page.keyboard.press('Escape');
     await expect(banner).toHaveCount(0);
     // The live selection is the one from before the preview.

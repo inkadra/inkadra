@@ -16,6 +16,7 @@ interface SessionState {
   user: User | null;
   loading: boolean;
   version?: string;
+  enrollmentRequired?: boolean;
   refresh: () => Promise<void>;
 }
 
@@ -25,6 +26,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const [instance, setInstance] = useState<Instance | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [enrollmentRequired, setEnrollmentRequired] = useState(false);
   const [version, setVersion] = useState<string>();
   const latest = useRef(0);
 
@@ -39,18 +41,21 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         throw err;
       }),
     ]);
+    // One authenticated probe supplies the version and the enrollment decision. Missing
+    // metadata must not prevent startup; only the explicit policy denial gates the workspace.
+    let required = false;
     const identity = me
       ? await api.get<{ version: string }>('/instance/version').catch((err) => {
-          if (
+          required =
             err instanceof RequestError &&
             err.status === 403 &&
-            (err.details as { reason?: string } | undefined)?.reason === 'admin_two_factor_required'
-          )
-            return null;
-          throw err;
+            (err.details as { reason?: string } | undefined)?.reason ===
+              'admin_two_factor_required';
+          return null;
         })
       : null;
     if (call !== latest.current) return;
+    setEnrollmentRequired(required);
     setVersion(identity?.version);
     setInstance(inst);
     setUser(me);
@@ -68,7 +73,9 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   }, [refresh]);
 
   return (
-    <SessionContext.Provider value={{ instance, user, loading, refresh, version }}>
+    <SessionContext.Provider
+      value={{ instance, user, loading, refresh, enrollmentRequired, version }}
+    >
       {children}
     </SessionContext.Provider>
   );

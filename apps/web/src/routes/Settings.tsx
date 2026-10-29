@@ -81,7 +81,8 @@ function useStatus() {
   const fail = (err: unknown) =>
     show(
       err instanceof RequestError &&
-        (err.details as { reason?: string })?.reason === 'reauth_required'
+        (err.code === 'REAUTH_REQUIRED' ||
+          (err.details as { reason?: string })?.reason === 'reauth_required')
         ? t('auth.errors.reauthRequired')
         : err instanceof RequestError && (err.status === 400 || err.status === 403) && err.message
           ? err.message
@@ -341,7 +342,7 @@ function SignInMethods({
           label={t('settings.twoFactor.title')}
           help={
             !hasPassword
-              ? t('settings.twoFactor.needsPassword')
+              ? t('settings.twoFactor.passwordless')
               : twoFactor
                 ? t('settings.twoFactor.on')
                 : t('settings.twoFactor.off')
@@ -350,7 +351,7 @@ function SignInMethods({
           <Badge tone={twoFactor ? 'ok' : 'neutral'}>
             {t(twoFactor ? 'settingsUi.on' : 'settingsUi.off')}
           </Badge>
-          {hasPassword && (
+          {accounts !== null && (
             <Button
               variant={twoFactor ? 'ghost' : 'secondary'}
               onClick={() => setDialog('twoFactor')}
@@ -449,10 +450,25 @@ function QrCode({ text }: { text: string }) {
   );
 }
 
-function TwoFactor({ onDone }: { onDone: () => void }) {
+export function TwoFactor({
+  onDone,
+  mandatory = false,
+}: {
+  onDone: () => void;
+  mandatory?: boolean;
+}) {
   const { t } = useTranslation();
   const { user, refresh } = useSession();
   const [password, setPassword] = useState('');
+  const [hasPassword, setHasPassword] = useState<boolean | null>(null);
+  useEffect(() => {
+    void authApi
+      .listAccounts()
+      .then((accounts) =>
+        setHasPassword(accounts.some((account) => account.providerId === 'credential')),
+      )
+      .catch(() => setHasPassword(null));
+  }, []);
   const [setup, setSetup] = useState<{ totpURI: string; backupCodes: string[] } | null>(null);
   const [code, setCode] = useState('');
   const status = useStatus();
@@ -527,9 +543,11 @@ function TwoFactor({ onDone }: { onDone: () => void }) {
       />
       {status.node}
       <DialogActions>
-        <Button variant="ghost" onClick={onDone}>
-          {t('project.cancel')}
-        </Button>
+        {!mandatory && (
+          <Button variant="ghost" onClick={onDone}>
+            {t('project.cancel')}
+          </Button>
+        )}
         <Button type="submit" variant="primary" disabled={code.trim().length < 6}>
           {t('settings.twoFactor.confirm')}
         </Button>
@@ -540,19 +558,27 @@ function TwoFactor({ onDone }: { onDone: () => void }) {
       <p className="settings-muted">
         {enabled ? t('settings.twoFactor.on') : t('settings.twoFactor.off')}
       </p>
-      <TextField
-        label={t('settings.password.current')}
-        type="password"
-        autoComplete="current-password"
-        value={password}
-        onChange={(e) => setPassword(e.target.value)}
-      />
+      {hasPassword !== false && (
+        <TextField
+          label={t('settings.password.current')}
+          type="password"
+          autoComplete="current-password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+        />
+      )}
       {status.node}
       <DialogActions>
-        <Button variant="ghost" onClick={onDone}>
-          {t('project.cancel')}
-        </Button>
-        <Button type="submit" variant={enabled ? 'danger' : 'primary'} disabled={!password}>
+        {!mandatory && (
+          <Button variant="ghost" onClick={onDone}>
+            {t('project.cancel')}
+          </Button>
+        )}
+        <Button
+          type="submit"
+          variant={enabled ? 'danger' : 'primary'}
+          disabled={hasPassword === null || (hasPassword && !password)}
+        >
           {enabled ? t('settings.twoFactor.disable') : t('settings.twoFactor.enable')}
         </Button>
       </DialogActions>

@@ -23,6 +23,7 @@ describe('same-origin writes', () => {
     async (method) => {
       for (const cookie of [
         'inkadra.session_token=test',
+        '__Host-inkadra.session_token=test',
         'other=value; __Secure-inkadra.session_token=test',
       ]) {
         for (const source of [

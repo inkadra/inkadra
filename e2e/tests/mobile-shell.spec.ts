@@ -48,6 +48,14 @@ test('mobile shell gives the canvas full width and keeps shell actions reachable
   await expect(page).toHaveURL(`/p/${project.id}`);
   const canvas = page.getByTestId('canvas');
   await expect(canvas).toBeVisible();
+  // The lazy board stylesheet can commit after the canvas becomes visible. Wait for
+  // the responsive layout before measuring it.
+  await expect
+    .poll(async () => {
+      const box = await canvas.boundingBox();
+      return { x: box?.x, width: box?.width };
+    })
+    .toEqual({ x: 0, width: 390 });
   const bounds = await canvas.boundingBox();
   expect(bounds?.x).toBe(0);
   expect(bounds?.width).toBe(390);

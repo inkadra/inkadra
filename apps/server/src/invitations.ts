@@ -16,6 +16,8 @@ import { sha256 } from './secrets.ts';
 
 /** Cookie set by POST /invitations/by-token/{token}/claim, read when an account is created. */
 export const INVITATION_COOKIE = 'inkadra.invitation';
+export const invitationCookieName = (publicUrl: string) =>
+  publicUrl.startsWith('https:') ? '__Host-inkadra.invitation' : INVITATION_COOKIE;
 export const INVITATION_COOKIE_MAX_AGE = 60 * 60;
 
 export type InvitationRow = typeof invitation.$inferSelect;
@@ -42,8 +44,9 @@ export async function findInvitation(db: Database, token: string): Promise<Invit
 export async function invitationFromCookie(
   db: Database,
   cookieHeader: string | null | undefined,
+  publicUrl: string,
 ): Promise<InvitationRow | null> {
-  const token = readCookie(cookieHeader, INVITATION_COOKIE);
+  const token = readCookie(cookieHeader, invitationCookieName(publicUrl));
   if (!token) return null;
   const row = await findInvitation(db, token);
   return row && invitationStatus(row) === 'valid' ? row : null;

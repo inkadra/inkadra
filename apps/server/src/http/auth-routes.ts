@@ -2,6 +2,7 @@ import { AUTH_PREFIX } from '@inkadra/shared';
 import { eq } from 'drizzle-orm';
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import type { Actor } from '../access.ts';
+import { enforceAdminTwoFactor } from '../admin-two-factor.ts';
 import { type Auth, CLIENT_IP_HEADER } from '../auth.ts';
 import type { Database } from '../db/client.ts';
 import { user } from '../db/schema.ts';
@@ -47,33 +48,55 @@ export function registerAuthRoutes(app: FastifyInstance, auth: Auth, publicUrl: 
  * The signed-in person: a bearer token (`Authorization: Bearer ink_…`) or the session cookie.
  * Better Auth's own endpoints only accept the cookie.
  */
-export async function requireActor(auth: Auth, req: FastifyRequest, db: Database): Promise<Actor> {
+export async function requireActor(
+  auth: Auth,
+  req: FastifyRequest,
+  db: Database,
+  enrollment = false,
+): Promise<Actor> {
   const token = bearerToken(req.headers.authorization);
   if (token) {
     const actor = await actorFromToken(db, token);
     if (!actor) throw new HttpError('unauthorized', 'The token is not valid any more.');
+    if (!enrollment) await enforceAdminTwoFactor(db, actor);
     return actor;
   }
   const session = await auth.api.getSession({ headers: toHeaders(req) });
   if (!session) throw new HttpError('unauthorized', 'Sign in to continue.');
   const [owner] = await db
-    .select({ id: user.id, role: user.role, deactivatedAt: user.deactivatedAt })
+    .select({
+      id: user.id,
+      role: user.role,
+      deactivatedAt: user.deactivatedAt,
+      twoFactorEnabled: user.twoFactorEnabled,
+    })
     .from(user)
     .where(eq(user.id, session.user.id));
   if (!owner || owner.deactivatedAt) throw new HttpError('unauthorized', 'Account deactivated.');
+  if (!enrollment) await enforceAdminTwoFactor(db, owner);
   return { id: owner.id, role: owner.role };
 }
 
 /** Like requireActor, for account-level actions that a token must not do. */
-export async function requireSession(auth: Auth, req: FastifyRequest, db: Database) {
+export async function requireSession(
+  auth: Auth,
+  req: FastifyRequest,
+  db: Database,
+  enrollment = false,
+) {
   if (bearerToken(req.headers.authorization))
     throw new HttpError('forbidden', 'Not available with a token. Sign in on the web.');
   const session = await auth.api.getSession({ headers: toHeaders(req) });
   if (!session) throw new HttpError('unauthorized', 'Sign in to continue.');
   const [owner] = await db
-    .select({ deactivatedAt: user.deactivatedAt })
+    .select({
+      role: user.role,
+      deactivatedAt: user.deactivatedAt,
+      twoFactorEnabled: user.twoFactorEnabled,
+    })
     .from(user)
     .where(eq(user.id, session.user.id));
   if (!owner || owner.deactivatedAt) throw new HttpError('unauthorized', 'Account deactivated.');
+  if (!enrollment) await enforceAdminTwoFactor(db, owner);
   return session;
 }

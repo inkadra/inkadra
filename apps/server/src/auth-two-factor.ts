@@ -1,9 +1,11 @@
-import { createAuthMiddleware } from 'better-auth/api';
+import { APIError } from 'better-auth';
+import { createAuthMiddleware, getSessionFromCtx } from 'better-auth/api';
 import { twoFactor } from 'better-auth/plugins';
+import { FRESH_SIGN_IN_MS } from './auth-session.ts';
 
 /** Extend the upstream challenge, keeping its signed cookie, expiry and attempt counter. */
 export function hardenedTwoFactor(issuer: string) {
-  const plugin = twoFactor({ issuer });
+  const plugin = twoFactor({ issuer, allowPasswordless: true });
   const hook = plugin.hooks.after[0];
   if (!hook) throw new Error('Better Auth two-factor hook is missing.');
   const upstream = hook.handler;
@@ -48,5 +50,38 @@ export function hardenedTwoFactor(issuer: string) {
     }
     return result.response;
   });
-  return plugin;
+  return {
+    ...plugin,
+    hooks: {
+      ...plugin.hooks,
+      before: [
+        {
+          matcher: (ctx: { path?: string }) =>
+            [
+              '/two-factor/enable',
+              '/two-factor/disable',
+              '/two-factor/get-totp-uri',
+              '/two-factor/generate-backup-codes',
+              '/two-factor/view-backup-codes',
+            ].includes(ctx.path ?? ''),
+          handler: createAuthMiddleware(async (ctx) => {
+            const session = await getSessionFromCtx(ctx);
+            if (!session) return;
+            const credential = await ctx.context.internalAdapter.findCredentialAccount(
+              session.user.id,
+            );
+            // Password accounts retain upstream password confirmation. Provider-only accounts
+            // must prove a recent sign-in before secrets or recovery codes can be exposed/changed.
+            if (credential?.password) return;
+            const signedInAt = new Date(session.session.createdAt).getTime();
+            if (!Number.isFinite(signedInAt) || Date.now() - signedInAt >= FRESH_SIGN_IN_MS)
+              throw new APIError('FORBIDDEN', {
+                code: 'REAUTH_REQUIRED',
+                message: 'Sign in again before managing two-step verification.',
+              });
+          }),
+        },
+      ],
+    },
+  };
 }

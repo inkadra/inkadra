@@ -16,7 +16,9 @@ function respond(me: User) {
 
 let latestRefresh: () => Promise<void> = async () => {};
 let latestVersion: string | undefined;
+let snapshot: ReturnType<typeof useSession>;
 function Probe() {
+  snapshot = useSession();
   latestVersion = useSession().version;
   latestRefresh = useSession().refresh;
   return null;
@@ -116,6 +118,85 @@ it('loads software identity only from an authenticated source and clears it on s
     await act(async () => latestRefresh());
     expect(latestVersion).toBeUndefined();
     expect(get).not.toHaveBeenCalledWith('/instance/version');
+  } finally {
+    await act(async () => root.unmount());
+  }
+});
+
+it.each([
+  [
+    'enrollment',
+    new RequestError(403, 'forbidden', 'Enroll', { reason: 'admin_two_factor_required' }),
+    true,
+  ],
+  ['server error', new RequestError(503, 'internal', 'Unavailable'), false],
+  ['network error', new TypeError('Network unavailable'), false],
+  ['expired authorization', new RequestError(401, 'unauthorized', 'Expired'), false],
+  ['unrelated forbidden response', new RequestError(403, 'forbidden', 'Denied'), false],
+] as const)(
+  'finishes startup with a single version probe on %s',
+  async (_label, error, enrollment) => {
+    const me = { ...user('it'), role: 'admin', twoFactorEnabled: false };
+    const get = vi.spyOn(api, 'get').mockImplementation(async (path) => {
+      if (path === '/instance') return instance;
+      if (path === '/me') return me;
+      if (path === '/instance/version') throw error;
+      throw new Error(`Unexpected request ${path}`);
+    });
+    const host = document.createElement('div');
+    const root = createRoot(host);
+    try {
+      await act(async () =>
+        root.render(
+          <SessionProvider>
+            <Probe />
+          </SessionProvider>,
+        ),
+      );
+      expect(snapshot.loading).toBe(false);
+      expect(snapshot.user).toEqual(me);
+      expect(snapshot.version).toBeUndefined();
+      expect(snapshot.enrollmentRequired).toBe(enrollment);
+      expect(get.mock.calls.map(([path]) => path)).toEqual([
+        '/instance',
+        '/me',
+        '/instance/version',
+      ]);
+    } finally {
+      await act(async () => root.unmount());
+    }
+  },
+);
+
+it('clears enrollment after the next successful version probe', async () => {
+  let required = true;
+  const get = vi.spyOn(api, 'get').mockImplementation(async (path) => {
+    if (path === '/instance') return instance;
+    if (path === '/me') return { ...user('it'), role: 'admin', twoFactorEnabled: !required };
+    if (path === '/instance/version') {
+      if (required)
+        throw new RequestError(403, 'forbidden', 'Enroll', { reason: 'admin_two_factor_required' });
+      return { version: '0.4.2' };
+    }
+    throw new Error(`Unexpected request ${path}`);
+  });
+  const host = document.createElement('div');
+  const root = createRoot(host);
+  try {
+    await act(async () =>
+      root.render(
+        <SessionProvider>
+          <Probe />
+        </SessionProvider>,
+      ),
+    );
+    expect(snapshot.enrollmentRequired).toBe(true);
+    required = false;
+    get.mockClear();
+    await act(async () => latestRefresh());
+    expect(snapshot.enrollmentRequired).toBe(false);
+    expect(snapshot.version).toBe('0.4.2');
+    expect(get.mock.calls.map(([path]) => path)).toEqual(['/instance', '/me', '/instance/version']);
   } finally {
     await act(async () => root.unmount());
   }
