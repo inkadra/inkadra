@@ -67,6 +67,7 @@ describe.skipIf(!url)('sign-in providers (needs DATABASE_URL)', () => {
     app = await createApp({ config, db, auth, log, ...testDeps(db, log) });
     close = async () => {
       await app.close();
+      auth.closeSecurity();
       await client.end();
     };
   });
@@ -126,7 +127,7 @@ describe.skipIf(!url)('sign-in providers (needs DATABASE_URL)', () => {
     if (!provider) throw new Error('Missing provider');
     const info = vi.spyOn(provider, 'getUserInfo').mockResolvedValue({
       user: { email, name: owner.name, emailVerified: true },
-      data: { sub: owner.id },
+      data: { sub: owner.id, id: owner.id },
     });
     const exchange = vi.spyOn(provider, 'validateAuthorizationCode').mockResolvedValue({});
     const originalOptions = provider.options;

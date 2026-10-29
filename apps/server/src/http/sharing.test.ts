@@ -44,7 +44,8 @@ describe.skipIf(!url)('sharing, invitations, tokens and accounts (needs DATABASE
     REDIS_URL: process.env.REDIS_URL,
     PUBLIC_URL: 'http://localhost:3000',
     DATABASE_URL: url ?? 'postgres://unused',
-    AUTH_SECRET: 'test-secret-test-secret-test-secret-0123',
+    // Isolate persistent budgets from other suites and earlier CI attempts.
+    AUTH_SECRET: randomBytes(32).toString('hex'),
     REGISTRATION: 'invite',
     CLIPPER_EXTENSION_IDS: EXTENSION_ID,
     GOOGLE_CLIENT_ID: 'test-google-client',
@@ -886,6 +887,7 @@ describe.skipIf(!url)('sharing, invitations, tokens and accounts (needs DATABASE
       email: as.viewer.email,
       password: PASSWORD,
     });
+    expect(signIn.status).toBe(200);
     expect(signIn.body.twoFactorRedirect).toBe(true);
     await expectPrivateSession(signIn);
     expect(cookieOf(signIn.cookies, 'inkadra.session_token').split('=')[1] ?? '').toBe('');

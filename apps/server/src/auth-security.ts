@@ -15,7 +15,8 @@ export function authSecurity(config: Config) {
     throw new Error('REDIS_URL is required for persistent authentication rate limits.');
   redis?.on('error', () => {});
   const memory = new Map<string, { n: number; until: number }>();
-  const key = (value: string) => `inkadra:auth:${sha256(value)}`;
+  const namespace = sha256(`${config.PUBLIC_URL}:${config.AUTH_SECRET}`);
+  const key = (value: string) => `inkadra:auth:${namespace}:${sha256(value)}`;
   async function budget(id: string, max: number, seconds: number, increment: boolean) {
     if (redis) {
       const result = (await redis.eval(
