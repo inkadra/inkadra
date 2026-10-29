@@ -13,8 +13,12 @@ proxy must
    shared links call the API directly and cannot pass through it.
 
 `compose.yaml` publishes Inkadra on `127.0.0.1:3000`, so only a proxy on the same machine can
-reach it. If the proxy runs elsewhere, set `INKADRA_BIND=0.0.0.0` (or the LAN address) and limit
-`TRUST_PROXY` to the proxy's address.
+reach it; the bundled proxies remove the published port altogether and reach Inkadra inside the
+Docker network. Keep it that way: port 3000 speaks plain HTTP and believes `X-Forwarded-For`
+from private networks, so it must never be reachable from the internet. If the proxy runs on
+another machine, set `INKADRA_BIND` to the LAN or Tailscale address the proxy uses (not
+`0.0.0.0` on a machine with a public address), firewall the port to the proxy, and limit
+`TRUST_PROXY` to the proxy's address. See [Security headers](#security-headers) for the rest.
 
 The configurations in [`deploy/proxy`](../../deploy/proxy) (Caddy, Traefik, Nginx) are tested by
 CI on every change, in all-in-one and split mode, with
@@ -142,8 +146,8 @@ WebSockets work without settings. Two things are on the VPS side and in Inkadra'
   `entryPoints.websecure.transport.respondingTimeouts` as shown under [Traefik](#traefik), and
   restart the stack.
 - `TRUST_PROXY` must accept the address requests come from. With Newt in the same Docker network
-  the default is enough; when the target is a Tailscale address, add the Tailscale range:
-  `TRUST_PROXY=loopback,linklocal,uniquelocal,100.64.0.0/10`.
+  the default is enough; when the target is a Tailscale address, trust only the tailnet address
+  of the machine Newt runs on, e.g. `TRUST_PROXY=100.100.10.20`, not the whole Tailscale range.
 
 All-in-one mode is the easy fit for Pangolin: one target. For split mode, add a second target
 for the path prefix `/collab` on port `3001`, if your Pangolin version supports path-based
@@ -156,13 +160,66 @@ request (100 MB on the free plan). Inkadra's apps upload in resumable chunks of 
 so large files still work; only scripts that send bigger requests to the API hit the limit. Keep WebSockets enabled in the
 Cloudflare dashboard (they are on by default).
 
-## Security boundary
+## Security headers
 
-Set `TRUST_PROXY` to **only the proxy's IP address or dedicated subnet**, rather than all
-private networks or the entire Tailscale range. Keep port 3000 inside the Docker network;
-if host access is necessary, bind it to `127.0.0.1`, never a public interface. The proxy
-must overwrite forwarding headers. Configure a permanent HTTP-to-HTTPS redirect and HSTS
-at the TLS proxy. Application HSTS is also available with `HSTS_ENABLED=true` and an HTTPS
-`PUBLIC_URL`; it is deliberately opt-in. `CSP_ENFORCE=false` initially emits report-only CSP;
-review browser console violations before enabling enforcement. No server or proxy settings
-are changed automatically by these application options.
+Whatever the proxy, finish with these four:
+1. **`TRUST_PROXY` lists only the proxy**: its address, or the dedicated subnet it connects from,
+   not every private network and not the whole Tailscale range. See
+   [`TRUST_PROXY`](configuration.md#trust_proxy).
+2. **Port 3000 stays private**: inside the Docker network, or bound to `127.0.0.1`. Never publish
+   it on a public interface.
+3. **The proxy sets the forwarding headers itself**, replacing what the client sent, and serves
+   only HTTPS: a permanent redirect (301 or 308) from HTTP to HTTPS.
+4. **HSTS at the proxy**, once HTTPS works for good: browsers then refuse plain HTTP for that
+   domain for a year. Add `includeSubDomains` only if every subdomain of it serves HTTPS.
+
+Inkadra can send HSTS itself with `HSTS_ENABLED=true`, and sends its own
+`Content-Security-Policy` (report-only until `CSP_ENFORCE=true`), `Permissions-Policy` and
+`Cross-Origin-Opener-Policy`: see [Browser security headers](configuration.md#browser-security-headers).
+Do not add a second `Content-Security-Policy` at the proxy; the browser would apply both.
+
+**Caddy** redirects HTTP to HTTPS permanently by itself and replaces `X-Forwarded-For` from
+untrusted clients:
+
+```caddy
+inkadra.example.com {
+	header Strict-Transport-Security "max-age=31536000"
+	reverse_proxy 127.0.0.1:3000
+}
+```
+
+**Traefik**: a permanent redirect on the HTTP entry point (static configuration; the bundled
+`deploy/proxy/traefik` already has it), and a headers middleware on the router:
+
+```yaml
+entryPoints:
+  web:
+    address: ":80"
+    http:
+      redirections:
+        entryPoint:
+          to: websecure
+          scheme: https
+          permanent: true
+```
+
+```yaml
+labels:
+  - traefik.http.middlewares.inkadra-headers.headers.stsSeconds=31536000
+  - traefik.http.routers.inkadra.middlewares=inkadra-headers
+```
+
+Traefik replaces `X-Forwarded-For` from clients it does not trust; leave `forwardedHeaders.insecure`
+off and `forwardedHeaders.trustedIPs` empty unless another proxy sits in front of it.
+
+**Nginx**: the `return 301` server block of the [template](../../deploy/proxy/nginx/inkadra.conf.template)
+handles the redirect; in the `listen 443` server add:
+
+```nginx
+add_header Strict-Transport-Security "max-age=31536000" always;
+# Nginx is the first hop: replace what the client sent instead of appending to it.
+proxy_set_header X-Forwarded-For $remote_addr;
+```
+
+If Nginx sits behind another proxy or a CDN, keep `$proxy_add_x_forwarded_for` and configure
+`set_real_ip_from` for that proxy instead.

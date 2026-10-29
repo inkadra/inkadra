@@ -9,7 +9,7 @@ major version does.
 Pin a version in `.env`, so an upgrade happens when you decide:
 
 ```sh
-INKADRA_TAG=0.2.0
+INKADRA_TAG=0.4.0
 ```
 
 To move to a new version, read its [release notes](https://github.com/inkadra/inkadra/releases),
@@ -26,6 +26,56 @@ there.
 
 Going back to an older version after its migrations ran is not supported: restore the backup
 taken before the upgrade instead.
+
+## Upgrading to 0.4
+
+0.4 hardens sign-in. Before you change `INKADRA_TAG`:
+
+1. **Pass the new settings to the container.** The `compose.yaml` on `main` forwards
+   `OIDC_ALLOWED_DOMAINS`, `CSP_ENFORCE`, `CSP_REPORT_URI` and `HSTS_ENABLED` from `.env`. The
+   files attached to the 0.4.0 release do not: if you use them and want any of these, add them
+   under `environment` of the `inkadra` service, for example `HSTS_ENABLED: ${HSTS_ENABLED:-false}`.
+   With 0.4.0, add `CSP_REPORT_URI` only with a value: an empty one stops the server.
+2. **`REDIS_URL` is now required in production by every role, `web` included.** Sign-in limits
+   are kept in Valkey. The bundled `compose.yaml` already sets it; if you run the `web` role on
+   its own or with your own environment, point it at your Valkey or Redis, or it will not start.
+3. **Google with `GOOGLE_ALLOWED_DOMAINS`** now checks the account's Workspace domain (`hd`) on
+   every sign-in, also for accounts linked before. Personal Google accounts (`@gmail.com`) of
+   people in that list can no longer sign in with Google: they use their password or an email
+   link, or you remove the restriction.
+4. **OIDC with `OIDC_ALLOWED_DOMAINS`** accepts only addresses the provider marks as verified
+   (`email_verified`). Check that your provider sends that claim before setting it.
+5. **Two-factor applies to every sign-in method**: people with an authenticator app are now asked
+   for the code after an email link, Google or OIDC as well.
+6. **Personal tokens** made without an expiry now last 90 days, and making one needs a recent
+   sign-in (15 minutes). Tokens made before the upgrade keep their expiry.
+
+Then upgrade as usual. If someone gets locked out by the new limits, clear them with
+`unlock-auth` (see [Unlocking an account](configuration.md#unlocking-an-account)):
+
+```sh
+docker compose exec inkadra node /app/dist/main.js unlock-auth person@example.com
+```
+
+### Trying CSP enforcement
+
+0.4 sends a `Content-Security-Policy` in **report-only** mode: the browser applies nothing, it
+only reports what the policy would block. To switch to enforcement:
+
+1. Use Inkadra normally for a while with the browser's developer tools open (Console): open
+   boards with images, videos, YouTube links and files, sign in with each method you use. Every
+   `[Report Only] Refused to load…` message is something enforcement would break. For a whole
+   team, set `CSP_REPORT_URI` to an endpoint that collects reports.
+2. Fix what you can at the source: a proxy that injects scripts or styles, an S3 address that
+   differs from `S3_ENDPOINT`. If something Inkadra itself needs is blocked, please open an issue.
+3. Set `CSP_ENFORCE=true` in `.env` and run `docker compose up -d`. If something breaks, set it
+   back to `false`: nothing is stored, the header changes on the next page load.
+
+### HSTS
+
+HSTS is off in Inkadra by default; set it at the proxy (see
+[Security headers](reverse-proxy.md#security-headers)) or with `HSTS_ENABLED=true`. Turn it on
+only when HTTPS works for good: browsers remember it for a year.
 
 ## Upgrading to Valkey 9
 
@@ -60,13 +110,13 @@ in this repository, and a software bill of materials. To check that an image was
 repository by its CI and nothing else:
 
 ```sh
-gh attestation verify oci://ghcr.io/inkadra/inkadra:0.2.0 --repo inkadra/inkadra
+gh attestation verify oci://ghcr.io/inkadra/inkadra:0.4.0 --repo inkadra/inkadra
 ```
 
 To list the packages inside it:
 
 ```sh
-docker buildx imagetools inspect ghcr.io/inkadra/inkadra:0.2.0 --format '{{ json .SBOM }}'
+docker buildx imagetools inspect ghcr.io/inkadra/inkadra:0.4.0 --format '{{ json .SBOM }}'
 ```
 
 ## How releases are made
