@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-import { expect, test } from '@playwright/test';
+import { expect, type Page, test } from '@playwright/test';
 
 const root = process
   .cwd()
@@ -168,9 +168,7 @@ test('compare keeps both images inside the stage (#223)', async ({ page }, testI
   }
 });
 
-test('Inbox restores canvas geometry, opener focus and total shot count', async ({
-  page,
-}, testInfo) => {
+async function openShell(page: Page) {
   await page.setViewportSize({ width: 1280, height: 800 });
   await page.route('**/api/v1/**', (route) => {
     const path = new URL(route.request().url()).pathname;
@@ -209,6 +207,11 @@ test('Inbox restores canvas geometry, opener focus and total shot count', async 
   await page.goto('http://127.0.0.1:5179/__shot');
   const inbox = page.locator('.ink-sidebar').getByRole('button', { name: 'Inbox', exact: true });
   await expect(inbox).toBeVisible();
+  return inbox;
+}
+
+test('Inbox restores canvas geometry, opener focus and total shot count', async ({ page }) => {
+  const inbox = await openShell(page);
   const corner = page.locator('.canvas__corner');
   const toolbar = page.locator('.toolbar');
   const sidebar = (await page.locator('.ink-sidebar').boundingBox())!;
@@ -242,6 +245,12 @@ test('Inbox restores canvas geometry, opener focus and total shot count', async 
   );
   const shots = page.locator('.ink-sidebar .ink-nav').filter({ hasText: 'Shot list' });
   await expect(shots.locator('.ink-nav__count')).toHaveText('7');
+});
+
+test('appearance tabs fit their content and keep validation outside the panel', async ({
+  page,
+}, testInfo) => {
+  await openShell(page);
   await page.locator('.project-navigation__options').first().click();
   await page.getByRole('menuitem', { name: 'Project appearance' }).click();
   const dialog = page.locator('.project-appearance .ink-dialog');
