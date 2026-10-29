@@ -12,5 +12,7 @@ it('binds devices to account and signing key; rejects tampering and expiry', () 
   try {
     vi.advanceTimersByTime((DEVICE_AGE + 1) * 1000);
     expect(devices.verify(token, 'member@example.com')).toBeNull();
-  } finally { vi.useRealTimers(); }
+  } finally {
+    vi.useRealTimers();
+  }
 });

@@ -1,6 +1,6 @@
-import type { Logger } from 'pino';
 import { isIP } from 'node:net';
 import IORedis from 'ioredis';
+import type { Logger } from 'pino';
 import type { Config } from './config.ts';
 import { sha256 } from './secrets.ts';
 
@@ -92,9 +92,19 @@ export function authSecurity(config: Config, log?: Logger) {
     async ready() {
       if (!redis || redis.status === 'ready') return;
       await new Promise<void>((resolve, reject) => {
-        const cleanup = () => { redis.off('ready', onReady); redis.off('error', onError); clearTimeout(timer); };
-        const onReady = () => { cleanup(); resolve(); };
-        const onError = () => { cleanup(); reject(new Error('Authentication storage unavailable')); };
+        const cleanup = () => {
+          redis.off('ready', onReady);
+          redis.off('error', onError);
+          clearTimeout(timer);
+        };
+        const onReady = () => {
+          cleanup();
+          resolve();
+        };
+        const onError = () => {
+          cleanup();
+          reject(new Error('Authentication storage unavailable'));
+        };
         const timer = setTimeout(onError, 5000);
         redis.once('ready', onReady);
         redis.once('error', onError);
@@ -102,7 +112,11 @@ export function authSecurity(config: Config, log?: Logger) {
     },
     async refund(id: string) {
       if (redis) {
-        await redis.eval("if tonumber(redis.call('GET',KEYS[1]) or '0') > 0 then return redis.call('DECR',KEYS[1]) end; return 0", 1, key(id));
+        await redis.eval(
+          "if tonumber(redis.call('GET',KEYS[1]) or '0') > 0 then return redis.call('DECR',KEYS[1]) end; return 0",
+          1,
+          key(id),
+        );
       } else {
         const entry = memory.get(id);
         if (entry && entry.until > Date.now() && entry.n > 0) entry.n--;

@@ -6,22 +6,22 @@ or share the real `.env`.
 
 ## Server
 
-| Variable        | Default                          | Meaning                                                                                  |
-| --------------- | -------------------------------- | ---------------------------------------------------------------------------------------- |
-| `NODE_ENV`      | `production`                     | `development`, `production` or `test`                                                    |
-| `PUBLIC_URL`    | required                         | Address people use, as served by your proxy, e.g. `https://inkadra.example.com`. No path |
-| `AUTH_SECRET`   | required                         | At least 32 random characters: `openssl rand -hex 32`. Changing it signs everyone out    |
-| `DATABASE_URL`  | set by compose                   | Postgres connection string                                                               |
-| `REDIS_URL`     | set by compose                   | Valkey or Redis connection string. Required in production by `web`, `worker`, `all` and `collab`    |
-| `INSTANCE_NAME` | `Inkadra`                        | Name shown in the app                                                                    |
-| `REGISTRATION`  | `invite`                         | `invite`: only invited people can sign up. `open`: anyone can                            |
-| `HOST`          | `0.0.0.0`                        | Interface the web server listens on                                                      |
-| `PORT`          | `3000`                           | Port of the web server                                                                   |
-| `COLLAB_PORT`   | `3001`                           | Port of the collaboration server, in split mode                                          |
-| `DATA_DIR`      | `/data`                          | Where files live; the `local` driver keeps them in `<DATA_DIR>/files`                    |
-| `WEB_DIST`      |                                  | Folder of the built web app; unset for the default next to the server                    |
-| `TRUST_PROXY`   | `loopback,linklocal,uniquelocal` | Who may tell Inkadra the client's address. See [below](#trust_proxy)                     |
-| `LOG_LEVEL`     | `info`                           | `fatal`, `error`, `warn`, `info`, `debug` or `trace`                                     |
+| Variable        | Default                          | Meaning                                                                                          |
+| --------------- | -------------------------------- | ------------------------------------------------------------------------------------------------ |
+| `NODE_ENV`      | `production`                     | `development`, `production` or `test`                                                            |
+| `PUBLIC_URL`    | required                         | Address people use, as served by your proxy, e.g. `https://inkadra.example.com`. No path         |
+| `AUTH_SECRET`   | required                         | At least 32 random characters: `openssl rand -hex 32`. Changing it signs everyone out            |
+| `DATABASE_URL`  | set by compose                   | Postgres connection string                                                                       |
+| `REDIS_URL`     | set by compose                   | Valkey or Redis connection string. Required in production by `web`, `worker`, `all` and `collab` |
+| `INSTANCE_NAME` | `Inkadra`                        | Name shown in the app                                                                            |
+| `REGISTRATION`  | `invite`                         | `invite`: only invited people can sign up. `open`: anyone can                                    |
+| `HOST`          | `0.0.0.0`                        | Interface the web server listens on                                                              |
+| `PORT`          | `3000`                           | Port of the web server                                                                           |
+| `COLLAB_PORT`   | `3001`                           | Port of the collaboration server, in split mode                                                  |
+| `DATA_DIR`      | `/data`                          | Where files live; the `local` driver keeps them in `<DATA_DIR>/files`                            |
+| `WEB_DIST`      |                                  | Folder of the built web app; unset for the default next to the server                            |
+| `TRUST_PROXY`   | `loopback,linklocal,uniquelocal` | Who may tell Inkadra the client's address. See [below](#trust_proxy)                             |
+| `LOG_LEVEL`     | `info`                           | `fatal`, `error`, `warn`, `info`, `debug` or `trace`                                             |
 
 ## Files and uploads
 

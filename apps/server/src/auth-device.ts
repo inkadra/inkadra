@@ -9,10 +9,14 @@ export function knownDevices(secret: string) {
   const sign = (value: string) => createHmac('sha256', key).update(value).digest('base64url');
   return {
     issue(user: { id: string; email: string }) {
-      const value = Buffer.from(JSON.stringify({
-        userId: user.id, email: user.email.trim().toLowerCase(),
-        device: randomUUID(), expires: Date.now() + DEVICE_AGE * 1000,
-      })).toString('base64url');
+      const value = Buffer.from(
+        JSON.stringify({
+          userId: user.id,
+          email: user.email.trim().toLowerCase(),
+          device: randomUUID(),
+          expires: Date.now() + DEVICE_AGE * 1000,
+        }),
+      ).toString('base64url');
       return `${value}.${sign(value)}`;
     },
     verify(cookie: string | undefined, email: string): string | null {
@@ -24,10 +28,15 @@ export function knownDevices(secret: string) {
       if (actual.length !== expected.length || !timingSafeEqual(actual, expected)) return null;
       try {
         const data = JSON.parse(Buffer.from(value, 'base64url').toString());
-        return typeof data.userId === 'string' && typeof data.device === 'string' &&
-          data.email === email && data.expires > Date.now()
-          ? `${data.userId}:${data.device}` : null;
-      } catch { return null; }
+        return typeof data.userId === 'string' &&
+          typeof data.device === 'string' &&
+          data.email === email &&
+          data.expires > Date.now()
+          ? `${data.userId}:${data.device}`
+          : null;
+      } catch {
+        return null;
+      }
     },
   };
 }

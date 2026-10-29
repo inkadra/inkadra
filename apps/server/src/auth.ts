@@ -194,8 +194,7 @@ export function createAuth(config: Config, db: Database, deps: AuthDeps = {}) {
           ctx.path.startsWith('/two-factor/') ||
           ctx.path === '/request-password-reset' ||
           ctx.path === '/reset-password';
-        if (config.NODE_ENV !== 'production' && config.AUTH_RATE_LIMITS === 'off')
-          return;
+        if (config.NODE_ENV !== 'production' && config.AUTH_RATE_LIMITS === 'off') return;
         const address =
           typeof ctx.body?.email === 'string' ? ctx.body.email.trim().toLowerCase() : '';
         const ip = ctx.headers?.get(CLIENT_IP_HEADER) ?? 'unknown';
@@ -206,8 +205,14 @@ export function createAuth(config: Config, db: Database, deps: AuthDeps = {}) {
             throw new APIError('TOO_MANY_REQUESTS', { message: 'Too many attempts.' });
           }
           if (!sensitive) return;
-          const strict = ctx.path.startsWith('/sign-up/') || ['/change-password', '/change-email'].includes(ctx.path);
-          const burst = await security.consume(`ip:${authSource(ip)}:${ctx.path}`, strict ? 3 : 30, strict ? 10 : 60);
+          const strict =
+            ctx.path.startsWith('/sign-up/') ||
+            ['/change-password', '/change-email'].includes(ctx.path);
+          const burst = await security.consume(
+            `ip:${authSource(ip)}:${ctx.path}`,
+            strict ? 3 : 30,
+            strict ? 10 : 60,
+          );
           if (!burst.allowed) {
             ctx.setHeader('retry-after', String(burst.retryAfter));
             throw new APIError('TOO_MANY_REQUESTS', { message: 'Too many attempts.' });
@@ -218,7 +223,9 @@ export function createAuth(config: Config, db: Database, deps: AuthDeps = {}) {
             (ctx.context as BudgetContext).inkadraReservations = held;
             for (const [id, max, seconds] of [
               [`login:${address}:${authSource(ip)}`, 10, 900],
-              device ? [`device:${device}`, 5, 900] as const : [`account:${address}`, 50, 3600] as const,
+              device
+                ? ([`device:${device}`, 5, 900] as const)
+                : ([`account:${address}`, 50, 3600] as const),
             ] as const) {
               const result = await security.consume(id, max, seconds);
               held.push(id);
@@ -257,18 +264,21 @@ export function createAuth(config: Config, db: Database, deps: AuthDeps = {}) {
       }),
       after: createAuthMiddleware(async (ctx) => {
         const ok = !(ctx.context.returned instanceof APIError);
-        const ip = ctx.headers?.get(CLIENT_IP_HEADER) ?? 'unknown';
         try {
           const enabled = config.NODE_ENV === 'production' || config.AUTH_RATE_LIMITS !== 'off';
           const held = (ctx.context as BudgetContext).inkadraReservations;
           delete (ctx.context as BudgetContext).inkadraReservations;
-          if (held && !(ctx.context.returned instanceof APIError && ctx.context.returned.status === 'UNAUTHORIZED'))
+          if (
+            held &&
+            !(
+              ctx.context.returned instanceof APIError &&
+              ctx.context.returned.status === 'UNAUTHORIZED'
+            )
+          )
             await Promise.all(held.map((id) => security.refund(id)));
           const verifiedUser = ctx.context.newSession?.user ?? ctx.context.session?.user;
           if (enabled && ok && ctx.path.startsWith('/two-factor/verify-') && verifiedUser) {
             const user = verifiedUser;
-            await security.storage.delete(`login:${user.email.toLowerCase()}:${authSource(ip)}`);
-            await security.storage.delete(`account:${user.email.toLowerCase()}`);
             await security.storage.delete(`totp:${user.id}`);
           }
         } catch {
@@ -315,15 +325,21 @@ export function createAuth(config: Config, db: Database, deps: AuthDeps = {}) {
             sendResetPassword: async ({ user, url }, request) => {
               const t = mailText(user as { locale?: string | null });
               void (async () => {
-                if (!(await mailBudget(user.email.toLowerCase(), request?.headers.get(CLIENT_IP_HEADER) ?? 'unknown'))) return;
-              sendDetached(
-                mailer,
-                actionMail(user.email, t.resetSubject, t.resetLines(config.INSTANCE_NAME), {
-                  label: t.resetAction,
-                  url,
-                }),
-                deps.log,
-              );
+                if (
+                  !(await mailBudget(
+                    user.email.toLowerCase(),
+                    request?.headers.get(CLIENT_IP_HEADER) ?? 'unknown',
+                  ))
+                )
+                  return;
+                sendDetached(
+                  mailer,
+                  actionMail(user.email, t.resetSubject, t.resetLines(config.INSTANCE_NAME), {
+                    label: t.resetAction,
+                    url,
+                  }),
+                  deps.log,
+                );
               })().catch(() => security.reportError());
             },
           }
@@ -395,7 +411,13 @@ export function createAuth(config: Config, db: Database, deps: AuthDeps = {}) {
                     )
                       return;
                   }
-                  if (!(await mailBudget(to.toLowerCase(), ctx?.headers?.get(CLIENT_IP_HEADER) ?? 'unknown'))) return;
+                  if (
+                    !(await mailBudget(
+                      to.toLowerCase(),
+                      ctx?.headers?.get(CLIENT_IP_HEADER) ?? 'unknown',
+                    ))
+                  )
+                    return;
                   const t = mailText(existing ?? {});
                   sendDetached(
                     mailer,
@@ -413,23 +435,31 @@ export function createAuth(config: Config, db: Database, deps: AuthDeps = {}) {
       {
         id: 'known-device',
         hooks: {
-          after: [{
-            matcher: (ctx) => Boolean(ctx.context.newSession) && (
-              ctx.path.startsWith('/sign-in/') || ctx.path.startsWith('/sign-up/') ||
-              ctx.path.startsWith('/callback/') || ctx.path === '/magic-link/verify' ||
-              ctx.path.startsWith('/two-factor/verify-')
-            ),
-            handler: createAuthMiddleware(async (ctx) => {
-              const user = ctx.context.newSession?.user;
-              // Runs after the upstream two-factor hook has removed provisional sessions.
-              if (!user) return;
-              const result = ctx.context.returned;
-              if (result instanceof APIError && result.statusCode >= 400) return;
-              ctx.setCookie(DEVICE_COOKIE, devices.issue(user), {
-                httpOnly: true, secure: true, sameSite: 'lax', path: '/', maxAge: DEVICE_AGE,
-              });
-            }),
-          }],
+          after: [
+            {
+              matcher: (ctx) =>
+                Boolean(ctx.context.newSession) &&
+                (ctx.path.startsWith('/sign-in/') ||
+                  ctx.path.startsWith('/sign-up/') ||
+                  ctx.path.startsWith('/callback/') ||
+                  ctx.path === '/magic-link/verify' ||
+                  ctx.path.startsWith('/two-factor/verify-')),
+              handler: createAuthMiddleware(async (ctx) => {
+                const user = ctx.context.newSession?.user;
+                // Runs after the upstream two-factor hook has removed provisional sessions.
+                if (!user) return;
+                const result = ctx.context.returned;
+                if (result instanceof APIError && result.statusCode >= 400) return;
+                ctx.setCookie(DEVICE_COOKIE, devices.issue(user), {
+                  httpOnly: true,
+                  secure: true,
+                  sameSite: 'lax',
+                  path: '/',
+                  maxAge: DEVICE_AGE,
+                });
+              }),
+            },
+          ],
         },
       },
     ],

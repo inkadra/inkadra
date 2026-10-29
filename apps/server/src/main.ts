@@ -4,8 +4,8 @@ import { mkdir } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import pino from 'pino';
-import { authSecurity, authSource } from './auth-security.ts';
 import { createAuth } from './auth.ts';
+import { authSecurity, authSource } from './auth-security.ts';
 import { type BoardReader, directBoardReader } from './board-content.ts';
 import { type BoardNotifier, directBoardNotifier } from './board-notices.ts';
 import { type BoardWriter, directBoardWriter } from './board-writer.ts';
@@ -49,7 +49,7 @@ async function main() {
   // Host/container administrators only; deliberately not an HTTP endpoint.
   if (command === 'unlock-auth') {
     const address = process.argv[3]?.trim().toLowerCase();
-    if (!address || !address.includes('@') || !config.REDIS_URL)
+    if (!address?.includes('@') || !config.REDIS_URL)
       throw new Error('Usage: inkadra unlock-auth <email> [source-ip]; REDIS_URL required');
     const security = authSecurity(config, log);
     try {
@@ -62,7 +62,9 @@ async function main() {
         await security.storage.delete(`mail:${address}:${authSource(source)}`);
       }
       log.info('Authentication account budgets cleared');
-    } finally { security.close(); }
+    } finally {
+      security.close();
+    }
     return;
   }
 

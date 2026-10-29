@@ -44,7 +44,7 @@ it('does not clear password budgets before a required second factor', async () =
   await auth.options.hooks?.after?.(
     ctx('/two-factor/verify-totp', { newSession: { user } }) as never,
   );
-  expect(budgets.storage.delete).toHaveBeenCalledWith(`account:${user.email}`);
+  expect(budgets.storage.delete).not.toHaveBeenCalledWith(`account:${user.email}`);
   expect(budgets.storage.delete).toHaveBeenCalledWith('totp:member');
 });
 
@@ -55,7 +55,9 @@ it('reserves before verification and refunds only non-401 outcomes', async () =>
     await auth.options.hooks?.before?.(ctx('/sign-in/email', context) as never);
     expect(budgets.consume).toHaveBeenCalledWith(`account:${user.email}`, 50, 3600);
     await auth.options.hooks?.after?.(ctx('/sign-in/email', context) as never);
-    expect(budgets.refund).toHaveBeenCalledTimes(returned instanceof APIError && returned.status === 'UNAUTHORIZED' ? 0 : 2);
+    expect(budgets.refund).toHaveBeenCalledTimes(
+      returned instanceof APIError && returned.status === 'UNAUTHORIZED' ? 0 : 2,
+    );
   }
 });
 
@@ -79,16 +81,22 @@ it('clears second-factor budgets after verification within an existing session',
 
 it('groups rotating IPv6 burst keys and reserves account/source counters', async () => {
   for (const ip of ['2001:db8::1', '2001:db8::2']) {
-    await auth.options.hooks?.before?.({ ...ctx('/sign-in/email'), headers: new Headers({ 'x-inkadra-client-ip': ip }) } as never);
+    await auth.options.hooks?.before?.({
+      ...ctx('/sign-in/email'),
+      headers: new Headers({ 'x-inkadra-client-ip': ip }),
+    } as never);
   }
   expect(budgets.consume).toHaveBeenCalledWith('ip:2001:db8:0:0::/64:/sign-in/email', 30, 60);
   expect(budgets.consume).toHaveBeenCalledWith(`account:${user.email}`, 50, 3600);
 });
 
-it.each(['/change-password', '/change-email', '/sign-up/other'])('limits sensitive endpoint %s', async (path) => {
-  await auth.options.hooks?.before?.(ctx(path) as never);
-  expect(budgets.consume).toHaveBeenCalledWith(`ip:192.0.2.0/24:${path}`, 3, 10);
-});
+it.each(['/change-password', '/change-email', '/sign-up/other'])(
+  'limits sensitive endpoint %s',
+  async (path) => {
+    await auth.options.hooks?.before?.(ctx(path) as never);
+    expect(budgets.consume).toHaveBeenCalledWith(`ip:192.0.2.0/24:${path}`, 3, 10);
+  },
+);
 it('covers generic auth endpoints', async () => {
   await auth.options.hooks?.before?.(ctx('/get-session') as never);
   expect(budgets.consume).toHaveBeenCalledWith('generic:192.0.2.0/24', 100, 10);
@@ -102,4 +110,34 @@ it('retains budgets after a failed second factor', async () => {
     }) as never,
   );
   expect(budgets.storage.delete).not.toHaveBeenCalled();
+});
+
+it('uses a device budget instead of the exhausted account budget', async () => {
+  const { knownDevices, DEVICE_COOKIE } = await import('./auth-device.ts');
+  const token = knownDevices('test-secret-test-secret-test-secret').issue(user);
+  await auth.options.hooks?.before?.({
+    ...ctx('/sign-in/email'),
+    getCookie: (name: string) => (name === DEVICE_COOKIE ? token : undefined),
+  } as never);
+  expect(budgets.consume).not.toHaveBeenCalledWith(`account:${user.email}`, 50, 3600);
+  expect(budgets.consume).toHaveBeenCalledWith(expect.stringMatching(/^device:member:/), 5, 900);
+  expect(budgets.consume).toHaveBeenCalledWith(`login:${user.email}:192.0.2.0/24`, 10, 900);
+});
+
+it('refunds reservations after Better Auth copies the request context', async () => {
+  const context = {};
+  await auth.options.hooks?.before?.(ctx('/sign-in/email', context) as never);
+  await auth.options.hooks?.after?.(ctx('/sign-in/email', { ...context, returned: {} }) as never);
+  expect(budgets.refund).toHaveBeenCalledWith(`account:${user.email}`);
+});
+
+it('does not reserve an account attempt after source rejection', async () => {
+  budgets.consume.mockResolvedValueOnce({ allowed: true, retryAfter: 0 });
+  budgets.consume.mockResolvedValueOnce({ allowed: true, retryAfter: 0 });
+  budgets.consume.mockResolvedValueOnce({ allowed: false, retryAfter: 900 });
+  await expect(
+    auth.options.hooks?.before?.(ctx('/sign-in/email') as never),
+  ).rejects.toMatchObject({ status: 'TOO_MANY_REQUESTS' });
+  expect(budgets.refund).toHaveBeenCalledWith(`login:${user.email}:192.0.2.0/24`);
+  expect(budgets.consume).not.toHaveBeenCalledWith(`account:${user.email}`, 50, 3600);
 });
