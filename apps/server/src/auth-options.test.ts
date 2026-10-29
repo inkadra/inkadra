@@ -173,3 +173,46 @@ it('preserves the provider authorization URL before any session exists', async (
     await sql.end();
   }
 });
+
+it.each(['/change-password', '/change-email'])(
+  'enforces the credential-change burst before authentication on %s',
+  async (path) => {
+    const { db, sql } = createDatabase(config.DATABASE_URL);
+    const auth = createAuth(config, db);
+    try {
+      const call = () =>
+        auth.handler(
+          new Request(`https://example.com/api/auth${path}`, {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({
+              currentPassword: 'incorrect-password',
+              newPassword: 'replacement-password',
+              newEmail: 'new@example.com',
+            }),
+          }),
+        );
+      for (let i = 0; i < 3; i++) expect((await call()).status).not.toBe(429);
+      const blocked = await call();
+      expect(blocked.status).toBe(429);
+      expect(Number(blocked.headers.get('retry-after'))).toBeGreaterThan(0);
+    } finally {
+      auth.closeSecurity();
+      await sql.end();
+    }
+  },
+);
+
+it('limits generic HTTP auth traffic without blocking internal session lookup', async () => {
+  const { db, sql } = createDatabase(config.DATABASE_URL);
+  const auth = createAuth(config, db);
+  const call = () => auth.handler(new Request('https://example.com/api/auth/get-session'));
+  try {
+    for (let i = 0; i < 100; i++) expect((await call()).status).toBe(200);
+    expect((await call()).status).toBe(429);
+    expect(await auth.api.getSession({ headers: new Headers() })).toBeNull();
+  } finally {
+    auth.closeSecurity();
+    await sql.end();
+  }
+});
