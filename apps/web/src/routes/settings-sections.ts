@@ -137,9 +137,16 @@ export interface SettingsMatch {
   setting: string | null;
 }
 
-/** Lower case without accents, so "verifica" finds "Verifica" and "lingua" finds "Lingua". */
+/**
+ * Lower case without accents or typographic apostrophes, so "verifica" finds "Verifica" and
+ * "dell'istanza" finds "dell’istanza".
+ */
 function fold(text: string): string {
-  return text.normalize('NFD').replace(/\p{M}/gu, '').toLocaleLowerCase();
+  return text
+    .normalize('NFD')
+    .replace(/\p{M}/gu, '')
+    .replace(/[\u2018\u2019]/g, "'")
+    .toLocaleLowerCase();
 }
 
 /**

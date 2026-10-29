@@ -571,26 +571,34 @@ export function createAuth(config: Config, db: Database, deps: AuthDeps = {}) {
   });
   /**
    * Password confirmation for actions outside Better Auth's endpoints (account deletion).
-   * Internal auth.api calls skip the hooks above, so this takes the same budgets as
-   * /change-password and sign-in: a burst per source and the account's failure budget, which
-   * only a correct password refunds.
+   * Internal auth.api calls skip the hooks above, so this takes its own budgets: a burst per
+   * source, like /change-password, and a failure budget per user that only a correct password
+   * refunds. It is not the sign-in budget per address: anyone who knows the address can spend
+   * that one, which would lock a signed-in person out of deleting the account.
    */
   const confirmPassword = async (
-    owner: { email: string },
+    owner: { id: string },
     password: string,
     headers: Headers,
-  ): Promise<'ok' | 'wrong' | 'unavailable' | { retryAfter: number }> => {
+  ): Promise<'ok' | 'wrong' | 'unavailable' | 'failed' | { retryAfter: number }> => {
     const limited = config.NODE_ENV === 'production' || config.AUTH_RATE_LIMITS !== 'off';
     const ip = headers.get(CLIENT_IP_HEADER) ?? 'unknown';
-    const failures = `account:${owner.email.trim().toLowerCase()}`;
+    const failures = `delete:${owner.id}`;
+    const held: string[] = [];
+    const refund = () =>
+      Promise.all(held.map((id) => security.refund(id))).catch(() => security.reportError());
     if (limited) {
       try {
         for (const [id, max, seconds] of [
           [`ip:${authSource(ip)}:/delete-user`, 3, 10],
-          [failures, 50, 3600],
+          [failures, 10, 3600],
         ] as const) {
           const result = await security.consume(id, max, seconds);
-          if (!result.allowed) return { retryAfter: Math.max(1, result.retryAfter) };
+          held.push(id);
+          if (!result.allowed) {
+            await refund();
+            return { retryAfter: Math.max(1, result.retryAfter) };
+          }
         }
       } catch {
         security.reportError();
@@ -599,8 +607,12 @@ export function createAuth(config: Config, db: Database, deps: AuthDeps = {}) {
     }
     try {
       await auth.api.verifyPassword({ body: { password }, headers });
-    } catch {
-      return 'wrong';
+    } catch (err) {
+      if (err instanceof APIError && err.body?.code === 'INVALID_PASSWORD') return 'wrong';
+      // Not an answer about the password (database, session): nothing to count.
+      deps.log?.error({ err }, 'password confirmation failed');
+      if (limited) await refund();
+      return 'failed';
     }
     if (limited) await security.refund(failures).catch(() => security.reportError());
     return 'ok';

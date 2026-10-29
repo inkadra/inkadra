@@ -38,8 +38,9 @@ export function setupAttention(setup: Setup, page: string): boolean {
 
 /**
  * The settings window's own navigation: a search that narrows the pages, by title or by a
- * setting on them (which is then named), then the pages the person may open, grouped. Moving between pages replaces the history entry, so the
- * browser's Back closes the window instead of walking through every page visited.
+ * setting on them (which is then named), then the pages the person may open, grouped. Moving
+ * between pages replaces the history entry, so the browser's Back closes the window instead of
+ * walking through every page visited.
  */
 export function SettingsNav({ setup, members }: { setup: Setup; members?: number | null }) {
   const { t } = useTranslation();

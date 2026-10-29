@@ -344,6 +344,8 @@ export function registerAccountRoutes(app: FastifyInstance, deps: Deps) {
       }
       if (confirmed === 'unavailable')
         throw new HttpError('internal', 'Authentication temporarily unavailable.');
+      if (confirmed === 'failed')
+        throw new HttpError('internal', 'The password could not be checked. Try again.');
       if (confirmed === 'wrong') throw new HttpError('forbidden', 'The password is not right.');
     } else if (Date.now() - new Date(session.session.createdAt).getTime() >= FRESH_SIGN_IN_MS) {
       throw new HttpError('forbidden', 'Sign in again, then delete the account within 15 minutes.');

@@ -86,4 +86,6 @@ it('finds pages by the settings on them, naming the setting, in both languages',
   // Neither case nor accents matter.
   expect(found('TEMA')).toEqual([['preferences', 'Tema']]);
   expect(found('nome dell’istànza')).toEqual([['instance', 'Nome dell’istanza']]);
+  // Nor which apostrophe: keyboards type ' where the texts use ’.
+  expect(found("nome dell'istanza")).toEqual([['instance', 'Nome dell’istanza']]);
 });
