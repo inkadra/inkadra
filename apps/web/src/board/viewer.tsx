@@ -263,7 +263,7 @@ export function MediaViewer({
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const target = e.target instanceof HTMLElement ? e.target : null;
-      if (isTyping(e.target) && e.key !== 'Escape') return;
+      if (isTyping(e.target) && e.key !== 'Escape' && e.key !== 'Tab') return;
       // The canvas behind listens on window too.
       e.stopImmediatePropagation();
       if (e.type !== 'keydown') return;

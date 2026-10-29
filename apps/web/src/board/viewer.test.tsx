@@ -688,6 +688,13 @@ describe('MediaViewer keyboard, focus and comments', () => {
     });
     expect(tab.defaultPrevented).toBe(true);
     expect(document.activeElement).toBe(focusable[0]);
+    const field = document.createElement('textarea');
+    dialog.append(field);
+    field.focus();
+    const fieldTab = new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true });
+    await act(async () => field.dispatchEvent(fieldTab));
+    expect(fieldTab.defaultPrevented).toBe(true);
+    expect(document.activeElement).toBe(focusable[0]);
     await act(async () => root.render(<div />));
     expect(document.activeElement).toBe(opener);
     opener.remove();
