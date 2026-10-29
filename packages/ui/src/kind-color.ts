@@ -1,31 +1,21 @@
 // SPDX-License-Identifier: MPL-2.0
 import type { CSSProperties } from 'react';
 
-/** Content semantics only: project identity and workflow status use separate palettes. */
+/**
+ * Canvas types only: board kinds, views, templates and sidebar modules. Canvas tools have
+ * their own palette (tool-color.ts); project identity and workflow status use others again.
+ */
 export const kindColor = {
   storyboard: 'purple',
-  frame: 'purple',
-  scene: 'purple',
   shotlist: 'green',
   production: 'green',
   moodboard: 'orange',
-  image: 'orange',
-  color: 'orange',
-  palette: 'orange',
-  link: 'orange',
   schedule: 'teal',
   review: 'pink',
-  note: 'yellow',
-  todo: 'yellow',
   pitch: null,
   board: null,
   blank: null,
-  column: null,
   canvas: null,
-  select: null,
-  pointer: null,
-  hand: null,
-  arrow: null,
 } as const;
 export type ContentKind = keyof typeof kindColor;
 export function kindStyle(kind: ContentKind): CSSProperties {

@@ -1,5 +1,5 @@
 import type { Notification, PlannedShootingDay, Project, RecentBoard } from '@inkadra/shared';
-import { Avatar, Icon, type IconName, kindStyle, ProjectGlyph } from '@inkadra/ui';
+import { Avatar, Icon, kindStyle, ProjectGlyph } from '@inkadra/ui';
 import { type MouseEvent, type ReactNode, useId, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router';
@@ -18,7 +18,7 @@ import {
   useRecentBoards,
   useShootingDays,
 } from './home-data.ts';
-import { PROJECT_TEMPLATES, type ProjectTemplate } from './project-setup.ts';
+import { PROJECT_TEMPLATES, TEMPLATE_ICONS } from './project-setup.ts';
 import './home.css';
 
 function greetingKey(hour: number) {
@@ -26,15 +26,6 @@ function greetingKey(hour: number) {
   if (hour < 18) return 'home.greeting.afternoon';
   return 'home.greeting.evening';
 }
-
-const TEMPLATE_ICONS: Record<ProjectTemplate, IconName> = {
-  production: 'scene',
-  moodboard: 'image',
-  storyboard: 'storyboard',
-  shotlist: 'shotlist',
-  pitch: 'board',
-  blank: 'plus',
-};
 
 export function Home() {
   const { t, i18n } = useTranslation();

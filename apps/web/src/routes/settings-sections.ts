@@ -149,24 +149,34 @@ function fold(text: string): string {
     .toLocaleLowerCase();
 }
 
+/** Looks up a translation, in the interface language or in the one given. */
+export type SettingsTranslate = (key: string, options?: { lng: string }) => string;
+
 /**
  * The pages a settings search finds: by title, description and group, or by one of the
- * settings on the page (password, 2FA, theme, invitations…), which is then named.
+ * settings on the page (password, 2FA, theme, invitations…), which is then named. Every
+ * language in `languages` is searched, so "tema" finds the theme with the interface in
+ * English; what is shown stays in the interface language. The keyword lists of all languages
+ * name the same settings in the same order (a test checks this).
  */
 export function matchSettings(
   pages: SettingsPage[],
   query: string,
-  t: (key: string) => string,
+  t: SettingsTranslate,
+  languages: readonly string[] = [],
 ): SettingsMatch[] {
   const needle = fold(query.trim());
   if (!needle) return pages.map((page) => ({ page, setting: null }));
+  const variants = (key: string) => [t(key), ...languages.map((lng) => t(key, { lng }))];
+  const list = (text: string) => text.split(',').map((k) => k.trim());
   return pages.flatMap((page): SettingsMatch[] => {
-    if (fold(`${t(page.title)} ${t(page.lead)} ${t(GROUP_TITLES[page.group])}`).includes(needle))
-      return [{ page, setting: null }];
-    const setting = t(page.keywords)
-      .split(',')
-      .map((k) => k.trim())
-      .find((k) => k && fold(k).includes(needle));
+    const heading = [page.title, page.lead, GROUP_TITLES[page.group]].flatMap(variants);
+    if (heading.some((text) => fold(text).includes(needle))) return [{ page, setting: null }];
+    const shown = list(t(page.keywords));
+    const index = variants(page.keywords)
+      .map((text) => list(text).findIndex((k) => k && fold(k).includes(needle)))
+      .find((i) => i >= 0);
+    const setting = index === undefined ? undefined : shown[index];
     return setting ? [{ page, setting }] : [];
   });
 }

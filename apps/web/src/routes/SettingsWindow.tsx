@@ -77,7 +77,9 @@ export function SettingsWindow({
     if (!el.open) el.showModal();
     const overflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
-    el.querySelector<HTMLElement>('h2')?.focus();
+    // No scrolling into view: on phones that pans the visual viewport and the window looks
+    // off-centre.
+    el.querySelector<HTMLElement>('h2')?.focus({ preventScroll: true });
     return () => {
       document.body.style.overflow = overflow;
       closingSelf.current = true;
@@ -125,7 +127,7 @@ export function SettingsWindow({
     >
       <DiagnosticsContext.Provider value={onDiagnostics}>
         <div className="settings-window__frame">
-          {!phone && <SettingsNav setup={setup} members={members} />}
+          {!phone && <SettingsNav setup={setup} members={members} onClose={onClose} />}
           <section className="settings-window__main">
             <header className="settings-window__head">
               {phone && !list && (

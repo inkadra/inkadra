@@ -30,10 +30,9 @@ test('a storyboard holds scenes and frames, the shot list shows the same frames'
     'aria-selected',
     'true',
   );
-  await expect(page.getByText('Storyboard vuoto')).toBeVisible();
-
-  await page.getByRole('button', { name: 'Nuova scena' }).first().click();
+  // S inserts the Storyboard of the Canvas menu: the template's scene and three frames.
   const scene = page.getByRole('region', { name: 'Scena 1' });
+  await expect(scene.locator('.story__tile')).toHaveCount(3);
   await scene.getByLabel('Luogo', { exact: true }).fill('Stazione');
   await scene.getByLabel('Luogo', { exact: true }).press('Enter');
   await scene.getByLabel('Interno o esterno').selectOption('ext');
@@ -41,18 +40,18 @@ test('a storyboard holds scenes and frames, the shot list shows the same frames'
 
   await scene.getByRole('button', { name: 'Nuova inquadratura' }).last().click();
   const panel = page.getByRole('complementary', { name: 'Dettagli' });
-  await expect(panel.getByText('1A')).toBeVisible();
+  await expect(panel.getByText('1D')).toBeVisible();
   await panel
     .getByLabel('Azione', { exact: true })
     .fill('Il treno entra, il neon le taglia il viso');
   await panel.getByLabel('Campo', { exact: true }).selectOption('cu');
   await panel.getByLabel('Durata (s)').fill('4,5');
   await panel.getByLabel('Durata (s)').press('Enter');
-  await expect(page.getByText('1 inquadratura · 0:05').first()).toBeVisible();
+  await expect(page.getByText('4 inquadrature · 0:08').first()).toBeVisible();
 
   // The pen: one line is one stroke in the frame.
   await panel.getByRole('button', { name: 'Disegna' }).click();
-  const pen = page.getByRole('dialog', { name: /Disegno dell’inquadratura 1A/ });
+  const pen = page.getByRole('dialog', { name: /Disegno dell’inquadratura 1D/ });
   const area = pen.locator('.pen__area');
   const box = await area.boundingBox();
   if (!box) throw new Error('no drawing area');
@@ -72,7 +71,7 @@ test('a storyboard holds scenes and frames, the shot list shows the same frames'
 
   await page.getByRole('tab', { name: 'Shot list' }).click();
   await expect(page).toHaveURL(/view=shotlist/);
-  const row = page.getByRole('row', { name: /1A/ });
+  const row = page.getByRole('row', { name: /1D/ });
   await expect(row.getByLabel('Azione', { exact: true })).toHaveValue(/Il treno entra/);
   await expect(row.getByLabel('Campo', { exact: true })).toHaveValue('cu');
   await expect(page.locator('.shots__scene')).toContainText('EST. STAZIONE – NOTTE');
@@ -80,7 +79,7 @@ test('a storyboard holds scenes and frames, the shot list shows the same frames'
   // The same frame is a card on the canvas view of the board.
   await page.getByRole('tab', { name: 'Lavagna' }).click();
   await expect(page.locator('[data-type="scene"]')).toContainText('EST. STAZIONE');
-  await expect(page.locator('[data-type="frame"]')).toContainText('1A');
+  await expect(page.locator('[data-type="frame"]').filter({ hasText: '1D' })).toHaveCount(1);
 });
 
 test('search finds the frame and opens it where it is', async ({ page }) => {
@@ -90,9 +89,9 @@ test('search finds the frame and opens it where it is', async ({ page }) => {
     await page.keyboard.press('ControlOrMeta+k');
     const dialog = page.getByRole('dialog', { name: 'Cerca' });
     await dialog.getByRole('combobox').fill('neon');
-    await expect(dialog.getByRole('option', { name: /1A/ })).toBeVisible({ timeout: 2_000 });
+    await expect(dialog.getByRole('option', { name: /1D/ })).toBeVisible({ timeout: 2_000 });
   }).toPass({ timeout: 30_000 });
-  await page.getByRole('option', { name: /1A/ }).click();
+  await page.getByRole('option', { name: /1D/ }).click();
   await expect(page).toHaveURL(/view=canvas/);
   await expect(page.locator('[data-type="frame"].is-selected')).toBeVisible();
 });

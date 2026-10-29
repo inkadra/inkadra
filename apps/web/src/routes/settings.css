@@ -2,8 +2,12 @@
    the page navigation on the left and one column of setting rows on the right. */
 
 .settings-window {
+  /* Centred in the visible viewport at any height, whatever the browser's dialog defaults. */
+  position: fixed;
+  inset: 0;
+  margin: auto;
   width: min(860px, 90vw);
-  height: min(660px, 90vh);
+  height: min(660px, 90dvh);
   max-width: none;
   max-height: none;
   padding: 0;

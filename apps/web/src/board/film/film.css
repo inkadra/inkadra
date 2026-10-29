@@ -76,7 +76,7 @@
   white-space: nowrap;
 }
 .film-status--draft {
-  background: color-mix(in srgb, var(--ink-tag-purple) 16%, transparent);
+  background: color-mix(in srgb, var(--ink-tag-purple) 12%, transparent);
   color: var(--ink-tag-purple);
 }
 .film-status--todo {
@@ -88,16 +88,16 @@
   color: var(--ink-accent-soft-fg);
 }
 .film-status--shot {
-  background: color-mix(in srgb, var(--ink-tag-green) 16%, transparent);
+  background: color-mix(in srgb, var(--ink-tag-green) 12%, transparent);
   color: var(--ink-tag-green);
 }
 .film-status--retake {
-  background: color-mix(in srgb, var(--ink-tag-orange) 16%, transparent);
+  background: color-mix(in srgb, var(--ink-tag-orange) 12%, transparent);
   color: var(--ink-tag-orange);
 }
 .film-status--approved {
   background: var(--ink-tag-purple);
-  color: var(--ink-on-accent);
+  color: var(--ink-tag-purple-bg);
 }
 select.film-status {
   width: auto;
@@ -1936,8 +1936,8 @@ select.film-status {
   width: 18px;
   height: 18px;
   border-radius: 50%;
-  background: #1a3324;
-  color: #9fe0b4;
+  background: var(--ink-tag-green-bg);
+  color: var(--ink-tag-green);
   display: grid;
   place-items: center;
   font-size: 11px;
@@ -1991,13 +1991,13 @@ select.film-status {
 }
 
 .review-decision-btn.is-approved {
-  background: #1f3a2a;
-  color: #9fe0b4;
+  background: var(--ink-tag-green-bg);
+  color: var(--ink-tag-green);
 }
 
 .review-decision-btn.is-changes {
-  background: #3a2418;
-  color: #f2b08a;
+  background: var(--ink-tag-orange-bg);
+  color: var(--ink-tag-orange);
 }
 
 .review-comments-list {
@@ -2951,7 +2951,7 @@ select.film-status {
 
 .shots__group-pill--approved {
   background: var(--ink-tag-purple);
-  color: var(--ink-on-accent);
+  color: var(--ink-tag-purple-bg);
 }
 
 .shots__add-row {

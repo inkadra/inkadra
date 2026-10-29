@@ -407,8 +407,10 @@ export function ProjectAppearanceDialog({
                 ))}
               </div>
             </div>
+            {/* The Symbol panel sets the height; the emoji grid scrolls inside it. */}
             <div
               role="tabpanel"
+              className="project-appearance__emoji-panel"
               inert={tab !== 'emoji'}
               id="appearance-panel-emoji"
               aria-labelledby="appearance-tab-emoji"

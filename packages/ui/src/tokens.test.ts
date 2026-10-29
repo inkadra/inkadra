@@ -1,8 +1,11 @@
 // SPDX-License-Identifier: MPL-2.0
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { dark, light } from './tokens.ts';
+import { type ContentKind, kindColor } from './kind-color.ts';
+import { contrast, distance } from './oklab.ts';
+import { type ColorToken, dark, light } from './tokens.ts';
 import { tokensCss } from './tokens-css.ts';
+import { type ToolKind, toolColor } from './tool-color.ts';
 
 describe('tokens', () => {
   it('tokens.css matches tokens.ts', () => {
@@ -41,5 +44,156 @@ describe('tokens', () => {
     expect(ratio(dark['on-accent'], dark['accent-button'])).toBeGreaterThan(4.5);
     expect(ratio(dark['text-muted'], dark['bg-app'])).toBeGreaterThan(4.5);
     expect(ratio(light['text-secondary'], light['bg-panel'])).toBeGreaterThan(4.5);
+  });
+
+  /** The colour a content kind is drawn with, as a token. */
+  const kindToken = (kind: ContentKind): ColorToken => {
+    const color = kindColor[kind];
+    return color ? `tag-${color}` : 'text-secondary';
+  };
+  const kindTokens = [...new Set((Object.keys(kindColor) as ContentKind[]).map(kindToken))];
+  /** Kinds shown side by side: project sidebar modules, then the toolbar's Canvas menu. */
+  const neighbours: ContentKind[][] = [
+    ['storyboard', 'shotlist', 'schedule', 'review'],
+    ['board', 'moodboard', 'storyboard', 'shotlist', 'production'],
+  ];
+  it('keeps every pair of content-kind colours apart, more so for neighbours', () => {
+    // Purple, green, orange, teal, pink and neutral: canvas types only (decision of 0.4.2).
+    expect(kindTokens).toHaveLength(6);
+    for (const [name, theme] of [
+      ['light', light],
+      ['dark', dark],
+    ] as const) {
+      kindTokens.forEach((a, i) => {
+        for (const b of kindTokens.slice(i + 1))
+          expect(distance(theme[a], theme[b]), `${name} ${a} / ${b}`).toBeGreaterThanOrEqual(0.1);
+      });
+      for (const row of neighbours)
+        row.slice(1).forEach((kind, i) => {
+          const [a, b] = [kindToken(row[i] as ContentKind), kindToken(kind)];
+          if (a !== b)
+            expect(distance(theme[a], theme[b]), `${name} ${a} / ${b}`).toBeGreaterThanOrEqual(
+              0.12,
+            );
+        });
+      // Teal sits nearest the accent: blue stays reserved for selection and focus.
+      expect(distance(theme['tag-teal'], theme['accent-primary'])).toBeGreaterThanOrEqual(0.1);
+    }
+  });
+
+  it('keeps the project identity palette distinguishable', () => {
+    const palette: ColorToken[] = [
+      'tag-blue',
+      'tag-orange',
+      'tag-purple',
+      'tag-green',
+      'text-muted',
+      'tag-teal',
+      'tag-yellow',
+      'tag-red',
+      'tag-pink',
+    ];
+    for (const [name, theme] of [
+      ['light', light],
+      ['dark', dark],
+    ] as const)
+      palette.forEach((a, i) => {
+        for (const b of palette.slice(i + 1))
+          expect(distance(theme[a], theme[b]), `${name} ${a} / ${b}`).toBeGreaterThanOrEqual(0.085);
+      });
+  });
+
+  /** `color-mix(in srgb, fg p%, bg)`, as the film status chips draw their tint. */
+  const mix = (fg: string, bg: string, p: number) =>
+    `#${[1, 3, 5]
+      .map((i) => {
+        const channel = (c: string) => Number.parseInt(c.slice(i, i + 2), 16);
+        return Math.round(channel(fg) * p + channel(bg) * (1 - p))
+          .toString(16)
+          .padStart(2, '0');
+      })
+      .join('')}`;
+
+  it('keeps film status chips and pills at 4.5:1 (film.css)', () => {
+    for (const [name, theme] of [
+      ['light', light],
+      ['dark', dark],
+    ] as const) {
+      // .film-status--draft / --shot / --retake: the hue on a 12% tint of itself over surface-1.
+      for (const tag of ['tag-purple', 'tag-green', 'tag-orange'] as const)
+        expect(
+          contrast(theme[tag], mix(theme[tag], theme['surface-1'], 0.12)),
+          `${name} ${tag} chip`,
+        ).toBeGreaterThanOrEqual(4.5);
+      // .film-status--approved and .shots__group-pill--approved.
+      expect(
+        contrast(theme['tag-purple-bg'], theme['tag-purple']),
+        `${name} approved`,
+      ).toBeGreaterThanOrEqual(4.5);
+    }
+  });
+
+  /** The colour a canvas tool is drawn with, as a token. */
+  const toolToken = (tool: ToolKind): ColorToken => {
+    const color = toolColor[tool];
+    return color ? `tool-${color}` : 'text-secondary';
+  };
+  const toolTokens = [
+    ...new Set(
+      (Object.values(toolColor).filter(Boolean) as string[]).map((c) => `tool-${c}` as ColorToken),
+    ),
+  ];
+  // biome-ignore format: one toolbar, left to right (Board and Storyboard are in the Canvas menu)
+  const toolbar: ToolKind[] = ['select', 'hand', 'arrow', 'note', 'image', 'link', 'todo', 'color', 'column', 'frame'];
+  const themes = [
+    ['light', light],
+    ['dark', dark],
+  ] as const;
+
+  // Olive colour is the exception (decision 0033): the light theme leaves it 0.12 from green.
+  const floor = (tool: ColorToken) => (tool === 'tool-color' ? 0.11 : 0.13);
+  it('keeps tool colours far from canvas types, accent and danger', () => {
+    expect(toolTokens).toHaveLength(5);
+    const others: ColorToken[] = [
+      ...kindTokens,
+      'accent-primary',
+      'accent-soft-fg',
+      'danger-fg',
+      'status-danger',
+    ];
+    for (const [name, theme] of themes)
+      for (const tool of toolTokens)
+        for (const other of others)
+          expect(
+            distance(theme[tool], theme[other]),
+            `${name} ${tool} / ${other}`,
+          ).toBeGreaterThanOrEqual(floor(tool));
+  });
+
+  it('keeps tool colours apart from each other, more so on the toolbar', () => {
+    for (const [name, theme] of themes) {
+      toolTokens.forEach((a, i) => {
+        for (const b of toolTokens.slice(i + 1))
+          expect(distance(theme[a], theme[b]), `${name} ${a} / ${b}`).toBeGreaterThanOrEqual(0.1);
+      });
+      toolbar.slice(1).forEach((tool, i) => {
+        const [a, b] = [toolToken(toolbar[i] as ToolKind), toolToken(tool)];
+        if (a !== b)
+          expect(distance(theme[a], theme[b]), `${name} ${a} / ${b}`).toBeGreaterThanOrEqual(0.12);
+      });
+    }
+  });
+
+  it('keeps tool icons readable on the toolbar and on their own tile', () => {
+    for (const [name, theme] of themes)
+      for (const tool of toolTokens) {
+        expect(contrast(theme[tool], theme['surface-1']), `${name} ${tool}`).toBeGreaterThanOrEqual(
+          4.5,
+        );
+        expect(
+          contrast(theme[tool], theme[`${tool}-bg` as ColorToken]),
+          `${name} ${tool} tile`,
+        ).toBeGreaterThanOrEqual(3);
+      }
   });
 });

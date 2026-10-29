@@ -72,9 +72,15 @@ import * as Y from 'yjs';
 import { addActions, useRegisterActions } from '../commands/actions.ts';
 import { canvasActions, duplicateInStore } from '../commands/board-actions.ts';
 import { useSession } from '../lib/session.tsx';
+import { queueSeeds } from '../routes/seed-queue.tsx';
 import { accessNotices } from './access-notices.ts';
 import { ArrowLayer } from './arrows.tsx';
 import { canRenameBoard, createBoard, setBoardCover } from './boards.ts';
+import {
+  type CanvasTemplate,
+  createCanvasBoards,
+  isStoryboardTemplate,
+} from './canvas-templates.ts';
 import { Card } from './cards.tsx';
 import {
   BarButton,
@@ -530,6 +536,38 @@ export function Canvas({
 
   const select = useCallback((ids: Iterable<string>) => setSelection(new Set(ids)), []);
 
+  /** A board card from the Canvas menu; templates are laid out in the background. */
+  const insertCanvas = useCallback(
+    async (template: CanvasTemplate, at?: Point) => {
+      if (readOnly) return;
+      const pos = at ?? center(DEFAULT_WIDTH.board);
+      try {
+        const { board, jobs } = await createCanvasBoards(projectId, boardId, template, t, userId);
+        store.undo.stopCapturing();
+        const card = createElement(
+          doc,
+          'board',
+          pos,
+          { boardId: board.id },
+          { userId, origin: LOCAL },
+        );
+        queueSeeds(jobs);
+        select([card.id]);
+        setEditing(card.id);
+      } catch {
+        setToast({
+          text: t(
+            isStoryboardTemplate(template)
+              ? 'board.errors.storyboardCreate'
+              : 'board.errors.boardCreate',
+          ),
+          undo: false,
+        });
+      }
+    },
+    [readOnly, center, t, projectId, boardId, userId, store, doc, select, setEditing],
+  );
+
   const add = useCallback(
     async (type: ToolType, at?: Point) => {
       if (readOnly) return;
@@ -559,25 +597,9 @@ export function Canvas({
           fileInput.current?.click();
           return;
         case 'board':
-        case 'storyboard': {
-          const story = type === 'storyboard';
-          try {
-            const board = await createBoard(
-              projectId,
-              boardId,
-              story ? t('board.types.storyboard') : t('board.board.untitled'),
-              story ? 'storyboard' : 'board',
-            );
-            created = createElement(doc, 'board', pos, { boardId: board.id }, opts);
-          } catch {
-            setToast({
-              text: story ? t('board.errors.storyboardCreate') : t('board.errors.boardCreate'),
-              undo: false,
-            });
-            return;
-          }
-          break;
-        }
+        case 'storyboard':
+          // The same as choosing Board or Storyboard in the Canvas menu.
+          return insertCanvas(type, pos);
         case 'frame':
           created = createElement(doc, 'frame', pos, {}, opts);
           select([created.id]);
@@ -592,7 +614,7 @@ export function Canvas({
         setEditing(created.id);
       }
     },
-    [readOnly, center, userId, store, doc, projectId, boardId, t, select, setEditing],
+    [readOnly, center, userId, store, doc, select, setEditing, insertCanvas],
   );
 
   const uploadFiles = useCallback(
@@ -2284,7 +2306,14 @@ export function Canvas({
           />
           <ZoomControls zoom={viewport.zoom} onZoom={zoomTo} />
         </div>
-        {!readOnly && <Toolbar tool={tool} onTool={setTool} onAdd={(type) => void add(type)} />}
+        {!readOnly && (
+          <Toolbar
+            tool={tool}
+            onTool={setTool}
+            onAdd={(type) => void add(type)}
+            onCanvas={(template) => void insertCanvas(template)}
+          />
+        )}
         <UploadPanel />
         {linkDraft && (
           <LinkDraft

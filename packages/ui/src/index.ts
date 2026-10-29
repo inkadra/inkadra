@@ -4,3 +4,4 @@ export * from './icons.tsx';
 export * from './kind-color.ts';
 export * from './shell.tsx';
 export * as tokens from './tokens.ts';
+export * from './tool-color.ts';

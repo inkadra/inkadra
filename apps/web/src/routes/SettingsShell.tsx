@@ -2,6 +2,7 @@ import { Icon, type IconName } from '@inkadra/ui';
 import { createContext, type ReactNode, useContext, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useLocation } from 'react-router';
+import { LOCALES } from '../i18n/locales.ts';
 import { useSession } from '../lib/session.tsx';
 import { resetSaveState, type SaveState, useSaveState } from './settings-save.ts';
 import {
@@ -40,9 +41,18 @@ export function setupAttention(setup: Setup, page: string): boolean {
  * The settings window's own navigation: a search that narrows the pages, by title or by a
  * setting on them (which is then named), then the pages the person may open, grouped. Moving
  * between pages replaces the history entry, so the browser's Back closes the window instead of
- * walking through every page visited.
+ * walking through every page visited. Escape closes the window even with text in the search,
+ * like the command palette and the global search, instead of the browser clearing the field.
  */
-export function SettingsNav({ setup, members }: { setup: Setup; members?: number | null }) {
+export function SettingsNav({
+  setup,
+  members,
+  onClose,
+}: {
+  setup: Setup;
+  members?: number | null;
+  onClose?: () => void;
+}) {
   const { t } = useTranslation();
   const { user, instance, version } = useSession();
   const { pathname, search } = useLocation();
@@ -52,6 +62,7 @@ export function SettingsNav({ setup, members }: { setup: Setup; members?: number
     SETTINGS_PAGES.filter((p) => !p.admin || user?.role === 'admin'),
     query,
     t,
+    LOCALES,
   );
   const groups = [...new Set(matches.map((m) => m.page.group))] as SettingsGroup[];
   return (
@@ -65,6 +76,12 @@ export function SettingsNav({ setup, members }: { setup: Setup; members?: number
           placeholder={t('settingsUi.search')}
           value={query}
           onChange={(e) => setQuery(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key !== 'Escape' || !onClose) return;
+            // A search field clears itself on Escape and swallows it; the window should close.
+            e.preventDefault();
+            onClose();
+          }}
         />
       </label>
       <div className="settings-nav__groups">

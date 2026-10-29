@@ -2,9 +2,9 @@ import i18n from 'i18next';
 import { initReactI18next } from 'react-i18next';
 import en from './en.json';
 import it from './it.json';
+import { LOCALES, type Locale } from './locales.ts';
 
-export const LOCALES = ['it', 'en'] as const;
-export type Locale = (typeof LOCALES)[number];
+export { LOCALES, type Locale };
 
 function detect(): Locale {
   const preferred = typeof navigator === 'undefined' ? [] : navigator.languages;

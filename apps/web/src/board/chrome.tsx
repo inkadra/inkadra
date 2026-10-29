@@ -6,9 +6,18 @@ import {
   type Viewport,
 } from '@inkadra/canvas-core';
 import type { Element } from '@inkadra/doc-schema';
-import { type ContentKind, Icon, type IconName, KeyCap, kindStyle } from '@inkadra/ui';
+import {
+  type ContentKind,
+  Icon,
+  type IconName,
+  KeyCap,
+  kindStyle,
+  type ToolKind,
+  toolStyle,
+} from '@inkadra/ui';
 import type { Editor } from '@tiptap/react';
 import {
+  type CSSProperties,
   type ReactNode,
   type Ref,
   type RefObject,
@@ -18,8 +27,15 @@ import {
   useRef,
   useState,
 } from 'react';
+import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { addActions, type PaletteAction, rankActions } from '../commands/actions.ts';
+import {
+  CANVAS_TEMPLATES,
+  type CanvasTemplate,
+  canvasTemplateIcon,
+  canvasTemplateLabel,
+} from './canvas-templates.ts';
 import { Card, NOTE_COLORS } from './cards.tsx';
 import { GuestVisibilityIcon } from './guest-visibility.tsx';
 import { isMac } from './shortcuts.ts';
@@ -44,11 +60,12 @@ export const TOOLS: Array<{ type: ToolType; icon: IconName; key?: string; menuOn
   { type: 'image', icon: 'image', key: 'I' },
   { type: 'link', icon: 'link', key: 'L' },
   { type: 'todo', icon: 'todo', key: 'T' },
-  { type: 'column', icon: 'toolColumn', key: 'C' },
-  { type: 'board', icon: 'board', key: 'B' },
+  { type: 'column', icon: 'splitPanel', key: 'C' },
+  // Board and Storyboard are inserted from the Canvas menu; their keys and palette entries stay.
+  { type: 'board', icon: 'board', key: 'B', menuOnly: true },
   { type: 'color', icon: 'color', key: 'K' },
   { type: 'frame', icon: 'frame', key: 'F' },
-  { type: 'storyboard', icon: 'storyboard', key: 'S' },
+  { type: 'storyboard', icon: 'storyboard', key: 'S', menuOnly: true },
   { type: 'scene', icon: 'scene', menuOnly: true },
 ];
 
@@ -59,10 +76,13 @@ export function Toolbar({
   tool,
   onTool,
   onAdd,
+  onCanvas,
 }: {
   tool: CanvasTool;
   onTool: (tool: CanvasTool) => void;
   onAdd: (type: ToolType) => void;
+  /** A board from the Canvas menu: plain or laid out from a template. */
+  onCanvas: (template: CanvasTemplate) => void;
 }) {
   const { t } = useTranslation();
   return (
@@ -107,11 +127,11 @@ export function Toolbar({
               !tl.menuOnly &&
               (group === 'create'
                 ? ['note', 'image', 'link', 'todo', 'color'].includes(tl.type)
-                : ['column', 'board', 'frame', 'storyboard'].includes(tl.type)),
+                : ['column', 'frame'].includes(tl.type)),
           ).map((tl) => (
             <ToolButton
               key={tl.type}
-              kind={tl.type}
+              kind={tl.type as ToolKind}
               icon={tl.icon}
               label={t(`board.types.${tl.type}`)}
               keyHint={tl.key ?? ''}
@@ -121,7 +141,82 @@ export function Toolbar({
           ))}
         </fieldset>
       ))}
+      <fieldset
+        className="toolbar__group toolbar__group--canvas"
+        aria-label={t('board.canvasMenu.hint')}
+      >
+        <CanvasMenuButton onCanvas={onCanvas} />
+      </fieldset>
     </div>
+  );
+}
+
+/**
+ * The primary action at the end of the bar: a menu of the canvas types to insert, each in its
+ * content-kind colour. The menu sits outside the bar, which scrolls sideways on phones.
+ */
+function CanvasMenuButton({ onCanvas }: { onCanvas: (template: CanvasTemplate) => void }) {
+  const { t } = useTranslation();
+  const tooltipId = useId();
+  const button = useRef<HTMLButtonElement>(null);
+  const [at, setAt] = useState<{ right: number; bottom: number } | null>(null);
+  const label = t('board.canvasMenu.label');
+  // Above the button, its right edge on the button's.
+  const open = () => {
+    const rect = button.current?.getBoundingClientRect();
+    if (!rect) return;
+    setAt({
+      right: Math.max(8, document.documentElement.clientWidth - rect.right),
+      bottom: window.innerHeight - rect.top + 8,
+    });
+  };
+  return (
+    <>
+      <button
+        ref={button}
+        type="button"
+        className="toolbar__btn toolbar__btn--canvas"
+        aria-haspopup="menu"
+        aria-expanded={!!at}
+        aria-describedby={tooltipId}
+        aria-label={label}
+        title={label}
+        onClick={() => (at ? setAt(null) : open())}
+        onKeyDown={(e) => {
+          if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+            e.preventDefault();
+            open();
+          }
+        }}
+      >
+        <Icon name="plus" size={18} />
+        <span className="toolbar__label">{label}</span>
+        <Icon name="caretDown" size={10} />
+        <span className="toolbar__tip" id={tooltipId} role="tooltip">
+          {t('board.canvasMenu.hint')}
+        </span>
+      </button>
+      {at &&
+        createPortal(
+          <ContextMenu
+            label={label}
+            className="menu--canvas"
+            style={{ right: at.right, bottom: at.bottom }}
+            anchor={button}
+            items={CANVAS_TEMPLATES.map((template) => ({
+              label: canvasTemplateLabel(template, t),
+              icon: canvasTemplateIcon(template),
+              kind: template,
+              action: () => onCanvas(template),
+            }))}
+            onClose={(reason) => {
+              setAt(null);
+              if (reason === 'escape') button.current?.focus();
+            }}
+          />,
+          document.body,
+        )}
+    </>
   );
 }
 
@@ -134,7 +229,7 @@ function ToolButton({
   onClick,
   dragType,
 }: {
-  kind: ContentKind;
+  kind: ToolKind;
   icon: IconName;
   label: string;
   keyHint: string;
@@ -147,7 +242,7 @@ function ToolButton({
     <button
       type="button"
       className={`toolbar__btn toolbar__btn--${dragType ?? icon}`}
-      style={kindStyle(kind)}
+      style={toolStyle(kind)}
       aria-describedby={tooltipId}
       aria-keyshortcuts={keyHint}
       aria-label={label}
@@ -401,6 +496,9 @@ export type MenuItem =
       /** Not available yet: shown, but it does nothing and says why in `hint`. */
       disabled?: boolean;
       hint?: string;
+      /** A leading icon on a tile in the content-kind colour, as in the Canvas menu. */
+      icon?: IconName;
+      kind?: ContentKind;
       divider?: never;
     }
   | { divider: true };
@@ -408,6 +506,9 @@ export type MenuItem =
 export function ContextMenu({
   x,
   y,
+  style,
+  className,
+  label,
   items,
   onClose,
   anchor,
@@ -415,6 +516,10 @@ export function ContextMenu({
   /** Viewport position; without it the menu is placed by the stylesheet of its container. */
   x?: number;
   y?: number;
+  /** Placement other than a top-left corner, e.g. above the toolbar button that opens it. */
+  style?: CSSProperties;
+  className?: string;
+  label?: string;
   items: MenuItem[];
   /** Why the menu closes, so a caller can return focus only when the keyboard was used. */
   onClose: (reason: 'escape' | 'outside' | 'item') => void;
@@ -437,23 +542,30 @@ export function ContextMenu({
   return (
     <div
       ref={ref}
-      className="menu"
+      className={className ? `menu ${className}` : 'menu'}
       role="menu"
-      style={x === undefined ? undefined : { left: x, top: y }}
+      aria-label={label}
+      style={style ?? (x === undefined ? undefined : { left: x, top: y })}
       data-chrome
       onKeyDown={(e) => {
         if (e.key === 'Escape') {
           e.preventDefault();
           onClose('escape');
         }
-        if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+        if (['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(e.key)) {
           e.preventDefault();
           const all = [
             // Disabled items stay in the walk so their "coming soon" hint can be found.
             ...(ref.current?.querySelectorAll<HTMLElement>('[role="menuitem"]') ?? []),
           ];
           const i = all.indexOf(document.activeElement as HTMLElement);
-          all[(i + (e.key === 'ArrowDown' ? 1 : -1) + all.length) % all.length]?.focus();
+          const next =
+            e.key === 'Home'
+              ? 0
+              : e.key === 'End'
+                ? all.length - 1
+                : (i + (e.key === 'ArrowDown' ? 1 : -1) + all.length) % all.length;
+          all[next]?.focus();
         }
       }}
     >
@@ -475,6 +587,15 @@ export function ContextMenu({
               item.action?.();
             }}
           >
+            {item.icon && (
+              <span
+                className="menu__tile"
+                style={item.kind ? kindStyle(item.kind) : undefined}
+                aria-hidden="true"
+              >
+                <Icon name={item.icon} size={14} />
+              </span>
+            )}
             {item.label}
             {item.hint && (
               <span id={`${hintId}-${i}`} className="menu__hint" aria-hidden="true">

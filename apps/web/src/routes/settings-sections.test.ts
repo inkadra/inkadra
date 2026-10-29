@@ -89,3 +89,110 @@ it('finds pages by the settings on them, naming the setting, in both languages',
   // Nor which apostrophe: keyboards type ' where the texts use ’.
   expect(found("nome dell'istanza")).toEqual([['instance', 'Nome dell’istanza']]);
 });
+
+it('finds settings by the words of every language, naming them in the interface one', async () => {
+  const i18n = i18next.createInstance();
+  await i18n.init({
+    lng: 'en',
+    resources: { en: { translation: en }, it: { translation: itLocale } },
+  });
+  const t = (key: string, options?: { lng: string }) => i18n.t(key, options);
+  const found = (query: string) =>
+    matchSettings(SETTINGS_PAGES, query, t, ['it', 'en']).map((m) => [m.page.id, m.setting]);
+  // With the interface in English these Italian words used to find nothing.
+  expect(found('tema')).toEqual([['preferences', 'Theme']]);
+  expect(found('lingua')).toEqual([['preferences', 'Language']]);
+  expect(found('invito')).toContainEqual(['members', 'Invitation link']);
+  expect(found('elimina')).toEqual([['account', 'Delete account']]);
+  expect(found('registrazione')).toContainEqual(['registration', 'Open registration']);
+  expect(found('password')).toContainEqual(['account', 'Password']);
+  await i18n.changeLanguage('it');
+  expect(found('theme')).toEqual([['preferences', 'Tema']]);
+  expect(found('language')).toEqual([['preferences', 'Lingua']]);
+});
+
+/** Each setting, [English, Italian]: search shows the keyword at the same index in the UI language. */
+const KEYWORD_PAIRS: Record<string, [string, string][]> = {
+  account: [
+    ['Name', 'Nome'],
+    ['Email', 'Email'],
+    ['Profile photo', 'Foto profilo'],
+    ['Password', 'Password'],
+    ['Two-step verification (2FA)', 'Verifica in due passaggi (2FA)'],
+    ['Backup codes', 'Codici di riserva'],
+    ['Sign-in methods', 'Metodi di accesso'],
+    ['Sessions', 'Sessioni'],
+    ['Devices', 'Dispositivi'],
+    ['Apps and tokens', 'App e token'],
+    ['Delete account', 'Elimina account'],
+  ],
+  preferences: [
+    ['Theme', 'Tema'],
+    ['Dark theme', 'Tema scuro'],
+    ['Light theme', 'Tema chiaro'],
+    ['Language', 'Lingua'],
+  ],
+  notifications: [
+    ['Email notifications', 'Notifiche email'],
+    ['Mentions', 'Menzioni'],
+    ['Replies', 'Risposte'],
+    ['Reviews', 'Revisioni'],
+    ['Daily digest', 'Riepilogo giornaliero'],
+    ['Inbox', 'Inbox'],
+  ],
+  members: [
+    ['Invite members', 'Invita membri'],
+    ['Invitations', 'Inviti'],
+    ['Invitation link', 'Link di invito'],
+    ['Role', 'Ruolo'],
+    ['Administrators', 'Amministratori'],
+    ['Deactivate account', 'Disattiva account'],
+    ['Reactivate account', 'Riattiva account'],
+    ['People', 'Persone'],
+  ],
+  workspace: [
+    ['Space used', 'Spazio usato'],
+    ['Uploaded files', 'File caricati'],
+    ['Storage', 'Archiviazione'],
+  ],
+  classifications: [
+    ['Project types', 'Tipi di progetto'],
+    ['Tags', 'Tag'],
+    ['Catalogs', 'Cataloghi'],
+  ],
+  providers: [
+    ['Google', 'Google'],
+    ['OIDC', 'OIDC'],
+    ['Single sign-on (SSO)', 'Single sign-on (SSO)'],
+    ['Email sign-in link', 'Link di accesso via email'],
+    ['Email and password', 'Email e password'],
+    ['SMTP', 'SMTP'],
+    ['Outgoing email', 'Invio email'],
+  ],
+  registration: [
+    ['New accounts', 'Nuovi account'],
+    ['Open registration', 'Registrazione aperta'],
+    ['Invitation only', 'Solo su invito'],
+    ['Closed registration', 'Registrazione chiusa'],
+  ],
+  instance: [
+    ['Instance name', 'Nome dell’istanza'],
+    ['Public address', 'Indirizzo pubblico'],
+    ['Version', 'Versione'],
+    ['Diagnostics', 'Diagnostica'],
+    ['Instance status', 'Stato dell’istanza'],
+  ],
+};
+
+it('lists the same settings in the same order in every language', () => {
+  const keywords = (locale: typeof en, page: string) =>
+    (locale.settingsUi.keywords as Record<string, string>)[page]?.split(',').map((k) => k.trim()) ??
+    [];
+  expect(Object.keys(KEYWORD_PAIRS).sort()).toEqual(
+    SETTINGS_PAGES.map((page) => page.keywords.replace('settingsUi.keywords.', '')).sort(),
+  );
+  for (const [id, pairs] of Object.entries(KEYWORD_PAIRS)) {
+    expect(keywords(en, id), id).toEqual(pairs.map(([english]) => english));
+    expect(keywords(itLocale, id), id).toEqual(pairs.map(([, italian]) => italian));
+  }
+});

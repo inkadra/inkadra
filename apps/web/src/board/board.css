@@ -652,6 +652,39 @@
 .toolbar__btn[draggable="true"] {
   cursor: grab;
 }
+/* The Canvas menu button: the bar's primary action, blue with white text. */
+.toolbar .toolbar__btn.toolbar__btn--canvas {
+  width: auto;
+  min-width: 44px;
+  padding: 0 10px 0 8px;
+  grid-auto-flow: column;
+  gap: 6px;
+  background: var(--ink-accent-button);
+  color: var(--ink-on-accent);
+  box-shadow: none;
+  font-size: 13px;
+  font-weight: 600;
+}
+.toolbar .toolbar__btn.toolbar__btn--canvas:hover {
+  background: var(--ink-accent-button-hover);
+  color: var(--ink-on-accent);
+  box-shadow: none;
+}
+.toolbar .toolbar__btn.toolbar__btn--canvas:active,
+.toolbar .toolbar__btn.toolbar__btn--canvas[aria-expanded="true"] {
+  background: var(--ink-accent-button-active);
+  color: var(--ink-on-accent);
+}
+/* A narrow phone keeps the plus and the caret: the row of tools already scrolls. */
+@media (max-width: 480px) {
+  .toolbar .toolbar__btn.toolbar__btn--canvas {
+    padding: 0 8px;
+    gap: 2px;
+  }
+  .toolbar__btn--canvas .toolbar__label {
+    display: none;
+  }
+}
 .toolbar__tip {
   position: absolute;
   bottom: calc(100% + 10px);
@@ -784,6 +817,35 @@
   margin-left: auto;
   font-size: 10px;
   color: var(--ink-text-muted);
+}
+.menu__tile {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 22px;
+  height: 22px;
+  margin-right: 8px;
+  border-radius: 6px;
+  color: var(--kind-fg, var(--ink-text-secondary));
+  background: var(--kind-bg, var(--ink-surface-2));
+}
+/* Opened from the toolbar: fixed above its button, outside the bar that scrolls on phones. */
+.menu--canvas {
+  position: fixed;
+  z-index: 110;
+  width: auto;
+  min-width: 220px;
+  padding: 6px;
+}
+.menu--canvas .menu__item {
+  height: 38px;
+  padding: 0 10px 0 6px;
+  font-size: 13px;
+}
+.menu--canvas .menu__tile {
+  width: 26px;
+  height: 26px;
+  margin-right: 10px;
 }
 .menu__divider {
   height: 1px;
@@ -2102,6 +2164,10 @@ button.card__play {
   }
   .viewer__side {
     display: none;
+  }
+  /* The panel floats over the stage: reserve its width so the media shrinks instead. */
+  .viewer--info-open .viewer__stage-container .viewer__stage {
+    padding-right: calc(8px + min(350px, 100%));
   }
   .viewer--info-open .viewer__side {
     display: flex;

@@ -1,4 +1,5 @@
 import type { Board, Project } from '@inkadra/shared';
+import type { IconName } from '@inkadra/ui';
 import { createBoard } from '../board/boards.ts';
 
 export const PROJECT_TEMPLATES = [
@@ -10,6 +11,15 @@ export const PROJECT_TEMPLATES = [
   'blank',
 ] as const;
 export type ProjectTemplate = (typeof PROJECT_TEMPLATES)[number];
+/** Shared by the Home template cards and the canvas toolbar's Canvas menu. */
+export const TEMPLATE_ICONS: Record<ProjectTemplate, IconName> = {
+  production: 'scene',
+  moodboard: 'image',
+  storyboard: 'storyboard',
+  shotlist: 'shotlist',
+  pitch: 'board',
+  blank: 'plus',
+};
 /**
  * The guided setup's title, shared by the page and the header breadcrumb: only a user without
  * projects gets the welcome one, and none while the projects are loading.
@@ -46,9 +56,12 @@ export interface CreatedSetupBoard {
   seed?: SetupBoard['seed'];
 }
 
-/** Keep successful steps so retry never deliberately creates a second project or board. */
+/**
+ * Keep successful steps so retry never deliberately creates a second project or board. The
+ * boards go under `rootBoardId`: the project's root, or a board inserted on a canvas.
+ */
 export async function createSetupBoards(
-  project: Project,
+  project: Pick<Project, 'id' | 'rootBoardId'>,
   template: ProjectTemplate,
   created: CreatedSetupBoard[],
   title: (key: string) => string,
