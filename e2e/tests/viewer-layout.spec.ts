@@ -395,6 +395,25 @@ test('Escape closes the settings window at once, even with text in the search', 
   expect(await closed()).toBe(1);
 });
 
+test('the settings heading focused on open shows no focus ring after a key press', async ({
+  page,
+}) => {
+  const dialog = await openSettings(page, 1280, 800);
+  // A key press first, as with a hardware keyboard: programmatic focus then matches
+  // :focus-visible, which is where the global ring (a box-shadow) applies.
+  await page.keyboard.press('Tab');
+  const ring = await dialog.locator('.settings-window__head h2').evaluate((h2) => {
+    h2.focus({ preventScroll: true });
+    const style = getComputedStyle(h2);
+    return {
+      visible: h2.matches(':focus-visible'),
+      boxShadow: style.boxShadow,
+      outline: style.outlineStyle,
+    };
+  });
+  expect(ring).toEqual({ visible: true, boxShadow: 'none', outline: 'none' });
+});
+
 for (const [width, height, mobile] of [
   [1280, 800, false],
   [1440, 900, false],

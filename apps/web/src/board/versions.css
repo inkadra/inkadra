@@ -63,6 +63,10 @@
 .version-banner strong {
   margin-right: auto;
 }
+.version-banner strong:focus-visible {
+  /* Focused by code so screen readers announce the preview, not a control: no ring. */
+  box-shadow: none;
+}
 .board-preview {
   display: flex;
   flex-direction: column;

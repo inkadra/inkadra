@@ -1414,6 +1414,10 @@ button.crumb--editable:focus-visible {
   display: flex;
   background: rgb(8 8 10 / 0.92);
 }
+.viewer:focus-visible {
+  /* Focused by code on open, not a control: no ring. */
+  box-shadow: none;
+}
 .viewer__stage {
   container-type: size;
   min-height: 0;
