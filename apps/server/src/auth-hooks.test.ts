@@ -44,7 +44,7 @@ it('increments account and source budgets only on password 401 responses', async
   await auth.options.hooks?.after?.(
     ctx('/sign-in/email', { returned: new APIError('UNAUTHORIZED') }) as never,
   );
-  expect(budgets.take).toHaveBeenCalledWith(`login:${user.email}:192.0.2.1`, 10, 900);
+  expect(budgets.take).toHaveBeenCalledWith(`login:${user.email}:192.0.2.0/24`, 10, 900);
   expect(budgets.take).toHaveBeenCalledWith(`account:${user.email}`, 50, 3600);
 });
 

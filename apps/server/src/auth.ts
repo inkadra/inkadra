@@ -4,7 +4,7 @@ import { createAuthMiddleware, getSessionFromCtx } from 'better-auth/api';
 import { genericOAuth, magicLink } from 'better-auth/plugins';
 import { and, count, eq, lt, sql } from 'drizzle-orm';
 import type { Logger } from 'pino';
-import { authSecurity } from './auth-security.ts';
+import { authSecurity, authSource } from './auth-security.ts';
 import { hardenedTwoFactor } from './auth-two-factor.ts';
 import type { Config } from './config.ts';
 import type { Database } from './db/client.ts';
@@ -197,7 +197,7 @@ export function createAuth(config: Config, db: Database, deps: AuthDeps = {}) {
           }
           if (ctx.path === '/sign-in/email' && address) {
             for (const [id, max, seconds] of [
-              [`login:${address}:${ip}`, 10, 900],
+              [`login:${address}:${authSource(ip)}`, 10, 900],
               [`account:${address}`, 50, 3600],
             ] as const) {
               const result = await security.check(id, max, seconds);
@@ -242,17 +242,17 @@ export function createAuth(config: Config, db: Database, deps: AuthDeps = {}) {
               ctx.context.returned instanceof APIError &&
               ctx.context.returned.status === 'UNAUTHORIZED'
             ) {
-              await security.take(`login:${address}:${ip}`, 10, 900);
+              await security.take(`login:${address}:${authSource(ip)}`, 10, 900);
               await security.take(`account:${address}`, 50, 3600);
             } else if (ctx.context.newSession && !ctx.context.newSession.user.twoFactorEnabled) {
-              await security.storage.delete(`login:${address}:${ip}`);
+              await security.storage.delete(`login:${address}:${authSource(ip)}`);
               await security.storage.delete(`account:${address}`);
             }
           }
           const verifiedUser = ctx.context.newSession?.user ?? ctx.context.session?.user;
           if (enabled && ok && ctx.path.startsWith('/two-factor/verify-') && verifiedUser) {
             const user = verifiedUser;
-            await security.storage.delete(`login:${user.email.toLowerCase()}:${ip}`);
+            await security.storage.delete(`login:${user.email.toLowerCase()}:${authSource(ip)}`);
             await security.storage.delete(`account:${user.email.toLowerCase()}`);
             await security.storage.delete(`totp:${user.id}`);
           }

@@ -16,11 +16,12 @@ redirect to the existing login challenge after the provisional session is delete
 social ID-token sign-in, too. Integration regressions must cover Google, OIDC and magic links;
 upgrades must preserve this wrapper's assumptions.
 
-Use atomic Valkey budgets with hashed keys and expiring counters. Before password checks,
-read failure counts; only 401 responses increment them. Limit each account/IP pair to ten
+Use atomic Valkey budgets with hashed keys and expiring counters, namespaced by instance URL
+and auth secret so independent deployments sharing Valkey cannot spend each other's budgets. Before password checks,
+read failure counts; only 401 responses increment them. Limit each account/source subnet pair (IPv4 /24, IPv6 /64) to ten
 failures per 15 minutes, with a wide account ceiling of 50 failures/hour against distributed
 attacks. The ceiling can still be abused to deny access temporarily; pairing the tighter
-limit with IP avoids allowing one anonymous attacker ten requests to block every source.
+limit with the source subnet avoids allowing one anonymous attacker ten requests to block every source.
 Concurrent failures can overshoot a read budget; the separate 30 requests/minute per-IP,
 per-endpoint burst bound limits that race. NAT users share the burst budget; configure
 TRUST_PROXY correctly. Successful passwords clear counters only without 2FA; clear after

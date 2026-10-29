@@ -1,6 +1,33 @@
+import { isIP } from 'node:net';
 import IORedis from 'ioredis';
 import type { Config } from './config.ts';
 import { sha256 } from './secrets.ts';
+
+/** Group rotating addresses without allowing IPv6 privacy addresses to bypass failures. */
+export function authSource(address: string): string {
+  if (isIP(address) === 4) return `${address.split('.').slice(0, 3).join('.')}.0/24`;
+  if (isIP(address) === 6) {
+    // URL canonicalizes IPv4-mapped forms to hexadecimal before expanding ::.
+    const canonical = new URL(`http://[${address}]/`).hostname.slice(1, -1);
+    const [left, right] = canonical.split('::');
+    const start = left ? left.split(':') : [];
+    const end = right ? right.split(':') : [];
+    const parts =
+      right === undefined
+        ? start
+        : [...start, ...Array(8 - start.length - end.length).fill('0'), ...end];
+    if (parts.slice(0, 5).every((part) => Number.parseInt(part, 16) === 0) && parts[5] === 'ffff') {
+      const high = Number.parseInt(parts[6] ?? '0', 16);
+      const low = Number.parseInt(parts[7] ?? '0', 16);
+      return authSource(`${high >> 8}.${high & 255}.${low >> 8}.${low & 255}`);
+    }
+    return `${parts
+      .slice(0, 4)
+      .map((part) => Number.parseInt(part, 16).toString(16))
+      .join(':')}::/64`;
+  }
+  return 'unknown';
+}
 
 /** Atomic, expiring budgets; neither credentials nor addresses appear in keys. */
 export function authSecurity(config: Config) {

@@ -808,7 +808,8 @@ describe.skipIf(!url)('sharing, invitations, tokens and accounts (needs DATABASE
     for (let i = 0; i < 10; i++)
       expect((await attempt('192.0.2.121', 'wrong-password')).status).toBe(401);
     expect((await attempt('192.0.2.121', PASSWORD)).status).toBe(429);
-    expect((await attempt('192.0.2.122', PASSWORD)).status).toBe(200);
+    expect((await attempt('192.0.2.122', PASSWORD)).status).toBe(429);
+    expect((await attempt('192.0.3.122', PASSWORD)).status).toBe(200);
   });
 
   it('emails sign-in links only to people who may sign in', async () => {

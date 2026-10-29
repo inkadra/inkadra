@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { authSecurity } from './auth-security.ts';
+import { authSecurity, authSource } from './auth-security.ts';
 import { loadConfig } from './config.ts';
 
 describe('authentication budgets', () => {
@@ -50,3 +50,14 @@ it.skipIf(!process.env.REDIS_URL)(
     }
   },
 );
+
+it.each([
+  ['192.0.2.121', '192.0.2.0/24'],
+  ['::ffff:192.0.2.121', '192.0.2.0/24'],
+  ['2001:db8:abcd:1234:ffff::1', '2001:db8:abcd:1234::/64'],
+  ['2001:0db8:abcd:1234::2', '2001:db8:abcd:1234::/64'],
+  ['::1', '0:0:0:0::/64'],
+  ['unknown', 'unknown'],
+])('groups authentication source %s as %s', (address, expected) => {
+  expect(authSource(address)).toBe(expected);
+});
