@@ -675,13 +675,39 @@
   background: var(--ink-accent-button-active);
   color: var(--ink-on-accent);
 }
-/* A narrow phone keeps the plus and the caret: the row of tools already scrolls. */
-@media (max-width: 480px) {
+/*
+ * The bar sizes to the canvas, not the window (a sidebar can take 260 px): below the width
+ * of the whole bar with its label, the Canvas button keeps the plus and the caret, and below
+ * the bar without it, the row scrolls sideways instead of wrapping.
+ */
+.canvas {
+  container: canvas / inline-size;
+}
+/* A tap leaves :hover on touch screens: the tooltips would stay up under the menu. */
+@media (hover: none) {
+  .toolbar .toolbar__btn:hover .toolbar__tip,
+  .toolbar .toolbar__btn:focus-visible .toolbar__tip {
+    display: none;
+  }
+}
+@container canvas (width < 640px) {
   .toolbar .toolbar__btn.toolbar__btn--canvas {
     padding: 0 8px;
     gap: 2px;
   }
   .toolbar__btn--canvas .toolbar__label {
+    display: none;
+  }
+}
+@container canvas (width < 600px) {
+  .toolbar {
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scrollbar-width: none;
+    touch-action: pan-x;
+  }
+  .toolbar .toolbar__btn:hover .toolbar__tip,
+  .toolbar .toolbar__btn:focus-visible .toolbar__tip {
     display: none;
   }
 }
@@ -2087,29 +2113,26 @@ button.crumb--editable:focus-visible {
     height: 44px;
   }
 }
+/* Touch and narrow windows: 44 px targets, still one row (an iPad wrapped a grid of six). */
 @media (max-width: 700px), (pointer: coarse) {
   .toolbar {
-    display: grid;
-    grid-template-columns: repeat(6, 44px);
+    flex-wrap: nowrap;
     gap: 4px;
     max-width: calc(100% - 16px);
   }
   .toolbar__group {
-    display: contents;
+    flex: none;
   }
   .toolbar__btn {
     width: 44px;
     height: 44px;
-  }
-  .toolbar__btn:nth-child(6n + 1) .toolbar__tip {
-    left: 0;
-    transform: none;
+    flex: none;
   }
   .toolbar__group--navigate .toolbar__btn:first-child .toolbar__tip {
     left: 0;
     transform: none;
   }
-  .toolbar__group--organize .toolbar__btn:last-child .toolbar__tip {
+  .toolbar__group--canvas .toolbar__btn:last-child .toolbar__tip {
     left: auto;
     right: 0;
     transform: none;
