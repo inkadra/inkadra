@@ -30,6 +30,7 @@ import {
   nextZoomStep,
   type Point,
   pasteElements,
+  pinchViewport,
   type Rect,
   type ResizeCorner,
   type ResizeOptions,
@@ -176,6 +177,13 @@ type Gesture =
     }
   | { kind: 'arrow'; start: Point; fromId: string | null };
 
+/** Two fingers on the canvas: where they and the view were when the second one landed. */
+interface Pinch {
+  ids: readonly [number, number];
+  from: readonly [Point, Point];
+  viewport: Viewport;
+}
+
 interface Overlay {
   offset?: { dx: number; dy: number };
   moving?: Set<string>;
@@ -305,6 +313,13 @@ export function Canvas({
   const gesture = useRef<Gesture | null>(null);
   const spaceDown = useRef(false);
   const lastPointer = useRef<Point | null>(null);
+  /** Fingers on the canvas, by pointer id, in screen coordinates. */
+  const touches = useRef(new Map<number, Point>());
+  const pinch = useRef<Pinch | null>(null);
+  /** Set once two fingers touched: the one left after a pinch starts nothing until all lift. */
+  const touchHeld = useRef(false);
+  /** Selection when the first finger landed, restored if a second one turns it into a pinch. */
+  const touchSelection = useRef<ReadonlySet<string>>(EMPTY_SET);
   const unsortedRef = useRef<HTMLDivElement>(null);
 
   const setViewport = useCallback(
@@ -790,7 +805,67 @@ export function Canvas({
     return { x: e.clientX - (r?.left ?? 0), y: e.clientY - (r?.top ?? 0) };
   }
 
+  /**
+   * Tracks fingers; returns true when the touch belongs to a two-finger gesture, which pans and
+   * zooms the view instead of what one finger does.
+   */
+  function touchDown(e: ReactPointerEvent<HTMLDivElement>): boolean {
+    if (e.pointerType !== 'touch') return false;
+    // The first finger of a new touch: anything left from a lost pointerup is stale.
+    if (e.isPrimary) {
+      touches.current.clear();
+      pinch.current = null;
+      touchHeld.current = false;
+      touchSelection.current = selection;
+    }
+    touches.current.set(e.pointerId, screenPoint(e));
+    if (touches.current.size < 2) return touchHeld.current;
+    if (!pinch.current) startPinch(e);
+    return true;
+  }
+
+  function startPinch(e: ReactPointerEvent<HTMLDivElement>) {
+    const [a, b] = [...touches.current].slice(-2);
+    if (!a || !b) return;
+    // Whatever the first finger began is dropped as if it never happened: a move or a resize only
+    // lives in the overlay until it ends, a marquee changed the selection.
+    const g = gesture.current;
+    gesture.current = null;
+    setOverlay(NO_OVERLAY);
+    if (g && g.kind !== 'pan') setSelection(touchSelection.current);
+    setMenu(null);
+    touchHeld.current = true;
+    pinch.current = { ids: [a[0], b[0]], from: [a[1], b[1]], viewport: vp.current };
+    rootRef.current?.setPointerCapture(e.pointerId);
+    e.preventDefault();
+  }
+
+  /** Moves a finger; returns true when the move belongs to a two-finger gesture. */
+  function touchMove(e: ReactPointerEvent<HTMLDivElement>): boolean {
+    if (e.pointerType !== 'touch' || !touches.current.has(e.pointerId)) return false;
+    touches.current.set(e.pointerId, screenPoint(e));
+    const p = pinch.current;
+    if (!p) return touchHeld.current;
+    const a = touches.current.get(p.ids[0]);
+    const b = touches.current.get(p.ids[1]);
+    if (a && b) setViewport(pinchViewport(p.viewport, p.from, [a, b]));
+    return true;
+  }
+
+  /** Lifts a finger; returns true when it belonged to a two-finger gesture. */
+  function touchUp(e: ReactPointerEvent<HTMLDivElement>): boolean {
+    if (e.pointerType !== 'touch' || !touches.current.delete(e.pointerId)) return false;
+    if (!touchHeld.current) return false;
+    if (pinch.current?.ids.includes(e.pointerId)) pinch.current = null;
+    if (touches.current.size === 0) touchHeld.current = false;
+    if (rootRef.current?.hasPointerCapture(e.pointerId)) {
+      rootRef.current.releasePointerCapture(e.pointerId);
+    }
+    return true;
+  }
+
   function onPointerDown(e: ReactPointerEvent<HTMLDivElement>) {
+    if (touchDown(e)) return;
     if (e.button === 2) return;
     const target = e.target as HTMLElement;
     if (target.closest('[data-play-link]')) return;
@@ -888,6 +963,7 @@ export function Canvas({
   }
 
   function onPointerMove(e: ReactPointerEvent<HTMLDivElement>) {
+    if (touchMove(e)) return;
     const p = screenPoint(e);
     lastPointer.current = p;
     presence.cursor(screenToWorld(vp.current, p));
@@ -1018,6 +1094,7 @@ export function Canvas({
   }
 
   function onPointerUp(e: ReactPointerEvent<HTMLDivElement>) {
+    if (touchUp(e)) return;
     const g = gesture.current;
     gesture.current = null;
     if (rootRef.current?.hasPointerCapture(e.pointerId)) {
@@ -1131,6 +1208,8 @@ export function Canvas({
     if (target.closest('[data-chrome]') && !canvasElementId(target)) return;
     if (isTyping(target)) return;
     e.preventDefault();
+    // A long press of the fingers of a pinch.
+    if (touchHeld.current) return;
     const id = canvasElementId(target);
     if (id && !selection.has(id)) select([id]);
     if (!id) setSelection(EMPTY_SET);
@@ -1157,8 +1236,14 @@ export function Canvas({
         setViewport({ ...v, x: v.x + dx / v.zoom, y: v.y + dy / v.zoom });
       }
     };
+    // Older Safari zooms the page on a pinch even where touch-action is none; the canvas zooms itself.
+    const noPageZoom = (e: Event) => e.preventDefault();
     el.addEventListener('wheel', onWheel, { passive: false });
-    return () => el.removeEventListener('wheel', onWheel);
+    el.addEventListener('gesturestart', noPageZoom);
+    return () => {
+      el.removeEventListener('wheel', onWheel);
+      el.removeEventListener('gesturestart', noPageZoom);
+    };
   }, [setViewport]);
 
   useEffect(() => () => clearTimeout(settleTimer.current), []);
