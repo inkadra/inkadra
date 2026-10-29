@@ -212,7 +212,7 @@ function StoragePage() {
 
 function AccessPage() {
   const { t } = useTranslation();
-  const { instance } = useSession();
+  const { instance, version } = useSession();
   return (
     <>
       <Card title={t('settings.methods.title')}>
@@ -263,7 +263,7 @@ function AccessPage() {
 
 function InstancePage({ section, setup }: { section: string; setup: Setup }) {
   const { t } = useTranslation();
-  const { instance } = useSession();
+  const { instance, version } = useSession();
   const { settings, error, save } = useInstanceSettings();
   if (error) return <LoadError />;
   if (!settings) return <p role="status">{t('admin.loading')}</p>;
@@ -272,6 +272,9 @@ function InstancePage({ section, setup }: { section: string; setup: Setup }) {
     return (
       <Card title={t('admin.registration')}>
         <div className="settings-rows">
+          <Row label={t('admin.requireAdminTwoFactor')} help={t('admin.requireAdminTwoFactorHelp')}>
+            <input type="checkbox" aria-label={t('admin.requireAdminTwoFactor')} checked={settings.requireAdminTwoFactor ?? false} onChange={(event) => void save({ requireAdminTwoFactor: event.target.checked }).catch(() => {})} />
+          </Row>
           <Row label={t('settingsUi.registration.label')} help={t('admin.registrationHelp')}>
             <RegistrationControl
               value={settings.registration}
@@ -307,7 +310,7 @@ function InstancePage({ section, setup }: { section: string; setup: Setup }) {
             <code className="settings-env">{instance?.publicUrl}</code>
           </Row>
           <Row label={t('settingsUi.about.version')}>
-            <span>Inkadra {instance?.version}</span>
+            <span>Inkadra {version}</span>
           </Row>
         </div>
       </Card>

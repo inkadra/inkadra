@@ -15,6 +15,7 @@ interface SessionState {
   instance: Instance | null;
   user: User | null;
   loading: boolean;
+  version?: string;
   refresh: () => Promise<void>;
 }
 
@@ -24,6 +25,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const [instance, setInstance] = useState<Instance | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [version, setVersion] = useState<string>();
   const latest = useRef(0);
 
   const refresh = useCallback(async () => {
@@ -37,7 +39,9 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         throw err;
       }),
     ]);
+    const identity = me ? await api.get<{ version: string }>('/instance/version') : null;
     if (call !== latest.current) return;
+    setVersion(identity?.version);
     setInstance(inst);
     setUser(me);
     if (me?.locale) {
@@ -54,7 +58,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   }, [refresh]);
 
   return (
-    <SessionContext.Provider value={{ instance, user, loading, refresh }}>
+    <SessionContext.Provider value={{ instance, user, loading, refresh, version }}>
       {children}
     </SessionContext.Provider>
   );

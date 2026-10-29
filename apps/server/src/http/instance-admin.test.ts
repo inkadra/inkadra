@@ -260,7 +260,7 @@ describe.skipIf(!url)('instance administration', () => {
     ).toBe(200);
     expect(
       (await request('admin', 'PATCH', '/instance/settings', { registration: 'invite' })).json(),
-    ).toEqual({ name: 'Studio', registration: 'invite' });
+    ).toEqual({ name: 'Studio', registration: 'invite', requireAdminTwoFactor: false });
     expect((await app.inject('/api/v1/instance')).json()).toMatchObject({
       name: 'Studio',
       registration: 'invite',

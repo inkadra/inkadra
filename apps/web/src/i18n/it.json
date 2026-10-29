@@ -1951,6 +1951,8 @@
     "dangerZone": "Zona sensibile"
   },
   "admin": {
+    "requireAdminTwoFactor": "Richiedi la verifica in due passaggi agli amministratori",
+    "requireAdminTwoFactorHelp": "Gli amministratori devono configurare la verifica in due passaggi per usare l’istanza. Prima di attivarla, configura una password e conserva i codici di recupero.",
     "personal": "Personale",
     "account": "Account",
     "preferences": "Preferenze",

@@ -117,3 +117,10 @@ CLIPPER_EXTENSION_IDS=abcdefghijklmnopabcdefghijklmnop
 Without it the `/authorize` page refuses the request: only the redirect address
 `https://<id>.chromiumapp.org/auth` of an allowed id receives a code. See
 [apps/clipper](../../apps/clipper/README.md) to build and load the extension.
+
+## Public instance metadata in 0.4.2
+
+`GET /api/v1/health` and `GET /api/v1/instance` no longer return `version`. Integrations
+must tolerate its absence. Signed-in clients can use `GET /api/v1/instance/version`;
+administrator diagnostics retain their version field. This is an intentional security
+change to v1 in 0.4.2 (issue #225).

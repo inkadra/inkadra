@@ -51,7 +51,7 @@ import {
   UpdateGuestSession,
   UpdateShareLink,
 } from './guests.ts';
-import { Diagnostics, Health, Instance } from './instance.ts';
+import { Diagnostics, Health, Instance, InstanceVersion } from './instance.ts';
 import {
   InstanceMember,
   InstanceSettings,
@@ -248,6 +248,15 @@ registry.registerPath({
 });
 
 // Instance -------------------------------------------------------------------
+
+registry.registerPath({
+  method: 'get',
+  path: v1('/instance/version'),
+  tags: ['Instance'],
+  security: secured,
+  summary: 'Software version for signed-in users.',
+  responses: { 200: { description: 'Version', ...json(InstanceVersion) }, ...errors },
+});
 
 registry.registerPath({
   method: 'get',

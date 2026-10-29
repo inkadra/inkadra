@@ -4,7 +4,6 @@ import { Timestamp, z } from './common.ts';
 export const Health = z
   .object({
     status: z.enum(['ok', 'degraded']),
-    version: z.string(),
     checks: z.object({
       database: z.enum(['ok', 'error']),
       queue: z.enum(['ok', 'error', 'disabled']),
@@ -22,7 +21,6 @@ export const RegistrationMode = z.enum(['first-user', 'invite', 'open', 'closed'
 export const Instance = z
   .object({
     name: z.string(),
-    version: z.string(),
     publicUrl: z.url(),
     setupRequired: z.boolean(),
     registration: RegistrationMode,
@@ -118,3 +116,7 @@ export const Diagnostics = z
   })
   .openapi('Diagnostics');
 export type Diagnostics = z.infer<typeof Diagnostics>;
+
+/** Software identity is available only to signed-in users. */
+export const InstanceVersion = z.object({ version: z.string() }).openapi('InstanceVersion');
+export type InstanceVersion = z.infer<typeof InstanceVersion>;

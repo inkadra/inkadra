@@ -53,7 +53,7 @@ function Group({ title, children }: { title: string; children: ReactNode }) {
 
 function AdminGroups({ setup }: { setup: Setup }) {
   const { t, i18n } = useTranslation();
-  const { instance } = useSession();
+  const { instance, version } = useSession();
   const [members, setMembers] = useState<number | null>(null);
   const { usage } = useStorageUsage();
   const { settings } = useInstanceSettings();
@@ -93,7 +93,7 @@ function AdminGroups({ setup }: { setup: Setup }) {
         <Item
           to={href('instance')}
           label={t('settingsUi.pages.about')}
-          value={instance?.version}
+          value={version}
           warn={setupAttention(setup, 'instance') ? pending : undefined}
         />
       </Group>
@@ -104,7 +104,7 @@ function AdminGroups({ setup }: { setup: Setup }) {
 /** Phone settings: the Profile tab, as grouped rows like the native apps. */
 export function SettingsHome({ setup }: { setup: Setup }) {
   const { t, i18n } = useTranslation();
-  const { user, instance, refresh } = useSession();
+  const { user, instance, refresh, version } = useSession();
   const { preference, choose } = useTheme();
   const [email, setEmail] = useState<NotificationPreferences['email'] | null>(null);
   useEffect(() => {
@@ -164,7 +164,7 @@ export function SettingsHome({ setup }: { setup: Setup }) {
         {t('auth.signOut')}
       </button>
       <p className="settings-home__version">
-        Inkadra {instance?.version} · AGPL-3.0 ·{' '}
+        Inkadra {version} · AGPL-3.0 ·{' '}
         <DiagnosticsLink>{t('settingsUi.diagnostics')}</DiagnosticsLink>
       </p>
     </div>

@@ -1951,6 +1951,8 @@
     "dangerZone": "Danger zone"
   },
   "admin": {
+    "requireAdminTwoFactor": "Require two-step verification for administrators",
+    "requireAdminTwoFactorHelp": "Administrators must set up two-step verification to use the instance. Before enabling, set a password and keep recovery codes.",
     "personal": "Personal",
     "account": "Account",
     "preferences": "Preferences",

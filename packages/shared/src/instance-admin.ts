@@ -6,6 +6,7 @@ export const InstanceSettings = z
   .object({
     name: z.string().trim().min(1).max(120),
     registration: z.enum(['open', 'invite', 'closed']),
+    requireAdminTwoFactor: z.boolean().default(false).openapi({ description: 'Require administrators to enroll in two-step verification before using the instance. Defaults to false on older installations.' }),
   })
   .openapi('InstanceSettings');
 export type InstanceSettings = z.infer<typeof InstanceSettings>;

@@ -7,7 +7,8 @@ import { SettingsWindow } from './SettingsWindow.tsx';
 
 const session = vi.hoisted(() => ({
   user: { role: 'admin' },
-  instance: { version: '1.2.3', name: 'Studio' },
+  version: '1.2.3',
+  instance: { name: 'Studio' },
 }));
 const phone = vi.hoisted(() => ({ value: false }));
 vi.mock('../lib/session.tsx', () => ({ useSession: () => session }));
