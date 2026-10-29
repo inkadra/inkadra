@@ -247,6 +247,7 @@ export function MediaViewer({
   const dialogRef = useRef<HTMLDivElement>(null);
   const [copied, setCopied] = useState<string | null>(null);
   const [zoom100, setZoom100] = useState(false);
+  const [infoOpen, setInfoOpen] = useState(false);
   const { videoRef, unplayable, setUnplayable } = useVideoUnplayable(ready?.url, ready?.id);
 
   const guestMode = useContext(GuestModeContext);
@@ -372,7 +373,7 @@ export function MediaViewer({
   return (
     <div
       ref={dialogRef}
-      className="viewer"
+      className={`viewer${infoOpen ? ' viewer--info-open' : ''}`}
       role="dialog"
       aria-modal="true"
       aria-label={displayName}
@@ -393,6 +394,15 @@ export function MediaViewer({
             </span>
           ))}
           <div className="viewer__header-spacer" />
+          <button
+            type="button"
+            className="ink-btn ink-btn--secondary viewer__stage-btn viewer__info-toggle"
+            aria-expanded={infoOpen}
+            aria-controls="viewer-info"
+            onClick={() => setInfoOpen((open) => !open)}
+          >
+            {t('viewer.info')}
+          </button>
           {gallery?.onCompare && (
             <button
               type="button"
@@ -512,7 +522,7 @@ export function MediaViewer({
                   className="viewer__iframe"
                   src={youtubeEmbedUrl(element.url) ?? ''}
                   title={element.title || 'YouTube video'}
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                   allowFullScreen
                 />
               </div>
@@ -601,7 +611,7 @@ export function MediaViewer({
       </div>
 
       {/* Sidebar Details */}
-      <aside className="viewer__side" data-scroll>
+      <aside id="viewer-info" className="viewer__side" data-scroll>
         {gallery && !ready && (
           <p role="status">
             {t(asset === 'missing' ? 'moodboard.unavailable' : 'moodboard.loading')}

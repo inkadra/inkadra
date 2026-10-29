@@ -1348,7 +1348,7 @@ button.crumb--editable:focus-visible {
 .viewer {
   position: fixed;
   inset: 0;
-  z-index: 50;
+  z-index: 1100;
   display: flex;
   background: rgb(8 8 10 / 0.92);
 }
@@ -2080,4 +2080,36 @@ button.card__play {
 .toolbar__group--navigate .toolbar__btn:not([aria-pressed="true"]):hover,
 .toolbar__group--navigate .toolbar__btn:not([aria-pressed="true"]):active {
   color: var(--ink-text-primary);
+}
+
+.viewer__info-toggle {
+  display: none;
+}
+@media (max-height: 500px) and (orientation: landscape) {
+  .viewer__stage {
+    padding: 8px;
+    padding-bottom: calc(8px + var(--viewer-thumbs-h, 0px));
+  }
+
+  .viewer__info-toggle {
+    display: inline-flex;
+  }
+  .viewer__stage-container:has(.viewer__thumbnails) .viewer__stage {
+    --viewer-thumbs-h: 64px;
+  }
+  .viewer__thumbnails {
+    bottom: 8px;
+  }
+  .viewer__side {
+    display: none;
+  }
+  .viewer--info-open .viewer__side {
+    display: flex;
+    position: absolute;
+    inset: 52px 0 0 auto;
+    width: min(350px, 100%);
+    max-height: none;
+    z-index: 3;
+    background: var(--ink-bg-panel);
+  }
 }

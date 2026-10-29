@@ -519,6 +519,7 @@
     "done": "Done"
   },
   "viewer": {
+    "info": "Info",
     "title": "Image",
     "close": "Close",
     "exif": "Shooting data",
@@ -1736,7 +1737,7 @@
     "retry": "Retry",
     "empty": "No projects",
     "emptyBody": "Create a project or change the search filters.",
-    "storage": "Original files on this instance: {{bytes}} bytes. Excludes previews and database.",
+    "storage": "Original files on this instance: {{bytes}}. Excludes previews and database.",
     "storageError": "Storage usage is unavailable.",
     "openNamed": "Open {{name}}",
     "open": "Open",

@@ -462,13 +462,13 @@ export function ProjectAppearanceDialog({
               onChange={(event) => setIcon({ ...icon, emoji: event.target.value || null })}
             />
             <p className="ink-muted">{t('appearance.emojiHelp')}</p>
+            {tab === 'emoji' && !icon.emoji?.trim() && (
+              <p className="ink-muted">{t('appearance.chooseEmoji')}</p>
+            )}
+            {tab === 'emoji' && !!icon.emoji?.trim() && !valid && (
+              <p role="alert">{t('appearance.invalid')}</p>
+            )}
           </div>
-          {tab === 'emoji' && !icon.emoji?.trim() && (
-            <p className="ink-muted">{t('appearance.chooseEmoji')}</p>
-          )}
-          {tab === 'emoji' && !!icon.emoji?.trim() && !valid && (
-            <p role="alert">{t('appearance.invalid')}</p>
-          )}
           {error && <p role="alert">{t('appearance.error')}</p>}
           <DialogActions>
             <Button

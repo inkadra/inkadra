@@ -218,3 +218,8 @@
     text-align: left;
   }
 }
+
+.project-appearance [role="tabpanel"] {
+  height: 340px;
+  overflow-y: auto;
+}

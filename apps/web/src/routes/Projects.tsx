@@ -17,6 +17,7 @@ import {
   type ProjectOverview,
   projectOverviews,
 } from './projects-overview.ts';
+import { formatStorage } from './StorageCharts.tsx';
 import './home.css';
 import './projects.css';
 
@@ -247,7 +248,7 @@ export function Projects() {
         <p className="ink-muted projects-page__storage">
           {usage !== null
             ? t('projectsPage.storage', {
-                bytes: new Intl.NumberFormat(i18n.language).format(usage),
+                bytes: formatStorage(usage, i18n.language),
               })
             : usageError
               ? t('projectsPage.storageError')
