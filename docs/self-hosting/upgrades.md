@@ -30,7 +30,6 @@ taken before the upgrade instead.
 ## Upgrading to 0.4
 
 0.4 hardens sign-in. Before you change `INKADRA_TAG`:
-
 1. **Pass the new settings to the container.** The `compose.yaml` on `main` forwards
    `OIDC_ALLOWED_DOMAINS`, `CSP_ENFORCE`, `CSP_REPORT_URI` and `HSTS_ENABLED` from `.env`. The
    files attached to the 0.4.0 release do not: if you use them and want any of these, add them
@@ -61,7 +60,6 @@ docker compose exec inkadra node /app/dist/main.js unlock-auth person@example.co
 
 0.4 sends a `Content-Security-Policy` in **report-only** mode: the browser applies nothing, it
 only reports what the policy would block. To switch to enforcement:
-
 1. Use Inkadra normally for a while with the browser's developer tools open (Console): open
    boards with images, videos, YouTube links and files, sign in with each method you use. Every
    `[Report Only] Refused to load…` message is something enforcement would break. For a whole

@@ -119,7 +119,6 @@ Never use `true`: it trusts everyone, so any client could choose its address.
 Inkadra limits sign-in, sign-up, password reset, email links and two-factor attempts per
 client network, per account and per email recipient. The counters live in Valkey (`REDIS_URL`),
 so they hold across restarts and across containers in split mode.
-
 - **`REDIS_URL` is required in production by every role**, `web` included: without it the
   server does not start. `compose.yaml` sets it to the bundled Valkey.
 - If Valkey is unreachable, the endpoints above answer `503` instead of letting attempts through;
@@ -154,7 +153,7 @@ setting can break an installation in ways the server cannot see:
 
 | Variable         | Default | Meaning                                                                                       |
 | ---------------- | ------- | --------------------------------------------------------------------------------------------- |
-| `CSP_ENFORCE`    | `false` | `false` sends the policy as `Content-Security-Policy-Report-Only`; `true` enforces it          |
+| `CSP_ENFORCE`    | `false` | `false` sends the policy as `Content-Security-Policy-Report-Only`; `true` enforces it         |
 | `CSP_REPORT_URI` |         | Absolute address that receives violation reports, e.g. `https://reports.example.com/csp`      |
 | `HSTS_ENABLED`   | `false` | `true` sends `Strict-Transport-Security: max-age=31536000`, only when `PUBLIC_URL` is `https` |
 
