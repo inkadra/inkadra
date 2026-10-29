@@ -15,10 +15,8 @@ import {
 } from '@inkadra/ui';
 import {
   createContext,
-  lazy,
   type MouseEvent,
   type ReactNode,
-  Suspense,
   useContext,
   useEffect,
   useMemo,
@@ -78,14 +76,9 @@ import {
   subscribeProjects,
 } from './projects.ts';
 import { SearchDialog } from './SearchDialog.tsx';
-
 import { SettingsWindow } from './SettingsWindow.tsx';
 import { isSettingsPath } from './settings-sections.ts';
 import './mobile-shell.css';
-
-const TwoFactor = lazy(() =>
-  import('./Settings.tsx').then((module) => ({ default: module.TwoFactor })),
-);
 
 interface ProjectsState {
   projects: Project[] | null;
@@ -215,7 +208,7 @@ function UnderlayNavigation({ open, children }: { open: boolean; children: React
   );
 }
 
-function EnrolledAppLayout({ home }: { home?: ReactNode }) {
+export function AppLayout({ home }: { home?: ReactNode }) {
   const setup = useInstanceSetup();
   const { t } = useTranslation();
   const { user, instance, refresh } = useSession();
@@ -993,19 +986,4 @@ function useBoardCounts(
     };
   }, [projectId, stamp, boards?.length]);
   return counts;
-}
-
-export function AppLayout(props: { home?: ReactNode }) {
-  const { enrollmentRequired } = useSession();
-  const { t } = useTranslation();
-  if (enrollmentRequired)
-    return (
-      <main className="settings-page">
-        <p role="alert">{t('settings.twoFactor.requiredAdmin')}</p>
-        <Suspense fallback={null}>
-          <TwoFactor onDone={() => {}} />
-        </Suspense>
-      </main>
-    );
-  return <EnrolledAppLayout {...props} />;
 }

@@ -8,6 +8,7 @@ import { SessionProvider, useSession } from './lib/session.tsx';
 import { AppContextMenu } from './menus/AppContextMenu.tsx';
 import { registerServiceWorker } from './pwa/register.ts';
 import { UpdatePrompt } from './pwa/UpdatePrompt.tsx';
+import { AdminEnrollment } from './routes/AdminEnrollment.tsx';
 import { AppLayout } from './routes/AppLayout.tsx';
 import { Authorize } from './routes/Authorize.tsx';
 import { Diagnostics } from './routes/Diagnostics.tsx';
@@ -25,7 +26,11 @@ import { Team } from './routes/Team.tsx';
 function Root() {
   const { loading } = useSession();
   if (loading) return null;
-  return <Outlet />;
+  return (
+    <AdminEnrollment>
+      <Outlet />
+    </AdminEnrollment>
+  );
 }
 
 const loadBoard = async () => ({ Component: (await import('./board/BoardPage.tsx')).BoardPage });

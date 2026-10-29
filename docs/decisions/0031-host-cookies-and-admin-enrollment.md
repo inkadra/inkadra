@@ -8,6 +8,8 @@ factor. Better Auth 1.7 prepends `__Secure-` even to explicit cookie names.
 ## Decision
 
 Own the complete cookie names and Secure attribute; use `__Host-inkadra.*` on HTTPS only.
+Better Auth configures one session-cookie name and has no native legacy-name alias. A custom
+bridge would need to rewrite cookies consistently across auth, REST and collaboration.
 Do not accept legacy HTTPS cookies: this deliberately requires one sign-in after upgrade
 rather than preserving the injection surface during a migration. Document this in the
 self-hosting upgrade notes. HTTP development remains unprefixed.
