@@ -8,7 +8,7 @@ export const OFFLINE_PAGE = '/offline.html';
 
 /** Build files worth keeping: scripts, styles and fonts, all fingerprinted by Vite. */
 export function isPrecached(fileName: string): boolean {
-  return /^assets\/[^/]+\.(js|css|woff2)$/.test(fileName);
+  return fileName === 'offline.js' || /^assets\/[^/]+\.(js|css|woff2)$/.test(fileName);
 }
 
 export type Route =

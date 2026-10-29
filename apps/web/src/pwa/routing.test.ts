@@ -52,7 +52,7 @@ describe('service worker routing', () => {
 
   it('lets OAuth callbacks and other redirects go straight to the server', () => {
     expect(how(navigation('/api/auth/callback/google?code=x&state=y'))).toBe('network');
-    expect(how(navigation('/api/auth/oauth2/callback/oidc?code=x'))).toBe('network');
+    expect(how(navigation('/api/auth/callback/oidc?code=x'))).toBe('network');
   });
 
   it('handles page navigations network first, including the auth pages', () => {

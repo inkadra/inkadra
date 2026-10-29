@@ -84,28 +84,12 @@ ${LOGO}
 <p id="body">${it.body}</p>
 <button id="retry" type="button">${it.retry}</button>
 </main>
-<script>
-try {
-  var t = localStorage.getItem('inkadra.theme');
-  if (t === 'dark' || t === 'light') document.documentElement.dataset.theme = t;
-} catch (e) {}
-var text = { it: ${JSON.stringify(it)}, en: ${JSON.stringify(en)} };
-var langs = navigator.languages || [navigator.language || ''];
-for (var i = 0; i < langs.length; i++) {
-  var base = String(langs[i]).slice(0, 2);
-  if (text[base]) {
-    if (base !== 'it') {
-      document.documentElement.lang = base;
-      document.title = text[base].title + ' · Inkadra';
-      ['title', 'body', 'retry'].forEach(function (k) { document.getElementById(k).innerHTML = text[base][k]; });
-    }
-    break;
-  }
-}
-document.getElementById('retry').addEventListener('click', function () { location.reload(); });
-window.addEventListener('online', function () { location.reload(); });
-</script>
+<div id="messages" hidden data-messages="${escapeHtml(JSON.stringify({ it, en }))}"></div>
+<script src="/offline.js"></script>
 </body>
 </html>
 `;
 }
+
+export const offlineScript =
+  "try {\n  var t = localStorage.getItem('inkadra.theme');\n  if (t === 'dark' || t === 'light') document.documentElement.dataset.theme = t;\n} catch (e) {}\nvar text = JSON.parse(document.getElementById('messages').dataset.messages);\nvar langs = navigator.languages || [navigator.language || ''];\nfor (var i = 0; i < langs.length; i++) {\n  var base = String(langs[i]).slice(0, 2);\n  if (text[base]) {\n    if (base !== 'it') {\n      document.documentElement.lang = base;\n      document.title = text[base].title + ' · Inkadra';\n      ['title', 'body', 'retry'].forEach(function (k) { document.getElementById(k).innerHTML = text[base][k]; });\n    }\n    break;\n  }\n}\ndocument.getElementById('retry').addEventListener('click', function () { location.reload(); });\nwindow.addEventListener('online', function () { location.reload(); });\n";

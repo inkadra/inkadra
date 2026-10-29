@@ -28,6 +28,7 @@
     "createAdmin": "Create account and sign in",
     "signOut": "Sign out",
     "errors": {
+      "reauthRequired": "Sign in again to continue.",
       "invalid": "Wrong email or password.",
       "closed": "Registration is closed. Ask your administrator for an invitation.",
       "password": "The password needs at least 10 characters.",

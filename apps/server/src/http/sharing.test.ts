@@ -9,6 +9,7 @@ import { loadConfig } from '../config.ts';
 import { createDatabase, runMigrations } from '../db/client.ts';
 import {
   invitation as invitationTable,
+  personalToken,
   project,
   session as sessionTable,
   verification,
@@ -40,9 +41,11 @@ function totp(base32: string, at = Date.now()) {
 describe.skipIf(!url)('sharing, invitations, tokens and accounts (needs DATABASE_URL)', () => {
   const config = loadConfig({
     NODE_ENV: 'test',
+    REDIS_URL: process.env.REDIS_URL,
     PUBLIC_URL: 'http://localhost:3000',
     DATABASE_URL: url ?? 'postgres://unused',
-    AUTH_SECRET: 'test-secret-test-secret-test-secret-0123',
+    // Isolate persistent budgets from other suites and earlier CI attempts.
+    AUTH_SECRET: randomBytes(32).toString('hex'),
     REGISTRATION: 'invite',
     CLIPPER_EXTENSION_IDS: EXTENSION_ID,
     GOOGLE_CLIENT_ID: 'test-google-client',
@@ -67,12 +70,14 @@ describe.skipIf(!url)('sharing, invitations, tokens and accounts (needs DATABASE
     method: string,
     path: string,
     payload?: unknown,
+    source = '127.0.0.1',
   ) {
     const auth = who === null ? {} : typeof who === 'string' ? { cookie: as[who].cookie } : who;
     const res = await fetch(`${base}${path}`, {
       method,
       headers: {
         origin: config.PUBLIC_URL,
+        'x-forwarded-for': source,
         ...(auth.cookie ? { cookie: auth.cookie } : {}),
         ...('bearer' in auth && auth.bearer ? { authorization: `Bearer ${auth.bearer}` } : {}),
         ...(payload !== undefined ? { 'content-type': 'application/json' } : {}),
@@ -115,11 +120,15 @@ describe.skipIf(!url)('sharing, invitations, tokens and accounts (needs DATABASE
 
   async function signUp(who: Who, invitationCookie = '') {
     const email = `${who}@example.com`;
-    const res = await call({ cookie: invitationCookie }, 'POST', '/api/auth/sign-up/email', {
-      email,
-      password: PASSWORD,
-      name: who[0]?.toUpperCase() + who.slice(1),
-    });
+    // Independent people on separate source networks; keep production limits enabled.
+    const source = `192.0.${['owner', 'editor', 'viewer', 'guest', 'outsider', 'newbie'].indexOf(who)}.1`;
+    const res = await call(
+      { cookie: invitationCookie },
+      'POST',
+      '/api/auth/sign-up/email',
+      { email, password: PASSWORD, name: who[0]?.toUpperCase() + who.slice(1) },
+      source,
+    );
     if (res.status === 200)
       as[who] = {
         cookie: cookieOf(res.cookies, 'inkadra.session_token'),
@@ -139,6 +148,7 @@ describe.skipIf(!url)('sharing, invitations, tokens and accounts (needs DATABASE
     await runMigrations(config.DATABASE_URL, migrationsFolder);
     await db.execute(sql`truncate table "user", project, instance_setting, verification cascade`);
     auth = createAuth(config, db, { mailer });
+    await auth.readySecurity();
     // Revocation must be observed on the next request, including with the old cookies.
     expect(auth.options).not.toHaveProperty('session.cookieCache.enabled', true);
     expect(auth.options).not.toHaveProperty('secondaryStorage');
@@ -150,6 +160,7 @@ describe.skipIf(!url)('sharing, invitations, tokens and accounts (needs DATABASE
 
   afterAll(async () => {
     await app?.close();
+    auth?.closeSecurity();
     await client.end();
   });
 
@@ -223,6 +234,13 @@ describe.skipIf(!url)('sharing, invitations, tokens and accounts (needs DATABASE
     const closed = await signUp('editor');
     expect(closed.status).toBe(403);
     expect(closed.body.code).toBe('REGISTRATION_CLOSED');
+    const existing = await call(null, 'POST', '/api/auth/sign-up/email', {
+      email: as.owner.email,
+      password: PASSWORD,
+      name: 'Probe',
+    });
+    expect(existing.status).toBe(closed.status);
+    expect(existing.body.code).toBe(closed.body.code);
 
     // Only administrators invite to the instance alone.
     const link = await call('owner', 'POST', '/api/v1/invitations', { kind: 'link' });
@@ -545,6 +563,11 @@ describe.skipIf(!url)('sharing, invitations, tokens and accounts (needs DATABASE
     const { token, id } = created.body;
     expect(token).toMatch(/^ink_/);
     const bearer = { bearer: token };
+    expect(new Date(created.body.expiresAt).getTime() - Date.now()).toBeGreaterThan(
+      89 * 86_400_000,
+    );
+    expect((await call(bearer, 'GET', '/api/v1/instance/members')).status).toBe(403);
+    expect((await call(bearer, 'GET', '/api/v1/diagnostics')).status).toBe(403);
     expect((await call(bearer, 'GET', '/api/v1/me')).body.id).toBe(as.owner.id);
     expect((await call(bearer, 'POST', '/api/v1/me/tokens', { name: 'More' })).status).toBe(403);
     expect((await call(bearer, 'DELETE', '/api/v1/me', { password: PASSWORD })).status).toBe(403);
@@ -553,6 +576,24 @@ describe.skipIf(!url)('sharing, invitations, tokens and accounts (needs DATABASE
     expect(listed.body.items[0].lastUsedAt).not.toBeNull();
     expect((await call(bearer, 'DELETE', `/api/v1/me/tokens/${id}`)).status).toBe(204);
     expect((await call(bearer, 'GET', '/api/v1/me')).status).toBe(401);
+  });
+
+  it('requires a fresh cookie session to create tokens and app authorizations', async () => {
+    await db
+      .update(sessionTable)
+      .set({ createdAt: new Date(Date.now() - 16 * 60_000) })
+      .where(eq(sessionTable.userId, as.owner.id));
+    try {
+      expect((await call('owner', 'POST', '/api/v1/me/tokens', { name: 'Stale' })).status).toBe(
+        403,
+      );
+      expect((await call('owner', 'POST', '/api/v1/app-authorizations', {})).status).toBe(403);
+    } finally {
+      await db
+        .update(sessionTable)
+        .set({ createdAt: new Date() })
+        .where(eq(sessionTable.userId, as.owner.id));
+    }
   });
 
   it('lists sessions without tokens and ends only your own, by id', async () => {
@@ -762,20 +803,56 @@ describe.skipIf(!url)('sharing, invitations, tokens and accounts (needs DATABASE
     ]);
   });
 
+  it('counts only failed passwords and leaves another source able to sign in', async () => {
+    const attempt = (ip: string, password: string) =>
+      auth.handler(
+        new Request(`${config.PUBLIC_URL}/api/auth/sign-in/email`, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json', 'x-inkadra-client-ip': ip },
+          body: JSON.stringify({ email: as.editor.email, password }),
+        }),
+      );
+    for (let i = 0; i < 10; i++)
+      expect((await attempt('192.0.2.121', 'wrong-password')).status).toBe(401);
+    expect((await attempt('192.0.2.121', PASSWORD)).status).toBe(429);
+    expect((await attempt('192.0.2.122', PASSWORD)).status).toBe(429);
+    expect((await attempt('192.0.3.122', PASSWORD)).status).toBe(200);
+  });
+
   it('emails sign-in links only to people who may sign in', async () => {
     mailer.sent.length = 0;
     const ask = (email: string) => call(null, 'POST', '/api/auth/sign-in/magic-link', { email });
     expect((await ask(as.editor.email)).status).toBe(200);
     expect((await ask('stranger@example.com')).status).toBe(200);
+    await vi.waitFor(() => expect(mailer.sent.length).toBeGreaterThan(0));
     expect(mailer.sent.map((m) => m.to)).toEqual([as.editor.email]);
     expect(mailer.sent[0]?.text).toContain('/api/auth/magic-link/verify');
+    await vi.waitFor(() => expect(mailer.sent.length).toBeGreaterThan(0));
     const link = new URL(mailer.sent[0]?.text.match(/https?:\/\/\S+/)?.[0] ?? '');
     // Removing callbackURL selects Better Auth's page-readable JSON response.
     link.searchParams.delete('callbackURL');
     await expectSessionCookie(await call(null, 'GET', `${link.pathname}${link.search}`));
   });
 
+  it('shares the recipient email budget across magic links and password resets', async () => {
+    const email = as.outsider.email;
+    mailer.sent.length = 0;
+    for (let i = 0; i < 4; i++) {
+      expect((await call(null, 'POST', '/api/auth/sign-in/magic-link', { email })).status).toBe(
+        200,
+      );
+      await vi.waitFor(() => expect(mailer.sent.length).toBe(Math.min(i + 1, 3)));
+    }
+    expect((await call(null, 'POST', '/api/auth/request-password-reset', { email })).status).toBe(
+      200,
+    );
+    expect(mailer.sent).toHaveLength(3);
+  });
+
   it('asks for a code after enabling two-factor authentication', async () => {
+    // Test 2FA for an established account. On first email proof Better Auth deliberately
+    // revokes unproven credentials, so a magic link would otherwise remove this password.
+    await (await auth.$context).internalAdapter.updateUser(as.viewer.id, { emailVerified: true });
     const enabled = await call('viewer', 'POST', '/api/auth/two-factor/enable', {
       password: PASSWORD,
     });
@@ -794,11 +871,38 @@ describe.skipIf(!url)('sharing, invitations, tokens and accounts (needs DATABASE
     as.viewer.cookie = cookieOf(verified.cookies, 'inkadra.session_token');
     expect((await call('viewer', 'GET', '/api/v1/me')).body.twoFactorEnabled).toBe(true);
 
+    mailer.sent.length = 0;
+    const magic = await call(null, 'POST', '/api/auth/sign-in/magic-link', {
+      email: as.viewer.email,
+    });
+    expect(magic.status).toBe(200);
+    await vi.waitFor(() => expect(mailer.sent.length).toBeGreaterThan(0));
+    const link = new URL(mailer.sent[0]?.text.match(/https?:\/\/\S+/)?.[0] ?? '');
+    const response = await fetch(`${base}${link.pathname}${link.search}`, { redirect: 'manual' });
+    expect(response.status).toBe(302);
+    expect(response.headers.get('location')).toBe('/login?twoFactor=true&next=%2F');
+    const challenge = response.headers
+      .getSetCookie()
+      .map((c) => c.split(';')[0])
+      .join('; ');
+    expect((await call({ cookie: challenge }, 'GET', '/api/v1/me')).status).toBe(401);
+    const completed = await call(
+      { cookie: challenge },
+      'POST',
+      '/api/auth/two-factor/verify-totp',
+      { code: totp(secret) },
+    );
+    await expectSessionCookie(completed);
+    // HTTP instances cannot use the Secure device cookie.
+    expect(cookieOf(completed.cookies, '__Host-inkadra.known-device')).toBe('');
+
     const signIn = await call(null, 'POST', '/api/auth/sign-in/email', {
       email: as.viewer.email,
       password: PASSWORD,
     });
+    expect(signIn.status).toBe(200);
     expect(signIn.body.twoFactorRedirect).toBe(true);
+    expect(cookieOf(signIn.cookies, '__Host-inkadra.known-device')).toBe('');
     await expectPrivateSession(signIn);
     expect(cookieOf(signIn.cookies, 'inkadra.session_token').split('=')[1] ?? '').toBe('');
     const second = await call(
@@ -821,16 +925,62 @@ describe.skipIf(!url)('sharing, invitations, tokens and accounts (needs DATABASE
         { code: enabled.body.backupCodes[0] },
       ),
     );
+    mailer.sent.length = 0;
+    const disabled = await call('viewer', 'POST', '/api/auth/two-factor/disable', {
+      password: PASSWORD,
+    });
+    expect(disabled.status).toBe(200);
+    expect(mailer.sent.some((m) => m.subject === 'Autenticazione a due fattori disabilitata')).toBe(
+      true,
+    );
+    as.viewer.cookie = cookieOf(disabled.cookies, 'inkadra.session_token');
   });
 
   it('rotates the password session only through its httpOnly cookie', async () => {
+    const issued = await call('guest', 'POST', '/api/v1/me/tokens', {
+      name: 'Before password change',
+    });
+    expect(issued.status).toBe(201);
     const changed = await call('guest', 'POST', '/api/auth/change-password', {
       currentPassword: PASSWORD,
       newPassword: `${PASSWORD}-changed`,
       revokeOtherSessions: true,
     });
     await expectSessionCookie(changed);
+    expect((await call({ bearer: issued.body.token }, 'GET', '/api/v1/me')).status).toBe(401);
+    expect(
+      mailer.sent.some((m) => m.to === as.guest.email && m.subject === 'Password modificata'),
+    ).toBe(true);
     expect((await call('guest', 'GET', '/api/v1/me')).status).toBe(401);
+    const changedCookie = cookieOf(changed.cookies, 'inkadra.session_token');
+    const token = await call({ cookie: changedCookie }, 'POST', '/api/v1/me/tokens', {
+      name: 'Before reset',
+    });
+    expect(token.status).toBe(201);
+    await db
+      .update(personalToken)
+      .set({ client: 'mobile' })
+      .where(eq(personalToken.id, token.body.id));
+    mailer.sent.length = 0;
+    expect(
+      (
+        await call(null, 'POST', '/api/auth/request-password-reset', {
+          email: as.guest.email,
+          redirectTo: '/login',
+        })
+      ).status,
+    ).toBe(200);
+    // Reset delivery, including its budget check, is detached from the response.
+    await vi.waitFor(() => expect(mailer.sent.length).toBeGreaterThan(0));
+    const resetUrl = new URL(mailer.sent[0]?.text.match(/https?:\/\/\S+/)?.[0] ?? '');
+    const reset = await call(null, 'POST', '/api/auth/reset-password', {
+      token: resetUrl.pathname.split('/').pop(),
+      newPassword: `${PASSWORD}-reset`,
+    });
+    expect(reset.status).toBe(200);
+    expect((await call({ cookie: changedCookie }, 'GET', '/api/v1/me')).status).toBe(401);
+    expect((await call({ bearer: token.body.token }, 'GET', '/api/v1/me')).status).toBe(401);
+    expect(mailer.sent.some((m) => m.subject === 'Password modificata')).toBe(true);
   });
 
   it('deletes an account, but not while it is the only owner of a shared project', async () => {

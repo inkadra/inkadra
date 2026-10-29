@@ -13,6 +13,10 @@ vi.mock('./auth-routes.ts', () => ({
     if (!req.headers.role) throw new HttpError('unauthorized', 'Sign in.');
     return { id: 'admin', role: req.headers.role };
   },
+  requireSession: async (_auth: unknown, req: { headers: Record<string, string> }) => {
+    if (!req.headers.role) throw new HttpError('unauthorized', 'Sign in.');
+    return { user: { id: 'admin', role: req.headers.role } };
+  },
 }));
 const apps: ReturnType<typeof Fastify>[] = [];
 afterEach(async () => {

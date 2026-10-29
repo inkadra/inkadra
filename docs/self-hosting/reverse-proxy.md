@@ -155,3 +155,14 @@ If the domain goes through Cloudflare's proxy (orange cloud), its plan limits th
 request (100 MB on the free plan). Inkadra's apps upload in resumable chunks of at most 50 MiB,
 so large files still work; only scripts that send bigger requests to the API hit the limit. Keep WebSockets enabled in the
 Cloudflare dashboard (they are on by default).
+
+## Security boundary
+
+Set `TRUST_PROXY` to **only the proxy's IP address or dedicated subnet**, rather than all
+private networks or the entire Tailscale range. Keep port 3000 inside the Docker network;
+if host access is necessary, bind it to `127.0.0.1`, never a public interface. The proxy
+must overwrite forwarding headers. Configure a permanent HTTP-to-HTTPS redirect and HSTS
+at the TLS proxy. Application HSTS is also available with `HSTS_ENABLED=true` and an HTTPS
+`PUBLIC_URL`; it is deliberately opt-in. `CSP_ENFORCE=false` initially emits report-only CSP;
+review browser console violations before enabling enforcement. No server or proxy settings
+are changed automatically by these application options.

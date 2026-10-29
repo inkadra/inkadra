@@ -1,6 +1,7 @@
 import { createTransport } from 'nodemailer';
 import type { Logger } from 'pino';
 import type { Config } from './config.ts';
+import { mailText } from './mail-texts.ts';
 
 export interface Mail {
   to: string;
@@ -65,4 +66,26 @@ export function actionMail(
     '</div>',
   ].join('');
   return { to, subject, text, html };
+}
+
+/** SMTP never delays an auth response; delivery errors cannot expose account existence. */
+export function sendDetached(mailer: Mailer | undefined, mail: Mail, log?: Pick<Logger, 'warn'>) {
+  if (!mailer?.enabled) return;
+  void Promise.resolve()
+    .then(() => mailer.send(mail))
+    .catch(() => log?.warn('security email delivery failed'));
+}
+
+export function securityNotification(
+  mailer: Mailer | undefined,
+  user: { email: string; locale?: string | null },
+  event: 'password' | 'twoFactor' | 'token',
+  log?: Pick<Logger, 'warn'>,
+) {
+  const t = mailText(user);
+  sendDetached(
+    mailer,
+    { to: user.email, subject: t.securitySubjects[event], text: t.securityNotice },
+    log,
+  );
 }

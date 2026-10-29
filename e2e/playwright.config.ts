@@ -69,6 +69,8 @@ export default defineConfig({
       reuseExistingServer: false,
       timeout: 60_000,
       env: {
+        NODE_ENV: 'development',
+        AUTH_RATE_LIMITS: 'off',
         PORT: String(port),
         PUBLIC_URL: baseURL,
         DATABASE_URL:

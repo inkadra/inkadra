@@ -43,6 +43,8 @@ const HOUR = 60 * 60 * 1000;
 describe.skipIf(!url)('board versions (needs DATABASE_URL)', () => {
   const env = {
     NODE_ENV: 'test',
+    // Fixture setup creates many accounts on one loopback network. Auth limits have dedicated tests.
+    AUTH_RATE_LIMITS: 'off',
     PUBLIC_URL: 'http://localhost:3000',
     DATABASE_URL: url ?? 'postgres://unused',
     AUTH_SECRET: 'test-secret-test-secret-test-secret-0123',

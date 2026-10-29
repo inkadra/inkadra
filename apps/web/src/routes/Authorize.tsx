@@ -3,7 +3,7 @@ import { Avatar, Button, Logo, Wordmark } from '@inkadra/ui';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Navigate, useLocation, useSearchParams } from 'react-router';
-import { api } from '../lib/api.ts';
+import { api, authApi, RequestError } from '../lib/api.ts';
 import { useSession } from '../lib/session.tsx';
 import './login.css';
 
@@ -56,7 +56,18 @@ export function Authorize() {
         request,
       );
       window.location.assign(redirectTo);
-    } catch {
+    } catch (err) {
+      if (
+        err instanceof RequestError &&
+        (err.details as { reason?: string })?.reason === 'reauth_required'
+      ) {
+        setError(t('auth.errors.reauthRequired'));
+        await authApi.signOut();
+        window.location.assign(
+          `/login?next=${encodeURIComponent(location.pathname + location.search)}`,
+        );
+        return;
+      }
       setError(t('authorize.failed'));
       setBusy(false);
     }

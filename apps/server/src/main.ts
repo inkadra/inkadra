@@ -5,6 +5,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import pino from 'pino';
 import { createAuth } from './auth.ts';
+import { authSecurity, authSource } from './auth-security.ts';
 import { type BoardReader, directBoardReader } from './board-content.ts';
 import { type BoardNotifier, directBoardNotifier } from './board-notices.ts';
 import { type BoardWriter, directBoardWriter } from './board-writer.ts';
@@ -27,7 +28,7 @@ import { startIndexBackfill } from './search/index-doc.ts';
 import { createStorage } from './storage.ts';
 import { directVersionWriter, type VersionWriter } from './versions.ts';
 
-const COMMANDS = ['web', 'collab', 'worker', 'all', 'migrate'] as const;
+const COMMANDS = ['web', 'collab', 'worker', 'all', 'migrate', 'unlock-auth'] as const;
 type Command = (typeof COMMANDS)[number];
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -45,6 +46,28 @@ async function main() {
   const log = pino({ level: config.LOG_LEVEL, base: { service: command } });
   log.info({ version: VERSION }, 'starting inkadra');
 
+  // Host/container administrators only; deliberately not an HTTP endpoint.
+  if (command === 'unlock-auth') {
+    const address = process.argv[3]?.trim().toLowerCase();
+    if (!address?.includes('@') || !config.REDIS_URL)
+      throw new Error('Usage: inkadra unlock-auth <email> [source-ip]; REDIS_URL required');
+    const security = authSecurity(config, log);
+    try {
+      await security.ready();
+      await security.storage.delete(`account:${address}`);
+      await security.storage.delete(`mail:${address}`);
+      const source = process.argv[4];
+      if (source) {
+        await security.storage.delete(`login:${address}:${authSource(source)}`);
+        await security.storage.delete(`mail:${address}:${authSource(source)}`);
+      }
+      log.info('Authentication account budgets cleared');
+    } finally {
+      security.close();
+    }
+    return;
+  }
+
   if (command === 'migrate' || command === 'web' || command === 'all') {
     await runMigrations(config.DATABASE_URL, migrationsFolder);
     log.info('database migrations applied');
@@ -58,7 +81,10 @@ async function main() {
   const tmpDir = join(config.DATA_DIR, 'tmp');
   await mkdir(tmpDir, { recursive: true });
   const media = { db, storage, tmpDir, heic: config.HEIC_PREVIEWS };
-  const closers: Array<() => Promise<unknown>> = [() => sql.end({ timeout: 5 })];
+  const closers: Array<() => Promise<unknown>> = [
+    async () => auth.closeSecurity(),
+    () => sql.end({ timeout: 5 }),
+  ];
 
   if (command === 'worker' || command === 'all') {
     if (!config.REDIS_URL) throw new Error('REDIS_URL is required by the worker.');

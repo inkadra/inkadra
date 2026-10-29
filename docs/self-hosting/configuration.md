@@ -6,22 +6,22 @@ or share the real `.env`.
 
 ## Server
 
-| Variable        | Default                          | Meaning                                                                                  |
-| --------------- | -------------------------------- | ---------------------------------------------------------------------------------------- |
-| `NODE_ENV`      | `production`                     | `development`, `production` or `test`                                                    |
-| `PUBLIC_URL`    | required                         | Address people use, as served by your proxy, e.g. `https://inkadra.example.com`. No path |
-| `AUTH_SECRET`   | required                         | At least 32 random characters: `openssl rand -hex 32`. Changing it signs everyone out    |
-| `DATABASE_URL`  | set by compose                   | Postgres connection string                                                               |
-| `REDIS_URL`     | set by compose                   | Valkey or Redis connection string. Needed by `worker`, `all` and, for clips, `collab`    |
-| `INSTANCE_NAME` | `Inkadra`                        | Name shown in the app                                                                    |
-| `REGISTRATION`  | `invite`                         | `invite`: only invited people can sign up. `open`: anyone can                            |
-| `HOST`          | `0.0.0.0`                        | Interface the web server listens on                                                      |
-| `PORT`          | `3000`                           | Port of the web server                                                                   |
-| `COLLAB_PORT`   | `3001`                           | Port of the collaboration server, in split mode                                          |
-| `DATA_DIR`      | `/data`                          | Where files live; the `local` driver keeps them in `<DATA_DIR>/files`                    |
-| `WEB_DIST`      |                                  | Folder of the built web app; unset for the default next to the server                    |
-| `TRUST_PROXY`   | `loopback,linklocal,uniquelocal` | Who may tell Inkadra the client's address. See [below](#trust_proxy)                     |
-| `LOG_LEVEL`     | `info`                           | `fatal`, `error`, `warn`, `info`, `debug` or `trace`                                     |
+| Variable        | Default                          | Meaning                                                                                          |
+| --------------- | -------------------------------- | ------------------------------------------------------------------------------------------------ |
+| `NODE_ENV`      | `production`                     | `development`, `production` or `test`                                                            |
+| `PUBLIC_URL`    | required                         | Address people use, as served by your proxy, e.g. `https://inkadra.example.com`. No path         |
+| `AUTH_SECRET`   | required                         | At least 32 random characters: `openssl rand -hex 32`. Changing it signs everyone out            |
+| `DATABASE_URL`  | set by compose                   | Postgres connection string                                                                       |
+| `REDIS_URL`     | set by compose                   | Valkey or Redis connection string. Required in production by `web`, `worker`, `all` and `collab` |
+| `INSTANCE_NAME` | `Inkadra`                        | Name shown in the app                                                                            |
+| `REGISTRATION`  | `invite`                         | `invite`: only invited people can sign up. `open`: anyone can                                    |
+| `HOST`          | `0.0.0.0`                        | Interface the web server listens on                                                              |
+| `PORT`          | `3000`                           | Port of the web server                                                                           |
+| `COLLAB_PORT`   | `3001`                           | Port of the collaboration server, in split mode                                                  |
+| `DATA_DIR`      | `/data`                          | Where files live; the `local` driver keeps them in `<DATA_DIR>/files`                            |
+| `WEB_DIST`      |                                  | Folder of the built web app; unset for the default next to the server                            |
+| `TRUST_PROXY`   | `loopback,linklocal,uniquelocal` | Who may tell Inkadra the client's address. See [below](#trust_proxy)                             |
+| `LOG_LEVEL`     | `info`                           | `fatal`, `error`, `warn`, `info`, `debug` or `trace`                                             |
 
 ## Files and uploads
 
@@ -90,7 +90,56 @@ The default trusts loopback and private networks, which covers a proxy on the sa
 in the same Docker network. Change it when the proxy connects from somewhere else:
 - a proxy on another machine of your LAN: its address, e.g. `TRUST_PROXY=192.168.1.10`;
 - a proxy that reaches Inkadra over Tailscale, for example Pangolin on a VPS targeting the
-  server's Tailscale address: add the Tailscale range,
-  `TRUST_PROXY=loopback,linklocal,uniquelocal,100.64.0.0/10`.
+  server's Tailscale address: trust only that proxy's exact tailnet address,
+  for example `TRUST_PROXY=100.100.10.20`.
 
 Never use `true`: it trusts everyone, so any client could choose its address.
+
+## Authentication and browser hardening
+
+Production authentication requires `REDIS_URL` (the existing Valkey instance). IP, account
+and recipient budgets persist across processes and restarts. **Breaking change: every production
+role that creates auth, including `web`, refuses to start without REDIS_URL.** Unavailable Valkey
+returns 503 for sign-in, sign-up, credential changes, reset and 2FA; session lookup and sign-out
+remain available.
+Tests use Valkey when REDIS_URL is set; otherwise they use bounded memory. E2e uses
+NODE_ENV=development and AUTH_RATE_LIMITS=off; production always ignores this override.
+Email delivery runs outside the request's awaited SMTP path. Delivery is best effort: process
+termination can lose pending messages, and delivery failures are logged without credentials.
+
+| Variable               | Default | Meaning                                                                                                                        |
+| ---------------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| `CSP_ENFORCE`          | `false` | Send CSP in report-only mode; `true` enforces it. Validate your media and integrations first.                                  |
+| `CSP_REPORT_URI`       | unset   | Optional absolute report-uri destination for CSP violation reports.                                                            |
+| `HSTS_ENABLED`         | `false` | Opt into one-year HSTS, only when `PUBLIC_URL` uses HTTPS.                                                                     |
+| `OIDC_ALLOWED_DOMAINS` | any     | Allowed verified email domains for OIDC. Google issuers use the verified `hd` claim and fall back to `GOOGLE_ALLOWED_DOMAINS`. |
+
+Magic links and Google/OIDC callbacks require the same second factor as password sign-in.
+After a browser callback the challenge opens at `/login?twoFactor=true`; no full session is
+retained until verification. Existing trusted-device cookies retain Better Auth semantics.
+Personal token and app authorization creation need a cookie session younger than 15 minutes.
+Personal tokens default to 90 days, including an omitted or null expiry; explicit lifetimes
+retain the existing API maximum of 3650 days. Password changes revoke non-app personal
+tokens; resets revoke all tokens (including app tokens) and every browser session.
+Google domain restrictions require `hd` even for linked users. Generic OIDC allowlists accept
+`email_verified` as boolean `true` or string `"true"` (Cognito). Open registration and valid
+invitations can still reveal existing accounts during sign-up.
+
+### Unlocking an account
+
+From an administrator shell inside the server container, with its existing environment:
+
+```sh
+node dist/main.js unlock-auth person@example.com
+# Also clear that recipient's source-network login/mail counters if needed:
+node dist/main.js unlock-auth person@example.com 192.0.2.10
+```
+
+This clears the global account and mail ceilings in the configured instance's Valkey namespace.
+It does not change passwords, sessions, two-factor settings or network burst limits. Access to
+this command requires host/container administrative access; there is no public unlock endpoint.
+Known HTTPS devices receive a signed 90-day cookie after sign-in: they can retry during a global
+account lockout, within five failures/15 minutes per device and the usual source-network budget.
+The cookie grants no session or second-factor bypass. Rotating AUTH_SECRET invalidates it.
+Email delivery allows three requests/15 minutes per recipient/source network and ten/hour per
+recipient; distributed or sustained abuse can still exhaust the larger ceiling.
