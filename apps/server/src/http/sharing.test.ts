@@ -970,6 +970,8 @@ describe.skipIf(!url)('sharing, invitations, tokens and accounts (needs DATABASE
         })
       ).status,
     ).toBe(200);
+    // Reset delivery, including its budget check, is detached from the response.
+    await vi.waitFor(() => expect(mailer.sent.length).toBeGreaterThan(0));
     const resetUrl = new URL(mailer.sent[0]?.text.match(/https?:\/\/\S+/)?.[0] ?? '');
     const reset = await call(null, 'POST', '/api/auth/reset-password', {
       token: resetUrl.pathname.split('/').pop(),
