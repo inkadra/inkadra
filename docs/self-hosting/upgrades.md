@@ -126,3 +126,17 @@ tag. CI runs in full (tests, end-to-end, the reverse proxy examples, a vulnerabi
 the image), builds amd64 and arm64 on native runners without build cache, publishes `X.Y.Z`,
 `X.Y` and `latest`, and attaches the deployment files to the release. Versions with a suffix
 (`0.3.0-rc.1`) are pre-releases: they never move `latest` or `X.Y`.
+
+## Upgrading to 0.4.2
+
+Public `GET /api/v1/health` and `GET /api/v1/instance` responses no longer include `version`.
+This deliberate security change removes a v1 response field: monitoring and discovery
+clients must tolerate its absence. Signed-in clients can read `GET /api/v1/instance/version`;
+administrator diagnostics retain their version. Refresh cached web clients after the upgrade.
+See the [0.4.2 upgrade notes](../releases/0.4.2.md), including the one-time HTTPS sign-in and
+extra 2FA prompt, legacy session-list entries, and coordinated updates of split roles.
+
+The administrator two-step requirement defaults off for existing installations. Only an
+administrator with verified 2FA can enable it. Keep recovery codes and access to the host-only
+`inkadra admin-2fa off` emergency command before activation. Deploy the auth enforcement
+and setting contract together for 0.4.2; do not activate the setting on an older auth server.

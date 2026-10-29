@@ -263,7 +263,7 @@ function AccessPage() {
 
 function InstancePage({ section, setup }: { section: string; setup: Setup }) {
   const { t } = useTranslation();
-  const { instance, version } = useSession();
+  const { instance, version, user } = useSession();
   const { settings, error, save } = useInstanceSettings();
   if (error) return <LoadError />;
   if (!settings) return <p role="status">{t('admin.loading')}</p>;
@@ -272,11 +272,19 @@ function InstancePage({ section, setup }: { section: string; setup: Setup }) {
     return (
       <Card title={t('admin.registration')}>
         <div className="settings-rows">
-          <Row label={t('admin.requireAdminTwoFactor')} help={t('admin.requireAdminTwoFactorHelp')}>
+          <Row
+            label={t('admin.requireAdminTwoFactor')}
+            help={t(
+              user?.twoFactorEnabled
+                ? 'admin.requireAdminTwoFactorHelp'
+                : 'admin.requireAdminTwoFactorEnrollFirst',
+            )}
+          >
             <input
               type="checkbox"
               aria-label={t('admin.requireAdminTwoFactor')}
               checked={settings.requireAdminTwoFactor ?? false}
+              disabled={!user?.twoFactorEnabled}
               onChange={(event) =>
                 void save({ requireAdminTwoFactor: event.target.checked }).catch(() => {})
               }

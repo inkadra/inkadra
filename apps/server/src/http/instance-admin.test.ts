@@ -11,6 +11,7 @@ import {
   assetVariant,
   boardElementIndex,
   boardGrant,
+  instanceSetting,
   personalToken,
   projectMember,
   session,
@@ -267,6 +268,30 @@ describe.skipIf(!url)('instance administration', () => {
     });
     expect((await signUp('blocked')).statusCode).toBe(403);
   });
+  it('refuses policy activation by an administrator without verified two-factor authentication', async () => {
+    const [previous] = await db
+      .select()
+      .from(instanceSetting)
+      .where(eq(instanceSetting.key, 'administration'));
+    try {
+      const rejected = await request('admin', 'PATCH', '/instance/settings', {
+        requireAdminTwoFactor: true,
+      });
+      expect(rejected.statusCode).toBe(403);
+      expect(rejected.json().error.details.reason).toBe(
+        'admin_two_factor_enrollment_required_to_enable',
+      );
+      expect(
+        (await request('admin', 'GET', '/instance/settings')).json().requireAdminTwoFactor,
+      ).toBe(false);
+    } finally {
+      await db
+        .update(instanceSetting)
+        .set({ value: previous?.value ?? {} })
+        .where(eq(instanceSetting.key, 'administration'));
+    }
+  });
+
   it('defaults the enrollment policy off, validates it and preserves it across partial writes', async () => {
     expect((await request('admin', 'GET', '/instance/settings')).json().requireAdminTwoFactor).toBe(
       false,
@@ -275,6 +300,10 @@ describe.skipIf(!url)('instance administration', () => {
       (await request('admin', 'PATCH', '/instance/settings', { requireAdminTwoFactor: 'true' }))
         .statusCode,
     ).toBe(400);
+    const [previous] = await db
+      .select()
+      .from(instanceSetting)
+      .where(eq(instanceSetting.key, 'administration'));
     // Enroll the fixture administrator so this also remains valid with auth enforcement applied.
     await db.update(user).set({ twoFactorEnabled: true }).where(eq(user.id, people.admin!.id));
     try {
@@ -288,7 +317,10 @@ describe.skipIf(!url)('instance administration', () => {
           .requireAdminTwoFactor,
       ).toBe(true);
     } finally {
-      await request('admin', 'PATCH', '/instance/settings', { requireAdminTwoFactor: false });
+      await db
+        .update(instanceSetting)
+        .set({ value: previous?.value ?? {} })
+        .where(eq(instanceSetting.key, 'administration'));
       await db.update(user).set({ twoFactorEnabled: false }).where(eq(user.id, people.admin!.id));
     }
   });

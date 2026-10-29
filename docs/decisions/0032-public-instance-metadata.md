@@ -23,3 +23,13 @@ on a server without that enforcement.
 Health checks remain usable anonymously without disclosing the release. Old installations
 interpret an absent policy as false. Maintainers must approve this contract change before
 shipping the accompanying auth behavior. No bearer token or diagnostic schema changes.
+
+## Review follow-up
+
+`InstanceSettings` responses always include the effective policy, including false on
+older installations; OpenAPI therefore requires the field. Its read-time default lives in
+the server, while PATCH omissions remain optional and never reset the stored value.
+Activation is rejected unless the current database row of the requesting administrator
+has verified 2FA. The UI disables activation until enrollment and refreshes its session
+after every successful setting change. Release and upgrade notes explicitly describe the
+public version-field removal.

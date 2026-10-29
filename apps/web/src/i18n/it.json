@@ -1953,7 +1953,8 @@
   },
   "admin": {
     "requireAdminTwoFactor": "Richiedi la verifica in due passaggi agli amministratori",
-    "requireAdminTwoFactorHelp": "Gli amministratori devono configurare la verifica in due passaggi per usare l’istanza. Prima di attivarla, configura una password e conserva i codici di recupero.",
+    "requireAdminTwoFactorHelp": "Gli amministratori devono configurare la verifica in due passaggi per usare l’istanza. Conserva i codici di recupero prima di attivare il requisito.",
+    "requireAdminTwoFactorEnrollFirst": "Prima configura e verifica la tua autenticazione in due passaggi in Account. Solo un amministratore già protetto può attivare questo requisito.",
     "personal": "Personale",
     "account": "Account",
     "preferences": "Preferenze",

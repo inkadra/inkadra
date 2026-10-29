@@ -713,13 +713,13 @@
           },
           "requireAdminTwoFactor": {
             "type": "boolean",
-            "default": false,
             "description": "Require administrators to enroll in two-step verification before using the instance. Defaults to false on older installations."
           }
         },
         "required": [
           "name",
-          "registration"
+          "registration",
+          "requireAdminTwoFactor"
         ]
       },
       "UpdateInstanceSettings": {
