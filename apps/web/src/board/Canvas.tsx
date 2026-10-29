@@ -2227,48 +2227,48 @@ export function Canvas({
         {/* On the body: the canvas's touch-action and gesture handlers would block pinch-zoom. */}
         {viewed &&
           createPortal(
-          <MediaViewer
-            store={store}
-            element={viewed}
-            projectId={projectId}
-            userId={userId}
-            readOnly={readOnly}
-            onClose={closeViewer}
-            gallery={
-              viewableElements.length > 1 && viewedIndex >= 0
-                ? {
-                    index: viewedIndex,
-                    total: viewableElements.length,
-                    onPrevious: () => {
-                      const prev = viewableElements[viewedIndex - 1];
-                      if (prev) setViewing(prev.id);
-                    },
-                    onNext: () => {
-                      const next = viewableElements[viewedIndex + 1];
-                      if (next) setViewing(next.id);
-                    },
-                    onSelect: (idx: number) => {
-                      const target = viewableElements[idx];
-                      if (target) setViewing(target.id);
-                    },
-                    items: viewableElements.map((el) => ({
-                      id: el.id,
-                      assetId: el.type === 'link' ? el.imageAssetId : el.assetId,
-                      filename:
-                        el.type === 'link'
-                          ? el.title || el.url
-                          : el.type === 'image'
-                            ? el.caption
-                            : 'name' in el && typeof el.name === 'string'
-                              ? el.name
-                              : undefined,
-                      type: el.type,
-                    })),
-                    usedIn: [],
-                  }
-                : undefined
-            }
-          />,
+            <MediaViewer
+              store={store}
+              element={viewed}
+              projectId={projectId}
+              userId={userId}
+              readOnly={readOnly}
+              onClose={closeViewer}
+              gallery={
+                viewableElements.length > 1 && viewedIndex >= 0
+                  ? {
+                      index: viewedIndex,
+                      total: viewableElements.length,
+                      onPrevious: () => {
+                        const prev = viewableElements[viewedIndex - 1];
+                        if (prev) setViewing(prev.id);
+                      },
+                      onNext: () => {
+                        const next = viewableElements[viewedIndex + 1];
+                        if (next) setViewing(next.id);
+                      },
+                      onSelect: (idx: number) => {
+                        const target = viewableElements[idx];
+                        if (target) setViewing(target.id);
+                      },
+                      items: viewableElements.map((el) => ({
+                        id: el.id,
+                        assetId: el.type === 'link' ? el.imageAssetId : el.assetId,
+                        filename:
+                          el.type === 'link'
+                            ? el.title || el.url
+                            : el.type === 'image'
+                              ? el.caption
+                              : 'name' in el && typeof el.name === 'string'
+                                ? el.name
+                                : undefined,
+                        type: el.type,
+                      })),
+                      usedIn: [],
+                    }
+                  : undefined
+              }
+            />,
             document.body,
           )}
 

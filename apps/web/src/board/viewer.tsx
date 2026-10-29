@@ -461,9 +461,7 @@ export function MediaViewer({
             </>
           )}
 
-          <div
-            className={`viewer__media-wrap${isYoutube ? ' viewer__media-wrap--embed' : ''}`}
-          >
+          <div className={`viewer__media-wrap${isYoutube ? ' viewer__media-wrap--embed' : ''}`}>
             {isYoutube ? (
               <div className="viewer__embed">
                 <iframe
@@ -502,7 +500,9 @@ export function MediaViewer({
                 className="viewer__media viewer__media--contain"
                 poster={pickVariant(ready, wide) || ready.url}
                 moving={movingVariantUrl(ready, wide)}
-                alt={element.type === 'image' ? (element.caption ?? ready.filename) : ready.filename}
+                alt={
+                  element.type === 'image' ? (element.caption ?? ready.filename) : ready.filename
+                }
               />
             ) : null}
           </div>

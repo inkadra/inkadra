@@ -190,9 +190,16 @@ for (const [width, height] of [
       // Nothing in the viewer may block the browser's own pinch-zoom.
       expect(
         await page.evaluate(() =>
-          [document.documentElement, document.body, ...document.querySelectorAll('.viewer *')]
+          [
+            document.documentElement,
+            document.body,
+            ...Array.from(document.querySelectorAll('.viewer *')),
+          ]
             .map((el) => getComputedStyle(el).touchAction)
-            .filter((value) => value !== 'auto' && !value.includes('pinch-zoom') && value !== 'manipulation'),
+            .filter(
+              (value) =>
+                value !== 'auto' && !value.includes('pinch-zoom') && value !== 'manipulation',
+            ),
         ),
       ).toEqual([]);
       await page.screenshot({ path: testInfo.outputPath(`fit-${width}x${height}.png`) });
