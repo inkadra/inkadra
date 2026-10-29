@@ -35,6 +35,9 @@ configured, copy the link and send it yourself.
    GOOGLE_ALLOWED_DOMAINS=studio.it
    ```
 
+With `GOOGLE_ALLOWED_DOMAINS`, Google must vouch for the Workspace domain (`hd`) on every
+sign-in: personal `@gmail.com` accounts are refused, even when they were linked before.
+
 People who already have an account can also add Google from **Settings → Sign-in methods**.
 Signing in with Google with the same address links it to the existing account automatically,
 but only when that account's email is verified — otherwise the sign-in is refused and you
@@ -61,7 +64,12 @@ OIDC_CLIENT_SECRET=…
 # true only if the provider verifies every email address: links sign-ins to existing accounts
 # even without email_verified; the existing account's email must still be verified (see Google)
 OIDC_TRUST_EMAIL=false
+# optional: only verified addresses of these domains
+OIDC_ALLOWED_DOMAINS=studio.it
 ```
+
+With `OIDC_ALLOWED_DOMAINS`, the provider must mark the address as verified (`email_verified`)
+and its domain must be in the list. See [Configuration](configuration.md#sign-in-and-email).
 
 The discovery address is usually the issuer followed by `/.well-known/openid-configuration`
 (Authentik: `…/application/o/<slug>/…`, Keycloak: `…/realms/<realm>/…`).
@@ -83,7 +91,8 @@ when registration is open, and the page answers the same either way.
 ## Two-factor authentication
 
 Everyone can turn on an authenticator app (TOTP) in **Settings → Account**, and gets ten
-backup codes for when the phone is not at hand. Administrators cannot turn it off for
+backup codes for when the phone is not at hand. Once it is on, the code is asked after every way
+of signing in: password, email link, Google and OIDC. Administrators cannot turn it off for
 someone else yet: keep the backup codes.
 
 ## The browser clipper and the mobile app

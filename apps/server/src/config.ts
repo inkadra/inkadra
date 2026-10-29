@@ -25,7 +25,8 @@ const Env = z.object({
   AUTH_SECRET: z.string().min(32, 'AUTH_SECRET must be at least 32 characters'),
   INSTANCE_NAME: z.string().min(1).default('Inkadra'),
   AUTH_RATE_LIMITS: z.enum(['on', 'off']).default('on'),
-  CSP_REPORT_URI: z.string().url().optional(),
+  /** Empty when unset: compose passes every variable, set or not. */
+  CSP_REPORT_URI: z.preprocess(emptyToUndefined, z.url().optional()),
   CSP_ENFORCE: bool('false'),
   HSTS_ENABLED: bool('false'),
   OIDC_ALLOWED_DOMAINS: list,

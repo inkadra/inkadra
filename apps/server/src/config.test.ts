@@ -24,3 +24,13 @@ describe('UPLOAD_MAX_SIZE', () => {
     expect(() => loadConfig({ ...base, UPLOAD_MAX_SIZE: 'lots' })).toThrow(/UPLOAD_MAX_SIZE/);
   });
 });
+
+describe('CSP_REPORT_URI', () => {
+  it('treats an empty value as unset and rejects a relative one', () => {
+    expect(loadConfig({ ...base, CSP_REPORT_URI: '' }).CSP_REPORT_URI).toBeUndefined();
+    expect(
+      loadConfig({ ...base, CSP_REPORT_URI: 'https://r.example.com/csp' }).CSP_REPORT_URI,
+    ).toBe('https://r.example.com/csp');
+    expect(() => loadConfig({ ...base, CSP_REPORT_URI: '/csp' })).toThrow(/CSP_REPORT_URI/);
+  });
+});

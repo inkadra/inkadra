@@ -43,19 +43,27 @@ own server.
 ## What it does
 
 - **Boards on an infinite canvas.** Notes, images, files, links, to-do lists, colour swatches,
-  columns, arrows and boards inside boards. Start from scratch or from a template.
-- **Storyboards and shot lists.** Scenes and frames with shot size, angle, movement, lens,
-  duration, cast and status. Draw on a frame with the pen, or start from a picture. The shot
-  list is the same data as a table you can filter and export to CSV.
+  columns, arrows and boards inside boards. Start from scratch or from a template. YouTube and
+  Vimeo links show their preview, and YouTube videos play in the viewer.
+- **Storyboards, shot lists and schedules.** Scenes and frames with shot size, angle, movement,
+  lens, duration, cast and status. Draw on a frame with the pen, or start from a picture. The
+  shot list is the same data as a table you can filter and export to CSV; the shooting
+  schedule plans the days from the same shots.
+- **A home for every project.** Home opens on your recent boards, today's shooting day and what
+  changed. Each project has its own colour, shape or emoji, and every kind of content keeps one
+  colour across the app: storyboards purple, shot lists green, moodboards and media orange,
+  schedules teal, reviews pink, notes yellow.
 - **Together, live.** Everyone on a board sees changes as they happen. Roles per project and per
-  board, invitations, comments with mentions, review status and notifications.
+  board, invitations, comments with mentions, review status, and an inbox for notifications.
 - **Client review.** Share a board through a link, with or without comments and picks, and keep
-  some cards for the team only. Named versions let you go back to any earlier state.
+  some cards for the team only. Named versions let you go back to any earlier state, or bring
+  back a single deleted element.
 - **Capture from the web.** The [Inkadra Clipper](apps/clipper) extension saves images, quotes
   and links from Chrome, Edge, Brave and Arc straight onto a board.
 - **Your server, your files.** One Docker image for amd64 and arm64. Files on a volume, a host
-  folder or any S3 storage. Email, Google or your own OIDC provider for sign-in. Installs as an
-  app from the browser.
+  folder or any S3 storage. Email, Google or your own OIDC provider for sign-in, with two-factor
+  authentication on every method and sign-in limits that survive restarts. Installs as an app
+  from the browser.
 
 <table>
   <tr>
@@ -74,6 +82,15 @@ own server.
       <p align="center"><sub>Shot list: the same frames as a table</sub></p>
     </td>
   </tr>
+  <tr>
+    <td colspan="2">
+      <picture>
+        <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/readme/home-dark.png">
+        <img src="docs/screenshots/readme/home-light.png" alt="Home: today's shooting day, the recent boards with their kind colours, activity and templates">
+      </picture>
+      <p align="center"><sub>Home: today's shoot, recent boards and what changed</sub></p>
+    </td>
+  </tr>
 </table>
 
 ## Run it
@@ -90,6 +107,10 @@ docker compose up -d
 ```
 
 Open `PUBLIC_URL` in a browser: the first account you create becomes the administrator.
+
+To pin a release instead of following `latest`, set `INKADRA_TAG=0.4.0` (or `0.4` for its patch
+releases) in `.env`. Upgrading from 0.3? Read [Upgrading to 0.4](docs/self-hosting/upgrades.md#upgrading-to-04)
+first: Valkey is now required by every role and allowed domains are checked more strictly.
 
 The [self-hosting guide](docs/self-hosting) covers reverse proxies (Caddy, Traefik, Nginx,
 Nginx Proxy Manager, Pangolin), sign-in, storage on host folders or S3, split mode, upgrades

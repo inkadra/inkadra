@@ -90,7 +90,9 @@ waits for them. The service worker that does this never stores API responses,
 files, sign-in pages or anything tied to an account: see
 [decision 0015](../decisions/0015-installable-web-app.md). A proxy in front of Inkadra must
 serve `/sw.js` and `/manifest.webmanifest` as it receives them (the examples in `deploy/proxy`
-do); if it adds a `Content-Security-Policy`, it needs `worker-src 'self'`, `manifest-src 'self'`
+do). Inkadra sends its own `Content-Security-Policy` (see
+[Browser security headers](configuration.md#browser-security-headers)); a proxy that adds another
+one needs `worker-src 'self'`, `manifest-src 'self'`
 and must allow the inline `<script>` and `<style>` of `offline.html` and the inline theme script
 of `index.html` (with `'unsafe-inline'` or their hashes).
 
@@ -106,8 +108,10 @@ selects the role:
 | `collab`        | Real-time collaboration (WebSocket) on port 3001                    |
 | `worker`        | Background jobs (thumbnails, email, maintenance)                    |
 | `migrate`       | Apply database migrations and exit (`web` and `all` do it on start) |
+| `unlock-auth`   | Clear the sign-in counters of one account, then exit                |
 
-It needs Postgres 16 and Valkey 8 (or Redis 7); `compose.yaml` runs both. With your own
+It needs Postgres 16 and Valkey 8 or newer (or Redis 7); `compose.yaml` runs Postgres 16 and
+Valkey 9. Valkey is required in production by every role. With your own
 Postgres, the `pg_trgm` extension must be available (it is in the standard `contrib` package
 and in the official images); a migration creates it as the database owner. The server runs as
 user `node` (uid 1000) with a read-only root filesystem and no Linux capabilities; it writes
@@ -117,13 +121,13 @@ switches to uid 1000, which drops them. Each role has its own health check.
 
 | Tag           | What it is                                                  |
 | ------------- | ----------------------------------------------------------- |
-| `0.2.0`       | One release. Recommended: pin it in `INKADRA_TAG`           |
-| `0.2`         | The latest patch release of 0.2                             |
+| `0.4.0`       | One release. Recommended: pin it in `INKADRA_TAG`           |
+| `0.4`         | The latest patch release of 0.4                             |
 | `latest`      | The latest stable release                                   |
 | `edge`        | The latest commit of `main`: for testing, not for real work |
 | `sha-1a2b3c4` | One commit                                                  |
 
-Every tag also exists with the suffix `-media` (`0.2.0-media`, `latest-media`, `edge-media`…):
+Every tag also exists with the suffix `-media` (`0.4.0-media`, `latest-media`, `edge-media`…):
 the same image plus ffmpeg, a few hundred MB larger. With it, videos get a poster thumbnail on the
 board and their duration. Without it they upload and play the same, with a generic card. Set
 `INKADRA_TAG=latest-media` (or the version you pin, with `-media`) to use it. The server reports

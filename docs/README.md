@@ -10,4 +10,6 @@
 | [End-to-end tests](../e2e)                            | Running the Playwright tests and the load tests                        |
 
 `assets/` holds the logo (`logo-light.svg`, `logo-dark.svg`) and the social preview image;
-`screenshots/` holds the pictures used by the README and by pull requests.
+`screenshots/` holds the pictures used by the README (`screenshots/readme`) and by pull requests;
+`screens/` holds a few more from pull requests. Upgrading an instance? Start from
+[Upgrades](self-hosting/upgrades.md): it says what to do before moving to a new version.

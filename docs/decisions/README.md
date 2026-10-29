@@ -28,10 +28,13 @@ in order. An accepted decision is never rewritten: a later one supersedes it.
 | [0021](0021-templates-on-existing-boards.md)    | Templates on existing boards; Storyboard creates a real storyboard board               |
 | [0022](0022-shooting-schedule.md)               | Shooting schedules in Postgres, storyboard references by id                            |
 | [0023](0023-home-overview.md)                   | Home overview from two read-only lists                                                 |
-| [0026](0026-snapshot-trash.md)                  | Restore individual elements from saved versions                                        |
-| [0024](0024-project-setup-and-personal-pins.md) | 0024 · Project setup and personal pins                                                 |
+| [0024](0024-project-setup-and-personal-pins.md) | Project setup and personal pins                                                        |
 | [0025](0025-classification-catalogs.md)         | Instance classification catalogs                                                       |
-| [0025](0025-instance-administration.md)         | 0025 · Instance settings and member administration                                     |
-| [0027](0027-project-identity-palette.md)        | 0027 · Extend project identity without changing existing defaults                      |
-| [0028](0028-authentication-hardening.md)        | 0028 — Authentication hardening                                                        |
+| [0025](0025-instance-administration.md)         | Instance settings and member administration                                            |
+| [0026](0026-snapshot-trash.md)                  | Restore individual elements from saved versions                                        |
+| [0027](0027-project-identity-palette.md)        | Extend project identity without changing existing defaults                             |
+| [0028](0028-authentication-hardening.md)        | Authentication hardening: limits in Valkey, second factor everywhere, browser policies |
 | [0029](0029-settings-window.md)                 | Settings open as a window over the current page                                        |
+
+Two decisions share the number 0025: they were accepted in parallel, and accepted records
+are not renumbered.
