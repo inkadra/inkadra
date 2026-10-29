@@ -20,6 +20,7 @@ import { and, asc, count, desc, eq, gt, inArray, isNull, ne, sql } from 'drizzle
 import type { FastifyInstance } from 'fastify';
 import sharp from 'sharp';
 import type { Auth } from '../auth.ts';
+import { FRESH_SIGN_IN_MS } from '../auth-session.ts';
 import type { Config } from '../config.ts';
 import type { Database } from '../db/client.ts';
 import {
@@ -57,7 +58,7 @@ interface Deps {
 const TokenParams = z.object({ tokenId: Id });
 const SessionParams = z.object({ sessionId: Id });
 const CODE_TTL_MS = 2 * 60_000;
-const FRESH_SIGN_IN_MS = 15 * 60_000;
+
 const CLIENT_NAMES: Record<AppClient, string> = { clipper: 'Inkadra Clipper', mobile: 'Inkadra' };
 
 /**
@@ -199,7 +200,7 @@ export function registerAccountRoutes(app: FastifyInstance, deps: Deps) {
   });
 
   app.delete(v1('/me/sessions/:sessionId'), async (req, reply) => {
-    const session = await requireSession(auth, req, db);
+    const session = await requireSession(auth, req, db, true);
     const { sessionId } = SessionParams.parse(req.params);
     const [row] = await db
       .select({ token: sessionTable.token })
@@ -243,7 +244,7 @@ export function registerAccountRoutes(app: FastifyInstance, deps: Deps) {
   });
 
   app.delete(v1('/me/tokens/:tokenId'), async (req, reply) => {
-    const actor = await requireActor(auth, req, db);
+    const actor = await requireActor(auth, req, db, true);
     const { tokenId } = TokenParams.parse(req.params);
     const removed = await db
       .delete(personalToken)

@@ -5,7 +5,7 @@ import { sendError } from './errors.ts';
 const SAFE = new Set(['GET', 'HEAD', 'OPTIONS']);
 const GUEST_PREFIX = `${API_PREFIX}/guest/`;
 /** Better Auth's session cookie (`cookiePrefix: 'inkadra'`), with `__Secure-` over HTTPS. */
-const SESSION_COOKIE = /(?:^|;\s*)(?:__Secure-)?inkadra\.session_token=/;
+const SESSION_COOKIE = /(?:^|;\s*)(?:__Secure-|__Host-)?inkadra\.session_token=/;
 
 /**
  * Whether a write needs to come from the instance itself (decision 0013): every write under

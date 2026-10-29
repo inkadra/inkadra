@@ -14,7 +14,7 @@ import { readInstanceSettings } from './instance-settings.ts';
 import {
   acceptInvitation,
   findInvitation,
-  INVITATION_COOKIE,
+  invitationCookieName,
   invitationFromCookie,
   invitedAddressMatches,
   readCookie,
@@ -182,7 +182,7 @@ export function createAuth(config: Config, db: Database, deps: AuthDeps = {}) {
       before: createAuthMiddleware(async (ctx) => {
         const invitation =
           ctx.path === '/sign-up/email'
-            ? await invitationFromCookie(db, ctx.headers?.get('cookie'))
+            ? await invitationFromCookie(db, ctx.headers?.get('cookie'), config.PUBLIC_URL)
             : null;
         if (ctx.path === '/sign-up/email' && (await countUsers(db)) > 0) {
           const { registration } = await readInstanceSettings(db, config);
@@ -420,7 +420,11 @@ export function createAuth(config: Config, db: Database, deps: AuthDeps = {}) {
                     .from(schema.user)
                     .where(eq(schema.user.email, to.toLowerCase()));
                   if (!existing) {
-                    const invited = await invitationFromCookie(db, ctx?.headers?.get('cookie'));
+                    const invited = await invitationFromCookie(
+                      db,
+                      ctx?.headers?.get('cookie'),
+                      config.PUBLIC_URL,
+                    );
                     const { registration } = await readInstanceSettings(db, config);
                     if (
                       (registration === 'closed' || (registration !== 'open' && !invited)) &&
@@ -483,7 +487,18 @@ export function createAuth(config: Config, db: Database, deps: AuthDeps = {}) {
       },
     ],
     advanced: {
-      cookiePrefix: 'inkadra',
+      // Better Auth prepends __Secure- even to explicitly named cookies. Disable that
+      // automatic prefix, set Secure explicitly, and own the complete __Host- names.
+      useSecureCookies: false,
+      cookiePrefix: config.PUBLIC_URL.startsWith('https:') ? '__Host-inkadra' : 'inkadra',
+      defaultCookieAttributes: { secure: config.PUBLIC_URL.startsWith('https:'), path: '/' },
+      cookies: {
+        session_token: {
+          name: config.PUBLIC_URL.startsWith('https:')
+            ? '__Host-inkadra.session_token'
+            : 'inkadra.session_token',
+        },
+      },
       database: { generateId: 'uuid' },
       // The HTTP bridge puts Fastify's client address (which honours TRUST_PROXY) in this header
       // and drops any copy sent by the client, so rate limits cannot be dodged with X-Forwarded-For.
@@ -511,7 +526,11 @@ export function createAuth(config: Config, db: Database, deps: AuthDeps = {}) {
             if (await claimSetup(db)) return { data: { ...user, role: 'admin' } };
             const { registration } = await readInstanceSettings(db, config);
             if (registration !== 'open') {
-              const invited = await invitationFromCookie(db, ctx?.headers?.get('cookie'));
+              const invited = await invitationFromCookie(
+                db,
+                ctx?.headers?.get('cookie'),
+                config.PUBLIC_URL,
+              );
               if (!invited || registration === 'closed') {
                 throw new APIError('FORBIDDEN', {
                   code: 'REGISTRATION_CLOSED',
@@ -538,12 +557,15 @@ export function createAuth(config: Config, db: Database, deps: AuthDeps = {}) {
           after: async (user, ctx) => {
             const reserved = ctx ? reservedInvitations.get(ctx) : undefined;
             // A reserved invitation may have just used its last use, so look it up by token.
-            const token = readCookie(ctx?.headers?.get('cookie'), INVITATION_COOKIE);
+            const token = readCookie(
+              ctx?.headers?.get('cookie'),
+              invitationCookieName(config.PUBLIC_URL),
+            );
             const invited = reserved
               ? token
                 ? await findInvitation(db, token)
                 : null
-              : await invitationFromCookie(db, ctx?.headers?.get('cookie'));
+              : await invitationFromCookie(db, ctx?.headers?.get('cookie'), config.PUBLIC_URL);
             if (!invited || (reserved && invited.id !== reserved)) return;
             try {
               await acceptInvitation(db, invited.id, user.id, { reserved: !!reserved });

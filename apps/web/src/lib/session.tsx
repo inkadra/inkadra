@@ -15,6 +15,7 @@ interface SessionState {
   instance: Instance | null;
   user: User | null;
   loading: boolean;
+  enrollmentRequired?: boolean;
   refresh: () => Promise<void>;
 }
 
@@ -24,6 +25,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const [instance, setInstance] = useState<Instance | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [enrollmentRequired, setEnrollmentRequired] = useState(false);
   const latest = useRef(0);
 
   const refresh = useCallback(async () => {
@@ -37,7 +39,18 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         throw err;
       }),
     ]);
+    let required = false;
+    if (me?.role === 'admin' && !me.twoFactorEnabled) {
+      await api.get('/instance/settings').catch((err) => {
+        required =
+          err instanceof RequestError &&
+          err.status === 403 &&
+          (err.details as { reason?: string } | undefined)?.reason === 'admin_two_factor_required';
+        if (!required) throw err;
+      });
+    }
     if (call !== latest.current) return;
+    setEnrollmentRequired(required);
     setInstance(inst);
     setUser(me);
     if (me?.locale) {
@@ -54,7 +67,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   }, [refresh]);
 
   return (
-    <SessionContext.Provider value={{ instance, user, loading, refresh }}>
+    <SessionContext.Provider value={{ instance, user, loading, refresh, enrollmentRequired }}>
       {children}
     </SessionContext.Provider>
   );

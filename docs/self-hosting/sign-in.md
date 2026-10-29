@@ -117,3 +117,51 @@ CLIPPER_EXTENSION_IDS=abcdefghijklmnopabcdefghijklmnop
 Without it the `/authorize` page refuses the request: only the redirect address
 `https://<id>.chromiumapp.org/auth` of an allowed id receives a code. See
 [apps/clipper](../../apps/clipper/README.md) to build and load the extension.
+
+## HTTPS cookies in 0.4.2
+
+HTTPS installations use `__Host-inkadra.*` authentication cookies, with Secure,
+Path=/ and no Domain. Better Auth's automatic `__Secure-` prefix is disabled so
+it cannot prepend a second prefix. HTTP development keeps the plain `inkadra.*` names.
+
+Upgrading an HTTPS installation requires everyone to sign in once again, and pending
+invitations must be claimed again from their original links. Old sessions remain subject
+to their normal expiry/revocation, but their old cookie names are no longer accepted.
+Accepting the legacy cookie indefinitely would retain the sibling-subdomain cookie
+injection risk this change addresses. Bearer tokens are unaffected.
+
+## Mobile redirect schemes
+
+The server allows the custom redirect `inkadra://auth` for the planned mobile app;
+`apps/mobile` currently contains planning documentation only. Another application can register
+that scheme and intercept the authorization redirect. PKCE binds code redemption to the
+initiating app's verifier, but does not prove ownership of the redirect handler or prevent
+interception and denial of service. Do not treat a custom scheme as a verified app identity.
+
+The plan is verified HTTPS Android App Links (`assetlinks.json`) and iOS Universal Links
+(`apple-app-site-association`) with platform association checks, exact redirect allowlists,
+and PKCE retained. Self-hosted origins need their own association files. Until those are
+implemented, this risk remains; do not broaden the redirect allowlist as a workaround.
+
+## Administrator enrollment policy
+
+The `requireAdminTwoFactor` administration setting defaults to false. When enabled,
+administrators without two-step verification can read their identity and enroll through
+Better Auth, but cannot use product APIs, administrator APIs, tokens or collaboration.
+They see an enrollment banner instead of the workspace. Keep backup codes for recovery. Accounts without a credential password enroll using their
+authenticated provider session; accounts with a password must confirm it. Bootstrap stays available on an empty instance; an existing
+policy applies to the first administrator immediately after signup.
+
+### Emergency policy override and recent sign-in
+
+Enable the requirement only after enrolling the administrator who activates it. If nobody
+can get past enrollment, an operator can run `inkadra admin-2fa off` with the instance's
+database configuration (in Docker: `docker compose exec inkadra node /app/dist/main.js admin-2fa off`,
+in both all-in-one and split mode). This disables only the policy and preserves other
+settings and all personal second factors. Reload the browser afterwards. `unlock-auth`
+only clears attempt budgets and is not this override.
+
+Provider-only accounts need a sign-in less than 15 minutes old to enable/disable 2FA,
+retrieve the TOTP URI or read/regenerate backup codes. Password accounts still confirm
+their password. While enrollment is required, signing out and revoking the other sessions
+remain available; revocation does not allow creating or reading other credentials.

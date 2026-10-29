@@ -45,11 +45,19 @@ export async function issueToken(
 }
 
 /** The person a bearer token belongs to, or null for unknown, expired or revoked tokens. */
-export async function actorFromToken(db: Database, token: string): Promise<Actor | null> {
+export async function actorFromToken(
+  db: Database,
+  token: string,
+): Promise<(Actor & { twoFactorEnabled: boolean | null }) | null> {
   if (!isToken(token)) return null;
   const now = new Date();
   const [row] = await db
-    .select({ id: personalToken.id, userId: user.id, role: user.role })
+    .select({
+      id: personalToken.id,
+      userId: user.id,
+      role: user.role,
+      twoFactorEnabled: user.twoFactorEnabled,
+    })
     .from(personalToken)
     .innerJoin(user, eq(user.id, personalToken.userId))
     .where(
@@ -73,7 +81,12 @@ export async function actorFromToken(db: Database, token: string): Promise<Actor
         ),
       ),
     );
-  return { id: row.userId, role: row.role === 'admin' ? 'admin' : 'member', tokenId: row.id };
+  return {
+    id: row.userId,
+    role: row.role === 'admin' ? 'admin' : 'member',
+    tokenId: row.id,
+    twoFactorEnabled: row.twoFactorEnabled,
+  };
 }
 
 export function bearerToken(authorization: string | undefined): string | null {
