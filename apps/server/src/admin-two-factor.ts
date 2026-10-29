@@ -7,7 +7,10 @@ import { HttpError } from './http/errors.ts';
 export async function adminEnrollmentRequired(db: Database, id: string): Promise<boolean> {
   const [owner] = await db.select().from(user).where(eq(user.id, id));
   if (owner?.role !== 'admin' || owner.twoFactorEnabled) return false;
-  const [settings] = await db.select().from(instanceSetting).where(eq(instanceSetting.key, 'administration'));
+  const [settings] = await db
+    .select()
+    .from(instanceSetting)
+    .where(eq(instanceSetting.key, 'administration'));
   return settings?.value?.requireAdminTwoFactor === true;
 }
 

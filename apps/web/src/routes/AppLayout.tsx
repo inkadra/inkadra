@@ -15,8 +15,10 @@ import {
 } from '@inkadra/ui';
 import {
   createContext,
+  lazy,
   type MouseEvent,
   type ReactNode,
+  Suspense,
   useContext,
   useEffect,
   useMemo,
@@ -76,10 +78,14 @@ import {
   subscribeProjects,
 } from './projects.ts';
 import { SearchDialog } from './SearchDialog.tsx';
-import { TwoFactor } from './Settings.tsx';
+
 import { SettingsWindow } from './SettingsWindow.tsx';
 import { isSettingsPath } from './settings-sections.ts';
 import './mobile-shell.css';
+
+const TwoFactor = lazy(() =>
+  import('./Settings.tsx').then((module) => ({ default: module.TwoFactor })),
+);
 
 interface ProjectsState {
   projects: Project[] | null;
@@ -996,7 +1002,9 @@ export function AppLayout(props: { home?: ReactNode }) {
     return (
       <main className="settings-page">
         <p role="alert">{t('settings.twoFactor.requiredAdmin')}</p>
-        <TwoFactor onDone={() => {}} />
+        <Suspense fallback={null}>
+          <TwoFactor onDone={() => {}} />
+        </Suspense>
       </main>
     );
   return <EnrolledAppLayout {...props} />;

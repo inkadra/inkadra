@@ -11,6 +11,7 @@ import {
   assetVariant,
   boardElementIndex,
   boardGrant,
+  instanceSetting,
   personalToken,
   projectMember,
   session,
@@ -247,6 +248,41 @@ describe.skipIf(!url)('instance administration', () => {
       scope: 'project',
       bytes: 3000,
     });
+  });
+
+  it('enforces enrollment for session, token and account endpoints, and unlocks after enrollment', async () => {
+    const token = await issueToken(db, people.admin!.id, { name: 'Enrollment regression' });
+    await db
+      .insert(instanceSetting)
+      .values({ key: 'administration', value: { requireAdminTwoFactor: true } })
+      .onConflictDoUpdate({
+        target: instanceSetting.key,
+        set: { value: { requireAdminTwoFactor: true } },
+      });
+    try {
+      for (const path of ['/projects', '/instance/settings', '/me/tokens']) {
+        const response = await request('admin', 'GET', path);
+        expect(response.statusCode).toBe(403);
+        expect(response.json().error.details.reason).toBe('admin_two_factor_required');
+      }
+      expect((await request('admin', 'GET', '/me')).statusCode).toBe(200);
+      expect((await request('member', 'GET', '/projects')).statusCode).toBe(200);
+      expect(
+        (
+          await app.inject({
+            url: '/api/v1/projects',
+            headers: { authorization: `Bearer ${token.token}` },
+          })
+        ).statusCode,
+      ).toBe(403);
+      await db.update(user).set({ twoFactorEnabled: true }).where(eq(user.id, people.admin!.id));
+      expect((await request('admin', 'GET', '/projects')).statusCode).toBe(200);
+      expect((await request('admin', 'GET', '/instance/settings')).statusCode).toBe(200);
+    } finally {
+      await db.delete(instanceSetting).where(eq(instanceSetting.key, 'administration'));
+      await db.update(user).set({ twoFactorEnabled: false }).where(eq(user.id, people.admin!.id));
+      await db.delete(personalToken).where(eq(personalToken.id, token.row.id));
+    }
   });
 
   it('validates settings, persists partial overrides and updates public metadata', async () => {
