@@ -105,6 +105,14 @@ describe('two-finger gesture', () => {
     expect(mid.x).toBeCloseTo(screenToWorld(v, { x: 200, y: 200 }).x);
   });
 
+  it('zooms out as far as it goes when the fingers meet', () => {
+    const mid = { x: 200, y: 200 };
+    const next = pinchViewport(v, [a, b], [mid, mid]);
+    expect(next.zoom).toBe(MIN_ZOOM);
+    expect(screenToWorld(next, mid).x).toBeCloseTo(screenToWorld(v, mid).x);
+    expect(screenToWorld(next, mid).y).toBeCloseTo(screenToWorld(v, mid).y);
+  });
+
   it('only pans when the fingers start on the same spot', () => {
     const next = pinchViewport(
       v,

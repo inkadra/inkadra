@@ -57,7 +57,8 @@ export function pinchViewport(
 ): Viewport {
   const start = Math.hypot(from[1].x - from[0].x, from[1].y - from[0].y);
   const now = Math.hypot(to[1].x - to[0].x, to[1].y - to[0].y);
-  const zoom = clampZoom(start > 0 && now > 0 ? (v.zoom * now) / start : v.zoom);
+  // Fingers that started together only pan; fingers that meet zoom out as far as it goes.
+  const zoom = start > 0 ? clampZoom((v.zoom * now) / start) : v.zoom;
   const world = screenToWorld(v, {
     x: (from[0].x + from[1].x) / 2,
     y: (from[0].y + from[1].y) / 2,
