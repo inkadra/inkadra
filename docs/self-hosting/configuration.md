@@ -100,7 +100,8 @@ Never use `true`: it trusts everyone, so any client could choose its address.
 Production authentication requires `REDIS_URL` (the existing Valkey instance). IP, account
 and recipient budgets persist across processes and restarts. **Breaking change: every production
 role that creates auth, including `web`, refuses to start without REDIS_URL.** Unavailable Valkey
-returns 503 for sign-in/reset/2FA while session lookup and sign-out remain available.
+returns 503 for sign-in, sign-up, credential changes, reset and 2FA; session lookup and sign-out
+remain available.
 Tests use Valkey when REDIS_URL is set; otherwise they use bounded memory. E2e uses
 NODE_ENV=development and AUTH_RATE_LIMITS=off; production always ignores this override.
 Email delivery runs outside the request's awaited SMTP path. Delivery is best effort: process

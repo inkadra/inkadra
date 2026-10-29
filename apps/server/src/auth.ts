@@ -440,6 +440,7 @@ export function createAuth(config: Config, db: Database, deps: AuthDeps = {}) {
           after: [
             {
               matcher: (ctx) =>
+                new URL(config.PUBLIC_URL).protocol === 'https:' &&
                 Boolean(ctx.context.newSession) &&
                 Boolean(ctx.path) &&
                 ((ctx.path ?? '').startsWith('/sign-in/') ||
@@ -538,7 +539,10 @@ export function createAuth(config: Config, db: Database, deps: AuthDeps = {}) {
       },
     },
   });
-  return Object.assign(auth, { closeSecurity: () => security.close() });
+  return Object.assign(auth, {
+    readySecurity: () => security.ready(),
+    closeSecurity: () => security.close(),
+  });
 }
 
 export type Auth = ReturnType<typeof createAuth>;

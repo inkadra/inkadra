@@ -175,3 +175,23 @@ it('detaches reset delivery budgets and keys them by recipient and source', asyn
   await vi.waitFor(() => expect(send).toHaveBeenCalledOnce());
   expect(budgets.take).toHaveBeenCalledWith(`mail:${user.email}`, 10, 3600);
 });
+
+it('issues a host-only secure device cookie after the two-factor plugin', async () => {
+  const plugins = auth.options.plugins ?? [];
+  const index = plugins.findIndex((plugin) => plugin.id === 'known-device');
+  expect(index).toBeGreaterThan(plugins.findIndex((plugin) => plugin.id === 'two-factor'));
+  const hook = plugins[index]?.hooks?.after?.[0];
+  if (!hook) throw new Error('Missing known-device hook');
+  const context = ctx('/two-factor/verify-totp', { newSession: { user } });
+  expect(hook.matcher(context as never)).toBe(true);
+  expect(hook.matcher(ctx('/sign-in/email') as never)).toBe(false);
+  const result = (await hook.handler({ ...context, returnHeaders: true } as never)) as {
+    headers: Headers;
+  };
+  const cookie = result.headers.get('set-cookie');
+  expect(cookie).toContain('__Host-inkadra.known-device=');
+  expect(cookie).toContain('HttpOnly');
+  expect(cookie).toContain('Secure');
+  expect(cookie).toContain('SameSite=Lax');
+  expect(cookie).not.toContain('Domain=');
+});

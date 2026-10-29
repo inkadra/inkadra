@@ -148,6 +148,7 @@ describe.skipIf(!url)('sharing, invitations, tokens and accounts (needs DATABASE
     await runMigrations(config.DATABASE_URL, migrationsFolder);
     await db.execute(sql`truncate table "user", project, instance_setting, verification cascade`);
     auth = createAuth(config, db, { mailer });
+    await auth.readySecurity();
     // Revocation must be observed on the next request, including with the old cookies.
     expect(auth.options).not.toHaveProperty('session.cookieCache.enabled', true);
     expect(auth.options).not.toHaveProperty('secondaryStorage');
@@ -892,7 +893,8 @@ describe.skipIf(!url)('sharing, invitations, tokens and accounts (needs DATABASE
       { code: totp(secret) },
     );
     await expectSessionCookie(completed);
-    expect(cookieOf(completed.cookies, '__Host-inkadra.known-device')).not.toBe('');
+    // HTTP instances cannot use the Secure device cookie.
+    expect(cookieOf(completed.cookies, '__Host-inkadra.known-device')).toBe('');
 
     const signIn = await call(null, 'POST', '/api/auth/sign-in/email', {
       email: as.viewer.email,

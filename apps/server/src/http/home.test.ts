@@ -18,6 +18,8 @@ const url = process.env.DATABASE_URL;
 describe.skipIf(!url)('home overview: recent boards and shooting days (needs DATABASE_URL)', () => {
   const config = loadConfig({
     NODE_ENV: 'test',
+    // Fixture setup creates many accounts on one loopback network. Auth limits have dedicated tests.
+    AUTH_RATE_LIMITS: 'off',
     PUBLIC_URL: 'http://localhost:3000',
     DATABASE_URL: url ?? 'postgres://unused',
     AUTH_SECRET: 'test-secret-test-secret-test-secret-0123',
