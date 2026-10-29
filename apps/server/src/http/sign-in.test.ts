@@ -2,13 +2,14 @@ import { randomUUID } from 'node:crypto';
 import { createServer, type Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { fileURLToPath } from 'node:url';
+import { hashPassword } from 'better-auth/crypto';
 import pino from 'pino';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import type { Auth } from '../auth.ts';
 import { createAuth } from '../auth.ts';
 import { loadConfig } from '../config.ts';
 import { createDatabase, runMigrations } from '../db/client.ts';
-import { user } from '../db/schema.ts';
+import { account, user } from '../db/schema.ts';
 import { testDeps } from '../test-deps.ts';
 import { createApp } from './app.ts';
 
@@ -179,5 +180,63 @@ describe.skipIf(!url)('sign-in providers (needs DATABASE_URL)', () => {
       info.mockRestore();
       exchange.mockRestore();
     }
+  });
+
+  it('lets a known HTTPS device sign in during a distributed account lockout', async () => {
+    const password = 'correct horse battery staple';
+    const fixture = async () => {
+      const email = `${randomUUID()}@example.com`;
+      const [owner] = await db
+        .insert(user)
+        .values({ name: 'Known device', email, emailVerified: true })
+        .returning();
+      if (!owner) throw new Error('Missing fixture');
+      await db.insert(account).values({
+        accountId: owner.id,
+        providerId: 'credential',
+        userId: owner.id,
+        password: await hashPassword(password),
+      });
+      return email;
+    };
+    const signIn = (email: string, secret: string, source: string, cookie = '') =>
+      app.inject({
+        method: 'POST',
+        url: '/api/auth/sign-in/email',
+        headers: {
+          origin: 'https://inkadra.example.com',
+          'x-forwarded-for': source,
+          ...(cookie ? { cookie } : {}),
+        },
+        payload: { email, password: secret },
+      });
+    const deviceOf = (res: Awaited<ReturnType<typeof signIn>>) =>
+      res.cookies.find((c) => c.name === '__Host-inkadra.known-device');
+
+    const email = await fixture();
+    const first = await signIn(email, password, '198.51.100.1');
+    expect(first.statusCode).toBe(200);
+    const device = deviceOf(first);
+    expect(device).toMatchObject({ httpOnly: true, secure: true, path: '/', sameSite: 'Lax' });
+    expect(device?.domain).toBeUndefined();
+    const known = `__Host-inkadra.known-device=${device?.value}`;
+
+    // Five networks spend the hourly account ceiling without hitting their own source limits.
+    for (let network = 0; network < 5; network++)
+      for (let attempt = 0; attempt < 10; attempt++)
+        expect((await signIn(email, 'wrong password!', `203.0.${network}.1`)).statusCode).toBe(401);
+    const locked = await signIn(email, password, '198.51.100.1');
+    expect(locked.statusCode).toBe(429);
+    expect(locked.headers['retry-after']).toBeTruthy();
+
+    // Another account's valid device cookie is not a bypass.
+    const other = await fixture();
+    const foreign = deviceOf(await signIn(other, password, '198.51.101.1'));
+    const borrowed = `__Host-inkadra.known-device=${foreign?.value}`;
+    expect((await signIn(email, password, '198.51.100.1', borrowed)).statusCode).toBe(429);
+
+    const resumed = await signIn(email, password, '198.51.100.1', known);
+    expect(resumed.statusCode).toBe(200);
+    expect(resumed.cookies.some((c) => c.name.endsWith('session_token') && c.value)).toBe(true);
   });
 });
