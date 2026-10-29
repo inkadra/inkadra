@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -12,6 +13,8 @@ import { pushBoardDoc, signIn, uploadFile, waitForAssets } from '../tests/perf/s
  * (docs/screenshots/readme), in the dark and the light theme:
  *
  *   SHOTS_BASE_URL=http://localhost:3200 pnpm --filter @inkadra/e2e screenshots
+ *
+ * SHOTS_CHANNEL=chrome uses the installed Chrome instead of Playwright's Chromium.
  *
  * The pictures on the boards are drawn here, so the screenshots carry no third-party images.
  */
@@ -159,7 +162,11 @@ function note(doc: Y.Doc, at: { x: number; y: number }, lines: string[], w?: num
 
 async function main() {
   const browser = await chromium.launch(
-    process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {},
+    process.env.CHROMIUM_PATH
+      ? { executablePath: process.env.CHROMIUM_PATH }
+      : process.env.SHOTS_CHANNEL
+        ? { channel: process.env.SHOTS_CHANNEL }
+        : {},
   );
   const pictures = await renderStills(browser);
   const cookie = await signIn(base, account);
@@ -400,6 +407,45 @@ async function main() {
   });
   await pushBoardDoc(base, cookie, storyboard.id, story);
 
+  // The casting board, so that its card on Home has a preview.
+  const cast = new Y.Doc();
+  initBoardDoc(cast, casting.id);
+  cast.transact(() => {
+    note(cast, { x: 0, y: 0 }, ['Anna', 'Late twenties, tired, quick to laugh.'], 260);
+    note(cast, { x: 0, y: 200 }, ['Leo', 'Older, night-shift worker, few words.'], 260);
+    createElement(cast, 'image', { x: 300, y: 0 }, { assetId: pic('window'), w: 320 }, opts);
+    createElement(cast, 'image', { x: 300, y: 200 }, { assetId: pic('diner'), w: 320 }, opts);
+  });
+  await pushBoardDoc(base, cookie, casting.id, cast);
+
+  // A shooting day today, for the card on Home. The date is the local one, like the app's.
+  const now = new Date();
+  const pad = (n: number) => String(n).padStart(2, '0');
+  const today = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+  const block = (type: string, title: string, start: string | null, duration: number) => ({
+    id: randomUUID(),
+    type,
+    title,
+    start,
+    duration,
+    shotId: null,
+    cast: [],
+    departments: [],
+  });
+  await api(cookie, `/boards/${storyboard.id}/schedule`, {
+    date: today,
+    callTime: '18:30',
+    wrap: '04:00',
+    location: 'Central station',
+    notes: '',
+    blocks: [
+      block('setup', 'Lamps and rain machine', '18:30', 90),
+      block('shot', 'The empty platform', null, 60),
+      block('break', 'Dinner', null, 45),
+      block('shot', 'Anna misses the train', null, 120),
+    ],
+  });
+
   mkdirSync(out, { recursive: true });
   const boardUrl = `/p/${project.id}`;
   const storyUrl = `/p/${project.id}/b/${storyboard.id}`;
@@ -421,6 +467,7 @@ async function main() {
     await shoot(page, boardUrl, join(out, `board-${theme}.png`));
     await shoot(page, storyUrl, join(out, `storyboard-${theme}.png`));
     await shoot(page, `${storyUrl}?view=shotlist`, join(out, `shotlist-${theme}.png`));
+    await shoot(page, '/', join(out, `home-${theme}.png`));
     await context.close();
   }
   await browser.close();
@@ -430,7 +477,7 @@ async function main() {
 async function shoot(page: Page, path: string, file: string) {
   await page.goto(path);
   await page.waitForLoadState('networkidle');
-  if (!path.includes('view=')) {
+  if (path !== '/' && !path.includes('view=')) {
     await page
       .getByTestId('canvas')
       .click({ position: { x: 5, y: 5 } })
