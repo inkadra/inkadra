@@ -33,3 +33,11 @@ Activation is rejected unless the current database row of the requesting adminis
 has verified 2FA. The UI disables activation until enrollment and refreshes its session
 after every successful setting change. Release and upgrade notes explicitly describe the
 public version-field removal.
+
+## Maintainer approval — 2026-10-29
+
+Eccezione di contratto **approvata dal maintainer il 2026-10-29**: remove `version` from
+`GET /api/v1/health` and `GET /api/v1/instance` in v1 **without a deprecation period**.
+This explicit approval is limited to these public software-version fields. Operators must
+update monitors and dashboards that read the version from `/health`; the public health
+response continues to provide status and dependency checks, but no release identifier.
