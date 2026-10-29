@@ -548,16 +548,11 @@
     "openOnYoutube": "Open on YouTube",
     "copyAll": "Copy all",
     "copiedAll": "All colours copied",
-    "zoomFit": "Fit",
-    "zoom100": "Zoom 100%",
-    "zoomHelp": "Space toggles between fit and 100%",
     "hints": {
-      "nav": "to browse",
-      "zoom": "zoom 100%"
+      "nav": "to browse"
     },
     "keys": {
-      "esc": "esc",
-      "space": "space"
+      "esc": "esc"
     },
     "thumbnails": "Thumbnails",
     "item": "Item {{n}}"
@@ -1681,7 +1676,6 @@
     "navigation": "Gallery navigation",
     "previous": "Previous",
     "next": "Next",
-    "compare": "Compare A/B",
     "usedIn": "Used in · this board",
     "openSource": "Open source"
   },

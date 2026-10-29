@@ -3205,16 +3205,6 @@ button.moodboard__card {
   gap: 8px;
   align-items: center;
 }
-.viewer__stage--compare .viewer__media-wrap {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  gap: 12px;
-  width: 100%;
-  min-width: 0;
-}
-.viewer__stage--compare .viewer__media {
-  cursor: default;
-}
 /* Review: frame list, the frame on stage and the decision panel -------------------- */
 
 .client-review__frames {
