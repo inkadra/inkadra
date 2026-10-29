@@ -66,6 +66,7 @@ import {
   useState,
   useSyncExternalStore,
 } from 'react';
+import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router';
 import * as Y from 'yjs';
@@ -1670,7 +1671,6 @@ export function Canvas({
     () => (drawing ? storyboardOf([...snap.byId.values()]).flatMap((g) => g.frames) : []),
     [drawing, snap],
   );
-  const [compareViewer, setCompareViewer] = useState(false);
   // Only while the viewer is open; in reading order (top to bottom, then left to right).
   const viewableElements = useMemo(
     () => (viewing ? viewableInOrder([...snap.byId.values()], guest) : []),
@@ -1684,16 +1684,8 @@ export function Canvas({
       ? viewedEl
       : null;
   const viewedIndex = viewed ? viewableElements.findIndex((el) => el.id === viewed.id) : -1;
-  const compareWith =
-    viewed && viewedIndex >= 0
-      ? viewableElements
-          .slice(viewedIndex + 1)
-          .concat(viewableElements.slice(0, viewedIndex))
-          .find((el): el is Extract<Element, { type: 'image' | 'link' }> => el.type !== 'file')
-      : undefined;
   const closeViewer = useCallback(() => {
     setViewing(null);
-    setCompareViewer(false);
   }, []);
 
   const addTemplate = async (id: TemplateId) => {
@@ -2232,7 +2224,9 @@ export function Canvas({
             onClose={() => setDrawing(null)}
           />
         )}
-        {viewed && (
+        {/* On the body: the canvas's touch-action and gesture handlers would block pinch-zoom. */}
+        {viewed &&
+          createPortal(
           <MediaViewer
             store={store}
             element={viewed}
@@ -2270,14 +2264,13 @@ export function Canvas({
                               : undefined,
                       type: el.type,
                     })),
-                    onCompare: compareWith ? () => setCompareViewer((c) => !c) : undefined,
-                    comparison: compareViewer ? compareWith : undefined,
                     usedIn: [],
                   }
                 : undefined
             }
-          />
-        )}
+          />,
+            document.body,
+          )}
 
         {menu && menuItems.length > 0 && (
           <ContextMenu x={menu.x} y={menu.y} items={menuItems} onClose={() => setMenu(null)} />

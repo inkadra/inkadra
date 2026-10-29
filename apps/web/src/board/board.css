@@ -1745,29 +1745,11 @@ button.crumb--editable:focus-visible {
   --viewer-thumbs-h: 98px;
 }
 
-.viewer__media-wrap.is-zoomed {
-  max-width: none;
-  max-height: none;
-}
-.viewer__picture-btn {
-  display: contents;
-  cursor: zoom-in;
-}
 .viewer__media--contain {
   max-width: 100%;
   max-height: calc(100vh - 170px);
   object-fit: contain;
   border-radius: 4px;
-  cursor: zoom-in;
-}
-.viewer__media--zoom100 {
-  max-width: none;
-  max-height: none;
-  width: auto;
-  height: auto;
-  object-fit: none;
-  border-radius: 4px;
-  cursor: zoom-out;
 }
 .viewer__stage-nav {
   position: absolute;

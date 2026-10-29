@@ -31,8 +31,7 @@ const base = { x: 0, y: 0, w: 320, h: 200, z: 'a0', parent: null, createdBy: nul
 const yt = { ...base, id: 'yt', type: 'link', url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ', title: 'A cinematic reference with a long title', tags: ['reference'] };
 const img = (id, assetId) => ({ ...base, id, type: 'image', assetId, caption: 'Image ' + id, tags: ['reference'] });
 const sc = ${JSON.stringify(scenario)};
-const element = sc === 'yt' || sc === 'yt-compare' ? yt : sc === 'portrait' ? img('i2', 'port') : sc === 'video' ? { ...img('v1', 'vid'), type: 'video' } : img('i1', 'land');
-const comparison = sc.endsWith('compare') ? img('c1', 'land') : undefined;
+const element = sc === 'yt' ? yt : sc === 'portrait' ? img('i2', 'port') : sc === 'video' ? { ...img('v1', 'vid'), type: 'video' } : img('i1', 'land');
 const items = Array.from({ length: 5 }, (_, i) => ({ id: String(i), type: 'image', assetId: 'land', filename: 'Reference ' + (i + 1) }));
 if (sc === 'shell') {
   nav.remove();
@@ -63,7 +62,7 @@ if (sc === 'shell') {
   const onClose = () => { window.settingsClosed += 1; };
   function Loaded() { const { loading } = useSession(); return loading ? null : React.createElement(SettingsWindow, { setup: { checks: null, error: false }, onClose, onBack: () => {} }, React.createElement('p', null, 'Settings page')); }
   ReactDOM.createRoot(document.getElementById('root')).render(React.createElement(MemoryRouter, { initialEntries: ['/settings?section=account'] }, React.createElement(SessionProvider, null, React.createElement(Loaded))));
-} else ReactDOM.createRoot(document.getElementById('root')).render(React.createElement(MediaViewer, { store: {}, element, projectId: 'p', userId: 'u', readOnly: true, onClose: () => {}, gallery: { index: 3, total: 5, onPrevious: () => {}, onNext: () => {}, onSelect: () => {}, onCompare: () => {}, comparison, usedIn: [], items } }));
+} else ReactDOM.createRoot(document.getElementById('root')).render(React.createElement(MediaViewer, { store: {}, element, projectId: 'p', userId: 'u', readOnly: true, onClose: () => {}, gallery: { index: 3, total: 5, onPrevious: () => {}, onNext: () => {}, onSelect: () => {}, usedIn: [], items } }));
 </script></body></html>`;
 
 for (const [width, height] of [
@@ -143,47 +142,63 @@ for (const [width, height] of [
   });
 }
 
-test('compare keeps both images inside the stage (#223)', async ({ page }, testInfo) => {
-  await page.setViewportSize({ width: 1280, height: 800 });
-  await page.route('**/api/v1/**', (route) => route.fulfill({ status: 404, json: {} }));
-  await page.route('**/__shot', (route) =>
-    route.fulfill({ body: fixture('image-compare'), contentType: 'text/html' }),
-  );
-  await page.route('**/img/*.svg', (route) =>
-    route.fulfill({
-      contentType: 'image/svg+xml',
-      body: '<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900"><rect width="1600" height="900" fill="gray"/></svg>',
-    }),
-  );
-  await page.goto('http://127.0.0.1:5179/__shot');
-  await expect(page.locator('.viewer__media')).toHaveCount(2);
-  await expect
-    .poll(() =>
-      page
-        .locator('.viewer__media')
-        .first()
-        .evaluate((el) => (el as HTMLImageElement).naturalWidth),
-    )
-    .toBe(1600);
-  for (const theme of ['dark', 'light']) {
-    await page.evaluate((theme) => (document.documentElement.dataset.theme = theme), theme);
-    await page.screenshot({ path: testInfo.outputPath(`compare-${theme}.png`) });
-  }
-  await expect(
-    page.locator('.viewer__stage-header button[aria-keyshortcuts="Space"]'),
-  ).toBeDisabled();
-  await page.locator('.viewer').focus();
-  await page.keyboard.press('Space');
-  await expect(page.locator('.viewer__media-wrap')).not.toHaveClass(/is-zoomed/);
-  await page.locator('.viewer__picture-btn img').click({ force: true });
-  await expect(page.locator('.viewer__media-wrap')).not.toHaveClass(/is-zoomed/);
-  const stage = (await page.locator('.viewer__stage').boundingBox())!;
-  for (const image of await page.locator('.viewer__media').all()) {
-    const box = (await image.boundingBox())!;
-    expect(box.x).toBeGreaterThanOrEqual(stage.x);
-    expect(box.x + box.width).toBeLessThanOrEqual(stage.x + stage.width);
-  }
-});
+for (const [width, height] of [
+  [1280, 800],
+  [412, 915],
+] as const) {
+  test.describe(`no compare or zoom ${width}x${height}`, () => {
+    test.use({ hasTouch: width < 1000, isMobile: width < 1000 });
+    test('the viewer has no compare or zoom action and always fits the image', async ({
+      page,
+    }, testInfo) => {
+      await page.setViewportSize({ width, height });
+      await page.route('**/api/v1/**', (route) => route.fulfill({ status: 404, json: {} }));
+      await page.route('**/__shot', (route) =>
+        route.fulfill({ body: fixture('image'), contentType: 'text/html' }),
+      );
+      await page.route('**/img/*.svg', (route) =>
+        route.fulfill({
+          contentType: 'image/svg+xml',
+          body: '<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900"><rect width="1600" height="900" fill="gray"/></svg>',
+        }),
+      );
+      await page.goto('http://127.0.0.1:5179/__shot');
+      const media = page.locator('.viewer__media');
+      await expect(media).toHaveCount(1);
+      await expect
+        .poll(() => media.evaluate((el) => (el as HTMLImageElement).naturalWidth))
+        .toBe(1600);
+      const viewer = page.locator('.viewer');
+      for (const name of [/confronta|compare/i, /zoom|adatta|\bfit\b/i]) {
+        await expect(viewer.getByRole('button', { name })).toHaveCount(0);
+      }
+      await expect(viewer.locator('[aria-keyshortcuts="Space"]')).toHaveCount(0);
+      await expect(viewer.locator('.viewer__hints')).not.toContainText(/zoom/i);
+      const fitted = async () => {
+        const stage = (await page.locator('.viewer__stage').boundingBox())!;
+        const box = (await media.boundingBox())!;
+        expect(box.x).toBeGreaterThanOrEqual(stage.x);
+        expect(box.x + box.width).toBeLessThanOrEqual(stage.x + stage.width);
+        expect(box.y + box.height).toBeLessThanOrEqual(stage.y + stage.height);
+      };
+      await fitted();
+      await viewer.focus();
+      await page.keyboard.press('Space');
+      await media.click();
+      await expect(media).toBeVisible();
+      await fitted();
+      // Nothing in the viewer may block the browser's own pinch-zoom.
+      expect(
+        await page.evaluate(() =>
+          [document.documentElement, document.body, ...document.querySelectorAll('.viewer *')]
+            .map((el) => getComputedStyle(el).touchAction)
+            .filter((value) => value !== 'auto' && !value.includes('pinch-zoom') && value !== 'manipulation'),
+        ),
+      ).toEqual([]);
+      await page.screenshot({ path: testInfo.outputPath(`fit-${width}x${height}.png`) });
+    });
+  });
+}
 
 async function openShell(page: Page) {
   await page.setViewportSize({ width: 1280, height: 800 });
@@ -317,7 +332,7 @@ for (const [width, height] of [
       await page.evaluate(() => (document.activeElement as HTMLElement).checkVisibility()),
     ).toBe(true);
     await page.keyboard.press('Space');
-    await expect(page.locator('.viewer__media-wrap')).toHaveClass(/is-zoomed/);
+    expect(await inside()).toBe(true);
     for (const key of ['Shift+Tab', ...Array(30).fill('Tab'), ...Array(30).fill('Shift+Tab')]) {
       await page.keyboard.press(key);
       expect(await inside()).toBe(true);

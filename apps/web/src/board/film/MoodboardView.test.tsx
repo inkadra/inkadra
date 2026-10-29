@@ -115,7 +115,7 @@ it('renders empty state, reacts to Yjs updates and filters the gallery and palet
   expect(host.textContent).toContain('moodboard.noMatches');
 });
 
-it('navigates the filtered gallery, compares real references, shows frame reuse and respects readOnly', async () => {
+it('navigates the filtered gallery without a compare action, shows frame reuse and respects readOnly', async () => {
   const { doc, store, add } = board();
   const first = add('image', { assetId: 'one', caption: 'First', tags: ['Night'] });
   add('image', { assetId: 'excluded', tags: ['Day'] });
@@ -140,10 +140,10 @@ it('navigates the filtered gallery, compares real references, shows frame reuse 
   expect(dialog()?.querySelector('[data-tags-readonly="true"]')).not.toBeNull();
   expect(dialog()?.textContent).not.toContain('viewer.addColors');
   const buttons = () => [...(dialog()?.querySelectorAll('button') ?? [])];
-  await click(
-    buttons().find((button) => button.getAttribute('aria-label') === 'moodboard.compare') ?? null,
+  expect(buttons().some((button) => button.getAttribute('aria-label') === 'moodboard.compare')).toBe(
+    false,
   );
-  expect(dialog()?.querySelectorAll('.viewer__stage img')).toHaveLength(2);
+  expect(dialog()?.querySelectorAll('.viewer__stage img')).toHaveLength(1);
   await key('ArrowRight');
   expect(dialog()?.textContent).toContain('2 / 2');
   expect(dialog()?.querySelector('.viewer__stage-title')?.textContent).toBe('Second');

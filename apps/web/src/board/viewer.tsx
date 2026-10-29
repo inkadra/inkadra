@@ -228,8 +228,6 @@ export function MediaViewer({
     onPrevious: () => void;
     onNext: () => void;
     onSelect?: (index: number) => void;
-    onCompare?: () => void;
-    comparison?: Extract<Element, { type: 'image' | 'link' }>;
     usedIn: string[];
     items?: GalleryItem[];
   };
@@ -240,14 +238,8 @@ export function MediaViewer({
   const asset = useAsset(assetId);
   const isYoutube = element.type === 'link' && isYoutubeUrl(element.url);
   const ready: Asset | null = asset && asset !== 'missing' ? asset : null;
-  const comparison = gallery?.comparison;
-  const comparisonAsset = useAsset(
-    comparison?.type === 'link' ? comparison.imageAssetId : comparison?.assetId,
-  );
   const dialogRef = useRef<HTMLDivElement>(null);
   const [copied, setCopied] = useState<string | null>(null);
-  const [zoom100, setZoom100] = useState(false);
-  const effectiveZoom = zoom100 && !comparison;
   const [infoOpen, setInfoOpen] = useState(false);
   const { videoRef, unplayable, setUnplayable } = useVideoUnplayable(ready?.url, ready?.id);
 
@@ -262,7 +254,6 @@ export function MediaViewer({
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      const target = e.target instanceof HTMLElement ? e.target : null;
       if (isTyping(e.target) && e.key !== 'Escape' && e.key !== 'Tab') return;
       // The canvas behind listens on window too.
       e.stopImmediatePropagation();
@@ -278,20 +269,6 @@ export function MediaViewer({
       if (gallery && e.key === 'ArrowRight') {
         e.preventDefault();
         gallery.onNext();
-      }
-      // Space belongs to the focused control (buttons, links, video, tabs); it zooms only from
-      // the stage itself or when nothing is focused.
-      if (
-        (e.key === ' ' || e.code === 'Space') &&
-        !e.repeat &&
-        !comparison &&
-        (!target ||
-          target === document.body ||
-          target === dialogRef.current ||
-          target.classList.contains('viewer__stage'))
-      ) {
-        e.preventDefault();
-        setZoom100((z) => !z);
       }
       if (e.key === 'Tab') {
         const focusable = [
@@ -327,7 +304,7 @@ export function MediaViewer({
       window.removeEventListener('keydown', onKey, true);
       window.removeEventListener('keyup', onKey, true);
     };
-  }, [onClose, gallery, comparison]);
+  }, [onClose, gallery]);
 
   // Focus once on opening, keep it during navigation, give it back to the opener on close.
   useEffect(() => {
@@ -417,35 +394,6 @@ export function MediaViewer({
           >
             {t('viewer.info')}
           </button>
-          {gallery?.onCompare && (
-            <button
-              type="button"
-              className={`ink-btn ink-btn--secondary viewer__stage-btn${comparison ? ' is-active' : ''}`}
-              aria-label={t('moodboard.compare')}
-              onClick={gallery.onCompare}
-            >
-              <span className="viewer__action-icon" aria-hidden="true">
-                <Icon name="column" size={18} />
-              </span>
-              <span className="viewer__action-label">{t('moodboard.compare')}</span>
-            </button>
-          )}
-          <button
-            type="button"
-            className="ink-btn ink-btn--secondary viewer__stage-btn"
-            disabled={!!comparison}
-            onClick={() => setZoom100((z) => !z)}
-            title={t('viewer.zoomHelp')}
-            aria-label={effectiveZoom ? t('viewer.zoomFit') : t('viewer.zoom100')}
-            aria-keyshortcuts="Space"
-          >
-            <span className="viewer__action-icon" aria-hidden="true">
-              <Icon name="fit" size={18} />
-            </span>
-            <span className="viewer__action-label">
-              {effectiveZoom ? t('viewer.zoomFit') : t('viewer.zoom100')}
-            </span>
-          </button>
           <button
             type="button"
             className="ink-btn ink-btn--secondary viewer__stage-btn"
@@ -462,7 +410,7 @@ export function MediaViewer({
 
         {/* Stage Area */}
         <div
-          className={`viewer__stage${comparison ? ' viewer__stage--compare' : ''}`}
+          className="viewer__stage"
           onPointerDown={(e) => e.target === e.currentTarget && onClose()}
         >
           {/* Navigation Arrows */}
@@ -514,23 +462,8 @@ export function MediaViewer({
           )}
 
           <div
-            className={`viewer__media-wrap${isYoutube ? ' viewer__media-wrap--embed' : ''}${effectiveZoom ? ' is-zoomed' : ''}`}
+            className={`viewer__media-wrap${isYoutube ? ' viewer__media-wrap--embed' : ''}`}
           >
-            {comparison && comparisonAsset && comparisonAsset !== 'missing' && (
-              <img
-                className={`viewer__media ${effectiveZoom ? 'viewer__media--zoom100' : 'viewer__media--contain'}`}
-                src={
-                  effectiveZoom
-                    ? comparisonAsset.url
-                    : pickVariant(comparisonAsset, wide) || comparisonAsset.url
-                }
-                alt={
-                  comparison.type === 'image'
-                    ? comparison.caption || comparisonAsset.filename
-                    : comparison.title || comparisonAsset.filename
-                }
-              />
-            )}
             {isYoutube ? (
               <div className="viewer__embed">
                 <iframe
@@ -546,7 +479,7 @@ export function MediaViewer({
                 {/* biome-ignore lint/a11y/useMediaCaption: people's own footage has no captions */}
                 <video
                   ref={videoRef}
-                  className={`viewer__media ${effectiveZoom ? 'viewer__media--zoom100' : 'viewer__media--contain'}`}
+                  className="viewer__media viewer__media--contain"
                   src={ready.url}
                   poster={ready.variants.length > 0 ? pickVariant(ready, wide) : undefined}
                   controls
@@ -565,24 +498,12 @@ export function MediaViewer({
                 )}
               </>
             ) : ready ? (
-              <button
-                type="button"
-                className="viewer__picture-btn"
-                disabled={!!comparison}
-                title={t('viewer.zoomHelp')}
-                aria-label={effectiveZoom ? t('viewer.zoomFit') : t('viewer.zoom100')}
-                aria-pressed={effectiveZoom}
-                onClick={() => !comparison && setZoom100((z) => !z)}
-              >
-                <MovingPicture
-                  className={`viewer__media ${effectiveZoom ? 'viewer__media--zoom100' : 'viewer__media--contain'}`}
-                  poster={effectiveZoom ? ready.url : pickVariant(ready, wide) || ready.url}
-                  moving={movingVariantUrl(ready, wide)}
-                  alt={
-                    element.type === 'image' ? (element.caption ?? ready.filename) : ready.filename
-                  }
-                />
-              </button>
+              <MovingPicture
+                className="viewer__media viewer__media--contain"
+                poster={pickVariant(ready, wide) || ready.url}
+                moving={movingVariantUrl(ready, wide)}
+                alt={element.type === 'image' ? (element.caption ?? ready.filename) : ready.filename}
+              />
             ) : null}
           </div>
 
@@ -590,10 +511,6 @@ export function MediaViewer({
           <div className="viewer__hints">
             <span className="viewer__hint">
               <span className="viewer__hint-kbd">← →</span> {t('viewer.hints.nav')}
-            </span>
-            <span className="viewer__hint">
-              <span className="viewer__hint-kbd">{t('viewer.keys.space')}</span>{' '}
-              {t('viewer.hints.zoom')}
             </span>
           </div>
         </div>

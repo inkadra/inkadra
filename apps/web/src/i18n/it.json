@@ -548,16 +548,11 @@
     "openOnYoutube": "Apri su YouTube",
     "copyAll": "Copia tutto",
     "copiedAll": "Tutti i colori copiati",
-    "zoomFit": "Adatta",
-    "zoom100": "Zoom 100%",
-    "zoomHelp": "Spazio per alternare tra adatta e 100%",
     "hints": {
-      "nav": "per scorrere",
-      "zoom": "zoom 100%"
+      "nav": "per scorrere"
     },
     "keys": {
-      "esc": "esc",
-      "space": "spazio"
+      "esc": "esc"
     },
     "thumbnails": "Miniature",
     "item": "Elemento {{n}}"
@@ -1681,7 +1676,6 @@
     "navigation": "Navigazione galleria",
     "previous": "Precedente",
     "next": "Successiva",
-    "compare": "Confronta A/B",
     "usedIn": "Usata in · questa board",
     "openSource": "Apri fonte"
   },

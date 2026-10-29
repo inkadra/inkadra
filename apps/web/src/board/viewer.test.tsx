@@ -209,7 +209,6 @@ describe('MediaViewer video playback', () => {
           total: 5,
           onPrevious: vi.fn(),
           onNext: vi.fn(),
-          onCompare: vi.fn(),
           usedIn: [],
         }}
         onClose={vi.fn()}
@@ -222,8 +221,6 @@ describe('MediaViewer video playback', () => {
     expect(html).toContain('viewer__action-icon');
     expect(html).toContain('viewer__action-label');
     expect(html).toContain('aria-label="Chiudi"');
-    expect(html).toContain('aria-label="moodboard.compare"');
-    expect(html).toContain('aria-label="viewer.zoom100"');
     expect(html).toContain(
       'src="https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ?autoplay=1&amp;rel=0"',
     );
@@ -546,7 +543,7 @@ describe('MediaViewer gallery enhancements', () => {
     expect(onPrev).toHaveBeenCalledTimes(1);
   });
 
-  it('toggles zoom on spacebar and supports copy all palette', async () => {
+  it('always fits the image, ignores Space and supports copy all palette', async () => {
     let clipboard = '';
     vi.stubGlobal('navigator', {
       clipboard: {
@@ -578,12 +575,11 @@ describe('MediaViewer gallery enhancements', () => {
     );
 
     expect(container.querySelector('.viewer__media--contain')).not.toBeNull();
-    expect(container.querySelector('.viewer__media--zoom100')).toBeNull();
-
     await act(async () => {
       window.dispatchEvent(new KeyboardEvent('keydown', { key: ' ' }));
     });
-    expect(container.querySelector('.viewer__media--zoom100')).not.toBeNull();
+    expect(container.querySelector('.viewer__media--contain')).not.toBeNull();
+    expect(container.querySelector('.is-zoomed')).toBeNull();
 
     const copyAll = container.querySelector<HTMLButtonElement>('.viewer__copy-all-btn');
     expect(copyAll).not.toBeNull();
@@ -644,7 +640,7 @@ describe('MediaViewer keyboard, focus and comments', () => {
     resetReviews();
   });
 
-  it('leaves Space to a focused button and does not zoom', async () => {
+  it('leaves Space to a focused button', async () => {
     await render(viewer());
     const button = container.querySelector<HTMLButtonElement>(
       '.viewer__stage-nav, .viewer__copy-all-btn, .viewer__stage-btn',
@@ -655,22 +651,26 @@ describe('MediaViewer keyboard, focus and comments', () => {
     window.addEventListener('keydown', (e) => (prevented = e.defaultPrevented), { once: true });
     await space(button as HTMLElement);
     expect(prevented).toBe(false);
-    expect(container.querySelector('.viewer__media--zoom100')).toBeNull();
   });
 
-  it('leaves Space to the video controls', async () => {
-    mockState.asset = { ...videoAsset } as Asset;
-    await render(viewer());
-    const video = container.querySelector('video') as HTMLVideoElement;
-    expect(video).not.toBeNull();
-    await space(video);
-    expect(container.querySelector('.viewer__media--zoom100')).toBeNull();
-  });
-
-  it('zooms with Space from the stage', async () => {
-    await render(viewer());
+  it('has no compare or zoom controls and keeps the image fitted', async () => {
+    await render(
+      viewer({
+        gallery: { index: 0, total: 2, onPrevious: vi.fn(), onNext: vi.fn(), usedIn: [] },
+      }),
+    );
+    const labels = [...container.querySelectorAll('button')].map(
+      (b) => `${b.getAttribute('aria-label') ?? ''} ${b.textContent ?? ''}`,
+    );
+    expect(labels.filter((l) => /compare|zoom/i.test(l))).toEqual([]);
+    expect(container.querySelector('[aria-keyshortcuts="Space"]')).toBeNull();
+    expect(container.querySelector('.viewer__media--contain')?.closest('button')).toBeNull();
+    let prevented = false;
+    window.addEventListener('keydown', (e) => (prevented = e.defaultPrevented), { once: true });
     await space(container.querySelector('.viewer__stage') as HTMLElement);
-    expect(container.querySelector('.viewer__media--zoom100')).not.toBeNull();
+    expect(prevented).toBe(false);
+    expect(container.querySelector('.viewer__media--contain')).not.toBeNull();
+    expect(container.textContent).not.toMatch(/zoom/i);
   });
 
   it('keeps Tab inside the dialog for a single image and restores focus on close', async () => {
@@ -743,13 +743,8 @@ describe('viewer translations', () => {
     const keys = [
       'viewer.copyAll',
       'viewer.copiedAll',
-      'viewer.zoomFit',
-      'viewer.zoom100',
-      'viewer.zoomHelp',
       'viewer.hints.nav',
-      'viewer.hints.zoom',
       'viewer.keys.esc',
-      'viewer.keys.space',
       'viewer.thumbnails',
       'viewer.item',
       'comments.title',

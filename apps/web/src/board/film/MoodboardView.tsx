@@ -68,7 +68,6 @@ export function MoodboardView({
   const snapshot = useSyncExternalStore(store.subscribe, store.getSnapshot);
   const [tag, setTag] = useState('');
   const [selected, setSelected] = useState<string | null>(null);
-  const [compare, setCompare] = useState(false);
   const opener = useRef<HTMLButtonElement | null>(null);
   const all = [...snapshot.byId.values()];
   const references = referencesOf(all);
@@ -86,7 +85,6 @@ export function MoodboardView({
   useEffect(() => {
     if (selected && !current) {
       setSelected(null);
-      setCompare(false);
       opener.current?.focus();
     }
   }, [selected, current]);
@@ -103,7 +101,6 @@ export function MoodboardView({
     : [];
   const closeViewer = () => {
     setSelected(null);
-    setCompare(false);
     opener.current?.focus();
   };
 
@@ -197,8 +194,6 @@ export function MoodboardView({
               filename: m.type === 'image' ? m.caption : m.title,
               type: m.type,
             })),
-            onCompare: media.length > 1 ? () => setCompare(!compare) : undefined,
-            comparison: compare ? media[(index + 1) % media.length] : undefined,
             usedIn,
           }}
         />
