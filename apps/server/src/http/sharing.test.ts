@@ -843,6 +843,9 @@ describe.skipIf(!url)('sharing, invitations, tokens and accounts (needs DATABASE
   });
 
   it('asks for a code after enabling two-factor authentication', async () => {
+    // Test 2FA for an established account. On first email proof Better Auth deliberately
+    // revokes unproven credentials, so a magic link would otherwise remove this password.
+    await (await auth.$context).internalAdapter.updateUser(as.viewer.id, { emailVerified: true });
     const enabled = await call('viewer', 'POST', '/api/auth/two-factor/enable', {
       password: PASSWORD,
     });
