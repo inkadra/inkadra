@@ -1,3 +1,4 @@
+import './zod-jitless.ts';
 import '@inkadra/ui/styles.css';
 import './i18n/index.ts';
 import { StrictMode } from 'react';

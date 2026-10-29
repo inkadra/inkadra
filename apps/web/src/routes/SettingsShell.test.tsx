@@ -89,6 +89,14 @@ it('narrows the pages to those matching the search', async () => {
     'admin.registration',
   ]);
   expect(host.querySelectorAll('.settings-nav__group h3')).toHaveLength(1);
+  // A setting on a page finds the page and is named next to it (keys stand in here too).
+  await type('keywords.preferences');
+  expect([...host.querySelectorAll('.settings-nav__item')].map((a) => a.textContent)).toEqual([
+    'admin.preferencessettingsUi.keywords.preferences',
+  ]);
+  expect(host.querySelector('.settings-nav__match')?.textContent).toBe(
+    'settingsUi.keywords.preferences',
+  );
   await type('nothing like this');
   expect(host.querySelectorAll('.settings-nav__item')).toHaveLength(0);
   expect(host.querySelector('.settings-nav__empty')?.textContent).toBe('settingsUi.noResults');

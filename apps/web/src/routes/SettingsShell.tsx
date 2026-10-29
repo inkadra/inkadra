@@ -6,6 +6,7 @@ import { useSession } from '../lib/session.tsx';
 import { resetSaveState, type SaveState, useSaveState } from './settings-save.ts';
 import {
   GROUP_TITLES,
+  matchSettings,
   SETTINGS_PAGES,
   type SettingsGroup,
   type SettingsPage,
@@ -36,9 +37,10 @@ export function setupAttention(setup: Setup, page: string): boolean {
 }
 
 /**
- * The settings window's own navigation: a search that narrows the pages, then the pages
- * the person may open, grouped. Moving between pages replaces the history entry, so the
- * browser's Back closes the window instead of walking through every page visited.
+ * The settings window's own navigation: a search that narrows the pages, by title or by a
+ * setting on them (which is then named), then the pages the person may open, grouped. Moving
+ * between pages replaces the history entry, so the browser's Back closes the window instead of
+ * walking through every page visited.
  */
 export function SettingsNav({ setup, members }: { setup: Setup; members?: number | null }) {
   const { t } = useTranslation();
@@ -46,16 +48,12 @@ export function SettingsNav({ setup, members }: { setup: Setup; members?: number
   const { pathname, search } = useLocation();
   const [query, setQuery] = useState('');
   const current = settingsSection(pathname, search).id;
-  const needle = query.trim().toLocaleLowerCase();
-  const pages = SETTINGS_PAGES.filter(
-    (p) =>
-      (!p.admin || user?.role === 'admin') &&
-      (!needle ||
-        `${t(p.title)} ${t(p.lead)} ${t(GROUP_TITLES[p.group])}`
-          .toLocaleLowerCase()
-          .includes(needle)),
+  const matches = matchSettings(
+    SETTINGS_PAGES.filter((p) => !p.admin || user?.role === 'admin'),
+    query,
+    t,
   );
-  const groups = [...new Set(pages.map((p) => p.group))] as SettingsGroup[];
+  const groups = [...new Set(matches.map((m) => m.page.group))] as SettingsGroup[];
   return (
     <nav className="settings-nav" aria-label={t('nav.settings')}>
       <label className="settings-nav__search">
@@ -74,9 +72,9 @@ export function SettingsNav({ setup, members }: { setup: Setup; members?: number
           <div key={group} className="settings-nav__group">
             <h3>{t(GROUP_TITLES[group])}</h3>
             <ul>
-              {pages
-                .filter((p) => p.group === group)
-                .map((p) => (
+              {matches
+                .filter((m) => m.page.group === group)
+                .map(({ page: p, setting }) => (
                   <li key={p.id}>
                     <Link
                       to={p.href}
@@ -90,6 +88,7 @@ export function SettingsNav({ setup, members }: { setup: Setup; members?: number
                     >
                       <Icon name={SECTION_ICONS[p.id] ?? 'settings'} size={16} />
                       <span className="settings-nav__label">{t(p.title)}</span>
+                      {setting && <span className="settings-nav__match">{setting}</span>}
                       {p.id === 'members' && members != null && (
                         <span className="settings-nav__count">{members}</span>
                       )}
@@ -99,7 +98,7 @@ export function SettingsNav({ setup, members }: { setup: Setup; members?: number
             </ul>
           </div>
         ))}
-        {pages.length === 0 && (
+        {matches.length === 0 && (
           <p className="settings-nav__empty" role="status">
             {t('settingsUi.noResults')}
           </p>

@@ -13,9 +13,14 @@ Google. `REGISTRATION=open` lets anyone with access to the address sign up.
 
 Invitations are made from the **Share** dialog of a board or project (editors and owners) or,
 by administrators, for the instance alone. An invitation by email works once; an invitation
-link works for anyone who opens it until it expires (1 to 90 days) or is revoked. Inviting the
-address of someone who already has an account gives them access at once. Without email
-configured, copy the link and send it yourself.
+link works for anyone who opens it until it expires (1 to 90 days) or is revoked. An instance
+link made without an expiry works once, for two days. Inviting the address of someone who
+already has an account gives them access at once. Without email configured, copy the link and
+send it yourself.
+
+A use is counted when the account is about to be created. If creating it then fails (a
+database error, for example), that use stays counted: an invitation by email or a single-use
+link then reads as used, so send a new invitation.
 
 ## Google
 

@@ -7,6 +7,8 @@ export interface SettingsPage {
   /** Translation key of the navigation label and page heading. */
   title: string;
   lead: string;
+  /** Translation key of the settings on the page, comma-separated, for the search. */
+  keywords: string;
   admin: boolean;
 }
 
@@ -18,6 +20,7 @@ export const SETTINGS_PAGES: SettingsPage[] = [
     href: '/settings?section=account',
     title: 'admin.account',
     lead: 'settingsUi.leads.account',
+    keywords: 'settingsUi.keywords.account',
     admin: false,
   },
   {
@@ -26,6 +29,7 @@ export const SETTINGS_PAGES: SettingsPage[] = [
     href: '/settings?section=preferences',
     title: 'admin.preferences',
     lead: 'settingsUi.leads.preferences',
+    keywords: 'settingsUi.keywords.preferences',
     admin: false,
   },
   {
@@ -34,6 +38,7 @@ export const SETTINGS_PAGES: SettingsPage[] = [
     href: '/settings?section=notifications',
     title: 'admin.notifications',
     lead: 'settingsUi.leads.notifications',
+    keywords: 'settingsUi.keywords.notifications',
     admin: false,
   },
   {
@@ -42,6 +47,7 @@ export const SETTINGS_PAGES: SettingsPage[] = [
     href: '/settings/team',
     title: 'admin.members',
     lead: 'admin.teamHelp',
+    keywords: 'settingsUi.keywords.members',
     admin: true,
   },
   {
@@ -50,6 +56,7 @@ export const SETTINGS_PAGES: SettingsPage[] = [
     href: '/settings?section=workspace',
     title: 'admin.storage',
     lead: 'settingsUi.leads.storage',
+    keywords: 'settingsUi.keywords.workspace',
     admin: true,
   },
   {
@@ -58,6 +65,7 @@ export const SETTINGS_PAGES: SettingsPage[] = [
     href: '/settings?section=classifications',
     title: 'admin.classifications',
     lead: 'catalogs.scope',
+    keywords: 'settingsUi.keywords.classifications',
     admin: true,
   },
   {
@@ -66,6 +74,7 @@ export const SETTINGS_PAGES: SettingsPage[] = [
     href: '/settings?section=providers',
     title: 'settingsUi.pages.access',
     lead: 'settingsUi.leads.access',
+    keywords: 'settingsUi.keywords.providers',
     admin: true,
   },
   {
@@ -74,6 +83,7 @@ export const SETTINGS_PAGES: SettingsPage[] = [
     href: '/settings?section=registration',
     title: 'admin.registration',
     lead: 'settingsUi.leads.registration',
+    keywords: 'settingsUi.keywords.registration',
     admin: true,
   },
   {
@@ -82,6 +92,7 @@ export const SETTINGS_PAGES: SettingsPage[] = [
     href: '/settings?section=instance',
     title: 'settingsUi.pages.about',
     lead: 'settingsUi.leads.about',
+    keywords: 'settingsUi.keywords.instance',
     admin: true,
   },
 ];
@@ -118,4 +129,44 @@ export function autosaves(id: string): boolean {
 /** Plain `/settings` is the phone settings home; every page has an explicit section. */
 export function isSettingsHome(pathname: string, search: string): boolean {
   return pathname === '/settings' && !new URLSearchParams(search).get('section');
+}
+
+export interface SettingsMatch {
+  page: SettingsPage;
+  /** The setting that matched, when the page matched through one rather than its title. */
+  setting: string | null;
+}
+
+/**
+ * Lower case without accents or typographic apostrophes, so "verifica" finds "Verifica" and
+ * "dell'istanza" finds "dell’istanza".
+ */
+function fold(text: string): string {
+  return text
+    .normalize('NFD')
+    .replace(/\p{M}/gu, '')
+    .replace(/[\u2018\u2019]/g, "'")
+    .toLocaleLowerCase();
+}
+
+/**
+ * The pages a settings search finds: by title, description and group, or by one of the
+ * settings on the page (password, 2FA, theme, invitations…), which is then named.
+ */
+export function matchSettings(
+  pages: SettingsPage[],
+  query: string,
+  t: (key: string) => string,
+): SettingsMatch[] {
+  const needle = fold(query.trim());
+  if (!needle) return pages.map((page) => ({ page, setting: null }));
+  return pages.flatMap((page): SettingsMatch[] => {
+    if (fold(`${t(page.title)} ${t(page.lead)} ${t(GROUP_TITLES[page.group])}`).includes(needle))
+      return [{ page, setting: null }];
+    const setting = t(page.keywords)
+      .split(',')
+      .map((k) => k.trim())
+      .find((k) => k && fold(k).includes(needle));
+    return setting ? [{ page, setting }] : [];
+  });
 }

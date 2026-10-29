@@ -1935,6 +1935,17 @@
     },
     "search": "Search settings",
     "noResults": "No settings found",
+    "keywords": {
+      "account": "Name, Email, Profile photo, Password, Two-step verification (2FA), Backup codes, Sign-in methods, Sessions, Devices, Apps and tokens, Delete account",
+      "preferences": "Theme, Dark theme, Light theme, Language",
+      "notifications": "Email notifications, Mentions, Replies, Reviews, Daily digest, Inbox",
+      "members": "Invite members, Invitations, Invitation link, Role, Administrators, Deactivate account, Reactivate account, People",
+      "workspace": "Space used, Uploaded files, Storage",
+      "classifications": "Project types, Tags, Catalogs",
+      "providers": "Google, OIDC, Single sign-on (SSO), Email sign-in link, Email and password, SMTP, Outgoing email",
+      "registration": "New accounts, Open registration, Invitation only, Closed registration",
+      "instance": "Instance name, Public address, Version, Diagnostics, Instance status"
+    },
     "close": "Close settings",
     "dangerZone": "Danger zone"
   },

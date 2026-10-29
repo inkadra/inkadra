@@ -1,5 +1,5 @@
 import type { AcceptedInvitation, InvitationPreview, ProjectRole } from '@inkadra/shared';
-import { and, eq, isNull, sql } from 'drizzle-orm';
+import { and, eq, gt, isNull, lt, or, sql } from 'drizzle-orm';
 import { atLeast, boardAccess, projectRole } from './access.ts';
 import type { Database } from './db/client.ts';
 import {
@@ -77,6 +77,30 @@ export function invitedAddressMatches(row: InvitationRow, email: string): boolea
 }
 
 /**
+ * Counts one use of an invitation before the account it creates exists. A single conditional
+ * UPDATE, so parallel sign-ups with the same link can never exceed `maxUses`: the ones that
+ * find no use left get null. A use stays counted if creating the account fails afterwards.
+ */
+export async function reserveInvitationUse(
+  db: Database,
+  invitationId: string,
+): Promise<InvitationRow | null> {
+  const [row] = await db
+    .update(invitation)
+    .set({ uses: sql`${invitation.uses} + 1` })
+    .where(
+      and(
+        eq(invitation.id, invitationId),
+        isNull(invitation.revokedAt),
+        gt(invitation.expiresAt, sql`now()`),
+        or(isNull(invitation.maxUses), lt(invitation.uses, invitation.maxUses)),
+      ),
+    )
+    .returning();
+  return row ?? null;
+}
+
+/**
  * Gives the person what the invitation is for and counts the use. Never lowers a role the
  * person already has. Throws `not_found` for an invitation that cannot be used any more and
  * `forbidden` when an email invitation is opened with an account for another address.
@@ -85,6 +109,8 @@ export async function acceptInvitation(
   db: Database,
   invitationId: string,
   userId: string,
+  /** The use was already counted by reserveInvitationUse at sign-up. */
+  { reserved = false }: { reserved?: boolean } = {},
 ): Promise<AcceptedInvitation> {
   return db.transaction(async (tx) => {
     const [row] = await tx
@@ -107,7 +133,7 @@ export async function acceptInvitation(
       (await hasInvitedRole(db2, row, userId))
     )
       return { projectId: row.projectId, boardId: row.boardId };
-    if (invitationStatus(row) !== 'valid')
+    if (!reserved && invitationStatus(row) !== 'valid')
       throw new HttpError('not_found', 'This invitation can no longer be used.');
     if (!me || !invitedAddressMatches(row, me.email))
       throw new HttpError(
@@ -117,10 +143,11 @@ export async function acceptInvitation(
     // The link reached this mailbox, which proves the address.
     if (row.kind === 'email')
       await tx.update(user).set({ emailVerified: true }).where(eq(user.id, userId));
-    await tx
-      .update(invitation)
-      .set({ uses: sql`${invitation.uses} + 1` })
-      .where(eq(invitation.id, row.id));
+    if (!reserved)
+      await tx
+        .update(invitation)
+        .set({ uses: sql`${invitation.uses} + 1` })
+        .where(eq(invitation.id, row.id));
     if (role && row.boardId) {
       const access = await boardAccess(db2, { id: userId }, row.boardId);
       if (!access) throw new HttpError('not_found', 'The board of this invitation was deleted.');

@@ -11,7 +11,15 @@ import type { Config } from './config.ts';
 import type { Database } from './db/client.ts';
 import * as schema from './db/schema.ts';
 import { readInstanceSettings } from './instance-settings.ts';
-import { acceptInvitation, invitationFromCookie, invitedAddressMatches } from './invitations.ts';
+import {
+  acceptInvitation,
+  findInvitation,
+  INVITATION_COOKIE,
+  invitationFromCookie,
+  invitedAddressMatches,
+  readCookie,
+  reserveInvitationUse,
+} from './invitations.ts';
 import { mailText } from './mail-texts.ts';
 import { actionMail, type Mailer, securityNotification, sendDetached } from './mailer.ts';
 
@@ -164,6 +172,9 @@ export function createAuth(config: Config, db: Database, deps: AuthDeps = {}) {
       );
     securityNotification(mailer, user, 'password', deps.log);
   };
+  // Invitations whose use the user-create hook counted, by the endpoint context it shares with
+  // the after hook.
+  const reservedInvitations = new WeakMap<object, string>();
   const auth = betterAuth({
     // Scope availability failures to credential entry, never session lookup/sign-out.
     rateLimit: { enabled: false },
@@ -513,14 +524,29 @@ export function createAuth(config: Config, db: Database, deps: AuthDeps = {}) {
                   message: `This invitation was sent to ${invited.email}: sign up with that address.`,
                 });
               }
+              // Count the use now, atomically: parallel sign-ups with the same link must not
+              // all pass the check above and exceed its maxUses.
+              if (!(await reserveInvitationUse(db, invited.id)))
+                throw new APIError('FORBIDDEN', {
+                  code: 'REGISTRATION_CLOSED',
+                  message: 'Registration is closed. Ask an administrator for an invitation.',
+                });
+              if (ctx) reservedInvitations.set(ctx, invited.id);
             }
             return { data: { ...user, role: 'member' } };
           },
           after: async (user, ctx) => {
-            const invited = await invitationFromCookie(db, ctx?.headers?.get('cookie'));
-            if (!invited) return;
+            const reserved = ctx ? reservedInvitations.get(ctx) : undefined;
+            // A reserved invitation may have just used its last use, so look it up by token.
+            const token = readCookie(ctx?.headers?.get('cookie'), INVITATION_COOKIE);
+            const invited = reserved
+              ? token
+                ? await findInvitation(db, token)
+                : null
+              : await invitationFromCookie(db, ctx?.headers?.get('cookie'));
+            if (!invited || (reserved && invited.id !== reserved)) return;
             try {
-              await acceptInvitation(db, invited.id, user.id);
+              await acceptInvitation(db, invited.id, user.id, { reserved: !!reserved });
             } catch (err) {
               // The account exists either way; the invitation page can be opened again.
               deps.log?.warn({ err }, 'invitation not accepted at sign-up');
@@ -543,7 +569,56 @@ export function createAuth(config: Config, db: Database, deps: AuthDeps = {}) {
       },
     },
   });
+  /**
+   * Password confirmation for actions outside Better Auth's endpoints (account deletion).
+   * Internal auth.api calls skip the hooks above, so this takes its own budgets: a burst per
+   * source, like /change-password, and a failure budget per user that only a correct password
+   * refunds. It is not the sign-in budget per address: anyone who knows the address can spend
+   * that one, which would lock a signed-in person out of deleting the account.
+   */
+  const confirmPassword = async (
+    owner: { id: string },
+    password: string,
+    headers: Headers,
+  ): Promise<'ok' | 'wrong' | 'unavailable' | 'failed' | { retryAfter: number }> => {
+    const limited = config.NODE_ENV === 'production' || config.AUTH_RATE_LIMITS !== 'off';
+    const ip = headers.get(CLIENT_IP_HEADER) ?? 'unknown';
+    const failures = `delete:${owner.id}`;
+    const held: string[] = [];
+    const refund = () =>
+      Promise.all(held.map((id) => security.refund(id))).catch(() => security.reportError());
+    if (limited) {
+      try {
+        for (const [id, max, seconds] of [
+          [`ip:${authSource(ip)}:/delete-user`, 3, 10],
+          [failures, 10, 3600],
+        ] as const) {
+          const result = await security.consume(id, max, seconds);
+          held.push(id);
+          if (!result.allowed) {
+            await refund();
+            return { retryAfter: Math.max(1, result.retryAfter) };
+          }
+        }
+      } catch {
+        security.reportError();
+        return 'unavailable';
+      }
+    }
+    try {
+      await auth.api.verifyPassword({ body: { password }, headers });
+    } catch (err) {
+      if (err instanceof APIError && err.body?.code === 'INVALID_PASSWORD') return 'wrong';
+      // Not an answer about the password (database, session): nothing to count.
+      deps.log?.error({ err }, 'password confirmation failed');
+      if (limited) await refund();
+      return 'failed';
+    }
+    if (limited) await security.refund(failures).catch(() => security.reportError());
+    return 'ok';
+  };
   return Object.assign(auth, {
+    confirmPassword,
     readySecurity: () => security.ready(),
     closeSecurity: () => security.close(),
   });

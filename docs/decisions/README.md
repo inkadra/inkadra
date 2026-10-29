@@ -35,6 +35,7 @@ in order. An accepted decision is never rewritten: a later one supersedes it.
 | [0027](0027-project-identity-palette.md)        | Extend project identity without changing existing defaults                             |
 | [0028](0028-authentication-hardening.md)        | Authentication hardening: limits in Valkey, second factor everywhere, browser policies |
 | [0029](0029-settings-window.md)                 | Settings open as a window over the current page                                        |
+| [0030](0030-authentication-follow-ups.md)       | Authentication follow-ups without contract changes                                     |
 
 Two decisions share the number 0025: they were accepted in parallel, and accepted records
 are not renumbered.

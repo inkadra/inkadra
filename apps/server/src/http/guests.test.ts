@@ -1,6 +1,7 @@
 import type { AddressInfo } from 'node:net';
 import { fileURLToPath } from 'node:url';
 import { addElement, createBoardDoc, type Element, roots } from '@inkadra/doc-schema';
+import { hashPassword } from 'better-auth/crypto';
 import { and, eq, sql } from 'drizzle-orm';
 import pino from 'pino';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
@@ -392,10 +393,12 @@ describe.skipIf(!url)('guest share links (needs DATABASE_URL)', () => {
     expect((await call('editor', 'POST', `/api/v1/boards/${B.QR}/share-links`, {})).status).toBe(
       404,
     );
-    const short = await call('editor', 'POST', `/api/v1/boards/${B.A}/share-links`, {
-      password: 'abc',
-    });
-    expect(short.status).toBe(400);
+    for (const password of ['abc', 'nine-char']) {
+      const short = await call('editor', 'POST', `/api/v1/boards/${B.A}/share-links`, {
+        password,
+      });
+      expect(short.status).toBe(400);
+    }
     expect(
       (await call('editor', 'POST', `/api/v1/boards/${B.A}/share-links`, { role: 'owner' })).status,
     ).toBe(400);
@@ -406,13 +409,23 @@ describe.skipIf(!url)('guest share links (needs DATABASE_URL)', () => {
 
   it('stores link passwords with the account password hasher', async () => {
     const res = await call('owner', 'POST', `/api/v1/boards/${B.A}/share-links`, {
-      password: 'segreto-1',
+      password: 'segreto-cliente',
     });
     expect(res.body.hasPassword).toBe(true);
     const [row] = await db.select().from(shareLink).where(eq(shareLink.id, res.body.id));
     // Better Auth's scrypt format: salt:key in hex.
     expect(row?.passwordHash).toMatch(/^[0-9a-f]{32}:[0-9a-f]{128}$/);
     await call('owner', 'DELETE', `/api/v1/share-links/${res.body.id}`);
+  });
+
+  it('keeps opening links whose password predates the 10-character minimum', async () => {
+    const link = await createLink('editor', B.A, { password: 'long-enough-1' });
+    await db
+      .update(shareLink)
+      .set({ passwordHash: await hashPassword('old-pw') })
+      .where(eq(shareLink.id, link.id));
+    expect((await open(link, { password: 'old-pw', ip: '10.30.0.1' })).status).toBe(200);
+    await call('editor', 'DELETE', `/api/v1/share-links/${link.id}`);
   });
 
   it('lists the links of a board for its editors, with the token to copy again', async () => {
@@ -914,7 +927,10 @@ describe.skipIf(!url)('guest share links (needs DATABASE_URL)', () => {
     });
     expect(res.headers.get('referrer-policy')).toBe('no-referrer');
     expect(res.headers.get('x-robots-tag')).toContain('noindex');
-    const locked = await createLink('editor', B.A, { password: 'segreto-1', expiresInDays: 3 });
+    const locked = await createLink('editor', B.A, {
+      password: 'segreto-cliente',
+      expiresInDays: 3,
+    });
     const preview = await call(null, 'GET', `/api/v1/guest/by-token/${locked.token}`);
     expect(preview.body).toEqual({
       linkId: locked.id,
@@ -933,7 +949,7 @@ describe.skipIf(!url)('guest share links (needs DATABASE_URL)', () => {
     const expired = await call(null, 'GET', `/api/v1/guest/by-token/${locked.token}`);
     expect(expired.status).toBe(403);
     expect(expired.body.error.details).toEqual({ reason: 'expired' });
-    const opened = await open(locked, { password: 'segreto-1' });
+    const opened = await open(locked, { password: 'segreto-cliente' });
     expect(opened.status).toBe(403);
     expect(opened.body.error.details).toEqual({ reason: 'expired' });
   });
@@ -1115,7 +1131,7 @@ describe.skipIf(!url)('guest share links (needs DATABASE_URL)', () => {
   }, 60_000);
 
   it('asks for the password, limits wrong ones and ends sessions when it changes', async () => {
-    const link = await createLink('editor', B.A, { password: 'segreto-1' });
+    const link = await createLink('editor', B.A, { password: 'segreto-cliente' });
     const where = '10.20.0.1';
     const missing = await open(link, { ip: where });
     expect(missing.status).toBe(403);
@@ -1125,7 +1141,7 @@ describe.skipIf(!url)('guest share links (needs DATABASE_URL)', () => {
     expect(wrong.body.error.details).toEqual({ reason: 'wrong_password' });
     expect(missing.body).not.toHaveProperty('sharedBy');
     expect(wrong.body).not.toHaveProperty('sharedBy');
-    const ok = await open(link, { password: 'segreto-1', name: 'Ugo' });
+    const ok = await open(link, { password: 'segreto-cliente', name: 'Ugo' });
     expect(ok.status).toBe(200);
     // Who shared the link shows only once the password was right.
     expect(ok.body.sharedBy).toBe('Editor');
@@ -1139,17 +1155,24 @@ describe.skipIf(!url)('guest share links (needs DATABASE_URL)', () => {
     expect(simultaneous.filter((r) => r.status === 429)).toHaveLength(3);
     for (const res of simultaneous.filter((r) => r.status === 429)) expectRetryAfter(res, 0, 900);
     // Blocked for this address, even with the right password; others still get in.
-    expectRetryAfter(await open(link, { password: 'segreto-1', ip: where }), 850, 900);
-    expect((await open(link, { password: 'segreto-1', ip: '10.20.0.2' })).status).toBe(200);
+    expectRetryAfter(await open(link, { password: 'segreto-cliente', ip: where }), 850, 900);
+    expect((await open(link, { password: 'segreto-cliente', ip: '10.20.0.2' })).status).toBe(200);
 
     expect(
-      (await call('editor', 'PATCH', `/api/v1/share-links/${link.id}`, { password: 'nuova-pw' }))
+      (await call('editor', 'PATCH', `/api/v1/share-links/${link.id}`, { password: 'too-short' }))
         .status,
+    ).toBe(400);
+    expect(
+      (
+        await call('editor', 'PATCH', `/api/v1/share-links/${link.id}`, {
+          password: 'nuova-password',
+        })
+      ).status,
     ).toBe(200);
     const stale = await call({ cookie: ok.cookie }, 'GET', g(link, '/session'));
     expect(stale.status).toBe(403);
     expect(stale.body.error.details).toEqual({ reason: 'password_required' });
-    const again = await open(link, { cookie: ok.cookie, password: 'nuova-pw' });
+    const again = await open(link, { cookie: ok.cookie, password: 'nuova-password' });
     expect(again.body.guest).toEqual(ok.body.guest);
     // Removing the password keeps the sessions.
     await call('editor', 'PATCH', `/api/v1/share-links/${link.id}`, { password: null });

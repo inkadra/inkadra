@@ -337,11 +337,16 @@ export function registerAccountRoutes(app: FastifyInstance, deps: Deps) {
       .where(and(eq(account.userId, userId), eq(account.providerId, 'credential')));
     if (credential) {
       if (!password) throw new HttpError('bad_request', 'Type your password to confirm.');
-      try {
-        await auth.api.verifyPassword({ body: { password }, headers: toHeaders(req) });
-      } catch {
-        throw new HttpError('forbidden', 'The password is not right.');
+      const confirmed = await auth.confirmPassword(session.user, password, toHeaders(req));
+      if (typeof confirmed === 'object') {
+        reply.header('retry-after', String(confirmed.retryAfter));
+        throw new HttpError('rate_limited', 'Too many attempts.');
       }
+      if (confirmed === 'unavailable')
+        throw new HttpError('internal', 'Authentication temporarily unavailable.');
+      if (confirmed === 'failed')
+        throw new HttpError('internal', 'The password could not be checked. Try again.');
+      if (confirmed === 'wrong') throw new HttpError('forbidden', 'The password is not right.');
     } else if (Date.now() - new Date(session.session.createdAt).getTime() >= FRESH_SIGN_IN_MS) {
       throw new HttpError('forbidden', 'Sign in again, then delete the account within 15 minutes.');
     }
