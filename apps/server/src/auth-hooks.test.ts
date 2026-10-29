@@ -1,4 +1,4 @@
-import { APIError } from 'better-auth';
+import { APIError, type BetterAuthPlugin } from 'better-auth';
 import { afterEach, expect, it, vi } from 'vitest';
 import { createAuth } from './auth.ts';
 import { loadConfig } from './config.ts';
@@ -180,7 +180,7 @@ it('issues a host-only secure device cookie after the two-factor plugin', async 
   const plugins = auth.options.plugins ?? [];
   const index = plugins.findIndex((plugin) => plugin.id === 'known-device');
   expect(index).toBeGreaterThan(plugins.findIndex((plugin) => plugin.id === 'two-factor'));
-  const hook = plugins[index]?.hooks?.after?.[0];
+  const hook = (plugins[index] as BetterAuthPlugin | undefined)?.hooks?.after?.[0];
   if (!hook) throw new Error('Missing known-device hook');
   const context = ctx('/two-factor/verify-totp', { newSession: { user } });
   expect(hook.matcher(context as never)).toBe(true);
