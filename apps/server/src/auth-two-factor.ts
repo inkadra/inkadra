@@ -3,7 +3,7 @@ import { twoFactor } from 'better-auth/plugins';
 
 /** Extend the upstream challenge, keeping its signed cookie, expiry and attempt counter. */
 export function hardenedTwoFactor(issuer: string) {
-  const plugin = twoFactor({ issuer });
+  const plugin = twoFactor({ issuer, allowPasswordless: true });
   const hook = plugin.hooks.after[0];
   if (!hook) throw new Error('Better Auth two-factor hook is missing.');
   const upstream = hook.handler;

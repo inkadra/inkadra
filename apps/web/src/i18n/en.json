@@ -1438,6 +1438,7 @@
       "changed": "Password changed. Your other sessions were signed out."
     },
     "twoFactor": {
+      "passwordless": "Accounts without a password can use their provider session to set up two-step verification.",
       "requiredAdmin": "To continue as an administrator, set up two-step verification. Keep your recovery codes.",
       "title": "Two-step verification",
       "on": "On: signing in also asks for a code from your app.",

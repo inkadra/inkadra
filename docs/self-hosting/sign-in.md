@@ -147,7 +147,6 @@ implemented, this risk remains; do not broaden the redirect allowlist as a worka
 The `requireAdminTwoFactor` administration setting defaults to false. When enabled,
 administrators without two-step verification can read their identity and enroll through
 Better Auth, but cannot use product APIs, administrator APIs, tokens or collaboration.
-They see an enrollment banner instead of the workspace. Enable the policy only after
-administrators have set a password (including accounts originally using OAuth), and keep
-backup codes for recovery. Bootstrap stays available on an empty instance; an existing
+They see an enrollment banner instead of the workspace. Keep backup codes for recovery. Accounts without a credential password enroll using their
+authenticated provider session; accounts with a password must confirm it. Bootstrap stays available on an empty instance; an existing
 policy applies to the first administrator immediately after signup.

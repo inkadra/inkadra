@@ -23,7 +23,10 @@ persisted boolean independently and defaults to off.
 
 ## Consequences
 
-Policy activation may lock out passwordless administrators until they set a password through
-Better Auth. Administrators should enroll before activation and retain backup codes.
+Use Better Auth’s native `allowPasswordless` enrollment for accounts with no credential
+password. Their authenticated identity-provider session authorizes enrollment; credential
+accounts still require their password (verified by the upstream credential-account lookup).
+TOTP verification remains mandatory before `twoFactorEnabled` becomes true. Administrators
+should enroll before activation and retain backup codes.
 Existing sockets are closed at the next access recheck. Custom mobile URI schemes remain
 an acknowledged risk pending verified HTTPS links; PKCE alone cannot verify app ownership.

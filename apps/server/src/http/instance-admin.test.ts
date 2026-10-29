@@ -1,3 +1,4 @@
+import { createHmac } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { InstanceMember, InstanceSettings, StorageUsage } from '@inkadra/shared';
 import { eq, sql } from 'drizzle-orm';
@@ -7,6 +8,7 @@ import { createAuth } from '../auth.ts';
 import { loadConfig } from '../config.ts';
 import { createDatabase, runMigrations } from '../db/client.ts';
 import {
+  account,
   asset,
   assetVariant,
   boardElementIndex,
@@ -21,6 +23,20 @@ import { memoryMailer } from '../mailer.ts';
 import { testDeps } from '../test-deps.ts';
 import { issueToken } from '../tokens.ts';
 import { createApp } from './app.ts';
+
+/** RFC 6238 code (SHA-1, 30 s, 6 digits) for a base32 secret, as authenticator apps do. */
+function totp(base32: string, at = Date.now()) {
+  const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+  let bits = '';
+  for (const c of base32.replace(/=+$/, '').toUpperCase())
+    bits += alphabet.indexOf(c).toString(2).padStart(5, '0');
+  const key = Buffer.from(bits.match(/.{8}/g)?.map((b) => Number.parseInt(b, 2)) ?? []);
+  const counter = Buffer.alloc(8);
+  counter.writeBigUInt64BE(BigInt(Math.floor(at / 30_000)));
+  const mac = createHmac('sha1', key).update(counter).digest();
+  const offset = (mac.at(-1) ?? 0) & 0xf;
+  return String((mac.readUInt32BE(offset) & 0x7fffffff) % 1_000_000).padStart(6, '0');
+}
 
 const url = process.env.DATABASE_URL;
 describe.skipIf(!url)('instance administration', () => {
@@ -282,6 +298,60 @@ describe.skipIf(!url)('instance administration', () => {
       await db.delete(instanceSetting).where(eq(instanceSetting.key, 'administration'));
       await db.update(user).set({ twoFactorEnabled: false }).where(eq(user.id, people.admin!.id));
       await db.delete(personalToken).where(eq(personalToken.id, token.row.id));
+    }
+  });
+
+  it('lets a passwordless administrator enroll and unlocks only after a verified TOTP', async () => {
+    expect(
+      (
+        await app.inject({
+          method: 'POST',
+          url: '/api/auth/two-factor/enable',
+          headers: { cookie: people.admin!.cookie, origin: config.PUBLIC_URL },
+          payload: {},
+        })
+      ).statusCode,
+    ).toBe(400);
+    const registered = await signUp('passwordless');
+    expect(registered.statusCode).toBe(200);
+    const id = registered.json().user.id;
+    const cookie = String(registered.headers['set-cookie']).split(';')[0] ?? '';
+    await db.delete(account).where(eq(account.userId, id));
+    await db.update(user).set({ role: 'admin' }).where(eq(user.id, id));
+    await db
+      .insert(instanceSetting)
+      .values({ key: 'administration', value: { requireAdminTwoFactor: true } })
+      .onConflictDoUpdate({
+        target: instanceSetting.key,
+        set: { value: { requireAdminTwoFactor: true } },
+      });
+    try {
+      const headers = { cookie, origin: config.PUBLIC_URL };
+      expect((await app.inject({ url: '/api/v1/projects', headers })).statusCode).toBe(403);
+      const enabled = await app.inject({
+        method: 'POST',
+        url: '/api/auth/two-factor/enable',
+        headers,
+        payload: {},
+      });
+      expect(enabled.statusCode).toBe(200);
+      expect(enabled.json().backupCodes.length).toBeGreaterThan(0);
+      expect((await app.inject({ url: '/api/v1/projects', headers })).statusCode).toBe(403);
+      const secret = new URL(enabled.json().totpURI).searchParams.get('secret') ?? '';
+      const verified = await app.inject({
+        method: 'POST',
+        url: '/api/auth/two-factor/verify-totp',
+        headers,
+        payload: { code: totp(secret) },
+      });
+      expect(verified.statusCode).toBe(200);
+      const newCookie = String(verified.headers['set-cookie']).split(';')[0] ?? '';
+      expect(
+        (await app.inject({ url: '/api/v1/projects', headers: { cookie: newCookie } })).statusCode,
+      ).toBe(200);
+    } finally {
+      await db.delete(instanceSetting).where(eq(instanceSetting.key, 'administration'));
+      await db.update(user).set({ role: 'member' }).where(eq(user.id, id));
     }
   });
 

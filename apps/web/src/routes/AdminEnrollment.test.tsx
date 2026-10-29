@@ -5,6 +5,7 @@ import { expect, it, vi } from 'vitest';
 import { AdminEnrollment } from './AdminEnrollment.tsx';
 
 const state = vi.hoisted(() => ({ enrollmentRequired: false }));
+vi.mock('../lib/theme.ts', () => ({ useTheme: () => ({}) }));
 vi.mock('../lib/session.tsx', () => ({ useSession: () => state }));
 vi.mock('react-i18next', () => ({ useTranslation: () => ({ t: (key: string) => key }) }));
 vi.mock('./Settings.tsx', () => ({ TwoFactor: () => <form aria-label="Enroll" /> }));

@@ -341,7 +341,7 @@ function SignInMethods({
           label={t('settings.twoFactor.title')}
           help={
             !hasPassword
-              ? t('settings.twoFactor.needsPassword')
+              ? t('settings.twoFactor.passwordless')
               : twoFactor
                 ? t('settings.twoFactor.on')
                 : t('settings.twoFactor.off')
@@ -350,7 +350,7 @@ function SignInMethods({
           <Badge tone={twoFactor ? 'ok' : 'neutral'}>
             {t(twoFactor ? 'settingsUi.on' : 'settingsUi.off')}
           </Badge>
-          {hasPassword && (
+          {accounts !== null && (
             <Button
               variant={twoFactor ? 'ghost' : 'secondary'}
               onClick={() => setDialog('twoFactor')}
@@ -453,6 +453,15 @@ export function TwoFactor({ onDone }: { onDone: () => void }) {
   const { t } = useTranslation();
   const { user, refresh } = useSession();
   const [password, setPassword] = useState('');
+  const [hasPassword, setHasPassword] = useState<boolean | null>(null);
+  useEffect(() => {
+    void authApi
+      .listAccounts()
+      .then((accounts) =>
+        setHasPassword(accounts.some((account) => account.providerId === 'credential')),
+      )
+      .catch(() => setHasPassword(null));
+  }, []);
   const [setup, setSetup] = useState<{ totpURI: string; backupCodes: string[] } | null>(null);
   const [code, setCode] = useState('');
   const status = useStatus();
@@ -540,19 +549,25 @@ export function TwoFactor({ onDone }: { onDone: () => void }) {
       <p className="settings-muted">
         {enabled ? t('settings.twoFactor.on') : t('settings.twoFactor.off')}
       </p>
-      <TextField
-        label={t('settings.password.current')}
-        type="password"
-        autoComplete="current-password"
-        value={password}
-        onChange={(e) => setPassword(e.target.value)}
-      />
+      {hasPassword !== false && (
+        <TextField
+          label={t('settings.password.current')}
+          type="password"
+          autoComplete="current-password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+        />
+      )}
       {status.node}
       <DialogActions>
         <Button variant="ghost" onClick={onDone}>
           {t('project.cancel')}
         </Button>
-        <Button type="submit" variant={enabled ? 'danger' : 'primary'} disabled={!password}>
+        <Button
+          type="submit"
+          variant={enabled ? 'danger' : 'primary'}
+          disabled={hasPassword === null || (hasPassword && !password)}
+        >
           {enabled ? t('settings.twoFactor.disable') : t('settings.twoFactor.enable')}
         </Button>
       </DialogActions>

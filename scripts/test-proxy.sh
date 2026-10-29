@@ -104,7 +104,7 @@ body=$(c "$url/api/v1/instance")
 headers=$(c -D - -o /dev/null -c "$work/cookies" -H "Origin: $url" -H 'Content-Type: application/json' \
   --data '{"name":"Proxy Test","email":"proxy@example.com","password":"correct-horse-battery"}' \
   "$url/api/auth/sign-up/email")
-if grep -qi '^set-cookie: __Secure-inkadra.*; Secure' <<<"$headers"; then
+if grep -qi '^set-cookie: __Host-inkadra\.session_token=.*; Path=/; HttpOnly; Secure; SameSite=Lax' <<<"$headers"; then
   pass "sign-up sets a Secure session cookie"
 else
   fail "secure session cookie (headers: $(tr '\r\n' '  ' <<<"$headers"))"
