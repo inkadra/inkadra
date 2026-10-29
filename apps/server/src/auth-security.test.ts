@@ -61,3 +61,33 @@ it.each([
 ])('groups authentication source %s as %s', (address, expected) => {
   expect(authSource(address)).toBe(expected);
 });
+
+it.skipIf(!process.env.REDIS_URL)(
+  'shares budgets across processes only within an instance',
+  async () => {
+    const config = loadConfig({
+      NODE_ENV: 'test',
+      REDIS_URL: process.env.REDIS_URL,
+      PUBLIC_URL: 'https://example.com',
+      DATABASE_URL: 'unused',
+      AUTH_SECRET: 'test-secret-test-secret-test-secret',
+    });
+    const first = authSecurity(config);
+    const second = authSecurity(config);
+    const independent = authSecurity({ ...config, PUBLIC_URL: 'https://other.example.com' });
+    const id = `isolation:${crypto.randomUUID()}`;
+    try {
+      const { vi } = await import('vitest');
+      for (const store of [first, second, independent])
+        await vi.waitFor(async () => expect((await store.check(id, 1, 60)).allowed).toBe(true));
+      expect(await first.take(id, 1, 60)).toBe(true);
+      expect((await second.check(id, 1, 60)).allowed).toBe(false);
+      expect((await independent.check(id, 1, 60)).allowed).toBe(true);
+    } finally {
+      await first.storage.delete(id);
+      first.close();
+      second.close();
+      independent.close();
+    }
+  },
+);

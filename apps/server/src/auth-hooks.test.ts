@@ -65,3 +65,22 @@ it('clears second-factor budgets after verification within an existing session',
   await auth.options.hooks?.after?.(ctx('/two-factor/verify-totp', { session: { user } }) as never);
   expect(budgets.storage.delete).toHaveBeenCalledWith('totp:member');
 });
+
+it('reads failure counters before password verification without consuming them', async () => {
+  await auth.options.hooks?.before?.(ctx('/sign-in/email') as never);
+  expect(budgets.check).toHaveBeenCalledWith(`login:${user.email}:192.0.2.0/24`, 10, 900);
+  expect(budgets.check).toHaveBeenCalledWith(`account:${user.email}`, 50, 3600);
+  expect(budgets.take).not.toHaveBeenCalled();
+  expect(budgets.consume).toHaveBeenCalledTimes(1);
+  expect(budgets.consume).toHaveBeenCalledWith('ip:192.0.2.1:/sign-in/email', 30, 60);
+});
+
+it('retains budgets after a failed second factor', async () => {
+  await auth.options.hooks?.after?.(
+    ctx('/two-factor/verify-totp', {
+      session: { user },
+      returned: new APIError('UNAUTHORIZED'),
+    }) as never,
+  );
+  expect(budgets.storage.delete).not.toHaveBeenCalled();
+});
