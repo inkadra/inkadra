@@ -14,6 +14,8 @@ export const InstanceSettings = z
   .openapi('InstanceSettings');
 export type InstanceSettings = z.infer<typeof InstanceSettings>;
 export const UpdateInstanceSettings = InstanceSettings.partial()
+  // A PATCH omission must preserve the stored policy, not apply its read-time default.
+  .extend({ requireAdminTwoFactor: z.boolean().optional() })
   .strict()
   .openapi('UpdateInstanceSettings');
 export const InstanceMember = z
