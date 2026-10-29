@@ -17,6 +17,7 @@ describe('browser security policy', () => {
     expect(h['content-security-policy-report-only']).toContain('wss://inkadra.example:8443');
     expect(h['content-security-policy-report-only']).toContain("script-src 'self';");
     expect(h['content-security-policy']).toBeUndefined();
+    expect(h['content-security-policy-report-only']).not.toContain('upgrade-insecure-requests');
     expect(h['strict-transport-security']).toBeUndefined();
     expect(h['cross-origin-opener-policy']).toBe('same-origin');
     expect(h['permissions-policy']).toContain('camera=()');
@@ -37,6 +38,7 @@ describe('browser security policy', () => {
       "connect-src 'self' wss://inkadra.example:8443 https://objects.example",
     );
     expect(h['strict-transport-security']).toBe('max-age=31536000');
+    expect(h['content-security-policy']).toContain('upgrade-insecure-requests');
     expect(h['content-security-policy']).toContain('report-uri https://reports.example/csp');
     expect(
       securityHeaders(

@@ -91,3 +91,18 @@ it.skipIf(!process.env.REDIS_URL)(
     }
   },
 );
+
+it('bounds concurrent reservations and refunds without erasing other failures', async () => {
+  const store = authSecurity(loadConfig({ NODE_ENV: 'test', PUBLIC_URL: 'https://example.com', DATABASE_URL: 'unused', AUTH_SECRET: 'test-secret-test-secret-test-secret' }));
+  const id = `account:${crypto.randomUUID()}`;
+  const results = await Promise.all(Array.from({ length: 100 }, async () => {
+    const result = await store.consume(id, 50, 3600);
+    if (!result.allowed) await store.refund(id);
+    return result.allowed;
+  }));
+  expect(results.filter(Boolean)).toHaveLength(50);
+  expect((await store.check(id, 50, 3600)).allowed).toBe(false);
+  await store.refund(id);
+  expect((await store.consume(id, 50, 3600)).allowed).toBe(true);
+  store.close();
+});

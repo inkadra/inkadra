@@ -342,7 +342,7 @@ export function registerAccountRoutes(app: FastifyInstance, deps: Deps) {
       } catch {
         throw new HttpError('forbidden', 'The password is not right.');
       }
-    } else if (Date.now() - new Date(session.session.createdAt).getTime() > FRESH_SIGN_IN_MS) {
+    } else if (Date.now() - new Date(session.session.createdAt).getTime() >= FRESH_SIGN_IN_MS) {
       throw new HttpError('forbidden', 'Sign in again, then delete the account within 15 minutes.');
     }
 

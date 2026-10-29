@@ -1,3 +1,4 @@
+import type { Logger } from 'pino';
 import { isIP } from 'node:net';
 import IORedis from 'ioredis';
 import type { Config } from './config.ts';
@@ -30,7 +31,7 @@ export function authSource(address: string): string {
 }
 
 /** Atomic, expiring budgets; neither credentials nor addresses appear in keys. */
-export function authSecurity(config: Config) {
+export function authSecurity(config: Config, log?: Logger) {
   const redis = config.REDIS_URL
     ? new IORedis(config.REDIS_URL, {
         maxRetriesPerRequest: 1,
@@ -40,7 +41,15 @@ export function authSecurity(config: Config) {
     : undefined;
   if (!redis && config.NODE_ENV === 'production')
     throw new Error('REDIS_URL is required for persistent authentication rate limits.');
-  redis?.on('error', () => {});
+  let lastError = -Infinity;
+  const reportError = () => {
+    if (Date.now() - lastError < 60_000) return;
+    lastError = Date.now();
+    // Never serialize driver errors: connection strings may contain credentials.
+    if (log) log.error('Authentication rate-limit storage unavailable');
+    else console.error('Authentication rate-limit storage unavailable');
+  };
+  redis?.on('error', reportError);
   const memory = new Map<string, { n: number; until: number }>();
   const namespace = sha256(`${config.PUBLIC_URL}:${config.AUTH_SECRET}`);
   const key = (value: string) => `inkadra:auth:${namespace}:${sha256(value)}`;
@@ -79,6 +88,26 @@ export function authSecurity(config: Config) {
     };
   }
   return {
+    reportError,
+    async ready() {
+      if (!redis || redis.status === 'ready') return;
+      await new Promise<void>((resolve, reject) => {
+        const cleanup = () => { redis.off('ready', onReady); redis.off('error', onError); clearTimeout(timer); };
+        const onReady = () => { cleanup(); resolve(); };
+        const onError = () => { cleanup(); reject(new Error('Authentication storage unavailable')); };
+        const timer = setTimeout(onError, 5000);
+        redis.once('ready', onReady);
+        redis.once('error', onError);
+      });
+    },
+    async refund(id: string) {
+      if (redis) {
+        await redis.eval("if tonumber(redis.call('GET',KEYS[1]) or '0') > 0 then return redis.call('DECR',KEYS[1]) end; return 0", 1, key(id));
+      } else {
+        const entry = memory.get(id);
+        if (entry && entry.until > Date.now() && entry.n > 0) entry.n--;
+      }
+    },
     check: (id: string, max: number, seconds: number) => budget(id, max, seconds, false),
     consume: (id: string, max: number, seconds: number) => budget(id, max, seconds, true),
     async take(id: string, max: number, seconds: number) {

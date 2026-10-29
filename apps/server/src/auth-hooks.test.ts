@@ -6,6 +6,8 @@ import type { Database } from './db/client.ts';
 
 const budgets = vi.hoisted(() => ({
   consume: vi.fn(async () => ({ allowed: true, retryAfter: 0 })),
+  refund: vi.fn(async () => {}),
+  reportError: vi.fn(),
   check: vi.fn(async () => ({ allowed: true, retryAfter: 0 })),
   take: vi.fn(async () => true),
   storage: { delete: vi.fn(async () => {}) },
@@ -31,6 +33,9 @@ const ctx = (path: string, context: object = {}) => ({
   body: { email: user.email },
   headers: new Headers({ 'x-inkadra-client-ip': '192.0.2.1' }),
   context,
+  getCookie: () => undefined,
+  setCookie: vi.fn(),
+  setHeader: vi.fn(),
 });
 
 it('does not clear password budgets before a required second factor', async () => {
@@ -43,12 +48,15 @@ it('does not clear password budgets before a required second factor', async () =
   expect(budgets.storage.delete).toHaveBeenCalledWith('totp:member');
 });
 
-it('increments account and source budgets only on password 401 responses', async () => {
-  await auth.options.hooks?.after?.(
-    ctx('/sign-in/email', { returned: new APIError('UNAUTHORIZED') }) as never,
-  );
-  expect(budgets.take).toHaveBeenCalledWith(`login:${user.email}:192.0.2.0/24`, 10, 900);
-  expect(budgets.take).toHaveBeenCalledWith(`account:${user.email}`, 50, 3600);
+it('reserves before verification and refunds only non-401 outcomes', async () => {
+  for (const returned of [new APIError('UNAUTHORIZED'), new APIError('BAD_REQUEST'), {}]) {
+    vi.clearAllMocks();
+    const context = { returned };
+    await auth.options.hooks?.before?.(ctx('/sign-in/email', context) as never);
+    expect(budgets.consume).toHaveBeenCalledWith(`account:${user.email}`, 50, 3600);
+    await auth.options.hooks?.after?.(ctx('/sign-in/email', context) as never);
+    expect(budgets.refund).toHaveBeenCalledTimes(returned instanceof APIError && returned.status === 'UNAUTHORIZED' ? 0 : 2);
+  }
 });
 
 it('applies the TOTP budget to the authenticated user across sessions', async () => {
@@ -69,13 +77,21 @@ it('clears second-factor budgets after verification within an existing session',
   expect(budgets.storage.delete).toHaveBeenCalledWith('totp:member');
 });
 
-it('reads failure counters before password verification without consuming them', async () => {
-  await auth.options.hooks?.before?.(ctx('/sign-in/email') as never);
-  expect(budgets.check).toHaveBeenCalledWith(`login:${user.email}:192.0.2.0/24`, 10, 900);
-  expect(budgets.check).toHaveBeenCalledWith(`account:${user.email}`, 50, 3600);
-  expect(budgets.take).not.toHaveBeenCalled();
-  expect(budgets.consume).toHaveBeenCalledTimes(1);
-  expect(budgets.consume).toHaveBeenCalledWith('ip:192.0.2.1:/sign-in/email', 30, 60);
+it('groups rotating IPv6 burst keys and reserves account/source counters', async () => {
+  for (const ip of ['2001:db8::1', '2001:db8::2']) {
+    await auth.options.hooks?.before?.({ ...ctx('/sign-in/email'), headers: new Headers({ 'x-inkadra-client-ip': ip }) } as never);
+  }
+  expect(budgets.consume).toHaveBeenCalledWith('ip:2001:db8:0:0::/64:/sign-in/email', 30, 60);
+  expect(budgets.consume).toHaveBeenCalledWith(`account:${user.email}`, 50, 3600);
+});
+
+it.each(['/change-password', '/change-email', '/sign-up/other'])('limits sensitive endpoint %s', async (path) => {
+  await auth.options.hooks?.before?.(ctx(path) as never);
+  expect(budgets.consume).toHaveBeenCalledWith(`ip:192.0.2.0/24:${path}`, 3, 10);
+});
+it('covers generic auth endpoints', async () => {
+  await auth.options.hooks?.before?.(ctx('/get-session') as never);
+  expect(budgets.consume).toHaveBeenCalledWith('generic:192.0.2.0/24', 100, 10);
 });
 
 it('retains budgets after a failed second factor', async () => {

@@ -29,7 +29,7 @@ export function securityHeaders(config: Config): Record<string, string> {
     "form-action 'self'",
     "frame-ancestors 'none'",
     ...(config.CSP_REPORT_URI ? [`report-uri ${config.CSP_REPORT_URI}`] : []),
-    ...(publicUrl.protocol === 'https:' ? ['upgrade-insecure-requests'] : []),
+    ...(config.CSP_ENFORCE && publicUrl.protocol === 'https:' ? ['upgrade-insecure-requests'] : []),
   ].join('; ');
   const youtube = '(self "https://www.youtube-nocookie.com")';
   return {

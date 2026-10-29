@@ -12,7 +12,7 @@ or share the real `.env`.
 | `PUBLIC_URL`    | required                         | Address people use, as served by your proxy, e.g. `https://inkadra.example.com`. No path |
 | `AUTH_SECRET`   | required                         | At least 32 random characters: `openssl rand -hex 32`. Changing it signs everyone out    |
 | `DATABASE_URL`  | set by compose                   | Postgres connection string                                                               |
-| `REDIS_URL`     | set by compose                   | Valkey or Redis connection string. Needed by `worker`, `all` and, for clips, `collab`    |
+| `REDIS_URL`     | set by compose                   | Valkey or Redis connection string. Required in production by `web`, `worker`, `all` and `collab`    |
 | `INSTANCE_NAME` | `Inkadra`                        | Name shown in the app                                                                    |
 | `REGISTRATION`  | `invite`                         | `invite`: only invited people can sign up. `open`: anyone can                            |
 | `HOST`          | `0.0.0.0`                        | Interface the web server listens on                                                      |
@@ -123,3 +123,22 @@ tokens; resets revoke all tokens (including app tokens) and every browser sessio
 Google domain restrictions require `hd` even for linked users. Generic OIDC allowlists accept
 `email_verified` as boolean `true` or string `"true"` (Cognito). Open registration and valid
 invitations can still reveal existing accounts during sign-up.
+
+### Unlocking an account
+
+From an administrator shell inside the server container, with its existing environment:
+
+```sh
+node dist/main.js unlock-auth person@example.com
+# Also clear that recipient's source-network login/mail counters if needed:
+node dist/main.js unlock-auth person@example.com 192.0.2.10
+```
+
+This clears the global account and mail ceilings in the configured instance's Valkey namespace.
+It does not change passwords, sessions, two-factor settings or network burst limits. Access to
+this command requires host/container administrative access; there is no public unlock endpoint.
+Known HTTPS devices receive a signed 90-day cookie after sign-in: they can retry during a global
+account lockout, within five failures/15 minutes per device and the usual source-network budget.
+The cookie grants no session or second-factor bypass. Rotating AUTH_SECRET invalidates it.
+Email delivery allows three requests/15 minutes per recipient/source network and ten/hour per
+recipient; distributed or sustained abuse can still exhaust the larger ceiling.
