@@ -172,7 +172,7 @@ test('a finger on the toolbar works its button and never joins a pinch', async (
   // A finger on the board, then a tap on a toolbar button: the button works, nothing pinches.
   // Chrome only clicks for a lone finger, so the tap is the events a phone sends for it.
   await touch('touchStart', [{ ...board, id: 1 }]);
-  await hand.evaluate((button) => {
+  await hand.evaluate((button: HTMLElement) => {
     const at = button.getBoundingClientRect();
     const init = {
       pointerId: 99,
