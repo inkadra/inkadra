@@ -705,10 +705,12 @@ export function AppLayout({ home }: { home?: ReactNode }) {
             canvas={!!projectId}
             collapsed={inboxOpen || collapsed}
           >
-            {/* Keep a containing block while Inbox hides and restores the canvas. */}
+            {/* Keep layout observable while Inbox covers the board, including sidebar resizes. */}
             <div
+              inert={inboxOpen}
+              aria-hidden={inboxOpen || undefined}
               style={{
-                display: inboxOpen ? 'none' : 'block',
+                visibility: inboxOpen ? 'hidden' : 'visible',
                 position: 'relative',
                 height: '100%',
               }}

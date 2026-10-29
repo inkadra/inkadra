@@ -382,3 +382,47 @@ test('search from home suggests shared project tags and preserves multiword sele
   expect(queries[1]!.get('tag')).toBe('blue hour');
   expect(queries[1]!.get('q')).toBe('station');
 });
+
+test('real board restores canvas controls after the sidebar Inbox closes', async ({
+  page,
+}, testInfo) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await signIn(page);
+  const response = await page.request.post('/api/v1/projects', {
+    headers: { origin: new URL(page.url()).origin },
+    data: { name: 'Inbox layout regression' },
+  });
+  expect(response.status()).toBe(201);
+  const project = await response.json();
+  await page.goto(`/p/${project.id}?view=canvas`);
+  const canvas = page.getByTestId('canvas');
+  await expect(canvas).toBeVisible();
+  await canvas.dblclick({ position: { x: 350, y: 220 } });
+  await page.keyboard.type('Inbox layout regression');
+  await page.keyboard.press('Escape');
+  await page.keyboard.press('Escape');
+  const sidebar = (await page.locator('.ink-sidebar').boundingBox())!;
+  const toolbar = page.locator('.toolbar');
+  const before = (await toolbar.boundingBox())!;
+  const inbox = page.locator('.ink-sidebar').getByRole('button', { name: 'Inbox', exact: true });
+  await inbox.click();
+  // Keep the real Canvas laid out so ResizeObserver sees sidebar changes while covered.
+  await expect
+    .poll(() => page.getByTestId('canvas').evaluate((el) => el.clientWidth))
+    .toBeGreaterThan(0);
+  await expect(page.locator('.notifications--fixed')).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(page.locator('.notifications--fixed')).toHaveCount(0);
+  const minimap = (await page.locator('.minimap').boundingBox())!;
+  const zoom = (await page.getByRole('button', { name: 'Riduci', exact: true }).boundingBox())!;
+  const after = (await toolbar.boundingBox())!;
+  console.log(JSON.stringify({ sidebar, minimap, zoom, before, after }));
+  expect(minimap.x).toBeGreaterThanOrEqual(sidebar.x + sidebar.width);
+  expect(zoom.x).toBeGreaterThanOrEqual(sidebar.x + sidebar.width);
+  expect(after.x + after.width / 2).toBeCloseTo(before.x + before.width / 2, 0);
+  await expect(inbox).toBeFocused();
+  for (const theme of ['light', 'dark']) {
+    await page.evaluate((theme) => (document.documentElement.dataset.theme = theme), theme);
+    await page.screenshot({ path: testInfo.outputPath(`inbox-${theme}.png`) });
+  }
+});

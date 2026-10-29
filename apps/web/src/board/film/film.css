@@ -3212,6 +3212,9 @@ button.moodboard__card {
   width: 100%;
   min-width: 0;
 }
+.viewer__stage--compare .viewer__media {
+  cursor: default;
+}
 /* Review: frame list, the frame on stage and the decision panel -------------------- */
 
 .client-review__frames {

@@ -132,3 +132,9 @@ export const type = {
   label: [11, 600],
   tag: [10, 500],
 } as const;
+
+/** Full-screen media covers app chrome; update notifications remain above it. */
+export const layers = {
+  'layer-viewer': '1000',
+  'layer-notification': '1100',
+} as const;

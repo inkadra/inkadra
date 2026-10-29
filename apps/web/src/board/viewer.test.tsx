@@ -679,7 +679,7 @@ describe('MediaViewer keyboard, focus and comments', () => {
     opener.focus();
     await render(viewer());
     const dialog = container.querySelector('[role="dialog"]') as HTMLElement;
-    expect(dialog.contains(document.activeElement)).toBe(true);
+    expect(document.activeElement).toBe(dialog);
     const focusable = [...dialog.querySelectorAll<HTMLElement>('button:not(:disabled), a[href]')];
     focusable.at(-1)?.focus();
     const tab = new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true });

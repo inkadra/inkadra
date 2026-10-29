@@ -219,7 +219,19 @@
   }
 }
 
-.project-appearance [role="tabpanel"] {
-  height: 340px;
-  overflow-y: auto;
+.project-appearance__panels {
+  display: grid;
+}
+.project-appearance__panels [role="tabpanel"] {
+  grid-area: 1 / 1;
+}
+.project-appearance__panels [role="tabpanel"][hidden] {
+  display: block;
+  visibility: hidden;
+}
+.project-appearance__feedback {
+  min-height: 3em;
+}
+.project-appearance__feedback p {
+  margin-block: 8px;
 }

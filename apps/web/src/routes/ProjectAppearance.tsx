@@ -349,119 +349,125 @@ export function ProjectAppearanceDialog({
               </button>
             ))}
           </div>
-          <div
-            role="tabpanel"
-            id="appearance-panel-symbol"
-            aria-labelledby="appearance-tab-symbol"
-            hidden={tab !== 'symbol'}
-          >
+          <div className="project-appearance__panels">
             <div
-              className="project-appearance__choices"
-              role="radiogroup"
-              aria-label={t('appearance.symbol')}
-              onKeyDown={radioKeys}
+              role="tabpanel"
+              inert={tab !== 'symbol'}
+              id="appearance-panel-symbol"
+              aria-labelledby="appearance-tab-symbol"
+              hidden={tab !== 'symbol'}
             >
-              {ProjectIcon.shape.shape.options.map((shape) => (
-                <button
-                  type="button"
-                  role="radio"
-                  aria-checked={icon.shape === shape}
-                  tabIndex={icon.shape === shape ? 0 : -1}
-                  disabled={disabled}
-                  key={shape}
-                  onClick={() => setIcon({ ...icon, shape })}
-                >
-                  <ProjectGlyph shape={shape} color={icon.color} />
-                  <span>{t(`appearance.shapes.${shape}`)}</span>
-                </button>
-              ))}
-            </div>
-            <div className="project-appearance__color-label">
-              {t('appearance.color')} · {t(`appearance.colors.${icon.color}`)}
+              <div
+                className="project-appearance__choices"
+                role="radiogroup"
+                aria-label={t('appearance.symbol')}
+                onKeyDown={radioKeys}
+              >
+                {ProjectIcon.shape.shape.options.map((shape) => (
+                  <button
+                    type="button"
+                    role="radio"
+                    aria-checked={icon.shape === shape}
+                    tabIndex={icon.shape === shape ? 0 : -1}
+                    disabled={disabled}
+                    key={shape}
+                    onClick={() => setIcon({ ...icon, shape })}
+                  >
+                    <ProjectGlyph shape={shape} color={icon.color} />
+                    <span>{t(`appearance.shapes.${shape}`)}</span>
+                  </button>
+                ))}
+              </div>
+              <div className="project-appearance__color-label">
+                {t('appearance.color')} · {t(`appearance.colors.${icon.color}`)}
+              </div>
+              <div
+                className="project-appearance__swatches"
+                role="radiogroup"
+                aria-label={t('appearance.color')}
+                onKeyDown={radioKeys}
+              >
+                {COLOR_ORDER.map((color) => (
+                  <button
+                    type="button"
+                    role="radio"
+                    aria-label={t(`appearance.colors.${color}`)}
+                    aria-checked={icon.color === color}
+                    tabIndex={icon.color === color ? 0 : -1}
+                    disabled={disabled}
+                    key={color}
+                    style={
+                      {
+                        '--swatch':
+                          color === 'neutral' ? 'var(--ink-text-muted)' : `var(--ink-tag-${color})`,
+                      } as CSSProperties
+                    }
+                    onClick={() => setIcon({ ...icon, color })}
+                  />
+                ))}
+              </div>
             </div>
             <div
-              className="project-appearance__swatches"
-              role="radiogroup"
-              aria-label={t('appearance.color')}
-              onKeyDown={radioKeys}
+              role="tabpanel"
+              inert={tab !== 'emoji'}
+              id="appearance-panel-emoji"
+              aria-labelledby="appearance-tab-emoji"
+              hidden={tab !== 'emoji'}
             >
-              {COLOR_ORDER.map((color) => (
-                <button
-                  type="button"
-                  role="radio"
-                  aria-label={t(`appearance.colors.${color}`)}
-                  aria-checked={icon.color === color}
-                  tabIndex={icon.color === color ? 0 : -1}
-                  disabled={disabled}
-                  key={color}
-                  style={
-                    {
-                      '--swatch':
-                        color === 'neutral' ? 'var(--ink-text-muted)' : `var(--ink-tag-${color})`,
-                    } as CSSProperties
-                  }
-                  onClick={() => setIcon({ ...icon, color })}
-                />
-              ))}
+              <div
+                className="project-appearance__emojis"
+                role="radiogroup"
+                aria-label={t('appearance.emoji')}
+                onKeyDown={radioKeys}
+              >
+                {[
+                  '🎬',
+                  '🎥',
+                  '📷',
+                  '🎞️',
+                  '🎭',
+                  '🎨',
+                  '💡',
+                  '🎙️',
+                  '🌆',
+                  '🏔️',
+                  '🌊',
+                  '🚗',
+                  '👗',
+                  '🍝',
+                  '⭐',
+                  '🔥',
+                ].map((emoji, index, all) => (
+                  <button
+                    type="button"
+                    role="radio"
+                    aria-label={emoji}
+                    aria-checked={icon.emoji === emoji}
+                    tabIndex={
+                      icon.emoji === emoji || (!all.includes(icon.emoji ?? '') && index === 0)
+                        ? 0
+                        : -1
+                    }
+                    disabled={disabled}
+                    key={emoji}
+                    onClick={() => setIcon({ ...icon, emoji })}
+                  >
+                    {emoji}
+                  </button>
+                ))}
+              </div>
+              <TextField
+                label={t('appearance.pasteEmoji')}
+                disabled={disabled}
+                value={icon.emoji ?? ''}
+                maxLength={32}
+                placeholder="🎬"
+                onChange={(event) => setIcon({ ...icon, emoji: event.target.value || null })}
+              />
+              <p className="ink-muted">{t('appearance.emojiHelp')}</p>
             </div>
           </div>
-          <div
-            role="tabpanel"
-            id="appearance-panel-emoji"
-            aria-labelledby="appearance-tab-emoji"
-            hidden={tab !== 'emoji'}
-          >
-            <div
-              className="project-appearance__emojis"
-              role="radiogroup"
-              aria-label={t('appearance.emoji')}
-              onKeyDown={radioKeys}
-            >
-              {[
-                '🎬',
-                '🎥',
-                '📷',
-                '🎞️',
-                '🎭',
-                '🎨',
-                '💡',
-                '🎙️',
-                '🌆',
-                '🏔️',
-                '🌊',
-                '🚗',
-                '👗',
-                '🍝',
-                '⭐',
-                '🔥',
-              ].map((emoji, index, all) => (
-                <button
-                  type="button"
-                  role="radio"
-                  aria-label={emoji}
-                  aria-checked={icon.emoji === emoji}
-                  tabIndex={
-                    icon.emoji === emoji || (!all.includes(icon.emoji ?? '') && index === 0)
-                      ? 0
-                      : -1
-                  }
-                  disabled={disabled}
-                  key={emoji}
-                  onClick={() => setIcon({ ...icon, emoji })}
-                >
-                  {emoji}
-                </button>
-              ))}
-            </div>
-            <TextField
-              label={t('appearance.pasteEmoji')}
-              disabled={disabled}
-              value={icon.emoji ?? ''}
-              maxLength={32}
-              placeholder="🎬"
-              onChange={(event) => setIcon({ ...icon, emoji: event.target.value || null })}
-            />
-            <p className="ink-muted">{t('appearance.emojiHelp')}</p>
+          <div className="project-appearance__feedback">
             {tab === 'emoji' && !icon.emoji?.trim() && (
               <p className="ink-muted">{t('appearance.chooseEmoji')}</p>
             )}

@@ -247,6 +247,7 @@ export function MediaViewer({
   const dialogRef = useRef<HTMLDivElement>(null);
   const [copied, setCopied] = useState<string | null>(null);
   const [zoom100, setZoom100] = useState(false);
+  const effectiveZoom = zoom100 && !comparison;
   const [infoOpen, setInfoOpen] = useState(false);
   const { videoRef, unplayable, setUnplayable } = useVideoUnplayable(ready?.url, ready?.id);
 
@@ -283,6 +284,7 @@ export function MediaViewer({
       if (
         (e.key === ' ' || e.code === 'Space') &&
         !e.repeat &&
+        !comparison &&
         (!target ||
           target === document.body ||
           target === dialogRef.current ||
@@ -296,13 +298,24 @@ export function MediaViewer({
           ...(dialogRef.current?.querySelectorAll<HTMLElement>(
             'button:not(:disabled), a[href], input, select, textarea, video[controls], [tabindex="0"]',
           ) ?? []),
-        ];
+        ].filter(
+          (el) =>
+            el.checkVisibility?.({ checkVisibilityCSS: true }) ?? el.getClientRects().length > 0,
+        );
         const first = focusable[0];
         const last = focusable.at(-1);
-        if (e.shiftKey && document.activeElement === first) {
+        if (
+          e.shiftKey &&
+          (document.activeElement === first ||
+            !focusable.includes(document.activeElement as HTMLElement))
+        ) {
           e.preventDefault();
           last?.focus();
-        } else if (!e.shiftKey && document.activeElement === last) {
+        } else if (
+          !e.shiftKey &&
+          (document.activeElement === last ||
+            !focusable.includes(document.activeElement as HTMLElement))
+        ) {
           e.preventDefault();
           first?.focus();
         }
@@ -314,12 +327,12 @@ export function MediaViewer({
       window.removeEventListener('keydown', onKey, true);
       window.removeEventListener('keyup', onKey, true);
     };
-  }, [onClose, gallery]);
+  }, [onClose, gallery, comparison]);
 
   // Focus once on opening, keep it during navigation, give it back to the opener on close.
   useEffect(() => {
     const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-    dialogRef.current?.querySelector<HTMLElement>('button:not(:disabled)')?.focus();
+    dialogRef.current?.focus();
     const dialog = dialogRef.current;
     return () => {
       // Unless the parent already moved focus elsewhere.
@@ -375,6 +388,7 @@ export function MediaViewer({
       ref={dialogRef}
       className={`viewer${infoOpen ? ' viewer--info-open' : ''}`}
       role="dialog"
+      tabIndex={-1}
       aria-modal="true"
       aria-label={displayName}
       data-chrome
@@ -419,16 +433,17 @@ export function MediaViewer({
           <button
             type="button"
             className="ink-btn ink-btn--secondary viewer__stage-btn"
+            disabled={!!comparison}
             onClick={() => setZoom100((z) => !z)}
             title={t('viewer.zoomHelp')}
-            aria-label={zoom100 ? t('viewer.zoomFit') : t('viewer.zoom100')}
+            aria-label={effectiveZoom ? t('viewer.zoomFit') : t('viewer.zoom100')}
             aria-keyshortcuts="Space"
           >
             <span className="viewer__action-icon" aria-hidden="true">
               <Icon name="fit" size={18} />
             </span>
             <span className="viewer__action-label">
-              {zoom100 ? t('viewer.zoomFit') : t('viewer.zoom100')}
+              {effectiveZoom ? t('viewer.zoomFit') : t('viewer.zoom100')}
             </span>
           </button>
           <button
@@ -499,13 +514,13 @@ export function MediaViewer({
           )}
 
           <div
-            className={`viewer__media-wrap${isYoutube ? ' viewer__media-wrap--embed' : ''}${zoom100 ? ' is-zoomed' : ''}`}
+            className={`viewer__media-wrap${isYoutube ? ' viewer__media-wrap--embed' : ''}${effectiveZoom ? ' is-zoomed' : ''}`}
           >
             {comparison && comparisonAsset && comparisonAsset !== 'missing' && (
               <img
-                className={`viewer__media ${zoom100 ? 'viewer__media--zoom100' : 'viewer__media--contain'}`}
+                className={`viewer__media ${effectiveZoom ? 'viewer__media--zoom100' : 'viewer__media--contain'}`}
                 src={
-                  zoom100
+                  effectiveZoom
                     ? comparisonAsset.url
                     : pickVariant(comparisonAsset, wide) || comparisonAsset.url
                 }
@@ -531,7 +546,7 @@ export function MediaViewer({
                 {/* biome-ignore lint/a11y/useMediaCaption: people's own footage has no captions */}
                 <video
                   ref={videoRef}
-                  className={`viewer__media ${zoom100 ? 'viewer__media--zoom100' : 'viewer__media--contain'}`}
+                  className={`viewer__media ${effectiveZoom ? 'viewer__media--zoom100' : 'viewer__media--contain'}`}
                   src={ready.url}
                   poster={ready.variants.length > 0 ? pickVariant(ready, wide) : undefined}
                   controls
@@ -553,14 +568,15 @@ export function MediaViewer({
               <button
                 type="button"
                 className="viewer__picture-btn"
+                disabled={!!comparison}
                 title={t('viewer.zoomHelp')}
-                aria-label={zoom100 ? t('viewer.zoomFit') : t('viewer.zoom100')}
-                aria-pressed={zoom100}
-                onClick={() => setZoom100((z) => !z)}
+                aria-label={effectiveZoom ? t('viewer.zoomFit') : t('viewer.zoom100')}
+                aria-pressed={effectiveZoom}
+                onClick={() => !comparison && setZoom100((z) => !z)}
               >
                 <MovingPicture
-                  className={`viewer__media ${zoom100 ? 'viewer__media--zoom100' : 'viewer__media--contain'}`}
-                  poster={zoom100 ? ready.url : pickVariant(ready, wide) || ready.url}
+                  className={`viewer__media ${effectiveZoom ? 'viewer__media--zoom100' : 'viewer__media--contain'}`}
+                  poster={effectiveZoom ? ready.url : pickVariant(ready, wide) || ready.url}
                   moving={movingVariantUrl(ready, wide)}
                   alt={
                     element.type === 'image' ? (element.caption ?? ready.filename) : ready.filename

@@ -1348,7 +1348,7 @@ button.crumb--editable:focus-visible {
 .viewer {
   position: fixed;
   inset: 0;
-  z-index: 1100;
+  z-index: var(--ink-layer-viewer);
   display: flex;
   background: rgb(8 8 10 / 0.92);
 }
@@ -2111,5 +2111,12 @@ button.card__play {
     max-height: none;
     z-index: 3;
     background: var(--ink-bg-panel);
+  }
+}
+
+@media (max-height: 500px) and (orientation: landscape) {
+  .viewer--info-open .viewer__stage-nav,
+  .viewer--info-open .viewer__thumbnails {
+    display: none;
   }
 }
