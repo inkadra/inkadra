@@ -30,6 +30,7 @@ import {
   nextZoomStep,
   type Point,
   pasteElements,
+  pinchViewport,
   type Rect,
   type ResizeCorner,
   type ResizeOptions,
@@ -117,6 +118,8 @@ import { loadViewport, saveViewport } from './viewport.ts';
 import { isYoutubeUrl } from './youtube.ts';
 
 const DRAG_THRESHOLD = 3;
+/** Controls inside cards, which take the pointer instead of the canvas. */
+const INTERACTIVE = 'input, textarea, select, button, a, [contenteditable="true"], [data-no-drag]';
 const SNAP_PX = 6;
 /** Extra world around the screen that stays rendered, so short pans show no gaps. */
 const OVERSCAN_PX = 400;
@@ -175,6 +178,13 @@ type Gesture =
       options: ResizeOptions;
     }
   | { kind: 'arrow'; start: Point; fromId: string | null };
+
+/** Two fingers on the canvas: where they and the view were when this pair began. */
+interface Pinch {
+  ids: readonly [number, number];
+  from: readonly [Point, Point];
+  viewport: Viewport;
+}
 
 interface Overlay {
   offset?: { dx: number; dy: number };
@@ -305,6 +315,17 @@ export function Canvas({
   const gesture = useRef<Gesture | null>(null);
   const spaceDown = useRef(false);
   const lastPointer = useRef<Point | null>(null);
+  /** Fingers on the canvas, by pointer id, in screen coordinates. */
+  const touches = useRef(new Map<number, Point>());
+  const pinch = useRef<Pinch | null>(null);
+  /** Frame that draws the pinch at the fingers' latest positions. */
+  const pinchFrame = useRef<number | undefined>(undefined);
+  /** Fingers on the toolbar, a menu or a control: they work there and never join a pinch. */
+  const touchesOutside = useRef(new Set<number>());
+  /** Set once two fingers touched: the one left after a pinch starts nothing until all lift. */
+  const touchHeld = useRef(false);
+  /** Selection when the first finger landed, restored if a second one turns it into a pinch. */
+  const touchSelection = useRef<ReadonlySet<string>>(EMPTY_SET);
   const unsortedRef = useRef<HTMLDivElement>(null);
 
   const setViewport = useCallback(
@@ -790,7 +811,124 @@ export function Canvas({
     return { x: e.clientX - (r?.left ?? 0), y: e.clientY - (r?.top ?? 0) };
   }
 
+  /** Whether a finger here may join a pinch: on the board or a card, not on chrome or a control. */
+  function pinchable(target: HTMLElement): boolean {
+    if (target.closest(`${INTERACTIVE}, [data-play-link]`)) return false;
+    return !!canvasElementId(target) || !target.closest('[data-chrome]');
+  }
+
+  /**
+   * The two most recent fingers, which a pinch follows from the current view: a third finger
+   * takes over from the oldest, and lifting one of the pair with two others down continues with
+   * those two.
+   */
+  function pinchPair(): Pinch | null {
+    const [a, b] = [...touches.current].slice(-2);
+    return a && b ? { ids: [a[0], b[0]], from: [a[1], b[1]], viewport: vp.current } : null;
+  }
+
+  /** Moves the view to where the pair's fingers are now; once per frame however many moves. */
+  function drawPinch() {
+    if (pinchFrame.current !== undefined) cancelAnimationFrame(pinchFrame.current);
+    pinchFrame.current = undefined;
+    const p = pinch.current;
+    const a = p && touches.current.get(p.ids[0]);
+    const b = p && touches.current.get(p.ids[1]);
+    if (p && a && b) setViewport(pinchViewport(p.viewport, p.from, [a, b]));
+  }
+
+  /**
+   * Tracks fingers; returns true when the touch belongs to a two-finger gesture, which pans and
+   * zooms the view instead of what one finger does, or to a control while fingers are on the
+   * board.
+   */
+  function touchDown(e: ReactPointerEvent<HTMLDivElement>): boolean {
+    if (e.pointerType !== 'touch') return false;
+    // The first finger of a new touch: anything left from a lost pointerup is stale.
+    if (e.isPrimary) {
+      touches.current.clear();
+      touchesOutside.current.clear();
+      pinch.current = null;
+      drawPinch();
+      touchHeld.current = false;
+    }
+    if (!pinchable(e.target as HTMLElement)) {
+      // A lone finger on a control does what a mouse does there.
+      if (touches.current.size === 0) return false;
+      // With fingers on the board the control handles it as usual; the canvas leaves them alone.
+      touchesOutside.current.add(e.pointerId);
+      return true;
+    }
+    if (touches.current.size === 0) touchSelection.current = selection;
+    touches.current.set(e.pointerId, screenPoint(e));
+    if (touches.current.size < 2) return touchHeld.current;
+    if (pinch.current) {
+      drawPinch();
+      pinch.current = pinchPair();
+    } else {
+      startPinch();
+    }
+    rootRef.current?.setPointerCapture(e.pointerId);
+    e.preventDefault();
+    return true;
+  }
+
+  function startPinch() {
+    // Whatever the first finger began is dropped as if it never happened: a move or a resize only
+    // lives in the overlay until it ends, a marquee changed the selection.
+    const g = gesture.current;
+    gesture.current = null;
+    setOverlay(NO_OVERLAY);
+    if (g && g.kind !== 'pan') setSelection(touchSelection.current);
+    setMenu(null);
+    touchHeld.current = true;
+    pinch.current = pinchPair();
+  }
+
+  /** Moves a finger; returns true when the move belongs to a two-finger gesture. */
+  function touchMove(e: ReactPointerEvent<HTMLDivElement>): boolean {
+    if (e.pointerType !== 'touch') return false;
+    if (touchesOutside.current.has(e.pointerId)) return true;
+    if (!touches.current.has(e.pointerId)) return touchHeld.current;
+    touches.current.set(e.pointerId, screenPoint(e));
+    const p = pinch.current;
+    if (!p) return touchHeld.current;
+    // Fingers outside the pair only move where a later pair would start.
+    if (p.ids.includes(e.pointerId) && pinchFrame.current === undefined) {
+      pinchFrame.current = requestAnimationFrame(drawPinch);
+    }
+    return true;
+  }
+
+  /** Lifts a finger; returns true when it belonged to a two-finger gesture or a control. */
+  function touchUp(e: ReactPointerEvent<HTMLDivElement>): boolean {
+    if (e.pointerType !== 'touch') return false;
+    if (touchesOutside.current.delete(e.pointerId)) return true;
+    if (!touches.current.has(e.pointerId)) return touchHeld.current;
+    if (pinch.current?.ids.includes(e.pointerId)) {
+      drawPinch();
+      touches.current.delete(e.pointerId);
+      pinch.current = pinchPair();
+    } else {
+      touches.current.delete(e.pointerId);
+    }
+    const held = touchHeld.current;
+    if (touches.current.size === 0) touchHeld.current = false;
+    if (held && rootRef.current?.hasPointerCapture(e.pointerId)) {
+      rootRef.current.releasePointerCapture(e.pointerId);
+    }
+    return held;
+  }
+
+  /** A finger whose capture the canvas lost without a pointerup leaves its gesture as on cancel. */
+  function onLostPointerCapture(e: ReactPointerEvent<HTMLDivElement>) {
+    // Captures lost by the cards' own elements are the browser's implicit ones, handed over here.
+    if (e.target !== e.currentTarget) return;
+    if (touches.current.has(e.pointerId) || touchesOutside.current.has(e.pointerId)) touchUp(e);
+  }
+
   function onPointerDown(e: ReactPointerEvent<HTMLDivElement>) {
+    if (touchDown(e)) return;
     if (e.button === 2) return;
     const target = e.target as HTMLElement;
     if (target.closest('[data-play-link]')) return;
@@ -829,9 +967,7 @@ export function Canvas({
     const id = targetId;
     const el = snap.byId.get(id);
     if (!el) return;
-    const interactive = target.closest(
-      'input, textarea, select, button, a, [contenteditable="true"], [data-no-drag]',
-    );
+    const interactive = target.closest(INTERACTIVE);
     if (editing === id && interactive) return;
     if (editing && editing !== id) setEditing(null);
 
@@ -888,6 +1024,7 @@ export function Canvas({
   }
 
   function onPointerMove(e: ReactPointerEvent<HTMLDivElement>) {
+    if (touchMove(e)) return;
     const p = screenPoint(e);
     lastPointer.current = p;
     presence.cursor(screenToWorld(vp.current, p));
@@ -1018,6 +1155,7 @@ export function Canvas({
   }
 
   function onPointerUp(e: ReactPointerEvent<HTMLDivElement>) {
+    if (touchUp(e)) return;
     const g = gesture.current;
     gesture.current = null;
     if (rootRef.current?.hasPointerCapture(e.pointerId)) {
@@ -1131,6 +1269,8 @@ export function Canvas({
     if (target.closest('[data-chrome]') && !canvasElementId(target)) return;
     if (isTyping(target)) return;
     e.preventDefault();
+    // A long press of the fingers of a pinch.
+    if (touchHeld.current) return;
     const id = canvasElementId(target);
     if (id && !selection.has(id)) select([id]);
     if (!id) setSelection(EMPTY_SET);
@@ -1157,11 +1297,23 @@ export function Canvas({
         setViewport({ ...v, x: v.x + dx / v.zoom, y: v.y + dy / v.zoom });
       }
     };
+    // Older Safari zooms the page on a pinch even where touch-action is none; the canvas zooms itself.
+    const noPageZoom = (e: Event) => e.preventDefault();
     el.addEventListener('wheel', onWheel, { passive: false });
-    return () => el.removeEventListener('wheel', onWheel);
+    el.addEventListener('gesturestart', noPageZoom);
+    return () => {
+      el.removeEventListener('wheel', onWheel);
+      el.removeEventListener('gesturestart', noPageZoom);
+    };
   }, [setViewport]);
 
-  useEffect(() => () => clearTimeout(settleTimer.current), []);
+  useEffect(
+    () => () => {
+      clearTimeout(settleTimer.current);
+      if (pinchFrame.current !== undefined) cancelAnimationFrame(pinchFrame.current);
+    },
+    [],
+  );
 
   // Keyboard --------------------------------------------------------------------
   const keyHandler = useRef<(e: KeyboardEvent) => void>(() => {});
@@ -1784,6 +1936,7 @@ export function Canvas({
         onPointerLeave={() => presence.cursor(null)}
         onPointerUp={onPointerUp}
         onPointerCancel={onPointerUp}
+        onLostPointerCapture={onLostPointerCapture}
         onDoubleClick={onDoubleClick}
         onContextMenu={onContextMenu}
         onDragOver={onDragOver}

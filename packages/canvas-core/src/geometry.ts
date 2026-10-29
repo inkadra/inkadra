@@ -44,6 +44,29 @@ export function zoomAt(v: Viewport, anchor: Point, zoom: number): Viewport {
   return { zoom: next, x: world.x - anchor.x / next, y: world.y - anchor.y / next };
 }
 
+/**
+ * Viewport during a two-finger gesture, from where the fingers started (`from`, with the view
+ * `v` of that moment) to where they are now (`to`), in screen coordinates. The view pans with
+ * the midpoint and zooms by the change in distance, so the world point under the first midpoint
+ * stays under the current one.
+ */
+export function pinchViewport(
+  v: Viewport,
+  from: readonly [Point, Point],
+  to: readonly [Point, Point],
+): Viewport {
+  const start = Math.hypot(from[1].x - from[0].x, from[1].y - from[0].y);
+  const now = Math.hypot(to[1].x - to[0].x, to[1].y - to[0].y);
+  // Fingers that started together only pan; fingers that meet zoom out as far as it goes.
+  const zoom = start > 0 ? clampZoom((v.zoom * now) / start) : v.zoom;
+  const world = screenToWorld(v, {
+    x: (from[0].x + from[1].x) / 2,
+    y: (from[0].y + from[1].y) / 2,
+  });
+  const mid = { x: (to[0].x + to[1].x) / 2, y: (to[0].y + to[1].y) / 2 };
+  return { zoom, x: world.x - mid.x / zoom, y: world.y - mid.y / zoom };
+}
+
 export function intersects(a: Rect, b: Rect): boolean {
   return a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
 }
