@@ -4,7 +4,7 @@ import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import i18n from '../i18n/index.ts';
-import { api } from './api.ts';
+import { api, RequestError } from './api.ts';
 import { SessionProvider, useSession } from './session.tsx';
 
 const instance = {} as Instance;
@@ -15,7 +15,9 @@ function respond(me: User) {
 }
 
 let latestRefresh: () => Promise<void> = async () => {};
+let latestVersion: string | undefined;
 function Probe() {
+  latestVersion = useSession().version;
   latestRefresh = useSession().refresh;
   return null;
 }
@@ -85,4 +87,36 @@ it('ignores an older refresh that finishes after a newer one', async () => {
     act(() => root.unmount());
     host.remove();
   };
+});
+
+it('loads software identity only from an authenticated source and clears it on sign-out', async () => {
+  let signedIn = true;
+  const get = vi.spyOn(api, 'get').mockImplementation(async (path) => {
+    if (path === '/instance') return { version: 'untrusted-public-version' };
+    if (path === '/me') {
+      if (!signedIn) throw new RequestError(401, 'unauthorized', 'Sign in');
+      return user('it');
+    }
+    if (path === '/instance/version') return { version: '0.4.2' };
+    throw new Error(path);
+  });
+  const host = document.createElement('div');
+  const root = createRoot(host);
+  try {
+    await act(async () =>
+      root.render(
+        <SessionProvider>
+          <Probe />
+        </SessionProvider>,
+      ),
+    );
+    expect(latestVersion).toBe('0.4.2');
+    get.mockClear();
+    signedIn = false;
+    await act(async () => latestRefresh());
+    expect(latestVersion).toBeUndefined();
+    expect(get).not.toHaveBeenCalledWith('/instance/version');
+  } finally {
+    await act(async () => root.unmount());
+  }
 });

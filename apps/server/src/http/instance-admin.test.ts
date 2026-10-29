@@ -267,6 +267,32 @@ describe.skipIf(!url)('instance administration', () => {
     });
     expect((await signUp('blocked')).statusCode).toBe(403);
   });
+  it('defaults the enrollment policy off, validates it and preserves it across partial writes', async () => {
+    expect((await request('admin', 'GET', '/instance/settings')).json().requireAdminTwoFactor).toBe(
+      false,
+    );
+    expect(
+      (await request('admin', 'PATCH', '/instance/settings', { requireAdminTwoFactor: 'true' }))
+        .statusCode,
+    ).toBe(400);
+    // Enroll the fixture administrator so this also remains valid with auth enforcement applied.
+    await db.update(user).set({ twoFactorEnabled: true }).where(eq(user.id, people.admin!.id));
+    try {
+      expect(
+        (
+          await request('admin', 'PATCH', '/instance/settings', { requireAdminTwoFactor: true })
+        ).json().requireAdminTwoFactor,
+      ).toBe(true);
+      expect(
+        (await request('admin', 'PATCH', '/instance/settings', { name: 'Studio' })).json()
+          .requireAdminTwoFactor,
+      ).toBe(true);
+    } finally {
+      await request('admin', 'PATCH', '/instance/settings', { requireAdminTwoFactor: false });
+      await db.update(user).set({ twoFactorEnabled: false }).where(eq(user.id, people.admin!.id));
+    }
+  });
+
   it('reuses address-bound instance invitations; closed blocks even a claimed invite', async () => {
     const invite = await request('admin', 'POST', '/invitations', {
       kind: 'email',

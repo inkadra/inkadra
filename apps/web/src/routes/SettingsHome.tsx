@@ -53,7 +53,7 @@ function Group({ title, children }: { title: string; children: ReactNode }) {
 
 function AdminGroups({ setup }: { setup: Setup }) {
   const { t, i18n } = useTranslation();
-  const { instance, version } = useSession();
+  const { version } = useSession();
   const [members, setMembers] = useState<number | null>(null);
   const { usage } = useStorageUsage();
   const { settings } = useInstanceSettings();

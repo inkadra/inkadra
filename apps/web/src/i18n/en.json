@@ -9,6 +9,7 @@
     "editHint": "Use Ctrl/⌘+X to cut and Ctrl/⌘+V to paste. Clipboard access depends on your browser."
   },
   "app": {
+    "publicFooter": "Inkadra · AGPL-3.0",
     "name": "Inkadra",
     "tagline": "From idea to frame.",
     "footer": "Open source · AGPL-3.0 · v{{version}}"

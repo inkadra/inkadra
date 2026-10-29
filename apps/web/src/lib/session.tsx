@@ -39,7 +39,17 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         throw err;
       }),
     ]);
-    const identity = me ? await api.get<{ version: string }>('/instance/version') : null;
+    const identity = me
+      ? await api.get<{ version: string }>('/instance/version').catch((err) => {
+          if (
+            err instanceof RequestError &&
+            err.status === 403 &&
+            (err.details as { reason?: string } | undefined)?.reason === 'admin_two_factor_required'
+          )
+            return null;
+          throw err;
+        })
+      : null;
     if (call !== latest.current) return;
     setVersion(identity?.version);
     setInstance(inst);

@@ -9,6 +9,7 @@
     "editHint": "Usa Ctrl/⌘+X per tagliare e Ctrl/⌘+V per incollare. L’accesso agli appunti dipende dal browser."
   },
   "app": {
+    "publicFooter": "Inkadra · AGPL-3.0",
     "name": "Inkadra",
     "tagline": "Dall’idea all’inquadratura.",
     "footer": "Open source · AGPL-3.0 · v{{version}}"

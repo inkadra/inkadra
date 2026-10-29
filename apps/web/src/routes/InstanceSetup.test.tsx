@@ -16,7 +16,6 @@ let root: ReturnType<typeof createRoot>;
 let socket: { onopen?: () => void; onerror?: () => void; close: () => void };
 const instance: Instance = {
   name: 'Inkadra',
-  version: 'test',
   setupRequired: false,
   registration: 'invite',
   media: { videoPosters: false, rawPreviews: false },

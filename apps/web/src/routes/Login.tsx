@@ -94,7 +94,7 @@ export function Login() {
           </p>
         )}
       </main>
-      <p className="login__footer">{t('app.footer', { version: instance?.version ?? '' })}</p>
+      <p className="login__footer">{t('app.publicFooter')}</p>
     </div>
   );
 }

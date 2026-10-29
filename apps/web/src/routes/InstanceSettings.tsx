@@ -212,7 +212,7 @@ function StoragePage() {
 
 function AccessPage() {
   const { t } = useTranslation();
-  const { instance, version } = useSession();
+  const { instance } = useSession();
   return (
     <>
       <Card title={t('settings.methods.title')}>
@@ -273,7 +273,14 @@ function InstancePage({ section, setup }: { section: string; setup: Setup }) {
       <Card title={t('admin.registration')}>
         <div className="settings-rows">
           <Row label={t('admin.requireAdminTwoFactor')} help={t('admin.requireAdminTwoFactorHelp')}>
-            <input type="checkbox" aria-label={t('admin.requireAdminTwoFactor')} checked={settings.requireAdminTwoFactor ?? false} onChange={(event) => void save({ requireAdminTwoFactor: event.target.checked }).catch(() => {})} />
+            <input
+              type="checkbox"
+              aria-label={t('admin.requireAdminTwoFactor')}
+              checked={settings.requireAdminTwoFactor ?? false}
+              onChange={(event) =>
+                void save({ requireAdminTwoFactor: event.target.checked }).catch(() => {})
+              }
+            />
           </Row>
           <Row label={t('settingsUi.registration.label')} help={t('admin.registrationHelp')}>
             <RegistrationControl

@@ -8,7 +8,7 @@ import { SettingsHome } from './SettingsHome.tsx';
 
 const session = vi.hoisted(() => ({
   user: { role: 'admin', name: 'Ada Lovelace', email: 'ada@example.com', locale: 'it' },
-  version: '0.4.0' ,
+  version: '0.4.0',
   instance: {},
   refresh: vi.fn(async () => {}),
 }));
