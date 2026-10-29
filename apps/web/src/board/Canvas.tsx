@@ -853,9 +853,11 @@ export function Canvas({
       touchHeld.current = false;
     }
     if (!pinchable(e.target as HTMLElement)) {
+      // A lone finger on a control does what a mouse does there.
+      if (touches.current.size === 0) return false;
+      // With fingers on the board the control handles it as usual; the canvas leaves them alone.
       touchesOutside.current.add(e.pointerId);
-      // The control handles it as usual; the canvas leaves the fingers on the board alone.
-      return touches.current.size > 0;
+      return true;
     }
     if (touches.current.size === 0) touchSelection.current = selection;
     touches.current.set(e.pointerId, screenPoint(e));
@@ -916,6 +918,13 @@ export function Canvas({
       rootRef.current.releasePointerCapture(e.pointerId);
     }
     return held;
+  }
+
+  /** A finger whose capture the canvas lost without a pointerup leaves its gesture as on cancel. */
+  function onLostPointerCapture(e: ReactPointerEvent<HTMLDivElement>) {
+    // Captures lost by the cards' own elements are the browser's implicit ones, handed over here.
+    if (e.target !== e.currentTarget) return;
+    if (touches.current.has(e.pointerId) || touchesOutside.current.has(e.pointerId)) touchUp(e);
   }
 
   function onPointerDown(e: ReactPointerEvent<HTMLDivElement>) {
@@ -1927,6 +1936,7 @@ export function Canvas({
         onPointerLeave={() => presence.cursor(null)}
         onPointerUp={onPointerUp}
         onPointerCancel={onPointerUp}
+        onLostPointerCapture={onLostPointerCapture}
         onDoubleClick={onDoubleClick}
         onContextMenu={onContextMenu}
         onDragOver={onDragOver}

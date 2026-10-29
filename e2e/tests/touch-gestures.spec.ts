@@ -216,6 +216,49 @@ test('a finger on the toolbar works its button and never joins a pinch', async (
   await touch('touchEnd', []);
 });
 
+test('with the hand tool a finger on a note being written leaves no pan behind', async ({
+  page,
+  baseURL,
+}) => {
+  const card = await boardWithNote(page, baseURL!);
+  const canvas = await page.getByTestId('canvas').boundingBox();
+  if (!canvas) throw new Error('canvas missing');
+  await page.locator('.canvas .toolbar').getByRole('button', { name: 'Mano', exact: true }).tap();
+  await card.dblclick();
+  await page.getByRole('button', { name: 'Modifica sulla board', exact: true }).tap();
+  const editor = card.locator('[data-no-drag] [contenteditable="true"]');
+  await expect(editor).toBeVisible();
+  const box = await editor.boundingBox();
+  if (!box) throw new Error('editor missing');
+  const { touch } = await touchscreen(page);
+
+  // A tap in the editor: as with a mouse, the hand tool would pan from there until it lifts.
+  await touch('touchStart', [{ x: box.x + box.width / 2, y: box.y + box.height / 2, id: 1 }]);
+  await touch('touchEnd', []);
+  await settle(page);
+  const start = await view(page);
+
+  // Once it lifted, the pointer moving over the board pans nothing.
+  await page.mouse.move(canvas.x + 60, canvas.y + 140);
+  await page.mouse.move(canvas.x + 160, canvas.y + 260, { steps: 4 });
+  await settle(page);
+  expect(await view(page)).toEqual(start);
+  await expect(page.getByTestId('canvas')).not.toHaveClass(/canvas--panning/);
+
+  // A finger on empty board still pans the view.
+  const board = { x: canvas.x + 60, y: canvas.y + 140 };
+  await touch('touchStart', [{ ...board, id: 2 }]);
+  for (let i = 1; i <= 4; i++) {
+    await touch('touchMove', [{ x: board.x + 20 * i, y: board.y + 30 * i, id: 2 }]);
+  }
+  await touch('touchEnd', []);
+  await settle(page);
+  const panned = await view(page);
+  expect(panned.zoom).toBe(start.zoom);
+  expect(panned.x).toBeCloseTo(start.x + 80, 0);
+  expect(panned.y).toBeCloseTo(start.y + 120, 0);
+});
+
 test('with three fingers the pinch follows the two most recent', async ({ page, baseURL }) => {
   await boardWithNote(page, baseURL!);
   const canvas = await page.getByTestId('canvas').boundingBox();
