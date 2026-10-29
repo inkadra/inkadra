@@ -109,6 +109,7 @@ selects the role:
 | `worker`        | Background jobs (thumbnails, email, maintenance)                    |
 | `migrate`       | Apply database migrations and exit (`web` and `all` do it on start) |
 | `unlock-auth`   | Clear the sign-in counters of one account, then exit                |
+| `admin-2fa off` | Turn off the "require 2FA for administrators" setting, then exit    |
 
 It needs Postgres 16 and Valkey 8 or newer (or Redis 7); `compose.yaml` runs Postgres 16 and
 Valkey 9. Valkey is required in production by every role. With your own
