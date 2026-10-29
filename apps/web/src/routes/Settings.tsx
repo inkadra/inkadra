@@ -449,7 +449,13 @@ function QrCode({ text }: { text: string }) {
   );
 }
 
-export function TwoFactor({ onDone }: { onDone: () => void }) {
+export function TwoFactor({
+  onDone,
+  mandatory = false,
+}: {
+  onDone: () => void;
+  mandatory?: boolean;
+}) {
   const { t } = useTranslation();
   const { user, refresh } = useSession();
   const [password, setPassword] = useState('');
@@ -536,9 +542,11 @@ export function TwoFactor({ onDone }: { onDone: () => void }) {
       />
       {status.node}
       <DialogActions>
-        <Button variant="ghost" onClick={onDone}>
-          {t('project.cancel')}
-        </Button>
+        {!mandatory && (
+          <Button variant="ghost" onClick={onDone}>
+            {t('project.cancel')}
+          </Button>
+        )}
         <Button type="submit" variant="primary" disabled={code.trim().length < 6}>
           {t('settings.twoFactor.confirm')}
         </Button>
@@ -560,9 +568,11 @@ export function TwoFactor({ onDone }: { onDone: () => void }) {
       )}
       {status.node}
       <DialogActions>
-        <Button variant="ghost" onClick={onDone}>
-          {t('project.cancel')}
-        </Button>
+        {!mandatory && (
+          <Button variant="ghost" onClick={onDone}>
+            {t('project.cancel')}
+          </Button>
+        )}
         <Button
           type="submit"
           variant={enabled ? 'danger' : 'primary'}

@@ -8,7 +8,6 @@ const state = vi.hoisted(() => ({ enrollmentRequired: false }));
 vi.mock('../lib/theme.ts', () => ({ useTheme: () => ({}) }));
 vi.mock('../lib/session.tsx', () => ({ useSession: () => state }));
 vi.mock('react-i18next', () => ({ useTranslation: () => ({ t: (key: string) => key }) }));
-vi.mock('./Settings.tsx', () => ({ TwoFactor: () => <form aria-label="Enroll" /> }));
 
 it('replaces all protected content with enrollment until the administrator has verified 2FA', async () => {
   const host = document.createElement('div');
@@ -17,7 +16,7 @@ it('replaces all protected content with enrollment until the administrator has v
     state.enrollmentRequired = true;
     await act(async () =>
       root.render(
-        <AdminEnrollment>
+        <AdminEnrollment setup={<form aria-label="Enroll" />}>
           <div data-workspace />
         </AdminEnrollment>,
       ),
@@ -30,7 +29,7 @@ it('replaces all protected content with enrollment until the administrator has v
     state.enrollmentRequired = false;
     await act(async () =>
       root.render(
-        <AdminEnrollment>
+        <AdminEnrollment setup={<form aria-label="Enroll" />}>
           <div data-workspace />
         </AdminEnrollment>,
       ),

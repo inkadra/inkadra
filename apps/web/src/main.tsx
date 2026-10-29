@@ -20,14 +20,14 @@ import { NotFound } from './routes/NotFound.tsx';
 import { Onboarding } from './routes/Onboarding.tsx';
 import { Projects } from './routes/Projects.tsx';
 import { ResetPassword } from './routes/ResetPassword.tsx';
-import { Settings } from './routes/Settings.tsx';
+import { Settings, TwoFactor } from './routes/Settings.tsx';
 import { Team } from './routes/Team.tsx';
 
 function Root() {
   const { loading } = useSession();
   if (loading) return null;
   return (
-    <AdminEnrollment>
+    <AdminEnrollment setup={<TwoFactor mandatory onDone={() => {}} />}>
       <Outlet />
     </AdminEnrollment>
   );

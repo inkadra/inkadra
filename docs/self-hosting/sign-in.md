@@ -132,7 +132,8 @@ injection risk this change addresses. Bearer tokens are unaffected.
 
 ## Mobile redirect schemes
 
-The mobile shell currently uses a custom URI scheme. Another application can register
+The server allows the custom redirect `inkadra://auth` for the planned mobile app;
+`apps/mobile` currently contains planning documentation only. Another application can register
 that scheme and intercept the authorization redirect. PKCE binds code redemption to the
 initiating app's verifier, but does not prove ownership of the redirect handler or prevent
 interception and denial of service. Do not treat a custom scheme as a verified app identity.
