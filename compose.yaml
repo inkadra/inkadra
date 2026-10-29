@@ -46,7 +46,8 @@ services:
       OIDC_ALLOWED_DOMAINS: ${OIDC_ALLOWED_DOMAINS:-}
       # Browser policies (see docs/self-hosting/configuration.md#browser-security-headers)
       CSP_ENFORCE: ${CSP_ENFORCE:-false}
-      CSP_REPORT_URI: ${CSP_REPORT_URI:-}
+      # CSP_REPORT_URI is not forwarded by default: 0.4.0 refuses an empty value. To collect
+      # reports, add `CSP_REPORT_URI: ${CSP_REPORT_URI}` here together with a value in .env.
       HSTS_ENABLED: ${HSTS_ENABLED:-false}
     volumes:
       # A named volume by default. Set INKADRA_DATA to a host folder to keep uploads on a disk

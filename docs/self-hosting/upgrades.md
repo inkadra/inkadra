@@ -31,10 +31,11 @@ taken before the upgrade instead.
 
 0.4 hardens sign-in. Before you change `INKADRA_TAG`:
 1. **Pass the new settings to the container.** The `compose.yaml` on `main` forwards
-   `OIDC_ALLOWED_DOMAINS`, `CSP_ENFORCE`, `CSP_REPORT_URI` and `HSTS_ENABLED` from `.env`. The
+   `OIDC_ALLOWED_DOMAINS`, `CSP_ENFORCE` and `HSTS_ENABLED` from `.env`. The
    files attached to the 0.4.0 release do not: if you use them and want any of these, add them
    under `environment` of the `inkadra` service, for example `HSTS_ENABLED: ${HSTS_ENABLED:-false}`.
-   With 0.4.0, add `CSP_REPORT_URI` only with a value: an empty one stops the server.
+   `CSP_REPORT_URI` is not forwarded by default, because 0.4.0 refuses an empty value: add
+   `CSP_REPORT_URI: ${CSP_REPORT_URI}` only together with a value in `.env`.
 2. **`REDIS_URL` is now required in production by every role, `web` included.** Sign-in limits
    are kept in Valkey. The bundled `compose.yaml` already sets it; if you run the `web` role on
    its own or with your own environment, point it at your Valkey or Redis, or it will not start.
