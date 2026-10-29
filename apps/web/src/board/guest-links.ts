@@ -11,7 +11,8 @@ import type {
 
 export const GUEST_ROLES: GuestRole[] = ['guest_view', 'guest_comment', 'guest_approve'];
 export const EXPIRY_DAYS = [1, 7, 30, 90, 365] as const;
-export const MIN_PASSWORD = 6;
+// The server asks for at least 10 characters for a new or changed link password (decision 0030).
+export const MIN_PASSWORD = 10;
 
 /** Statuses this build does not know count as not working. */
 export function statusOf(link: Pick<ShareLink, 'status'>): ShareLinkStatus | 'unknown' {

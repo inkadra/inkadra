@@ -1,7 +1,7 @@
 import { createHmac, randomBytes } from 'node:crypto';
 import type { AddressInfo } from 'node:net';
 import { fileURLToPath } from 'node:url';
-import { eq, sql } from 'drizzle-orm';
+import { eq, like, sql } from 'drizzle-orm';
 import pino from 'pino';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { createAuth } from '../auth.ts';
@@ -12,6 +12,7 @@ import {
   personalToken,
   project,
   session as sessionTable,
+  user,
   verification,
 } from '../db/schema.ts';
 import { memoryMailer } from '../mailer.ts';
@@ -242,19 +243,68 @@ describe.skipIf(!url)('sharing, invitations, tokens and accounts (needs DATABASE
     expect(existing.status).toBe(closed.status);
     expect(existing.body.code).toBe(closed.body.code);
 
-    // Only administrators invite to the instance alone.
+    // Only administrators invite to the instance alone. An instance link works once and for
+    // two days unless the request asks otherwise.
     const link = await call('owner', 'POST', '/api/v1/invitations', { kind: 'link' });
     expect(link.status).toBe(201);
     const { invitation } = link.body;
-    expect(invitation).toMatchObject({ kind: 'link', projectId: null, maxUses: null });
+    expect(invitation).toMatchObject({ kind: 'link', projectId: null, maxUses: 1 });
+    const days = (new Date(invitation.expiresAt).getTime() - Date.now()) / 86_400_000;
+    expect(days).toBeGreaterThan(1.9);
+    expect(days).toBeLessThanOrEqual(2);
     const token = invitation.url.split('/join/')[1];
     const preview = await call(null, 'GET', `/api/v1/invitations/by-token/${token}`);
     expect(preview.body).toMatchObject({ status: 'valid', invitedBy: 'Owner', role: null });
+    const longer = await call('owner', 'POST', '/api/v1/invitations', {
+      kind: 'link',
+      expiresInDays: 7,
+    });
+    expect(
+      (new Date(longer.body.invitation.expiresAt).getTime() - Date.now()) / 86_400_000,
+    ).toBeGreaterThan(6.9);
+    expect(
+      (await call('owner', 'DELETE', `/api/v1/invitations/${longer.body.invitation.id}`)).status,
+    ).toBe(204);
 
     const claimed = await claim(invitation.url);
     expect(claimed.status).toBe(204);
-    for (const who of ['editor', 'viewer', 'guest', 'outsider'] as const)
-      await expectSessionCookie(await signUp(who, claimed.cookie));
+    await expectSessionCookie(await signUp('editor', claimed.cookie));
+    // Used up: the same claim cookie creates no second account.
+    const again = await signUp('viewer', claimed.cookie);
+    expect(again.status).toBe(403);
+    expect(again.body.code).toBe('REGISTRATION_CLOSED');
+    for (const who of ['viewer', 'guest', 'outsider'] as const) {
+      const next = await call('owner', 'POST', '/api/v1/invitations', { kind: 'link' });
+      await expectSessionCookie(await signUp(who, (await claim(next.body.invitation.url)).cookie));
+    }
+  });
+
+  it('never lets parallel sign-ups exceed the uses of an instance link', async () => {
+    const link = await call('owner', 'POST', '/api/v1/invitations', { kind: 'link' });
+    const { cookie } = await claim(link.body.invitation.url);
+    const results = await Promise.all(
+      Array.from({ length: 5 }, (_, i) =>
+        call(
+          { cookie },
+          'POST',
+          '/api/auth/sign-up/email',
+          { email: `racer${i}@example.com`, password: PASSWORD, name: `Racer ${i}` },
+          `198.18.${i}.1`,
+        ),
+      ),
+    );
+    expect(results.filter((r) => r.status === 200)).toHaveLength(1);
+    const [row] = await db
+      .select({ uses: invitationTable.uses })
+      .from(invitationTable)
+      .where(eq(invitationTable.id, link.body.invitation.id));
+    expect(row?.uses).toBe(1);
+    const created = await db
+      .select({ email: user.email })
+      .from(user)
+      .where(like(user.email, 'racer%'));
+    expect(created).toHaveLength(1);
+    await db.delete(user).where(like(user.email, 'racer%'));
   });
 
   it('sets up a project with nested boards', async () => {
@@ -984,7 +1034,13 @@ describe.skipIf(!url)('sharing, invitations, tokens and accounts (needs DATABASE
   });
 
   it('deletes an account, but not while it is the only owner of a shared project', async () => {
-    const blocked = await call('owner', 'DELETE', '/api/v1/me', { password: PASSWORD });
+    const blocked = await call(
+      'owner',
+      'DELETE',
+      '/api/v1/me',
+      { password: PASSWORD },
+      '198.51.100.1',
+    );
     expect(blocked.status).toBe(409);
     expect(blocked.body.error.details.soleOwnerOf).toEqual([
       { id: projectId, name: 'Ultima corsa' },
@@ -1006,9 +1062,15 @@ describe.skipIf(!url)('sharing, invitations, tokens and accounts (needs DATABASE
     ]);
     expect((await call('newbie', 'DELETE', grant)).status).toBe(204);
 
+    // Password confirmation takes the same burst budget as a password change.
+    const guess = () =>
+      call('newbie', 'DELETE', '/api/v1/me', { password: 'wrong-password-123' }, '203.0.113.9');
+    for (let i = 0; i < 3; i++) expect((await guess()).status).toBe(403);
+    const limited = await guess();
+    expect(limited.status).toBe(429);
     expect(
-      (await call('newbie', 'DELETE', '/api/v1/me', { password: 'wrong-password-123' })).status,
-    ).toBe(403);
+      Number(limited.readableHeaders.find(([name]) => name === 'retry-after')?.[1]),
+    ).toBeGreaterThan(0);
     expect((await call('newbie', 'DELETE', '/api/v1/me', {})).status).toBe(400);
     expect((await call('newbie', 'DELETE', '/api/v1/me', { password: PASSWORD })).status).toBe(204);
     expect(await db.select().from(project).where(eq(project.id, solo.body.id))).toEqual([]);

@@ -195,3 +195,31 @@ it('issues a host-only secure device cookie after the two-factor plugin', async 
   expect(cookie).toContain('SameSite=Lax');
   expect(cookie).not.toContain('Domain=');
 });
+
+it('limits password confirmations for account deletion like a credential change', async () => {
+  const headers = new Headers({ 'x-inkadra-client-ip': '192.0.2.1' });
+  const verify = vi.spyOn(auth.api, 'verifyPassword');
+  verify.mockRejectedValueOnce(new APIError('BAD_REQUEST', { message: 'Invalid password' }));
+  expect(await auth.confirmPassword({ email: 'Member@Example.com' }, 'wrong', headers)).toBe(
+    'wrong',
+  );
+  expect(budgets.consume).toHaveBeenCalledWith('ip:192.0.2.0/24:/delete-user', 3, 10);
+  expect(budgets.consume).toHaveBeenCalledWith(`account:${user.email}`, 50, 3600);
+  // A wrong password keeps its reservation in the account's failure budget.
+  expect(budgets.refund).not.toHaveBeenCalled();
+
+  verify.mockResolvedValueOnce({ status: true } as never);
+  expect(await auth.confirmPassword(user, 'right', headers)).toBe('ok');
+  expect(budgets.refund).toHaveBeenCalledWith(`account:${user.email}`);
+
+  vi.clearAllMocks();
+  budgets.consume.mockResolvedValueOnce({ allowed: false, retryAfter: 7 });
+  expect(await auth.confirmPassword(user, 'right', headers)).toEqual({ retryAfter: 7 });
+  expect(verify).not.toHaveBeenCalled();
+
+  budgets.consume.mockRejectedValueOnce(new Error('offline'));
+  expect(await auth.confirmPassword(user, 'right', headers)).toBe('unavailable');
+  expect(budgets.reportError).toHaveBeenCalled();
+  expect(verify).not.toHaveBeenCalled();
+  verify.mockRestore();
+});

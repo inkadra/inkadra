@@ -1935,6 +1935,17 @@
     },
     "search": "Cerca nelle impostazioni",
     "noResults": "Nessuna impostazione trovata",
+    "keywords": {
+      "account": "Nome, Email, Foto profilo, Password, Verifica in due passaggi (2FA), Codici di riserva, Metodi di accesso, Sessioni, Dispositivi, App e token, Elimina account",
+      "preferences": "Tema, Tema scuro, Tema chiaro, Lingua",
+      "notifications": "Notifiche email, Menzioni, Risposte, Revisioni, Riepilogo giornaliero, Inbox",
+      "members": "Invita membri, Inviti, Link di invito, Ruolo, Amministratori, Disattiva account, Riattiva account, Persone",
+      "workspace": "Spazio usato, File caricati, Archiviazione",
+      "classifications": "Tipi di progetto, Tag, Cataloghi",
+      "providers": "Google, OIDC, Single sign-on (SSO), Link di accesso via email, Email e password, SMTP, Invio email",
+      "registration": "Nuovi account, Registrazione aperta, Solo su invito, Registrazione chiusa",
+      "instance": "Nome dell’istanza, Indirizzo pubblico, Versione, Diagnostica, Stato dell’istanza"
+    },
     "close": "Chiudi impostazioni",
     "dangerZone": "Zona sensibile"
   },

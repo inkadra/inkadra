@@ -167,6 +167,15 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.settings-nav__match {
+  flex: 0 1 auto;
+  max-width: 55%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11px;
+  color: var(--ink-text-muted);
+}
 .settings-nav__count {
   font-size: 11px;
   font-variant-numeric: tabular-nums;

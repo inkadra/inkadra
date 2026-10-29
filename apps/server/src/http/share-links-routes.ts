@@ -46,6 +46,20 @@ const LinkParams = z.object({ linkId: Id });
 /** Share links a person may create in an hour (decision 0013). */
 const LINKS_PER_HOUR = 50;
 
+/**
+ * Shortest password for a new or changed share link (decision 0030). The shared schema still
+ * accepts 6 until a contract change raises it; links with a shorter password keep working.
+ */
+export const SHARE_LINK_PASSWORD_MIN = 10;
+
+function checkNewPassword(password: string | null | undefined) {
+  if (password && password.length < SHARE_LINK_PASSWORD_MIN)
+    throw new HttpError(
+      'bad_request',
+      `A share link password needs at least ${SHARE_LINK_PASSWORD_MIN} characters.`,
+    );
+}
+
 /** Seals link tokens so the people who manage a link can copy it again. */
 export const shareLinkSealer = (authSecret: string) => sealer(authSecret, 'share-link');
 
@@ -130,6 +144,7 @@ export function registerShareLinkRoutes(app: FastifyInstance, deps: Deps) {
     const actor = await requireActor(auth, req, db);
     const { boardId } = BoardParams.parse(req.params);
     const input = CreateShareLink.parse(req.body ?? {});
+    checkNewPassword(input.password);
     const access = await requireBoardRole(db, actor, boardId, CAPABILITY_ROLE.share);
     const token = newSecret('', 32);
     const passwordHash = input.password ? await hashPassword(input.password) : null;
@@ -175,6 +190,7 @@ export function registerShareLinkRoutes(app: FastifyInstance, deps: Deps) {
     const actor = await requireActor(auth, req, db);
     const { linkId } = LinkParams.parse(req.params);
     const input = UpdateShareLink.parse(req.body ?? {});
+    checkNewPassword(input.password);
     const row = await managedLink(actor, linkId);
     if (row.revokedAt) throw new HttpError('conflict', 'A revoked link cannot be changed.');
     const changesScope = [

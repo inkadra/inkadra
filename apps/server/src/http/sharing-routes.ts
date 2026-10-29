@@ -64,6 +64,12 @@ const TokenParams = z.object({ token: z.string().min(16).max(128) });
 
 /** Invitations a person may create in an hour, so an account cannot be used to send spam. */
 const INVITATIONS_PER_HOUR = 50;
+/**
+ * An instance invitation link creates an account for whoever opens it, so unless the request
+ * asks otherwise it works once and for two days. CreateInvitation's own default (7 days) is
+ * the contract; the request body tells whether the client chose it.
+ */
+const INSTANCE_LINK_DAYS = 2;
 
 const toPerson = (row: typeof user.$inferSelect): Person => ({
   id: row.id,
@@ -449,6 +455,11 @@ export function registerSharingRoutes(app: FastifyInstance, deps: Deps) {
       }
     }
 
+    const instanceLink = input.kind === 'link' && !projectId;
+    const expiresInDays =
+      instanceLink && (req.body as { expiresInDays?: unknown } | null)?.expiresInDays === undefined
+        ? INSTANCE_LINK_DAYS
+        : input.expiresInDays;
     const token = newSecret('', 24);
     const [created] = await db
       .insert(invitation)
@@ -462,8 +473,8 @@ export function registerSharingRoutes(app: FastifyInstance, deps: Deps) {
         boardId,
         role,
         invitedBy: actor.id,
-        maxUses: input.kind === 'email' ? 1 : null,
-        expiresAt: new Date(Date.now() + input.expiresInDays * 86_400_000),
+        maxUses: input.kind === 'email' || instanceLink ? 1 : null,
+        expiresAt: new Date(Date.now() + expiresInDays * 86_400_000),
       })
       .returning();
     if (!created) throw new Error('Invitation insert returned nothing');
