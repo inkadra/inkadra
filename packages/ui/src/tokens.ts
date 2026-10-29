@@ -53,7 +53,7 @@ export const dark = {
   'tag-yellow-bg': '#383420',
   'tag-red': '#F68186',
   'tag-red-bg': '#412327',
-  'tag-pink': '#FE96D5',
+  'tag-pink': '#FF91CC',
   'tag-pink-bg': '#422533',
 } as const;
 
