@@ -34,9 +34,9 @@ import { board, boardGrant, invitation, projectMember, user } from '../db/schema
 import {
   acceptInvitation,
   findInvitation,
-  INVITATION_COOKIE,
   INVITATION_COOKIE_MAX_AGE,
   type InvitationRow,
+  invitationCookieName,
   invitationStatus,
   invitationTarget,
   invitedRole,
@@ -222,7 +222,7 @@ export function registerSharingRoutes(app: FastifyInstance, deps: Deps) {
 
   function setInvitationCookie(reply: FastifyReply, token: string | null) {
     const parts = [
-      `${INVITATION_COOKIE}=${token ? encodeURIComponent(token) : ''}`,
+      `${invitationCookieName(config.PUBLIC_URL)}=${token ? encodeURIComponent(token) : ''}`,
       'Path=/',
       'HttpOnly',
       'SameSite=Lax',

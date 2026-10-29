@@ -449,7 +449,7 @@ function QrCode({ text }: { text: string }) {
   );
 }
 
-function TwoFactor({ onDone }: { onDone: () => void }) {
+export function TwoFactor({ onDone }: { onDone: () => void }) {
   const { t } = useTranslation();
   const { user, refresh } = useSession();
   const [password, setPassword] = useState('');

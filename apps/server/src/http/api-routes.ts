@@ -94,7 +94,7 @@ export function registerApiRoutes(app: FastifyInstance, deps: Deps) {
   });
 
   app.get(v1('/me'), async (req) => {
-    const actor = await requireActor(auth, req, db);
+    const actor = await requireActor(auth, req, db, true);
     const [row] = await db.select().from(user).where(eq(user.id, actor.id));
     if (!row) throw new HttpError('unauthorized', 'Sign in to continue.');
     return toUser(row);

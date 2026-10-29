@@ -117,3 +117,37 @@ CLIPPER_EXTENSION_IDS=abcdefghijklmnopabcdefghijklmnop
 Without it the `/authorize` page refuses the request: only the redirect address
 `https://<id>.chromiumapp.org/auth` of an allowed id receives a code. See
 [apps/clipper](../../apps/clipper/README.md) to build and load the extension.
+
+## HTTPS cookies in 0.4.2
+
+HTTPS installations use `__Host-inkadra.*` authentication cookies, with Secure,
+Path=/ and no Domain. Better Auth's automatic `__Secure-` prefix is disabled so
+it cannot prepend a second prefix. HTTP development keeps the plain `inkadra.*` names.
+
+Upgrading an HTTPS installation requires everyone to sign in once again, and pending
+invitations must be claimed again from their original links. Old sessions remain subject
+to their normal expiry/revocation, but their old cookie names are no longer accepted.
+Accepting the legacy cookie indefinitely would retain the sibling-subdomain cookie
+injection risk this change addresses. Bearer tokens are unaffected.
+
+## Mobile redirect schemes
+
+The mobile shell currently uses a custom URI scheme. Another application can register
+that scheme and intercept the authorization redirect. PKCE binds code redemption to the
+initiating app's verifier, but does not prove ownership of the redirect handler or prevent
+interception and denial of service. Do not treat a custom scheme as a verified app identity.
+
+The plan is verified HTTPS Android App Links (`assetlinks.json`) and iOS Universal Links
+(`apple-app-site-association`) with platform association checks, exact redirect allowlists,
+and PKCE retained. Self-hosted origins need their own association files. Until those are
+implemented, this risk remains; do not broaden the redirect allowlist as a workaround.
+
+## Administrator enrollment policy
+
+The `requireAdminTwoFactor` administration setting defaults to false. When enabled,
+administrators without two-step verification can read their identity and enroll through
+Better Auth, but cannot use product APIs, administrator APIs, tokens or collaboration.
+They see an enrollment banner instead of the workspace. Enable the policy only after
+administrators have set a password (including accounts originally using OAuth), and keep
+backup codes for recovery. Bootstrap stays available on an empty instance; an existing
+policy applies to the first administrator immediately after signup.

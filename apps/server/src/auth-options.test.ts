@@ -216,3 +216,23 @@ it('limits generic HTTP auth traffic without blocking internal session lookup', 
     await sql.end();
   }
 });
+
+it.each(['https://example.com', 'http://localhost:3000'])(
+  'uses a valid host-only session cookie on %s',
+  async (publicUrl) => {
+    const { db, sql } = createDatabase(config.DATABASE_URL);
+    const auth = createAuth({ ...config, PUBLIC_URL: publicUrl }, db);
+    try {
+      const cookie = (await auth.$context).authCookies.sessionToken;
+      expect(cookie.name).toBe(
+        publicUrl.startsWith('https:') ? '__Host-inkadra.session_token' : 'inkadra.session_token',
+      );
+      expect(cookie.attributes.path).toBe('/');
+      expect(cookie.attributes.domain).toBeUndefined();
+      expect(Boolean(cookie.attributes.secure)).toBe(publicUrl.startsWith('https:'));
+    } finally {
+      auth.closeSecurity();
+      await sql.end();
+    }
+  },
+);

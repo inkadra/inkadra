@@ -14,6 +14,7 @@ import { and, eq, gt, isNull, or, sql } from 'drizzle-orm';
 import type { Logger } from 'pino';
 import * as Y from 'yjs';
 import { type Actor, atLeast, boardRole } from './access.ts';
+import { adminEnrollmentRequired } from './admin-two-factor.ts';
 import type { Auth } from './auth.ts';
 import type { Database } from './db/client.ts';
 import { board, boardDoc, personalToken, session, user } from './db/schema.ts';
@@ -62,12 +63,14 @@ export function createCollabServer(deps: {
     // Native apps and the clipper send their token; browsers send the session cookie.
     if (isToken(token)) {
       const actor = await actorFromToken(db, token);
-      return actor && { actor, sessionId: null };
+      return actor && !(await adminEnrollmentRequired(db, actor.id))
+        ? { actor, sessionId: null }
+        : null;
     }
     const session = await auth.api.getSession({ headers });
     if (!session) return null;
     const [owner] = await db.select().from(user).where(eq(user.id, session.user.id));
-    if (!owner || owner.deactivatedAt) return null;
+    if (!owner || owner.deactivatedAt || (await adminEnrollmentRequired(db, owner.id))) return null;
     return {
       actor: {
         id: session.user.id,
@@ -79,6 +82,7 @@ export function createCollabServer(deps: {
 
   /** Whether the token or session a connection signed in with is still valid. */
   async function stillSignedIn(ctx: Context, now: Date): Promise<boolean> {
+    if (await adminEnrollmentRequired(db, ctx.actor.id)) return false;
     if (ctx.actor.tokenId) {
       const [row] = await db
         .select({ id: personalToken.id })
