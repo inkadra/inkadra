@@ -52,6 +52,17 @@ if (sc === 'shell') {
   const { SessionProvider, useSession } = await import('/src/lib/session.tsx');
   function Loaded() { const { loading } = useSession(); return loading ? null : React.createElement(Routes, null, React.createElement(Route, { element: React.createElement(AppLayout) }, React.createElement(Route, { path: '*', element: React.createElement('div', { style: { display: 'contents' } }, canvas) }))); }
   ReactDOM.createRoot(document.getElementById('root')).render(React.createElement(MemoryRouter, { initialEntries: ['/p/p/b/b'] }, React.createElement(SessionProvider, null, React.createElement(Loaded))));
+} else if (sc === 'settings') {
+  nav.remove();
+  const source = await (await fetch('/src/routes/AppLayout.tsx')).text();
+  const routerUrl = source.match(/from "([^"]*react-router[^"]*)"/)[1];
+  const { MemoryRouter } = await import(routerUrl);
+  const { SessionProvider, useSession } = await import('/src/lib/session.tsx');
+  const { SettingsWindow } = await import('/src/routes/SettingsWindow.tsx');
+  window.settingsClosed = 0;
+  const onClose = () => { window.settingsClosed += 1; };
+  function Loaded() { const { loading } = useSession(); return loading ? null : React.createElement(SettingsWindow, { setup: { checks: null, error: false }, onClose, onBack: () => {} }, React.createElement('p', null, 'Settings page')); }
+  ReactDOM.createRoot(document.getElementById('root')).render(React.createElement(MemoryRouter, { initialEntries: ['/settings?section=account'] }, React.createElement(SessionProvider, null, React.createElement(Loaded))));
 } else ReactDOM.createRoot(document.getElementById('root')).render(React.createElement(MediaViewer, { store: {}, element, projectId: 'p', userId: 'u', readOnly: true, onClose: () => {}, gallery: { index: 3, total: 5, onPrevious: () => {}, onNext: () => {}, onSelect: () => {}, onCompare: () => {}, comparison, usedIn: [], items } }));
 </script></body></html>`;
 
@@ -99,6 +110,12 @@ for (const [width, height] of [
         await expect(page.locator('.viewer__side')).toBeVisible();
         await expect(page.locator('.viewer__thumbnails')).toBeHidden();
         await expect(page.locator('.viewer__stage-nav--next')).toBeHidden();
+        // The open panel must not cover the player: the stage shrinks to the remaining width.
+        const side = (await page.locator('.viewer__side').boundingBox())!;
+        const player = (await page.locator('.viewer__iframe').boundingBox())!;
+        console.log(JSON.stringify({ infoOpen: { side, player } }));
+        expect(player.x + player.width).toBeLessThanOrEqual(side.x);
+        expect(player.width).toBeGreaterThan(300);
         for (const theme of ['light', 'dark']) {
           await page.evaluate((theme) => (document.documentElement.dataset.theme = theme), theme);
           await page.screenshot({ path: testInfo.outputPath(`info-open-${theme}.png`) });
@@ -322,3 +339,79 @@ test('PWA update notification remains above the viewer', async ({ page }) => {
     }),
   ).toBe(true);
 });
+
+async function openSettings(page: Page, width: number, height: number, desktopSite = false) {
+  await page.setViewportSize({ width, height });
+  await page.route('**/api/v1/**', (route) => {
+    const path = new URL(route.request().url()).pathname;
+    const json = path.endsWith('/instance')
+      ? { name: 'Inkadra', version: '0.4.2', setupComplete: true }
+      : path.endsWith('/me')
+        ? { id: 'u', name: 'Test', email: 't@example.com', role: 'member', locale: 'en' }
+        : { items: [], nextCursor: null, count: 0 };
+    return route.fulfill({ json });
+  });
+  // A phone's "desktop site" ignores the viewport tag and lays the page out 980 px wide.
+  const body = fixture('settings').replace(desktopSite ? /<meta name="viewport"[^>]*>/ : '', '');
+  await page.route('**/__shot', (route) => route.fulfill({ body, contentType: 'text/html' }));
+  await page.goto('http://127.0.0.1:5179/__shot');
+  const dialog = page.locator('dialog.settings-window');
+  await expect(dialog.getByRole('heading', { name: 'Account', exact: true })).toBeVisible();
+  return dialog;
+}
+
+test('settings search finds settings by their Italian names with the interface in English', async ({
+  page,
+}) => {
+  const dialog = await openSettings(page, 1280, 800);
+  const search = dialog.getByRole('searchbox', { name: 'Search settings' });
+  for (const [word, title, setting] of [
+    ['tema', 'Preferences', 'Theme'],
+    ['lingua', 'Preferences', 'Language'],
+    ['password', 'Account', 'Password'],
+  ] as const) {
+    await search.fill(word);
+    const item = dialog.locator('.settings-nav__item').first();
+    await expect(item).toContainText(title);
+    await expect(item.locator('.settings-nav__match')).toHaveText(setting);
+  }
+});
+
+test('Escape closes the settings window at once, even with text in the search', async ({
+  page,
+}) => {
+  const dialog = await openSettings(page, 1280, 800);
+  const closed = () =>
+    page.evaluate(() => (window as unknown as { settingsClosed: number }).settingsClosed);
+  // Like the command palette and the global search: Escape closes, typed text or not.
+  await dialog.getByRole('searchbox', { name: 'Search settings' }).fill('password');
+  await page.keyboard.press('Escape');
+  await expect.poll(closed).toBe(1);
+  await page.waitForTimeout(200);
+  expect(await closed()).toBe(1);
+});
+
+for (const [width, height, mobile] of [
+  [1280, 800, false],
+  [1440, 900, false],
+  [900, 2000, false],
+  [1024, 1366, false],
+  [412, 915, true],
+] as const) {
+  test.describe(`settings window ${width}x${height}${mobile ? ' desktop site' : ''}`, () => {
+    test.use({ isMobile: mobile, hasTouch: mobile });
+    test('is centred in the visible viewport', async ({ page }) => {
+      const dialog = await openSettings(page, width, height, mobile);
+      await page.waitForTimeout(300);
+      const box = (await dialog.boundingBox())!;
+      const view = await page.evaluate(() => {
+        const v = window.visualViewport!;
+        return { x: v.offsetLeft, y: v.offsetTop, width: v.width, height: v.height };
+      });
+      console.log(JSON.stringify({ scenario: 'settings centre', width, height, box, view }));
+      if (mobile) expect(view.height).toBeGreaterThan(1300);
+      expect(Math.abs(box.y - view.y - (view.height - box.height) / 2)).toBeLessThanOrEqual(1);
+      expect(Math.abs(box.x - view.x - (view.width - box.width) / 2)).toBeLessThanOrEqual(1);
+    });
+  });
+}

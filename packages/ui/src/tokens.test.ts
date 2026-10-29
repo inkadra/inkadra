@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: MPL-2.0
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { dark, light } from './tokens.ts';
+import { type ContentKind, kindColor } from './kind-color.ts';
+import { distance } from './oklab.ts';
+import { type ColorToken, dark, light } from './tokens.ts';
 import { tokensCss } from './tokens-css.ts';
 
 describe('tokens', () => {
@@ -41,5 +43,63 @@ describe('tokens', () => {
     expect(ratio(dark['on-accent'], dark['accent-button'])).toBeGreaterThan(4.5);
     expect(ratio(dark['text-muted'], dark['bg-app'])).toBeGreaterThan(4.5);
     expect(ratio(light['text-secondary'], light['bg-panel'])).toBeGreaterThan(4.5);
+  });
+
+  /** The colour a content kind is drawn with, as a token. */
+  const kindToken = (kind: ContentKind): ColorToken => {
+    const color = kindColor[kind];
+    return color ? `tag-${color}` : 'text-secondary';
+  };
+  const kindTokens = [...new Set((Object.keys(kindColor) as ContentKind[]).map(kindToken))];
+  /** Kinds shown side by side: project sidebar modules, then the board toolbar. */
+  const neighbours: ContentKind[][] = [
+    ['storyboard', 'shotlist', 'schedule', 'review'],
+    // biome-ignore format: one toolbar, left to right
+    ['select', 'hand', 'arrow', 'note', 'image', 'link', 'todo', 'color', 'column', 'board', 'frame', 'storyboard'],
+  ];
+
+  it('keeps every pair of content-kind colours apart, more so for neighbours', () => {
+    expect(kindTokens).toHaveLength(7);
+    for (const [name, theme] of [
+      ['light', light],
+      ['dark', dark],
+    ] as const) {
+      kindTokens.forEach((a, i) => {
+        for (const b of kindTokens.slice(i + 1))
+          expect(distance(theme[a], theme[b]), `${name} ${a} / ${b}`).toBeGreaterThanOrEqual(0.1);
+      });
+      for (const row of neighbours)
+        row.slice(1).forEach((kind, i) => {
+          const [a, b] = [kindToken(row[i] as ContentKind), kindToken(kind)];
+          if (a !== b)
+            expect(distance(theme[a], theme[b]), `${name} ${a} / ${b}`).toBeGreaterThanOrEqual(
+              0.12,
+            );
+        });
+      // Teal sits nearest the accent: blue stays reserved for selection and focus.
+      expect(distance(theme['tag-teal'], theme['accent-primary'])).toBeGreaterThanOrEqual(0.1);
+    }
+  });
+
+  it('keeps the project identity palette distinguishable', () => {
+    const palette: ColorToken[] = [
+      'tag-blue',
+      'tag-orange',
+      'tag-purple',
+      'tag-green',
+      'text-muted',
+      'tag-teal',
+      'tag-yellow',
+      'tag-red',
+      'tag-pink',
+    ];
+    for (const [name, theme] of [
+      ['light', light],
+      ['dark', dark],
+    ] as const)
+      palette.forEach((a, i) => {
+        for (const b of palette.slice(i + 1))
+          expect(distance(theme[a], theme[b]), `${name} ${a} / ${b}`).toBeGreaterThanOrEqual(0.08);
+      });
   });
 });

@@ -38,23 +38,23 @@
   --ink-danger-border: #3A2326;
   --ink-danger-fg: #F2A9AC;
   --ink-tag-blue: #9DB8F2;
-  --ink-tag-orange: #F2B08A;
-  --ink-tag-purple: #C3B2F2;
-  --ink-tag-green: #9FE0B4;
+  --ink-tag-orange: #F79B54;
+  --ink-tag-purple: #B897F0;
+  --ink-tag-green: #7AD689;
   --ink-logo-tile: #EDEDED;
   --ink-logo-ink: #0E0E10;
   --ink-tag-blue-bg: #1E2A44;
-  --ink-tag-orange-bg: #35271F;
-  --ink-tag-purple-bg: #2D2540;
-  --ink-tag-green-bg: #20362A;
-  --ink-tag-teal: #8FD9D2;
-  --ink-tag-teal-bg: #203937;
-  --ink-tag-yellow: #EBCF7A;
-  --ink-tag-yellow-bg: #3B3320;
+  --ink-tag-orange-bg: #35271E;
+  --ink-tag-purple-bg: #2E253F;
+  --ink-tag-green-bg: #243526;
+  --ink-tag-teal: #60D8EB;
+  --ink-tag-teal-bg: #20383D;
+  --ink-tag-yellow: #EDD963;
+  --ink-tag-yellow-bg: #383420;
   --ink-tag-red: #F68186;
   --ink-tag-red-bg: #412327;
-  --ink-tag-pink: #F2A8CF;
-  --ink-tag-pink-bg: #402638;
+  --ink-tag-pink: #FC9AC9;
+  --ink-tag-pink-bg: #422533;
 }
 
 :root[data-theme='light'] {
@@ -91,23 +91,23 @@
   --ink-danger-border: #F2CFD0;
   --ink-danger-fg: #A1262B;
   --ink-tag-blue: #2F5AAE;
-  --ink-tag-orange: #A5521F;
-  --ink-tag-purple: #5B3FB0;
-  --ink-tag-green: #23743F;
+  --ink-tag-orange: #A24714;
+  --ink-tag-purple: #6A40B0;
+  --ink-tag-green: #1E7729;
   --ink-logo-tile: #161616;
   --ink-logo-ink: #FAFAF8;
   --ink-tag-blue-bg: #E6EDFB;
-  --ink-tag-orange-bg: #FAEDE4;
-  --ink-tag-purple-bg: #EFEAF9;
-  --ink-tag-green-bg: #E7F3EB;
-  --ink-tag-teal: #1D6E6A;
-  --ink-tag-teal-bg: #E4F2F0;
-  --ink-tag-yellow: #856400;
-  --ink-tag-yellow-bg: #F7F0D8;
+  --ink-tag-orange-bg: #FBECE6;
+  --ink-tag-purple-bg: #EEEAFA;
+  --ink-tag-green-bg: #E9F3E9;
+  --ink-tag-teal: #1E809C;
+  --ink-tag-teal-bg: #E4F1F6;
+  --ink-tag-yellow: #867413;
+  --ink-tag-yellow-bg: #F5F1D8;
   --ink-tag-red: #A55C5F;
   --ink-tag-red-bg: #F6E7E8;
-  --ink-tag-pink: #A3326C;
-  --ink-tag-pink-bg: #F8E7F0;
+  --ink-tag-pink: #A82965;
+  --ink-tag-pink-bg: #FAE7ED;
 }
 
 @media (prefers-color-scheme: light) {
@@ -145,22 +145,22 @@
     --ink-danger-border: #F2CFD0;
     --ink-danger-fg: #A1262B;
     --ink-tag-blue: #2F5AAE;
-    --ink-tag-orange: #A5521F;
-    --ink-tag-purple: #5B3FB0;
-    --ink-tag-green: #23743F;
+    --ink-tag-orange: #A24714;
+    --ink-tag-purple: #6A40B0;
+    --ink-tag-green: #1E7729;
     --ink-logo-tile: #161616;
     --ink-logo-ink: #FAFAF8;
     --ink-tag-blue-bg: #E6EDFB;
-    --ink-tag-orange-bg: #FAEDE4;
-    --ink-tag-purple-bg: #EFEAF9;
-    --ink-tag-green-bg: #E7F3EB;
-    --ink-tag-teal: #1D6E6A;
-    --ink-tag-teal-bg: #E4F2F0;
-    --ink-tag-yellow: #856400;
-    --ink-tag-yellow-bg: #F7F0D8;
+    --ink-tag-orange-bg: #FBECE6;
+    --ink-tag-purple-bg: #EEEAFA;
+    --ink-tag-green-bg: #E9F3E9;
+    --ink-tag-teal: #1E809C;
+    --ink-tag-teal-bg: #E4F1F6;
+    --ink-tag-yellow: #867413;
+    --ink-tag-yellow-bg: #F5F1D8;
     --ink-tag-red: #A55C5F;
     --ink-tag-red-bg: #F6E7E8;
-    --ink-tag-pink: #A3326C;
-    --ink-tag-pink-bg: #F8E7F0;
+    --ink-tag-pink: #A82965;
+    --ink-tag-pink-bg: #FAE7ED;
   }
 }

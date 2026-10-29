@@ -2103,6 +2103,10 @@ button.card__play {
   .viewer__side {
     display: none;
   }
+  /* The panel floats over the stage: reserve its width so the media shrinks instead. */
+  .viewer--info-open .viewer__stage-container .viewer__stage {
+    padding-right: calc(8px + min(350px, 100%));
+  }
   .viewer--info-open .viewer__side {
     display: flex;
     position: absolute;

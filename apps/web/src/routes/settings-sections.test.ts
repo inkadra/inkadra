@@ -89,3 +89,34 @@ it('finds pages by the settings on them, naming the setting, in both languages',
   // Nor which apostrophe: keyboards type ' where the texts use ’.
   expect(found("nome dell'istanza")).toEqual([['instance', 'Nome dell’istanza']]);
 });
+
+it('finds settings by the words of every language, naming them in the interface one', async () => {
+  const i18n = i18next.createInstance();
+  await i18n.init({
+    lng: 'en',
+    resources: { en: { translation: en }, it: { translation: itLocale } },
+  });
+  const t = (key: string, options?: { lng: string }) => i18n.t(key, options);
+  const found = (query: string) =>
+    matchSettings(SETTINGS_PAGES, query, t, ['it', 'en']).map((m) => [m.page.id, m.setting]);
+  // With the interface in English these Italian words used to find nothing.
+  expect(found('tema')).toEqual([['preferences', 'Theme']]);
+  expect(found('lingua')).toEqual([['preferences', 'Language']]);
+  expect(found('invito')).toContainEqual(['members', 'Invitation link']);
+  expect(found('elimina')).toEqual([['account', 'Delete account']]);
+  expect(found('registrazione')).toContainEqual(['registration', 'Open registration']);
+  expect(found('password')).toContainEqual(['account', 'Password']);
+  await i18n.changeLanguage('it');
+  expect(found('theme')).toEqual([['preferences', 'Tema']]);
+  expect(found('language')).toEqual([['preferences', 'Lingua']]);
+});
+
+it('lists the same settings in the same order in every language', () => {
+  const keywords = (locale: typeof en, page: string) =>
+    (locale.settingsUi.keywords as Record<string, string>)[page]?.split(',') ?? [];
+  for (const page of SETTINGS_PAGES) {
+    const id = page.keywords.replace('settingsUi.keywords.', '');
+    expect(keywords(itLocale, id).length, id).toBe(keywords(en, id).length);
+    expect(keywords(en, id).length, id).toBeGreaterThan(0);
+  }
+});
