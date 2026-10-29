@@ -19,6 +19,12 @@
   display: flex;
 }
 
+.present-view:focus-visible {
+  /* Focused by code on open, not a control: no ring. */
+  outline: none;
+  box-shadow: none;
+}
+
 .present-view::backdrop {
   background: var(--ink-bg-canvas);
 }

@@ -53,9 +53,11 @@
   padding: 0 12px 0 28px;
   border-bottom: 1px solid var(--ink-border-muted);
 }
-.settings-window__head h2:focus {
-  /* Focused by code on open, not a control: no ring. */
+.settings-window__head h2:focus,
+.settings-window__head h2:focus-visible {
+  /* Focused by code on open, not a control: no ring, even after a key press. */
   outline: none;
+  box-shadow: none;
 }
 .settings-window__head h2 {
   flex: 1;

@@ -204,6 +204,11 @@
   font-size: 13px;
   font-weight: 600;
 }
+/* Focused by code when a view opens or a link changes, not controls: no ring. */
+.guest-picks-head__title:focus-visible,
+.guest-link .share__name:focus-visible {
+  box-shadow: none;
+}
 .guest-picks-list {
   list-style: none;
   margin: 0;
