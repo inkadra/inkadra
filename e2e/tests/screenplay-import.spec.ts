@@ -101,6 +101,23 @@ test('a Fountain screenplay becomes scenes and frames, undone in one step', asyn
   await expect(page.locator('.story__scene')).toHaveCount(0);
 });
 
+test('the sidebar counts the imported frames before the server has stored them', async ({
+  page,
+}) => {
+  await openStoryboard(page);
+  const shots = page.getByRole('link', { name: /^Storyboard/ }).first();
+  await page.getByRole('button', { name: 'Importa sceneggiatura…' }).first().click();
+  const dialog = await pick(page, 'last-train.fountain');
+  await dialog.getByRole('checkbox', { name: /COLD OPEN/ }).uncheck();
+  await expect(dialog.getByText('Crea 4 scene e 8 inquadrature.')).toBeVisible();
+  await dialog.getByRole('button', { name: 'Importa', exact: true }).click();
+  await expect(dialog).toBeHidden();
+  // The server stores a board about two seconds after the last edit: the count cannot wait for it.
+  await expect(shots).toHaveAttribute('title', /8 inquadrature/, { timeout: 1500 });
+  await page.getByRole('status').getByRole('button', { name: 'Annulla' }).click();
+  await expect(shots).not.toHaveAttribute('title', /8 inquadrature/, { timeout: 1500 });
+});
+
 test('a Final Draft screenplay makes a new storyboard named after its title', async ({ page }) => {
   await openStoryboard(page);
   await page.getByRole('button', { name: 'Importa sceneggiatura…' }).first().click();
