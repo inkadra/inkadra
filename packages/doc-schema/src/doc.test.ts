@@ -10,6 +10,7 @@ import {
   Element,
   FrameElement,
   type FrameShape,
+  getAnimaticAudio,
   getBoardAspect,
   getSchemaVersion,
   migrateBoardDoc,
@@ -19,6 +20,7 @@ import {
   roots,
   SchemaTooNewError,
   STROKE_GRID,
+  setAnimaticAudio,
   setBoardAspect,
   UNSORTED,
   validateBoardDoc,
@@ -102,7 +104,7 @@ describe('board document', () => {
     const file = { ...base(), type: 'file' as const, assetId: 'asset-id' };
     addElement(doc, file);
     const before = roots(doc).elements.toJSON();
-    expect(migrateBoardDoc(doc, boardId)).toEqual([4, 5, 6, 7, 8]);
+    expect(migrateBoardDoc(doc, boardId)).toEqual([4, 5, 6, 7, 8, 9]);
     expect(getSchemaVersion(doc)).toBe(CURRENT_SCHEMA_VERSION);
     expect(roots(doc).elements.toJSON()).toEqual(before);
     expect(readElement(roots(doc).elements.get(file.id)!)).not.toHaveProperty('caption');
@@ -162,7 +164,7 @@ describe('board document', () => {
     addElement(doc, note);
     addElement(doc, column);
     const before = [...roots(doc).elements.values()].map((m) => readElement(m));
-    expect(migrateBoardDoc(doc, boardId)).toEqual([3, 4, 5, 6, 7, 8]);
+    expect(migrateBoardDoc(doc, boardId)).toEqual([3, 4, 5, 6, 7, 8, 9]);
     expect(getSchemaVersion(doc)).toBe(CURRENT_SCHEMA_VERSION);
     expect([...roots(doc).elements.values()].map((m) => readElement(m))).toEqual(before);
     expect(validateBoardDoc(doc)).toEqual([]);
@@ -322,6 +324,28 @@ describe('board document', () => {
     expect(validateBoardDoc(doc)).toHaveLength(1);
   });
 
+  it('keeps the sound track of the animatic in meta', () => {
+    const doc = createBoardDoc(boardId);
+    expect(getAnimaticAudio(doc)).toBeNull();
+    const audio = { assetId: '6f1d0c1e-3b9a-4c55-8a51-0e0f3b8a9c11', volume: 0.8 };
+    setAnimaticAudio(doc, audio);
+    expect(getAnimaticAudio(doc)).toEqual(audio);
+    expect(validateBoardDoc(doc)).toEqual([]);
+    expect(() => setAnimaticAudio(doc, { ...audio, volume: 2 })).toThrow();
+    roots(doc).meta.set('animaticAudio', { assetId: 'not-an-id', volume: 1 });
+    expect(getAnimaticAudio(doc)).toBeNull();
+    expect(validateBoardDoc(doc)).toHaveLength(1);
+    setAnimaticAudio(doc, null);
+    expect(roots(doc).meta.has('animaticAudio')).toBe(false);
+  });
+
+  it('migrates version 8 without adding a sound track', () => {
+    const doc = createBoardDoc(boardId);
+    roots(doc).meta.set('schemaVersion', 8);
+    expect(migrateBoardDoc(doc, boardId)).toEqual([9]);
+    expect(getAnimaticAudio(doc)).toBeNull();
+  });
+
   it('upgrades a version 1 document without touching its elements', () => {
     const update = Uint8Array.from(atob(BOARD_V1), (c) => c.charCodeAt(0));
     const doc = new Y.Doc();
@@ -329,7 +353,7 @@ describe('board document', () => {
     expect(getSchemaVersion(doc)).toBe(1);
     const before = [...roots(doc).elements.values()].map((m) => readElement(m));
     expect(before.every(Boolean)).toBe(true);
-    expect(migrateBoardDoc(doc, boardId)).toEqual([2, 3, 4, 5, 6, 7, 8]);
+    expect(migrateBoardDoc(doc, boardId)).toEqual([2, 3, 4, 5, 6, 7, 8, 9]);
     expect(getSchemaVersion(doc)).toBe(CURRENT_SCHEMA_VERSION);
     expect([...roots(doc).elements.values()].map((m) => readElement(m))).toEqual(before);
     const note = roots(doc).elements.get('note_v1_00001')!;
@@ -445,7 +469,7 @@ describe('video still provenance', () => {
     const frame = { ...base(), type: 'frame' as const, assetId, notes: 'Last Train' };
     addElement(doc, frame);
     const before = roots(doc).elements.toJSON();
-    expect(migrateBoardDoc(doc, boardId)).toEqual([5, 6, 7, 8]);
+    expect(migrateBoardDoc(doc, boardId)).toEqual([5, 6, 7, 8, 9]);
     expect(getSchemaVersion(doc)).toBe(CURRENT_SCHEMA_VERSION);
     expect(roots(doc).elements.toJSON()).toEqual(before);
     expect(readElement(roots(doc).elements.get(frame.id)!)).not.toHaveProperty('source');
@@ -488,7 +512,7 @@ describe('arrow path', () => {
     const element = arrow();
     addElement(doc, element);
     const before = roots(doc).elements.toJSON();
-    expect(migrateBoardDoc(doc, boardId)).toEqual([6, 7, 8]);
+    expect(migrateBoardDoc(doc, boardId)).toEqual([6, 7, 8, 9]);
     expect(getSchemaVersion(doc)).toBe(CURRENT_SCHEMA_VERSION);
     expect(roots(doc).elements.toJSON()).toEqual(before);
     expect(readElement(roots(doc).elements.get(element.id)!)).not.toHaveProperty('path');
@@ -551,7 +575,7 @@ describe('story bible cards', () => {
     roots(doc).meta.set('schemaVersion', 6);
     addElement(doc, { ...base(), type: 'note' });
     const before = roots(doc).elements.toJSON();
-    expect(migrateBoardDoc(doc, boardId)).toEqual([7, 8]);
+    expect(migrateBoardDoc(doc, boardId)).toEqual([7, 8, 9]);
     expect(getSchemaVersion(doc)).toBe(CURRENT_SCHEMA_VERSION);
     expect(roots(doc).elements.toJSON()).toEqual(before);
   });
@@ -600,7 +624,7 @@ describe('image crop and rotation', () => {
     const image = { ...base(), type: 'image' as const, assetId, caption: 'Locandina' };
     addElement(doc, image);
     const before = roots(doc).elements.toJSON();
-    expect(migrateBoardDoc(doc, boardId)).toEqual([8]);
+    expect(migrateBoardDoc(doc, boardId)).toEqual([8, 9]);
     expect(getSchemaVersion(doc)).toBe(CURRENT_SCHEMA_VERSION);
     expect(roots(doc).elements.toJSON()).toEqual(before);
     const parsed = readElement(roots(doc).elements.get(image.id)!);

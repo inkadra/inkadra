@@ -256,6 +256,7 @@ export async function registerGuestRoutes(app: FastifyInstance, deps: Deps) {
                 }))
             : [],
         downloadUrl: download ? `${assetPath(ctx.link.id, row.id)}/file` : null,
+        streamUrl: null,
       }));
   }
 
@@ -340,7 +341,11 @@ export async function registerGuestRoutes(app: FastifyInstance, deps: Deps) {
     }
     const board = boards.find((b) => b.id === boardId) as GuestBoard;
     const body: Omit<GuestBoardSnapshot, 'version' | 'generatedAt'> = {
-      board: { ...board, aspect: top.row.kind === 'storyboard' ? view.aspect : null },
+      board: {
+        ...board,
+        aspect: top.row.kind === 'storyboard' ? view.aspect : null,
+        animaticAudio: null,
+      },
       breadcrumb,
       elements: shown.map((el) => guestElement(view, el) as GuestBoardSnapshot['elements'][number]),
       assets,
