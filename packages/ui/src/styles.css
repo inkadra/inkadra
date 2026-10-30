@@ -692,6 +692,10 @@ select {
   padding: 4px;
   outline: none;
 }
+/* Focus stays on the listbox; the active option shows where it is, not a ring around the list. */
+.ink-select__list:focus-visible {
+  box-shadow: none;
+}
 .ink-select__option {
   min-height: 32px;
   padding: 4px 8px;
