@@ -333,7 +333,7 @@ test('viewers and commenters get no board menu, no guest hiding and no scene tog
       await expect(other.locator('.story__tile')).toHaveCount(0);
       await expect(page.locator('.story__tile')).toHaveCount(4);
       await other.getByRole('tab', { name: 'Shot list' }).click();
-      await expect(other.getByRole('row', { name: /^1A / })).toBeVisible();
+      await expect(other.getByRole('row', { name: /^1A\b/ })).toBeVisible();
       await expect(other.getByLabel('Azione', { exact: true }).first()).not.toBeEditable();
       await expect(other.getByRole('button', { name: 'Nascondi agli ospiti' })).toHaveCount(0);
       await other.goto(`/p/${project.id}`);
