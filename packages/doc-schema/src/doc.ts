@@ -3,7 +3,7 @@ import * as Y from 'yjs';
 import { AspectRatio, Element, type ElementType } from './elements.ts';
 
 /** Bump when the shape of the board document changes, and add a migration below. */
-export const CURRENT_SCHEMA_VERSION = 5;
+export const CURRENT_SCHEMA_VERSION = 6;
 
 export const DOC_NAME_PREFIX = 'board:';
 
@@ -70,6 +70,9 @@ const migrations: Record<number, Migration> = {
   // 5: optional video still provenance on images and storyboard frames (decision 0042).
   // Existing documents stay unchanged; older clients must not discard the source.
   4: () => {},
+  // 6: optional `path` (straight or curved) on arrows (decision 0043). Existing arrows stay
+  // straight; older builds must not straighten curved arrows when copying them.
+  5: () => {},
 };
 
 export function getBoardAspect(doc: Y.Doc): AspectRatio | null {

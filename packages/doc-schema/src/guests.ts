@@ -85,7 +85,7 @@ export const GUEST_ELEMENT_FIELDS = {
     'shapes',
     'referenceOpacity',
   ],
-  arrow: [...COMMON_GUEST_FIELDS, 'from', 'to', 'label', 'line', 'heads'],
+  arrow: [...COMMON_GUEST_FIELDS, 'from', 'to', 'label', 'line', 'heads', 'path'],
 } as const satisfies Record<ElementType, readonly string[]>;
 
 /**
