@@ -121,6 +121,11 @@ export const ArchiveElements = z.object({
   boardId: Id,
   schemaVersion: z.int().min(0),
   aspect: z.string().nullable(),
+  /** From document version 9: the sound track of the storyboard's animatic (decision 0046). */
+  animaticAudio: z
+    .object({ assetId: Id, volume: z.number().min(0).max(1) })
+    .nullable()
+    .optional(),
   elements: z.array(z.record(z.string(), z.unknown())),
 });
 export type ArchiveElements = z.infer<typeof ArchiveElements>;

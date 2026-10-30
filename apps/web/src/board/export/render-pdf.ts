@@ -4,6 +4,7 @@ import {
   appendBezierCurve,
   clip,
   closePath,
+  degrees,
   endPath,
   LineCapStyle,
   LineJoinStyle,
@@ -19,7 +20,7 @@ import {
   setLineJoin,
 } from 'pdf-lib';
 import type { LoadedImage } from './images.ts';
-import { type FontWeight, fitBox, type Op, type Page, roundedRectPath } from './pages.ts';
+import { type FontWeight, imagePlacement, type Op, type Page, roundedRectPath } from './pages.ts';
 
 export interface PdfMeta {
   title: string;
@@ -119,14 +120,30 @@ async function drawOps(
       case 'image': {
         const img = await pictureOf(op.key);
         if (!img) break;
-        const box = fitBox(img, op, op.fit);
-        page.drawImage(img, {
-          x: box.x,
-          y: height - box.y - box.h,
-          width: box.w,
-          height: box.h,
-          ...(op.opacity !== undefined && op.opacity < 1 ? { opacity: op.opacity } : {}),
-        });
+        const p = imagePlacement(img, op);
+        if (!p.transformed || p.rotation === 0) {
+          page.drawImage(img, {
+            x: p.cx - p.drawW / 2,
+            y: height - p.cy - p.drawH / 2,
+            width: p.drawW,
+            height: p.drawH,
+            ...(op.opacity !== undefined && op.opacity < 1 ? { opacity: op.opacity } : {}),
+          });
+        } else {
+          const theta = (-p.rotation * Math.PI) / 180;
+          const cos = Math.cos(theta);
+          const sin = Math.sin(theta);
+          const dx = (p.drawW / 2) * cos - (p.drawH / 2) * sin;
+          const dy = (p.drawW / 2) * sin + (p.drawH / 2) * cos;
+          page.drawImage(img, {
+            x: p.cx - dx,
+            y: height - p.cy - dy,
+            width: p.drawW,
+            height: p.drawH,
+            rotate: degrees(-p.rotation),
+            ...(op.opacity !== undefined && op.opacity < 1 ? { opacity: op.opacity } : {}),
+          });
+        }
         break;
       }
       case 'polyline': {

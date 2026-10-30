@@ -1,6 +1,6 @@
 import { FRAME_STATUSES, type FrameStatus } from '@inkadra/doc-schema';
 import { Select } from '@inkadra/ui';
-import { type KeyboardEvent, useId, useState } from 'react';
+import { type KeyboardEvent, useId, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { ShotDisplayStatus } from './film-status.ts';
 
@@ -218,4 +218,145 @@ export function parseSeconds(text: string): number | undefined {
 
 export function secondsText(ms: number | undefined): string {
   return ms === undefined ? '' : String(Math.round(ms / 100) / 10);
+}
+
+/**
+ * A list of short names typed as chips: Enter, comma or leaving the field adds the text,
+ * Backspace on an empty field takes the last one back. Suggestions come from a datalist.
+ */
+export function TokenField({
+  id,
+  values,
+  suggestions = [],
+  placeholder,
+  disabled,
+  removeLabel,
+  onChange,
+}: {
+  id?: string | undefined;
+  values: readonly string[];
+  suggestions?: readonly string[];
+  placeholder?: string | undefined;
+  disabled?: boolean | undefined;
+  /** Accessible name of a chip's remove button, e.g. "Remove Elena". */
+  removeLabel: (value: string) => string;
+  onChange: (values: string[]) => void;
+}) {
+  const listId = useId();
+  const [text, setText] = useState('');
+  const add = (raw: string) => {
+    const next = [...values];
+    for (const part of raw.split(',')) {
+      const value = part.trim().slice(0, 120);
+      const key = value.toLocaleLowerCase();
+      if (value && !next.some((v) => v.toLocaleLowerCase() === key)) next.push(value);
+    }
+    setText('');
+    if (next.length !== values.length) onChange(next.slice(0, 100));
+  };
+  const known = new Set(values.map((v) => v.toLocaleLowerCase()));
+  return (
+    <div className="token-field" data-disabled={disabled || undefined}>
+      {values.map((value) => (
+        <span key={value} className="token-field__chip">
+          {value}
+          {!disabled && (
+            <button
+              type="button"
+              className="token-field__remove"
+              aria-label={removeLabel(value)}
+              onClick={() => onChange(values.filter((v) => v !== value))}
+            >
+              ×
+            </button>
+          )}
+        </span>
+      ))}
+      <input
+        id={id}
+        className="token-field__input"
+        list={suggestions.length ? listId : undefined}
+        value={text}
+        disabled={disabled}
+        placeholder={values.length ? undefined : placeholder}
+        onChange={(e) => {
+          const next = e.target.value;
+          // Picking a suggestion or typing a comma completes the chip.
+          if (next.includes(',') || suggestions.includes(next)) add(next);
+          else setText(next);
+        }}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            add(text);
+          } else if (e.key === 'Backspace' && !text && values.length) {
+            onChange(values.slice(0, -1));
+          }
+        }}
+        onBlur={() => add(text)}
+      />
+      {suggestions.length > 0 && (
+        <datalist id={listId}>
+          {suggestions
+            .filter((s) => !known.has(s.toLocaleLowerCase()))
+            .map((s) => (
+              <option key={s} value={s} />
+            ))}
+        </datalist>
+      )}
+    </div>
+  );
+}
+
+/**
+ * A time that is worked out when nobody sets it: shows the computed time, muted, and turns
+ * into a time input on click. Clearing the input returns to the computed time.
+ */
+export function AutoTime({
+  id,
+  value,
+  computed,
+  autoLabel,
+  disabled,
+  onChange,
+}: {
+  id: string;
+  value: string | null;
+  /** The time used when `value` is empty, already formatted; null when there is none. */
+  computed: string | null;
+  autoLabel: string;
+  disabled?: boolean | undefined;
+  onChange: (value: string | null) => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const input = useRef<HTMLInputElement>(null);
+  if (!value && !editing && computed) {
+    return (
+      <button
+        id={id}
+        type="button"
+        className="ink-input auto-time"
+        disabled={disabled}
+        onClick={() => {
+          setEditing(true);
+          requestAnimationFrame(() => input.current?.focus());
+        }}
+      >
+        <span>{computed}</span>
+        <span className="auto-time__tag">{autoLabel}</span>
+      </button>
+    );
+  }
+  return (
+    <input
+      ref={input}
+      id={id}
+      className="ink-input"
+      type="time"
+      value={value ?? ''}
+      disabled={disabled}
+      onChange={(e) => onChange(e.target.value || null)}
+      onBlur={() => setEditing(false)}
+    />
+  );
 }

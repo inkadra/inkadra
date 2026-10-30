@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: MPL-2.0
 import * as Y from 'yjs';
+import { z } from 'zod';
 import { AspectRatio, Element, type ElementType } from './elements.ts';
 
 /** Bump when the shape of the board document changes, and add a migration below. */
-export const CURRENT_SCHEMA_VERSION = 8;
+export const CURRENT_SCHEMA_VERSION = 9;
 
 export const DOC_NAME_PREFIX = 'board:';
 
@@ -20,8 +21,8 @@ export function parseBoardDocName(name: string): string | null {
 
 /**
  * Root types of a board document. Nothing else may be stored at the root.
- * `meta` holds `schemaVersion`, `boardId` and, from version 2, `aspect` (the AspectRatio of
- * a storyboard's frames).
+ * `meta` holds `schemaVersion`, `boardId`, from version 2 `aspect` (the AspectRatio of a
+ * storyboard's frames) and from version 9 `animaticAudio` (the sound track of its animatic).
  */
 export function roots(doc: Y.Doc) {
   return {
@@ -79,7 +80,34 @@ const migrations: Record<number, Migration> = {
   // 8: optional non-destructive `crop` and `rotation` on image elements (decision 0045).
   // Existing images stay uncropped and unrotated; older builds must not strip crop or rotation.
   7: () => {},
+  // 9: optional `meta.animaticAudio`, the sound track of a storyboard's animatic (decision
+  // 0046). Existing storyboards play silent; older builds must not drop the track on restore.
+  8: () => {},
 };
+
+/**
+ * The one sound track of a storyboard's animatic: an uploaded audio file of the board's
+ * project that starts with the first frame. `volume` is the level the team mixed (0 to 1);
+ * muting is a choice of each viewer and is not stored.
+ */
+export const AnimaticAudio = z.object({
+  assetId: z.uuid(),
+  volume: z.number().min(0).max(1),
+});
+export type AnimaticAudio = z.infer<typeof AnimaticAudio>;
+
+export function getAnimaticAudio(doc: Y.Doc): AnimaticAudio | null {
+  const parsed = AnimaticAudio.safeParse(roots(doc).meta.get('animaticAudio'));
+  return parsed.success ? parsed.data : null;
+}
+
+export function setAnimaticAudio(doc: Y.Doc, audio: AnimaticAudio | null, origin?: unknown): void {
+  const { meta } = roots(doc);
+  doc.transact(() => {
+    if (audio === null) meta.delete('animaticAudio');
+    else meta.set('animaticAudio', AnimaticAudio.parse(audio));
+  }, origin);
+}
 
 export function getBoardAspect(doc: Y.Doc): AspectRatio | null {
   const parsed = AspectRatio.safeParse(roots(doc).meta.get('aspect'));
@@ -195,6 +223,10 @@ export function validateBoardDoc(doc: Y.Doc): ValidationIssue[] {
   const aspect = roots(doc).meta.get('aspect');
   if (aspect !== undefined && !AspectRatio.safeParse(aspect).success) {
     issues.push({ elementId: '', message: 'meta.aspect is not a known aspect ratio.' });
+  }
+  const audio = roots(doc).meta.get('animaticAudio');
+  if (audio !== undefined && !AnimaticAudio.safeParse(audio).success) {
+    issues.push({ elementId: '', message: 'meta.animaticAudio is not a valid sound track.' });
   }
   for (const name of doc.share.keys()) {
     if (name !== 'meta' && name !== 'elements') {

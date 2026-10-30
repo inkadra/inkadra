@@ -741,3 +741,72 @@ select {
   background: currentColor;
   flex: none;
 }
+
+/* Slider ------------------------------------------------------------------------- */
+
+.ink-slider {
+  --ink-slider-track: linear-gradient(
+    to right,
+    var(--ink-text-primary) var(--ink-slider-fill, 0%),
+    var(--ink-border-strong) var(--ink-slider-fill, 0%)
+  );
+  appearance: none;
+  width: 96px;
+  height: 28px;
+  margin: 0;
+  background: transparent;
+  cursor: pointer;
+}
+.ink-slider:focus-visible {
+  box-shadow: none;
+}
+.ink-slider:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.ink-slider::-webkit-slider-runnable-track {
+  height: 2px;
+  border-radius: 1px;
+  background: var(--ink-slider-track);
+}
+.ink-slider::-moz-range-track {
+  height: 2px;
+  border-radius: 1px;
+  background: var(--ink-slider-track);
+}
+.ink-slider::-webkit-slider-thumb {
+  appearance: none;
+  width: 12px;
+  height: 12px;
+  margin-top: -5px;
+  border-radius: 50%;
+  border: 2px solid var(--ink-surface-1);
+  background: var(--ink-text-primary);
+}
+.ink-slider::-moz-range-thumb {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  border: 2px solid var(--ink-surface-1);
+  background: var(--ink-text-primary);
+}
+.ink-slider:focus-visible::-webkit-slider-thumb {
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ink-accent-primary) 25%, transparent);
+}
+.ink-slider:focus-visible::-moz-range-thumb {
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ink-accent-primary) 25%, transparent);
+}
+@media (pointer: coarse) {
+  .ink-slider {
+    height: 44px;
+  }
+  .ink-slider::-webkit-slider-thumb {
+    width: 20px;
+    height: 20px;
+    margin-top: -9px;
+  }
+  .ink-slider::-moz-range-thumb {
+    width: 16px;
+    height: 16px;
+  }
+}

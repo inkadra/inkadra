@@ -6,6 +6,8 @@ import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useClassifications } from '../../lib/classifications.ts';
 import { pickVariant, useAsset } from '../assets.ts';
+import { CroppedImage } from '../CroppedImage.tsx';
+import { hasImageTransform } from '../image-crop.ts';
 import type { BoardStore } from '../store.ts';
 import { normaliseTag } from '../tags.tsx';
 import { MediaViewer } from '../viewer.tsx';
@@ -28,7 +30,8 @@ function ReferenceImage({ element }: { element: MediaReference }) {
   const { t } = useTranslation();
   const asset = useAsset(element.type === 'image' ? element.assetId : element.imageAssetId);
   const label = element.type === 'image' ? element.caption : element.title || element.url;
-  if (!asset || asset === 'missing' || !pickVariant(asset, 640)) {
+  const src = asset && asset !== 'missing' ? pickVariant(asset, 640) : '';
+  if (!asset || asset === 'missing' || !src) {
     return (
       <span className="moodboard__placeholder">
         {t(
@@ -39,9 +42,21 @@ function ReferenceImage({ element }: { element: MediaReference }) {
       </span>
     );
   }
+  if (element.type === 'image' && hasImageTransform(element)) {
+    return (
+      <CroppedImage
+        poster={src}
+        alt={label || asset.filename}
+        width={asset.width}
+        height={asset.height}
+        crop={element.crop}
+        rotation={element.rotation}
+      />
+    );
+  }
   return (
     <img
-      src={pickVariant(asset, 640)}
+      src={src}
       alt={label || asset.filename}
       loading="lazy"
       width={asset.width ?? undefined}

@@ -338,7 +338,24 @@
     },
     "image": {
       "processing": "Processing…",
-      "failed": "Preview unavailable"
+      "failed": "Preview unavailable",
+      "cropRotate": "Crop and rotate",
+      "restoreOriginal": "Restore original",
+      "cropToolbar": "Crop and rotation",
+      "cropStage": "Crop area",
+      "cropSize": "Crop {{width}} × {{height}} px",
+      "cropHelp": "Changes apply at once and Undo reverts them. Arrows move the crop, Alt and arrows resize it, Shift takes bigger steps, Esc leaves.",
+      "rotateLeft": "Rotate 90° left",
+      "rotateRight": "Rotate 90° right",
+      "angle": "Rotation angle",
+      "resetAngle": "Straighten: fine angle to 0°",
+      "resetAngleHint": "Double-click to go back to 0°",
+      "done": "Done",
+      "aspect": {
+        "label": "Aspect ratio",
+        "preset": "Aspect ratio {{ratio}}",
+        "free": "Free"
+      }
     },
     "file": {
       "loading": "File",
@@ -565,7 +582,9 @@
       "esc": "esc"
     },
     "thumbnails": "Thumbnails",
-    "item": "Item {{n}}"
+    "item": "Item {{n}}",
+    "showOriginal": "Show original",
+    "showEdited": "Show cropped"
   },
   "search": {
     "title": "Search",
@@ -674,7 +693,8 @@
         "dusk": "DUSK"
       },
       "collapse": "Collapse the scene",
-      "expand": "Expand the scene"
+      "expand": "Expand the scene",
+      "addTitle": "Add a title"
     },
     "frame": {
       "add": "New frame",
@@ -1635,10 +1655,10 @@
     "missingShot": "Missing shot",
     "type": "Block type",
     "title": "Title",
-    "start": "Start (empty: automatic)",
+    "start": "Start",
     "duration": "Estimated minutes",
-    "cast": "Cast (comma separated)",
-    "departments": "Departments (comma separated)",
+    "cast": "Cast",
+    "departments": "Departments",
     "castConflict": "Cast overlaps another block.",
     "up": "Move up",
     "down": "Move down",
@@ -1677,8 +1697,6 @@
     "castFlag": "Cast conflict",
     "dropHint": "Drop a shot here",
     "inspector": "Shooting day details",
-    "planned": "Planned",
-    "blocks": "Blocks",
     "block": "Selected block",
     "blockHint": "Select a block in the day to edit it.",
     "noBlocks": "No blocks yet. Add one, or drop a shot on the day.",
@@ -1688,7 +1706,13 @@
     "staleKeep": "Keep mine",
     "staleBlocked": "{{day}} changed elsewhere: choose which version to keep before adding shots.",
     "invalidBlocked": "{{day}} has an invalid draft: fix it in the inspector before adding shots.",
-    "addedTo": "{{shot}} added to {{day}}."
+    "addedTo": "{{shot}} added to {{day}}.",
+    "auto": "auto",
+    "summary_one": "{{planned}} planned · {{count}} block",
+    "summary_other": "{{planned}} planned · {{count}} blocks",
+    "castPlaceholder": "Add a name",
+    "departmentsPlaceholder": "Department: note",
+    "removeToken": "Remove {{name}}"
   },
   "moodboard": {
     "count_one": "{{count}} reference",

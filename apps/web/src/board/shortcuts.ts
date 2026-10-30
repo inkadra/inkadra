@@ -23,6 +23,7 @@ export type Command =
   | { kind: 'escape' }
   | { kind: 'edit' }
   | { kind: 'rename' }
+  | { kind: 'crop' }
   | { kind: 'lock' }
   | { kind: 'front' }
   | { kind: 'back' }
@@ -114,6 +115,8 @@ export function commandFor(e: KeyInput, mac = isMac()): Command | null {
       return { kind: 'add', type: 'image' };
     case 'k':
       return { kind: 'add', type: 'color' };
+    case 'x':
+      return { kind: 'crop' };
     case '+':
     case '=':
       return { kind: 'zoom', to: 'in' };

@@ -7,9 +7,11 @@ import { memo, useContext, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useClassifications } from '../lib/classifications.ts';
 import { pickVariant, useAsset } from './assets.ts';
+import { CroppedImage } from './CroppedImage.tsx';
 import { GuestModeContext } from './context.ts';
 import { FrameGrab } from './FrameGrab.tsx';
 import { VideoFrameStepper } from './frame-grab.ts';
+import { hasImageTransform } from './image-crop.ts';
 import { MovingPicture, movingVariantUrl } from './moving.tsx';
 import { authorName, editableText } from './review-model.ts';
 import { canComment, openComments, useReviews } from './review-store.ts';
@@ -258,6 +260,12 @@ export function MediaViewer({
   }, [element.id, isYoutube]);
   const [copied, setCopied] = useState<string | null>(null);
   const [infoOpen, setInfoOpen] = useState(false);
+  const [showOriginal, setShowOriginal] = useState(false);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: reset original toggle when switching elements
+  useEffect(() => {
+    setShowOriginal(false);
+  }, [element.id]);
+  const isTransformedImage = element.type === 'image' && hasImageTransform(element);
   const { videoRef, unplayable, setUnplayable } = useVideoUnplayable(ready?.url, ready?.id);
 
   const stepper = useRef(new VideoFrameStepper());
@@ -431,6 +439,22 @@ export function MediaViewer({
             </span>
           ))}
           <div className="viewer__header-spacer" />
+          {isTransformedImage && (
+            <button
+              type="button"
+              className="ink-btn ink-btn--secondary viewer__stage-btn viewer__original-toggle"
+              aria-pressed={showOriginal}
+              aria-label={t(showOriginal ? 'viewer.showEdited' : 'viewer.showOriginal')}
+              onClick={() => setShowOriginal((prev) => !prev)}
+            >
+              <span className="viewer__action-icon" aria-hidden="true">
+                <Icon name="image" size={18} />
+              </span>
+              <span className="viewer__action-label">
+                {t(showOriginal ? 'viewer.showEdited' : 'viewer.showOriginal')}
+              </span>
+            </button>
+          )}
           <FrameGrab
             key={element.id}
             store={store}
@@ -565,14 +589,27 @@ export function MediaViewer({
                 )}
               </>
             ) : ready ? (
-              <MovingPicture
-                className="viewer__media viewer__media--contain"
-                poster={pickVariant(ready, wide) || ready.url}
-                moving={movingVariantUrl(ready, wide)}
-                alt={
-                  element.type === 'image' ? (element.caption ?? ready.filename) : ready.filename
-                }
-              />
+              isTransformedImage && !showOriginal ? (
+                <CroppedImage
+                  className="viewer__media viewer__media--contain"
+                  poster={pickVariant(ready, wide) || ready.url}
+                  moving={movingVariantUrl(ready, wide)}
+                  alt={element.caption ?? ready.filename}
+                  width={ready.width}
+                  height={ready.height}
+                  crop={element.crop}
+                  rotation={element.rotation}
+                />
+              ) : (
+                <MovingPicture
+                  className="viewer__media viewer__media--contain"
+                  poster={pickVariant(ready, wide) || ready.url}
+                  moving={movingVariantUrl(ready, wide)}
+                  alt={
+                    element.type === 'image' ? (element.caption ?? ready.filename) : ready.filename
+                  }
+                />
+              )
             ) : null}
           </div>
 

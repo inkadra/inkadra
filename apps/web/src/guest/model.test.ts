@@ -86,7 +86,7 @@ describe('session refresh', () => {
   } as GuestBoard;
   const snap = (version: string, title = 'Set', elements: unknown[] = []) =>
     ({
-      board: { ...board, title, aspect: null },
+      board: { ...board, title, aspect: null, animaticAudio: null },
       breadcrumb: [],
       elements,
       assets: [],

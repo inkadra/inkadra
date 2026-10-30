@@ -28,6 +28,9 @@ picture later.
   and client exports see the intended framing. The canvas, moodboard gallery, media viewer (with
   a toggle to inspect the uncropped original), guest views, browser-built PDF/PNG exports and
   project archive exports/imports all preserve and apply the same non-destructive framing.
+- Cropping is entered from the selection-toolbar crop button, the context menu or the `X` key
+  with one unlocked image selected. Double-click keeps opening the media viewer, as for every
+  other card.
 
 **Consequences.** Older builds reject version 8 documents instead of silently discarding crop or
 rotation when copying or exporting image cards. No database migration, HTTP endpoint or storage

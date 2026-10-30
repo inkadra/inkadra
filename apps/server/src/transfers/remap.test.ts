@@ -118,9 +118,19 @@ describe('remapDoc', () => {
     });
   });
 
-  it('rewrites files, boards, the board itself and authors, keeping element ids', () => {
+  it('rewrites files, boards, the board itself and authors, keeping element ids and image crop/rotation', () => {
     const doc = createBoardDoc(oldBoard);
-    addElement(doc, { ...base, id: 'image-0001', type: 'image', assetId: file });
+    addElement(doc, {
+      ...base,
+      id: 'image-0001',
+      type: 'image',
+      assetId: file,
+      crop: { x: 0.1, y: 0.2, w: 0.5, h: 0.5, aspect: '1:1' },
+      rotation: 90,
+    });
+    const badImg = addElement(doc, { ...base, id: 'image-0002', type: 'image', assetId: file });
+    badImg.set('crop', { x: -1, y: 0, w: 2, h: 1 });
+    badImg.set('rotation', 999);
     addElement(doc, { ...base, id: 'board-0001', type: 'board', boardId: child });
     addElement(doc, {
       ...base,
@@ -137,7 +147,15 @@ describe('remapDoc', () => {
     const { meta, elements } = roots(doc);
     expect(meta.get('boardId')).toBe(newBoard);
     const read = (id: string) => readElement(elements.get(id) as never);
-    expect(read('image-0001')).toMatchObject({ assetId: newFile, createdBy: importer });
+    expect(read('image-0001')).toMatchObject({
+      assetId: newFile,
+      createdBy: importer,
+      crop: { x: 0.1, y: 0.2, w: 0.5, h: 0.5, aspect: '1:1' },
+      rotation: 90,
+    });
+    expect(read('image-0002')).toMatchObject({ assetId: newFile, createdBy: importer });
+    expect((read('image-0002') as { crop?: unknown }).crop).toBeUndefined();
+    expect((read('image-0002') as { rotation?: unknown }).rotation).toBeUndefined();
     expect(read('board-0001')).toMatchObject({ boardId: newChild });
     // Not in the archive: never left pointing at something of another project.
     // An optional picture that is not in the archive goes; it never points elsewhere.

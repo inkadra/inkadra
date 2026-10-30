@@ -1355,6 +1355,7 @@ describe.skipIf(!url)('guest share links (needs DATABASE_URL)', () => {
         },
       ],
       downloadUrl: null,
+      streamUrl: null,
     });
     expect(res.body.board).toMatchObject({ id: B.A, parentBoardId: null, aspect: null });
     expect(res.body.breadcrumb).toEqual([]);

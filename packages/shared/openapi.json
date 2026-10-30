@@ -5048,10 +5048,34 @@
                       "null"
                     ],
                     "description": "Storyboards: `meta.aspect`."
+                  },
+                  "animaticAudio": {
+                    "type": [
+                      "object",
+                      "null"
+                    ],
+                    "properties": {
+                      "assetId": {
+                        "type": "string",
+                        "format": "uuid",
+                        "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10"
+                      },
+                      "volume": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 1
+                      }
+                    },
+                    "required": [
+                      "assetId",
+                      "volume"
+                    ],
+                    "description": "Storyboards: `meta.animaticAudio`, the sound track of the animatic, when its file is ready; the file is in `assets` with a `streamUrl`."
                   }
                 },
                 "required": [
-                  "aspect"
+                  "aspect",
+                  "animaticAudio"
                 ]
               }
             ]
@@ -5088,7 +5112,7 @@
             "items": {
               "$ref": "#/components/schemas/GuestAsset"
             },
-            "description": "Files the visible elements refer to, and nothing else."
+            "description": "Files the visible elements refer to, and the sound track of a storyboard animatic."
           },
           "reviews": {
             "type": "array",
@@ -5229,6 +5253,13 @@
               "null"
             ],
             "description": "`/api/v1/guest/links/{linkId}/assets/{assetId}/file` when the link allows downloads, else null."
+          },
+          "streamUrl": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "`/api/v1/guest/links/{linkId}/assets/{assetId}/stream`: only for the sound track of a storyboard animatic (`board.animaticAudio`), else null. Plays inline with byte ranges, whatever `allowDownload` says; it is never served as an attachment."
           }
         },
         "required": [
@@ -5242,7 +5273,8 @@
           "durationMs",
           "animated",
           "variants",
-          "downloadUrl"
+          "downloadUrl",
+          "streamUrl"
         ]
       },
       "GuestAssetVariant": {
@@ -15210,6 +15242,90 @@
           },
           "206": {
             "description": "Part of the file"
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No guest session, or it expired (details: GuestDenied)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Link expired, revoked or suspended, password changed, role too low, or a cross-site write (GuestDenied)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found, or not visible to guests of this link (hidden cards included)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/guest/links/{linkId}/assets/{assetId}/stream": {
+      "get": {
+        "tags": [
+          "Guests"
+        ],
+        "security": [
+          {
+            "guest": []
+          }
+        ],
+        "summary": "The sound track of a storyboard animatic, to play inline. Supports `Range`.",
+        "description": "Only for the asset named by `meta.animaticAudio` of a storyboard of the link, whatever `allowDownload` says (decision 0046); checked on every request. Sent inline, without a filename, with `Cache-Control: private, no-store`.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10"
+            },
+            "required": true,
+            "name": "linkId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10"
+            },
+            "required": true,
+            "name": "assetId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Audio"
+          },
+          "206": {
+            "description": "Part of the audio"
           },
           "400": {
             "description": "Invalid request",

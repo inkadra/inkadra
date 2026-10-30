@@ -434,7 +434,7 @@ function SceneList({
           {groups.map((group) => (
             <option key={groupKey(group)} value={groupKey(group)}>
               {group.scene
-                ? `${group.scene.number} ${group.scene.title || t('film.scene.untitled')}`
+                ? `${group.scene.number} ${sceneName(group.scene) || t('film.scene.untitled')}`
                 : t('film.loose')}{' '}
               · {group.frames.length}
             </option>
@@ -472,7 +472,7 @@ function SceneList({
                     {g.scene ? (
                       <>
                         <strong>{g.scene.number}</strong>{' '}
-                        {g.scene.title || t('film.scene.untitled')}
+                        {sceneName(g.scene) || t('film.scene.untitled')}
                       </>
                     ) : (
                       t('film.loose')
@@ -496,6 +496,11 @@ function SceneList({
       </nav>
     </>
   );
+}
+
+/** What a scene is called in lists: its title, else its location, as imported scenes are. */
+export function sceneName(scene: SceneElement): string {
+  return scene.title.trim() || scene.location?.trim() || '';
 }
 
 /** INT. KITCHEN – NIGHT, from the scene fields. */
@@ -621,7 +626,7 @@ function SceneSection({
           key={`t${scene.title}`}
           className="card__inline-input story__scene-title"
           defaultValue={scene.title}
-          placeholder={t('film.scene.untitled')}
+          placeholder={t('film.scene.addTitle')}
           readOnly={readOnly}
           aria-label={t('film.scene.title')}
           onBlur={(e) => {
