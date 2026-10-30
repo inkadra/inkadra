@@ -2338,6 +2338,7 @@
     "charactersLine": "Characters: {{names}}",
     "sceneList": "Scenes to import",
     "all": "All scenes",
+    "prelude": "Before the first scene",
     "noHeading": "Untitled scene",
     "framesCount_one": "{{count}} frame",
     "framesCount_other": "{{count}} frames",

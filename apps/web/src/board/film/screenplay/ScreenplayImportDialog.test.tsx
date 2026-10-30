@@ -86,4 +86,8 @@ it('closes without closing the dialog it was opened from', async () => {
   await act(async () => dialogs[1]?.dispatchEvent(new Event('close')));
   expect(inner).toHaveBeenCalled();
   expect(outer).not.toHaveBeenCalled();
+  expect(dialogs[0]?.open).toBe(true);
+  // The outer dialog still closes on its own events.
+  await act(async () => dialogs[0]?.dispatchEvent(new Event('close')));
+  expect(outer).toHaveBeenCalledTimes(1);
 });

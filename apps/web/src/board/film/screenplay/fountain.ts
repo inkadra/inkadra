@@ -25,16 +25,19 @@ const NOTE_MARK = '\uE000';
  */
 export function parseFountain(source: string): Script {
   const notes: string[] = [];
-  const text = source
-    .replace(/^﻿/, '')
-    .replace(/\r\n?/g, '\n')
-    // Boneyard: text the writer left out.
-    .replace(/\/\*[\s\S]*?\*\//g, '')
-    // Notes may cross lines; keep a mark where they were so they follow their paragraph.
-    .replace(/\[\[([\s\S]*?)\]\]/g, (_, note: string) => {
+  const normalised = source.replace(/^\uFEFF/, '').replace(/\r\n?/g, '\n');
+  // Boneyard: text the writer left out. Notes may cross lines; a mark keeps their place so
+  // they follow their paragraph. Both are found with indexOf, in linear time: an opening mark
+  // without its closing one leaves the rest of the text as it is.
+  const text = between(
+    between(normalised, '/*', '*/', () => ''),
+    '[[',
+    ']]',
+    (note) => {
       notes.push(clean(note.replace(/\n/g, ' ')));
       return `${NOTE_MARK}${notes.length - 1}${NOTE_MARK}`;
-    });
+    },
+  );
   let lines = text.split('\n');
   const titlePage: Record<string, string> = {};
   if (TITLE_KEYS.test(lines.find((l) => l.trim())?.trim() ?? '')) {
@@ -62,7 +65,12 @@ export function parseFountain(source: string): Script {
   let scene: ScriptScene | null = null;
   const push = (block: ScriptBlock) => (scene ? scene.blocks : prelude).push(block);
   const startScene = (heading: string) => {
-    scene = { ...parseHeading(heading), blocks: [], characters: [] };
+    // Synopses written just before a heading describe the scene it opens.
+    const previous = scene ? scene.blocks : prelude;
+    const moved: ScriptBlock[] = [];
+    while (previous.at(-1)?.kind === 'synopsis' && (!scene || previous.length > 1))
+      moved.unshift(previous.pop() as ScriptBlock);
+    scene = { ...parseHeading(heading), blocks: moved, characters: [] };
     if (section) scene.section = section;
     scenes.push(scene);
   };
@@ -133,9 +141,10 @@ export function parseFountain(source: string): Script {
     push({ kind: 'dialogue', ...splitCue(inline(cue)), lines });
   }
 
-  // A script without headings (a short, a scene on its own) is still one scene.
-  if (scenes.length === 0 && prelude.some((b) => b.kind === 'action' || b.kind === 'dialogue'))
-    scenes.push({ heading: '', blocks: prelude, characters: [] });
+  // Action or dialogue before the first heading (a cold open, a script without headings) is
+  // a scene of its own, without a heading, that the person can leave out.
+  if (prelude.some((b) => b.kind === 'action' || b.kind === 'dialogue'))
+    scenes.unshift({ heading: '', prelude: true, blocks: prelude, characters: [] });
   return finishScript('fountain', titlePage, scenes);
 }
 
@@ -160,6 +169,7 @@ function* paragraphs(lines: string[]): Generator<string[]> {
 
 /** A character cue: capitals (an extension in brackets may be lower case), not a transition. */
 function isCue(line: string): boolean {
+  if (line.length > 80) return false;
   const name = splitCue(line).character;
   return (
     name.length > 0 &&
@@ -175,8 +185,28 @@ function isCue(line: string): boolean {
 function inline(text: string): string {
   return clean(
     text
-      .replace(/(\*{1,3}|_)(?=\S)([^*_\n]*?\S)\1/g, '$2')
+      .replace(/(\*{1,3})(?=\S)([^*\n]*?\S)\1/g, '$2')
+      // Underline only between word boundaries: snake_case_names and URLs keep theirs.
+      .replace(/(^|[^\p{L}\p{N}_])_(?=\S)([^_\n]*?\S)_(?![\p{L}\p{N}_])/gu, '$1$2')
       .replace(/\\([*_\\])/g, '$1')
       .replace(new RegExp(`${NOTE_MARK}\\d+${NOTE_MARK}`, 'g'), ''),
   );
+}
+
+/** Replaces each `open … close` span by `replace(inner)`, scanning once. */
+function between(
+  text: string,
+  open: string,
+  close: string,
+  replace: (inner: string) => string,
+): string {
+  let out = '';
+  let from = 0;
+  for (;;) {
+    const start = text.indexOf(open, from);
+    const end = start < 0 ? -1 : text.indexOf(close, start + open.length);
+    if (end < 0) return out + text.slice(from);
+    out += text.slice(from, start) + replace(text.slice(start + open.length, end));
+    from = end + close.length;
+  }
 }

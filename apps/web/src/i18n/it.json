@@ -2338,6 +2338,7 @@
     "charactersLine": "Personaggi: {{names}}",
     "sceneList": "Scene da importare",
     "all": "Tutte le scene",
+    "prelude": "Prima della prima scena",
     "noHeading": "Scena senza titolo",
     "framesCount_one": "{{count}} inquadratura",
     "framesCount_other": "{{count}} inquadrature",

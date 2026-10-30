@@ -100,6 +100,51 @@ describe('Fountain', () => {
     ]);
   });
 
+  it('stays linear on unclosed notes, boneyards and long cue lines', () => {
+    for (const source of [
+      '[['.repeat(100_000),
+      '/*'.repeat(100_000),
+      `INT. HALL - DAY\n\n${'('.repeat(200_000)}\nText`,
+    ]) {
+      const start = performance.now();
+      parseFountain(source);
+      expect(performance.now() - start).toBeLessThan(200);
+    }
+    // An unclosed note keeps its text.
+    expect(parseFountain('INT. HALL - DAY\n\nA [[door.').scenes[0]?.blocks).toEqual([
+      { kind: 'action', text: 'A [[door.' },
+    ]);
+  });
+
+  it('keeps what comes before the first heading as a scene without one', () => {
+    const s = parseFountain('A clock ticks.\n\nINT. HALL - DAY\n\nA door.');
+    expect(s.scenes.map((x) => [x.heading, x.prelude])).toEqual([
+      ['', true],
+      ['INT. HALL - DAY', undefined],
+    ]);
+    expect(parseFountain('FADE IN:\n\nINT. HALL - DAY\n\nA door.').scenes).toHaveLength(1);
+  });
+
+  it('gives a synopsis written before a heading to the scene it opens', () => {
+    const s = parseFountain(
+      'INT. HALL - DAY\n\n= In the hall.\n\nA door.\n\n= Out in the yard.\n\nEXT. YARD - DAY\n\nRain.',
+    );
+    expect(s.scenes.map((x) => x.blocks.filter((b) => b.kind === 'synopsis'))).toEqual([
+      [{ kind: 'synopsis', text: 'In the hall.' }],
+      [{ kind: 'synopsis', text: 'Out in the yard.' }],
+    ]);
+  });
+
+  it('removes underline marks only around words', () => {
+    const s = parseFountain(
+      'INT. HALL - DAY\n\nShe types _now_ my_file_name and http://a.example/x_y_z.',
+    );
+    expect(s.scenes[0]?.blocks[0]).toEqual({
+      kind: 'action',
+      text: 'She types now my_file_name and http://a.example/x_y_z.',
+    });
+  });
+
   it('makes one scene of a script without headings', () => {
     expect(parseFountain('A door opens.\n\nANNA\nHello?').scenes).toHaveLength(1);
   });

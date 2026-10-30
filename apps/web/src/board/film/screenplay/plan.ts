@@ -47,6 +47,8 @@ export function planImport(
   script: Script,
   options: ImportOptions,
   characterLine: (names: string[]) => string,
+  /** Name of the scene made of what comes before the first heading. */
+  preludeTitle = '',
 ): ImportPlan {
   const plan: ImportPlan = { scenes: [], frameCount: 0, truncated: false };
   if (script.title) plan.title = cut(script.title, 200);
@@ -71,7 +73,7 @@ export function planImport(
         : []),
     ].join('\n');
     const planned: NewScene = {
-      title: cut(sceneTitle(scene), 200),
+      title: cut(sceneTitle(scene, preludeTitle), 200),
       frames,
     };
     if (number) planned.number = number.slice(0, 12);
@@ -94,7 +96,8 @@ const CONTINUITY =
  * words after the location (FLASHBACK, DREAM) follow in brackets. A forced heading without
  * INT/EXT is the name itself.
  */
-function sceneTitle(scene: ScriptScene): string {
+function sceneTitle(scene: ScriptScene, prelude: string): string {
+  if (scene.prelude) return prelude;
   if (!scene.setting) return scene.heading;
   const extras = (scene.extra ?? '')
     .split(/\s+[-–—]\s+|\s*[–—]\s*/)

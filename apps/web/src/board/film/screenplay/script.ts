@@ -26,6 +26,8 @@ export interface ScriptScene {
   time?: NonNullable<SceneElement['time']>;
   /** What follows the time of day or is not one: CONTINUOUS, LATER, FLASHBACK… */
   extra?: string;
+  /** Action or dialogue before the first heading, kept as a scene without a heading. */
+  prelude?: boolean;
   /** The section (Fountain `#`) or act the scene belongs to, if any. */
   section?: string;
   blocks: ScriptBlock[];
@@ -82,7 +84,7 @@ const LATER =
 
 /** `INT. CENTRAL STATION – NIGHT #4A#` → number, setting, location, time and the rest. */
 export function parseHeading(raw: string): Omit<ScriptScene, 'blocks' | 'characters'> {
-  let heading = clean(raw);
+  let heading = clean(raw).slice(0, 500);
   let number: string | undefined;
   const num = /\s*#([^#\s]{1,12})#\s*$/.exec(heading);
   if (num) {
@@ -125,7 +127,9 @@ export function parseHeading(raw: string): Omit<ScriptScene, 'blocks' | 'charact
 
 /** Character name for the cast: without extensions, dual-dialogue mark or trailing spaces. */
 export function splitCue(raw: string): { character: string; extension?: string } {
-  const text = clean(raw).replace(/\s*\^$/, '');
+  const text = clean(raw)
+    .slice(0, 200)
+    .replace(/\s*\^$/, '');
   const m = /^(.*?)\s*((?:\([^)]*\)\s*)+)$/.exec(text);
   const character = (m ? m[1] : text)?.trim() ?? '';
   const extension = m?.[2]?.trim();

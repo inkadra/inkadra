@@ -48,8 +48,11 @@ export function ScreenplayImportDialog({
   const plan = useMemo(
     () =>
       file && options
-        ? planImport(file.script, options, (names) =>
-            t('screenplay.charactersLine', { names: names.join(', ') }),
+        ? planImport(
+            file.script,
+            options,
+            (names) => t('screenplay.charactersLine', { names: names.join(', ') }),
+            t('screenplay.prelude'),
           )
         : null,
     [file, options, t],
@@ -205,7 +208,9 @@ export function ScreenplayImportDialog({
                         />
                         <span className="script-import__number">{numbers[i] ?? '–'}</span>
                         <span className="script-import__heading">
-                          {scene.heading.toLocaleUpperCase() || t('screenplay.noHeading')}
+                          {scene.prelude
+                            ? t('screenplay.prelude')
+                            : scene.heading.toLocaleUpperCase() || t('screenplay.noHeading')}
                         </span>
                         {options.frames !== 'none' && (
                           <span className="script-import__count">

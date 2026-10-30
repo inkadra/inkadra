@@ -57,8 +57,8 @@ export function parseFdx(source: string): Script {
     else if (type === 'New Act' || type === 'End of Act' || type === 'Outline 1') section = text;
     else if (type !== 'Cast List') push({ kind: 'action', text });
   }
-  if (scenes.length === 0 && prelude.some((b) => b.kind === 'action' || b.kind === 'dialogue'))
-    scenes.push({ heading: '', blocks: prelude, characters: [] });
+  if (prelude.some((b) => b.kind === 'action' || b.kind === 'dialogue'))
+    scenes.unshift({ heading: '', prelude: true, blocks: prelude, characters: [] });
   return finishScript('fdx', titlePage(root), scenes);
 }
 

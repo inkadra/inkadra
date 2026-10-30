@@ -22,7 +22,13 @@ frames with action, dialogue, notes and cast (decision 0012).
   extensions and dual dialogue `^`, parentheticals, transitions (`TO:`, `>`), sections `#`,
   synopses `=`, notes `[[ ]]`, boneyard `/* */` (dropped), emphasis marks (removed). It is
   lenient where real files are: Windows line endings, a BOM, indentation, a heading without a
-  blank line after it. A script without headings becomes one scene. Italian headings
+  blank line after it. Action or dialogue before the first heading (a cold open, a script
+  without headings) becomes a first scene without a heading, listed in the preview as "Before
+  the first scene" so it can be left out; a lone transition (FADE IN:) is not kept. A synopsis
+  `=` written just before a heading belongs to the scene that heading opens, not to the one
+  above. Boneyard and notes are found with a single `indexOf` scan, so unclosed marks cost
+  linear time and keep their text; long lines are never taken for character cues. Underline
+  marks `_…_` are removed only around words, so `snake_case` names and addresses survive. Italian headings
   (`EST.`, `INT./EST.`, `GIORNO`, `NOTTE`…) are read too.
 - **Final Draft**: `DOMParser` on the XML, after refusing any `<!DOCTYPE` or `<!ENTITY`, so
   nothing is expanded or fetched; a parser error or another root element is refused. Paragraph
