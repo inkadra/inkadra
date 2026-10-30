@@ -121,7 +121,9 @@ for (const [device, width, height] of [
         })
         .toMatchObject({ label: 'di notte', path: 'curved', line: 'dashed', heads: 'both' });
       // One project in the sidebar of the next screenshots.
-      await page.request.delete(`/api/v1/projects/${project.id}`, { headers: { origin: baseURL! } });
+      await page.request.delete(`/api/v1/projects/${project.id}`, {
+        headers: { origin: baseURL! },
+      });
     });
   }
 }
