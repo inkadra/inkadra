@@ -3,7 +3,7 @@ import { fitBox, type Op, type Page, roundedRectPath } from './pages.ts';
 
 type Ctx = CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D;
 
-type Images = ReadonlyMap<string, { bitmap: ImageBitmap; width: number; height: number }>;
+type Images = ReadonlyMap<string, { bitmap?: ImageBitmap; width: number; height: number }>;
 
 /** Draws a page on a 2D canvas at `scale` pixels per point, on white paper, `offsetY` pixels down. */
 export function drawPage(ctx: Ctx, page: Page, scale: number, images: Images, offsetY = 0) {
@@ -55,7 +55,7 @@ function drawOps(ctx: Ctx, ops: readonly Op[], images: Images) {
         break;
       case 'image': {
         const img = images.get(op.key);
-        if (!img) break;
+        if (!img?.bitmap) break;
         const box = fitBox(img, op, op.fit);
         ctx.globalAlpha = op.opacity ?? 1;
         ctx.drawImage(img.bitmap, box.x, box.y, box.w, box.h);
@@ -105,6 +105,7 @@ export async function renderPng(
   scale: number,
   images: Images,
   background: string,
+  { signal, onPage }: { signal?: AbortSignal; onPage?: (done: number) => void } = {},
 ): Promise<Blob> {
   const gap = pages.length > 1 ? 24 : 0;
   const width = Math.max(...pages.map((p) => p.width));
@@ -115,9 +116,14 @@ export async function renderPng(
   ctx.fillStyle = background;
   ctx.fillRect(0, 0, canvas.width, canvas.height);
   let y = 0;
-  for (const page of pages) {
+  for (const [n, page] of pages.entries()) {
+    signal?.throwIfAborted();
     drawPage(ctx, page, scale, images, Math.round(y * scale));
     y += page.height + gap;
+    onPage?.(n + 1);
+    // Lets the dialog repaint its progress and a cancel through between pages.
+    await new Promise((r) => setTimeout(r, 0));
   }
+  signal?.throwIfAborted();
   return canvas.convertToBlob({ type: 'image/png' });
 }

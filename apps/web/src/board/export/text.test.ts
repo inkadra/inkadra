@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Measure } from './pages.ts';
-import { ellipsize, textBlock, wrapText } from './text.ts';
+import { ellipsize, missingGlyphs, textBlock, wrapText } from './text.ts';
 
 // Every character is half the font size wide.
 const measure: Measure = (text, size) => [...text].length * size * 0.5;
@@ -57,5 +57,25 @@ describe('textBlock', () => {
     if (first?.kind !== 'text' || second?.kind !== 'text') throw new Error('expected text');
     expect(second.y - first.y).toBe(28);
     expect(bottom).toBe(142);
+  });
+});
+
+describe('missingGlyphs', () => {
+  it('finds characters the font cannot draw, inside clips too, a few at most', () => {
+    const latin = (ch: string) => ch.charCodeAt(0) < 0x250;
+    const text = (value: string) =>
+      ({ kind: 'text', x: 0, y: 0, text: value, size: 10, weight: 400, color: '#000000' }) as const;
+    const pages = [
+      {
+        width: 10,
+        height: 10,
+        ops: [
+          text('Città è già'),
+          { kind: 'clip', x: 0, y: 0, w: 1, h: 1, ops: [text('東京 Привет')] },
+        ],
+      },
+    ] as const;
+    expect(missingGlyphs(pages as never, latin)).toEqual(['東', '京', 'П', 'р', 'и', 'в']);
+    expect(missingGlyphs([{ width: 1, height: 1, ops: [text('Ciao')] }], latin)).toEqual([]);
   });
 });

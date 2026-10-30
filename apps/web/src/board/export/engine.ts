@@ -29,9 +29,10 @@ import {
   exportable,
 } from './board-model.ts';
 import { type CardContext, cardHeight, type Palette } from './board-render.ts';
+import type { ExportCache } from './cache.ts';
+import { commentEntries } from './comments.ts';
 import {
   boardPage,
-  type CommentEntry,
   commentPages,
   type DocInfo,
   type ExportKind,
@@ -44,13 +45,23 @@ import {
   type Words,
 } from './compose.ts';
 import { loadFonts } from './fonts.ts';
-import { assetMeta, decodeImage, type LoadedImage, loadAssetImage } from './images.ts';
+import {
+  assetMeta,
+  closeImages,
+  decodeImage,
+  IMAGE_CONCURRENCY,
+  type ImageMode,
+  type LoadedImage,
+  loadAssetImage,
+  pool,
+} from './images.ts';
 import { type FramesPerPage, type Orientation, type PaperSize, pixelRatio } from './layout.ts';
 import { noteBlocks } from './note-text.ts';
 import type { Op, Page } from './pages.ts';
 import { renderPng } from './render-canvas.ts';
 import { renderPdf } from './render-pdf.ts';
 import { logoUrl } from './settings.ts';
+import { missingGlyphs } from './text.ts';
 
 export type ExportFormat = 'pdf' | 'png';
 export type ExportWhat = 'board' | 'selection' | 'visible' | 'storyboard' | 'shotlist';
@@ -80,48 +91,46 @@ export interface ExportEnv {
   threads: readonly CommentThread[];
   t: TFunction;
   language: string;
+  /** Pictures of the preview, kept while the dialog is open. */
+  cache: ExportCache;
 }
 
 export interface BuiltPages {
   pages: Page[];
   images: Map<string, LoadedImage>;
   fonts: Awaited<ReturnType<typeof loadFonts>>;
+  /** Characters of the content the embedded font cannot draw, a few at most. */
+  missing: string[];
+}
+
+export interface ExportProgress {
+  phase: 'pictures' | 'pages';
+  done: number;
+  total: number;
+}
+
+export interface BuildOptions {
+  /** Only the pictures of the first pages, decoded and kept in `env.cache`. */
+  preview?: boolean;
+  signal?: AbortSignal;
+  onProgress?: (progress: ExportProgress) => void;
 }
 
 /** Colours of the printed page: always the light theme, whatever the app shows. */
 const PALETTE: Palette = light;
 
-const imageCache = new Map<string, Promise<LoadedImage | null>>();
-function cachedImage(id: string, pixels: number) {
-  const key = `${id}@${pixels}`;
-  let p = imageCache.get(key);
-  if (!p) {
-    p = loadAssetImage(id, pixels);
-    imageCache.set(key, p);
-    // A failure may be temporary (offline): ask again next time.
-    void p.then((img) => {
-      if (!img) imageCache.delete(key);
+async function logoImage(asset: Asset, mode: ImageMode, signal?: AbortSignal) {
+  try {
+    const res = await fetch(logoUrl(asset), {
+      credentials: 'same-origin',
+      ...(signal ? { signal } : {}),
     });
+    if (!res.ok) return null;
+    return await decodeImage(await res.blob(), mode, true);
+  } catch (err) {
+    if (signal?.aborted) throw err;
+    return null;
   }
-  return p;
-}
-
-const logoCache = new Map<string, Promise<LoadedImage | null>>();
-function logoImage(asset: Asset) {
-  const url = logoUrl(asset);
-  let p = logoCache.get(url);
-  if (!p) {
-    p = fetch(url, { credentials: 'same-origin' })
-      .then((r) => (r.ok ? r.blob() : Promise.reject(new Error(String(r.status)))))
-      .then((b) => decodeImage(b, true))
-      .catch(() => null);
-    logoCache.set(url, p);
-    // A failure may be temporary (offline): ask again next time.
-    void p.then((img) => {
-      if (!img) logoCache.delete(url);
-    });
-  }
-  return p;
 }
 
 function thumbnailPixels(req: ExportRequest, preview: boolean): number {
@@ -139,11 +148,36 @@ export function kindOf(what: ExportWhat): ExportKind {
 export async function buildPages(
   req: ExportRequest,
   env: ExportEnv,
-  preview = false,
+  { preview = false, signal, onProgress }: BuildOptions = {},
 ): Promise<BuiltPages> {
   const { store, t } = env;
   const fonts = await loadFonts();
+  signal?.throwIfAborted();
   const images = new Map<string, LoadedImage>();
+  const mode: ImageMode = preview || req.format === 'png' ? 'bitmap' : 'pdf';
+  const names = preview ? env.cache.names : new Map<string, string>();
+  // Loads pictures into `images`: from the dialog's cache for the preview, else afresh.
+  const load = async (ids: Iterable<string>) => {
+    const todo = [...ids].filter((id) => !images.has(id));
+    let done = 0;
+    await pool(
+      todo,
+      IMAGE_CONCURRENCY,
+      async (id) => {
+        const meta = await assetMeta(id);
+        if (meta) names.set(id, meta.filename);
+        if (meta?.kind === 'image') {
+          const img = preview
+            ? await env.cache.image(meta, pixels, signal)
+            : await loadAssetImage(meta, pixels, mode, signal);
+          if (img) images.set(id, img);
+        }
+        done += 1;
+        if (!preview) onProgress?.({ phase: 'pictures', done, total: todo.length });
+      },
+      signal,
+    );
+  };
   const snapshot = store.getSnapshot();
   const all = listElements(store.doc);
   const lookup = (id: string) => snapshot.byId.get(id);
@@ -177,7 +211,7 @@ export async function buildPages(
       const img = images.get(assetId);
       return { key: assetId, info: img ?? { width: 4, height: 3 } };
     },
-    fileName: (assetId) => assetNames.get(assetId) ?? t('export.file'),
+    fileName: (assetId) => names.get(assetId) ?? t('export.file'),
     boardTitle: (boardId) => env.boards?.find((b) => b.id === boardId)?.title ?? t('export.board'),
     frameLabel: (id) => labels.get(id) ?? '',
     frameAspect: (frame) => aspectValue(frame.aspect ?? boardAspect),
@@ -214,7 +248,7 @@ export async function buildPages(
   };
 
   const setup = { paper: req.paper, orientation: req.orientation };
-  const logo = req.logo ? await logoImage(req.logo) : null;
+  const logo = req.logo ? await logoImage(req.logo, mode, signal) : null;
   if (logo) images.set('logo', logo);
   let content: Page[] = [];
   let summary = '';
@@ -236,7 +270,7 @@ export async function buildPages(
     };
     // Pictures first: their proportions set the height of cards stacked in columns.
     const first = collectBoard(source, scope, filter);
-    await loadInto(images, assetIdsOf(first.items.flatMap(flatten)), pixels);
+    await load(assetIdsOf(first.items.flatMap(flatten)));
     const { items, region } = collectBoard(source, scope, filter);
     for (const item of items.flatMap(flatten)) shownIds.add(item.id);
     const count = items
@@ -286,7 +320,23 @@ export async function buildPages(
   }
 
   if (req.comments && req.format === 'pdf') {
-    const entries = commentEntries(env, req.audience, shownIds, lookup, labels, dateFormat, words);
+    const entries = commentEntries(env.threads, {
+      audience: req.audience,
+      shown: shownIds,
+      exists: (id) => snapshot.byId.has(id),
+      label: (id) => {
+        const el = snapshot.byId.get(id);
+        return el?.type === 'frame' ? (labels.get(el.id) ?? '') : t(`board.types.${el?.type}`);
+      },
+      date: (iso) => dateFormat.format(new Date(iso)),
+      words: {
+        onBoard: words.onBoard,
+        onCard: words.onCard,
+        removedCard: words.removedCard,
+        deleted: t('comments.deleted'),
+        deletedAuthor: t('comments.deletedAuthor'),
+      },
+    });
     if (entries.length) content.push(...commentPages(setup, entries, ctx, words));
   }
 
@@ -312,12 +362,15 @@ export async function buildPages(
   const needed = new Set<string>();
   for (const page of preview ? pages.slice(0, 2) : pages) collectKeys(page.ops, needed);
   needed.delete('logo');
-  await loadInto(images, needed, pixels);
-  return { pages, images, fonts };
+  try {
+    await load(needed);
+  } catch (err) {
+    // Aborted: an export frees what it loaded; the preview's pictures stay in the cache.
+    if (!preview) closeImages(images.values());
+    throw err;
+  }
+  return { pages, images, fonts, missing: missingGlyphs(pages, fonts.covers) };
 }
-
-// Filenames of file cards, filled by loadInto from the asset metadata.
-const assetNames = new Map<string, string>();
 
 function flatten(p: { el: Element; children?: unknown[] }): Element[] {
   const kids = (p.children ?? []) as Array<{ el: Element; children?: unknown[] }>;
@@ -335,19 +388,6 @@ function assetIdsOf(elements: readonly Element[]): Set<string> {
   return ids;
 }
 
-async function loadInto(images: Map<string, LoadedImage>, ids: Iterable<string>, pixels: number) {
-  await Promise.all(
-    [...ids].map(async (id) => {
-      if (images.has(id)) return;
-      const meta = await assetMeta(id);
-      if (meta) assetNames.set(id, meta.filename);
-      if (meta?.kind !== 'image') return;
-      const img = await cachedImage(id, pixels);
-      if (img) images.set(id, img);
-    }),
-  );
-}
-
 function collectKeys(ops: readonly Op[], into: Set<string>) {
   for (const op of ops) {
     if (op.kind === 'image') into.add(op.key);
@@ -355,85 +395,51 @@ function collectKeys(ops: readonly Op[], into: Set<string>) {
   }
 }
 
-function commentEntries(
-  env: ExportEnv,
-  audience: Audience,
-  shown: ReadonlySet<string>,
-  lookup: (id: string) => Element | undefined,
-  labels: ReadonlyMap<string, string>,
-  dates: Intl.DateTimeFormat,
-  words: Words,
-): CommentEntry[] {
-  const { t } = env;
-  const visible = (thread: CommentThread) =>
-    audience === 'team' || thread.visibility === 'everyone';
-  const author = (c: CommentThread | CommentThread['replies'][number]) =>
-    c.author.kind === 'user'
-      ? c.author.user.name
-      : c.author.kind === 'guest'
-        ? c.author.name
-        : t('comments.deletedAuthor');
-  const body = (c: CommentThread | CommentThread['replies'][number]) =>
-    c.body.replace(/@\{([^}]+)\}/g, (all, id: string) => {
-      const user = c.mentions.find((u) => u.id === id);
-      return user ? `@${user.name}` : all;
-    });
-  const target = (elementId: string | null) => {
-    if (elementId === null) return words.onBoard;
-    const el = lookup(elementId);
-    if (!el) return words.removedCard;
-    const label = el.type === 'frame' ? (labels.get(el.id) ?? '') : t(`board.types.${el.type}`);
-    return words.onCard(label);
-  };
-  return [...env.threads]
-    .filter((thread) => visible(thread) && thread.body)
-    .filter(
-      (thread) =>
-        thread.elementId === null ||
-        shown.has(thread.elementId) ||
-        (audience === 'team' && !lookup(thread.elementId)),
-    )
-    .sort((a, b) => a.createdAt.localeCompare(b.createdAt))
-    .map((thread) => ({
-      target: target(thread.elementId),
-      author: author(thread),
-      date: dates.format(new Date(thread.createdAt)),
-      body: body(thread),
-      replies: thread.replies
-        .filter((r) => r.body)
-        .map((r) => ({
-          author: author(r),
-          date: dates.format(new Date(r.createdAt)),
-          body: body(r),
-        })),
-    }));
-}
-
 /** The finished file and the name to download it under. */
 export async function exportFile(
   req: ExportRequest,
   env: ExportEnv,
+  options: Omit<BuildOptions, 'preview'> = {},
 ): Promise<{ blob: Blob; name: string }> {
-  const { pages, images, fonts } = await buildPages(req, env);
+  const { signal, onProgress } = options;
+  const { pages, images, fonts } = await buildPages(req, env, options);
   const base = (env.boardTitle || env.projectName || 'inkadra')
     .replace(/[\\/:*?"<>|]/g, '_')
     .trim();
-  if (req.format === 'png') {
-    const width = Math.max(...pages.map((p) => p.width));
-    const height = pages.reduce((s, p) => s + p.height, 0);
-    const blob = await renderPng(pages, pixelRatio(width, height), images, PALETTE['surface-3']);
-    return { blob, name: `${base}.png` };
+  const pageProgress = (done: number) =>
+    onProgress?.({ phase: 'pages', done, total: pages.length });
+  try {
+    if (req.format === 'png') {
+      const width = Math.max(...pages.map((p) => p.width));
+      const height = pages.reduce((s, p) => s + p.height, 0);
+      const blob = await renderPng(pages, pixelRatio(width, height), images, PALETTE['surface-3'], {
+        ...(signal ? { signal } : {}),
+        onPage: pageProgress,
+      });
+      return { blob, name: `${base}.png` };
+    }
+    const bytes = await renderPdf(
+      pages,
+      fonts.bytes,
+      images,
+      {
+        title: env.boardTitle || env.projectName,
+        author: env.projectName,
+        subject:
+          kindOf(req.what) === 'board'
+            ? env.t('export.kindBoard')
+            : env.t(`film.views.${kindOf(req.what)}`),
+        language: env.language,
+      },
+      { ...(signal ? { signal } : {}), onPage: pageProgress },
+    );
+    return {
+      blob: new Blob([bytes as BlobPart], { type: 'application/pdf' }),
+      name: `${base}.pdf`,
+    };
+  } finally {
+    closeImages(images.values());
   }
-  const bytes = await renderPdf(pages, fonts.bytes, images, {
-    title: env.boardTitle || env.projectName,
-    author: env.projectName,
-    subject:
-      kindOf(req.what) === 'board'
-        ? env.t('export.kindBoard')
-        : env.t(`film.views.${kindOf(req.what)}`),
-    language: env.language,
-  });
-  return { blob: new Blob([bytes as BlobPart], { type: 'application/pdf' }), name: `${base}.pdf` };
 }
 
 export function downloadBlob(blob: Blob, name: string) {

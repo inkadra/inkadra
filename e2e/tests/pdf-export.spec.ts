@@ -116,7 +116,8 @@ test.beforeAll(async ({ baseURL }) => {
     body.insert(0, [p]);
     return el;
   };
-  note(0, 'Sodium light against wet blue');
+  const visible = note(0, 'Sodium light against wet blue');
+  updateElement(board, visible.id, { tags: ['budget-tag'] });
   const secret = note(300, 'Budget note for the team only');
   updateElement(board, secret.id, { guestHidden: true });
   createElement(
@@ -132,6 +133,7 @@ test.beforeAll(async ({ baseURL }) => {
   await pushBoardDoc(base, cookie, project.rootBoardId, board);
 
   const story = new Y.Doc();
+  let firstFrameId = '';
   initBoardDoc(story, storyboard.id);
   const scene = addScene(
     story,
@@ -146,10 +148,21 @@ test.beforeAll(async ({ baseURL }) => {
       { action: `Frame action ${i + 1}`, shot: 'ws', durationMs: 3000 },
       opts,
     );
+    if (i === 0) {
+      firstFrameId = frame.id;
+      updateElement(story, frame.id, { notes: 'Director only note', tags: ['internal-tag'] });
+    }
     if (i === 4)
       updateElement(story, frame.id, { guestHidden: true, action: 'Hidden frame action' });
   }
   await pushBoardDoc(base, cookie, storyboard.id, story);
+  // One comment for everyone, one for the team only, on the first frame.
+  for (const [body, visibility] of [
+    ['Shared with the client', 'everyone'],
+    ['Team only remark', 'team'],
+  ] as const) {
+    await post(`/boards/${storyboard.id}/comments`, { elementId: firstFrameId, body, visibility });
+  }
   seeded = { projectId: project.id, rootBoardId: project.rootBoardId, storyboardId: storyboard.id };
 });
 
@@ -165,10 +178,7 @@ test('a board exports to PDF for clients without the cards hidden from guests', 
   await page.getByRole('button', { name: 'Menu della board' }).click();
   await page.getByRole('menuitem', { name: 'Esporta…' }).click();
   const dialog = page.getByRole('dialog', { name: 'Esporta' });
-  await expect(dialog.getByRole('button', { name: 'Clienti' })).toHaveAttribute(
-    'aria-pressed',
-    'true',
-  );
+  await expect(dialog.getByRole('radio', { name: 'Clienti' })).toBeChecked();
   await expect(
     dialog.getByRole('checkbox', { name: 'Escludi le card nascoste agli ospiti' }),
   ).toBeChecked();
@@ -203,11 +213,12 @@ test('a board exports to PDF for clients without the cards hidden from guests', 
   expect(pdf.pages[1]).toContain('Sodium light against wet blue');
   expect(pdf.pages[1]).toContain('Book the platform');
   expect(pdf.pages.join(' ')).not.toContain('Budget note');
+  expect(pdf.pages.join(' ')).not.toContain('budget-tag');
 
   // For the team, with the option off, the hidden card is printed.
   await page.getByRole('button', { name: 'Menu della board' }).click();
   await page.getByRole('menuitem', { name: 'Esporta…' }).click();
-  await dialog.getByRole('button', { name: 'Il team' }).click();
+  await dialog.getByRole('radio', { name: 'Il team' }).click();
   await dialog.getByRole('checkbox', { name: 'Escludi le card nascoste agli ospiti' }).uncheck();
   await dialog.getByRole('checkbox', { name: /Copertina/ }).uncheck();
   await expect(dialog.getByText('1 pagina')).toBeVisible();
@@ -231,15 +242,12 @@ test('a storyboard exports to PDF with frames per page, and to PNG', async ({ pa
   await page.getByRole('button', { name: 'Esporta PDF' }).click();
   const dialog = page.getByRole('dialog', { name: 'Esporta' });
   // The dialog starts from the choices the last export saved for the project, logo included.
-  await expect(dialog.getByRole('button', { name: 'Il team' })).toHaveAttribute(
-    'aria-pressed',
-    'true',
-  );
+  await expect(dialog.getByRole('radio', { name: 'Il team' })).toBeChecked();
   await expect(dialog.getByRole('checkbox', { name: /Copertina/ })).not.toBeChecked();
   await expect(dialog.locator('.export__logo-img')).toBeVisible();
-  await dialog.getByRole('button', { name: 'Clienti' }).click();
+  await dialog.getByRole('radio', { name: 'Clienti' }).click();
   await dialog.getByRole('checkbox', { name: /Copertina/ }).check();
-  await dialog.getByRole('button', { name: '2', exact: true }).click();
+  await dialog.getByRole('radio', { name: '2', exact: true }).click();
   // Title page and four frames shown to clients, two a page.
   await expect(dialog.getByText('3 pagine')).toBeVisible();
   const [download] = await Promise.all([
@@ -260,9 +268,28 @@ test('a storyboard exports to PDF with frames per page, and to PNG', async ({ pa
   expect(pdf.pages[2]).toContain('3 di 3');
   expect(pdf.pages[2]).toContain('Frame action 4');
   expect(pdf.pages.join(' ')).not.toContain('Hidden frame action');
+  // Nothing internal reaches a client: director's notes, tags, production status.
+  for (const internal of ['Director only note', 'internal-tag', 'Bozza']) {
+    expect(pdf.pages.join(' ')).not.toContain(internal);
+  }
+
+  // With comments, clients get only the threads meant for everyone.
+  await page.getByRole('button', { name: 'Esporta PDF' }).click();
+  await expect(dialog.getByRole('radio', { name: 'Clienti' })).toBeChecked();
+  await dialog.getByRole('checkbox', { name: 'Includi i commenti' }).check();
+  const [withComments] = await Promise.all([
+    page.waitForEvent('download'),
+    dialog.getByRole('button', { name: 'Esporta', exact: true }).click(),
+  ]);
+  const commentsPath = info.outputPath('storyboard-comments.pdf');
+  await withComments.saveAs(commentsPath);
+  const commented = (await readPdf(commentsPath)).pages.join(' ');
+  expect(commented).toContain('Shared with the client');
+  expect(commented).not.toContain('Team only remark');
+  expect(commented).not.toContain('Director only note');
 
   await page.getByRole('button', { name: 'Esporta PDF' }).click();
-  await dialog.getByRole('button', { name: 'Immagine (PNG)' }).click();
+  await dialog.getByRole('radio', { name: 'Immagine (PNG)' }).click();
   const [png] = await Promise.all([
     page.waitForEvent('download'),
     dialog.getByRole('button', { name: 'Esporta', exact: true }).click(),

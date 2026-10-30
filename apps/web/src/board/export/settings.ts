@@ -70,33 +70,51 @@ export function logoUrl(asset: Asset): string {
   return asset.variants.at(-1)?.url ?? asset.url;
 }
 
+export class LogoTimeoutError extends Error {}
+
 /**
- * Uploads a logo into the project like any file and resolves with its asset id once the bytes
- * have arrived (the server refuses a logo whose upload is not finished).
+ * Uploads a logo into the project like any file and resolves with its asset id once the worker
+ * has made it ready (the server refuses a logo that is not). The file gets a fresh
+ * `lastModified`, so the upload panel never merges it with the same file added before, which
+ * would never call `onAsset`; and the whole wait is bounded.
  */
-export function uploadLogo(file: File, projectId: string, boardId: string): Promise<string> {
+export function uploadLogo(
+  file: File,
+  projectId: string,
+  boardId: string,
+  timeoutMs = 120_000,
+): Promise<string> {
+  const unique = new File([file], file.name, { type: file.type, lastModified: Date.now() });
   return new Promise((resolve, reject) => {
-    let assetId: string | null = null;
+    let settled = false;
+    const finish = (fn: () => void) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      fn();
+    };
+    const timer = setTimeout(() => finish(() => reject(new LogoTimeoutError())), timeoutMs);
     startUpload({
-      file,
+      file: unique,
       projectId,
       boardId,
       onAsset: (id) => {
-        assetId = id;
-        void waitUploaded(id).then(resolve, reject);
+        void waitReady(id, () => settled).then(
+          (ok) => finish(() => resolve(ok)),
+          (err: unknown) => finish(() => reject(err)),
+        );
       },
-      onFailed: () => reject(new Error(`Logo upload failed${assetId ? ` (${assetId})` : ''}`)),
+      onFailed: () => finish(() => reject(new Error('Logo upload failed'))),
     });
   });
 }
 
-async function waitUploaded(id: string, timeoutMs = 60_000): Promise<string> {
-  const until = Date.now() + timeoutMs;
-  while (Date.now() < until) {
+async function waitReady(id: string, stop: () => boolean): Promise<string> {
+  while (!stop()) {
     const asset = await api.get<Asset>(`/assets/${id}`).catch(() => null);
     if (asset?.status === 'failed') throw new Error('Logo processing failed');
-    if (asset && asset.status !== 'pending') return id;
+    if (asset?.status === 'ready') return id;
     await new Promise((r) => setTimeout(r, 500));
   }
-  throw new Error('Logo upload timed out');
+  return id;
 }

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-import type { FontWeight, Measure, Op } from './pages.ts';
+import type { FontWeight, Measure, Op, Page } from './pages.ts';
 
 export interface TextStyle {
   size: number;
@@ -107,4 +107,22 @@ export function textBlock(
 
 export function lineHeight(style: TextStyle): number {
   return style.leading ?? style.size * 1.35;
+}
+
+/** A few characters of the pages' texts that the font cannot draw (they print as boxes). */
+export function missingGlyphs(pages: readonly Page[], covers: (ch: string) => boolean, max = 6) {
+  const found = new Set<string>();
+  const walk = (ops: readonly Op[]) => {
+    for (const op of ops) {
+      if (found.size >= max) return;
+      if (op.kind === 'clip') walk(op.ops);
+      if (op.kind !== 'text') continue;
+      for (const ch of op.text) {
+        if (!covers(ch)) found.add(ch);
+        if (found.size >= max) return;
+      }
+    }
+  };
+  for (const page of pages) walk(page.ops);
+  return [...found];
 }

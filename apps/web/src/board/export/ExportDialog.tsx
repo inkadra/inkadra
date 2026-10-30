@@ -6,10 +6,18 @@ import { type ReactNode, useEffect, useId, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { getReviews } from '../review-store.ts';
 import type { BoardStore } from '../store.ts';
-import type { ExportEnv, ExportFormat, ExportRequest, ExportWhat } from './engine.ts';
+import { ExportCache } from './cache.ts';
+import type {
+  ExportEnv,
+  ExportFormat,
+  ExportProgress,
+  ExportRequest,
+  ExportWhat,
+} from './engine.ts';
 import { FRAMES_PER_PAGE, type FramesPerPage, type Orientation, type PaperSize } from './layout.ts';
 import {
   fetchExportSettings,
+  LogoTimeoutError,
   localePaper,
   logoProblem,
   logoUrl,
@@ -74,9 +82,23 @@ export function ExportDialog(props: ExportDialogProps) {
     };
   }, [projectId]);
   const canEdit = settings?.canEdit ?? false;
-  const [logoState, setLogoState] = useState<'idle' | 'busy' | 'type' | 'size' | 'failed'>('idle');
+  const [logoState, setLogoState] = useState<
+    'idle' | 'busy' | 'type' | 'size' | 'failed' | 'timeout'
+  >('idle');
   const [busy, setBusy] = useState(false);
   const [failed, setFailed] = useState(false);
+  const [progress, setProgress] = useState<ExportProgress | null>(null);
+  const [missing, setMissing] = useState<string[]>([]);
+  // Pictures of the preview live as long as the dialog; an export in flight stops with it.
+  const [cache] = useState(() => new ExportCache());
+  const running = useRef<AbortController | null>(null);
+  useEffect(
+    () => () => {
+      running.current?.abort();
+      cache.close();
+    },
+    [cache],
+  );
   const set = <K extends keyof ExportRequest>(key: K, value: ExportRequest[K]) => {
     touched.current = true;
     setReq((r) => ({ ...r, [key]: value }));
@@ -92,6 +114,7 @@ export function ExportDialog(props: ExportDialogProps) {
     threads: getReviews().threads,
     t,
     language: i18n.language,
+    cache,
   };
   const envRef = useRef(env);
   envRef.current = env;
@@ -101,11 +124,18 @@ export function ExportDialog(props: ExportDialogProps) {
   const client = req.audience === 'client';
 
   async function submit() {
+    const controller = new AbortController();
+    running.current = controller;
     setBusy(true);
     setFailed(false);
+    setProgress(null);
     try {
       const { exportFile, downloadBlob } = await engine();
-      const { blob, name } = await exportFile(req, envRef.current);
+      const { blob, name } = await exportFile(req, envRef.current, {
+        signal: controller.signal,
+        onProgress: setProgress,
+      });
+      if (controller.signal.aborted) return;
       downloadBlob(blob, name);
       // Editors keep their last choices for the whole project; a failure costs only that.
       if (settings?.canEdit) {
@@ -115,10 +145,19 @@ export function ExportDialog(props: ExportDialogProps) {
       }
       onClose();
     } catch {
-      setFailed(true);
+      if (!controller.signal.aborted) setFailed(true);
     } finally {
-      setBusy(false);
+      if (running.current === controller) running.current = null;
+      if (!controller.signal.aborted) {
+        setBusy(false);
+        setProgress(null);
+      }
     }
+  }
+
+  function cancel() {
+    running.current?.abort();
+    onClose();
   }
 
   async function pickLogo(file: File | undefined) {
@@ -135,8 +174,8 @@ export function ExportDialog(props: ExportDialogProps) {
       setSettings(saved);
       setReq((r) => ({ ...r, logo: saved.logo }));
       setLogoState('idle');
-    } catch {
-      setLogoState('failed');
+    } catch (err) {
+      setLogoState(err instanceof LogoTimeoutError ? 'timeout' : 'failed');
     }
   }
 
@@ -306,8 +345,10 @@ export function ExportDialog(props: ExportDialogProps) {
                   </>
                 )}
                 <p
-                  className={`export__hint${['type', 'size', 'failed'].includes(logoState) ? ' export__hint--error' : ''}`}
-                  role={['type', 'size', 'failed'].includes(logoState) ? 'alert' : 'status'}
+                  className={`export__hint${['type', 'size', 'failed', 'timeout'].includes(logoState) ? ' export__hint--error' : ''}`}
+                  role={
+                    ['type', 'size', 'failed', 'timeout'].includes(logoState) ? 'alert' : 'status'
+                  }
                 >
                   {logoState === 'busy'
                     ? t('export.logoUploading')
@@ -315,25 +356,63 @@ export function ExportDialog(props: ExportDialogProps) {
                       ? t('export.logoInvalid')
                       : logoState === 'failed'
                         ? t('export.logoFailed')
-                        : canEdit
-                          ? t('export.logoHint')
-                          : req.logo
-                            ? t('export.logoReadOnly')
-                            : t('export.logoNone')}
+                        : logoState === 'timeout'
+                          ? t('export.logoTimeout')
+                          : canEdit
+                            ? t('export.logoHint')
+                            : req.logo
+                              ? t('export.logoReadOnly')
+                              : t('export.logoNone')}
                 </p>
               </div>
               {canEdit && <p className="export__hint">{t('export.sharedHint')}</p>}
             </fieldset>
           </div>
-          <Preview req={req} env={envRef} />
+          <Preview req={req} env={envRef} onMissing={setMissing} />
         </div>
+        {missing.length > 0 && (
+          <p className="export__notice" role="note">
+            {t('export.missingGlyphs', { chars: missing.join(' ') })}
+          </p>
+        )}
+        {busy && (
+          <div className="export__progress-row" role="status">
+            <div
+              className="export__progress"
+              role="progressbar"
+              aria-label={t('export.busy')}
+              aria-valuemin={0}
+              aria-valuemax={progress?.total ?? 0}
+              aria-valuenow={progress?.done ?? 0}
+            >
+              <span
+                style={{
+                  width: progress?.total ? `${(progress.done / progress.total) * 100}%` : '0%',
+                }}
+              />
+            </div>
+            <span className="export__hint">
+              {progress
+                ? t(
+                    progress.phase === 'pictures'
+                      ? 'export.progressPictures'
+                      : 'export.progressPages',
+                    {
+                      done: progress.done,
+                      total: progress.total,
+                    },
+                  )
+                : t('export.busy')}
+            </span>
+          </div>
+        )}
         {failed && (
           <p className="export__hint export__hint--error" role="alert">
             {t('export.failed')}
           </p>
         )}
         <DialogActions>
-          <Button onClick={onClose}>{t('export.cancel')}</Button>
+          <Button onClick={cancel}>{t('export.cancel')}</Button>
           <Button
             variant="primary"
             icon="download"
@@ -377,6 +456,8 @@ function Segmented({
   hint?: string | undefined;
 }) {
   const hintId = useId();
+  const name = useId();
+  // Native radios: one tab stop and arrow keys come with them; the labels look like segments.
   return (
     <fieldset
       className="export__field export__seg-field"
@@ -385,15 +466,17 @@ function Segmented({
       <legend className={hideLabel ? 'ink-sr-only' : 'export__label'}>{label}</legend>
       <div className="export__seg">
         {options.map(([v, text]) => (
-          <button
-            key={v}
-            type="button"
-            className="export__seg-btn"
-            aria-pressed={value === v}
-            onClick={() => onChange(v)}
-          >
+          <label key={v} className="export__seg-btn">
+            <input
+              type="radio"
+              className="export__seg-input"
+              name={name}
+              value={v}
+              checked={value === v}
+              onChange={() => onChange(v)}
+            />
             {text}
-          </button>
+          </label>
         ))}
       </div>
       {hint && (
@@ -435,7 +518,15 @@ function Check({
 }
 
 /** The first page, redrawn shortly after the options change. */
-function Preview({ req, env }: { req: ExportRequest; env: { current: ExportEnv } }) {
+function Preview({
+  req,
+  env,
+  onMissing,
+}: {
+  req: ExportRequest;
+  env: { current: ExportEnv };
+  onMissing: (chars: string[]) => void;
+}) {
   const { t } = useTranslation();
   const canvas = useRef<HTMLCanvasElement>(null);
   const [state, setState] = useState<{
@@ -446,7 +537,9 @@ function Preview({ req, env }: { req: ExportRequest; env: { current: ExportEnv }
     pages: 0,
   });
   useEffect(() => {
-    let cancelled = false;
+    // A newer preview stops the older one; pictures already decoded stay in the dialog's cache.
+    const controller = new AbortController();
+    const cancelled = () => controller.signal.aborted;
     setState((s) => ({ ...s, status: 'loading' }));
     const timer = setTimeout(async () => {
       try {
@@ -455,12 +548,15 @@ function Preview({ req, env }: { req: ExportRequest; env: { current: ExportEnv }
           import('./render-canvas.ts'),
         ]);
         await document.fonts.load('600 12px Inter');
-        const built = await buildPages(req, env.current, true);
+        const built = await buildPages(req, env.current, {
+          preview: true,
+          signal: controller.signal,
+        });
         // The title page says little about the layout: show the first page of content.
         const withTitle = req.titlePage && req.format === 'pdf' && built.pages.length > 1;
         const page = built.pages[withTitle ? 1 : 0];
         const el = canvas.current;
-        if (cancelled || !page || !el) return;
+        if (cancelled() || !page || !el) return;
         const cssWidth = el.parentElement?.clientWidth ?? 360;
         const scale = (cssWidth / page.width) * (window.devicePixelRatio || 1);
         el.width = Math.round(page.width * scale);
@@ -468,15 +564,16 @@ function Preview({ req, env }: { req: ExportRequest; env: { current: ExportEnv }
         const ctx = el.getContext('2d');
         if (ctx) drawPage(ctx, page, scale, built.images);
         setState({ status: 'ready', pages: built.pages.length });
+        onMissing(built.missing);
       } catch {
-        if (!cancelled) setState((s) => ({ ...s, status: 'error' }));
+        if (!cancelled()) setState((s) => ({ ...s, status: 'error' }));
       }
     }, 150);
     return () => {
-      cancelled = true;
+      controller.abort();
       clearTimeout(timer);
     };
-  }, [req, env]);
+  }, [req, env, onMissing]);
   return (
     <figure className="export__preview">
       <div className="export__paper" data-status={state.status}>
@@ -486,9 +583,9 @@ function Preview({ req, env }: { req: ExportRequest; env: { current: ExportEnv }
           role="img"
           aria-label={t('export.preview')}
         />
-        {state.status === 'loading' && (
-          <span className="export__preview-note">{t('export.previewLoading')}</span>
-        )}
+        <span className="export__preview-note" role="status">
+          {state.status === 'loading' ? t('export.previewLoading') : ''}
+        </span>
         {state.status === 'error' && (
           <span className="export__preview-note" role="alert">
             {t('export.previewFailed')}
