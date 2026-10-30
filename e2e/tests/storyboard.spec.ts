@@ -42,6 +42,14 @@ test('a storyboard holds scenes and frames, the shot list shows the same frames'
   await scene.getByLabel('Luogo', { exact: true }).press('Enter');
   await chooseSelect(scene.getByLabel('Interno o esterno'), 'ext');
   await chooseSelect(scene.getByLabel('Momento', { exact: true }), 'night');
+  if (process.env.SELECT_SCREENSHOTS) {
+    await page.screenshot({ path: '../docs/screenshots/ui-select/storyboard-scene-header.png' });
+    const trigger = scene.getByLabel('Interno o esterno');
+    await trigger.click();
+    await page.screenshot({ path: '../docs/screenshots/ui-select/quiet-open-desktop-dark.png' });
+    await page.keyboard.press('Escape');
+  }
+
 
   await scene.getByRole('button', { name: 'Nuova inquadratura' }).last().click();
   const panel = page.getByRole('complementary', { name: 'Dettagli' });
@@ -77,6 +85,8 @@ test('a storyboard holds scenes and frames, the shot list shows the same frames'
   await page.getByRole('tab', { name: 'Shot list' }).click();
   await expect(page).toHaveURL(/view=shotlist/);
   const row = page.getByRole('row', { name: /1D/ });
+  if (process.env.SELECT_SCREENSHOTS) await page.screenshot({ path: '../docs/screenshots/ui-select/shot-list-cell.png' });
+
   await expect(row.getByLabel('Azione', { exact: true })).toHaveValue(/Il treno entra/);
   await expect(row.getByLabel('Campo', { exact: true })).toHaveAttribute('data-value', 'cu');
   await expect(page.locator('.shots__scene')).toContainText('EST. STAZIONE – NOTTE');

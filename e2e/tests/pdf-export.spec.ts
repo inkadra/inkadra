@@ -178,6 +178,23 @@ test('a board exports to PDF for clients without the cards hidden from guests', 
   await page.getByRole('button', { name: 'Menu della board' }).click();
   await page.getByRole('menuitem', { name: 'Esporta…' }).click();
   const dialog = page.getByRole('dialog', { name: 'Esporta' });
+  if (process.env.SELECT_SCREENSHOTS) {
+    await page.screenshot({ path: '../docs/screenshots/ui-select/export-dialog.png' });
+    const trigger = dialog.getByRole('combobox').first();
+    await trigger.click();
+    await page.screenshot({ path: '../docs/screenshots/ui-select/default-open-desktop-dark.png' });
+    await page.keyboard.press('Escape');
+    await page.evaluate(() => { document.documentElement.dataset.theme = 'light'; });
+    await trigger.click();
+    await page.screenshot({ path: '../docs/screenshots/ui-select/default-open-desktop-light.png' });
+    await page.keyboard.press('Escape');
+    await page.setViewportSize({width:390,height:844});
+    await trigger.click();
+    await page.screenshot({ path: '../docs/screenshots/ui-select/phone-bottom-sheet.png' });
+    await page.keyboard.press('Escape');
+    await page.setViewportSize({width:1440,height:900});
+  }
+
   await expect(dialog.getByRole('radio', { name: 'Clienti' })).toBeChecked();
   await expect(
     dialog.getByRole('checkbox', { name: 'Escludi le card nascoste agli ospiti' }),

@@ -646,3 +646,4 @@ select {
 .ink-select:focus:not(:focus-visible) { box-shadow: none; border-color: var(--ink-border-default); }
 .ink-select--quiet:focus:not(:focus-visible) { border-color: transparent; }
 .ink-select:focus-visible { border-color: var(--ink-accent-primary); }
+.ink-select__dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; flex: none; }

@@ -185,6 +185,7 @@ export function StatusSelect({
   return (
     <Select variant="quiet"
       className={`ink-input film-status film-status--${current}`}
+      options={FRAME_STATUSES.map(s => ({ value: s, label: t(`film.status.${s}`), icon: <span className={`ink-select__dot film-status--${s}`} /> }))}
       value={current}
       disabled={readOnly}
       aria-label={label}
@@ -193,11 +194,6 @@ export function StatusSelect({
         onCommit(next === 'draft' ? undefined : next);
       }}
     >
-      {FRAME_STATUSES.map((s) => (
-        <option key={s} value={s}>
-          {t(`film.status.${s}`)}
-        </option>
-      ))}
     </Select>
   );
 }
