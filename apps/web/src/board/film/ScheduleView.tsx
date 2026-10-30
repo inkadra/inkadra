@@ -8,7 +8,14 @@ import {
   type ShootingDayInput,
 } from '@inkadra/shared';
 import { Button, Dialog, DialogActions, EmptyState } from '@inkadra/ui';
-import { type CSSProperties, useEffect, useId, useMemo, useState } from 'react';
+import {
+  type CSSProperties,
+  useEffect,
+  useId,
+  useMemo,
+  useState,
+  useSyncExternalStore,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { api, RequestError } from '../../lib/api.ts';
 import { useIsPhone } from '../../lib/phone.ts';
@@ -309,13 +316,18 @@ export function ScheduleView({
       ]),
     ),
   );
-  // Names already in the storyboard or the plan, offered while typing the cast of a block.
+  // Character cards of the board and names already in the storyboard or the plan, offered
+  // while typing the cast of a block.
+  const snap = useSyncExternalStore(store.subscribe, store.getSnapshot);
   const castSuggestions = [
     ...new Map(
       [
+        ...[...snap.byId.values()].flatMap((el) => (el.type === 'character' ? [el.name] : [])),
         ...frames.flatMap((frame) => frame.cast ?? []),
         ...drafted.flatMap(({ draft }) => draft.blocks.flatMap((block) => block.cast)),
-      ].map((name) => [name.trim().toLocaleLowerCase(), name.trim()]),
+      ]
+        .filter((name) => name.trim())
+        .map((name) => [name.trim().toLocaleLowerCase(), name.trim()]),
     ).values(),
   ].sort((a, b) => a.localeCompare(b));
   const phone = useIsPhone();
