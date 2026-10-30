@@ -6,7 +6,7 @@ export function chooseSelect(trigger: Element | null | undefined, value: string)
   HTMLElement.prototype.hidePopover ??= function () {};
   HTMLElement.prototype.scrollIntoView ??= function () {};
   flushSync(() => trigger.click());
-  const option = [...document.querySelectorAll<HTMLElement>('[role="option"]')].find(node => node.dataset.value === value);
+  const option = [...(trigger.getRootNode() as ParentNode).querySelectorAll<HTMLElement>('[role="option"]')].find(node => node.dataset.value === value);
   if (!option) throw new Error(`Select option missing: ${value}`);
   flushSync(() => option.click());
 }

@@ -106,7 +106,7 @@ it('changes global roles through the instance endpoint', async () => {
 });
 it('requires confirmation before soft deactivation', async () => {
   await render();
-  const button = [...host.querySelectorAll('tbody button')].find(
+  const button = [...host.querySelectorAll('tbody button:not([role=combobox])')].find(
     (b) => !b.hasAttribute('disabled'),
   ) as HTMLButtonElement;
   await act(async () => button.click());
