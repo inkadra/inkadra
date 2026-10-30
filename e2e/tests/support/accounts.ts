@@ -29,6 +29,7 @@ export async function signUpViaInvite(
   const claim = await fetch(`${base}/api/v1/invitations/by-token/${token}/claim`, {
     method: 'POST',
     headers: json,
+    body: '{}',
   });
   if (!claim.ok) throw new Error(`Claim failed: ${claim.status}`);
   const invited = claim.headers.getSetCookie().map((c) => c.split(';')[0]);

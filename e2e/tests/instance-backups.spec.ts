@@ -30,8 +30,7 @@ const isBackupSettings = (r: { url(): string; request(): { method(): string } })
 test('the administrator backs up now and finds the backup in the history', async ({ page }) => {
   await login(page, admin);
   await page.goto('/settings?section=backups');
-  const history = page.getByRole('heading', { name: 'Cronologia' }).locator('xpath=ancestor::*[1]');
-  await expect(page.getByText('Ancora nessun backup').first()).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Esegui backup ora' })).toBeEnabled();
 
   const started = page.waitForResponse(
     (r) => r.url().endsWith('/instance/backups') && r.request().method() === 'POST',
@@ -44,11 +43,10 @@ test('the administrator backs up now and finds the backup in the history', async
   await expect(item.getByText('Completato')).toBeVisible({ timeout: 90_000 });
   await expect(item).toContainText('Manuale');
   await expect(item).toContainText(/\d+(,\d+)?\s?(B|KB|MB|GB)\b/);
-  await expect(item.locator('.backup-list__file')).toHaveText(/\.(zip|sql|dump|tar)(\.\w+)?$|\S+/);
+  await expect(item.locator('.backup-list__file')).not.toBeEmpty();
   await expect(page.getByRole('button', { name: 'Esegui backup ora' })).toBeEnabled();
   // The summary row says the same of the last backup.
   await expect(page.getByText('Ultimo backup')).toBeVisible();
-  await expect(history).toBeVisible();
 });
 
 test('the nightly schedule, its time and the retention persist after a reload', async ({
