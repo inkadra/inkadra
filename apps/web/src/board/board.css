@@ -1900,7 +1900,10 @@ button.crumb--editable:focus-visible {
   display: flex;
   gap: 18px;
   font-size: 11px;
-  color: var(--ink-text-muted, #808086);
+  color: var(--ink-text-secondary);
+  background: var(--ink-surface-float);
+  padding: 4px 8px;
+  border-radius: 4px;
   z-index: 3;
 }
 .viewer__hint {
@@ -1912,8 +1915,8 @@ button.crumb--editable:focus-visible {
   font-size: 10px;
   padding: 1px 5px;
   border-radius: 4px;
-  border: 1px solid var(--ink-border-subtle, #2a2a2e);
-  color: #ededed;
+  border: 1px solid var(--ink-border-default);
+  color: var(--ink-text-primary);
 }
 .viewer__title-row {
   display: flex;
@@ -2208,5 +2211,47 @@ button.card__play {
   .viewer--info-open .viewer__stage-nav,
   .viewer--info-open .viewer__thumbnails {
     display: none;
+  }
+}
+
+/* A capture stays in the viewer until its destination is chosen. */
+.viewer__grab-options {
+  position: absolute;
+  z-index: 5;
+  top: 72px;
+  right: 24px;
+  width: min(360px, calc(100% - 32px));
+  max-height: calc(100dvh - 112px);
+  overflow: auto;
+  display: grid;
+  gap: 12px;
+  padding: 20px;
+  border: 1px solid var(--ink-border-default);
+  border-radius: 12px;
+  background: var(--ink-surface-float);
+  color: var(--ink-text-primary);
+  text-align: left;
+}
+.viewer__grab-options label {
+  display: grid;
+  gap: 6px;
+  font-size: 13px;
+}
+.viewer__grab-options :where(p) {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+}
+.film-panel__video-picker {
+  display: grid;
+  gap: 8px;
+}
+@media (max-width: 767px) {
+  .viewer__grab-options {
+    right: 16px;
+    top: 80px;
+  }
+  .viewer__hints {
+    flex-wrap: wrap;
   }
 }

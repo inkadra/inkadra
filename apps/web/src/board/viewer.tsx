@@ -8,13 +8,15 @@ import { useTranslation } from 'react-i18next';
 import { useClassifications } from '../lib/classifications.ts';
 import { pickVariant, useAsset } from './assets.ts';
 import { GuestModeContext } from './context.ts';
+import { FrameGrab } from './FrameGrab.tsx';
+import { VideoFrameStepper } from './frame-grab.ts';
 import { MovingPicture, movingVariantUrl } from './moving.tsx';
 import { authorName, editableText } from './review-model.ts';
 import { canComment, openComments, useReviews } from './review-store.ts';
 import { isTyping } from './shortcuts.ts';
 import { type BoardStore, LOCAL } from './store.ts';
 import { TagEditor } from './tags.tsx';
-import { isYoutubeUrl, youtubeEmbedUrl } from './youtube.ts';
+import { isYoutubeUrl, youtubeEmbedUrl, youtubePlayerTime } from './youtube.ts';
 
 type Exif = Record<string, unknown>;
 
@@ -215,7 +217,9 @@ export function MediaViewer({
   readOnly,
   onClose,
   gallery,
+  initialFrameId,
 }: {
+  initialFrameId?: string;
   store: BoardStore;
   element: Extract<Element, { type: 'image' | 'file' | 'link' }>;
   projectId: string;
@@ -239,9 +243,31 @@ export function MediaViewer({
   const isYoutube = element.type === 'link' && isYoutubeUrl(element.url);
   const ready: Asset | null = asset && asset !== 'missing' ? asset : null;
   const dialogRef = useRef<HTMLDivElement>(null);
+  const iframeRef = useRef<HTMLIFrameElement>(null);
+  const [youtubeTime, setYoutubeTime] = useState<number | null>(null);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: reset player time when navigating gallery items
+  useEffect(() => {
+    setYoutubeTime(null);
+    if (!isYoutube) return;
+    const receive = (event: MessageEvent) => {
+      const time = youtubePlayerTime(event, iframeRef.current?.contentWindow ?? null);
+      if (time !== null) setYoutubeTime(time);
+    };
+    window.addEventListener('message', receive);
+    return () => window.removeEventListener('message', receive);
+  }, [element.id, isYoutube]);
   const [copied, setCopied] = useState<string | null>(null);
   const [infoOpen, setInfoOpen] = useState(false);
   const { videoRef, unplayable, setUnplayable } = useVideoUnplayable(ready?.url, ready?.id);
+
+  const stepper = useRef(new VideoFrameStepper());
+  const [videoPaused, setVideoPaused] = useState(false);
+  useEffect(() => {
+    const player = videoRef.current;
+    if (!player || !ready?.id) return;
+    stepper.current = new VideoFrameStepper();
+    return stepper.current.start(player);
+  }, [ready?.id, videoRef]);
 
   const guestMode = useContext(GuestModeContext);
   const threads = useReviews((s) => s.threads);
@@ -258,15 +284,35 @@ export function MediaViewer({
       // The canvas behind listens on window too.
       e.stopImmediatePropagation();
       if (e.type !== 'keydown') return;
+      if (e.key === 'Escape' && dialogRef.current?.querySelector('.viewer__grab-options')) {
+        e.preventDefault();
+        dialogRef.current.querySelector<HTMLButtonElement>('.viewer__grab-options button')?.click();
+        return;
+      }
+      if (e.key.toLowerCase() === 'g' && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        e.preventDefault();
+        dialogRef.current?.querySelector<HTMLButtonElement>('.viewer__grab')?.click();
+        return;
+      }
+      if (
+        (e.key === ',' ||
+          e.key === '.' ||
+          (e.shiftKey && (e.key === 'ArrowLeft' || e.key === 'ArrowRight'))) &&
+        videoRef.current?.paused
+      ) {
+        e.preventDefault();
+        stepper.current.step(videoRef.current, e.key === ',' || e.key === 'ArrowLeft' ? -1 : 1);
+        return;
+      }
       if (e.key === 'Escape') {
         e.preventDefault();
         onClose();
       }
-      if (gallery && e.key === 'ArrowLeft') {
+      if (gallery && !e.shiftKey && e.key === 'ArrowLeft') {
         e.preventDefault();
         gallery.onPrevious();
       }
-      if (gallery && e.key === 'ArrowRight') {
+      if (gallery && !e.shiftKey && e.key === 'ArrowRight') {
         e.preventDefault();
         gallery.onNext();
       }
@@ -304,7 +350,7 @@ export function MediaViewer({
       window.removeEventListener('keydown', onKey, true);
       window.removeEventListener('keyup', onKey, true);
     };
-  }, [onClose, gallery]);
+  }, [onClose, gallery, videoRef]);
 
   // Focus once on opening, keep it during navigation, give it back to the opener on close.
   useEffect(() => {
@@ -385,6 +431,19 @@ export function MediaViewer({
             </span>
           ))}
           <div className="viewer__header-spacer" />
+          <FrameGrab
+            key={element.id}
+            store={store}
+            element={element}
+            asset={ready}
+            video={videoRef}
+            projectId={projectId}
+            userId={userId}
+            readOnly={readOnly || guestMode}
+            initialFrameId={initialFrameId}
+            youtubeTime={youtubeTime}
+            onDone={onClose}
+          />
           <button
             type="button"
             className="ink-btn ink-btn--secondary viewer__stage-btn viewer__info-toggle"
@@ -465,8 +524,15 @@ export function MediaViewer({
             {isYoutube ? (
               <div className="viewer__embed">
                 <iframe
+                  ref={iframeRef}
                   className="viewer__iframe"
-                  src={youtubeEmbedUrl(element.url) ?? ''}
+                  src={`${youtubeEmbedUrl(element.url)}&enablejsapi=1&origin=${encodeURIComponent(location.origin)}`}
+                  onLoad={() =>
+                    iframeRef.current?.contentWindow?.postMessage(
+                      JSON.stringify({ event: 'listening', id: 'inkadra-viewer' }),
+                      'https://www.youtube-nocookie.com',
+                    )
+                  }
                   title={element.title || 'YouTube video'}
                   allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                   allowFullScreen
@@ -483,6 +549,9 @@ export function MediaViewer({
                   controls
                   autoPlay
                   onError={onVideoError}
+                  onPlay={() => setVideoPaused(false)}
+                  onPause={() => setVideoPaused(true)}
+                  onLoadedData={(e) => setVideoPaused(e.currentTarget.paused)}
                   style={unplayable ? { display: 'none' } : undefined}
                 />
                 {unplayable && (
@@ -508,11 +577,16 @@ export function MediaViewer({
           </div>
 
           {/* Bottom Hints */}
-          <div className="viewer__hints">
-            <span className="viewer__hint">
-              <span className="viewer__hint-kbd">← →</span> {t('viewer.hints.nav')}
-            </span>
-          </div>
+          {(ready?.kind !== 'video' || videoPaused) && (
+            <div className="viewer__hints">
+              <span className="viewer__hint">
+                <span className="viewer__hint-kbd">
+                  {ready?.kind === 'video' ? ', / . · ⇧ ← / →' : '← →'}
+                </span>{' '}
+                {t(ready?.kind === 'video' ? 'frameGrab.stepHint' : 'viewer.hints.nav')}
+              </span>
+            </div>
+          )}
         </div>
 
         {/* Thumbnails Strip */}

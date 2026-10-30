@@ -886,7 +886,8 @@ export function DrawingEditor({
               file,
               projectId,
               boardId,
-              onAsset: (assetId) => updateElement(store.doc, id, { assetId }, LOCAL),
+              onAsset: (assetId) =>
+                updateElement(store.doc, id, { assetId, source: undefined }, LOCAL),
             });
           }}
         />

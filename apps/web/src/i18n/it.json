@@ -2379,5 +2379,25 @@
       "chosen": "{{title}} · {{scenes}} · {{frames}}",
       "remove": "Togli la sceneggiatura"
     }
+  },
+  "frameGrab": {
+    "grab": "Cattura fotogramma",
+    "thumbnail": "Usa miniatura",
+    "destination": "Destinazione del fotogramma",
+    "externalHint": "I player esterni non consentono di catturare fotogrammi. La miniatura non rappresenta il tempo indicato.",
+    "captured": "Fotogramma a {{timecode}} · risoluzione originale",
+    "frame": "Inquadratura",
+    "choose": "Scegli un’inquadratura",
+    "noFrames": "Crea un’inquadratura nello storyboard per usarla come destinazione.",
+    "useFrame": "Usa come immagine dell’inquadratura",
+    "addBoard": "Aggiungi alla lavagna",
+    "uploading": "Caricamento del fotogramma…",
+    "error": "Impossibile salvare il fotogramma. Controlla video, permessi e destinazione, poi riprova.",
+    "referenceTime": "Tempo di riferimento YouTube (secondi)",
+    "stepHint": "Fotogramma precedente / successivo",
+    "fromVideo": "Da video",
+    "pickVideo": "Scegli un video o un link presente su questa lavagna.",
+    "noVideos": "Aggiungi prima un video o un link YouTube/Vimeo alla lavagna.",
+    "hiddenDestination": "La sorgente è nascosta agli ospiti: anche questa inquadratura verrà nascosta."
   }
 }

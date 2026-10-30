@@ -24,6 +24,7 @@ import { startUpload } from '../uploads.ts';
 import { aspectLabel } from './aspect.ts';
 import { FramePicture } from './FramePicture.tsx';
 import { PresetField, parseSeconds, StatusSelect, secondsText, TextField } from './fields.tsx';
+import { VideoReferencePicker } from './VideoReferencePicker.tsx';
 
 type Patch = Partial<Omit<FrameElement, 'id' | 'type'>>;
 
@@ -114,8 +115,20 @@ export function FramePanel({
               <Button icon="upload" variant="ghost" onClick={() => fileInput.current?.click()}>
                 {t('film.frame.upload')}
               </Button>
+              {!guest && userId && (
+                <VideoReferencePicker
+                  store={store}
+                  frameId={frame.id}
+                  projectId={projectId}
+                  userId={userId}
+                  readOnly={readOnly}
+                />
+              )}
               {frame.assetId && (
-                <Button variant="ghost" onClick={() => set({ assetId: undefined })}>
+                <Button
+                  variant="ghost"
+                  onClick={() => set({ assetId: undefined, source: undefined })}
+                >
                   {t('film.frame.removePicture')}
                 </Button>
               )}
@@ -300,7 +313,8 @@ export function FramePanel({
             file,
             projectId,
             boardId,
-            onAsset: (assetId) => updateElement(store.doc, id, { assetId }, LOCAL),
+            onAsset: (assetId) =>
+              updateElement(store.doc, id, { assetId, source: undefined }, LOCAL),
           });
         }}
       />
