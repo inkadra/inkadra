@@ -151,8 +151,8 @@ export function CallSheetModal({
                         ? t('callSheet.castHelp')
                         : undefined
                   }
-                  checked={included[section]}
-                  disabled={!day}
+                  checked={show(section)}
+                  disabled={!day || !filled[section]}
                   onChange={(checked) =>
                     setIncluded((current) => ({ ...current, [section]: checked }))
                   }
@@ -260,7 +260,7 @@ export function CallSheetModal({
                     <table className="sheet__table">
                       <thead>
                         <tr>
-                          <th scope="col">{t('callSheet.cast')}</th>
+                          <th scope="col">{t('callSheet.name')}</th>
                           <th scope="col">{t('callSheet.firstBlock')}</th>
                           <th scope="col">{t('callSheet.shots')}</th>
                         </tr>
@@ -290,8 +290,8 @@ export function CallSheetModal({
                         </tr>
                       </thead>
                       <tbody>
-                        {departments.map((entry, n) => (
-                          <tr key={`${entry.blockId}-${n}`}>
+                        {departments.map((entry) => (
+                          <tr key={`${entry.blockId}-${entry.department}-${entry.note}`}>
                             <td>
                               <strong>{entry.department}</strong>
                             </td>
@@ -356,6 +356,7 @@ function ToggleRow({
         id={id}
         type="checkbox"
         role="switch"
+        aria-checked={checked}
         className="call-sheet__switch"
         checked={checked}
         disabled={disabled}

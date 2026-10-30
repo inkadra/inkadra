@@ -1719,7 +1719,8 @@
     "shots": "Shots",
     "department": "Department",
     "note": "Note",
-    "noBlocks": "No blocks scheduled."
+    "noBlocks": "No blocks scheduled.",
+    "name": "Name"
   },
   "clientReview": {
     "progress": "{{approved}} of {{total}} frames approved",

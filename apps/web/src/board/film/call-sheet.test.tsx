@@ -73,7 +73,15 @@ async function mount(days: ShootingDay[]) {
         days={days}
         shots={
           new Map([
-            ['frame', { label: '4A', action: 'Anna steps off the train', scene: '4', slugline: 'EXT. PLATFORM' }],
+            [
+              'frame',
+              {
+                label: '4A',
+                action: 'Anna steps off the train',
+                scene: '4',
+                slugline: 'EXT. PLATFORM',
+              },
+            ],
           ])
         }
         projectName="Film"
@@ -112,7 +120,8 @@ it('renders saved data and linked or removed shots, toggles sections and prints 
   expect(paper()?.textContent).toContain('05:00 (+1)');
   const schedule = host.querySelector<HTMLInputElement>('input[role=switch]');
   await act(async () => schedule?.click());
-  expect(paper()?.textContent).not.toContain('4A');
+  expect(host.querySelector('.sheet__table--schedule')).toBeNull();
+  expect(paper()?.textContent).not.toContain('Anna steps off the train');
   const select = host.querySelector('select');
   await act(async () => {
     if (select) {

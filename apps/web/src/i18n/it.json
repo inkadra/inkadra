@@ -1719,7 +1719,8 @@
     "shots": "Inquadrature",
     "department": "Reparto",
     "note": "Nota",
-    "noBlocks": "Nessun blocco in programma."
+    "noBlocks": "Nessun blocco in programma.",
+    "name": "Nome"
   },
   "clientReview": {
     "progress": "{{approved}} di {{total}} inquadrature approvate",

@@ -74,7 +74,7 @@
   transition: background 120ms;
 }
 .call-sheet__switch::after {
-  content: '';
+  content: "";
   position: absolute;
   top: 2px;
   left: 2px;
@@ -139,7 +139,7 @@
   box-shadow: 0 1px 4px rgb(0 0 0 / 0.25);
   font-size: 11px;
   line-height: 1.45;
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
 }
 .sheet__head {
   display: flex;
@@ -234,6 +234,7 @@
 }
 .sheet__table th {
   padding-top: 0;
+  white-space: nowrap;
   border-bottom-color: var(--ink-border-strong);
 }
 .sheet__table th:first-child,
@@ -265,7 +266,9 @@
   background: var(--ink-surface-2);
   color: var(--ink-text-secondary);
 }
-.sheet__row--aside td:first-child {
+/* The band's padding keeps every time of the schedule on one left edge. */
+.sheet__table--schedule th:first-child,
+.sheet__table--schedule td:first-child {
   padding-left: 8px;
 }
 .sheet__foot {
@@ -288,6 +291,17 @@
   .phone-sheet .ink-dialog:has(.call-sheet) {
     width: 100vw;
     max-width: 100vw;
+  }
+  /* On phones the day comes first, then the sheet, then the section switches. */
+  .call-sheet__controls {
+    display: contents;
+  }
+  .call-sheet__preview {
+    order: 1;
+  }
+  .call-sheet__group,
+  .call-sheet__notice {
+    order: 2;
   }
   .call-sheet {
     grid-template-columns: minmax(0, 1fr);
@@ -313,12 +327,51 @@
   .sheet__fact:nth-child(-n + 2) {
     border-bottom: 1px solid var(--ink-border-default);
   }
-  /* The schedule keeps its columns: it scrolls sideways inside the paper. */
-  .sheet__section:has(.sheet__table--schedule) {
-    overflow-x: auto;
+  /* The schedule turns into stacked rows: the time on the left, the shot and its scene,
+     what happens and who is in it on the right. */
+  .sheet__table--schedule thead {
+    display: none;
   }
-  .sheet__table--schedule {
-    min-width: 520px;
+  .sheet__table--schedule tr {
+    display: grid;
+    grid-template-columns: 92px minmax(0, 1fr);
+    column-gap: 8px;
+    row-gap: 2px;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--ink-border-default);
+  }
+  .sheet__table--schedule td {
+    display: block;
+    grid-column: 2;
+    width: auto !important;
+    padding: 0 !important;
+    border: 0;
+    white-space: normal !important;
+  }
+  .sheet__table--schedule td:first-child {
+    grid-column: 1;
+    grid-row: 1 / span 4;
+    padding-left: 8px !important;
+    white-space: nowrap !important;
+  }
+  .sheet__table--schedule td:nth-child(3) {
+    order: 1;
+  }
+  .sheet__table--schedule td:nth-child(2) {
+    order: 2;
+  }
+  .sheet__table--schedule td:nth-child(4) {
+    order: 3;
+  }
+  .sheet__table--schedule td:nth-child(5) {
+    order: 4;
+    color: var(--ink-text-secondary);
+  }
+  .sheet__table--schedule .sheet__row--aside {
+    background: var(--ink-surface-2);
+  }
+  .sheet__table--schedule .sheet__row--aside td {
+    background: none;
   }
 }
 
