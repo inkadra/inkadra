@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { addFrame, addScene, type FrameElement, storyboardOf } from '@inkadra/canvas-core';
 import { createBoardDoc, getAnimaticAudio, readElement, roots } from '@inkadra/doc-schema';
 import { expect, type Page, test } from '@playwright/test';
+import { chooseSelect } from '../helpers/select.ts';
 import { readBoard } from './frame-grab.helpers.ts';
 import { pushBoardDoc, signIn, uploadFile, waitForAssets } from './perf/seed.ts';
 
@@ -146,7 +147,7 @@ async function open(page: Page, baseURL: string, theme: 'light' | 'dark') {
   // A phone shows the storyboard modes as a picker instead of segments.
   const picker = page.getByRole('combobox', { name: 'Modalità storyboard' });
   await page.locator('.story__bar').waitFor();
-  if (await picker.isVisible()) await picker.selectOption('animatic');
+  if (await picker.isVisible()) await chooseSelect(picker, 'animatic');
   else await page.getByRole('button', { name: 'Animatic', exact: true }).click();
   await expect(page.locator('.animatic__block')).toHaveCount(5);
   return { cookie, project, boardId };

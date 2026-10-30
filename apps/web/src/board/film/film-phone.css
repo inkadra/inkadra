@@ -57,17 +57,11 @@
     display: none;
   }
   .story > .story__bar > .story__mode-picker {
-    display: block;
+    display: inline-flex;
     flex: 1 1 auto;
     min-width: 0;
     max-width: 200px;
     min-height: 44px;
-    padding: 0 8px;
-    border: 1px solid var(--ink-border-subtle);
-    border-radius: 8px;
-    background: var(--ink-bg-panel);
-    color: var(--ink-text-primary);
-    font: inherit;
   }
   :is(.story, .shots) > .story__bar .ink-header__spacer {
     display: none;

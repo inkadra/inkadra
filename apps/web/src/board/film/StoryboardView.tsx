@@ -189,22 +189,17 @@ export function StoryboardView({
           ))}
         </fieldset>
         {/* On a phone the three modes do not fit as segments: a picker, like the view switcher. */}
-        <select
+        <Select
           className="story__mode-picker"
           aria-label={t('film.playback.mode')}
           value={mode}
-          onChange={(e) => {
-            const value = e.target.value as StoryMode;
+          onChange={(next) => {
+            const value = next as StoryMode;
             setMode(value);
             if (value === 'animatic') setSelected(null);
           }}
-        >
-          {STORY_MODES.map((value) => (
-            <option key={value} value={value}>
-              {t(`film.playback.${value}`)}
-            </option>
-          ))}
-        </select>
+          options={STORY_MODES.map((value) => ({ value, label: t(`film.playback.${value}`) }))}
+        />
         <div className="view-options__inline">
           {sizeControl}
           {aspectControl}
