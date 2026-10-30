@@ -361,9 +361,8 @@
   align-items: flex-start;
   gap: 8px;
 }
-.card__todo-list input[type="checkbox"] {
-  margin: 3px 0 0;
-  accent-color: var(--ink-accent-primary);
+.card__todo-list .ink-choice {
+  margin-top: 3px;
 }
 .card__todo-list li.is-done {
   color: var(--ink-text-muted);

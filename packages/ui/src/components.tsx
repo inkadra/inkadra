@@ -99,7 +99,7 @@ export function IconButton({
     <button
       type="button"
       aria-label={label}
-      title={label}
+      data-ink-tooltip={label}
       className={cx('ink-iconbtn', className)}
       {...props}
     >

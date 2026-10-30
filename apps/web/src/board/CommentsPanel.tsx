@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
+
 import { type Element, roots } from '@inkadra/doc-schema';
 import {
   type Author,
@@ -8,7 +9,7 @@ import {
   MAX_COMMENT_LENGTH,
   type UserSummary,
 } from '@inkadra/shared';
-import { Button, Icon, IconButton, Select } from '@inkadra/ui';
+import { Button, ChoiceTile, Icon, IconButton, Radio, Select } from '@inkadra/ui';
 import {
   type FormEvent,
   type KeyboardEvent,
@@ -351,19 +352,18 @@ function CommentsPanel() {
         <fieldset className="review-segments">
           <legend className="review-hidden">{t('comments.filter')}</legend>
           {(['open', 'resolved', 'all'] as const).map((value) => (
-            <label key={value} className={filter === value ? 'is-active' : undefined}>
-              <input
-                type="radio"
-                name="comments-filter"
-                value={value}
-                checked={filter === value}
-                onChange={() => {
-                  setFilter(value);
-                  setLimit(THREADS_PAGE);
-                }}
-              />
+            <ChoiceTile
+              key={value}
+              name="comments-filter"
+              value={value}
+              checked={filter === value}
+              onChange={() => {
+                setFilter(value);
+                setLimit(THREADS_PAGE);
+              }}
+            >
               {t(`comments.filterStatus.${value}`)}
-            </label>
+            </ChoiceTile>
           ))}
         </fieldset>
 
@@ -538,8 +538,7 @@ function NewThread({
           <legend>{t('comments.visibilityLabel')}</legend>
           {(['team', 'everyone'] as const).map((value) => (
             <label key={value}>
-              <input
-                type="radio"
+              <Radio
                 name={`${id}-visibility`}
                 value={value}
                 checked={visibility === value}

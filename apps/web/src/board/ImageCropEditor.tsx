@@ -368,7 +368,7 @@ export function ImageCropToolbar({
             className={`ctxbar__btn crop-bar__preset${activeAspect === preset ? ' is-active' : ''}`}
             aria-pressed={activeAspect === preset}
             aria-label={t('board.image.aspect.preset', { ratio: presetLabel(preset) })}
-            title={t('board.image.aspect.preset', { ratio: presetLabel(preset) })}
+            data-ink-tooltip={t('board.image.aspect.preset', { ratio: presetLabel(preset) })}
             onMouseDown={(e) => e.preventDefault()}
             onClick={() => selectAspect(preset)}
           >
@@ -381,7 +381,7 @@ export function ImageCropToolbar({
         type="button"
         className="ctxbar__btn"
         aria-label={t('board.image.rotateLeft')}
-        title={t('board.image.rotateLeft')}
+        data-ink-tooltip={t('board.image.rotateLeft')}
         onMouseDown={(e) => e.preventDefault()}
         onClick={() => stepRotate(-1)}
       >
@@ -391,7 +391,7 @@ export function ImageCropToolbar({
         type="button"
         className="ctxbar__btn"
         aria-label={t('board.image.rotateRight')}
-        title={t('board.image.rotateRight')}
+        data-ink-tooltip={t('board.image.rotateRight')}
         onMouseDown={(e) => e.preventDefault()}
         onClick={() => stepRotate(1)}
       >
@@ -404,7 +404,7 @@ export function ImageCropToolbar({
           step={1}
           value={fine}
           aria-label={t('board.image.angle')}
-          title={t('board.image.resetAngleHint')}
+          data-ink-tooltip={t('board.image.resetAngleHint')}
           onPointerDown={() => store.undo.stopCapturing()}
           onPointerUp={() => store.undo.stopCapturing()}
           onDoubleClick={() => changeFineAngle(0)}
@@ -415,7 +415,7 @@ export function ImageCropToolbar({
           className="crop-bar__deg ink-mono"
           disabled={fine === 0}
           aria-label={t('board.image.resetAngle')}
-          title={t('board.image.resetAngle')}
+          data-ink-tooltip={t('board.image.resetAngle')}
           onMouseDown={(e) => e.preventDefault()}
           onClick={() => {
             store.undo.stopCapturing();
@@ -431,7 +431,7 @@ export function ImageCropToolbar({
         className="ctxbar__btn crop-bar__text-btn"
         disabled={!transformed}
         aria-label={t('board.image.restoreOriginal')}
-        title={t('board.image.restoreOriginal')}
+        data-ink-tooltip={t('board.image.restoreOriginal')}
         onMouseDown={(e) => e.preventDefault()}
         onClick={() => restoreOriginalImage(store, element)}
       >
@@ -442,7 +442,7 @@ export function ImageCropToolbar({
         type="button"
         className="ctxbar__btn crop-bar__done is-active"
         aria-label={t('board.image.done')}
-        title={t('board.image.done')}
+        data-ink-tooltip={t('board.image.done')}
         onMouseDown={(e) => e.preventDefault()}
         onClick={onDone}
       >

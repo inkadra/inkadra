@@ -23,7 +23,7 @@ export function FrameVisibilityButton({
       type="button"
       className="ink-iconbtn guest-toggle"
       aria-label={t('guestVisibility.hide')}
-      title={t('guestVisibility.hide')}
+      data-ink-tooltip={t('guestVisibility.hide')}
       aria-pressed={!!frame.guestHidden}
       onClick={() => toggleGuestHidden(store, [frame.id])}
     >

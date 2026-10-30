@@ -442,7 +442,7 @@ export function AppLayout({ home }: { home?: ReactNode }) {
         type="button"
         className="ink-sidebar__search"
         aria-label={t('nav.search')}
-        title={t('nav.search')}
+        data-ink-tooltip={t('nav.search')}
         onClick={() => {
           setDrawerOpen(false);
           setSearching(true);

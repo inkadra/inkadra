@@ -142,7 +142,7 @@ export function ShotlistKanban({
                   type="button"
                   className="kanban__add"
                   aria-label={t('film.list.addInStatus', { status: t(col.labelKey) })}
-                  title={t('film.list.addInStatus', { status: t(col.labelKey) })}
+                  data-ink-tooltip={t('film.list.addInStatus', { status: t(col.labelKey) })}
                   onClick={() => onAddFrame(col.key)}
                 >
                   +

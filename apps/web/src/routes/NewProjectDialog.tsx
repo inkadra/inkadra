@@ -5,7 +5,7 @@ import {
   type ProjectType,
   z,
 } from '@inkadra/shared';
-import { Button, Dialog, DialogActions, Select, TextField } from '@inkadra/ui';
+import { Button, ChoiceTile, Dialog, DialogActions, Select, TextField } from '@inkadra/ui';
 import { type FormEvent, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { castName, type ImportPlan } from '../board/film/screenplay/plan.ts';
@@ -220,32 +220,31 @@ export function ProjectSetupForm({
           {catalogs.projectTypes
             .filter((o) => !o.archived)
             .map(({ id: v }) => (
-              <label key={v}>
-                <input
-                  type="radio"
-                  name="projectType"
-                  checked={type === v}
-                  onChange={() => setType(v)}
-                />
+              <ChoiceTile
+                key={v}
+                name="projectType"
+                value={v}
+                checked={type === v}
+                onChange={() => setType(v)}
+              >
                 {typeLabel(v)}
-              </label>
+              </ChoiceTile>
             ))}
         </fieldset>
         <fieldset className="project-setup__templates">
           <legend>{t('onboarding.template')}</legend>
           {PROJECT_TEMPLATES.map((v) => (
-            <label key={v} className="ink-card">
-              <input
-                type="radio"
-                name="projectTemplate"
-                checked={template === v}
-                onChange={() => setTemplate(v)}
-              />
-              <span>
-                <strong>{t(`onboarding.templates.${v}.name`)}</strong>
-                <small className="ink-muted">{t(`onboarding.templates.${v}.body`)}</small>
-              </span>
-            </label>
+            <ChoiceTile
+              key={v}
+              variant="card"
+              name="projectTemplate"
+              value={v}
+              checked={template === v}
+              onChange={() => setTemplate(v)}
+            >
+              <strong>{t(`onboarding.templates.${v}.name`)}</strong>
+              <small className="ink-muted">{t(`onboarding.templates.${v}.body`)}</small>
+            </ChoiceTile>
           ))}
         </fieldset>
         {withStoryboard && (

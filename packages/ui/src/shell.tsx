@@ -65,7 +65,7 @@ export function RailButton({
       type="button"
       className="ink-rail__btn"
       aria-label={badge ? `${label}, ${badge}` : label}
-      title={label}
+      data-ink-tooltip={label}
       aria-current={active ? 'page' : undefined}
       {...props}
     >
@@ -121,7 +121,9 @@ export function NavItem({
   const content = (
     <>
       {icon ? <Icon name={icon} contentKind={contentKind} /> : leading}
-      <span className="ink-nav__name">{label}</span>
+      <span className="ink-nav__name" data-ink-tooltip-label>
+        {label}
+      </span>
       {count !== undefined && <span className="ink-nav__count">{count}</span>}
       {badge ? (
         <span className="ink-nav__badge" aria-hidden="true">
@@ -130,18 +132,24 @@ export function NavItem({
       ) : null}
     </>
   );
-  // With the column collapsed only the icon shows, so the name moves to the tooltip.
-  const title = props.title ?? label;
-  return props.href ? (
-    <a className="ink-nav" aria-current={active ? 'page' : undefined} title={title} {...props}>
+  // With the column collapsed only the icon shows, so the name moves to the tooltip; a fully
+  // visible name needs none.
+  const { title = label, ...rest } = props;
+  return rest.href ? (
+    <a
+      className="ink-nav"
+      aria-current={active ? 'page' : undefined}
+      data-ink-tooltip={title}
+      {...rest}
+    >
       {content}
     </a>
   ) : (
     <button
       className="ink-nav"
-      title={title}
+      data-ink-tooltip={title}
       aria-pressed={active}
-      {...(props as ButtonHTMLAttributes<HTMLButtonElement>)}
+      {...(rest as ButtonHTMLAttributes<HTMLButtonElement>)}
       type="button"
     >
       {content}

@@ -7,7 +7,7 @@ import {
   updateTodoItem,
 } from '@inkadra/canvas-core';
 import type { Element } from '@inkadra/doc-schema';
-import { Icon } from '@inkadra/ui';
+import { Checkbox, Icon } from '@inkadra/ui';
 import {
   type CSSProperties,
   type KeyboardEvent,
@@ -611,8 +611,7 @@ function TodoCard({ element, editing }: { element: Of<'todo'>; editing: boolean 
       <ul className="card__todo-list">
         {element.items.map((item) => (
           <li key={item.id} className={item.done ? 'is-done' : undefined}>
-            <input
-              type="checkbox"
+            <Checkbox
               checked={item.done}
               disabled={readOnly}
               onChange={(e) =>

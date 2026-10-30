@@ -204,7 +204,7 @@ function CanvasMenuButton({
         aria-expanded={!!at}
         aria-describedby={tooltipId}
         aria-label={label}
-        title={label}
+        data-ink-tooltip={label}
         onClick={() => (at ? setAt(null) : open())}
         onKeyDown={(e) => {
           if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
@@ -293,7 +293,7 @@ function ToolButton({
       aria-keyshortcuts={keyHint}
       aria-label={label}
       aria-pressed={pressed}
-      title={`${label} (${keyHint})`}
+      data-ink-tooltip={`${label} (${keyHint})`}
       onClick={onClick}
       draggable={!!dragType}
       onDragStart={(e) => {
@@ -329,7 +329,7 @@ export function BarButton({
       type="button"
       className={`ctxbar__btn${active ? ' is-active' : ''}${danger ? ' is-danger' : ''}`}
       aria-label={label}
-      title={label}
+      data-ink-tooltip={label}
       aria-pressed={active}
       onMouseDown={(e) => e.preventDefault()}
       onClick={onClick}
@@ -438,7 +438,7 @@ export function ContextBar({
             type="button"
             className="ctxbar__swatch"
             aria-label={t('board.colors.none')}
-            title={t('board.colors.none')}
+            data-ink-tooltip={t('board.colors.none')}
             onMouseDown={(e) => e.preventDefault()}
             onClick={() => onColor(undefined)}
           />
@@ -448,7 +448,7 @@ export function ContextBar({
               type="button"
               className={`ctxbar__swatch ctxbar__swatch--${c}`}
               aria-label={t(`board.colors.${c}`)}
-              title={t(`board.colors.${c}`)}
+              data-ink-tooltip={t(`board.colors.${c}`)}
               onMouseDown={(e) => e.preventDefault()}
               onClick={() => onColor(c)}
             />
@@ -497,7 +497,7 @@ export function ContextBar({
           type="button"
           className={`ctxbar__btn${guestHidden ? ' is-active' : ''}`}
           aria-label={t('guestVisibility.hide')}
-          title={t('guestVisibility.hide')}
+          data-ink-tooltip={t('guestVisibility.hide')}
           aria-pressed={guestHidden}
           onMouseDown={(e) => e.preventDefault()}
           onClick={onGuestHidden}
@@ -517,7 +517,7 @@ export function ContextBar({
         type="button"
         className="ctxbar__btn"
         aria-label={t('board.menu.more')}
-        title={t('board.menu.more')}
+        data-ink-tooltip={t('board.menu.more')}
         aria-haspopup="menu"
         onClick={(e) => {
           const bar = (e.currentTarget.parentElement as HTMLElement).getBoundingClientRect();
@@ -749,7 +749,7 @@ export function ZoomControls({
       <button
         type="button"
         aria-label={t('board.zoom.out')}
-        title={t('board.zoom.out')}
+        data-ink-tooltip={t('board.zoom.out')}
         onClick={() => onZoom('out')}
       >
         <Icon name="minus" size={14} />
@@ -757,7 +757,7 @@ export function ZoomControls({
       <button
         type="button"
         className="zoom__value"
-        title={t('board.zoom.reset')}
+        data-ink-tooltip={t('board.zoom.reset')}
         onClick={() => onZoom('reset')}
       >
         {Math.round(zoom * 100)}%
@@ -765,7 +765,7 @@ export function ZoomControls({
       <button
         type="button"
         aria-label={t('board.zoom.in')}
-        title={t('board.zoom.in')}
+        data-ink-tooltip={t('board.zoom.in')}
         onClick={() => onZoom('in')}
       >
         <Icon name="plus" size={14} />
@@ -773,7 +773,7 @@ export function ZoomControls({
       <button
         type="button"
         aria-label={t('board.zoom.fit')}
-        title={t('board.zoom.fit')}
+        data-ink-tooltip={t('board.zoom.fit')}
         onClick={() => onZoom('fit')}
       >
         <Icon name="fit" size={14} />

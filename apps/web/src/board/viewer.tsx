@@ -639,7 +639,7 @@ export function MediaViewer({
                   e.stopPropagation();
                   gallery.onSelect?.(idx);
                 }}
-                title={item.filename || t('viewer.item', { n: idx + 1 })}
+                data-ink-tooltip={item.filename || t('viewer.item', { n: idx + 1 })}
                 aria-label={item.filename || t('viewer.item', { n: idx + 1 })}
               >
                 {Math.abs(idx - gallery.index) <= THUMB_WINDOW ? (
@@ -724,7 +724,7 @@ export function MediaViewer({
                   className="viewer__swatch"
                   style={{ background: hex }}
                   aria-label={t('viewer.copyHex', { hex })}
-                  title={t('viewer.copyHex', { hex })}
+                  data-ink-tooltip={t('viewer.copyHex', { hex })}
                   onClick={async () => {
                     if (!navigator.clipboard?.writeText) return;
                     try {

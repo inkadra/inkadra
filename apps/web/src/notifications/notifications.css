@@ -340,9 +340,8 @@
 .notification-frequency strong {
   font-weight: 500;
 }
-.notification-frequency input {
-  margin: 2px 0 0;
-  accent-color: var(--ink-accent-primary);
+.notification-frequency .ink-choice {
+  margin-top: 1px;
 }
 
 /* Detail pane (Issue #106 / V2-Inbox) */

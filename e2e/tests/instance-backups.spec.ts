@@ -68,7 +68,7 @@ test('the nightly schedule, its time and the retention persist after a reload', 
 }) => {
   await login(page, admin);
   await page.goto('/settings?section=backups');
-  const nightly = page.getByRole('checkbox', { name: 'Backup notturno' });
+  const nightly = page.getByRole('switch', { name: 'Backup notturno' });
   const time = page.getByLabel('Ora', { exact: true });
   const keep = page.getByLabel('Conserva', { exact: true });
   await expect(time).toBeVisible();
@@ -135,7 +135,7 @@ test.describe('whoever is not an administrator', () => {
     await expect(page.getByRole('link', { name: 'Backup', exact: true })).toHaveCount(0);
     await page.goto('/settings?section=backups');
     await expect(page.getByRole('button', { name: 'Esegui backup ora' })).toHaveCount(0);
-    await expect(page.getByRole('checkbox', { name: 'Backup notturno' })).toHaveCount(0);
+    await expect(page.getByRole('switch', { name: 'Backup notturno' })).toHaveCount(0);
 
     // And the server refuses them, whatever the page shows.
     for (const [method, path] of [

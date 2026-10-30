@@ -121,10 +121,6 @@
 .script-import__row:hover {
   background: var(--ink-surface-2);
 }
-.script-import__row input {
-  margin: 0;
-  accent-color: var(--ink-accent-primary);
-}
 .script-import__row--all {
   padding: 0 11px;
   min-height: 28px;
@@ -163,7 +159,7 @@
   min-width: 0;
 }
 /* Long labels (the target choice) wrap instead of running out of the column. */
-.script-import__options .export__seg {
+.script-import__options .ink-radio-group__options {
   flex-wrap: wrap;
 }
 .script-import__cap {

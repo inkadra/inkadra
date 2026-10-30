@@ -28,8 +28,10 @@ test('a storyboard holds scenes and frames, the shot list shows the same frames'
   await expect(card).toContainText('Binario 21');
   // The sidebar counts the frames laid out in the background, without a reload.
   const modules = page.locator('.ink-sidebar__modules');
-  await expect(modules.locator('a[title^="Storyboard"] .ink-nav__count')).toHaveText('3');
-  await expect(modules.locator('a[title^="Shot list"] .ink-nav__count')).toHaveText('3');
+  await expect(modules.locator('a[data-ink-tooltip^="Storyboard"] .ink-nav__count')).toHaveText(
+    '3',
+  );
+  await expect(modules.locator('a[data-ink-tooltip^="Shot list"] .ink-nav__count')).toHaveText('3');
   await card.dblclick();
   await expect(page.getByRole('tab', { name: 'Storyboard' })).toHaveAttribute(
     'aria-selected',
