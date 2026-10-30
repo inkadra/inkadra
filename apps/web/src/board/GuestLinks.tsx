@@ -241,7 +241,7 @@ function CreateForm({
   const opener = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (open) first.current?.querySelector('.ink-select')?.focus();
+    if (open) first.current?.querySelector<HTMLButtonElement>('.ink-select')?.focus();
   }, [open]);
 
   const reset = () => {

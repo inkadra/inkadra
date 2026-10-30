@@ -1,7 +1,7 @@
 import { flushSync } from 'react-dom';
 /** Real button/listbox interaction for component tests in happy-dom. */
-export function chooseSelect(trigger: HTMLElement | null | undefined, value: string) {
-  if (!trigger) throw new Error('Select trigger missing');
+export function chooseSelect(trigger: Element | null | undefined, value: string) {
+  if (!(trigger instanceof HTMLElement)) throw new Error('Select trigger missing');
   HTMLElement.prototype.showPopover ??= function () {};
   HTMLElement.prototype.hidePopover ??= function () {};
   HTMLElement.prototype.scrollIntoView ??= function () {};
