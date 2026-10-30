@@ -1428,6 +1428,9 @@ export function Canvas({
     if (e.type !== 'keydown' || isTyping(e.target) || palette) return;
     const cmd = commandFor(e);
     if (!cmd) return;
+    // Enter on a focused button (the selection bar, the toolbar) presses the button.
+    if (cmd.kind === 'edit' && (e.target as HTMLElement | null)?.closest?.('button, a[href]'))
+      return;
     const single = selection.size === 1 ? snap.byId.get([...selection][0] ?? '') : undefined;
     switch (cmd.kind) {
       case 'tool':
