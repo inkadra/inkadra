@@ -10,7 +10,8 @@ after `first-run.spec.ts` on a fresh e2e instance.
 - `export-dialog.png`: default triggers inside a dialog.
 - `default-open-desktop-dark.png`: desktop popover, dark.
 - `default-open-desktop-light.png`: desktop popover, light.
-- `phone-bottom-sheet.png` / `phone-bottom-sheet-dark.png`: 390 px phone, 44 px option rows,
+- `phone-bottom-sheet.png` / `phone-bottom-sheet-dark.png`: 390 px phone bottom sheet over a dimmed
+  backdrop, with a handle, the field label as title and 44 px option rows,
   light and dark.
 
 The screenshot hooks are opt-in; normal e2e runs do not overwrite these files.
