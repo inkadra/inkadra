@@ -33,7 +33,12 @@ const SCENES = [
     location: 'Treno',
     frames: [
       { action: 'Marta si siede accanto al finestrino.', durationMs: 2500, shot: 'ms' },
-      { action: 'Fuori, le luci della città scorrono.', durationMs: 2000, shot: 'ws', dialogue: 'Ce l’ho fatta.' },
+      {
+        action: 'Fuori, le luci della città scorrono.',
+        durationMs: 2000,
+        shot: 'ws',
+        dialogue: 'Ce l’ho fatta.',
+      },
     ],
   },
 ] as const;
@@ -145,7 +150,9 @@ async function open(page: Page, baseURL: string, theme: 'light' | 'dark') {
 
 /** Frame ids on the time line, in order. */
 const order = (page: Page) =>
-  page.locator('.animatic__block').evaluateAll((els) => els.map((e) => e.getAttribute('data-frame')));
+  page
+    .locator('.animatic__block')
+    .evaluateAll((els) => els.map((e) => e.getAttribute('data-frame')));
 
 async function savedFrames(baseURL: string, cookie: string, boardId: string) {
   const doc = await readBoard(baseURL, cookie, boardId);
@@ -167,10 +174,7 @@ test('the animatic plays, retimes and reorders frames, with a sound track guests
   const player = page.getByRole('region', { name: 'Animatic' });
   // A missing duration counts one second: 2 + 1.5 + 1 + 2.5 + 2.
   await expect(player.getByText('5 inquadrature · durata 0:09.0')).toBeVisible();
-  await expect(player.locator('.animatic__scene')).toHaveText([
-    '1 · Binario 9',
-    '2 · Carrozza 4',
-  ]);
+  await expect(player.locator('.animatic__scene')).toHaveText(['1 · Binario 9', '2 · Carrozza 4']);
 
   // Change a duration: the edge of 1C, two quarter seconds with the keyboard, then a drag.
   const handle = player.getByRole('slider', { name: 'Durata di 1C' });
@@ -202,10 +206,14 @@ test('the animatic plays, retimes and reorders frames, with a sound track guests
   await page.mouse.move(second.x + second.width * 0.8, second.y + second.height / 2, { steps: 8 });
   await expect(player.locator('.animatic__block.drop-after')).toHaveCount(1);
   await page.mouse.up();
-  await expect.poll(() => order(page)).toEqual([before[1], before[0], before[2], before[3], before[4]]);
+  await expect
+    .poll(() => order(page))
+    .toEqual([before[1], before[0], before[2], before[3], before[4]]);
   await player.locator(`[data-frame="${before[3]}"] button`).focus();
   await page.keyboard.press('Alt+ArrowLeft');
-  await expect.poll(() => order(page)).toEqual([before[1], before[0], before[2], before[3], before[4]]);
+  await expect
+    .poll(() => order(page))
+    .toEqual([before[1], before[0], before[2], before[3], before[4]]);
   await expect(player.locator('.animatic__scene')).toHaveText(['1 · Binario 9', '2 · Carrozza 4']);
   await expect(player.locator('.animatic__block.is-scene-start')).toHaveCount(1);
   expect(
@@ -224,12 +232,16 @@ test('the animatic plays, retimes and reorders frames, with a sound track guests
     buffer: tone(),
   });
   await expect(player.getByText('binario.wav')).toBeVisible({ timeout: 30_000 });
-  await expect.poll(async () => (await savedFrames(baseURL!, cookie, boardId)).audio).toMatchObject({
-    volume: 1,
-  });
+  await expect
+    .poll(async () => (await savedFrames(baseURL!, cookie, boardId)).audio)
+    .toMatchObject({
+      volume: 1,
+    });
   const audio = player.locator('audio');
   await expect(audio).toHaveAttribute('src', /\/api\/v1\/assets\/.+\/file$/);
-  await page.waitForFunction(() => (document.querySelector('.animatic audio') as HTMLAudioElement)?.readyState >= 1);
+  await page.waitForFunction(
+    () => (document.querySelector('.animatic audio') as HTMLAudioElement)?.readyState >= 1,
+  );
 
   // Frame step moves the sound with the picture.
   await player.locator('.animatic__stage').focus();
@@ -273,7 +285,10 @@ test('the animatic plays, retimes and reorders frames, with a sound track guests
   await expect(dialog.locator('.animatic__block')).toHaveCount(5);
   await expect(dialog.getByRole('slider', { name: /Durata di/ })).toHaveCount(0);
   await expect(dialog.getByRole('button', { name: 'Aggiungi colonna sonora' })).toHaveCount(0);
-  await expect(dialog.locator('audio')).toHaveAttribute('src', /\/api\/v1\/guest\/links\/.+\/stream$/);
+  await expect(dialog.locator('audio')).toHaveAttribute(
+    'src',
+    /\/api\/v1\/guest\/links\/.+\/stream$/,
+  );
   await dialog.getByRole('button', { name: 'Riproduci' }).click();
   await expect
     .poll(() => dialog.locator('audio').evaluate((el: HTMLAudioElement) => el.paused))
@@ -307,7 +322,9 @@ for (const [device, width, height] of [
       await expect(player.locator('.animatic__caption')).toContainText('Ce l’ho fatta.');
       await page.locator('.animatic__stage').blur();
       await page.screenshot({ path: `${out}/${device}-${theme}-animatic.png` });
-      await page.request.delete(`/api/v1/projects/${project.id}`, { headers: { origin: baseURL! } });
+      await page.request.delete(`/api/v1/projects/${project.id}`, {
+        headers: { origin: baseURL! },
+      });
     });
   }
 }
