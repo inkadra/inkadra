@@ -1,4 +1,4 @@
-import { Button, Dialog, DialogActions, Icon, kindStyle, Select } from '@inkadra/ui';
+import { Button, Checkbox, Dialog, DialogActions, Icon, kindStyle, Select } from '@inkadra/ui';
 import { type DragEvent, useId, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Check, Field, Segmented } from '../../export/fields.tsx';
@@ -183,8 +183,7 @@ export function ScreenplayImportDialog({
               <fieldset className="script-import__scenes" aria-describedby={listId}>
                 <legend className="export__label">{t('screenplay.sceneList')}</legend>
                 <label className="script-import__row script-import__row--all">
-                  <input
-                    type="checkbox"
+                  <Checkbox
                     checked={chosen === total}
                     ref={(el) => {
                       if (el) el.indeterminate = chosen > 0 && chosen < total;
@@ -201,8 +200,7 @@ export function ScreenplayImportDialog({
                     // biome-ignore lint/suspicious/noArrayIndexKey: scenes have no identity but their order
                     <li key={i}>
                       <label className="script-import__row">
-                        <input
-                          type="checkbox"
+                        <Checkbox
                           checked={options.scenes.has(i)}
                           onChange={(e) => toggle(i, e.target.checked)}
                         />

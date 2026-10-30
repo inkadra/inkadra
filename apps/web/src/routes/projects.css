@@ -236,37 +236,17 @@
   flex-wrap: wrap;
   gap: 8px;
 }
-.project-setup__choices label {
-  display: inline-flex;
-  gap: 6px;
-  padding: 8px;
-  border: 1px solid var(--ink-border-default);
-  border-radius: 24px;
-  font-size: 12px;
-}
 .project-setup__templates {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 10px;
-}
-.project-setup__templates label {
-  display: flex;
-  align-items: start;
-  gap: 6px;
-  padding: 16px 10px;
-  cursor: pointer;
-}
-.project-setup__templates label:has(input:checked),
-.project-setup__choices label:has(input:checked) {
-  border-color: var(--ink-accent-primary);
-  background: var(--ink-bg-panel);
 }
 .project-setup__templates strong {
   font-size: 12px;
 }
 .project-setup__templates small {
   display: block;
-  margin-top: 8px;
+  margin-top: 4px;
   line-height: 1.5;
   font-size: 11px;
 }

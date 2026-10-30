@@ -1,6 +1,7 @@
 import './zod-jitless.ts';
 import '@inkadra/ui/styles.css';
 import './i18n/index.ts';
+import { TooltipProvider } from '@inkadra/ui';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { createBrowserRouter, Outlet, RouterProvider } from 'react-router';
@@ -76,10 +77,12 @@ const root = document.getElementById('root');
 if (!root) throw new Error('Missing #root');
 createRoot(root).render(
   <StrictMode>
-    <AppContextMenu>
-      <RouterProvider router={router} />
-    </AppContextMenu>
-    <UpdatePrompt />
+    <TooltipProvider>
+      <AppContextMenu>
+        <RouterProvider router={router} />
+      </AppContextMenu>
+      <UpdatePrompt />
+    </TooltipProvider>
   </StrictMode>,
 );
 registerServiceWorker();

@@ -4,7 +4,16 @@ import type {
   Invitation,
   InvitationResult,
 } from '@inkadra/shared';
-import { Avatar, Button, Dialog, DialogActions, Icon, Select, TextField } from '@inkadra/ui';
+import {
+  Avatar,
+  Button,
+  Dialog,
+  DialogActions,
+  Icon,
+  Select,
+  Switch,
+  TextField,
+} from '@inkadra/ui';
 import { type FormEvent, useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api, RequestError } from '../lib/api.ts';
@@ -117,9 +126,8 @@ export function Team() {
               help={t('projectCreation.settings.help')}
               htmlFor="members-create-projects"
             >
-              <input
+              <Switch
                 id="members-create-projects"
-                type="checkbox"
                 checked={settings.membersCanCreateProjects ?? true}
                 disabled={busy}
                 onChange={(e) => {
@@ -225,7 +233,7 @@ export function Team() {
                         aria-label={t('admin.roleFor', { name: m.name })}
                         value={m.role}
                         disabled={busy || last}
-                        title={last ? t('admin.lastAdmin') : undefined}
+                        data-ink-tooltip={last ? t('admin.lastAdmin') : undefined}
                         onChange={(e) => void update(m.id, { role: e })}
                       >
                         <option value="admin">{t('admin.roles.admin')}</option>
@@ -280,7 +288,7 @@ export function Team() {
                       <Button
                         variant="ghost"
                         disabled={busy || last}
-                        title={last ? t('admin.lastAdmin') : undefined}
+                        data-ink-tooltip={last ? t('admin.lastAdmin') : undefined}
                         onClick={() =>
                           m.deactivatedAt ? void update(m.id, { active: true }) : setDeactivating(m)
                         }
@@ -314,7 +322,9 @@ export function Team() {
                         <Button
                           variant="ghost"
                           disabled={busy || !instance?.auth.email}
-                          title={!instance?.auth.email ? t('admin.smtpRequired') : undefined}
+                          data-ink-tooltip={
+                            !instance?.auth.email ? t('admin.smtpRequired') : undefined
+                          }
                           onClick={() =>
                             void run(async () =>
                               setCreated(

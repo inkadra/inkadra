@@ -38,53 +38,6 @@
 .export__row > .export__field:first-child {
   flex: 0 0 96px;
 }
-.export__seg {
-  display: inline-flex;
-  gap: 2px;
-  padding: 2px;
-  border-radius: 8px;
-  background: var(--ink-surface-2);
-  border: 1px solid var(--ink-border-default);
-  align-self: flex-start;
-  max-width: 100%;
-}
-.export__seg-btn {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-  height: 26px;
-  padding: 0 10px;
-  border: 0;
-  border-radius: 6px;
-  background: transparent;
-  color: var(--ink-text-secondary);
-  font: inherit;
-  font-size: 12px;
-  font-weight: 500;
-  white-space: nowrap;
-  cursor: pointer;
-}
-/* The radio covers its label, invisible: clicks and focus land on the real control. */
-.export__seg-input {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  margin: 0;
-  opacity: 0;
-  cursor: pointer;
-}
-.export__seg-btn:hover {
-  color: var(--ink-text-primary);
-}
-.export__seg-btn:has(input:checked) {
-  background: var(--ink-surface-3);
-  color: var(--ink-text-primary);
-}
-.export__seg-btn:has(input:focus-visible) {
-  outline: 2px solid var(--ink-accent-primary);
-  outline-offset: 1px;
-}
 .export__hint {
   display: block;
   margin: 0;
@@ -111,9 +64,8 @@
   color: var(--ink-text-primary);
   cursor: pointer;
 }
-.export__check input {
-  margin: 2px 0 0;
-  accent-color: var(--ink-accent-primary);
+.export__check .ink-choice {
+  margin-top: 1px;
 }
 .export__check:has(input:disabled) {
   color: var(--ink-text-secondary);

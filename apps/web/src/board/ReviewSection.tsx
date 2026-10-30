@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 import type { Author, ElementReviewEvent, ReviewStatus } from '@inkadra/shared';
-import { Button } from '@inkadra/ui';
+import { Button, ChoiceTile } from '@inkadra/ui';
 import { useEffect, useId, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api, RequestError } from '../lib/api.ts';
@@ -105,16 +105,15 @@ export function ReviewSection({ elementId }: { elementId: string }) {
           <fieldset className="review-statuses">
             <legend>{t('review.set')}</legend>
             {REVIEW_STATUSES.map((value) => (
-              <label key={value} className={status === value ? 'is-active' : undefined}>
-                <input
-                  type="radio"
-                  name={`${id}-status`}
-                  value={value}
-                  checked={status === value}
-                  onChange={() => setStatus(value)}
-                />
+              <ChoiceTile
+                key={value}
+                name={`${id}-status`}
+                value={value}
+                checked={status === value}
+                onChange={() => setStatus(value)}
+              >
                 <ReviewChip status={value} />
-              </label>
+              </ChoiceTile>
             ))}
           </fieldset>
           <label className="review-field">

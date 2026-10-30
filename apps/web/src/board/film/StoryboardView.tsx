@@ -137,7 +137,7 @@ export function StoryboardView({
           className="story__mode"
           aria-pressed={size === value}
           aria-label={t(`film.playback.sizes.${value}`)}
-          title={t(`film.playback.sizes.${value}`)}
+          data-ink-tooltip={t(`film.playback.sizes.${value}`)}
           onClick={() => setSize(value)}
         >
           {value.toUpperCase()}
@@ -238,7 +238,7 @@ export function StoryboardView({
             icon="upload"
             className="film-compact-btn"
             aria-label={t('screenplay.open')}
-            title={t('screenplay.open')}
+            data-ink-tooltip={t('screenplay.open')}
             onClick={onImportScript}
           >
             <span className="film-compact-btn__label">{t('screenplay.openShort')}</span>
@@ -660,7 +660,7 @@ function SceneSection({
               type="button"
               className="ink-iconbtn guest-toggle"
               aria-label={t('guestVisibility.hide')}
-              title={t('guestVisibility.hide')}
+              data-ink-tooltip={t('guestVisibility.hide')}
               aria-pressed={!!scene.guestHidden}
               onClick={() => toggleGuestHidden(store, [scene.id])}
             >

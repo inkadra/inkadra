@@ -159,16 +159,16 @@ test('comments, mentions, review status and notifications between two people', a
   );
 
   // The director resolves; the owner's open list empties and the badge goes away.
-  await panel.getByText('Aperte', { exact: true }).click();
+  await panel.getByRole('radio', { name: 'Aperte', exact: true }).check();
   await otherPanel.getByRole('button', { name: 'Risolvi' }).click();
   await expect(panel.getByText('Nessuna discussione aperta.')).toBeVisible();
   await expect(card.locator('.card-review')).toHaveCount(0);
-  await panel.getByText('Risolte', { exact: true }).click();
+  await panel.getByRole('radio', { name: 'Risolte', exact: true }).check();
   await expect(panel.getByText('Risolta da Luca Regista')).toBeVisible();
 
   // Review status: set by the commenter with a note, seen live, with its history.
   await otherPanel.getByRole('button', { name: 'Cambia stato' }).click();
-  await otherPanel.getByText('Approvata', { exact: true }).click();
+  await otherPanel.getByRole('radio', { name: /^Approvata/ }).check();
   await otherPanel.getByLabel('Nota (facoltativa)').fill('Pronta per il montaggio');
   await otherPanel.getByRole('button', { name: 'Aggiorna la revisione' }).click();
   await expect(card.getByRole('button', { name: /Revisione: Approvata/ })).toBeVisible();

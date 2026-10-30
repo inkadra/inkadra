@@ -259,44 +259,11 @@ button.review-link:hover:not(:disabled) {
   flex-wrap: wrap;
   gap: 4px;
 }
-.review-segments label,
-.review-statuses label {
-  display: inline-flex;
-  align-items: center;
-  padding: 4px 10px;
-  border: 1px solid var(--ink-border-default);
-  border-radius: 999px;
-  color: var(--ink-text-secondary);
-  font-size: 12px;
-  cursor: pointer;
-}
-.review-statuses label {
+.review-statuses .ink-tile {
   padding: 3px;
 }
 .review-statuses .review-chip {
   border: 0;
-}
-.review-segments label.is-active,
-.review-statuses label.is-active {
-  border-color: var(--ink-text-secondary);
-  background: var(--ink-surface-2);
-  color: var(--ink-text-primary);
-}
-.review-segments input,
-.review-statuses input,
-.comment-visibility input[type="radio"] {
-  accent-color: var(--ink-accent-primary);
-}
-.review-segments input,
-.review-statuses input {
-  position: absolute;
-  opacity: 0;
-  pointer-events: none;
-}
-.review-segments label:has(input:focus-visible),
-.review-statuses label:has(input:focus-visible) {
-  outline: 2px solid var(--ink-accent-primary);
-  outline-offset: 2px;
 }
 .review-statuses legend,
 .comment-visibility legend {

@@ -163,8 +163,14 @@ export const layers = {
   'layer-notification': '1100',
 } as const;
 
-/** Floating menus share one elevation in both themes; sheets and dialogs dim the page alike. */
+/**
+ * Floating menus share one elevation in both themes; sheets and dialogs dim the page alike;
+ * tooltips are a dark chip in both.
+ */
 export const effects = {
   'shadow-menu': '0 8px 30px #0003',
   scrim: 'rgba(10, 10, 12, 0.5)',
+  'tooltip-bg': '#232327',
+  'tooltip-fg': '#EDEDED',
+  'tooltip-border': '#FFFFFF14',
 } as const;

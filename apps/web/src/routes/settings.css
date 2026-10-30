@@ -433,36 +433,6 @@
   color: var(--ink-accent-soft-fg);
 }
 
-.settings-segmented {
-  display: inline-flex;
-  margin: 0;
-  padding: 3px;
-  border: 1px solid var(--ink-border-default);
-  border-radius: 8px;
-  background: var(--ink-bg-app);
-}
-.settings-segmented label {
-  padding: 4px 10px;
-  border-radius: 6px;
-  color: var(--ink-text-secondary);
-  font-size: 12.5px;
-  white-space: nowrap;
-  cursor: pointer;
-}
-.settings-segmented label.is-on {
-  background: var(--ink-surface-3);
-  color: var(--ink-text-primary);
-}
-.settings-segmented label:focus-within {
-  outline: 2px solid var(--ink-accent-primary);
-  outline-offset: -2px;
-}
-.settings-segmented input {
-  position: absolute;
-  opacity: 0;
-  pointer-events: none;
-}
-
 .settings-list {
   list-style: none;
   margin: 0;

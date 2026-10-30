@@ -1,4 +1,4 @@
-import { Button, TextField } from '@inkadra/ui';
+import { Button, Checkbox, TextField } from '@inkadra/ui';
 import { type FormEvent, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { authApi, RequestError } from '../lib/api.ts';
@@ -283,7 +283,7 @@ function ForgotPassword({ email }: { email: string }) {
       type="button"
       className="login__switch"
       disabled={!email.trim()}
-      title={email.trim() ? undefined : t('auth.reset.needEmail')}
+      data-ink-tooltip={email.trim() ? undefined : t('auth.reset.needEmail')}
       onClick={async () => {
         try {
           await authApi.requestPasswordReset(email.trim());
@@ -343,7 +343,7 @@ function TwoFactorStep({ onSignedIn }: { onSignedIn: () => Promise<void> }) {
       />
       {!backup && (
         <label className="login__check">
-          <input type="checkbox" checked={trust} onChange={(e) => setTrust(e.target.checked)} />
+          <Checkbox checked={trust} onChange={(e) => setTrust(e.target.checked)} />
           {t('auth.twoFactor.trust')}
         </label>
       )}

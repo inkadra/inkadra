@@ -73,7 +73,7 @@ it('shows grouped rows with current values, inline theme and sign out', async ()
   expect(row('/settings?section=providers')).toContain('onboarding.needsSetup');
   expect(row('/settings?section=instance')).not.toContain('onboarding.needsSetup');
   await act(async () => {
-    host.querySelector<HTMLInputElement>('.settings-segmented input[value="light"]')?.click();
+    host.querySelector<HTMLInputElement>('.ink-segmented input[value="light"]')?.click();
   });
   expect(choose).toHaveBeenCalledWith('light');
   await act(async () => host.querySelector<HTMLButtonElement>('.settings-home__signout')?.click());

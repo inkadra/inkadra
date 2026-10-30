@@ -512,7 +512,7 @@ export function DrawingEditor({
             className="pen__toggle"
             aria-pressed={onionShown}
             disabled={!prev}
-            title={`${t('film.pen.onion')} (O)`}
+            data-ink-tooltip={`${t('film.pen.onion')} (O)`}
             onClick={() => setOnion((v) => !v)}
           >
             <Icon name="onion" size={16} />
@@ -524,7 +524,7 @@ export function DrawingEditor({
             type="button"
             className="pen__toggle"
             aria-pressed={guides}
-            title={`${t('film.pen.guides')} (G)`}
+            data-ink-tooltip={`${t('film.pen.guides')} (G)`}
             onClick={() => setGuides((v) => !v)}
           >
             <Icon name="guides" size={16} />
@@ -534,7 +534,7 @@ export function DrawingEditor({
             type="button"
             className="pen__toggle"
             aria-pressed={layers}
-            title={`${t('film.pen.layers')} (L)`}
+            data-ink-tooltip={`${t('film.pen.layers')} (L)`}
             onClick={() => setLayers((v) => !v)}
           >
             <Icon name="layers" size={16} />
@@ -551,7 +551,7 @@ export function DrawingEditor({
               type="button"
               className="pen__zoom-value"
               aria-label={t('film.pen.zoomReset', { percent })}
-              title={`${t('film.pen.zoomReset', { percent })} (0)`}
+              data-ink-tooltip={`${t('film.pen.zoomReset', { percent })} (0)`}
               onClick={resetView}
             >
               {percent}%
@@ -578,7 +578,7 @@ export function DrawingEditor({
                 className="toolbar__btn"
                 aria-pressed={tool === x.tool}
                 aria-label={t(`film.pen.${x.tool}`)}
-                title={`${t(`film.pen.${x.tool}`)} (${x.key})`}
+                data-ink-tooltip={`${t(`film.pen.${x.tool}`)} (${x.key})`}
                 onClick={() => setTool(x.tool)}
               >
                 <Icon name={x.tool === 'shape' ? SHAPE_ICONS[shapeKind] : x.icon} size={16} />
@@ -594,7 +594,7 @@ export function DrawingEditor({
                     className="toolbar__btn"
                     aria-pressed={shapeKind === kind}
                     aria-label={t(`film.pen.shapes.${kind}`)}
-                    title={t(`film.pen.shapes.${kind}`)}
+                    data-ink-tooltip={t(`film.pen.shapes.${kind}`)}
                     onClick={() => setShapeKind(kind)}
                   >
                     <Icon name={SHAPE_ICONS[kind]} size={16} />
@@ -834,7 +834,7 @@ export function DrawingEditor({
                 <Button
                   variant="ghost"
                   icon="upload"
-                  title={`${t('film.pen.reference')} (I)`}
+                  data-ink-tooltip={`${t('film.pen.reference')} (I)`}
                   onClick={() => fileInput.current?.click()}
                 >
                   {frame.assetId ? t('film.pen.referenceReplace') : t('film.pen.reference')}

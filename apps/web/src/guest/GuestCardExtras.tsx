@@ -96,7 +96,7 @@ export function PickControls({ elementId, compact }: { elementId: string; compac
             className="guest-star"
             aria-pressed={current?.stars === n}
             aria-label={t('guest.pick.star', { count: n })}
-            title={t('guest.pick.star', { count: n })}
+            data-ink-tooltip={t('guest.pick.star', { count: n })}
             disabled={busy}
             data-on={(current?.stars ?? 0) >= n || undefined}
             onClick={() => run(toggleStars(current, n))}

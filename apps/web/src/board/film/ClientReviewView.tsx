@@ -198,7 +198,7 @@ export function ClientReviewView({
                   variant="ghost"
                   className="client-review__step"
                   aria-label={t('clientReview.previous')}
-                  title={t('clientReview.previous')}
+                  data-ink-tooltip={t('clientReview.previous')}
                   disabled={currentIndex === 0}
                   onClick={() => step(-1)}
                 >
@@ -216,7 +216,7 @@ export function ClientReviewView({
                   variant="ghost"
                   className="client-review__step"
                   aria-label={t('clientReview.next')}
-                  title={t('clientReview.next')}
+                  data-ink-tooltip={t('clientReview.next')}
                   disabled={currentIndex >= visible.length - 1}
                   onClick={() => step(1)}
                 >

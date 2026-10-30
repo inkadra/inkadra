@@ -82,38 +82,7 @@ export function Badge({
   return <span className={`settings-badge settings-badge--${tone}`}>{children}</span>;
 }
 
-export function Segmented<T extends string>({
-  label,
-  value,
-  options,
-  onChange,
-  disabled,
-}: {
-  label: string;
-  value: T;
-  options: Array<{ value: T; label: string }>;
-  onChange: (value: T) => void;
-  disabled?: boolean;
-}) {
-  const name = useId();
-  return (
-    <div role="radiogroup" aria-label={label} className="settings-segmented">
-      {options.map((o) => (
-        <label key={o.value} className={o.value === value ? 'is-on' : undefined}>
-          <input
-            type="radio"
-            name={name}
-            value={o.value}
-            checked={o.value === value}
-            disabled={disabled}
-            onChange={() => onChange(o.value)}
-          />
-          {o.label}
-        </label>
-      ))}
-    </div>
-  );
-}
+export { Segmented } from '@inkadra/ui';
 
 /**
  * A text setting that saves itself after a pause in typing or on blur.

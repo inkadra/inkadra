@@ -320,7 +320,7 @@ function SignInMethods({
               <Button
                 variant="ghost"
                 disabled={methods < 2}
-                title={methods < 2 ? t('settings.methods.last') : undefined}
+                data-ink-tooltip={methods < 2 ? t('settings.methods.last') : undefined}
                 onClick={async () => {
                   try {
                     await trackSave(authApi.unlinkAccount(p.id));

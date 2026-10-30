@@ -4,7 +4,7 @@ import {
   type InstanceBackups,
   type BackupSettings as Settings,
 } from '@inkadra/shared';
-import { Button, Select } from '@inkadra/ui';
+import { Button, Select, Switch } from '@inkadra/ui';
 import { useCallback, useEffect, useId, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api, RequestError } from '../lib/api.ts';
@@ -132,8 +132,7 @@ export function BackupSettings() {
                 : t('backups.nightlyOff')
             }
           >
-            <input
-              type="checkbox"
+            <Switch
               aria-label={t('backups.nightly')}
               checked={settings.enabled}
               onChange={(e) => void save({ enabled: e.target.checked })}

@@ -42,7 +42,8 @@ select {
   color: inherit;
 }
 
-:focus-visible {
+:focus-visible,
+.ink-choice:has(> input:focus-visible) {
   outline: none;
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--ink-accent-primary) 25%, transparent);
 }
@@ -873,4 +874,319 @@ select {
     width: 16px;
     height: 16px;
   }
+}
+
+/* Choice controls ---------------------------------------------------------- */
+
+/* The native input stays on top, transparent: clicks, labels and keys land on the real control. */
+.ink-choice {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+  vertical-align: middle;
+}
+.ink-choice > input {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+.ink-choice > input:focus-visible {
+  box-shadow: none;
+}
+.ink-choice:has(> input:disabled) {
+  opacity: 0.5;
+}
+.ink-choice > input:disabled {
+  cursor: default;
+}
+.ink-choice__box {
+  display: grid;
+  place-items: center;
+  box-sizing: border-box;
+  width: 16px;
+  height: 16px;
+  border: 1px solid var(--ink-border-strong);
+  border-radius: 4px;
+  background: var(--ink-surface-1);
+  color: var(--ink-on-accent);
+  pointer-events: none;
+  transition:
+    background 120ms,
+    border-color 120ms;
+}
+.ink-choice:hover > input:not(:disabled) + .ink-choice__box {
+  border-color: var(--ink-text-muted);
+}
+.ink-checkbox .ink-choice__box > svg,
+.ink-checkbox__dash {
+  display: none;
+}
+.ink-checkbox > input:checked + .ink-choice__box,
+.ink-checkbox > input:indeterminate + .ink-choice__box {
+  border-color: var(--ink-accent-button);
+  background: var(--ink-accent-button);
+}
+.ink-checkbox > input:checked:not(:indeterminate) + .ink-choice__box > svg {
+  display: block;
+}
+.ink-checkbox > input:indeterminate + .ink-choice__box > .ink-checkbox__dash {
+  display: block;
+  width: 8px;
+  height: 2px;
+  border-radius: 1px;
+  background: currentColor;
+}
+.ink-radio,
+.ink-radio .ink-choice__box {
+  border-radius: 50%;
+}
+.ink-radio > input:checked + .ink-choice__box {
+  border: 5px solid var(--ink-accent-button);
+  background: var(--ink-on-accent);
+}
+
+/* The call sheet switch of Design 0.6, for settings that apply at once. */
+.ink-switch {
+  width: 30px;
+  height: 18px;
+  border-radius: 9px;
+}
+.ink-switch__track {
+  position: relative;
+  box-sizing: border-box;
+  width: 30px;
+  height: 18px;
+  border: 1px solid var(--ink-border-strong);
+  border-radius: 9px;
+  background: var(--ink-surface-3);
+  pointer-events: none;
+  transition: background 120ms;
+}
+.ink-switch__track::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--ink-text-secondary);
+  transition: transform 120ms;
+}
+.ink-switch > input:checked + .ink-switch__track {
+  border-color: var(--ink-accent-button);
+  background: var(--ink-accent-button);
+}
+.ink-switch > input:checked + .ink-switch__track::after {
+  background: var(--ink-on-accent);
+  transform: translateX(12px);
+}
+
+.ink-radio-group {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.ink-radio-group__legend {
+  margin-bottom: 8px;
+  padding: 0;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--ink-text-secondary);
+}
+.ink-radio-group__options {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.ink-radio-group__option {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 13px;
+  cursor: pointer;
+}
+.ink-radio-group__option > .ink-choice {
+  margin-top: 1px;
+}
+.ink-radio-group__option small,
+.ink-radio-group__hint {
+  display: block;
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--ink-text-muted);
+}
+.ink-radio-group__hint {
+  margin-top: 6px;
+}
+
+/* Segmented: the same radios drawn as segments; the checked one is raised, never blue. */
+.ink-segmented .ink-radio-group__options {
+  flex-direction: row;
+  align-self: flex-start;
+  gap: 2px;
+  max-width: 100%;
+  width: fit-content;
+  padding: 2px;
+  border: 1px solid var(--ink-border-default);
+  border-radius: 8px;
+  background: var(--ink-surface-2);
+}
+.ink-segmented .ink-radio-group__option {
+  position: relative;
+  align-items: center;
+  height: 26px;
+  padding: 0 10px;
+  border-radius: 6px;
+  color: var(--ink-text-secondary);
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+.ink-segmented .ink-radio-group__option > .ink-choice {
+  position: absolute;
+  inset: 0;
+  width: auto;
+  height: auto;
+  margin: 0;
+  border-radius: inherit;
+}
+.ink-segmented .ink-choice__box {
+  display: none;
+}
+.ink-segmented .ink-radio-group__option:hover {
+  color: var(--ink-text-primary);
+}
+.ink-segmented .ink-radio-group__option:has(input:checked) {
+  background: var(--ink-surface-3);
+  color: var(--ink-text-primary);
+}
+.ink-segmented .ink-radio-group__option:has(input:disabled) {
+  opacity: 0.5;
+  cursor: default;
+}
+
+/* Choice tiles: radios drawn as pills or cards; the selected one has the selection ring. */
+.ink-tile {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  box-sizing: border-box;
+  border: 1px solid var(--ink-border-default);
+  color: var(--ink-text-secondary);
+  cursor: pointer;
+  transition:
+    border-color 120ms,
+    background 120ms;
+}
+/* The radio covers its tile, invisible: clicks and focus land on the real control. */
+.ink-tile__input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+.ink-tile:hover {
+  border-color: var(--ink-border-strong);
+  color: var(--ink-text-primary);
+}
+.ink-tile:has(> .ink-tile__input:checked) {
+  border-color: var(--ink-accent-primary);
+  background: var(--ink-bg-panel);
+  color: var(--ink-text-primary);
+}
+.ink-tile:has(> .ink-tile__input:focus-visible) {
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ink-accent-primary) 25%, transparent);
+}
+.ink-tile:has(> .ink-tile__input:disabled) {
+  opacity: 0.5;
+  cursor: default;
+}
+.ink-tile--pill {
+  min-height: 28px;
+  padding: 4px 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  white-space: nowrap;
+}
+.ink-tile--card {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  padding: 14px 12px;
+  border-radius: 10px;
+  background: var(--ink-surface-1);
+  color: var(--ink-text-primary);
+  text-align: left;
+}
+
+/* Touch: the visible control stays small, the hit area grows to 44 px. */
+@media (max-width: 479px), (pointer: coarse) {
+  .ink-choice > input {
+    inset: -14px;
+    width: auto;
+    height: auto;
+  }
+  .ink-segmented .ink-radio-group__option {
+    height: 44px;
+    min-width: 44px;
+    justify-content: center;
+  }
+  .ink-segmented .ink-choice > input {
+    inset: 0;
+  }
+  .ink-tile--pill {
+    min-height: 44px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ink-tile,
+  .ink-choice__box,
+  .ink-switch__track,
+  .ink-switch__track::after {
+    transition: none;
+  }
+}
+
+/* Tooltip ------------------------------------------------------------------- */
+
+/* One shared chip in the top layer, so it shows over dialogs too; dark in both themes. */
+.ink-tooltip {
+  position: fixed;
+  inset: auto;
+  top: var(--ink-tooltip-top, 0);
+  left: var(--ink-tooltip-left, 0);
+  max-width: min(260px, calc(100vw - 16px));
+  margin: 0;
+  padding: 4px 8px;
+  border: 1px solid var(--ink-tooltip-border);
+  border-radius: 6px;
+  background: var(--ink-tooltip-bg);
+  color: var(--ink-tooltip-fg);
+  box-shadow: var(--ink-shadow-menu);
+  font:
+    500 12px / 1.4 Inter,
+    system-ui,
+    sans-serif;
+  overflow-wrap: anywhere;
+  pointer-events: none;
+}
+.ink-tooltip[hidden] {
+  display: none;
 }

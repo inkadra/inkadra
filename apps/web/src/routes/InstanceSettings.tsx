@@ -1,4 +1,5 @@
 import type { InstanceSettings as Settings, StorageUsage } from '@inkadra/shared';
+import { Switch } from '@inkadra/ui';
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api } from '../lib/api.ts';
@@ -282,8 +283,7 @@ function InstancePage({ section, setup }: { section: string; setup: Setup }) {
                 : 'admin.requireAdminTwoFactorEnrollFirst',
             )}
           >
-            <input
-              type="checkbox"
+            <Switch
               aria-label={t('admin.requireAdminTwoFactor')}
               checked={settings.requireAdminTwoFactor ?? false}
               disabled={!user?.twoFactorEnabled}

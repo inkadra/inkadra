@@ -463,7 +463,7 @@ function BoardScreen({
                 className="view-tabs__tab"
                 // On narrow desktops only the open tab keeps its name: the rest say it on hover.
                 aria-label={t(`film.views.${v}`)}
-                title={t(`film.views.${v}`)}
+                data-ink-tooltip={t(`film.views.${v}`)}
                 onClick={() => chooseView(v)}
               >
                 <Icon name={viewIcon(v)} contentKind={v} size={14} />

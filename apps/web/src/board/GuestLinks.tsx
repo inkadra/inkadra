@@ -5,7 +5,7 @@ import type {
   ShareLink,
   ShareLinkPicks,
 } from '@inkadra/shared';
-import { Button, Icon, IconButton, Select } from '@inkadra/ui';
+import { Button, Checkbox, Icon, IconButton, Select } from '@inkadra/ui';
 import { type FormEvent, useCallback, useEffect, useId, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api, RequestError } from '../lib/api.ts';
@@ -197,9 +197,8 @@ function Check({
   const id = useId();
   return (
     <div className="guest-links__check">
-      <input
+      <Checkbox
         id={id}
-        type="checkbox"
         checked={checked}
         disabled={disabled}
         aria-describedby={hint ? `${id}-hint` : undefined}

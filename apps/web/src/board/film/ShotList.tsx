@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
+
 import {
   addFrame,
   addScene,
@@ -10,7 +11,7 @@ import {
   updateElement,
 } from '@inkadra/canvas-core';
 import { SHOT_ANGLES, SHOT_MOVEMENTS, SHOT_SIZES } from '@inkadra/doc-schema';
-import { Button, EmptyState, Icon, Select } from '@inkadra/ui';
+import { Button, Checkbox, EmptyState, Icon, Select } from '@inkadra/ui';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useClassifications } from '../../lib/classifications.ts';
@@ -661,8 +662,7 @@ export function ShotList({
       {!readOnly && allVisibleFrameIds.length > 0 && (
         <label className="shot-cards__select-all">
           <span className="shot-cards__select-all-box">
-            <input
-              type="checkbox"
+            <Checkbox
               className="shots__checkbox"
               checked={allSelected}
               ref={(el) => {
@@ -697,8 +697,7 @@ export function ShotList({
                     >
                       {!readOnly && (
                         <label className="shot-card__check">
-                          <input
-                            type="checkbox"
+                          <Checkbox
                             className="shots__checkbox"
                             checked={isChecked}
                             onChange={() => toggleSelect(f.id)}
@@ -907,8 +906,7 @@ export function ShotList({
                 <tr>
                   {!readOnly && (
                     <th className="shots__select-col">
-                      <input
-                        type="checkbox"
+                      <Checkbox
                         className="shots__checkbox"
                         onClick={(e) => e.stopPropagation()}
                         checked={allSelected}
@@ -958,8 +956,7 @@ export function ShotList({
                           >
                             {!readOnly && (
                               <td className="shots__select-col">
-                                <input
-                                  type="checkbox"
+                                <Checkbox
                                   className="shots__checkbox"
                                   checked={isSelectedRow}
                                   onChange={() => toggleSelect(f.id)}

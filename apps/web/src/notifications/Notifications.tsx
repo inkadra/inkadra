@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
+
 import type { Notification, NotificationPreferences, UnreadCount } from '@inkadra/shared';
-import { Button, Icon, IconButton } from '@inkadra/ui';
+import { Button, Icon, IconButton, Radio } from '@inkadra/ui';
 import { type RefObject, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router';
@@ -223,7 +224,7 @@ export function NotificationBell({
         type="button"
         className="ink-iconbtn notification-bell__button"
         aria-label={t('notifications.bell', { count: unread })}
-        title={t('nav.inbox')}
+        data-ink-tooltip={t('nav.inbox')}
         aria-expanded={open}
         aria-haspopup="dialog"
         onClick={() => (open ? close() : setOpen(true))}
@@ -725,8 +726,7 @@ export function EmailNotifications() {
           >
             {(['immediate', 'daily', 'off'] as const).map((value) => (
               <label key={value} className={email === value ? 'is-on' : undefined}>
-                <input
-                  type="radio"
+                <Radio
                   name="email-frequency"
                   value={value}
                   checked={email === value}

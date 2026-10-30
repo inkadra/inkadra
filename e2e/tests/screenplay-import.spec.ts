@@ -116,9 +116,9 @@ test('the sidebar counts the imported frames before the server has stored them',
   await dialog.getByRole('button', { name: 'Importa', exact: true }).click();
   await expect(dialog).toBeHidden();
   // The server stores a board about two seconds after the last edit: the count cannot wait for it.
-  await expect(shots).toHaveAttribute('title', /8 inquadrature/, { timeout: 1500 });
+  await expect(shots).toHaveAttribute('data-ink-tooltip', /8 inquadrature/, { timeout: 1500 });
   await page.getByRole('status').getByRole('button', { name: 'Annulla' }).click();
-  await expect(shots).not.toHaveAttribute('title', /8 inquadrature/, { timeout: 1500 });
+  await expect(shots).not.toHaveAttribute('data-ink-tooltip', /8 inquadrature/, { timeout: 1500 });
 });
 
 test('a Final Draft screenplay makes a new storyboard named after its title', async ({ page }) => {

@@ -28,7 +28,7 @@ export function UpdatePrompt() {
         type="button"
         className="pwa-update__close"
         aria-label={t('pwa.later')}
-        title={t('pwa.later')}
+        data-ink-tooltip={t('pwa.later')}
         onClick={dismissUpdate}
       >
         <Icon name="close" size={14} />

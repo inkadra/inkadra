@@ -1,5 +1,5 @@
 import type { Project } from '@inkadra/shared';
-import { Button, Dialog, DialogActions, Select, TextField } from '@inkadra/ui';
+import { Button, ChoiceTile, Dialog, DialogActions, Select, TextField } from '@inkadra/ui';
 import { type FormEvent, useEffect, useId, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router';
@@ -103,24 +103,23 @@ export function NewBoardDialog({
         <fieldset className="home-new__choices">
           <legend className="ink-field__label">{t('home.newBoard.start')}</legend>
           {START_CHOICES.map((c) => (
-            <label key={c} className="home-new__choice">
-              <input
-                type="radio"
-                name="start"
-                value={c}
-                checked={choice === c}
-                onChange={() => {
-                  // A title still matching the previous template follows the new one.
-                  const previous = choice === 'blank' ? '' : t(choiceKey(choice, 'name'));
-                  if (title === previous) setTitle(c === 'blank' ? '' : t(choiceKey(c, 'name')));
-                  setChoice(c);
-                }}
-              />
-              <span>
-                <span className="home-new__name">{t(choiceKey(c, 'name'))}</span>
-                <span className="ink-muted home-new__body">{t(choiceKey(c, 'body'))}</span>
-              </span>
-            </label>
+            <ChoiceTile
+              key={c}
+              variant="card"
+              className="home-new__choice"
+              name="start"
+              value={c}
+              checked={choice === c}
+              onChange={() => {
+                // A title still matching the previous template follows the new one.
+                const previous = choice === 'blank' ? '' : t(choiceKey(choice, 'name'));
+                if (title === previous) setTitle(c === 'blank' ? '' : t(choiceKey(c, 'name')));
+                setChoice(c);
+              }}
+            >
+              <span className="home-new__name">{t(choiceKey(c, 'name'))}</span>
+              <span className="ink-muted home-new__body">{t(choiceKey(c, 'body'))}</span>
+            </ChoiceTile>
           ))}
         </fieldset>
         <TextField

@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
+
 import type { Asset, ShootingDay } from '@inkadra/shared';
-import { Button, Dialog, DialogActions, Select } from '@inkadra/ui';
+import { Button, Dialog, DialogActions, Select, Switch } from '@inkadra/ui';
 import { type ReactNode, useEffect, useId, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Field } from '../export/fields.tsx';
@@ -352,12 +353,9 @@ function ToggleRow({
         <span className="call-sheet__row-label">{label}</span>
         {help && <span className="call-sheet__row-help">{help}</span>}
       </label>
-      <input
+      <Switch
         id={id}
-        type="checkbox"
-        role="switch"
         aria-checked={checked}
-        className="call-sheet__switch"
         checked={checked}
         disabled={disabled}
         onChange={(e) => onChange(e.target.checked)}
