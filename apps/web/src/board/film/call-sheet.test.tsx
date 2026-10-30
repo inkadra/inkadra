@@ -1,3 +1,4 @@
+import { chooseSelect } from '../../test/select.ts';
 // @vitest-environment happy-dom
 import type { ShootingDay } from '@inkadra/shared';
 import { act } from 'react';
@@ -104,11 +105,10 @@ it('renders saved data and linked or removed shots, toggles sections and prints 
   const schedule = host.querySelector<HTMLInputElement>('input[type=checkbox]');
   await act(async () => schedule?.click());
   expect(paper()?.textContent).not.toContain('4A');
-  const select = host.querySelector('select');
+  const .ink-select = host.querySelector('.ink-select');
   await act(async () => {
     if (select) {
-      select.value = 'day-2';
-      select.dispatchEvent(new Event('change', { bubbles: true }));
+      chooseSelect(select, 'day-2');
     }
   });
   expect(paper()?.textContent).toContain('Studio');

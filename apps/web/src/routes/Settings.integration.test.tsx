@@ -1,3 +1,4 @@
+import { chooseSelect } from '../test/select.ts';
 // @vitest-environment happy-dom
 import { act } from 'react';
 import { createRoot } from 'react-dom/client';
@@ -109,11 +110,10 @@ it('saves the language as soon as it changes, without a save button', async () =
   expect([...host.querySelectorAll('button')].some((b) => b.textContent === 'settings.save')).toBe(
     false,
   );
-  const select = host.querySelector<HTMLSelectElement>('select');
-  if (!select) throw new Error('Locale select missing');
+  const .ink-select = host.querySelector<HTMLButtonElement>('.ink-select');
+  if (!select) throw new Error('Locale .ink-select missing');
   await act(async () => {
-    select.value = 'it';
-    select.dispatchEvent(new Event('change', { bubbles: true }));
+    chooseSelect(select, 'it');
   });
   expect(api.patch).toHaveBeenCalledWith('/me', { locale: 'it' });
   expect(i18nMock.changeLanguage).toHaveBeenCalledWith('it');

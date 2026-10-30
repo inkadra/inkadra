@@ -1,3 +1,4 @@
+import { chooseSelect } from '../../test/select.ts';
 // @vitest-environment happy-dom
 import { addFrame, addScene } from '@inkadra/canvas-core';
 import { act } from 'react';
@@ -24,14 +25,13 @@ it('shares the scene filter between compact and desktop navigation without modif
     await act(async () =>
       root.render(<StoryboardView store={store} projectId="p" boardId="b" userId="u" readOnly />),
     );
-    const picker = host.querySelector<HTMLSelectElement>('.story__scene-picker select');
-    expect(picker?.options).toHaveLength(4);
+    const picker = host.querySelector<HTMLButtonElement>('.story__scene-picker .ink-select');
+    expect(picker?.getAttribute('aria-haspopup')).toBe('listbox');
     expect(host.querySelector(`label[for="${picker?.id}"]`)).not.toBeNull();
     expect(host.querySelectorAll('.story__tile')).toHaveLength(3);
     await act(async () => {
       if (picker) {
-        picker.value = b.id;
-        picker.dispatchEvent(new Event('change', { bubbles: true }));
+        chooseSelect(picker, b.id);
       }
     });
     expect(host.querySelectorAll('.story__tile')).toHaveLength(1);

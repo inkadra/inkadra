@@ -1,3 +1,4 @@
+import { chooseSelect } from '../test/select.ts';
 // @vitest-environment happy-dom
 import type { InstanceBackups } from '@inkadra/shared';
 import { act } from 'react';
@@ -58,7 +59,7 @@ it('shows the last result, the schedule and the history', async () => {
   expect(host.textContent).not.toContain('backups.notInBucket');
   expect(host.textContent).toContain('inkadra-backup-20261102-030000-0193f0a4.zip');
   expect(host.querySelector<HTMLInputElement>('input[type=time]')?.value).toBe('03:00');
-  expect(host.querySelector<HTMLSelectElement>('select')?.value).toBe('7');
+  expect(host.querySelector<HTMLButtonElement>('.ink-select')?.dataset.value).toBe('7');
   // Backups are never offered as a download from the browser.
   expect(host.querySelector('a[download]')).toBeNull();
 });
@@ -68,10 +69,9 @@ it('saves the time and retention as they change', async () => {
   vi.mocked(api.patch).mockResolvedValue({});
   await act(async () => root.render(<BackupSettings />));
   expect(host.textContent).toContain('backups.none');
-  const select = host.querySelector<HTMLSelectElement>('select') as HTMLSelectElement;
+  const .ink-select = host.querySelector<HTMLButtonElement>('.ink-select') as HTMLButtonElement;
   await act(async () => {
-    select.value = '30';
-    select.dispatchEvent(new Event('change', { bubbles: true }));
+    chooseSelect(select, '30');
   });
   expect(api.patch).toHaveBeenCalledWith('/instance/backups/settings', { retention: 30 });
 });

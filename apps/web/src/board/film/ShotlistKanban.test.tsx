@@ -1,3 +1,4 @@
+import { chooseSelect } from '../../test/select.ts';
 // @vitest-environment happy-dom
 import { createElement, type FrameElement } from '@inkadra/canvas-core';
 import { act } from 'react';
@@ -127,11 +128,10 @@ it('renders 5 columns including approved and allows moving cards via menu and ke
     ).toBe('ready');
   }
 
-  const moveSelect = host.querySelector<HTMLSelectElement>('.kanban__move-select');
+  const moveSelect = host.querySelector<HTMLButtonElement>('.kanban__move-select');
   expect(moveSelect).not.toBeNull();
   if (moveSelect) {
-    moveSelect.value = 'shot';
-    moveSelect.dispatchEvent(new Event('change', { bubbles: true }));
+    chooseSelect(moveSelect, 'shot');
     expect(
       (doc.getMap('elements').get(frame.id) as Y.Map<unknown> | undefined)?.get('status'),
     ).toBe('shot');
@@ -161,11 +161,10 @@ it('sets approved: true when moving into approved column, and clears it when mov
   );
 
   // Move in: move to approved
-  const moveSelect = host.querySelector<HTMLSelectElement>('.kanban__move-select');
+  const moveSelect = host.querySelector<HTMLButtonElement>('.kanban__move-select');
   expect(moveSelect).not.toBeNull();
   if (moveSelect) {
-    moveSelect.value = 'approved';
-    moveSelect.dispatchEvent(new Event('change', { bubbles: true }));
+    chooseSelect(moveSelect, 'approved');
     expect(
       (doc.getMap('elements').get(frame.id) as Y.Map<unknown> | undefined)?.get('approved'),
     ).toBe(true);
@@ -187,11 +186,10 @@ it('sets approved: true when moving into approved column, and clears it when mov
   );
 
   // Move out: move to todo
-  const moveOutSelect = hostApproved.querySelector<HTMLSelectElement>('.kanban__move-select');
+  const moveOutSelect = hostApproved.querySelector<HTMLButtonElement>('.kanban__move-select');
   expect(moveOutSelect).not.toBeNull();
   if (moveOutSelect) {
-    moveOutSelect.value = 'todo';
-    moveOutSelect.dispatchEvent(new Event('change', { bubbles: true }));
+    chooseSelect(moveOutSelect, 'todo');
     const map = doc.getMap('elements').get(frame.id) as Y.Map<unknown> | undefined;
     expect(map?.get('status')).toBe('todo');
     expect(map?.get('approved')).toBe(false);

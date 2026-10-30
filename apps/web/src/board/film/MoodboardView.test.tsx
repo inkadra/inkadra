@@ -1,3 +1,4 @@
+import { chooseSelect } from '../../test/select.ts';
 // @vitest-environment happy-dom
 import { createElement, deleteElements, updateElement } from '@inkadra/canvas-core';
 import { act } from 'react';
@@ -101,10 +102,9 @@ it('renders empty state, reacts to Yjs updates and filters the gallery and palet
   });
   expect(host.querySelectorAll('button.moodboard__card')).toHaveLength(2);
   expect(host.querySelectorAll('.moodboard__color')).toHaveLength(1);
-  const filter = host.querySelector('select');
+  const filter = host.querySelector('.ink-select');
   await act(async () => {
-    if (filter) filter.value = 'day';
-    filter?.dispatchEvent(new Event('change', { bubbles: true }));
+    chooseSelect(filter, 'day');
   });
   expect(host.querySelectorAll('button.moodboard__card')).toHaveLength(1);
   expect(host.querySelector('.moodboard__color')).toBeNull();
@@ -127,10 +127,9 @@ it('navigates the filtered gallery without a compare action, shows frame reuse a
   });
   add('frame', { assetId: 'one', label: '4C' });
   const host = await mount(store);
-  const filter = host.querySelector('select');
+  const filter = host.querySelector('.ink-select');
   await act(async () => {
-    if (filter) filter.value = 'night';
-    filter?.dispatchEvent(new Event('change', { bubbles: true }));
+    chooseSelect(filter, 'night');
   });
   const opener = host.querySelector<HTMLButtonElement>('button.moodboard__card');
   await click(opener);

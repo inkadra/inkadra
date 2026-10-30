@@ -1,3 +1,4 @@
+import { chooseSelect } from '../../test/select.ts';
 // @vitest-environment happy-dom
 import { addFrame, addScene, createElement, type FrameElement } from '@inkadra/canvas-core';
 import { act, useState } from 'react';
@@ -251,11 +252,10 @@ describe('Animatic', () => {
     await tick(1000);
     expect(time()).toBe('0:01.0 / 0:05.0');
     now = 1000;
-    const select = host.querySelector('select');
+    const .ink-select = host.querySelector('.ink-select');
     if (!select) throw new Error('no speed');
     await act(async () => {
-      select.value = '2';
-      select.dispatchEvent(new Event('change', { bubbles: true }));
+      chooseSelect(select, '2');
     });
     await tick(1500);
     expect(time()).toBe('0:02.0 / 0:05.0');

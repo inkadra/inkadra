@@ -96,7 +96,7 @@ export function FrameGrab({
     ((external && element.type === 'link' && !!element.imageAssetId && asset?.kind === 'image') ||
       asset?.kind === 'video');
   useEffect(() => {
-    if (open) panel.current?.querySelector<HTMLSelectElement>('select')?.focus();
+    if (open) panel.current?.querySelector<HTMLButtonElement>('.ink-select')?.focus();
   }, [open]);
   if (!available) return null;
 
