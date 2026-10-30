@@ -4,6 +4,7 @@ import { expect, type Page, test } from '@playwright/test';
 /**
  * The canvas toolbar on tablets and narrow windows: one row at every width, and the Canvas
  * button as wide as its content (an iPad mini wrapped it in two rows, label outside the fill).
+ * On phones the tools scroll and the Canvas button stays pinned in view (it was scrolled off).
  */
 const vite = process.env.E2E_VITE_URL ?? 'http://127.0.0.1:5179';
 const root = process
@@ -95,19 +96,26 @@ async function measure(page: Page) {
       .filter((c) => c.getAttribute('role') !== 'tooltip' && getComputedStyle(c).display !== 'none')
       .map((c) => c.getBoundingClientRect());
     const box = canvas.getBoundingClientRect();
+    // The scrolling part of the bar: its tools, or the whole bar before they were split.
+    const tools = bar.querySelector<HTMLElement>('.toolbar__tools') ?? bar;
     return {
       tops: [...new Set(buttons.map((b) => Math.round(b.top)))],
       button: { left: box.left, right: box.right, width: box.width, height: box.height },
       partsInside: parts.every((p) => p.left >= box.left - 0.5 && p.right <= box.right + 0.5),
       labelShown: getComputedStyle(label).display !== 'none',
       bar: bar.getBoundingClientRect().toJSON(),
-      scroll: bar.scrollWidth - bar.clientWidth,
+      scroll: Math.max(bar.scrollWidth - bar.clientWidth, tools.scrollWidth - tools.clientWidth),
+      barScroll: bar.scrollWidth - bar.clientWidth,
       viewport: document.documentElement.clientWidth,
     };
   });
 }
 
 for (const [width, height, touch, viewportTag] of [
+  // Phones, where the tools scroll.
+  [360, 800, true, true],
+  [390, 844, true, true],
+  [430, 932, true, true],
   // iPad mini portrait, as a tablet and as Safari's default desktop site (no viewport tag).
   [744, 1133, true, true],
   [744, 1133, true, false],
@@ -139,7 +147,47 @@ for (const [width, height, touch, viewportTag] of [
       expect(m.bar.right).toBeLessThanOrEqual(m.viewport);
       // The label shows whenever the whole bar fits with it; otherwise the bar may scroll.
       if (m.labelShown) expect(m.scroll).toBeLessThanOrEqual(1);
+      // Only the tools scroll: the Canvas button is always on screen, at the end of the bar.
+      expect(m.barScroll, 'the bar itself does not scroll').toBeLessThanOrEqual(1);
+      expect(m.button.left).toBeGreaterThanOrEqual(m.bar.left);
+      expect(m.button.right).toBeLessThanOrEqual(m.bar.right);
+      expect(m.bar.right - m.button.right, 'pinned at the right end').toBeLessThanOrEqual(8);
       await page.locator('.canvas .toolbar').screenshot({ path: info.outputPath('toolbar.png') });
+    });
+  });
+}
+
+for (const [width, height] of [
+  [360, 800],
+  [390, 844],
+  [430, 932],
+  [560, 900],
+] as const) {
+  test.describe(`canvas toolbar ${width}x${height} phone`, () => {
+    test.use({ isMobile: true, hasTouch: true });
+    test('scrolls the tools under a pinned Canvas button whose menu opens above it', async ({
+      page,
+    }) => {
+      const toolbar = await openCanvas(page, width, height, true);
+      const canvasButton = toolbar.locator('.toolbar__btn--canvas');
+      const before = await canvasButton.boundingBox();
+      await toolbar.evaluate((bar) => {
+        const tools = bar.querySelector('.toolbar__tools') ?? bar;
+        tools.scrollLeft = tools.scrollWidth;
+      });
+      const after = await canvasButton.boundingBox();
+      expect(after).toEqual(before);
+      if (!after) throw new Error('no Canvas button');
+      expect(after.x + after.width).toBeLessThanOrEqual(width);
+      await expect(canvasButton).toBeInViewport({ ratio: 1 });
+      await canvasButton.tap();
+      const menu = page.locator('.menu--canvas');
+      await expect(menu).toBeVisible();
+      const box = await menu.boundingBox();
+      if (!box) throw new Error('no Canvas menu');
+      expect(box.y + box.height).toBeLessThanOrEqual(after.y);
+      expect(Math.abs(box.x + box.width - (after.x + after.width))).toBeLessThanOrEqual(1);
+      expect(box.x).toBeGreaterThanOrEqual(0);
     });
   });
 }

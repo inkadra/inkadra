@@ -87,60 +87,63 @@ export function Toolbar({
   const { t } = useTranslation();
   return (
     <div className="toolbar" role="toolbar" aria-label={t('board.toolbar')} data-chrome>
-      <fieldset
-        className="toolbar__group toolbar__group--navigate"
-        aria-label={t('board.toolGroups.navigate')}
-      >
-        <ToolButton
-          icon="pointer"
-          kind="select"
-          label={t('board.tools.select')}
-          keyHint="V"
-          pressed={tool === 'select'}
-          onClick={() => onTool('select')}
-        />
-        <ToolButton
-          icon="hand"
-          kind="hand"
-          label={t('board.tools.hand')}
-          keyHint="H"
-          pressed={tool === 'hand'}
-          onClick={() => onTool('hand')}
-        />
-        <ToolButton
-          icon="arrow"
-          kind="arrow"
-          label={t('board.tools.arrow')}
-          keyHint="A"
-          pressed={tool === 'arrow'}
-          onClick={() => onTool(tool === 'arrow' ? 'select' : 'arrow')}
-        />
-      </fieldset>
-      {(['create', 'organize'] as const).map((group) => (
+      {/* On phones the tools scroll sideways and the Canvas button stays pinned beside them. */}
+      <div className="toolbar__tools">
         <fieldset
-          key={group}
-          className={`toolbar__group toolbar__group--${group}`}
-          aria-label={t(`board.toolGroups.${group}`)}
+          className="toolbar__group toolbar__group--navigate"
+          aria-label={t('board.toolGroups.navigate')}
         >
-          {TOOLS.filter(
-            (tl) =>
-              !tl.menuOnly &&
-              (group === 'create'
-                ? ['note', 'image', 'link', 'todo', 'color'].includes(tl.type)
-                : ['column', 'frame'].includes(tl.type)),
-          ).map((tl) => (
-            <ToolButton
-              key={tl.type}
-              kind={tl.type as ToolKind}
-              icon={tl.icon}
-              label={t(`board.types.${tl.type}`)}
-              keyHint={tl.key ?? ''}
-              onClick={() => onAdd(tl.type)}
-              dragType={tl.type}
-            />
-          ))}
+          <ToolButton
+            icon="pointer"
+            kind="select"
+            label={t('board.tools.select')}
+            keyHint="V"
+            pressed={tool === 'select'}
+            onClick={() => onTool('select')}
+          />
+          <ToolButton
+            icon="hand"
+            kind="hand"
+            label={t('board.tools.hand')}
+            keyHint="H"
+            pressed={tool === 'hand'}
+            onClick={() => onTool('hand')}
+          />
+          <ToolButton
+            icon="arrow"
+            kind="arrow"
+            label={t('board.tools.arrow')}
+            keyHint="A"
+            pressed={tool === 'arrow'}
+            onClick={() => onTool(tool === 'arrow' ? 'select' : 'arrow')}
+          />
         </fieldset>
-      ))}
+        {(['create', 'organize'] as const).map((group) => (
+          <fieldset
+            key={group}
+            className={`toolbar__group toolbar__group--${group}`}
+            aria-label={t(`board.toolGroups.${group}`)}
+          >
+            {TOOLS.filter(
+              (tl) =>
+                !tl.menuOnly &&
+                (group === 'create'
+                  ? ['note', 'image', 'link', 'todo', 'color'].includes(tl.type)
+                  : ['column', 'frame'].includes(tl.type)),
+            ).map((tl) => (
+              <ToolButton
+                key={tl.type}
+                kind={tl.type as ToolKind}
+                icon={tl.icon}
+                label={t(`board.types.${tl.type}`)}
+                keyHint={tl.key ?? ''}
+                onClick={() => onAdd(tl.type)}
+                dragType={tl.type}
+              />
+            ))}
+          </fieldset>
+        ))}
+      </div>
       <fieldset
         className="toolbar__group toolbar__group--canvas"
         aria-label={t('board.canvasMenu.hint')}
@@ -153,7 +156,7 @@ export function Toolbar({
 
 /**
  * The primary action at the end of the bar: a menu of the canvas types to insert, each in its
- * content-kind colour. The menu sits outside the bar, which scrolls sideways on phones.
+ * content-kind colour. The menu sits outside the bar, whose tools scroll sideways on phones.
  */
 function CanvasMenuButton({ onCanvas }: { onCanvas: (template: CanvasTemplate) => void }) {
   const { t } = useTranslation();
