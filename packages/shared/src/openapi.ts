@@ -817,7 +817,7 @@ registry.registerPath({
   security: secured,
   summary: 'Your confirmed clip destinations, most recently used first.',
   description:
-    'At most 20 per user. Current board access is checked before limit. Deleted boards and archived projects are excluded. The first item is the last board. Independent of /me/recent-boards.',
+    'At most 20 per user. Only boards the caller can currently edit are returned, checked before limit. Deleted boards and archived projects are excluded. The first item is the last board. Independent of /me/recent-boards.',
   request: { query: ClipBoardQuery },
   responses: { 200: { description: 'Personal clip history', ...json(ClipBoards) }, ...errors },
 });

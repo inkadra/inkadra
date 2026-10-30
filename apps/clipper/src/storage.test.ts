@@ -44,10 +44,19 @@ afterEach(() => vi.unstubAllGlobals());
 describe('server clip history with a local cache', () => {
   it('replaces cache with server ordering and derives last from the first item', async () => {
     const remote = { ...board, id: 'remote' };
-    fetchMock.mockResolvedValue(new Response(JSON.stringify({ items: [remote, board] })));
+    const items = [remote, board].map((b) => ({ ...b, myRole: 'editor' }));
+    fetchMock.mockResolvedValue(new Response(JSON.stringify({ items })));
     expect(await refreshClipBoards()).toEqual([remote, board]);
     expect(await getLastBoard()).toEqual(remote);
     expect(fetchMock.mock.calls[0]?.[0]).toBe('https://ink.example/api/v1/me/clip-boards');
+  });
+  it('drops boards the user can no longer edit, so they stop being the default', async () => {
+    const viewer = { ...board, id: 'viewer', myRole: 'viewer' };
+    const editable = { ...board, id: 'editable', myRole: 'owner' };
+    fetchMock.mockResolvedValue(new Response(JSON.stringify({ items: [viewer, editable] })));
+    const { myRole: _, ...expected } = editable;
+    expect(await refreshClipBoards()).toEqual([expected]);
+    expect(await getLastBoard()).toEqual(expected);
   });
   it('lets an empty server history win, without importing the old browser list', async () => {
     fetchMock.mockResolvedValue(new Response(JSON.stringify({ items: [] })));

@@ -131,13 +131,19 @@ describe.skipIf(!url)('personal clip board history', () => {
     expect(await history()).toHaveLength(20);
   });
 
-  it('filters current access, archived projects and soft-deleted boards before limit', async () => {
+  it('filters current edit access, archived projects and soft-deleted boards before limit', async () => {
     await db
       .delete(projectMember)
       .where(and(eq(projectMember.projectId, projectId), eq(projectMember.userId, owner)));
     expect(await history()).toEqual([]);
+    // A viewer cannot clip, so the board is no destination until edit access returns.
     await db.insert(projectMember).values({ projectId, userId: owner, role: 'viewer' });
-    expect((await history(1))[0]?.myRole).toBe('viewer');
+    expect(await history()).toEqual([]);
+    await db
+      .update(projectMember)
+      .set({ role: 'editor' })
+      .where(and(eq(projectMember.projectId, projectId), eq(projectMember.userId, owner)));
+    expect((await history(1))[0]?.myRole).toBe('editor');
     await db.update(board).set({ deletedAt: new Date() }).where(eq(board.id, ids[1]!));
     expect(await history(1)).toHaveLength(1);
     expect((await history()).map((r) => r.id)).not.toContain(ids[1]);

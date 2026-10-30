@@ -6,7 +6,10 @@ import { clipBoardUse, user } from './db/schema.ts';
 /** Serialize per user, including concurrent clips on different server replicas. */
 export async function rememberClipBoard(db: Database, userId: string, boardId: string) {
   await db.transaction(async (tx) => {
-    await tx.select({ id: user.id }).from(user).where(eq(user.id, userId)).for('update');
+    // A busy user row must not hold up the response of a clip that already succeeded.
+    await tx.execute(sql`set local lock_timeout = '2s'`);
+    // NO KEY UPDATE serializes clips without blocking inserts that reference the user.
+    await tx.select({ id: user.id }).from(user).where(eq(user.id, userId)).for('no key update');
     await tx
       .insert(clipBoardUse)
       .values({ userId, boardId, usedAt: sql`clock_timestamp()` })

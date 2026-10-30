@@ -804,5 +804,8 @@ export const clipBoardUse = pgTable(
       .references(() => board.id, { onDelete: 'cascade' }),
     usedAt: timestamp('used_at', { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [primaryKey({ columns: [t.userId, t.boardId] })],
+  (t) => [
+    primaryKey({ columns: [t.userId, t.boardId] }),
+    index('clip_board_use_board_idx').on(t.boardId),
+  ],
 );

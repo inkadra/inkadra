@@ -1,7 +1,9 @@
 import { createHash } from 'node:crypto';
 import {
   API_PREFIX,
+  atLeast,
   Id as AssetId,
+  CAPABILITY_ROLE,
   type Board,
   type BoardColumns,
   type BoardDetail,
@@ -148,7 +150,8 @@ export function registerBoardRoutes(app: FastifyInstance, deps: Deps) {
     );
     const items: ClipBoard[] = rows.flatMap((r) => {
       const myRole = roles.get(r.board.id);
-      return myRole
+      // Only boards the caller can still clip into: a viewer cannot be a destination.
+      return myRole && atLeast(myRole, CAPABILITY_ROLE.edit)
         ? [
             {
               id: r.board.id,

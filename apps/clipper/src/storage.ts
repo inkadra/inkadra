@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MPL-2.0
 import { CLIP_BOARD_HISTORY_LIMIT } from '@inkadra/shared/constants';
 import { InkadraApi } from './api.ts';
+import { CAN_EDIT } from './boards.ts';
 import { ClipperError } from './errors.ts';
 
 /** The server the clipper is connected to, kept in chrome.storage.local (never synced). */
@@ -99,7 +100,8 @@ export async function refreshClipBoards(): Promise<BoardRef[]> {
       current.serverUrl !== connection.serverUrl
     )
       return getRecentBoards();
-    const recentBoards = items.map(toBoardRef);
+    // A board the user can no longer edit must not stay the default destination.
+    const recentBoards = items.filter((b) => CAN_EDIT.has(b.myRole)).map(toBoardRef);
     await chrome.storage.local.set({ recentBoards });
     await chrome.storage.local.remove('lastBoard');
     return recentBoards;

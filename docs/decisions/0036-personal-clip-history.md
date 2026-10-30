@@ -14,7 +14,8 @@ Unconfirmed or rejected clips do not update history.
 
 `GET /api/v1/me/clip-boards?limit=1..20` defaults to 20 and returns `ClipBoards`:
 `items` of `ClipBoard` (`id`, `projectId`, `title`, `projectName`, `myRole`, `usedAt`).
-It checks current access with `boardRoles`, excludes deleted boards and archived projects,
+It checks current access with `boardRoles` and keeps only boards the caller can still edit
+(clipping needs `editor`), excludes deleted boards and archived projects,
 and applies the requested limit after filtering. The first item is the last destination;
 there is no separate last-board field. `DELETE /api/v1/me/clip-boards/:boardId` returns 204
 idempotently, including after access is lost. Authentication and rate-limit policy match

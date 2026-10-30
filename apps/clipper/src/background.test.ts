@@ -158,7 +158,7 @@ describe('background clip entry points', () => {
     async (status) => {
       let finish!: (response: Response) => void;
       fetchMock
-        .mockResolvedValueOnce(response(200, { items: [board] }))
+        .mockResolvedValueOnce(response(200, { items: [{ ...board, myRole: 'editor' }] }))
         .mockResolvedValueOnce(new Response(new Blob(['image'], { type: 'image/png' })))
         .mockImplementationOnce(
           () =>
