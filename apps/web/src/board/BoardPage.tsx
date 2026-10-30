@@ -1,3 +1,4 @@
+import type { Rect } from '@inkadra/canvas-core';
 import type { Board, BoardDetail, ProjectRole } from '@inkadra/shared';
 import { Avatar, Button, EmptyState, Icon, IconButton } from '@inkadra/ui';
 import {
@@ -23,6 +24,8 @@ import { CommentsButton, useCardLabel } from './CommentsPanel.tsx';
 import { ContextMenu } from './chrome.tsx';
 import { type BoardConnection, useBoardConnection } from './connection.ts';
 import { DeniedState } from './DeniedState.tsx';
+import { ExportDialog, type ExportSource } from './export/ExportDialog.tsx';
+import type { ExportWhat } from './export/engine.ts';
 import { ClientReviewView } from './film/ClientReviewView.tsx';
 import { MoodboardView } from './film/MoodboardView.tsx';
 import { ScheduleView } from './film/ScheduleView.tsx';
@@ -208,8 +211,27 @@ function BoardScreen({
   const [sharing, setSharing] = useState(false);
   const [versionsOpen, setVersionsOpen] = useState(false);
   const [headerMenu, setHeaderMenu] = useState(false);
-  const [preview, setPreview] = useState<VersionPreview | null>(null);
   const liveSelection = useRef<ReadonlySet<string>>(new Set());
+  const [exporting, setExporting] = useState<{
+    source: ExportSource;
+    what?: ExportWhat;
+    selection: ReadonlySet<string>;
+    visible: Rect | null;
+  } | null>(null);
+  const visibleRef = useRef<(() => Rect | null) | null>(null);
+  // Selection and visible area are read when the dialog opens, not followed afterwards.
+  const openExport = useCallback((source: ExportSource, what?: ExportWhat) => {
+    setExporting({
+      source,
+      ...(what ? { what } : {}),
+      selection: liveSelection.current,
+      visible: visibleRef.current?.() ?? null,
+    });
+  }, []);
+  const exportSelection = useCallback(() => openExport('canvas', 'selection'), [openExport]);
+  const exportStoryboard = useCallback(() => openExport('storyboard'), [openExport]);
+  const exportShotList = useCallback(() => openExport('shotlist'), [openExport]);
+  const [preview, setPreview] = useState<VersionPreview | null>(null);
   const rememberSelection = useCallback((ids: ReadonlySet<string>) => {
     liveSelection.current = ids;
   }, []);
@@ -433,12 +455,11 @@ function BoardScreen({
                   items={[
                     { label: t('versions.title'), action: () => setVersionsOpen(true) },
                     { divider: true },
-                    // Export is still to come; presenting lives in the Storyboard view.
                     {
                       label: t('board.export.action'),
-                      disabled: true,
-                      hint: t('board.export.soon'),
+                      action: () => openExport(exportSourceOf(view)),
                     },
+                    // Presenting lives in the Storyboard view.
                     {
                       label: t('board.present.action'),
                       disabled: true,
@@ -480,6 +501,7 @@ function BoardScreen({
       editable,
       headerMenu,
       closeHeaderMenu,
+      openExport,
       handleRenameCurrentBoard,
       boardId,
       projectRole,
@@ -524,6 +546,7 @@ function BoardScreen({
         boardTitle={crumbs.at(-1)?.title ?? detail?.title ?? ''}
         userId={user.id}
         readOnly={!!preview || !editable}
+        onExport={exportStoryboard}
       />
     ) : view === 'shotlist' ? (
       <ShotList
@@ -534,6 +557,7 @@ function BoardScreen({
         boardId={boardId}
         userId={user.id}
         readOnly={!!preview || !editable}
+        onExport={exportShotList}
       />
     ) : view === 'schedule' ? (
       <ScheduleView
@@ -582,6 +606,8 @@ function BoardScreen({
       <BoardCanvas
         initialSelection={liveSelection.current}
         onSelectionChange={rememberSelection}
+        onExportSelection={exportSelection}
+        visibleRef={visibleRef}
         conn={conn}
         breadcrumb={crumbTitles}
         projectId={projectId}
@@ -600,6 +626,21 @@ function BoardScreen({
       {versions}
       {content}
       {shareDialog}
+      {exporting && (
+        <ExportDialog
+          source={exporting.source}
+          initialWhat={exporting.what}
+          store={preview?.store ?? conn.store}
+          projectId={projectId}
+          boardId={boardId}
+          projectName={projectName}
+          boardTitle={crumbs.at(-1)?.title ?? detail?.title ?? ''}
+          boards={boards}
+          selection={exporting.selection}
+          visible={exporting.visible}
+          onClose={() => setExporting(null)}
+        />
+      )}
       <RestoredToast
         provider={conn.provider}
         boardId={boardId}
@@ -611,6 +652,11 @@ function BoardScreen({
 }
 
 /** The canvas with the other people on the board. */
+/** The export dialog follows the open view; other views export the board's cards. */
+function exportSourceOf(view: string): ExportSource {
+  return view === 'storyboard' || view === 'shotlist' ? view : 'canvas';
+}
+
 function BoardCanvas(props: Omit<Parameters<typeof Canvas>[0], 'peers'>) {
   const peers = usePeers(props.conn.provider);
   return <Canvas {...props} peers={peers} />;

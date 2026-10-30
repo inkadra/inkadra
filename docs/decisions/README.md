@@ -41,6 +41,7 @@ in order. An accepted decision is never rewritten: a later one supersedes it.
 | [0035](0035-request-origins-and-canonical-links.md) | Request origins for browser traffic, canonical URLs for external links                 |
 | [0036](0036-personal-clip-history.md)               | Personal clip destination history shared across browsers                               |
 | [0037](0037-export-import-and-backups.md)           | Project archives in an open format, logical instance backups without pg_dump           |
+| [0038](0038-pdf-and-image-export.md)                | PDF and image export built in the browser                                              |
 | [0039](0039-project-export-settings.md)             | PDF and image export settings stored per project                                       |
 
 Two decisions share the number 0025: they were accepted in parallel, and accepted records

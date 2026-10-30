@@ -1,0 +1,237 @@
+/* Export dialog: options on the left, the first page on the right; stacked on phones. */
+.ink-dialog:has(.export) {
+  width: min(880px, calc(100vw - 32px));
+  max-width: calc(100vw - 32px);
+}
+.export {
+  display: grid;
+  grid-template-columns: minmax(0, 320px) minmax(0, 1fr);
+  gap: 24px;
+  align-items: start;
+}
+.export__controls {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+}
+.export__field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.export__label {
+  padding: 0;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--ink-text-secondary);
+}
+.export__row {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+}
+.export__row > .export__field:first-child {
+  flex: 0 0 96px;
+}
+.export__seg {
+  display: inline-flex;
+  gap: 2px;
+  padding: 2px;
+  border-radius: 8px;
+  background: var(--ink-surface-2);
+  border: 1px solid var(--ink-border-default);
+  align-self: flex-start;
+  max-width: 100%;
+}
+.export__seg-btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  height: 26px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--ink-text-secondary);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+}
+/* The radio covers its label, invisible: clicks and focus land on the real control. */
+.export__seg-input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+.export__seg-btn:hover {
+  color: var(--ink-text-primary);
+}
+.export__seg-btn:has(input:checked) {
+  background: var(--ink-surface-3);
+  color: var(--ink-text-primary);
+}
+.export__seg-btn:has(input:focus-visible) {
+  outline: 2px solid var(--ink-accent-primary);
+  outline-offset: 1px;
+}
+.export__hint {
+  display: block;
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--ink-text-muted);
+}
+.export__hint--error {
+  color: var(--ink-danger-fg);
+}
+.export__options {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.export__check {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--ink-text-primary);
+  cursor: pointer;
+}
+.export__check input {
+  margin: 2px 0 0;
+  accent-color: var(--ink-accent-primary);
+}
+.export__check:has(input:disabled) {
+  color: var(--ink-text-secondary);
+  cursor: default;
+}
+.export__logo {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding-top: 4px;
+}
+.export__logo-label {
+  flex: 1 0 100%;
+  font-size: 13px;
+}
+.export__logo-img {
+  height: 28px;
+  max-width: 96px;
+  object-fit: contain;
+  padding: 2px 6px;
+  border-radius: 6px;
+  /* The logo is shown on the paper it will be printed on. */
+  background: var(--ink-surface-1);
+  border: 1px solid var(--ink-border-default);
+}
+.export__logo .export__hint {
+  flex: 1 0 100%;
+}
+.export__preview {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+  padding: 16px;
+  border-radius: 10px;
+  background: var(--ink-bg-canvas);
+  border: 1px solid var(--ink-border-default);
+}
+.export__paper {
+  position: relative;
+}
+.export__canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 2px;
+  box-shadow: 0 1px 4px rgb(0 0 0 / 0.25);
+  transition: opacity 120ms;
+}
+.export__paper[data-status="loading"] .export__canvas {
+  opacity: 0.55;
+}
+.export__preview-note {
+  position: absolute;
+  inset: auto 0 8px;
+  text-align: center;
+  font-size: 12px;
+  color: var(--ink-text-secondary);
+}
+.export__preview figcaption {
+  text-align: center;
+}
+/* Same look as the upload progress of a card. */
+.export__progress-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 12px;
+}
+.export__progress {
+  height: 4px;
+  border-radius: 2px;
+  background: var(--ink-surface-3);
+  overflow: hidden;
+}
+.export__progress span {
+  display: block;
+  height: 100%;
+  border-radius: 2px;
+  background: var(--ink-accent-primary);
+  transition: width 150ms;
+}
+.export__notice {
+  margin: 12px 0 0;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: var(--ink-surface-2);
+  border: 1px solid var(--ink-border-default);
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--ink-text-secondary);
+}
+@media (prefers-reduced-motion: reduce) {
+  .export__canvas,
+  .export__progress span {
+    transition: none;
+  }
+}
+@media (width < 768px) {
+  .export {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 16px;
+    max-height: calc(100dvh - 180px);
+    overflow-y: auto;
+  }
+  .export__preview {
+    order: -1;
+    padding: 10px;
+  }
+  .export__paper {
+    max-width: 260px;
+    margin: 0 auto;
+    width: 100%;
+  }
+  .phone-sheet .ink-dialog:has(.export) {
+    width: 100vw;
+    max-width: 100vw;
+  }
+}
