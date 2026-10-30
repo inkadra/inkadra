@@ -44,5 +44,7 @@ in order. An accepted decision is never rewritten: a later one supersedes it.
 | [0038](0038-pdf-and-image-export.md)                | PDF and image export built in the browser                                              |
 | [0039](0039-project-export-settings.md)             | PDF and image export settings stored per project                                       |
 
+| [0042](0042-video-frame-grab.md) | Video stills and their source |
+
 Two decisions share the number 0025: they were accepted in parallel, and accepted records
 are not renumbered.

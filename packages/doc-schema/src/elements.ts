@@ -61,8 +61,24 @@ export const NoteElement = Base.extend({
   type: z.literal('note'),
   color: z.string().optional(),
 });
+/** Provenance of a video still. Thumbnail time is a reference, not the pictured instant. */
+export const VideoFrameSource = z.discriminatedUnion('kind', [
+  z.object({
+    kind: z.literal('uploaded-video'),
+    assetId: z.uuid(),
+    timeSeconds: z.number().finite().nonnegative(),
+  }),
+  z.object({
+    kind: z.literal('link-thumbnail'),
+    url: z.url({ protocol: /^https?$/ }).max(2048),
+    timeSeconds: z.number().finite().nonnegative().optional(),
+  }),
+]);
+export type VideoFrameSource = z.infer<typeof VideoFrameSource>;
+
 export const ImageElement = Base.extend({
   type: z.literal('image'),
+  source: VideoFrameSource.optional(),
   assetId: z.string(),
   caption: z.string().max(2000).optional(),
 });
@@ -200,6 +216,7 @@ const FrameShapes = z
 /** A storyboard frame: a picture (drawn or uploaded) with the data of the shot. */
 export const FrameElement = Base.extend({
   type: z.literal('frame'),
+  source: VideoFrameSource.optional(),
   label: z
     .string()
     .trim()

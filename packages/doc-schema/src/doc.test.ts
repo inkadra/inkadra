@@ -102,8 +102,8 @@ describe('board document', () => {
     const file = { ...base(), type: 'file' as const, assetId: 'asset-id' };
     addElement(doc, file);
     const before = roots(doc).elements.toJSON();
-    expect(migrateBoardDoc(doc, boardId)).toEqual([4]);
-    expect(getSchemaVersion(doc)).toBe(4);
+    expect(migrateBoardDoc(doc, boardId)).toEqual([4, 5]);
+    expect(getSchemaVersion(doc)).toBe(CURRENT_SCHEMA_VERSION);
     expect(roots(doc).elements.toJSON()).toEqual(before);
     expect(readElement(roots(doc).elements.get(file.id)!)).not.toHaveProperty('caption');
     expect(validateBoardDoc(doc)).toEqual([]);
@@ -162,8 +162,8 @@ describe('board document', () => {
     addElement(doc, note);
     addElement(doc, column);
     const before = [...roots(doc).elements.values()].map((m) => readElement(m));
-    expect(migrateBoardDoc(doc, boardId)).toEqual([3, 4]);
-    expect(getSchemaVersion(doc)).toBe(4);
+    expect(migrateBoardDoc(doc, boardId)).toEqual([3, 4, 5]);
+    expect(getSchemaVersion(doc)).toBe(CURRENT_SCHEMA_VERSION);
     expect([...roots(doc).elements.values()].map((m) => readElement(m))).toEqual(before);
     expect(validateBoardDoc(doc)).toEqual([]);
   });
@@ -329,8 +329,8 @@ describe('board document', () => {
     expect(getSchemaVersion(doc)).toBe(1);
     const before = [...roots(doc).elements.values()].map((m) => readElement(m));
     expect(before.every(Boolean)).toBe(true);
-    expect(migrateBoardDoc(doc, boardId)).toEqual([2, 3, 4]);
-    expect(getSchemaVersion(doc)).toBe(4);
+    expect(migrateBoardDoc(doc, boardId)).toEqual([2, 3, 4, 5]);
+    expect(getSchemaVersion(doc)).toBe(CURRENT_SCHEMA_VERSION);
     expect([...roots(doc).elements.values()].map((m) => readElement(m))).toEqual(before);
     const note = roots(doc).elements.get('note_v1_00001')!;
     expect((note.get('body') as Y.XmlFragment).toString()).toContain('Luce al neon');
@@ -394,5 +394,61 @@ describe('board document', () => {
     const copy = new Y.Doc();
     Y.applyUpdate(copy, Y.encodeStateAsUpdate(doc));
     expect(roots(copy).elements.get('future_el_0001')?.get('type')).toBe('hologram');
+  });
+});
+
+describe('video still provenance', () => {
+  const assetId = '0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10';
+  it('preserves subsecond source times on images and frames through Yjs', () => {
+    for (const type of ['image', 'frame'] as const) {
+      for (const source of [
+        { kind: 'uploaded-video' as const, assetId, timeSeconds: 12.345 },
+        {
+          kind: 'link-thumbnail' as const,
+          url: 'https://www.youtube.com/watch?v=abcdefghijk',
+          timeSeconds: 42,
+        },
+        { kind: 'link-thumbnail' as const, url: 'https://vimeo.com/123' },
+      ]) {
+        const doc = createBoardDoc(boardId);
+        const element = { ...base(), type, assetId, source };
+        addElement(doc, element);
+        const copy = new Y.Doc();
+        Y.applyUpdate(copy, Y.encodeStateAsUpdate(doc));
+        expect(readElement(roots(copy).elements.get(element.id)!)).toMatchObject(element);
+        expect(validateBoardDoc(copy)).toEqual([]);
+      }
+    }
+  });
+
+  it('rejects invalid times and unsafe or incomplete sources', () => {
+    for (const type of ['image', 'frame'] as const) {
+      for (const source of [
+        ...[-1, Number.NaN, Number.POSITIVE_INFINITY, '12'].map((timeSeconds) => ({
+          kind: 'uploaded-video',
+          assetId,
+          timeSeconds,
+        })),
+        { kind: 'uploaded-video', assetId },
+        { kind: 'uploaded-video', assetId: 'invalid', timeSeconds: 0 },
+        { kind: 'link-thumbnail', url: 'javascript:alert(1)' },
+        { kind: 'link-thumbnail', url: 'https://vimeo.com/123', timeSeconds: -1 },
+        { kind: 'unknown', assetId, timeSeconds: 0 },
+      ])
+        expect(Element.safeParse({ ...base(), type, assetId, source }).success).toBe(false);
+    }
+  });
+
+  it('migrates version 4 without fabricating provenance or altering notes', () => {
+    const doc = createBoardDoc(boardId);
+    roots(doc).meta.set('schemaVersion', 4);
+    const frame = { ...base(), type: 'frame' as const, assetId, notes: 'Last Train' };
+    addElement(doc, frame);
+    const before = roots(doc).elements.toJSON();
+    expect(migrateBoardDoc(doc, boardId)).toEqual([5]);
+    expect(getSchemaVersion(doc)).toBe(5);
+    expect(roots(doc).elements.toJSON()).toEqual(before);
+    expect(readElement(roots(doc).elements.get(frame.id)!)).not.toHaveProperty('source');
+    expect(migrateBoardDoc(doc, boardId)).toEqual([]);
   });
 });

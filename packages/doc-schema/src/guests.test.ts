@@ -53,7 +53,8 @@ describe('guest element fields', () => {
   // a field added to an element needs a decision before guests see it.
   const omitted: Record<string, readonly string[]> = {
     common: ['tags', 'locked', 'guestHidden'],
-    frame: ['status', 'notes', 'approved'],
+    frame: ['status', 'notes', 'approved', 'source'],
+    image: ['source'],
   };
 
   it('decides for every field of every element type', () => {
@@ -97,6 +98,29 @@ describe('guest element fields', () => {
       expect(Element.parse(guest)).toEqual(guest);
       const { caption: _caption, ...legacy } = element as typeof element & { caption?: string };
       expect(toGuestElement(legacy)).not.toHaveProperty('caption');
+    }
+  });
+
+  it('never exposes video provenance to guests', () => {
+    for (const type of ['image', 'frame'] as const) {
+      const element = Element.parse({
+        id: 'V1StGXR8_Z5jdHi6B-myT',
+        type,
+        x: 0,
+        y: 0,
+        w: 240,
+        z: 'a0',
+        parent: null,
+        createdBy: null,
+        createdAt: 0,
+        assetId: 'still',
+        source: {
+          kind: 'uploaded-video',
+          assetId: '0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10',
+          timeSeconds: 0,
+        },
+      });
+      expect(toGuestElement(element)).not.toHaveProperty('source');
     }
   });
 
