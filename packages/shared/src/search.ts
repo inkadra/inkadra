@@ -16,12 +16,16 @@ export const SearchQuery = z
     tag: z.string().trim().min(1).max(40).optional().openapi({
       description: 'Only cards with this tag (compared without case).',
     }),
-    type: z.string().max(20).optional().openapi({
-      description:
-        'Only cards of this element type, e.g. `frame` or `image`. With `projectId` and ' +
-        'without `q` or `tag`, lists the named cards of that type the caller can read ' +
-        '(since API 0.10.0).',
-    }),
+    type: z
+      .string()
+      .max(20)
+      .optional()
+      .openapi({
+        description:
+          'Only cards of this element type, e.g. `frame` or `image`. With `projectId` and ' +
+          'without `q` or `tag`, lists the named cards of that type the caller can read ' +
+          '(since API 0.10.0).',
+      }),
     limit: z.coerce.number().int().min(1).max(50).default(20),
   })
   // A type within one project lists those cards, e.g. the characters of a project.
