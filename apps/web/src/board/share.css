@@ -335,6 +335,10 @@
    go on a second line, with touch-sized targets. The invite field puts its role and end date
    under the address for the same reason. */
 @media (width < 480px) {
+  /* Two-line rows: room for more than two people before the list scrolls. */
+  .share__list {
+    max-height: 55vh;
+  }
   .share__row {
     flex-wrap: wrap;
     gap: 0 4px;
