@@ -5,7 +5,7 @@ import type { BoardOption } from './messages.ts';
 import type { BoardRef } from './storage.ts';
 
 /** Roles that may add cards. The server decides with the effective role; this only hides noise. */
-const CAN_EDIT: ReadonlySet<ProjectRole> = new Set(['owner', 'editor']);
+export const CAN_EDIT: ReadonlySet<ProjectRole> = new Set(['owner', 'editor']);
 
 /**
  * The picker before anything is typed: recent boards, then the root board of every active

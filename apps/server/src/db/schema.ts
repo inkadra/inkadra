@@ -791,3 +791,21 @@ export const shootingDay = pgTable(
   },
   (t) => [index('shooting_day_board_date_idx').on(t.boardId, t.date)],
 );
+
+/** Bounded personal history of confirmed clip destinations. */
+export const clipBoardUse = pgTable(
+  'clip_board_use',
+  {
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => user.id, { onDelete: 'cascade' }),
+    boardId: uuid('board_id')
+      .notNull()
+      .references(() => board.id, { onDelete: 'cascade' }),
+    usedAt: timestamp('used_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.userId, t.boardId] }),
+    index('clip_board_use_board_idx').on(t.boardId),
+  ],
+);

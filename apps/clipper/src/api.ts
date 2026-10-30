@@ -4,6 +4,7 @@ import type {
   AppToken,
   Board,
   BoardColumn,
+  ClipBoards,
   ClipRequest,
   ClipResult,
   ExchangeAppCode,
@@ -60,6 +61,19 @@ export class InkadraApi {
 
   async revokeToken(tokenId: string): Promise<void> {
     await this.request<void>('DELETE', `/me/tokens/${encodeURIComponent(tokenId)}`);
+  }
+
+  async clipBoards(): Promise<ClipBoards['items']> {
+    const page = await this.request<ClipBoards>('GET', '/me/clip-boards', {
+      signal: AbortSignal.timeout(4000),
+    });
+    return page.items;
+  }
+
+  async forgetClipBoard(boardId: string): Promise<void> {
+    await this.request<void>('DELETE', `/me/clip-boards/${encodeURIComponent(boardId)}`, {
+      signal: AbortSignal.timeout(4000),
+    });
   }
 
   async projects(): Promise<Project[]> {
@@ -133,7 +147,7 @@ export class InkadraApi {
   private async request<T>(
     method: string,
     path: string,
-    options: { auth?: boolean; json?: unknown; form?: FormData } = {},
+    options: { auth?: boolean; json?: unknown; form?: FormData; signal?: AbortSignal } = {},
   ): Promise<T> {
     const headers: Record<string, string> = { Accept: 'application/json' };
     if (options.auth !== false) {
@@ -155,6 +169,7 @@ export class InkadraApi {
         headers,
         body,
         credentials: 'omit',
+        signal: options.signal,
       });
     } catch (err) {
       // fetch only rejects when no answer arrived: no network, DNS, TLS or a refused connection.

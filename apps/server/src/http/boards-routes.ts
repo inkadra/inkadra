@@ -2,9 +2,13 @@ import { createHash } from 'node:crypto';
 import {
   API_PREFIX,
   Id as AssetId,
+  atLeast,
   type Board,
   type BoardColumns,
   type BoardDetail,
+  CAPABILITY_ROLE,
+  type ClipBoard,
+  ClipBoardQuery,
   CreateBoard,
   Id,
   type ProjectRole,
@@ -29,7 +33,7 @@ import type { Auth } from '../auth.ts';
 import { type BoardReader, storedColumns } from '../board-content.ts';
 import { boardCounts, projectPreview } from '../board-preview.ts';
 import type { Database } from '../db/client.ts';
-import { asset, board, boardDoc, project } from '../db/schema.ts';
+import { asset, board, boardDoc, clipBoardUse, project } from '../db/schema.ts';
 import { iso } from './api-routes.ts';
 import { requireActor } from './auth-routes.ts';
 import { HttpError } from './errors.ts';
@@ -127,6 +131,50 @@ export function registerBoardRoutes(app: FastifyInstance, deps: Deps) {
     reply.header('etag', etag);
     if (req.headers['if-none-match'] === etag) return reply.code(304).send();
     return body;
+  });
+
+  app.get(v1('/me/clip-boards'), async (req) => {
+    const actor = await requireActor(auth, req, db);
+    const { limit } = ClipBoardQuery.parse(req.query ?? {});
+    const rows = await db
+      .select({ board, projectName: project.name, usedAt: clipBoardUse.usedAt })
+      .from(clipBoardUse)
+      .innerJoin(board, eq(board.id, clipBoardUse.boardId))
+      .innerJoin(project, and(eq(project.id, board.projectId), isNull(project.archivedAt)))
+      .where(and(eq(clipBoardUse.userId, actor.id), isNull(board.deletedAt)))
+      .orderBy(desc(clipBoardUse.usedAt), asc(board.id));
+    const roles = await boardRoles(
+      db,
+      actor,
+      rows.map((r) => r.board.id),
+    );
+    const items: ClipBoard[] = rows.flatMap((r) => {
+      const myRole = roles.get(r.board.id);
+      // Only boards the caller can still clip into: a viewer cannot be a destination.
+      return myRole && atLeast(myRole, CAPABILITY_ROLE.edit)
+        ? [
+            {
+              id: r.board.id,
+              projectId: r.board.projectId,
+              title: r.board.title,
+              projectName: r.projectName,
+              myRole,
+              usedAt: iso(r.usedAt),
+            },
+          ]
+        : [];
+    });
+    return { items: items.slice(0, limit) };
+  });
+
+  app.delete(v1('/me/clip-boards/:boardId'), async (req, reply) => {
+    const actor = await requireActor(auth, req, db);
+    const { boardId } = BoardParams.parse(req.params);
+    // Idempotent, including boards the caller can no longer open.
+    await db
+      .delete(clipBoardUse)
+      .where(and(eq(clipBoardUse.userId, actor.id), eq(clipBoardUse.boardId, boardId)));
+    return reply.status(204).send();
   });
 
   app.get(v1('/me/recent-boards'), async (req) => {

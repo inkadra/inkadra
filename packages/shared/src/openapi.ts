@@ -14,6 +14,8 @@ import {
   BoardCounts,
   BoardDetail,
   BoardPreview,
+  ClipBoardQuery,
+  ClipBoards,
   CreateBoard,
   RecentBoard,
   RecentBoardQuery,
@@ -806,6 +808,27 @@ registry.registerPath({
   summary: 'Move a board and its sub-boards to the trash. The root board cannot be deleted.',
   request: { params: idParam('boardId') },
   responses: { 204: { description: 'Deleted' }, ...errors },
+});
+
+registry.registerPath({
+  method: 'get',
+  path: v1('/me/clip-boards'),
+  tags: ['Boards'],
+  security: secured,
+  summary: 'Your confirmed clip destinations, most recently used first.',
+  description:
+    'At most 20 per user. Only boards the caller can currently edit are returned, checked before limit. Deleted boards and archived projects are excluded. The first item is the last board. Independent of /me/recent-boards.',
+  request: { query: ClipBoardQuery },
+  responses: { 200: { description: 'Personal clip history', ...json(ClipBoards) }, ...errors },
+});
+registry.registerPath({
+  method: 'delete',
+  path: v1('/me/clip-boards/{boardId}'),
+  tags: ['Boards'],
+  security: secured,
+  summary: 'Forget one personal clip destination, even without current board access.',
+  request: { params: idParam('boardId') },
+  responses: { 204: { description: 'Forgotten (also when already absent)' }, ...errors },
 });
 
 registry.registerPath({

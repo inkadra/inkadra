@@ -19,6 +19,7 @@ import {
   type NewCard,
   type NoteBlock,
 } from '../board-writer.ts';
+import { rememberClipBoard } from '../clip-board-history.ts';
 import type { Database } from '../db/client.ts';
 import { asset } from '../db/schema.ts';
 import type { Jobs } from '../jobs.ts';
@@ -425,6 +426,10 @@ export async function registerClipRoutes(app: FastifyInstance, deps: Deps) {
             : new HttpError('internal', 'The board could not be reached in time: try again.');
         // On the board now: from here the assets are the card's, and the clip has succeeded.
         await process(created.splice(0), req.log);
+        // A history failure must never turn a confirmed clip into a retryable failure.
+        await rememberClipBoard(db, actor.id, input.boardId).catch((err) =>
+          req.log.error({ err }, 'clip history not recorded'),
+        );
         const body: ClipResult = { boardId: input.boardId, elementId: placed.elementId, assetId };
         return reply.status(201).send(body);
       } finally {
