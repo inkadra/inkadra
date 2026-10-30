@@ -14,7 +14,7 @@
   },
   "dependencies": {
     "@inkadra/doc-schema": "workspace:*",
-    "fractional-indexing": "^3.2.0",
+    "fractional-indexing": "^4.0.0",
     "yjs": "^13.6.0"
   },
   "devDependencies": {
