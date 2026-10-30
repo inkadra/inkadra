@@ -5048,10 +5048,34 @@
                       "null"
                     ],
                     "description": "Storyboards: `meta.aspect`."
+                  },
+                  "animaticAudio": {
+                    "type": [
+                      "object",
+                      "null"
+                    ],
+                    "properties": {
+                      "assetId": {
+                        "type": "string",
+                        "format": "uuid",
+                        "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10"
+                      },
+                      "volume": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 1
+                      }
+                    },
+                    "required": [
+                      "assetId",
+                      "volume"
+                    ],
+                    "description": "Storyboards: `meta.animaticAudio`, the sound track of the animatic, when its file is ready; the file is in `assets` with a `streamUrl`."
                   }
                 },
                 "required": [
-                  "aspect"
+                  "aspect",
+                  "animaticAudio"
                 ]
               }
             ]
@@ -5088,7 +5112,7 @@
             "items": {
               "$ref": "#/components/schemas/GuestAsset"
             },
-            "description": "Files the visible elements refer to, and nothing else."
+            "description": "Files the visible elements refer to, and the sound track of a storyboard animatic."
           },
           "reviews": {
             "type": "array",
@@ -5229,6 +5253,13 @@
               "null"
             ],
             "description": "`/api/v1/guest/links/{linkId}/assets/{assetId}/file` when the link allows downloads, else null."
+          },
+          "streamUrl": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "`/api/v1/guest/links/{linkId}/assets/{assetId}/stream`: only for the sound track of a storyboard animatic (`board.animaticAudio`), else null. Plays inline with byte ranges, whatever `allowDownload` says; it is never served as an attachment."
           }
         },
         "required": [
@@ -5242,7 +5273,8 @@
           "durationMs",
           "animated",
           "variants",
-          "downloadUrl"
+          "downloadUrl",
+          "streamUrl"
         ]
       },
       "GuestAssetVariant": {

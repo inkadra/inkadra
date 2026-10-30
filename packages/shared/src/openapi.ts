@@ -1742,6 +1742,23 @@ registry.registerPath({
 });
 registry.registerPath({
   method: 'get',
+  path: v1('/guest/links/{linkId}/assets/{assetId}/stream'),
+  tags: ['Guests'],
+  security: guest,
+  summary: 'The sound track of a storyboard animatic, to play inline. Supports `Range`.',
+  description:
+    'Only for the asset named by `meta.animaticAudio` of a storyboard of the link, whatever ' +
+    '`allowDownload` says (decision 0046); checked on every request. Sent inline, without a ' +
+    'filename, with `Cache-Control: private, no-store`.',
+  request: { params: z.object({ linkId: Id, assetId: Id }) },
+  responses: {
+    200: { description: 'Audio' },
+    206: { description: 'Part of the audio' },
+    ...guestErrors,
+  },
+});
+registry.registerPath({
+  method: 'get',
   path: v1('/guest/links/{linkId}/boards/{boardId}/comments'),
   tags: ['Guests'],
   security: guest,
