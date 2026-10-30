@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "Inkadra API",
-    "version": "0.8.0",
+    "version": "0.9.0",
     "license": {
       "name": "AGPL-3.0-only",
       "identifier": "AGPL-3.0-only"
@@ -178,6 +178,21 @@
               "name_required"
             ],
             "description": "`no_session`: no guest cookie, or its session expired; open the link again. `unavailable`: the link is suspended (the guest is not told why). Open: clients show a reason they do not know as a generic error."
+          }
+        },
+        "required": [
+          "reason"
+        ]
+      },
+      "ProjectCreationDenied": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "type": "string",
+            "enum": [
+              "project_creation_disabled"
+            ],
+            "description": "An administrator lets only some people create and import projects on this instance. Open: clients show a reason they do not know as a generic error."
           }
         },
         "required": [
@@ -717,6 +732,11 @@
           "requireAdminTwoFactor": {
             "type": "boolean",
             "description": "Require administrators to enroll in two-step verification before using the instance. Defaults to false on older installations."
+          },
+          "membersCanCreateProjects": {
+            "type": "boolean",
+            "default": true,
+            "description": "Whether members (not only administrators) can create and import projects. A per-account choice (InstanceMember.canCreateProjectsOverride) wins over it. Defaults to true; missing from servers before API 0.9.0."
           }
         },
         "required": [
@@ -742,6 +762,9 @@
             ]
           },
           "requireAdminTwoFactor": {
+            "type": "boolean"
+          },
+          "membersCanCreateProjects": {
             "type": "boolean"
           }
         },
@@ -798,6 +821,17 @@
             "type": "integer",
             "minimum": 0,
             "description": "Direct project memberships, including archived projects; excludes board-only grants."
+          },
+          "canCreateProjects": {
+            "type": "boolean",
+            "description": "Effective: administrators always can; members follow their override, else the instance setting. Missing from servers before API 0.9.0."
+          },
+          "canCreateProjectsOverride": {
+            "type": [
+              "boolean",
+              "null"
+            ],
+            "description": "Per-account choice; null follows InstanceSettings.membersCanCreateProjects."
           }
         },
         "required": [
@@ -822,6 +856,13 @@
           },
           "active": {
             "type": "boolean"
+          },
+          "canCreateProjects": {
+            "type": [
+              "boolean",
+              "null"
+            ],
+            "description": "Override for this account; null goes back to the instance setting."
           }
         },
         "additionalProperties": false
@@ -1005,6 +1046,10 @@
           },
           "twoFactorEnabled": {
             "type": "boolean"
+          },
+          "canCreateProjects": {
+            "type": "boolean",
+            "description": "Whether this person can create and import projects (decision 0041). Missing from servers before API 0.9.0, where everyone can."
           },
           "createdAt": {
             "type": "string",
@@ -2588,6 +2633,15 @@
             "type": "string",
             "format": "date-time",
             "example": "2026-11-02T09:30:00.000Z"
+          },
+          "expiresAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "example": "2026-11-02T09:30:00.000Z",
+            "description": "When the role ends, at most 366 days ahead; null for no end. Not for owners: a project always keeps one. Missing from servers before API 0.9.0."
           }
         },
         "required": [
@@ -2607,6 +2661,15 @@
               "commenter",
               "viewer"
             ]
+          },
+          "expiresAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "example": "2026-11-02T09:30:00.000Z",
+            "description": "When the membership ends; null removes the end, left out keeps it. Setting it is for owners. Making someone owner clears it; an owner with an end date is refused."
           }
         },
         "required": [
@@ -2975,6 +3038,15 @@
               null
             ],
             "description": "Role on the project, or null for people who only have board grants."
+          },
+          "expiresAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "example": "2026-11-02T09:30:00.000Z",
+            "description": "When the role of `source` ends: the grant falls back to the inherited role, the membership is removed. Missing from servers before API 0.9.0."
           }
         },
         "required": [
@@ -3037,6 +3109,15 @@
               "commenter",
               "viewer"
             ]
+          },
+          "expiresAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "example": "2026-11-02T09:30:00.000Z",
+            "description": "When the grant ends and the person falls back to the inherited role; null removes the end, left out keeps it. Not with `owner`."
           }
         },
         "required": [
@@ -3152,6 +3233,15 @@
             ],
             "format": "date-time",
             "example": "2026-11-02T09:30:00.000Z"
+          },
+          "accessExpiresAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "example": "2026-11-02T09:30:00.000Z",
+            "description": "When the role given by accepting ends; null for no end. Unlike `expiresAt`, which is when the invitation itself stops working."
           }
         },
         "required": [
@@ -3255,6 +3345,15 @@
             "minimum": 1,
             "maximum": 90,
             "default": 7
+          },
+          "accessExpiresAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "example": "2026-11-02T09:30:00.000Z",
+            "description": "When the role given by accepting ends; not with `owner`. Accepting after that time gives nothing."
           }
         }
       },
@@ -3316,6 +3415,15 @@
             "type": "string",
             "format": "date-time",
             "example": "2026-11-02T09:30:00.000Z"
+          },
+          "accessExpiresAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "example": "2026-11-02T09:30:00.000Z",
+            "description": "When the role ends, at most 366 days ahead; null for no end. Not for owners: a project always keeps one. Missing from servers before API 0.9.0."
           }
         },
         "required": [
@@ -4075,9 +4183,11 @@
               "review",
               "invitation_accepted",
               "export_ready",
-              "import_ready"
+              "import_ready",
+              "access_expiring",
+              "access_expired"
             ],
-            "description": "`mention`: someone mentioned you in a comment. `reply`: a reply in a thread you wrote in. `comment`: a new thread on a card you created. `review`: the review status of a card you created, or asked a review for, changed. `invitation_accepted`: someone accepted your invitation. `export_ready`: your export of `projectId` can be downloaded; it carries no transfer id, clients find the archive in `GET /transfers`. `import_ready`: your import finished as `projectId`. Both are in-app only, without actor, and arrive from API 0.8.0. Open: clients show types they do not know as a plain line with the actor, the board and the time."
+            "description": "`mention`: someone mentioned you in a comment. `reply`: a reply in a thread you wrote in. `comment`: a new thread on a card you created. `review`: the review status of a card you created, or asked a review for, changed. `invitation_accepted`: someone accepted your invitation. `export_ready`: your export of `projectId` can be downloaded; it carries no transfer id, clients find the archive in `GET /transfers`. `import_ready`: your import finished as `projectId`. Both are in-app only, without actor, and arrive from API 0.8.0. `access_expiring`: the role of `subject` on `projectId` (or on `boardId` and its sub-boards) ends at `accessExpiresAt`, sent three days before to that person and to the project owners. `access_expired`: it has ended. Both from API 0.9.0 (decision 0041). Open: clients show types they do not know as a plain line with the actor, the board and the time."
           },
           "actor": {
             "allOf": [
@@ -4165,6 +4275,46 @@
               null
             ],
             "description": "For review."
+          },
+          "subject": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "format": "uuid",
+                "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10"
+              },
+              "name": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 120
+              },
+              "image": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "format": "uri"
+              }
+            },
+            "required": [
+              "id",
+              "name",
+              "image"
+            ],
+            "description": "For access_expiring and access_expired: whose access it is (the recipient themselves, or a member for the owners). Missing from servers before API 0.9.0."
+          },
+          "accessExpiresAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "example": "2026-11-02T09:30:00.000Z",
+            "description": "For access_expiring and access_expired."
           },
           "readAt": {
             "type": [
@@ -6454,7 +6604,7 @@
             "bearer": []
           }
         ],
-        "summary": "Administrator only: persist instance name and registration mode.",
+        "summary": "Administrator only: persist instance name, registration mode and who can create projects.",
         "requestBody": {
           "required": true,
           "content": {
@@ -6611,7 +6761,7 @@
             "bearer": []
           }
         ],
-        "summary": "Administrator only: change global role or deactivate/reactivate an account.",
+        "summary": "Administrator only: change global role, deactivate/reactivate an account or let it create projects.",
         "description": "Deactivation preserves content and memberships, revokes sessions and personal tokens and prevents sign-in. The last active administrator cannot be demoted or deactivated. Invitations never grant administrator privileges.",
         "parameters": [
           {
@@ -8383,7 +8533,7 @@
             "bearer": []
           }
         ],
-        "summary": "Import a project archive as a new project owned by the caller. The body is the zip (`application/zip`, with Content-Length, at most `IMPORT_MAX_SIZE`); the worker checks and reads it afterwards. One import at a time per person. Sessions and personal tokens.",
+        "summary": "Import a project archive as a new project owned by the caller. The body is the zip (`application/zip`, with Content-Length, at most `IMPORT_MAX_SIZE`); the worker checks and reads it afterwards. One import at a time per person. Sessions and personal tokens. Refused with 403 (details: ProjectCreationDenied) when the caller cannot create projects.",
         "requestBody": {
           "required": true,
           "content": {
@@ -9401,6 +9551,7 @@
           }
         ],
         "summary": "Create a project with its root board. The creator becomes owner.",
+        "description": "Refused with 403 (details: ProjectCreationDenied) when the caller cannot create projects (User.canCreateProjects).",
         "requestBody": {
           "content": {
             "application/json": {
@@ -9804,7 +9955,7 @@
           }
         ],
         "summary": "Add a member or change a role.",
-        "description": "Editors can add people as editor, commenter or viewer. Changing the role of an existing member, and anything about owners, is for owners. A project always keeps one owner.",
+        "description": "Editors can add people as editor, commenter or viewer. Changing the role of an existing member, setting or changing `expiresAt`, and anything about owners, is for owners. A project always keeps one owner, so owners never have an end date.",
         "parameters": [
           {
             "schema": {
@@ -10842,7 +10993,7 @@
           }
         ],
         "summary": "Give someone a role on this board and its sub-boards.",
-        "description": "Needs editor on the board; the role can be at most your own, and you cannot change the access of someone whose role here is higher than yours. Not for the root board: use project members.",
+        "description": "Needs editor on the board; the role can be at most your own, and you cannot change the access of someone whose role here is higher than yours. Not for the root board: use project members. `expiresAt` ends the grant at that time (decision 0041).",
         "parameters": [
           {
             "schema": {

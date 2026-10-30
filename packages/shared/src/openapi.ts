@@ -79,6 +79,7 @@ import {
 import {
   CreateProject,
   Project,
+  ProjectCreationDenied,
   ProjectMember,
   SetProjectMember,
   SetProjectPin,
@@ -141,7 +142,7 @@ import {
   UpdateBoardVersion,
 } from './versions.ts';
 
-export const API_VERSION = '0.8.0';
+export const API_VERSION = '0.9.0';
 
 const registry = new OpenAPIRegistry();
 
@@ -300,7 +301,8 @@ registry.registerPath({
   path: v1('/instance/settings'),
   tags: ['Instance'],
   security: secured,
-  summary: 'Administrator only: persist instance name and registration mode.',
+  summary:
+    'Administrator only: persist instance name, registration mode and who can create projects.',
   request: { body: { required: true, ...json(UpdateInstanceSettings) } },
   responses: { 200: { description: 'Saved settings', ...json(InstanceSettings) }, ...errors },
 });
@@ -320,7 +322,9 @@ registry.registerPath({
   path: v1('/instance/members/{userId}'),
   tags: ['Instance'],
   security: secured,
-  summary: 'Administrator only: change global role or deactivate/reactivate an account.',
+  summary:
+    'Administrator only: change global role, deactivate/reactivate an account or let it create ' +
+    'projects.',
   description:
     'Deactivation preserves content and memberships, revokes sessions and personal tokens and prevents sign-in. The last active administrator cannot be demoted or deactivated. Invitations never grant administrator privileges.',
   request: {
@@ -713,7 +717,8 @@ registry.registerPath({
   summary:
     'Import a project archive as a new project owned by the caller. The body is the zip ' +
     '(`application/zip`, with Content-Length, at most `IMPORT_MAX_SIZE`); the worker checks ' +
-    'and reads it afterwards. One import at a time per person. Sessions and personal tokens.',
+    'and reads it afterwards. One import at a time per person. Sessions and personal tokens. ' +
+    'Refused with 403 (details: ProjectCreationDenied) when the caller cannot create projects.',
   request: { body: { required: true, content: { 'application/zip': { schema: zipBody } } } },
   responses: {
     202: { description: 'Import queued', headers: transferLocation, ...json(ProjectTransfer) },
@@ -859,6 +864,9 @@ registry.registerPath({
   tags: ['Projects'],
   security: secured,
   summary: 'Create a project with its root board. The creator becomes owner.',
+  description:
+    'Refused with 403 (details: ProjectCreationDenied) when the caller cannot create projects ' +
+    '(User.canCreateProjects).',
   request: { body: json(CreateProject) },
   responses: { 201: { description: 'Created', ...json(Project) }, ...errors },
 });
@@ -906,7 +914,8 @@ registry.registerPath({
   summary: 'Add a member or change a role.',
   description:
     'Editors can add people as editor, commenter or viewer. Changing the role of an existing ' +
-    'member, and anything about owners, is for owners. A project always keeps one owner.',
+    'member, setting or changing `expiresAt`, and anything about owners, is for owners. A ' +
+    'project always keeps one owner, so owners never have an end date.',
   request: { params: z.object({ projectId: Id, userId: Id }), body: json(SetProjectMember) },
   responses: { 200: { description: 'Member added or changed', ...json(ProjectMember) }, ...errors },
 });
@@ -1061,7 +1070,7 @@ registry.registerPath({
   description:
     'Needs editor on the board; the role can be at most your own, and you cannot change the ' +
     'access of someone whose role here is higher than yours. Not for the root board: use ' +
-    'project members.',
+    'project members. `expiresAt` ends the grant at that time (decision 0041).',
   request: { params: z.object({ boardId: Id, userId: Id }), body: json(SetBoardGrant) },
   responses: { 200: { description: 'Granted', ...json(BoardAccessEntry) }, ...errors },
 });
@@ -1608,6 +1617,7 @@ const guestErrors = {
 };
 const guestWriteErrors = { ...guestErrors, ...tooMany };
 registry.register('GuestDenied', GuestDenied);
+registry.register('ProjectCreationDenied', ProjectCreationDenied);
 const guestBoardParams = z.object({ linkId: Id, boardId: Id });
 const guestElementParams = guestBoardParams.extend({ elementId: ElementRef });
 const guestCommentParams = z.object({ linkId: Id, commentId: Id });
