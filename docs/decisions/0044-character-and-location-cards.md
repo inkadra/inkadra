@@ -15,7 +15,7 @@ show contacts typed in a note, and storyboard frames name their cast in free tex
   - `location`: `name`, optional `setting` (`int`, `ext`, `int-ext`, as on scenes), `address`,
     `mapUrl`, `assetId` (photo), `light` (best time and light), `availability`, `contact`,
     `notes`, `scenes`.
-  Migration from version 6 changes only the schema version.
+    Migration from version 6 changes only the schema version.
 - **Linked scenes are scene numbers** as written in the script (`"4"`, `"12A"`), not element
   ids: scenes live in storyboard boards, other documents, and are renumbered and re-imported;
   numbers are what crews use on call sheets and survive both.

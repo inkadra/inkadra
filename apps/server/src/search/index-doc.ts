@@ -176,15 +176,7 @@ export function entryFor(el: Element, body: string, autoLabel?: string): IndexEn
       return {
         ...base,
         title: el.name,
-        text: join(
-          el.name,
-          el.address,
-          el.light,
-          el.availability,
-          el.contact,
-          el.notes,
-          el.scenes,
-        ),
+        text: join(el.name, el.address, el.light, el.availability, el.contact, el.notes, el.scenes),
         assetId: uuidOrNull(el.assetId),
         data: { setting: el.setting ?? null },
       };

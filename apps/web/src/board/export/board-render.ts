@@ -401,6 +401,9 @@ function body(p: Placed, ctx: CardContext): Op[] {
       return ops;
     }
     case 'arrow':
+    // Story bible cards are drawn by their implementation (decision 0044).
+    case 'character':
+    case 'location':
       return [];
   }
 }
