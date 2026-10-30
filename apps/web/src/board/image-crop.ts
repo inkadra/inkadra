@@ -149,6 +149,53 @@ export function fitCropToAspect(
   return sanitizeCrop({ x, y, w, h, aspect: preset });
 }
 
+/**
+ * Keeps a preset crop at its aspect after the rotated bounds change (fine angle), around its
+ * center and at its width where it fits. Free crops are returned as they are.
+ */
+export function conformCropAspect(crop: ImageCrop, rotWidth: number, rotHeight: number): ImageCrop {
+  const ratio = cropAspectValue(crop.aspect);
+  if (!ratio) return sanitizeCrop(crop);
+  const normRatio = (ratio * (rotHeight > 0 ? rotHeight : 3)) / (rotWidth > 0 ? rotWidth : 4);
+  let w = crop.w;
+  let h = w / normRatio;
+  if (h > 1) {
+    h = 1;
+    w = normRatio;
+  }
+  if (w > 1) {
+    w = 1;
+    h = 1 / normRatio;
+  }
+  const cx = crop.x + crop.w / 2;
+  const cy = crop.y + crop.h / 2;
+  return sanitizeCrop({
+    x: clamp(cx - w / 2, 0, Math.max(0, 1 - w)),
+    y: clamp(cy - h / 2, 0, Math.max(0, 1 - h)),
+    w,
+    h,
+    aspect: crop.aspect,
+  });
+}
+
+/**
+ * Crop after a 90° step. A free crop turns with the picture; a preset is the shape of the
+ * result, so it stays landscape or portrait as chosen and is refitted, largest and centered
+ * on the turned rectangle, inside the new bounds.
+ */
+export function cropAfterQuarterTurn(
+  crop: ImageCrop,
+  direction: 1 | -1,
+  rotWidth: number,
+  rotHeight: number,
+): ImageCrop {
+  if (isIdentityCrop(crop)) return crop;
+  const turned = rotateCrop90(crop, direction);
+  return crop.aspect && crop.aspect !== 'free'
+    ? fitCropToAspect(turned, crop.aspect, rotWidth, rotHeight)
+    : turned;
+}
+
 /** Rotates a normalized crop rectangle by +90° CW (`1`) or -90° CCW (`-1`) with the image. */
 export function rotateCrop90(crop: ImageCrop, direction: 1 | -1): ImageCrop {
   const c = sanitizeCrop(crop);

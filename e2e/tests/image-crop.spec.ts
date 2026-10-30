@@ -99,6 +99,24 @@ function fictionalFramePng(width: number, height: number, variant: 'platform' | 
   ]);
 }
 
+/**
+ * Switches the theme and captures the page. Animations are finished first: the header buttons
+ * fade their background for 120 ms, and a capture taken mid-fade shows them half dark.
+ */
+async function shoot(page: Page, theme: 'light' | 'dark', name: string) {
+  await page.evaluate((t) => {
+    document.documentElement.dataset.theme = t;
+  }, theme);
+  await page.screenshot({ path: join(screenshotDir, name), animations: 'disabled' });
+}
+
+/** Width over height of a locator's box. */
+async function aspectOf(page: Page, selector: string): Promise<number> {
+  const box = await page.locator(selector).boundingBox();
+  if (!box) throw new Error(`${selector} has no box`);
+  return box.width / box.height;
+}
+
 async function signInPage(page: Page) {
   await page.goto('/login');
   await page.getByLabel('Email').fill(admin.email);
@@ -142,18 +160,18 @@ test.beforeAll(async ({ baseURL }) => {
   const img1 = createElement(
     board,
     'image',
-    { x: 80, y: 110 },
-    { w: 340, assetId: asset1, caption: 'Banchina — camera A (35mm)', tags: ['luce'] },
+    { x: 80, y: 40 },
+    { w: 300, assetId: asset1, caption: 'Banchina — camera A (35mm)', tags: ['luce'] },
     { userId: null },
   );
   createElement(
     board,
     'image',
-    { x: 460, y: 110 },
+    { x: 420, y: 40 },
     { w: 260, assetId: asset2, caption: 'Controluce pioggia — esterno', tags: ['luce'] },
     { userId: null },
   );
-  const note = createElement(board, 'note', { x: 460, y: 360 }, { w: 260 }, { userId: null });
+  const note = createElement(board, 'note', { x: 420, y: 290 }, { w: 260 }, { userId: null });
   const body = roots(board).elements.get(note.id)?.get('body') as Y.XmlFragment;
   const p = new Y.XmlElement('paragraph');
   p.insert(0, [new Y.XmlText('Ritaglio 16:9 e rotazione per il riferimento del carrello.')]);
@@ -205,18 +223,15 @@ test('image card crop, rotate, reload persistence, moodboard + viewer toggle, ex
   await cropToolbar.getByRole('button', { name: 'Ruota di 90° a destra' }).click();
   await expect(cropToolbar.locator('.crop-bar__deg')).toHaveText('90°');
 
-  // Capture desktop edit mode screenshots (dark + light)
-  await page.evaluate(() => {
-    document.documentElement.dataset.theme = 'dark';
-  });
-  await page.screenshot({ path: join(screenshotDir, 'desktop-edit-dark.png') });
-  await page.evaluate(() => {
-    document.documentElement.dataset.theme = 'light';
-  });
-  await page.screenshot({ path: join(screenshotDir, 'desktop-edit-light.png') });
-  await page.evaluate(() => {
-    document.documentElement.dataset.theme = 'dark';
-  });
+  // The crop stage shows the whole turned picture; the 16:9 preset stays landscape.
+  await expect
+    .poll(() =>
+      aspectOf(page, `[data-el="${seeded.primaryImageId}"] [data-testid="image-crop-box"]`),
+    )
+    .toBeCloseTo(16 / 9, 1);
+
+  await shoot(page, 'dark', 'desktop-edit-dark.png');
+  await shoot(page, 'light', 'desktop-edit-light.png');
 
   // Exit crop mode via Done button
   await cropToolbar.getByRole('button', { name: 'Fatto' }).click();
@@ -225,32 +240,53 @@ test('image card crop, rotate, reload persistence, moodboard + viewer toggle, ex
   await expect(croppedMedia).toBeVisible();
   await expect(croppedMedia).toHaveAttribute('data-rotation', '90');
 
-  // Capture desktop result screenshots (dark + light)
-  await page.screenshot({ path: join(screenshotDir, 'desktop-result-dark.png') });
-  await page.evaluate(() => {
-    document.documentElement.dataset.theme = 'light';
-  });
-  await page.screenshot({ path: join(screenshotDir, 'desktop-result-light.png') });
-  await page.evaluate(() => {
-    document.documentElement.dataset.theme = 'dark';
-  });
+  // The card follows the crop: same width, 16:9 picture, caption and tags below, no overflow.
+  const cardBox = await card.boundingBox();
+  const mediaBox = await card.locator('.card__media').boundingBox();
+  const pictureBox = await croppedMedia.boundingBox();
+  const captionBox = await card.getByText('Banchina — camera A (35mm)').boundingBox();
+  if (!cardBox || !mediaBox || !pictureBox || !captionBox) throw new Error('card without boxes');
+  expect(pictureBox.width / pictureBox.height).toBeCloseTo(16 / 9, 1);
+  expect(mediaBox.width / mediaBox.height).toBeCloseTo(16 / 9, 1);
+  expect(Math.abs(mediaBox.width - cardBox.width)).toBeLessThanOrEqual(2);
+  expect(pictureBox.y + pictureBox.height).toBeLessThanOrEqual(mediaBox.y + mediaBox.height + 1);
+  expect(captionBox.y).toBeGreaterThanOrEqual(mediaBox.y + mediaBox.height - 1);
+  expect(captionBox.y + captionBox.height).toBeLessThanOrEqual(cardBox.y + cardBox.height);
+  const tagBox = await card.locator('.tag-chip').first().boundingBox();
+  expect(tagBox && tagBox.y + tagBox.height <= cardBox.y + cardBox.height).toBe(true);
 
-  // Phone viewport screenshots (edit mode + result, dark + light)
+  await shoot(page, 'dark', 'desktop-result-dark.png');
+  await shoot(page, 'light', 'desktop-result-light.png');
+
+  // Phone: a fresh load at phone size, the card zoomed into view.
   await page.setViewportSize({ width: 390, height: 844 });
+  await page.reload();
+  await expect(card.locator('.cropped-image[data-cropped="true"]')).toBeAttached();
+  await page.keyboard.press('Shift+Digit1');
+  await card.click();
+  await page.keyboard.press('Shift+Digit2');
   await card.dblclick();
+  const phoneBar = page.getByRole('toolbar', { name: 'Ritaglio e rotazione' });
   await expect(page.getByTestId('image-crop-stage')).toBeVisible();
-  await page.screenshot({ path: join(screenshotDir, 'phone-edit-dark.png') });
-  await page.evaluate(() => {
-    document.documentElement.dataset.theme = 'light';
-  });
-  await page.screenshot({ path: join(screenshotDir, 'phone-edit-light.png') });
-  await page.getByRole('toolbar', { name: 'Ritaglio e rotazione' }).getByRole('button', { name: 'Fatto' }).click();
+  await page.keyboard.press('Shift+Digit2');
+  // The crop bar is a bottom sheet: inside the screen, above the tool bar, 44 px targets.
+  const barBox = await phoneBar.boundingBox();
+  const toolsBox = await page.locator('.toolbar').boundingBox();
+  if (!barBox || !toolsBox) throw new Error('phone bars without boxes');
+  expect(barBox.x).toBeGreaterThanOrEqual(0);
+  expect(barBox.x + barBox.width).toBeLessThanOrEqual(390);
+  expect(barBox.y + barBox.height).toBeLessThanOrEqual(toolsBox.y);
+  for (const name of ['Ripristina originale', 'Fatto', 'Ruota di 90° a destra']) {
+    const button = await phoneBar.getByRole('button', { name }).boundingBox();
+    expect(button?.height).toBeGreaterThanOrEqual(44);
+    expect(button && button.x >= 0 && button.x + button.width <= 390).toBe(true);
+  }
+  await shoot(page, 'dark', 'phone-edit-dark.png');
+  await shoot(page, 'light', 'phone-edit-light.png');
+  await phoneBar.getByRole('button', { name: 'Fatto' }).click();
   await expect(page.getByTestId('image-crop-stage')).toBeHidden();
-  await page.screenshot({ path: join(screenshotDir, 'phone-result-light.png') });
-  await page.evaluate(() => {
-    document.documentElement.dataset.theme = 'dark';
-  });
-  await page.screenshot({ path: join(screenshotDir, 'phone-result-dark.png') });
+  await shoot(page, 'light', 'phone-result-light.png');
+  await shoot(page, 'dark', 'phone-result-dark.png');
 
   // Restore desktop viewport and reload page to verify persistence
   await page.setViewportSize({ width: 1440, height: 900 });

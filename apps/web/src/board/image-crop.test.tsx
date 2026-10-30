@@ -10,6 +10,8 @@ import { type CardContext, cardHeight, drawCard, type Palette } from './export/b
 import { imagePlacement, type Op } from './export/pages.ts';
 import { applyImageTransform, restoreOriginalImage } from './ImageCropEditor.tsx';
 import {
+  conformCropAspect,
+  cropAfterQuarterTurn,
   croppedRotatedSize,
   FULL_CROP,
   fitCropToAspect,
@@ -96,6 +98,25 @@ describe('image-crop geometry helpers', () => {
     expect(back.h).toBeCloseTo(initial.h, 5);
   });
 
+  it('keeps a preset crop at its aspect across 90° steps and fine angles', () => {
+    // A 480×320 picture cropped to 16:9, then turned clockwise: the result stays 16:9.
+    const crop = fitCropToAspect(FULL_CROP, '16:9', 480, 320);
+    const turned = rotatedBounds(480, 320, 90);
+    const next = cropAfterQuarterTurn(crop, 1, turned.width, turned.height);
+    const out = croppedRotatedSize(480, 320, next, 90);
+    expect(out.width / out.height).toBeCloseTo(16 / 9, 3);
+    expect(next.aspect).toBe('16:9');
+
+    const tilted = rotatedBounds(480, 320, 12);
+    const kept = conformCropAspect(crop, tilted.width, tilted.height);
+    const tiltedOut = croppedRotatedSize(480, 320, kept, 12);
+    expect(tiltedOut.width / tiltedOut.height).toBeCloseTo(16 / 9, 3);
+
+    // A free crop turns with the picture.
+    const free = { x: 0.1, y: 0.2, w: 0.5, h: 0.3 };
+    expect(cropAfterQuarterTurn(free, 1, 320, 480)).toEqual(rotateCrop90(free, 1));
+  });
+
   it('moves and resizes crop rectangle within [0, 1] bounds', () => {
     const start = { x: 0.2, y: 0.2, w: 0.5, h: 0.5, aspect: 'free' as const };
     const moved = moveCropRect(start, 0.5, -0.5);
@@ -148,12 +169,7 @@ describe('CroppedImage component & BoardStore integration', () => {
     if (img.type !== 'image') throw new Error('expected image element');
 
     const initialH = store.rectOf(img).h;
-    applyImageTransform(
-      store,
-      img,
-      { x: 0, y: 0.25, w: 1, h: 0.5, aspect: '16:9' },
-      90,
-    );
+    applyImageTransform(store, img, { x: 0, y: 0.25, w: 1, h: 0.5, aspect: '16:9' }, 90);
 
     const updated = store.getSnapshot().byId.get(img.id);
     expect(updated?.type).toBe('image');

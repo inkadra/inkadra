@@ -2267,8 +2267,16 @@ button.card__play {
   width: 100%;
   overflow: hidden;
 }
+/* The crop sets the media aspect; a card with older explicit geometry letterboxes it instead
+   of stretching or overflowing, like uncropped pictures with object-fit: contain. */
+.card__media:has(> .cropped-image) {
+  container-type: size;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+}
 .card__media > .cropped-image {
-  height: 100%;
+  width: min(100%, calc(100cqh * var(--cropped-ratio, 1)));
 }
 .cropped-image.viewer__media {
   width: min(
@@ -2438,6 +2446,7 @@ button.card__play {
 
 .crop-bar {
   left: var(--crop-bar-left, 8px);
+  top: var(--crop-bar-top, 8px);
   height: 36px;
   gap: 2px;
   padding: 0 6px;
@@ -2514,9 +2523,34 @@ button.card__play {
   background: var(--ink-accent-button-hover);
   color: var(--ink-on-accent);
 }
+/* Narrow canvases: a bottom sheet that wraps above the tool bar, with 44 px targets. */
 @container canvas (width < 640px) {
   .crop-bar {
+    top: auto;
+    bottom: 84px;
     left: 8px;
     right: 8px;
+    max-width: none;
+    height: auto;
+    padding: 4px;
+    flex-wrap: wrap;
+    justify-content: center;
+    row-gap: 4px;
+    overflow: visible;
+  }
+  .crop-bar .ctxbar__btn,
+  .crop-bar__preset {
+    min-width: 44px;
+    height: 44px;
+  }
+  .crop-bar__text-btn,
+  .crop-bar__done {
+    padding: 0 12px;
+  }
+  .crop-bar__angle {
+    height: 44px;
+  }
+  .crop-bar__angle input[type="range"] {
+    width: 96px;
   }
 }

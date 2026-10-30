@@ -14,6 +14,8 @@ import { useBoard } from './context.ts';
 import {
   CROP_HANDLES,
   type CropHandle,
+  conformCropAspect,
+  cropAfterQuarterTurn,
   FULL_CROP,
   fitCropToAspect,
   hasImageTransform,
@@ -21,7 +23,6 @@ import {
   moveCropRect,
   normalizeRotation,
   resizeCropRect,
-  rotateCrop90,
   rotatedBounds,
   sanitizeCrop,
   splitRotation,
@@ -258,14 +259,21 @@ export function ImageCropToolbar({
   function stepRotate(direction: 1 | -1) {
     store.undo.stopCapturing();
     const nextRot = normalizeRotation(quarterBase + direction * 90 + fine);
-    const nextCrop = isIdentityCrop(crop) ? crop : rotateCrop90(crop, direction);
+    const bounds = rotatedBounds(baseW, baseH, nextRot);
+    const nextCrop = cropAfterQuarterTurn(crop, direction, bounds.width, bounds.height);
     applyImageTransform(store, element, nextCrop, nextRot);
     store.undo.stopCapturing();
   }
 
   function changeFineAngle(nextFine: number) {
     const nextRot = normalizeRotation(quarterBase + nextFine);
-    applyImageTransform(store, element, crop, nextRot);
+    const bounds = rotatedBounds(baseW, baseH, nextRot);
+    applyImageTransform(
+      store,
+      element,
+      conformCropAspect(crop, bounds.width, bounds.height),
+      nextRot,
+    );
   }
 
   const presetLabel = (preset: ImageCropAspect) =>
@@ -276,7 +284,10 @@ export function ImageCropToolbar({
       className="ctxbar crop-bar"
       role="toolbar"
       aria-label={t('board.image.cropToolbar')}
-      style={{ ['--crop-bar-left' as string]: `${Math.max(8, box.x)}px`, top }}
+      style={{
+        ['--crop-bar-left' as string]: `${Math.max(8, box.x)}px`,
+        ['--crop-bar-top' as string]: `${top}px`,
+      }}
       data-chrome
     >
       <fieldset className="crop-bar__group" aria-label={t('board.image.aspect.label')}>
