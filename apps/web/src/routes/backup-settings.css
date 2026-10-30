@@ -1,6 +1,8 @@
 /* Settings → Backups (decision 0037). Neutral rows; status badges carry the only colour. */
 .backup-settings__time {
-  width: 7.5em;
+  /* Sized by its content: a 12-hour locale adds AM/PM, which a fixed width cut off. */
+  width: auto;
+  min-width: 7.5em;
 }
 .backup-settings__error {
   margin: 12px 0 0;
