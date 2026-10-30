@@ -7,10 +7,10 @@ import {
   moveFrames,
   storyboardOf,
 } from '@inkadra/canvas-core';
+import { setAnimaticAudio } from '@inkadra/doc-schema';
 import { act, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { setAnimaticAudio } from '@inkadra/doc-schema';
 import * as Y from 'yjs';
 import mockEn from '../../i18n/en.json';
 import mockIt from '../../i18n/it.json';
@@ -166,7 +166,7 @@ describe('animatic time line', () => {
     const s2 = addScene(doc, { title: 'Treno' }, opts);
     const [a, b, c] = [1, 2, 3].map((n) =>
       addFrame(doc, s1.id, null, { durationMs: n * 1000 }, opts),
-    );
+    ) as [FrameElement, FrameElement, FrameElement];
     const d = addFrame(doc, s2.id, null, { durationMs: 500 }, opts);
     const groups = () => storyboardOf([...store.getSnapshot().byId.values()]);
     const ids = () => groups().map((g) => g.frames.map((f) => f.id));
@@ -187,9 +187,15 @@ describe('animatic time line', () => {
     expect(ids()).toEqual([[b.id, c.id, a.id], [d.id]]);
     // One place later across the cut: first to the start of the next scene.
     move(neighbourTarget(groups(), line(), a.id, 1), a.id);
-    expect(ids()).toEqual([[b.id, c.id], [a.id, d.id]]);
+    expect(ids()).toEqual([
+      [b.id, c.id],
+      [a.id, d.id],
+    ]);
     move(neighbourTarget(groups(), line(), a.id, 1), a.id);
-    expect(ids()).toEqual([[b.id, c.id], [d.id, a.id]]);
+    expect(ids()).toEqual([
+      [b.id, c.id],
+      [d.id, a.id],
+    ]);
     expect(neighbourTarget(groups(), line(), a.id, 1)).toBeNull();
     move(neighbourTarget(groups(), line(), d.id, -1), d.id);
     expect(ids()).toEqual([[b.id, c.id, d.id], [a.id]]);
@@ -337,7 +343,9 @@ describe('Animatic', () => {
     const first = host.querySelector<HTMLElement>(`[data-frame="${list[0]?.id}"] button`);
     if (!first) throw new Error('no block');
     const pointer = (type: string, clientX: number) =>
-      first.dispatchEvent(new PointerEvent(type, { bubbles: true, button: 0, pointerId: 1, clientX }));
+      first.dispatchEvent(
+        new PointerEvent(type, { bubbles: true, button: 0, pointerId: 1, clientX }),
+      );
     await act(async () => {
       pointer('pointerdown', 50);
       pointer('pointermove', 200);

@@ -349,7 +349,9 @@ export async function registerGuestRoutes(app: FastifyInstance, deps: Deps) {
     const board = boards.find((b) => b.id === boardId) as GuestBoard;
     // The sound track only once its file can be streamed; nothing about it before.
     const playable = track && listed.some((a) => a.id === track.assetId && a.streamUrl);
-    const assets = listed.filter((a) => shownAssets.has(a.id) || (playable && a.id === track.assetId));
+    const assets = listed.filter(
+      (a) => shownAssets.has(a.id) || (playable && a.id === track.assetId),
+    );
     const body: Omit<GuestBoardSnapshot, 'version' | 'generatedAt'> = {
       board: {
         ...board,

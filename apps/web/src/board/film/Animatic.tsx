@@ -454,7 +454,7 @@ function SoundTrack({
 
   if (!audio && readOnly) return null;
   return (
-    <div className="animatic__sound" role="group" aria-label={t('film.playback.sound')}>
+    <fieldset className="animatic__sound" aria-label={t('film.playback.sound')}>
       {audio && src && (
         // biome-ignore lint/a11y/useMediaCaption: a temp track or voice-over timed to the frames
         <audio ref={element} src={src} preload="auto" />
@@ -527,7 +527,7 @@ function SoundTrack({
           />
         </>
       )}
-    </div>
+    </fieldset>
   );
 }
 
@@ -567,9 +567,7 @@ const TrackBlocks = memo(function TrackBlocks({
   // The click that ends a drag must not also seek.
   const dragged = useRef(false);
   const [draft, setDraft] = useState<{ id: string; ms: number } | null>(null);
-  const [drop, setDrop] = useState<{ moving: string; target: string; after: boolean } | null>(
-    null,
-  );
+  const [drop, setDrop] = useState<{ moving: string; target: string; after: boolean } | null>(null);
   const canMove = !readOnly && !!groups;
 
   const setDuration = (frame: FrameElement, ms: number) => {
@@ -683,7 +681,8 @@ const TrackBlocks = memo(function TrackBlocks({
 
   return timeline.map((entry, i) => {
     const length = draft?.id === entry.frame.id ? draft.ms : entry.end - entry.start;
-    const sceneStart = i > 0 && (timeline[i - 1]?.frame.parent ?? null) !== (entry.frame.parent ?? null);
+    const sceneStart =
+      i > 0 && (timeline[i - 1]?.frame.parent ?? null) !== (entry.frame.parent ?? null);
     const marker =
       drop && drop.moving !== entry.frame.id && drop.target === entry.frame.id
         ? drop.after

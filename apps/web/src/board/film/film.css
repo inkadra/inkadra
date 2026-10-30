@@ -581,6 +581,12 @@ select.film-status {
   align-items: center;
   gap: 4px;
 }
+.animatic__sound {
+  min-inline-size: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
 .animatic .ink-iconbtn[aria-pressed="true"] {
   background: var(--ink-accent-soft-bg);
   color: var(--ink-accent-soft-fg);

@@ -1724,7 +1724,13 @@ describe.skipIf(!url)('guest share links (needs DATABASE_URL)', () => {
   it('streams the sound track of a shared animatic inline, never as a download', async () => {
     const [sb] = await db
       .insert(board)
-      .values({ projectId: P, title: 'Ultimo Treno', position: 'a9', parentBoardId: B.R, kind: 'storyboard' })
+      .values({
+        projectId: P,
+        title: 'Ultimo Treno',
+        position: 'a9',
+        parentBoardId: B.R,
+        kind: 'storyboard',
+      })
       .returning();
     const S = sb?.id as string;
     const [track] = await db
@@ -1741,8 +1747,10 @@ describe.skipIf(!url)('guest share links (needs DATABASE_URL)', () => {
       .returning();
     const A = track?.id as string;
     await deps.storage.write('originals/binario.mp3', Buffer.from('0123456789'), 'audio/mpeg');
-    await saveDoc(S, [{ ...el, id: 'frame_audio_1', type: 'frame', parent: null, durationMs: 2000 }], (doc) =>
-      setAnimaticAudio(doc, { assetId: A, volume: 0.7 }),
+    await saveDoc(
+      S,
+      [{ ...el, id: 'frame_audio_1', type: 'frame', parent: null, durationMs: 2000 }],
+      (doc) => setAnimaticAudio(doc, { assetId: A, volume: 0.7 }),
     );
     const link = await createLink('editor', S);
     const o = await open(link);
