@@ -156,7 +156,8 @@ export async function createApp(deps: AppDeps) {
       const path = req.url.split('?')[0] ?? '/';
       const isApi = path.startsWith(API_PREFIX) || path.startsWith(AUTH_PREFIX);
       const isFile = path.startsWith('/assets/') || path.startsWith(COLLAB_PATH);
-      if (req.method !== 'GET' || isApi || isFile)
+      // HEAD too: uptime monitors and proxies probe the site with it.
+      if ((req.method !== 'GET' && req.method !== 'HEAD') || isApi || isFile)
         return sendError(reply, 'not_found', 'Not found.');
       return reply.header('cache-control', 'no-cache').sendFile('index.html');
     });

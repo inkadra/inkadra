@@ -50,9 +50,9 @@ own server.
   shot list is the same data as a table you can filter and export to CSV; the shooting
   schedule plans the days from the same shots.
 - **A home for every project.** Home opens on your recent boards, today's shooting day and what
-  changed. Each project has its own colour, shape or emoji, and every kind of content keeps one
-  colour across the app: storyboards purple, shot lists green, moodboards and media orange,
-  schedules teal, reviews pink, notes yellow.
+  changed. Each project has its own colour, shape or emoji, and every kind of canvas keeps one
+  colour across the app: storyboards purple, shot lists green, moodboards orange, schedules
+  teal, reviews pink. The tools that add cards have colours of their own, kept apart from those.
 - **Together, live.** Everyone on a board sees changes as they happen. Roles per project and per
   board, invitations, comments with mentions, review status, and an inbox for notifications.
 - **Client review.** Share a board through a link, with or without comments and picks, and keep
