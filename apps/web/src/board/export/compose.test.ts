@@ -108,6 +108,28 @@ describe('storyboard pages', () => {
     expect(storyboardPages(a4, [], 4, ctx, words, true)).toHaveLength(1);
   });
 
+  it('fills each column with its picture and lines the text up with it', () => {
+    for (const perPage of [2, 4, 6] as const) {
+      const [page] = storyboardPages(a4, shots(perPage), perPage, ctx, words, true);
+      // framePicture draws a border rect the size of the picture after its clip.
+      const borders = (page?.ops ?? []).filter(
+        (op): op is Extract<Op, { kind: 'rect' }> => op.kind === 'rect' && !!op.stroke,
+      );
+      expect(borders).toHaveLength(perPage);
+      const widths = new Set(borders.map((b) => b.w.toFixed(2)));
+      expect(widths.size).toBe(1);
+      const xs = [...new Set(borders.map((b) => b.x.toFixed(2)))].map(Number).sort((a, b) => a - b);
+      const w = borders[0]?.w ?? 0;
+      // Consistent gutters between columns, grid centred on the page.
+      for (let i = 1; i < xs.length; i++)
+        expect((xs[i] ?? 0) - (xs[i - 1] ?? 0) - w).toBeCloseTo(18, 1);
+      const right = (xs.at(-1) ?? 0) + w;
+      expect((xs[0] ?? 0) - 0).toBeCloseTo((page?.width ?? 0) - right, 1);
+      const labels = texts(page?.ops ?? []).filter((t) => /^1[A-F]$/.test(t));
+      expect(labels).toHaveLength(perPage);
+    }
+  });
+
   it("prints the director's notes only for the team", () => {
     expect(allText(storyboardPages(a4, shots(1, 'Luce fredda'), 2, ctx, words, true))).toContain(
       'Luce fredda',
@@ -156,7 +178,7 @@ describe('shot list pages', () => {
 });
 
 describe('finish', () => {
-  it('numbers content pages and leaves the title page bare', () => {
+  it('counts the title page in the numbers but prints none on it', () => {
     const info = {
       projectName: 'Ultima corsa',
       boardTitle: 'Binario 21',
@@ -173,9 +195,9 @@ describe('finish', () => {
       true,
     );
     expect(pages).toHaveLength(3);
-    expect(texts(pages[0]?.ops ?? [])).not.toContain('1 of 2');
-    expect(texts(pages[1]?.ops ?? [])).toContain('1 of 2');
-    expect(texts(pages[2]?.ops ?? [])).toContain('2 of 2');
+    expect(texts(pages[0]?.ops ?? []).some((t) => t.endsWith('of 3'))).toBe(false);
+    expect(texts(pages[1]?.ops ?? [])).toContain('2 of 3');
+    expect(texts(pages[2]?.ops ?? [])).toContain('3 of 3');
     expect(texts(pages[0]?.ops ?? [])).toContain('Binario 21');
   });
 });

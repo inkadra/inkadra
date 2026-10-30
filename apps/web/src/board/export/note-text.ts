@@ -4,7 +4,7 @@ import type { NoteBlock } from './board-render.ts';
 
 /**
  * The rich text of a note as print blocks: paragraphs, headings, list and task items, quotes
- * and code. Inline marks are dropped (decision 0037).
+ * and code. Inline marks are dropped (decision 0038).
  */
 export function noteBlocks(body: unknown): NoteBlock[] {
   if (!(body instanceof Y.XmlFragment)) return [];

@@ -12,7 +12,7 @@ export interface LoadedImage extends ImageInfo {
 
 /**
  * Smallest WebP thumbnail at least `pixels` wide, else the largest. Exports never use the
- * original file (decision 0037): thumbnails are what everyone who can open the board sees.
+ * original file (decision 0038): thumbnails are what everyone who can open the board sees.
  */
 export function thumbnailFor(asset: Asset, pixels: number): string | null {
   const variants = [...asset.variants].sort((a, b) => a.width - b.width);
