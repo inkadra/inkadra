@@ -1,4 +1,3 @@
-import { Select } from '@inkadra/ui';
 import {
   addFrame,
   addScene,
@@ -13,7 +12,7 @@ import {
   updateElement,
 } from '@inkadra/canvas-core';
 import { ASPECT_RATIOS, type AspectRatio, SHOT_SIZES, setBoardAspect } from '@inkadra/doc-schema';
-import { Button, EmptyState, Icon, IconButton } from '@inkadra/ui';
+import { Button, EmptyState, Icon, IconButton, Select } from '@inkadra/ui';
 import { type DragEvent, memo, useId, useMemo, useState, useSyncExternalStore } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useRegisterActions } from '../../commands/actions.ts';
@@ -149,7 +148,8 @@ export function StoryboardView({
   const aspectControl = (
     <label className="story__aspect">
       <span>{t('film.aspect.label')}</span>
-      <Select variant="quiet"
+      <Select
+        variant="quiet"
         className="ink-input"
         value={boardAspect}
         disabled={readOnly}
@@ -420,7 +420,8 @@ function SceneList({
     <>
       <label className="story__scene-picker" htmlFor={pickerId}>
         <span>{t('film.playback.scenes')}</span>
-        <Select variant="quiet"
+        <Select
+          variant="quiet"
           id={pickerId}
           className="ink-input"
           value={filter ?? ''}
@@ -572,14 +573,13 @@ function SceneSection({
           }}
           onKeyDown={blurOnEnter}
         />
-        <Select variant="quiet"
+        <Select
+          variant="quiet"
           className="ink-input story__scene-select"
           value={scene.setting ?? ''}
           disabled={readOnly}
           aria-label={t('film.scene.setting')}
-          onChange={(e) =>
-            set({ setting: (e || undefined) as SceneElement['setting'] })
-          }
+          onChange={(e) => set({ setting: (e || undefined) as SceneElement['setting'] })}
         >
           <option value="">—</option>
           {(['int', 'ext', 'int-ext'] as const).map((s) => (
@@ -601,7 +601,8 @@ function SceneSection({
           }}
           onKeyDown={blurOnEnter}
         />
-        <Select variant="quiet"
+        <Select
+          variant="quiet"
           className="ink-input story__scene-select"
           value={scene.time ?? ''}
           disabled={readOnly}

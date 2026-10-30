@@ -1,9 +1,8 @@
-import { Select } from '@inkadra/ui';
 // SPDX-License-Identifier: AGPL-3.0-only
 import { formatDuration } from '@inkadra/canvas-core';
 import { SHOT_SIZES } from '@inkadra/doc-schema';
 import type { ReviewStatus } from '@inkadra/shared';
-import { Button, EmptyState } from '@inkadra/ui';
+import { Button, EmptyState, Select } from '@inkadra/ui';
 import { type KeyboardEvent, useId, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api, RequestError } from '../../lib/api.ts';

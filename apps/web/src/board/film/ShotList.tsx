@@ -1,4 +1,3 @@
-import { Select } from '@inkadra/ui';
 // SPDX-License-Identifier: AGPL-3.0-only
 import {
   addFrame,
@@ -11,7 +10,7 @@ import {
   updateElement,
 } from '@inkadra/canvas-core';
 import { SHOT_ANGLES, SHOT_MOVEMENTS, SHOT_SIZES } from '@inkadra/doc-schema';
-import { Button, EmptyState, Icon } from '@inkadra/ui';
+import { Button, EmptyState, Icon, Select } from '@inkadra/ui';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useClassifications } from '../../lib/classifications.ts';
@@ -1143,7 +1142,7 @@ export function ShotList({
                 onChange={(e) => {
                   const sceneId = e;
                   if (sceneId) bulkMoveToScene(sceneId);
-                  }}
+                }}
               >
                 <option value="" disabled>
                   {t('film.list.moveToScene')} ▾

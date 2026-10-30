@@ -108,7 +108,8 @@ export function Select({
     position();
     el.focus();
     const outside = (event: PointerEvent) => {
-      if (!el.contains(event.target as Node) && !button.contains(event.target as Node)) setOpen(false);
+      if (!el.contains(event.target as Node) && !button.contains(event.target as Node))
+        setOpen(false);
     };
     document.addEventListener('pointerdown', outside);
     window.addEventListener('resize', position);
@@ -236,7 +237,9 @@ export function Select({
               )}
               <div
                 tabIndex={-1}
-                onKeyDown={() => { /* Keyboard handling belongs to the listbox. */ }}
+                onKeyDown={() => {
+                  /* Keyboard handling belongs to the listbox. */
+                }}
                 role="option"
                 data-value={item.value}
                 id={`${id}-${index}`}

@@ -1,5 +1,4 @@
-import { Select } from '@inkadra/ui';
-import { Button, Dialog, DialogActions, Icon, kindStyle } from '@inkadra/ui';
+import { Button, Dialog, DialogActions, Icon, kindStyle, Select } from '@inkadra/ui';
 import { type DragEvent, useId, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Check, Field, Segmented } from '../../export/fields.tsx';

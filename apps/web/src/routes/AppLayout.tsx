@@ -1,4 +1,3 @@
-import { Select } from '@inkadra/ui';
 import type { Board, BoardCount, BoardKind, Project } from '@inkadra/shared';
 import {
   AppShell,
@@ -11,6 +10,7 @@ import {
   KeyCap,
   Logo,
   NavItem,
+  Select,
   Sidebar,
   SidebarSection,
 } from '@inkadra/ui';

@@ -1,5 +1,5 @@
-import { chooseSelect } from '../helpers/select.ts';
 import { expect, type Page, test } from '@playwright/test';
+import { chooseSelect } from '../helpers/select.ts';
 import { signIn } from './perf/seed.ts';
 import { signUpViaInvite } from './support/accounts.ts';
 

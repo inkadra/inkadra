@@ -1,7 +1,6 @@
-import { Select } from '@inkadra/ui';
 import { UNSORTED } from '@inkadra/doc-schema';
 import type { GuestBoardSnapshot, GuestElement, GuestSession } from '@inkadra/shared';
-import { Button } from '@inkadra/ui';
+import { Button, Select } from '@inkadra/ui';
 import { useId, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useGuestActions } from './actions.ts';

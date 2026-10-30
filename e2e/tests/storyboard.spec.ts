@@ -1,5 +1,5 @@
-import { chooseSelect } from '../helpers/select.ts';
 import { expect, type Page, test } from '@playwright/test';
+import { chooseSelect } from '../helpers/select.ts';
 
 // Runs after first-run.spec.ts, on the same instance: the administrator and the project exist.
 test.describe.configure({ mode: 'serial' });
@@ -50,7 +50,6 @@ test('a storyboard holds scenes and frames, the shot list shows the same frames'
     await page.keyboard.press('Escape');
   }
 
-
   await scene.getByRole('button', { name: 'Nuova inquadratura' }).last().click();
   const panel = page.getByRole('complementary', { name: 'Dettagli' });
   await expect(panel.getByText('1D')).toBeVisible();
@@ -85,7 +84,8 @@ test('a storyboard holds scenes and frames, the shot list shows the same frames'
   await page.getByRole('tab', { name: 'Shot list' }).click();
   await expect(page).toHaveURL(/view=shotlist/);
   const row = page.getByRole('row', { name: /1D/ });
-  if (process.env.SELECT_SCREENSHOTS) await page.screenshot({ path: '../docs/screenshots/ui-select/shot-list-cell.png' });
+  if (process.env.SELECT_SCREENSHOTS)
+    await page.screenshot({ path: '../docs/screenshots/ui-select/shot-list-cell.png' });
 
   await expect(row.getByLabel('Azione', { exact: true })).toHaveValue(/Il treno entra/);
   await expect(row.getByLabel('Campo', { exact: true })).toHaveAttribute('data-value', 'cu');

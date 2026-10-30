@@ -1,4 +1,3 @@
-import { Select } from '@inkadra/ui';
 import type {
   BoardDetail,
   CreateShareLink,
@@ -6,7 +5,7 @@ import type {
   ShareLink,
   ShareLinkPicks,
 } from '@inkadra/shared';
-import { Button, Icon, IconButton } from '@inkadra/ui';
+import { Button, Icon, IconButton, Select } from '@inkadra/ui';
 import { type FormEvent, useCallback, useEffect, useId, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api, RequestError } from '../lib/api.ts';

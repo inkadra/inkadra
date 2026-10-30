@@ -1,5 +1,5 @@
-import { chooseSelect } from '../helpers/select.ts';
 import { expect, type Page, test } from '@playwright/test';
+import { chooseSelect } from '../helpers/select.ts';
 
 // Uses the account created by first-run.spec.ts, and creates it when run on its own.
 const admin = {

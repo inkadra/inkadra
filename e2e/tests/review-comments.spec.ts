@@ -1,5 +1,5 @@
-import { chooseSelect } from '../helpers/select.ts';
 import { type Browser, expect, type Page, test } from '@playwright/test';
+import { chooseSelect } from '../helpers/select.ts';
 
 // Runs after first-run.spec.ts, on the same instance: the administrator exists. Each test makes
 // its own project, so it does not depend on the other specs.

@@ -1,5 +1,5 @@
-import { chooseSelect } from '../helpers/select.ts';
 import { type Browser, expect, type Page, test } from '@playwright/test';
+import { chooseSelect } from '../helpers/select.ts';
 
 // Runs after first-run.spec.ts: the administrator and the project "Ultima corsa" exist.
 test.describe.configure({ mode: 'serial' });

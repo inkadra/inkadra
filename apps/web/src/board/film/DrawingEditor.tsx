@@ -1,4 +1,3 @@
-import { Select } from '@inkadra/ui';
 import {
   addFrame,
   addShape,
@@ -24,7 +23,7 @@ import {
   MAX_STROKES,
   type Stroke,
 } from '@inkadra/doc-schema';
-import { Button, Icon, IconButton, type IconName } from '@inkadra/ui';
+import { Button, Icon, IconButton, type IconName, Select } from '@inkadra/ui';
 import { type PointerEvent, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { isMac } from '../shortcuts.ts';

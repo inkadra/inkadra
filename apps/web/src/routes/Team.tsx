@@ -1,11 +1,10 @@
-import { Select } from '@inkadra/ui';
 import type {
   InstanceMember,
   InstanceSettings,
   Invitation,
   InvitationResult,
 } from '@inkadra/shared';
-import { Avatar, Button, Dialog, DialogActions, Icon, TextField } from '@inkadra/ui';
+import { Avatar, Button, Dialog, DialogActions, Icon, Select, TextField } from '@inkadra/ui';
 import { type FormEvent, useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api, RequestError } from '../lib/api.ts';
@@ -251,8 +250,7 @@ export function Team() {
                           disabled={busy}
                           onChange={(e) =>
                             void update(m.id, {
-                              canCreateProjects:
-                                e === 'default' ? null : e === 'yes',
+                              canCreateProjects: e === 'default' ? null : e === 'yes',
                             })
                           }
                         >

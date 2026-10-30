@@ -1,8 +1,7 @@
-import { Select } from '@inkadra/ui';
 // SPDX-License-Identifier: AGPL-3.0-only
 import { type FrameElement, formatDuration, updateElement } from '@inkadra/canvas-core';
 import { type AspectRatio, SHOT_SIZES } from '@inkadra/doc-schema';
-import { Icon } from '@inkadra/ui';
+import { Icon, Select } from '@inkadra/ui';
 import { type DragEvent, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { CardReview } from '../CardReview.tsx';

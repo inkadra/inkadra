@@ -1,8 +1,7 @@
-import { Select } from '@inkadra/ui';
 // SPDX-License-Identifier: AGPL-3.0-only
 import { type FrameElement, updateElement } from '@inkadra/canvas-core';
 import type { AspectRatio } from '@inkadra/doc-schema';
-import { Button, IconButton } from '@inkadra/ui';
+import { Button, IconButton, Select } from '@inkadra/ui';
 import {
   type KeyboardEvent,
   memo,
@@ -203,11 +202,7 @@ export function Animatic({
         />
         <label className="story__aspect">
           <span>{t('film.playback.speed')}</span>
-          <Select
-            className="ink-input"
-            value={speed}
-            onChange={(e) => setSpeed(Number(e))}
-          >
+          <Select className="ink-input" value={speed} onChange={(e) => setSpeed(Number(e))}>
             {SPEEDS.map((s) => (
               <option key={s} value={s}>
                 {s}×

@@ -1,7 +1,6 @@
-import { Select } from '@inkadra/ui';
 // SPDX-License-Identifier: AGPL-3.0-only
 import type { ShootingDay } from '@inkadra/shared';
-import { Button, Dialog, DialogActions } from '@inkadra/ui';
+import { Button, Dialog, DialogActions, Select } from '@inkadra/ui';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { castCalls } from './call-sheet.ts';
@@ -48,13 +47,10 @@ export function CallSheetModal({
     <Dialog open title={t('shells.callSheet')} onClose={onClose}>
       <div className="call-sheet">
         <aside className="call-sheet__controls">
+          {/* biome-ignore lint/a11y/noLabelWithoutControl: Select renders a labelable button. */}
           <label>
             {t('schedule.date')}
-            <Select
-              value={day?.id ?? ''}
-              disabled={!day}
-              onChange={(e) => setDayId(e)}
-            >
+            <Select value={day?.id ?? ''} disabled={!day} onChange={(e) => setDayId(e)}>
               {ordered.map((item) => (
                 <option key={item.id} value={item.id}>
                   {item.date}

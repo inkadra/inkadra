@@ -1,4 +1,3 @@
-import { chooseSelect } from '../helpers/select.ts';
 import { deflateSync } from 'node:zlib';
 import { HocuspocusProvider, HocuspocusProviderWebsocket } from '@hocuspocus/provider';
 import { createElement } from '@inkadra/canvas-core';
@@ -6,6 +5,7 @@ import { boardDocName, roots } from '@inkadra/doc-schema';
 import { type Browser, expect, type Page, test } from '@playwright/test';
 import WebSocket from 'ws';
 import * as Y from 'yjs';
+import { chooseSelect } from '../helpers/select.ts';
 
 // Runs after first-run.spec.ts: works on a project of its own, as the administrator.
 test.describe.configure({ mode: 'serial' });
@@ -453,7 +453,9 @@ test('a guest of an approval link approves a card and withdraws the decision', a
   await expectNoTeamUi(guest.page);
   // No proofing on this link: no picks on the cards.
   await expect(guest.page.getByRole('button', { name: 'Scelgo' })).toHaveCount(0);
-  await chooseSelect(guest.page.getByLabel('Card', { exact: true }), { label: 'Benvenuti sul set' });
+  await chooseSelect(guest.page.getByLabel('Card', { exact: true }), {
+    label: 'Benvenuti sul set',
+  });
   const panel = guest.page.getByRole('complementary', { name: 'Dettagli e commenti' });
   await panel.getByRole('button', { name: 'Approva' }).click();
   const naming = guest.page.getByRole('dialog', { name: 'Come ti chiami?' });

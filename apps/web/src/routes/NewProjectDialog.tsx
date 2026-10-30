@@ -1,4 +1,3 @@
-import { Select } from '@inkadra/ui';
 import {
   type InvitationResult,
   type Project,
@@ -6,7 +5,7 @@ import {
   type ProjectType,
   z,
 } from '@inkadra/shared';
-import { Button, Dialog, DialogActions, TextField } from '@inkadra/ui';
+import { Button, Dialog, DialogActions, Select, TextField } from '@inkadra/ui';
 import { type FormEvent, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { castName, type ImportPlan } from '../board/film/screenplay/plan.ts';
@@ -285,6 +284,7 @@ export function ProjectSetupForm({
               value={email}
               onChange={(e) => setEmail(e.target.value)}
             />
+            {/* biome-ignore lint/a11y/noLabelWithoutControl: Select renders a labelable button. */}
             <label>
               {t('onboarding.role')}
               <Select

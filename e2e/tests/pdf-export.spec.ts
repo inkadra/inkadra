@@ -184,15 +184,17 @@ test('a board exports to PDF for clients without the cards hidden from guests', 
     await trigger.click();
     await page.screenshot({ path: '../docs/screenshots/ui-select/default-open-desktop-dark.png' });
     await page.keyboard.press('Escape');
-    await page.evaluate(() => { document.documentElement.dataset.theme = 'light'; });
+    await page.evaluate(() => {
+      document.documentElement.dataset.theme = 'light';
+    });
     await trigger.click();
     await page.screenshot({ path: '../docs/screenshots/ui-select/default-open-desktop-light.png' });
     await page.keyboard.press('Escape');
-    await page.setViewportSize({width:390,height:844});
+    await page.setViewportSize({ width: 390, height: 844 });
     await trigger.click();
     await page.screenshot({ path: '../docs/screenshots/ui-select/phone-bottom-sheet.png' });
     await page.keyboard.press('Escape');
-    await page.setViewportSize({width:1440,height:900});
+    await page.setViewportSize({ width: 1440, height: 900 });
   }
 
   await expect(dialog.getByRole('radio', { name: 'Clienti' })).toBeChecked();

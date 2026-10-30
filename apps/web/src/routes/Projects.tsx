@@ -1,6 +1,5 @@
-import { Select } from '@inkadra/ui';
 import type { Project } from '@inkadra/shared';
-import { Avatar, Button, Dialog, DialogActions } from '@inkadra/ui';
+import { Avatar, Button, Dialog, DialogActions, Select } from '@inkadra/ui';
 import { type FormEvent, useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
@@ -181,13 +180,10 @@ export function Projects() {
             onChange={(e) => change('search', e.target.value)}
           />
         </label>
+        {/* biome-ignore lint/a11y/noLabelWithoutControl: Select renders a labelable button. */}
         <label>
           {t('projectsPage.status')}
-          <Select
-            className="ink-input"
-            value={query.status}
-            onChange={(e) => change('status', e)}
-          >
+          <Select className="ink-input" value={query.status} onChange={(e) => change('status', e)}>
             {['all', 'active', 'archived'].map((v) => (
               <option key={v} value={v}>
                 {t(`projectsPage.${v}`)}
@@ -195,13 +191,10 @@ export function Projects() {
             ))}
           </Select>
         </label>
+        {/* biome-ignore lint/a11y/noLabelWithoutControl: Select renders a labelable button. */}
         <label>
           {t('onboarding.type')}
-          <Select
-            className="ink-input"
-            value={query.type}
-            onChange={(e) => change('type', e)}
-          >
+          <Select className="ink-input" value={query.type} onChange={(e) => change('type', e)}>
             <option value="all">{t('projectsPage.all')}</option>
             {catalogs.projectTypes.map(({ id: v }) => (
               <option key={v} value={v}>
@@ -211,6 +204,7 @@ export function Projects() {
           </Select>
         </label>
         {others && (
+          {/* biome-ignore lint/a11y/noLabelWithoutControl: Select renders a labelable button. */}
           <label>
             {t('projectsPage.people')}
             <Select
@@ -227,13 +221,10 @@ export function Projects() {
             </Select>
           </label>
         )}
+        {/* biome-ignore lint/a11y/noLabelWithoutControl: Select renders a labelable button. */}
         <label>
           {t('projectsPage.sort')}
-          <Select
-            className="ink-input"
-            value={query.sort}
-            onChange={(e) => change('sort', e)}
-          >
+          <Select className="ink-input" value={query.sort} onChange={(e) => change('sort', e)}>
             {['activity', 'name', 'created'].map((v) => (
               <option key={v} value={v}>
                 {t(`projectsPage.sorts.${v}`)}
@@ -428,14 +419,10 @@ function ProjectTypeDialog({
       }}
     >
       <form className="settings__form" onSubmit={submit}>
+        {/* biome-ignore lint/a11y/noLabelWithoutControl: Select renders a labelable button. */}
         <label className="project-type-field">
           {t('onboarding.type')}
-          <Select
-            className="ink-input"
-            value={type}
-            disabled={busy}
-            onChange={(e) => setType(e)}
-          >
+          <Select className="ink-input" value={type} disabled={busy} onChange={(e) => setType(e)}>
             <option value="">—</option>
             {project.type && !catalogs.projectTypes.some((o) => o.id === project.type) && (
               <option value={project.type}>{project.type}</option>

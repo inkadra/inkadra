@@ -1,4 +1,3 @@
-import { Select } from '@inkadra/ui';
 // SPDX-License-Identifier: AGPL-3.0-only
 import { type FrameElement, formatDuration } from '@inkadra/canvas-core';
 import {
@@ -8,7 +7,7 @@ import {
   type ShootingDay,
   type ShootingDayInput,
 } from '@inkadra/shared';
-import { Button, Dialog, DialogActions, EmptyState } from '@inkadra/ui';
+import { Button, Dialog, DialogActions, EmptyState, Select } from '@inkadra/ui';
 import { type CSSProperties, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api, RequestError } from '../../lib/api.ts';
@@ -764,14 +763,13 @@ function DayInspector({
           <div className="schedule__block-editor" key={block.id}>
             {block.shotId && <p className="schedule__block-shot">{shotTitle(block.shotId)}</p>}
             <div className="schedule__fields">
+              {/* biome-ignore lint/a11y/noLabelWithoutControl: Select renders a labelable button. */}
               <label>
                 {t('schedule.type')}
                 <Select
                   className="ink-input"
                   value={block.type}
-                  onChange={(e) =>
-                    blockUpdate(block.id, { type: e as ScheduleBlock['type'] })
-                  }
+                  onChange={(e) => blockUpdate(block.id, { type: e as ScheduleBlock['type'] })}
                 >
                   {(['setup', 'shot', 'break', 'move', 'note'] as const).map((type) => (
                     <option key={type} value={type}>

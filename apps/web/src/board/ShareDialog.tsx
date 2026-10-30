@@ -1,4 +1,3 @@
-import { Select } from '@inkadra/ui';
 import type {
   BoardAccess,
   BoardAccessEntry,
@@ -8,7 +7,7 @@ import type {
   Person,
   ProjectRole,
 } from '@inkadra/shared';
-import { Avatar, Button, Dialog, Icon, IconButton } from '@inkadra/ui';
+import { Avatar, Button, Dialog, Icon, IconButton, Select } from '@inkadra/ui';
 import { type FormEvent, type KeyboardEvent, useCallback, useEffect, useId, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api, RequestError } from '../lib/api.ts';

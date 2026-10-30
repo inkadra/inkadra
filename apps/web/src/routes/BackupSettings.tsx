@@ -1,11 +1,10 @@
-import { Select } from '@inkadra/ui';
 import {
   BACKUP_RETENTION_MAX,
   type InstanceBackup,
   type InstanceBackups,
   type BackupSettings as Settings,
 } from '@inkadra/shared';
-import { Button } from '@inkadra/ui';
+import { Button, Select } from '@inkadra/ui';
 import { useCallback, useEffect, useId, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api, RequestError } from '../lib/api.ts';

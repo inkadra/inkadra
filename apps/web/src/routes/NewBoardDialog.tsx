@@ -1,6 +1,5 @@
-import { Select } from '@inkadra/ui';
 import type { Project } from '@inkadra/shared';
-import { Button, Dialog, DialogActions, TextField } from '@inkadra/ui';
+import { Button, Dialog, DialogActions, Select, TextField } from '@inkadra/ui';
 import { type FormEvent, useEffect, useId, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router';

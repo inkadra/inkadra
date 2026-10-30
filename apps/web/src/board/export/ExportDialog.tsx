@@ -1,8 +1,7 @@
-import { Select } from '@inkadra/ui';
 // SPDX-License-Identifier: AGPL-3.0-only
 import type { Rect } from '@inkadra/canvas-core';
 import { type Board, DEFAULT_EXPORT_PREFERENCES, type ExportSettings } from '@inkadra/shared';
-import { Button, Dialog, DialogActions } from '@inkadra/ui';
+import { Button, Dialog, DialogActions, Select } from '@inkadra/ui';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { getReviews } from '../review-store.ts';

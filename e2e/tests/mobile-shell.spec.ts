@@ -1,5 +1,5 @@
-import { chooseSelect } from '../helpers/select.ts';
 import { expect, test } from '@playwright/test';
+import { chooseSelect } from '../helpers/select.ts';
 
 test.use({ viewport: { width: 390, height: 844 }, hasTouch: true });
 

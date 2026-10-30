@@ -1,11 +1,10 @@
-import { Select } from '@inkadra/ui';
 import type {
   AccountSession,
   CreatedPersonalToken,
   DeleteMeBlocked,
   PersonalToken,
 } from '@inkadra/shared';
-import { Avatar, Button, Dialog, DialogActions, TextField } from '@inkadra/ui';
+import { Avatar, Button, Dialog, DialogActions, Select, TextField } from '@inkadra/ui';
 import { type FormEvent, useCallback, useEffect, useId, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation } from 'react-router';

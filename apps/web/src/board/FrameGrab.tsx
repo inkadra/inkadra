@@ -1,8 +1,7 @@
-import { Select } from '@inkadra/ui';
 // SPDX-License-Identifier: AGPL-3.0-only
 import { type Element, hiddenFromGuests, type VideoFrameSource } from '@inkadra/doc-schema';
 import type { Asset } from '@inkadra/shared';
-import { Icon } from '@inkadra/ui';
+import { Icon, Select } from '@inkadra/ui';
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -283,6 +282,7 @@ export function FrameGrab({
                   />
                 </label>
               )}
+              {/* biome-ignore lint/a11y/noLabelWithoutControl: Select renders a labelable button. */}
               <label>
                 {t('frameGrab.frame')}
                 <Select
