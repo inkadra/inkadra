@@ -451,12 +451,9 @@ describe('Animatic', () => {
     await tick(1000);
     expect(time()).toBe('0:01.0 / 0:05.0');
     now = 1000;
-    const select = host.querySelector('select');
-    if (!select) throw new Error('no speed');
-    await act(async () => {
-      select.value = '2';
-      select.dispatchEvent(new Event('change', { bubbles: true }));
-    });
+    const double = host.querySelector<HTMLButtonElement>('.animatic__speed button:last-child');
+    if (!double) throw new Error('no speed');
+    await act(async () => double.click());
     await tick(1500);
     expect(time()).toBe('0:02.0 / 0:05.0');
     expect(host.querySelector('button')?.textContent).toBe('Pause');

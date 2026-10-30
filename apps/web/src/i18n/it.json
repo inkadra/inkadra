@@ -869,7 +869,7 @@
       "selectRow": "Seleziona inquadratura {{label}}"
     },
     "playback": {
-      "mode": "Vista",
+      "mode": "Modalità storyboard",
       "grid": "Griglia",
       "sequence": "Sequenza",
       "animatic": "Animatic",
@@ -895,9 +895,8 @@
       "now": "Inquadratura {{label}} a {{time}}",
       "block": "Vai a {{label}}, {{duration}}",
       "resize": "Durata di {{label}}",
-      "keyboard": "Tasti: Spazio riproduce o mette in pausa, le frecce vanno all’inquadratura successiva o precedente, Maiusc con una freccia sposta di un secondo, Home e Fine vanno all’inizio e alla fine.",
       "empty": "Nessuna inquadratura da riprodurre: tutte hanno durata zero.",
-      "defaultDuration": "Le inquadrature senza durata durano un secondo (blocchi a righe). Trascina il bordo di un blocco per impostarne la durata a quarti di secondo, trascina il blocco per spostare l’inquadratura, oppure premi Alt con una freccia.",
+      "defaultDuration": "Le inquadrature senza durata durano un secondo (a righe). Trascina il bordo di un blocco per la durata a quarti di secondo; trascina il blocco per spostare l’inquadratura.",
       "noFrames": "Nessuna inquadratura in questa scena",
       "noFramesBody": "Aggiungi un’inquadratura per riprodurla nell’animatic.",
       "defaultDurationReadOnly": "Le inquadrature senza durata durano un secondo (blocchi a righe).",
@@ -915,7 +914,16 @@
       "mute": "Disattiva audio",
       "unmute": "Attiva audio",
       "volume": "Volume",
-      "watch": "Guarda l’animatic"
+      "watch": "Guarda l’animatic",
+      "keys": {
+        "title": "Scorciatoie da tastiera",
+        "space": "Spazio",
+        "play": "riproduci o pausa",
+        "frame": "inquadratura precedente o successiva",
+        "second": "un secondo indietro o avanti",
+        "ends": "inizio o fine",
+        "move": "sposta l’inquadratura selezionata"
+      }
     }
   },
   "roles": {

@@ -6,7 +6,7 @@ import {
   updateElement,
 } from '@inkadra/canvas-core';
 import { AnimaticAudio, type AspectRatio, roots, setAnimaticAudio } from '@inkadra/doc-schema';
-import { Button, IconButton } from '@inkadra/ui';
+import { Button, IconButton, KeyCap, Slider } from '@inkadra/ui';
 import {
   type KeyboardEvent,
   memo,
@@ -47,7 +47,7 @@ import { FramePicture } from './FramePicture.tsx';
 export const seconds = (ms: number) =>
   `${(ms / 1000).toLocaleString(undefined, { maximumFractionDigits: 2 })} s`;
 
-const SPEEDS = [0.5, 1, 1.5, 2] as const;
+const SPEEDS = [0.5, 1, 2] as const;
 const SEEK_MS = 1000;
 /** Pointer travel that turns a press on a block into a drag that reorders it. */
 const DRAG_PX = 6;
@@ -271,9 +271,8 @@ export function Animatic({
         <output className="animatic__time" aria-label={t('film.playback.time')}>
           {timecode(time)} / {timecode(total)}
         </output>
-        <input
+        <Slider
           className="animatic__scrub"
-          type="range"
           min={0}
           max={total || 1}
           step={100}
@@ -281,7 +280,7 @@ export function Animatic({
           disabled={!total}
           aria-label={t('film.playback.seek')}
           aria-valuetext={timecode(time)}
-          onChange={(e) => seek(Number(e.target.value))}
+          onChange={seek}
         />
         <div className="animatic__toggles">
           <IconButton
@@ -296,20 +295,19 @@ export function Animatic({
             aria-pressed={overlay}
             onClick={() => setOverlay(!overlay)}
           />
-          <label className="story__aspect">
-            <span>{t('film.playback.speed')}</span>
-            <select
-              className="ink-input"
-              value={speed}
-              onChange={(e) => setSpeed(Number(e.target.value))}
-            >
-              {SPEEDS.map((s) => (
-                <option key={s} value={s}>
-                  {s}×
-                </option>
-              ))}
-            </select>
-          </label>
+          <fieldset className="story__modes animatic__speed" aria-label={t('film.playback.speed')}>
+            {SPEEDS.map((s) => (
+              <button
+                type="button"
+                key={s}
+                className="story__mode"
+                aria-pressed={speed === s}
+                onClick={() => setSpeed(s)}
+              >
+                {s.toLocaleString()}×
+              </button>
+            ))}
+          </fieldset>
         </div>
         {present && onClose && (
           <IconButton icon="close" label={t('film.playback.close')} onClick={onClose} />
@@ -363,10 +361,7 @@ export function Animatic({
           </fieldset>
         </div>
       )}
-      <p id={hintId} className="animatic__hint">
-        {t('film.playback.keyboard')}{' '}
-        {readOnly ? t('film.playback.defaultDurationReadOnly') : t('film.playback.defaultDuration')}
-      </p>
+      <Shortcuts id={hintId} readOnly={readOnly} />
     </section>
   );
   if (!present) return body;
@@ -382,6 +377,77 @@ export function Animatic({
     >
       {body}
     </dialog>
+  );
+}
+
+/**
+ * The player's keys: one line with the main ones, the rest behind a small button. The full
+ * list is also the stage's description for screen readers.
+ */
+function Shortcuts({ id, readOnly }: { id: string; readOnly: boolean }) {
+  const { t } = useTranslation();
+  const [open, setOpen] = useState(false);
+  const root = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const away = (e: Event) => {
+      if (!root.current?.contains(e.target as Node)) setOpen(false);
+    };
+    // Escape closes the list first, before the player or the Present dialog sees it.
+    const close = (e: globalThis.KeyboardEvent) => {
+      if (e.key !== 'Escape') return;
+      e.preventDefault();
+      e.stopPropagation();
+      setOpen(false);
+    };
+    document.addEventListener('pointerdown', away);
+    document.addEventListener('keydown', close, true);
+    return () => {
+      document.removeEventListener('pointerdown', away);
+      document.removeEventListener('keydown', close, true);
+    };
+  }, [open]);
+  const keys: Array<[string[], string]> = [
+    [[t('film.playback.keys.space')], t('film.playback.keys.play')],
+    [['←', '→'], t('film.playback.keys.frame')],
+    [['⇧ ←', '⇧ →'], t('film.playback.keys.second')],
+    [['Home', 'End'], t('film.playback.keys.ends')],
+    ...(readOnly ? [] : [[['Alt ←', 'Alt →'], t('film.playback.keys.move')] as [string[], string]]),
+  ];
+  return (
+    <div ref={root} className="animatic__keys">
+      <span className="animatic__keys-line" aria-hidden="true">
+        <KeyCap>{t('film.playback.keys.space')}</KeyCap> {t('film.playback.keys.play')}
+        <KeyCap>←</KeyCap>
+        <KeyCap>→</KeyCap> {t('film.playback.keys.frame')}
+      </span>
+      <IconButton
+        icon="keyboard"
+        label={t('film.playback.keys.title')}
+        aria-expanded={open}
+        aria-controls={id}
+        onClick={() => setOpen(!open)}
+      />
+      <div id={id} className="animatic__keys-pop" role="note" hidden={!open}>
+        <dl>
+          {keys.map(([caps, text]) => (
+            <div key={text}>
+              <dt>
+                {caps.map((c) => (
+                  <KeyCap key={c}>{c}</KeyCap>
+                ))}
+              </dt>
+              <dd>{text}</dd>
+            </div>
+          ))}
+        </dl>
+        <p>
+          {readOnly
+            ? t('film.playback.defaultDurationReadOnly')
+            : t('film.playback.defaultDuration')}
+        </p>
+      </div>
+    </div>
   );
 }
 
@@ -467,9 +533,8 @@ function SoundTrack({
             aria-pressed={muted}
             onClick={() => setMuted(!muted)}
           />
-          <input
+          <Slider
             className="animatic__volume"
-            type="range"
             min={0}
             max={1}
             step={0.05}
@@ -477,7 +542,7 @@ function SoundTrack({
             disabled={muted}
             aria-label={t('film.playback.volume')}
             aria-valuetext={`${Math.round(volume * 100)}%`}
-            onChange={(e) => setVolume(Number(e.target.value))}
+            onChange={setVolume}
           />
           <span className="animatic__sound-name" title={file?.filename}>
             {asset === 'missing' ? t('film.playback.soundMissing') : (file?.filename ?? '…')}

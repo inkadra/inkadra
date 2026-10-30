@@ -143,7 +143,11 @@ async function open(page: Page, baseURL: string, theme: 'light' | 'dark') {
   }
   await pushBoardDoc(baseURL, cookie, boardId, doc);
   await page.goto(`/p/${project.id}/b/${boardId}?view=storyboard`);
-  await page.getByRole('button', { name: 'Animatic', exact: true }).click();
+  // A phone shows the storyboard modes as a picker instead of segments.
+  const picker = page.getByRole('combobox', { name: 'Modalità storyboard' });
+  await page.locator('.story__bar').waitFor();
+  if (await picker.isVisible()) await picker.selectOption('animatic');
+  else await page.getByRole('button', { name: 'Animatic', exact: true }).click();
   await expect(page.locator('.animatic__block')).toHaveCount(5);
   return { cookie, project, boardId };
 }

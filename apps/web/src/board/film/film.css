@@ -394,6 +394,9 @@ select.film-status {
 .story--sequence .story__tile-action {
   -webkit-line-clamp: unset;
 }
+.story__mode-picker {
+  display: none;
+}
 .story__modes {
   display: inline-flex;
   min-inline-size: 0;
@@ -620,7 +623,6 @@ select.film-status {
 }
 .animatic__volume {
   width: 96px;
-  accent-color: var(--ink-accent-primary);
 }
 /* Scene cuts: storyboard purple, the colour of scenes. */
 .animatic__scenes {
@@ -652,8 +654,12 @@ select.film-status {
 }
 .animatic__scrub {
   flex: 1;
+  width: auto;
   min-width: 160px;
-  accent-color: var(--ink-accent-primary);
+}
+.animatic__speed .story__mode {
+  padding: 0 8px;
+  font-variant-numeric: tabular-nums;
 }
 .animatic__track {
   position: relative;
@@ -767,9 +773,63 @@ select.film-status {
   background: var(--ink-text-primary);
   pointer-events: none;
 }
-.animatic__hint {
-  margin: 0;
+/* Shortcuts: one line of the main keys, the full list in a popover. */
+.animatic__keys {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+  min-height: 32px;
   font-size: 12px;
+  color: var(--ink-text-muted);
+}
+.animatic__keys-line {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  overflow: hidden;
+  white-space: nowrap;
+}
+.animatic__keys-line .ink-kc + :not(.ink-kc) {
+  margin-right: 8px;
+}
+.animatic__keys-pop {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 4px);
+  z-index: 10;
+  width: min(340px, calc(100vw - 32px));
+  padding: 12px;
+  border: 1px solid var(--ink-border-default);
+  border-radius: 10px;
+  background: var(--ink-surface-1);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 0.16);
+  color: var(--ink-text-secondary);
+}
+.animatic__keys-pop[hidden] {
+  display: none;
+}
+.animatic__keys-pop dl {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+}
+.animatic__keys-pop dl > div {
+  display: grid;
+  grid-template-columns: 104px 1fr;
+  align-items: center;
+  gap: 8px;
+}
+.animatic__keys-pop dt {
+  display: flex;
+  gap: 4px;
+}
+.animatic__keys-pop dd {
+  margin: 0;
+}
+.animatic__keys-pop p {
+  margin: 10px 0 0;
   color: var(--ink-text-muted);
 }
 .animatic-dialog {

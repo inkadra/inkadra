@@ -869,7 +869,7 @@
       "selectRow": "Select shot {{label}}"
     },
     "playback": {
-      "mode": "View",
+      "mode": "Storyboard mode",
       "grid": "Grid",
       "sequence": "Sequence",
       "animatic": "Animatic",
@@ -895,9 +895,8 @@
       "now": "Frame {{label}} at {{time}}",
       "block": "Go to {{label}}, {{duration}}",
       "resize": "Duration of {{label}}",
-      "keyboard": "Keys: Space plays or pauses, the arrows go to the next or previous frame, Shift with an arrow moves by one second, Home and End go to the start and the end.",
       "empty": "No frames to play: every frame has a zero duration.",
-      "defaultDuration": "Frames without a duration play for one second (striped blocks). Drag the edge of a block to set its duration in quarter seconds, drag the block to move the frame, or press Alt with an arrow on it.",
+      "defaultDuration": "Frames without a duration play for one second (striped). Drag a block’s edge to set its duration in quarter seconds; drag the block to move the frame.",
       "noFrames": "No frames in this scene",
       "noFramesBody": "Add a frame to play it in the animatic.",
       "defaultDurationReadOnly": "Frames without a duration play for one second (striped blocks).",
@@ -915,7 +914,16 @@
       "mute": "Mute",
       "unmute": "Unmute",
       "volume": "Volume",
-      "watch": "Play animatic"
+      "watch": "Play animatic",
+      "keys": {
+        "title": "Keyboard shortcuts",
+        "space": "Space",
+        "play": "play or pause",
+        "frame": "previous or next frame",
+        "second": "one second back or forward",
+        "ends": "start or end",
+        "move": "move the focused frame"
+      }
     }
   },
   "roles": {
