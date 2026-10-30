@@ -674,7 +674,8 @@
         "dusk": "TRAMONTO"
       },
       "collapse": "Comprimi la scena",
-      "expand": "Espandi la scena"
+      "expand": "Espandi la scena",
+      "addTitle": "Aggiungi un titolo"
     },
     "frame": {
       "add": "Nuova inquadratura",
@@ -1635,10 +1636,10 @@
     "missingShot": "Inquadratura rimossa",
     "type": "Tipo di blocco",
     "title": "Titolo",
-    "start": "Inizio (vuoto: automatico)",
+    "start": "Inizio",
     "duration": "Minuti stimati",
-    "cast": "Cast (separato da virgole)",
-    "departments": "Reparti (separati da virgole)",
+    "cast": "Cast",
+    "departments": "Reparti",
     "castConflict": "Il cast è impegnato in un altro blocco sovrapposto.",
     "up": "Sposta su",
     "down": "Sposta giù",
@@ -1677,8 +1678,6 @@
     "castFlag": "Conflitto di cast",
     "dropHint": "Trascina qui un’inquadratura",
     "inspector": "Dettagli del giorno di riprese",
-    "planned": "Pianificato",
-    "blocks": "Blocchi",
     "block": "Blocco selezionato",
     "blockHint": "Seleziona un blocco nel giorno per modificarlo.",
     "noBlocks": "Ancora nessun blocco. Aggiungine uno o trascina un’inquadratura sul giorno.",
@@ -1688,7 +1687,13 @@
     "staleKeep": "Tieni la mia",
     "staleBlocked": "{{day}} è stato modificato altrove: scegli quale versione tenere prima di aggiungere inquadrature.",
     "invalidBlocked": "{{day}} ha una bozza non valida: correggila nell’ispettore prima di aggiungere inquadrature.",
-    "addedTo": "{{shot}} aggiunta a {{day}}."
+    "addedTo": "{{shot}} aggiunta a {{day}}.",
+    "auto": "auto",
+    "summary_one": "{{planned}} pianificate · {{count}} blocco",
+    "summary_other": "{{planned}} pianificate · {{count}} blocchi",
+    "castPlaceholder": "Aggiungi un nome",
+    "departmentsPlaceholder": "Reparto: nota",
+    "removeToken": "Rimuovi {{name}}"
   },
   "moodboard": {
     "count_one": "{{count}} riferimento",
