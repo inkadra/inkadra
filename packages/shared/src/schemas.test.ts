@@ -20,6 +20,13 @@ describe('contracts', () => {
     expect(SearchQuery.safeParse({ q: '  ' }).success).toBe(false);
     expect(SearchQuery.parse({ q: 'binario' }).limit).toBe(20);
     expect(SearchQuery.safeParse({ tag: 'notte', limit: '5' }).success).toBe(true);
+    expect(SearchQuery.safeParse({ type: 'character' }).success).toBe(false);
+    expect(
+      SearchQuery.safeParse({
+        type: 'character',
+        projectId: '0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10',
+      }).success,
+    ).toBe(true);
   });
 
   it('builds an OpenAPI 3.1 document with every path', () => {

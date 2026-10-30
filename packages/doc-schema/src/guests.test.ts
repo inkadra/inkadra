@@ -55,6 +55,8 @@ describe('guest element fields', () => {
     common: ['tags', 'locked', 'guestHidden'],
     frame: ['status', 'notes', 'approved', 'source'],
     image: ['source'],
+    character: ['contact', 'notes'],
+    location: ['address', 'mapUrl', 'availability', 'contact', 'notes'],
   };
 
   it('decides for every field of every element type', () => {
@@ -175,5 +177,52 @@ describe('guest element fields', () => {
 
     const guestWithoutLabel = toGuestElement(frame);
     expect(guestWithoutLabel).not.toHaveProperty('label');
+  });
+
+  it('keeps contacts, notes and private addresses of story bible cards from guests', () => {
+    const common = {
+      id: 'V1StGXR8_Z5jdHi6B-myT',
+      x: 0,
+      y: 0,
+      w: 260,
+      z: 'a0',
+      parent: null,
+      createdBy: 'user-1',
+      createdAt: 1,
+    };
+    const leo = toGuestElement(
+      Element.parse({
+        ...common,
+        type: 'character',
+        name: 'Leo',
+        role: 'Guardiano',
+        actor: 'Marco Riva',
+        contact: '+39 333 000 0000',
+        notes: 'Chiede il cachet in anticipo',
+        scenes: ['2'],
+      }),
+    );
+    expect(leo).toMatchObject({ name: 'Leo', role: 'Guardiano', actor: 'Marco Riva' });
+    expect(leo).not.toHaveProperty('contact');
+    expect(leo).not.toHaveProperty('notes');
+    expect(Element.parse(leo)).toEqual(leo);
+    const cabin = toGuestElement(
+      Element.parse({
+        ...common,
+        type: 'location',
+        name: 'Cabina del guardiano',
+        setting: 'int',
+        address: 'Via dei Binari 4',
+        mapUrl: 'https://www.openstreetmap.org/',
+        availability: 'Weekend',
+        contact: 'Sig. Rossi',
+        notes: 'Chiavi in portineria',
+        light: 'Neon verde',
+      }),
+    );
+    expect(Object.keys(cabin).sort()).toEqual(
+      [...Object.keys(common), 'type', 'name', 'setting', 'light'].sort(),
+    );
+    expect(Element.parse(cabin)).toEqual(cabin);
   });
 });

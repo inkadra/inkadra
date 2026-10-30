@@ -142,7 +142,7 @@ import {
   UpdateBoardVersion,
 } from './versions.ts';
 
-export const API_VERSION = '0.9.0';
+export const API_VERSION = '0.10.0';
 
 const registry = new OpenAPIRegistry();
 

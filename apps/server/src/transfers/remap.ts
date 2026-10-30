@@ -11,8 +11,13 @@ export interface IdMaps {
 }
 
 const ASSET_FIELDS = ['assetId', 'imageAssetId'] as const;
-/** Where a picture is optional (a frame's reference, a link's preview), a missing one goes. */
-const OPTIONAL_ASSET: Record<string, string> = { frame: 'assetId', link: 'imageAssetId' };
+/** Where a picture is optional (a frame's reference, a link's preview, a portrait), a missing one goes. */
+const OPTIONAL_ASSET: Record<string, string> = {
+  frame: 'assetId',
+  link: 'imageAssetId',
+  character: 'assetId',
+  location: 'assetId',
+};
 
 /**
  * Rewrites the ids a board document refers to (decision 0037). A reference to a file that was
