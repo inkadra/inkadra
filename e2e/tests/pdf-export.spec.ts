@@ -1,4 +1,5 @@
 import { readFile } from 'node:fs/promises';
+import { deflateSync } from 'node:zlib';
 import { addFrame, addScene, createElement, updateElement } from '@inkadra/canvas-core';
 import { initBoardDoc, roots } from '@inkadra/doc-schema';
 import { expect, type Page, test } from '@playwright/test';
@@ -28,6 +29,40 @@ async function readPdf(path: string) {
   }
   const meta = await pdf.getMetadata();
   return { pages, title: (meta.info as { Title?: string }).Title ?? '' };
+}
+
+/** A small opaque PNG (solid colour), as a logo would be. */
+function pngLogo(width: number, height: number): Buffer {
+  const crcTable = Array.from({ length: 256 }, (_, n) => {
+    let c = n;
+    for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
+    return c >>> 0;
+  });
+  const crc = (buf: Buffer) => {
+    let c = 0xffffffff;
+    for (const b of buf) c = (crcTable[(c ^ b) & 0xff] as number) ^ (c >>> 8);
+    return (c ^ 0xffffffff) >>> 0;
+  };
+  const chunk = (type: string, data: Buffer) => {
+    const head = Buffer.alloc(4);
+    head.writeUInt32BE(data.length);
+    const body = Buffer.concat([Buffer.from(type, 'ascii'), data]);
+    const tail = Buffer.alloc(4);
+    tail.writeUInt32BE(crc(body));
+    return Buffer.concat([head, body, tail]);
+  };
+  const ihdr = Buffer.alloc(13);
+  ihdr.writeUInt32BE(width, 0);
+  ihdr.writeUInt32BE(height, 4);
+  ihdr.set([8, 2, 0, 0, 0], 8);
+  const row = Buffer.concat([Buffer.from([0]), Buffer.alloc(width * 3, 0x33)]);
+  const raw = Buffer.concat(Array.from({ length: height }, () => row));
+  return Buffer.concat([
+    Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
+    chunk('IHDR', ihdr),
+    chunk('IDAT', deflateSync(raw)),
+    chunk('IEND', Buffer.alloc(0)),
+  ]);
 }
 
 async function watchCsp(page: Page) {
@@ -142,6 +177,18 @@ test('a board exports to PDF for clients without the cards hidden from guests', 
   ).toBeVisible();
   await expect(dialog.getByText('2 pagine')).toBeVisible();
 
+  // The logo is stored on the server, for the whole project.
+  await dialog.locator('input[type="file"]').setInputFiles({
+    name: 'logo.png',
+    mimeType: 'image/png',
+    buffer: pngLogo(240, 80),
+  });
+  await expect(dialog.locator('.export__logo-img')).toBeVisible({ timeout: 30_000 });
+  const stored = await (
+    await page.request.get(`/api/v1/projects/${seeded.projectId}/export-settings`)
+  ).json();
+  expect(stored.logo).toMatchObject({ mime: 'image/png', filename: 'logo.png' });
+
   const [download] = await Promise.all([
     page.waitForEvent('download'),
     dialog.getByRole('button', { name: 'Esporta', exact: true }).click(),
@@ -183,6 +230,15 @@ test('a storyboard exports to PDF with frames per page, and to PNG', async ({ pa
   await expect(page.getByRole('status').getByText('Sincronizzato')).toBeVisible();
   await page.getByRole('button', { name: 'Esporta PDF' }).click();
   const dialog = page.getByRole('dialog', { name: 'Esporta' });
+  // The dialog starts from the choices the last export saved for the project, logo included.
+  await expect(dialog.getByRole('button', { name: 'Il team' })).toHaveAttribute(
+    'aria-pressed',
+    'true',
+  );
+  await expect(dialog.getByRole('checkbox', { name: /Copertina/ })).not.toBeChecked();
+  await expect(dialog.locator('.export__logo-img')).toBeVisible();
+  await dialog.getByRole('button', { name: 'Clienti' }).click();
+  await dialog.getByRole('checkbox', { name: /Copertina/ }).check();
   await dialog.getByRole('button', { name: '2', exact: true }).click();
   // Title page and four frames shown to clients, two a page.
   await expect(dialog.getByText('3 pagine')).toBeVisible();

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 import type { Rect } from '@inkadra/canvas-core';
-import type { Board } from '@inkadra/shared';
+import { type Board, DEFAULT_EXPORT_PREFERENCES, type ExportSettings } from '@inkadra/shared';
 import { Button, Dialog, DialogActions } from '@inkadra/ui';
 import { type ReactNode, useEffect, useId, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -8,7 +8,15 @@ import { getReviews } from '../review-store.ts';
 import type { BoardStore } from '../store.ts';
 import type { ExportEnv, ExportFormat, ExportRequest, ExportWhat } from './engine.ts';
 import { FRAMES_PER_PAGE, type FramesPerPage, type Orientation, type PaperSize } from './layout.ts';
-import { readLogo, removeLogo, saveLogo } from './logo.ts';
+import {
+  fetchExportSettings,
+  localePaper,
+  logoProblem,
+  logoUrl,
+  preferencesPatch,
+  saveExportSettings,
+  uploadLogo,
+} from './settings.ts';
 import './export.css';
 
 /** Where the dialog was opened from: the canvas offers board scopes, film views their own. */
@@ -20,6 +28,8 @@ export interface ExportDialogProps {
   initialWhat?: ExportWhat | undefined;
   store: BoardStore;
   projectId: string;
+  /** The open board: a new logo is uploaded through it, like any file. */
+  boardId: string;
   projectName: string;
   boardTitle: string;
   boards: readonly Board[] | null;
@@ -31,33 +41,46 @@ export interface ExportDialogProps {
 // The engine (pdf-lib, fontkit, Inter) loads only when the dialog opens.
 const engine = () => import('./engine.ts');
 
-/** Letter in the United States and Canada, A4 everywhere else. */
-function defaultPaper(): PaperSize {
-  return /-(US|CA)$/i.test(navigator.language) ? 'letter' : 'a4';
-}
-
 export function ExportDialog(props: ExportDialogProps) {
-  const { source, store, projectId, onClose } = props;
+  const { source, store, projectId, boardId, onClose } = props;
   const { t, i18n } = useTranslation();
   const film = source !== 'canvas';
+  // Until the project's settings arrive, the safe defaults; then the shared choices.
   const [req, setReq] = useState<ExportRequest>(() => ({
-    format: 'pdf',
+    ...DEFAULT_EXPORT_PREFERENCES,
     what: props.initialWhat ?? (film ? source : 'board'),
-    paper: defaultPaper(),
-    orientation: 'landscape',
-    framesPerPage: 4,
-    titlePage: true,
-    logo: readLogo(projectId),
-    comments: false,
-    // Safer by default: an export sent to the wrong person cannot be recalled.
-    audience: 'client',
-    hideGuestHidden: true,
+    paper: localePaper(),
+    logo: null,
   }));
-  const [logoError, setLogoError] = useState(false);
+  const [settings, setSettings] = useState<ExportSettings | null>(null);
+  const touched = useRef(false);
+  useEffect(() => {
+    let live = true;
+    fetchExportSettings(projectId).then(
+      (loaded) => {
+        if (!live) return;
+        setSettings(loaded);
+        const { logo, logoAssetId: _id, canEdit: _edit, updatedAt: _at, ...prefs } = loaded;
+        setReq((r) =>
+          touched.current
+            ? { ...r, logo }
+            : { ...r, ...prefs, paper: prefs.paper ?? localePaper(), logo },
+        );
+      },
+      () => {},
+    );
+    return () => {
+      live = false;
+    };
+  }, [projectId]);
+  const canEdit = settings?.canEdit ?? false;
+  const [logoState, setLogoState] = useState<'idle' | 'busy' | 'type' | 'size' | 'failed'>('idle');
   const [busy, setBusy] = useState(false);
   const [failed, setFailed] = useState(false);
-  const set = <K extends keyof ExportRequest>(key: K, value: ExportRequest[K]) =>
+  const set = <K extends keyof ExportRequest>(key: K, value: ExportRequest[K]) => {
+    touched.current = true;
     setReq((r) => ({ ...r, [key]: value }));
+  };
 
   const env: ExportEnv = {
     store,
@@ -84,6 +107,12 @@ export function ExportDialog(props: ExportDialogProps) {
       const { exportFile, downloadBlob } = await engine();
       const { blob, name } = await exportFile(req, envRef.current);
       downloadBlob(blob, name);
+      // Editors keep their last choices for the whole project; a failure costs only that.
+      if (settings?.canEdit) {
+        const { what: _what, logo: _logo, ...chosen } = req;
+        const patch = preferencesPatch(settings, chosen);
+        if (Object.keys(patch).length) await saveExportSettings(projectId, patch).catch(() => {});
+      }
       onClose();
     } catch {
       setFailed(true);
@@ -94,9 +123,33 @@ export function ExportDialog(props: ExportDialogProps) {
 
   async function pickLogo(file: File | undefined) {
     if (!file) return;
-    const url = await saveLogo(projectId, file);
-    setLogoError(!url);
-    if (url) set('logo', url);
+    const problem = logoProblem(file);
+    if (problem) {
+      setLogoState(problem);
+      return;
+    }
+    setLogoState('busy');
+    try {
+      const assetId = await uploadLogo(file, projectId, boardId);
+      const saved = await saveExportSettings(projectId, { logoAssetId: assetId });
+      setSettings(saved);
+      setReq((r) => ({ ...r, logo: saved.logo }));
+      setLogoState('idle');
+    } catch {
+      setLogoState('failed');
+    }
+  }
+
+  async function dropLogo() {
+    setLogoState('busy');
+    try {
+      const saved = await saveExportSettings(projectId, { logoAssetId: null });
+      setSettings(saved);
+      setReq((r) => ({ ...r, logo: null }));
+      setLogoState('idle');
+    } catch {
+      setLogoState('failed');
+    }
   }
 
   const whatOptions: ExportWhat[] = film
@@ -219,40 +272,57 @@ export function ExportDialog(props: ExportDialogProps) {
               )}
               <div className="export__logo">
                 <span className="export__logo-label">{t('export.logo')}</span>
-                {req.logo && <img className="export__logo-img" src={req.logo} alt="" />}
-                <input
-                  ref={fileInput}
-                  type="file"
-                  accept="image/png,image/jpeg"
-                  className="ink-sr-only"
-                  tabIndex={-1}
-                  aria-hidden="true"
-                  onChange={(e) => {
-                    void pickLogo(e.target.files?.[0]);
-                    e.target.value = '';
-                  }}
-                />
-                <Button size="md" onClick={() => fileInput.current?.click()}>
-                  {req.logo ? t('export.logoReplace') : t('export.logoAdd')}
-                </Button>
-                {req.logo && (
-                  <Button
-                    variant="ghost"
-                    onClick={() => {
-                      removeLogo(projectId);
-                      set('logo', null);
-                    }}
-                  >
-                    {t('export.logoRemove')}
-                  </Button>
+                {req.logo && <img className="export__logo-img" src={logoUrl(req.logo)} alt="" />}
+                {canEdit && (
+                  <>
+                    <input
+                      ref={fileInput}
+                      type="file"
+                      accept="image/png,image/jpeg"
+                      className="ink-sr-only"
+                      tabIndex={-1}
+                      aria-hidden="true"
+                      onChange={(e) => {
+                        void pickLogo(e.target.files?.[0]);
+                        e.target.value = '';
+                      }}
+                    />
+                    <Button
+                      size="md"
+                      disabled={logoState === 'busy'}
+                      onClick={() => fileInput.current?.click()}
+                    >
+                      {req.logo ? t('export.logoReplace') : t('export.logoAdd')}
+                    </Button>
+                    {req.logo && (
+                      <Button
+                        variant="ghost"
+                        disabled={logoState === 'busy'}
+                        onClick={() => void dropLogo()}
+                      >
+                        {t('export.logoRemove')}
+                      </Button>
+                    )}
+                  </>
                 )}
                 <p
-                  className={`export__hint${logoError ? ' export__hint--error' : ''}`}
-                  role={logoError ? 'alert' : undefined}
+                  className={`export__hint${['type', 'size', 'failed'].includes(logoState) ? ' export__hint--error' : ''}`}
+                  role={['type', 'size', 'failed'].includes(logoState) ? 'alert' : 'status'}
                 >
-                  {logoError ? t('export.logoInvalid') : t('export.logoHint')}
+                  {logoState === 'busy'
+                    ? t('export.logoUploading')
+                    : logoState === 'type' || logoState === 'size'
+                      ? t('export.logoInvalid')
+                      : logoState === 'failed'
+                        ? t('export.logoFailed')
+                        : canEdit
+                          ? t('export.logoHint')
+                          : req.logo
+                            ? t('export.logoReadOnly')
+                            : t('export.logoNone')}
                 </p>
               </div>
+              {canEdit && <p className="export__hint">{t('export.sharedHint')}</p>}
             </fieldset>
           </div>
           <Preview req={req} env={envRef} />

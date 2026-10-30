@@ -632,6 +632,7 @@ function BoardScreen({
           initialWhat={exporting.what}
           store={preview?.store ?? conn.store}
           projectId={projectId}
+          boardId={boardId}
           projectName={projectName}
           boardTitle={crumbs.at(-1)?.title ?? detail?.title ?? ''}
           boards={boards}

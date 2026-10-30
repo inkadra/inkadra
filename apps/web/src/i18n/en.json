@@ -2271,8 +2271,8 @@
     "logoAdd": "Choose logo…",
     "logoReplace": "Replace…",
     "logoRemove": "Remove logo",
-    "logoHint": "PNG or JPEG up to 256 KB, kept in this browser for this project.",
-    "logoInvalid": "The logo must be a PNG or JPEG of at most 256 KB.",
+    "logoHint": "PNG or JPEG up to 512 KB, shared by everyone on this project.",
+    "logoInvalid": "The logo must be a PNG or JPEG of at most 512 KB.",
     "comments": "Include comments",
     "commentsHintClient": "Only threads that guests can read.",
     "hideHidden": "Leave out cards hidden from guests",
@@ -2309,6 +2309,11 @@
       "cast": "Cast",
       "status": "Status"
     },
-    "pageOf": "{{n}} of {{total}}"
+    "pageOf": "{{n}} of {{total}}",
+    "logoUploading": "Uploading the logo…",
+    "logoFailed": "The logo could not be saved. Try again.",
+    "logoReadOnly": "Set by the project's editors.",
+    "logoNone": "No logo. Project editors can add one.",
+    "sharedHint": "Your choices become the starting point for everyone on this project when you export."
   }
 }
