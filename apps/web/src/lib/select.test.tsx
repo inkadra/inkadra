@@ -10,7 +10,7 @@ let escaped: () => void;
 function Harness() {
   const [value, setValue] = useState('a');
   return (
-    <form
+    <dialog open onCancel={escaped}><form
       onKeyDown={(event) => {
         if (event.key === 'Escape') escaped();
       }}
@@ -26,7 +26,7 @@ function Harness() {
           { value: 'c', label: 'Charlie' },
         ]}
       />
-    </form>
+    </form></dialog>
   );
 }
 beforeEach(async () => {

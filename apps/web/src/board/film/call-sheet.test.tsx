@@ -1,9 +1,9 @@
 // @vitest-environment happy-dom
 import type { ShootingDay } from '@inkadra/shared';
-import { chooseSelect } from '../../test/select.ts';
 import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { afterEach, expect, it, vi } from 'vitest';
+import { chooseSelect } from '../../test/select.ts';
 import { CallSheetModal } from './CallSheetModal.tsx';
 import { castCalls, departmentNotes, plannedWrap } from './call-sheet.ts';
 

@@ -1,8 +1,7 @@
-import { Select } from '@inkadra/ui';
 // SPDX-License-Identifier: AGPL-3.0-only
 import { deleteElements, updateElement } from '@inkadra/canvas-core';
 import type { Element } from '@inkadra/doc-schema';
-import { Button, IconButton } from '@inkadra/ui';
+import { Button, IconButton, Select } from '@inkadra/ui';
 import { useContext, useEffect, useId, useRef, useState, useSyncExternalStore } from 'react';
 import { useTranslation } from 'react-i18next';
 import { pickVariant, useAsset } from '../assets.ts';

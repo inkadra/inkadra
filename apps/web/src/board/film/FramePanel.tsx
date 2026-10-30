@@ -1,4 +1,3 @@
-import { Select } from '@inkadra/ui';
 import { deleteElements, type FrameElement, updateElement } from '@inkadra/canvas-core';
 import {
   ASPECT_RATIOS,
@@ -8,7 +7,7 @@ import {
   SHOT_SIZES,
 } from '@inkadra/doc-schema';
 import type { SearchResult } from '@inkadra/shared';
-import { Button, Icon, IconButton } from '@inkadra/ui';
+import { Button, Icon, IconButton, Select } from '@inkadra/ui';
 import { useContext, useEffect, useId, useRef, useState, useSyncExternalStore } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useRegisterActions } from '../../commands/actions.ts';

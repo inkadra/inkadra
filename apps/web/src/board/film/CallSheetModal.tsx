@@ -1,7 +1,6 @@
-import { Select } from '@inkadra/ui';
 // SPDX-License-Identifier: AGPL-3.0-only
 import type { Asset, ShootingDay } from '@inkadra/shared';
-import { Button, Dialog, DialogActions } from '@inkadra/ui';
+import { Button, Dialog, DialogActions, Select } from '@inkadra/ui';
 import { type ReactNode, useEffect, useId, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Field } from '../export/fields.tsx';
