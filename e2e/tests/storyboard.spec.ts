@@ -256,7 +256,10 @@ test('shell views use real shots and the call sheet traps and restores focus', a
   const print = dialog.getByRole('button', { name: 'Stampa / esporta' });
   await expect(dialog).toBeVisible();
   await expect(daySelect).toBeEnabled();
-  await expect(daySelect.locator('option')).toHaveCount(1);
+  await daySelect.click();
+  await expect(page.getByRole('listbox').getByRole('option')).toHaveCount(1);
+  await page.keyboard.press('Escape');
+  await expect(dialog).toBeVisible();
   await expect(print).toBeEnabled();
   await expect(
     dialog.getByRole('article', { name: 'Anteprima foglio di lavorazione' }),

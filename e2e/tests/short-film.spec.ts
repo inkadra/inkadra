@@ -575,7 +575,7 @@ test('a short film is prepared from the moodboard to the shot list', async ({
     await schedule.getByRole('button', { name: 'Foglio di lavorazione' }).click();
     const sheet = page.getByRole('dialog', { name: 'Foglio di lavorazione' });
     await expect(
-      sheet.getByRole('combobox', { name: 'Data', exact: true }).locator('option'),
+      sheet.getByRole('combobox', { name: 'Data', exact: true }),
     ).toHaveCount(2);
     const preview = sheet.getByRole('article', { name: 'Anteprima foglio di lavorazione' });
     // It opens on the day last edited; the other day is one choice away.

@@ -176,6 +176,7 @@ export function Select({
           aria-labelledby={props['aria-labelledby'] ?? props.id ?? `${id}-trigger`}
           aria-activedescendant={active >= 0 ? `${id}-${active}` : undefined}
           className="ink-select__list"
+          onClick={event => { event.preventDefault(); event.stopPropagation(); }}
           onKeyDown={(event) => {
             event.stopPropagation();
             if (event.key === 'Escape') {
