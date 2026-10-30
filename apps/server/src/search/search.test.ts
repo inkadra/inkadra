@@ -381,6 +381,11 @@ describe.skipIf(!url)('search (needs DATABASE_URL)', () => {
       .set({ expiresAt: null })
       .where(eq(boardGrant.userId, guest!.id));
     expect((await get('owner', '/api/v1/search?type=character')).status).toBe(400);
+    // Words and a story card type: still only named cards, never the board's title.
+    const typed = await get('owner', `/api/v1/search?q=binar&type=character`);
+    expect(typed.body.items).toEqual([]);
+    const byRole = await get('owner', `/api/v1/search?q=capotreno&type=character&projectId=${projectId}`);
+    expect(byRole.body.items.map((h: { title: string }) => h.title)).toEqual(['Marta', 'Marta']);
   });
 
   it('indexes boards stored before the index existed', async () => {

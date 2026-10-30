@@ -160,8 +160,10 @@ export function registerSearchRoutes(app: FastifyInstance, { db, auth }: Deps) {
         ? [tag]
         : [];
     const like = q ? containsPattern(q) : null;
-    // A type in a project without words lists those cards; unnamed ones would show the board.
-    const listing = !q && !tag && !!query.type;
+    // A type in a project without words lists those cards, and characters and locations are
+    // found by name: an unnamed one would only show the title of its board.
+    const listing =
+      (!q && !tag && !!query.type) || query.type === 'character' || query.type === 'location';
     const hits: SearchHit[] = [];
 
     if (q && !tag && !query.type) {
