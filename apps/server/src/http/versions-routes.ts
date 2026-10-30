@@ -60,6 +60,7 @@ function toVersion(row: {
   kind: BoardVersion['kind'];
   name: string | null;
   createdBy: string | null;
+  importedAuthor: string | null;
   creatorName: string | null;
   creatorImage: string | null;
   createdAt: Date;
@@ -77,6 +78,7 @@ function toVersion(row: {
       row.createdBy && row.creatorName !== null
         ? { id: row.createdBy, name: row.creatorName, image: row.creatorImage }
         : null,
+    importedAuthor: row.importedAuthor,
     createdAt: iso(row.createdAt),
     size: row.size,
     elementCount: row.elementCount,

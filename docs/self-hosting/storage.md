@@ -91,5 +91,6 @@ the same way, but MinIO no longer publishes container images.
 ## Moving between local and S3
 
 Switching `STORAGE_DRIVER` does not move the files already uploaded, so pick the storage before
-you start real work. A command that moves files between drivers is planned with the backup
-tools of 1.0.
+you start real work. A command that moves files between drivers is planned for 1.0; meanwhile
+exporting projects and importing them on an instance with the other driver moves them one by
+one.

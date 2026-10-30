@@ -1353,7 +1353,9 @@
       "review": "ha cambiato una revisione",
       "reviewStatus": "ha cambiato la revisione in «{{status}}»",
       "invitation_accepted": "ha accettato il tuo invito",
-      "unknown": "ha fatto qualcosa"
+      "unknown": "ha fatto qualcosa",
+      "export_ready": "L'esportazione del progetto è pronta da scaricare",
+      "import_ready": "L'importazione del progetto è terminata"
     },
     "emailTitle": "Notifiche email",
     "emailHint": "Menzioni, risposte e revisioni anche per email, se il server può inviarle.",
@@ -1865,7 +1867,8 @@
       "storage": "File originali caricati nell’istanza.",
       "access": "I metodi di accesso si configurano sul server; qui vedi cosa è attivo.",
       "registration": "Chi può creare un nuovo account.",
-      "about": "Nome, indirizzo, versione e stato della configurazione dell’istanza."
+      "about": "Nome, indirizzo, versione e stato della configurazione dell’istanza.",
+      "backups": "Copie notturne del database, per ripristinare il server dopo un guasto."
     },
     "autosave": {
       "idle": "Salvataggio automatico",
@@ -1947,7 +1950,8 @@
       "classifications": "Tipi di progetto, Tag, Cataloghi",
       "providers": "Google, OIDC, Single sign-on (SSO), Link di accesso via email, Email e password, SMTP, Invio email",
       "registration": "Nuovi account, Registrazione aperta, Solo su invito, Registrazione chiusa",
-      "instance": "Nome dell’istanza, Indirizzo pubblico, Versione, Diagnostica, Stato dell’istanza"
+      "instance": "Nome dell’istanza, Indirizzo pubblico, Versione, Diagnostica, Stato dell’istanza",
+      "backups": "Backup, Esegui backup ora, Ripristino, Conservazione, Backup notturno"
     },
     "close": "Chiudi impostazioni",
     "dangerZone": "Zona sensibile"
@@ -2142,5 +2146,94 @@
     "sidebarPreview": "Nella barra laterale",
     "close": "Chiudi",
     "chooseEmoji": "Scegli un’emoji"
+  },
+  "transfer": {
+    "exportMenu": "Esporta progetto…",
+    "importMenu": "Importa progetto…",
+    "fromArchive": "Hai un archivio Inkadra?",
+    "exportTitle": "Esporta «{{name}}»",
+    "exportLead": "Uno zip con tutte le board, i file e i commenti, da conservare o da importare su un altro server Inkadra.",
+    "included": "Incluso",
+    "includedList": "Board e sotto-board, file originali, commenti, revisioni, giorni di ripresa, versioni con nome",
+    "excluded": "Escluso",
+    "excludedList": "Membri, link di condivisione e ospiti, board nel cestino, versioni automatiche",
+    "preparing": "Preparazione dell'archivio",
+    "exportReady": "L'archivio è pronto",
+    "availableUntil": "disponibile fino a {{time}}",
+    "notifyNote": "Puoi chiudere questa finestra: una notifica ti avvisa quando ha finito.",
+    "export": "Esporta",
+    "exportAgain": "Esporta di nuovo",
+    "download": "Scarica",
+    "retry": "Riprova",
+    "hide": "Nascondi",
+    "close": "Chiudi",
+    "exportForbidden": "Solo proprietari ed editor del progetto possono esportarlo.",
+    "startError": "Non è stato possibile avviare l'esportazione. Riprova.",
+    "importTitle": "Importa progetto",
+    "importLead": "Crea un nuovo progetto da un archivio Inkadra. Ne sarai l'unico membro; i commenti mantengono i nomi degli autori.",
+    "drop": "Trascina qui l'archivio o scegli un file",
+    "dropHint": "Uno .zip esportato da Inkadra",
+    "change": "scegline un altro",
+    "notZip": "Scegli un archivio .zip esportato da Inkadra.",
+    "uploading": "Caricamento",
+    "importing": "Importazione",
+    "importReady": "«{{name}}» è pronto",
+    "summary": "{{boards}} board · {{files}} file · {{comments}} commenti",
+    "remappedPeople_one": "1 autore dell'altro server è mostrato per nome; il suo lavoro ora è tuo.",
+    "remappedPeople_other": "{{count}} autori dell'altro server sono mostrati per nome; il loro lavoro ora è tuo.",
+    "skippedFiles_one": "1 file mancava o era danneggiato: la sua card è vuota.",
+    "skippedFiles_other": "{{count}} file mancavano o erano danneggiati: le loro card sono vuote.",
+    "openProject": "Apri progetto",
+    "chooseAnother": "Scegli un altro file",
+    "import": "Importa",
+    "uploadError": "Non è stato possibile inviare l'archivio. Controlla la connessione e riprova.",
+    "busy": "Un'altra tua importazione è ancora in corso. Attendi che finisca.",
+    "failure": {
+      "too_large": "L'archivio è più grande di quanto questo server accetti.",
+      "invalid_archive": "Questo file non è un archivio Inkadra valido.",
+      "unsupported_version": "L'archivio viene da un Inkadra più recente. Aggiorna prima questo server.",
+      "too_new": "Le board vengono da un Inkadra più recente. Aggiorna prima questo server.",
+      "storage": "Non è stato possibile salvare i file. Chiedi all'amministratore di controllare lo spazio libero.",
+      "gone": "Non puoi più modificare questo progetto, oppure è stato eliminato.",
+      "interrupted": "Il server si è fermato durante il lavoro. Riprova.",
+      "cancelled": "Annullato.",
+      "internal": "Qualcosa è andato storto. Riprova."
+    }
+  },
+  "backups": {
+    "title": "Backup",
+    "cardLead": "Ogni backup contiene l'intero database. I file restano dove sono: fai il backup anche del volume dati o del bucket.",
+    "now": "Esegui backup ora",
+    "running": "Backup in corso…",
+    "busy": "C'è già un backup in corso.",
+    "startError": "Non è stato possibile avviare il backup. Riprova.",
+    "loadError": "Non è stato possibile caricare i backup.",
+    "last": "Ultimo backup",
+    "none": "Ancora nessun backup",
+    "filesListed_one": "elenca 1 file ({{size}})",
+    "filesListed_other": "elenca {{count}} file ({{size}})",
+    "nightly": "Backup notturno",
+    "next": "Prossimo: {{time}}",
+    "nightlyOff": "Disattivato: i backup partono solo quando li avvii tu.",
+    "time": "Ora",
+    "timeZone": "Fuso orario del server: {{zone}}",
+    "keep": "Conserva",
+    "keepHelp": "I backup più vecchi vengono rimossi dopo che uno nuovo è riuscito.",
+    "keepCount_one": "l'ultimo backup",
+    "keepCount_other": "gli ultimi {{count}} backup",
+    "history": "Cronologia",
+    "inBucket": "copiato nel bucket",
+    "trigger": {
+      "scheduled": "Notturno",
+      "manual": "Manuale"
+    },
+    "status": {
+      "running": "In corso",
+      "ready": "Completato",
+      "failed": "Non riuscito",
+      "removed": "Rimosso"
+    },
+    "where": "I backup non si scaricano dal browser: copiali da DATA_DIR/backups sul server. Ripristina su un database vuoto con",
+    "whereBucket": "I backup non si scaricano dal browser: copiali da DATA_DIR/backups o da backups/ nel bucket. Ripristina su un database vuoto con"
   }
 }

@@ -1,6 +1,7 @@
 import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { Readable } from 'node:stream';
 import { describe, expect, it } from 'vitest';
 import { loadConfig } from './config.ts';
 import { createStorage, localStorage, readAll, type Storage, variantKey } from './storage.ts';
@@ -22,6 +23,21 @@ function contract(name: string, make: () => Storage) {
       await copy.done();
       await storage.remove([key]);
       expect(await storage.size(key)).toBeNull();
+    });
+
+    it('writes streams of unknown length, in parts when large', async () => {
+      const small = variantKey('0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a11', '256');
+      await storage.writeStream(small, Readable.from([Buffer.from('abc')]), 'image/webp');
+      expect((await readAll(await storage.read(small))).toString()).toBe('abc');
+      // Over one 16 MiB part: S3 takes it as a multipart upload.
+      const big = Buffer.alloc(17 * 1024 * 1024, 7);
+      const large = variantKey('0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a12', '256');
+      const pieces = Array.from({ length: 17 }, (_, i) =>
+        big.subarray(i * 1024 * 1024, (i + 1) * 1024 * 1024),
+      );
+      await storage.writeStream(large, Readable.from(pieces), 'application/zip');
+      expect(await storage.size(large)).toBe(big.length);
+      await storage.remove([small, large]);
     });
 
     it('refuses keys that could escape the storage root', async () => {

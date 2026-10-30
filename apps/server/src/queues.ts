@@ -1,9 +1,19 @@
 import type { BoardNotice } from '@inkadra/doc-schema';
-import type { BoardColumn } from '@inkadra/shared';
+import type { BackupSettings, BoardColumn } from '@inkadra/shared';
 import { Queue, QueueEvents, Worker } from 'bullmq';
 import { and, eq, lt } from 'drizzle-orm';
 import IORedis from 'ioredis';
 import type { Logger } from 'pino';
+import {
+  type BackupDeps,
+  backupCron,
+  readBackupSettings,
+  reapStaleBackups,
+  runBackup,
+  serverTimeZone,
+  startBackup,
+  sweepPartialBackups,
+} from './backup.ts';
 import type { BoardReader, StoredElement } from './board-content.ts';
 import { type BoardNotifier, NOTICE_TTL_MS } from './board-notices.ts';
 import {
@@ -20,6 +30,7 @@ import { type MediaDeps, markFailed, processAsset } from './media/process.ts';
 import { purgeNotifications, sendDigests, sendImmediateEmails } from './notifications.ts';
 import { clearExpiredGuestNames } from './share-links.ts';
 import { type Storage, UPLOAD_EXPIRY_MS } from './storage.ts';
+import { runTransfer, sweepTransfers } from './transfers/service.ts';
 import {
   applyVersionRetention,
   type RestoreVersion,
@@ -45,6 +56,8 @@ export const QUEUES = {
    * `inkadra collab` (split mode).
    */
   collab: 'collab',
+  /** Project exports and imports, one at a time (decision 0037). */
+  transfers: 'transfers',
 } as const;
 
 export type JobPayloads = {
@@ -62,6 +75,10 @@ export type JobPayloads = {
   /** A stateless message for the open clients of a board (comments, reviews). */
   'collab:notice': { boardId: string; notice: BoardNotice; sentAt: number };
   'maintenance:purge-notifications': Record<string, never>;
+  /** A backup started from the settings; the nightly one carries no id. */
+  'maintenance:backup': { backupId?: string };
+  'maintenance:transfer-sweep': Record<string, never>;
+  'transfers:run': { transferId: string };
   /** Grouped `immediate` notification emails, every minute. */
   'email:notifications': Record<string, never>;
   /** `daily` digests, checked every hour. */
@@ -79,6 +96,7 @@ export function createQueues(url: string, opts: { prefix?: string } = {}) {
   const connection = createRedis(url);
   const media = new Queue(QUEUES.media, { connection, prefix: opts.prefix });
   const maintenance = new Queue(QUEUES.maintenance, { connection, prefix: opts.prefix });
+  const transfers = new Queue(QUEUES.transfers, { connection, prefix: opts.prefix });
   const jobs: Jobs = {
     async processAsset(assetId) {
       // The job id makes a second enqueue of the same asset a no-op while the first is waiting.
@@ -96,12 +114,22 @@ export function createQueues(url: string, opts: { prefix?: string } = {}) {
           { ...ATTEMPTS, ...KEEP },
         );
     },
+    async runTransfer(transferId) {
+      // Not retried: a failure is written to the row and the person starts again.
+      await transfers.add('run', { transferId }, { jobId: `transfer-${transferId}`, ...KEEP });
+    },
+    async runBackup(backupId) {
+      await maintenance.add('backup', { backupId }, { jobId: `backup-${backupId}`, ...KEEP });
+    },
+    async scheduleBackups(settings) {
+      await scheduleBackups(maintenance, settings);
+    },
   };
   return {
     connection,
     jobs,
     async close() {
-      await Promise.all([media.close(), maintenance.close()]);
+      await Promise.all([media.close(), maintenance.close(), transfers.close()]);
       connection.disconnect();
     },
   };
@@ -139,12 +167,47 @@ export async function purgeUploads(db: Database, storage: Storage, jobs: Jobs) {
   return { removed, requeued: stale.length - removed };
 }
 
+/** The nightly backup at the time of the settings, in the server's time zone. */
+async function scheduleBackups(queue: Queue, settings: BackupSettings) {
+  if (!settings.enabled) {
+    await queue.removeJobScheduler('backup-nightly');
+    return;
+  }
+  await queue.upsertJobScheduler(
+    'backup-nightly',
+    { pattern: backupCron(settings), tz: serverTimeZone() },
+    { name: 'backup', data: {}, opts: KEEP },
+  );
+}
+
+/** What exports, imports and backups need besides the media dependencies. */
+export interface TransferWorkerDeps {
+  dataDir: string;
+  uploadMaxSize: number;
+  importMaxSize: number;
+  migrationsFolder: string;
+  /** Files live in S3: copy backups to the bucket too. */
+  bucket: boolean;
+  /** Backups dump the database over a connection of their own. */
+  databaseUrl: string;
+}
+
+/** Runs a backup job: the nightly one starts its own row, skipped while another runs. */
+export async function backupJob(deps: BackupDeps, backupId?: string) {
+  const row = backupId ? { id: backupId } : await startBackup(deps.db, 'scheduled', null);
+  if (!row) return { skipped: 'running' as const };
+  const done = await runBackup(deps, row.id);
+  return { status: done?.status ?? 'gone' };
+}
+
 export async function startWorkers(
   url: string,
   log: Logger,
   deps: MediaDeps & {
     db: Database;
     storage: Storage;
+    /** Exports, imports and backups; off without it. */
+    transfers?: TransferWorkerDeps;
     /** Notification emails; off without it. */
     mailer?: Mailer;
     publicUrl?: string;
@@ -154,6 +217,15 @@ export async function startWorkers(
 ) {
   const connection = createRedis(url);
   const queues = createQueues(url, opts);
+  const backupDeps: BackupDeps | undefined = deps.transfers && {
+    db: deps.db,
+    storage: deps.storage,
+    dataDir: deps.transfers.dataDir,
+    migrationsFolder: deps.transfers.migrationsFolder,
+    bucket: deps.transfers.bucket,
+    databaseUrl: deps.transfers.databaseUrl,
+    log,
+  };
 
   const maintenance = new Worker(
     QUEUES.maintenance,
@@ -168,6 +240,17 @@ export async function startWorkers(
       if (job.name === 'version-retention') return applyVersionRetention(deps.db);
       if (job.name === 'purge-notifications') return purgeNotifications(deps.db);
       if (job.name === 'anonymise-guests') return clearExpiredGuestNames(deps.db);
+      if (job.name === 'backup' && backupDeps)
+        return backupJob(backupDeps, (job.data as JobPayloads['maintenance:backup']).backupId);
+      if (job.name === 'transfer-sweep' && deps.transfers) {
+        await reapStaleBackups(deps.db);
+        await sweepPartialBackups(deps.transfers.dataDir);
+        return sweepTransfers({
+          db: deps.db,
+          dataDir: deps.transfers.dataDir,
+          jobs: queues.jobs,
+        });
+      }
       throw new Error(`Unknown job ${job.name}`);
     },
     { connection, concurrency: 2, prefix: opts.prefix },
@@ -244,7 +327,30 @@ export async function startWorkers(
     { name: 'anonymise-guests', data: {}, opts: KEEP },
   );
 
-  for (const w of [maintenance, media, email]) {
+  // Exports and imports read and write whole projects: one at a time.
+  const transfers = new Worker(
+    QUEUES.transfers,
+    async (job) => {
+      if (job.name !== 'run' || !deps.transfers) throw new Error(`Unknown job ${job.name}`);
+      const { transferId } = job.data as JobPayloads['transfers:run'];
+      await runTransfer(
+        { ...deps.transfers, db: deps.db, storage: deps.storage, jobs: queues.jobs, log },
+        transferId,
+      );
+    },
+    // Big archives take long: keep the lock alive well past the default 30 seconds.
+    { connection, concurrency: 1, prefix: opts.prefix, lockDuration: 5 * 60 * 1000 },
+  );
+  if (deps.transfers) {
+    await scheduler.upsertJobScheduler(
+      'transfer-sweep',
+      { every: 60 * 60 * 1000 },
+      { name: 'transfer-sweep', data: {}, opts: KEEP },
+    );
+    await scheduleBackups(scheduler, await readBackupSettings(deps.db));
+  }
+
+  for (const w of [maintenance, media, email, transfers]) {
     w.on('failed', (job, err) => log.error({ queue: w.name, job: job?.id, err }, 'job failed'));
   }
   return {
@@ -253,6 +359,7 @@ export async function startWorkers(
         maintenance.close(),
         media.close(),
         email.close(),
+        transfers.close(),
         scheduler.close(),
         mailScheduler.close(),
         queues.close(),
@@ -465,7 +572,11 @@ export function startBoardWorker(
  * Runs jobs in the calling process, for installs and tests without Redis. Failures are
  * logged; nothing is retried.
  */
-export function inlineJobs(deps: MediaDeps, log: Logger): Jobs & { idle(): Promise<void> } {
+export function inlineJobs(
+  deps: MediaDeps,
+  log: Logger,
+  transfers?: TransferWorkerDeps,
+): Jobs & { idle(): Promise<void> } {
   const running = new Set<Promise<unknown>>();
   const track = (work: Promise<unknown>) => {
     const p = work
@@ -473,7 +584,7 @@ export function inlineJobs(deps: MediaDeps, log: Logger): Jobs & { idle(): Promi
       .finally(() => running.delete(p));
     running.add(p);
   };
-  return {
+  const self: Jobs & { idle(): Promise<void> } = {
     async processAsset(assetId) {
       track(
         processAsset({ ...deps, log }, assetId).catch(async (err) => {
@@ -485,10 +596,36 @@ export function inlineJobs(deps: MediaDeps, log: Logger): Jobs & { idle(): Promi
     async deleteFiles(keys) {
       track(deps.storage.remove(keys));
     },
+    ...(transfers
+      ? {
+          async runTransfer(transferId: string) {
+            track(runTransfer({ ...transfers, ...deps, jobs: self, log }, transferId));
+          },
+          async runBackup(backupId: string) {
+            track(
+              runBackup(
+                {
+                  db: deps.db,
+                  storage: deps.storage,
+                  dataDir: transfers.dataDir,
+                  migrationsFolder: transfers.migrationsFolder,
+                  databaseUrl: transfers.databaseUrl,
+                  bucket: transfers.bucket,
+                  log,
+                },
+                backupId,
+              ),
+            );
+          },
+          // Without a worker there is no schedule: backups run when asked for.
+          async scheduleBackups() {},
+        }
+      : {}),
     async idle() {
       while (running.size > 0) await Promise.all(running);
     },
   };
+  return self;
 }
 
 /**

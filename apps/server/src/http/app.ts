@@ -42,6 +42,7 @@ import { registerSearchRoutes } from './search-routes.ts';
 import { securityHeaders } from './security-headers.ts';
 import { GUEST_PAGE_PATH, registerShareLinkRoutes } from './share-links-routes.ts';
 import { registerSharingRoutes } from './sharing-routes.ts';
+import { registerTransferRoutes } from './transfers-routes.ts';
 import { registerUploads } from './uploads.ts';
 import { registerVersionRoutes } from './versions-routes.ts';
 
@@ -135,6 +136,7 @@ export async function createApp(deps: AppDeps) {
   registerReviewRoutes(app, deps);
   registerScheduleRoutes(app, deps);
   registerNotificationRoutes(app, deps);
+  registerTransferRoutes(app, deps);
   registerUploads(app, { ...deps, uploadMaxSize: config.UPLOAD_MAX_SIZE });
   await registerClipRoutes(app, { ...deps, uploadMaxSize: config.UPLOAD_MAX_SIZE });
   // Share links and their guests (decision 0013) decode stored documents through one cache.

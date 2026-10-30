@@ -64,6 +64,9 @@ own server.
   folder or any S3 storage. Email, Google or your own OIDC provider for sign-in, with two-factor
   authentication on every method and sign-in limits that survive restarts. Installs as an app
   from the browser.
+- **Take it with you.** Export a project as an open zip archive (boards, original files,
+  comments, reviews, schedule) and import it on any Inkadra server. Nightly backups of the
+  database, with a restore command that also carries data across upgrades.
 
 <table>
   <tr>

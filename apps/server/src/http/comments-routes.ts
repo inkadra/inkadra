@@ -111,7 +111,7 @@ export function toComment(row: Row, people: People, viewer: Viewer): Comment {
     createdAt: iso(row.createdAt),
     editedAt: row.editedAt ? iso(row.editedAt) : null,
     deletedAt: row.deletedAt ? iso(row.deletedAt) : null,
-    author: authorOf(people, row.authorId, row.authorGuestId),
+    author: authorOf(people, row.authorId, row.authorGuestId, row.importedAuthor),
     body: row.deletedAt ? '' : row.body,
     mentions: row.deletedAt
       ? []

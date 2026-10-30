@@ -1,15 +1,19 @@
 import { createReadStream, createWriteStream } from 'node:fs';
-import { mkdir, rm, stat, writeFile } from 'node:fs/promises';
+import { mkdir, rename, rm, stat, writeFile } from 'node:fs/promises';
 import { dirname, join, resolve, sep } from 'node:path';
 import type { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import {
+  AbortMultipartUploadCommand,
+  CompleteMultipartUploadCommand,
+  CreateMultipartUploadCommand,
   DeleteObjectsCommand,
   GetObjectCommand,
   HeadObjectCommand,
   PutObjectCommand,
   S3Client,
   type S3ClientConfig,
+  UploadPartCommand,
 } from '@aws-sdk/client-s3';
 import { FileStore } from '@tus/file-store';
 import { S3Store } from '@tus/s3-store';
@@ -31,6 +35,8 @@ export interface Storage {
   /** Byte range is inclusive, as in HTTP. */
   read(key: string, range?: { start: number; end: number }): Promise<Readable>;
   write(key: string, body: Buffer, contentType: string): Promise<void>;
+  /** Writes a file of unknown length from a stream (imports, backup copies). */
+  writeStream(key: string, body: Readable, contentType: string): Promise<void>;
   /** A local path to the file, downloading it first when needed. Call `done` afterwards. */
   localCopy(key: string, tmpDir: string): Promise<{ path: string; done: () => Promise<void> }>;
   remove(keys: string[]): Promise<void>;
@@ -88,6 +94,17 @@ export function localStorage(root: string): Storage {
       const target = path(key);
       await mkdir(dirname(target), { recursive: true });
       await writeFile(target, body);
+    },
+    async writeStream(key, body) {
+      const target = path(key);
+      await mkdir(dirname(target), { recursive: true });
+      const partial = `${target}.partial`;
+      try {
+        await pipeline(body, createWriteStream(partial));
+        await rename(partial, target);
+      } finally {
+        await rm(partial, { force: true });
+      }
     },
     async localCopy(key) {
       return { path: path(key), done: async () => {} };
@@ -156,6 +173,49 @@ function s3Storage(config: Config): Storage {
         new PutObjectCommand({ Bucket: bucket, Key: key, Body: body, ContentType: contentType }),
       );
     },
+    async writeStream(key, body, contentType) {
+      checkKey(key);
+      // Parts of 16 MiB: S3 allows 10 000 parts, so up to 156 GiB per file.
+      const PART = 16 * 1024 * 1024;
+      const parts = chunks(body, PART);
+      const first = await parts.next();
+      const head = first.done ? Buffer.alloc(0) : first.value;
+      if (head.length < PART) {
+        await client.send(
+          new PutObjectCommand({ Bucket: bucket, Key: key, Body: head, ContentType: contentType }),
+        );
+        return;
+      }
+      const { UploadId } = await client.send(
+        new CreateMultipartUploadCommand({ Bucket: bucket, Key: key, ContentType: contentType }),
+      );
+      const done: Array<{ ETag: string | undefined; PartNumber: number }> = [];
+      try {
+        let part: Buffer | undefined = head;
+        while (part) {
+          const PartNumber = done.length + 1;
+          const res = await client.send(
+            new UploadPartCommand({ Bucket: bucket, Key: key, UploadId, PartNumber, Body: part }),
+          );
+          done.push({ ETag: res.ETag, PartNumber });
+          const next = await parts.next();
+          part = next.done ? undefined : next.value;
+        }
+        await client.send(
+          new CompleteMultipartUploadCommand({
+            Bucket: bucket,
+            Key: key,
+            UploadId,
+            MultipartUpload: { Parts: done },
+          }),
+        );
+      } catch (err) {
+        await client
+          .send(new AbortMultipartUploadCommand({ Bucket: bucket, Key: key, UploadId }))
+          .catch(() => {});
+        throw err;
+      }
+    },
     async localCopy(key, tmpDir) {
       const target = join(tmpDir, key.replaceAll('/', '_'));
       await mkdir(tmpDir, { recursive: true });
@@ -175,6 +235,23 @@ function s3Storage(config: Config): Storage {
       }
     },
   };
+}
+
+/** The stream in pieces of `size` bytes (the last one shorter). */
+async function* chunks(stream: Readable, size: number): AsyncGenerator<Buffer> {
+  let pending: Buffer[] = [];
+  let length = 0;
+  for await (const chunk of stream) {
+    pending.push(chunk as Buffer);
+    length += (chunk as Buffer).length;
+    while (length >= size) {
+      const all = Buffer.concat(pending);
+      yield all.subarray(0, size);
+      pending = [all.subarray(size)];
+      length -= size;
+    }
+  }
+  if (length > 0 || pending.length === 0) yield Buffer.concat(pending);
 }
 
 /** Reads a whole stream; for small files only (thumbnails, page snippets). */
