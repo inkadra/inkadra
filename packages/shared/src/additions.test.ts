@@ -206,7 +206,7 @@ describe('contract additions of API 0.5.0', () => {
 
   it('documents the new paths and answers', () => {
     const doc = buildOpenApiDocument();
-    expect(doc.info.version).toBe('0.7.0');
+    expect(doc.info.version).toBe('0.8.0');
     const paths = doc.paths ?? {};
     expect(paths['/api/v1/boards/{boardId}/columns']?.get).toBeDefined();
     expect(paths['/api/v1/boards/{boardId}/versions/{versionId}']?.get).toBeDefined();

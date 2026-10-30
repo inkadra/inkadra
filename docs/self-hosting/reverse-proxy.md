@@ -109,7 +109,7 @@ replace `${INKADRA_DOMAIN}` with your domain and both `${INKADRA_…UPSTREAM}` w
 point `ssl_certificate` at your certificate, for example from certbot. The parts that matter:
 
 ```nginx
-client_max_body_size    0;      # no limit here, Inkadra enforces UPLOAD_MAX_SIZE
+client_max_body_size    0;      # no limit here, Inkadra enforces UPLOAD_MAX_SIZE and IMPORT_MAX_SIZE
 proxy_request_buffering off;    # stream uploads instead of writing them to the proxy's disk
 proxy_read_timeout      600s;
 proxy_set_header Upgrade    $http_upgrade;
@@ -119,6 +119,11 @@ proxy_set_header X-Forwarded-Proto $scheme;
 
 In Docker, [`deploy/proxy/nginx`](../../deploy/proxy/nginx) fills in the template from `.env` and
 reads the certificate from `NGINX_CERTS`.
+
+Project imports send the whole archive in one request (uploads are sent in pieces), so a proxy
+limit on the request body also limits imports. Behind Cloudflare's proxy a request body can be
+at most 100 MB on the Free and Pro plans: import larger projects through a direct route (LAN
+address, Tailscale) or split them.
 
 ## Nginx Proxy Manager
 

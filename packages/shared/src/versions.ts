@@ -29,6 +29,15 @@ export const BoardVersion = z
     kind: BoardVersionKind,
     name: z.string().nullable(),
     createdBy: UserSummary.nullable().openapi({ description: 'Null for automatic versions.' }),
+    importedAuthor: z
+      .string()
+      .nullable()
+      .optional()
+      .openapi({
+        description:
+          'Imported versions (decision 0037): the author’s name on the exporting server, ' +
+          'display-only; `createdBy` is then the person who imported. Missing before API 0.8.0.',
+      }),
     createdAt: Timestamp,
     size: z.int().min(0).openapi({ description: 'Bytes of the stored state.' }),
     elementCount: z.int().min(0),
