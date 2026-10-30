@@ -71,7 +71,12 @@ test('the nightly schedule, its time and the retention persist after a reload', 
   const time = page.getByLabel('Ora', { exact: true });
   const keep = page.getByLabel('Conserva', { exact: true });
   await expect(time).toBeVisible();
-  // The time is off limits until the nightly backup is on.
+  // Start from off, whatever the default is: the time is off limits until the backup is on.
+  if (await nightly.isChecked()) {
+    const off = page.waitForResponse(isBackupSettings);
+    await nightly.uncheck();
+    expect((await off).ok()).toBe(true);
+  }
   await expect(time).toBeDisabled();
 
   let saved = page.waitForResponse(isBackupSettings);
