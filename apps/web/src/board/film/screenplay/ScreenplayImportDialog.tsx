@@ -261,6 +261,15 @@ export function ScreenplayImportDialog({
                     {t('screenplay.cast')}
                   </Check>
                 )}
+                {script.characters.length > 0 && (
+                  <Check
+                    checked={options.characterCards}
+                    onChange={(v) => set('characterCards', v)}
+                    hint={t('screenplay.characterCardsHint')}
+                  >
+                    {t('screenplay.characterCards')}
+                  </Check>
+                )}
                 {targets.length > 1 && (
                   <Segmented
                     label={t('screenplay.target')}

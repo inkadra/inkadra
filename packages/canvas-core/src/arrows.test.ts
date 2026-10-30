@@ -1,7 +1,19 @@
 // SPDX-License-Identifier: MPL-2.0
 import { createBoardDoc, roots } from '@inkadra/doc-schema';
 import { describe, expect, it } from 'vitest';
-import { arrowEnds, createArrow, exitPoint, moveArrows, refreshArrows } from './arrows.ts';
+import {
+  arrowBox,
+  arrowEnds,
+  arrowGeometry,
+  arrowPathData,
+  arrowPolyline,
+  createArrow,
+  curveControl,
+  exitPoint,
+  moveArrows,
+  refreshArrows,
+  setArrowPath,
+} from './arrows.ts';
 import { copyElements, createElement, listElements, pasteElements } from './board.ts';
 
 const opts = { userId: 'u1' };
@@ -77,5 +89,62 @@ describe('arrows', () => {
     expect(copy.from.elementId).not.toBe(a.id);
     expect(pasted).toContain(copy.from.elementId);
     expect(copy.to.elementId).toBe(b.id);
+  });
+});
+
+describe('curved arrows', () => {
+  it('bows to the left of the direction, by a bounded share of the length', () => {
+    expect(curveControl({ x: 0, y: 0 }, { x: 100, y: 0 }, undefined)).toBeNull();
+    expect(curveControl({ x: 0, y: 0 }, { x: 100, y: 0 }, 'straight')).toBeNull();
+    const c = curveControl({ x: 0, y: 0 }, { x: 100, y: 0 }, 'curved')!;
+    expect(c.x).toBeCloseTo(50);
+    expect(c.y).toBeCloseTo(-36);
+    // Long arrows bow by at most MAX_CURVE_BOW at their middle.
+    expect(curveControl({ x: 0, y: 0 }, { x: 5000, y: 0 }, 'curved')!.y).toBeCloseTo(-320);
+    // Reversed arrows bow the other way.
+    expect(curveControl({ x: 100, y: 0 }, { x: 0, y: 0 }, 'curved')!.y).toBeCloseTo(36);
+  });
+
+  it('puts the label on the middle of the curve and leaves cards facing the bow', () => {
+    const rects = new Map([
+      ['marta', { x: 0, y: 0, w: 100, h: 100 }],
+      ['leo', { x: 400, y: 0, w: 100, h: 100 }],
+    ]);
+    const rectOf = (id: string) => rects.get(id) ?? null;
+    const arrow = {
+      from: { elementId: 'marta', x: 0, y: 0 },
+      to: { elementId: 'leo', x: 0, y: 0 },
+    };
+    const straight = arrowGeometry(arrow, rectOf);
+    expect(straight.c).toBeNull();
+    expect(straight.mid).toEqual({ x: 250, y: 50 });
+    const curved = arrowGeometry({ ...arrow, path: 'curved' }, rectOf);
+    expect(curved.mid.x).toBeCloseTo(250);
+    expect(curved.mid.y).toBeLessThan(0);
+    // Both ends leave their card upwards-ish, toward the control point.
+    expect(curved.a.y).toBeLessThan(50);
+    expect(curved.b.y).toBeLessThan(50);
+    expect(arrowPathData(curved)).toMatch(/^M[\d.-]+ [\d.-]+Q/);
+    expect(arrowPathData(straight)).toMatch(/^M[\d.-]+ [\d.-]+L/);
+    const line = arrowPolyline(curved, 10);
+    expect(line).toHaveLength(11);
+    expect(line[0]).toEqual(curved.a);
+    expect(line[10]!.x).toBeCloseTo(curved.b.x);
+    expect(line[5]!.y).toBeCloseTo(curved.mid.y);
+    expect(arrowBox(curved).y).toBeCloseTo(curved.mid.y);
+  });
+
+  it('switches path, keeping the box around the curve', () => {
+    const doc = createBoardDoc('0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10');
+    const arrow = createArrow(doc, { x: 0, y: 0 }, { x: 200, y: 0 }, () => null, {}, opts);
+    expect(arrow.h).toBe(1);
+    setArrowPath(doc, [arrow], 'curved', () => null);
+    const map = roots(doc).elements.get(arrow.id)!;
+    expect(map.get('path')).toBe('curved');
+    expect(map.get('y')).toBeLessThan(-30);
+    setArrowPath(doc, [{ ...arrow, path: 'curved' }], undefined, () => null);
+    expect(map.has('path')).toBe(false);
+    expect(map.get('h')).toBe(1);
+    expect(arrowEnds({ ...arrow, path: 'curved' }, () => null).b).toEqual({ x: 200, y: 0 });
   });
 });

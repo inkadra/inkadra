@@ -44,8 +44,9 @@ const COMMON_GUEST_FIELDS = [
  * an allow list: a field added to an element later stays out of guest snapshots until it is
  * added here. Left out on purpose: `tags` (internal labels), `locked` (editing state),
  * `guestHidden` (hidden elements are not sent at all) and, on frames, `status` (the production
- * status, not the review) and `notes` (the director's notes). `createdBy` is always sent as
- * null.
+ * status, not the review) and `notes` (the director's notes); on characters `contact` and
+ * `notes`, on locations `address`, `mapUrl`, `availability`, `contact` and `notes` (people's
+ * details and private places, decision 0044). `createdBy` is always sent as null.
  */
 export const GUEST_ELEMENT_FIELDS = {
   note: [...COMMON_GUEST_FIELDS, 'color'],
@@ -85,7 +86,18 @@ export const GUEST_ELEMENT_FIELDS = {
     'shapes',
     'referenceOpacity',
   ],
-  arrow: [...COMMON_GUEST_FIELDS, 'from', 'to', 'label', 'line', 'heads'],
+  arrow: [...COMMON_GUEST_FIELDS, 'from', 'to', 'label', 'line', 'heads', 'path'],
+  character: [
+    ...COMMON_GUEST_FIELDS,
+    'name',
+    'role',
+    'assetId',
+    'age',
+    'description',
+    'actor',
+    'scenes',
+  ],
+  location: [...COMMON_GUEST_FIELDS, 'name', 'setting', 'assetId', 'light', 'scenes'],
 } as const satisfies Record<ElementType, readonly string[]>;
 
 /**

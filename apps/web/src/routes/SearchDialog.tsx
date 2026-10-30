@@ -40,6 +40,8 @@ const ICONS: Record<string, IconName> = {
   scene: 'scene',
   frame: 'frame',
   arrow: 'arrow',
+  character: 'user',
+  location: 'pin',
 };
 
 function iconOf(hit: SearchHit): IconName {

@@ -45,8 +45,9 @@ in order. An accepted decision is never rewritten: a later one supersedes it.
 | [0039](0039-project-export-settings.md)              | PDF and image export settings stored per project                                       |
 | [0040](0040-screenplay-import.md)                    | Screenplay import from Fountain and Final Draft, read in the browser                   |
 | [0041](0041-expiring-access-and-project-creation.md) | Expiring access for people with an account; who can create projects                    |
-
-| [0042](0042-video-frame-grab.md) | Video stills and their source |
+| [0042](0042-video-frame-grab.md)                     | Video stills and their source                                                          |
+| [0043](0043-arrow-labels-and-styles.md)              | Arrow labels and styles: straight or curved, line, ends                                |
+| [0044](0044-character-and-location-cards.md)         | Character and location cards for the story bible                                       |
 
 Two decisions share the number 0025: they were accepted in parallel, and accepted records
 are not renumbered.

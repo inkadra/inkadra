@@ -260,7 +260,7 @@ test('shell views use real shots and the call sheet traps and restores focus', a
   await expect(print).toBeEnabled();
   await expect(
     dialog.getByRole('article', { name: 'Anteprima foglio di lavorazione' }),
-  ).toContainText('Revisione piano');
+  ).toContainText('Revisione 1');
   await expect(dialog).not.toContainText('Demo · non salvato');
   // Focus lands inside the dialog, on its first control, never on the page behind it.
   expect(await dialog.evaluate((element) => element.contains(document.activeElement))).toBe(true);

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-import { arrowEnds, decodeStroke, type Rect } from '@inkadra/canvas-core';
+import { arrowGeometry, arrowPolyline, decodeStroke, type Rect } from '@inkadra/canvas-core';
 import type { Element, FrameShape, Stroke } from '@inkadra/doc-schema';
 import type { Placed } from './board-model.ts';
 import type { ImageInfo, Measure, Op } from './pages.ts';
@@ -48,10 +48,14 @@ export interface CardContext {
   /** Shot size, angle, movement, lens and duration on one line. */
   frameMeta(frame: Extract<Element, { type: 'frame' }>): string;
   slugline(scene: Extract<Element, { type: 'scene' }>): string;
+  /** Actor or INT./EXT. and the scene count of a character or location, on one line. */
+  storyMeta(card: Extract<Element, { type: 'character' | 'location' }>): string;
   words: { board: string; file: string };
 }
 
 const PAD = 12;
+/** Side of a character's portrait on its card. */
+const PORTRAIT = 56;
 const RADIUS = 10;
 const BODY: Omit<TextStyle, 'color'> = { size: 13, weight: 400, leading: 19.5 };
 const SMALL: Omit<TextStyle, 'color'> = { size: 11, weight: 400, leading: 16 };
@@ -87,6 +91,23 @@ export function cardHeight(el: Element, w: number, ctx: CardContext): number | n
       return w / ctx.frameAspect(el) + 52;
     case 'color':
       return w;
+    case 'character': {
+      const text =
+        lines(el.name || ' ', TITLE, 1) +
+        (el.role ? lines(el.role, SMALL, 1) : 0) +
+        (ctx.storyMeta(el) ? lines(ctx.storyMeta(el), SMALL, 1) : 0);
+      return Math.max(PORTRAIT, text + 4) + 20;
+    }
+    case 'location': {
+      const pic = ctx.image(el.assetId) ? (w * 9) / 16 : 0;
+      return (
+        pic +
+        20 +
+        lines(el.name || ' ', TITLE, 2) +
+        (ctx.storyMeta(el) ? lines(ctx.storyMeta(el), SMALL, 1) : 0) +
+        (el.light ? lines(el.light, SMALL, 2) + 2 : 0)
+      );
+    }
     default:
       return null;
   }
@@ -402,6 +423,56 @@ function body(p: Placed, ctx: CardContext): Op[] {
     }
     case 'arrow':
       return [];
+    case 'character': {
+      // The face of the card only: contacts and notes stay in the app (decision 0044).
+      const ops: Op[] = [];
+      const top = p.y + 10;
+      const img = ctx.image(el.assetId);
+      const box = { x, y: top, w: PORTRAIT, h: PORTRAIT };
+      ops.push(
+        img
+          ? { kind: 'clip', ...box, radius: 8, ops: [picture(img.key, box, 'cover', c)] }
+          : { kind: 'rect', ...box, radius: 8, fill: c['surface-2'] },
+      );
+      const tx = x + PORTRAIT + 10;
+      const tw = inner - PORTRAIT - 10;
+      const line = (value: string, at: number, style: Omit<TextStyle, 'color'>, color: string) =>
+        textBlock(wrapText(value, tw, style.size, style.weight, m, 1), tx, at, { ...style, color });
+      const name = line(el.name, top + 4, TITLE, c['text-primary']);
+      ops.push(...name.ops);
+      let below = name.bottom;
+      for (const [value, color] of [
+        [el.role, c['text-secondary']],
+        [ctx.storyMeta(el), c['text-muted']],
+      ] as const) {
+        if (!value) continue;
+        const block = line(value, below, SMALL, color);
+        ops.push(...block.ops);
+        below = block.bottom;
+      }
+      return ops;
+    }
+    case 'location': {
+      const ops: Op[] = [];
+      let top = p.y + 10;
+      const img = ctx.image(el.assetId);
+      if (img) {
+        const h = (p.w * 9) / 16;
+        ops.push(picture(img.key, { x: p.x, y: p.y, w: p.w, h }, 'cover', c));
+        top = p.y + h + 10;
+      }
+      const name = text(el.name, top, TITLE, c['text-primary'], 2);
+      ops.push(...name.ops);
+      let below = name.bottom;
+      const meta = ctx.storyMeta(el);
+      if (meta) {
+        const block = text(meta, below, SMALL, c['text-muted'], 1);
+        ops.push(...block.ops);
+        below = block.bottom;
+      }
+      if (el.light) ops.push(...text(el.light, below + 2, SMALL, c['text-secondary'], 2).ops);
+      return ops;
+    }
   }
 }
 
@@ -574,11 +645,13 @@ function drawArrow(
   ctx: CardContext,
 ): Op[] {
   const c = ctx.colors;
-  const { a, b } = arrowEnds(el, rectOf);
+  const g = arrowGeometry(el, rectOf);
+  const { a, b } = g;
   const color = c['text-secondary'];
-  const dash = el.line === 'dashed' ? [6, 5] : undefined;
-  const ops: Op[] = [
-    {
+  const dashed = el.line === 'dashed';
+  const ops: Op[] = [];
+  if (!g.c) {
+    ops.push({
       kind: 'line',
       x1: a.x,
       y1: a.y,
@@ -586,16 +659,28 @@ function drawArrow(
       y2: b.y,
       color,
       width: 1.5,
-      ...(dash ? { dash } : {}),
-    },
-  ];
+      ...(dashed ? { dash: [6, 5] } : {}),
+    });
+  } else if (!dashed) {
+    ops.push({
+      kind: 'polyline',
+      points: arrowPolyline(g).flatMap((p) => [p.x, p.y]),
+      color,
+      width: 1.5,
+    });
+  } else {
+    ops.push(...dashes(arrowPolyline(g, 48), 6, 5, color));
+  }
+  // Heads point along the path: on a curve, from the control point.
+  const ta = g.c ?? b;
+  const tb = g.c ?? a;
   const heads = el.heads ?? 'end';
-  if (heads !== 'none') ops.push(head(a.x, a.y, b.x, b.y, 9, color));
-  if (heads === 'both') ops.push(head(b.x, b.y, a.x, a.y, 9, color));
+  if (heads !== 'none') ops.push(head(tb.x, tb.y, b.x, b.y, 9, color));
+  if (heads === 'both') ops.push(head(ta.x, ta.y, a.x, a.y, 9, color));
   if (el.label) {
     const w = ctx.measure(el.label, 11, 500);
-    const mx = (a.x + b.x) / 2;
-    const my = (a.y + b.y) / 2;
+    const mx = g.mid.x;
+    const my = g.mid.y;
     ops.push({
       kind: 'rect',
       x: mx - w / 2 - 6,
@@ -616,6 +701,39 @@ function drawArrow(
       weight: 500,
       color: c['text-primary'],
     });
+  }
+  return ops;
+}
+
+/** Dashes along a polyline, as lines `on` long with gaps `off` long. */
+function dashes(
+  points: readonly { x: number; y: number }[],
+  on: number,
+  off: number,
+  color: string,
+): Op[] {
+  const ops: Op[] = [];
+  let drawing = true;
+  let left = on;
+  for (const [i, q] of points.entries()) {
+    const start = points[i - 1];
+    if (!start) continue;
+    let p: { x: number; y: number } = start;
+    let len = Math.hypot(q.x - p.x, q.y - p.y);
+    while (len > 0) {
+      const step = Math.min(left, len);
+      const t = step / len;
+      const next: { x: number; y: number } = { x: p.x + (q.x - p.x) * t, y: p.y + (q.y - p.y) * t };
+      if (drawing)
+        ops.push({ kind: 'line', x1: p.x, y1: p.y, x2: next.x, y2: next.y, color, width: 1.5 });
+      p = next;
+      len -= step;
+      left -= step;
+      if (left <= 1e-6) {
+        drawing = !drawing;
+        left = drawing ? on : off;
+      }
+    }
   }
   return ops;
 }

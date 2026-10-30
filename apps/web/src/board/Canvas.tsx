@@ -1,10 +1,13 @@
 import {
   type Alignment,
   type ArrowElement,
+  type ArrowGeometry,
   addScene,
   alignRects,
   applyTemplate,
+  arrowBox,
   arrowEnds,
+  arrowGeometry,
   boundsOf,
   bringToFront,
   centerOn,
@@ -38,7 +41,6 @@ import {
   refreshArrows,
   resizeFromCorner,
   screenToWorld,
-  segmentBox,
   sendToBack,
   snapRect,
   storyboardOf,
@@ -75,7 +77,7 @@ import { canvasActions, duplicateInStore } from '../commands/board-actions.ts';
 import { useSession } from '../lib/session.tsx';
 import { queueSeeds } from '../routes/seed-queue.tsx';
 import { accessNotices } from './access-notices.ts';
-import { ArrowLayer } from './arrows.tsx';
+import { ArrowLayer, ArrowStyleButtons, onArrowStyleButton } from './arrows.tsx';
 import { canRenameBoard, createBoard, setBoardCover } from './boards.ts';
 import {
   type CanvasTemplate,
@@ -84,7 +86,6 @@ import {
 } from './canvas-templates.ts';
 import { Card } from './cards.tsx';
 import {
-  BarButton,
   type CanvasTool,
   CommandPalette,
   ContextBar,
@@ -106,6 +107,7 @@ import { BoardContext, type BoardContextValue, GuestModeContext, LARGE_BOARD } f
 import { useBoardAspect } from './film/aspect.ts';
 import { DrawingEditor } from './film/DrawingEditor.tsx';
 import { FramePanel } from './film/FramePanel.tsx';
+import { StoryCardPanel } from './film/StoryCardPanel.tsx';
 import { createScreenplayStoryboard } from './film/screenplay/new-storyboard.ts';
 import type { ImportPlan } from './film/screenplay/plan.ts';
 import { ScreenplayImportDialog } from './film/screenplay/ScreenplayImportDialog.tsx';
@@ -271,8 +273,7 @@ export function Canvas({
   const liveRect = useCallback(
     (el: Element): Rect => {
       if (el.type !== 'arrow') return store.rectOf(el);
-      const { a, b } = arrowEnds(el, cardRect);
-      return segmentBox(a, b);
+      return arrowBox(arrowGeometry(el, cardRect));
     },
     [store, cardRect],
   );
@@ -301,6 +302,8 @@ export function Canvas({
   const [tool, setTool] = useState<CanvasTool>('select');
   /** Frame whose details panel is open, frame being drawn, image or video in the viewer. */
   const [framePanel, setFramePanel] = useState<string | null>(null);
+  /** Character or location card whose side sheet is open. */
+  const [storyPanel, setStoryPanel] = useState<string | null>(null);
   const [noteSheet, setNoteSheet] = useState<string | null>(null);
   const [drawing, setDrawing] = useState<string | null>(null);
   const [viewing, setViewing] = useState<string | null>(null);
@@ -652,6 +655,13 @@ export function Canvas({
         case 'scene':
           created = addScene(doc, {}, opts, pos);
           break;
+        case 'character':
+        case 'location':
+          // Named in the side sheet, which opens on the new card.
+          created = createElement(doc, type, pos, { name: '' }, opts);
+          select([created.id]);
+          setStoryPanel(created.id);
+          return;
       }
       if (created) {
         select([created.id]);
@@ -856,7 +866,12 @@ export function Canvas({
         setViewing(el.id);
       } else if (el.type === 'frame') {
         select([el.id]);
+        setStoryPanel(null);
         setFramePanel(el.id);
+      } else if (el.type === 'character' || el.type === 'location') {
+        select([el.id]);
+        setFramePanel(null);
+        setStoryPanel(el.id);
       } else if (el.type === 'note') {
         select([el.id]);
         // The sheet takes over the note's document: leave inline editing first.
@@ -1428,6 +1443,7 @@ export function Canvas({
     if (e.type !== 'keydown' || isTyping(e.target) || palette) return;
     const cmd = commandFor(e);
     if (!cmd) return;
+    if (cmd.kind === 'edit' && onArrowStyleButton(e.target)) return;
     const single = selection.size === 1 ? snap.byId.get([...selection][0] ?? '') : undefined;
     switch (cmd.kind) {
       case 'tool':
@@ -1671,7 +1687,7 @@ export function Canvas({
   // Where each arrow is drawn now, following the cards being dragged.
   // biome-ignore lint/correctness/useExhaustiveDependencies: sizeVersion invalidates measured heights
   const arrowEndsById = useMemo(() => {
-    const out = new Map<string, { a: Point; b: Point }>();
+    const out = new Map<string, ArrowGeometry>();
     if (arrows.length === 0) return out;
     const { moving, offset } = overlay;
     const shifted = (id: string) => {
@@ -1684,7 +1700,10 @@ export function Canvas({
         moved && !(end.elementId && cardRect(end.elementId))
           ? { ...end, x: end.x + offset.dx, y: end.y + offset.dy }
           : end;
-      out.set(arrow.id, arrowEnds({ from: shift(arrow.from), to: shift(arrow.to) }, shifted));
+      out.set(
+        arrow.id,
+        arrowGeometry({ from: shift(arrow.from), to: shift(arrow.to), path: arrow.path }, shifted),
+      );
     }
     return out;
   }, [arrows, overlay, cardRect, sizeVersion]);
@@ -1708,6 +1727,10 @@ export function Canvas({
     return el?.type === 'frame' ? el : null;
   };
   const panelFrame = frameOf(framePanel);
+  const storyCard = (() => {
+    const el = storyPanel ? snap.byId.get(storyPanel) : undefined;
+    return el?.type === 'character' || el?.type === 'location' ? el : undefined;
+  })();
   const drawnFrame = frameOf(drawing);
   // Shooting order, for the editor's strip and onion skin; only while a drawing is open.
   const storyFrames = useMemo(
@@ -2163,40 +2186,16 @@ export function Canvas({
             onTags={(x, y) => setTagging({ x, y, ids: [...selection] })}
             extra={
               selectedEls.every((e) => e.type === 'arrow') && (
-                <>
-                  <BarButton
-                    icon="minus"
-                    label={t('board.arrow.dashed')}
-                    active={selectedEls.every((e) => e.type === 'arrow' && e.line === 'dashed')}
-                    onClick={() => {
-                      const dashed = !selectedEls.every(
-                        (e) => e.type === 'arrow' && e.line === 'dashed',
-                      );
-                      updateElements(
-                        doc,
-                        selectedEls.map((e) => ({
-                          id: e.id,
-                          patch: { line: dashed ? 'dashed' : undefined },
-                        })),
-                        LOCAL,
-                      );
-                    }}
-                  />
-                  <BarButton
-                    icon="arrow"
-                    label={t('board.arrow.heads')}
-                    onClick={() => {
-                      const first = selectedEls[0];
-                      const now = first?.type === 'arrow' ? (first.heads ?? 'end') : 'end';
-                      const heads = now === 'end' ? 'both' : now === 'both' ? 'none' : undefined;
-                      updateElements(
-                        doc,
-                        selectedEls.map((e) => ({ id: e.id, patch: { heads } })),
-                        LOCAL,
-                      );
-                    }}
-                  />
-                </>
+                <ArrowStyleButtons
+                  doc={doc}
+                  arrows={selectedEls as ArrowElement[]}
+                  rectOf={cardRect}
+                  onLabel={
+                    selectedEls.length === 1 && selectedEls[0] && !selectedEls[0].locked
+                      ? setEditing.bind(null, selectedEls[0].id)
+                      : undefined
+                  }
+                />
               )
             }
           />
@@ -2252,6 +2251,19 @@ export function Canvas({
               readOnly={readOnly}
               onClose={() => setFramePanel(null)}
               onDraw={() => setDrawing(panelFrame.id)}
+            />
+          </div>
+        )}
+        {storyCard && !panelFrame && (
+          <div className="canvas__panel">
+            <StoryCardPanel
+              key={storyCard.id}
+              store={store}
+              card={storyCard}
+              projectId={projectId}
+              boardId={boardId}
+              readOnly={readOnly}
+              onClose={() => setStoryPanel(null)}
             />
           </div>
         )}

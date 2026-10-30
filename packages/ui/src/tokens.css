@@ -67,7 +67,9 @@
   --ink-tool-color-bg: #2A2E19;
 }
 
-:root[data-theme='light'] {
+/* Printed paper is always light, like the PDF export (decision 0038). */
+:root[data-theme='light'],
+.ink-paper {
   color-scheme: light;
   --ink-bg-rail: #EFEFEC;
   --ink-bg-app: #EFEFEC;

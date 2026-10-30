@@ -2255,3 +2255,6 @@ button.card__play {
     flex-wrap: wrap;
   }
 }
+.ctxbar__arrow-styles {
+  display: contents;
+}

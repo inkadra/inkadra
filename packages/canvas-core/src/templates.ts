@@ -19,8 +19,8 @@ export interface TemplateLabels {
   storyboard: { scene: string };
   production: { todo: string; doing: string; done: string };
   brief: { column: string; logline: string; synopsis: string; tone: string };
-  locations: { column: string; location: string };
-  casting: { column: string; role: string };
+  locations: { column: string };
+  casting: { column: string };
 }
 
 const GAP = 40;
@@ -80,13 +80,12 @@ export function applyTemplate(
       addNote(col, l.synopsis);
       addNote(col, l.tone);
     } else if (id === 'locations') {
-      const l = labels.locations;
-      const col = column(0, l.column);
-      addNote(col, l.location);
+      // A blank location card: its face asks for the name (decision 0044).
+      const col = column(0, labels.locations.column);
+      createElement(doc, 'location', at, { name: '', parent: col }, opts);
     } else if (id === 'casting') {
-      const l = labels.casting;
-      const col = column(0, l.column);
-      addNote(col, l.role);
+      const col = column(0, labels.casting.column);
+      createElement(doc, 'character', at, { name: '', parent: col }, opts);
     }
   }, opts.origin);
   return ids;

@@ -15,6 +15,9 @@ export const toolColor = {
   color: 'color',
   column: null,
   frame: null,
+  // Story bible cards are neutral like their surfaces (decision 0044).
+  character: null,
+  location: null,
   select: null,
   hand: null,
   arrow: null,

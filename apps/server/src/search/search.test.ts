@@ -56,6 +56,9 @@ function storyboard(boardId: string) {
     label: 'Sodio 100%_',
     tags: ['Notte'],
   });
+  addElement(doc, { ...base(), type: 'character', name: 'Marta', role: 'Capotreno' });
+  // A blank card of the Casting template: listed by nobody until it has a name.
+  addElement(doc, { ...base(), type: 'character', name: '' });
   const note = addElement(doc, { ...base(), type: 'note' });
   const p = new Y.XmlElement('paragraph');
   p.insert(0, [new Y.XmlText('Sopralluogo alla stazione')]);
@@ -70,7 +73,7 @@ describe('index entries', () => {
     const doc = storyboard('0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10');
     roots(doc).elements.set('future_el_0001', new Y.Map(Object.entries({ type: 'hologram' })));
     const entries = entriesFor(doc);
-    expect(entries).toHaveLength(4);
+    expect(entries).toHaveLength(6);
     const frame = entries.find((e) => e.type === 'frame')!;
     expect(frame.title).toBe('4C');
     expect(frame.text).toContain('85mm');
@@ -96,6 +99,39 @@ describe('index entries', () => {
       expect.objectContaining({ elementId: file.id, text: file.caption }),
       expect.objectContaining({ elementId: old.id, title: '', text: '' }),
     ]);
+  });
+
+  it('indexes everything the team sees on character and location cards', () => {
+    const doc = createBoardDoc('board');
+    const marta = {
+      ...base(),
+      type: 'character' as const,
+      name: 'Marta',
+      role: 'Capotreno',
+      actor: 'Giulia Neri',
+      contact: 'agenzia@example.com',
+      scenes: ['3A'],
+    };
+    const station = {
+      ...base(),
+      type: 'location' as const,
+      name: 'Stazione Centrale',
+      setting: 'ext' as const,
+      address: 'Piazza Duca d’Aosta',
+      light: 'Crepuscolo',
+    };
+    addElement(doc, marta);
+    addElement(doc, station);
+    const [m, s] = entriesFor(doc);
+    expect(m).toMatchObject({ type: 'character', title: 'Marta', data: { role: 'Capotreno' } });
+    for (const word of ['Capotreno', 'Giulia Neri', 'agenzia@example.com', '3A'])
+      expect(m?.text).toContain(word);
+    expect(s).toMatchObject({
+      type: 'location',
+      title: 'Stazione Centrale',
+      data: { setting: 'ext' },
+    });
+    expect(s?.text).toContain('Piazza Duca');
   });
 
   it('gives frames without a label the shot number the storyboard shows', () => {
@@ -317,6 +353,42 @@ describe.skipIf(!url)('search (needs DATABASE_URL)', () => {
       url: `/api/v1/boards/${otherId}`,
       headers: { cookie: cookies.owner, origin: config.PUBLIC_URL },
     });
+  });
+
+  it('lists the named cards of one type only to people who can read them', async () => {
+    const path = `/api/v1/search?type=character&projectId=${projectId}`;
+    const names = async (who: keyof typeof cookies) => {
+      const res = await get(who, path);
+      expect(res.status).toBe(200);
+      return res.body.items.map((h: { title: string; boardId: string }) => [h.title, h.boardId]);
+    };
+    // Named characters only: the blank one is left out.
+    const owner = await names('owner');
+    expect(owner).toContainEqual(['Marta', boardId]);
+    expect(owner.every(([title]: string[]) => title === 'Marta')).toBe(true);
+    expect(await names('stranger')).toEqual([]);
+    // A viewer grant on one board: only that board's characters.
+    expect(await names('guest')).toEqual([['Marta', boardId]]);
+    const [guest] = await db
+      .select({ id: user.id })
+      .from(user)
+      .where(eq(user.email, 'guest@example.com'));
+    await db
+      .update(boardGrant)
+      .set({ expiresAt: new Date(Date.now() - 60_000) })
+      .where(eq(boardGrant.userId, guest!.id));
+    expect(await names('guest')).toEqual([]);
+    await db.update(boardGrant).set({ expiresAt: null }).where(eq(boardGrant.userId, guest!.id));
+    expect((await get('owner', '/api/v1/search?type=character')).status).toBe(400);
+    // Words and a story card type: still only named cards, never the board's title.
+    const typed = await get('owner', `/api/v1/search?q=binar&type=character`);
+    expect(typed.body.items).toEqual([]);
+    const byRole = await get(
+      'owner',
+      `/api/v1/search?q=capotreno&type=character&projectId=${projectId}`,
+    );
+    expect(byRole.body.items.length).toBeGreaterThan(0);
+    for (const hit of byRole.body.items) expect(hit.title).toBe('Marta');
   });
 
   it('indexes boards stored before the index existed', async () => {

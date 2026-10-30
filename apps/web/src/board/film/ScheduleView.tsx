@@ -13,6 +13,7 @@ import { useTranslation } from 'react-i18next';
 import { api, RequestError } from '../../lib/api.ts';
 import type { BoardStore } from '../store.ts';
 import { CallSheetModal } from './CallSheetModal.tsx';
+import { plannedWrap } from './call-sheet.ts';
 import { useSlugline, useStoryboard } from './StoryboardView.tsx';
 import {
   castConflicts,
@@ -95,6 +96,7 @@ type Selection = { day: string | null; block: string | null };
 export function ScheduleView({
   store,
   projectName,
+  projectId,
   boardId = '',
   readOnly = false,
 }: {
@@ -298,6 +300,19 @@ export function ScheduleView({
     const label = labels.get(shotId) ?? t('schedule.missingShot');
     return frame?.action ? `${label} · ${frame.action}` : label;
   };
+  const callSheetShots = new Map(
+    groups.flatMap(({ scene, frames: items }) =>
+      items.map((frame) => [
+        frame.id,
+        {
+          label: labels.get(frame.id) ?? '',
+          action: frame.action?.trim(),
+          scene: scene?.number,
+          slugline: scene ? slugline(scene) : undefined,
+        },
+      ]),
+    ),
+  );
   const unscheduled = frames.filter((frame) => !scheduled.has(frame.id));
 
   return (
@@ -457,9 +472,11 @@ export function ScheduleView({
       {callSheetOpen && (
         <CallSheetModal
           days={days}
-          labels={labels}
+          shots={callSheetShots}
           projectName={projectName}
+          projectId={projectId}
           initialDayId={active?.day.id}
+          unsaved={drafted.some((item) => item.dirty)}
           onClose={() => setCallSheetOpen(false)}
         />
       )}
@@ -533,6 +550,8 @@ function DayColumn({
   const { t } = useTranslation();
   const dayLabel = useDayLabel();
   const [over, setOver] = useState(false);
+  // Without a saved wrap time the day ends with its last block.
+  const wrap = plannedWrap(draft);
   return (
     <section
       className={`schedule__day${selected ? ' is-selected' : ''}${over ? ' is-drop' : ''}`}
@@ -604,9 +623,9 @@ function DayColumn({
             </button>
           </li>
         ))}
-        {draft.wrap && (
+        {wrap !== null && (
           <li className="schedule__marker">
-            {draft.wrap} {t('schedule.wrapRow')}
+            {clockLabel(wrap)} {t('schedule.wrapRow')}
           </li>
         )}
       </ol>

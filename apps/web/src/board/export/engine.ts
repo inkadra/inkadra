@@ -227,6 +227,13 @@ export async function buildPages(
         .filter(Boolean)
         .join(' · '),
     slugline,
+    storyMeta: (el) =>
+      [
+        el.type === 'character' ? el.actor : el.setting && t(`film.scene.settings.${el.setting}`),
+        el.scenes?.length ? t('story.sceneCount', { count: el.scenes.length }) : null,
+      ]
+        .filter(Boolean)
+        .join(' · '),
     words: { board: t('export.board'), file: t('export.file') },
   };
 

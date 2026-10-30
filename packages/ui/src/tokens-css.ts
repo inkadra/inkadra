@@ -18,7 +18,9 @@ ${vars(layers, '  ')}
 ${vars(dark, '  ')}
 }
 
-:root[data-theme='light'] {
+/* Printed paper is always light, like the PDF export (decision 0038). */
+:root[data-theme='light'],
+.ink-paper {
   color-scheme: light;
 ${vars(light, '  ')}
 }

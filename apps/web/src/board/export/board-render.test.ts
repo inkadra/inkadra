@@ -1,0 +1,55 @@
+import type { Element } from '@inkadra/doc-schema';
+import { describe, expect, it } from 'vitest';
+import { type CardContext, drawBoard, type Palette } from './board-render.ts';
+
+const colors = new Proxy({}, { get: (_, key) => `#${String(key)}` }) as Palette;
+const ctx = {
+  measure: (text: string) => text.length * 6,
+  colors,
+  noteBlocks: () => [],
+  image: () => null,
+  fileName: () => '',
+  boardTitle: () => '',
+} as unknown as CardContext;
+
+const arrow = (fields: Partial<Extract<Element, { type: 'arrow' }>>) => {
+  const el = {
+    id: 'arrow001',
+    type: 'arrow',
+    x: 0,
+    y: 0,
+    w: 200,
+    h: 1,
+    z: 'a1',
+    parent: null,
+    createdBy: null,
+    createdAt: 0,
+    from: { x: 0, y: 0 },
+    to: { x: 200, y: 0 },
+    ...fields,
+  } as Element;
+  return { el, x: 0, y: 0, w: 200, h: 1 };
+};
+
+describe('arrows in exports', () => {
+  it('draws a straight arrow with its label on a chip at the middle', () => {
+    const ops = drawBoard([arrow({ label: 'conosce' })], ctx);
+    expect(ops.map((o) => o.kind)).toEqual(['line', 'polygon', 'rect', 'text']);
+    const chip = ops[2] as Extract<(typeof ops)[number], { kind: 'rect' }>;
+    expect(chip.fill).toBe('#surface-1');
+    expect(chip.x + chip.w / 2).toBeCloseTo(100);
+  });
+
+  it('draws a curved arrow along the curve, label at its top, heads at both ends', () => {
+    const ops = drawBoard([arrow({ label: 'conosce', path: 'curved', heads: 'both' })], ctx);
+    expect(ops.map((o) => o.kind)).toEqual(['polyline', 'polygon', 'polygon', 'rect', 'text']);
+    const chip = ops[3] as Extract<(typeof ops)[number], { kind: 'rect' }>;
+    expect(chip.y + chip.h / 2).toBeCloseTo(-36);
+  });
+
+  it('dashes a curved arrow and leaves the heads out when asked', () => {
+    const ops = drawBoard([arrow({ path: 'curved', line: 'dashed', heads: 'none' })], ctx);
+    expect(ops.length).toBeGreaterThan(10);
+    expect(ops.every((o) => o.kind === 'line')).toBe(true);
+  });
+});

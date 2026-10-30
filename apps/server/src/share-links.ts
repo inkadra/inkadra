@@ -285,6 +285,8 @@ export function elementAssetIds(el: Element): string[] {
     case 'file':
       return [el.assetId];
     case 'frame':
+    case 'character':
+    case 'location':
       return el.assetId ? [el.assetId] : [];
     case 'link':
       return el.imageAssetId ? [el.imageAssetId] : [];
