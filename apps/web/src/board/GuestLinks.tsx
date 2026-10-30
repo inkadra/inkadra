@@ -595,7 +595,7 @@ function EditForm({
   const box = useRef<HTMLFormElement>(null);
 
   useEffect(() => {
-    box.current?.querySelector<HTMLElement>('select:not(:disabled), input')?.focus();
+    box.current?.querySelector<HTMLElement>('.ink-select:not(:disabled), input')?.focus();
   }, []);
 
   async function submit(e: FormEvent) {
