@@ -10,6 +10,8 @@ import type { FontWeight, Measure } from './pages.ts';
 export interface Fonts {
   bytes: Record<FontWeight, Uint8Array>;
   measure: Measure;
+  /** True when the embedded font can draw the character (white space always can). */
+  covers(ch: string): boolean;
 }
 
 const URLS: Record<FontWeight, string> = { 400: regular, 500: medium, 600: semibold };
@@ -26,7 +28,10 @@ export function loadFonts(): Promise<Fonts> {
       }),
     );
     const bytes = Object.fromEntries(entries) as Record<FontWeight, Uint8Array>;
-    return { bytes, measure: measureFrom(bytes) };
+    const regular = fontkit.create(bytes[400]);
+    const covers = (ch: string) =>
+      /\s/.test(ch) || regular.hasGlyphForCodePoint(ch.codePointAt(0) ?? 32);
+    return { bytes, measure: measureFrom(bytes), covers };
   })().catch((err: unknown) => {
     loading = null;
     throw err;

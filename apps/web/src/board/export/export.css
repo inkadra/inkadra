@@ -49,6 +49,9 @@
   max-width: 100%;
 }
 .export__seg-btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
   height: 26px;
   padding: 0 10px;
   border: 0;
@@ -61,14 +64,24 @@
   white-space: nowrap;
   cursor: pointer;
 }
+/* The radio covers its label, invisible: clicks and focus land on the real control. */
+.export__seg-input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
 .export__seg-btn:hover {
   color: var(--ink-text-primary);
 }
-.export__seg-btn[aria-pressed="true"] {
+.export__seg-btn:has(input:checked) {
   background: var(--ink-surface-3);
   color: var(--ink-text-primary);
 }
-.export__seg-btn:focus-visible {
+.export__seg-btn:has(input:focus-visible) {
   outline: 2px solid var(--ink-accent-primary);
   outline-offset: 1px;
 }
@@ -165,8 +178,39 @@
 .export__preview figcaption {
   text-align: center;
 }
+/* Same look as the upload progress of a card. */
+.export__progress-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 12px;
+}
+.export__progress {
+  height: 4px;
+  border-radius: 2px;
+  background: var(--ink-surface-3);
+  overflow: hidden;
+}
+.export__progress span {
+  display: block;
+  height: 100%;
+  border-radius: 2px;
+  background: var(--ink-accent-primary);
+  transition: width 150ms;
+}
+.export__notice {
+  margin: 12px 0 0;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: var(--ink-surface-2);
+  border: 1px solid var(--ink-border-default);
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--ink-text-secondary);
+}
 @media (prefers-reduced-motion: reduce) {
-  .export__canvas {
+  .export__canvas,
+  .export__progress span {
     transition: none;
   }
 }

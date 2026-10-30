@@ -39,6 +39,7 @@ export async function renderPdf(
   fonts: Record<FontWeight, Uint8Array>,
   images: ReadonlyMap<string, LoadedImage>,
   meta: PdfMeta,
+  { signal, onPage }: { signal?: AbortSignal; onPage?: (done: number) => void } = {},
 ): Promise<Uint8Array> {
   const pdf = await PDFDocument.create();
   pdf.registerFontkit(fontkit);
@@ -58,18 +59,21 @@ export async function renderPdf(
     let img = pictures.get(key);
     if (img) return img;
     const source = images.get(key);
-    if (!source) return null;
+    if (!source?.bytes) return null;
     img =
       source.type === 'png' ? await pdf.embedPng(source.bytes) : await pdf.embedJpg(source.bytes);
     pictures.set(key, img);
     return img;
   };
-  for (const page of pages) {
+  for (const [n, page] of pages.entries()) {
+    signal?.throwIfAborted();
     const out = pdf.addPage([page.width, page.height]);
     // Round joins keep pen strokes smooth; every drawing inherits it.
     out.pushOperators(setLineJoin(LineJoinStyle.Round));
     await drawOps(out, page.height, page.ops, embedded, pictureOf);
+    onPage?.(n + 1);
   }
+  signal?.throwIfAborted();
   return pdf.save();
 }
 

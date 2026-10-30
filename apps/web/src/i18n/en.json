@@ -2314,6 +2314,10 @@
     "logoFailed": "The logo could not be saved. Try again.",
     "logoReadOnly": "Set by the project's editors.",
     "logoNone": "No logo. Project editors can add one.",
-    "sharedHint": "Your choices become the starting point for everyone on this project when you export."
+    "sharedHint": "Your choices become the starting point for everyone on this project when you export.",
+    "progressPictures": "Loading pictures… {{done}} of {{total}}",
+    "progressPages": "Drawing pages… {{done}} of {{total}}",
+    "missingGlyphs": "Some characters ({{chars}}) are not in the export font and will print as empty boxes.",
+    "logoTimeout": "The logo upload is taking too long. Try again."
   }
 }

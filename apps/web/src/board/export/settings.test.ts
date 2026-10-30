@@ -1,6 +1,15 @@
 import { DEFAULT_EXPORT_PREFERENCES } from '@inkadra/shared';
-import { describe, expect, it } from 'vitest';
-import { localePaper, logoProblem, preferencesPatch } from './settings.ts';
+import { describe, expect, it, vi } from 'vitest';
+import {
+  LogoTimeoutError,
+  localePaper,
+  logoProblem,
+  preferencesPatch,
+  uploadLogo,
+} from './settings.ts';
+
+// The upload panel already holds this file: it resumes that upload and never calls onAsset.
+vi.mock('../uploads.ts', () => ({ startUpload: vi.fn(() => 'u1') }));
 
 describe('export settings on the client', () => {
   it('reads a null paper as the reader’s own default', () => {
@@ -29,5 +38,14 @@ describe('export settings on the client', () => {
     expect(logoProblem({ type: 'image/svg+xml', size: 1000 })).toBe('type');
     expect(logoProblem({ type: 'image/webp', size: 1000 })).toBe('type');
     expect(logoProblem({ type: 'image/png', size: 512 * 1024 + 1 })).toBe('size');
+  });
+});
+
+describe('uploadLogo', () => {
+  it('gives up with a timeout instead of waiting for ever', async () => {
+    const file = new File([new Uint8Array([0x89, 0x50, 0x4e, 0x47])], 'logo.png', {
+      type: 'image/png',
+    });
+    await expect(uploadLogo(file, 'p1', 'b1', 20)).rejects.toBeInstanceOf(LogoTimeoutError);
   });
 });
