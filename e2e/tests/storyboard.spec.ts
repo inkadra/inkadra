@@ -48,6 +48,15 @@ test('a storyboard holds scenes and frames, the shot list shows the same frames'
     await trigger.click();
     await page.screenshot({ path: '../docs/screenshots/ui-select/quiet-open-desktop-dark.png' });
     await page.keyboard.press('Escape');
+    await page.evaluate(() => {
+      document.documentElement.dataset.theme = 'light';
+    });
+    await trigger.click();
+    await page.screenshot({ path: '../docs/screenshots/ui-select/quiet-open-desktop-light.png' });
+    await page.keyboard.press('Escape');
+    await page.evaluate(() => {
+      document.documentElement.dataset.theme = 'dark';
+    });
   }
 
   await scene.getByRole('button', { name: 'Nuova inquadratura' }).last().click();
