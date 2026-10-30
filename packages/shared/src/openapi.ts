@@ -39,6 +39,7 @@ import {
 } from './comments.ts';
 import { ApiError, Id, OutcomeUnknown, PageQuery, page, z } from './common.ts';
 import { API_PREFIX, AUTH_PREFIX } from './constants.ts';
+import { ExportSettings, UpdateExportSettings } from './export-settings.ts';
 import {
   CreateGuestSession,
   CreateShareLink,
@@ -682,6 +683,31 @@ registry.registerPath({
   summary: 'Set the caller’s personal project pin. Requires project membership.',
   request: { params: idParam('projectId'), body: json(SetProjectPin) },
   responses: { 200: { description: 'Updated', ...json(Project) }, ...errors },
+});
+
+registry.registerPath({
+  method: 'get',
+  path: v1('/projects/{projectId}/export-settings'),
+  tags: ['Projects'],
+  security: secured,
+  summary: 'Shared PDF and image export settings of the project, with its logo.',
+  description:
+    'Anyone with a role on the project or on one of its boards can read them. A project that ' +
+    'never saved settings answers the defaults, with `updatedAt` null.',
+  request: { params: idParam('projectId') },
+  responses: { 200: { description: 'Export settings', ...json(ExportSettings) }, ...errors },
+});
+registry.registerPath({
+  method: 'patch',
+  path: v1('/projects/{projectId}/export-settings'),
+  tags: ['Projects'],
+  security: secured,
+  summary: 'Change some export settings or the logo. Requires the editor role on the project.',
+  description:
+    'Fields left out keep their value. The logo is an image asset of the same project, PNG or ' +
+    'JPEG of at most 512 KiB; anything else is refused with `bad_request`.',
+  request: { params: idParam('projectId'), body: json(UpdateExportSettings) },
+  responses: { 200: { description: 'Updated', ...json(ExportSettings) }, ...errors },
 });
 
 registry.registerPath({
