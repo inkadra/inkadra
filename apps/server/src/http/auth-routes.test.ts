@@ -1,7 +1,7 @@
-import type { FastifyRequest } from 'fastify';
-import { describe, expect, it } from 'vitest';
-import { CLIENT_IP_HEADER } from '../auth.ts';
-import { toHeaders } from './auth-routes.ts';
+import Fastify, { type FastifyRequest } from 'fastify';
+import { describe, expect, it, vi } from 'vitest';
+import { type Auth, CLIENT_IP_HEADER } from '../auth.ts';
+import { registerAuthRoutes, toHeaders } from './auth-routes.ts';
 
 describe('toHeaders', () => {
   it('replaces any client-sent address header with the address Fastify resolved', () => {
@@ -27,4 +27,36 @@ describe('client address', () => {
     expect(direct.body).toBe('203.0.113.9');
     expect(viaProxy.body).toBe('6.6.6.6');
   });
+});
+
+it('checks auth write origins even without cookies, preserving native clients and canonical origin', async () => {
+  const app = Fastify();
+  const handler = vi.fn(async () => new Response('{}'));
+  registerAuthRoutes(app, { handler } as unknown as Auth, 'https://boards.example.test');
+  try {
+    for (const [headers, status] of [
+      [{ origin: 'https://evil.test' }, 403],
+      [{ origin: 'null' }, 403],
+      [{ 'sec-fetch-site': 'cross-site' }, 403],
+      [{ origin: 'http://soyo:7340' }, 200],
+      [{ origin: 'https://boards.example.test' }, 200],
+      [{}, 200],
+      [{ 'sec-fetch-site': 'same-origin' }, 200],
+    ] as const) {
+      const res = await app.inject({
+        method: 'POST',
+        url: '/api/auth/sign-in/email',
+        headers: { host: 'soyo:7340', ...headers },
+        payload: {},
+      });
+      expect(res.statusCode).toBe(status);
+    }
+    expect(handler).toHaveBeenCalledTimes(4);
+    expect(
+      (await app.inject({ url: '/api/auth/get-session', headers: { origin: 'https://evil.test' } }))
+        .statusCode,
+    ).toBe(200);
+  } finally {
+    await app.close();
+  }
 });

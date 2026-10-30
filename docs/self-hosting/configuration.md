@@ -91,6 +91,9 @@ Allowed domains are checked on every sign-in, also for people who already have a
 
 ## TRUST_PROXY
 
+**LAN port exposure requires narrowing the default trust list.** See the warning in
+[Direct LAN and Tailscale access](#direct-lan-and-tailscale-access) before publishing a port.
+
 Behind a proxy, every request reaches Inkadra from the proxy's address. The proxy puts the
 real client address in `X-Forwarded-For`, and Inkadra believes that header only when the
 request comes from an address listed in `TRUST_PROXY`. The client address limits sign-in
@@ -173,6 +176,13 @@ also redirects HTTP to HTTPS: see [Reverse proxy](reverse-proxy.md#security-head
   and signs out every browser.
 - Email is sent in the background: a container stopped at the wrong moment can lose a message
   that was about to go out, and failures are logged without credentials.
+
+> **Before exposing the port to LAN clients:** narrow `TRUST_PROXY` to the proxy's
+> address or dedicated subnet, for example `172.18.0.0/16` for a pinned Docker network
+> or `100.100.10.20` for the Newt peer. The default includes `uniquelocal`, which
+> trusts all RFC1918 clients. Such a client can forge `X-Forwarded-Proto: https`,
+> `X-Forwarded-Host` and `X-Forwarded-For`, selecting Secure cookies over cleartext
+> or bypassing address-based rate limits. Direct clients need no proxy trust.
 
 ## Direct LAN and Tailscale access
 

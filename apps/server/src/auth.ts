@@ -69,7 +69,13 @@ export interface AuthDeps {
   log?: Logger;
 }
 
-function createAuthInstance(config: Config, db: Database, deps: AuthDeps, cookieUrl: string) {
+function createAuthInstance(
+  config: Config,
+  db: Database,
+  deps: AuthDeps,
+  cookieUrl: string,
+  security: ReturnType<typeof authSecurity>,
+) {
   const { mailer } = deps;
   const email = Boolean(mailer?.enabled);
   const allowedDomains = config.GOOGLE_ALLOWED_DOMAINS.map((d) => d.toLowerCase());
@@ -144,7 +150,6 @@ function createAuthInstance(config: Config, db: Database, deps: AuthDeps, cookie
 
   const trusted = ['google', ...(oidc && config.OIDC_TRUST_EMAIL ? [OIDC_PROVIDER_ID] : [])];
 
-  const security = authSecurity(config, deps.log);
   const devices = knownDevices(config.AUTH_SECRET);
   // Hooks receive shallow copies of the endpoint context but share ctx.context; reservations
   // made before the password check live there until the after hook settles them.
@@ -649,12 +654,13 @@ function createAuthInstance(config: Config, db: Database, deps: AuthDeps, cookie
 
 /** Two immutable cookie policies avoid mutating shared Better Auth state across requests. */
 export function createAuth(config: Config, db: Database, deps: AuthDeps = {}) {
-  const canonical = createAuthInstance(config, db, deps, config.PUBLIC_URL);
+  const security = authSecurity(config, deps.log);
+  const canonical = createAuthInstance(config, db, deps, config.PUBLIC_URL, security);
   let alternate: ReturnType<typeof createAuthInstance> | undefined;
   const select = (origin?: string | null) => {
     if (!origin || origin.startsWith('https:') === config.PUBLIC_URL.startsWith('https:'))
       return canonical;
-    alternate ??= createAuthInstance(config, db, deps, origin);
+    alternate ??= createAuthInstance(config, db, deps, origin, security);
     return alternate;
   };
   const api = new Proxy(canonical.api, {
@@ -673,10 +679,7 @@ export function createAuth(config: Config, db: Database, deps: AuthDeps = {}) {
     confirmPassword: (...args: Parameters<typeof canonical.confirmPassword>) =>
       select(args[2].get(ORIGIN_HEADER)).confirmPassword(...args),
     handler: (request: Request) => select(new URL(request.url).origin).handler(request),
-    closeSecurity: () => {
-      canonical.closeSecurity();
-      alternate?.closeSecurity();
-    },
+    closeSecurity: () => security.close(),
   };
 }
 

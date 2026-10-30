@@ -6,9 +6,9 @@ import { enforceAdminTwoFactor } from '../admin-two-factor.ts';
 import { type Auth, CLIENT_IP_HEADER } from '../auth.ts';
 import type { Database } from '../db/client.ts';
 import { user } from '../db/schema.ts';
-import { ORIGIN_HEADER, requestOrigin } from '../request-origin.ts';
+import { allowedOrigin, ORIGIN_HEADER, requestOrigin } from '../request-origin.ts';
 import { actorFromToken, bearerToken } from '../tokens.ts';
-import { HttpError } from './errors.ts';
+import { HttpError, sendError } from './errors.ts';
 
 export function toHeaders(req: FastifyRequest): Headers {
   const headers = new Headers();
@@ -28,11 +28,20 @@ export function toHeaders(req: FastifyRequest): Headers {
 }
 
 /** Mounts Better Auth under /api/auth by translating Fastify requests to Fetch requests. */
-export function registerAuthRoutes(app: FastifyInstance, auth: Auth) {
+export function registerAuthRoutes(app: FastifyInstance, auth: Auth, publicUrl: string) {
   app.route({
     method: ['GET', 'POST'],
     url: `${AUTH_PREFIX}/*`,
     async handler(req, reply) {
+      // Better Auth skips Origin validation without cookies. Protect login/signup too,
+      // while retaining native clients that send neither Origin nor Fetch Metadata.
+      if (
+        req.method === 'POST' &&
+        (req.headers.origin !== undefined
+          ? !allowedOrigin(req.headers.origin, requestOrigin(req), publicUrl)
+          : req.headers['sec-fetch-site'] === 'cross-site')
+      )
+        return sendError(reply, 'forbidden', 'Cross-site request refused.');
       const url = new URL(`${requestOrigin(req)}${req.url}`);
       const request = new Request(url, {
         method: req.method,

@@ -21,7 +21,9 @@ export function rawOrigin(req: IncomingMessage, trustProxy: boolean | string): s
   const last = (value: string | string[] | undefined) =>
     (Array.isArray(value) ? value[0] : value)?.split(',').at(-1)?.trim();
   const protocol = trusted ? last(req.headers['x-forwarded-proto']) : undefined;
-  const scheme = protocol ?? ('encrypted' in req.socket && req.socket.encrypted ? 'https' : 'http');
+  const normalized = protocol === 'ws' ? 'http' : protocol === 'wss' ? 'https' : protocol;
+  const scheme =
+    normalized ?? ('encrypted' in req.socket && req.socket.encrypted ? 'https' : 'http');
   const host = (trusted && last(req.headers['x-forwarded-host'])) || req.headers.host;
   if (!host || !['http', 'https'].includes(scheme) || /[\s/@\\?#]/.test(host))
     throw new Error('Invalid request origin');
@@ -42,4 +44,9 @@ export function requestOrigin(req: FastifyRequest): string {
 
 export function allowedOrigin(origin: string, own: string, publicUrl: string): boolean {
   return origin === own || origin === new URL(publicUrl).origin;
+}
+
+/** Failed origin validation must not run again while sending its 400 response. */
+export function requestIsSecure(req: FastifyRequest): boolean {
+  return origins.get(req.raw)?.startsWith('https:') ?? false;
 }

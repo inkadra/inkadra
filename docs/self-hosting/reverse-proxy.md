@@ -20,6 +20,13 @@ it from the public internet. Plain HTTP exposes credentials and content; Tailsca
 traffic between peers. No list of LAN addresses is required. `PUBLIC_URL` stays the public
 HTTPS address for external links and OAuth callbacks.
 
+> **Before exposing the port to LAN clients:** narrow `TRUST_PROXY` to the proxy's
+> address or dedicated subnet, for example `172.18.0.0/16` for a pinned Docker network
+> or `100.100.10.20` for the Newt peer. The default includes `uniquelocal`, which
+> trusts all RFC1918 clients. Such a client can forge `X-Forwarded-Proto: https`,
+> `X-Forwarded-Host` and `X-Forwarded-For`, selecting Secure cookies over cleartext
+> or bypassing address-based rate limits. Direct clients need no proxy trust.
+
 Set `TRUST_PROXY` to the actual proxy peer addresses, not all LAN clients. The proxy must
 overwrite forwarded host/protocol headers, preserve the original Host (or set
 X-Forwarded-Host), and send X-Forwarded-Proto. Direct untrusted clients cannot override the

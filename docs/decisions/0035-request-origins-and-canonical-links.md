@@ -63,3 +63,19 @@ Secure contexts required by browser APIs are still unavailable on ordinary HTTP 
 No database migration or HTTPS cookie migration is required. Existing HTTPS sessions retain
 their names; users sign in separately at each LAN/Tailscale host. Port exposure remains an
 operator decision tracked in #225; this change neither deploys nor opens any ports.
+
+### Review follow-up
+
+Keep the default `TRUST_PROXY=loopback,linklocal,uniquelocal` for existing Docker-proxied
+installations. Direct LAN exposure requires narrowing it to the actual proxy address or
+pinned Docker subnet (or the Newt peer), documented prominently in self-hosting guidance.
+Private clients otherwise can forge forwarded protocol/host and rate-limit addresses.
+Use documentation rather than a runtime warning: an immediate private peer cannot cheaply
+be distinguished from a legitimate proxy under this broad trust policy.
+
+Normalize trusted proxy `ws`/`wss` protocols to `http`/`https` for upgrades. Share one
+authentication security store and lifecycle across both transport configurations.
+Reject unrelated Origin on auth writes even without cookies; without Origin reject
+cross-site Fetch Metadata but preserve existing native clients. The missing-cookie
+login-CSRF gap also existed on main: its REST CSRF hook excludes auth endpoints and
+Better Auth skips trusted-origin validation when no cookie is present.

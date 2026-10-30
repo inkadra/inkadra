@@ -54,3 +54,18 @@ describe('request origin boundary', () => {
     }
   });
 });
+
+it.each([
+  ['ws', 'http'],
+  ['wss', 'https'],
+])('normalizes trusted upgrade protocol %s', (forwarded, scheme) => {
+  const headers = {
+    host: 'internal:3000',
+    'x-forwarded-host': 'boards.example.test',
+    'x-forwarded-proto': forwarded,
+  };
+  expect(rawOrigin(request('172.18.0.5', headers), '172.18.0.0/16')).toBe(
+    `${scheme}://boards.example.test`,
+  );
+  expect(rawOrigin(request('192.168.1.20', headers), '172.18.0.0/16')).toBe('http://internal:3000');
+});
