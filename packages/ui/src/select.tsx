@@ -198,6 +198,7 @@ export function Select({
       {open && (
         // The layer lives in the top layer (a manual popover), above open dialogs too: positioned
         // under the trigger on desktop, a dimmed backdrop with a bottom sheet on phones.
+        // biome-ignore lint/a11y/noStaticElementInteractions lint/a11y/useKeyWithClickEvents: a tap on the backdrop is a pointer shortcut; the listbox handles Escape.
         <div
           ref={popup}
           popover="manual"
