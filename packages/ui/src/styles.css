@@ -671,7 +671,7 @@ select {
   color: var(--ink-text-primary);
   border: 1px solid var(--ink-border-muted);
   border-radius: 8px;
-  box-shadow: 0 8px 30px color-mix(in srgb, var(--ink-text-primary) 20%, transparent);
+  box-shadow: var(--ink-shadow-menu);
   font: inherit;
   font-size: 13px;
 }

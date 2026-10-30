@@ -6,6 +6,7 @@
   color-scheme: dark;
   --ink-layer-viewer: 1000;
   --ink-layer-notification: 1100;
+  --ink-shadow-menu: 0 8px 30px #0003;
   --ink-bg-rail: #0E0E10;
   --ink-bg-app: #141416;
   --ink-bg-panel: #121214;

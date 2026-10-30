@@ -162,3 +162,6 @@ export const layers = {
   'layer-viewer': '1000',
   'layer-notification': '1100',
 } as const;
+
+/** Floating menus share one elevation in both themes. */
+export const effects = { 'shadow-menu': '0 8px 30px #0003' } as const;
