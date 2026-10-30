@@ -37,6 +37,7 @@ in order. An accepted decision is never rewritten: a later one supersedes it.
 | [0029](0029-settings-window.md)                 | Settings open as a window over the current page                                        |
 | [0030](0030-authentication-follow-ups.md)       | Authentication follow-ups without contract changes                                     |
 | [0033](0033-canvas-and-tool-colours.md)         | Canvas types keep the content colours, tools get their own, one Canvas menu            |
+| [0034](0034-share-link-password-contract.md)    | Align share-link password contracts with the ten-character server minimum              |
 
 Two decisions share the number 0025: they were accepted in parallel, and accepted records
 are not renumbered.
