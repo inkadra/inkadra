@@ -5,7 +5,9 @@ import { type RefObject, useCallback, useEffect, useMemo, useRef, useState } fro
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router';
 import { authorName, groupByDay, type Page, reviewKey } from '../board/review-model.ts';
+import { expiryDate } from '../lib/access.ts';
 import { api } from '../lib/api.ts';
+import { signedInId } from '../lib/me.ts';
 import { trackSave } from '../routes/settings-save.ts';
 import { InboxDetail } from './InboxDetail.tsx';
 import {
@@ -167,10 +169,23 @@ export function useNotificationFeed(onCount: () => Promise<void>): NotificationF
 
 /** What happened, after the actor's name; unknown types read as a plain line. */
 export function describeNotification(
-  n: Pick<Notification, 'type' | 'reviewStatus'>,
+  n: Pick<Notification, 'type' | 'reviewStatus'> &
+    Partial<Pick<Notification, 'subject' | 'accessExpiresAt'>>,
   t: (key: string, values?: Record<string, string>) => string,
+  /** The signed-in person, to tell their own access from a member's (decision 0041). */
+  me?: { id?: string; locale?: string },
 ): string {
   const type = (KNOWN_TYPES as readonly string[]).includes(n.type) ? n.type : 'unknown';
+  if (type === 'access_expiring' || type === 'access_expired') {
+    const own = !n.subject || n.subject.id === (me?.id ?? signedInId());
+    const date = n.accessExpiresAt
+      ? expiryDate(n.accessExpiresAt, me?.locale ?? document.documentElement.lang ?? 'it')
+      : '';
+    return t(`notifications.type.${type}${own ? 'Own' : ''}`, {
+      name: n.subject?.name ?? '',
+      date,
+    });
+  }
   if (type === 'review' && n.reviewStatus)
     return t('notifications.type.reviewStatus', {
       status: t(`review.status.${reviewKey(n.reviewStatus)}`),
@@ -574,7 +589,7 @@ export function NotificationList({
                         <div className="notification__body">
                           <span className="notification__line">
                             {actor && <b>{actor} </b>}
-                            {describeNotification(n, t)}
+                            {describeNotification(n, t, { locale: i18n.language })}
                           </span>
                           <div className="notification__subline">
                             {(n.boardTitle || n.projectName) && (

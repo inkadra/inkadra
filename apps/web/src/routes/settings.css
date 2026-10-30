@@ -845,6 +845,16 @@
   .team-table .team-col--last {
     display: none;
   }
+  .team-table .team-col--create {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .team-table .team-col--create::before {
+    content: attr(data-label);
+    font-size: 11px;
+    color: var(--ink-text-muted);
+  }
   .team-table tr {
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto;

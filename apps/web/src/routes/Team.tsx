@@ -1,4 +1,9 @@
-import type { InstanceMember, Invitation, InvitationResult } from '@inkadra/shared';
+import type {
+  InstanceMember,
+  InstanceSettings,
+  Invitation,
+  InvitationResult,
+} from '@inkadra/shared';
 import { Avatar, Button, Dialog, DialogActions, Icon, TextField } from '@inkadra/ui';
 import { type FormEvent, useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -6,7 +11,7 @@ import { api, RequestError } from '../lib/api.ts';
 import { useSession } from '../lib/session.tsx';
 import { SettingsShell } from './SettingsShell.tsx';
 import { trackSave } from './settings-save.ts';
-import { Badge, Card } from './settings-ui.tsx';
+import { Badge, Card, Row } from './settings-ui.tsx';
 
 function relative(value: string, locale: string): string {
   const seconds = (new Date(value).getTime() - Date.now()) / 1000;
@@ -27,6 +32,7 @@ export function Team() {
   const { user, instance, refresh } = useSession();
   const { t, i18n } = useTranslation();
   const [members, setMembers] = useState<InstanceMember[] | null>(null);
+  const [settings, setSettings] = useState<InstanceSettings | null>(null);
   const [invitations, setInvitations] = useState<Invitation[]>([]);
   const [query, setQuery] = useState('');
   const [role, setRole] = useState('all');
@@ -38,11 +44,13 @@ export function Team() {
   const [deactivating, setDeactivating] = useState<InstanceMember | null>(null);
   const admin = user?.role === 'admin';
   const load = useCallback(async () => {
-    const [people, pending] = await Promise.all([
+    const [people, pending, instanceSettings] = await Promise.all([
       api.get<{ items: InstanceMember[] }>('/instance/members'),
       api.get<{ items: Invitation[] }>('/invitations'),
+      api.get<InstanceSettings>('/instance/settings'),
     ]);
     setMembers(people.items);
+    setSettings(instanceSettings);
     setInvitations(pending.items.filter((i) => i.projectId === null && i.boardId === null));
   }, []);
   useEffect(() => {
@@ -101,6 +109,34 @@ export function Team() {
           {error}
         </p>
       )}
+      {settings && (
+        <Card title={t('projectCreation.settings.title')}>
+          <div className="settings-rows">
+            <Row
+              label={t('projectCreation.settings.label')}
+              help={t('projectCreation.settings.help')}
+              htmlFor="members-create-projects"
+            >
+              <input
+                id="members-create-projects"
+                type="checkbox"
+                checked={settings.membersCanCreateProjects ?? true}
+                disabled={busy}
+                onChange={(e) => {
+                  const membersCanCreateProjects = e.target.checked;
+                  // At once; a failed save reloads the stored value.
+                  setSettings({ ...settings, membersCanCreateProjects });
+                  void run(() =>
+                    api.patch('/instance/settings', { membersCanCreateProjects }),
+                  ).then((saved) => {
+                    if (!saved) void load().catch(() => {});
+                  });
+                }}
+              />
+            </Row>
+          </div>
+        </Card>
+      )}
       <div className="team-tools">
         <label className="team-search">
           <Icon name="search" size={14} />
@@ -146,6 +182,9 @@ export function Team() {
               <tr>
                 <th scope="col">{t('admin.person')}</th>
                 <th scope="col">{t('admin.role')}</th>
+                <th scope="col" className="team-col--create">
+                  {t('projectCreation.column')}
+                </th>
                 <th scope="col" className="team-col--projects">
                   {t('admin.projects')}
                 </th>
@@ -193,6 +232,41 @@ export function Team() {
                         <option value="member">{t('admin.roles.member')}</option>
                       </select>
                     </td>
+                    {/* The column title, shown on phones where the table head is hidden. */}
+                    <td className="team-col--create" data-label={t('projectCreation.column')}>
+                      {m.role === 'admin' ? (
+                        <span className="settings-muted">{t('projectCreation.always')}</span>
+                      ) : (
+                        <select
+                          className="ink-input team-role"
+                          aria-label={t('projectCreation.for', { name: m.name })}
+                          value={
+                            m.canCreateProjectsOverride === true
+                              ? 'yes'
+                              : m.canCreateProjectsOverride === false
+                                ? 'no'
+                                : 'default'
+                          }
+                          disabled={busy}
+                          onChange={(e) =>
+                            void update(m.id, {
+                              canCreateProjects:
+                                e.target.value === 'default' ? null : e.target.value === 'yes',
+                            })
+                          }
+                        >
+                          <option value="default">
+                            {t(
+                              settings?.membersCanCreateProjects === false
+                                ? 'projectCreation.defaultNo'
+                                : 'projectCreation.defaultYes',
+                            )}
+                          </option>
+                          <option value="yes">{t('projectCreation.yes')}</option>
+                          <option value="no">{t('projectCreation.no')}</option>
+                        </select>
+                      )}
+                    </td>
                     <td className="team-col--projects">{m.projectsCount}</td>
                     <td className="team-col--last settings-muted">
                       {m.lastActiveAt ? (
@@ -223,7 +297,7 @@ export function Team() {
               <tbody className="team-pending">
                 {invitations.map((i) => (
                   <tr key={i.id}>
-                    <th scope="row" colSpan={4}>
+                    <th scope="row" colSpan={5}>
                       <span className="team-person">
                         <Badge>{t('settingsUi.members.pending')}</Badge>
                         <span>

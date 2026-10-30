@@ -4,6 +4,7 @@ import { Queue, QueueEvents, Worker } from 'bullmq';
 import { and, eq, lt } from 'drizzle-orm';
 import IORedis from 'ioredis';
 import type { Logger } from 'pino';
+import { sweepAccessExpiry } from './access-expiry.ts';
 import {
   type BackupDeps,
   backupCron,
@@ -75,6 +76,8 @@ export type JobPayloads = {
   /** A stateless message for the open clients of a board (comments, reviews). */
   'collab:notice': { boardId: string; notice: BoardNotice; sentAt: number };
   'maintenance:purge-notifications': Record<string, never>;
+  /** Warns about and removes ended memberships and grants (decision 0041), every minute. */
+  'maintenance:access-expiry': Record<string, never>;
   /** A backup started from the settings; the nightly one carries no id. */
   'maintenance:backup': { backupId?: string };
   'maintenance:transfer-sweep': Record<string, never>;
@@ -239,6 +242,7 @@ export async function startWorkers(
       if (job.name === 'purge-uploads') return purgeUploads(deps.db, deps.storage, queues.jobs);
       if (job.name === 'version-retention') return applyVersionRetention(deps.db);
       if (job.name === 'purge-notifications') return purgeNotifications(deps.db);
+      if (job.name === 'access-expiry') return sweepAccessExpiry(deps.db);
       if (job.name === 'anonymise-guests') return clearExpiredGuestNames(deps.db);
       if (job.name === 'backup' && backupDeps)
         return backupJob(backupDeps, (job.data as JobPayloads['maintenance:backup']).backupId);
@@ -307,6 +311,15 @@ export async function startWorkers(
     'purge-notifications',
     { every: 24 * 60 * 60 * 1000 },
     { name: 'purge-notifications', data: {}, opts: KEEP },
+  );
+  await scheduler.upsertJobScheduler(
+    'access-expiry',
+    { every: 60 * 1000 },
+    {
+      name: 'access-expiry',
+      data: {},
+      opts: { ...KEEP, removeOnComplete: { age: 600, count: 100 } },
+    },
   );
   const mailScheduler = new Queue(QUEUES.email, { connection, prefix: opts.prefix });
   const QUIET = { removeOnComplete: { age: 600, count: 100 }, removeOnFail: { age: 86400 } };

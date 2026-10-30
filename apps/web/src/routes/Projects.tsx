@@ -25,7 +25,7 @@ export function Projects() {
   const { catalogs, typeLabel } = useClassifications();
   const { t, i18n } = useTranslation();
   const { user } = useSession();
-  const { openNewProject, openImportProject } = useProjects();
+  const { openNewProject, openImportProject, canCreateProjects } = useProjects();
   const [items, setItems] = useState<ProjectOverview[] | null>(null);
   const known = useRef<Set<string>>(new Set());
   useEffect(() => {
@@ -142,13 +142,32 @@ export function Projects() {
           )}
         </div>
         <div className="projects-page__actions">
-          <Link className="ink-btn ink-btn--ghost" to="/onboarding">
-            {t('onboarding.guidedSetup')}
-          </Link>
-          <Button onClick={openImportProject}>{t('transfer.importMenu')}</Button>
-          <Button variant="primary" icon="plus" onClick={() => openNewProject()}>
-            {t('nav.newProject')}
-          </Button>
+          {canCreateProjects ? (
+            <>
+              <Link className="ink-btn ink-btn--ghost" to="/onboarding">
+                {t('onboarding.guidedSetup')}
+              </Link>
+              <Button onClick={openImportProject}>{t('transfer.importMenu')}</Button>
+              <Button variant="primary" icon="plus" onClick={() => openNewProject()}>
+                {t('nav.newProject')}
+              </Button>
+            </>
+          ) : (
+            // Decision 0041: shown, so people know where projects come from, but off.
+            <>
+              <span id="projects-creation-off" className="ink-muted projects-page__off">
+                {t('projectCreation.off')}
+              </span>
+              <Button
+                variant="primary"
+                icon="plus"
+                disabled
+                aria-describedby="projects-creation-off"
+              >
+                {t('nav.newProject')}
+              </Button>
+            </>
+          )}
         </div>
       </header>
       <div className="projects-page__filters">
@@ -239,7 +258,9 @@ export function Projects() {
       {items && visible.length === 0 && (
         <div className="projects-page__empty">
           <h2>{t('projectsPage.empty')}</h2>
-          <p className="ink-muted">{t('projectsPage.emptyBody')}</p>
+          <p className="ink-muted">
+            {t(canCreateProjects ? 'projectsPage.emptyBody' : 'projectCreation.emptyBody')}
+          </p>
         </div>
       )}
       <div className={`projects-page__items projects-page__items--${view}`}>

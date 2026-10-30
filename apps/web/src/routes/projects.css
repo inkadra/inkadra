@@ -27,6 +27,19 @@
 .projects-page__actions > a {
   text-decoration: none;
 }
+/* Project creation kept to some people (decision 0041): a short line before the off button. */
+.projects-page__off {
+  max-width: 340px;
+  font-size: 12px;
+}
+.onboarding-page__off {
+  margin: 0;
+  padding: 12px 14px;
+  border-radius: 8px;
+  background: var(--ink-surface-2);
+  color: var(--ink-text-secondary);
+  font-size: 13px;
+}
 .projects-page__filters {
   display: flex;
   flex-wrap: wrap;

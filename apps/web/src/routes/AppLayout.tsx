@@ -52,6 +52,7 @@ import {
   viewIcon,
 } from '../board/views.ts';
 import { appActions } from '../commands/app-actions.ts';
+import { canCreateProjects } from '../lib/access.ts';
 import { api, authApi } from '../lib/api.ts';
 import { HeaderContext } from '../lib/header.tsx';
 import { useSession } from '../lib/session.tsx';
@@ -94,6 +95,8 @@ interface ProjectsState {
   openNewProject: (template?: ProjectTemplate) => void;
   /** Opens Import project… (decision 0037). */
   openImportProject: () => void;
+  /** False when an administrator keeps project creation to some people (decision 0041). */
+  canCreateProjects: boolean;
   openSearch: () => void;
   openInbox: () => void;
   unread: number;
@@ -105,6 +108,7 @@ const ProjectsContext = createContext<ProjectsState>({
   shared: null,
   openNewProject: () => {},
   openImportProject: () => {},
+  canCreateProjects: true,
   openSearch: () => {},
   openInbox: () => {},
   unread: 0,
@@ -222,6 +226,7 @@ export function AppLayout({ home }: { home?: ReactNode }) {
   const setup = useInstanceSetup();
   const { t } = useTranslation();
   const { user, instance, refresh } = useSession();
+  const canCreate = canCreateProjects(user);
   const { theme, toggle } = useTheme();
   const navigate = useNavigate();
   const url = useLocation();
@@ -477,14 +482,16 @@ export function AppLayout({ home }: { home?: ReactNode }) {
       <SidebarSection
         title={t('nav.projects')}
         action={
-          <IconButton
-            icon="plus"
-            label={t('nav.newProject')}
-            onClick={() => {
-              setDrawerOpen(false);
-              setCreating(true);
-            }}
-          />
+          canCreate ? (
+            <IconButton
+              icon="plus"
+              label={t('nav.newProject')}
+              onClick={() => {
+                setDrawerOpen(false);
+                setCreating(true);
+              }}
+            />
+          ) : undefined
         }
       />
       {projects?.map((p) => (
@@ -655,9 +662,11 @@ export function AppLayout({ home }: { home?: ReactNode }) {
                 >
                   {t('home.newBoard.action')}
                 </Button>
-                <Button variant="secondary" onClick={() => setCreating(true)}>
-                  {t('nav.newProject')}
-                </Button>
+                {canCreate && (
+                  <Button variant="secondary" onClick={() => setCreating(true)}>
+                    {t('nav.newProject')}
+                  </Button>
+                )}
               </div>
             )}
           </>
@@ -702,8 +711,9 @@ export function AppLayout({ home }: { home?: ReactNode }) {
         value={{
           projects,
           shared,
-          openNewProject: (template) => setCreating(template ?? true),
-          openImportProject: () => setImporting(true),
+          openNewProject: (template) => canCreate && setCreating(template ?? true),
+          openImportProject: () => canCreate && setImporting(true),
+          canCreateProjects: canCreate,
           openSearch: () => setSearching(true),
           openInbox: () => setInboxOpen(true),
           unread,
@@ -812,16 +822,18 @@ export function AppLayout({ home }: { home?: ReactNode }) {
           <div className="phone-sheet">
             <Dialog open title={t('mobile.createTitle')} onClose={() => setNewSheet(false)}>
               <div className="mobile-new-sheet__actions">
-                <Button
-                  block
-                  icon="plus"
-                  onClick={() => {
-                    setNewSheet(false);
-                    setCreating(true);
-                  }}
-                >
-                  {t('nav.newProject')}
-                </Button>
+                {canCreate && (
+                  <Button
+                    block
+                    icon="plus"
+                    onClick={() => {
+                      setNewSheet(false);
+                      setCreating(true);
+                    }}
+                  >
+                    {t('nav.newProject')}
+                  </Button>
+                )}
                 <Button
                   block
                   icon="board"
@@ -855,7 +867,7 @@ export function AppLayout({ home }: { home?: ReactNode }) {
               canCreateBoard: writable.length > 0,
               theme,
               navigate,
-              newProject: () => setCreating(true),
+              newProject: canCreate ? () => setCreating(true) : undefined,
               newBoard: () => {
                 setBoardProject(undefined);
                 setCreatingBoard(true);
@@ -876,7 +888,7 @@ export function AppLayout({ home }: { home?: ReactNode }) {
           />
         )}
         <NewProjectDialog
-          open={creating !== false}
+          open={canCreate && creating !== false}
           template={typeof creating === 'string' ? creating : undefined}
           onClose={() => setCreating(false)}
           onImport={() => {
@@ -889,7 +901,7 @@ export function AppLayout({ home }: { home?: ReactNode }) {
             navigate(`/p/${p.id}`);
           }}
         />
-        {importing && <ImportProjectDialog onClose={() => setImporting(false)} />}
+        {canCreate && importing && <ImportProjectDialog onClose={() => setImporting(false)} />}
         <SeedQueue />
       </ProjectsContext.Provider>
     </InstanceSetupContext.Provider>

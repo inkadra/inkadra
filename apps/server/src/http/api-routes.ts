@@ -8,6 +8,7 @@ import {
 } from '@inkadra/shared';
 import { eq, sql } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
+import { canCreateProjects } from '../access-expiry.ts';
 import type { Auth } from '../auth.ts';
 import { countUsers, OIDC_PROVIDER_ID } from '../auth.ts';
 import { type Config, VERSION } from '../config.ts';
@@ -100,7 +101,7 @@ export function registerApiRoutes(app: FastifyInstance, deps: Deps) {
     const actor = await requireActor(auth, req, db, true);
     const [row] = await db.select().from(user).where(eq(user.id, actor.id));
     if (!row) throw new HttpError('unauthorized', 'Sign in to continue.');
-    return toUser(row);
+    return { ...toUser(row), canCreateProjects: await canCreateProjects(db, config, row) };
   });
 
   app.patch(v1('/me'), async (req) => {
@@ -111,6 +112,6 @@ export function registerApiRoutes(app: FastifyInstance, deps: Deps) {
         ? await db.select().from(user).where(eq(user.id, actor.id))
         : await db.update(user).set(patch).where(eq(user.id, actor.id)).returning();
     if (!row) throw new HttpError('unauthorized', 'Sign in to continue.');
-    return toUser(row);
+    return { ...toUser(row), canCreateProjects: await canCreateProjects(db, config, row) };
   });
 }

@@ -263,3 +263,70 @@
   font-weight: 500;
   color: #ededed;
 }
+
+/* End of someone's access (decision 0041): muted, in the warning colour within three days. */
+.share__expiry {
+  color: var(--ink-text-muted);
+  white-space: nowrap;
+}
+.share__expiry--soon {
+  color: var(--ink-status-warn);
+}
+.share__field > .share__expiry {
+  font-size: 11px;
+  padding: 0 2px;
+}
+.share__expiry-menu {
+  position: relative;
+  flex: none;
+}
+.share__expiry-btn {
+  color: var(--ink-text-muted);
+}
+.share__expiry-btn--set {
+  color: var(--ink-text-secondary);
+}
+.share__expiry-pop {
+  position: fixed;
+  z-index: 2;
+  min-inline-size: 0;
+  margin: 0;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  border-radius: 10px;
+  /* As the context menus. */
+  background: var(--ink-surface-1);
+  border: 1px solid var(--ink-border-subtle);
+  box-shadow: 0 8px 30px #0003;
+}
+.share__expiry-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--ink-text-secondary);
+}
+.share__date {
+  height: 32px;
+  padding: 0 8px;
+  border-radius: 6px;
+  border: 1px solid var(--ink-border-default);
+  background: var(--ink-surface-1);
+  color-scheme: light dark;
+}
+.share__date:focus-visible {
+  border-color: var(--ink-accent-primary);
+}
+.share__expiry-help {
+  margin: 0;
+  font-size: 11px;
+  color: var(--ink-text-muted);
+}
+.share__expiry-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+}

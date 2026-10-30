@@ -34,6 +34,7 @@ function context(overrides: Partial<ReturnType<typeof useProjects>> = {}) {
     shared: [],
     openNewProject: vi.fn(),
     openImportProject: vi.fn(),
+    canCreateProjects: true,
     openSearch: vi.fn(),
     openInbox: vi.fn(),
     unread: 0,
@@ -114,6 +115,14 @@ it('shows clean empty states and no Today card without data', async () => {
       expect.stringMatching(/^\/me\/shooting-days\?from=(\d{4}-\d\d-\d\d)&to=\1$/),
     ]),
   );
+});
+
+it('offers no templates to people who cannot create projects', async () => {
+  context({ canCreateProjects: false });
+  respond({});
+  await render();
+  expect(host.querySelector('#home-templates')).toBeNull();
+  expect(host.querySelectorAll('.home__template')).toHaveLength(0);
 });
 
 it('shows today’s shooting day, recent boards and the last day of activity', async () => {

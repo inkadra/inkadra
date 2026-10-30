@@ -64,6 +64,19 @@ const it = {
         return `${who}: "${where}"`;
     }
   },
+  /** `who` null: the access of the recipient. */
+  accessLine: (type: string, who: string | null, where: string, at: Date | null) => {
+    const when = at
+      ? at.toLocaleDateString('it-IT', { day: 'numeric', month: 'long', timeZone: 'UTC' })
+      : '';
+    if (type === 'access_expiring')
+      return who
+        ? `L'accesso di ${who} a "${where}" scade il ${when}`
+        : `Il tuo accesso a "${where}" scade il ${when}`;
+    return who
+      ? `L'accesso di ${who} a "${where}" è scaduto`
+      : `Il tuo accesso a "${where}" è scaduto`;
+  },
   notificationSubject: (count: number, instance: string) =>
     count === 1 ? `Una novità su ${instance}` : `${count} novità su ${instance}`,
   digestSubject: (instance: string) => `Il riepilogo di oggi su ${instance}`,
@@ -129,6 +142,16 @@ const en: Texts = {
       default:
         return `${who}: "${where}"`;
     }
+  },
+  accessLine: (type, who, where, at) => {
+    const when = at
+      ? at.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', timeZone: 'UTC' })
+      : '';
+    if (type === 'access_expiring')
+      return who
+        ? `${who}'s access to "${where}" ends on ${when}`
+        : `Your access to "${where}" ends on ${when}`;
+    return who ? `${who}'s access to "${where}" has ended` : `Your access to "${where}" has ended`;
   },
   notificationSubject: (count, instance) =>
     count === 1 ? `Something new on ${instance}` : `${count} new things on ${instance}`,

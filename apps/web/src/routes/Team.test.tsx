@@ -193,3 +193,31 @@ it('lists pending instance invitations as table rows next to the members', async
   expect(host.querySelector('.settings-segmented')).toBeNull();
   expect(host.querySelector('aside')).toBeNull();
 });
+
+it('turns project creation off for members and sets a per-person exception', async () => {
+  vi.mocked(api.patch).mockResolvedValue({});
+  await render();
+  const option = host.querySelector<HTMLInputElement>('#members-create-projects');
+  expect(option?.checked).toBe(true);
+  await act(async () => option?.click());
+  expect(api.patch).toHaveBeenCalledWith('/instance/settings', {
+    membersCanCreateProjects: false,
+  });
+  // Administrators always can: no control on their row.
+  expect(host.querySelector('select[aria-label="projectCreation.for"]')).not.toBeNull();
+  const select = host.querySelector<HTMLSelectElement>('select[aria-label="projectCreation.for"]');
+  expect([...(select?.options ?? [])].map((o) => o.value)).toEqual(['default', 'yes', 'no']);
+  expect(host.querySelectorAll('select[aria-label="projectCreation.for"]')).toHaveLength(1);
+  await act(async () => {
+    if (!select) return;
+    select.value = 'yes';
+    select.dispatchEvent(new Event('change', { bubbles: true }));
+  });
+  expect(api.patch).toHaveBeenCalledWith('/instance/members/member', { canCreateProjects: true });
+  await act(async () => {
+    if (!select) return;
+    select.value = 'default';
+    select.dispatchEvent(new Event('change', { bubbles: true }));
+  });
+  expect(api.patch).toHaveBeenCalledWith('/instance/members/member', { canCreateProjects: null });
+});

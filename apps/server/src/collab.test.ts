@@ -23,7 +23,7 @@ import { directBoardWriter } from './board-writer.ts';
 import { attachCollab, createCollabServer } from './collab.ts';
 import { loadConfig } from './config.ts';
 import { createDatabase, runMigrations } from './db/client.ts';
-import { boardDoc, boardElementIndex } from './db/schema.ts';
+import { boardDoc, boardElementIndex, projectMember } from './db/schema.ts';
 import { createApp } from './http/app.ts';
 import { createRedis, QUEUES, queuedBoardNotifier, startBoardWorker } from './queues.ts';
 import { testDeps } from './test-deps.ts';
@@ -334,6 +334,27 @@ describe.skipIf(!url)('collab (needs DATABASE_URL)', () => {
     expect(await closed).toBe(true);
     editor.close();
     check.close();
+  });
+
+  it('closes the connection at the next re-check once a membership ends', async () => {
+    await signUp('colourist');
+    const set = await app.inject({
+      method: 'PUT',
+      url: `/api/v1/projects/${projectId}/members/${people.colourist?.id}`,
+      headers: as('owner'),
+      payload: { role: 'editor', expiresAt: new Date(Date.now() + 86_400_000).toISOString() },
+    });
+    expect(set.json().expiresAt).not.toBeNull();
+    const colourist = connect(as('colourist'));
+    await colourist.synced;
+    const closed = closedWith(colourist);
+    // The end date passes; no sweep runs: the access check alone closes the connection.
+    await db
+      .update(projectMember)
+      .set({ expiresAt: new Date(Date.now() - 1000) })
+      .where(eq(projectMember.userId, people.colourist?.id ?? ''));
+    expect(await closed).toBe('Forbidden');
+    colourist.close();
   });
 
   it('lets a promoted viewer edit without reconnecting', async () => {

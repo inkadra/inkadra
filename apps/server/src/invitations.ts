@@ -124,7 +124,9 @@ export async function acceptInvitation(
     if (!row) throw new HttpError('not_found', 'This invitation can no longer be used.');
     const [me] = await tx.select({ email: user.email }).from(user).where(eq(user.id, userId));
     const db2 = tx as unknown as Database;
-    const role = invitedRole(row);
+    // Accepting after the end date of the access it gives gives nothing (decision 0041).
+    const end = row.accessExpiresAt;
+    const role = end && end.getTime() <= Date.now() ? null : invitedRole(row);
     // An account created through Google, OIDC or an email link already used its email
     // invitation; coming back to the link then just leads to what it was for.
     if (
@@ -157,20 +159,20 @@ export async function acceptInvitation(
       if (!atLeast(access.role, role))
         await tx
           .insert(boardGrant)
-          .values({ boardId: row.boardId, userId, role, grantedBy: row.invitedBy })
+          .values({ boardId: row.boardId, userId, role, grantedBy: row.invitedBy, expiresAt: end })
           .onConflictDoUpdate({
             target: [boardGrant.boardId, boardGrant.userId],
-            set: { role, grantedBy: row.invitedBy },
+            set: { role, grantedBy: row.invitedBy, expiresAt: end, expiryWarnedAt: null },
           });
     } else if (role && row.projectId) {
       const current = await projectRole(tx, { id: userId }, row.projectId);
       if (!atLeast(current, role))
         await tx
           .insert(projectMember)
-          .values({ projectId: row.projectId, userId, role })
+          .values({ projectId: row.projectId, userId, role, expiresAt: end })
           .onConflictDoUpdate({
             target: [projectMember.projectId, projectMember.userId],
-            set: { role },
+            set: { role, expiresAt: end, expiryWarnedAt: null },
           });
     }
     // The person who invited hears about it (decision 0013), unless they used their own link.

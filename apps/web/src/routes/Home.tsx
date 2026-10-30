@@ -30,7 +30,8 @@ function greetingKey(hour: number) {
 export function Home() {
   const { t, i18n } = useTranslation();
   const { user } = useSession();
-  const { projects, shared, openNewProject, openInbox, unread, refreshUnread } = useProjects();
+  const { projects, shared, openNewProject, canCreateProjects, openInbox, unread, refreshUnread } =
+    useProjects();
   const navigate = useNavigate();
   const now = new Date();
   const firstName = user?.name.split(' ')[0] ?? '';
@@ -184,30 +185,33 @@ export function Home() {
         </Section>
       )}
 
-      <Section id="home-templates" title={t('home.templates.title')}>
-        <div className="home__templates">
-          {PROJECT_TEMPLATES.map((c) => (
-            <button
-              key={c}
-              type="button"
-              className="ink-card home__template"
-              // The same templates and form as New project and the guided setup.
-              onClick={() => openNewProject(c)}
-            >
-              <span
-                className="home__template-icon"
-                data-kind={c}
-                style={kindStyle(c)}
-                aria-hidden="true"
+      {/* Templates create projects: not offered to people who cannot (decision 0041). */}
+      {canCreateProjects && (
+        <Section id="home-templates" title={t('home.templates.title')}>
+          <div className="home__templates">
+            {PROJECT_TEMPLATES.map((c) => (
+              <button
+                key={c}
+                type="button"
+                className="ink-card home__template"
+                // The same templates and form as New project and the guided setup.
+                onClick={() => openNewProject(c)}
               >
-                <Icon name={TEMPLATE_ICONS[c]} size={16} />
-              </span>
-              <span className="home__name">{t(`onboarding.templates.${c}.name`)}</span>
-              <span className="ink-muted home__when">{t(`onboarding.templates.${c}.body`)}</span>
-            </button>
-          ))}
-        </div>
-      </Section>
+                <span
+                  className="home__template-icon"
+                  data-kind={c}
+                  style={kindStyle(c)}
+                  aria-hidden="true"
+                >
+                  <Icon name={TEMPLATE_ICONS[c]} size={16} />
+                </span>
+                <span className="home__name">{t(`onboarding.templates.${c}.name`)}</span>
+                <span className="ink-muted home__when">{t(`onboarding.templates.${c}.body`)}</span>
+              </button>
+            ))}
+          </div>
+        </Section>
+      )}
     </div>
   );
 }
@@ -347,6 +351,7 @@ function BoardCard({
 
 function ActivityItem({ item, onRead }: { item: Notification; onRead: () => Promise<void> }) {
   const { t, i18n } = useTranslation();
+  const { user } = useSession();
   const navigate = useNavigate();
   const path = notificationPath(item);
   const actor = authorName(item.actor);
@@ -359,7 +364,7 @@ function ActivityItem({ item, onRead }: { item: Notification; onRead: () => Prom
       <span className="home__activity-body">
         <span className={item.reviewStatus === 'approved' ? 'home__approved' : undefined}>
           {actor && <b>{actor} </b>}
-          {describeNotification(item, t)}
+          {describeNotification(item, t, { id: user?.id, locale: i18n.language })}
         </span>
         <span className="ink-muted home__when">
           {where && `${where} · `}
