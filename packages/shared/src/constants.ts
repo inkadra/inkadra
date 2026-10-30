@@ -11,3 +11,6 @@ export const COLLAB_PATH = '/collab';
  * `variants/{size}?animated=1`. Larger pictures have a static poster only.
  */
 export const MOVING_THUMBNAIL_MAX_WIDTH = 1024;
+
+/** Maximum personal clip destinations retained by the server and browser cache. */
+export const CLIP_BOARD_HISTORY_LIMIT = 20;

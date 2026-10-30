@@ -122,3 +122,12 @@ seconds, success/failure cleanup and overlapping saves. For a real-browser check
 unpacked extension, close its worker DevTools (which itself prevents idle shutdown), and save
 an image through the context menu over a connection slow enough to take over 30 seconds.
 Confirm one request/card and that the worker can become idle again after completion.
+
+## Clip destination history
+
+Confirmed clips update a private server history shared across browsers (up to 20 boards).
+The first accessible destination is the default. The extension caches this list locally
+for offline use; successful server reads replace the cache, including empty lists. Older
+servers keep local-only history. See [ADR 0036](../../docs/decisions/0036-personal-clip-history.md)
+and the generated API contract for `GET /api/v1/me/clip-boards` and
+`DELETE /api/v1/me/clip-boards/{boardId}`.

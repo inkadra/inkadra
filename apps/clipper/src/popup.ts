@@ -272,7 +272,15 @@ async function start() {
   if (selected) void columns.select(selected.id).catch(showError);
   updateSelection();
   try {
+    const initialSelection = selected;
     starting = await send('boards', {});
+    // Show the cached destination immediately, then adopt the refreshed server default.
+    const fresh = await send('status', {});
+    if (selected === initialSelection) {
+      selected = fresh.lastBoard;
+      if (selected) void columns.select(selected.id).catch(showError);
+      updateSelection();
+    }
   } catch (err) {
     showError(err);
   }

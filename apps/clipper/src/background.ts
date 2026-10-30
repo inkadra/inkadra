@@ -13,8 +13,8 @@ import {
   forgetBoard,
   getConnection,
   getLastBoard,
-  getRecentBoards,
   markRevoked,
+  refreshClipBoards,
   rememberBoard,
   toBoardRef,
 } from './storage.ts';
@@ -43,7 +43,7 @@ async function handleFailure(err: unknown, board?: BoardRef): Promise<void> {
   if (!(err instanceof ClipperError)) return;
   if (err.kind === 'unauthorized') await markRevoked();
   // The board was deleted or moved out of reach: stop offering it.
-  if (err.kind === 'not_found' && board) await forgetBoard(board.id);
+  if (err.kind === 'not_found' && board) await forgetBoard(board.id).catch(() => {});
 }
 
 /**
@@ -148,7 +148,7 @@ async function clipFromPage(
   frameId?: number,
 ): Promise<void> {
   try {
-    const board = await getLastBoard();
+    const board = (await refreshClipBoards())[0] ?? null;
     if (!board) throw new ClipperError('no_board');
     const saved = await clipTo(board, content, { tab, frameId });
     await toast(tab, {
@@ -236,7 +236,13 @@ const handlers: Handlers = {
     if (parent) return childBoards(api, parent);
     const q = query?.trim();
     if (q) return searchBoards(api, q);
-    return startingBoards(api, await getRecentBoards());
+    const recent = await refreshClipBoards();
+    try {
+      return await startingBoards(api, recent);
+    } catch (err) {
+      if (!(err instanceof ClipperError) || err.kind !== 'offline') throw err;
+      return recent.map((b) => ({ ...b, section: 'recent' as const, depth: 0, expandable: false }));
+    }
   },
   async columns({ boardId }) {
     const { api } = await connected();

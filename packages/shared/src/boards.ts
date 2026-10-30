@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MPL-2.0
 import { FractionalIndex, Id, Timestamp, z } from './common.ts';
+import { CLIP_BOARD_HISTORY_LIMIT } from './constants.ts';
 import { ProjectRole } from './projects.ts';
 
 export const BoardKind = z.enum(['board', 'storyboard']);
@@ -104,3 +105,23 @@ export const BoardCounts = z.object({ items: z.array(BoardCount) }).openapi('Boa
   description: 'Counts of the project boards the caller can open, for the navigation.',
 });
 export type BoardCounts = z.infer<typeof BoardCounts>;
+
+/** Personal clip destinations, independent of edits by other people. */
+export const ClipBoard = Board.pick({ id: true, projectId: true, title: true, myRole: true })
+  .extend({ projectName: z.string(), usedAt: Timestamp })
+  .openapi('ClipBoard');
+export type ClipBoard = z.infer<typeof ClipBoard>;
+export const ClipBoardQuery = z
+  .object({
+    limit: z.coerce
+      .number()
+      .int()
+      .min(1)
+      .max(CLIP_BOARD_HISTORY_LIMIT)
+      .default(CLIP_BOARD_HISTORY_LIMIT),
+  })
+  .openapi('ClipBoardQuery');
+export const ClipBoards = z
+  .object({ items: z.array(ClipBoard).max(CLIP_BOARD_HISTORY_LIMIT) })
+  .openapi('ClipBoards');
+export type ClipBoards = z.infer<typeof ClipBoards>;

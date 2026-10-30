@@ -78,6 +78,13 @@
       "when": 1793355449130,
       "tag": "0010_session_transport",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1793356920049,
+      "tag": "0011_clip_board_history",
+      "breakpoints": true
     }
   ]
 }

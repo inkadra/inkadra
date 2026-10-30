@@ -24,6 +24,7 @@ function mockChrome() {
       local: {
         setAccessLevel: vi.fn(),
         set: vi.fn(async () => {}),
+        remove: vi.fn(async () => {}),
         get: vi.fn(async (key: string) => ({
           [key]:
             key === 'connection'
@@ -32,8 +33,8 @@ function mockChrome() {
                   token: 'test-token',
                   uploadMaxBytes: 1024,
                 }
-              : key === 'lastBoard'
-                ? board
+              : key === 'recentBoards'
+                ? [board]
                 : [],
         })),
       },
@@ -71,6 +72,16 @@ function send(message: unknown): Promise<Reply<unknown>> {
 const flush = () => vi.advanceTimersByTimeAsync(0);
 
 describe('background clip entry points', () => {
+  it('shows cached status immediately and lists cached destinations offline', async () => {
+    expect(await send({ type: 'status' })).toMatchObject({ ok: true, data: { lastBoard: board } });
+    expect(fetchMock).not.toHaveBeenCalled();
+    fetchMock.mockRejectedValue(new TypeError('offline'));
+    expect(await send({ type: 'boards' })).toMatchObject({
+      ok: true,
+      data: [{ ...board, section: 'recent' }],
+    });
+  });
+
   it('routes the column request and popup title/column to the API', async () => {
     fetchMock.mockResolvedValueOnce(response(200, { items: [{ id: 'col', title: '' }] }));
     expect(await send({ type: 'columns', boardId: 'b' })).toEqual({
@@ -102,7 +113,9 @@ describe('background clip entry points', () => {
         tab,
       );
     await flush();
-    expect(JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body))).toMatchObject({
+    expect(
+      JSON.parse(String(fetchMock.mock.calls.find((c) => c[1]?.method === 'POST')?.[1]?.body)),
+    ).toMatchObject({
       title: 'Tab title',
     });
   });
@@ -113,7 +126,9 @@ describe('background clip entry points', () => {
       { id: 1, url: 'https://a.example', title: 'Source title' },
     );
     await flush();
-    expect(JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body))).not.toHaveProperty('title');
+    expect(
+      JSON.parse(String(fetchMock.mock.calls.find((c) => c[1]?.method === 'POST')?.[1]?.body)),
+    ).not.toHaveProperty('title');
   });
 
   it.each([413, 429, 500])(
@@ -143,6 +158,7 @@ describe('background clip entry points', () => {
     async (status) => {
       let finish!: (response: Response) => void;
       fetchMock
+        .mockResolvedValueOnce(response(200, { items: [board] }))
         .mockResolvedValueOnce(new Response(new Blob(['image'], { type: 'image/png' })))
         .mockImplementationOnce(
           () =>
@@ -155,16 +171,20 @@ describe('background clip entry points', () => {
         { id: 1 },
       );
       await flush();
-      await vi.waitFor(() => expect(fetchMock.mock.calls[1]?.[1]?.body).toBeInstanceOf(FormData));
+      await vi.waitFor(() =>
+        expect(fetchMock.mock.calls.find((c) => c[1]?.method === 'POST')?.[1]?.body).toBeInstanceOf(
+          FormData,
+        ),
+      );
       await vi.advanceTimersByTimeAsync(65_000);
       expect(chromeMock.runtime.getPlatformInfo).toHaveBeenCalledTimes(3);
-      expect(fetchMock).toHaveBeenCalledTimes(2);
+      expect(fetchMock).toHaveBeenCalledTimes(3);
       finish(response(status, status === 201 ? result : { error: { code: 'internal' } }));
       await flush();
       await vi.advanceTimersByTimeAsync(60_000);
       expect(chromeMock.runtime.getPlatformInfo).toHaveBeenCalledTimes(3);
       expect(vi.getTimerCount()).toBe(0);
-      expect(fetchMock).toHaveBeenCalledTimes(2);
+      expect(fetchMock).toHaveBeenCalledTimes(3);
     },
   );
 
