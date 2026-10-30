@@ -5,8 +5,8 @@
   inset: 0;
   overflow: hidden;
   touch-action: none;
-  user-.ink-select: none;
-  -webkit-user-.ink-select: none;
+  user-select: none;
+  -webkit-user-select: none;
   background-color: var(--ink-bg-canvas);
   outline: none;
   --shadow-float: 0 8px 24px rgb(0 0 0 / 0.35);
@@ -70,8 +70,8 @@
   opacity: 0.35;
 }
 .card.is-editing {
-  user-.ink-select: text;
-  -webkit-user-.ink-select: text;
+  user-select: text;
+  -webkit-user-select: text;
 }
 .card--tint-blue {
   background: color-mix(in srgb, var(--ink-tag-blue) 14%, var(--ink-surface-1));
@@ -105,7 +105,7 @@
   border: 0;
   background: transparent;
   outline: none;
-  user-.ink-select: text;
+  user-select: text;
 }
 .card__inline-input::placeholder {
   color: var(--ink-text-muted);

@@ -1303,7 +1303,7 @@
   flex-direction: column;
   gap: 8px;
   cursor: grab;
-  user-.ink-select: none;
+  user-select: none;
   transition:
     transform 0.1s ease,
     border-color 0.1s ease;
@@ -2640,7 +2640,7 @@
 }
 .schedule__shot:focus-visible,
 .schedule__day-head:focus-visible,
-.schedule__block-.ink-select:focus-visible {
+.schedule__block-select:focus-visible {
   outline: 2px solid var(--ink-accent-primary);
   outline-offset: 2px;
 }
@@ -2687,7 +2687,7 @@
 .schedule__block--break {
   --block-tint: var(--ink-tag-green);
 }
-.schedule__block-.ink-select {
+.schedule__block-select {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
@@ -2705,20 +2705,20 @@
   text-align: left;
   cursor: pointer;
 }
-.schedule__block-.ink-select:hover {
+.schedule__block-select:hover {
   border-color: var(--ink-border-strong);
   border-left-color: var(--block-tint);
 }
-.schedule__block.has-conflict .schedule__block-.ink-select {
+.schedule__block.has-conflict .schedule__block-select {
   border-color: var(--ink-danger-border);
   border-left-color: var(--block-tint);
 }
-.schedule__block.is-selected .schedule__block-.ink-select {
+.schedule__block.is-selected .schedule__block-select {
   border-color: var(--ink-accent-primary);
   border-left-color: var(--block-tint);
   box-shadow: 0 0 0 1px var(--ink-accent-primary);
 }
-.schedule__block-.ink-select strong {
+.schedule__block-select strong {
   color: var(--ink-text-secondary);
   font-size: 11px;
   font-weight: 500;
@@ -2732,7 +2732,7 @@
   color: var(--ink-text-muted);
   font-size: 11px;
 }
-.schedule__block-.ink-select .schedule__flag {
+.schedule__block-select .schedule__flag {
   margin-top: 4px;
 }
 .schedule__drop {
@@ -3094,7 +3094,7 @@
   opacity: 0.8;
 }
 
-.kanban__move-.ink-select {
+.kanban__move-select {
   height: 20px;
   font-size: 11px;
   background: var(--ink-surface-1);
