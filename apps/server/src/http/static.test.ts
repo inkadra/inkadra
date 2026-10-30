@@ -96,7 +96,8 @@ describe('web app files', () => {
     expect(root.statusCode).toBe(200);
     expect(root.headers['content-type']).toMatch(/^text\/html/);
     expect(root.body).toBe('');
-    expect((await app.inject({ method: 'HEAD', url: '/assets/index-OLD.js' })).statusCode).toBe(404);
+    const missing = await app.inject({ method: 'HEAD', url: '/assets/index-OLD.js' });
+    expect(missing.statusCode).toBe(404);
   });
 
   it('keeps the token of a guest page out of referrers and search engines', async () => {
