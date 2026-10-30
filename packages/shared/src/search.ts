@@ -21,9 +21,14 @@ export const SearchQuery = z
     }),
     limit: z.coerce.number().int().min(1).max(50).default(20),
   })
-  .refine((v) => (v.q !== undefined && v.q.length > 0) || v.tag !== undefined, {
-    message: 'Send q, tag or both.',
-  })
+  // A type within one project lists those cards, e.g. the characters of a project.
+  .refine(
+    (v) =>
+      (v.q !== undefined && v.q.length > 0) ||
+      v.tag !== undefined ||
+      (v.type !== undefined && v.projectId !== undefined),
+    { message: 'Send q, tag or both, or a type with a project.' },
+  )
   .openapi('SearchQuery');
 export type SearchQuery = z.infer<typeof SearchQuery>;
 

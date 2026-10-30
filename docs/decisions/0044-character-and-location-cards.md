@@ -23,6 +23,8 @@ show contacts typed in a note, and storyboard frames name their cast in free tex
   the project's character cards (from search) to pick, which adds the card's name. Existing
   free-text cast keeps working; a name that matches a character card (ignoring case) is shown
   as linked. No frame field changes.
+- **Search by type**: `GET /search` also accepts a `type` with a `projectId` and no words, to
+  list the cards of a type in a project (the cast picker lists the project's characters).
 - **Maps**: `mapUrl` is any HTTP(S) link opened in a new tab. No embedded map, tiles or
   geocoding: nothing new for the CSP and no API key.
 - **Guests** (allow list, decision 0013) see on characters the name, role, picture, age,
