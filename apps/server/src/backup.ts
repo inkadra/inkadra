@@ -287,7 +287,10 @@ export async function runBackup(deps: BackupDeps, id: string): Promise<BackupRow
         );
         copied = true;
       } catch (err) {
-        log.error({ err, backup: id, fileName }, 'backup kept on the data volume, bucket copy failed');
+        log.error(
+          { err, backup: id, fileName },
+          'backup kept on the data volume, bucket copy failed',
+        );
       }
     }
     // Only a backup still running becomes ready: never one another process marked over.
