@@ -645,13 +645,14 @@ function dashes(
   let drawing = true;
   let left = on;
   for (const [i, q] of points.entries()) {
-    let p = points[i - 1];
-    if (!p) continue;
+    const start = points[i - 1];
+    if (!start) continue;
+    let p: { x: number; y: number } = start;
     let len = Math.hypot(q.x - p.x, q.y - p.y);
     while (len > 0) {
       const step = Math.min(left, len);
       const t = step / len;
-      const next = { x: p.x + (q.x - p.x) * t, y: p.y + (q.y - p.y) * t };
+      const next: { x: number; y: number } = { x: p.x + (q.x - p.x) * t, y: p.y + (q.y - p.y) * t };
       if (drawing)
         ops.push({ kind: 'line', x1: p.x, y1: p.y, x2: next.x, y2: next.y, color, width: 1.5 });
       p = next;
