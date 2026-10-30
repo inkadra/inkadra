@@ -111,7 +111,10 @@ describe('curved arrows', () => {
       ['leo', { x: 400, y: 0, w: 100, h: 100 }],
     ]);
     const rectOf = (id: string) => rects.get(id) ?? null;
-    const arrow = { from: { elementId: 'marta', x: 0, y: 0 }, to: { elementId: 'leo', x: 0, y: 0 } };
+    const arrow = {
+      from: { elementId: 'marta', x: 0, y: 0 },
+      to: { elementId: 'leo', x: 0, y: 0 },
+    };
     const straight = arrowGeometry(arrow, rectOf);
     expect(straight.c).toBeNull();
     expect(straight.mid).toEqual({ x: 250, y: 50 });

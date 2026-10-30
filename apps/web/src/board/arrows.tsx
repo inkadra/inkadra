@@ -182,9 +182,7 @@ export function ArrowStyleButtons({
         icon="curve"
         label={t('board.arrow.curved')}
         active={curved}
-        onClick={() =>
-          setArrowPath(doc, editable, curved ? undefined : 'curved', rectOf, LOCAL)
-        }
+        onClick={() => setArrowPath(doc, editable, curved ? undefined : 'curved', rectOf, LOCAL)}
       />
       <BarButton
         icon={heads === 'both' ? 'arrowBoth' : heads === 'none' ? 'line' : 'arrow'}

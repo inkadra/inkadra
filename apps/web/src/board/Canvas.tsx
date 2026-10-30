@@ -2,12 +2,12 @@ import {
   type Alignment,
   type ArrowElement,
   type ArrowGeometry,
-  arrowBox,
-  arrowGeometry,
   addScene,
   alignRects,
   applyTemplate,
+  arrowBox,
   arrowEnds,
+  arrowGeometry,
   boundsOf,
   bringToFront,
   centerOn,
@@ -86,7 +86,6 @@ import {
 } from './canvas-templates.ts';
 import { Card } from './cards.tsx';
 import {
-  BarButton,
   type CanvasTool,
   CommandPalette,
   ContextBar,
@@ -1687,10 +1686,7 @@ export function Canvas({
           : end;
       out.set(
         arrow.id,
-        arrowGeometry(
-          { from: shift(arrow.from), to: shift(arrow.to), path: arrow.path },
-          shifted,
-        ),
+        arrowGeometry({ from: shift(arrow.from), to: shift(arrow.to), path: arrow.path }, shifted),
       );
     }
     return out;
