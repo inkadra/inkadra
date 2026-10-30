@@ -27,11 +27,16 @@ export function parseScenes(text: string): string[] | undefined {
   return scenes.length > 0 ? scenes : undefined;
 }
 
-/** A web address for `mapUrl`, or null when the text is not one. */
+/**
+ * A web address for `mapUrl`, or null when the text is not one: other schemes, addresses with a
+ * user name or password, and anything longer than the 2048 characters the schema keeps.
+ */
 export function parseMapUrl(text: string): string | null {
   try {
     const url = new URL(text.trim());
-    return url.protocol === 'http:' || url.protocol === 'https:' ? url.href.slice(0, 2048) : null;
+    if (url.protocol !== 'http:' && url.protocol !== 'https:') return null;
+    if (url.username || url.password) return null;
+    return url.href.length <= 2048 ? url.href : null;
   } catch {
     return null;
   }

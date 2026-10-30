@@ -14,6 +14,11 @@ describe('story card fields', () => {
     );
     expect(parseMapUrl('javascript:alert(1)')).toBeNull();
     expect(parseMapUrl('Piazza Duca d’Aosta')).toBeNull();
+    expect(parseMapUrl('https://user:secret@maps.example.com/')).toBeNull();
+    expect(parseMapUrl('https://user@maps.example.com/')).toBeNull();
+    const long = `https://maps.example.com/?q=${'a'.repeat(2048)}`;
+    expect(parseMapUrl(long)).toBeNull();
+    expect(parseMapUrl(long.slice(0, 2048))).toBe(long.slice(0, 2048));
   });
 
   it('looks addresses up on OpenStreetMap without embedding a map', () => {

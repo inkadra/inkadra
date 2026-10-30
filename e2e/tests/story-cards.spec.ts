@@ -267,6 +267,19 @@ for (const [device, width, height] of [
       for (const secret of ['Agenzia Lumen', 'Provino', 'Piazza della Stazione', 'portineria'])
         expect(seen).not.toContain(secret);
       await guestPage.screenshot({ path: `${out}/${device}-${theme}-guest.png` });
+      // Opened, a character and a location still show nothing private on the guest page.
+      for (const id of [ids.marta, ids.cabin]) {
+        await guestPage.locator(`[data-el="${id}"]`).click();
+        await guestPage.locator(`[data-el="${id}"]`).dblclick();
+        for (const secret of [
+          'Agenzia Lumen',
+          'Provino',
+          'Piazza della Stazione',
+          'portineria',
+          'Solo team',
+        ])
+          await expect(guestPage.locator('body')).not.toContainText(secret);
+      }
       await guest.close();
       await page.request.delete(`/api/v1/projects/${project.id}`, {
         headers: { origin: baseURL! },

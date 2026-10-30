@@ -710,9 +710,11 @@
       "commentsNone": "Ancora nessun commento su questa inquadratura.",
       "commentsCount_one": "{{count}} discussione aperta",
       "commentsCount_other": "{{count}} discussioni aperte",
-      "castLinks": "Personaggi della board",
+      "castLinks": "Personaggi del progetto",
       "castLink": "Aggiungi {{name}} al cast",
-      "castLinked": "{{name}} è nel cast"
+      "castLinked": "{{name}} è nel cast",
+      "castFilter": "Cerca un personaggio",
+      "castNone": "Nessun personaggio con questo nome."
     },
     "shot": {
       "ews": "Campo lunghissimo",

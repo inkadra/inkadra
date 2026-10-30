@@ -8,7 +8,7 @@ import {
 } from '@inkadra/doc-schema';
 import type { SearchResult } from '@inkadra/shared';
 import { Button, Icon, IconButton } from '@inkadra/ui';
-import { useContext, useEffect, useRef, useState, useSyncExternalStore } from 'react';
+import { useContext, useEffect, useId, useRef, useState, useSyncExternalStore } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useRegisterActions } from '../../commands/actions.ts';
 import {
@@ -349,51 +349,88 @@ function CastLinks({
 }) {
   const { t } = useTranslation();
   const snap = useSyncExternalStore(store.subscribe, store.getSnapshot);
+  const [query, setQuery] = useState('');
   const [found, setFound] = useState<string[]>([]);
+  const filterId = useId();
+  // The project's characters, by name; past the first page, typing finds the rest.
   useEffect(() => {
     let live = true;
-    const params = new URLSearchParams({ type: 'character', projectId, limit: '50' });
-    api
-      .get<SearchResult>(`/search?${params}`)
-      .then((r) => live && setFound(r.items.map((hit) => hit.title)))
-      .catch(() => {});
+    const words = query.trim();
+    const timer = setTimeout(
+      () => {
+        const params = new URLSearchParams({
+          type: 'character',
+          projectId,
+          limit: String(CAST_PAGE),
+          ...(words ? { q: words } : {}),
+        });
+        api
+          .get<SearchResult>(`/search?${params}`)
+          .then((r) => live && setFound(r.items.map((hit) => hit.title)))
+          .catch(() => {});
+      },
+      words ? 250 : 0,
+    );
     return () => {
       live = false;
+      clearTimeout(timer);
     };
-  }, [projectId]);
-  const here = [...snap.byId.values()].flatMap((el) => (el.type === 'character' ? [el.name] : []));
+  }, [projectId, query]);
+  const needle = query.trim().toLocaleLowerCase();
+  const here = [...snap.byId.values()].flatMap((el) =>
+    el.type === 'character' && el.name.toLocaleLowerCase().includes(needle) ? [el.name] : [],
+  );
   const seen = new Set<string>();
   const names = [...here, ...found]
     .map((n) => n.trim())
     .filter((n) => n && !seen.has(n.toLocaleLowerCase()) && seen.add(n.toLocaleLowerCase()))
     .sort((a, b) => a.localeCompare(b));
-  if (names.length === 0) return null;
+  if (names.length === 0 && !needle) return null;
   const inCast = new Set(cast.map((c) => c.toLocaleLowerCase()));
   return (
     <div className="film-field">
-      <span className="film-field__label">{t('film.frame.castLinks')}</span>
-      <ul className="film-cast__links">
-        {names.map((name) => {
-          const linked = inCast.has(name.toLocaleLowerCase());
-          return (
-            <li key={name}>
-              <button
-                type="button"
-                className={`film-cast__link${linked ? ' is-linked' : ''}`}
-                aria-label={t(linked ? 'film.frame.castLinked' : 'film.frame.castLink', { name })}
-                disabled={linked}
-                onClick={() => onAdd(name.slice(0, 80))}
-              >
-                <Icon name={linked ? 'check' : 'user'} size={12} />
-                {name}
-              </button>
-            </li>
-          );
-        })}
-      </ul>
+      <label className="film-field__label" htmlFor={filterId}>
+        {t('film.frame.castLinks')}
+      </label>
+      <input
+        id={filterId}
+        className="ink-input"
+        type="search"
+        value={query}
+        placeholder={t('film.frame.castFilter')}
+        onChange={(e) => setQuery(e.target.value.slice(0, 200))}
+      />
+      {names.length === 0 ? (
+        <p className="film-field__hint">{t('film.frame.castNone')}</p>
+      ) : (
+        <ul className="film-cast__links">
+          {names.map((name) => {
+            const linked = inCast.has(name.toLocaleLowerCase());
+            return (
+              <li key={name}>
+                <button
+                  type="button"
+                  className={`film-cast__link${linked ? ' is-linked' : ''}`}
+                  aria-label={t(linked ? 'film.frame.castLinked' : 'film.frame.castLink', {
+                    name,
+                  })}
+                  disabled={linked}
+                  onClick={() => onAdd(name.slice(0, 80))}
+                >
+                  <Icon name={linked ? 'check' : 'user'} size={12} />
+                  {name}
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      )}
     </div>
   );
 }
+
+/** Characters listed before typing; the search finds the others. */
+const CAST_PAGE = 50;
 
 const PREVIEW_THREADS = 3;
 

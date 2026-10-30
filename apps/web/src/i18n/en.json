@@ -710,9 +710,11 @@
       "commentsNone": "No comments on this frame yet.",
       "commentsCount_one": "{{count}} open thread",
       "commentsCount_other": "{{count}} open threads",
-      "castLinks": "Characters on this board",
+      "castLinks": "Characters in this project",
       "castLink": "Add {{name}} to the cast",
-      "castLinked": "{{name}} is in the cast"
+      "castLinked": "{{name}} is in the cast",
+      "castFilter": "Find a character",
+      "castNone": "No character by that name."
     },
     "shot": {
       "ews": "Extreme wide",
