@@ -173,7 +173,7 @@ test('backup routes are refused with a personal access token, even the administr
     const res = await fetch(`${base}/api/v1${path}`, {
       method,
       headers: { ...bearer, 'content-type': 'application/json' },
-      ...(method === 'PATCH' ? { body: JSON.stringify({ retention: 3 }) } : { body: '{}' }),
+      ...(method === 'GET' ? {} : { body: JSON.stringify(method === 'PATCH' ? { retention: 3 } : {}) }),
     });
     expect(res.status, `${method} ${path}`).toBe(403);
   }
