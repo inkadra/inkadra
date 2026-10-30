@@ -670,7 +670,7 @@ select {
   background: var(--ink-surface-1);
   color: var(--ink-text-primary);
   border: 1px solid var(--ink-border-muted);
-  border-radius: 8px;
+  border-radius: 10px;
   box-shadow: var(--ink-shadow-menu);
   font: inherit;
   font-size: 13px;
