@@ -123,7 +123,11 @@ describe('index entries', () => {
     expect(m).toMatchObject({ type: 'character', title: 'Marta', data: { role: 'Capotreno' } });
     for (const word of ['Capotreno', 'Giulia Neri', 'agenzia@example.com', '3A'])
       expect(m?.text).toContain(word);
-    expect(s).toMatchObject({ type: 'location', title: 'Stazione Centrale', data: { setting: 'ext' } });
+    expect(s).toMatchObject({
+      type: 'location',
+      title: 'Stazione Centrale',
+      data: { setting: 'ext' },
+    });
     expect(s?.text).toContain('Piazza Duca');
   });
 
