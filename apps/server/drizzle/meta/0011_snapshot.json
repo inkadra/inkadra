@@ -1,5 +1,5 @@
 {
-  "id": "5b344078-9c76-4a27-97fb-5eab2f20ccae",
+  "id": "18d568e8-62ca-484f-823f-516a9e1e0837",
   "prevId": "071c3f09-4c54-412b-857e-e8fc9714d470",
   "version": "7",
   "dialect": "postgresql",
@@ -1093,7 +1093,23 @@
           "default": "now()"
         }
       },
-      "indexes": {},
+      "indexes": {
+        "clip_board_use_board_idx": {
+          "name": "clip_board_use_board_idx",
+          "columns": [
+            {
+              "expression": "board_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
       "foreignKeys": {
         "clip_board_use_user_id_user_id_fk": {
           "name": "clip_board_use_user_id_user_id_fk",
