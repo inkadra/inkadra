@@ -77,7 +77,12 @@ import {
 } from './projects.ts';
 import { SearchDialog } from './SearchDialog.tsx';
 import { SettingsWindow } from './SettingsWindow.tsx';
-import { SeedQueue } from './seed-queue.tsx';
+import {
+  forgetSeededCounts,
+  mergeSeededCounts,
+  SeedQueue,
+  useSeededCounts,
+} from './seed-queue.tsx';
 import { isSettingsPath } from './settings-sections.ts';
 import './mobile-shell.css';
 
@@ -978,7 +983,10 @@ function useBoardCounts(
     api
       .get<{ items: BoardCount[] }>(`/projects/${projectId}/board-counts`)
       .then((r) => {
-        if (live) setCounts(new Map(r.items.map((c) => [c.boardId, c])));
+        if (!live) return;
+        const next = new Map(r.items.map((c) => [c.boardId, c]));
+        setCounts(next);
+        forgetSeededCounts(next);
       })
       .catch(() => {
         // Counts are a hint; the navigation works without them.
@@ -987,5 +995,7 @@ function useBoardCounts(
       live = false;
     };
   }, [projectId, stamp, boards?.length]);
-  return counts;
+  // Boards laid out in the background (the Canvas menu) are counted as soon as they are seeded.
+  const seeded = useSeededCounts();
+  return useMemo(() => mergeSeededCounts(counts, seeded), [counts, seeded]);
 }

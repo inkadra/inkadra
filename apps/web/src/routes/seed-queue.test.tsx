@@ -1,12 +1,25 @@
 // @vitest-environment happy-dom
+
+import type { BoardCount } from '@inkadra/shared';
 import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { expect, it, vi } from 'vitest';
-import { queueSeeds, SeedQueue } from './seed-queue.tsx';
+import {
+  forgetSeededCounts,
+  mergeSeededCounts,
+  queueSeeds,
+  type SeededCounts,
+  SeedQueue,
+  useSeededCounts,
+} from './seed-queue.tsx';
 
-const finish: { done?: () => void; failed?: () => void } = {};
+const finish: { done?: (counts?: SeededCounts) => void; failed?: () => void } = {};
 vi.mock('./ProjectSetupSeed.tsx', () => ({
-  ProjectSetupSeed: (props: { boardId: string; done: () => void; failed: () => void }) => {
+  ProjectSetupSeed: (props: {
+    boardId: string;
+    done: (counts?: SeededCounts) => void;
+    failed: () => void;
+  }) => {
     finish.done = props.done;
     finish.failed = props.failed;
     return <i data-board={props.boardId} />;
@@ -36,6 +49,49 @@ it('seeds queued boards one at a time and moves on when one fails', async () => 
     expect(shown()).toBe('c');
     await act(async () => finish.done?.());
     expect(shown()).toBeNull();
+  } finally {
+    await act(async () => root.unmount());
+    host.remove();
+  }
+});
+
+const server = new Map<string, BoardCount>();
+let shown = new Map<string, BoardCount>();
+function Counts() {
+  shown = mergeSeededCounts(server, useSeededCounts());
+  return null;
+}
+
+it('counts a seeded board in the navigation until the server has stored it', async () => {
+  const host = document.createElement('div');
+  document.body.append(host);
+  const root = createRoot(host);
+  server.set('s', { boardId: 's', elementCount: 0, frameCount: 0, framesToShoot: 0 });
+  try {
+    await act(async () =>
+      root.render(
+        <>
+          <SeedQueue />
+          <Counts />
+        </>,
+      ),
+    );
+    await act(async () => queueSeeds([{ boardId: 's', seed: 'storyboard', userId: 'u' }]));
+    expect(shown.get('s')?.frameCount).toBe(0);
+    // The Canvas menu's storyboard: a scene and three frames.
+    await act(async () => finish.done?.({ elementCount: 4, frameCount: 3, framesToShoot: 3 }));
+    expect(shown.get('s')).toEqual({
+      boardId: 's',
+      elementCount: 4,
+      frameCount: 3,
+      framesToShoot: 3,
+    });
+    // Once stored, the server's counts win, also when they change afterwards.
+    server.set('s', { boardId: 's', elementCount: 5, frameCount: 3, framesToShoot: 2 });
+    await act(async () => forgetSeededCounts(server));
+    server.set('s', { boardId: 's', elementCount: 0, frameCount: 0, framesToShoot: 0 });
+    await act(async () => root.render(<Counts />));
+    expect(shown.get('s')?.elementCount).toBe(0);
   } finally {
     await act(async () => root.unmount());
     host.remove();

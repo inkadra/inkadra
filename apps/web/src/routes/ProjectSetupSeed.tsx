@@ -5,6 +5,7 @@ import { useBoardConnection } from '../board/connection.ts';
 import { LOCAL } from '../board/store.ts';
 import { seedStoryboard, seedTemplate, templateLabels } from '../board/templates.ts';
 import type { CreatedSetupBoard } from './project-setup.ts';
+import type { SeededCounts } from './seed-queue.tsx';
 
 /** One connection at a time. Wait for the server to acknowledge edits before disconnecting. */
 export function ProjectSetupSeed({
@@ -19,7 +20,8 @@ export function ProjectSetupSeed({
   seed?: CreatedSetupBoard['seed'];
   links?: CreatedSetupBoard[];
   userId: string;
-  done: () => void;
+  /** Called with the board's counts once the server has the edits. */
+  done: (counts: SeededCounts) => void;
   failed: () => void;
 }) {
   const conn = useBoardConnection(boardId);
@@ -61,7 +63,14 @@ export function ProjectSetupSeed({
         !finished.current
       ) {
         finished.current = true;
-        done();
+        const counts = { elementCount: 0, frameCount: 0, framesToShoot: 0 };
+        for (const el of listElements(conn.store.doc)) {
+          counts.elementCount++;
+          if (el.type !== 'frame') continue;
+          counts.frameCount++;
+          if (el.status !== 'shot') counts.framesToShoot++;
+        }
+        done(counts);
       }
     }, 100);
     const timeout = setTimeout(() => {
