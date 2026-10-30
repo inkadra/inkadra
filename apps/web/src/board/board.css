@@ -2487,16 +2487,24 @@ button.card__play {
   font-size: 11px;
   color: var(--ink-text-secondary);
 }
-.crop-bar__angle input[type="range"] {
-  width: 72px;
-  accent-color: var(--ink-accent-primary);
-  cursor: pointer;
-}
 .crop-bar__deg {
-  min-width: 30px;
+  min-width: 34px;
+  height: 26px;
+  padding: 0 4px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--ink-text-muted);
   text-align: right;
   font-variant-numeric: tabular-nums;
+  cursor: pointer;
+}
+.crop-bar__deg:hover:not(:disabled) {
+  background: var(--ink-surface-3);
   color: var(--ink-text-primary);
+}
+.crop-bar__deg:disabled {
+  cursor: default;
 }
 .crop-bar__text-btn,
 .crop-bar__done {
@@ -2550,7 +2558,11 @@ button.card__play {
   .crop-bar__angle {
     height: 44px;
   }
-  .crop-bar__angle input[type="range"] {
-    width: 96px;
+  .crop-bar__deg {
+    min-width: 44px;
+    height: 44px;
+  }
+  .crop-bar .ink-slider {
+    height: 44px;
   }
 }

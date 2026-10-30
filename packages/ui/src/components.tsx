@@ -137,6 +137,49 @@ export function TextField({
   );
 }
 
+export interface SliderProps
+  extends Omit<
+    InputHTMLAttributes<HTMLInputElement>,
+    'type' | 'value' | 'onChange' | 'min' | 'max' | 'step'
+  > {
+  value: number;
+  min: number;
+  max: number;
+  step?: number;
+  onChange: (value: number) => void;
+  'aria-label': string;
+}
+
+/**
+ * A themed range input: thin neutral track, the filled part and thumb in the text colour, the
+ * global focus ring. Arrows, Page Up/Down, Home and End work natively.
+ */
+export function Slider({
+  value,
+  min,
+  max,
+  step = 1,
+  onChange,
+  className,
+  style,
+  ...props
+}: SliderProps) {
+  const fill = max > min ? ((Math.min(max, Math.max(min, value)) - min) / (max - min)) * 100 : 0;
+  return (
+    <input
+      type="range"
+      className={cx('ink-slider', className)}
+      min={min}
+      max={max}
+      step={step}
+      value={value}
+      style={{ ['--ink-slider-fill' as string]: `${fill}%`, ...style }}
+      onChange={(e) => onChange(Number(e.currentTarget.value))}
+      {...props}
+    />
+  );
+}
+
 export function KeyCap({ children }: { children: ReactNode }) {
   return <kbd className="ink-kc">{children}</kbd>;
 }

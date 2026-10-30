@@ -6,8 +6,13 @@ import {
   type ImageCrop,
   type ImageCropAspect,
 } from '@inkadra/doc-schema';
-import { Icon } from '@inkadra/ui';
-import { type PointerEvent as ReactPointerEvent, useRef } from 'react';
+import { Icon, Slider } from '@inkadra/ui';
+import {
+  type KeyboardEvent as ReactKeyboardEvent,
+  type PointerEvent as ReactPointerEvent,
+  useId,
+  useRef,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAsset } from './assets.ts';
 import { useBoard } from './context.ts';
@@ -16,9 +21,11 @@ import {
   type CropHandle,
   conformCropAspect,
   cropAfterQuarterTurn,
+  cropInsideImage,
   FULL_CROP,
   fitCropToAspect,
   hasImageTransform,
+  inscribeCrop,
   isIdentityCrop,
   moveCropRect,
   normalizeRotation,
@@ -99,8 +106,9 @@ export function ImageCropStage({
   baseWidth: number;
   baseHeight: number;
 }) {
-  const { store } = useBoard();
+  const { store, setCropping } = useBoard();
   const { t } = useTranslation();
+  const helpId = useId();
   const stageRef = useRef<HTMLDivElement>(null);
   const dragRef = useRef<{
     kind: 'move' | CropHandle;
@@ -143,8 +151,47 @@ export function ImageCropStage({
       drag.kind === 'move'
         ? moveCropRect(drag.startCrop, dx, dy)
         : resizeCropRect(drag.startCrop, drag.kind, dx, dy, rBounds.width, rBounds.height);
+    // At a free angle the crop may not reach into the empty corners: that step is skipped.
+    if (cropInsideImage(next, baseWidth, baseHeight, rot)) {
+      applyImageTransform(store, element, next, rot);
+    }
+  }
+
+  /**
+   * Arrows move the crop, Alt+arrows resize it from its right and bottom edges, Shift takes
+   * bigger steps; Escape leaves crop mode. Edits apply as they happen and Undo reverts them.
+   */
+  function onKeyDown(e: ReactKeyboardEvent<HTMLDivElement>) {
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      e.stopPropagation();
+      setCropping?.(null);
+      return;
+    }
+    const dirs: Record<string, [number, number]> = {
+      ArrowLeft: [-1, 0],
+      ArrowRight: [1, 0],
+      ArrowUp: [0, -1],
+      ArrowDown: [0, 1],
+    };
+    const dir = dirs[e.key];
+    if (!dir) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const step = e.shiftKey ? 0.1 : 0.01;
+    const [dx, dy] = [dir[0] * step, dir[1] * step];
+    const next = e.altKey
+      ? resizeCropRect(crop, dx !== 0 ? 'e' : 's', dx, dy, rBounds.width, rBounds.height)
+      : moveCropRect(crop, dx, dy);
+    if (!cropInsideImage(next, baseWidth, baseHeight, rot)) return;
+    store.undo.stopCapturing();
     applyImageTransform(store, element, next, rot);
   }
+
+  const sizeLabel = t('board.image.cropSize', {
+    width: Math.round(crop.w * rBounds.width),
+    height: Math.round(crop.h * rBounds.height),
+  });
 
   function onPointerUp(e: ReactPointerEvent<HTMLDivElement>) {
     if (!dragRef.current) return;
@@ -160,10 +207,8 @@ export function ImageCropStage({
     <div
       ref={stageRef}
       className="crop-stage"
-      role="application"
       data-no-drag
       data-testid="image-crop-stage"
-      aria-label={t('board.image.cropStage')}
       style={{ aspectRatio: `${rBounds.width} / ${rBounds.height}` }}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
@@ -194,6 +239,12 @@ export function ImageCropStage({
       <div
         className="crop-stage__box"
         data-testid="image-crop-box"
+        role="application"
+        // biome-ignore lint/a11y/noNoninteractiveTabindex: role=application, operated by its own keys.
+        tabIndex={0}
+        aria-label={t('board.image.cropStage')}
+        aria-describedby={helpId}
+        onKeyDown={onKeyDown}
         style={{
           left: `${crop.x * 100}%`,
           top: `${crop.y * 100}%`,
@@ -216,6 +267,12 @@ export function ImageCropStage({
           />
         ))}
       </div>
+      <p id={helpId} className="ink-sr-only">
+        {t('board.image.cropHelp')}
+      </p>
+      <p className="ink-sr-only" aria-live="polite">
+        {sizeLabel}
+      </p>
     </div>
   );
 }
@@ -251,7 +308,12 @@ export function ImageCropToolbar({
 
   function selectAspect(preset: ImageCropAspect) {
     store.undo.stopCapturing();
-    const next = fitCropToAspect(crop, preset, rBounds.width, rBounds.height);
+    const next = inscribeCrop(
+      fitCropToAspect(crop, preset, rBounds.width, rBounds.height),
+      baseW,
+      baseH,
+      rot,
+    );
     applyImageTransform(store, element, next, rot);
     store.undo.stopCapturing();
   }
@@ -260,7 +322,12 @@ export function ImageCropToolbar({
     store.undo.stopCapturing();
     const nextRot = normalizeRotation(quarterBase + direction * 90 + fine);
     const bounds = rotatedBounds(baseW, baseH, nextRot);
-    const nextCrop = cropAfterQuarterTurn(crop, direction, bounds.width, bounds.height);
+    const nextCrop = inscribeCrop(
+      cropAfterQuarterTurn(crop, direction, bounds.width, bounds.height),
+      baseW,
+      baseH,
+      nextRot,
+    );
     applyImageTransform(store, element, nextCrop, nextRot);
     store.undo.stopCapturing();
   }
@@ -268,12 +335,15 @@ export function ImageCropToolbar({
   function changeFineAngle(nextFine: number) {
     const nextRot = normalizeRotation(quarterBase + nextFine);
     const bounds = rotatedBounds(baseW, baseH, nextRot);
-    applyImageTransform(
-      store,
-      element,
+    // A free angle leaves the bounding box's corners empty: the crop shrinks to stay on the
+    // picture.
+    const nextCrop = inscribeCrop(
       conformCropAspect(crop, bounds.width, bounds.height),
+      baseW,
+      baseH,
       nextRot,
     );
+    applyImageTransform(store, element, nextCrop, nextRot);
   }
 
   const presetLabel = (preset: ImageCropAspect) =>
@@ -327,22 +397,34 @@ export function ImageCropToolbar({
       >
         <Icon name="rotateRight" size={14} />
       </button>
-      <label className="crop-bar__angle">
-        <input
-          type="range"
+      <span className="crop-bar__angle">
+        <Slider
           min={-45}
           max={45}
           step={1}
           value={fine}
           aria-label={t('board.image.angle')}
+          title={t('board.image.resetAngleHint')}
           onPointerDown={() => store.undo.stopCapturing()}
           onPointerUp={() => store.undo.stopCapturing()}
-          onChange={(e) => changeFineAngle(Number(e.target.value))}
+          onDoubleClick={() => changeFineAngle(0)}
+          onChange={changeFineAngle}
         />
-        <span className="crop-bar__deg" aria-live="polite">
+        <button
+          type="button"
+          className="crop-bar__deg ink-mono"
+          disabled={fine === 0}
+          aria-label={t('board.image.resetAngle')}
+          title={t('board.image.resetAngle')}
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={() => {
+            store.undo.stopCapturing();
+            changeFineAngle(0);
+          }}
+        >
           {Math.round(rot)}°
-        </span>
-      </label>
+        </button>
+      </span>
       <span className="ctxbar__sep" aria-hidden="true" />
       <button
         type="button"

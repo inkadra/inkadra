@@ -12,10 +12,12 @@ import { applyImageTransform, restoreOriginalImage } from './ImageCropEditor.tsx
 import {
   conformCropAspect,
   cropAfterQuarterTurn,
+  cropInsideImage,
   croppedRotatedSize,
   FULL_CROP,
   fitCropToAspect,
   hasImageTransform,
+  inscribeCrop,
   isIdentityCrop,
   moveCropRect,
   normalizeRotation,
@@ -115,6 +117,63 @@ describe('image-crop geometry helpers', () => {
     // A free crop turns with the picture.
     const free = { x: 0.1, y: 0.2, w: 0.5, h: 0.3 };
     expect(cropAfterQuarterTurn(free, 1, 320, 480)).toEqual(rotateCrop90(free, 1));
+  });
+
+  it('shrinks a crop off the empty corners of a free angle onto the picture', () => {
+    expect(cropInsideImage(FULL_CROP, 480, 320, 0)).toBe(true);
+    expect(cropInsideImage(FULL_CROP, 480, 320, 90)).toBe(true);
+    expect(cropInsideImage(FULL_CROP, 480, 320, 10)).toBe(false);
+    const preset = fitCropToAspect(FULL_CROP, '16:9', 480, 320);
+    const inscribed = inscribeCrop(preset, 480, 320, 10);
+    expect(cropInsideImage(inscribed, 480, 320, 10)).toBe(true);
+    const out = croppedRotatedSize(480, 320, inscribed, 10);
+    expect(out.width / out.height).toBeCloseTo(16 / 9, 2);
+    // Largest: a slightly bigger crop of the same aspect would leave the picture.
+    const grown = {
+      ...inscribed,
+      x: inscribed.x - 0.01,
+      y: inscribed.y - 0.01,
+      w: inscribed.w + 0.02,
+      h: inscribed.h + 0.02,
+    };
+    expect(cropInsideImage(grown, 480, 320, 10)).toBe(false);
+    // Crops already on the picture stay as they are.
+    const small = { x: 0.4, y: 0.4, w: 0.2, h: 0.2 };
+    expect(inscribeCrop(small, 480, 320, 10)).toBe(small);
+  });
+
+  it('keeps tiny imported crops that the schema accepts', () => {
+    const tiny = sanitizeCrop({ x: 0.5, y: 0.5, w: 0.001, h: 0.002 });
+    expect(tiny.w).toBeCloseTo(0.001, 4);
+    expect(tiny.h).toBeCloseTo(0.002, 4);
+  });
+
+  it('places the PDF and PNG picture for 90° and 45° rotations', () => {
+    const info = { width: 400, height: 200 };
+    // 90°: the turned picture is 200×400; it fills a 100×200 box exactly, centered.
+    const quarter = imagePlacement(info, {
+      x: 0,
+      y: 0,
+      w: 100,
+      h: 200,
+      fit: 'cover',
+      rotation: 90,
+    });
+    expect(quarter).toMatchObject({ transformed: true, rotation: 90 });
+    expect(quarter.cx).toBeCloseTo(50, 5);
+    expect(quarter.cy).toBeCloseTo(100, 5);
+    expect(quarter.drawW).toBeCloseTo(200, 5);
+    expect(quarter.drawH).toBeCloseTo(100, 5);
+    // 45°: bounds are (400+200)/√2 square; the picture keeps its own proportions.
+    const box = { x: 10, y: 20, w: 300, h: 300, fit: 'contain' as const, rotation: 45 };
+    const tilted = imagePlacement(info, box);
+    const side = 600 / Math.SQRT2;
+    expect(tilted.rotation).toBe(45);
+    expect(tilted.cx).toBeCloseTo(160, 5);
+    expect(tilted.cy).toBeCloseTo(170, 5);
+    expect(tilted.drawW).toBeCloseTo((400 * 300) / side, 5);
+    expect(tilted.drawH).toBeCloseTo((200 * 300) / side, 5);
+    expect(tilted.drawW / tilted.drawH).toBeCloseTo(2, 5);
   });
 
   it('moves and resizes crop rectangle within [0, 1] bounds', () => {
@@ -235,6 +294,7 @@ describe('CroppedImage component & BoardStore integration', () => {
       frameAspect: () => 16 / 9,
       frameMeta: () => '',
       slugline: () => '',
+      storyMeta: () => '',
       words: { board: 'Board', file: 'File' },
     };
     const h = cardHeight(img, img.w, ctx) ?? 180;

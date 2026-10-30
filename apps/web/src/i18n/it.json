@@ -343,9 +343,13 @@
       "restoreOriginal": "Ripristina originale",
       "cropToolbar": "Ritaglio e rotazione",
       "cropStage": "Area di ritaglio",
+      "cropSize": "Ritaglio {{width}} × {{height}} px",
+      "cropHelp": "Le modifiche valgono subito e Annulla le toglie. Frecce per spostare il ritaglio, Alt e frecce per ridimensionarlo, Maiusc per passi più grandi, Esc per uscire.",
       "rotateLeft": "Ruota di 90° a sinistra",
       "rotateRight": "Ruota di 90° a destra",
       "angle": "Angolo di rotazione",
+      "resetAngle": "Raddrizza: angolo fine a 0°",
+      "resetAngleHint": "Doppio clic per tornare a 0°",
       "done": "Fatto",
       "aspect": {
         "label": "Proporzioni",

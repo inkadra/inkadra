@@ -343,9 +343,13 @@
       "restoreOriginal": "Restore original",
       "cropToolbar": "Crop and rotation",
       "cropStage": "Crop area",
+      "cropSize": "Crop {{width}} × {{height}} px",
+      "cropHelp": "Changes apply at once and Undo reverts them. Arrows move the crop, Alt and arrows resize it, Shift takes bigger steps, Esc leaves.",
       "rotateLeft": "Rotate 90° left",
       "rotateRight": "Rotate 90° right",
       "angle": "Rotation angle",
+      "resetAngle": "Straighten: fine angle to 0°",
+      "resetAngleHint": "Double-click to go back to 0°",
       "done": "Done",
       "aspect": {
         "label": "Aspect ratio",

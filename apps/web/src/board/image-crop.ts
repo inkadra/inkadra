@@ -6,8 +6,11 @@ export const FULL_CROP: ImageCrop = { x: 0, y: 0, w: 1, h: 1 };
 export const CROP_HANDLES = ['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w'] as const;
 export type CropHandle = (typeof CROP_HANDLES)[number];
 
+/** Smallest crop the editor lets a hand drag to; documents may hold smaller ones. */
 const MIN_CROP_SIZE = 0.05;
 const EPS = 1e-4;
+/** Smallest crop any renderer keeps: the rounding step, so every positive schema value survives. */
+const MIN_STORED_SIZE = 1e-4;
 
 function round4(n: number): number {
   const r = Math.round(n * 10000) / 10000;
@@ -42,8 +45,8 @@ export function splitRotation(rotation = 0): { base: 0 | 90 | 180 | 270; fine: n
 /** Clamps and rounds a crop rectangle so it always satisfies `ImageCrop` schema bounds. */
 export function sanitizeCrop(crop?: Partial<ImageCrop> | null): ImageCrop {
   if (!crop) return { ...FULL_CROP };
-  const w = round4(clamp(Number.isFinite(crop.w) ? (crop.w as number) : 1, MIN_CROP_SIZE, 1));
-  const h = round4(clamp(Number.isFinite(crop.h) ? (crop.h as number) : 1, MIN_CROP_SIZE, 1));
+  const w = round4(clamp(Number.isFinite(crop.w) ? (crop.w as number) : 1, MIN_STORED_SIZE, 1));
+  const h = round4(clamp(Number.isFinite(crop.h) ? (crop.h as number) : 1, MIN_STORED_SIZE, 1));
   const x = round4(clamp(Number.isFinite(crop.x) ? (crop.x as number) : 0, 0, Math.max(0, 1 - w)));
   const y = round4(clamp(Number.isFinite(crop.y) ? (crop.y as number) : 0, 0, Math.max(0, 1 - h)));
   return {
@@ -194,6 +197,68 @@ export function cropAfterQuarterTurn(
   return crop.aspect && crop.aspect !== 'free'
     ? fitCropToAspect(turned, crop.aspect, rotWidth, rotHeight)
     : turned;
+}
+
+/**
+ * True when the crop lies on the picture: at a free angle the corners of the rotated bounding
+ * box are empty, and a crop reaching into them would show the canvas behind.
+ */
+export function cropInsideImage(
+  crop: ImageCrop,
+  width: number,
+  height: number,
+  rotation = 0,
+): boolean {
+  const b = rotatedBounds(width, height, rotation);
+  const rad = (rotation * Math.PI) / 180;
+  const cos = Math.cos(rad);
+  const sin = Math.sin(rad);
+  const tolerance = 0.5;
+  for (const [nx, ny] of [
+    [crop.x, crop.y],
+    [crop.x + crop.w, crop.y],
+    [crop.x, crop.y + crop.h],
+    [crop.x + crop.w, crop.y + crop.h],
+  ] as const) {
+    const u = (nx - 0.5) * b.width;
+    const v = (ny - 0.5) * b.height;
+    // Back into the unrotated picture's frame.
+    const px = u * cos + v * sin;
+    const py = -u * sin + v * cos;
+    if (Math.abs(px) > width / 2 + tolerance || Math.abs(py) > height / 2 + tolerance) return false;
+  }
+  return true;
+}
+
+/**
+ * Shrinks a crop that reaches into the empty corners of a free-angle rotation to the largest
+ * rectangle of the same aspect centered on the picture, so no empty corner is ever shown.
+ */
+export function inscribeCrop(
+  crop: ImageCrop,
+  width: number,
+  height: number,
+  rotation = 0,
+): ImageCrop {
+  const W = width > 0 ? width : 4;
+  const H = height > 0 ? height : 3;
+  if (cropInsideImage(crop, W, H, rotation)) return crop;
+  const b = rotatedBounds(W, H, rotation);
+  const ratio = cropAspectValue(crop.aspect) ?? (crop.w * b.width) / (crop.h * b.height);
+  const rad = (rotation * Math.PI) / 180;
+  const c = Math.abs(Math.cos(rad));
+  const s = Math.abs(Math.sin(rad));
+  // Corners (±w/2, ±h/2) with w = ratio·h stay inside the W×H picture turned by the angle.
+  const h = Math.min(W / (ratio * c + s), H / (ratio * s + c));
+  const nw = Math.min(1, (ratio * h) / b.width);
+  const nh = Math.min(1, h / b.height);
+  return sanitizeCrop({
+    x: (1 - nw) / 2,
+    y: (1 - nh) / 2,
+    w: nw,
+    h: nh,
+    ...(crop.aspect ? { aspect: crop.aspect } : {}),
+  });
 }
 
 /** Rotates a normalized crop rectangle by +90° CW (`1`) or -90° CCW (`-1`) with the image. */

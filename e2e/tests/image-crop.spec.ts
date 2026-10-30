@@ -230,6 +230,24 @@ test('image card crop, rotate, reload persistence, moodboard + viewer toggle, ex
     )
     .toBeCloseTo(16 / 9, 1);
 
+  // Keyboard: the crop box takes focus, arrows move it, the size is announced.
+  await expect(stage.getByText('Ritaglio 320 × 180 px')).toBeAttached();
+  await cropBox.focus();
+  const before = await cropBox.boundingBox();
+  await page.keyboard.press('ArrowDown');
+  await expect.poll(async () => (await cropBox.boundingBox())?.y).toBeGreaterThan(before?.y ?? 0);
+  await page.keyboard.press('ArrowUp');
+  await expect.poll(async () => (await cropBox.boundingBox())?.y).toBeCloseTo(before?.y ?? 0, 0);
+  // The angle slider is the themed one; double-click and the readout both go back to 0°.
+  const angle = cropToolbar.getByRole('slider', { name: 'Angolo di rotazione' });
+  await expect(angle).toHaveClass(/ink-slider/);
+  await angle.focus();
+  await page.keyboard.press('ArrowRight');
+  await expect(cropToolbar.locator('.crop-bar__deg')).toHaveText('91°');
+  await cropToolbar.getByRole('button', { name: 'Raddrizza: angolo fine a 0°' }).click();
+  await expect(cropToolbar.locator('.crop-bar__deg')).toHaveText('90°');
+  await page.mouse.move(0, 0);
+
   await shoot(page, 'dark', 'desktop-edit-dark.png');
   await shoot(page, 'light', 'desktop-edit-light.png');
 
@@ -283,7 +301,9 @@ test('image card crop, rotate, reload persistence, moodboard + viewer toggle, ex
   }
   await shoot(page, 'dark', 'phone-edit-dark.png');
   await shoot(page, 'light', 'phone-edit-light.png');
-  await phoneBar.getByRole('button', { name: 'Fatto' }).click();
+  // Escape on the focused crop box leaves crop mode.
+  await page.getByTestId('image-crop-box').focus();
+  await page.keyboard.press('Escape');
   await expect(page.getByTestId('image-crop-stage')).toBeHidden();
   await shoot(page, 'light', 'phone-result-light.png');
   await shoot(page, 'dark', 'phone-result-dark.png');
