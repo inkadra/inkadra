@@ -283,7 +283,7 @@ test('image card crop, rotate, reload persistence, moodboard + viewer toggle, ex
   await page.keyboard.press('Shift+Digit1');
   await card.click();
   await page.keyboard.press('Shift+Digit2');
-  await card.dblclick();
+  await page.getByRole('button', { name: 'Ritaglia e ruota' }).click();
   const phoneBar = page.getByRole('toolbar', { name: 'Ritaglio e rotazione' });
   await expect(page.getByTestId('image-crop-stage')).toBeVisible();
   await page.keyboard.press('Shift+Digit2');

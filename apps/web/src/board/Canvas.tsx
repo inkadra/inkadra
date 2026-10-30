@@ -1359,11 +1359,6 @@ export function Canvas({
     }
     const el = snap.byId.get(targetId);
     if (el && editing !== el.id) {
-      if (!readOnly && el.type === 'image' && !el.locked) {
-        select([el.id]);
-        setCropping(el.id);
-        return;
-      }
       openElement(el);
     }
   }
@@ -1516,6 +1511,11 @@ export function Canvas({
           canRenameBoard(boards?.find((b) => b.id === single.boardId))
         ) {
           setEditing(single.id);
+        }
+        break;
+      case 'crop':
+        if (!readOnly && single?.type === 'image' && !single.locked) {
+          setCropping((prev) => (prev === single.id ? null : single.id));
         }
         break;
       case 'lock':
@@ -1909,6 +1909,7 @@ export function Canvas({
             {
               toolbar: true,
               label: t('board.image.cropRotate'),
+              shortcut: 'X',
               action: () => setCropping(single.id),
             },
             ...(hasImageTransform(single)

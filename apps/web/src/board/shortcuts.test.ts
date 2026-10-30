@@ -26,3 +26,8 @@ describe('canvas keyboard shortcuts', () => {
     expect(commandFor(key('Enter'))).toEqual({ kind: 'edit' });
   });
 });
+
+it('maps X to the crop command', () => {
+  expect(commandFor(key('x'), false)).toEqual({ kind: 'crop' });
+  expect(commandFor(key('x', { ctrlKey: true }), false)).toBeNull();
+});
