@@ -267,6 +267,15 @@ export const GuestAsset = z
           '`/api/v1/guest/links/{linkId}/assets/{assetId}/file` when the link allows downloads, ' +
           'else null.',
       }),
+    streamUrl: z
+      .string()
+      .nullable()
+      .openapi({
+        description:
+          '`/api/v1/guest/links/{linkId}/assets/{assetId}/stream`: only for the sound track of ' +
+          'a storyboard animatic (`board.animaticAudio`), else null. Plays inline with byte ' +
+          'ranges, whatever `allowDownload` says; it is never served as an attachment.',
+      }),
   })
   .openapi('GuestAsset');
 export type GuestAsset = z.infer<typeof GuestAsset>;
@@ -313,13 +322,22 @@ export const GuestBoardSnapshot = z
   .object({
     board: GuestBoard.extend({
       aspect: z.string().nullable().openapi({ description: 'Storyboards: `meta.aspect`.' }),
+      animaticAudio: z
+        .object({ assetId: Id, volume: z.number().min(0).max(1) })
+        .nullable()
+        .openapi({
+          description:
+            'Storyboards: `meta.animaticAudio`, the sound track of the animatic, when its file ' +
+            'is ready; the file is in `assets` with a `streamUrl`.',
+        }),
     }),
     breadcrumb: z.array(z.object({ id: Id, title: z.string() })).openapi({
       description: 'From the board of the link to the parent; empty for the board of the link.',
     }),
     elements: z.array(GuestElement),
     assets: z.array(GuestAsset).openapi({
-      description: 'Files the visible elements refer to, and nothing else.',
+      description:
+        'Files the visible elements refer to, and the sound track of a storyboard animatic.',
     }),
     reviews: z.array(GuestElementReview).openapi({
       description:

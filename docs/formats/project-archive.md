@@ -28,6 +28,9 @@ Inside documents, cards refer to files by `assetId` (image, file, frame, and the
 character or location card, from schema version 7) or `imageAssetId` (link) and to boards by
 `boardId` (board cards); `meta.boardId` names the board itself. Element ids are stable:
 comments, reviews and schedule blocks refer to cards by them.
+`elements.json` also has the storyboard's `aspect` and, from document version 9,
+`animaticAudio` (`{ assetId, volume }`, the sound track of its animatic, decision 0046) or
+null.
 
 Authors are ids of `people.json`. Comment bodies write mentions as `@{personId}`; a deleted
 comment keeps its place with an empty body. `guestName` marks a comment written by a guest of a
@@ -38,8 +41,8 @@ Boards in the trash are not in the archive, nor anything under them or on them.
 
 A file that is missing, too large or does not match its checksum is skipped. Its cards stay:
 image and file cards then show a missing file, while optional pictures (the reference of a
-storyboard frame, the preview of a link, the picture of a character or location) are removed.
-A skipped logo leaves the project without one.
+storyboard frame, the preview of a link, the picture of a character or location, the sound
+track of an animatic) are removed. A skipped logo leaves the project without one.
 
 ## Reading an archive
 

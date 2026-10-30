@@ -329,6 +329,7 @@ describe('mounted viewer error events', () => {
     animated: videoAsset.animated,
     variants: videoAsset.variants,
     downloadUrl: '/api/v1/guest/links/link/assets/video-prores/file',
+    streamUrl: null,
   };
   const guest = (download: boolean, asset = guestAsset) => (
     <GuestActionsContext.Provider
