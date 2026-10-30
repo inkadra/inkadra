@@ -71,10 +71,15 @@ export function StoryCardPanel({
   const [picking, setPicking] = useState(false);
   const [badMap, setBadMap] = useState(false);
   // A new card opens with its name to type.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: only when another card opens
   useEffect(() => {
-    if (!card.name && !locked)
-      panel.current?.querySelector<HTMLInputElement>('input[data-name]')?.focus();
-  }, [card.name, locked]);
+    if (card.name || locked) return;
+    // After the canvas has handled the click that created the card.
+    const frame = requestAnimationFrame(() =>
+      panel.current?.querySelector<HTMLInputElement>('.story-panel__name input')?.focus(),
+    );
+    return () => cancelAnimationFrame(frame);
+  }, [card.id]);
   const kind = card.type;
   return (
     <aside
