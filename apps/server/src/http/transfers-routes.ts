@@ -17,6 +17,7 @@ import type { Auth } from '../auth.ts';
 import {
   nextBackupAt,
   readBackupSettings,
+  reapStaleBackups,
   serverTimeZone,
   startBackup,
   toBackup,
@@ -243,6 +244,9 @@ export function registerTransferRoutes(app: FastifyInstance, deps: Deps) {
     return actor;
   };
   const overview = async (): Promise<InstanceBackups> => {
+    // A backup whose process died never says so: mark it before listing, so the page shows
+    // `interrupted` instead of a backup running for ever.
+    await reapStaleBackups(db);
     const settings = await readBackupSettings(db);
     const rows = await db
       .select()

@@ -2233,7 +2233,14 @@
       "removed": "Rimosso"
     },
     "where": "I backup non si scaricano dal browser: copiali da DATA_DIR/backups sul server. Ripristina su un database vuoto con",
-    "whereBucket": "I backup non si scaricano dal browser: copiali da DATA_DIR/backups o da backups/ nel bucket. Ripristina su un database vuoto con"
+    "whereBucket": "I backup non si scaricano dal browser: copiali da DATA_DIR/backups o da backups/ nel bucket. Ripristina su un database vuoto con",
+    "failure": {
+      "interrupted": "Il server si è fermato mentre era in corso. Avvialo di nuovo.",
+      "stalled": "Ha smesso di avanzare ed è stato annullato. Controlla il log del server per questo backup.",
+      "no_space": "Il volume dei dati è pieno.",
+      "permission": "Il server non può scrivere nella sua cartella dati (DATA_DIR/backups).",
+      "internal": "Qualcosa è andato storto. Il log del server dice cosa, con l'id di questo backup."
+    }
   },
   "export": {
     "title": "Esporta",

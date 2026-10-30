@@ -115,6 +115,7 @@ export function BackupSettings() {
                           size: size(last.files.bytes),
                         })
                       : null,
+                    last.status === 'failed' ? failureText(t, last.failure) : null,
                   ]
                     .filter(Boolean)
                     .join(' · ')
@@ -196,6 +197,9 @@ export function BackupSettings() {
                       .filter(Boolean)
                       .join(' · ')}
                   </span>
+                  {b.status === 'failed' && (
+                    <span className="backup-list__failure">{failureText(t, b.failure)}</span>
+                  )}
                   {b.fileName && <code className="backup-list__file">{b.fileName}</code>}
                 </div>
                 <StatusBadge backup={b} />
@@ -210,6 +214,13 @@ export function BackupSettings() {
       </p>
     </>
   );
+}
+
+const FAILURES = ['interrupted', 'stalled', 'no_space', 'permission', 'internal'];
+
+/** Why a backup failed, in words; reasons this version does not know read as `internal`. */
+function failureText(t: (key: string) => string, failure: string | null) {
+  return t(`backups.failure.${failure && FAILURES.includes(failure) ? failure : 'internal'}`);
 }
 
 function StatusBadge({ backup }: { backup: InstanceBackup }) {

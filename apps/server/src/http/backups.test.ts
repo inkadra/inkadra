@@ -1,6 +1,7 @@
 import { existsSync } from 'node:fs';
 import { readdir } from 'node:fs/promises';
 import { join } from 'node:path';
+import { Readable } from 'node:stream';
 import { fileURLToPath } from 'node:url';
 import { addElement, createBoardDoc } from '@inkadra/doc-schema';
 import { InstanceBackups } from '@inkadra/shared';
@@ -17,6 +18,7 @@ import {
   backupsDir,
   nextBackupAt,
   restoreBackup,
+  resumeWhenDone,
   runBackup,
   STALE_MS,
   startBackup,
@@ -31,6 +33,26 @@ import { createApp } from './app.ts';
 
 const migrations = fileURLToPath(new URL('../../drizzle', import.meta.url));
 const url = process.env.DATABASE_URL;
+
+describe('COPY streams of postgres.js', () => {
+  it('resume their socket once they end, even when they ended full', async () => {
+    // Like postgres.js: read() resumes the socket; data arrives faster than it is read.
+    let resumes = 0;
+    const source = new Readable({
+      highWaterMark: 16,
+      read() {
+        resumes += 1;
+      },
+    });
+    expect(source.push(Buffer.alloc(64))).toBe(false); // full: the socket is paused
+    source.push(null); // CopyDone arrived in the same chunk
+    resumeWhenDone(source);
+    const before = resumes;
+    for await (const _ of source);
+    await new Promise((r) => setImmediate(r));
+    expect(resumes).toBeGreaterThan(before);
+  });
+});
 
 describe('backup schedule', () => {
   it('turns the time into a daily cron pattern and the next start', () => {
@@ -248,6 +270,86 @@ describe.skipIf(!url)('instance backups (needs DATABASE_URL)', () => {
       await client.end({ timeout: 1 });
     }
   }, 60_000);
+
+  it('finishes a backup whose large tables fill the COPY streams', async () => {
+    const fresh = await freshDatabase(config.DATABASE_URL, 'large_tables');
+    await runMigrations(fresh, migrations);
+    const admin = postgres(fresh, { max: 1, onnotice: () => {} });
+    await admin`create table zz_large as select g as id, repeat('x', 200) as pad
+      from generate_series(1, 300000) g`;
+    await admin`create table zz_after (id int)`;
+    await admin`insert into zz_after values (1)`;
+    await admin.end();
+    const client = postgres(fresh, { max: 2, onnotice: () => {} });
+    const other = drizzle(client, { schema, casing: 'snake_case' });
+    try {
+      const row = await startBackup(other, 'manual', null);
+      const done = await runBackup(
+        { ...backupDeps(), db: other, databaseUrl: fresh, stallMs: 20_000 },
+        row?.id as string,
+      );
+      expect(done).toMatchObject({ status: 'ready', failure: null });
+    } finally {
+      await client.end({ timeout: 1 });
+    }
+  }, 60_000);
+
+  it('fails a backup that stops moving as stalled, with its reason', async () => {
+    const fresh = await freshDatabase(config.DATABASE_URL, 'stalled');
+    await runMigrations(fresh, migrations);
+    const locker = postgres(fresh, { max: 1, onnotice: () => {} });
+    await locker`create table zz_locked (id int)`;
+    const client = postgres(fresh, { max: 2, onnotice: () => {} });
+    const other = drizzle(client, { schema, casing: 'snake_case' });
+    // Another session holds the table: the COPY waits and no data ever moves.
+    const reserved = await locker.reserve();
+    await reserved`begin`;
+    await reserved`lock table zz_locked in access exclusive mode`;
+    try {
+      const row = await startBackup(other, 'manual', null);
+      const done = await runBackup(
+        { ...backupDeps(), db: other, databaseUrl: fresh, stallMs: 400 },
+        row?.id as string,
+      );
+      expect(done).toMatchObject({ status: 'failed', failure: 'stalled' });
+      const left = (await readdir(backupsDir(deps.root))).filter((f) => f.endsWith('.partial'));
+      expect(left).toEqual([]);
+    } finally {
+      await reserved`rollback`;
+      reserved.release();
+      await locker.end({ timeout: 1 });
+      await client.end({ timeout: 1 });
+    }
+  }, 60_000);
+
+  it('never works on a backup that is no longer running (a job run again)', async () => {
+    const row = await startBackup(db, 'manual', null);
+    await db
+      .update(instanceBackup)
+      .set({ status: 'failed', failure: 'interrupted', finishedAt: new Date() })
+      .where(eq(instanceBackup.id, row?.id as string));
+    const before = (await readdir(backupsDir(deps.root))).length;
+    expect(await runBackup(backupDeps(), row?.id as string)).toBeNull();
+    const [after] = await db
+      .select()
+      .from(instanceBackup)
+      .where(eq(instanceBackup.id, row?.id as string));
+    expect(after).toMatchObject({ status: 'failed', failure: 'interrupted', fileName: null });
+    expect((await readdir(backupsDir(deps.root))).length).toBe(before);
+  });
+
+  it('lists a backup left running by a dead process as interrupted', async () => {
+    const stuck = await startBackup(db, 'manual', null);
+    await db
+      .update(instanceBackup)
+      .set({ heartbeatAt: new Date(Date.now() - STALE_MS - 1000) })
+      .where(eq(instanceBackup.id, stuck?.id as string));
+    const list = InstanceBackups.parse((await request('admin', 'GET', '/instance/backups')).json());
+    expect(list.items.find((b) => b.id === stuck?.id)).toMatchObject({
+      status: 'failed',
+      failure: 'interrupted',
+    });
+  });
 
   it('lets the next backup run when a running one stopped beating', async () => {
     const stuck = await startBackup(db, 'manual', null);
