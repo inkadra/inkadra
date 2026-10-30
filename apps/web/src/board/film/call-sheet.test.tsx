@@ -4,9 +4,11 @@ import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { afterEach, expect, it, vi } from 'vitest';
 import { CallSheetModal } from './CallSheetModal.tsx';
-import { castCalls } from './call-sheet.ts';
+import { castCalls, departmentNotes, plannedWrap } from './call-sheet.ts';
 
-vi.mock('react-i18next', () => ({ useTranslation: () => ({ t: (key: string) => key }) }));
+vi.mock('react-i18next', () => ({
+  useTranslation: () => ({ t: (key: string) => key, i18n: { language: 'en' } }),
+}));
 const day: ShootingDay = {
   id: 'day-1',
   projectId: 'project',
@@ -69,7 +71,11 @@ async function mount(days: ShootingDay[]) {
     root.render(
       <CallSheetModal
         days={days}
-        labels={new Map([['frame', '4A']])}
+        shots={
+          new Map([
+            ['frame', { label: '4A', action: 'Anna steps off the train', scene: '4', slugline: 'EXT. PLATFORM' }],
+          ])
+        }
         projectName="Film"
         onClose={() => {}}
       />,
@@ -98,10 +104,13 @@ it('renders saved data and linked or removed shots, toggles sections and prints 
   const paper = () => host.querySelector('article');
   expect(paper()?.textContent).toContain('Station');
   expect(paper()?.textContent).toContain('4A');
+  // The description of a shot is what happens in it, not the block type.
+  expect(paper()?.textContent).toContain('Anna steps off the train');
+  expect(paper()?.textContent).toContain('EXT. PLATFORM');
   expect(paper()?.textContent).toContain('schedule.missingShot');
-  expect(paper()?.textContent).toContain('Camera: bring lights');
+  expect(paper()?.textContent).toContain('bring lights');
   expect(paper()?.textContent).toContain('05:00 (+1)');
-  const schedule = host.querySelector<HTMLInputElement>('input[type=checkbox]');
+  const schedule = host.querySelector<HTMLInputElement>('input[role=switch]');
   await act(async () => schedule?.click());
   expect(paper()?.textContent).not.toContain('4A');
   const select = host.querySelector('select');
@@ -117,7 +126,35 @@ it('renders saved data and linked or removed shots, toggles sections and prints 
     [...host.querySelectorAll('button')].find((b) => b.textContent === 'shells.print')?.click(),
   );
   expect(print).toHaveBeenCalledOnce();
-  expect(host.querySelectorAll('input:disabled')).toHaveLength(5);
+  // Day 2 has no blocks, cast, departments or notes: those sections say so and stay out.
+  expect(host.querySelectorAll('input[role=switch]')).toHaveLength(5);
+  expect(host.textContent).toContain('callSheet.emptyHelp');
+  expect(paper()?.textContent).not.toContain('bring lights');
+});
+it('prints the saved wrap, or the end of the last block when none is saved', () => {
+  expect(plannedWrap(day)).toBe(1740);
+  // Without a wrap time the day ends with its latest block: 01:00 + 30 min, next morning.
+  expect(plannedWrap({ ...day, wrap: null })).toBe(1530);
+  expect(plannedWrap({ ...day, callTime: '07:30', wrap: null, blocks: [] })).toBeNull();
+  const plain = {
+    ...day,
+    callTime: '07:30',
+    wrap: null,
+    blocks: [
+      { ...(day.blocks[2] as ShootingDay['blocks'][number]), id: 'x', duration: 45 },
+      { ...(day.blocks[2] as ShootingDay['blocks'][number]), id: 'y', duration: 90 },
+    ],
+  };
+  expect(plannedWrap(plain)).toBe(7 * 60 + 30 + 135);
+});
+it('groups department entries by department, splitting "Department: note"', () => {
+  const blocks = day.blocks.map((block) => ({ ...block }));
+  (blocks[1] as ShootingDay['blocks'][number]).departments = ['Sound', 'camera: dolly'];
+  expect(departmentNotes({ ...day, blocks })).toEqual([
+    { department: 'camera', note: 'dolly', start: 1200, blockId: 'b' },
+    { department: 'Camera', note: 'bring lights', start: 1500, blockId: 'a' },
+    { department: 'Sound', note: '', start: 1200, blockId: 'b' },
+  ]);
 });
 it('shows an empty state and disables printing when there are no accessible shooting days', async () => {
   const host = await mount([]);
