@@ -41,5 +41,7 @@ in order. An accepted decision is never rewritten: a later one supersedes it.
 | [0035](0035-request-origins-and-canonical-links.md) | Request origins for browser traffic, canonical URLs for external links                 |
 | [0036](0036-personal-clip-history.md)               | Personal clip destination history shared across browsers                               |
 
+| [0042](0042-video-frame-grab.md) | Video stills and their source |
+
 Two decisions share the number 0025: they were accepted in parallel, and accepted records
 are not renumbered.
