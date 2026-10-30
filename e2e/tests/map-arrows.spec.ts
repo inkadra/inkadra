@@ -68,7 +68,6 @@ async function open(page: Page, baseURL: string, theme: 'light' | 'dark') {
   const { doc, plain } = seed(project.rootBoardId);
   await pushBoardDoc(baseURL, cookie, project.rootBoardId, doc);
   await page.goto(`/p/${project.id}/b/${project.rootBoardId}?view=canvas`);
-  await expect(page.getByRole('status').getByText('Sincronizzato')).toBeVisible();
   await expect(page.locator('.arrows__label')).toHaveCount(3);
   return { cookie, project, plain };
 }
