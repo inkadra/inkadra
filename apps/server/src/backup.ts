@@ -431,6 +431,7 @@ async function dumpDatabase(
     zip.abort();
   };
   signal.addEventListener('abort', stop, { once: true });
+  let cause: unknown;
   try {
     const result = await sql.begin('isolation level repeatable read read only', async (tx) => {
       try {
@@ -507,6 +508,8 @@ async function dumpDatabase(
         await zip.addJson('manifest.json', manifest);
         return { files: { count: files.length, bytes } };
       } catch (err) {
+        // Ending the connection rejects the transaction with its own error: keep ours.
+        cause = err;
         void sql.end({ timeout: 0 });
         throw err;
       }
@@ -515,7 +518,7 @@ async function dumpDatabase(
     return { size, ...result };
   } catch (err) {
     zip.abort();
-    throw err;
+    throw cause ?? err;
   } finally {
     signal.removeEventListener('abort', stop);
     await sql.end({ timeout: 0 }).catch(() => {});
