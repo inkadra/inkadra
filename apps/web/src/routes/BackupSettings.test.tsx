@@ -69,7 +69,7 @@ it('saves the time and retention as they change', async () => {
   vi.mocked(api.patch).mockResolvedValue({});
   await act(async () => root.render(<BackupSettings />));
   expect(host.textContent).toContain('backups.none');
-  const .ink-select = host.querySelector<HTMLButtonElement>('.ink-select') as HTMLButtonElement;
+  const select = host.querySelector<HTMLButtonElement>('.ink-select') as HTMLButtonElement;
   await act(async () => {
     chooseSelect(select, '30');
   });

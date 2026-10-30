@@ -252,7 +252,7 @@ describe('Animatic', () => {
     await tick(1000);
     expect(time()).toBe('0:01.0 / 0:05.0');
     now = 1000;
-    const .ink-select = host.querySelector('.ink-select');
+    const select = host.querySelector('.ink-select');
     if (!select) throw new Error('no speed');
     await act(async () => {
       chooseSelect(select, '2');

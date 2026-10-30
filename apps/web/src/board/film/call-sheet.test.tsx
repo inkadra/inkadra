@@ -105,7 +105,7 @@ it('renders saved data and linked or removed shots, toggles sections and prints 
   const schedule = host.querySelector<HTMLInputElement>('input[type=checkbox]');
   await act(async () => schedule?.click());
   expect(paper()?.textContent).not.toContain('4A');
-  const .ink-select = host.querySelector('.ink-select');
+  const select = host.querySelector('.ink-select');
   await act(async () => {
     if (select) {
       chooseSelect(select, 'day-2');

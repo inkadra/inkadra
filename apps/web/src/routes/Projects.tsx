@@ -204,7 +204,7 @@ export function Projects() {
           </Select>
         </label>
         {others && (
-          {/* biome-ignore lint/a11y/noLabelWithoutControl: Select renders a labelable button. */}
+          // biome-ignore lint/a11y/noLabelWithoutControl: Select renders a labelable button.
           <label>
             {t('projectsPage.people')}
             <Select

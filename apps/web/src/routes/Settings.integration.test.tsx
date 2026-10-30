@@ -110,7 +110,7 @@ it('saves the language as soon as it changes, without a save button', async () =
   expect([...host.querySelectorAll('button')].some((b) => b.textContent === 'settings.save')).toBe(
     false,
   );
-  const .ink-select = host.querySelector<HTMLButtonElement>('.ink-select');
+  const select = host.querySelector<HTMLButtonElement>('.ink-select');
   if (!select) throw new Error('Locale .ink-select missing');
   await act(async () => {
     chooseSelect(select, 'it');

@@ -98,7 +98,7 @@ it('renders actual members, direct project counts and pending empty state', asyn
 });
 it('changes global roles through the instance endpoint', async () => {
   await render();
-  const .ink-select = host.querySelectorAll('tbody .ink-select')[1] as HTMLButtonElement;
+  const select = host.querySelectorAll('tbody .ink-select')[1] as HTMLButtonElement;
   await act(async () => {
     chooseSelect(select, 'admin');
   });
@@ -205,7 +205,7 @@ it('turns project creation off for members and sets a per-person exception', asy
   });
   // Administrators always can: no control on their row.
   expect(host.querySelector('.ink-select[aria-label="projectCreation.for"]')).not.toBeNull();
-  const .ink-select = host.querySelector<HTMLButtonElement>('.ink-select[aria-label="projectCreation.for"]');
+  const select = host.querySelector<HTMLButtonElement>('.ink-select[aria-label="projectCreation.for"]');
   expect(select?.getAttribute('aria-haspopup')).toBe('listbox');
   expect(host.querySelectorAll('.ink-select[aria-label="projectCreation.for"]')).toHaveLength(1);
   await act(async () => {

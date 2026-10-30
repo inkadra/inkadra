@@ -165,7 +165,7 @@ it('keeps the Project type dialog open with an error when saving fails', async (
   const dialog = host.querySelector('dialog');
   expect(dialog).not.toBeNull();
   // A right-click in the dialog is the browser's, not the card's project menu.
-  const .ink-select = dialog?.querySelector('.ink-select');
+  const select = dialog?.querySelector('.ink-select');
   const event = new MouseEvent('contextmenu', { bubbles: true, cancelable: true });
   await act(async () => select?.dispatchEvent(event));
   expect(event.defaultPrevented).toBe(false);

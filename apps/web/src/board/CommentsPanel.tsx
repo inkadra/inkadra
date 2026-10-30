@@ -368,7 +368,7 @@ function CommentsPanel() {
         </fieldset>
 
         {!elementId && (
-          {/* biome-ignore lint/a11y/noLabelWithoutControl: Select renders a labelable button. */}
+          // biome-ignore lint/a11y/noLabelWithoutControl: Select renders a labelable button.
           <label className="review-field">
             {t('review.filter')}
             <Select className="ink-input" value={reviewFilter} onChange={(e) => setReviewFilter(e)}>
