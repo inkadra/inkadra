@@ -12,7 +12,7 @@
   font-family: var(--ink-font, Inter, sans-serif);
   flex-direction: column;
   overflow: hidden;
-  user-select: none;
+  user-.ink-select: none;
 }
 
 .present-view[open] {

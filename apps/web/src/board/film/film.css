@@ -99,7 +99,7 @@
   background: var(--ink-tag-purple);
   color: var(--ink-tag-purple-bg);
 }
-select.film-status {
+.ink-select.film-status {
   width: auto;
   height: 24px;
   padding: 0 6px;
@@ -165,7 +165,7 @@ select.film-status {
   border-bottom: 1px solid var(--ink-border-subtle);
   background: var(--ink-bg-panel);
 }
-.story__bar select.ink-input {
+.story__bar .ink-select.ink-input {
   width: auto;
 }
 .story__aspect {
@@ -535,7 +535,7 @@ select.film-status {
   gap: 12px;
   flex-wrap: wrap;
 }
-.animatic__controls select.ink-input {
+.animatic__controls .ink-select.ink-input {
   width: auto;
 }
 .animatic__time {
@@ -794,8 +794,8 @@ select.film-status {
 .shots > .story__bar > .view-options__inline > .ink-btn {
   flex: none;
 }
-.shots > .story__bar > select.ink-input,
-.shots > .story__bar > .view-options__inline > select.ink-input {
+.shots > .story__bar > .ink-select.ink-input,
+.shots > .story__bar > .view-options__inline > .ink-select.ink-input {
   flex: 0 1 auto;
   min-width: 96px;
   max-width: 180px;
@@ -873,7 +873,7 @@ select.film-status {
   min-width: 200px;
 }
 .shots__table .ink-input,
-.shots__table select {
+.shots__table .ink-select {
   height: 26px;
   font-size: 12px;
   min-width: 132px;
@@ -979,7 +979,7 @@ select.film-status {
   font-size: 12px;
   color: var(--ink-text-muted);
 }
-.pen__aspect select {
+.pen__aspect .ink-select {
   width: auto;
 }
 .pen__view {
@@ -1303,7 +1303,7 @@ select.film-status {
   flex-direction: column;
   gap: 8px;
   cursor: grab;
-  user-select: none;
+  user-.ink-select: none;
   transition:
     transform 0.1s ease,
     border-color 0.1s ease;
@@ -2640,7 +2640,7 @@ select.film-status {
 }
 .schedule__shot:focus-visible,
 .schedule__day-head:focus-visible,
-.schedule__block-select:focus-visible {
+.schedule__block-.ink-select:focus-visible {
   outline: 2px solid var(--ink-accent-primary);
   outline-offset: 2px;
 }
@@ -2687,7 +2687,7 @@ select.film-status {
 .schedule__block--break {
   --block-tint: var(--ink-tag-green);
 }
-.schedule__block-select {
+.schedule__block-.ink-select {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
@@ -2705,20 +2705,20 @@ select.film-status {
   text-align: left;
   cursor: pointer;
 }
-.schedule__block-select:hover {
+.schedule__block-.ink-select:hover {
   border-color: var(--ink-border-strong);
   border-left-color: var(--block-tint);
 }
-.schedule__block.has-conflict .schedule__block-select {
+.schedule__block.has-conflict .schedule__block-.ink-select {
   border-color: var(--ink-danger-border);
   border-left-color: var(--block-tint);
 }
-.schedule__block.is-selected .schedule__block-select {
+.schedule__block.is-selected .schedule__block-.ink-select {
   border-color: var(--ink-accent-primary);
   border-left-color: var(--block-tint);
   box-shadow: 0 0 0 1px var(--ink-accent-primary);
 }
-.schedule__block-select strong {
+.schedule__block-.ink-select strong {
   color: var(--ink-text-secondary);
   font-size: 11px;
   font-weight: 500;
@@ -2732,7 +2732,7 @@ select.film-status {
   color: var(--ink-text-muted);
   font-size: 11px;
 }
-.schedule__block-select .schedule__flag {
+.schedule__block-.ink-select .schedule__flag {
   margin-top: 4px;
 }
 .schedule__drop {
@@ -2997,7 +2997,7 @@ select.film-status {
   white-space: nowrap;
 }
 
-.shots__bulk-toolbar select {
+.shots__bulk-toolbar .ink-select {
   height: 26px;
   font-size: 12px;
   background: var(--ink-surface-2);
@@ -3094,7 +3094,7 @@ select.film-status {
   opacity: 0.8;
 }
 
-.kanban__move-select {
+.kanban__move-.ink-select {
   height: 20px;
   font-size: 11px;
   background: var(--ink-surface-1);
@@ -3127,7 +3127,7 @@ select.film-status {
   gap: 12px;
   margin: 16px 0;
 }
-.moodboard__filter select {
+.moodboard__filter .ink-select {
   font: inherit;
   color: var(--ink-text-primary);
   background: var(--ink-surface-2);
@@ -3444,7 +3444,7 @@ button.moodboard__card {
     color: var(--ink-text-secondary);
     font-size: 12px;
   }
-  .story__scene-picker select {
+  .story__scene-picker .ink-select {
     flex: 1;
     min-width: 0;
     min-height: 44px;

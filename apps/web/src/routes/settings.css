@@ -594,7 +594,7 @@
   border-radius: 6px;
   background: var(--ink-surface-2);
   overflow-wrap: anywhere;
-  user-select: all;
+  user-.ink-select: all;
 }
 
 /* Members */
