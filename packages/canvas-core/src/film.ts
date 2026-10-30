@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MPL-2.0
 import {
+  addElement,
   type Element,
   type FrameShape,
   MAX_SHAPES,
@@ -10,8 +11,17 @@ import {
   type Stroke,
   UNSORTED,
 } from '@inkadra/doc-schema';
+import { generateNKeysBetween } from 'fractional-indexing';
 import * as Y from 'yjs';
-import { childrenOf, createElement, keysAt, listElements, moveIntoParent } from './board.ts';
+import {
+  childrenOf,
+  createElement,
+  DEFAULT_WIDTH,
+  keyAtEnd,
+  keysAt,
+  listElements,
+  moveIntoParent,
+} from './board.ts';
 import type { Point } from './geometry.ts';
 
 /**
@@ -112,6 +122,65 @@ export function addScene(
     },
     opts,
   ) as SceneElement;
+}
+
+export type NewScene = Partial<Omit<SceneElement, 'id' | 'type' | 'x' | 'y' | 'parent'>> & {
+  frames: Array<Partial<Omit<FrameElement, 'id' | 'type' | 'parent' | 'x' | 'y'>>>;
+};
+
+/**
+ * Many scenes with their frames after the existing ones, in one transaction: an import is
+ * undone in one step. Scenes without a number continue from the last one, as `addScene`
+ * does. The document is read once, so a long script does not slow down with every card.
+ */
+export function addScenes(doc: Y.Doc, scenes: readonly NewScene[], opts: Opts): SceneElement[] {
+  const all = listElements(doc);
+  const existing = all.filter((e): e is SceneElement => e.type === 'scene');
+  let right = existing.reduce((m, s) => Math.max(m, s.x + s.w), -Infinity);
+  let last = Number.parseInt(existing.sort(byZ).at(-1)?.number ?? '0', 10);
+  if (!Number.isFinite(last)) last = existing.length;
+  const sceneKeys = generateNKeysBetween(keyAtEnd(all, null), null, scenes.length);
+  const created: SceneElement[] = [];
+  const now = Date.now();
+  doc.transact(() => {
+    scenes.forEach(({ frames, ...fields }, i) => {
+      const parsed = Number.parseInt(fields.number ?? '', 10);
+      last = fields.number ? (Number.isFinite(parsed) ? parsed : last + 1) : last + 1;
+      const scene = {
+        title: '',
+        ...fields,
+        number: fields.number ?? String(last),
+        type: 'scene',
+        id: newElementId(),
+        x: Number.isFinite(right) ? right + 40 : 0,
+        y: 0,
+        w: fields.w ?? DEFAULT_WIDTH.scene,
+        z: sceneKeys[i] ?? keyAtEnd(all, null),
+        parent: null,
+        createdBy: opts.userId,
+        createdAt: now,
+      } satisfies SceneElement;
+      right = scene.x + scene.w;
+      addElement(doc, scene);
+      created.push(scene);
+      const keys = generateNKeysBetween(null, null, frames.length);
+      frames.forEach((frame, j) => {
+        addElement(doc, {
+          ...frame,
+          type: 'frame',
+          id: newElementId(),
+          x: 0,
+          y: 0,
+          w: frame.w ?? DEFAULT_WIDTH.frame,
+          z: keys[j] ?? String(j),
+          parent: scene.id,
+          createdBy: opts.userId,
+          createdAt: now,
+        });
+      });
+    });
+  }, opts.origin);
+  return created;
 }
 
 /** A new frame in a scene (or loose when `sceneId` is null) before the frame at `index`. */

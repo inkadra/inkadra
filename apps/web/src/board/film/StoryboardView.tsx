@@ -60,6 +60,7 @@ export function StoryboardView({
   userId,
   readOnly,
   onExport,
+  onImportScript,
 }: {
   store: BoardStore;
   projectId: string;
@@ -69,6 +70,8 @@ export function StoryboardView({
   readOnly: boolean;
   /** Opens the export dialog on the storyboard. */
   onExport?: (() => void) | undefined;
+  /** Opens the screenplay import, which adds scenes and frames from a script file. */
+  onImportScript?: (() => void) | undefined;
 }) {
   const { t } = useTranslation();
   const boardAspect = useBoardAspect(store.doc);
@@ -108,6 +111,9 @@ export function StoryboardView({
             label: t('film.frame.add'),
             run: () => newFrame(current?.parent ?? (filter === LOOSE ? null : filter)),
           },
+          ...(onImportScript
+            ? [{ id: 'import-screenplay', label: t('screenplay.open'), run: onImportScript }]
+            : []),
         ],
   );
 
@@ -213,6 +219,17 @@ export function StoryboardView({
             <span className="film-compact-btn__label">{t('export.openPdf')}</span>
           </Button>
         )}
+        {!readOnly && onImportScript && (
+          <Button
+            icon="upload"
+            className="film-compact-btn"
+            aria-label={t('screenplay.open')}
+            title={t('screenplay.open')}
+            onClick={onImportScript}
+          >
+            <span className="film-compact-btn__label">{t('screenplay.openShort')}</span>
+          </Button>
+        )}
         {!readOnly && (
           <Button
             icon="plus"
@@ -268,9 +285,16 @@ export function StoryboardView({
                 title={t('film.empty.title')}
                 actions={
                   !readOnly && (
-                    <Button variant="primary" icon="plus" onClick={newScene}>
-                      {t('film.scene.add')}
-                    </Button>
+                    <>
+                      <Button variant="primary" icon="plus" onClick={newScene}>
+                        {t('film.scene.add')}
+                      </Button>
+                      {onImportScript && (
+                        <Button icon="upload" onClick={onImportScript}>
+                          {t('screenplay.open')}
+                        </Button>
+                      )}
+                    </>
                   )
                 }
               >

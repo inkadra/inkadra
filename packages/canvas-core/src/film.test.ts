@@ -12,6 +12,7 @@ import { listElements, updateElement } from './board.ts';
 import {
   addFrame,
   addScene,
+  addScenes,
   addShape,
   addStroke,
   clearDrawing,
@@ -36,6 +37,30 @@ const opts = { userId: null };
 const boardId = '0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10';
 
 describe('storyboards', () => {
+  it('adds many scenes with their frames after the existing ones, in one transaction', () => {
+    const doc = createBoardDoc(boardId);
+    const first = addScene(doc, { number: '2', title: 'Before' }, opts);
+    let transactions = 0;
+    doc.on('afterTransaction', () => transactions++);
+    const added = addScenes(
+      doc,
+      [
+        { title: '', location: 'Platform', frames: [{ action: 'A' }, { action: 'B' }] },
+        { number: '9B', title: 'Booth', frames: [] },
+        { title: '', frames: [{}] },
+      ],
+      { userId: 'u', origin: 'import' },
+    );
+    expect(transactions).toBe(1);
+    const groups = storyboardOf(listElements(doc));
+    expect(groups.map((g) => g.scene?.number)).toEqual(['2', '3', '9B', '10']);
+    expect(groups[1]?.frames.map((f) => f.action)).toEqual(['A', 'B']);
+    expect(groups[3]?.frames).toHaveLength(1);
+    expect(added[0]?.x).toBeGreaterThan(first.x);
+    expect(added[1]?.x).toBeGreaterThan(added[0]?.x ?? 0);
+    for (const el of listElements(doc)) expect(Element.safeParse(el).success).toBe(true);
+  });
+
   it('letters frames like a script: A to Z, then AA', () => {
     expect([0, 1, 25, 26, 27, 51, 52].map(frameLetter)).toEqual([
       'A',

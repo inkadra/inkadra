@@ -2,6 +2,7 @@ import { createElement, listElements } from '@inkadra/canvas-core';
 import { useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useBoardConnection } from '../board/connection.ts';
+import { applyImport, type ImportPlan } from '../board/film/screenplay/plan.ts';
 import { LOCAL } from '../board/store.ts';
 import { seedStoryboard, seedTemplate, templateLabels } from '../board/templates.ts';
 import type { CreatedSetupBoard } from './project-setup.ts';
@@ -11,6 +12,7 @@ import type { SeededCounts } from './seed-queue.tsx';
 export function ProjectSetupSeed({
   boardId,
   seed,
+  screenplay,
   links,
   userId,
   done,
@@ -18,6 +20,8 @@ export function ProjectSetupSeed({
 }: {
   boardId: string;
   seed?: CreatedSetupBoard['seed'];
+  /** Scenes and frames of an imported screenplay, written instead of the storyboard template. */
+  screenplay?: ImportPlan | undefined;
   links?: CreatedSetupBoard[];
   userId: string;
   /** Called with the board's counts once the server has the edits. */
@@ -31,7 +35,11 @@ export function ProjectSetupSeed({
   useEffect(() => {
     if (conn?.status !== 'synced' || conn.readOnly || applied.current) return;
     applied.current = true;
-    if (seed === 'storyboard')
+    // Never over existing work, as the templates.
+    if (screenplay) {
+      if (listElements(conn.store.doc).length === 0)
+        applyImport(conn.store.doc, screenplay, { userId, origin: LOCAL });
+    } else if (seed === 'storyboard')
       seedStoryboard(conn.store.doc, t('templates.storyboard.scene'), userId);
     else if (seed) seedTemplate(conn.store.doc, seed, templateLabels(t), userId);
     if (links) {
@@ -53,7 +61,7 @@ export function ProjectSetupSeed({
         });
       }, LOCAL);
     }
-  }, [conn, seed, links, userId, t]);
+  }, [conn, seed, screenplay, links, userId, t]);
   useEffect(() => {
     const timer = setInterval(() => {
       if (

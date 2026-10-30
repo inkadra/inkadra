@@ -106,6 +106,9 @@ import { BoardContext, type BoardContextValue, GuestModeContext, LARGE_BOARD } f
 import { useBoardAspect } from './film/aspect.ts';
 import { DrawingEditor } from './film/DrawingEditor.tsx';
 import { FramePanel } from './film/FramePanel.tsx';
+import { createScreenplayStoryboard } from './film/screenplay/new-storyboard.ts';
+import type { ImportPlan } from './film/screenplay/plan.ts';
+import { ScreenplayImportDialog } from './film/screenplay/ScreenplayImportDialog.tsx';
 import { viewableInOrder } from './gallery.ts';
 import { toggleGuestHidden } from './guest-visibility.tsx';
 import { fillLinkPreview, webUrl } from './links.ts';
@@ -582,6 +585,31 @@ export function Canvas({
       }
     },
     [readOnly, center, t, projectId, boardId, userId, store, doc, select, setEditing],
+  );
+
+  const [importingScript, setImportingScript] = useState(false);
+  /** A storyboard card from a screenplay: the board is filled in the background, like a template. */
+  const insertScreenplay = useCallback(
+    async (plan: ImportPlan) => {
+      if (readOnly) return;
+      const board = await createScreenplayStoryboard(
+        projectId,
+        boardId,
+        plan,
+        t('screenplay.untitled'),
+        userId,
+      );
+      store.undo.stopCapturing();
+      const card = createElement(
+        doc,
+        'board',
+        center(DEFAULT_WIDTH.board),
+        { boardId: board.id },
+        { userId, origin: LOCAL },
+      );
+      select([card.id]);
+    },
+    [readOnly, projectId, boardId, t, userId, store, doc, center, select],
   );
 
   const add = useCallback(
@@ -2324,9 +2352,17 @@ export function Canvas({
             onTool={setTool}
             onAdd={(type) => void add(type)}
             onCanvas={(template) => void insertCanvas(template)}
+            onScreenplay={() => setImportingScript(true)}
           />
         )}
         <UploadPanel />
+        {importingScript && (
+          <ScreenplayImportDialog
+            targets={['new']}
+            onImport={insertScreenplay}
+            onClose={() => setImportingScript(false)}
+          />
+        )}
         {linkDraft && (
           <LinkDraft
             at={worldToScreen(viewport, linkDraft.at)}

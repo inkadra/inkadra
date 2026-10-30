@@ -8,6 +8,8 @@ import {
 import { Button, Dialog, DialogActions, TextField } from '@inkadra/ui';
 import { type FormEvent, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { castName, type ImportPlan } from '../board/film/screenplay/plan.ts';
+import { ScreenplayImportDialog } from '../board/film/screenplay/ScreenplayImportDialog.tsx';
 import { api } from '../lib/api.ts';
 import { useClassifications } from '../lib/classifications.ts';
 import { useSession } from '../lib/session.tsx';
@@ -99,6 +101,10 @@ export function ProjectSetupForm({
   const [created, setCreated] = useState<Project | null>(null);
   const [seeding, setSeeding] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [screenplay, setScreenplay] = useState<ImportPlan | null>(null);
+  const [pickingScript, setPickingScript] = useState(false);
+  // The screenplay fills the template's storyboard instead of its sample scene.
+  const withStoryboard = setupBoards(template).some((b) => b.kind === 'storyboard');
   const progress = useRef<{
     project: Project | null;
     boards: CreatedSetupBoard[];
@@ -242,6 +248,33 @@ export function ProjectSetupForm({
             </label>
           ))}
         </fieldset>
+        {withStoryboard && (
+          <div className="project-setup__script">
+            <span className="project-setup__script-text">
+              <strong>{t('screenplay.setup.label')}</strong>
+              <small className="ink-muted">
+                {screenplay
+                  ? t('screenplay.setup.chosen', {
+                      title: screenplay.title
+                        ? castName(screenplay.title)
+                        : t('screenplay.untitled'),
+                      scenes: t('screenplay.scenes', { count: screenplay.scenes.length }),
+                      frames: t('screenplay.framesCount', { count: screenplay.frameCount }),
+                    })
+                  : t('screenplay.setup.hint')}
+              </small>
+            </span>
+            {screenplay ? (
+              <Button variant="ghost" onClick={() => setScreenplay(null)}>
+                {t('screenplay.setup.remove')}
+              </Button>
+            ) : (
+              <Button icon="upload" onClick={() => setPickingScript(true)}>
+                {t('screenplay.open')}
+              </Button>
+            )}
+          </div>
+        )}
         <fieldset className="project-setup__invites">
           <legend>{t('onboarding.invite')}</legend>
           <div className="project-setup__invite-entry">
@@ -348,10 +381,26 @@ export function ProjectSetupForm({
           key={seedBoard?.board.id ?? project.rootBoardId}
           boardId={seedBoard?.board.id ?? project.rootBoardId}
           seed={seedBoard?.seed}
+          screenplay={
+            withStoryboard && seedBoard?.board.kind === 'storyboard'
+              ? (screenplay ?? undefined)
+              : undefined
+          }
           links={seedBoard ? undefined : progress.current.boards}
           userId={user.id}
           done={seedDone}
           failed={seedFailed}
+        />
+      )}
+      {pickingScript && (
+        <ScreenplayImportDialog
+          targets={['new']}
+          confirmLabel={t('screenplay.use')}
+          onImport={(plan) => {
+            setScreenplay(plan);
+            if (!name.trim() && plan.title) setName(castName(plan.title).slice(0, 120));
+          }}
+          onClose={() => setPickingScript(false)}
         />
       )}
     </form>

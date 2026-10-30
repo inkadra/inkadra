@@ -1,12 +1,17 @@
 import type { BoardCount } from '@inkadra/shared';
 import { useSyncExternalStore } from 'react';
+import type { ImportPlan } from '../board/film/screenplay/plan.ts';
 import { ProjectSetupSeed } from './ProjectSetupSeed.tsx';
 import type { CreatedSetupBoard } from './project-setup.ts';
 
-/** A board to lay out from a template, or to fill with cards for `links`, once it syncs. */
+/**
+ * A board to lay out from a template or an imported screenplay, or to fill with cards for
+ * `links`, once it syncs.
+ */
 export interface SeedJob {
   boardId: string;
   seed?: CreatedSetupBoard['seed'];
+  screenplay?: ImportPlan;
   links?: CreatedSetupBoard[];
   userId: string;
 }
@@ -87,6 +92,7 @@ export function SeedQueue() {
       key={job.id}
       boardId={job.boardId}
       seed={job.seed}
+      screenplay={job.screenplay}
       links={job.links}
       userId={job.userId}
       done={seededDone(job.boardId)}

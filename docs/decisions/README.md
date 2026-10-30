@@ -43,6 +43,7 @@ in order. An accepted decision is never rewritten: a later one supersedes it.
 | [0037](0037-export-import-and-backups.md)           | Project archives in an open format, logical instance backups without pg_dump           |
 | [0038](0038-pdf-and-image-export.md)                | PDF and image export built in the browser                                              |
 | [0039](0039-project-export-settings.md)             | PDF and image export settings stored per project                                       |
+| [0040](0040-screenplay-import.md)                   | Screenplay import from Fountain and Final Draft, read in the browser                   |
 
 | [0042](0042-video-frame-grab.md) | Video stills and their source |
 
