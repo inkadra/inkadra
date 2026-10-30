@@ -1,6 +1,7 @@
 import type { AcceptedInvitation, InvitationPreview, ProjectRole } from '@inkadra/shared';
 import { and, eq, gt, isNull, lt, or, sql } from 'drizzle-orm';
-import { atLeast, boardAccess, projectRole } from './access.ts';
+import { activeGrant, activeMember, atLeast, boardAccess, projectRole } from './access.ts';
+import { mergeInvitedRole } from './access-expiry.ts';
 import type { Database } from './db/client.ts';
 import {
   board,
@@ -29,6 +30,8 @@ export function invitationStatus(
   if (row.revokedAt) return 'revoked';
   if (row.maxUses !== null && row.uses >= row.maxUses) return 'used';
   if (row.expiresAt <= now) return 'expired';
+  // The access it gives has already ended (decision 0041): nothing left to accept.
+  if (row.accessExpiresAt && row.accessExpiresAt <= now) return 'expired';
   return 'valid';
 }
 
@@ -96,6 +99,7 @@ export async function reserveInvitationUse(
         eq(invitation.id, invitationId),
         isNull(invitation.revokedAt),
         gt(invitation.expiresAt, sql`now()`),
+        or(isNull(invitation.accessExpiresAt), gt(invitation.accessExpiresAt, sql`now()`)),
         or(isNull(invitation.maxUses), lt(invitation.uses, invitation.maxUses)),
       ),
     )
@@ -127,6 +131,7 @@ export async function acceptInvitation(
     // Accepting after the end date of the access it gives gives nothing (decision 0041).
     const end = row.accessExpiresAt;
     const role = end && end.getTime() <= Date.now() ? null : invitedRole(row);
+    const incoming = role && { role, expiresAt: end };
     // An account created through Google, OIDC or an email link already used its email
     // invitation; coming back to the link then just leads to what it was for.
     if (
@@ -153,26 +158,46 @@ export async function acceptInvitation(
         .update(invitation)
         .set({ uses: sql`${invitation.uses} + 1` })
         .where(eq(invitation.id, row.id));
-    if (role && row.boardId) {
+    // Only ever raises a role, and never turns a permanent one into a temporary one.
+    if (incoming && row.boardId) {
       const access = await boardAccess(db2, { id: userId }, row.boardId);
       if (!access) throw new HttpError('not_found', 'The board of this invitation was deleted.');
-      if (!atLeast(access.role, role))
+      const [held] = await tx
+        .select({ role: boardGrant.role, expiresAt: boardGrant.expiresAt })
+        .from(boardGrant)
+        .where(
+          and(eq(boardGrant.boardId, row.boardId), eq(boardGrant.userId, userId), activeGrant()),
+        );
+      const next = !atLeast(access.role, incoming.role)
+        ? mergeInvitedRole(held ?? null, incoming)
+        : null;
+      if (next)
         await tx
           .insert(boardGrant)
-          .values({ boardId: row.boardId, userId, role, grantedBy: row.invitedBy, expiresAt: end })
+          .values({ boardId: row.boardId, userId, grantedBy: row.invitedBy, ...next })
           .onConflictDoUpdate({
             target: [boardGrant.boardId, boardGrant.userId],
-            set: { role, grantedBy: row.invitedBy, expiresAt: end, expiryWarnedAt: null },
+            set: { ...next, grantedBy: row.invitedBy, expiryWarnedAt: null },
           });
-    } else if (role && row.projectId) {
-      const current = await projectRole(tx, { id: userId }, row.projectId);
-      if (!atLeast(current, role))
+    } else if (incoming && row.projectId) {
+      const [held] = await tx
+        .select({ role: projectMember.role, expiresAt: projectMember.expiresAt })
+        .from(projectMember)
+        .where(
+          and(
+            eq(projectMember.projectId, row.projectId),
+            eq(projectMember.userId, userId),
+            activeMember(),
+          ),
+        );
+      const next = mergeInvitedRole(held ?? null, incoming);
+      if (next)
         await tx
           .insert(projectMember)
-          .values({ projectId: row.projectId, userId, role, expiresAt: end })
+          .values({ projectId: row.projectId, userId, ...next })
           .onConflictDoUpdate({
             target: [projectMember.projectId, projectMember.userId],
-            set: { role, expiresAt: end, expiryWarnedAt: null },
+            set: { ...next, expiryWarnedAt: null },
           });
     }
     // The person who invited hears about it (decision 0013), unless they used their own link.

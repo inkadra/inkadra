@@ -141,3 +141,21 @@ it('sets and removes an end date with the role unchanged', async () => {
     { role: 'viewer', expiresAt: null },
   ]);
 });
+
+it('closes only the picker on Escape and returns focus to its button', async () => {
+  const row = rowOf('Luca Neri');
+  const button = row?.querySelector<HTMLButtonElement>('.share__expiry-btn');
+  expect(button?.getAttribute('aria-haspopup')).toBe('dialog');
+  await act(async () => button?.click());
+  const picker = row?.querySelector('fieldset');
+  expect(picker?.querySelector('legend')?.textContent).toContain('share.expiry.of');
+  const esc = new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true });
+  const outside = vi.fn();
+  document.addEventListener('keydown', outside);
+  await act(async () => picker?.querySelector('input')?.dispatchEvent(esc));
+  document.removeEventListener('keydown', outside);
+  expect(esc.defaultPrevented).toBe(true);
+  expect(outside).not.toHaveBeenCalled();
+  expect(row?.querySelector('fieldset')).toBeNull();
+  expect(document.activeElement).toBe(button);
+});

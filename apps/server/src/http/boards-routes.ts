@@ -25,6 +25,7 @@ import {
   boardRoles,
   effectiveRole,
   effectiveRoles,
+  live,
   projectGrants,
   projectRole,
   requireBoardRole,
@@ -191,10 +192,11 @@ export function registerBoardRoutes(app: FastifyInstance, deps: Deps) {
         and(
           isNull(board.deletedAt),
           sql`(exists (select 1 from project_member m
-              where m.project_id = ${board.projectId} and m.user_id = ${actor.id})
+              where m.project_id = ${board.projectId} and m.user_id = ${actor.id} and ${live('m')})
             or ${board.id} in (
               with recursive granted as (
-                select g.board_id as id from board_grant g where g.user_id = ${actor.id}
+                select g.board_id as id from board_grant g
+                where g.user_id = ${actor.id} and ${live('g')}
                 union
                 select c.id from board c join granted on c.parent_board_id = granted.id
               )

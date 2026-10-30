@@ -225,6 +225,8 @@ export function ShareDialog({
                       <ExpiryPicker
                         value={e.expiresAt ?? null}
                         label={t('share.expiry.of', { name: e.user.name })}
+                        // Removing or extending an end date is for owners (decision 0041).
+                        canExtend={myRole === 'owner'}
                         onChange={(at) => {
                           setSelectedUserId(e.user.id);
                           return run(() => setExpiry(e, at))();

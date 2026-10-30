@@ -3,11 +3,16 @@ import { and, eq, sql } from 'drizzle-orm';
 import pino from 'pino';
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { boardAccess, boardRole } from './access.ts';
-import { readExpiry, sweepAccessExpiry } from './access-expiry.ts';
+import { mergeInvitedRole, readExpiry, sweepAccessExpiry, widensEnd } from './access-expiry.ts';
 import { createAuth } from './auth.ts';
 import { loadConfig } from './config.ts';
 import { createDatabase, runMigrations } from './db/client.ts';
-import { boardGrant, notification, projectMember } from './db/schema.ts';
+import {
+  boardGrant,
+  invitation as invitationTable,
+  notification,
+  projectMember,
+} from './db/schema.ts';
 import { createApp } from './http/app.ts';
 import { testDeps } from './test-deps.ts';
 
@@ -26,6 +31,41 @@ describe('readExpiry', () => {
     expect(() => readExpiry('2026-11-30T10:00:00Z', 'viewer', now)).toThrow(/future/);
     expect(() => readExpiry('2028-01-01T10:00:00Z', 'viewer', now)).toThrow(/366/);
     expect(() => readExpiry('2026-12-15T10:00:00Z', 'owner', now)).toThrow(/Owners/);
+  });
+});
+
+describe('mergeInvitedRole and widensEnd', () => {
+  const d = (n: number) => new Date(Date.UTC(2026, 11, n));
+  it('only raises, keeps permanent roles and never extends an end', () => {
+    const viewer = { role: 'viewer' as const, expiresAt: null };
+    expect(mergeInvitedRole(null, { role: 'editor', expiresAt: d(5) })).toEqual({
+      role: 'editor',
+      expiresAt: d(5),
+    });
+    expect(mergeInvitedRole(viewer, { role: 'editor', expiresAt: d(5) })).toBeNull();
+    expect(mergeInvitedRole(viewer, { role: 'editor', expiresAt: null })).toEqual({
+      role: 'editor',
+      expiresAt: null,
+    });
+    expect(
+      mergeInvitedRole({ role: 'viewer', expiresAt: d(5) }, { role: 'editor', expiresAt: null }),
+    ).toEqual({ role: 'editor', expiresAt: d(5) });
+    expect(
+      mergeInvitedRole({ role: 'viewer', expiresAt: d(9) }, { role: 'editor', expiresAt: d(5) }),
+    ).toEqual({ role: 'editor', expiresAt: d(5) });
+    expect(
+      mergeInvitedRole({ role: 'editor', expiresAt: d(5) }, { role: 'viewer', expiresAt: null }),
+    ).toBeNull();
+    expect(
+      mergeInvitedRole({ role: 'editor', expiresAt: d(5) }, { role: 'owner', expiresAt: null }),
+    ).toEqual({ role: 'owner', expiresAt: null });
+  });
+  it('tells when an end date gives more access', () => {
+    expect(widensEnd(null, d(5))).toBe(false);
+    expect(widensEnd(undefined, null)).toBe(false);
+    expect(widensEnd(d(5), d(3))).toBe(false);
+    expect(widensEnd(d(5), d(8))).toBe(true);
+    expect(widensEnd(d(5), null)).toBe(true);
   });
 });
 
@@ -322,5 +362,148 @@ describe.skipIf(!url)('expiring access and project creation (needs DATABASE_URL)
         })
       ).statusCode,
     ).toBe(403);
+  });
+
+  /** The end date of someone's membership passes, without a sweep. */
+  const endMembership = (projectId: string, userId: string) =>
+    db
+      .update(projectMember)
+      .set({ expiresAt: new Date(Date.now() - 1000) })
+      .where(and(eq(projectMember.projectId, projectId), eq(projectMember.userId, userId)));
+
+  it('hides an ended membership from search, schedules, recent boards and share links', async () => {
+    await signUp('dario');
+    const made = await call('owner', 'POST', '/projects', { name: 'Expiring Night Unit' });
+    const p = made.json() as { id: string; rootBoardId: string };
+    await call('owner', 'PUT', `/projects/${p.id}/members/${id('dario')}`, {
+      role: 'editor',
+      expiresAt: inDays(5),
+    });
+    const today = new Date().toISOString().slice(0, 10);
+    const day = await call('owner', 'POST', `/boards/${p.rootBoardId}/schedule`, {
+      date: today,
+      callTime: '18:30',
+      wrap: null,
+      location: 'Platform 9',
+      notes: '',
+      blocks: [],
+    });
+    expect(day.statusCode).toBe(201);
+    const link = await call('dario', 'POST', `/boards/${p.rootBoardId}/share-links`, {});
+    expect(link.statusCode).toBe(201);
+    const token = String(link.json().url).split('/').pop() ?? '';
+    const sees = async () => ({
+      search: (await call('dario', 'GET', '/search?q=Expiring')).json().items.length,
+      days: (await call('dario', 'GET', `/me/shooting-days?from=${today}&to=${today}`)).json().items
+        .length,
+      recent: (await call('dario', 'GET', '/me/recent-boards')).json().items.length,
+      link: (await app.inject({ method: 'GET', url: `/api/v1/guest/by-token/${token}` }))
+        .statusCode,
+    });
+    expect(await sees()).toEqual({ search: 1, days: 1, recent: 1, link: 200 });
+    await endMembership(p.id, id('dario'));
+    const after = await sees();
+    expect(after).toMatchObject({ search: 0, days: 0, recent: 0 });
+    // The link acts for its creator: it stops with their role.
+    expect(after.link).toBe(403);
+  });
+
+  it('never replaces a permanent role with a temporary one, nor extends an end', async () => {
+    await signUp('elena');
+    // Permanent viewer on the board; a temporary editor invitation keeps it as it is.
+    await call('owner', 'PUT', `/boards/${child}/grants/${id('elena')}`, { role: 'viewer' });
+    const direct = await call('owner', 'POST', '/invitations', {
+      kind: 'email',
+      email: 'elena@example.com',
+      boardId: child,
+      role: 'editor',
+      accessExpiresAt: inDays(3),
+    });
+    expect(direct.statusCode).toBe(409);
+    const link = await call('owner', 'POST', '/invitations', {
+      kind: 'link',
+      boardId: child,
+      role: 'editor',
+      accessExpiresAt: inDays(3),
+    });
+    const token = String(link.json().invitation.url).split('/').pop();
+    const accepted = await call('elena', 'POST', `/invitations/by-token/${token}/accept`);
+    expect(accepted.statusCode).toBe(200);
+    const [held] = await db
+      .select()
+      .from(boardGrant)
+      .where(and(eq(boardGrant.boardId, child), eq(boardGrant.userId, id('elena'))));
+    expect(held).toMatchObject({ role: 'viewer', expiresAt: null });
+
+    // Temporary viewer: a later, permanent editor link raises the role but keeps the end.
+    const soon = inDays(2);
+    await call('owner', 'PUT', `/boards/${child}/grants/${id('elena')}`, {
+      role: 'viewer',
+      expiresAt: soon,
+    });
+    const permanent = await call('owner', 'POST', '/invitations', {
+      kind: 'link',
+      boardId: child,
+      role: 'editor',
+    });
+    const again = String(permanent.json().invitation.url).split('/').pop();
+    await call('elena', 'POST', `/invitations/by-token/${again}/accept`);
+    const [raised] = await db
+      .select()
+      .from(boardGrant)
+      .where(and(eq(boardGrant.boardId, child), eq(boardGrant.userId, id('elena'))));
+    expect(raised?.role).toBe('editor');
+    expect(raised?.expiresAt?.toISOString()).toBe(soon);
+  });
+
+  it('lets only project owners remove or extend the end of a grant', async () => {
+    // bruno is a project editor; he shares the child board with elena.
+    await call('owner', 'PUT', `/projects/${projectId}/members/${id('bruno')}`, {
+      role: 'editor',
+    });
+    await call('owner', 'PUT', `/boards/${child}/grants/${id('elena')}`, {
+      role: 'viewer',
+      expiresAt: inDays(10),
+    });
+    const put = (who: string, expiresAt: string | null) =>
+      call(who, 'PUT', `/boards/${child}/grants/${id('elena')}`, { role: 'viewer', expiresAt });
+    expect((await put('bruno', inDays(5))).statusCode).toBe(200);
+    expect((await put('bruno', inDays(8))).statusCode).toBe(403);
+    expect((await put('bruno', null)).statusCode).toBe(403);
+    expect((await put('owner', inDays(30))).statusCode).toBe(200);
+    expect((await put('owner', null)).statusCode).toBe(200);
+  });
+
+  it('shows an invitation whose access already ended as expired, and uses nothing', async () => {
+    await signUp('fabio');
+    const res = await call('owner', 'POST', '/invitations', {
+      kind: 'link',
+      projectId,
+      role: 'viewer',
+      accessExpiresAt: inDays(1),
+    });
+    const inv = res.json().invitation as { id: string; url: string };
+    const token = inv.url.split('/').pop();
+    await db
+      .update(invitationTable)
+      .set({ accessExpiresAt: new Date(Date.now() - 1000) })
+      .where(eq(invitationTable.id, inv.id));
+    const preview = await app.inject({
+      method: 'GET',
+      url: `/api/v1/invitations/by-token/${token}`,
+    });
+    expect(preview.json().status).toBe('expired');
+    expect((await call('fabio', 'POST', `/invitations/by-token/${token}/accept`)).statusCode).toBe(
+      404,
+    );
+    const [row] = await db.select().from(invitationTable).where(eq(invitationTable.id, inv.id));
+    expect(row?.uses).toBe(0);
+    const told = await db
+      .select()
+      .from(notification)
+      .where(
+        and(eq(notification.type, 'invitation_accepted'), eq(notification.actorId, id('fabio'))),
+      );
+    expect(told).toHaveLength(0);
   });
 });

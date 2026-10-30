@@ -21,9 +21,12 @@ export function ExpiryLabel({ at }: { at: string }) {
 export function ExpiryPicker({
   value,
   label,
+  canExtend = true,
   onChange,
 }: {
   value: string | null;
+  /** False for people who are not project owners: they can only set an end or move it earlier. */
+  canExtend?: boolean;
   /** Accessible name of the button, e.g. "End of access for Anna". */
   label: string;
   onChange: (expiresAt: string | null) => Promise<unknown> | void;
@@ -34,8 +37,14 @@ export function ExpiryPicker({
   // Placed against the window: the people list scrolls and would cut a popover inside it.
   const [place, setPlace] = useState<CSSProperties>({});
   const box = useRef<HTMLDivElement>(null);
+  const close = () => {
+    setOpen(false);
+    // Back to the clock button, the first child of the box.
+    box.current?.querySelector<HTMLButtonElement>('.share__expiry-btn')?.focus();
+  };
   const id = useId();
   const bounds = expiryBounds();
+  if (!canExtend && value) bounds.max = dateInputValue(new Date(value));
 
   useEffect(() => {
     if (!open) return;
@@ -51,7 +60,7 @@ export function ExpiryPicker({
   async function submit() {
     const at = endOfDay(day);
     if (!at) return;
-    setOpen(false);
+    close();
     await onChange(at);
   }
 
@@ -60,6 +69,7 @@ export function ExpiryPicker({
       <IconButton
         icon="clock"
         label={label}
+        aria-haspopup="dialog"
         aria-expanded={open}
         aria-controls={open ? id : undefined}
         className={value ? 'share__expiry-btn share__expiry-btn--set' : 'share__expiry-btn'}
@@ -77,7 +87,19 @@ export function ExpiryPicker({
         }}
       />
       {open && (
-        <fieldset id={id} className="share__expiry-pop" style={place} aria-label={label}>
+        <fieldset
+          id={id}
+          className="share__expiry-pop"
+          style={place}
+          onKeyDown={(e) => {
+            if (e.key !== 'Escape') return;
+            // Only the picker closes: the share dialog around it stays open.
+            e.preventDefault();
+            e.stopPropagation();
+            close();
+          }}
+        >
+          <legend className="share__sr">{label}</legend>
           <label className="share__expiry-field">
             <span>{t('share.expiry.until')}</span>
             <input
@@ -99,11 +121,11 @@ export function ExpiryPicker({
           </label>
           <p className="share__expiry-help">{t('share.expiry.help')}</p>
           <div className="share__expiry-actions">
-            {value && (
+            {value && canExtend && (
               <Button
                 variant="ghost"
                 onClick={() => {
-                  setOpen(false);
+                  close();
                   void onChange(null);
                 }}
               >

@@ -66,9 +66,7 @@ const it = {
   },
   /** `who` null: the access of the recipient. */
   accessLine: (type: string, who: string | null, where: string, at: Date | null) => {
-    const when = at
-      ? at.toLocaleDateString('it-IT', { day: 'numeric', month: 'long', timeZone: 'UTC' })
-      : '';
+    const when = at ? accessWhen(at, 'it-IT') : '';
     if (type === 'access_expiring')
       return who
         ? `L'accesso di ${who} a "${where}" scade il ${when}`
@@ -144,9 +142,7 @@ const en: Texts = {
     }
   },
   accessLine: (type, who, where, at) => {
-    const when = at
-      ? at.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', timeZone: 'UTC' })
-      : '';
+    const when = at ? accessWhen(at, 'en-GB') : '';
     if (type === 'access_expiring')
       return who
         ? `${who}'s access to "${where}" ends on ${when}`
@@ -159,6 +155,21 @@ const en: Texts = {
   notificationSettings: (url) => `Choose when you get these emails in your settings: ${url}`,
   notificationAction: 'Open Inkadra',
 };
+
+/**
+ * When access ends, for emails. Accounts keep no time zone, so the time and the zone name
+ * (the server's) go with the date: "15 dicembre, 23:59 CET" is unambiguous anywhere.
+ */
+export function accessWhen(at: Date, locale: string, timeZone?: string): string {
+  return at.toLocaleString(locale, {
+    day: 'numeric',
+    month: 'long',
+    hour: '2-digit',
+    minute: '2-digit',
+    timeZoneName: 'short',
+    ...(timeZone ? { timeZone } : {}),
+  });
+}
 
 export function mailText(who: { locale?: string | null }): Texts {
   return who.locale?.toLowerCase().startsWith('en') ? en : it;

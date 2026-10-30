@@ -29,7 +29,7 @@ import {
 } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
 import { generateKeyBetween } from 'fractional-indexing';
-import { type Actor, activeMember, atLeast, higher, requireProjectRole } from '../access.ts';
+import { type Actor, activeMember, atLeast, higher, live, requireProjectRole } from '../access.ts';
 import { readExpiry, requireProjectCreation } from '../access-expiry.ts';
 import type { Auth } from '../auth.ts';
 import { readClassifications, validateProjectType } from '../classifications.ts';
@@ -177,9 +177,10 @@ export function registerProjectRoutes(app: FastifyInstance, deps: Deps) {
     reply.header('cache-control', 'private, no-store');
     // A member/grantee can see the owning project's label. Admin status alone grants no project access.
     const visible = sql<boolean>`(exists(select 1 from project_member m
-      where m.project_id = ${asset.projectId} and m.user_id = ${actor.id})
+      where m.project_id = ${asset.projectId} and m.user_id = ${actor.id} and ${live('m')})
       or exists(select 1 from board_grant g join board b on b.id = g.board_id
-        where b.project_id = ${asset.projectId} and b.deleted_at is null and g.user_id = ${actor.id}))`;
+        where b.project_id = ${asset.projectId} and b.deleted_at is null and g.user_id = ${actor.id}
+          and ${live('g')}))`;
     const rows = await db
       .select({
         mime: asset.mime,

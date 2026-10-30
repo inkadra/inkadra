@@ -39,10 +39,12 @@ export function endOfDay(value: string): string | null {
   return Number.isNaN(at.getTime()) ? null : at.toISOString();
 }
 
-/** Bounds of the date picker: tomorrow to the furthest day the server accepts. */
+/**
+ * Bounds of the date picker: tomorrow to the furthest day the server accepts. Calendar days,
+ * not 24-hour steps, so a daylight saving change cannot move them.
+ */
 export function expiryBounds(now = new Date()) {
-  return {
-    min: dateInputValue(new Date(now.getTime() + DAY)),
-    max: dateInputValue(new Date(now.getTime() + (EXPIRY_MAX_DAYS - 1) * DAY)),
-  };
+  const day = (offset: number) =>
+    dateInputValue(new Date(now.getFullYear(), now.getMonth(), now.getDate() + offset));
+  return { min: day(1), max: day(EXPIRY_MAX_DAYS - 1) };
 }

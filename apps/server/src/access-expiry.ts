@@ -1,6 +1,6 @@
-import { ProjectCreationDenied } from '@inkadra/shared';
+import { ProjectCreationDenied, type ProjectRole } from '@inkadra/shared';
 import { eq, sql } from 'drizzle-orm';
-import type { Actor } from './access.ts';
+import { type Actor, higher } from './access.ts';
 import type { Config } from './config.ts';
 import type { Database } from './db/client.ts';
 import { notification, user } from './db/schema.ts';
@@ -33,6 +33,38 @@ export function readExpiry(
       `The end date can be at most ${MAX_EXPIRY_DAYS} days ahead.`,
     );
   return at;
+}
+
+/** A role on one membership or grant and when it ends (null: never). */
+export interface Held {
+  role: ProjectRole;
+  expiresAt: Date | null;
+}
+
+/**
+ * What an invitation does to the role a person already holds on the same membership or grant
+ * (decision 0041), or null when nothing changes. It only raises the role, never replaces a
+ * permanent role with a temporary one, and never removes or extends an end date: of two, the
+ * earlier stays. Owners never end.
+ */
+export function mergeInvitedRole(current: Held | null, incoming: Held): Held | null {
+  if (!current) return incoming.role === 'owner' ? { ...incoming, expiresAt: null } : incoming;
+  if (!higher(incoming.role, current.role)) return null;
+  if (incoming.role === 'owner') return { role: 'owner', expiresAt: null };
+  if (current.expiresAt === null && incoming.expiresAt !== null) return null;
+  const expiresAt =
+    current.expiresAt === null
+      ? null
+      : incoming.expiresAt === null || current.expiresAt < incoming.expiresAt
+        ? current.expiresAt
+        : incoming.expiresAt;
+  return { role: incoming.role, expiresAt };
+}
+
+/** Whether going from one end date to another gives more access: removing or extending it. */
+export function widensEnd(current: Date | null | undefined, next: Date | null): boolean {
+  if (!current) return false;
+  return next === null || next.getTime() > current.getTime();
 }
 
 /** Whether a person can create and import projects: administrators always can. */
@@ -161,9 +193,11 @@ export function startInlineExpirySweep(
   log: { error: (obj: unknown, msg: string) => void },
   everyMs = 60_000,
 ) {
-  const timer = setInterval(() => {
+  const run = () =>
     sweepAccessExpiry(db).catch((err) => log.error({ err }, 'access expiry sweep failed'));
-  }, everyMs);
+  // At once too: rows that ended while the server was down are cleaned up and notified.
+  void run();
+  const timer = setInterval(run, everyMs);
   timer.unref();
   return () => clearInterval(timer);
 }

@@ -23,8 +23,8 @@ export const activeMember = () =>
   or(isNull(projectMember.expiresAt), gt(projectMember.expiresAt, sql`now()`));
 export const activeGrant = () =>
   or(isNull(boardGrant.expiresAt), gt(boardGrant.expiresAt, sql`now()`));
-/** The same conditions for raw SQL, on the given table aliases. */
-const live = (alias: string) =>
+/** The same conditions for raw SQL, on the given table alias (`m`, `g`, …). */
+export const live = (alias: string) =>
   sql.raw(`(${alias}.expires_at is null or ${alias}.expires_at > now())`);
 
 export function higher(a: ProjectRole, b: ProjectRole): boolean {

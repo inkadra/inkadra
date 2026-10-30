@@ -44,5 +44,7 @@ describe('access helpers (decision 0041)', () => {
       min: '2026-10-31',
       max: '2027-10-30',
     });
+    // Calendar days: a daylight saving change (25 October 2026 in Europe) moves nothing.
+    expect(expiryBounds(new Date(2026, 9, 24, 23, 30)).min).toBe('2026-10-25');
   });
 });
