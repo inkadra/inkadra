@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api } from '../lib/api.ts';
 import { useSession } from '../lib/session.tsx';
+import { BackupSettings } from './BackupSettings.tsx';
 import { DiagnosticsLink } from './SettingsShell.tsx';
 import { formatStorage, StorageCharts } from './StorageCharts.tsx';
 import { trackSave } from './settings-save.ts';
@@ -195,6 +196,7 @@ function RegistrationControl({
 export function InstanceSettings({ section, setup }: { section: string; setup: Setup }) {
   if (section === 'workspace') return <StoragePage />;
   if (section === 'providers') return <AccessPage />;
+  if (section === 'backups') return <BackupSettings />;
   return <InstancePage section={section} setup={setup} />;
 }
 

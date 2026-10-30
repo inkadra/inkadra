@@ -1,0 +1,54 @@
+/* Settings → Backups (decision 0037). Neutral rows; status badges carry the only colour. */
+.backup-settings__time {
+  width: 7.5em;
+}
+.backup-settings__error {
+  margin: 12px 0 0;
+  color: var(--ink-danger-fg);
+  font-size: 13px;
+}
+.backup-settings__empty {
+  margin: 0;
+  color: var(--ink-text-muted);
+  font-size: 13px;
+}
+.backup-list {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.backup-list__item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 0;
+  border-top: 1px solid var(--ink-border-subtle);
+}
+.backup-list__item:first-child {
+  border-top: 0;
+}
+.backup-list__text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.backup-list__when {
+  color: var(--ink-text-primary);
+  font-size: 13px;
+  font-weight: 500;
+}
+.backup-list__meta {
+  color: var(--ink-text-muted);
+  font-size: 12px;
+}
+.backup-list__file {
+  overflow: hidden;
+  color: var(--ink-text-secondary);
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

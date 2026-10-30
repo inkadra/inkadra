@@ -199,7 +199,11 @@ function toGuestComment(row: CommentRow, ctx: GuestContext, names: Names): Guest
   const mine = row.authorGuestId === ctx.guest.id;
   let author: GuestAuthor;
   if (row.authorId)
-    author = { kind: 'team', name: names.userNames.get(row.authorId) ?? null, isYou: false };
+    author = {
+      kind: 'team',
+      name: row.importedAuthor ?? names.userNames.get(row.authorId) ?? null,
+      isYou: false,
+    };
   else if (row.authorGuestId)
     author = { kind: 'guest', name: names.guestNames.get(row.authorGuestId) ?? null, isYou: mine };
   else author = { kind: 'deleted', name: null, isYou: false };

@@ -68,6 +68,7 @@ import { MobileNavigation } from './MobileNavigation.tsx';
 import { NewBoardDialog } from './NewBoardDialog.tsx';
 import { NewProjectDialog } from './NewProjectDialog.tsx';
 import { ProjectNavItem } from './ProjectAppearance.tsx';
+import { ImportProjectDialog } from './ProjectTransfer.tsx';
 import { onboardingTitle, type ProjectTemplate } from './project-setup.ts';
 import {
   getCachedProjects,
@@ -91,6 +92,8 @@ interface ProjectsState {
   shared: Board[] | null;
   /** Opens New project, optionally with a template already chosen. */
   openNewProject: (template?: ProjectTemplate) => void;
+  /** Opens Import project… (decision 0037). */
+  openImportProject: () => void;
   openSearch: () => void;
   openInbox: () => void;
   unread: number;
@@ -101,6 +104,7 @@ const ProjectsContext = createContext<ProjectsState>({
   projects: null,
   shared: null,
   openNewProject: () => {},
+  openImportProject: () => {},
   openSearch: () => {},
   openInbox: () => {},
   unread: 0,
@@ -242,6 +246,7 @@ export function AppLayout({ home }: { home?: ReactNode }) {
   // A template when New project opens with one preselected, as from Home.
   const [creating, setCreating] = useState<boolean | ProjectTemplate>(false);
   const [creatingBoard, setCreatingBoard] = useState(false);
+  const [importing, setImporting] = useState(false);
   // The project a new board goes into when it starts from inside that project.
   const [boardProject, setBoardProject] = useState<string | undefined>();
   const [newSheet, setNewSheet] = useState(false);
@@ -698,6 +703,7 @@ export function AppLayout({ home }: { home?: ReactNode }) {
           projects,
           shared,
           openNewProject: (template) => setCreating(template ?? true),
+          openImportProject: () => setImporting(true),
           openSearch: () => setSearching(true),
           openInbox: () => setInboxOpen(true),
           unread,
@@ -873,12 +879,17 @@ export function AppLayout({ home }: { home?: ReactNode }) {
           open={creating !== false}
           template={typeof creating === 'string' ? creating : undefined}
           onClose={() => setCreating(false)}
+          onImport={() => {
+            setCreating(false);
+            setImporting(true);
+          }}
           onCreated={async (p) => {
             setCreating(false);
             await refreshProjects();
             navigate(`/p/${p.id}`);
           }}
         />
+        {importing && <ImportProjectDialog onClose={() => setImporting(false)} />}
         <SeedQueue />
       </ProjectsContext.Provider>
     </InstanceSetupContext.Provider>

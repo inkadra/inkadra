@@ -7,6 +7,8 @@ export const KNOWN_TYPES = [
   'comment',
   'review',
   'invitation_accepted',
+  'export_ready',
+  'import_ready',
 ] as const;
 
 /** Where a notification leads: the board, with the card selected and the thread open. */

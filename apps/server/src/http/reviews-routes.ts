@@ -42,7 +42,7 @@ function toElementReview(row: ReviewRow, people: People): ElementReview {
     elementId: row.elementId,
     status: row.status,
     note: row.note,
-    changedBy: authorOf(people, row.changedBy, row.changedByGuest),
+    changedBy: authorOf(people, row.changedBy, row.changedByGuest, row.importedAuthor),
     changedAt: iso(row.changedAt),
   };
 }
@@ -192,7 +192,7 @@ export function registerReviewRoutes(app: FastifyInstance, deps: Deps) {
       previous: r.previous,
       status: r.status,
       note: r.note,
-      changedBy: authorOf(people, r.userId, r.guestId),
+      changedBy: authorOf(people, r.userId, r.guestId, r.importedAuthor),
       changedAt: iso(r.createdAt),
     }));
     return { items, nextCursor: page.nextCursor };

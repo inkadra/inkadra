@@ -19,7 +19,9 @@ vi.mock('../lib/api.ts', () => ({ api: { get: vi.fn(), put: vi.fn(), patch: vi.f
 vi.mock('../lib/session.tsx', () => ({
   useSession: () => ({ user: { id: 'me', role: session.role } }),
 }));
-vi.mock('./AppLayout.tsx', () => ({ useProjects: () => ({ openNewProject: vi.fn() }) }));
+vi.mock('./AppLayout.tsx', () => ({
+  useProjects: () => ({ openNewProject: vi.fn(), openImportProject: vi.fn() }),
+}));
 vi.mock('./BoardPreview.tsx', () => ({
   BoardPreview: ({ boardId }: { boardId: string }) => <span data-preview={boardId} />,
 }));
@@ -90,7 +92,13 @@ it('shows the Home card with the actions in its menu', async () => {
   await act(async () => card?.querySelector<HTMLButtonElement>('.project-card__options')?.click());
   expect(
     [...document.querySelectorAll('[role="menuitem"]')].map((item) => item.textContent),
-  ).toEqual(['appearance.title', 'projectsPage.pin', 'onboarding.type', 'projectsPage.archive']);
+  ).toEqual([
+    'appearance.title',
+    'projectsPage.pin',
+    'onboarding.type',
+    'transfer.exportMenu',
+    'projectsPage.archive',
+  ]);
   vi.mocked(api.put).mockResolvedValue({ ...project, pinned: true });
   await act(async () =>
     document.querySelector<HTMLButtonElement>('[role="menuitem"]:nth-child(2)')?.click(),

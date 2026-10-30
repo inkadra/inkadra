@@ -87,6 +87,15 @@ export const SETTINGS_PAGES: SettingsPage[] = [
     admin: true,
   },
   {
+    id: 'backups',
+    group: 'instance',
+    href: '/settings?section=backups',
+    title: 'backups.title',
+    lead: 'settingsUi.leads.backups',
+    keywords: 'settingsUi.keywords.backups',
+    admin: true,
+  },
+  {
     id: 'instance',
     group: 'instance',
     href: '/settings?section=instance',

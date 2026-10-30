@@ -26,11 +26,14 @@ export function NewProjectDialog({
   template,
   onClose,
   onCreated,
+  onImport,
 }: {
   open: boolean;
   /** Preselected, as when opened from a template on Home. */
   template?: ProjectTemplate;
   onClose: () => void;
+  /** Switches to Import project… for someone holding an archive. */
+  onImport?: () => void;
   onCreated: (p: Project) => void;
 }) {
   const { t } = useTranslation();
@@ -44,6 +47,19 @@ export function NewProjectDialog({
         if (busy) e.preventDefault();
       }}
     >
+      {open && onImport && (
+        <p className="new-project__import ink-muted">
+          {t('transfer.fromArchive')}{' '}
+          <button
+            type="button"
+            className="new-project__import-link"
+            disabled={busy}
+            onClick={onImport}
+          >
+            {t('transfer.importMenu')}
+          </button>
+        </p>
+      )}
       {open && (
         <ProjectSetupForm
           template={template}

@@ -1353,7 +1353,9 @@
       "review": "changed a review",
       "reviewStatus": "changed the review to “{{status}}”",
       "invitation_accepted": "accepted your invitation",
-      "unknown": "did something"
+      "unknown": "did something",
+      "export_ready": "Your project export is ready to download",
+      "import_ready": "Your project import is finished"
     },
     "emailTitle": "Email notifications",
     "emailHint": "Mentions, replies and reviews by email too, when the server can send it.",
@@ -1865,7 +1867,8 @@
       "storage": "Original files uploaded to this instance.",
       "access": "Sign-in methods come from the server configuration; here you see what is active.",
       "registration": "Who can create a new account.",
-      "about": "Instance name, address, version and setup status."
+      "about": "Instance name, address, version and setup status.",
+      "backups": "Nightly copies of the database, to restore the server after a failure."
     },
     "autosave": {
       "idle": "Autosave on",
@@ -1947,7 +1950,8 @@
       "classifications": "Project types, Tags, Catalogs",
       "providers": "Google, OIDC, Single sign-on (SSO), Email sign-in link, Email and password, SMTP, Outgoing email",
       "registration": "New accounts, Open registration, Invitation only, Closed registration",
-      "instance": "Instance name, Public address, Version, Diagnostics, Instance status"
+      "instance": "Instance name, Public address, Version, Diagnostics, Instance status",
+      "backups": "Backups, Back up now, Restore, Retention, Nightly backup"
     },
     "close": "Close settings",
     "dangerZone": "Danger zone"
@@ -2142,5 +2146,94 @@
     "sidebarPreview": "In the sidebar",
     "close": "Close",
     "chooseEmoji": "Choose an emoji"
+  },
+  "transfer": {
+    "exportMenu": "Export project…",
+    "importMenu": "Import project…",
+    "fromArchive": "Have an Inkadra archive?",
+    "exportTitle": "Export “{{name}}”",
+    "exportLead": "A zip with every board, file and comment, to keep or to import on another Inkadra server.",
+    "included": "Included",
+    "includedList": "Boards and sub-boards, original files, comments, reviews, shooting days, named versions",
+    "excluded": "Not included",
+    "excludedList": "Members, share links and guests, boards in the trash, automatic versions",
+    "preparing": "Preparing the archive",
+    "exportReady": "The archive is ready",
+    "availableUntil": "available until {{time}}",
+    "notifyNote": "You can close this window: a notification tells you when it is done.",
+    "export": "Export",
+    "exportAgain": "Export again",
+    "download": "Download",
+    "retry": "Try again",
+    "hide": "Hide",
+    "close": "Close",
+    "exportForbidden": "Only owners and editors of the project can export it.",
+    "startError": "The export could not start. Try again.",
+    "importTitle": "Import project",
+    "importLead": "Creates a new project from an Inkadra archive. You will be its only member; comments keep their authors' names.",
+    "drop": "Drop the archive here or choose a file",
+    "dropHint": "A .zip exported from Inkadra",
+    "change": "choose another",
+    "notZip": "Choose a .zip archive exported from Inkadra.",
+    "uploading": "Uploading",
+    "importing": "Importing",
+    "importReady": "“{{name}}” is ready",
+    "summary": "{{boards}} boards · {{files}} files · {{comments}} comments",
+    "remappedPeople_one": "1 author from the other server is shown by name; their work now belongs to you.",
+    "remappedPeople_other": "{{count}} authors from the other server are shown by name; their work now belongs to you.",
+    "skippedFiles_one": "1 file was missing or damaged: its card is empty.",
+    "skippedFiles_other": "{{count}} files were missing or damaged: their cards are empty.",
+    "openProject": "Open project",
+    "chooseAnother": "Choose another file",
+    "import": "Import",
+    "uploadError": "The archive could not be sent. Check the connection and try again.",
+    "busy": "Another import of yours is still running. Wait for it to finish.",
+    "failure": {
+      "too_large": "The archive is larger than this server accepts.",
+      "invalid_archive": "This file is not a valid Inkadra archive.",
+      "unsupported_version": "The archive comes from a newer Inkadra. Update this server first.",
+      "too_new": "The boards come from a newer Inkadra. Update this server first.",
+      "storage": "The files could not be stored. Ask the administrator to check the free space.",
+      "gone": "You can no longer edit this project, or it was deleted.",
+      "interrupted": "The server stopped while working on it. Try again.",
+      "cancelled": "Cancelled.",
+      "internal": "Something went wrong. Try again."
+    }
+  },
+  "backups": {
+    "title": "Backups",
+    "cardLead": "Each backup holds the whole database. Files stay where they are: back up the data volume or the bucket too.",
+    "now": "Back up now",
+    "running": "Backing up…",
+    "busy": "A backup is already running.",
+    "startError": "The backup could not start. Try again.",
+    "loadError": "Backups could not be loaded.",
+    "last": "Last backup",
+    "none": "No backups yet",
+    "filesListed_one": "lists 1 file ({{size}})",
+    "filesListed_other": "lists {{count}} files ({{size}})",
+    "nightly": "Nightly backup",
+    "next": "Next: {{time}}",
+    "nightlyOff": "Off: backups run only when you start one.",
+    "time": "Time",
+    "timeZone": "Server time zone: {{zone}}",
+    "keep": "Keep",
+    "keepHelp": "Older backups are removed after a new one succeeds.",
+    "keepCount_one": "the last backup",
+    "keepCount_other": "the last {{count}} backups",
+    "history": "History",
+    "inBucket": "copied to the bucket",
+    "trigger": {
+      "scheduled": "Nightly",
+      "manual": "Manual"
+    },
+    "status": {
+      "running": "Running",
+      "ready": "Completed",
+      "failed": "Failed",
+      "removed": "Removed"
+    },
+    "where": "Backups are not downloadable from the browser: copy them from DATA_DIR/backups on the server. Restore on an empty database with",
+    "whereBucket": "Backups are not downloadable from the browser: copy them from DATA_DIR/backups or backups/ in the bucket. Restore on an empty database with"
   }
 }

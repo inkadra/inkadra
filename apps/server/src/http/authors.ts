@@ -101,7 +101,10 @@ export function authorOf(
   people: People,
   userId: string | null | undefined,
   guestId: string | null | undefined,
+  /** Came with an imported project: the author's name there, shown instead (decision 0037). */
+  importedAuthor?: string | null,
 ): Author {
+  if (importedAuthor) return { kind: 'imported', name: importedAuthor };
   if (userId) {
     const u = people.users.get(userId);
     if (u) return { kind: 'user', user: u };

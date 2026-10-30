@@ -101,15 +101,17 @@ of `index.html` (with `'unsafe-inline'` or their hashes).
 One image, `ghcr.io/inkadra/inkadra`, built for `linux/amd64` and `linux/arm64`. Its command
 selects the role:
 
-| Command         | Role                                                                |
-| --------------- | ------------------------------------------------------------------- |
-| `all` (default) | Web app, API, collaboration and background jobs in one container    |
-| `web`           | Web app and API on port 3000                                        |
-| `collab`        | Real-time collaboration (WebSocket) on port 3001                    |
-| `worker`        | Background jobs (thumbnails, email, maintenance)                    |
-| `migrate`       | Apply database migrations and exit (`web` and `all` do it on start) |
-| `unlock-auth`   | Clear the sign-in counters of one account, then exit                |
-| `admin-2fa off` | Turn off the "require 2FA for administrators" setting, then exit    |
+| Command                 | Role                                                                |
+| ----------------------- | ------------------------------------------------------------------- |
+| `all` (default)         | Web app, API, collaboration and background jobs in one container    |
+| `web`                   | Web app and API on port 3000                                        |
+| `collab`                | Real-time collaboration (WebSocket) on port 3001                    |
+| `worker`                | Background jobs (thumbnails, email, maintenance)                    |
+| `migrate`               | Apply database migrations and exit (`web` and `all` do it on start) |
+| `unlock-auth`           | Clear the sign-in counters of one account, then exit                |
+| `admin-2fa off`         | Turn off the "require 2FA for administrators" setting, then exit    |
+| `backup create`         | Write a backup of the database to `/data/backups`, then exit        |
+| `backup restore <file>` | Restore a backup into an empty database, then exit                  |
 
 It needs Postgres 16 and Valkey 8 or newer (or Redis 7); `compose.yaml` runs Postgres 16 and
 Valkey 9. Valkey is required in production by every role. With your own
@@ -164,10 +166,52 @@ docker compose -f compose.yaml -f deploy/compose.split.yaml -f deploy/proxy/cadd
 
 ## Backups
 
-Until the built-in backup arrives (1.0), back up the database with
+Inkadra backs up its database every night, by default at 03:00 in the server's time zone (`TZ`),
+and keeps the last 7. Administrators change the time and how many to keep, start one at once
+and see the history in **Settings → Backups**. Backups need the `worker` role (in `all` it is
+always there); without Valkey they run only when started from Settings.
+
+A backup is one zip, `inkadra-backup-<date>-<id>.zip`, in `/data/backups` (the `inkadra-data`
+volume or your `INKADRA_DATA` folder). When files are in S3 it is also copied to `backups/` in
+the bucket. It holds every table of the database and a list of the stored files with their
+size and checksum, not the files themselves: files never change once written, so **back up the
+data volume or the bucket too**, with your usual tool (restic, Borg, a snapshot of the volume,
+bucket versioning or replication). The format is described in
+[instance-backup.md](../formats/instance-backup.md).
+
+Backups contain password hashes, sessions and sealed tokens: keep them as safe as the database,
+and never make the `backups/` prefix of a bucket public. They are not downloadable from the
+browser; copy them from the server:
 
 ```sh
-docker compose exec -T postgres pg_dump -U inkadra -Fc inkadra > inkadra-$(date +%F).dump
+docker compose cp inkadra:/data/backups ./inkadra-backups
 ```
 
-and copy the files: the `inkadra-data` volume (or your `INKADRA_DATA` folder), or the bucket.
+To take one from the command line, for example before an upgrade:
+
+```sh
+docker compose exec -u node inkadra node /app/dist/main.js backup create
+```
+
+Projects can also be exported one by one (**⋯ → Export project…**) and imported on any Inkadra
+server; that is for moving work, not for restoring a server.
+
+### Restoring
+
+A backup restores into an **empty** database, with the same or a newer version of Inkadra
+(migrations added since the backup are applied after the data). A backup made by a newer
+version is refused. Keep the same `AUTH_SECRET`: sealed tokens and two-factor secrets need it.
+
+```sh
+docker compose stop inkadra
+# Bring back the files first if they were lost: the data volume or the bucket.
+docker compose exec postgres dropdb -U inkadra inkadra
+docker compose exec postgres createdb -U inkadra inkadra
+docker compose run --rm inkadra backup restore /data/backups/inkadra-backup-20261102-030000-0193f0a4.zip
+docker compose up -d
+```
+
+The restore loads the tables in order, rebuilds the search index on the next start, and lists
+any file named by the backup that storage does not have (a warning, not an error: restore the
+volume or the bucket and they come back). To restore a backup copied elsewhere, put it in the
+data folder first, for example with `docker compose cp`.

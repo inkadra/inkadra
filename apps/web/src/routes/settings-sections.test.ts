@@ -29,6 +29,7 @@ it('identifies all settings pages and localizes headings, descriptions and group
       'instance',
       'providers',
       'registration',
+      'backups',
       'members',
     ]) {
       const pathname = section === 'members' ? '/settings/team' : '/settings';
@@ -168,6 +169,13 @@ const KEYWORD_PAIRS: Record<string, [string, string][]> = {
     ['Email and password', 'Email e password'],
     ['SMTP', 'SMTP'],
     ['Outgoing email', 'Invio email'],
+  ],
+  backups: [
+    ['Backups', 'Backup'],
+    ['Back up now', 'Esegui backup ora'],
+    ['Restore', 'Ripristino'],
+    ['Retention', 'Conservazione'],
+    ['Nightly backup', 'Backup notturno'],
   ],
   registration: [
     ['New accounts', 'Nuovi account'],
