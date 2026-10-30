@@ -592,3 +592,12 @@ button.review-link:hover:not(:disabled) {
 .review-section .review-statuses .review-chip {
   background: transparent;
 }
+
+/* In the review view the status sits in the panel's own flow: no card inside the panel. */
+.client-review .review-section {
+  padding: 12px 0 0;
+  border: 0;
+  border-top: 1px solid var(--ink-border-muted);
+  border-radius: 0;
+  background: none;
+}

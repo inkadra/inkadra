@@ -60,7 +60,12 @@
   inset: 0;
   display: grid;
   place-items: center;
-  color: #a3a3a0;
+  color: var(--ink-text-muted);
+}
+/* Nothing drawn yet: an empty slot in the app's own surface, not a sheet of paper. */
+.frame-pic:has(> .frame-pic__empty) {
+  background: var(--ink-surface-2);
+  box-shadow: inset 0 0 0 1px var(--ink-border-default);
 }
 
 /* Status chips -------------------------------------------------------------------- */
@@ -75,17 +80,19 @@
   font-weight: 500;
   white-space: nowrap;
 }
+/* Draft is where every frame starts: neutral. Colour marks the statuses that mean progress. */
 .film-status--draft {
-  background: color-mix(in srgb, var(--ink-tag-purple) 12%, transparent);
-  color: var(--ink-tag-purple);
+  background: transparent;
+  box-shadow: inset 0 0 0 1px var(--ink-border-default);
+  color: var(--ink-text-muted);
 }
 .film-status--todo {
   background: var(--ink-surface-3);
   color: var(--ink-text-secondary);
 }
 .film-status--ready {
-  background: var(--ink-accent-soft-bg);
-  color: var(--ink-accent-soft-fg);
+  background: var(--ink-tag-teal-bg);
+  color: var(--ink-tag-teal);
 }
 .film-status--shot {
   background: color-mix(in srgb, var(--ink-tag-green) 12%, transparent);
@@ -142,6 +149,22 @@ select.film-status {
 .film-preset > * {
   flex: 1;
   min-width: 0;
+}
+/* Selects inside a scene header or a table cell stay quiet until pointed at or focused. */
+.story__scene-select,
+.shots__table select.ink-input,
+.shots__table textarea.ink-input {
+  border-color: transparent;
+  background-color: transparent;
+}
+.shots__table textarea.ink-input {
+  resize: none;
+}
+.story__scene-select:hover:not(:disabled),
+.shots__table select.ink-input:hover:not(:disabled),
+.shots__table textarea.ink-input:hover:not(:read-only) {
+  border-color: var(--ink-border-default);
+  background-color: var(--ink-surface-1);
 }
 
 /* Storyboard view --------------------------------------------------------------------- */
@@ -798,7 +821,7 @@ select.film-status {
 .shots > .story__bar > .view-options__inline > select.ink-input {
   flex: 0 1 auto;
   min-width: 96px;
-  max-width: 180px;
+  max-width: 240px;
   text-overflow: ellipsis;
 }
 .shots > .story__bar > .ink-header__spacer {
@@ -2538,6 +2561,11 @@ select.film-status {
 .schedule__queue .story__sidebar-title {
   display: flex;
   justify-content: space-between;
+  gap: 8px;
+}
+.schedule__queue .story__sidebar-title span {
+  color: var(--ink-text-muted);
+  font-variant-numeric: tabular-nums;
 }
 .schedule__queue > .schedule__hint {
   margin: 0 8px 12px;
@@ -2607,6 +2635,8 @@ select.film-status {
 }
 .schedule__day {
   flex: 0 0 260px;
+  /* Long text wraps inside the column instead of widening it. */
+  min-width: 0;
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -2616,7 +2646,7 @@ select.film-status {
   background: var(--ink-bg-panel);
 }
 .schedule__day.is-selected {
-  border-color: var(--ink-border-strong);
+  border-color: var(--ink-accent-primary);
 }
 .schedule__day.is-drop {
   border-color: var(--ink-accent-primary);
@@ -2649,11 +2679,13 @@ select.film-status {
   font-weight: 600;
 }
 .schedule__day-sub {
+  display: -webkit-box;
   overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
   color: var(--ink-text-muted);
   font-size: 11px;
+  overflow-wrap: anywhere;
 }
 .schedule__timeline {
   display: flex;
@@ -2671,12 +2703,13 @@ select.film-status {
   font-size: 12px;
   font-variant-numeric: tabular-nums;
 }
-/* Block colours come from the tag tokens; the height follows the estimated minutes. */
+/* The kind is a left accent only (shots neutral: they are most blocks); selection is the
+   standard focus ring. The height follows the estimated minutes. */
 .schedule__block {
   --block-tint: var(--ink-border-strong);
 }
 .schedule__block--shot {
-  --block-tint: var(--ink-tag-blue);
+  --block-tint: var(--ink-text-muted);
 }
 .schedule__block--setup {
   --block-tint: var(--ink-tag-purple);
@@ -2714,9 +2747,9 @@ select.film-status {
   border-left-color: var(--block-tint);
 }
 .schedule__block.is-selected .schedule__block-select {
-  border-color: var(--ink-accent-primary);
   border-left-color: var(--block-tint);
-  box-shadow: 0 0 0 1px var(--ink-accent-primary);
+  background: var(--ink-surface-2);
+  box-shadow: 0 0 0 2px var(--ink-accent-primary);
 }
 .schedule__block-select strong {
   color: var(--ink-text-secondary);
@@ -2838,6 +2871,37 @@ select.film-status {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
+}
+.schedule__wide {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.schedule__summary {
+  margin: 0;
+  color: var(--ink-text-secondary);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+.schedule__actions--block {
+  align-items: center;
+}
+.schedule__actions--block .schedule__remove {
+  color: var(--ink-danger-fg);
+}
+/* Deleting the day sits apart from the everyday actions, after saving. */
+.schedule__danger {
+  padding-top: 12px;
+  border-top: 1px solid var(--ink-border-subtle);
+}
+/* On phones the inspector opens in a sheet over the plan. */
+.ink-dialog .schedule__inspector {
+  width: auto;
+  max-height: calc(100dvh - 200px);
+  overflow: auto;
+  padding: 0;
+  border: 0;
+  background: none;
 }
 .schedule__save {
   display: flex;
@@ -3332,6 +3396,8 @@ button.moodboard__card {
 .client-review__decision {
   display: grid;
   grid-template-columns: 1fr 1fr;
+  border-color: var(--ink-border-default);
+  background: var(--ink-surface-1);
 }
 .client-review__decision .story__mode {
   height: 32px;
@@ -3685,4 +3751,136 @@ button.moodboard__card {
 .canvas__panel > .film-panel {
   position: relative;
   width: min(340px, 100vw);
+}
+
+/* Chips typed into a field (cast, departments) and times worked out by the schedule ------ */
+
+.token-field {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  min-height: 32px;
+  padding: 3px 6px;
+  border: 1px solid var(--ink-border-default);
+  border-radius: 8px;
+  background: var(--ink-surface-1);
+  cursor: text;
+}
+.token-field:focus-within {
+  border-color: var(--ink-accent-primary);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ink-accent-primary) 25%, transparent);
+}
+.token-field[data-disabled] {
+  cursor: default;
+}
+.token-field__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  max-width: 100%;
+  height: 22px;
+  padding: 0 4px 0 8px;
+  border-radius: 11px;
+  background: var(--ink-surface-3);
+  color: var(--ink-text-primary);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+.token-field[data-disabled] .token-field__chip {
+  padding-right: 8px;
+}
+.token-field__remove {
+  display: grid;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--ink-text-secondary);
+  font: inherit;
+  font-size: 13px;
+  line-height: 1;
+  cursor: pointer;
+}
+.token-field__remove:hover {
+  background: var(--ink-surface-float);
+  color: var(--ink-text-primary);
+}
+.token-field__remove:focus-visible {
+  outline: 2px solid var(--ink-accent-primary);
+  outline-offset: 1px;
+}
+.token-field__input {
+  flex: 1 0 80px;
+  min-width: 0;
+  height: 24px;
+  padding: 0 2px;
+  border: 0;
+  outline: none;
+  background: transparent;
+  color: var(--ink-text-primary);
+  font: inherit;
+  font-size: 13px;
+}
+.token-field__input::placeholder {
+  color: var(--ink-text-muted);
+}
+.auto-time {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  color: var(--ink-text-secondary);
+  font: inherit;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  text-align: left;
+  cursor: pointer;
+}
+.auto-time > span:first-child {
+  white-space: nowrap;
+}
+.auto-time__tag {
+  color: var(--ink-text-muted);
+  font-size: 11px;
+}
+
+@media (width < 768px) {
+  /* The totals on one line, the two actions side by side under them. */
+  .schedule > .story__bar {
+    gap: 8px;
+    padding: 8px 12px;
+  }
+  .schedule > .story__bar .story__total {
+    flex: 1 0 100%;
+  }
+  .schedule > .story__bar .ink-header__spacer {
+    display: none;
+  }
+  .schedule > .story__bar .ink-btn {
+    flex: 1 1 0;
+    min-height: 44px;
+    justify-content: center;
+  }
+  /* Days stack at the full width of the phone: nothing clipped on the right. */
+  .schedule__board {
+    padding: 12px 12px 32px;
+  }
+  .schedule__days {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .schedule__day {
+    flex: none;
+    width: 100%;
+    box-sizing: border-box;
+  }
+}
+
+/* The sheet's title already names the day. */
+.ink-dialog .schedule__inspector-head > :not(.schedule__summary) {
+  display: none;
 }
