@@ -1,3 +1,4 @@
+import { Select } from '@inkadra/ui';
 import type { Board, BoardCount, BoardKind, Project } from '@inkadra/shared';
 import {
   AppShell,
@@ -679,18 +680,18 @@ export function AppLayout({ home }: { home?: ReactNode }) {
             contentKind={currentView ?? defaultView(openKind)}
             size={18}
           />
-          <select
+          <Select
             className="mobile-view-switcher"
             aria-label={t('film.views.label')}
             value={currentView ?? ''}
-            onChange={(e) => showView(e.target.value as BoardView)}
+            onChange={(e) => showView(e as BoardView)}
           >
             {pickerViews(openKind, currentView).map((v) => (
               <option key={v} value={v}>
                 {t(`film.views.${v}`)}
               </option>
             ))}
-          </select>
+          </Select>
         </div>
       )}
       <NotificationBell

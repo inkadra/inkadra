@@ -1,3 +1,4 @@
+import { Select } from '@inkadra/ui';
 import type {
   BoardAccess,
   BoardAccessEntry,
@@ -387,18 +388,18 @@ function RoleSelect({
 }) {
   const { t } = useTranslation();
   return (
-    <select
+    <Select
       className="share__select"
       aria-label={label}
       value={value}
-      onChange={(e) => onChange(e.target.value as ProjectRole)}
+      onChange={(e) => onChange(e as ProjectRole)}
     >
       {choices.map((r) => (
         <option key={r} value={r}>
           {t(`roles.${r}`)}
         </option>
       ))}
-    </select>
+    </Select>
   );
 }
 
@@ -630,18 +631,18 @@ function LinkSection({
             label={t('share.link.role')}
             onChange={setRole}
           />
-          <select
+          <Select
             className="share__select"
             aria-label={t('share.link.expires')}
             value={days}
-            onChange={(e) => setDays(Number(e.target.value))}
+            onChange={(e) => setDays(Number(e))}
           >
             {[1, 7, 30, 90].map((d) => (
               <option key={d} value={d}>
                 {t('share.link.days', { count: d })}
               </option>
             ))}
-          </select>
+          </Select>
           <Button icon="link" onClick={act(create)}>
             {t('share.link.create')}
           </Button>

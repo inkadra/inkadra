@@ -1,3 +1,4 @@
+import { Select } from '@inkadra/ui';
 // SPDX-License-Identifier: AGPL-3.0-only
 import type { ShootingDay } from '@inkadra/shared';
 import { Button, Dialog, DialogActions } from '@inkadra/ui';
@@ -49,17 +50,17 @@ export function CallSheetModal({
         <aside className="call-sheet__controls">
           <label>
             {t('schedule.date')}
-            <select
+            <Select
               value={day?.id ?? ''}
               disabled={!day}
-              onChange={(e) => setDayId(e.target.value)}
+              onChange={(e) => setDayId(e)}
             >
               {ordered.map((item) => (
                 <option key={item.id} value={item.id}>
                   {item.date}
                 </option>
               ))}
-            </select>
+            </Select>
           </label>
           <p>{t('callSheet.savedOnly')}</p>
           <fieldset>

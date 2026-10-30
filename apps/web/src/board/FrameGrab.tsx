@@ -1,3 +1,4 @@
+import { Select } from '@inkadra/ui';
 // SPDX-License-Identifier: AGPL-3.0-only
 import { type Element, hiddenFromGuests, type VideoFrameSource } from '@inkadra/doc-schema';
 import type { Asset } from '@inkadra/shared';
@@ -284,11 +285,11 @@ export function FrameGrab({
               )}
               <label>
                 {t('frameGrab.frame')}
-                <select
+                <Select
                   className="ink-input"
                   value={target}
                   disabled={busy}
-                  onChange={(e) => setTarget(e.target.value)}
+                  onChange={(e) => setTarget(e)}
                 >
                   <option value="">{t('frameGrab.choose')}</option>
                   {frames.map((f) => (
@@ -296,7 +297,7 @@ export function FrameGrab({
                       {f.label}
                     </option>
                   ))}
-                </select>
+                </Select>
               </label>
               {sourceHidden && target && !targetHidden && (
                 <p className="ink-muted">{t('frameGrab.hiddenDestination')}</p>

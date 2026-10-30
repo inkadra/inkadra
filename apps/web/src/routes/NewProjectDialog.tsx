@@ -1,3 +1,4 @@
+import { Select } from '@inkadra/ui';
 import {
   type InvitationResult,
   type Project,
@@ -286,17 +287,17 @@ export function ProjectSetupForm({
             />
             <label>
               {t('onboarding.role')}
-              <select
+              <Select
                 className="ink-input"
                 value={role}
-                onChange={(e) => setRole(e.target.value as ProjectRole)}
+                onChange={(e) => setRole(e as ProjectRole)}
               >
                 {['editor', 'commenter', 'viewer', 'owner'].map((v) => (
                   <option key={v} value={v}>
                     {t(`roles.${v}`)}
                   </option>
                 ))}
-              </select>
+              </Select>
             </label>
             <Button onClick={addInvite} disabled={!email.trim()}>
               {t('onboarding.add')}

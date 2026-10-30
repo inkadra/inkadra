@@ -1,3 +1,4 @@
+import { Select } from '@inkadra/ui';
 // SPDX-License-Identifier: AGPL-3.0-only
 import { formatDuration } from '@inkadra/canvas-core';
 import { SHOT_SIZES } from '@inkadra/doc-schema';
@@ -288,18 +289,18 @@ export function ClientReviewView({
                 {ready && <ReviewSection elementId={current.id} />}
                 <div className="client-review__threads-head">
                   <h3>{t('clientReview.guestThreads')}</h3>
-                  <select
+                  <Select
                     className="ink-input"
                     aria-label={t('comments.filter')}
                     value={threadFilter}
-                    onChange={(e) => setThreadFilter(e.target.value)}
+                    onChange={(e) => setThreadFilter(e)}
                   >
                     {['open', 'resolved', 'all'].map((value) => (
                       <option key={value} value={value}>
                         {t(`comments.filterStatus.${value}`)}
                       </option>
                     ))}
-                  </select>
+                  </Select>
                 </div>
                 <p className="schedule__hint">{t('clientReview.audienceHint')}</p>
                 {state.status === 'loading' && (

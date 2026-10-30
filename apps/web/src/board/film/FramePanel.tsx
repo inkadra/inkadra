@@ -1,3 +1,4 @@
+import { Select } from '@inkadra/ui';
 import { deleteElements, type FrameElement, updateElement } from '@inkadra/canvas-core';
 import {
   ASPECT_RATIOS,
@@ -145,12 +146,12 @@ export function FramePanel({
           />
           <div className="film-field">
             <label htmlFor={`aspect-${frame.id}`}>{t('film.aspect.label')}</label>
-            <select
+            <Select
               id={`aspect-${frame.id}`}
               className="ink-input"
               value={frame.aspect ?? ''}
               disabled={readOnly}
-              onChange={(e) => set({ aspect: (e.target.value || undefined) as AspectRatio })}
+              onChange={(e) => set({ aspect: (e || undefined) as AspectRatio })}
             >
               <option value="">
                 {t('film.aspect.board', { ratio: aspectLabel(boardAspect) })}
@@ -160,7 +161,7 @@ export function FramePanel({
                   {aspectLabel(r)}
                 </option>
               ))}
-            </select>
+            </Select>
           </div>
         </div>
         <TextField

@@ -1,3 +1,4 @@
+import { Select } from '@inkadra/ui';
 // SPDX-License-Identifier: AGPL-3.0-only
 import { type FrameElement, formatDuration } from '@inkadra/canvas-core';
 import {
@@ -765,11 +766,11 @@ function DayInspector({
             <div className="schedule__fields">
               <label>
                 {t('schedule.type')}
-                <select
+                <Select
                   className="ink-input"
                   value={block.type}
                   onChange={(e) =>
-                    blockUpdate(block.id, { type: e.target.value as ScheduleBlock['type'] })
+                    blockUpdate(block.id, { type: e as ScheduleBlock['type'] })
                   }
                 >
                   {(['setup', 'shot', 'break', 'move', 'note'] as const).map((type) => (
@@ -777,7 +778,7 @@ function DayInspector({
                       {t(`schedule.types.${type}`)}
                     </option>
                   ))}
-                </select>
+                </Select>
               </label>
               <label>
                 {t('schedule.title')}

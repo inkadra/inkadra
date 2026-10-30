@@ -1,3 +1,4 @@
+import { Select } from '@inkadra/ui';
 import type { Project } from '@inkadra/shared';
 import { Button, Dialog, DialogActions, TextField } from '@inkadra/ui';
 import { type FormEvent, useEffect, useId, useState } from 'react';
@@ -87,18 +88,18 @@ export function NewBoardDialog({
           <label htmlFor={projectId} className="ink-field__label">
             {t('home.newBoard.project')}
           </label>
-          <select
+          <Select
             id={projectId}
             className="ink-input"
             value={project}
-            onChange={(e) => setProject(e.target.value)}
+            onChange={(e) => setProject(e)}
           >
             {projects.map((p) => (
               <option key={p.id} value={p.id}>
                 {p.name}
               </option>
             ))}
-          </select>
+          </Select>
         </div>
         <fieldset className="home-new__choices">
           <legend className="ink-field__label">{t('home.newBoard.start')}</legend>

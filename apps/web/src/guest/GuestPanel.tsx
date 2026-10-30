@@ -1,3 +1,4 @@
+import { Select } from '@inkadra/ui';
 import { UNSORTED } from '@inkadra/doc-schema';
 import type { GuestBoardSnapshot, GuestElement, GuestSession } from '@inkadra/shared';
 import { Button } from '@inkadra/ui';
@@ -105,11 +106,11 @@ export function GuestPanel({
           <label className="guest-panel__label" htmlFor={cardsId}>
             {t('guest.card.choose')}
           </label>
-          <select
+          <Select
             id={cardsId}
             className="ink-input guest-panel__select"
             value={selected?.id ?? ''}
-            onChange={(e) => actions.select(e.target.value || null)}
+            onChange={(e) => actions.select(e || null)}
           >
             <option value="">{t('guest.card.none')}</option>
             {cards.map((el) => (
@@ -117,7 +118,7 @@ export function GuestPanel({
                 {label(el)}
               </option>
             ))}
-          </select>
+          </Select>
         </div>
       )}
 

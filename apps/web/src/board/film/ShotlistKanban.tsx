@@ -1,3 +1,4 @@
+import { Select } from '@inkadra/ui';
 // SPDX-License-Identifier: AGPL-3.0-only
 import { type FrameElement, formatDuration, updateElement } from '@inkadra/canvas-core';
 import { type AspectRatio, SHOT_SIZES } from '@inkadra/doc-schema';
@@ -235,13 +236,13 @@ export function ShotlistKanban({
                       )}
                       <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                         {!readOnly && (
-                          <select
+                          <Select
                             className="kanban__move-select"
                             aria-label={t('film.list.moveToColumn')}
                             value=""
                             onClick={(e) => e.stopPropagation()}
                             onChange={(e) => {
-                              const val = e.target.value as KanbanColumnKey;
+                              const val = e as KanbanColumnKey;
                               if (val) moveCard(f.id, val);
                             }}
                           >
@@ -253,7 +254,7 @@ export function ShotlistKanban({
                                 {t('film.list.moveCard', { column: t(c.labelKey) })}
                               </option>
                             ))}
-                          </select>
+                          </Select>
                         )}
                         <CardReview elementId={f.id} withPins={false} />
                       </div>

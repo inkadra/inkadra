@@ -1,3 +1,4 @@
+import { Select } from '@inkadra/ui';
 import {
   addFrame,
   addScene,
@@ -148,18 +149,18 @@ export function StoryboardView({
   const aspectControl = (
     <label className="story__aspect">
       <span>{t('film.aspect.label')}</span>
-      <select
+      <Select variant="quiet"
         className="ink-input"
         value={boardAspect}
         disabled={readOnly}
-        onChange={(e) => setBoardAspect(store.doc, e.target.value as AspectRatio, LOCAL)}
+        onChange={(e) => setBoardAspect(store.doc, e as AspectRatio, LOCAL)}
       >
         {ASPECT_RATIOS.map((r) => (
           <option key={r} value={r}>
             {aspectLabel(r)}
           </option>
         ))}
-      </select>
+      </Select>
     </label>
   );
   const totalLabel = (
@@ -419,11 +420,11 @@ function SceneList({
     <>
       <label className="story__scene-picker" htmlFor={pickerId}>
         <span>{t('film.playback.scenes')}</span>
-        <select
+        <Select variant="quiet"
           id={pickerId}
           className="ink-input"
           value={filter ?? ''}
-          onChange={(event) => onFilter(event.target.value || null)}
+          onChange={(event) => onFilter(event || null)}
         >
           <option value="">
             {t('film.playback.allScenes')} · {frames}
@@ -436,7 +437,7 @@ function SceneList({
               · {group.frames.length}
             </option>
           ))}
-        </select>
+        </Select>
       </label>
       <nav className="story__sidebar" aria-label={t('film.playback.scenes')} data-scroll>
         <h2 className="story__sidebar-title">{t('film.playback.scenes')}</h2>
@@ -571,13 +572,13 @@ function SceneSection({
           }}
           onKeyDown={blurOnEnter}
         />
-        <select
+        <Select variant="quiet"
           className="ink-input story__scene-select"
           value={scene.setting ?? ''}
           disabled={readOnly}
           aria-label={t('film.scene.setting')}
           onChange={(e) =>
-            set({ setting: (e.target.value || undefined) as SceneElement['setting'] })
+            set({ setting: (e || undefined) as SceneElement['setting'] })
           }
         >
           <option value="">—</option>
@@ -586,7 +587,7 @@ function SceneSection({
               {t(`film.scene.settings.${s}`)}
             </option>
           ))}
-        </select>
+        </Select>
         <input
           key={`l${scene.location ?? ''}`}
           className="card__inline-input story__scene-location"
@@ -600,12 +601,12 @@ function SceneSection({
           }}
           onKeyDown={blurOnEnter}
         />
-        <select
+        <Select variant="quiet"
           className="ink-input story__scene-select"
           value={scene.time ?? ''}
           disabled={readOnly}
           aria-label={t('film.scene.time')}
-          onChange={(e) => set({ time: (e.target.value || undefined) as SceneElement['time'] })}
+          onChange={(e) => set({ time: (e || undefined) as SceneElement['time'] })}
         >
           <option value="">—</option>
           {(['day', 'night', 'dawn', 'dusk'] as const).map((s) => (
@@ -613,7 +614,7 @@ function SceneSection({
               {t(`film.scene.times.${s}`)}
             </option>
           ))}
-        </select>
+        </Select>
         <input
           key={`t${scene.title}`}
           className="card__inline-input story__scene-title"

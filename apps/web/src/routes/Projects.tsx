@@ -1,3 +1,4 @@
+import { Select } from '@inkadra/ui';
 import type { Project } from '@inkadra/shared';
 import { Avatar, Button, Dialog, DialogActions } from '@inkadra/ui';
 import { type FormEvent, useCallback, useEffect, useRef, useState } from 'react';
@@ -182,24 +183,24 @@ export function Projects() {
         </label>
         <label>
           {t('projectsPage.status')}
-          <select
+          <Select
             className="ink-input"
             value={query.status}
-            onChange={(e) => change('status', e.target.value)}
+            onChange={(e) => change('status', e)}
           >
             {['all', 'active', 'archived'].map((v) => (
               <option key={v} value={v}>
                 {t(`projectsPage.${v}`)}
               </option>
             ))}
-          </select>
+          </Select>
         </label>
         <label>
           {t('onboarding.type')}
-          <select
+          <Select
             className="ink-input"
             value={query.type}
-            onChange={(e) => change('type', e.target.value)}
+            onChange={(e) => change('type', e)}
           >
             <option value="all">{t('projectsPage.all')}</option>
             {catalogs.projectTypes.map(({ id: v }) => (
@@ -207,15 +208,15 @@ export function Projects() {
                 {typeLabel(v)}
               </option>
             ))}
-          </select>
+          </Select>
         </label>
         {others && (
           <label>
             {t('projectsPage.people')}
-            <select
+            <Select
               className="ink-input"
               value={query.person}
-              onChange={(e) => change('person', e.target.value)}
+              onChange={(e) => change('person', e)}
             >
               <option value="all">{t('projectsPage.all')}</option>
               {[...people].map(([id, person]) => (
@@ -223,22 +224,22 @@ export function Projects() {
                   {person.name}
                 </option>
               ))}
-            </select>
+            </Select>
           </label>
         )}
         <label>
           {t('projectsPage.sort')}
-          <select
+          <Select
             className="ink-input"
             value={query.sort}
-            onChange={(e) => change('sort', e.target.value)}
+            onChange={(e) => change('sort', e)}
           >
             {['activity', 'name', 'created'].map((v) => (
               <option key={v} value={v}>
                 {t(`projectsPage.sorts.${v}`)}
               </option>
             ))}
-          </select>
+          </Select>
         </label>
         <div className="projects-page__view">
           {['grid', 'list'].map((v) => (
@@ -429,11 +430,11 @@ function ProjectTypeDialog({
       <form className="settings__form" onSubmit={submit}>
         <label className="project-type-field">
           {t('onboarding.type')}
-          <select
+          <Select
             className="ink-input"
             value={type}
             disabled={busy}
-            onChange={(e) => setType(e.target.value)}
+            onChange={(e) => setType(e)}
           >
             <option value="">—</option>
             {project.type && !catalogs.projectTypes.some((o) => o.id === project.type) && (
@@ -446,7 +447,7 @@ function ProjectTypeDialog({
                   {typeLabel(o.id)}
                 </option>
               ))}
-          </select>
+          </Select>
         </label>
         {error && <p role="alert">{t('projectsPage.saveError')}</p>}
         <DialogActions>

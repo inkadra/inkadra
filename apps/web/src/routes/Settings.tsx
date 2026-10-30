@@ -1,3 +1,4 @@
+import { Select } from '@inkadra/ui';
 import type {
   AccountSession,
   CreatedPersonalToken,
@@ -140,18 +141,18 @@ export function Preferences() {
           help={t('settingsUi.preferences.languageHelp')}
           htmlFor={languageId}
         >
-          <select
+          <Select
             id={languageId}
             className="ink-input settings-input"
             value={locale}
-            onChange={(e) => void changeLocale(e.target.value)}
+            onChange={(e) => void changeLocale(e)}
           >
             {LOCALES.map((l) => (
               <option key={l} value={l}>
                 {t(`settings.profile.languages.${l}`)}
               </option>
             ))}
-          </select>
+          </Select>
         </Row>
       </div>
     </Card>

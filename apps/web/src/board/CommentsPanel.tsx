@@ -1,3 +1,4 @@
+import { Select } from '@inkadra/ui';
 // SPDX-License-Identifier: AGPL-3.0-only
 import { type Element, roots } from '@inkadra/doc-schema';
 import {
@@ -370,10 +371,10 @@ function CommentsPanel() {
         {!elementId && (
           <label className="review-field">
             {t('review.filter')}
-            <select
+            <Select
               className="ink-input"
               value={reviewFilter}
-              onChange={(e) => setReviewFilter(e.target.value)}
+              onChange={(e) => setReviewFilter(e)}
             >
               <option value="">{t('review.filterNone')}</option>
               {REVIEW_STATUSES.map((s) => (
@@ -381,7 +382,7 @@ function CommentsPanel() {
                   {t(`review.status.${s}`)}
                 </option>
               ))}
-            </select>
+            </Select>
           </label>
         )}
         {reviewFilter && (

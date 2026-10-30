@@ -1,3 +1,4 @@
+import { Select } from '@inkadra/ui';
 import type {
   InstanceMember,
   InstanceSettings,
@@ -149,26 +150,26 @@ export function Team() {
             onChange={(e) => setQuery(e.target.value)}
           />
         </label>
-        <select
+        <Select
           className="ink-input team-filter"
           aria-label={t('admin.role')}
           value={role}
-          onChange={(e) => setRole(e.target.value)}
+          onChange={(e) => setRole(e)}
         >
           <option value="all">{t('admin.all')}</option>
           <option value="admin">{t('admin.roles.admin')}</option>
           <option value="member">{t('admin.roles.member')}</option>
-        </select>
-        <select
+        </Select>
+        <Select
           className="ink-input team-filter"
           aria-label={t('admin.status')}
           value={status}
-          onChange={(e) => setStatus(e.target.value)}
+          onChange={(e) => setStatus(e)}
         >
           <option value="all">{t('settingsUi.members.allStatuses')}</option>
           <option value="active">{t('admin.active')}</option>
           <option value="inactive">{t('admin.inactive')}</option>
-        </select>
+        </Select>
       </div>
       {members === null ? (
         !error && <p role="status">{t('admin.loading')}</p>
@@ -220,24 +221,24 @@ export function Team() {
                       </span>
                     </th>
                     <td>
-                      <select
+                      <Select
                         className="ink-input team-role"
                         aria-label={t('admin.roleFor', { name: m.name })}
                         value={m.role}
                         disabled={busy || last}
                         title={last ? t('admin.lastAdmin') : undefined}
-                        onChange={(e) => void update(m.id, { role: e.target.value })}
+                        onChange={(e) => void update(m.id, { role: e })}
                       >
                         <option value="admin">{t('admin.roles.admin')}</option>
                         <option value="member">{t('admin.roles.member')}</option>
-                      </select>
+                      </Select>
                     </td>
                     {/* The column title, shown on phones where the table head is hidden. */}
                     <td className="team-col--create" data-label={t('projectCreation.column')}>
                       {m.role === 'admin' ? (
                         <span className="settings-muted">{t('projectCreation.always')}</span>
                       ) : (
-                        <select
+                        <Select
                           className="ink-input team-role"
                           aria-label={t('projectCreation.for', { name: m.name })}
                           value={
@@ -251,7 +252,7 @@ export function Team() {
                           onChange={(e) =>
                             void update(m.id, {
                               canCreateProjects:
-                                e.target.value === 'default' ? null : e.target.value === 'yes',
+                                e === 'default' ? null : e === 'yes',
                             })
                           }
                         >
@@ -264,7 +265,7 @@ export function Team() {
                           </option>
                           <option value="yes">{t('projectCreation.yes')}</option>
                           <option value="no">{t('projectCreation.no')}</option>
-                        </select>
+                        </Select>
                       )}
                     </td>
                     <td className="team-col--projects">{m.projectsCount}</td>

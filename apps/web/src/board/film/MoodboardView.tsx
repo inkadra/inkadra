@@ -1,3 +1,4 @@
+import { Select } from '@inkadra/ui';
 // SPDX-License-Identifier: AGPL-3.0-only
 import { frameLabels, storyboardOf } from '@inkadra/canvas-core';
 import type { Element } from '@inkadra/doc-schema';
@@ -113,7 +114,7 @@ export function MoodboardView({
       </header>
       <label className="moodboard__filter">
         {t('moodboard.filter')}
-        <select value={tag} onChange={(event) => setTag(event.target.value)}>
+        <Select value={tag} onChange={(event) => setTag(event)}>
           <option value="">{t('moodboard.all')}</option>
           {tags.map((value) => (
             <option key={value} value={value}>
@@ -121,7 +122,7 @@ export function MoodboardView({
             </option>
           ))}
           {tag && !tags.includes(tag) && <option value={tag}>{tagLabel(tag)}</option>}
-        </select>
+        </Select>
       </label>
       {colors.length > 0 && (
         <section aria-label={t('moodboard.palette')} className="moodboard__palette">

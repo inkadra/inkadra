@@ -1,3 +1,4 @@
+import { Select } from '@inkadra/ui';
 // SPDX-License-Identifier: AGPL-3.0-only
 import type { Rect } from '@inkadra/canvas-core';
 import { type Board, DEFAULT_EXPORT_PREFERENCES, type ExportSettings } from '@inkadra/shared';
@@ -213,11 +214,11 @@ export function ExportDialog(props: ExportDialogProps) {
             />
             <Field label={t('export.what')}>
               {(id) => (
-                <select
+                <Select
                   id={id}
                   className="ink-input"
                   value={req.what}
-                  onChange={(e) => set('what', e.target.value as ExportWhat)}
+                  onChange={(e) => set('what', e as ExportWhat)}
                 >
                   {whatOptions.map((w) => (
                     <option
@@ -233,7 +234,7 @@ export function ExportDialog(props: ExportDialogProps) {
                         : t(`export.what${w[0]?.toUpperCase()}${w.slice(1)}`)}
                     </option>
                   ))}
-                </select>
+                </Select>
               )}
             </Field>
             {req.what === 'storyboard' && (
@@ -248,15 +249,15 @@ export function ExportDialog(props: ExportDialogProps) {
               <div className="export__row">
                 <Field label={t('export.page')}>
                   {(id) => (
-                    <select
+                    <Select
                       id={id}
                       className="ink-input"
                       value={req.paper}
-                      onChange={(e) => set('paper', e.target.value as PaperSize)}
+                      onChange={(e) => set('paper', e as PaperSize)}
                     >
                       <option value="a4">{t('export.paperA4')}</option>
                       <option value="letter">{t('export.paperLetter')}</option>
-                    </select>
+                    </Select>
                   )}
                 </Field>
                 <Segmented

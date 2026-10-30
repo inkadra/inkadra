@@ -1,3 +1,4 @@
+import { Select } from '@inkadra/ui';
 import {
   BACKUP_RETENTION_MAX,
   type InstanceBackup,
@@ -158,18 +159,18 @@ export function BackupSettings() {
             />
           </Row>
           <Row label={t('backups.keep')} help={t('backups.keepHelp')} htmlFor={retentionId}>
-            <select
+            <Select
               id={retentionId}
               className="ink-input"
               value={settings.retention}
-              onChange={(e) => void save({ retention: Number(e.target.value) })}
+              onChange={(e) => void save({ retention: Number(e) })}
             >
               {retentionChoices.map((n) => (
                 <option key={n} value={n}>
                   {t('backups.keepCount', { count: n })}
                 </option>
               ))}
-            </select>
+            </Select>
           </Row>
         </div>
         {startError && (

@@ -1,3 +1,4 @@
+import { Select } from '@inkadra/ui';
 import {
   addFrame,
   addShape,
@@ -481,7 +482,7 @@ export function DrawingEditor({
         {goNext && <IconButton icon="chevronRight" label={t('film.pen.next')} onClick={goNext} />}
         <label className="pen__aspect">
           <span>{t('film.aspect.label')}</span>
-          <select
+          <Select
             className="ink-input"
             value={frame.aspect ?? ''}
             disabled={readOnly}
@@ -490,7 +491,7 @@ export function DrawingEditor({
                 updateElement(
                   store.doc,
                   frame.id,
-                  { aspect: (e.target.value || undefined) as AspectRatio | undefined },
+                  { aspect: (e || undefined) as AspectRatio | undefined },
                   LOCAL,
                 ),
               )
@@ -502,7 +503,7 @@ export function DrawingEditor({
                 {aspectLabel(r)}
               </option>
             ))}
-          </select>
+          </Select>
         </label>
         <span className="ink-header__spacer" />
         <fieldset className="pen__view" aria-label={t('film.pen.view')}>
