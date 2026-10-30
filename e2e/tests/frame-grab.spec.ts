@@ -9,10 +9,17 @@ import { pushBoardDoc, signIn, uploadFile, waitForAssets } from './perf/seed.ts'
 
 const out = fileURLToPath(new URL('../../docs/screenshots/0.6-frame-grab/', import.meta.url));
 
-/** Fictional animated train, generated in Chrome without a codec dependency or third-party media. */
+/** The clip must outlast the seek target plus a few frame steps, however loaded the runner is. */
+const MIN_FOOTAGE_SECONDS = 1;
+
+/**
+ * Fictional animated train, generated in Chrome without a codec dependency or third-party media.
+ * MediaRecorder stamps frames as the canvas delivers them, so a starved main thread records a
+ * shorter clip than the loop's wall time; record again until the decoded clip is long enough.
+ */
 async function footage(page: Page) {
   return Buffer.from(
-    await page.evaluate(async () => {
+    await page.evaluate(async (minSeconds) => {
       const canvas = document.createElement('canvas');
       canvas.width = 1280;
       canvas.height = 720;
@@ -37,23 +44,53 @@ async function footage(page: Page) {
         ctx.fillText('PLATFORM 09 · NIGHT EXTERIOR', 70, 130);
       };
       draw(240);
-      const stream = canvas.captureStream(30);
-      const recorder = new MediaRecorder(stream, { mimeType: 'video/webm;codecs=vp8' });
-      const chunks: Blob[] = [];
-      recorder.ondataavailable = (event) => chunks.push(event.data);
-      const done = new Promise<number[]>((resolve) => {
-        recorder.onstop = async () =>
-          resolve([...new Uint8Array(await new Blob(chunks).arrayBuffer())]);
-      });
-      recorder.start();
-      for (let i = 0; i < 40; i++) {
-        draw(240 - i * 3);
-        await new Promise((r) => setTimeout(r, 33));
+      const record = async (seconds: number) => {
+        const stream = canvas.captureStream(30);
+        const recorder = new MediaRecorder(stream, { mimeType: 'video/webm;codecs=vp8' });
+        const chunks: Blob[] = [];
+        recorder.ondataavailable = (event) => chunks.push(event.data);
+        const done = new Promise<Blob>((resolve) => {
+          recorder.onstop = () => resolve(new Blob(chunks, { type: 'video/webm' }));
+        });
+        recorder.start();
+        const started = performance.now();
+        for (let i = 0; performance.now() - started < seconds * 1000; i++) {
+          draw(240 - (i % 40) * 3);
+          await new Promise((r) => setTimeout(r, 33));
+        }
+        recorder.stop();
+        for (const track of stream.getTracks()) track.stop();
+        return done;
+      };
+      /** WebM from MediaRecorder has no duration header: seek past the end to find the real one. */
+      const lengthOf = async (blob: Blob) => {
+        const url = URL.createObjectURL(blob);
+        const probe = document.createElement('video');
+        probe.muted = true;
+        probe.src = url;
+        try {
+          // A clip recorded by a starved thread may be too short to decode at all.
+          const decoded = await new Promise<boolean>((r) => {
+            probe.onloadeddata = () => r(true);
+            probe.onerror = () => r(false);
+          });
+          if (!decoded) return 0;
+          probe.currentTime = 1e9;
+          await new Promise<void>((r) =>
+            probe.addEventListener('seeked', () => r(), { once: true }),
+          );
+          return probe.currentTime;
+        } finally {
+          URL.revokeObjectURL(url);
+        }
+      };
+      for (let attempt = 0; attempt < 5; attempt++) {
+        const blob = await record(2 + attempt * 2);
+        if ((await lengthOf(blob)) >= minSeconds)
+          return [...new Uint8Array(await blob.arrayBuffer())];
       }
-      recorder.stop();
-      for (const track of stream.getTracks()) track.stop();
-      return done;
-    }),
+      throw new Error(`could not record ${minSeconds}s of footage`);
+    }, MIN_FOOTAGE_SECONDS),
   );
 }
 
@@ -132,15 +169,26 @@ for (const [device, width, height] of [
       const viewer = page.getByRole('dialog');
       const video = viewer.locator('video');
       await expect(video).toBeVisible();
+      // Settle on a paused, decoded frame well before the end of the clip.
       await video.evaluate(async (video: HTMLVideoElement) => {
         if (video.readyState < 2)
           await new Promise<void>((r) =>
             video.addEventListener('loadeddata', () => r(), { once: true }),
           );
         video.pause();
-        video.currentTime = 0.6;
+        video.currentTime = 0.3;
         await new Promise<void>((r) => video.addEventListener('seeked', () => r(), { once: true }));
       });
+      await expect
+        .poll(() =>
+          video.evaluate((v: HTMLVideoElement) => ({
+            paused: v.paused,
+            seeking: v.seeking,
+            ready: v.readyState >= 3,
+          })),
+        )
+        .toMatchObject({ paused: true, seeking: false, ready: true });
+      expect(await video.evaluate((v: HTMLVideoElement) => v.seekable.end(0))).toBeGreaterThan(0.6);
       await expect(viewer.locator('.viewer__hint')).toHaveText(
         ', / . · ⇧ ← / → Fotogramma precedente / successivo',
       );
@@ -148,9 +196,10 @@ for (const [device, width, height] of [
       // Period steps the paused video; plain arrows remain gallery navigation.
       const before = await video.evaluate((v: HTMLVideoElement) => v.currentTime);
       await page.keyboard.press('.');
+      // At least most of one 30 fps frame later (the stepper falls back to 1/30 s), and settled.
       await expect
         .poll(() => video.evaluate((v: HTMLVideoElement) => v.currentTime))
-        .toBeGreaterThan(before);
+        .toBeGreaterThan(before + 1 / 60);
       await expect.poll(() => video.evaluate((v: HTMLVideoElement) => v.seeking)).toBe(false);
       await page.keyboard.press('g');
       await expect(page.getByRole('region', { name: 'Destinazione del fotogramma' })).toBeVisible();
