@@ -21,7 +21,7 @@ async function login(page: Page, who: { email: string; password: string }) {
   await page.getByLabel('Email').fill(who.email);
   await page.getByLabel('Password').fill(who.password);
   await page.getByRole('button', { name: 'Accedi' }).click();
-  await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+  await expect(page).not.toHaveURL(/\/login/);
 }
 
 const isBackupSettings = (r: { url(): string; request(): { method(): string } }) =>

@@ -22,7 +22,7 @@ const director = {
   password: 'another-horse-battery',
 };
 const opts = { userId: null } as const;
-const NAME = 'Porto Vecchio';
+const NAME = `Porto Vecchio ${Date.now()}`;
 const COMMENT = 'Schiarire il cielo a sinistra';
 
 interface Seeded {
