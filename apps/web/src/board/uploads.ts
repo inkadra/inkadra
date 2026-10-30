@@ -58,6 +58,7 @@ export interface StartUpload {
   /** Called once, as soon as the server has created the asset (before the bytes arrive). */
   onAsset: (assetId: string) => void;
   onFailed?: (assetId: string | null) => void;
+  onComplete?: (assetId: string) => void;
 }
 
 const online = () => typeof navigator === 'undefined' || navigator.onLine !== false;
@@ -83,7 +84,7 @@ if (typeof window !== 'undefined') {
  * project resumes that upload (or leaves it running) instead of starting a second one, and
  * calls no `onAsset` again: its card already exists.
  */
-export function startUpload({ file, projectId, boardId, onAsset, onFailed }: StartUpload): string {
+export function startUpload({ file, projectId, boardId, onAsset, onFailed, onComplete }: StartUpload): string {
   const fingerprint = [projectId, file.name, file.size, file.lastModified].join('|');
   const existing = items.find(
     (i) => i.fingerprint === fingerprint && i.state !== 'done' && i.state !== 'cancelled',
@@ -139,6 +140,8 @@ export function startUpload({ file, projectId, boardId, onAsset, onFailed }: Sta
     onSuccess: () => {
       patch(key, { state: 'done', sent: file.size, reconnecting: false });
       uploads.delete(key);
+      const assetId = items.find((i) => i.key === key)?.assetId;
+      if (assetId) onComplete?.(assetId);
       setTimeout(() => dismiss(key), 4000);
     },
     onError: () => {

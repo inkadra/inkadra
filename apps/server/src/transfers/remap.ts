@@ -35,6 +35,12 @@ export function remapDoc(doc: Y.Doc, boardId: string, maps: IdMaps): void {
         else if (OPTIONAL_ASSET[el.get('type') as string] === field) el.delete(field);
         else el.set(field, randomUUID());
       }
+      const source = el.get('source') as { kind?: string; assetId?: string } | undefined;
+      if (source?.kind === 'uploaded-video') {
+        const to = source.assetId && maps.assets.get(source.assetId);
+        if (to) el.set('source', { ...source, assetId: to });
+        else el.delete('source');
+      }
       if (el.get('type') === 'board') el.set('boardId', mapped(maps.boards, el.get('boardId')));
       const by = el.get('createdBy');
       if (typeof by === 'string') el.set('createdBy', maps.person(by));

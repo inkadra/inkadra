@@ -13,6 +13,8 @@ import { authorName, editableText } from './review-model.ts';
 import { canComment, openComments, useReviews } from './review-store.ts';
 import { isTyping } from './shortcuts.ts';
 import { type BoardStore, LOCAL } from './store.ts';
+import { FrameGrab } from './FrameGrab.tsx';
+import { VideoFrameStepper } from './frame-grab.ts';
 import { TagEditor } from './tags.tsx';
 import { isYoutubeUrl, youtubeEmbedUrl } from './youtube.ts';
 
@@ -215,7 +217,9 @@ export function MediaViewer({
   readOnly,
   onClose,
   gallery,
+  initialFrameId,
 }: {
+  initialFrameId?: string;
   store: BoardStore;
   element: Extract<Element, { type: 'image' | 'file' | 'link' }>;
   projectId: string;
@@ -243,6 +247,15 @@ export function MediaViewer({
   const [infoOpen, setInfoOpen] = useState(false);
   const { videoRef, unplayable, setUnplayable } = useVideoUnplayable(ready?.url, ready?.id);
 
+  const stepper = useRef(new VideoFrameStepper());
+  const [exactStep, setExactStep] = useState(true);
+  useEffect(() => {
+    const player = videoRef.current;
+    if (!player) return;
+    stepper.current = new VideoFrameStepper();
+    return stepper.current.start(player);
+  }, [ready?.id, videoRef]);
+
   const guestMode = useContext(GuestModeContext);
   const threads = useReviews((s) => s.threads);
   const reviewsReady = useReviews((s) => s.status);
@@ -258,6 +271,21 @@ export function MediaViewer({
       // The canvas behind listens on window too.
       e.stopImmediatePropagation();
       if (e.type !== 'keydown') return;
+      if (e.key === 'Escape' && dialogRef.current?.querySelector('.viewer__grab-options')) {
+        e.preventDefault();
+        dialogRef.current.querySelector<HTMLButtonElement>('.viewer__grab-options button')?.click();
+        return;
+      }
+      if (e.key.toLowerCase() === 'g' && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        e.preventDefault();
+        dialogRef.current?.querySelector<HTMLButtonElement>('.viewer__grab')?.click();
+        return;
+      }
+      if ((e.key === 'ArrowLeft' || e.key === 'ArrowRight') && videoRef.current?.paused) {
+        e.preventDefault();
+        setExactStep(stepper.current.step(videoRef.current, e.key === 'ArrowLeft' ? -1 : 1));
+        return;
+      }
       if (e.key === 'Escape') {
         e.preventDefault();
         onClose();
@@ -304,7 +332,7 @@ export function MediaViewer({
       window.removeEventListener('keydown', onKey, true);
       window.removeEventListener('keyup', onKey, true);
     };
-  }, [onClose, gallery]);
+  }, [onClose, gallery, videoRef]);
 
   // Focus once on opening, keep it during navigation, give it back to the opener on close.
   useEffect(() => {
@@ -385,6 +413,9 @@ export function MediaViewer({
             </span>
           ))}
           <div className="viewer__header-spacer" />
+          <FrameGrab key={element.id} store={store} element={element} asset={ready} video={videoRef}
+            projectId={projectId} userId={userId} readOnly={readOnly || guestMode}
+            initialFrameId={initialFrameId} onDone={onClose} />
           <button
             type="button"
             className="ink-btn ink-btn--secondary viewer__stage-btn viewer__info-toggle"
@@ -510,8 +541,9 @@ export function MediaViewer({
           {/* Bottom Hints */}
           <div className="viewer__hints">
             <span className="viewer__hint">
-              <span className="viewer__hint-kbd">← →</span> {t('viewer.hints.nav')}
+              <span className="viewer__hint-kbd">← →</span> {t(ready?.kind === 'video' ? 'frameGrab.stepHint' : 'viewer.hints.nav')}
             </span>
+            {ready?.kind === 'video' && <span className="viewer__hint" role="status">{t(exactStep ? 'frameGrab.stepPrecision' : 'frameGrab.approximate')}</span>}
           </div>
         </div>
 
