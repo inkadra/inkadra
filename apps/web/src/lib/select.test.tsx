@@ -15,7 +15,7 @@ function Harness() {
         if (event.key === 'Escape') escaped();
       }}
     >
-      <Select
+      <label>Choice<Select
         name="choice"
         aria-label="Choice"
         value={value}
@@ -25,7 +25,7 @@ function Harness() {
           { value: 'b', label: 'Beta', disabled: true },
           { value: 'c', label: 'Charlie' },
         ]}
-      />
+      /></label>
     </form></dialog>
   );
 }
@@ -70,4 +70,11 @@ it('consumes Escape before the containing dialog and restores focus', async () =
   await key('Escape');
   expect(escaped).not.toHaveBeenCalled();
   expect(document.activeElement).toBe(host.querySelector('button'));
+});
+
+it('does not reopen after a pointer choice in a wrapping label', async () => {
+  await act(async () => host.querySelector('button')?.click());
+  await act(async () => host.querySelector<HTMLElement>('[role="option"][data-value="c"]')?.click());
+  expect(host.querySelector('button')?.getAttribute('aria-expanded')).toBe('false');
+  expect(new FormData(host.querySelector('form')!).get('choice')).toBe('c');
 });
