@@ -226,7 +226,7 @@ for (const [device, width, height] of [
         // Search finds characters by actor, as cards of their own type.
         await page.keyboard.press('Control+k');
         await page.getByRole('combobox', { name: 'Cerca' }).fill('Giulia Neri');
-        await expect(page.getByRole('option', { name: /Marta/ })).toBeVisible();
+        await expect(page.getByRole('option', { name: /Marta/ }).first()).toBeVisible();
         await page.keyboard.press('Escape');
       }
 
