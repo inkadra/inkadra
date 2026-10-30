@@ -10,6 +10,7 @@ import {
   readBackupSettings,
   reapStaleBackups,
   runBackup,
+  STARTUP_STALE_MS,
   serverTimeZone,
   startBackup,
   sweepPartialBackups,
@@ -347,6 +348,9 @@ export async function startWorkers(
       { every: 60 * 60 * 1000 },
       { name: 'transfer-sweep', data: {}, opts: KEEP },
     );
+    // Backups run only in workers: one left running by a worker that died is over.
+    const reaped = await reapStaleBackups(deps.db, STARTUP_STALE_MS);
+    if (reaped) log.warn({ reaped }, 'backups left running by a stopped worker marked interrupted');
     await scheduleBackups(scheduler, await readBackupSettings(deps.db));
   }
 

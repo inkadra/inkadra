@@ -52,3 +52,7 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.backup-list__failure {
+  color: var(--ink-text-secondary);
+  font-size: 12px;
+}

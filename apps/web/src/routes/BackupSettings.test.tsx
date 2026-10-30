@@ -45,11 +45,17 @@ const backup = (patch: Partial<InstanceBackups['items'][number]>) => ({
 
 it('shows the last result, the schedule and the history', async () => {
   vi.mocked(api.get).mockResolvedValue(
-    overview([backup({}), backup({ id: 'old', status: 'failed', fileName: null, size: null })]),
+    overview([
+      backup({}),
+      backup({ id: 'old', status: 'failed', fileName: null, size: null, failure: 'stalled' }),
+    ]),
   );
   await act(async () => root.render(<BackupSettings />));
   expect(host.textContent).toContain('backups.status.ready');
   expect(host.textContent).toContain('backups.status.failed');
+  // The reason is said, never an endless "running".
+  expect(host.textContent).toContain('backups.failure.stalled');
+  expect(host.textContent).not.toContain('backups.notInBucket');
   expect(host.textContent).toContain('inkadra-backup-20261102-030000-0193f0a4.zip');
   expect(host.querySelector<HTMLInputElement>('input[type=time]')?.value).toBe('03:00');
   expect(host.querySelector<HTMLSelectElement>('select')?.value).toBe('7');

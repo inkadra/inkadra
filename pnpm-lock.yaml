@@ -113,7 +113,7 @@ importers:
         specifier: ^10.4.0
         version: 10.4.0
       postgres:
-        specifier: ^3.4.0
+        specifier: 3.4.9
         version: 3.4.9
       sharp:
         specifier: ^0.35.5

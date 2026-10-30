@@ -2233,7 +2233,16 @@
       "removed": "Removed"
     },
     "where": "Backups are not downloadable from the browser: copy them from DATA_DIR/backups on the server. Restore on an empty database with",
-    "whereBucket": "Backups are not downloadable from the browser: copy them from DATA_DIR/backups or backups/ in the bucket. Restore on an empty database with"
+    "whereBucket": "Backups are not downloadable from the browser: copy them from DATA_DIR/backups or backups/ in the bucket. Restore on an empty database with",
+    "failure": {
+      "interrupted": "The server stopped while it ran. Start it again.",
+      "stalled": "It stopped making progress and was cancelled. Check the server log for this backup.",
+      "no_space": "The data volume is full.",
+      "permission": "The server cannot write to its data folder (DATA_DIR/backups).",
+      "internal": "Something went wrong. The server log says what, with the id of this backup.",
+      "inconsistent": "Some boards or comments point at each other in a loop, so they cannot be saved in order. The server log names the table."
+    },
+    "notInBucket": "Kept on the server only: the copy to the bucket failed."
   },
   "export": {
     "title": "Export",
