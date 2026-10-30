@@ -1,3 +1,4 @@
+import { chooseSelect } from '../helpers/select.ts';
 // SPDX-License-Identifier: AGPL-3.0-only
 import { mkdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -203,9 +204,9 @@ for (const [device, width, height] of [
       await expect.poll(() => video.evaluate((v: HTMLVideoElement) => v.seeking)).toBe(false);
       await page.keyboard.press('g');
       await expect(page.getByRole('region', { name: 'Destinazione del fotogramma' })).toBeVisible();
-      await page
+      await chooseSelect(page
         .getByRole('combobox', { name: 'Inquadratura', exact: true })
-        .selectOption({ label: '1A' });
+        , { label: '1A' });
       await expect(
         page.getByText(/^Fotogramma a \d+:\d{2},\d{2} · risoluzione originale$/),
       ).toBeVisible();
@@ -229,7 +230,7 @@ for (const [device, width, height] of [
       expect(captured).toMatchObject({ kind: 'image', width: 1280, height: 720 });
       await expect(viewer).toHaveCount(0);
       if (device === 'phone')
-        await page.getByRole('combobox', { name: 'Vista', exact: true }).selectOption('storyboard');
+        await chooseSelect(page.getByRole('combobox', { name: 'Vista', exact: true }), 'storyboard');
       else await page.getByRole('tab', { name: 'Storyboard', exact: true }).click();
       await expect(page.locator('.story__tile img')).toBeVisible();
       await page.screenshot({ path: `${out}/${device}-${theme}-storyboard.png` });
@@ -364,9 +365,9 @@ for (const provider of ['youtube', 'vimeo']) {
     if (provider === 'youtube') {
       await page.getByLabel('Tempo di riferimento YouTube (secondi)').fill('67');
     }
-    await page
+    await chooseSelect(page
       .getByRole('combobox', { name: 'Inquadratura', exact: true })
-      .selectOption({ label: '1A' });
+      , { label: '1A' });
     await page.getByRole('button', { name: 'Usa come immagine dell’inquadratura' }).click();
     await expect(page.getByRole('dialog')).toHaveCount(0);
     const saved = await readBoard(baseURL!, cookie, project.rootBoardId);

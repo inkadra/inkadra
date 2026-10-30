@@ -1,3 +1,4 @@
+import { chooseSelect } from '../helpers/select.ts';
 import { expect, type Page, test } from '@playwright/test';
 
 // Uses the account created by first-run.spec.ts, and creates it when run on its own.
@@ -95,7 +96,7 @@ test('home shows today’s shooting day and starts from templates', async ({ pag
   // Board layouts stay in New board.
   await page.getByRole('button', { name: 'Nuova board' }).click();
   const board = page.getByRole('dialog', { name: 'Nuova board' });
-  await board.getByLabel('Progetto').selectOption({ label: projectName });
+  await chooseSelect(board.getByLabel('Progetto'), { label: projectName });
   await board.getByRole('radio', { name: /Produzione/ }).check();
   await expect(board.getByLabel('Nome della board')).toHaveValue('Produzione');
   await board.getByRole('button', { name: 'Crea board' }).click();

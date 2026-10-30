@@ -1,3 +1,4 @@
+import { chooseSelect } from '../helpers/select.ts';
 import { expect, type Page, test } from '@playwright/test';
 
 // Runs after first-run.spec.ts, on the same instance: the administrator and the project exist.
@@ -39,8 +40,8 @@ test('a storyboard holds scenes and frames, the shot list shows the same frames'
   await expect(scene.locator('.story__tile')).toHaveCount(3);
   await scene.getByLabel('Luogo', { exact: true }).fill('Stazione');
   await scene.getByLabel('Luogo', { exact: true }).press('Enter');
-  await scene.getByLabel('Interno o esterno').selectOption('ext');
-  await scene.getByLabel('Momento', { exact: true }).selectOption('night');
+  await chooseSelect(scene.getByLabel('Interno o esterno'), 'ext');
+  await chooseSelect(scene.getByLabel('Momento', { exact: true }), 'night');
 
   await scene.getByRole('button', { name: 'Nuova inquadratura' }).last().click();
   const panel = page.getByRole('complementary', { name: 'Dettagli' });
@@ -48,7 +49,7 @@ test('a storyboard holds scenes and frames, the shot list shows the same frames'
   await panel
     .getByLabel('Azione', { exact: true })
     .fill('Il treno entra, il neon le taglia il viso');
-  await panel.getByLabel('Campo', { exact: true }).selectOption('cu');
+  await chooseSelect(panel.getByLabel('Campo', { exact: true }), 'cu');
   await panel.getByLabel('Durata (s)').fill('4,5');
   await panel.getByLabel('Durata (s)').press('Enter');
   await expect(page.getByText('4 inquadrature · 0:08').first()).toBeVisible();

@@ -78,7 +78,7 @@ export function Select({ value, onChange, options, children, name, placeholder, 
       {items.length === 0 && <div className="ink-select__empty">{emptyText}</div>}
       {items.map((item, index) => <div key={item.value}>
         {item.group && item.group !== items[index - 1]?.group && <div className="ink-select__group">{item.group}</div>}
-        <div role="option" id={`${id}-${index}`} aria-selected={selected === index} aria-disabled={item.disabled || undefined} data-active={active === index || undefined} className="ink-select__option" onPointerMove={() => !item.disabled && setActive(index)} onMouseDown={event => event.preventDefault()} onClick={() => choose(index)}>
+        <div role="option" data-value={item.value} id={`${id}-${index}`} aria-selected={selected === index} aria-disabled={item.disabled || undefined} data-active={active === index || undefined} className="ink-select__option" onPointerMove={() => !item.disabled && setActive(index)} onMouseDown={event => event.preventDefault()} onClick={() => choose(index)}>
           {item.icon}<span className="ink-select__label">{item.label}{item.description && <small>{item.description}</small>}</span>{selected === index && <Icon name="check" size={16} />}
         </div>
       </div>)}

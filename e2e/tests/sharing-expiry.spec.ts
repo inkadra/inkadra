@@ -1,3 +1,4 @@
+import { chooseSelect } from '../helpers/select.ts';
 import { type Browser, expect, type Page, test } from '@playwright/test';
 
 // Runs after first-run.spec.ts: the administrator exists. Works in its own project and puts
@@ -105,16 +106,16 @@ test('only allowed people create projects; exceptions per person', async ({ page
   expect(refused.status()).toBe(403);
   expect((await refused.json()).error.details.reason).toBe('project_creation_disabled');
 
-  await page
+  await chooseSelect(page
     .getByRole('combobox', { name: `Può creare progetti: ${marta.name}` })
-    .selectOption('yes');
+    , 'yes');
   await martaPage.reload();
   await expect(martaPage.getByRole('button', { name: 'Nuovo progetto' }).first()).toBeEnabled();
 
   // Back as it was for the specs that follow.
-  await page
+  await chooseSelect(page
     .getByRole('combobox', { name: `Può creare progetti: ${marta.name}` })
-    .selectOption('default');
+    , 'default');
   await option.check();
   await expect(option).toBeChecked();
   await martaPage.context().close();

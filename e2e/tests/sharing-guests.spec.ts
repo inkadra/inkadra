@@ -1,3 +1,4 @@
+import { chooseSelect } from '../helpers/select.ts';
 import { deflateSync } from 'node:zlib';
 import { HocuspocusProvider, HocuspocusProviderWebsocket } from '@hocuspocus/provider';
 import { createElement } from '@inkadra/canvas-core';
@@ -252,7 +253,7 @@ test('an editor creates a password link with comments and proofing', async ({ pa
   const dialog = await openGuestLinks(page);
   await expect(dialog.getByText('Nessun link per ospiti.')).toBeVisible();
   await dialog.getByRole('button', { name: 'Nuovo link per ospiti' }).click();
-  await dialog.getByLabel('Chi apre il link').selectOption('guest_comment');
+  await chooseSelect(dialog.getByLabel('Chi apre il link'), 'guest_comment');
   await dialog.getByLabel('Per chi è (facoltativo)').fill('Cliente');
   await dialog.getByLabel('Selezione foto').check();
   await dialog.getByLabel('Proteggi con una password').check();
@@ -308,7 +309,7 @@ test('a guest opens the link, comments and picks a picture', async ({ browser })
   const pick = page.locator(`[data-el="${seeded.first}"]`).getByRole('button', { name: 'Scelgo' });
   await pick.click();
   await expect(pick).toHaveAttribute('aria-pressed', 'true');
-  await page.getByLabel('Card', { exact: true }).selectOption(seeded.first);
+  await chooseSelect(page.getByLabel('Card', { exact: true }), seeded.first);
   const panel = page.getByRole('complementary', { name: 'Dettagli e commenti' });
   await panel.getByRole('button', { name: '4 stelle' }).click();
   await expect(panel.getByRole('button', { name: '4 stelle' })).toHaveAttribute(
@@ -330,7 +331,7 @@ test('a guest opens the link, comments and picks a picture', async ({ browser })
   await expectNoTeamUi(page);
 
   // A dropped connection keeps the board and the text being typed, and the page recovers.
-  await page.getByLabel('Card', { exact: true }).selectOption('');
+  await chooseSelect(page.getByLabel('Card', { exact: true }), '');
   await expect(page.getByRole('heading', { name: 'Commenti sulla board' })).toBeVisible();
   const draft = page.getByLabel('Scrivi un commento');
   await draft.fill('Bozza da non perdere');
@@ -452,7 +453,7 @@ test('a guest of an approval link approves a card and withdraws the decision', a
   await expectNoTeamUi(guest.page);
   // No proofing on this link: no picks on the cards.
   await expect(guest.page.getByRole('button', { name: 'Scelgo' })).toHaveCount(0);
-  await guest.page.getByLabel('Card', { exact: true }).selectOption({ label: 'Benvenuti sul set' });
+  await chooseSelect(guest.page.getByLabel('Card', { exact: true }), { label: 'Benvenuti sul set' });
   const panel = guest.page.getByRole('complementary', { name: 'Dettagli e commenti' });
   await panel.getByRole('button', { name: 'Approva' }).click();
   const naming = guest.page.getByRole('dialog', { name: 'Come ti chiami?' });

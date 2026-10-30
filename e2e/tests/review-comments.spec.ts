@@ -1,3 +1,4 @@
+import { chooseSelect } from '../helpers/select.ts';
 import { type Browser, expect, type Page, test } from '@playwright/test';
 
 // Runs after first-run.spec.ts, on the same instance: the administrator exists. Each test makes
@@ -181,9 +182,9 @@ test('comments, mentions, review status and notifications between two people', a
 
   // Filter cards by status from the board's comments.
   await panel.getByRole('button', { name: 'Tutte le discussioni' }).click();
-  await panel.getByLabel('Card per stato di revisione').selectOption('approved');
+  await chooseSelect(panel.getByLabel('Card per stato di revisione'), 'approved');
   await expect(panel.getByRole('button', { name: /Luce sul volto.*Approvata/ })).toBeVisible();
-  await panel.getByLabel('Card per stato di revisione').selectOption('changes_requested');
+  await chooseSelect(panel.getByLabel('Card per stato di revisione'), 'changes_requested');
   await expect(panel.getByText('Nessuna card con questo stato.')).toBeVisible();
 
   // Drafts are kept per scope, and double Escape in the new-thread composer discards without

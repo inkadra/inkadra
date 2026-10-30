@@ -1,3 +1,4 @@
+import { chooseSelect } from '../helpers/select.ts';
 import { type Browser, expect, type Page, test } from '@playwright/test';
 
 // Runs after first-run.spec.ts: the administrator and the project "Ultima corsa" exist.
@@ -135,7 +136,7 @@ test('a role change reaches a board that is already open', async ({ page, browse
   await page.getByRole('button', { name: 'Condividi' }).click();
   const dialog = page.getByRole('dialog');
   const role = dialog.getByRole('combobox', { name: `Ruolo di ${guest.name}` });
-  await role.selectOption('editor');
+  await chooseSelect(role, 'editor');
   await expect(role).toHaveValue('editor');
 
   // Without a reload, the person is told and can write.
@@ -153,7 +154,7 @@ test('a role change reaches a board that is already open', async ({ page, browse
   await expect(page.locator('[data-type="note"]', { hasText: 'Nota di Paolo' })).toBeVisible();
 
   // And back: the open board turns read-only again, with a notice.
-  await role.selectOption('viewer');
+  await chooseSelect(role, 'viewer');
   await expect(other.getByText('ora puoi solo guardare questa board')).toBeVisible({
     timeout: 45_000,
   });

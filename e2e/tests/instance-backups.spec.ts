@@ -1,3 +1,4 @@
+import { chooseSelect } from '../helpers/select.ts';
 import { expect, type Page, test } from '@playwright/test';
 import { signIn } from './perf/seed.ts';
 import { signUpViaInvite } from './support/accounts.ts';
@@ -90,7 +91,7 @@ test('the nightly schedule, its time and the retention persist after a reload', 
   expect((await saved).ok()).toBe(true);
 
   saved = page.waitForResponse(isBackupSettings);
-  await keep.selectOption('3');
+  await chooseSelect(keep, '3');
   expect((await saved).ok()).toBe(true);
 
   await page.reload();
