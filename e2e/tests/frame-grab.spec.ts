@@ -269,7 +269,7 @@ for (const [device, width, height] of [
         await page.getByRole('button', { name: 'Cattura fotogramma', exact: true }).click();
         await expect(
           page.getByRole('combobox', { name: 'Inquadratura', exact: true }),
-        ).not.toHaveValue('');
+        ).not.toHaveAttribute('data-value', '');
         await page.getByRole('button', { name: 'Aggiungi alla lavagna', exact: true }).click();
         await expect(page.getByRole('dialog')).toHaveCount(0);
         const board = await readBoard(baseURL!, cookie, project.rootBoardId);
