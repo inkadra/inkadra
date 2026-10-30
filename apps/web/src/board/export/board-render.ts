@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-import { arrowEnds, decodeStroke, type Rect } from '@inkadra/canvas-core';
+import { arrowGeometry, arrowPolyline, decodeStroke, type Rect } from '@inkadra/canvas-core';
 import type { Element, FrameShape, Stroke } from '@inkadra/doc-schema';
 import type { Placed } from './board-model.ts';
 import type { ImageInfo, Measure, Op } from './pages.ts';
@@ -574,11 +574,13 @@ function drawArrow(
   ctx: CardContext,
 ): Op[] {
   const c = ctx.colors;
-  const { a, b } = arrowEnds(el, rectOf);
+  const g = arrowGeometry(el, rectOf);
+  const { a, b } = g;
   const color = c['text-secondary'];
-  const dash = el.line === 'dashed' ? [6, 5] : undefined;
-  const ops: Op[] = [
-    {
+  const dashed = el.line === 'dashed';
+  const ops: Op[] = [];
+  if (!g.c) {
+    ops.push({
       kind: 'line',
       x1: a.x,
       y1: a.y,
@@ -586,16 +588,28 @@ function drawArrow(
       y2: b.y,
       color,
       width: 1.5,
-      ...(dash ? { dash } : {}),
-    },
-  ];
+      ...(dashed ? { dash: [6, 5] } : {}),
+    });
+  } else if (!dashed) {
+    ops.push({
+      kind: 'polyline',
+      points: arrowPolyline(g).flatMap((p) => [p.x, p.y]),
+      color,
+      width: 1.5,
+    });
+  } else {
+    ops.push(...dashes(arrowPolyline(g, 48), 6, 5, color));
+  }
+  // Heads point along the path: on a curve, from the control point.
+  const ta = g.c ?? b;
+  const tb = g.c ?? a;
   const heads = el.heads ?? 'end';
-  if (heads !== 'none') ops.push(head(a.x, a.y, b.x, b.y, 9, color));
-  if (heads === 'both') ops.push(head(b.x, b.y, a.x, a.y, 9, color));
+  if (heads !== 'none') ops.push(head(tb.x, tb.y, b.x, b.y, 9, color));
+  if (heads === 'both') ops.push(head(ta.x, ta.y, a.x, a.y, 9, color));
   if (el.label) {
     const w = ctx.measure(el.label, 11, 500);
-    const mx = (a.x + b.x) / 2;
-    const my = (a.y + b.y) / 2;
+    const mx = g.mid.x;
+    const my = g.mid.y;
     ops.push({
       kind: 'rect',
       x: mx - w / 2 - 6,
@@ -616,6 +630,38 @@ function drawArrow(
       weight: 500,
       color: c['text-primary'],
     });
+  }
+  return ops;
+}
+
+/** Dashes along a polyline, as lines `on` long with gaps `off` long. */
+function dashes(
+  points: readonly { x: number; y: number }[],
+  on: number,
+  off: number,
+  color: string,
+): Op[] {
+  const ops: Op[] = [];
+  let drawing = true;
+  let left = on;
+  for (let i = 1; i < points.length; i++) {
+    let p = points[i - 1]!;
+    const q = points[i]!;
+    let len = Math.hypot(q.x - p.x, q.y - p.y);
+    while (len > 0) {
+      const step = Math.min(left, len);
+      const t = step / len;
+      const next = { x: p.x + (q.x - p.x) * t, y: p.y + (q.y - p.y) * t };
+      if (drawing)
+        ops.push({ kind: 'line', x1: p.x, y1: p.y, x2: next.x, y2: next.y, color, width: 1.5 });
+      p = next;
+      len -= step;
+      left -= step;
+      if (left <= 1e-6) {
+        drawing = !drawing;
+        left = drawing ? on : off;
+      }
+    }
   }
   return ops;
 }

@@ -1,6 +1,9 @@
 import {
   type Alignment,
   type ArrowElement,
+  type ArrowGeometry,
+  arrowBox,
+  arrowGeometry,
   addScene,
   alignRects,
   applyTemplate,
@@ -38,7 +41,6 @@ import {
   refreshArrows,
   resizeFromCorner,
   screenToWorld,
-  segmentBox,
   sendToBack,
   snapRect,
   storyboardOf,
@@ -75,7 +77,7 @@ import { canvasActions, duplicateInStore } from '../commands/board-actions.ts';
 import { useSession } from '../lib/session.tsx';
 import { queueSeeds } from '../routes/seed-queue.tsx';
 import { accessNotices } from './access-notices.ts';
-import { ArrowLayer } from './arrows.tsx';
+import { ArrowLayer, ArrowStyleButtons } from './arrows.tsx';
 import { canRenameBoard, createBoard, setBoardCover } from './boards.ts';
 import {
   type CanvasTemplate,
@@ -271,8 +273,7 @@ export function Canvas({
   const liveRect = useCallback(
     (el: Element): Rect => {
       if (el.type !== 'arrow') return store.rectOf(el);
-      const { a, b } = arrowEnds(el, cardRect);
-      return segmentBox(a, b);
+      return arrowBox(arrowGeometry(el, cardRect));
     },
     [store, cardRect],
   );
@@ -1671,7 +1672,7 @@ export function Canvas({
   // Where each arrow is drawn now, following the cards being dragged.
   // biome-ignore lint/correctness/useExhaustiveDependencies: sizeVersion invalidates measured heights
   const arrowEndsById = useMemo(() => {
-    const out = new Map<string, { a: Point; b: Point }>();
+    const out = new Map<string, ArrowGeometry>();
     if (arrows.length === 0) return out;
     const { moving, offset } = overlay;
     const shifted = (id: string) => {
@@ -1684,7 +1685,13 @@ export function Canvas({
         moved && !(end.elementId && cardRect(end.elementId))
           ? { ...end, x: end.x + offset.dx, y: end.y + offset.dy }
           : end;
-      out.set(arrow.id, arrowEnds({ from: shift(arrow.from), to: shift(arrow.to) }, shifted));
+      out.set(
+        arrow.id,
+        arrowGeometry(
+          { from: shift(arrow.from), to: shift(arrow.to), path: arrow.path },
+          shifted,
+        ),
+      );
     }
     return out;
   }, [arrows, overlay, cardRect, sizeVersion]);
@@ -2163,40 +2170,16 @@ export function Canvas({
             onTags={(x, y) => setTagging({ x, y, ids: [...selection] })}
             extra={
               selectedEls.every((e) => e.type === 'arrow') && (
-                <>
-                  <BarButton
-                    icon="minus"
-                    label={t('board.arrow.dashed')}
-                    active={selectedEls.every((e) => e.type === 'arrow' && e.line === 'dashed')}
-                    onClick={() => {
-                      const dashed = !selectedEls.every(
-                        (e) => e.type === 'arrow' && e.line === 'dashed',
-                      );
-                      updateElements(
-                        doc,
-                        selectedEls.map((e) => ({
-                          id: e.id,
-                          patch: { line: dashed ? 'dashed' : undefined },
-                        })),
-                        LOCAL,
-                      );
-                    }}
-                  />
-                  <BarButton
-                    icon="arrow"
-                    label={t('board.arrow.heads')}
-                    onClick={() => {
-                      const first = selectedEls[0];
-                      const now = first?.type === 'arrow' ? (first.heads ?? 'end') : 'end';
-                      const heads = now === 'end' ? 'both' : now === 'both' ? 'none' : undefined;
-                      updateElements(
-                        doc,
-                        selectedEls.map((e) => ({ id: e.id, patch: { heads } })),
-                        LOCAL,
-                      );
-                    }}
-                  />
-                </>
+                <ArrowStyleButtons
+                  doc={doc}
+                  arrows={selectedEls as ArrowElement[]}
+                  rectOf={cardRect}
+                  onLabel={
+                    selectedEls.length === 1 && !selectedEls[0]?.locked
+                      ? () => setEditing(selectedEls[0]!.id)
+                      : undefined
+                  }
+                />
               )
             }
           />
