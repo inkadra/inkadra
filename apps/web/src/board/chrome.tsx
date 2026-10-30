@@ -77,12 +77,15 @@ export function Toolbar({
   onTool,
   onAdd,
   onCanvas,
+  onScreenplay,
 }: {
   tool: CanvasTool;
   onTool: (tool: CanvasTool) => void;
   onAdd: (type: ToolType) => void;
   /** A board from the Canvas menu: plain or laid out from a template. */
   onCanvas: (template: CanvasTemplate) => void;
+  /** A storyboard made from a screenplay file, after the Canvas menu's Storyboard. */
+  onScreenplay?: () => void;
 }) {
   const { t } = useTranslation();
   return (
@@ -148,7 +151,7 @@ export function Toolbar({
         className="toolbar__group toolbar__group--canvas"
         aria-label={t('board.canvasMenu.hint')}
       >
-        <CanvasMenuButton onCanvas={onCanvas} />
+        <CanvasMenuButton onCanvas={onCanvas} onScreenplay={onScreenplay} />
       </fieldset>
     </div>
   );
@@ -158,7 +161,13 @@ export function Toolbar({
  * The primary action at the end of the bar: a menu of the canvas types to insert, each in its
  * content-kind colour. The menu sits outside the bar, whose tools scroll sideways on phones.
  */
-function CanvasMenuButton({ onCanvas }: { onCanvas: (template: CanvasTemplate) => void }) {
+function CanvasMenuButton({
+  onCanvas,
+  onScreenplay,
+}: {
+  onCanvas: (template: CanvasTemplate) => void;
+  onScreenplay?: (() => void) | undefined;
+}) {
   const { t } = useTranslation();
   const tooltipId = useId();
   const button = useRef<HTMLButtonElement>(null);
@@ -206,12 +215,24 @@ function CanvasMenuButton({ onCanvas }: { onCanvas: (template: CanvasTemplate) =
             className="menu--canvas"
             style={{ right: at.right, bottom: at.bottom }}
             anchor={button}
-            items={CANVAS_TEMPLATES.map((template) => ({
-              label: canvasTemplateLabel(template, t),
-              icon: canvasTemplateIcon(template),
-              kind: template,
-              action: () => onCanvas(template),
-            }))}
+            items={CANVAS_TEMPLATES.flatMap((template): MenuItem[] => [
+              {
+                label: canvasTemplateLabel(template, t),
+                icon: canvasTemplateIcon(template),
+                kind: template,
+                action: () => onCanvas(template),
+              },
+              ...(template === 'storyboard' && onScreenplay
+                ? [
+                    {
+                      label: t('screenplay.fromScreenplay'),
+                      icon: 'upload' as const,
+                      kind: 'storyboard' as const,
+                      action: onScreenplay,
+                    },
+                  ]
+                : []),
+            ])}
             onClose={(reason) => {
               setAt(null);
               if (reason === 'escape') button.current?.focus();

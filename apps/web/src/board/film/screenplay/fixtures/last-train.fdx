@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no" ?>
+<FinalDraft DocumentType="Script" Template="No" Version="5">
+  <Content>
+    <Paragraph Type="Scene Heading" Number="1">
+      <SceneProperties Length="1" Page="1" Title="">
+        <Summary>
+          <Paragraph Alignment="Left"><Text>Mara misses the last train and meets Leo.</Text></Paragraph>
+        </Summary>
+      </SceneProperties>
+      <Text>EXT. CENTRAL STATION - NIGHT</Text>
+    </Paragraph>
+    <Paragraph Type="Action">
+      <Text>Rain hammers the glass roof. </Text><Text Style="Bold">MARA</Text><Text> runs across the empty concourse.</Text>
+    </Paragraph>
+    <Paragraph Type="Character"><Text>MARA</Text></Paragraph>
+    <Paragraph Type="Parenthetical"><Text>(out of breath)</Text></Paragraph>
+    <Paragraph Type="Dialogue"><Text>No. No, no, no.</Text></Paragraph>
+    <Paragraph Type="Character"><Text>LEO (O.S.)</Text></Paragraph>
+    <Paragraph Type="Dialogue"><Text>It left four minutes early.</Text></Paragraph>
+    <Paragraph Type="Shot"><Text>CLOSE ON THE DEPARTURES BOARD</Text></Paragraph>
+    <Paragraph Type="Transition"><Text>CUT TO:</Text></Paragraph>
+    <Paragraph Type="Scene Heading" Number="2">
+      <Text>INT. GUARD BOOTH - CONTINUOUS</Text>
+    </Paragraph>
+    <Paragraph Type="Action"><Text>A tiny room: a heater, a radio, a chessboard mid-game.</Text></Paragraph>
+    <Paragraph>
+      <DualDialogue>
+        <Paragraph Type="Character"><Text>MARA</Text></Paragraph>
+        <Paragraph Type="Dialogue"><Text>Is there a bus?</Text></Paragraph>
+        <Paragraph Type="Character"><Text>LEO</Text></Paragraph>
+        <Paragraph Type="Dialogue"><Text>There is me, and there is tea.</Text></Paragraph>
+      </DualDialogue>
+    </Paragraph>
+    <Paragraph Type="Scene Heading" Number="3">
+      <Text>EXT. PLATFORM 4 - DAWN</Text>
+    </Paragraph>
+    <Paragraph Type="Action"><Text>The first train glides in, empty and gold in the low sun.</Text></Paragraph>
+  </Content>
+  <TitlePage>
+    <Content>
+      <Paragraph Alignment="Center"><Text>LAST TRAIN</Text></Paragraph>
+      <Paragraph Alignment="Center"><Text>written by</Text></Paragraph>
+      <Paragraph Alignment="Center"><Text>Nora Vidal</Text></Paragraph>
+    </Content>
+  </TitlePage>
+</FinalDraft>

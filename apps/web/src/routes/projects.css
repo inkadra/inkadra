@@ -360,3 +360,26 @@
   color: var(--ink-text-muted);
   cursor: default;
 }
+/* Optional screenplay for the template's storyboard, under the templates. */
+.project-setup__script {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid var(--ink-border-default);
+  border-radius: 10px;
+}
+.project-setup__script-text {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+  min-width: 0;
+}
+.project-setup__script-text strong {
+  font-size: 12px;
+}
+.project-setup__script-text small {
+  font-size: 11px;
+  line-height: 1.5;
+}

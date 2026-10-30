@@ -21,7 +21,7 @@ import { renameProject } from '../routes/projects.ts';
 import { boardPath, fetchBoard, renameBoard, useProjectBoards } from './boards.ts';
 import { Canvas } from './Canvas.tsx';
 import { CommentsButton, useCardLabel } from './CommentsPanel.tsx';
-import { ContextMenu } from './chrome.tsx';
+import { ContextMenu, Toast } from './chrome.tsx';
 import { type BoardConnection, useBoardConnection } from './connection.ts';
 import { DeniedState } from './DeniedState.tsx';
 import { ExportDialog, type ExportSource } from './export/ExportDialog.tsx';
@@ -31,8 +31,15 @@ import { MoodboardView } from './film/MoodboardView.tsx';
 import { ScheduleView } from './film/ScheduleView.tsx';
 import { ShotList } from './film/ShotList.tsx';
 import { StoryboardView } from './film/StoryboardView.tsx';
+import { createScreenplayStoryboard } from './film/screenplay/new-storyboard.ts';
+import { applyImport, type ImportPlan } from './film/screenplay/plan.ts';
+import {
+  type ImportTarget,
+  ScreenplayImportDialog,
+} from './film/screenplay/ScreenplayImportDialog.tsx';
 import { boardPeople, EditingLine, editingPeople, SyncStatus } from './header-status.tsx';
 import { RestoredToast } from './RestoredToast.tsx';
+import { LOCAL } from './store.ts';
 import { type VersionPreview, VersionsDialog } from './VersionsDialog.tsx';
 import {
   type BoardView,
@@ -231,6 +238,10 @@ function BoardScreen({
   const exportSelection = useCallback(() => openExport('canvas', 'selection'), [openExport]);
   const exportStoryboard = useCallback(() => openExport('storyboard'), [openExport]);
   const exportShotList = useCallback(() => openExport('shotlist'), [openExport]);
+  const [importingScript, setImportingScript] = useState(false);
+  const openScriptImport = useCallback(() => setImportingScript(true), []);
+  const [scriptToast, setScriptToast] = useState<string | null>(null);
+  const closeScriptToast = useCallback(() => setScriptToast(null), []);
   const [preview, setPreview] = useState<VersionPreview | null>(null);
   const rememberSelection = useCallback((ids: ReadonlySet<string>) => {
     liveSelection.current = ids;
@@ -359,6 +370,35 @@ function BoardScreen({
     [boardId, rootBoardId, projectName, detail, boards],
   );
   const crumbTitles = useMemo(() => crumbs.map((c) => c.title), [crumbs]);
+
+  /** Appends to this storyboard as one undo step, or makes a new one beside it and opens it. */
+  const importScript = useCallback(
+    async (plan: ImportPlan, target: ImportTarget) => {
+      if (!conn || !user) return;
+      if (target === 'append') {
+        conn.store.undo.stopCapturing();
+        applyImport(conn.store.doc, plan, { userId: user.id, origin: LOCAL });
+        conn.store.undo.stopCapturing();
+        // The storyboard has no undo shortcut of its own: the toast takes the import back.
+        setScriptToast(
+          t('screenplay.imported', {
+            scenes: t('screenplay.scenes', { count: plan.scenes.length }),
+            frames: t('screenplay.framesCount', { count: plan.frameCount }),
+          }),
+        );
+        return;
+      }
+      const board = await createScreenplayStoryboard(
+        projectId,
+        detail?.parentBoardId ?? rootBoardId ?? boardId,
+        plan,
+        t('screenplay.untitled'),
+        user.id,
+      );
+      void openBoard(board.id);
+    },
+    [conn, user, projectId, detail, rootBoardId, boardId, t, openBoard],
+  );
 
   const selfId = user?.id ?? null;
 
@@ -547,6 +587,7 @@ function BoardScreen({
         userId={user.id}
         readOnly={!!preview || !editable}
         onExport={exportStoryboard}
+        onImportScript={openScriptImport}
       />
     ) : view === 'shotlist' ? (
       <ShotList
@@ -626,6 +667,20 @@ function BoardScreen({
       {versions}
       {content}
       {shareDialog}
+      {importingScript && editable && !preview && (
+        <ScreenplayImportDialog
+          targets={['append', 'new']}
+          onImport={importScript}
+          onClose={() => setImportingScript(false)}
+        />
+      )}
+      {scriptToast && (
+        <Toast
+          text={scriptToast}
+          onUndo={() => conn.store.undo.undo()}
+          onClose={closeScriptToast}
+        />
+      )}
       {exporting && (
         <ExportDialog
           source={exporting.source}

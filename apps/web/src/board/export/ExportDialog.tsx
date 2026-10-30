@@ -2,7 +2,7 @@
 import type { Rect } from '@inkadra/canvas-core';
 import { type Board, DEFAULT_EXPORT_PREFERENCES, type ExportSettings } from '@inkadra/shared';
 import { Button, Dialog, DialogActions } from '@inkadra/ui';
-import { type ReactNode, useEffect, useId, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { getReviews } from '../review-store.ts';
 import type { BoardStore } from '../store.ts';
@@ -14,6 +14,7 @@ import type {
   ExportRequest,
   ExportWhat,
 } from './engine.ts';
+import { Check, Field, Segmented } from './fields.tsx';
 import { FRAMES_PER_PAGE, type FramesPerPage, type Orientation, type PaperSize } from './layout.ts';
 import {
   fetchExportSettings,
@@ -425,95 +426,6 @@ export function ExportDialog(props: ExportDialogProps) {
         </DialogActions>
       </Dialog>
     </div>
-  );
-}
-
-function Field({ label, children }: { label: string; children: (id: string) => ReactNode }) {
-  const id = useId();
-  return (
-    <div className="export__field">
-      <label className="export__label" htmlFor={id}>
-        {label}
-      </label>
-      {children(id)}
-    </div>
-  );
-}
-
-function Segmented({
-  label,
-  hideLabel,
-  value,
-  options,
-  onChange,
-  hint,
-}: {
-  label: string;
-  hideLabel?: boolean;
-  value: string;
-  options: Array<[string, string]>;
-  onChange: (value: string) => void;
-  hint?: string | undefined;
-}) {
-  const hintId = useId();
-  const name = useId();
-  // Native radios: one tab stop and arrow keys come with them; the labels look like segments.
-  return (
-    <fieldset
-      className="export__field export__seg-field"
-      aria-describedby={hint ? hintId : undefined}
-    >
-      <legend className={hideLabel ? 'ink-sr-only' : 'export__label'}>{label}</legend>
-      <div className="export__seg">
-        {options.map(([v, text]) => (
-          <label key={v} className="export__seg-btn">
-            <input
-              type="radio"
-              className="export__seg-input"
-              name={name}
-              value={v}
-              checked={value === v}
-              onChange={() => onChange(v)}
-            />
-            {text}
-          </label>
-        ))}
-      </div>
-      {hint && (
-        <p id={hintId} className="export__hint">
-          {hint}
-        </p>
-      )}
-    </fieldset>
-  );
-}
-
-function Check({
-  checked,
-  disabled,
-  onChange,
-  hint,
-  children,
-}: {
-  checked: boolean;
-  disabled?: boolean;
-  onChange: (value: boolean) => void;
-  hint?: string | undefined;
-  children: ReactNode;
-}) {
-  return (
-    <label className="export__check">
-      <input
-        type="checkbox"
-        checked={checked}
-        disabled={disabled}
-        onChange={(e) => onChange(e.target.checked)}
-      />
-      <span>
-        {children}
-        {hint && <span className="export__hint">{hint}</span>}
-      </span>
-    </label>
   );
 }
 

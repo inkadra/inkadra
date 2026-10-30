@@ -346,8 +346,10 @@ export function Dialog({
       ref={ref}
       className="ink-dialog"
       aria-labelledby={titleId}
-      onClose={onClose}
-      onCancel={onCancel}
+      // React hands a dialog's close and cancel to the dialogs around it too: a dialog opened
+      // from another one must not close that one.
+      onClose={(event) => event.target === event.currentTarget && onClose()}
+      onCancel={(event) => event.target === event.currentTarget && onCancel?.(event)}
     >
       <h2 id={titleId} className="ink-dialog__title">
         {title}
