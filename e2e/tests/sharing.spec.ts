@@ -1,4 +1,5 @@
 import { type Browser, expect, type Page, test } from '@playwright/test';
+import { chooseSelect } from '../helpers/select.ts';
 
 // Runs after first-run.spec.ts: the administrator and the project "Ultima corsa" exist.
 test.describe.configure({ mode: 'serial' });
@@ -57,9 +58,13 @@ test('the owner makes an invitation link for the project', async ({ page }) => {
   await expect(dialog.getByText('Giulia Bianchi (tu)')).toBeVisible();
   await expect(dialog.getByText('Chi inviti qui entra in tutto il progetto.')).toBeVisible();
   // Links give at most editor: owners are named from the people list (decision 0019).
-  await expect(
-    dialog.getByRole('combobox', { name: 'Ruolo per chi usa il link' }).locator('option'),
-  ).toHaveText(['Lettore', 'Commentatore', 'Editor']);
+  await dialog.getByRole('combobox', { name: 'Ruolo per chi usa il link' }).click();
+  await expect(page.getByRole('listbox').getByRole('option')).toHaveText([
+    'Lettore',
+    'Commentatore',
+    'Editor',
+  ]);
+  await page.keyboard.press('Escape');
   await dialog.getByRole('button', { name: 'Crea link' }).click();
   const link = dialog.getByRole('textbox', { name: 'Link d’invito' });
   await expect(link).toHaveValue(/\/join\/[A-Za-z0-9_-]+$/);
@@ -135,8 +140,8 @@ test('a role change reaches a board that is already open', async ({ page, browse
   await page.getByRole('button', { name: 'Condividi' }).click();
   const dialog = page.getByRole('dialog');
   const role = dialog.getByRole('combobox', { name: `Ruolo di ${guest.name}` });
-  await role.selectOption('editor');
-  await expect(role).toHaveValue('editor');
+  await chooseSelect(role, 'editor');
+  await expect(role).toHaveAttribute('data-value', 'editor');
 
   // Without a reload, the person is told and can write.
   await expect(other.getByText('ora puoi modificare questa board')).toBeVisible({
@@ -153,7 +158,7 @@ test('a role change reaches a board that is already open', async ({ page, browse
   await expect(page.locator('[data-type="note"]', { hasText: 'Nota di Paolo' })).toBeVisible();
 
   // And back: the open board turns read-only again, with a notice.
-  await role.selectOption('viewer');
+  await chooseSelect(role, 'viewer');
   await expect(other.getByText('ora puoi solo guardare questa board')).toBeVisible({
     timeout: 45_000,
   });

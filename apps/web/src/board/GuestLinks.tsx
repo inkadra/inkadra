@@ -5,7 +5,7 @@ import type {
   ShareLink,
   ShareLinkPicks,
 } from '@inkadra/shared';
-import { Button, Icon, IconButton } from '@inkadra/ui';
+import { Button, Icon, IconButton, Select } from '@inkadra/ui';
 import { type FormEvent, useCallback, useEffect, useId, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api, RequestError } from '../lib/api.ts';
@@ -164,19 +164,19 @@ function RoleSelect({
   return (
     <div className="guest-links__field">
       <label htmlFor={id}>{label}</label>
-      <select
+      <Select
         id={id}
         className="guest-links__select"
         value={value}
         disabled={disabled}
-        onChange={(e) => onChange(e.target.value as GuestRole)}
+        onChange={(e) => onChange(e as GuestRole)}
       >
         {GUEST_ROLES.map((r) => (
           <option key={r} value={r}>
             {t(`guestLinks.roles.${r}`)}
           </option>
         ))}
-      </select>
+      </Select>
     </div>
   );
 }
@@ -241,7 +241,7 @@ function CreateForm({
   const opener = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (open) first.current?.querySelector('select')?.focus();
+    if (open) first.current?.querySelector<HTMLButtonElement>('.ink-select')?.focus();
   }, [open]);
 
   const reset = () => {
@@ -301,11 +301,11 @@ function CreateForm({
         <RoleSelect value={role} onChange={setRole} label={t('guestLinks.role')} />
         <div className="guest-links__field">
           <label htmlFor={ids.expiry}>{t('guestLinks.expiry')}</label>
-          <select
+          <Select
             id={ids.expiry}
             className="guest-links__select"
             value={days}
-            onChange={(e) => setDays(Number(e.target.value))}
+            onChange={(e) => setDays(Number(e))}
           >
             <option value={0}>{t('guestLinks.never')}</option>
             {EXPIRY_DAYS.map((d) => (
@@ -313,7 +313,7 @@ function CreateForm({
                 {t('share.link.days', { count: d })}
               </option>
             ))}
-          </select>
+          </Select>
         </div>
         <div className="guest-links__field guest-links__field--wide">
           <label htmlFor={ids.label}>{t('guestLinks.label')}</label>
@@ -595,7 +595,7 @@ function EditForm({
   const box = useRef<HTMLFormElement>(null);
 
   useEffect(() => {
-    box.current?.querySelector<HTMLElement>('select:not(:disabled), input')?.focus();
+    box.current?.querySelector<HTMLElement>('.ink-select:not(:disabled), input')?.focus();
   }, []);
 
   async function submit(e: FormEvent) {
@@ -639,13 +639,13 @@ function EditForm({
         />
         <div className="guest-links__field">
           <label htmlFor={ids.expiry}>{t('guestLinks.expiry')}</label>
-          <select
+          <Select
             id={ids.expiry}
             className="guest-links__select"
             disabled={!scope}
             value={String(draft.expiry)}
             onChange={(e) => {
-              const v = e.target.value;
+              const v = e;
               set({ expiry: v === 'keep' || v === 'none' ? v : Number(v) });
             }}
           >
@@ -656,7 +656,7 @@ function EditForm({
                 {t('guestLinks.fromNow', { count: d })}
               </option>
             ))}
-          </select>
+          </Select>
         </div>
         <div className="guest-links__field guest-links__field--wide">
           <label htmlFor={ids.label}>{t('guestLinks.label')}</label>
@@ -693,13 +693,13 @@ function EditForm({
       />
       <div className="guest-links__field guest-links__field--wide">
         <label htmlFor={ids.pwMode}>{t('guestLinks.password')}</label>
-        <select
+        <Select
           id={ids.pwMode}
           className="guest-links__select"
           disabled={!scope}
           value={draft.password.mode}
           onChange={(e) =>
-            set({ password: { mode: e.target.value as LinkDraft['password']['mode'], value: '' } })
+            set({ password: { mode: e as LinkDraft['password']['mode'], value: '' } })
           }
         >
           <option value="keep">
@@ -709,7 +709,7 @@ function EditForm({
             {link.hasPassword ? t('guestLinks.passwordChange') : t('guestLinks.passwordAdd')}
           </option>
           {link.hasPassword && <option value="remove">{t('guestLinks.passwordRemove')}</option>}
-        </select>
+        </Select>
         {draft.password.mode === 'set' && (
           <>
             <label htmlFor={ids.password} className="guest-links__sr">

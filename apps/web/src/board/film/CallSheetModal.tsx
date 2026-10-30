@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 import type { Asset, ShootingDay } from '@inkadra/shared';
-import { Button, Dialog, DialogActions } from '@inkadra/ui';
+import { Button, Dialog, DialogActions, Select } from '@inkadra/ui';
 import { type ReactNode, useEffect, useId, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Field } from '../export/fields.tsx';
@@ -121,19 +121,19 @@ export function CallSheetModal({
           <div className="call-sheet__controls">
             <Field label={t('schedule.date')}>
               {(id) => (
-                <select
+                <Select
                   id={id}
                   className="ink-input"
                   value={day?.id ?? ''}
                   disabled={!day}
-                  onChange={(e) => setDayId(e.target.value)}
+                  onChange={(e) => setDayId(e)}
                 >
                   {ordered.map((item, n) => (
                     <option key={item.id} value={item.id}>
                       {[t('schedule.dayNumber', { n: n + 1 }), shortDate(item.date)].join(' · ')}
                     </option>
                   ))}
-                </select>
+                </Select>
               )}
             </Field>
             <section className="call-sheet__group" aria-labelledby={groupId}>

@@ -299,7 +299,7 @@
   /* As the context menus. */
   background: var(--ink-surface-1);
   border: 1px solid var(--ink-border-subtle);
-  box-shadow: 0 8px 30px #0003;
+  box-shadow: var(--ink-shadow-menu);
 }
 .share__expiry-field {
   display: flex;

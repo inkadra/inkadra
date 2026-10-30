@@ -7,7 +7,7 @@ import {
   SHOT_SIZES,
 } from '@inkadra/doc-schema';
 import type { SearchResult } from '@inkadra/shared';
-import { Button, Icon, IconButton } from '@inkadra/ui';
+import { Button, Icon, IconButton, Select } from '@inkadra/ui';
 import { useContext, useEffect, useId, useRef, useState, useSyncExternalStore } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useRegisterActions } from '../../commands/actions.ts';
@@ -147,12 +147,12 @@ export function FramePanel({
           />
           <div className="film-field">
             <label htmlFor={`aspect-${frame.id}`}>{t('film.aspect.label')}</label>
-            <select
+            <Select
               id={`aspect-${frame.id}`}
               className="ink-input"
               value={frame.aspect ?? ''}
               disabled={readOnly}
-              onChange={(e) => set({ aspect: (e.target.value || undefined) as AspectRatio })}
+              onChange={(e) => set({ aspect: (e || undefined) as AspectRatio })}
             >
               <option value="">
                 {t('film.aspect.board', { ratio: aspectLabel(boardAspect) })}
@@ -162,7 +162,7 @@ export function FramePanel({
                   {aspectLabel(r)}
                 </option>
               ))}
-            </select>
+            </Select>
           </div>
         </div>
         <TextField

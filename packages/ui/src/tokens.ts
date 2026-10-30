@@ -162,3 +162,9 @@ export const layers = {
   'layer-viewer': '1000',
   'layer-notification': '1100',
 } as const;
+
+/** Floating menus share one elevation in both themes; sheets and dialogs dim the page alike. */
+export const effects = {
+  'shadow-menu': '0 8px 30px #0003',
+  scrim: 'rgba(10, 10, 12, 0.5)',
+} as const;

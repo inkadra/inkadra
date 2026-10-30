@@ -1,4 +1,5 @@
 import { FRAME_STATUSES, type FrameStatus } from '@inkadra/doc-schema';
+import { Select } from '@inkadra/ui';
 import { type KeyboardEvent, useId, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { ShotDisplayStatus } from './film-status.ts';
@@ -100,14 +101,15 @@ export function PresetField({
   const [custom, setCustom] = useState(!isCode);
   const showText = custom || !isCode;
   const select = (
-    <select
+    <Select
+      variant="quiet"
       id={id}
       className="ink-input film-field__select"
       value={showText ? CUSTOM : (value ?? '')}
       disabled={readOnly}
       aria-label={compact ? label : undefined}
       onChange={(e) => {
-        const next = e.target.value;
+        const next = e;
         if (next === CUSTOM) {
           setCustom(true);
           return;
@@ -123,7 +125,7 @@ export function PresetField({
         </option>
       ))}
       <option value={CUSTOM}>{t('film.frame.custom')}</option>
-    </select>
+    </Select>
   );
   const text = showText && (
     <input
@@ -182,22 +184,22 @@ export function StatusSelect({
   const { t } = useTranslation();
   const current = value ?? 'draft';
   return (
-    <select
+    <Select
+      variant="quiet"
       className={`ink-input film-status film-status--${current}`}
+      options={FRAME_STATUSES.map((s) => ({
+        value: s,
+        label: t(`film.status.${s}`),
+        icon: <span className={`ink-select__dot film-status--${s}`} />,
+      }))}
       value={current}
       disabled={readOnly}
       aria-label={label}
       onChange={(e) => {
-        const next = e.target.value as FrameStatus;
+        const next = e as FrameStatus;
         onCommit(next === 'draft' ? undefined : next);
       }}
-    >
-      {FRAME_STATUSES.map((s) => (
-        <option key={s} value={s}>
-          {t(`film.status.${s}`)}
-        </option>
-      ))}
-    </select>
+    ></Select>
   );
 }
 

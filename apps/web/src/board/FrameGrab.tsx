@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 import { type Element, hiddenFromGuests, type VideoFrameSource } from '@inkadra/doc-schema';
 import type { Asset } from '@inkadra/shared';
-import { Icon } from '@inkadra/ui';
+import { Icon, Select } from '@inkadra/ui';
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -96,7 +96,7 @@ export function FrameGrab({
     ((external && element.type === 'link' && !!element.imageAssetId && asset?.kind === 'image') ||
       asset?.kind === 'video');
   useEffect(() => {
-    if (open) panel.current?.querySelector<HTMLSelectElement>('select')?.focus();
+    if (open) panel.current?.querySelector<HTMLButtonElement>('.ink-select')?.focus();
   }, [open]);
   if (!available) return null;
 
@@ -282,13 +282,14 @@ export function FrameGrab({
                   />
                 </label>
               )}
+              {/* biome-ignore lint/a11y/noLabelWithoutControl: Select renders a labelable button. */}
               <label>
                 {t('frameGrab.frame')}
-                <select
+                <Select
                   className="ink-input"
                   value={target}
                   disabled={busy}
-                  onChange={(e) => setTarget(e.target.value)}
+                  onChange={(e) => setTarget(e)}
                 >
                   <option value="">{t('frameGrab.choose')}</option>
                   {frames.map((f) => (
@@ -296,7 +297,7 @@ export function FrameGrab({
                       {f.label}
                     </option>
                   ))}
-                </select>
+                </Select>
               </label>
               {sourceHidden && target && !targetHidden && (
                 <p className="ink-muted">{t('frameGrab.hiddenDestination')}</p>

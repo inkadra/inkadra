@@ -10,7 +10,7 @@ import {
   updateElement,
 } from '@inkadra/canvas-core';
 import { SHOT_ANGLES, SHOT_MOVEMENTS, SHOT_SIZES } from '@inkadra/doc-schema';
-import { Button, EmptyState, Icon } from '@inkadra/ui';
+import { Button, EmptyState, Icon, Select } from '@inkadra/ui';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useClassifications } from '../../lib/classifications.ts';
@@ -467,11 +467,11 @@ export function ShotList({
   // Filters, grouping, sorting and export sit in the bar; on a phone they fold into View options.
   const filterControls = (
     <>
-      <select
+      <Select
         className="ink-input"
         value={selectedScene}
         aria-label={t('film.list.groupScene')}
-        onChange={(e) => setSelectedScene(e.target.value)}
+        onChange={(e) => setSelectedScene(e)}
       >
         <option value="">{t('film.list.allScenes')}</option>
         {scenes.map((s) => (
@@ -480,14 +480,14 @@ export function ShotList({
             {s.title || slugline(s)}
           </option>
         ))}
-      </select>
+      </Select>
 
       {allLocations.length > 0 && (
-        <select
+        <Select
           className="ink-input"
           value={selectedLocation}
           aria-label={t('film.list.groupLocation')}
-          onChange={(e) => setSelectedLocation(e.target.value)}
+          onChange={(e) => setSelectedLocation(e)}
         >
           <option value="">{t('film.list.allLocations')}</option>
           {allLocations.map((l) => (
@@ -495,15 +495,15 @@ export function ShotList({
               {l}
             </option>
           ))}
-        </select>
+        </Select>
       )}
 
       {allCast.length > 0 && (
-        <select
+        <Select
           className="ink-input"
           value={selectedCast}
           aria-label={t('film.frame.cast')}
-          onChange={(e) => setSelectedCast(e.target.value)}
+          onChange={(e) => setSelectedCast(e)}
         >
           <option value="">{t('film.list.allCast')}</option>
           {allCast.map((c) => (
@@ -511,14 +511,14 @@ export function ShotList({
               {c}
             </option>
           ))}
-        </select>
+        </Select>
       )}
 
-      <select
+      <Select
         className="ink-input"
         value={status}
         aria-label={t('film.frame.status')}
-        onChange={(e) => setStatus(e.target.value as ShotDisplayStatus | '')}
+        onChange={(e) => setStatus(e as ShotDisplayStatus | '')}
       >
         <option value="">{t('film.list.allStatuses')}</option>
         {SHOT_DISPLAY_STATUSES.map((s) => (
@@ -526,13 +526,13 @@ export function ShotList({
             {t(`film.status.${s}`)}
           </option>
         ))}
-      </select>
+      </Select>
 
-      <select
+      <Select
         className="ink-input"
         value={groupBy}
         aria-label={t('film.list.groupBy')}
-        onChange={(e) => setGroupBy(e.target.value as 'scene' | 'location' | 'status' | 'none')}
+        onChange={(e) => setGroupBy(e as 'scene' | 'location' | 'status' | 'none')}
       >
         <option value="scene">
           {t('film.list.groupBy')}: {t('film.list.groupScene')}
@@ -546,13 +546,13 @@ export function ShotList({
         <option value="none">
           {t('film.list.groupBy')}: {t('film.list.groupNone')}
         </option>
-      </select>
+      </Select>
 
-      <select
+      <Select
         className="ink-input"
         value={sortBy}
         aria-label={t('film.list.sortBy')}
-        onChange={(e) => setSortBy(e.target.value as 'manual' | 'label' | 'duration')}
+        onChange={(e) => setSortBy(e as 'manual' | 'label' | 'duration')}
       >
         <option value="manual">
           {t('film.list.sortBy')}: {t('film.list.sortManual')}
@@ -563,7 +563,7 @@ export function ShotList({
         <option value="duration">
           {t('film.list.sortBy')}: {t('film.list.sortDuration')}
         </option>
-      </select>
+      </Select>
     </>
   );
   const exportButton = (
@@ -1117,13 +1117,12 @@ export function ShotList({
             className="shots__bulk-toolbar"
           >
             <b>{t('film.list.selectedCount', { count: visibleSelectedIds.length })}</b>
-            <select
+            <Select
               aria-label={t('film.list.changeStatus')}
-              defaultValue=""
+              value=""
               onChange={(e) => {
-                const nextStatus = e.target.value as ShotDisplayStatus;
+                const nextStatus = e as ShotDisplayStatus;
                 if (nextStatus) bulkChangeStatus(nextStatus);
-                e.target.value = '';
               }}
             >
               <option value="" disabled>
@@ -1134,16 +1133,15 @@ export function ShotList({
                   {t(`film.status.${s}`)}
                 </option>
               ))}
-            </select>
+            </Select>
 
             {scenes.length > 0 && (
-              <select
+              <Select
                 aria-label={t('film.list.moveToScene')}
-                defaultValue=""
+                value=""
                 onChange={(e) => {
-                  const sceneId = e.target.value;
+                  const sceneId = e;
                   if (sceneId) bulkMoveToScene(sceneId);
-                  e.target.value = '';
                 }}
               >
                 <option value="" disabled>
@@ -1155,7 +1153,7 @@ export function ShotList({
                     {s.title || slugline(s)}
                   </option>
                 ))}
-              </select>
+              </Select>
             )}
 
             <button

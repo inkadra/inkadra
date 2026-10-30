@@ -1,4 +1,5 @@
 import { expect, type Page, test } from '@playwright/test';
+import { chooseSelect } from '../helpers/select.ts';
 
 // Runs after first-run.spec.ts, on the same instance: the administrator and the project exist.
 test.describe.configure({ mode: 'serial' });
@@ -39,8 +40,24 @@ test('a storyboard holds scenes and frames, the shot list shows the same frames'
   await expect(scene.locator('.story__tile')).toHaveCount(3);
   await scene.getByLabel('Luogo', { exact: true }).fill('Stazione');
   await scene.getByLabel('Luogo', { exact: true }).press('Enter');
-  await scene.getByLabel('Interno o esterno').selectOption('ext');
-  await scene.getByLabel('Momento', { exact: true }).selectOption('night');
+  await chooseSelect(scene.getByLabel('Interno o esterno'), 'ext');
+  await chooseSelect(scene.getByLabel('Momento', { exact: true }), 'night');
+  if (process.env.SELECT_SCREENSHOTS) {
+    await page.screenshot({ path: '../docs/screenshots/ui-select/storyboard-scene-header.png' });
+    const trigger = scene.getByLabel('Interno o esterno');
+    await trigger.click();
+    await page.screenshot({ path: '../docs/screenshots/ui-select/quiet-open-desktop-dark.png' });
+    await page.keyboard.press('Escape');
+    await page.evaluate(() => {
+      document.documentElement.dataset.theme = 'light';
+    });
+    await trigger.click();
+    await page.screenshot({ path: '../docs/screenshots/ui-select/quiet-open-desktop-light.png' });
+    await page.keyboard.press('Escape');
+    await page.evaluate(() => {
+      document.documentElement.dataset.theme = 'dark';
+    });
+  }
 
   await scene.getByRole('button', { name: 'Nuova inquadratura' }).last().click();
   const panel = page.getByRole('complementary', { name: 'Dettagli' });
@@ -48,7 +65,7 @@ test('a storyboard holds scenes and frames, the shot list shows the same frames'
   await panel
     .getByLabel('Azione', { exact: true })
     .fill('Il treno entra, il neon le taglia il viso');
-  await panel.getByLabel('Campo', { exact: true }).selectOption('cu');
+  await chooseSelect(panel.getByLabel('Campo', { exact: true }), 'cu');
   await panel.getByLabel('Durata (s)').fill('4,5');
   await panel.getByLabel('Durata (s)').press('Enter');
   await expect(page.getByText('4 inquadrature · 0:08').first()).toBeVisible();
@@ -76,8 +93,11 @@ test('a storyboard holds scenes and frames, the shot list shows the same frames'
   await page.getByRole('tab', { name: 'Shot list' }).click();
   await expect(page).toHaveURL(/view=shotlist/);
   const row = page.getByRole('row', { name: /1D/ });
+  if (process.env.SELECT_SCREENSHOTS)
+    await page.screenshot({ path: '../docs/screenshots/ui-select/shot-list-cell.png' });
+
   await expect(row.getByLabel('Azione', { exact: true })).toHaveValue(/Il treno entra/);
-  await expect(row.getByLabel('Campo', { exact: true })).toHaveValue('cu');
+  await expect(row.getByLabel('Campo', { exact: true })).toHaveAttribute('data-value', 'cu');
   await expect(page.locator('.shots__scene')).toContainText('EST. STAZIONE – NOTTE');
 
   // The same frame is a card on the canvas view of the board.
@@ -245,7 +265,10 @@ test('shell views use real shots and the call sheet traps and restores focus', a
   const print = dialog.getByRole('button', { name: 'Stampa / esporta' });
   await expect(dialog).toBeVisible();
   await expect(daySelect).toBeEnabled();
-  await expect(daySelect.locator('option')).toHaveCount(1);
+  await daySelect.click();
+  await expect(page.getByRole('listbox').getByRole('option')).toHaveCount(1);
+  await page.keyboard.press('Escape');
+  await expect(dialog).toBeVisible();
   await expect(print).toBeEnabled();
   await expect(
     dialog.getByRole('article', { name: 'Anteprima foglio di lavorazione' }),

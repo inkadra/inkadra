@@ -5,6 +5,7 @@ import { createRoot } from 'react-dom/client';
 import { afterEach, expect, it, vi } from 'vitest';
 import * as Y from 'yjs';
 import mockEn from '../../i18n/en.json';
+import { chooseSelect } from '../../test/select.ts';
 import { BoardStore } from '../store.ts';
 import { ShotList } from './ShotList.tsx';
 
@@ -127,15 +128,14 @@ it('supports row multi-selection and bulk actions (change status and delete)', a
   expect(toolbar?.textContent).toContain('2 selected');
 
   // Change status to 'shot'
-  const statusSelect = toolbar?.querySelector<HTMLSelectElement>(
-    'select[aria-label="Change status"]',
+  const statusSelect = toolbar?.querySelector<HTMLButtonElement>(
+    '.ink-select[aria-label="Change status"]',
   );
   expect(statusSelect).not.toBeNull();
 
   await act(async () => {
     if (statusSelect) {
-      statusSelect.value = 'shot';
-      statusSelect.dispatchEvent(new Event('change', { bubbles: true }));
+      chooseSelect(statusSelect, 'shot');
     }
   });
 
@@ -175,12 +175,11 @@ it('applies bulk actions only to visible rows, prunes selection on filter change
   expect(toolbar?.textContent).toContain('2 selected');
 
   // Filter to show only ready status (frame 1B)
-  const filterSelect = host.querySelector<HTMLSelectElement>('select[aria-label="Status"]');
+  const filterSelect = host.querySelector<HTMLButtonElement>('.ink-select[aria-label="Status"]');
   expect(filterSelect).not.toBeNull();
   await act(async () => {
     if (filterSelect) {
-      filterSelect.value = 'ready';
-      filterSelect.dispatchEvent(new Event('change', { bubbles: true }));
+      chooseSelect(filterSelect, 'ready');
     }
   });
 

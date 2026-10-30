@@ -7,7 +7,7 @@ import {
   type ShootingDay,
   type ShootingDayInput,
 } from '@inkadra/shared';
-import { Button, Dialog, DialogActions, EmptyState } from '@inkadra/ui';
+import { Button, Dialog, DialogActions, EmptyState, Select } from '@inkadra/ui';
 import {
   type CSSProperties,
   useEffect,
@@ -829,21 +829,20 @@ function DayInspector({
           <div className="schedule__block-editor" key={block.id}>
             {block.shotId && <p className="schedule__block-shot">{shotTitle(block.shotId)}</p>}
             <div className="schedule__fields">
+              {/* biome-ignore lint/a11y/noLabelWithoutControl: Select renders a labelable button. */}
               <label>
                 {t('schedule.type')}
-                <select
+                <Select
                   className="ink-input"
                   value={block.type}
-                  onChange={(e) =>
-                    blockUpdate(block.id, { type: e.target.value as ScheduleBlock['type'] })
-                  }
+                  onChange={(e) => blockUpdate(block.id, { type: e as ScheduleBlock['type'] })}
                 >
                   {(['setup', 'shot', 'break', 'move', 'note'] as const).map((type) => (
                     <option key={type} value={type}>
                       {t(`schedule.types.${type}`)}
                     </option>
                   ))}
-                </select>
+                </Select>
               </label>
               <label>
                 {t('schedule.title')}

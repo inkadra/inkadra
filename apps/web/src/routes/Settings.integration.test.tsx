@@ -4,6 +4,7 @@ import { createRoot } from 'react-dom/client';
 import { MemoryRouter } from 'react-router';
 import { afterEach, expect, it, vi } from 'vitest';
 import { api } from '../lib/api.ts';
+import { chooseSelect } from '../test/select.ts';
 import { Settings } from './Settings.tsx';
 
 const session = vi.hoisted(() => ({
@@ -109,11 +110,10 @@ it('saves the language as soon as it changes, without a save button', async () =
   expect([...host.querySelectorAll('button')].some((b) => b.textContent === 'settings.save')).toBe(
     false,
   );
-  const select = host.querySelector<HTMLSelectElement>('select');
-  if (!select) throw new Error('Locale select missing');
+  const select = host.querySelector<HTMLButtonElement>('.ink-select');
+  if (!select) throw new Error('Locale .ink-select missing');
   await act(async () => {
-    select.value = 'it';
-    select.dispatchEvent(new Event('change', { bubbles: true }));
+    chooseSelect(select, 'it');
   });
   expect(api.patch).toHaveBeenCalledWith('/me', { locale: 'it' });
   expect(i18nMock.changeLanguage).toHaveBeenCalledWith('it');

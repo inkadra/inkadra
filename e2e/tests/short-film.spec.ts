@@ -3,6 +3,7 @@ import { join } from 'node:path';
 import { deflateSync } from 'node:zlib';
 import { expect, type Page, test } from '@playwright/test';
 import { getDocument } from 'pdfjs-dist/legacy/build/pdf.mjs';
+import { chooseSelect } from '../helpers/select.ts';
 
 /**
  * Gate 0.3: a short film of 3 scenes and 30 shots is prepared entirely in Inkadra, from the
@@ -370,7 +371,7 @@ test('a short film is prepared from the moodboard to the shot list', async ({
     });
     await expect(dialog.getByText('ULTIMO TRENO', { exact: true })).toBeVisible();
     await expect(dialog.getByText(/di Giulia Bianchi · 3 scene · 2 personaggi/)).toBeVisible();
-    await dialog.getByLabel('Al massimo per scena').selectOption('12');
+    await chooseSelect(dialog.getByLabel('Al massimo per scena'), '12');
     await expect(dialog.getByText('Crea 3 scene e 28 inquadrature.')).toBeVisible();
     await dialog.getByRole('button', { name: 'Importa', exact: true }).click();
     await expect(dialog).toBeHidden();
@@ -407,9 +408,9 @@ test('a short film is prepared from the moodboard to the shot list', async ({
       const label = `1${String.fromCharCode(65 + i)}`;
       await page.getByRole('button', { name: label, exact: true }).click();
       await expect(panel.locator('.film-panel__label')).toHaveText(label);
-      await panel.getByLabel('Campo', { exact: true }).selectOption(d.shot);
-      await panel.getByLabel('Angolazione', { exact: true }).selectOption(d.angle);
-      await panel.getByLabel('Movimento', { exact: true }).selectOption(d.movement);
+      await chooseSelect(panel.getByLabel('Campo', { exact: true }), d.shot);
+      await chooseSelect(panel.getByLabel('Angolazione', { exact: true }), d.angle);
+      await chooseSelect(panel.getByLabel('Movimento', { exact: true }), d.movement);
       await panel.getByLabel('Obiettivo', { exact: true }).fill(d.lens);
       await panel.getByLabel('Obiettivo', { exact: true }).press('Enter');
       await panel.getByLabel('Durata (s)').fill(d.seconds);
@@ -484,7 +485,10 @@ test('a short film is prepared from the moodboard to the shot list', async ({
     await expect(page.locator('.shots__scene')).toHaveCount(3);
     // What was set in the storyboard is in the table: 1B is the old 1A.
     await expect(rowOf('1B').getByLabel('Obiettivo', { exact: true })).toHaveValue(details[0].lens);
-    await expect(rowOf('1B').getByLabel('Campo', { exact: true })).toHaveValue(details[0].shot);
+    await expect(rowOf('1B').getByLabel('Campo', { exact: true })).toHaveAttribute(
+      'data-value',
+      details[0].shot,
+    );
 
     // Filter by text: the frames that speak of the radio.
     const wanted = screenplay.scenes.flatMap((scene, n) => {
@@ -506,14 +510,14 @@ test('a short film is prepared from the moodboard to the shot list', async ({
     }
     const bulk = page.getByRole('toolbar', { name: 'Azioni sulle righe selezionate' });
     await expect(bulk).toContainText('6 selezionate');
-    await bulk.getByLabel('Cambia stato').selectOption('todo');
+    await chooseSelect(bulk.getByLabel('Cambia stato'), 'todo');
     await bulk.getByRole('button', { name: 'Deseleziona' }).click();
-    await rowOf('3B').getByLabel('Stato', { exact: true }).selectOption('todo');
+    await chooseSelect(rowOf('3B').getByLabel('Stato', { exact: true }), 'todo');
     await rowOf('3B').getByLabel('Stato', { exact: true }).blur();
     const byStatus = page.locator('.story__bar').getByLabel('Stato', { exact: true });
-    await byStatus.selectOption('todo');
+    await chooseSelect(byStatus, 'todo');
     await expect(rows).toHaveCount(7);
-    await byStatus.selectOption('');
+    await chooseSelect(byStatus, '');
     await expect(rows).toHaveCount(30);
 
     // The CSV has a header and one row per shot, as the table.
@@ -574,14 +578,14 @@ test('a short film is prepared from the moodboard to the shot list', async ({
 
     await schedule.getByRole('button', { name: 'Foglio di lavorazione' }).click();
     const sheet = page.getByRole('dialog', { name: 'Foglio di lavorazione' });
-    await expect(
-      sheet.getByRole('combobox', { name: 'Data', exact: true }).locator('option'),
-    ).toHaveCount(2);
+    await sheet.getByRole('combobox', { name: 'Data', exact: true }).click();
+    await expect(page.getByRole('listbox').getByRole('option')).toHaveCount(2);
+    await page.keyboard.press('Escape');
     const preview = sheet.getByRole('article', { name: 'Anteprima foglio di lavorazione' });
     // It opens on the day last edited; the other day is one choice away.
     await expect(preview).toContainText('Vagone storico, deposito');
     await gap(page, 'call-sheet');
-    await sheet.getByRole('combobox', { name: 'Data', exact: true }).selectOption({ index: 0 });
+    await chooseSelect(sheet.getByRole('combobox', { name: 'Data', exact: true }), { index: 0 });
     await expect(preview).toContainText('Stazione di Ponte Rotto');
     await expect(preview).toContainText('1A');
     await expect(sheet.getByRole('button', { name: 'Stampa / esporta' })).toBeEnabled();
@@ -623,7 +627,7 @@ test('a short film is prepared from the moodboard to the shot list', async ({
     const share = page.getByRole('dialog', { name: /^Condividi/ });
     await share.getByRole('tab', { name: 'Link per ospiti' }).click();
     await share.getByRole('button', { name: 'Nuovo link per ospiti' }).click();
-    await share.getByLabel('Chi apre il link').selectOption('guest_approve');
+    await chooseSelect(share.getByLabel('Chi apre il link'), 'guest_approve');
     await share.getByLabel('Per chi è (facoltativo)').fill('Cliente');
     await share.getByRole('button', { name: 'Crea link per ospiti' }).click();
     const url = share.getByRole('textbox', { name: 'Link per ospiti “Cliente”' });
@@ -636,7 +640,7 @@ test('a short film is prepared from the moodboard to the shot list', async ({
     await guest.goto(guestUrl);
     await expect(guest.getByText('Ospite · può approvare')).toBeVisible();
     await expect(guest.locator('[data-el]').first()).toBeVisible({ timeout: 30_000 });
-    await guest.getByLabel('Card', { exact: true }).selectOption({ label: '1B' });
+    await chooseSelect(guest.getByLabel('Card', { exact: true }), { label: '1B' });
     const panel = guest.getByRole('complementary', { name: 'Dettagli e commenti' });
     await panel.getByRole('button', { name: 'Approva' }).click();
     const naming = guest.getByRole('dialog', { name: 'Come ti chiami?' });

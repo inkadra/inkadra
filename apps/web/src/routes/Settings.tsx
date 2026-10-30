@@ -4,7 +4,7 @@ import type {
   DeleteMeBlocked,
   PersonalToken,
 } from '@inkadra/shared';
-import { Avatar, Button, Dialog, DialogActions, TextField } from '@inkadra/ui';
+import { Avatar, Button, Dialog, DialogActions, Select, TextField } from '@inkadra/ui';
 import { type FormEvent, useCallback, useEffect, useId, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation } from 'react-router';
@@ -140,18 +140,18 @@ export function Preferences() {
           help={t('settingsUi.preferences.languageHelp')}
           htmlFor={languageId}
         >
-          <select
+          <Select
             id={languageId}
             className="ink-input settings-input"
             value={locale}
-            onChange={(e) => void changeLocale(e.target.value)}
+            onChange={(e) => void changeLocale(e)}
           >
             {LOCALES.map((l) => (
               <option key={l} value={l}>
                 {t(`settings.profile.languages.${l}`)}
               </option>
             ))}
-          </select>
+          </Select>
         </Row>
       </div>
     </Card>

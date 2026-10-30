@@ -106,7 +106,7 @@
   background: var(--ink-tag-purple);
   color: var(--ink-tag-purple-bg);
 }
-select.film-status {
+.ink-select.film-status {
   width: auto;
   height: 24px;
   padding: 0 6px;
@@ -188,7 +188,7 @@ select.film-status {
   border-bottom: 1px solid var(--ink-border-subtle);
   background: var(--ink-bg-panel);
 }
-.story__bar select.ink-input {
+.story__bar .ink-select.ink-input {
   width: auto;
 }
 .story__aspect {
@@ -575,7 +575,7 @@ select.film-status {
   gap: 12px;
   flex-wrap: wrap;
 }
-.animatic__controls select.ink-input {
+.animatic__controls .ink-select.ink-input {
   width: auto;
 }
 .animatic__toggles,
@@ -1004,8 +1004,8 @@ select.film-status {
 .shots > .story__bar > .view-options__inline > .ink-btn {
   flex: none;
 }
-.shots > .story__bar > select.ink-input,
-.shots > .story__bar > .view-options__inline > select.ink-input {
+.shots > .story__bar > .ink-select.ink-input,
+.shots > .story__bar > .view-options__inline > .ink-select.ink-input {
   flex: 0 1 auto;
   min-width: 96px;
   max-width: 240px;
@@ -1083,7 +1083,7 @@ select.film-status {
   min-width: 200px;
 }
 .shots__table .ink-input,
-.shots__table select {
+.shots__table .ink-select {
   height: 26px;
   font-size: 12px;
   min-width: 132px;
@@ -1189,7 +1189,7 @@ select.film-status {
   font-size: 12px;
   color: var(--ink-text-muted);
 }
-.pen__aspect select {
+.pen__aspect .ink-select {
   width: auto;
 }
 .pen__view {
@@ -3248,7 +3248,7 @@ select.film-status {
   white-space: nowrap;
 }
 
-.shots__bulk-toolbar select {
+.shots__bulk-toolbar .ink-select {
   height: 26px;
   font-size: 12px;
   background: var(--ink-surface-2);
@@ -3378,7 +3378,7 @@ select.film-status {
   gap: 12px;
   margin: 16px 0;
 }
-.moodboard__filter select {
+.moodboard__filter .ink-select {
   font: inherit;
   color: var(--ink-text-primary);
   background: var(--ink-surface-2);
@@ -3697,7 +3697,7 @@ button.moodboard__card {
     color: var(--ink-text-secondary);
     font-size: 12px;
   }
-  .story__scene-picker select {
+  .story__scene-picker .ink-select {
     flex: 1;
     min-width: 0;
     min-height: 44px;

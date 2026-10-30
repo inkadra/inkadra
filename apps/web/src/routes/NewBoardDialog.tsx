@@ -1,5 +1,5 @@
 import type { Project } from '@inkadra/shared';
-import { Button, Dialog, DialogActions, TextField } from '@inkadra/ui';
+import { Button, Dialog, DialogActions, Select, TextField } from '@inkadra/ui';
 import { type FormEvent, useEffect, useId, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router';
@@ -87,18 +87,18 @@ export function NewBoardDialog({
           <label htmlFor={projectId} className="ink-field__label">
             {t('home.newBoard.project')}
           </label>
-          <select
+          <Select
             id={projectId}
             className="ink-input"
             value={project}
-            onChange={(e) => setProject(e.target.value)}
+            onChange={(e) => setProject(e)}
           >
             {projects.map((p) => (
               <option key={p.id} value={p.id}>
                 {p.name}
               </option>
             ))}
-          </select>
+          </Select>
         </div>
         <fieldset className="home-new__choices">
           <legend className="ink-field__label">{t('home.newBoard.start')}</legend>

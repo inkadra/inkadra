@@ -81,8 +81,11 @@ test('a Fountain screenplay becomes scenes and frames, undone in one step', asyn
       .getByRole('region', { name: 'Scena 2', exact: true })
       .getByLabel('Titolo', { exact: true }),
   ).toHaveValue('Guard Booth');
-  await expect(station.getByLabel('Interno o esterno')).toHaveValue('ext');
-  await expect(station.getByLabel('Momento', { exact: true })).toHaveValue('night');
+  await expect(station.getByLabel('Interno o esterno')).toHaveAttribute('data-value', 'ext');
+  await expect(station.getByLabel('Momento', { exact: true })).toHaveAttribute(
+    'data-value',
+    'night',
+  );
   await expect(station.getByLabel('Sinossi')).toHaveValue(
     'Mara misses the last train and meets Leo.',
   );

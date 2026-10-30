@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { chooseSelect } from '../helpers/select.ts';
 
 test.use({ viewport: { width: 390, height: 844 }, hasTouch: true });
 
@@ -61,9 +62,9 @@ test('mobile shell gives the canvas full width and keeps shell actions reachable
   expect(bounds?.width).toBe(390);
   expect(bounds?.height).toBeGreaterThan(600);
   await expect(page.locator('.mobile-view-switcher')).toBeVisible();
-  await page.locator('.mobile-view-switcher').selectOption('shotlist');
+  await chooseSelect(page.locator('.mobile-view-switcher'), 'shotlist');
   await expect(page).toHaveURL(/view=shotlist/);
-  await page.locator('.mobile-view-switcher').selectOption('canvas');
+  await chooseSelect(page.locator('.mobile-view-switcher'), 'canvas');
   await expect(canvas).toBeVisible();
   const toolbar = page.locator('.canvas .toolbar');
   await expect(toolbar).toBeVisible();
@@ -100,7 +101,7 @@ test('mobile shell gives the canvas full width and keeps shell actions reachable
   await sheet.getByRole('button', { name: `Nuova board in ${project.name}`, exact: true }).click();
   const boardDialog = page.getByRole('dialog', { name: 'Nuova board', exact: true });
   await expect(boardDialog).toBeVisible();
-  await expect(boardDialog.getByLabel('Progetto')).toHaveValue(project.id);
+  await expect(boardDialog.getByLabel('Progetto')).toHaveAttribute('data-value', project.id);
   await page.keyboard.press('Escape');
   await nav.getByRole('button', { name: 'Nuovo', exact: true }).click();
   await sheet.getByRole('button', { name: 'Nuovo progetto', exact: true }).click();

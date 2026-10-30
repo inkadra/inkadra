@@ -8,7 +8,7 @@ import {
   MAX_COMMENT_LENGTH,
   type UserSummary,
 } from '@inkadra/shared';
-import { Button, Icon, IconButton } from '@inkadra/ui';
+import { Button, Icon, IconButton, Select } from '@inkadra/ui';
 import {
   type FormEvent,
   type KeyboardEvent,
@@ -368,20 +368,17 @@ function CommentsPanel() {
         </fieldset>
 
         {!elementId && (
+          // biome-ignore lint/a11y/noLabelWithoutControl: Select renders a labelable button.
           <label className="review-field">
             {t('review.filter')}
-            <select
-              className="ink-input"
-              value={reviewFilter}
-              onChange={(e) => setReviewFilter(e.target.value)}
-            >
+            <Select className="ink-input" value={reviewFilter} onChange={(e) => setReviewFilter(e)}>
               <option value="">{t('review.filterNone')}</option>
               {REVIEW_STATUSES.map((s) => (
                 <option key={s} value={s}>
                   {t(`review.status.${s}`)}
                 </option>
               ))}
-            </select>
+            </Select>
           </label>
         )}
         {reviewFilter && (

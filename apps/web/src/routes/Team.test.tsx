@@ -6,6 +6,7 @@ import { MemoryRouter } from 'react-router';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { api } from '../lib/api.ts';
 import { useSession } from '../lib/session.tsx';
+import { chooseSelect } from '../test/select.ts';
 import { Team } from './Team.tsx';
 
 const { t } = vi.hoisted(() => ({ t: (key: string) => key }));
@@ -91,22 +92,21 @@ it('renders actual members, direct project counts and pending empty state', asyn
   expect(host.textContent).toContain('admin.never');
   expect(host.textContent).toContain('admin.noInvitations');
   expect(
-    host.querySelector<HTMLSelectElement>('select[aria-label="admin.roleFor"]')?.disabled,
+    host.querySelector<HTMLButtonElement>('.ink-select[aria-label="admin.roleFor"]')?.disabled,
   ).toBe(true);
   expect(host.querySelectorAll('tbody tr')).toHaveLength(2);
 });
 it('changes global roles through the instance endpoint', async () => {
   await render();
-  const select = host.querySelectorAll('tbody select')[1] as HTMLSelectElement;
+  const select = host.querySelectorAll('tbody .ink-select')[1] as HTMLButtonElement;
   await act(async () => {
-    select.value = 'admin';
-    select.dispatchEvent(new Event('change', { bubbles: true }));
+    chooseSelect(select, 'admin');
   });
   expect(api.patch).toHaveBeenCalledWith('/instance/members/member', { role: 'admin' });
 });
 it('requires confirmation before soft deactivation', async () => {
   await render();
-  const button = [...host.querySelectorAll('tbody button')].find(
+  const button = [...host.querySelectorAll('tbody button:not([role=combobox])')].find(
     (b) => !b.hasAttribute('disabled'),
   ) as HTMLButtonElement;
   await act(async () => button.click());
@@ -204,20 +204,20 @@ it('turns project creation off for members and sets a per-person exception', asy
     membersCanCreateProjects: false,
   });
   // Administrators always can: no control on their row.
-  expect(host.querySelector('select[aria-label="projectCreation.for"]')).not.toBeNull();
-  const select = host.querySelector<HTMLSelectElement>('select[aria-label="projectCreation.for"]');
-  expect([...(select?.options ?? [])].map((o) => o.value)).toEqual(['default', 'yes', 'no']);
-  expect(host.querySelectorAll('select[aria-label="projectCreation.for"]')).toHaveLength(1);
+  expect(host.querySelector('.ink-select[aria-label="projectCreation.for"]')).not.toBeNull();
+  const select = host.querySelector<HTMLButtonElement>(
+    '.ink-select[aria-label="projectCreation.for"]',
+  );
+  expect(select?.getAttribute('aria-haspopup')).toBe('listbox');
+  expect(host.querySelectorAll('.ink-select[aria-label="projectCreation.for"]')).toHaveLength(1);
   await act(async () => {
     if (!select) return;
-    select.value = 'yes';
-    select.dispatchEvent(new Event('change', { bubbles: true }));
+    chooseSelect(select, 'yes');
   });
   expect(api.patch).toHaveBeenCalledWith('/instance/members/member', { canCreateProjects: true });
   await act(async () => {
     if (!select) return;
-    select.value = 'default';
-    select.dispatchEvent(new Event('change', { bubbles: true }));
+    chooseSelect(select, 'default');
   });
   expect(api.patch).toHaveBeenCalledWith('/instance/members/member', { canCreateProjects: null });
 });

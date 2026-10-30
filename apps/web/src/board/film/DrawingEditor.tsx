@@ -23,7 +23,7 @@ import {
   MAX_STROKES,
   type Stroke,
 } from '@inkadra/doc-schema';
-import { Button, Icon, IconButton, type IconName } from '@inkadra/ui';
+import { Button, Icon, IconButton, type IconName, Select } from '@inkadra/ui';
 import { type PointerEvent, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { isMac } from '../shortcuts.ts';
@@ -479,9 +479,10 @@ export function DrawingEditor({
           />
         )}
         {goNext && <IconButton icon="chevronRight" label={t('film.pen.next')} onClick={goNext} />}
+        {/* biome-ignore lint/a11y/noLabelWithoutControl: Select renders a labelable button. */}
         <label className="pen__aspect">
           <span>{t('film.aspect.label')}</span>
-          <select
+          <Select
             className="ink-input"
             value={frame.aspect ?? ''}
             disabled={readOnly}
@@ -490,7 +491,7 @@ export function DrawingEditor({
                 updateElement(
                   store.doc,
                   frame.id,
-                  { aspect: (e.target.value || undefined) as AspectRatio | undefined },
+                  { aspect: (e || undefined) as AspectRatio | undefined },
                   LOCAL,
                 ),
               )
@@ -502,7 +503,7 @@ export function DrawingEditor({
                 {aspectLabel(r)}
               </option>
             ))}
-          </select>
+          </Select>
         </label>
         <span className="ink-header__spacer" />
         <fieldset className="pen__view" aria-label={t('film.pen.view')}>

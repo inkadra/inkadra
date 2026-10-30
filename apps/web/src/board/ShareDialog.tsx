@@ -7,7 +7,7 @@ import type {
   Person,
   ProjectRole,
 } from '@inkadra/shared';
-import { Avatar, Button, Dialog, Icon, IconButton } from '@inkadra/ui';
+import { Avatar, Button, Dialog, Icon, IconButton, Select } from '@inkadra/ui';
 import { type FormEvent, type KeyboardEvent, useCallback, useEffect, useId, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api, RequestError } from '../lib/api.ts';
@@ -387,18 +387,18 @@ function RoleSelect({
 }) {
   const { t } = useTranslation();
   return (
-    <select
+    <Select
       className="share__select"
       aria-label={label}
       value={value}
-      onChange={(e) => onChange(e.target.value as ProjectRole)}
+      onChange={(e) => onChange(e as ProjectRole)}
     >
       {choices.map((r) => (
         <option key={r} value={r}>
           {t(`roles.${r}`)}
         </option>
       ))}
-    </select>
+    </Select>
   );
 }
 
@@ -630,18 +630,18 @@ function LinkSection({
             label={t('share.link.role')}
             onChange={setRole}
           />
-          <select
+          <Select
             className="share__select"
             aria-label={t('share.link.expires')}
             value={days}
-            onChange={(e) => setDays(Number(e.target.value))}
+            onChange={(e) => setDays(Number(e))}
           >
             {[1, 7, 30, 90].map((d) => (
               <option key={d} value={d}>
                 {t('share.link.days', { count: d })}
               </option>
             ))}
-          </select>
+          </Select>
           <Button icon="link" onClick={act(create)}>
             {t('share.link.create')}
           </Button>

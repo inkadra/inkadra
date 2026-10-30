@@ -3,6 +3,7 @@ import type { ShootingDay } from '@inkadra/shared';
 import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { afterEach, expect, it, vi } from 'vitest';
+import { chooseSelect } from '../../test/select.ts';
 import { CallSheetModal } from './CallSheetModal.tsx';
 import { castCalls, departmentNotes, plannedWrap } from './call-sheet.ts';
 
@@ -122,11 +123,10 @@ it('renders saved data and linked or removed shots, toggles sections and prints 
   await act(async () => schedule?.click());
   expect(host.querySelector('.sheet__table--schedule')).toBeNull();
   expect(paper()?.textContent).not.toContain('Anna steps off the train');
-  const select = host.querySelector('select');
+  const select = host.querySelector<HTMLButtonElement>('.ink-select');
   await act(async () => {
     if (select) {
-      select.value = 'day-2';
-      select.dispatchEvent(new Event('change', { bubbles: true }));
+      chooseSelect(select, 'day-2');
     }
   });
   expect(paper()?.textContent).toContain('Studio');

@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { addFrame, addScene, createElement } from '@inkadra/canvas-core';
 import { createBoardDoc, readElement, roots } from '@inkadra/doc-schema';
 import { expect, type Page, test } from '@playwright/test';
+import { chooseSelect } from '../helpers/select.ts';
 import { readBoard } from './frame-grab.helpers.ts';
 import { pushBoardDoc, signIn, uploadFile, waitForAssets } from './perf/seed.ts';
 
@@ -203,9 +204,9 @@ for (const [device, width, height] of [
       await expect.poll(() => video.evaluate((v: HTMLVideoElement) => v.seeking)).toBe(false);
       await page.keyboard.press('g');
       await expect(page.getByRole('region', { name: 'Destinazione del fotogramma' })).toBeVisible();
-      await page
-        .getByRole('combobox', { name: 'Inquadratura', exact: true })
-        .selectOption({ label: '1A' });
+      await chooseSelect(page.getByRole('combobox', { name: 'Inquadratura', exact: true }), {
+        label: '1A',
+      });
       await expect(
         page.getByText(/^Fotogramma a \d+:\d{2},\d{2} · risoluzione originale$/),
       ).toBeVisible();
@@ -229,7 +230,10 @@ for (const [device, width, height] of [
       expect(captured).toMatchObject({ kind: 'image', width: 1280, height: 720 });
       await expect(viewer).toHaveCount(0);
       if (device === 'phone')
-        await page.getByRole('combobox', { name: 'Vista', exact: true }).selectOption('storyboard');
+        await chooseSelect(
+          page.getByRole('combobox', { name: 'Vista', exact: true }),
+          'storyboard',
+        );
       else await page.getByRole('tab', { name: 'Storyboard', exact: true }).click();
       await expect(page.locator('.story__tile img')).toBeVisible();
       await page.screenshot({ path: `${out}/${device}-${theme}-storyboard.png` });
@@ -265,7 +269,7 @@ for (const [device, width, height] of [
         await page.getByRole('button', { name: 'Cattura fotogramma', exact: true }).click();
         await expect(
           page.getByRole('combobox', { name: 'Inquadratura', exact: true }),
-        ).not.toHaveValue('');
+        ).not.toHaveAttribute('data-value', '');
         await page.getByRole('button', { name: 'Aggiungi alla lavagna', exact: true }).click();
         await expect(page.getByRole('dialog')).toHaveCount(0);
         const board = await readBoard(baseURL!, cookie, project.rootBoardId);
@@ -364,9 +368,9 @@ for (const provider of ['youtube', 'vimeo']) {
     if (provider === 'youtube') {
       await page.getByLabel('Tempo di riferimento YouTube (secondi)').fill('67');
     }
-    await page
-      .getByRole('combobox', { name: 'Inquadratura', exact: true })
-      .selectOption({ label: '1A' });
+    await chooseSelect(page.getByRole('combobox', { name: 'Inquadratura', exact: true }), {
+      label: '1A',
+    });
     await page.getByRole('button', { name: 'Usa come immagine dell’inquadratura' }).click();
     await expect(page.getByRole('dialog')).toHaveCount(0);
     const saved = await readBoard(baseURL!, cookie, project.rootBoardId);

@@ -90,8 +90,8 @@ it('shows the Home card with the actions in its menu', async () => {
   const card = host.querySelector('.project-card');
   expect(card?.querySelector('[data-preview="root1"]')).not.toBeNull();
   expect(card?.querySelector('h2')?.textContent).toBe('Last Train');
-  // No inline type select and no button repeating the click on the card.
-  expect(card?.querySelector('select')).toBeNull();
+  // No inline type .ink-select and no button repeating the click on the card.
+  expect(card?.querySelector('.ink-select')).toBeNull();
   expect(
     [...(card?.querySelectorAll('button') ?? [])].map((b) => b.getAttribute('aria-haspopup')),
   ).toEqual(['menu']);
@@ -165,7 +165,7 @@ it('keeps the Project type dialog open with an error when saving fails', async (
   const dialog = host.querySelector('dialog');
   expect(dialog).not.toBeNull();
   // A right-click in the dialog is the browser's, not the card's project menu.
-  const select = dialog?.querySelector('select');
+  const select = dialog?.querySelector('.ink-select');
   const event = new MouseEvent('contextmenu', { bubbles: true, cancelable: true });
   await act(async () => select?.dispatchEvent(event));
   expect(event.defaultPrevented).toBe(false);

@@ -5,7 +5,7 @@ import {
   type ProjectType,
   z,
 } from '@inkadra/shared';
-import { Button, Dialog, DialogActions, TextField } from '@inkadra/ui';
+import { Button, Dialog, DialogActions, Select, TextField } from '@inkadra/ui';
 import { type FormEvent, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { castName, type ImportPlan } from '../board/film/screenplay/plan.ts';
@@ -284,19 +284,20 @@ export function ProjectSetupForm({
               value={email}
               onChange={(e) => setEmail(e.target.value)}
             />
+            {/* biome-ignore lint/a11y/noLabelWithoutControl: Select renders a labelable button. */}
             <label>
               {t('onboarding.role')}
-              <select
+              <Select
                 className="ink-input"
                 value={role}
-                onChange={(e) => setRole(e.target.value as ProjectRole)}
+                onChange={(e) => setRole(e as ProjectRole)}
               >
                 {['editor', 'commenter', 'viewer', 'owner'].map((v) => (
                   <option key={v} value={v}>
                     {t(`roles.${v}`)}
                   </option>
                 ))}
-              </select>
+              </Select>
             </label>
             <Button onClick={addInvite} disabled={!email.trim()}>
               {t('onboarding.add')}

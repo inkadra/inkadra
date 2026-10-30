@@ -1,4 +1,5 @@
 import { type Browser, expect, type Page, test } from '@playwright/test';
+import { chooseSelect } from '../helpers/select.ts';
 
 // Runs after first-run.spec.ts: the administrator exists. Works in its own project and puts
 // the instance settings back, so the specs after it see what they expect (decision 0041).
@@ -80,7 +81,7 @@ test('the owner sees the end date, moves it closer and removes it', async ({ pag
   await row.getByRole('button', { name: 'Togli la scadenza' }).click();
   await expect(row.locator('.share__expiry')).toHaveCount(0);
   // The role did not change.
-  await expect(row.getByRole('combobox')).toHaveValue('editor');
+  await expect(row.getByRole('combobox')).toHaveAttribute('data-value', 'editor');
 });
 
 test('only allowed people create projects; exceptions per person', async ({ page }) => {
@@ -105,16 +106,18 @@ test('only allowed people create projects; exceptions per person', async ({ page
   expect(refused.status()).toBe(403);
   expect((await refused.json()).error.details.reason).toBe('project_creation_disabled');
 
-  await page
-    .getByRole('combobox', { name: `Può creare progetti: ${marta.name}` })
-    .selectOption('yes');
+  await chooseSelect(
+    page.getByRole('combobox', { name: `Può creare progetti: ${marta.name}` }),
+    'yes',
+  );
   await martaPage.reload();
   await expect(martaPage.getByRole('button', { name: 'Nuovo progetto' }).first()).toBeEnabled();
 
   // Back as it was for the specs that follow.
-  await page
-    .getByRole('combobox', { name: `Può creare progetti: ${marta.name}` })
-    .selectOption('default');
+  await chooseSelect(
+    page.getByRole('combobox', { name: `Può creare progetti: ${marta.name}` }),
+    'default',
+  );
   await option.check();
   await expect(option).toBeChecked();
   await martaPage.context().close();

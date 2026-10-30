@@ -1,4 +1,4 @@
-import { Button, Dialog, DialogActions, Icon, kindStyle } from '@inkadra/ui';
+import { Button, Dialog, DialogActions, Icon, kindStyle, Select } from '@inkadra/ui';
 import { type DragEvent, useId, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Check, Field, Segmented } from '../../export/fields.tsx';
@@ -237,18 +237,18 @@ export function ScreenplayImportDialog({
                 {options.frames === 'action' && (
                   <Field label={t('screenplay.maxFrames')}>
                     {(id) => (
-                      <select
+                      <Select
                         id={id}
                         className="ink-input script-import__cap"
                         value={options.maxFrames}
-                        onChange={(e) => set('maxFrames', Number(e.target.value) as FrameCap)}
+                        onChange={(e) => set('maxFrames', Number(e) as FrameCap)}
                       >
                         {FRAME_CAPS.map((n) => (
                           <option key={n} value={n}>
                             {n}
                           </option>
                         ))}
-                      </select>
+                      </Select>
                     )}
                   </Field>
                 )}

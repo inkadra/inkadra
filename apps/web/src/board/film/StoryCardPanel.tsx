@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 import { deleteElements, updateElement } from '@inkadra/canvas-core';
 import type { Element } from '@inkadra/doc-schema';
-import { Button, IconButton } from '@inkadra/ui';
+import { Button, IconButton, Select } from '@inkadra/ui';
 import { useContext, useEffect, useId, useRef, useState, useSyncExternalStore } from 'react';
 import { useTranslation } from 'react-i18next';
 import { pickVariant, useAsset } from '../assets.ts';
@@ -324,12 +324,12 @@ function SettingField({
   return (
     <div className="film-field">
       <label htmlFor={id}>{t('film.scene.setting')}</label>
-      <select
+      <Select
         id={id}
         className="ink-input"
         value={value ?? ''}
         disabled={readOnly}
-        onChange={(e) => onCommit((e.target.value || undefined) as typeof value)}
+        onChange={(e) => onCommit((e || undefined) as typeof value)}
       >
         <option value="">–</option>
         {(['int', 'ext', 'int-ext'] as const).map((s) => (
@@ -337,7 +337,7 @@ function SettingField({
             {t(`film.scene.settings.${s}`)}
           </option>
         ))}
-      </select>
+      </Select>
     </div>
   );
 }
