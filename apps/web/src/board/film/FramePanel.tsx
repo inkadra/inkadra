@@ -11,12 +11,12 @@ import { Button, Icon, IconButton } from '@inkadra/ui';
 import { useContext, useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useRegisterActions } from '../../commands/actions.ts';
-import { api } from '../../lib/api.ts';
 import {
   duplicateInStore,
   framePanelActions,
   setFrameStatus,
 } from '../../commands/board-actions.ts';
+import { api } from '../../lib/api.ts';
 import { GuestModeContext } from '../context.ts';
 import { authorName, editableText } from '../review-model.ts';
 import { openComments, useReviews } from '../review-store.ts';
