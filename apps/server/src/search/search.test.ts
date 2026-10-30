@@ -56,6 +56,9 @@ function storyboard(boardId: string) {
     label: 'Sodio 100%_',
     tags: ['Notte'],
   });
+  addElement(doc, { ...base(), type: 'character', name: 'Marta', role: 'Capotreno' });
+  // A blank card of the Casting template: listed by nobody until it has a name.
+  addElement(doc, { ...base(), type: 'character', name: '' });
   const note = addElement(doc, { ...base(), type: 'note' });
   const p = new Y.XmlElement('paragraph');
   p.insert(0, [new Y.XmlText('Sopralluogo alla stazione')]);
@@ -350,6 +353,34 @@ describe.skipIf(!url)('search (needs DATABASE_URL)', () => {
       url: `/api/v1/boards/${otherId}`,
       headers: { cookie: cookies.owner, origin: config.PUBLIC_URL },
     });
+  });
+
+  it('lists the named cards of one type only to people who can read them', async () => {
+    const path = `/api/v1/search?type=character&projectId=${projectId}`;
+    const names = async (who: keyof typeof cookies) => {
+      const res = await get(who, path);
+      expect(res.status).toBe(200);
+      return res.body.items.map((h: { title: string; boardId: string }) => [h.title, h.boardId]);
+    };
+    // Both boards of the project (the second one comes from the guest test).
+    expect((await names('owner')).map(([title]: string[]) => title)).toEqual(['Marta', 'Marta']);
+    expect(await names('stranger')).toEqual([]);
+    // A viewer grant on one board: only that board's characters.
+    expect(await names('guest')).toEqual([['Marta', boardId]]);
+    const [guest] = await db
+      .select({ id: user.id })
+      .from(user)
+      .where(eq(user.email, 'guest@example.com'));
+    await db
+      .update(boardGrant)
+      .set({ expiresAt: new Date(Date.now() - 60_000) })
+      .where(eq(boardGrant.userId, guest!.id));
+    expect(await names('guest')).toEqual([]);
+    await db
+      .update(boardGrant)
+      .set({ expiresAt: null })
+      .where(eq(boardGrant.userId, guest!.id));
+    expect((await get('owner', '/api/v1/search?type=character')).status).toBe(400);
   });
 
   it('indexes boards stored before the index existed', async () => {

@@ -25,8 +25,9 @@ All JSON is UTF-8; timestamps are ISO 8601 with offset; ids are UUIDs of the exp
 | `export-settings.json`           | PDF and image export settings of the project and its logo (an asset id)     |
 
 Inside documents, cards refer to files by `assetId` (image, file, frame, and the picture of a
-character or location card, from schema version 7) or `imageAssetId` (link) and to boards by `boardId` (board cards); `meta.boardId` names the board itself. Element
-ids are stable: comments, reviews and schedule blocks refer to cards by them.
+character or location card, from schema version 7) or `imageAssetId` (link) and to boards by
+`boardId` (board cards); `meta.boardId` names the board itself. Element ids are stable:
+comments, reviews and schedule blocks refer to cards by them.
 
 Authors are ids of `people.json`. Comment bodies write mentions as `@{personId}`; a deleted
 comment keeps its place with an empty body. `guestName` marks a comment written by a guest of a
@@ -37,8 +38,8 @@ Boards in the trash are not in the archive, nor anything under them or on them.
 
 A file that is missing, too large or does not match its checksum is skipped. Its cards stay:
 image and file cards then show a missing file, while optional pictures (the reference of a
-storyboard frame, the preview of a link, the picture of a character or location) are removed. A skipped logo leaves the project
-without one.
+storyboard frame, the preview of a link, the picture of a character or location) are removed.
+A skipped logo leaves the project without one.
 
 ## Reading an archive
 

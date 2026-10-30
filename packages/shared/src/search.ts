@@ -17,7 +17,10 @@ export const SearchQuery = z
       description: 'Only cards with this tag (compared without case).',
     }),
     type: z.string().max(20).optional().openapi({
-      description: 'Only cards of this element type, e.g. `frame` or `image`.',
+      description:
+        'Only cards of this element type, e.g. `frame` or `image`. With `projectId` and ' +
+        'without `q` or `tag`, lists the named cards of that type the caller can read ' +
+        '(since API 0.10.0).',
     }),
     limit: z.coerce.number().int().min(1).max(50).default(20),
   })
