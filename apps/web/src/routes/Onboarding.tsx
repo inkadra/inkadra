@@ -11,7 +11,7 @@ export function Onboarding() {
   const navigate = useNavigate();
   const setup = useInstanceSetupState();
   // The same form as New project: only a first project gets the welcome title.
-  const { projects } = useProjects();
+  const { projects, canCreateProjects } = useProjects();
   const title = onboardingTitle(projects);
   const first = title === 'onboarding.firstTitle';
   return (
@@ -22,13 +22,19 @@ export function Onboarding() {
         <p className="ink-muted">
           {title && t(first ? 'onboarding.firstSubtitle' : 'onboarding.subtitle')}
         </p>
-        <ProjectSetupForm
-          onClose={() => navigate('/projects')}
-          onCreated={async (p) => {
-            await refreshProjects();
-            navigate(`/p/${p.id}`);
-          }}
-        />
+        {canCreateProjects ? (
+          <ProjectSetupForm
+            onClose={() => navigate('/projects')}
+            onCreated={async (p) => {
+              await refreshProjects();
+              navigate(`/p/${p.id}`);
+            }}
+          />
+        ) : (
+          <p role="status" className="onboarding-page__off">
+            {t('projectCreation.off')}
+          </p>
+        )}
       </section>
       <aside>
         <InstanceChecklist {...setup} />

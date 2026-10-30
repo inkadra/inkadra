@@ -79,11 +79,14 @@ export class Recipients {
  * itself: a board they still have a role on (not in the trash), or a project they still touch
  * when there is no board. Notifications about neither are about the instance and always shown.
  */
+type Placed = Pick<NotificationRow, 'boardId' | 'projectId'> &
+  Partial<Pick<NotificationRow, 'subjectUserId'>>;
+
 export async function visibility(
   db: Database,
   userId: string,
-  rows: ReadonlyArray<Pick<NotificationRow, 'boardId' | 'projectId'>>,
-): Promise<(row: Pick<NotificationRow, 'boardId' | 'projectId'>) => boolean> {
+  rows: ReadonlyArray<Placed>,
+): Promise<(row: Placed) => boolean> {
   const boardIds = rows.flatMap((r) => (r.boardId ? [r.boardId] : []));
   const readable = await boardRoles(db, { id: userId }, boardIds);
   const projectIds = [
@@ -92,6 +95,8 @@ export async function visibility(
   const touched = new Set<string>();
   for (const p of projectIds) if (await touchesProject(db, { id: userId }, p)) touched.add(p);
   return (r) => {
+    // People keep hearing about the end of their own access (decision 0041).
+    if (r.subjectUserId === userId) return true;
     if (r.boardId) return readable.has(r.boardId);
     if (r.projectId) return touched.has(r.projectId);
     return true;
@@ -183,6 +188,16 @@ export async function renderNotifications(
     [...rows.map((r) => r.actorId), ...comments.flatMap((c) => c.mentions)],
     rows.map((r) => r.actorGuestId),
   );
+  const subjectIds = [...new Set(rows.flatMap((r) => (r.subjectUserId ? [r.subjectUserId] : [])))];
+  const subjects = new Map(
+    (subjectIds.length === 0
+      ? []
+      : await db
+          .select({ id: user.id, name: user.name, image: user.image })
+          .from(user)
+          .where(inArray(user.id, subjectIds))
+    ).map((u) => [u.id, u]),
+  );
   const names = new Map([...people.users].map(([id, u]) => [id, u.name]));
   const readableNames = new Map<string, Map<string, string>>();
   for (const boardId of new Set(comments.map((c) => c.boardId))) {
@@ -216,6 +231,8 @@ export async function renderNotifications(
       excerpt:
         c && !c.deletedAt ? excerpt(c.body, readableNames.get(c.boardId) ?? new Map()) : null,
       reviewStatus: r.reviewStatus,
+      subject: r.subjectUserId ? (subjects.get(r.subjectUserId) ?? null) : null,
+      accessExpiresAt: r.accessExpiresAt ? iso(r.accessExpiresAt) : null,
       readAt: r.readAt ? iso(r.readAt) : null,
       createdAt: iso(r.createdAt),
     };
@@ -228,11 +245,12 @@ export async function unreadCount(db: Database, userId: string, cap = 1000): Pro
     .select({
       boardId: notification.boardId,
       projectId: notification.projectId,
+      subjectUserId: notification.subjectUserId,
       n: sql<number>`count(*)::int`,
     })
     .from(notification)
     .where(and(eq(notification.userId, userId), isNull(notification.readAt)))
-    .groupBy(notification.boardId, notification.projectId);
+    .groupBy(notification.boardId, notification.projectId, notification.subjectUserId);
   const visible = await visibility(db, userId, groups);
   let total = 0;
   for (const g of groups) if (visible(g)) total += g.n;
@@ -250,7 +268,14 @@ export interface NotificationMailDeps {
 }
 
 /** One line of an email for a notification. */
-function mailLine(texts: ReturnType<typeof mailText>, n: Notification): string {
+function mailLine(texts: ReturnType<typeof mailText>, n: Notification, to: string): string {
+  if (n.type === 'access_expiring' || n.type === 'access_expired')
+    return texts.accessLine(
+      n.type,
+      n.subject?.id === to ? null : (n.subject?.name ?? texts.someone),
+      n.boardTitle ?? n.projectName ?? '',
+      n.accessExpiresAt ? new Date(n.accessExpiresAt) : null,
+    );
   const who =
     n.actor?.kind === 'user'
       ? n.actor.user.name
@@ -322,7 +347,7 @@ async function sendTo(
     if (!me) return false;
     const texts = mailText(me);
     const items = await renderNotifications(db, userId, rows);
-    const lines = items.map((n) => mailLine(texts, n));
+    const lines = items.map((n) => mailLine(texts, n, userId));
     lines.push(texts.notificationSettings(`${deps.publicUrl}/settings`));
     const first = items[0];
     const sameBoard = first?.boardId && items.every((n) => n.boardId === first.boardId);

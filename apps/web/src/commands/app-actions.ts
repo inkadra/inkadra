@@ -18,13 +18,14 @@ export function appActions({
   canCreateBoard: boolean;
   theme: 'light' | 'dark';
   navigate: (to: string) => void;
-  newProject: () => void;
+  /** Missing for people who cannot create projects (decision 0041). */
+  newProject?: () => void;
   newBoard: () => void;
   toggleTheme: () => void;
   openInbox: () => void;
 }): PaletteAction[] {
   return [
-    { id: 'new-project', label: t('nav.newProject'), run: newProject },
+    ...(newProject ? [{ id: 'new-project', label: t('nav.newProject'), run: newProject }] : []),
     ...(canCreateBoard
       ? [{ id: 'new-board', label: t('home.newBoard.title'), run: newBoard }]
       : []),

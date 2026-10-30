@@ -19,14 +19,18 @@ import type { FastifyInstance, FastifyReply } from 'fastify';
 import {
   type BoardAccess as Access,
   type Actor,
+  activeGrant,
+  activeMember,
   atLeast,
   boardAccess,
   effectiveRole,
   higher,
+  live,
   projectRole,
   requireBoardRole,
   requireProjectRole,
 } from '../access.ts';
+import { mergeInvitedRole, readExpiry, widensEnd } from '../access-expiry.ts';
 import type { Auth } from '../auth.ts';
 import type { Config } from '../config.ts';
 import type { Database } from '../db/client.ts';
@@ -85,16 +89,21 @@ async function accessList(db: Database, access: Access): Promise<BoardAccessEntr
   const titles = new Map(access.chain.map((c) => [c.id, c.title]));
   const [members, grants] = await Promise.all([
     db
-      .select({ role: projectMember.role, user })
+      .select({ role: projectMember.role, expiresAt: projectMember.expiresAt, user })
       .from(projectMember)
       .innerJoin(user, eq(user.id, projectMember.userId))
-      .where(eq(projectMember.projectId, access.board.projectId))
+      .where(and(eq(projectMember.projectId, access.board.projectId), activeMember()))
       .orderBy(asc(projectMember.addedAt)),
     db
-      .select({ boardId: boardGrant.boardId, role: boardGrant.role, user })
+      .select({
+        boardId: boardGrant.boardId,
+        role: boardGrant.role,
+        expiresAt: boardGrant.expiresAt,
+        user,
+      })
       .from(boardGrant)
       .innerJoin(user, eq(user.id, boardGrant.userId))
-      .where(inArray(boardGrant.boardId, chainIds))
+      .where(and(inArray(boardGrant.boardId, chainIds), activeGrant()))
       .orderBy(asc(boardGrant.createdAt)),
   ]);
   const people = new Map<
@@ -102,14 +111,29 @@ async function accessList(db: Database, access: Access): Promise<BoardAccessEntr
     {
       row: typeof user.$inferSelect;
       projectRole: ProjectRole | null;
+      projectEnd: Date | null;
       grants: Map<string, ProjectRole>;
+      grantEnds: Map<string, Date | null>;
     }
   >();
   for (const m of members)
-    people.set(m.user.id, { row: m.user, projectRole: m.role, grants: new Map() });
+    people.set(m.user.id, {
+      row: m.user,
+      projectRole: m.role,
+      projectEnd: m.expiresAt,
+      grants: new Map(),
+      grantEnds: new Map(),
+    });
   for (const g of grants) {
-    const p = people.get(g.user.id) ?? { row: g.user, projectRole: null, grants: new Map() };
+    const p = people.get(g.user.id) ?? {
+      row: g.user,
+      projectRole: null,
+      projectEnd: null,
+      grants: new Map(),
+      grantEnds: new Map(),
+    };
     p.grants.set(g.boardId, g.role);
+    p.grantEnds.set(g.boardId, g.expiresAt);
     people.set(g.user.id, p);
   }
   const out: BoardAccessEntry[] = [];
@@ -127,6 +151,9 @@ async function accessList(db: Database, access: Access): Promise<BoardAccessEntr
           }
         : { kind: 'project' },
       projectRole: p.projectRole,
+      expiresAt: endOf(
+        eff.grantBoardId ? (p.grantEnds.get(eff.grantBoardId) ?? null) : p.projectEnd,
+      ),
     });
   }
   const order: Record<ProjectRole, number> = { owner: 0, editor: 1, commenter: 2, viewer: 3 };
@@ -134,6 +161,8 @@ async function accessList(db: Database, access: Access): Promise<BoardAccessEntr
     (a, b) => order[a.role] - order[b.role] || a.user.name.localeCompare(b.user.name),
   );
 }
+
+const endOf = (at: Date | null) => (at ? iso(at) : null);
 
 async function entryFor(db: Database, boardId: string, userId: string) {
   const access = await boardAccess(db, { id: userId }, boardId);
@@ -182,6 +211,7 @@ export function registerSharingRoutes(app: FastifyInstance, deps: Deps) {
       createdAt: iso(row.createdAt),
       expiresAt: iso(row.expiresAt),
       lastSentAt: row.lastSentAt ? iso(row.lastSentAt) : null,
+      accessExpiresAt: endOf(row.accessExpiresAt),
     };
   }
 
@@ -266,16 +296,36 @@ export function registerSharingRoutes(app: FastifyInstance, deps: Deps) {
   app.put(v1('/boards/:boardId/grants/:userId'), async (req) => {
     const actor = await requireActor(auth, req, db);
     const { boardId, userId } = GrantParams.parse(req.params);
-    const { role } = SetBoardGrant.parse(req.body);
+    const { role, expiresAt: requested } = SetBoardGrant.parse(req.body);
+    const expiresAt = readExpiry(requested, role);
     const [target] = await db.select({ id: user.id }).from(user).where(eq(user.id, userId));
     if (!target) throw new HttpError('not_found', 'User not found.');
-    await checkGrant(actor, boardId, userId, role);
+    const mine = await checkGrant(actor, boardId, userId, role);
+    const [current] = await db
+      .select({ expiresAt: boardGrant.expiresAt })
+      .from(boardGrant)
+      .where(and(eq(boardGrant.boardId, boardId), eq(boardGrant.userId, userId), activeGrant()));
+    // Left out, the end date stays (older clients do not show it); owners never end.
+    const end =
+      role === 'owner' ? null : expiresAt === undefined ? (current?.expiresAt ?? null) : expiresAt;
+    // Removing or extending an end date widens access: project owners only (decision 0041).
+    if (
+      widensEnd(current?.expiresAt, end) &&
+      (await projectRole(db, actor, mine.board.projectId)) !== 'owner'
+    )
+      throw new HttpError('forbidden', 'Only project owners can remove or extend an end date.');
+    const reset = !current || end?.getTime() !== current.expiresAt?.getTime();
     await db
       .insert(boardGrant)
-      .values({ boardId, userId, role, grantedBy: actor.id })
+      .values({ boardId, userId, role, grantedBy: actor.id, expiresAt: end })
       .onConflictDoUpdate({
         target: [boardGrant.boardId, boardGrant.userId],
-        set: { role, grantedBy: actor.id },
+        set: {
+          role,
+          grantedBy: actor.id,
+          expiresAt: end,
+          ...(reset ? { expiryWarnedAt: null } : {}),
+        },
       });
     return entryFor(db, boardId, userId);
   });
@@ -302,7 +352,8 @@ export function registerSharingRoutes(app: FastifyInstance, deps: Deps) {
         and(
           eq(boardGrant.userId, actor.id),
           isNull(board.deletedAt),
-          sql`not exists (select 1 from ${projectMember} pm where pm.project_id = ${board.projectId} and pm.user_id = ${actor.id})`,
+          activeGrant(),
+          sql`not exists (select 1 from ${projectMember} pm where pm.project_id = ${board.projectId} and pm.user_id = ${actor.id} and (pm.expires_at is null or pm.expires_at > now()))`,
         ),
       )
       .orderBy(asc(board.title));
@@ -323,10 +374,11 @@ export function registerSharingRoutes(app: FastifyInstance, deps: Deps) {
     if (!searchLimiter.take(actor.id))
       throw new HttpError('rate_limited', 'Too many searches: wait a minute.');
     const [sharer] = await db.execute<{ ok: number }>(sql`
-      select 1 as ok from ${projectMember}
-      where user_id = ${actor.id} and role in ('owner', 'editor')
+      select 1 as ok from ${projectMember} m
+      where m.user_id = ${actor.id} and m.role in ('owner', 'editor') and ${live('m')}
       union all
-      select 1 from ${boardGrant} where user_id = ${actor.id} and role in ('owner', 'editor')
+      select 1 from ${boardGrant} g
+      where g.user_id = ${actor.id} and g.role in ('owner', 'editor') and ${live('g')}
       limit 1`);
     if (!sharer) throw new HttpError('forbidden', 'Only people who can share can search.');
     const like = `%${q.replace(/[\\%_]/g, (c) => `\\${c}`)}%`;
@@ -342,7 +394,8 @@ export function registerSharingRoutes(app: FastifyInstance, deps: Deps) {
               or(ilike(user.name, like), ilike(user.email, like)),
               sql`exists (
                 select 1 from ${projectMember} a join ${projectMember} b on a.project_id = b.project_id
-                where a.user_id = ${actor.id} and b.user_id = ${user.id})`,
+                where a.user_id = ${actor.id} and b.user_id = ${user.id}
+                  and ${live('a')} and ${live('b')})`,
             ),
           ),
         ),
@@ -409,6 +462,7 @@ export function registerSharingRoutes(app: FastifyInstance, deps: Deps) {
     const role = projectId ? (input.role ?? null) : null;
     if (role && mine && higher(role, mine))
       throw new HttpError('forbidden', 'You cannot give a role higher than yours.');
+    const accessExpiresAt = (role && readExpiry(input.accessExpiresAt, role)) || null;
 
     const [recent] = await db
       .select({ n: count() })
@@ -434,19 +488,48 @@ export function registerSharingRoutes(app: FastifyInstance, deps: Deps) {
           if (boardId) {
             if (current?.role && mine && higher(current.role, mine))
               throw new HttpError('forbidden', 'This person has more access than you here.');
+            const [held] = await db
+              .select({ role: boardGrant.role, expiresAt: boardGrant.expiresAt })
+              .from(boardGrant)
+              .where(
+                and(
+                  eq(boardGrant.boardId, boardId),
+                  eq(boardGrant.userId, existing.id),
+                  activeGrant(),
+                ),
+              );
+            // Only raises, never makes a permanent role temporary or extends an end date.
+            const next = mergeInvitedRole(held ?? null, { role, expiresAt: accessExpiresAt });
+            if (!next)
+              throw new HttpError(
+                'conflict',
+                'This person already has a role here without an end date: change it in the list instead.',
+              );
             await db
               .insert(boardGrant)
-              .values({ boardId, userId: existing.id, role, grantedBy: actor.id })
+              .values({ boardId, userId: existing.id, grantedBy: actor.id, ...next })
               .onConflictDoUpdate({
                 target: [boardGrant.boardId, boardGrant.userId],
-                set: { role, grantedBy: actor.id },
+                set: { ...next, grantedBy: actor.id, expiryWarnedAt: null },
               });
           } else {
             const pRole = await projectRole(db, existing, projectId);
             // Changing an existing member's role is for owners (PUT /members does that).
             if (pRole)
               throw new HttpError('conflict', 'Already a member: change the role instead.');
-            await db.insert(projectMember).values({ projectId, userId: existing.id, role });
+            // An ended membership not swept yet is replaced.
+            await db
+              .insert(projectMember)
+              .values({ projectId, userId: existing.id, role, expiresAt: accessExpiresAt })
+              .onConflictDoUpdate({
+                target: [projectMember.projectId, projectMember.userId],
+                set: {
+                  role,
+                  expiresAt: accessExpiresAt,
+                  expiryWarnedAt: null,
+                  addedAt: sql`now()`,
+                },
+              });
           }
         }
         const body: InvitationResult = {
@@ -477,6 +560,7 @@ export function registerSharingRoutes(app: FastifyInstance, deps: Deps) {
         invitedBy: actor.id,
         maxUses: input.kind === 'email' || instanceLink ? 1 : null,
         expiresAt: new Date(Date.now() + expiresInDays * 86_400_000),
+        accessExpiresAt,
       })
       .returning();
     if (!created) throw new Error('Invitation insert returned nothing');
@@ -548,6 +632,7 @@ export function registerSharingRoutes(app: FastifyInstance, deps: Deps) {
       email: row.email,
       status: invitationStatus(row),
       expiresAt: iso(row.expiresAt),
+      accessExpiresAt: endOf(row.accessExpiresAt),
     };
     return body;
   });

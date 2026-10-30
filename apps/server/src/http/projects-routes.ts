@@ -29,9 +29,11 @@ import {
 } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
 import { generateKeyBetween } from 'fractional-indexing';
-import { type Actor, atLeast, higher, requireProjectRole } from '../access.ts';
+import { type Actor, activeMember, atLeast, higher, live, requireProjectRole } from '../access.ts';
+import { readExpiry, requireProjectCreation } from '../access-expiry.ts';
 import type { Auth } from '../auth.ts';
 import { readClassifications, validateProjectType } from '../classifications.ts';
+import type { Config } from '../config.ts';
 import type { Database } from '../db/client.ts';
 import {
   asset,
@@ -50,6 +52,7 @@ import { requireActor } from './auth-routes.ts';
 import { HttpError } from './errors.ts';
 
 interface Deps {
+  config: Config;
   db: Database;
   auth: Auth;
   jobs: Jobs;
@@ -101,7 +104,13 @@ async function loadProject(db: Database, actor: Actor, projectId: string) {
     .from(projectMember)
     .innerJoin(project, eq(project.id, projectMember.projectId))
     .innerJoin(board, and(eq(board.projectId, project.id), isNull(board.parentBoardId)))
-    .where(and(eq(projectMember.projectId, projectId), eq(projectMember.userId, actor.id)));
+    .where(
+      and(
+        eq(projectMember.projectId, projectId),
+        eq(projectMember.userId, actor.id),
+        activeMember(),
+      ),
+    );
   if (!row) throw new HttpError('not_found', 'Project not found.');
   const [pin] = await db
     .select()
@@ -115,12 +124,13 @@ async function listMembers(db: Database, projectId: string): Promise<ProjectMemb
     .select({ member: projectMember, user })
     .from(projectMember)
     .innerJoin(user, eq(user.id, projectMember.userId))
-    .where(eq(projectMember.projectId, projectId))
+    .where(and(eq(projectMember.projectId, projectId), activeMember()))
     .orderBy(asc(projectMember.addedAt));
   return rows.map((r) => ({
     user: { id: r.user.id, name: r.user.name, image: r.user.image },
     role: r.member.role,
     addedAt: iso(r.member.addedAt),
+    expiresAt: r.member.expiresAt ? iso(r.member.expiresAt) : null,
   }));
 }
 
@@ -136,7 +146,13 @@ async function lockMembers(tx: Tx, projectId: string, actorId: string, needed: P
   const [me] = await tx
     .select({ role: projectMember.role })
     .from(projectMember)
-    .where(and(eq(projectMember.projectId, projectId), eq(projectMember.userId, actorId)));
+    .where(
+      and(
+        eq(projectMember.projectId, projectId),
+        eq(projectMember.userId, actorId),
+        activeMember(),
+      ),
+    );
   if (!me) throw new HttpError('not_found', 'Project not found.');
   if (!atLeast(me.role, needed)) throw new HttpError('forbidden', `Needs the ${needed} role.`);
   return me.role;
@@ -151,7 +167,7 @@ async function ownerCount(db: Pick<Database, 'select'>, projectId: string) {
 }
 
 export function registerProjectRoutes(app: FastifyInstance, deps: Deps) {
-  const { db, auth, jobs } = deps;
+  const { config, db, auth, jobs } = deps;
   const v1 = (path: string) => `${API_PREFIX}${path}`;
 
   app.get(v1('/instance/storage'), async (req, reply) => {
@@ -161,9 +177,10 @@ export function registerProjectRoutes(app: FastifyInstance, deps: Deps) {
     reply.header('cache-control', 'private, no-store');
     // A member/grantee can see the owning project's label. Admin status alone grants no project access.
     const visible = sql<boolean>`(exists(select 1 from project_member m
-      where m.project_id = ${asset.projectId} and m.user_id = ${actor.id})
+      where m.project_id = ${asset.projectId} and m.user_id = ${actor.id} and ${live('m')})
       or exists(select 1 from board_grant g join board b on b.id = g.board_id
-        where b.project_id = ${asset.projectId} and b.deleted_at is null and g.user_id = ${actor.id}))`;
+        where b.project_id = ${asset.projectId} and b.deleted_at is null and g.user_id = ${actor.id}
+          and ${live('g')}))`;
     const rows = await db
       .select({
         mime: asset.mime,
@@ -192,6 +209,7 @@ export function registerProjectRoutes(app: FastifyInstance, deps: Deps) {
       .where(
         and(
           eq(projectMember.userId, actor.id),
+          activeMember(),
           query.archived === 'true' ? isNotNull(project.archivedAt) : isNull(project.archivedAt),
           after
             ? or(
@@ -224,6 +242,7 @@ export function registerProjectRoutes(app: FastifyInstance, deps: Deps) {
   app.post(v1('/projects'), async (req, reply) => {
     const actor = await requireActor(auth, req, db);
     const input = CreateProject.parse(req.body);
+    await requireProjectCreation(db, config, actor);
     validateDates(input.shootingStart ?? null, input.shootingEnd ?? null);
     const id = randomUUID();
     const icon = input.icon ?? defaultProjectIcon(id);
@@ -375,7 +394,8 @@ export function registerProjectRoutes(app: FastifyInstance, deps: Deps) {
   app.put(v1('/projects/:projectId/members/:userId'), async (req) => {
     const actor = await requireActor(auth, req, db);
     const { projectId, userId } = MemberParams.parse(req.params);
-    const { role } = SetProjectMember.parse(req.body);
+    const { role, expiresAt: requested } = SetProjectMember.parse(req.body);
+    const expiresAt = readExpiry(requested, role);
     // Editors add people (up to editor); everything else about members is for owners.
     await requireProjectRole(db, actor, projectId, 'editor');
     const [target] = await db.select({ id: user.id }).from(user).where(eq(user.id, userId));
@@ -383,19 +403,40 @@ export function registerProjectRoutes(app: FastifyInstance, deps: Deps) {
     await db.transaction(async (tx) => {
       const mine = await lockMembers(tx, projectId, actor.id, 'editor');
       const [current] = await tx
-        .select({ role: projectMember.role })
+        .select({ role: projectMember.role, expiresAt: projectMember.expiresAt })
         .from(projectMember)
-        .where(and(eq(projectMember.projectId, projectId), eq(projectMember.userId, userId)));
-      if (mine !== 'owner' && (current || higher(role, mine)))
+        .where(
+          and(
+            eq(projectMember.projectId, projectId),
+            eq(projectMember.userId, userId),
+            activeMember(),
+          ),
+        );
+      // An end date is a change to the member, which is for owners (decision 0041).
+      if (mine !== 'owner' && (current || higher(role, mine) || expiresAt))
         throw new HttpError('forbidden', 'Needs the owner role.');
       if (current?.role === 'owner' && role !== 'owner' && (await ownerCount(tx, projectId)) < 2)
         throw new HttpError('conflict', 'A project needs at least one owner.');
+      // Owners never end; left out, the end date stays (older clients do not show it).
+      const end =
+        role === 'owner'
+          ? null
+          : expiresAt === undefined
+            ? (current?.expiresAt ?? null)
+            : expiresAt;
+      const changed = end?.getTime() !== current?.expiresAt?.getTime();
       await tx
         .insert(projectMember)
-        .values({ projectId, userId, role })
+        .values({ projectId, userId, role, expiresAt: end })
         .onConflictDoUpdate({
           target: [projectMember.projectId, projectMember.userId],
-          set: { role },
+          // A row that had ended but was not swept yet starts again.
+          set: {
+            role,
+            expiresAt: end,
+            ...(changed || !current ? { expiryWarnedAt: null } : {}),
+            ...(current ? {} : { addedAt: sql`now()` }),
+          },
         });
     });
     const member = (await listMembers(db, projectId)).find((m) => m.user.id === userId);

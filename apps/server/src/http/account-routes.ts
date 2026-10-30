@@ -19,6 +19,7 @@ import {
 import { and, asc, count, desc, eq, gt, inArray, isNull, ne, sql } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
 import sharp from 'sharp';
+import { activeGrant, activeMember } from '../access.ts';
 import type { Auth } from '../auth.ts';
 import { FRESH_SIGN_IN_MS } from '../auth-session.ts';
 import type { Config } from '../config.ts';
@@ -366,7 +367,13 @@ export function registerAccountRoutes(app: FastifyInstance, deps: Deps) {
         const [others] = await tx
           .select({ n: count() })
           .from(projectMember)
-          .where(and(eq(projectMember.projectId, p.id), ne(projectMember.userId, userId)));
+          .where(
+            and(
+              eq(projectMember.projectId, p.id),
+              ne(projectMember.userId, userId),
+              activeMember(),
+            ),
+          );
         const [owners] = await tx
           .select({ n: count() })
           .from(projectMember)
@@ -382,7 +389,7 @@ export function registerAccountRoutes(app: FastifyInstance, deps: Deps) {
           .select({ n: count() })
           .from(boardGrant)
           .innerJoin(board, eq(board.id, boardGrant.boardId))
-          .where(and(eq(board.projectId, p.id), ne(boardGrant.userId, userId)));
+          .where(and(eq(board.projectId, p.id), ne(boardGrant.userId, userId), activeGrant()));
         if ((others?.n ?? 0) + (guests?.n ?? 0) === 0) alone.push(p.id);
         else if ((owners?.n ?? 0) === 0) soleOwnerOf.push(p);
       }

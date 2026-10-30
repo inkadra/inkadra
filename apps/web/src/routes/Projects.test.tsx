@@ -9,6 +9,7 @@ import { Projects } from './Projects.tsx';
 import { projectOverviews } from './projects-overview.ts';
 
 const session = vi.hoisted(() => ({ role: 'member' }));
+const creation = vi.hoisted(() => ({ allowed: true }));
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
     t: (key: string, values?: { bytes?: string }) => values?.bytes ?? key,
@@ -20,7 +21,11 @@ vi.mock('../lib/session.tsx', () => ({
   useSession: () => ({ user: { id: 'me', role: session.role } }),
 }));
 vi.mock('./AppLayout.tsx', () => ({
-  useProjects: () => ({ openNewProject: vi.fn(), openImportProject: vi.fn() }),
+  useProjects: () => ({
+    openNewProject: vi.fn(),
+    openImportProject: vi.fn(),
+    canCreateProjects: creation.allowed,
+  }),
 }));
 vi.mock('./BoardPreview.tsx', () => ({
   BoardPreview: ({ boardId }: { boardId: string }) => <span data-preview={boardId} />,
@@ -65,6 +70,7 @@ afterEach(() => {
   act(() => root.unmount());
   host.remove();
   vi.clearAllMocks();
+  creation.allowed = true;
 });
 async function render(members: ProjectMember[]) {
   vi.mocked(projectOverviews).mockResolvedValue([
@@ -105,6 +111,18 @@ it('shows the Home card with the actions in its menu', async () => {
   );
   expect(api.put).toHaveBeenCalledWith('/projects/p1/pin', { pinned: true });
   expect(host.querySelector('.project-card__badge')?.textContent).toBe('projectsPage.pinned');
+});
+
+it('shows New project off, with why, to people who cannot create projects', async () => {
+  creation.allowed = false;
+  await render([member('me', 'Giulia')]);
+  const actions = host.querySelector('.projects-page__actions');
+  const button = [...(actions?.querySelectorAll('button') ?? [])];
+  expect(button.map((b) => [b.textContent, b.disabled])).toEqual([['nav.newProject', true]]);
+  expect(button[0]?.getAttribute('aria-describedby')).toBe('projects-creation-off');
+  expect(actions?.textContent).toContain('projectCreation.off');
+  // No import and no guided setup either.
+  expect(actions?.querySelector('a')).toBeNull();
 });
 
 it('offers the People filter only when someone else is on a project', async () => {

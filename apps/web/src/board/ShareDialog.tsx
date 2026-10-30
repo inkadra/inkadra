@@ -11,7 +11,9 @@ import { Avatar, Button, Dialog, Icon, IconButton } from '@inkadra/ui';
 import { type FormEvent, type KeyboardEvent, useCallback, useEffect, useId, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api, RequestError } from '../lib/api.ts';
+import { useIsPhone } from '../lib/phone.ts';
 import { useSession } from '../lib/session.tsx';
+import { ExpiryLabel, ExpiryPicker } from './ExpiryPicker.tsx';
 import { GuestLinks } from './GuestLinks.tsx';
 import { PermissionsMatrix } from './PermissionsMatrix.tsx';
 import './share.css';
@@ -87,6 +89,15 @@ export function ShareDialog({
     await (isRoot
       ? api.put(`/projects/${board.projectId}/members/${entry.user.id}`, { role })
       : api.put(`/boards/${board.id}/grants/${entry.user.id}`, { role }));
+  }
+  // The role is sent again as it is: the end date is part of the same membership or grant.
+  async function setExpiry(entry: BoardAccessEntry, expiresAt: string | null) {
+    await (isRoot
+      ? api.put(`/projects/${board.projectId}/members/${entry.user.id}`, {
+          role: entry.role,
+          expiresAt,
+        })
+      : api.put(`/boards/${board.id}/grants/${entry.user.id}`, { role: entry.role, expiresAt }));
   }
   async function remove(entry: BoardAccessEntry) {
     await (isRoot
@@ -188,6 +199,12 @@ export function ShareDialog({
                           {me ? t('share.you', { name: e.user.name }) : e.user.name}
                         </span>
                         <span className="share__sub">{sourceText(t, e, board.id, isRoot)}</span>
+                        {/* A line of its own, so it is never cut off by a long address. */}
+                        {e.expiresAt && (
+                          <span className="share__sub">
+                            <ExpiryLabel at={e.expiresAt} />
+                          </span>
+                        )}
                       </span>
                     </button>
                     {editable ? (
@@ -202,6 +219,21 @@ export function ShareDialog({
                       />
                     ) : (
                       <span className="share__role">{t(`roles.${e.role}`)}</span>
+                    )}
+                    {/* Owners never expire: a project always keeps one (decision 0041). */}
+                    {editable && own && e.role !== 'owner' ? (
+                      <ExpiryPicker
+                        value={e.expiresAt ?? null}
+                        label={t('share.expiry.of', { name: e.user.name })}
+                        // Removing or extending an end date is for owners (decision 0041).
+                        canExtend={myRole === 'owner'}
+                        onChange={(at) => {
+                          setSelectedUserId(e.user.id);
+                          return run(() => setExpiry(e, at))();
+                        }}
+                      />
+                    ) : (
+                      <span className="share__spacer" />
                     )}
                     {editable && own ? (
                       <IconButton
@@ -394,6 +426,9 @@ function InviteForm({
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
   const [copyUrl, setCopyUrl] = useState<string | null>(null);
+  const [until, setUntil] = useState<string | null>(null);
+  // The full hint does not fit a phone: the short label says enough there.
+  const phone = useIsPhone();
 
   useEffect(() => {
     const q = query.trim();
@@ -432,8 +467,10 @@ function InviteForm({
         email,
         boardId,
         role,
+        ...(until && role !== 'owner' ? { accessExpiresAt: until } : {}),
       });
       setQuery('');
+      setUntil(null);
       setFound([]);
       if (res.status === 'added') {
         setStatus(await onDone(t('share.added', { name: res.entry.user.name })));
@@ -461,7 +498,11 @@ function InviteForm({
           autoComplete="off"
           list={listId}
           placeholder={
-            canEmail ? t('share.invitePlaceholder') : t('share.invitePlaceholderNoEmail')
+            phone
+              ? t('share.inviteLabel')
+              : canEmail
+                ? t('share.invitePlaceholder')
+                : t('share.invitePlaceholderNoEmail')
           }
           aria-label={t('share.inviteLabel')}
           value={query}
@@ -480,6 +521,12 @@ function InviteForm({
           label={t('share.inviteRole')}
           onChange={setRole}
         />
+        {role !== 'owner' && (
+          <>
+            {until && <ExpiryLabel at={until} />}
+            <ExpiryPicker value={until} label={t('share.expiry.invite')} onChange={setUntil} />
+          </>
+        )}
       </div>
       <Button type="submit" variant="primary" disabled={busy || query.trim() === ''}>
         {t('share.invite')}

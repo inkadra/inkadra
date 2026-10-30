@@ -64,6 +64,17 @@ const it = {
         return `${who}: "${where}"`;
     }
   },
+  /** `who` null: the access of the recipient. */
+  accessLine: (type: string, who: string | null, where: string, at: Date | null) => {
+    const when = at ? accessWhen(at, 'it-IT') : '';
+    if (type === 'access_expiring')
+      return who
+        ? `L'accesso di ${who} a "${where}" scade il ${when}`
+        : `Il tuo accesso a "${where}" scade il ${when}`;
+    return who
+      ? `L'accesso di ${who} a "${where}" è scaduto`
+      : `Il tuo accesso a "${where}" è scaduto`;
+  },
   notificationSubject: (count: number, instance: string) =>
     count === 1 ? `Una novità su ${instance}` : `${count} novità su ${instance}`,
   digestSubject: (instance: string) => `Il riepilogo di oggi su ${instance}`,
@@ -130,12 +141,35 @@ const en: Texts = {
         return `${who}: "${where}"`;
     }
   },
+  accessLine: (type, who, where, at) => {
+    const when = at ? accessWhen(at, 'en-GB') : '';
+    if (type === 'access_expiring')
+      return who
+        ? `${who}'s access to "${where}" ends on ${when}`
+        : `Your access to "${where}" ends on ${when}`;
+    return who ? `${who}'s access to "${where}" has ended` : `Your access to "${where}" has ended`;
+  },
   notificationSubject: (count, instance) =>
     count === 1 ? `Something new on ${instance}` : `${count} new things on ${instance}`,
   digestSubject: (instance) => `Today on ${instance}`,
   notificationSettings: (url) => `Choose when you get these emails in your settings: ${url}`,
   notificationAction: 'Open Inkadra',
 };
+
+/**
+ * When access ends, for emails. Accounts keep no time zone, so the time and the zone name
+ * (the server's) go with the date: "15 dicembre, 23:59 CET" is unambiguous anywhere.
+ */
+export function accessWhen(at: Date, locale: string, timeZone?: string): string {
+  return at.toLocaleString(locale, {
+    day: 'numeric',
+    month: 'long',
+    hour: '2-digit',
+    minute: '2-digit',
+    timeZoneName: 'short',
+    ...(timeZone ? { timeZone } : {}),
+  });
+}
 
 export function mailText(who: { locale?: string | null }): Texts {
   return who.locale?.toLowerCase().startsWith('en') ? en : it;

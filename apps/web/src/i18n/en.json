@@ -941,6 +941,15 @@
       "download": "Download originals",
       "yes": "Yes",
       "no": "No"
+    },
+    "expiry": {
+      "label": "Expires {{date}}",
+      "until": "Access until",
+      "help": "After that day the role is removed. The person and the project owners get a reminder three days before.",
+      "save": "Set",
+      "clear": "Remove end date",
+      "of": "End of access for {{name}}",
+      "invite": "End of access for the person you invite"
     }
   },
   "guestLinks": {
@@ -1354,7 +1363,11 @@
       "invitation_accepted": "accepted your invitation",
       "unknown": "did something",
       "export_ready": "Your project export is ready to download",
-      "import_ready": "Your project import is finished"
+      "import_ready": "Your project import is finished",
+      "access_expiring": "{{name}}’s access ends on {{date}}",
+      "access_expiringOwn": "Your access ends on {{date}}",
+      "access_expired": "{{name}}’s access has ended",
+      "access_expiredOwn": "Your access has ended"
     },
     "emailTitle": "Email notifications",
     "emailHint": "Mentions, replies and reviews by email too, when the server can send it.",
@@ -2408,5 +2421,21 @@
     "pickVideo": "Choose a video or link on this board.",
     "noVideos": "Add a video or YouTube/Vimeo link to this board first.",
     "hiddenDestination": "The source is hidden from guests: this frame will also be hidden."
+  },
+  "projectCreation": {
+    "off": "On this instance, only people an administrator allows create projects. You work in the projects you are invited to.",
+    "emptyBody": "When someone invites you to a project, you find it here.",
+    "settings": {
+      "title": "Projects",
+      "label": "Members can create projects",
+      "help": "When off, only administrators create and import projects; everyone else works in the projects they are invited to. You can make exceptions for single people below."
+    },
+    "column": "Creates projects",
+    "always": "Always",
+    "for": "Can create projects: {{name}}",
+    "defaultYes": "As the instance (yes)",
+    "defaultNo": "As the instance (no)",
+    "yes": "Yes",
+    "no": "No"
   }
 }

@@ -10,7 +10,7 @@ import {
 } from '@inkadra/shared';
 import { and, eq, inArray, isNull, sql } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
-import { type Actor, effectiveRoles } from '../access.ts';
+import { type Actor, activeGrant, activeMember, effectiveRoles } from '../access.ts';
 import type { Auth } from '../auth.ts';
 import { readClassifications } from '../classifications.ts';
 import type { Database } from '../db/client.ts';
@@ -81,12 +81,21 @@ export async function readableBoards(
     db
       .select({ projectId: projectMember.projectId, role: projectMember.role })
       .from(projectMember)
-      .where(and(eq(projectMember.userId, actor.id), scope(projectMember.projectId))),
+      .where(
+        and(eq(projectMember.userId, actor.id), scope(projectMember.projectId), activeMember()),
+      ),
     db
       .select({ boardId: boardGrant.boardId, role: boardGrant.role, projectId: board.projectId })
       .from(boardGrant)
       .innerJoin(board, eq(board.id, boardGrant.boardId))
-      .where(and(eq(boardGrant.userId, actor.id), isNull(board.deletedAt), scope(board.projectId))),
+      .where(
+        and(
+          eq(boardGrant.userId, actor.id),
+          isNull(board.deletedAt),
+          scope(board.projectId),
+          activeGrant(),
+        ),
+      ),
   ]);
   const projectRoles = new Map<string, ProjectRole>(memberships.map((m) => [m.projectId, m.role]));
   const grants = new Map<string, Map<string, ProjectRole>>();

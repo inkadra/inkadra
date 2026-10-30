@@ -1,5 +1,5 @@
 import { atLeast, type ProjectRole, PROJECT_ROLE_RANK as rank } from '@inkadra/shared';
-import { and, eq, inArray, isNull, sql } from 'drizzle-orm';
+import { and, eq, gt, inArray, isNull, or, sql } from 'drizzle-orm';
 import { visibleBoardCard } from './board-content.ts';
 import type { Database } from './db/client.ts';
 import { asset, board, boardGrant, notification, projectMember } from './db/schema.ts';
@@ -13,6 +13,19 @@ export interface Actor {
 }
 
 export { atLeast, type GuestAction, guestCan } from '@inkadra/shared';
+
+/**
+ * Memberships and grants whose end date has passed count as absent from that moment
+ * (decision 0041), before the sweep removes them: open connections lose access at their next
+ * re-check whatever the job schedule.
+ */
+export const activeMember = () =>
+  or(isNull(projectMember.expiresAt), gt(projectMember.expiresAt, sql`now()`));
+export const activeGrant = () =>
+  or(isNull(boardGrant.expiresAt), gt(boardGrant.expiresAt, sql`now()`));
+/** The same conditions for raw SQL, on the given table alias (`m`, `g`, …). */
+export const live = (alias: string) =>
+  sql.raw(`(${alias}.expires_at is null or ${alias}.expires_at > now())`);
 
 export function higher(a: ProjectRole, b: ProjectRole): boolean {
   return rank[a] > rank[b];
@@ -75,7 +88,13 @@ export async function projectRole(
   const [row] = await db
     .select({ role: projectMember.role })
     .from(projectMember)
-    .where(and(eq(projectMember.projectId, projectId), eq(projectMember.userId, actor.id)));
+    .where(
+      and(
+        eq(projectMember.projectId, projectId),
+        eq(projectMember.userId, actor.id),
+        activeMember(),
+      ),
+    );
   return row?.role ?? null;
 }
 
@@ -105,7 +124,9 @@ async function grantsOn(
   const rows = await db
     .select({ boardId: boardGrant.boardId, role: boardGrant.role })
     .from(boardGrant)
-    .where(and(eq(boardGrant.userId, userId), inArray(boardGrant.boardId, boardIds)));
+    .where(
+      and(eq(boardGrant.userId, userId), inArray(boardGrant.boardId, boardIds), activeGrant()),
+    );
   return new Map(rows.map((r) => [r.boardId, r.role]));
 }
 
@@ -169,7 +190,12 @@ export async function projectGrants(
     .from(boardGrant)
     .innerJoin(board, eq(board.id, boardGrant.boardId))
     .where(
-      and(eq(boardGrant.userId, actor.id), eq(board.projectId, projectId), isNull(board.deletedAt)),
+      and(
+        eq(boardGrant.userId, actor.id),
+        eq(board.projectId, projectId),
+        isNull(board.deletedAt),
+        activeGrant(),
+      ),
     );
   return new Map(rows.map((r) => [r.boardId, r.role]));
 }
@@ -186,7 +212,12 @@ export async function touchesProject(
     .from(boardGrant)
     .innerJoin(board, eq(board.id, boardGrant.boardId))
     .where(
-      and(eq(boardGrant.userId, actor.id), eq(board.projectId, projectId), isNull(board.deletedAt)),
+      and(
+        eq(boardGrant.userId, actor.id),
+        eq(board.projectId, projectId),
+        isNull(board.deletedAt),
+        activeGrant(),
+      ),
     )
     .limit(1);
   return Boolean(row);
@@ -272,7 +303,12 @@ async function bestGrant(
     .from(boardGrant)
     .innerJoin(board, eq(board.id, boardGrant.boardId))
     .where(
-      and(eq(boardGrant.userId, actor.id), eq(board.projectId, projectId), isNull(board.deletedAt)),
+      and(
+        eq(boardGrant.userId, actor.id),
+        eq(board.projectId, projectId),
+        isNull(board.deletedAt),
+        activeGrant(),
+      ),
     );
   let best: ProjectRole | null = null;
   for (const r of rows) if (!best || higher(r.role, best)) best = r.role;
@@ -310,8 +346,9 @@ export async function boardRoles(
     )
     select up.start, up.id, g.role as grant_role, m.role as project_role
     from up
-    left join board_grant g on g.board_id = up.id and g.user_id = ${actor.id}
+    left join board_grant g on g.board_id = up.id and g.user_id = ${actor.id} and ${live('g')}
     left join project_member m on m.project_id = up.project_id and m.user_id = ${actor.id}
+      and ${live('m')}
     order by up.start, up.depth`);
   type Chain = {
     chain: string[];
@@ -340,7 +377,8 @@ export async function boardRoles(
 /** SQL equivalent of visibility/boardRoles: every granted role permits reading. */
 export function notificationAccess(userId: string) {
   return sql`(
-    (${notification.boardId} is not null and exists (
+    ${notification.subjectUserId} = ${userId}
+    or (${notification.boardId} is not null and exists (
       with recursive up as (
         select b.id, b.parent_board_id, b.project_id from board b
         where b.id = ${notification.boardId} and b.deleted_at is null
@@ -349,16 +387,17 @@ export function notificationAccess(userId: string) {
         join up on b.id = up.parent_board_id
       )
       select 1 from up where
-        exists (select 1 from board_grant g where g.board_id = up.id and g.user_id = ${userId})
+        exists (select 1 from board_grant g where g.board_id = up.id and g.user_id = ${userId}
+          and ${live('g')})
         or exists (select 1 from project_member m
-          where m.project_id = up.project_id and m.user_id = ${userId})
+          where m.project_id = up.project_id and m.user_id = ${userId} and ${live('m')})
     )) or (${notification.boardId} is null and (
       ${notification.projectId} is null
       or exists (select 1 from project_member m
-        where m.project_id = ${notification.projectId} and m.user_id = ${userId})
+        where m.project_id = ${notification.projectId} and m.user_id = ${userId} and ${live('m')})
       or exists (select 1 from board_grant g join board b on b.id = g.board_id
         where b.project_id = ${notification.projectId} and b.deleted_at is null
-          and g.user_id = ${userId})
+          and g.user_id = ${userId} and ${live('g')})
     ))
   )`;
 }
@@ -387,8 +426,8 @@ export async function boardRolesForPeople(
     select people.id as user_id,
       coalesce(
         (select g.role from up join board_grant g on g.board_id = up.id
-         where g.user_id = people.id order by up.depth limit 1),
-        (select m.role from project_member m where m.user_id = people.id
+         where g.user_id = people.id and ${live('g')} order by up.depth limit 1),
+        (select m.role from project_member m where m.user_id = people.id and ${live('m')}
          and m.project_id = (select project_id from up limit 1))
       ) as role
     from people`);
@@ -430,7 +469,7 @@ export async function rolesOnProjectBoards(
       .select({ boardId: boardGrant.boardId, role: boardGrant.role })
       .from(boardGrant)
       .innerJoin(board, eq(board.id, boardGrant.boardId))
-      .where(and(eq(boardGrant.userId, userId), eq(board.projectId, projectId))),
+      .where(and(eq(boardGrant.userId, userId), eq(board.projectId, projectId), activeGrant())),
     projectRole(db, { id: userId }, projectId),
   ]);
   // Keep ancestors in the role calculation even when trashed: boardAccess uses their grants

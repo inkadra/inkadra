@@ -13,6 +13,7 @@ import {
 } from '@inkadra/shared';
 import { and, desc, eq, gt, inArray, sql } from 'drizzle-orm';
 import type { FastifyInstance, FastifyRequest } from 'fastify';
+import { requireProjectCreation } from '../access-expiry.ts';
 import type { Auth } from '../auth.ts';
 import {
   nextBackupAt,
@@ -107,6 +108,7 @@ export function registerTransferRoutes(app: FastifyInstance, deps: Deps) {
     );
     scope.post(v1('/projects/import'), async (req, reply) => {
       const actor = await requireActor(auth, req, db);
+      await requireProjectCreation(db, config, actor);
       if (!jobs.runTransfer) throw new HttpError('internal', 'Imports are not available.');
       const type = (req.headers['content-type'] ?? '').split(';')[0]?.trim().toLowerCase();
       if (type !== 'application/zip' && type !== 'application/x-zip-compressed')

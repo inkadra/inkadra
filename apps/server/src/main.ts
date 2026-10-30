@@ -4,6 +4,7 @@ import { mkdir } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import pino, { type Logger } from 'pino';
+import { startInlineExpirySweep } from './access-expiry.ts';
 import { disableAdminTwoFactor } from './admin-two-factor.ts';
 import { createAuth } from './auth.ts';
 import { authSecurity, authSource } from './auth-security.ts';
@@ -181,6 +182,9 @@ async function main() {
     } else {
       log.warn('REDIS_URL is not set: processing uploads inside the web process');
       jobs = inlineJobs(media, log, transfers);
+      // Without a worker, ended access is swept here (decision 0041).
+      const stopSweep = startInlineExpirySweep(db, log);
+      closers.unshift(async () => stopSweep());
     }
     // Left behind by a clip that was being received when the server stopped.
     const swept = await sweepClipTemp(tmpDir);

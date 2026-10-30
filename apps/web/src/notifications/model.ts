@@ -9,6 +9,8 @@ export const KNOWN_TYPES = [
   'invitation_accepted',
   'export_ready',
   'import_ready',
+  'access_expiring',
+  'access_expired',
 ] as const;
 
 /** Where a notification leads: the board, with the card selected and the thread open. */

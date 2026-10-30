@@ -8,6 +8,7 @@ import {
 } from '@inkadra/shared';
 import { and, asc, eq, isNull, sql } from 'drizzle-orm';
 import type { FastifyInstance, FastifyRequest } from 'fastify';
+import { live } from '../access.ts';
 import type { Auth } from '../auth.ts';
 import { readClassifications, validateCatalogUpdate } from '../classifications.ts';
 import type { Config } from '../config.ts';
@@ -79,6 +80,7 @@ export function registerInstanceAdminRoutes(
   });
   app.get(`${API_PREFIX}/instance/members`, async (req) => {
     await admin(req);
+    const { membersCanCreateProjects } = await readInstanceSettings(db, config);
     const rows = await db
       .select({
         id: user.id,
@@ -90,7 +92,8 @@ export function registerInstanceAdminRoutes(
         lastActiveAt: sql<
           Date | string | null
         >`greatest((select max(updated_at) from session where user_id = "user"."id"), (select max(last_used_at) from personal_token where user_id = "user"."id"))`,
-        projectsCount: sql<number>`(select count(*)::int from project_member where user_id = "user"."id")`,
+        projectsCount: sql<number>`(select count(*)::int from project_member m where m.user_id = "user"."id" and ${live('m')})`,
+        canCreateProjectsOverride: user.canCreateProjects,
       })
       .from(user)
       .orderBy(asc(user.name), asc(user.id));
@@ -99,6 +102,8 @@ export function registerInstanceAdminRoutes(
         ...r,
         deactivatedAt: r.deactivatedAt?.toISOString() ?? null,
         lastActiveAt: r.lastActiveAt ? new Date(r.lastActiveAt).toISOString() : null,
+        canCreateProjects:
+          r.role === 'admin' || (r.canCreateProjectsOverride ?? membersCanCreateProjects),
       })),
     };
   });
@@ -129,6 +134,10 @@ export function registerInstanceAdminRoutes(
         .update(user)
         .set({
           role: patch.role ?? target.role,
+          canCreateProjects:
+            patch.canCreateProjects === undefined
+              ? target.canCreateProjects
+              : patch.canCreateProjects,
           deactivatedAt:
             patch.active === false
               ? (target.deactivatedAt ?? new Date())

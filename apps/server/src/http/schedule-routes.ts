@@ -9,7 +9,7 @@ import {
 } from '@inkadra/shared';
 import { and, asc, eq, gte, isNull, lte, sql } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
-import { requireBoardRole } from '../access.ts';
+import { live, requireBoardRole } from '../access.ts';
 import type { Auth } from '../auth.ts';
 import type { Database } from '../db/client.ts';
 import { board, project, shootingDay } from '../db/schema.ts';
@@ -40,14 +40,14 @@ export function registerScheduleRoutes(
     // (board_id, date) index instead of being scanned across every project's history.
     const readable = sql`array(
       with recursive granted as (
-        select g.board_id as id from board_grant g where g.user_id = ${actor.id}
+        select g.board_id as id from board_grant g where g.user_id = ${actor.id} and ${live('g')}
         union
         select c.id from board c join granted on c.parent_board_id = granted.id
       )
       select id from granted
       union
       select b.id from board b join project_member m on m.project_id = b.project_id
-        where m.user_id = ${actor.id}
+        where m.user_id = ${actor.id} and ${live('m')}
     )`;
     const rows = await db
       .select({ day: shootingDay, boardTitle: board.title, projectName: project.name })

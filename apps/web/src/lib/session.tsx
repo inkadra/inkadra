@@ -10,6 +10,7 @@ import {
 } from 'react';
 import i18n, { LOCALES, type Locale } from '../i18n/index.ts';
 import { api, RequestError } from './api.ts';
+import { setSignedInId } from './me.ts';
 
 interface SessionState {
   instance: Instance | null;
@@ -59,6 +60,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     setVersion(identity?.version);
     setInstance(inst);
     setUser(me);
+    setSignedInId(me?.id ?? null);
     if (me?.locale) {
       const base = me.locale.slice(0, 2) as Locale;
       if (LOCALES.includes(base) && i18n.language !== base) {

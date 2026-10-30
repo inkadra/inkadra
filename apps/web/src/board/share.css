@@ -263,3 +263,130 @@
   font-weight: 500;
   color: #ededed;
 }
+
+/* End of someone's access (decision 0041): muted, in the warning colour within three days. */
+.share__expiry {
+  color: var(--ink-text-muted);
+  white-space: nowrap;
+}
+.share__expiry--soon {
+  color: var(--ink-status-warn);
+}
+.share__field > .share__expiry {
+  font-size: 11px;
+  padding: 0 2px;
+}
+.share__expiry-menu {
+  position: relative;
+  flex: none;
+}
+.share__expiry-btn {
+  color: var(--ink-text-muted);
+}
+.share__expiry-btn--set {
+  color: var(--ink-text-secondary);
+}
+.share__expiry-pop {
+  position: fixed;
+  z-index: 2;
+  min-inline-size: 0;
+  margin: 0;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  border-radius: 10px;
+  /* As the context menus. */
+  background: var(--ink-surface-1);
+  border: 1px solid var(--ink-border-subtle);
+  box-shadow: 0 8px 30px #0003;
+}
+.share__expiry-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--ink-text-secondary);
+}
+.share__date {
+  height: 32px;
+  padding: 0 8px;
+  border-radius: 6px;
+  border: 1px solid var(--ink-border-default);
+  background: var(--ink-surface-1);
+  color-scheme: light dark;
+}
+.share__date:focus-visible {
+  border-color: var(--ink-accent-primary);
+}
+.share__expiry-help {
+  margin: 0;
+  font-size: 11px;
+  color: var(--ink-text-muted);
+}
+.share__expiry-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+/* Phones: the person (name, email, end date) gets the whole width; role, end date and remove
+   go on a second line, with touch-sized targets. The invite field puts its role and end date
+   under the address for the same reason. */
+@media (width < 480px) {
+  /* Two-line rows: room for more than two people before the list scrolls. */
+  .share__list {
+    max-height: 55vh;
+  }
+  .share__row {
+    flex-wrap: wrap;
+    gap: 0 4px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid var(--ink-border-subtle);
+  }
+  .share__row:last-child {
+    border-bottom: 0;
+  }
+  .share__person {
+    flex: 1 0 100%;
+  }
+  .share__row > :nth-child(2) {
+    margin-left: auto;
+  }
+  .share__row .share__select,
+  .share__row .share__role {
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+  }
+  .share__row .ink-iconbtn,
+  .share__row .share__spacer,
+  .share__field .ink-iconbtn {
+    width: 44px;
+    height: 44px;
+  }
+  .share__row--pending .share__who {
+    flex: 1 0 calc(100% - 40px);
+  }
+  .share__row--pending > :nth-child(3) {
+    margin-left: auto;
+  }
+  .share__field {
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    height: auto;
+    padding: 0 4px 0 10px;
+  }
+  .share__field > .share__input {
+    flex: 1 0 100%;
+    height: 44px;
+  }
+  .share__field .share__select {
+    min-height: 44px;
+  }
+  .share__invite > .ink-btn {
+    flex: 1 0 100%;
+    min-height: 44px;
+  }
+}

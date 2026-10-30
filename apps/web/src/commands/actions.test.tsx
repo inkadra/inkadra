@@ -109,6 +109,21 @@ describe('permission gating', () => {
     expect(app(false, false)).not.toContain('new-board');
   });
 
+  it('offers New project only to people who can create projects', () => {
+    expect(app(false, false)).toContain('new-project');
+    const ids = appActions({
+      t,
+      admin: false,
+      canCreateBoard: false,
+      theme: 'light',
+      navigate: vi.fn(),
+      newBoard: vi.fn(),
+      toggleTheme: vi.fn(),
+      openInbox: vi.fn(),
+    }).map((a) => a.id);
+    expect(ids).not.toContain('new-project');
+  });
+
   const canvas = (opts: { readOnly?: boolean; guest?: boolean; framePanelOpen?: boolean }) =>
     canvasActions({
       readOnly: false,
