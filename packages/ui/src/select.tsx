@@ -29,6 +29,15 @@ type Props = Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'onChange' | 'value' 
   emptyText?: string;
   variant?: 'default' | 'quiet';
 };
+/** A label's own words, without the controls it may wrap (the trigger, its list). */
+function labelText(label: HTMLLabelElement | undefined) {
+  if (!label) return '';
+  const copy = label.cloneNode(true) as HTMLElement;
+  for (const control of copy.querySelectorAll('button, input, select, textarea, [popover]'))
+    control.remove();
+  return copy.textContent?.trim() ?? '';
+}
+
 /** Single choice listbox. Native option children are accepted for incremental migrations. */
 export function Select({
   value,
@@ -88,7 +97,7 @@ export function Select({
     // The phone sheet is titled with the field's visible label, or its accessible name.
     const button = trigger.current;
     setTitle(
-      button?.labels?.[0]?.textContent?.trim() ||
+      labelText(button?.labels?.[0]) ||
         (props['aria-labelledby'] &&
           document.getElementById(props['aria-labelledby'])?.textContent?.trim()) ||
         props['aria-label'] ||
