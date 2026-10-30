@@ -3776,7 +3776,7 @@
           },
           "password": {
             "type": "string",
-            "minLength": 6,
+            "minLength": 10,
             "maxLength": 128,
             "description": "Stored only as a hash."
           },
@@ -3824,7 +3824,7 @@
               "string",
               "null"
             ],
-            "minLength": 6,
+            "minLength": 10,
             "maxLength": 128,
             "description": "A new password, or null to remove it. Guests who opened the link before must enter the new one."
           },
