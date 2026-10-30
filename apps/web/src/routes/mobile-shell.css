@@ -206,10 +206,16 @@
     bottom: 12px;
     width: max-content;
     max-width: calc(100% - 24px - env(safe-area-inset-left) - env(safe-area-inset-right));
+    touch-action: pan-x;
+  }
+  /* Only the tools scroll: the Canvas button stays pinned at the right end of the bar. */
+  .canvas .toolbar__tools {
+    display: flex;
+    gap: inherit;
+    min-width: 0;
     overflow-x: auto;
     overscroll-behavior-x: contain;
     scrollbar-width: none;
-    touch-action: pan-x;
   }
   .canvas .toolbar__group {
     display: flex;

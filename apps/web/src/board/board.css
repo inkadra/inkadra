@@ -699,12 +699,26 @@
     display: none;
   }
 }
+/* The navigation and creation tools; laid out as direct items of the bar unless they scroll. */
+.toolbar__tools {
+  display: contents;
+}
 @container canvas (width < 600px) {
+  /* The tools scroll sideways; the Canvas button stays pinned at the end, always in view. */
   .toolbar {
+    max-width: calc(100% - 16px);
+    touch-action: pan-x;
+  }
+  .toolbar__tools {
+    display: flex;
+    gap: inherit;
+    min-width: 0;
     overflow-x: auto;
     overscroll-behavior-x: contain;
     scrollbar-width: none;
-    touch-action: pan-x;
+  }
+  .toolbar__group--canvas {
+    flex: none;
   }
   .toolbar .toolbar__btn:hover .toolbar__tip,
   .toolbar .toolbar__btn:focus-visible .toolbar__tip {
@@ -2072,7 +2086,8 @@ button.crumb--editable:focus-visible {
   display: flex;
   gap: 2px;
 }
-.toolbar__group + .toolbar__group {
+.toolbar__group + .toolbar__group,
+.toolbar__tools + .toolbar__group {
   border-left: 1px solid var(--ink-border-default);
   padding-left: 6px;
 }
