@@ -101,11 +101,7 @@ export function getAnimaticAudio(doc: Y.Doc): AnimaticAudio | null {
   return parsed.success ? parsed.data : null;
 }
 
-export function setAnimaticAudio(
-  doc: Y.Doc,
-  audio: AnimaticAudio | null,
-  origin?: unknown,
-): void {
+export function setAnimaticAudio(doc: Y.Doc, audio: AnimaticAudio | null, origin?: unknown): void {
   const { meta } = roots(doc);
   doc.transact(() => {
     if (audio === null) meta.delete('animaticAudio');
