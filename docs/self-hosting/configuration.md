@@ -25,17 +25,18 @@ or share the real `.env`.
 
 ## Files and uploads
 
-| Variable               | Default     | Meaning                                                                                    |
-| ---------------------- | ----------- | ------------------------------------------------------------------------------------------ |
-| `STORAGE_DRIVER`       | `local`     | `local`: files in the data volume. `s3`: files in a bucket. See [Storage](storage.md)      |
-| `S3_ENDPOINT`          | AWS         | Address of an S3-compatible service, e.g. `https://s3.eu-central-003.backblazeb2.com`      |
-| `S3_REGION`            | `us-east-1` | Region of the bucket                                                                       |
-| `S3_BUCKET`            |             | Bucket name                                                                                |
-| `S3_ACCESS_KEY_ID`     |             | Access key                                                                                 |
-| `S3_SECRET_ACCESS_KEY` |             | Secret key                                                                                 |
-| `S3_FORCE_PATH_STYLE`  | `false`     | `true` for MinIO, RustFS, Garage and most self-hosted stores                               |
-| `UPLOAD_MAX_SIZE`      | `20GB`      | Largest file anyone can upload, as bytes or with a unit (`500MB`, `4GB`); `0` for no limit |
-| `HEIC_PREVIEWS`        | `true`      | `false` stops Inkadra decoding HEIC photos from iPhones: they are kept, without a preview  |
+| Variable               | Default     | Meaning                                                                                           |
+| ---------------------- | ----------- | ------------------------------------------------------------------------------------------------- |
+| `STORAGE_DRIVER`       | `local`     | `local`: files in the data volume. `s3`: files in a bucket. See [Storage](storage.md)             |
+| `S3_ENDPOINT`          | AWS         | Address of an S3-compatible service, e.g. `https://s3.eu-central-003.backblazeb2.com`             |
+| `S3_REGION`            | `us-east-1` | Region of the bucket                                                                              |
+| `S3_BUCKET`            |             | Bucket name                                                                                       |
+| `S3_ACCESS_KEY_ID`     |             | Access key                                                                                        |
+| `S3_SECRET_ACCESS_KEY` |             | Secret key                                                                                        |
+| `S3_FORCE_PATH_STYLE`  | `false`     | `true` for MinIO, RustFS, Garage and most self-hosted stores                                      |
+| `UPLOAD_MAX_SIZE`      | `20GB`      | Largest file anyone can upload, as bytes or with a unit (`500MB`, `4GB`); `0` for no limit        |
+| `IMPORT_MAX_SIZE`      | `20GB`      | Largest project archive an import accepts, compressed and in total uncompressed; `0` for no limit |
+| `HEIC_PREVIEWS`        | `true`      | `false` stops Inkadra decoding HEIC photos from iPhones: they are kept, without a preview         |
 
 ## Compose only
 

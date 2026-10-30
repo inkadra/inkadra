@@ -62,6 +62,11 @@ export const Author = z
     z.object({ kind: z.literal('deleted') }).openapi({
       description: 'The account was deleted; the comment stays without an author.',
     }),
+    z.object({ kind: z.literal('imported'), name: z.string().max(200) }).openapi({
+      description:
+        'Came with an imported project (decision 0037): the name the author had on the ' +
+        'exporting server, display-only and linked to no account here. From API 0.8.0.',
+    }),
   ])
   .openapi('Author', {
     description:

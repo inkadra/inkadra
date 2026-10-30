@@ -8,13 +8,24 @@ import { ReviewStatus } from './reviews.ts';
  * server when something happens and never by clients; email follows the person's preference.
  */
 export const NotificationType = z
-  .enum(['mention', 'reply', 'comment', 'review', 'invitation_accepted'])
+  .enum([
+    'mention',
+    'reply',
+    'comment',
+    'review',
+    'invitation_accepted',
+    'export_ready',
+    'import_ready',
+  ])
   .openapi({
     description:
       '`mention`: someone mentioned you in a comment. `reply`: a reply in a thread you wrote ' +
       'in. `comment`: a new thread on a card you created. `review`: the review status of a ' +
       'card you created, or asked a review for, changed. `invitation_accepted`: someone ' +
-      'accepted your invitation. Open: clients show types they do not know as a plain line ' +
+      'accepted your invitation. `export_ready`: your export of `projectId` can be ' +
+      'downloaded; it carries no transfer id, clients find the archive in `GET /transfers`. ' +
+      '`import_ready`: your import finished as `projectId`. Both are in-app only, without ' +
+      'actor, and arrive from API 0.8.0. Open: clients show types they do not know as a plain line ' +
       'with the actor, the board and the time.',
   });
 export type NotificationType = z.infer<typeof NotificationType>;
