@@ -3509,3 +3509,174 @@ button.moodboard__card {
 .guest-toggle[aria-pressed="true"] {
   color: var(--ink-text-primary);
 }
+
+/* Character and location cards (decision 0044) ------------------------------------ */
+
+.story-card {
+  display: flex;
+  gap: 10px;
+  min-width: 0;
+}
+.story-card--location {
+  flex-direction: column;
+  gap: 4px;
+}
+.story-card__text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  justify-content: center;
+}
+.story-card__head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  color: var(--ink-text-secondary);
+}
+.story-card .card__title {
+  color: var(--ink-text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+.story-card .card__title.is-empty {
+  color: var(--ink-text-muted);
+  font-weight: 400;
+}
+.story-card__head .card__title {
+  flex: 1;
+}
+.story-card__light {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.story-card__meta {
+  font-size: 11px;
+  color: var(--ink-text-muted);
+}
+/* INT./EXT. is data, not a status: a quiet chip like the scene slugline. */
+.story-chip {
+  background: var(--ink-surface-2);
+  color: var(--ink-text-secondary);
+  border: 1px solid var(--ink-border-subtle);
+}
+.story-picture {
+  position: relative;
+  overflow: hidden;
+  background: var(--ink-surface-2);
+  color: var(--ink-text-secondary);
+  flex: none;
+}
+.story-picture img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.story-picture--character {
+  width: 56px;
+  height: 56px;
+  border-radius: 8px;
+}
+.story-picture--location {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+}
+.story-picture__empty {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  font-size: 18px;
+  font-weight: 500;
+}
+.story-panel__picture .story-picture--character {
+  width: 120px;
+  height: 120px;
+  border-radius: 12px;
+}
+.story-panel__picture .story-picture--location {
+  border-radius: 8px;
+}
+.story-panel__team {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--ink-border-subtle);
+}
+.story-panel__team-title {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--ink-text-secondary);
+}
+.story-panel__team-hint {
+  margin: -8px 0 0;
+  font-size: 11px;
+  color: var(--ink-text-muted);
+}
+.story-panel__map {
+  font-size: 12px;
+  color: var(--ink-accent-primary);
+}
+.story-panel__pictures {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(64px, 1fr));
+  gap: 6px;
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.story-panel__pick {
+  display: block;
+  width: 100%;
+  aspect-ratio: 1;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid var(--ink-border-default);
+  border-radius: 6px;
+  background: var(--ink-surface-2);
+  cursor: pointer;
+}
+.story-panel__pick img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.story-panel__pick:focus-visible {
+  outline: 2px solid var(--ink-accent-primary);
+  outline-offset: 1px;
+}
+.film-cast__links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.film-cast__link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 24px;
+  padding: 0 8px;
+  border: 1px solid var(--ink-border-default);
+  border-radius: 12px;
+  background: var(--ink-surface-1);
+  color: var(--ink-text-primary);
+  font-size: 12px;
+  cursor: pointer;
+}
+.film-cast__link.is-linked {
+  border-color: var(--ink-border-subtle);
+  background: var(--ink-surface-2);
+  color: var(--ink-text-secondary);
+  cursor: default;
+}

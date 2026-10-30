@@ -51,7 +51,9 @@ export type ToolType =
   | 'color'
   | 'frame'
   | 'scene'
-  | 'storyboard';
+  | 'storyboard'
+  | 'character'
+  | 'location';
 export type CanvasTool = 'select' | 'hand' | 'arrow';
 export const TOOL_MIME = 'application/x-inkadra-tool';
 
@@ -67,6 +69,9 @@ export const TOOLS: Array<{ type: ToolType; icon: IconName; key?: string; menuOn
   { type: 'frame', icon: 'frame', key: 'F' },
   { type: 'storyboard', icon: 'storyboard', key: 'S', menuOnly: true },
   { type: 'scene', icon: 'scene', menuOnly: true },
+  // Story bible cards (decision 0044): from the Canvas menu and the command palette.
+  { type: 'character', icon: 'user', menuOnly: true },
+  { type: 'location', icon: 'pin', menuOnly: true },
 ];
 
 const mod = () => (isMac() ? '⌘' : 'Ctrl+');
@@ -151,7 +156,11 @@ export function Toolbar({
         className="toolbar__group toolbar__group--canvas"
         aria-label={t('board.canvasMenu.hint')}
       >
-        <CanvasMenuButton onCanvas={onCanvas} onScreenplay={onScreenplay} />
+        <CanvasMenuButton
+          onCanvas={onCanvas}
+          onScreenplay={onScreenplay}
+          onCard={(type) => onAdd(type)}
+        />
       </fieldset>
     </div>
   );
@@ -164,9 +173,12 @@ export function Toolbar({
 function CanvasMenuButton({
   onCanvas,
   onScreenplay,
+  onCard,
 }: {
   onCanvas: (template: CanvasTemplate) => void;
   onScreenplay?: (() => void) | undefined;
+  /** Story bible cards, listed after the canvas types. */
+  onCard: (type: 'character' | 'location') => void;
 }) {
   const { t } = useTranslation();
   const tooltipId = useId();
@@ -232,6 +244,16 @@ function CanvasMenuButton({
                     },
                   ]
                 : []),
+            ]).concat([
+              { divider: true },
+              ...(['character', 'location'] as const).map(
+                (type): MenuItem => ({
+                  label: t(`board.types.${type}`),
+                  icon: type === 'character' ? 'user' : 'pin',
+                  kind: 'canvas',
+                  action: () => onCard(type),
+                }),
+              ),
             ])}
             onClose={(reason) => {
               setAt(null);

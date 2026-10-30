@@ -214,6 +214,12 @@ const paths = {
   arrowBoth: <path d="M6 18L18 6M6 11v7h7M11 6h7v7" />,
   curve: <path d="M5 19C5 11 11 5 19 5" />,
   dashed: <path d="M4 12h3M10.5 12h3M17 12h3" />,
+  pin: (
+    <>
+      <path d="M12 21s-6-5.6-6-11a6 6 0 0 1 12 0c0 5.4-6 11-6 11z" />
+      <circle cx="12" cy="10" r="2.2" />
+    </>
+  ),
   text: <path d="M5 6V4h14v2M12 4v16M9 20h6" />,
   layers: <path d="M12 3l9 5-9 5-9-5zM3 13l9 5 9-5" />,
   guides: <path d="M4 4h16v16H4zM9.3 4v16M14.7 4v16M4 9.3h16M4 14.7h16" />,

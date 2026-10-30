@@ -26,6 +26,7 @@ import { CardReview } from './CardReview.tsx';
 import { CardExtrasContext, GuestModeContext, useBoard } from './context.ts';
 import { useBoardAspect } from './film/aspect.ts';
 import { FramePicture } from './film/FramePicture.tsx';
+import { StoryPicture } from './film/StoryCardPanel.tsx';
 import { useSlugline } from './film/StoryboardView.tsx';
 import { GuestVisibility } from './guest-visibility.tsx';
 import { webUrl } from './links.ts';
@@ -188,7 +189,65 @@ function CardBody({
     case 'arrow':
       // Drawn by the arrow layer, not as a card.
       return null;
+    case 'character':
+      return <CharacterCard element={element} />;
+    case 'location':
+      return <LocationCard element={element} />;
   }
+}
+
+/** Compact face of a character: portrait, name, role; the rest is in its side sheet. */
+function CharacterCard({ element }: { element: Of<'character'> }) {
+  const { t } = useTranslation();
+  const scenes = element.scenes?.length ?? 0;
+  return (
+    <div className="card__pad story-card story-card--character">
+      <StoryPicture assetId={element.assetId} label={element.name} pixels={112} kind="character" />
+      <div className="story-card__text">
+        <span className={`card__title${element.name ? '' : ' is-empty'}`}>
+          {element.name || t('story.character.namePlaceholder')}
+        </span>
+        {element.role && <span className="card__desc">{element.role}</span>}
+        {(element.actor || scenes > 0) && (
+          <span className="story-card__meta">
+            {[element.actor, scenes > 0 && t('story.sceneCount', { count: scenes })]
+              .filter(Boolean)
+              .join(' · ')}
+          </span>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/** Compact face of a location: photo, name, INT/EXT and the light to shoot in. */
+function LocationCard({ element }: { element: Of<'location'> }) {
+  const { t } = useTranslation();
+  const scenes = element.scenes?.length ?? 0;
+  return (
+    <>
+      {element.assetId && (
+        <StoryPicture assetId={element.assetId} label={element.name} pixels={520} kind="location" />
+      )}
+      <div className="card__pad story-card story-card--location">
+        <div className="story-card__head">
+          {!element.assetId && <Icon name="pin" size={14} />}
+          <span className={`card__title${element.name ? '' : ' is-empty'}`}>
+            {element.name || t('story.location.namePlaceholder')}
+          </span>
+          {element.setting && (
+            <span className="film-chip story-chip">
+              {t(`film.scene.settings.${element.setting}`)}
+            </span>
+          )}
+        </div>
+        {element.light && <span className="card__desc story-card__light">{element.light}</span>}
+        {scenes > 0 && (
+          <span className="story-card__meta">{t('story.sceneCount', { count: scenes })}</span>
+        )}
+      </div>
+    </>
+  );
 }
 
 function FrameCard({ element, width }: { element: Of<'frame'>; width: number }) {

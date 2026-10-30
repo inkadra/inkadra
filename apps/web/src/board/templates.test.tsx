@@ -149,26 +149,22 @@ describe('templates', () => {
     doc.destroy();
   });
 
-  it('seeds locations and casting with a column and one placeholder note each', () => {
+  it('seeds locations and casting with a column and one blank story card each', () => {
     const labels = templateLabels((key) => key);
-    for (const [tpl, colKey, noteKey] of [
-      ['locations', 'templates.locations.column', 'templates.locations.location'],
-      ['casting', 'templates.casting.column', 'templates.casting.role'],
+    for (const [tpl, colKey, type] of [
+      ['locations', 'templates.locations.column', 'location'],
+      ['casting', 'templates.casting.column', 'character'],
     ] as const) {
       const doc = new Y.Doc();
       const store = new BoardStore(doc);
       expect(seedTemplate(doc, tpl, labels, 'filmmaker')).toBe(true);
       const elements = listElements(doc);
       const column = elements.find((e) => e.type === 'column');
-      expect(column).toBeDefined();
       expect(column?.title).toBe(colKey);
-      const notes = elements.filter((e) => e.type === 'note');
-      expect(notes).toHaveLength(1);
-      expect(notes[0]?.parent).toBe(column?.id);
-      const body = store.map(notes[0]!.id)?.get('body');
-      expect(body instanceof Y.XmlFragment ? body.toString() : '').toBe(
-        `<paragraph>${noteKey}</paragraph>`,
-      );
+      const cards = elements.filter((e) => e.type === type);
+      expect(cards).toHaveLength(1);
+      expect(cards[0]).toMatchObject({ parent: column?.id, name: '' });
+      expect(elements.some((e) => e.type === 'note')).toBe(false);
       store.undo.undo();
       expect(listElements(doc)).toEqual([]);
       store.destroy();

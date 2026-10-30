@@ -6,10 +6,12 @@ import {
   SHOT_MOVEMENTS,
   SHOT_SIZES,
 } from '@inkadra/doc-schema';
-import { Button, IconButton } from '@inkadra/ui';
-import { useContext, useEffect, useRef } from 'react';
+import type { SearchResult } from '@inkadra/shared';
+import { Button, Icon, IconButton } from '@inkadra/ui';
+import { useContext, useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useRegisterActions } from '../../commands/actions.ts';
+import { api } from '../../lib/api.ts';
 import {
   duplicateInStore,
   framePanelActions,
@@ -238,6 +240,14 @@ export function FramePanel({
             set({ cast: cast.length > 0 ? cast : undefined });
           }}
         />
+        {!readOnly && !guest && (
+          <CastLinks
+            store={store}
+            projectId={projectId}
+            cast={frame.cast ?? []}
+            onAdd={(name) => set({ cast: [...(frame.cast ?? []), name].slice(0, 30) })}
+          />
+        )}
         <TextField
           label={t('film.frame.dialogue')}
           value={frame.dialogue ?? ''}
@@ -319,6 +329,69 @@ export function FramePanel({
         }}
       />
     </aside>
+  );
+}
+
+/**
+ * Character cards of the project (search) and of this board, to add to the frame's cast by
+ * name (decision 0044). A name already in the cast, ignoring case, shows as linked.
+ */
+function CastLinks({
+  store,
+  projectId,
+  cast,
+  onAdd,
+}: {
+  store: BoardStore;
+  projectId: string;
+  cast: readonly string[];
+  onAdd: (name: string) => void;
+}) {
+  const { t } = useTranslation();
+  const snap = useSyncExternalStore(store.subscribe, store.getSnapshot);
+  const [found, setFound] = useState<string[]>([]);
+  useEffect(() => {
+    let live = true;
+    const params = new URLSearchParams({ type: 'character', projectId, limit: '50' });
+    api
+      .get<SearchResult>(`/search?${params}`)
+      .then((r) => live && setFound(r.items.map((hit) => hit.title)))
+      .catch(() => {});
+    return () => {
+      live = false;
+    };
+  }, [projectId]);
+  const here = [...snap.byId.values()].flatMap((el) => (el.type === 'character' ? [el.name] : []));
+  const seen = new Set<string>();
+  const names = [...here, ...found]
+    .map((n) => n.trim())
+    .filter((n) => n && !seen.has(n.toLocaleLowerCase()) && seen.add(n.toLocaleLowerCase()))
+    .sort((a, b) => a.localeCompare(b));
+  if (names.length === 0) return null;
+  const inCast = new Set(cast.map((c) => c.toLocaleLowerCase()));
+  return (
+    <div className="film-field">
+      <span className="film-field__label">{t('film.frame.castLinks')}</span>
+      <ul className="film-cast__links">
+        {names.map((name) => {
+          const linked = inCast.has(name.toLocaleLowerCase());
+          return (
+            <li key={name}>
+              <button
+                type="button"
+                className={`film-cast__link${linked ? ' is-linked' : ''}`}
+                aria-label={t(linked ? 'film.frame.castLinked' : 'film.frame.castLink', { name })}
+                disabled={linked}
+                onClick={() => onAdd(name.slice(0, 80))}
+              >
+                <Icon name={linked ? 'check' : 'user'} size={12} />
+                {name}
+              </button>
+            </li>
+          );
+        })}
+      </ul>
+    </div>
   );
 }
 
