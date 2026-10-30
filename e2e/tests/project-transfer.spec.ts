@@ -3,9 +3,9 @@ import { addFrame, addScene, createElement } from '@inkadra/canvas-core';
 import { initBoardDoc, roots } from '@inkadra/doc-schema';
 import { expect, type Page, test } from '@playwright/test';
 import * as Y from 'yjs';
+import { pushBoardDoc, signIn, uploadFile, waitForAssets } from './perf/seed.ts';
 import { signUpViaInvite } from './support/accounts.ts';
 import { png, readZip, writeZip } from './support/archive.ts';
-import { pushBoardDoc, signIn, uploadFile, waitForAssets } from './perf/seed.ts';
 
 // Runs after first-run.spec.ts, on the same instance: the administrator exists. The project is
 // made here, so the story does not depend on the other specs.
@@ -139,10 +139,15 @@ test.beforeAll(async ({ baseURL }) => {
   await expect
     .poll(
       () =>
-        call('POST', `/boards/${project.rootBoardId}/comments`, {
-          elementId: note.id,
-          body: COMMENT,
-        }, directorCookie).then(
+        call(
+          'POST',
+          `/boards/${project.rootBoardId}/comments`,
+          {
+            elementId: note.id,
+            body: COMMENT,
+          },
+          directorCookie,
+        ).then(
           () => true,
           () => false,
         ),
@@ -160,12 +165,15 @@ test.beforeAll(async ({ baseURL }) => {
 test('a project exports from its menu to a zip with a manifest', async ({ page }, info) => {
   await login(page);
   await page.getByRole('link', { name: 'Progetti', exact: true }).first().click();
-  await page.getByRole('button', { name: `Opzioni progetto: ${NAME}` }).first().click();
+  await page
+    .getByRole('button', { name: `Opzioni progetto: ${NAME}` })
+    .first()
+    .click();
   await page.getByRole('menuitem', { name: 'Esporta progetto…' }).click();
   const dialog = page.getByRole('dialog', { name: `Esporta «${NAME}»` });
   await expect(dialog.getByText('Board e sotto-board, file originali, commenti')).toBeVisible();
   await dialog.getByRole('button', { name: 'Esporta', exact: true }).click();
-  await expect(dialog.getByRole('status').getByText('L\'archivio è pronto')).toBeVisible({
+  await expect(dialog.getByRole('status').getByText("L'archivio è pronto")).toBeVisible({
     timeout: 60_000,
   });
 
@@ -326,7 +334,7 @@ test.describe('an archive that is not an Inkadra export', () => {
     await expect(dialog.getByRole('button', { name: 'Scegli un altro file' })).toBeVisible();
     await expect(dialog.getByRole('link', { name: 'Apri progetto' })).toHaveCount(0);
     await dialog.getByRole('button', { name: 'Scegli un altro file' }).click();
-    await expect(dialog.getByText('Trascina qui l\'archivio o scegli un file')).toBeVisible();
+    await expect(dialog.getByText("Trascina qui l'archivio o scegli un file")).toBeVisible();
     await dialog.getByRole('button', { name: 'Chiudi' }).click();
     // Nothing was created.
     const after = await json<{ items: unknown[] }>(page, '/projects');

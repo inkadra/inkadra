@@ -108,7 +108,9 @@ test('the nightly schedule, its time and the retention persist after a reload', 
   await expect(time).toBeDisabled();
   await expect(time).toHaveValue('03:45');
   await expect(keep).toHaveValue('3');
-  await expect(page.getByText('Disattivato: i backup partono solo quando li avvii tu.')).toBeVisible();
+  await expect(
+    page.getByText('Disattivato: i backup partono solo quando li avvii tu.'),
+  ).toBeVisible();
 });
 
 test.describe('whoever is not an administrator', () => {
@@ -173,7 +175,9 @@ test('backup routes are refused with a personal access token, even the administr
     const res = await fetch(`${base}/api/v1${path}`, {
       method,
       headers: { ...bearer, 'content-type': 'application/json' },
-      ...(method === 'GET' ? {} : { body: JSON.stringify(method === 'PATCH' ? { retention: 3 } : {}) }),
+      ...(method === 'GET'
+        ? {}
+        : { body: JSON.stringify(method === 'PATCH' ? { retention: 3 } : {}) }),
     });
     expect(res.status, `${method} ${path}`).toBe(403);
   }
