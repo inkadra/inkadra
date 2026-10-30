@@ -1,6 +1,7 @@
 import { canvasElements, childrenOf, isContainer, listElements } from '@inkadra/canvas-core';
 import { type Element, readElement, roots, UNSORTED } from '@inkadra/doc-schema';
 import * as Y from 'yjs';
+import { croppedRotatedSize } from './image-crop.ts';
 
 /** Transaction origin of edits made in this tab: the undo history tracks only these. */
 export const LOCAL = Symbol('local');
@@ -134,8 +135,10 @@ export class BoardStore {
 
 function estimateHeight(el: Element): number {
   switch (el.type) {
-    case 'image':
-      return Math.round(el.w * 0.75);
+    case 'image': {
+      const dims = croppedRotatedSize(4, 3, el.crop, el.rotation);
+      return Math.round((el.w * dims.height) / dims.width);
+    }
     case 'column':
     case 'scene':
       return 120;

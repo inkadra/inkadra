@@ -2258,3 +2258,311 @@ button.card__play {
 .ctxbar__arrow-styles {
   display: contents;
 }
+
+/* Non-destructive image crop & rotation ----------------------------------------- */
+
+.cropped-image {
+  position: relative;
+  display: block;
+  width: 100%;
+  overflow: hidden;
+}
+/* The crop sets the media aspect; a card with older explicit geometry letterboxes it instead
+   of stretching or overflowing, like uncropped pictures with object-fit: contain. */
+.card__media:has(> .cropped-image) {
+  container-type: size;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+}
+.card__media > .cropped-image {
+  width: min(100%, calc(100cqh * var(--cropped-ratio, 1)));
+}
+.cropped-image.viewer__media {
+  width: min(
+    calc(100cqw - 48px),
+    calc(min(100cqh - 48px, 100vh - 170px) * var(--cropped-ratio, 1))
+  );
+  max-width: 100%;
+  max-height: calc(100vh - 170px);
+}
+.cropped-image.guest-viewer__media {
+  width: min(calc(100vw - 64px), 1160px, calc((100vh - 120px) * var(--cropped-ratio, 1)));
+  max-width: 100%;
+  max-height: calc(100vh - 120px);
+}
+.cropped-image__plane {
+  position: absolute;
+  pointer-events: none;
+}
+.cropped-image__rot {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform-origin: center center;
+}
+.cropped-image .cropped-image__rot img,
+.cropped-image .cropped-image__rot video,
+.crop-stage .crop-stage__rot img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: fill;
+  pointer-events: none;
+  user-select: none;
+}
+
+.card.is-cropping {
+  z-index: 4;
+  overflow: visible;
+}
+.card.is-cropping > .card__media {
+  overflow: visible;
+}
+
+.crop-stage {
+  position: relative;
+  width: 100%;
+  background: var(--ink-bg-canvas);
+  touch-action: none;
+  user-select: none;
+  cursor: move;
+}
+.crop-stage__viewport {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  border-radius: 9px 9px 0 0;
+  pointer-events: none;
+}
+.crop-stage__rot {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform-origin: center center;
+  pointer-events: none;
+}
+.crop-stage__scrim {
+  position: absolute;
+  box-shadow: 0 0 0 9999px rgb(0 0 0 / 0.55);
+  pointer-events: none;
+}
+.crop-stage__box {
+  position: absolute;
+  box-sizing: border-box;
+  border: calc(1.5px / var(--zoom, 1)) solid var(--ink-accent-primary);
+  cursor: move;
+  touch-action: none;
+}
+.crop-stage__grid {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.crop-stage__line {
+  position: absolute;
+  background: color-mix(in srgb, var(--ink-on-accent) 45%, transparent);
+}
+.crop-stage__line--v1,
+.crop-stage__line--v2 {
+  top: 0;
+  bottom: 0;
+  width: calc(1px / var(--zoom, 1));
+}
+.crop-stage__line--v1 {
+  left: 33.3333%;
+}
+.crop-stage__line--v2 {
+  left: 66.6667%;
+}
+.crop-stage__line--h1,
+.crop-stage__line--h2 {
+  left: 0;
+  right: 0;
+  height: calc(1px / var(--zoom, 1));
+}
+.crop-stage__line--h1 {
+  top: 33.3333%;
+}
+.crop-stage__line--h2 {
+  top: 66.6667%;
+}
+.crop-stage__handle {
+  position: absolute;
+  width: calc(24px / var(--zoom, 1));
+  height: calc(24px / var(--zoom, 1));
+  transform: translate(-50%, -50%);
+  pointer-events: auto;
+  touch-action: none;
+}
+.crop-stage__handle::after {
+  content: "";
+  position: absolute;
+  inset: calc(8px / var(--zoom, 1));
+  border-radius: calc(2px / var(--zoom, 1));
+  background: var(--ink-on-accent);
+  border: calc(1px / var(--zoom, 1)) solid var(--ink-accent-primary);
+}
+.crop-stage__handle--nw {
+  left: 0;
+  top: 0;
+  cursor: nwse-resize;
+}
+.crop-stage__handle--n {
+  left: 50%;
+  top: 0;
+  cursor: ns-resize;
+}
+.crop-stage__handle--ne {
+  left: 100%;
+  top: 0;
+  cursor: nesw-resize;
+}
+.crop-stage__handle--e {
+  left: 100%;
+  top: 50%;
+  cursor: ew-resize;
+}
+.crop-stage__handle--se {
+  left: 100%;
+  top: 100%;
+  cursor: nwse-resize;
+}
+.crop-stage__handle--s {
+  left: 50%;
+  top: 100%;
+  cursor: ns-resize;
+}
+.crop-stage__handle--sw {
+  left: 0;
+  top: 100%;
+  cursor: nesw-resize;
+}
+.crop-stage__handle--w {
+  left: 0;
+  top: 50%;
+  cursor: ew-resize;
+}
+
+.crop-bar {
+  left: var(--crop-bar-left, 8px);
+  top: var(--crop-bar-top, 8px);
+  height: 36px;
+  gap: 2px;
+  padding: 0 6px;
+  max-width: calc(100% - 16px);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.crop-bar::-webkit-scrollbar {
+  display: none;
+}
+.crop-bar__group {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+.crop-bar__preset {
+  width: auto;
+  min-width: 28px;
+  padding: 0 7px;
+  font-size: 11px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.crop-bar__preset.is-active {
+  background: var(--ink-accent-soft-bg);
+  color: var(--ink-accent-soft-fg);
+}
+.crop-bar__angle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 6px;
+  font-size: 11px;
+  color: var(--ink-text-secondary);
+}
+.crop-bar__deg {
+  min-width: 34px;
+  height: 26px;
+  padding: 0 4px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--ink-text-muted);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+}
+.crop-bar__deg:hover:not(:disabled) {
+  background: var(--ink-surface-3);
+  color: var(--ink-text-primary);
+}
+.crop-bar__deg:disabled {
+  cursor: default;
+}
+.crop-bar__text-btn,
+.crop-bar__done {
+  width: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 0 8px;
+  font-size: 11px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+.crop-bar__text-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.crop-bar__done,
+.crop-bar__done.is-active {
+  background: var(--ink-accent-button);
+  color: var(--ink-on-accent);
+}
+.crop-bar__done:hover,
+.crop-bar__done.is-active:hover {
+  background: var(--ink-accent-button-hover);
+  color: var(--ink-on-accent);
+}
+/* Narrow canvases: a bottom sheet that wraps above the tool bar, with 44 px targets. */
+@container canvas (width < 640px) {
+  .crop-bar {
+    top: auto;
+    bottom: 84px;
+    left: 8px;
+    right: 8px;
+    max-width: none;
+    height: auto;
+    padding: 4px;
+    flex-wrap: wrap;
+    justify-content: center;
+    row-gap: 4px;
+    overflow: visible;
+  }
+  .crop-bar .ctxbar__btn,
+  .crop-bar__preset {
+    min-width: 44px;
+    height: 44px;
+  }
+  .crop-bar__text-btn,
+  .crop-bar__done {
+    padding: 0 12px;
+  }
+  .crop-bar__angle {
+    height: 44px;
+  }
+  .crop-bar__deg {
+    min-width: 44px;
+    height: 44px;
+  }
+  .crop-bar .ink-slider {
+    height: 44px;
+  }
+}
