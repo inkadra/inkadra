@@ -1,6 +1,6 @@
 # 0043 · Arrow labels and styles
 
-Proposed, 2026-10. Extends the arrow element of the board document (document version 2).
+Proposed, 2026-10. Extends the arrow element of the board document in document version 6.
 
 **Context.** Arrows already carry an optional `label`, a `line` (solid or dashed) and `heads`
 (end, both, none), but the canvas offers labels only through a double click and styles through
