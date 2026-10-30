@@ -10,23 +10,29 @@ let escaped: () => void;
 function Harness() {
   const [value, setValue] = useState('a');
   return (
-    <dialog open onCancel={escaped}><form
-      onKeyDown={(event) => {
-        if (event.key === 'Escape') escaped();
-      }}
-    >
-      <label htmlFor="choice">Choice<Select id="choice"
-        name="choice"
-        aria-label="Choice"
-        value={value}
-        onChange={setValue}
-        options={[
-          { value: 'a', label: 'Alpha' },
-          { value: 'b', label: 'Beta', disabled: true },
-          { value: 'c', label: 'Charlie' },
-        ]}
-      /></label>
-    </form></dialog>
+    <dialog open onCancel={escaped}>
+      <form
+        onKeyDown={(event) => {
+          if (event.key === 'Escape') escaped();
+        }}
+      >
+        <label htmlFor="choice">
+          Choice
+          <Select
+            id="choice"
+            name="choice"
+            aria-label="Choice"
+            value={value}
+            onChange={setValue}
+            options={[
+              { value: 'a', label: 'Alpha' },
+              { value: 'b', label: 'Beta', disabled: true },
+              { value: 'c', label: 'Charlie' },
+            ]}
+          />
+        </label>
+      </form>
+    </dialog>
   );
 }
 beforeEach(async () => {
@@ -55,7 +61,10 @@ it('opens with keyboard, skips disabled options, selects and submits the control
   await key('ArrowDown');
   await key('Enter');
   const form = host.querySelector('form')!;
-  const submitted = vi.fn((event: Event) => { event.preventDefault(); return new FormData(form).get('choice'); });
+  const submitted = vi.fn((event: Event) => {
+    event.preventDefault();
+    return new FormData(form).get('choice');
+  });
   form.addEventListener('submit', submitted);
   form.requestSubmit();
   expect(submitted).toHaveReturnedWith('c');
@@ -78,7 +87,9 @@ it('consumes Escape before the containing dialog and restores focus', async () =
 
 it('does not reopen after a pointer choice in a wrapping label', async () => {
   await act(async () => host.querySelector('button')?.click());
-  await act(async () => host.querySelector<HTMLElement>('[role="option"][data-value="c"]')?.click());
+  await act(async () =>
+    host.querySelector<HTMLElement>('[role="option"][data-value="c"]')?.click(),
+  );
   expect(host.querySelector('button')?.getAttribute('aria-expanded')).toBe('false');
   expect(new FormData(host.querySelector('form')!).get('choice')).toBe('c');
 });

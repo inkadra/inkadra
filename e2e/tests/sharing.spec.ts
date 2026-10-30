@@ -59,7 +59,11 @@ test('the owner makes an invitation link for the project', async ({ page }) => {
   await expect(dialog.getByText('Chi inviti qui entra in tutto il progetto.')).toBeVisible();
   // Links give at most editor: owners are named from the people list (decision 0019).
   await dialog.getByRole('combobox', { name: 'Ruolo per chi usa il link' }).click();
-  await expect(page.getByRole('listbox').getByRole('option')).toHaveText(['Lettore', 'Commentatore', 'Editor']);
+  await expect(page.getByRole('listbox').getByRole('option')).toHaveText([
+    'Lettore',
+    'Commentatore',
+    'Editor',
+  ]);
   await page.keyboard.press('Escape');
   await dialog.getByRole('button', { name: 'Crea link' }).click();
   const link = dialog.getByRole('textbox', { name: 'Link d’invito' });
