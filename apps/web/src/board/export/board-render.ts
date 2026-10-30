@@ -644,9 +644,9 @@ function dashes(
   const ops: Op[] = [];
   let drawing = true;
   let left = on;
-  for (let i = 1; i < points.length; i++) {
-    let p = points[i - 1]!;
-    const q = points[i]!;
+  for (const [i, q] of points.entries()) {
+    let p = points[i - 1];
+    if (!p) continue;
     let len = Math.hypot(q.x - p.x, q.y - p.y);
     while (len > 0) {
       const step = Math.min(left, len);

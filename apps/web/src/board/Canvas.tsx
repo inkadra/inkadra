@@ -2171,8 +2171,8 @@ export function Canvas({
                   arrows={selectedEls as ArrowElement[]}
                   rectOf={cardRect}
                   onLabel={
-                    selectedEls.length === 1 && !selectedEls[0]?.locked
-                      ? () => setEditing(selectedEls[0]!.id)
+                    selectedEls.length === 1 && selectedEls[0] && !selectedEls[0].locked
+                      ? setEditing.bind(null, selectedEls[0].id)
                       : undefined
                   }
                 />
