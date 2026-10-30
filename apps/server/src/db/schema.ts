@@ -809,3 +809,18 @@ export const clipBoardUse = pgTable(
     index('clip_board_use_board_idx').on(t.boardId),
   ],
 );
+
+/**
+ * Shared PDF and image export settings of a project (decision 0039). `preferences` holds the
+ * dialog's starting choices as JSON, read field by field against ExportPreferences so a value a
+ * later version adds or drops never breaks the row; the logo is an asset of the project.
+ */
+export const projectExportSettings = pgTable('project_export_settings', {
+  projectId: uuid('project_id')
+    .primaryKey()
+    .references(() => project.id, { onDelete: 'cascade' }),
+  preferences: jsonb('preferences').$type<Record<string, unknown>>().notNull().default({}),
+  logoAssetId: uuid('logo_asset_id').references(() => asset.id, { onDelete: 'set null' }),
+  updatedBy: uuid('updated_by').references(() => user.id, { onDelete: 'set null' }),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});

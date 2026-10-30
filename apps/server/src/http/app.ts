@@ -30,6 +30,7 @@ import { registerCommentRoutes } from './comments-routes.ts';
 import { registerCsrfCheck } from './csrf.ts';
 import { registerDiagnostics } from './diagnostics.ts';
 import { errorHandler, sendError } from './errors.ts';
+import { registerExportSettingsRoutes } from './export-settings-routes.ts';
 import { registerGuestRoutes } from './guest-routes.ts';
 import { registerInstanceAdminRoutes } from './instance-admin-routes.ts';
 import { registerLinkPreviews } from './link-previews.ts';
@@ -123,6 +124,7 @@ export async function createApp(deps: AppDeps) {
   registerInstanceAdminRoutes(app, deps);
   registerSharingRoutes(app, { ...deps, mailer });
   registerProjectRoutes(app, deps);
+  registerExportSettingsRoutes(app, deps);
   registerBoardRoutes(app, deps);
   registerVersionRoutes(app, deps);
   registerAssetRoutes(app, deps);

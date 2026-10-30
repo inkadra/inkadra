@@ -6,6 +6,7 @@ export * from './clip.ts';
 export * from './comments.ts';
 export * from './common.ts';
 export * from './constants.ts';
+export * from './export-settings.ts';
 export * from './guests.ts';
 export * from './instance.ts';
 export * from './instance-admin.ts';

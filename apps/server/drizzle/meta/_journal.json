@@ -85,6 +85,13 @@
       "when": 1793357418591,
       "tag": "0011_clip_board_history",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1793364734483,
+      "tag": "0012_export_settings",
+      "breakpoints": true
     }
   ]
 }
