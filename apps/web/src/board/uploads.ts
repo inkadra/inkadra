@@ -84,7 +84,14 @@ if (typeof window !== 'undefined') {
  * project resumes that upload (or leaves it running) instead of starting a second one, and
  * calls no `onAsset` again: its card already exists.
  */
-export function startUpload({ file, projectId, boardId, onAsset, onFailed, onComplete }: StartUpload): string {
+export function startUpload({
+  file,
+  projectId,
+  boardId,
+  onAsset,
+  onFailed,
+  onComplete,
+}: StartUpload): string {
   const fingerprint = [projectId, file.name, file.size, file.lastModified].join('|');
   const existing = items.find(
     (i) => i.fingerprint === fingerprint && i.state !== 'done' && i.state !== 'cancelled',

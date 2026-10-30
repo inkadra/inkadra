@@ -35,3 +35,39 @@ export function youtubeEmbedUrl(url: string): string | null {
 export function isYoutubeUrl(url: string): boolean {
   return youtubeVideoId(url) !== null;
 }
+
+/** Video reference links supported by the viewer; Vimeo uses only its stored thumbnail. */
+export function isVideoLink(url: string): boolean {
+  if (isYoutubeUrl(url)) return true;
+  try {
+    const parsed = new URL(url);
+    return (
+      /^https?:$/.test(parsed.protocol) &&
+      /^(www\.)?vimeo\.com$/.test(parsed.hostname) &&
+      /^\/\d+\/?$/.test(parsed.pathname)
+    );
+  } catch {
+    return false;
+  }
+}
+
+/** Accept playback updates only from this viewer's privacy-enhanced YouTube player. */
+export function youtubePlayerTime(
+  event: Pick<MessageEvent, 'origin' | 'source' | 'data'>,
+  player: Window | null,
+): number | null {
+  if (!player || event.origin !== 'https://www.youtube-nocookie.com' || event.source !== player)
+    return null;
+  try {
+    const data = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
+    const time = data?.info?.currentTime;
+    return data?.event === 'infoDelivery' &&
+      typeof time === 'number' &&
+      Number.isFinite(time) &&
+      time >= 0
+      ? time
+      : null;
+  } catch {
+    return null;
+  }
+}

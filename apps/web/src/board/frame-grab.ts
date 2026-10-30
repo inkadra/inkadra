@@ -17,7 +17,10 @@ export async function captureVideoFrame(video: HTMLVideoElement): Promise<File> 
   if (!ctx) throw new Error('canvas-unavailable');
   ctx.drawImage(video, 0, 0);
   const blob = await new Promise<Blob>((resolve, reject) => {
-    canvas.toBlob((blob) => blob ? resolve(blob) : reject(new Error('encode-failed')), 'image/png');
+    canvas.toBlob(
+      (blob) => (blob ? resolve(blob) : reject(new Error('encode-failed'))),
+      'image/png',
+    );
   });
   return new File([blob], `frame-${video.currentTime.toFixed(3)}.png`, { type: 'image/png' });
 }
@@ -25,14 +28,24 @@ export async function captureVideoFrame(video: HTMLVideoElement): Promise<File> 
 export function frameChoices(store: BoardStore) {
   const groups = storyboardOf([...store.getSnapshot().byId.values()]);
   const labels = frameLabels(groups);
-  return groups.flatMap((g) => g.frames).map((frame) => ({ id: frame.id, label: labels.get(frame.id) || frame.id }));
+  return groups
+    .flatMap((g) => g.frames)
+    .map((frame) => ({ id: frame.id, label: labels.get(frame.id) || frame.id }));
 }
 
 /** Use the live document at commit time: collaborators may delete a destination during upload. */
-export function placeVideoStill(store: BoardStore, input: {
-  sourceId: string; targetId: string | null; assetId: string;
-  source: VideoFrameSource; userId: string; caption: string; reference?: string;
-}): boolean {
+export function placeVideoStill(
+  store: BoardStore,
+  input: {
+    sourceId: string;
+    targetId: string | null;
+    assetId: string;
+    source: VideoFrameSource;
+    userId: string;
+    caption: string;
+    reference?: string;
+  },
+): boolean {
   const byId = store.getSnapshot().byId;
   const original = byId.get(input.sourceId);
   const target = input.targetId ? byId.get(input.targetId) : null;
@@ -43,16 +56,31 @@ export function placeVideoStill(store: BoardStore, input: {
     const notes = [target.notes, input.reference].filter(Boolean).join('\n');
     // Never truncate director's notes to make room for a reference.
     if (notes.length > 4000) return false;
-    updateElement(store.doc, target.id, {
-      assetId: input.assetId, source: input.source,
-      ...(input.reference ? { notes } : {}),
-      ...(guestHidden ? { guestHidden: true } : {}),
-    }, LOCAL);
+    updateElement(
+      store.doc,
+      target.id,
+      {
+        assetId: input.assetId,
+        source: input.source,
+        ...(input.reference ? { notes } : {}),
+        ...(guestHidden ? { guestHidden: true } : {}),
+      },
+      LOCAL,
+    );
   } else {
-    createElement(store.doc, 'image', { x: original.x + original.w + 24, y: original.y }, {
-      assetId: input.assetId, source: input.source, caption: input.caption.slice(0, 2000),
-      guestHidden, parent: original.parent,
-    }, { userId: input.userId, origin: LOCAL });
+    createElement(
+      store.doc,
+      'image',
+      { x: original.x + original.w + 24, y: original.y },
+      {
+        assetId: input.assetId,
+        source: input.source,
+        caption: input.caption.slice(0, 2000),
+        guestHidden,
+        parent: original.parent,
+      },
+      { userId: input.userId, origin: LOCAL },
+    );
   }
   return true;
 }
@@ -67,16 +95,27 @@ export class VideoFrameStepper {
   private callback: number | null = null;
   private last: { time: number; frame: number } | null = null;
   private adjacent = new Map<number, number>();
+  get mediaTime(): number | null {
+    return this.last?.time ?? null;
+  }
   start(video: HTMLVideoElement) {
     if (!video.requestVideoFrameCallback) return () => {};
     const tick: VideoFrameRequestCallback = (_now, meta) => {
-      if (this.last && meta.presentedFrames === this.last.frame + 1 && meta.mediaTime > this.last.time && !video.seeking)
+      if (
+        this.last &&
+        meta.presentedFrames === this.last.frame + 1 &&
+        meta.mediaTime > this.last.time &&
+        !video.seeking
+      )
         this.adjacent.set(this.last.time, meta.mediaTime);
       this.last = { time: meta.mediaTime, frame: meta.presentedFrames };
-      if (this.adjacent.size > 10000) this.adjacent.delete(this.adjacent.keys().next().value!);
+      const oldest = this.adjacent.keys().next().value;
+      if (this.adjacent.size > 10000 && oldest !== undefined) this.adjacent.delete(oldest);
       this.callback = video.requestVideoFrameCallback(tick);
     };
-    const seeking = () => { this.last = null; };
+    const seeking = () => {
+      this.last = null;
+    };
     video.addEventListener('seeking', seeking);
     this.callback = video.requestVideoFrameCallback(tick);
     return () => {
@@ -87,9 +126,14 @@ export class VideoFrameStepper {
   step(video: HTMLVideoElement, direction: -1 | 1): boolean {
     if (!video.paused || video.seeking) return false;
     const current = this.last?.time ?? video.currentTime;
-    const next = direction === 1 ? this.adjacent.get(current)
-      : [...this.adjacent].find(([, end]) => end === current)?.[0];
-    video.currentTime = Math.max(0, Math.min(video.duration || 0, next ?? video.currentTime + direction / 30));
+    const next =
+      direction === 1
+        ? this.adjacent.get(current)
+        : [...this.adjacent].find(([, end]) => end === current)?.[0];
+    video.currentTime = Math.max(
+      0,
+      Math.min(video.duration || 0, next ?? video.currentTime + direction / 30),
+    );
     return next !== undefined;
   }
 }

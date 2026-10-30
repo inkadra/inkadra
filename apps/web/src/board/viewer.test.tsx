@@ -222,7 +222,7 @@ describe('MediaViewer video playback', () => {
     expect(html).toContain('viewer__action-label');
     expect(html).toContain('aria-label="Chiudi"');
     expect(html).toContain(
-      'src="https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ?autoplay=1&amp;rel=0"',
+      'src="https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ?autoplay=1&amp;rel=0&amp;enablejsapi=1&amp;origin=http%3A%2F%2Flocalhost%3A3000"',
     );
     expect(html).toContain('Never Gonna Give You Up');
     expect(html).toContain('Official music video');

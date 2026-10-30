@@ -14,6 +14,48 @@ const importer = '99999999-9999-4999-8999-999999999999';
 const base = { x: 0, y: 0, w: 200, z: 'a0', parent: null, createdAt: 1, createdBy: author };
 
 describe('remapDoc', () => {
+  it('remaps nested video provenance and drops sources of videos not imported', () => {
+    const doc = createBoardDoc(oldBoard);
+    for (const type of ['frame', 'image'] as const) {
+      for (const [suffix, assetId] of [
+        ['stored', file],
+        ['missing', elsewhere],
+      ]) {
+        addElement(doc, {
+          ...base,
+          id: `${type}-${suffix}`,
+          type,
+          assetId: file,
+          source: { kind: 'uploaded-video', assetId: assetId!, timeSeconds: 1.125 },
+        });
+      }
+    }
+    addElement(doc, {
+      ...base,
+      id: 'link-still',
+      type: 'image',
+      assetId: file,
+      source: { kind: 'link-thumbnail', url: 'https://vimeo.com/123' },
+    });
+    remapDoc(doc, newBoard, {
+      boards: new Map(),
+      assets: new Map([[file, newFile]]),
+      person: () => importer,
+    });
+    for (const type of ['frame', 'image']) {
+      expect(roots(doc).elements.get(`${type}-stored`)?.get('source')).toEqual({
+        kind: 'uploaded-video',
+        assetId: newFile,
+        timeSeconds: 1.125,
+      });
+      expect(roots(doc).elements.get(`${type}-missing`)?.has('source')).toBe(false);
+    }
+    expect(roots(doc).elements.get('link-still')?.get('source')).toEqual({
+      kind: 'link-thumbnail',
+      url: 'https://vimeo.com/123',
+    });
+  });
+
   it('rewrites files, boards, the board itself and authors, keeping element ids', () => {
     const doc = createBoardDoc(oldBoard);
     addElement(doc, { ...base, id: 'image-0001', type: 'image', assetId: file });

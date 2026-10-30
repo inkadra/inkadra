@@ -125,7 +125,7 @@ import { templateLabels, templateRect } from './templates.ts';
 import { startUpload } from './uploads.ts';
 import { MediaViewer } from './viewer.tsx';
 import { loadViewport, saveViewport } from './viewport.ts';
-import { isYoutubeUrl } from './youtube.ts';
+import { isVideoLink } from './youtube.ts';
 
 const DRAG_THRESHOLD = 3;
 /** Controls inside cards, which take the pointer instead of the canvas. */
@@ -846,7 +846,7 @@ export function Canvas({
       if (el.type === 'board') onOpenBoard(el.boardId);
       else if (onOpen?.(el)) return;
       else if (el.type === 'link') {
-        if (isYoutubeUrl(el.url)) {
+        if (isVideoLink(el.url)) {
           setViewing(el.id);
           return;
         }
@@ -1723,7 +1723,7 @@ export function Canvas({
   const viewed =
     viewedEl?.type === 'image' ||
     viewedEl?.type === 'file' ||
-    (viewedEl?.type === 'link' && isYoutubeUrl(viewedEl.url))
+    (viewedEl?.type === 'link' && isVideoLink(viewedEl.url))
       ? viewedEl
       : null;
   const viewedIndex = viewed ? viewableElements.findIndex((el) => el.id === viewed.id) : -1;

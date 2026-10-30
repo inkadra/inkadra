@@ -8,15 +8,15 @@ import { useTranslation } from 'react-i18next';
 import { useClassifications } from '../lib/classifications.ts';
 import { pickVariant, useAsset } from './assets.ts';
 import { GuestModeContext } from './context.ts';
+import { FrameGrab } from './FrameGrab.tsx';
+import { VideoFrameStepper } from './frame-grab.ts';
 import { MovingPicture, movingVariantUrl } from './moving.tsx';
 import { authorName, editableText } from './review-model.ts';
 import { canComment, openComments, useReviews } from './review-store.ts';
 import { isTyping } from './shortcuts.ts';
 import { type BoardStore, LOCAL } from './store.ts';
-import { FrameGrab } from './FrameGrab.tsx';
-import { VideoFrameStepper } from './frame-grab.ts';
 import { TagEditor } from './tags.tsx';
-import { isYoutubeUrl, youtubeEmbedUrl } from './youtube.ts';
+import { isYoutubeUrl, youtubeEmbedUrl, youtubePlayerTime } from './youtube.ts';
 
 type Exif = Record<string, unknown>;
 
@@ -243,6 +243,19 @@ export function MediaViewer({
   const isYoutube = element.type === 'link' && isYoutubeUrl(element.url);
   const ready: Asset | null = asset && asset !== 'missing' ? asset : null;
   const dialogRef = useRef<HTMLDivElement>(null);
+  const iframeRef = useRef<HTMLIFrameElement>(null);
+  const [youtubeTime, setYoutubeTime] = useState<number | null>(null);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: reset player time when navigating gallery items
+  useEffect(() => {
+    setYoutubeTime(null);
+    if (!isYoutube) return;
+    const receive = (event: MessageEvent) => {
+      const time = youtubePlayerTime(event, iframeRef.current?.contentWindow ?? null);
+      if (time !== null) setYoutubeTime(time);
+    };
+    window.addEventListener('message', receive);
+    return () => window.removeEventListener('message', receive);
+  }, [element.id, isYoutube]);
   const [copied, setCopied] = useState<string | null>(null);
   const [infoOpen, setInfoOpen] = useState(false);
   const { videoRef, unplayable, setUnplayable } = useVideoUnplayable(ready?.url, ready?.id);
@@ -251,7 +264,7 @@ export function MediaViewer({
   const [exactStep, setExactStep] = useState(true);
   useEffect(() => {
     const player = videoRef.current;
-    if (!player) return;
+    if (!player || !ready?.id) return;
     stepper.current = new VideoFrameStepper();
     return stepper.current.start(player);
   }, [ready?.id, videoRef]);
@@ -413,9 +426,20 @@ export function MediaViewer({
             </span>
           ))}
           <div className="viewer__header-spacer" />
-          <FrameGrab key={element.id} store={store} element={element} asset={ready} video={videoRef}
-            projectId={projectId} userId={userId} readOnly={readOnly || guestMode}
-            initialFrameId={initialFrameId} onDone={onClose} />
+          <FrameGrab
+            key={element.id}
+            store={store}
+            element={element}
+            asset={ready}
+            video={videoRef}
+            projectId={projectId}
+            userId={userId}
+            readOnly={readOnly || guestMode}
+            initialFrameId={initialFrameId}
+            frameTime={() => stepper.current.mediaTime}
+            youtubeTime={youtubeTime}
+            onDone={onClose}
+          />
           <button
             type="button"
             className="ink-btn ink-btn--secondary viewer__stage-btn viewer__info-toggle"
@@ -496,8 +520,15 @@ export function MediaViewer({
             {isYoutube ? (
               <div className="viewer__embed">
                 <iframe
+                  ref={iframeRef}
                   className="viewer__iframe"
-                  src={youtubeEmbedUrl(element.url) ?? ''}
+                  src={`${youtubeEmbedUrl(element.url)}&enablejsapi=1&origin=${encodeURIComponent(location.origin)}`}
+                  onLoad={() =>
+                    iframeRef.current?.contentWindow?.postMessage(
+                      JSON.stringify({ event: 'listening', id: 'inkadra-viewer' }),
+                      'https://www.youtube-nocookie.com',
+                    )
+                  }
                   title={element.title || 'YouTube video'}
                   allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                   allowFullScreen
@@ -541,9 +572,14 @@ export function MediaViewer({
           {/* Bottom Hints */}
           <div className="viewer__hints">
             <span className="viewer__hint">
-              <span className="viewer__hint-kbd">← →</span> {t(ready?.kind === 'video' ? 'frameGrab.stepHint' : 'viewer.hints.nav')}
+              <span className="viewer__hint-kbd">← →</span>{' '}
+              {t(ready?.kind === 'video' ? 'frameGrab.stepHint' : 'viewer.hints.nav')}
             </span>
-            {ready?.kind === 'video' && <span className="viewer__hint" role="status">{t(exactStep ? 'frameGrab.stepPrecision' : 'frameGrab.approximate')}</span>}
+            {ready?.kind === 'video' && (
+              <span className="viewer__hint" role="status">
+                {t(exactStep ? 'frameGrab.stepPrecision' : 'frameGrab.approximate')}
+              </span>
+            )}
           </div>
         </div>
 

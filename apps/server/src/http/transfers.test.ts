@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Readable } from 'node:stream';
 import { fileURLToPath } from 'node:url';
-import { addElement, createBoardDoc, roots } from '@inkadra/doc-schema';
+import { addElement, CURRENT_SCHEMA_VERSION, createBoardDoc, roots } from '@inkadra/doc-schema';
 import { ProjectArchiveManifest, ProjectTransfer, ProjectTransfers } from '@inkadra/shared';
 import { asc, eq, sql } from 'drizzle-orm';
 import pino from 'pino';
@@ -116,7 +116,7 @@ async function storeDoc(db: Database, boardId: string, doc: Y.Doc) {
   const state = Y.encodeStateAsUpdate(doc);
   await db
     .insert(boardDoc)
-    .values({ boardId, state, schemaVersion: 4, size: state.byteLength })
+    .values({ boardId, state, schemaVersion: CURRENT_SCHEMA_VERSION, size: state.byteLength })
     .onConflictDoUpdate({ target: boardDoc.boardId, set: { state, size: state.byteLength } });
   await writeBoardIndex(db, boardId, doc);
 }
@@ -125,12 +125,17 @@ async function storeDoc(db: Database, boardId: string, doc: Y.Doc) {
 function comparable(state: Uint8Array) {
   const doc = new Y.Doc();
   Y.applyUpdate(doc, state);
-  return readableElements(doc).map(({ assetId, boardId, createdBy, imageAssetId, source, ...rest }) => ({
-    ...rest,
-    source: source && typeof source === 'object' && 'kind' in source && source.kind === 'uploaded-video' ? { ...source, assetId: '<remapped>' } : source,
-    hasAsset: assetId !== undefined,
-    hasBoard: boardId !== undefined,
-  }));
+  return readableElements(doc).map(
+    ({ assetId, boardId, createdBy, imageAssetId, source, ...rest }) => ({
+      ...rest,
+      source:
+        source && typeof source === 'object' && 'kind' in source && source.kind === 'uploaded-video'
+          ? { ...source, assetId: '<remapped>' }
+          : source,
+      hasAsset: assetId !== undefined,
+      hasBoard: boardId !== undefined,
+    }),
+  );
 }
 
 describe.skipIf(!url)('project export and import (needs DATABASE_URL)', () => {
@@ -207,12 +212,24 @@ describe.skipIf(!url)('project export and import (needs DATABASE_URL)', () => {
       .where(eq(asset.id, assetId));
     await source.deps.storage.write(`originals/${assetId}`, png, 'image/png');
     const video = Buffer.from('synthetic video original');
-    const [footage] = await source.db.insert(asset).values({
-      projectId, kind: 'video', mime: 'video/mp4', filename: 'last-train.mp4',
-      size: video.length, storageKey: 'pending', status: 'ready', createdBy: people.owner?.id,
-    }).returning();
+    const [footage] = await source.db
+      .insert(asset)
+      .values({
+        projectId,
+        kind: 'video',
+        mime: 'video/mp4',
+        filename: 'last-train.mp4',
+        size: video.length,
+        storageKey: 'pending',
+        status: 'ready',
+        createdBy: people.owner?.id,
+      })
+      .returning();
     videoId = footage!.id;
-    await source.db.update(asset).set({ storageKey: `originals/${videoId}` }).where(eq(asset.id, videoId));
+    await source.db
+      .update(asset)
+      .set({ storageKey: `originals/${videoId}` })
+      .where(eq(asset.id, videoId));
     await source.deps.storage.write(`originals/${videoId}`, video, 'video/mp4');
     // Export settings with the station picture as the logo (decision 0039).
     await source.db.insert(projectExportSettings).values({
@@ -323,7 +340,7 @@ describe.skipIf(!url)('project export and import (needs DATABASE_URL)', () => {
       kind: 'named',
       name: 'Before the rain',
       state,
-      schemaVersion: 4,
+      schemaVersion: CURRENT_SCHEMA_VERSION,
       size: state.byteLength,
       elementCount: 3,
       createdBy: people.owner?.id,
@@ -498,12 +515,19 @@ describe.skipIf(!url)('project export and import (needs DATABASE_URL)', () => {
     const elements = roots(doc).elements;
     expect(roots(doc).meta.get('boardId')).toBe(rootB);
     expect(elements.get('board-00001')?.get('boardId')).toBe(childB);
-    const importedFiles = await target.db.select().from(asset).where(eq(asset.projectId, newProject));
+    const importedFiles = await target.db
+      .select()
+      .from(asset)
+      .where(eq(asset.projectId, newProject));
     const fileB = importedFiles.find((f) => f.filename === 'station.png');
     const videoB = importedFiles.find((f) => f.filename === 'last-train.mp4');
     expect(videoB?.id).toBeTruthy();
     expect(videoB?.id).not.toBe(videoId);
-    expect(elements.get('image-00001')?.get('source')).toEqual({ kind: 'uploaded-video', assetId: videoB?.id, timeSeconds: 1.125 });
+    expect(elements.get('image-00001')?.get('source')).toEqual({
+      kind: 'uploaded-video',
+      assetId: videoB?.id,
+      timeSeconds: 1.125,
+    });
     expect(elements.get('image-00001')?.get('assetId')).toBe(fileB?.id);
     expect(elements.get('image-00001')?.get('createdBy')).toBe(importer.id);
     expect(elements.get('note-000001')?.get('createdBy')).toBe(importer.id);
@@ -618,7 +642,7 @@ describe.skipIf(!url)('project export and import (needs DATABASE_URL)', () => {
       formatVersion: 1,
       appVersion: 'test',
       exportedAt: new Date().toISOString(),
-      docSchemaVersion: 4,
+      docSchemaVersion: CURRENT_SCHEMA_VERSION,
       counts: { boards: 0, assets: 0, comments: 0, versions: 0 },
     };
     expect(await send(await zipOf({ 'manifest.json': { ...manifest, formatVersion: 2 } }))).toBe(
@@ -742,7 +766,7 @@ describe.skipIf(!url)('project export and import (needs DATABASE_URL)', () => {
       formatVersion: 1,
       appVersion: 'test',
       exportedAt: at,
-      docSchemaVersion: 4,
+      docSchemaVersion: CURRENT_SCHEMA_VERSION,
       counts: { boards: 1, assets: 1, comments: 0, versions: 0 },
     });
     await json('project.json', {
@@ -763,7 +787,7 @@ describe.skipIf(!url)('project export and import (needs DATABASE_URL)', () => {
         title: 'Night Shift',
         position: 'a0',
         coverAssetId: null,
-        schemaVersion: 4,
+        schemaVersion: CURRENT_SCHEMA_VERSION,
         createdBy: null,
         createdAt: at,
         updatedAt: at,

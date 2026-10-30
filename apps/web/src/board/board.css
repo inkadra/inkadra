@@ -2224,7 +2224,7 @@ button.card__play {
   gap: 12px;
   padding: 20px;
   border: 1px solid var(--ink-border-default);
-  border-radius: var(--ink-radius-panel, 12px);
+  border-radius: 12px;
   background: var(--ink-surface-float);
   color: var(--ink-text-primary);
   text-align: left;
@@ -2234,9 +2234,21 @@ button.card__play {
   gap: 6px;
   font-size: 13px;
 }
-.viewer__grab-options p { margin: 0; font-size: 13px; line-height: 1.5; }
-.film-panel__video-picker { display: grid; gap: 8px; }
+.viewer__grab-options :where(p) {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+}
+.film-panel__video-picker {
+  display: grid;
+  gap: 8px;
+}
 @media (max-width: 767px) {
-  .viewer__grab-options { right: 16px; top: 80px; }
-  .viewer__hints { flex-wrap: wrap; }
+  .viewer__grab-options {
+    right: 16px;
+    top: 80px;
+  }
+  .viewer__hints {
+    flex-wrap: wrap;
+  }
 }
