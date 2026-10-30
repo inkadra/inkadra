@@ -160,6 +160,7 @@ export async function buildPages(
   const load = async (ids: Iterable<string>) => {
     const todo = [...ids].filter((id) => !images.has(id));
     let done = 0;
+    if (!preview && todo.length > 0) onProgress?.({ phase: 'pictures', done, total: todo.length });
     await pool(
       todo,
       IMAGE_CONCURRENCY,
