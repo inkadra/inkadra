@@ -330,3 +330,59 @@
   justify-content: flex-end;
   gap: 6px;
 }
+
+/* Phones: the person (name, email, end date) gets the whole width; role, end date and remove
+   go on a second line, with touch-sized targets. The invite field puts its role and end date
+   under the address for the same reason. */
+@media (width < 480px) {
+  .share__row {
+    flex-wrap: wrap;
+    gap: 0 4px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid var(--ink-border-subtle);
+  }
+  .share__row:last-child {
+    border-bottom: 0;
+  }
+  .share__person {
+    flex: 1 0 100%;
+  }
+  .share__row > :nth-child(2) {
+    margin-left: auto;
+  }
+  .share__row .share__select,
+  .share__row .share__role {
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+  }
+  .share__row .ink-iconbtn,
+  .share__row .share__spacer,
+  .share__field .ink-iconbtn {
+    width: 44px;
+    height: 44px;
+  }
+  .share__row--pending .share__who {
+    flex: 1 0 calc(100% - 40px);
+  }
+  .share__row--pending > :nth-child(3) {
+    margin-left: auto;
+  }
+  .share__field {
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    height: auto;
+    padding: 0 4px 0 10px;
+  }
+  .share__field > .share__input {
+    flex: 1 0 100%;
+    height: 44px;
+  }
+  .share__field .share__select {
+    min-height: 44px;
+  }
+  .share__invite > .ink-btn {
+    flex: 1 0 100%;
+    min-height: 44px;
+  }
+}

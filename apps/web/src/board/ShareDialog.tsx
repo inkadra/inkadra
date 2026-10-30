@@ -11,6 +11,7 @@ import { Avatar, Button, Dialog, Icon, IconButton } from '@inkadra/ui';
 import { type FormEvent, type KeyboardEvent, useCallback, useEffect, useId, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api, RequestError } from '../lib/api.ts';
+import { useIsPhone } from '../lib/phone.ts';
 import { useSession } from '../lib/session.tsx';
 import { ExpiryLabel, ExpiryPicker } from './ExpiryPicker.tsx';
 import { GuestLinks } from './GuestLinks.tsx';
@@ -424,6 +425,8 @@ function InviteForm({
   const [status, setStatus] = useState<string | null>(null);
   const [copyUrl, setCopyUrl] = useState<string | null>(null);
   const [until, setUntil] = useState<string | null>(null);
+  // The full hint does not fit a phone: the short label says enough there.
+  const phone = useIsPhone();
 
   useEffect(() => {
     const q = query.trim();
@@ -493,7 +496,11 @@ function InviteForm({
           autoComplete="off"
           list={listId}
           placeholder={
-            canEmail ? t('share.invitePlaceholder') : t('share.invitePlaceholderNoEmail')
+            phone
+              ? t('share.inviteLabel')
+              : canEmail
+                ? t('share.invitePlaceholder')
+                : t('share.invitePlaceholderNoEmail')
           }
           aria-label={t('share.inviteLabel')}
           value={query}
