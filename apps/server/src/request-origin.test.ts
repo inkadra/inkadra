@@ -40,6 +40,7 @@ describe('request origin boundary', () => {
     app.get('/', (req) => Object.fromEntries(toHeaders(req)));
     try {
       const response = await app.inject({
+        url: '/',
         headers: {
           host: 'soyo:7340',
           [ORIGIN_HEADER]: 'https://evil.test',
