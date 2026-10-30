@@ -1,4 +1,4 @@
-import { addScenes, type NewScene } from '@inkadra/canvas-core';
+import { addScenes, frameLetter, type NewScene } from '@inkadra/canvas-core';
 import type * as Y from 'yjs';
 import type { Script, ScriptBlock, ScriptScene } from './script.ts';
 
@@ -50,9 +50,12 @@ export function planImport(
 ): ImportPlan {
   const plan: ImportPlan = { scenes: [], frameCount: 0, truncated: false };
   if (script.title) plan.title = cut(script.title, 200);
-  const chosen = script.scenes.filter((_, i) => options.scenes.has(i));
+  const numbers = sceneNumbers(script.scenes);
+  const chosen = script.scenes
+    .map((scene, i) => ({ scene, number: numbers[i] }))
+    .filter((_, i) => options.scenes.has(i));
   if (chosen.length > MAX_IMPORT_SCENES) plan.truncated = true;
-  for (const scene of chosen.slice(0, MAX_IMPORT_SCENES)) {
+  for (const { scene, number } of chosen.slice(0, MAX_IMPORT_SCENES)) {
     let frames = options.frames === 'none' ? [] : framesOf(scene, options);
     const room = MAX_IMPORT_FRAMES - plan.frameCount;
     if (frames.length > room) {
@@ -68,10 +71,10 @@ export function planImport(
         : []),
     ].join('\n');
     const planned: NewScene = {
-      title: cut(scene.extra ?? (scene.setting ? '' : scene.heading), 200),
+      title: cut(sceneTitle(scene), 200),
       frames,
     };
-    if (scene.number) planned.number = scene.number.slice(0, 12);
+    if (number) planned.number = number.slice(0, 12);
     if (scene.setting) planned.setting = scene.setting;
     if (scene.time) planned.time = scene.time;
     if (scene.location) planned.location = cut(scene.location, 200);
@@ -79,6 +82,63 @@ export function planImport(
     plan.scenes.push(planned);
   }
   return plan;
+}
+
+/** Continuity words of a heading: they say how the scene follows the last, not what it is. */
+const CONTINUITY =
+  /^(?:CONTINUOUS|CONT(?:'|’)?D|LATER|MOMENTS LATER|A MOMENT LATER|SAME|SAME TIME|CONTINUA|CONTINUAZIONE|PIÙ TARDI|POCO DOPO|STESSO MOMENTO)$/i;
+
+/**
+ * The visible name of an imported scene: its location, as a manual scene would be named
+ * ("Central Station"). Continuity words are dropped (the board has no field for them); other
+ * words after the location (FLASHBACK, DREAM) follow in brackets. A forced heading without
+ * INT/EXT is the name itself.
+ */
+function sceneTitle(scene: ScriptScene): string {
+  if (!scene.setting) return scene.heading;
+  const extras = (scene.extra ?? '')
+    .split(/\s+[-–—]\s+|\s*[–—]\s*/)
+    .map((e) => e.trim())
+    .filter((e) => e && !CONTINUITY.test(e));
+  const name = scene.location ? castName(scene.location.toLocaleUpperCase()) : '';
+  const tail = extras.map((e) => castName(e.toLocaleUpperCase())).join(', ');
+  return name && tail ? `${name} (${tail})` : name || tail;
+}
+
+/**
+ * Scene numbers when the script numbers some of its scenes: theirs are kept, and a scene
+ * without one takes the industry's numbering for inserted scenes, the number before it plus a
+ * letter (2 → 2A, or 2B when the script has a 2A), or a letter before the next number for a
+ * scene ahead of the first one (A1). A script without numbers gets none here: the scenes
+ * continue from the board's last scene, as new scenes do.
+ */
+export function sceneNumbers(scenes: readonly ScriptScene[]): Array<string | undefined> {
+  if (!scenes.some((s) => s.number)) return scenes.map(() => undefined);
+  const taken = new Set(scenes.flatMap((s) => (s.number ? [s.number.toUpperCase()] : [])));
+  const free = (make: (letter: string) => string) => {
+    for (let i = 0; ; i++) {
+      const candidate = make(frameLetter(i));
+      if (!taken.has(candidate.toUpperCase())) {
+        taken.add(candidate.toUpperCase());
+        return candidate;
+      }
+    }
+  };
+  const result: Array<string | undefined> = [];
+  scenes.forEach((scene, i) => {
+    if (scene.number) {
+      result.push(scene.number);
+      return;
+    }
+    // After 2A comes 2B, not 2AA.
+    const before = result
+      .slice(0, i)
+      .findLast(Boolean)
+      ?.replace(/(\d)[A-Z]+$/i, '$1');
+    const after = scenes.slice(i + 1).find((s) => s.number)?.number;
+    result.push(before ? free((l) => `${before}${l}`) : free((l) => `${l}${after ?? '1'}`));
+  });
+  return result;
 }
 
 /** Writes the plan after the existing scenes, as one undoable step. */

@@ -33,10 +33,19 @@ frames with action, dialogue, notes and cast (decision 0012).
   dialog says when a script was cut.
 - **Mapping**, pure and tested (`plan.ts`), so the preview shows exactly what is written:
   - one scene element per selected scene, after the existing scenes and to their right on the
-    canvas. Number from the script, or continuing from the last scene. INT/EXT, location and
-    time from the heading (MORNING and AFTERNOON count as day, EVENING as dusk); what follows
-    (CONTINUOUS, LATER, FLASHBACK) or a forced heading becomes the scene title. Synopsis from
-    Fountain synopses or the Final Draft summary.
+    canvas. INT/EXT, location and time from the heading (MORNING and AFTERNOON count as day,
+    EVENING as dusk). Synopsis from Fountain synopses or the Final Draft summary.
+  - **scene name**: scripts do not name scenes, so the title is the location in title case
+    ("Central Station"), as a person would name it. Continuity words (CONTINUOUS, LATER,
+    MOMENTS LATER, SAME, CONTINUA, PIÙ TARDI…) are not a time of day and never a title; the time
+    field only holds day, night, dawn and dusk, and there is no field for them, so they are
+    dropped. Other words after the location (FLASHBACK, DREAM) follow it in brackets. A forced
+    heading without INT/EXT is the name as written. The dialog shows headings in capitals.
+  - **numbers**: a script's own scene numbers are kept. When it numbers some scenes but not
+    others, an unnumbered scene takes the convention for inserted scenes: the number before it
+    plus the first free letter (2 → 2A, or 2B when the script has a 2A), or a letter before the
+    first number for a scene ahead of it (A1). A script without any number continues from the
+    board's last scene, as new scenes do. The preview shows the numbers that will be written.
   - frames, chosen in the dialog: **none**, **one per scene** (all its action, a dialogue
     snippet, every speaker), or **one per action paragraph** (default) with the dialogue and
     notes that follow it, at most 4–24 per scene: past the cap the action joins the last frame

@@ -6,7 +6,15 @@ import { BoardStore, LOCAL } from '../../store.ts';
 import fdx from './fixtures/last-train.fdx?raw';
 import fountain from './fixtures/last-train.fountain?raw';
 import { parseScreenplay } from './parse.ts';
-import { applyImport, castName, defaultOptions, MAX_IMPORT_FRAMES, planImport } from './plan.ts';
+import {
+  applyImport,
+  castName,
+  defaultOptions,
+  MAX_IMPORT_FRAMES,
+  planImport,
+  sceneNumbers,
+} from './plan.ts';
+import { parseHeading } from './script.ts';
 
 const line = (names: string[]) => `Characters: ${names.join(', ')}`;
 const script = parseScreenplay('last-train.fountain', fountain);
@@ -22,7 +30,7 @@ describe('planImport', () => {
       setting: 'ext',
       location: 'CENTRAL STATION',
       time: 'night',
-      title: '',
+      title: 'Central Station',
       synopsis: 'Mara misses the last train and meets Leo.',
     });
     expect(station?.frames).toHaveLength(3);
@@ -32,9 +40,11 @@ describe('planImport', () => {
       cast: ['Mara', 'Leo'],
       notes: 'Leo should already be in frame, half hidden by the pillar.',
     });
-    // A forced heading names the scene; a continuation is the title of its scene.
-    expect(plan.scenes[0]).toMatchObject({ title: 'COLD OPEN' });
-    expect(plan.scenes[2]).toMatchObject({ title: 'CONTINUOUS', location: 'GUARD BOOTH' });
+    // A forced heading names the scene; continuity words are never a title.
+    expect(plan.scenes[0]).toMatchObject({ number: 'A1', title: 'COLD OPEN' });
+    expect(plan.scenes[2]).toMatchObject({ title: 'Guard Booth', location: 'GUARD BOOTH' });
+    expect(plan.scenes[3]).toMatchObject({ number: '2A', title: 'Guard Booth' });
+    expect(plan.scenes[4]).toMatchObject({ number: '3A', title: 'Platform 4' });
     expect(plan.frameCount).toBe(plan.scenes.reduce((n, s) => n + s.frames.length, 0));
   });
 
@@ -80,6 +90,27 @@ describe('planImport', () => {
     const bounded = planImport(huge, defaultOptions(huge), line);
     expect(bounded.frameCount).toBe(MAX_IMPORT_FRAMES);
     expect(bounded.truncated).toBe(true);
+  });
+
+  it('numbers inserted scenes like a shooting script, without duplicates', () => {
+    const scenes = ['', '1', '', '2', '2A', '', ''].map((number) => ({
+      ...parseHeading('INT. ROOM - DAY'),
+      ...(number ? { number } : {}),
+      blocks: [],
+      characters: [],
+    }));
+    expect(sceneNumbers(scenes)).toEqual(['A1', '1', '1A', '2', '2A', '2B', '2C']);
+  });
+
+  it('names a scene after its location and keeps only meaningful extras', () => {
+    const s = parseScreenplay(
+      'x.fountain',
+      'INT. HALL - NIGHT (FLASHBACK)\n\nOne.\n\nEXT. YARD - MOMENTS LATER\n\nTwo.',
+    );
+    expect(planImport(s, defaultOptions(s), line).scenes.map((x) => x.title)).toEqual([
+      'Hall (Flashback)',
+      'Yard',
+    ]);
   });
 
   it('writes names in title case', () => {

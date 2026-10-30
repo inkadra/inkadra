@@ -53,9 +53,7 @@ it('previews the script and imports the chosen scenes', async () => {
   const rows = [...document.querySelectorAll<HTMLInputElement>('.script-import__list input')];
   expect(rows).toHaveLength(5);
   await act(async () => rows[0]?.click());
-  expect(document.querySelector('.script-import__summary')?.textContent).toBe(
-    'screenplay.summary',
-  );
+  expect(document.querySelector('.script-import__summary')?.textContent).toBe('screenplay.summary');
   await act(async () => button('screenplay.submit')?.click());
   const [plan, target] = onImport.mock.calls[0] ?? [];
   expect(target).toBe('append');

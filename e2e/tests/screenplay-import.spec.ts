@@ -67,7 +67,7 @@ test('a Fountain screenplay becomes scenes and frames, undone in one step', asyn
   for (const [number, tiles] of [
     ['1', 3],
     ['2', 1],
-    ['3', 1],
+    ['2A', 1],
     ['3A', 3],
   ] as const) {
     const scene = page.getByRole('region', { name: `Scena ${number}`, exact: true });
@@ -75,6 +75,12 @@ test('a Fountain screenplay becomes scenes and frames, undone in one step', asyn
   }
   const station = page.getByRole('region', { name: 'Scena 1', exact: true });
   await expect(station.getByLabel('Luogo', { exact: true })).toHaveValue('CENTRAL STATION');
+  await expect(station.getByLabel('Titolo', { exact: true })).toHaveValue('Central Station');
+  await expect(
+    page
+      .getByRole('region', { name: 'Scena 2', exact: true })
+      .getByLabel('Titolo', { exact: true }),
+  ).toHaveValue('Guard Booth');
   await expect(station.getByLabel('Interno o esterno')).toHaveValue('ext');
   await expect(station.getByLabel('Momento', { exact: true })).toHaveValue('night');
   await expect(station.getByLabel('Sinossi')).toHaveValue(

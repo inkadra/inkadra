@@ -12,6 +12,7 @@ import {
   type ImportOptions,
   type ImportPlan,
   planImport,
+  sceneNumbers,
 } from './plan.ts';
 import { type Script, ScriptError } from './script.ts';
 import './screenplay.css';
@@ -53,6 +54,7 @@ export function ScreenplayImportDialog({
         : null,
     [file, options, t],
   );
+  const numbers = useMemo(() => (file ? sceneNumbers(file.script.scenes) : []), [file]);
   // Frames each listed scene would get, for the counts beside them.
   const perScene = useMemo(() => {
     if (!file || !options) return [];
@@ -201,9 +203,9 @@ export function ScreenplayImportDialog({
                           checked={options.scenes.has(i)}
                           onChange={(e) => toggle(i, e.target.checked)}
                         />
-                        <span className="script-import__number">{scene.number ?? '–'}</span>
+                        <span className="script-import__number">{numbers[i] ?? '–'}</span>
                         <span className="script-import__heading">
-                          {scene.heading || t('screenplay.noHeading')}
+                          {scene.heading.toLocaleUpperCase() || t('screenplay.noHeading')}
                         </span>
                         {options.frames !== 'none' && (
                           <span className="script-import__count">
