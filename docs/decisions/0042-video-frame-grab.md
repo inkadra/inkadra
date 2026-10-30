@@ -13,6 +13,8 @@ reliably encode the source. External player iframes cannot be captured by a same
   preserve the presentation timestamp). A `link-thumbnail` source holds an HTTP(S) reference URL
   and optionally a reference time. Its thumbnail does **not** depict that reference time.
   The resulting picture stays in the existing `assetId` field; links retain `imageAssetId`.
+- Provenance is internal production metadata, omitted from guest snapshots on images and
+  frames. Sharing a still does not share the source footage or its URL.
 - Migration from version 4 changes only the schema version. Existing pictures have no source;
   we never infer a timestamp or overwrite notes. This metadata grants no file access: source
   assets remain subject to normal project and board permissions. Consumers must treat a

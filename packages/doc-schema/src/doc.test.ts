@@ -397,14 +397,17 @@ describe('board document', () => {
   });
 });
 
-
 describe('video still provenance', () => {
   const assetId = '0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10';
   it('preserves subsecond source times on images and frames through Yjs', () => {
     for (const type of ['image', 'frame'] as const) {
       for (const source of [
         { kind: 'uploaded-video' as const, assetId, timeSeconds: 12.345 },
-        { kind: 'link-thumbnail' as const, url: 'https://www.youtube.com/watch?v=abcdefghijk', timeSeconds: 42 },
+        {
+          kind: 'link-thumbnail' as const,
+          url: 'https://www.youtube.com/watch?v=abcdefghijk',
+          timeSeconds: 42,
+        },
         { kind: 'link-thumbnail' as const, url: 'https://vimeo.com/123' },
       ]) {
         const doc = createBoardDoc(boardId);
@@ -422,14 +425,17 @@ describe('video still provenance', () => {
     for (const type of ['image', 'frame'] as const) {
       for (const source of [
         ...[-1, Number.NaN, Number.POSITIVE_INFINITY, '12'].map((timeSeconds) => ({
-          kind: 'uploaded-video', assetId, timeSeconds,
+          kind: 'uploaded-video',
+          assetId,
+          timeSeconds,
         })),
         { kind: 'uploaded-video', assetId },
         { kind: 'uploaded-video', assetId: 'invalid', timeSeconds: 0 },
         { kind: 'link-thumbnail', url: 'javascript:alert(1)' },
         { kind: 'link-thumbnail', url: 'https://vimeo.com/123', timeSeconds: -1 },
         { kind: 'unknown', assetId, timeSeconds: 0 },
-      ]) expect(Element.safeParse({ ...base(), type, assetId, source }).success).toBe(false);
+      ])
+        expect(Element.safeParse({ ...base(), type, assetId, source }).success).toBe(false);
     }
   });
 
