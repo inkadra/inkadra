@@ -50,7 +50,7 @@ const COMMON_GUEST_FIELDS = [
  */
 export const GUEST_ELEMENT_FIELDS = {
   note: [...COMMON_GUEST_FIELDS, 'color'],
-  image: [...COMMON_GUEST_FIELDS, 'assetId', 'caption'],
+  image: [...COMMON_GUEST_FIELDS, 'assetId', 'caption', 'crop', 'rotation'],
   link: [...COMMON_GUEST_FIELDS, 'url', 'title', 'description', 'imageAssetId'],
   file: [...COMMON_GUEST_FIELDS, 'assetId', 'caption'],
   todo: [...COMMON_GUEST_FIELDS, 'title', 'items'],
