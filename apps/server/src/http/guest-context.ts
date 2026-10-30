@@ -7,6 +7,7 @@ import type { Config } from '../config.ts';
 import type { Database } from '../db/client.ts';
 import { shareGuest, shareLink } from '../db/schema.ts';
 import { readCookie } from '../invitations.ts';
+import { requestOrigin } from '../request-origin.ts';
 import { newSecret, sha256 } from '../secrets.ts';
 import {
   type DocViews,
@@ -49,9 +50,9 @@ export function linkStopped(status: 'expired' | 'revoked' | 'suspended') {
 export const guestPath = (linkId: string) => `${API_PREFIX}/guest/links/${linkId}`;
 
 export function createGuestAuth(deps: { config: Config; db: Database; docs: DocViews }) {
-  const { config, db, docs } = deps;
-  const secure = config.PUBLIC_URL.startsWith('https://');
-  const cookieName = secure ? `__Secure-${GUEST_COOKIE}` : GUEST_COOKIE;
+  const { db, docs } = deps;
+  const nameFor = (req: FastifyRequest) =>
+    requestOrigin(req).startsWith('https:') ? `__Secure-${GUEST_COOKIE}` : GUEST_COOKIE;
   const writes = new RateLimiter(60, 60_000);
 
   /** Server expiry is capped by the link; the cookie survives extensions of that cap. */
@@ -59,6 +60,8 @@ export function createGuestAuth(deps: { config: Config; db: Database; docs: DocV
     new Date(Math.min(now.getTime() + SESSION_MS, link.expiresAt?.getTime() ?? Infinity));
 
   function setCookie(reply: FastifyReply, linkId: string, token: string | null) {
+    const secure = requestOrigin(reply.request).startsWith('https:');
+    const cookieName = nameFor(reply.request);
     const maxAge = token ? Math.floor(SESSION_MS / 1000) : 0;
     const parts = [
       `${cookieName}=${token ?? ''}`,
@@ -71,7 +74,7 @@ export function createGuestAuth(deps: { config: Config; db: Database; docs: DocV
     reply.header('set-cookie', parts.join('; '));
   }
 
-  const cookieToken = (req: FastifyRequest) => readCookie(req.headers.cookie, cookieName);
+  const cookieToken = (req: FastifyRequest) => readCookie(req.headers.cookie, nameFor(req));
 
   /** The guest the request's cookie belongs to, on this link, whatever their session state. */
   async function cookieGuest(req: FastifyRequest, linkId: string): Promise<GuestRow | null> {
@@ -164,7 +167,6 @@ export function createGuestAuth(deps: { config: Config; db: Database; docs: DocV
   }
 
   return {
-    cookieName,
     setCookie,
     cookieGuest,
     startSession,

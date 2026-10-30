@@ -75,7 +75,8 @@
       "invalid": "Codice non valido. Riprova.",
       "useBackup": "Usa un codice di riserva",
       "useApp": "Usa l’app di autenticazione"
-    }
+    },
+    "canonicalProviders": "L’accesso con Google e SSO è disponibile all’indirizzo pubblico:"
   },
   "mobile": {
     "navigation": "Navigazione principale",

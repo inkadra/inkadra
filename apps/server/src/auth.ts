@@ -22,6 +22,7 @@ import {
 } from './invitations.ts';
 import { mailText } from './mail-texts.ts';
 import { actionMail, type Mailer, securityNotification, sendDetached } from './mailer.ts';
+import { ORIGIN_HEADER } from './request-origin.ts';
 
 /** Internal header carrying the client address from the HTTP layer to Better Auth. */
 export const CLIENT_IP_HEADER = 'x-inkadra-client-ip';
@@ -68,7 +69,7 @@ export interface AuthDeps {
   log?: Logger;
 }
 
-export function createAuth(config: Config, db: Database, deps: AuthDeps = {}) {
+function createAuthInstance(config: Config, db: Database, deps: AuthDeps, cookieUrl: string) {
   const { mailer } = deps;
   const email = Boolean(mailer?.enabled);
   const allowedDomains = config.GOOGLE_ALLOWED_DOMAINS.map((d) => d.toLowerCase());
@@ -182,7 +183,7 @@ export function createAuth(config: Config, db: Database, deps: AuthDeps = {}) {
       before: createAuthMiddleware(async (ctx) => {
         const invitation =
           ctx.path === '/sign-up/email'
-            ? await invitationFromCookie(db, ctx.headers?.get('cookie'), config.PUBLIC_URL)
+            ? await invitationFromCookie(db, ctx.headers?.get('cookie'), cookieUrl)
             : null;
         if (ctx.path === '/sign-up/email' && (await countUsers(db)) > 0) {
           const { registration } = await readInstanceSettings(db, config);
@@ -311,7 +312,10 @@ export function createAuth(config: Config, db: Database, deps: AuthDeps = {}) {
     baseURL: config.PUBLIC_URL,
     basePath: '/api/auth',
     secret: config.AUTH_SECRET,
-    trustedOrigins: [config.PUBLIC_URL],
+    trustedOrigins: async (request) => [
+      config.PUBLIC_URL,
+      ...(request ? [new URL(request.url).origin] : []),
+    ],
     // They expose or take session tokens; the account page uses /api/v1/me/sessions instead.
     disabledPaths: [
       '/list-sessions',
@@ -423,7 +427,7 @@ export function createAuth(config: Config, db: Database, deps: AuthDeps = {}) {
                     const invited = await invitationFromCookie(
                       db,
                       ctx?.headers?.get('cookie'),
-                      config.PUBLIC_URL,
+                      cookieUrl,
                     );
                     const { registration } = await readInstanceSettings(db, config);
                     if (
@@ -459,7 +463,7 @@ export function createAuth(config: Config, db: Database, deps: AuthDeps = {}) {
           after: [
             {
               matcher: (ctx) =>
-                new URL(config.PUBLIC_URL).protocol === 'https:' &&
+                new URL(cookieUrl).protocol === 'https:' &&
                 Boolean(ctx.context.newSession) &&
                 Boolean(ctx.path) &&
                 ((ctx.path ?? '').startsWith('/sign-in/') ||
@@ -490,11 +494,11 @@ export function createAuth(config: Config, db: Database, deps: AuthDeps = {}) {
       // Better Auth prepends __Secure- even to explicitly named cookies. Disable that
       // automatic prefix, set Secure explicitly, and own the complete __Host- names.
       useSecureCookies: false,
-      cookiePrefix: config.PUBLIC_URL.startsWith('https:') ? '__Host-inkadra' : 'inkadra',
-      defaultCookieAttributes: { secure: config.PUBLIC_URL.startsWith('https:'), path: '/' },
+      cookiePrefix: cookieUrl.startsWith('https:') ? '__Host-inkadra' : 'inkadra',
+      defaultCookieAttributes: { secure: cookieUrl.startsWith('https:'), path: '/' },
       cookies: {
         session_token: {
-          name: config.PUBLIC_URL.startsWith('https:')
+          name: cookieUrl.startsWith('https:')
             ? '__Host-inkadra.session_token'
             : 'inkadra.session_token',
         },
@@ -529,7 +533,7 @@ export function createAuth(config: Config, db: Database, deps: AuthDeps = {}) {
               const invited = await invitationFromCookie(
                 db,
                 ctx?.headers?.get('cookie'),
-                config.PUBLIC_URL,
+                cookieUrl,
               );
               if (!invited || registration === 'closed') {
                 throw new APIError('FORBIDDEN', {
@@ -557,15 +561,12 @@ export function createAuth(config: Config, db: Database, deps: AuthDeps = {}) {
           after: async (user, ctx) => {
             const reserved = ctx ? reservedInvitations.get(ctx) : undefined;
             // A reserved invitation may have just used its last use, so look it up by token.
-            const token = readCookie(
-              ctx?.headers?.get('cookie'),
-              invitationCookieName(config.PUBLIC_URL),
-            );
+            const token = readCookie(ctx?.headers?.get('cookie'), invitationCookieName(cookieUrl));
             const invited = reserved
               ? token
                 ? await findInvitation(db, token)
                 : null
-              : await invitationFromCookie(db, ctx?.headers?.get('cookie'), config.PUBLIC_URL);
+              : await invitationFromCookie(db, ctx?.headers?.get('cookie'), cookieUrl);
             if (!invited || (reserved && invited.id !== reserved)) return;
             try {
               await acceptInvitation(db, invited.id, user.id, { reserved: !!reserved });
@@ -644,6 +645,39 @@ export function createAuth(config: Config, db: Database, deps: AuthDeps = {}) {
     readySecurity: () => security.ready(),
     closeSecurity: () => security.close(),
   });
+}
+
+/** Two immutable cookie policies avoid mutating shared Better Auth state across requests. */
+export function createAuth(config: Config, db: Database, deps: AuthDeps = {}) {
+  const canonical = createAuthInstance(config, db, deps, config.PUBLIC_URL);
+  let alternate: ReturnType<typeof createAuthInstance> | undefined;
+  const select = (origin?: string | null) => {
+    if (!origin || origin.startsWith('https:') === config.PUBLIC_URL.startsWith('https:'))
+      return canonical;
+    alternate ??= createAuthInstance(config, db, deps, origin);
+    return alternate;
+  };
+  const api = new Proxy(canonical.api, {
+    get(target, key) {
+      const method = Reflect.get(target, key);
+      if (typeof method !== 'function') return method;
+      return (input: { headers?: Headers } = {}) => {
+        const selected = select(input.headers?.get(ORIGIN_HEADER));
+        return Reflect.get(selected.api, key)(input);
+      };
+    },
+  });
+  return {
+    ...canonical,
+    api,
+    confirmPassword: (...args: Parameters<typeof canonical.confirmPassword>) =>
+      select(args[2].get(ORIGIN_HEADER)).confirmPassword(...args),
+    handler: (request: Request) => select(new URL(request.url).origin).handler(request),
+    closeSecurity: () => {
+      canonical.closeSecurity();
+      alternate?.closeSecurity();
+    },
+  };
 }
 
 export type Auth = ReturnType<typeof createAuth>;

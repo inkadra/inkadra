@@ -18,6 +18,7 @@ import { adminEnrollmentRequired } from './admin-two-factor.ts';
 import type { Auth } from './auth.ts';
 import type { Database } from './db/client.ts';
 import { board, boardDoc, personalToken, session, user } from './db/schema.ts';
+import { allowedOrigin, ORIGIN_HEADER, rawOrigin } from './request-origin.ts';
 import { writeBoardIndex } from './search/index-doc.ts';
 import { actorFromToken, isToken } from './tokens.ts';
 import { AUTO_VERSION_EVERY_MS, takeAutoVersion } from './versions.ts';
@@ -44,12 +45,12 @@ export function createCollabServer(deps: {
   auth: Auth;
   log: Logger;
   publicUrl: string;
+  trustProxy?: boolean | string;
   recheckMs?: number;
   /** Clock for automatic versions; tests move it forward. */
   now?: () => Date;
 }) {
   const { db, auth, log } = deps;
-  const allowedOrigin = new URL(deps.publicUrl).origin;
   /** Yjs client ids each socket has published presence for, per document. */
   const owners = new Map<string, string>();
   // Seed lazily from the authoritative transaction, including after a process restart.
@@ -165,12 +166,29 @@ export function createCollabServer(deps: {
       if (timer) clearInterval(timer);
     },
 
+    async onUpgrade({ request, socket }) {
+      let own: string;
+      try {
+        own = rawOrigin(request, deps.trustProxy ?? false);
+      } catch {
+        socket.destroy();
+        // Hocuspocus treats rejection without a reason as an already handled upgrade.
+        return Promise.reject();
+      }
+      // Resolve before removing any forwarded headers.
+      request.headers[ORIGIN_HEADER] = own;
+      // Downstream auth must never interpret unsanitized proxy headers.
+      for (const key of Object.keys(request.headers))
+        if (key.startsWith('x-forwarded-')) delete request.headers[key];
+    },
+
     async onAuthenticate({ documentName, requestHeaders, connectionConfig, token }) {
       const boardId = parseBoardDocName(documentName);
       if (!boardId) throw new Error('Unknown document');
       // Browsers always send Origin on WebSocket upgrades; native apps send none.
       const origin = requestHeaders.get('origin');
-      if (origin && origin !== allowedOrigin) throw new Error('Origin not allowed');
+      if (origin && !allowedOrigin(origin, requestHeaders.get(ORIGIN_HEADER) ?? '', deps.publicUrl))
+        throw new Error('Origin not allowed');
       const signed = await signedIn(token, requestHeaders);
       if (!signed) throw new Error('Not signed in');
       const { actor } = signed;

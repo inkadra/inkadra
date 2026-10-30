@@ -44,6 +44,7 @@ import {
 import { mailText } from '../mail-texts.ts';
 import { actionMail, type Mailer } from '../mailer.ts';
 import { addressBucket, RateLimiter } from '../rate-limits.ts';
+import { requestOrigin } from '../request-origin.ts';
 import { newSecret, sealer, sha256 } from '../secrets.ts';
 import { iso } from './api-routes.ts';
 import { requireActor } from './auth-routes.ts';
@@ -157,7 +158,6 @@ export function registerSharingRoutes(app: FastifyInstance, deps: Deps) {
   const seal = sealer(config.AUTH_SECRET, 'invitation');
   const previewLimiter = new RateLimiter(30, 60_000);
   const searchLimiter = new RateLimiter(30, 60_000);
-  const secureCookie = config.PUBLIC_URL.startsWith('https://');
   const joinUrl = (token: string) => `${config.PUBLIC_URL}/join/${token}`;
 
   /** `fresh`: the token just made, for the answer that creates or resends an invitation. */
@@ -221,8 +221,10 @@ export function registerSharingRoutes(app: FastifyInstance, deps: Deps) {
   }
 
   function setInvitationCookie(reply: FastifyReply, token: string | null) {
+    const origin = requestOrigin(reply.request);
+    const secureCookie = origin.startsWith('https:');
     const parts = [
-      `${invitationCookieName(config.PUBLIC_URL)}=${token ? encodeURIComponent(token) : ''}`,
+      `${invitationCookieName(origin)}=${token ? encodeURIComponent(token) : ''}`,
       'Path=/',
       'HttpOnly',
       'SameSite=Lax',

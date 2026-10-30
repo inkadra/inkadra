@@ -7,6 +7,7 @@ describe('toHeaders', () => {
   it('replaces any client-sent address header with the address Fastify resolved', () => {
     const req = {
       ip: '203.0.113.7',
+      raw: { socket: { remoteAddress: '203.0.113.7' }, headers: { host: 'soyo:7340' } },
       headers: { [CLIENT_IP_HEADER]: '1.2.3.4', 'x-forwarded-for': '9.9.9.9', cookie: 'a=b' },
     } as unknown as FastifyRequest;
     const headers = toHeaders(req);

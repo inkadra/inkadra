@@ -1,5 +1,6 @@
 import { API_PREFIX } from '@inkadra/shared';
 import type { FastifyInstance, FastifyRequest } from 'fastify';
+import { allowedOrigin, requestOrigin } from '../request-origin.ts';
 import { sendError } from './errors.ts';
 
 const SAFE = new Set(['GET', 'HEAD', 'OPTIONS']);
@@ -32,7 +33,9 @@ export function sameOrigin(headers: FastifyRequest['headers'], allowedOrigin: st
 
 /** Shared with the guest-link routes: validate against the configured instance origin. */
 export function checkSameOrigin(req: FastifyRequest, publicUrl: string): boolean {
-  return sameOrigin(req.headers, new URL(publicUrl).origin);
+  return req.headers.origin !== undefined
+    ? allowedOrigin(req.headers.origin, requestOrigin(req), publicUrl)
+    : sameOrigin(req.headers, requestOrigin(req));
 }
 
 /**

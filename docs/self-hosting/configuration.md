@@ -173,3 +173,16 @@ also redirects HTTP to HTTPS: see [Reverse proxy](reverse-proxy.md#security-head
   and signs out every browser.
 - Email is sent in the background: a container stopped at the wrong moment can lose a message
   that was about to go out, and failures are logged without credentials.
+
+## Direct LAN and Tailscale access
+
+`PUBLIC_URL` is the canonical external address for email, invitations, share links and
+OAuth callbacks. You can also use any directly reachable LAN or Tailscale HTTP address
+without registering it. Cookies follow the verified request protocol: Secure host cookies
+on HTTPS, ordinary host-only cookies on HTTP. Sign in separately at each hostname.
+
+`INKADRA_BIND=0.0.0.0` publishes the configured port on every host interface, including the
+LAN. Restrict it with a firewall; do not expose plain HTTP to the public internet. HTTP
+exposes passwords, sessions and content in clear text. Tailscale encrypts traffic between
+peers. Narrow `TRUST_PROXY` to actual proxy peers: it controls trust in forwarded host and
+protocol as well as client addresses. Direct clients do not need to be trusted proxies.

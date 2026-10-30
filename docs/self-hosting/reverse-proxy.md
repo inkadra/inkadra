@@ -13,12 +13,18 @@ proxy must
    shared links call the API directly and cannot pass through it.
 
 `compose.yaml` publishes Inkadra on `127.0.0.1:3000`, so only a proxy on the same machine can
-reach it; the bundled proxies remove the published port altogether and reach Inkadra inside the
-Docker network. Keep it that way: port 3000 speaks plain HTTP and believes `X-Forwarded-For`
-from private networks, so it must never be reachable from the internet. If the proxy runs on
-another machine, set `INKADRA_BIND` to the LAN or Tailscale address the proxy uses (not
-`0.0.0.0` on a machine with a public address), firewall the port to the proxy, and limit
-`TRUST_PROXY` to the proxy's address. See [Security headers](#security-headers) for the rest.
+reach it; the bundled proxies reach Inkadra inside the Docker network. To allow direct LAN
+or Tailscale access as well, publish the port on a selected private interface or set
+`INKADRA_BIND=0.0.0.0`. This publishes it on the LAN and every other host interface: firewall
+it from the public internet. Plain HTTP exposes credentials and content; Tailscale encrypts
+traffic between peers. No list of LAN addresses is required. `PUBLIC_URL` stays the public
+HTTPS address for external links and OAuth callbacks.
+
+Set `TRUST_PROXY` to the actual proxy peer addresses, not all LAN clients. The proxy must
+overwrite forwarded host/protocol headers, preserve the original Host (or set
+X-Forwarded-Host), and send X-Forwarded-Proto. Direct untrusted clients cannot override the
+socket protocol with those headers. HSTS and CSP upgrade-insecure-requests are sent only
+on verified HTTPS responses. See [Security headers](#security-headers).
 
 The configurations in [`deploy/proxy`](../../deploy/proxy) (Caddy, Traefik, Nginx) are tested by
 CI on every change, in all-in-one and split mode, with

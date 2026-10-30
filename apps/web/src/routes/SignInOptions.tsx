@@ -57,7 +57,9 @@ export function SignInOptions({
 }) {
   const { t } = useTranslation();
   const { instance } = useSession();
+  const canonical = !instance || new URL(instance.publicUrl).origin === window.location.origin;
   const auth = instance?.auth;
+  const externalAuth = canonical ? auth : undefined;
   const [name, setName] = useState('');
   const [email, setEmail] = useState(fixedEmail ?? '');
   const [password, setPassword] = useState('');
@@ -68,7 +70,7 @@ export function SignInOptions({
     () => new URLSearchParams(window.location.search).get('twoFactor') === 'true',
   );
   const [withPassword, setWithPassword] = useState(!auth?.magicLink || signUp);
-  const providers = (auth?.google ? 1 : 0) + (auth?.oidc.length ?? 0);
+  const providers = (externalAuth?.google ? 1 : 0) + (externalAuth?.oidc.length ?? 0);
 
   async function attempt(action: () => Promise<unknown>) {
     setError(null);
@@ -126,9 +128,15 @@ export function SignInOptions({
 
   return (
     <>
+      {!canonical && (auth?.google || (auth?.oidc.length ?? 0) > 0) && (
+        <p>
+          {t('auth.canonicalProviders')}{' '}
+          <a href={`${instance?.publicUrl}/login`}>{instance?.publicUrl}</a>
+        </p>
+      )}
       {providers > 0 && (
         <div className="login__providers">
-          {auth?.google && (
+          {externalAuth?.google && (
             <button
               type="button"
               className="login__provider"
@@ -139,7 +147,7 @@ export function SignInOptions({
               {t('auth.google')}
             </button>
           )}
-          {auth?.oidc.map((p) => (
+          {externalAuth?.oidc.map((p) => (
             <button
               key={p.id}
               type="button"

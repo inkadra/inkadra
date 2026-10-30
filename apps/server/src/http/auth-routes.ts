@@ -6,26 +6,34 @@ import { enforceAdminTwoFactor } from '../admin-two-factor.ts';
 import { type Auth, CLIENT_IP_HEADER } from '../auth.ts';
 import type { Database } from '../db/client.ts';
 import { user } from '../db/schema.ts';
+import { ORIGIN_HEADER, requestOrigin } from '../request-origin.ts';
 import { actorFromToken, bearerToken } from '../tokens.ts';
 import { HttpError } from './errors.ts';
 
 export function toHeaders(req: FastifyRequest): Headers {
   const headers = new Headers();
   for (const [key, value] of Object.entries(req.headers)) {
-    if (value === undefined || key === CLIENT_IP_HEADER) continue;
+    if (
+      value === undefined ||
+      key === CLIENT_IP_HEADER ||
+      key === ORIGIN_HEADER ||
+      key.startsWith('x-forwarded-')
+    )
+      continue;
     headers.set(key, Array.isArray(value) ? value.join(', ') : value);
   }
   headers.set(CLIENT_IP_HEADER, req.ip);
+  headers.set(ORIGIN_HEADER, requestOrigin(req));
   return headers;
 }
 
 /** Mounts Better Auth under /api/auth by translating Fastify requests to Fetch requests. */
-export function registerAuthRoutes(app: FastifyInstance, auth: Auth, publicUrl: string) {
+export function registerAuthRoutes(app: FastifyInstance, auth: Auth) {
   app.route({
     method: ['GET', 'POST'],
     url: `${AUTH_PREFIX}/*`,
     async handler(req, reply) {
-      const url = new URL(req.url, publicUrl);
+      const url = new URL(`${requestOrigin(req)}${req.url}`);
       const request = new Request(url, {
         method: req.method,
         headers: toHeaders(req),

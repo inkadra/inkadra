@@ -173,3 +173,18 @@ or token secrets; they do not allow reading or revoking another account’s cred
 must tolerate its absence. Signed-in clients can use `GET /api/v1/instance/version`;
 administrator diagnostics retain their version field. This is an intentional security
 change to v1 in 0.4.2 (issue #225).
+
+## Signing in through a private address
+
+The same instance supports its public HTTPS URL and direct HTTP LAN/Tailscale addresses
+(such as `http://soyo:7340`) without listing them in configuration. Publish the port on the
+appropriate interface; `INKADRA_BIND=0.0.0.0` makes it reachable on the LAN. Keep
+`PUBLIC_URL` set to the public HTTPS address. Email/password, sessions, uploads and
+collaboration use the current browser address. Sign in once per hostname.
+
+Google and SSO buttons are hidden away from the canonical address, with a link to sign in
+there: their registered callback URI and state cookies belong to the public address.
+Magic links, invitation and share links also open the canonical address. To use an invitation
+or share link privately, replace just its origin with the private address, preserving its
+path and token. Plain HTTP sends credentials in clear text; use a trusted LAN or Tailscale.
+Existing HTTPS sessions keep their Secure `__Host-` cookies; no migration is needed.

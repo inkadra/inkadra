@@ -16,6 +16,7 @@ import type { Config } from '../config.ts';
 import type { Database } from '../db/client.ts';
 import type { Jobs } from '../jobs.ts';
 import { type Mailer, noMailer } from '../mailer.ts';
+import { rememberOrigin, requestOrigin } from '../request-origin.ts';
 import { DocViews } from '../share-links.ts';
 import type { Storage } from '../storage.ts';
 import type { VersionWriter } from '../versions.ts';
@@ -92,9 +93,15 @@ export async function createApp(deps: AppDeps) {
   const app = Fastify(options);
 
   app.setErrorHandler(errorHandler);
+  app.addHook('onRequest', async (req) => {
+    rememberOrigin(req.raw, config.TRUST_PROXY);
+  });
 
   app.addHook('onSend', async (req, reply) => {
-    for (const [name, value] of Object.entries(securityHeaders(config))) reply.header(name, value);
+    for (const [name, value] of Object.entries(
+      securityHeaders(config, requestOrigin(req).startsWith('https:')),
+    ))
+      reply.header(name, value);
     reply.header('x-content-type-options', 'nosniff');
     reply.header('x-frame-options', 'DENY');
     // The token of a share link is in the path of its guest page: it must not leak to the
@@ -107,7 +114,7 @@ export async function createApp(deps: AppDeps) {
 
   // Before every route: cross-site writes stop here (decision 0013).
   registerCsrfCheck(app, config.PUBLIC_URL);
-  registerAuthRoutes(app, deps.auth, config.PUBLIC_URL);
+  registerAuthRoutes(app, deps.auth);
   const mailer = deps.mailer ?? noMailer;
   registerApiRoutes(app, { ...deps, mailer });
   registerAccountRoutes(app, deps);

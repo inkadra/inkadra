@@ -75,7 +75,8 @@
       "invalid": "That code is not valid. Try again.",
       "useBackup": "Use a backup code",
       "useApp": "Use the authenticator app"
-    }
+    },
+    "canonicalProviders": "Google and SSO sign-in are available at the public address:"
   },
   "mobile": {
     "navigation": "Main navigation",
