@@ -278,6 +278,49 @@ export const ArrowElement = Base.extend({
     ),
 });
 
+/** Scene numbers as written in the script ("4", "12A"): scenes live on other boards. */
+const SceneNumbers = z
+  .array(z.string().trim().min(1).max(12))
+  .max(200)
+  .optional()
+  .describe('Scene numbers as written in the script, e.g. "4" or "12A" (since version 7).');
+
+/**
+ * A character of the story bible: a structured card whose face shows the name, the role and
+ * the picture; the rest is read and edited in the card's side sheet (decision 0044).
+ */
+export const CharacterElement = Base.extend({
+  type: z.literal('character'),
+  name: z.string().max(120),
+  role: z.string().max(200).optional().describe('Role in the story, e.g. "protagonist".'),
+  assetId: z.string().optional().describe('Photo or reference picture.'),
+  age: z.string().max(40).optional().describe('As written: "34", "about 60", "teen".'),
+  description: z.string().max(4000).optional(),
+  actor: z.string().max(120).optional().describe('Who plays the character.'),
+  contact: z.string().max(500).optional().describe('Agent, phone or e-mail; never for guests.'),
+  notes: z.string().max(4000).optional().describe('Internal casting notes; never for guests.'),
+  scenes: SceneNumbers,
+});
+
+/** A shooting location of the story bible (decision 0044). */
+export const LocationElement = Base.extend({
+  type: z.literal('location'),
+  name: z.string().max(200),
+  setting: z.enum(['int', 'ext', 'int-ext']).optional(),
+  address: z.string().max(500).optional(),
+  mapUrl: z
+    .url({ protocol: /^https?$/ })
+    .max(2048)
+    .optional()
+    .describe('A link to any map service, opened in a new tab; never embedded.'),
+  assetId: z.string().optional().describe('Photo of the place.'),
+  light: z.string().max(1000).optional().describe('Best time of day and light notes.'),
+  availability: z.string().max(1000).optional(),
+  contact: z.string().max(500).optional().describe('Owner or manager; never for guests.'),
+  notes: z.string().max(4000).optional().describe('Internal notes; never for guests.'),
+  scenes: SceneNumbers,
+});
+
 export const Element = z.discriminatedUnion('type', [
   NoteElement,
   ImageElement,
@@ -290,6 +333,8 @@ export const Element = z.discriminatedUnion('type', [
   SceneElement,
   FrameElement,
   ArrowElement,
+  CharacterElement,
+  LocationElement,
 ]);
 
 /** Element types that hold other elements through `parent`. */

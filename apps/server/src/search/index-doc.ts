@@ -155,6 +155,39 @@ export function entryFor(el: Element, body: string, autoLabel?: string): IndexEn
       };
     case 'arrow':
       return { ...base, title: el.label ?? '', text: join(el.label) };
+    case 'character':
+      return {
+        ...base,
+        title: el.name,
+        text: join(
+          el.name,
+          el.role,
+          el.age,
+          el.description,
+          el.actor,
+          el.contact,
+          el.notes,
+          el.scenes,
+        ),
+        assetId: uuidOrNull(el.assetId),
+        data: { role: el.role ?? null },
+      };
+    case 'location':
+      return {
+        ...base,
+        title: el.name,
+        text: join(
+          el.name,
+          el.address,
+          el.light,
+          el.availability,
+          el.contact,
+          el.notes,
+          el.scenes,
+        ),
+        assetId: uuidOrNull(el.assetId),
+        data: { setting: el.setting ?? null },
+      };
   }
 }
 

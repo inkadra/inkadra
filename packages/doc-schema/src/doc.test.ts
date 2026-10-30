@@ -102,7 +102,7 @@ describe('board document', () => {
     const file = { ...base(), type: 'file' as const, assetId: 'asset-id' };
     addElement(doc, file);
     const before = roots(doc).elements.toJSON();
-    expect(migrateBoardDoc(doc, boardId)).toEqual([4, 5, 6]);
+    expect(migrateBoardDoc(doc, boardId)).toEqual([4, 5, 6, 7]);
     expect(getSchemaVersion(doc)).toBe(CURRENT_SCHEMA_VERSION);
     expect(roots(doc).elements.toJSON()).toEqual(before);
     expect(readElement(roots(doc).elements.get(file.id)!)).not.toHaveProperty('caption');
@@ -162,7 +162,7 @@ describe('board document', () => {
     addElement(doc, note);
     addElement(doc, column);
     const before = [...roots(doc).elements.values()].map((m) => readElement(m));
-    expect(migrateBoardDoc(doc, boardId)).toEqual([3, 4, 5, 6]);
+    expect(migrateBoardDoc(doc, boardId)).toEqual([3, 4, 5, 6, 7]);
     expect(getSchemaVersion(doc)).toBe(CURRENT_SCHEMA_VERSION);
     expect([...roots(doc).elements.values()].map((m) => readElement(m))).toEqual(before);
     expect(validateBoardDoc(doc)).toEqual([]);
@@ -329,7 +329,7 @@ describe('board document', () => {
     expect(getSchemaVersion(doc)).toBe(1);
     const before = [...roots(doc).elements.values()].map((m) => readElement(m));
     expect(before.every(Boolean)).toBe(true);
-    expect(migrateBoardDoc(doc, boardId)).toEqual([2, 3, 4, 5, 6]);
+    expect(migrateBoardDoc(doc, boardId)).toEqual([2, 3, 4, 5, 6, 7]);
     expect(getSchemaVersion(doc)).toBe(CURRENT_SCHEMA_VERSION);
     expect([...roots(doc).elements.values()].map((m) => readElement(m))).toEqual(before);
     const note = roots(doc).elements.get('note_v1_00001')!;
@@ -445,7 +445,7 @@ describe('video still provenance', () => {
     const frame = { ...base(), type: 'frame' as const, assetId, notes: 'Last Train' };
     addElement(doc, frame);
     const before = roots(doc).elements.toJSON();
-    expect(migrateBoardDoc(doc, boardId)).toEqual([5, 6]);
+    expect(migrateBoardDoc(doc, boardId)).toEqual([5, 6, 7]);
     expect(getSchemaVersion(doc)).toBe(CURRENT_SCHEMA_VERSION);
     expect(roots(doc).elements.toJSON()).toEqual(before);
     expect(readElement(roots(doc).elements.get(frame.id)!)).not.toHaveProperty('source');
@@ -488,9 +488,71 @@ describe('arrow path', () => {
     const element = arrow();
     addElement(doc, element);
     const before = roots(doc).elements.toJSON();
-    expect(migrateBoardDoc(doc, boardId)).toEqual([6]);
+    expect(migrateBoardDoc(doc, boardId)).toEqual([6, 7]);
     expect(getSchemaVersion(doc)).toBe(CURRENT_SCHEMA_VERSION);
     expect(roots(doc).elements.toJSON()).toEqual(before);
     expect(readElement(roots(doc).elements.get(element.id)!)).not.toHaveProperty('path');
+  });
+});
+
+describe('story bible cards', () => {
+  const assetId = '0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10';
+  const marta = () => ({
+    ...base(),
+    type: 'character' as const,
+    name: 'Marta',
+    role: 'Protagonista',
+    assetId,
+    age: '34',
+    description: 'Capotreno, aspetta l’ultimo treno ogni notte.',
+    actor: 'Giulia Neri',
+    contact: 'agenzia@example.com',
+    notes: 'Provino il 12.',
+    scenes: ['1', '3A'],
+  });
+  const station = () => ({
+    ...base(),
+    type: 'location' as const,
+    name: 'Stazione Centrale',
+    setting: 'int-ext' as const,
+    address: 'Piazza Duca d’Aosta 1, Milano',
+    mapUrl: 'https://www.openstreetmap.org/#map=18/45.4864/9.2041',
+    assetId,
+    light: 'Blu del crepuscolo, 19:30',
+    availability: 'Solo di notte, dopo le 23',
+    contact: 'Ufficio permessi',
+    notes: 'Serve il permesso RFI.',
+    scenes: ['1'],
+  });
+
+  it('keeps characters and locations through Yjs', () => {
+    for (const element of [marta(), station(), { ...base(), type: 'character', name: '' }]) {
+      const doc = createBoardDoc(boardId);
+      addElement(doc, element as Element);
+      const copy = new Y.Doc();
+      Y.applyUpdate(copy, Y.encodeStateAsUpdate(doc));
+      expect(readElement(roots(copy).elements.get(element.id)!)).toMatchObject(element);
+      expect(validateBoardDoc(copy)).toEqual([]);
+    }
+  });
+
+  it('rejects unsafe map links, unknown settings and long scene numbers', () => {
+    for (const bad of [
+      { ...station(), mapUrl: 'javascript:alert(1)' },
+      { ...station(), setting: 'space' },
+      { ...marta(), scenes: ['1234567890123'] },
+      { ...marta(), name: undefined },
+    ])
+      expect(Element.safeParse(bad).success).toBe(false);
+  });
+
+  it('migrates version 6 unchanged', () => {
+    const doc = createBoardDoc(boardId);
+    roots(doc).meta.set('schemaVersion', 6);
+    addElement(doc, { ...base(), type: 'note' });
+    const before = roots(doc).elements.toJSON();
+    expect(migrateBoardDoc(doc, boardId)).toEqual([7]);
+    expect(getSchemaVersion(doc)).toBe(CURRENT_SCHEMA_VERSION);
+    expect(roots(doc).elements.toJSON()).toEqual(before);
   });
 });

@@ -34,6 +34,8 @@ export const DEFAULT_WIDTH: Record<ElementType, number> = {
   scene: 260,
   frame: 240,
   arrow: 1,
+  character: 240,
+  location: 260,
 };
 
 export const MIN_WIDTH = 80;
