@@ -61,6 +61,7 @@ export function ShotList({
   boardId = '',
   userId = 'local',
   readOnly,
+  onExport,
 }: {
   store: BoardStore;
   boardTitle: string;
@@ -68,6 +69,8 @@ export function ShotList({
   boardId?: string;
   userId?: string;
   readOnly: boolean;
+  /** Opens the export dialog on the shot list. */
+  onExport?: (() => void) | undefined;
 }) {
   const { tagLabel } = useClassifications();
   const { t } = useTranslation();
@@ -564,9 +567,16 @@ export function ShotList({
     </>
   );
   const exportButton = (
-    <Button icon="download" disabled={frames.length === 0} onClick={exportCsv}>
-      {t('film.list.export')}
-    </Button>
+    <>
+      <Button icon="download" disabled={frames.length === 0} onClick={exportCsv}>
+        {t('film.list.export')}
+      </Button>
+      {onExport && (
+        <Button icon="download" onClick={onExport}>
+          {t('export.openPdf')}
+        </Button>
+      )}
+    </>
   );
 
   const groupHeading = (g: ShotGroup, isCollapsed: boolean) => {

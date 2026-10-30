@@ -59,6 +59,7 @@ export function StoryboardView({
   boardTitle = '',
   userId,
   readOnly,
+  onExport,
 }: {
   store: BoardStore;
   projectId: string;
@@ -66,6 +67,8 @@ export function StoryboardView({
   boardTitle?: string;
   userId: string;
   readOnly: boolean;
+  /** Opens the export dialog on the storyboard. */
+  onExport?: (() => void) | undefined;
 }) {
   const { t } = useTranslation();
   const boardAspect = useBoardAspect(store.doc);
@@ -200,6 +203,16 @@ export function StoryboardView({
         >
           <span className="film-compact-btn__label">{t('film.playback.present')}</span>
         </Button>
+        {onExport && (
+          <Button
+            icon="download"
+            className="film-compact-btn"
+            aria-label={t('export.openPdf')}
+            onClick={onExport}
+          >
+            <span className="film-compact-btn__label">{t('export.openPdf')}</span>
+          </Button>
+        )}
         {!readOnly && (
           <Button
             icon="plus"
