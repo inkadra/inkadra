@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MPL-2.0
-import { FractionalIndex, Id, Timestamp, z } from './common.ts';
+import { AccessExpiry, FractionalIndex, Id, Timestamp, z } from './common.ts';
 import { UserSummary } from './users.ts';
 
 /** Roles on a project. Boards inherit the project role unless a board grant overrides it. */
@@ -100,11 +100,34 @@ export const ProjectMember = z
     user: UserSummary,
     role: ProjectRole,
     addedAt: Timestamp,
+    expiresAt: AccessExpiry.optional(),
   })
   .openapi('ProjectMember');
 export type ProjectMember = z.infer<typeof ProjectMember>;
 
-export const SetProjectMember = z.object({ role: ProjectRole }).openapi('SetProjectMember');
+export const SetProjectMember = z
+  .object({
+    role: ProjectRole,
+    expiresAt: AccessExpiry.optional().openapi({
+      description:
+        'When the membership ends; null removes the end, left out keeps it. Setting it is for ' +
+        'owners. Making someone owner clears it; an owner with an end date is refused.',
+    }),
+  })
+  .openapi('SetProjectMember');
+export type SetProjectMember = z.infer<typeof SetProjectMember>;
+
+/** `details` of the 403 to POST /projects and POST /projects/import (decision 0041). */
+export const ProjectCreationDenied = z
+  .object({
+    reason: z.literal('project_creation_disabled').openapi({
+      description:
+        'An administrator lets only some people create and import projects on this instance. ' +
+        'Open: clients show a reason they do not know as a generic error.',
+    }),
+  })
+  .openapi('ProjectCreationDenied');
+export type ProjectCreationDenied = z.infer<typeof ProjectCreationDenied>;
 
 export const SetProjectPin = z.object({ pinned: z.boolean() }).openapi('SetProjectPin');
 

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MPL-2.0
-import { Id, Timestamp, z } from './common.ts';
+import { AccessExpiry, Id, Timestamp, z } from './common.ts';
 import { ProjectRole } from './projects.ts';
 import { UserSummary } from './users.ts';
 
@@ -35,6 +35,11 @@ export const BoardAccessEntry = z
     source: AccessSource,
     projectRole: ProjectRole.nullable().openapi({
       description: 'Role on the project, or null for people who only have board grants.',
+    }),
+    expiresAt: AccessExpiry.optional().openapi({
+      description:
+        'When the role of `source` ends: the grant falls back to the inherited role, the ' +
+        'membership is removed. Missing from servers before API 0.9.0.',
     }),
   })
   .openapi('BoardAccessEntry');
@@ -81,6 +86,11 @@ export const Invitation = z
     createdAt: Timestamp,
     expiresAt: Timestamp,
     lastSentAt: Timestamp.nullable(),
+    accessExpiresAt: AccessExpiry.optional().openapi({
+      description:
+        'When the role given by accepting ends; null for no end. Unlike `expiresAt`, which is ' +
+        'when the invitation itself stops working.',
+    }),
   })
   .openapi('Invitation');
 export type Invitation = z.infer<typeof Invitation>;
@@ -107,6 +117,11 @@ export const CreateInvitation = z
         '0.6.0 also accept `owner`.',
     }),
     expiresInDays: z.int().min(1).max(90).default(7),
+    accessExpiresAt: AccessExpiry.optional().openapi({
+      description:
+        'When the role given by accepting ends; not with `owner`. Accepting after that time ' +
+        'gives nothing.',
+    }),
   })
   .refine((v) => v.kind !== 'email' || v.email !== undefined, {
     message: 'An email invitation needs an address.',
@@ -150,6 +165,7 @@ export const InvitationPreview = z
     email: z.email().nullable(),
     status: z.enum(['valid', 'expired', 'used', 'revoked']),
     expiresAt: Timestamp,
+    accessExpiresAt: AccessExpiry.optional(),
   })
   .openapi('InvitationPreview');
 export type InvitationPreview = z.infer<typeof InvitationPreview>;
@@ -159,7 +175,16 @@ export const AcceptedInvitation = z
   .openapi('AcceptedInvitation');
 export type AcceptedInvitation = z.infer<typeof AcceptedInvitation>;
 
-export const SetBoardGrant = z.object({ role: ProjectRole }).openapi('SetBoardGrant');
+export const SetBoardGrant = z
+  .object({
+    role: ProjectRole,
+    expiresAt: AccessExpiry.optional().openapi({
+      description:
+        'When the grant ends and the person falls back to the inherited role; null removes ' +
+        'the end, left out keeps it. Not with `owner`.',
+    }),
+  })
+  .openapi('SetBoardGrant');
 export type SetBoardGrant = z.infer<typeof SetBoardGrant>;
 
 export const UserSearchQuery = z.object({ q: z.string().trim().min(1).max(254) });

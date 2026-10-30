@@ -49,6 +49,8 @@ export const user = pgTable('user', {
     .default('member'),
   locale: text('locale'),
   deactivatedAt: timestamp('deactivated_at', { withTimezone: true }),
+  /** Per-account choice over `membersCanCreateProjects`; null follows the instance (0041). */
+  canCreateProjects: boolean('can_create_projects'),
   twoFactorEnabled: boolean('two_factor_enabled').notNull().default(false),
   createdAt: createdAt(),
   updatedAt: updatedAt(),
@@ -203,10 +205,19 @@ export const projectMember = pgTable(
       .references(() => user.id, { onDelete: 'cascade' }),
     role: text('role', { enum: roleEnum }).notNull(),
     addedAt: timestamp('added_at', { withTimezone: true }).notNull().defaultNow(),
+    /**
+     * When the membership ends (decision 0041). Access checks ignore it from then on; the
+     * sweep removes the row. Never set for owners.
+     */
+    expiresAt: timestamp('expires_at', { withTimezone: true }),
+    /** Set once the "expires soon" notification went out for the current `expiresAt`. */
+    expiryWarnedAt: timestamp('expiry_warned_at', { withTimezone: true }),
   },
   (t) => [
     primaryKey({ columns: [t.projectId, t.userId] }),
     index('project_member_user_idx').on(t.userId),
+    index('project_member_expires_idx').on(t.expiresAt).where(sql`${t.expiresAt} is not null`),
+    check('project_member_owner_no_expiry', sql`${t.role} <> 'owner' or ${t.expiresAt} is null`),
   ],
 );
 
@@ -271,10 +282,15 @@ export const boardGrant = pgTable(
     role: text('role', { enum: roleEnum }).notNull(),
     grantedBy: uuid('granted_by').references(() => user.id, { onDelete: 'set null' }),
     createdAt: createdAt(),
+    /** When the grant ends and the inherited role applies again (decision 0041). */
+    expiresAt: timestamp('expires_at', { withTimezone: true }),
+    expiryWarnedAt: timestamp('expiry_warned_at', { withTimezone: true }),
   },
   (t) => [
     primaryKey({ columns: [t.boardId, t.userId] }),
     index('board_grant_user_idx').on(t.userId),
+    index('board_grant_expires_idx').on(t.expiresAt).where(sql`${t.expiresAt} is not null`),
+    check('board_grant_owner_no_expiry', sql`${t.role} <> 'owner' or ${t.expiresAt} is null`),
   ],
 );
 
@@ -299,6 +315,8 @@ export const invitation = pgTable(
     uses: integer('uses').notNull().default(0),
     maxUses: integer('max_uses'),
     expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+    /** When the role given by accepting ends; copied to the membership or grant (0041). */
+    accessExpiresAt: timestamp('access_expires_at', { withTimezone: true }),
     lastSentAt: timestamp('last_sent_at', { withTimezone: true }),
     revokedAt: timestamp('revoked_at', { withTimezone: true }),
     createdAt: createdAt(),
@@ -608,6 +626,8 @@ export const notification = pgTable(
         'invitation_accepted',
         'export_ready',
         'import_ready',
+        'access_expiring',
+        'access_expired',
       ],
     }).notNull(),
     actorId: uuid('actor_id').references(() => user.id, { onDelete: 'set null' }),
@@ -617,6 +637,9 @@ export const notification = pgTable(
     elementId: text('element_id'),
     commentId: uuid('comment_id').references(() => comment.id, { onDelete: 'cascade' }),
     reviewStatus: text('review_status', { enum: reviewStatusEnum }),
+    /** access_expiring/access_expired: whose access, and when it ends (decision 0041). */
+    subjectUserId: uuid('subject_user_id').references(() => user.id, { onDelete: 'cascade' }),
+    accessExpiresAt: timestamp('access_expires_at', { withTimezone: true }),
     readAt: timestamp('read_at', { withTimezone: true }),
     /** Set once the notification went out by email, alone or in a digest. */
     emailedAt: timestamp('emailed_at', { withTimezone: true }),
@@ -632,6 +655,9 @@ export const notification = pgTable(
     // Retention: notifications are removed after 90 days.
     index('notification_created_idx').on(t.createdAt),
     index('notification_actor_idx').on(t.actorId).where(sql`${t.actorId} is not null`),
+    index('notification_subject_idx')
+      .on(t.subjectUserId)
+      .where(sql`${t.subjectUserId} is not null`),
     index('notification_actor_guest_idx')
       .on(t.actorGuestId)
       .where(sql`${t.actorGuestId} is not null`),

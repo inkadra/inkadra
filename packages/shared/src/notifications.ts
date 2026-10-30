@@ -2,6 +2,7 @@
 import { Author, ElementRef, ListLimit } from './comments.ts';
 import { Cursor, Id, Timestamp, z } from './common.ts';
 import { ReviewStatus } from './reviews.ts';
+import { UserSummary } from './users.ts';
 
 /**
  * In-app notifications of the signed-in person (docs/decisions/0013). They are written by the
@@ -16,6 +17,8 @@ export const NotificationType = z
     'invitation_accepted',
     'export_ready',
     'import_ready',
+    'access_expiring',
+    'access_expired',
   ])
   .openapi({
     description:
@@ -25,7 +28,10 @@ export const NotificationType = z
       'accepted your invitation. `export_ready`: your export of `projectId` can be ' +
       'downloaded; it carries no transfer id, clients find the archive in `GET /transfers`. ' +
       '`import_ready`: your import finished as `projectId`. Both are in-app only, without ' +
-      'actor, and arrive from API 0.8.0. Open: clients show types they do not know as a plain line ' +
+      'actor, and arrive from API 0.8.0. `access_expiring`: the role of `subject` on ' +
+      '`projectId` (or on `boardId` and its sub-boards) ends at `accessExpiresAt`, sent three ' +
+      'days before to that person and to the project owners. `access_expired`: it has ended. ' +
+      'Both from API 0.9.0 (decision 0041). Open: clients show types they do not know as a plain line ' +
       'with the actor, the board and the time.',
   });
 export type NotificationType = z.infer<typeof NotificationType>;
@@ -59,6 +65,16 @@ export const Notification = z
           'comment is deleted.',
       }),
     reviewStatus: ReviewStatus.nullable().openapi({ description: 'For review.' }),
+    subject: UserSummary.nullable()
+      .optional()
+      .openapi({
+        description:
+          'For access_expiring and access_expired: whose access it is (the recipient ' +
+          'themselves, or a member for the owners). Missing from servers before API 0.9.0.',
+      }),
+    accessExpiresAt: Timestamp.nullable()
+      .optional()
+      .openapi({ description: 'For access_expiring and access_expired.' }),
     readAt: Timestamp.nullable(),
     createdAt: Timestamp,
   })

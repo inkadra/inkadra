@@ -521,7 +521,13 @@ describe.skipIf(!url)('instance administration', () => {
     ).toBe(200);
     expect(
       (await request('admin', 'PATCH', '/instance/settings', { registration: 'invite' })).json(),
-    ).toEqual({ name: 'Studio', registration: 'invite', requireAdminTwoFactor: false });
+    ).toEqual({
+      name: 'Studio',
+      registration: 'invite',
+      requireAdminTwoFactor: false,
+      // Decision 0041: on by default, the behaviour before the setting existed.
+      membersCanCreateProjects: true,
+    });
     expect((await app.inject('/api/v1/instance')).json()).toMatchObject({
       name: 'Studio',
       registration: 'invite',

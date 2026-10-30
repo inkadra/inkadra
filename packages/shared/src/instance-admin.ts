@@ -10,12 +10,24 @@ export const InstanceSettings = z
       description:
         'Require administrators to enroll in two-step verification before using the instance. Defaults to false on older installations.',
     }),
+    membersCanCreateProjects: z
+      .boolean()
+      .default(true)
+      .openapi({
+        description:
+          'Whether members (not only administrators) can create and import projects. A ' +
+          'per-account choice (InstanceMember.canCreateProjectsOverride) wins over it. Defaults ' +
+          'to true; missing from servers before API 0.9.0.',
+      }),
   })
   .openapi('InstanceSettings');
 export type InstanceSettings = z.infer<typeof InstanceSettings>;
 export const UpdateInstanceSettings = InstanceSettings.partial()
   // A PATCH omission must preserve the stored policy, not apply its read-time default.
-  .extend({ requireAdminTwoFactor: z.boolean().optional() })
+  .extend({
+    requireAdminTwoFactor: z.boolean().optional(),
+    membersCanCreateProjects: z.boolean().optional(),
+  })
   .strict()
   .openapi('UpdateInstanceSettings');
 export const InstanceMember = z
@@ -36,11 +48,28 @@ export const InstanceMember = z
       description:
         'Direct project memberships, including archived projects; excludes board-only grants.',
     }),
+    canCreateProjects: z
+      .boolean()
+      .optional()
+      .openapi({
+        description:
+          'Effective: administrators always can; members follow their override, else the ' +
+          'instance setting. Missing from servers before API 0.9.0.',
+      }),
+    canCreateProjectsOverride: z.boolean().nullable().optional().openapi({
+      description: 'Per-account choice; null follows InstanceSettings.membersCanCreateProjects.',
+    }),
   })
   .openapi('InstanceMember');
 export type InstanceMember = z.infer<typeof InstanceMember>;
 export const UpdateInstanceMember = z
-  .object({ role: InstanceRole.optional(), active: z.boolean().optional() })
+  .object({
+    role: InstanceRole.optional(),
+    active: z.boolean().optional(),
+    canCreateProjects: z.boolean().nullable().optional().openapi({
+      description: 'Override for this account; null goes back to the instance setting.',
+    }),
+  })
   .strict()
   .openapi('UpdateInstanceMember');
 

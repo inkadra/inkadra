@@ -10,6 +10,16 @@ export const Timestamp = z.iso.datetime({ offset: true }).openapi({
   example: '2026-11-02T09:30:00.000Z',
 });
 
+/**
+ * When a role given to someone with an account ends (decision 0041): a time in the future, at
+ * most a year ahead. Null: no end. Owners never have one.
+ */
+export const AccessExpiry = Timestamp.nullable().openapi({
+  description:
+    'When the role ends, at most 366 days ahead; null for no end. Not for owners: a project ' +
+    'always keeps one. Missing from servers before API 0.9.0.',
+});
+
 /** Fractional index used to order siblings without renumbering (see docs/decisions/0004). */
 export const FractionalIndex = z
   .string()

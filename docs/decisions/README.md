@@ -44,6 +44,7 @@ in order. An accepted decision is never rewritten: a later one supersedes it.
 | [0038](0038-pdf-and-image-export.md)                | PDF and image export built in the browser                                              |
 | [0039](0039-project-export-settings.md)             | PDF and image export settings stored per project                                       |
 | [0040](0040-screenplay-import.md)                   | Screenplay import from Fountain and Final Draft, read in the browser                   |
+| [0041](0041-expiring-access-and-project-creation.md) | Expiring access for people with an account; who can create projects |
 
 | [0042](0042-video-frame-grab.md) | Video stills and their source |
 

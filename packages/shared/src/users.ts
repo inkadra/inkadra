@@ -13,6 +13,14 @@ export const User = z
     role: InstanceRole,
     locale: z.string().max(16).nullable(),
     twoFactorEnabled: z.boolean(),
+    canCreateProjects: z
+      .boolean()
+      .optional()
+      .openapi({
+        description:
+          'Whether this person can create and import projects (decision 0041). Missing from ' +
+          'servers before API 0.9.0, where everyone can.',
+      }),
     createdAt: Timestamp,
   })
   .openapi('User');
