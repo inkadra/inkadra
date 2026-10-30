@@ -18,8 +18,13 @@ Postgres/Valkey URLs and `CSP_ENFORCE=true`. The config uses installed Chrome an
 server/web app, with no preview server. The tests also assert no CSP violations.
 
 Stepping uses adjacent presentation timestamps observed through `requestVideoFrameCallback`.
-An unobserved adjacent frame uses an explicitly labelled approximate 1/30-second seek; this
+An unobserved adjacent frame uses an approximate 1/30-second seek; this
 is not a promise of frame accuracy for arbitrary seeks or variable-rate footage (ADR 0042).
 YouTube/Vimeo use the stored server thumbnail, which does not depict the reference time.
 YouTube times received from the player can seed the reference; the seconds field remains
 editable when the player cannot report a time.
+
+The viewer shows only the previous/next frame keyboard hint while paused. Source times in
+the capture popover and card captions use a shared localized timecode (`0:00,62` in Italian,
+`0:00.62` in English); numeric provenance retains its full precision. Hint text and key badges
+use the shared viewer tokens on a token surface for contrast in both themes.

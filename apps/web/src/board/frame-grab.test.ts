@@ -2,7 +2,12 @@
 import { createElement } from '@inkadra/canvas-core';
 import { createBoardDoc } from '@inkadra/doc-schema';
 import { describe, expect, it, vi } from 'vitest';
-import { captureVideoFrame, placeVideoStill, VideoFrameStepper } from './frame-grab.ts';
+import {
+  captureVideoFrame,
+  formatSourceTime,
+  placeVideoStill,
+  VideoFrameStepper,
+} from './frame-grab.ts';
 import { BoardStore } from './store.ts';
 
 const id = '11111111-1111-4111-8111-111111111111';
@@ -166,4 +171,11 @@ it('uses adjacent observed presentation timestamps for variable frame rate foota
   expect(video.currentTime).toBe(1.04);
   stop();
   expect(video.cancelVideoFrameCallback).toHaveBeenCalledWith(1);
+});
+
+it('formats source time consistently in Italian and English, carrying rounded seconds', () => {
+  expect(formatSourceTime(0.62, 'it')).toBe('0:00,62');
+  expect(formatSourceTime(0.62, 'en')).toBe('0:00.62');
+  expect(formatSourceTime(65.125, 'it')).toBe('1:05,13');
+  expect(formatSourceTime(59.999, 'en')).toBe('1:00.00');
 });

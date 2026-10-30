@@ -3,6 +3,21 @@ import { createElement, frameLabels, storyboardOf, updateElement } from '@inkadr
 import { hiddenFromGuests, roots, type VideoFrameSource } from '@inkadra/doc-schema';
 import { type BoardStore, LOCAL } from './store.ts';
 
+/** Presentation time for people; source metadata keeps the unrounded seconds. */
+export function formatSourceTime(seconds: number, locale: string): string {
+  const hundredths = Math.round(Math.max(0, Number.isFinite(seconds) ? seconds : 0) * 100);
+  const minutes = new Intl.NumberFormat(locale, { useGrouping: false }).format(
+    Math.floor(hundredths / 6000),
+  );
+  const remainder = new Intl.NumberFormat(locale, {
+    useGrouping: false,
+    minimumIntegerDigits: 2,
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format((hundredths % 6000) / 100);
+  return `${minutes}:${remainder}`;
+}
+
 /** Full decoded resolution, never the CSS size of the player. */
 export async function captureVideoFrame(video: HTMLVideoElement): Promise<File> {
   if (new URL(video.currentSrc || video.src, location.href).origin !== location.origin)

@@ -261,7 +261,7 @@ export function MediaViewer({
   const { videoRef, unplayable, setUnplayable } = useVideoUnplayable(ready?.url, ready?.id);
 
   const stepper = useRef(new VideoFrameStepper());
-  const [exactStep, setExactStep] = useState(true);
+  const [videoPaused, setVideoPaused] = useState(false);
   useEffect(() => {
     const player = videoRef.current;
     if (!player || !ready?.id) return;
@@ -296,7 +296,7 @@ export function MediaViewer({
       }
       if ((e.key === 'ArrowLeft' || e.key === 'ArrowRight') && videoRef.current?.paused) {
         e.preventDefault();
-        setExactStep(stepper.current.step(videoRef.current, e.key === 'ArrowLeft' ? -1 : 1));
+        stepper.current.step(videoRef.current, e.key === 'ArrowLeft' ? -1 : 1);
         return;
       }
       if (e.key === 'Escape') {
@@ -545,6 +545,9 @@ export function MediaViewer({
                   controls
                   autoPlay
                   onError={onVideoError}
+                  onPlay={() => setVideoPaused(false)}
+                  onPause={() => setVideoPaused(true)}
+                  onLoadedData={(e) => setVideoPaused(e.currentTarget.paused)}
                   style={unplayable ? { display: 'none' } : undefined}
                 />
                 {unplayable && (
@@ -570,17 +573,14 @@ export function MediaViewer({
           </div>
 
           {/* Bottom Hints */}
-          <div className="viewer__hints">
-            <span className="viewer__hint">
-              <span className="viewer__hint-kbd">← →</span>{' '}
-              {t(ready?.kind === 'video' ? 'frameGrab.stepHint' : 'viewer.hints.nav')}
-            </span>
-            {ready?.kind === 'video' && (
-              <span className="viewer__hint" role="status">
-                {t(exactStep ? 'frameGrab.stepPrecision' : 'frameGrab.approximate')}
+          {(ready?.kind !== 'video' || videoPaused) && (
+            <div className="viewer__hints">
+              <span className="viewer__hint">
+                <span className="viewer__hint-kbd">← →</span>{' '}
+                {t(ready?.kind === 'video' ? 'frameGrab.stepHint' : 'viewer.hints.nav')}
               </span>
-            )}
-          </div>
+            </div>
+          )}
         </div>
 
         {/* Thumbnails Strip */}

@@ -135,6 +135,9 @@ for (const [device, width, height] of [
         video.currentTime = 0.6;
         await new Promise<void>((r) => video.addEventListener('seeked', () => r(), { once: true }));
       });
+      await expect(viewer.locator('.viewer__hint')).toHaveText(
+        '← → Fotogramma precedente / successivo',
+      );
       await page.screenshot({ path: `${out}/${device}-${theme}-viewer.png` });
       // Paused arrow keys seek the video rather than navigate away.
       const before = await video.evaluate((v: HTMLVideoElement) => v.currentTime);
@@ -148,6 +151,9 @@ for (const [device, width, height] of [
       await page
         .getByRole('combobox', { name: 'Inquadratura', exact: true })
         .selectOption({ label: '1A' });
+      await expect(
+        page.getByText(/^Fotogramma a \d+:\d{2},\d{2} · risoluzione originale$/),
+      ).toBeVisible();
       await page.screenshot({ path: `${out}/${device}-${theme}-destination.png` });
       const uploaded = page.waitForResponse(
         (res) => res.request().method() === 'PATCH' && res.url().includes('/uploads/') && res.ok(),
@@ -204,6 +210,9 @@ for (const [device, width, height] of [
           .map(readElement)
           .find((el) => el?.type === 'image');
         expect(image).toMatchObject({ source: { kind: 'uploaded-video', assetId } });
+        expect(image?.type === 'image' && image.caption).toMatch(
+          /Last Train\.webm · \d+:\d{2},\d{2}$/,
+        );
       }
     });
   }

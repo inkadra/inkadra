@@ -4,7 +4,13 @@ import type { Asset } from '@inkadra/shared';
 import { Icon } from '@inkadra/ui';
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { useTranslation } from 'react-i18next';
-import { captureVideoFrame, frameChoices, placeVideoStill, uploadBoardId } from './frame-grab.ts';
+import {
+  captureVideoFrame,
+  formatSourceTime,
+  frameChoices,
+  placeVideoStill,
+  uploadBoardId,
+} from './frame-grab.ts';
 import type { BoardStore } from './store.ts';
 import { startUpload } from './uploads.ts';
 import { isVideoLink, isYoutubeUrl, parseYoutubeStartTime } from './youtube.ts';
@@ -34,7 +40,7 @@ export function FrameGrab({
   frameTime?: () => number | null;
   onDone: () => void;
 }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(false);
@@ -124,7 +130,7 @@ export function FrameGrab({
         assetId,
         source: provenance,
         userId,
-        caption: `${element.type === 'link' ? element.title || element.url : asset.filename} · ${source.kind === 'uploaded-video' ? `${source.timeSeconds.toFixed(3)} s` : t('frameGrab.thumbnail')}`,
+        caption: `${element.type === 'link' ? element.title || element.url : asset.filename} · ${source.kind === 'uploaded-video' ? formatSourceTime(source.timeSeconds, i18n.language) : t('frameGrab.thumbnail')}`,
         reference,
       });
       setBusy(false);
@@ -206,8 +212,10 @@ export function FrameGrab({
                 {external
                   ? t('frameGrab.externalHint')
                   : t('frameGrab.captured', {
-                      seconds:
-                        source?.kind === 'uploaded-video' ? source.timeSeconds.toFixed(3) : '',
+                      timecode:
+                        source?.kind === 'uploaded-video'
+                          ? formatSourceTime(source.timeSeconds, i18n.language)
+                          : '',
                     })}
               </p>
               {youtube && (
