@@ -483,7 +483,15 @@
       "label": "Etichetta della freccia",
       "placeholder": "Etichetta",
       "dashed": "Linea tratteggiata",
-      "heads": "Punte della freccia"
+      "curved": "Linea curva",
+      "addLabel": "Aggiungi etichetta",
+      "editLabel": "Modifica etichetta",
+      "heads": "Punte: {{current}}",
+      "headsValue": {
+        "end": "una",
+        "both": "entrambe",
+        "none": "nessuna"
+      }
     },
     "video": {
       "play": "Riproduci"

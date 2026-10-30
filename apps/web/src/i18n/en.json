@@ -483,7 +483,15 @@
       "label": "Arrow label",
       "placeholder": "Label",
       "dashed": "Dashed line",
-      "heads": "Arrow heads"
+      "curved": "Curved line",
+      "addLabel": "Add label",
+      "editLabel": "Edit label",
+      "heads": "Ends: {{current}}",
+      "headsValue": {
+        "end": "one",
+        "both": "both",
+        "none": "none"
+      }
     },
     "video": {
       "play": "Play"
