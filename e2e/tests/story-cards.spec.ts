@@ -52,9 +52,10 @@ async function pictures(page: Page) {
       }),
     };
   });
-  return Object.fromEntries(
-    Object.entries(drawn).map(([k, v]) => [k, Buffer.from(v)]),
-  ) as Record<keyof typeof drawn, Buffer>;
+  return Object.fromEntries(Object.entries(drawn).map(([k, v]) => [k, Buffer.from(v)])) as Record<
+    keyof typeof drawn,
+    Buffer
+  >;
 }
 
 async function seed(page: Page, baseURL: string, theme: 'light' | 'dark') {
@@ -145,7 +146,13 @@ async function seed(page: Page, baseURL: string, theme: 'light' | 'dark') {
     },
     opts,
   );
-  const frame = createElement(doc, 'frame', { x: 680, y: 260 }, { action: 'Marta guarda il tabellone vuoto.' }, opts);
+  const frame = createElement(
+    doc,
+    'frame',
+    { x: 680, y: 260 },
+    { action: 'Marta guarda il tabellone vuoto.' },
+    opts,
+  );
   await pushBoardDoc(baseURL, cookie, project.rootBoardId, doc);
   return { cookie, project, ids: { marta: marta.id, cabin: cabin.id, frame: frame.id } };
 }
@@ -201,9 +208,9 @@ for (const [device, width, height] of [
         await fresh.getByLabel('Ruolo nella storia').click();
         await page.keyboard.type('Comparsa');
         await fresh.getByLabel('Età').click();
-        await expect(page.locator('[data-type="character"]', { hasText: 'Bigliettaia' })).toContainText(
-          'Comparsa',
-        );
+        await expect(
+          page.locator('[data-type="character"]', { hasText: 'Bigliettaia' }),
+        ).toContainText('Comparsa');
         await fresh.getByRole('button', { name: 'Chiudi la scheda' }).click();
 
         // The frame's cast links to character cards by name; free text stays.
@@ -212,7 +219,9 @@ for (const [device, width, height] of [
         await panel.getByLabel('Personaggi', { exact: true }).fill('Passeggero');
         await panel.getByLabel('Personaggi', { exact: true }).blur();
         await panel.getByRole('button', { name: 'Aggiungi Marta al cast' }).click();
-        await expect(panel.getByLabel('Personaggi', { exact: true })).toHaveValue('Passeggero, Marta');
+        await expect(panel.getByLabel('Personaggi', { exact: true })).toHaveValue(
+          'Passeggero, Marta',
+        );
         await expect(panel.getByRole('button', { name: 'Marta è nel cast' })).toBeDisabled();
 
         await expect
@@ -231,10 +240,10 @@ for (const [device, width, height] of [
       }
 
       // Guests see the faces, never contacts, notes or addresses.
-      const created = await page.request.post(
-        `/api/v1/boards/${project.rootBoardId}/share-links`,
-        { headers: { origin: baseURL! }, data: { role: 'guest_view', label: 'Produzione' } },
-      );
+      const created = await page.request.post(`/api/v1/boards/${project.rootBoardId}/share-links`, {
+        headers: { origin: baseURL! },
+        data: { role: 'guest_view', label: 'Produzione' },
+      });
       expect(created.ok()).toBe(true);
       const { url } = await created.json();
       const guest = await browser.newContext({
@@ -259,7 +268,9 @@ for (const [device, width, height] of [
         expect(seen).not.toContain(secret);
       await guestPage.screenshot({ path: `${out}/${device}-${theme}-guest.png` });
       await guest.close();
-      await page.request.delete(`/api/v1/projects/${project.id}`, { headers: { origin: baseURL! } });
+      await page.request.delete(`/api/v1/projects/${project.id}`, {
+        headers: { origin: baseURL! },
+      });
     });
   }
 }
