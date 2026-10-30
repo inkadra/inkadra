@@ -57,7 +57,8 @@ const day: ShootingDay = {
 async function editThenChangeElsewhere() {
   const get = vi.spyOn(api, 'get').mockResolvedValue({ items: [day], nextCursor: null });
   const host = await mount(<ScheduleView store={store()} boardId="board" />);
-  const notes = () => host.querySelector<HTMLTextAreaElement>('.schedule__inspector textarea[maxlength="10000"]');
+  const notes = () =>
+    host.querySelector<HTMLTextAreaElement>('.schedule__inspector textarea[maxlength="10000"]');
   await act(async () => {
     const field = notes();
     if (!field) return;
