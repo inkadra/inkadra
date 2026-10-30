@@ -10,6 +10,12 @@ import {
   VariantQuery,
 } from './assets.ts';
 import {
+  BackupSettings,
+  InstanceBackup,
+  InstanceBackups,
+  UpdateBackupSettings,
+} from './backups.ts';
+import {
   Board,
   BoardCounts,
   BoardDetail,
@@ -109,6 +115,7 @@ import {
   SetBoardGrant,
   UserSearchQuery,
 } from './sharing.ts';
+import { ProjectTransfer, ProjectTransfers } from './transfers.ts';
 import {
   AccountSession,
   AppAuthorizationRedirect,
@@ -134,7 +141,7 @@ import {
   UpdateBoardVersion,
 } from './versions.ts';
 
-export const API_VERSION = '0.7.0';
+export const API_VERSION = '0.8.0';
 
 const registry = new OpenAPIRegistry();
 
@@ -669,6 +676,130 @@ registry.registerPath({
       description: 'Original asset usage',
       ...json(StorageUsage),
     },
+    ...errors,
+  },
+});
+
+// Project export and import, instance backups (decision 0037) -------------------
+
+const zipBody = z.string().openapi({ format: 'binary' });
+const transferLocation = {
+  Location: {
+    description: '`/api/v1/transfers/{transferId}`: poll it until `ready` or `failed`.',
+    schema: { type: 'string' as const },
+  },
+};
+registry.registerPath({
+  method: 'post',
+  path: v1('/projects/{projectId}/exports'),
+  tags: ['Transfers'],
+  security: secured,
+  summary:
+    'Start an export of the project as an archive (owners and editors of the project, by ' +
+    'project role: boards whose grant gives them less are included too). An export of the ' +
+    'same project already queued or running for the caller is returned instead. Sessions ' +
+    'and personal tokens.',
+  request: { params: idParam('projectId') },
+  responses: {
+    202: { description: 'Export queued', headers: transferLocation, ...json(ProjectTransfer) },
+    ...errors,
+  },
+});
+registry.registerPath({
+  method: 'post',
+  path: v1('/projects/import'),
+  tags: ['Transfers'],
+  security: secured,
+  summary:
+    'Import a project archive as a new project owned by the caller. The body is the zip ' +
+    '(`application/zip`, with Content-Length, at most `IMPORT_MAX_SIZE`); the worker checks ' +
+    'and reads it afterwards. One import at a time per person. Sessions and personal tokens.',
+  request: { body: { required: true, content: { 'application/zip': { schema: zipBody } } } },
+  responses: {
+    202: { description: 'Import queued', headers: transferLocation, ...json(ProjectTransfer) },
+    409: { description: 'Another import of the caller is still running', ...json(ApiError) },
+    411: { description: 'No Content-Length', ...json(ApiError) },
+    413: { description: 'Larger than the instance accepts', ...json(ApiError) },
+    415: { description: 'Not application/zip', ...json(ApiError) },
+    ...errors,
+  },
+});
+registry.registerPath({
+  method: 'get',
+  path: v1('/transfers'),
+  tags: ['Transfers'],
+  security: secured,
+  summary: "The caller's exports and imports of the last seven days.",
+  responses: { 200: { description: 'Transfers', ...json(ProjectTransfers) }, ...errors },
+});
+registry.registerPath({
+  method: 'get',
+  path: v1('/transfers/{transferId}'),
+  tags: ['Transfers'],
+  security: secured,
+  summary: 'One export or import of the caller.',
+  request: { params: idParam('transferId') },
+  responses: { 200: { description: 'Transfer', ...json(ProjectTransfer) }, ...errors },
+});
+registry.registerPath({
+  method: 'get',
+  path: v1('/transfers/{transferId}/download'),
+  tags: ['Transfers'],
+  security: secured,
+  summary:
+    'The archive of a ready export, for the person who asked for it while they can still ' +
+    'edit the project. Sent as an attachment named after the project ' +
+    '(`Content-Disposition`, ASCII fallback and RFC 5987 `filename*`).',
+  request: { params: idParam('transferId') },
+  responses: {
+    ...errors,
+    200: { description: 'Project archive', content: { 'application/zip': { schema: zipBody } } },
+    404: { description: 'No such transfer of the caller, or an import', ...json(ApiError) },
+    409: { description: 'Not ready yet, or failed', ...json(ApiError) },
+    410: { description: 'Expired and removed', ...json(ApiError) },
+  },
+});
+registry.registerPath({
+  method: 'delete',
+  path: v1('/transfers/{transferId}'),
+  tags: ['Transfers'],
+  security: secured,
+  summary:
+    'Remove an export or import of the caller. One still queued or running is marked ' +
+    '`failed` (`cancelled`) at once; the worker checks the row between steps and stops, ' +
+    'whichever process runs it.',
+  request: { params: idParam('transferId') },
+  responses: { 204: { description: 'Removed' }, ...errors },
+});
+registry.registerPath({
+  method: 'get',
+  path: v1('/instance/backups'),
+  tags: ['Instance'],
+  security: secured,
+  summary:
+    'Administrator only, signed-in session (no personal tokens): backup settings, schedule and recent backups.',
+  responses: { 200: { description: 'Backups', ...json(InstanceBackups) }, ...errors },
+});
+registry.registerPath({
+  method: 'patch',
+  path: v1('/instance/backups/settings'),
+  tags: ['Instance'],
+  security: secured,
+  summary: 'Administrator only, signed-in session: nightly backup time, retention, on or off.',
+  request: { body: { required: true, ...json(UpdateBackupSettings) } },
+  responses: { 200: { description: 'Saved settings', ...json(BackupSettings) }, ...errors },
+});
+registry.registerPath({
+  method: 'post',
+  path: v1('/instance/backups'),
+  tags: ['Instance'],
+  security: secured,
+  summary:
+    'Administrator only, signed-in session: back up now. Archives are never served over ' +
+    'HTTP; administrators copy them from `DATA_DIR/backups` or the bucket.',
+  responses: {
+    202: { description: 'Backup started', ...json(InstanceBackup) },
+    409: { description: 'A backup is already running', ...json(ApiError) },
     ...errors,
   },
 });
@@ -1889,6 +2020,7 @@ export function buildOpenApiDocument() {
       { name: 'Versions' },
       { name: 'Clip' },
       { name: 'Schedule' },
+      { name: 'Transfers' },
     ],
   });
 }

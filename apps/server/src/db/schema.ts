@@ -383,6 +383,8 @@ export const asset = pgTable(
     animated: boolean('animated').notNull().default(false),
     sourceUrl: text('source_url'),
     createdBy: uuid('created_by').references(() => user.id, { onDelete: 'set null' }),
+    /** Came with an imported project: the author's name there, display-only (decision 0037). */
+    importedAuthor: text('imported_author'),
     createdAt: createdAt(),
   },
   (t) => [index('asset_project_idx').on(t.projectId), index('asset_sha_idx').on(t.sha256)],
@@ -431,6 +433,8 @@ export const comment = pgTable(
     /** A guest of `share_link_id` (composite foreign key). */
     authorGuestId: uuid('author_guest_id'),
     shareLinkId: uuid('share_link_id').references(() => shareLink.id, { onDelete: 'cascade' }),
+    /** Came with an imported project: the author's name there, display-only (decision 0037). */
+    importedAuthor: text('imported_author'),
     body: text('body').notNull(),
     mentions: uuid('mentions').array().notNull().default(sql`'{}'::uuid[]`),
     visibility: text('visibility', { enum: ['team', 'everyone'] })
@@ -507,6 +511,8 @@ export const elementReview = pgTable(
     shareLinkId: uuid('share_link_id').references(() => shareLink.id, { onDelete: 'cascade' }),
     /** Team rows: who last set `in_review`, told about later decisions. */
     requestedBy: uuid('requested_by').references(() => user.id, { onDelete: 'set null' }),
+    /** Came with an imported project: the author's name there, display-only (decision 0037). */
+    importedAuthor: text('imported_author'),
     changedAt: timestamp('changed_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
@@ -554,6 +560,8 @@ export const elementReviewEvent = pgTable(
      * cascades, so a guest's decision can never turn into one of the team.
      */
     shareLinkId: uuid('share_link_id').references(() => shareLink.id, { onDelete: 'cascade' }),
+    /** Came with an imported project: the author's name there, display-only (decision 0037). */
+    importedAuthor: text('imported_author'),
     createdAt: createdAt(),
   },
   (t) => [
@@ -592,7 +600,15 @@ export const notification = pgTable(
       .notNull()
       .references(() => user.id, { onDelete: 'cascade' }),
     type: text('type', {
-      enum: ['mention', 'reply', 'comment', 'review', 'invitation_accepted'],
+      enum: [
+        'mention',
+        'reply',
+        'comment',
+        'review',
+        'invitation_accepted',
+        'export_ready',
+        'import_ready',
+      ],
     }).notNull(),
     actorId: uuid('actor_id').references(() => user.id, { onDelete: 'set null' }),
     actorGuestId: uuid('actor_guest_id').references(() => shareGuest.id, { onDelete: 'set null' }),
@@ -756,6 +772,8 @@ export const boardVersion = pgTable(
     size: integer('size').notNull(),
     elementCount: integer('element_count').notNull(),
     createdBy: uuid('created_by').references(() => user.id, { onDelete: 'set null' }),
+    /** Came with an imported project: the author's name there, display-only (decision 0037). */
+    importedAuthor: text('imported_author'),
     createdAt: createdAt(),
     /** Retention removes the version after this; null for named versions. */
     expiresAt: timestamp('expires_at', { withTimezone: true }),
@@ -824,3 +842,83 @@ export const projectExportSettings = pgTable('project_export_settings', {
   updatedBy: uuid('updated_by').references(() => user.id, { onDelete: 'set null' }),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });
+
+// Export, import and backups (docs/decisions/0037) ---------------------------
+
+/**
+ * A project export or import of one person, run by the worker. The archive lives in
+ * `DATA_DIR/transfers/<id>.zip` (shared by the web and worker roles): exports until
+ * `expires_at`, uploaded imports until they are read.
+ */
+export const projectTransfer = pgTable(
+  'project_transfer',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    kind: text('kind', { enum: ['export', 'import'] }).notNull(),
+    status: text('status', { enum: ['queued', 'running', 'ready', 'failed'] })
+      .notNull()
+      .default('queued'),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => user.id, { onDelete: 'cascade' }),
+    /** Export: the source. Import: the new project, once created. */
+    projectId: uuid('project_id').references(() => project.id, { onDelete: 'set null' }),
+    projectName: text('project_name').notNull(),
+    /** Thousandths of the work done. */
+    progress: integer('progress').notNull().default(0),
+    size: bigint('size', { mode: 'number' }),
+    failure: text('failure'),
+    summary: jsonb('summary').$type<import('@inkadra/shared').TransferSummary>(),
+    createdAt: createdAt(),
+    /** Moves with every progress step: a `running` row still for 15 minutes is interrupted. */
+    updatedAt: updatedAt(),
+    finishedAt: timestamp('finished_at', { withTimezone: true }),
+    expiresAt: timestamp('expires_at', { withTimezone: true }),
+  },
+  (t) => [
+    index('project_transfer_user_idx').on(t.userId, t.createdAt.desc()),
+    index('project_transfer_project_idx').on(t.projectId).where(sql`${t.projectId} is not null`),
+    index('project_transfer_expires_idx').on(t.expiresAt).where(sql`${t.expiresAt} is not null`),
+    // One import at a time per person: each holds a whole archive on disk.
+    uniqueIndex('project_transfer_one_import_uq')
+      .on(t.userId)
+      .where(sql`${t.kind} = 'import' and ${t.status} in ('queued', 'running')`),
+    index('project_transfer_active_idx')
+      .on(t.updatedAt)
+      .where(sql`${t.status} in ('queued', 'running')`),
+  ],
+);
+
+/** Instance backups: rows survive their files so the history shows failures too. */
+export const instanceBackup = pgTable(
+  'instance_backup',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    trigger: text('trigger', { enum: ['scheduled', 'manual'] }).notNull(),
+    status: text('status', { enum: ['running', 'ready', 'failed'] })
+      .notNull()
+      .default('running'),
+    fileName: text('file_name'),
+    size: bigint('size', { mode: 'number' }),
+    copiedToBucket: boolean('copied_to_bucket').notNull().default(false),
+    fileCount: integer('file_count'),
+    fileBytes: bigint('file_bytes', { mode: 'number' }),
+    failure: text('failure'),
+    requestedBy: uuid('requested_by').references(() => user.id, { onDelete: 'set null' }),
+    startedAt: timestamp('started_at', { withTimezone: true }).notNull().defaultNow(),
+    /**
+     * Moved by the running backup every few seconds. A `running` row older than 15 minutes is
+     * marked `failed` (`interrupted`) by the next start or the hourly sweep, so a crash never
+     * blocks later backups through the unique index below.
+     */
+    heartbeatAt: timestamp('heartbeat_at', { withTimezone: true }).notNull().defaultNow(),
+    finishedAt: timestamp('finished_at', { withTimezone: true }),
+    /** Set once retention removed the archive. */
+    removedAt: timestamp('removed_at', { withTimezone: true }),
+  },
+  (t) => [
+    index('instance_backup_started_idx').on(t.startedAt.desc()),
+    // One backup at a time across workers.
+    uniqueIndex('instance_backup_running_uq').on(t.status).where(sql`${t.status} = 'running'`),
+  ],
+);
