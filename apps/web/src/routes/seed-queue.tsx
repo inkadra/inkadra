@@ -1,3 +1,4 @@
+import type { BoardCount } from '@inkadra/shared';
 import { useSyncExternalStore } from 'react';
 import { ProjectSetupSeed } from './ProjectSetupSeed.tsx';
 import type { CreatedSetupBoard } from './project-setup.ts';
@@ -10,11 +11,21 @@ export interface SeedJob {
   userId: string;
 }
 
+export type SeededCounts = Omit<BoardCount, 'boardId'>;
+
 let queue: Array<SeedJob & { id: number }> = [];
 let nextId = 0;
+// Counts of boards seeded here, for the navigation until the server has stored them.
+let seeded: ReadonlyMap<string, SeededCounts> = new Map();
 const listeners = new Set<() => void>();
 const emit = () => {
   for (const l of listeners) l();
+};
+const subscribe = (l: () => void) => {
+  listeners.add(l);
+  return () => {
+    listeners.delete(l);
+  };
 };
 
 /**
@@ -32,15 +43,44 @@ const next = () => {
   emit();
 };
 
+const seededDone = (boardId: string) => (counts?: SeededCounts) => {
+  if (counts) seeded = new Map(seeded).set(boardId, counts);
+  next();
+};
+
+/** Counts of the boards seeded in this session, by board. */
+export function useSeededCounts(): ReadonlyMap<string, SeededCounts> {
+  return useSyncExternalStore(subscribe, () => seeded);
+}
+
+/**
+ * The server stores a board a couple of seconds after its last edit, so counts fetched when
+ * a seed finishes can still be empty: seeded boards keep their local counts until the server
+ * reports elements on them.
+ */
+export function mergeSeededCounts(
+  server: ReadonlyMap<string, BoardCount>,
+  local: ReadonlyMap<string, SeededCounts>,
+): Map<string, BoardCount> {
+  const merged = new Map(server);
+  for (const [boardId, counts] of local)
+    if (!server.get(boardId)?.elementCount) merged.set(boardId, { boardId, ...counts });
+  return merged;
+}
+
+/** Drops local counts the server has caught up with. */
+export function forgetSeededCounts(server: ReadonlyMap<string, BoardCount>) {
+  const stored = [...seeded.keys()].filter((id) => server.get(id)?.elementCount);
+  if (stored.length === 0) return;
+  const rest = new Map(seeded);
+  for (const id of stored) rest.delete(id);
+  seeded = rest;
+  emit();
+}
+
 /** Mounted once by the app layout. A board that fails to seed stays empty, with its templates. */
 export function SeedQueue() {
-  const job = useSyncExternalStore(
-    (l) => {
-      listeners.add(l);
-      return () => listeners.delete(l);
-    },
-    () => queue[0],
-  );
+  const job = useSyncExternalStore(subscribe, () => queue[0]);
   if (!job) return null;
   return (
     <ProjectSetupSeed
@@ -49,7 +89,7 @@ export function SeedQueue() {
       seed={job.seed}
       links={job.links}
       userId={job.userId}
-      done={next}
+      done={seededDone(job.boardId)}
       failed={next}
     />
   );
