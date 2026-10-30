@@ -69,7 +69,8 @@ export const ShareLink = z
   .openapi('ShareLink');
 export type ShareLink = z.infer<typeof ShareLink>;
 
-const Password = z.string().min(6).max(128);
+// Only new or changed passwords; guest sessions must also accept legacy passwords.
+const Password = z.string().min(10).max(128);
 
 export const CreateShareLink = z
   .object({

@@ -141,6 +141,19 @@ describe('review and sharing contracts', () => {
     expect(UpdateShareLink.parse({ password: null })).toEqual({ password: null });
   });
 
+  it('requires ten characters only when setting a share-link password', () => {
+    for (const schema of [CreateShareLink, UpdateShareLink]) {
+      expect(schema.safeParse({ password: '123456789' }).success).toBe(false);
+      expect(schema.safeParse({ password: '1234567890' }).success).toBe(true);
+    }
+    const input = { token: 'k'.repeat(43), password: '123456' };
+    expect(CreateGuestSession.parse(input)).toEqual(input);
+    const schemas = buildOpenApiDocument().components?.schemas;
+    for (const name of ['CreateShareLink', 'UpdateShareLink']) {
+      expect(schemas?.[name]).toHaveProperty('properties.password.minLength', 10);
+    }
+  });
+
   it('lets guests come in with the token, without a name, and needs something to pick', () => {
     const token = 'k'.repeat(43);
     expect(CreateGuestSession.parse({ token })).toEqual({ token });
