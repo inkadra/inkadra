@@ -314,13 +314,23 @@ for (const [device, width, height] of [
         mimeType: 'audio/wav',
         buffer: tone(),
       });
-      await expect(player.getByText('ultimo-treno-temp.wav')).toBeVisible({ timeout: 30_000 });
+      // The file name is left out on a phone; the mute button shows the track is there.
+      await expect(player.getByRole('button', { name: 'Disattiva audio' })).toBeVisible({
+        timeout: 30_000,
+      });
       // Into 2B: the dialogue line shows over the picture.
       await player.locator('.animatic__stage').focus();
       for (let i = 0; i < 4; i++) await page.keyboard.press('ArrowRight');
       await page.keyboard.press('Shift+ArrowRight');
       await expect(player.locator('.animatic__caption')).toContainText('Ce l’ho fatta.');
       await page.locator('.animatic__stage').blur();
+      await expect
+        .poll(() =>
+          player
+            .locator('.animatic__picture img')
+            .evaluate((img: HTMLImageElement) => img.complete && img.naturalWidth > 0),
+        )
+        .toBe(true);
       await page.screenshot({ path: `${out}/${device}-${theme}-animatic.png` });
       await page.request.delete(`/api/v1/projects/${project.id}`, {
         headers: { origin: baseURL! },
