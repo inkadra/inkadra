@@ -160,7 +160,13 @@ export function Select({
           }
         }}
       >
-        <span className={selected < 0 || (items[selected]?.disabled && items[selected]?.value === '') ? 'ink-select__placeholder' : 'ink-select__value'}>
+        <span
+          className={
+            selected < 0 || (items[selected]?.disabled && items[selected]?.value === '')
+              ? 'ink-select__placeholder'
+              : 'ink-select__value'
+          }
+        >
           {selected < 0 ? placeholder : items[selected]?.label}
         </span>
         <Icon name="chevronDown" size={16} />

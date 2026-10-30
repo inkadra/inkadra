@@ -1,9 +1,9 @@
-import { chooseSelect } from '../helpers/select.ts';
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { deflateSync } from 'node:zlib';
 import { expect, type Page, test } from '@playwright/test';
 import { getDocument } from 'pdfjs-dist/legacy/build/pdf.mjs';
+import { chooseSelect } from '../helpers/select.ts';
 
 /**
  * Gate 0.3: a short film of 3 scenes and 30 shots is prepared entirely in Inkadra, from the
@@ -485,7 +485,10 @@ test('a short film is prepared from the moodboard to the shot list', async ({
     await expect(page.locator('.shots__scene')).toHaveCount(3);
     // What was set in the storyboard is in the table: 1B is the old 1A.
     await expect(rowOf('1B').getByLabel('Obiettivo', { exact: true })).toHaveValue(details[0].lens);
-    await expect(rowOf('1B').getByLabel('Campo', { exact: true })).toHaveAttribute('data-value', details[0].shot);
+    await expect(rowOf('1B').getByLabel('Campo', { exact: true })).toHaveAttribute(
+      'data-value',
+      details[0].shot,
+    );
 
     // Filter by text: the frames that speak of the radio.
     const wanted = screenplay.scenes.flatMap((scene, n) => {
