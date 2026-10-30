@@ -95,6 +95,8 @@ it('shows statuses and authors it does not know without breaking', () => {
   expect(authorName({ kind: 'guest', name: 'Cliente', guestId: 'g', shareLinkId: 'l' })).toBe(
     'Cliente',
   );
+  // Imported comments (decision 0037) show the name they had on the other server.
+  expect(authorName({ kind: 'imported', name: 'Luca Regista' })).toBe('Luca Regista');
   expect(authorName(JSON.parse('{"kind":"future"}'))).toBeNull();
   expect(authorName(null)).toBeNull();
 });

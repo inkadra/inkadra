@@ -16,10 +16,10 @@ export function reviewKey(status: string): KnownReviewStatus {
     : 'in_review';
 }
 
-/** Name to show for an author; null for a deleted account or a kind this client does not know. */
+/** Name to show for an author (an imported one keeps the name it had on the other server); null for a deleted account or a kind this client does not know. */
 export function authorName(author: Author | null | undefined): string | null {
   if (author?.kind === 'user') return author.user.name;
-  if (author?.kind === 'guest') return author.name;
+  if (author?.kind === 'guest' || author?.kind === 'imported') return author.name;
   return null;
 }
 

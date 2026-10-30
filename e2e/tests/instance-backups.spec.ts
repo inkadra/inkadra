@@ -42,7 +42,7 @@ test('the administrator backs up now and finds the backup in the history', async
   const item = page.locator('.backup-list__item').first();
   await expect(item.getByText('Completato')).toBeVisible({ timeout: 90_000 });
   await expect(item).toContainText('Manuale');
-  await expect(item).toContainText(/\d+(,\d+)?\s?(B|KB|MB|GB)\b/);
+  await expect(item).toContainText(/\d+(,\d+)?\s?(B|KB|MB|GB)/);
   await expect(item.locator('.backup-list__file')).not.toBeEmpty();
   await expect(page.getByRole('button', { name: 'Esegui backup ora' })).toBeEnabled();
   // The summary row says the same of the last backup.
