@@ -42,5 +42,7 @@ The final JSON reports operation count, seed, convergence, state bytes, process
 peak RSS, recovery time, and maximum observed delivery lag. Lag samples check
 source clocks at a reference editor every 500 ms; they include intentional offline
 time, and are not a production latency benchmark. RSS includes the test clients
-and independent oracle in the same process as the server. No fixed RSS threshold
+and independent oracle in the same process as the server. Recovery timing includes the cost of normalizing and comparing all encoded histories,
+so it is not a pure network latency measurement.
+No fixed RSS threshold
 is portable across platforms; recovery must finish within 20 seconds.
