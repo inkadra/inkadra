@@ -63,14 +63,8 @@ export function templateLabels(t: (key: string) => string): TemplateLabels {
       synopsis: t('templates.brief.synopsis'),
       tone: t('templates.brief.tone'),
     },
-    locations: {
-      column: t('templates.locations.column'),
-      location: t('templates.locations.location'),
-    },
-    casting: {
-      column: t('templates.casting.column'),
-      role: t('templates.casting.role'),
-    },
+    locations: { column: t('templates.locations.column') },
+    casting: { column: t('templates.casting.column') },
   };
 }
 

@@ -318,7 +318,9 @@
       "scene": "Scene",
       "frame": "Frame",
       "arrow": "Arrow",
-      "storyboard": "Storyboard"
+      "storyboard": "Storyboard",
+      "character": "Character",
+      "location": "Location"
     },
     "tools": {
       "select": "Select",
@@ -616,14 +618,12 @@
     "locations": {
       "name": "Locations",
       "body": "Locations and scouting",
-      "column": "Locations",
-      "location": "Location"
+      "column": "Locations"
     },
     "casting": {
       "name": "Casting",
       "body": "Roles and cast",
-      "column": "Casting",
-      "role": "Role"
+      "column": "Casting"
     }
   },
   "film": {
@@ -709,7 +709,12 @@
       "commentsOpen": "Open the comments",
       "commentsNone": "No comments on this frame yet.",
       "commentsCount_one": "{{count}} open thread",
-      "commentsCount_other": "{{count}} open threads"
+      "commentsCount_other": "{{count}} open threads",
+      "castLinks": "Characters in this project",
+      "castLink": "Add {{name}} to the cast",
+      "castLinked": "{{name}} is in the cast",
+      "castFilter": "Find a character",
+      "castNone": "No character by that name."
     },
     "shot": {
       "ews": "Extreme wide",
@@ -2413,7 +2418,9 @@
       "hint": "Start the storyboard from a Fountain or Final Draft file.",
       "chosen": "{{title}} · {{scenes}} · {{frames}}",
       "remove": "Remove the screenplay"
-    }
+    },
+    "characterCards": "Create cards for the speaking characters",
+    "characterCardsHint": "One character card per name, with its scenes; names already on the board are skipped."
   },
   "frameGrab": {
     "grab": "Grab frame",
@@ -2450,5 +2457,48 @@
     "defaultNo": "As the instance (no)",
     "yes": "Yes",
     "no": "No"
+  },
+  "story": {
+    "close": "Close the card",
+    "upload": "Upload photo",
+    "fromBoard": "From the board",
+    "removePicture": "Remove photo",
+    "noPictures": "No images on this board.",
+    "usePicture": "Use {{name}}",
+    "scenes": "Scenes",
+    "scenesHint": "Scene numbers separated by commas, e.g. 1, 3A",
+    "sceneCount_one": "{{count}} scene",
+    "sceneCount_other": "{{count}} scenes",
+    "teamOnly": "Team only",
+    "teamOnlyHint": "Guests of share links do not see these fields.",
+    "notes": "Notes",
+    "character": {
+      "details": "Character card",
+      "name": "Name",
+      "namePlaceholder": "New character",
+      "role": "Role in the story",
+      "rolePlaceholder": "Lead",
+      "age": "Age",
+      "actor": "Played by",
+      "description": "Description",
+      "contact": "Contact (agent, phone)",
+      "delete": "Delete character"
+    },
+    "location": {
+      "details": "Location card",
+      "name": "Name",
+      "namePlaceholder": "New location",
+      "light": "Light and best time",
+      "lightPlaceholder": "E.g. backlight at sunset",
+      "availability": "Availability",
+      "address": "Address",
+      "mapUrl": "Map link",
+      "mapUrlHint": "A link to any map service; it opens in a new tab.",
+      "mapUrlInvalid": "Needs a web address starting with https://",
+      "openMap": "Open the map",
+      "searchMap": "Look up the address on OpenStreetMap",
+      "contact": "Contact (owner, permits)",
+      "delete": "Delete location"
+    }
   }
 }

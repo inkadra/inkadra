@@ -318,7 +318,9 @@
       "scene": "Scena",
       "frame": "Inquadratura",
       "arrow": "Freccia",
-      "storyboard": "Storyboard"
+      "storyboard": "Storyboard",
+      "character": "Personaggio",
+      "location": "Location"
     },
     "tools": {
       "select": "Seleziona",
@@ -616,14 +618,12 @@
     "locations": {
       "name": "Location",
       "body": "Location e sopralluoghi",
-      "column": "Location",
-      "location": "Location"
+      "column": "Location"
     },
     "casting": {
       "name": "Casting",
       "body": "Ruoli e cast",
-      "column": "Casting",
-      "role": "Ruolo"
+      "column": "Casting"
     }
   },
   "film": {
@@ -709,7 +709,12 @@
       "commentsOpen": "Apri i commenti",
       "commentsNone": "Ancora nessun commento su questa inquadratura.",
       "commentsCount_one": "{{count}} discussione aperta",
-      "commentsCount_other": "{{count}} discussioni aperte"
+      "commentsCount_other": "{{count}} discussioni aperte",
+      "castLinks": "Personaggi del progetto",
+      "castLink": "Aggiungi {{name}} al cast",
+      "castLinked": "{{name}} è nel cast",
+      "castFilter": "Cerca un personaggio",
+      "castNone": "Nessun personaggio con questo nome."
     },
     "shot": {
       "ews": "Campo lunghissimo",
@@ -2413,7 +2418,9 @@
       "hint": "Fai partire lo storyboard da un file Fountain o Final Draft.",
       "chosen": "{{title}} · {{scenes}} · {{frames}}",
       "remove": "Togli la sceneggiatura"
-    }
+    },
+    "characterCards": "Crea le schede dei personaggi che parlano",
+    "characterCardsHint": "Una scheda personaggio per nome, con le sue scene; i nomi già presenti sulla board vengono saltati."
   },
   "frameGrab": {
     "grab": "Cattura fotogramma",
@@ -2450,5 +2457,48 @@
     "defaultNo": "Come l’istanza (no)",
     "yes": "Sì",
     "no": "No"
+  },
+  "story": {
+    "close": "Chiudi la scheda",
+    "upload": "Carica foto",
+    "fromBoard": "Dalla board",
+    "removePicture": "Togli la foto",
+    "noPictures": "Nessuna immagine su questa board.",
+    "usePicture": "Usa {{name}}",
+    "scenes": "Scene",
+    "scenesHint": "Numeri di scena separati da virgole, es. 1, 3A",
+    "sceneCount_one": "{{count}} scena",
+    "sceneCount_other": "{{count}} scene",
+    "teamOnly": "Solo team",
+    "teamOnlyHint": "Gli ospiti dei link di condivisione non vedono questi campi.",
+    "notes": "Note",
+    "character": {
+      "details": "Scheda personaggio",
+      "name": "Nome",
+      "namePlaceholder": "Nuovo personaggio",
+      "role": "Ruolo nella storia",
+      "rolePlaceholder": "Protagonista",
+      "age": "Età",
+      "actor": "Interprete",
+      "description": "Descrizione",
+      "contact": "Contatto (agenzia, telefono)",
+      "delete": "Elimina il personaggio"
+    },
+    "location": {
+      "details": "Scheda location",
+      "name": "Nome",
+      "namePlaceholder": "Nuova location",
+      "light": "Luce e orario migliore",
+      "lightPlaceholder": "Es. controluce al tramonto",
+      "availability": "Disponibilità",
+      "address": "Indirizzo",
+      "mapUrl": "Link alla mappa",
+      "mapUrlHint": "Un link a qualsiasi servizio di mappe: si apre in una nuova scheda.",
+      "mapUrlInvalid": "Serve un indirizzo web che inizi con https://",
+      "openMap": "Apri la mappa",
+      "searchMap": "Cerca l’indirizzo su OpenStreetMap",
+      "contact": "Contatto (proprietario, permessi)",
+      "delete": "Elimina la location"
+    }
   }
 }

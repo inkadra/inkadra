@@ -107,6 +107,7 @@ import { BoardContext, type BoardContextValue, GuestModeContext, LARGE_BOARD } f
 import { useBoardAspect } from './film/aspect.ts';
 import { DrawingEditor } from './film/DrawingEditor.tsx';
 import { FramePanel } from './film/FramePanel.tsx';
+import { StoryCardPanel } from './film/StoryCardPanel.tsx';
 import { createScreenplayStoryboard } from './film/screenplay/new-storyboard.ts';
 import type { ImportPlan } from './film/screenplay/plan.ts';
 import { ScreenplayImportDialog } from './film/screenplay/ScreenplayImportDialog.tsx';
@@ -301,6 +302,8 @@ export function Canvas({
   const [tool, setTool] = useState<CanvasTool>('select');
   /** Frame whose details panel is open, frame being drawn, image or video in the viewer. */
   const [framePanel, setFramePanel] = useState<string | null>(null);
+  /** Character or location card whose side sheet is open. */
+  const [storyPanel, setStoryPanel] = useState<string | null>(null);
   const [noteSheet, setNoteSheet] = useState<string | null>(null);
   const [drawing, setDrawing] = useState<string | null>(null);
   const [viewing, setViewing] = useState<string | null>(null);
@@ -652,6 +655,13 @@ export function Canvas({
         case 'scene':
           created = addScene(doc, {}, opts, pos);
           break;
+        case 'character':
+        case 'location':
+          // Named in the side sheet, which opens on the new card.
+          created = createElement(doc, type, pos, { name: '' }, opts);
+          select([created.id]);
+          setStoryPanel(created.id);
+          return;
       }
       if (created) {
         select([created.id]);
@@ -856,7 +866,12 @@ export function Canvas({
         setViewing(el.id);
       } else if (el.type === 'frame') {
         select([el.id]);
+        setStoryPanel(null);
         setFramePanel(el.id);
+      } else if (el.type === 'character' || el.type === 'location') {
+        select([el.id]);
+        setFramePanel(null);
+        setStoryPanel(el.id);
       } else if (el.type === 'note') {
         select([el.id]);
         // The sheet takes over the note's document: leave inline editing first.
@@ -1712,6 +1727,10 @@ export function Canvas({
     return el?.type === 'frame' ? el : null;
   };
   const panelFrame = frameOf(framePanel);
+  const storyCard = (() => {
+    const el = storyPanel ? snap.byId.get(storyPanel) : undefined;
+    return el?.type === 'character' || el?.type === 'location' ? el : undefined;
+  })();
   const drawnFrame = frameOf(drawing);
   // Shooting order, for the editor's strip and onion skin; only while a drawing is open.
   const storyFrames = useMemo(
@@ -2232,6 +2251,19 @@ export function Canvas({
               readOnly={readOnly}
               onClose={() => setFramePanel(null)}
               onDraw={() => setDrawing(panelFrame.id)}
+            />
+          </div>
+        )}
+        {storyCard && !panelFrame && (
+          <div className="canvas__panel">
+            <StoryCardPanel
+              key={storyCard.id}
+              store={store}
+              card={storyCard}
+              projectId={projectId}
+              boardId={boardId}
+              readOnly={readOnly}
+              onClose={() => setStoryPanel(null)}
             />
           </div>
         )}

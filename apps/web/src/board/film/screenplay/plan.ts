@@ -1,4 +1,11 @@
-import { addScenes, frameLetter, type NewScene } from '@inkadra/canvas-core';
+import {
+  addScenes,
+  createElement,
+  DEFAULT_WIDTH,
+  frameLetter,
+  listElements,
+  type NewScene,
+} from '@inkadra/canvas-core';
 import type * as Y from 'yjs';
 import type { Script, ScriptBlock, ScriptScene } from './script.ts';
 
@@ -19,6 +26,8 @@ export interface ImportOptions {
   maxFrames: FrameCap;
   /** Characters who speak go into the frames' cast; otherwise they are listed in the synopsis. */
   cast: boolean;
+  /** A character card for each character who speaks (decision 0044). */
+  characterCards: boolean;
 }
 
 export interface ImportPlan {
@@ -28,6 +37,8 @@ export interface ImportPlan {
   frameCount: number;
   /** Scenes or frames were left out to stay within the bounds. */
   truncated: boolean;
+  /** Character cards to create: names who speak, with the indexes of their planned scenes. */
+  characters: Array<{ name: string; scenes: number[] }>;
 }
 
 export function defaultOptions(script: Script): ImportOptions {
@@ -36,6 +47,7 @@ export function defaultOptions(script: Script): ImportOptions {
     frames: 'action',
     maxFrames: 8,
     cast: true,
+    characterCards: false,
   };
 }
 
@@ -50,7 +62,8 @@ export function planImport(
   /** Name of the scene made of what comes before the first heading. */
   preludeTitle = '',
 ): ImportPlan {
-  const plan: ImportPlan = { scenes: [], frameCount: 0, truncated: false };
+  const plan: ImportPlan = { scenes: [], frameCount: 0, truncated: false, characters: [] };
+  const speakers = new Map<string, { name: string; scenes: number[] }>();
   if (script.title) plan.title = cut(script.title, 200);
   const numbers = sceneNumbers(script.scenes);
   const chosen = script.scenes
@@ -81,8 +94,18 @@ export function planImport(
     if (scene.time) planned.time = scene.time;
     if (scene.location) planned.location = cut(scene.location, 200);
     if (synopsis) planned.synopsis = cut(synopsis, 2000);
+    if (options.characterCards) {
+      for (const who of scene.characters) {
+        const name = cut(castName(who), 120);
+        const key = name.toLocaleLowerCase();
+        const entry = speakers.get(key) ?? { name, scenes: [] };
+        entry.scenes.push(plan.scenes.length);
+        speakers.set(key, entry);
+      }
+    }
     plan.scenes.push(planned);
   }
+  plan.characters = [...speakers.values()];
   return plan;
 }
 
@@ -150,7 +173,45 @@ export function applyImport(
   plan: ImportPlan,
   opts: { userId: string | null; origin?: unknown },
 ) {
-  return addScenes(doc, plan.scenes, opts);
+  let created: ReturnType<typeof addScenes> = [];
+  doc.transact(() => {
+    created = addScenes(doc, plan.scenes, opts);
+    addCharacterCards(doc, plan.characters, created, opts);
+  }, opts.origin);
+  return created;
+}
+
+const CHARACTER_GAP = 20;
+
+/**
+ * Character cards in a row above the new scenes, linked to them by scene number. A name that
+ * a character card on the board already has, ignoring case, is skipped.
+ */
+function addCharacterCards(
+  doc: Y.Doc,
+  characters: ImportPlan['characters'],
+  scenes: ReadonlyArray<{ number: string; x: number }>,
+  opts: { userId: string | null; origin?: unknown },
+) {
+  const taken = new Set(
+    listElements(doc).flatMap((el) =>
+      el.type === 'character' ? [el.name.trim().toLocaleLowerCase()] : [],
+    ),
+  );
+  const fresh = characters.filter((c) => !taken.has(c.name.toLocaleLowerCase()));
+  const left = scenes[0]?.x ?? 0;
+  fresh.forEach((character, i) => {
+    const numbers = [
+      ...new Set(character.scenes.flatMap((j) => (scenes[j] ? [scenes[j].number] : []))),
+    ].slice(0, 200);
+    createElement(
+      doc,
+      'character',
+      { x: left + i * (DEFAULT_WIDTH.character + CHARACTER_GAP), y: -140 },
+      { name: character.name, ...(numbers.length ? { scenes: numbers } : {}) },
+      opts,
+    );
+  });
 }
 
 type PlannedFrame = NewScene['frames'][number];

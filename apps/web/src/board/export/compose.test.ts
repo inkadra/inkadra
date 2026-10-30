@@ -1,7 +1,7 @@
 import type { Element } from '@inkadra/doc-schema';
 import { light } from '@inkadra/ui/tokens';
 import { describe, expect, it } from 'vitest';
-import type { CardContext } from './board-render.ts';
+import { type CardContext, cardHeight, drawCard } from './board-render.ts';
 import {
   finish,
   type Shot,
@@ -24,6 +24,7 @@ const ctx: CardContext = {
   frameAspect: () => 16 / 9,
   frameMeta: () => '',
   slugline: () => 'EXT. STAZIONE – NOTTE',
+  storyMeta: (el) => (el.type === 'character' ? (el.actor ?? '') : 'INT.'),
   words: { board: 'Board', file: 'File' },
 };
 
@@ -199,5 +200,52 @@ describe('finish', () => {
     expect(texts(pages[1]?.ops ?? [])).toContain('2 of 3');
     expect(texts(pages[2]?.ops ?? [])).toContain('3 of 3');
     expect(texts(pages[0]?.ops ?? [])).toContain('Binario 21');
+  });
+});
+
+describe('story bible cards in exports', () => {
+  const common = { x: 0, y: 0, w: 240, z: 'a0', parent: null, createdBy: null, createdAt: 0 };
+  const flat = (ops: readonly Op[]): Op[] =>
+    ops.flatMap((op) => (op.kind === 'clip' ? [op, ...flat(op.ops)] : [op]));
+  const words = (ops: readonly Op[]) =>
+    flat(ops).flatMap((op) => (op.kind === 'text' ? [op.text] : []));
+
+  it('draws the face of a character, never its contact or notes', () => {
+    const marta = {
+      ...common,
+      id: 'marta0001',
+      type: 'character',
+      name: 'Marta',
+      role: 'Capotreno',
+      actor: 'Giulia Neri',
+      contact: 'agenzia@example.com',
+      notes: 'Provino il 12',
+    } as Element;
+    const h = cardHeight(marta, 240, ctx) ?? 0;
+    expect(h).toBeGreaterThanOrEqual(76);
+    const shown = words(drawCard({ el: marta, x: 0, y: 0, w: 240, h }, ctx)).join(' ');
+    expect(shown).toContain('Marta');
+    expect(shown).toContain('Capotreno');
+    expect(shown).toContain('Giulia Neri');
+    expect(shown).not.toContain('agenzia');
+    expect(shown).not.toContain('Provino');
+  });
+
+  it('draws a location with its setting and light, without the address', () => {
+    const cabin = {
+      ...common,
+      id: 'cabin0001',
+      type: 'location',
+      name: 'Cabina del guardiano',
+      setting: 'int',
+      light: 'Neon verde',
+      address: 'Via dei Binari 4',
+    } as Element;
+    const h = cardHeight(cabin, 240, ctx) ?? 0;
+    const shown = words(drawCard({ el: cabin, x: 0, y: 0, w: 240, h }, ctx)).join(' ');
+    expect(shown).toContain('Cabina del guardiano');
+    expect(shown).toContain('INT.');
+    expect(shown).toContain('Neon verde');
+    expect(shown).not.toContain('Binari');
   });
 });

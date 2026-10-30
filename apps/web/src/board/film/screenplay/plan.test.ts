@@ -151,3 +151,33 @@ describe('applyImport', () => {
     expect(storyboardOf(listElements(doc)).map((g) => g.scene?.number)).toEqual(['4', '5', '6']);
   });
 });
+
+describe('character cards from the screenplay', () => {
+  it('plans a card per speaking character, with the scenes they speak in', () => {
+    expect(planImport(script, defaultOptions(script), line).characters).toEqual([]);
+    const plan = planImport(script, { ...defaultOptions(script), characterCards: true }, line);
+    expect(plan.characters.map((c) => c.name)).toEqual(['Mara', 'Leo']);
+    expect(plan.characters.every((c) => c.scenes.length > 0)).toBe(true);
+  });
+
+  it('creates the cards with scene numbers, skips names already on the board, one undo', () => {
+    const doc = new Y.Doc();
+    const store = new BoardStore(doc);
+    const plan = planImport(script, { ...defaultOptions(script), characterCards: true }, line);
+    applyImport(doc, plan, { userId: 'u1', origin: LOCAL });
+    const cards = listElements(doc).filter((e) => e.type === 'character');
+    expect(cards.map((c) => c.type === 'character' && c.name)).toEqual(['Mara', 'Leo']);
+    const numbers = new Set(
+      listElements(doc).flatMap((e) => (e.type === 'scene' ? [e.number] : [])),
+    );
+    for (const card of cards)
+      if (card.type === 'character')
+        for (const n of card.scenes ?? []) expect(numbers.has(n)).toBe(true);
+    applyImport(doc, plan, { userId: 'u1', origin: LOCAL });
+    expect(listElements(doc).filter((e) => e.type === 'character')).toHaveLength(2);
+    store.undo.undo();
+    store.undo.undo();
+    expect(listElements(doc)).toEqual([]);
+    store.destroy();
+  });
+});

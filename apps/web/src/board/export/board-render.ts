@@ -48,10 +48,14 @@ export interface CardContext {
   /** Shot size, angle, movement, lens and duration on one line. */
   frameMeta(frame: Extract<Element, { type: 'frame' }>): string;
   slugline(scene: Extract<Element, { type: 'scene' }>): string;
+  /** Actor or INT./EXT. and the scene count of a character or location, on one line. */
+  storyMeta(card: Extract<Element, { type: 'character' | 'location' }>): string;
   words: { board: string; file: string };
 }
 
 const PAD = 12;
+/** Side of a character's portrait on its card. */
+const PORTRAIT = 56;
 const RADIUS = 10;
 const BODY: Omit<TextStyle, 'color'> = { size: 13, weight: 400, leading: 19.5 };
 const SMALL: Omit<TextStyle, 'color'> = { size: 11, weight: 400, leading: 16 };
@@ -87,6 +91,23 @@ export function cardHeight(el: Element, w: number, ctx: CardContext): number | n
       return w / ctx.frameAspect(el) + 52;
     case 'color':
       return w;
+    case 'character': {
+      const text =
+        lines(el.name || ' ', TITLE, 1) +
+        (el.role ? lines(el.role, SMALL, 1) : 0) +
+        (ctx.storyMeta(el) ? lines(ctx.storyMeta(el), SMALL, 1) : 0);
+      return Math.max(PORTRAIT, text + 4) + 20;
+    }
+    case 'location': {
+      const pic = ctx.image(el.assetId) ? (w * 9) / 16 : 0;
+      return (
+        pic +
+        20 +
+        lines(el.name || ' ', TITLE, 2) +
+        (ctx.storyMeta(el) ? lines(ctx.storyMeta(el), SMALL, 1) : 0) +
+        (el.light ? lines(el.light, SMALL, 2) + 2 : 0)
+      );
+    }
     default:
       return null;
   }
@@ -401,10 +422,57 @@ function body(p: Placed, ctx: CardContext): Op[] {
       return ops;
     }
     case 'arrow':
-    // Story bible cards are drawn by their implementation (decision 0044).
-    case 'character':
-    case 'location':
       return [];
+    case 'character': {
+      // The face of the card only: contacts and notes stay in the app (decision 0044).
+      const ops: Op[] = [];
+      const top = p.y + 10;
+      const img = ctx.image(el.assetId);
+      const box = { x, y: top, w: PORTRAIT, h: PORTRAIT };
+      ops.push(
+        img
+          ? { kind: 'clip', ...box, radius: 8, ops: [picture(img.key, box, 'cover', c)] }
+          : { kind: 'rect', ...box, radius: 8, fill: c['surface-2'] },
+      );
+      const tx = x + PORTRAIT + 10;
+      const tw = inner - PORTRAIT - 10;
+      const line = (value: string, at: number, style: Omit<TextStyle, 'color'>, color: string) =>
+        textBlock(wrapText(value, tw, style.size, style.weight, m, 1), tx, at, { ...style, color });
+      const name = line(el.name, top + 4, TITLE, c['text-primary']);
+      ops.push(...name.ops);
+      let below = name.bottom;
+      for (const [value, color] of [
+        [el.role, c['text-secondary']],
+        [ctx.storyMeta(el), c['text-muted']],
+      ] as const) {
+        if (!value) continue;
+        const block = line(value, below, SMALL, color);
+        ops.push(...block.ops);
+        below = block.bottom;
+      }
+      return ops;
+    }
+    case 'location': {
+      const ops: Op[] = [];
+      let top = p.y + 10;
+      const img = ctx.image(el.assetId);
+      if (img) {
+        const h = (p.w * 9) / 16;
+        ops.push(picture(img.key, { x: p.x, y: p.y, w: p.w, h }, 'cover', c));
+        top = p.y + h + 10;
+      }
+      const name = text(el.name, top, TITLE, c['text-primary'], 2);
+      ops.push(...name.ops);
+      let below = name.bottom;
+      const meta = ctx.storyMeta(el);
+      if (meta) {
+        const block = text(meta, below, SMALL, c['text-muted'], 1);
+        ops.push(...block.ops);
+        below = block.bottom;
+      }
+      if (el.light) ops.push(...text(el.light, below + 2, SMALL, c['text-secondary'], 2).ops);
+      return ops;
+    }
   }
 }
 

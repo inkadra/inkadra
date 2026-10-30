@@ -72,7 +72,7 @@ it('groups tools with described tooltips while preserving actions and pressed mo
 });
 
 it('opens the Canvas menu of canvas types, walks it with the keyboard and inserts one', async () => {
-  const { host, onCanvas, cleanup } = await renderToolbar();
+  const { host, onCanvas, onAdd, cleanup } = await renderToolbar();
   try {
     const button = host.querySelector<HTMLButtonElement>('.toolbar__btn--canvas')!;
     expect(button.getAttribute('aria-haspopup')).toBe('menu');
@@ -88,11 +88,13 @@ it('opens the Canvas menu of canvas types, walks it with the keyboard and insert
       'onboarding.templates.storyboard.name',
       'onboarding.templates.shotlist.name',
       'onboarding.templates.production.name',
+      'board.types.character',
+      'board.types.location',
     ]);
     // No shortcut hints in the menu (B and S still work on the canvas).
     expect(menu.querySelector('.menu__key')).toBeNull();
     expect(items.map((i) => i.querySelector('.menu__tile svg')?.innerHTML)).toEqual(
-      ['page', 'tiles', 'storyboard', 'shotlist', 'calendar'].map(
+      ['page', 'tiles', 'storyboard', 'shotlist', 'calendar', 'user', 'pin'].map(
         (name) =>
           renderToStaticMarkup(<Icon name={name as IconName} />).match(
             /<svg[^>]*>(.*)<\/svg>/,
@@ -106,6 +108,9 @@ it('opens the Canvas menu of canvas types, walks it with the keyboard and insert
     expect(tiles[2]).toContain('--ink-tag-purple');
     expect(tiles[3]).toContain('--ink-tag-green');
     expect(tiles[4]).toContain('--ink-tag-green');
+    // Story bible cards are neutral: colour only where it means a kind of canvas.
+    expect(tiles[5]).toContain('--kind-fg: var(--ink-text-secondary)');
+    expect(tiles[6]).toContain('--kind-fg: var(--ink-text-secondary)');
     expect(document.activeElement).toBe(items[0]);
     const key = (k: string) =>
       act(async () => {
@@ -116,7 +121,7 @@ it('opens the Canvas menu of canvas types, walks it with the keyboard and insert
     await key('ArrowDown');
     expect(document.activeElement).toBe(items[1]);
     await key('End');
-    expect(document.activeElement).toBe(items[4]);
+    expect(document.activeElement).toBe(items[6]);
     await key('ArrowDown');
     expect(document.activeElement).toBe(items[0]);
     await key('Escape');
@@ -128,6 +133,10 @@ it('opens the Canvas menu of canvas types, walks it with the keyboard and insert
     await act(async () => document.querySelectorAll<HTMLElement>('[role="menuitem"]')[2]?.click());
     expect(onCanvas).toHaveBeenCalledWith('storyboard');
     expect(document.querySelector('[role="menu"]')).toBeNull();
+
+    await act(async () => button.click());
+    await act(async () => document.querySelectorAll<HTMLElement>('[role="menuitem"]')[5]?.click());
+    expect(onAdd).toHaveBeenCalledWith('character');
   } finally {
     await cleanup();
   }
