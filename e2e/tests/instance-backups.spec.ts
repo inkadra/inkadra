@@ -36,11 +36,24 @@ test('the administrator backs up now and finds the backup in the history', async
     (r) => r.url().endsWith('/instance/backups') && r.request().method() === 'POST',
   );
   await page.getByRole('button', { name: 'Esegui backup ora' }).click();
-  expect((await started).status()).toBe(202);
+  const response = await started;
+  expect(response.status()).toBe(202);
+  const { id } = (await response.json()) as { id: string };
+  await expect
+    .poll(
+      async () => {
+        const { items } = (await (await page.request.get('/api/v1/instance/backups')).json()) as {
+          items: { id: string; status: string }[];
+        };
+        return items.find((b) => b.id === id)?.status;
+      },
+      { timeout: 90_000 },
+    )
+    .toBe('ready');
 
-  // The page follows the running backup until it is done: Completed, with a size.
+  // The page shows it as the newest one: Completed, with a size.
   const item = page.locator('.backup-list__item').first();
-  await expect(item.getByText('Completato')).toBeVisible({ timeout: 90_000 });
+  await expect(item.getByText('Completato')).toBeVisible({ timeout: 15_000 });
   await expect(item).toContainText('Manuale');
   await expect(item).toContainText(/\d+(,\d+)?\s?(B|KB|MB|GB)/);
   await expect(item.locator('.backup-list__file')).not.toBeEmpty();
