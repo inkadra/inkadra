@@ -1,49 +1,380 @@
 /* biome-ignore-all lint/complexity/noImportantStyles: Print must override application layout and inline ancestor styles. */
-/* Real call sheet: the shared native dialog owns focus and Escape handling. */
+/* Call sheet: options on the left, the sheet on its paper on the right, like the export dialog.
+   The shared native dialog owns focus and Escape handling. */
 .ink-dialog:has(.call-sheet) {
-  width: min(1100px, 94vw);
-  max-width: 94vw;
+  width: min(1120px, calc(100vw - 32px));
+  max-width: calc(100vw - 32px);
 }
 .call-sheet {
   display: grid;
-  grid-template-columns: 250px minmax(0, 1fr);
+  grid-template-columns: minmax(0, 260px) minmax(0, 1fr);
   gap: 24px;
+  align-items: start;
 }
-.call-sheet__controls label {
+.call-sheet__controls {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  min-width: 0;
+}
+/* A group of rows, as in the settings window: uppercase label, rows on hairlines. */
+.call-sheet__group {
+  min-width: 0;
+}
+.call-sheet__group-title {
+  margin: 0;
+  padding: 0 0 8px;
+  border-bottom: 1px solid var(--ink-border-muted);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-text-muted);
+}
+.call-sheet__row {
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin-block: 10px;
+  gap: 12px;
+  min-height: 44px;
+  padding: 8px 0;
+  border-top: 1px solid var(--ink-border-muted);
 }
-.call-sheet__controls > label {
+.call-sheet__group-title + .call-sheet__row {
+  border-top: 0;
+}
+.call-sheet__row-text {
+  display: flex;
+  flex: 1;
   flex-direction: column;
-  align-items: stretch;
+  gap: 2px;
+  min-width: 0;
+  cursor: pointer;
 }
-.call-sheet__paper {
-  background: white;
-  color: #141414;
-  padding: 24px;
+.call-sheet__row-label {
+  font-size: 13px;
+  font-weight: 500;
+}
+.call-sheet__row-help {
   font-size: 12px;
-  overflow-wrap: anywhere;
+  line-height: 1.4;
+  color: var(--ink-text-muted);
 }
-.call-sheet__paper header {
-  border-bottom: 2px solid #141414;
+/* An on/off switch drawn on the native checkbox: one tab stop, Space toggles it. */
+.call-sheet__switch {
+  appearance: none;
+  position: relative;
+  flex: none;
+  width: 30px;
+  height: 18px;
+  margin: 0;
+  border-radius: 9px;
+  background: var(--ink-surface-3);
+  border: 1px solid var(--ink-border-strong);
+  cursor: pointer;
+  transition: background 120ms;
 }
-.call-sheet__paper table {
+.call-sheet__switch::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--ink-text-secondary);
+  transition: transform 120ms;
+}
+.call-sheet__switch:checked {
+  background: var(--ink-accent-button);
+  border-color: var(--ink-accent-button);
+}
+.call-sheet__switch:checked::after {
+  background: var(--ink-on-accent);
+  transform: translateX(12px);
+}
+.call-sheet__switch:focus-visible {
+  outline: 2px solid var(--ink-accent-primary);
+  outline-offset: 2px;
+}
+.call-sheet__switch:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.call-sheet__notice {
+  margin: 0;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: var(--ink-surface-2);
+  border: 1px solid var(--ink-border-default);
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--ink-text-secondary);
+}
+/* The paper sits on the canvas colour, as the first page in the export dialog. */
+.call-sheet__preview {
+  min-width: 0;
+  max-height: calc(100dvh - 190px);
+  overflow: auto;
+  padding: 20px;
+  border-radius: 10px;
+  background: var(--ink-bg-canvas);
+  border: 1px solid var(--ink-border-default);
+}
+.call-sheet__empty {
+  margin: 0;
+  padding: 40px 0;
+  text-align: center;
+  font-size: 13px;
+  color: var(--ink-text-secondary);
+}
+
+/* The sheet itself: always light (.ink-paper), Inter, a clean grid of hairlines. */
+.call-sheet__paper {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 36px 40px 24px;
+  border-radius: 2px;
+  background: var(--ink-surface-1);
+  color: var(--ink-text-primary);
+  box-shadow: 0 1px 4px rgb(0 0 0 / 0.25);
+  font-size: 11px;
+  line-height: 1.45;
+  overflow-wrap: break-word;
+}
+.sheet__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--ink-border-strong);
+}
+.sheet__project {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--ink-text-secondary);
+}
+.sheet__title {
+  margin: 2px 0 0;
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+.sheet__logo {
+  max-width: 140px;
+  height: 36px;
+  object-fit: contain;
+}
+.sheet__facts {
+  display: grid;
+  grid-template-columns: 1fr 1.6fr 1fr 1fr;
+  margin: 0;
+  border-bottom: 1px solid var(--ink-border-default);
+}
+.sheet__fact {
+  padding: 10px 12px;
+  border-left: 1px solid var(--ink-border-default);
+}
+.sheet__fact:first-child {
+  padding-left: 0;
+  border-left: 0;
+}
+.sheet__fact dt,
+.sheet__section h4,
+.sheet__table th {
+  font-size: 8.5px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-text-muted);
+}
+.sheet__fact dd {
+  margin: 3px 0 0;
+  font-size: 12px;
+  font-weight: 500;
+}
+.sheet__fact dd.sheet__fact-strong {
+  font-size: 20px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+.sheet__section {
+  margin-top: 20px;
+}
+.sheet__section h4 {
+  margin: 0 0 6px;
+}
+.sheet__place {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+}
+.sheet__muted {
+  margin: 0;
+  color: var(--ink-text-secondary);
+}
+.sheet__pre {
+  white-space: pre-wrap;
+}
+.sheet__section > p.sheet__pre {
+  margin: 0;
+}
+.sheet__table {
   width: 100%;
   border-collapse: collapse;
 }
-.call-sheet__paper th,
-.call-sheet__paper td {
+.sheet__table th,
+.sheet__table td {
+  padding: 6px 8px;
   text-align: left;
   vertical-align: top;
-  padding: 6px;
-  border-bottom: 1px solid #ccc;
+  border-bottom: 1px solid var(--ink-border-default);
 }
-.call-sheet__paper p,
-.call-sheet__paper li {
-  white-space: pre-wrap;
+.sheet__table th {
+  padding-top: 0;
+  white-space: nowrap;
+  border-bottom-color: var(--ink-border-strong);
 }
+.sheet__table th:first-child,
+.sheet__table td:first-child {
+  padding-left: 0;
+}
+.sheet__table th:last-child,
+.sheet__table td:last-child {
+  padding-right: 0;
+}
+.sheet__table strong {
+  font-weight: 600;
+}
+.sheet__time {
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.sheet__table--schedule td:nth-child(2) {
+  width: 26%;
+}
+.sheet__table--schedule td:nth-child(3) {
+  white-space: nowrap;
+}
+.sheet__table--schedule td:nth-child(5) {
+  width: 18%;
+}
+/* Breaks, moves and set-ups: a quiet band, not another shot. */
+.sheet__row--aside td {
+  background: var(--ink-surface-2);
+  color: var(--ink-text-secondary);
+}
+/* The band's padding keeps every time of the schedule on one left edge. */
+.sheet__table--schedule th:first-child,
+.sheet__table--schedule td:first-child {
+  padding-left: 8px;
+}
+.sheet__foot {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 28px;
+  font-size: 8.5px;
+  color: var(--ink-text-muted);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .call-sheet__switch,
+  .call-sheet__switch::after {
+    transition: none;
+  }
+}
+
+@media (width < 768px) {
+  .phone-sheet .ink-dialog:has(.call-sheet) {
+    width: 100vw;
+    max-width: 100vw;
+  }
+  /* On phones the day comes first, then the sheet, then the section switches. */
+  .call-sheet__controls {
+    display: contents;
+  }
+  .call-sheet__preview {
+    order: 1;
+  }
+  .call-sheet__group,
+  .call-sheet__notice {
+    order: 2;
+  }
+  .call-sheet {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 16px;
+    max-height: calc(100dvh - 160px);
+    overflow-y: auto;
+  }
+  .call-sheet__preview {
+    max-height: none;
+    overflow: visible;
+    padding: 10px;
+  }
+  .call-sheet__paper {
+    padding: 20px 16px 16px;
+  }
+  .sheet__facts {
+    grid-template-columns: 1fr 1fr;
+  }
+  .sheet__fact:nth-child(3) {
+    padding-left: 0;
+    border-left: 0;
+  }
+  .sheet__fact:nth-child(-n + 2) {
+    border-bottom: 1px solid var(--ink-border-default);
+  }
+  /* The schedule turns into stacked rows: the time on the left, the shot and its scene,
+     what happens and who is in it on the right. */
+  .sheet__table--schedule thead {
+    display: none;
+  }
+  .sheet__table--schedule tr {
+    display: grid;
+    grid-template-columns: 92px minmax(0, 1fr);
+    column-gap: 8px;
+    row-gap: 2px;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--ink-border-default);
+  }
+  .sheet__table--schedule td {
+    display: block;
+    grid-column: 2;
+    width: auto !important;
+    padding: 0 !important;
+    border: 0;
+    white-space: normal !important;
+  }
+  .sheet__table--schedule td:first-child {
+    grid-column: 1;
+    grid-row: 1 / span 4;
+    padding-left: 8px !important;
+    white-space: nowrap !important;
+  }
+  .sheet__table--schedule td:nth-child(3) {
+    order: 1;
+  }
+  .sheet__table--schedule td:nth-child(2) {
+    order: 2;
+  }
+  .sheet__table--schedule td:nth-child(4) {
+    order: 3;
+  }
+  .sheet__table--schedule td:nth-child(5) {
+    order: 4;
+    color: var(--ink-text-secondary);
+  }
+  .sheet__table--schedule .sheet__row--aside {
+    background: var(--ink-surface-2);
+  }
+  .sheet__table--schedule .sheet__row--aside td {
+    background: none;
+  }
+}
+
 @media print {
   @page {
     size: A4 portrait;
@@ -79,20 +410,37 @@
   }
   .call-sheet {
     display: block;
+    max-height: none;
+    overflow: visible;
+  }
+  .call-sheet__preview {
+    max-height: none;
+    overflow: visible;
+    padding: 0;
+    border: 0;
+    background: none;
   }
   .call-sheet__paper {
+    max-width: none;
     padding: 0;
-    font-size: 10pt;
+    box-shadow: none;
+    font-size: 9.5pt;
   }
-  .call-sheet__paper thead {
+  .sheet__table--schedule {
+    min-width: 0;
+  }
+  .sheet__table thead {
     display: table-header-group;
   }
-  .call-sheet__paper tr,
-  .call-sheet__paper li,
-  .call-sheet__paper header {
+  .sheet__table tr,
+  .sheet__head,
+  .sheet__facts {
     break-inside: avoid;
   }
-  .call-sheet__paper h4 {
+  .sheet__section h4 {
     break-after: avoid;
+  }
+  .sheet__row--aside td {
+    print-color-adjust: exact;
   }
 }
