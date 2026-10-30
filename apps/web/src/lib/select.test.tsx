@@ -15,7 +15,7 @@ function Harness() {
         if (event.key === 'Escape') escaped();
       }}
     >
-      <label>Choice<Select
+      <label htmlFor="choice">Choice<Select id="choice"
         name="choice"
         aria-label="Choice"
         value={value}
@@ -54,7 +54,11 @@ it('opens with keyboard, skips disabled options, selects and submits the control
   await key('ArrowDown');
   await key('ArrowDown');
   await key('Enter');
-  expect(new FormData(host.querySelector('form')!).get('choice')).toBe('c');
+  const form = host.querySelector('form')!;
+  const submitted = vi.fn((event: Event) => { event.preventDefault(); return new FormData(form).get('choice'); });
+  form.addEventListener('submit', submitted);
+  form.requestSubmit();
+  expect(submitted).toHaveReturnedWith('c');
   expect(host.querySelector('button')?.getAttribute('aria-expanded')).toBe('false');
 });
 it('supports Home, End and type ahead', async () => {
