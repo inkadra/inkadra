@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { roots } from '@inkadra/doc-schema';
+import { roots, VideoFrameSource } from '@inkadra/doc-schema';
 import type * as Y from 'yjs';
 
 export interface IdMaps {
@@ -28,18 +28,24 @@ export function remapDoc(doc: Y.Doc, boardId: string, maps: IdMaps): void {
   doc.transact(() => {
     meta.set('boardId', boardId);
     for (const el of elements.values()) {
+      let pictureMissing = false;
       for (const field of ASSET_FIELDS) {
         if (!el.has(field)) continue;
         const to = maps.assets.get(el.get(field) as string);
         if (to) el.set(field, to);
-        else if (OPTIONAL_ASSET[el.get('type') as string] === field) el.delete(field);
-        else el.set(field, randomUUID());
+        else if (OPTIONAL_ASSET[el.get('type') as string] === field) {
+          el.delete(field);
+          if (field === 'assetId') pictureMissing = true;
+        } else el.set(field, randomUUID());
       }
-      const source = el.get('source') as { kind?: string; assetId?: string } | undefined;
-      if (source?.kind === 'uploaded-video') {
-        const to = source.assetId && maps.assets.get(source.assetId);
-        if (to) el.set('source', { ...source, assetId: to });
-        else el.delete('source');
+      if (el.has('source')) {
+        const source = VideoFrameSource.safeParse(el.get('source'));
+        if (pictureMissing || !el.has('assetId') || !source.success) el.delete('source');
+        else if (source.data.kind === 'uploaded-video') {
+          const to = maps.assets.get(source.data.assetId);
+          if (to) el.set('source', { ...source.data, assetId: to });
+          else el.delete('source');
+        } else el.set('source', source.data);
       }
       if (el.get('type') === 'board') el.set('boardId', mapped(maps.boards, el.get('boardId')));
       const by = el.get('createdBy');

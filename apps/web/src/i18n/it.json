@@ -2397,6 +2397,7 @@
     "stepHint": "Fotogramma precedente / successivo",
     "fromVideo": "Da video",
     "pickVideo": "Scegli un video o un link presente su questa lavagna.",
-    "noVideos": "Aggiungi prima un video o un link YouTube/Vimeo alla lavagna."
+    "noVideos": "Aggiungi prima un video o un link YouTube/Vimeo alla lavagna.",
+    "hiddenDestination": "La sorgente è nascosta agli ospiti: anche questa inquadratura verrà nascosta."
   }
 }

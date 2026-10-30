@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-import type { Element, VideoFrameSource } from '@inkadra/doc-schema';
+import { type Element, hiddenFromGuests, type VideoFrameSource } from '@inkadra/doc-schema';
 import type { Asset } from '@inkadra/shared';
 import { Icon } from '@inkadra/ui';
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
@@ -12,7 +12,7 @@ import {
   uploadBoardId,
 } from './frame-grab.ts';
 import type { BoardStore } from './store.ts';
-import { startUpload } from './uploads.ts';
+import { cancelUpload, startUpload } from './uploads.ts';
 import { isVideoLink, isYoutubeUrl, parseYoutubeStartTime } from './youtube.ts';
 
 export function FrameGrab({
@@ -25,7 +25,6 @@ export function FrameGrab({
   readOnly,
   initialFrameId,
   youtubeTime,
-  frameTime,
   onDone,
 }: {
   store: BoardStore;
@@ -37,7 +36,6 @@ export function FrameGrab({
   readOnly: boolean;
   initialFrameId?: string;
   youtubeTime?: number | null;
-  frameTime?: () => number | null;
   onDone: () => void;
 }) {
   const { t, i18n } = useTranslation();
@@ -55,17 +53,42 @@ export function FrameGrab({
   const allowed = useRef(!readOnly);
   allowed.current = !readOnly;
   const mounted = useRef(true);
+  const generation = useRef(0);
+  const uploadKey = useRef<string | null>(null);
+  const captureController = useRef<AbortController | null>(null);
   const pendingCommit = useRef<((assetId: string) => void) | null>(null);
   useEffect(() => {
     mounted.current = true;
+    const offline = () => {
+      if (!uploadKey.current) return;
+      generation.current += 1;
+      cancelUpload(uploadKey.current);
+      uploadKey.current = null;
+      pendingCommit.current = null;
+      setBusy(false);
+      setError(true);
+    };
+    window.addEventListener('offline', offline);
     return () => {
       mounted.current = false;
+      generation.current += 1;
+      captureController.current?.abort();
+      if (uploadKey.current) cancelUpload(uploadKey.current);
+      pendingCommit.current = null;
+      window.removeEventListener('offline', offline);
     };
   }, []);
   const subscribe = store.subscribe ?? (() => () => {});
   const snapshot = store.getSnapshot ?? (() => null);
   const currentSnapshot = useSyncExternalStore(subscribe, snapshot, snapshot);
   const frames = currentSnapshot ? frameChoices(store) : [];
+  const sourceHidden = currentSnapshot
+    ? hiddenFromGuests(element.id, (id) => currentSnapshot.byId.get(id))
+    : false;
+  const targetHidden =
+    target && currentSnapshot
+      ? hiddenFromGuests(target, (id) => currentSnapshot.byId.get(id))
+      : false;
   const external = element.type === 'link' && isVideoLink(element.url);
   const youtube = element.type === 'link' && isYoutubeUrl(element.url);
   const available =
@@ -95,14 +118,14 @@ export function FrameGrab({
     try {
       const player = video.current;
       if (!player || !asset) throw new Error('missing-video');
-      const timeSeconds = frameTime?.() ?? player.currentTime;
-      const captured = await captureVideoFrame(player);
+      captureController.current = new AbortController();
+      const captured = await captureVideoFrame(player, captureController.current.signal);
       if (!mounted.current || !allowed.current) return;
-      setFile(captured);
-      setSource({ kind: 'uploaded-video', assetId: asset.id, timeSeconds });
+      setFile(captured.file);
+      setSource({ kind: 'uploaded-video', assetId: asset.id, timeSeconds: captured.timeSeconds });
       setOpen(true);
     } catch {
-      setError(true);
+      if (mounted.current) setError(true);
     } finally {
       if (mounted.current) setBusy(false);
     }
@@ -111,6 +134,11 @@ export function FrameGrab({
   function save(targetId: string | null) {
     if (!source || !allowed.current || busy || !asset) return;
     setError(false);
+    if (navigator.onLine === false) {
+      setBusy(false);
+      setError(true);
+      return;
+    }
     const provenance: VideoFrameSource =
       source.kind === 'link-thumbnail' && youtube ? { ...source, timeSeconds: seconds } : source;
     const reference =
@@ -123,7 +151,12 @@ export function FrameGrab({
           })()
         : undefined;
     const commit = (assetId: string) => {
-      if (!mounted.current || !allowed.current) return;
+      uploadKey.current = null;
+      pendingCommit.current = null;
+      if (!mounted.current || !allowed.current) {
+        if (mounted.current) setBusy(false);
+        return;
+      }
       const ok = placeVideoStill(store, {
         sourceId: element.id,
         targetId,
@@ -134,8 +167,10 @@ export function FrameGrab({
         reference,
       });
       setBusy(false);
-      if (ok) onDone();
-      else setError(true);
+      if (ok) {
+        setFile(null);
+        onDone();
+      } else setError(true);
     };
     if (external) {
       commit(asset.id);
@@ -148,14 +183,21 @@ export function FrameGrab({
     }
     setBusy(true);
     pendingCommit.current = commit;
-    startUpload({
+    const run = ++generation.current;
+    uploadKey.current = startUpload({
       file,
       projectId,
       boardId,
       onAsset: () => {},
-      onComplete: (assetId) => pendingCommit.current?.(assetId),
+      onComplete: (assetId) => {
+        if (run === generation.current) pendingCommit.current?.(assetId);
+      },
       onFailed: () => {
-        if (mounted.current) {
+        if (mounted.current && run === generation.current) {
+          generation.current += 1;
+          if (uploadKey.current) cancelUpload(uploadKey.current);
+          uploadKey.current = null;
+          pendingCommit.current = null;
           setBusy(false);
           setError(true);
         }
@@ -172,7 +214,7 @@ export function FrameGrab({
         aria-label={t(external ? 'frameGrab.thumbnail' : 'frameGrab.grab')}
         aria-keyshortcuts={external ? undefined : 'G'}
         aria-expanded={open}
-        aria-controls="frame-grab-options"
+        aria-controls={open || error ? 'frame-grab-options' : undefined}
         disabled={busy}
         onClick={() => void grab()}
       >
@@ -194,9 +236,15 @@ export function FrameGrab({
             <button
               type="button"
               className="ink-btn ink-btn--ghost"
-              disabled={busy}
               aria-label={t('viewer.close')}
               onClick={() => {
+                generation.current += 1;
+                captureController.current?.abort();
+                if (uploadKey.current) cancelUpload(uploadKey.current);
+                uploadKey.current = null;
+                pendingCommit.current = null;
+                setBusy(false);
+                setFile(null);
                 setOpen(false);
                 setError(false);
                 button.current?.focus();
@@ -250,6 +298,9 @@ export function FrameGrab({
                   ))}
                 </select>
               </label>
+              {sourceHidden && target && !targetHidden && (
+                <p className="ink-muted">{t('frameGrab.hiddenDestination')}</p>
+              )}
               {!frames.length && <p className="ink-muted">{t('frameGrab.noFrames')}</p>}
               <button
                 type="button"

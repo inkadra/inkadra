@@ -7,6 +7,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { type GuestActions, GuestActionsContext } from '../guest/actions.ts';
 import { GuestViewer } from '../guest/GuestViewer.tsx';
+import { GuestModeContext } from './context.ts';
 import { resetReviews, setReviews } from './review-store.ts';
 import { isUnplayableVideoError, MediaViewer, VideoUnplayable } from './viewer.tsx';
 
@@ -640,6 +641,37 @@ describe('MediaViewer keyboard, focus and comments', () => {
     resetReviews();
   });
 
+  it('keeps gallery arrows while paused and steps only with comma, period or Shift arrows', async () => {
+    mockState.asset = videoAsset;
+    const next = vi.fn();
+    const previous = vi.fn();
+    await render(
+      viewer({
+        element: { ...element, type: 'file' } as Extract<Element, { type: 'file' }>,
+        gallery: { index: 0, total: 2, onPrevious: previous, onNext: next, usedIn: [] },
+      }),
+    );
+    const video = container.querySelector('video')!;
+    Object.defineProperties(video, { paused: { value: true }, duration: { value: 10 } });
+    video.currentTime = 1;
+    const key = async (key: string, shiftKey = false) =>
+      act(async () => {
+        window.dispatchEvent(new KeyboardEvent('keydown', { key, shiftKey, bubbles: true }));
+      });
+    await key('ArrowRight');
+    await key('ArrowLeft');
+    expect(next).toHaveBeenCalledOnce();
+    expect(previous).toHaveBeenCalledOnce();
+    expect(video.currentTime).toBe(1);
+    await key('.');
+    expect(video.currentTime).toBeGreaterThan(1);
+    await key(',');
+    expect(video.currentTime).toBeCloseTo(1);
+    await key('ArrowRight', true);
+    expect(video.currentTime).toBeGreaterThan(1);
+    expect(next).toHaveBeenCalledOnce();
+  });
+
   it('leaves Space to a focused button', async () => {
     await render(viewer());
     const button = container.querySelector<HTMLButtonElement>(
@@ -759,6 +791,37 @@ describe('viewer translations', () => {
     for (const k of keys) {
       expect(typeof get(en, k), k).toBe('string');
       expect(typeof get(it_, k), k).toBe('string');
+    }
+  });
+});
+
+describe('capture permission matrix', () => {
+  it('shows Grab only for an editor outside guest mode', () => {
+    mockState.asset = videoAsset;
+    for (const [readOnly, guest, visible] of [
+      [false, false, true],
+      [true, false, false],
+      [false, true, false],
+      [true, true, false],
+    ]) {
+      const html = renderToStaticMarkup(
+        <GuestModeContext.Provider value={guest!}>
+          <MediaViewer
+            store={{} as import('./store.ts').BoardStore}
+            element={
+              { id: 'video-card', type: 'file', assetId: videoAsset.id } as Extract<
+                Element,
+                { type: 'file' }
+              >
+            }
+            projectId="p"
+            userId="u"
+            readOnly={readOnly!}
+            onClose={() => {}}
+          />
+        </GuestModeContext.Provider>,
+      );
+      expect(html.includes('viewer__grab')).toBe(visible);
     }
   });
 });

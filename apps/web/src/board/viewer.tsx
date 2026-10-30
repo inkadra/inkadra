@@ -294,20 +294,25 @@ export function MediaViewer({
         dialogRef.current?.querySelector<HTMLButtonElement>('.viewer__grab')?.click();
         return;
       }
-      if ((e.key === 'ArrowLeft' || e.key === 'ArrowRight') && videoRef.current?.paused) {
+      if (
+        (e.key === ',' ||
+          e.key === '.' ||
+          (e.shiftKey && (e.key === 'ArrowLeft' || e.key === 'ArrowRight'))) &&
+        videoRef.current?.paused
+      ) {
         e.preventDefault();
-        stepper.current.step(videoRef.current, e.key === 'ArrowLeft' ? -1 : 1);
+        stepper.current.step(videoRef.current, e.key === ',' || e.key === 'ArrowLeft' ? -1 : 1);
         return;
       }
       if (e.key === 'Escape') {
         e.preventDefault();
         onClose();
       }
-      if (gallery && e.key === 'ArrowLeft') {
+      if (gallery && !e.shiftKey && e.key === 'ArrowLeft') {
         e.preventDefault();
         gallery.onPrevious();
       }
-      if (gallery && e.key === 'ArrowRight') {
+      if (gallery && !e.shiftKey && e.key === 'ArrowRight') {
         e.preventDefault();
         gallery.onNext();
       }
@@ -436,7 +441,6 @@ export function MediaViewer({
             userId={userId}
             readOnly={readOnly || guestMode}
             initialFrameId={initialFrameId}
-            frameTime={() => stepper.current.mediaTime}
             youtubeTime={youtubeTime}
             onDone={onClose}
           />
@@ -576,7 +580,9 @@ export function MediaViewer({
           {(ready?.kind !== 'video' || videoPaused) && (
             <div className="viewer__hints">
               <span className="viewer__hint">
-                <span className="viewer__hint-kbd">← →</span>{' '}
+                <span className="viewer__hint-kbd">
+                  {ready?.kind === 'video' ? ', / . · ⇧ ← / →' : '← →'}
+                </span>{' '}
                 {t(ready?.kind === 'video' ? 'frameGrab.stepHint' : 'viewer.hints.nav')}
               </span>
             </div>

@@ -106,17 +106,41 @@ describe('video still destinations', () => {
   });
 });
 
-it('captures at intrinsic resolution and rejects cross-origin or seeking video', async () => {
+it('pauses a playing video, waits for presentation, captures its timestamp and releases the canvas', async () => {
   const video = document.createElement('video');
   video.src = '/footage.mp4';
+  let paused = false;
+  let time = 1;
   Object.defineProperties(video, {
     videoWidth: { value: 1920 },
     videoHeight: { value: 1080 },
     readyState: { value: 2 },
-    currentTime: { value: 1.25 },
+    paused: { get: () => paused },
+    currentTime: {
+      get: () => time,
+      set: () => {
+        time = 1.25;
+        queueMicrotask(() => video.dispatchEvent(new Event('seeked')));
+      },
+    },
   });
+  vi.spyOn(video, 'pause').mockImplementation(() => {
+    paused = true;
+    time = 1.2;
+  });
+  video.requestVideoFrameCallback = (callback) => {
+    expect(paused).toBe(true);
+    queueMicrotask(() => callback(0, { mediaTime: 1.25 } as VideoFrameCallbackMetadata));
+    return 1;
+  };
+  video.cancelVideoFrameCallback = vi.fn();
   const canvas = document.createElement('canvas');
-  const draw = vi.fn();
+  const draw = vi.fn(() => {
+    expect(paused).toBe(true);
+    expect(time).toBe(1.25);
+    expect(canvas.width).toBe(1920);
+    expect(canvas.height).toBe(1080);
+  });
   vi.spyOn(canvas, 'getContext').mockReturnValue({ drawImage: draw } as never);
   vi.spyOn(canvas, 'toBlob').mockImplementation((callback) =>
     callback(new Blob(['png'], { type: 'image/png' })),
@@ -125,11 +149,12 @@ it('captures at intrinsic resolution and rejects cross-origin or seeking video',
   vi.spyOn(document, 'createElement').mockImplementation((tag, options) =>
     tag === 'canvas' ? canvas : create(tag, options),
   );
-  const file = await captureVideoFrame(video);
-  expect(canvas.width).toBe(1920);
-  expect(canvas.height).toBe(1080);
+  const captured = await captureVideoFrame(video);
+  expect(captured.timeSeconds).toBe(1.25);
+  expect(captured.file.type).toBe('image/png');
   expect(draw).toHaveBeenCalledWith(video, 0, 0);
-  expect(file.type).toBe('image/png');
+  expect(canvas.width).toBe(0);
+  expect(canvas.height).toBe(0);
   video.src = 'https://other.example/footage.mp4';
   await expect(captureVideoFrame(video)).rejects.toThrow('cross-origin');
   vi.restoreAllMocks();

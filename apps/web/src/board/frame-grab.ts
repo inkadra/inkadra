@@ -18,26 +18,70 @@ export function formatSourceTime(seconds: number, locale: string): string {
   return `${minutes}:${remainder}`;
 }
 
-/** Full decoded resolution, never the CSS size of the player. */
-export async function captureVideoFrame(video: HTMLVideoElement): Promise<File> {
+/** Freeze and present a decoded frame before reading its time or copying its pixels. */
+export async function captureVideoFrame(
+  video: HTMLVideoElement,
+  signal?: AbortSignal,
+): Promise<{ file: File; timeSeconds: number }> {
   if (new URL(video.currentSrc || video.src, location.href).origin !== location.origin)
     throw new Error('cross-origin');
-  if (video.readyState < 2 || !video.videoWidth || !video.videoHeight || video.seeking)
-    throw new Error('not-ready');
+  if (video.readyState < 2 || !video.videoWidth || !video.videoHeight) throw new Error('not-ready');
   video.pause();
-  const canvas = document.createElement('canvas');
-  canvas.width = video.videoWidth;
-  canvas.height = video.videoHeight;
-  const ctx = canvas.getContext('2d');
-  if (!ctx) throw new Error('canvas-unavailable');
-  ctx.drawImage(video, 0, 0);
-  const blob = await new Promise<Blob>((resolve, reject) => {
-    canvas.toBlob(
-      (blob) => (blob ? resolve(blob) : reject(new Error('encode-failed'))),
-      'image/png',
-    );
+  const presented = await new Promise<number | null>((resolve, reject) => {
+    let callback: number | undefined;
+    let raf: number | undefined;
+    const finish = (time: number | null, error?: Error) => {
+      clearTimeout(timeout);
+      video.removeEventListener('seeked', seeked);
+      signal?.removeEventListener('abort', aborted);
+      if (callback !== undefined) video.cancelVideoFrameCallback(callback);
+      if (raf !== undefined) cancelAnimationFrame(raf);
+      if (error) reject(error);
+      else resolve(time);
+    };
+    const aborted = () => finish(null, new Error('cancelled'));
+    const seeked = () => {
+      if (video.requestVideoFrameCallback)
+        callback = video.requestVideoFrameCallback((_now, meta) => finish(meta.mediaTime));
+      // Some browsers do not send a new rVFC for a same-time seek. Wait for paint there.
+      raf = requestAnimationFrame(() => {
+        raf = requestAnimationFrame(() => finish(null));
+      });
+    };
+    const timeout = setTimeout(() => finish(null, new Error('frame-timeout')), 3000);
+    video.addEventListener('seeked', seeked, { once: true });
+    signal?.addEventListener('abort', aborted, { once: true });
+    if (signal?.aborted) {
+      aborted();
+      return;
+    }
+    // Force a paused presentation even when capture was requested during playback.
+    // biome-ignore lint/correctness/noSelfAssign: a same-time seek refreshes paused video presentation
+    video.currentTime = video.currentTime;
   });
-  return new File([blob], `frame-${video.currentTime.toFixed(3)}.png`, { type: 'image/png' });
+  if (signal?.aborted || video.seeking || !video.paused) throw new Error('not-ready');
+  const timeSeconds = presented ?? video.currentTime;
+  const canvas = document.createElement('canvas');
+  try {
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) throw new Error('canvas-unavailable');
+    ctx.drawImage(video, 0, 0);
+    const blob = await new Promise<Blob>((resolve, reject) => {
+      canvas.toBlob(
+        (blob) => (blob ? resolve(blob) : reject(new Error('encode-failed'))),
+        'image/png',
+      );
+    });
+    return {
+      file: new File([blob], `frame-${timeSeconds.toFixed(3)}.png`, { type: 'image/png' }),
+      timeSeconds,
+    };
+  } finally {
+    canvas.width = 0;
+    canvas.height = 0;
+  }
 }
 
 export function frameChoices(store: BoardStore) {

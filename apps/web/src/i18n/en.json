@@ -2397,6 +2397,7 @@
     "stepHint": "Previous / next frame",
     "fromVideo": "From video",
     "pickVideo": "Choose a video or link on this board.",
-    "noVideos": "Add a video or YouTube/Vimeo link to this board first."
+    "noVideos": "Add a video or YouTube/Vimeo link to this board first.",
+    "hiddenDestination": "The source is hidden from guests: this frame will also be hidden."
   }
 }

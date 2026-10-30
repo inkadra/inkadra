@@ -164,11 +164,14 @@ export function startUpload({
   void upload
     .findPreviousUploads()
     .then((previous) => {
+      if (!uploads.has(key)) return;
       const last = previous[0];
       if (last) upload.resumeFromPreviousUpload(last);
       upload.start();
     })
-    .catch(() => upload.start());
+    .catch(() => {
+      if (uploads.has(key)) upload.start();
+    });
   return key;
 }
 

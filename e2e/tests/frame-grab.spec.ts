@@ -115,7 +115,13 @@ for (const [device, width, height] of [
         { action: 'The last train arrives at the platform.', notes: 'Keep the warm window light.' },
         { userId: null },
       );
-      createElement(doc, 'file', { x: 60, y: 40 }, { assetId: assetId! }, { userId: null });
+      createElement(
+        doc,
+        'file',
+        { x: 60, y: 40 },
+        { assetId: assetId!, guestHidden: device === 'desktop' && theme === 'dark' },
+        { userId: null },
+      );
       await pushBoardDoc(baseURL!, cookie, project.rootBoardId, doc);
       await page.goto(`/p/${project.id}/b/${project.rootBoardId}?view=canvas`);
       await expect(page.locator('[data-type="file"]')).toBeVisible();
@@ -136,12 +142,12 @@ for (const [device, width, height] of [
         await new Promise<void>((r) => video.addEventListener('seeked', () => r(), { once: true }));
       });
       await expect(viewer.locator('.viewer__hint')).toHaveText(
-        '← → Fotogramma precedente / successivo',
+        ', / . · ⇧ ← / → Fotogramma precedente / successivo',
       );
       await page.screenshot({ path: `${out}/${device}-${theme}-viewer.png` });
-      // Paused arrow keys seek the video rather than navigate away.
+      // Period steps the paused video; plain arrows remain gallery navigation.
       const before = await video.evaluate((v: HTMLVideoElement) => v.currentTime);
-      await page.keyboard.press('ArrowRight');
+      await page.keyboard.press('.');
       await expect
         .poll(() => video.evaluate((v: HTMLVideoElement) => v.currentTime))
         .toBeGreaterThan(before);
@@ -154,6 +160,12 @@ for (const [device, width, height] of [
       await expect(
         page.getByText(/^Fotogramma a \d+:\d{2},\d{2} · risoluzione originale$/),
       ).toBeVisible();
+      if (device === 'desktop' && theme === 'dark')
+        await expect(
+          page.getByText(
+            'La sorgente è nascosta agli ospiti: anche questa inquadratura verrà nascosta.',
+          ),
+        ).toBeVisible();
       await page.screenshot({ path: `${out}/${device}-${theme}-destination.png` });
       const uploaded = page.waitForResponse(
         (res) => res.request().method() === 'PATCH' && res.url().includes('/uploads/') && res.ok(),
@@ -199,6 +211,8 @@ for (const [device, width, height] of [
         await expect
           .poll(() => player.evaluate((v: HTMLVideoElement) => v.readyState))
           .toBeGreaterThanOrEqual(2);
+        await player.evaluate((video: HTMLVideoElement) => video.play());
+        expect(await player.evaluate((video: HTMLVideoElement) => video.paused)).toBe(false);
         await page.getByRole('button', { name: 'Cattura fotogramma', exact: true }).click();
         await expect(
           page.getByRole('combobox', { name: 'Inquadratura', exact: true }),

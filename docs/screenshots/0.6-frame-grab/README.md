@@ -5,11 +5,11 @@ Captured from the running app in installed Chrome on the workstation, using the 
 No client footage or external video was downloaded. The image shown in each storyboard is
 an actual uploaded PNG captured by the viewer through the normal tus/media flow.
 
-| View | Desktop light | Desktop dark | Phone light | Phone dark |
-| --- | --- | --- | --- | --- |
-| Viewer and capture action | [Image](desktop-light-viewer.png) | [Image](desktop-dark-viewer.png) | [Image](phone-light-viewer.png) | [Image](phone-dark-viewer.png) |
-| Destination choice | [Image](desktop-light-destination.png) | [Image](desktop-dark-destination.png) | [Image](phone-light-destination.png) | [Image](phone-dark-destination.png) |
-| Resulting storyboard | [Image](desktop-light-storyboard.png) | [Image](desktop-dark-storyboard.png) | [Image](phone-light-storyboard.png) | [Image](phone-dark-storyboard.png) |
+| View                      | Desktop light                          | Desktop dark                          | Phone light                          | Phone dark                          |
+| ------------------------- | -------------------------------------- | ------------------------------------- | ------------------------------------ | ----------------------------------- |
+| Viewer and capture action | [Image](desktop-light-viewer.png)      | [Image](desktop-dark-viewer.png)      | [Image](phone-light-viewer.png)      | [Image](phone-dark-viewer.png)      |
+| Destination choice        | [Image](desktop-light-destination.png) | [Image](desktop-dark-destination.png) | [Image](phone-light-destination.png) | [Image](phone-dark-destination.png) |
+| Resulting storyboard      | [Image](desktop-light-storyboard.png)  | [Image](desktop-dark-storyboard.png)  | [Image](phone-light-storyboard.png)  | [Image](phone-dark-storyboard.png)  |
 
 Desktop viewport: 1440×900. Phone viewport: 412×915. Themes use Inkadra's existing tokens.
 Regenerate with `pnpm --filter @inkadra/e2e exec playwright test --config frame-grab.config.ts

@@ -14,6 +14,39 @@ const importer = '99999999-9999-4999-8999-999999999999';
 const base = { x: 0, y: 0, w: 200, z: 'a0', parent: null, createdAt: 1, createdBy: author };
 
 describe('remapDoc', () => {
+  it('drops malformed provenance and sources of missing frame pictures', () => {
+    const doc = createBoardDoc(oldBoard);
+    const malformed = [
+      null,
+      'source',
+      {},
+      { kind: 'uploaded-video', assetId: file, timeSeconds: -1 },
+      { kind: 'link-thumbnail', url: 'javascript:alert(1)' },
+    ];
+    malformed.forEach((source, index) => {
+      const el = addElement(doc, {
+        ...base,
+        id: `bad-source-${index}`,
+        type: 'image',
+        assetId: file,
+      });
+      el.set('source', source);
+    });
+    addElement(doc, {
+      ...base,
+      id: 'missing-picture',
+      type: 'frame',
+      assetId: elsewhere,
+      source: { kind: 'link-thumbnail', url: 'https://vimeo.com/123' },
+    });
+    remapDoc(doc, newBoard, {
+      boards: new Map(),
+      assets: new Map([[file, newFile]]),
+      person: () => importer,
+    });
+    for (const el of roots(doc).elements.values()) expect(el.has('source')).toBe(false);
+  });
+
   it('remaps nested video provenance and drops sources of videos not imported', () => {
     const doc = createBoardDoc(oldBoard);
     for (const type of ['frame', 'image'] as const) {
