@@ -1,4 +1,11 @@
-import { addElement, createBoardDoc, readElement, roots } from '@inkadra/doc-schema';
+import {
+  addElement,
+  createBoardDoc,
+  getAnimaticAudio,
+  readElement,
+  roots,
+  setAnimaticAudio,
+} from '@inkadra/doc-schema';
 import { describe, expect, it } from 'vitest';
 import { remapDoc, remapMentions } from './remap.ts';
 
@@ -162,6 +169,18 @@ describe('remapDoc', () => {
     const link = read('link-00001') as { imageAssetId?: string };
     expect(link.imageAssetId).toBeUndefined();
     expect(JSON.stringify(read('link-00001'))).not.toContain(elsewhere);
+  });
+
+  it('remaps the sound track of the animatic and drops one whose file was skipped', () => {
+    const kept = createBoardDoc(oldBoard);
+    setAnimaticAudio(kept, { assetId: file, volume: 0.6 });
+    const maps = { boards: new Map(), assets: new Map([[file, newFile]]), person: () => importer };
+    remapDoc(kept, newBoard, maps);
+    expect(getAnimaticAudio(kept)).toEqual({ assetId: newFile, volume: 0.6 });
+    const skipped = createBoardDoc(oldBoard);
+    setAnimaticAudio(skipped, { assetId: elsewhere, volume: 1 });
+    remapDoc(skipped, newBoard, maps);
+    expect(roots(skipped).meta.has('animaticAudio')).toBe(false);
   });
 });
 

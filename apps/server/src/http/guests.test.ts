@@ -1,6 +1,12 @@
 import type { AddressInfo } from 'node:net';
 import { fileURLToPath } from 'node:url';
-import { addElement, createBoardDoc, type Element, roots } from '@inkadra/doc-schema';
+import {
+  addElement,
+  createBoardDoc,
+  type Element,
+  roots,
+  setAnimaticAudio,
+} from '@inkadra/doc-schema';
 import { hashPassword } from 'better-auth/crypto';
 import { and, eq, sql } from 'drizzle-orm';
 import pino from 'pino';
@@ -1711,6 +1717,74 @@ describe.skipIf(!url)('guest share links (needs DATABASE_URL)', () => {
       404,
     );
     expect((await call({ cookie: o.cookie }, 'GET', g(link, `/assets/${X.xq}/file`))).status).toBe(
+      404,
+    );
+  });
+
+  it('streams the sound track of a shared animatic inline, never as a download', async () => {
+    const [sb] = await db
+      .insert(board)
+      .values({ projectId: P, title: 'Ultimo Treno', position: 'a9', parentBoardId: B.R, kind: 'storyboard' })
+      .returning();
+    const S = sb?.id as string;
+    const [track] = await db
+      .insert(asset)
+      .values({
+        projectId: P,
+        kind: 'audio',
+        mime: 'audio/mpeg',
+        filename: 'binario.mp3',
+        size: 10,
+        storageKey: 'originals/binario.mp3',
+        status: 'ready',
+      })
+      .returning();
+    const A = track?.id as string;
+    await deps.storage.write('originals/binario.mp3', Buffer.from('0123456789'), 'audio/mpeg');
+    await saveDoc(S, [{ ...el, id: 'frame_audio_1', type: 'frame', parent: null, durationMs: 2000 }], (doc) =>
+      setAnimaticAudio(doc, { assetId: A, volume: 0.7 }),
+    );
+    const link = await createLink('editor', S);
+    const o = await open(link);
+    const snap = await call({ cookie: o.cookie }, 'GET', g(link, `/boards/${S}`));
+    expect(snap.body.board.animaticAudio).toEqual({ assetId: A, volume: 0.7 });
+    expect(snap.body.assets.find((a: { id: string }) => a.id === A)).toMatchObject({
+      kind: 'audio',
+      filename: null,
+      downloadUrl: null,
+      streamUrl: `/api/v1/guest/links/${link.id}/assets/${A}/stream`,
+    });
+    const stream = await call({ cookie: o.cookie }, 'GET', g(link, `/assets/${A}/stream`));
+    expect(stream.status).toBe(200);
+    expect(stream.text).toBe('0123456789');
+    expect(stream.headers.get('content-type')).toBe('audio/mpeg');
+    expect(stream.headers.get('content-disposition')).toBe('inline');
+    expect(stream.headers.get('cache-control')).toBe('private, no-store');
+    const part = await call(
+      { cookie: o.cookie },
+      'GET',
+      g(link, `/assets/${A}/stream`),
+      undefined,
+      { range: 'bytes=2-4' },
+    );
+    expect(part.status).toBe(206);
+    expect(part.text).toBe('234');
+    // No original without downloads, no stream of anything but the track, nor without a session.
+    expect((await call({ cookie: o.cookie }, 'GET', g(link, `/assets/${A}/file`))).status).toBe(
+      403,
+    );
+    expect(
+      (await call({ cookie: o.cookie }, 'GET', g(link, `/assets/${X.x1}/stream`))).status,
+    ).toBe(404);
+    expect((await call(null, 'GET', g(link, `/assets/${A}/stream`))).status).toBe(401);
+    // A board that is not a storyboard has no animatic to stream.
+    await db.update(board).set({ kind: 'board' }).where(eq(board.id, S));
+    const plain = await createLink('editor', S);
+    const p = await open(plain);
+    const again = await call({ cookie: p.cookie }, 'GET', g(plain, `/boards/${S}`));
+    expect(again.body.board.animaticAudio).toBeNull();
+    expect(again.body.assets.some((a: { id: string }) => a.id === A)).toBe(false);
+    expect((await call({ cookie: p.cookie }, 'GET', g(plain, `/assets/${A}/stream`))).status).toBe(
       404,
     );
   });

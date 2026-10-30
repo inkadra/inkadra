@@ -275,3 +275,36 @@
     flex-wrap: wrap;
   }
 }
+
+/* Animatic on a phone: the picture first, controls in two rows, the hint left out. */
+@media (width < 768px) {
+  .animatic__stage {
+    padding: 6px;
+  }
+  .animatic__picture {
+    width: 100%;
+    min-width: 0;
+  }
+  .animatic__caption {
+    bottom: 6px;
+    max-width: calc(100% - 12px);
+    padding: 4px 8px;
+    font-size: 12px;
+  }
+  .animatic__controls {
+    gap: 8px;
+  }
+  .animatic__scrub {
+    order: 3;
+    flex-basis: 100%;
+  }
+  .animatic__toggles {
+    margin-left: auto;
+  }
+  .animatic__toggles .story__aspect > span,
+  .animatic__sound-name,
+  .animatic__block-time,
+  .animatic__hint {
+    display: none;
+  }
+}

@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import {
   CURRENT_SCHEMA_VERSION,
+  getAnimaticAudio,
   getBoardAspect,
   getSchemaVersion,
   readElement,
@@ -257,6 +258,7 @@ export async function exportProject(
         boardId: b.id,
         schemaVersion,
         aspect: getBoardAspect(doc),
+        animaticAudio: getAnimaticAudio(doc),
         elements: readable,
       });
       doc.destroy();

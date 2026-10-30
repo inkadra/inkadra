@@ -277,10 +277,12 @@ export function writeVersionOver(live: Y.Doc, version: Y.Doc): void {
     }
     for (const id of hidden)
       if (!hiddenFromGuests(id, lookup)) now.elements.get(id)?.set(GUEST_HIDDEN, true);
-    const aspect = then.meta.get('aspect');
-    if (!same(now.meta.get('aspect'), aspect)) {
-      if (aspect === undefined) now.meta.delete('aspect');
-      else now.meta.set('aspect', aspect);
+    // The storyboard's aspect and animatic sound track come back with the frames.
+    for (const key of ['aspect', 'animaticAudio']) {
+      const value = then.meta.get(key);
+      if (same(now.meta.get(key), value)) continue;
+      if (value === undefined) now.meta.delete(key);
+      else now.meta.set(key, value);
     }
   });
 }

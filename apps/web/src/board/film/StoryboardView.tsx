@@ -251,10 +251,12 @@ export function StoryboardView({
               key={filter ?? ''}
               store={store}
               frames={visibleFrames}
+              groups={visible}
               labels={labels}
               boardAspect={boardAspect}
               readOnly={readOnly}
               suspended={present}
+              upload={readOnly ? undefined : { projectId, boardId }}
             />
           )}
           {mode === 'animatic' && groups.length > 0 && visibleFrames.length === 0 && (

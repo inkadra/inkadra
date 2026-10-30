@@ -1,9 +1,11 @@
 import {
+  AnimaticAudio,
   AspectRatio,
   addElement,
   Element,
   initBoardDoc,
   roots,
+  setAnimaticAudio,
   setBoardAspect,
 } from '@inkadra/doc-schema';
 import type { GuestElement } from '@inkadra/shared';
@@ -87,11 +89,20 @@ const written = new WeakMap<Y.Map<unknown>, string>();
  * Makes the doc show exactly the elements of a snapshot. Elements that do not parse (a type
  * this build does not know) are left out rather than breaking the board.
  */
-export function syncGuestDoc(doc: Y.Doc, elements: readonly GuestElement[], aspect: string | null) {
-  const { elements: map } = roots(doc);
+export function syncGuestDoc(
+  doc: Y.Doc,
+  elements: readonly GuestElement[],
+  aspect: string | null,
+  audio: AnimaticAudio | null = null,
+) {
+  const { elements: map, meta } = roots(doc);
   doc.transact(() => {
     const parsedAspect = AspectRatio.safeParse(aspect);
     setBoardAspect(doc, parsedAspect.success ? parsedAspect.data : null);
+    const parsedAudio = AnimaticAudio.safeParse(audio);
+    const nextAudio = parsedAudio.success ? parsedAudio.data : null;
+    if (JSON.stringify(meta.get('animaticAudio') ?? null) !== JSON.stringify(nextAudio))
+      setAnimaticAudio(doc, nextAudio);
     const keep = new Set<string>();
     for (const raw of elements) {
       const { body, ...fields } = raw;

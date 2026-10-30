@@ -196,6 +196,15 @@ const paths = {
     </>
   ),
   play: <path d="M8 5v14l11-7z" />,
+  volume: <path d="M4 9h4l5-4v14l-5-4H4zM16 9a4 4 0 0 1 0 6M18.5 6.5a7.5 7.5 0 0 1 0 11" />,
+  mute: <path d="M4 9h4l5-4v14l-5-4H4zM16 9l5 6M21 9l-5 6" />,
+  repeat: <path d="M4 11V9a3 3 0 0 1 3-3h12l-3-3M20 13v2a3 3 0 0 1-3 3H5l3 3" />,
+  captions: (
+    <>
+      <rect x="3" y="5" width="18" height="14" rx="2" />
+      <path d="M7 15h6M15 15h2M7 11h2M11 11h6" />
+    </>
+  ),
   brush: <path d="M14 4l6 6-8 8-6-6zM6 12c-2 0-3 2-3 4 0 1-1 3-1 3s3 0 5-1c2-1 3-2 3-4" />,
   marker: <path d="M15 4l5 5-9 9H6v-5zM4 20h7" />,
   eraser: <path d="M9 20h11M4 15l9-11 7 6-8 10H8zM9 9l6 5" />,
