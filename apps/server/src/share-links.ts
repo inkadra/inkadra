@@ -1,7 +1,9 @@
 import { createHash } from 'node:crypto';
 import { frameLabels, storyboardOf } from '@inkadra/canvas-core';
 import {
+  type AnimaticAudio,
   type Element,
+  getAnimaticAudio,
   getBoardAspect,
   hiddenFromGuests,
   readElement,
@@ -55,7 +57,8 @@ export interface LinkContents {
   boards: Map<string, LinkBoard>;
   views: Map<string, BoardView>;
   shown: Map<string, Element[]>;
-  assets: { shown: Set<string>; covers: Set<string> };
+  /** `audio`: sound tracks of the link's storyboards, streamed only (decision 0046). */
+  assets: { shown: Set<string>; covers: Set<string>; audio: Set<string> };
 }
 
 export type ResolvedLink =
@@ -152,12 +155,14 @@ export async function resolveLink(
     }
   }
   const shown = new Map<string, Element[]>();
-  const assets = { shown: new Set<string>(), covers: new Set<string>() };
+  const assets = { shown: new Set<string>(), covers: new Set<string>(), audio: new Set<string>() };
   for (const [id, { row }] of included) {
-    const elements = linkElements(await viewFor(id), included);
+    const view = await viewFor(id);
+    const elements = linkElements(view, included);
     shown.set(id, elements);
     for (const el of elements) for (const assetId of elementAssetIds(el)) assets.shown.add(assetId);
     if (row.coverAssetId) assets.covers.add(row.coverAssetId);
+    if (row.kind === 'storyboard' && view.audio) assets.audio.add(view.audio.assetId);
   }
   const contents = { boards: included, views, shown, assets };
   docs.rememberLink(key, contents);
@@ -169,6 +174,8 @@ export async function resolveLink(
 /** What guests may see of one stored board document, before the link is applied. */
 export interface BoardView {
   aspect: string | null;
+  /** The sound track of the animatic (`meta.animaticAudio`). */
+  audio: AnimaticAudio | null;
   /** Valid elements not hidden from guests, nor inside something hidden. */
   visible: Element[];
   /** Rich text of the visible notes, as ProseMirror JSON. */
@@ -177,7 +184,13 @@ export interface BoardView {
   labels: Map<string, string>;
 }
 
-const EMPTY_VIEW: BoardView = { aspect: null, visible: [], bodies: new Map(), labels: new Map() };
+const EMPTY_VIEW: BoardView = {
+  aspect: null,
+  audio: null,
+  visible: [],
+  bodies: new Map(),
+  labels: new Map(),
+};
 
 /** Reads a document, leaving out what is hidden from guests (fails closed, decision 0013). */
 export function viewOf(doc: Y.Doc): BoardView {
@@ -204,7 +217,7 @@ export function viewOf(doc: Y.Doc): BoardView {
   // By id, so the snapshot and its version do not depend on how the document was decoded.
   visible.sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
   const labels = frameLabels(storyboardOf(all));
-  return { aspect: getBoardAspect(doc), visible, bodies, labels };
+  return { aspect: getBoardAspect(doc), audio: getAnimaticAudio(doc), visible, bodies, labels };
 }
 
 /**

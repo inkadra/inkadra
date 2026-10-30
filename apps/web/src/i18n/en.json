@@ -869,7 +869,7 @@
       "selectRow": "Select shot {{label}}"
     },
     "playback": {
-      "mode": "View",
+      "mode": "Storyboard mode",
       "grid": "Grid",
       "sequence": "Sequence",
       "animatic": "Animatic",
@@ -895,11 +895,35 @@
       "now": "Frame {{label}} at {{time}}",
       "block": "Go to {{label}}, {{duration}}",
       "resize": "Duration of {{label}}",
-      "keyboard": "Keys: Space plays or pauses, arrows move by one second, Page Up and Page Down jump between frames, Home and End go to the start and the end.",
       "empty": "No frames to play: every frame has a zero duration.",
-      "defaultDuration": "Frames without a duration play for one second (striped blocks); drag the edge of a block to set its duration.",
+      "defaultDuration": "Frames without a duration play for one second (striped). Drag a block’s edge to set its duration in quarter seconds; drag the block to move the frame.",
       "noFrames": "No frames in this scene",
-      "noFramesBody": "Add a frame to play it in the animatic."
+      "noFramesBody": "Add a frame to play it in the animatic.",
+      "defaultDurationReadOnly": "Frames without a duration play for one second (striped blocks).",
+      "sceneTitle": "{{number}} · {{title}}",
+      "runtime_one": "{{count}} frame · runtime {{duration}}",
+      "runtime_other": "{{count}} frames · runtime {{duration}}",
+      "loop": "Loop",
+      "overlay": "Show shot and action over the picture",
+      "sound": "Sound track",
+      "noSound": "No sound track",
+      "soundMissing": "Sound file not available",
+      "addSound": "Add sound track",
+      "replaceSound": "Replace",
+      "removeSound": "Remove sound track",
+      "mute": "Mute",
+      "unmute": "Unmute",
+      "volume": "Volume",
+      "watch": "Play animatic",
+      "keys": {
+        "title": "Keyboard shortcuts",
+        "space": "Space",
+        "play": "play or pause",
+        "frame": "previous or next frame",
+        "second": "one second back or forward",
+        "ends": "start or end",
+        "move": "move the focused frame"
+      }
     }
   },
   "roles": {

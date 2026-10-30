@@ -394,6 +394,9 @@
 .story--sequence .story__tile-action {
   -webkit-line-clamp: unset;
 }
+.story__mode-picker {
+  display: none;
+}
 .story__modes {
   display: inline-flex;
   min-inline-size: 0;
@@ -528,21 +531,35 @@
   outline-offset: 2px;
 }
 .animatic__picture {
-  width: min(100%, 880px);
+  position: relative;
+  width: min(100%, 1040px, calc((100vh - 360px) * 16 / 9));
+  min-width: min(100%, 320px);
 }
+/* Shot and action over the picture, on a surface so they read on any drawing. */
 .animatic__caption {
+  position: absolute;
+  left: 50%;
+  bottom: 12px;
+  transform: translateX(-50%);
   display: flex;
   margin: 0;
   flex-wrap: wrap;
   justify-content: center;
-  gap: 4px 10px;
-  max-width: 880px;
-  font-size: 13px;
-  color: var(--ink-text-secondary);
+  align-items: baseline;
   text-align: center;
+  gap: 2px 10px;
+  width: fit-content;
+  max-width: calc(100% - 24px);
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--ink-surface-1) 88%, transparent);
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--ink-text-secondary);
 }
-.animatic__caption strong {
+.animatic__shot {
   color: var(--ink-text-primary);
+  font-variant-numeric: tabular-nums;
 }
 .animatic__dialogue {
   flex-basis: 100%;
@@ -561,6 +578,74 @@
 .animatic__controls .ink-select.ink-input {
   width: auto;
 }
+.animatic__toggles,
+.animatic__sound {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.animatic__sound {
+  min-inline-size: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.animatic .ink-iconbtn[aria-pressed="true"] {
+  background: var(--ink-accent-soft-bg);
+  color: var(--ink-accent-soft-fg);
+}
+.animatic__timeline {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.animatic__timeline-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 16px;
+  flex-wrap: wrap;
+  min-height: 32px;
+}
+.animatic__runtime {
+  font-size: 12px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-text-secondary);
+}
+.animatic__sound-name {
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+  color: var(--ink-text-secondary);
+}
+.animatic__volume {
+  width: 96px;
+}
+/* Scene cuts: storyboard purple, the colour of scenes. */
+.animatic__scenes {
+  display: flex;
+  min-width: 0;
+}
+.animatic__scene {
+  flex: 1 1 0;
+  min-width: 0;
+  padding: 0 6px;
+  border-left: 2px solid var(--ink-tag-purple);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 18px;
+  color: var(--ink-tag-purple);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.animatic__scene.is-loose {
+  border-left-color: var(--ink-border-strong);
+  color: var(--ink-text-muted);
+}
 .animatic__time {
   font-size: 12px;
   font-variant-numeric: tabular-nums;
@@ -569,8 +654,12 @@
 }
 .animatic__scrub {
   flex: 1;
+  width: auto;
   min-width: 160px;
-  accent-color: var(--ink-accent-primary);
+}
+.animatic__speed .story__mode {
+  padding: 0 8px;
+  font-variant-numeric: tabular-nums;
 }
 .animatic__track {
   position: relative;
@@ -578,7 +667,7 @@
   margin: 0;
   padding: 0;
   display: flex;
-  height: 44px;
+  height: 52px;
   border: 1px solid var(--ink-border-default);
   border-radius: 8px;
   background: var(--ink-bg-canvas);
@@ -602,9 +691,36 @@
 .animatic__block.is-active {
   background: color-mix(in srgb, var(--ink-accent-primary) 22%, var(--ink-surface-2));
 }
+.animatic__block.is-scene-start {
+  box-shadow: inset 2px 0 0 var(--ink-tag-purple);
+}
+.animatic__block.is-moving {
+  opacity: 0.45;
+}
+.animatic__block.drop-before::before,
+.animatic__block.drop-after::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  z-index: 3;
+  width: 3px;
+  background: var(--ink-accent-primary);
+}
+.animatic__block.drop-before::before {
+  left: -2px;
+}
+.animatic__block.drop-after::after {
+  right: -2px;
+}
 .animatic__block-seek {
   flex: 1;
   min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+  touch-action: pan-y;
   padding: 0 6px;
   border: 0;
   background: transparent;
@@ -617,6 +733,20 @@
   text-overflow: ellipsis;
   white-space: nowrap;
   cursor: pointer;
+}
+.animatic__block-label,
+.animatic__block-time {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.animatic__block-time {
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-text-secondary);
+}
+.animatic__block-seek:focus-visible {
+  outline: 2px solid var(--ink-accent-primary);
+  outline-offset: -2px;
 }
 .animatic__handle {
   position: absolute;
@@ -643,9 +773,63 @@
   background: var(--ink-text-primary);
   pointer-events: none;
 }
-.animatic__hint {
-  margin: 0;
+/* Shortcuts: one line of the main keys, the full list in a popover. */
+.animatic__keys {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+  min-height: 32px;
   font-size: 12px;
+  color: var(--ink-text-muted);
+}
+.animatic__keys-line {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  overflow: hidden;
+  white-space: nowrap;
+}
+.animatic__keys-line .ink-kc + :not(.ink-kc) {
+  margin-right: 8px;
+}
+.animatic__keys-pop {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 4px);
+  z-index: 10;
+  width: min(340px, calc(100vw - 32px));
+  padding: 12px;
+  border: 1px solid var(--ink-border-default);
+  border-radius: 10px;
+  background: var(--ink-surface-1);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 0.16);
+  color: var(--ink-text-secondary);
+}
+.animatic__keys-pop[hidden] {
+  display: none;
+}
+.animatic__keys-pop dl {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+}
+.animatic__keys-pop dl > div {
+  display: grid;
+  grid-template-columns: 104px 1fr;
+  align-items: center;
+  gap: 8px;
+}
+.animatic__keys-pop dt {
+  display: flex;
+  gap: 4px;
+}
+.animatic__keys-pop dd {
+  margin: 0;
+}
+.animatic__keys-pop p {
+  margin: 10px 0 0;
   color: var(--ink-text-muted);
 }
 .animatic-dialog {
@@ -679,6 +863,9 @@
   width: 100%;
   display: flex;
   justify-content: center;
+}
+.animatic--present .animatic__picture {
+  position: relative;
 }
 .animatic--present .frame-pic {
   height: 100%;

@@ -198,6 +198,7 @@ export function PresentationView({
       <Animatic
         store={store}
         frames={frames}
+        groups={groups}
         labels={labels}
         boardAspect={boardAspect}
         readOnly={readOnly}
