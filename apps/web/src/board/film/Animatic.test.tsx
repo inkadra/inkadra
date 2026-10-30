@@ -1,4 +1,3 @@
-import { chooseSelect } from '../../test/select.ts';
 // @vitest-environment happy-dom
 import { addFrame, addScene, createElement, type FrameElement } from '@inkadra/canvas-core';
 import { act, useState } from 'react';
@@ -7,6 +6,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import * as Y from 'yjs';
 import mockEn from '../../i18n/en.json';
 import mockIt from '../../i18n/it.json';
+import { chooseSelect } from '../../test/select.ts';
 import { BoardStore } from '../store.ts';
 import { Animatic } from './Animatic.tsx';
 import {

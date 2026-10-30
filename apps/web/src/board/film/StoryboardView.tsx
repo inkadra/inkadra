@@ -146,6 +146,7 @@ export function StoryboardView({
     </fieldset>
   );
   const aspectControl = (
+    // biome-ignore lint/a11y/noLabelWithoutControl: Select renders a labelable button.
     <label className="story__aspect">
       <span>{t('film.aspect.label')}</span>
       <Select

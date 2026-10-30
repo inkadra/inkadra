@@ -479,6 +479,7 @@ export function DrawingEditor({
           />
         )}
         {goNext && <IconButton icon="chevronRight" label={t('film.pen.next')} onClick={goNext} />}
+        {/* biome-ignore lint/a11y/noLabelWithoutControl: Select renders a labelable button. */}
         <label className="pen__aspect">
           <span>{t('film.aspect.label')}</span>
           <Select

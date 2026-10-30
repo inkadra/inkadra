@@ -200,6 +200,7 @@ export function Animatic({
           aria-valuetext={timecode(time)}
           onChange={(e) => seek(Number(e.target.value))}
         />
+        {/* biome-ignore lint/a11y/noLabelWithoutControl: Select renders a labelable button. */}
         <label className="story__aspect">
           <span>{t('film.playback.speed')}</span>
           <Select className="ink-input" value={speed} onChange={(e) => setSpeed(Number(e))}>

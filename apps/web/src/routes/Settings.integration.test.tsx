@@ -1,10 +1,10 @@
-import { chooseSelect } from '../test/select.ts';
 // @vitest-environment happy-dom
 import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { MemoryRouter } from 'react-router';
 import { afterEach, expect, it, vi } from 'vitest';
 import { api } from '../lib/api.ts';
+import { chooseSelect } from '../test/select.ts';
 import { Settings } from './Settings.tsx';
 
 const session = vi.hoisted(() => ({

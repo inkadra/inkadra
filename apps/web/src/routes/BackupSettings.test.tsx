@@ -1,10 +1,10 @@
-import { chooseSelect } from '../test/select.ts';
 // @vitest-environment happy-dom
 import type { InstanceBackups } from '@inkadra/shared';
 import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { afterEach, expect, it, vi } from 'vitest';
 import { api, RequestError } from '../lib/api.ts';
+import { chooseSelect } from '../test/select.ts';
 import { BackupSettings } from './BackupSettings.tsx';
 
 vi.mock('react-i18next', () => ({

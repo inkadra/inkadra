@@ -1,4 +1,3 @@
-import { chooseSelect } from '../test/select.ts';
 // @vitest-environment happy-dom
 import type { InstanceMember, User } from '@inkadra/shared';
 import { act } from 'react';
@@ -7,6 +6,7 @@ import { MemoryRouter } from 'react-router';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { api } from '../lib/api.ts';
 import { useSession } from '../lib/session.tsx';
+import { chooseSelect } from '../test/select.ts';
 import { Team } from './Team.tsx';
 
 const { t } = vi.hoisted(() => ({ t: (key: string) => key }));
@@ -205,7 +205,9 @@ it('turns project creation off for members and sets a per-person exception', asy
   });
   // Administrators always can: no control on their row.
   expect(host.querySelector('.ink-select[aria-label="projectCreation.for"]')).not.toBeNull();
-  const select = host.querySelector<HTMLButtonElement>('.ink-select[aria-label="projectCreation.for"]');
+  const select = host.querySelector<HTMLButtonElement>(
+    '.ink-select[aria-label="projectCreation.for"]',
+  );
   expect(select?.getAttribute('aria-haspopup')).toBe('listbox');
   expect(host.querySelectorAll('.ink-select[aria-label="projectCreation.for"]')).toHaveLength(1);
   await act(async () => {
