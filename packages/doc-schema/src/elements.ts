@@ -269,6 +269,13 @@ export const ArrowElement = Base.extend({
   label: z.string().max(200).optional(),
   line: z.enum(['solid', 'dashed']).optional(),
   heads: z.enum(['end', 'both', 'none']).optional().describe('Omitted = end.'),
+  path: z
+    .enum(['straight', 'curved'])
+    .optional()
+    .describe(
+      'Omitted = straight. A curved arrow bows to the left of the line from `from` to `to`, ' +
+        'by a share of its length that renderers fix (since version 6).',
+    ),
 });
 
 export const Element = z.discriminatedUnion('type', [
