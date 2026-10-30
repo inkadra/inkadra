@@ -7,6 +7,7 @@ import {
   pageSize,
   paginateRows,
   pixelRatio,
+  storyboardCells,
   storyboardGrid,
 } from './layout.ts';
 
@@ -45,6 +46,28 @@ describe('storyboard grid', () => {
     expect(cells[0]).toEqual({ x: 0, y: 0, w: 100, h: 41 });
     expect(cells[1]?.x).toBe(118);
     expect(cells[3]).toEqual({ x: 118, y: 59, w: 100, h: 41 });
+  });
+});
+
+describe('storyboard cells', () => {
+  const box = { x: 0, y: 0, w: 770, h: 470 };
+
+  it('keeps the full column width when the height allows it', () => {
+    const cells = storyboardCells(box, 2, 1, 16 / 9, 80, 18);
+    expect(cells[0]?.w).toBeCloseTo(376);
+    expect(cells[0]?.x).toBe(0);
+    expect((cells[1]?.x ?? 0) + (cells[1]?.w ?? 0)).toBeCloseTo(770);
+  });
+
+  it('narrows every column to fit the height and centres the grid', () => {
+    const cells = storyboardCells(box, 2, 2, 16 / 9, 80, 18);
+    const w = cells[0]?.w ?? 0;
+    // Each row holds the picture and the text room: (470 - 18) / 2 = 226 = w / aspect + 80.
+    expect(w / (16 / 9) + 80).toBeCloseTo(226);
+    expect(new Set(cells.map((c) => c.w)).size).toBe(1);
+    expect((cells[1]?.x ?? 0) - (cells[0]?.x ?? 0) - w).toBeCloseTo(18);
+    expect(cells[0]?.x).toBeCloseTo(770 - ((cells[1]?.x ?? 0) + w));
+    expect((cells[3]?.y ?? 0) + (cells[3]?.h ?? 0)).toBeLessThanOrEqual(470.001);
   });
 });
 

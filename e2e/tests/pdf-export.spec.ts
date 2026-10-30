@@ -38,7 +38,8 @@ async function watchCsp(page: Page) {
       seen.push(`${e.effectiveDirective} ${e.blockedURI} ${e.sourceFile}:${e.lineNumber}`),
     );
   });
-  return () => page.evaluate(() => (window as unknown as { cspViolations: string[] }).cspViolations);
+  return () =>
+    page.evaluate(() => (window as unknown as { cspViolations: string[] }).cspViolations);
 }
 
 async function signInPage(page: Page) {
@@ -61,7 +62,9 @@ test.beforeAll(async ({ baseURL }) => {
     if (!res.ok) throw new Error(`${path}: ${res.status} ${await res.text()}`);
     return (await res.json()) as T;
   };
-  const project = await post<{ id: string; rootBoardId: string }>('/projects', { name: 'Last Train' });
+  const project = await post<{ id: string; rootBoardId: string }>('/projects', {
+    name: 'Last Train',
+  });
   const storyboard = await post<{ id: string }>(`/projects/${project.id}/boards`, {
     parentBoardId: project.rootBoardId,
     kind: 'storyboard',
@@ -81,21 +84,43 @@ test.beforeAll(async ({ baseURL }) => {
   note(0, 'Sodium light against wet blue');
   const secret = note(300, 'Budget note for the team only');
   updateElement(board, secret.id, { guestHidden: true });
-  createElement(board, 'todo', { x: 0, y: 200 }, { title: 'Before the shoot', items: [{ id: 'item000001', text: 'Book the platform', done: false }] }, opts);
+  createElement(
+    board,
+    'todo',
+    { x: 0, y: 200 },
+    {
+      title: 'Before the shoot',
+      items: [{ id: 'item000001', text: 'Book the platform', done: false }],
+    },
+    opts,
+  );
   await pushBoardDoc(base, cookie, project.rootBoardId, board);
 
   const story = new Y.Doc();
   initBoardDoc(story, storyboard.id);
-  const scene = addScene(story, { number: '1', title: 'The platform', setting: 'ext', time: 'night', location: 'Station' }, opts);
+  const scene = addScene(
+    story,
+    { number: '1', title: 'The platform', setting: 'ext', time: 'night', location: 'Station' },
+    opts,
+  );
   for (let i = 0; i < 5; i++) {
-    const frame = addFrame(story, scene.id, null, { action: `Frame action ${i + 1}`, shot: 'ws', durationMs: 3000 }, opts);
-    if (i === 4) updateElement(story, frame.id, { guestHidden: true, action: 'Hidden frame action' });
+    const frame = addFrame(
+      story,
+      scene.id,
+      null,
+      { action: `Frame action ${i + 1}`, shot: 'ws', durationMs: 3000 },
+      opts,
+    );
+    if (i === 4)
+      updateElement(story, frame.id, { guestHidden: true, action: 'Hidden frame action' });
   }
   await pushBoardDoc(base, cookie, storyboard.id, story);
   seeded = { projectId: project.id, rootBoardId: project.rootBoardId, storyboardId: storyboard.id };
 });
 
-test('a board exports to PDF for clients without the cards hidden from guests', async ({ page }, info) => {
+test('a board exports to PDF for clients without the cards hidden from guests', async ({
+  page,
+}, info) => {
   const violations = await watchCsp(page);
   await signInPage(page);
   await page.goto(`/p/${seeded.projectId}/b/${seeded.rootBoardId}`);
@@ -105,9 +130,16 @@ test('a board exports to PDF for clients without the cards hidden from guests', 
   await page.getByRole('button', { name: 'Menu della board' }).click();
   await page.getByRole('menuitem', { name: 'Esporta…' }).click();
   const dialog = page.getByRole('dialog', { name: 'Esporta' });
-  await expect(dialog.getByRole('button', { name: 'Clienti' })).toHaveAttribute('aria-pressed', 'true');
-  await expect(dialog.getByRole('checkbox', { name: 'Escludi le card nascoste agli ospiti' })).toBeChecked();
-  await expect(dialog.getByRole('img', { name: 'Anteprima della prima pagina di contenuto' })).toBeVisible();
+  await expect(dialog.getByRole('button', { name: 'Clienti' })).toHaveAttribute(
+    'aria-pressed',
+    'true',
+  );
+  await expect(
+    dialog.getByRole('checkbox', { name: 'Escludi le card nascoste agli ospiti' }),
+  ).toBeChecked();
+  await expect(
+    dialog.getByRole('img', { name: 'Anteprima della prima pagina di contenuto' }),
+  ).toBeVisible();
   await expect(dialog.getByText('2 pagine')).toBeVisible();
 
   const [download] = await Promise.all([
@@ -167,6 +199,9 @@ test('a storyboard exports to PDF with frames per page, and to PNG', async ({ pa
   expect(pdf.pages[0]).toContain('STORYBOARD');
   expect(pdf.pages[1]).toContain('1A');
   expect(pdf.pages[1]).toContain('Frame action 1');
+  // Page numbers count the title page, like the preview.
+  expect(pdf.pages[1]).toContain('2 di 3');
+  expect(pdf.pages[2]).toContain('3 di 3');
   expect(pdf.pages[2]).toContain('Frame action 4');
   expect(pdf.pages.join(' ')).not.toContain('Hidden frame action');
 

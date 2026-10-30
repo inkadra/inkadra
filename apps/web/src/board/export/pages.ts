@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 /**
  * Pages of an export as a list of drawing operations, in PDF points (1/72 in) with the origin
- * at the top left. The PDF and the canvas backends draw the same list (decision 0037).
+ * at the top left. The PDF and the canvas backends draw the same list (decision 0038).
  */
 
 export type FontWeight = 400 | 500 | 600;

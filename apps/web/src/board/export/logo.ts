@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 /**
- * The logo printed on exports, kept in this browser per project (decision 0037): storing it on
+ * The logo printed on exports, kept in this browser per project (decision 0038): storing it on
  * the server would need a contract change.
  */
 export const MAX_LOGO_BYTES = 256 * 1024;

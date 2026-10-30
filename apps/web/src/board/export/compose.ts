@@ -16,13 +16,13 @@ import {
   FOOTER,
   type FramesPerPage,
   fitRegion,
-  gridCells,
   HEADER,
   MARGIN,
   type Orientation,
   type PaperSize,
   pageSize,
   paginateRows,
+  storyboardCells,
   storyboardGrid,
 } from './layout.ts';
 import type { FontWeight, Op, Page } from './pages.ts';
@@ -200,7 +200,14 @@ export function titlePage(setup: PageSetup, info: DocInfo, ctx: CardContext, wor
   top = title.bottom + 6;
   if (info.boardTitle && info.boardTitle !== info.projectName) {
     page.ops.push(
-      text(ellipsize(info.projectName, inner, 14, 400, m), x, top + 14, 14, 400, c['text-secondary']),
+      text(
+        ellipsize(info.projectName, inner, 14, 400, m),
+        x,
+        top + 14,
+        14,
+        400,
+        c['text-secondary'],
+      ),
     );
   }
   top += 40;
@@ -268,9 +275,13 @@ export function storyboardPages(
   const grid = storyboardGrid(perPage, setup.orientation);
   return chunk(shots, perPage).map((group) => {
     const page: Page = { width, height, ops: [] };
-    const cells = gridCells(contentBox(width, height), grid.cols, grid.rows);
+    const box = contentBox(width, height);
+    const f = perPage <= 2 ? 1.15 : 1;
+    // Room under each picture for label, shot data and a few lines of action.
+    const textRoom = perPage === 1 ? box.h * 0.3 : 84 * f;
+    const narrowest = Math.min(...group.map((s) => ctx.frameAspect(s.frame)), 16 / 9);
+    const cells = storyboardCells(box, grid.cols, grid.rows, narrowest, textRoom);
     if (group.length === 0) {
-      const box = contentBox(width, height);
       page.ops.push(text(words.noFrames, box.x, box.y + 20, 11, 400, ctx.colors['text-muted']));
     }
     group.forEach((shot, i) => {
@@ -292,12 +303,8 @@ function storyboardCell(
   const c = ctx.colors;
   const m = ctx.measure;
   const f = perPage <= 2 ? 1.15 : 1;
-  const aspect = ctx.frameAspect(shot.frame);
-  // The picture takes the width, unless that leaves too little room for the shot data.
-  // Several frames a page keep about five lines of shot data under each picture.
-  const maxPic = perPage === 1 ? cell.h * 0.7 : Math.max(cell.h * 0.55, cell.h - 80 * f);
-  const picH = Math.min(cell.w / aspect, maxPic);
-  const pic = { x: cell.x, y: cell.y, w: picH * aspect, h: picH };
+  // The picture fills the column; the text below lines up with it.
+  const pic = { x: cell.x, y: cell.y, w: cell.w, h: cell.w / ctx.frameAspect(shot.frame) };
   const ops: Op[] = framePicture(shot.frame, pic, ctx);
   let top = pic.y + pic.h + 8 * f;
   const labelSize = 11 * f;
@@ -321,21 +328,14 @@ function storyboardCell(
   if (shot.status) {
     const sw = m(shot.status, 7.5 * f, 500);
     ops.push(
-      text(
-        shot.status,
-        cell.x + pic.w - sw,
-        top + labelSize,
-        7.5 * f,
-        500,
-        c['text-secondary'],
-      ),
+      text(shot.status, cell.x + pic.w - sw, top + labelSize, 7.5 * f, 500, c['text-secondary']),
     );
   }
   top += labelSize + 6 * f;
   const meta = [shot.size, shot.angle, shot.movement, shot.frame.lens, shot.duration]
     .filter(Boolean)
     .join(' · ');
-  const width = Math.max(pic.w, cell.w * 0.6);
+  const width = pic.w;
   const bottom = cell.y + cell.h;
   const block = (value: string, size: number, weight: FontWeight, color: string) => {
     const leading = size * 1.4;
@@ -658,7 +658,10 @@ export function commentPages(
   });
 }
 
-/** Adds the running header and footer; the title page, when there is one, has neither. */
+/**
+ * Adds the running header and footer. Page numbers count every page, the title page included,
+ * which carries neither.
+ */
 export function finish(
   pages: Page[],
   info: DocInfo,
@@ -666,9 +669,9 @@ export function finish(
   words: Words,
   hasTitle: boolean,
 ) {
-  const content = hasTitle ? pages.slice(1) : pages;
-  content.forEach((page, i) => {
-    chrome(page, info, ctx, i + 1, content.length, words);
+  pages.forEach((page, i) => {
+    if (hasTitle && i === 0) return;
+    chrome(page, info, ctx, i + 1, pages.length, words);
   });
   return pages;
 }

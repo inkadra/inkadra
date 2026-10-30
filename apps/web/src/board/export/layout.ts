@@ -68,6 +68,35 @@ export function gridCells(box: Box, cols: number, rows: number, gutter = GUTTER)
   return cells;
 }
 
+/**
+ * Cells of a storyboard page. Every picture fills the width of its column; columns narrow
+ * (all by the same amount) when the pictures and the `text` space under them would not fit the
+ * height, and the grid is then centred across the page. `aspect` is the narrowest picture
+ * (width / height) of the page, so no picture overflows its cell.
+ */
+export function storyboardCells(
+  box: Box,
+  cols: number,
+  rows: number,
+  aspect: number,
+  text: number,
+  gutter = GUTTER,
+): Box[] {
+  const widest = (box.w - gutter * (cols - 1)) / cols;
+  const rowRoom = (box.h - gutter * (rows - 1)) / rows;
+  const w = Math.max(1, Math.min(widest, (rowRoom - text) * aspect));
+  const h = w / aspect + text;
+  const gridW = cols * w + gutter * (cols - 1);
+  const x0 = box.x + (box.w - gridW) / 2;
+  const cells: Box[] = [];
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      cells.push({ x: x0 + c * (w + gutter), y: box.y + r * (h + gutter), w, h });
+    }
+  }
+  return cells;
+}
+
 /** Items in consecutive pages of `perPage`; an empty list still makes one (empty) page. */
 export function chunk<T>(items: readonly T[], perPage: number): T[][] {
   if (perPage < 1) throw new RangeError('perPage must be at least 1');
