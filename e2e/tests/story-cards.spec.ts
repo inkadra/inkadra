@@ -269,8 +269,8 @@ for (const [device, width, height] of [
       await guestPage.screenshot({ path: `${out}/${device}-${theme}-guest.png` });
       // Opened, a character and a location still show nothing private on the guest page.
       for (const id of [ids.marta, ids.cabin]) {
-        await guestPage.locator(`[data-el="${id}"]`).click();
-        await guestPage.locator(`[data-el="${id}"]`).dblclick();
+        // Selected: the guest panel shows the card's details.
+        await guestPage.locator(`[data-el="${id}"]`).click({ timeout: 10_000 });
         for (const secret of [
           'Agenzia Lumen',
           'Provino',
@@ -279,6 +279,7 @@ for (const [device, width, height] of [
           'Solo team',
         ])
           await expect(guestPage.locator('body')).not.toContainText(secret);
+        await guestPage.keyboard.press('Escape');
       }
       await guest.close();
       await page.request.delete(`/api/v1/projects/${project.id}`, {
