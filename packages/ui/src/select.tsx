@@ -223,92 +223,91 @@ export function Select({
               aria-labelledby={props['aria-labelledby'] ?? props.id ?? `${id}-trigger`}
               aria-activedescendant={active >= 0 ? `${id}-${active}` : undefined}
               className="ink-select__list"
-            onKeyDown={(event) => {
-              event.stopPropagation();
-              if (event.key === 'Escape') {
-                event.preventDefault();
-                close(true);
-                return;
-              }
-              if (event.key === 'Tab') {
-                close(true);
-                return;
-              }
-              if (event.key === 'Enter' || event.key === ' ') {
-                event.preventDefault();
-                choose(active);
-                return;
-              }
-              if (['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) {
-                event.preventDefault();
-                const current = enabled.indexOf(active);
-                setActive(
-                  enabled[
-                    event.key === 'Home'
-                      ? 0
-                      : event.key === 'End'
-                        ? enabled.length - 1
-                        : (current + (event.key === 'ArrowUp' ? -1 : 1) + enabled.length) %
-                          enabled.length
-                  ] ?? -1,
-                );
-                return;
-              }
-              if (event.key.length === 1 && !event.ctrlKey && !event.metaKey && !event.altKey) {
-                event.preventDefault();
-                const now = Date.now();
-                search.current.text =
-                  (now - search.current.time > 700 ? '' : search.current.text) +
-                  event.key.toLocaleLowerCase();
-                search.current.time = now;
-                const text = search.current.text;
-                const prefix = [...text].every((c) => c === text[0]) ? (text[0] ?? text) : text;
-                const match = [
-                  ...enabled.filter((i) => i > active),
-                  ...enabled.filter((i) => i <= active),
-                ].find((i) =>
-                  document
-                    .getElementById(`${id}-${i}`)
-                    ?.textContent?.trim()
-                    .toLocaleLowerCase()
-                    .startsWith(prefix),
-                );
-                if (match !== undefined) setActive(match);
-              }
-            }}
-
+              onKeyDown={(event) => {
+                event.stopPropagation();
+                if (event.key === 'Escape') {
+                  event.preventDefault();
+                  close(true);
+                  return;
+                }
+                if (event.key === 'Tab') {
+                  close(true);
+                  return;
+                }
+                if (event.key === 'Enter' || event.key === ' ') {
+                  event.preventDefault();
+                  choose(active);
+                  return;
+                }
+                if (['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) {
+                  event.preventDefault();
+                  const current = enabled.indexOf(active);
+                  setActive(
+                    enabled[
+                      event.key === 'Home'
+                        ? 0
+                        : event.key === 'End'
+                          ? enabled.length - 1
+                          : (current + (event.key === 'ArrowUp' ? -1 : 1) + enabled.length) %
+                            enabled.length
+                    ] ?? -1,
+                  );
+                  return;
+                }
+                if (event.key.length === 1 && !event.ctrlKey && !event.metaKey && !event.altKey) {
+                  event.preventDefault();
+                  const now = Date.now();
+                  search.current.text =
+                    (now - search.current.time > 700 ? '' : search.current.text) +
+                    event.key.toLocaleLowerCase();
+                  search.current.time = now;
+                  const text = search.current.text;
+                  const prefix = [...text].every((c) => c === text[0]) ? (text[0] ?? text) : text;
+                  const match = [
+                    ...enabled.filter((i) => i > active),
+                    ...enabled.filter((i) => i <= active),
+                  ].find((i) =>
+                    document
+                      .getElementById(`${id}-${i}`)
+                      ?.textContent?.trim()
+                      .toLocaleLowerCase()
+                      .startsWith(prefix),
+                  );
+                  if (match !== undefined) setActive(match);
+                }
+              }}
             >
-          {items.length === 0 && <div className="ink-select__empty">{emptyText}</div>}
-          {items.map((item, index) => (
-            <div key={item.value}>
-              {item.group && item.group !== items[index - 1]?.group && (
-                <div className="ink-select__group">{item.group}</div>
-              )}
-              <div
-                tabIndex={-1}
-                onKeyDown={() => {
-                  /* Keyboard handling belongs to the listbox. */
-                }}
-                role="option"
-                data-value={item.value}
-                id={`${id}-${index}`}
-                aria-selected={selected === index}
-                aria-disabled={item.disabled || undefined}
-                data-active={active === index || undefined}
-                className="ink-select__option"
-                onPointerMove={() => !item.disabled && setActive(index)}
-                onMouseDown={(event) => event.preventDefault()}
-                onClick={() => choose(index)}
-              >
-                {item.icon}
-                <span className="ink-select__label">
-                  {item.label}
-                  {item.description && <small>{item.description}</small>}
-                </span>
-                {selected === index && <Icon name="check" size={16} />}
-              </div>
-            </div>
-          ))}
+              {items.length === 0 && <div className="ink-select__empty">{emptyText}</div>}
+              {items.map((item, index) => (
+                <div key={item.value}>
+                  {item.group && item.group !== items[index - 1]?.group && (
+                    <div className="ink-select__group">{item.group}</div>
+                  )}
+                  <div
+                    tabIndex={-1}
+                    onKeyDown={() => {
+                      /* Keyboard handling belongs to the listbox. */
+                    }}
+                    role="option"
+                    data-value={item.value}
+                    id={`${id}-${index}`}
+                    aria-selected={selected === index}
+                    aria-disabled={item.disabled || undefined}
+                    data-active={active === index || undefined}
+                    className="ink-select__option"
+                    onPointerMove={() => !item.disabled && setActive(index)}
+                    onMouseDown={(event) => event.preventDefault()}
+                    onClick={() => choose(index)}
+                  >
+                    {item.icon}
+                    <span className="ink-select__label">
+                      {item.label}
+                      {item.description && <small>{item.description}</small>}
+                    </span>
+                    {selected === index && <Icon name="check" size={16} />}
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         </div>
