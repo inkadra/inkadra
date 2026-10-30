@@ -338,7 +338,20 @@
     },
     "image": {
       "processing": "Processing…",
-      "failed": "Preview unavailable"
+      "failed": "Preview unavailable",
+      "cropRotate": "Crop and rotate",
+      "restoreOriginal": "Restore original",
+      "cropToolbar": "Crop and rotation",
+      "cropStage": "Crop area",
+      "rotateLeft": "Rotate 90° left",
+      "rotateRight": "Rotate 90° right",
+      "angle": "Rotation angle",
+      "done": "Done",
+      "aspect": {
+        "label": "Aspect ratio",
+        "preset": "Aspect ratio {{ratio}}",
+        "free": "Free"
+      }
     },
     "file": {
       "loading": "File",
@@ -565,7 +578,9 @@
       "esc": "esc"
     },
     "thumbnails": "Thumbnails",
-    "item": "Item {{n}}"
+    "item": "Item {{n}}",
+    "showOriginal": "Show original",
+    "showEdited": "Show cropped"
   },
   "search": {
     "title": "Search",

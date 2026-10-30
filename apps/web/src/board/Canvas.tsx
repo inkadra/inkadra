@@ -86,6 +86,7 @@ import {
 } from './canvas-templates.ts';
 import { Card } from './cards.tsx';
 import {
+  BarButton,
   type CanvasTool,
   CommandPalette,
   ContextBar,
@@ -113,6 +114,8 @@ import type { ImportPlan } from './film/screenplay/plan.ts';
 import { ScreenplayImportDialog } from './film/screenplay/ScreenplayImportDialog.tsx';
 import { viewableInOrder } from './gallery.ts';
 import { toggleGuestHidden } from './guest-visibility.tsx';
+import { ImageCropToolbar, restoreOriginalImage } from './ImageCropEditor.tsx';
+import { hasImageTransform } from './image-crop.ts';
 import { fillLinkPreview, webUrl } from './links.ts';
 import { NoteSideSheet } from './NoteSideSheet.tsx';
 import { fillFragment, isEmpty } from './note.tsx';
@@ -299,6 +302,7 @@ export function Canvas({
   const fitted = useRef(!preview && loadViewport(boardId) !== null);
   const [selection, setSelection] = useState<ReadonlySet<string>>(initialSelection);
   const [editing, setEditingState] = useState<string | null>(null);
+  const [cropping, setCropping] = useState<string | null>(null);
   const [tool, setTool] = useState<CanvasTool>('select');
   /** Frame whose details panel is open, frame being drawn, image or video in the viewer. */
   const [framePanel, setFramePanel] = useState<string | null>(null);
@@ -507,8 +511,17 @@ export function Canvas({
       return new Set([...sel].filter((id) => snap.byId.has(id)));
     });
     if (editing && !snap.byId.has(editing)) setEditing(null);
+    if (
+      cropping &&
+      (readOnly ||
+        !selection.has(cropping) ||
+        snap.byId.get(cropping)?.type !== 'image' ||
+        snap.byId.get(cropping)?.locked)
+    ) {
+      setCropping(null);
+    }
     if (noteSheet && !snap.byId.has(noteSheet)) setNoteSheet(null);
-  }, [snap, editing, setEditing, noteSheet]);
+  }, [snap, editing, setEditing, cropping, readOnly, selection, noteSheet]);
 
   const toWorld = useCallback((clientX: number, clientY: number): Point => {
     const r = rootRef.current?.getBoundingClientRect();
@@ -1028,6 +1041,7 @@ export function Canvas({
 
     if (tool === 'arrow' && !readOnly) {
       if (editing) setEditing(null);
+      if (cropping) setCropping(null);
       const from = targetId ? snap.byId.get(targetId) : undefined;
       const fromId = from && from.parent === null && from.type !== 'arrow' ? from.id : null;
       gesture.current = { kind: 'arrow', start: screenToWorld(vp.current, p), fromId };
@@ -1038,6 +1052,7 @@ export function Canvas({
 
     if (!targetId) {
       if (editing) setEditing(null);
+      if (cropping) setCropping(null);
       const base = e.shiftKey ? new Set(selection) : new Set<string>();
       if (!e.shiftKey) setSelection(EMPTY_SET);
       gesture.current = { kind: 'marquee', start: screenToWorld(vp.current, p), base };
@@ -1049,8 +1064,9 @@ export function Canvas({
     const el = snap.byId.get(id);
     if (!el) return;
     const interactive = target.closest(INTERACTIVE);
-    if (editing === id && interactive) return;
+    if ((editing === id || cropping === id) && interactive) return;
     if (editing && editing !== id) setEditing(null);
+    if (cropping && cropping !== id) setCropping(null);
 
     let next: Set<string>;
     let clickOnly: string | null = null;
@@ -1342,7 +1358,14 @@ export function Canvas({
       return;
     }
     const el = snap.byId.get(targetId);
-    if (el && editing !== el.id) openElement(el);
+    if (el && editing !== el.id) {
+      if (!readOnly && el.type === 'image' && !el.locked) {
+        select([el.id]);
+        setCropping(el.id);
+        return;
+      }
+      openElement(el);
+    }
   }
 
   function onContextMenu(e: ReactMouseEvent<HTMLDivElement>) {
@@ -1476,11 +1499,13 @@ export function Canvas({
       case 'escape':
         setMenu(null);
         if (tool === 'arrow') setTool('select');
+        else if (cropping) setCropping(null);
         else if (editing) setEditing(null);
         else setSelection(EMPTY_SET);
         break;
       case 'edit':
-        if (single) openElement(single);
+        if (cropping) setCropping(null);
+        else if (single) openElement(single);
         break;
       case 'rename':
         if (
@@ -1646,6 +1671,8 @@ export function Canvas({
       largeBoard,
       editing,
       setEditing,
+      cropping,
+      setCropping,
       openBoard: onOpenBoard,
       openElement,
       setNoteEditor,
@@ -1663,6 +1690,7 @@ export function Canvas({
       largeBoard,
       editing,
       setEditing,
+      cropping,
       onOpenBoard,
       setNoteEditor,
       openElement,
@@ -1876,6 +1904,24 @@ export function Canvas({
       ...(single && (single.type === 'image' || single.type === 'file')
         ? [{ label: t('board.menu.viewImage'), action: () => openElement(single) }]
         : []),
+      ...(single?.type === 'image' && !readOnly && !single.locked
+        ? [
+            {
+              toolbar: true,
+              label: t('board.image.cropRotate'),
+              action: () => setCropping(single.id),
+            },
+            ...(hasImageTransform(single)
+              ? [
+                  {
+                    toolbar: true,
+                    label: t('board.image.restoreOriginal'),
+                    action: () => restoreOriginalImage(store, single),
+                  },
+                ]
+              : []),
+          ]
+        : []),
       ...(single &&
       (single.type === 'image' || single.type === 'file') &&
       !readOnly &&
@@ -2004,6 +2050,16 @@ export function Canvas({
     !!overlay.moving?.has(el.id) ||
     (isContainer(el) && !!snap.columns.get(el.id)?.some((c) => selection.has(c.id)));
 
+  const croppingElement =
+    !readOnly &&
+    cropping &&
+    selectedEls.length === 1 &&
+    selectedEls[0]?.id === cropping &&
+    selectedEls[0].type === 'image' &&
+    !selectedEls[0].locked
+      ? selectedEls[0]
+      : null;
+
   return (
     <BoardContext.Provider value={ctx}>
       <div
@@ -2057,7 +2113,11 @@ export function Canvas({
             visible
               .filter(
                 (el) =>
-                  selection.has(el.id) && !el.locked && el.parent === null && el.type !== 'arrow',
+                  selection.has(el.id) &&
+                  el.id !== cropping &&
+                  !el.locked &&
+                  el.parent === null &&
+                  el.type !== 'arrow',
               )
               .map((el) => {
                 const rect = overlay.resize?.id === el.id ? overlay.resize : liveRect(el);
@@ -2155,51 +2215,89 @@ export function Canvas({
           </div>
         )}
 
-        {!overlay.offset && !overlay.marquee && selectionBox && (
-          <ContextBar
-            box={selectionBox}
-            elements={selectedEls}
-            editor={editing ? noteEditor.current : null}
-            readOnly={readOnly}
-            onComments={
-              !preview &&
-              selectedEls.length === 1 &&
-              selectedEls[0] &&
-              selectedEls[0].type !== 'arrow'
-                ? openComments.bind(null, { elementId: selectedEls[0].id })
-                : undefined
-            }
-            onAlign={align}
-            onGroup={groupIntoColumn}
-            onLock={toggleLock}
-            onGuestHidden={() => toggleGuestHidden(store, [...selection])}
-            onDelete={removeSelection}
-            onDuplicate={duplicate}
-            onMore={(x, y) =>
-              setMenu({ x, y, at: screenToWorld(vp.current, { x, y }), fromToolbar: true })
-            }
-            onColor={(color) => {
-              for (const el of selectedEls) {
-                if (el.type === 'note') updateElement(doc, el.id, { color }, LOCAL);
+        {!overlay.offset &&
+          !overlay.marquee &&
+          selectionBox &&
+          (croppingElement ? (
+            <ImageCropToolbar
+              box={selectionBox}
+              element={croppingElement}
+              onDone={() => setCropping(null)}
+            />
+          ) : (
+            <ContextBar
+              box={selectionBox}
+              elements={selectedEls}
+              editor={editing ? noteEditor.current : null}
+              readOnly={readOnly}
+              onComments={
+                !preview &&
+                selectedEls.length === 1 &&
+                selectedEls[0] &&
+                selectedEls[0].type !== 'arrow'
+                  ? openComments.bind(null, { elementId: selectedEls[0].id })
+                  : undefined
               }
-            }}
-            onTags={(x, y) => setTagging({ x, y, ids: [...selection] })}
-            extra={
-              selectedEls.every((e) => e.type === 'arrow') && (
-                <ArrowStyleButtons
-                  doc={doc}
-                  arrows={selectedEls as ArrowElement[]}
-                  rectOf={cardRect}
-                  onLabel={
-                    selectedEls.length === 1 && selectedEls[0] && !selectedEls[0].locked
-                      ? setEditing.bind(null, selectedEls[0].id)
-                      : undefined
-                  }
-                />
-              )
-            }
-          />
-        )}
+              onAlign={align}
+              onGroup={groupIntoColumn}
+              onLock={toggleLock}
+              onGuestHidden={() => toggleGuestHidden(store, [...selection])}
+              onDelete={removeSelection}
+              onDuplicate={duplicate}
+              onMore={(x, y) =>
+                setMenu({ x, y, at: screenToWorld(vp.current, { x, y }), fromToolbar: true })
+              }
+              onColor={(color) => {
+                for (const el of selectedEls) {
+                  if (el.type === 'note') updateElement(doc, el.id, { color }, LOCAL);
+                }
+              }}
+              onTags={(x, y) => setTagging({ x, y, ids: [...selection] })}
+              extra={
+                <>
+                  {!readOnly &&
+                    selectedEls.length === 1 &&
+                    selectedEls[0]?.type === 'image' &&
+                    !selectedEls[0].locked && (
+                      <>
+                        <BarButton
+                          icon="crop"
+                          label={t('board.image.cropRotate')}
+                          active={cropping === selectedEls[0].id}
+                          onClick={() =>
+                            setCropping((prev) =>
+                              prev === selectedEls[0]?.id ? null : (selectedEls[0]?.id ?? null),
+                            )
+                          }
+                        />
+                        {hasImageTransform(selectedEls[0]) && (
+                          <BarButton
+                            icon="undo"
+                            label={t('board.image.restoreOriginal')}
+                            onClick={() => {
+                              const img = selectedEls[0];
+                              if (img?.type === 'image') restoreOriginalImage(store, img);
+                            }}
+                          />
+                        )}
+                      </>
+                    )}
+                  {selectedEls.every((e) => e.type === 'arrow') && (
+                    <ArrowStyleButtons
+                      doc={doc}
+                      arrows={selectedEls as ArrowElement[]}
+                      rectOf={cardRect}
+                      onLabel={
+                        selectedEls.length === 1 && selectedEls[0] && !selectedEls[0].locked
+                          ? setEditing.bind(null, selectedEls[0].id)
+                          : undefined
+                      }
+                    />
+                  )}
+                </>
+              }
+            />
+          ))}
         {tagging && (
           <TagPopover
             x={tagging.x}

@@ -23,15 +23,18 @@ import { pickVariant, useAsset } from './assets.ts';
 import { canRenameBoard, renameBoard } from './boards.ts';
 import { CardCaption } from './CardCaption.tsx';
 import { CardReview } from './CardReview.tsx';
+import { CroppedImage } from './CroppedImage.tsx';
 import { CardExtrasContext, GuestModeContext, useBoard } from './context.ts';
 import { useBoardAspect } from './film/aspect.ts';
 import { FramePicture } from './film/FramePicture.tsx';
 import { useSlugline } from './film/StoryboardView.tsx';
 import { StoryPicture } from './film/StoryCardPanel.tsx';
 import { GuestVisibility } from './guest-visibility.tsx';
+import { ImageCropStage } from './ImageCropEditor.tsx';
+import { croppedRotatedSize, rotatedBounds } from './image-crop.ts';
 import { webUrl } from './links.ts';
 import { useMeasure } from './measure.ts';
-import { MovingPicture, movingVariantUrl } from './moving.tsx';
+import { movingVariantUrl } from './moving.tsx';
 import { NoteBody, NoteEditor, useFragment } from './note.tsx';
 import { LOCAL } from './store.ts';
 import { TagList } from './tags.tsx';
@@ -76,11 +79,12 @@ export const Card = memo(function Card({
   draggingIds,
   zoom,
 }: CardProps) {
-  const { store, editing } = useBoard();
+  const { store, editing, cropping } = useBoard();
   const extras = useContext(CardExtrasContext);
   const { t } = useTranslation();
   const measure = useMeasure(store, element.id, !nested);
   const isEditing = editing === element.id;
+  const isCropping = cropping === element.id;
   const w = resize?.w ?? element.w;
   const style: CSSProperties = nested
     ? {}
@@ -88,7 +92,7 @@ export const Card = memo(function Card({
         left: resize?.x ?? element.x,
         top: resize?.y ?? element.y,
         width: w,
-        height: element.type === 'link' ? undefined : (resize?.h ?? element.h),
+        height: element.type === 'link' || isCropping ? undefined : (resize?.h ?? element.h),
         transform: offset ? `translate(${offset.dx}px, ${offset.dy}px)` : undefined,
       };
   if (zoom !== undefined) (style as Record<string, unknown>)['--zoom'] = zoom;
@@ -98,6 +102,7 @@ export const Card = memo(function Card({
     nested ? 'card--nested' : 'card--free',
     selected && 'is-selected',
     isEditing && 'is-editing',
+    isCropping && 'is-cropping',
     offset && 'is-moving',
     dimmed && 'is-dimmed',
     element.locked && 'is-locked',
@@ -326,7 +331,7 @@ function ImageCard({
   width: number;
   selected: boolean;
 }) {
-  const { scale, largeBoard } = useBoard();
+  const { scale, largeBoard, cropping } = useBoard();
   const { t } = useTranslation();
   const asset = useAsset(element.assetId);
   const progress = useUploadProgress(element.assetId);
@@ -340,21 +345,43 @@ function ImageCard({
     ready && (!largeBoard || selected || hover)
       ? movingVariantUrl(ready, width * scale * dpr)
       : null;
-  const ratio = ready?.width && ready.height ? `${ready.width} / ${ready.height}` : '4 / 3';
+  const baseW = ready?.width && ready.width > 0 ? ready.width : 4;
+  const baseH = ready?.height && ready.height > 0 ? ready.height : 3;
+  const isCropping = cropping === element.id;
+  const dims = isCropping
+    ? rotatedBounds(baseW, baseH, element.rotation)
+    : croppedRotatedSize(baseW, baseH, element.crop, element.rotation);
+  const ratio = `${dims.width} / ${dims.height}`;
   return (
     <>
       <div
         className="card__media"
-        style={{ aspectRatio: element.h ? undefined : ratio }}
+        style={{
+          aspectRatio: element.h && !isCropping && element.parent === null ? undefined : ratio,
+        }}
         onPointerEnter={() => setHover(true)}
         onPointerLeave={() => setHover(false)}
       >
         {src ? (
-          <MovingPicture
-            poster={src}
-            moving={moving}
-            alt={element.caption ?? ready?.filename ?? ''}
-          />
+          isCropping ? (
+            <ImageCropStage
+              element={element}
+              src={src}
+              alt={element.caption ?? ready?.filename ?? ''}
+              baseWidth={baseW}
+              baseHeight={baseH}
+            />
+          ) : (
+            <CroppedImage
+              poster={src}
+              moving={moving}
+              alt={element.caption ?? ready?.filename ?? ''}
+              width={baseW}
+              height={baseH}
+              crop={element.crop}
+              rotation={element.rotation}
+            />
+          )
         ) : (
           <span className="card__media-state">
             <Icon name="image" />

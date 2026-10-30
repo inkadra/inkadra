@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-import { fitBox, type Op, type Page, roundedRectPath } from './pages.ts';
+import { imagePlacement, type Op, type Page, roundedRectPath } from './pages.ts';
 
 type Ctx = CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D;
 
@@ -56,9 +56,17 @@ function drawOps(ctx: Ctx, ops: readonly Op[], images: Images) {
       case 'image': {
         const img = images.get(op.key);
         if (!img?.bitmap) break;
-        const box = fitBox(img, op, op.fit);
+        const p = imagePlacement(img, op);
         ctx.globalAlpha = op.opacity ?? 1;
-        ctx.drawImage(img.bitmap, box.x, box.y, box.w, box.h);
+        if (!p.transformed) {
+          ctx.drawImage(img.bitmap, p.cx - p.drawW / 2, p.cy - p.drawH / 2, p.drawW, p.drawH);
+        } else {
+          ctx.save();
+          ctx.translate(p.cx, p.cy);
+          if (p.rotation) ctx.rotate((p.rotation * Math.PI) / 180);
+          ctx.drawImage(img.bitmap, -p.drawW / 2, -p.drawH / 2, p.drawW, p.drawH);
+          ctx.restore();
+        }
         ctx.globalAlpha = 1;
         break;
       }

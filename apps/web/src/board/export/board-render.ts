@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 import { arrowGeometry, arrowPolyline, decodeStroke, type Rect } from '@inkadra/canvas-core';
 import type { Element, FrameShape, Stroke } from '@inkadra/doc-schema';
+import { croppedRotatedSize } from '../image-crop.ts';
 import type { Placed } from './board-model.ts';
 import type { ImageInfo, Measure, Op } from './pages.ts';
 import { ellipsize, lineHeight, type TextStyle, textBlock, wrapText } from './text.ts';
@@ -84,7 +85,13 @@ export function cardHeight(el: Element, w: number, ctx: CardContext): number | n
       return 20 + (el.title ? lineHeight({ ...TITLE, color: '' }) + 4 : 0) + el.items.length * 24;
     case 'image': {
       const img = ctx.image(el.assetId);
-      const pic = img ? (w * img.info.height) / img.info.width : w * 0.75;
+      const dims = croppedRotatedSize(
+        img?.info.width ?? 4,
+        img?.info.height ?? 3,
+        el.crop,
+        el.rotation,
+      );
+      const pic = (w * dims.height) / dims.width;
       return pic + (el.caption ? lines(el.caption, SMALL, 3) + 12 : 0);
     }
     case 'frame':
@@ -228,7 +235,9 @@ function body(p: Placed, ctx: CardContext): Op[] {
         : [];
       const captionH = captionLines.length ? captionLines.length * (SMALL.leading ?? 16) + 12 : 0;
       const pic = { x: p.x, y: p.y, w: p.w, h: Math.max(1, p.h - captionH) };
-      const ops: Op[] = [picture(img?.key, pic, 'cover', c)];
+      const ops: Op[] = [
+        picture(img?.key, pic, 'cover', c, { crop: el.crop, rotation: el.rotation }),
+      ];
       if (captionLines.length) {
         ops.push(
           ...textBlock(captionLines, x, pic.y + pic.h + 6, { ...SMALL, color: c['text-secondary'] })
@@ -514,6 +523,10 @@ export function picture(
   box: Rect,
   fit: 'cover' | 'contain',
   c: Palette,
+  transform?: {
+    crop?: { x: number; y: number; w: number; h: number } | undefined;
+    rotation?: number | undefined;
+  },
 ): Op {
   if (!key) return { kind: 'rect', ...box, fill: c['surface-3'] };
   return {
@@ -521,7 +534,14 @@ export function picture(
     ...box,
     ops: [
       { kind: 'rect', ...box, fill: c['surface-2'] },
-      { kind: 'image', key, ...box, fit },
+      {
+        kind: 'image',
+        key,
+        ...box,
+        fit,
+        ...(transform?.crop ? { crop: transform.crop } : {}),
+        ...(transform?.rotation !== undefined ? { rotation: transform.rotation } : {}),
+      },
     ],
   };
 }

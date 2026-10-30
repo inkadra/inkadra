@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { roots, VideoFrameSource } from '@inkadra/doc-schema';
+import { ImageCrop, roots, VideoFrameSource } from '@inkadra/doc-schema';
 import type * as Y from 'yjs';
 
 export interface IdMaps {
@@ -51,6 +51,22 @@ export function remapDoc(doc: Y.Doc, boardId: string, maps: IdMaps): void {
           if (to) el.set('source', { ...source.data, assetId: to });
           else el.delete('source');
         } else el.set('source', source.data);
+      }
+      if (el.has('crop')) {
+        const crop = ImageCrop.safeParse(el.get('crop'));
+        if (crop.success) el.set('crop', crop.data);
+        else el.delete('crop');
+      }
+      if (el.has('rotation')) {
+        const rotation = el.get('rotation');
+        if (
+          typeof rotation !== 'number' ||
+          !Number.isFinite(rotation) ||
+          rotation < -360 ||
+          rotation > 360
+        ) {
+          el.delete('rotation');
+        }
       }
       if (el.get('type') === 'board') el.set('boardId', mapped(maps.boards, el.get('boardId')));
       const by = el.get('createdBy');

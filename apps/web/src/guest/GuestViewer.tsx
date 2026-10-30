@@ -1,8 +1,10 @@
+import { ImageCrop } from '@inkadra/doc-schema';
 import type { GuestElement } from '@inkadra/shared';
 import { IconButton } from '@inkadra/ui';
 import { useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { MovingPicture, movingVariantUrl } from '../board/moving.tsx';
+import { CroppedImage } from '../board/CroppedImage.tsx';
+import { movingVariantUrl } from '../board/moving.tsx';
 import { isUnplayableVideoError, useVideoUnplayable, VideoUnplayable } from '../board/viewer.tsx';
 import { useGuestActions } from './actions.ts';
 import { PickControls, ReviewChip } from './GuestCardExtras.tsx';
@@ -31,6 +33,10 @@ export function GuestViewer({ element, onClose }: { element: GuestElement; onClo
   const wide = Math.min(2048, window.innerWidth * (window.devicePixelRatio || 1));
   const src = guestVariant(asset, wide);
   const title = asset?.filename || caption || t(`board.types.${element.type}`);
+  const parsedCrop = element.type === 'image' ? ImageCrop.safeParse(element.crop) : null;
+  const crop = parsedCrop?.success ? parsedCrop.data : undefined;
+  const rotation =
+    element.type === 'image' && typeof element.rotation === 'number' ? element.rotation : undefined;
 
   useEffect(() => {
     const el = ref.current;
@@ -80,11 +86,15 @@ export function GuestViewer({ element, onClose }: { element: GuestElement; onClo
             )}
           </>
         ) : src && asset ? (
-          <MovingPicture
+          <CroppedImage
             className="guest-viewer__media"
             poster={src}
             moving={movingVariantUrl(asset, wide)}
             alt={caption || title}
+            width={asset.width}
+            height={asset.height}
+            crop={crop}
+            rotation={rotation}
           />
         ) : (
           <p className="ink-muted">{t('guest.viewer.noPreview')}</p>

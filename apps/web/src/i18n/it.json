@@ -338,7 +338,20 @@
     },
     "image": {
       "processing": "Elaborazione…",
-      "failed": "Anteprima non disponibile"
+      "failed": "Anteprima non disponibile",
+      "cropRotate": "Ritaglia e ruota",
+      "restoreOriginal": "Ripristina originale",
+      "cropToolbar": "Ritaglio e rotazione",
+      "cropStage": "Area di ritaglio",
+      "rotateLeft": "Ruota di 90° a sinistra",
+      "rotateRight": "Ruota di 90° a destra",
+      "angle": "Angolo di rotazione",
+      "done": "Fatto",
+      "aspect": {
+        "label": "Proporzioni",
+        "preset": "Proporzioni {{ratio}}",
+        "free": "Libero"
+      }
     },
     "file": {
       "loading": "File",
@@ -565,7 +578,9 @@
       "esc": "esc"
     },
     "thumbnails": "Miniature",
-    "item": "Elemento {{n}}"
+    "item": "Elemento {{n}}",
+    "showOriginal": "Mostra originale",
+    "showEdited": "Mostra ritaglio"
   },
   "search": {
     "title": "Cerca",
