@@ -22,6 +22,7 @@ const ALLOWED = new Set([
   'OFL-1.1',
   'Python-2.0',
   'Unlicense',
+  'Zlib',
 ]);
 
 /** Packages whose licence field is missing or non-SPDX but were checked by hand. */

@@ -224,6 +224,10 @@ export interface CanvasProps {
   onSelectionChange?: (ids: ReadonlySet<string>) => void;
   /** Opens an image, file or frame in a view of the page's own; return false for the default. */
   onOpen?: (el: Element) => boolean;
+  /** Opens the export dialog on the selection. */
+  onExportSelection?: () => void;
+  /** Filled with a reader of the part of the board on screen, for the export dialog. */
+  visibleRef?: { current: (() => Rect | null) | null };
 }
 
 export function Canvas({
@@ -240,6 +244,8 @@ export function Canvas({
   onOpenBoard,
   onSelectionChange,
   onOpen,
+  onExportSelection,
+  visibleRef,
 }: CanvasProps) {
   const { t } = useTranslation();
   const guest = useContext(GuestModeContext);
@@ -478,6 +484,15 @@ export function Canvas({
   useEffect(() => {
     onSelectionChange?.(selection);
   }, [selection, onSelectionChange]);
+
+  useEffect(() => {
+    if (!visibleRef) return;
+    visibleRef.current = () =>
+      size.w > 0 && size.h > 0 ? visibleWorld(vp.current, size.w, size.h) : null;
+    return () => {
+      visibleRef.current = null;
+    };
+  }, [visibleRef, size]);
 
   // Drop selection entries that were deleted (here or by someone else).
   useEffect(() => {
@@ -1843,6 +1858,9 @@ export function Canvas({
             },
           ]
         : []),
+      ...(onExportSelection && !preview
+        ? [{ label: t('export.openSelection'), action: onExportSelection }]
+        : []),
       ...(readOnly
         ? []
         : [
@@ -1916,6 +1934,7 @@ export function Canvas({
     openElement,
     doc,
     setEditing,
+    onExportSelection,
   ]);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: sizeVersion invalidates measured heights
