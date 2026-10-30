@@ -78,7 +78,7 @@ test('a storyboard holds scenes and frames, the shot list shows the same frames'
   await expect(page).toHaveURL(/view=shotlist/);
   const row = page.getByRole('row', { name: /1D/ });
   await expect(row.getByLabel('Azione', { exact: true })).toHaveValue(/Il treno entra/);
-  await expect(row.getByLabel('Campo', { exact: true })).toHaveValue('cu');
+  await expect(row.getByLabel('Campo', { exact: true })).toHaveAttribute('data-value', 'cu');
   await expect(page.locator('.shots__scene')).toContainText('EST. STAZIONE – NOTTE');
 
   // The same frame is a card on the canvas view of the board.

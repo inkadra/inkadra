@@ -643,3 +643,6 @@ select {
   .ink-select__list { left: 0; top: auto; bottom: 0; width: 100%; max-height: 60dvh; border-radius: 12px 12px 0 0; padding: 8px 8px max(8px, env(safe-area-inset-bottom)); }
   .ink-select__option { min-height: 44px; }
 }
+.ink-select:focus:not(:focus-visible) { box-shadow: none; border-color: var(--ink-border-default); }
+.ink-select--quiet:focus:not(:focus-visible) { border-color: transparent; }
+.ink-select:focus-visible { border-color: var(--ink-accent-primary); }

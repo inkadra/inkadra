@@ -97,7 +97,7 @@ test('the nightly schedule, its time and the retention persist after a reload', 
   await page.reload();
   await expect(nightly).toBeChecked();
   await expect(time).toHaveValue('03:45');
-  await expect(keep).toHaveValue('3');
+  await expect(keep).toHaveAttribute('data-value', '3');
   await expect(page.getByText(/^Prossimo:/)).toContainText('03:45');
 
   // Off again: the time is locked and the page says backups only start when asked.
@@ -108,7 +108,7 @@ test('the nightly schedule, its time and the retention persist after a reload', 
   await expect(nightly).not.toBeChecked();
   await expect(time).toBeDisabled();
   await expect(time).toHaveValue('03:45');
-  await expect(keep).toHaveValue('3');
+  await expect(keep).toHaveAttribute('data-value', '3');
   await expect(
     page.getByText('Disattivato: i backup partono solo quando li avvii tu.'),
   ).toBeVisible();

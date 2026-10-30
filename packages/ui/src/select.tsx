@@ -53,7 +53,7 @@ export function Select({ value, onChange, options, children, name, placeholder, 
   const choose = (index: number) => { const item = items[index]; if (!item || item.disabled) return; onChange(item.value); close(true); };
   return <>
     {name && <input type="hidden" name={name} value={value} disabled={disabled} />}
-    <button {...props} ref={trigger} type="button" role="combobox" aria-haspopup="listbox" aria-expanded={open} aria-controls={`${id}-list`} disabled={disabled}
+    <button {...props} ref={trigger} type="button" role="combobox" data-value={value} aria-haspopup="listbox" aria-expanded={open} aria-controls={`${id}-list`} disabled={disabled}
       className={`ink-input ink-select ink-select--${variant} ${className}`} onClick={event => { props.onClick?.(event); if (!event.defaultPrevented) open ? close() : show(); }}
       onKeyDown={event => { props.onKeyDown?.(event); if (!event.defaultPrevented && ['ArrowDown', 'ArrowUp', 'Enter', ' '].includes(event.key)) { event.preventDefault(); show(); } }}>
       <span className={selected < 0 ? 'ink-select__placeholder' : 'ink-select__value'}>{selected < 0 ? placeholder : items[selected]?.label}</span><Icon name="chevronDown" size={16} />

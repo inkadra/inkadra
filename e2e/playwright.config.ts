@@ -9,6 +9,7 @@ import { defineConfig, devices } from '@playwright/test';
  * Needs Postgres (DATABASE_URL, an empty database) and Valkey/Redis (REDIS_URL);
  * run `pnpm build` first. CI provides both as services.
  */
+const vitePort = Number(process.env.E2E_VITE_PORT ?? 5179);
 const port = Number(process.env.E2E_PORT ?? 3100);
 // Lets setOffline() and routes reach the service worker's own requests, as a real outage would.
 process.env.PW_EXPERIMENTAL_SERVICE_WORKER_NETWORK_EVENTS ??= '1';
@@ -59,8 +60,8 @@ export default defineConfig({
   ],
   webServer: [
     {
-      command: 'pnpm --filter @inkadra/web exec vite --host 127.0.0.1 --port 5179 --strictPort',
-      url: 'http://127.0.0.1:5179',
+      command: `pnpm --filter @inkadra/web exec vite --host 127.0.0.1 --port ${vitePort} --strictPort`,
+      url: `http://127.0.0.1:${vitePort}`,
       timeout: 60_000,
     },
     {

@@ -137,7 +137,7 @@ test('a role change reaches a board that is already open', async ({ page, browse
   const dialog = page.getByRole('dialog');
   const role = dialog.getByRole('combobox', { name: `Ruolo di ${guest.name}` });
   await chooseSelect(role, 'editor');
-  await expect(role).toHaveValue('editor');
+  await expect(role).toHaveAttribute('data-value', 'editor');
 
   // Without a reload, the person is told and can write.
   await expect(other.getByText('ora puoi modificare questa board')).toBeVisible({

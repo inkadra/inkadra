@@ -81,7 +81,7 @@ test('the owner sees the end date, moves it closer and removes it', async ({ pag
   await row.getByRole('button', { name: 'Togli la scadenza' }).click();
   await expect(row.locator('.share__expiry')).toHaveCount(0);
   // The role did not change.
-  await expect(row.getByRole('combobox')).toHaveValue('editor');
+  await expect(row.getByRole('combobox')).toHaveAttribute('data-value', 'editor');
 });
 
 test('only allowed people create projects; exceptions per person', async ({ page }) => {
