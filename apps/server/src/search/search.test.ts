@@ -98,6 +98,35 @@ describe('index entries', () => {
     ]);
   });
 
+  it('indexes everything the team sees on character and location cards', () => {
+    const doc = createBoardDoc('board');
+    const marta = {
+      ...base(),
+      type: 'character' as const,
+      name: 'Marta',
+      role: 'Capotreno',
+      actor: 'Giulia Neri',
+      contact: 'agenzia@example.com',
+      scenes: ['3A'],
+    };
+    const station = {
+      ...base(),
+      type: 'location' as const,
+      name: 'Stazione Centrale',
+      setting: 'ext' as const,
+      address: 'Piazza Duca d’Aosta',
+      light: 'Crepuscolo',
+    };
+    addElement(doc, marta);
+    addElement(doc, station);
+    const [m, s] = entriesFor(doc);
+    expect(m).toMatchObject({ type: 'character', title: 'Marta', data: { role: 'Capotreno' } });
+    for (const word of ['Capotreno', 'Giulia Neri', 'agenzia@example.com', '3A'])
+      expect(m?.text).toContain(word);
+    expect(s).toMatchObject({ type: 'location', title: 'Stazione Centrale', data: { setting: 'ext' } });
+    expect(s?.text).toContain('Piazza Duca');
+  });
+
   it('gives frames without a label the shot number the storyboard shows', () => {
     const scene = { ...base(), type: 'scene' as const, number: '12', title: '' };
     const frame = (z: string, label?: string) => ({

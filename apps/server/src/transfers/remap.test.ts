@@ -47,6 +47,27 @@ describe('remapDoc', () => {
     for (const el of roots(doc).elements.values()) expect(el.has('source')).toBe(false);
   });
 
+  it('remaps character and location pictures and drops the ones not imported', () => {
+    const doc = createBoardDoc(oldBoard);
+    addElement(doc, { ...base, id: 'character-ok', type: 'character', name: 'Marta', assetId: file });
+    addElement(doc, {
+      ...base,
+      id: 'location-missing',
+      type: 'location',
+      name: 'Stazione Centrale',
+      assetId: elsewhere,
+    });
+    remapDoc(doc, newBoard, {
+      boards: new Map(),
+      assets: new Map([[file, newFile]]),
+      person: () => importer,
+    });
+    const { elements } = roots(doc);
+    expect(elements.get('character-ok')?.get('assetId')).toBe(newFile);
+    expect(elements.get('location-missing')?.has('assetId')).toBe(false);
+    expect(readElement(elements.get('location-missing')!)).toMatchObject({ name: 'Stazione Centrale' });
+  });
+
   it('remaps nested video provenance and drops sources of videos not imported', () => {
     const doc = createBoardDoc(oldBoard);
     for (const type of ['frame', 'image'] as const) {
