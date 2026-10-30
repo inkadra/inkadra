@@ -104,11 +104,10 @@ The value is `false`, or a comma-separated list of addresses, CIDR ranges and th
 `loopback`, `linklocal` and `uniquelocal` (private networks). The default trusts loopback and
 every private network, which works for a proxy on the same machine or in the same Docker
 network. It is a starting point, not the safest setting: anything else on those networks could
-claim any client address. Once the proxy works, narrow it to **the proxy's own address or its
-dedicated subnet**:
-- a proxy in the same Docker network: that network's subnet, from
-  `docker network inspect inkadra_default --format '{{(index .IPAM.Config 0).Subnet}}'`,
-  e.g. `TRUST_PROXY=172.18.0.0/16`. Pin the subnet in compose if you rely on it;
+claim any client address. Once the proxy works, narrow it to **the proxy's own address**:
+- a proxy in the same Docker network: its single container IP, e.g.
+  `TRUST_PROXY=172.18.0.10`. Pin it with `ipv4_address: 172.18.0.10` in compose
+  (and configure network IPAM for that address);
 - a proxy on the same machine, reaching the published port: `TRUST_PROXY=loopback`;
 - a proxy on another machine of your LAN: its address, e.g. `TRUST_PROXY=192.168.1.10`;
 - a proxy that reaches Inkadra over Tailscale, for example Pangolin on a VPS targeting the
@@ -154,11 +153,11 @@ Inkadra sends `Content-Security-Policy`, `Permissions-Policy` and
 `Cross-Origin-Opener-Policy: same-origin` on its pages. Two of them are opt-in, because a wrong
 setting can break an installation in ways the server cannot see:
 
-| Variable         | Default | Meaning                                                                                       |
-| ---------------- | ------- | --------------------------------------------------------------------------------------------- |
-| `CSP_ENFORCE`    | `false` | `false` sends the policy as `Content-Security-Policy-Report-Only`; `true` enforces it         |
-| `CSP_REPORT_URI` |         | Absolute address that receives violation reports, e.g. `https://reports.example.com/csp`      |
-| `HSTS_ENABLED`   | `false` | `true` sends `Strict-Transport-Security: max-age=31536000`, only when `PUBLIC_URL` is `https` |
+| Variable         | Default | Meaning                                                                                                        |
+| ---------------- | ------- | -------------------------------------------------------------------------------------------------------------- |
+| `CSP_ENFORCE`    | `false` | `false` sends the policy as `Content-Security-Policy-Report-Only`; `true` enforces it                          |
+| `CSP_REPORT_URI` |         | Absolute address that receives violation reports, e.g. `https://reports.example.com/csp`                       |
+| `HSTS_ENABLED`   | `false` | `true` sends `Strict-Transport-Security: max-age=31536000`, only on requests whose verified transport is HTTPS |
 
 The policy allows the instance itself, its WebSocket, the S3 bucket when files are in S3,
 Google profile pictures and the privacy-enhanced YouTube player. To move to enforcement, see
@@ -178,7 +177,7 @@ also redirects HTTP to HTTPS: see [Reverse proxy](reverse-proxy.md#security-head
   that was about to go out, and failures are logged without credentials.
 
 > **Before exposing the port to LAN clients:** narrow `TRUST_PROXY` to the proxy's
-> address or dedicated subnet, for example `172.18.0.0/16` for a pinned Docker network
+> container IP pinned with `ipv4_address`, for example `172.18.0.10`
 > or `100.100.10.20` for the Newt peer. The default includes `uniquelocal`, which
 > trusts all RFC1918 clients. Such a client can forge `X-Forwarded-Proto: https`,
 > `X-Forwarded-Host` and `X-Forwarded-For`, selecting Secure cookies over cleartext
@@ -196,3 +195,13 @@ LAN. Restrict it with a firewall; do not expose plain HTTP to the public interne
 exposes passwords, sessions and content in clear text. Tailscale encrypts traffic between
 peers. Narrow `TRUST_PROXY` to actual proxy peers: it controls trust in forwarded host and
 protocol as well as client addresses. Direct clients do not need to be trusted proxies.
+
+HTTP cookies ignore ports. Use a hostname dedicated to Inkadra for direct HTTP access:
+another service on the same IP/hostname can receive or plant `inkadra.session_token` or
+`inkadra.invitation`, including a more specific Path, enabling fixation/login CSRF without
+cross-origin requests. Alternatively use HTTPS through `tailscale serve`.
+
+Do not trust the whole Docker subnet or its gateway. With userland-proxy, hairpin,
+rootless Docker or IPv6 forwarding, a direct LAN client can appear as the Docker gateway
+(e.g. `172.18.0.1`). Trusting that gateway/subnet lets direct clients forge proxy headers.
+Use the pinned proxy container IP and verify the peer address in your deployment.

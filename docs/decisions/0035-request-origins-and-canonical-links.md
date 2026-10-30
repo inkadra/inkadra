@@ -60,15 +60,17 @@ the reverse proxy are appropriate where stronger host restrictions are needed.
 HTTP LAN access exposes credentials and content in clear text; the owner accepts this
 tradeoff. Tailscale encrypts transport between its peers, but HTTP itself remains plain.
 Secure contexts required by browser APIs are still unavailable on ordinary HTTP LAN hosts.
-No database migration or HTTPS cookie migration is required. Existing HTTPS sessions retain
+Migration 0010 adds a session transport field, defaulting existing sessions to HTTPS.
+New sessions record their creation transport; adapter lookups reject the opposite transport
+for both HTTP auth endpoints and internal REST/collab session resolution. No cookie migration
+is required. Existing HTTPS sessions retain
 their names; users sign in separately at each LAN/Tailscale host. Port exposure remains an
 operator decision tracked in #225; this change neither deploys nor opens any ports.
 
 ### Review follow-up
 
 Keep the default `TRUST_PROXY=loopback,linklocal,uniquelocal` for existing Docker-proxied
-installations. Direct LAN exposure requires narrowing it to the actual proxy address or
-pinned Docker subnet (or the Newt peer), documented prominently in self-hosting guidance.
+installations. Direct LAN exposure requires narrowing it to the single proxy container IP pinned with `ipv4_address` (or the Newt peer), documented prominently in self-hosting guidance.
 Private clients otherwise can forge forwarded protocol/host and rate-limit addresses.
 Use documentation rather than a runtime warning: an immediate private peer cannot cheaply
 be distinguished from a legitimate proxy under this broad trust policy.
@@ -79,3 +81,19 @@ Reject unrelated Origin on auth writes even without cookies; without Origin reje
 cross-site Fetch Metadata but preserve existing native clients. The missing-cookie
 login-CSRF gap also existed on main: its REST CSRF hook excludes auth endpoints and
 Better Auth skips trusted-origin validation when no cookie is present.
+
+### Second review follow-up
+
+HTTP cookies ignore port boundaries. Direct HTTP requires a hostname dedicated to Inkadra:
+any service on that host can receive or plant session/invitation cookies (including Path
+shadowing), enabling fixation/login CSRF without cross-origin requests. HTTPS through
+`tailscale serve` is the alternative. Transport binding prevents HTTP-born sessions from
+being replayed on HTTPS, including by renaming the cookie; the reverse direction is rejected too.
+
+Trust only the pinned proxy container IP, not the Docker subnet/gateway. Userland-proxy,
+hairpin, rootless and IPv6 forwarding can present direct clients as the gateway
+(e.g. 172.18.0.1), otherwise granting them forwarded-header trust.
+
+The auth bridge currently rejects foreign-Origin POST callbacks as well. No configured
+provider uses OIDC `form_post` today; adding one requires a narrowly scoped callback
+exemption with verified OAuth state and form-body handling/tests before enabling it.

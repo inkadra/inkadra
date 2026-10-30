@@ -74,7 +74,7 @@ export function registerDiagnostics(app: FastifyInstance, deps: Deps) {
     const seen = `${request.protocol}://${request.host}`;
     add(
       'public_url_matches_request',
-      seen === publicUrl.origin ? 'ok' : 'error',
+      seen === publicUrl.origin ? 'ok' : 'warning',
       publicUrl.origin,
       seen,
     );

@@ -329,16 +329,38 @@ function createAuthInstance(
       '/get-access-token',
       '/refresh-token',
     ],
-    database: drizzleAdapter(db, {
-      provider: 'pg',
-      schema: {
-        user: schema.user,
-        session: schema.session,
-        account: schema.account,
-        verification: schema.verification,
-        twoFactor: schema.twoFactor,
-      },
-    }),
+    database: (options: Parameters<ReturnType<typeof drizzleAdapter>>[0]) => {
+      const adapter = drizzleAdapter(db, {
+        provider: 'pg',
+        schema: {
+          user: schema.user,
+          session: schema.session,
+          account: schema.account,
+          verification: schema.verification,
+          twoFactor: schema.twoFactor,
+        },
+      })(options);
+      return {
+        ...adapter,
+        // Filter at the adapter boundary: HTTP endpoints, internal getSession and
+        // collab all use this authoritative lookup, including session refresh.
+        findOne: (input: Parameters<ReturnType<ReturnType<typeof drizzleAdapter>>['findOne']>[0]) =>
+          adapter.findOne({
+            ...input,
+            ...(input.model === 'session'
+              ? {
+                  where: [
+                    ...(input.where ?? []),
+                    {
+                      field: 'transport',
+                      value: cookieUrl.startsWith('https:') ? 'https' : 'http',
+                    },
+                  ],
+                }
+              : {}),
+          }),
+      };
+    },
     emailAndPassword: {
       enabled: true,
       revokeSessionsOnPasswordReset: true,
@@ -383,6 +405,9 @@ function createAuthInstance(
       },
     },
     session: {
+      additionalFields: {
+        transport: { type: 'string', required: false, input: false },
+      },
       expiresIn: 60 * 60 * 24 * 30,
       updateAge: 60 * 60 * 24,
       // Deleting the account or changing security settings needs a sign-in this recent.
@@ -524,6 +549,9 @@ function createAuthInstance(
               .where(eq(schema.user.id, session.userId));
             if (!owner || owner.deactivatedAt)
               throw new APIError('FORBIDDEN', { message: 'Account deactivated.' });
+            return {
+              data: { ...session, transport: cookieUrl.startsWith('https:') ? 'https' : 'http' },
+            };
           },
         },
       },

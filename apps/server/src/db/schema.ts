@@ -68,6 +68,7 @@ export const session = pgTable(
   {
     id: uuid('id').primaryKey().defaultRandom(),
     token: text('token').notNull().unique(),
+    transport: text('transport').notNull().default('https'),
     userId: uuid('user_id')
       .notNull()
       .references(() => user.id, { onDelete: 'cascade' }),

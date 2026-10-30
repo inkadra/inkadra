@@ -1,3 +1,4 @@
+import { createServer } from 'node:http';
 import { fileURLToPath } from 'node:url';
 import { HocuspocusProvider, HocuspocusProviderWebsocket } from '@hocuspocus/provider';
 import { boardDocName } from '@inkadra/doc-schema';
@@ -41,7 +42,7 @@ it.skipIf(!process.env.DATABASE_URL)(
       auth,
       log,
       publicUrl: config.PUBLIC_URL,
-      trustProxy: config.TRUST_PROXY,
+      trustProxy: false,
     });
     attachCollab(app.server, collab);
     const lan = { host: 'soyo:7340', origin: 'http://soyo:7340' };
@@ -142,38 +143,123 @@ it.skipIf(!process.env.DATABASE_URL)(
       await app.listen({ host: '127.0.0.1', port: 0 });
       const address = app.server.address();
       if (!address || typeof address === 'string') throw new Error('No listener');
-      const websocket = new HocuspocusProviderWebsocket({
-        url: `ws://127.0.0.1:${address.port}/collab`,
-        WebSocketPolyfill: class extends WebSocket {
-          constructor(url: string) {
-            super(url, { headers });
-          }
-        },
-      });
-      const document = new Y.Doc();
-      const provider = new HocuspocusProvider({
-        websocketProvider: websocket,
-        name: boardDocName(project.json().rootBoardId),
-        document,
-        token: '',
-      });
-      try {
-        await new Promise<void>((resolve, reject) => {
-          const timer = setTimeout(() => reject(new Error('LAN collaboration timed out')), 5000);
-          provider.on('synced', () => {
-            clearTimeout(timer);
-            resolve();
-          });
-          provider.on('authenticationFailed', () => {
-            clearTimeout(timer);
-            reject(new Error('LAN collaboration rejected'));
-          });
+      async function collaborate(
+        requestHeaders: Record<string, string>,
+        port = typeof address === 'object' && address ? address.port : 0,
+      ) {
+        const websocket = new HocuspocusProviderWebsocket({
+          url: `ws://127.0.0.1:${port}/collab`,
+          WebSocketPolyfill: class extends WebSocket {
+            constructor(url: string) {
+              super(url, { headers: requestHeaders });
+            }
+          },
         });
-      } finally {
-        provider.destroy();
-        websocket.destroy();
-        document.destroy();
+        const document = new Y.Doc();
+        const provider = new HocuspocusProvider({
+          websocketProvider: websocket,
+          name: boardDocName(project.json().rootBoardId),
+          document,
+          token: '',
+        });
+        try {
+          await new Promise<void>((resolve, reject) => {
+            const timer = setTimeout(() => reject(new Error('LAN collaboration timed out')), 5000);
+            provider.on('synced', () => {
+              clearTimeout(timer);
+              resolve();
+            });
+            provider.on('authenticationFailed', () => {
+              clearTimeout(timer);
+              reject(new Error('LAN collaboration rejected'));
+            });
+            // Shared websocket providers require explicit attachment (as in the web app).
+            provider.attach();
+          });
+        } finally {
+          provider.destroy();
+          websocket.destroy();
+          document.destroy();
+        }
       }
+      await collaborate(headers);
+      await expect(collaborate({ ...headers, origin: 'https://evil.test' })).rejects.toThrow(
+        'LAN collaboration rejected',
+      );
+      await expect(
+        collaborate({
+          ...headers,
+          origin: 'https://evil.test',
+          'x-inkadra-request-origin': 'https://evil.test',
+          'x-forwarded-proto': 'https',
+          'x-forwarded-host': 'evil.test',
+        }),
+      ).rejects.toThrow('LAN collaboration rejected');
+      const httpsCookie = httpsLogin.cookies.find(
+        (c) => c.name === '__Host-inkadra.session_token',
+      )!;
+      const secureHttp = createServer();
+      const secureCollab = createCollabServer({
+        db,
+        auth,
+        log,
+        publicUrl: config.PUBLIC_URL,
+        trustProxy: 'loopback',
+      });
+      attachCollab(secureHttp, secureCollab);
+      try {
+        await new Promise<void>((resolve) => secureHttp.listen(0, '127.0.0.1', resolve));
+        const secureAddress = secureHttp.address();
+        if (!secureAddress || typeof secureAddress === 'string')
+          throw new Error('No HTTPS proxy listener');
+        const proxySocket = {
+          ...proxy,
+          cookie: `__Host-inkadra.session_token=${httpsCookie.value}`,
+        };
+        await collaborate(proxySocket, secureAddress.port);
+        await expect(
+          collaborate(
+            {
+              ...proxySocket,
+              cookie: `__Host-inkadra.session_token=${cookie.value}`,
+            },
+            secureAddress.port,
+          ),
+        ).rejects.toThrow('LAN collaboration rejected');
+      } finally {
+        await secureCollab.destroy();
+        await new Promise<void>((resolve, reject) =>
+          secureHttp.close((err) => (err ? reject(err) : resolve())),
+        );
+      }
+
+      for (const [transportHeaders, replay] of [
+        [proxy, `__Host-inkadra.session_token=${cookie.value}`],
+        [lan, `inkadra.session_token=${httpsCookie.value}`],
+      ] as const) {
+        expect(
+          (
+            await app.inject({
+              url: '/api/v1/me',
+              headers: { ...transportHeaders, cookie: replay },
+            })
+          ).statusCode,
+        ).toBe(401);
+        expect(
+          (
+            await app.inject({
+              url: '/api/auth/get-session',
+              headers: { ...transportHeaders, cookie: replay },
+            })
+          ).json(),
+        ).toBeNull();
+      }
+      await expect(
+        collaborate({
+          ...lan,
+          cookie: `inkadra.session_token=${httpsCookie.value}`,
+        }),
+      ).rejects.toThrow('LAN collaboration rejected');
     } finally {
       await collab.destroy();
       await app.close();

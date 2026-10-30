@@ -21,7 +21,7 @@ traffic between peers. No list of LAN addresses is required. `PUBLIC_URL` stays 
 HTTPS address for external links and OAuth callbacks.
 
 > **Before exposing the port to LAN clients:** narrow `TRUST_PROXY` to the proxy's
-> address or dedicated subnet, for example `172.18.0.0/16` for a pinned Docker network
+> container IP pinned with `ipv4_address`, for example `172.18.0.10`
 > or `100.100.10.20` for the Newt peer. The default includes `uniquelocal`, which
 > trusts all RFC1918 clients. Such a client can forge `X-Forwarded-Proto: https`,
 > `X-Forwarded-Host` and `X-Forwarded-For`, selecting Secure cookies over cleartext
@@ -176,7 +176,7 @@ Cloudflare dashboard (they are on by default).
 ## Security headers
 
 Whatever the proxy, finish with these four:
-1. **`TRUST_PROXY` lists only the proxy**: its address, or the dedicated subnet it connects from,
+1. **`TRUST_PROXY` lists only the proxy**: its single pinned container IP,
    not every private network and not the whole Tailscale range. See
    [`TRUST_PROXY`](configuration.md#trust_proxy).
 2. **Port 3000 stays private**: inside the Docker network, or bound to `127.0.0.1`. Never publish
@@ -236,3 +236,8 @@ proxy_set_header X-Forwarded-For $remote_addr;
 
 If Nginx sits behind another proxy or a CDN, keep `$proxy_add_x_forwarded_for` and configure
 `set_real_ip_from` for that proxy instead.
+
+Do not include the Docker gateway (e.g. `172.18.0.1`) or the whole subnet in TRUST_PROXY.
+Userland-proxy, hairpin, rootless or IPv6 forwarding can make direct LAN clients appear
+from that gateway, giving them proxy-header trust. Pin the proxy with `ipv4_address`
+and trust only that container IP; verify the actual peer in your deployment.
