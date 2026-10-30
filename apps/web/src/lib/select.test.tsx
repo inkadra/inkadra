@@ -5,7 +5,7 @@ import { createRoot } from 'react-dom/client';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 let host: HTMLDivElement;
 let root: ReturnType<typeof createRoot>;
-let escaped: ReturnType<typeof vi.fn>;
+let escaped: () => void;
 function Harness() {
   const [value, setValue] = useState('a');
   return <form onKeyDown={event => { if (event.key === 'Escape') escaped(); }}><Select name="choice" aria-label="Choice" value={value} onChange={setValue} options={[{value:'a',label:'Alpha'}, {value:'b',label:'Beta',disabled:true}, {value:'c',label:'Charlie'}]} /></form>;

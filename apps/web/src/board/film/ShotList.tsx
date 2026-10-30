@@ -1120,11 +1120,10 @@ export function ShotList({
             <b>{t('film.list.selectedCount', { count: visibleSelectedIds.length })}</b>
             <Select
               aria-label={t('film.list.changeStatus')}
-              defaultValue=""
+              value=""
               onChange={(e) => {
                 const nextStatus = e as ShotDisplayStatus;
                 if (nextStatus) bulkChangeStatus(nextStatus);
-                e = '';
               }}
             >
               <option value="" disabled>
@@ -1140,12 +1139,11 @@ export function ShotList({
             {scenes.length > 0 && (
               <Select
                 aria-label={t('film.list.moveToScene')}
-                defaultValue=""
+                value=""
                 onChange={(e) => {
                   const sceneId = e;
                   if (sceneId) bulkMoveToScene(sceneId);
-                  e = '';
-                }}
+                  }}
               >
                 <option value="" disabled>
                   {t('film.list.moveToScene')} ▾
