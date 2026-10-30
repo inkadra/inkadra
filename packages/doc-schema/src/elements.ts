@@ -76,11 +76,45 @@ export const VideoFrameSource = z.discriminatedUnion('kind', [
 ]);
 export type VideoFrameSource = z.infer<typeof VideoFrameSource>;
 
+/** Aspect presets offered when cropping an image card. */
+export const IMAGE_CROP_ASPECTS = ['free', '1:1', '4:3', '16:9', '2.39:1'] as const;
+export const ImageCropAspect = z.enum(IMAGE_CROP_ASPECTS);
+export type ImageCropAspect = z.infer<typeof ImageCropAspect>;
+
+/**
+ * Non-destructive crop rectangle in normalized [0, 1] coordinates of the rotated image
+ * bounding box.
+ */
+export const ImageCrop = z
+  .object({
+    x: z.number().finite().min(0).max(1),
+    y: z.number().finite().min(0).max(1),
+    w: z.number().finite().positive().max(1),
+    h: z.number().finite().positive().max(1),
+    aspect: ImageCropAspect.optional(),
+  })
+  .refine((c) => c.x + c.w <= 1 + 1e-6 && c.y + c.h <= 1 + 1e-6, {
+    message: 'Crop rectangle must stay within the [0, 1] image bounds.',
+  });
+export type ImageCrop = z.infer<typeof ImageCrop>;
+
 export const ImageElement = Base.extend({
   type: z.literal('image'),
   source: VideoFrameSource.optional(),
   assetId: z.string(),
   caption: z.string().max(2000).optional(),
+  crop: ImageCrop.optional().describe(
+    'Non-destructive crop rectangle in normalized [0, 1] coordinates of the rotated image (since version 8).',
+  ),
+  rotation: z
+    .number()
+    .finite()
+    .min(-360)
+    .max(360)
+    .optional()
+    .describe(
+      'Clockwise rotation in degrees (90° steps or free angle; omitted or 0 = unrotated, since version 8).',
+    ),
 });
 export const LinkElement = Base.extend({
   type: z.literal('link'),

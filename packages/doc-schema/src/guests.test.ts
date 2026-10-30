@@ -103,6 +103,34 @@ describe('guest element fields', () => {
     }
   });
 
+  it('keeps image crop and rotation in guest snapshots', () => {
+    const image = Element.parse({
+      id: 'V1StGXR8_Z5jdHi6B-myT',
+      type: 'image',
+      x: 0,
+      y: 0,
+      w: 240,
+      z: 'a0',
+      parent: null,
+      createdBy: 'user-1',
+      createdAt: 1,
+      assetId: 'asset-id',
+      crop: { x: 0.1, y: 0.2, w: 0.8, h: 0.6, aspect: '16:9' },
+      rotation: 90,
+      tags: ['internal'],
+    });
+    const guest = toGuestElement(image);
+    expect(guest).toMatchObject({
+      type: 'image',
+      assetId: 'asset-id',
+      crop: { x: 0.1, y: 0.2, w: 0.8, h: 0.6, aspect: '16:9' },
+      rotation: 90,
+      createdBy: null,
+    });
+    expect(guest).not.toHaveProperty('tags');
+    expect(Element.parse(guest)).toEqual(guest);
+  });
+
   it('never exposes video provenance to guests', () => {
     for (const type of ['image', 'frame'] as const) {
       const element = Element.parse({
