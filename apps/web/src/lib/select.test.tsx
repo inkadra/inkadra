@@ -3,33 +3,71 @@ import { Select } from '@inkadra/ui';
 import { act, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
+
 let host: HTMLDivElement;
 let root: ReturnType<typeof createRoot>;
 let escaped: () => void;
 function Harness() {
   const [value, setValue] = useState('a');
-  return <form onKeyDown={event => { if (event.key === 'Escape') escaped(); }}><Select name="choice" aria-label="Choice" value={value} onChange={setValue} options={[{value:'a',label:'Alpha'}, {value:'b',label:'Beta',disabled:true}, {value:'c',label:'Charlie'}]} /></form>;
+  return (
+    <form
+      onKeyDown={(event) => {
+        if (event.key === 'Escape') escaped();
+      }}
+    >
+      <Select
+        name="choice"
+        aria-label="Choice"
+        value={value}
+        onChange={setValue}
+        options={[
+          { value: 'a', label: 'Alpha' },
+          { value: 'b', label: 'Beta', disabled: true },
+          { value: 'c', label: 'Charlie' },
+        ]}
+      />
+    </form>
+  );
 }
 beforeEach(async () => {
   escaped = vi.fn();
   HTMLElement.prototype.showPopover = vi.fn();
   HTMLElement.prototype.hidePopover = vi.fn();
   HTMLElement.prototype.scrollIntoView = vi.fn();
-  host = document.createElement('div'); document.body.append(host); root = createRoot(host);
+  host = document.createElement('div');
+  document.body.append(host);
+  root = createRoot(host);
   await act(async () => root.render(<Harness />));
 });
-afterEach(() => { act(() => root.unmount()); host.remove(); });
-async function key(key: string) { await act(async () => (host.querySelector('[role="listbox"]') ?? host.querySelector('button'))?.dispatchEvent(new KeyboardEvent('keydown',{key,bubbles:true,cancelable:true}))); }
+afterEach(() => {
+  act(() => root.unmount());
+  host.remove();
+});
+async function key(key: string) {
+  await act(async () =>
+    (host.querySelector('[role="listbox"]') ?? host.querySelector('button'))?.dispatchEvent(
+      new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true }),
+    ),
+  );
+}
 it('opens with keyboard, skips disabled options, selects and submits the controlled value', async () => {
-  await key('ArrowDown'); await key('ArrowDown'); await key('Enter');
+  await key('ArrowDown');
+  await key('ArrowDown');
+  await key('Enter');
   expect(new FormData(host.querySelector('form')!).get('choice')).toBe('c');
   expect(host.querySelector('button')?.getAttribute('aria-expanded')).toBe('false');
 });
 it('supports Home, End and type ahead', async () => {
-  await key('Enter'); await key('End'); await key('Home'); await key('c'); await key('Enter');
+  await key('Enter');
+  await key('End');
+  await key('Home');
+  await key('c');
+  await key('Enter');
   expect(host.querySelector('button')?.textContent).toContain('Charlie');
 });
 it('consumes Escape before the containing dialog and restores focus', async () => {
-  await key(' '); await key('Escape'); expect(escaped).not.toHaveBeenCalled();
+  await key(' ');
+  await key('Escape');
+  expect(escaped).not.toHaveBeenCalled();
   expect(document.activeElement).toBe(host.querySelector('button'));
 });
