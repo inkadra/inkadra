@@ -24,7 +24,7 @@
   "devDependencies": {
     "@inkadra/doc-schema": "workspace:*",
     "@stoplight/prism-cli": "^5.16.0",
-    "@types/node": "^22.18.0",
+    "@types/node": "^26.6.5",
     "tsx": "^4.23.0",
     "typescript": "^5.9.0",
     "vitest": "^5.0.0"
