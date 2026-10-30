@@ -2239,8 +2239,10 @@
       "stalled": "Ha smesso di avanzare ed è stato annullato. Controlla il log del server per questo backup.",
       "no_space": "Il volume dei dati è pieno.",
       "permission": "Il server non può scrivere nella sua cartella dati (DATA_DIR/backups).",
-      "internal": "Qualcosa è andato storto. Il log del server dice cosa, con l'id di questo backup."
-    }
+      "internal": "Qualcosa è andato storto. Il log del server dice cosa, con l'id di questo backup.",
+      "inconsistent": "Alcune board o commenti si indicano a vicenda in un ciclo e non si possono salvare in ordine. Il log del server indica la tabella."
+    },
+    "notInBucket": "Conservato solo sul server: la copia nel bucket non è riuscita."
   },
   "export": {
     "title": "Esporta",

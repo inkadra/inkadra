@@ -200,6 +200,9 @@ export function BackupSettings() {
                   {b.status === 'failed' && (
                     <span className="backup-list__failure">{failureText(t, b.failure)}</span>
                   )}
+                  {data.bucket && b.status === 'ready' && b.fileName && !b.copiedToBucket && (
+                    <span className="backup-list__failure">{t('backups.notInBucket')}</span>
+                  )}
                   {b.fileName && <code className="backup-list__file">{b.fileName}</code>}
                 </div>
                 <StatusBadge backup={b} />
@@ -216,7 +219,7 @@ export function BackupSettings() {
   );
 }
 
-const FAILURES = ['interrupted', 'stalled', 'no_space', 'permission', 'internal'];
+const FAILURES = ['interrupted', 'stalled', 'inconsistent', 'no_space', 'permission', 'internal'];
 
 /** Why a backup failed, in words; reasons this version does not know read as `internal`. */
 function failureText(t: (key: string) => string, failure: string | null) {

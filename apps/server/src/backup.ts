@@ -24,7 +24,7 @@ import {
   type InstanceBackup,
   BackupSettings as Settings,
 } from '@inkadra/shared';
-import { and, desc, eq, inArray, isNull, lt } from 'drizzle-orm';
+import { and, desc, eq, inArray, isNull, lt, sql } from 'drizzle-orm';
 import type { Logger } from 'pino';
 import postgres from 'postgres';
 import { VERSION } from './config.ts';
@@ -53,6 +53,9 @@ const NAME = /^[a-z_][a-z0-9_]{0,62}$/;
 
 /** A dump with no data moving for this long has stalled and fails (`stalled`). */
 export const STALL_MS = 5 * 60 * 1000;
+/** Rows the backup cannot write in an order a restore can load (a cycle of parents). */
+class BackupInconsistent extends Error {}
+
 class BackupStalled extends Error {
   constructor() {
     super('The backup made no progress and was stopped.');
@@ -62,7 +65,11 @@ class BackupStalled extends Error {
 /** A running backup moves its heartbeat this often; one silent for STALE_MS was interrupted. */
 const HEARTBEAT_MS = 10 * 1000;
 export const STALE_MS = 15 * 60 * 1000;
-/** A worker that starts runs no backup yet: older silent rows belong to a process now gone. */
+/**
+ * A worker that starts reaps running backups whose heartbeat is this old. A live process
+ * beats every HEARTBEAT_MS whatever its backup is doing, so only rows of a process that is
+ * gone (six missed beats) are taken, never one another worker is still running.
+ */
 export const STARTUP_STALE_MS = 60 * 1000;
 
 /**
@@ -149,6 +156,8 @@ export interface BackupDeps {
   databaseUrl: string;
   /** Tests: how long a dump may stand still before it fails as `stalled`. */
   stallMs?: number;
+  /** Tests: how often the heartbeat beats. */
+  heartbeatMs?: number;
   storage: Storage;
   dataDir: string;
   migrationsFolder: string;
@@ -194,32 +203,45 @@ export async function runBackup(deps: BackupDeps, id: string): Promise<BackupRow
   // The id keeps two backups of the same second apart.
   const fileName = `inkadra-backup-${stamp(new Date())}-${id.slice(0, 8)}.zip`;
   const partial = join(dir, `${fileName}.partial`);
-  // The heartbeat moves only while data moves: a dump stuck on a query that never answers
-  // stops beating and is reaped as interrupted, instead of staying `running` for ever.
+  // Two clocks. The heartbeat says this process is alive: it beats on a timer for the whole
+  // run (rename and bucket copy included), so a worker that starts elsewhere never takes a
+  // live backup for a dead one. Stall detection watches the dump only: when no data moved
+  // for `stallMs` and its connection is not working on a query either, the dump is stuck.
   let movedAt = Date.now();
-  let beatAt = 0;
-  // Nothing moved for this long: the dump is stuck (a query that never answers, a stream
-  // that never ends). Fail it with `stalled` instead of leaving it `running`.
+  let dumping = false;
+  let dumpPid: number | null = null;
   const stall = new AbortController();
   const stallMs = deps.stallMs ?? STALL_MS;
   const stalled = new Promise<never>((_, reject) =>
     stall.signal.addEventListener('abort', () => reject(new BackupStalled()), { once: true }),
   );
   stalled.catch(() => {});
+  const watch = async () => {
+    if (!dumping || stall.signal.aborted || Date.now() - movedAt <= stallMs) return;
+    // Quiet is fine while Postgres works on the dump's query (sorting a large table for a
+    // parents-first COPY, counting rows); waiting on a lock or on us reading is not.
+    if (dumpPid !== null) {
+      const [activity] = await db.execute<{ state: string | null; wait: string | null }>(
+        sql`select state, wait_event_type as wait from pg_stat_activity where pid = ${dumpPid}`,
+      );
+      if (activity?.state === 'active' && activity.wait !== 'Lock' && activity.wait !== 'Client') {
+        movedAt = Date.now();
+        return;
+      }
+    }
+    if (!dumping || stall.signal.aborted) return;
+    log.error({ backup: id, stalledFor: Date.now() - movedAt }, 'backup stalled, giving up');
+    stall.abort();
+  };
   const heartbeat = setInterval(
     () => {
-      if (Date.now() - movedAt > stallMs && !stall.signal.aborted) {
-        log.error({ backup: id, stalledFor: Date.now() - movedAt }, 'backup stalled, giving up');
-        stall.abort();
-      }
-      if (movedAt <= beatAt) return;
-      beatAt = Date.now();
       db.update(instanceBackup)
         .set({ heartbeatAt: new Date() })
         .where(and(eq(instanceBackup.id, id), eq(instanceBackup.status, 'running')))
         .catch(() => {});
+      watch().catch(() => {});
     },
-    Math.min(HEARTBEAT_MS, Math.max(50, stallMs / 4)),
+    deps.heartbeatMs ?? Math.min(HEARTBEAT_MS, Math.max(50, stallMs / 4)),
   );
   heartbeat.unref();
   try {
@@ -231,34 +253,44 @@ export async function runBackup(deps: BackupDeps, id: string): Promise<BackupRow
       .where(eq(instanceBackup.id, id));
     if (claimed?.status !== 'running') {
       log.warn({ backup: id, status: claimed?.status ?? null }, 'backup not running, skipped');
-      clearInterval(heartbeat);
       return null;
     }
     log.info({ backup: id, fileName }, 'backup started');
     // Backups hold password hashes and sessions: readable by the server's user only.
     await mkdir(dir, { recursive: true, mode: 0o700 });
     await chmod(dir, 0o700).catch(() => {});
-    const dump = dumpDatabase(
-      deps,
-      partial,
-      () => {
+    dumping = true;
+    const dump = dumpDatabase(deps, partial, {
+      moved: () => {
         movedAt = Date.now();
       },
-      stall.signal,
-    );
+      connected: (pid) => {
+        dumpPid = pid;
+      },
+      signal: stall.signal,
+    });
     // After a stall the dump may still fail on its own: that is already handled.
     dump.catch(() => {});
-    const result = await Promise.race([dump, stalled]);
+    const result = await Promise.race([dump, stalled]).finally(() => {
+      dumping = false;
+    });
     await rename(partial, join(dir, fileName));
+    // The archive on the data volume is a complete backup on its own: a failed copy to the
+    // bucket keeps it, reported as not copied (`copiedToBucket: false`) and logged.
     let copied = false;
     if (deps.bucket) {
-      await deps.storage.writeStream(
-        `${BUCKET_PREFIX}${fileName}`,
-        createReadStream(join(dir, fileName)),
-        'application/zip',
-      );
-      copied = true;
+      try {
+        await deps.storage.writeStream(
+          `${BUCKET_PREFIX}${fileName}`,
+          createReadStream(join(dir, fileName)),
+          'application/zip',
+        );
+        copied = true;
+      } catch (err) {
+        log.error({ err, backup: id, fileName }, 'backup kept on the data volume, bucket copy failed');
+      }
     }
+    // Only a backup still running becomes ready: never one another process marked over.
     const [row] = await db
       .update(instanceBackup)
       .set({
@@ -270,31 +302,30 @@ export async function runBackup(deps: BackupDeps, id: string): Promise<BackupRow
         fileBytes: result.files.bytes,
         finishedAt: new Date(),
       })
-      .where(eq(instanceBackup.id, id))
+      .where(and(eq(instanceBackup.id, id), eq(instanceBackup.status, 'running')))
       .returning();
-    log.info({ backup: id, fileName, size: result.size }, 'backup written');
+    if (!row) log.warn({ backup: id, fileName }, 'backup written after it was marked over');
+    else log.info({ backup: id, fileName, size: result.size }, 'backup written');
     await applyBackupRetention(deps);
     return row ?? null;
   } catch (err) {
+    const code = (err as NodeJS.ErrnoException)?.code;
     const failure =
       err instanceof BackupStalled
         ? 'stalled'
-        : (err as NodeJS.ErrnoException)?.code === 'ENOSPC'
-          ? 'no_space'
-          : (err as NodeJS.ErrnoException)?.code === 'EACCES' ||
-              (err as NodeJS.ErrnoException)?.code === 'EPERM'
-            ? 'permission'
-            : 'internal';
+        : err instanceof BackupInconsistent
+          ? 'inconsistent'
+          : code === 'ENOSPC'
+            ? 'no_space'
+            : code === 'EACCES' || code === 'EPERM'
+              ? 'permission'
+              : 'internal';
     log.error({ err, backup: id, failure }, 'backup failed');
     await rm(partial, { force: true }).catch(() => {});
     const [row] = await db
       .update(instanceBackup)
-      .set({
-        status: 'failed',
-        failure,
-        finishedAt: new Date(),
-      })
-      .where(eq(instanceBackup.id, id))
+      .set({ status: 'failed', failure, finishedAt: new Date() })
+      .where(and(eq(instanceBackup.id, id), eq(instanceBackup.status, 'running')))
       .returning();
     return row ?? null;
   } finally {
@@ -368,6 +399,8 @@ function lineCounter(moved: () => void) {
  * the stream's `read()`. When the COPY ends while the socket is paused, nothing resumes it
  * and the next query on the connection never gets its answer: the backup waited for ever
  * after the last large table. Once the stream has ended, its `read()` resumes the socket.
+ * postgres is pinned to exactly 3.4.9 in package.json for this: check this workaround (and
+ * the large-table backup test) before upgrading it.
  */
 export function resumeWhenDone(source: Readable): Readable {
   const resume = () => (source as Readable & { _read(size: number): void })._read(0);
@@ -379,9 +412,9 @@ export function resumeWhenDone(source: Readable): Readable {
 async function dumpDatabase(
   deps: BackupDeps,
   path: string,
-  moved: () => void,
-  signal: AbortSignal,
+  hooks: { moved: () => void; connected: (pid: number) => void; signal: AbortSignal },
 ) {
+  const { moved, signal } = hooks;
   const journal = await readJournal(deps.migrationsFolder);
   const tagOf = new Map(journal.entries.map((e) => [String(e.when), e.tag]));
   // A connection of its own: when a COPY breaks off while its socket is paused for
@@ -398,6 +431,8 @@ async function dumpDatabase(
   try {
     const result = await sql.begin('isolation level repeatable read read only', async (tx) => {
       try {
+        const [backend] = await tx<{ pid: number }[]>`select pg_backend_pid() as pid`;
+        if (backend) hooks.connected(backend.pid);
         const applied = await tx<{ created_at: string }[]>`
         select created_at::text from drizzle.__drizzle_migrations order by created_at`;
         const migrations = applied.map((m) => tagOf.get(m.created_at) ?? m.created_at);
@@ -435,7 +470,7 @@ async function dumpDatabase(
             const [all] = await tx<{ n: number }[]>`select count(*)::int as n from ${tx(name)}`;
             const missing = (all?.n ?? 0) - counter.lines();
             if (missing !== 0)
-              throw new Error(
+              throw new BackupInconsistent(
                 `${name}: ${missing} rows are in a cycle of parents and cannot be backed up.`,
               );
           }

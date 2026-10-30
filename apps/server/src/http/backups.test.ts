@@ -17,6 +17,7 @@ import {
   backupCron,
   backupsDir,
   nextBackupAt,
+  reapStaleBackups,
   restoreBackup,
   resumeWhenDone,
   runBackup,
@@ -339,12 +340,75 @@ describe.skipIf(!url)('instance backups (needs DATABASE_URL)', () => {
       const [b] = await admin`insert into board (project_id, parent_board_id, title, position)
         values (${p?.id}, ${a?.id}, 'B', 'a2') returning id`;
       await admin`update board set parent_board_id = ${b?.id} where id = ${a?.id}`;
-      expect(await run()).toMatchObject({ status: 'failed', failure: 'internal' });
+      expect(await run()).toMatchObject({ status: 'failed', failure: 'inconsistent' });
     } finally {
       await admin.end({ timeout: 1 });
       await client.end({ timeout: 1 });
     }
   }, 60_000);
+
+  it('keeps a live but quiet backup when another worker starts', async () => {
+    const fresh = await freshDatabase(config.DATABASE_URL, 'quiet');
+    await runMigrations(fresh, migrations);
+    const locker = postgres(fresh, { max: 1, onnotice: () => {} });
+    await locker`create table zz_locked (id int)`;
+    const client = postgres(fresh, { max: 3, onnotice: () => {} });
+    const other = drizzle(client, { schema, casing: 'snake_case' });
+    const reserved = await locker.reserve();
+    await reserved`begin`;
+    await reserved`lock table zz_locked in access exclusive mode`;
+    try {
+      const row = await startBackup(other, 'manual', null);
+      // No data moves while the COPY waits; the process is alive all the same.
+      const running = runBackup(
+        { ...backupDeps(), db: other, databaseUrl: fresh, stallMs: 30_000, heartbeatMs: 100 },
+        row?.id as string,
+      );
+      await new Promise((r) => setTimeout(r, 1500));
+      // A worker starting now reaps rows silent for longer than a second: not this one.
+      expect(await reapStaleBackups(other, 1000)).toBe(0);
+      await reserved`rollback`;
+      expect(await running).toMatchObject({ status: 'ready', failure: null });
+    } finally {
+      reserved.release();
+      await locker.end({ timeout: 1 });
+      await client.end({ timeout: 1 });
+    }
+  }, 60_000);
+
+  it('keeps the archive when the copy to the bucket fails, as not copied', async () => {
+    const failing = {
+      ...deps.storage,
+      async writeStream() {
+        throw new Error('bucket down');
+      },
+    };
+    const row = await startBackup(db, 'manual', null);
+    const done = await runBackup(
+      { ...backupDeps(), storage: failing, bucket: true },
+      row?.id as string,
+    );
+    expect(done).toMatchObject({ status: 'ready', copiedToBucket: false });
+    expect(existsSync(join(backupsDir(deps.root), done?.fileName as string))).toBe(true);
+  });
+
+  it('never turns a backup marked over by someone else into ready', async () => {
+    const row = await startBackup(db, 'manual', null);
+    const id = row?.id as string;
+    // While the archive is copied, another process decides this backup is over.
+    const meanwhile = {
+      ...deps.storage,
+      async writeStream() {
+        await db
+          .update(instanceBackup)
+          .set({ status: 'failed', failure: 'interrupted', finishedAt: new Date() })
+          .where(eq(instanceBackup.id, id));
+      },
+    };
+    expect(await runBackup({ ...backupDeps(), storage: meanwhile, bucket: true }, id)).toBeNull();
+    const [after] = await db.select().from(instanceBackup).where(eq(instanceBackup.id, id));
+    expect(after).toMatchObject({ status: 'failed', failure: 'interrupted' });
+  });
 
   it('fails a backup that stops moving as stalled, with its reason', async () => {
     const fresh = await freshDatabase(config.DATABASE_URL, 'stalled');
