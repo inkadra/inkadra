@@ -1777,9 +1777,9 @@ describe.skipIf(!url)('guest share links (needs DATABASE_URL)', () => {
     );
     expect(part.status).toBe(206);
     expect(part.text).toBe('234');
-    // No original without downloads, no stream of anything but the track, nor without a session.
+    // Never as an original (not a card's file), no stream of anything else, nor without a session.
     expect((await call({ cookie: o.cookie }, 'GET', g(link, `/assets/${A}/file`))).status).toBe(
-      403,
+      404,
     );
     expect(
       (await call({ cookie: o.cookie }, 'GET', g(link, `/assets/${X.x1}/stream`))).status,
