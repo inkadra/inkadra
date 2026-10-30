@@ -77,7 +77,7 @@ import { canvasActions, duplicateInStore } from '../commands/board-actions.ts';
 import { useSession } from '../lib/session.tsx';
 import { queueSeeds } from '../routes/seed-queue.tsx';
 import { accessNotices } from './access-notices.ts';
-import { ArrowLayer, ArrowStyleButtons } from './arrows.tsx';
+import { ArrowLayer, ArrowStyleButtons, onArrowStyleButton } from './arrows.tsx';
 import { canRenameBoard, createBoard, setBoardCover } from './boards.ts';
 import {
   type CanvasTemplate,
@@ -1428,9 +1428,7 @@ export function Canvas({
     if (e.type !== 'keydown' || isTyping(e.target) || palette) return;
     const cmd = commandFor(e);
     if (!cmd) return;
-    // Enter on a focused button (the selection bar, the toolbar) presses the button.
-    if (cmd.kind === 'edit' && (e.target as HTMLElement | null)?.closest?.('button, a[href]'))
-      return;
+    if (cmd.kind === 'edit' && onArrowStyleButton(e.target)) return;
     const single = selection.size === 1 ? snap.byId.get([...selection][0] ?? '') : undefined;
     switch (cmd.kind) {
       case 'tool':

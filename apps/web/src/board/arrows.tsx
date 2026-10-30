@@ -164,7 +164,7 @@ export function ArrowStyleButtons({
       LOCAL,
     );
   return (
-    <>
+    <span className="ctxbar__arrow-styles" data-arrow-styles>
       {onLabel && (
         <BarButton
           icon="text"
@@ -192,6 +192,14 @@ export function ArrowStyleButtons({
           patch({ heads: next === 'end' ? undefined : next });
         }}
       />
-    </>
+    </span>
   );
+}
+
+/**
+ * Enter on a focused arrow style button presses it; the canvas must not also take it as
+ * "edit the selected arrow's label". Every other Enter keeps its canvas meaning.
+ */
+export function onArrowStyleButton(target: EventTarget | null): boolean {
+  return target instanceof Element && !!target.closest('[data-arrow-styles] button');
 }
