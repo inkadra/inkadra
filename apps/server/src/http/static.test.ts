@@ -91,6 +91,15 @@ describe('web app files', () => {
     expect(page.headers['referrer-policy']).toBe('strict-origin-when-cross-origin');
   });
 
+  it('answers HEAD on app routes like GET, without a body', async () => {
+    const root = await app.inject({ method: 'HEAD', url: '/' });
+    expect(root.statusCode).toBe(200);
+    expect(root.headers['content-type']).toMatch(/^text\/html/);
+    expect(root.body).toBe('');
+    const missing = await app.inject({ method: 'HEAD', url: '/assets/index-OLD.js' });
+    expect(missing.statusCode).toBe(404);
+  });
+
   it('keeps the token of a guest page out of referrers and search engines', async () => {
     const page = await app.inject('/s/abcdefghijklmnopqrstuvwxyz');
     expect(page.statusCode).toBe(200);
