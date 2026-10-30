@@ -454,7 +454,7 @@ describe('video still provenance', () => {
 });
 
 describe('arrow path', () => {
-  const arrow = (path?: unknown) => ({
+  const arrow = (path?: 'straight' | 'curved') => ({
     ...base(),
     type: 'arrow' as const,
     from: { x: 0, y: 0 },
@@ -462,7 +462,7 @@ describe('arrow path', () => {
     label: 'Marta → Leo',
     line: 'dashed' as const,
     heads: 'both' as const,
-    ...(path === undefined ? {} : { path }),
+    ...(path ? { path } : {}),
   });
 
   it('keeps curved and straight arrows with their label through Yjs', () => {
@@ -479,7 +479,7 @@ describe('arrow path', () => {
 
   it('rejects unknown paths', () => {
     for (const path of ['zigzag', 1, null])
-      expect(Element.safeParse(arrow(path)).success).toBe(false);
+      expect(Element.safeParse({ ...arrow(), path }).success).toBe(false);
   });
 
   it('migrates version 5 arrows unchanged, so they stay straight', () => {
