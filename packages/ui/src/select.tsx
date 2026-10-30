@@ -136,6 +136,7 @@ export function Select({
       <button
         {...props}
         ref={trigger}
+        id={props.id ?? `${id}-trigger`}
         type="button"
         role="combobox"
         data-value={value}
@@ -172,7 +173,7 @@ export function Select({
           id={`${id}-list`}
           tabIndex={-1}
           aria-label={props['aria-label']}
-          aria-labelledby={props['aria-labelledby'] ?? props.id}
+          aria-labelledby={props['aria-labelledby'] ?? props.id ?? `${id}-trigger`}
           aria-activedescendant={active >= 0 ? `${id}-${active}` : undefined}
           className="ink-select__list"
           onKeyDown={(event) => {
