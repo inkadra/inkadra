@@ -38,6 +38,7 @@ import {
   ScreenplayImportDialog,
 } from './film/screenplay/ScreenplayImportDialog.tsx';
 import { boardPeople, EditingLine, editingPeople, SyncStatus } from './header-status.tsx';
+import { useLiveBoardCounts } from './live-counts.ts';
 import { RestoredToast } from './RestoredToast.tsx';
 import { LOCAL } from './store.ts';
 import { type VersionPreview, VersionsDialog } from './VersionsDialog.tsx';
@@ -212,6 +213,7 @@ function BoardScreen({
   const { user } = useSession();
   const { items: boards } = useProjectBoards(projectId);
   const conn = useBoardConnection(boardId);
+  useLiveBoardCounts(conn, boardId);
   const [detail, setDetail] = useState<BoardDetail | null>(null);
   const kind = detail?.kind ?? boards?.find((b) => b.id === boardId)?.kind;
   const [view, setView] = useBoardView(kind);

@@ -8,8 +8,10 @@ import {
   forgetSeededCounts,
   mergeSeededCounts,
   queueSeeds,
+  releaseLiveCounts,
   type SeededCounts,
   SeedQueue,
+  setLiveCounts,
   useSeededCounts,
 } from './seed-queue.tsx';
 
@@ -93,6 +95,27 @@ it('counts a seeded board in the navigation until the server has stored it', asy
     await act(async () => root.render(<Counts />));
     expect(shown.get('s')?.elementCount).toBe(0);
   } finally {
+    await act(async () => root.unmount());
+    host.remove();
+  }
+});
+
+it('counts the board open in a Canvas from its doc, also when the server still has old counts', async () => {
+  const host = document.createElement('div');
+  document.body.append(host);
+  const root = createRoot(host);
+  server.set('o', { boardId: 'o', elementCount: 4, frameCount: 3, framesToShoot: 3 });
+  try {
+    await act(async () => root.render(<Counts />));
+    // A screenplay imported into the storyboard: the server still stores three frames.
+    await act(async () => setLiveCounts('o', { elementCount: 6, frameCount: 5, framesToShoot: 5 }));
+    expect(shown.get('o')?.frameCount).toBe(5);
+    await act(async () => forgetSeededCounts(server));
+    expect(shown.get('o')?.frameCount).toBe(5);
+    await act(async () => setLiveCounts('o', { elementCount: 5, frameCount: 4, framesToShoot: 4 }));
+    expect(shown.get('o')?.frameCount).toBe(4);
+  } finally {
+    releaseLiveCounts('o');
     await act(async () => root.unmount());
     host.remove();
   }
