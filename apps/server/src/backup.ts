@@ -77,9 +77,14 @@ const PARENTS_FIRST: Record<string, (columns: string[]) => string> = {
        union all select b.id, d.depth + 1 from board b join d on b.parent_board_id = d.id)
      select ${columns.map((c) => `board."${c}"`).join(', ')} from board join d using (id)
      order by d.depth, board.id`,
+  // By depth too: older data may hold replies to replies, which a plain "starts first"
+  // order would write before the reply they point to.
   comment: (columns) =>
-    `select ${columns.map((c) => `"${c}"`).join(', ')} from comment
-     order by thread_id nulls first, id`,
+    `with recursive d(id, depth) as (
+       select id, 0 from comment where thread_id is null
+       union all select c.id, d.depth + 1 from comment c join d on c.thread_id = d.id)
+     select ${columns.map((c) => `comment."${c}"`).join(', ')} from comment join d using (id)
+     order by d.depth, comment.id`,
 };
 
 export type BackupRow = typeof instanceBackup.$inferSelect;
@@ -424,6 +429,16 @@ async function dumpDatabase(
           );
           // piped: a COPY that fails mid-way must fail the backup, never leave it waiting.
           await zip.addStream(entry, piped(source, counter.stream));
+          if (ordered) {
+            // Rows no root reaches (a cycle of parents) would be left out without a word, and
+            // the restore would then fail: say so now, with the table, instead.
+            const [all] = await tx<{ n: number }[]>`select count(*)::int as n from ${tx(name)}`;
+            const missing = (all?.n ?? 0) - counter.lines();
+            if (missing !== 0)
+              throw new Error(
+                `${name}: ${missing} rows are in a cycle of parents and cannot be backed up.`,
+              );
+          }
           listed.push({ name, columns, rows: counter.lines(), entry });
         }
         // Every stored file: originals with their checksum, thumbnails by key.

@@ -294,6 +294,58 @@ describe.skipIf(!url)('instance backups (needs DATABASE_URL)', () => {
     }
   }, 60_000);
 
+  it('backs up replies to replies parents first, and refuses boards in a cycle', async () => {
+    const fresh = await freshDatabase(config.DATABASE_URL, 'orders');
+    await runMigrations(fresh, migrations);
+    const admin = postgres(fresh, { max: 1, onnotice: () => {} });
+    const [p] = await admin`insert into project (name, position) values ('Last Train', 'a0')
+      returning id`;
+    const [root] = await admin`insert into board (project_id, title, position)
+      values (${p?.id}, 'Last Train', 'a0') returning id`;
+    // Ids chosen so that the reply to a reply sorts before the reply it answers.
+    const start = '00000000-0000-4000-8000-00000000000a';
+    const reply = 'ffffffff-ffff-4fff-8fff-fffffffffff1';
+    const nested = '11111111-1111-4111-8111-111111111111';
+    await admin`insert into comment (id, project_id, board_id, body) values
+      (${start}, ${p?.id}, ${root?.id}, 'Which platform?')`;
+    await admin`insert into comment (id, project_id, board_id, thread_id, body) values
+      (${reply}, ${p?.id}, ${root?.id}, ${start}, 'Four')`;
+    await admin`insert into comment (id, project_id, board_id, thread_id, body) values
+      (${nested}, ${p?.id}, ${root?.id}, ${reply}, 'Sure?')`;
+    const client = postgres(fresh, { max: 2, onnotice: () => {} });
+    const other = drizzle(client, { schema, casing: 'snake_case' });
+    const run = async () => {
+      const row = await startBackup(other, 'manual', null);
+      return runBackup({ ...backupDeps(), db: other, databaseUrl: fresh }, row?.id as string);
+    };
+    try {
+      const done = await run();
+      expect(done).toMatchObject({ status: 'ready' });
+      // It restores: every comment comes after the one it answers.
+      const target = await freshDatabase(config.DATABASE_URL, 'orders_restore');
+      const report = await restoreBackup({
+        file: join(backupsDir(deps.root), done?.fileName as string),
+        databaseUrl: target,
+        migrationsFolder: migrations,
+        storage: deps.storage,
+        tmpDir: join(deps.root, 'tmp'),
+        log,
+      });
+      expect(report.rows).toBeGreaterThan(0);
+
+      // Two boards that are each other's parent: no root reaches them.
+      const [a] = await admin`insert into board (project_id, parent_board_id, title, position)
+        values (${p?.id}, ${root?.id}, 'A', 'a1') returning id`;
+      const [b] = await admin`insert into board (project_id, parent_board_id, title, position)
+        values (${p?.id}, ${a?.id}, 'B', 'a2') returning id`;
+      await admin`update board set parent_board_id = ${b?.id} where id = ${a?.id}`;
+      expect(await run()).toMatchObject({ status: 'failed', failure: 'internal' });
+    } finally {
+      await admin.end({ timeout: 1 });
+      await client.end({ timeout: 1 });
+    }
+  }, 60_000);
+
   it('fails a backup that stops moving as stalled, with its reason', async () => {
     const fresh = await freshDatabase(config.DATABASE_URL, 'stalled');
     await runMigrations(fresh, migrations);
