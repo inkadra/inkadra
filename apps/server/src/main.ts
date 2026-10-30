@@ -115,7 +115,13 @@ async function main() {
 
   let collab: ReturnType<typeof createCollabServer> | undefined;
   if (command === 'collab' || command === 'all') {
-    collab = createCollabServer({ db, auth, log, publicUrl: config.PUBLIC_URL });
+    collab = createCollabServer({
+      db,
+      auth,
+      log,
+      publicUrl: config.PUBLIC_URL,
+      trustProxy: config.TRUST_PROXY,
+    });
     const server = collab;
     closers.unshift(() => server.destroy());
     const backfill = startIndexBackfill(db, log);

@@ -82,7 +82,11 @@ describe.skipIf(!url)('sign-in providers (needs DATABASE_URL)', () => {
     const res = await app.inject({
       method: 'POST',
       url: '/api/auth/sign-in/social',
-      headers: { origin: 'https://inkadra.example.com' },
+      headers: {
+        host: 'inkadra.example.com',
+        'x-forwarded-proto': 'https',
+        origin: 'https://inkadra.example.com',
+      },
       payload: { provider, callbackURL: '/' },
     });
     expect(res.statusCode).toBe(200);
@@ -138,7 +142,11 @@ describe.skipIf(!url)('sign-in providers (needs DATABASE_URL)', () => {
         const direct = await app.inject({
           method: 'POST',
           url: '/api/auth/sign-in/social',
-          headers: { origin: 'https://inkadra.example.com' },
+          headers: {
+            host: 'inkadra.example.com',
+            'x-forwarded-proto': 'https',
+            origin: 'https://inkadra.example.com',
+          },
           payload: { provider: id, idToken: { token: 'test-id-token' } },
         });
         expect(direct.statusCode).toBe(200);
@@ -150,14 +158,18 @@ describe.skipIf(!url)('sign-in providers (needs DATABASE_URL)', () => {
       const start = await app.inject({
         method: 'POST',
         url: '/api/auth/sign-in/social',
-        headers: { origin: 'https://inkadra.example.com' },
+        headers: {
+          host: 'inkadra.example.com',
+          'x-forwarded-proto': 'https',
+          origin: 'https://inkadra.example.com',
+        },
         payload: { provider: id, callbackURL: '/authorize?client_id=mobile' },
       });
       const state = new URL(start.json().url).searchParams.get('state');
       const cookie = start.cookies.map((c) => `${c.name}=${c.value}`).join('; ');
       const callback = await app.inject({
         url: `/api/auth/callback/${id}?code=test&state=${state}`,
-        headers: { cookie },
+        headers: { host: 'inkadra.example.com', 'x-forwarded-proto': 'https', cookie },
       });
       expect(callback.statusCode).toBe(302);
       expect(callback.cookies.some((c) => c.name === '__Host-inkadra.known-device')).toBe(false);
@@ -171,7 +183,12 @@ describe.skipIf(!url)('sign-in providers (needs DATABASE_URL)', () => {
       const invalid = await app.inject({
         method: 'POST',
         url: '/api/auth/two-factor/verify-totp',
-        headers: { cookie: challenge, origin: 'https://inkadra.example.com' },
+        headers: {
+          host: 'inkadra.example.com',
+          'x-forwarded-proto': 'https',
+          cookie: challenge,
+          origin: 'https://inkadra.example.com',
+        },
         payload: { code: '000000' },
       });
       expect(invalid.statusCode).toBeGreaterThanOrEqual(400);
@@ -204,6 +221,8 @@ describe.skipIf(!url)('sign-in providers (needs DATABASE_URL)', () => {
         method: 'POST',
         url: '/api/auth/sign-in/email',
         headers: {
+          host: 'inkadra.example.com',
+          'x-forwarded-proto': 'https',
           origin: 'https://inkadra.example.com',
           'x-forwarded-for': source,
           ...(cookie ? { cookie } : {}),

@@ -39,7 +39,12 @@ it.skipIf(!process.env.DATABASE_URL)(
       app.inject({
         method: 'POST',
         url: '/api/auth/sign-up/email',
-        headers: { origin: config.PUBLIC_URL, ...(cookie ? { cookie } : {}) },
+        headers: {
+          host: new URL(config.PUBLIC_URL).host,
+          'x-forwarded-proto': 'https',
+          origin: config.PUBLIC_URL,
+          ...(cookie ? { cookie } : {}),
+        },
         payload: { name: email, email, password: 'https-only-test-password' },
       });
     try {
@@ -52,7 +57,12 @@ it.skipIf(!process.env.DATABASE_URL)(
       const invitation = await app.inject({
         method: 'POST',
         url: '/api/v1/invitations',
-        headers: { cookie, origin: config.PUBLIC_URL },
+        headers: {
+          host: new URL(config.PUBLIC_URL).host,
+          'x-forwarded-proto': 'https',
+          cookie,
+          origin: config.PUBLIC_URL,
+        },
         payload: { kind: 'email', email: 'invited@example.test' },
       });
       expect(invitation.statusCode).toBe(201);
@@ -60,7 +70,11 @@ it.skipIf(!process.env.DATABASE_URL)(
       const claim = await app.inject({
         method: 'POST',
         url: `/api/v1/invitations/by-token/${token}/claim`,
-        headers: { origin: config.PUBLIC_URL },
+        headers: {
+          host: new URL(config.PUBLIC_URL).host,
+          'x-forwarded-proto': 'https',
+          origin: config.PUBLIC_URL,
+        },
         payload: {},
       });
       expect(claim.statusCode).toBe(204);

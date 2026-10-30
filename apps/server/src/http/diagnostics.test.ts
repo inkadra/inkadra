@@ -75,10 +75,12 @@ describe.skipIf(!url)('diagnostics (needs DATABASE_URL)', () => {
     for (const c of body.checks) expect([c.expected, c.actual]).toEqual([null, null]);
   });
 
-  it('flags a proxy that does not send the scheme', async () => {
+  it('warns for alternate direct origins and a proxy without the scheme', async () => {
     const body = (await get({ 'x-forwarded-for': '203.0.113.7' })).json<Diagnostics>();
     expect(body.request.protocol).toBe('http');
-    expect(check(body, 'public_url_matches_request')?.status).toBe('error');
+    expect(check(body, 'public_url_matches_request')?.status).toBe('warning');
+    const direct = (await get({ host: 'soyo:7340' })).json<Diagnostics>();
+    expect(check(direct, 'public_url_matches_request')?.status).toBe('warning');
   });
 
   it('needs an administrator once the first account exists', async () => {

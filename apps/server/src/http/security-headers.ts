@@ -1,8 +1,9 @@
 import type { Config } from '../config.ts';
 
-export function securityHeaders(config: Config): Record<string, string> {
-  const publicUrl = new URL(config.PUBLIC_URL);
-  const socket = `${publicUrl.protocol === 'https:' ? 'wss:' : 'ws:'}//${publicUrl.host}`;
+export function securityHeaders(
+  config: Config,
+  secure = config.PUBLIC_URL.startsWith('https:'),
+): Record<string, string> {
   const storage =
     config.STORAGE_DRIVER === 's3'
       ? config.S3_ENDPOINT
@@ -20,7 +21,7 @@ export function securityHeaders(config: Config): Record<string, string> {
     `img-src 'self' data: blob: https://*.googleusercontent.com ${storage}`.trim(),
     `media-src 'self' blob: ${storage}`.trim(),
     "font-src 'self'",
-    `connect-src 'self' ${socket} ${storage}`.trim(),
+    `connect-src 'self' ${storage}`.trim(),
     'frame-src https://www.youtube-nocookie.com',
     "worker-src 'self'",
     "manifest-src 'self'",
@@ -29,7 +30,7 @@ export function securityHeaders(config: Config): Record<string, string> {
     "form-action 'self'",
     "frame-ancestors 'none'",
     ...(config.CSP_REPORT_URI ? [`report-uri ${config.CSP_REPORT_URI}`] : []),
-    ...(config.CSP_ENFORCE && publicUrl.protocol === 'https:' ? ['upgrade-insecure-requests'] : []),
+    ...(config.CSP_ENFORCE && secure ? ['upgrade-insecure-requests'] : []),
   ].join('; ');
   const youtube = '(self "https://www.youtube-nocookie.com")';
   return {
@@ -37,8 +38,6 @@ export function securityHeaders(config: Config): Record<string, string> {
       policy,
     'permissions-policy': `camera=(), microphone=(), geolocation=(), payment=(), usb=(), autoplay=${youtube}, encrypted-media=${youtube}, picture-in-picture=${youtube}, fullscreen=${youtube}, clipboard-write=${youtube}`,
     'cross-origin-opener-policy': 'same-origin',
-    ...(config.HSTS_ENABLED && publicUrl.protocol === 'https:'
-      ? { 'strict-transport-security': 'max-age=31536000' }
-      : {}),
+    ...(config.HSTS_ENABLED && secure ? { 'strict-transport-security': 'max-age=31536000' } : {}),
   };
 }

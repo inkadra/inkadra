@@ -39,7 +39,8 @@
     "sharp": "^0.35.5",
     "ws": "^8.22.0",
     "yjs": "^13.6.0",
-    "zod": "^4.6.0"
+    "zod": "^4.6.0",
+    "@fastify/proxy-addr": "^5.1.2"
   },
   "devDependencies": {
     "@hocuspocus/provider": "^4.7.1",

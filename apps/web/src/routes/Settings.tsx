@@ -280,8 +280,14 @@ function SignInMethods({
   const status = useStatus();
   const [dialog, setDialog] = useState<'password' | 'twoFactor' | null>(null);
   const providers = [
-    ...(instance?.auth.google ? [{ id: 'google', name: 'Google' }] : []),
-    ...(instance?.auth.oidc ?? []),
+    ...(instance &&
+    new URL(instance.publicUrl).origin === window.location.origin &&
+    instance.auth.google
+      ? [{ id: 'google', name: 'Google' }]
+      : []),
+    ...(instance && new URL(instance.publicUrl).origin === window.location.origin
+      ? instance.auth.oidc
+      : []),
   ];
   const linked = (id: string) => accounts?.some((a) => a.providerId === id) ?? false;
   const methods = accounts?.length ?? 0;

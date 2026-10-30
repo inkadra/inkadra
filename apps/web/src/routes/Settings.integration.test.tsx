@@ -9,7 +9,7 @@ import { Settings } from './Settings.tsx';
 const session = vi.hoisted(() => ({
   user: { role: 'admin', name: 'Editor', email: 'editor@example.test', locale: 'en' },
   version: '1.0.0',
-  instance: { auth: { google: false, oidc: [] } },
+  instance: { publicUrl: 'http://localhost:3000', auth: { google: false, oidc: [] } },
   refresh: vi.fn(),
 }));
 const phone = vi.hoisted(() => ({ value: false }));

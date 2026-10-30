@@ -12,9 +12,9 @@ const config = (env: Record<string, string> = {}) =>
   });
 
 describe('browser security policy', () => {
-  it('reports by default and derives the websocket origin including port', () => {
+  it('reports by default and permits same-origin connections', () => {
     const h = securityHeaders(config());
-    expect(h['content-security-policy-report-only']).toContain('wss://inkadra.example:8443');
+    expect(h['content-security-policy-report-only']).toContain("connect-src 'self'");
     expect(h['content-security-policy-report-only']).toContain("script-src 'self';");
     expect(h['content-security-policy']).toBeUndefined();
     expect(h['content-security-policy-report-only']).not.toContain('upgrade-insecure-requests');
@@ -34,9 +34,7 @@ describe('browser security policy', () => {
         S3_ENDPOINT: 'https://objects.example',
       }),
     );
-    expect(h['content-security-policy']).toContain(
-      "connect-src 'self' wss://inkadra.example:8443 https://objects.example",
-    );
+    expect(h['content-security-policy']).toContain("connect-src 'self' https://objects.example");
     expect(h['strict-transport-security']).toBe('max-age=31536000');
     expect(h['content-security-policy']).toContain('upgrade-insecure-requests');
     expect(h['content-security-policy']).toContain('report-uri https://reports.example/csp');
@@ -52,10 +50,8 @@ describe('browser security policy', () => {
     ).toContain('https://media.objects.example:9000');
   });
   it('never sends HSTS or upgrades insecure requests on local HTTP', () => {
-    const h = securityHeaders(
-      config({ PUBLIC_URL: 'http://localhost:3000', HSTS_ENABLED: 'true' }),
-    );
+    const h = securityHeaders(config({ CSP_ENFORCE: 'true', HSTS_ENABLED: 'true' }), false);
     expect(h['strict-transport-security']).toBeUndefined();
-    expect(h['content-security-policy-report-only']).not.toContain('upgrade-insecure-requests');
+    expect(h['content-security-policy']).not.toContain('upgrade-insecure-requests');
   });
 });

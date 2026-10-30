@@ -258,7 +258,11 @@ describe('guest rules', () => {
   });
 
   it('accepts writes only from the instance itself', () => {
-    const req = (headers: Record<string, string>) => ({ headers }) as unknown as FastifyRequest;
+    const req = (headers: Record<string, string>) =>
+      ({
+        headers,
+        raw: { headers: { host: 'ink.example.com' }, socket: { encrypted: true } },
+      }) as unknown as FastifyRequest;
     const url = 'https://ink.example.com/';
     expect(checkSameOrigin(req({ origin: 'https://ink.example.com' }), url)).toBe(true);
     expect(checkSameOrigin(req({ origin: 'https://evil.example.com' }), url)).toBe(false);
@@ -271,6 +275,7 @@ describe('guest rules', () => {
   it('names the guest cookie __Secure- over HTTPS, scoped to the path of its link', () => {
     const headers: Record<string, string> = {};
     const reply = {
+      request: { raw: { headers: { host: 'ink.example.com' }, socket: { encrypted: true } } },
       header: (k: string, v: string) => {
         headers[k] = v;
       },

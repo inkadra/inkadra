@@ -13,12 +13,25 @@ proxy must
    shared links call the API directly and cannot pass through it.
 
 `compose.yaml` publishes Inkadra on `127.0.0.1:3000`, so only a proxy on the same machine can
-reach it; the bundled proxies remove the published port altogether and reach Inkadra inside the
-Docker network. Keep it that way: port 3000 speaks plain HTTP and believes `X-Forwarded-For`
-from private networks, so it must never be reachable from the internet. If the proxy runs on
-another machine, set `INKADRA_BIND` to the LAN or Tailscale address the proxy uses (not
-`0.0.0.0` on a machine with a public address), firewall the port to the proxy, and limit
-`TRUST_PROXY` to the proxy's address. See [Security headers](#security-headers) for the rest.
+reach it; the bundled proxies reach Inkadra inside the Docker network. To allow direct LAN
+or Tailscale access as well, publish the port on a selected private interface or set
+`INKADRA_BIND=0.0.0.0`. This publishes it on the LAN and every other host interface: firewall
+it from the public internet. Plain HTTP exposes credentials and content; Tailscale encrypts
+traffic between peers. No list of LAN addresses is required. `PUBLIC_URL` stays the public
+HTTPS address for external links and OAuth callbacks.
+
+> **Before exposing the port to LAN clients:** narrow `TRUST_PROXY` to the proxy's
+> container IP pinned with `ipv4_address`, for example `172.18.0.10`
+> or `100.100.10.20` for the Newt peer. The default includes `uniquelocal`, which
+> trusts all RFC1918 clients. Such a client can forge `X-Forwarded-Proto: https`,
+> `X-Forwarded-Host` and `X-Forwarded-For`, selecting Secure cookies over cleartext
+> or bypassing address-based rate limits. Direct clients need no proxy trust.
+
+Set `TRUST_PROXY` to the actual proxy peer addresses, not all LAN clients. The proxy must
+overwrite forwarded host/protocol headers, preserve the original Host (or set
+X-Forwarded-Host), and send X-Forwarded-Proto. Direct untrusted clients cannot override the
+socket protocol with those headers. HSTS and CSP upgrade-insecure-requests are sent only
+on verified HTTPS responses. See [Security headers](#security-headers).
 
 The configurations in [`deploy/proxy`](../../deploy/proxy) (Caddy, Traefik, Nginx) are tested by
 CI on every change, in all-in-one and split mode, with
@@ -163,7 +176,7 @@ Cloudflare dashboard (they are on by default).
 ## Security headers
 
 Whatever the proxy, finish with these four:
-1. **`TRUST_PROXY` lists only the proxy**: its address, or the dedicated subnet it connects from,
+1. **`TRUST_PROXY` lists only the proxy**: its single pinned container IP,
    not every private network and not the whole Tailscale range. See
    [`TRUST_PROXY`](configuration.md#trust_proxy).
 2. **Port 3000 stays private**: inside the Docker network, or bound to `127.0.0.1`. Never publish
@@ -223,3 +236,8 @@ proxy_set_header X-Forwarded-For $remote_addr;
 
 If Nginx sits behind another proxy or a CDN, keep `$proxy_add_x_forwarded_for` and configure
 `set_real_ip_from` for that proxy instead.
+
+Do not include the Docker gateway (e.g. `172.18.0.1`) or the whole subnet in TRUST_PROXY.
+Userland-proxy, hairpin, rootless or IPv6 forwarding can make direct LAN clients appear
+from that gateway, giving them proxy-header trust. Pin the proxy with `ipv4_address`
+and trust only that container IP; verify the actual peer in your deployment.
