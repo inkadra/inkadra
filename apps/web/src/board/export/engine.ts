@@ -15,7 +15,7 @@ import {
   SHOT_MOVEMENTS,
   SHOT_SIZES,
 } from '@inkadra/doc-schema';
-import type { Board, CommentThread } from '@inkadra/shared';
+import type { Asset, Board, CommentThread } from '@inkadra/shared';
 import { light } from '@inkadra/ui/tokens';
 import type { TFunction } from 'i18next';
 import { DEFAULT_ASPECT } from '../film/aspect.ts';
@@ -50,6 +50,7 @@ import { noteBlocks } from './note-text.ts';
 import type { Op, Page } from './pages.ts';
 import { renderPng } from './render-canvas.ts';
 import { renderPdf } from './render-pdf.ts';
+import { logoUrl } from './settings.ts';
 
 export type ExportFormat = 'pdf' | 'png';
 export type ExportWhat = 'board' | 'selection' | 'visible' | 'storyboard' | 'shotlist';
@@ -61,8 +62,8 @@ export interface ExportRequest {
   orientation: Orientation;
   framesPerPage: FramesPerPage;
   titlePage: boolean;
-  /** Data URL of the logo, or null. */
-  logo: string | null;
+  /** The project's logo (decision 0039), or null. */
+  logo: Asset | null;
   comments: boolean;
   audience: Audience;
   hideGuestHidden: boolean;
@@ -106,14 +107,19 @@ function cachedImage(id: string, pixels: number) {
 }
 
 const logoCache = new Map<string, Promise<LoadedImage | null>>();
-function logoImage(dataUrl: string) {
-  let p = logoCache.get(dataUrl);
+function logoImage(asset: Asset) {
+  const url = logoUrl(asset);
+  let p = logoCache.get(url);
   if (!p) {
-    p = fetch(dataUrl)
-      .then((r) => r.blob())
+    p = fetch(url, { credentials: 'same-origin' })
+      .then((r) => (r.ok ? r.blob() : Promise.reject(new Error(String(r.status)))))
       .then((b) => decodeImage(b, true))
       .catch(() => null);
-    logoCache.set(dataUrl, p);
+    logoCache.set(url, p);
+    // A failure may be temporary (offline): ask again next time.
+    void p.then((img) => {
+      if (!img) logoCache.delete(url);
+    });
   }
   return p;
 }

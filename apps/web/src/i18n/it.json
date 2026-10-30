@@ -2178,8 +2178,8 @@
     "logoAdd": "Scegli logo…",
     "logoReplace": "Sostituisci…",
     "logoRemove": "Rimuovi logo",
-    "logoHint": "PNG o JPEG fino a 256 KB, salvato in questo browser per questo progetto.",
-    "logoInvalid": "Il logo deve essere un PNG o un JPEG di al massimo 256 KB.",
+    "logoHint": "PNG o JPEG fino a 512 KB, condiviso con tutto il progetto.",
+    "logoInvalid": "Il logo deve essere un PNG o un JPEG di al massimo 512 KB.",
     "comments": "Includi i commenti",
     "commentsHintClient": "Solo le discussioni che gli ospiti possono leggere.",
     "hideHidden": "Escludi le card nascoste agli ospiti",
@@ -2216,6 +2216,11 @@
       "cast": "Personaggi",
       "status": "Stato"
     },
-    "pageOf": "{{n}} di {{total}}"
+    "pageOf": "{{n}} di {{total}}",
+    "logoUploading": "Caricamento del logo…",
+    "logoFailed": "Impossibile salvare il logo. Riprova.",
+    "logoReadOnly": "Impostato dagli editor del progetto.",
+    "logoNone": "Nessun logo. Gli editor del progetto possono aggiungerne uno.",
+    "sharedHint": "Quando esporti, le tue scelte diventano il punto di partenza per tutto il progetto."
   }
 }

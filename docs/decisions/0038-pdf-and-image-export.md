@@ -37,8 +37,9 @@ and not on the server.
   default; with clients only threads visible to everyone are included.
 - The export is offered in the board menu (editors, like the rest of that menu), in the menu of a
   selection and in the Storyboard and Shot list views (everyone who can open the board).
-- The optional logo is kept **in this browser, per project** (local storage, at most 256 KB,
-  PNG or JPEG). Storing it on the server needs a contract change and is left to a follow-up.
+- The dialog starts from the project's **shared export settings** and prints the project's logo
+  (decision 0039). Editors who export save their choices back as the new starting point; a new
+  logo is uploaded as a PNG or JPEG asset of the project.
 
 ## Consequences
 
