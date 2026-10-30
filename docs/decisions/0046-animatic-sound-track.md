@@ -14,8 +14,7 @@ not flip through cards.
   as any other file; the track starts with the first frame of the storyboard and is not
   trimmed or offset. `volume` (0 to 1) is the level the team mixed and syncs like any edit;
   mute is a choice of each viewer, kept in the browser, never in the document. Migration from
-  version 8 changes only the schema version (7 and 8 are reserved for decisions 0044 and 0045,
-  which land separately).
+  version 8 changes only the schema version.
 - Timeline maths stay in the client: frames in storyboard order, a missing duration previews
   for one second and counts as such in the runtime, dragging a block edge snaps to 0.25 s.
   Reordering on the timeline is the existing frame move (same scene or across scenes), so the
