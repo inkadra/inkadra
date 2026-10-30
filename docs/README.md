@@ -7,6 +7,7 @@
 | [Review and sharing server](review-sharing-server.md) | How the server implements team comments, reviews and notifications     |
 | [Contributing](../CONTRIBUTING.md)                    | Conventions for every change: contracts, code, pull requests, releases |
 | [Clipper](../apps/clipper)                            | Building and installing the browser extension                          |
+| [Collaboration simulation](testing/collaboration-simulation.md) | Gate 0.3 ten-user integration test and 30-minute soak |
 | [End-to-end tests](../e2e)                            | Running the Playwright tests and the load tests                        |
 
 `assets/` holds the logo (`logo-light.svg`, `logo-dark.svg`) and the social preview image;
