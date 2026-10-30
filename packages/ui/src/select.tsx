@@ -70,7 +70,10 @@ export function Select({
   const id = useId();
   const trigger = useRef<HTMLButtonElement>(null);
   const popup = useRef<HTMLDivElement>(null);
+  const panel = useRef<HTMLDivElement>(null);
+  const list = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false);
+  const [title, setTitle] = useState('');
   const [active, setActive] = useState(-1);
   const search = useRef({ text: '', time: 0 });
   const selected = items.findIndex((item) => item.value === String(value));
@@ -82,19 +85,30 @@ export function Select({
     if (focus) trigger.current?.focus();
   };
   const show = () => {
+    // The phone sheet is titled with the field's visible label, or its accessible name.
+    const button = trigger.current;
+    setTitle(
+      button?.labels?.[0]?.textContent?.trim() ||
+        (props['aria-labelledby'] &&
+          document.getElementById(props['aria-labelledby'])?.textContent?.trim()) ||
+        props['aria-label'] ||
+        '',
+    );
     setActive(selected >= 0 && !items[selected]?.disabled ? selected : (enabled[0] ?? -1));
     setOpen(true);
   };
   useEffect(() => {
     if (!open) return;
     const el = popup.current;
+    const box = panel.current;
+    const listbox = list.current;
     const button = trigger.current;
-    if (!el || !button) return;
+    if (!el || !box || !listbox || !button) return;
     el.showPopover();
     const position = () => {
       const rect = button.getBoundingClientRect();
       const width = Math.min(Math.max(rect.width, 160), window.innerWidth - 16);
-      const height = Math.min(el.scrollHeight, 288, window.innerHeight - 32);
+      const height = Math.min(box.scrollHeight, 288, window.innerHeight - 32);
       el.style.setProperty(
         '--ink-select-left',
         `${Math.max(8, Math.min(rect.left, window.innerWidth - width - 8))}px`,
@@ -106,10 +120,11 @@ export function Select({
       el.style.setProperty('--ink-select-width', `${width}px`);
     };
     position();
-    el.focus();
+    listbox.focus();
+    // On a phone the layer is the scrim around the sheet: its own click closes the sheet.
     const outside = (event: PointerEvent) => {
-      if (!el.contains(event.target as Node) && !button.contains(event.target as Node))
-        setOpen(false);
+      const target = event.target as Node;
+      if (!el.contains(target) && !button.contains(target)) setOpen(false);
     };
     document.addEventListener('pointerdown', outside);
     window.addEventListener('resize', position);
@@ -172,74 +187,88 @@ export function Select({
         <Icon name="chevronDown" size={16} />
       </button>
       {open && (
+        // The layer lives in the top layer (a manual popover), above open dialogs too: positioned
+        // under the trigger on desktop, a dimmed backdrop with a bottom sheet on phones.
         <div
           ref={popup}
           popover="manual"
-          role="listbox"
-          id={`${id}-list`}
-          tabIndex={-1}
-          aria-label={props['aria-label']}
-          aria-labelledby={props['aria-labelledby'] ?? props.id ?? `${id}-trigger`}
-          aria-activedescendant={active >= 0 ? `${id}-${active}` : undefined}
-          className="ink-select__list"
+          className="ink-select__layer"
           onClick={(event) => {
+            // Keeps a wrapping label from pressing the trigger again.
             event.preventDefault();
             event.stopPropagation();
-          }}
-          onKeyDown={(event) => {
-            event.stopPropagation();
-            if (event.key === 'Escape') {
-              event.preventDefault();
-              close(true);
-              return;
-            }
-            if (event.key === 'Tab') {
-              close(true);
-              return;
-            }
-            if (event.key === 'Enter' || event.key === ' ') {
-              event.preventDefault();
-              choose(active);
-              return;
-            }
-            if (['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) {
-              event.preventDefault();
-              const current = enabled.indexOf(active);
-              setActive(
-                enabled[
-                  event.key === 'Home'
-                    ? 0
-                    : event.key === 'End'
-                      ? enabled.length - 1
-                      : (current + (event.key === 'ArrowUp' ? -1 : 1) + enabled.length) %
-                        enabled.length
-                ] ?? -1,
-              );
-              return;
-            }
-            if (event.key.length === 1 && !event.ctrlKey && !event.metaKey && !event.altKey) {
-              event.preventDefault();
-              const now = Date.now();
-              search.current.text =
-                (now - search.current.time > 700 ? '' : search.current.text) +
-                event.key.toLocaleLowerCase();
-              search.current.time = now;
-              const text = search.current.text;
-              const prefix = [...text].every((c) => c === text[0]) ? (text[0] ?? text) : text;
-              const match = [
-                ...enabled.filter((i) => i > active),
-                ...enabled.filter((i) => i <= active),
-              ].find((i) =>
-                document
-                  .getElementById(`${id}-${i}`)
-                  ?.textContent?.trim()
-                  .toLocaleLowerCase()
-                  .startsWith(prefix),
-              );
-              if (match !== undefined) setActive(match);
-            }
+            if (event.target === event.currentTarget) close(true);
           }}
         >
+          <div ref={panel} className="ink-select__panel">
+            <div className="ink-select__sheet-head" aria-hidden="true">
+              <span className="ink-select__handle" />
+              {title && <span className="ink-select__title">{title}</span>}
+            </div>
+            <div
+              ref={list}
+              role="listbox"
+              id={`${id}-list`}
+              tabIndex={-1}
+              aria-label={props['aria-label']}
+              aria-labelledby={props['aria-labelledby'] ?? props.id ?? `${id}-trigger`}
+              aria-activedescendant={active >= 0 ? `${id}-${active}` : undefined}
+              className="ink-select__list"
+            onKeyDown={(event) => {
+              event.stopPropagation();
+              if (event.key === 'Escape') {
+                event.preventDefault();
+                close(true);
+                return;
+              }
+              if (event.key === 'Tab') {
+                close(true);
+                return;
+              }
+              if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                choose(active);
+                return;
+              }
+              if (['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) {
+                event.preventDefault();
+                const current = enabled.indexOf(active);
+                setActive(
+                  enabled[
+                    event.key === 'Home'
+                      ? 0
+                      : event.key === 'End'
+                        ? enabled.length - 1
+                        : (current + (event.key === 'ArrowUp' ? -1 : 1) + enabled.length) %
+                          enabled.length
+                  ] ?? -1,
+                );
+                return;
+              }
+              if (event.key.length === 1 && !event.ctrlKey && !event.metaKey && !event.altKey) {
+                event.preventDefault();
+                const now = Date.now();
+                search.current.text =
+                  (now - search.current.time > 700 ? '' : search.current.text) +
+                  event.key.toLocaleLowerCase();
+                search.current.time = now;
+                const text = search.current.text;
+                const prefix = [...text].every((c) => c === text[0]) ? (text[0] ?? text) : text;
+                const match = [
+                  ...enabled.filter((i) => i > active),
+                  ...enabled.filter((i) => i <= active),
+                ].find((i) =>
+                  document
+                    .getElementById(`${id}-${i}`)
+                    ?.textContent?.trim()
+                    .toLocaleLowerCase()
+                    .startsWith(prefix),
+                );
+                if (match !== undefined) setActive(match);
+              }
+            }}
+
+            >
           {items.length === 0 && <div className="ink-select__empty">{emptyText}</div>}
           {items.map((item, index) => (
             <div key={item.value}>
@@ -271,6 +300,8 @@ export function Select({
               </div>
             </div>
           ))}
+            </div>
+          </div>
         </div>
       )}
     </>

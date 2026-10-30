@@ -578,7 +578,7 @@ select {
   box-shadow: 0 12px 32px rgba(0, 0, 0, 0.55);
 }
 .ink-dialog::backdrop {
-  background: rgba(10, 10, 12, 0.5);
+  background: var(--ink-scrim);
 }
 .ink-dialog__title {
   margin: 0 0 12px;
@@ -656,24 +656,41 @@ select {
 .ink-select__empty {
   color: var(--ink-text-muted);
 }
-.ink-select__list {
+.ink-select__layer {
   position: fixed;
   inset: auto;
   left: var(--ink-select-left);
   top: var(--ink-select-top);
   width: var(--ink-select-width);
-  max-height: min(288px, calc(100dvh - 32px));
-  overflow-y: auto;
   margin: 0;
-  padding: 4px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--ink-text-primary);
+  overflow: visible;
+}
+.ink-select__panel {
+  display: flex;
+  flex-direction: column;
+  max-height: min(288px, calc(100dvh - 32px));
   box-sizing: border-box;
   background: var(--ink-surface-1);
-  color: var(--ink-text-primary);
   border: 1px solid var(--ink-border-muted);
   border-radius: 10px;
   box-shadow: var(--ink-shadow-menu);
   font: inherit;
   font-size: 13px;
+}
+.ink-select__sheet-head {
+  display: none;
+}
+.ink-select__list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 4px;
+  outline: none;
 }
 .ink-select__option {
   min-height: 32px;
@@ -710,18 +727,61 @@ select {
   letter-spacing: 0.06em;
   color: var(--ink-text-muted);
 }
+/* Phones: a bottom sheet over a dimmed backdrop, titled with the field, closed by a tap outside. */
 @media (max-width: 479px), (pointer: coarse) {
+  .ink-select__layer {
+    inset: 0;
+    width: auto;
+    height: auto;
+    max-width: none;
+    max-height: none;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    background: var(--ink-scrim);
+  }
+  .ink-select__panel {
+    max-height: min(70dvh, calc(100dvh - 48px));
+    border-width: 1px 0 0;
+    border-radius: 14px 14px 0 0;
+    padding-bottom: env(safe-area-inset-bottom);
+    animation: ink-select-sheet 160ms ease-out;
+  }
+  .ink-select__sheet-head {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 16px 10px;
+    border-bottom: 1px solid var(--ink-border-subtle);
+  }
+  .ink-select__handle {
+    width: 36px;
+    height: 4px;
+    border-radius: 2px;
+    background: var(--ink-border-strong);
+  }
+  .ink-select__title {
+    align-self: stretch;
+    font-size: 14px;
+    font-weight: 600;
+  }
   .ink-select__list {
-    left: 0;
-    top: auto;
-    bottom: 0;
-    width: 100%;
-    max-height: 60dvh;
-    border-radius: 12px 12px 0 0;
-    padding: 8px 8px max(8px, env(safe-area-inset-bottom));
+    padding: 6px 8px 8px;
   }
   .ink-select__option {
     min-height: 44px;
+  }
+}
+@keyframes ink-select-sheet {
+  from {
+    transform: translateY(24px);
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ink-select__panel {
+    animation: none;
   }
 }
 .ink-select:focus:not(:focus-visible) {

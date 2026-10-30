@@ -93,3 +93,15 @@ it('does not reopen after a pointer choice in a wrapping label', async () => {
   expect(host.querySelector('button')?.getAttribute('aria-expanded')).toBe('false');
   expect(new FormData(host.querySelector('form')!).get('choice')).toBe('c');
 });
+
+it('titles the sheet with the field label and closes on a backdrop tap, back on the trigger', async () => {
+  await act(async () => host.querySelector('button')?.click());
+  const layer = host.querySelector<HTMLElement>('.ink-select__layer');
+  expect(layer?.querySelector('.ink-select__title')?.textContent).toBe('Choice');
+  expect(layer?.querySelector('[role="listbox"]')).not.toBeNull();
+  await act(async () => layer?.click());
+  expect(host.querySelector('.ink-select__layer')).toBeNull();
+  expect(host.querySelector('button')?.getAttribute('aria-expanded')).toBe('false');
+  expect(document.activeElement).toBe(host.querySelector('button'));
+  expect(new FormData(host.querySelector('form')!).get('choice')).toBe('a');
+});
