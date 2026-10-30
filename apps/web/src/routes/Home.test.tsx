@@ -33,6 +33,7 @@ function context(overrides: Partial<ReturnType<typeof useProjects>> = {}) {
     projects: [project],
     shared: [],
     openNewProject: vi.fn(),
+    openImportProject: vi.fn(),
     openSearch: vi.fn(),
     openInbox: vi.fn(),
     unread: 0,

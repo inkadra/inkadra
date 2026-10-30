@@ -13,7 +13,9 @@ INKADRA_TAG=0.4.0
 ```
 
 To move to a new version, read its [release notes](https://github.com/inkadra/inkadra/releases),
-back up (see [Backups](README.md#backups)), change `INKADRA_TAG` and run
+back up (see [Backups](README.md#backups): `docker compose exec -u node inkadra node
+/app/dist/main.js backup create`, plus a copy of the data volume or the bucket), change
+`INKADRA_TAG` and run
 
 ```sh
 docker compose pull
@@ -25,7 +27,18 @@ Database migrations run when the new version starts, before it accepts requests.
 there.
 
 Going back to an older version after its migrations ran is not supported: restore the backup
-taken before the upgrade instead.
+taken before the upgrade instead, with that older version
+(see [Restoring](README.md#restoring)). A backup restores on the same or any newer version, so it
+also carries data across an upgrade.
+
+## Upgrading to 0.5
+
+- Nightly backups are on by default at 03:00 server time, kept for 7 days, in `/data/backups`.
+  Make sure the data volume has room for them, or turn them off in **Settings → Backups** if
+  you back up Postgres another way.
+- Project export and import arrive. An import sends the whole archive in one request, up to
+  `IMPORT_MAX_SIZE` (default 20GB): raise the body limit of your reverse proxy if it has one
+  (see [Reverse proxy](reverse-proxy.md)).
 
 ## Upgrading to 0.4
 

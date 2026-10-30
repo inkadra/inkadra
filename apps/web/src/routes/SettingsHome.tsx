@@ -90,6 +90,7 @@ function AdminGroups({ setup }: { setup: Setup }) {
           label={t('admin.registration')}
           value={settings ? t(`admin.registrationModes.${settings.registration}`) : undefined}
         />
+        <Item to={href('backups')} label={t('backups.title')} />
         <Item
           to={href('instance')}
           label={t('settingsUi.pages.about')}

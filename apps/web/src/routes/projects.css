@@ -340,3 +340,23 @@
     grid-template-columns: 112px minmax(0, 1fr);
   }
 }
+/* "Have an Inkadra archive? Import project…" above the New project form. */
+.new-project__import {
+  margin: 0 0 12px;
+  font-size: 13px;
+}
+.new-project__import-link {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--ink-text-primary);
+  font: inherit;
+  font-weight: 500;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+.new-project__import-link:disabled {
+  color: var(--ink-text-muted);
+  cursor: default;
+}

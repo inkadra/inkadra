@@ -1,6 +1,6 @@
 import type { Project } from '@inkadra/shared';
 import { Avatar, Button, Dialog, DialogActions } from '@inkadra/ui';
-import { type FormEvent, useCallback, useEffect, useState } from 'react';
+import { type FormEvent, useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
 import { api } from '../lib/api.ts';
@@ -25,13 +25,19 @@ export function Projects() {
   const { catalogs, typeLabel } = useClassifications();
   const { t, i18n } = useTranslation();
   const { user } = useSession();
-  const { openNewProject } = useProjects();
+  const { openNewProject, openImportProject } = useProjects();
   const [items, setItems] = useState<ProjectOverview[] | null>(null);
+  const known = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    known.current = new Set(items?.map((row) => row.project.id));
+  }, [items]);
   useEffect(
     () =>
       subscribeProjects(() => {
         const cached = getCachedProjects();
-        if (cached)
+        // A project created elsewhere (an import that just finished) needs its overview.
+        if (cached?.some((p) => !known.current.has(p.id))) void loadRef.current();
+        else if (cached)
           setItems(
             (current) =>
               current?.map((row) => ({
@@ -64,6 +70,8 @@ export function Projects() {
       setError(true);
     }
   }, []);
+  const loadRef = useRef(load);
+  loadRef.current = load;
   useEffect(() => {
     void load();
   }, [load]);
@@ -137,6 +145,7 @@ export function Projects() {
           <Link className="ink-btn ink-btn--ghost" to="/onboarding">
             {t('onboarding.guidedSetup')}
           </Link>
+          <Button onClick={openImportProject}>{t('transfer.importMenu')}</Button>
           <Button variant="primary" icon="plus" onClick={() => openNewProject()}>
             {t('nav.newProject')}
           </Button>
@@ -293,6 +302,7 @@ function ProjectCard({
         ? [
             {
               label: t(p.archivedAt ? 'projectsPage.unarchive' : 'projectsPage.archive'),
+              trailing: true,
               disabled: busy,
               action: () => void mutate(p, 'archive'),
             },

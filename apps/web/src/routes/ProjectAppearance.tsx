@@ -11,6 +11,7 @@ import {
 } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
+import { canExportProject, ExportProjectDialog } from './ProjectTransfer.tsx';
 import { updateProjectAppearance } from './projects.ts';
 import './project-appearance.css';
 
@@ -35,11 +36,13 @@ export interface ProjectMenuItem {
   label: string;
   action: () => void;
   disabled?: boolean;
+  /** Goes after Export project…, at the end of the menu (Archive). */
+  trailing?: boolean;
 }
 
 /**
  * The ⋯ menu of a project, shared by the sidebar and the Projects page: project appearance
- * for editors, then the caller's own actions. Returns the trigger, the right-click handlers
+ * for editors, then the caller's own actions, then Export project… for owners and editors. Returns the trigger, the right-click handlers
  * and the layer (menu and dialog) so each place keeps its own markup.
  */
 export function useProjectMenu(
@@ -50,6 +53,7 @@ export function useProjectMenu(
   const { t } = useTranslation();
   const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
   const [editing, setEditing] = useState(false);
+  const [exporting, setExporting] = useState(false);
   const opener = useRef<HTMLElement | null>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -57,7 +61,11 @@ export function useProjectMenu(
     ...(canEditProjectAppearance(project)
       ? [{ label: t('appearance.title'), action: () => setEditing(true) }]
       : []),
-    ...extra,
+    ...extra.filter((item) => !item.trailing),
+    ...(canExportProject(project)
+      ? [{ label: t('transfer.exportMenu'), action: () => setExporting(true) }]
+      : []),
+    ...extra.filter((item) => item.trailing),
   ];
   const enabled = items.length > 0;
   const close = () => {
@@ -188,6 +196,15 @@ export function useProjectMenu(
           onSaved={onSaved}
           onClose={() => {
             setEditing(false);
+            opener.current?.focus();
+          }}
+        />
+      )}
+      {exporting && (
+        <ExportProjectDialog
+          project={project}
+          onClose={() => {
+            setExporting(false);
             opener.current?.focus();
           }}
         />

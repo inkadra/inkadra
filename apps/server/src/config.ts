@@ -38,6 +38,8 @@ const Env = z.object({
   WEB_DIST: z.string().optional(),
   /** Largest file an upload may have: bytes or a size such as `500MB`, `20GB`; 0 = no limit. */
   UPLOAD_MAX_SIZE: z.string().default('20GB').transform(parseSize),
+  /** Largest project archive an import accepts, compressed and uncompressed; 0 = no limit. */
+  IMPORT_MAX_SIZE: z.string().default('20GB').transform(parseSize),
   /** Where files live: `local` (DATA_DIR/files) or any S3-compatible bucket. */
   STORAGE_DRIVER: z.enum(['local', 's3']).default('local'),
   /** Empty for AWS; the MinIO, Garage or R2 address otherwise. */

@@ -1,0 +1,130 @@
+/* Export and import dialogs (decision 0037). Neutral surfaces; blue only for progress fill
+   and the primary action, as in upload progress on cards. */
+.transfer-dialog {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  font-size: 13px;
+  line-height: 1.5;
+}
+.transfer-dialog p {
+  margin: 0;
+}
+.transfer-dialog__lead {
+  color: var(--ink-text-secondary);
+}
+.transfer-dialog__note {
+  color: var(--ink-text-muted);
+  font-size: 12px;
+}
+.transfer-contents {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 4px 12px;
+  margin: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--ink-border-subtle);
+  border-radius: 8px;
+  background: var(--ink-surface-1);
+}
+.transfer-contents dt {
+  color: var(--ink-text-muted);
+}
+.transfer-contents dd {
+  margin: 0;
+  color: var(--ink-text-primary);
+}
+.transfer-progress {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.transfer-progress__head {
+  display: flex;
+  justify-content: space-between;
+  color: var(--ink-text-secondary);
+}
+.transfer-progress__value {
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-text-muted);
+}
+.transfer-progress__bar {
+  height: 4px;
+  border-radius: 2px;
+  background: var(--ink-surface-3);
+  overflow: hidden;
+}
+.transfer-progress__bar span {
+  display: block;
+  height: 100%;
+  border-radius: 2px;
+  background: var(--ink-accent-primary);
+  transition: width 0.3s ease;
+}
+.transfer-result {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 12px;
+  border: 1px solid var(--ink-border-subtle);
+  border-radius: 8px;
+  background: var(--ink-surface-1);
+}
+.transfer-result__title {
+  font-weight: 600;
+  color: var(--ink-text-primary);
+}
+.transfer-result__meta {
+  color: var(--ink-text-muted);
+}
+.transfer-result__warn {
+  color: var(--ink-status-warn);
+}
+.transfer-error {
+  color: var(--ink-danger-fg);
+}
+/* Drop zone of Import project…: neutral dashed well; the focus ring and a drag over it are
+   the only blue, as they mean "this is where it goes". */
+.transfer-drop {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 22px 16px;
+  border: 1px dashed var(--ink-border-default);
+  border-radius: 8px;
+  background: var(--ink-surface-1);
+  text-align: center;
+  cursor: pointer;
+}
+.transfer-drop:hover {
+  background: var(--ink-surface-2);
+}
+.transfer-drop.is-dragging,
+.transfer-drop:focus-within {
+  border-color: var(--ink-accent-primary);
+}
+.transfer-drop.has-file {
+  border-style: solid;
+}
+.transfer-drop__input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+.transfer-drop__title {
+  font-weight: 600;
+  color: var(--ink-text-primary);
+  overflow-wrap: anywhere;
+}
+.transfer-drop__meta {
+  color: var(--ink-text-muted);
+  font-size: 12px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .transfer-progress__bar span {
+    transition: none;
+  }
+}

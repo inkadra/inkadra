@@ -3,15 +3,16 @@
 import { mkdir } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import pino from 'pino';
+import pino, { type Logger } from 'pino';
 import { disableAdminTwoFactor } from './admin-two-factor.ts';
 import { createAuth } from './auth.ts';
 import { authSecurity, authSource } from './auth-security.ts';
+import { backupsDir, restoreBackup, runBackup, startBackup } from './backup.ts';
 import { type BoardReader, directBoardReader } from './board-content.ts';
 import { type BoardNotifier, directBoardNotifier } from './board-notices.ts';
 import { type BoardWriter, directBoardWriter } from './board-writer.ts';
 import { attachCollab, createCollabServer } from './collab.ts';
-import { loadConfig, VERSION } from './config.ts';
+import { type Config, loadConfig, VERSION } from './config.ts';
 import { createDatabase, runMigrations } from './db/client.ts';
 import { createApp } from './http/app.ts';
 import { sweepClipTemp } from './http/clip-routes.ts';
@@ -29,7 +30,16 @@ import { startIndexBackfill } from './search/index-doc.ts';
 import { createStorage } from './storage.ts';
 import { directVersionWriter, type VersionWriter } from './versions.ts';
 
-const COMMANDS = ['web', 'collab', 'worker', 'all', 'migrate', 'unlock-auth', 'admin-2fa'] as const;
+const COMMANDS = [
+  'web',
+  'collab',
+  'worker',
+  'all',
+  'migrate',
+  'unlock-auth',
+  'admin-2fa',
+  'backup',
+] as const;
 type Command = (typeof COMMANDS)[number];
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -83,6 +93,12 @@ async function main() {
     return;
   }
 
+  // Host/container administrators only: `backup create` or `backup restore <file>`.
+  if (command === 'backup') {
+    await backupCommand(config, log, process.argv.slice(3));
+    return;
+  }
+
   if (command === 'migrate' || command === 'web' || command === 'all') {
     await runMigrations(config.DATABASE_URL, migrationsFolder);
     log.info('database migrations applied');
@@ -96,6 +112,7 @@ async function main() {
   const tmpDir = join(config.DATA_DIR, 'tmp');
   await mkdir(tmpDir, { recursive: true });
   const media = { db, storage, tmpDir, heic: config.HEIC_PREVIEWS };
+  const transfers = transferDeps(config);
   const closers: Array<() => Promise<unknown>> = [
     async () => auth.closeSecurity(),
     () => sql.end({ timeout: 5 }),
@@ -108,6 +125,7 @@ async function main() {
       mailer,
       publicUrl: config.PUBLIC_URL,
       instanceName: config.INSTANCE_NAME,
+      transfers,
     });
     closers.unshift(() => workers.close());
     log.info('worker started');
@@ -162,7 +180,7 @@ async function main() {
       };
     } else {
       log.warn('REDIS_URL is not set: processing uploads inside the web process');
-      jobs = inlineJobs(media, log);
+      jobs = inlineJobs(media, log, transfers);
     }
     // Left behind by a clip that was being received when the server stopped.
     const swept = await sweepClipTemp(tmpDir);
@@ -222,6 +240,58 @@ async function main() {
   };
   process.once('SIGTERM', () => void shutdown('SIGTERM'));
   process.once('SIGINT', () => void shutdown('SIGINT'));
+}
+
+function transferDeps(config: Config) {
+  return {
+    dataDir: config.DATA_DIR,
+    uploadMaxSize: config.UPLOAD_MAX_SIZE,
+    importMaxSize: config.IMPORT_MAX_SIZE,
+    migrationsFolder,
+    bucket: config.STORAGE_DRIVER === 's3',
+    databaseUrl: config.DATABASE_URL,
+  };
+}
+
+async function backupCommand(config: Config, log: Logger, args: string[]) {
+  const [action, file] = args;
+  if (action === 'restore' && file && args.length === 2) {
+    const tmpDir = join(config.DATA_DIR, 'tmp');
+    await mkdir(tmpDir, { recursive: true });
+    const report = await restoreBackup({
+      file,
+      databaseUrl: config.DATABASE_URL,
+      migrationsFolder,
+      storage: createStorage(config),
+      tmpDir,
+      log,
+    });
+    log.info(report, 'backup restored');
+    if (report.files.missing > 0)
+      log.warn(
+        { missing: report.files.missing, examples: report.files.examples },
+        'some files listed by the backup are not in storage: restore the data volume or bucket too',
+      );
+    return;
+  }
+  if (action === 'create' && args.length === 1) {
+    await runMigrations(config.DATABASE_URL, migrationsFolder);
+    const { db, sql } = createDatabase(config.DATABASE_URL, 2);
+    try {
+      const row = await startBackup(db, 'manual', null);
+      if (!row) throw new Error('A backup is already running.');
+      const done = await runBackup(
+        { db, storage: createStorage(config), log, ...transferDeps(config) },
+        row.id,
+      );
+      if (done?.status !== 'ready') throw new Error('The backup failed, see the log above.');
+      log.info({ file: join(backupsDir(config.DATA_DIR), done.fileName ?? '') }, 'backup written');
+    } finally {
+      await sql.end({ timeout: 5 });
+    }
+    return;
+  }
+  throw new Error('Usage: inkadra backup create | inkadra backup restore <file>');
 }
 
 main().catch((err) => {

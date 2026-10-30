@@ -288,7 +288,7 @@ export async function registerGuestRoutes(app: FastifyInstance, deps: Deps) {
       changedBy: fromLink
         ? { kind: 'guest', name: row.guestName, isYou: r.changedByGuest === ctx.guest.id }
         : r.changedBy
-          ? { kind: 'team', name: row.userName, isYou: false }
+          ? { kind: 'team', name: r.importedAuthor ?? row.userName, isYou: false }
           : { kind: 'deleted', name: null, isYou: false },
       changedAt: iso(r.changedAt),
     };
