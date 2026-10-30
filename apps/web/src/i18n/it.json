@@ -869,7 +869,7 @@
       "selectRow": "Seleziona inquadratura {{label}}"
     },
     "playback": {
-      "mode": "Vista",
+      "mode": "Modalità storyboard",
       "grid": "Griglia",
       "sequence": "Sequenza",
       "animatic": "Animatic",
@@ -895,11 +895,35 @@
       "now": "Inquadratura {{label}} a {{time}}",
       "block": "Vai a {{label}}, {{duration}}",
       "resize": "Durata di {{label}}",
-      "keyboard": "Tasti: Spazio riproduce o mette in pausa, le frecce spostano di un secondo, Pag su e Pag giù saltano fra le inquadrature, Home e Fine vanno all’inizio e alla fine.",
       "empty": "Nessuna inquadratura da riprodurre: tutte hanno durata zero.",
-      "defaultDuration": "Le inquadrature senza durata durano un secondo (blocchi a righe); trascina il bordo di un blocco per impostarne la durata.",
+      "defaultDuration": "Le inquadrature senza durata durano un secondo (a righe). Trascina il bordo di un blocco per la durata a quarti di secondo; trascina il blocco per spostare l’inquadratura.",
       "noFrames": "Nessuna inquadratura in questa scena",
-      "noFramesBody": "Aggiungi un’inquadratura per riprodurla nell’animatic."
+      "noFramesBody": "Aggiungi un’inquadratura per riprodurla nell’animatic.",
+      "defaultDurationReadOnly": "Le inquadrature senza durata durano un secondo (blocchi a righe).",
+      "sceneTitle": "{{number}} · {{title}}",
+      "runtime_one": "{{count}} inquadratura · durata {{duration}}",
+      "runtime_other": "{{count}} inquadrature · durata {{duration}}",
+      "loop": "Ripeti",
+      "overlay": "Mostra inquadratura e azione sull’immagine",
+      "sound": "Colonna sonora",
+      "noSound": "Nessuna colonna sonora",
+      "soundMissing": "File audio non disponibile",
+      "addSound": "Aggiungi colonna sonora",
+      "replaceSound": "Sostituisci",
+      "removeSound": "Rimuovi colonna sonora",
+      "mute": "Disattiva audio",
+      "unmute": "Attiva audio",
+      "volume": "Volume",
+      "watch": "Guarda l’animatic",
+      "keys": {
+        "title": "Scorciatoie da tastiera",
+        "space": "Spazio",
+        "play": "riproduci o pausa",
+        "frame": "inquadratura precedente o successiva",
+        "second": "un secondo indietro o avanti",
+        "ends": "inizio o fine",
+        "move": "sposta l’inquadratura selezionata"
+      }
     }
   },
   "roles": {

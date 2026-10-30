@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { ImageCrop, roots, VideoFrameSource } from '@inkadra/doc-schema';
+import { AnimaticAudio, ImageCrop, roots, VideoFrameSource } from '@inkadra/doc-schema';
 import type * as Y from 'yjs';
 
 export interface IdMaps {
@@ -32,6 +32,13 @@ export function remapDoc(doc: Y.Doc, boardId: string, maps: IdMaps): void {
     (typeof id === 'string' && map.get(id)) || randomUUID();
   doc.transact(() => {
     meta.set('boardId', boardId);
+    // The animatic's sound track is optional: it goes with its file when the file was skipped.
+    if (meta.has('animaticAudio')) {
+      const audio = AnimaticAudio.safeParse(meta.get('animaticAudio'));
+      const to = audio.success ? maps.assets.get(audio.data.assetId) : undefined;
+      if (audio.success && to) meta.set('animaticAudio', { ...audio.data, assetId: to });
+      else meta.delete('animaticAudio');
+    }
     for (const el of elements.values()) {
       let pictureMissing = false;
       for (const field of ASSET_FIELDS) {

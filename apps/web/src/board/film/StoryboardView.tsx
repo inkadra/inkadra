@@ -186,6 +186,23 @@ export function StoryboardView({
             </button>
           ))}
         </fieldset>
+        {/* On a phone the three modes do not fit as segments: a picker, like the view switcher. */}
+        <select
+          className="story__mode-picker"
+          aria-label={t('film.playback.mode')}
+          value={mode}
+          onChange={(e) => {
+            const value = e.target.value as StoryMode;
+            setMode(value);
+            if (value === 'animatic') setSelected(null);
+          }}
+        >
+          {STORY_MODES.map((value) => (
+            <option key={value} value={value}>
+              {t(`film.playback.${value}`)}
+            </option>
+          ))}
+        </select>
         <div className="view-options__inline">
           {sizeControl}
           {aspectControl}
@@ -251,10 +268,12 @@ export function StoryboardView({
               key={filter ?? ''}
               store={store}
               frames={visibleFrames}
+              groups={visible}
               labels={labels}
               boardAspect={boardAspect}
               readOnly={readOnly}
               suspended={present}
+              upload={readOnly ? undefined : { projectId, boardId }}
             />
           )}
           {mode === 'animatic' && groups.length > 0 && visibleFrames.length === 0 && (

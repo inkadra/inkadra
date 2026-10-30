@@ -2,8 +2,9 @@ import type { Asset, GuestAsset } from '@inkadra/shared';
 
 /**
  * Guest files in the shape the board's cards read. Pictures come only as the guest WebP
- * variants; `url` is the original only when the link allows downloads, else the largest
- * variant, so nothing on the page ever points at an account path.
+ * variants; `url` is the stream of an animatic's sound track, the original when the link
+ * allows downloads, else the largest variant, so nothing on the page ever points at an
+ * account path.
  */
 export function toAsset(g: GuestAsset): Asset {
   const largest = g.variants.at(-1)?.url ?? '';
@@ -20,7 +21,7 @@ export function toAsset(g: GuestAsset): Asset {
     durationMs: g.durationMs,
     animated: g.animated,
     status: 'ready',
-    url: g.downloadUrl ?? largest,
+    url: g.streamUrl ?? g.downloadUrl ?? largest,
     variants: g.variants.map((v) => ({ ...v })),
     exif: null,
     palette: null,

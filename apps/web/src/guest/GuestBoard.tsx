@@ -28,6 +28,7 @@ import { BoardStore } from '../board/store.ts';
 import { NoSessionProvider } from '../lib/session.tsx';
 import { type GuestActions, GuestActionsContext } from './actions.ts';
 import { GuestRequestError, guestApi } from './api.ts';
+import { GuestAnimatic } from './GuestAnimatic.tsx';
 import { GuestCardExtras } from './GuestCardExtras.tsx';
 import { GuestPanel } from './GuestPanel.tsx';
 import { GuestViewer } from './GuestViewer.tsx';
@@ -229,7 +230,7 @@ export function GuestBoardScreen({
   useEffect(() => {
     if (!store || !snapshot || snapshot.board.id !== boardId) return;
     for (const a of snapshot.assets) primeAsset(toAsset(a));
-    syncGuestDoc(store.doc, snapshot.elements, snapshot.board.aspect);
+    syncGuestDoc(store.doc, snapshot.elements, snapshot.board.aspect, snapshot.board.animaticAudio);
     setLoaded(boardId);
   }, [store, snapshot, boardId]);
 
@@ -431,6 +432,9 @@ export function GuestBoardScreen({
             ))}
           </nav>
           <span className="guest__spacer" />
+          {store && loaded === boardId && snapshot?.board.kind === 'storyboard' && (
+            <GuestAnimatic store={store} />
+          )}
           {offline && (
             <span className="guest__offline" role="status">
               {t('guest.offline')}

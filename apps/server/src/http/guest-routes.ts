@@ -221,6 +221,11 @@ export async function registerGuestRoutes(app: FastifyInstance, deps: Deps) {
     };
   }
 
+  /** The ready audio file of a storyboard animatic of the link (decision 0046). */
+  function streamable(ctx: GuestContext, row: { id: string; kind: string; status: string }) {
+    return ctx.assets.audio.has(row.id) && row.kind === 'audio' && row.status === 'ready';
+  }
+
   async function guestAssets(ctx: GuestContext, ids: string[]): Promise<GuestAsset[]> {
     if (ids.length === 0) return [];
     const [rows, variants] = await Promise.all([
@@ -256,7 +261,7 @@ export async function registerGuestRoutes(app: FastifyInstance, deps: Deps) {
                 }))
             : [],
         downloadUrl: download ? `${assetPath(ctx.link.id, row.id)}/file` : null,
-        streamUrl: null,
+        streamUrl: streamable(ctx, row) ? `${assetPath(ctx.link.id, row.id)}/stream` : null,
       }));
   }
 
@@ -321,8 +326,10 @@ export async function registerGuestRoutes(app: FastifyInstance, deps: Deps) {
     const shown = await guests.shown(ctx, boardId);
     const ids = shown.map((e) => e.id);
     const visible = new Set(ids);
-    const assetIds = [...new Set(shown.flatMap(elementAssetIds))];
-    const [boards, assets, reviews, commentCounts, picks, commentsVersion] = await Promise.all([
+    const shownAssets = new Set(shown.flatMap(elementAssetIds));
+    const track = top.row.kind === 'storyboard' ? view.audio : null;
+    const assetIds = [...new Set([...shownAssets, ...(track ? [track.assetId] : [])])];
+    const [boards, listed, reviews, commentCounts, picks, commentsVersion] = await Promise.all([
       guestBoards(ctx),
       guestAssets(ctx, assetIds),
       reviewRows(ctx, boardId),
@@ -340,11 +347,16 @@ export async function registerGuestRoutes(app: FastifyInstance, deps: Deps) {
       breadcrumb.unshift({ id: b.row.id, title: b.row.title });
     }
     const board = boards.find((b) => b.id === boardId) as GuestBoard;
+    // The sound track only once its file can be streamed; nothing about it before.
+    const playable = track && listed.some((a) => a.id === track.assetId && a.streamUrl);
+    const assets = listed.filter(
+      (a) => shownAssets.has(a.id) || (playable && a.id === track.assetId),
+    );
     const body: Omit<GuestBoardSnapshot, 'version' | 'generatedAt'> = {
       board: {
         ...board,
         aspect: top.row.kind === 'storyboard' ? view.aspect : null,
-        animaticAudio: null,
+        animaticAudio: playable ? { assetId: track.assetId, volume: track.volume } : null,
       },
       breadcrumb,
       elements: shown.map((el) => guestElement(view, el) as GuestBoardSnapshot['elements'][number]),
@@ -635,6 +647,34 @@ export async function registerGuestRoutes(app: FastifyInstance, deps: Deps) {
       if (matchesEtag(req.headers['if-none-match'], etag)) return reply.status(304).send();
       reply.header('content-type', 'application/octet-stream');
       reply.header('content-disposition', contentDisposition('attachment', row.filename));
+      reply.header('accept-ranges', 'bytes');
+      const range = parseRange(req.headers.range, row.size);
+      if (range === undefined) {
+        reply.header('content-range', `bytes */${row.size}`);
+        return reply.status(416).send();
+      }
+      if (range) {
+        reply.status(206);
+        reply.header('content-range', `bytes ${range.start}-${range.end}/${row.size}`);
+        reply.header('content-length', range.end - range.start + 1);
+        return reply.send(await storage.read(row.storageKey, range));
+      }
+      reply.header('content-length', row.size);
+      return reply.send(await storage.read(row.storageKey));
+    });
+
+    // The sound track of a storyboard animatic: played inline whatever `allowDownload` says,
+    // never as an attachment nor with its name (decision 0046).
+    scope.get(v1('/guest/links/:linkId/assets/:assetId/stream'), async (req, reply) => {
+      const { linkId, assetId } = AssetParams.parse(req.params);
+      const ctx = await guests.requireGuest(req, reply, linkId);
+      if (!ctx.assets.audio.has(assetId)) throw new HttpError('not_found', 'Asset not found.');
+      const row = await projectAsset(ctx, assetId);
+      if (!streamable(ctx, row)) throw new HttpError('not_found', 'Asset not found.');
+      guestFileHeaders(reply, row.sha256 ?? row.id);
+      reply.header('cache-control', 'private, no-store');
+      reply.header('content-type', row.mime.startsWith('audio/') ? row.mime : 'audio/mpeg');
+      reply.header('content-disposition', 'inline');
       reply.header('accept-ranges', 'bytes');
       const range = parseRange(req.headers.range, row.size);
       if (range === undefined) {
