@@ -25,11 +25,17 @@ lost with the browser's storage. They belong to the project, like its name and i
   people without access 404. Fields left out keep their value.
 - The logo is an ordinary **image asset of the same project**, uploaded through the existing
   upload flow, so it counts towards project storage and is served, cached and permission-checked
-  like any picture. It must be PNG or JPEG of at most 512 KiB and finished uploading. SVG is
-  refused: it can carry scripts, and sanitising it on the server is more than this needs.
+  like any picture. It must be PNG or JPEG of at most 512 KiB and **ready**: processed by the
+  worker, so its type has been read from the file. The PATCH checks the declared type and the
+  first bytes of the stored file again, inside the transaction. SVG is refused: it can carry
+  scripts, and sanitising it on the server is more than this needs. A logo whose file is not
+  ready is not returned to readers.
   Clients draw the logo from its WebP thumbnails (which keep transparency), or from the original
   when it is too small to have any, which viewers may open in that case.
-- Removing the logo clears the reference and keeps the asset. Deleting the asset clears the
+- Replacing or removing the logo **deletes the previous asset** when nothing else may show it:
+  no board cover, no guest pick, and its id in no board document or version of the project
+  (versions can bring cards back, decision 0013). The id is looked for in the stored Yjs bytes,
+  where strings are UTF-8; a false match only keeps the file. Deleting the asset clears the
   reference (`on delete set null`); deleting the project deletes the row.
 
 ## Consequences

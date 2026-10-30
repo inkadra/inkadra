@@ -1,12 +1,13 @@
 import { fileURLToPath } from 'node:url';
 import { DEFAULT_EXPORT_PREFERENCES, ExportSettings } from '@inkadra/shared';
-import { sql } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import pino from 'pino';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createAuth } from '../auth.ts';
 import { loadConfig } from '../config.ts';
 import { createDatabase, runMigrations } from '../db/client.ts';
-import { asset, boardGrant, projectExportSettings } from '../db/schema.ts';
+import { asset, board, boardGrant, projectExportSettings } from '../db/schema.ts';
+import type { Storage } from '../storage.ts';
 import { testDeps } from '../test-deps.ts';
 import { createApp } from './app.ts';
 import { readPreferences } from './export-settings-routes.ts';
@@ -36,6 +37,8 @@ describe.skipIf(!url)('project export settings', () => {
   const people: Record<string, { cookie: string; id: string }> = {};
   let projectId: string;
   let otherProjectId: string;
+  let storage: Storage;
+  let rootBoardId: string;
   const request = (who: string, method: 'GET' | 'PATCH' | 'PUT', path: string, payload?: object) =>
     app.inject({
       method,
@@ -44,7 +47,12 @@ describe.skipIf(!url)('project export settings', () => {
       ...(payload ? { payload } : {}),
     });
   const settingsPath = () => `/projects/${projectId}/export-settings`;
-  const addAsset = async (fields: Partial<typeof asset.$inferInsert> = {}) => {
+  const PNG = Buffer.from([
+    0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 13, 0x49, 0x48, 0x44, 0x52,
+  ]);
+  const addAsset = async (fields: Partial<typeof asset.$inferInsert> = {}, bytes: Buffer = PNG) => {
+    const storageKey = `originals/test-${Math.random().toString(36).slice(2)}`;
+    await storage.write(storageKey, bytes, 'application/octet-stream');
     const [row] = await db
       .insert(asset)
       .values({
@@ -53,13 +61,15 @@ describe.skipIf(!url)('project export settings', () => {
         mime: 'image/png',
         filename: 'logo.png',
         size: 20_000,
-        storageKey: `test/${Math.random()}`,
+        storageKey,
         status: 'ready',
         ...fields,
       })
       .returning();
     return row?.id as string;
   };
+  const exists = async (id: string) =>
+    (await db.select({ id: asset.id }).from(asset).where(eq(asset.id, id))).length === 1;
 
   beforeAll(async () => {
     await runMigrations(
@@ -67,7 +77,9 @@ describe.skipIf(!url)('project export settings', () => {
       fileURLToPath(new URL('../../drizzle', import.meta.url)),
     );
     await db.execute(sql`truncate table "user", project, instance_setting cascade`);
-    app = await createApp({ config, db, auth: createAuth(config, db), log, ...testDeps(db, log) });
+    const deps = testDeps(db, log);
+    storage = deps.storage;
+    app = await createApp({ config, db, auth: createAuth(config, db), log, ...deps });
     for (const name of ['owner', 'editor', 'viewer', 'guest', 'stranger']) {
       const res = await app.inject({
         method: 'POST',
@@ -88,6 +100,7 @@ describe.skipIf(!url)('project export settings', () => {
       payload: { name: 'Last Train' },
     });
     projectId = project.json().id;
+    rootBoardId = project.json().rootBoardId;
     const other = await app.inject({
       method: 'POST',
       url: '/api/v1/projects',
@@ -189,6 +202,11 @@ describe.skipIf(!url)('project export settings', () => {
       await addAsset({ kind: 'file', mime: 'application/pdf' }),
       await addAsset({ size: 600 * 1024 }),
       await addAsset({ status: 'pending' }),
+      // Accepted before by mistake: the worker has not read the file yet.
+      await addAsset({ status: 'processing' }),
+      await addAsset({ status: 'failed' }),
+      // Declared PNG, but the bytes are an HTML page.
+      await addAsset({}, Buffer.from('<html><script>alert(1)</script></html>')),
     ];
     for (const logoAssetId of bad) {
       expect((await request('owner', 'PATCH', settingsPath(), { logoAssetId })).statusCode).toBe(
@@ -202,6 +220,42 @@ describe.skipIf(!url)('project export settings', () => {
         })
       ).statusCode,
     ).toBe(400);
+  });
+
+  it('merges concurrent changes of different fields', async () => {
+    const [a, b] = await Promise.all([
+      request('owner', 'PATCH', settingsPath(), { orientation: 'portrait' }),
+      request('editor', 'PATCH', settingsPath(), { comments: true }),
+    ]);
+    expect(a.statusCode).toBe(200);
+    expect(b.statusCode).toBe(200);
+    expect((await request('viewer', 'GET', settingsPath())).json()).toMatchObject({
+      orientation: 'portrait',
+      comments: true,
+      framesPerPage: 6,
+    });
+  });
+
+  it('deletes a replaced logo nothing else uses, and keeps one in use', async () => {
+    const first = await addAsset();
+    const second = await addAsset();
+    await request('owner', 'PATCH', settingsPath(), { logoAssetId: first });
+    await request('owner', 'PATCH', settingsPath(), { logoAssetId: second });
+    expect(await exists(first)).toBe(false);
+    // The second becomes the board's cover too: removing the logo keeps the file.
+    await db.update(board).set({ coverAssetId: second }).where(eq(board.id, rootBoardId));
+    await request('owner', 'PATCH', settingsPath(), { logoAssetId: null });
+    expect(await exists(second)).toBe(true);
+    await db.update(board).set({ coverAssetId: null }).where(eq(board.id, rootBoardId));
+  });
+
+  it('answers no logo while its file is not ready', async () => {
+    const id = await addAsset();
+    await request('owner', 'PATCH', settingsPath(), { logoAssetId: id });
+    await db.update(asset).set({ status: 'processing' }).where(eq(asset.id, id));
+    const read = (await request('viewer', 'GET', settingsPath())).json();
+    expect(read).toMatchObject({ logo: null, logoAssetId: null });
+    await db.update(asset).set({ status: 'ready' }).where(eq(asset.id, id));
   });
 
   it('drops the logo when its asset is deleted, and the row with the project', async () => {

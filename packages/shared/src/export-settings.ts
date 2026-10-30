@@ -59,7 +59,9 @@ export const DEFAULT_EXPORT_PREFERENCES: ExportPreferences = {
 export const ExportSettings = ExportPreferences.extend({
   logoAssetId: Id.nullable(),
   logo: Asset.nullable().openapi({
-    description: 'The logo asset, so readers need no second request. Null without a logo.',
+    description:
+      'The logo asset, so readers need no second request. Null without a logo or while its ' +
+      'file is not ready.',
   }),
   canEdit: z.boolean().openapi({ description: 'The caller may change these settings.' }),
   updatedAt: Timestamp.nullable().openapi({ description: 'Null while the defaults apply.' }),
@@ -72,8 +74,9 @@ export const UpdateExportSettings = ExportPreferences.partial()
       .optional()
       .openapi({
         description:
-          'An image asset of this project, PNG or JPEG of at most EXPORT_LOGO_MAX_BYTES ' +
-          '(512 KiB), uploaded like any other file. Null removes the logo; the asset stays.',
+          'A ready image asset of this project, PNG or JPEG (declared and read from the file) ' +
+          'of at most EXPORT_LOGO_MAX_BYTES (512 KiB), uploaded like any other file. Null ' +
+          'removes the logo. The previous logo asset is deleted when nothing else uses it.',
       }),
   })
   .strict()

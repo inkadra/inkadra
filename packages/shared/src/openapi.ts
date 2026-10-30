@@ -704,8 +704,9 @@ registry.registerPath({
   security: secured,
   summary: 'Change some export settings or the logo. Requires the editor role on the project.',
   description:
-    'Fields left out keep their value. The logo is an image asset of the same project, PNG or ' +
-    'JPEG of at most 512 KiB; anything else is refused with `bad_request`.',
+    'Fields left out keep their value. The logo is a ready image asset of the same project, ' +
+    'PNG or JPEG of at most 512 KiB; anything else is refused with `bad_request`. A replaced ' +
+    'logo asset is deleted when no board, version, cover or pick uses it.',
   request: { params: idParam('projectId'), body: json(UpdateExportSettings) },
   responses: { 200: { description: 'Updated', ...json(ExportSettings) }, ...errors },
 });

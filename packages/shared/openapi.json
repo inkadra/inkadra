@@ -1937,7 +1937,7 @@
           "sourceUrl",
           "createdAt"
         ],
-        "description": "The logo asset, so readers need no second request. Null without a logo."
+        "description": "The logo asset, so readers need no second request. Null without a logo or while its file is not ready."
       },
       "AssetVariant": {
         "type": "object",
@@ -2138,7 +2138,7 @@
             ],
             "format": "uuid",
             "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10",
-            "description": "An image asset of this project, PNG or JPEG of at most EXPORT_LOGO_MAX_BYTES (512 KiB), uploaded like any other file. Null removes the logo; the asset stays."
+            "description": "A ready image asset of this project, PNG or JPEG (declared and read from the file) of at most EXPORT_LOGO_MAX_BYTES (512 KiB), uploaded like any other file. Null removes the logo. The previous logo asset is deleted when nothing else uses it."
           }
         },
         "additionalProperties": false
@@ -8092,7 +8092,7 @@
           }
         ],
         "summary": "Change some export settings or the logo. Requires the editor role on the project.",
-        "description": "Fields left out keep their value. The logo is an image asset of the same project, PNG or JPEG of at most 512 KiB; anything else is refused with `bad_request`.",
+        "description": "Fields left out keep their value. The logo is a ready image asset of the same project, PNG or JPEG of at most 512 KiB; anything else is refused with `bad_request`. A replaced logo asset is deleted when no board, version, cover or pick uses it.",
         "parameters": [
           {
             "schema": {
