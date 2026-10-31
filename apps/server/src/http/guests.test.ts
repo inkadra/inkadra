@@ -1039,12 +1039,9 @@ describe.skipIf(!url)('guest share links (needs DATABASE_URL)', () => {
       return { views: row?.viewCount, last: row?.lastUsedAt, opens: opens.length };
     };
     for (const who of ['owner', 'viewer'] as const) {
-      const opened = await call(
-        { cookie: as[who].cookie },
-        'POST',
-        g(link, '/session'),
-        { token: link.token },
-      );
+      const opened = await call({ cookie: as[who].cookie }, 'POST', g(link, '/session'), {
+        token: link.token,
+      });
       expect(opened.status).toBe(200);
       const guest = cookieOf(opened.cookies, 'inkadra.guest');
       const both = { cookie: `${guest}; ${as[who].cookie}` };
