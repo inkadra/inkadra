@@ -79,10 +79,11 @@ services:
       POSTGRES_DB: inkadra
     volumes:
       # PostgreSQL 18 keeps its cluster in /var/lib/postgresql/18/docker, so the volume is the
-      # parent folder. This is a new volume: data from PostgreSQL 16 is in `postgres-data` and
-      # must be moved over (docs/self-hosting/upgrades.md#upgrading-to-postgresql-18).
+      # parent folder. An existing `postgres-data` from PostgreSQL 16 has its cluster at the
+      # top and is refused below until it is moved over
+      # (docs/self-hosting/upgrades.md#upgrading-to-postgresql-18).
       # A host folder here must be owned by uid 70, the postgres user of the alpine image.
-      - ${POSTGRES_DATA:-postgres18-data}:/var/lib/postgresql
+      - ${POSTGRES_DATA:-postgres-data}:/var/lib/postgresql
     # A cluster of PostgreSQL 16 or older mounted here (its PG_VERSION would sit right in the
     # volume) must not be answered with an empty database next to it: stop and say what to do.
     entrypoint:
@@ -119,5 +120,7 @@ services:
 
 volumes:
   inkadra-data:
+  postgres-data:
+  # Only for moving a PostgreSQL 16 install: POSTGRES_DATA=postgres18-data (see the guide).
   postgres18-data:
   valkey-data:

@@ -41,9 +41,10 @@ newer, and **16 stays supported for one more release** (see
 [Staying on PostgreSQL 16](#staying-on-postgresql-16-for-now)).
 
 Do the steps in this order. Do **not** just replace `compose.yaml` and run `docker compose up -d`:
-the new file uses a new volume, `postgres18-data`, so PostgreSQL 18 would start with an empty
-database while your data waits in `postgres-data`. (Pointing the new file at a folder or volume
-that holds a PostgreSQL 16 cluster is refused, with a message that sends you here.) It takes a
+PostgreSQL 18 cannot use the `postgres-data` volume (or `POSTGRES_DATA` folder) of 16. It does
+not start an empty database beside your data: it stops, and its log says "The volume holds a
+PostgreSQL 16 database from an older layout" with a link to this section. Nothing is lost, but
+the instance is down until you do the steps below. It takes a
 few minutes of downtime for a small instance; the dump and restore grow with the size of the
 database, and you need room for the dump and for the second copy of the database.
 
@@ -107,8 +108,12 @@ your usual copy of the data volume or the bucket. Check that `./inkadra-backups`
    # .env: POSTGRES_DATA=/srv/inkadra/postgres18
    ```
 
-   With the default volumes there is nothing to set: PostgreSQL 18 uses the new volume
-   `postgres18-data`.
+   With the default volume, use the second one `compose.yaml` declares, so that `postgres-data`
+   stays as it is:
+
+   ```sh
+   # .env: POSTGRES_DATA=postgres18-data
+   ```
 
 4. **Start PostgreSQL 18 alone and load the dump.**
 
@@ -136,7 +141,9 @@ your usual copy of the data volume or the bucket. Check that `./inkadra-backups`
 
 6. **Keep the old data for a while.** The volume `postgres-data` (or the old folder) is the way
    back, untouched. Delete it once you are sure, after a week of normal use, for example:
-   `docker volume rm inkadra_postgres-data`.
+   `docker volume rm inkadra_postgres-data`. Keep `POSTGRES_DATA` in `.env`: new installs use
+   `postgres-data` for the cluster of 18 (it is where `18/docker` lives), yours uses
+   `postgres18-data`.
 
 ### In place with pgautoupgrade
 
@@ -205,7 +212,8 @@ release. After that the file is removed: move to 18 before then.
 Before you delete the old volume you can return to PostgreSQL 16 in two ways.
 
 **To the database as it was before the upgrade** (after a dump and restore; whatever was
-written on 18 since is lost):
+written on 18 since is lost). Point `POSTGRES_DATA` back at the old volume or folder: delete the
+line `POSTGRES_DATA=postgres18-data` from `.env`, or set the old folder again.
 
 ```sh
 docker compose down

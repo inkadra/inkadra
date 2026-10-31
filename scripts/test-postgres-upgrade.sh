@@ -119,8 +119,30 @@ if [[ $mode == dump ]]; then
   # 4. Stop the old database. Volumes stay.
   old down
 
-  # The new compose.yaml refuses a volume that holds a cluster from the old layout, instead of
-  # starting an empty database beside it.
+  # What a plain `docker compose pull && up -d` does on an existing install: the new
+  # compose.yaml finds the cluster of 16 in postgres-data and stops, with the pointer to the
+  # guide, instead of starting an empty database (and the app on it) beside the data.
+  if new up -d --quiet-pull --wait --wait-timeout 45 >"$work/plain-up.log" 2>&1; then
+    fail "plain up on the volume of PostgreSQL 16 started"
+  else
+    plain_logs=$(new logs --no-color postgres 2>&1)
+    if [[ $plain_logs == *"The volume holds a PostgreSQL 16 database from an older layout"* &&
+      $plain_logs == *"upgrades.md#upgrading-to-postgresql-18"* ]]; then
+      pass "plain up on the volume of PostgreSQL 16 stops with the guide message"
+    else
+      fail "plain up: wrong message: $(tail -n5 "$work/plain-up.log") / $(tail -n5 <<<"$plain_logs")"
+    fi
+  fi
+  [[ -z $(new ps --status running --services | grep -x inkadra || true) ]] &&
+    ! curl -sf --max-time 5 "$url/api/v1/health" >/dev/null &&
+    pass "the app did not start on an empty database" || fail "the app is running after a plain up"
+  [[ $(docker volume ls -q | grep -c "^${project}_postgres18-data$" || true) == 0 ]] &&
+    pass "no new volume was filled" || fail "a new volume exists"
+  new down
+  # Step 3 of the guide: the new database goes on a volume of its own.
+  echo "POSTGRES_DATA=postgres18-data" >>"$work/.env"
+
+  # The same refusal for a host folder.
   mkdir "$work/old-layout"
   echo 16 >"$work/old-layout/PG_VERSION"
   if out=$(POSTGRES_DATA="$work/old-layout" new run --rm --no-deps postgres 2>&1); then
@@ -197,6 +219,7 @@ old up -d --wait --wait-timeout 180
 if [[ $mode == dump ]]; then
   old down
   unset POSTGRES_DATA
+  sed -i '/^POSTGRES_DATA=/d' "$work/.env"
   old up -d --wait --wait-timeout 180
   [[ $(sign_in) == 200 ]] && p=$(projects) || p=
   [[ $p == *"Before the upgrade"* && $p != *"After the upgrade"* ]] && pass "rollback: old volume untouched" ||
