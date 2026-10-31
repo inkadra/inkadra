@@ -1,8 +1,4 @@
-import {
-  frameLabels,
-  type SceneElement,
-  storyboardOf,
-} from '@inkadra/canvas-core';
+import { frameLabels, type SceneElement, storyboardOf } from '@inkadra/canvas-core';
 import { useMemo, useSyncExternalStore } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { BoardStore } from '../store.ts';

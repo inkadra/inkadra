@@ -11,13 +11,7 @@ import {
 } from '@inkadra/canvas-core';
 import { ASPECT_RATIOS, type AspectRatio, SHOT_SIZES, setBoardAspect } from '@inkadra/doc-schema';
 import { Button, EmptyState, Icon, IconButton, Select } from '@inkadra/ui';
-import {
-  type DragEvent,
-  memo,
-  useCallback,
-  useId,
-  useState,
-} from 'react';
+import { type DragEvent, memo, useCallback, useId, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useRegisterActions } from '../../commands/actions.ts';
 import { useSession } from '../../lib/session.tsx';
@@ -34,6 +28,7 @@ import { FramePanel } from './FramePanel.tsx';
 import { FramePicture } from './FramePicture.tsx';
 import { FrameVisibilityButton } from './FrameVisibilityButton.tsx';
 import { blurOnEnter, StatusChip, usePresetText } from './fields.tsx';
+import { sceneName, useStoryboard } from './storyboard-data.ts';
 import {
   applyDrop,
   type DropTarget,
@@ -41,7 +36,6 @@ import {
   isFileDrag,
   splitDropped,
 } from './storyboard-drop.ts';
-import { sceneName, useStoryboard } from './storyboard-data.ts';
 import { ViewOptions } from './ViewOptions.tsx';
 
 const FRAME_MIME = 'application/x-inkadra-frame';
@@ -69,7 +63,6 @@ const sameMark = (a: FileMark | null, b: FileMark | null) =>
 /** A frame counts as drawn once it has a picture or a pen drawing. */
 const isDrawn = (f: FrameElement) =>
   !!f.assetId || (f.strokes?.length ?? 0) > 0 || (f.shapes?.length ?? 0) > 0;
-
 
 export function StoryboardView({
   store,
@@ -561,8 +554,6 @@ function SceneList({
     </>
   );
 }
-
-
 
 function SceneSection({
   group,
