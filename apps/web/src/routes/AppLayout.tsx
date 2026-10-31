@@ -16,10 +16,13 @@ import {
 } from '@inkadra/ui';
 import {
   createContext,
+  type FocusEvent,
   type MouseEvent,
+  type PointerEvent,
   type ReactNode,
   useContext,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -56,7 +59,7 @@ import {
 import { appActions } from '../commands/app-actions.ts';
 import { canCreateProjects } from '../lib/access.ts';
 import { api, authApi } from '../lib/api.ts';
-import { HeaderContext } from '../lib/header.tsx';
+import { HeaderContext, type HeaderParts } from '../lib/header.tsx';
 import { useSession } from '../lib/session.tsx';
 import { useTheme } from '../lib/theme.ts';
 import {
@@ -257,7 +260,7 @@ export function AppLayout({ home }: { home?: ReactNode }) {
   // The project a new board goes into when it starts from inside that project.
   const [boardProject, setBoardProject] = useState<string | undefined>();
   const [newSheet, setNewSheet] = useState(false);
-  const [headerContent, setHeaderContent] = useState<ReactNode | null>(null);
+  const [headerContent, setHeaderContent] = useState<HeaderParts | null>(null);
   const [searching, setSearching] = useState(false);
   const [inboxOpen, setInboxOpen] = useState(false);
   const mobileInboxButton = useRef<HTMLButtonElement>(null);
@@ -304,12 +307,21 @@ export function AppLayout({ home }: { home?: ReactNode }) {
     return () => window.removeEventListener('keydown', onKey);
   }, []);
 
-  const [collapsed, setCollapsed] = useState(() => readCollapsed());
+  // Remembered per person on this device (#333).
+  const userId = user?.id;
+  const [collapsed, setCollapsed] = useState(() => readCollapsed(userId));
+  useEffect(() => setCollapsed(readCollapsed(userId)), [userId]);
   const toggleCollapsed = () =>
     setCollapsed((c) => {
-      writeCollapsed(!c);
+      writeCollapsed(userId, !c);
       return !c;
     });
+  const peek = useSidebarPeek(collapsed || inboxOpen);
+  const launcherRef = useRef<HTMLButtonElement>(null);
+  // A peek lays the page out as with the navigation open, so what sits beside it moves aside
+  // in step instead of being covered; over the Inbox it stays a layer above it.
+  const shellCollapsed = inboxOpen || (collapsed && !peek.shown);
+  const sliding = useSlide(shellCollapsed);
   // ⌘\ / Ctrl+\ folds the navigation column to its icons and back.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -317,14 +329,14 @@ export function AppLayout({ home }: { home?: ReactNode }) {
       if ((mac ? e.metaKey : e.ctrlKey) && !e.shiftKey && !e.altKey && e.key === '\\') {
         e.preventDefault();
         setCollapsed((c) => {
-          writeCollapsed(!c);
+          writeCollapsed(userId, !c);
           return !c;
         });
       }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, []);
+  }, [userId]);
 
   const pathProject = pathname.startsWith('/p/') ? pathname.split('/')[2] : undefined;
   const { items: projectBoards } = useProjectBoards(pathProject);
@@ -427,7 +439,7 @@ export function AppLayout({ home }: { home?: ReactNode }) {
     (v === 'storyboard' && !filmView && !!storyboardId && openBoardId === storyboardId);
 
   const sidebar = (
-    <Sidebar label={t('nav.navigation')}>
+    <Sidebar label={t('nav.navigation')} {...peek.panel}>
       <div className="ink-sidebar__workspace">
         <Logo />
         <span className="ink-nav__name" style={{ flex: 1 }}>
@@ -435,11 +447,17 @@ export function AppLayout({ home }: { home?: ReactNode }) {
         </span>
         <IconButton
           className={`ink-sidebar__toggle${collapsed ? ' is-collapsed' : ''}`}
-          icon="chevronRight"
+          icon="splitPanel"
           label={t(collapsed ? 'nav.expand' : 'nav.collapse')}
           aria-expanded={!(collapsed || inboxOpen)}
           disabled={inboxOpen}
-          onClick={toggleCollapsed}
+          onClick={() => {
+            peek.hide();
+            const collapsing = !collapsed;
+            toggleCollapsed();
+            // The panel shrinks into the logo button: the focus goes there with it.
+            if (collapsing) requestAnimationFrame(() => launcherRef.current?.focus());
+          }}
         />
       </div>
       <button
@@ -484,121 +502,123 @@ export function AppLayout({ home }: { home?: ReactNode }) {
         active={pathname === '/projects'}
         onClick={go('/projects')}
       />
-      <SidebarSection
-        title={t('nav.projects')}
-        action={
-          canCreate ? (
-            <IconButton
-              icon="plus"
-              label={t('nav.newProject')}
-              onClick={() => {
-                setDrawerOpen(false);
-                setCreating(true);
-              }}
+      <div className="ink-sidebar__scroll">
+        <SidebarSection
+          title={t('nav.projects')}
+          action={
+            canCreate ? (
+              <IconButton
+                icon="plus"
+                label={t('nav.newProject')}
+                onClick={() => {
+                  setDrawerOpen(false);
+                  setCreating(true);
+                }}
+              />
+            ) : undefined
+          }
+        />
+        {projects?.map((p) => (
+          <div key={p.id} className={p.id === projectId ? undefined : 'ink-sidebar__collapsible'}>
+            <ProjectNavItem
+              project={p}
+              active={p.id === projectId && !boardId && !filmView}
+              onClick={go(`/p/${p.id}`)}
             />
-          ) : undefined
-        }
-      />
-      {projects?.map((p) => (
-        <div key={p.id} className={p.id === projectId ? undefined : 'ink-sidebar__collapsible'}>
-          <ProjectNavItem
-            project={p}
-            active={p.id === projectId && !boardId && !filmView}
-            onClick={go(`/p/${p.id}`)}
-          />
-          {p.id === projectId && (
-            <div className="ink-sidebar__modules">
-              {showFilmLinks && (
-                <>
-                  <NavItem
-                    icon="storyboard"
-                    contentKind="storyboard"
-                    label={t('nav.storyboard')}
-                    count={storyboardCounts?.frameCount}
-                    title={
-                      storyboardCounts
-                        ? `${t('nav.storyboard')} · ${t('nav.shots', { count: storyboardCounts.frameCount })}`
-                        : undefined
-                    }
-                    active={filmRowActive('storyboard')}
-                    href={hrefFor('storyboard')}
-                    onClick={(e) => {
-                      e.preventDefault();
-                      showView('storyboard');
-                    }}
+            {p.id === projectId && (
+              <div className="ink-sidebar__modules">
+                {showFilmLinks && (
+                  <>
+                    <NavItem
+                      icon="storyboard"
+                      contentKind="storyboard"
+                      label={t('nav.storyboard')}
+                      count={storyboardCounts?.frameCount}
+                      title={
+                        storyboardCounts
+                          ? `${t('nav.storyboard')} · ${t('nav.shots', { count: storyboardCounts.frameCount })}`
+                          : undefined
+                      }
+                      active={filmRowActive('storyboard')}
+                      href={hrefFor('storyboard')}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        showView('storyboard');
+                      }}
+                    />
+                    <NavItem
+                      icon="shotlist"
+                      contentKind="shotlist"
+                      label={t('nav.shotlist')}
+                      count={storyboardCounts?.frameCount}
+                      title={
+                        storyboardCounts
+                          ? `${t('nav.shotlist')} · ${t('nav.toShoot', { count: storyboardCounts.frameCount, left: storyboardCounts.framesToShoot })}`
+                          : undefined
+                      }
+                      active={filmRowActive('shotlist')}
+                      href={hrefFor('shotlist')}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        showView('shotlist');
+                      }}
+                    />
+                    <NavItem
+                      icon="calendar"
+                      contentKind="schedule"
+                      label={t('nav.schedule')}
+                      active={filmRowActive('schedule')}
+                      href={hrefFor('schedule')}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        showView('schedule');
+                      }}
+                    />
+                    <NavItem
+                      icon="people"
+                      contentKind="review"
+                      label={t('nav.clients')}
+                      active={filmRowActive('review')}
+                      href={hrefFor('review')}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        showView('review');
+                      }}
+                    />
+                  </>
+                )}
+                <div className="ink-sidebar__collapsible">
+                  <div className="ink-sidebar__label">{t('nav.boards')}</div>
+                  <BoardTree
+                    projectId={p.id}
+                    parentId={p.rootBoardId}
+                    activeId={boardId}
+                    hiddenId={storyboardId}
+                    depth={1}
+                    go={go}
+                    counts={counts}
                   />
-                  <NavItem
-                    icon="shotlist"
-                    contentKind="shotlist"
-                    label={t('nav.shotlist')}
-                    count={storyboardCounts?.frameCount}
-                    title={
-                      storyboardCounts
-                        ? `${t('nav.shotlist')} · ${t('nav.toShoot', { count: storyboardCounts.frameCount, left: storyboardCounts.framesToShoot })}`
-                        : undefined
-                    }
-                    active={filmRowActive('shotlist')}
-                    href={hrefFor('shotlist')}
-                    onClick={(e) => {
-                      e.preventDefault();
-                      showView('shotlist');
-                    }}
-                  />
-                  <NavItem
-                    icon="calendar"
-                    contentKind="schedule"
-                    label={t('nav.schedule')}
-                    active={filmRowActive('schedule')}
-                    href={hrefFor('schedule')}
-                    onClick={(e) => {
-                      e.preventDefault();
-                      showView('schedule');
-                    }}
-                  />
-                  <NavItem
-                    icon="people"
-                    contentKind="review"
-                    label={t('nav.clients')}
-                    active={filmRowActive('review')}
-                    href={hrefFor('review')}
-                    onClick={(e) => {
-                      e.preventDefault();
-                      showView('review');
-                    }}
-                  />
-                </>
-              )}
-              <div className="ink-sidebar__collapsible">
-                <div className="ink-sidebar__label">{t('nav.boards')}</div>
-                <BoardTree
-                  projectId={p.id}
-                  parentId={p.rootBoardId}
-                  activeId={boardId}
-                  hiddenId={storyboardId}
-                  depth={1}
-                  go={go}
-                  counts={counts}
-                />
+                </div>
               </div>
-            </div>
-          )}
-        </div>
-      ))}
-      {shared && shared.length > 0 && (
-        <div className="ink-sidebar__collapsible">
-          <SidebarSection title={t('nav.shared')} />
-          {shared.map((b) => (
-            <NavItem
-              key={b.id}
-              icon="people"
-              label={b.title}
-              href={`/p/${b.projectId}/b/${b.id}`}
-              active={b.id === boardId}
-              onClick={go(`/p/${b.projectId}/b/${b.id}`)}
-            />
-          ))}
-        </div>
-      )}
+            )}
+          </div>
+        ))}
+        {shared && shared.length > 0 && (
+          <div className="ink-sidebar__collapsible">
+            <SidebarSection title={t('nav.shared')} />
+            {shared.map((b) => (
+              <NavItem
+                key={b.id}
+                icon="people"
+                label={b.title}
+                href={`/p/${b.projectId}/b/${b.id}`}
+                active={b.id === boardId}
+                onClick={go(`/p/${b.projectId}/b/${b.id}`)}
+              />
+            ))}
+          </div>
+        )}
+      </div>
       <span className="ink-sidebar__spacer" />
       <div className="ink-sidebar__user">
         <Avatar image={user.image} name={user.name} />
@@ -626,6 +646,61 @@ export function AppLayout({ home }: { home?: ReactNode }) {
     </Sidebar>
   );
 
+  // Home creates from the header only; search stays in the sidebar and on ⌘K.
+  const homeActions = (
+    <div className="home-header-actions">
+      <Button
+        variant="primary"
+        icon="plus"
+        disabled={writable.length === 0}
+        onClick={() => {
+          setBoardProject(undefined);
+          setCreatingBoard(true);
+        }}
+      >
+        {t('home.newBoard.action')}
+      </Button>
+      {canCreate && (
+        <Button variant="secondary" onClick={() => setCreating(true)}>
+          {t('nav.newProject')}
+        </Button>
+      )}
+    </div>
+  );
+
+  // The logo at the top left never moves (#333): open, it is the navigation's logo; collapsed,
+  // the panel shrinks into it and it is the button that brings the navigation back.
+  const launcher = (
+    <>
+      <button
+        ref={launcherRef}
+        type="button"
+        className="ink-shell__launcher"
+        {...(shellCollapsed
+          ? { 'aria-label': t('nav.expand'), 'data-ink-tooltip': t('nav.expand') }
+          : { 'aria-hidden': true, tabIndex: -1 })}
+        aria-expanded={false}
+        onClick={() => {
+          if (!shellCollapsed) return;
+          peek.hide();
+          if (inboxOpen) setInboxOpen(false);
+          if (collapsed) toggleCollapsed();
+          // The button is only the logo now: the focus goes to the panel's own toggle.
+          requestAnimationFrame(() =>
+            document
+              .querySelector<HTMLElement>('.ink-shell > .ink-sidebar .ink-sidebar__toggle')
+              ?.focus(),
+          );
+        }}
+      >
+        <Logo size={26} />
+      </button>
+      {(collapsed || inboxOpen) && (
+        <div className="ink-shell__edge" aria-hidden="true" {...peek.edge} />
+      )}
+    </>
+  );
+
   const header = (
     <Header>
       <div className="mobile-header-actions">
@@ -640,8 +715,8 @@ export function AppLayout({ home }: { home?: ReactNode }) {
         )}
       </div>
       <div className="shell-header-content">
-        {headerContent ?? (
-          <>
+        <div className="ink-header__group ink-header__start">
+          {headerContent?.start ?? (
             <nav aria-label={t('nav.breadcrumb')} className="ink-header__crumbs">
               <span style={{ fontWeight: 600 }}>
                 {current?.name ??
@@ -650,30 +725,20 @@ export function AppLayout({ home }: { home?: ReactNode }) {
                     : t(pathname === '/projects' ? 'nav.projects' : 'nav.home'))}
               </span>
             </nav>
-            <span className="ink-header__spacer" />
-            {/* Home creates from here only; search stays in the sidebar and on ⌘K. */}
-            {pathname === '/' && (
-              <div className="home-header-actions">
-                <Button
-                  variant="primary"
-                  icon="plus"
-                  disabled={writable.length === 0}
-                  onClick={() => {
-                    setBoardProject(undefined);
-                    setCreatingBoard(true);
-                  }}
-                >
-                  {t('home.newBoard.action')}
-                </Button>
-                {canCreate && (
-                  <Button variant="secondary" onClick={() => setCreating(true)}>
-                    {t('nav.newProject')}
-                  </Button>
-                )}
-              </div>
-            )}
-          </>
-        )}
+          )}
+        </div>
+        <div className="ink-header__group ink-header__end">
+          {headerContent ? headerContent.end : pathname === '/' && homeActions}
+          <NotificationBell
+            unread={unread}
+            onCount={refreshUnread}
+            feed={notifications}
+            onOpenInbox={(opener) => {
+              inboxOpener.current = opener;
+              setInboxOpen(true);
+            }}
+          />
+        </div>
       </div>
       {projectId && (
         <div className="mobile-view-picker">
@@ -697,15 +762,6 @@ export function AppLayout({ home }: { home?: ReactNode }) {
           </Select>
         </div>
       )}
-      <NotificationBell
-        unread={unread}
-        onCount={refreshUnread}
-        feed={notifications}
-        onOpenInbox={(opener) => {
-          inboxOpener.current = opener;
-          setInboxOpen(true);
-        }}
-      />
     </Header>
   );
 
@@ -726,10 +782,14 @@ export function AppLayout({ home }: { home?: ReactNode }) {
       >
         <HeaderContext.Provider value={setHeaderContent}>
           <AppShell
+            launcher={launcher}
             sidebar={sidebar}
             header={header}
-            canvas={!!projectId}
-            collapsed={inboxOpen || collapsed}
+            // A board's own canvas runs edge to edge; its other views sit in a surface.
+            canvas={!!projectId && (currentView === 'canvas' || currentView === null)}
+            collapsed={shellCollapsed}
+            peek={peek.shown}
+            sliding={sliding}
           >
             {/* Keep layout observable while Inbox covers the board, including sidebar resizes. */}
             <div
@@ -971,20 +1031,103 @@ function BoardTree({
 }
 
 const COLLAPSED_KEY = 'inkadra.sidebar.collapsed';
-function readCollapsed(): boolean {
+/** One choice per person: the key of the device-wide choice from before #333 is the fallback. */
+const collapsedKey = (userId: string | undefined) =>
+  userId ? `${COLLAPSED_KEY}.${userId}` : COLLAPSED_KEY;
+function readCollapsed(userId: string | undefined): boolean {
   try {
-    return localStorage.getItem(COLLAPSED_KEY) === '1';
+    const own = localStorage.getItem(collapsedKey(userId));
+    return (own ?? localStorage.getItem(COLLAPSED_KEY)) === '1';
   } catch {
     return false;
   }
 }
-function writeCollapsed(value: boolean) {
+function writeCollapsed(userId: string | undefined, value: boolean) {
   try {
-    if (value) localStorage.setItem(COLLAPSED_KEY, '1');
-    else localStorage.removeItem(COLLAPSED_KEY);
+    localStorage.setItem(collapsedKey(userId), value ? '1' : '0');
   } catch {
     // Private mode: the choice lasts for this page only.
   }
+}
+
+/** A little longer than the slide: --ink-dur-slow, after the content's fade when collapsing. */
+const SLIDE_MS = 400;
+
+/**
+ * Which way the navigation is sliding, for the length of the slide: the panels beside it
+ * animate from their old place to the new one with it. Set before the paint that shows the
+ * new layout, so no frame has them in their new place without the animation.
+ */
+function useSlide(collapsed: boolean): 'out' | 'in' | null {
+  const [sliding, setSliding] = useState<'out' | 'in' | null>(null);
+  const was = useRef(collapsed);
+  useLayoutEffect(() => {
+    if (was.current === collapsed) return;
+    was.current = collapsed;
+    setSliding(collapsed ? 'out' : 'in');
+    const timer = setTimeout(() => setSliding(null), SLIDE_MS);
+    return () => clearTimeout(timer);
+  }, [collapsed]);
+  return sliding;
+}
+
+/** How long the pointer rests on the left edge before the navigation peeks out, and leaves it. */
+const PEEK_IN_MS = 180;
+const PEEK_OUT_MS = 320;
+
+/**
+ * The collapsed navigation shows itself over the page while a mouse rests on the window's left
+ * edge, and hides again a moment after the pointer (or the focus) leaves it.
+ */
+function useSidebarPeek(collapsed: boolean) {
+  const [shown, setShown] = useState(false);
+  const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const later = (next: boolean, ms: number) => {
+    clearTimeout(timer.current);
+    timer.current = setTimeout(() => setShown(next), ms);
+  };
+  const cancel = () => clearTimeout(timer.current);
+  useEffect(() => () => clearTimeout(timer.current), []);
+  useEffect(() => {
+    if (!collapsed) {
+      clearTimeout(timer.current);
+      setShown(false);
+    }
+  }, [collapsed]);
+  useEffect(() => {
+    if (!shown) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setShown(false);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [shown]);
+  const mouse = (e: PointerEvent) => e.pointerType === 'mouse';
+  return {
+    shown: collapsed && shown,
+    hide: () => {
+      cancel();
+      setShown(false);
+    },
+    edge: {
+      onPointerEnter: (e: PointerEvent) => mouse(e) && later(true, PEEK_IN_MS),
+      // Out of the edge and not into the panel (which cancels this): the peek ends.
+      onPointerLeave: () => (shown ? later(false, PEEK_OUT_MS) : cancel()),
+    },
+    panel: collapsed
+      ? {
+          onPointerEnter: cancel,
+          onPointerLeave: (e: PointerEvent) => mouse(e) && later(false, PEEK_OUT_MS),
+          onFocus: () => {
+            cancel();
+            setShown(true);
+          },
+          onBlur: (e: FocusEvent) => {
+            if (!e.currentTarget.contains(e.relatedTarget as Node | null)) later(false, 0);
+          },
+        }
+      : {},
+  };
 }
 
 /** Element and frame counts of the open project's boards; refreshed when its boards change. */

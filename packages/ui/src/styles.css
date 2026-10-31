@@ -528,55 +528,6 @@ select {
   padding-left: 22px;
 }
 
-/* Collapsed: the same column with icons only; names stay as tooltips and accessible names. */
-.ink-shell--collapsed .ink-sidebar {
-  padding: 12px 8px 0;
-  align-items: center;
-  overflow-x: hidden;
-}
-.ink-shell--collapsed .ink-sidebar .ink-nav__name,
-.ink-shell--collapsed .ink-sidebar .ink-nav__count,
-.ink-shell--collapsed .ink-sidebar .ink-sidebar__label,
-.ink-shell--collapsed .ink-sidebar .ink-sidebar__section,
-.ink-shell--collapsed .ink-sidebar .ink-sidebar__who,
-.ink-shell--collapsed .ink-sidebar .ink-sidebar__search-text,
-.ink-shell--collapsed .ink-sidebar .ink-sidebar__collapsible {
-  display: none;
-}
-.ink-shell--collapsed .ink-sidebar .ink-nav,
-.ink-shell--collapsed .ink-sidebar .ink-sidebar__modules > .ink-nav {
-  width: 40px;
-  justify-content: center;
-  padding: 0;
-  position: relative;
-}
-.ink-shell--collapsed .ink-sidebar .ink-nav__badge {
-  position: absolute;
-  top: -2px;
-  right: -2px;
-  min-width: 14px;
-  height: 14px;
-  font-size: 9px;
-  padding: 0 3px;
-}
-.ink-shell--collapsed .ink-sidebar .ink-sidebar__search {
-  width: 40px;
-  justify-content: center;
-  padding: 0;
-}
-.ink-shell--collapsed .ink-sidebar .ink-sidebar__workspace {
-  flex-direction: column;
-  padding: 2px 0 12px;
-}
-.ink-shell--collapsed .ink-sidebar .ink-sidebar__user {
-  flex-direction: column;
-  margin: 8px -8px 0;
-  padding: 10px 0 12px;
-}
-.ink-shell--collapsed .ink-sidebar .ink-sidebar__user-actions {
-  flex-direction: column;
-}
-
 .ink-header {
   display: flex;
   align-items: center;
@@ -608,6 +559,388 @@ select {
   background-image: radial-gradient(circle, var(--ink-canvas-dot) 1px, transparent 1.5px);
   background-size: 22px 22px;
   background-position: 11px 11px;
+}
+
+/* Floating shell (#333) ------------------------------------------------------- */
+
+/* The surface every floating panel shares: translucent, so the board shows faintly through,
+   with the menu shadow and a hairline. The blur sits on a layer behind the panel's content
+   (::before), so the panel does not become the containing block of its fixed popovers. */
+:root {
+  --ink-float-bg: color-mix(in srgb, var(--ink-surface-float) 86%, transparent);
+  --ink-float-hairline: color-mix(in srgb, var(--ink-text-primary) 8%, transparent);
+  --ink-float-shadow: var(--ink-shadow-menu), 0 0 0 1px var(--ink-float-hairline);
+  --ink-float-blur: blur(14px) saturate(1.2);
+}
+.ink-shell__launcher,
+.ink-shell__edge,
+.ink-header__divider {
+  display: none;
+}
+
+/* Desktop and tablet: the page fills the window and the chrome floats 12 px from its edges and
+   from each other. Phones keep their own layout (mobile-shell.css in the web app). */
+@media (width >= 768px) {
+  .ink-shell {
+    --ink-float-gap: 12px;
+    --ink-sidebar-width: 236px;
+    --ink-launcher-size: 42px;
+    --ink-header-height: 42px;
+    /* Where the panels beside the navigation start, and where the free part of a board begins. */
+    --ink-shell-left: calc(var(--ink-sidebar-width) + var(--ink-float-gap) * 2);
+    --ink-board-left: calc(var(--ink-sidebar-width) + var(--ink-float-gap));
+    position: relative;
+    display: block;
+    overflow: hidden;
+  }
+  .ink-shell--collapsed {
+    /* Collapsing, the content fades first; only then the panel shrinks and the others follow. */
+    --ink-collapse-hold: calc(var(--ink-dur-slow) * 0.25);
+    --ink-shell-left: calc(var(--ink-launcher-size) + var(--ink-float-gap) * 2);
+    --ink-board-left: 0px;
+  }
+  .ink-shell--no-sidebar {
+    --ink-shell-left: var(--ink-float-gap);
+    --ink-board-left: 0px;
+  }
+
+  .ink-shell > .ink-sidebar,
+  .ink-shell > .ink-header .ink-header__group,
+  .ink-shell__launcher {
+    isolation: isolate;
+    border-radius: var(--ink-radius-lg);
+    background: transparent;
+  }
+  .ink-shell > .ink-sidebar::before,
+  .ink-shell > .ink-header .ink-header__group::before,
+  .ink-shell__launcher::before {
+    content: "";
+    position: absolute;
+    z-index: -1;
+    inset: 0;
+    border-radius: inherit;
+    background: var(--ink-float-bg);
+    -webkit-backdrop-filter: var(--ink-float-blur);
+    backdrop-filter: var(--ink-float-blur);
+    box-shadow: var(--ink-float-shadow);
+    pointer-events: none;
+  }
+  /* A moving board is redrawn every frame: the panels over it drop the blur until it settles
+     (only these layers restyle; a custom property would restyle the whole board). */
+  .ink-shell:has(.canvas--moving) > .ink-sidebar::before,
+  .ink-shell:has(.canvas--moving) > .ink-header .ink-header__group::before,
+  .ink-shell:has(.canvas--moving) > .ink-shell__launcher::before {
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+
+  /* The navigation panel. */
+  .ink-shell > .ink-sidebar {
+    position: absolute;
+    z-index: 40;
+    top: var(--ink-float-gap);
+    left: var(--ink-float-gap);
+    bottom: var(--ink-float-gap);
+    width: var(--ink-sidebar-width);
+    box-sizing: border-box;
+    padding: 10px 10px 0;
+    border: 0;
+    overflow: hidden;
+    transition: visibility 0s;
+  }
+  /* The panel's surface fills the panel; collapsed, it is the logo button's square at its
+     top-left corner (#333), so its edge moves with the same curve as the panels beside it and
+     its corners stay round all the way. Its size moves, not a clip: Chrome does not paint a
+     clip-path transition on a blurred layer, and this layer has no children to lay out. */
+  .ink-shell > .ink-sidebar::before {
+    inset: 0 auto auto 0;
+    width: 100%;
+    height: 100%;
+    transition:
+      width var(--ink-dur-slow) var(--ink-ease-out),
+      height var(--ink-dur-slow) var(--ink-ease-out);
+  }
+  /* Its content: visible, fading in over the last 40% of the growth. */
+  .ink-shell > .ink-sidebar > * {
+    transition: opacity calc(var(--ink-dur-slow) * 0.4) linear calc(var(--ink-dur-slow) * 0.6);
+  }
+  .ink-shell > .ink-sidebar .ink-sidebar__workspace {
+    /* The logo is the floating button's, which never moves: its own place here stays empty,
+       exactly under it, and the name and the toggle line up beside it. */
+    margin: -2px 0 0 -2px;
+    padding: 0 2px 10px 0;
+  }
+  .ink-shell > .ink-sidebar .ink-sidebar__workspace > [role="img"] {
+    visibility: hidden;
+    width: 26px !important;
+    height: 26px !important;
+  }
+  .ink-shell > .ink-sidebar .ink-sidebar__search {
+    height: 32px;
+    margin-bottom: 8px;
+    border-color: transparent;
+    border-radius: var(--ink-radius-sm);
+    background: var(--ink-surface-2);
+  }
+  .ink-shell > .ink-sidebar .ink-nav {
+    height: 30px;
+  }
+  .ink-shell > .ink-sidebar .ink-nav:hover,
+  .ink-shell > .ink-sidebar .ink-nav[aria-current="page"],
+  .ink-shell > .ink-sidebar .ink-nav[aria-pressed="true"] {
+    background: var(--ink-surface-2);
+  }
+  /* Home, Inbox and Projects stay; the project tree scrolls between them and the person. */
+  .ink-shell > .ink-sidebar .ink-sidebar__scroll {
+    flex: 1;
+    min-height: 0;
+    margin: 0 -10px;
+    padding: 0 10px 8px;
+    overflow-y: auto;
+    scrollbar-width: thin;
+  }
+  .ink-shell > .ink-sidebar .ink-sidebar__spacer {
+    display: none;
+  }
+  .ink-shell > .ink-sidebar .ink-sidebar__user {
+    position: static;
+    margin: 0 -10px;
+    padding: 8px 10px 10px 12px;
+    border-top: 1px solid var(--ink-border-default);
+    background: transparent;
+  }
+  .ink-shell > .ink-sidebar .ink-sidebar__toggle,
+  .ink-shell > .ink-sidebar .ink-sidebar__toggle.is-collapsed {
+    transform: none;
+  }
+
+  /* Collapsed: the panel shrinks into the logo button at its top-left corner, which stays; the
+     content fades out over the first 40% so no letter is cut. Expanding grows it back out of
+     the button. A peek from the left edge grows it the same way. */
+  .ink-shell--collapsed > .ink-sidebar {
+    visibility: hidden;
+    transition: visibility 0s linear calc(var(--ink-collapse-hold) + var(--ink-dur-slow));
+  }
+  .ink-shell--collapsed > .ink-sidebar::before {
+    width: var(--ink-launcher-size);
+    height: var(--ink-launcher-size);
+    transition:
+      width var(--ink-dur-slow) var(--ink-ease-out) var(--ink-collapse-hold),
+      height var(--ink-dur-slow) var(--ink-ease-out) var(--ink-collapse-hold);
+  }
+  .ink-shell--collapsed > .ink-sidebar > * {
+    opacity: 0;
+    transition: opacity var(--ink-collapse-hold) var(--ink-ease-out);
+  }
+  .ink-shell--collapsed.ink-shell--peek > .ink-sidebar {
+    z-index: 110;
+    visibility: visible;
+    transition: visibility 0s;
+  }
+  .ink-shell--collapsed.ink-shell--peek > .ink-sidebar::before {
+    width: 100%;
+    height: 100%;
+    transition:
+      width var(--ink-dur-slow) var(--ink-ease-out),
+      height var(--ink-dur-slow) var(--ink-ease-out);
+  }
+  .ink-shell--collapsed.ink-shell--peek > .ink-sidebar > * {
+    opacity: 1;
+    transition: opacity calc(var(--ink-dur-slow) * 0.4) linear calc(var(--ink-dur-slow) * 0.6);
+  }
+
+  /* What sits beside the navigation follows it as it slides (#333). The layout takes its new
+     place at once and each panel starts from where it was (--ink-follow, its own shift), with
+     the sidebar's duration and easing: in step with it, never under it, and only transforms
+     move. The shell carries --sliding-out/in for the length of the slide (AppLayout.tsx).
+     The move is named only without reduced motion (below): with it, `animation` is invalid,
+     so nothing moves and the panels change place with the navigation at once. */
+  .ink-shell--sliding-out > .ink-header .ink-header__start,
+  .ink-shell--sliding-in > .ink-header .ink-header__start {
+    --ink-follow: calc(
+      (var(--ink-sidebar-width) - var(--ink-launcher-size)) *
+      var(--ink-follow-dir)
+    );
+    translate: var(--ink-follow-x) 0;
+    animation: var(--ink-follow-name) var(--ink-dur-slow) var(--ink-ease-out)
+      var(--ink-follow-hold, 0s) backwards;
+  }
+  /* The logo: always here, above the panel, never moving. Collapsed it is the button that
+     brings the navigation back, on its own surface once the panel has shrunk into it; open, it
+     is only the panel's logo. */
+  .ink-shell__launcher {
+    position: absolute;
+    z-index: 120;
+    top: var(--ink-float-gap);
+    left: var(--ink-float-gap);
+    width: var(--ink-launcher-size);
+    height: var(--ink-launcher-size);
+    display: grid;
+    place-items: center;
+    padding: 0;
+    border: 0;
+    color: inherit;
+    background: transparent;
+    cursor: pointer;
+  }
+  .ink-shell__launcher::before {
+    opacity: 0;
+    transition: opacity 0s;
+  }
+  .ink-shell--collapsed:not(.ink-shell--peek) > .ink-shell__launcher::before {
+    opacity: 1;
+    transition: opacity 0s linear calc(var(--ink-collapse-hold) + var(--ink-dur-slow));
+  }
+  .ink-shell:not(.ink-shell--collapsed) > .ink-shell__launcher,
+  .ink-shell--peek > .ink-shell__launcher {
+    pointer-events: none;
+  }
+  .ink-shell__launcher:hover::before {
+    background: color-mix(in srgb, var(--ink-surface-2) 92%, transparent);
+  }
+  .ink-shell__edge {
+    display: block;
+    position: absolute;
+    z-index: 38;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    width: 8px;
+  }
+
+  /* The header: two panels, where am I at the left and the page's actions at the right. */
+  .ink-shell > .ink-header {
+    position: absolute;
+    z-index: 30;
+    top: var(--ink-float-gap);
+    left: var(--ink-shell-left);
+    right: var(--ink-float-gap);
+    height: var(--ink-header-height);
+    padding: 0;
+    gap: var(--ink-float-gap);
+    pointer-events: none;
+  }
+  .ink-shell > .ink-header .ink-header__group {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    min-width: 0;
+    height: 100%;
+    box-sizing: border-box;
+    padding: 0 6px 0 12px;
+    pointer-events: auto;
+  }
+  .ink-shell > .ink-header .ink-header__start {
+    flex: 0 1 auto;
+  }
+  .ink-shell > .ink-header .ink-header__end {
+    flex: none;
+    max-width: 100%;
+    margin-left: auto;
+  }
+  .ink-shell > .ink-header .ink-header__group:empty {
+    display: none;
+  }
+  .ink-shell > .ink-header .ink-header__crumbs {
+    flex: 0 1 auto;
+    overflow: hidden;
+    margin-right: 4px;
+  }
+  .ink-header__divider {
+    display: block;
+    flex: none;
+    width: 1px;
+    height: 20px;
+    margin: 0 4px;
+    background: var(--ink-border-strong);
+  }
+
+  /* The page: a board runs under everything; other pages sit in a surface beside the panels. */
+  .ink-shell > .ink-main {
+    position: absolute;
+    top: calc(var(--ink-float-gap) * 2 + var(--ink-header-height));
+    right: var(--ink-float-gap);
+    bottom: var(--ink-float-gap);
+    left: var(--ink-shell-left);
+    margin: 0;
+    border-radius: var(--ink-radius-lg);
+    transition: left var(--ink-dur-slow) var(--ink-ease-out);
+  }
+  /* Nothing floats over a page in its surface: a canvas there keeps its chrome at its edges. */
+  .ink-shell > .ink-main:not(.ink-main--canvas) {
+    --ink-board-left: 0px;
+  }
+  .ink-shell > .ink-main--canvas {
+    inset: 0;
+    border: 0;
+    border-radius: 0;
+    transition: none;
+  }
+}
+
+/* The follow runs on the main thread, frame for frame with the navigation's surface (whose
+   size moves there): as a compositor animation of translate it started a frame or two apart.
+   It moves a registered length that `translate` reads, still only a transform on screen.
+   Two names for one move, so turning back mid-slide starts the move again. */
+@property --ink-follow-x {
+  syntax: "<length>";
+  inherits: false;
+  initial-value: 0px;
+}
+@keyframes ink-follow-out {
+  from {
+    --ink-follow-x: var(--ink-follow, 0px);
+  }
+  to {
+    --ink-follow-x: 0px;
+  }
+}
+@keyframes ink-follow-in {
+  from {
+    --ink-follow-x: var(--ink-follow, 0px);
+  }
+  to {
+    --ink-follow-x: 0px;
+  }
+}
+
+/* Reduced motion: the navigation and what follows it change place at once, together. */
+@media (width >= 768px) and (prefers-reduced-motion: reduce) {
+  .ink-shell--collapsed > .ink-sidebar {
+    translate: none;
+  }
+  .ink-shell > .ink-sidebar,
+  .ink-shell > .ink-sidebar::before,
+  .ink-shell > .ink-sidebar > *,
+  .ink-shell--collapsed > .ink-sidebar,
+  .ink-shell--collapsed > .ink-sidebar::before,
+  .ink-shell--collapsed > .ink-sidebar > *,
+  .ink-shell--collapsed.ink-shell--peek > .ink-sidebar,
+  .ink-shell--collapsed.ink-shell--peek > .ink-sidebar::before,
+  .ink-shell--collapsed.ink-shell--peek > .ink-sidebar > *,
+  .ink-shell__launcher::before,
+  .ink-shell--collapsed:not(.ink-shell--peek) > .ink-shell__launcher::before,
+  .ink-shell > .ink-main {
+    transition: none;
+  }
+}
+@media (width >= 768px) and (prefers-reduced-motion: no-preference) {
+  .ink-shell--sliding-out {
+    --ink-follow-hold: var(--ink-collapse-hold);
+    --ink-follow-dir: 1;
+    --ink-follow-name: ink-follow-out;
+  }
+  .ink-shell--sliding-in {
+    --ink-follow-dir: -1;
+    --ink-follow-name: ink-follow-in;
+  }
+}
+@media (prefers-reduced-transparency: reduce) {
+  :root {
+    --ink-float-bg: var(--ink-surface-float);
+    --ink-float-blur: none;
+  }
 }
 
 /* Surfaces ------------------------------------------------------------------ */

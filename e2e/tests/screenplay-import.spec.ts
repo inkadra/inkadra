@@ -154,7 +154,8 @@ test('the import dialog opened from the Canvas toolbar is modal and the board st
 }) => {
   await openBoard(page, seeded.canvasId);
   // A note to aim at, then nothing selected.
-  await page.locator('.canvas').dblclick({ position: { x: 60, y: 300 } });
+  // Beside the floating navigation (#333): the canvas runs under it from the window's edge.
+  await page.locator('.canvas').dblclick({ position: { x: 300, y: 348 } });
   const note = page.locator('.card--note');
   await expect(note).toHaveCount(1);
   await page.keyboard.type('Binario 9');

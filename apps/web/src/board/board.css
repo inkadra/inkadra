@@ -2613,3 +2613,181 @@ button.card__play {
     height: 44px;
   }
 }
+
+/* Floating shell (#333) ------------------------------------------------------------ */
+
+/* Phones: the dock is no box at all, the tool bar is placed by the canvas as before. */
+.canvas__dock {
+  display: contents;
+}
+
+/* Desktop and tablet: the board runs under the navigation and the header panels, so its own
+   chrome keeps to the part beside them (--ink-board-left, from the shell), 12 px from the edges,
+   in the same translucent panels. */
+@media (width >= 768px) {
+  .canvas__corner {
+    left: calc(var(--ink-board-left, 0px) + 12px);
+    bottom: 12px;
+    gap: 8px;
+  }
+  /* They follow the sliding navigation with a transform (see the shell in styles.css). */
+  :is(.ink-shell--sliding-out, .ink-shell--sliding-in)
+    .ink-main--canvas
+    :is(.canvas__corner, .unsorted, .canvas__dock) {
+    --ink-follow: calc((var(--ink-sidebar-width) + var(--ink-float-gap)) * var(--ink-follow-dir));
+    translate: var(--ink-follow-x) 0;
+    animation: var(--ink-follow-name) var(--ink-dur-slow) var(--ink-ease-out)
+      var(--ink-follow-hold, 0s) backwards;
+  }
+  /* The bar is centred on the free part of the board: it moves half as far. */
+  :is(.ink-shell--sliding-out, .ink-shell--sliding-in) .ink-main--canvas .canvas__dock {
+    --ink-follow: calc(
+      (var(--ink-sidebar-width) + var(--ink-float-gap)) /
+      2 *
+      var(--ink-follow-dir)
+    );
+  }
+  /* The tool bar is centred on the board beside the navigation and never reaches the corner:
+     the dock starts after it, and its end spacer (as wide as the corner) gives way first. */
+  .canvas__dock {
+    position: absolute;
+    left: calc(var(--ink-board-left, 0px) + 12px + 150px + 12px);
+    right: 12px;
+    bottom: 12px;
+    display: flex;
+    justify-content: center;
+    pointer-events: none;
+    container: canvas / inline-size;
+  }
+  .canvas__dock::after {
+    content: "";
+    flex: 0 1000 calc(150px + 12px);
+    min-width: 0;
+  }
+  .canvas__dock > .toolbar {
+    position: relative;
+    left: auto;
+    bottom: auto;
+    transform: none;
+    flex: 0 1 auto;
+    min-width: 0;
+    max-width: 100%;
+    box-sizing: border-box;
+    pointer-events: auto;
+  }
+  .canvas .toolbar,
+  .canvas .minimap,
+  .canvas .zoom,
+  .canvas .unsorted__toggle {
+    position: relative;
+    isolation: isolate;
+    border-color: transparent;
+    border-radius: var(--ink-radius-lg);
+    background: transparent;
+    box-shadow: none;
+  }
+  .canvas .minimap {
+    border-radius: var(--ink-radius-md);
+  }
+  .canvas .toolbar::before,
+  .canvas .minimap::before,
+  .canvas .zoom::before,
+  .canvas .unsorted__toggle::before {
+    content: "";
+    position: absolute;
+    z-index: -1;
+    inset: 0;
+    border-radius: inherit;
+    background: var(--ink-float-bg);
+    -webkit-backdrop-filter: var(--ink-float-blur);
+    backdrop-filter: var(--ink-float-blur);
+    box-shadow: var(--ink-float-shadow);
+    pointer-events: none;
+  }
+  .canvas--moving :is(.toolbar, .minimap, .zoom, .unsorted__toggle)::before {
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+  .canvas .zoom {
+    height: 36px;
+    padding: 0 4px;
+  }
+  .canvas .zoom button {
+    height: 28px;
+    min-width: 28px;
+    border-radius: var(--ink-radius-sm);
+  }
+  .canvas .unsorted {
+    left: calc(var(--ink-board-left, 0px) + 12px);
+    /* Above the corner: the minimap (90 + its border), the gap and the zoom. */
+    bottom: calc(12px + 92px + 8px + 36px + 8px);
+  }
+  .canvas .uploads {
+    right: 12px;
+    bottom: 12px;
+  }
+  /* A card's side panel opens under the top-right header panel, not behind it. */
+  .ink-shell .canvas .canvas__panel {
+    top: calc(12px * 2 + 42px);
+    right: 12px;
+    bottom: 12px;
+  }
+  /* Menus opened on the board go over the floating panels. */
+  .ink-shell .canvas .menu {
+    z-index: 50;
+  }
+  .ink-shell .board-header-menu .menu {
+    top: calc(100% + 12px);
+  }
+  :root .comments-panel {
+    top: calc(12px * 2 + 42px);
+    right: 12px;
+    bottom: 12px;
+  }
+}
+@media (width >= 768px) {
+  /* The views in the top-left panel, next to where am I. */
+  .ink-shell > .ink-header .view-tabs {
+    margin-left: 4px;
+    padding: 3px;
+  }
+  .ink-shell > .ink-header .view-tabs__tab {
+    height: 26px;
+  }
+  /* Comments is a quiet button next to Share, the panel's primary action. */
+  .ink-shell > .ink-header .comments-button:not(:hover, [aria-expanded="true"]) {
+    border-color: transparent;
+    background: transparent;
+  }
+}
+/* Narrow desktops and tablets: the top-right panel gives room to where am I. Export and Present
+   stay in the board menu (⋯); Comments keeps its icon and count. */
+@media (768px <= width < 1100px) {
+  .ink-shell > .ink-header .comments-button {
+    padding-inline: 8px;
+  }
+  .ink-shell > .ink-header .comments-button__label {
+    display: none;
+  }
+}
+@media (768px <= width < 1000px) {
+  .ink-shell > .ink-header :is(.board-header-export, .board-header-present) {
+    display: none;
+  }
+  .ink-shell > .ink-header .ink-header__crumbs {
+    min-width: 72px;
+  }
+}
+/* A version preview on the full-bleed board: its banner floats under the header panels, beside
+   the navigation, instead of sitting under them. */
+@media (width >= 768px) {
+  .ink-shell > .ink-main--canvas .board-preview > .version-banner {
+    position: relative;
+    z-index: 1;
+    margin: calc(12px * 2 + 42px) 12px 0 var(--ink-shell-left, 12px);
+    border: 0;
+    border-radius: var(--ink-radius-lg);
+    background: var(--ink-surface-float);
+    box-shadow: var(--ink-float-shadow);
+  }
+}

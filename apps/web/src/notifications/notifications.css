@@ -685,10 +685,19 @@
   margin-top: 8px;
 }
 
-/* The Inbox owns the shell content while the navigation becomes an icon rail. */
+/* The Inbox owns the shell content while the navigation folds to its logo button: a surface
+   beside it, 12 px from the window edges, like the floating panels (#333). */
 @media (min-width: 768px) {
   .ink-shell:has(.notifications--fixed) > .ink-header {
     visibility: hidden;
+  }
+  .notifications--fixed {
+    top: 12px;
+    bottom: 12px;
+    left: var(--ink-shell-left, 66px);
+    right: 12px;
+    border-radius: var(--ink-radius-lg);
+    box-shadow: var(--ink-float-shadow);
   }
 }
 .notification__open.notification__open--drawer {

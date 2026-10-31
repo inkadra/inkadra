@@ -1,6 +1,6 @@
 import type { Rect } from '@inkadra/canvas-core';
-import type { Board, BoardDetail, ProjectRole } from '@inkadra/shared';
-import { Avatar, Button, EmptyState, Icon, IconButton } from '@inkadra/ui';
+import type { Board, BoardDetail, Project, ProjectRole } from '@inkadra/shared';
+import { Avatar, Button, EmptyState, Icon, IconButton, ProjectGlyph } from '@inkadra/ui';
 import {
   Fragment,
   type MouseEvent,
@@ -112,6 +112,7 @@ export function BoardPage() {
       key={boardId}
       projectId={projectId}
       projectName={project?.name ?? ''}
+      projectIcon={project?.icon}
       rootBoardId={project?.rootBoardId}
       projectRole={project?.myRole ?? null}
       boardId={boardId}
@@ -198,12 +199,14 @@ function CurrentCrumb({
 function BoardScreen({
   projectId,
   projectName,
+  projectIcon,
   rootBoardId,
   projectRole,
   boardId,
 }: {
   projectId: string;
   projectName: string;
+  projectIcon?: Project['icon'] | undefined;
   rootBoardId: string | undefined;
   projectRole: ProjectRole | null;
   boardId: string;
@@ -407,82 +410,79 @@ function BoardScreen({
   const selfId = user?.id ?? null;
 
   const header = useMemo(
-    () => (
-      <>
-        <nav aria-label={t('nav.breadcrumb')} className="ink-header__crumbs">
-          {crumbs.map((c, i) => (
-            <Fragment key={c.id}>
-              {i > 0 && (
-                <span className="crumb__sep" aria-hidden="true">
-                  /
-                </span>
-              )}
-              {i === crumbs.length - 1 ? (
-                <CurrentCrumb
-                  title={c.title}
-                  ariaLabel={c.id === rootBoardId ? t('project.name') : t('board.board.title')}
-                  // The limits of UpdateProject.name and UpdateBoard.title.
-                  maxLength={c.id === rootBoardId ? 120 : 200}
-                  canRename={editable && (boardId !== rootBoardId || canEdit(projectRole))}
-                  onRename={handleRenameCurrentBoard}
-                />
-              ) : (
-                <a
-                  className="crumb"
-                  href={boardPath(projectId, c.id, rootBoardId)}
-                  onClick={(e: MouseEvent) => {
-                    e.preventDefault();
-                    openBoard(c.id);
-                  }}
-                >
-                  {c.title}
-                </a>
-              )}
-            </Fragment>
-          ))}
-        </nav>
-        {tabs.length > 0 && (
-          <div
-            className="view-tabs"
-            role="tablist"
-            aria-label={t('film.views.label')}
-            onKeyDown={(e) => {
-              // Arrow keys walk the tabs; Enter and Space pick one, as on any button.
-              if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
-              const all = [...e.currentTarget.querySelectorAll<HTMLButtonElement>('[role="tab"]')];
-              const at = all.indexOf(document.activeElement as HTMLButtonElement);
-              e.preventDefault();
-              all[(at + (e.key === 'ArrowRight' ? 1 : -1) + all.length) % all.length]?.focus();
-            }}
-          >
-            {tabs.map((v) => (
-              <button
-                key={v}
-                type="button"
-                role="tab"
-                aria-selected={view === v}
-                tabIndex={view === v ? 0 : -1}
-                className="view-tabs__tab"
-                // On narrow desktops only the open tab keeps its name: the rest say it on hover.
-                aria-label={t(`film.views.${v}`)}
-                data-ink-tooltip={t(`film.views.${v}`)}
-                onClick={() => chooseView(v)}
-              >
-                <Icon name={viewIcon(v)} contentKind={v} size={14} />
-                <span className="view-tabs__label">{t(`film.views.${v}`)}</span>
-              </button>
+    () => ({
+      start: (
+        <>
+          <nav aria-label={t('nav.breadcrumb')} className="ink-header__crumbs">
+            {/* The project's glyph before its name; phones show the last crumb only. */}
+            {projectIcon && crumbs[0]?.id === rootBoardId && <ProjectGlyph {...projectIcon} />}
+            {crumbs.map((c, i) => (
+              <Fragment key={c.id}>
+                {i > 0 && (
+                  <span className="crumb__sep" aria-hidden="true">
+                    /
+                  </span>
+                )}
+                {i === crumbs.length - 1 ? (
+                  <CurrentCrumb
+                    title={c.title}
+                    ariaLabel={c.id === rootBoardId ? t('project.name') : t('board.board.title')}
+                    // The limits of UpdateProject.name and UpdateBoard.title.
+                    maxLength={c.id === rootBoardId ? 120 : 200}
+                    canRename={editable && (boardId !== rootBoardId || canEdit(projectRole))}
+                    onRename={handleRenameCurrentBoard}
+                  />
+                ) : (
+                  <a
+                    className="crumb"
+                    href={boardPath(projectId, c.id, rootBoardId)}
+                    onClick={(e: MouseEvent) => {
+                      e.preventDefault();
+                      openBoard(c.id);
+                    }}
+                  >
+                    {c.title}
+                  </a>
+                )}
+              </Fragment>
             ))}
-          </div>
-        )}
-        <span className="ink-header__spacer" />
-        {conn && <BoardPresence conn={conn} selfId={selfId} />}
-        {editable && (
-          <>
-            <IconButton
-              icon="clock"
-              label={t('versions.title')}
-              onClick={() => setVersionsOpen(true)}
-            />
+          </nav>
+          {tabs.length > 0 && (
+            <div
+              className="view-tabs"
+              role="tablist"
+              aria-label={t('film.views.label')}
+              onKeyDown={(e) => {
+                // Arrow keys walk the tabs; Enter and Space pick one, as on any button.
+                if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
+                const all = [
+                  ...e.currentTarget.querySelectorAll<HTMLButtonElement>('[role="tab"]'),
+                ];
+                const at = all.indexOf(document.activeElement as HTMLButtonElement);
+                e.preventDefault();
+                all[(at + (e.key === 'ArrowRight' ? 1 : -1) + all.length) % all.length]?.focus();
+              }}
+            >
+              {tabs.map((v) => (
+                <button
+                  key={v}
+                  type="button"
+                  role="tab"
+                  aria-selected={view === v}
+                  tabIndex={view === v ? 0 : -1}
+                  className="view-tabs__tab"
+                  // On narrow desktops only the open tab keeps its name: the rest say it on hover.
+                  aria-label={t(`film.views.${v}`)}
+                  data-ink-tooltip={t(`film.views.${v}`)}
+                  onClick={() => chooseView(v)}
+                >
+                  <Icon name={viewIcon(v)} contentKind={v} size={14} />
+                  <span className="view-tabs__label">{t(`film.views.${v}`)}</span>
+                </button>
+              ))}
+            </div>
+          )}
+          {editable && (
             <div className="board-header-menu" ref={headerMenuAnchor}>
               <IconButton
                 id="board-header-menu"
@@ -518,24 +518,52 @@ function BoardScreen({
                 />
               )}
             </div>
-          </>
-        )}
-        {detail && (
-          <Button
-            variant={
-              detail.myRole === 'owner' || detail.myRole === 'editor' ? 'primary' : 'secondary'
-            }
-            icon="people"
-            className="board-share"
-            aria-label={t('share.open')}
-            onClick={() => setSharing(true)}
-          >
-            <span className="board-share__label">{t('share.open')}</span>
-          </Button>
-        )}
-        <CommentsButton />
-      </>
-    ),
+          )}
+        </>
+      ),
+      end: (
+        <>
+          {conn && <BoardPresence conn={conn} selfId={selfId} />}
+          {editable && (
+            <>
+              <IconButton
+                icon="clock"
+                label={t('versions.title')}
+                onClick={() => setVersionsOpen(true)}
+              />
+              <IconButton
+                icon="download"
+                className="board-header-export"
+                label={t('board.export.action')}
+                onClick={() => openExport(exportSourceOf(view))}
+              />
+              {/* Presenting lives in the Storyboard view. */}
+              <IconButton
+                icon="play"
+                className="board-header-present"
+                label={`${t('board.present.action')} · ${t('board.present.soon')}`}
+                disabled
+              />
+            </>
+          )}
+          {(editable || detail) && <span className="ink-header__divider" aria-hidden="true" />}
+          <CommentsButton />
+          {detail && (
+            <Button
+              variant={
+                detail.myRole === 'owner' || detail.myRole === 'editor' ? 'primary' : 'secondary'
+              }
+              icon="people"
+              className="board-share"
+              aria-label={t('share.open')}
+              onClick={() => setSharing(true)}
+            >
+              <span className="board-share__label">{t('share.open')}</span>
+            </Button>
+          )}
+        </>
+      ),
+    }),
     [
       crumbs,
       t,
@@ -556,6 +584,7 @@ function BoardScreen({
       boardId,
       projectRole,
       selfId,
+      projectIcon,
     ],
   );
   useHeaderContent(header);
@@ -741,13 +770,6 @@ function BoardPresence({ conn, selfId }: { conn: BoardConnection; selfId: string
     p.readOnly ? t('board.peers.viewing', { name: p.user.name }) : p.user.name;
   return (
     <>
-      <SyncStatus
-        status={conn.status}
-        readOnly={conn.readOnly}
-        saves={conn.saves}
-        online={online}
-      />
-      {writing.length > 0 && <EditingPeople people={writing} store={conn.store} />}
       {people.length > 0 && (
         <ul className="peers" aria-label={t('board.peers.label', { count: people.length })}>
           {shown.map((p) => (
@@ -765,6 +787,13 @@ function BoardPresence({ conn, selfId }: { conn: BoardConnection; selfId: string
           )}
         </ul>
       )}
+      <SyncStatus
+        status={conn.status}
+        readOnly={conn.readOnly}
+        saves={conn.saves}
+        online={online}
+      />
+      {writing.length > 0 && <EditingPeople people={writing} store={conn.store} />}
     </>
   );
 }

@@ -1,4 +1,9 @@
 /* The desktop shell stays in the shared UI stylesheet. */
+
+/* The collapsed navigation peeking out (#333) is the whole panel, project menus included. */
+.ink-shell--collapsed.ink-shell--peek .project-navigation__options {
+  display: inline-block;
+}
 .mobile-bottom-nav,
 .mobile-header-actions,
 .mobile-view-picker {
@@ -44,7 +49,11 @@
   .mobile-back svg {
     transform: rotate(180deg);
   }
-  .shell-header-content > :not(.ink-header__crumbs, .board-header-menu, .ink-btn) {
+  /* The desktop panels (#333) mean nothing here: their items join the one row. */
+  .ink-header__group {
+    display: contents;
+  }
+  .ink-header__group > :not(.ink-header__crumbs, .board-header-menu, .ink-btn) {
     display: none;
   }
   .shell-header-content .ink-header__crumbs {
@@ -80,7 +89,7 @@
     font: inherit;
     font-weight: 500;
   }
-  .shell-header-content > .board-header-menu {
+  .ink-header__group > .board-header-menu {
     grid-area: 1 / 5;
   }
   .board-header-menu :where(button) {
@@ -88,7 +97,7 @@
     height: 44px;
   }
   /* Share and comments: plain 44 px icons, like back and the menu. */
-  .shell-header-content > .ink-btn {
+  .ink-header__group > .ink-btn {
     grid-row: 1;
     width: 44px;
     height: 44px;
@@ -98,17 +107,17 @@
     border-color: transparent;
     color: var(--ink-text-secondary);
   }
-  .shell-header-content > .board-share {
+  .ink-header__group > .board-share {
     grid-column: 3;
   }
   .board-share .board-share__label {
     display: none;
   }
-  .shell-header-content > .comments-button {
+  .ink-header__group > .comments-button {
     position: relative;
     grid-column: 4;
   }
-  .shell-header-content > .comments-button[aria-expanded="true"] {
+  .ink-header__group > .comments-button[aria-expanded="true"] {
     background: var(--ink-surface-2);
     color: var(--ink-text-primary);
   }
@@ -146,7 +155,7 @@
     font-size: 15px;
     font-weight: 600;
   }
-  .ink-header > .notification-bell {
+  .ink-header .notification-bell {
     display: none;
   }
   .ink-shell > .ink-main {
