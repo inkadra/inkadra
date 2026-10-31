@@ -30,12 +30,15 @@ const thread = {
 let host: HTMLDivElement;
 let root: ReturnType<typeof createRoot>;
 beforeEach(() => {
+  // Frames only run when the test says so: the caret must not depend on one.
+  vi.useFakeTimers({ toFake: ['requestAnimationFrame', 'cancelAnimationFrame'] });
   resetReviews({ people: [giulia] });
   host = document.createElement('div');
   document.body.append(host);
   root = createRoot(host);
 });
 afterEach(async () => {
+  vi.useRealTimers();
   await act(async () => root.unmount());
   host.remove();
 });
@@ -70,7 +73,7 @@ it('puts the caret after a picked mention at once, so the next key lands after i
   expect(option?.textContent).toBe('Giulia Bianchi');
   await act(async () => option?.click());
 
-  // Right after the click, before any animation frame: nothing typed now may be moved.
+  // Right after the click, with no animation frame run: nothing typed now may be moved.
   expect(field.value).toBe('Schiarire @Giulia Bianchi  per favore');
   const at = 'Schiarire @Giulia Bianchi '.length;
   expect([field.selectionStart, field.selectionEnd]).toEqual([at, at]);
