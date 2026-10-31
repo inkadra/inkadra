@@ -90,6 +90,7 @@ export function registerApiRoutes(app: FastifyInstance, deps: Deps) {
         return {
           videoPosters: tools.ffmpeg !== null,
           rawPreviews: config.RAW_PREVIEWS && tools.exiftool !== null,
+          pdfPreviews: config.PDF_PREVIEWS && tools.pdftoppm !== null,
           videoProxies: config.VIDEO_PROXIES && tools.ffmpeg !== null && tools.ffprobe !== null,
         };
       })(),

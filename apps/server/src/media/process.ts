@@ -11,6 +11,7 @@ import { animatedVariantKey, readAll, type Storage, variantKey } from '../storag
 import { readExif } from './exif.ts';
 import { decodeHeic, sniffImage } from './heic.ts';
 import { palette } from './palette.ts';
+import { isPdf, readPdfInfo, renderFirstPage } from './pdf.ts';
 import { extractRawPreview, orientedPixels, readRawExif, sniffRaw } from './raw.ts';
 import {
   DEFAULT_PROXY_SETTINGS,
@@ -30,6 +31,8 @@ export interface MediaDeps {
   heic: boolean;
   /** Camera RAW thumbnails from their embedded JPEG (RAW_PREVIEWS); on if unset. */
   raw?: boolean;
+  /** Thumbnails of page 1 of PDFs and their page count (PDF_PREVIEWS); on if unset. */
+  pdf?: boolean;
   /** Playable copies of videos browsers cannot play (decision 0048); on with defaults if unset. */
   proxies?: ProxySettings;
   /**
@@ -125,7 +128,8 @@ async function sha256(storage: Storage, key: string) {
  * videos, when ffmpeg is installed, the duration, codecs and thumbnails of a poster frame,
  * and the playable copy queued when browsers cannot play the original (decision 0048).
  * Animated GIFs and animated WebPs also get moving thumbnails, when they fit `caps`. Camera
- * RAW files get the thumbnails of their embedded JPEG preview, with exiftool.
+ * RAW files get the thumbnails of their embedded JPEG preview, with exiftool; PDFs those of
+ * page 1 and their page count, with poppler.
  * Safe to run twice: variants are overwritten.
  */
 export async function processAsset(deps: MediaDeps, assetId: string, caps = ANIMATED_CAPS) {
@@ -139,6 +143,7 @@ export async function processAsset(deps: MediaDeps, assetId: string, caps = ANIM
   // Most RAW formats are TIFF inside: they are told apart before the photos.
   const rawType = sniffRaw(head, row.filename, row.mime);
   if (rawType) return processRaw(deps, row, digest, rawType);
+  if (row.kind === 'file' && isPdf(head)) return processPdf(deps, row, digest);
   const sniffed = sniffImage(head);
   // SVG is rasterised only when it was declared as such: it cannot be sniffed safely.
   const svg = !sniffed && row.kind === 'image' && row.mime === 'image/svg+xml';
@@ -291,6 +296,44 @@ async function processRaw(
     return { variants: result.variants.length };
   } finally {
     await copy.done();
+  }
+}
+
+/**
+ * A PDF: its page count and thumbnails of page 1, rendered by poppler with time and memory
+ * limits. Encrypted or broken PDFs, or a server without poppler, leave the file ready with no
+ * thumbnails: the card falls back to its badge.
+ */
+async function processPdf(deps: MediaDeps, row: typeof asset.$inferSelect, digest: string) {
+  const { db, storage } = deps;
+  const plain = { sha256: digest, mime: 'application/pdf', status: 'ready' as const };
+  const { pdftoppm, pdfinfo } = await mediaTools();
+  if (deps.pdf === false || !pdftoppm || !pdfinfo) {
+    await save(db, row.id, [], { ...plain, pageCount: null });
+    return { variants: 0 };
+  }
+  await mkdir(deps.tmpDir, { recursive: true });
+  const copy = await storage.localCopy(row.storageKey, join(deps.tmpDir, row.id));
+  const prefix = join(deps.tmpDir, `${row.id}.page1`);
+  try {
+    const { pageCount } = await readPdfInfo(pdfinfo, copy.path);
+    const page = pageCount ? await renderFirstPage(pdftoppm, copy.path, prefix) : null;
+    if (!page) {
+      await save(db, row.id, [], { ...plain, pageCount });
+      return { variants: 0, pageCount };
+    }
+    const result = await thumbnails(deps, row.id, sharp(page, { failOn: 'error' }));
+    await save(db, row.id, result.variants, {
+      ...plain,
+      pageCount,
+      width: result.width,
+      height: result.height,
+      palette: result.palette,
+    });
+    return { variants: result.variants.length, pageCount };
+  } finally {
+    await copy.done();
+    await rm(`${prefix}.png`, { force: true });
   }
 }
 

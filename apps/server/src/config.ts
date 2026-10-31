@@ -66,6 +66,8 @@ const Env = z.object({
    * preview the camera embedded, read with exiftool where the worker has it (decision 0048).
    */
   RAW_PREVIEWS: bool('true'),
+  /** Thumbnails of page 1 of PDFs and their page count, with poppler where the worker has it. */
+  PDF_PREVIEWS: bool('true'),
   /**
    * Playable H.264/AAC MP4 copies of videos browsers cannot play (ProRes, MKV, AVI, MXF, HEVC),
    * made by the worker when it has ffmpeg (decision 0048). `false` saves the storage they take.

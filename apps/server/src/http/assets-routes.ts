@@ -77,6 +77,7 @@ export function toAsset(row: typeof asset.$inferSelect, variants: VariantRow[]):
     videoCodec: row.videoCodec,
     audioCodec: row.audioCodec,
     frameRate: row.frameRate,
+    pageCount: row.pageCount,
     proxy: toProxy(row, variants),
     status: row.status,
     url: fileUrl(row.id),

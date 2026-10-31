@@ -13,6 +13,9 @@ export interface MediaTools {
   ffprobe: string | null;
   /** Reads the JPEG previews and EXIF of camera RAW files. */
   exiftool: string | null;
+  /** Poppler: renders page 1 of PDFs, and reads their page count. */
+  pdftoppm: string | null;
+  pdfinfo: string | null;
   /** `prlimit` (util-linux), to cap the memory of the others; null where there is none. */
   prlimit: string | null;
 }
@@ -36,13 +39,15 @@ async function find(variable: string, name: string, args: string[]) {
 
 export function mediaTools(): Promise<MediaTools> {
   tools ??= (async () => {
-    const [ffmpeg, ffprobe, exiftool, prlimit] = await Promise.all([
+    const [ffmpeg, ffprobe, exiftool, pdftoppm, pdfinfo, prlimit] = await Promise.all([
       find('FFMPEG_PATH', 'ffmpeg', ['-version']),
       find('FFPROBE_PATH', 'ffprobe', ['-version']),
       find('EXIFTOOL_PATH', 'exiftool', ['-ver']),
+      find('PDFTOPPM_PATH', 'pdftoppm', ['-v']),
+      find('PDFINFO_PATH', 'pdfinfo', ['-v']),
       process.platform === 'linux' ? find('PRLIMIT_PATH', 'prlimit', ['--version']) : null,
     ]);
-    return { ffmpeg, ffprobe, exiftool, prlimit };
+    return { ffmpeg, ffprobe, exiftool, pdftoppm, pdfinfo, prlimit };
   })();
   return tools;
 }

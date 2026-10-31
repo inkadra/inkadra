@@ -28,6 +28,7 @@ const sampleAsset: Asset = {
   videoCodec: null,
   audioCodec: null,
   frameRate: null,
+  pageCount: null,
   proxy: null,
   animated: false,
   status: 'ready',

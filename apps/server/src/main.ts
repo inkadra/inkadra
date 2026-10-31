@@ -118,6 +118,7 @@ async function main() {
     tmpDir,
     heic: config.HEIC_PREVIEWS,
     raw: config.RAW_PREVIEWS,
+    pdf: config.PDF_PREVIEWS,
     proxies: {
       enabled: config.VIDEO_PROXIES,
       maxDurationS: config.VIDEO_PROXY_MAX_DURATION,

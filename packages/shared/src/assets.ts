@@ -90,6 +90,15 @@ export const Asset = z
       description: 'Codec of the first audio stream (`aac`, `pcm_s16le`…); null when silent.',
     }),
     frameRate: z.number().nullable().openapi({ description: 'Frames per second of videos.' }),
+    pageCount: z
+      .int()
+      .min(1)
+      .nullable()
+      .openapi({
+        description:
+          'Pages of a PDF; null for other files and for PDFs the server could not read ' +
+          '(encrypted with a password to open, broken) or has no poppler for.',
+      }),
     proxy: AssetProxy.nullable().openapi({
       description:
         'Playable MP4 copy of a video in a format browsers do not play. Null for other ' +
@@ -108,7 +117,9 @@ export const Asset = z
         'ffmpeg (Instance.media.videoPosters); otherwise videos have none. Camera RAW files ' +
         '(`mime` in RAW_IMAGE_TYPES) get them from the JPEG preview the camera embedded, ' +
         'when the server has exiftool (Instance.media.rawPreviews); none when there is no ' +
-        'preview.',
+        'preview. PDFs get them from page 1 (Instance.media.pdfPreviews), and `width` and ' +
+        '`height` are then the size of that rendered page, for its aspect ratio; none when ' +
+        'the PDF does not render.',
     }),
     exif: z.record(z.string(), z.unknown()).nullable().openapi({
       description: 'Camera and exposure data. Location (GPS) fields are never stored.',

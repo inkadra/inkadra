@@ -1,11 +1,14 @@
-# 0048 · Media worker previews: playable video copies, camera RAW
+# 0048 · Media worker previews: playable video copies, camera RAW, PDF pages
 
 Proposed, 2026-10. Extends files and media (decision 0009) and the `-media` image (decision
 0010). Part of the file card family (#325); the cards themselves come later, after a mockup.
 
 **Context.** Camera files (ProRes MOV, MKV, AVI, MXF, HEVC) often do not play in the browser.
 The worker already reads the duration and a poster frame with ffmpeg, but playback depends on
-what the browser happens to decode, and a card that does not play is a dead end.
+what the browser happens to decode, and a card that does not play is a dead end. Camera RAW
+photos and PDFs had no preview at all. Every one of these is an untrusted binary: it is read
+in the worker, by tools of the `-media` image, with time and memory limits, never in the
+browser.
 
 **Decision.**
 - **Which videos.** After the poster, the worker probes the video with ffprobe. The original
@@ -56,7 +59,21 @@ what the browser happens to decode, and a card that does not play is a dead end.
   downloaded as it is. `Instance.media.rawPreviews` says whether the instance makes them;
   `RAW_IMAGE_TYPES` in `@inkadra/shared` lists the types for the cards to come.
 
+**PDF.**
+- A file whose first bytes hold `%PDF-` gets the `application/pdf` type, its page count from
+  poppler's `pdfinfo`, and page 1 rendered by `pdftoppm` (`poppler-utils` in the `-media`
+  image) within its crop box, 2048 pixels on its longer side, as the source of the usual
+  thumbnails. `width` and `height` are those of the rendered page, so a card can follow the
+  aspect ratio of the document (A4 portrait, landscape tickets). Only page 1 is ever read.
+- Poppler runs no scripts and opens nothing over the network. Each run has a 1 GiB address
+  space, 30 seconds and no environment of the server.
+- Encrypted (with a password to open) or broken PDFs, `PDF_PREVIEWS=false` or no poppler:
+  the asset is ready without thumbnails and `pageCount` stays null; the card keeps its badge.
+  Rendering in the browser with pdf.js stays for the viewer and for screenplays (#294).
+  `Instance.media.pdfPreviews` says whether the instance makes them.
+
 **Consequences.** A ProRes card plays everywhere once its copy is made, at the cost of CPU in
 the worker and roughly 40 MB per minute of storage at the default bitrate. Instances on the
 standard image have no ffmpeg: their videos keep `proxy: null` or `skipped`, as before, and
-their RAW files stay file cards.
+their RAW files and PDFs stay file cards. The `-media` image grows by exiftool (Perl) and
+poppler, a few tens of MB.

@@ -418,6 +418,8 @@ export const asset = pgTable(
       enum: ['queued', 'processing', 'ready', 'failed', 'skipped'],
     }),
     proxyProgress: integer('proxy_progress'),
+    /** Pages of a PDF, when poppler could read it. */
+    pageCount: integer('page_count'),
     status: text('status', { enum: ['pending', 'processing', 'ready', 'failed'] })
       .notNull()
       .default('pending'),

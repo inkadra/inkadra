@@ -675,6 +675,10 @@
                 "type": "boolean",
                 "description": "The worker can decode camera RAW files into thumbnails."
               },
+              "pdfPreviews": {
+                "type": "boolean",
+                "description": "The worker renders page 1 of PDFs into thumbnails and reads their page count (poppler)."
+              },
               "videoProxies": {
                 "type": "boolean",
                 "description": "The worker makes playable MP4 copies of videos browsers cannot play (`Asset.proxy`): ffmpeg is there and VIDEO_PROXIES is not `false`."
@@ -683,6 +687,7 @@
             "required": [
               "videoPosters",
               "rawPreviews",
+              "pdfPreviews",
               "videoProxies"
             ],
             "description": "Media tools available on this server (image tag `-media`)."
@@ -2280,6 +2285,14 @@
             ],
             "description": "Frames per second of videos."
           },
+          "pageCount": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 1,
+            "description": "Pages of a PDF; null for other files and for PDFs the server could not read (encrypted with a password to open, broken) or has no poppler for."
+          },
           "proxy": {
             "$ref": "#/components/schemas/AssetProxy"
           },
@@ -2301,7 +2314,7 @@
             "items": {
               "$ref": "#/components/schemas/AssetVariant"
             },
-            "description": "WebP thumbnails, smallest first, empty until `status` is `ready`. Sizes wider than the original are skipped. For videos they show a poster frame, when the server has ffmpeg (Instance.media.videoPosters); otherwise videos have none. Camera RAW files (`mime` in RAW_IMAGE_TYPES) get them from the JPEG preview the camera embedded, when the server has exiftool (Instance.media.rawPreviews); none when there is no preview."
+            "description": "WebP thumbnails, smallest first, empty until `status` is `ready`. Sizes wider than the original are skipped. For videos they show a poster frame, when the server has ffmpeg (Instance.media.videoPosters); otherwise videos have none. Camera RAW files (`mime` in RAW_IMAGE_TYPES) get them from the JPEG preview the camera embedded, when the server has exiftool (Instance.media.rawPreviews); none when there is no preview. PDFs get them from page 1 (Instance.media.pdfPreviews), and `width` and `height` are then the size of that rendered page, for its aspect ratio; none when the PDF does not render."
           },
           "exif": {
             "type": [
@@ -2352,6 +2365,7 @@
           "videoCodec",
           "audioCodec",
           "frameRate",
+          "pageCount",
           "proxy",
           "status",
           "url",

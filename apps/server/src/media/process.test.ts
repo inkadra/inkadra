@@ -393,6 +393,63 @@ describe.skipIf(!url)('processAsset (needs DATABASE_URL)', () => {
     });
   });
 
+  describe('PDF', async () => {
+    const tools = await mediaTools();
+    const poppler = Boolean(tools.pdftoppm && tools.pdfinfo);
+
+    it.skipIf(!poppler)('renders page 1 and counts the pages', async () => {
+      const id = await upload(fixture('two-pages.pdf'), 'application/pdf', 'call-sheet.pdf');
+      await processAsset(deps, id);
+      const { row, variants } = await load(id);
+      // Page 1 is A4 portrait (page 2 is landscape): 2048 high, its width in proportion.
+      expect(row).toMatchObject({
+        status: 'ready',
+        kind: 'file',
+        mime: 'application/pdf',
+        pageCount: 2,
+        width: 1448,
+        height: 2048,
+      });
+      expect(variants.map((v) => v.size)).toEqual(['256', '512', '1024']);
+      // Red on the top half, blue on the bottom one.
+      const thumb = await sharp(await readAll(await storage.read(variants[0]?.storageKey ?? '')))
+        .raw()
+        .toBuffer({ resolveWithObject: true });
+      const px = (y: number) => {
+        const at = y * thumb.info.width * thumb.info.channels;
+        return [...thumb.data.subarray(at, at + 3)];
+      };
+      expect(px(20)[0]).toBeGreaterThan(200);
+      expect(px(thumb.info.height - 20)[2]).toBeGreaterThan(200);
+    });
+
+    it('keeps encrypted and broken PDFs ready, without thumbnails', async () => {
+      const locked = await upload(fixture('encrypted.pdf'), 'application/pdf', 'locked.pdf');
+      await processAsset(deps, locked);
+      const a = await load(locked);
+      expect(a.row).toMatchObject({ status: 'ready', mime: 'application/pdf', pageCount: null });
+      expect(a.variants).toHaveLength(0);
+
+      const broken = await upload(
+        fixture('two-pages.pdf').subarray(0, 300),
+        'application/octet-stream',
+        'broken.pdf',
+      );
+      await processAsset(deps, broken);
+      const b = await load(broken);
+      expect(b.row).toMatchObject({ status: 'ready', mime: 'application/pdf', pageCount: null });
+      expect(b.variants).toHaveLength(0);
+    });
+
+    it.skipIf(!poppler)('makes no thumbnails when PDF previews are off', async () => {
+      const id = await upload(fixture('two-pages.pdf'), 'application/pdf', 'off.pdf');
+      await processAsset({ ...deps, pdf: false }, id);
+      const { row, variants } = await load(id);
+      expect(row).toMatchObject({ status: 'ready', pageCount: null });
+      expect(variants).toHaveLength(0);
+    });
+  });
+
   it('only checksums other files', async () => {
     const id = await upload(
       Buffer.from('%PDF-1.7 not really'),

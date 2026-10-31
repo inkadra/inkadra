@@ -23,6 +23,7 @@ export function toAsset(g: GuestAsset): Asset {
     videoCodec: null,
     audioCodec: null,
     frameRate: null,
+    pageCount: null,
     proxy: null,
     animated: g.animated,
     status: 'ready',

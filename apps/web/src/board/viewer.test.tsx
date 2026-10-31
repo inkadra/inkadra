@@ -54,6 +54,7 @@ const videoAsset: Asset = {
   videoCodec: null,
   audioCodec: null,
   frameRate: null,
+  pageCount: null,
   proxy: null,
   animated: false,
   status: 'ready',
