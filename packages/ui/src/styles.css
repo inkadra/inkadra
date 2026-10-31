@@ -648,13 +648,17 @@ select {
     overflow: hidden;
     transition: visibility 0s;
   }
-  /* The panel's surface is clipped to the panel; collapsed, to the logo button's square at its
-     top-left corner (#333), so its edge moves with the same curve as the panels beside it.
-     The clip sits on the surface layer itself: on the panel it would cut the blur off from the
-     board behind. */
+  /* The panel's surface fills the panel; collapsed, it is the logo button's square at its
+     top-left corner (#333), so its edge moves with the same curve as the panels beside it and
+     its corners stay round all the way. Its size moves, not a clip: Chrome does not paint a
+     clip-path transition on a blurred layer, and this layer has no children to lay out. */
   .ink-shell > .ink-sidebar::before {
-    clip-path: inset(0 0 0 0 round var(--ink-radius-lg));
-    transition: clip-path var(--ink-dur-slow) var(--ink-ease-out);
+    inset: 0 auto auto 0;
+    width: 100%;
+    height: 100%;
+    transition:
+      width var(--ink-dur-slow) var(--ink-ease-out),
+      height var(--ink-dur-slow) var(--ink-ease-out);
   }
   /* Its content: visible, fading in over the last 40% of the growth. */
   .ink-shell > .ink-sidebar > * {
@@ -718,11 +722,11 @@ select {
     transition: visibility 0s linear calc(var(--ink-collapse-hold) + var(--ink-dur-slow));
   }
   .ink-shell--collapsed > .ink-sidebar::before {
-    transition: clip-path var(--ink-dur-slow) var(--ink-ease-out) var(--ink-collapse-hold);
-    clip-path: inset(
-      0 calc(100% - var(--ink-launcher-size)) calc(100% - var(--ink-launcher-size)) 0 round
-        var(--ink-radius-lg)
-    );
+    width: var(--ink-launcher-size);
+    height: var(--ink-launcher-size);
+    transition:
+      width var(--ink-dur-slow) var(--ink-ease-out) var(--ink-collapse-hold),
+      height var(--ink-dur-slow) var(--ink-ease-out) var(--ink-collapse-hold);
   }
   .ink-shell--collapsed > .ink-sidebar > * {
     opacity: 0;
@@ -734,7 +738,11 @@ select {
     transition: visibility 0s;
   }
   .ink-shell--collapsed.ink-shell--peek > .ink-sidebar::before {
-    clip-path: inset(0 0 0 0 round var(--ink-radius-lg));
+    width: 100%;
+    height: 100%;
+    transition:
+      width var(--ink-dur-slow) var(--ink-ease-out),
+      height var(--ink-dur-slow) var(--ink-ease-out);
   }
   .ink-shell--collapsed.ink-shell--peek > .ink-sidebar > * {
     opacity: 1;
