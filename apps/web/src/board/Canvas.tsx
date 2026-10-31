@@ -11,6 +11,7 @@ import {
   boundsOf,
   bringToFront,
   centerOn,
+  clampZoom,
   containsPoint,
   copyElements,
   createArrow,
@@ -130,6 +131,7 @@ import { templateLabels, templateRect } from './templates.ts';
 import { startUpload } from './uploads.ts';
 import { MediaViewer } from './viewer.tsx';
 import { loadViewport, saveViewport } from './viewport.ts';
+import { easeZoom, wheelZoomFactor } from './wheel-zoom.ts';
 import { isVideoLink } from './youtube.ts';
 
 const DRAG_THRESHOLD = 3;
@@ -1377,20 +1379,55 @@ export function Canvas({
     setMenu({ x: p.x, y: p.y, at: screenToWorld(vp.current, p) });
   }
 
-  // Wheel: scroll pans, pinch or Ctrl/⌘ + wheel zooms.
+  // Wheel: scroll pans, pinch or Ctrl/⌘ + wheel zooms. A mouse wheel notch is one small step that
+  // eases toward its target, so quick scrolling accumulates smoothly; a trackpad pinch stays direct.
   useEffect(() => {
     const el = rootRef.current;
     if (!el) return;
+    let frame: number | undefined;
+    let target = 1;
+    let applied = 1;
+    let anchor = { x: 0, y: 0 };
+    let last = 0;
+    const stop = () => {
+      if (frame !== undefined) cancelAnimationFrame(frame);
+      frame = undefined;
+    };
+    const tick = (now: number) => {
+      frame = undefined;
+      // Something else moved the view (a pan, the zoom buttons, fit): let it win.
+      if (vp.current.zoom !== applied) return;
+      const next = easeZoom(vp.current.zoom, target, Math.min(now - last, 50));
+      last = now;
+      setViewport(zoomAt(vp.current, anchor, next));
+      applied = vp.current.zoom;
+      if (next !== target) frame = requestAnimationFrame(tick);
+    };
     const onWheel = (e: WheelEvent) => {
       if ((e.target as HTMLElement).closest('[data-scroll]')) return;
       e.preventDefault();
       const r = el.getBoundingClientRect();
-      const anchor = { x: e.clientX - r.left, y: e.clientY - r.top };
+      const point = { x: e.clientX - r.left, y: e.clientY - r.top };
       const v = vp.current;
       if (e.ctrlKey || e.metaKey) {
-        const factor = Math.exp(-e.deltaY * (e.deltaMode === 1 ? 0.05 : 0.01));
-        setViewport(zoomAt(v, anchor, v.zoom * factor));
+        const { factor, discrete } = wheelZoomFactor(e.deltaY, e.deltaMode);
+        const reduced = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+        if (!discrete || reduced) {
+          stop();
+          setViewport(zoomAt(v, point, v.zoom * factor));
+          return;
+        }
+        // Notches pile up on the target the view is still easing toward.
+        const animating = frame !== undefined && v.zoom === applied;
+        target = clampZoom((animating ? target : v.zoom) * factor);
+        anchor = point;
+        applied = v.zoom;
+        if (frame === undefined) {
+          last = performance.now();
+          frame = requestAnimationFrame(tick);
+        }
       } else {
+        stop();
         const dx = e.shiftKey ? e.deltaY : e.deltaX;
         const dy = e.shiftKey ? 0 : e.deltaY;
         setViewport({ ...v, x: v.x + dx / v.zoom, y: v.y + dy / v.zoom });
@@ -1401,6 +1438,7 @@ export function Canvas({
     el.addEventListener('wheel', onWheel, { passive: false });
     el.addEventListener('gesturestart', noPageZoom);
     return () => {
+      stop();
       el.removeEventListener('wheel', onWheel);
       el.removeEventListener('gesturestart', noPageZoom);
     };
