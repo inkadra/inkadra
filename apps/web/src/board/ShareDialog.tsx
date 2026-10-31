@@ -21,13 +21,12 @@ import { useTranslation } from 'react-i18next';
 import { api, RequestError } from '../lib/api.ts';
 import { useIsPhone } from '../lib/phone.ts';
 import { useSession } from '../lib/session.tsx';
+import { EMAIL, PeoplePicker } from '../people/PeoplePicker.tsx';
 import { ExpiryLabel, ExpiryPicker } from './ExpiryPicker.tsx';
 import { GuestLinks } from './GuestLinks.tsx';
 import { PermissionsMatrix } from './PermissionsMatrix.tsx';
 import './share.css';
 import { linkRoleChoices, rank, roleChoices } from './share-roles.ts';
-
-const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 /**
  * Who can open a board and with which role: people from the project and from grants here or
@@ -438,7 +437,6 @@ function InviteForm({
   onTyping: (typing: boolean) => void;
 }) {
   const { t } = useTranslation();
-  const listId = useId();
   const [query, setQuery] = useState('');
   const [role, setRole] = useState<ProjectRole>(
     choices.includes('commenter') ? 'commenter' : 'viewer',
@@ -455,24 +453,6 @@ function InviteForm({
     onTyping(typing);
   }, [typing, onTyping]);
   useEffect(() => () => onTyping(false), [onTyping]);
-
-  useEffect(() => {
-    const q = query.trim();
-    // Results of the previous text must never be picked for the new one.
-    setFound([]);
-    if (q.length < 2 || EMAIL.test(q)) return;
-    let current = true;
-    const timer = setTimeout(() => {
-      api
-        .get<{ items: Person[] }>(`/users/search?q=${encodeURIComponent(q)}`)
-        .then((r) => current && setFound(r.items))
-        .catch(() => current && setFound([]));
-    }, 250);
-    return () => {
-      current = false;
-      clearTimeout(timer);
-    };
-  }, [query]);
 
   async function submit(e: FormEvent) {
     e.preventDefault();
@@ -517,12 +497,9 @@ function InviteForm({
   return (
     <form className="share__invite" onSubmit={submit}>
       <div className="share__field">
-        <input
-          className="share__input"
-          type="text"
-          inputMode="email"
-          autoComplete="off"
-          list={listId}
+        <PeoplePicker
+          className="share__picker"
+          inputClassName="share__input"
           placeholder={
             phone
               ? t('share.inviteLabel')
@@ -532,15 +509,10 @@ function InviteForm({
           }
           aria-label={t('share.inviteLabel')}
           value={query}
-          onChange={(e) => setQuery(e.target.value)}
+          onChange={setQuery}
+          onPick={(p) => setQuery(p.email ?? p.name)}
+          onResults={setFound}
         />
-        <datalist id={listId}>
-          {found.map((p) => (
-            <option key={p.id} value={p.email ?? p.name}>
-              {p.name}
-            </option>
-          ))}
-        </datalist>
         <RoleSelect
           value={role}
           choices={choices}
