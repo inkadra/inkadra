@@ -1,6 +1,6 @@
 import { execFileSync } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
-import { readFileSync } from 'node:fs';
+import { readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { eq, sql } from 'drizzle-orm';
@@ -12,7 +12,14 @@ import { asset, assetVariant, project } from '../db/schema.ts';
 import { animatedVariantKey, originalKey, readAll } from '../storage.ts';
 import { testDeps } from '../test-deps.ts';
 import { ANIMATED_CAPS, fitsAnimatedCaps, processAsset, variantWidths } from './process.ts';
-import { mediaTools, resetMediaTools, sniffVideo } from './video.ts';
+import { runProxy } from './proxy.ts';
+import {
+  DEFAULT_PROXY_SETTINGS,
+  mediaTools,
+  probeVideo,
+  resetMediaTools,
+  sniffVideo,
+} from './video.ts';
 
 const url = process.env.DATABASE_URL;
 const migrationsFolder = fileURLToPath(new URL('../../drizzle', import.meta.url));
@@ -393,6 +400,103 @@ describe.skipIf(!url)('processAsset (needs DATABASE_URL)', () => {
       const { row, variants } = await load(id);
       expect(row?.status).toBe('ready');
       expect(variants).toHaveLength(0);
+    });
+
+    it.skipIf(!tools.ffmpeg)('makes no playable copy of a video browsers play', async () => {
+      const queued: string[] = [];
+      const id = await upload(clip(), 'video/mp4', 'plays.mp4');
+      await processAsset({ ...deps, enqueueProxy: async (a) => void queued.push(a) }, id);
+      const { row } = await load(id);
+      expect(row).toMatchObject({ proxyStatus: null, videoCodec: 'h264', frameRate: 24 });
+      expect(queued).toEqual([]);
+    });
+
+    describe.skipIf(!tools.ffmpeg || !tools.ffprobe)('playable copies', () => {
+      const withQueue = () => {
+        const queued: string[] = [];
+        return {
+          queued,
+          deps: { ...deps, enqueueProxy: async (a: string) => void queued.push(a) },
+        };
+      };
+
+      it('encodes ProRes to H.264/AAC MP4, keeping the original', async () => {
+        const body = fixture('prores-proxy.mov');
+        const id = await upload(body, 'video/quicktime', 'A001_C002.mov');
+        const q = withQueue();
+        await processAsset(q.deps, id);
+        let { row, variants } = await load(id);
+        expect(row).toMatchObject({
+          status: 'ready',
+          videoCodec: 'prores',
+          audioCodec: 'pcm_s16le',
+          frameRate: 12,
+          proxyStatus: 'queued',
+        });
+        expect(variants.map((v) => v.size)).toEqual(['256']);
+        expect(q.queued).toEqual([id]);
+
+        const progress: number[] = [];
+        await runProxy(deps, id, (p) => void progress.push(p));
+        ({ row, variants } = await load(id));
+        expect(row).toMatchObject({ proxyStatus: 'ready', proxyProgress: 100 });
+        expect(progress.at(-1)).toBe(100);
+        const proxy = variants.find((v) => v.size === 'proxy');
+        expect(proxy).toMatchObject({ mime: 'video/mp4', width: 64, height: 36 });
+        expect(proxy?.bytes).toBeGreaterThan(0);
+        const out = join(root, `proxy-${id}.mp4`);
+        writeFileSync(out, await readAll(await storage.read(proxy?.storageKey ?? '')));
+        const made = await probeVideo(tools.ffprobe ?? '', out);
+        expect(made).toMatchObject({
+          videoCodec: 'h264',
+          audioCodec: 'aac',
+          pixelFormat: 'yuv420p',
+        });
+        // The original is untouched.
+        expect(await readAll(await storage.read(originalKey(id)))).toEqual(body);
+
+        // A second pass of the thumbnails keeps the copy and does not queue another.
+        const again = withQueue();
+        await processAsset(again.deps, id);
+        ({ row, variants } = await load(id));
+        expect(row?.proxyStatus).toBe('ready');
+        expect(variants.some((v) => v.size === 'proxy')).toBe(true);
+        expect(again.queued).toEqual([]);
+      });
+
+      it('only remuxes H.264 out of Matroska, with the sound as AAC', async () => {
+        const id = await upload(fixture('h264-opus.mkv'), 'video/x-matroska', 'take.mkv');
+        const q = withQueue();
+        await processAsset(q.deps, id);
+        expect((await load(id)).row?.proxyStatus).toBe('queued');
+        await runProxy(deps, id);
+        const { variants } = await load(id);
+        const proxy = variants.find((v) => v.size === 'proxy');
+        const out = join(root, `remux-${id}.mp4`);
+        writeFileSync(out, await readAll(await storage.read(proxy?.storageKey ?? '')));
+        expect(await probeVideo(tools.ffprobe ?? '', out)).toMatchObject({
+          videoCodec: 'h264',
+          audioCodec: 'aac',
+        });
+      });
+
+      it('says skipped when proxies are turned off or the video is too long', async () => {
+        const off = withQueue();
+        const id = await upload(fixture('prores-proxy.mov'), 'video/quicktime', 'off.mov');
+        await processAsset(
+          { ...off.deps, proxies: { ...DEFAULT_PROXY_SETTINGS, enabled: false } },
+          id,
+        );
+        expect((await load(id)).row?.proxyStatus).toBe('skipped');
+        expect(off.queued).toEqual([]);
+
+        // Turned off after it was queued: the job gives up without running ffmpeg.
+        await processAsset(withQueue().deps, id);
+        await runProxy({ ...deps, proxies: { ...DEFAULT_PROXY_SETTINGS, maxDurationS: 0.1 } }, id);
+        const { row, variants } = await load(id);
+        expect(row?.proxyStatus).toBe('skipped');
+        expect(variants.some((v) => v.size === 'proxy')).toBe(false);
+      });
     });
 
     it.skipIf(!tools.ffmpeg)('stores videos without poster when ffmpeg is missing', async () => {

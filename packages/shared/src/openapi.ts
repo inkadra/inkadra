@@ -1251,6 +1251,23 @@ registry.registerPath({
 });
 registry.registerPath({
   method: 'get',
+  path: v1('/assets/{assetId}/proxy'),
+  tags: ['Assets'],
+  security: secured,
+  summary: 'The playable H.264/AAC MP4 copy of a video, when `Asset.proxy.status` is `ready`.',
+  description:
+    'Made by the worker for videos browsers do not play (ProRes, MKV, AVI, MXF, HEVC). ' +
+    'Supports `Range`. Readable by every role that sees the asset; the original stays at ' +
+    '`/assets/{assetId}/file`. 404 while there is none.',
+  request: { params: idParam('assetId') },
+  responses: {
+    200: { description: 'MP4 video', content: { 'video/mp4': { schema: z.string() } } },
+    206: { description: 'Part of the video' },
+    ...errors,
+  },
+});
+registry.registerPath({
+  method: 'get',
   path: v1('/assets/{assetId}/variants/{size}'),
   tags: ['Assets'],
   security: secured,

@@ -5,6 +5,11 @@
 export interface Jobs {
   /** Thumbnails, EXIF, palette and checksum of an uploaded asset. */
   processAsset(assetId: string): Promise<void>;
+  /**
+   * The playable MP4 copy of a video browsers cannot play (decision 0048), queued by the
+   * worker after the poster; missing where nothing makes them.
+   */
+  makeProxy?(assetId: string): Promise<void>;
   /** Remove files from storage after their rows are gone. */
   deleteFiles(keys: string[]): Promise<void>;
   /** A queued project export or import (decision 0037); missing where transfers are off. */

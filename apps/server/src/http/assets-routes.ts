@@ -1,6 +1,7 @@
 import {
   API_PREFIX,
   type Asset,
+  type AssetProxy,
   atLeast,
   CAPABILITY_ROLE,
   Id,
@@ -8,8 +9,8 @@ import {
   VariantQuery,
   z,
 } from '@inkadra/shared';
-import { asc, eq } from 'drizzle-orm';
-import type { FastifyInstance, FastifyReply } from 'fastify';
+import { and, asc, eq } from 'drizzle-orm';
+import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { requireAssetRole } from '../access.ts';
 import type { Auth } from '../auth.ts';
 import type { Database } from '../db/client.ts';
@@ -32,6 +33,27 @@ const v1 = (path: string) => `${API_PREFIX}${path}`;
 export const fileUrl = (assetId: string) => v1(`/assets/${assetId}/file`);
 export const variantUrl = (assetId: string, size: string) =>
   v1(`/assets/${assetId}/variants/${size}`);
+export const proxyUrl = (assetId: string) => v1(`/assets/${assetId}/proxy`);
+
+type VariantRow = typeof assetVariant.$inferSelect;
+/** A WebP thumbnail row, not the playable copy of a video (`proxy`, decision 0048). */
+export type ThumbnailRow = VariantRow & { size: Exclude<VariantRow['size'], 'proxy'> };
+export const isThumbnail = (v: VariantRow): v is ThumbnailRow => v.size !== 'proxy';
+
+/** Where the playable copy of a video stands, for the API; null when there is none to make. */
+export function toProxy(row: typeof asset.$inferSelect, variants: VariantRow[]): AssetProxy | null {
+  if (!row.proxyStatus) return null;
+  const made = row.proxyStatus === 'ready' ? variants.find((v) => v.size === 'proxy') : undefined;
+  return {
+    status: row.proxyStatus === 'ready' && !made ? 'failed' : row.proxyStatus,
+    progress: row.proxyProgress,
+    url: made ? proxyUrl(row.id) : null,
+    mime: 'video/mp4',
+    width: made?.width ?? null,
+    height: made?.height ?? null,
+    size: made?.bytes ?? null,
+  };
+}
 
 /** Types shown in the page; anything else (HTML, SVG, scripts, documents) is downloaded. */
 const INLINE =
@@ -40,10 +62,7 @@ const INLINE =
 // Files never change after upload: cache them for good, but only in the viewer's browser.
 const IMMUTABLE = 'private, max-age=31536000, immutable';
 
-export function toAsset(
-  row: typeof asset.$inferSelect,
-  variants: Array<typeof assetVariant.$inferSelect>,
-): Asset {
+export function toAsset(row: typeof asset.$inferSelect, variants: VariantRow[]): Asset {
   return {
     id: row.id,
     projectId: row.projectId,
@@ -55,11 +74,16 @@ export function toAsset(
     width: row.width,
     height: row.height,
     durationMs: row.durationMs,
+    videoCodec: row.videoCodec,
+    audioCodec: row.audioCodec,
+    frameRate: row.frameRate,
+    proxy: toProxy(row, variants),
     status: row.status,
     url: fileUrl(row.id),
     variants:
       row.status === 'ready'
         ? variants
+            .filter(isThumbnail)
             .map((v) => ({
               size: v.size,
               width: v.width,
@@ -107,6 +131,30 @@ export function fileHeaders(reply: FastifyReply, etag: string) {
   reply.header('cross-origin-resource-policy', 'same-origin');
 }
 
+/** Sends a stored file, or the single byte range asked for. */
+export async function sendRanged(
+  req: FastifyRequest,
+  reply: FastifyReply,
+  storage: Storage,
+  key: string,
+  size: number,
+) {
+  reply.header('accept-ranges', 'bytes');
+  const range = parseRange(req.headers.range, size);
+  if (range === undefined) {
+    reply.header('content-range', `bytes */${size}`);
+    return reply.status(416).send();
+  }
+  if (range) {
+    reply.status(206);
+    reply.header('content-range', `bytes ${range.start}-${range.end}/${size}`);
+    reply.header('content-length', range.end - range.start + 1);
+    return reply.send(await storage.read(key, range));
+  }
+  reply.header('content-length', size);
+  return reply.send(await storage.read(key));
+}
+
 export function registerAssetRoutes(app: FastifyInstance, deps: Deps) {
   const { db, auth, storage } = deps;
 
@@ -151,20 +199,28 @@ export function registerAssetRoutes(app: FastifyInstance, deps: Deps) {
       'content-disposition',
       contentDisposition(inline ? 'inline' : 'attachment', row.filename),
     );
-    reply.header('accept-ranges', 'bytes');
-    const range = parseRange(req.headers.range, row.size);
-    if (range === undefined) {
-      reply.header('content-range', `bytes */${row.size}`);
-      return reply.status(416).send();
-    }
-    if (range) {
-      reply.status(206);
-      reply.header('content-range', `bytes ${range.start}-${range.end}/${row.size}`);
-      reply.header('content-length', range.end - range.start + 1);
-      return reply.send(await storage.read(row.storageKey, range));
-    }
-    reply.header('content-length', row.size);
-    return reply.send(await storage.read(row.storageKey));
+    return sendRanged(req, reply, storage, row.storageKey, row.size);
+  });
+
+  app.get(v1('/assets/:assetId/proxy'), async (req, reply) => {
+    const actor = await requireActor(auth, req, db);
+    const { assetId } = AssetParams.parse(req.params);
+    const { asset: row } = await requireAssetRole(db, actor, assetId, 'viewer');
+    // Like the stream of an original video, every role that sees the card may play it.
+    const [made] = await db
+      .select()
+      .from(assetVariant)
+      .where(and(eq(assetVariant.assetId, assetId), eq(assetVariant.size, 'proxy')));
+    if (!made || row.proxyStatus !== 'ready')
+      return sendError(reply, 'not_found', 'This video has no playable copy.');
+    const etag = `${row.sha256 ?? row.id}-proxy`;
+    fileHeaders(reply, etag);
+    if (req.headers['if-none-match'] === `"${etag}"`) return reply.status(304).send();
+    reply.header('content-type', 'video/mp4');
+    const name = `${row.filename.replace(/\.[^.]*$/, '') || 'video'}.mp4`;
+    reply.header('content-disposition', contentDisposition('inline', name));
+    const size = made.bytes ?? (await storage.size(made.storageKey)) ?? 0;
+    return sendRanged(req, reply, storage, made.storageKey, size);
   });
 
   app.get(v1('/assets/:assetId/variants/:size'), async (req, reply) => {

@@ -28,7 +28,7 @@ import {
 import { newSecret, sealer, sha256 } from '../secrets.ts';
 import { DocViews, resolveLink, type ShareLinkRow } from '../share-links.ts';
 import { iso } from './api-routes.ts';
-import { variantUrl } from './assets-routes.ts';
+import { isThumbnail, variantUrl } from './assets-routes.ts';
 import { requireActor } from './auth-routes.ts';
 import { HttpError } from './errors.ts';
 
@@ -287,6 +287,7 @@ export function registerShareLinkRoutes(app: FastifyInstance, deps: Deps) {
           filename: p.assetId ? (files.get(p.assetId)?.filename ?? null) : null,
           variants: variants
             .filter((v) => v.assetId === p.assetId)
+            .filter(isThumbnail)
             .sort((a, b) => Number(a.size) - Number(b.size))
             .map((v) => ({
               size: v.size,

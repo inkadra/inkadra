@@ -25,7 +25,8 @@ import type { Config } from './config.ts';
  *
  * Keys are relative paths: originals at `originals/<assetId>` (written by the tus store, which
  * names files after the upload id), thumbnails at `variants/<assetId>/<size>.webp`, and the
- * moving copies of animated pictures at `variants/<assetId>/<size>-animated.webp`.
+ * moving copies of animated pictures at `variants/<assetId>/<size>-animated.webp`, and the
+ * playable MP4 copy of a video at `variants/<assetId>/proxy.mp4` (decision 0048).
  * Files never change once written, so they can be cached forever.
  */
 export interface Storage {
@@ -50,6 +51,9 @@ export const variantKey = (assetId: string, size: string) => `variants/${assetId
 /** The moving copy of a thumbnail, for GIF and animated WebP sources. Served with `?animated=1`. */
 export const animatedVariantKey = (assetId: string, size: string) =>
   `variants/${assetId}/${size}-animated.webp`;
+
+/** The playable H.264/AAC copy of a video browsers cannot play: the `proxy` variant row. */
+export const proxyKey = (assetId: string) => `variants/${assetId}/proxy.mp4`;
 
 const SAFE_KEY = /^[a-z]+(\/[A-Za-z0-9._-]+)+$/;
 function checkKey(key: string) {

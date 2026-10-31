@@ -18,6 +18,7 @@ const mockState = vi.hoisted(() => ({
 vi.mock('./assets.ts', () => ({
   useAsset: () => mockState.asset,
   pickVariant: () => 'https://example.com/poster.jpg',
+  playbackUrl: (a: Asset) => (a.proxy?.status === 'ready' && a.proxy.url) || a.url,
 }));
 
 vi.mock('./tags.tsx', () => ({
@@ -50,6 +51,10 @@ const videoAsset: Asset = {
   width: 3840,
   height: 2160,
   durationMs: 45000,
+  videoCodec: null,
+  audioCodec: null,
+  frameRate: null,
+  proxy: null,
   animated: false,
   status: 'ready',
   url: '/api/v1/assets/video-prores/file',
@@ -166,6 +171,43 @@ describe('MediaViewer video playback', () => {
     expect(html).toContain('controls=""');
     expect(html).toContain('poster="https://example.com/poster.jpg"');
 
+    vi.unstubAllGlobals();
+  });
+
+  it('plays the playable copy of a camera format once the worker made it', () => {
+    mockState.asset = {
+      ...videoAsset,
+      proxy: {
+        status: 'ready',
+        progress: 100,
+        url: '/api/v1/assets/video-prores/proxy',
+        mime: 'video/mp4',
+        width: 1920,
+        height: 1080,
+        size: 1000,
+      },
+    };
+    vi.stubGlobal('window', {
+      innerWidth: 1920,
+      devicePixelRatio: 1,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    });
+    const fakeStore = {
+      undo: { stopCapturing: vi.fn() },
+      doc: { transact: vi.fn() },
+    } as unknown as import('./store.ts').BoardStore;
+    const html = renderToStaticMarkup(
+      <MediaViewer
+        store={fakeStore}
+        element={fileElement}
+        projectId="proj-01"
+        userId="user-01"
+        readOnly={false}
+        onClose={vi.fn()}
+      />,
+    );
+    expect(html).toContain('src="/api/v1/assets/video-prores/proxy"');
     vi.unstubAllGlobals();
   });
 

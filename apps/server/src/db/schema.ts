@@ -11,6 +11,7 @@ import {
   jsonb,
   pgTable,
   primaryKey,
+  real,
   text,
   timestamp,
   unique,
@@ -405,6 +406,18 @@ export const asset = pgTable(
     width: integer('width'),
     height: integer('height'),
     durationMs: integer('duration_ms'),
+    /** First video and audio streams of a video, as ffprobe names their codecs. */
+    videoCodec: text('video_codec'),
+    audioCodec: text('audio_codec'),
+    frameRate: real('frame_rate'),
+    /**
+     * The playable MP4 copy of a video browsers cannot play (decision 0048): null when none is
+     * needed. Its file is the `proxy` row of `asset_variant`.
+     */
+    proxyStatus: text('proxy_status', {
+      enum: ['queued', 'processing', 'ready', 'failed', 'skipped'],
+    }),
+    proxyProgress: integer('proxy_progress'),
     status: text('status', { enum: ['pending', 'processing', 'ready', 'failed'] })
       .notNull()
       .default('pending'),
@@ -427,10 +440,18 @@ export const assetVariant = pgTable(
     assetId: uuid('asset_id')
       .notNull()
       .references(() => asset.id, { onDelete: 'cascade' }),
-    size: text('size', { enum: ['256', '512', '1024', '2048'] }).notNull(),
+    /**
+     * A WebP thumbnail width, or `proxy`: the playable MP4 copy of a video (decision 0048),
+     * which is not a thumbnail and never listed with them (`isThumbnail`).
+     */
+    size: text('size', { enum: ['256', '512', '1024', '2048', 'proxy'] }).notNull(),
     width: integer('width').notNull(),
     height: integer('height').notNull(),
     storageKey: text('storage_key').notNull(),
+    /** Null for WebP thumbnails. */
+    mime: text('mime'),
+    /** Bytes of the file; null for thumbnails written before it was recorded. */
+    bytes: bigint('bytes', { mode: 'number' }),
   },
   (t) => [primaryKey({ columns: [t.assetId, t.size] })],
 );

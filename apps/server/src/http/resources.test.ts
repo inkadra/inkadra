@@ -1,13 +1,15 @@
 import { createServer, type Server, type ServerResponse } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { fileURLToPath } from 'node:url';
-import { sql } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import pino from 'pino';
 import sharp from 'sharp';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createAuth } from '../auth.ts';
 import { loadConfig } from '../config.ts';
 import { createDatabase, runMigrations } from '../db/client.ts';
+import { asset, assetVariant } from '../db/schema.ts';
+import { originalKey, proxyKey } from '../storage.ts';
 import { testDeps } from '../test-deps.ts';
 import { createApp } from './app.ts';
 
@@ -399,6 +401,73 @@ describe.skipIf(!url)('projects, boards, uploads and assets (needs DATABASE_URL)
     expect((await call('viewer', 'GET', `${flat.variants[0].url}?animated=1`)).statusCode).toBe(
       404,
     );
+  });
+
+  it('serves the playable copy of a video to viewers, never as a thumbnail', async () => {
+    const id = crypto.randomUUID();
+    const original = Buffer.from('not really ProRes');
+    const mp4 = Buffer.from('0123456789 pretend this is an MP4');
+    await deps.storage.write(originalKey(id), original, 'video/quicktime');
+    await db.insert(asset).values({
+      id,
+      projectId,
+      kind: 'video',
+      mime: 'video/quicktime',
+      filename: 'A001.mov',
+      size: original.length,
+      storageKey: originalKey(id),
+      status: 'ready',
+      videoCodec: 'prores',
+      audioCodec: 'pcm_s16le',
+      frameRate: 23.976,
+      proxyStatus: 'processing',
+      proxyProgress: 40,
+    });
+    let body = (await call('viewer', 'GET', `/api/v1/assets/${id}`)).json();
+    expect(body).toMatchObject({
+      videoCodec: 'prores',
+      frameRate: 23.976,
+      proxy: { status: 'processing', progress: 40, url: null, mime: 'video/mp4' },
+    });
+    expect((await call('viewer', 'GET', `/api/v1/assets/${id}/proxy`)).statusCode).toBe(404);
+
+    await deps.storage.write(proxyKey(id), mp4, 'video/mp4');
+    await db.insert(assetVariant).values({
+      assetId: id,
+      size: 'proxy',
+      width: 1920,
+      height: 1080,
+      storageKey: proxyKey(id),
+      mime: 'video/mp4',
+      bytes: mp4.length,
+    });
+    await db
+      .update(asset)
+      .set({ proxyStatus: 'ready', proxyProgress: 100 })
+      .where(eq(asset.id, id));
+    body = (await call('viewer', 'GET', `/api/v1/assets/${id}`)).json();
+    expect(body.variants).toEqual([]);
+    expect(body.proxy).toEqual({
+      status: 'ready',
+      progress: 100,
+      url: `/api/v1/assets/${id}/proxy`,
+      mime: 'video/mp4',
+      width: 1920,
+      height: 1080,
+      size: mp4.length,
+    });
+    const whole = await call('viewer', 'GET', body.proxy.url);
+    expect(whole.statusCode).toBe(200);
+    expect(whole.headers['content-type']).toBe('video/mp4');
+    expect(whole.headers['content-disposition']).toContain('inline; filename="A001.mp4"');
+    expect(whole.rawPayload).toEqual(mp4);
+    const part = await call('viewer', 'GET', body.proxy.url, undefined, { range: 'bytes=0-9' });
+    expect(part.statusCode).toBe(206);
+    expect(part.headers['content-range']).toBe(`bytes 0-9/${mp4.length}`);
+    expect(part.rawPayload.toString()).toBe('0123456789');
+    // The original is still the original.
+    expect((await call('owner', 'GET', `/api/v1/assets/${id}/file`)).rawPayload).toEqual(original);
+    expect((await call('stranger', 'GET', body.proxy.url)).statusCode).toBe(404);
   });
 
   it('serves anything that could run in a browser as a sandboxed download', async () => {

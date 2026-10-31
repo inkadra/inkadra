@@ -53,7 +53,7 @@ import {
 } from '../share-links.ts';
 import { animatedVariantKey, type Storage } from '../storage.ts';
 import { iso } from './api-routes.ts';
-import { contentDisposition, fileHeaders, parseRange } from './assets-routes.ts';
+import { contentDisposition, fileHeaders, isThumbnail, parseRange } from './assets-routes.ts';
 import { toHeaders } from './auth-routes.ts';
 import { HttpError } from './errors.ts';
 import {
@@ -271,6 +271,7 @@ export async function registerGuestRoutes(app: FastifyInstance, deps: Deps) {
           row.status === 'ready'
             ? variants
                 .filter((v) => v.assetId === row.id)
+                .filter(isThumbnail)
                 .sort((a, b) => Number(a.size) - Number(b.size))
                 .map((v) => ({
                   size: v.size,

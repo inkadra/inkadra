@@ -3,7 +3,7 @@ import { mkdir, readFile, rm } from 'node:fs/promises';
 import { join } from 'node:path';
 import { pipeline } from 'node:stream/promises';
 import { MOVING_THUMBNAIL_MAX_WIDTH, ThumbnailSize } from '@inkadra/shared';
-import { eq } from 'drizzle-orm';
+import { and, eq, ne } from 'drizzle-orm';
 import sharp, { type Sharp } from 'sharp';
 import type { Database } from '../db/client.ts';
 import { asset, assetVariant } from '../db/schema.ts';
@@ -11,13 +11,29 @@ import { animatedVariantKey, readAll, type Storage, variantKey } from '../storag
 import { readExif } from './exif.ts';
 import { decodeHeic, sniffImage } from './heic.ts';
 import { palette } from './palette.ts';
-import { extractPoster, mediaTools, probeVideo, sniffVideo } from './video.ts';
+import {
+  DEFAULT_PROXY_SETTINGS,
+  extractPoster,
+  mediaTools,
+  type ProxySettings,
+  probeVideo,
+  proxyPlan,
+  sniffVideo,
+  type VideoInfo,
+} from './video.ts';
 
 export interface MediaDeps {
   db: Database;
   storage: Storage;
   tmpDir: string;
   heic: boolean;
+  /** Playable copies of videos browsers cannot play (decision 0048); on with defaults if unset. */
+  proxies?: ProxySettings;
+  /**
+   * Queues the playable copy of a video. Without it (tests, tools) none is made and the asset
+   * says `skipped`.
+   */
+  enqueueProxy?: (assetId: string) => Promise<void>;
   /** Where a failed pass of the moving variants is reported; the posters are still saved. */
   log?: { warn: (fields: Record<string, unknown>, message: string) => void };
 }
@@ -103,7 +119,8 @@ async function sha256(storage: Storage, key: string) {
 /**
  * Turns an uploaded original into a ready asset: checksum always; for images also the real
  * type, dimensions, EXIF without location, palette and WebP thumbnails without metadata; for
- * videos, when ffmpeg is installed, the duration and thumbnails of a poster frame.
+ * videos, when ffmpeg is installed, the duration, codecs and thumbnails of a poster frame,
+ * and the playable copy queued when browsers cannot play the original (decision 0048).
  * Animated GIFs and animated WebPs also get moving thumbnails, when they fit `caps`.
  * Safe to run twice: variants are overwritten.
  */
@@ -133,21 +150,29 @@ export async function processAsset(deps: MediaDeps, assetId: string, caps = ANIM
   try {
     if (video && tools?.ffmpeg) {
       await mkdir(deps.tmpDir, { recursive: true });
-      const { durationMs } = tools.ffprobe
-        ? await probeVideo(tools.ffprobe, copy.path).catch(() => ({ durationMs: null }))
-        : { durationMs: null };
+      const info: VideoInfo | null = tools.ffprobe
+        ? await probeVideo(tools.ffprobe, copy.path).catch(() => null)
+        : null;
+      const durationMs = info?.durationMs ?? null;
       await extractPoster(tools.ffmpeg, copy.path, posterPath, durationMs);
       const result = await thumbnails(deps, assetId, sharp(posterPath, { failOn: 'error' }));
+      const proxyStatus = await proxyState(deps, assetId, video, info, row.size);
       await save(db, assetId, result.variants, {
         sha256: digest,
         width: result.width,
         height: result.height,
         durationMs,
+        videoCodec: info?.videoCodec ?? null,
+        audioCodec: info?.audioCodec ?? null,
+        frameRate: info?.frameRate ?? null,
+        proxyStatus,
+        proxyProgress: proxyStatus === 'ready' ? 100 : null,
         palette: result.palette,
         status: 'ready',
         animated: false,
       });
-      return { variants: result.variants.length };
+      if (proxyStatus === 'queued') await deps.enqueueProxy?.(assetId);
+      return { variants: result.variants.length, proxy: proxyStatus };
     }
 
     let mime = sniffed ?? row.mime;
@@ -209,6 +234,29 @@ export async function processAsset(deps: MediaDeps, assetId: string, caps = ANIM
   }
 }
 
+/**
+ * Where the playable copy of a video stands before the poster is saved: `queued` when one is
+ * to be made (the caller queues it), `ready` when an earlier run made it, `skipped` when the
+ * instance does not make it, null when the original plays as it is.
+ */
+async function proxyState(
+  deps: MediaDeps,
+  assetId: string,
+  container: string,
+  info: VideoInfo | null,
+  size: number,
+): Promise<(typeof asset.$inferInsert)['proxyStatus']> {
+  if (!info) return null;
+  const plan = proxyPlan(container, info, size, deps.proxies ?? DEFAULT_PROXY_SETTINGS);
+  if (plan === 'none') return null;
+  if (plan === 'skip' || !deps.enqueueProxy) return 'skipped';
+  const [made] = await deps.db
+    .select({ size: assetVariant.size })
+    .from(assetVariant)
+    .where(and(eq(assetVariant.assetId, assetId), eq(assetVariant.size, 'proxy')));
+  return made ? 'ready' : 'queued';
+}
+
 /** WebP thumbnails and dominant colours of a picture, upright. */
 async function thumbnails(deps: MediaDeps, assetId: string, input: Sharp) {
   // Orientation is applied to the pixels, so the variants need no EXIF to display upright.
@@ -227,7 +275,14 @@ async function thumbnails(deps: MediaDeps, assetId: string, input: Sharp) {
     const size = String(width) as ThumbnailSize;
     const key = variantKey(assetId, size);
     await deps.storage.write(key, data, 'image/webp');
-    variants.push({ assetId, size, width: out.width, height: out.height, storageKey: key });
+    variants.push({
+      assetId,
+      size,
+      width: out.width,
+      height: out.height,
+      storageKey: key,
+      bytes: data.length,
+    });
   }
   return { variants, widths, width: info.width, height: info.height, palette: palette(colours) };
 }
@@ -304,7 +359,10 @@ async function save(
   fields: Partial<typeof asset.$inferInsert>,
 ) {
   await db.transaction(async (tx) => {
-    await tx.delete(assetVariant).where(eq(assetVariant.assetId, assetId));
+    // The playable copy of a video is made by a job of its own and outlives a second pass.
+    await tx
+      .delete(assetVariant)
+      .where(and(eq(assetVariant.assetId, assetId), ne(assetVariant.size, 'proxy')));
     if (variants.length > 0) await tx.insert(assetVariant).values(variants);
     await tx.update(asset).set(fields).where(eq(asset.id, assetId));
   });

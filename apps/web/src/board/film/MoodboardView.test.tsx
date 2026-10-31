@@ -30,6 +30,7 @@ vi.mock('../assets.ts', () => ({
           }
         : undefined,
   pickVariant: (asset: { url: string }) => asset.url,
+  playbackUrl: (asset: { url: string }) => asset.url,
 }));
 vi.mock('../tags.tsx', () => ({
   normaliseTag: (value: string) => value.trim().toLowerCase(),

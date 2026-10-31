@@ -30,6 +30,7 @@ services:
       STORAGE_DRIVER: ${STORAGE_DRIVER:-local}
       UPLOAD_MAX_SIZE: ${UPLOAD_MAX_SIZE:-20GB}
       HEIC_PREVIEWS: ${HEIC_PREVIEWS:-true}
+      VIDEO_PROXIES: ${VIDEO_PROXIES:-true}
       # Sign-in with Google, an OIDC provider, email (see docs/self-hosting/sign-in.md)
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}

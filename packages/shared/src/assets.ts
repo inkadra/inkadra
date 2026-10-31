@@ -21,6 +21,36 @@ export const AssetVariant = z
   })
   .openapi('AssetVariant');
 
+/**
+ * State of the H.264/AAC MP4 copy the worker makes of a video the browser cannot play
+ * (ProRes, MKV, AVI, MXF, HEVC…). `skipped` means one was needed but not made: proxies are
+ * turned off (VIDEO_PROXIES), the source is past the limits, or the server has no ffmpeg.
+ */
+export const AssetProxyStatus = z.enum(['queued', 'processing', 'ready', 'failed', 'skipped']);
+export type AssetProxyStatus = z.infer<typeof AssetProxyStatus>;
+
+export const AssetProxy = z
+  .object({
+    status: AssetProxyStatus,
+    progress: z.int().min(0).max(100).nullable().openapi({
+      description: 'Percent done while `processing`; 100 once `ready`; null when unknown.',
+    }),
+    url: z
+      .string()
+      .nullable()
+      .openapi({
+        description:
+          'Same-origin path, `/api/v1/assets/{assetId}/proxy`, once `ready`; null before. ' +
+          'Supports `Range`. The original stays at `Asset.url`.',
+      }),
+    mime: z.literal('video/mp4'),
+    width: z.int().nullable(),
+    height: z.int().nullable(),
+    size: z.int().min(0).nullable().openapi({ description: 'Bytes of the MP4 once ready.' }),
+  })
+  .openapi('AssetProxy');
+export type AssetProxy = z.infer<typeof AssetProxy>;
+
 export const Asset = z
   .object({
     id: Id,
@@ -33,6 +63,18 @@ export const Asset = z
     width: z.int().nullable(),
     height: z.int().nullable(),
     durationMs: z.int().nullable(),
+    videoCodec: z.string().nullable().openapi({
+      description: 'Codec of the first video stream as ffprobe names it (`h264`, `prores`…).',
+    }),
+    audioCodec: z.string().nullable().openapi({
+      description: 'Codec of the first audio stream (`aac`, `pcm_s16le`…); null when silent.',
+    }),
+    frameRate: z.number().nullable().openapi({ description: 'Frames per second of videos.' }),
+    proxy: AssetProxy.nullable().openapi({
+      description:
+        'Playable MP4 copy of a video in a format browsers do not play. Null for other ' +
+        'files and for videos that already play (H.264 MP4, WebM): use `url` then.',
+    }),
     status: AssetStatus,
     url: z.string().openapi({
       description:

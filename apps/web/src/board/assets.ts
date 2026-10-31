@@ -83,8 +83,15 @@ function fetchOnce(id: string): Promise<PollOutcome> {
 
 function needsPolling(id: string): boolean {
   const value = cache.get(id);
+  if (!value) return true;
+  if (value === 'missing') return false;
+  // A video is ready with its poster while its playable copy is still being made.
+  const proxy = value.proxy?.status;
   return (
-    !value || (value !== 'missing' && (value.status === 'pending' || value.status === 'processing'))
+    value.status === 'pending' ||
+    value.status === 'processing' ||
+    proxy === 'queued' ||
+    proxy === 'processing'
   );
 }
 
@@ -166,6 +173,14 @@ const BROWSER_IMAGES = new Set([
   'image/webp',
   'image/avif',
 ]);
+
+/**
+ * What a video element plays: the playable MP4 copy the worker made of a format browsers do
+ * not read (decision 0048), else the original.
+ */
+export function playbackUrl(asset: Asset): string {
+  return asset.proxy?.status === 'ready' && asset.proxy.url ? asset.proxy.url : asset.url;
+}
 
 /**
  * Smallest variant at least `pixels` wide, else the largest there is. Before the worker has

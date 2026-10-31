@@ -38,6 +38,20 @@ or share the real `.env`.
 | `IMPORT_MAX_SIZE`      | `20GB`      | Largest project archive an import accepts, compressed and in total uncompressed; `0` for no limit |
 | `HEIC_PREVIEWS`        | `true`      | `false` stops Inkadra decoding HEIC photos from iPhones: they are kept, without a preview         |
 
+## Media previews
+
+These need the `-media` image (see [The image](README.md#the-image)); the standard image has no
+media tools and ignores them. The policy is in [decision 0048](../decisions/0048-media-worker-previews.md).
+
+| Variable                      | Default | Meaning                                                                                                               |
+| ----------------------------- | ------- | --------------------------------------------------------------------------------------------------------------------- |
+| `VIDEO_PROXIES`               | `true`  | Make a playable H.264/AAC MP4 of videos browsers cannot play (ProRes, MKV, AVI, MXF, HEVC). `false` saves the storage |
+| `VIDEO_PROXY_MAX_DURATION`    | `7200`  | Longest video, in seconds, that gets a playable copy; `0` for no limit                                                |
+| `VIDEO_PROXY_MAX_SOURCE_SIZE` | `20GB`  | Largest video that gets a playable copy, as bytes or with a unit; `0` for no limit                                    |
+| `VIDEO_PROXY_RESOLUTION`      | `1080`  | Shorter side of the copy in pixels (`1080` gives 1920×1080 at most); never upscaled                                   |
+| `VIDEO_PROXY_BITRATE`         | `5M`    | Peak video bitrate of the copy (`5M`, `2500k`); about 40 MB per minute at `5M`                                        |
+| `VIDEO_PROXY_CONCURRENCY`     | `1`     | Copies one worker makes at once. Each uses the CPU fully while it runs                                                |
+
 ## Compose only
 
 These change `compose.yaml` itself, not the server.

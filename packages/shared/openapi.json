@@ -674,11 +674,16 @@
               "rawPreviews": {
                 "type": "boolean",
                 "description": "The worker can decode camera RAW files into thumbnails."
+              },
+              "videoProxies": {
+                "type": "boolean",
+                "description": "The worker makes playable MP4 copies of videos browsers cannot play (`Asset.proxy`): ffmpeg is there and VIDEO_PROXIES is not `false`."
               }
             },
             "required": [
               "videoPosters",
-              "rawPreviews"
+              "rawPreviews",
+              "videoProxies"
             ],
             "description": "Media tools available on this server (image tag `-media`)."
           },
@@ -2254,6 +2259,30 @@
               "null"
             ]
           },
+          "videoCodec": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Codec of the first video stream as ffprobe names it (`h264`, `prores`…)."
+          },
+          "audioCodec": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Codec of the first audio stream (`aac`, `pcm_s16le`…); null when silent."
+          },
+          "frameRate": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "description": "Frames per second of videos."
+          },
+          "proxy": {
+            "$ref": "#/components/schemas/AssetProxy"
+          },
           "status": {
             "type": "string",
             "enum": [
@@ -2320,6 +2349,10 @@
           "width",
           "height",
           "durationMs",
+          "videoCodec",
+          "audioCodec",
+          "frameRate",
+          "proxy",
           "status",
           "url",
           "variants",
@@ -2330,6 +2363,76 @@
           "createdAt"
         ],
         "description": "The logo asset, so readers need no second request. Null without a logo or while its file is not ready."
+      },
+      "AssetProxy": {
+        "type": [
+          "object",
+          "null"
+        ],
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "queued",
+              "processing",
+              "ready",
+              "failed",
+              "skipped"
+            ]
+          },
+          "progress": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0,
+            "maximum": 100,
+            "description": "Percent done while `processing`; 100 once `ready`; null when unknown."
+          },
+          "url": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Same-origin path, `/api/v1/assets/{assetId}/proxy`, once `ready`; null before. Supports `Range`. The original stays at `Asset.url`."
+          },
+          "mime": {
+            "type": "string",
+            "enum": [
+              "video/mp4"
+            ]
+          },
+          "width": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "height": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "size": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0,
+            "description": "Bytes of the MP4 once ready."
+          }
+        },
+        "required": [
+          "status",
+          "progress",
+          "url",
+          "mime",
+          "width",
+          "height",
+          "size"
+        ],
+        "description": "Playable MP4 copy of a video in a format browsers do not play. Null for other files and for videos that already play (H.264 MP4, WebM): use `url` then."
       },
       "AssetVariant": {
         "type": "object",
@@ -12152,6 +12255,90 @@
           },
           "206": {
             "description": "Part of the file"
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/assets/{assetId}/proxy": {
+      "get": {
+        "tags": [
+          "Assets"
+        ],
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "The playable H.264/AAC MP4 copy of a video, when `Asset.proxy.status` is `ready`.",
+        "description": "Made by the worker for videos browsers do not play (ProRes, MKV, AVI, MXF, HEVC). Supports `Range`. Readable by every role that sees the asset; the original stays at `/assets/{assetId}/file`. 404 while there is none.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10"
+            },
+            "required": true,
+            "name": "assetId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "MP4 video",
+            "content": {
+              "video/mp4": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "206": {
+            "description": "Part of the video"
           },
           "400": {
             "description": "Invalid request",
