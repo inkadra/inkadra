@@ -65,7 +65,9 @@ it('puts the caret after a picked mention at once, so the next key lands after i
       />,
     ),
   );
-  const reply = [...host.querySelectorAll('button')].find((b) => b.textContent === 'comments.reply');
+  const reply = [...host.querySelectorAll('button')].find(
+    (b) => b.textContent === 'comments.reply',
+  );
   await act(async () => reply?.click());
   const field = host.querySelector('textarea') as HTMLTextAreaElement;
   await act(async () => type(field, 'Schiarire @Giu per favore', 'Schiarire @Giu'.length));
