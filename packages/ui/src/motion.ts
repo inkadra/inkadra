@@ -29,7 +29,10 @@ export function fadeOutCopy(node: Element | null): void {
   if (budget-- <= 0) return;
   const copy = node.cloneNode(true) as HTMLElement;
   // Nothing that finds the element by its identity or type should find its copy.
-  for (const el of [copy, ...copy.querySelectorAll('[id], [data-el], [data-type], [data-testid]')]) {
+  for (const el of [
+    copy,
+    ...copy.querySelectorAll('[id], [data-el], [data-type], [data-testid]'),
+  ]) {
     el.removeAttribute('id');
     el.removeAttribute('data-el');
     el.removeAttribute('data-type');
