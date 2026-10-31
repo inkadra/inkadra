@@ -588,6 +588,24 @@ select {
   font-size: 14px;
   font-weight: 600;
 }
+.ink-dialog__confirm {
+  position: sticky;
+  bottom: -16px;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  margin: 16px -16px -16px;
+  padding: 12px 16px;
+  border-top: 1px solid var(--ink-border-subtle);
+  border-radius: 0 0 12px 12px;
+  background: var(--ink-surface-float);
+}
+.ink-dialog__confirm-text {
+  margin-right: auto;
+  font-weight: 600;
+}
 .ink-dialog__actions {
   display: flex;
   justify-content: flex-end;

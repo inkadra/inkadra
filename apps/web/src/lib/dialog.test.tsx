@@ -1,5 +1,5 @@
 // @vitest-environment happy-dom
-import { Dialog, swallowOutsidePress } from '@inkadra/ui';
+import { Dialog, type DialogHandle, swallowOutsidePress } from '@inkadra/ui';
 import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
@@ -58,14 +58,31 @@ const click = (el: Element, x: number, y: number) =>
     el.dispatchEvent(new MouseEvent('click', { bubbles: true, clientX: x, clientY: y }));
   });
 
-async function dialogWith(onClose: () => void, onCancel?: (e: React.SyntheticEvent) => void) {
+async function dialogWith(
+  onClose: () => void,
+  onCancel?: (e: React.SyntheticEvent) => void,
+  extra: { dirty?: boolean; ref?: React.RefObject<DialogHandle | null> } = {},
+) {
   const host = await mount(
-    <Dialog open title="Title" onClose={onClose} onCancel={onCancel}>
+    <Dialog open title="Title" onClose={onClose} onCancel={onCancel} {...extra}>
       <button type="button">Inside</button>
     </Dialog>,
   );
   return host.querySelector('dialog') as HTMLDialogElement;
 }
+
+const confirm = (dialog: HTMLDialogElement) =>
+  dialog.querySelector<HTMLElement>('.ink-dialog__confirm');
+const answer = (dialog: HTMLDialogElement, label: string) =>
+  [...dialog.querySelectorAll('.ink-dialog__confirm button')].find(
+    (b) => b.textContent === label,
+  ) as HTMLButtonElement;
+const pressEscape = (el: Element) =>
+  act(() => {
+    el.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }),
+    );
+  });
 
 it('closes on a click on the backdrop, like Escape', async () => {
   const onClose = vi.fn();
@@ -139,4 +156,60 @@ it('lets an outside press on empty space close a menu without reaching what is b
   control.dispatchEvent(new MouseEvent('pointerdown', { bubbles: true }));
   expect(menuClosed).toHaveBeenCalledTimes(2);
   expect(seen).toHaveBeenCalledTimes(2);
+});
+
+it('asks before closing a dirty dialog from the backdrop, and Keep editing stays', async () => {
+  const onClose = vi.fn();
+  const dialog = await dialogWith(onClose, undefined, { dirty: true });
+  await press(dialog, 10, 10);
+  await click(dialog, 10, 10);
+  expect(confirm(dialog)?.textContent).toContain('Discard changes?');
+  expect(dialog.open).toBe(true);
+  expect(onClose).not.toHaveBeenCalled();
+  expect(document.activeElement).toBe(answer(dialog, 'Keep editing'));
+  await act(async () => answer(dialog, 'Keep editing').click());
+  expect(confirm(dialog)).toBeNull();
+  expect(dialog.open).toBe(true);
+  expect(onClose).not.toHaveBeenCalled();
+});
+
+it('closes a dirty dialog once Discard is chosen', async () => {
+  const onClose = vi.fn();
+  const dialog = await dialogWith(onClose, undefined, { dirty: true });
+  await press(dialog, 10, 10);
+  await click(dialog, 10, 10);
+  await act(async () => answer(dialog, 'Discard').click());
+  expect(dialog.open).toBe(false);
+  expect(onClose).toHaveBeenCalledTimes(1);
+});
+
+it('asks on Escape and on requestClose, and Escape on the question keeps editing', async () => {
+  const onClose = vi.fn();
+  const handle = { current: null } as React.RefObject<DialogHandle | null>;
+  const dialog = await dialogWith(onClose, undefined, { dirty: true, ref: handle });
+  await pressEscape(dialog.querySelector('button') as Element);
+  expect(confirm(dialog)).not.toBeNull();
+  await pressEscape(answer(dialog, 'Keep editing'));
+  expect(confirm(dialog)).toBeNull();
+  expect(dialog.open).toBe(true);
+  // The Cancel and close buttons of the dialog's own content go through the handle.
+  await act(async () => handle.current?.requestClose());
+  expect(confirm(dialog)).not.toBeNull();
+  expect(onClose).not.toHaveBeenCalled();
+});
+
+it('closes at once when nothing is dirty, and does not ask when onCancel holds it', async () => {
+  const onClose = vi.fn();
+  const handle = { current: null } as React.RefObject<DialogHandle | null>;
+  const clean = await dialogWith(onClose, undefined, { ref: handle });
+  await act(async () => handle.current?.requestClose());
+  expect(confirm(clean)).toBeNull();
+  expect(clean.open).toBe(false);
+  expect(onClose).toHaveBeenCalledTimes(1);
+
+  const held = await dialogWith(vi.fn(), (e) => e.preventDefault(), { dirty: true });
+  await press(held, 10, 10);
+  await click(held, 10, 10);
+  expect(confirm(held)).toBeNull();
+  expect(held.open).toBe(true);
 });

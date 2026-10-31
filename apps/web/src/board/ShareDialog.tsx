@@ -7,8 +7,16 @@ import type {
   Person,
   ProjectRole,
 } from '@inkadra/shared';
-import { Avatar, Button, Dialog, Icon, IconButton, Select } from '@inkadra/ui';
-import { type FormEvent, type KeyboardEvent, useCallback, useEffect, useId, useState } from 'react';
+import { Avatar, Button, Dialog, type DialogHandle, Icon, IconButton, Select } from '@inkadra/ui';
+import {
+  type FormEvent,
+  type KeyboardEvent,
+  useCallback,
+  useEffect,
+  useId,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { api, RequestError } from '../lib/api.ts';
 import { useIsPhone } from '../lib/phone.ts';
@@ -51,6 +59,9 @@ export function ShareDialog({
   const [tab, setTab] = useState<ShareTab>('people');
   const tabsId = useId();
   const [selectedUserId, setSelectedUserId] = useState<string | undefined>(undefined);
+  // An invitation being typed is lost when the dialog closes.
+  const [typing, setTyping] = useState(false);
+  const dialog = useRef<DialogHandle>(null);
   const shownTab = canShareGuests ? tab : 'people';
 
   const load = useCallback(async () => {
@@ -109,13 +120,19 @@ export function ShareDialog({
   const link = invitations.find((i) => i.kind === 'link' && i.url);
 
   return (
-    <Dialog open={open} title={t('share.title', { title: board.title })} onClose={onClose}>
+    <Dialog
+      ref={dialog}
+      open={open}
+      dirty={typing}
+      title={t('share.title', { title: board.title })}
+      onClose={onClose}
+    >
       <div className="share">
         <IconButton
           icon="close"
           label={t('share.close')}
           className="share__close"
-          onClick={onClose}
+          onClick={() => dialog.current?.requestClose()}
         />
         {canShareGuests && <ShareTabs id={tabsId} tab={shownTab} onTab={setTab} />}
         {shownTab === 'guests' ? (
@@ -156,6 +173,7 @@ export function ShareDialog({
                   return text;
                 }}
                 onError={fail}
+                onTyping={setTyping}
               />
             )}
 
@@ -409,12 +427,15 @@ function InviteForm({
   canEmail,
   onDone,
   onError,
+  onTyping,
 }: {
   boardId: string;
   choices: ProjectRole[];
   canEmail: boolean;
   onDone: (text: string) => Promise<string>;
   onError: (err: unknown) => void;
+  /** Whether a name or address is typed and not yet invited. */
+  onTyping: (typing: boolean) => void;
 }) {
   const { t } = useTranslation();
   const listId = useId();
@@ -429,6 +450,11 @@ function InviteForm({
   const [until, setUntil] = useState<string | null>(null);
   // The full hint does not fit a phone: the short label says enough there.
   const phone = useIsPhone();
+  const typing = query.trim() !== '';
+  useEffect(() => {
+    onTyping(typing);
+  }, [typing, onTyping]);
+  useEffect(() => () => onTyping(false), [onTyping]);
 
   useEffect(() => {
     const q = query.trim();

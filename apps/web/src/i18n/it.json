@@ -197,6 +197,11 @@
     "create": "Crea progetto",
     "cancel": "Annulla"
   },
+  "dialog": {
+    "discardTitle": "Scartare le modifiche?",
+    "discard": "Scarta",
+    "keep": "Continua a modificare"
+  },
   "notFound": {
     "title": "Pagina non trovata",
     "back": "Torna alla home"
