@@ -1,5 +1,5 @@
 import { existsSync } from 'node:fs';
-import { readdir } from 'node:fs/promises';
+import { mkdir, readdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
@@ -32,6 +32,7 @@ import { createDatabase, runMigrations } from '../db/client.ts';
 import * as schema from '../db/schema.ts';
 import { board, boardDoc, comment, instanceBackup, instanceSetting } from '../db/schema.ts';
 import { createStorage } from '../storage.ts';
+import { readZip, writeZip } from '../transfers/zip.ts';
 import { freshDatabase, testDeps } from '../test-deps.ts';
 import { createApp } from './app.ts';
 
@@ -589,6 +590,53 @@ describe.skipIf(!url)('instance backups (needs DATABASE_URL)', () => {
       expect(indexed?.indexedAt).toBeNull();
     } finally {
       await restoredClient.end({ timeout: 1 });
+    }
+  });
+
+  it('fails a restore whose archive lacks a table entry, rolling back with no COPY left open', async () => {
+    const [row] = await db
+      .select()
+      .from(instanceBackup)
+      .where(and(eq(instanceBackup.status, 'ready'), isNull(instanceBackup.removedAt)));
+    const file = join(backupsDir(deps.root), row?.fileName as string);
+    // The same archive without the entry of its last table: the manifest still lists it, so the
+    // restore opens the COPY FROM for that table, then fails to open the entry.
+    const source = await readZip(file, {
+      entries: 10_000,
+      totalBytes: Number.MAX_SAFE_INTEGER,
+      compressionRatio: 10_000,
+    });
+    const broken = join(deps.root, 'tmp', 'missing-entry.zip');
+    try {
+      const manifest = JSON.parse((await source.buffer('manifest.json', 64 * 1024 * 1024)).toString());
+      const dropped = manifest.tables.at(-1).entry as string;
+      await mkdir(join(deps.root, 'tmp'), { recursive: true });
+      const writer = writeZip(broken);
+      for (const name of source.names())
+        if (name !== dropped) await writer.addBuffer(name, await source.buffer(name, 1024 ** 3));
+      await writer.close();
+    } finally {
+      source.close();
+    }
+
+    const fresh = await freshDatabase(config.DATABASE_URL, 'restore_missing');
+    // Before the fix the open COPY made the ROLLBACK hang or fail with COPY_IN_PROGRESS.
+    await expect(
+      restoreBackup({
+        file: broken,
+        databaseUrl: fresh,
+        migrationsFolder: migrations,
+        storage: deps.storage,
+        tmpDir: join(deps.root, 'tmp'),
+        log,
+      }),
+    ).rejects.toMatchObject({ reason: 'invalid_archive', message: /Missing entry/ });
+    const { sql: after } = createDatabase(fresh, 1);
+    try {
+      const [people] = await after<{ n: number }[]>`select count(*)::int as n from "user"`;
+      expect(people?.n).toBe(0);
+    } finally {
+      await after.end({ timeout: 1 });
     }
   });
 });
