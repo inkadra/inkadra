@@ -16,6 +16,7 @@ import {
   BUCKET_PREFIX,
   backupCron,
   backupsDir,
+  copyReadable,
   nextBackupAt,
   reapStaleBackups,
   restoreBackup,
@@ -269,6 +270,34 @@ describe.skipIf(!url)('instance backups (needs DATABASE_URL)', () => {
       await killer;
       await admin.end({ timeout: 1 });
       await client.end({ timeout: 1 });
+    }
+  }, 60_000);
+
+  it('rejects a COPY cancelled right as it starts without an unhandled error', async () => {
+    const copy = postgres(config.DATABASE_URL, { max: 1, onnotice: () => {} });
+    const unhandled: unknown[] = [];
+    const onUncaught = (err: unknown) => unhandled.push(err);
+    process.on('uncaughtException', onUncaught);
+    process.on('unhandledRejection', onUncaught);
+    try {
+      for (let i = 0; i < 50; i += 1) {
+        // Cancelling in the first row sends ErrorResponse (57014) in the same socket read as
+        // CopyOutResponse, so postgres.js destroys the stream on nextTick, before await.
+        const run = async () => {
+          const stream = await copyReadable(
+            copy.unsafe(
+              'copy (select pg_cancel_backend(pg_backend_pid()), g from generate_series(1, 10) g) to stdout',
+            ),
+          );
+          for await (const _ of stream);
+        };
+        await expect(run()).rejects.toMatchObject({ code: '57014' });
+      }
+      expect(unhandled).toEqual([]);
+    } finally {
+      process.off('uncaughtException', onUncaught);
+      process.off('unhandledRejection', onUncaught);
+      await copy.end({ timeout: 1 });
     }
   }, 60_000);
 

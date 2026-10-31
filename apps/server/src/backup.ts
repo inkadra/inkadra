@@ -12,7 +12,7 @@ import {
   writeFile,
 } from 'node:fs/promises';
 import { join } from 'node:path';
-import { type Readable, Transform } from 'node:stream';
+import { type Readable, Transform, type Writable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import {
   BACKUP_FORMAT,
@@ -414,6 +414,58 @@ export function resumeWhenDone(source: Readable): Readable {
   return source;
 }
 
+/**
+ * When a COPY fails right as it starts (for example `57014` on cancel in the same socket
+ * read as `CopyOutResponse`), postgres.js destroys the stream on `nextTick`, before `await`
+ * resumes on the microtask queue. Attaching the listener in `query.resolve` catches the
+ * error as soon as the stream object exists.
+ */
+function guardCopyStream<T extends Readable | Writable>(
+  query: { resolve?: (stream: T) => void },
+  open: () => Promise<T>,
+  prepare?: (stream: T) => void,
+): Promise<T> {
+  let earlyError: unknown;
+  let attached = false;
+  const setup = (stream: T) => {
+    if (attached || !stream || typeof stream.on !== 'function') return;
+    attached = true;
+    stream.on('error', (err) => {
+      earlyError ??= err;
+    });
+    prepare?.(stream);
+  };
+  const resolve = query.resolve;
+  if (typeof resolve === 'function') {
+    query.resolve = function (stream: T) {
+      setup(stream);
+      return resolve.call(this, stream);
+    };
+  }
+  return open().then((stream) => {
+    setup(stream);
+    const err = earlyError ?? stream.errored;
+    if (err) throw err;
+    return stream;
+  });
+}
+
+export function copyReadable(
+  query: Pick<postgres.PendingQuery<postgres.Row[]>, 'readable'>,
+): Promise<Readable> {
+  return guardCopyStream(
+    query as { resolve?: (s: Readable) => void },
+    () => query.readable(),
+    resumeWhenDone,
+  );
+}
+
+export function copyWritable(
+  query: Pick<postgres.PendingQuery<postgres.Row[]>, 'writable'>,
+): Promise<Writable> {
+  return guardCopyStream(query as { resolve?: (s: Writable) => void }, () => query.writable());
+}
+
 async function dumpDatabase(
   deps: BackupDeps,
   path: string,
@@ -463,10 +515,10 @@ async function dumpDatabase(
           moved();
           const counter = lineCounter(moved);
           const ordered = PARENTS_FIRST[name];
-          const source = resumeWhenDone(
+          const source = await copyReadable(
             ordered
-              ? await tx.unsafe(`copy (${ordered(columns)}) to stdout`).readable()
-              : await tx`copy ${tx(name)} (${tx(columns)}) to stdout`.readable(),
+              ? tx.unsafe(`copy (${ordered(columns)}) to stdout`)
+              : tx`copy ${tx(name)} (${tx(columns)}) to stdout`,
           );
           // piped: a COPY that fails mid-way must fail the backup, never leave it waiting.
           await zip.addStream(entry, piped(source, counter.stream));
@@ -654,9 +706,15 @@ export async function restoreBackup(opts: {
       await target.begin(async (tx) => {
         for (const table of manifest.tables) {
           const name = table.name;
-          const sink =
-            await tx`copy ${tx(table.name)} (${tx(table.columns)}) from stdin`.writable();
-          await pipeline(await zip.stream(table.entry, Number.MAX_SAFE_INTEGER), sink);
+          const sink = await copyWritable(
+            tx`copy ${tx(table.name)} (${tx(table.columns)}) from stdin`,
+          );
+          const entry = await zip.stream(table.entry, Number.MAX_SAFE_INTEGER);
+          if (sink.errored) {
+            entry.destroy();
+            throw sink.errored;
+          }
+          await pipeline(entry, sink);
           rows += table.rows;
           opts.log.info({ table: name, rows: table.rows }, 'table restored');
         }
