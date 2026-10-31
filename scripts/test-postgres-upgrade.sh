@@ -156,7 +156,7 @@ fi
 
 now up -d --wait --wait-timeout 180
 pass "app starts on PostgreSQL 18"
-[[ $(migrations) -ge $migrations_before ]] && pass "migrations applied ($migrations_before before, $(migrations) now)" ||
+[[ $(migrations) -ge $migrations_before ]] && pass "all migrations applied ($migrations_before before, $(migrations) now)" ||
   fail "migrations: $migrations_before before, $(migrations) now"
 [[ $(c "$url/api/v1/health") == *'"status":"ok"'* ]] && pass "health ok" || fail "health"
 

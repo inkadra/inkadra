@@ -31,6 +31,203 @@ taken before the upgrade instead, with that older version
 (see [Restoring](README.md#restoring)). A backup restores on the same or any newer version, so it
 also carries data across an upgrade.
 
+## Upgrading to PostgreSQL 18
+
+`compose.yaml` now runs PostgreSQL 18 instead of 16. A PostgreSQL server cannot read the data
+folder of another major version, and the official image of 18 keeps its data in a different
+place (`/var/lib/postgresql/18/docker`, the volume being `/var/lib/postgresql`). So an existing
+install has to move its database once. Nothing else changes: Inkadra runs on PostgreSQL 16 and
+newer, and **16 stays supported for one more release** (see
+[Staying on PostgreSQL 16](#staying-on-postgresql-16-for-now)).
+
+Do the steps in this order. Do **not** just replace `compose.yaml` and run `docker compose up -d`:
+the new file uses a new volume, `postgres18-data`, so PostgreSQL 18 would start with an empty
+database while your data waits in `postgres-data`. (Pointing the new file at a folder or volume
+that holds a PostgreSQL 16 cluster is refused, with a message that sends you here.) It takes a
+few minutes of downtime for a small instance; the dump and restore grow with the size of the
+database, and you need room for the dump and for the second copy of the database.
+
+There are two ways. Both are run by CI on every change (`scripts/test-postgres-upgrade.sh`,
+from seeded data on 16 to the app running on 18), so the commands below are the tested ones.
+
+| Way                                      | Good for                                                                    |
+| ---------------------------------------- | --------------------------------------------------------------------------- |
+| [Dump and restore](#dump-and-restore)    | The default. A new volume: the old one stays as it was, so going back is easy |
+| [In place](#in-place-with-pgautoupgrade) | A large database, where a dump takes too long. Changes the old volume         |
+
+You need Docker Compose 2.24 or newer for the files in `deploy/` (`docker compose version`).
+Check which PostgreSQL you run now with
+`docker compose exec postgres postgres --version`. The commands assume the project name
+`inkadra` (the folder name, unless you set `-p`): replace `inkadra_postgres-data` with
+`<project>_postgres-data` otherwise. `docker volume ls` shows it.
+
+### Back up first
+
+Whichever way you take, start with the backups, from the `compose.yaml` you run today:
+
+```sh
+docker compose exec -u node inkadra node /app/dist/main.js backup create
+docker compose cp inkadra:/data/backups ./inkadra-backups     # keep a copy off the volume
+```
+
+The first is the Inkadra backup (see [Backups](README.md#backups)): it restores into an empty
+database of any PostgreSQL version, so it is also your way back. Files are not part of it: keep
+your usual copy of the data volume or the bucket. Check that `./inkadra-backups` holds a recent
+`inkadra-backup-….zip`.
+
+### Dump and restore
+
+1. **Stop Inkadra, so nothing writes, and dump the database** with the server that holds it.
+   Check the end of the file: it must say the dump is complete.
+
+   ```sh
+   docker compose stop inkadra
+   docker compose exec -T postgres pg_dump -U inkadra --no-owner inkadra > inkadra.sql
+   tail -n 5 inkadra.sql | grep "dump complete"
+   ```
+
+   The bundled database holds only `inkadra`. If you added other databases or roles to it, use
+   `pg_dumpall -U inkadra > all.sql` and restore that instead, into a new cluster, expecting
+   "already exists" messages for the `inkadra` role and database.
+
+2. **Stop the old database.** The volumes stay: never add `-v`.
+
+   ```sh
+   docker compose down
+   ```
+
+3. **Take the new files.** Replace `compose.yaml` and the files of `deploy/` you use with the
+   ones of the release, and merge new settings of `.env.example` into `.env`. With a host folder
+   in `POSTGRES_DATA`, pick a **new, empty folder** for PostgreSQL 18, owned by uid 70
+   (see [Storage](storage.md)), and keep the old one:
+
+   ```sh
+   mkdir -p /srv/inkadra/postgres18
+   chown 70:70 /srv/inkadra/postgres18
+   # .env: POSTGRES_DATA=/srv/inkadra/postgres18
+   ```
+
+   With the default volumes there is nothing to set: PostgreSQL 18 uses the new volume
+   `postgres18-data`.
+
+4. **Start PostgreSQL 18 alone and load the dump.**
+
+   ```sh
+   docker compose up -d --wait postgres
+   docker compose exec postgres postgres --version         # 18.x
+   docker compose exec -T postgres psql -U inkadra -d inkadra -v ON_ERROR_STOP=1 --single-transaction -q < inkadra.sql
+   ```
+
+   The load is one transaction: if it fails, nothing is half loaded. Fix the cause and run it
+   again (if the database already has tables, empty it first: `docker compose exec postgres
+   dropdb -U inkadra inkadra && docker compose exec postgres createdb -U inkadra inkadra`).
+
+5. **Start everything.** Pull the new image first if you are also moving to a newer Inkadra:
+   its migrations run on start, before it accepts requests.
+
+   ```sh
+   docker compose up -d
+   docker compose ps          # inkadra, postgres and valkey "healthy"
+   ```
+
+   Sign in and look at a project. Statistics for the planner are rebuilt by autovacuum within a
+   few minutes; on a large database run `docker compose exec postgres vacuumdb -U inkadra
+   --analyze-only inkadra` to hurry it.
+
+6. **Keep the old data for a while.** The volume `postgres-data` (or the old folder) is the way
+   back, untouched. Delete it once you are sure, after a week of normal use, for example:
+   `docker volume rm inkadra_postgres-data`.
+
+### In place with pgautoupgrade
+
+[pgautoupgrade](https://github.com/pgautoupgrade/docker-pgautoupgrade) upgrades a data folder
+with `pg_upgrade`, which is faster than a dump on large databases. It **changes the old volume**,
+and a half-done upgrade cannot be undone from inside it, so copy the volume first. The data
+stays in the layout of 16 (`/var/lib/postgresql/data`): you keep adding
+`deploy/compose.postgres-old-layout.yaml`, with `POSTGRES_MAJOR=18`, and can move to the new
+layout later with a dump and restore.
+
+1. **Stop everything and copy the volume.** For a host folder, copy the folder instead
+   (`cp -a`, keeping owners).
+
+   ```sh
+   docker compose stop inkadra
+   docker compose down
+   docker run --rm -v inkadra_postgres-data:/from -v "$PWD":/to alpine \
+     tar czf /to/postgres-data-16.tgz -C /from .
+   ```
+
+2. **Take the new `compose.yaml` and `deploy/` files** as in step 3 above, but leave
+   `POSTGRES_DATA` as it was, and tell Compose to use the old-layout file every time:
+
+   ```sh
+   cat >> .env <<'ENV'
+   COMPOSE_FILE=compose.yaml:deploy/compose.postgres-old-layout.yaml
+   POSTGRES_MAJOR=18
+   ENV
+   ```
+
+   Add your other files to `COMPOSE_FILE` too (separated by `:`), for example
+   `deploy/compose.s3.yaml`.
+
+3. **Upgrade the volume.** The password is not used, the database exists already; the image
+   only insists on one. The container exits when it is done. For a host folder, give it as
+   `-v /srv/inkadra/postgres:/var/lib/postgresql/data`.
+
+   ```sh
+   docker run --rm -e POSTGRES_USER=inkadra -e POSTGRES_DB=inkadra -e POSTGRES_PASSWORD=unused \
+     -e PGDATA=/var/lib/postgresql/data -e PGAUTO_ONESHOT=yes \
+     -v inkadra_postgres-data:/var/lib/postgresql/data pgautoupgrade/pgautoupgrade:18-alpine
+   ```
+
+4. **Start.**
+
+   ```sh
+   docker compose up -d --wait postgres
+   docker compose exec postgres postgres --version          # 18.x
+   docker compose up -d
+   ```
+
+### Staying on PostgreSQL 16 for now
+
+Keep the volume you have and add the old-layout file to every command (or to `COMPOSE_FILE` in
+`.env`, as above): it runs `postgres:16-alpine` on `postgres-data` (or your `POSTGRES_DATA`).
+
+```sh
+docker compose -f compose.yaml -f deploy/compose.postgres-old-layout.yaml up -d
+```
+
+PostgreSQL 16 stays supported, and CI keeps running the server tests against it, for one more
+release. After that the file is removed: move to 18 before then.
+
+### Going back
+
+Before you delete the old volume you can return to PostgreSQL 16 in two ways.
+
+**To the database as it was before the upgrade** (after a dump and restore; whatever was
+written on 18 since is lost):
+
+```sh
+docker compose down
+docker compose -f compose.yaml -f deploy/compose.postgres-old-layout.yaml up -d
+```
+
+**With what was written since**, from an Inkadra backup made on 18, into a new, empty database
+of 16:
+
+```sh
+docker compose exec -u node inkadra node /app/dist/main.js backup create
+docker compose down
+mkdir -p /srv/inkadra/postgres16-new && chown 70:70 /srv/inkadra/postgres16-new
+export POSTGRES_DATA=/srv/inkadra/postgres16-new      # instead of the line in .env
+docker compose -f compose.yaml -f deploy/compose.postgres-old-layout.yaml up -d --wait postgres
+docker compose -f compose.yaml -f deploy/compose.postgres-old-layout.yaml run --rm inkadra backup restore /data/backups/inkadra-backup-<the newest>.zip
+docker compose -f compose.yaml -f deploy/compose.postgres-old-layout.yaml up -d
+```
+
+After an in-place upgrade the second way works the same; the first is the copy of the volume you
+made: stop everything, empty the volume and unpack `postgres-data-16.tgz` into it.
+
 ## Upgrading to 0.5
 
 - Nightly backups are on by default at 03:00 server time, kept for 7 days, in `/data/backups`.
