@@ -430,6 +430,41 @@ describe('Animatic', () => {
     expect(volume?.disabled).toBe(true);
   });
 
+  it('mounts the sound track only once its file is ready', async () => {
+    const { doc, store } = board();
+    const list = frames(doc, [2000, 2000]);
+    const assetId = '0b9e6c52-7d11-4f0a-9a3e-5d0c7f6a2b44';
+    const track = (status: 'processing' | 'ready') => ({
+      id: assetId,
+      projectId: 'p',
+      kind: 'audio' as const,
+      mime: 'audio/mpeg',
+      filename: 'voce.mp3',
+      size: 10,
+      sha256: null,
+      width: null,
+      height: null,
+      durationMs: 4000,
+      animated: false,
+      status,
+      url: `/api/v1/assets/${assetId}/file`,
+      variants: [],
+      exif: null,
+      palette: null,
+      sourceUrl: null,
+      createdAt: new Date(0).toISOString(),
+    });
+    primeAsset(track('processing'));
+    setAnimaticAudio(doc, { assetId, volume: 1 });
+    const host = await mount(
+      <Animatic store={store} frames={list} labels={new Map()} boardAspect="16:9" readOnly />,
+    );
+    expect(host.textContent).toContain('voce.mp3');
+    expect(host.querySelector('audio')).toBeNull();
+    await act(async () => primeAsset(track('ready')));
+    expect(host.querySelector('audio')?.getAttribute('src')).toBe(`/api/v1/assets/${assetId}/file`);
+  });
+
   it('keeps playing at the new speed when the speed changes', async () => {
     const { doc, store } = board();
     const list = frames(doc, [5000]);

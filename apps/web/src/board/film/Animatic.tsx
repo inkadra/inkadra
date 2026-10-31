@@ -482,7 +482,9 @@ function SoundTrack({
   const [ownVolume, setOwnVolume] = useState<number | null>(null);
   const volume = ownVolume ?? audio?.volume ?? 1;
   const [uploading, setUploading] = useState(false);
-  const src = file?.url;
+  // A file still being uploaded or processed answers 404: loading it then leaves the element
+  // in error for good. The element mounts once the asset is ready.
+  const src = file?.status === 'ready' ? file.url : undefined;
 
   useEffect(() => {
     const el = element.current;
