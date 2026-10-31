@@ -11,6 +11,8 @@ const exec = promisify(execFile);
 export interface MediaTools {
   ffmpeg: string | null;
   ffprobe: string | null;
+  /** Reads the JPEG previews and EXIF of camera RAW files. */
+  exiftool: string | null;
   /** `prlimit` (util-linux), to cap the memory of the others; null where there is none. */
   prlimit: string | null;
 }
@@ -34,12 +36,13 @@ async function find(variable: string, name: string, args: string[]) {
 
 export function mediaTools(): Promise<MediaTools> {
   tools ??= (async () => {
-    const [ffmpeg, ffprobe, prlimit] = await Promise.all([
+    const [ffmpeg, ffprobe, exiftool, prlimit] = await Promise.all([
       find('FFMPEG_PATH', 'ffmpeg', ['-version']),
       find('FFPROBE_PATH', 'ffprobe', ['-version']),
+      find('EXIFTOOL_PATH', 'exiftool', ['-ver']),
       process.platform === 'linux' ? find('PRLIMIT_PATH', 'prlimit', ['--version']) : null,
     ]);
-    return { ffmpeg, ffprobe, prlimit };
+    return { ffmpeg, ffprobe, exiftool, prlimit };
   })();
   return tools;
 }

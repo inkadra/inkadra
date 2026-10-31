@@ -89,7 +89,7 @@ export function registerApiRoutes(app: FastifyInstance, deps: Deps) {
         const tools = await mediaTools();
         return {
           videoPosters: tools.ffmpeg !== null,
-          rawPreviews: false,
+          rawPreviews: config.RAW_PREVIEWS && tools.exiftool !== null,
           videoProxies: config.VIDEO_PROXIES && tools.ffmpeg !== null && tools.ffprobe !== null,
         };
       })(),

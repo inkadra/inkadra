@@ -2301,7 +2301,7 @@
             "items": {
               "$ref": "#/components/schemas/AssetVariant"
             },
-            "description": "WebP thumbnails, smallest first, empty until `status` is `ready`. Sizes wider than the original are skipped. For videos they show a poster frame, when the server has ffmpeg (Instance.media.videoPosters); otherwise videos have none."
+            "description": "WebP thumbnails, smallest first, empty until `status` is `ready`. Sizes wider than the original are skipped. For videos they show a poster frame, when the server has ffmpeg (Instance.media.videoPosters); otherwise videos have none. Camera RAW files (`mime` in RAW_IMAGE_TYPES) get them from the JPEG preview the camera embedded, when the server has exiftool (Instance.media.rawPreviews); none when there is no preview."
           },
           "exif": {
             "type": [

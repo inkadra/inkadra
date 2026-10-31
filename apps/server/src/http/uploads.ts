@@ -10,6 +10,7 @@ import type { Auth } from '../auth.ts';
 import type { Database } from '../db/client.ts';
 import { asset } from '../db/schema.ts';
 import type { Jobs } from '../jobs.ts';
+import { rawTypeOf } from '../media/raw.ts';
 import { originalKey, type Storage } from '../storage.ts';
 import { requireActor } from './auth-routes.ts';
 import { HttpError, sendError } from './errors.ts';
@@ -30,9 +31,12 @@ const context = new AsyncLocalStorage<{ actor: Actor; assetId: string }>();
 
 const HEIC = /\.(heic|heif)$/i;
 
-/** Asset kind from the declared type, falling back on the extension for HEIC from iPhones. */
+/**
+ * Asset kind from the declared type, falling back on the extension for HEIC from iPhones and
+ * camera RAW files, which browsers often send without a type.
+ */
 export function kindOf(mime: string, filename: string): AssetKind {
-  if (mime.startsWith('image/') || HEIC.test(filename)) return 'image';
+  if (mime.startsWith('image/') || HEIC.test(filename) || rawTypeOf(filename)) return 'image';
   if (mime.startsWith('video/')) return 'video';
   if (mime.startsWith('audio/')) return 'audio';
   return 'file';
@@ -44,7 +48,7 @@ export function cleanMime(mime: string, filename: string): string {
   if (/^[a-z]+\/[a-z0-9.+-]+$/.test(base) && base !== 'application/octet-stream') return base;
   if (HEIC.test(filename))
     return filename.toLowerCase().endsWith('.heif') ? 'image/heif' : 'image/heic';
-  return 'application/octet-stream';
+  return rawTypeOf(filename) ?? 'application/octet-stream';
 }
 
 function tusError(status: number, message: string) {

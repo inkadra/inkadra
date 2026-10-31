@@ -62,6 +62,11 @@ const Env = z.object({
     .default('true')
     .transform((v) => v === 'true'),
   /**
+   * Thumbnails of camera RAW files (CR2, CR3, NEF, ARW, DNG, RAF, ORF, RW2) from the JPEG
+   * preview the camera embedded, read with exiftool where the worker has it (decision 0048).
+   */
+  RAW_PREVIEWS: bool('true'),
+  /**
    * Playable H.264/AAC MP4 copies of videos browsers cannot play (ProRes, MKV, AVI, MXF, HEVC),
    * made by the worker when it has ffmpeg (decision 0048). `false` saves the storage they take.
    */

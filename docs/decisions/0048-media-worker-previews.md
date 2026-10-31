@@ -1,4 +1,4 @@
-# 0048 · Media worker previews: playable video copies
+# 0048 · Media worker previews: playable video copies, camera RAW
 
 Proposed, 2026-10. Extends files and media (decision 0009) and the `-media` image (decision
 0010). Part of the file card family (#325); the cards themselves come later, after a mockup.
@@ -40,6 +40,23 @@ what the browser happens to decode, and a card that does not play is a dead end.
   when it is ready; the card design waits for the mockup of #325. Guests play originals for
   now.
 
+**Camera RAW.**
+- CR2, CR3, NEF, ARW, DNG, RAF, ORF and RW2 are recognised by their first bytes; NEF, ARW and
+  DNG are plain TIFF inside, so they also need their extension or declared type, and a TIFF
+  photo is never taken for one. Uploads with a vague type get the RAW type from the extension
+  and the `image` kind.
+- The worker never develops a RAW. exiftool (`libimage-exiftool-perl` in the `-media` image)
+  extracts the embedded JPEGs (`JpgFromRaw`, `PreviewImage`, `OtherImage`) and the largest
+  becomes the source of the usual WebP thumbnails and palette, turned by the EXIF orientation
+  of the RAW (the preview is stored as the sensor saw it). EXIF comes from exiftool with the
+  same fields as photos and the same rule: no location. exiftool runs with a 2 GiB address
+  space, 30 seconds, and no environment of the server.
+- No exiftool, `RAW_PREVIEWS=false`, or no usable preview: the asset is ready without
+  thumbnails, with its RAW `mime`, and keeps the kind it was uploaded with. The original is
+  downloaded as it is. `Instance.media.rawPreviews` says whether the instance makes them;
+  `RAW_IMAGE_TYPES` in `@inkadra/shared` lists the types for the cards to come.
+
 **Consequences.** A ProRes card plays everywhere once its copy is made, at the cost of CPU in
 the worker and roughly 40 MB per minute of storage at the default bitrate. Instances on the
-standard image have no ffmpeg: their videos keep `proxy: null` or `skipped`, as before.
+standard image have no ffmpeg: their videos keep `proxy: null` or `skipped`, as before, and
+their RAW files stay file cards.

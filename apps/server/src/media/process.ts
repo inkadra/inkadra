@@ -11,6 +11,7 @@ import { animatedVariantKey, readAll, type Storage, variantKey } from '../storag
 import { readExif } from './exif.ts';
 import { decodeHeic, sniffImage } from './heic.ts';
 import { palette } from './palette.ts';
+import { extractRawPreview, orientedPixels, readRawExif, sniffRaw } from './raw.ts';
 import {
   DEFAULT_PROXY_SETTINGS,
   extractPoster,
@@ -27,6 +28,8 @@ export interface MediaDeps {
   storage: Storage;
   tmpDir: string;
   heic: boolean;
+  /** Camera RAW thumbnails from their embedded JPEG (RAW_PREVIEWS); on if unset. */
+  raw?: boolean;
   /** Playable copies of videos browsers cannot play (decision 0048); on with defaults if unset. */
   proxies?: ProxySettings;
   /**
@@ -121,7 +124,8 @@ async function sha256(storage: Storage, key: string) {
  * type, dimensions, EXIF without location, palette and WebP thumbnails without metadata; for
  * videos, when ffmpeg is installed, the duration, codecs and thumbnails of a poster frame,
  * and the playable copy queued when browsers cannot play the original (decision 0048).
- * Animated GIFs and animated WebPs also get moving thumbnails, when they fit `caps`.
+ * Animated GIFs and animated WebPs also get moving thumbnails, when they fit `caps`. Camera
+ * RAW files get the thumbnails of their embedded JPEG preview, with exiftool.
  * Safe to run twice: variants are overwritten.
  */
 export async function processAsset(deps: MediaDeps, assetId: string, caps = ANIMATED_CAPS) {
@@ -132,6 +136,9 @@ export async function processAsset(deps: MediaDeps, assetId: string, caps = ANIM
 
   const digest = await sha256(storage, row.storageKey);
   const head = await readAll(await storage.read(row.storageKey, { start: 0, end: 255 }));
+  // Most RAW formats are TIFF inside: they are told apart before the photos.
+  const rawType = sniffRaw(head, row.filename, row.mime);
+  if (rawType) return processRaw(deps, row, digest, rawType);
   const sniffed = sniffImage(head);
   // SVG is rasterised only when it was declared as such: it cannot be sniffed safely.
   const svg = !sniffed && row.kind === 'image' && row.mime === 'image/svg+xml';
@@ -231,6 +238,59 @@ export async function processAsset(deps: MediaDeps, assetId: string, caps = ANIM
   } finally {
     await copy.done();
     await rm(posterPath, { force: true });
+  }
+}
+
+/**
+ * A camera RAW file: thumbnails from the largest JPEG preview the camera embedded, turned by
+ * the orientation of the RAW, and its EXIF, read by exiftool. The RAW itself is never
+ * developed. Without exiftool, or without a preview, the file is ready with no thumbnails and
+ * keeps its kind: a file card with its RAW type.
+ */
+async function processRaw(
+  deps: MediaDeps,
+  row: typeof asset.$inferSelect,
+  digest: string,
+  mime: string,
+) {
+  const { db, storage } = deps;
+  const plain = { sha256: digest, mime, status: 'ready' as const, animated: false };
+  const { exiftool } = await mediaTools();
+  if (deps.raw === false || !exiftool) {
+    await save(db, row.id, [], plain);
+    return { variants: 0 };
+  }
+  await mkdir(deps.tmpDir, { recursive: true });
+  const copy = await storage.localCopy(row.storageKey, join(deps.tmpDir, row.id));
+  try {
+    const [preview, meta] = await Promise.all([
+      extractRawPreview(exiftool, copy.path, join(deps.tmpDir, `${row.id}.previews`)),
+      readRawExif(exiftool, copy.path),
+    ]);
+    const pixels = preview
+      ? await orientedPixels(preview, meta.orientation).catch((err) => {
+          // A broken preview is not a broken upload: the RAW is kept, without thumbnails.
+          deps.log?.warn({ err, assetId: row.id }, 'RAW preview does not decode');
+          return null;
+        })
+      : null;
+    if (!pixels) {
+      await save(db, row.id, [], { ...plain, exif: meta.exif });
+      return { variants: 0 };
+    }
+    const { data, ...raw } = pixels;
+    const result = await thumbnails(deps, row.id, sharp(data, { raw }));
+    await save(db, row.id, result.variants, {
+      ...plain,
+      kind: 'image',
+      width: result.width,
+      height: result.height,
+      exif: meta.exif,
+      palette: result.palette,
+    });
+    return { variants: result.variants.length };
+  } finally {
+    await copy.done();
   }
 }
 

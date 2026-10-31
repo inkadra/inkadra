@@ -334,6 +334,65 @@ describe.skipIf(!url)('processAsset (needs DATABASE_URL)', () => {
     expect(variants).toHaveLength(0);
   });
 
+  describe('camera RAW', async () => {
+    const tools = await mediaTools();
+
+    it.skipIf(!tools.exiftool)('makes upright thumbnails from the embedded preview', async () => {
+      const body = fixture('orientation-6.dng');
+      const id = await upload(body, 'application/octet-stream', 'IMG_0006.DNG');
+      await processAsset(deps, id);
+      const { row, variants } = await load(id);
+      expect(row).toMatchObject({
+        status: 'ready',
+        kind: 'image',
+        mime: 'image/x-adobe-dng',
+        // The 320×200 preview, turned a quarter as the RAW says.
+        width: 200,
+        height: 320,
+      });
+      expect(row?.exif).toMatchObject({
+        Make: 'Inkadra',
+        Model: 'Test DNG',
+        FNumber: 2.8,
+        ExposureTime: 0.004,
+        ISO: 400,
+        FocalLength: 50,
+        Orientation: 6,
+      });
+      expect(variants.map((v) => [v.size, v.width, v.height])).toEqual([['256', 200, 320]]);
+      // Red was on the left of the sensor: on the top once upright.
+      const thumb = await sharp(await readAll(await storage.read(variants[0]?.storageKey ?? '')))
+        .raw()
+        .toBuffer({ resolveWithObject: true });
+      const px = (y: number) => {
+        const at = y * thumb.info.width * thumb.info.channels;
+        return [...thumb.data.subarray(at, at + 3)];
+      };
+      expect(px(10)[0]).toBeGreaterThan(200);
+      expect(px(310)[2]).toBeGreaterThan(200);
+      // The RAW itself is never changed.
+      expect(await readAll(await storage.read(originalKey(id)))).toEqual(body);
+    });
+
+    it('keeps a RAW without a preview as a file of its RAW type', async () => {
+      // TIFF magic and nothing else: no IFD, no preview.
+      const body = Buffer.from([0x49, 0x49, 0x2a, 0x00, 0, 0, 0, 0, ...new Array(64).fill(0)]);
+      const id = await upload(body, 'application/octet-stream', 'DSC_0001.NEF');
+      await processAsset(deps, id);
+      const { row, variants } = await load(id);
+      expect(row).toMatchObject({ status: 'ready', mime: 'image/x-nikon-nef', kind: 'file' });
+      expect(variants).toHaveLength(0);
+    });
+
+    it.skipIf(!tools.exiftool)('makes no thumbnails when RAW previews are off', async () => {
+      const id = await upload(fixture('orientation-6.dng'), 'image/x-adobe-dng', 'off.dng');
+      await processAsset({ ...deps, raw: false }, id);
+      const { row, variants } = await load(id);
+      expect(row).toMatchObject({ status: 'ready', mime: 'image/x-adobe-dng' });
+      expect(variants).toHaveLength(0);
+    });
+  });
+
   it('only checksums other files', async () => {
     const id = await upload(
       Buffer.from('%PDF-1.7 not really'),

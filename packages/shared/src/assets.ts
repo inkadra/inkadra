@@ -6,6 +6,26 @@ export type AssetKind = z.infer<typeof AssetKind>;
 
 export const AssetStatus = z.enum(['pending', 'processing', 'ready', 'failed']);
 
+/**
+ * Camera RAW formats, by file extension. The worker makes the thumbnails of these from the
+ * JPEG preview the camera embedded (decision 0048); the original is kept and downloaded as
+ * it is.
+ */
+export const RAW_IMAGE_TYPES = {
+  cr2: 'image/x-canon-cr2',
+  cr3: 'image/x-canon-cr3',
+  nef: 'image/x-nikon-nef',
+  arw: 'image/x-sony-arw',
+  dng: 'image/x-adobe-dng',
+  raf: 'image/x-fuji-raf',
+  orf: 'image/x-olympus-orf',
+  rw2: 'image/x-panasonic-rw2',
+} as const;
+
+/** True for the type of a camera RAW file (`Asset.mime`). */
+export const isRawImageType = (mime: string) =>
+  (Object.values(RAW_IMAGE_TYPES) as string[]).includes(mime);
+
 /** Thumbnail widths produced by the worker; every variant is WebP. */
 export const ThumbnailSize = z.enum(['256', '512', '1024', '2048']);
 export type ThumbnailSize = z.infer<typeof ThumbnailSize>;
@@ -85,7 +105,10 @@ export const Asset = z
       description:
         'WebP thumbnails, smallest first, empty until `status` is `ready`. Sizes wider than ' +
         'the original are skipped. For videos they show a poster frame, when the server has ' +
-        'ffmpeg (Instance.media.videoPosters); otherwise videos have none.',
+        'ffmpeg (Instance.media.videoPosters); otherwise videos have none. Camera RAW files ' +
+        '(`mime` in RAW_IMAGE_TYPES) get them from the JPEG preview the camera embedded, ' +
+        'when the server has exiftool (Instance.media.rawPreviews); none when there is no ' +
+        'preview.',
     }),
     exif: z.record(z.string(), z.unknown()).nullable().openapi({
       description: 'Camera and exposure data. Location (GPS) fields are never stored.',

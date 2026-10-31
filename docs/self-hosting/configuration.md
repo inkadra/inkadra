@@ -45,6 +45,7 @@ media tools and ignores them. The policy is in [decision 0048](../decisions/0048
 
 | Variable                      | Default | Meaning                                                                                                               |
 | ----------------------------- | ------- | --------------------------------------------------------------------------------------------------------------------- |
+| `RAW_PREVIEWS`                | `true`  | Thumbnails of camera RAW files (CR2, CR3, NEF, ARW, DNG, RAF, ORF, RW2) from the JPEG preview the camera embedded     |
 | `VIDEO_PROXIES`               | `true`  | Make a playable H.264/AAC MP4 of videos browsers cannot play (ProRes, MKV, AVI, MXF, HEVC). `false` saves the storage |
 | `VIDEO_PROXY_MAX_DURATION`    | `7200`  | Longest video, in seconds, that gets a playable copy; `0` for no limit                                                |
 | `VIDEO_PROXY_MAX_SOURCE_SIZE` | `20GB`  | Largest video that gets a playable copy, as bytes or with a unit; `0` for no limit                                    |

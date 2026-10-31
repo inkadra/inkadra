@@ -30,13 +30,16 @@ LABEL org.opencontainers.image.title="Inkadra" \
 # Security updates published since the base image was built; tini reaps child processes (the
 # worker will run ffmpeg) and forwards signals. npm, corepack and yarn are not needed at
 # runtime: removing them shrinks the image and the list of packages a scanner reports.
-# MEDIA=true builds the `-media` variant: ffmpeg gives videos a poster and a duration. It adds
-# a few hundred MB, so the default image goes without (see docs/self-hosting).
+# MEDIA=true builds the `-media` variant (decisions 0010 and 0048): ffmpeg gives videos a poster,
+# a duration and a playable copy; exiftool reads the previews embedded in camera RAW files. It
+# adds a few hundred MB, so the default image goes without (see docs/self-hosting).
 ARG MEDIA=false
 RUN apt-get update \
  && apt-get upgrade -y --no-install-recommends \
  && apt-get install -y --no-install-recommends tini \
- && if [ "$MEDIA" = "true" ]; then apt-get install -y --no-install-recommends ffmpeg; fi \
+ && if [ "$MEDIA" = "true" ]; then \
+      apt-get install -y --no-install-recommends ffmpeg libimage-exiftool-perl; \
+    fi \
  && rm -rf /var/lib/apt/lists/* \
  && rm -rf /usr/local/lib/node_modules/npm /usr/local/lib/node_modules/corepack /opt/yarn-* \
  && rm -f /usr/local/bin/npm /usr/local/bin/npx /usr/local/bin/corepack /usr/local/bin/yarn /usr/local/bin/yarnpkg
