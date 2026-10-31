@@ -1,6 +1,7 @@
 // @vitest-environment happy-dom
-import { afterEach, expect, it, vi } from 'vitest';
+
 import { fadeOutCopy } from '@inkadra/ui';
+import { afterEach, expect, it, vi } from 'vitest';
 
 afterEach(() => {
   vi.useRealTimers();

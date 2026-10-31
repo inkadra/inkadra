@@ -96,7 +96,9 @@ export function SettingsWindow({
     // biome-ignore lint/a11y/useKeyWithClickEvents: the backdrop's keyboard path is Escape (onCancel).
     <dialog
       ref={ref}
-      className={phone ? 'settings-window settings-window--phone' : 'settings-window ink-motion-dialog'}
+      className={
+        phone ? 'settings-window settings-window--phone' : 'settings-window ink-motion-dialog'
+      }
       aria-labelledby={titleId}
       aria-modal="true"
       tabIndex={-1}

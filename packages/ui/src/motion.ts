@@ -33,7 +33,8 @@ export function fadeOutCopy(node: Element | null): void {
     el.removeAttribute('data-el');
     el.removeAttribute('data-testid');
   }
-  for (const name of [...copy.classList]) if (name.startsWith('ink-motion-')) copy.classList.remove(name);
+  for (const name of [...copy.classList])
+    if (name.startsWith('ink-motion-')) copy.classList.remove(name);
   copy.setAttribute('aria-hidden', 'true');
   copy.inert = true;
   copy.classList.add('ink-motion-exit');
