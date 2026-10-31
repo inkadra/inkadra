@@ -1,9 +1,9 @@
+import { randomBytes } from 'node:crypto';
 import { mkdtemp, readFile, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { randomBytes } from 'node:crypto';
-import yauzl from 'yauzl';
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
+import yauzl from 'yauzl';
 import { z } from 'zod';
 import { ArchiveError, readZip, streamOf, writeZip } from './zip.ts';
 

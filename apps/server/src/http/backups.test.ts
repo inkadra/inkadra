@@ -32,8 +32,8 @@ import { createDatabase, runMigrations } from '../db/client.ts';
 import * as schema from '../db/schema.ts';
 import { board, boardDoc, comment, instanceBackup, instanceSetting } from '../db/schema.ts';
 import { createStorage } from '../storage.ts';
-import { readZip, writeZip } from '../transfers/zip.ts';
 import { freshDatabase, testDeps } from '../test-deps.ts';
+import { readZip, writeZip } from '../transfers/zip.ts';
 import { createApp } from './app.ts';
 
 const migrations = fileURLToPath(new URL('../../drizzle', import.meta.url));
@@ -608,7 +608,9 @@ describe.skipIf(!url)('instance backups (needs DATABASE_URL)', () => {
     });
     const broken = join(deps.root, 'tmp', 'missing-entry.zip');
     try {
-      const manifest = JSON.parse((await source.buffer('manifest.json', 64 * 1024 * 1024)).toString());
+      const manifest = JSON.parse(
+        (await source.buffer('manifest.json', 64 * 1024 * 1024)).toString(),
+      );
       const dropped = manifest.tables.at(-1).entry as string;
       await mkdir(join(deps.root, 'tmp'), { recursive: true });
       const writer = writeZip(broken);
