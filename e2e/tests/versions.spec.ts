@@ -77,8 +77,8 @@ async function seed(page: Page, baseURL: string) {
 }
 
 async function openVersions(page: Page) {
-  await page.getByRole('button', { name: 'Menu della board', exact: true }).click();
-  await page.getByRole('menuitem', { name: 'Versioni della board' }).click();
+  // The clock icon in the header; the ⋯ menu lists Versions only on phones.
+  await page.getByRole('button', { name: 'Versioni della board', exact: true }).click();
   return page.getByRole('dialog', { name: 'Versioni della board', exact: true });
 }
 
@@ -363,7 +363,8 @@ test('version failures explain rate limits and let the editor recover', async ({
   await menuButton.click();
   await expect(page.getByRole('menu')).toHaveCount(0);
   await menuButton.click();
-  await expect(page.getByRole('menuitem', { name: 'Versioni della board' })).toBeFocused();
+  await expect(page.getByRole('menuitem', { name: 'Esporta…' })).toBeFocused();
+  await expect(page.getByRole('menuitem', { name: 'Versioni della board' })).toHaveCount(0);
   await page.keyboard.press('Escape');
   await expect(page.getByRole('menu')).toHaveCount(0);
   await expect(menuButton).toBeFocused();
@@ -563,7 +564,10 @@ test('the versions panel follows other editors, and leaving a preview keeps the 
     // Dialog visibility changes before its focus restoration finishes. Wait until the
     // closed dialog no longer owns focus, otherwise its Escape can swallow this key.
     await expect(page.locator('dialog[open], [role="menu"]')).toHaveCount(0);
-    await expect(menuButton).toBeFocused();
+    // Focus goes back to the control that opened the dialog: the clock icon.
+    await expect(
+      page.getByRole('button', { name: 'Versioni della board', exact: true }),
+    ).toBeFocused();
     await page.keyboard.press('Escape');
     await expect(banner).toHaveCount(0);
     // The live selection is the one from before the preview.
