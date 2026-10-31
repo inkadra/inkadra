@@ -412,7 +412,15 @@ export function ScheduleView({
               <p className="schedule__hint">{t('schedule.allScheduled')}</p>
             ) : (
               <p className="schedule__hint">
-                {t(readOnly ? 'schedule.queueReadOnly' : 'schedule.queueHint')}
+                {readOnly ? (
+                  t('schedule.queueReadOnly')
+                ) : (
+                  <>
+                    {/* A finger taps, a mouse drags or clicks: film.css shows the one that fits. */}
+                    <span className="schedule__hint-pointer">{t('schedule.queueHint')}</span>
+                    <span className="schedule__hint-touch">{t('schedule.queueHintTouch')}</span>
+                  </>
+                )}
               </p>
             )}
             {groups.map((group) => {

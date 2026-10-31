@@ -304,6 +304,7 @@
     "empty": {
       "title": "Empty board",
       "body": "Double-click for a note, drop files or use the bar below. / opens the commands.",
+      "bodyTouch": "Double-tap for a note or use the bar below.",
       "templates": "Or start from a template"
     },
     "types": {
@@ -1364,7 +1365,8 @@
     "save": "Save",
     "body": "Comment",
     "placeholder": "Write a comment…",
-    "mentionHint": "@ to mention someone · ⌘/Ctrl+Enter to send",
+    "mentionHint": "@ to mention someone",
+    "sendHint": "⌘/Ctrl+Enter to send",
     "mentions": "People to mention",
     "tooLong": "The comment is longer than {{max}} characters.",
     "error": "That did not work. Try again.",
@@ -1710,6 +1712,7 @@
     "conflicts_other": "{{count}} blocks with cast conflicts",
     "allScheduled": "Every shot is on a shooting day.",
     "queueHint": "Drag a shot onto a day, or click it to add it to the selected day.",
+    "queueHintTouch": "Tap a shot to add it to the selected day.",
     "queueReadOnly": "Shots that are not on a shooting day yet.",
     "emptyTitle": "No shooting days yet",
     "emptyBody": "Add the first shooting day, then drag shots from the list onto it.",

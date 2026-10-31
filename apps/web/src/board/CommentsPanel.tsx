@@ -1057,11 +1057,17 @@ function Composer({
         )}
       </div>
       <span id={`${id}-hint`} className="ink-muted comment-hint" aria-live="polite">
-        {tooLong
-          ? t('comments.tooLong', { max: MAX_COMMENT_LENGTH })
-          : armed
-            ? t('comments.escapeAgain')
-            : t('comments.mentionHint')}
+        {tooLong ? (
+          t('comments.tooLong', { max: MAX_COMMENT_LENGTH })
+        ) : armed ? (
+          t('comments.escapeAgain')
+        ) : (
+          <>
+            {t('comments.mentionHint')}
+            {/* Fingers have no keyboard shortcut to read (comments.css). */}
+            <span className="comment-hint__keys"> · {t('comments.sendHint')}</span>
+          </>
+        )}
       </span>
       {children}
       <div className="review-row">

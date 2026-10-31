@@ -76,7 +76,11 @@ export function NoteSideSheet({
             ))}
           </ol>
         </nav>
-        <Button aria-pressed={expanded} onClick={() => setExpanded(!expanded)}>
+        <Button
+          className="note-sidesheet__expand"
+          aria-pressed={expanded}
+          onClick={() => setExpanded(!expanded)}
+        >
           {t('shells.noteExpand')}
         </Button>
         <Button onClick={onClose}>{t('shells.close')}</Button>
@@ -85,8 +89,26 @@ export function NoteSideSheet({
         <article className="note-sidesheet__doc">
           <div className="note-sidesheet__meta-row">
             <span>{t('shells.noteWords', { count })}</span>
-            {!readOnly && <Button onClick={onEditOnCanvas}>{t('shells.editOnCanvas')}</Button>}
-            {onComments && <Button onClick={onComments}>{t('comments.open')}</Button>}
+            {!readOnly && (
+              <Button
+                icon="pen"
+                className="note-sidesheet__action"
+                data-ink-tooltip={t('shells.editOnCanvas')}
+                onClick={onEditOnCanvas}
+              >
+                <span className="note-sidesheet__action-label">{t('shells.editOnCanvas')}</span>
+              </Button>
+            )}
+            {onComments && (
+              <Button
+                icon="comment"
+                className="note-sidesheet__action"
+                data-ink-tooltip={t('comments.open')}
+                onClick={onComments}
+              >
+                <span className="note-sidesheet__action-label">{t('comments.open')}</span>
+              </Button>
+            )}
           </div>
           {fragment &&
             (readOnly ? (

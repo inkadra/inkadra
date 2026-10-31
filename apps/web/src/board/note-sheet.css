@@ -81,6 +81,53 @@
   font-size: 12px;
   color: var(--ink-text-secondary);
 }
+/* A phone: the whole screen, so Full page has nothing left to do; clear of the notch. */
+@media (width < 768px) {
+  .note-sidesheet {
+    width: 100vw;
+    border-left: 0;
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) 0 env(safe-area-inset-left);
+  }
+  .note-sidesheet__expand {
+    display: none;
+  }
+  .note-sidesheet__header {
+    padding: 6px 12px 6px 16px;
+  }
+  .note-sidesheet__header .ink-btn {
+    min-height: 44px;
+  }
+  .note-sidesheet__doc {
+    padding: 20px 16px calc(24px + env(safe-area-inset-bottom));
+  }
+  /* Word count, then the two actions as 44 px icon buttons on one row; the names stay for
+     screen readers. */
+  .note-sidesheet__meta-row {
+    flex-wrap: nowrap;
+    gap: 4px;
+  }
+  .note-sidesheet__meta-row > span:first-child {
+    margin-right: auto;
+  }
+  .note-sidesheet__action {
+    width: 44px;
+    min-height: 44px;
+    padding: 0;
+    justify-content: center;
+  }
+  .note-sidesheet__action svg {
+    width: 18px;
+    height: 18px;
+  }
+  .note-sidesheet__action-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+}
 @keyframes note-slide-in {
   from {
     transform: translateX(100%);

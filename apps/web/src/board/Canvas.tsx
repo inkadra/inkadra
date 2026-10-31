@@ -2198,7 +2198,9 @@ export function Canvas({
         {snap.canvas.length === 0 && conn.status === 'synced' && !readOnly && (
           <div className="canvas__empty">
             <span className="canvas__empty-title">{t('board.empty.title')}</span>
-            <span className="ink-muted">{t('board.empty.body')}</span>
+            {/* A finger gets its own wording, without the keyboard tip (board.css). */}
+            <span className="ink-muted canvas__empty-pointer">{t('board.empty.body')}</span>
+            <span className="ink-muted canvas__empty-touch">{t('board.empty.bodyTouch')}</span>
             <span className="canvas__templates-title">{t('board.empty.templates')}</span>
             <div className="canvas__templates" data-chrome>
               {TEMPLATE_IDS.map((id) => (

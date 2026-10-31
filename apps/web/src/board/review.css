@@ -459,6 +459,12 @@ button.review-link:hover:not(:disabled) {
 .comment-hint {
   font-size: 11px;
 }
+/* A touch screen has no keyboard shortcut to read. */
+@media (pointer: coarse) {
+  .comment-hint__keys {
+    display: none;
+  }
+}
 .mention-suggestions {
   position: absolute;
   left: 0;

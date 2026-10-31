@@ -383,6 +383,8 @@
     height: 44px;
   }
   .share__field .share__select {
+    flex: 1 1 auto;
+    width: auto;
     min-height: 44px;
   }
   .share__invite > .ink-btn {
