@@ -398,12 +398,14 @@ function lineCounter(moved: () => void) {
 }
 
 /**
- * postgres.js (3.4) pauses its socket when a COPY stream is full and resumes it only from
- * the stream's `read()`. When the COPY ends while the socket is paused, nothing resumes it
- * and the next query on the connection never gets its answer: the backup waited for ever
+ * postgres.js 3.4 paused its socket when a COPY stream was full and resumed it only from
+ * the stream's `read()`. When the COPY ended while the socket was paused, nothing resumed
+ * it and the next query on the connection never got its answer: the backup waited for ever
  * after the last large table. Once the stream has ended, its `read()` resumes the socket.
- * postgres is pinned to exactly 3.4.9 in package.json for this: check this workaround (and
- * the large-table backup test) before upgrading it.
+ * postgres.js 4 also stops reading messages while paused, so `CopyDone` waits for the next
+ * `read()` and this is a no-op there; it stays as a guard. postgres is pinned to an exact
+ * version in package.json for this: check this workaround (and the large-table backup
+ * test) before upgrading it.
  */
 export function resumeWhenDone(source: Readable): Readable {
   const resume = () => (source as Readable & { _read(size: number): void })._read(0);
