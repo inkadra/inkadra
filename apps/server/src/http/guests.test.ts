@@ -980,8 +980,8 @@ describe.skipIf(!url)('guest share links (needs DATABASE_URL)', () => {
     ]);
     // Another guest, a return visit and a resumed session are the same link and version.
     await open(link, { name: 'Bruno' });
-    await open(link, { cookie: first.cookie });
-    expect((await call({ cookie: first.cookie }, 'GET', g(link, '/session'))).status).toBe(200);
+    const again = await open(link, { cookie: first.cookie });
+    expect((await call({ cookie: again.cookie }, 'GET', g(link, '/session'))).status).toBe(200);
     expect(await rows()).toHaveLength(1);
 
     const inbox = await call('owner', 'GET', '/api/v1/me/notifications');
@@ -1004,7 +1004,7 @@ describe.skipIf(!url)('guest share links (needs DATABASE_URL)', () => {
     await db
       .insert(boardVersion)
       .values({ boardId, kind: 'auto', state: new Uint8Array(), schemaVersion: 3, size: 0, elementCount: 0 });
-    await call({ cookie: first.cookie }, 'GET', g(link, '/session'));
+    await call({ cookie: again.cookie }, 'GET', g(link, '/session'));
     expect(await rows()).toHaveLength(1);
     await db.insert(boardVersion).values({
       boardId,
@@ -1015,8 +1015,8 @@ describe.skipIf(!url)('guest share links (needs DATABASE_URL)', () => {
       size: 0,
       elementCount: 0,
     });
-    await call({ cookie: first.cookie }, 'GET', g(link, '/session'));
-    await call({ cookie: first.cookie }, 'GET', g(link, '/session'));
+    await call({ cookie: again.cookie }, 'GET', g(link, '/session'));
+    await call({ cookie: again.cookie }, 'GET', g(link, '/session'));
     expect(await rows()).toHaveLength(2);
   });
 
