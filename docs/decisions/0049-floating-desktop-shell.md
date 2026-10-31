@@ -1,4 +1,4 @@
-# 0048 · Floating desktop shell
+# 0049 · Floating desktop shell
 
 Accepted, 2026-10 (#333). Replaces the fixed header bar and sidebar column on desktop and tablet.
 
