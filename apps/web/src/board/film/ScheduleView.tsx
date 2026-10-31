@@ -23,7 +23,7 @@ import type { BoardStore } from '../store.ts';
 import { CallSheetModal } from './CallSheetModal.tsx';
 import { plannedWrap } from './call-sheet.ts';
 import { AutoTime, TokenField } from './fields.tsx';
-import { useSlugline, useStoryboard } from './StoryboardView.tsx';
+import { useSlugline, useStoryboard } from './storyboard-data.ts';
 import { castConflicts, clockLabel, newScheduleBlock, scheduleTimes } from './schedule.ts';
 import './film.css';
 

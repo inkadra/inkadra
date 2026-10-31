@@ -29,7 +29,7 @@ import { CroppedImage } from './CroppedImage.tsx';
 import { CardExtrasContext, GuestModeContext, useBoard } from './context.ts';
 import { useBoardAspect } from './film/aspect.ts';
 import { FramePicture } from './film/FramePicture.tsx';
-import { useSlugline } from './film/StoryboardView.tsx';
+import { useSlugline } from './film/storyboard-data.ts';
 import { StoryPicture } from './film/StoryCardPanel.tsx';
 import { GuestVisibility } from './guest-visibility.tsx';
 import { ImageCropStage } from './ImageCropEditor.tsx';

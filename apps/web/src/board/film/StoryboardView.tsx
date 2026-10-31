@@ -4,11 +4,9 @@ import {
   deleteElements,
   type FrameElement,
   formatDuration,
-  frameLabels,
   moveFrames,
   type SceneElement,
   type SceneGroup,
-  storyboardOf,
   updateElement,
 } from '@inkadra/canvas-core';
 import { ASPECT_RATIOS, type AspectRatio, SHOT_SIZES, setBoardAspect } from '@inkadra/doc-schema';
@@ -18,9 +16,7 @@ import {
   memo,
   useCallback,
   useId,
-  useMemo,
   useState,
-  useSyncExternalStore,
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useRegisterActions } from '../../commands/actions.ts';
@@ -45,6 +41,7 @@ import {
   isFileDrag,
   splitDropped,
 } from './storyboard-drop.ts';
+import { sceneName, useStoryboard } from './storyboard-data.ts';
 import { ViewOptions } from './ViewOptions.tsx';
 
 const FRAME_MIME = 'application/x-inkadra-frame';
@@ -73,15 +70,6 @@ const sameMark = (a: FileMark | null, b: FileMark | null) =>
 const isDrawn = (f: FrameElement) =>
   !!f.assetId || (f.strokes?.length ?? 0) > 0 || (f.shapes?.length ?? 0) > 0;
 
-/** Scenes and frames of the board, in order, from the live document. */
-export function useStoryboard(store: BoardStore) {
-  const snap = useSyncExternalStore(store.subscribe, store.getSnapshot);
-  return useMemo(() => {
-    const groups = storyboardOf([...snap.byId.values()]);
-    const frames = groups.flatMap((g) => g.frames);
-    return { groups, frames, labels: frameLabels(groups) };
-  }, [snap]);
-}
 
 export function StoryboardView({
   store,
@@ -574,23 +562,7 @@ function SceneList({
   );
 }
 
-/** What a scene is called in lists: its title, else its location, as imported scenes are. */
-export function sceneName(scene: SceneElement): string {
-  return scene.title.trim() || scene.location?.trim() || '';
-}
 
-/** INT. KITCHEN – NIGHT, from the scene fields. */
-export function useSlugline() {
-  const { t } = useTranslation();
-  return (scene: SceneElement) =>
-    [
-      scene.setting && t(`film.scene.settings.${scene.setting}`),
-      scene.location?.toUpperCase(),
-      scene.time && `– ${t(`film.scene.times.${scene.time}`)}`,
-    ]
-      .filter(Boolean)
-      .join(' ');
-}
 
 function SceneSection({
   group,

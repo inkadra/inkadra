@@ -14,7 +14,7 @@ import type { BoardStore } from '../store.ts';
 import { useBoardAspect } from './aspect.ts';
 import { FramePicture } from './FramePicture.tsx';
 import { usePresetText } from './fields.tsx';
-import { useStoryboard } from './StoryboardView.tsx';
+import { useStoryboard } from './storyboard-data.ts';
 import './film.css';
 
 const filters = ['all', 'pending', 'approved', 'changes_requested'] as const;
