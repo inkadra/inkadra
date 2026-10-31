@@ -4086,7 +4086,7 @@ button.moodboard__card {
   /* Scene header: the number keeps to its digits and the location takes the rest of the line,
      so INT./EXT., location and time read as one slug line before the title. */
   .story__scene-head {
-    gap: 4px 6px;
+    gap: 10px 6px;
   }
   .story__scene-head .story__scene-number {
     width: 2.5em;
