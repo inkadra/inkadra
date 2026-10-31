@@ -1,6 +1,14 @@
 import type { Project } from '@inkadra/shared';
-import { Button, ChoiceTile, Dialog, DialogActions, Select, TextField } from '@inkadra/ui';
-import { type FormEvent, useEffect, useId, useState } from 'react';
+import {
+  Button,
+  ChoiceTile,
+  Dialog,
+  DialogActions,
+  type DialogHandle,
+  Select,
+  TextField,
+} from '@inkadra/ui';
+import { type FormEvent, useEffect, useId, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router';
 import { createBoard } from '../board/boards.ts';
@@ -38,6 +46,7 @@ export function NewBoardDialog({
   const [title, setTitle] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const dialog = useRef<DialogHandle>(null);
 
   // Every opening starts from what was clicked, in the most recent project.
   // biome-ignore lint/correctness/useExhaustiveDependencies: only when it opens, not on refresh.
@@ -56,6 +65,8 @@ export function NewBoardDialog({
   }, [open, initial]);
 
   const target = projects.find((p) => p.id === project);
+  // Only a title the person changed counts: the template's own name is not input.
+  const dirty = !busy && title !== (choice === 'blank' ? '' : t(choiceKey(choice, 'name')));
 
   async function submit(e: FormEvent) {
     e.preventDefault();
@@ -81,7 +92,13 @@ export function NewBoardDialog({
   }
 
   return (
-    <Dialog open={open} title={t('home.newBoard.title')} onClose={onClose}>
+    <Dialog
+      ref={dialog}
+      open={open}
+      dirty={dirty}
+      title={t('home.newBoard.title')}
+      onClose={onClose}
+    >
       <form onSubmit={submit} className="home-new">
         <div className="ink-field">
           <label htmlFor={projectId} className="ink-field__label">
@@ -131,7 +148,7 @@ export function NewBoardDialog({
           maxLength={200}
         />
         <DialogActions>
-          <Button variant="ghost" onClick={onClose}>
+          <Button variant="ghost" onClick={() => dialog.current?.requestClose()}>
             {t('project.cancel')}
           </Button>
           <Button type="submit" variant="primary" disabled={busy || !target || !title.trim()}>

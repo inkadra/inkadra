@@ -197,6 +197,11 @@
     "create": "Create project",
     "cancel": "Cancel"
   },
+  "dialog": {
+    "discardTitle": "Discard changes?",
+    "discard": "Discard",
+    "keep": "Keep editing"
+  },
   "notFound": {
     "title": "Page not found",
     "back": "Back to home"

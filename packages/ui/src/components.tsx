@@ -1,13 +1,18 @@
 // SPDX-License-Identifier: MPL-2.0
 import {
   type ButtonHTMLAttributes,
+  createContext,
   type InputHTMLAttributes,
   type PointerEvent,
   type MouseEvent as ReactMouseEvent,
   type ReactNode,
+  type Ref,
   type SyntheticEvent,
+  useCallback,
+  useContext,
   useEffect,
   useId,
+  useImperativeHandle,
   useRef,
   useState,
 } from 'react';
@@ -417,15 +422,71 @@ export function useBackdropClick(onClick: (dialog: HTMLDialogElement) => void) {
   };
 }
 
+/** The words of the confirmation a dirty dialog asks before it closes; the app provides its own. */
+export interface DialogTexts {
+  title: string;
+  discard: string;
+  keep: string;
+}
+export const DialogTextsContext = createContext<DialogTexts>({
+  title: 'Discard changes?',
+  discard: 'Discard',
+  keep: 'Keep editing',
+});
+
+/** What a dirty `Dialog` tells its `DialogActions`: the row turns into the question. */
+const DialogConfirmContext = createContext<{
+  confirming: boolean;
+  texts: DialogTexts;
+  discard: () => void;
+  keep: () => void;
+  register: () => () => void;
+} | null>(null);
+
+function ConfirmButtons({
+  texts,
+  discard,
+  keep,
+}: {
+  texts: DialogTexts;
+  discard: () => void;
+  keep: () => void;
+}) {
+  return (
+    <>
+      <span className="ink-dialog__confirm-text">{texts.title}</span>
+      <Button variant="ghost" onClick={discard}>
+        {texts.discard}
+      </Button>
+      {/* The question takes focus, and the safe answer has it. */}
+      <Button variant="primary" autoFocus onClick={keep}>
+        {texts.keep}
+      </Button>
+    </>
+  );
+}
+
+/** What a `Dialog` hands to its `ref`. */
+export interface DialogHandle {
+  /** Closes like Escape or a click on the backdrop: asks first when the dialog is `dirty`. */
+  requestClose: () => void;
+}
+
 /**
  * Modal dialog on the native <dialog> element (focus trap and Escape for free). A click on the
  * backdrop closes it like Escape does: `onCancel` can still keep it open.
+ *
+ * With `dirty` (unsaved input) Escape, the backdrop and `ref.current.requestClose()` (for the
+ * Cancel and close buttons) ask "Discard changes?" first, with Keep editing focused; Escape on
+ * that question keeps editing. Anything that closes `open` from outside does not ask.
  */
 export function Dialog({
   open,
   title,
   onClose,
   onCancel,
+  dirty = false,
+  ref: handle,
   children,
 }: {
   open: boolean;
@@ -434,15 +495,33 @@ export function Dialog({
   onClose: () => void;
   /** Runs on Escape before the dialog closes; `preventDefault()` asks the browser to keep it open. */
   onCancel?: (event: SyntheticEvent<HTMLDialogElement>) => void;
+  /** Unsaved input: closing it by hand asks for confirmation. */
+  dirty?: boolean;
+  ref?: Ref<DialogHandle>;
   children: ReactNode;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
   const titleId = useId();
-  const backdrop = useBackdropClick((el) => {
+  const texts = useContext(DialogTextsContext);
+  const [confirming, setConfirming] = useState(false);
+  // Rows of actions inside: the question takes the place of the first, else it has a bar.
+  const [actionRows, setActionRows] = useState(0);
+  const register = useCallback(() => {
+    setActionRows((n) => n + 1);
+    return () => setActionRows((n) => n - 1);
+  }, []);
+  const requestClose = () => {
+    const el = ref.current;
+    if (!el) return;
     const cancel = new Event('cancel', { cancelable: true });
     el.dispatchEvent(cancel);
     if (!cancel.defaultPrevented) el.close();
-  });
+  };
+  useImperativeHandle(handle, () => ({ requestClose }));
+  const backdrop = useBackdropClick(requestClose);
+  useEffect(() => {
+    if (!open || !dirty) setConfirming(false);
+  }, [open, dirty]);
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
@@ -459,19 +538,78 @@ export function Dialog({
       className="ink-dialog"
       aria-labelledby={titleId}
       {...backdrop}
+      // A second Escape in a row cannot be cancelled by the browser: take Escape first.
+      onKeyDown={(event) => {
+        if (event.key !== 'Escape' || (!dirty && !confirming)) return;
+        if (
+          event.target instanceof Element &&
+          event.target.closest('dialog') !== event.currentTarget
+        )
+          return;
+        event.preventDefault();
+        if (confirming) setConfirming(false);
+        else requestClose();
+      }}
       // React hands a dialog's close and cancel to the dialogs around it too: a dialog opened
       // from another one must not close that one.
       onClose={(event) => event.target === event.currentTarget && onClose()}
-      onCancel={(event) => event.target === event.currentTarget && onCancel?.(event)}
+      onCancel={(event) => {
+        if (event.target !== event.currentTarget) return;
+        if (confirming) {
+          event.preventDefault();
+          setConfirming(false);
+          return;
+        }
+        onCancel?.(event);
+        if (dirty && !event.defaultPrevented) {
+          event.preventDefault();
+          setConfirming(true);
+        }
+      }}
     >
       <h2 id={titleId} className="ink-dialog__title">
         {title}
       </h2>
-      {children}
+      <DialogConfirmContext.Provider
+        value={{
+          confirming,
+          texts,
+          discard: () => ref.current?.close(),
+          keep: () => setConfirming(false),
+          register,
+        }}
+      >
+        {children}
+      </DialogConfirmContext.Provider>
+      {confirming && actionRows === 0 && (
+        <div
+          className="ink-dialog__confirm ink-dialog__confirm--bar"
+          role="alertdialog"
+          aria-label={texts.title}
+        >
+          <ConfirmButtons
+            texts={texts}
+            discard={() => ref.current?.close()}
+            keep={() => setConfirming(false)}
+          />
+        </div>
+      )}
     </dialog>
   );
 }
 
 export function DialogActions({ children }: { children: ReactNode }) {
-  return <div className="ink-dialog__actions">{children}</div>;
+  const dialog = useContext(DialogConfirmContext);
+  const register = dialog?.register;
+  useEffect(() => register?.(), [register]);
+  return (
+    <div className={cx('ink-dialog__actions', dialog?.confirming && 'is-confirming')}>
+      {children}
+      {dialog?.confirming && (
+        <div className="ink-dialog__confirm" role="alertdialog" aria-label={dialog.texts.title}>
+          <ConfirmButtons texts={dialog.texts} discard={dialog.discard} keep={dialog.keep} />
+        </div>
+      )}
+    </div>
+  );
 }
