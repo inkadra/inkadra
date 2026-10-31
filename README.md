@@ -121,7 +121,7 @@ and troubleshooting. Images are published for amd64 and arm64 as `ghcr.io/inkadr
 
 ## Develop
 
-Requirements: Node 22.18 or newer, pnpm 10 (`corepack enable`), Postgres 16 and Valkey or Redis.
+Requirements: Node 26 or newer, pnpm 12 (`npm i -g pnpm@12.17.0`), Postgres 16 and Valkey or Redis.
 
 ```sh
 pnpm install

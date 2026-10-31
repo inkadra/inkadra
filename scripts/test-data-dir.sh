@@ -67,7 +67,7 @@ owners=$(as_root 'stat -c %u:%g /d /d/files /d/files/old.txt | sort -u')
 [[ $owners == "1000:1000" ]] && pass "data folder given to uid 1000" || fail "owners after start: $owners"
 
 # The server process: uid 1000 and no capabilities left.
-proc=$(compose exec -T inkadra sh -c 'for p in /proc/[0-9]*; do [ "$(cat $p/comm)" = node ] && grep -E "^(Uid|CapEff):" $p/status && break; done')
+proc=$(compose exec -T inkadra sh -c 'for p in /proc/[0-9]*; do if tr "\0" " " <"$p/cmdline" 2>/dev/null | grep -q "^node /app/dist/main.js "; then grep -E "^(Uid|CapEff):" "$p/status" && break; fi; done' || true)
 if [[ $proc == *"Uid:"*"1000"* && $proc == *"CapEff:"*"0000000000000000"* ]]; then
   pass "server runs as uid 1000 without capabilities"
 else

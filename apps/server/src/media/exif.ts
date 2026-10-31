@@ -1,3 +1,4 @@
+import { readFile } from 'node:fs/promises';
 import exifr from 'exifr';
 
 /**
@@ -44,7 +45,8 @@ export function pickExif(raw: Record<string, unknown> | undefined | null) {
 
 export async function readExif(file: string | Buffer) {
   try {
-    const raw = await exifr.parse(file, {
+    const buf = typeof file === 'string' ? await readFile(file) : file;
+    const raw = await exifr.parse(buf, {
       pick: [...KEEP],
       gps: false,
       translateValues: true,

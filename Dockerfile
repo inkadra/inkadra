@@ -1,11 +1,12 @@
 # syntax=docker/dockerfile:1.7
 # One image, several roles: `inkadra all` (default), `web`, `collab`, `worker`, `migrate`.
 
-ARG NODE_VERSION=22.23
+ARG NODE_VERSION=26.13
 
-FROM node:${NODE_VERSION}-bookworm-slim AS base
+FROM node:${NODE_VERSION}-trixie-slim AS base
 ENV PNPM_HOME=/pnpm PATH=/pnpm:$PATH CI=true
-RUN corepack enable
+# Node 26 no longer ships corepack; keep this version in sync with packageManager in package.json.
+RUN npm install -g pnpm@12.17.0
 WORKDIR /src
 
 FROM base AS build
@@ -15,7 +16,7 @@ RUN pnpm turbo run build --filter=@inkadra/server --filter=@inkadra/web
 RUN --mount=type=cache,id=pnpm,target=/pnpm/store \
     pnpm --filter @inkadra/server deploy --prod --legacy /out
 
-FROM node:${NODE_VERSION}-bookworm-slim AS runtime
+FROM node:${NODE_VERSION}-trixie-slim AS runtime
 ARG VERSION=0.0.0-dev
 ARG REVISION=unknown
 LABEL org.opencontainers.image.title="Inkadra" \
