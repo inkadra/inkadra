@@ -126,7 +126,8 @@ test('named versions preview an isolated read-only canvas and restore every open
     await other.goto(`/p/${project.id}`);
     await expect(other.locator('[data-el]')).toHaveCount(3);
     // An edit the other client can still undo when the version is saved.
-    await other.getByTestId('canvas').dblclick({ position: { x: 700, y: 450 } });
+    // An empty spot below the cards; the canvas starts at the window's edge (#333).
+    await other.getByTestId('canvas').dblclick({ position: { x: 940, y: 498 } });
     await other.keyboard.type('Other early note');
     await other.keyboard.press('Escape');
     await expect(page.locator('[data-el]')).toHaveCount(4);
