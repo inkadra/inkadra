@@ -1,7 +1,9 @@
+import { randomBytes } from 'node:crypto';
 import { mkdtemp, readFile, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { beforeAll, describe, expect, it } from 'vitest';
+import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
+import yauzl from 'yauzl';
 import { z } from 'zod';
 import { ArchiveError, readZip, streamOf, writeZip } from './zip.ts';
 
@@ -47,6 +49,44 @@ describe('zip archives', () => {
       'invalid_archive',
     );
     expect(await reason(read.buffer('missing', 10))).toBe('invalid_archive');
+    read.close();
+  });
+
+  afterEach(() => vi.restoreAllMocks());
+
+  it('destroys the yauzl stream when an entry is destroyed half read', async () => {
+    // Without it the source only gets unpiped and keeps its reference on the file.
+    const opened: NodeJS.ReadableStream[] = [];
+    const open = yauzl.ZipFile.prototype.openReadStream;
+    vi.spyOn(yauzl.ZipFile.prototype, 'openReadStream').mockImplementation(function (
+      this: yauzl.ZipFile,
+      ...args: unknown[]
+    ) {
+      const cb = args.at(-1) as (err: Error | null, s?: NodeJS.ReadableStream) => void;
+      args[args.length - 1] = (err: Error | null, s?: NodeJS.ReadableStream) => {
+        if (s) opened.push(s);
+        cb(err, s);
+      };
+      return (open as (...a: unknown[]) => void).apply(this, args);
+    } as never);
+    const big = randomBytes(2 * 1024 * 1024);
+    const path = join(dir, 'half.zip');
+    const writer = writeZip(path);
+    await writer.addBuffer('stored', big, false);
+    await writer.addBuffer('deflated', big, true);
+    await writer.close();
+    const read = await readZip(path, { ...limits, compressionRatio: 1e9 });
+    for (const name of ['stored', 'deflated']) {
+      const entry = await read.stream(name, Number.MAX_SAFE_INTEGER);
+      const source = opened.at(-1) as unknown as { destroyed: boolean };
+      await new Promise((resolve) => entry.once('data', resolve));
+      expect(source.destroyed, name).toBe(false);
+      await new Promise((resolve) => {
+        entry.once('close', resolve);
+        entry.destroy();
+      });
+      expect(source.destroyed, name).toBe(true);
+    }
     read.close();
   });
 
