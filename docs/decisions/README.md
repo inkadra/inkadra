@@ -52,6 +52,7 @@ in order. An accepted decision is never rewritten: a later one supersedes it.
 | [0046](0046-animatic-sound-track.md)                 | Animatic timeline and sound track, played by guests                                    |
 | [0047](0047-remove-animatic-and-sequence-modes.md)   | Animatic and Sequence modes removed; their data is kept                                |
 | [0048](0048-media-worker-previews.md)                | Media worker previews: playable video copies, camera RAW and PDF pages                 |
+| [0049](0049-floating-desktop-shell.md)               | Desktop shell: floating panels over a full-bleed board                                 |
 
 Two decisions share the number 0025: they were accepted in parallel, and accepted records
 are not renumbered.
