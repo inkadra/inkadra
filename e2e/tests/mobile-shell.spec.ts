@@ -137,5 +137,12 @@ test('mobile shell gives the canvas full width and keeps shell actions reachable
   await page.setViewportSize({ width: 1440, height: 900 });
   await expect(nav).toBeHidden();
   await expect(page.locator('.ink-shell > .ink-sidebar')).toBeVisible();
-  await expect.poll(async () => (await canvas.boundingBox())?.x).toBeGreaterThanOrEqual(240);
+  // Desktop: the board runs edge to edge and the navigation floats over it (#333).
+  await expect
+    .poll(async () => {
+      const box = await canvas.boundingBox();
+      return { x: box?.x, width: box?.width };
+    })
+    .toEqual({ x: 0, width: 1440 });
+  expect((await page.locator('.ink-shell > .ink-sidebar').boundingBox())?.x).toBe(12);
 });

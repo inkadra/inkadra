@@ -1,4 +1,9 @@
 /* The desktop shell stays in the shared UI stylesheet. */
+
+/* The collapsed navigation peeking out (#333) is the whole panel, project menus included. */
+.ink-shell--collapsed.ink-shell--peek .project-navigation__options {
+  display: inline-block;
+}
 .mobile-bottom-nav,
 .mobile-header-actions,
 .mobile-view-picker {

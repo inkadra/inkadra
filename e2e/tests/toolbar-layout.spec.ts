@@ -38,7 +38,7 @@ import '/src/pwa/pwa.css';
   const canvas = React.createElement(Canvas, { conn, breadcrumb: [], projectId: 'p', boardId: 'b', userId: 'u', boards: [], canEdit: true, peers: [], onOpenBoard: () => {} });
   const { SessionProvider, useSession } = await import('/src/lib/session.tsx');
   function Loaded() { const { loading } = useSession(); return loading ? null : React.createElement(Routes, null, React.createElement(Route, { element: React.createElement(AppLayout) }, React.createElement(Route, { path: '*', element: React.createElement('div', { style: { display: 'contents' } }, canvas) }))); }
-  ReactDOM.createRoot(document.getElementById('root')).render(React.createElement(MemoryRouter, { initialEntries: ['/p/p/b/b'] }, React.createElement(SessionProvider, null, React.createElement(Loaded))));
+  ReactDOM.createRoot(document.getElementById('root')).render(React.createElement(MemoryRouter, { initialEntries: ['/p/p/b/b?view=canvas'] }, React.createElement(SessionProvider, null, React.createElement(Loaded))));
 </script></body></html>`;
 
 async function openCanvas(page: Page, width: number, height: number, viewportTag: boolean) {

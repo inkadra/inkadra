@@ -1068,7 +1068,8 @@ function useSidebarPeek(collapsed: boolean) {
     },
     edge: {
       onPointerEnter: (e: PointerEvent) => mouse(e) && later(true, PEEK_IN_MS),
-      onPointerLeave: () => !shown && cancel(),
+      // Out of the edge and not into the panel (which cancels this): the peek ends.
+      onPointerLeave: () => (shown ? later(false, PEEK_OUT_MS) : cancel()),
     },
     panel: collapsed
       ? {

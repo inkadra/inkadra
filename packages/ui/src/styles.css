@@ -801,6 +801,10 @@ select {
     border-radius: var(--ink-radius-lg);
     transition: left var(--ink-dur-slow) var(--ink-ease-out);
   }
+  /* Nothing floats over a page in its surface: a canvas there keeps its chrome at its edges. */
+  .ink-shell > .ink-main:not(.ink-main--canvas) {
+    --ink-board-left: 0px;
+  }
   .ink-shell > .ink-main--canvas {
     inset: 0;
     border: 0;

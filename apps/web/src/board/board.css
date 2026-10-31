@@ -2747,4 +2747,9 @@ button.card__play {
   .ink-shell > .ink-header .view-tabs__tab {
     height: 26px;
   }
+  /* Comments is a quiet button next to Share, the panel's primary action. */
+  .ink-shell > .ink-header .comments-button:not(:hover, [aria-expanded="true"]) {
+    border-color: transparent;
+    background: transparent;
+  }
 }
