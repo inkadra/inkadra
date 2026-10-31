@@ -135,7 +135,13 @@ describe('applyDrop', () => {
     expect(ids).toHaveLength(3);
     // The frames are there at once, without pictures: the layout does not move later.
     expect(board(store).map((f) => f.label)).toEqual(['1A', '1B', '1C', '1D', '1E']);
-    expect(board(store).map((f) => f.assetId)).toEqual([undefined, undefined, undefined, undefined, undefined]);
+    expect(board(store).map((f) => f.assetId)).toEqual([
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+    ]);
     expect(started.map((s) => s.file.name)).toEqual(['x.png', 'y.png', 'z.png']);
     // Assets arrive in any order; each lands in the frame of its own file.
     started[2]?.onAsset('asset-z');
@@ -186,7 +192,12 @@ describe('applyDrop', () => {
   it('reports an upload that failed before the server knew the file, not one it can resume', () => {
     const { store, scene } = setup();
     const { h, started, failed } = hooks();
-    applyDrop(store, { kind: 'insert', sceneId: scene.id, index: 0 }, [file('a.png'), file('b.png')], h);
+    applyDrop(
+      store,
+      { kind: 'insert', sceneId: scene.id, index: 0 },
+      [file('a.png'), file('b.png')],
+      h,
+    );
     started[0]?.onFailed(null);
     started[1]?.onFailed('asset-b');
     expect(failed).toEqual(['a.png']);

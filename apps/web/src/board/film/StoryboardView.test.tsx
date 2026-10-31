@@ -83,9 +83,7 @@ it('drops images between two frames as one new frame each, and not for a read-on
     started.length = 0;
     await render(true);
     const viewerGrid = host.querySelector('.story__grid') as HTMLElement;
-    await act(async () =>
-      viewerGrid.dispatchEvent(dragFiles('drop', [image('c.png')], 108, 40)),
-    );
+    await act(async () => viewerGrid.dispatchEvent(dragFiles('drop', [image('c.png')], 108, 40)));
     expect(frames()).toHaveLength(4);
     expect(started).toHaveLength(0);
   } finally {

@@ -25,8 +25,8 @@ import {
 import { useTranslation } from 'react-i18next';
 import { useRegisterActions } from '../../commands/actions.ts';
 import { useSession } from '../../lib/session.tsx';
-import { Toast, UploadPanel } from '../chrome.tsx';
 import { CardReview } from '../CardReview.tsx';
+import { Toast, UploadPanel } from '../chrome.tsx';
 import { GuestVisibility, GuestVisibilityIcon, toggleGuestHidden } from '../guest-visibility.tsx';
 import { PresentationView } from '../PresentationView.tsx';
 import { type BoardStore, LOCAL } from '../store.ts';
