@@ -2753,3 +2753,21 @@ button.card__play {
     background: transparent;
   }
 }
+/* Narrow desktops and tablets: the top-right panel gives room to where am I. Export and Present
+   stay in the board menu (⋯); Comments keeps its icon and count. */
+@media (768px <= width < 1100px) {
+  .ink-shell > .ink-header .comments-button {
+    padding-inline: 8px;
+  }
+  .ink-shell > .ink-header .comments-button__label {
+    display: none;
+  }
+}
+@media (768px <= width < 1000px) {
+  .ink-shell > .ink-header :is(.board-header-export, .board-header-present) {
+    display: none;
+  }
+  .ink-shell > .ink-header .ink-header__crumbs {
+    min-width: 72px;
+  }
+}
