@@ -64,6 +64,7 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -130,7 +131,7 @@ import { TagPopover } from './tags.tsx';
 import { templateLabels, templateRect } from './templates.ts';
 import { startUpload } from './uploads.ts';
 import { MediaViewer } from './viewer.tsx';
-import { loadViewport, saveViewport } from './viewport.ts';
+import { loadViewport, saveViewport, shiftViewport } from './viewport.ts';
 import { easeZoom, wheelZoomFactor } from './wheel-zoom.ts';
 import { isVideoLink } from './youtube.ts';
 
@@ -324,6 +325,17 @@ export function Canvas({
   const vp = useRef(viewport);
   const settleTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const fitted = useRef(!preview && loadViewport(boardId) !== null);
+  // A remembered view is of the free part of the canvas: place it there once laid out.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: once, on mount.
+  useLayoutEffect(() => {
+    const el = rootRef.current;
+    if (!el || !fitted.current || preview) return;
+    const inset = chromeInsets(el);
+    if (inset.left === 0 && inset.top === 0) return;
+    const value = shiftViewport(vp.current, inset, -1);
+    vp.current = value;
+    setViewportState(value);
+  }, []);
   const [selection, setSelection] = useState<ReadonlySet<string>>(initialSelection);
   const [editing, setEditingState] = useState<string | null>(null);
   const [cropping, setCropping] = useState<string | null>(null);
@@ -380,7 +392,12 @@ export function Canvas({
       const value = typeof next === 'function' ? next(vp.current) : next;
       vp.current = value;
       setViewportState(value);
-      if (!preview) saveViewport(boardId, value);
+      // Kept as the view of the free part of the canvas: the same place stays in sight when
+      // the navigation floats over the board, collapses, or the page is a phone.
+      if (!preview)
+        saveViewport(boardId, value, (v) =>
+          rootRef.current ? shiftViewport(v, chromeInsets(rootRef.current), 1) : v,
+        );
       // While the view moves the world and the dots are composited, so a pan only shifts pixels; once it
       // settles the layer goes away and the cards are drawn sharp at the new zoom.
       rootRef.current?.classList.add('canvas--moving');
