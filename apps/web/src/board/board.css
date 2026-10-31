@@ -2634,15 +2634,15 @@ button.card__play {
   :is(.ink-shell--sliding-out, .ink-shell--sliding-in)
     .ink-main--canvas
     :is(.canvas__corner, .unsorted, .canvas__dock) {
-    --ink-follow: calc(
-      (var(--ink-sidebar-width) + var(--ink-float-gap)) * var(--ink-follow-dir)
-    );
+    --ink-follow: calc((var(--ink-sidebar-width) + var(--ink-float-gap)) * var(--ink-follow-dir));
     animation: var(--ink-follow-name) var(--ink-dur-slow) var(--ink-ease-out);
   }
   /* The bar is centred on the free part of the board: it moves half as far. */
   :is(.ink-shell--sliding-out, .ink-shell--sliding-in) .ink-main--canvas .canvas__dock {
     --ink-follow: calc(
-      (var(--ink-sidebar-width) + var(--ink-float-gap)) / 2 * var(--ink-follow-dir)
+      (var(--ink-sidebar-width) + var(--ink-float-gap)) /
+      2 *
+      var(--ink-follow-dir)
     );
   }
   /* The tool bar is centred on the board beside the navigation and never reaches the corner:

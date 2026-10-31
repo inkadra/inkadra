@@ -725,7 +725,8 @@ select {
   .ink-shell--sliding-out > .ink-header .ink-header__start,
   .ink-shell--sliding-in > .ink-header .ink-header__start {
     --ink-follow: calc(
-      (var(--ink-sidebar-width) - var(--ink-launcher-size)) * var(--ink-follow-dir)
+      (var(--ink-sidebar-width) - var(--ink-launcher-size)) *
+      var(--ink-follow-dir)
     );
     animation: var(--ink-follow-name) var(--ink-dur-slow) var(--ink-ease-out);
   }
