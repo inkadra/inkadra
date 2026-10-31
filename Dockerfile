@@ -5,6 +5,7 @@ ARG NODE_VERSION=26.13
 
 FROM node:${NODE_VERSION}-trixie-slim AS base
 ENV PNPM_HOME=/pnpm PATH=/pnpm:$PATH CI=true
+# Node 26 no longer ships corepack; keep this version in sync with packageManager in package.json.
 RUN npm install -g pnpm@12.17.0
 WORKDIR /src
 
