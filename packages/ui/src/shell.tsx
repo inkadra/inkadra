@@ -1,10 +1,5 @@
 // SPDX-License-Identifier: MPL-2.0
-import type {
-  AnchorHTMLAttributes,
-  ButtonHTMLAttributes,
-  HTMLAttributes,
-  ReactNode,
-} from 'react';
+import type { AnchorHTMLAttributes, ButtonHTMLAttributes, HTMLAttributes, ReactNode } from 'react';
 import { Icon, type IconName } from './icons.tsx';
 import type { ContentKind } from './kind-color.ts';
 

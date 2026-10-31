@@ -494,121 +494,121 @@ export function AppLayout({ home }: { home?: ReactNode }) {
         onClick={go('/projects')}
       />
       <div className="ink-sidebar__scroll">
-      <SidebarSection
-        title={t('nav.projects')}
-        action={
-          canCreate ? (
-            <IconButton
-              icon="plus"
-              label={t('nav.newProject')}
-              onClick={() => {
-                setDrawerOpen(false);
-                setCreating(true);
-              }}
+        <SidebarSection
+          title={t('nav.projects')}
+          action={
+            canCreate ? (
+              <IconButton
+                icon="plus"
+                label={t('nav.newProject')}
+                onClick={() => {
+                  setDrawerOpen(false);
+                  setCreating(true);
+                }}
+              />
+            ) : undefined
+          }
+        />
+        {projects?.map((p) => (
+          <div key={p.id} className={p.id === projectId ? undefined : 'ink-sidebar__collapsible'}>
+            <ProjectNavItem
+              project={p}
+              active={p.id === projectId && !boardId && !filmView}
+              onClick={go(`/p/${p.id}`)}
             />
-          ) : undefined
-        }
-      />
-      {projects?.map((p) => (
-        <div key={p.id} className={p.id === projectId ? undefined : 'ink-sidebar__collapsible'}>
-          <ProjectNavItem
-            project={p}
-            active={p.id === projectId && !boardId && !filmView}
-            onClick={go(`/p/${p.id}`)}
-          />
-          {p.id === projectId && (
-            <div className="ink-sidebar__modules">
-              {showFilmLinks && (
-                <>
-                  <NavItem
-                    icon="storyboard"
-                    contentKind="storyboard"
-                    label={t('nav.storyboard')}
-                    count={storyboardCounts?.frameCount}
-                    title={
-                      storyboardCounts
-                        ? `${t('nav.storyboard')} · ${t('nav.shots', { count: storyboardCounts.frameCount })}`
-                        : undefined
-                    }
-                    active={filmRowActive('storyboard')}
-                    href={hrefFor('storyboard')}
-                    onClick={(e) => {
-                      e.preventDefault();
-                      showView('storyboard');
-                    }}
+            {p.id === projectId && (
+              <div className="ink-sidebar__modules">
+                {showFilmLinks && (
+                  <>
+                    <NavItem
+                      icon="storyboard"
+                      contentKind="storyboard"
+                      label={t('nav.storyboard')}
+                      count={storyboardCounts?.frameCount}
+                      title={
+                        storyboardCounts
+                          ? `${t('nav.storyboard')} · ${t('nav.shots', { count: storyboardCounts.frameCount })}`
+                          : undefined
+                      }
+                      active={filmRowActive('storyboard')}
+                      href={hrefFor('storyboard')}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        showView('storyboard');
+                      }}
+                    />
+                    <NavItem
+                      icon="shotlist"
+                      contentKind="shotlist"
+                      label={t('nav.shotlist')}
+                      count={storyboardCounts?.frameCount}
+                      title={
+                        storyboardCounts
+                          ? `${t('nav.shotlist')} · ${t('nav.toShoot', { count: storyboardCounts.frameCount, left: storyboardCounts.framesToShoot })}`
+                          : undefined
+                      }
+                      active={filmRowActive('shotlist')}
+                      href={hrefFor('shotlist')}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        showView('shotlist');
+                      }}
+                    />
+                    <NavItem
+                      icon="calendar"
+                      contentKind="schedule"
+                      label={t('nav.schedule')}
+                      active={filmRowActive('schedule')}
+                      href={hrefFor('schedule')}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        showView('schedule');
+                      }}
+                    />
+                    <NavItem
+                      icon="people"
+                      contentKind="review"
+                      label={t('nav.clients')}
+                      active={filmRowActive('review')}
+                      href={hrefFor('review')}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        showView('review');
+                      }}
+                    />
+                  </>
+                )}
+                <div className="ink-sidebar__collapsible">
+                  <div className="ink-sidebar__label">{t('nav.boards')}</div>
+                  <BoardTree
+                    projectId={p.id}
+                    parentId={p.rootBoardId}
+                    activeId={boardId}
+                    hiddenId={storyboardId}
+                    depth={1}
+                    go={go}
+                    counts={counts}
                   />
-                  <NavItem
-                    icon="shotlist"
-                    contentKind="shotlist"
-                    label={t('nav.shotlist')}
-                    count={storyboardCounts?.frameCount}
-                    title={
-                      storyboardCounts
-                        ? `${t('nav.shotlist')} · ${t('nav.toShoot', { count: storyboardCounts.frameCount, left: storyboardCounts.framesToShoot })}`
-                        : undefined
-                    }
-                    active={filmRowActive('shotlist')}
-                    href={hrefFor('shotlist')}
-                    onClick={(e) => {
-                      e.preventDefault();
-                      showView('shotlist');
-                    }}
-                  />
-                  <NavItem
-                    icon="calendar"
-                    contentKind="schedule"
-                    label={t('nav.schedule')}
-                    active={filmRowActive('schedule')}
-                    href={hrefFor('schedule')}
-                    onClick={(e) => {
-                      e.preventDefault();
-                      showView('schedule');
-                    }}
-                  />
-                  <NavItem
-                    icon="people"
-                    contentKind="review"
-                    label={t('nav.clients')}
-                    active={filmRowActive('review')}
-                    href={hrefFor('review')}
-                    onClick={(e) => {
-                      e.preventDefault();
-                      showView('review');
-                    }}
-                  />
-                </>
-              )}
-              <div className="ink-sidebar__collapsible">
-                <div className="ink-sidebar__label">{t('nav.boards')}</div>
-                <BoardTree
-                  projectId={p.id}
-                  parentId={p.rootBoardId}
-                  activeId={boardId}
-                  hiddenId={storyboardId}
-                  depth={1}
-                  go={go}
-                  counts={counts}
-                />
+                </div>
               </div>
-            </div>
-          )}
-        </div>
-      ))}
-      {shared && shared.length > 0 && (
-        <div className="ink-sidebar__collapsible">
-          <SidebarSection title={t('nav.shared')} />
-          {shared.map((b) => (
-            <NavItem
-              key={b.id}
-              icon="people"
-              label={b.title}
-              href={`/p/${b.projectId}/b/${b.id}`}
-              active={b.id === boardId}
-              onClick={go(`/p/${b.projectId}/b/${b.id}`)}
-            />
-          ))}
-        </div>
-      )}
+            )}
+          </div>
+        ))}
+        {shared && shared.length > 0 && (
+          <div className="ink-sidebar__collapsible">
+            <SidebarSection title={t('nav.shared')} />
+            {shared.map((b) => (
+              <NavItem
+                key={b.id}
+                icon="people"
+                label={b.title}
+                href={`/p/${b.projectId}/b/${b.id}`}
+                active={b.id === boardId}
+                onClick={go(`/p/${b.projectId}/b/${b.id}`)}
+              />
+            ))}
+          </div>
+        )}
       </div>
       <span className="ink-sidebar__spacer" />
       <div className="ink-sidebar__user">
