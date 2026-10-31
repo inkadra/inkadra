@@ -1,6 +1,6 @@
 import type { Rect } from '@inkadra/canvas-core';
-import type { Board, BoardDetail, ProjectRole } from '@inkadra/shared';
-import { Avatar, Button, EmptyState, Icon, IconButton } from '@inkadra/ui';
+import type { Board, BoardDetail, Project, ProjectRole } from '@inkadra/shared';
+import { Avatar, Button, EmptyState, Icon, IconButton, ProjectGlyph } from '@inkadra/ui';
 import {
   Fragment,
   type MouseEvent,
@@ -112,6 +112,7 @@ export function BoardPage() {
       key={boardId}
       projectId={projectId}
       projectName={project?.name ?? ''}
+      projectIcon={project?.icon}
       rootBoardId={project?.rootBoardId}
       projectRole={project?.myRole ?? null}
       boardId={boardId}
@@ -198,12 +199,14 @@ function CurrentCrumb({
 function BoardScreen({
   projectId,
   projectName,
+  projectIcon,
   rootBoardId,
   projectRole,
   boardId,
 }: {
   projectId: string;
   projectName: string;
+  projectIcon?: Project['icon'] | undefined;
   rootBoardId: string | undefined;
   projectRole: ProjectRole | null;
   boardId: string;
@@ -407,9 +410,12 @@ function BoardScreen({
   const selfId = user?.id ?? null;
 
   const header = useMemo(
-    () => (
-      <>
+    () => ({
+      start: (
+        <>
         <nav aria-label={t('nav.breadcrumb')} className="ink-header__crumbs">
+          {/* The project's glyph before its name; phones show the last crumb only. */}
+          {projectIcon && crumbs[0]?.id === rootBoardId && <ProjectGlyph {...projectIcon} />}
           {crumbs.map((c, i) => (
             <Fragment key={c.id}>
               {i > 0 && (
@@ -474,15 +480,7 @@ function BoardScreen({
             ))}
           </div>
         )}
-        <span className="ink-header__spacer" />
-        {conn && <BoardPresence conn={conn} selfId={selfId} />}
         {editable && (
-          <>
-            <IconButton
-              icon="clock"
-              label={t('versions.title')}
-              onClick={() => setVersionsOpen(true)}
-            />
             <div className="board-header-menu" ref={headerMenuAnchor}>
               <IconButton
                 id="board-header-menu"
@@ -518,8 +516,36 @@ function BoardScreen({
                 />
               )}
             </div>
+        )}
+        </>
+      ),
+      end: (
+        <>
+        {conn && <BoardPresence conn={conn} selfId={selfId} />}
+        {editable && (
+          <>
+            <IconButton
+              icon="clock"
+              label={t('versions.title')}
+              onClick={() => setVersionsOpen(true)}
+            />
+            <IconButton
+              icon="download"
+              className="board-header-export"
+              label={t('board.export.action')}
+              onClick={() => openExport(exportSourceOf(view))}
+            />
+            {/* Presenting lives in the Storyboard view. */}
+            <IconButton
+              icon="play"
+              className="board-header-present"
+              label={`${t('board.present.action')} · ${t('board.present.soon')}`}
+              disabled
+            />
           </>
         )}
+        {(editable || detail) && <span className="ink-header__divider" aria-hidden="true" />}
+        <CommentsButton />
         {detail && (
           <Button
             variant={
@@ -533,9 +559,9 @@ function BoardScreen({
             <span className="board-share__label">{t('share.open')}</span>
           </Button>
         )}
-        <CommentsButton />
-      </>
-    ),
+        </>
+      ),
+    }),
     [
       crumbs,
       t,
@@ -556,6 +582,7 @@ function BoardScreen({
       boardId,
       projectRole,
       selfId,
+      projectIcon,
     ],
   );
   useHeaderContent(header);
@@ -741,13 +768,6 @@ function BoardPresence({ conn, selfId }: { conn: BoardConnection; selfId: string
     p.readOnly ? t('board.peers.viewing', { name: p.user.name }) : p.user.name;
   return (
     <>
-      <SyncStatus
-        status={conn.status}
-        readOnly={conn.readOnly}
-        saves={conn.saves}
-        online={online}
-      />
-      {writing.length > 0 && <EditingPeople people={writing} store={conn.store} />}
       {people.length > 0 && (
         <ul className="peers" aria-label={t('board.peers.label', { count: people.length })}>
           {shown.map((p) => (
@@ -765,6 +785,13 @@ function BoardPresence({ conn, selfId }: { conn: BoardConnection; selfId: string
           )}
         </ul>
       )}
+      <SyncStatus
+        status={conn.status}
+        readOnly={conn.readOnly}
+        saves={conn.saves}
+        online={online}
+      />
+      {writing.length > 0 && <EditingPeople people={writing} store={conn.store} />}
     </>
   );
 }

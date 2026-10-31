@@ -144,6 +144,28 @@ const OVERSCAN_PX = 400;
 const FAR_ZOOM = 0.3;
 const DOT_GRID = 22;
 
+/**
+ * How much of the canvas the shell's floating panels cover (#333): the navigation at the left
+ * and the header panels at the top, when they float over the board. Zero on phones and outside
+ * the app shell, where nothing floats over the canvas.
+ */
+function chromeInsets(canvas: HTMLElement): { left: number; top: number } {
+  const shell = canvas.closest('.ink-shell');
+  if (!shell) return { left: 0, top: 0 };
+  const box = canvas.getBoundingClientRect();
+  const over = (selector: string, side: 'right' | 'bottom') => {
+    const el = shell.querySelector<HTMLElement>(selector);
+    if (!el || getComputedStyle(el).visibility === 'hidden') return 0;
+    const r = el.getBoundingClientRect();
+    if (r.width === 0 || r.height === 0) return 0;
+    return Math.max(0, side === 'right' ? r.right - box.left : r.bottom - box.top);
+  };
+  return {
+    left: over(':scope > .ink-sidebar', 'right'),
+    top: over(':scope > .ink-header', 'bottom'),
+  };
+}
+
 /** On-screen spacing of the background dots: the grid doubles as you zoom out, never denser than 16px. */
 function dotSpacing(zoom: number): number {
   let step = DOT_GRID * zoom;
@@ -414,13 +436,19 @@ export function Canvas({
     return () => ro.disconnect();
   }, []);
 
-  /** Viewport fitting a rect in the part of the canvas above the toolbar, which floats over it. */
+  /**
+   * Viewport fitting a rect in the part of the canvas the floating chrome leaves free: above the
+   * toolbar, and beside the navigation and below the header panels when they float over it.
+   */
   const fitView = useCallback(
     (r: Rect, padding?: number, maxZoom?: number) => {
-      const root = rootRef.current?.getBoundingClientRect();
-      const bar = rootRef.current?.querySelector('.toolbar')?.getBoundingClientRect();
+      const el = rootRef.current;
+      const root = el?.getBoundingClientRect();
+      const bar = el?.querySelector('.toolbar')?.getBoundingClientRect();
       const below = root && bar?.height ? Math.max(0, root.bottom - bar.top) : 0;
-      return fitRect(r, size.w, size.h - below, padding, maxZoom);
+      const { left, top } = el ? chromeInsets(el) : { left: 0, top: 0 };
+      const view = fitRect(r, size.w - left, size.h - below - top, padding, maxZoom);
+      return { ...view, x: view.x - left / view.zoom, y: view.y - top / view.zoom };
     },
     [size],
   );
@@ -2498,13 +2526,16 @@ export function Canvas({
           <ZoomControls zoom={viewport.zoom} onZoom={zoomTo} />
         </div>
         {!readOnly && (
-          <Toolbar
-            tool={tool}
-            onTool={setTool}
-            onAdd={(type) => void add(type)}
-            onCanvas={(template) => void insertCanvas(template)}
-            onScreenplay={() => setImportingScript(true)}
-          />
+          // Centres the bar on the part of the board beside the navigation, clear of the corner.
+          <div className="canvas__dock">
+            <Toolbar
+              tool={tool}
+              onTool={setTool}
+              onAdd={(type) => void add(type)}
+              onCanvas={(template) => void insertCanvas(template)}
+              onScreenplay={() => setImportingScript(true)}
+            />
+          </div>
         )}
         <UploadPanel />
         {/* On the body: the dialog is the viewport's, not a card of the board. */}

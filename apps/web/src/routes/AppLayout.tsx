@@ -16,7 +16,9 @@ import {
 } from '@inkadra/ui';
 import {
   createContext,
+  type FocusEvent,
   type MouseEvent,
+  type PointerEvent,
   type ReactNode,
   useContext,
   useEffect,
@@ -56,7 +58,7 @@ import {
 import { appActions } from '../commands/app-actions.ts';
 import { canCreateProjects } from '../lib/access.ts';
 import { api, authApi } from '../lib/api.ts';
-import { HeaderContext } from '../lib/header.tsx';
+import { HeaderContext, type HeaderParts } from '../lib/header.tsx';
 import { useSession } from '../lib/session.tsx';
 import { useTheme } from '../lib/theme.ts';
 import {
@@ -257,7 +259,7 @@ export function AppLayout({ home }: { home?: ReactNode }) {
   // The project a new board goes into when it starts from inside that project.
   const [boardProject, setBoardProject] = useState<string | undefined>();
   const [newSheet, setNewSheet] = useState(false);
-  const [headerContent, setHeaderContent] = useState<ReactNode | null>(null);
+  const [headerContent, setHeaderContent] = useState<HeaderParts | null>(null);
   const [searching, setSearching] = useState(false);
   const [inboxOpen, setInboxOpen] = useState(false);
   const mobileInboxButton = useRef<HTMLButtonElement>(null);
@@ -304,12 +306,16 @@ export function AppLayout({ home }: { home?: ReactNode }) {
     return () => window.removeEventListener('keydown', onKey);
   }, []);
 
-  const [collapsed, setCollapsed] = useState(() => readCollapsed());
+  // Remembered per person on this device (#333).
+  const userId = user?.id;
+  const [collapsed, setCollapsed] = useState(() => readCollapsed(userId));
+  useEffect(() => setCollapsed(readCollapsed(userId)), [userId]);
   const toggleCollapsed = () =>
     setCollapsed((c) => {
-      writeCollapsed(!c);
+      writeCollapsed(userId, !c);
       return !c;
     });
+  const peek = useSidebarPeek(collapsed || inboxOpen);
   // ⌘\ / Ctrl+\ folds the navigation column to its icons and back.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -317,14 +323,14 @@ export function AppLayout({ home }: { home?: ReactNode }) {
       if ((mac ? e.metaKey : e.ctrlKey) && !e.shiftKey && !e.altKey && e.key === '\\') {
         e.preventDefault();
         setCollapsed((c) => {
-          writeCollapsed(!c);
+          writeCollapsed(userId, !c);
           return !c;
         });
       }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, []);
+  }, [userId]);
 
   const pathProject = pathname.startsWith('/p/') ? pathname.split('/')[2] : undefined;
   const { items: projectBoards } = useProjectBoards(pathProject);
@@ -427,7 +433,7 @@ export function AppLayout({ home }: { home?: ReactNode }) {
     (v === 'storyboard' && !filmView && !!storyboardId && openBoardId === storyboardId);
 
   const sidebar = (
-    <Sidebar label={t('nav.navigation')}>
+    <Sidebar label={t('nav.navigation')} {...peek.panel}>
       <div className="ink-sidebar__workspace">
         <Logo />
         <span className="ink-nav__name" style={{ flex: 1 }}>
@@ -435,11 +441,14 @@ export function AppLayout({ home }: { home?: ReactNode }) {
         </span>
         <IconButton
           className={`ink-sidebar__toggle${collapsed ? ' is-collapsed' : ''}`}
-          icon="chevronRight"
+          icon="splitPanel"
           label={t(collapsed ? 'nav.expand' : 'nav.collapse')}
           aria-expanded={!(collapsed || inboxOpen)}
           disabled={inboxOpen}
-          onClick={toggleCollapsed}
+          onClick={() => {
+            peek.hide();
+            toggleCollapsed();
+          }}
         />
       </div>
       <button
@@ -484,6 +493,7 @@ export function AppLayout({ home }: { home?: ReactNode }) {
         active={pathname === '/projects'}
         onClick={go('/projects')}
       />
+      <div className="ink-sidebar__scroll">
       <SidebarSection
         title={t('nav.projects')}
         action={
@@ -599,6 +609,7 @@ export function AppLayout({ home }: { home?: ReactNode }) {
           ))}
         </div>
       )}
+      </div>
       <span className="ink-sidebar__spacer" />
       <div className="ink-sidebar__user">
         <Avatar image={user.image} name={user.name} />
@@ -626,6 +637,49 @@ export function AppLayout({ home }: { home?: ReactNode }) {
     </Sidebar>
   );
 
+  // Home creates from the header only; search stays in the sidebar and on ⌘K.
+  const homeActions = (
+    <div className="home-header-actions">
+      <Button
+        variant="primary"
+        icon="plus"
+        disabled={writable.length === 0}
+        onClick={() => {
+          setBoardProject(undefined);
+          setCreatingBoard(true);
+        }}
+      >
+        {t('home.newBoard.action')}
+      </Button>
+      {canCreate && (
+        <Button variant="secondary" onClick={() => setCreating(true)}>
+          {t('nav.newProject')}
+        </Button>
+      )}
+    </div>
+  );
+
+  // Collapsed, only the logo stays at the top left: it brings the navigation back.
+  const launcher = (collapsed || inboxOpen) && (
+    <>
+      <button
+        type="button"
+        className="ink-shell__launcher"
+        aria-label={t('nav.expand')}
+        data-ink-tooltip={t('nav.expand')}
+        aria-expanded={false}
+        onClick={() => {
+          peek.hide();
+          if (inboxOpen) setInboxOpen(false);
+          if (collapsed) toggleCollapsed();
+        }}
+      >
+        <Logo size={26} />
+      </button>
+      <div className="ink-shell__edge" aria-hidden="true" {...peek.edge} />
+    </>
+  );
+
   const header = (
     <Header>
       <div className="mobile-header-actions">
@@ -640,8 +694,8 @@ export function AppLayout({ home }: { home?: ReactNode }) {
         )}
       </div>
       <div className="shell-header-content">
-        {headerContent ?? (
-          <>
+        <div className="ink-header__group ink-header__start">
+          {headerContent?.start ?? (
             <nav aria-label={t('nav.breadcrumb')} className="ink-header__crumbs">
               <span style={{ fontWeight: 600 }}>
                 {current?.name ??
@@ -650,30 +704,20 @@ export function AppLayout({ home }: { home?: ReactNode }) {
                     : t(pathname === '/projects' ? 'nav.projects' : 'nav.home'))}
               </span>
             </nav>
-            <span className="ink-header__spacer" />
-            {/* Home creates from here only; search stays in the sidebar and on ⌘K. */}
-            {pathname === '/' && (
-              <div className="home-header-actions">
-                <Button
-                  variant="primary"
-                  icon="plus"
-                  disabled={writable.length === 0}
-                  onClick={() => {
-                    setBoardProject(undefined);
-                    setCreatingBoard(true);
-                  }}
-                >
-                  {t('home.newBoard.action')}
-                </Button>
-                {canCreate && (
-                  <Button variant="secondary" onClick={() => setCreating(true)}>
-                    {t('nav.newProject')}
-                  </Button>
-                )}
-              </div>
-            )}
-          </>
-        )}
+          )}
+        </div>
+        <div className="ink-header__group ink-header__end">
+          {headerContent ? headerContent.end : pathname === '/' && homeActions}
+          <NotificationBell
+            unread={unread}
+            onCount={refreshUnread}
+            feed={notifications}
+            onOpenInbox={(opener) => {
+              inboxOpener.current = opener;
+              setInboxOpen(true);
+            }}
+          />
+        </div>
       </div>
       {projectId && (
         <div className="mobile-view-picker">
@@ -697,15 +741,6 @@ export function AppLayout({ home }: { home?: ReactNode }) {
           </Select>
         </div>
       )}
-      <NotificationBell
-        unread={unread}
-        onCount={refreshUnread}
-        feed={notifications}
-        onOpenInbox={(opener) => {
-          inboxOpener.current = opener;
-          setInboxOpen(true);
-        }}
-      />
     </Header>
   );
 
@@ -726,10 +761,13 @@ export function AppLayout({ home }: { home?: ReactNode }) {
       >
         <HeaderContext.Provider value={setHeaderContent}>
           <AppShell
+            launcher={launcher}
             sidebar={sidebar}
             header={header}
-            canvas={!!projectId}
+            // A board's own canvas runs edge to edge; its other views sit in a surface.
+            canvas={!!projectId && (currentView === 'canvas' || currentView === null)}
             collapsed={inboxOpen || collapsed}
+            peek={peek.shown}
           >
             {/* Keep layout observable while Inbox covers the board, including sidebar resizes. */}
             <div
@@ -971,20 +1009,81 @@ function BoardTree({
 }
 
 const COLLAPSED_KEY = 'inkadra.sidebar.collapsed';
-function readCollapsed(): boolean {
+/** One choice per person: the key of the device-wide choice from before #333 is the fallback. */
+const collapsedKey = (userId: string | undefined) =>
+  userId ? `${COLLAPSED_KEY}.${userId}` : COLLAPSED_KEY;
+function readCollapsed(userId: string | undefined): boolean {
   try {
-    return localStorage.getItem(COLLAPSED_KEY) === '1';
+    const own = localStorage.getItem(collapsedKey(userId));
+    return (own ?? localStorage.getItem(COLLAPSED_KEY)) === '1';
   } catch {
     return false;
   }
 }
-function writeCollapsed(value: boolean) {
+function writeCollapsed(userId: string | undefined, value: boolean) {
   try {
-    if (value) localStorage.setItem(COLLAPSED_KEY, '1');
-    else localStorage.removeItem(COLLAPSED_KEY);
+    localStorage.setItem(collapsedKey(userId), value ? '1' : '0');
   } catch {
     // Private mode: the choice lasts for this page only.
   }
+}
+
+/** How long the pointer rests on the left edge before the navigation peeks out, and leaves it. */
+const PEEK_IN_MS = 180;
+const PEEK_OUT_MS = 320;
+
+/**
+ * The collapsed navigation shows itself over the page while a mouse rests on the window's left
+ * edge, and hides again a moment after the pointer (or the focus) leaves it.
+ */
+function useSidebarPeek(collapsed: boolean) {
+  const [shown, setShown] = useState(false);
+  const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const later = (next: boolean, ms: number) => {
+    clearTimeout(timer.current);
+    timer.current = setTimeout(() => setShown(next), ms);
+  };
+  const cancel = () => clearTimeout(timer.current);
+  useEffect(() => () => clearTimeout(timer.current), []);
+  useEffect(() => {
+    if (!collapsed) {
+      clearTimeout(timer.current);
+      setShown(false);
+    }
+  }, [collapsed]);
+  useEffect(() => {
+    if (!shown) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setShown(false);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [shown]);
+  const mouse = (e: PointerEvent) => e.pointerType === 'mouse';
+  return {
+    shown: collapsed && shown,
+    hide: () => {
+      cancel();
+      setShown(false);
+    },
+    edge: {
+      onPointerEnter: (e: PointerEvent) => mouse(e) && later(true, PEEK_IN_MS),
+      onPointerLeave: () => !shown && cancel(),
+    },
+    panel: collapsed
+      ? {
+          onPointerEnter: cancel,
+          onPointerLeave: (e: PointerEvent) => mouse(e) && later(false, PEEK_OUT_MS),
+          onFocus: () => {
+            cancel();
+            setShown(true);
+          },
+          onBlur: (e: FocusEvent) => {
+            if (!e.currentTarget.contains(e.relatedTarget as Node | null)) later(false, 0);
+          },
+        }
+      : {},
+  };
 }
 
 /** Element and frame counts of the open project's boards; refreshed when its boards change. */

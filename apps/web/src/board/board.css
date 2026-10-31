@@ -2613,3 +2613,138 @@ button.card__play {
     height: 44px;
   }
 }
+
+/* Floating shell (#333) ------------------------------------------------------------ */
+
+/* Phones: the dock is no box at all, the tool bar is placed by the canvas as before. */
+.canvas__dock {
+  display: contents;
+}
+
+/* Desktop and tablet: the board runs under the navigation and the header panels, so its own
+   chrome keeps to the part beside them (--ink-board-left, from the shell), 12 px from the edges,
+   in the same translucent panels. */
+@media (width >= 768px) {
+  .canvas__corner {
+    left: calc(var(--ink-board-left, 0px) + 12px);
+    bottom: 12px;
+    gap: 8px;
+    transition: left var(--ink-dur-slow) var(--ink-ease-out);
+  }
+  /* The tool bar is centred on the board beside the navigation and never reaches the corner:
+     the dock starts after it, and its end spacer (as wide as the corner) gives way first. */
+  .canvas__dock {
+    position: absolute;
+    left: calc(var(--ink-board-left, 0px) + 12px + 150px + 12px);
+    right: 12px;
+    bottom: 12px;
+    display: flex;
+    justify-content: center;
+    pointer-events: none;
+    container: canvas / inline-size;
+    transition: left var(--ink-dur-slow) var(--ink-ease-out);
+  }
+  .canvas__dock::after {
+    content: "";
+    flex: 0 1000 calc(150px + 12px);
+    min-width: 0;
+  }
+  .canvas__dock > .toolbar {
+    position: relative;
+    left: auto;
+    bottom: auto;
+    transform: none;
+    flex: 0 1 auto;
+    min-width: 0;
+    max-width: 100%;
+    box-sizing: border-box;
+    pointer-events: auto;
+  }
+  .canvas .toolbar,
+  .canvas .minimap,
+  .canvas .zoom,
+  .canvas .unsorted__toggle {
+    position: relative;
+    isolation: isolate;
+    border-color: transparent;
+    border-radius: var(--ink-radius-lg);
+    background: transparent;
+    box-shadow: none;
+  }
+  .canvas .minimap {
+    border-radius: var(--ink-radius-md);
+  }
+  .canvas .toolbar::before,
+  .canvas .minimap::before,
+  .canvas .zoom::before,
+  .canvas .unsorted__toggle::before {
+    content: "";
+    position: absolute;
+    z-index: -1;
+    inset: 0;
+    border-radius: inherit;
+    background: var(--ink-float-bg);
+    -webkit-backdrop-filter: var(--ink-float-blur);
+    backdrop-filter: var(--ink-float-blur);
+    box-shadow: var(--ink-float-shadow);
+    pointer-events: none;
+  }
+  .canvas--moving :is(.toolbar, .minimap, .zoom, .unsorted__toggle)::before {
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+  .canvas .zoom {
+    height: 36px;
+    padding: 0 4px;
+  }
+  .canvas .zoom button {
+    height: 28px;
+    min-width: 28px;
+    border-radius: var(--ink-radius-sm);
+  }
+  .canvas .unsorted {
+    left: calc(var(--ink-board-left, 0px) + 12px);
+    /* Above the corner: the minimap (90 + its border), the gap and the zoom. */
+    bottom: calc(12px + 92px + 8px + 36px + 8px);
+    transition: left var(--ink-dur-slow) var(--ink-ease-out);
+  }
+  .canvas .uploads {
+    right: 12px;
+    bottom: 12px;
+  }
+  /* A card's side panel opens under the top-right header panel, not behind it. */
+  .ink-shell .canvas .canvas__panel {
+    top: calc(12px * 2 + 42px);
+    right: 12px;
+    bottom: 12px;
+  }
+  /* Menus opened on the board go over the floating panels. */
+  .ink-shell .canvas .menu {
+    z-index: 50;
+  }
+  .ink-shell .board-header-menu .menu {
+    top: calc(100% + 12px);
+  }
+  :root .comments-panel {
+    top: calc(12px * 2 + 42px);
+    right: 12px;
+    bottom: 12px;
+  }
+}
+@media (width >= 768px) and (prefers-reduced-motion: reduce) {
+  .canvas__corner,
+  .canvas__dock,
+  .canvas .unsorted {
+    transition: none;
+  }
+}
+@media (width >= 768px) {
+  /* The views in the top-left panel, next to where am I. */
+  .ink-shell > .ink-header .view-tabs {
+    margin-left: 4px;
+    padding: 3px;
+  }
+  .ink-shell > .ink-header .view-tabs__tab {
+    height: 26px;
+  }
+}

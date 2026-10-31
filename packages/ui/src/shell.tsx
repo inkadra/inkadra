@@ -1,38 +1,54 @@
 // SPDX-License-Identifier: MPL-2.0
-import type { AnchorHTMLAttributes, ButtonHTMLAttributes, ReactNode } from 'react';
+import type {
+  AnchorHTMLAttributes,
+  ButtonHTMLAttributes,
+  HTMLAttributes,
+  ReactNode,
+} from 'react';
 import { Icon, type IconName } from './icons.tsx';
 import type { ContentKind } from './kind-color.ts';
 
 /**
- * Desktop layout: one navigation column (240, or 56 with icons only when collapsed), header 48,
- * rounded main panel. `rail` is kept for callers that still pass a separate icon rail.
+ * Desktop and tablet layout (#333): the page fills the window and the chrome floats over it.
+ * The navigation is a floating panel at the left (collapsed, only `launcher` stays: a small
+ * button that brings it back; `peek` shows it over the page for a moment), the header is two
+ * floating panels at the top, and a board (`canvas`) runs edge to edge under all of them.
+ * Other pages sit in a rounded surface beside the navigation. Phones keep their own layout.
+ * `rail` is kept for callers that still pass a separate icon rail.
  */
 export function AppShell({
   rail,
+  launcher,
   sidebar,
   header,
   children,
   canvas,
   collapsed,
+  peek,
 }: {
   rail?: ReactNode;
+  launcher?: ReactNode;
   sidebar?: ReactNode;
   header: ReactNode;
   children: ReactNode;
   canvas?: boolean;
   collapsed?: boolean;
+  peek?: boolean;
 }) {
   const className = [
     'ink-shell',
     rail ? 'ink-shell--rail' : '',
     sidebar ? '' : 'ink-shell--no-sidebar',
     collapsed ? 'ink-shell--collapsed' : '',
+    collapsed && peek ? 'ink-shell--peek' : '',
+    canvas ? 'ink-shell--canvas' : '',
   ]
     .filter(Boolean)
     .join(' ');
   return (
     <div className={className}>
       {rail}
+      {launcher}
       {sidebar}
       {header}
       <main className={canvas ? 'ink-main ink-main--canvas' : 'ink-main'}>{children}</main>
@@ -82,9 +98,13 @@ export function RailButton({
 export const RailSeparator = () => <span className="ink-rail__sep" aria-hidden="true" />;
 export const RailSpacer = () => <span className="ink-rail__spacer" />;
 
-export function Sidebar({ label, children }: { label: string; children: ReactNode }) {
+export function Sidebar({
+  label,
+  children,
+  ...props
+}: HTMLAttributes<HTMLElement> & { label: string; children: ReactNode }) {
   return (
-    <aside className="ink-sidebar" aria-label={label}>
+    <aside className="ink-sidebar" aria-label={label} {...props}>
       {children}
     </aside>
   );
