@@ -9,6 +9,7 @@ import { Button, Checkbox, Icon, IconButton, Select } from '@inkadra/ui';
 import { type FormEvent, useCallback, useEffect, useId, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api, RequestError } from '../lib/api.ts';
+import { relativeTime } from '../notifications/Notifications.tsx';
 import {
   canChangeScope,
   draftOf,
@@ -447,12 +448,12 @@ function LinkRow({
           <span className="share__sub">
             {[
               link.createdBy ? t('guestLinks.createdBy', { name: link.createdBy.name }) : null,
-              t('guestLinks.usage', { count: link.viewCount, guests: link.guestCount }),
               link.lastUsedAt
-                ? t('guestLinks.lastUsed', {
-                    date: formatDate(link.lastUsedAt, i18n.language, true),
-                  })
+                ? t('guestLinks.lastUsed', { when: relativeTime(link.lastUsedAt, i18n.language) })
                 : t('guestLinks.neverUsed'),
+              link.viewCount > 0
+                ? t('guestLinks.usage', { count: link.viewCount, guests: link.guestCount })
+                : null,
             ]
               .filter(Boolean)
               .join(' · ')}

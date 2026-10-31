@@ -371,7 +371,7 @@ test('the team sees the comment and the picks', async ({ page, baseURL }) => {
 
   const dialog = await openGuestLinks(page);
   const row = dialog.getByRole('listitem').filter({ hasText: 'Cliente' });
-  await expect(row.getByText(/aperto \d+ volt[ae] · ospiti: 1/)).toBeVisible();
+  await expect(row.getByText(/Aperto · .+ · \d+ visit[ae] · ospiti: 1/)).toBeVisible();
   await row.getByRole('button', { name: 'Risultati' }).click();
   await expect(dialog.getByRole('heading', { name: 'Selezione · Cliente' })).toBeVisible();
   const item = dialog.getByRole('listitem').filter({ hasText: 'scatto-alba.png' });

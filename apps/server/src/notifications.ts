@@ -16,7 +16,7 @@ import {
   project,
   user,
 } from './db/schema.ts';
-import { authorOf, loadPeople } from './http/authors.ts';
+import { authorOf, labelOf, loadPeople } from './http/authors.ts';
 import { afterCursor, atText, type Keyset } from './http/keyset.ts';
 import { RateLimiter } from './http/link-previews.ts';
 import { mailText } from './mail-texts.ts';
@@ -58,6 +58,8 @@ export interface NotificationEvent {
   elementId?: string | null;
   commentId?: string | null;
   reviewStatus?: ReviewStatus | null;
+  /** For `link_opened`: the link a guest opened. */
+  shareLinkId?: string | null;
 }
 
 /**
@@ -133,6 +135,7 @@ export async function notify(
       elementId: event.elementId ?? null,
       commentId: event.commentId ?? null,
       reviewStatus: event.reviewStatus ?? null,
+      shareLinkId: event.shareLinkId ?? null,
     });
   }
   if (values.length > 0) await db.insert(notification).values(values);
@@ -187,6 +190,7 @@ export async function renderNotifications(
     { id: userId },
     [...rows.map((r) => r.actorId), ...comments.flatMap((c) => c.mentions)],
     rows.map((r) => r.actorGuestId),
+    rows.map((r) => r.shareLinkId),
   );
   const subjectIds = [...new Set(rows.flatMap((r) => (r.subjectUserId ? [r.subjectUserId] : [])))];
   const subjects = new Map(
@@ -219,7 +223,7 @@ export async function renderNotifications(
       id: r.id,
       type: r.type,
       // Every event has an actor; once their account is gone the actor shows as deleted.
-      actor: authorOf(people, r.actorId, r.actorGuestId),
+      actor: r.type === 'link_opened' ? null : authorOf(people, r.actorId, r.actorGuestId),
       projectId: r.projectId,
       projectName: r.projectId ? (projectNames.get(r.projectId) ?? null) : null,
       boardId: r.boardId,
@@ -233,6 +237,7 @@ export async function renderNotifications(
       reviewStatus: r.reviewStatus,
       subject: r.subjectUserId ? (subjects.get(r.subjectUserId) ?? null) : null,
       accessExpiresAt: r.accessExpiresAt ? iso(r.accessExpiresAt) : null,
+      shareLinkLabel: r.shareLinkId ? labelOf(people, r.shareLinkId) : null,
       readAt: r.readAt ? iso(r.readAt) : null,
       createdAt: iso(r.createdAt),
     };
@@ -276,6 +281,8 @@ function mailLine(texts: ReturnType<typeof mailText>, n: Notification, to: strin
       n.boardTitle ?? n.projectName ?? '',
       n.accessExpiresAt ? new Date(n.accessExpiresAt) : null,
     );
+  if (n.type === 'link_opened')
+    return texts.linkOpenedLine(n.shareLinkLabel ?? null, n.boardTitle ?? n.projectName ?? '');
   const who =
     n.actor?.kind === 'user'
       ? n.actor.user.name

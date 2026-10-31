@@ -641,6 +641,7 @@ export const notification = pgTable(
         'import_ready',
         'access_expiring',
         'access_expired',
+        'link_opened',
       ],
     }).notNull(),
     actorId: uuid('actor_id').references(() => user.id, { onDelete: 'set null' }),
@@ -653,6 +654,8 @@ export const notification = pgTable(
     /** access_expiring/access_expired: whose access, and when it ends (decision 0041). */
     subjectUserId: uuid('subject_user_id').references(() => user.id, { onDelete: 'cascade' }),
     accessExpiresAt: timestamp('access_expires_at', { withTimezone: true }),
+    /** link_opened: the link a guest opened; the notification shows its label. */
+    shareLinkId: uuid('share_link_id').references(() => shareLink.id, { onDelete: 'cascade' }),
     readAt: timestamp('read_at', { withTimezone: true }),
     /** Set once the notification went out by email, alone or in a digest. */
     emailedAt: timestamp('emailed_at', { withTimezone: true }),
@@ -676,6 +679,7 @@ export const notification = pgTable(
       .where(sql`${t.actorGuestId} is not null`),
     // Comments are hard-deleted and cascade here.
     index('notification_comment_idx').on(t.commentId).where(sql`${t.commentId} is not null`),
+    index('notification_share_link_idx').on(t.shareLinkId).where(sql`${t.shareLinkId} is not null`),
   ],
 );
 
@@ -733,6 +737,23 @@ export const shareLink = pgTable(
     index('share_link_project_idx').on(t.projectId),
     index('share_link_created_by_idx').on(t.createdBy).where(sql`${t.createdBy} is not null`),
   ],
+);
+
+/**
+ * The first time a link was opened for each version of its board (the newest named version at
+ * that moment, '' before any). It only decides whether to notify the owner of the link: no
+ * address, device or guest is stored, and views are not counted per row.
+ */
+export const shareLinkOpen = pgTable(
+  'share_link_open',
+  {
+    shareLinkId: uuid('share_link_id')
+      .notNull()
+      .references(() => shareLink.id, { onDelete: 'cascade' }),
+    versionKey: text('version_key').notNull(),
+    openedAt: timestamp('opened_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [primaryKey({ columns: [t.shareLinkId, t.versionKey] })],
 );
 
 /**

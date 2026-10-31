@@ -64,6 +64,9 @@ const it = {
         return `${who}: "${where}"`;
     }
   },
+  /** `label`: what the link is called, null without one. */
+  linkOpenedLine: (label: string | null, where: string) =>
+    `${label ?? 'Un ospite'} ha aperto "${where}"`,
   /** `who` null: the access of the recipient. */
   accessLine: (type: string, who: string | null, where: string, at: Date | null) => {
     const when = at ? accessWhen(at, 'it-IT') : '';
@@ -141,6 +144,7 @@ const en: Texts = {
         return `${who}: "${where}"`;
     }
   },
+  linkOpenedLine: (label, where) => `${label ?? 'A guest'} opened "${where}"`,
   accessLine: (type, who, where, at) => {
     const when = at ? accessWhen(at, 'en-GB') : '';
     if (type === 'access_expiring')

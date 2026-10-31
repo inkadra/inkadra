@@ -3,11 +3,15 @@ import { Avatar, Icon, kindStyle, ProjectGlyph } from '@inkadra/ui';
 import { type MouseEvent, type ReactNode, useId, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router';
-import { authorName } from '../board/review-model.ts';
 import { api } from '../lib/api.ts';
 import { useSession } from '../lib/session.tsx';
 import { notificationPath } from '../notifications/model.ts';
-import { avatarBg, describeNotification, relativeTime } from '../notifications/Notifications.tsx';
+import {
+  avatarBg,
+  describeNotification,
+  notificationActor,
+  relativeTime,
+} from '../notifications/Notifications.tsx';
 import { useProjects } from './AppLayout.tsx';
 import { BoardPreview } from './BoardPreview.tsx';
 import {
@@ -354,7 +358,7 @@ function ActivityItem({ item, onRead }: { item: Notification; onRead: () => Prom
   const { user } = useSession();
   const navigate = useNavigate();
   const path = notificationPath(item);
-  const actor = authorName(item.actor);
+  const actor = notificationActor(item, t);
   const where = [...new Set([item.projectName, item.boardTitle])].filter(Boolean).join(' · ');
   const body = (
     <>

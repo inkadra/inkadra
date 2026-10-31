@@ -5,9 +5,11 @@ import { MemoryRouter } from 'react-router';
 import { beforeEach, expect, it, vi } from 'vitest';
 import { api } from '../lib/api.ts';
 import {
+  describeNotification,
   initials,
   NotificationBell,
   NotificationList,
+  notificationActor,
   useNotificationFeed,
 } from './Notifications.tsx';
 
@@ -42,6 +44,16 @@ it('builds initials from the first two words, ignoring extra whitespace', () => 
   expect(initials('Laura')).toBe('LA');
   expect(initials(null)).toBe('IN');
   expect(initials('')).toBe('IN');
+});
+
+it('names an opened link by its label, with no guest or visit details', () => {
+  const t = (key: string) => key;
+  const opened = { type: 'link_opened', actor: null, reviewStatus: null } as const;
+  expect(notificationActor({ ...opened, shareLinkLabel: ' Cliente ' }, t)).toBe('Cliente');
+  expect(notificationActor({ ...opened, shareLinkLabel: null }, t)).toBe(
+    'notifications.type.guest',
+  );
+  expect(describeNotification(opened, t)).toBe('notifications.type.link_opened');
 });
 
 it('keeps the API unread count across pages and excludes comments from mentions', async () => {

@@ -11,6 +11,7 @@ export const KNOWN_TYPES = [
   'import_ready',
   'access_expiring',
   'access_expired',
+  'link_opened',
 ] as const;
 
 /** Where a notification leads: the board, with the card selected and the thread open. */

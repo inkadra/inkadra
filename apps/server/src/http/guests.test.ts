@@ -21,6 +21,7 @@ import {
   board,
   boardDoc,
   boardGrant,
+  boardVersion,
   comment,
   elementReview,
   elementReviewEvent,
@@ -958,6 +959,105 @@ describe.skipIf(!url)('guest share links (needs DATABASE_URL)', () => {
     const opened = await open(locked, { password: 'segreto-cliente' });
     expect(opened.status).toBe(403);
     expect(opened.body.error.details).toEqual({ reason: 'expired' });
+  });
+
+  it('tells the link maker once per link and version, and keeps nothing about the visit', async () => {
+    const boardId = await insertBoard(P, 'Opened notice', B.R);
+    const link = await createLink('owner', boardId, { label: 'Cliente' });
+    const rows = () => db.select().from(notification).where(eq(notification.shareLinkId, link.id));
+    expect(await rows()).toHaveLength(0);
+
+    const first = await open(link, { name: 'Anna' });
+    expect(await rows()).toMatchObject([
+      {
+        userId: as.owner.id,
+        type: 'link_opened',
+        actorId: null,
+        actorGuestId: null,
+        projectId: P,
+        boardId,
+      },
+    ]);
+    // Another guest, a return visit and a resumed session are the same link and version.
+    await open(link, { name: 'Bruno' });
+    const again = await open(link, { cookie: first.cookie });
+    expect((await call({ cookie: again.cookie }, 'GET', g(link, '/session'))).status).toBe(200);
+    expect(await rows()).toHaveLength(1);
+
+    const inbox = await call('owner', 'GET', '/api/v1/me/notifications');
+    expect(
+      inbox.body.items.filter((n: { type: string }) => n.type === 'link_opened'),
+    ).toContainEqual(
+      expect.objectContaining({
+        actor: null,
+        boardId,
+        boardTitle: 'Opened notice',
+        shareLinkLabel: 'Cliente',
+      }),
+    );
+    // Only the first open per version is stored: no address, device or guest.
+    const stored = await client`select * from share_link_open where share_link_id = ${link.id}`;
+    expect(stored).toHaveLength(1);
+    expect(Object.keys(stored[0] ?? {}).sort()).toEqual([
+      'opened_at',
+      'share_link_id',
+      'version_key',
+    ]);
+
+    // A new named version is a new first open; automatic ones are not.
+    await db.insert(boardVersion).values({
+      boardId,
+      kind: 'auto',
+      state: new Uint8Array(),
+      schemaVersion: 3,
+      size: 0,
+      elementCount: 0,
+    });
+    await call({ cookie: again.cookie }, 'GET', g(link, '/session'));
+    expect(await rows()).toHaveLength(1);
+    await db.insert(boardVersion).values({
+      boardId,
+      kind: 'named',
+      name: 'Rough cut v2',
+      state: new Uint8Array(),
+      schemaVersion: 3,
+      size: 0,
+      elementCount: 0,
+    });
+    await call({ cookie: again.cookie }, 'GET', g(link, '/session'));
+    await call({ cookie: again.cookie }, 'GET', g(link, '/session'));
+    expect(await rows()).toHaveLength(2);
+  });
+
+  it('does not count the maker or project members opening a link as a visit', async () => {
+    const boardId = await insertBoard(P, 'Team opens', B.R);
+    const link = await createLink('owner', boardId, { label: 'Cliente' });
+    const rows = () => db.select().from(notification).where(eq(notification.shareLinkId, link.id));
+    const state = async () => {
+      const [row] = await db.select().from(shareLink).where(eq(shareLink.id, link.id));
+      const opens = await client`select 1 from share_link_open where share_link_id = ${link.id}`;
+      return { views: row?.viewCount, last: row?.lastUsedAt, opens: opens.length };
+    };
+    for (const who of ['owner', 'viewer'] as const) {
+      const opened = await call({ cookie: as[who].cookie }, 'POST', g(link, '/session'), {
+        token: link.token,
+      });
+      expect(opened.status).toBe(200);
+      const guest = cookieOf(opened.cookies, 'inkadra.guest');
+      const both = { cookie: `${guest}; ${as[who].cookie}` };
+      expect((await call(both, 'GET', g(link, '/session'))).status).toBe(200);
+    }
+    expect(await rows()).toHaveLength(0);
+    expect(await state()).toEqual({ views: 0, last: null, opens: 0 });
+
+    // Someone with an account but no access to the board is a guest like any other.
+    const outsider = await call({ cookie: as.outsider.cookie }, 'POST', g(link, '/session'), {
+      token: link.token,
+    });
+    expect(outsider.status).toBe(200);
+    expect(await rows()).toHaveLength(1);
+    expect((await state()).opens).toBe(1);
+    expect((await state()).views).toBe(1);
   });
 
   it('opens a session with a cookie scoped to the link', async () => {

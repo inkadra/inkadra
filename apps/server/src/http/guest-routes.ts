@@ -21,8 +21,9 @@ import {
 } from '@inkadra/shared';
 import { verifyPassword } from 'better-auth/crypto';
 import { and, asc, count, eq, getTableColumns, gt, inArray, isNull, or, sql } from 'drizzle-orm';
-import type { FastifyInstance, FastifyReply } from 'fastify';
-import { guestCan } from '../access.ts';
+import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
+import { boardRoles, guestCan } from '../access.ts';
+import type { Auth } from '../auth.ts';
 import { storedElement } from '../board-content.ts';
 import { type BoardNotifier, noNotices } from '../board-notices.ts';
 import type { Config } from '../config.ts';
@@ -39,6 +40,7 @@ import {
   sharePick,
   user,
 } from '../db/schema.ts';
+import { recordLinkOpen } from '../link-opens.ts';
 import { afterCommit, notify, Recipients } from '../notifications.ts';
 import { addressBucket, Failures } from '../rate-limits.ts';
 import { safeEqual, sha256 } from '../secrets.ts';
@@ -52,6 +54,7 @@ import {
 import { animatedVariantKey, type Storage } from '../storage.ts';
 import { iso } from './api-routes.ts';
 import { contentDisposition, fileHeaders, parseRange } from './assets-routes.ts';
+import { toHeaders } from './auth-routes.ts';
 import { HttpError } from './errors.ts';
 import {
   type GuestCommentEvent,
@@ -70,6 +73,7 @@ import { RateLimiter } from './link-previews.ts';
 
 interface Deps {
   config: Config;
+  auth: Auth;
   db: Database;
   storage: Storage;
   docs: DocViews;
@@ -110,6 +114,21 @@ function matchesEtag(header: string | undefined, version: string) {
 export async function registerGuestRoutes(app: FastifyInstance, deps: Deps) {
   const { config, db, storage, docs } = deps;
   const notices = deps.notices ?? noNotices;
+
+  /**
+   * Whether the request also carries the session of someone who can open the board: the maker
+   * of the link, or a member of the project, looking at their own link. Only real guests count
+   * as opening a link, for the notification and for the "Opened" state of the link.
+   */
+  async function fromTeam(req: FastifyRequest, boardId: string) {
+    try {
+      const session = await deps.auth.api.getSession({ headers: toHeaders(req) });
+      if (!session) return false;
+      return (await boardRoles(db, { id: session.user.id }, [boardId])).has(boardId);
+    } catch {
+      return false;
+    }
+  }
 
   /** Use the same recipients, access checks and queued email preferences as team writes. */
   async function afterGuestWrite(event: GuestEvent) {
@@ -512,6 +531,7 @@ export async function registerGuestRoutes(app: FastifyInstance, deps: Deps) {
         reply.header('retry-after', newGuests.retryAfterSeconds(addressKey));
         throw new HttpError('rate_limited', 'Too many new guests: try again later.');
       }
+      const team = await fromTeam(req, link.boardId);
       const guest = await db.transaction(async (tx) => {
         // Enforce the daily link-wide cap even for concurrent requests on different workers.
         await tx.execute(
@@ -547,22 +567,28 @@ export async function registerGuestRoutes(app: FastifyInstance, deps: Deps) {
           }
         }
         const guest = await guests.startSession(reply, link, returning, input.name, tx);
-        await tx
-          .update(shareLink)
-          .set({
-            viewCount: sql`${shareLink.viewCount} + 1`,
-            lastUsedAt: new Date(),
-            updatedAt: sql`${shareLink.updatedAt}`,
-          })
-          .where(eq(shareLink.id, link.id));
+        if (!team)
+          await tx
+            .update(shareLink)
+            .set({
+              viewCount: sql`${shareLink.viewCount} + 1`,
+              lastUsedAt: new Date(),
+              updatedAt: sql`${shareLink.updatedAt}`,
+            })
+            .where(eq(shareLink.id, link.id));
         return guest;
       });
+      if (!team) await afterCommit(app.log, () => recordLinkOpen(db, link));
       return toSession({ link, guest, ...resolved });
     });
 
     scope.get(v1('/guest/links/:linkId/session'), async (req, reply) => {
       const { linkId } = LinkParams.parse(req.params);
-      return toSession(await guests.requireGuest(req, reply, linkId));
+      const ctx = await guests.requireGuest(req, reply, linkId);
+      // A guest who comes back after a new named version counts as opening that version.
+      if (!(await fromTeam(req, ctx.link.boardId)))
+        await afterCommit(app.log, () => recordLinkOpen(db, ctx.link));
+      return toSession(ctx);
     });
 
     scope.patch(v1('/guest/links/:linkId/session'), async (req, reply) => {

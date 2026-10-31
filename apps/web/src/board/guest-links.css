@@ -249,3 +249,8 @@
   border-radius: var(--ink-radius-xs);
   background: var(--ink-surface-1);
 }
+
+/* The opened state must stay readable on phones: the line wraps instead of cutting it off. */
+.guest-link .share__sub {
+  white-space: normal;
+}
