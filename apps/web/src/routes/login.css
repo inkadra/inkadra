@@ -169,3 +169,25 @@
 .login__invite p {
   margin: 0;
 }
+
+/* Phones and the installed app: clear the notch and the home indicator, 44 px targets. */
+@media (width < 768px) {
+  .login {
+    padding: max(32px, calc(env(safe-area-inset-top) + 16px)) max(16px, env(safe-area-inset-right))
+      max(32px, calc(env(safe-area-inset-bottom) + 16px)) max(16px, env(safe-area-inset-left));
+  }
+  .login__provider {
+    height: 44px;
+    font-size: 14px;
+  }
+  .login__note,
+  .login__switch {
+    font-size: 13px;
+  }
+  .login__switch,
+  .login__note a {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+  }
+}

@@ -44,3 +44,30 @@
   outline: 2px solid var(--ink-accent-primary);
   outline-offset: 2px;
 }
+
+/* Phones: across the width, clear of the home indicator and above the bottom bar if there is
+   one, with 44 px targets. */
+@media (width < 768px) {
+  .pwa-update {
+    left: max(12px, env(safe-area-inset-left));
+    right: max(12px, env(safe-area-inset-right));
+    bottom: max(12px, calc(env(safe-area-inset-bottom) + 8px));
+    max-width: none;
+    padding: 0 4px 0 14px;
+    font-size: 13px;
+  }
+  body:has(.mobile-bottom-nav) .pwa-update {
+    bottom: calc(64px + env(safe-area-inset-bottom) + 8px);
+  }
+  .pwa-update > :first-child {
+    flex: 1;
+  }
+  .pwa-update__action {
+    min-height: 44px;
+    padding: 0 8px;
+  }
+  .pwa-update__close {
+    width: 44px;
+    height: 44px;
+  }
+}

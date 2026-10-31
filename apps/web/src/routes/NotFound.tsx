@@ -7,7 +7,9 @@ export function NotFound() {
   return (
     <div style={{ display: 'grid', placeItems: 'center', height: '100%', padding: 32 }}>
       <EmptyState icon="search" title={t('notFound.title')}>
-        <Link to="/">{t('notFound.back')}</Link>
+        <Link to="/" className="ink-btn ink-btn--secondary">
+          {t('notFound.back')}
+        </Link>
       </EmptyState>
     </div>
   );
