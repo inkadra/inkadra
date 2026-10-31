@@ -1028,10 +1028,10 @@
       "noExpiry": "no expiry"
     },
     "createdBy": "Created by {{name}}",
-    "usage_one": "opened {{count}} time · guests: {{guests}}",
-    "usage_other": "opened {{count}} times · guests: {{guests}}",
-    "lastUsed": "last used {{date}}",
-    "neverUsed": "never used",
+    "usage_one": "{{count}} visit · guests: {{guests}}",
+    "usage_other": "{{count}} visits · guests: {{guests}}",
+    "lastUsed": "Opened · {{when}}",
+    "neverUsed": "Not opened yet",
     "status": {
       "active": "Active",
       "expired": "Expired",
@@ -1389,7 +1389,9 @@
       "access_expiring": "{{name}}’s access ends on {{date}}",
       "access_expiringOwn": "Your access ends on {{date}}",
       "access_expired": "{{name}}’s access has ended",
-      "access_expiredOwn": "Your access has ended"
+      "access_expiredOwn": "Your access has ended",
+      "guest": "A guest",
+      "link_opened": "opened the board"
     },
     "emailTitle": "Email notifications",
     "emailHint": "Mentions, replies and reviews by email too, when the server can send it.",

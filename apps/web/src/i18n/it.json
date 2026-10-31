@@ -1028,10 +1028,10 @@
       "noExpiry": "senza scadenza"
     },
     "createdBy": "Creato da {{name}}",
-    "usage_one": "aperto {{count}} volta · ospiti: {{guests}}",
-    "usage_other": "aperto {{count}} volte · ospiti: {{guests}}",
-    "lastUsed": "ultimo uso {{date}}",
-    "neverUsed": "mai usato",
+    "usage_one": "{{count}} visita · ospiti: {{guests}}",
+    "usage_other": "{{count}} visite · ospiti: {{guests}}",
+    "lastUsed": "Aperto · {{when}}",
+    "neverUsed": "Non ancora aperto",
     "status": {
       "active": "Attivo",
       "expired": "Scaduto",
@@ -1389,7 +1389,9 @@
       "access_expiring": "L’accesso di {{name}} scade il {{date}}",
       "access_expiringOwn": "Il tuo accesso scade il {{date}}",
       "access_expired": "L’accesso di {{name}} è scaduto",
-      "access_expiredOwn": "Il tuo accesso è scaduto"
+      "access_expiredOwn": "Il tuo accesso è scaduto",
+      "guest": "Un ospite",
+      "link_opened": "ha aperto la board"
     },
     "emailTitle": "Notifiche email",
     "emailHint": "Menzioni, risposte e revisioni anche per email, se il server può inviarle.",

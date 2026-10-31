@@ -27,7 +27,13 @@ import {
 import { canComment } from '../board/review-store.ts';
 import { api } from '../lib/api.ts';
 import { notificationPath } from './model.ts';
-import { avatarBg, describeNotification, initials, relativeTime } from './Notifications.tsx';
+import {
+  avatarBg,
+  describeNotification,
+  initials,
+  notificationActor,
+  relativeTime,
+} from './Notifications.tsx';
 
 type DetailProps = {
   notification: Notification | null;
@@ -748,14 +754,14 @@ function InboxDetailContent({
                   style={{
                     width: 36,
                     height: 36,
-                    background: avatarBg(authorName(notification.actor)),
+                    background: avatarBg(notificationActor(notification, t)),
                   }}
                 >
-                  {initials(authorName(notification.actor))}
+                  {initials(notificationActor(notification, t))}
                 </span>
                 <div>
                   <div style={{ fontWeight: 600, fontSize: 14 }}>
-                    {authorName(notification.actor)} {describeNotification(notification, t)}
+                    {notificationActor(notification, t)} {describeNotification(notification, t)}
                   </div>
                   <time
                     dateTime={notification.createdAt}

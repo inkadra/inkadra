@@ -39,6 +39,7 @@ import {
   sharePick,
   user,
 } from '../db/schema.ts';
+import { recordLinkOpen } from '../link-opens.ts';
 import { afterCommit, notify, Recipients } from '../notifications.ts';
 import { addressBucket, Failures } from '../rate-limits.ts';
 import { safeEqual, sha256 } from '../secrets.ts';
@@ -557,12 +558,16 @@ export async function registerGuestRoutes(app: FastifyInstance, deps: Deps) {
           .where(eq(shareLink.id, link.id));
         return guest;
       });
+      await afterCommit(app.log, () => recordLinkOpen(db, link));
       return toSession({ link, guest, ...resolved });
     });
 
     scope.get(v1('/guest/links/:linkId/session'), async (req, reply) => {
       const { linkId } = LinkParams.parse(req.params);
-      return toSession(await guests.requireGuest(req, reply, linkId));
+      const ctx = await guests.requireGuest(req, reply, linkId);
+      // A guest who comes back after a new named version counts as opening that version.
+      await afterCommit(app.log, () => recordLinkOpen(db, ctx.link));
+      return toSession(ctx);
     });
 
     scope.patch(v1('/guest/links/:linkId/session'), async (req, reply) => {

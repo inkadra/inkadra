@@ -168,6 +168,18 @@ export function useNotificationFeed(onCount: () => Promise<void>): NotificationF
   );
 }
 
+/**
+ * Who a notification starts with: the actor, or for an opened link the label of the link
+ * (nobody is named for a visit), or "A guest" without a label.
+ */
+export function notificationActor(
+  n: Pick<Notification, 'type' | 'actor'> & Partial<Pick<Notification, 'shareLinkLabel'>>,
+  t: (key: string) => string,
+): string | null {
+  if (n.type === 'link_opened') return n.shareLinkLabel?.trim() || t('notifications.type.guest');
+  return authorName(n.actor);
+}
+
 /** What happened, after the actor's name; unknown types read as a plain line. */
 export function describeNotification(
   n: Pick<Notification, 'type' | 'reviewStatus'> &
@@ -555,7 +567,7 @@ export function NotificationList({
               <ul className="notifications__list">
                 {list.map((n) => {
                   const path = notificationPath(n);
-                  const actor = authorName(n.actor);
+                  const actor = notificationActor(n, t);
                   const isSelected = n.id === selectedId;
                   return (
                     <li

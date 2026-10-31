@@ -19,6 +19,7 @@ export const NotificationType = z
     'import_ready',
     'access_expiring',
     'access_expired',
+    'link_opened',
   ])
   .openapi({
     description:
@@ -31,7 +32,9 @@ export const NotificationType = z
       'actor, and arrive from API 0.8.0. `access_expiring`: the role of `subject` on ' +
       '`projectId` (or on `boardId` and its sub-boards) ends at `accessExpiresAt`, sent three ' +
       'days before to that person and to the project owners. `access_expired`: it has ended. ' +
-      'Both from API 0.9.0 (decision 0041). Open: clients show types they do not know as a plain line ' +
+      'Both from API 0.9.0 (decision 0041). `link_opened`: a guest opened a share link you ' +
+      'made for the first time, or for the first time since a new named version of the board; ' +
+      'it has no actor (`shareLinkLabel` says which link) and nothing about the visit. Open: clients show types they do not know as a plain line ' +
       'with the actor, the board and the time.',
   });
 export type NotificationType = z.infer<typeof NotificationType>;
@@ -75,6 +78,15 @@ export const Notification = z
     accessExpiresAt: Timestamp.nullable()
       .optional()
       .openapi({ description: 'For access_expiring and access_expired.' }),
+    shareLinkLabel: z
+      .string()
+      .nullable()
+      .optional()
+      .openapi({
+        description:
+          'For link_opened: the label of the link that was opened; null without one, or when ' +
+          'you have no role on its board. Missing from servers before this notification existed.',
+      }),
     readAt: Timestamp.nullable(),
     createdAt: Timestamp,
   })
