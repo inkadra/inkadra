@@ -74,7 +74,7 @@
   flex: none;
   font-size: 11px;
   padding: 2px 8px;
-  border-radius: 99px;
+  border-radius: var(--ink-radius-full);
   background: var(--ink-surface-3);
   color: var(--ink-text-secondary);
 }

@@ -20,7 +20,7 @@
 .app-error__id {
   margin-top: 12px;
   padding: 3px 8px;
-  border-radius: 6px;
+  border-radius: var(--ink-radius-sm);
   background: var(--ink-surface-1);
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 11px;

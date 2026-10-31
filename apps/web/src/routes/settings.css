@@ -14,7 +14,7 @@
   padding: 0;
   overflow: hidden;
   border: 1px solid var(--ink-border-default);
-  border-radius: 12px;
+  border-radius: var(--ink-radius-lg);
   background: var(--ink-surface-1);
   color: var(--ink-text-primary);
   box-shadow: 0 12px 32px rgba(0, 0, 0, 0.18);
@@ -143,7 +143,7 @@
   min-height: 30px;
   padding: 0 8px;
   border: 1px solid transparent;
-  border-radius: 6px;
+  border-radius: var(--ink-radius-sm);
   color: var(--ink-text-nav);
   font-size: 13px;
   text-decoration: none;
@@ -374,7 +374,7 @@
   width: 28px;
   height: 28px;
   flex: none;
-  border-radius: 7px;
+  border-radius: var(--ink-radius-sm);
   background: var(--ink-surface-3);
   color: var(--ink-text-secondary);
   font-size: 11px;
@@ -402,7 +402,7 @@
   align-items: center;
   gap: 5px;
   padding: 2px 8px;
-  border-radius: 99px;
+  border-radius: var(--ink-radius-full);
   background: var(--ink-surface-3);
   color: var(--ink-text-secondary);
   font-size: 11px;
@@ -535,7 +535,7 @@
 .settings__qr {
   width: 160px;
   height: 160px;
-  border-radius: 8px;
+  border-radius: var(--ink-radius-sm);
   image-rendering: pixelated;
 }
 .settings__secret {
@@ -557,13 +557,13 @@
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
   gap: 6px;
-  border-radius: 8px;
+  border-radius: var(--ink-radius-sm);
   background: var(--ink-surface-1);
 }
 .settings__token {
   display: block;
   padding: 8px 10px;
-  border-radius: 6px;
+  border-radius: var(--ink-radius-sm);
   background: var(--ink-surface-2);
   overflow-wrap: anywhere;
   user-select: all;
@@ -662,7 +662,7 @@
 .settings-home__me,
 .settings-home__group ul {
   border: 1px solid var(--ink-border-default);
-  border-radius: 12px;
+  border-radius: var(--ink-radius-md);
   background: var(--ink-surface-1);
 }
 .settings-home__me {
@@ -741,7 +741,7 @@
   min-height: 46px;
   margin-top: 22px;
   border: 1px solid var(--ink-border-default);
-  border-radius: 12px;
+  border-radius: var(--ink-radius-md);
   background: var(--ink-surface-1);
   color: var(--ink-danger-fg);
   font: inherit;

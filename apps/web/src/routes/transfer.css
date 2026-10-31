@@ -24,7 +24,7 @@
   margin: 0;
   padding: 10px 12px;
   border: 1px solid var(--ink-border-subtle);
-  border-radius: 8px;
+  border-radius: var(--ink-radius-sm);
   background: var(--ink-surface-1);
 }
 .transfer-contents dt {
@@ -67,7 +67,7 @@
   gap: 2px;
   padding: 10px 12px;
   border: 1px solid var(--ink-border-subtle);
-  border-radius: 8px;
+  border-radius: var(--ink-radius-sm);
   background: var(--ink-surface-1);
 }
 .transfer-result__title {
@@ -93,7 +93,7 @@
   gap: 2px;
   padding: 22px 16px;
   border: 1px dashed var(--ink-border-default);
-  border-radius: 8px;
+  border-radius: var(--ink-radius-sm);
   background: var(--ink-surface-1);
   text-align: center;
   cursor: pointer;

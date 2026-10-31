@@ -9,7 +9,7 @@
   background: var(--ink-surface-1);
   color: var(--ink-text-primary);
   border: 1px solid var(--ink-border-subtle);
-  border-radius: 10px;
+  border-radius: var(--ink-radius-md);
   box-shadow: var(--ink-shadow-menu);
 }
 .app-context-menu button {
@@ -18,7 +18,7 @@
   min-height: 36px;
   padding: 8px 12px;
   border: 0;
-  border-radius: 6px;
+  border-radius: calc(var(--ink-radius-md) - 6px);
   background: transparent;
   color: inherit;
   text-align: start;
@@ -55,6 +55,6 @@
     left: max(12px, env(safe-area-inset-left));
     right: max(12px, env(safe-area-inset-right));
     bottom: calc(64px + env(safe-area-inset-bottom) + 8px);
-    border-radius: 10px;
+    border-radius: var(--ink-radius-md);
   }
 }

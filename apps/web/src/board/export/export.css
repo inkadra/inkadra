@@ -87,7 +87,7 @@
   max-width: 96px;
   object-fit: contain;
   padding: 2px 6px;
-  border-radius: 6px;
+  border-radius: var(--ink-radius-sm);
   /* The logo is shown on the paper it will be printed on. */
   background: var(--ink-surface-1);
   border: 1px solid var(--ink-border-default);
@@ -102,7 +102,7 @@
   gap: 8px;
   min-width: 0;
   padding: 16px;
-  border-radius: 10px;
+  border-radius: var(--ink-radius-md);
   background: var(--ink-bg-canvas);
   border: 1px solid var(--ink-border-default);
 }
@@ -153,7 +153,7 @@
 .export__notice {
   margin: 12px 0 0;
   padding: 8px 10px;
-  border-radius: 8px;
+  border-radius: var(--ink-radius-sm);
   background: var(--ink-surface-2);
   border: 1px solid var(--ink-border-default);
   font-size: 12px;
