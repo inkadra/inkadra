@@ -20,10 +20,9 @@ import { CardReview } from '../CardReview.tsx';
 import { GuestVisibility, GuestVisibilityIcon, toggleGuestHidden } from '../guest-visibility.tsx';
 import { PresentationView } from '../PresentationView.tsx';
 import { type BoardStore, LOCAL } from '../store.ts';
-import { Animatic } from './Animatic.tsx';
-import { estimatedDurationMs } from './animatic.ts';
 import { aspectLabel, useBoardAspect } from './aspect.ts';
 import { DrawingEditor } from './DrawingEditor.tsx';
+import { estimatedDurationMs } from './duration.ts';
 import { FramePanel } from './FramePanel.tsx';
 import { FramePicture } from './FramePicture.tsx';
 import { FrameVisibilityButton } from './FrameVisibilityButton.tsx';
@@ -31,9 +30,7 @@ import { blurOnEnter, StatusChip, usePresetText } from './fields.tsx';
 import { ViewOptions } from './ViewOptions.tsx';
 
 const FRAME_MIME = 'application/x-inkadra-frame';
-const STORY_MODES = ['grid', 'sequence', 'animatic'] as const;
 const TILE_SIZES = ['s', 'm', 'l'] as const;
-type StoryMode = (typeof STORY_MODES)[number];
 type TileSize = (typeof TILE_SIZES)[number];
 const LOOSE = 'loose';
 
@@ -76,7 +73,6 @@ export function StoryboardView({
   const { t } = useTranslation();
   const boardAspect = useBoardAspect(store.doc);
   const { groups, frames, labels } = useStoryboard(store);
-  const [mode, setMode] = useState<StoryMode>('grid');
   const [size, setSize] = useState<TileSize>('m');
   const [sceneFilter, setSceneFilter] = useState<string | null>(null);
   const [present, setPresent] = useState(false);
@@ -128,7 +124,7 @@ export function StoryboardView({
 
   const total = estimatedDurationMs(frames);
   // Size, aspect and total sit in the bar; on a phone they fold into View options.
-  const sizeControl = mode !== 'animatic' && (
+  const sizeControl = (
     <fieldset className="story__modes" aria-label={t('film.playback.size')}>
       {TILE_SIZES.map((value) => (
         <button
@@ -170,36 +166,8 @@ export function StoryboardView({
     </span>
   );
   return (
-    <div className={`story story--${mode} story--${size}`}>
+    <div className={`story story--${size}`}>
       <div className="story__bar" data-chrome>
-        <fieldset className="story__modes" aria-label={t('film.playback.mode')}>
-          {STORY_MODES.map((value) => (
-            <button
-              type="button"
-              key={value}
-              className="story__mode"
-              aria-pressed={mode === value}
-              onClick={() => {
-                setMode(value);
-                if (value === 'animatic') setSelected(null);
-              }}
-            >
-              {t(`film.playback.${value}`)}
-            </button>
-          ))}
-        </fieldset>
-        {/* On a phone the three modes do not fit as segments: a picker, like the view switcher. */}
-        <Select
-          className="story__mode-picker"
-          aria-label={t('film.playback.mode')}
-          value={mode}
-          onChange={(next) => {
-            const value = next as StoryMode;
-            setMode(value);
-            if (value === 'animatic') setSelected(null);
-          }}
-          options={STORY_MODES.map((value) => ({ value, label: t(`film.playback.${value}`) }))}
-        />
         <div className="view-options__inline">
           {sizeControl}
           {aspectControl}
@@ -260,40 +228,6 @@ export function StoryboardView({
           <SceneList groups={groups} filter={filter} onFilter={setSceneFilter} />
         )}
         <div className="story__scroll" data-scroll>
-          {mode === 'animatic' && visibleFrames.length > 0 && (
-            <Animatic
-              key={filter ?? ''}
-              store={store}
-              frames={visibleFrames}
-              groups={visible}
-              labels={labels}
-              boardAspect={boardAspect}
-              readOnly={readOnly}
-              suspended={present}
-              upload={readOnly ? undefined : { projectId, boardId }}
-            />
-          )}
-          {mode === 'animatic' && groups.length > 0 && visibleFrames.length === 0 && (
-            <div className="board-state">
-              <EmptyState
-                icon="storyboard"
-                title={t('film.playback.noFrames')}
-                actions={
-                  !readOnly && (
-                    <Button
-                      variant="primary"
-                      icon="plus"
-                      onClick={() => newFrame(filter === LOOSE ? null : filter)}
-                    >
-                      {t('film.frame.add')}
-                    </Button>
-                  )
-                }
-              >
-                {t('film.playback.noFramesBody')}
-              </EmptyState>
-            </div>
-          )}
           {groups.length === 0 && (
             <div className="board-state">
               <EmptyState
@@ -318,58 +252,57 @@ export function StoryboardView({
               </EmptyState>
             </div>
           )}
-          {mode !== 'animatic' &&
-            visible.map((g) => (
-              <SceneSection
-                key={g.scene?.id ?? 'loose'}
-                group={g}
-                store={store}
-                readOnly={readOnly}
-                onAddFrame={() => newFrame(g.scene?.id ?? null)}
-              >
-                {g.frames.map((f, i) => (
-                  <FrameTile
-                    key={f.id}
-                    frame={f}
-                    store={store}
-                    label={labels.get(f.id) ?? ''}
-                    boardAspect={boardAspect}
-                    selected={f.id === selected}
-                    readOnly={readOnly}
-                    dropBefore={!!g.scene && drop?.scene === g.scene.id && drop.index === i}
-                    onSelect={() => setSelected(f.id)}
-                    onDraw={() => setDrawing(f.id)}
-                    onDragOver={(e, after) => {
-                      if (!g.scene || readOnly) return;
+          {visible.map((g) => (
+            <SceneSection
+              key={g.scene?.id ?? 'loose'}
+              group={g}
+              store={store}
+              readOnly={readOnly}
+              onAddFrame={() => newFrame(g.scene?.id ?? null)}
+            >
+              {g.frames.map((f, i) => (
+                <FrameTile
+                  key={f.id}
+                  frame={f}
+                  store={store}
+                  label={labels.get(f.id) ?? ''}
+                  boardAspect={boardAspect}
+                  selected={f.id === selected}
+                  readOnly={readOnly}
+                  dropBefore={!!g.scene && drop?.scene === g.scene.id && drop.index === i}
+                  onSelect={() => setSelected(f.id)}
+                  onDraw={() => setDrawing(f.id)}
+                  onDragOver={(e, after) => {
+                    if (!g.scene || readOnly) return;
+                    e.preventDefault();
+                    const index = after ? i + 1 : i;
+                    if (drop?.scene !== g.scene.id || drop.index !== index)
+                      setDrop({ scene: g.scene.id, index });
+                  }}
+                  onDrop={(e) => g.scene && drop && onDrop(e, g.scene.id, drop.index)}
+                />
+              ))}
+              {!readOnly && (
+                <li className="story__add-item">
+                  <button
+                    type="button"
+                    className={`story__add${g.scene && drop?.scene === g.scene.id && drop.index === g.frames.length ? ' is-drop' : ''}`}
+                    onClick={() => newFrame(g.scene?.id ?? null)}
+                    onDragOver={(e) => {
+                      if (!g.scene) return;
                       e.preventDefault();
-                      const index = after ? i + 1 : i;
-                      if (drop?.scene !== g.scene.id || drop.index !== index)
-                        setDrop({ scene: g.scene.id, index });
+                      setDrop({ scene: g.scene.id, index: g.frames.length });
                     }}
-                    onDrop={(e) => g.scene && drop && onDrop(e, g.scene.id, drop.index)}
-                  />
-                ))}
-                {!readOnly && (
-                  <li className="story__add-item">
-                    <button
-                      type="button"
-                      className={`story__add${g.scene && drop?.scene === g.scene.id && drop.index === g.frames.length ? ' is-drop' : ''}`}
-                      onClick={() => newFrame(g.scene?.id ?? null)}
-                      onDragOver={(e) => {
-                        if (!g.scene) return;
-                        e.preventDefault();
-                        setDrop({ scene: g.scene.id, index: g.frames.length });
-                      }}
-                      onDragLeave={() => setDrop(null)}
-                      onDrop={(e) => g.scene && onDrop(e, g.scene.id, g.frames.length)}
-                    >
-                      <Icon name="plus" size={16} />
-                      {t('film.frame.add')}
-                    </button>
-                  </li>
-                )}
-              </SceneSection>
-            ))}
+                    onDragLeave={() => setDrop(null)}
+                    onDrop={(e) => g.scene && onDrop(e, g.scene.id, g.frames.length)}
+                  >
+                    <Icon name="plus" size={16} />
+                    {t('film.frame.add')}
+                  </button>
+                </li>
+              )}
+            </SceneSection>
+          ))}
         </div>
         {current && (
           <FramePanel
@@ -392,7 +325,6 @@ export function StoryboardView({
           groups={visible}
           labels={labels}
           boardTitle={boardTitle}
-          readOnly={readOnly}
           onClose={() => setPresent(false)}
         />
       )}
@@ -429,7 +361,7 @@ function SceneList({
   const { t } = useTranslation();
   const pickerId = useId();
   const frames = groups.reduce((n, g) => n + g.frames.length, 0);
-  // The same estimate the animatic plays: frames without a duration count one second.
+  // Frames without a duration count one second.
   const total = estimatedDurationMs(groups.flatMap((g) => g.frames));
   return (
     <>

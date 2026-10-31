@@ -29,8 +29,8 @@ character or location card, from schema version 7) or `imageAssetId` (link) and 
 `boardId` (board cards); `meta.boardId` names the board itself. Element ids are stable:
 comments, reviews and schedule blocks refer to cards by them.
 `elements.json` also has the storyboard's `aspect` and, from document version 9,
-`animaticAudio` (`{ assetId, volume }`, the sound track of its animatic, decision 0046) or
-null.
+`animaticAudio` (`{ assetId, volume }`, the sound track of its animatic, decision 0046; the
+app no longer plays it, decision 0047) or null.
 
 Authors are ids of `people.json`. Comment bodies write mentions as `@{personId}`; a deleted
 comment keeps its place with an empty body. `guestName` marks a comment written by a guest of a
