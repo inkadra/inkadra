@@ -13,6 +13,12 @@ type OpenMenu = {
   container: HTMLElement;
 };
 
+/** A long press on a touch screen, rather than a right click or the keyboard menu key. */
+function fromTouch(event: MouseEvent): boolean {
+  if ('pointerType' in event && event.pointerType) return event.pointerType === 'touch';
+  return window.matchMedia?.('(pointer: coarse)').matches ?? false;
+}
+
 /** Last-resort menu: local React handlers (canvas/projects) get first refusal. */
 export function AppContextMenu({ children }: { children: ReactNode }) {
   const { t } = useTranslation();
@@ -31,10 +37,13 @@ export function AppContextMenu({ children }: { children: ReactNode }) {
         return;
       }
       if (!(event.target instanceof Element)) return;
-      event.preventDefault();
       const origin = event.target;
       const field = origin.closest<HTMLInputElement | HTMLTextAreaElement>('input,textarea');
       const editor = origin.closest<HTMLElement>('[contenteditable="true"]');
+      // A long press in a field on a phone must reach the system menu: it is the only way to
+      // paste there (a one-time code, a link), and this menu cannot read the clipboard.
+      if ((field || editor) && fromTouch(event)) return;
+      event.preventDefault();
       const privateField = field instanceof HTMLInputElement && field.type === 'password';
       const text = privateField
         ? ''

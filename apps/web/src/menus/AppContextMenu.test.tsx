@@ -133,3 +133,38 @@ it('copies only selected non-password text and reports clipboard rejection', asy
     vi.unstubAllGlobals();
   }
 });
+
+it('leaves a long press in a field to the system menu so paste stays available', async () => {
+  const host = document.createElement('div');
+  document.body.append(host);
+  const root = createRoot(host);
+  try {
+    await act(async () =>
+      root.render(
+        <AppContextMenu>
+          <input aria-label="Code" />
+          <p>Text</p>
+        </AppContextMenu>,
+      ),
+    );
+    const touch = (target: Element | null) => {
+      const event = new MouseEvent('contextmenu', { bubbles: true, cancelable: true });
+      Object.defineProperty(event, 'pointerType', { value: 'touch' });
+      target?.dispatchEvent(event);
+      return event;
+    };
+    let event!: MouseEvent;
+    await act(async () => {
+      event = touch(host.querySelector('input'));
+    });
+    expect(event.defaultPrevented).toBe(false);
+    expect(document.querySelector('[role="menu"]')).toBeNull();
+    await act(async () => {
+      event = touch(host.querySelector('p'));
+    });
+    expect(event.defaultPrevented).toBe(true);
+  } finally {
+    await act(async () => root.unmount());
+    host.remove();
+  }
+});
