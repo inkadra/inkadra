@@ -144,6 +144,77 @@ export function TextField({
   );
 }
 
+/**
+ * A date in the app's own field look: the label or the chosen date, a calendar icon, and the
+ * browser's picker on click. The native input stays underneath for typing and for forms.
+ */
+export function DateField({
+  label,
+  value,
+  onChange,
+  clearLabel,
+  className,
+  ...props
+}: Omit<InputHTMLAttributes<HTMLInputElement>, 'type' | 'value' | 'onChange'> & {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  /** Shown as a × button while a date is set. */
+  clearLabel?: string;
+}) {
+  const open = (input: HTMLInputElement) => {
+    try {
+      input.showPicker?.();
+    } catch {
+      // Not allowed outside a user gesture, or not supported: typing still works.
+    }
+  };
+  const shown = value
+    ? new Intl.DateTimeFormat(document.documentElement.lang || undefined, {
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric',
+      }).format(new Date(`${value}T00:00`))
+    : label;
+  return (
+    <div className={cx('ink-date', value && 'ink-date--set', className)}>
+      <span className="ink-date__text" aria-hidden="true">
+        {shown}
+      </span>
+      <input
+        {...props}
+        type="date"
+        className="ink-date__input"
+        aria-label={label}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        onClick={(e) => open(e.currentTarget)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            open(e.currentTarget);
+          }
+        }}
+      />
+      {value && clearLabel ? (
+        <button
+          type="button"
+          className="ink-date__clear"
+          aria-label={clearLabel}
+          disabled={props.disabled}
+          onClick={() => onChange('')}
+        >
+          <Icon name="close" size={14} />
+        </button>
+      ) : (
+        <span className="ink-date__icon" aria-hidden="true">
+          <Icon name="calendar" size={16} />
+        </span>
+      )}
+    </div>
+  );
+}
+
 export interface SliderProps
   extends Omit<
     InputHTMLAttributes<HTMLInputElement>,
@@ -247,8 +318,26 @@ export type GlyphShape =
   | 'hexagon'
   | 'star'
   | 'pentagon'
-  | 'cross';
+  | 'cross'
+  | 'octagon'
+  | 'drop'
+  | 'moon'
+  | 'clapperboard';
 export type GlyphColor = keyof typeof glyphColor;
+const GLYPH_SHAPES: readonly GlyphShape[] = [
+  'diamond',
+  'circle',
+  'triangle',
+  'square',
+  'hexagon',
+  'star',
+  'pentagon',
+  'cross',
+  'octagon',
+  'drop',
+  'moon',
+  'clapperboard',
+];
 
 /** Project marker: paired frames echo the logo; names remain the accessible identity. */
 export function ProjectGlyph({
@@ -278,12 +367,7 @@ export function ProjectGlyph({
       </span>
     );
   const stroke = glyphColor[color] ?? glyphColor.neutral;
-  if (
-    !['diamond', 'circle', 'triangle', 'square', 'hexagon', 'star', 'pentagon', 'cross'].includes(
-      shape,
-    )
-  )
-    shape = 'circle';
+  if (!GLYPH_SHAPES.includes(shape)) shape = 'circle';
   const common = { fill: 'none', stroke, strokeWidth: 1.6, strokeLinejoin: 'round' as const };
   return (
     <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true" style={{ flex: 'none' }}>
@@ -336,6 +420,30 @@ export function ProjectGlyph({
         <>
           <path d="M6 1.8h4v4.2h4.2v4H10v4.2H6V10H1.8V6H6z" {...common} />
           <rect x="6.9" y="6.9" width="2.2" height="2.2" {...common} />
+        </>
+      )}
+      {shape === 'octagon' && (
+        <>
+          <path d="M5.6 1.8h4.8l3.8 3.8v4.8l-3.8 3.8H5.6l-3.8-3.8V5.6z" {...common} />
+          <path d="M7 5.6h2l1.4 1.4v2L9 10.4H7L5.6 9V7z" {...common} />
+        </>
+      )}
+      {shape === 'drop' && (
+        <>
+          <path d="M8 1.6s5 5.1 5 8.4a5 5 0 0 1-10 0c0-3.3 5-8.4 5-8.4z" {...common} />
+          <path d="M8 7.4s2 2 2 3.2a2 2 0 0 1-4 0c0-1.2 2-3.2 2-3.2z" {...common} />
+        </>
+      )}
+      {shape === 'moon' && (
+        <>
+          <path d="M13.6 9.9A6 6 0 1 1 6.1 2.4a4.9 4.9 0 0 0 7.5 7.5z" {...common} />
+          <circle cx="6.4" cy="9.4" r="1.6" {...common} />
+        </>
+      )}
+      {shape === 'clapperboard' && (
+        <>
+          <rect x="2" y="6.3" width="12" height="7.7" rx="1.2" {...common} />
+          <path d="M2 6.3l1.3-3.4 10.6 1.4-.6 2M5.6 3.2l-.8 3M9.2 3.7l-.8 2.6" {...common} />
         </>
       )}
     </svg>

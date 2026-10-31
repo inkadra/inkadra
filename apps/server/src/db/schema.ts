@@ -174,7 +174,20 @@ export const project = pgTable('project', {
   id: uuid('id').primaryKey().defaultRandom(),
   name: text('name').notNull(),
   iconShape: text('icon_shape', {
-    enum: ['diamond', 'circle', 'triangle', 'square', 'hexagon', 'star', 'pentagon', 'cross'],
+    enum: [
+      'diamond',
+      'circle',
+      'triangle',
+      'square',
+      'hexagon',
+      'star',
+      'pentagon',
+      'cross',
+      'octagon',
+      'drop',
+      'moon',
+      'clapperboard',
+    ],
   })
     .notNull()
     .default('circle'),

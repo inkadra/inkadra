@@ -34,6 +34,15 @@
   background: var(--ink-surface-1);
   border: 1px solid var(--ink-border-default);
 }
+/* The suggestions open under the whole field, role and expiry included. */
+.share__field {
+  position: relative;
+}
+.share__picker {
+  position: static;
+  flex: 1;
+  display: flex;
+}
 .share__field:focus-within {
   border-color: var(--ink-accent-primary);
 }
@@ -380,8 +389,10 @@
     height: auto;
     padding: 0 4px 0 10px;
   }
-  .share__field > .share__input {
+  .share__field > .share__picker {
     flex: 1 0 100%;
+  }
+  .share__picker > .share__input {
     height: 44px;
   }
   .share__field .share__select {

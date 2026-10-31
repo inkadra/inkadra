@@ -2,7 +2,16 @@
 import { expect, it } from 'vitest';
 import { type GlyphShape, ProjectGlyph } from './components.tsx';
 
-it.each(['hexagon', 'star', 'pentagon', 'cross'] as const)('draws paired %s frames', (shape) => {
+it.each([
+  'hexagon',
+  'star',
+  'pentagon',
+  'cross',
+  'octagon',
+  'drop',
+  'moon',
+  'clapperboard',
+] as const)('draws paired %s frames', (shape) => {
   const glyph = ProjectGlyph({ shape, color: 'pink' });
   expect(glyph.props.viewBox).toBe('0 0 16 16');
   const selected = glyph.props.children.filter(Boolean);

@@ -2106,7 +2106,11 @@
               "hexagon",
               "star",
               "pentagon",
-              "cross"
+              "cross",
+              "octagon",
+              "drop",
+              "moon",
+              "clapperboard"
             ]
           },
           "color": {

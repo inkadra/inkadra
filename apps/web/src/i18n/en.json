@@ -1801,7 +1801,6 @@
   },
   "onboarding": {
     "guidedSetup": "Guided setup",
-    "pendingEmail": "Add the email address to the invitation list, or clear it to create the project.",
     "title": "New project",
     "firstTitle": "Your first project",
     "subtitle": "Choose a template, set the dates and invite your team. You can change everything later.",
@@ -1814,9 +1813,8 @@
       "photo_shoot": "Photo shoot",
       "documentary": "Documentary"
     },
-    "start": "Shooting start · optional",
-    "end": "Shooting end · optional",
-    "template": "Start from a template",
+    "start": "Shooting start",
+    "end": "Shooting end",
     "templates": {
       "production": {
         "name": "Film pre-production",
@@ -1852,8 +1850,7 @@
       "shotlist": "Shot list and storyboard",
       "pitch": "Client pitch"
     },
-    "invite": "Invite your team · optional",
-    "email": "Email",
+    "invite": "Team",
     "role": "Role",
     "add": "Add",
     "remove": "Remove",
@@ -1861,14 +1858,13 @@
     "noSmtp": "Invitations work without SMTP: copy the links and send them yourself.",
     "invalidEmail": "Enter a valid email address that is not already in the list.",
     "invalidDates": "The shooting end must follow the start.",
-    "partialError": "The project already exists. Retry to finish missing boards and invitations, or skip and open it from Projects.",
+    "partialError": "The project already exists. Retry to finish missing boards and invitations, or close and open it from Projects.",
     "creating": "Creating and syncing boards…",
     "boards_one": "{{count}} board",
     "boards_other": "{{count}} boards",
     "invitations_one": "{{count}} invitation",
     "invitations_other": "{{count}} invitations",
     "summary": "$t(onboarding.boards, {\"count\": {{boards}} }) and $t(onboarding.invitations, {\"count\": {{invitations}} }) will be created",
-    "skip": "Skip for now",
     "inviteResults": "Created invitations",
     "sent": "Email sent",
     "copyLink": "Copy the link and send it to your team",
@@ -1890,7 +1886,15 @@
       "drag": "Drag files and links onto the canvas.",
       "phone": "Save to Unsorted from your phone."
     },
-    "settingsPending": "Settings, instance setup incomplete"
+    "settingsPending": "Settings, instance setup incomplete",
+    "startFrom": "Start from",
+    "details": "Details",
+    "detailsHint": "type, dates, team",
+    "clearDate": "Clear {{label}}",
+    "people": "People or email",
+    "peoplePlaceholder": "Add people or an email…",
+    "createAndInvite_one": "Create and invite ({{count}})",
+    "createAndInvite_other": "Create and invite ({{count}})"
   },
   "settingsUi": {
     "profile": "Profile",
@@ -2160,7 +2164,6 @@
     "symbol": "Symbol",
     "color": "Color",
     "emoji": "Emoji",
-    "emojiHelp": "Emoji keep their own colours.",
     "invalid": "Use a single emoji.",
     "reset": "Reset to default",
     "error": "Could not save project appearance. Check your permissions and try again.",
@@ -2172,7 +2175,11 @@
       "hexagon": "Hexagon",
       "star": "Star",
       "pentagon": "Pentagon",
-      "cross": "Cross"
+      "cross": "Cross",
+      "octagon": "Octagon",
+      "drop": "Drop",
+      "moon": "Moon",
+      "clapperboard": "Clapperboard"
     },
     "colors": {
       "blue": "Blue",
@@ -2185,15 +2192,13 @@
       "red": "Red",
       "pink": "Pink"
     },
-    "pasteEmoji": "Paste another emoji",
-    "sidebarPreview": "In the sidebar",
-    "close": "Close",
-    "chooseEmoji": "Choose an emoji"
+    "pasteEmoji": "Paste or type an emoji",
+    "sidebarPreview": "How it looks in the sidebar",
+    "close": "Close"
   },
   "transfer": {
     "exportMenu": "Export project…",
     "importMenu": "Import project…",
-    "fromArchive": "Have an Inkadra archive?",
     "exportTitle": "Export “{{name}}”",
     "exportLead": "A zip with every board, file and comment, to keep or to import on another Inkadra server.",
     "included": "Included",
@@ -2241,7 +2246,8 @@
       "interrupted": "The server stopped while working on it. Try again.",
       "cancelled": "Cancelled.",
       "internal": "Something went wrong. Try again."
-    }
+    },
+    "importArchive": "Import archive…"
   },
   "backups": {
     "title": "Backups",

@@ -52,25 +52,6 @@
   background: var(--ink-surface-2);
   outline: 2px solid var(--ink-accent-primary);
 }
-.project-appearance__preview {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 12px;
-}
-.project-appearance__choices {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-  margin-bottom: 16px;
-}
-.project-appearance__choices label {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 8px;
-  cursor: pointer;
-}
 @media (pointer: coarse) {
   .project-navigation__options {
     min-width: 44px;
@@ -81,13 +62,39 @@
 .ink-shell--collapsed .project-navigation__options {
   display: none;
 }
+/* Project appearance: a preview, Symbol/Emoji tabs over one fixed-height panel, the footer. */
+.project-appearance .ink-dialog {
+  width: min(400px, calc(100vw - 32px));
+  border-radius: var(--ink-radius-lg);
+  /* Scrolls only when the viewport is genuinely too short. */
+  max-height: calc(100dvh - 32px);
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+.project-appearance .ink-dialog__title {
+  padding-right: 32px;
+}
+.project-appearance__form {
+  --appearance-panel: 196px;
+  --appearance-tile: 40px;
+  --appearance-emoji: 30px;
+  --appearance-swatch: 22px;
+  --appearance-field: 34px;
+  display: flex;
+  flex-direction: column;
+}
 .project-appearance__preview {
-  background: var(--ink-surface-2);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  margin-bottom: 12px;
+  background: var(--ink-surface-1);
   border-radius: var(--ink-radius-md);
 }
 .project-appearance__tile {
-  width: 52px;
-  height: 52px;
+  width: 44px;
+  height: 44px;
   display: grid;
   place-items: center;
   background: var(--project-bg);
@@ -95,102 +102,191 @@
   flex: none;
 }
 .project-appearance__tile > svg {
-  width: 32px;
-  height: 32px;
+  width: 22px;
+  height: 22px;
 }
 .project-appearance__tile > span {
-  transform: scale(2);
+  transform: scale(1.4);
 }
-.project-appearance__sidebar {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-top: 6px;
+.project-appearance__name {
+  min-width: 0;
   overflow-wrap: anywhere;
+}
+.project-appearance__name small {
+  display: block;
+  color: var(--ink-text-muted);
+  font-size: 11.5px;
 }
 .project-appearance__tabs {
   display: flex;
-  gap: 4px;
-  padding: 4px;
-  background: var(--ink-surface-2);
+  padding: 3px;
+  margin-bottom: 12px;
+  background: var(--ink-surface-1);
   border-radius: var(--ink-radius-sm);
 }
 .project-appearance__tabs button {
   flex: 1;
-  padding: 10px;
+  padding: 6px;
   border: 0;
   border-radius: var(--ink-radius-sm);
   background: transparent;
-  color: var(--ink-text-primary);
+  color: var(--ink-text-secondary);
+  font: inherit;
+  font-weight: 500;
+  cursor: pointer;
 }
 .project-appearance__tabs [aria-selected="true"] {
-  background: var(--ink-surface-1);
-  box-shadow: 0 1px 4px #0002;
+  background: var(--ink-surface-3);
+  color: var(--ink-text-primary);
+}
+.project-appearance__panels {
+  position: relative;
+  display: grid;
+  height: var(--appearance-panel);
+}
+.project-appearance__panels [role="tabpanel"] {
+  grid-area: 1 / 1;
+  min-height: 0;
+}
+.project-appearance__panels [role="tabpanel"][hidden] {
+  display: block;
+  visibility: hidden;
 }
 .project-appearance__choices {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 8px;
-  margin-top: 12px;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 6px;
 }
 .project-appearance__choices button,
 .project-appearance__emojis button {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
-  padding: 12px 4px;
-  background: var(--ink-surface-1);
-  border: 1px solid var(--ink-border-default);
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
   border-radius: var(--ink-radius-sm);
-  color: var(--ink-text-primary);
+  color: var(--ink-text-icon);
   cursor: pointer;
-  min-height: 44px;
+}
+.project-appearance__choices button {
+  height: var(--appearance-tile);
+  background: var(--ink-surface-1);
+}
+.project-appearance__choices button > svg {
+  width: 18px;
+  height: 18px;
+}
+.project-appearance__emojis button {
+  height: var(--appearance-emoji);
+  background: transparent;
+  font-size: 17px;
+  line-height: 1;
+}
+.project-appearance__choices button:hover,
+.project-appearance__emojis button:hover {
+  background: var(--ink-surface-2);
 }
 .project-appearance__choices [aria-checked="true"],
-.project-appearance__emojis [aria-checked="true"] {
-  border-color: var(--ink-accent-primary);
-  box-shadow: 0 0 0 2px var(--ink-accent-primary);
+.project-appearance__emojis [aria-checked="true"],
+.project-appearance__choices [aria-checked="true"]:hover,
+.project-appearance__emojis [aria-checked="true"]:hover {
+  background: var(--ink-accent-soft-bg);
+  box-shadow: inset 0 0 0 1.5px var(--ink-accent-primary);
 }
 .project-appearance__choices button:focus-visible,
 .project-appearance__swatches button:focus-visible,
 .project-appearance__emojis button:focus-visible,
 .project-appearance__tabs button:focus-visible {
-  outline: 2px solid color-mix(in srgb, var(--ink-accent-primary) 25%, transparent);
-  outline-offset: 3px;
+  outline: 2px solid color-mix(in srgb, var(--ink-accent-primary) 40%, transparent);
+  outline-offset: 2px;
 }
+.project-appearance__color-label {
+  display: flex;
+  justify-content: space-between;
+  margin: 12px 0 7px;
+  color: var(--ink-text-secondary);
+  font-size: 11.5px;
+}
+/* Nine swatches on one row at every width. */
 .project-appearance__swatches {
   display: flex;
-  flex-wrap: wrap;
-  gap: 0;
-  margin-top: 8px;
+  justify-content: space-between;
 }
 .project-appearance__swatches button {
-  width: 42px;
-  height: 42px;
-  border: 6px solid var(--ink-surface-1);
-  border-radius: 50%;
-  background: var(--swatch);
-  color: var(--swatch);
+  width: calc(var(--appearance-swatch) + 6px);
+  height: calc(var(--appearance-swatch) + 6px);
+  padding: 0;
+  border: 3px solid var(--ink-surface-float);
+  border-radius: var(--ink-radius-full);
+  background: var(--swatch) content-box;
   cursor: pointer;
 }
-/* The surface-coloured border leaves a gap; the ring outside it marks the choice. */
+/* The float-coloured border leaves a gap; the ring outside it marks the choice. */
 .project-appearance__swatches [aria-checked="true"] {
-  box-shadow: 0 0 0 2px var(--swatch);
+  box-shadow: 0 0 0 1.5px var(--swatch);
+}
+.project-appearance__emoji-panel {
+  display: flex;
+  flex-direction: column;
 }
 .project-appearance__emojis {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 8px;
-  margin: 12px 0;
+  grid-template-columns: repeat(8, minmax(0, 1fr));
+  gap: 4px;
+  align-content: start;
 }
-.project-appearance__emojis button {
-  font-size: 24px;
+.project-appearance__custom {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: var(--appearance-field);
+  margin-top: 10px;
+  padding: 0 10px;
+  background: var(--ink-surface-1);
+  border: 1px solid var(--ink-border-default);
+  border-radius: var(--ink-radius-sm);
+  box-sizing: border-box;
+}
+.project-appearance__custom:focus-within {
+  border-color: var(--ink-accent-primary);
+}
+.project-appearance__custom-glyph {
+  flex: none;
+  width: 18px;
+  text-align: center;
+  font-size: 15px;
+  color: var(--ink-text-muted);
+}
+.project-appearance__custom-input {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  outline: none;
+  background: transparent;
+  color: var(--ink-text-primary);
+  font: inherit;
+}
+.project-appearance__custom-input::placeholder {
+  color: var(--ink-text-muted);
+}
+.project-appearance__message {
+  margin: 10px 0 0;
+  font-size: 12px;
+}
+/* The last line of the fixed panel, under the emoji field. */
+.project-appearance__invalid {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  margin: 0;
+  line-height: 16px;
+  color: var(--ink-status-danger);
 }
 .project-appearance__reset {
   margin-right: auto;
-  background: transparent;
-  border-color: transparent;
+  color: var(--ink-text-secondary);
 }
 .project-appearance__close {
   position: absolute;
@@ -199,69 +295,33 @@
   width: 36px;
   height: 36px;
   border: 0;
+  border-radius: var(--ink-radius-sm);
   background: transparent;
-  color: var(--ink-text-primary);
-  font-size: 24px;
+  color: var(--ink-text-secondary);
+  font-size: 22px;
   cursor: pointer;
 }
-.project-appearance .ink-dialog__title {
-  padding-right: 32px;
-}
-.project-appearance .ink-dialog {
-  max-height: calc(100dvh - 32px);
-  overflow-y: auto;
-}
-@media (width < 400px) {
-  .project-appearance .ink-dialog__actions {
-    flex-wrap: wrap;
-  }
-  .project-appearance__reset {
-    flex-basis: 100%;
-    text-align: left;
-  }
+.project-appearance__close:hover {
+  color: var(--ink-text-primary);
+  background: var(--ink-surface-2);
 }
 
-.project-appearance__panels {
-  display: grid;
-  position: relative;
-}
-.project-appearance__panels [role="tabpanel"] {
-  grid-area: 1 / 1;
-}
-.project-appearance__panels [role="tabpanel"][hidden] {
-  display: block;
-  visibility: hidden;
-}
-/* Both tabs keep the Symbol panel's height: the emoji grid scrolls, the field stays in view. */
-.project-appearance__panels .project-appearance__emoji-panel {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
-}
-.project-appearance__emoji-panel .project-appearance__emojis {
-  flex: 1 1 auto;
-  min-height: 0;
-  overflow-y: auto;
-  margin: 12px 0 8px;
-  /* Room for the selection ring and the focus outline inside the scrolling area. */
-  padding: 6px;
-  align-content: start;
-}
-.project-appearance__emoji-panel p {
-  flex: none;
-  margin-block: 8px 0;
-}
-/* One line kept for the emoji message, so showing it moves nothing. */
-.project-appearance__feedback {
-  min-height: 3em;
-}
-.project-appearance__feedback p {
-  margin-block: 8px;
-}
-
+/* Phones: 44 px targets, so the shared panel grows to fit the larger tiles. */
 @media (width < 768px) {
+  .project-appearance .ink-dialog {
+    width: 100vw;
+    border-radius: var(--ink-radius-xl) var(--ink-radius-xl) 0 0;
+  }
+  .project-appearance__form {
+    --appearance-panel: 248px;
+    --appearance-tile: 44px;
+    --appearance-emoji: 40px;
+    --appearance-swatch: 26px;
+    --appearance-field: 44px;
+  }
+  .project-appearance__custom-input {
+    font-size: 16px;
+  }
   .project-context-menu [role="menuitem"],
   .project-appearance__tabs button {
     min-height: 44px;
@@ -271,5 +331,14 @@
     right: 4px;
     width: 44px;
     height: 44px;
+  }
+}
+@media (width < 400px) {
+  .project-appearance .ink-dialog__actions {
+    flex-wrap: wrap;
+  }
+  .project-appearance__reset {
+    flex-basis: 100%;
+    text-align: left;
   }
 }

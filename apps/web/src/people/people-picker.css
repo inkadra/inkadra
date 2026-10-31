@@ -1,0 +1,61 @@
+/* People suggestions under a name-or-email field (Share, New project). */
+.people-picker {
+  position: relative;
+  min-width: 0;
+}
+.people-picker__list {
+  position: absolute;
+  z-index: 10;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  min-width: 240px;
+  max-height: 240px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  padding: 4px;
+  border: 1px solid var(--ink-border-default);
+  border-radius: var(--ink-radius-md);
+  background: var(--ink-surface-float);
+  box-shadow: var(--ink-shadow-menu);
+}
+.people-picker__list[hidden] {
+  display: none;
+}
+.people-picker__option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 40px;
+  padding: 6px 8px;
+  border-radius: var(--ink-radius-sm);
+  color: var(--ink-text-primary);
+  cursor: pointer;
+}
+.people-picker__option[aria-selected="true"] {
+  background: var(--ink-surface-2);
+}
+.people-picker__who {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.people-picker__name,
+.people-picker__email {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.people-picker__name {
+  font-size: 13px;
+  font-weight: 500;
+}
+.people-picker__email {
+  font-size: 11.5px;
+  color: var(--ink-text-muted);
+}
+@media (width < 768px) {
+  .people-picker__option {
+    min-height: 44px;
+  }
+}
