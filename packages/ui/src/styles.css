@@ -644,9 +644,10 @@ select {
     padding: 10px 10px 0;
     border: 0;
     overflow: hidden;
+    /* Only a transform moves, on the compositor; the surface stays whole for the whole slide
+       (an opacity below 1 would also cut the blur layer off from the board behind). */
     transition:
       translate var(--ink-dur-slow) var(--ink-ease-out),
-      opacity var(--ink-dur-base) var(--ink-ease-out),
       visibility 0s;
   }
   .ink-shell > .ink-sidebar .ink-sidebar__workspace {
@@ -695,22 +696,38 @@ select {
      a moment (peek) when the pointer rests on the left edge. */
   .ink-shell--collapsed > .ink-sidebar {
     translate: calc(-100% - var(--ink-float-gap) * 2) 0;
-    opacity: 0;
     visibility: hidden;
     transition:
-      translate var(--ink-dur-base) var(--ink-ease-in),
-      opacity var(--ink-dur-base) var(--ink-ease-in),
-      visibility 0s linear var(--ink-dur-base);
+      translate var(--ink-dur-slow) var(--ink-ease-out),
+      visibility 0s linear var(--ink-dur-slow);
   }
   .ink-shell--collapsed.ink-shell--peek > .ink-sidebar {
     z-index: 110;
     translate: none;
-    opacity: 1;
     visibility: visible;
     transition:
       translate var(--ink-dur-slow) var(--ink-ease-out),
-      opacity var(--ink-dur-base) var(--ink-ease-out),
       visibility 0s;
+  }
+
+  /* What sits beside the navigation follows it as it slides (#333). The layout takes its new
+     place at once and each panel starts from where it was (--ink-follow, its own shift), with
+     the sidebar's duration and easing: in step with it, never under it, and only transforms
+     move. The shell carries --sliding-out/in for the length of the slide (AppLayout.tsx). */
+  .ink-shell--sliding-out {
+    --ink-follow-dir: 1;
+    --ink-follow-name: ink-follow-out;
+  }
+  .ink-shell--sliding-in {
+    --ink-follow-dir: -1;
+    --ink-follow-name: ink-follow-in;
+  }
+  .ink-shell--sliding-out > .ink-header .ink-header__start,
+  .ink-shell--sliding-in > .ink-header .ink-header__start {
+    --ink-follow: calc(
+      (var(--ink-sidebar-width) - var(--ink-launcher-size)) * var(--ink-follow-dir)
+    );
+    animation: var(--ink-follow-name) var(--ink-dur-slow) var(--ink-ease-out);
   }
   .ink-shell__launcher {
     position: absolute;
@@ -752,7 +769,6 @@ select {
     padding: 0;
     gap: var(--ink-float-gap);
     pointer-events: none;
-    transition: left var(--ink-dur-slow) var(--ink-ease-out);
   }
   .ink-shell > .ink-header .ink-header__group {
     position: relative;
@@ -813,13 +829,31 @@ select {
   }
 }
 
+/* Two names for one move, so turning back mid-slide starts the move again. */
+@keyframes ink-follow-out {
+  from {
+    translate: var(--ink-follow, 0px) 0;
+  }
+}
+@keyframes ink-follow-in {
+  from {
+    translate: var(--ink-follow, 0px) 0;
+  }
+}
+
+/* Reduced motion: the navigation and what follows it change place at once, together. */
 @media (width >= 768px) and (prefers-reduced-motion: reduce) {
   .ink-shell--collapsed > .ink-sidebar {
     translate: none;
   }
-  .ink-shell > .ink-header,
+  .ink-shell > .ink-sidebar,
+  .ink-shell--collapsed > .ink-sidebar,
+  .ink-shell--collapsed.ink-shell--peek > .ink-sidebar,
   .ink-shell > .ink-main {
     transition: none;
+  }
+  :is(.ink-shell--sliding-out, .ink-shell--sliding-in) * {
+    animation: none;
   }
 }
 @media (prefers-reduced-transparency: reduce) {

@@ -2629,7 +2629,21 @@ button.card__play {
     left: calc(var(--ink-board-left, 0px) + 12px);
     bottom: 12px;
     gap: 8px;
-    transition: left var(--ink-dur-slow) var(--ink-ease-out);
+  }
+  /* They follow the sliding navigation with a transform (see the shell in styles.css). */
+  :is(.ink-shell--sliding-out, .ink-shell--sliding-in)
+    .ink-main--canvas
+    :is(.canvas__corner, .unsorted, .canvas__dock) {
+    --ink-follow: calc(
+      (var(--ink-sidebar-width) + var(--ink-float-gap)) * var(--ink-follow-dir)
+    );
+    animation: var(--ink-follow-name) var(--ink-dur-slow) var(--ink-ease-out);
+  }
+  /* The bar is centred on the free part of the board: it moves half as far. */
+  :is(.ink-shell--sliding-out, .ink-shell--sliding-in) .ink-main--canvas .canvas__dock {
+    --ink-follow: calc(
+      (var(--ink-sidebar-width) + var(--ink-float-gap)) / 2 * var(--ink-follow-dir)
+    );
   }
   /* The tool bar is centred on the board beside the navigation and never reaches the corner:
      the dock starts after it, and its end spacer (as wide as the corner) gives way first. */
@@ -2642,7 +2656,6 @@ button.card__play {
     justify-content: center;
     pointer-events: none;
     container: canvas / inline-size;
-    transition: left var(--ink-dur-slow) var(--ink-ease-out);
   }
   .canvas__dock::after {
     content: "";
@@ -2706,7 +2719,6 @@ button.card__play {
     left: calc(var(--ink-board-left, 0px) + 12px);
     /* Above the corner: the minimap (90 + its border), the gap and the zoom. */
     bottom: calc(12px + 92px + 8px + 36px + 8px);
-    transition: left var(--ink-dur-slow) var(--ink-ease-out);
   }
   .canvas .uploads {
     right: 12px;
@@ -2729,13 +2741,6 @@ button.card__play {
     top: calc(12px * 2 + 42px);
     right: 12px;
     bottom: 12px;
-  }
-}
-@media (width >= 768px) and (prefers-reduced-motion: reduce) {
-  .canvas__corner,
-  .canvas__dock,
-  .canvas .unsorted {
-    transition: none;
   }
 }
 @media (width >= 768px) {

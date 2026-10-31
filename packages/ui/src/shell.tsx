@@ -20,6 +20,7 @@ export function AppShell({
   canvas,
   collapsed,
   peek,
+  sliding,
 }: {
   rail?: ReactNode;
   launcher?: ReactNode;
@@ -29,6 +30,8 @@ export function AppShell({
   canvas?: boolean;
   collapsed?: boolean;
   peek?: boolean;
+  /** While the navigation slides out or in: what sits beside it follows (#333). */
+  sliding?: 'out' | 'in' | null;
 }) {
   const className = [
     'ink-shell',
@@ -37,6 +40,7 @@ export function AppShell({
     collapsed ? 'ink-shell--collapsed' : '',
     collapsed && peek ? 'ink-shell--peek' : '',
     canvas ? 'ink-shell--canvas' : '',
+    sliding ? `ink-shell--sliding-${sliding}` : '',
   ]
     .filter(Boolean)
     .join(' ');

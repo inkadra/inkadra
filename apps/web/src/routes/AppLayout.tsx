@@ -22,6 +22,7 @@ import {
   type ReactNode,
   useContext,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -316,6 +317,7 @@ export function AppLayout({ home }: { home?: ReactNode }) {
       return !c;
     });
   const peek = useSidebarPeek(collapsed || inboxOpen);
+  const sliding = useSlide(collapsed || inboxOpen);
   // ⌘\ / Ctrl+\ folds the navigation column to its icons and back.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -768,6 +770,7 @@ export function AppLayout({ home }: { home?: ReactNode }) {
             canvas={!!projectId && (currentView === 'canvas' || currentView === null)}
             collapsed={inboxOpen || collapsed}
             peek={peek.shown}
+            sliding={sliding}
           >
             {/* Keep layout observable while Inbox covers the board, including sidebar resizes. */}
             <div
@@ -1026,6 +1029,27 @@ function writeCollapsed(userId: string | undefined, value: boolean) {
   } catch {
     // Private mode: the choice lasts for this page only.
   }
+}
+
+/** A little longer than --ink-dur-slow, the length of the slide. */
+const SLIDE_MS = 320;
+
+/**
+ * Which way the navigation is sliding, for the length of the slide: the panels beside it
+ * animate from their old place to the new one with it. Set before the paint that shows the
+ * new layout, so no frame has them in their new place without the animation.
+ */
+function useSlide(collapsed: boolean): 'out' | 'in' | null {
+  const [sliding, setSliding] = useState<'out' | 'in' | null>(null);
+  const was = useRef(collapsed);
+  useLayoutEffect(() => {
+    if (was.current === collapsed) return;
+    was.current = collapsed;
+    setSliding(collapsed ? 'out' : 'in');
+    const timer = setTimeout(() => setSliding(null), SLIDE_MS);
+    return () => clearTimeout(timer);
+  }, [collapsed]);
+  return sliding;
 }
 
 /** How long the pointer rests on the left edge before the navigation peeks out, and leaves it. */
