@@ -52,17 +52,6 @@
   :is(.story, .shots) > .story__bar .film-compact-btn__label {
     display: none;
   }
-  /* Grid, Sequence and Animatic would truncate as segments: a picker takes their place. */
-  .story > .story__bar > .story__modes {
-    display: none;
-  }
-  .story > .story__bar > .story__mode-picker {
-    display: inline-flex;
-    flex: 1 1 auto;
-    min-width: 0;
-    max-width: 200px;
-    min-height: 44px;
-  }
   :is(.story, .shots) > .story__bar .ink-header__spacer {
     display: none;
   }
@@ -289,59 +278,5 @@
     right: 12px;
     transform: none;
     flex-wrap: wrap;
-  }
-}
-
-/* Animatic on a phone: the picture first, controls in two rows, the hint left out. */
-@media (width < 768px) {
-  .animatic .animatic__stage {
-    padding: 6px;
-  }
-  .animatic .animatic__picture {
-    width: 100%;
-    min-width: 0;
-  }
-  /* A strip along the bottom edge, two short lines at most, so the drawing stays visible. */
-  .animatic .animatic__caption {
-    left: 4px;
-    right: 4px;
-    bottom: 4px;
-    transform: none;
-    justify-content: flex-start;
-    gap: 0 6px;
-    width: auto;
-    max-width: none;
-    padding: 2px 6px;
-    border-radius: 4px;
-    font-size: 11px;
-    line-height: 1.35;
-    text-align: left;
-  }
-  .animatic .animatic__caption > * {
-    min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-  .animatic .animatic__caption > .animatic__shot {
-    flex: none;
-  }
-  .animatic .animatic__caption > span:not(.animatic__dialogue) {
-    flex: 1 1 0;
-  }
-  .animatic .animatic__controls {
-    gap: 8px;
-  }
-  .animatic .animatic__scrub {
-    order: 3;
-    flex-basis: 100%;
-  }
-  .animatic .animatic__toggles {
-    margin-left: auto;
-  }
-  .animatic .animatic__sound-name,
-  .animatic .animatic__block-time,
-  .animatic .animatic__keys-line {
-    display: none;
   }
 }

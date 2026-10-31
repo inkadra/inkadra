@@ -197,6 +197,11 @@
     "create": "Create project",
     "cancel": "Cancel"
   },
+  "dialog": {
+    "discardTitle": "Discard changes?",
+    "discard": "Discard",
+    "keep": "Keep editing"
+  },
   "notFound": {
     "title": "Page not found",
     "back": "Back to home"
@@ -871,10 +876,6 @@
       "selectRow": "Select shot {{label}}"
     },
     "playback": {
-      "mode": "Storyboard mode",
-      "grid": "Grid",
-      "sequence": "Sequence",
-      "animatic": "Animatic",
       "size": "Tile size",
       "sizes": {
         "s": "Small tiles",
@@ -886,46 +887,7 @@
       "allScenes": "All scenes",
       "drawn": "{{drawn}} of {{total}} drawn",
       "estimated_one": "{{count}} frame · estimated duration {{duration}}. The bar shows the drawn frames.",
-      "estimated_other": "{{count}} frames · estimated duration {{duration}}. The bar shows the drawn frames.",
-      "play": "Play",
-      "pause": "Pause",
-      "speed": "Speed",
-      "close": "Close presentation",
-      "time": "Timecode",
-      "seek": "Animatic position",
-      "track": "Frames on the time line",
-      "now": "Frame {{label}} at {{time}}",
-      "block": "Go to {{label}}, {{duration}}",
-      "resize": "Duration of {{label}}",
-      "empty": "No frames to play: every frame has a zero duration.",
-      "defaultDuration": "Frames without a duration play for one second (striped). Drag a block’s edge to set its duration in quarter seconds; drag the block to move the frame.",
-      "noFrames": "No frames in this scene",
-      "noFramesBody": "Add a frame to play it in the animatic.",
-      "defaultDurationReadOnly": "Frames without a duration play for one second (striped blocks).",
-      "sceneTitle": "{{number}} · {{title}}",
-      "runtime_one": "{{count}} frame · runtime {{duration}}",
-      "runtime_other": "{{count}} frames · runtime {{duration}}",
-      "loop": "Loop",
-      "overlay": "Show shot and action over the picture",
-      "sound": "Sound track",
-      "noSound": "No sound track",
-      "soundMissing": "Sound file not available",
-      "addSound": "Add sound track",
-      "replaceSound": "Replace",
-      "removeSound": "Remove sound track",
-      "mute": "Mute",
-      "unmute": "Unmute",
-      "volume": "Volume",
-      "watch": "Play animatic",
-      "keys": {
-        "title": "Keyboard shortcuts",
-        "space": "Space",
-        "play": "play or pause",
-        "frame": "previous or next frame",
-        "second": "one second back or forward",
-        "ends": "start or end",
-        "move": "move the focused frame"
-      }
+      "estimated_other": "{{count}} frames · estimated duration {{duration}}. The bar shows the drawn frames."
     }
   },
   "roles": {
@@ -2154,7 +2116,6 @@
     "slides": "Slides",
     "toolbar": "Presentation controls",
     "keysHint": "to navigate slides",
-    "playAnimatic": "Play animatic",
     "speakerNotes": "Speaker notes",
     "closeNotes": "Collapse notes",
     "fullscreen": "Fullscreen",

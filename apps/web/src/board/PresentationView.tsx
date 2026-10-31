@@ -4,7 +4,6 @@ import { SHOT_MOVEMENTS, SHOT_SIZES } from '@inkadra/doc-schema';
 import { Button, Icon, IconButton, KeyCap } from '@inkadra/ui';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Animatic } from './film/Animatic.tsx';
 import { useBoardAspect } from './film/aspect.ts';
 import { FramePicture } from './film/FramePicture.tsx';
 import { usePresetText } from './film/fields.tsx';
@@ -44,7 +43,6 @@ export function PresentationView({
   labels,
   boardTitle,
   projectTitle,
-  readOnly = false,
   onClose,
 }: {
   store: BoardStore;
@@ -53,7 +51,6 @@ export function PresentationView({
   labels: Map<string, string>;
   boardTitle: string;
   projectTitle?: string;
-  readOnly?: boolean;
   onClose: () => void;
 }) {
   const { t } = useTranslation();
@@ -61,7 +58,6 @@ export function PresentationView({
   const getPreset = usePresetText();
   const [index, setIndex] = useState(0);
   const [showNotes, setShowNotes] = useState(true);
-  const [playingAnimatic, setPlayingAnimatic] = useState(false);
   const [elapsed, setElapsed] = useState(0);
   const [paused, setPaused] = useState(false);
   const [fullscreen, setFullscreen] = useState(false);
@@ -90,14 +86,13 @@ export function PresentationView({
 
   // Modal dialog: the page behind is inert and Tab stays inside.
   useEffect(() => {
-    if (playingAnimatic) return;
     const el = rootRef.current;
     if (el && !el.open) el.showModal();
     el?.focus();
     return () => {
       if (el?.open) el.close();
     };
-  }, [playingAnimatic]);
+  }, []);
 
   // Leaving the presentation also leaves fullscreen.
   useEffect(() => {
@@ -109,8 +104,7 @@ export function PresentationView({
     };
   }, []);
 
-  const { slides, frames } = useMemo(() => {
-    const frameList: FrameElement[] = [];
+  const slides = useMemo(() => {
     const list: SlideItem[] = [];
 
     for (const group of groups) {
@@ -124,7 +118,6 @@ export function PresentationView({
       const sceneHeading = headingParts.join(' · ');
 
       for (const frame of group.frames) {
-        frameList.push(frame);
         const label = labels.get(frame.id) ?? frame.label ?? String(list.length + 1);
         list.push({
           id: frame.id,
@@ -148,7 +141,7 @@ export function PresentationView({
       }
     }
 
-    return { slides: list, frames: frameList };
+    return list;
   }, [groups, labels, getPreset, t]);
 
   const total = slides.length;
@@ -166,7 +159,6 @@ export function PresentationView({
 
   // Keys are captured here so the board canvas behind never sees them.
   useEffect(() => {
-    if (playingAnimatic) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.ctrlKey || e.metaKey || e.altKey) return;
       if (isTyping(e.target)) return;
@@ -183,7 +175,7 @@ export function PresentationView({
     };
     document.addEventListener('keydown', onKey, true);
     return () => document.removeEventListener('keydown', onKey, true);
-  }, [onClose, goNext, goPrev, playingAnimatic]);
+  }, [onClose, goNext, goPrev]);
 
   const toggleFullscreen = () => {
     if (document.fullscreenElement) {
@@ -192,21 +184,6 @@ export function PresentationView({
       rootRef.current?.requestFullscreen?.().catch(() => {});
     }
   };
-
-  if (playingAnimatic) {
-    return (
-      <Animatic
-        store={store}
-        frames={frames}
-        groups={groups}
-        labels={labels}
-        boardAspect={boardAspect}
-        readOnly={readOnly}
-        present
-        onClose={() => setPlayingAnimatic(false)}
-      />
-    );
-  }
 
   const progressPercent = total > 0 ? ((safeIndex + 1) / total) * 100 : 0;
   const slideAria = t('present.slideAria', { current: safeIndex + 1, total });
@@ -346,17 +323,6 @@ export function PresentationView({
               </span>
 
               <div style={{ flex: 1 }} />
-
-              {frames.length > 0 && (
-                <button
-                  type="button"
-                  className="present-toolbar__btn"
-                  onClick={() => setPlayingAnimatic(true)}
-                >
-                  <Icon name="play" size={14} />
-                  <span>{t('present.playAnimatic')}</span>
-                </button>
-              )}
 
               <button
                 type="button"

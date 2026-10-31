@@ -5,6 +5,7 @@ import { TooltipProvider } from '@inkadra/ui';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { createBrowserRouter, Outlet, RouterProvider } from 'react-router';
+import { DialogTexts } from './lib/DialogTexts.tsx';
 import { SessionProvider, useSession } from './lib/session.tsx';
 import { AppContextMenu } from './menus/AppContextMenu.tsx';
 import { registerServiceWorker } from './pwa/register.ts';
@@ -78,9 +79,11 @@ if (!root) throw new Error('Missing #root');
 createRoot(root).render(
   <StrictMode>
     <TooltipProvider>
-      <AppContextMenu>
-        <RouterProvider router={router} />
-      </AppContextMenu>
+      <DialogTexts>
+        <AppContextMenu>
+          <RouterProvider router={router} />
+        </AppContextMenu>
+      </DialogTexts>
       <UpdatePrompt />
     </TooltipProvider>
   </StrictMode>,

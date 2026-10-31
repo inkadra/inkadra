@@ -1,4 +1,4 @@
-import { Button, IconButton } from '@inkadra/ui';
+import { Button, IconButton, swallowOutsidePress } from '@inkadra/ui';
 import { type CSSProperties, useEffect, useId, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { dateInputValue, endOfDay, expiresSoon, expiryBounds, expiryDate } from '../lib/access.ts';
@@ -50,10 +50,12 @@ export function ExpiryPicker({
     if (!open) return;
     setDay(value ? dateInputValue(new Date(value)) : '');
     const outside = (e: PointerEvent) => {
-      if (!box.current?.contains(e.target as Node)) setOpen(false);
+      if (box.current?.contains(e.target as Node)) return;
+      swallowOutsidePress(e);
+      setOpen(false);
     };
-    document.addEventListener('pointerdown', outside);
-    return () => document.removeEventListener('pointerdown', outside);
+    document.addEventListener('pointerdown', outside, true);
+    return () => document.removeEventListener('pointerdown', outside, true);
   }, [open, value]);
 
   // Not a form: the picker also sits inside the invitation form.

@@ -588,6 +588,62 @@ select {
   font-size: 14px;
   font-weight: 600;
 }
+.ink-dialog__confirm {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.ink-dialog__confirm-text {
+  margin-right: auto;
+  font-weight: 600;
+}
+/* A bar for a dialog without an action row. */
+.ink-dialog__confirm--bar {
+  position: sticky;
+  bottom: -16px;
+  z-index: 2;
+  justify-content: flex-end;
+  margin: 16px -16px -16px;
+  padding: 12px 16px;
+  border-top: 1px solid var(--ink-border-subtle);
+  border-radius: 0 0 12px 12px;
+  background: var(--ink-surface-float);
+}
+/* The question takes the place of the actions without moving them: they fade out under it. */
+.ink-dialog__actions {
+  position: relative;
+}
+.ink-dialog__actions > :not(.ink-dialog__confirm) {
+  transition: opacity 120ms;
+}
+.ink-dialog__actions.is-confirming > :not(.ink-dialog__confirm) {
+  opacity: 0;
+  visibility: hidden;
+  transition:
+    opacity 120ms,
+    visibility 0s 120ms;
+}
+.ink-dialog__actions > .ink-dialog__confirm {
+  position: absolute;
+  inset: 0;
+  padding: inherit;
+  background: inherit;
+  animation: ink-dialog-confirm-in 120ms;
+}
+@keyframes ink-dialog-confirm-in {
+  from {
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ink-dialog__actions > :not(.ink-dialog__confirm),
+  .ink-dialog__actions.is-confirming > :not(.ink-dialog__confirm) {
+    transition: none;
+  }
+  .ink-dialog__actions > .ink-dialog__confirm {
+    animation: none;
+  }
+}
 .ink-dialog__actions {
   display: flex;
   justify-content: flex-end;

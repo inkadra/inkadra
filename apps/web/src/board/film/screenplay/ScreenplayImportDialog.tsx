@@ -1,4 +1,13 @@
-import { Button, Checkbox, Dialog, DialogActions, Icon, kindStyle, Select } from '@inkadra/ui';
+import {
+  Button,
+  Checkbox,
+  Dialog,
+  DialogActions,
+  type DialogHandle,
+  Icon,
+  kindStyle,
+  Select,
+} from '@inkadra/ui';
 import { type DragEvent, useId, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Check, Field, Segmented } from '../../export/fields.tsx';
@@ -43,6 +52,7 @@ export function ScreenplayImportDialog({
   const [busy, setBusy] = useState(false);
   const [over, setOver] = useState(false);
   const input = useRef<HTMLInputElement>(null);
+  const dialog = useRef<DialogHandle>(null);
   const listId = useId();
   const count = (key: string, n: number) => t(`screenplay.${key}`, { count: n });
   const plan = useMemo(
@@ -115,7 +125,14 @@ export function ScreenplayImportDialog({
   const total = script?.scenes.length ?? 0;
   return (
     <div className="phone-sheet">
-      <Dialog open title={t('screenplay.title')} onClose={onClose}>
+      <Dialog
+        ref={dialog}
+        open
+        // A file that is read but not imported yet: the choices made on it would be lost.
+        dirty={!!file && !busy}
+        title={t('screenplay.title')}
+        onClose={onClose}
+      >
         <input
           ref={input}
           type="file"
@@ -297,7 +314,7 @@ export function ScreenplayImportDialog({
           </p>
         )}
         <DialogActions>
-          <Button variant="ghost" onClick={onClose}>
+          <Button variant="ghost" onClick={() => dialog.current?.requestClose()}>
             {t('screenplay.cancel')}
           </Button>
           <Button

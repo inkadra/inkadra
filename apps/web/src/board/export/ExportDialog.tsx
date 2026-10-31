@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 import type { Rect } from '@inkadra/canvas-core';
 import { type Board, DEFAULT_EXPORT_PREFERENCES, type ExportSettings } from '@inkadra/shared';
-import { Button, Dialog, DialogActions, Select } from '@inkadra/ui';
+import { Button, Dialog, DialogActions, type DialogHandle, Select } from '@inkadra/ui';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { getReviews } from '../review-store.ts';
@@ -63,6 +63,9 @@ export function ExportDialog(props: ExportDialogProps) {
   }));
   const [settings, setSettings] = useState<ExportSettings | null>(null);
   const touched = useRef(false);
+  // The options were changed by hand: closing would lose them.
+  const [changed, setChanged] = useState(false);
+  const dialog = useRef<DialogHandle>(null);
   useEffect(() => {
     let live = true;
     fetchExportSettings(projectId).then(
@@ -102,6 +105,7 @@ export function ExportDialog(props: ExportDialogProps) {
   );
   const set = <K extends keyof ExportRequest>(key: K, value: ExportRequest[K]) => {
     touched.current = true;
+    setChanged(true);
     setReq((r) => ({ ...r, [key]: value }));
   };
 
@@ -156,7 +160,7 @@ export function ExportDialog(props: ExportDialogProps) {
     }
   }
 
-  function cancel() {
+  function closed() {
     running.current?.abort();
     onClose();
   }
@@ -199,7 +203,7 @@ export function ExportDialog(props: ExportDialogProps) {
 
   return (
     <div className="phone-sheet">
-      <Dialog open title={t('export.title')} onClose={onClose}>
+      <Dialog ref={dialog} open dirty={changed && !busy} title={t('export.title')} onClose={closed}>
         <div className="export">
           <div className="export__controls">
             <Segmented
@@ -413,7 +417,7 @@ export function ExportDialog(props: ExportDialogProps) {
           </p>
         )}
         <DialogActions>
-          <Button onClick={cancel}>{t('export.cancel')}</Button>
+          <Button onClick={() => dialog.current?.requestClose()}>{t('export.cancel')}</Button>
           <Button
             variant="primary"
             icon="download"

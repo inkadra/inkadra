@@ -38,7 +38,6 @@ const present = {
   noSlides: 'present.noSlides',
   fullscreen: 'present.fullscreen',
   exitFullscreen: 'present.exitFullscreen',
-  playAnimatic: 'present.playAnimatic',
 };
 
 function setup() {
@@ -190,17 +189,6 @@ describe('PresentationView', () => {
     fsEl = null;
     Reflect.deleteProperty(document, 'fullscreenElement');
     Reflect.deleteProperty(document, 'exitFullscreen');
-  });
-
-  it('opens the animatic from the slides and comes back', async () => {
-    const { store } = twoFrames();
-    const host = await mount(view(store));
-    const play = [...host.querySelectorAll('button')].find((b) =>
-      b.textContent?.includes(present.playAnimatic),
-    );
-    await act(async () => play?.click());
-    expect(host.querySelector('.animatic-dialog')).not.toBeNull();
-    expect(host.querySelector('.present-view')).toBeNull();
   });
 
   it('toggles the speaker notes', async () => {

@@ -3,7 +3,6 @@ import { join } from 'node:path';
 import { createArrow, createElement } from '@inkadra/canvas-core';
 import { readElement, roots } from '@inkadra/doc-schema';
 import { type Browser, chromium, type Page } from '@playwright/test';
-import { chooseSelect } from '../helpers/select.ts';
 import { readBoard } from '../tests/frame-grab.helpers.ts';
 import { pushBoardDoc, uploadFile, waitForAssets } from '../tests/perf/seed.ts';
 import { type SampleProject, seedSampleProject } from './sample-project.ts';
@@ -257,16 +256,6 @@ const shots: Shot[] = [
     async (page, seed) => {
       await board(page, seed, seed.storyboard.id, 'schedule');
       await page.getByRole('button', { name: 'Foglio di lavorazione' }).first().click();
-    },
-  ],
-  [
-    '17-animatic',
-    async (page, seed) => {
-      await board(page, seed, seed.storyboard.id, 'storyboard');
-      const picker = page.getByRole('combobox', { name: 'Modalità storyboard' });
-      if (await picker.isVisible()) await chooseSelect(picker, 'animatic');
-      else await page.getByRole('button', { name: 'Animatic', exact: true }).click();
-      await page.getByRole('region', { name: 'Animatic' }).waitFor();
     },
   ],
   [
