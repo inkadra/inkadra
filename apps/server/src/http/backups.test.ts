@@ -2,6 +2,7 @@ import { existsSync } from 'node:fs';
 import { readdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { Readable } from 'node:stream';
+import { pipeline } from 'node:stream/promises';
 import { fileURLToPath } from 'node:url';
 import { addElement, createBoardDoc } from '@inkadra/doc-schema';
 import { InstanceBackups } from '@inkadra/shared';
@@ -17,6 +18,7 @@ import {
   backupCron,
   backupsDir,
   copyReadable,
+  copyWritable,
   nextBackupAt,
   reapStaleBackups,
   restoreBackup,
@@ -280,10 +282,19 @@ describe.skipIf(!url)('instance backups (needs DATABASE_URL)', () => {
     process.on('uncaughtException', onUncaught);
     process.on('unhandledRejection', onUncaught);
     try {
+      await copy.unsafe(`
+        create temp table zz_copy_in (x int);
+        create function pg_temp.zz_cancel() returns trigger language plpgsql as
+          'begin perform pg_cancel_backend(pg_backend_pid()); return null; end';
+        create trigger zz_cancel before insert on zz_copy_in
+          for each statement execute function pg_temp.zz_cancel();
+      `);
       for (let i = 0; i < 50; i += 1) {
-        // Cancelling in the first row sends ErrorResponse (57014) in the same socket read as
-        // CopyOutResponse, so postgres.js destroys the stream on nextTick, before await.
-        const run = async () => {
+        // Cancelling in the first row or in a BEFORE STATEMENT trigger sends ErrorResponse
+        // (57014) right after CopyOutResponse or CopyInResponse, so postgres.js may destroy the
+        // stream on nextTick before await resumes. The 57014 assertion holds whichever way the
+        // race goes: either guardCopyStream rejects before await, or consuming the stream does.
+        const out = async () => {
           const stream = await copyReadable(
             copy.unsafe(
               'copy (select pg_cancel_backend(pg_backend_pid()), g from generate_series(1, 10) g) to stdout',
@@ -291,7 +302,13 @@ describe.skipIf(!url)('instance backups (needs DATABASE_URL)', () => {
           );
           for await (const _ of stream);
         };
-        await expect(run()).rejects.toMatchObject({ code: '57014' });
+        await expect(out()).rejects.toMatchObject({ code: '57014' });
+
+        const into = async () => {
+          const sink = await copyWritable(copy.unsafe('copy zz_copy_in from stdin'));
+          await pipeline(Readable.from(['1\n']), sink);
+        };
+        await expect(into()).rejects.toMatchObject({ code: '57014' });
       }
       expect(unhandled).toEqual([]);
     } finally {

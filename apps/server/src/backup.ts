@@ -709,7 +709,10 @@ export async function restoreBackup(opts: {
           const sink = await copyWritable(
             tx`copy ${tx(table.name)} (${tx(table.columns)}) from stdin`,
           );
-          const entry = await zip.stream(table.entry, Number.MAX_SAFE_INTEGER);
+          const entry = await zip.stream(table.entry, Number.MAX_SAFE_INTEGER).catch((err) => {
+            sink.destroy();
+            throw err;
+          });
           if (sink.errored) {
             entry.destroy();
             throw sink.errored;

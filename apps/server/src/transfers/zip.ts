@@ -202,6 +202,7 @@ export async function readZip(path: string, limits: ZipLimits): Promise<ZipReade
           err instanceof ArchiveError ? err : new ArchiveError('invalid_archive', err.message),
         ),
       );
+      guard.once('close', () => source.destroy());
       return source.pipe(guard);
     },
     async buffer(name, max) {
