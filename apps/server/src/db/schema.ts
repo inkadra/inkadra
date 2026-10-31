@@ -679,9 +679,7 @@ export const notification = pgTable(
       .where(sql`${t.actorGuestId} is not null`),
     // Comments are hard-deleted and cascade here.
     index('notification_comment_idx').on(t.commentId).where(sql`${t.commentId} is not null`),
-    index('notification_share_link_idx')
-      .on(t.shareLinkId)
-      .where(sql`${t.shareLinkId} is not null`),
+    index('notification_share_link_idx').on(t.shareLinkId).where(sql`${t.shareLinkId} is not null`),
   ],
 );
 

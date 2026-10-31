@@ -998,12 +998,23 @@ describe.skipIf(!url)('guest share links (needs DATABASE_URL)', () => {
     // Only the first open per version is stored: no address, device or guest.
     const stored = await client`select * from share_link_open where share_link_id = ${link.id}`;
     expect(stored).toHaveLength(1);
-    expect(Object.keys(stored[0] ?? {}).sort()).toEqual(['opened_at', 'share_link_id', 'version_key']);
+    expect(Object.keys(stored[0] ?? {}).sort()).toEqual([
+      'opened_at',
+      'share_link_id',
+      'version_key',
+    ]);
 
     // A new named version is a new first open; automatic ones are not.
     await db
       .insert(boardVersion)
-      .values({ boardId, kind: 'auto', state: new Uint8Array(), schemaVersion: 3, size: 0, elementCount: 0 });
+      .values({
+        boardId,
+        kind: 'auto',
+        state: new Uint8Array(),
+        schemaVersion: 3,
+        size: 0,
+        elementCount: 0,
+      });
     await call({ cookie: again.cookie }, 'GET', g(link, '/session'));
     expect(await rows()).toHaveLength(1);
     await db.insert(boardVersion).values({
