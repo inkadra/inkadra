@@ -2771,3 +2771,16 @@ button.card__play {
     min-width: 72px;
   }
 }
+/* A version preview on the full-bleed board: its banner floats under the header panels, beside
+   the navigation, instead of sitting under them. */
+@media (width >= 768px) {
+  .ink-shell > .ink-main--canvas .board-preview > .version-banner {
+    position: relative;
+    z-index: 1;
+    margin: calc(12px * 2 + 42px) 12px 0 var(--ink-shell-left, 12px);
+    border: 0;
+    border-radius: var(--ink-radius-lg);
+    background: var(--ink-surface-float);
+    box-shadow: var(--ink-float-shadow);
+  }
+}
