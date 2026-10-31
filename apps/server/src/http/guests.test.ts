@@ -1005,16 +1005,14 @@ describe.skipIf(!url)('guest share links (needs DATABASE_URL)', () => {
     ]);
 
     // A new named version is a new first open; automatic ones are not.
-    await db
-      .insert(boardVersion)
-      .values({
-        boardId,
-        kind: 'auto',
-        state: new Uint8Array(),
-        schemaVersion: 3,
-        size: 0,
-        elementCount: 0,
-      });
+    await db.insert(boardVersion).values({
+      boardId,
+      kind: 'auto',
+      state: new Uint8Array(),
+      schemaVersion: 3,
+      size: 0,
+      elementCount: 0,
+    });
     await call({ cookie: again.cookie }, 'GET', g(link, '/session'));
     expect(await rows()).toHaveLength(1);
     await db.insert(boardVersion).values({
