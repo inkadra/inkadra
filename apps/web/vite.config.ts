@@ -1,3 +1,4 @@
+/// <reference types="vitest/config" />
 import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vite';
 import { pwa } from './pwa/plugin.ts';
@@ -13,6 +14,7 @@ export default defineConfig({
       '/collab': { target: api.replace(/^http/, 'ws'), ws: true },
     },
   },
+  test: { setupFiles: ['./src/test/no-network.ts'] },
   build: {
     outDir: 'dist',
     sourcemap: true,
