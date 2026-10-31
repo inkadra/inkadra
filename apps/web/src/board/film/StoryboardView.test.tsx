@@ -67,9 +67,7 @@ it('drops images between two frames as one new frame each, and not for a read-on
 
     const notes = new File(['x'], 'notes.txt', { type: 'text/plain' });
     await act(async () =>
-      grid.dispatchEvent(
-        dragFiles('drop', [image('a.png'), notes, image('b.jpg')], 108, 40),
-      ),
+      grid.dispatchEvent(dragFiles('drop', [image('a.png'), notes, image('b.jpg')], 108, 40)),
     );
     expect(frames()).toHaveLength(4);
     expect(started.map((u) => u.file.name)).toEqual(['a.png', 'b.jpg']);
