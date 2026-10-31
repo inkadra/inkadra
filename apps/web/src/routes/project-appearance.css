@@ -33,6 +33,8 @@
   background: var(--ink-surface-float);
   color: var(--ink-text-primary);
   box-shadow: 0 6px 24px #0003;
+  transform-origin: var(--ink-origin, top left);
+  animation: ink-scale-in var(--ink-dur-fast) var(--ink-ease-out) backwards;
 }
 .project-context-menu > button {
   display: block;

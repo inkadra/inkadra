@@ -93,7 +93,6 @@ select {
   font-size: 12px;
   white-space: nowrap;
   cursor: pointer;
-  transition: background-color 120ms cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 .ink-btn:disabled {
   opacity: 0.4;
@@ -1297,4 +1296,183 @@ select {
 }
 .ink-tooltip[hidden] {
   display: none;
+}
+
+/* Motion (#332) --------------------------------------------------------------- */
+
+/* Only transform and opacity move, so the compositor runs it at the display's refresh rate.
+   Things enter with a CSS animation on mount: nothing runs per frame in JavaScript. The
+   individual `translate` and `scale` properties compose with an element's own transform. */
+@keyframes ink-fade-in {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes ink-fade-out {
+  to {
+    opacity: 0;
+  }
+}
+/* Menus, popovers, selects and tooltips: from their anchor (`--ink-origin`, top left by default). */
+@keyframes ink-scale-in {
+  from {
+    opacity: 0;
+    scale: 0.96;
+  }
+}
+/* Toasts. */
+@keyframes ink-rise-in {
+  from {
+    opacity: 0;
+    translate: 0 8px;
+  }
+}
+/* Side panels, from the edge they sit on (`--ink-slide-from`, the right by default). */
+@keyframes ink-slide-in {
+  from {
+    opacity: 0;
+    translate: var(--ink-slide-from, 16px) 0;
+  }
+}
+/* New cards on the board, with a slight overshoot. */
+@keyframes ink-pop-in {
+  from {
+    opacity: 0;
+    scale: 0.96;
+  }
+}
+
+.ink-motion-pop {
+  transform-origin: var(--ink-origin, top left);
+  animation: ink-scale-in var(--ink-dur-fast) var(--ink-ease-out) backwards;
+}
+.ink-motion-rise {
+  animation: ink-rise-in var(--ink-dur-base) var(--ink-ease-out) backwards;
+}
+.ink-motion-slide {
+  animation: ink-slide-in var(--ink-dur-slow) var(--ink-ease-out) backwards;
+}
+.ink-motion-card {
+  animation: ink-pop-in var(--ink-dur-base) var(--ink-ease-pop) backwards;
+}
+/* A copy left behind by fadeOutCopy() while it fades away (motion.ts). */
+.ink-motion-exit {
+  pointer-events: none;
+  animation: ink-fade-out var(--ink-dur-fast) var(--ink-ease-in) forwards;
+}
+.ink-tooltip:not([hidden]) {
+  transform-origin: var(--ink-origin, center bottom);
+  animation: ink-scale-in var(--ink-dur-fast) var(--ink-ease-out) backwards;
+}
+@media (width >= 768px) {
+  .ink-select__panel {
+    transform-origin: var(--ink-origin, top left);
+    animation: ink-scale-in var(--ink-dur-fast) var(--ink-ease-out) backwards;
+  }
+}
+
+/* Dialogs and sheets on the native <dialog>: fade and rise in, leave faster, the backdrop fades.
+   `allow-discrete` keeps a closing dialog in the top layer until its fade ends; where a browser
+   lacks it, the dialog simply closes at once. */
+.ink-dialog,
+.ink-motion-dialog,
+.ink-dialog::backdrop,
+.ink-motion-dialog::backdrop {
+  opacity: 0;
+  transition-property: opacity, translate, scale, overlay, display;
+  transition-duration: var(--ink-dur-fast);
+  transition-timing-function: var(--ink-ease-in);
+  transition-behavior: allow-discrete;
+}
+.ink-dialog,
+.ink-motion-dialog {
+  translate: 0 4px;
+}
+.ink-dialog:not([open]),
+.ink-motion-dialog:not([open]),
+.ink-dialog:not([open])::backdrop,
+.ink-motion-dialog:not([open])::backdrop {
+  pointer-events: none;
+}
+.ink-dialog[open],
+.ink-motion-dialog[open],
+.ink-dialog[open]::backdrop,
+.ink-motion-dialog[open]::backdrop {
+  opacity: 1;
+  translate: none;
+  scale: none;
+  transition-duration: var(--ink-dur-base);
+  transition-timing-function: var(--ink-ease-out);
+}
+@starting-style {
+  .ink-dialog[open],
+  .ink-motion-dialog[open] {
+    opacity: 0;
+    translate: 0 8px;
+    scale: 0.98;
+  }
+  .ink-dialog[open]::backdrop,
+  .ink-motion-dialog[open]::backdrop {
+    opacity: 0;
+  }
+}
+
+/* Press: a subtle scale on buttons and tool tiles. */
+.ink-btn,
+.ink-iconbtn,
+.ink-rail__btn,
+.ink-press {
+  transition-property: background-color, color, border-color, scale;
+  transition-duration: var(--ink-dur-fast);
+  transition-timing-function: var(--ink-ease-out);
+}
+.ink-btn:not(:disabled):active,
+.ink-iconbtn:not(:disabled):active,
+.ink-rail__btn:active,
+.ink-press:not(:disabled):active {
+  scale: 0.97;
+}
+
+/* Reduced motion: nothing moves, things only fade (or appear at once). */
+@media (prefers-reduced-motion: reduce) {
+  @keyframes ink-scale-in {
+    from {
+      opacity: 0;
+    }
+  }
+  @keyframes ink-rise-in {
+    from {
+      opacity: 0;
+    }
+  }
+  @keyframes ink-slide-in {
+    from {
+      opacity: 0;
+    }
+  }
+  @keyframes ink-pop-in {
+    from {
+      opacity: 0;
+    }
+  }
+  .ink-dialog,
+  .ink-motion-dialog,
+  .ink-dialog[open],
+  .ink-motion-dialog[open] {
+    translate: none;
+    scale: none;
+  }
+  @starting-style {
+    .ink-dialog[open],
+    .ink-motion-dialog[open] {
+      translate: none;
+      scale: none;
+    }
+  }
+  .ink-btn:active,
+  .ink-iconbtn:active,
+  .ink-rail__btn:active,
+  .ink-press:active {
+    scale: none;
+  }
 }

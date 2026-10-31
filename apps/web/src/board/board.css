@@ -638,6 +638,7 @@
   display: grid;
   place-items: center;
   cursor: pointer;
+  transition: scale var(--ink-dur-fast) var(--ink-ease-out);
 }
 .toolbar__btn:hover {
   background: var(--ink-surface-2);
@@ -756,8 +757,19 @@
   display: grid;
   place-items: center;
   cursor: pointer;
+  transition: scale var(--ink-dur-fast) var(--ink-ease-out);
 }
 .ctxbar__btn:hover,
+.toolbar__btn:active,
+.ctxbar__btn:active {
+  scale: 0.97;
+}
+@media (prefers-reduced-motion: reduce) {
+  .toolbar__btn:active,
+  .ctxbar__btn:active {
+    scale: none;
+  }
+}
 .ctxbar__btn.is-active {
   background: var(--ink-surface-3);
   color: var(--ink-text-primary);
@@ -800,6 +812,8 @@
   background: var(--ink-surface-float);
   border: 1px solid var(--ink-border-default);
   box-shadow: var(--shadow-float);
+  transform-origin: var(--ink-origin, top left);
+  animation: ink-scale-in var(--ink-dur-fast) var(--ink-ease-out) backwards;
 }
 .menu__item {
   display: flex;
@@ -1357,6 +1371,8 @@ button.crumb--editable:focus-visible {
   border-radius: var(--ink-radius-md);
   background: var(--ink-surface-float);
   box-shadow: var(--shadow-float);
+  transform-origin: var(--ink-origin, top left);
+  animation: ink-scale-in var(--ink-dur-fast) var(--ink-ease-out) backwards;
 }
 .tag-popover__actions {
   display: flex;

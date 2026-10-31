@@ -69,7 +69,8 @@ function attach() {
       chip.hidden = false;
       chip.showPopover?.();
       const anchor = control.getBoundingClientRect();
-      const box = chip.getBoundingClientRect();
+      // Its laid-out size: the scale it enters with must not shift it.
+      const box = { width: chip.offsetWidth, height: chip.offsetHeight };
       const left = Math.max(
         8,
         Math.min(anchor.left + (anchor.width - box.width) / 2, innerWidth - box.width - 8),
@@ -78,6 +79,8 @@ function attach() {
       const top = above >= 8 ? above : Math.min(anchor.bottom + 6, innerHeight - box.height - 8);
       chip.style.setProperty('--ink-tooltip-left', `${left}px`);
       chip.style.setProperty('--ink-tooltip-top', `${Math.max(8, top)}px`);
+      // It grows from the control it describes.
+      chip.style.setProperty('--ink-origin', above >= 8 ? 'center bottom' : 'center top');
     };
     const controlFor = (event: Event) =>
       event.target instanceof Element

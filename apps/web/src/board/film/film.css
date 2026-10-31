@@ -1858,6 +1858,8 @@
   border: 1px solid #2e2e33;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
   z-index: 10;
+  transform-origin: var(--ink-origin, top left);
+  animation: ink-scale-in var(--ink-dur-fast) var(--ink-ease-out) backwards;
 }
 
 .review-mention-item {

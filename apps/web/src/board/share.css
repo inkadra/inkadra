@@ -300,6 +300,8 @@
   background: var(--ink-surface-1);
   border: 1px solid var(--ink-border-subtle);
   box-shadow: var(--ink-shadow-menu);
+  transform-origin: var(--ink-origin, top left);
+  animation: ink-scale-in var(--ink-dur-fast) var(--ink-ease-out) backwards;
 }
 .share__expiry-field {
   display: flex;
