@@ -7,7 +7,7 @@ await build({
   outfile: 'dist/main.js',
   bundle: true,
   platform: 'node',
-  target: 'node22',
+  target: 'node26',
   format: 'esm',
   sourcemap: true,
   plugins: [

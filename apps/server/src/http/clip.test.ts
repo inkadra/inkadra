@@ -219,7 +219,7 @@ describe.skipIf(!url)('clip (needs DATABASE_URL)', () => {
     const data = new FormData();
     for (const [key, value] of Object.entries(fields))
       for (const v of Array.isArray(value) ? value : [value]) data.append(key, v);
-    if (file) data.append('file', new Blob([file[0]], { type: file[2] }), file[1]);
+    if (file) data.append('file', new Blob([new Uint8Array(file[0])], { type: file[2] }), file[1]);
     return data;
   }
 

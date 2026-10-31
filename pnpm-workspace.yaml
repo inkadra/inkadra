@@ -3,5 +3,10 @@ packages:
   - packages/*
   - e2e
 
-onlyBuiltDependencies:
-  - esbuild
+allowBuilds:
+  "@scarf/scarf": false
+  esbuild: true
+  msgpackr-extract: false
+
+overrides:
+  postman-collection@4>lodash: 4.18.1
