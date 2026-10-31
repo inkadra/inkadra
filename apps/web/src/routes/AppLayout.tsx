@@ -317,7 +317,10 @@ export function AppLayout({ home }: { home?: ReactNode }) {
       return !c;
     });
   const peek = useSidebarPeek(collapsed || inboxOpen);
-  const sliding = useSlide(collapsed || inboxOpen);
+  // A peek lays the page out as with the navigation open, so what sits beside it moves aside
+  // in step instead of being covered; over the Inbox it stays a layer above it.
+  const shellCollapsed = inboxOpen || (collapsed && !peek.shown);
+  const sliding = useSlide(shellCollapsed);
   // ⌘\ / Ctrl+\ folds the navigation column to its icons and back.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -768,7 +771,7 @@ export function AppLayout({ home }: { home?: ReactNode }) {
             header={header}
             // A board's own canvas runs edge to edge; its other views sit in a surface.
             canvas={!!projectId && (currentView === 'canvas' || currentView === null)}
-            collapsed={inboxOpen || collapsed}
+            collapsed={shellCollapsed}
             peek={peek.shown}
             sliding={sliding}
           >

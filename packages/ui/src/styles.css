@@ -713,15 +713,9 @@ select {
   /* What sits beside the navigation follows it as it slides (#333). The layout takes its new
      place at once and each panel starts from where it was (--ink-follow, its own shift), with
      the sidebar's duration and easing: in step with it, never under it, and only transforms
-     move. The shell carries --sliding-out/in for the length of the slide (AppLayout.tsx). */
-  .ink-shell--sliding-out {
-    --ink-follow-dir: 1;
-    --ink-follow-name: ink-follow-out;
-  }
-  .ink-shell--sliding-in {
-    --ink-follow-dir: -1;
-    --ink-follow-name: ink-follow-in;
-  }
+     move. The shell carries --sliding-out/in for the length of the slide (AppLayout.tsx).
+     The move is named only without reduced motion (below): with it, `animation` is invalid,
+     so nothing moves and the panels change place with the navigation at once. */
   .ink-shell--sliding-out > .ink-header .ink-header__start,
   .ink-shell--sliding-in > .ink-header .ink-header__start {
     --ink-follow: calc(
@@ -853,8 +847,15 @@ select {
   .ink-shell > .ink-main {
     transition: none;
   }
-  :is(.ink-shell--sliding-out, .ink-shell--sliding-in) * {
-    animation: none;
+}
+@media (width >= 768px) and (prefers-reduced-motion: no-preference) {
+  .ink-shell--sliding-out {
+    --ink-follow-dir: 1;
+    --ink-follow-name: ink-follow-out;
+  }
+  .ink-shell--sliding-in {
+    --ink-follow-dir: -1;
+    --ink-follow-name: ink-follow-in;
   }
 }
 @media (prefers-reduced-transparency: reduce) {
