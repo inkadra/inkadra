@@ -244,6 +244,19 @@ test('the animatic plays, retimes and reorders frames, with a sound track guests
     });
   const audio = player.locator('audio');
   await expect(audio).toHaveAttribute('src', /\/api\/v1\/assets\/.+\/file$/);
+  // The team streams the file while it is still being processed, but guests get the track
+  // only once it is ready (decision 0046): wait for the asset, not for the clock.
+  const trackAssetId = (await savedFrames(baseURL!, cookie, boardId)).audio?.assetId;
+  expect(trackAssetId).toBeTruthy();
+  await expect
+    .poll(
+      async () => {
+        const res = await page.request.get(`/api/v1/assets/${trackAssetId}`);
+        return res.ok() ? ((await res.json()) as { status: string }).status : res.status();
+      },
+      { timeout: 60_000 },
+    )
+    .toBe('ready');
   await page.waitForFunction(
     () => (document.querySelector('.animatic audio') as HTMLAudioElement)?.readyState >= 1,
   );
