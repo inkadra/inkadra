@@ -621,6 +621,7 @@ export function AppLayout({ home }: { home?: ReactNode }) {
   const header = (
     <Header>
       <div className="mobile-header-actions">
+        {/* The drawer opens from Projects in the bottom bar, not from here as well. */}
         {projectId && (
           <IconButton
             className="mobile-back"
@@ -629,13 +630,6 @@ export function AppLayout({ home }: { home?: ReactNode }) {
             onClick={() => navigate(boardId ? `/p/${projectId}` : '/')}
           />
         )}
-        <IconButton
-          icon="board"
-          label={t('nav.navigation')}
-          aria-haspopup="dialog"
-          aria-expanded={drawerOpen}
-          onClick={() => setDrawerOpen(true)}
-        />
       </div>
       <div className="shell-header-content">
         {headerContent ?? (
@@ -681,6 +675,7 @@ export function AppLayout({ home }: { home?: ReactNode }) {
             size={18}
           />
           <Select
+            variant="quiet"
             className="mobile-view-switcher"
             aria-label={t('film.views.label')}
             value={currentView ?? ''}
@@ -807,14 +802,12 @@ export function AppLayout({ home }: { home?: ReactNode }) {
         {drawerOpen && (
           <div className="mobile-drawer">
             <Dialog open title={t('nav.navigation')} onClose={() => setDrawerOpen(false)}>
-              <Button
-                variant="ghost"
-                block
+              <IconButton
+                icon="close"
                 className="mobile-drawer__close"
+                label={t('mobile.close')}
                 onClick={() => setDrawerOpen(false)}
-              >
-                {t('mobile.close')}
-              </Button>
+              />
               {sidebar}
             </Dialog>
           </div>
@@ -851,7 +844,7 @@ export function AppLayout({ home }: { home?: ReactNode }) {
                 </Button>
                 {/* Phones have no Esc and a tap outside does not close the sheet. */}
                 <Button variant="ghost" block onClick={() => setNewSheet(false)}>
-                  {t('mobile.close')}
+                  {t('mobile.closeSheet')}
                 </Button>
               </div>
             </Dialog>
