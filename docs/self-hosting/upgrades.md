@@ -50,8 +50,8 @@ database, and you need room for the dump and for the second copy of the database
 There are two ways. Both are run by CI on every change (`scripts/test-postgres-upgrade.sh`,
 from seeded data on 16 to the app running on 18), so the commands below are the tested ones.
 
-| Way                                      | Good for                                                                    |
-| ---------------------------------------- | --------------------------------------------------------------------------- |
+| Way                                      | Good for                                                                      |
+| ---------------------------------------- | ----------------------------------------------------------------------------- |
 | [Dump and restore](#dump-and-restore)    | The default. A new volume: the old one stays as it was, so going back is easy |
 | [In place](#in-place-with-pgautoupgrade) | A large database, where a dump takes too long. Changes the old volume         |
 
