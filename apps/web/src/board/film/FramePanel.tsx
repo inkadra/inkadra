@@ -42,6 +42,7 @@ export function FramePanel({
   userId = null,
   id,
   takeFocus = false,
+  dropping = false,
   onClose,
   onDraw,
 }: {
@@ -56,6 +57,8 @@ export function FramePanel({
   id?: string;
   /** Move focus into the panel when it opens, for a panel that covers what opened it. */
   takeFocus?: boolean;
+  /** Image files are being dragged over the picture (storyboard): dropping them replaces it. */
+  dropping?: boolean;
   onClose: () => void;
   onDraw: () => void;
 }) {
@@ -99,7 +102,10 @@ export function FramePanel({
         <IconButton icon="close" label={t('film.frame.close')} onClick={onClose} />
       </header>
       <div className="film-panel__body">
-        <div className="film-panel__picture">
+        <div
+          className={`film-panel__picture${dropping ? ' is-drop' : ''}`}
+          data-story-frame={frame.id}
+        >
           <FramePicture
             assetId={frame.assetId}
             aspect={frame.aspect}

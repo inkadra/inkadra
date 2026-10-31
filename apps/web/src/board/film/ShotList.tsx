@@ -42,7 +42,7 @@ import {
   type ShotDisplayStatus,
 } from './film-status.ts';
 import { ShotlistKanban } from './ShotlistKanban.tsx';
-import { useSlugline, useStoryboard } from './StoryboardView.tsx';
+import { useSlugline, useStoryboard } from './storyboard-data.ts';
 import { ViewOptions } from './ViewOptions.tsx';
 
 type Patch = Partial<Omit<FrameElement, 'id' | 'type'>>;

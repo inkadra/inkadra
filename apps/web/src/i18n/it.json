@@ -673,6 +673,10 @@
     "total_one": "{{count}} inquadratura · {{duration}}",
     "total_other": "{{count}} inquadrature · {{duration}}",
     "loose": "Senza scena",
+    "drop": {
+      "notImage_one": "Qui si possono trascinare solo immagini: {{count}} file ignorato.",
+      "notImage_other": "Qui si possono trascinare solo immagini: {{count}} file ignorati."
+    },
     "empty": {
       "title": "Storyboard vuoto",
       "body": "Aggiungi una scena e disegna o carica le inquadrature."

@@ -673,6 +673,10 @@
     "total_one": "{{count}} frame · {{duration}}",
     "total_other": "{{count}} frames · {{duration}}",
     "loose": "No scene",
+    "drop": {
+      "notImage_one": "Only pictures can be dropped here: {{count}} file skipped.",
+      "notImage_other": "Only pictures can be dropped here: {{count}} files skipped."
+    },
     "empty": {
       "title": "Empty storyboard",
       "body": "Add a scene, then draw or upload its frames."

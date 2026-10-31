@@ -23,8 +23,8 @@ import type { BoardStore } from '../store.ts';
 import { CallSheetModal } from './CallSheetModal.tsx';
 import { plannedWrap } from './call-sheet.ts';
 import { AutoTime, TokenField } from './fields.tsx';
-import { useSlugline, useStoryboard } from './StoryboardView.tsx';
 import { castConflicts, clockLabel, newScheduleBlock, scheduleTimes } from './schedule.ts';
+import { useSlugline, useStoryboard } from './storyboard-data.ts';
 import './film.css';
 
 export const SHOT_DRAG_TYPE = 'application/x-inkadra-schedule-shot';

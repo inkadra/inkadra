@@ -311,6 +311,12 @@
   background: none;
   cursor: pointer;
 }
+.story__tile.is-replace .story__tile-pic,
+.film-panel__picture.is-drop {
+  outline: 2px solid var(--ink-accent-primary);
+  outline-offset: 2px;
+  border-radius: var(--ink-radius-xs);
+}
 .story__tile-meta {
   display: flex;
   align-items: center;
@@ -370,6 +376,13 @@
 /* Tile size and the scene list. */
 .story {
   --story-tile: 220px;
+  position: relative;
+}
+/* Files dragged over a storyboard that has no scene yet: the whole page is the target. */
+.story__scroll.is-drop {
+  outline: 2px solid var(--ink-accent-primary);
+  outline-offset: -4px;
+  border-radius: var(--ink-radius-md);
 }
 .story--s {
   --story-tile: 150px;
