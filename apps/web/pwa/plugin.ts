@@ -5,7 +5,7 @@ import { dark } from '@inkadra/ui/tokens';
 import { build, type Plugin } from 'vite';
 import { isPrecached, OFFLINE_PAGE } from '../src/pwa/routing.ts';
 import { iconPng } from './icons.ts';
-import { ICONS, offlinePage, offlineScript, themeColor, webManifest } from './pages.ts';
+import { APPLE_META, ICONS, offlinePage, offlineScript, themeColor, webManifest } from './pages.ts';
 
 const file = (path: string) => fileURLToPath(new URL(path, import.meta.url));
 const json = (path: string) => JSON.parse(readFileSync(file(path), 'utf8'));
@@ -25,6 +25,14 @@ export function pwa(): Plugin {
       return [
         { tag: 'link', attrs: { rel: 'manifest', href: '/manifest.webmanifest' }, injectTo },
         { tag: 'link', attrs: { rel: 'apple-touch-icon', href: `/${ICONS.apple}` }, injectTo },
+        // Added to the home screen, iOS opens the app without Safari's bars, under its name.
+        // The default status bar keeps the clock readable in both themes; the layout pads for
+        // the notch and the home indicator with env(safe-area-inset-*).
+        ...Object.entries(APPLE_META).map(([name, content]) => ({
+          tag: 'meta',
+          attrs: { name, content },
+          injectTo,
+        })),
         ...(['dark', 'light'] as const).map((scheme) => ({
           tag: 'meta',
           attrs: {

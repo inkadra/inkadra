@@ -14,6 +14,14 @@ export const ICONS = {
   apple: 'icons/apple-touch-icon.png',
 } as const;
 
+/** What iOS reads when the app is added to the home screen; the manifest says the rest. */
+export const APPLE_META = {
+  'mobile-web-app-capable': 'yes',
+  'apple-mobile-web-app-capable': 'yes',
+  'apple-mobile-web-app-title': 'Inkadra',
+  'apple-mobile-web-app-status-bar-style': 'default',
+} as const;
+
 /** The window colour: the background behind the rail, as the page itself paints it. */
 export const themeColor = { dark: dark['bg-rail'], light: light['bg-rail'] };
 

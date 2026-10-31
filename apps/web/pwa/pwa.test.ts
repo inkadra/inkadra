@@ -4,6 +4,7 @@ import en from '../src/i18n/en.json';
 import itMessages from '../src/i18n/it.json';
 import { drawIcon, iconPng } from './icons.ts';
 import { offlinePage, webManifest } from './pages.ts';
+import { pwa } from './plugin.ts';
 
 describe('web app manifest', () => {
   it('describes an installable app at the site root', () => {
@@ -20,6 +21,23 @@ describe('web app manifest', () => {
     expect(sizes).toEqual(
       expect.arrayContaining(['192x192 any', '512x512 any', '512x512 maskable']),
     );
+  });
+});
+
+describe('index.html', () => {
+  it('links the manifest and the Apple icon, and opens standalone from the iOS home screen', () => {
+    const hook = pwa().transformIndexHtml as unknown as () => Array<{
+      tag: string;
+      attrs: Record<string, string>;
+    }>;
+    const tags = hook();
+    const attrs = (tag: string, key: string, value: string) =>
+      tags.find((t) => t.tag === tag && t.attrs[key] === value)?.attrs;
+    expect(attrs('link', 'rel', 'manifest')?.href).toBe('/manifest.webmanifest');
+    expect(attrs('link', 'rel', 'apple-touch-icon')?.href).toBe('/icons/apple-touch-icon.png');
+    expect(attrs('meta', 'name', 'apple-mobile-web-app-capable')?.content).toBe('yes');
+    expect(attrs('meta', 'name', 'apple-mobile-web-app-title')?.content).toBe('Inkadra');
+    expect(attrs('meta', 'name', 'apple-mobile-web-app-status-bar-style')?.content).toBe('default');
   });
 });
 
