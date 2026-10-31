@@ -96,13 +96,7 @@ export function SettingsWindow({
     // biome-ignore lint/a11y/useKeyWithClickEvents: the backdrop's keyboard path is Escape (onCancel).
     <dialog
       ref={ref}
-      className={[
-        'settings-window',
-        !phone && page.id === 'members' && 'settings-window--wide',
-        phone && 'settings-window--phone',
-      ]
-        .filter(Boolean)
-        .join(' ')}
+      className={phone ? 'settings-window settings-window--phone' : 'settings-window'}
       aria-labelledby={titleId}
       aria-modal="true"
       tabIndex={-1}

@@ -63,15 +63,14 @@ it('frames a page with the navigation, its title and the save status', async () 
   expect(dialog.querySelector('.settings-nav')).not.toBeNull();
   expect(dialog.querySelector('.settings-save')).not.toBeNull();
   expect(dialog.querySelector('[data-content]')).not.toBeNull();
-  expect(dialog.classList.contains('settings-window--wide')).toBe(false);
   // Read-only pages have nothing to save.
   const storage = await render('/settings?section=workspace');
   expect(storage.querySelector('.settings-save')).toBeNull();
 });
 
-it('widens for Members and counts the active ones', async () => {
+it('keeps one size on Members and counts the active ones', async () => {
   const dialog = await render('/settings/team');
-  expect(dialog.classList.contains('settings-window--wide')).toBe(true);
+  expect(dialog.className).toBe('settings-window');
   expect(dialog.querySelector('[aria-current="page"] .settings-nav__count')?.textContent).toBe('2');
 });
 
@@ -128,7 +127,6 @@ it('on phones lists the pages first, then shows one page with a way back', async
     page.querySelector<HTMLButtonElement>('[aria-label="mobile.back"]')?.click(),
   );
   expect(onBack).toHaveBeenCalledTimes(1);
-  expect(page.classList.contains('settings-window--wide')).toBe(false);
 });
 
 it('restores the body scroll style on close', async () => {
