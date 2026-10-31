@@ -18,7 +18,7 @@
     "@playwright/test": "1.64.1",
     "@types/node": "^26.6.6",
     "@types/ws": "^8.18.2",
-    "pdfjs-dist": "^5.7.284",
+    "pdfjs-dist": "^6.4.299",
     "tsx": "^4.23.0",
     "typescript": "^7.0.2",
     "ws": "^8.22.0",
