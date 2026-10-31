@@ -5,6 +5,7 @@ import {
   headerViews,
   isBoardView,
   pickerViews,
+  projectHasStoryboard,
   storyboardOf,
   VIEWS,
   viewDestination,
@@ -158,5 +159,29 @@ describe('reading the address', () => {
     expect(storyboardOf(boards)).toBe('sb');
     expect(storyboardOf([root])).toBeNull();
     expect(storyboardOf(null)).toBeNull();
+  });
+});
+
+describe('projectHasStoryboard', () => {
+  const none = new Map<string, { frameCount: number }>();
+  it('is false for a project of plain boards, and while its boards are unknown', () => {
+    expect(projectHasStoryboard([makeBoard('a', 'board'), makeBoard('b', 'board')], none)).toBe(
+      false,
+    );
+    expect(projectHasStoryboard(null, none)).toBe(false);
+    expect(projectHasStoryboard(undefined, none)).toBe(false);
+    expect(projectHasStoryboard([], none)).toBe(false);
+  });
+
+  it('is true with a storyboard board, or as soon as any board holds frames', () => {
+    expect(
+      projectHasStoryboard([makeBoard('a', 'board'), makeBoard('s', 'storyboard')], none),
+    ).toBe(true);
+    const framed = new Map([['a', { frameCount: 1 }]]);
+    expect(projectHasStoryboard([makeBoard('a', 'board')], framed)).toBe(true);
+    // The last frame going away takes the links away again.
+    expect(
+      projectHasStoryboard([makeBoard('a', 'board')], new Map([['a', { frameCount: 0 }]])),
+    ).toBe(false);
   });
 });

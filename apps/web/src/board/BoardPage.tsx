@@ -14,6 +14,7 @@ import { useTranslation } from 'react-i18next';
 import { Navigate, useLocation, useNavigate, useParams, useSearchParams } from 'react-router';
 import { useRegisterActions } from '../commands/actions.ts';
 import { useHeaderContent } from '../lib/header.tsx';
+import { useIsPhone } from '../lib/phone.ts';
 import { useSession } from '../lib/session.tsx';
 import { useProjects } from '../routes/AppLayout.tsx';
 import { NotFound } from '../routes/NotFound.tsx';
@@ -220,6 +221,7 @@ function BoardScreen({
   const [sharing, setSharing] = useState(false);
   const [versionsOpen, setVersionsOpen] = useState(false);
   const [headerMenu, setHeaderMenu] = useState(false);
+  const isPhone = useIsPhone();
   const liveSelection = useRef<ReadonlySet<string>>(new Set());
   const [exporting, setExporting] = useState<{
     source: ExportSource;
@@ -495,8 +497,13 @@ function BoardScreen({
                   onClose={closeHeaderMenu}
                   anchor={headerMenuAnchor}
                   items={[
-                    { label: t('versions.title'), action: () => setVersionsOpen(true) },
-                    { divider: true },
+                    // The clock icon covers Versions on desktop; phones hide it, so the menu keeps it.
+                    ...(isPhone
+                      ? [
+                          { label: t('versions.title'), action: () => setVersionsOpen(true) },
+                          { divider: true as const },
+                        ]
+                      : []),
                     {
                       label: t('board.export.action'),
                       action: () => openExport(exportSourceOf(view)),
@@ -542,6 +549,7 @@ function BoardScreen({
       detail,
       editable,
       headerMenu,
+      isPhone,
       closeHeaderMenu,
       openExport,
       handleRenameCurrentBoard,

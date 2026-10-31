@@ -210,7 +210,6 @@ function CanvasMenuButton({
   onCard: (type: 'character' | 'location') => void;
 }) {
   const { t } = useTranslation();
-  const tooltipId = useId();
   const button = useRef<HTMLButtonElement>(null);
   const [at, setAt] = useState<{ right: number; bottom: number } | null>(null);
   const label = t('board.canvasMenu.label');
@@ -231,9 +230,8 @@ function CanvasMenuButton({
         className="toolbar__btn toolbar__btn--canvas"
         aria-haspopup="menu"
         aria-expanded={!!at}
-        aria-describedby={tooltipId}
         aria-label={label}
-        data-ink-tooltip={label}
+        data-ink-tooltip={t('board.canvasMenu.hint')}
         onClick={() => (at ? setAt(null) : open())}
         onKeyDown={(e) => {
           if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
@@ -245,9 +243,6 @@ function CanvasMenuButton({
         <Icon name="plus" size={18} />
         <span className="toolbar__label">{label}</span>
         <Icon name="caretDown" size={10} />
-        <span className="toolbar__tip" id={tooltipId} role="tooltip">
-          {t('board.canvasMenu.hint')}
-        </span>
       </button>
       {at &&
         createPortal(
@@ -312,13 +307,11 @@ function ToolButton({
   onClick: () => void;
   dragType?: ToolType;
 }) {
-  const tooltipId = useId();
   return (
     <button
       type="button"
       className={`toolbar__btn toolbar__btn--${dragType ?? icon}`}
       style={toolStyle(kind)}
-      aria-describedby={tooltipId}
       aria-keyshortcuts={keyHint}
       aria-label={label}
       aria-pressed={pressed}
@@ -332,10 +325,6 @@ function ToolButton({
       }}
     >
       <Icon name={icon} size={20} />
-      <span className="toolbar__tip" id={tooltipId} role="tooltip">
-        {label}
-        <KeyCap>{keyHint}</KeyCap>
-      </span>
     </button>
   );
 }

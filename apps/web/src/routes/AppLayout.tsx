@@ -47,6 +47,7 @@ import {
   isBoardView,
   isFilmView,
   pickerViews,
+  projectHasStoryboard,
   storyboardOf,
   viewDestination,
   viewHref,
@@ -418,6 +419,9 @@ export function AppLayout({ home }: { home?: ReactNode }) {
   // canvas lights the Storyboard row (the board is not listed again under Boards), and the
   // project row is current only on the root board's own views.
   const filmView = isFilmView(currentView);
+  // The film links appear with the project's first storyboard (or frame) and while a film view is
+  // open, so there is always a way back; until the boards are known they stay out.
+  const showFilmLinks = filmView || projectHasStoryboard(projectBoards, counts);
   const filmRowActive = (v: BoardView) =>
     currentView === v ||
     (v === 'storyboard' && !filmView && !!storyboardId && openBoardId === storyboardId);
@@ -504,62 +508,66 @@ export function AppLayout({ home }: { home?: ReactNode }) {
           />
           {p.id === projectId && (
             <div className="ink-sidebar__modules">
-              <NavItem
-                icon="storyboard"
-                contentKind="storyboard"
-                label={t('nav.storyboard')}
-                count={storyboardCounts?.frameCount}
-                title={
-                  storyboardCounts
-                    ? `${t('nav.storyboard')} · ${t('nav.shots', { count: storyboardCounts.frameCount })}`
-                    : undefined
-                }
-                active={filmRowActive('storyboard')}
-                href={hrefFor('storyboard')}
-                onClick={(e) => {
-                  e.preventDefault();
-                  showView('storyboard');
-                }}
-              />
-              <NavItem
-                icon="shotlist"
-                contentKind="shotlist"
-                label={t('nav.shotlist')}
-                count={storyboardCounts?.frameCount}
-                title={
-                  storyboardCounts
-                    ? `${t('nav.shotlist')} · ${t('nav.toShoot', { count: storyboardCounts.frameCount, left: storyboardCounts.framesToShoot })}`
-                    : undefined
-                }
-                active={filmRowActive('shotlist')}
-                href={hrefFor('shotlist')}
-                onClick={(e) => {
-                  e.preventDefault();
-                  showView('shotlist');
-                }}
-              />
-              <NavItem
-                icon="calendar"
-                contentKind="schedule"
-                label={t('nav.schedule')}
-                active={filmRowActive('schedule')}
-                href={hrefFor('schedule')}
-                onClick={(e) => {
-                  e.preventDefault();
-                  showView('schedule');
-                }}
-              />
-              <NavItem
-                icon="people"
-                contentKind="review"
-                label={t('nav.clients')}
-                active={filmRowActive('review')}
-                href={hrefFor('review')}
-                onClick={(e) => {
-                  e.preventDefault();
-                  showView('review');
-                }}
-              />
+              {showFilmLinks && (
+                <>
+                  <NavItem
+                    icon="storyboard"
+                    contentKind="storyboard"
+                    label={t('nav.storyboard')}
+                    count={storyboardCounts?.frameCount}
+                    title={
+                      storyboardCounts
+                        ? `${t('nav.storyboard')} · ${t('nav.shots', { count: storyboardCounts.frameCount })}`
+                        : undefined
+                    }
+                    active={filmRowActive('storyboard')}
+                    href={hrefFor('storyboard')}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      showView('storyboard');
+                    }}
+                  />
+                  <NavItem
+                    icon="shotlist"
+                    contentKind="shotlist"
+                    label={t('nav.shotlist')}
+                    count={storyboardCounts?.frameCount}
+                    title={
+                      storyboardCounts
+                        ? `${t('nav.shotlist')} · ${t('nav.toShoot', { count: storyboardCounts.frameCount, left: storyboardCounts.framesToShoot })}`
+                        : undefined
+                    }
+                    active={filmRowActive('shotlist')}
+                    href={hrefFor('shotlist')}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      showView('shotlist');
+                    }}
+                  />
+                  <NavItem
+                    icon="calendar"
+                    contentKind="schedule"
+                    label={t('nav.schedule')}
+                    active={filmRowActive('schedule')}
+                    href={hrefFor('schedule')}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      showView('schedule');
+                    }}
+                  />
+                  <NavItem
+                    icon="people"
+                    contentKind="review"
+                    label={t('nav.clients')}
+                    active={filmRowActive('review')}
+                    href={hrefFor('review')}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      showView('review');
+                    }}
+                  />
+                </>
+              )}
               <div className="ink-sidebar__collapsible">
                 <div className="ink-sidebar__label">{t('nav.boards')}</div>
                 <BoardTree

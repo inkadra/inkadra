@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { api } from '../lib/api.ts';
 import { useSession } from '../lib/session.tsx';
 import { BackupSettings } from './BackupSettings.tsx';
+import { ProviderIcon } from './ProviderIcon.tsx';
 import { DiagnosticsLink } from './SettingsShell.tsx';
 import { formatStorage, StorageCharts } from './StorageCharts.tsx';
 import { trackSave } from './settings-save.ts';
@@ -118,14 +119,6 @@ function InstanceStatus({ setup }: { setup: Setup }) {
   );
 }
 
-function ProviderIcon({ id }: { id: string }) {
-  return (
-    <span className={`settings-provider settings-provider--${id}`} aria-hidden="true">
-      {id === 'google' ? 'G' : id === 'password' ? '@' : id === 'smtp' ? '✉' : id[0]?.toUpperCase()}
-    </span>
-  );
-}
-
 /** Read-only sign-in providers: they are configured in the server environment. */
 function providerRows(
   instance: ReturnType<typeof useSession>['instance'],
@@ -223,7 +216,7 @@ function AccessPage() {
           {providerRows(instance, t).map((p) => (
             <Row
               key={p.id + p.name}
-              leading={<ProviderIcon id={p.id} />}
+              leading={<ProviderIcon id={p.id} name={p.name} />}
               label={p.name}
               help={p.help}
             >

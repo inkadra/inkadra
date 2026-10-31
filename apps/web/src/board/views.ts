@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-import type { Board, BoardKind } from '@inkadra/shared';
+import type { Board, BoardCount, BoardKind } from '@inkadra/shared';
 import type { IconName } from '@inkadra/ui';
 import { boardPath } from './boards.ts';
 
@@ -54,6 +54,18 @@ export function askedView(asked: string | null, kind: BoardKind | undefined): Bo
 /** The project's storyboard, where the film views live; null when the project has none. */
 export function storyboardOf(boards: readonly Board[] | null | undefined): string | null {
   return boards?.find((b) => b.kind === 'storyboard')?.id ?? null;
+}
+
+/**
+ * Whether the project has a storyboard: a board of that kind, or any board that already holds
+ * frames. The sidebar lists the film views only then. Unknown boards count as none.
+ */
+export function projectHasStoryboard(
+  boards: readonly Board[] | null | undefined,
+  counts: ReadonlyMap<string, Pick<BoardCount, 'frameCount'>>,
+): boolean {
+  if (storyboardOf(boards)) return true;
+  return !!boards?.some((b) => (counts.get(b.id)?.frameCount ?? 0) > 0);
 }
 
 /**
