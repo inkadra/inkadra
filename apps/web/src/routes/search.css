@@ -92,3 +92,22 @@
   font-size: 11px;
   color: var(--ink-text-muted);
 }
+
+/* Phones: near the top, where the keyboard leaves it room, with 16 px text (iOS zooms in on
+   smaller fields) and finger-sized results. A tap outside closes it. */
+@media (width < 768px) {
+  .search {
+    top: calc(env(safe-area-inset-top) + 8px);
+    width: calc(100% - 16px - env(safe-area-inset-left) - env(safe-area-inset-right));
+  }
+  .search__input {
+    font-size: 16px;
+  }
+  .search__list {
+    max-height: calc(100dvh - 96px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+  }
+  .search__item {
+    min-height: 44px;
+    align-items: center;
+  }
+}

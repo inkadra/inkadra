@@ -105,4 +105,12 @@
   .catalogs__bar {
     background: var(--ink-bg-app);
   }
+  /* Up and down stay side by side but grow to finger size. */
+  .catalogs__move .ink-iconbtn {
+    width: 36px;
+    height: 44px;
+  }
+  .catalogs__row {
+    gap: 4px;
+  }
 }

@@ -85,7 +85,8 @@
     "profile": "Profilo",
     "createTitle": "Crea",
     "newBoardIn": "Nuova board in {{project}}",
-    "close": "Chiudi navigazione"
+    "close": "Chiudi navigazione",
+    "closeSheet": "Chiudi"
   },
   "nav": {
     "modules": "Moduli",

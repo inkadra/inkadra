@@ -44,3 +44,17 @@
   background: var(--ink-surface-1);
   color: var(--ink-text-primary);
 }
+
+/* Phones: finger-sized rows, and the error clear of the bottom bar and the safe area. */
+@media (width < 768px) {
+  .app-context-menu button {
+    min-height: 44px;
+    font-size: 14px;
+  }
+  .app-context-error {
+    left: max(12px, env(safe-area-inset-left));
+    right: max(12px, env(safe-area-inset-right));
+    bottom: calc(64px + env(safe-area-inset-bottom) + 8px);
+    border-radius: 10px;
+  }
+}

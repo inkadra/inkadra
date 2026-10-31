@@ -13,7 +13,7 @@ export function AdminEnrollment({ children, setup }: { children: ReactNode; setu
   const { t } = useTranslation();
   if (!enrollmentRequired) return children;
   return (
-    <main className="settings-page">
+    <main className="settings-page admin-enrollment">
       <p role="alert">{t('settings.twoFactor.requiredAdmin')}</p>
       {setup}
       <Button

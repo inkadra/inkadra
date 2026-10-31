@@ -175,7 +175,11 @@
     flex: 1 1 140px;
   }
   .projects-page__view {
+    height: 44px;
     margin-left: 0;
+  }
+  .projects-page__view .ink-btn {
+    height: 36px;
   }
 }
 .projects-page__empty {

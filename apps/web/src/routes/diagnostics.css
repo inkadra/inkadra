@@ -119,3 +119,11 @@
   font-size: 13px;
   color: var(--ink-text-secondary);
 }
+
+@media (width < 768px) {
+  .diagnostics__back {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+  }
+}

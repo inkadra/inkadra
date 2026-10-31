@@ -430,6 +430,11 @@ a.home__activity-item:hover {
   .home__section-head {
     flex-wrap: wrap;
   }
+  .home__more {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+  }
 }
 
 .home__preview[data-tint="teal"] {
