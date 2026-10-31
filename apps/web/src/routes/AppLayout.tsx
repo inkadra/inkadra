@@ -687,7 +687,9 @@ export function AppLayout({ home }: { home?: ReactNode }) {
           if (collapsed) toggleCollapsed();
           // The button is only the logo now: the focus goes to the panel's own toggle.
           requestAnimationFrame(() =>
-            document.querySelector<HTMLElement>('.ink-shell > .ink-sidebar .ink-sidebar__toggle')?.focus(),
+            document
+              .querySelector<HTMLElement>('.ink-shell > .ink-sidebar .ink-sidebar__toggle')
+              ?.focus(),
           );
         }}
       >
