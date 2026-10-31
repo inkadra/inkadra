@@ -23,6 +23,7 @@ import {
   type RefObject,
   useEffect,
   useId,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -76,6 +77,32 @@ export const TOOLS: Array<{ type: ToolType; icon: IconName; key?: string; menuOn
 
 const mod = () => (isMac() ? '⌘' : 'Ctrl+');
 
+/**
+ * Marks a sideways-scrolling row with `data-more-start` and `data-more-end` while there is more
+ * of it past that edge, so CSS can fade the edge instead of showing a tool cut in half.
+ */
+function useScrollEdges<T extends HTMLElement>() {
+  const ref = useRef<T>(null);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const update = () => {
+      const rest = el.scrollWidth - el.clientWidth - el.scrollLeft;
+      el.toggleAttribute('data-more-start', el.scrollLeft > 1);
+      el.toggleAttribute('data-more-end', rest > 1);
+    };
+    update();
+    el.addEventListener('scroll', update, { passive: true });
+    const resize = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(update);
+    resize?.observe(el);
+    return () => {
+      el.removeEventListener('scroll', update);
+      resize?.disconnect();
+    };
+  }, []);
+  return ref;
+}
+
 /** Bottom tool bar: click adds in the middle of the view, drag drops where you let go. */
 export function Toolbar({
   tool,
@@ -93,10 +120,11 @@ export function Toolbar({
   onScreenplay?: () => void;
 }) {
   const { t } = useTranslation();
+  const tools = useScrollEdges<HTMLDivElement>();
   return (
     <div className="toolbar" role="toolbar" aria-label={t('board.toolbar')} data-chrome>
       {/* On phones the tools scroll sideways and the Canvas button stays pinned beside them. */}
-      <div className="toolbar__tools">
+      <div ref={tools} className="toolbar__tools">
         <fieldset
           className="toolbar__group toolbar__group--navigate"
           aria-label={t('board.toolGroups.navigate')}
@@ -375,14 +403,27 @@ export function ContextBar({
   extra?: ReactNode;
 }) {
   const { t } = useTranslation();
+  const bar = useRef<HTMLDivElement>(null);
+  const left = Math.max(8, box.x);
+  // A selection near the right edge would push the bar off a narrow screen: keep it inside.
+  // The bar is taller with touch targets, so it also clears the selection by its real height.
+  useLayoutEffect(() => {
+    const el = bar.current;
+    const room = (el?.offsetParent as HTMLElement | null)?.clientWidth;
+    if (!el || !room) return;
+    el.style.left = `${Math.max(8, Math.min(left, room - el.offsetWidth - 8))}px`;
+    const above = box.y - el.offsetHeight - 10;
+    el.style.top = `${above < 8 ? box.y + box.h + 8 : above}px`;
+  });
   if (elements.length === 0 || (readOnly && !onComments)) return null;
   if (readOnly && onComments)
     return (
       <div
+        ref={bar}
         className="ctxbar"
         role="toolbar"
         aria-label={t('board.contextBar')}
-        style={{ left: Math.max(8, box.x), top: box.y - 44 < 8 ? box.y + box.h + 8 : box.y - 44 }}
+        style={{ left, top: box.y - 44 < 8 ? box.y + box.h + 8 : box.y - 44 }}
         data-chrome
       >
         <BarButton icon="comment" label={t('comments.open')} onClick={onComments} />
@@ -396,10 +437,11 @@ export function ContextBar({
   const top = box.y - 44 < 8 ? box.y + box.h + 8 : box.y - 44;
   return (
     <div
+      ref={bar}
       className="ctxbar"
       role="toolbar"
       aria-label={t('board.contextBar')}
-      style={{ left: Math.max(8, box.x), top }}
+      style={{ left, top }}
       data-chrome
     >
       {onComments && <BarButton icon="comment" label={t('comments.open')} onClick={onComments} />}
@@ -509,7 +551,7 @@ export function ContextBar({
       <BarButton
         icon="tag"
         label={t('tags.title')}
-        onClick={() => onTags(Math.max(8, box.x), box.y + box.h + 8)}
+        onClick={() => onTags(left, box.y + box.h + 8)}
       />
       <BarButton icon="copy" label={t('board.menu.duplicate')} onClick={onDuplicate} />
       <BarButton icon="trash" label={t('board.menu.delete')} onClick={onDelete} />
@@ -574,6 +616,16 @@ export function ContextMenu({
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const hintId = useId();
+  // Opened at a point near an edge (a long press on a phone), the menu moves back inside its
+  // container instead of running off the screen; a menu taller than the room scrolls.
+  useLayoutEffect(() => {
+    const el = ref.current;
+    const room = el?.offsetParent as HTMLElement | null;
+    if (!el || !room || x === undefined || y === undefined || style) return;
+    el.style.maxHeight = `${room.clientHeight - 16}px`;
+    el.style.left = `${Math.max(8, Math.min(x, room.clientWidth - el.offsetWidth - 8))}px`;
+    el.style.top = `${Math.max(8, Math.min(y, room.clientHeight - el.offsetHeight - 8))}px`;
+  }, [x, y, style]);
   useEffect(() => {
     ref.current
       ?.querySelector<HTMLButtonElement>('[role="menuitem"]:not([aria-disabled="true"])')

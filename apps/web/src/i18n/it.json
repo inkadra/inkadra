@@ -304,6 +304,7 @@
     "empty": {
       "title": "Board vuota",
       "body": "Doppio clic per una nota, trascina file o usa la barra in basso. / apre i comandi.",
+      "bodyTouch": "Tocca due volte per una nota o usa la barra in basso.",
       "templates": "Oppure parti da un modello"
     },
     "types": {
@@ -1364,7 +1365,8 @@
     "save": "Salva",
     "body": "Commento",
     "placeholder": "Scrivi un commento…",
-    "mentionHint": "@ per menzionare qualcuno · ⌘/Ctrl+Invio per inviare",
+    "mentionHint": "@ per menzionare qualcuno",
+    "sendHint": "⌘/Ctrl+Invio per inviare",
     "mentions": "Persone da menzionare",
     "tooLong": "Il commento supera i {{max}} caratteri.",
     "error": "Operazione non riuscita. Riprova.",
@@ -1710,6 +1712,7 @@
     "conflicts_other": "{{count}} blocchi con conflitti di cast",
     "allScheduled": "Tutte le inquadrature sono in un giorno di riprese.",
     "queueHint": "Trascina un’inquadratura su un giorno, oppure fai clic per aggiungerla al giorno selezionato.",
+    "queueHintTouch": "Tocca un’inquadratura per aggiungerla al giorno selezionato.",
     "queueReadOnly": "Inquadrature non ancora in un giorno di riprese.",
     "emptyTitle": "Nessun giorno di riprese",
     "emptyBody": "Aggiungi il primo giorno di riprese, poi trascinaci le inquadrature dall’elenco.",

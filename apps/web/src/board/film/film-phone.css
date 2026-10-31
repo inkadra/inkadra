@@ -262,9 +262,27 @@
 }
 
 @media (width < 768px) {
-  /* The frame panel covers the list: there is no room beside it. */
-  .shots .film-panel {
+  /* The frame panel covers the list: there is no room beside it. The same on the storyboard,
+     where a 340 px panel left a strip of frames too thin to use. */
+  .shots .film-panel,
+  .story__main .film-panel {
     width: 100%;
+    border-left: 0;
+  }
+  /* Totals wrap as whole phrases ("6 da girare"), never a word per line. */
+  .shots .shots__footer {
+    height: auto;
+    min-height: 38px;
+    flex-wrap: wrap;
+    gap: 2px 12px;
+    padding: 6px 12px;
+  }
+  .shots .shots__footer > span,
+  .shots .shots__footer-dot-item {
+    white-space: nowrap;
+  }
+  .shots .shots__footer-dots {
+    gap: 12px;
   }
   .shots .shots__bulk-toolbar {
     left: 12px;

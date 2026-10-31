@@ -716,6 +716,23 @@
     overscroll-behavior-x: contain;
     scrollbar-width: none;
   }
+  /* A tool cut by the edge fades out instead, so the row reads as one that scrolls
+     (chrome.tsx sets the attributes from the scroll position). */
+  .toolbar__tools[data-more-end] {
+    mask-image: linear-gradient(to right, #000 calc(100% - 32px), transparent);
+  }
+  .toolbar__tools[data-more-start] {
+    mask-image: linear-gradient(to left, #000 calc(100% - 32px), transparent);
+  }
+  .toolbar__tools[data-more-start][data-more-end] {
+    mask-image: linear-gradient(
+      to right,
+      transparent,
+      #000 32px,
+      #000 calc(100% - 32px),
+      transparent
+    );
+  }
   .toolbar__group--canvas {
     flex: none;
   }
@@ -2120,6 +2137,17 @@ button.crumb--editable:focus-visible {
   opacity: 0.45;
   cursor: default;
 }
+.canvas__empty-touch {
+  display: none;
+}
+@media (pointer: coarse) {
+  .canvas__empty-pointer {
+    display: none;
+  }
+  .canvas__empty-touch {
+    display: inline;
+  }
+}
 @media (pointer: coarse) {
   .viewer__hints,
   .viewer__kbd {
@@ -2153,6 +2181,43 @@ button.crumb--editable:focus-visible {
     left: auto;
     right: 0;
     transform: none;
+  }
+  /* The selection bar too: 44 px tall targets, 40 px wide so an image's eight actions fit a
+     360 px phone; a selection with more scrolls sideways in one row. */
+  .ctxbar {
+    height: 52px;
+    max-width: calc(100% - 16px);
+    box-sizing: border-box;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scrollbar-width: none;
+  }
+  .ctxbar__btn {
+    flex: none;
+    width: 40px;
+    height: 44px;
+  }
+  .ctxbar__swatch {
+    flex: none;
+    width: 28px;
+    height: 28px;
+    margin: 0 8px;
+  }
+  .ctxbar__sep {
+    flex: none;
+  }
+  /* Menus: finger-sized rows, no keyboard shortcuts to read. */
+  .menu {
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+  .menu__item {
+    height: auto;
+    min-height: 44px;
+    font-size: 14px;
+  }
+  .menu__key {
+    display: none;
   }
 }
 
@@ -2214,6 +2279,11 @@ button.card__play {
 }
 
 /* A capture stays in the viewer until its destination is chosen. */
+/* The gallery arrows and thumbnails step aside while a capture waits for its destination: on
+   a phone they would cover its fields. */
+.viewer__stage-container:has(.viewer__grab-options) :is(.viewer__stage-nav, .viewer__thumbnails) {
+  display: none;
+}
 .viewer__grab-options {
   position: absolute;
   z-index: 5;
