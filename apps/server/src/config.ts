@@ -62,6 +62,36 @@ const Env = z.object({
     .default('true')
     .transform((v) => v === 'true'),
   /**
+   * Thumbnails of camera RAW files (CR2, CR3, NEF, ARW, DNG, RAF, ORF, RW2) from the JPEG
+   * preview the camera embedded, read with exiftool where the worker has it (decision 0048).
+   */
+  RAW_PREVIEWS: bool('true'),
+  /** Thumbnails of page 1 of PDFs and their page count, with poppler where the worker has it. */
+  PDF_PREVIEWS: bool('true'),
+  /**
+   * Playable H.264/AAC MP4 copies of videos browsers cannot play (ProRes, MKV, AVI, MXF, HEVC),
+   * made by the worker when it has ffmpeg (decision 0048). `false` saves the storage they take.
+   */
+  VIDEO_PROXIES: bool('true'),
+  /** Longest source, in seconds, that gets a copy; 0 = no limit. */
+  VIDEO_PROXY_MAX_DURATION: z.coerce.number().int().min(0).default(7200),
+  /** Largest source that gets a copy: bytes or a size such as `500MB`, `20GB`; 0 = no limit. */
+  VIDEO_PROXY_MAX_SOURCE_SIZE: z.string().default('20GB').transform(parseSize),
+  /** Shorter side of the copy, in pixels (1080 makes 1920×1080 at most); never upscaled. */
+  VIDEO_PROXY_RESOLUTION: z.coerce.number().int().min(144).max(2160).default(1080),
+  /** Peak video bitrate of the copy, as ffmpeg reads it (`5M`, `2500k`). */
+  VIDEO_PROXY_BITRATE: z
+    .string()
+    .regex(/^\d+(\.\d+)?[kKmM]?$/, 'Use a bitrate such as 5M or 2500k')
+    .default('5M'),
+  /**
+   * Copies made at once by each worker. Each takes up to 4 GiB of address space (about 1 to
+   * 2 GB of RAM in practice for 1080p) and VIDEO_PROXY_THREADS cores.
+   */
+  VIDEO_PROXY_CONCURRENCY: z.coerce.number().int().min(1).max(4).default(1),
+  /** Encoder threads of one copy; it runs at a lower priority (nice 10) than the web role. */
+  VIDEO_PROXY_THREADS: z.coerce.number().int().min(1).max(16).default(2),
+  /**
    * Which peers may set X-Forwarded-For: `false`, or a comma-separated list of addresses,
    * CIDRs or the presets `loopback`, `linklocal`, `uniquelocal` (private networks, where a
    * reverse proxy normally sits). `true` trusts everyone and lets clients pick their address.

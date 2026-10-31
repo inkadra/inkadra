@@ -1,9 +1,9 @@
 import { createHash } from 'node:crypto';
-import { mkdir, readFile, rm } from 'node:fs/promises';
+import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { pipeline } from 'node:stream/promises';
 import { MOVING_THUMBNAIL_MAX_WIDTH, ThumbnailSize } from '@inkadra/shared';
-import { eq } from 'drizzle-orm';
+import { and, eq, ne } from 'drizzle-orm';
 import sharp, { type Sharp } from 'sharp';
 import type { Database } from '../db/client.ts';
 import { asset, assetVariant } from '../db/schema.ts';
@@ -11,13 +11,36 @@ import { animatedVariantKey, readAll, type Storage, variantKey } from '../storag
 import { readExif } from './exif.ts';
 import { decodeHeic, sniffImage } from './heic.ts';
 import { palette } from './palette.ts';
-import { extractPoster, mediaTools, probeVideo, sniffVideo } from './video.ts';
+import { isPdf, readPdfInfo, renderFirstPage } from './pdf.ts';
+import { extractRawPreview, orientedPixels, readRawExif, sniffRaw } from './raw.ts';
+import { ensureFreeSpace, withJobDir } from './scratch.ts';
+import {
+  DEFAULT_PROXY_SETTINGS,
+  extractPoster,
+  mediaTools,
+  type ProxySettings,
+  probeVideo,
+  proxyPlan,
+  sniffVideo,
+  type VideoInfo,
+} from './video.ts';
 
 export interface MediaDeps {
   db: Database;
   storage: Storage;
   tmpDir: string;
   heic: boolean;
+  /** Camera RAW thumbnails from their embedded JPEG (RAW_PREVIEWS); on if unset. */
+  raw?: boolean;
+  /** Thumbnails of page 1 of PDFs and their page count (PDF_PREVIEWS); on if unset. */
+  pdf?: boolean;
+  /** Playable copies of videos browsers cannot play (decision 0048); on with defaults if unset. */
+  proxies?: ProxySettings;
+  /**
+   * Queues the playable copy of a video. Without it (tests, tools) none is made and the asset
+   * says `skipped`.
+   */
+  enqueueProxy?: (assetId: string) => Promise<void>;
   /** Where a failed pass of the moving variants is reported; the posters are still saved. */
   log?: { warn: (fields: Record<string, unknown>, message: string) => void };
 }
@@ -103,11 +126,27 @@ async function sha256(storage: Storage, key: string) {
 /**
  * Turns an uploaded original into a ready asset: checksum always; for images also the real
  * type, dimensions, EXIF without location, palette and WebP thumbnails without metadata; for
- * videos, when ffmpeg is installed, the duration and thumbnails of a poster frame.
- * Animated GIFs and animated WebPs also get moving thumbnails, when they fit `caps`.
+ * videos, when ffmpeg is installed, the duration, codecs and thumbnails of a poster frame,
+ * and the playable copy queued when browsers cannot play the original (decision 0048).
+ * Animated GIFs and animated WebPs also get moving thumbnails, when they fit `caps`. Camera
+ * RAW files get the thumbnails of their embedded JPEG preview, with exiftool; PDFs those of
+ * page 1 and their page count, with poppler.
  * Safe to run twice: variants are overwritten.
  */
-export async function processAsset(deps: MediaDeps, assetId: string, caps = ANIMATED_CAPS) {
+/** What a pass did, for the job result and the tests. */
+export interface ProcessResult {
+  skipped?: 'gone';
+  variants?: number;
+  animated?: number;
+  proxy?: (typeof asset.$inferInsert)['proxyStatus'];
+  pageCount?: number | null;
+}
+
+export async function processAsset(
+  deps: MediaDeps,
+  assetId: string,
+  caps = ANIMATED_CAPS,
+): Promise<ProcessResult> {
   const { db, storage } = deps;
   const [row] = await db.select().from(asset).where(eq(asset.id, assetId));
   if (!row) return { skipped: 'gone' as const };
@@ -115,6 +154,10 @@ export async function processAsset(deps: MediaDeps, assetId: string, caps = ANIM
 
   const digest = await sha256(storage, row.storageKey);
   const head = await readAll(await storage.read(row.storageKey, { start: 0, end: 255 }));
+  // Most RAW formats are TIFF inside: they are told apart before the photos.
+  const rawType = sniffRaw(head, row.filename, row.mime);
+  if (rawType) return processRaw(deps, row, digest, rawType);
+  if (row.kind === 'file' && isPdf(head)) return processPdf(deps, row, digest);
   const sniffed = sniffImage(head);
   // SVG is rasterised only when it was declared as such: it cannot be sniffed safely.
   const svg = !sniffed && row.kind === 'image' && row.mime === 'image/svg+xml';
@@ -128,85 +171,216 @@ export async function processAsset(deps: MediaDeps, assetId: string, caps = ANIM
     return { variants: 0 };
   }
 
-  const copy = await storage.localCopy(row.storageKey, join(deps.tmpDir, assetId));
-  const posterPath = join(deps.tmpDir, `${assetId}.poster.png`);
-  try {
-    if (video && tools?.ffmpeg) {
-      await mkdir(deps.tmpDir, { recursive: true });
-      const { durationMs } = tools.ffprobe
-        ? await probeVideo(tools.ffprobe, copy.path).catch(() => ({ durationMs: null }))
-        : { durationMs: null };
-      await extractPoster(tools.ffmpeg, copy.path, posterPath, durationMs);
-      const result = await thumbnails(deps, assetId, sharp(posterPath, { failOn: 'error' }));
+  return withJobDir(deps.tmpDir, async (dir) => {
+    const copy = await localSource(storage, row, dir);
+    const posterPath = join(dir, 'poster.png');
+    try {
+      if (video && tools?.ffmpeg) {
+        const info: VideoInfo | null = tools.ffprobe
+          ? await probeVideo(tools.ffprobe, copy.path).catch(() => null)
+          : null;
+        const durationMs = info?.durationMs ?? null;
+        await extractPoster(tools.ffmpeg, copy.path, posterPath, durationMs);
+        const result = await thumbnails(deps, assetId, sharp(posterPath, { failOn: 'error' }));
+        const proxyStatus = await proxyState(deps, assetId, video, info, row.size);
+        await save(db, assetId, result.variants, {
+          sha256: digest,
+          width: result.width,
+          height: result.height,
+          durationMs,
+          videoCodec: info?.videoCodec ?? null,
+          audioCodec: info?.audioCodec ?? null,
+          frameRate: info?.frameRate ?? null,
+          proxyStatus,
+          proxyProgress: proxyStatus === 'ready' ? 100 : null,
+          palette: result.palette,
+          status: 'ready',
+          animated: false,
+        });
+        if (proxyStatus === 'queued') await deps.enqueueProxy?.(assetId);
+        return { variants: result.variants.length, proxy: proxyStatus };
+      }
+
+      let mime = sniffed ?? row.mime;
+      let input: Sharp;
+      // Frames and frame size, for the moving variants: 1 frame for a still picture.
+      let frames = 1;
+      let frameWidth = 0;
+      let frameHeight = 0;
+      let delays: number[] | undefined;
+      if (mime === 'image/heic') {
+        if (!deps.heic) {
+          await db
+            .update(asset)
+            .set({ sha256: digest, mime, kind: 'image', status: 'ready', animated: false })
+            .where(eq(asset.id, assetId));
+          return { variants: 0 };
+        }
+        const image = await decodeHeic(await readFile(copy.path));
+        input = sharp(image.data, {
+          raw: { width: image.width, height: image.height, channels: 4 },
+        });
+      } else {
+        input = sharp(copy.path, { failOn: 'error', animated: false });
+        const meta = await input.metadata();
+        mime = (meta.format && SHARP_MIME[meta.format]) ?? mime;
+        frames = meta.pages ?? 1;
+        frameWidth = meta.width ?? 0;
+        frameHeight = meta.height ?? 0;
+        delays = meta.delay;
+      }
+
+      const exif = await readExif(copy.path);
+      const result = await thumbnails(deps, assetId, input);
+      let animated = 0;
+      if (frames > 1 && (mime === 'image/gif' || mime === 'image/webp')) {
+        animated = await animatedThumbnails(deps, assetId, copy.path, result.widths, caps, {
+          frames,
+          width: frameWidth,
+          height: frameHeight,
+          delays,
+        });
+      } else {
+        // A previous run may have made moving copies of a source that no longer moves.
+        await deps.storage.remove(animatedKeys(assetId));
+      }
       await save(db, assetId, result.variants, {
         sha256: digest,
+        mime,
+        kind: 'image',
         width: result.width,
         height: result.height,
-        durationMs,
+        exif,
         palette: result.palette,
         status: 'ready',
-        animated: false,
+        animated: animated > 0,
       });
-      return { variants: result.variants.length };
+      return { variants: result.variants.length, animated };
+    } finally {
+      await copy.done();
     }
+  });
+}
 
-    let mime = sniffed ?? row.mime;
-    let input: Sharp;
-    // Frames and frame size, for the moving variants: 1 frame for a still picture.
-    let frames = 1;
-    let frameWidth = 0;
-    let frameHeight = 0;
-    let delays: number[] | undefined;
-    if (mime === 'image/heic') {
-      if (!deps.heic) {
-        await db
-          .update(asset)
-          .set({ sha256: digest, mime, kind: 'image', status: 'ready', animated: false })
-          .where(eq(asset.id, assetId));
+/** A path to the original inside the job folder `dir`, after checking a download fits. */
+async function localSource(storage: Storage, row: typeof asset.$inferSelect, dir: string) {
+  if (storage.copiesToLocal) await ensureFreeSpace(dir, row.size, 'the copy of the original');
+  return storage.localCopy(row.storageKey, dir);
+}
+
+/**
+ * A camera RAW file: thumbnails from the largest JPEG preview the camera embedded, turned by
+ * the orientation of the RAW, and its EXIF, read by exiftool. The RAW itself is never
+ * developed. Without exiftool, or without a preview, the file is ready with no thumbnails and
+ * keeps its kind: a file card with its RAW type.
+ */
+async function processRaw(
+  deps: MediaDeps,
+  row: typeof asset.$inferSelect,
+  digest: string,
+  mime: string,
+) {
+  const { db, storage } = deps;
+  const plain = { sha256: digest, mime, status: 'ready' as const, animated: false };
+  const { exiftool } = await mediaTools();
+  if (deps.raw === false || !exiftool) {
+    await save(db, row.id, [], plain);
+    return { variants: 0 };
+  }
+  return withJobDir(deps.tmpDir, async (dir) => {
+    const copy = await localSource(storage, row, dir);
+    try {
+      const [preview, meta] = await Promise.all([
+        extractRawPreview(exiftool, copy.path, join(dir, 'previews')),
+        readRawExif(exiftool, copy.path),
+      ]);
+      const pixels = preview
+        ? await orientedPixels(preview, meta.orientation).catch((err) => {
+            // A broken preview is not a broken upload: the RAW is kept, without thumbnails.
+            deps.log?.warn({ err, assetId: row.id }, 'RAW preview does not decode');
+            return null;
+          })
+        : null;
+      if (!pixels) {
+        await save(db, row.id, [], { ...plain, exif: meta.exif });
         return { variants: 0 };
       }
-      const image = await decodeHeic(await readFile(copy.path));
-      input = sharp(image.data, { raw: { width: image.width, height: image.height, channels: 4 } });
-    } else {
-      input = sharp(copy.path, { failOn: 'error', animated: false });
-      const meta = await input.metadata();
-      mime = (meta.format && SHARP_MIME[meta.format]) ?? mime;
-      frames = meta.pages ?? 1;
-      frameWidth = meta.width ?? 0;
-      frameHeight = meta.height ?? 0;
-      delays = meta.delay;
-    }
-
-    const exif = await readExif(copy.path);
-    const result = await thumbnails(deps, assetId, input);
-    let animated = 0;
-    if (frames > 1 && (mime === 'image/gif' || mime === 'image/webp')) {
-      animated = await animatedThumbnails(deps, assetId, copy.path, result.widths, caps, {
-        frames,
-        width: frameWidth,
-        height: frameHeight,
-        delays,
+      const { data, ...raw } = pixels;
+      const result = await thumbnails(deps, row.id, sharp(data, { raw }));
+      await save(db, row.id, result.variants, {
+        ...plain,
+        kind: 'image',
+        width: result.width,
+        height: result.height,
+        exif: meta.exif,
+        palette: result.palette,
       });
-    } else {
-      // A previous run may have made moving copies of a source that no longer moves.
-      await deps.storage.remove(animatedKeys(assetId));
+      return { variants: result.variants.length };
+    } finally {
+      await copy.done();
     }
-    await save(db, assetId, result.variants, {
-      sha256: digest,
-      mime,
-      kind: 'image',
-      width: result.width,
-      height: result.height,
-      exif,
-      palette: result.palette,
-      status: 'ready',
-      animated: animated > 0,
-    });
-    return { variants: result.variants.length, animated };
-  } finally {
-    await copy.done();
-    await rm(posterPath, { force: true });
+  });
+}
+
+/**
+ * A PDF: its page count and thumbnails of page 1, rendered by poppler with time and memory
+ * limits. Encrypted or broken PDFs, or a server without poppler, leave the file ready with no
+ * thumbnails: the card falls back to its badge.
+ */
+async function processPdf(deps: MediaDeps, row: typeof asset.$inferSelect, digest: string) {
+  const { db, storage } = deps;
+  const plain = { sha256: digest, mime: 'application/pdf', status: 'ready' as const };
+  const { pdftoppm, pdfinfo } = await mediaTools();
+  if (deps.pdf === false || !pdftoppm || !pdfinfo) {
+    await save(db, row.id, [], { ...plain, pageCount: null });
+    return { variants: 0 };
   }
+  return withJobDir(deps.tmpDir, async (dir) => {
+    const copy = await localSource(storage, row, dir);
+    const prefix = join(dir, 'page1');
+    try {
+      const { pageCount } = await readPdfInfo(pdfinfo, copy.path);
+      const page = pageCount ? await renderFirstPage(pdftoppm, copy.path, prefix) : null;
+      if (!page) {
+        await save(db, row.id, [], { ...plain, pageCount });
+        return { variants: 0, pageCount };
+      }
+      const result = await thumbnails(deps, row.id, sharp(page, { failOn: 'error' }));
+      await save(db, row.id, result.variants, {
+        ...plain,
+        pageCount,
+        width: result.width,
+        height: result.height,
+        palette: result.palette,
+      });
+      return { variants: result.variants.length, pageCount };
+    } finally {
+      await copy.done();
+    }
+  });
+}
+
+/**
+ * Where the playable copy of a video stands before the poster is saved: `queued` when one is
+ * to be made (the caller queues it), `ready` when an earlier run made it, `skipped` when the
+ * instance does not make it, null when the original plays as it is.
+ */
+async function proxyState(
+  deps: MediaDeps,
+  assetId: string,
+  container: string,
+  info: VideoInfo | null,
+  size: number,
+): Promise<(typeof asset.$inferInsert)['proxyStatus']> {
+  if (!info) return null;
+  const plan = proxyPlan(container, info, size, deps.proxies ?? DEFAULT_PROXY_SETTINGS);
+  if (plan === 'none') return null;
+  if (plan === 'skip' || !deps.enqueueProxy) return 'skipped';
+  const [made] = await deps.db
+    .select({ size: assetVariant.size })
+    .from(assetVariant)
+    .where(and(eq(assetVariant.assetId, assetId), eq(assetVariant.size, 'proxy')));
+  return made ? 'ready' : 'queued';
 }
 
 /** WebP thumbnails and dominant colours of a picture, upright. */
@@ -227,7 +401,14 @@ async function thumbnails(deps: MediaDeps, assetId: string, input: Sharp) {
     const size = String(width) as ThumbnailSize;
     const key = variantKey(assetId, size);
     await deps.storage.write(key, data, 'image/webp');
-    variants.push({ assetId, size, width: out.width, height: out.height, storageKey: key });
+    variants.push({
+      assetId,
+      size,
+      width: out.width,
+      height: out.height,
+      storageKey: key,
+      bytes: data.length,
+    });
   }
   return { variants, widths, width: info.width, height: info.height, palette: palette(colours) };
 }
@@ -304,7 +485,10 @@ async function save(
   fields: Partial<typeof asset.$inferInsert>,
 ) {
   await db.transaction(async (tx) => {
-    await tx.delete(assetVariant).where(eq(assetVariant.assetId, assetId));
+    // The playable copy of a video is made by a job of its own and outlives a second pass.
+    await tx
+      .delete(assetVariant)
+      .where(and(eq(assetVariant.assetId, assetId), ne(assetVariant.size, 'proxy')));
     if (variants.length > 0) await tx.insert(assetVariant).values(variants);
     await tx.update(asset).set(fields).where(eq(asset.id, assetId));
   });

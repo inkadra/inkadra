@@ -113,6 +113,20 @@
       "when": 1793485153536,
       "tag": "0015_guest_link_opened",
       "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1793488515777,
+      "tag": "0016_media_previews",
+      "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1793488531335,
+      "tag": "0017_media_pdf_pages",
+      "breakpoints": true
     }
   ]
 }

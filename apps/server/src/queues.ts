@@ -1,6 +1,6 @@
 import type { BoardNotice } from '@inkadra/doc-schema';
 import type { BackupSettings, BoardColumn } from '@inkadra/shared';
-import { Queue, QueueEvents, Worker } from 'bullmq';
+import { Queue, QueueEvents, UnrecoverableError, Worker } from 'bullmq';
 import { and, eq, lt } from 'drizzle-orm';
 import IORedis from 'ioredis';
 import type { Logger } from 'pino';
@@ -29,6 +29,8 @@ import { asset } from './db/schema.ts';
 import type { Jobs } from './jobs.ts';
 import { type Mailer, noMailer } from './mailer.ts';
 import { type MediaDeps, markFailed, processAsset } from './media/process.ts';
+import { markProxyFailed, runProxy } from './media/proxy.ts';
+import { ProxyTimeout } from './media/video.ts';
 import { purgeNotifications, sendDigests, sendImmediateEmails } from './notifications.ts';
 import { clearExpiredGuestNames } from './share-links.ts';
 import { type Storage, UPLOAD_EXPIRY_MS } from './storage.ts';
@@ -49,6 +51,11 @@ import {
 export const QUEUES = {
   /** Thumbnails, WebP, EXIF, palette, video posters (wave 1). */
   media: 'media',
+  /**
+   * Playable MP4 copies of videos browsers cannot play (decision 0048): long and CPU heavy,
+   * so apart from the thumbnails and one at a time by default (VIDEO_PROXY_CONCURRENCY).
+   */
+  proxies: 'media-proxies',
   /** Outgoing email (wave 2). */
   email: 'email',
   /** Housekeeping: trash purge, upload cleanup, backups (wave 3). */
@@ -68,6 +75,7 @@ export type JobPayloads = {
   'maintenance:purge-uploads': Record<string, never>;
   'maintenance:anonymise-guests': Record<string, never>;
   'media:process': { assetId: string };
+  'media-proxies:make': { assetId: string };
   'collab:read-element': { boardId: string; elementId: string; expiresAt: number };
   'collab:read-columns': { boardId: string; expiresAt: number };
   'collab:add-card': AddCard & { expiresAt: number };
@@ -101,6 +109,7 @@ export function createQueues(url: string, opts: { prefix?: string } = {}) {
   const media = new Queue(QUEUES.media, { connection, prefix: opts.prefix });
   const maintenance = new Queue(QUEUES.maintenance, { connection, prefix: opts.prefix });
   const transfers = new Queue(QUEUES.transfers, { connection, prefix: opts.prefix });
+  const proxies = new Queue(QUEUES.proxies, { connection, prefix: opts.prefix });
   const jobs: Jobs = {
     async processAsset(assetId) {
       // The job id makes a second enqueue of the same asset a no-op while the first is waiting.
@@ -108,6 +117,24 @@ export function createQueues(url: string, opts: { prefix?: string } = {}) {
         'process',
         { assetId },
         { jobId: `process-${assetId}`, ...ATTEMPTS, ...KEEP },
+      );
+    },
+    async makeProxy(assetId) {
+      // A finished or failed job keeps its id for a while, and an add with that id would do
+      // nothing: it goes first, so a second pass of the asset (an import, a retry) queues again.
+      const jobId = `proxy-${assetId}`;
+      const old = await proxies.getJob(jobId);
+      if (old && ['completed', 'failed'].includes(await old.getState())) await old.remove();
+      // Two tries: a copy that fails twice is a source ffmpeg cannot read, not bad luck.
+      await proxies.add(
+        'make',
+        { assetId },
+        {
+          jobId,
+          attempts: 2,
+          backoff: { type: 'fixed', delay: 60_000 },
+          ...KEEP,
+        },
       );
     },
     async deleteFiles(keys) {
@@ -133,7 +160,7 @@ export function createQueues(url: string, opts: { prefix?: string } = {}) {
     connection,
     jobs,
     async close() {
-      await Promise.all([media.close(), maintenance.close(), transfers.close()]);
+      await Promise.all([media.close(), maintenance.close(), transfers.close(), proxies.close()]);
       connection.disconnect();
     },
   };
@@ -215,6 +242,8 @@ export async function startWorkers(
     transfers?: TransferWorkerDeps;
     /** Notification emails; off without it. */
     mailer?: Mailer;
+    /** Playable copies of videos made at once (VIDEO_PROXY_CONCURRENCY). */
+    proxyConcurrency?: number;
     publicUrl?: string;
     instanceName?: string;
   },
@@ -268,7 +297,10 @@ export async function startWorkers(
     async (job) => {
       if (job.name !== 'process') throw new Error(`Unknown job ${job.name}`);
       const { assetId } = job.data as JobPayloads['media:process'];
-      return processAsset({ ...deps, log }, assetId);
+      return processAsset(
+        { ...deps, log, enqueueProxy: (id) => queues.jobs.makeProxy?.(id) ?? Promise.resolve() },
+        assetId,
+      );
     },
     { connection, concurrency: 2, prefix: opts.prefix },
   );
@@ -276,6 +308,36 @@ export async function startWorkers(
     if (job && job.attemptsMade >= (job.opts.attempts ?? 1))
       void markFailed(deps.db, (job.data as JobPayloads['media:process']).assetId).catch((e) =>
         log.error({ err: e }, 'could not mark asset failed'),
+      );
+  });
+
+  // Playable copies of videos: a transcode can take as long as the video, so the lock is long
+  // and progress goes to the job as well as to the asset row.
+  const proxies = new Worker(
+    QUEUES.proxies,
+    async (job) => {
+      if (job.name !== 'make') throw new Error(`Unknown job ${job.name}`);
+      const { assetId } = job.data as JobPayloads['media-proxies:make'];
+      try {
+        return await runProxy(deps, assetId, (percent) => job.updateProgress(percent));
+      } catch (err) {
+        // A copy that ran out of time would run out of time again.
+        if (err instanceof ProxyTimeout) throw new UnrecoverableError(err.message);
+        throw err;
+      }
+    },
+    {
+      connection,
+      concurrency: deps.proxyConcurrency ?? 1,
+      prefix: opts.prefix,
+      lockDuration: 5 * 60 * 1000,
+    },
+  );
+  proxies.on('failed', (job, err) => {
+    // An UnrecoverableError (a timeout) ends the job before its last attempt.
+    if (job && (job.attemptsMade >= (job.opts.attempts ?? 1) || err instanceof UnrecoverableError))
+      void markProxyFailed(deps.db, (job.data as JobPayloads['media-proxies:make']).assetId).catch(
+        (e) => log.error({ err: e }, 'could not mark the playable copy failed'),
       );
   });
 
@@ -368,7 +430,7 @@ export async function startWorkers(
     await scheduleBackups(scheduler, await readBackupSettings(deps.db));
   }
 
-  for (const w of [maintenance, media, email, transfers]) {
+  for (const w of [maintenance, media, proxies, email, transfers]) {
     w.on('failed', (job, err) => log.error({ queue: w.name, job: job?.id, err }, 'job failed'));
   }
   return {
@@ -376,6 +438,7 @@ export async function startWorkers(
       await Promise.all([
         maintenance.close(),
         media.close(),
+        proxies.close(),
         email.close(),
         transfers.close(),
         scheduler.close(),
@@ -602,14 +665,29 @@ export function inlineJobs(
       .finally(() => running.delete(p));
     running.add(p);
   };
+  // Playable copies run one after the other, as with the default worker concurrency.
+  let proxyChain: Promise<unknown> = Promise.resolve();
   const self: Jobs & { idle(): Promise<void> } = {
     async processAsset(assetId) {
       track(
-        processAsset({ ...deps, log }, assetId).catch(async (err) => {
+        processAsset(
+          { ...deps, log, enqueueProxy: (id) => self.makeProxy?.(id) ?? Promise.resolve() },
+          assetId,
+        ).catch(async (err) => {
           await markFailed(deps.db, assetId);
           throw err;
         }),
       );
+    },
+    async makeProxy(assetId) {
+      const run = proxyChain.then(() =>
+        runProxy(deps, assetId).catch(async (err) => {
+          await markProxyFailed(deps.db, assetId);
+          throw err;
+        }),
+      );
+      proxyChain = run.catch(() => {});
+      track(run);
     },
     async deleteFiles(keys) {
       track(deps.storage.remove(keys));

@@ -6,7 +6,7 @@ import { Avatar, Button, Icon } from '@inkadra/ui';
 import { memo, useContext, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useClassifications } from '../lib/classifications.ts';
-import { pickVariant, useAsset } from './assets.ts';
+import { pickVariant, playbackUrl, useAsset } from './assets.ts';
 import { CroppedImage } from './CroppedImage.tsx';
 import { GuestModeContext } from './context.ts';
 import { FrameGrab } from './FrameGrab.tsx';
@@ -266,7 +266,10 @@ export function MediaViewer({
     setShowOriginal(false);
   }, [element.id]);
   const isTransformedImage = element.type === 'image' && hasImageTransform(element);
-  const { videoRef, unplayable, setUnplayable } = useVideoUnplayable(ready?.url, ready?.id);
+  const { videoRef, unplayable, setUnplayable } = useVideoUnplayable(
+    ready ? playbackUrl(ready) : undefined,
+    ready?.id,
+  );
 
   const stepper = useRef(new VideoFrameStepper());
   const [videoPaused, setVideoPaused] = useState(false);
@@ -568,7 +571,7 @@ export function MediaViewer({
                 <video
                   ref={videoRef}
                   className="viewer__media viewer__media--contain"
-                  src={ready.url}
+                  src={playbackUrl(ready)}
                   poster={ready.variants.length > 0 ? pickVariant(ready, wide) : undefined}
                   controls
                   autoPlay

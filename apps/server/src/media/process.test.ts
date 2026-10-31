@@ -1,6 +1,6 @@
 import { execFileSync } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
-import { readFileSync } from 'node:fs';
+import { readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { eq, sql } from 'drizzle-orm';
@@ -9,10 +9,17 @@ import sharp from 'sharp';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createDatabase, runMigrations } from '../db/client.ts';
 import { asset, assetVariant, project } from '../db/schema.ts';
-import { animatedVariantKey, originalKey, readAll } from '../storage.ts';
+import { animatedVariantKey, originalKey, proxyKey, readAll } from '../storage.ts';
 import { testDeps } from '../test-deps.ts';
 import { ANIMATED_CAPS, fitsAnimatedCaps, processAsset, variantWidths } from './process.ts';
-import { mediaTools, resetMediaTools, sniffVideo } from './video.ts';
+import { runProxy } from './proxy.ts';
+import {
+  DEFAULT_PROXY_SETTINGS,
+  mediaTools,
+  probeVideo,
+  resetMediaTools,
+  sniffVideo,
+} from './video.ts';
 
 const url = process.env.DATABASE_URL;
 const migrationsFolder = fileURLToPath(new URL('../../drizzle', import.meta.url));
@@ -327,6 +334,122 @@ describe.skipIf(!url)('processAsset (needs DATABASE_URL)', () => {
     expect(variants).toHaveLength(0);
   });
 
+  describe('camera RAW', async () => {
+    const tools = await mediaTools();
+
+    it.skipIf(!tools.exiftool)('makes upright thumbnails from the embedded preview', async () => {
+      const body = fixture('orientation-6.dng');
+      const id = await upload(body, 'application/octet-stream', 'IMG_0006.DNG');
+      await processAsset(deps, id);
+      const { row, variants } = await load(id);
+      expect(row).toMatchObject({
+        status: 'ready',
+        kind: 'image',
+        mime: 'image/x-adobe-dng',
+        // The 320×200 preview, turned a quarter as the RAW says.
+        width: 200,
+        height: 320,
+      });
+      expect(row?.exif).toMatchObject({
+        Make: 'Inkadra',
+        Model: 'Test DNG',
+        FNumber: 2.8,
+        ExposureTime: 0.004,
+        ISO: 400,
+        FocalLength: 50,
+        Orientation: 6,
+      });
+      expect(variants.map((v) => [v.size, v.width, v.height])).toEqual([['256', 200, 320]]);
+      // Red was on the left of the sensor: on the top once upright.
+      const thumb = await sharp(await readAll(await storage.read(variants[0]?.storageKey ?? '')))
+        .raw()
+        .toBuffer({ resolveWithObject: true });
+      const px = (y: number) => {
+        const at = y * thumb.info.width * thumb.info.channels;
+        return [...thumb.data.subarray(at, at + 3)];
+      };
+      expect(px(10)[0]).toBeGreaterThan(200);
+      expect(px(310)[2]).toBeGreaterThan(200);
+      // The RAW itself is never changed.
+      expect(await readAll(await storage.read(originalKey(id)))).toEqual(body);
+    });
+
+    it('keeps a RAW without a preview as a file of its RAW type', async () => {
+      // TIFF magic and nothing else: no IFD, no preview.
+      const body = Buffer.from([0x49, 0x49, 0x2a, 0x00, 0, 0, 0, 0, ...new Array(64).fill(0)]);
+      const id = await upload(body, 'application/octet-stream', 'DSC_0001.NEF');
+      await processAsset(deps, id);
+      const { row, variants } = await load(id);
+      expect(row).toMatchObject({ status: 'ready', mime: 'image/x-nikon-nef', kind: 'file' });
+      expect(variants).toHaveLength(0);
+    });
+
+    it.skipIf(!tools.exiftool)('makes no thumbnails when RAW previews are off', async () => {
+      const id = await upload(fixture('orientation-6.dng'), 'image/x-adobe-dng', 'off.dng');
+      await processAsset({ ...deps, raw: false }, id);
+      const { row, variants } = await load(id);
+      expect(row).toMatchObject({ status: 'ready', mime: 'image/x-adobe-dng' });
+      expect(variants).toHaveLength(0);
+    });
+  });
+
+  describe('PDF', async () => {
+    const tools = await mediaTools();
+    const poppler = Boolean(tools.pdftoppm && tools.pdfinfo);
+
+    it.skipIf(!poppler)('renders page 1 and counts the pages', async () => {
+      const id = await upload(fixture('two-pages.pdf'), 'application/pdf', 'call-sheet.pdf');
+      await processAsset(deps, id);
+      const { row, variants } = await load(id);
+      // Page 1 is A4 portrait (page 2 is landscape): 2048 high, its width in proportion.
+      expect(row).toMatchObject({
+        status: 'ready',
+        kind: 'file',
+        mime: 'application/pdf',
+        pageCount: 2,
+        width: 1448,
+        height: 2048,
+      });
+      expect(variants.map((v) => v.size)).toEqual(['256', '512', '1024']);
+      // Red on the top half, blue on the bottom one.
+      const thumb = await sharp(await readAll(await storage.read(variants[0]?.storageKey ?? '')))
+        .raw()
+        .toBuffer({ resolveWithObject: true });
+      const px = (y: number) => {
+        const at = y * thumb.info.width * thumb.info.channels;
+        return [...thumb.data.subarray(at, at + 3)];
+      };
+      expect(px(20)[0]).toBeGreaterThan(200);
+      expect(px(thumb.info.height - 20)[2]).toBeGreaterThan(200);
+    });
+
+    it('keeps encrypted and broken PDFs ready, without thumbnails', async () => {
+      const locked = await upload(fixture('encrypted.pdf'), 'application/pdf', 'locked.pdf');
+      await processAsset(deps, locked);
+      const a = await load(locked);
+      expect(a.row).toMatchObject({ status: 'ready', mime: 'application/pdf', pageCount: null });
+      expect(a.variants).toHaveLength(0);
+
+      const broken = await upload(
+        fixture('two-pages.pdf').subarray(0, 300),
+        'application/octet-stream',
+        'broken.pdf',
+      );
+      await processAsset(deps, broken);
+      const b = await load(broken);
+      expect(b.row).toMatchObject({ status: 'ready', mime: 'application/pdf', pageCount: null });
+      expect(b.variants).toHaveLength(0);
+    });
+
+    it.skipIf(!poppler)('makes no thumbnails when PDF previews are off', async () => {
+      const id = await upload(fixture('two-pages.pdf'), 'application/pdf', 'off.pdf');
+      await processAsset({ ...deps, pdf: false }, id);
+      const { row, variants } = await load(id);
+      expect(row).toMatchObject({ status: 'ready', pageCount: null });
+      expect(variants).toHaveLength(0);
+    });
+  });
+
   it('only checksums other files', async () => {
     const id = await upload(
       Buffer.from('%PDF-1.7 not really'),
@@ -393,6 +516,110 @@ describe.skipIf(!url)('processAsset (needs DATABASE_URL)', () => {
       const { row, variants } = await load(id);
       expect(row?.status).toBe('ready');
       expect(variants).toHaveLength(0);
+    });
+
+    it.skipIf(!tools.ffmpeg)('makes no playable copy of a video browsers play', async () => {
+      const queued: string[] = [];
+      const id = await upload(clip(), 'video/mp4', 'plays.mp4');
+      await processAsset({ ...deps, enqueueProxy: async (a) => void queued.push(a) }, id);
+      const { row } = await load(id);
+      expect(row).toMatchObject({ proxyStatus: null, videoCodec: 'h264', frameRate: 24 });
+      expect(queued).toEqual([]);
+    });
+
+    describe.skipIf(!tools.ffmpeg || !tools.ffprobe)('playable copies', () => {
+      const withQueue = () => {
+        const queued: string[] = [];
+        return {
+          queued,
+          deps: { ...deps, enqueueProxy: async (a: string) => void queued.push(a) },
+        };
+      };
+
+      it('encodes ProRes to H.264/AAC MP4, keeping the original', async () => {
+        const body = fixture('prores-proxy.mov');
+        const id = await upload(body, 'video/quicktime', 'A001_C002.mov');
+        const q = withQueue();
+        await processAsset(q.deps, id);
+        let { row, variants } = await load(id);
+        expect(row).toMatchObject({
+          status: 'ready',
+          videoCodec: 'prores',
+          audioCodec: 'pcm_s16le',
+          frameRate: 12,
+          proxyStatus: 'queued',
+        });
+        expect(variants.map((v) => v.size)).toEqual(['256']);
+        expect(q.queued).toEqual([id]);
+
+        const progress: number[] = [];
+        await runProxy(deps, id, (p) => void progress.push(p));
+        ({ row, variants } = await load(id));
+        expect(row).toMatchObject({ proxyStatus: 'ready', proxyProgress: 100 });
+        expect(progress.at(-1)).toBe(100);
+        const proxy = variants.find((v) => v.size === 'proxy');
+        expect(proxy).toMatchObject({ mime: 'video/mp4', width: 64, height: 36 });
+        expect(proxy?.bytes).toBeGreaterThan(0);
+        const out = join(root, `proxy-${id}.mp4`);
+        writeFileSync(out, await readAll(await storage.read(proxy?.storageKey ?? '')));
+        const made = await probeVideo(tools.ffprobe ?? '', out);
+        expect(made).toMatchObject({
+          videoCodec: 'h264',
+          audioCodec: 'aac',
+          pixelFormat: 'yuv420p',
+        });
+        // The original is untouched.
+        expect(await readAll(await storage.read(originalKey(id)))).toEqual(body);
+
+        // A second pass of the thumbnails keeps the copy and does not queue another.
+        const again = withQueue();
+        await processAsset(again.deps, id);
+        ({ row, variants } = await load(id));
+        expect(row?.proxyStatus).toBe('ready');
+        expect(variants.some((v) => v.size === 'proxy')).toBe(true);
+        expect(again.queued).toEqual([]);
+      });
+
+      it('removes a copy written for an asset deleted meanwhile', async () => {
+        const id = randomUUID();
+        await storage.write(proxyKey(id), Buffer.from('left over'), 'video/mp4');
+        expect(await runProxy(deps, id)).toEqual({ skipped: 'gone' });
+        expect(await storage.size(proxyKey(id))).toBeNull();
+      });
+
+      it('only remuxes H.264 out of Matroska, with the sound as AAC', async () => {
+        const id = await upload(fixture('h264-opus.mkv'), 'video/x-matroska', 'take.mkv');
+        const q = withQueue();
+        await processAsset(q.deps, id);
+        expect((await load(id)).row?.proxyStatus).toBe('queued');
+        await runProxy(deps, id);
+        const { variants } = await load(id);
+        const proxy = variants.find((v) => v.size === 'proxy');
+        const out = join(root, `remux-${id}.mp4`);
+        writeFileSync(out, await readAll(await storage.read(proxy?.storageKey ?? '')));
+        expect(await probeVideo(tools.ffprobe ?? '', out)).toMatchObject({
+          videoCodec: 'h264',
+          audioCodec: 'aac',
+        });
+      });
+
+      it('says skipped when proxies are turned off or the video is too long', async () => {
+        const off = withQueue();
+        const id = await upload(fixture('prores-proxy.mov'), 'video/quicktime', 'off.mov');
+        await processAsset(
+          { ...off.deps, proxies: { ...DEFAULT_PROXY_SETTINGS, enabled: false } },
+          id,
+        );
+        expect((await load(id)).row?.proxyStatus).toBe('skipped');
+        expect(off.queued).toEqual([]);
+
+        // Turned off after it was queued: the job gives up without running ffmpeg.
+        await processAsset(withQueue().deps, id);
+        await runProxy({ ...deps, proxies: { ...DEFAULT_PROXY_SETTINGS, maxDurationS: 0.1 } }, id);
+        const { row, variants } = await load(id);
+        expect(row?.proxyStatus).toBe('skipped');
+        expect(variants.some((v) => v.size === 'proxy')).toBe(false);
+      });
     });
 
     it.skipIf(!tools.ffmpeg)('stores videos without poster when ffmpeg is missing', async () => {

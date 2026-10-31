@@ -394,6 +394,50 @@ describe.skipIf(!url)('instance backups (needs DATABASE_URL)', () => {
     }
   }, 60_000);
 
+  it('leaves the playable copies of videos out, as they can be made again', async () => {
+    const fresh = await freshDatabase(config.DATABASE_URL, 'proxies');
+    await runMigrations(fresh, migrations);
+    const admin = postgres(fresh, { max: 1, onnotice: () => {} });
+    const [p] = await admin`insert into project (name, position) values ('Rushes', 'a0')
+      returning id`;
+    const [a] = await admin`insert into asset (project_id, kind, mime, filename, size,
+      storage_key, status, proxy_status, proxy_progress)
+      values (${p?.id}, 'video', 'video/quicktime', 'A001.mov', 10, 'originals/x', 'ready',
+        'ready', 100) returning id`;
+    await admin`insert into asset_variant (asset_id, size, width, height, storage_key) values
+      (${a?.id}, '256', 256, 144, ${`variants/${a?.id}/256.webp`}),
+      (${a?.id}, 'proxy', 1920, 1080, ${`variants/${a?.id}/proxy.mp4`})`;
+    const client = postgres(fresh, { max: 2, onnotice: () => {} });
+    const other = drizzle(client, { schema, casing: 'snake_case' });
+    const target = await freshDatabase(config.DATABASE_URL, 'proxies_restore');
+    const restored = postgres(target, { max: 1, onnotice: () => {} });
+    try {
+      const row = await startBackup(other, 'manual', null);
+      const done = await runBackup(
+        { ...backupDeps(), db: other, databaseUrl: fresh },
+        row?.id as string,
+      );
+      expect(done).toMatchObject({ status: 'ready', fileCount: 2 });
+      const report = await restoreBackup({
+        file: join(backupsDir(deps.root), done?.fileName as string),
+        databaseUrl: target,
+        migrationsFolder: migrations,
+        storage: deps.storage,
+        tmpDir: join(deps.root, 'tmp'),
+        log,
+      });
+      expect(report.files.listed).toBe(2);
+      const sizes = await restored`select size from asset_variant`;
+      expect(sizes.map((v) => v.size)).toEqual(['256']);
+      const [back] = await restored`select proxy_status, proxy_progress from asset`;
+      expect(back).toEqual({ proxy_status: 'skipped', proxy_progress: null });
+    } finally {
+      await admin.end({ timeout: 1 });
+      await client.end({ timeout: 1 });
+      await restored.end({ timeout: 1 });
+    }
+  }, 60_000);
+
   it('keeps a live but quiet backup when another worker starts', async () => {
     const fresh = await freshDatabase(config.DATABASE_URL, 'quiet');
     await runMigrations(fresh, migrations);

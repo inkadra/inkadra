@@ -85,7 +85,15 @@ export function registerApiRoutes(app: FastifyInstance, deps: Deps) {
       },
       collabPath: COLLAB_PATH,
       // The web role runs the same image as the worker, so it sees the same tools.
-      media: { videoPosters: (await mediaTools()).ffmpeg !== null, rawPreviews: false },
+      media: await (async () => {
+        const tools = await mediaTools();
+        return {
+          videoPosters: tools.ffmpeg !== null,
+          rawPreviews: config.RAW_PREVIEWS && tools.exiftool !== null,
+          pdfPreviews: config.PDF_PREVIEWS && tools.pdftoppm !== null,
+          videoProxies: config.VIDEO_PROXIES && tools.ffmpeg !== null && tools.ffprobe !== null,
+        };
+      })(),
       limits: { uploadMaxBytes: config.UPLOAD_MAX_SIZE },
       serverTime: new Date().toISOString(),
     };

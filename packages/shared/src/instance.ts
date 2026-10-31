@@ -46,6 +46,16 @@ export const Instance = z
         rawPreviews: z.boolean().openapi({
           description: 'The worker can decode camera RAW files into thumbnails.',
         }),
+        pdfPreviews: z.boolean().openapi({
+          description:
+            'The worker renders page 1 of PDFs into thumbnails and reads their page count ' +
+            '(poppler).',
+        }),
+        videoProxies: z.boolean().openapi({
+          description:
+            'The worker makes playable MP4 copies of videos browsers cannot play ' +
+            '(`Asset.proxy`): ffmpeg is there and VIDEO_PROXIES is not `false`.',
+        }),
       })
       .openapi({ description: 'Media tools available on this server (image tag `-media`).' }),
     limits: z.object({

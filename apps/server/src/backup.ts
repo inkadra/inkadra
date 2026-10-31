@@ -94,6 +94,27 @@ const PARENTS_FIRST: Record<string, (columns: string[]) => string> = {
      order by d.depth, comment.id`,
 };
 
+/**
+ * Rows written differently from the table, for files a backup leaves out because they can be
+ * made again: the playable copies of videos (decision 0048), as large as the videos
+ * themselves. Their `proxy` variant rows are skipped, and the assets that had one restore as
+ * `skipped`: the card falls back to the poster and the original until it is processed again.
+ */
+const WITHOUT_DERIVED: Record<string, (columns: string[]) => string> = {
+  asset_variant: (columns) =>
+    `select ${columns.map((c) => `"${c}"`).join(', ')} from asset_variant where size <> 'proxy'`,
+  asset: (columns) =>
+    `select ${columns
+      .map((c) =>
+        c === 'proxy_status'
+          ? `case when proxy_status in ('queued', 'processing', 'ready') then 'skipped' else proxy_status end`
+          : c === 'proxy_progress'
+            ? 'null::integer'
+            : `"${c}"`,
+      )
+      .join(', ')} from asset`,
+};
+
 export type BackupRow = typeof instanceBackup.$inferSelect;
 
 export function toBackup(row: BackupRow): InstanceBackup {
@@ -515,9 +536,10 @@ async function dumpDatabase(
           moved();
           const counter = lineCounter(moved);
           const ordered = PARENTS_FIRST[name];
+          const query = ordered ?? WITHOUT_DERIVED[name];
           const source = await copyReadable(
-            ordered
-              ? tx.unsafe(`copy (${ordered(columns)}) to stdout`)
+            query
+              ? tx.unsafe(`copy (${query(columns)}) to stdout`)
               : tx`copy ${tx(name)} (${tx(columns)}) to stdout`,
           );
           // piped: a COPY that fails mid-way must fail the backup, never leave it waiting.
@@ -534,11 +556,12 @@ async function dumpDatabase(
           }
           listed.push({ name, columns, rows: counter.lines(), entry });
         }
-        // Every stored file: originals with their checksum, thumbnails by key.
+        // Every stored file: originals with their checksum, thumbnails by key. Playable
+        // copies of videos are left out with their rows (WITHOUT_DERIVED).
         const files = await tx<{ key: string; size: string | null; sha256: string | null }[]>`
         select storage_key as key, size::text, sha256 from asset where status <> 'pending'
         union all
-        select storage_key, null, null from asset_variant`;
+        select storage_key, null, null from asset_variant where size <> 'proxy'`;
         let bytes = 0;
         const lines = files.map((f) => {
           bytes += Number(f.size ?? 0);

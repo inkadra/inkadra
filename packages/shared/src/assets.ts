@@ -6,6 +6,26 @@ export type AssetKind = z.infer<typeof AssetKind>;
 
 export const AssetStatus = z.enum(['pending', 'processing', 'ready', 'failed']);
 
+/**
+ * Camera RAW formats, by file extension. The worker makes the thumbnails of these from the
+ * JPEG preview the camera embedded (decision 0048); the original is kept and downloaded as
+ * it is.
+ */
+export const RAW_IMAGE_TYPES = {
+  cr2: 'image/x-canon-cr2',
+  cr3: 'image/x-canon-cr3',
+  nef: 'image/x-nikon-nef',
+  arw: 'image/x-sony-arw',
+  dng: 'image/x-adobe-dng',
+  raf: 'image/x-fuji-raf',
+  orf: 'image/x-olympus-orf',
+  rw2: 'image/x-panasonic-rw2',
+} as const;
+
+/** True for the type of a camera RAW file (`Asset.mime`). */
+export const isRawImageType = (mime: string) =>
+  (Object.values(RAW_IMAGE_TYPES) as string[]).includes(mime);
+
 /** Thumbnail widths produced by the worker; every variant is WebP. */
 export const ThumbnailSize = z.enum(['256', '512', '1024', '2048']);
 export type ThumbnailSize = z.infer<typeof ThumbnailSize>;
@@ -21,6 +41,36 @@ export const AssetVariant = z
   })
   .openapi('AssetVariant');
 
+/**
+ * State of the H.264/AAC MP4 copy the worker makes of a video the browser cannot play
+ * (ProRes, MKV, AVI, MXF, HEVC…). `skipped` means one was needed but not made: proxies are
+ * turned off (VIDEO_PROXIES), the source is past the limits, or the server has no ffmpeg.
+ */
+export const AssetProxyStatus = z.enum(['queued', 'processing', 'ready', 'failed', 'skipped']);
+export type AssetProxyStatus = z.infer<typeof AssetProxyStatus>;
+
+export const AssetProxy = z
+  .object({
+    status: AssetProxyStatus,
+    progress: z.int().min(0).max(100).nullable().openapi({
+      description: 'Percent done while `processing`; 100 once `ready`; null when unknown.',
+    }),
+    url: z
+      .string()
+      .nullable()
+      .openapi({
+        description:
+          'Same-origin path, `/api/v1/assets/{assetId}/proxy`, once `ready`; null before. ' +
+          'Supports `Range`. The original stays at `Asset.url`.',
+      }),
+    mime: z.literal('video/mp4'),
+    width: z.int().nullable(),
+    height: z.int().nullable(),
+    size: z.int().min(0).nullable().openapi({ description: 'Bytes of the MP4 once ready.' }),
+  })
+  .openapi('AssetProxy');
+export type AssetProxy = z.infer<typeof AssetProxy>;
+
 export const Asset = z
   .object({
     id: Id,
@@ -33,6 +83,27 @@ export const Asset = z
     width: z.int().nullable(),
     height: z.int().nullable(),
     durationMs: z.int().nullable(),
+    videoCodec: z.string().nullable().openapi({
+      description: 'Codec of the first video stream as ffprobe names it (`h264`, `prores`…).',
+    }),
+    audioCodec: z.string().nullable().openapi({
+      description: 'Codec of the first audio stream (`aac`, `pcm_s16le`…); null when silent.',
+    }),
+    frameRate: z.number().nullable().openapi({ description: 'Frames per second of videos.' }),
+    pageCount: z
+      .int()
+      .min(1)
+      .nullable()
+      .openapi({
+        description:
+          'Pages of a PDF; null for other files and for PDFs the server could not read ' +
+          '(encrypted with a password to open, broken) or has no poppler for.',
+      }),
+    proxy: AssetProxy.nullable().openapi({
+      description:
+        'Playable MP4 copy of a video in a format browsers do not play. Null for other ' +
+        'files and for videos that already play (H.264 MP4, WebM): use `url` then.',
+    }),
     status: AssetStatus,
     url: z.string().openapi({
       description:
@@ -43,7 +114,12 @@ export const Asset = z
       description:
         'WebP thumbnails, smallest first, empty until `status` is `ready`. Sizes wider than ' +
         'the original are skipped. For videos they show a poster frame, when the server has ' +
-        'ffmpeg (Instance.media.videoPosters); otherwise videos have none.',
+        'ffmpeg (Instance.media.videoPosters); otherwise videos have none. Camera RAW files ' +
+        '(`mime` in RAW_IMAGE_TYPES) get them from the JPEG preview the camera embedded, ' +
+        'when the server has exiftool (Instance.media.rawPreviews); none when there is no ' +
+        'preview. PDFs get them from page 1 (Instance.media.pdfPreviews), and `width` and ' +
+        '`height` are then the size of that rendered page, for its aspect ratio; none when ' +
+        'the PDF does not render.',
     }),
     exif: z.record(z.string(), z.unknown()).nullable().openapi({
       description: 'Camera and exposure data. Location (GPS) fields are never stored.',

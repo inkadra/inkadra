@@ -19,6 +19,7 @@ import { createApp } from './http/app.ts';
 import { sweepClipTemp } from './http/clip-routes.ts';
 import type { Jobs } from './jobs.ts';
 import { createMailer } from './mailer.ts';
+import { sweepJobDirs } from './media/scratch.ts';
 import {
   createQueues,
   inlineJobs,
@@ -112,7 +113,25 @@ async function main() {
   const storage = createStorage(config);
   const tmpDir = join(config.DATA_DIR, 'tmp');
   await mkdir(tmpDir, { recursive: true });
-  const media = { db, storage, tmpDir, heic: config.HEIC_PREVIEWS };
+  // Scratch folders of media jobs a crash left behind (not those of a job still running).
+  const sweptJobs = await sweepJobDirs(tmpDir);
+  if (sweptJobs > 0) log.info({ swept: sweptJobs }, 'removed stale media job folders');
+  const media = {
+    db,
+    storage,
+    tmpDir,
+    heic: config.HEIC_PREVIEWS,
+    raw: config.RAW_PREVIEWS,
+    pdf: config.PDF_PREVIEWS,
+    proxies: {
+      enabled: config.VIDEO_PROXIES,
+      maxDurationS: config.VIDEO_PROXY_MAX_DURATION,
+      maxSourceBytes: config.VIDEO_PROXY_MAX_SOURCE_SIZE,
+      resolution: config.VIDEO_PROXY_RESOLUTION,
+      bitrate: config.VIDEO_PROXY_BITRATE,
+      threads: config.VIDEO_PROXY_THREADS,
+    },
+  };
   const transfers = transferDeps(config);
   const closers: Array<() => Promise<unknown>> = [
     async () => auth.closeSecurity(),
@@ -123,6 +142,7 @@ async function main() {
     if (!config.REDIS_URL) throw new Error('REDIS_URL is required by the worker.');
     const workers = await startWorkers(config.REDIS_URL, log, {
       ...media,
+      proxyConcurrency: config.VIDEO_PROXY_CONCURRENCY,
       mailer,
       publicUrl: config.PUBLIC_URL,
       instanceName: config.INSTANCE_NAME,

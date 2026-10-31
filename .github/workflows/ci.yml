@@ -63,6 +63,11 @@ jobs:
           test ! -s /tmp/drizzle-diff || { echo "Schema changed without a migration: run pnpm db:generate"; exit 1; }
       - name: Types
         run: pnpm turbo run typecheck
+      # The media worker tests skip what needs a tool the runner does not have.
+      - name: Media tools of the -media image
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq --no-install-recommends ffmpeg libimage-exiftool-perl poppler-utils
       - name: Unit and integration tests
         run: pnpm turbo run test
       - name: Licences of production dependencies
@@ -261,7 +266,7 @@ jobs:
           path: ${{ runner.temp }}/image.tar
           retention-days: 1
 
-  # The `-media` variant: same image plus ffmpeg. Checked here so a broken apt step or a
+  # The `-media` variant: same image plus ffmpeg, exiftool and poppler. Checked here so a broken apt step or a
   # missing binary fails before main publishes it.
   image-media:
     name: Docker image (media)
@@ -282,10 +287,13 @@ jobs:
             REVISION=${{ github.sha }}
             MEDIA=true
           load: true
-      - name: ffmpeg and ffprobe run as the image user
+      - name: Media tools run as the image user
         run: |
           docker run --rm --entrypoint ffmpeg "$IMAGE:ci-media" -hide_banner -version
           docker run --rm --entrypoint ffprobe "$IMAGE:ci-media" -hide_banner -version
+          docker run --rm --entrypoint exiftool "$IMAGE:ci-media" -ver
+          docker run --rm --entrypoint pdftoppm "$IMAGE:ci-media" -v
+          docker run --rm --entrypoint prlimit "$IMAGE:ci-media" --version
           docker image ls "$IMAGE"
       # ffmpeg brings its own libraries (codecs, X11, Mesa…): scan them like the standard image.
       - name: Fail on critical vulnerabilities that have a fix

@@ -18,7 +18,7 @@ const instance: Instance = {
   name: 'Inkadra',
   setupRequired: false,
   registration: 'invite',
-  media: { videoPosters: false, rawPreviews: false },
+  media: { videoPosters: false, rawPreviews: false, pdfPreviews: false, videoProxies: false },
   limits: { uploadMaxBytes: 0 },
   serverTime: '2026-10-27T00:00:00Z',
   auth: { emailPassword: true, magicLink: false, email: true, google: false, oidc: [] },
