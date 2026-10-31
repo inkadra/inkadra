@@ -35,5 +35,9 @@ export function saveViewport(
 
 /** A viewport moved by the part of the canvas the floating panels cover (#333). */
 export function shiftViewport(v: Viewport, inset: { left: number; top: number }, sign: 1 | -1) {
-  return { zoom: v.zoom, x: v.x + (sign * inset.left) / v.zoom, y: v.y + (sign * inset.top) / v.zoom };
+  return {
+    zoom: v.zoom,
+    x: v.x + (sign * inset.left) / v.zoom,
+    y: v.y + (sign * inset.top) / v.zoom,
+  };
 }
