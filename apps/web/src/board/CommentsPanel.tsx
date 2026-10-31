@@ -18,6 +18,7 @@ import {
   useCallback,
   useEffect,
   useId,
+  useLayoutEffect,
   useMemo,
   useReducer,
   useRef,
@@ -907,6 +908,20 @@ function Composer({
   const [error, setError] = useState<string | null>(null);
   const input = useRef<HTMLTextAreaElement>(null);
   const id = useId();
+  // Where the caret goes once a picked mention is in the field.
+  const pendingCaret = useRef<number | null>(null);
+
+  // Runs in the same task as the click that picked the mention, before the browser can deliver
+  // another key. Moving the caret from a later animation frame instead put it back before
+  // anything typed in the meantime ("per favore" became "er favorep").
+  useLayoutEffect(() => {
+    const at = pendingCaret.current;
+    if (at === null) return;
+    pendingCaret.current = null;
+    const el = input.current;
+    el?.focus();
+    el?.setSelectionRange(at, at);
+  }, [text]);
 
   useEffect(() => {
     if (!autoFocus) return;
@@ -938,11 +953,8 @@ function Composer({
     setText(next);
     setDismissed(true);
     const at = start + token.length;
-    requestAnimationFrame(() => {
-      input.current?.focus();
-      input.current?.setSelectionRange(at, at);
-      setCaret(at);
-    });
+    pendingCaret.current = at;
+    setCaret(at);
   };
 
   async function send(e: FormEvent) {
