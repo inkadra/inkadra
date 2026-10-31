@@ -13,13 +13,24 @@ import {
 } from '@inkadra/canvas-core';
 import { ASPECT_RATIOS, type AspectRatio, SHOT_SIZES, setBoardAspect } from '@inkadra/doc-schema';
 import { Button, EmptyState, Icon, IconButton, Select } from '@inkadra/ui';
-import { type DragEvent, memo, useId, useMemo, useState, useSyncExternalStore } from 'react';
+import {
+  type DragEvent,
+  memo,
+  useCallback,
+  useId,
+  useMemo,
+  useState,
+  useSyncExternalStore,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { useRegisterActions } from '../../commands/actions.ts';
+import { useSession } from '../../lib/session.tsx';
+import { Toast, UploadPanel } from '../chrome.tsx';
 import { CardReview } from '../CardReview.tsx';
 import { GuestVisibility, GuestVisibilityIcon, toggleGuestHidden } from '../guest-visibility.tsx';
 import { PresentationView } from '../PresentationView.tsx';
 import { type BoardStore, LOCAL } from '../store.ts';
+import { startUpload } from '../uploads.ts';
 import { aspectLabel, useBoardAspect } from './aspect.ts';
 import { DrawingEditor } from './DrawingEditor.tsx';
 import { estimatedDurationMs } from './duration.ts';
@@ -27,6 +38,13 @@ import { FramePanel } from './FramePanel.tsx';
 import { FramePicture } from './FramePicture.tsx';
 import { FrameVisibilityButton } from './FrameVisibilityButton.tsx';
 import { blurOnEnter, StatusChip, usePresetText } from './fields.tsx';
+import {
+  applyDrop,
+  type DropTarget,
+  insertIndexAt,
+  isFileDrag,
+  splitDropped,
+} from './storyboard-drop.ts';
 import { ViewOptions } from './ViewOptions.tsx';
 
 const FRAME_MIME = 'application/x-inkadra-frame';
@@ -35,6 +53,22 @@ type TileSize = (typeof TILE_SIZES)[number];
 const LOOSE = 'loose';
 
 const groupKey = (g: SceneGroup) => g.scene?.id ?? LOOSE;
+
+/** What the picture files being dragged over the storyboard would do, drawn before the drop. */
+type FileMark =
+  | { kind: 'replace'; frameId: string }
+  | { kind: 'insert'; scene: string; index: number }
+  | { kind: 'new-scene' };
+
+const sameMark = (a: FileMark | null, b: FileMark | null) =>
+  a === b ||
+  (!!a &&
+    !!b &&
+    a.kind === b.kind &&
+    (a.kind === 'replace' ? a.frameId === (b as typeof a).frameId : true) &&
+    (a.kind === 'insert'
+      ? a.scene === (b as typeof a).scene && a.index === (b as typeof a).index
+      : true));
 /** A frame counts as drawn once it has a picture or a pen drawing. */
 const isDrawn = (f: FrameElement) =>
   !!f.assetId || (f.strokes?.length ?? 0) > 0 || (f.shapes?.length ?? 0) > 0;
@@ -79,6 +113,10 @@ export function StoryboardView({
   const [selected, setSelected] = useState<string | null>(null);
   const [drawing, setDrawing] = useState<string | null>(null);
   const [drop, setDrop] = useState<{ scene: string; index: number } | null>(null);
+  const [fileMark, setFileMark] = useState<FileMark | null>(null);
+  const [toast, setToast] = useState<string | null>(null);
+  const closeToast = useCallback(() => setToast(null), []);
+  const { instance } = useSession();
   const opts = { userId, origin: LOCAL };
   // A scene deleted while it is the filter shows every scene again.
   const filter = groups.some((g) => groupKey(g) === sceneFilter) ? sceneFilter : null;
@@ -121,6 +159,83 @@ export function StoryboardView({
     store.undo.stopCapturing();
     moveFrames(store.doc, [id], sceneId, index, LOCAL);
   }
+
+  /** Where files dropped at the pointer would go; null where nothing can be dropped. */
+  function resolveDrop(e: DragEvent): { target: DropTarget; mark: FileMark } | null {
+    const el = e.target instanceof Element ? e.target : null;
+    const framePart = el?.closest<HTMLElement>('[data-story-frame]');
+    if (framePart) {
+      for (const g of groups) {
+        const index = g.frames.findIndex((f) => f.id === framePart.dataset.storyFrame);
+        const frame = g.frames[index];
+        if (frame)
+          return {
+            target: { kind: 'replace', frameId: frame.id, sceneId: g.scene?.id ?? null, index },
+            mark: { kind: 'replace', frameId: frame.id },
+          };
+      }
+      return null;
+    }
+    if (!el?.closest('.story__scroll')) return null;
+    const section = el.closest<HTMLElement>('[data-story-scene]');
+    // Below the last scene, or in the empty storyboard, files go to the end.
+    const group =
+      visible.find((g) => groupKey(g) === section?.dataset.storyScene) ?? visible.at(-1);
+    if (!group) return { target: { kind: 'new-scene' }, mark: { kind: 'new-scene' } };
+    const boxes = section
+      ? [...section.querySelectorAll('.story__tile')].map((tile) => tile.getBoundingClientRect())
+      : [];
+    // A collapsed scene shows no frames to aim at: it takes the files at its end.
+    const index =
+      !section || group.scene === null || boxes.length < group.frames.length
+        ? group.frames.length
+        : insertIndexAt(boxes, e.clientX, e.clientY);
+    return {
+      target: { kind: 'insert', sceneId: group.scene?.id ?? null, index },
+      mark: { kind: 'insert', scene: groupKey(group), index },
+    };
+  }
+
+  function onFileDragOver(e: DragEvent) {
+    if (!isFileDrag([...e.dataTransfer.types])) return;
+    // Cancelling the drag also keeps the browser from opening the file in place of the board.
+    e.preventDefault();
+    const hit = readOnly ? null : resolveDrop(e);
+    e.dataTransfer.dropEffect = hit ? 'copy' : 'none';
+    const mark = hit?.mark ?? null;
+    setFileMark((prev) => (sameMark(prev, mark) ? prev : mark));
+  }
+
+  function onFileDrop(e: DragEvent) {
+    if (!isFileDrag([...e.dataTransfer.types])) return;
+    e.preventDefault();
+    setFileMark(null);
+    const hit = readOnly ? null : resolveDrop(e);
+    if (!hit) return;
+    const { images, skipped } = splitDropped([...e.dataTransfer.files]);
+    if (skipped.length > 0) setToast(t('film.drop.notImage', { count: skipped.length }));
+    const max = instance?.limits.uploadMaxBytes ?? 0;
+    const tooBig = max > 0 ? images.filter((f) => f.size > max) : [];
+    if (tooBig[0]) setToast(t('board.errors.tooBig', { name: tooBig[0].name }));
+    applyDrop(
+      store,
+      hit.target,
+      images.filter((f) => !tooBig.includes(f)),
+      {
+        userId,
+        upload: (file, hooks) => startUpload({ file, projectId, boardId, ...hooks }),
+        onFailed: (file) => setToast(t('board.errors.upload', { name: file.name })),
+      },
+    );
+  }
+
+  /** Where the insertion marker stands in a scene: a reorder in progress, or dropped files. */
+  const markAt = (g: SceneGroup) =>
+    drop?.scene === groupKey(g)
+      ? drop.index
+      : fileMark?.kind === 'insert' && fileMark.scene === groupKey(g)
+        ? fileMark.index
+        : null;
 
   const total = estimatedDurationMs(frames);
   // Size, aspect and total sit in the bar; on a phone they fold into View options.
@@ -223,11 +338,21 @@ export function StoryboardView({
           </Button>
         )}
       </div>
-      <div className="story__main">
+      <div
+        className="story__main"
+        onDragOver={onFileDragOver}
+        onDragLeave={(e) => {
+          if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setFileMark(null);
+        }}
+        onDrop={onFileDrop}
+      >
         {groups.length > 0 && (
           <SceneList groups={groups} filter={filter} onFilter={setSceneFilter} />
         )}
-        <div className="story__scroll" data-scroll>
+        <div
+          className={`story__scroll${fileMark?.kind === 'new-scene' ? ' is-drop' : ''}`}
+          data-scroll
+        >
           {groups.length === 0 && (
             <div className="board-state">
               <EmptyState
@@ -269,11 +394,12 @@ export function StoryboardView({
                   boardAspect={boardAspect}
                   selected={f.id === selected}
                   readOnly={readOnly}
-                  dropBefore={!!g.scene && drop?.scene === g.scene.id && drop.index === i}
+                  dropBefore={markAt(g) === i}
+                  replacing={fileMark?.kind === 'replace' && fileMark.frameId === f.id}
                   onSelect={() => setSelected(f.id)}
                   onDraw={() => setDrawing(f.id)}
                   onDragOver={(e, after) => {
-                    if (!g.scene || readOnly) return;
+                    if (!g.scene || readOnly || isFileDrag([...e.dataTransfer.types])) return;
                     e.preventDefault();
                     const index = after ? i + 1 : i;
                     if (drop?.scene !== g.scene.id || drop.index !== index)
@@ -286,10 +412,10 @@ export function StoryboardView({
                 <li className="story__add-item">
                   <button
                     type="button"
-                    className={`story__add${g.scene && drop?.scene === g.scene.id && drop.index === g.frames.length ? ' is-drop' : ''}`}
+                    className={`story__add${markAt(g) === g.frames.length ? ' is-drop' : ''}`}
                     onClick={() => newFrame(g.scene?.id ?? null)}
                     onDragOver={(e) => {
-                      if (!g.scene) return;
+                      if (!g.scene || isFileDrag([...e.dataTransfer.types])) return;
                       e.preventDefault();
                       setDrop({ scene: g.scene.id, index: g.frames.length });
                     }}
@@ -316,9 +442,12 @@ export function StoryboardView({
             readOnly={readOnly}
             onClose={() => setSelected(null)}
             onDraw={() => setDrawing(current.id)}
+            dropping={fileMark?.kind === 'replace' && fileMark.frameId === current.id}
           />
         )}
       </div>
+      <UploadPanel />
+      {toast && <Toast text={toast} onClose={closeToast} />}
       {present && (
         <PresentationView
           store={store}
@@ -482,7 +611,7 @@ function SceneSection({
   const duration = formatDuration(estimatedDurationMs(frames));
   if (!scene) {
     return (
-      <section className="story__scene">
+      <section className="story__scene" data-story-scene={LOOSE}>
         <header className="story__scene-head">
           <span className="story__scene-title">{t('film.loose')}</span>
           <span className="story__scene-meta">
@@ -499,6 +628,7 @@ function SceneSection({
     <section
       className="story__scene"
       aria-label={t('film.scene.heading', { number: scene.number })}
+      data-story-scene={scene.id}
     >
       <header className="story__scene-head">
         <button
@@ -642,6 +772,7 @@ const FrameTile = memo(function FrameTile({
   selected,
   readOnly,
   dropBefore,
+  replacing,
   onSelect,
   onDraw,
   onDragOver,
@@ -654,6 +785,8 @@ const FrameTile = memo(function FrameTile({
   selected: boolean;
   readOnly: boolean;
   dropBefore: boolean;
+  /** Image files are being dragged over the picture: dropping them replaces it. */
+  replacing: boolean;
   onSelect: () => void;
   onDraw: () => void;
   onDragOver: (e: DragEvent, after: boolean) => void;
@@ -663,7 +796,7 @@ const FrameTile = memo(function FrameTile({
   const shot = presetText('film.shot', SHOT_SIZES, frame.shot);
   return (
     <li
-      className={`story__tile${selected ? ' is-selected' : ''}${dropBefore ? ' is-drop' : ''}`}
+      className={`story__tile${selected ? ' is-selected' : ''}${dropBefore ? ' is-drop' : ''}${replacing ? ' is-replace' : ''}`}
       draggable={!readOnly}
       onDragStart={(e) => {
         e.dataTransfer.setData(FRAME_MIME, frame.id);
@@ -679,6 +812,7 @@ const FrameTile = memo(function FrameTile({
       <button
         type="button"
         className="story__tile-pic"
+        data-story-frame={frame.id}
         onClick={onSelect}
         onDoubleClick={onDraw}
         aria-label={label}
