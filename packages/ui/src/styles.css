@@ -42,8 +42,10 @@ select {
   color: inherit;
 }
 
-:focus-visible,
-.ink-choice:has(> input:focus-visible) {
+/* Keep this selector alone: listed with `.ink-choice:has(…)` the build folded both into :is(),
+   which takes the specificity of its strongest member and beat every component that turns the
+   ring off (the search field, for one). The choice ring lives with the other .ink-choice rules. */
+:focus-visible {
   outline: none;
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--ink-accent-primary) 25%, transparent);
 }
@@ -944,6 +946,10 @@ select {
   margin: 0;
   opacity: 0;
   cursor: pointer;
+}
+.ink-choice:has(> input:focus-visible) {
+  outline: none;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ink-accent-primary) 25%, transparent);
 }
 .ink-choice > input:focus-visible {
   box-shadow: none;
