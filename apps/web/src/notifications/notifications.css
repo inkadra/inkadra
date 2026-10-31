@@ -41,6 +41,9 @@
   color: var(--ink-text-primary);
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
   outline: none;
+}
+/* The bell's popover grows from the bell; the Inbox page itself does not move. */
+.notifications:not(.notifications--fixed) {
   transform-origin: var(--ink-origin, top right);
   animation: ink-scale-in var(--ink-dur-fast) var(--ink-ease-out) backwards;
 }

@@ -15,7 +15,7 @@ let burstStart = 0;
 
 /**
  * Leaves a fading copy of `node` in its place. Call it while the node is still in the document,
- * from the cleanup of a layout effect. The copy has no ids and is hidden from assistive
+ * from the cleanup of a layout effect. The copy has no ids or types and is hidden from assistive
  * technology and from the pointer.
  */
 export function fadeOutCopy(node: Element | null): void {
@@ -28,9 +28,11 @@ export function fadeOutCopy(node: Element | null): void {
   }
   if (budget-- <= 0) return;
   const copy = node.cloneNode(true) as HTMLElement;
-  for (const el of [copy, ...copy.querySelectorAll('[id], [data-el], [data-testid]')]) {
+  // Nothing that finds the element by its identity or type should find its copy.
+  for (const el of [copy, ...copy.querySelectorAll('[id], [data-el], [data-type], [data-testid]')]) {
     el.removeAttribute('id');
     el.removeAttribute('data-el');
+    el.removeAttribute('data-type');
     el.removeAttribute('data-testid');
   }
   for (const name of [...copy.classList])

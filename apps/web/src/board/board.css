@@ -874,8 +874,11 @@
   width: auto;
   min-width: 220px;
   padding: 6px;
+  /* It opens above the Canvas button, aligned to its right edge. */
+  --ink-origin: bottom right;
 }
 .menu--canvas .menu__item {
+  border-radius: calc(var(--ink-radius-md) - 6px);
   height: 38px;
   padding: 0 10px 0 6px;
   font-size: 13px;
