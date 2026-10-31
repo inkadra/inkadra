@@ -33,10 +33,15 @@ export async function readPdfInfo(pdfinfo: string, file: string) {
     const stdout = await runTool(pdfinfo, [file], {
       timeoutMs: POPPLER_TIMEOUT_MS,
       memoryBytes: POPPLER_MEMORY,
-      maxBuffer: 256 * 1024,
+      // The Info dictionary (title, subject, keywords) comes first and can be huge.
+      maxBuffer: 16 * 1024 * 1024,
     });
     return parsePdfInfo(stdout.toString('utf8'));
-  } catch {
+  } catch (err) {
+    // Past even that, what was printed may still hold the page count.
+    const partial = (err as { code?: string; stdout?: Buffer }).stdout;
+    if ((err as { code?: string }).code === 'ERR_CHILD_PROCESS_STDIO_MAXBUFFER' && partial)
+      return parsePdfInfo(partial.toString('utf8'));
     return { pageCount: null, encrypted: false };
   }
 }
@@ -65,7 +70,8 @@ export async function renderFirstPage(pdftoppm: string, file: string, outPrefix:
         file,
         outPrefix,
       ],
-      { timeoutMs: POPPLER_TIMEOUT_MS, memoryBytes: POPPLER_MEMORY },
+      // A 2048 px PNG is a few MB; nothing it writes may grow past 256 MB.
+      { timeoutMs: POPPLER_TIMEOUT_MS, memoryBytes: POPPLER_MEMORY, fileBytes: 256 * 1024 ** 2 },
     );
   } catch {
     return null;

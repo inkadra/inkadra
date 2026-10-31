@@ -59,6 +59,9 @@ const rate = (value: string | undefined) => {
   return Number.isFinite(fps) && fps > 0 && fps < 1000 ? Math.round(fps * 1000) / 1000 : null;
 };
 
+/** Largest value of an `integer` column, and of a Node timer: longer durations are lies. */
+export const MAX_INT32 = 2 ** 31 - 1;
+
 const name = (value: string | undefined) =>
   value && /^[a-z0-9_.-]{1,40}$/i.test(value) ? value.toLowerCase() : null;
 
@@ -70,12 +73,14 @@ export function parseProbe(json: unknown): VideoInfo {
   const video = streams.find((s) => s.codec_type === 'video' && !s.disposition?.attached_pic);
   const audio = streams.find((s) => s.codec_type === 'audio');
   const seconds = Number(data.format?.duration);
+  const ms = Math.round(seconds * 1000);
   const rotation = Math.abs(video?.side_data_list?.find((d) => d.rotation)?.rotation ?? 0);
   const turned = rotation === 90 || rotation === 270;
   const size = (v: number | undefined) =>
     v !== undefined && Number.isInteger(v) && v > 0 ? v : null;
   return {
-    durationMs: Number.isFinite(seconds) && seconds > 0 ? Math.round(seconds * 1000) : null,
+    // A header can claim any length: one past what the row holds is discarded, not saved.
+    durationMs: Number.isFinite(ms) && ms > 0 && ms <= MAX_INT32 ? ms : null,
     width: size(turned ? video?.height : video?.width),
     height: size(turned ? video?.width : video?.height),
     videoCodec: name(video?.codec_name),
@@ -139,7 +144,7 @@ export async function extractPoster(
         'png',
         out,
       ],
-      { timeoutMs: 120_000, memoryBytes: FFMPEG_MEMORY },
+      { timeoutMs: 120_000, memoryBytes: FFMPEG_MEMORY, fileBytes: 256 * 1024 * 1024 },
     );
   const written = async () => (await stat(out).catch(() => null))?.size ?? 0;
   // Seeking past the end of a broken or variable-rate file writes nothing: try the start.
@@ -166,6 +171,8 @@ export interface ProxySettings {
   resolution: number;
   /** Peak video bitrate, as ffmpeg reads it (`5M`). */
   bitrate: string;
+  /** Encoder threads of one copy. */
+  threads: number;
 }
 
 export const DEFAULT_PROXY_SETTINGS: ProxySettings = {
@@ -174,7 +181,11 @@ export const DEFAULT_PROXY_SETTINGS: ProxySettings = {
   maxSourceBytes: 20 * 1024 ** 3,
   resolution: 1080,
   bitrate: '5M',
+  threads: 2,
 };
+
+/** Longest a copy may run, whatever the video: 4 hours. */
+export const PROXY_MAX_RUN_MS = 4 * 60 * 60 * 1000;
 
 /** 8-bit 4:2:0 H.264, which every browser decodes. */
 const plainH264 = (info: VideoInfo) =>
@@ -212,7 +223,41 @@ export function proxyPlan(
   if (settings.maxSourceBytes > 0 && sourceBytes > settings.maxSourceBytes) return 'skip';
   if (settings.maxDurationS > 0 && (info.durationMs ?? 0) > settings.maxDurationS * 1000)
     return 'skip';
+  // A video with no duration is still copied: `-t`, `-fs` and the timeout use the caps.
   return 'make';
+}
+
+/** Seconds a copy is planned for: the duration, else the limit of the instance or 4 hours. */
+function plannedSeconds(info: VideoInfo, settings: ProxySettings) {
+  const cap = settings.maxDurationS > 0 ? settings.maxDurationS : PROXY_MAX_RUN_MS / 4000;
+  return info.durationMs ? Math.min(info.durationMs / 1000, cap) : cap;
+}
+
+/** `5M` → 5 000 000 bits per second. */
+const bitsPerSecond = (bitrate: string) => {
+  const m = /^(\d+(?:\.\d+)?)([kKmM]?)$/.exec(bitrate);
+  const unit = { k: 1e3, m: 1e6 }[m?.[2]?.toLowerCase() ?? ''] ?? 1;
+  return m ? Number(m[1]) * unit : 5e6;
+};
+
+/** H.264 that already fits only changes container: the picture is copied, not re-encoded. */
+export function copiesVideo(info: VideoInfo, settings: ProxySettings) {
+  const short = Math.min(info.width ?? Infinity, info.height ?? Infinity);
+  return plainH264(info) && short <= settings.resolution;
+}
+
+/**
+ * Largest playable copy ffmpeg may write (`-fs`): half again what the peak bitrates give over
+ * the planned length (the source size for a remux), never more than the largest source.
+ */
+export function proxyMaxBytes(info: VideoInfo, settings: ProxySettings, sourceBytes: number) {
+  const margin = 16 * 1024 * 1024;
+  const estimate = copiesVideo(info, settings)
+    ? sourceBytes * 1.1
+    : (plannedSeconds(info, settings) * (bitsPerSecond(settings.bitrate) + 384_000) * 1.5) / 8;
+  const capped =
+    settings.maxSourceBytes > 0 ? Math.min(estimate, settings.maxSourceBytes * 1.1) : estimate;
+  return Math.ceil(capped + margin);
 }
 
 /** `5M` → `10M`: the rate-control buffer is two seconds at the peak rate. */
@@ -222,10 +267,14 @@ const doubled = (bitrate: string) => {
 };
 
 /** ffmpeg arguments of the playable copy of `input`, progress on stdout. */
-export function proxyArgs(input: string, output: string, info: VideoInfo, settings: ProxySettings) {
-  const short = Math.min(info.width ?? Infinity, info.height ?? Infinity);
-  // H.264 that already fits only changes container: the picture is copied, not re-encoded.
-  const copyVideo = plainH264(info) && short <= settings.resolution;
+export function proxyArgs(
+  input: string,
+  output: string,
+  info: VideoInfo,
+  settings: ProxySettings,
+  sourceBytes: number,
+) {
+  const copyVideo = copiesVideo(info, settings);
   const copyAudio = info.audioCodec === 'aac';
   const r = settings.resolution;
   // The shorter side at most `r` (1080 makes 1920×1080 or 1080×1920), never upscaled, even.
@@ -240,8 +289,9 @@ export function proxyArgs(input: string, output: string, info: VideoInfo, settin
     ...SAFE_INPUT,
     '-i',
     input,
+    // `V`, not `v`: video streams that are not cover art (attached pictures).
     '-map',
-    '0:v:0',
+    '0:V:0',
     '-map',
     '0:a:0?',
     '-sn',
@@ -271,6 +321,12 @@ export function proxyArgs(input: string, output: string, info: VideoInfo, settin
           'high',
         ]),
     ...(copyAudio ? ['-c:a', 'copy'] : ['-c:a', 'aac', '-b:a', '128k', '-ac', '2']),
+    '-threads',
+    String(settings.threads),
+    // Whatever the header says, the copy stops at the length and the size it is planned for.
+    ...(settings.maxDurationS > 0 ? ['-t', String(settings.maxDurationS)] : []),
+    '-fs',
+    String(proxyMaxBytes(info, settings, sourceBytes)),
     '-movflags',
     '+faststart',
     '-f',
@@ -282,9 +338,13 @@ export function proxyArgs(input: string, output: string, info: VideoInfo, settin
   ];
 }
 
+/** ffmpeg ran out of time: another attempt would too. */
+export class ProxyTimeout extends Error {}
+
 /**
  * Writes the playable H.264/AAC MP4 of `input` to `output`, calling `onProgress` with the
- * percent done (0–99) as ffmpeg reports it. Killed past `timeoutMs`.
+ * percent done (0–99) as ffmpeg reports it. Runs at a lower priority, with caps on memory and
+ * on the file it writes; killed past `timeoutMs` with ProxyTimeout.
  */
 export async function makeProxy(
   ffmpeg: string,
@@ -292,19 +352,31 @@ export async function makeProxy(
   output: string,
   info: VideoInfo,
   settings: ProxySettings,
-  opts: { timeoutMs: number; onProgress?: (percent: number) => void },
+  opts: { timeoutMs: number; sourceBytes: number; onProgress?: (percent: number) => void },
 ): Promise<void> {
   const [file, argv] = await limitedCommand(
     ffmpeg,
-    proxyArgs(input, output, info, settings),
-    FFMPEG_MEMORY,
+    proxyArgs(input, output, info, settings, opts.sourceBytes),
+    {
+      memoryBytes: FFMPEG_MEMORY,
+      // Above -fs: ffmpeg stops cleanly at its own limit, the kernel only past it.
+      fileBytes: proxyMaxBytes(info, settings, opts.sourceBytes) + 64 * 1024 * 1024,
+      nice: true,
+    },
   );
   await new Promise<void>((resolve, reject) => {
     const child = spawn(file, argv, { env: toolEnv(), stdio: ['ignore', 'pipe', 'pipe'] });
     let stderr = '';
     let pending = '';
     let last = -1;
-    const timer = setTimeout(() => child.kill('SIGKILL'), opts.timeoutMs);
+    let timedOut = false;
+    const timer = setTimeout(
+      () => {
+        timedOut = true;
+        child.kill('SIGKILL');
+      },
+      Math.min(opts.timeoutMs, MAX_INT32),
+    );
     child.stdout.setEncoding('utf8');
     child.stdout.on('data', (chunk: string) => {
       pending += chunk;
@@ -331,6 +403,8 @@ export async function makeProxy(
     child.on('close', (code, signal) => {
       clearTimeout(timer);
       if (code === 0) resolve();
+      else if (timedOut)
+        reject(new ProxyTimeout(`ffmpeg ran past ${Math.round(opts.timeoutMs / 60_000)} minutes`));
       else
         reject(
           new Error(
@@ -341,7 +415,11 @@ export async function makeProxy(
   });
 }
 
-/** Time a copy may take: four times the length of the video, at least ten minutes. */
-export function proxyTimeoutMs(info: VideoInfo) {
-  return Math.max(10 * 60_000, (info.durationMs ?? 30 * 60_000) * 4);
+/**
+ * Time a copy may take: four times its planned length (the duration, else the cap), at least
+ * ten minutes, at most four hours.
+ */
+export function proxyTimeoutMs(info: VideoInfo, settings: ProxySettings) {
+  const planned = plannedSeconds(info, settings) * 1000 * 4;
+  return Math.min(PROXY_MAX_RUN_MS, MAX_INT32, Math.max(10 * 60_000, planned));
 }

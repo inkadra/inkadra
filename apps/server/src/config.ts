@@ -84,8 +84,13 @@ const Env = z.object({
     .string()
     .regex(/^\d+(\.\d+)?[kKmM]?$/, 'Use a bitrate such as 5M or 2500k')
     .default('5M'),
-  /** Copies made at once by each worker; they are CPU heavy. */
-  VIDEO_PROXY_CONCURRENCY: z.coerce.number().int().min(1).max(8).default(1),
+  /**
+   * Copies made at once by each worker. Each takes up to 4 GiB of address space (about 1 to
+   * 2 GB of RAM in practice for 1080p) and VIDEO_PROXY_THREADS cores.
+   */
+  VIDEO_PROXY_CONCURRENCY: z.coerce.number().int().min(1).max(4).default(1),
+  /** Encoder threads of one copy; it runs at a lower priority (nice 10) than the web role. */
+  VIDEO_PROXY_THREADS: z.coerce.number().int().min(1).max(16).default(2),
   /**
    * Which peers may set X-Forwarded-For: `false`, or a comma-separated list of addresses,
    * CIDRs or the presets `loopback`, `linklocal`, `uniquelocal` (private networks, where a

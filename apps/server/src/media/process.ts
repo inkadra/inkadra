@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { mkdir, readFile, rm } from 'node:fs/promises';
+import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { pipeline } from 'node:stream/promises';
 import { MOVING_THUMBNAIL_MAX_WIDTH, ThumbnailSize } from '@inkadra/shared';
@@ -13,6 +13,7 @@ import { decodeHeic, sniffImage } from './heic.ts';
 import { palette } from './palette.ts';
 import { isPdf, readPdfInfo, renderFirstPage } from './pdf.ts';
 import { extractRawPreview, orientedPixels, readRawExif, sniffRaw } from './raw.ts';
+import { ensureFreeSpace, withJobDir } from './scratch.ts';
 import {
   DEFAULT_PROXY_SETTINGS,
   extractPoster,
@@ -132,7 +133,20 @@ async function sha256(storage: Storage, key: string) {
  * page 1 and their page count, with poppler.
  * Safe to run twice: variants are overwritten.
  */
-export async function processAsset(deps: MediaDeps, assetId: string, caps = ANIMATED_CAPS) {
+/** What a pass did, for the job result and the tests. */
+export interface ProcessResult {
+  skipped?: 'gone';
+  variants?: number;
+  animated?: number;
+  proxy?: (typeof asset.$inferInsert)['proxyStatus'];
+  pageCount?: number | null;
+}
+
+export async function processAsset(
+  deps: MediaDeps,
+  assetId: string,
+  caps = ANIMATED_CAPS,
+): Promise<ProcessResult> {
   const { db, storage } = deps;
   const [row] = await db.select().from(asset).where(eq(asset.id, assetId));
   if (!row) return { skipped: 'gone' as const };
@@ -157,93 +171,101 @@ export async function processAsset(deps: MediaDeps, assetId: string, caps = ANIM
     return { variants: 0 };
   }
 
-  const copy = await storage.localCopy(row.storageKey, join(deps.tmpDir, assetId));
-  const posterPath = join(deps.tmpDir, `${assetId}.poster.png`);
-  try {
-    if (video && tools?.ffmpeg) {
-      await mkdir(deps.tmpDir, { recursive: true });
-      const info: VideoInfo | null = tools.ffprobe
-        ? await probeVideo(tools.ffprobe, copy.path).catch(() => null)
-        : null;
-      const durationMs = info?.durationMs ?? null;
-      await extractPoster(tools.ffmpeg, copy.path, posterPath, durationMs);
-      const result = await thumbnails(deps, assetId, sharp(posterPath, { failOn: 'error' }));
-      const proxyStatus = await proxyState(deps, assetId, video, info, row.size);
+  return withJobDir(deps.tmpDir, async (dir) => {
+    const copy = await localSource(storage, row, dir);
+    const posterPath = join(dir, 'poster.png');
+    try {
+      if (video && tools?.ffmpeg) {
+        const info: VideoInfo | null = tools.ffprobe
+          ? await probeVideo(tools.ffprobe, copy.path).catch(() => null)
+          : null;
+        const durationMs = info?.durationMs ?? null;
+        await extractPoster(tools.ffmpeg, copy.path, posterPath, durationMs);
+        const result = await thumbnails(deps, assetId, sharp(posterPath, { failOn: 'error' }));
+        const proxyStatus = await proxyState(deps, assetId, video, info, row.size);
+        await save(db, assetId, result.variants, {
+          sha256: digest,
+          width: result.width,
+          height: result.height,
+          durationMs,
+          videoCodec: info?.videoCodec ?? null,
+          audioCodec: info?.audioCodec ?? null,
+          frameRate: info?.frameRate ?? null,
+          proxyStatus,
+          proxyProgress: proxyStatus === 'ready' ? 100 : null,
+          palette: result.palette,
+          status: 'ready',
+          animated: false,
+        });
+        if (proxyStatus === 'queued') await deps.enqueueProxy?.(assetId);
+        return { variants: result.variants.length, proxy: proxyStatus };
+      }
+
+      let mime = sniffed ?? row.mime;
+      let input: Sharp;
+      // Frames and frame size, for the moving variants: 1 frame for a still picture.
+      let frames = 1;
+      let frameWidth = 0;
+      let frameHeight = 0;
+      let delays: number[] | undefined;
+      if (mime === 'image/heic') {
+        if (!deps.heic) {
+          await db
+            .update(asset)
+            .set({ sha256: digest, mime, kind: 'image', status: 'ready', animated: false })
+            .where(eq(asset.id, assetId));
+          return { variants: 0 };
+        }
+        const image = await decodeHeic(await readFile(copy.path));
+        input = sharp(image.data, {
+          raw: { width: image.width, height: image.height, channels: 4 },
+        });
+      } else {
+        input = sharp(copy.path, { failOn: 'error', animated: false });
+        const meta = await input.metadata();
+        mime = (meta.format && SHARP_MIME[meta.format]) ?? mime;
+        frames = meta.pages ?? 1;
+        frameWidth = meta.width ?? 0;
+        frameHeight = meta.height ?? 0;
+        delays = meta.delay;
+      }
+
+      const exif = await readExif(copy.path);
+      const result = await thumbnails(deps, assetId, input);
+      let animated = 0;
+      if (frames > 1 && (mime === 'image/gif' || mime === 'image/webp')) {
+        animated = await animatedThumbnails(deps, assetId, copy.path, result.widths, caps, {
+          frames,
+          width: frameWidth,
+          height: frameHeight,
+          delays,
+        });
+      } else {
+        // A previous run may have made moving copies of a source that no longer moves.
+        await deps.storage.remove(animatedKeys(assetId));
+      }
       await save(db, assetId, result.variants, {
         sha256: digest,
+        mime,
+        kind: 'image',
         width: result.width,
         height: result.height,
-        durationMs,
-        videoCodec: info?.videoCodec ?? null,
-        audioCodec: info?.audioCodec ?? null,
-        frameRate: info?.frameRate ?? null,
-        proxyStatus,
-        proxyProgress: proxyStatus === 'ready' ? 100 : null,
+        exif,
         palette: result.palette,
         status: 'ready',
-        animated: false,
+        animated: animated > 0,
       });
-      if (proxyStatus === 'queued') await deps.enqueueProxy?.(assetId);
-      return { variants: result.variants.length, proxy: proxyStatus };
+      return { variants: result.variants.length, animated };
+    } finally {
+      await copy.done();
     }
+  });
+}
 
-    let mime = sniffed ?? row.mime;
-    let input: Sharp;
-    // Frames and frame size, for the moving variants: 1 frame for a still picture.
-    let frames = 1;
-    let frameWidth = 0;
-    let frameHeight = 0;
-    let delays: number[] | undefined;
-    if (mime === 'image/heic') {
-      if (!deps.heic) {
-        await db
-          .update(asset)
-          .set({ sha256: digest, mime, kind: 'image', status: 'ready', animated: false })
-          .where(eq(asset.id, assetId));
-        return { variants: 0 };
-      }
-      const image = await decodeHeic(await readFile(copy.path));
-      input = sharp(image.data, { raw: { width: image.width, height: image.height, channels: 4 } });
-    } else {
-      input = sharp(copy.path, { failOn: 'error', animated: false });
-      const meta = await input.metadata();
-      mime = (meta.format && SHARP_MIME[meta.format]) ?? mime;
-      frames = meta.pages ?? 1;
-      frameWidth = meta.width ?? 0;
-      frameHeight = meta.height ?? 0;
-      delays = meta.delay;
-    }
-
-    const exif = await readExif(copy.path);
-    const result = await thumbnails(deps, assetId, input);
-    let animated = 0;
-    if (frames > 1 && (mime === 'image/gif' || mime === 'image/webp')) {
-      animated = await animatedThumbnails(deps, assetId, copy.path, result.widths, caps, {
-        frames,
-        width: frameWidth,
-        height: frameHeight,
-        delays,
-      });
-    } else {
-      // A previous run may have made moving copies of a source that no longer moves.
-      await deps.storage.remove(animatedKeys(assetId));
-    }
-    await save(db, assetId, result.variants, {
-      sha256: digest,
-      mime,
-      kind: 'image',
-      width: result.width,
-      height: result.height,
-      exif,
-      palette: result.palette,
-      status: 'ready',
-      animated: animated > 0,
-    });
-    return { variants: result.variants.length, animated };
-  } finally {
-    await copy.done();
-    await rm(posterPath, { force: true });
-  }
+/** A path to the original inside the job folder `dir`, after checking a download fits. */
+async function localSource(storage: Storage, row: typeof asset.$inferSelect, dir: string) {
+  if (storage.copiesToLocal) await ensureFreeSpace(dir, row.size, 'the copy of the original');
+  return storage.localCopy(row.storageKey, dir);
 }
 
 /**
@@ -265,38 +287,39 @@ async function processRaw(
     await save(db, row.id, [], plain);
     return { variants: 0 };
   }
-  await mkdir(deps.tmpDir, { recursive: true });
-  const copy = await storage.localCopy(row.storageKey, join(deps.tmpDir, row.id));
-  try {
-    const [preview, meta] = await Promise.all([
-      extractRawPreview(exiftool, copy.path, join(deps.tmpDir, `${row.id}.previews`)),
-      readRawExif(exiftool, copy.path),
-    ]);
-    const pixels = preview
-      ? await orientedPixels(preview, meta.orientation).catch((err) => {
-          // A broken preview is not a broken upload: the RAW is kept, without thumbnails.
-          deps.log?.warn({ err, assetId: row.id }, 'RAW preview does not decode');
-          return null;
-        })
-      : null;
-    if (!pixels) {
-      await save(db, row.id, [], { ...plain, exif: meta.exif });
-      return { variants: 0 };
+  return withJobDir(deps.tmpDir, async (dir) => {
+    const copy = await localSource(storage, row, dir);
+    try {
+      const [preview, meta] = await Promise.all([
+        extractRawPreview(exiftool, copy.path, join(dir, 'previews')),
+        readRawExif(exiftool, copy.path),
+      ]);
+      const pixels = preview
+        ? await orientedPixels(preview, meta.orientation).catch((err) => {
+            // A broken preview is not a broken upload: the RAW is kept, without thumbnails.
+            deps.log?.warn({ err, assetId: row.id }, 'RAW preview does not decode');
+            return null;
+          })
+        : null;
+      if (!pixels) {
+        await save(db, row.id, [], { ...plain, exif: meta.exif });
+        return { variants: 0 };
+      }
+      const { data, ...raw } = pixels;
+      const result = await thumbnails(deps, row.id, sharp(data, { raw }));
+      await save(db, row.id, result.variants, {
+        ...plain,
+        kind: 'image',
+        width: result.width,
+        height: result.height,
+        exif: meta.exif,
+        palette: result.palette,
+      });
+      return { variants: result.variants.length };
+    } finally {
+      await copy.done();
     }
-    const { data, ...raw } = pixels;
-    const result = await thumbnails(deps, row.id, sharp(data, { raw }));
-    await save(db, row.id, result.variants, {
-      ...plain,
-      kind: 'image',
-      width: result.width,
-      height: result.height,
-      exif: meta.exif,
-      palette: result.palette,
-    });
-    return { variants: result.variants.length };
-  } finally {
-    await copy.done();
-  }
+  });
 }
 
 /**
@@ -312,29 +335,29 @@ async function processPdf(deps: MediaDeps, row: typeof asset.$inferSelect, diges
     await save(db, row.id, [], { ...plain, pageCount: null });
     return { variants: 0 };
   }
-  await mkdir(deps.tmpDir, { recursive: true });
-  const copy = await storage.localCopy(row.storageKey, join(deps.tmpDir, row.id));
-  const prefix = join(deps.tmpDir, `${row.id}.page1`);
-  try {
-    const { pageCount } = await readPdfInfo(pdfinfo, copy.path);
-    const page = pageCount ? await renderFirstPage(pdftoppm, copy.path, prefix) : null;
-    if (!page) {
-      await save(db, row.id, [], { ...plain, pageCount });
-      return { variants: 0, pageCount };
+  return withJobDir(deps.tmpDir, async (dir) => {
+    const copy = await localSource(storage, row, dir);
+    const prefix = join(dir, 'page1');
+    try {
+      const { pageCount } = await readPdfInfo(pdfinfo, copy.path);
+      const page = pageCount ? await renderFirstPage(pdftoppm, copy.path, prefix) : null;
+      if (!page) {
+        await save(db, row.id, [], { ...plain, pageCount });
+        return { variants: 0, pageCount };
+      }
+      const result = await thumbnails(deps, row.id, sharp(page, { failOn: 'error' }));
+      await save(db, row.id, result.variants, {
+        ...plain,
+        pageCount,
+        width: result.width,
+        height: result.height,
+        palette: result.palette,
+      });
+      return { variants: result.variants.length, pageCount };
+    } finally {
+      await copy.done();
     }
-    const result = await thumbnails(deps, row.id, sharp(page, { failOn: 'error' }));
-    await save(db, row.id, result.variants, {
-      ...plain,
-      pageCount,
-      width: result.width,
-      height: result.height,
-      palette: result.palette,
-    });
-    return { variants: result.variants.length, pageCount };
-  } finally {
-    await copy.done();
-    await rm(`${prefix}.png`, { force: true });
-  }
+  });
 }
 
 /**

@@ -1,4 +1,4 @@
-import { mkdir, readdir, readFile, rm } from 'node:fs/promises';
+import { mkdir, readdir, readFile, rm, stat } from 'node:fs/promises';
 import { join } from 'node:path';
 import { RAW_IMAGE_TYPES } from '@inkadra/shared';
 import sharp, { type Sharp } from 'sharp';
@@ -8,6 +8,10 @@ import { runTool } from './tools.ts';
 /** Address space of one exiftool run: Perl reading a 100 MB RAW fits well within it. */
 const EXIFTOOL_MEMORY = 2 * 1024 ** 3;
 const EXIFTOOL_TIMEOUT_MS = 30_000;
+/** Largest embedded preview read: full-size JPEGs of 100 MP cameras stay well below it. */
+export const MAX_PREVIEW_BYTES = 64 * 1024 * 1024;
+/** Pixels sharp decodes of a preview: about 100 MP, past which the preview is refused. */
+export const MAX_PREVIEW_PIXELS = 100_000_000;
 
 const extension = (filename: string) => /\.([a-z0-9]+)$/i.exec(filename)?.[1]?.toLowerCase();
 
@@ -59,11 +63,19 @@ export async function extractRawPreview(
     await runTool(
       exiftool,
       ['-q', '-m', '-b', '-W', join(workDir, '%t.%s'), ...PREVIEW_TAGS.map((t) => `-${t}`), file],
-      { timeoutMs: EXIFTOOL_TIMEOUT_MS, memoryBytes: EXIFTOOL_MEMORY },
+      // No file it writes may be larger than the largest preview read.
+      {
+        timeoutMs: EXIFTOOL_TIMEOUT_MS,
+        memoryBytes: EXIFTOOL_MEMORY,
+        fileBytes: MAX_PREVIEW_BYTES,
+      },
     ).catch(() => null);
     let best: Buffer | null = null;
     for (const name of await readdir(workDir)) {
-      const data = await readFile(join(workDir, name));
+      const path = join(workDir, name);
+      const size = (await stat(path)).size;
+      if (size > MAX_PREVIEW_BYTES || size <= (best?.length ?? 0)) continue;
+      const data = await readFile(path);
       const jpeg = data[0] === 0xff && data[1] === 0xd8 && data[2] === 0xff;
       if (jpeg && data.length > (best?.length ?? 0)) best = data;
     }
@@ -142,7 +154,7 @@ export async function readRawExif(exiftool: string, file: string) {
  * swap order.
  */
 export async function orientedPixels(jpeg: Buffer, orientation: number) {
-  let { data, info } = await sharp(jpeg, { failOn: 'error' })
+  let { data, info } = await sharp(jpeg, { failOn: 'error', limitInputPixels: MAX_PREVIEW_PIXELS })
     .raw()
     .toBuffer({ resolveWithObject: true });
   const step = async (op: (s: Sharp) => Sharp) => {

@@ -19,6 +19,7 @@ import { createApp } from './http/app.ts';
 import { sweepClipTemp } from './http/clip-routes.ts';
 import type { Jobs } from './jobs.ts';
 import { createMailer } from './mailer.ts';
+import { sweepJobDirs } from './media/scratch.ts';
 import {
   createQueues,
   inlineJobs,
@@ -112,6 +113,9 @@ async function main() {
   const storage = createStorage(config);
   const tmpDir = join(config.DATA_DIR, 'tmp');
   await mkdir(tmpDir, { recursive: true });
+  // Scratch folders of media jobs a crash left behind (not those of a job still running).
+  const sweptJobs = await sweepJobDirs(tmpDir);
+  if (sweptJobs > 0) log.info({ swept: sweptJobs }, 'removed stale media job folders');
   const media = {
     db,
     storage,
@@ -125,6 +129,7 @@ async function main() {
       maxSourceBytes: config.VIDEO_PROXY_MAX_SOURCE_SIZE,
       resolution: config.VIDEO_PROXY_RESOLUTION,
       bitrate: config.VIDEO_PROXY_BITRATE,
+      threads: config.VIDEO_PROXY_THREADS,
     },
   };
   const transfers = transferDeps(config);

@@ -22,16 +22,26 @@ browser.
   H.264 that already fits is only remuxed (`-c:v copy`), and AAC sound is copied, so an MKV
   or MOV from a phone takes seconds. Metadata, chapters and subtitles are dropped.
 - **Limits.** Sources longer than `VIDEO_PROXY_MAX_DURATION` (2 h) or larger than
-  `VIDEO_PROXY_MAX_SOURCE_SIZE` (20 GB) are skipped. ffmpeg gets only the file protocol and a
-  list of demuxers (as for posters), a 4 GiB address space through `prlimit`, no environment
-  of the server, and four times the length of the video (at least 10 minutes) before it is
-  killed. Jobs run in their own BullMQ queue, `media-proxies`, one at a time per worker
-  (`VIDEO_PROXY_CONCURRENCY`), two attempts; without Redis they run one after the other in the
-  web process.
+  `VIDEO_PROXY_MAX_SOURCE_SIZE` (20 GB) are skipped. Whatever its header claims, the copy
+  stops at that length (`-t`) and at a size planned from the peak bitrates (`-fs`, half again
+  over the length; the source size for a remux); a video of unknown length is planned for the
+  cap, never for nothing, and durations past what an `integer` column holds are discarded.
+  ffmpeg gets only the file protocol and a list of demuxers (as for posters), the first video
+  stream that is not cover art (`-map 0:V:0`), `VIDEO_PROXY_THREADS` threads (2) at `nice 10`,
+  a 4 GiB address space and a file-size cap through `prlimit`, no environment of the server,
+  and four times the planned length (at least 10 minutes, at most 4 hours) before it is
+  killed. Free space is checked before the source is downloaded from a bucket and before
+  ffmpeg starts. Jobs run in their own BullMQ queue, `media-proxies`, one at a time per worker
+  (`VIDEO_PROXY_CONCURRENCY`, at most 4), two attempts, none after a timeout; a second pass of
+  the asset queues it again. Without Redis they run one after the other in the web process.
+- **Scratch files.** Every media job (copies, posters, RAW previews, PDF pages) works in a
+  folder of its own, `DATA_DIR/tmp/job-*`, removed when it ends; folders older than 6 hours,
+  left by a crash, are swept when the server starts.
 - **Storage.** The copy is the `proxy` row of `asset_variant` (`mime`, `bytes`), at
   `variants/<assetId>/proxy.mp4`, so it is removed with the asset like the thumbnails. It is
   never listed with the thumbnails. A second pass of the thumbnails keeps it: originals never
-  change. `VIDEO_PROXIES=false` turns copies off for an instance that would rather save the
+  change. Backups leave copies out, rows and files: they can be made again, and they restore
+  as `skipped`. A copy finished for an asset deleted meanwhile is removed. `VIDEO_PROXIES=false` turns copies off for an instance that would rather save the
   storage; the copies already made stay.
 - **API.** `Asset.proxy` is null when no copy is needed, else `{ status, progress, url, mime,
   width, height, size }` with `status` one of `queued`, `processing` (with `progress` in
@@ -54,6 +64,8 @@ browser.
   of the RAW (the preview is stored as the sensor saw it). EXIF comes from exiftool with the
   same fields as photos and the same rule: no location. exiftool runs with a 2 GiB address
   space, 30 seconds, and no environment of the server.
+- Previews larger than 64 MB are not read (exiftool cannot write them either), and sharp
+  decodes at most about 100 megapixels of one.
 - No exiftool, `RAW_PREVIEWS=false`, or no usable preview: the asset is ready without
   thumbnails, with its RAW `mime`, and keeps the kind it was uploaded with. The original is
   downloaded as it is. `Instance.media.rawPreviews` says whether the instance makes them;

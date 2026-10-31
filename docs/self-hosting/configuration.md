@@ -43,16 +43,17 @@ or share the real `.env`.
 These need the `-media` image (see [The image](README.md#the-image)); the standard image has no
 media tools and ignores them. The policy is in [decision 0048](../decisions/0048-media-worker-previews.md).
 
-| Variable                      | Default | Meaning                                                                                                               |
-| ----------------------------- | ------- | --------------------------------------------------------------------------------------------------------------------- |
-| `RAW_PREVIEWS`                | `true`  | Thumbnails of camera RAW files (CR2, CR3, NEF, ARW, DNG, RAF, ORF, RW2) from the JPEG preview the camera embedded     |
-| `PDF_PREVIEWS`                | `true`  | Thumbnails of page 1 of PDFs and their page count, rendered once on upload                                            |
-| `VIDEO_PROXIES`               | `true`  | Make a playable H.264/AAC MP4 of videos browsers cannot play (ProRes, MKV, AVI, MXF, HEVC). `false` saves the storage |
-| `VIDEO_PROXY_MAX_DURATION`    | `7200`  | Longest video, in seconds, that gets a playable copy; `0` for no limit                                                |
-| `VIDEO_PROXY_MAX_SOURCE_SIZE` | `20GB`  | Largest video that gets a playable copy, as bytes or with a unit; `0` for no limit                                    |
-| `VIDEO_PROXY_RESOLUTION`      | `1080`  | Shorter side of the copy in pixels (`1080` gives 1920×1080 at most); never upscaled                                   |
-| `VIDEO_PROXY_BITRATE`         | `5M`    | Peak video bitrate of the copy (`5M`, `2500k`); about 40 MB per minute at `5M`                                        |
-| `VIDEO_PROXY_CONCURRENCY`     | `1`     | Copies one worker makes at once. Each uses the CPU fully while it runs                                                |
+| Variable                      | Default | Meaning                                                                                                                                                           |
+| ----------------------------- | ------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `RAW_PREVIEWS`                | `true`  | Thumbnails of camera RAW files (CR2, CR3, NEF, ARW, DNG, RAF, ORF, RW2) from the JPEG preview the camera embedded                                                 |
+| `PDF_PREVIEWS`                | `true`  | Thumbnails of page 1 of PDFs and their page count, rendered once on upload                                                                                        |
+| `VIDEO_PROXIES`               | `true`  | Make a playable H.264/AAC MP4 of videos browsers cannot play (ProRes, MKV, AVI, MXF, HEVC). `false` saves the storage                                             |
+| `VIDEO_PROXY_MAX_DURATION`    | `7200`  | Longest video, in seconds, that gets a playable copy; `0` for no limit                                                                                            |
+| `VIDEO_PROXY_MAX_SOURCE_SIZE` | `20GB`  | Largest video that gets a playable copy, as bytes or with a unit; `0` for no limit                                                                                |
+| `VIDEO_PROXY_RESOLUTION`      | `1080`  | Shorter side of the copy in pixels (`1080` gives 1920×1080 at most); never upscaled                                                                               |
+| `VIDEO_PROXY_BITRATE`         | `5M`    | Peak video bitrate of the copy (`5M`, `2500k`); about 40 MB per minute at `5M`                                                                                    |
+| `VIDEO_PROXY_CONCURRENCY`     | `1`     | Copies one worker makes at once, at most `4`. Count 1 to 2 GB of RAM per copy at 1080p (each is capped at 4 GiB of address space) and `VIDEO_PROXY_THREADS` cores |
+| `VIDEO_PROXY_THREADS`         | `2`     | Encoder threads of one copy. Copies run at a lower priority (`nice 10`) than the web role                                                                         |
 
 ## Compose only
 

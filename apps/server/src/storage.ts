@@ -32,6 +32,8 @@ import type { Config } from './config.ts';
 export interface Storage {
   /** Datastore for resumable uploads; file ids are storage keys. */
   readonly uploads: DataStore;
+  /** `localCopy` downloads the file (a bucket) rather than giving its path on this disk. */
+  readonly copiesToLocal?: boolean;
   size(key: string): Promise<number | null>;
   /** Byte range is inclusive, as in HTTP. */
   read(key: string, range?: { start: number; end: number }): Promise<Readable>;
@@ -161,6 +163,7 @@ function s3Storage(config: Config): Storage {
 
   return {
     uploads,
+    copiesToLocal: true,
     async size(key) {
       checkKey(key);
       try {

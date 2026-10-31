@@ -9,7 +9,7 @@ import sharp from 'sharp';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createDatabase, runMigrations } from '../db/client.ts';
 import { asset, assetVariant, project } from '../db/schema.ts';
-import { animatedVariantKey, originalKey, readAll } from '../storage.ts';
+import { animatedVariantKey, originalKey, proxyKey, readAll } from '../storage.ts';
 import { testDeps } from '../test-deps.ts';
 import { ANIMATED_CAPS, fitsAnimatedCaps, processAsset, variantWidths } from './process.ts';
 import { runProxy } from './proxy.ts';
@@ -578,6 +578,13 @@ describe.skipIf(!url)('processAsset (needs DATABASE_URL)', () => {
         expect(row?.proxyStatus).toBe('ready');
         expect(variants.some((v) => v.size === 'proxy')).toBe(true);
         expect(again.queued).toEqual([]);
+      });
+
+      it('removes a copy written for an asset deleted meanwhile', async () => {
+        const id = randomUUID();
+        await storage.write(proxyKey(id), Buffer.from('left over'), 'video/mp4');
+        expect(await runProxy(deps, id)).toEqual({ skipped: 'gone' });
+        expect(await storage.size(proxyKey(id))).toBeNull();
       });
 
       it('only remuxes H.264 out of Matroska, with the sound as AAC', async () => {

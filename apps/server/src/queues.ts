@@ -1,6 +1,6 @@
 import type { BoardNotice } from '@inkadra/doc-schema';
 import type { BackupSettings, BoardColumn } from '@inkadra/shared';
-import { Queue, QueueEvents, Worker } from 'bullmq';
+import { Queue, QueueEvents, UnrecoverableError, Worker } from 'bullmq';
 import { and, eq, lt } from 'drizzle-orm';
 import IORedis from 'ioredis';
 import type { Logger } from 'pino';
@@ -30,6 +30,7 @@ import type { Jobs } from './jobs.ts';
 import { type Mailer, noMailer } from './mailer.ts';
 import { type MediaDeps, markFailed, processAsset } from './media/process.ts';
 import { markProxyFailed, runProxy } from './media/proxy.ts';
+import { ProxyTimeout } from './media/video.ts';
 import { purgeNotifications, sendDigests, sendImmediateEmails } from './notifications.ts';
 import { clearExpiredGuestNames } from './share-links.ts';
 import { type Storage, UPLOAD_EXPIRY_MS } from './storage.ts';
@@ -119,12 +120,17 @@ export function createQueues(url: string, opts: { prefix?: string } = {}) {
       );
     },
     async makeProxy(assetId) {
+      // A finished or failed job keeps its id for a while, and an add with that id would do
+      // nothing: it goes first, so a second pass of the asset (an import, a retry) queues again.
+      const jobId = `proxy-${assetId}`;
+      const old = await proxies.getJob(jobId);
+      if (old && ['completed', 'failed'].includes(await old.getState())) await old.remove();
       // Two tries: a copy that fails twice is a source ffmpeg cannot read, not bad luck.
       await proxies.add(
         'make',
         { assetId },
         {
-          jobId: `proxy-${assetId}`,
+          jobId,
           attempts: 2,
           backoff: { type: 'fixed', delay: 60_000 },
           ...KEEP,
@@ -312,7 +318,13 @@ export async function startWorkers(
     async (job) => {
       if (job.name !== 'make') throw new Error(`Unknown job ${job.name}`);
       const { assetId } = job.data as JobPayloads['media-proxies:make'];
-      return runProxy(deps, assetId, (percent) => job.updateProgress(percent));
+      try {
+        return await runProxy(deps, assetId, (percent) => job.updateProgress(percent));
+      } catch (err) {
+        // A copy that ran out of time would run out of time again.
+        if (err instanceof ProxyTimeout) throw new UnrecoverableError(err.message);
+        throw err;
+      }
     },
     {
       connection,
@@ -321,8 +333,9 @@ export async function startWorkers(
       lockDuration: 5 * 60 * 1000,
     },
   );
-  proxies.on('failed', (job) => {
-    if (job && job.attemptsMade >= (job.opts.attempts ?? 1))
+  proxies.on('failed', (job, err) => {
+    // An UnrecoverableError (a timeout) ends the job before its last attempt.
+    if (job && (job.attemptsMade >= (job.opts.attempts ?? 1) || err instanceof UnrecoverableError))
       void markProxyFailed(deps.db, (job.data as JobPayloads['media-proxies:make']).assetId).catch(
         (e) => log.error({ err: e }, 'could not mark the playable copy failed'),
       );

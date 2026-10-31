@@ -1,9 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import {
   DEFAULT_PROXY_SETTINGS,
+  MAX_INT32,
+  PROXY_MAX_RUN_MS,
   parseProbe,
   proxyArgs,
+  proxyMaxBytes,
   proxyPlan,
+  proxyTimeoutMs,
   type VideoInfo,
   webPlayable,
 } from './video.ts';
@@ -66,6 +70,14 @@ describe('parseProbe', () => {
     });
     expect(parseProbe(null).videoCodec).toBeNull();
   });
+
+  it('discards a duration the row could not hold', () => {
+    const claim = (duration: string) => parseProbe({ format: { duration } }).durationMs;
+    expect(claim(String(MAX_INT32 / 1000))).toBe(MAX_INT32);
+    expect(claim('2147484')).toBeNull();
+    expect(claim('1e300')).toBeNull();
+    expect(claim('Infinity')).toBeNull();
+  });
 });
 
 describe('webPlayable', () => {
@@ -113,7 +125,9 @@ describe('proxyPlan', () => {
 });
 
 describe('proxyArgs', () => {
-  const args = (i: VideoInfo) => proxyArgs('/in', '/out.mp4', i, DEFAULT_PROXY_SETTINGS);
+  const args = (i: VideoInfo, settings = DEFAULT_PROXY_SETTINGS) =>
+    proxyArgs('/in', '/out.mp4', i, settings, 50 * 1024 ** 2);
+  const flagValue = (list: string[], flag: string) => list[list.indexOf(flag) + 1];
 
   it('only changes the container of H.264 that fits, re-encoding sound that is not AAC', () => {
     const remux = args(info({ audioCodec: 'opus' }));
@@ -132,5 +146,53 @@ describe('proxyArgs', () => {
     expect(line).toContain('+faststart');
     // 4K H.264 is scaled down rather than copied.
     expect(args(info({ width: 3840, height: 2160 })).join(' ')).toContain('libx264');
+  });
+
+  it('maps the first real video stream, never cover art', () => {
+    const list = args(info());
+    expect(list[list.indexOf('-map') + 1]).toBe('0:V:0');
+    expect(list).not.toContain('0:v:0');
+  });
+
+  it('caps the length, the size and the threads of the copy', () => {
+    const list = args(info({ videoCodec: 'prores' }));
+    expect(flagValue(list, '-t')).toBe('7200');
+    expect(flagValue(list, '-threads')).toBe('2');
+    // 10 s at 5 Mbit/s plus sound, half again, and a 16 MB margin.
+    expect(Number(flagValue(list, '-fs'))).toBe(
+      proxyMaxBytes(info({ videoCodec: 'prores' }), DEFAULT_PROXY_SETTINGS, 50 * 1024 ** 2),
+    );
+    expect(Number(flagValue(list, '-fs'))).toBeLessThan(30 * 1024 ** 2);
+    expect(args(info(), { ...DEFAULT_PROXY_SETTINGS, maxDurationS: 0 })).not.toContain('-t');
+    // A remux is as large as its source, not as the bitrate says.
+    const remux = Number(flagValue(args(info({ audioCodec: 'opus' })), '-fs'));
+    expect(remux).toBeGreaterThan(55 * 1024 ** 2);
+  });
+
+  it('plans a video of unknown length for the cap, not for nothing', () => {
+    const unknown = info({ videoCodec: 'prores', durationMs: null });
+    // 7200 s at 5.384 Mbit/s, half again: about 7 GB, never 0.
+    expect(proxyMaxBytes(unknown, DEFAULT_PROXY_SETTINGS, 1000)).toBeGreaterThan(6e9);
+    const noCap = { ...DEFAULT_PROXY_SETTINGS, maxDurationS: 0, maxSourceBytes: 0 };
+    // No limit of its own: the 4-hour run limit plans an hour of video.
+    expect(proxyMaxBytes(unknown, noCap, 1000)).toBeGreaterThan(3e9);
+    expect(proxyPlan('video/quicktime', unknown, 1000, DEFAULT_PROXY_SETTINGS)).toBe('make');
+  });
+});
+
+describe('proxyTimeoutMs', () => {
+  it('is four times the length, at least ten minutes, at most four hours', () => {
+    expect(proxyTimeoutMs(info({ durationMs: 60_000 }), DEFAULT_PROXY_SETTINGS)).toBe(600_000);
+    expect(proxyTimeoutMs(info({ durationMs: 30 * 60_000 }), DEFAULT_PROXY_SETTINGS)).toBe(
+      2 * 60 * 60_000,
+    );
+    expect(proxyTimeoutMs(info({ durationMs: MAX_INT32 }), DEFAULT_PROXY_SETTINGS)).toBe(
+      PROXY_MAX_RUN_MS,
+    );
+    // Unknown length: the cap of the instance, so four hours here too.
+    expect(proxyTimeoutMs(info({ durationMs: null }), DEFAULT_PROXY_SETTINGS)).toBe(
+      PROXY_MAX_RUN_MS,
+    );
+    expect(PROXY_MAX_RUN_MS).toBeLessThan(MAX_INT32);
   });
 });

@@ -18,6 +18,8 @@ export interface MediaTools {
   pdfinfo: string | null;
   /** `prlimit` (util-linux), to cap the memory of the others; null where there is none. */
   prlimit: string | null;
+  /** `nice` (coreutils), so a long transcode yields the CPU to the web role. */
+  nice: string | null;
 }
 
 let tools: Promise<MediaTools> | undefined;
@@ -39,15 +41,17 @@ async function find(variable: string, name: string, args: string[]) {
 
 export function mediaTools(): Promise<MediaTools> {
   tools ??= (async () => {
-    const [ffmpeg, ffprobe, exiftool, pdftoppm, pdfinfo, prlimit] = await Promise.all([
+    const linux = process.platform === 'linux';
+    const [ffmpeg, ffprobe, exiftool, pdftoppm, pdfinfo, prlimit, nice] = await Promise.all([
       find('FFMPEG_PATH', 'ffmpeg', ['-version']),
       find('FFPROBE_PATH', 'ffprobe', ['-version']),
       find('EXIFTOOL_PATH', 'exiftool', ['-ver']),
       find('PDFTOPPM_PATH', 'pdftoppm', ['-v']),
       find('PDFINFO_PATH', 'pdfinfo', ['-v']),
-      process.platform === 'linux' ? find('PRLIMIT_PATH', 'prlimit', ['--version']) : null,
+      linux ? find('PRLIMIT_PATH', 'prlimit', ['--version']) : null,
+      linux ? find('NICE_PATH', 'nice', ['--version']) : null,
     ]);
-    return { ffmpeg, ffprobe, exiftool, pdftoppm, pdfinfo, prlimit };
+    return { ffmpeg, ffprobe, exiftool, pdftoppm, pdfinfo, prlimit, nice };
   })();
   return tools;
 }
@@ -57,11 +61,19 @@ export function resetMediaTools() {
   tools = undefined;
 }
 
-export interface RunLimits {
+/** Caps a tool runs under, where prlimit and nice exist (Linux, the `-media` image). */
+export interface ProcessLimits {
+  /** Address space of the process: a decoder bomb fails instead of eating the RAM. */
+  memoryBytes?: number;
+  /** Largest file the process may write (`--fsize`): it is killed past it. */
+  fileBytes?: number;
+  /** Runs at `nice -n 10`, below the web role. */
+  nice?: boolean;
+}
+
+export interface RunLimits extends ProcessLimits {
   /** Killed past this. */
   timeoutMs: number;
-  /** Address space of the process, when prlimit is there; a decoder bomb fails instead. */
-  memoryBytes?: number;
   /** Largest stdout kept; past it the run fails. */
   maxBuffer?: number;
 }
@@ -75,16 +87,21 @@ export function toolEnv(): NodeJS.ProcessEnv {
   };
 }
 
-/** `bin args`, behind prlimit when there is one and a memory cap is asked for. */
+/** `bin args` under prlimit and nice, as `limits` asks and the system allows. */
 export async function limitedCommand(
   bin: string,
   args: string[],
-  memoryBytes?: number,
+  limits: ProcessLimits = {},
 ): Promise<[string, string[]]> {
-  const { prlimit } = await mediaTools();
-  return prlimit && memoryBytes
-    ? [prlimit, [`--as=${memoryBytes}`, '--', bin, ...args]]
-    : [bin, args];
+  const { prlimit, nice } = await mediaTools();
+  let command: [string, string[]] = [bin, args];
+  if (limits.nice && nice) command = [nice, ['-n', '10', ...command.flat()]];
+  const caps = [
+    ...(limits.memoryBytes ? [`--as=${Math.floor(limits.memoryBytes)}`] : []),
+    ...(limits.fileBytes ? [`--fsize=${Math.floor(limits.fileBytes)}`] : []),
+  ];
+  if (prlimit && caps.length > 0) command = [prlimit, [...caps, '--', ...command.flat()]];
+  return command;
 }
 
 /**
@@ -92,7 +109,7 @@ export async function limitedCommand(
  * a list, never through a shell. stdout comes back as bytes: embedded previews are binary.
  */
 export async function runTool(bin: string, args: string[], limits: RunLimits) {
-  const [file, argv] = await limitedCommand(bin, args, limits.memoryBytes);
+  const [file, argv] = await limitedCommand(bin, args, limits);
   const { stdout } = await exec(file, argv, {
     timeout: limits.timeoutMs,
     maxBuffer: limits.maxBuffer ?? 1024 * 1024,
