@@ -761,6 +761,7 @@ select {
       (var(--ink-sidebar-width) - var(--ink-launcher-size)) *
       var(--ink-follow-dir)
     );
+    translate: var(--ink-follow-x) 0;
     animation: var(--ink-follow-name) var(--ink-dur-slow) var(--ink-ease-out)
       var(--ink-follow-hold, 0s) backwards;
   }
@@ -878,15 +879,29 @@ select {
   }
 }
 
-/* Two names for one move, so turning back mid-slide starts the move again. */
+/* The follow runs on the main thread, frame for frame with the navigation's surface (whose
+   size moves there): as a compositor animation of translate it started a frame or two apart.
+   It moves a registered length that `translate` reads, still only a transform on screen.
+   Two names for one move, so turning back mid-slide starts the move again. */
+@property --ink-follow-x {
+  syntax: "<length>";
+  inherits: false;
+  initial-value: 0px;
+}
 @keyframes ink-follow-out {
   from {
-    translate: var(--ink-follow, 0px) 0;
+    --ink-follow-x: var(--ink-follow, 0px);
+  }
+  to {
+    --ink-follow-x: 0px;
   }
 }
 @keyframes ink-follow-in {
   from {
-    translate: var(--ink-follow, 0px) 0;
+    --ink-follow-x: var(--ink-follow, 0px);
+  }
+  to {
+    --ink-follow-x: 0px;
   }
 }
 
