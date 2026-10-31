@@ -2072,17 +2072,17 @@ export function Canvas({
           tool === 'arrow' ? 'canvas--arrow' : '',
           gesture.current?.kind === 'pan' ? 'canvas--panning' : '',
         ].join(' ')}
-        onPointerDown={onPointerDown}
-        onPointerMove={onPointerMove}
+        onPointerDown={outsideDialogs(onPointerDown)}
+        onPointerMove={outsideDialogs(onPointerMove)}
         onPointerLeave={() => presence.cursor(null)}
         onPointerUp={onPointerUp}
         onPointerCancel={onPointerUp}
         onLostPointerCapture={onLostPointerCapture}
-        onDoubleClick={onDoubleClick}
-        onContextMenu={onContextMenu}
-        onDragOver={onDragOver}
+        onDoubleClick={outsideDialogs(onDoubleClick)}
+        onContextMenu={outsideDialogs(onContextMenu)}
+        onDragOver={outsideDialogs(onDragOver)}
         onDragLeave={() => setDropHint(false)}
-        onDrop={onDrop}
+        onDrop={outsideDialogs(onDrop)}
         data-testid="canvas"
         aria-label={t('board.canvas')}
         role="application"
@@ -2469,13 +2469,16 @@ export function Canvas({
           />
         )}
         <UploadPanel />
-        {importingScript && (
-          <ScreenplayImportDialog
-            targets={['new']}
-            onImport={insertScreenplay}
-            onClose={() => setImportingScript(false)}
-          />
-        )}
+        {/* On the body: the dialog is the viewport's, not a card of the board. */}
+        {importingScript &&
+          createPortal(
+            <ScreenplayImportDialog
+              targets={['new']}
+              onImport={insertScreenplay}
+              onClose={() => setImportingScript(false)}
+            />,
+            document.body,
+          )}
         {linkDraft && (
           <LinkDraft
             at={worldToScreen(viewport, linkDraft.at)}
@@ -2527,6 +2530,18 @@ export function Canvas({
       </div>
     </BoardContext.Provider>
   );
+}
+
+/**
+ * A dialog is a child of the board in React's tree even though it sits in the top layer (or on
+ * the body), so its pointer and drop events bubble up to the board: pressing Cancel would start
+ * a marquee and a double click would add a note. The board leaves those events alone.
+ */
+function outsideDialogs<E extends { target: EventTarget }>(handler: (e: E) => void) {
+  return (e: E) => {
+    if ((e.target as HTMLElement).closest?.('dialog')) return;
+    handler(e);
+  };
 }
 
 function LinkDraft({

@@ -7,7 +7,7 @@ test.describe.configure({ mode: 'serial' });
 
 const admin = { name: 'Giulia', email: 'giulia@example.com', password: 'correct-horse-battery' };
 const fixtures = new URL('../../apps/web/src/board/film/screenplay/fixtures/', import.meta.url);
-let seeded: { projectId: string; storyboardId: string };
+let seeded: { projectId: string; storyboardId: string; canvasId: string };
 
 test.beforeAll(async ({ baseURL }) => {
   const base = baseURL as string;
@@ -29,18 +29,29 @@ test.beforeAll(async ({ baseURL }) => {
     kind: 'storyboard',
     title: 'Night platform',
   });
-  seeded = { projectId: project.id, storyboardId: storyboard.id };
+  const canvas = await post<{ id: string }>(`/projects/${project.id}/boards`, {
+    parentBoardId: project.rootBoardId,
+    kind: 'board',
+    title: 'Night canvas',
+  });
+  seeded = { projectId: project.id, storyboardId: storyboard.id, canvasId: canvas.id };
 });
 
-async function openStoryboard(page: Page) {
+async function signedIn(page: Page) {
   await page.goto('/login');
   await page.getByLabel('Email').fill(admin.email);
   await page.getByLabel('Password').fill(admin.password);
   await page.getByRole('button', { name: 'Accedi' }).click();
   await expect(page.getByRole('heading', { name: /Giulia$/ })).toBeVisible();
-  await page.goto(`/p/${seeded.projectId}/b/${seeded.storyboardId}`);
+}
+
+async function openBoard(page: Page, boardId: string) {
+  await signedIn(page);
+  await page.goto(`/p/${seeded.projectId}/b/${boardId}`);
   await expect(page.getByRole('status').getByText('Sincronizzato')).toBeVisible();
 }
+
+const openStoryboard = (page: Page) => openBoard(page, seeded.storyboardId);
 
 async function pick(page: Page, file: string) {
   const dialog = page.getByRole('dialog', { name: 'Importa una sceneggiatura' });
@@ -136,4 +147,59 @@ test('a Final Draft screenplay makes a new storyboard named after its title', as
   await expect(page.locator('.story__tile')).toHaveCount(3);
   await expect(page.locator('.story__tile-action').first()).toContainText('Rain hammers');
   await expect(page.getByRole('navigation').getByText('Last Train').first()).toBeVisible();
+});
+
+test('the import dialog opened from the Canvas toolbar is modal and the board stays out of it', async ({
+  page,
+}) => {
+  await openBoard(page, seeded.canvasId);
+  // A note to aim at, then nothing selected.
+  await page.locator('.canvas').dblclick({ position: { x: 60, y: 300 } });
+  const note = page.locator('.card--note');
+  await expect(note).toHaveCount(1);
+  await page.keyboard.type('Binario 9');
+  await page.keyboard.press('Escape');
+  await page.locator('.canvas').click({ position: { x: 900, y: 600 } });
+  const noteBox = (await note.boundingBox())!;
+  // Its left edge sticks out of the dialog that opens later, centred over the board.
+  const aim = { x: noteBox.x + 8, y: noteBox.y + noteBox.height / 2 };
+
+  const open = async () => {
+    await page.locator('.toolbar__btn--canvas').click();
+    await page.getByRole('menuitem', { name: 'Storyboard da sceneggiatura…' }).click();
+    const dialog = page.getByRole('dialog', { name: 'Importa una sceneggiatura' });
+    await expect(dialog).toBeVisible();
+    return dialog;
+  };
+  const dialog = await open();
+
+  // Fixed to the viewport, centred, with the board behind it.
+  const box = (await dialog.boundingBox())!;
+  expect(Math.abs(box.x + box.width / 2 - 720)).toBeLessThan(2);
+  expect(Math.abs(box.y + box.height / 2 - 450)).toBeLessThan(2);
+  expect(await dialog.evaluate((d) => d.matches(':modal'))).toBe(true);
+  expect(await dialog.evaluate((d) => d.closest('.canvas'))).toBeNull();
+  expect(aim.x).toBeLessThan(box.x);
+
+  // Panning the board does not move it, and a double click on it makes no note.
+  await page.mouse.move(aim.x, aim.y);
+  await page.mouse.wheel(200, 200);
+  expect(await dialog.boundingBox()).toEqual(box);
+  expect(await note.boundingBox()).toEqual(noteBox);
+  await dialog.getByRole('heading', { name: 'Importa una sceneggiatura' }).dblclick();
+  await expect(note).toHaveCount(1);
+  await expect(dialog).toBeVisible();
+
+  // Cancel is a button press, not the start of a text selection.
+  await dialog.getByRole('button', { name: 'Annulla' }).click();
+  await expect(dialog).toBeHidden();
+  await expect(note).toHaveCount(1);
+  await expect(page.locator('.card.is-selected')).toHaveCount(0);
+
+  // A click on the board behind the open dialog closes it and selects nothing.
+  const again = await open();
+  await page.mouse.click(aim.x, aim.y);
+  await expect(again).toBeHidden();
+  await expect(note).toHaveCount(1);
+  await expect(page.locator('.card.is-selected')).toHaveCount(0);
 });

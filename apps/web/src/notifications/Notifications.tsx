@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 import type { Notification, NotificationPreferences, UnreadCount } from '@inkadra/shared';
-import { Button, Icon, IconButton, Radio } from '@inkadra/ui';
+import { Button, Icon, IconButton, Radio, swallowOutsidePress } from '@inkadra/ui';
 import { type RefObject, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router';
@@ -328,12 +328,12 @@ export function NotificationList({
   useEffect(() => {
     const away = (e: PointerEvent) => {
       const target = e.target as Node;
-      if (!panel.current?.contains(target) && !bell?.current?.contains(target)) {
-        onNavigate();
-      }
+      if (panel.current?.contains(target) || bell?.current?.contains(target)) return;
+      swallowOutsidePress(e);
+      onNavigate();
     };
-    document.addEventListener('pointerdown', away);
-    return () => document.removeEventListener('pointerdown', away);
+    document.addEventListener('pointerdown', away, true);
+    return () => document.removeEventListener('pointerdown', away, true);
   }, [bell, onNavigate]);
 
   // Arrow navigation batches reads: only the item where scrolling stops is marked, ~400 ms later.

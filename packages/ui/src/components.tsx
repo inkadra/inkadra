@@ -2,6 +2,8 @@
 import {
   type ButtonHTMLAttributes,
   type InputHTMLAttributes,
+  type PointerEvent,
+  type MouseEvent as ReactMouseEvent,
   type ReactNode,
   type SyntheticEvent,
   useEffect,
@@ -356,7 +358,69 @@ export function EmptyState({
   );
 }
 
-/** Modal dialog on the native <dialog> element (focus trap and Escape for free). */
+const PRESSABLE =
+  'button, a[href], input, select, textarea, summary, label, [role="button"], [role="menuitem"], [role="option"], [role="tab"], [role="switch"], [role="checkbox"], [contenteditable="true"]';
+
+/**
+ * For the capture-phase `pointerdown` listener of a menu or popover that closes on an outside
+ * press: a press on empty space only closes it. Neither it nor the click that follows reaches
+ * what is underneath, the board included. A press on a control goes through, so one press
+ * still reaches another menu's button.
+ */
+export function swallowOutsidePress(event: Event) {
+  const target = event.target;
+  if (!(target instanceof Element) || target.closest(PRESSABLE)) return;
+  event.stopPropagation();
+  // The click follows the release at once. A press that never ends in one (a touch that turns
+  // into a scroll is cancelled) must not hold back a later click.
+  const pressed = new AbortController();
+  document.addEventListener('pointercancel', () => pressed.abort(), {
+    capture: true,
+    once: true,
+    signal: pressed.signal,
+  });
+  document.addEventListener(
+    'pointerup',
+    () => {
+      pressed.abort();
+      const swallow = (e: Event) => e.stopPropagation();
+      document.addEventListener('click', swallow, { capture: true, once: true });
+      setTimeout(() => document.removeEventListener('click', swallow, true), 0);
+    },
+    { capture: true, once: true, signal: pressed.signal },
+  );
+}
+
+/** True for a pointer or click event on the `::backdrop` of a modal <dialog>, not on its content. */
+function onBackdrop(e: PointerEvent<HTMLDialogElement> | ReactMouseEvent<HTMLDialogElement>) {
+  if (e.target !== e.currentTarget) return false;
+  const r = e.currentTarget.getBoundingClientRect();
+  return e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom;
+}
+
+/**
+ * Props for a modal <dialog> that asks to close when a click lands on its backdrop. The press
+ * must also have started there: selecting text and letting go outside does not close it, nor
+ * does a click made with the keyboard.
+ */
+export function useBackdropClick(onClick: (dialog: HTMLDialogElement) => void) {
+  const pressed = useRef(false);
+  return {
+    onPointerDown: (e: PointerEvent<HTMLDialogElement>) => {
+      pressed.current = onBackdrop(e);
+    },
+    onClick: (e: ReactMouseEvent<HTMLDialogElement>) => {
+      const hit = pressed.current && onBackdrop(e);
+      pressed.current = false;
+      if (hit) onClick(e.currentTarget);
+    },
+  };
+}
+
+/**
+ * Modal dialog on the native <dialog> element (focus trap and Escape for free). A click on the
+ * backdrop closes it like Escape does: `onCancel` can still keep it open.
+ */
 export function Dialog({
   open,
   title,
@@ -374,6 +438,11 @@ export function Dialog({
 }) {
   const ref = useRef<HTMLDialogElement>(null);
   const titleId = useId();
+  const backdrop = useBackdropClick((el) => {
+    const cancel = new Event('cancel', { cancelable: true });
+    el.dispatchEvent(cancel);
+    if (!cancel.defaultPrevented) el.close();
+  });
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
@@ -389,6 +458,7 @@ export function Dialog({
       ref={ref}
       className="ink-dialog"
       aria-labelledby={titleId}
+      {...backdrop}
       // React hands a dialog's close and cancel to the dialogs around it too: a dialog opened
       // from another one must not close that one.
       onClose={(event) => event.target === event.currentTarget && onClose()}

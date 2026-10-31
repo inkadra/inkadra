@@ -1,6 +1,14 @@
 /* biome-ignore-all lint/a11y/useSemanticElements: Custom radio tiles implement roving focus and arrow selection. */
 import { defaultProjectIcon, type Project, ProjectIcon, type z } from '@inkadra/shared';
-import { Button, Dialog, DialogActions, NavItem, ProjectGlyph, TextField } from '@inkadra/ui';
+import {
+  Button,
+  Dialog,
+  DialogActions,
+  NavItem,
+  ProjectGlyph,
+  swallowOutsidePress,
+  TextField,
+} from '@inkadra/ui';
 import {
   type CSSProperties,
   type KeyboardEvent,
@@ -77,13 +85,15 @@ export function useProjectMenu(
     menuRef.current?.querySelector<HTMLButtonElement>('[role="menuitem"]:not(:disabled)')?.focus();
     const dismiss = (event: PointerEvent) => {
       if (
-        !menuRef.current?.contains(event.target as Node) &&
-        !opener.current?.contains(event.target as Node)
+        menuRef.current?.contains(event.target as Node) ||
+        opener.current?.contains(event.target as Node)
       )
-        setMenu(null);
+        return;
+      swallowOutsidePress(event);
+      setMenu(null);
     };
-    document.addEventListener('pointerdown', dismiss);
-    return () => document.removeEventListener('pointerdown', dismiss);
+    document.addEventListener('pointerdown', dismiss, true);
+    return () => document.removeEventListener('pointerdown', dismiss, true);
   }, [menu]);
   /** Opens at `anchor`; focus returns to `focus` when the menu or its dialog closes. */
   const open = (anchor: HTMLElement, focus: HTMLElement | null, x?: number, y?: number) => {
