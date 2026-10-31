@@ -223,7 +223,7 @@ export async function renderNotifications(
       id: r.id,
       type: r.type,
       // Every event has an actor; once their account is gone the actor shows as deleted.
-      actor: authorOf(people, r.actorId, r.actorGuestId),
+      actor: r.type === 'link_opened' ? null : authorOf(people, r.actorId, r.actorGuestId),
       projectId: r.projectId,
       projectName: r.projectId ? (projectNames.get(r.projectId) ?? null) : null,
       boardId: r.boardId,
