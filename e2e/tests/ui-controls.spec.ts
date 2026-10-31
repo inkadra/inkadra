@@ -68,7 +68,13 @@ for (const [device, width, height] of [
         const before = await cover.isChecked();
         await cover.click();
         await expect(cover).toBeChecked({ checked: !before });
+        // The options were changed by hand: Escape asks before dropping them.
         await page.keyboard.press('Escape');
+        await expect(
+          dialog.getByRole('alertdialog', { name: 'Scartare le modifiche?' }),
+        ).toBeVisible();
+        await expect(dialog.getByRole('button', { name: 'Continua a modificare' })).toBeFocused();
+        await dialog.getByRole('button', { name: 'Scarta' }).click();
         await expect(dialog).toBeHidden();
       }
 

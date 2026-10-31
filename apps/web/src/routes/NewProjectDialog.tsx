@@ -5,7 +5,15 @@ import {
   type ProjectType,
   z,
 } from '@inkadra/shared';
-import { Button, ChoiceTile, Dialog, DialogActions, Select, TextField } from '@inkadra/ui';
+import {
+  Button,
+  ChoiceTile,
+  Dialog,
+  DialogActions,
+  type DialogHandle,
+  Select,
+  TextField,
+} from '@inkadra/ui';
 import { type FormEvent, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { castName, type ImportPlan } from '../board/film/screenplay/plan.ts';
@@ -40,9 +48,13 @@ export function NewProjectDialog({
 }) {
   const { t } = useTranslation();
   const [busy, setBusy] = useState(false);
+  const [dirty, setDirty] = useState(false);
+  const dialog = useRef<DialogHandle>(null);
   return (
     <Dialog
+      ref={dialog}
       open={open}
+      dirty={dirty}
       title={t('project.dialogTitle')}
       onClose={onClose}
       onCancel={(e) => {
@@ -65,9 +77,10 @@ export function NewProjectDialog({
       {open && (
         <ProjectSetupForm
           template={template}
-          onClose={onClose}
+          onClose={() => dialog.current?.requestClose()}
           onCreated={onCreated}
           onBusyChange={setBusy}
+          onDirtyChange={setDirty}
         />
       )}
     </Dialog>
@@ -79,11 +92,14 @@ export function ProjectSetupForm({
   onClose,
   onCreated,
   onBusyChange,
+  onDirtyChange,
 }: {
   template?: ProjectTemplate;
   onClose: () => void;
   onCreated: (p: Project) => void;
   onBusyChange?: (busy: boolean) => void;
+  /** Whether something was typed or chosen that closing would lose. */
+  onDirtyChange?: (dirty: boolean) => void;
 }) {
   const { catalogs, typeLabel } = useClassifications();
   const { t } = useTranslation();
@@ -115,6 +131,15 @@ export function ProjectSetupForm({
     onBusyChange?.(busy);
   }, [busy, onBusyChange]);
   const locked = busy || !!progress.current.project;
+  const dirty =
+    !created &&
+    !locked &&
+    !!(name.trim() || start || end || email.trim() || invites.length || screenplay);
+  useEffect(() => {
+    onDirtyChange?.(dirty);
+  }, [dirty, onDirtyChange]);
+  // Nothing is left to lose once the form is gone.
+  useEffect(() => () => onDirtyChange?.(false), [onDirtyChange]);
   const dateError = !!start && !!end && end < start;
   const addInvite = () => {
     const address = email.trim().toLowerCase();

@@ -12,6 +12,7 @@ import {
   type IconName,
   KeyCap,
   kindStyle,
+  swallowOutsidePress,
   type ToolKind,
   toolStyle,
 } from '@inkadra/ui';
@@ -632,7 +633,9 @@ export function ContextMenu({
       ?.focus();
     const away = (e: PointerEvent) => {
       const target = e.target as Node;
-      if (!ref.current?.contains(target) && !anchor?.current?.contains(target)) onClose('outside');
+      if (ref.current?.contains(target) || anchor?.current?.contains(target)) return;
+      swallowOutsidePress(e);
+      onClose('outside');
     };
     document.addEventListener('pointerdown', away, true);
     return () => document.removeEventListener('pointerdown', away, true);

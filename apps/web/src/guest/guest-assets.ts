@@ -2,7 +2,7 @@ import type { Asset, GuestAsset } from '@inkadra/shared';
 
 /**
  * Guest files in the shape the board's cards read. Pictures come only as the guest WebP
- * variants; `url` is the stream of an animatic's sound track, the original when the link
+ * variants; `url` is the original when the link
  * allows downloads, else the largest variant, so nothing on the page ever points at an
  * account path.
  */

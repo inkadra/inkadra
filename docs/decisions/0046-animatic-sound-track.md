@@ -1,7 +1,9 @@
 # 0046 · Animatic timeline and sound track
 
-Proposed, 2026-10. Extends the storyboard (decisions 0003 and later), guest views (decision
-0013) and project archives (decision 0037).
+Proposed, 2026-10. The user interface is superseded by
+[0047](0047-remove-animatic-and-sequence-modes.md); the data contract stays. Extends the
+storyboard (decisions 0003 and later), guest views (decision 0013) and project archives
+(decision 0037).
 
 **Context.** The storyboard already plays its frames in order, each for its `durationMs`, in an
 Animatic tab and in Present. Directors time an animatic against a temp track or a voice-over:

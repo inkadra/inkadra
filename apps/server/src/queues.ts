@@ -146,7 +146,8 @@ export function createQueues(url: string, opts: { prefix?: string } = {}) {
  * This is not a cleanup of unused files: a finished upload is kept whether or not a card
  * shows it. Anything that ever removes files no card uses must also look inside board
  * versions (`board_version`), because restoring a version brings its cards and their files
- * back (decision 0013).
+ * back (decision 0013), and count `meta.animaticAudio` as a reference: the storyboard keeps
+ * its sound track although no screen plays it (decision 0047).
  */
 export async function purgeUploads(db: Database, storage: Storage, jobs: Jobs) {
   const stale = await db

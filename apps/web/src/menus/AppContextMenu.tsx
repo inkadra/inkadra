@@ -1,3 +1,4 @@
+import { swallowOutsidePress } from '@inkadra/ui';
 import { type ReactNode, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
@@ -157,7 +158,9 @@ export function AppContextMenu({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!menu) return;
     const away = (event: PointerEvent) => {
-      if (!ref.current?.contains(event.target as Node)) setMenu(null);
+      if (ref.current?.contains(event.target as Node)) return;
+      swallowOutsidePress(event);
+      setMenu(null);
     };
     const dismiss = () => setMenu(null);
     document.addEventListener('pointerdown', away, true);

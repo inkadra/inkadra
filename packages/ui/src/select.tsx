@@ -9,6 +9,7 @@ import {
   useRef,
   useState,
 } from 'react';
+import { swallowOutsidePress } from './components.tsx';
 import { Icon } from './icons.tsx';
 
 export type SelectOption = {
@@ -133,14 +134,16 @@ export function Select({
     // On a phone the layer is the scrim around the sheet: its own click closes the sheet.
     const outside = (event: PointerEvent) => {
       const target = event.target as Node;
-      if (!el.contains(target) && !button.contains(target)) setOpen(false);
+      if (el.contains(target) || button.contains(target)) return;
+      swallowOutsidePress(event);
+      setOpen(false);
     };
-    document.addEventListener('pointerdown', outside);
+    document.addEventListener('pointerdown', outside, true);
     window.addEventListener('resize', position);
     window.addEventListener('scroll', position, true);
     return () => {
       el.hidePopover();
-      document.removeEventListener('pointerdown', outside);
+      document.removeEventListener('pointerdown', outside, true);
       window.removeEventListener('resize', position);
       window.removeEventListener('scroll', position, true);
     };

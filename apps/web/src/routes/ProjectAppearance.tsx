@@ -1,6 +1,15 @@
 /* biome-ignore-all lint/a11y/useSemanticElements: Custom radio tiles implement roving focus and arrow selection. */
 import { defaultProjectIcon, type Project, ProjectIcon, type z } from '@inkadra/shared';
-import { Button, Dialog, DialogActions, NavItem, ProjectGlyph, TextField } from '@inkadra/ui';
+import {
+  Button,
+  Dialog,
+  DialogActions,
+  type DialogHandle,
+  NavItem,
+  ProjectGlyph,
+  swallowOutsidePress,
+  TextField,
+} from '@inkadra/ui';
 import {
   type CSSProperties,
   type KeyboardEvent,
@@ -77,13 +86,15 @@ export function useProjectMenu(
     menuRef.current?.querySelector<HTMLButtonElement>('[role="menuitem"]:not(:disabled)')?.focus();
     const dismiss = (event: PointerEvent) => {
       if (
-        !menuRef.current?.contains(event.target as Node) &&
-        !opener.current?.contains(event.target as Node)
+        menuRef.current?.contains(event.target as Node) ||
+        opener.current?.contains(event.target as Node)
       )
-        setMenu(null);
+        return;
+      swallowOutsidePress(event);
+      setMenu(null);
     };
-    document.addEventListener('pointerdown', dismiss);
-    return () => document.removeEventListener('pointerdown', dismiss);
+    document.addEventListener('pointerdown', dismiss, true);
+    return () => document.removeEventListener('pointerdown', dismiss, true);
   }, [menu]);
   /** Opens at `anchor`; focus returns to `focus` when the menu or its dialog closes. */
   const open = (anchor: HTMLElement, focus: HTMLElement | null, x?: number, y?: number) => {
@@ -256,6 +267,7 @@ export function ProjectAppearanceDialog({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(false);
   const allowed = canEditProjectAppearance(project);
+  const dialog = useRef<DialogHandle>(null);
   useEffect(() => {
     document
       .querySelector<HTMLElement>('.project-appearance [role="tab"][aria-selected="true"]')
@@ -264,6 +276,12 @@ export function ProjectAppearanceDialog({
   const disabled = busy || !allowed;
   const payload = { ...icon, emoji: tab === 'symbol' ? null : icon.emoji };
   const valid = ProjectIcon.safeParse(payload).success && (tab !== 'emoji' || !!icon.emoji?.trim());
+  const dirty =
+    allowed &&
+    !busy &&
+    (payload.shape !== project.icon.shape ||
+      payload.color !== project.icon.color ||
+      (payload.emoji ?? null) !== (project.icon.emoji ?? null));
   async function save() {
     if (!allowed || !valid || busy) return;
     setBusy(true);
@@ -281,7 +299,9 @@ export function ProjectAppearanceDialog({
   return (
     <div className="phone-sheet project-appearance">
       <Dialog
+        ref={dialog}
         open
+        dirty={dirty}
         title={t('appearance.title')}
         onClose={onClose}
         onCancel={(event) => {
@@ -300,7 +320,7 @@ export function ProjectAppearanceDialog({
             className="project-appearance__close"
             aria-label={t('appearance.close')}
             disabled={busy}
-            onClick={onClose}
+            onClick={() => dialog.current?.requestClose()}
           >
             ×
           </button>
@@ -508,7 +528,7 @@ export function ProjectAppearanceDialog({
             >
               {t('appearance.reset')}
             </Button>
-            <Button type="button" disabled={busy} onClick={onClose}>
+            <Button type="button" disabled={busy} onClick={() => dialog.current?.requestClose()}>
               {t('project.cancel')}
             </Button>
             <Button type="submit" variant="primary" disabled={busy || !allowed || !valid}>

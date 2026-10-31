@@ -50,6 +50,7 @@ in order. An accepted decision is never rewritten: a later one supersedes it.
 | [0044](0044-character-and-location-cards.md)         | Character and location cards for the story bible                                       |
 | [0045](0045-image-crop-and-rotation.md)              | Non-destructive image crop and rotation                                                |
 | [0046](0046-animatic-sound-track.md)                 | Animatic timeline and sound track, played by guests                                    |
+| [0047](0047-remove-animatic-and-sequence-modes.md)   | Animatic and Sequence modes removed; their data is kept                                |
 
 Two decisions share the number 0025: they were accepted in parallel, and accepted records
 are not renumbered.

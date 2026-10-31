@@ -1,4 +1,4 @@
-import { Button } from '@inkadra/ui';
+import { Button, useBackdropClick } from '@inkadra/ui';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import * as Y from 'yjs';
@@ -30,6 +30,7 @@ export function NoteSideSheet({
   const body = store.map(noteId)?.get('body');
   const fragment = body instanceof Y.XmlFragment ? body : null;
   const count = useWordCount(fragment);
+  const backdrop = useBackdropClick(onClose);
   useEffect(() => {
     const dialog = ref.current;
     if (!dialog) return;
@@ -53,6 +54,7 @@ export function NoteSideSheet({
       aria-label={t('board.note.label')}
       data-chrome
       data-scroll
+      {...backdrop}
       onClose={onClose}
       onKeyDown={(event) => event.stopPropagation()}
       onCancel={(event) => {

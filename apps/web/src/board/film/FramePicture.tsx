@@ -10,8 +10,8 @@ import { PENS, strokePath, VIEW_W } from './strokes.ts';
 /**
  * The picture of a frame: its reference image, if any, under the pen drawing and its shapes,
  * in the frame's aspect ratio. `under` is drawn between the image and the drawing (the onion
- * skin), `children` on top (the live line while drawing). Memoized: the animatic re-renders on
- * every playback tick, the picture only when the frame changes.
+ * skin), `children` on top (the live line while drawing). Memoized: it redraws only when the
+ * frame changes.
  */
 export const FramePicture = memo(function FramePicture({
   assetId,
