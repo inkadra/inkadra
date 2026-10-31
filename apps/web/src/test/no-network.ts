@@ -8,7 +8,9 @@
  */
 function refuse(input: Parameters<typeof fetch>[0]): Promise<Response> {
   const url = input instanceof Request ? input.url : String(input);
-  return Promise.reject(new TypeError(`fetch failed: unit tests do not reach the network (${url})`));
+  return Promise.reject(
+    new TypeError(`fetch failed: unit tests do not reach the network (${url})`),
+  );
 }
 
 globalThis.fetch = refuse;

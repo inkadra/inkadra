@@ -911,9 +911,9 @@ function Composer({
   // Where the caret goes once a picked mention is in the field.
   const pendingCaret = useRef<number | null>(null);
 
-  // Runs in the same task as the click that picked the mention, before the browser can deliver
-  // another key. Moving the caret from a later animation frame instead put it back before
-  // anything typed in the meantime ("per favore" became "er favorep").
+  // Runs after the render that puts the mention in the field, in the same task as the click that
+  // picked it, so no key can arrive first. Moving the caret from a later animation frame put it
+  // back before anything typed in the meantime ("per favore" became "er favorep").
   useLayoutEffect(() => {
     const at = pendingCaret.current;
     if (at === null) return;
@@ -921,7 +921,7 @@ function Composer({
     const el = input.current;
     el?.focus();
     el?.setSelectionRange(at, at);
-  }, [text]);
+  });
 
   useEffect(() => {
     if (!autoFocus) return;
