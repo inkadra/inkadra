@@ -48,7 +48,6 @@
   margin: 24px 0;
 }
 .projects-page__filters label,
-.project-setup__invite-entry label,
 .project-type-field {
   display: flex;
   flex-direction: column;
@@ -201,28 +200,20 @@
 .onboarding-page__form {
   padding: 28px;
 }
+/* New project: the name and a start first; type, dates and team under one quiet disclosure. */
 .project-setup {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 12px;
 }
 .project-setup__fields {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 14px;
   border: 0;
   padding: 0;
   margin: 0;
   min-width: 0;
-}
-.project-setup__dates {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-}
-.project-setup__dates > * {
-  flex: 1;
-  min-width: 140px;
 }
 .project-setup fieldset fieldset {
   border: 0;
@@ -231,43 +222,200 @@
   min-width: 0;
 }
 .project-setup legend {
-  margin-bottom: 10px;
-  font-size: 13px;
-  font-weight: 600;
+  margin-bottom: 7px;
+  padding: 0;
+  font-size: 11.5px;
+  font-weight: 500;
+  color: var(--ink-text-secondary);
+}
+.project-setup__name .ink-field__label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+.project-setup__name .ink-input {
+  height: 44px;
+  padding: 0 12px;
+  font-size: 15px;
+  border-radius: var(--ink-radius-sm);
+}
+.project-setup__template-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+}
+.ink-tile--card.project-setup__template {
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  padding: 8px 9px;
+  border-color: transparent;
+  border-radius: var(--ink-radius-md);
+  font-size: 12px;
+  font-weight: 500;
+}
+.ink-tile--card.project-setup__template:has(> .ink-tile__input:checked) {
+  border-color: transparent;
+  background: var(--ink-accent-soft-bg);
+  box-shadow: inset 0 0 0 1.5px var(--ink-accent-primary);
+}
+.project-setup__template-icon {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 24px;
+  height: 24px;
+  border-radius: var(--ink-radius-sm);
+  background: var(--kind-bg);
+  color: var(--kind-fg);
+}
+.project-setup__template-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.project-setup__hint {
+  margin: 6px 0 0;
+  font-size: 11.5px;
+  color: var(--ink-text-muted);
+}
+.project-setup__details {
+  border-top: 1px solid var(--ink-border-default);
+  padding-top: 4px;
+}
+.project-setup__disclosure {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 36px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--ink-text-secondary);
+  font: inherit;
+  font-weight: 500;
+  text-align: start;
+  cursor: pointer;
+}
+.project-setup__disclosure:hover {
+  color: var(--ink-text-primary);
+}
+.project-setup__disclosure svg {
+  flex: none;
+}
+.project-setup__disclosure[aria-expanded="true"] svg {
+  transform: rotate(90deg);
+}
+.project-setup__disclosure small {
+  color: var(--ink-text-muted);
+  font-size: 12px;
+  font-weight: 400;
+}
+.project-setup__details-body {
+  display: grid;
+  gap: 12px;
+  padding-top: 6px;
 }
 .project-setup__choices {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 6px;
 }
-.project-setup__templates {
+.project-setup__dates {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px;
-}
-.project-setup__templates strong {
-  font-size: 12px;
-}
-.project-setup__templates small {
-  display: block;
-  margin-top: 4px;
-  line-height: 1.5;
-  font-size: 11px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
 }
 .project-setup__invite-entry {
   display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  align-items: end;
+  gap: 6px;
+  align-items: stretch;
 }
-.project-setup__invites ul,
+.project-setup__people {
+  flex: 1;
+}
+.project-setup__people .ink-input,
+.project-setup__invite-entry .ink-btn {
+  height: 36px;
+}
+.project-setup__invite-entry .project-setup__role {
+  width: auto;
+  flex: none;
+}
+.project-setup__invite-error {
+  margin: 6px 0 0;
+  font-size: 12px;
+  color: var(--ink-status-danger);
+}
+.project-setup__people-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.project-setup__people-list li {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+  padding: 2px;
+  border-radius: var(--ink-radius-full);
+  background: var(--ink-surface-3);
+  font-size: 11.5px;
+}
+.project-setup__person {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.project-setup__remove {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--ink-radius-full);
+  background: transparent;
+  color: var(--ink-text-muted);
+  cursor: pointer;
+}
+.project-setup__remove:hover {
+  color: var(--ink-text-primary);
+  background: var(--ink-surface-2);
+}
+.project-setup__import {
+  margin-right: auto;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--ink-text-secondary);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+.project-setup__import:hover {
+  color: var(--ink-text-primary);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.project-setup__import:disabled {
+  color: var(--ink-text-muted);
+  cursor: default;
+}
 .instance-checklist ul {
   list-style: none;
   padding: 0;
-}
-.project-setup__invites li {
-  font-size: 12px;
-  overflow-wrap: anywhere;
 }
 .instance-checklist {
   padding: 20px;
@@ -283,7 +431,8 @@
   line-height: 1.8;
 }
 .ink-dialog:has(.project-setup) {
-  width: min(780px, calc(100vw - 48px));
+  width: min(480px, calc(100vw - 48px));
+  border-radius: var(--ink-radius-lg);
   max-height: calc(100vh - 64px);
   overflow-y: auto;
 }
@@ -330,32 +479,9 @@
   .onboarding-page__form {
     padding: 20px 16px;
   }
-  .project-setup__templates {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
   .projects-page__items--list .project-card {
     grid-template-columns: 112px minmax(0, 1fr);
   }
-}
-/* "Have an Inkadra archive? Import project…" above the New project form. */
-.new-project__import {
-  margin: 0 0 12px;
-  font-size: 13px;
-}
-.new-project__import-link {
-  padding: 0;
-  border: 0;
-  background: transparent;
-  color: var(--ink-text-primary);
-  font: inherit;
-  font-weight: 500;
-  text-decoration: underline;
-  text-underline-offset: 2px;
-  cursor: pointer;
-}
-.new-project__import-link:disabled {
-  color: var(--ink-text-muted);
-  cursor: default;
 }
 /* Optional screenplay for the template's storyboard, under the templates. */
 .project-setup__script {
@@ -379,4 +505,32 @@
 .project-setup__script-text small {
   font-size: 11px;
   line-height: 1.5;
+}
+
+/* Phones: fields and their buttons line up at 44 px. */
+@media (width < 768px) {
+  .project-setup__people .ink-input,
+  .project-setup__invite-entry .ink-btn,
+  .project-setup__invite-entry .project-setup__role {
+    height: 44px;
+  }
+  .project-setup__remove {
+    width: 32px;
+    height: 32px;
+  }
+  /* The import link on its own line, Cancel and Create side by side under it. */
+  .project-setup__import {
+    flex-basis: 100%;
+    min-height: 32px;
+    text-align: start;
+  }
+  .project-setup .ink-dialog__actions > .ink-btn {
+    flex: 1;
+  }
+  .project-setup__script {
+    flex-wrap: wrap;
+  }
+  .project-setup__script-text {
+    flex-basis: 200px;
+  }
 }

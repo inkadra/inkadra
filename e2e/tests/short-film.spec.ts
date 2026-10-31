@@ -257,6 +257,7 @@ test('a short film is prepared from the moodboard to the shot list', async ({
     await page.getByRole('button', { name: 'Nuovo progetto' }).first().click();
     const dialog = page.getByRole('dialog', { name: 'Nuovo progetto' });
     await dialog.getByLabel('Nome del progetto').fill('Ultimo Treno');
+    await dialog.getByRole('button', { name: /^Dettagli/ }).click();
     await dialog.getByRole('radio', { name: 'Cortometraggio' }).check();
     await dialog.getByRole('radio', { name: /Pre-produzione film/ }).check();
     await dialog.getByRole('button', { name: 'Crea progetto' }).click();

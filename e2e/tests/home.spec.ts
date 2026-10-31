@@ -90,7 +90,7 @@ test('home shows today’s shooting day and starts from templates', async ({ pag
     .click();
   const dialog = page.getByRole('dialog', { name: 'Nuovo progetto' });
   await expect(dialog.getByRole('radio', { name: /Moodboard/ })).toBeChecked();
-  await dialog.getByRole('button', { name: 'Salta per ora' }).click();
+  await dialog.getByRole('button', { name: 'Annulla', exact: true }).click();
   await expect(dialog).toBeHidden();
 
   // Board layouts stay in New board.

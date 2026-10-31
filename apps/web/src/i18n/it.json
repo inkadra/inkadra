@@ -1801,7 +1801,6 @@
   },
   "onboarding": {
     "guidedSetup": "Configurazione guidata",
-    "pendingEmail": "Aggiungi l’indirizzo email alla lista degli inviti, oppure svuota il campo per creare il progetto.",
     "title": "Nuovo progetto",
     "firstTitle": "Il tuo primo progetto",
     "subtitle": "Scegli un modello, le date e invita il team. Potrai cambiare tutto dopo.",
@@ -1814,9 +1813,8 @@
       "photo_shoot": "Servizio foto",
       "documentary": "Documentario"
     },
-    "start": "Inizio riprese · facoltativo",
-    "end": "Fine riprese · facoltativo",
-    "template": "Parti da un modello",
+    "start": "Inizio riprese",
+    "end": "Fine riprese",
     "templates": {
       "production": {
         "name": "Pre-produzione film",
@@ -1852,8 +1850,7 @@
       "shotlist": "Shotlist e storyboard",
       "pitch": "Pitch cliente"
     },
-    "invite": "Invita il team · facoltativo",
-    "email": "Email",
+    "invite": "Team",
     "role": "Ruolo",
     "add": "Aggiungi",
     "remove": "Rimuovi",
@@ -1861,14 +1858,13 @@
     "noSmtp": "Senza SMTP gli inviti restano validi: copia i link e inviali tu.",
     "invalidEmail": "Inserisci un indirizzo email valido che non sia già nell’elenco.",
     "invalidDates": "La fine delle riprese deve seguire l’inizio.",
-    "partialError": "Il progetto esiste già. Riprova per completare board e inviti mancanti, oppure salta e aprilo da Progetti.",
+    "partialError": "Il progetto esiste già. Riprova per completare board e inviti mancanti, oppure chiudi e aprilo da Progetti.",
     "creating": "Creazione e sincronizzazione delle board…",
     "boards_one": "{{count}} board",
     "boards_other": "{{count}} board",
     "invitations_one": "{{count}} invito",
     "invitations_other": "{{count}} inviti",
     "summary": "Verranno creati $t(onboarding.boards, {\"count\": {{boards}} }) e $t(onboarding.invitations, {\"count\": {{invitations}} })",
-    "skip": "Salta per ora",
     "inviteResults": "Inviti creati",
     "sent": "Email inviata",
     "copyLink": "Copia il link e invialo al team",
@@ -1890,7 +1886,15 @@
       "drag": "Trascina file e link sul canvas.",
       "phone": "Dal telefono salva nei Non ordinati."
     },
-    "settingsPending": "Impostazioni, configurazione istanza incompleta"
+    "settingsPending": "Impostazioni, configurazione istanza incompleta",
+    "startFrom": "Parti da",
+    "details": "Dettagli",
+    "detailsHint": "tipo, date, team",
+    "clearDate": "Cancella {{label}}",
+    "people": "Persone o email",
+    "peoplePlaceholder": "Aggiungi persone o email…",
+    "createAndInvite_one": "Crea e invita ({{count}})",
+    "createAndInvite_other": "Crea e invita ({{count}})"
   },
   "settingsUi": {
     "profile": "Profilo",
@@ -2195,7 +2199,6 @@
   "transfer": {
     "exportMenu": "Esporta progetto…",
     "importMenu": "Importa progetto…",
-    "fromArchive": "Hai un archivio Inkadra?",
     "exportTitle": "Esporta «{{name}}»",
     "exportLead": "Uno zip con tutte le board, i file e i commenti, da conservare o da importare su un altro server Inkadra.",
     "included": "Incluso",
@@ -2243,7 +2246,8 @@
       "interrupted": "Il server si è fermato durante il lavoro. Riprova.",
       "cancelled": "Annullato.",
       "internal": "Qualcosa è andato storto. Riprova."
-    }
+    },
+    "importArchive": "Importa un archivio…"
   },
   "backups": {
     "title": "Backup",

@@ -12,7 +12,19 @@ vi.mock('../lib/session.tsx', () => ({
   useSession: () => ({ user: { id: 'me' }, instance: { auth: { email: false } } }),
 }));
 vi.mock('../lib/api.ts', () => ({
-  api: { post: vi.fn(), get: vi.fn(async () => structuredClone(DEFAULT_CLASSIFICATIONS)) },
+  api: {
+    post: vi.fn(),
+    get: vi.fn(async (path: string) =>
+      path.startsWith('/users/search')
+        ? {
+            items: [
+              { id: 'u1', name: 'Giulia Rossi', email: 'giulia@example.com', image: null },
+              { id: 'u2', name: 'Giorgio Bianchi', email: 'giorgio@example.com', image: null },
+            ],
+          }
+        : structuredClone(DEFAULT_CLASSIFICATIONS),
+    ),
+  },
 }));
 vi.mock('../board/boards.ts', () => ({ createBoard: vi.fn() }));
 // Collaboration seeding is covered separately; advance only when this test asks.
@@ -52,16 +64,41 @@ const button = (key: string) =>
 async function blank() {
   await input('input[maxlength="120"]', 'Last Run');
   await act(async () =>
-    host.querySelectorAll<HTMLInputElement>('input[name="projectTemplate"]')[5]?.click(),
+    host.querySelector<HTMLInputElement>('input[name="projectTemplate"][value="blank"]')?.click(),
   );
 }
-it('skips without creating data', async () => {
-  await act(async () => button('onboarding.skip')?.click());
+async function openDetails() {
+  await act(async () =>
+    host.querySelector<HTMLButtonElement>('.project-setup__disclosure')?.click(),
+  );
+}
+const people = 'input[role="combobox"]';
+const submit = () =>
+  act(async () =>
+    host
+      .querySelector('form')
+      ?.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })),
+  );
+it('shows only the name and the templates until Details opens', async () => {
+  expect(host.querySelector('input[name="projectType"]')).toBeNull();
+  expect(host.querySelector('input[type="date"]')).toBeNull();
+  expect(host.querySelector(people)).toBeNull();
+  expect(host.textContent).not.toContain('onboarding.skip');
+  await openDetails();
+  expect(host.querySelector('.project-setup__disclosure')?.getAttribute('aria-expanded')).toBe(
+    'true',
+  );
+  expect(host.querySelectorAll('input[type="date"]')).toHaveLength(2);
+  expect(host.querySelector(people)).not.toBeNull();
+});
+it('cancels without creating data', async () => {
+  await act(async () => button('project.cancel')?.click());
   expect(close).toHaveBeenCalledOnce();
   expect(api.post).not.toHaveBeenCalled();
 });
 it('creates metadata, waits for root sync, then opens the real project', async () => {
   await blank();
+  await openDetails();
   await input('input[type="date"]', '2026-11-02');
   await act(async () => host.querySelector<HTMLInputElement>('input[name="projectType"]')?.click());
   vi.mocked(api.post).mockResolvedValueOnce({ id: 'p', rootBoardId: 'root' } as Project);
@@ -76,18 +113,18 @@ it('creates metadata, waits for root sync, then opens the real project', async (
     shootingStart: '2026-11-02',
     shootingEnd: null,
   });
-  expect(host.textContent).toContain('onboarding.summary');
   expect(created).not.toHaveBeenCalled();
   await act(async () => advance());
   expect(created).toHaveBeenCalledWith({ id: 'p', rootBoardId: 'root' });
-  expect(host.textContent).not.toContain('onboarding.summary');
 });
 it('keeps a project and successful invites on failure; retries only missing invitations', async () => {
   await blank();
+  await openDetails();
   for (const email of ['one@example.com', 'two@example.com']) {
-    await input('input[type="email"]', email);
+    await input(people, email);
     await act(async () => button('onboarding.add')?.click());
   }
+  expect(button('onboarding.createAndInvite')).toBeDefined();
   const p = { id: 'p', rootBoardId: 'root' } as Project;
   const invitation = {
     id: 'i',
@@ -128,26 +165,63 @@ it('keeps a project and successful invites on failure; retries only missing invi
   expect(created).toHaveBeenCalledWith(p);
 });
 
-it('explains why an unadded email blocks project creation', async () => {
+it('does not let a half-typed email block Create, and invites a complete one', async () => {
   await blank();
-  await input('input[type="email"]', 'team@example.com');
-  expect(host.textContent).toContain('onboarding.pendingEmail');
-  expect(button('project.create')?.disabled).toBe(true);
-  await input('input[type="email"]', '');
+  await openDetails();
+  await input(people, 'team@');
   expect(host.textContent).not.toContain('onboarding.pendingEmail');
   expect(button('project.create')?.disabled).toBe(false);
+  await act(async () => button('onboarding.add')?.click());
+  expect(host.querySelector('[role="alert"]')?.textContent).toBe('onboarding.invalidEmail');
+  await input(people, 'team@example.com');
+  expect(host.querySelector('[role="alert"]')).toBeNull();
+  // A complete address left in the field is invited with the project.
+  expect(button('onboarding.createAndInvite')?.disabled).toBe(false);
+  vi.mocked(api.post).mockResolvedValueOnce({ id: 'p', rootBoardId: 'root' } as Project);
+  vi.mocked(api.post).mockResolvedValueOnce({
+    status: 'invited',
+    invitation: { id: 'i', email: 'team@example.com', emailSent: true, url: null },
+  });
+  await submit();
+  await act(async () => advance());
+  expect(api.post).toHaveBeenCalledWith('/invitations', {
+    kind: 'email',
+    projectId: 'p',
+    email: 'team@example.com',
+    role: 'editor',
+  });
+});
+
+it('suggests people on the instance and leaves out those already added', async () => {
+  await blank();
+  await openDetails();
+  await input(people, 'gi');
+  await act(async () => new Promise((r) => setTimeout(r, 300)));
+  expect(api.get).toHaveBeenCalledWith('/users/search?q=gi');
+  const options = () =>
+    [...host.querySelectorAll('[role="option"] .people-picker__name')].map((o) => o.textContent);
+  expect(options()).toEqual(['Giulia Rossi', 'Giorgio Bianchi']);
+  await act(async () => host.querySelector<HTMLElement>('[role="option"]')?.click());
+  expect(host.querySelector('.project-setup__people-list')?.textContent).toContain('Giulia Rossi');
+  expect(host.querySelector<HTMLInputElement>(people)?.value).toBe('');
+  await input(people, 'gio');
+  await act(async () => new Promise((r) => setTimeout(r, 300)));
+  expect(options()).toEqual(['Giorgio Bianchi']);
 });
 
 it('defaults to blank without creating child boards or template content', async () => {
   const choices = host.querySelectorAll<HTMLInputElement>('input[name="projectTemplate"]');
   expect([...choices].map((choice) => choice.checked)).toEqual([
-    false,
-    false,
-    false,
-    false,
-    false,
     true,
+    false,
+    false,
+    false,
+    false,
+    false,
   ]);
+  expect(host.querySelector('.project-setup__hint')?.textContent).toBe(
+    'onboarding.templates.blank.body',
+  );
   await input('input[maxlength="120"]', 'Blank project');
   const project = { id: 'p', rootBoardId: 'root' } as Project;
   vi.mocked(api.post).mockResolvedValueOnce(project);
@@ -172,6 +246,7 @@ it('offers configured active project types using stable identifiers', async () =
       projectTypes: [custom, { ...custom, id: 'retired', label: 'Retired', archived: true }],
     }),
   );
+  await openDetails();
   expect(host.textContent).toContain('Feature');
   expect(host.textContent).not.toContain('Retired');
   await blank();
@@ -194,5 +269,5 @@ it('starts from the template picked on Home', async () => {
   );
   const checked = host.querySelector<HTMLInputElement>('input[name="projectTemplate"]:checked');
   const radios = [...host.querySelectorAll<HTMLInputElement>('input[name="projectTemplate"]')];
-  expect(radios.indexOf(checked as HTMLInputElement)).toBe(1);
+  expect(radios.indexOf(checked as HTMLInputElement)).toBe(2);
 });

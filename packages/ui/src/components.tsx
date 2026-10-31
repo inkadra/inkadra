@@ -144,6 +144,77 @@ export function TextField({
   );
 }
 
+/**
+ * A date in the app's own field look: the label or the chosen date, a calendar icon, and the
+ * browser's picker on click. The native input stays underneath for typing and for forms.
+ */
+export function DateField({
+  label,
+  value,
+  onChange,
+  clearLabel,
+  className,
+  ...props
+}: Omit<InputHTMLAttributes<HTMLInputElement>, 'type' | 'value' | 'onChange'> & {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  /** Shown as a × button while a date is set. */
+  clearLabel?: string;
+}) {
+  const open = (input: HTMLInputElement) => {
+    try {
+      input.showPicker?.();
+    } catch {
+      // Not allowed outside a user gesture, or not supported: typing still works.
+    }
+  };
+  const shown = value
+    ? new Intl.DateTimeFormat(document.documentElement.lang || undefined, {
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric',
+      }).format(new Date(`${value}T00:00`))
+    : label;
+  return (
+    <div className={cx('ink-date', value && 'ink-date--set', className)}>
+      <span className="ink-date__text" aria-hidden="true">
+        {shown}
+      </span>
+      <input
+        {...props}
+        type="date"
+        className="ink-date__input"
+        aria-label={label}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        onClick={(e) => open(e.currentTarget)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            open(e.currentTarget);
+          }
+        }}
+      />
+      {value && clearLabel ? (
+        <button
+          type="button"
+          className="ink-date__clear"
+          aria-label={clearLabel}
+          disabled={props.disabled}
+          onClick={() => onChange('')}
+        >
+          <Icon name="close" size={14} />
+        </button>
+      ) : (
+        <span className="ink-date__icon" aria-hidden="true">
+          <Icon name="calendar" size={16} />
+        </span>
+      )}
+    </div>
+  );
+}
+
 export interface SliderProps
   extends Omit<
     InputHTMLAttributes<HTMLInputElement>,

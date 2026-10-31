@@ -105,6 +105,7 @@ for (const [device, width, height] of [
           .click();
       }
       const setup = page.getByRole('dialog', { name: 'Nuovo progetto' });
+      await setup.getByRole('button', { name: /^Dettagli/ }).click();
       const types = setup.getByRole('group', { name: 'Tipo di progetto' });
       await types.getByRole('radio').first().focus();
       await page.keyboard.press('ArrowRight');
