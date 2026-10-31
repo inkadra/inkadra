@@ -338,6 +338,7 @@ export function StoryboardView({
           </Button>
         )}
       </div>
+      {/* biome-ignore lint/a11y/noStaticElementInteractions: dropping picture files is a shortcut for "Upload an image" */}
       <div
         className="story__main"
         onDragOver={onFileDragOver}

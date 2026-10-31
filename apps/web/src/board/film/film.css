@@ -304,18 +304,18 @@
   border-radius: 2px;
   background: var(--ink-accent-primary);
 }
-.story__tile.is-replace .story__tile-pic,
-.film-panel__picture.is-drop {
-  outline: 2px solid var(--ink-accent-primary);
-  outline-offset: 2px;
-  border-radius: var(--ink-radius-xs);
-}
 .story__tile-pic {
   display: block;
   padding: 0;
   border: 0;
   background: none;
   cursor: pointer;
+}
+.story__tile.is-replace .story__tile-pic,
+.film-panel__picture.is-drop {
+  outline: 2px solid var(--ink-accent-primary);
+  outline-offset: 2px;
+  border-radius: var(--ink-radius-xs);
 }
 .story__tile-meta {
   display: flex;
