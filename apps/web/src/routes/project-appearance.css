@@ -16,7 +16,7 @@
   min-width: 36px;
   min-height: 36px;
   cursor: pointer;
-  border-radius: 6px;
+  border-radius: var(--ink-radius-sm);
 }
 .project-navigation__options:hover,
 .project-navigation__options:focus-visible {
@@ -29,10 +29,12 @@
   min-width: 220px;
   padding: 6px;
   border: 1px solid var(--ink-border-default);
-  border-radius: 8px;
+  border-radius: var(--ink-radius-md);
   background: var(--ink-surface-float);
   color: var(--ink-text-primary);
   box-shadow: 0 6px 24px #0003;
+  transform-origin: var(--ink-origin, top left);
+  animation: ink-scale-in var(--ink-dur-fast) var(--ink-ease-out) backwards;
 }
 .project-context-menu > button {
   display: block;
@@ -40,7 +42,7 @@
   width: 100%;
   text-align: start;
   border: 0;
-  border-radius: 4px;
+  border-radius: calc(var(--ink-radius-md) - 6px);
   color: inherit;
   background: transparent;
   cursor: pointer;
@@ -81,7 +83,7 @@
 }
 .project-appearance__preview {
   background: var(--ink-surface-2);
-  border-radius: 10px;
+  border-radius: var(--ink-radius-md);
 }
 .project-appearance__tile {
   width: 52px;
@@ -89,7 +91,7 @@
   display: grid;
   place-items: center;
   background: var(--project-bg);
-  border-radius: 10px;
+  border-radius: var(--ink-radius-md);
   flex: none;
 }
 .project-appearance__tile > svg {
@@ -111,13 +113,13 @@
   gap: 4px;
   padding: 4px;
   background: var(--ink-surface-2);
-  border-radius: 8px;
+  border-radius: var(--ink-radius-sm);
 }
 .project-appearance__tabs button {
   flex: 1;
   padding: 10px;
   border: 0;
-  border-radius: 6px;
+  border-radius: var(--ink-radius-sm);
   background: transparent;
   color: var(--ink-text-primary);
 }
@@ -140,7 +142,7 @@
   padding: 12px 4px;
   background: var(--ink-surface-1);
   border: 1px solid var(--ink-border-default);
-  border-radius: 8px;
+  border-radius: var(--ink-radius-sm);
   color: var(--ink-text-primary);
   cursor: pointer;
   min-height: 44px;

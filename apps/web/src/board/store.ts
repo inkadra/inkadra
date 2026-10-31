@@ -29,6 +29,8 @@ export class BoardStore {
   /** Rendered heights of elements whose height follows their content. */
   private heights = new Map<string, number>();
   private sizeVersion = 0;
+  /** Elements that just appeared, with the time: their cards pop in once (takeAdded). */
+  private added = new Map<string, number>();
 
   constructor(readonly doc: Y.Doc) {
     const { elements } = roots(doc);
@@ -60,6 +62,7 @@ export class BoardStore {
     if (touched.size === 0) return;
     const byId = new Map(this.snapshot.byId);
     let changed = false;
+    const added: string[] = [];
     for (const id of touched) {
       const map = elements.get(id);
       const next = map ? readElement(map) : null;
@@ -67,11 +70,19 @@ export class BoardStore {
       if (!next) {
         changed = byId.delete(id) || changed;
       } else if (!old || !sameElement(old, next)) {
+        if (!old) added.push(id);
         byId.set(id, next);
         changed = true;
       }
     }
     if (!changed) return;
+    // Not the first load of a board, nor a large sync after being offline: those just appear.
+    const local = events[0]?.transaction.local ?? false;
+    if (added.length > 0 && added.length <= 50 && (local || this.snapshot.byId.size > 0)) {
+      const now = performance.now();
+      for (const [id, at] of this.added) if (now - at > 1000) this.added.delete(id);
+      for (const id of added) this.added.set(id, now);
+    }
     this.index(byId);
     for (const l of this.listeners) l();
   };
@@ -102,6 +113,13 @@ export class BoardStore {
   };
 
   getSnapshot = () => this.snapshot;
+
+  /** True once for an element added in the last second, for its card to pop in. */
+  takeAdded(id: string): boolean {
+    const at = this.added.get(id);
+    this.added.delete(id);
+    return at !== undefined && performance.now() - at < 1000;
+  }
 
   subscribeSizes = (listener: () => void) => {
     this.sizeListeners.add(listener);

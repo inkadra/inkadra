@@ -11,6 +11,18 @@
   --ink-tooltip-bg: #232327;
   --ink-tooltip-fg: #EDEDED;
   --ink-tooltip-border: #FFFFFF14;
+  --ink-radius-xs: 4px;
+  --ink-radius-sm: 8px;
+  --ink-radius-md: 12px;
+  --ink-radius-lg: 16px;
+  --ink-radius-xl: 20px;
+  --ink-radius-full: 999px;
+  --ink-dur-fast: 120ms;
+  --ink-dur-base: 180ms;
+  --ink-dur-slow: 260ms;
+  --ink-ease-out: cubic-bezier(.22, 1, .36, 1);
+  --ink-ease-in: cubic-bezier(.4, 0, 1, 1);
+  --ink-ease-pop: cubic-bezier(.34, 1.4, .64, 1);
   --ink-bg-rail: #0E0E10;
   --ink-bg-app: #141416;
   --ink-bg-panel: #121214;

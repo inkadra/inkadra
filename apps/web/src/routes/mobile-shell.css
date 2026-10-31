@@ -139,7 +139,7 @@
     padding: 12px 4px 0;
     box-sizing: content-box;
     border: 0;
-    border-radius: 8px;
+    border-radius: var(--ink-radius-sm);
     background: transparent;
     color: var(--ink-text-primary);
     font: inherit;
@@ -177,7 +177,7 @@
     justify-content: center;
     gap: 4px;
     border: 0;
-    border-radius: 10px;
+    border-radius: var(--ink-radius-md);
     background: transparent;
     color: var(--ink-text-secondary);
     font: inherit;
@@ -195,7 +195,7 @@
     /* The pill grows around the icon without moving the label off the other tabs' line. */
     margin: -4px 0;
     padding: 4px 14px;
-    border-radius: 999px;
+    border-radius: var(--ink-radius-full);
     background: var(--ink-accent-button);
     color: var(--ink-on-accent);
   }
@@ -207,7 +207,7 @@
     top: 0;
     right: 8px;
     padding: 1px 4px;
-    border-radius: 8px;
+    border-radius: var(--ink-radius-sm);
     background: var(--ink-accent-primary);
     color: white;
   }
@@ -218,7 +218,7 @@
     height: 100dvh;
     max-height: 100dvh;
     box-sizing: border-box;
-    border-radius: 0 12px 12px 0;
+    border-radius: 0 var(--ink-radius-md) var(--ink-radius-md) 0;
     overflow-y: auto;
     padding: max(16px, env(safe-area-inset-top)) 12px max(16px, env(safe-area-inset-bottom))
       max(12px, env(safe-area-inset-left));

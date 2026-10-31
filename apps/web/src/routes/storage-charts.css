@@ -6,7 +6,7 @@
 }
 .storage-tiles > div {
   padding: 12px 14px;
-  border-radius: 10px;
+  border-radius: var(--ink-radius-md);
   background: var(--ink-surface-2);
 }
 .storage-tiles dt {
@@ -25,7 +25,7 @@
   height: 8px;
   margin: 12px 0 4px;
   overflow: hidden;
-  border-radius: 4px;
+  border-radius: var(--ink-radius-full);
   background: var(--ink-surface-2);
 }
 .storage-chart table {

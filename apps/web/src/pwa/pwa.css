@@ -8,12 +8,13 @@
   gap: 12px;
   max-width: calc(100vw - 32px);
   padding: 8px 8px 8px 14px;
-  border-radius: 10px;
+  border-radius: var(--ink-radius-md);
   background: var(--ink-surface-float);
   border: 1px solid var(--ink-border-default);
   box-shadow: 0 8px 24px rgb(0 0 0 / 0.35);
   color: var(--ink-text-primary);
   font-size: 12px;
+  animation: ink-rise-in var(--ink-dur-base) var(--ink-ease-out) backwards;
 }
 .pwa-update__action {
   padding: 0;
@@ -31,7 +32,7 @@
   height: 24px;
   padding: 0;
   border: 0;
-  border-radius: 6px;
+  border-radius: var(--ink-radius-sm);
   background: transparent;
   color: var(--ink-text-muted);
   cursor: pointer;

@@ -16,7 +16,7 @@
   gap: 4px;
   padding: 1px 6px;
   border: 1px solid var(--ink-border-default);
-  border-radius: 999px;
+  border-radius: var(--ink-radius-full);
   font-size: 11px;
   line-height: 1.5;
   white-space: nowrap;
@@ -41,7 +41,7 @@
   min-width: 18px;
   height: 18px;
   padding: 0 5px;
-  border-radius: 999px;
+  border-radius: var(--ink-radius-full);
   background: var(--ink-surface-3);
   color: var(--ink-text-primary);
   font-size: 11px;
@@ -82,7 +82,7 @@
   height: 20px;
   padding: 0 6px;
   border: 1px solid var(--ink-border-strong);
-  border-radius: 999px;
+  border-radius: var(--ink-radius-full);
   background: var(--ink-surface-float);
   color: var(--ink-text-secondary);
   font: inherit;
@@ -143,7 +143,7 @@
 .comment-pin-target span {
   max-width: 90%;
   padding: 6px 8px;
-  border-radius: 6px;
+  border-radius: var(--ink-radius-sm);
   background: var(--ink-surface-float);
 }
 .shots__pic-col {
@@ -161,11 +161,12 @@
   display: flex;
   flex-direction: column;
   border: 1px solid var(--ink-border-default);
-  border-radius: 12px;
+  border-radius: var(--ink-radius-lg);
   background: var(--ink-bg-panel);
   color: var(--ink-text-primary);
   box-shadow: -8px 0 32px rgba(0, 0, 0, 0.25);
   outline: none;
+  animation: ink-slide-in var(--ink-dur-slow) var(--ink-ease-out) backwards;
 }
 .comments-panel__head {
   display: flex;
@@ -305,7 +306,7 @@ button.review-link:hover:not(:disabled) {
   gap: 8px;
   padding: 6px 8px;
   border: 1px solid var(--ink-border-subtle);
-  border-radius: 8px;
+  border-radius: var(--ink-radius-sm);
   background: var(--ink-surface-1);
   color: var(--ink-text-primary);
   font: inherit;
@@ -326,7 +327,7 @@ button.review-link:hover:not(:disabled) {
   gap: 8px;
   padding: 12px;
   border: 1px solid var(--ink-border-subtle);
-  border-radius: 10px;
+  border-radius: var(--ink-radius-md);
   background: var(--ink-surface-1);
 }
 .review-current {
@@ -372,7 +373,7 @@ button.review-link:hover:not(:disabled) {
   gap: 8px;
   padding: 12px;
   border: 1px solid var(--ink-border-subtle);
-  border-radius: 10px;
+  border-radius: var(--ink-radius-md);
   background: var(--ink-surface-1);
 }
 .comment-thread.is-resolved {
@@ -439,7 +440,7 @@ button.review-link:hover:not(:disabled) {
   gap: 6px;
   padding: 8px;
   border: 1px solid var(--ink-danger-border);
-  border-radius: 8px;
+  border-radius: var(--ink-radius-sm);
   background: var(--ink-danger-bg);
 }
 .review-confirm p {
@@ -475,7 +476,7 @@ button.review-link:hover:not(:disabled) {
   margin: 0;
   padding: 4px;
   border: 1px solid var(--ink-border-default);
-  border-radius: 8px;
+  border-radius: var(--ink-radius-sm);
   background: var(--ink-surface-float);
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
 }
@@ -484,7 +485,7 @@ button.review-link:hover:not(:disabled) {
   width: 100%;
   padding: 6px 8px;
   border: 0;
-  border-radius: 6px;
+  border-radius: var(--ink-radius-sm);
   background: transparent;
   color: var(--ink-text-primary);
   font: inherit;

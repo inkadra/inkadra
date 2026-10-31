@@ -479,7 +479,7 @@ export function NotificationList({
                   fontSize: 11,
                   fontWeight: 600,
                   padding: '1px 7px',
-                  borderRadius: 99,
+                  borderRadius: 'var(--ink-radius-full)',
                   background: 'var(--ink-accent-primary)',
                   color: 'var(--ink-on-accent)',
                 }}

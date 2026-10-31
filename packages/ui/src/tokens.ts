@@ -136,13 +136,35 @@ export const light: Record<ColorToken, string> = {
 };
 
 export const space = { 1: 4, 2: 8, 3: 12, 4: 16, 6: 24, 8: 32, 12: 48 } as const;
-export const radius = { handle: 2, key: 4, menu: 6, control: 8, card: 10, panel: 12 } as const;
 export const layout = { rail: 52, sidebar: 210, header: 48, inspector: 300, grid: 22 } as const;
+
+/**
+ * Corner radii (decision of #332): xs badges and small chips, sm buttons, fields and menu items,
+ * md cards, menus and popovers, lg dialogs and floating panels, xl phone sheets, full pills and
+ * avatars. A radius inside a padded box stays concentric: outer radius minus the padding.
+ * Hairlines of 1-3 px (focus rings, thin bars) are the only raw values left in the CSS.
+ */
+export const radius = {
+  'radius-xs': '4px',
+  'radius-sm': '8px',
+  'radius-md': '12px',
+  'radius-lg': '16px',
+  'radius-xl': '20px',
+  'radius-full': '999px',
+} as const;
+
+/**
+ * Motion (#332): fast for hovers, presses, menus and exits; base for dialogs, toasts and cards
+ * that appear; slow for panels. Ease out to enter, ease in to leave, pop for new cards.
+ * Only transform and opacity move; reduced motion turns movement into a fade or nothing.
+ */
 export const motion = {
-  hover: '120ms',
-  menu: '180ms',
-  panel: '240ms',
-  ease: 'cubic-bezier(.2,.8,.2,1)',
+  'dur-fast': '120ms',
+  'dur-base': '180ms',
+  'dur-slow': '260ms',
+  'ease-out': 'cubic-bezier(.22, 1, .36, 1)',
+  'ease-in': 'cubic-bezier(.4, 0, 1, 1)',
+  'ease-pop': 'cubic-bezier(.34, 1.4, .64, 1)',
 } as const;
 
 /** Text styles: [size px, weight, use]. */

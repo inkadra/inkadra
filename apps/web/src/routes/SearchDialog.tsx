@@ -196,7 +196,7 @@ export function SearchDialog({
     <div className="search__backdrop" onPointerDown={onClose}>
       <dialog
         open
-        className="search"
+        className="search ink-motion-dialog"
         aria-label={t('search.title')}
         onPointerDown={(e) => e.stopPropagation()}
       >

@@ -62,7 +62,7 @@
 .call-sheet__notice {
   margin: 0;
   padding: 8px 10px;
-  border-radius: 8px;
+  border-radius: var(--ink-radius-sm);
   background: var(--ink-surface-2);
   border: 1px solid var(--ink-border-default);
   font-size: 12px;
@@ -75,7 +75,7 @@
   max-height: calc(100dvh - 190px);
   overflow: auto;
   padding: 20px;
-  border-radius: 10px;
+  border-radius: var(--ink-radius-md);
   background: var(--ink-bg-canvas);
   border: 1px solid var(--ink-border-default);
 }

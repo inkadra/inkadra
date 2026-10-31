@@ -70,7 +70,7 @@ it('frames a page with the navigation, its title and the save status', async () 
 
 it('keeps one size on Members and counts the active ones', async () => {
   const dialog = await render('/settings/team');
-  expect(dialog.className).toBe('settings-window');
+  expect(dialog.className).toBe('settings-window ink-motion-dialog');
   expect(dialog.querySelector('[aria-current="page"] .settings-nav__count')?.textContent).toBe('2');
 });
 

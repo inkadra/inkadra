@@ -36,6 +36,8 @@ export default defineConfig({
     baseURL,
     locale: 'it-IT',
     colorScheme: 'dark',
+    // The tests measure layout: menus and dialogs must not be caught mid-animation (#332).
+    reducedMotion: 'reduce',
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
     launchOptions: process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {},
@@ -55,6 +57,8 @@ export default defineConfig({
         viewport: { width: 1440, height: 900 },
         // Timings measure the app; the worker's first install would compete with it.
         serviceWorkers: 'block',
+        // With the animations people see.
+        reducedMotion: 'no-preference',
       },
     },
   ],

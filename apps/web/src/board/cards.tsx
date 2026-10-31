@@ -7,13 +7,15 @@ import {
   updateTodoItem,
 } from '@inkadra/canvas-core';
 import type { Element } from '@inkadra/doc-schema';
-import { Checkbox, Icon } from '@inkadra/ui';
+import { Checkbox, fadeOutCopy, Icon } from '@inkadra/ui';
 import {
   type CSSProperties,
   type KeyboardEvent,
   memo,
+  useCallback,
   useContext,
   useEffect,
+  useLayoutEffect,
   useRef,
   useState,
 } from 'react';
@@ -83,6 +85,22 @@ export const Card = memo(function Card({
   const extras = useContext(CardExtrasContext);
   const { t } = useTranslation();
   const measure = useMeasure(store, element.id, !nested);
+  // A card just added (here, by undo or by someone else) pops in; a deleted one fades out.
+  const [entering] = useState(() => store.takeAdded(element.id));
+  const node = useRef<HTMLDivElement | null>(null);
+  const ref = useCallback(
+    (el: HTMLDivElement | null) => {
+      node.current = el;
+      measure(el);
+    },
+    [measure],
+  );
+  useLayoutEffect(
+    () => () => {
+      if (!nested && !store.getSnapshot().byId.has(element.id)) fadeOutCopy(node.current);
+    },
+    [store, element.id, nested],
+  );
   const isEditing = editing === element.id;
   const isCropping = cropping === element.id;
   const w = resize?.w ?? element.w;
@@ -107,13 +125,14 @@ export const Card = memo(function Card({
     dimmed && 'is-dimmed',
     element.locked && 'is-locked',
     element.type === 'note' && element.color && `card--tint-${element.color}`,
+    entering && 'ink-motion-card',
   ]
     .filter(Boolean)
     .join(' ');
 
   return (
     <div
-      ref={measure}
+      ref={ref}
       className={className}
       style={style}
       data-el={element.id}

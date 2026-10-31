@@ -5,7 +5,7 @@
   gap: 2px;
   margin-left: 16px;
   padding: 2px;
-  border-radius: 8px;
+  border-radius: var(--ink-radius-sm);
   background: var(--ink-surface-2);
 }
 .view-tabs__tab {
@@ -15,7 +15,7 @@
   height: 24px;
   padding: 0 10px;
   border: 0;
-  border-radius: 6px;
+  border-radius: calc(var(--ink-radius-sm) - 2px);
   background: transparent;
   color: var(--ink-text-secondary);
   font-size: 12px;
@@ -37,7 +37,7 @@
   position: relative;
   width: 100%;
   overflow: hidden;
-  border-radius: 6px;
+  border-radius: var(--ink-radius-sm);
   /* Paper in both themes: frames are drawn in dark pencil, as on a printed storyboard. */
   background: #ececea;
 }
@@ -75,7 +75,7 @@
   align-items: center;
   height: 18px;
   padding: 0 6px;
-  border-radius: 9px;
+  border-radius: var(--ink-radius-full);
   font-size: 11px;
   font-weight: 500;
   white-space: nowrap;
@@ -287,7 +287,7 @@
   gap: 6px;
   padding: 6px;
   border: 1px solid var(--ink-border-default);
-  border-radius: 10px;
+  border-radius: var(--ink-radius-md);
   background: var(--ink-surface-1);
 }
 .story__tile.is-selected {
@@ -352,7 +352,7 @@
   flex: 1;
   min-height: 140px;
   border: 1.5px dashed var(--ink-border-strong);
-  border-radius: 10px;
+  border-radius: var(--ink-radius-md);
   background: transparent;
   color: var(--ink-text-secondary);
   font-size: 12px;
@@ -387,14 +387,14 @@
   gap: 2px;
   padding: 2px;
   border: 1px solid var(--ink-border-subtle);
-  border-radius: 8px;
+  border-radius: var(--ink-radius-sm);
   background: var(--ink-bg-canvas);
 }
 .story__mode {
   height: 26px;
   padding: 0 10px;
   border: 0;
-  border-radius: 6px;
+  border-radius: var(--ink-radius-sm);
   background: transparent;
   color: var(--ink-text-secondary);
   font: inherit;
@@ -446,7 +446,7 @@
   width: 100%;
   padding: 6px 8px;
   border: 0;
-  border-radius: 6px;
+  border-radius: var(--ink-radius-sm);
   background: transparent;
   color: var(--ink-text-secondary);
   font: inherit;
@@ -576,7 +576,7 @@
   width: 100%;
   padding: 6px 8px;
   border: 1px solid var(--ink-border-subtle);
-  border-radius: 8px;
+  border-radius: var(--ink-radius-sm);
   background: transparent;
   color: var(--ink-text-secondary);
   font: inherit;
@@ -711,7 +711,7 @@
   min-width: 70px;
   padding: 3px 4px;
   border: 1px solid transparent;
-  border-radius: 4px;
+  border-radius: var(--ink-radius-xs);
   background: transparent;
   color: var(--ink-text-primary);
   font: inherit;
@@ -825,7 +825,7 @@
   height: 28px;
   padding: 0 10px;
   border: 1px solid var(--ink-border-default);
-  border-radius: 8px;
+  border-radius: var(--ink-radius-sm);
   background: transparent;
   color: var(--ink-text-secondary);
   font: inherit;
@@ -850,7 +850,7 @@
   min-width: 48px;
   height: 28px;
   border: 0;
-  border-radius: 6px;
+  border-radius: var(--ink-radius-sm);
   background: transparent;
   color: var(--ink-text-secondary);
   font: inherit;
@@ -889,7 +889,7 @@
   position: relative;
   transform-origin: center;
   box-shadow: 0 8px 32px rgb(0 0 0 / 0.35);
-  border-radius: 6px;
+  border-radius: var(--ink-radius-sm);
 }
 .pen__guides {
   position: absolute;
@@ -942,7 +942,7 @@
   width: 104px;
   padding: 4px;
   border: 1px solid var(--ink-border-subtle);
-  border-radius: 8px;
+  border-radius: var(--ink-radius-sm);
   background: transparent;
   color: var(--ink-text-secondary);
   font: inherit;
@@ -1034,7 +1034,7 @@
   flex: none;
   background: var(--ink-surface-1);
   border: 1px solid var(--ink-border-default);
-  border-radius: 12px;
+  border-radius: var(--ink-radius-md);
   padding: 10px;
   box-sizing: border-box;
   display: flex;
@@ -1081,7 +1081,7 @@
   width: 22px;
   height: 22px;
   border: 0;
-  border-radius: 6px;
+  border-radius: var(--ink-radius-sm);
   background: transparent;
   color: var(--ink-text-muted);
   cursor: pointer;
@@ -1125,7 +1125,7 @@
 .kanban__card {
   background: var(--ink-surface-2);
   border: 1px solid var(--ink-border-subtle);
-  border-radius: 10px;
+  border-radius: var(--ink-radius-md);
   padding: 10px;
   display: flex;
   flex-direction: column;
@@ -1156,7 +1156,7 @@
 .kanban__card-pic {
   width: 64px;
   height: 27px;
-  border-radius: 4px;
+  border-radius: var(--ink-radius-xs);
   overflow: hidden;
   flex: none;
   background: var(--ink-bg-app);
@@ -1196,7 +1196,7 @@
   display: inline-block;
   font-size: 10px;
   font-weight: 500;
-  border-radius: 99px;
+  border-radius: var(--ink-radius-full);
   padding: 2px 8px;
   background: var(--ink-accent-soft-bg);
   color: var(--ink-accent-soft-fg);
@@ -1256,7 +1256,7 @@
   height: 90vh;
   background: #0e0e10;
   border: 1px solid #26262a;
-  border-radius: 12px;
+  border-radius: var(--ink-radius-lg);
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -1287,14 +1287,14 @@
   background: #141416;
   border: 1px solid #232327;
   padding: 2px;
-  border-radius: 8px;
+  border-radius: var(--ink-radius-sm);
 }
 
 .callsheet-topbar__tab {
   height: 26px;
   padding: 0 10px;
   border: 0;
-  border-radius: 6px;
+  border-radius: calc(var(--ink-radius-sm) - 2px);
   background: transparent;
   color: #9a9a9a;
   font-size: 12px;
@@ -1319,7 +1319,7 @@
   width: 24px;
   height: 24px;
   border: 0;
-  border-radius: 4px;
+  border-radius: var(--ink-radius-xs);
   background: #1c1c1f;
   color: #ededed;
   font-weight: 600;
@@ -1442,7 +1442,7 @@
 .sw {
   width: 28px;
   height: 16px;
-  border-radius: 99px;
+  border-radius: var(--ink-radius-full);
   background: #3b7cf6;
   position: relative;
   flex: none;
@@ -1553,7 +1553,7 @@
   display: flex;
   gap: 2px;
   padding: 2px;
-  border-radius: 9px;
+  border-radius: var(--ink-radius-sm);
   background: #141416;
   border: 1px solid #232327;
 }
@@ -1574,7 +1574,7 @@
   display: flex;
   gap: 2px;
   padding: 2px;
-  border-radius: 9px;
+  border-radius: var(--ink-radius-sm);
   background: #141416;
   border: 1px solid #232327;
 }
@@ -1590,7 +1590,7 @@
   aspect-ratio: 2.39;
   max-height: 440px;
   margin: 0;
-  border-radius: 12px;
+  border-radius: var(--ink-radius-md);
   overflow: hidden;
   background: #141416;
   border: 1px solid #232327;
@@ -1689,7 +1689,7 @@
   flex-direction: column;
   gap: 6px;
   padding: 4px;
-  border-radius: 10px;
+  border-radius: var(--ink-radius-md);
   border: 1px solid #232327;
   background: transparent;
   cursor: pointer;
@@ -1708,7 +1708,7 @@
   width: 100%;
   aspect-ratio: 2.39;
   background: #1a1a1d;
-  border-radius: 6px;
+  border-radius: var(--ink-radius-sm);
 }
 
 .review-carousel__foot {
@@ -1738,7 +1738,7 @@
 .review-tips {
   width: 340px;
   padding: 12px 14px;
-  border-radius: 10px;
+  border-radius: var(--ink-radius-md);
   background: #141416;
   border: 1px solid #232327;
   font-size: 11px;
@@ -1753,7 +1753,7 @@
   gap: 10px;
   height: 38px;
   padding: 0 14px;
-  border-radius: 10px;
+  border-radius: var(--ink-radius-md);
   background: #1c1c1f;
   border: 1px solid #2e2e33;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
@@ -1807,7 +1807,7 @@
   grid-template-columns: 1fr 1fr;
   gap: 2px;
   padding: 3px;
-  border-radius: 10px;
+  border-radius: var(--ink-radius-md);
   background: #0e0e10;
   border: 1px solid #232327;
   margin: 14px 20px 0;
@@ -1853,11 +1853,13 @@
   bottom: 84px;
   width: 230px;
   padding: 4px;
-  border-radius: 10px;
+  border-radius: var(--ink-radius-md);
   background: #1c1c1f;
   border: 1px solid #2e2e33;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
   z-index: 10;
+  transform-origin: var(--ink-origin, top left);
+  animation: ink-scale-in var(--ink-dur-fast) var(--ink-ease-out) backwards;
 }
 
 .review-mention-item {
@@ -1866,7 +1868,7 @@
   align-items: center;
   gap: 8px;
   padding: 6px 8px;
-  border-radius: 7px;
+  border-radius: var(--ink-radius-sm);
   background: transparent;
   border: 0;
   color: #ededed;
@@ -1879,7 +1881,7 @@
 
 .review-textarea-wrapper {
   padding: 10px 12px;
-  border-radius: 10px;
+  border-radius: var(--ink-radius-md);
   background: #0e0e10;
   border: 1px solid #3b7cf6;
   box-shadow: 0 0 0 3px rgba(59, 124, 246, 0.18);
@@ -2010,7 +2012,7 @@
   width: 100%;
   max-width: 702px;
   aspect-ratio: 702 / 480;
-  border-radius: 6px;
+  border-radius: var(--ink-radius-sm);
   overflow: hidden;
   position: relative;
   background: #0a0a0c;
@@ -2114,7 +2116,7 @@
   height: 44px;
   padding: 0;
   border: 0;
-  border-radius: 6px;
+  border-radius: var(--ink-radius-sm);
   overflow: hidden;
   background: #1e1416;
   cursor: pointer;
@@ -2184,7 +2186,7 @@
 .moodboard-color-swatch-box {
   display: block;
   height: 34px;
-  border-radius: 6px;
+  border-radius: var(--ink-radius-sm);
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06);
 }
 
@@ -2196,7 +2198,7 @@
   background: #ededed;
   color: #141414;
   padding: 2px 6px;
-  border-radius: 4px;
+  border-radius: var(--ink-radius-xs);
   animation: fadeIn 0.15s ease;
 }
 
@@ -2210,7 +2212,7 @@
 .moodboard-comment-input-box {
   margin-top: auto;
   height: 32px;
-  border-radius: 8px;
+  border-radius: var(--ink-radius-sm);
   border: 1px solid #2a2a2e;
   background: #141416;
   color: #ededed;
@@ -2252,7 +2254,7 @@
 .film-shell__badge {
   padding: 4px 8px;
   border: 1px solid currentColor;
-  border-radius: 6px;
+  border-radius: var(--ink-radius-sm);
 }
 .film-shell__columns {
   display: grid;
@@ -2264,7 +2266,7 @@
   padding: 16px;
   margin: 8px 0;
   border: 1px solid var(--ink-border-default);
-  border-radius: 8px;
+  border-radius: var(--ink-radius-sm);
 }
 .film-shell__drop {
   min-height: 120px;
@@ -2325,7 +2327,7 @@
   gap: 8px;
   padding: 10px;
   border: 1px solid var(--ink-danger-border);
-  border-radius: 8px;
+  border-radius: var(--ink-radius-sm);
   background: var(--ink-danger-bg);
   color: var(--ink-danger-fg);
   font-size: 12px;
@@ -2345,7 +2347,7 @@
   align-items: center;
   height: 18px;
   padding: 0 6px;
-  border-radius: 9px;
+  border-radius: var(--ink-radius-full);
   background: var(--ink-danger-bg);
   color: var(--ink-danger-fg);
   font-size: 11px;
@@ -2399,7 +2401,7 @@
   margin-bottom: 6px;
   padding: 8px 10px;
   border: 1px solid var(--ink-border-default);
-  border-radius: 8px;
+  border-radius: var(--ink-radius-sm);
   background: var(--ink-surface-1);
   color: var(--ink-text-primary);
   font: inherit;
@@ -2447,7 +2449,7 @@
   gap: 8px;
   padding: 8px;
   border: 1px solid var(--ink-border-subtle);
-  border-radius: 12px;
+  border-radius: var(--ink-radius-md);
   background: var(--ink-bg-panel);
 }
 .schedule__day.is-selected {
@@ -2463,7 +2465,7 @@
   gap: 2px;
   padding: 4px 6px;
   border: 0;
-  border-radius: 8px;
+  border-radius: var(--ink-radius-sm);
   background: transparent;
   color: var(--ink-text-primary);
   font: inherit;
@@ -2502,7 +2504,7 @@
 }
 .schedule__marker {
   padding: 6px 10px;
-  border-radius: 6px;
+  border-radius: var(--ink-radius-sm);
   background: var(--ink-surface-1);
   color: var(--ink-text-secondary);
   font-size: 12px;
@@ -2535,7 +2537,7 @@
   padding: 8px 10px;
   border: 1px solid var(--ink-border-default);
   border-left: 3px solid var(--block-tint);
-  border-radius: 8px;
+  border-radius: var(--ink-radius-sm);
   background: var(--ink-surface-1);
   color: var(--ink-text-primary);
   font: inherit;
@@ -2577,7 +2579,7 @@
   margin: 0;
   padding: 12px;
   border: 1px dashed var(--ink-border-strong);
-  border-radius: 8px;
+  border-radius: var(--ink-radius-sm);
   color: var(--ink-text-muted);
   font-size: 12px;
   text-align: center;
@@ -2608,7 +2610,7 @@
 .schedule__stats div {
   padding: 8px 10px;
   border: 1px solid var(--ink-border-subtle);
-  border-radius: 8px;
+  border-radius: var(--ink-radius-sm);
   background: var(--ink-surface-1);
 }
 .schedule__stats dt {
@@ -2660,7 +2662,7 @@
 .schedule__inspector .schedule__error {
   padding: 6px 10px;
   border: 1px solid var(--ink-danger-border);
-  border-radius: 8px;
+  border-radius: var(--ink-radius-sm);
 }
 .schedule__block-editor {
   display: flex;
@@ -2750,7 +2752,7 @@
   gap: 4px;
   height: 24px;
   padding: 0 8px;
-  border-radius: 99px;
+  border-radius: var(--ink-radius-full);
   background: var(--ink-accent-soft-bg);
   border: 1px solid var(--ink-border-default);
   color: var(--ink-accent-soft-fg);
@@ -2799,7 +2801,7 @@
   display: inline-block;
   font-size: 10px;
   font-weight: 500;
-  border-radius: 99px;
+  border-radius: var(--ink-radius-full);
   padding: 2px 8px;
 }
 
@@ -2834,7 +2836,7 @@
 .shots__add-row-btn {
   background: none;
   border: 1px dashed var(--ink-border-default);
-  border-radius: 6px;
+  border-radius: var(--ink-radius-sm);
   color: var(--ink-text-muted);
   font-size: 12px;
   padding: 4px 10px;
@@ -2857,7 +2859,7 @@
   align-items: center;
   gap: 8px;
   padding: 6px 12px;
-  border-radius: 12px;
+  border-radius: var(--ink-radius-md);
   background: var(--ink-surface-1);
   border: 1px solid var(--ink-border-strong);
   box-shadow: 0 12px 30px rgba(0, 0, 0, 0.45);
@@ -2872,14 +2874,14 @@
   background: var(--ink-surface-2);
   color: var(--ink-text-primary);
   border: 1px solid var(--ink-border-default);
-  border-radius: 6px;
+  border-radius: var(--ink-radius-sm);
   padding: 0 6px;
 }
 
 .shots__bulk-btn {
   height: 26px;
   padding: 0 10px;
-  border-radius: 6px;
+  border-radius: var(--ink-radius-sm);
   border: 1px solid transparent;
   font-size: 12px;
   cursor: pointer;
@@ -2945,7 +2947,7 @@
 .kanban__empty-col {
   flex: 1;
   min-height: 120px;
-  border-radius: 10px;
+  border-radius: var(--ink-radius-md);
   border: 1.5px dashed var(--ink-border-default);
   display: flex;
   flex-direction: column;
@@ -2969,7 +2971,7 @@
   background: var(--ink-surface-1);
   color: var(--ink-text-muted);
   border: 1px solid var(--ink-border-subtle);
-  border-radius: 4px;
+  border-radius: var(--ink-radius-xs);
   padding: 0 2px;
 }
 
@@ -3001,7 +3003,7 @@
   color: var(--ink-text-primary);
   background: var(--ink-surface-2);
   border: 1px solid var(--ink-border-default);
-  border-radius: 6px;
+  border-radius: var(--ink-radius-sm);
   padding: 8px;
 }
 .moodboard__gallery {
@@ -3016,7 +3018,7 @@
   padding: 0;
   overflow: hidden;
   border: 1px solid var(--ink-border-default);
-  border-radius: 10px;
+  border-radius: var(--ink-radius-md);
   background: var(--ink-surface-2);
   color: var(--ink-text-primary);
   text-align: left;
@@ -3065,7 +3067,7 @@ button.moodboard__card {
 }
 .moodboard__color > span:first-child {
   height: 40px;
-  border-radius: 6px;
+  border-radius: var(--ink-radius-sm);
   border: 1px solid var(--ink-border-default);
 }
 .moodboard__navigation {
@@ -3093,7 +3095,7 @@ button.moodboard__card {
   gap: 6px;
   padding: 6px;
   border: 1px solid var(--ink-border-default);
-  border-radius: 10px;
+  border-radius: var(--ink-radius-md);
   background: var(--ink-surface-1);
   color: inherit;
   font: inherit;
@@ -3146,7 +3148,7 @@ button.moodboard__card {
 }
 .client-review__picture .frame-pic {
   border: 1px solid var(--ink-border-subtle);
-  border-radius: 10px;
+  border-radius: var(--ink-radius-md);
 }
 .client-review__step {
   font-size: 18px;
@@ -3448,7 +3450,7 @@ button.moodboard__card {
 .story-picture--character {
   width: 56px;
   height: 56px;
-  border-radius: 8px;
+  border-radius: var(--ink-radius-sm);
 }
 .story-picture--location {
   width: 100%;
@@ -3465,10 +3467,10 @@ button.moodboard__card {
 .story-panel__picture .story-picture--character {
   width: 120px;
   height: 120px;
-  border-radius: 12px;
+  border-radius: var(--ink-radius-md);
 }
 .story-panel__picture .story-picture--location {
-  border-radius: 8px;
+  border-radius: var(--ink-radius-sm);
 }
 .story-panel__team {
   display: flex;
@@ -3507,7 +3509,7 @@ button.moodboard__card {
   padding: 0;
   overflow: hidden;
   border: 1px solid var(--ink-border-default);
-  border-radius: 6px;
+  border-radius: var(--ink-radius-sm);
   background: var(--ink-surface-2);
   cursor: pointer;
 }
@@ -3535,7 +3537,7 @@ button.moodboard__card {
   height: 24px;
   padding: 0 8px;
   border: 1px solid var(--ink-border-default);
-  border-radius: 12px;
+  border-radius: var(--ink-radius-full);
   background: var(--ink-surface-1);
   color: var(--ink-text-primary);
   font-size: 12px;
@@ -3574,7 +3576,7 @@ button.moodboard__card {
   min-height: 32px;
   padding: 3px 6px;
   border: 1px solid var(--ink-border-default);
-  border-radius: 8px;
+  border-radius: var(--ink-radius-sm);
   background: var(--ink-surface-1);
   cursor: text;
 }
@@ -3592,7 +3594,7 @@ button.moodboard__card {
   max-width: 100%;
   height: 22px;
   padding: 0 4px 0 8px;
-  border-radius: 11px;
+  border-radius: var(--ink-radius-full);
   background: var(--ink-surface-3);
   color: var(--ink-text-primary);
   font-size: 12px;

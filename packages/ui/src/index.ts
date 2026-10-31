@@ -3,6 +3,7 @@ export * from './components.tsx';
 export * from './controls.tsx';
 export * from './icons.tsx';
 export * from './kind-color.ts';
+export * from './motion.ts';
 export * from './select.tsx';
 export * from './shell.tsx';
 export * as tokens from './tokens.ts';

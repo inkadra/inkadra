@@ -44,7 +44,7 @@
 .card {
   background: var(--ink-surface-1);
   border: 1px solid var(--ink-border-default);
-  border-radius: 10px;
+  border-radius: var(--ink-radius-md);
   color: var(--ink-text-primary);
   font-size: 13px;
   line-height: 1.5;
@@ -117,7 +117,7 @@
   right: 6px;
   width: 20px;
   height: 20px;
-  border-radius: 6px;
+  border-radius: var(--ink-radius-sm);
   display: grid;
   place-items: center;
   background: color-mix(in srgb, var(--ink-bg-rail) 80%, transparent);
@@ -208,7 +208,7 @@
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 12px;
   background: var(--ink-surface-2);
-  border-radius: 4px;
+  border-radius: var(--ink-radius-xs);
 }
 .note-text a {
   color: var(--ink-accent-soft-fg);
@@ -325,7 +325,7 @@
   flex: none;
   width: 26px;
   height: 32px;
-  border-radius: 4px;
+  border-radius: var(--ink-radius-xs);
   display: grid;
   place-items: center;
   background: var(--ink-accent-soft-bg);
@@ -386,7 +386,7 @@
   height: 28px;
   padding: 0;
   border: 1px solid var(--ink-border-strong);
-  border-radius: 6px;
+  border-radius: var(--ink-radius-sm);
   background: var(--ink-surface-1);
   cursor: pointer;
 }
@@ -405,7 +405,7 @@
 .card__board-tile {
   width: 48px;
   height: 40px;
-  border-radius: 8px;
+  border-radius: var(--ink-radius-sm);
   display: grid;
   place-items: center;
   background: var(--ink-surface-2);
@@ -417,7 +417,7 @@
 .card--scene {
   background: var(--ink-bg-app);
   border-color: var(--ink-border-muted);
-  border-radius: 12px;
+  border-radius: var(--ink-radius-md);
   padding: 10px;
   display: flex;
   flex-direction: column;
@@ -446,7 +446,7 @@
   height: 22px;
   padding: 0;
   border: 0;
-  border-radius: 6px;
+  border-radius: var(--ink-radius-sm);
   background: transparent;
   color: var(--ink-text-muted);
   display: grid;
@@ -491,7 +491,7 @@
 }
 .column__empty {
   border: 1.5px dashed var(--ink-border-strong);
-  border-radius: 10px;
+  border-radius: var(--ink-radius-md);
   padding: 18px 12px;
   text-align: center;
   font-size: 12px;
@@ -525,7 +525,7 @@
 .canvas__marquee {
   position: absolute;
   border: 1px dashed var(--ink-accent-primary);
-  border-radius: 4px;
+  border-radius: var(--ink-radius-xs);
   background: color-mix(in srgb, var(--ink-accent-primary) 6%, transparent);
   pointer-events: none;
 }
@@ -541,7 +541,7 @@
   position: absolute;
   inset: 12px;
   border: 1.5px dashed var(--ink-accent-primary);
-  border-radius: 12px;
+  border-radius: var(--ink-radius-md);
   background: color-mix(in srgb, var(--ink-accent-primary) 6%, transparent);
   display: grid;
   place-items: center;
@@ -583,7 +583,7 @@
   width: 140px;
   padding: 10px 12px;
   border: 1px solid var(--ink-border-default);
-  border-radius: 10px;
+  border-radius: var(--ink-radius-md);
   background: var(--ink-surface-1);
   color: var(--ink-text-primary);
   font-size: 11px;
@@ -614,7 +614,7 @@
   align-items: center;
   gap: 6px;
   padding: 6px;
-  border-radius: 14px;
+  border-radius: var(--ink-radius-lg);
   background: var(--ink-surface-1);
   border: 1px solid var(--ink-border-default);
   box-shadow: var(--shadow-float);
@@ -632,12 +632,13 @@
   height: 40px;
   padding: 0;
   border: 0;
-  border-radius: 8px;
+  border-radius: calc(var(--ink-radius-lg) - 6px);
   background: transparent;
   color: var(--kind-fg, var(--ink-text-secondary));
   display: grid;
   place-items: center;
   cursor: pointer;
+  transition: scale var(--ink-dur-fast) var(--ink-ease-out);
 }
 .toolbar__btn:hover {
   background: var(--ink-surface-2);
@@ -740,7 +741,7 @@
   align-items: center;
   height: 34px;
   padding: 0 4px;
-  border-radius: 10px;
+  border-radius: var(--ink-radius-md);
   background: var(--ink-surface-2);
   border: 1px solid var(--ink-border-strong);
   box-shadow: var(--shadow-float);
@@ -750,14 +751,25 @@
   height: 26px;
   padding: 0;
   border: 0;
-  border-radius: 6px;
+  border-radius: var(--ink-radius-sm);
   background: transparent;
   color: var(--ink-text-icon);
   display: grid;
   place-items: center;
   cursor: pointer;
+  transition: scale var(--ink-dur-fast) var(--ink-ease-out);
 }
 .ctxbar__btn:hover,
+.toolbar__btn:active,
+.ctxbar__btn:active {
+  scale: 0.97;
+}
+@media (prefers-reduced-motion: reduce) {
+  .toolbar__btn:active,
+  .ctxbar__btn:active {
+    scale: none;
+  }
+}
 .ctxbar__btn.is-active {
   background: var(--ink-surface-3);
   color: var(--ink-text-primary);
@@ -796,10 +808,12 @@
   z-index: 6;
   width: 210px;
   padding: 4px;
-  border-radius: 10px;
+  border-radius: var(--ink-radius-md);
   background: var(--ink-surface-float);
   border: 1px solid var(--ink-border-default);
   box-shadow: var(--shadow-float);
+  transform-origin: var(--ink-origin, top left);
+  animation: ink-scale-in var(--ink-dur-fast) var(--ink-ease-out) backwards;
 }
 .menu__item {
   display: flex;
@@ -808,7 +822,7 @@
   height: 28px;
   padding: 0 8px;
   border: 0;
-  border-radius: 6px;
+  border-radius: calc(var(--ink-radius-md) - 4px);
   background: transparent;
   color: var(--ink-text-icon);
   font-size: 12px;
@@ -849,7 +863,7 @@
   width: 22px;
   height: 22px;
   margin-right: 8px;
-  border-radius: 6px;
+  border-radius: var(--ink-radius-sm);
   color: var(--kind-fg, var(--ink-text-secondary));
   background: var(--kind-bg, var(--ink-surface-2));
 }
@@ -860,8 +874,11 @@
   width: auto;
   min-width: 220px;
   padding: 6px;
+  /* It opens above the Canvas button, aligned to its right edge. */
+  --ink-origin: bottom right;
 }
 .menu--canvas .menu__item {
+  border-radius: calc(var(--ink-radius-md) - 6px);
   height: 38px;
   padding: 0 10px 0 6px;
   font-size: 13px;
@@ -894,7 +911,7 @@
   display: block;
   padding: 0;
   border: 1px solid var(--ink-border-default);
-  border-radius: 10px;
+  border-radius: var(--ink-radius-md);
   background: var(--ink-surface-1);
   overflow: hidden;
   cursor: pointer;
@@ -924,7 +941,7 @@
   height: 30px;
   padding: 0 2px;
   border: 1px solid var(--ink-border-default);
-  border-radius: 10px;
+  border-radius: var(--ink-radius-md);
   background: var(--ink-surface-1);
 }
 .zoom button {
@@ -932,7 +949,7 @@
   min-width: 24px;
   padding: 0 4px;
   border: 0;
-  border-radius: 6px;
+  border-radius: var(--ink-radius-sm);
   background: transparent;
   color: var(--ink-text-secondary);
   display: grid;
@@ -956,7 +973,7 @@
   flex-direction: column;
   align-items: flex-start;
   gap: 6px;
-  border-radius: 12px;
+  border-radius: var(--ink-radius-md);
 }
 .unsorted.is-dropping {
   box-shadow: 0 0 0 2px var(--ink-accent-primary);
@@ -967,7 +984,7 @@
   gap: 8px;
   height: 32px;
   padding: 0 10px;
-  border-radius: 10px;
+  border-radius: var(--ink-radius-md);
   border: 1px solid var(--ink-border-default);
   background: var(--ink-surface-1);
   font-size: 12px;
@@ -982,7 +999,7 @@
   flex-direction: column;
   gap: 8px;
   padding: 10px;
-  border-radius: 12px;
+  border-radius: var(--ink-radius-md);
   background: var(--ink-bg-app);
   border: 1px solid var(--ink-border-default);
   box-shadow: var(--shadow-float);
@@ -1003,7 +1020,7 @@
   flex-direction: column;
   gap: 10px;
   padding: 10px 12px;
-  border-radius: 10px;
+  border-radius: var(--ink-radius-md);
   background: var(--ink-surface-float);
   border: 1px solid var(--ink-border-strong);
   box-shadow: var(--shadow-float);
@@ -1056,7 +1073,7 @@
   top: 14%;
   width: min(440px, calc(100% - 32px));
   transform: translateX(-50%);
-  border-radius: 12px;
+  border-radius: var(--ink-radius-lg);
   background: var(--ink-surface-float);
   border: 1px solid var(--ink-border-strong);
   box-shadow: 0 16px 40px rgb(0 0 0 / 0.45);
@@ -1085,7 +1102,7 @@
   height: 32px;
   padding: 0 10px;
   border: 0;
-  border-radius: 6px;
+  border-radius: var(--ink-radius-sm);
   background: transparent;
   color: var(--ink-text-icon);
   text-align: left;
@@ -1108,7 +1125,7 @@
   align-items: center;
   gap: 14px;
   padding: 10px 14px;
-  border-radius: 10px;
+  border-radius: var(--ink-radius-md);
   background: var(--ink-surface-float);
   border: 1px solid var(--ink-border-default);
   box-shadow: var(--shadow-float);
@@ -1147,7 +1164,7 @@ button.crumb {
 }
 button.crumb--editable {
   cursor: pointer;
-  border-radius: 4px;
+  border-radius: var(--ink-radius-xs);
 }
 button.crumb--editable:hover,
 button.crumb--editable:focus-visible {
@@ -1159,7 +1176,7 @@ button.crumb--editable:focus-visible {
   color: var(--ink-text-primary);
   background: var(--ink-surface-1);
   border: 1px solid var(--ink-accent-primary);
-  border-radius: 4px;
+  border-radius: var(--ink-radius-xs);
   padding: 1px 6px;
   outline: none;
   min-width: 60px;
@@ -1271,7 +1288,7 @@ button.crumb--editable:focus-visible {
   right: 6px;
   bottom: 6px;
   padding: 1px 6px;
-  border-radius: 4px;
+  border-radius: var(--ink-radius-xs);
   background: rgb(0 0 0 / 0.6);
   color: #fff;
   font-size: 11px;
@@ -1296,7 +1313,7 @@ button.crumb--editable:focus-visible {
   height: 20px;
   padding: 0 7px;
   border: 0;
-  border-radius: 10px;
+  border-radius: var(--ink-radius-full);
   background: var(--ink-surface-3);
   color: var(--ink-text-secondary);
   font-size: 11px;
@@ -1354,9 +1371,11 @@ button.crumb--editable:focus-visible {
   width: 280px;
   padding: 12px;
   border: 1px solid var(--ink-border-strong);
-  border-radius: 10px;
+  border-radius: var(--ink-radius-md);
   background: var(--ink-surface-float);
   box-shadow: var(--shadow-float);
+  transform-origin: var(--ink-origin, top left);
+  animation: ink-scale-in var(--ink-dur-fast) var(--ink-ease-out) backwards;
 }
 .tag-popover__actions {
   display: flex;
@@ -1405,7 +1424,7 @@ button.crumb--editable:focus-visible {
   transform: translate(-50%, -50%);
   padding: 2px 8px;
   border: 1px solid var(--ink-border-default);
-  border-radius: 6px;
+  border-radius: var(--ink-radius-sm);
   background: var(--ink-surface-1);
   color: var(--ink-text-primary);
   font-size: 12px;
@@ -1456,7 +1475,7 @@ button.crumb--editable:focus-visible {
   max-width: 100%;
   max-height: calc(100vh - 48px);
   object-fit: contain;
-  border-radius: 4px;
+  border-radius: var(--ink-radius-xs);
 }
 .viewer__unplayable {
   position: relative;
@@ -1477,7 +1496,7 @@ button.crumb--editable:focus-visible {
   gap: 12px;
   padding: 24px;
   background: rgb(0 0 0 / 0.65);
-  border-radius: 4px;
+  border-radius: var(--ink-radius-xs);
   text-align: center;
   color: #fff;
 }
@@ -1499,7 +1518,7 @@ button.crumb--editable:focus-visible {
   width: 100%;
   height: 100%;
   border: 0;
-  border-radius: 4px;
+  border-radius: var(--ink-radius-xs);
   box-shadow: var(--shadow-float);
 }
 .viewer__desc {
@@ -1570,7 +1589,7 @@ button.crumb--editable:focus-visible {
   height: 56px;
   padding: 4px 6px;
   border: 1px solid var(--ink-border-default);
-  border-radius: 6px;
+  border-radius: var(--ink-radius-sm);
   cursor: pointer;
 }
 .viewer__swatch span {
@@ -1604,7 +1623,7 @@ button.crumb--editable:focus-visible {
 .peer-outline {
   position: absolute;
   border: calc(2px / var(--zoom, 1)) solid var(--peer);
-  border-radius: 11px;
+  border-radius: var(--ink-radius-md);
   margin: calc(-3px / var(--zoom, 1));
   box-sizing: content-box;
   pointer-events: none;
@@ -1634,7 +1653,7 @@ button.crumb--editable:focus-visible {
   left: 14px;
   top: 14px;
   padding: 2px 6px;
-  border-radius: 6px;
+  border-radius: var(--ink-radius-sm);
   background: var(--peer);
   color: var(--ink-on-accent);
   font-size: 11px;
@@ -1707,7 +1726,7 @@ button.crumb--editable:focus-visible {
 .viewer__tag-badge {
   font-size: 11px;
   padding: 2px 8px;
-  border-radius: 99px;
+  border-radius: var(--ink-radius-full);
   background: #1e2a44;
   color: #9db8f2;
 }
@@ -1777,7 +1796,7 @@ button.crumb--editable:focus-visible {
   max-width: 100%;
   max-height: calc(100vh - 170px);
   object-fit: contain;
-  border-radius: 4px;
+  border-radius: var(--ink-radius-xs);
 }
 .viewer__stage-nav {
   position: absolute;
@@ -1824,7 +1843,7 @@ button.crumb--editable:focus-visible {
   display: flex;
   gap: 8px;
   padding: 6px 10px;
-  border-radius: 10px;
+  border-radius: var(--ink-radius-md);
   background: rgba(14, 14, 16, 0.85);
   backdrop-filter: blur(8px);
   border: 1px solid rgba(255, 255, 255, 0.08);
@@ -1836,7 +1855,7 @@ button.crumb--editable:focus-visible {
   position: relative;
   width: 48px;
   height: 36px;
-  border-radius: 4px;
+  border-radius: var(--ink-radius-xs);
   overflow: hidden;
   border: 1px solid transparent;
   background: #1c1c1f;
@@ -1887,7 +1906,7 @@ button.crumb--editable:focus-visible {
   color: var(--ink-text-secondary);
   background: var(--ink-surface-float);
   padding: 4px 8px;
-  border-radius: 4px;
+  border-radius: var(--ink-radius-xs);
   z-index: 3;
 }
 .viewer__hint {
@@ -1898,7 +1917,7 @@ button.crumb--editable:focus-visible {
 .viewer__hint-kbd {
   font-size: 10px;
   padding: 1px 5px;
-  border-radius: 4px;
+  border-radius: var(--ink-radius-xs);
   border: 1px solid var(--ink-border-default);
   color: var(--ink-text-primary);
 }
@@ -1929,7 +1948,7 @@ button.crumb--editable:focus-visible {
 .viewer__used-chip {
   font-size: 11px;
   padding: 3px 8px;
-  border-radius: 4px;
+  border-radius: var(--ink-radius-xs);
   background: var(--ink-bg-canvas, #1c1c1f);
   border: 1px solid var(--ink-border-default, #2a2a2e);
   color: #ededed;
@@ -1938,7 +1957,7 @@ button.crumb--editable:focus-visible {
   display: inline-block;
   margin-left: 6px;
   padding: 1px 6px;
-  border-radius: 99px;
+  border-radius: var(--ink-radius-full);
   font-size: 10px;
   font-weight: 600;
   background: var(--ink-border-subtle, #232327);
@@ -1972,7 +1991,7 @@ button.crumb--editable:focus-visible {
   gap: 8px;
   font-size: 12px;
   padding: 8px;
-  border-radius: 6px;
+  border-radius: var(--ink-radius-sm);
   background: var(--ink-bg-canvas, #141416);
   border: 1px solid var(--ink-border-subtle, #232327);
 }
@@ -2255,7 +2274,7 @@ button.card__play {
   gap: 12px;
   padding: 20px;
   border: 1px solid var(--ink-border-default);
-  border-radius: 12px;
+  border-radius: var(--ink-radius-md);
   background: var(--ink-surface-float);
   color: var(--ink-text-primary);
   text-align: left;
@@ -2360,7 +2379,7 @@ button.card__play {
   position: absolute;
   inset: 0;
   overflow: hidden;
-  border-radius: 9px 9px 0 0;
+  border-radius: var(--ink-radius-sm) var(--ink-radius-sm) 0 0;
   pointer-events: none;
 }
 .crop-stage__rot {
@@ -2520,7 +2539,7 @@ button.card__play {
   height: 26px;
   padding: 0 4px;
   border: 0;
-  border-radius: 6px;
+  border-radius: var(--ink-radius-sm);
   background: transparent;
   color: var(--ink-text-muted);
   text-align: right;

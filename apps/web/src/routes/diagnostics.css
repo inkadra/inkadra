@@ -24,7 +24,7 @@
   margin: 0;
   padding: 10px 12px;
   border: 1px solid var(--ink-border-default);
-  border-radius: 8px;
+  border-radius: var(--ink-radius-sm);
   background: var(--ink-surface-1);
   font-size: 13px;
   color: var(--ink-text-primary);
@@ -39,7 +39,7 @@
   padding: 0;
   list-style: none;
   border: 1px solid var(--ink-border-default);
-  border-radius: 8px;
+  border-radius: var(--ink-radius-sm);
   background: var(--ink-surface-1);
 }
 .diagnostics__item {

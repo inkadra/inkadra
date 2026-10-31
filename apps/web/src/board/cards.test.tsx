@@ -16,7 +16,7 @@ const state = vi.hoisted(() => ({
 }));
 vi.mock('./context.ts', async (original) => ({
   ...(await original<object>()),
-  useBoard: () => ({ ...state, scale: 1, store: {}, setEditing: vi.fn() }),
+  useBoard: () => ({ ...state, scale: 1, store: { takeAdded: () => false }, setEditing: vi.fn() }),
 }));
 vi.mock('react-i18next', () => ({ useTranslation: () => ({ t: (key: string) => key }) }));
 vi.mock('./assets.ts', () => ({

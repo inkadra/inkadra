@@ -15,6 +15,7 @@ import {
   swallowOutsidePress,
   type ToolKind,
   toolStyle,
+  useExitFade,
 } from '@inkadra/ui';
 import type { Editor } from '@tiptap/react';
 import {
@@ -979,7 +980,7 @@ export function CommandPalette({
     <div className="palette__backdrop" data-chrome onPointerDown={onClose}>
       <dialog
         open
-        className="palette"
+        className="palette ink-motion-dialog"
         aria-label={t('board.palette.title')}
         onPointerDown={(e) => e.stopPropagation()}
       >
@@ -1044,12 +1045,13 @@ export function Toast({
   onClose: () => void;
 }) {
   const { t } = useTranslation();
+  const ref = useExitFade<HTMLDivElement>();
   useEffect(() => {
     const timer = setTimeout(onClose, 5000);
     return () => clearTimeout(timer);
   }, [onClose]);
   return (
-    <div className="toast" role="status" data-chrome>
+    <div ref={ref} className="toast ink-motion-rise" role="status" data-chrome>
       <span>{text}</span>
       {onUndo && (
         <button

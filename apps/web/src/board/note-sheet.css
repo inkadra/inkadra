@@ -19,7 +19,7 @@
 .note-sidesheet[open] {
   display: flex;
   flex-direction: column;
-  animation: note-slide-in 0.2s ease-out;
+  animation: note-slide-in var(--ink-dur-slow) var(--ink-ease-out);
 }
 .note-sidesheet::backdrop {
   background: var(--ink-scrim);

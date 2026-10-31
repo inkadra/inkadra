@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MPL-2.0
-import { dark, effects, layers, light } from './tokens.ts';
+import { dark, effects, layers, light, motion, radius } from './tokens.ts';
 
 const vars = (tokens: Record<string, string>, indent: string) =>
   Object.entries(tokens)
@@ -16,6 +16,8 @@ export function tokensCss(): string {
   color-scheme: dark;
 ${vars(layers, '  ')}
 ${vars(effects, '  ')}
+${vars(radius, '  ')}
+${vars(motion, '  ')}
 ${vars(dark, '  ')}
 }
 

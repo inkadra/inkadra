@@ -87,13 +87,12 @@ select {
   gap: 6px;
   height: 28px;
   padding: 0 12px;
-  border-radius: 8px;
+  border-radius: var(--ink-radius-sm);
   border: 1px solid transparent;
   font-weight: 500;
   font-size: 12px;
   white-space: nowrap;
   cursor: pointer;
-  transition: background-color 120ms cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 .ink-btn:disabled {
   opacity: 0.4;
@@ -142,7 +141,7 @@ select {
   height: 30px;
   padding: 0;
   border: 0;
-  border-radius: 8px;
+  border-radius: var(--ink-radius-sm);
   background: transparent;
   color: var(--ink-text-secondary);
   display: grid;
@@ -168,7 +167,7 @@ select {
 }
 .ink-input {
   height: 36px;
-  border-radius: 8px;
+  border-radius: var(--ink-radius-sm);
   background: var(--ink-surface-1);
   border: 1px solid var(--ink-border-default);
   padding: 0 10px;
@@ -197,7 +196,7 @@ select {
   min-width: 16px;
   height: 16px;
   padding: 0 4px;
-  border-radius: 4px;
+  border-radius: var(--ink-radius-xs);
   background: var(--ink-surface-3);
   border: 1px solid var(--ink-border-strong);
   font-size: 10px;
@@ -266,7 +265,7 @@ select {
   width: 36px;
   height: 36px;
   border: 0;
-  border-radius: 10px;
+  border-radius: var(--ink-radius-md);
   background: transparent;
   color: var(--ink-text-muted);
   display: grid;
@@ -287,7 +286,7 @@ select {
   right: 2px;
   min-width: 15px;
   height: 15px;
-  border-radius: 99px;
+  border-radius: var(--ink-radius-full);
   background: var(--ink-accent-button);
   color: var(--ink-on-accent);
   font-size: 9px;
@@ -377,7 +376,7 @@ select {
   width: 100%;
   height: 30px;
   padding: 0 8px;
-  border-radius: 8px;
+  border-radius: var(--ink-radius-sm);
   background: var(--ink-bg-app);
   border: 1px solid var(--ink-border-muted);
   color: var(--ink-text-muted);
@@ -412,7 +411,7 @@ select {
   gap: 8px;
   height: 28px;
   padding: 0 8px;
-  border-radius: 6px;
+  border-radius: var(--ink-radius-sm);
   color: var(--ink-text-nav);
   cursor: pointer;
 }
@@ -445,7 +444,7 @@ select {
   min-width: 16px;
   height: 16px;
   padding: 0 5px;
-  border-radius: 99px;
+  border-radius: var(--ink-radius-full);
   background: var(--ink-accent-button);
   color: var(--ink-on-accent);
   font-size: 10px;
@@ -527,7 +526,7 @@ select {
 
 .ink-main {
   margin: 0 8px 8px 0;
-  border-radius: 12px;
+  border-radius: var(--ink-radius-md);
   border: 1px solid var(--ink-border-subtle);
   background: var(--ink-bg-panel);
   overflow: auto;
@@ -545,12 +544,12 @@ select {
 .ink-card {
   background: var(--ink-surface-1);
   border: 1px solid var(--ink-surface-2);
-  border-radius: 12px;
+  border-radius: var(--ink-radius-md);
 }
 
 .ink-empty {
   border: 1px dashed var(--ink-border-strong);
-  border-radius: 10px;
+  border-radius: var(--ink-radius-md);
   padding: 28px 20px;
   text-align: center;
   display: flex;
@@ -573,7 +572,7 @@ select {
 
 .ink-dialog {
   border: 1px solid var(--ink-border-default);
-  border-radius: 12px;
+  border-radius: var(--ink-radius-lg);
   background: var(--ink-surface-float);
   color: var(--ink-text-primary);
   padding: 16px;
@@ -606,7 +605,7 @@ select {
   margin: 16px -16px -16px;
   padding: 12px 16px;
   border-top: 1px solid var(--ink-border-subtle);
-  border-radius: 0 0 12px 12px;
+  border-radius: 0 0 var(--ink-radius-lg) var(--ink-radius-lg);
   background: var(--ink-surface-float);
 }
 /* The question takes the place of the actions without moving them: they fade out under it. */
@@ -703,7 +702,7 @@ select {
     width: 100vw;
     max-width: 100vw;
     box-sizing: border-box;
-    border-radius: 16px 16px 0 0;
+    border-radius: var(--ink-radius-xl) var(--ink-radius-xl) 0 0;
     padding: 16px max(16px, env(safe-area-inset-right)) max(16px, env(safe-area-inset-bottom))
       max(16px, env(safe-area-inset-left));
   }
@@ -781,7 +780,7 @@ select {
   box-sizing: border-box;
   background: var(--ink-surface-1);
   border: 1px solid var(--ink-border-muted);
-  border-radius: 10px;
+  border-radius: var(--ink-radius-md);
   box-shadow: var(--ink-shadow-menu);
   font: inherit;
   font-size: 13px;
@@ -809,7 +808,7 @@ select {
   align-items: center;
   gap: 8px;
   cursor: pointer;
-  border-radius: 4px;
+  border-radius: calc(var(--ink-radius-md) - 4px);
 }
 .ink-select__option[data-active] {
   background: var(--ink-surface-2);
@@ -852,7 +851,7 @@ select {
   .ink-select__panel {
     max-height: min(70dvh, calc(100dvh - 48px));
     border-width: 1px 0 0;
-    border-radius: 14px 14px 0 0;
+    border-radius: var(--ink-radius-xl) var(--ink-radius-xl) 0 0;
     padding-bottom: env(safe-area-inset-bottom);
     animation: ink-select-sheet 160ms ease-out;
   }
@@ -990,7 +989,7 @@ select {
   flex: none;
   width: 16px;
   height: 16px;
-  border-radius: 4px;
+  border-radius: var(--ink-radius-xs);
   vertical-align: middle;
 }
 .ink-choice > input {
@@ -1023,7 +1022,7 @@ select {
   width: 16px;
   height: 16px;
   border: 1px solid var(--ink-border-strong);
-  border-radius: 4px;
+  border-radius: var(--ink-radius-xs);
   background: var(--ink-surface-1);
   color: var(--ink-on-accent);
   pointer-events: none;
@@ -1066,7 +1065,7 @@ select {
 .ink-switch {
   width: 30px;
   height: 18px;
-  border-radius: 9px;
+  border-radius: var(--ink-radius-full);
 }
 .ink-switch__track {
   position: relative;
@@ -1074,7 +1073,7 @@ select {
   width: 30px;
   height: 18px;
   border: 1px solid var(--ink-border-strong);
-  border-radius: 9px;
+  border-radius: var(--ink-radius-full);
   background: var(--ink-surface-3);
   pointer-events: none;
   transition: background 120ms;
@@ -1148,7 +1147,7 @@ select {
   width: fit-content;
   padding: 2px;
   border: 1px solid var(--ink-border-default);
-  border-radius: 8px;
+  border-radius: var(--ink-radius-sm);
   background: var(--ink-surface-2);
 }
 .ink-segmented .ink-radio-group__option {
@@ -1156,7 +1155,7 @@ select {
   align-items: center;
   height: 26px;
   padding: 0 10px;
-  border-radius: 6px;
+  border-radius: calc(var(--ink-radius-sm) - 2px);
   color: var(--ink-text-secondary);
   font-size: 12px;
   font-weight: 500;
@@ -1228,7 +1227,7 @@ select {
 .ink-tile--pill {
   min-height: 28px;
   padding: 4px 12px;
-  border-radius: 999px;
+  border-radius: var(--ink-radius-full);
   font-size: 12px;
   white-space: nowrap;
 }
@@ -1237,7 +1236,7 @@ select {
   align-items: flex-start;
   gap: 4px;
   padding: 14px 12px;
-  border-radius: 10px;
+  border-radius: var(--ink-radius-md);
   background: var(--ink-surface-1);
   color: var(--ink-text-primary);
   text-align: left;
@@ -1284,7 +1283,7 @@ select {
   margin: 0;
   padding: 4px 8px;
   border: 1px solid var(--ink-tooltip-border);
-  border-radius: 6px;
+  border-radius: var(--ink-radius-sm);
   background: var(--ink-tooltip-bg);
   color: var(--ink-tooltip-fg);
   box-shadow: var(--ink-shadow-menu);
@@ -1297,4 +1296,183 @@ select {
 }
 .ink-tooltip[hidden] {
   display: none;
+}
+
+/* Motion (#332) --------------------------------------------------------------- */
+
+/* Only transform and opacity move, so the compositor runs it at the display's refresh rate.
+   Things enter with a CSS animation on mount: nothing runs per frame in JavaScript. The
+   individual `translate` and `scale` properties compose with an element's own transform. */
+@keyframes ink-fade-in {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes ink-fade-out {
+  to {
+    opacity: 0;
+  }
+}
+/* Menus, popovers, selects and tooltips: from their anchor (`--ink-origin`, top left by default). */
+@keyframes ink-scale-in {
+  from {
+    opacity: 0;
+    scale: 0.96;
+  }
+}
+/* Toasts. */
+@keyframes ink-rise-in {
+  from {
+    opacity: 0;
+    translate: 0 8px;
+  }
+}
+/* Side panels, from the edge they sit on (`--ink-slide-from`, the right by default). */
+@keyframes ink-slide-in {
+  from {
+    opacity: 0;
+    translate: var(--ink-slide-from, 16px) 0;
+  }
+}
+/* New cards on the board, with a slight overshoot. */
+@keyframes ink-pop-in {
+  from {
+    opacity: 0;
+    scale: 0.96;
+  }
+}
+
+.ink-motion-pop {
+  transform-origin: var(--ink-origin, top left);
+  animation: ink-scale-in var(--ink-dur-fast) var(--ink-ease-out) backwards;
+}
+.ink-motion-rise {
+  animation: ink-rise-in var(--ink-dur-base) var(--ink-ease-out) backwards;
+}
+.ink-motion-slide {
+  animation: ink-slide-in var(--ink-dur-slow) var(--ink-ease-out) backwards;
+}
+.ink-motion-card {
+  animation: ink-pop-in var(--ink-dur-base) var(--ink-ease-pop) backwards;
+}
+/* A copy left behind by fadeOutCopy() while it fades away (motion.ts). */
+.ink-motion-exit {
+  pointer-events: none;
+  animation: ink-fade-out var(--ink-dur-fast) var(--ink-ease-in) forwards;
+}
+.ink-tooltip:not([hidden]) {
+  transform-origin: var(--ink-origin, center bottom);
+  animation: ink-scale-in var(--ink-dur-fast) var(--ink-ease-out) backwards;
+}
+@media (width >= 768px) {
+  .ink-select__panel {
+    transform-origin: var(--ink-origin, top left);
+    animation: ink-scale-in var(--ink-dur-fast) var(--ink-ease-out) backwards;
+  }
+}
+
+/* Dialogs and sheets on the native <dialog>: fade and rise in, leave faster, the backdrop fades.
+   `allow-discrete` keeps a closing dialog in the top layer until its fade ends; where a browser
+   lacks it, the dialog simply closes at once. */
+.ink-dialog,
+.ink-motion-dialog,
+.ink-dialog::backdrop,
+.ink-motion-dialog::backdrop {
+  opacity: 0;
+  transition-property: opacity, translate, scale, overlay, display;
+  transition-duration: var(--ink-dur-fast);
+  transition-timing-function: var(--ink-ease-in);
+  transition-behavior: allow-discrete;
+}
+.ink-dialog,
+.ink-motion-dialog {
+  translate: 0 4px;
+}
+.ink-dialog:not([open]),
+.ink-motion-dialog:not([open]),
+.ink-dialog:not([open])::backdrop,
+.ink-motion-dialog:not([open])::backdrop {
+  pointer-events: none;
+}
+.ink-dialog[open],
+.ink-motion-dialog[open],
+.ink-dialog[open]::backdrop,
+.ink-motion-dialog[open]::backdrop {
+  opacity: 1;
+  translate: none;
+  scale: none;
+  transition-duration: var(--ink-dur-base);
+  transition-timing-function: var(--ink-ease-out);
+}
+@starting-style {
+  .ink-dialog[open],
+  .ink-motion-dialog[open] {
+    opacity: 0;
+    translate: 0 8px;
+    scale: 0.98;
+  }
+  .ink-dialog[open]::backdrop,
+  .ink-motion-dialog[open]::backdrop {
+    opacity: 0;
+  }
+}
+
+/* Press: a subtle scale on buttons and tool tiles. */
+.ink-btn,
+.ink-iconbtn,
+.ink-rail__btn,
+.ink-press {
+  transition-property: background-color, color, border-color, scale;
+  transition-duration: var(--ink-dur-fast);
+  transition-timing-function: var(--ink-ease-out);
+}
+.ink-btn:not(:disabled):active,
+.ink-iconbtn:not(:disabled):active,
+.ink-rail__btn:active,
+.ink-press:not(:disabled):active {
+  scale: 0.97;
+}
+
+/* Reduced motion: nothing moves, things only fade (or appear at once). */
+@media (prefers-reduced-motion: reduce) {
+  @keyframes ink-scale-in {
+    from {
+      opacity: 0;
+    }
+  }
+  @keyframes ink-rise-in {
+    from {
+      opacity: 0;
+    }
+  }
+  @keyframes ink-slide-in {
+    from {
+      opacity: 0;
+    }
+  }
+  @keyframes ink-pop-in {
+    from {
+      opacity: 0;
+    }
+  }
+  .ink-dialog,
+  .ink-motion-dialog,
+  .ink-dialog[open],
+  .ink-motion-dialog[open] {
+    translate: none;
+    scale: none;
+  }
+  @starting-style {
+    .ink-dialog[open],
+    .ink-motion-dialog[open] {
+      translate: none;
+      scale: none;
+    }
+  }
+  .ink-btn:active,
+  .ink-iconbtn:active,
+  .ink-rail__btn:active,
+  .ink-press:active {
+    scale: none;
+  }
 }

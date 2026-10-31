@@ -30,7 +30,7 @@
   align-items: center;
   height: 36px;
   padding: 0 4px 0 10px;
-  border-radius: 8px;
+  border-radius: var(--ink-radius-sm);
   background: var(--ink-surface-1);
   border: 1px solid var(--ink-border-default);
 }
@@ -51,7 +51,7 @@
 .share__select {
   height: 28px;
   padding: 0 6px;
-  border-radius: 6px;
+  border-radius: var(--ink-radius-sm);
   border: 0;
   background: transparent;
   color: var(--ink-text-secondary);
@@ -107,7 +107,7 @@
   font: inherit;
   text-align: left;
   cursor: pointer;
-  border-radius: 10px;
+  border-radius: var(--ink-radius-md);
 }
 .share__person:hover {
   background: var(--ink-surface-2);
@@ -185,7 +185,7 @@
   min-width: 200px;
   height: 36px;
   padding: 0 10px;
-  border-radius: 8px;
+  border-radius: var(--ink-radius-sm);
   background: var(--ink-surface-1);
   border: 1px solid var(--ink-border-subtle);
   color: var(--ink-text-secondary);
@@ -226,7 +226,7 @@
   margin-top: 8px;
   background: #1a1a1d;
   border: 1px solid #26262a;
-  border-radius: 8px;
+  border-radius: var(--ink-radius-sm);
   padding: 10px 12px;
 }
 
@@ -295,11 +295,13 @@
   display: flex;
   flex-direction: column;
   gap: 8px;
-  border-radius: 10px;
+  border-radius: var(--ink-radius-md);
   /* As the context menus. */
   background: var(--ink-surface-1);
   border: 1px solid var(--ink-border-subtle);
   box-shadow: var(--ink-shadow-menu);
+  transform-origin: var(--ink-origin, top left);
+  animation: ink-scale-in var(--ink-dur-fast) var(--ink-ease-out) backwards;
 }
 .share__expiry-field {
   display: flex;
@@ -312,7 +314,7 @@
 .share__date {
   height: 32px;
   padding: 0 8px;
-  border-radius: 6px;
+  border-radius: var(--ink-radius-sm);
   border: 1px solid var(--ink-border-default);
   background: var(--ink-surface-1);
   color-scheme: light dark;

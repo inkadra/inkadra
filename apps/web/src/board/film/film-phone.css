@@ -154,7 +154,7 @@
   display: flex;
   align-items: stretch;
   border: 1px solid var(--ink-border-subtle);
-  border-radius: 12px;
+  border-radius: var(--ink-radius-md);
   background: var(--ink-surface-1);
 }
 .shot-card.is-selected {
