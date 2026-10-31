@@ -2160,7 +2160,6 @@
     "symbol": "Symbol",
     "color": "Color",
     "emoji": "Emoji",
-    "emojiHelp": "Emoji keep their own colours.",
     "invalid": "Use a single emoji.",
     "reset": "Reset to default",
     "error": "Could not save project appearance. Check your permissions and try again.",
@@ -2172,7 +2171,11 @@
       "hexagon": "Hexagon",
       "star": "Star",
       "pentagon": "Pentagon",
-      "cross": "Cross"
+      "cross": "Cross",
+      "octagon": "Octagon",
+      "drop": "Drop",
+      "moon": "Moon",
+      "clapperboard": "Clapperboard"
     },
     "colors": {
       "blue": "Blue",
@@ -2185,10 +2188,9 @@
       "red": "Red",
       "pink": "Pink"
     },
-    "pasteEmoji": "Paste another emoji",
-    "sidebarPreview": "In the sidebar",
-    "close": "Close",
-    "chooseEmoji": "Choose an emoji"
+    "pasteEmoji": "Paste or type an emoji",
+    "sidebarPreview": "How it looks in the sidebar",
+    "close": "Close"
   },
   "transfer": {
     "exportMenu": "Export project…",

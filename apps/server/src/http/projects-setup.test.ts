@@ -106,7 +106,16 @@ describe.skipIf(!url)('project setup metadata and personal pins', () => {
       (await request('owner', 'PATCH', `/projects/${projectId}`, { icon })).json().icon,
     ).toEqual(icon);
     expect((await request('viewer', 'GET', `/projects/${projectId}`)).json().icon).toEqual(icon);
-    for (const shape of ['hexagon', 'star', 'pentagon', 'cross']) {
+    for (const shape of [
+      'hexagon',
+      'star',
+      'pentagon',
+      'cross',
+      'octagon',
+      'drop',
+      'moon',
+      'clapperboard',
+    ]) {
       for (const color of ['teal', 'yellow', 'red', 'pink']) {
         const next = { shape, color, emoji: null };
         expect(

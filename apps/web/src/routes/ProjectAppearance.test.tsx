@@ -152,7 +152,7 @@ it('keeps the context menu inside the active mobile navigation dialog', async ()
   expect(host.querySelector('dialog [role="menu"]')).not.toBeNull();
 });
 
-it('offers eight shapes and nine colours with arrow selection and saves new identity', async () => {
+it('offers twelve shapes and nine colours with arrow selection and saves new identity', async () => {
   const icon = { shape: 'hexagon', color: 'pink', emoji: null };
   const patch = vi.spyOn(api, 'patch').mockResolvedValue({ ...project, icon });
   await render();
@@ -163,7 +163,8 @@ it('offers eight shapes and nine colours with arrow selection and saves new iden
   const colors = host.querySelectorAll<HTMLButtonElement>(
     '.project-appearance__swatches [role="radio"]',
   );
-  expect(shapes).toHaveLength(8);
+  expect(shapes).toHaveLength(12);
+  expect(shapes[11]?.getAttribute('aria-label')).toBe('appearance.shapes.clapperboard');
   expect(colors).toHaveLength(9);
   await act(async () => shapes[3]?.click());
   await act(async () => {
@@ -197,7 +198,11 @@ it('keeps emoji across tab navigation, supports Home/End and exposes both panels
     emoji.dispatchEvent(new KeyboardEvent('keydown', { key: 'Home', bubbles: true })),
   );
   expect(symbol.getAttribute('aria-selected')).toBe('true');
-  expect(host.querySelector<HTMLInputElement>('input[maxlength="32"]')?.value).toBe('🎬');
+  // A grid emoji is shown as the selected tile, not as text in the field.
+  expect(host.querySelector('[role="radio"][aria-label="🎬"]')?.getAttribute('aria-checked')).toBe(
+    'true',
+  );
+  expect(host.querySelector<HTMLInputElement>('input[maxlength="32"]')?.value).toBe('');
   await act(async () =>
     symbol.dispatchEvent(new KeyboardEvent('keydown', { key: 'End', bubbles: true })),
   );
@@ -218,7 +223,21 @@ it('disables saving an empty emoji choice', async () => {
   await act(async () => host.querySelector<HTMLButtonElement>('#appearance-tab-emoji')?.click());
   expect(host.querySelector<HTMLButtonElement>('button[type="submit"]')?.disabled).toBe(true);
   expect(host.querySelector('[role="alert"]')).toBeNull();
-  expect(host.textContent).toContain('appearance.chooseEmoji');
+  expect(host.textContent).not.toContain('appearance.chooseEmoji');
+});
+
+it('selects a typed emoji right away, in the preview and for Save', async () => {
+  await render();
+  await openDialog();
+  await act(async () => host.querySelector<HTMLButtonElement>('#appearance-tab-emoji')?.click());
+  await act(async () => {
+    const input = host.querySelector<HTMLInputElement>('input[maxlength="32"]')!;
+    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set?.call(input, '🦊');
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+  });
+  expect(host.querySelector('.project-appearance__tile')?.textContent).toBe('🦊');
+  expect(host.querySelector<HTMLButtonElement>('button[type="submit"]')?.disabled).toBe(false);
+  expect(host.querySelector('.project-appearance__emojis [aria-checked="true"]')).toBeNull();
 });
 
 it('saves from Symbol with an invalid emoji by clearing it', async () => {

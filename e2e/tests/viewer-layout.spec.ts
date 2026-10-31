@@ -302,7 +302,7 @@ test('appearance tabs fit their content and keep validation outside the panel', 
   expect((await dialog.boundingBox())!.height).toBe(symbolHeight);
   const panel = page.locator('#appearance-panel-emoji');
   expect(await panel.evaluate((el) => el.scrollHeight - el.clientHeight)).toBeLessThanOrEqual(1);
-  await page.getByLabel('Paste another emoji').fill('x');
+  await page.getByLabel('Paste or type an emoji').fill('x');
   const alert = dialog.getByRole('alert');
   await expect(alert).toBeVisible();
   expect(await alert.evaluate((el) => !el.closest('[role="tabpanel"]'))).toBe(true);

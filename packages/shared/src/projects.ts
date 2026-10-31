@@ -17,6 +17,10 @@ export const ProjectIcon = z
       'star',
       'pentagon',
       'cross',
+      'octagon',
+      'drop',
+      'moon',
+      'clapperboard',
     ]),
     color: z.enum([
       'blue',
