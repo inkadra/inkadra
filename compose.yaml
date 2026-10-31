@@ -6,7 +6,7 @@
 #   deploy/compose.s3.yaml             files in an S3-compatible bucket you already have
 #   deploy/compose.rustfs.yaml         files in a bundled S3-compatible store (RustFS)
 #   deploy/proxy/<name>/compose.yaml   a reverse proxy in the same stack: caddy, traefik, nginx
-#   deploy/compose.postgres16.yaml     keep PostgreSQL 16 for now (docs/self-hosting/upgrades.md)
+#   deploy/compose.postgres-old-layout.yaml   stay on PostgreSQL 16 for now (docs/self-hosting/upgrades.md)
 
 name: inkadra
 

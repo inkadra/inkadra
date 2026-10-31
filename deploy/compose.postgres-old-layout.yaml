@@ -1,0 +1,27 @@
+# PostgreSQL on the data layout of version 16 and older: the cluster directly in
+# /var/lib/postgresql/data, on the volume `postgres-data` (or your POSTGRES_DATA folder) that
+# installs made before PostgreSQL 18 already have. It is for two cases (see
+# docs/self-hosting/upgrades.md#upgrading-to-postgresql-18):
+#
+#   - staying on PostgreSQL 16 for now. Supported for one more release.
+#   - the in-place upgrade with pgautoupgrade: afterwards set POSTGRES_MAJOR=18 in .env and
+#     keep this file. The data stays in this layout.
+#
+#   docker compose -f compose.yaml -f deploy/compose.postgres-old-layout.yaml up -d
+#
+# It also takes you back to 16 if the move to 18 has to be undone. Needs Docker Compose 2.24 or
+# newer (for `!override` and `!reset`).
+
+services:
+  postgres:
+    image: postgres:${POSTGRES_MAJOR:-16}-alpine
+    # The check of compose.yaml is for the new layout.
+    entrypoint: !reset null
+    environment:
+      # What the image of PostgreSQL 16 uses; the one of 18 would use /var/lib/postgresql/18/docker.
+      PGDATA: /var/lib/postgresql/data
+    volumes: !override
+      - ${POSTGRES_DATA:-postgres-data}:/var/lib/postgresql/data
+
+volumes:
+  postgres-data:
