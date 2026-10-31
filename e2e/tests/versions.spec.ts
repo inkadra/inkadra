@@ -141,7 +141,7 @@ test('named versions preview an isolated read-only canvas and restore every open
     await dialog.getByRole('button', { name: 'Salva il nuovo nome', exact: true }).click();
     await expect(dialog.getByText('Taglio approvato', { exact: true })).toBeVisible();
     await dialog.getByRole('button', { name: 'Chiudi', exact: true }).click();
-    await page.getByTestId('canvas').dblclick({ position: { x: 950, y: 500 } });
+    await page.getByTestId('canvas').dblclick({ position: { x: 1190, y: 548 } });
     await page.keyboard.type('New live note');
     await page.keyboard.press('Escape');
     await expect(other.locator('[data-el]')).toHaveCount(5);
@@ -164,7 +164,7 @@ test('named versions preview an isolated read-only canvas and restore every open
     await page.locator(`[data-el="${note.id}"]`).click();
     await expect(page.getByRole('button', { name: 'Commenti e revisione' })).toHaveCount(0);
     await expect(page.locator('[contenteditable="true"]')).toHaveCount(0);
-    await page.getByTestId('canvas').dblclick({ position: { x: 950, y: 500 } });
+    await page.getByTestId('canvas').dblclick({ position: { x: 1190, y: 548 } });
     await page.keyboard.press('n');
     await expect(page.locator('[data-el]')).toHaveCount(4);
     await expect(other.locator('[data-el]')).toHaveCount(5);
