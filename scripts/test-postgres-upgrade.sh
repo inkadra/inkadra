@@ -61,6 +61,8 @@ cleanup() {
   if [[ $failed != 0 ]]; then "$stack" logs --no-color --tail 60 || true; fi
   old down -v --remove-orphans >/dev/null 2>&1 || true
   new down -v --remove-orphans >/dev/null 2>&1 || true
+  # Whatever volume a stack of this test still holds (which one depends on how far it got).
+  docker volume ls -q --filter "label=com.docker.compose.project=$project" | xargs -r docker volume rm >/dev/null 2>&1 || true
   # Folders made by containers belong to other users.
   docker run --rm -v "$work:/w" --entrypoint sh postgres:16-alpine -c 'rm -rf /w/* /w/.[!.]*' >/dev/null 2>&1 || true
   rm -rf "$work"
