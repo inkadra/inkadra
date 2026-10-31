@@ -1048,8 +1048,8 @@ function writeCollapsed(userId: string | undefined, value: boolean) {
   }
 }
 
-/** A little longer than --ink-dur-slow, the length of the slide. */
-const SLIDE_MS = 320;
+/** A little longer than the slide: --ink-dur-slow, after the content's fade when collapsing. */
+const SLIDE_MS = 400;
 
 /**
  * Which way the navigation is sliding, for the length of the slide: the panels beside it

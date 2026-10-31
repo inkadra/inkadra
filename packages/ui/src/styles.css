@@ -594,6 +594,8 @@ select {
     overflow: hidden;
   }
   .ink-shell--collapsed {
+    /* Collapsing, the content fades first; only then the panel shrinks and the others follow. */
+    --ink-collapse-hold: calc(var(--ink-dur-slow) * 0.25);
     --ink-shell-left: calc(var(--ink-launcher-size) + var(--ink-float-gap) * 2);
     --ink-board-left: 0px;
   }
@@ -713,9 +715,10 @@ select {
      the button. A peek from the left edge grows it the same way. */
   .ink-shell--collapsed > .ink-sidebar {
     visibility: hidden;
-    transition: visibility 0s linear var(--ink-dur-slow);
+    transition: visibility 0s linear calc(var(--ink-collapse-hold) + var(--ink-dur-slow));
   }
   .ink-shell--collapsed > .ink-sidebar::before {
+    transition: clip-path var(--ink-dur-slow) var(--ink-ease-out) var(--ink-collapse-hold);
     clip-path: inset(
       0 calc(100% - var(--ink-launcher-size)) calc(100% - var(--ink-launcher-size)) 0 round
         var(--ink-radius-lg)
@@ -723,7 +726,7 @@ select {
   }
   .ink-shell--collapsed > .ink-sidebar > * {
     opacity: 0;
-    transition: opacity calc(var(--ink-dur-slow) * 0.4) var(--ink-ease-out);
+    transition: opacity var(--ink-collapse-hold) var(--ink-ease-out);
   }
   .ink-shell--collapsed.ink-shell--peek > .ink-sidebar {
     z-index: 110;
@@ -750,7 +753,8 @@ select {
       (var(--ink-sidebar-width) - var(--ink-launcher-size)) *
       var(--ink-follow-dir)
     );
-    animation: var(--ink-follow-name) var(--ink-dur-slow) var(--ink-ease-out);
+    animation: var(--ink-follow-name) var(--ink-dur-slow) var(--ink-ease-out)
+      var(--ink-follow-hold, 0s) backwards;
   }
   /* The logo: always here, above the panel, never moving. Collapsed it is the button that
      brings the navigation back, on its own surface once the panel has shrunk into it; open, it
@@ -776,7 +780,7 @@ select {
   }
   .ink-shell--collapsed:not(.ink-shell--peek) > .ink-shell__launcher::before {
     opacity: 1;
-    transition: opacity 0s linear var(--ink-dur-slow);
+    transition: opacity 0s linear calc(var(--ink-collapse-hold) + var(--ink-dur-slow));
   }
   .ink-shell:not(.ink-shell--collapsed) > .ink-shell__launcher,
   .ink-shell--peek > .ink-shell__launcher {
@@ -900,6 +904,7 @@ select {
 }
 @media (width >= 768px) and (prefers-reduced-motion: no-preference) {
   .ink-shell--sliding-out {
+    --ink-follow-hold: var(--ink-collapse-hold);
     --ink-follow-dir: 1;
     --ink-follow-name: ink-follow-out;
   }
