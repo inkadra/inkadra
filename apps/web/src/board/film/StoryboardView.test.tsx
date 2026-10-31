@@ -65,9 +65,10 @@ it('drops images between two frames as one new frame each, and not for a read-on
     expect(host.querySelectorAll('.story__tile.is-drop')).toHaveLength(1);
     expect(tiles[1]?.classList.contains('is-drop')).toBe(true);
 
+    const notes = new File(['x'], 'notes.txt', { type: 'text/plain' });
     await act(async () =>
       grid.dispatchEvent(
-        dragFiles('drop', [image('a.png'), image('notes.txt'), image('b.jpg')], 108, 40),
+        dragFiles('drop', [image('a.png'), notes, image('b.jpg')], 108, 40),
       ),
     );
     expect(frames()).toHaveLength(4);
