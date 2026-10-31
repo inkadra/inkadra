@@ -317,6 +317,7 @@ export function AppLayout({ home }: { home?: ReactNode }) {
       return !c;
     });
   const peek = useSidebarPeek(collapsed || inboxOpen);
+  const launcherRef = useRef<HTMLButtonElement>(null);
   // A peek lays the page out as with the navigation open, so what sits beside it moves aside
   // in step instead of being covered; over the Inbox it stays a layer above it.
   const shellCollapsed = inboxOpen || (collapsed && !peek.shown);
@@ -452,7 +453,10 @@ export function AppLayout({ home }: { home?: ReactNode }) {
           disabled={inboxOpen}
           onClick={() => {
             peek.hide();
+            const collapsing = !collapsed;
             toggleCollapsed();
+            // The panel shrinks into the logo button: the focus goes there with it.
+            if (collapsing) requestAnimationFrame(() => launcherRef.current?.focus());
           }}
         />
       </div>
@@ -664,24 +668,34 @@ export function AppLayout({ home }: { home?: ReactNode }) {
     </div>
   );
 
-  // Collapsed, only the logo stays at the top left: it brings the navigation back.
-  const launcher = (collapsed || inboxOpen) && (
+  // The logo at the top left never moves (#333): open, it is the navigation's logo; collapsed,
+  // the panel shrinks into it and it is the button that brings the navigation back.
+  const launcher = (
     <>
       <button
+        ref={launcherRef}
         type="button"
         className="ink-shell__launcher"
-        aria-label={t('nav.expand')}
-        data-ink-tooltip={t('nav.expand')}
+        {...(shellCollapsed
+          ? { 'aria-label': t('nav.expand'), 'data-ink-tooltip': t('nav.expand') }
+          : { 'aria-hidden': true, tabIndex: -1 })}
         aria-expanded={false}
         onClick={() => {
+          if (!shellCollapsed) return;
           peek.hide();
           if (inboxOpen) setInboxOpen(false);
           if (collapsed) toggleCollapsed();
+          // The button is only the logo now: the focus goes to the panel's own toggle.
+          requestAnimationFrame(() =>
+            document.querySelector<HTMLElement>('.ink-shell > .ink-sidebar .ink-sidebar__toggle')?.focus(),
+          );
         }}
       >
         <Logo size={26} />
       </button>
-      <div className="ink-shell__edge" aria-hidden="true" {...peek.edge} />
+      {(collapsed || inboxOpen) && (
+        <div className="ink-shell__edge" aria-hidden="true" {...peek.edge} />
+      )}
     </>
   );
 

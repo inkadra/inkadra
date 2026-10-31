@@ -644,14 +644,30 @@ select {
     padding: 10px 10px 0;
     border: 0;
     overflow: hidden;
-    /* Only a transform moves, on the compositor; the surface stays whole for the whole slide
-       (an opacity below 1 would also cut the blur layer off from the board behind). */
-    transition:
-      translate var(--ink-dur-slow) var(--ink-ease-out),
-      visibility 0s;
+    transition: visibility 0s;
+  }
+  /* The panel's surface is clipped to the panel; collapsed, to the logo button's square at its
+     top-left corner (#333), so its edge moves with the same curve as the panels beside it.
+     The clip sits on the surface layer itself: on the panel it would cut the blur off from the
+     board behind. */
+  .ink-shell > .ink-sidebar::before {
+    clip-path: inset(0 0 0 0 round var(--ink-radius-lg));
+    transition: clip-path var(--ink-dur-slow) var(--ink-ease-out);
+  }
+  /* Its content: visible, fading in over the last 40% of the growth. */
+  .ink-shell > .ink-sidebar > * {
+    transition: opacity calc(var(--ink-dur-slow) * 0.4) linear calc(var(--ink-dur-slow) * 0.6);
   }
   .ink-shell > .ink-sidebar .ink-sidebar__workspace {
-    padding: 2px 2px 10px;
+    /* The logo is the floating button's, which never moves: its own place here stays empty,
+       exactly under it, and the name and the toggle line up beside it. */
+    margin: -2px 0 0 -2px;
+    padding: 0 2px 10px 0;
+  }
+  .ink-shell > .ink-sidebar .ink-sidebar__workspace > [role="img"] {
+    visibility: hidden;
+    width: 26px !important;
+    height: 26px !important;
   }
   .ink-shell > .ink-sidebar .ink-sidebar__search {
     height: 32px;
@@ -692,22 +708,34 @@ select {
     transform: none;
   }
 
-  /* Collapsed: the panel slides out and a small button with the logo stays. It comes back for
-     a moment (peek) when the pointer rests on the left edge. */
+  /* Collapsed: the panel shrinks into the logo button at its top-left corner, which stays; the
+     content fades out over the first 40% so no letter is cut. Expanding grows it back out of
+     the button. A peek from the left edge grows it the same way. */
   .ink-shell--collapsed > .ink-sidebar {
-    translate: calc(-100% - var(--ink-float-gap) * 2) 0;
     visibility: hidden;
-    transition:
-      translate var(--ink-dur-slow) var(--ink-ease-out),
-      visibility 0s linear var(--ink-dur-slow);
+    transition: visibility 0s linear var(--ink-dur-slow);
+  }
+  .ink-shell--collapsed > .ink-sidebar::before {
+    clip-path: inset(
+      0 calc(100% - var(--ink-launcher-size)) calc(100% - var(--ink-launcher-size)) 0 round
+        var(--ink-radius-lg)
+    );
+  }
+  .ink-shell--collapsed > .ink-sidebar > * {
+    opacity: 0;
+    transition: opacity calc(var(--ink-dur-slow) * 0.4) var(--ink-ease-out);
   }
   .ink-shell--collapsed.ink-shell--peek > .ink-sidebar {
     z-index: 110;
-    translate: none;
     visibility: visible;
-    transition:
-      translate var(--ink-dur-slow) var(--ink-ease-out),
-      visibility 0s;
+    transition: visibility 0s;
+  }
+  .ink-shell--collapsed.ink-shell--peek > .ink-sidebar::before {
+    clip-path: inset(0 0 0 0 round var(--ink-radius-lg));
+  }
+  .ink-shell--collapsed.ink-shell--peek > .ink-sidebar > * {
+    opacity: 1;
+    transition: opacity calc(var(--ink-dur-slow) * 0.4) linear calc(var(--ink-dur-slow) * 0.6);
   }
 
   /* What sits beside the navigation follows it as it slides (#333). The layout takes its new
@@ -724,9 +752,12 @@ select {
     );
     animation: var(--ink-follow-name) var(--ink-dur-slow) var(--ink-ease-out);
   }
+  /* The logo: always here, above the panel, never moving. Collapsed it is the button that
+     brings the navigation back, on its own surface once the panel has shrunk into it; open, it
+     is only the panel's logo. */
   .ink-shell__launcher {
     position: absolute;
-    z-index: 39;
+    z-index: 120;
     top: var(--ink-float-gap);
     left: var(--ink-float-gap);
     width: var(--ink-launcher-size);
@@ -736,9 +767,20 @@ select {
     padding: 0;
     border: 0;
     color: inherit;
+    background: transparent;
     cursor: pointer;
-    transform-origin: top left;
-    animation: ink-scale-in var(--ink-dur-base) var(--ink-ease-out) backwards;
+  }
+  .ink-shell__launcher::before {
+    opacity: 0;
+    transition: opacity 0s;
+  }
+  .ink-shell--collapsed:not(.ink-shell--peek) > .ink-shell__launcher::before {
+    opacity: 1;
+    transition: opacity 0s linear var(--ink-dur-slow);
+  }
+  .ink-shell:not(.ink-shell--collapsed) > .ink-shell__launcher,
+  .ink-shell--peek > .ink-shell__launcher {
+    pointer-events: none;
   }
   .ink-shell__launcher:hover::before {
     background: color-mix(in srgb, var(--ink-surface-2) 92%, transparent);
@@ -842,8 +884,16 @@ select {
     translate: none;
   }
   .ink-shell > .ink-sidebar,
+  .ink-shell > .ink-sidebar::before,
+  .ink-shell > .ink-sidebar > *,
   .ink-shell--collapsed > .ink-sidebar,
+  .ink-shell--collapsed > .ink-sidebar::before,
+  .ink-shell--collapsed > .ink-sidebar > *,
   .ink-shell--collapsed.ink-shell--peek > .ink-sidebar,
+  .ink-shell--collapsed.ink-shell--peek > .ink-sidebar::before,
+  .ink-shell--collapsed.ink-shell--peek > .ink-sidebar > *,
+  .ink-shell__launcher::before,
+  .ink-shell--collapsed:not(.ink-shell--peek) > .ink-shell__launcher::before,
   .ink-shell > .ink-main {
     transition: none;
   }
