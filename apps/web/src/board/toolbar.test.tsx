@@ -51,11 +51,9 @@ it('groups tools with described tooltips while preserving actions and pressed mo
     expect(canvas.querySelector('.toolbar__label')?.textContent).toBe('board.canvasMenu.label');
     expect(canvas.getAttribute('style')).toBeNull();
     for (const button of host.querySelectorAll('button')) {
-      expect(
-        host
-          .querySelector(`[id="${button.getAttribute('aria-describedby')}"]`)
-          ?.getAttribute('role'),
-      ).toBe('tooltip');
+      // One tooltip: the shared chip fed by data-ink-tooltip, never a second bubble in the DOM.
+      expect(button.getAttribute('data-ink-tooltip')).toBeTruthy();
+      expect(button.querySelector('[role="tooltip"]')).toBeNull();
       if (!button.hasAttribute('aria-haspopup'))
         expect(button.getAttribute('aria-keyshortcuts')).toBeTruthy();
     }

@@ -682,13 +682,6 @@
 .canvas {
   container: canvas / inline-size;
 }
-/* A tap leaves :hover on touch screens: the tooltips would stay up under the menu. */
-@media (hover: none) {
-  .toolbar .toolbar__btn:hover .toolbar__tip,
-  .toolbar .toolbar__btn:focus-visible .toolbar__tip {
-    display: none;
-  }
-}
 @container canvas (width < 640px) {
   .toolbar .toolbar__btn.toolbar__btn--canvas {
     padding: 0 8px;
@@ -736,31 +729,6 @@
   .toolbar__group--canvas {
     flex: none;
   }
-  .toolbar .toolbar__btn:hover .toolbar__tip,
-  .toolbar .toolbar__btn:focus-visible .toolbar__tip {
-    display: none;
-  }
-}
-.toolbar__tip {
-  position: absolute;
-  bottom: calc(100% + 10px);
-  left: 50%;
-  transform: translateX(-50%);
-  display: none;
-  align-items: center;
-  gap: 8px;
-  padding: 4px 8px;
-  border-radius: 6px;
-  background: var(--ink-text-primary);
-  color: var(--ink-bg-rail);
-  font-size: 11px;
-  font-weight: 500;
-  white-space: nowrap;
-  pointer-events: none;
-}
-.toolbar__btn:hover .toolbar__tip,
-.toolbar__btn:focus-visible .toolbar__tip {
-  display: flex;
 }
 
 /* Context bar and menus ---------------------------------------------------------- */
@@ -2172,15 +2140,6 @@ button.crumb--editable:focus-visible {
     width: 44px;
     height: 44px;
     flex: none;
-  }
-  .toolbar__group--navigate .toolbar__btn:first-child .toolbar__tip {
-    left: 0;
-    transform: none;
-  }
-  .toolbar__group--canvas .toolbar__btn:last-child .toolbar__tip {
-    left: auto;
-    right: 0;
-    transform: none;
   }
   /* The selection bar too: 44 px tall targets, 40 px wide so an image's eight actions fit a
      360 px phone; a selection with more scrolls sideways in one row. */

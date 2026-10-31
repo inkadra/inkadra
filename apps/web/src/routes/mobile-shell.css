@@ -293,9 +293,6 @@
   .canvas .toolbar__sep {
     flex: none;
   }
-  .canvas .toolbar__tip {
-    display: none;
-  }
   .canvas .canvas__corner {
     width: 180px;
     /* Above the touch toolbar: one row of 44px targets, its padding and a gap. */
