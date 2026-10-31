@@ -100,6 +100,12 @@ const paths = {
       <path d="M8 11V8a4 4 0 0 1 8 0v3" />
     </>
   ),
+  key: (
+    <>
+      <circle cx="8" cy="15" r="4" />
+      <path d="M11 12l9-9M16 7l3 3M14 9l2 2" />
+    </>
+  ),
   unlock: (
     <>
       <rect x="5" y="11" width="14" height="10" rx="2" />

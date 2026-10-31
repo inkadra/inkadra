@@ -23,7 +23,7 @@ import { trackSave } from './settings-save.ts';
 import { isSettingsHome, settingsSection } from './settings-sections.ts';
 import { AutosaveText, Badge, Card, Row, Segmented, useIsPhone } from './settings-ui.tsx';
 import './projects.css';
-import { GoogleG } from './SignInOptions.tsx';
+import { ProviderIcon } from './ProviderIcon.tsx';
 import './settings.css';
 
 /** Every settings page except Members; plain `/settings` is the home list on phones. */
@@ -298,7 +298,7 @@ function SignInMethods({
       <div className="settings-rows">
         {hasPassword && (
           <Row
-            leading={<span className="settings-provider">@</span>}
+            leading={<ProviderIcon id="password" />}
             label={t('admin.password')}
             help={t('settings.password.body')}
           >
@@ -308,11 +308,7 @@ function SignInMethods({
         {providers.map((p) => (
           <Row
             key={p.id}
-            leading={
-              <span className="settings-provider">
-                {p.id === 'google' ? <GoogleG /> : p.name[0]}
-              </span>
-            }
+            leading={<ProviderIcon id={p.id} name={p.name} />}
             label={p.name}
             help={linked(p.id) ? t('settings.methods.linked') : t('settings.methods.notLinked')}
           >
