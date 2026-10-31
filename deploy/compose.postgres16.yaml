@@ -1,0 +1,19 @@
+# Keeps PostgreSQL 16 on its existing volume, for installs that have not moved to 18 yet.
+# Supported for one more release; then compose.yaml is the only way. Add it with -f:
+#
+#   docker compose -f compose.yaml -f deploy/compose.postgres16.yaml up -d
+#
+# The same file takes you back to 16 if the move to 18 has to be undone (see
+# docs/self-hosting/upgrades.md#upgrading-to-postgresql-18). Needs Docker Compose 2.24 or newer
+# (for `!override`).
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    entrypoint: !reset null
+    volumes: !override
+      # PostgreSQL 16 keeps its cluster directly in /var/lib/postgresql/data.
+      - ${POSTGRES_DATA:-postgres-data}:/var/lib/postgresql/data
+
+volumes:
+  postgres-data:

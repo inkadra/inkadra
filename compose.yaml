@@ -6,6 +6,7 @@
 #   deploy/compose.s3.yaml             files in an S3-compatible bucket you already have
 #   deploy/compose.rustfs.yaml         files in a bundled S3-compatible store (RustFS)
 #   deploy/proxy/<name>/compose.yaml   a reverse proxy in the same stack: caddy, traefik, nginx
+#   deploy/compose.postgres16.yaml     keep PostgreSQL 16 for now (docs/self-hosting/upgrades.md)
 
 name: inkadra
 
@@ -70,15 +71,32 @@ services:
         condition: service_healthy
 
   postgres:
-    image: postgres:16-alpine
+    image: postgres:18-alpine
     restart: unless-stopped
     environment:
       POSTGRES_USER: inkadra
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
       POSTGRES_DB: inkadra
     volumes:
+      # PostgreSQL 18 keeps its cluster in /var/lib/postgresql/18/docker, so the volume is the
+      # parent folder. This is a new volume: data from PostgreSQL 16 is in `postgres-data` and
+      # must be moved over (docs/self-hosting/upgrades.md#upgrading-to-postgresql-18).
       # A host folder here must be owned by uid 70, the postgres user of the alpine image.
-      - ${POSTGRES_DATA:-postgres-data}:/var/lib/postgresql/data
+      - ${POSTGRES_DATA:-postgres18-data}:/var/lib/postgresql
+    # A cluster of PostgreSQL 16 or older mounted here (its PG_VERSION would sit right in the
+    # volume) must not be answered with an empty database next to it: stop and say what to do.
+    entrypoint:
+      - sh
+      - -c
+      - |
+        if [ -f /var/lib/postgresql/PG_VERSION ]; then
+          echo "The volume holds a PostgreSQL $$(cat /var/lib/postgresql/PG_VERSION) database from an older layout." >&2
+          echo "Move it to PostgreSQL 18 first: docs/self-hosting/upgrades.md#upgrading-to-postgresql-18" >&2
+          exit 1
+        fi
+        exec docker-entrypoint.sh "$$@"
+      - --
+    command: ["postgres"] # a custom entrypoint drops the image's default command
     security_opt: ["no-new-privileges:true"]
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U inkadra -d inkadra"]
@@ -101,5 +119,5 @@ services:
 
 volumes:
   inkadra-data:
-  postgres-data:
+  postgres18-data:
   valkey-data:
