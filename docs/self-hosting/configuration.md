@@ -51,7 +51,8 @@ These change `compose.yaml` itself, not the server.
 | `INKADRA_BIND`            | `127.0.0.1`               | Host address the ports listen on. `0.0.0.0` if the proxy is on another machine |
 | `INKADRA_DATA`            | volume `inkadra-data`     | Host folder for uploads instead of the volume                                  |
 | `POSTGRES_PASSWORD`       | required                  | Password of the bundled Postgres                                               |
-| `POSTGRES_DATA`           | volume `postgres-data`    | Host folder for the database                                                   |
+| `POSTGRES_DATA`           | volume `postgres-data`    | Host folder for the database (or the name of another volume)                   |
+| `POSTGRES_MAJOR`          | `16`                      | PostgreSQL version, only with `deploy/compose.postgres-old-layout.yaml`        |
 | `VALKEY_DATA`             | volume `valkey-data`      | Host folder for Valkey                                                         |
 | `RUSTFS_DATA`             | volume `rustfs-data`      | Host folder for the bundled RustFS                                             |
 | `INKADRA_DOMAIN`          |                           | Host of `PUBLIC_URL`, for the bundled proxies                                  |

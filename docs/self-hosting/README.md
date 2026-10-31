@@ -113,8 +113,8 @@ selects the role:
 | `backup create`         | Write a backup of the database to `/data/backups`, then exit        |
 | `backup restore <file>` | Restore a backup into an empty database, then exit                  |
 
-It needs Postgres 16 and Valkey 8 or newer (or Redis 7); `compose.yaml` runs Postgres 16 and
-Valkey 9. Valkey is required in production by every role. With your own
+It needs Postgres 16 or newer and Valkey 8 or newer (or Redis 7); `compose.yaml` runs Postgres 18
+and Valkey 9 (moving an install from 16: see [Upgrades](upgrades.md#upgrading-to-postgresql-18)). Valkey is required in production by every role. With your own
 Postgres, the `pg_trgm` extension must be available (it is in the standard `contrib` package
 and in the official images); a migration creates it as the database owner. The server runs as
 user `node` (uid 1000) with a read-only root filesystem and no Linux capabilities; it writes

@@ -31,7 +31,7 @@ belong to uid 70 beforehand:
 
 ```sh
 mkdir -p /mnt/tank/inkadra/data /mnt/tank/inkadra/postgres
-chown -R 70:70 /mnt/tank/inkadra/postgres      # postgres:16-alpine runs as uid 70
+chown -R 70:70 /mnt/tank/inkadra/postgres      # postgres:18-alpine runs as uid 70
 chown -R 1000:1000 /mnt/tank/inkadra/data      # optional with compose.yaml, needed without it
 ```
 
@@ -39,6 +39,10 @@ On TrueNAS SCALE, create a dataset per folder (for example `apps/inkadra/data` a
 `apps/inkadra/postgres`), use the paths under `/mnt/<pool>/…`, and set the owners as above
 from the shell or in the dataset permissions (user and group with those numeric ids). Keep
 the database on a dataset with `sync=standard`, the default, never `disabled`.
+
+PostgreSQL 18 keeps its files in `18/docker` inside that folder, so the folder is meant for
+this one purpose; a folder that holds the files of PostgreSQL 16 directly (`PG_VERSION`,
+`base/`) is refused, see [Upgrades](upgrades.md#upgrading-to-postgresql-18).
 
 Avoid network shares (NFS, SMB) for `POSTGRES_DATA`: Postgres needs local disk semantics. For
 `INKADRA_DATA` a share works if it maps the owner to uid 1000.
