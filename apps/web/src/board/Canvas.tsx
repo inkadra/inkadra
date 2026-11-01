@@ -3289,6 +3289,14 @@ export function Canvas({
         {viewed &&
           createPortal(
             <MediaViewer
+              onOfficeTable={(id, name, rows) =>
+                setToast({
+                  text: t('office.created', { name, rows }),
+                  undo: true,
+                  show: [id],
+                  ok: true,
+                })
+              }
               store={store}
               element={viewed}
               projectId={projectId}

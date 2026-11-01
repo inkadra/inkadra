@@ -2904,5 +2904,39 @@
     "disabled": "Il feed del calendario è disattivato dall’amministratore.",
     "admin": "Feed del calendario",
     "adminHelp": "Consenti i link privati al calendario per giorni di riprese e scadenze."
+  },
+  "office": {
+    "loading": "Caricamento dell’anteprima…",
+    "unavailable": "Anteprima non disponibile",
+    "disabled": "La conversione dei documenti non è attiva su questo server, oppure il documento supera i limiti di conversione.",
+    "download": "Scarica l’originale",
+    "sheets": "Fogli",
+    "pages": "Pagine",
+    "page": "Pagina {{page}} di {{count}}",
+    "error": "Impossibile caricare la pagina.",
+    "previous": "Pagina precedente",
+    "next": "Pagina successiva",
+    "zoomOut": "Riduci",
+    "zoomIn": "Ingrandisci",
+    "type": "Tipo",
+    "size": "Dimensioni",
+    "conversion": "Anteprima convertita sul server: impaginazione e font possono differire leggermente dall’originale.",
+    "toTable": "Trasforma in tabella",
+    "firstSheet": "Crea una card tabella accanto al file dal primo foglio, “{{name}}”: {{rows}} righe × {{columns}} colonne. Il file resta sulla board.",
+    "created": "Creata la tabella “{{name}}” · {{rows}} righe",
+    "sheetCount_one": "{{count}} foglio",
+    "sheetCount_other": "{{count}} fogli",
+    "slideCount_one": "{{count}} diapositiva",
+    "slideCount_other": "{{count}} diapositive",
+    "uploaded": "Caricato da",
+    "types": {
+      "docx": "Documento Word",
+      "xlsx": "Foglio Excel",
+      "pptx": "Presentazione PowerPoint",
+      "odt": "Documento OpenDocument",
+      "ods": "Foglio OpenDocument",
+      "odp": "Presentazione OpenDocument",
+      "csv": "Valori separati da virgole"
+    }
   }
 }

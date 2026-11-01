@@ -5,6 +5,8 @@ import {
   atLeast,
   CAPABILITY_ROLE,
   Id,
+  OfficePartParams,
+  OfficePreview,
   VariantParams,
   VariantQuery,
   z,
@@ -14,8 +16,9 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { requireAssetRole } from '../access.ts';
 import type { Auth } from '../auth.ts';
 import type { Database } from '../db/client.ts';
-import { type asset, assetVariant } from '../db/schema.ts';
-import { animatedVariantKey, type Storage } from '../storage.ts';
+import { type asset, assetVariant, user } from '../db/schema.ts';
+import { officeKey } from '../media/office.ts';
+import { animatedVariantKey, readAll, type Storage } from '../storage.ts';
 import { iso } from './api-routes.ts';
 import { requireActor } from './auth-routes.ts';
 import { HttpError, sendError } from './errors.ts';
@@ -181,6 +184,31 @@ export function registerAssetRoutes(app: FastifyInstance, deps: Deps) {
       .where(eq(assetVariant.assetId, assetId))
       .orderBy(asc(assetVariant.width));
     return toAsset(row, variants);
+  });
+
+  // Worker-generated, inert derivatives; the original's permissions still apply.
+  app.get(v1('/assets/:assetId/office/:part'), async (req, reply) => {
+    const actor = await requireActor(auth, req, db);
+    const { assetId, part } = OfficePartParams.parse(req.params);
+    const { asset: row } = await requireAssetRole(db, actor, assetId, 'viewer');
+    if (part !== 'manifest.json' && Number(part.match(/\d+/)?.[0]) > (row.pageCount ?? 0))
+      return sendError(reply, 'not_found', 'Office page unavailable.');
+    const key = officeKey(assetId, part);
+    if (row.status !== 'ready' || (await storage.size(key)) === null)
+      return sendError(reply, 'not_found', 'Office preview unavailable.');
+    fileHeaders(reply, `${row.sha256 ?? row.id}-${part}`);
+    if (part === 'manifest.json') {
+      const manifest = OfficePreview.parse(
+        JSON.parse((await readAll(await storage.read(key))).toString('utf8')),
+      );
+      const [uploader] = row.createdBy
+        ? await db.select({ name: user.name }).from(user).where(eq(user.id, row.createdBy))
+        : [];
+      reply.header('cache-control', 'private, no-store');
+      return { ...manifest, uploadedBy: uploader?.name ?? null, uploadedAt: iso(row.createdAt) };
+    }
+    reply.header('content-type', part.endsWith('.json') ? 'application/json' : 'image/webp');
+    return reply.send(await storage.read(key));
   });
 
   app.get(v1('/assets/:assetId/file'), async (req, reply) => {

@@ -2904,5 +2904,39 @@
     "disabled": "The administrator has disabled calendar feeds.",
     "admin": "Calendar feeds",
     "adminHelp": "Allow private calendar links for shooting days and due dates."
+  },
+  "office": {
+    "loading": "Loading preview…",
+    "unavailable": "Preview unavailable",
+    "disabled": "Document conversion is not enabled on this server, or the document exceeds conversion limits.",
+    "download": "Download original",
+    "sheets": "Sheets",
+    "pages": "Pages",
+    "page": "Page {{page}} of {{count}}",
+    "error": "The page could not be loaded.",
+    "previous": "Previous page",
+    "next": "Next page",
+    "zoomOut": "Zoom out",
+    "zoomIn": "Zoom in",
+    "type": "Type",
+    "size": "Size",
+    "conversion": "Preview converted on the server: layout and fonts may differ slightly from the original.",
+    "toTable": "Turn into table",
+    "firstSheet": "Create a table card beside the file from the first sheet, “{{name}}”: {{rows}} rows × {{columns}} columns. The file stays on the board.",
+    "created": "Created table “{{name}}” · {{rows}} rows",
+    "sheetCount_one": "{{count}} sheet",
+    "sheetCount_other": "{{count}} sheets",
+    "slideCount_one": "{{count}} slide",
+    "slideCount_other": "{{count}} slides",
+    "uploaded": "Uploaded by",
+    "types": {
+      "docx": "Word document",
+      "xlsx": "Excel workbook",
+      "pptx": "PowerPoint presentation",
+      "odt": "OpenDocument text",
+      "ods": "OpenDocument spreadsheet",
+      "odp": "OpenDocument presentation",
+      "csv": "Comma-separated values"
+    }
   }
 }

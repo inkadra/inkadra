@@ -70,3 +70,15 @@ describe.skipIf(!s3Endpoint)('s3 storage (needs S3_TEST_ENDPOINT)', () => {
     ),
   );
 });
+
+it('removes Office derivatives together with their original', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'office-storage-'));
+  const storage = localStorage(dir);
+  const id = 'office-test';
+  await storage.write(`originals/${id}`, Buffer.from('original'), 'text/plain');
+  await storage.write(`variants/${id}/office-manifest.json`, Buffer.from('{}'), 'application/json');
+  await storage.write(`variants/${id}/office-page-50.webp`, Buffer.from('page'), 'image/webp');
+  await storage.remove([`originals/${id}`]);
+  expect(await storage.size(`variants/${id}/office-manifest.json`)).toBeNull();
+  expect(await storage.size(`variants/${id}/office-page-50.webp`)).toBeNull();
+});
