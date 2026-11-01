@@ -10,7 +10,7 @@ import { type OfficePreview, officeUrl } from './office.ts';
 export function useOfficePreview(asset: Asset | null) {
   const [state, setState] = useState<{ id: string; data: OfficePreview | null } | null>(null);
   useEffect(() => {
-    if (!asset) return;
+    if (asset?.status !== 'ready') return;
     const abort = new AbortController();
     fetch(officeUrl(asset.id), { signal: abort.signal })
       .then(async (res) => {
@@ -23,7 +23,7 @@ export function useOfficePreview(asset: Asset | null) {
       });
     return () => abort.abort();
   }, [asset]);
-  return asset && state?.id === asset.id ? state.data : undefined;
+  return asset?.status === 'ready' && state?.id === asset.id ? state.data : undefined;
 }
 
 export function OfficeStage({
