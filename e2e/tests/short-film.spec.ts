@@ -338,7 +338,9 @@ test('a short film is prepared from the moodboard to the shot list', async ({
     // The Moodboard view collects pictures, link and palette.
     await page.getByRole('tab', { name: 'Moodboard' }).click();
     const gallery = page.getByRole('region', { name: 'Moodboard', exact: true });
-    await expect(gallery.locator('.moodboard__card--color')).toContainText('Giallo sodio');
+    await expect(
+      gallery.locator('.moodboard__card--color', { hasText: 'Giallo sodio' }),
+    ).toBeVisible();
     // Pictures without a caption are all "Immagine": the view cannot tell them apart by name.
     await expect(gallery.getByRole('button', { name: 'Apri Immagine' })).toHaveCount(4);
     await gap(page, 'moodboard-view');
