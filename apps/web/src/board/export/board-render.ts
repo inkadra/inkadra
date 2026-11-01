@@ -974,7 +974,9 @@ export function planOps(
       );
     });
   }
+  const labels: Op[] = [];
   for (const icon of shown(el.icons)) inside.push(...iconOps(icon, ink(icon.color), 1, true));
+  inside.push(...labels);
   return [{ kind: 'clip', ...box, ops: inside }];
 
   /** An icon: its cone or beam, its glyph and its label; `veil` fades a blocking copy. */
@@ -1036,17 +1038,23 @@ export function planOps(
     }
     const label = iconLabel(icon);
     if (label && full) {
+      // Labels go last, on a patch of the card's colour: the halo of the board.
       const a = labelAnchor(icon);
       const size = LABEL_SIZE * k;
-      out.push({
-        kind: 'text',
-        x: box.x + a.x * k - ctx.measure(label, size, 500) / 2,
-        y: box.y + a.y * k,
-        text: label,
-        size,
-        weight: 500,
-        color,
-      });
+      const w = ctx.measure(label, size, 500);
+      const x = box.x + a.x * k - w / 2;
+      const y = box.y + a.y * k;
+      labels.push(
+        {
+          kind: 'rect',
+          x: x - 2 * k,
+          y: y - size,
+          w: w + 4 * k,
+          h: size * 1.3,
+          fill: c['surface-1'],
+        },
+        { kind: 'text', x, y, text: label, size, weight: 500, color },
+      );
     }
     return out;
   }

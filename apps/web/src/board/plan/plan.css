@@ -1133,3 +1133,11 @@ button.plan__badge:hover {
 .plan-editor--phone:focus {
   outline: none;
 }
+/* Labels over everything, with a halo of the card (review of #391). */
+.plan__label {
+  fill: currentColor;
+  stroke: var(--ink-surface-1);
+  stroke-width: 5px;
+  stroke-linejoin: round;
+  paint-order: stroke;
+}

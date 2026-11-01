@@ -16,6 +16,7 @@ import {
   gridLength,
   gridStep,
   iconCone,
+  isSized,
   itemBox,
   itemFrame,
   itemsBox,
@@ -110,6 +111,8 @@ const KINDS = new Set<string>(PLAN_ICON_KINDS);
 /** Schema bounds: sizes and reaches up to 4000 view units, a scale up to 100000 per metre. */
 const MAX_UNITS = 4000;
 const MAX_SCALE = 100000;
+/** A finger held this long (ms) on the empty plan starts a selection box. */
+const LONG_PRESS = 400;
 /** A set of primes, as on the mockup; Other takes any focal length. */
 const LENSES = [18, 24, 35, 50, 85, 135];
 const HANDLES = ['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w'] as const;
@@ -139,7 +142,7 @@ type Gesture =
   | { kind: 'resize'; handle: ResizeHandle; item: PlanItem }
   | { kind: 'moveMany'; start: Point; items: PlanItem[] }
   | { kind: 'rotateMany'; centre: Point; from: number; items: PlanItem[] }
-  | { kind: 'marquee'; a: Point; add: boolean }
+  | { kind: 'marquee'; a: Point; add: boolean; touch: boolean; at: number; live: boolean }
   | { kind: 'end'; which: 0 | 1; item: PlanShape };
 
 /** View units of a point of the drawing (0 to 1). */
@@ -229,7 +232,10 @@ export function PlanEditor({
     previewRef.current = list;
     setPreviewState(list);
   };
-  const [live, setLive] = useState<Point[] | null>(null);
+  /** The line being drawn: its points grow in place, a counter redraws it (no copy per move). */
+  const [live, setLiveState] = useState<{ points: Point[]; n: number } | null>(null);
+  const setLive = (points: Point[] | null) =>
+    setLiveState(points ? { points, n: points.length } : null);
   const [liveShape, setLiveShape] = useState<{ kind: DragKind; a: Point; b: Point } | null>(null);
   const [text, setText] = useState<TextDraft | null>(null);
   const textRef = useRef<TextDraft | null>(null);
@@ -275,6 +281,8 @@ export function PlanEditor({
         };
   const current = preview?.find((p) => p.id === item?.id) ?? item ?? null;
   /** The selected items as drawn, the previews of a gesture included. */
+  const liftedIds = useMemo(() => new Set(selection.map((r) => r.id)), [selection]);
+  const hiddenList = useMemo(() => [...myHidden], [myHidden]);
   const many = selection.length > 1 ? selection.flatMap((r) => planItem(shown, r) ?? []) : [];
 
   // The selection loses the items that go (deleted here, by undo or by someone else).
@@ -631,8 +639,17 @@ export function PlanEditor({
         // A drag on the empty plan picks what its box touches (round 6, f).
         if (!e.shiftKey) setSelection([]);
         e.currentTarget.setPointerCapture(e.pointerId);
-        gesture.current = { kind: 'marquee', a: p, add: e.shiftKey };
-        setMarquee({ a: p, b: p });
+        // A finger draws the box after a long press (round 6, f); a mouse at once.
+        const touch = e.pointerType === 'touch';
+        gesture.current = {
+          kind: 'marquee',
+          a: p,
+          add: e.shiftKey,
+          touch,
+          at: e.timeStamp,
+          live: !touch,
+        };
+        if (!touch) setMarquee({ a: p, b: p });
       }
       return;
     }
@@ -663,6 +680,12 @@ export function PlanEditor({
     if (!g) return;
     const p = pointAt(e);
     if (g.kind === 'marquee') {
+      if (!g.live) {
+        const moved = Math.hypot(view(p).x - view(g.a).x, view(p).y - view(g.a).y) > 12;
+        if (e.timeStamp - g.at >= LONG_PRESS) g.live = true;
+        else if (moved) gesture.current = null;
+        if (!g.live) return;
+      }
       setMarquee({ a: g.a, b: p });
       return;
     }
@@ -701,7 +724,7 @@ export function PlanEditor({
       }
       setPreview(moveItem(g.item, d));
     } else if (g.kind === 'resize') {
-      const symbol = isIcon(g.item) && !categoryOf(g.item.kind).sized;
+      const symbol = isIcon(g.item) && !isSized(g.item.kind);
       setPreview(
         resizeItem(g.item, g.handle, view(p), {
           keepRatio: e.shiftKey || symbol,
@@ -740,7 +763,7 @@ export function PlanEditor({
       // Coalesced events keep fast lines smooth on pens and fast mice.
       const events = e.nativeEvent.getCoalescedEvents?.() ?? [e.nativeEvent];
       for (const ev of events.length > 0 ? events : [e.nativeEvent]) g.points.push(pointAt(ev));
-      setLive([...g.points]);
+      setLive(g.points);
     } else {
       g.b = snapped(p);
       g.raw[1] = p;
@@ -853,7 +876,7 @@ export function PlanEditor({
   const box = current ? itemBox(current) : null;
   const frame = current ? itemFrame(current) : null;
   const pad = 8;
-  const symbol = isIcon(current) && !categoryOf(current.kind).sized;
+  const symbol = isIcon(current) && !isSized(current.kind);
   const ends =
     current && 'x0' in current && !frame
       ? [
@@ -981,7 +1004,7 @@ export function PlanEditor({
     <>
       {live && (
         <path
-          d={pathOf(live, PLAN_VIEW_H)}
+          d={pathOf(live.points, PLAN_VIEW_H)}
           fill="none"
           stroke="currentColor"
           strokeWidth={PLAN_PEN}
@@ -1147,7 +1170,7 @@ export function PlanEditor({
   /** Width and depth of furniture in metres; S, M, L of symbols and texts (round 6, e). */
   const sizeFields = current && (
     <>
-      {isIcon(current) && categoryOf(current.kind).sized && drawn.scale && frame && (
+      {isIcon(current) && isSized(current.kind) && drawn.scale && frame && (
         <>
           <span className="plan-editor__vr" aria-hidden="true" />
           <NumberField
@@ -1917,7 +1940,13 @@ export function PlanEditor({
           onPointerCancel={onPointerCancel}
         >
           {rulers}
-          <PlanDrawing plan={shown} grid={step} ghosts={ghosts} hidden={[...myHidden]}>
+          <PlanDrawing
+            plan={shown}
+            grid={step}
+            ghosts={ghosts}
+            hidden={hiddenList}
+            lifted={liftedIds}
+          >
             {liveLayer}
           </PlanDrawing>
           {text && (

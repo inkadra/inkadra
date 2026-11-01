@@ -246,6 +246,14 @@ export function categoryOf(kind: PlanIconKind): PlanCategory {
   return CATEGORY_OF.get(kind) ?? (PLAN_CATEGORIES[0] as PlanCategory);
 }
 
+/**
+ * Kinds that take a free width and depth: furniture, exteriors, and the dolly track and the
+ * diffusion frame, whose length is what the crew needs ("Binario 3 m", "Diffusore 1,2 m").
+ */
+export function isSized(kind: PlanIconKind): boolean {
+  return categoryOf(kind).sized || kind === 'track' || kind === 'frame';
+}
+
 export function glyphOf(kind: PlanIconKind | PlanNoteTool): GlyphPart[] {
   return GLYPHS[(kind === 'light' ? 'fresnel' : kind) as GlyphName];
 }

@@ -34,4 +34,9 @@ it('counts the kit of a plan by type and power, and nothing else', () => {
     { name: 'dolly', count: 1 },
   ]);
   expect(kitList({ ...plan, hiddenLayers: ['lights'] }, t)).toEqual([{ name: 'dolly', count: 1 }]);
+  // With a scale, a track says how long it is.
+  const track = icon('track', { w: 300, h: 40 });
+  expect(kitList({ icons: [track], scale: 100 }, t, 'it')).toEqual([
+    { name: 'track 3 m', count: 1 },
+  ]);
 });

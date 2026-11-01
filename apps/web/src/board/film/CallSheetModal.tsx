@@ -524,8 +524,8 @@ function SheetSceneBlock({
   plan: boolean;
   options: { kit: boolean; moves: boolean; fullPage: boolean };
 }) {
-  const { t } = useTranslation();
-  const kit = scene.plan && options.kit ? kitList(scene.plan, t) : [];
+  const { t, i18n } = useTranslation();
+  const kit = scene.plan && options.kit ? kitList(scene.plan, t, i18n.language) : [];
   return (
     <div className={`sheet__scene${plan && options.fullPage ? ' sheet__scene--page' : ''}`}>
       <p className="sheet__scene-head">

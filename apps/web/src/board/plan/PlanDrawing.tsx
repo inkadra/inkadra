@@ -22,6 +22,7 @@ import {
   type PlanIcon,
   type PlanIconKind,
   type PlanShape,
+  type PlanStroke as PlanStrokeItem,
   STROKE_GRID,
 } from '@inkadra/doc-schema';
 import { type CSSProperties, memo, type ReactNode, useId } from 'react';
@@ -134,13 +135,46 @@ export function PlanGlyph({
 
 /** "A cam · 35 mm": the label of an icon on the plan. */
 export function iconLabel(icon: PlanIcon): string {
-  const lens = icon.kind === 'camera' && icon.showLens ? `${icon.lens ?? 35} mm` : '';
+  const mm = icon.lens ?? 35;
+  // "A cam 35mm" already says it: no "· 35 mm" again.
+  const said = new RegExp(`\\b${mm}\\s?mm\\b`, 'i').test(icon.label ?? '');
+  const lens = icon.kind === 'camera' && icon.showLens && !said ? `${mm} mm` : '';
   const power = icon.power && !icon.label?.includes(icon.power) ? icon.power : '';
   return [icon.label, lens, power].filter(Boolean).join(' · ');
 }
 
-/** A set icon in view units: its cone or beam, its glyph, its label under it. */
-export function PlanIconView({
+/**
+ * The label of an icon, over everything else of the plan, with a halo of the card's colour so
+ * it reads over walls and beams; `lifted` moves it past the handles of a selected icon.
+ */
+export const PlanLabel = memo(function PlanLabel({
+  icon,
+  lifted,
+}: {
+  icon: PlanIcon;
+  lifted?: boolean | undefined;
+}) {
+  const label = iconLabel(icon);
+  if (!label) return null;
+  const at = labelAnchor(icon);
+  return (
+    <text
+      className="plan__label"
+      x={at.x}
+      y={at.y + (lifted ? 20 : 0)}
+      textAnchor="middle"
+      fontSize={LABEL_SIZE}
+      fontWeight={500}
+      fontFamily="inherit"
+      style={{ color: planCss(icon.color) }}
+    >
+      {label}
+    </text>
+  );
+});
+
+/** A set icon in view units: its cone or beam and its glyph (its label is drawn last). */
+export const PlanIconView = memo(function PlanIconView({
   icon,
   sensor,
   faded,
@@ -154,8 +188,6 @@ export function PlanIconView({
 }) {
   const t = iconTransform(icon);
   const cone = noCone ? null : iconCone(icon, sensor);
-  const label = iconLabel(icon);
-  const at = label ? labelAnchor(icon) : null;
   const scale = Math.sqrt(t.sx * t.sy);
   return (
     <g
@@ -186,22 +218,9 @@ export function PlanIconView({
       >
         <GlyphParts glyph={glyphOf(icon.kind)} fill={WASH} />
       </g>
-      {at && !faded && (
-        <text
-          x={at.x}
-          y={at.y}
-          textAnchor="middle"
-          fontSize={LABEL_SIZE}
-          fontWeight={500}
-          fill="currentColor"
-          fontFamily="inherit"
-        >
-          {label}
-        </text>
-      )}
     </g>
   );
-}
+});
 
 /** Radius of the number of a blocking position, in view units. */
 const STEP_DOT = 11;
@@ -211,7 +230,13 @@ const STEP_DOT = 11;
  * between them as arrows (dashed for the camera, say), each position numbered. `ghosts` false
  * leaves the veiled copies out.
  */
-export function BlockingView({ icon, ghosts = true }: { icon: PlanIcon; ghosts?: boolean }) {
+export const BlockingView = memo(function BlockingView({
+  icon,
+  ghosts = true,
+}: {
+  icon: PlanIcon;
+  ghosts?: boolean;
+}) {
   const steps = icon.steps ?? [];
   if (steps.length === 0) return null;
   const at = blockingPositions(icon);
@@ -269,7 +294,7 @@ export function BlockingView({ icon, ghosts = true }: { icon: PlanIcon; ghosts?:
       ))}
     </g>
   );
-}
+});
 
 /** Length of a measure in metres, "2,70 m", or null on a plan without a scale. */
 export function measureText(shape: PlanShape, scale: number | undefined, locale?: string): string {
@@ -281,7 +306,13 @@ export function measureText(shape: PlanShape, scale: number | undefined, locale?
 }
 
 /** A shape of a plan: a frame shape turned by its rotation, or a zone or a measure. */
-export function PlanShapeView({ shape, scale }: { shape: PlanShape; scale?: number | undefined }) {
+export const PlanShapeView = memo(function PlanShapeView({
+  shape,
+  scale,
+}: {
+  shape: PlanShape;
+  scale?: number | undefined;
+}) {
   const x0 = (shape.x0 / STROKE_GRID) * PLAN_VIEW_W;
   const y0 = (shape.y0 / STROKE_GRID) * PLAN_VIEW_H;
   const x1 = (shape.x1 / STROKE_GRID) * PLAN_VIEW_W;
@@ -356,7 +387,15 @@ export function PlanShapeView({ shape, scale }: { shape: PlanShape; scale?: numb
       {body}
     </g>
   );
-}
+});
+
+const PlanStroke = memo(function PlanStroke({ stroke }: { stroke: PlanStrokeItem }) {
+  return (
+    <g style={{ color: planCss(stroke.color) }}>
+      <StrokePath stroke={stroke} height={PLAN_VIEW_H} color="currentColor" />
+    </g>
+  );
+});
 
 /** The dots of the plan's own grid, one every `step` view units. */
 function GridDots({ step }: { step: number }) {
@@ -399,9 +438,12 @@ export const PlanDrawing = memo(function PlanDrawing({
   hidden,
   ghosts = true,
   moves = true,
+  lifted,
   children,
 }: {
   plan: PlanLike;
+  /** Icons whose labels move past the selection handles. */
+  lifted?: ReadonlySet<string> | undefined;
   /** Blocking moves and numbers; an export may leave them out. */
   moves?: boolean;
   /** Veiled copies of the earlier blocking positions; the arrows and numbers stay. */
@@ -421,9 +463,7 @@ export const PlanDrawing = memo(function PlanDrawing({
     >
       {grid && <GridDots step={grid} />}
       {visible(plan.strokes, off).map((s) => (
-        <g key={s.id} style={{ color: planCss(s.color) }}>
-          <StrokePath stroke={s} height={PLAN_VIEW_H} color="currentColor" />
-        </g>
+        <PlanStroke key={s.id} stroke={s} />
       ))}
       {visible(plan.shapes, off).map((s) => (
         <PlanShapeView key={s.id} shape={measureEnds(s, plan.icons)} scale={plan.scale} />
@@ -434,6 +474,9 @@ export const PlanDrawing = memo(function PlanDrawing({
         ))}
       {visible(plan.icons, off).map((icon) => (
         <PlanIconView key={icon.id} icon={icon} sensor={plan.sensor} />
+      ))}
+      {visible(plan.icons, off).map((icon) => (
+        <PlanLabel key={`l${icon.id}`} icon={icon} lifted={lifted?.has(icon.id)} />
       ))}
       {children}
     </svg>

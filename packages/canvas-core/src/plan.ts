@@ -21,7 +21,7 @@ import * as Y from 'yjs';
 import { keyAtEnd, listElements } from './board.ts';
 import { shapeHit, strokeHit } from './film.ts';
 import type { Point } from './geometry.ts';
-import { BEAM_KINDS, categoryOf, GLYPH_FACING, glyphBox, glyphOf } from './plan-icons.ts';
+import { BEAM_KINDS, categoryOf, GLYPH_FACING, glyphBox, glyphOf, isSized } from './plan-icons.ts';
 
 /**
  * Set plans (decision 0062): strokes and shapes as on frame drawings, plus set icons. Points
@@ -105,8 +105,8 @@ export function iconSize(icon: Pick<PlanIcon, 'kind' | 'size' | 'w' | 'h'>): {
   h: number;
 } {
   const box = glyphBox(glyphOf(icon.kind));
-  if (categoryOf(icon.kind).sized && icon.w && icon.h) return { w: icon.w, h: icon.h };
-  const long = categoryOf(icon.kind).sized ? 64 : SYMBOL_SIZES[icon.size ?? 'M'];
+  if (isSized(icon.kind) && icon.w && icon.h) return { w: icon.w, h: icon.h };
+  const long = isSized(icon.kind) ? 64 : SYMBOL_SIZES[icon.size ?? 'M'];
   const k = long / Math.max(box.w, box.h);
   return { w: icon.w ?? box.w * k, h: icon.h ?? box.h * k };
 }
@@ -350,7 +350,7 @@ export function resizeItem<T extends PlanItem>(
   const off = turn(local, f.angle);
   const centre = { x: f.centre.x + off.x, y: f.centre.y + off.y };
   if ('x' in item) {
-    if (categoryOf(item.kind).sized)
+    if (isSized(item.kind))
       return {
         ...item,
         w: Math.round(w * 10) / 10,

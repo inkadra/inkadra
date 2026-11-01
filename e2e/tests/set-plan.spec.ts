@@ -142,7 +142,7 @@ async function seed(page: Page, baseURL: string, theme: 'light' | 'dark') {
         },
       ],
       shapes: [
-        text('Table', 176, 124, 'tavolo'),
+        text('Table', 190, 126, 'tavolo'),
         text('Window', 140, 40, 'finestra'),
         text('Move', 282, 100, '1 → 2', '#B897F0'),
         {
@@ -158,13 +158,13 @@ async function seed(page: Page, baseURL: string, theme: 'light' | 'dark') {
         ...walls.map((w, n) => line(n, w)),
       ],
       icons: [
-        icon('Window', 'window', INK, 160, 20),
-        icon('Door', 'door', INK, 210, 212),
-        icon('Table', 'table', INK, 204, 121),
-        icon('Track', 'track', INK, 112, 211),
+        { ...icon('Window', 'window', INK, 160, 20), w: 210, h: 20 },
+        { ...icon('Door', 'door', INK, 210, 212), w: 95, h: 95 },
+        { ...icon('Table', 'table', INK, 204, 121), w: 180, h: 105 },
+        { ...icon('Track', 'track', INK, 112, 211), w: 320, h: 25 },
         icon('ACam', 'camera', '#9DB8F2', 100, 200, 310, 'A cam'),
         icon('BCam', 'camera', '#9DB8F2', 326, 70, 160, 'B cam'),
-        icon('Key', 'fresnel', '#EDD963', 340, 198, 225, 'Key 1,2K'),
+        { ...icon('Key', 'fresnel', '#EDD963', 340, 198, 225, 'Key'), power: '1,2K' },
         icon('Anna', 'actor', '#B897F0', 204, 78, 90, 'Anna'),
         icon('Marco', 'actor', '#7AD689', 214, 168, 270, 'Marco'),
         { ...icon('Sofa', 'sofa', INK, 318, 140), w: 100, h: 42 },
@@ -250,6 +250,11 @@ for (const theme of ['dark', 'light'] as const) {
     expect(tools.x).toBeGreaterThanOrEqual(win.x);
 
     // Search knows synonyms: "kino" finds the tube; Enter would place it.
+    // Keyboard: Tab to a tile, Enter arms it.
+    await tile('Tubo').focus();
+    await page.keyboard.press('Enter');
+    await expect(tile('Tubo')).toHaveAttribute('aria-pressed', 'true');
+    await page.keyboard.press('Escape');
     const search = editor.getByRole('searchbox', { name: 'Cerca un’icona' });
     await search.fill('kino');
     await expect(editor.locator('.plan-lib__tile')).toHaveCount(1);
@@ -513,7 +518,8 @@ for (const theme of ['dark', 'light'] as const) {
       const sheet = page.getByRole('article', { name: 'Anteprima foglio di lavorazione' });
       const scenes = sheet.locator('.sheet__section').filter({ hasText: 'Scene del giorno' });
       await expect(scenes.locator('.plan__svg')).toBeVisible();
-      await expect(scenes.locator('.sheet__kit')).toContainText('Fresnel');
+      await expect(scenes.locator('.sheet__kit')).toContainText('Fresnel 1,2K');
+      await expect(scenes.locator('.sheet__kit')).toContainText(/Binario \d/);
       await scenes.scrollIntoViewIfNeeded();
       await page
         .getByRole('dialog', { name: 'Foglio di lavorazione' })
