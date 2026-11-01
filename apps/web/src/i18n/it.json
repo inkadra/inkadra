@@ -452,6 +452,10 @@
     },
     "menu": {
       "playLink": "Riproduci {{title}}",
+      "openInViewer": "Apri nel visualizzatore",
+      "openOnInstagram": "Apri su Instagram",
+      "instagram": "Instagram",
+      "videoPlayer": "Video: {{title}}",
       "refreshPreviewFailed": "Impossibile aggiornare l’anteprima. Riprova più tardi.",
       "refreshPreview": "Aggiorna anteprima",
       "setCover": "Usa come copertina",
@@ -2021,7 +2025,9 @@
     },
     "preferences": {
       "themeHelp": "Sistema segue l’impostazione del dispositivo",
-      "languageHelp": "Lingua dell’interfaccia e delle email"
+      "languageHelp": "Lingua dell’interfaccia e delle email",
+      "keepPlaying": "Continua a riprodurre i video fuori schermo",
+      "keepPlayingHelp": "Un video in una card continua a suonare quando lo sposti fuori dalla vista. Spento, si ferma: la lavagna resta fluida."
     },
     "notifications": {
       "short": {
@@ -2075,7 +2081,7 @@
     "noResults": "Nessuna impostazione trovata",
     "keywords": {
       "account": "Nome, Email, Foto profilo, Password, Verifica in due passaggi (2FA), Codici di riserva, Metodi di accesso, Sessioni, Dispositivi, App e token, Elimina account",
-      "preferences": "Tema, Tema scuro, Tema chiaro, Lingua",
+      "preferences": "Tema, Tema scuro, Tema chiaro, Lingua, Continua a riprodurre i video fuori schermo",
       "notifications": "Notifiche email, Menzioni, Risposte, Revisioni, Riepilogo giornaliero, Inbox",
       "members": "Invita membri, Inviti, Link di invito, Ruolo, Amministratori, Disattiva account, Riattiva account, Persone",
       "workspace": "Spazio usato, File caricati, Archiviazione",

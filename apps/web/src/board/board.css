@@ -2760,13 +2760,75 @@ button.crumb--editable:focus-visible {
   }
 }
 
-.card--link .card__media--link:has(.card__play) {
+.card--link .card__media--link:is(.card__embed, :has(.card__play)) {
   aspect-ratio: 16 / 9;
 }
 button.card__play {
   pointer-events: auto;
   cursor: pointer;
   border: 0;
+}
+/*
+ * The player replaces the thumbnail, inside a frame that drags the card. Instagram's embed is
+ * a tall post, not a 16:9 picture.
+ */
+.card__embed {
+  box-sizing: border-box;
+  padding: 6px;
+  background: var(--ink-surface-2);
+}
+.card__embed iframe {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  border-radius: var(--ink-radius-xs);
+  background: #000;
+}
+.card--link .card__media--link.card__embed--portrait {
+  aspect-ratio: 10 / 13;
+}
+/* Instagram: ↗ sits in the footer, right-aligned on the host's line. */
+.card__host-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.card__host-row .card__expand {
+  position: static;
+  flex: none;
+}
+/* Alt held: the player does not take the pointer, so the card drags from anywhere. */
+.card__shield {
+  position: absolute;
+  inset: 0;
+  cursor: grabbing;
+}
+/* ↗ over the player: the viewer for a video, Instagram for a post. */
+.card__expand {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--ink-radius-sm);
+  background: rgb(0 0 0 / 0.6);
+  color: #fff;
+  cursor: pointer;
+}
+.card__badge {
+  position: absolute;
+  left: 8px;
+  bottom: 8px;
+  padding: 1px 6px;
+  border-radius: var(--ink-radius-xs);
+  background: rgb(0 0 0 / 0.6);
+  color: #fff;
+  font-size: 11px;
 }
 
 .toolbar__group--navigate .toolbar__btn:not([aria-pressed="true"]):hover,

@@ -36,6 +36,7 @@ import { useSlugline } from './film/storyboard-data.ts';
 import { GuestVisibility } from './guest-visibility.tsx';
 import { ImageCropStage } from './ImageCropEditor.tsx';
 import { croppedRotatedSize, rotatedBounds } from './image-crop.ts';
+import { playInline, stopInline, stopWhenOffscreen, useInlinePlaying } from './inline-player.ts';
 import { webUrl } from './links.ts';
 import { useMeasure } from './measure.ts';
 import { movingVariantUrl } from './moving.tsx';
@@ -43,7 +44,7 @@ import { NoteBody, NoteEditor, useFragment } from './note.tsx';
 import { LOCAL } from './store.ts';
 import { TagList } from './tags.tsx';
 import { localPreview, useUploadProgress } from './uploads.ts';
-import { isYoutubeUrl } from './youtube.ts';
+import { isInstagramUrl, videoEmbedUrl } from './youtube.ts';
 
 type Of<T extends Element['type']> = Extract<Element, { type: T }>;
 
@@ -485,20 +486,133 @@ function shortUrl(url: string): string {
   return text.length > 80 ? `${text.slice(0, 79)}…` : text;
 }
 
+/**
+ * The player takes the place of the thumbnail, inside a frame a few pixels wide: the frame and
+ * the title below drag the card. Holding Alt lays a shield over the player, so the card can be
+ * dragged from anywhere. shortcut: while the player has keyboard focus the page never sees Alt;
+ * the frame still drags then.
+ */
+function InlineVideo({
+  element,
+  embedUrl,
+  title,
+  instagram,
+}: {
+  element: Of<'link'>;
+  embedUrl: string;
+  title: string;
+  instagram: boolean;
+}) {
+  const { t } = useTranslation();
+  const ref = useRef<HTMLDivElement>(null);
+  const mounted = useRef(false);
+  const [alt, setAlt] = useState(false);
+  const id = element.id;
+  useEffect(() => {
+    mounted.current = true;
+    const stop = () => stopInline(id);
+    const onKey = (event: { key: string; altKey: boolean }) => {
+      if (event.key === 'Escape') stop();
+      setAlt(event.altKey);
+    };
+    const onBlur = () => setAlt(false);
+    window.addEventListener('keydown', onKey);
+    window.addEventListener('keyup', onKey);
+    window.addEventListener('blur', onBlur);
+    // Far off-screen means more than a screen away: a small pan keeps the video running.
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry && !entry.isIntersecting) stopWhenOffscreen(id);
+      },
+      { rootMargin: '100% 100% 100% 100%' },
+    );
+    if (ref.current) observer.observe(ref.current);
+    return () => {
+      window.removeEventListener('keydown', onKey);
+      window.removeEventListener('keyup', onKey);
+      window.removeEventListener('blur', onBlur);
+      observer.disconnect();
+      mounted.current = false;
+      // StrictMode remounts at once: only a card that really went away stops.
+      queueMicrotask(() => {
+        if (!mounted.current) stop();
+      });
+    };
+  }, [id]);
+  return (
+    <div
+      className={`card__media card__media--link card__embed${instagram ? ' card__embed--portrait' : ''}`}
+      ref={ref}
+    >
+      <iframe
+        src={embedUrl}
+        title={t('board.menu.videoPlayer', { title })}
+        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
+        allowFullScreen
+      />
+      {alt && <div className="card__shield" />}
+      {!instagram && <OpenOutButton element={element} instagram={false} />}
+    </div>
+  );
+}
+
+/** ↗ on a playing card: the viewer for a video, Instagram for a post. */
+function OpenOutButton({ element, instagram }: { element: Of<'link'>; instagram: boolean }) {
+  const { t } = useTranslation();
+  const { openElement } = useBoard();
+  const label = t(instagram ? 'board.menu.openOnInstagram' : 'board.menu.openInViewer');
+  return (
+    <button
+      type="button"
+      className="card__expand"
+      data-no-drag
+      data-play-link={element.id}
+      title={label}
+      aria-label={label}
+      onClick={(event) => {
+        event.stopPropagation();
+        stopInline(element.id);
+        openElement?.(element);
+      }}
+    >
+      <Icon name="arrow" size={14} />
+    </button>
+  );
+}
+
 function LinkCard({ element, width }: { element: Of<'link'>; width: number }) {
   const { t } = useTranslation();
-  const { scale, openElement } = useBoard();
+  const { scale } = useBoard();
   const image = useAsset(element.imageAssetId);
+  const playing = useInlinePlaying(element.id);
   const ready = image && image !== 'missing' ? image : null;
   const src = ready ? pickVariant(ready, width * scale * (window.devicePixelRatio || 1)) : '';
   const href = webUrl(element.url);
-  const isYoutube = isYoutubeUrl(element.url);
+  const title = element.title || (href ? new URL(href).hostname : element.url);
+  const embedUrl = videoEmbedUrl(element.url);
+  const instagram = isInstagramUrl(element.url);
+  const host = href ? (
+    <a
+      className="card__host"
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer nofollow"
+      data-no-drag
+    >
+      <Icon name="link" size={12} />
+      {hostOf(element.url)}
+    </a>
+  ) : (
+    <span className="card__host">{element.url}</span>
+  );
   return (
     <>
-      {src ? (
-        <div className="card__media card__media--link">
-          <img src={src} alt="" draggable={false} decoding="async" />
-          {isYoutube && (
+      {embedUrl && playing ? (
+        <InlineVideo element={element} embedUrl={embedUrl} title={title} instagram={instagram} />
+      ) : src || embedUrl ? (
+        <div className={`card__media card__media--link${src ? '' : ' card__video'}`}>
+          {src && <img src={src} alt="" draggable={false} decoding="async" />}
+          {embedUrl && (
             <button
               type="button"
               className="card__play"
@@ -506,51 +620,27 @@ function LinkCard({ element, width }: { element: Of<'link'>; width: number }) {
               data-play-link={element.id}
               onClick={(event) => {
                 event.stopPropagation();
-                openElement?.(element);
+                playInline(element.id);
               }}
-              aria-label={t('board.menu.playLink', {
-                title: element.title || (href ? new URL(href).hostname : element.url),
-              })}
+              aria-label={t('board.menu.playLink', { title })}
             >
               <Icon name="play" size={16} />
             </button>
           )}
-        </div>
-      ) : isYoutube ? (
-        <div className="card__media card__media--link card__video">
-          <button
-            type="button"
-            className="card__play"
-            data-no-drag
-            data-play-link={element.id}
-            onClick={(event) => {
-              event.stopPropagation();
-              openElement?.(element);
-            }}
-            aria-label={t('board.menu.playLink', {
-              title: element.title || (href ? new URL(href).hostname : element.url),
-            })}
-          >
-            <Icon name="play" size={16} />
-          </button>
+          {instagram && <span className="card__badge">{t('board.menu.instagram')}</span>}
         </div>
       ) : null}
       <div className="card__pad card__link">
         <span className="card__title">{element.title || shortUrl(element.url)}</span>
         {element.description && <span className="card__desc">{element.description}</span>}
-        {href ? (
-          <a
-            className="card__host"
-            href={href}
-            target="_blank"
-            rel="noopener noreferrer nofollow"
-            data-no-drag
-          >
-            <Icon name="link" size={12} />
-            {hostOf(element.url)}
-          </a>
+        {embedUrl && playing && instagram ? (
+          // Instagram's embed fills its picture with its own bars: ↗ waits below, by the host.
+          <div className="card__host-row">
+            {host}
+            <OpenOutButton element={element} instagram />
+          </div>
         ) : (
-          <span className="card__host">{element.url}</span>
+          host
         )}
       </div>
     </>

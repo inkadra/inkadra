@@ -4,11 +4,12 @@ import type {
   DeleteMeBlocked,
   PersonalToken,
 } from '@inkadra/shared';
-import { Avatar, Button, Dialog, DialogActions, Select, TextField } from '@inkadra/ui';
+import { Avatar, Button, Dialog, DialogActions, Select, Switch, TextField } from '@inkadra/ui';
 import { type FormEvent, useCallback, useEffect, useId, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation } from 'react-router';
 import { encode } from 'uqr';
+import { setKeepsPlayingOffscreen, useKeepsPlayingOffscreen } from '../board/inline-player.ts';
 import { LOCALES } from '../i18n/index.ts';
 import { api, authApi, RequestError } from '../lib/api.ts';
 import { useSession } from '../lib/session.tsx';
@@ -103,12 +104,14 @@ function useStatus() {
   return { show, showKey, fail, node, clear: () => setStatus(null) };
 }
 
-/** Theme applies instantly on this device; language is saved to the account. */
+/** Theme and video playback apply instantly on this device; language is saved to the account. */
 export function Preferences() {
   const { t, i18n } = useTranslation();
   const { user, refresh } = useSession();
   const { preference, choose } = useTheme();
   const languageId = useId();
+  const keepPlayingId = useId();
+  const keepPlaying = useKeepsPlayingOffscreen();
   const [locale, setLocale] = useState(user?.locale ?? i18n.language);
   async function changeLocale(next: string) {
     const previous = locale;
@@ -152,6 +155,17 @@ export function Preferences() {
               </option>
             ))}
           </Select>
+        </Row>
+        <Row
+          label={t('settingsUi.preferences.keepPlaying')}
+          help={t('settingsUi.preferences.keepPlayingHelp')}
+          htmlFor={keepPlayingId}
+        >
+          <Switch
+            id={keepPlayingId}
+            checked={keepPlaying}
+            onChange={(event) => setKeepsPlayingOffscreen(event.target.checked)}
+          />
         </Row>
       </div>
     </Card>

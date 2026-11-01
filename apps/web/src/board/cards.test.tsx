@@ -410,3 +410,33 @@ describe('board elements (#307, #318, #322)', () => {
     expect(render({ ...section, title: '' } as Element)).toContain('is-empty');
   });
 });
+
+describe('Vimeo and Instagram link cards', () => {
+  it('plays Vimeo in the card like YouTube, behind the same play button', () => {
+    state.editing = null;
+    vi.stubGlobal('window', { devicePixelRatio: 1 });
+    const html = render({ ...file, type: 'link', url: 'https://vimeo.com/123456' });
+    expect(html).toContain('data-play-link="file_caption_01"');
+    expect(html).not.toContain('<iframe');
+    vi.unstubAllGlobals();
+  });
+
+  it('shows an Instagram post as a thumbnail with a badge and a play button, and loads nothing', () => {
+    state.editing = null;
+    state.status = 'ready';
+    state.asset = { variants: [{ url: '/thumb.jpg' }] };
+    vi.stubGlobal('window', { devicePixelRatio: 1 });
+    const html = render({
+      ...file,
+      type: 'link',
+      url: 'https://www.instagram.com/reel/C1abc/',
+      imageAssetId: 'asset-id',
+    });
+    expect(html).toContain('board.menu.instagram');
+    expect(html).toContain('data-play-link="file_caption_01"');
+    expect(html).not.toContain('instagram.com/reel/C1abc/embed');
+    expect(html).not.toContain('<iframe');
+    state.asset = {};
+    vi.unstubAllGlobals();
+  });
+});

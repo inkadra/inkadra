@@ -13,13 +13,20 @@ import { FrameGrab } from './FrameGrab.tsx';
 import { fileBadge, fileFamily, isPdf } from './file-kinds.ts';
 import { VideoFrameStepper } from './frame-grab.ts';
 import { hasImageTransform } from './image-crop.ts';
+import { playInline } from './inline-player.ts';
 import { MovingPicture, movingVariantUrl } from './moving.tsx';
 import { authorName, editableText } from './review-model.ts';
 import { canComment, openComments, useReviews } from './review-store.ts';
 import { isTyping } from './shortcuts.ts';
 import { type BoardStore, LOCAL } from './store.ts';
 import { TagEditor } from './tags.tsx';
-import { isYoutubeUrl, youtubeEmbedUrl, youtubePlayerTime } from './youtube.ts';
+import {
+  isVideoLink,
+  isYoutubeUrl,
+  videoEmbedUrl,
+  YOUTUBE_ORIGIN,
+  youtubePlayerTime,
+} from './youtube.ts';
 
 type Exif = Record<string, unknown>;
 
@@ -244,6 +251,8 @@ export function MediaViewer({
   const assetId = element.type === 'link' ? element.imageAssetId : element.assetId;
   const asset = useAsset(assetId);
   const isYoutube = element.type === 'link' && isYoutubeUrl(element.url);
+  const embedUrl =
+    element.type === 'link' && isVideoLink(element.url) ? videoEmbedUrl(element.url) : null;
   const ready: Asset | null = asset && asset !== 'missing' ? asset : null;
   const dialogRef = useRef<HTMLDivElement>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
@@ -259,6 +268,10 @@ export function MediaViewer({
     window.addEventListener('message', receive);
     return () => window.removeEventListener('message', receive);
   }, [element.id, isYoutube]);
+  // A video playing on its card must not keep going behind the viewer.
+  useEffect(() => {
+    playInline(null);
+  }, []);
   const [copied, setCopied] = useState<string | null>(null);
   const [infoOpen, setInfoOpen] = useState(false);
   const [showOriginal, setShowOriginal] = useState(false);
@@ -548,20 +561,28 @@ export function MediaViewer({
             </>
           )}
 
-          <div className={`viewer__media-wrap${isYoutube ? ' viewer__media-wrap--embed' : ''}`}>
-            {isYoutube ? (
+          <div className={`viewer__media-wrap${embedUrl ? ' viewer__media-wrap--embed' : ''}`}>
+            {embedUrl ? (
               <div className="viewer__embed">
                 <iframe
                   ref={iframeRef}
                   className="viewer__iframe"
-                  src={`${youtubeEmbedUrl(element.url)}&enablejsapi=1&origin=${encodeURIComponent(location.origin)}`}
+                  src={
+                    isYoutube
+                      ? `${embedUrl}&enablejsapi=1&origin=${encodeURIComponent(location.origin)}`
+                      : embedUrl
+                  }
                   onLoad={() =>
+                    isYoutube &&
                     iframeRef.current?.contentWindow?.postMessage(
                       JSON.stringify({ event: 'listening', id: 'inkadra-viewer' }),
-                      'https://www.youtube-nocookie.com',
+                      YOUTUBE_ORIGIN,
                     )
                   }
-                  title={element.title || 'YouTube video'}
+                  title={
+                    (element.type === 'link' && element.title) ||
+                    (isYoutube ? 'YouTube video' : 'Vimeo video')
+                  }
                   allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                   allowFullScreen
                 />
