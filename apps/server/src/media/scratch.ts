@@ -1,5 +1,5 @@
-import { mkdir, mkdtemp, readdir, rm, stat, statfs } from 'node:fs/promises';
-import { join } from 'node:path';
+import { mkdir, mkdtemp, readdir, rm, stat, statfs, symlink } from 'node:fs/promises';
+import { join, resolve } from 'node:path';
 
 /** Prefix of the scratch folder of one media job, in DATA_DIR/tmp. */
 const JOB_PREFIX = 'job-';
@@ -24,6 +24,26 @@ export async function withJobDir<T>(tmpDir: string, work: (dir: string) => Promi
   } finally {
     await rm(dir, { recursive: true, force: true });
   }
+}
+
+/**
+ * The path ffmpeg and ffprobe open for `source`: a symlink to it alone in a private folder of
+ * the job (`dir/in/source`, mode 700). A QuickTime file can point at other files by a relative
+ * path (`dref` atoms) and ffmpeg looks for them next to the path it was given; through the
+ * link, that is an empty folder, never the other originals in `files/originals/`.
+ */
+export async function privateInput(dir: string, source: string) {
+  const folder = join(dir, 'in');
+  await mkdir(folder, { mode: 0o700 });
+  const link = join(folder, 'source');
+  try {
+    await symlink(resolve(source), link);
+  } catch (err) {
+    // Windows (development only) needs a privilege for symlinks; the image is Linux.
+    if (process.platform === 'win32') return source;
+    throw err;
+  }
+  return link;
 }
 
 /** Removes job folders older than `olderThanMs` (by mtime); returns how many went. */

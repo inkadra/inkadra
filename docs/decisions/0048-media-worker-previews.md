@@ -46,6 +46,12 @@ browser.
 - **Scratch files.** Every media job (copies, posters, RAW previews, PDF pages) works in a
   folder of its own, `DATA_DIR/tmp/job-*`, removed when it ends; folders older than 6 hours,
   left by a crash, are swept when the server starts.
+  ffmpeg and ffprobe never open an original where it is stored: they get a symlink to it,
+  alone in `job-*/in/` (mode 700), so the relative file references a QuickTime movie can carry
+  (`dref`) find nothing beside it instead of the other originals in `files/originals/` (#357).
+- **Image checks.** CI fails the `-media` image on any high or critical vulnerability that has
+  a fix (the standard image: critical), since its libraries parse untrusted files, and when it
+  has a setuid or setgid file the standard image does not (#357).
 - **Storage.** The copy is the `proxy` row of `asset_variant` (`mime`, `bytes`), at
   `variants/<assetId>/proxy.mp4`, so it is removed with the asset like the thumbnails. It is
   never listed with the thumbnails. A second pass of the thumbnails keeps it: originals never

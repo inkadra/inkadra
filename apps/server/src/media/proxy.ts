@@ -6,7 +6,7 @@ import type { Database } from '../db/client.ts';
 import { asset, assetVariant } from '../db/schema.ts';
 import { proxyKey, readAll, type Storage } from '../storage.ts';
 import { gpuDecodes, SOFTWARE_ENCODER, type VideoEncoder } from './hwaccel.ts';
-import { ensureFreeSpace, withJobDir } from './scratch.ts';
+import { ensureFreeSpace, privateInput, withJobDir } from './scratch.ts';
 import {
   copiesVideo,
   DEFAULT_PROXY_SETTINGS,
@@ -81,7 +81,8 @@ export async function runProxy(
     if (storage.copiesToLocal) await ensureFreeSpace(dir, row.size, 'the copy of the video');
     const copy = await storage.localCopy(row.storageKey, dir);
     try {
-      return await transcode(deps, row, container, copy.path, dir, onProgress);
+      const source = await privateInput(dir, copy.path);
+      return await transcode(deps, row, container, source, dir, onProgress);
     } finally {
       await copy.done();
     }
