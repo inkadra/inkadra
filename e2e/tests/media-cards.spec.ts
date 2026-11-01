@@ -255,6 +255,10 @@ test('one card per file type, as in the approved mockup', async ({ page, baseURL
   await expect(page.locator('.fbadge').filter({ hasText: 'RAW' })).toHaveCount(1);
   await expect(page.locator('.fcard__prep')).toContainText('42%');
   await page.keyboard.press('Shift+Digit1');
+  // The audio card's own player, scrubbed to the middle of the clip.
+  await expect(page.locator('.fcard__player audio')).toHaveCount(1);
+  await page.locator('.fcard__scrub').click();
+  await expect(page.locator('.fcard__scrub')).not.toHaveAttribute('aria-valuemax', '0');
 
   const dir = process.env.FILE_CARDS_SCREENSHOTS ?? info.outputPath();
   mkdirSync(dir, { recursive: true });

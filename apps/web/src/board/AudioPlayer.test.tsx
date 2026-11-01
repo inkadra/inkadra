@@ -130,9 +130,7 @@ describe('audio card player', () => {
     expect(scrub.getAttribute('aria-valuenow')).toBe('46');
     expect(chip(player)).toBe('0:46 / 1:32');
     expect(audio(player).currentTime).toBe(46);
-    expect(
-      (player.querySelector('.fcard__scrub-fill') as HTMLElement).style.width,
-    ).toBe('50%');
+    expect((player.querySelector('.fcard__scrub-fill') as HTMLElement).style.width).toBe('50%');
 
     act(() => {
       scrub.dispatchEvent(new PointerEvent('pointermove', { bubbles: true, clientX: 150 }));

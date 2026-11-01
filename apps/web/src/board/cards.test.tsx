@@ -294,7 +294,9 @@ describe('file card family', () => {
       'audio',
     );
     expect(html).toContain('class="fcard__player"');
-    expect(html).toMatch(/<audio src="\/api\/v1\/assets\/asset-id\/file" preload="metadata" hidden/);
+    expect(html).toMatch(
+      /<audio src="\/api\/v1\/assets\/asset-id\/file" preload="metadata" hidden/,
+    );
     expect(html).not.toContain('controls');
     expect(html).toContain('0:00 / 1:32');
     expect(html).toContain('<span class="fbadge fbadge--audio">M4A</span>');
