@@ -13865,6 +13865,17 @@
             "required": true,
             "name": "part",
             "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "maxLength": 64,
+              "description": "Revision from the manifest; with it a page may be cached for a year."
+            },
+            "required": false,
+            "description": "Revision from the manifest; with it a page may be cached for a year.",
+            "name": "v",
+            "in": "query"
           }
         ],
         "responses": {
@@ -13879,6 +13890,10 @@
                       "type": "integer",
                       "minimum": 0,
                       "maximum": 50
+                    },
+                    "revision": {
+                      "type": "string",
+                      "maxLength": 64
                     },
                     "uploadedBy": {
                       "type": [
@@ -13911,6 +13926,9 @@
                               "maxItems": 20
                             },
                             "maxItems": 500
+                          },
+                          "truncated": {
+                            "type": "boolean"
                           }
                         },
                         "required": [

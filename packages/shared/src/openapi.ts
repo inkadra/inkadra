@@ -7,6 +7,7 @@ import {
   CreateLinkPreview,
   LinkPreview,
   OfficePartParams,
+  OfficePartQuery,
   OfficePreview,
   ThumbnailSize,
   UploadMetadata,
@@ -1347,7 +1348,7 @@ registry.registerPath({
   summary: 'Worker-generated Office preview: manifest.json or page-1.webp through page-50.webp.',
   description:
     'Requires access to the asset. No original is changed. 404 without a generated derivative.',
-  request: { params: OfficePartParams },
+  request: { params: OfficePartParams, query: OfficePartQuery },
   responses: {
     200: {
       description: 'Office manifest or rendered page',

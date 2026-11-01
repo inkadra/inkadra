@@ -249,11 +249,15 @@ export type LinkPreview = z.infer<typeof LinkPreview>;
 export const OfficeSheet = z.object({
   name: z.string().max(2000),
   rows: z.array(z.array(z.string().max(2000)).max(20)).max(500),
+  /** True when rows, columns or cells beyond the limits were left out of `rows`. */
+  truncated: z.boolean().optional(),
 });
 export type OfficeSheet = z.infer<typeof OfficeSheet>;
 export const OfficePreview = z
   .object({
     pageCount: z.int().min(0).max(50),
+    /** Changes whenever the derivatives are regenerated: pass it as `v` to page URLs. */
+    revision: z.string().max(64).optional(),
     uploadedBy: z.string().nullable().optional(),
     uploadedAt: Timestamp.optional(),
     sheets: z.array(OfficeSheet).max(16),
@@ -263,6 +267,11 @@ export const OfficePreview = z
       value.sheets.reduce((n, s) => n + s.rows.reduce((m, r) => m + r.length, 0), 0) <= 10_000,
   );
 export type OfficePreview = z.infer<typeof OfficePreview>;
+export const OfficePartQuery = z.object({
+  v: z.string().max(64).optional().openapi({
+    description: 'Revision from the manifest; with it a page may be cached for a year.',
+  }),
+});
 export const OfficePartParams = z.object({
   assetId: Id,
   part: z.string().regex(/^(manifest\.json|page-([1-9]|[1-4][0-9]|50)\.webp)$/),
