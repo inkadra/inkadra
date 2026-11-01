@@ -22,6 +22,10 @@ for (const theme of ['light', 'dark'] as const)
       test.setTimeout(90_000);
       mkdirSync(out, { recursive: true });
       const prefix = `${phone ? 'phone' : 'desktop'}-${theme}`;
+      if (phone)
+        await page.route('**/api/v1/me/notifications/unread-count', (route) =>
+          route.fulfill({ json: { unread: 1 } }),
+        );
       const cookie = await signIn(baseURL!, perfUser);
       await page.context().addCookies(
         cookie.split('; ').map((pair) => {
@@ -101,7 +105,11 @@ for (const theme of ['light', 'dark'] as const)
         tasks.locator(`a[href*="/p/${project.id}/"]`).filter({ hasText: 'Permessi parcheggio' }),
       ).toBeVisible();
       await page.screenshot({ path: join(out, `${prefix}-home.png`) });
-      await page.getByRole('button', { name: 'Inbox', exact: true }).click();
+      const inbox = phone
+        ? page.locator('.mobile-bottom-nav').getByRole('button', { name: /^Inbox/ })
+        : page.getByRole('button', { name: 'Inbox', exact: true });
+      if (phone) await expect(inbox).toHaveAccessibleName('Inbox: 1 non letta');
+      await inbox.click();
       await page.getByRole('tab', { name: 'I miei compiti', exact: true }).click();
       await expect(
         page
