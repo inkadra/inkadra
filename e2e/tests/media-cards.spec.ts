@@ -301,7 +301,18 @@ test('audio cards show their waveform, play one at a time, and voice notes recor
   ids.forEach((assetId, i) => {
     createElement(doc, 'file', { x: 40 + i * 290, y: 40 }, { w: 260, assetId }, { userId: null });
   });
+  // A video link card: its inline player takes turns with the audio cards.
+  createElement(
+    doc,
+    'link',
+    { x: 620, y: 40 },
+    { w: 260, url: 'https://www.youtube.com/watch?v=yMnFHFf43Qg', title: 'Riferimento' },
+    { userId: null },
+  );
   await pushBoardDoc(base, cookie, boardId, doc);
+  await page.route('https://www.youtube-nocookie.com/**', (route) =>
+    route.fulfill({ contentType: 'text/html', body: '<body style="background:#000"></body>' }),
+  );
 
   // The microphone of the voice note: a Web Audio tone instead of a device.
   await page.addInitScript(() => {
@@ -342,6 +353,20 @@ test('audio cards show their waveform, play one at a time, and voice notes recor
   await page.keyboard.press('Space');
   await expect(play(second)).toHaveAttribute('aria-pressed', 'true');
   await page.keyboard.press('Space');
+  await expect(play(second)).toHaveAttribute('aria-pressed', 'false');
+
+  // One player for the whole board: a link card's video stops the audio, and the other way round.
+  const link = page.locator('[data-type="link"]');
+  await play(first).click();
+  await expect(play(first)).toHaveAttribute('aria-pressed', 'true');
+  await link.locator('.card__play').click();
+  await expect(link.locator('.card__embed iframe')).toHaveCount(1);
+  await expect(play(first)).toHaveAttribute('aria-pressed', 'false');
+  await play(first).click();
+  await expect(play(first)).toHaveAttribute('aria-pressed', 'true');
+  await expect(link.locator('iframe')).toHaveCount(0);
+  await play(first).click();
+  await expect(play(first)).toHaveAttribute('aria-pressed', 'false');
 
   // Screenshots for the pull request, only when asked for (light and dark, desktop and phone).
   const shots = process.env.AUDIO_CARD_SCREENSHOTS;

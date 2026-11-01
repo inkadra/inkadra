@@ -4,25 +4,10 @@ import { AudioWaveform } from '@inkadra/shared';
 import { Icon } from '@inkadra/ui';
 import { type KeyboardEvent, type PointerEvent, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-
-/**
- * The one sound playing on the board: an audio card, or the video or audio of the viewer.
- * Starting another pauses it.
- */
-let playing: HTMLMediaElement | null = null;
-
-export function claimPlayback(media: HTMLMediaElement) {
-  if (playing && playing !== media) playing.pause();
-  playing = media;
-}
-
-export function releasePlayback(media: HTMLMediaElement) {
-  if (playing === media) playing = null;
-}
+import { useInlineMedia } from './inline-player.ts';
 
 /** Tests only. */
 export function resetAudioPlayers() {
-  playing = null;
   waveforms.clear();
 }
 
@@ -79,15 +64,18 @@ const clamp = (v: number, min: number, max: number) => Math.min(max, Math.max(mi
  * The themed mini player of an audio card: a round play button, the waveform to scrub (a thin
  * bar until the worker has read it, or without ffmpeg) and the time in a chip. A hidden
  * `<audio>` plays. Space toggles while the player has focus; only one sound plays on a board
- * at a time.
+ * at a time, with link card videos and the viewer (inline-player.ts).
  */
 export function AudioPlayer({
+  id,
   src,
   name,
   durationMs,
   peaks = null,
   bars = 32,
 }: {
+  /** The card's element id: its turn in the one-player rule. */
+  id: string;
   src: string;
   name: string;
   durationMs: number | null;
@@ -101,21 +89,17 @@ export function AudioPlayer({
   const [time, setTime] = useState(0);
   const [duration, setDuration] = useState(durationMs ? durationMs / 1000 : 0);
   const scrubbing = useRef(false);
+  const turn = useInlineMedia(id, audio);
 
   useEffect(() => {
     const el = audio.current;
-    return () => {
-      if (!el) return;
-      el.pause();
-      releasePlayback(el);
-    };
+    return () => el?.pause();
   }, []);
 
   function toggle() {
     const el = audio.current;
     if (!el) return;
     if (el.paused) {
-      claimPlayback(el);
       void el.play()?.catch(() => setPlaying(false));
     } else {
       el.pause();
@@ -161,14 +145,13 @@ export function AudioPlayer({
         src={src}
         preload="metadata"
         hidden
-        onPlay={(e) => {
-          claimPlayback(e.currentTarget);
+        onPlay={() => {
+          turn.onPlay();
           setPlaying(true);
         }}
-        onPause={() => setPlaying(false)}
-        onEnded={(e) => {
+        onPause={() => {
+          turn.onPause();
           setPlaying(false);
-          releasePlayback(e.currentTarget);
         }}
         onTimeUpdate={(e) => {
           if (!scrubbing.current) setTime(e.currentTarget.currentTime);

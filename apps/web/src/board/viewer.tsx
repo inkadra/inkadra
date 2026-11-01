@@ -6,7 +6,6 @@ import { Avatar, Button, Icon } from '@inkadra/ui';
 import { memo, useContext, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useClassifications } from '../lib/classifications.ts';
-import { claimPlayback, releasePlayback } from './AudioPlayer.tsx';
 import { pickVariant, playbackUrl, useAsset } from './assets.ts';
 import { CroppedImage } from './CroppedImage.tsx';
 import { GuestModeContext } from './context.ts';
@@ -14,7 +13,7 @@ import { FrameGrab } from './FrameGrab.tsx';
 import { fileBadge, fileFamily, isPdf } from './file-kinds.ts';
 import { VideoFrameStepper } from './frame-grab.ts';
 import { hasImageTransform } from './image-crop.ts';
-import { playInline } from './inline-player.ts';
+import { playInline, useInlineMedia } from './inline-player.ts';
 import { MovingPicture, movingVariantUrl } from './moving.tsx';
 import { authorName, editableText } from './review-model.ts';
 import { canComment, openComments, useReviews } from './review-store.ts';
@@ -285,6 +284,10 @@ export function MediaViewer({
     ready ? playbackUrl(ready) : undefined,
     ready?.id,
   );
+  // The viewer's own media take turns with the cards (one player at a time).
+  const audioRef = useRef<HTMLAudioElement>(null);
+  const videoTurn = useInlineMedia('viewer-video', videoRef);
+  const audioTurn = useInlineMedia('viewer-audio', audioRef);
 
   const stepper = useRef(new VideoFrameStepper());
   const [videoPaused, setVideoPaused] = useState(false);
@@ -599,12 +602,12 @@ export function MediaViewer({
                   controls
                   autoPlay
                   onError={onVideoError}
-                  onPlay={(e) => {
-                    claimPlayback(e.currentTarget);
+                  onPlay={() => {
+                    videoTurn.onPlay();
                     setVideoPaused(false);
                   }}
-                  onPause={(e) => {
-                    releasePlayback(e.currentTarget);
+                  onPause={() => {
+                    videoTurn.onPause();
                     setVideoPaused(true);
                   }}
                   onLoadedData={(e) => setVideoPaused(e.currentTarget.paused)}
@@ -631,8 +634,8 @@ export function MediaViewer({
                   src={playbackUrl(ready)}
                   controls
                   autoPlay
-                  onPlay={(e) => claimPlayback(e.currentTarget)}
-                  onPause={(e) => releasePlayback(e.currentTarget)}
+                  ref={audioRef}
+                  {...audioTurn}
                 />
               </div>
             ) : ready &&

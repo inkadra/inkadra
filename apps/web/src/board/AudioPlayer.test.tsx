@@ -2,7 +2,8 @@
 import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { AudioPlayer, claimPlayback, resetAudioPlayers, waveformBars } from './AudioPlayer.tsx';
+import { AudioPlayer, resetAudioPlayers, waveformBars } from './AudioPlayer.tsx';
+import { isPlayingInline, playInline } from './inline-player.ts';
 
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (key: string) => key }),
@@ -35,6 +36,7 @@ beforeEach(() => {
   play.mockClear();
   pause.mockClear();
   resetAudioPlayers();
+  playInline(null);
   host = document.createElement('div');
   document.body.append(host);
   root = createRoot(host);
@@ -53,6 +55,7 @@ function mount(count = 1, peaks: number[] | null = null) {
           // biome-ignore lint/suspicious/noArrayIndexKey: fixed list
           <div key={i} className="card">
             <AudioPlayer
+              id={`file_${i}`}
               src={`/a${i}.m4a`}
               name={`nota-${i}.m4a`}
               durationMs={92_000}
@@ -182,12 +185,21 @@ describe('audio card waveform (#327)', () => {
     expect(bars.map((b) => b.classList.contains('is-played'))).toEqual([true, true, false, false]);
   });
 
-  it('pauses the card when the viewer starts a video', () => {
+  it('takes turns with link card videos and the viewer, through the one inline player', () => {
     const [player] = mount();
     if (!player) throw new Error('no player');
     act(() => button(player).click());
-    const video = document.createElement('video');
-    act(() => claimPlayback(video));
+    expect(isPlayingInline('file_0')).toBe(true);
+    // A link card starts its video: the card stops.
+    act(() => playInline('link_1'));
     expect(audio(player).paused).toBe(true);
+    expect(button(player).getAttribute('aria-pressed')).toBe('false');
+    // The card plays again: the link card loses its turn.
+    act(() => button(player).click());
+    expect(isPlayingInline('link_1')).toBe(false);
+    expect(isPlayingInline('file_0')).toBe(true);
+    // Pausing gives the turn back.
+    act(() => button(player).click());
+    expect(isPlayingInline('file_0')).toBe(false);
   });
 });

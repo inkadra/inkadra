@@ -190,7 +190,7 @@ function ReadyFileCard({
   if (asset.kind === 'video') {
     preview = <VideoPreview element={element} asset={asset} pixels={pixels} state={state} />;
   } else if (family === 'audio') {
-    preview = <AudioPreview asset={asset} state={state} width={width} />;
+    preview = <AudioPreview id={element.id} asset={asset} state={state} width={width} />;
   } else {
     const src =
       localPreview(element.assetId) ??
@@ -313,10 +313,12 @@ function VideoPreview({
  * arrives. Plays the original where the browser reads it, else the AAC copy.
  */
 function AudioPreview({
+  id,
   asset,
   state,
   width,
 }: {
+  id: string;
   asset: Asset;
   state: 'ready' | 'processing' | 'failed';
   width: number;
@@ -332,6 +334,7 @@ function AudioPreview({
         </span>
       ) : (
         <AudioPlayer
+          id={id}
           src={playbackUrl(asset)}
           name={asset.filename}
           durationMs={asset.durationMs}

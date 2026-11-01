@@ -1655,6 +1655,12 @@ button.fcard__audio-play:focus-visible {
     animation: none;
   }
 }
+/* On phones the pill sits where the zoom controls are: they wait until the note is saved. */
+@media (max-width: 767px) {
+  .canvas__corner:has(~ .voicenote) {
+    visibility: hidden;
+  }
+}
 .uploads__row {
   display: flex;
   align-items: center;
