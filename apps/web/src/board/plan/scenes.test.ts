@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 import type { Element } from '@inkadra/doc-schema';
 import { describe, expect, it } from 'vitest';
-import { plansOfScene, scenesOfPlan } from './scenes.tsx';
+import { lensMillimetres, plansOfScene, scenesOfPlan } from './scenes.tsx';
 
 const base = { x: 0, y: 0, w: 100, z: 'a0', parent: null, createdBy: null };
 const scene = (id: string, number: string) =>
@@ -27,4 +27,13 @@ describe('plans and scenes', () => {
     const giorno = byId.get('planGiorno') as Extract<Element, { type: 'plan' }>;
     expect(scenesOfPlan(giorno, byId).map((s) => s.number)).toEqual(['5', '7']);
   });
+});
+
+it('reads the focal length of a frame, and nothing else', () => {
+  expect(lensMillimetres('35mm')).toBe(35);
+  expect(lensMillimetres(' 85 mm ')).toBe(85);
+  expect(lensMillimetres('50')).toBe(50);
+  expect(lensMillimetres('24-70mm')).toBeNull();
+  expect(lensMillimetres('Cooke S4')).toBeNull();
+  expect(lensMillimetres(undefined)).toBeNull();
 });

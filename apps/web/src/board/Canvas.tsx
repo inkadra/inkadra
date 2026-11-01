@@ -156,7 +156,13 @@ import { NoteSideSheet } from './NoteSideSheet.tsx';
 import { fillFragment, isEmpty } from './note.tsx';
 import { PresenceLayer } from './PresenceLayer.tsx';
 import { PlanEditor } from './plan/PlanEditor.tsx';
-import { ScenePicker, scenesOfPlan, usePlanNav, useTakeParam } from './plan/scenes.tsx';
+import {
+  lensMillimetres,
+  ScenePicker,
+  scenesOfPlan,
+  usePlanNav,
+  useTakeParam,
+} from './plan/scenes.tsx';
 import { type Peer, useLocalPresence } from './presence.ts';
 import { canvasElementId, ResizeHandles } from './ResizeHandles.tsx';
 import { openComments } from './review-store.ts';
@@ -2432,6 +2438,16 @@ export function Canvas({
     if (!readOnly) setEditing(el.id);
   }, [planParam, takePlanParam, conn.status, snap, select, setEditing, readOnly]);
   const pickingScenes = scenePicker ? snap.byId.get(scenePicker.id) : undefined;
+  // The lenses of the frames of a plan's scenes, proposed for its cameras (round 6, c).
+  const planLenses = useMemo(() => {
+    const sceneIds = new Set(editedPlan?.sceneIds ?? []);
+    if (sceneIds.size === 0) return [];
+    return [...snap.byId.values()].flatMap((e) => {
+      if (e.type !== 'frame' || !e.parent || !sceneIds.has(e.parent)) return [];
+      const mm = lensMillimetres(e.lens);
+      return mm ? [{ label: labels.get(e.id) ?? '', mm }] : [];
+    });
+  }, [editedPlan, snap, labels]);
   const usedColors = useMemo(
     () =>
       [
@@ -3326,6 +3342,7 @@ export function Canvas({
             plan={editedPlan}
             phone={isPhone}
             scenes={boardScenes}
+            lenses={planLenses}
             onOpenScene={openScene}
             onClose={() => setEditing(null)}
           />

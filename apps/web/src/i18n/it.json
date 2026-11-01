@@ -893,7 +893,25 @@
       "searchScene": "Cerca scena",
       "noScenes": "Nessuna scena",
       "openScene": "Apri la scena {{number}}",
-      "short": "Pianta"
+      "short": "Pianta",
+      "lens": "Ottica",
+      "otherLens": "Altro…",
+      "focal": "Focale",
+      "fromFrames": "Dalle inquadrature",
+      "sensor": "Sensore",
+      "sensors": {
+        "s35": "Super 35",
+        "ff": "Full frame",
+        "m43": "Micro 4/3",
+        "s16": "Super 16"
+      },
+      "angle": "Angolo di campo",
+      "angleValue": "{{angle}}° orizz.",
+      "reach": "Lunghezza cono",
+      "showLens": "Mostra l’ottica nell’etichetta",
+      "power": "Potenza",
+      "beam": "Fascio",
+      "intensity": "Intensità"
     }
   },
   "tags": {

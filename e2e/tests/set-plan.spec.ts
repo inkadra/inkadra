@@ -256,6 +256,21 @@ for (const theme of ['dark', 'light'] as const) {
       .poll(async () => (await saved()).plan?.icons?.some((i) => i.label === 'A cam 35mm'))
       .toBe(true);
 
+    // The lens (round 6, c): Properties shows the primes; the cone narrows, the label says it.
+    await editor.getByRole('tab', { name: 'Proprietà' }).click();
+    await editor.locator('.plan-props__lenses').getByRole('button', { name: '85' }).click();
+    await expect
+      .poll(
+        async () =>
+          (await saved()).plan?.icons?.find((i) => i.kind === 'camera' && i.label === 'A cam 35mm')
+            ?.lens,
+      )
+      .toBe(85);
+    await editor.getByLabel('Mostra l’ottica nell’etichetta').check();
+    await expect(editor.locator('.plan__svg text', { hasText: '85 mm' })).toBeVisible();
+    await page.screenshot({ path: join(out, `desktop-${theme}-lens.png`) });
+    await editor.getByRole('tab', { name: 'Icone' }).click();
+
     // Duplicate, then delete the copy; the plan keeps the nine icons it had.
     await bar.getByRole('button', { name: 'Duplica' }).click();
     await expect.poll(async () => (await saved()).plan?.icons?.length).toBe(10);

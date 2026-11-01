@@ -9,6 +9,13 @@ import { ContextMenu } from '../chrome.tsx';
 import { sceneLabel } from '../film/NeededItems.tsx';
 import { type BoardStore, LOCAL } from '../store.ts';
 
+/** The focal length in a frame's Ottica field ("35mm", "35 mm", "35"), or null. */
+export function lensMillimetres(lens: string | undefined): number | null {
+  const match = /^\s*(\d+(?:[.,]\d+)?)\s*(?:mm)?\s*$/i.exec(lens ?? '');
+  const mm = match?.[1] ? Number(match[1].replace(',', '.')) : 0;
+  return mm >= 4 && mm <= 2000 ? Math.round(mm) : null;
+}
+
 /** Plans of a board that serve a scene, oldest first. */
 export function plansOfScene(elements: Iterable<Element>, sceneId: string): PlanElement[] {
   return [...elements]

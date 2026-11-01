@@ -893,7 +893,25 @@
       "searchScene": "Search scenes",
       "noScenes": "No scenes",
       "openScene": "Open scene {{number}}",
-      "short": "Plan"
+      "short": "Plan",
+      "lens": "Lens",
+      "otherLens": "Other…",
+      "focal": "Focal length",
+      "fromFrames": "From the frames",
+      "sensor": "Sensor",
+      "sensors": {
+        "s35": "Super 35",
+        "ff": "Full frame",
+        "m43": "Micro 4/3",
+        "s16": "Super 16"
+      },
+      "angle": "Angle of view",
+      "angleValue": "{{angle}}° horiz.",
+      "reach": "Cone length",
+      "showLens": "Show the lens in the label",
+      "power": "Power",
+      "beam": "Beam",
+      "intensity": "Intensity"
     }
   },
   "tags": {

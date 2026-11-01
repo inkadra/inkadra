@@ -4,9 +4,11 @@ import {
   addShape,
   addStroke,
   categoryOf,
+  DEFAULT_LENS,
   duplicatePlanItems,
   encodeStroke,
   gridStep,
+  iconCone,
   itemBox,
   layerOf,
   moveItem,
@@ -37,15 +39,17 @@ import {
   PLAN_ICON_KINDS,
   type PlanIcon,
   type PlanIconKind,
+  type PlanSensor,
   type PlanShape,
 } from '@inkadra/doc-schema';
-import { Button, Icon, IconButton, type IconName } from '@inkadra/ui';
+import { Button, Icon, IconButton, type IconName, Select, Switch } from '@inkadra/ui';
 import { type PointerEvent, type ReactNode, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { pathOf } from '../film/strokes.ts';
 import { isMac } from '../shortcuts.ts';
 import { type BoardStore, LOCAL } from '../store.ts';
+import { NumberField } from './NumberField.tsx';
 import { planTitle } from './PlanCard.tsx';
 import {
   iconColor,
@@ -55,6 +59,7 @@ import {
   PLAN_PEN,
   PLAN_TEXT,
   PlanDrawing,
+  PlanGlyph,
   PlanShapeView,
   planCss,
 } from './PlanDrawing.tsx';
@@ -77,6 +82,8 @@ const TOOLS: Array<{ tool: Tool; icon: IconName; key: string; phone: boolean }> 
   { tool: 'text', icon: 'text', key: 'T', phone: true },
 ];
 const KINDS = new Set<string>(PLAN_ICON_KINDS);
+/** A set of primes, as on the mockup; Other takes any focal length. */
+const LENSES = [18, 24, 35, 50, 85, 135];
 const isIconKind = (item: LibraryItem): item is PlanIconKind => KINDS.has(item);
 
 interface TextDraft {
@@ -112,6 +119,7 @@ export function PlanEditor({
   plan,
   phone,
   scenes,
+  lenses = [],
   onOpenScene,
   onClose,
 }: {
@@ -120,6 +128,8 @@ export function PlanEditor({
   phone: boolean;
   /** Scenes of the board, in shooting order, to link the plan to. */
   scenes: readonly SceneElement[];
+  /** Lenses of the frames of the plan's scenes, proposed for a camera ("5A · 35 mm"). */
+  lenses?: ReadonlyArray<{ label: string; mm: number }>;
   onOpenScene: (id: string) => void;
   onClose: () => void;
 }) {
@@ -129,6 +139,7 @@ export function PlanEditor({
   const [panel, setPanel] = useState<Panel>('icons');
   const [snap, setSnap] = useState(true);
   const [picking, setPicking] = useState<{ x: number; y: number } | null>(null);
+  const [otherLens, setOtherLens] = useState(false);
   const linked = scenesOfPlan(plan, new Map(scenes.map((s) => [s.id, s])));
   const [selected, setSelected] = useState<PlanItemRef | null>(null);
   /** The item being moved or turned, shown in place until the gesture ends. */
@@ -338,6 +349,8 @@ export function PlanEditor({
       if (hit) {
         const target = planItem(plan, hit);
         setSelected(hit);
+        // Picked with the arrow, a camera or a light shows its lens or beam (round 6, c).
+        if (tool === 'select' && !phone && isIcon(target) && iconCone(target)) setPanel('props');
         if (!target) return;
         e.currentTarget.setPointerCapture(e.pointerId);
         store.undo.stopCapturing();
@@ -606,6 +619,11 @@ export function PlanEditor({
           {labelField}
         </>
       )}
+      {isIcon(current) && current.kind === 'camera' && (
+        <button type="button" className="plan-editor__lens" onClick={() => setPanel('props')}>
+          {current.lens ?? DEFAULT_LENS} mm
+        </button>
+      )}
       <span className="plan-editor__vr" aria-hidden="true" />
       <IconButton
         icon="rotateRight"
@@ -630,11 +648,186 @@ export function PlanEditor({
     />
   );
 
+  const icon = isIcon(current) ? current : null;
+  const cone = icon ? iconCone(icon, plan.sensor) : null;
+  const camera = icon?.kind === 'camera' && cone && (
+    <>
+      <div className="plan-props__label">{t('board.plan.lens')}</div>
+      <div className="plan-props__lenses">
+        {LENSES.map((mm) => (
+          <button
+            key={mm}
+            type="button"
+            aria-pressed={(icon.lens ?? DEFAULT_LENS) === mm}
+            onClick={() => write({ ...icon, lens: mm })}
+          >
+            {mm}
+          </button>
+        ))}
+        <button
+          type="button"
+          className="plan-props__other"
+          aria-pressed={otherLens || !LENSES.includes(icon.lens ?? DEFAULT_LENS)}
+          onClick={() => setOtherLens(true)}
+        >
+          {t('board.plan.otherLens')}
+        </button>
+      </div>
+      {(otherLens || !LENSES.includes(icon.lens ?? DEFAULT_LENS)) && (
+        <div className="plan-props__row">
+          <span>{t('board.plan.focal')}</span>
+          <NumberField
+            value={icon.lens ?? DEFAULT_LENS}
+            min={4}
+            max={2000}
+            unit="mm"
+            label={t('board.plan.focal')}
+            onCommit={(mm) => write({ ...icon, lens: Math.round(mm) })}
+          />
+        </div>
+      )}
+      {lenses.length > 0 && (
+        <div className="plan-props__hints">
+          <span>{t('board.plan.fromFrames')}</span>
+          {lenses.map((l) => (
+            <button
+              key={l.label}
+              type="button"
+              className="plan__badge"
+              onClick={() => write({ ...icon, lens: l.mm })}
+            >
+              {l.label} · {l.mm} mm
+            </button>
+          ))}
+        </div>
+      )}
+      <div className="plan-props__row">
+        <span>{t('board.plan.sensor')}</span>
+        <Select
+          value={plan.sensor ?? 's35'}
+          onChange={(v) =>
+            change(() =>
+              updateElement(
+                doc,
+                plan.id,
+                { sensor: v === 's35' ? undefined : (v as PlanSensor) },
+                LOCAL,
+              ),
+            )
+          }
+          options={(['s35', 'ff', 'm43', 's16'] as const).map((v) => ({
+            value: v,
+            label: t(`board.plan.sensors.${v}`),
+          }))}
+        />
+      </div>
+      <div className="plan-props__row">
+        <span>{t('board.plan.angle')}</span>
+        <b>{t('board.plan.angleValue', { angle: Math.round(cone.angle) })}</b>
+      </div>
+      <div className="plan-props__row">
+        <span>{t('board.plan.reach')}</span>
+        {plan.scale ? (
+          <NumberField
+            value={Math.round((cone.reach / plan.scale) * 10) / 10}
+            min={0.5}
+            max={100}
+            step={0.5}
+            unit="m"
+            label={t('board.plan.reach')}
+            onCommit={(m) => write({ ...icon, reach: (plan.scale as number) * m })}
+          />
+        ) : (
+          <input
+            type="range"
+            className="plan-props__range"
+            aria-label={t('board.plan.reach')}
+            min={60}
+            max={900}
+            value={Math.round(cone.reach)}
+            onPointerDown={() => store.undo.stopCapturing()}
+            onChange={(e) =>
+              updatePlanItems(doc, plan.id, [{ ...icon, reach: Number(e.target.value) }], LOCAL)
+            }
+          />
+        )}
+      </div>
+      <label className="plan-props__row">
+        <span>{t('board.plan.showLens')}</span>
+        <Switch
+          checked={!!icon.showLens}
+          onChange={(e) => {
+            const next = { ...icon, showLens: e.target.checked };
+            if (!e.target.checked) delete (next as Partial<PlanIcon>).showLens;
+            write(next);
+          }}
+        />
+      </label>
+    </>
+  );
+  const range = (
+    label: string,
+    value: number,
+    min: number,
+    max: number,
+    shown: string,
+    set: (v: number) => PlanIcon,
+  ) => (
+    <div className="plan-props__row">
+      <span>{label}</span>
+      <input
+        type="range"
+        className="plan-props__range"
+        aria-label={label}
+        min={min}
+        max={max}
+        value={value}
+        onPointerDown={() => store.undo.stopCapturing()}
+        onPointerUp={() => store.undo.stopCapturing()}
+        onChange={(e) => updatePlanItems(doc, plan.id, [set(Number(e.target.value))], LOCAL)}
+      />
+      <b className="plan-props__value">{shown}</b>
+    </div>
+  );
+  const light = icon && cone?.beam && (
+    <>
+      <div className="plan-props__row">
+        <span>{t('board.plan.power')}</span>
+        <input
+          className="plan-editor__field"
+          aria-label={t('board.plan.power')}
+          placeholder="1,2K"
+          maxLength={20}
+          value={icon.power ?? ''}
+          onFocus={() => store.undo.stopCapturing()}
+          onChange={(e) => {
+            const next = { ...icon, power: e.target.value };
+            if (!e.target.value) delete (next as Partial<PlanIcon>).power;
+            updatePlanItems(doc, plan.id, [next], LOCAL);
+          }}
+        />
+      </div>
+      {range(t('board.plan.beam'), icon.beam ?? 30, 5, 180, `${icon.beam ?? 30}°`, (v) => ({
+        ...icon,
+        beam: v,
+      }))}
+      {range(
+        t('board.plan.intensity'),
+        Math.round((icon.intensity ?? 0.8) * 100),
+        0,
+        100,
+        `${Math.round((icon.intensity ?? 0.8) * 100)}%`,
+        (v) => ({ ...icon, intensity: v / 100 }),
+      )}
+    </>
+  );
+
   const properties = current ? (
     <div className="plan-props">
       <h3 className="plan-props__title">
+        {icon && <PlanGlyph kind={icon.kind} size={18} />}
         {iconName(current)}
-        {isIcon(current) && current.label && <span> · {current.label}</span>}
+        {icon?.label && <span> · {icon.label}</span>}
       </h3>
       <div className="plan-props__row">
         <span>{t('board.plan.color')}</span>
@@ -646,10 +839,12 @@ export function PlanEditor({
           {labelField}
         </div>
       )}
-      {isIcon(current) && (
+      {camera}
+      {light}
+      {icon && (
         <p className="plan-props__hint">
-          {t(`board.plan.categories.${categoryOf(current.kind).id}`)} ·{' '}
-          {t(`board.plan.layers.${layerOf(current)}`)}
+          {t(`board.plan.categories.${categoryOf(icon.kind).id}`)} ·{' '}
+          {t(`board.plan.layers.${layerOf(icon)}`)}
         </p>
       )}
     </div>

@@ -66,7 +66,7 @@
   position: fixed;
   inset: 0;
   /* Over the floating shell, its brand, and the phone's navigation bar (110). */
-  z-index: 150;
+  z-index: 300;
 }
 .plan-editor__backdrop {
   position: absolute;
@@ -502,7 +502,7 @@
   position: fixed;
   inset: 0;
   /* Over the phone's navigation bar (110): editing takes the whole screen. */
-  z-index: 150;
+  z-index: 300;
   display: flex;
   flex-direction: column;
   background: var(--ink-surface-1);
@@ -653,7 +653,7 @@ button.plan__badge:hover {
   margin-left: 4px;
 }
 .plan-scenes {
-  z-index: 160;
+  z-index: 310;
   width: 260px;
   padding: 10px 6px 8px;
   background: var(--ink-surface-float);
@@ -700,4 +700,106 @@ button.plan__badge:hover {
   gap: 4px;
   font-size: 11.5px;
   font-weight: 500;
+}
+
+/* Properties of a camera and a light (round 6, c). */
+.plan-props__title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.plan-props__title .plan-glyph {
+  color: var(--ink-text-icon);
+}
+.plan-props__label {
+  margin-top: 2px;
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-text-muted);
+}
+.plan-props__lenses {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 4px;
+}
+.plan-props__lenses button {
+  height: 30px;
+  border: 0;
+  border-radius: var(--ink-radius-sm);
+  background: var(--ink-surface-2);
+  color: var(--ink-text-secondary);
+  font: inherit;
+  font-size: 12.5px;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+}
+.plan-props__lenses button[aria-pressed="true"] {
+  background: var(--ink-accent-soft-bg);
+  color: var(--ink-accent-soft-fg);
+  box-shadow: inset 0 0 0 1.5px var(--ink-accent-primary);
+}
+.plan-props__lenses .plan-props__other {
+  grid-column: span 2;
+}
+.plan-props__hints {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  font-size: 11.5px;
+  color: var(--ink-text-muted);
+}
+.plan-props__range {
+  flex: 1;
+  min-width: 0;
+  accent-color: var(--ink-accent-button);
+}
+.plan-props__value {
+  min-width: 44px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-text-primary);
+}
+.plan-props__row b {
+  color: var(--ink-text-primary);
+  font-weight: 500;
+}
+.plan-num {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 28px;
+  padding: 0 8px;
+  border: 1px solid var(--ink-border-default);
+  border-radius: var(--ink-radius-sm);
+  background: var(--ink-surface-1);
+  color: var(--ink-text-secondary);
+  font-size: 12.5px;
+}
+.plan-num:focus-within {
+  border-color: var(--ink-accent-primary);
+}
+.plan-num input {
+  width: 44px;
+  border: 0;
+  background: transparent;
+  color: var(--ink-text-primary);
+  font: inherit;
+  text-align: right;
+  outline: 0;
+}
+.plan-editor__lens {
+  height: 26px;
+  padding: 0 6px;
+  border: 0;
+  border-radius: var(--ink-radius-sm);
+  background: transparent;
+  color: var(--ink-text-secondary);
+  font: inherit;
+  cursor: pointer;
+}
+.plan-editor__lens:hover {
+  background: var(--ink-surface-2);
 }
