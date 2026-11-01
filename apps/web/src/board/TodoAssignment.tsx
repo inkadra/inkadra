@@ -16,9 +16,12 @@ export function TodoAssignment({
   item,
   editing,
   open,
-  onClose, people, failed,
+  onClose,
+  people,
+  failed,
 }: {
-  people: Person[]; failed: boolean;
+  people: Person[];
+  failed: boolean;
   elementId: string;
   item: z.infer<typeof TodoItem>;
   editing: boolean;
@@ -64,11 +67,19 @@ export function TodoAssignment({
           aria-label={t('tasks.dueDate')}
           value={item.dueDate ?? ''}
           clearLabel={t('tasks.clearDate')}
-          onChange={(value) => { change({ dueDate: value || null }); setDating(false); }}
+          onChange={(value) => {
+            change({ dueDate: value || null });
+            setDating(false);
+          }}
         />
       ) : (
         item.dueDate && (
-          <button type="button" disabled={readOnly} className="todo-assignment__chip" onClick={() => setDating(true)}>
+          <button
+            type="button"
+            disabled={readOnly}
+            className="todo-assignment__chip"
+            onClick={() => setDating(true)}
+          >
             {item.dueDate === today
               ? t('tasks.today')
               : new Date(`${item.dueDate}T00:00`).toLocaleDateString(i18n.language, {
@@ -84,7 +95,13 @@ export function TodoAssignment({
             people={people}
             // biome-ignore lint/a11y/noAutofocus: explicitly opened by @ or the assignee chip.
             autoFocus
-            onKeyDown={(event) => { if (event.key === 'Escape') { event.stopPropagation(); setPicking(false); onClose(); } }}
+            onKeyDown={(event) => {
+              if (event.key === 'Escape') {
+                event.stopPropagation();
+                setPicking(false);
+                onClose();
+              }
+            }}
             value={query}
             onChange={setQuery}
             aria-label={t('tasks.assignee')}

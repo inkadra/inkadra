@@ -292,7 +292,8 @@ export function createCollabServer(deps: {
           set: { state, schemaVersion, size: state.byteLength, updatedAt: new Date() },
         });
       for (const [key, value] of pending) {
-        if (pendingAssignments.get(document)?.get(key) === value) pendingAssignments.get(document)?.delete(key);
+        if (pendingAssignments.get(document)?.get(key) === value)
+          pendingAssignments.get(document)?.delete(key);
       }
       for (const [key, item] of pending ?? []) {
         if (assignedItems(document).get(key)?.assigneeId !== item.assigneeId) continue;

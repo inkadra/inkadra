@@ -7,9 +7,8 @@ import {
   updateTodoItem,
 } from '@inkadra/canvas-core';
 import { CARD_COLORS, type ContentCounts, contentCounts, type Element } from '@inkadra/doc-schema';
-import { Checkbox, fadeOutCopy, Icon, ProjectGlyph } from '@inkadra/ui';
 import type { Person, ProjectMember } from '@inkadra/shared';
-import { api } from '../lib/api.ts';
+import { Checkbox, fadeOutCopy, Icon, ProjectGlyph } from '@inkadra/ui';
 import type { TFunction } from 'i18next';
 import {
   type CSSProperties,
@@ -24,6 +23,7 @@ import {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import * as Y from 'yjs';
+import { api } from '../lib/api.ts';
 import { pickVariant, useAsset } from './assets.ts';
 import { canRenameBoard, renameBoard } from './boards.ts';
 import { CardCaption } from './CardCaption.tsx';
@@ -664,10 +664,20 @@ function TodoCard({ element, editing }: { element: Of<'todo'>; editing: boolean 
   useEffect(() => {
     if (guest) return;
     let alive = true;
-    api.get<{ items: ProjectMember[] }>(`/projects/${projectId}/members`).then(r => {
-      if (alive) { setPeople(r.items.map(m => ({ ...m.user, email: null }))); setPeopleFailed(false); }
-    }).catch(() => { if (alive) setPeopleFailed(true); });
-    return () => { alive = false; };
+    api
+      .get<{ items: ProjectMember[] }>(`/projects/${projectId}/members`)
+      .then((r) => {
+        if (alive) {
+          setPeople(r.items.map((m) => ({ ...m.user, email: null })));
+          setPeopleFailed(false);
+        }
+      })
+      .catch(() => {
+        if (alive) setPeopleFailed(true);
+      });
+    return () => {
+      alive = false;
+    };
   }, [projectId, guest]);
   const { t } = useTranslation();
   const [draft, setDraft] = useState('');
@@ -746,7 +756,8 @@ function TodoCard({ element, editing }: { element: Of<'todo'>; editing: boolean 
               <span>{item.text}</span>
             )}
             <TodoAssignment
-                people={people} failed={peopleFailed}
+              people={people}
+              failed={peopleFailed}
               elementId={element.id}
               item={item}
               editing={editing}

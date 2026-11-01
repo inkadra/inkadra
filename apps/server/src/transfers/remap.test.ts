@@ -21,6 +21,24 @@ const importer = '99999999-9999-4999-8999-999999999999';
 const base = { x: 0, y: 0, w: 200, z: 'a0', parent: null, createdAt: 1, createdBy: author };
 
 describe('remapDoc', () => {
+  it('carries task due dates and remaps assignees to the importing account', () => {
+    const doc = createBoardDoc(oldBoard);
+    addElement(doc, {
+      ...base,
+      id: 'todo-card',
+      type: 'todo',
+      items: [
+        { id: 'todo-item', text: 'Permit', done: false, assigneeId: author, dueDate: '2026-11-14' },
+      ],
+    });
+    remapDoc(doc, newBoard, { boards: new Map(), assets: new Map(), person: () => importer });
+    const el = readElement(roots(doc).elements.get('todo-card')!);
+    expect(el?.type === 'todo' && el.items[0]).toMatchObject({
+      assigneeId: importer,
+      dueDate: '2026-11-14',
+    });
+    doc.destroy();
+  });
   it('drops malformed provenance and sources of missing frame pictures', () => {
     const doc = createBoardDoc(oldBoard);
     const malformed = [
