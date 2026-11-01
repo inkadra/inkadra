@@ -1,5 +1,11 @@
 // SPDX-License-Identifier: MPL-2.0
-import { createBoardDoc, type PlanIcon, roots, STROKE_GRID } from '@inkadra/doc-schema';
+import {
+  createBoardDoc,
+  PLAN_ICON_KINDS,
+  type PlanIcon,
+  roots,
+  STROKE_GRID,
+} from '@inkadra/doc-schema';
 import { describe, expect, it } from 'vitest';
 import * as Y from 'yjs';
 import {
@@ -13,7 +19,11 @@ import { addShape, addStroke } from './film.ts';
 import {
   addPlanIcon,
   duplicatePlanItems,
+  iconCone,
   iconHit,
+  iconSize,
+  layerOf,
+  lensAngle,
   moveItem,
   normalizeRotation,
   PLAN_GRID,
@@ -23,9 +33,11 @@ import {
   planItemAt,
   removePlanItems,
   rotateItem,
+  SYMBOL_SIZES,
   snapPlanPoint,
   updatePlanItems,
 } from './plan.ts';
+import { flattenPath, glyphBox, glyphOf, PLAN_CATEGORIES } from './plan-icons.ts';
 
 const boardId = '0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10';
 
@@ -61,7 +73,7 @@ describe('set plan icons', () => {
     expect(rotateItem({ ...icon, rotation: 345 }, 15)).not.toHaveProperty('rotation');
   });
 
-  it('turns lines around their middle and keeps rectangles upright', () => {
+  it('turns lines around their middle and rectangles by their rotation', () => {
     const line = {
       id: 'shapeAAAAAAAA',
       kind: 'line' as const,
@@ -79,7 +91,8 @@ describe('set plan icons', () => {
     const length = (Math.abs(turned.y1 - turned.y0) / STROKE_GRID) * PLAN_VIEW_H;
     expect(length).toBeCloseTo(((3096 - 1000) / STROKE_GRID) * PLAN_VIEW_W, -1);
     const rect = { ...line, kind: 'rect' as const };
-    expect(rotateItem(rect, 90)).toBe(rect);
+    expect(rotateItem(rect, 90)).toEqual({ ...rect, rotation: 90 });
+    expect(rotateItem({ ...rect, rotation: 270 }, 90)).toEqual(rect);
   });
 
   it('moves items inside the drawing only', () => {
@@ -100,7 +113,8 @@ describe('set plan icons', () => {
     expect(iconHit(icon, c)).toBe(true);
     expect(iconHit(icon, { x: c.x + 200, y: c.y })).toBe(false);
     // Turned 90°, it is taller than wide.
-    expect(iconHit({ ...icon, rotation: 90 }, { x: c.x, y: c.y + 30 })).toBe(true);
+    expect(iconHit({ ...icon, rotation: 90 }, { x: c.x, y: c.y + 24 })).toBe(true);
+    expect(iconHit(icon, { x: c.x, y: c.y + 24 })).toBe(false);
   });
 
   it('finds the top item, moves it, duplicates it and removes it', () => {
@@ -170,5 +184,51 @@ describe('set plans on the clipboard', () => {
         ?.get('icons') as Y.Array<unknown>;
       expect(icons.get(0)).toBeInstanceOf(Y.Map);
     }
+  });
+});
+
+describe('the icon library', () => {
+  it('has every kind in one category, with a glyph that flattens', () => {
+    const kinds = PLAN_CATEGORIES.flatMap((c) => c.kinds);
+    expect(new Set(kinds).size).toBe(kinds.length);
+    expect([...kinds, 'light'].sort()).toEqual([...PLAN_ICON_KINDS].sort());
+    for (const kind of kinds) {
+      const box = glyphBox(glyphOf(kind));
+      expect(box.w).toBeGreaterThan(4);
+      expect(box.h).toBeGreaterThan(4);
+    }
+  });
+
+  it('flattens arcs and curves through their end points', () => {
+    const [arc] = flattenPath('M7 16a9 9 0 0 1 9-9');
+    expect(arc?.points.slice(-2).map((v) => Math.round(v))).toEqual([16, 7]);
+    const [curve] = flattenPath('M6 24C10 12 18 9 26 9');
+    expect(curve?.points.slice(-2)).toEqual([26, 9]);
+  });
+
+  it('sizes symbols S, M, L and furniture freely', () => {
+    const fresnel = { ...camera, kind: 'fresnel' as const, id: 'iconAAAAAAAAA' };
+    const m = iconSize(fresnel);
+    expect(Math.max(m.w, m.h)).toBe(SYMBOL_SIZES.M);
+    expect(
+      Math.max(iconSize({ ...fresnel, size: 'L' }).w, iconSize({ ...fresnel, size: 'L' }).h),
+    ).toBe(SYMBOL_SIZES.L);
+    expect(iconSize({ kind: 'sofa', w: 220, h: 90 })).toEqual({ w: 220, h: 90 });
+  });
+
+  it('narrows the camera cone with a longer lens and widens a beam with its angle', () => {
+    const cam: PlanIcon = { ...camera, id: 'iconAAAAAAAAA' };
+    expect(lensAngle(35)).toBeCloseTo(39, 0);
+    expect(iconCone({ ...cam, lens: 85 })?.angle).toBeLessThan(iconCone(cam)?.angle ?? 0);
+    expect(iconCone({ ...cam, lens: 35 }, 'ff')?.angle).toBeCloseTo(54.4, 0);
+    const light: PlanIcon = { ...cam, kind: 'fresnel', beam: 60 };
+    expect(iconCone(light)).toMatchObject({ angle: 60, beam: true });
+    expect(iconCone({ ...cam, kind: 'table' })).toBeNull();
+  });
+
+  it('puts icons on their family layer unless they have their own', () => {
+    expect(layerOf({ ...camera, id: 'iconAAAAAAAAA', kind: 'fresnel' })).toBe('lights');
+    expect(layerOf({ ...camera, id: 'iconAAAAAAAAA', kind: 'sofa' })).toBe('set');
+    expect(layerOf({ ...camera, id: 'iconAAAAAAAAA', layer: 'notes' })).toBe('notes');
   });
 });

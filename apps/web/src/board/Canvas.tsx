@@ -2412,43 +2412,7 @@ export function Canvas({
   const editedEl = editing ? snap.byId.get(editing) : undefined;
   const pickingColor = editedEl?.type === 'color' && !readOnly ? editedEl : null;
   const editedPlan = editedEl?.type === 'plan' && !readOnly ? editedEl : null;
-  const editedPlanId = editedPlan?.id ?? null;
   const isPhone = useIsPhone();
-  // A plan opened on a desktop comes into view with room for its tools, its set icons on the
-  // right and the bar under it; where it already fits, the view stays.
-  // biome-ignore lint/correctness/useExhaustiveDependencies: once per plan opened.
-  useEffect(() => {
-    const el = editedPlanId ? store.getSnapshot().byId.get(editedPlanId) : undefined;
-    const root = rootRef.current;
-    if (!el || isPhone || !root || size.w === 0) return;
-    const r = liveRect(el);
-    const inset = chromeInsets(root);
-    const left = inset.left + 64;
-    const right = size.w - 272;
-    const top = inset.top + 24;
-    const bottom = size.h - 64;
-    const v = vp.current;
-    const a = worldToScreen(v, { x: r.x, y: r.y });
-    const fits =
-      v.zoom >= 0.75 &&
-      a.x >= left &&
-      a.x + r.w * v.zoom <= right &&
-      a.y >= top &&
-      a.y + r.h * v.zoom <= bottom;
-    if (fits || right - left < 200) return;
-    const zoom = clampZoom(Math.min(1, (right - left) / r.w, (bottom - top) / r.h));
-    setViewport({
-      zoom,
-      x: r.x + r.w / 2 - (left + right) / 2 / zoom,
-      y: r.y + r.h / 2 - (top + bottom) / 2 / zoom,
-    });
-  }, [editedPlanId, isPhone]);
-  const planAt = (() => {
-    if (!editedPlan || isPhone) return null;
-    const r = liveRect(editedPlan);
-    const a = worldToScreen(viewport, { x: r.x, y: r.y });
-    return { x: a.x, y: a.y, w: r.w * viewport.zoom, h: r.h * viewport.zoom, zoom: viewport.zoom };
-  })();
   const usedColors = useMemo(
     () =>
       [
@@ -3321,7 +3285,7 @@ export function Canvas({
           <PlanEditor
             store={store}
             plan={editedPlan}
-            at={planAt}
+            phone={isPhone}
             onClose={() => setEditing(null)}
           />
         )}

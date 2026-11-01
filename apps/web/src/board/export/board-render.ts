@@ -3,18 +3,27 @@ import {
   arrowGeometry,
   arrowPolyline,
   decodeStroke,
-  iconCentre,
+  flattenGlyph,
+  glyphOf,
+  iconCone,
+  iconPoint,
+  iconTransform,
   labelAnchor,
+  layerOf,
   PLAN_VIEW_W,
-  type PlanPaint,
-  type PlanPart,
-  planIconParts,
+  type PlanItem,
   type Rect,
 } from '@inkadra/canvas-core';
-import { type Element, type FrameShape, PLAN_ASPECT, type Stroke } from '@inkadra/doc-schema';
+import {
+  type Element,
+  type FrameShape,
+  PLAN_ASPECT,
+  type PlanShape,
+  type Stroke,
+} from '@inkadra/doc-schema';
 import type { AssetTrack } from '@inkadra/shared';
 import { croppedRotatedSize } from '../image-crop.ts';
-import { planToken } from '../plan/PlanDrawing.tsx';
+import { iconLabel, LABEL_SIZE, measureText, planToken } from '../plan/PlanDrawing.tsx';
 import type { Placed } from './board-model.ts';
 import type { ImageInfo, Measure, Op } from './pages.ts';
 import { ellipsize, lineHeight, type TextStyle, textBlock, wrapText } from './text.ts';
@@ -874,49 +883,79 @@ export function planOps(el: Extract<Element, { type: 'plan' }>, box: Rect, ctx: 
     const token = planToken(hex);
     return token ? c[token as keyof Palette] : hex;
   };
-  const inside: Op[] = [];
-  for (const stroke of el.strokes ?? [])
-    inside.push(strokeOp({ ...stroke, color: ink(stroke.color) }, box));
-  for (const shape of el.shapes ?? [])
-    inside.push(...shapeOps({ ...shape, color: ink(shape.color) }, box));
+  const shown = <T extends PlanItem>(items: readonly T[] | undefined) =>
+    (items ?? []).filter((item) => !el.hiddenLayers?.includes(layerOf(item)));
   const k = box.w / PLAN_VIEW_W;
-  for (const icon of el.icons ?? []) {
+  const at = (x: number, y: number) => ({ x: box.x + x * k, y: box.y + y * k });
+  const inside: Op[] = [];
+  for (const stroke of shown(el.strokes))
+    inside.push(strokeOp({ ...stroke, color: ink(stroke.color) }, box));
+  for (const shape of shown(el.shapes))
+    inside.push(...planShapeOps(shape, box, ink(shape.color), el.scale, ctx));
+  for (const icon of shown(el.icons)) {
     const color = ink(icon.color);
-    const paint = (p: PlanPaint | undefined): string | null => {
-      switch (p) {
-        case undefined:
-          return null;
-        case 'ink':
-          return color;
-        case 'soft':
-          return mix(color, c['surface-1'], 0.25);
-        case 'wash':
-          return mix(color, c['surface-1'], 0.14);
-        case 'faint':
-          return mix(color, c['surface-1'], 0.5);
-        case 'muted':
-          return c['text-muted'];
-        case 'surface':
-          return c['surface-1'];
-        case 'raised':
-          return c['surface-2'];
-      }
+    const cone = iconCone(icon, el.sensor);
+    if (cone) {
+      const pts = cone.points.map((p) => at(p.x, p.y));
+      const shade = cone.beam ? 0.06 + 0.16 * (icon.intensity ?? 0.8) : 0.14;
+      inside.push(
+        {
+          kind: 'polygon',
+          points: pts.flatMap((p) => [p.x, p.y]),
+          fill: mix(color, c['surface-1'], shade),
+        },
+        {
+          kind: 'polyline',
+          points: [...pts, pts[0] as { x: number; y: number }].flatMap((p) => [p.x, p.y]),
+          color: mix(color, c['surface-1'], 0.5),
+          width: 1.5 * k,
+        },
+      );
+    }
+    const t = iconTransform(icon);
+    const place = (x: number, y: number) => {
+      const q = iconPoint(t, x, y);
+      return at(q.x, q.y);
     };
-    const centre = iconCentre(icon);
-    const t = ((icon.rotation ?? 0) * Math.PI) / 180;
-    const place = (x: number, y: number) => ({
-      x: box.x + (centre.x + x * Math.cos(t) - y * Math.sin(t)) * k,
-      y: box.y + (centre.y + x * Math.sin(t) + y * Math.cos(t)) * k,
-    });
-    for (const part of planIconParts(icon.kind)) inside.push(...partOps(part, place, k, paint));
-    if (icon.label) {
-      const at = labelAnchor(icon);
-      const size = 24 * k;
+    const width = Math.min(1.6, 1.7 / Math.sqrt(t.sx * t.sy)) * Math.sqrt(t.sx * t.sy) * k;
+    const wash = mix(color, c['surface-1'], 0.12);
+    for (const part of flattenGlyph(glyphOf(icon.kind))) {
+      const pts: Array<{ x: number; y: number }> = [];
+      for (let i = 0; i + 1 < part.points.length; i += 2)
+        pts.push(place(part.points[i] as number, part.points[i + 1] as number));
+      if (part.closed && pts[0]) {
+        inside.push({ kind: 'polygon', points: pts.flatMap((p) => [p.x, p.y]), fill: wash });
+        pts.push(pts[0]);
+      }
+      const w = (width * part.width) / 1.5;
+      const stroke = part.opacity !== undefined ? mix(color, c['surface-1'], part.opacity) : color;
+      if (part.dash)
+        inside.push(
+          ...dashes(
+            pts,
+            (part.dash[0] as number) * w,
+            (part.dash[1] ?? (part.dash[0] as number)) * w,
+            stroke,
+            w,
+          ),
+        );
+      else
+        inside.push({
+          kind: 'polyline',
+          points: pts.flatMap((p) => [p.x, p.y]),
+          color: stroke,
+          width: w,
+        });
+    }
+    const label = iconLabel(icon);
+    if (label) {
+      const a = labelAnchor(icon);
+      const size = LABEL_SIZE * k;
       inside.push({
         kind: 'text',
-        x: box.x + at.x * k - ctx.measure(icon.label, size, 500) / 2,
-        y: box.y + at.y * k,
-        text: icon.label,
+        x: box.x + a.x * k - ctx.measure(label, size, 500) / 2,
+        y: box.y + a.y * k,
+        text: label,
         size,
         weight: 500,
         color,
@@ -926,36 +965,107 @@ export function planOps(el: Extract<Element, { type: 'plan' }>, box: Rect, ctx: 
   return [{ kind: 'clip', ...box, ops: inside }];
 }
 
-function partOps(
-  part: PlanPart,
-  place: (x: number, y: number) => { x: number; y: number },
-  k: number,
-  paint: (p: PlanPaint | undefined) => string | null,
+/** A plan shape: zones and measures, and frame shapes turned by their rotation. */
+function planShapeOps(
+  shape: PlanShape,
+  box: Rect,
+  color: string,
+  scale: number | undefined,
+  ctx: CardContext,
 ): Op[] {
-  const fill = paint(part.fill);
-  const stroke = paint(part.stroke);
-  const width = part.width * k;
-  let pts: Array<{ x: number; y: number }>;
-  if (part.circle) {
-    const { cx, cy, r } = part.circle;
-    pts = Array.from({ length: 25 }, (_, i) => {
-      const a = (i / 24) * Math.PI * 2;
-      return place(cx + r * Math.cos(a), cy + r * Math.sin(a));
-    });
-  } else {
-    const raw = part.points ?? [];
-    pts = [];
-    for (let i = 0; i + 1 < raw.length; i += 2)
-      pts.push(place(raw[i] as number, raw[i + 1] as number));
-    if (part.closed && pts[0]) pts.push(pts[0]);
+  const c = ctx.colors;
+  const g = (v: number, size: number) => (v / 4096) * size;
+  const x0 = box.x + g(shape.x0, box.w);
+  const y0 = box.y + g(shape.y0, box.h);
+  const x1 = box.x + g(shape.x1, box.w);
+  const y1 = box.y + g(shape.y1, box.h);
+  const width = (shape.width / 1000) * box.w;
+  if (shape.kind === 'measure') {
+    const label = measureText(shape, scale);
+    const ops: Op[] = [
+      { kind: 'line', x1: x0, y1: y0, x2: x1, y2: y1, color, width: (2 / 1000) * box.w },
+    ];
+    if (label) {
+      const size = (18 / 1000) * box.w;
+      const w = ctx.measure(label, size, 600);
+      ops.push(
+        {
+          kind: 'rect',
+          x: (x0 + x1) / 2 - w / 2 - 4,
+          y: (y0 + y1) / 2 - size,
+          w: w + 8,
+          h: size * 1.6,
+          radius: 3,
+          fill: c['surface-1'],
+          stroke: color,
+          lineWidth: 0.75,
+        },
+        {
+          kind: 'text',
+          x: (x0 + x1) / 2 - w / 2,
+          y: (y0 + y1) / 2 + size * 0.35,
+          text: label,
+          size,
+          weight: 600,
+          color: c['text-primary'],
+        },
+      );
+    }
+    return ops;
   }
-  const ops: Op[] = [];
-  if (fill && (part.closed || part.circle))
-    ops.push({ kind: 'polygon', points: pts.flatMap((p) => [p.x, p.y]), fill });
-  if (stroke && part.dash) ops.push(...dashes(pts, width * 3, width * 3, stroke, width));
-  else if (stroke)
-    ops.push({ kind: 'polyline', points: pts.flatMap((p) => [p.x, p.y]), color: stroke, width });
-  return ops;
+  const turned = (ops: Op[]): Op[] => {
+    if (!shape.rotation) return ops;
+    const cx = (x0 + x1) / 2;
+    const cy = (y0 + y1) / 2;
+    const t = (shape.rotation * Math.PI) / 180;
+    const pts = (p: readonly number[]) =>
+      p.map((v, i) =>
+        i % 2 === 0
+          ? cx + (v - cx) * Math.cos(t) - ((p[i + 1] as number) - cy) * Math.sin(t)
+          : cy + ((p[i - 1] as number) - cx) * Math.sin(t) + (v - cy) * Math.cos(t),
+      );
+    return ops.map((op) => {
+      if (op.kind === 'polyline' || op.kind === 'polygon') return { ...op, points: pts(op.points) };
+      if (op.kind === 'ellipse') {
+        const ring: number[] = [];
+        for (let i = 0; i <= 32; i++) {
+          const a = (i / 32) * Math.PI * 2;
+          ring.push(op.cx + op.rx * Math.cos(a), op.cy + op.ry * Math.sin(a));
+        }
+        return { kind: 'polyline', points: pts(ring), color: op.stroke, width: op.width };
+      }
+      // shortcut: exported texts stay level; turned texts print unturned until text ops can turn.
+      return op;
+    });
+  };
+  if (shape.kind === 'zone') {
+    const corners = [x0, y0, x1, y0, x1, y1, x0, y1];
+    const ring = [x0, y0, x1, y0, x1, y1, x0, y1, x0, y0];
+    const edge: Array<{ x: number; y: number }> = [];
+    const turnedRing = (
+      turned([{ kind: 'polyline', points: ring, color, width }])[0] as { points: number[] }
+    ).points;
+    for (let i = 0; i + 1 < turnedRing.length; i += 2)
+      edge.push({ x: turnedRing[i] as number, y: turnedRing[i + 1] as number });
+    const ops: Op[] = [
+      ...turned([{ kind: 'polygon', points: corners, fill: mix(color, c['surface-1'], 0.1) }]),
+      ...dashes(edge, width * 3, width * 2.5, color, width),
+    ];
+    if (shape.text) {
+      const size = (18 / 1000) * box.w;
+      ops.push({
+        kind: 'text',
+        x: Math.min(x0, x1) + 0.01 * box.w,
+        y: Math.min(y0, y1) + size * 1.3,
+        text: shape.text,
+        size,
+        weight: 400,
+        color,
+      });
+    }
+    return ops;
+  }
+  return turned(shapeOps({ ...shape, kind: shape.kind, color }, box));
 }
 
 function head(x0: number, y0: number, x1: number, y1: number, size: number, color: string): Op {

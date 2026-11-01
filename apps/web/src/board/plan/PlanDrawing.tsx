@@ -1,16 +1,26 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 import {
-  iconCentre,
+  categoryOf,
+  type GlyphPart,
+  glyphOf,
+  iconCone,
+  iconTransform,
   labelAnchor,
-  PLAN_GRID,
+  layerOf,
   PLAN_VIEW_H,
   PLAN_VIEW_W,
   type PlanElement,
-  type PlanPaint,
-  type PlanPart,
-  planIconParts,
+  type PlanFamily,
+  type PlanItem,
+  type PlanNoteTool,
 } from '@inkadra/canvas-core';
-import { PLAN_ASPECT, type PlanIcon, type PlanIconKind } from '@inkadra/doc-schema';
+import {
+  PLAN_ASPECT,
+  type PlanIcon,
+  type PlanIconKind,
+  type PlanShape,
+  STROKE_GRID,
+} from '@inkadra/doc-schema';
 import { type CSSProperties, memo, type ReactNode, useId } from 'react';
 import { StrokePath } from '../film/FramePicture.tsx';
 import { ShapeView } from '../film/shapes.tsx';
@@ -30,16 +40,19 @@ export const PLAN_COLORS = [
 export type PlanColor = (typeof PLAN_COLORS)[number];
 export const PLAN_INK = PLAN_COLORS[0].hex;
 
-/** The colour a new icon takes: cameras blue, lights yellow, actors purple, the set in ink. */
-export const ICON_COLORS: Record<PlanIconKind, string> = {
-  camera: PLAN_COLORS[1].hex,
+/** The colour a family starts in: lights yellow, cameras blue, people purple, the rest ink. */
+const FAMILY_COLORS: Record<PlanFamily, string> = {
   light: PLAN_COLORS[2].hex,
-  actor: PLAN_COLORS[3].hex,
-  door: PLAN_INK,
-  window: PLAN_INK,
-  table: PLAN_INK,
-  track: PLAN_INK,
+  camera: PLAN_COLORS[1].hex,
+  person: PLAN_COLORS[3].hex,
+  ink: PLAN_INK,
 };
+/** Annotations (arrows, texts, measures, zones) start green, as in the library. */
+export const NOTE_COLOR = PLAN_COLORS[4].hex;
+
+export function iconColor(kind: PlanIconKind): string {
+  return FAMILY_COLORS[categoryOf(kind).family];
+}
 
 /** Token of a stored colour, or null for a colour outside the palette (drawn as it is). */
 export function planToken(hex: string): string | null {
@@ -52,110 +65,276 @@ export function planCss(hex: string): string {
   return token ? `var(--ink-${token})` : hex;
 }
 
-/** Line width of the pen and of shapes, and font size of texts, in thousandths of the width. */
+/** Line width of the pen and of shapes, in thousandths of the width. */
 export const PLAN_PEN = 4;
-export const PLAN_TEXT = 24;
+/** Font sizes of texts, S, M and L, in thousandths of the width. */
+export const TEXT_SIZES = { S: 14, M: 18, L: 26 } as const;
+/** Font size of icon labels, in thousandths of the width. */
+export const LABEL_SIZE = 16;
+export const PLAN_TEXT = TEXT_SIZES.M;
 
-const PAINT: Record<PlanPaint, { color: string; opacity?: number }> = {
-  ink: { color: 'currentColor' },
-  soft: { color: 'currentColor', opacity: 0.25 },
-  wash: { color: 'currentColor', opacity: 0.14 },
-  faint: { color: 'currentColor', opacity: 0.5 },
-  muted: { color: 'var(--ink-text-muted)' },
-  surface: { color: 'var(--ink-surface-1)' },
-  raised: { color: 'var(--ink-surface-2)' },
-};
+/** Fill of the closed parts of an icon: a veil of its colour, what lies under it still shows. */
+const WASH = 'color-mix(in srgb, currentColor 12%, transparent)';
 
-function partStyle(part: PlanPart): CSSProperties {
-  const fill = part.fill ? PAINT[part.fill] : null;
-  const stroke = part.stroke ? PAINT[part.stroke] : null;
-  return {
-    fill: fill?.color ?? 'none',
-    fillOpacity: fill?.opacity,
-    stroke: stroke?.color ?? 'none',
-    strokeOpacity: stroke?.opacity,
-    strokeWidth: part.width,
-    strokeDasharray: part.dash ? `${part.width * 3} ${part.width * 3}` : undefined,
-  };
+/** The parts of a glyph as SVG, in its 32 grid. `fill` paints closed parts. */
+export function GlyphParts({ glyph, fill }: { glyph: GlyphPart[]; fill?: string }) {
+  return glyph.map((part, i) => {
+    const style: CSSProperties = {
+      strokeWidth: part.w,
+      strokeDasharray: part.dash?.join(' '),
+      opacity: part.o,
+    };
+    const key = i;
+    if (part.c) {
+      const [cx, cy, r] = part.c;
+      return <circle key={key} cx={cx} cy={cy} r={r} style={{ ...style, fill }} />;
+    }
+    if (part.r) {
+      const [x, y, w, h, rx] = part.r;
+      return (
+        <rect
+          key={key}
+          x={x}
+          y={y}
+          width={w}
+          height={h}
+          rx={rx || undefined}
+          transform={part.rot ? `rotate(${part.rot.join(' ')})` : undefined}
+          style={{ ...style, fill }}
+        />
+      );
+    }
+    return (
+      <path
+        key={key}
+        d={part.d}
+        style={{ ...style, fill: /z$/i.test(part.d ?? '') ? fill : undefined }}
+      />
+    );
+  });
 }
 
-function Part({ part }: { part: PlanPart }) {
-  const style = partStyle(part);
-  if (part.circle) return <circle {...part.circle} style={style} />;
-  const pts = part.points ?? [];
-  const pairs: string[] = [];
-  for (let i = 0; i + 1 < pts.length; i += 2) pairs.push(`${pts[i]},${pts[i + 1]}`);
-  return part.closed ? (
-    <polygon points={pairs.join(' ')} style={style} />
-  ) : (
-    <polyline points={pairs.join(' ')} style={style} />
+/** A library glyph at icon size, in the UI (the icon tiles of the library). */
+export function PlanGlyph({
+  kind,
+  size = 28,
+}: {
+  kind: PlanIconKind | PlanNoteTool;
+  size?: number;
+}) {
+  return (
+    <svg className="plan-glyph" viewBox="0 0 32 32" width={size} height={size} aria-hidden="true">
+      <GlyphParts glyph={glyphOf(kind)} />
+    </svg>
   );
 }
 
-/** A set icon in view units, with its label under it. */
-export function PlanIconView({ icon }: { icon: PlanIcon }) {
-  const c = iconCentre(icon);
-  const label = icon.label ? labelAnchor(icon) : null;
+/** "A cam · 35 mm": the label of an icon on the plan. */
+export function iconLabel(icon: PlanIcon): string {
+  const lens = icon.kind === 'camera' && icon.showLens ? `${icon.lens ?? 35} mm` : '';
+  const power = icon.power && !icon.label?.includes(icon.power) ? icon.power : '';
+  return [icon.label, lens, power].filter(Boolean).join(' · ');
+}
+
+/** A set icon in view units: its cone or beam, its glyph, its label under it. */
+export function PlanIconView({
+  icon,
+  sensor,
+  faded,
+  noCone,
+}: {
+  icon: PlanIcon;
+  sensor?: PlanElement['sensor'];
+  /** An earlier position in blocking: a veiled copy. */
+  faded?: boolean;
+  noCone?: boolean;
+}) {
+  const t = iconTransform(icon);
+  const cone = noCone ? null : iconCone(icon, sensor);
+  const label = iconLabel(icon);
+  const at = label ? labelAnchor(icon) : null;
+  const scale = Math.sqrt(t.sx * t.sy);
   return (
-    <g style={{ color: planCss(icon.color) }} strokeLinecap="round" strokeLinejoin="round">
-      <g transform={`translate(${c.x} ${c.y}) rotate(${icon.rotation ?? 0})`}>
-        {planIconParts(icon.kind).map((part, i) => (
-          // biome-ignore lint/suspicious/noArrayIndexKey: the parts of a kind never change.
-          <Part key={i} part={part} />
-        ))}
+    <g
+      style={{ color: planCss(icon.color), opacity: faded ? 0.4 : undefined }}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      data-icon={icon.id}
+    >
+      {cone && (
+        <polygon
+          points={cone.points.map((p) => `${p.x},${p.y}`).join(' ')}
+          style={{
+            fill: 'currentColor',
+            fillOpacity: cone.beam ? 0.06 + 0.16 * (icon.intensity ?? 0.8) : 0.14,
+            stroke: 'currentColor',
+            strokeOpacity: 0.5,
+            strokeWidth: 1.5,
+          }}
+        />
+      )}
+      <g
+        transform={`translate(${t.centre.x} ${t.centre.y}) rotate(${t.angle}) scale(${t.sx} ${t.sy}) translate(${-t.origin.x} ${-t.origin.y})`}
+        style={{
+          fill: 'none',
+          stroke: 'currentColor',
+          strokeWidth: 1.5 * Math.min(1.6, 1.7 / scale),
+        }}
+      >
+        <GlyphParts glyph={glyphOf(icon.kind)} fill={WASH} />
       </g>
-      {label && (
+      {at && !faded && (
         <text
-          x={label.x}
-          y={label.y}
+          x={at.x}
+          y={at.y}
           textAnchor="middle"
-          fontSize={PLAN_TEXT}
+          fontSize={LABEL_SIZE}
           fontWeight={500}
           fill="currentColor"
           fontFamily="inherit"
         >
-          {icon.label}
+          {label}
         </text>
       )}
     </g>
   );
 }
 
-/** The dots of the plan's own grid, one every PLAN_GRID view units. */
-function GridDots() {
+/** Length of a measure in metres, "2,70 m", or null on a plan without a scale. */
+export function measureText(shape: PlanShape, scale: number | undefined, locale?: string): string {
+  if (!scale) return '';
+  const dx = ((shape.x1 - shape.x0) / STROKE_GRID) * PLAN_VIEW_W;
+  const dy = ((shape.y1 - shape.y0) / STROKE_GRID) * PLAN_VIEW_H;
+  const m = Math.hypot(dx, dy) / scale;
+  return `${m.toLocaleString(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} m`;
+}
+
+/** A shape of a plan: a frame shape turned by its rotation, or a zone or a measure. */
+export function PlanShapeView({ shape, scale }: { shape: PlanShape; scale?: number | undefined }) {
+  const x0 = (shape.x0 / STROKE_GRID) * PLAN_VIEW_W;
+  const y0 = (shape.y0 / STROKE_GRID) * PLAN_VIEW_H;
+  const x1 = (shape.x1 / STROKE_GRID) * PLAN_VIEW_W;
+  const y1 = (shape.y1 / STROKE_GRID) * PLAN_VIEW_H;
+  const cx = (x0 + x1) / 2;
+  const cy = (y0 + y1) / 2;
+  const turn = shape.rotation ? `rotate(${shape.rotation} ${cx} ${cy})` : undefined;
+  let body: ReactNode;
+  if (shape.kind === 'zone') {
+    body = (
+      <>
+        <rect
+          x={Math.min(x0, x1)}
+          y={Math.min(y0, y1)}
+          width={Math.abs(x1 - x0)}
+          height={Math.abs(y1 - y0)}
+          style={{
+            fill: 'currentColor',
+            fillOpacity: 0.1,
+            stroke: 'currentColor',
+            strokeWidth: shape.width,
+            strokeDasharray: `${shape.width * 3} ${shape.width * 2.5}`,
+          }}
+        />
+        {shape.text && (
+          <text
+            x={Math.min(x0, x1) + 10}
+            y={Math.min(y0, y1) + PLAN_TEXT}
+            fontSize={TEXT_SIZES.S}
+            fill="currentColor"
+            fontFamily="inherit"
+          >
+            {shape.text}
+          </text>
+        )}
+      </>
+    );
+  } else if (shape.kind === 'measure') {
+    const label = measureText(shape, scale);
+    const a = Math.atan2(y1 - y0, x1 - x0);
+    const tick = (x: number, y: number) =>
+      `M${x - 9 * Math.sin(a)} ${y + 9 * Math.cos(a)}L${x + 9 * Math.sin(a)} ${y - 9 * Math.cos(a)}`;
+    const w = label.length * 11 + 16;
+    body = (
+      <>
+        <path
+          d={`M${x0} ${y0}L${x1} ${y1}${tick(x0, y0)}${tick(x1, y1)}`}
+          style={{
+            fill: 'none',
+            stroke: 'currentColor',
+            strokeWidth: 2,
+            strokeDasharray: shape.dashed ? '8 6' : undefined,
+          }}
+        />
+        {label && (
+          <g className="plan__chip">
+            <rect x={cx - w / 2} y={cy - 15} width={w} height={30} rx={6} />
+            <text x={cx} y={cy + 7} textAnchor="middle" fontSize={TEXT_SIZES.S} fontWeight={600}>
+              {label}
+            </text>
+          </g>
+        )}
+      </>
+    );
+  } else {
+    body = (
+      <ShapeView shape={{ ...shape, kind: shape.kind }} height={PLAN_VIEW_H} color="currentColor" />
+    );
+  }
+  return (
+    <g style={{ color: planCss(shape.color) }} transform={turn}>
+      {body}
+    </g>
+  );
+}
+
+/** The dots of the plan's own grid, one every `step` view units. */
+function GridDots({ step }: { step: number }) {
   const id = `plan-grid-${useId().replace(/[^a-zA-Z0-9]/g, '')}`;
   return (
     <>
       <defs>
-        <pattern id={id} width={PLAN_GRID} height={PLAN_GRID} patternUnits="userSpaceOnUse">
-          <circle cx={PLAN_GRID / 2} cy={PLAN_GRID / 2} r={2.2} className="plan__dot" />
+        <pattern id={id} width={step} height={step} patternUnits="userSpaceOnUse">
+          <circle cx={step / 2} cy={step / 2} r={2.2} className="plan__dot" />
         </pattern>
       </defs>
       <rect
-        x={-PLAN_GRID / 2}
-        y={-PLAN_GRID / 2}
-        width={PLAN_VIEW_W + PLAN_GRID}
-        height={PLAN_VIEW_H + PLAN_GRID}
+        x={-step / 2}
+        y={-step / 2}
+        width={PLAN_VIEW_W + step}
+        height={PLAN_VIEW_H + step}
         fill={`url(#${id})`}
       />
     </>
   );
 }
 
+export type PlanLike = Pick<
+  PlanElement,
+  'strokes' | 'shapes' | 'icons' | 'hiddenLayers' | 'sensor' | 'scale'
+>;
+
+const visible = <T extends PlanItem>(items: readonly T[] | undefined, hidden?: readonly string[]) =>
+  (items ?? []).filter((item) => !hidden?.includes(layerOf(item)));
+
 /**
  * A plan's drawing: strokes, then shapes and texts, then set icons, as vectors in the plan's
- * aspect ratio. `grid` shows the dots while editing; `children` draws on top (the live line,
- * the selection). Memoized: it redraws only when the plan changes.
+ * aspect ratio, its hidden layers left out. `grid` shows the dots while editing (every `step`
+ * view units); `children` draws on top (the live line, the selection). Memoized: it redraws
+ * only when the plan changes.
  */
 export const PlanDrawing = memo(function PlanDrawing({
   plan,
-  grid = false,
+  grid,
+  hidden,
   children,
 }: {
-  plan: Pick<PlanElement, 'strokes' | 'shapes' | 'icons'>;
-  grid?: boolean;
+  plan: PlanLike;
+  grid?: number | undefined;
+  /** Layers this person hides while editing, on top of the plan's own. */
+  hidden?: readonly string[] | undefined;
   children?: ReactNode;
 }) {
+  const off = [...(plan.hiddenLayers ?? []), ...(hidden ?? [])];
   return (
     <svg
       className="plan__svg"
@@ -163,19 +342,17 @@ export const PlanDrawing = memo(function PlanDrawing({
       style={{ aspectRatio: String(PLAN_ASPECT) }}
       aria-hidden="true"
     >
-      {grid && <GridDots />}
-      {plan.strokes?.map((s) => (
+      {grid && <GridDots step={grid} />}
+      {visible(plan.strokes, off).map((s) => (
         <g key={s.id} style={{ color: planCss(s.color) }}>
           <StrokePath stroke={s} height={PLAN_VIEW_H} color="currentColor" />
         </g>
       ))}
-      {plan.shapes?.map((s) => (
-        <g key={s.id} style={{ color: planCss(s.color) }}>
-          <ShapeView shape={s} height={PLAN_VIEW_H} color="currentColor" />
-        </g>
+      {visible(plan.shapes, off).map((s) => (
+        <PlanShapeView key={s.id} shape={s} scale={plan.scale} />
       ))}
-      {plan.icons?.map((icon) => (
-        <PlanIconView key={icon.id} icon={icon} />
+      {visible(plan.icons, off).map((icon) => (
+        <PlanIconView key={icon.id} icon={icon} sensor={plan.sensor} />
       ))}
       {children}
     </svg>

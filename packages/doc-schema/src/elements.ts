@@ -383,21 +383,89 @@ export const FrameElement = Base.extend({
 /** Width divided by height of a set plan's drawing; its coordinates are STROKE_GRID units of it. */
 export const PLAN_ASPECT = 3 / 2;
 export const MAX_PLAN_ICONS = 300;
-/** The set icons of a plan, drawn by renderers at a fixed size (decision 0062). */
+/**
+ * The set icons of a plan, by category (decision 0062): lights, grip, camera and movement,
+ * people, audio and video, furniture, exteriors. `light` is the light of version 14 plans,
+ * drawn as a Fresnel. Generic types only, no makes or models.
+ */
 export const PLAN_ICON_KINDS = [
+  'fresnel',
+  'led',
+  'tube',
+  'softbox',
+  'lantern',
+  'para',
+  'practical',
+  'sun',
+  'cstand',
+  'flag',
+  'frame',
+  'bounce',
+  'gel',
   'camera',
-  'light',
+  'tripod',
+  'gimbal',
+  'dolly',
+  'track',
+  'slider',
+  'jib',
+  'drone',
+  'carrig',
   'actor',
+  'group',
+  'crew',
+  'boom',
+  'monitor',
+  'recorder',
+  'table',
+  'chair',
+  'sofa',
+  'bed',
+  'wardrobe',
+  'desk',
+  'stairs',
   'door',
   'window',
-  'table',
-  'track',
+  'wall',
+  'column',
+  'tree',
+  'car',
+  'road',
+  'light',
 ] as const;
 export type PlanIconKind = (typeof PLAN_ICON_KINDS)[number];
+
+/** Layers of a plan; each item belongs to one (since version 15). */
+export const PLAN_LAYERS = ['set', 'lights', 'camera', 'actors', 'notes'] as const;
+export const PlanLayer = z.enum(PLAN_LAYERS);
+export type PlanLayer = z.infer<typeof PlanLayer>;
+
+/** Plain extras every plan item may carry (since version 15). */
+const PlanItemExtras = {
+  layer: PlanLayer.optional().describe("Omitted = the layer of the item's family."),
+  group: ElementId.optional().describe('Items with the same group move together; one level.'),
+};
+
+/** A position an icon moved through, in blocking (since version 15). */
+export const PlanStep = z.object({
+  x: GridCoord,
+  y: GridCoord,
+  rotation: z.int().min(0).max(359).optional(),
+  note: z.string().max(200).optional().describe('"Porta, entra".'),
+  bend: z
+    .number()
+    .finite()
+    .min(-1000)
+    .max(1000)
+    .optional()
+    .describe('Bow of the move from here to the next position, in view units; omitted = straight.'),
+});
+export type PlanStep = z.infer<typeof PlanStep>;
 
 /**
  * A set icon of a plan, centred on (x, y) in STROKE_GRID units of the drawing. `rotation` turns
  * it clockwise from facing right: a camera looks, a light shines and an actor faces that way.
+ * The rest is optional and since version 15: size, lens and beam, blocking, layer and group.
  */
 export const PlanIcon = z.object({
   id: ElementId,
@@ -407,6 +475,28 @@ export const PlanIcon = z.object({
   y: GridCoord,
   rotation: z.int().min(0).max(359).optional().describe('Degrees clockwise. Omitted = 0.'),
   label: z.string().max(60).optional().describe('"A cam", "Anna", "Key 1,2K".'),
+  size: z.enum(['S', 'L']).optional().describe('Symbols: small or large. Omitted = medium.'),
+  w: z.number().positive().max(4000).optional().describe('Furniture: width in view units.'),
+  h: z.number().positive().max(4000).optional().describe('Furniture: depth in view units.'),
+  lens: z.int().min(4).max(2000).optional().describe('Camera: focal length in mm. Omitted = 35.'),
+  showLens: z.boolean().optional().describe('Camera: the lens after the label.'),
+  reach: z
+    .number()
+    .positive()
+    .max(4000)
+    .optional()
+    .describe('Length of the view cone or beam, in view units. Omitted = the default.'),
+  power: z.string().max(20).optional().describe('Light: "1,2K", "300 W".'),
+  beam: z.int().min(5).max(180).optional().describe('Light: beam angle in degrees.'),
+  intensity: z.number().min(0).max(1).optional().describe('Light: 0 to 1, how dense its beam is.'),
+  steps: z
+    .array(PlanStep)
+    .max(30)
+    .optional()
+    .describe('Blocking: the earlier positions, first first; the icon stands at the last one.'),
+  note: z.string().max(200).optional().describe('Blocking: what happens at the last position.'),
+  dashed: z.boolean().optional().describe('Blocking: moves drawn dashed (the camera, say).'),
+  ...PlanItemExtras,
 });
 export type PlanIcon = z.infer<typeof PlanIcon>;
 
@@ -421,19 +511,80 @@ const PlanIcons = z
     }),
   );
 
+/** A pen stroke of a plan: a frame stroke with a layer and a group. */
+export const PlanStroke = Stroke.extend(PlanItemExtras);
+export type PlanStroke = z.infer<typeof PlanStroke>;
+
+/**
+ * A shape of a plan: a frame shape that may also be a measure (a dimension line, its ends
+ * attached to icons by `from` and `to`) or a zone (a dashed area), turned by `rotation` around
+ * its middle (since version 15).
+ */
+export const PlanShape = FrameShape.extend({
+  kind: z.enum([...SHAPE_KINDS, 'measure', 'zone']),
+  rotation: z.int().min(0).max(359).optional(),
+  dashed: z.boolean().optional(),
+  from: ElementId.optional().describe('Measure: icon its start follows.'),
+  to: ElementId.optional().describe('Measure: icon its end follows.'),
+  ...PlanItemExtras,
+});
+export type PlanShape = z.infer<typeof PlanShape>;
+
+const PlanShapes = z
+  .array(z.unknown())
+  .max(MAX_SHAPES)
+  .transform((items) =>
+    items.flatMap((item) => {
+      const parsed = PlanShape.safeParse(item);
+      return parsed.success ? [parsed.data] : [];
+    }),
+  );
+
+/** Sensor formats for a camera's angle of view; widths in mm. */
+export const PLAN_SENSORS = { s35: 24.89, ff: 36, m43: 17.3, s16: 12.52 } as const;
+export type PlanSensor = keyof typeof PLAN_SENSORS;
+
 /**
  * A set plan (since version 14, decision 0062): a lighting or blocking diagram drawn with the
  * frame drawing's strokes and shapes, plus set icons, over a drawing PLAN_ASPECT wide per unit
  * of height. Strokes and shapes are plain objects in Y.Arrays, as on frames; icons are Y.Maps
- * in a Y.Array, so two people moving and labelling different icons merge.
+ * in a Y.Array, so two people moving and labelling different icons merge. Version 15 adds the
+ * scenes it serves, variants sharing a base's Set layer, layers, a real scale and the output
+ * options.
  */
 export const PlanElement = Base.extend({
   type: z.literal('plan'),
   title: z.string().max(200).optional().describe('Shown after "Set plan" in the header.'),
-  strokes: z.array(Stroke).max(MAX_STROKES).optional().describe('Pen drawing, oldest first.'),
-  shapes: FrameShapes.optional().describe('Shapes and texts over the strokes, oldest first.'),
+  strokes: z.array(PlanStroke).max(MAX_STROKES).optional().describe('Pen drawing, oldest first.'),
+  shapes: PlanShapes.optional().describe('Shapes and texts over the strokes, oldest first.'),
   icons: PlanIcons.optional().describe('Set icons over the shapes, oldest first.'),
+  sceneIds: z
+    .array(ElementId)
+    .max(50)
+    .optional()
+    .describe('Scenes of the same board the plan serves.'),
+  variantOf: ElementId.optional().describe(
+    'Base plan whose Set layer this variant shows and edits; its own Set layer stays empty.',
+  ),
+  variant: z.string().max(60).optional().describe('Name of the variant: "Giorno", "Sera".'),
+  hiddenLayers: z
+    .array(PlanLayer)
+    .max(5)
+    .optional()
+    .describe('Left out on the card and in exports.'),
+  lockedLayers: z.array(PlanLayer).max(5).optional().describe('Not moved or edited.'),
+  scale: z
+    .number()
+    .positive()
+    .max(100000)
+    .optional()
+    .describe('View units per metre; omitted = no real scale, no metres.'),
+  grid: z.enum(['0.25', '0.5', '1']).optional().describe('Grid step in metres, with a scale.'),
+  rulers: z.boolean().optional(),
+  sensor: z.enum(['s35', 'ff', 'm43', 's16']).optional().describe('Omitted = Super 35.'),
+  presentation: z.boolean().optional().describe('False: left out of the scene slides.'),
 });
+export type PlanElementSchema = z.infer<typeof PlanElement>;
 
 /** One end of an arrow: attached to an element, or a free point on the canvas. */
 export const ArrowEnd = z.object({

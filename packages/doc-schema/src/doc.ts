@@ -4,7 +4,7 @@ import { z } from 'zod';
 import { AspectRatio, Element, type ElementType, type TableRow } from './elements.ts';
 
 /** Bump when the shape of the board document changes, and add a migration below. */
-export const CURRENT_SCHEMA_VERSION = 14;
+export const CURRENT_SCHEMA_VERSION = 15;
 
 export const DOC_NAME_PREFIX = 'board:';
 
@@ -97,6 +97,10 @@ const migrations: Record<number, Migration> = {
   // 14: the set plan element (#335, decision 0062). Additive; the bump keeps older servers from
   // loading documents with an element type they would refuse to validate.
   13: () => {},
+  // 15: plans grow (#335 v2, decision 0062): more icon kinds, sizes, lenses and beams,
+  // blocking steps, layers, groups, scenes, variants and a real scale. All optional; older
+  // builds must not drop them when copying a plan.
+  14: () => {},
 };
 
 /**

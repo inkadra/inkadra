@@ -37,6 +37,18 @@ const fields = {
     description:
       'Boards pan only around their content plus a margin, an area that grows with it (#324).',
   }),
+  planFavorites: z
+    .array(z.string().min(1).max(40))
+    .max(60)
+    .openapi({
+      description:
+        'Set plan icons starred by this person, in order (#335). Open list: clients skip kinds ' +
+        'they do not know.',
+    }),
+  planRecents: z
+    .array(z.string().min(1).max(40))
+    .max(8)
+    .openapi({ description: 'The last set plan icons this person placed, newest first.' }),
   toolbar: z
     .array(z.string().min(1).max(40))
     .max(40)
@@ -67,6 +79,8 @@ export const DEFAULT_USER_PREFERENCES: UserPreferences = {
   doubleClickNote: true,
   undoButtons: false,
   keepAroundContent: true,
+  planFavorites: [],
+  planRecents: [],
   toolbar: null,
 };
 

@@ -158,11 +158,11 @@ describe('writeVersionOver', () => {
       };
       const card = addElement(
         live,
-        field === 'items'
+        (field === 'items'
           ? { ...note('card0000'), type: 'todo', items: [item] }
           : field === 'strokes'
             ? { ...note('card0000'), type: 'frame', strokes: [stroke] }
-            : note('card0000'),
+            : note('card0000')) as Parameters<typeof addElement>[1],
       );
       if (field === 'body') write(live, 'card0000', 'version');
       const version = saved(live);

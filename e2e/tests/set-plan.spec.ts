@@ -148,7 +148,7 @@ async function seed(page: Page, baseURL: string, theme: 'light' | 'dark') {
         icon('Track', 'track', INK, 112, 211),
         icon('ACam', 'camera', '#9DB8F2', 100, 200, 310, 'A cam'),
         icon('BCam', 'camera', '#9DB8F2', 326, 70, 160, 'B cam'),
-        icon('Key', 'light', '#EDD963', 340, 198, 225, 'Key 1,2K'),
+        icon('Key', 'fresnel', '#EDD963', 340, 198, 225, 'Key 1,2K'),
         icon('Anna', 'actor', '#B897F0', 204, 78, 90, 'Anna'),
         icon('Marco', 'actor', '#7AD689', 214, 168, 270, 'Marco'),
       ],
@@ -183,13 +183,36 @@ for (const theme of ['dark', 'light'] as const) {
     await page.mouse.click(1300, 820);
     await page.screenshot({ path: join(out, `desktop-${theme}-board.png`) });
 
-    // Editing: the tools on the left, the grid on, the set icons on the right.
+    // Editing: a window in front of the dimmed board, tools inside its left edge, the library
+    // of 42 icons in 7 categories (and the annotations) on the right.
     await card.dblclick();
     const editor = page.getByRole('dialog', { name: 'Pianta del set · Cucina, giorno 2' });
     await expect(editor.getByRole('toolbar', { name: 'Strumenti della pianta' })).toBeVisible();
     await expect(editor.locator('pattern')).toHaveCount(1);
-    await editor.getByRole('button', { name: 'Icone da set' }).click();
-    await expect(editor.getByRole('button', { name: 'Binario' })).toBeVisible();
+    // 42 icons and 4 annotations, plus the recent and starred ones of earlier runs.
+    expect(await editor.locator('.plan-lib__tile').count()).toBeGreaterThanOrEqual(46);
+    // The last match: the category tile, after Recent and Favourites.
+    const tile = (name: string) => editor.getByRole('button', { name, exact: true }).last();
+    await expect(tile('Binario')).toBeVisible();
+    // The tools stay inside the window: nothing covers the cards next to the plan.
+    const win = (await editor.boundingBox())!;
+    const tools = (await editor
+      .getByRole('toolbar', { name: 'Strumenti della pianta' })
+      .boundingBox())!;
+    expect(tools.x).toBeGreaterThanOrEqual(win.x);
+
+    // Search knows synonyms: "kino" finds the tube; Enter would place it.
+    const search = editor.getByRole('searchbox', { name: 'Cerca un’icona' });
+    await search.fill('kino');
+    await expect(editor.locator('.plan-lib__tile')).toHaveCount(1);
+    await expect(tile('Tubo')).toBeVisible();
+    if (theme === 'dark') await page.screenshot({ path: join(out, 'desktop-dark-search.png') });
+    await search.fill('');
+    // A star keeps an icon among the Favourites.
+    // (The account is the same for both themes: the star stays from the dark run.)
+    if (theme === 'dark')
+      await editor.getByRole('button', { name: 'Preferito: Pannello LED' }).click();
+    await expect(editor.getByText('Preferiti', { exact: true })).toBeVisible();
 
     // Selecting A cam: the bar with its colour, its label, Ruota, Duplica and Elimina.
     const stage = editor.locator('.plan-editor__stage');
@@ -224,13 +247,18 @@ for (const theme of ['dark', 'light'] as const) {
     await page.keyboard.press('Delete');
     await expect.poll(async () => (await saved()).plan?.icons?.length).toBe(9);
 
-    // Tap Luce, then tap the plan: a light lands there, on the grid.
-    await editor.getByRole('button', { name: 'Luce' }).click();
+    // Tap Fresnel, then tap the plan twice: it stays armed and places two, then Recent shows it.
+    await tile('Fresnel').click();
     const spot = at(60, 60);
     await page.mouse.click(spot.x, spot.y);
+    const spot2 = at(60, 120);
+    await page.mouse.click(spot2.x, spot2.y);
     await expect
-      .poll(async () => (await saved()).plan?.icons?.filter((i) => i.kind === 'light').length)
-      .toBe(2);
+      .poll(async () => (await saved()).plan?.icons?.filter((i) => i.kind === 'fresnel').length)
+      .toBe(3);
+    await expect(editor.getByText('Recenti', { exact: true })).toBeVisible();
+    await page.mouse.click(aCam.x, aCam.y);
+    await page.screenshot({ path: join(out, `desktop-${theme}-library.png`) });
 
     // A line with the Linea tool, next to the walls.
     await editor.getByRole('button', { name: 'Linea' }).click();
@@ -277,8 +305,11 @@ for (const theme of ['dark', 'light'] as const) {
       const full = mobile.getByRole('dialog', { name: /Pianta del set/ });
       await expect(full.getByRole('button', { name: 'Fatto' })).toBeVisible();
       await full.getByRole('button', { name: 'Icone da set' }).tap();
-      await expect(full.getByRole('button', { name: 'Camera' })).toBeVisible();
-      await mobile.screenshot({ path: join(out, `phone-${theme}-editing.png`) });
+      await expect(full.getByRole('button', { name: 'Fresnel', exact: true })).toBeVisible();
+      await full.getByRole('tab', { name: 'Arredi' }).tap();
+      await expect(full.getByRole('button', { name: 'Divano', exact: true })).toBeVisible();
+      await full.getByRole('tab', { name: 'Luci' }).tap();
+      await mobile.screenshot({ path: join(out, `phone-${theme}-library.png`) });
       await full.getByRole('button', { name: 'Fatto' }).tap();
       await expect(full).toHaveCount(0);
     } finally {

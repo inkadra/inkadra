@@ -123,8 +123,8 @@ describe('set plans in exports', () => {
     // Ink and palette colours print with the theme's tokens.
     expect(drawing.ops[0]).toMatchObject({ kind: 'polyline', color: '#text-secondary' });
     const polygons = drawing.ops.filter((o) => o.kind === 'polygon');
-    // The view cone, the body and the lens of the camera.
-    expect(polygons).toHaveLength(3);
+    // The view cone and the body of the camera.
+    expect(polygons).toHaveLength(2);
     // Turned 90°: the cone points down from the centre (320, 34 + 213).
     const cone = polygons[0] as Extract<(typeof polygons)[number], { kind: 'polygon' }>;
     const ys = cone.points.filter((_, i) => i % 2 === 1);
