@@ -2,7 +2,7 @@
  * Dominant colours of an image by median cut over its pixels (RGB triplets), largest share
  * first. Pass a small rendition (64×64 is plenty): the cost is linear in the pixel count.
  */
-export function palette(rgb: Uint8Array, count = 5): string[] {
+export function palette(rgb: Uint8Array, count = 6): string[] {
   const n = Math.floor(rgb.length / 3);
   if (n === 0) return [];
   const value = (pixel: number, channel: number) => rgb[pixel * 3 + channel] ?? 0;

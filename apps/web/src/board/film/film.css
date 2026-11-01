@@ -3284,6 +3284,15 @@ button.moodboard__card:focus-visible {
 .moodboard__card--color[data-light] {
   color: rgb(0 0 0 / 0.75);
 }
+/* RGB and copy on hover or focus, as on the canvas (#308). */
+.moodboard__card--color .card__copy {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+}
+.moodboard__card--color:not(:hover, :focus-within) :is(.card__rgb, .card__copy) {
+  opacity: 0;
+}
 .moodboard__card--color code {
   font:
     600 11px ui-monospace,

@@ -2,12 +2,14 @@
 import { createElement, frameLabels, storyboardOf } from '@inkadra/canvas-core';
 import type { Element } from '@inkadra/doc-schema';
 import { Button, EmptyState, Icon } from '@inkadra/ui';
-import { useEffect, useId, useRef, useState, useSyncExternalStore } from 'react';
+import { useCallback, useEffect, useId, useRef, useState, useSyncExternalStore } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useClassifications } from '../../lib/classifications.ts';
 import { pickVariant, useAsset } from '../assets.ts';
 import { CroppedImage } from '../CroppedImage.tsx';
-import { UploadPanel } from '../chrome.tsx';
+import { CopyHexButton } from '../cards.tsx';
+import { Toast, UploadPanel } from '../chrome.tsx';
+import { hexToRgb } from '../colors.ts';
 import { uploadBoardId } from '../frame-grab.ts';
 import { hasImageTransform } from '../image-crop.ts';
 import { fillLinkPreview, webUrl } from '../links.ts';
@@ -313,6 +315,8 @@ export function MoodboardView({
   const [tag, setTag] = useState('');
   const [selected, setSelected] = useState<string | null>(null);
   const [notice, setNotice] = useState('');
+  const [copied, setCopied] = useState('');
+  const closeCopied = useCallback(() => setCopied(''), []);
   const opener = useRef<HTMLButtonElement | null>(null);
   const all = [...snapshot.byId.values()];
   const references = referencesOf(all);
@@ -449,6 +453,10 @@ export function MoodboardView({
                     style={{ background: element.hex }}
                     data-light={isLight(element.hex) || undefined}
                   >
+                    <span className="card__rgb ink-mono" aria-hidden="true">
+                      {hexToRgb(element.hex).join(' ')}
+                    </span>
+                    <CopyHexButton hex={element.hex} onCopied={setCopied} />
                     <code>{element.hex}</code>
                     {element.label && <span>{element.label}</span>}
                   </article>
@@ -493,6 +501,7 @@ export function MoodboardView({
         )}
       </div>
       <UploadPanel />
+      {copied && <Toast key={copied} text={copied} ok onClose={closeCopied} />}
       {current && (
         <MediaViewer
           store={store}

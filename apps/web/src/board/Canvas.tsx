@@ -89,10 +89,14 @@ import { addActions, type PaletteAction, useRegisterActions } from '../commands/
 import { canvasActions, duplicateInStore } from '../commands/board-actions.ts';
 import { useSession } from '../lib/session.tsx';
 import { ProjectAppearanceDialog } from '../routes/ProjectAppearance.tsx';
+import { setupBoards } from '../routes/project-setup.ts';
 import { queueSeeds } from '../routes/seed-queue.tsx';
 import { accessNotices } from './access-notices.ts';
+import { addedSummary } from './added-summary.ts';
 import { ArrowLayer, ArrowStyleButtons, onArrowStyleButton } from './arrows.tsx';
+import { getCachedAsset } from './assets.ts';
 import { canRenameBoard, createBoard, setBoardCover, setBoardIcon } from './boards.ts';
+import { ColorPicker } from './ColorPicker.tsx';
 import { loadSnapToGrid, loadTidyGap, saveSnapToGrid, saveTidyGap } from './canvas-prefs.ts';
 import {
   type CanvasTemplate,
@@ -119,6 +123,7 @@ import {
   ZoomControls,
 } from './chrome.tsx';
 import { decodeClipboard, encodeClipboard } from './clipboard.ts';
+import { addPalette } from './colors.ts';
 import type { BoardConnection } from './connection.ts';
 import { BoardContext, type BoardContextValue, GuestModeContext, LARGE_BOARD } from './context.ts';
 import { EmptyBoardStart } from './EmptyBoardStart.tsx';
@@ -269,6 +274,8 @@ const easeFrom = (entries: Iterable<readonly [string, Point]>) => ({
   at: performance.now(),
 });
 const EMPTY_SET: ReadonlySet<string> = new Set();
+/** Counts toasts, so each new one starts afresh. */
+let toastCount = 0;
 
 export interface CanvasProps {
   conn: BoardConnection;
@@ -313,7 +320,7 @@ export function Canvas({
   visibleRef,
   guestMaps,
 }: CanvasProps) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const guest = useContext(GuestModeContext);
   const { instance } = useSession();
   const mapAttribution = guestMaps ? guestMaps.attribution : instance?.maps?.attribution;
@@ -422,8 +429,19 @@ export function Canvas({
   /** The address field of a new link card, or of a map card (an address or a map link). */
   const [linkDraft, setLinkDraft] = useState<{ at: Point; map?: boolean } | null>(null);
   const [unsortedOpen, setUnsortedOpen] = useState(false);
-  const [toast, setToast] = useState<{ text: string; undo: boolean } | null>(null);
+  const [toast, setToast] = useState<{
+    text: string;
+    /** True to undo the last step; a function for edits that took several steps. */
+    undo: boolean | (() => void);
+    /** Cards that Show brings into view (#310). */
+    show?: readonly string[];
+    ok?: boolean;
+  } | null>(null);
   const closeToast = useCallback(() => setToast(null), []);
+  /** A short confirmation from a card, such as a copied colour (#308). */
+  const notify = useCallback((text: string) => setToast({ text, undo: false, ok: true }), []);
+  // A new toast starts its count and its Undo afresh.
+  const toastKey = useMemo(() => (toast ? ++toastCount : 0), [toast]);
   const [dropHint, setDropHint] = useState(false);
   const noteEditor = useRef<Editor | null>(null);
   const [, setEditorVersion] = useState(0);
@@ -524,6 +542,30 @@ export function Canvas({
       return { ...view, x: view.x - left / view.zoom, y: view.y - top / view.zoom };
     },
     [size],
+  );
+
+  /** Fits the view to cards just added, the cards in them included. */
+  const showCards = useCallback(
+    (ids: readonly string[]) => {
+      const { byId } = store.getSnapshot();
+      const els = ids.map((id) => byId.get(id)).filter((e) => e?.parent === null);
+      const bounds = boundsOf(els.filter((e) => e !== undefined).map(liveRect));
+      if (bounds) setViewport(fitView(bounds, 64, 1));
+    },
+    [store, liveRect, setViewport, fitView],
+  );
+
+  /** The undoable summary toast after adding many cards at once (#310). */
+  const summarize = useCallback(
+    (ids: readonly string[], verb?: 'added' | 'pasted', undo: boolean | (() => void) = true) => {
+      const { byId, columns } = store.getSnapshot();
+      const types = ids.flatMap((id) => {
+        const el = byId.get(id);
+        return el ? [el.type, ...(columns.get(id) ?? []).map((c) => c.type)] : [];
+      });
+      setToast({ text: addedSummary(t, i18n.language, types, verb), undo, show: ids, ok: true });
+    },
+    [store, t, i18n.language],
   );
 
   // First visit: fit the content once the document has arrived.
@@ -689,9 +731,20 @@ export function Canvas({
           { boardId: board.id },
           { userId, origin: LOCAL },
         );
+        store.undo.stopCapturing();
         queueSeeds(jobs);
         select([card.id]);
         setEditing(card.id);
+        // A template made boards that the card stands for: say how many, with Undo (#310).
+        if (template !== 'board') {
+          const count = Math.max(1, setupBoards(template).length);
+          setToast({
+            text: addedSummary(t, i18n.language, Array(count).fill('board')),
+            undo: true,
+            show: [card.id],
+            ok: true,
+          });
+        }
       } catch {
         setToast({
           text: t(
@@ -703,7 +756,20 @@ export function Canvas({
         });
       }
     },
-    [readOnly, center, place, t, projectId, boardId, userId, store, doc, select, setEditing],
+    [
+      readOnly,
+      center,
+      place,
+      t,
+      i18n.language,
+      projectId,
+      boardId,
+      userId,
+      store,
+      doc,
+      select,
+      setEditing,
+    ],
   );
 
   const [importingScript, setImportingScript] = useState(false);
@@ -728,7 +794,17 @@ export function Canvas({
         { boardId: board.id },
         { userId, origin: LOCAL },
       );
+      store.undo.stopCapturing();
       select([card.id]);
+      setToast({
+        text: t('screenplay.imported', {
+          scenes: t('screenplay.scenes', { count: plan.scenes.length }),
+          frames: t('screenplay.framesCount', { count: plan.frameCount }),
+        }),
+        undo: true,
+        show: [card.id],
+        ok: true,
+      });
     },
     [readOnly, projectId, boardId, t, userId, store, doc, center, place, select],
   );
@@ -799,45 +875,59 @@ export function Canvas({
   );
 
   const uploadFiles = useCallback(
-    (files: File[], at: Point) => {
+    (files: File[], at: Point, verb?: 'added' | 'pasted') => {
       if (readOnly) return;
       const max = instance?.limits.uploadMaxBytes ?? 0;
       const tooBig = max > 0 ? files.filter((f) => f.size > max) : [];
       if (tooBig.length > 0) {
         setToast({ text: t('board.errors.tooBig', { name: tooBig[0]?.name }), undo: false });
       }
-      files
-        .filter((f) => !tooBig.includes(f))
-        .forEach((file, i) => {
-          const step = magnetRef.current ? GRID : 24;
-          const pos = place({ x: at.x + i * step, y: at.y + i * step });
-          const type =
-            file.type.startsWith('image/') && !isDesignFile(file.name) ? 'image' : 'file';
-          startUpload({
-            file,
-            projectId,
-            boardId,
-            onAsset: (assetId) => {
-              // Resuming an upload from an earlier attempt: its card is already on the board.
-              const card = listElements(doc).find(
-                (e) => (e.type === 'image' || e.type === 'file') && e.assetId === assetId,
-              );
-              if (card) {
-                if (i === 0) select([card.id]);
-                return;
-              }
-              const el = createElement(doc, type, pos, { assetId }, { userId, origin: LOCAL });
-              store.undo.stopCapturing();
-              if (i === 0) select([el.id]);
-            },
-            onFailed: (assetId) => {
-              if (!assetId)
-                setToast({ text: t('board.errors.upload', { name: file.name }), undo: false });
-            },
-          });
+      const accepted = files.filter((f) => !tooBig.includes(f));
+      // Several files: once each has its card or failed, one toast sums them up (#310). Each
+      // card is its own undo step, as it arrives when its upload ends, so Undo removes them all.
+      const created: string[] = [];
+      let pending = accepted.length > 1 ? accepted.length : 0;
+      const settled = () => {
+        if (--pending !== 0 || created.length === 0) return;
+        summarize(created, verb, () => {
+          store.undo.stopCapturing();
+          deleteElements(doc, created, LOCAL);
+          store.undo.stopCapturing();
         });
+      };
+      accepted.forEach((file, i) => {
+        const step = magnetRef.current ? GRID : 24;
+        const pos = place({ x: at.x + i * step, y: at.y + i * step });
+        const type = file.type.startsWith('image/') && !isDesignFile(file.name) ? 'image' : 'file';
+        startUpload({
+          file,
+          projectId,
+          boardId,
+          onAsset: (assetId) => {
+            // Resuming an upload from an earlier attempt: its card is already on the board.
+            const card = listElements(doc).find(
+              (e) => (e.type === 'image' || e.type === 'file') && e.assetId === assetId,
+            );
+            if (card) {
+              if (i === 0) select([card.id]);
+              settled();
+              return;
+            }
+            const el = createElement(doc, type, pos, { assetId }, { userId, origin: LOCAL });
+            store.undo.stopCapturing();
+            if (i === 0) select([el.id]);
+            created.push(el.id);
+            settled();
+          },
+          onFailed: (assetId) => {
+            if (!assetId)
+              setToast({ text: t('board.errors.upload', { name: file.name }), undo: false });
+            settled();
+          },
+        });
+      });
     },
-    [readOnly, projectId, boardId, doc, userId, store, select, t, instance, place],
+    [readOnly, projectId, boardId, doc, userId, store, select, t, instance, place, summarize],
   );
 
   /** A map card from a map link or a typed address; the server finds the place and its map. */
@@ -883,6 +973,7 @@ export function Canvas({
     const count = selection.size;
     store.undo.stopCapturing();
     deleteElements(doc, selection, LOCAL);
+    store.undo.stopCapturing();
     setSelection(EMPTY_SET);
     setToast({ text: t('board.deleted', { count }), undo: true });
   }, [readOnly, selection, store, doc, t]);
@@ -1864,7 +1955,9 @@ export function Canvas({
     if (e.type !== 'keydown' || isTyping(e.target) || palette) return;
     const cmd = commandFor(e);
     if (!cmd) return;
-    if (cmd.kind === 'edit' && onArrowStyleButton(e.target)) return;
+    // Enter on the toast's buttons and a colour's copy button presses them (#310, #308).
+    const presses = e.target instanceof HTMLElement && !!e.target.closest('.toast, .card__copy');
+    if (cmd.kind === 'edit' && (onArrowStyleButton(e.target) || presses)) return;
     const single = selection.size === 1 ? snap.byId.get([...selection][0] ?? '') : undefined;
     switch (cmd.kind) {
       case 'tool':
@@ -2013,12 +2106,15 @@ export function Canvas({
     e.preventDefault();
     if (data) {
       store.undo.stopCapturing();
-      select(pasteElements(doc, data, at, { userId, origin: LOCAL }));
+      const ids = pasteElements(doc, data, at, { userId, origin: LOCAL });
+      store.undo.stopCapturing();
+      select(ids);
+      if (ids.length > 1) summarize(ids, 'pasted');
       return;
     }
     const files = [...e.clipboardData.files];
     if (files.length > 0) {
-      uploadFiles(files, at);
+      uploadFiles(files, at, 'pasted');
       return;
     }
     const grid = clipboardGrid(
@@ -2093,6 +2189,19 @@ export function Canvas({
     return labelsRef.current;
   }, [snap]);
   const largeBoard = snap.byId.size > LARGE_BOARD;
+  // Editing a swatch opens its colour picker, with the board's other colours (#308).
+  const editedEl = editing ? snap.byId.get(editing) : undefined;
+  const pickingColor = editedEl?.type === 'color' && !readOnly ? editedEl : null;
+  const usedColors = useMemo(
+    () =>
+      [
+        ...new Set(
+          [...snap.byId.values()].flatMap((e) => (e.type === 'color' ? [e.hex.toUpperCase()] : [])),
+        ),
+      ].slice(0, 12),
+    [snap],
+  );
+  const closePicker = useCallback(() => setEditing(null), [setEditing]);
   // Guests have no project to count in; versions show the counts of today.
   const boardCounts = useBoardCounts(guest ? undefined : projectId, boards);
   const ctx = useMemo<BoardContextValue>(
@@ -2116,8 +2225,10 @@ export function Canvas({
       frameLabels: labels,
       mapAttribution,
       mapTiles,
+      notify,
     }),
     [
+      notify,
       labels,
       mapAttribution,
       mapTiles,
@@ -2260,6 +2371,7 @@ export function Canvas({
     store.undo.stopCapturing();
     select(ids);
     setViewport(fitRect(rect, size.w, size.h));
+    summarize(ids);
   };
 
   // A search result links to ?el=<id>: select that card and bring it into view, once.
@@ -2321,6 +2433,22 @@ export function Canvas({
           ),
       };
     };
+    // The colours the media worker found in the picture, as cards beside it (#308).
+    const paletteItem = (image: Element): MenuItem[] => {
+      const asset = image.type === 'image' && image.assetId && getCachedAsset(image.assetId);
+      const colours = asset && asset !== 'missing' ? (asset.palette ?? []) : [];
+      if (colours.length === 0) return [];
+      return [
+        {
+          label: t('board.image.palette'),
+          action: () => {
+            const ids = addPalette(store, image, colours, userId);
+            select(ids);
+            summarize(ids);
+          },
+        },
+      ];
+    };
     const items: MenuItem[] = [
       ...(single?.type === 'link' && !readOnly && !single.locked
         ? [
@@ -2348,6 +2476,9 @@ export function Canvas({
               action: () => setIconBoard(boards?.find((b) => b.id === single.boardId) ?? null),
             },
           ]
+        : []),
+      ...(single?.type === 'color' && !readOnly && !single.locked
+        ? [{ label: t('board.color.edit'), action: () => setEditing(single.id) }]
         : []),
       ...(single?.type === 'section' && !readOnly && !single.locked
         ? [
@@ -2386,6 +2517,7 @@ export function Canvas({
                   },
                 ]
               : []),
+            ...paletteItem(single),
           ]
         : []),
       ...(single &&
@@ -2512,6 +2644,9 @@ export function Canvas({
     onExportSelection,
     arrangeable,
     arrange,
+    userId,
+    select,
+    summarize,
   ]);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: sizeVersion invalidates measured heights
@@ -2919,6 +3054,16 @@ export function Canvas({
             document.body,
           )}
 
+        {pickingColor && (
+          <ColorPicker
+            id={pickingColor.id}
+            hex={pickingColor.hex}
+            used={usedColors}
+            onChange={(hex) => updateElement(doc, pickingColor.id, { hex }, LOCAL)}
+            onCopied={notify}
+            onClose={closePicker}
+          />
+        )}
         {menu && menuItems.length > 0 && (
           <ContextMenu x={menu.x} y={menu.y} items={menuItems} onClose={() => setMenu(null)} />
         )}
@@ -3027,8 +3172,14 @@ export function Canvas({
         )}
         {toast && (
           <Toast
+            key={toastKey}
             text={toast.text}
-            onUndo={toast.undo ? () => store.undo.undo() : undefined}
+            ok={toast.ok}
+            onShow={toast.show ? () => showCards(toast.show ?? []) : undefined}
+            onUndo={
+              toast.undo === true ? () => store.undo.undo() : toast.undo ? toast.undo : undefined
+            }
+            history={store.undo}
             onClose={closeToast}
           />
         )}

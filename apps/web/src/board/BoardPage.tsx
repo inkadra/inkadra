@@ -716,7 +716,9 @@ function BoardScreen({
       {scriptToast && (
         <Toast
           text={scriptToast}
+          ok
           onUndo={() => conn.store.undo.undo()}
+          history={conn.store.undo}
           onClose={closeScriptToast}
         />
       )}

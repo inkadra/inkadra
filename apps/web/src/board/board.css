@@ -770,21 +770,212 @@ button.fcard__audio-play:focus-visible {
   position: relative;
   aspect-ratio: 4 / 3;
 }
-.card__swatch input[type="color"] {
-  position: absolute;
-  right: 6px;
-  bottom: 6px;
-  width: 28px;
-  height: 28px;
-  padding: 0;
-  border: 1px solid var(--ink-border-strong);
-  border-radius: var(--ink-radius-sm);
-  background: var(--ink-surface-1);
-  cursor: pointer;
-}
 .card__color-meta {
   display: flex;
   flex-direction: column;
+}
+/* The hex always; RGB and copy on hover, focus or selection (a tap on phones) (#308). */
+.card__rgb {
+  position: absolute;
+  left: 6px;
+  top: 6px;
+  padding: 2px 6px;
+  border-radius: var(--ink-radius-xs);
+  background: var(--ink-scrim);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 600;
+  pointer-events: none;
+}
+.card__color-hex {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+  min-height: 20px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--ink-text-primary);
+}
+.card__copy {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--ink-radius-xs);
+  background: var(--ink-surface-2);
+  color: var(--ink-text-icon);
+  cursor: pointer;
+}
+.card__copy:hover {
+  color: var(--ink-text-primary);
+}
+.card--color:not(:hover, :focus-within, .is-selected) :is(.card__rgb, .card__copy) {
+  opacity: 0;
+}
+.card__rgb,
+.card__copy {
+  transition: opacity var(--ink-dur-fast) var(--ink-ease-out);
+}
+/* "Crea palette" makes narrow chips: a taller colour, the hex without "#", no extras. */
+.card--color {
+  container-type: inline-size;
+}
+@container (width < 80px) {
+  .card--color .card__swatch {
+    aspect-ratio: 4 / 5;
+  }
+  .card--color .card__color-meta {
+    padding: 5px 4px;
+  }
+  .card--color .card__color-hex {
+    font-size: 9.5px;
+  }
+  .card--color :is(.card__hash, .card__copy, .card__rgb) {
+    display: none;
+  }
+}
+
+/* The colour picker of a swatch (#308): beside the card, a sheet on phones. */
+.colorpicker {
+  position: absolute;
+  z-index: 10;
+  width: 240px;
+  box-sizing: border-box;
+  padding: 10px;
+  border-radius: var(--ink-radius-md);
+  background: var(--ink-surface-float);
+  border: 1px solid var(--ink-border-default);
+  box-shadow: var(--shadow-float);
+  transform-origin: var(--ink-origin, top left);
+  animation: ink-scale-in var(--ink-dur-fast) var(--ink-ease-out) backwards;
+}
+/* The reactions under cards sit in a layer above the board: out of the open picker's way. */
+body:has(.colorpicker) .card-reactions {
+  visibility: hidden;
+}
+.colorpicker__square {
+  position: relative;
+  height: 130px;
+  border-radius: var(--ink-radius-sm);
+  background-image: linear-gradient(transparent, #000), linear-gradient(90deg, #fff, transparent);
+  touch-action: none;
+  cursor: crosshair;
+}
+.colorpicker__hue {
+  position: relative;
+  height: 12px;
+  margin: 10px 0;
+  border-radius: var(--ink-radius-full);
+  background: linear-gradient(90deg, #f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00);
+  touch-action: none;
+  cursor: pointer;
+}
+.colorpicker__square i,
+.colorpicker__hue i {
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  box-sizing: border-box;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  box-shadow: 0 0 0 1px rgb(0 0 0 / 0.4);
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+.colorpicker__hue i {
+  top: 50%;
+  width: 16px;
+  height: 16px;
+}
+.colorpicker__square:focus-visible,
+.colorpicker__hue:focus-visible {
+  outline: 2px solid var(--ink-accent-primary);
+  outline-offset: 2px;
+}
+.colorpicker__fields {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr 1fr 1fr auto;
+  gap: 5px;
+}
+.colorpicker__fields input {
+  width: 100%;
+  height: 28px;
+  box-sizing: border-box;
+  padding: 0 2px;
+  border: 1px solid var(--ink-border-default);
+  border-radius: var(--ink-radius-sm);
+  background: var(--ink-surface-1);
+  color: var(--ink-text-primary);
+  font-size: 12px;
+  text-align: center;
+  appearance: textfield;
+}
+.colorpicker__fields input::-webkit-inner-spin-button {
+  appearance: none;
+}
+.colorpicker__fields small {
+  display: block;
+  margin-top: 3px;
+  text-align: center;
+  font-size: 10px;
+  color: var(--ink-text-muted);
+}
+.colorpicker__fields .card__copy {
+  width: 28px;
+  height: 28px;
+  border-radius: var(--ink-radius-sm);
+}
+.colorpicker__label {
+  margin: 10px 0 0;
+  font-size: 12px;
+}
+.colorpicker__used {
+  display: flex;
+  gap: 4px;
+  margin-top: 8px;
+}
+.colorpicker__used button {
+  flex: 1;
+  height: 20px;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  border-radius: var(--ink-radius-xs);
+  cursor: pointer;
+}
+.colorpicker__used button[aria-pressed="true"] {
+  box-shadow:
+    0 0 0 2px var(--ink-surface-float),
+    0 0 0 3.5px currentColor;
+}
+@media (width < 768px) {
+  .colorpicker {
+    width: auto;
+    right: 10px;
+    padding: 14px;
+  }
+  .colorpicker__square {
+    height: 160px;
+  }
+  .colorpicker__hue {
+    height: 20px;
+    margin: 14px 0;
+  }
+  .colorpicker__hue i {
+    width: 24px;
+    height: 24px;
+  }
+  .colorpicker__fields input,
+  .colorpicker__fields .card__copy {
+    height: 36px;
+  }
+  .colorpicker__used button {
+    height: 32px;
+  }
 }
 
 /* Board link: the board's icon on a tile of its colour, the name and what it holds (#322). */
@@ -2066,21 +2257,111 @@ button.fcard__audio-play:focus-visible {
   transform: translateX(-50%);
   display: flex;
   align-items: center;
-  gap: 14px;
-  padding: 10px 14px;
+  gap: 6px;
+  min-height: 38px;
+  box-sizing: border-box;
+  padding: 6px 6px 6px 12px;
   border-radius: var(--ink-radius-md);
   background: var(--ink-surface-float);
   border: 1px solid var(--ink-border-default);
   box-shadow: var(--shadow-float);
-  font-size: 12px;
+  font-size: 12.5px;
+  white-space: nowrap;
+  overflow: hidden;
+}
+/* Without actions the text sits alone, padded evenly. */
+.toast:not(:has(button)) {
+  padding-right: 12px;
+}
+.toast__ok {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--ink-status-ok) 15%, transparent);
+  color: var(--ink-status-ok);
+}
+.toast__text {
+  margin-right: 6px;
 }
 .toast__action {
-  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  height: 26px;
+  padding: 0 9px;
   border: 0;
+  border-radius: var(--ink-radius-sm);
   background: transparent;
   color: var(--ink-accent-soft-fg);
+  font: inherit;
   font-weight: 500;
   cursor: pointer;
+}
+.toast__action:hover {
+  background: var(--ink-accent-soft-bg);
+}
+.toast__divider {
+  flex: none;
+  width: 1px;
+  height: 16px;
+  background: var(--ink-border-default);
+}
+.toast__close {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--ink-radius-sm);
+  background: transparent;
+  color: var(--ink-text-muted);
+  cursor: pointer;
+}
+.toast__close:hover {
+  color: var(--ink-text-primary);
+}
+/* Time left before the toast leaves: it stops with the count, on hover or focus. */
+.toast__bar {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: 2px;
+  height: 2px;
+  border-radius: var(--ink-radius-full);
+  background: var(--ink-text-muted);
+  transform-origin: left;
+  animation: toast-left linear forwards;
+}
+.toast__bar[data-held] {
+  animation-play-state: paused;
+}
+@keyframes toast-left {
+  to {
+    transform: scaleX(0);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .toast__bar {
+    display: none;
+  }
+}
+@media (width < 768px) {
+  .toast {
+    left: 10px;
+    right: 10px;
+    transform: none;
+    white-space: normal;
+  }
+  .toast__text {
+    flex: 1;
+  }
+  .toast__divider,
+  .toast__close {
+    display: none;
+  }
 }
 
 /* Header ------------------------------------------------------------------------ */
