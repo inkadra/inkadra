@@ -2840,6 +2840,19 @@
       "ExportPreferences": {
         "type": "object",
         "properties": {
+          "preset": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "enum": [
+              "client-pitch",
+              "production-book",
+              "internal-kickoff",
+              null
+            ],
+            "description": "The last audience preset chosen for this project, or null for custom options."
+          },
           "format": {
             "type": "string",
             "enum": [
@@ -2914,6 +2927,7 @@
           }
         },
         "required": [
+          "preset",
           "format",
           "framesPerPage",
           "paper",
@@ -2927,6 +2941,19 @@
       "UpdateExportSettings": {
         "type": "object",
         "properties": {
+          "preset": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "enum": [
+              "client-pitch",
+              "production-book",
+              "internal-kickoff",
+              null
+            ],
+            "description": "The last audience preset chosen for this project, or null for custom options."
+          },
           "format": {
             "type": "string",
             "enum": [

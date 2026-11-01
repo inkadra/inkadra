@@ -2566,6 +2566,8 @@
   },
   "export": {
     "title": "Esporta",
+    "titleProject": "Esporta «{{name}}»",
+    "close": "Chiudi",
     "cancel": "Annulla",
     "submit": "Esporta",
     "busy": "Esportazione…",
@@ -2647,7 +2649,28 @@
     "progressPictures": "Caricamento delle immagini… {{done}} di {{total}}",
     "progressPages": "Disegno delle pagine… {{done}} di {{total}}",
     "missingGlyphs": "Alcuni caratteri ({{chars}}) non sono nel font dell’export e verranno stampati come riquadri vuoti.",
-    "logoTimeout": "Il caricamento del logo sta impiegando troppo. Riprova."
+    "logoTimeout": "Il caricamento del logo sta impiegando troppo. Riprova.",
+    "presetsLabel": "Preset di esportazione",
+    "recommended": "Consigliato",
+    "customize": "Personalizza",
+    "editingPreset": "modifichi il preset {{n}}",
+    "remembered": "Ricordato per questo progetto",
+    "submitPages_one": "Esporta {{count}} pagina",
+    "submitPages_other": "Esporta {{count}} pagine",
+    "presets": {
+      "client-pitch": {
+        "title": "Pitch cliente",
+        "description": "Orizzontale · una inquadratura per pagina · per i clienti · niente note interne"
+      },
+      "production-book": {
+        "title": "Libro di produzione",
+        "description": "A4 verticale · shot list con tutti i campi · per il team · copertina inclusa"
+      },
+      "internal-kickoff": {
+        "title": "Kickoff interno",
+        "description": "Orizzontale · 4 per pagina · per il team · commenti e card nascoste inclusi"
+      }
+    }
   },
   "screenplay": {
     "open": "Importa sceneggiatura…",

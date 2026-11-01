@@ -178,6 +178,7 @@ test('a board exports to PDF for clients without the cards hidden from guests', 
   await page.getByRole('button', { name: 'Menu della board' }).click();
   await page.getByRole('menuitem', { name: 'Esporta…' }).click();
   const dialog = page.getByRole('dialog', { name: 'Esporta' });
+  await dialog.getByRole('button', { name: /Personalizza/ }).click();
   if (process.env.SELECT_SCREENSHOTS) {
     await page.screenshot({ path: '../docs/screenshots/ui-select/export-dialog.png' });
     const trigger = dialog.getByRole('combobox').first();
@@ -251,6 +252,7 @@ test('a board exports to PDF for clients without the cards hidden from guests', 
   // For the team, with the option off, the hidden card is printed.
   await page.getByRole('button', { name: 'Menu della board' }).click();
   await page.getByRole('menuitem', { name: 'Esporta…' }).click();
+  await dialog.getByRole('button', { name: /Personalizza/ }).click();
   await dialog.getByRole('radio', { name: 'Il team' }).click();
   await dialog.getByRole('checkbox', { name: 'Escludi le card nascoste agli ospiti' }).uncheck();
   await dialog.getByRole('checkbox', { name: /Copertina/ }).uncheck();
@@ -332,5 +334,95 @@ test('a storyboard exports to PDF with frames per page, and to PNG', async ({ pa
   expect(bytes.subarray(1, 4).toString()).toBe('PNG');
   // Width in the IHDR chunk: high resolution, not a screen capture.
   expect(bytes.readUInt32BE(16)).toBeGreaterThanOrEqual(2000);
+  expect(await violations()).toEqual([]);
+});
+
+test('each audience preset exports a PDF and remembers the last preset for the project', async ({
+  page,
+}, info) => {
+  const violations = await watchCsp(page);
+  await signInPage(page);
+  await page.goto(`/p/${seeded.projectId}/b/${seeded.storyboardId}?view=storyboard`);
+  await expect(page.getByRole('status').getByText('Sincronizzato')).toBeVisible();
+
+  // 1. Storyboard view recommends Pitch cliente (1 per page, client audience, cover, no comments).
+  await page.getByRole('button', { name: 'Esporta PDF' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Esporta' });
+  await expect(dialog.locator('.export__preset', { hasText: 'Pitch cliente' })).toContainText(
+    'Consigliato',
+  );
+  await dialog.getByRole('radio', { name: /Pitch cliente/ }).click();
+  await expect(dialog.getByText('5 pagine')).toBeVisible();
+  const [pitchDownload] = await Promise.all([
+    page.waitForEvent('download'),
+    dialog.getByRole('button', { name: 'Esporta', exact: true }).click(),
+  ]);
+  const pitchPath = info.outputPath('preset-client-pitch.pdf');
+  await pitchDownload.saveAs(pitchPath);
+  const pitchPdf = await readPdf(pitchPath);
+  expect(pitchPdf.pages).toHaveLength(5);
+  expect(pitchPdf.pages[0]).toContain('STORYBOARD');
+  expect(pitchPdf.pages[1]).toContain('Frame action 1');
+  expect(pitchPdf.pages.join(' ')).not.toContain('Hidden frame action');
+  expect(pitchPdf.pages.join(' ')).not.toContain('Director only note');
+  expect(pitchPdf.pages.join(' ')).not.toContain('Shared with the client');
+
+  // 2. Shot list view selects its recommended preset (Libro di produzione) instead of silently exporting the storyboard.
+  await page.getByRole('tab', { name: 'Shot list' }).click();
+  await page.getByRole('button', { name: 'Esporta PDF' }).click();
+  await expect(dialog.getByRole('radio', { name: /Libro di produzione/ })).toBeChecked();
+  await expect(dialog.locator('.export__preset', { hasText: 'Libro di produzione' })).toContainText(
+    'Consigliato',
+  );
+  await expect(dialog.getByText('2 pagine')).toBeVisible();
+  const [bookDownload] = await Promise.all([
+    page.waitForEvent('download'),
+    dialog.getByRole('button', { name: 'Esporta', exact: true }).click(),
+  ]);
+  const bookPath = info.outputPath('preset-production-book.pdf');
+  await bookDownload.saveAs(bookPath);
+  const bookPdf = await readPdf(bookPath);
+  expect(bookPdf.pages).toHaveLength(2);
+  expect(bookPdf.pages[0]).toContain('SHOT LIST');
+  expect(bookPdf.pages[1]).toContain('Hidden frame action');
+  expect(bookPdf.pages[1]).toContain('Bozza');
+  expect(bookPdf.pages.join(' ')).not.toContain('Shared with the client');
+
+  // 3. Schedule view recommends Kickoff interno (since Libro di produzione is a shot list preset).
+  await page.getByRole('tab', { name: 'Piano riprese' }).click();
+  await page.locator('.board-header-export').click();
+  await expect(dialog.getByRole('radio', { name: /Kickoff interno/ })).toBeChecked();
+  await expect(dialog.locator('.export__preset', { hasText: 'Kickoff interno' })).toContainText(
+    'Consigliato',
+  );
+  await expect(dialog.getByText('4 pagine')).toBeVisible();
+  const [kickoffDownload] = await Promise.all([
+    page.waitForEvent('download'),
+    dialog.getByRole('button', { name: 'Esporta', exact: true }).click(),
+  ]);
+  const kickoffPath = info.outputPath('preset-internal-kickoff.pdf');
+  await kickoffDownload.saveAs(kickoffPath);
+  const kickoffPdf = await readPdf(kickoffPath);
+  expect(kickoffPdf.pages).toHaveLength(4);
+  expect(kickoffPdf.pages[0]).toContain('STORYBOARD');
+  const kickoffText = kickoffPdf.pages.join(' ');
+  expect(kickoffText).toContain('Hidden frame action');
+  expect(kickoffText).toContain('Director only note');
+  expect(kickoffText).toContain('Shared with the client');
+  expect(kickoffText).toContain('Team only remark');
+
+  // 4. Returning to Storyboard remembers Kickoff interno (both export the storyboard) while marking Pitch cliente as Consigliato.
+  await page.getByRole('tab', { name: 'Storyboard' }).click();
+  await page.getByRole('button', { name: 'Esporta PDF' }).click();
+  await expect(dialog.getByRole('radio', { name: /Kickoff interno/ })).toBeChecked();
+  await expect(dialog.locator('.export__preset', { hasText: 'Pitch cliente' })).toContainText(
+    'Consigliato',
+  );
+  await dialog.getByRole('button', { name: 'Annulla' }).click();
+
+  const stored = await (
+    await page.request.get(`/api/v1/projects/${seeded.projectId}/export-settings`)
+  ).json();
+  expect(stored.preset).toBe('internal-kickoff');
   expect(await violations()).toEqual([]);
 });

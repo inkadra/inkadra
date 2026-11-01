@@ -2566,6 +2566,8 @@
   },
   "export": {
     "title": "Export",
+    "titleProject": "Export «{{name}}»",
+    "close": "Close",
     "cancel": "Cancel",
     "submit": "Export",
     "busy": "Exporting…",
@@ -2647,7 +2649,28 @@
     "progressPictures": "Loading pictures… {{done}} of {{total}}",
     "progressPages": "Drawing pages… {{done}} of {{total}}",
     "missingGlyphs": "Some characters ({{chars}}) are not in the export font and will print as empty boxes.",
-    "logoTimeout": "The logo upload is taking too long. Try again."
+    "logoTimeout": "The logo upload is taking too long. Try again.",
+    "presetsLabel": "Export presets",
+    "recommended": "Recommended",
+    "customize": "Customise",
+    "editingPreset": "editing preset {{n}}",
+    "remembered": "Remembered for this project",
+    "submitPages_one": "Export {{count}} page",
+    "submitPages_other": "Export {{count}} pages",
+    "presets": {
+      "client-pitch": {
+        "title": "Client pitch",
+        "description": "Landscape · one frame per page · for clients · no internal notes"
+      },
+      "production-book": {
+        "title": "Production book",
+        "description": "A4 portrait · shot list with every field · for the team · title page included"
+      },
+      "internal-kickoff": {
+        "title": "Internal kickoff",
+        "description": "Landscape · 4 per page · for the team · comments and hidden cards included"
+      }
+    }
   },
   "screenplay": {
     "open": "Import screenplay…",

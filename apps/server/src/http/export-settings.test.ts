@@ -16,8 +16,20 @@ describe('readPreferences', () => {
   it('keeps valid stored values and falls back field by field', () => {
     expect(readPreferences(null)).toEqual(DEFAULT_EXPORT_PREFERENCES);
     expect(
-      readPreferences({ framesPerPage: 6, paper: 'letter', audience: 'everyone', future: true }),
-    ).toEqual({ ...DEFAULT_EXPORT_PREFERENCES, framesPerPage: 6, paper: 'letter' });
+      readPreferences({
+        preset: 'production-book',
+        framesPerPage: 6,
+        paper: 'letter',
+        audience: 'everyone',
+        future: true,
+      }),
+    ).toEqual({
+      ...DEFAULT_EXPORT_PREFERENCES,
+      preset: 'production-book',
+      framesPerPage: 6,
+      paper: 'letter',
+    });
+    expect(readPreferences({ preset: 'obsolete-preset' })).toEqual(DEFAULT_EXPORT_PREFERENCES);
   });
 
   it('reads the theme the same way', () => {
@@ -161,8 +173,12 @@ describe.skipIf(!url)('project export settings', () => {
       paper: 'letter',
     });
     expect(res.statusCode).toBe(200);
-    res = await request('owner', 'PATCH', settingsPath(), { audience: 'team' });
+    res = await request('owner', 'PATCH', settingsPath(), {
+      preset: 'production-book',
+      audience: 'team',
+    });
     expect(res.json()).toMatchObject({
+      preset: 'production-book',
       framesPerPage: 6,
       paper: 'letter',
       audience: 'team',
@@ -171,6 +187,7 @@ describe.skipIf(!url)('project export settings', () => {
     expect(res.json().updatedAt).not.toBeNull();
     const read = (await request('viewer', 'GET', settingsPath())).json();
     expect(read).toMatchObject({
+      preset: 'production-book',
       framesPerPage: 6,
       paper: 'letter',
       audience: 'team',

@@ -16,6 +16,9 @@ export const ExportAudience = z.enum(['client', 'team']).openapi({
   description:
     '`client`: only what guests of a share link see. `team`: everything the reader can see.',
 });
+export const ExportPreset = z.enum(['client-pitch', 'production-book', 'internal-kickoff']);
+export type ExportPreset = z.infer<typeof ExportPreset>;
+export const EXPORT_PRESETS = ExportPreset.options;
 export const ExportFramesPerPage = z.union([
   z.literal(1),
   z.literal(2),
@@ -51,6 +54,9 @@ export const DEFAULT_PROJECT_THEME: ProjectTheme = { accent: null, headingFont: 
 
 export const ExportPreferences = z
   .object({
+    preset: ExportPreset.nullable().openapi({
+      description: 'The last audience preset chosen for this project, or null for custom options.',
+    }),
     format: ExportFormat,
     framesPerPage: ExportFramesPerPage,
     paper: ExportPaper.nullable().openapi({
@@ -69,6 +75,7 @@ export type ExportPreferences = z.infer<typeof ExportPreferences>;
 
 /** What a project that never saved its settings starts from. */
 export const DEFAULT_EXPORT_PREFERENCES: ExportPreferences = {
+  preset: null,
   format: 'pdf',
   framesPerPage: 4,
   paper: null,
