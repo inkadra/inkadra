@@ -44,7 +44,13 @@ async function enrich(sample: SampleProject) {
     for (const el of els) {
       if (el.type === 'image') {
         const info = about[names.get(el.assetId) ?? ''];
-        if (info) updateElement(mood, el.id, { tags: info.tags, ...(info.caption && !el.caption ? { caption: info.caption } : {}) }, origin);
+        if (info)
+          updateElement(
+            mood,
+            el.id,
+            { tags: info.tags, ...(info.caption && !el.caption ? { caption: info.caption } : {}) },
+            origin,
+          );
       }
       if (el.type === 'color') updateElement(mood, el.id, { tags: ['palette'] }, origin);
     }
@@ -64,7 +70,13 @@ async function enrich(sample: SampleProject) {
       ['#C2593B', 'Brick'],
       ['#1E2A33', 'Night blue'],
     ] as const)
-      createElement(mood, 'color', { x: 1600, y: 0 }, { hex, label, tags: ['palette'] }, { userId: null });
+      createElement(
+        mood,
+        'color',
+        { x: 1600, y: 0 },
+        { hex, label, tags: ['palette'] },
+        { userId: null },
+      );
   });
   await pushBoardDoc(base, cookie, project.rootBoardId, mood);
 }
@@ -73,9 +85,13 @@ async function gallery(page: Page, project: SampleProject, boardId: string) {
   await page.goto(`/p/${project.project.id}/b/${boardId}?view=moodboard`);
   await page.getByRole('region', { name: 'Moodboard', exact: true }).waitFor({ timeout: 20_000 });
   await page
-    .waitForFunction(() => [...document.images].every((i) => i.complete && i.naturalWidth > 0), null, {
-      timeout: 20_000,
-    })
+    .waitForFunction(
+      () => [...document.images].every((i) => i.complete && i.naturalWidth > 0),
+      null,
+      {
+        timeout: 20_000,
+      },
+    )
     .catch(() => {});
   await page.waitForTimeout(600);
 }
@@ -85,13 +101,33 @@ async function main(browser: Browser) {
   const sample = await seedSampleProject(browser, base);
   await enrich(sample);
   // A board with no pictures, links or colors: the casting board holds some.
-  const nothing = await api<{ id: string }>(base, sample.cookie, `/projects/${sample.project.id}/boards`, {
-    parentBoardId: sample.project.rootBoardId,
-    kind: 'board',
-    title: 'Empty',
-  });
-  const shots: Array<{ id: string; width: number; height: number; phone: boolean; board: string; themes: Array<'dark' | 'light'>; after?: (page: Page) => Promise<void> }> = [
-    { id: 'gallery', width: 1440, height: 900, phone: false, board: sample.project.rootBoardId, themes: ['dark', 'light'] },
+  const nothing = await api<{ id: string }>(
+    base,
+    sample.cookie,
+    `/projects/${sample.project.id}/boards`,
+    {
+      parentBoardId: sample.project.rootBoardId,
+      kind: 'board',
+      title: 'Empty',
+    },
+  );
+  const shots: Array<{
+    id: string;
+    width: number;
+    height: number;
+    phone: boolean;
+    board: string;
+    themes: Array<'dark' | 'light'>;
+    after?: (page: Page) => Promise<void>;
+  }> = [
+    {
+      id: 'gallery',
+      width: 1440,
+      height: 900,
+      phone: false,
+      board: sample.project.rootBoardId,
+      themes: ['dark', 'light'],
+    },
     {
       id: 'hover',
       width: 1440,
@@ -116,8 +152,22 @@ async function main(browser: Browser) {
         await page.waitForTimeout(300);
       },
     },
-    { id: 'gallery', width: 390, height: 844, phone: true, board: sample.project.rootBoardId, themes: ['dark', 'light'] },
-    { id: 'empty', width: 1440, height: 900, phone: false, board: nothing.id, themes: ['dark', 'light'] },
+    {
+      id: 'gallery',
+      width: 390,
+      height: 844,
+      phone: true,
+      board: sample.project.rootBoardId,
+      themes: ['dark', 'light'],
+    },
+    {
+      id: 'empty',
+      width: 1440,
+      height: 900,
+      phone: false,
+      board: nothing.id,
+      themes: ['dark', 'light'],
+    },
     { id: 'empty', width: 390, height: 844, phone: true, board: nothing.id, themes: ['dark'] },
   ];
   for (const shot of shots)
