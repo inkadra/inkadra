@@ -316,5 +316,7 @@ export const ArchiveExportSettings = z.object({
   /** Field by field: an importer keeps each that passes `ExportPreferences`, drops the rest. */
   preferences: z.record(z.string(), z.unknown()),
   logoAssetId: Id.nullable(),
+  /** The theme (decision 0057), read field by field too; older archives have none. */
+  theme: z.record(z.string(), z.unknown()).optional(),
 });
 export type ArchiveExportSettings = z.infer<typeof ArchiveExportSettings>;

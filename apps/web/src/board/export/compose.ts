@@ -44,6 +44,8 @@ export interface DocInfo {
   summary: string;
   /** Key of the logo picture, when one is printed. */
   logo?: { key: string; width: number; height: number } | undefined;
+  /** The theme's accent on paper (decision 0057): the header rule and a bar on the cover. */
+  accent?: string | undefined;
 }
 
 export interface Words {
@@ -121,9 +123,9 @@ function chrome(
   const top = MARGIN;
   const logoW = info.logo ? Math.min(90, (16 * info.logo.width) / info.logo.height) : 0;
   const titleW = page.width - MARGIN * 2 - logoW - 16;
-  const project = ellipsize(info.projectName, titleW * 0.5, 9, 600, m);
-  const projectW = m(project, 9, 600);
-  page.ops.push(text(project, MARGIN, top + 11, 9, 600, c['text-primary']));
+  const project = ellipsize(info.projectName, titleW * 0.5, 9, 'heading', m);
+  const projectW = m(project, 9, 'heading');
+  page.ops.push(text(project, MARGIN, top + 11, 9, 'heading', c['text-primary']));
   // The root board carries the project's name: say it once.
   if (info.boardTitle && info.boardTitle !== info.projectName) {
     page.ops.push(
@@ -154,8 +156,8 @@ function chrome(
     y1: top + HEADER - 8,
     x2: right,
     y2: top + HEADER - 8,
-    color: c['border-default'],
-    width: 0.75,
+    color: info.accent ?? c['border-default'],
+    width: info.accent ? 1.5 : 0.75,
   });
   const base = page.height - MARGIN;
   page.ops.push(text(`${info.date} · ${words.madeWith}`, MARGIN, base, 7.5, 400, c['text-muted']));
@@ -191,10 +193,10 @@ export function titlePage(setup: PageSetup, info: DocInfo, ctx: CardContext, wor
   page.ops.push(text(chip, x + 8, top + 12.3, 8, 600, kind ? c[kind.fg] : c['text-secondary']));
   top += 34;
   const title = textBlock(
-    wrapText(info.boardTitle || info.projectName, inner, 30, 600, m, 3),
+    wrapText(info.boardTitle || info.projectName, inner, 30, 'heading', m, 3),
     x,
     top,
-    { size: 30, weight: 600, leading: 36, color: c['text-primary'] },
+    { size: 30, weight: 'heading', leading: 36, color: c['text-primary'] },
   );
   page.ops.push(...title.ops);
   top = title.bottom + 6;
@@ -226,6 +228,8 @@ export function titlePage(setup: PageSetup, info: DocInfo, ctx: CardContext, wor
     page.ops.push(
       text(ellipsize(info.summary, inner, 10, 400, m), x, top + 16, 10, 400, c['text-secondary']),
     );
+  if (info.accent)
+    page.ops.push({ kind: 'rect', x, y: height - MARGIN - 24, w: inner, h: 3, fill: info.accent });
   page.ops.push(text(words.madeWith, x, height - MARGIN - 4, 7.5, 400, c['text-muted']));
   return page;
 }

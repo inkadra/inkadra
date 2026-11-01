@@ -2441,7 +2441,30 @@
     "sidebarPreview": "Così appare nella barra laterale",
     "close": "Chiudi",
     "boardTitle": "Icona e colore della board",
-    "boardPreview": "Così appare nelle card della board"
+    "boardPreview": "Così appare nelle card della board",
+    "presentation": "Presentazione",
+    "theme": {
+      "accent": "Accento",
+      "accentDefault": "{{color}} · colore del progetto",
+      "font": "Font dei titoli",
+      "fontNote": "Inclusi, licenza OFL",
+      "fonts": {
+        "inter": "come l’app",
+        "fraunces": "serif",
+        "space-grotesk": "grotesk",
+        "ibm-plex-mono": "mono"
+      },
+      "logo": "Logo",
+      "logoNote": "PNG o JPEG fino a 512 KB",
+      "logoUse": "Copertina e intestazioni",
+      "noLogo": "Nessun logo",
+      "logoRemove": "Rimuovi",
+      "previewSlide": "Anteprima · presentazione",
+      "previewPdf": "PDF · copertina e pagina (sempre su carta chiara)",
+      "paperNote": "Su carta l’accento usa la variante scura della stessa tinta, per il contrasto.",
+      "sampleTitle": "Scena 1",
+      "sampleMeta": "Campo lungo · 8 inquadrature"
+    }
   },
   "transfer": {
     "exportMenu": "Esporta progetto…",

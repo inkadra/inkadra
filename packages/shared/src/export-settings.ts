@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MPL-2.0
 import { Asset } from './assets.ts';
 import { Id, Timestamp, z } from './common.ts';
+import { ProjectIcon } from './projects.ts';
 
 /**
  * Shared settings of the PDF and image export of a project (decision 0039): the choices the
@@ -25,6 +26,28 @@ export const ExportFramesPerPage = z.union([
 /** Largest logo file, and the types it may have: PNG or JPEG (no SVG, which can carry scripts). */
 export const EXPORT_LOGO_MAX_BYTES = 512 * 1024;
 export const EXPORT_LOGO_TYPES = ['image/png', 'image/jpeg'] as const;
+
+/**
+ * Heading fonts of the project theme (decision 0057): bundled with the app under the OFL, never
+ * fetched from a font service. Body text always stays Inter.
+ */
+export const THEME_FONTS = ['inter', 'fraunces', 'space-grotesk', 'ibm-plex-mono'] as const;
+export const ThemeFont = z.enum(THEME_FONTS);
+export type ThemeFont = z.infer<typeof ThemeFont>;
+export const ThemeColor = ProjectIcon.shape.color;
+export type ThemeColor = z.infer<typeof ThemeColor>;
+
+/** How the presentation view and the PDF export look for this project; the logo is shared. */
+export const ProjectTheme = z
+  .object({
+    accent: ThemeColor.nullable().openapi({
+      description: 'Null: the colour of the project icon, following it when it changes.',
+    }),
+    headingFont: ThemeFont,
+  })
+  .openapi('ProjectTheme');
+export type ProjectTheme = z.infer<typeof ProjectTheme>;
+export const DEFAULT_PROJECT_THEME: ProjectTheme = { accent: null, headingFont: 'inter' };
 
 export const ExportPreferences = z
   .object({
@@ -63,6 +86,10 @@ export const ExportSettings = ExportPreferences.extend({
       'The logo asset, so readers need no second request. Null without a logo or while its ' +
       'file is not ready.',
   }),
+  theme: ProjectTheme,
+  projectColor: ThemeColor.openapi({
+    description: 'The colour of the project icon: the accent while `theme.accent` is null.',
+  }),
   canEdit: z.boolean().openapi({ description: 'The caller may change these settings.' }),
   updatedAt: Timestamp.nullable().openapi({ description: 'Null while the defaults apply.' }),
 }).openapi('ExportSettings');
@@ -78,6 +105,9 @@ export const UpdateExportSettings = ExportPreferences.partial()
           'of at most EXPORT_LOGO_MAX_BYTES (512 KiB), uploaded like any other file. Null ' +
           'removes the logo. The previous logo asset is deleted when nothing else uses it.',
       }),
+    theme: ProjectTheme.partial().optional().openapi({
+      description: 'Fields left out keep their value.',
+    }),
   })
   .strict()
   .openapi('UpdateExportSettings');

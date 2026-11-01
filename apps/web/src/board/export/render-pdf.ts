@@ -34,7 +34,10 @@ function color(hex: string) {
   return rgb(((n >> 16) & 255) / 255, ((n >> 8) & 255) / 255, (n & 255) / 255);
 }
 
-/** Writes the pages as a PDF with Inter embedded (subset) and the pictures as JPEG or PNG. */
+/**
+ * Writes the pages as a PDF with Inter and the heading font embedded (subset) and the pictures
+ * as JPEG or PNG.
+ */
 export async function renderPdf(
   pages: readonly Page[],
   fonts: Record<FontWeight, Uint8Array>,
@@ -50,10 +53,15 @@ export async function renderPdf(
   pdf.setLanguage(meta.language);
   pdf.setCreator('Inkadra');
   pdf.setProducer('Inkadra');
+  const semibold = await pdf.embedFont(fonts[600], { subset: true });
   const embedded = {
     400: await pdf.embedFont(fonts[400], { subset: true }),
     500: await pdf.embedFont(fonts[500], { subset: true }),
-    600: await pdf.embedFont(fonts[600], { subset: true }),
+    600: semibold,
+    heading:
+      fonts.heading === fonts[600]
+        ? semibold
+        : await pdf.embedFont(fonts.heading, { subset: true }),
   } satisfies Record<FontWeight, PDFFont>;
   const pictures = new Map<string, PDFImage>();
   const pictureOf = async (key: string) => {

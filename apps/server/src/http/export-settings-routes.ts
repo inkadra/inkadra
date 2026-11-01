@@ -2,11 +2,13 @@ import {
   API_PREFIX,
   atLeast,
   DEFAULT_EXPORT_PREFERENCES,
+  DEFAULT_PROJECT_THEME,
   EXPORT_LOGO_MAX_BYTES,
   EXPORT_LOGO_TYPES,
   type ExportPreferences,
   type ExportSettings,
   Id,
+  ProjectTheme,
   UpdateExportSettings,
   z,
 } from '@inkadra/shared';
@@ -61,11 +63,26 @@ export function readPreferences(stored: Record<string, unknown> | null): ExportP
   return out as ExportPreferences;
 }
 
+/** The stored theme read like the preferences: a value that does not parse is its default. */
+export function readTheme(stored: Record<string, unknown> | null): ProjectTheme {
+  const out: Record<string, unknown> = { ...DEFAULT_PROJECT_THEME };
+  for (const key of Object.keys(DEFAULT_PROJECT_THEME) as Array<keyof ProjectTheme>) {
+    if (!stored || !(key in stored)) continue;
+    const parsed = ProjectTheme.shape[key].safeParse(stored[key]);
+    if (parsed.success) out[key] = parsed.data;
+  }
+  return out as ProjectTheme;
+}
+
 async function load(db: Database, projectId: string, canEdit: boolean): Promise<ExportSettings> {
   const [row] = await db
     .select()
     .from(projectExportSettings)
     .where(eq(projectExportSettings.projectId, projectId));
+  const [owner] = await db
+    .select({ color: project.iconColor })
+    .from(project)
+    .where(eq(project.id, projectId));
   let logo: ExportSettings['logo'] = null;
   if (row?.logoAssetId) {
     const [file] = await db.select().from(asset).where(eq(asset.id, row.logoAssetId));
@@ -83,6 +100,8 @@ async function load(db: Database, projectId: string, canEdit: boolean): Promise<
     ...readPreferences(row?.preferences ?? null),
     logoAssetId: logo ? logo.id : null,
     logo,
+    theme: readTheme(row?.theme ?? null),
+    projectColor: owner?.color ?? 'neutral',
     canEdit,
     updatedAt: row ? iso(row.updatedAt) : null,
   };
@@ -191,7 +210,7 @@ export function registerExportSettingsRoutes(app: FastifyInstance, deps: Deps) {
       throw new HttpError('not_found', 'Project not found.');
     }
     if (!atLeast(role, 'editor')) throw new HttpError('forbidden', 'Needs the editor role.');
-    const { logoAssetId, ...preferences } = patch;
+    const { logoAssetId, theme = {}, ...preferences } = patch;
     const dropped = await db.transaction(async (tx) => {
       // The project row serialises concurrent changes, so two editors' fields merge.
       const [locked] = await tx
@@ -211,6 +230,7 @@ export function registerExportSettingsRoutes(app: FastifyInstance, deps: Deps) {
         .values({
           projectId,
           preferences,
+          theme,
           updatedBy: actor.id,
           updatedAt: now,
           ...(logoAssetId !== undefined ? { logoAssetId } : {}),
@@ -219,6 +239,7 @@ export function registerExportSettingsRoutes(app: FastifyInstance, deps: Deps) {
           target: projectExportSettings.projectId,
           set: {
             preferences: sql`${projectExportSettings.preferences} || ${JSON.stringify(preferences)}::jsonb`,
+            theme: sql`${projectExportSettings.theme} || ${JSON.stringify(theme)}::jsonb`,
             updatedBy: actor.id,
             updatedAt: now,
             ...(logoAssetId !== undefined ? { logoAssetId } : {}),

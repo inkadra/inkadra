@@ -5,8 +5,18 @@ type Ctx = CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D;
 
 type Images = ReadonlyMap<string, { bitmap?: ImageBitmap; width: number; height: number }>;
 
-/** Draws a page on a 2D canvas at `scale` pixels per point, on white paper, `offsetY` pixels down. */
-export function drawPage(ctx: Ctx, page: Page, scale: number, images: Images, offsetY = 0) {
+/**
+ * Draws a page on a 2D canvas at `scale` pixels per point, on white paper, `offsetY` pixels down;
+ * headings in `heading`, a CSS font stack.
+ */
+export function drawPage(
+  ctx: Ctx,
+  page: Page,
+  scale: number,
+  images: Images,
+  offsetY = 0,
+  heading = 'Inter',
+) {
   ctx.save();
   ctx.setTransform(scale, 0, 0, scale, 0, offsetY);
   ctx.fillStyle = '#FFFFFF';
@@ -16,11 +26,11 @@ export function drawPage(ctx: Ctx, page: Page, scale: number, images: Images, of
   ctx.textBaseline = 'alphabetic';
   ctx.lineCap = 'round';
   ctx.lineJoin = 'round';
-  drawOps(ctx, page.ops, images);
+  drawOps(ctx, page.ops, images, heading);
   ctx.restore();
 }
 
-function drawOps(ctx: Ctx, ops: readonly Op[], images: Images) {
+function drawOps(ctx: Ctx, ops: readonly Op[], images: Images, heading: string) {
   for (const op of ops) {
     switch (op.kind) {
       case 'rect': {
@@ -49,7 +59,10 @@ function drawOps(ctx: Ctx, ops: readonly Op[], images: Images) {
         ctx.setLineDash([]);
         break;
       case 'text':
-        ctx.font = `${op.weight} ${op.size}px Inter`;
+        ctx.font =
+          op.weight === 'heading'
+            ? `600 ${op.size}px ${heading}`
+            : `${op.weight} ${op.size}px Inter`;
         ctx.fillStyle = op.color;
         ctx.fillText(op.text, op.x, op.y);
         break;
@@ -100,7 +113,7 @@ function drawOps(ctx: Ctx, ops: readonly Op[], images: Images) {
       case 'clip':
         ctx.save();
         ctx.clip(new Path2D(roundedRectPath(op.x, op.y, op.w, op.h, op.radius)));
-        drawOps(ctx, op.ops, images);
+        drawOps(ctx, op.ops, images, heading);
         ctx.restore();
         break;
     }
@@ -113,7 +126,11 @@ export async function renderPng(
   scale: number,
   images: Images,
   background: string,
-  { signal, onPage }: { signal?: AbortSignal; onPage?: (done: number) => void } = {},
+  {
+    signal,
+    onPage,
+    heading,
+  }: { signal?: AbortSignal; onPage?: (done: number) => void; heading?: string } = {},
 ): Promise<Blob> {
   const gap = pages.length > 1 ? 24 : 0;
   const width = Math.max(...pages.map((p) => p.width));
@@ -126,7 +143,7 @@ export async function renderPng(
   let y = 0;
   for (const [n, page] of pages.entries()) {
     signal?.throwIfAborted();
-    drawPage(ctx, page, scale, images, Math.round(y * scale));
+    drawPage(ctx, page, scale, images, Math.round(y * scale), heading);
     y += page.height + gap;
     onPage?.(n + 1);
     // Lets the dialog repaint its progress and a cancel through between pages.

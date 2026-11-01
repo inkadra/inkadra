@@ -79,6 +79,13 @@
   font-size: 14px;
 }
 
+.present-header__logo {
+  height: 22px;
+  max-width: 88px;
+  object-fit: contain;
+  border-radius: var(--ink-radius-xs);
+}
+
 .present-header__title {
   font-size: 13px;
   font-weight: 500;
@@ -125,7 +132,7 @@
   font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.12em;
-  color: var(--ink-status-warn);
+  color: var(--present-accent, var(--ink-status-warn));
   text-transform: uppercase;
 }
 
@@ -162,11 +169,23 @@
 }
 
 .present-stage__shot-label {
+  font-family: var(--present-heading, inherit);
   font-size: 38px;
   font-weight: 600;
   letter-spacing: -0.02em;
   line-height: 1;
   min-width: 60px;
+}
+
+/* The theme's accent over the shot (decision 0057); the space is kept while it loads. */
+.present-stage__shot-label::before {
+  content: "";
+  display: block;
+  width: 28px;
+  height: 3px;
+  margin-bottom: 10px;
+  border-radius: var(--ink-radius-full);
+  background: var(--present-accent, transparent);
 }
 
 .present-stage__content {
@@ -274,7 +293,7 @@
 
 .present-progress__bar {
   height: 100%;
-  background: var(--ink-text-primary);
+  background: var(--present-accent, var(--ink-text-primary));
   border-radius: var(--ink-radius-full);
   transition: width 0.2s ease-out;
 }
@@ -400,4 +419,44 @@
   gap: 16px;
   color: var(--ink-text-muted);
   text-align: center;
+}
+
+/* Phones (#306 mockup): the picture edge to edge, the shot under it; no notes, strip or hints. */
+@media (width < 768px) {
+  .present-header {
+    top: 12px;
+    left: 16px;
+    right: 16px;
+  }
+  .present-sidebar,
+  .present-strip,
+  .present-toolbar__hint,
+  .present-toolbar > .present-toolbar__btn {
+    display: none;
+  }
+  .present-main {
+    padding: 64px 0 96px;
+  }
+  .present-stage__meta,
+  .present-stage__footer {
+    padding: 0 16px;
+  }
+  .present-stage__canvas {
+    max-height: none;
+    border-radius: 0;
+    box-shadow: none;
+  }
+  .present-stage__footer {
+    flex-direction: column;
+    gap: 6px;
+  }
+  .present-stage__shot-label {
+    font-size: 28px;
+  }
+  .present-stage__action {
+    font-size: 15px;
+  }
+  .present-bottom {
+    padding: 0 16px 16px;
+  }
 }

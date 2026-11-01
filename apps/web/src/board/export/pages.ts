@@ -13,7 +13,8 @@ import {
   sanitizeCrop,
 } from '../image-crop.ts';
 
-export type FontWeight = 400 | 500 | 600;
+/** `heading`: weight 600 in the project theme's heading font (decision 0057). */
+export type FontWeight = 400 | 500 | 600 | 'heading';
 
 export type Op =
   | {

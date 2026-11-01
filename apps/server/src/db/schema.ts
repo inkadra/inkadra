@@ -1080,6 +1080,8 @@ export const projectExportSettings = pgTable('project_export_settings', {
     .references(() => project.id, { onDelete: 'cascade' }),
   preferences: jsonb('preferences').$type<Record<string, unknown>>().notNull().default({}),
   logoAssetId: uuid('logo_asset_id').references(() => asset.id, { onDelete: 'set null' }),
+  /** The presentation and PDF theme (decision 0057), read field by field like `preferences`. */
+  theme: jsonb('theme').$type<Record<string, unknown>>().notNull().default({}),
   updatedBy: uuid('updated_by').references(() => user.id, { onDelete: 'set null' }),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });

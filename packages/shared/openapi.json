@@ -2412,6 +2412,24 @@
               "logo": {
                 "$ref": "#/components/schemas/Asset"
               },
+              "theme": {
+                "$ref": "#/components/schemas/ProjectTheme"
+              },
+              "projectColor": {
+                "type": "string",
+                "enum": [
+                  "blue",
+                  "orange",
+                  "purple",
+                  "green",
+                  "neutral",
+                  "teal",
+                  "yellow",
+                  "red",
+                  "pink"
+                ],
+                "description": "The colour of the project icon: the accent while `theme.accent` is null."
+              },
               "canEdit": {
                 "type": "boolean",
                 "description": "The caller may change these settings."
@@ -2429,6 +2447,8 @@
             "required": [
               "logoAssetId",
               "logo",
+              "theme",
+              "projectColor",
               "canEdit",
               "updatedAt"
             ]
@@ -2780,6 +2800,43 @@
         ],
         "description": "The route of a GPX file, read by the worker; null for other files and GPX files without a track. Its preview (`variants`) is the map around the route, when the instance has maps (Instance.maps)."
       },
+      "ProjectTheme": {
+        "type": "object",
+        "properties": {
+          "accent": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "enum": [
+              "blue",
+              "orange",
+              "purple",
+              "green",
+              "neutral",
+              "teal",
+              "yellow",
+              "red",
+              "pink",
+              null
+            ],
+            "description": "Null: the colour of the project icon, following it when it changes."
+          },
+          "headingFont": {
+            "type": "string",
+            "enum": [
+              "inter",
+              "fraunces",
+              "space-grotesk",
+              "ibm-plex-mono"
+            ]
+          }
+        },
+        "required": [
+          "accent",
+          "headingFont"
+        ]
+      },
       "ExportPreferences": {
         "type": "object",
         "properties": {
@@ -2950,6 +3007,40 @@
             "format": "uuid",
             "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10",
             "description": "A ready image asset of this project, PNG or JPEG (declared and read from the file) of at most EXPORT_LOGO_MAX_BYTES (512 KiB), uploaded like any other file. Null removes the logo. The previous logo asset is deleted when nothing else uses it."
+          },
+          "theme": {
+            "type": "object",
+            "properties": {
+              "accent": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "enum": [
+                  "blue",
+                  "orange",
+                  "purple",
+                  "green",
+                  "neutral",
+                  "teal",
+                  "yellow",
+                  "red",
+                  "pink",
+                  null
+                ],
+                "description": "Null: the colour of the project icon, following it when it changes."
+              },
+              "headingFont": {
+                "type": "string",
+                "enum": [
+                  "inter",
+                  "fraunces",
+                  "space-grotesk",
+                  "ibm-plex-mono"
+                ]
+              }
+            },
+            "description": "Fields left out keep their value."
           }
         },
         "additionalProperties": false

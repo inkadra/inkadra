@@ -21,6 +21,7 @@ import type { TFunction } from 'i18next';
 import { DEFAULT_ASPECT } from '../film/aspect.ts';
 import { getFrameStatus } from '../film/film-status.ts';
 import type { BoardStore } from '../store.ts';
+import { paperAccent, type Theme } from '../theme.ts';
 import {
   type Audience,
   type BoardSource,
@@ -44,7 +45,7 @@ import {
   titlePage,
   type Words,
 } from './compose.ts';
-import { loadFonts } from './fonts.ts';
+import { fallbackHeadings, loadFonts } from './fonts.ts';
 import {
   assetMeta,
   closeImages,
@@ -75,6 +76,8 @@ export interface ExportRequest {
   titlePage: boolean;
   /** The project's logo (decision 0039), or null. */
   logo: Asset | null;
+  /** The project's theme (decision 0057); left out, Inter and no accent. */
+  theme?: Theme | undefined;
   comments: boolean;
   audience: Audience;
   hideGuestHidden: boolean;
@@ -151,7 +154,7 @@ export async function buildPages(
   { preview = false, signal, onProgress }: BuildOptions = {},
 ): Promise<BuiltPages> {
   const { store, t } = env;
-  const fonts = await loadFonts();
+  const fonts = await loadFonts(req.theme?.headingFont);
   signal?.throwIfAborted();
   const images = new Map<string, LoadedImage>();
   const mode: ImageMode = preview || req.format === 'png' ? 'bitmap' : 'pdf';
@@ -360,6 +363,7 @@ export async function buildPages(
     kindLabel: kind === 'board' ? t('export.kindBoard') : t(`film.views.${kind}`),
     summary,
     logo: logo ? { key: 'logo', width: logo.width, height: logo.height } : undefined,
+    accent: req.theme ? paperAccent(req.theme.color) : undefined,
   };
   const withTitle = req.titlePage && req.format === 'pdf';
   const pages = finish(
@@ -369,6 +373,7 @@ export async function buildPages(
     words,
     withTitle,
   );
+  for (const page of pages) fallbackHeadings(page.ops, fonts.headingCovers);
 
   // Pictures of the pages that will be drawn (all of them, or the first for the preview).
   const needed = new Set<string>();
@@ -427,6 +432,7 @@ export async function exportFile(
       const blob = await renderPng(pages, pixelRatio(width, height), images, PALETTE['surface-3'], {
         ...(signal ? { signal } : {}),
         onPage: pageProgress,
+        heading: fonts.headingFamily,
       });
       return { blob, name: `${base}.png` };
     }
