@@ -3004,35 +3004,191 @@
   color: var(--ink-text-primary);
 }
 
-/* Board references: CSS columns preserve the same DOM order for keys and viewer. */
-.moodboard__filter {
+/* Moodboard (#301): a gallery first. A column naming the board and its tags beside the
+   references, one bar above them, and CSS columns for the masonry: the DOM order is the order
+   of the keys and of the viewer. */
+.moodboard {
+  display: grid;
+  grid-template-columns: 200px minmax(0, 1fr);
+  min-height: 100%;
+  color: var(--ink-text-primary);
+}
+.moodboard__side {
+  position: sticky;
+  top: 0;
+  align-self: start;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 16px 12px;
+  box-sizing: border-box;
+  color: var(--ink-text-secondary);
+  font-size: 12px;
+}
+.moodboard__side > strong {
+  color: var(--ink-text-primary);
+  font-size: 13px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.moodboard__side h2 {
+  margin: 16px 0 4px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-text-muted);
+}
+.moodboard__side ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.moodboard__side li button {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  padding: 6px 8px;
+  border: 0;
+  border-radius: var(--ink-radius-sm);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--ink-dur-fast) var(--ink-ease-out);
+}
+.moodboard__side li button:hover {
+  background: var(--ink-surface-2);
+}
+.moodboard__side li button[aria-pressed='true'] {
+  background: var(--ink-accent-soft-bg);
+  color: var(--ink-accent-soft-fg);
+}
+.moodboard__side li small {
+  color: var(--ink-text-muted);
+}
+.moodboard__main {
+  min-width: 0;
+  padding: 0 16px 24px;
+}
+.moodboard__bar {
+  position: sticky;
+  top: 0;
+  z-index: 2;
   display: flex;
   align-items: center;
-  gap: 12px;
-  margin: 16px 0;
+  gap: 8px;
+  padding: 12px 0;
+  background: var(--ink-bg-panel);
 }
-.moodboard__filter .ink-select {
-  font: inherit;
-  color: var(--ink-text-primary);
+.moodboard__count {
+  flex: none;
+  margin-right: 4px;
+  color: var(--ink-text-secondary);
+  font-size: 12px;
+}
+.moodboard__chips {
+  display: flex;
+  flex: 1;
+  gap: 8px;
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.moodboard__chips::-webkit-scrollbar {
+  display: none;
+}
+.moodboard__chip {
+  flex: none;
+  padding: 5px 10px;
+  border: 0;
+  border-radius: var(--ink-radius-full);
   background: var(--ink-surface-2);
-  border: 1px solid var(--ink-border-default);
-  border-radius: var(--ink-radius-sm);
-  padding: 8px;
+  color: var(--ink-text-secondary);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  transition:
+    background var(--ink-dur-fast) var(--ink-ease-out),
+    color var(--ink-dur-fast) var(--ink-ease-out);
 }
-.moodboard__gallery {
-  columns: 4 240px;
-  column-gap: 16px;
+.moodboard__chip:hover {
+  color: var(--ink-text-primary);
 }
-.moodboard__card {
-  display: block;
-  width: 100%;
-  break-inside: avoid;
-  margin: 0 0 16px;
-  padding: 0;
-  overflow: hidden;
+.moodboard__chip[aria-pressed='true'] {
+  background: var(--ink-accent-soft-bg);
+  color: var(--ink-accent-soft-fg);
+}
+.moodboard__add {
+  position: relative;
+  flex: none;
+}
+.moodboard__popover {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 3;
+  min-width: 200px;
+  padding: 6px;
   border: 1px solid var(--ink-border-default);
   border-radius: var(--ink-radius-md);
+  background: var(--ink-surface-float);
+  box-shadow: var(--ink-shadow-menu);
+}
+.moodboard__popover [role='menu'] {
+  display: flex;
+  flex-direction: column;
+}
+.moodboard__popover [role='menuitem'] {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px;
+  border: 0;
+  border-radius: var(--ink-radius-sm);
+  background: transparent;
+  color: var(--ink-text-primary);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.moodboard__popover [role='menuitem']:hover {
   background: var(--ink-surface-2);
+}
+.moodboard__popover .ink-input {
+  width: 260px;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+.moodboard__notice {
+  margin: 0 0 12px;
+  color: var(--ink-text-secondary);
+  font-size: 12px;
+}
+.moodboard__empty {
+  display: grid;
+  place-items: center;
+  min-height: 50vh;
+  text-align: center;
+}
+.moodboard__gallery {
+  columns: 4 220px;
+  column-gap: 8px;
+}
+.moodboard__card {
+  position: relative;
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  break-inside: avoid;
+  margin: 0 0 8px;
+  padding: 0;
+  overflow: hidden;
+  border: 0;
+  border-radius: var(--ink-radius-md);
+  background: var(--ink-surface-1);
   color: var(--ink-text-primary);
   text-align: left;
   font: inherit;
@@ -3040,48 +3196,91 @@
 button.moodboard__card {
   cursor: pointer;
 }
+button.moodboard__card:focus-visible {
+  outline: 2px solid var(--ink-accent-primary);
+  outline-offset: 2px;
+}
 .moodboard__card img {
   display: block;
   width: 100%;
   height: auto;
 }
+.moodboard__card--image img,
+.moodboard__card--link img {
+  transition: transform var(--ink-dur-slow) var(--ink-ease-out);
+}
+.moodboard__card--image:hover img {
+  transform: scale(1.02);
+}
 .moodboard__caption {
-  display: block;
-  padding: 12px;
+  position: absolute;
+  inset: auto 0 0;
+  padding: 24px 10px 8px;
+  background: linear-gradient(transparent, rgb(0 0 0 / 0.7));
+  color: #fff;
+  font-size: 12px;
   overflow-wrap: anywhere;
+  opacity: 0;
+  transition: opacity var(--ink-dur-base) var(--ink-ease-out);
 }
 .moodboard__caption small {
   display: block;
-  color: var(--ink-text-secondary);
-  margin-top: 6px;
+  margin-top: 2px;
+  opacity: 0.75;
 }
-.moodboard__swatch,
+.moodboard__card--image:hover .moodboard__caption,
+.moodboard__card--image:focus-visible .moodboard__caption {
+  opacity: 1;
+}
+/* A finger has no hover: captions stay visible. */
+@media (hover: none) {
+  .moodboard__caption {
+    opacity: 1;
+  }
+}
+.moodboard__card--link {
+  box-shadow: inset 0 0 0 1px var(--ink-border-default);
+}
+.moodboard__card--link .moodboard__placeholder {
+  min-height: 80px;
+}
+.moodboard__text {
+  display: block;
+  padding: 8px 10px 10px;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+.moodboard__text small {
+  display: block;
+  margin-top: 2px;
+  color: var(--ink-text-muted);
+  font-size: 11px;
+}
+.moodboard__card--color {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: 2px;
+  min-height: 88px;
+  padding: 8px 10px;
+  color: rgb(255 255 255 / 0.9);
+  font-size: 11px;
+}
+.moodboard__card--color[data-light] {
+  color: rgb(0 0 0 / 0.75);
+}
+.moodboard__card--color code {
+  font: 600 11px ui-monospace, Menlo, monospace;
+}
 .moodboard__placeholder {
   display: grid;
   place-items: center;
-  min-height: 160px;
-}
-.moodboard__palette {
-  margin: 16px 0 24px;
-}
-.moodboard__palette h2 {
-  font-size: 14px;
-}
-.moodboard__palette > div {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-}
-.moodboard__color {
-  min-width: 100px;
-  display: grid;
-  gap: 4px;
+  min-height: 120px;
+  padding: 8px;
+  background: var(--ink-surface-2);
+  color: var(--ink-text-muted);
   font-size: 12px;
-}
-.moodboard__color > span:first-child {
-  height: 40px;
-  border-radius: var(--ink-radius-sm);
-  border: 1px solid var(--ink-border-default);
+  text-align: center;
 }
 .moodboard__navigation {
   display: flex;
@@ -3755,14 +3954,26 @@ button.moodboard__card {
     justify-content: center;
   }
 
-  /* Moodboard: the filter label stays on one line beside its picker. */
-  .moodboard__filter {
-    white-space: nowrap;
+  /* Moodboard: the column folds into the chips; two columns of references; touch-size chips. */
+  .moodboard {
+    display: block;
   }
-  .moodboard__filter .ink-select {
-    flex: 1;
-    min-width: 0;
+  .moodboard__side {
+    display: none;
+  }
+  .moodboard__main {
+    padding: 0 12px calc(24px + env(safe-area-inset-bottom));
+  }
+  .moodboard__bar {
+    padding-top: 12px;
+  }
+  .moodboard__chip,
+  .moodboard__add .ink-btn {
     min-height: 44px;
+    padding-inline: 16px;
+  }
+  .moodboard__gallery {
+    columns: 2;
   }
 }
 
