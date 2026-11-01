@@ -45,10 +45,23 @@ const CATEGORIES: Array<{ id: CategoryId; items: readonly LibraryItem[] }> = [
   { id: 'notes', items: PLAN_NOTE_TOOLS },
 ];
 
-/** Remembers an icon as just used, first in the person's recents. */
+let pendingRecents: LibraryItem[] = [];
+let recentsTimer: ReturnType<typeof setTimeout> | undefined;
+
+/**
+ * Remembers an icon as just used, first in the person's recents. Placements in a burst go out
+ * as one change, merged with the list as it is when it is sent, so a newer list from another
+ * tab or device is kept and kinds this build does not know stay.
+ */
 export function rememberRecent(item: LibraryItem) {
-  const recents = getPreferences().planRecents.filter((k) => k !== item);
-  void updatePreferences({ planRecents: [item, ...recents].slice(0, RECENTS) }).catch(() => {});
+  pendingRecents = [item, ...pendingRecents.filter((k) => k !== item)];
+  clearTimeout(recentsTimer);
+  recentsTimer = setTimeout(() => {
+    const fresh = pendingRecents;
+    pendingRecents = [];
+    const rest = getPreferences().planRecents.filter((k) => !fresh.includes(k as LibraryItem));
+    void updatePreferences({ planRecents: [...fresh, ...rest].slice(0, RECENTS) }).catch(() => {});
+  }, 400);
 }
 
 /**
@@ -92,7 +105,9 @@ export function PlanLibrary({
   const found = q ? index.filter((e) => e.words.includes(q)).map((e) => e.item) : null;
 
   const toggleStar = (item: LibraryItem) => {
-    const next = starred.has(item) ? favourites.filter((k) => k !== item) : [...favourites, item];
+    // From the stored list, so stars on kinds a newer build added are kept.
+    const all = getPreferences().planFavorites;
+    const next = all.includes(item) ? all.filter((k) => k !== item) : [...new Set([...all, item])];
     void updatePreferences({ planFavorites: next }).catch(() => {});
   };
 
@@ -120,6 +135,13 @@ export function PlanLibrary({
         onPointerDown={(e) => down(e, item)}
         onPointerMove={move}
         onPointerUp={up}
+        // Keyboard: Enter or Space arms the tile; again on the armed tile places it in the
+        // middle of the plan.
+        onClick={(e) => {
+          if (e.detail !== 0) return;
+          if (armed === item) onPlaceFirst(item);
+          else onArm(item);
+        }}
       >
         <PlanGlyph kind={item} size={phone ? 24 : 26} />
         <span>{t(`board.plan.icons.${item}`)}</span>
@@ -273,7 +295,7 @@ export function PlanLibrary({
                   <Icon name="clock" size={12} />
                   {t('board.plan.recent')}
                 </div>
-                {grid(recents.slice(0, 4), 'r')}
+                {grid(recents, 'r')}
               </>
             )}
             {favourites.length > 0 && (
