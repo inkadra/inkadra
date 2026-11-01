@@ -70,6 +70,10 @@ export const Project = z
     shootingStart: ShootingDate.nullable().optional(),
     shootingEnd: ShootingDate.nullable().optional(),
     pinned: z.boolean().optional(),
+    group: z.object({ id: Id, position: FractionalIndex }).nullable().optional().openapi({
+      description:
+        'The caller’s own group of the project and its place in it; null outside any group.',
+    }),
   })
   .openapi('Project');
 export type Project = z.infer<typeof Project>;
@@ -134,6 +138,51 @@ export const ProjectCreationDenied = z
 export type ProjectCreationDenied = z.infer<typeof ProjectCreationDenied>;
 
 export const SetProjectPin = z.object({ pinned: z.boolean() }).openapi('SetProjectPin');
+
+/** Personal project groups (decision 0056): organisation only, never access. */
+export const ProjectGroupColor = z.enum(['blue', 'orange', 'purple', 'green', 'teal', 'pink']);
+export type ProjectGroupColor = z.infer<typeof ProjectGroupColor>;
+/** More groups than anyone organises by hand; keeps one person from filling the table. */
+export const MAX_PROJECT_GROUPS = 200;
+
+export const ProjectGroup = z
+  .object({
+    id: Id,
+    name: z.string().min(1).max(80),
+    color: ProjectGroupColor,
+    position: FractionalIndex,
+    collapsed: z.boolean(),
+  })
+  .openapi('ProjectGroup');
+export type ProjectGroup = z.infer<typeof ProjectGroup>;
+
+export const CreateProjectGroup = z
+  .object({ name: z.string().trim().min(1).max(80), color: ProjectGroupColor })
+  .openapi('CreateProjectGroup');
+export type CreateProjectGroup = z.infer<typeof CreateProjectGroup>;
+
+export const UpdateProjectGroup = z
+  .object({
+    name: z.string().trim().min(1).max(80),
+    color: ProjectGroupColor,
+    collapsed: z.boolean(),
+    before: Id.nullable().openapi({
+      description: 'Moves the group just before this other group of the caller; null, last.',
+    }),
+  })
+  .partial()
+  .openapi('UpdateProjectGroup');
+export type UpdateProjectGroup = z.infer<typeof UpdateProjectGroup>;
+
+export const SetProjectGroup = z
+  .object({
+    groupId: Id.nullable().openapi({ description: 'null takes the project out of its group.' }),
+    before: Id.optional().openapi({
+      description: 'Places the project just before this project of the same group; left out, last.',
+    }),
+  })
+  .openapi('SetProjectGroup');
+export type SetProjectGroup = z.infer<typeof SetProjectGroup>;
 
 /** Deterministic frame-inspired defaults, independent of names and list ordering. */
 export function defaultProjectIcon(id: string): z.infer<typeof ProjectIcon> {

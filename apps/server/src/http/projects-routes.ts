@@ -2,15 +2,20 @@ import { randomUUID } from 'node:crypto';
 import {
   API_PREFIX,
   CreateProject,
+  CreateProjectGroup,
   defaultProjectIcon,
   Id,
+  MAX_PROJECT_GROUPS,
   PageQuery,
   type Project,
+  type ProjectGroup,
   type ProjectMember,
   type ProjectRole,
+  SetProjectGroup,
   SetProjectMember,
   SetProjectPin,
   UpdateProject,
+  UpdateProjectGroup,
   z,
 } from '@inkadra/shared';
 import {
@@ -23,6 +28,7 @@ import {
   inArray,
   isNotNull,
   isNull,
+  lt,
   or,
   sql,
   sum,
@@ -40,6 +46,8 @@ import {
   assetVariant,
   board,
   project,
+  projectGroup,
+  projectGroupItem,
   projectMember,
   projectPin,
   user,
@@ -60,6 +68,7 @@ interface Deps {
 
 const ProjectParams = z.object({ projectId: Id });
 const MemberParams = z.object({ projectId: Id, userId: Id });
+const GroupParams = z.object({ groupId: Id });
 const ListQuery = PageQuery.extend({ archived: z.enum(['true', 'false']).optional() });
 
 export function toProject(
@@ -67,6 +76,7 @@ export function toProject(
   rootBoardId: string,
   myRole: ProjectRole,
   pinned = false,
+  group: { groupId: string; position: string } | null = null,
 ): Project {
   return {
     id: row.id,
@@ -82,7 +92,26 @@ export function toProject(
     shootingStart: row.shootingStart,
     shootingEnd: row.shootingEnd,
     pinned,
+    group: group ? { id: group.groupId, position: group.position } : null,
   };
+}
+
+const toGroup = (row: typeof projectGroup.$inferSelect): ProjectGroup => ({
+  id: row.id,
+  name: row.name,
+  color: row.color,
+  position: row.position,
+  collapsed: row.collapsed,
+});
+
+/** One of the actor's own groups; someone else's is as missing as one that never existed. */
+async function ownGroup(db: Pick<Database, 'select'>, actor: Actor, groupId: string) {
+  const [row] = await db
+    .select()
+    .from(projectGroup)
+    .where(and(eq(projectGroup.id, groupId), eq(projectGroup.userId, actor.id)));
+  if (!row) throw new HttpError('not_found', 'Group not found.');
+  return row;
 }
 
 /** Opaque keyset cursor over (position, id). */
@@ -116,7 +145,11 @@ async function loadProject(db: Database, actor: Actor, projectId: string) {
     .select()
     .from(projectPin)
     .where(and(eq(projectPin.projectId, projectId), eq(projectPin.userId, actor.id)));
-  return toProject(row.project, row.rootBoardId, row.role, !!pin);
+  const [group] = await db
+    .select()
+    .from(projectGroupItem)
+    .where(and(eq(projectGroupItem.projectId, projectId), eq(projectGroupItem.userId, actor.id)));
+  return toProject(row.project, row.rootBoardId, row.role, !!pin, group ?? null);
 }
 
 async function listMembers(db: Database, projectId: string): Promise<ProjectMember[]> {
@@ -200,6 +233,10 @@ export function registerProjectRoutes(app: FastifyInstance, deps: Deps) {
     const actor = await requireActor(auth, req, db);
     const query = ListQuery.parse(req.query ?? {});
     const pins = await db.select().from(projectPin).where(eq(projectPin.userId, actor.id));
+    const grouped = await db
+      .select()
+      .from(projectGroupItem)
+      .where(eq(projectGroupItem.userId, actor.id));
     const after = query.cursor ? decodeCursor(query.cursor) : null;
     const rows = await db
       .select({ project, role: projectMember.role, rootBoardId: board.id })
@@ -230,6 +267,7 @@ export function registerProjectRoutes(app: FastifyInstance, deps: Deps) {
           r.rootBoardId,
           r.role,
           pins.some((pin) => pin.projectId === r.project.id),
+          grouped.find((item) => item.projectId === r.project.id) ?? null,
         ),
       ),
       nextCursor:
@@ -351,6 +389,143 @@ export function registerProjectRoutes(app: FastifyInstance, deps: Deps) {
         .delete(projectPin)
         .where(and(eq(projectPin.projectId, projectId), eq(projectPin.userId, actor.id)));
     return loadProject(db, actor, projectId);
+  });
+
+  // Personal groups (decision 0056) ----------------------------------------------
+  // A group is the caller's own organisation: any signed-in person keeps their own, holding
+  // only projects they are a member of. Nobody else reads or changes it, admins included.
+
+  app.put(v1('/projects/:projectId/group'), async (req) => {
+    const actor = await requireActor(auth, req, db);
+    const { projectId } = ProjectParams.parse(req.params);
+    const { groupId, before } = SetProjectGroup.parse(req.body);
+    await requireProjectRole(db, actor, projectId, 'viewer');
+    if (groupId === null)
+      await db
+        .delete(projectGroupItem)
+        .where(
+          and(eq(projectGroupItem.projectId, projectId), eq(projectGroupItem.userId, actor.id)),
+        );
+    else {
+      await ownGroup(db, actor, groupId);
+      const items = projectGroupItem;
+      let next: string | null = null;
+      if (before) {
+        const [target] = await db
+          .select({ position: items.position })
+          .from(items)
+          .where(
+            and(
+              eq(items.userId, actor.id),
+              eq(items.projectId, before),
+              eq(items.groupId, groupId),
+            ),
+          );
+        if (!target) throw new HttpError('bad_request', 'before is not in that group.');
+        next = target.position;
+      }
+      const [previous] = await db
+        .select({ position: items.position })
+        .from(items)
+        .where(
+          and(
+            eq(items.groupId, groupId),
+            next === null ? undefined : lt(items.position, next),
+            sql`${items.projectId} <> ${projectId}`,
+          ),
+        )
+        .orderBy(desc(items.position))
+        .limit(1);
+      const at = generateKeyBetween(previous?.position ?? null, next);
+      await db
+        .insert(projectGroupItem)
+        .values({ userId: actor.id, projectId, groupId, position: at })
+        .onConflictDoUpdate({
+          target: [projectGroupItem.userId, projectGroupItem.projectId],
+          set: { groupId, position: at },
+        });
+    }
+    return loadProject(db, actor, projectId);
+  });
+
+  app.get(v1('/project-groups'), async (req) => {
+    const actor = await requireActor(auth, req, db);
+    const rows = await db
+      .select()
+      .from(projectGroup)
+      .where(eq(projectGroup.userId, actor.id))
+      .orderBy(asc(projectGroup.position), asc(projectGroup.id));
+    return { items: rows.map(toGroup) };
+  });
+
+  app.post(v1('/project-groups'), async (req, reply) => {
+    const actor = await requireActor(auth, req, db);
+    const input = CreateProjectGroup.parse(req.body);
+    const created = await db.transaction(async (tx) => {
+      // One person's creations in turn, so the cap and the last position hold.
+      await tx.select({ id: user.id }).from(user).where(eq(user.id, actor.id)).for('update');
+      const [total] = await tx
+        .select({ n: count() })
+        .from(projectGroup)
+        .where(eq(projectGroup.userId, actor.id));
+      if ((total?.n ?? 0) >= MAX_PROJECT_GROUPS)
+        throw new HttpError('conflict', `At most ${MAX_PROJECT_GROUPS} groups.`);
+      const [last] = await tx
+        .select({ position: projectGroup.position })
+        .from(projectGroup)
+        .where(eq(projectGroup.userId, actor.id))
+        .orderBy(desc(projectGroup.position))
+        .limit(1);
+      const [row] = await tx
+        .insert(projectGroup)
+        .values({
+          userId: actor.id,
+          name: input.name,
+          color: input.color,
+          position: generateKeyBetween(last?.position ?? null, null),
+        })
+        .returning();
+      if (!row) throw new Error('Group insert returned nothing');
+      return row;
+    });
+    return reply.status(201).send(toGroup(created));
+  });
+
+  app.patch(v1('/project-groups/:groupId'), async (req) => {
+    const actor = await requireActor(auth, req, db);
+    const { groupId } = GroupParams.parse(req.params);
+    const { before, ...patch } = UpdateProjectGroup.parse(req.body ?? {});
+    const current = await ownGroup(db, actor, groupId);
+    const set: Partial<typeof projectGroup.$inferInsert> = { ...patch };
+    if (before !== undefined) {
+      const mine = await db
+        .select({ id: projectGroup.id, position: projectGroup.position })
+        .from(projectGroup)
+        .where(and(eq(projectGroup.userId, actor.id), sql`${projectGroup.id} <> ${groupId}`))
+        .orderBy(asc(projectGroup.position), asc(projectGroup.id));
+      const at = before === null ? mine.length : mine.findIndex((g) => g.id === before);
+      if (at < 0) throw new HttpError('bad_request', 'before is not one of your groups.');
+      set.position = generateKeyBetween(mine[at - 1]?.position ?? null, mine[at]?.position ?? null);
+    }
+    if (Object.keys(set).length === 0) return toGroup(current);
+    const [row] = await db
+      .update(projectGroup)
+      .set(set)
+      .where(and(eq(projectGroup.id, groupId), eq(projectGroup.userId, actor.id)))
+      .returning();
+    if (!row) throw new HttpError('not_found', 'Group not found.');
+    return toGroup(row);
+  });
+
+  app.delete(v1('/project-groups/:groupId'), async (req, reply) => {
+    const actor = await requireActor(auth, req, db);
+    const { groupId } = GroupParams.parse(req.params);
+    await ownGroup(db, actor, groupId);
+    // The items go with it (foreign key): the projects stay, outside any group.
+    await db
+      .delete(projectGroup)
+      .where(and(eq(projectGroup.id, groupId), eq(projectGroup.userId, actor.id)));
+    return reply.status(204).send();
   });
 
   app.delete(v1('/projects/:projectId'), async (req, reply) => {

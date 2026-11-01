@@ -254,6 +254,56 @@ export const projectPin = pgTable(
   ],
 );
 
+/** Personal project groups (decision 0056): how one person sorts their list, never access. */
+export const projectGroup = pgTable(
+  'project_group',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => user.id, { onDelete: 'cascade' }),
+    name: text('name').notNull(),
+    color: text('color', {
+      enum: ['blue', 'orange', 'purple', 'green', 'teal', 'pink'],
+    }).notNull(),
+    position: text('position').notNull(),
+    collapsed: boolean('collapsed').notNull().default(false),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    index('project_group_user_idx').on(t.userId),
+    // Target of the item foreign key: a group only ever holds its own person's projects.
+    unique('project_group_id_user_key').on(t.id, t.userId),
+  ],
+);
+
+/** A project in one of its member's groups: at most one group per person and project. */
+export const projectGroupItem = pgTable(
+  'project_group_item',
+  {
+    userId: uuid('user_id').notNull(),
+    projectId: uuid('project_id').notNull(),
+    groupId: uuid('group_id').notNull(),
+    position: text('position').notNull(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.userId, t.projectId] }),
+    index('project_group_item_group_idx').on(t.groupId),
+    // Leaving the project takes it out of the group; dissolving the group frees its projects.
+    foreignKey({
+      name: 'project_group_item_member_fk',
+      columns: [t.projectId, t.userId],
+      foreignColumns: [projectMember.projectId, projectMember.userId],
+    }).onDelete('cascade'),
+    foreignKey({
+      name: 'project_group_item_group_fk',
+      columns: [t.groupId, t.userId],
+      foreignColumns: [projectGroup.id, projectGroup.userId],
+    }).onDelete('cascade'),
+  ],
+);
+
 export const board = pgTable(
   'board',
   {

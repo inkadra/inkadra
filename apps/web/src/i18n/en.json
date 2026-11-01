@@ -1978,6 +1978,23 @@
     "pinned": "Pinned",
     "saveError": "The change could not be saved. Try again."
   },
+  "groups": {
+    "new": "New group",
+    "rename": "Rename",
+    "name": "Group name",
+    "color": "Colour",
+    "personal": "Only for you. Dissolving a group leaves its projects alone.",
+    "create": "Create",
+    "group": "Group",
+    "none": "No group",
+    "move": "Move",
+    "moveTo": "Move to group…",
+    "options": "Group options: {{name}}",
+    "newProject": "New project in this group",
+    "dissolve": "Dissolve group",
+    "count_one": "{{count}} project",
+    "count_other": "{{count}} projects"
+  },
   "onboarding": {
     "guidedSetup": "Guided setup",
     "title": "New project",

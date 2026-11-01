@@ -13,13 +13,16 @@ import {
   type CSSProperties,
   type KeyboardEvent,
   type MouseEvent,
+  type ReactNode,
   useEffect,
   useRef,
   useState,
 } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
+import { MoveToGroupDialog, useDropTarget, useProjectDrag } from './ProjectGroups.tsx';
 import { canExportProject, ExportProjectDialog } from './ProjectTransfer.tsx';
+import { useDragging, useProjectGroups } from './project-groups.ts';
 import { updateProjectAppearance } from './projects.ts';
 import './project-appearance.css';
 
@@ -46,43 +49,28 @@ export interface ProjectMenuItem {
   disabled?: boolean;
   /** Goes after Export project…, at the end of the menu (Archive). */
   trailing?: boolean;
+  /** Destructive: set apart at the end, in the danger colour. */
+  danger?: boolean;
+  /** A colour choice: consecutive swatches share one row, after their `label` heading. */
+  swatch?: { color: string; checked: boolean; group: string };
 }
 
 /**
- * The ⋯ menu of a project, shared by the sidebar and the Projects page: project appearance
- * for editors, then the caller's own actions, then Export project… for owners and editors. Returns the trigger, the right-click handlers
- * and the layer (menu and dialog) so each place keeps its own markup.
+ * A ⋯ / right-click menu: opens at an element or a point, moves focus in, closes on Escape,
+ * Tab or a press outside, and gives focus back. Returns `open`, whether it is open, the
+ * focus target to return to and the layer to render.
  */
-export function useProjectMenu(
-  project: Project,
-  extra: ProjectMenuItem[] = [],
-  onSaved?: (project: Project) => void,
-) {
-  const { t } = useTranslation();
+export function useMenu(label: string, items: ProjectMenuItem[]) {
   const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
-  const [editing, setEditing] = useState(false);
-  const [exporting, setExporting] = useState(false);
   const opener = useRef<HTMLElement | null>(null);
-  const triggerRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
-  const items: ProjectMenuItem[] = [
-    ...(canEditProjectAppearance(project)
-      ? [{ label: t('appearance.title'), action: () => setEditing(true) }]
-      : []),
-    ...extra.filter((item) => !item.trailing),
-    ...(canExportProject(project)
-      ? [{ label: t('transfer.exportMenu'), action: () => setExporting(true) }]
-      : []),
-    ...extra.filter((item) => item.trailing),
-  ];
-  const enabled = items.length > 0;
   const close = () => {
     setMenu(null);
     opener.current?.focus();
   };
   useEffect(() => {
     if (!menu) return;
-    menuRef.current?.querySelector<HTMLButtonElement>('[role="menuitem"]:not(:disabled)')?.focus();
+    menuRef.current?.querySelector<HTMLButtonElement>('[role^="menuitem"]:not(:disabled)')?.focus();
     const dismiss = (event: PointerEvent) => {
       if (
         menuRef.current?.contains(event.target as Node) ||
@@ -104,6 +92,134 @@ export function useProjectMenu(
       y: Math.max(8, Math.min(y ?? rect.bottom, window.innerHeight - 48 - items.length * 40)),
     });
   };
+  const choose = (item: ProjectMenuItem) => () => {
+    close();
+    item.action();
+  };
+  const button = (item: ProjectMenuItem) =>
+    item.swatch ? (
+      <button
+        key={item.label}
+        type="button"
+        role="menuitemradio"
+        aria-checked={item.swatch.checked}
+        aria-label={item.label}
+        style={{ '--swatch': item.swatch.color } as CSSProperties}
+        disabled={item.disabled}
+        onClick={choose(item)}
+      />
+    ) : (
+      <button
+        key={item.label}
+        type="button"
+        role="menuitem"
+        className={item.danger ? 'is-danger' : undefined}
+        disabled={item.disabled}
+        onClick={choose(item)}
+      >
+        {item.label}
+      </button>
+    );
+  const rows: ReactNode[] = [];
+  items.forEach((item, i) => {
+    const previous = items[i - 1];
+    if (item.danger && !previous?.danger && i > 0)
+      rows.push(<hr key={`sep-${item.label}`} className="project-context-menu__separator" />);
+    if (!item.swatch) rows.push(button(item));
+    else if (previous?.swatch?.group !== item.swatch.group) {
+      const { group } = item.swatch;
+      rows.push(
+        <div key={`label-${group}`} className="project-context-menu__label" aria-hidden="true">
+          {group}
+        </div>,
+        <div
+          key={`row-${group}`}
+          role="group"
+          aria-label={group}
+          className="project-context-menu__swatches"
+        >
+          {items.filter((other) => other.swatch?.group === group).map(button)}
+        </div>,
+      );
+    }
+  });
+  const layer =
+    menu &&
+    items.length > 0 &&
+    createPortal(
+      <div
+        ref={menuRef}
+        role="menu"
+        aria-label={label}
+        className="project-context-menu"
+        style={{ left: menu.x, top: menu.y }}
+        onKeyDown={(event) => {
+          if (event.key === 'Escape' || event.key === 'Tab') {
+            if (event.key === 'Escape') {
+              event.preventDefault();
+              event.stopPropagation();
+            }
+            close();
+          } else if (
+            ['ArrowDown', 'ArrowUp', 'ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)
+          ) {
+            event.preventDefault();
+            const all = [
+              ...(menuRef.current?.querySelectorAll<HTMLButtonElement>(
+                '[role^="menuitem"]:not(:disabled)',
+              ) ?? []),
+            ];
+            const i = all.indexOf(document.activeElement as HTMLButtonElement);
+            const forward = event.key === 'ArrowDown' || event.key === 'ArrowRight';
+            const next =
+              event.key === 'Home'
+                ? 0
+                : event.key === 'End'
+                  ? all.length - 1
+                  : (i + (forward ? 1 : -1) + all.length) % all.length;
+            all[next]?.focus();
+          }
+        }}
+      >
+        {rows}
+      </div>,
+      opener.current?.closest('dialog') ?? document.body,
+    );
+  return { open, close, isOpen: !!menu, opener, layer };
+}
+
+/**
+ * The ⋯ menu of a project, shared by the sidebar and the Projects page: project appearance
+ * for editors, then the caller's own actions, then Export project… for owners and editors. Returns the trigger, the right-click handlers
+ * and the layer (menu and dialog) so each place keeps its own markup.
+ */
+export function useProjectMenu(
+  project: Project,
+  extra: ProjectMenuItem[] = [],
+  onSaved?: (project: Project) => void,
+) {
+  const { t } = useTranslation();
+  const [editing, setEditing] = useState(false);
+  const [exporting, setExporting] = useState(false);
+  const [moving, setMoving] = useState(false);
+  const groups = useProjectGroups();
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const items: ProjectMenuItem[] = [
+    ...(canEditProjectAppearance(project)
+      ? [{ label: t('appearance.title'), action: () => setEditing(true) }]
+      : []),
+    // Personal, so for every member; on a phone it stands in for dragging (decision 0056).
+    ...(groups.length > 0 || project.group
+      ? [{ label: t('groups.moveTo'), action: () => setMoving(true) }]
+      : []),
+    ...extra.filter((item) => !item.trailing),
+    ...(canExportProject(project)
+      ? [{ label: t('transfer.exportMenu'), action: () => setExporting(true) }]
+      : []),
+    ...extra.filter((item) => item.trailing),
+  ];
+  const enabled = items.length > 0;
+  const { open, close, isOpen, opener, layer: menuLayer } = useMenu(project.name, items);
   // The target can be a whole card that holds the menu's own dialogs: events from those, or
   // from anything portalled out of it, keep their native behaviour.
   const fromTarget = (event: MouseEvent<HTMLElement> | KeyboardEvent<HTMLElement>) => {
@@ -141,65 +257,15 @@ export function useProjectMenu(
         className={className}
         aria-label={t('appearance.options', { name: project.name })}
         aria-haspopup="menu"
-        aria-expanded={!!menu}
-        onClick={(event) => (menu ? close() : open(event.currentTarget, event.currentTarget))}
+        aria-expanded={isOpen}
+        onClick={(event) => (isOpen ? close() : open(event.currentTarget, event.currentTarget))}
       >
         ⋯
       </button>
     );
   const layer = (
     <>
-      {menu &&
-        enabled &&
-        createPortal(
-          <div
-            ref={menuRef}
-            role="menu"
-            aria-label={project.name}
-            className="project-context-menu"
-            style={{ left: menu.x, top: menu.y }}
-            onKeyDown={(event) => {
-              if (event.key === 'Escape' || event.key === 'Tab') {
-                if (event.key === 'Escape') {
-                  event.preventDefault();
-                  event.stopPropagation();
-                }
-                close();
-              } else if (['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) {
-                event.preventDefault();
-                const all = [
-                  ...(menuRef.current?.querySelectorAll<HTMLButtonElement>(
-                    '[role="menuitem"]:not(:disabled)',
-                  ) ?? []),
-                ];
-                const i = all.indexOf(document.activeElement as HTMLButtonElement);
-                const next =
-                  event.key === 'Home'
-                    ? 0
-                    : event.key === 'End'
-                      ? all.length - 1
-                      : (i + (event.key === 'ArrowDown' ? 1 : -1) + all.length) % all.length;
-                all[next]?.focus();
-              }
-            }}
-          >
-            {items.map((item) => (
-              <button
-                key={item.label}
-                type="button"
-                role="menuitem"
-                disabled={item.disabled}
-                onClick={() => {
-                  close();
-                  item.action();
-                }}
-              >
-                {item.label}
-              </button>
-            ))}
-          </div>,
-          opener.current?.closest('dialog') ?? document.body,
-        )}
+      {menuLayer}
       {editing && (
         <ProjectAppearanceDialog
           project={project}
@@ -219,24 +285,46 @@ export function useProjectMenu(
           }}
         />
       )}
+      {moving && (
+        <MoveToGroupDialog
+          project={project}
+          groups={groups}
+          onMoved={onSaved}
+          onClose={() => {
+            setMoving(false);
+            opener.current?.focus();
+          }}
+        />
+      )}
     </>
   );
   return { trigger, targetProps, layer };
 }
 
-/** A project in the sidebar, with its ⋯ menu. */
+/** A project in the sidebar, with its ⋯ menu; it can be dragged into or within a group. */
 export function ProjectNavItem({
   project,
   active,
   onClick,
+  onDropProject,
 }: {
   project: Project;
   active: boolean;
   onClick: (event: MouseEvent<HTMLAnchorElement>) => void;
+  /** A project dropped on this one, on its upper or lower half. */
+  onDropProject?: (projectId: string, after: boolean) => void;
 }) {
   const { trigger, targetProps, layer } = useProjectMenu(project);
+  const drag = useProjectDrag(project);
+  const drop = useDropTarget(`row:${project.id}`, (id, after) => {
+    if (id !== project.id) onDropProject?.(id, after);
+  });
+  const dragging = useDragging() === project.id;
   return (
-    <div className="project-navigation">
+    <div
+      className={`project-navigation${drop.isOver ? ' is-drop' : ''}${dragging ? ' is-dragging' : ''}`}
+      {...(onDropProject ? drop.props : {})}
+    >
       <NavItem
         leading={<ProjectGlyph {...project.icon} />}
         label={project.name}
@@ -244,6 +332,7 @@ export function ProjectNavItem({
         active={active}
         onClick={onClick}
         {...targetProps}
+        {...drag}
       />
       {trigger('project-navigation__options')}
       {layer}
@@ -598,7 +687,7 @@ export function ProjectAppearanceDialog({
 }
 
 /** Roving focus and selection for every tile/swatches group. */
-function radioKeys(event: KeyboardEvent<HTMLDivElement>) {
+export function radioKeys(event: KeyboardEvent<HTMLDivElement>) {
   if (!['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End'].includes(event.key))
     return;
   const items = [

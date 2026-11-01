@@ -1,6 +1,6 @@
-import type { Project } from '@inkadra/shared';
+import type { Project, ProjectGroup } from '@inkadra/shared';
 import { Avatar, Button, Dialog, DialogActions, Select } from '@inkadra/ui';
-import { type FormEvent, useCallback, useEffect, useRef, useState } from 'react';
+import { type FormEvent, type ReactNode, useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
 import { api } from '../lib/api.ts';
@@ -10,6 +10,21 @@ import { relativeTime } from '../notifications/Notifications.tsx';
 import { useProjects } from './AppLayout.tsx';
 import { BoardPreview } from './BoardPreview.tsx';
 import { useProjectMenu } from './ProjectAppearance.tsx';
+import {
+  GroupChevron,
+  GroupDot,
+  ProjectGroupDialog,
+  useDropTarget,
+  useGroupMenu,
+  useProjectDrag,
+} from './ProjectGroups.tsx';
+import {
+  groupProjects,
+  moveToGroup,
+  updateGroup,
+  useDragging,
+  useProjectGroups,
+} from './project-groups.ts';
 import { getCachedProjects, refreshProjects, subscribeProjects } from './projects.ts';
 import {
   archivedProjects,
@@ -53,6 +68,8 @@ export function Projects() {
   const [usage, setUsage] = useState<number | null>(null);
   const [usageError, setUsageError] = useState(false);
   const [view, setView] = useState('grid');
+  const groups = useProjectGroups();
+  const [newGroup, setNewGroup] = useState(false);
   const [query, setQuery] = useState({
     search: '',
     status: 'all',
@@ -125,6 +142,29 @@ export function Projects() {
   // Filtering by people means nothing while the person works alone.
   const others = [...people.keys()].some((id) => id !== user?.id);
   const visible = filterProjects(items ?? [], query);
+  // The page's sort applies inside every group; the groups keep their own order.
+  const grouped = groupProjects(visible, groups, (row) => row.project, true);
+  const filtered =
+    query.search.trim() !== '' ||
+    query.status !== 'all' ||
+    query.type !== 'all' ||
+    query.person !== 'all';
+  /** A project dropped on a group (or, with null, outside any) goes last there. */
+  const drop = (groupId: string | null) => (projectId: string) => {
+    setError(false);
+    moveToGroup(projectId, groupId)
+      .then(replace)
+      .catch(() => setError(true));
+  };
+  const card = (row: ProjectOverview) => (
+    <ProjectCard
+      key={row.project.id}
+      row={row}
+      busy={busy}
+      mutate={mutate}
+      onAppearanceSaved={replace}
+    />
+  );
   const change = (key: keyof typeof query, value: string) =>
     setQuery((q) => ({ ...q, [key]: value }));
   return (
@@ -142,6 +182,8 @@ export function Projects() {
           )}
         </div>
         <div className="projects-page__actions">
+          {/* Groups are personal: everyone sorts their own list (decision 0056). */}
+          <Button onClick={() => setNewGroup(true)}>{t('groups.new')}</Button>
           {canCreateProjects ? (
             <>
               <Link className="ink-btn ink-btn--ghost" to="/onboarding">
@@ -255,17 +297,27 @@ export function Projects() {
           </p>
         </div>
       )}
-      <div className={`projects-page__items projects-page__items--${view}`}>
-        {visible.map((row) => (
-          <ProjectCard
-            key={row.project.id}
-            row={row}
-            busy={busy}
-            mutate={mutate}
-            onAppearanceSaved={replace}
-          />
-        ))}
-      </div>
+      <LooseProjects view={view} empty={grouped.loose.length === 0} onDrop={drop(null)}>
+        {grouped.loose.map(card)}
+      </LooseProjects>
+      {items &&
+        grouped.groups
+          .filter(({ items: inside }) => !filtered || inside.length > 0)
+          .map(({ group, items: inside }) => (
+            <GroupSection
+              key={group.id}
+              group={group}
+              count={inside.length}
+              view={view}
+              onDrop={drop(group.id)}
+              onNewProject={
+                canCreateProjects ? () => openNewProject(undefined, group.id) : undefined
+              }
+            >
+              {inside.map(card)}
+            </GroupSection>
+          ))}
+      {newGroup && <ProjectGroupDialog onClose={() => setNewGroup(false)} />}
       {user?.role === 'admin' && (
         <p className="ink-muted projects-page__storage">
           {usage !== null
@@ -283,6 +335,82 @@ export function Projects() {
 
 type Change = 'pin' | 'archive' | { type: string | null };
 
+/** The projects outside any group; one dropped here leaves its group. */
+function LooseProjects({
+  view,
+  empty,
+  onDrop,
+  children,
+}: {
+  view: string;
+  empty: boolean;
+  onDrop: (projectId: string) => void;
+  children: ReactNode;
+}) {
+  const target = useDropTarget('loose', onDrop);
+  const dragging = useDragging();
+  return (
+    <div className={`projects-page__items projects-page__items--${view}`} {...target.props}>
+      {children}
+      {/* With every project in a group, the slot is the way out of them. */}
+      {dragging && (target.isOver || empty) && (
+        <div className="project-group-slot" aria-hidden="true" />
+      )}
+    </div>
+  );
+}
+
+/** One group: a header that folds it and takes dropped projects, over its own grid or list. */
+function GroupSection({
+  group,
+  count,
+  view,
+  onDrop,
+  onNewProject,
+  children,
+}: {
+  group: ProjectGroup;
+  count: number;
+  view: string;
+  onDrop: (projectId: string) => void;
+  onNewProject?: () => void;
+  children: ReactNode;
+}) {
+  const { t } = useTranslation();
+  const { trigger, onContextMenu, layer } = useGroupMenu(group, onNewProject);
+  const target = useDropTarget(group.id, onDrop);
+  const dragging = useDragging();
+  const open = !group.collapsed;
+  const body = `project-group-${group.id}`;
+  return (
+    <section className="project-group-section" aria-label={group.name} {...target.props}>
+      <div className={`project-group-head${target.isOver ? ' is-drop' : ''}`}>
+        <button
+          type="button"
+          className="project-group-head__toggle"
+          onContextMenu={onContextMenu}
+          aria-expanded={open}
+          aria-controls={body}
+          onClick={() => void updateGroup(group.id, { collapsed: open }).catch(() => {})}
+        >
+          <GroupChevron />
+          <GroupDot color={group.color} />
+          {group.name}
+        </button>
+        <span className="project-group-head__count">{t('groups.count', { count })}</span>
+        {trigger('project-navigation__options project-group-head__options')}
+      </div>
+      {open && (
+        <div id={body} className={`projects-page__items projects-page__items--${view}`}>
+          {children}
+          {target.isOver && dragging && <div className="project-group-slot" aria-hidden="true" />}
+        </div>
+      )}
+      {layer}
+    </section>
+  );
+}
+
 function ProjectCard({
   row,
   busy,
@@ -298,6 +426,8 @@ function ProjectCard({
   const { t, i18n } = useTranslation();
   const [typing, setTyping] = useState(false);
   const p = row.project;
+  const drag = useProjectDrag(p);
+  const dragging = useDragging() === p.id;
   const editor = p.myRole === 'owner' || p.myRole === 'editor';
   // The actions the sidebar menu has for the same project, plus the ones of this page.
   const { trigger, targetProps, layer } = useProjectMenu(
@@ -336,7 +466,11 @@ function ProjectCard({
       .map(date)
       .join(' – ') || t('projectsPage.noDates');
   return (
-    <article className="ink-card home__card project-card" {...targetProps}>
+    <article
+      className={`ink-card home__card project-card${dragging ? ' is-dragging' : ''}`}
+      {...targetProps}
+      {...drag}
+    >
       <Link
         to={`/p/${p.id}`}
         className="project-card__cover"

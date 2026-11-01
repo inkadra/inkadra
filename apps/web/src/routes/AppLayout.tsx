@@ -75,7 +75,9 @@ import { MobileNavigation } from './MobileNavigation.tsx';
 import { NewBoardDialog } from './NewBoardDialog.tsx';
 import { NewProjectDialog } from './NewProjectDialog.tsx';
 import { ProjectNavItem } from './ProjectAppearance.tsx';
+import { SidebarGroup, useDropTarget } from './ProjectGroups.tsx';
 import { ImportProjectDialog } from './ProjectTransfer.tsx';
+import { groupProjects, moveToGroup, useProjectGroups } from './project-groups.ts';
 import { onboardingTitle, type ProjectTemplate } from './project-setup.ts';
 import {
   getCachedProjects,
@@ -92,8 +94,8 @@ import './mobile-shell.css';
 interface ProjectsState {
   projects: Project[] | null;
   shared: Board[] | null;
-  /** Opens New project, optionally with a template already chosen. */
-  openNewProject: (template?: ProjectTemplate) => void;
+  /** Opens New project, optionally with a template already chosen, or into a group. */
+  openNewProject: (template?: ProjectTemplate, groupId?: string) => void;
   /** Opens Import project… (decision 0037). */
   openImportProject: () => void;
   /** False when an administrator keeps project creation to some people (decision 0041). */
@@ -248,6 +250,12 @@ export function AppLayout({ home }: { home?: ReactNode }) {
   // Everything in the shell follows the page under the settings window, not the settings URL.
   const { pathname, search } = overlay.location;
   const projects = useSyncExternalStore(subscribeProjects, getCachedProjects);
+  const groups = useProjectGroups(!!user);
+  const grouped = groupProjects(projects ?? [], groups, (p) => p);
+  // Dropped on the Projects heading, a project leaves its group.
+  const looseDrop = useDropTarget('loose', (id) => void moveToGroup(id, null).catch(() => {}));
+  // The group a project made from a group's menu goes into.
+  const newProjectGroup = useRef<string | undefined>(undefined);
   const [drawerOpen, setDrawerOpen] = useState(false);
   // A template when New project opens with one preselected, as from Home.
   const [creating, setCreating] = useState<boolean | ProjectTemplate>(false);
@@ -358,6 +366,13 @@ export function AppLayout({ home }: { home?: ReactNode }) {
     await refresh();
   }
 
+  const openNewProject = (template?: ProjectTemplate, groupId?: string) => {
+    if (!canCreate) return;
+    newProjectGroup.current = groupId;
+    setDrawerOpen(false);
+    setCreating(template ?? true);
+  };
+
   const inSettings = overlay.open;
   const closeSettings = () => {
     if (overlay.depth > 0) navigate(-overlay.depth);
@@ -434,6 +449,93 @@ export function AppLayout({ home }: { home?: ReactNode }) {
     currentView === v ||
     (v === 'storyboard' && !filmView && !!storyboardId && openBoardId === storyboardId);
 
+  const renderProject = (p: Project, onDropProject?: (id: string, after: boolean) => void) => (
+    <div key={p.id} className={p.id === projectId ? undefined : 'ink-sidebar__collapsible'}>
+      <ProjectNavItem
+        project={p}
+        onDropProject={onDropProject}
+        active={p.id === projectId && !boardId && !filmView}
+        onClick={go(`/p/${p.id}`)}
+      />
+      {p.id === projectId && (
+        <div className="ink-sidebar__modules">
+          {showFilmLinks && (
+            <>
+              <NavItem
+                icon="storyboard"
+                contentKind="storyboard"
+                label={t('nav.storyboard')}
+                count={storyboardCounts?.frameCount}
+                title={
+                  storyboardCounts
+                    ? `${t('nav.storyboard')} · ${t('nav.shots', { count: storyboardCounts.frameCount })}`
+                    : undefined
+                }
+                active={filmRowActive('storyboard')}
+                href={hrefFor('storyboard')}
+                onClick={(e) => {
+                  e.preventDefault();
+                  showView('storyboard');
+                }}
+              />
+              <NavItem
+                icon="shotlist"
+                contentKind="shotlist"
+                label={t('nav.shotlist')}
+                count={storyboardCounts?.frameCount}
+                title={
+                  storyboardCounts
+                    ? `${t('nav.shotlist')} · ${t('nav.toShoot', { count: storyboardCounts.frameCount, left: storyboardCounts.framesToShoot })}`
+                    : undefined
+                }
+                active={filmRowActive('shotlist')}
+                href={hrefFor('shotlist')}
+                onClick={(e) => {
+                  e.preventDefault();
+                  showView('shotlist');
+                }}
+              />
+              <NavItem
+                icon="calendar"
+                contentKind="schedule"
+                label={t('nav.schedule')}
+                active={filmRowActive('schedule')}
+                href={hrefFor('schedule')}
+                onClick={(e) => {
+                  e.preventDefault();
+                  showView('schedule');
+                }}
+              />
+              <NavItem
+                icon="people"
+                contentKind="review"
+                label={t('nav.clients')}
+                active={filmRowActive('review')}
+                href={hrefFor('review')}
+                onClick={(e) => {
+                  e.preventDefault();
+                  showView('review');
+                }}
+              />
+            </>
+          )}
+          <div className="ink-sidebar__collapsible">
+            <div className="ink-sidebar__label">{t('nav.boards')}</div>
+            <BoardTree
+              projectId={p.id}
+              parentId={p.rootBoardId}
+              activeId={boardId}
+              hiddenId={storyboardId}
+              depth={1}
+              go={go}
+              counts={counts}
+            />
+          </div>
+        </div>
+      )}
+    </div>
+  );
+
   const sidebar = (
     <Sidebar label={t('nav.navigation')} {...peek.panel}>
       <div className="ink-sidebar__workspace">
@@ -499,105 +601,47 @@ export function AppLayout({ home }: { home?: ReactNode }) {
         onClick={go('/projects')}
       />
       <div className="ink-sidebar__scroll">
-        <SidebarSection
-          title={t('nav.projects')}
-          action={
-            canCreate ? (
-              <IconButton
-                icon="plus"
-                label={t('nav.newProject')}
-                onClick={() => {
-                  setDrawerOpen(false);
-                  setCreating(true);
-                }}
-              />
-            ) : undefined
-          }
-        />
-        {projects?.map((p) => (
-          <div key={p.id} className={p.id === projectId ? undefined : 'ink-sidebar__collapsible'}>
-            <ProjectNavItem
-              project={p}
-              active={p.id === projectId && !boardId && !filmView}
-              onClick={go(`/p/${p.id}`)}
-            />
-            {p.id === projectId && (
-              <div className="ink-sidebar__modules">
-                {showFilmLinks && (
-                  <>
-                    <NavItem
-                      icon="storyboard"
-                      contentKind="storyboard"
-                      label={t('nav.storyboard')}
-                      count={storyboardCounts?.frameCount}
-                      title={
-                        storyboardCounts
-                          ? `${t('nav.storyboard')} · ${t('nav.shots', { count: storyboardCounts.frameCount })}`
-                          : undefined
-                      }
-                      active={filmRowActive('storyboard')}
-                      href={hrefFor('storyboard')}
-                      onClick={(e) => {
-                        e.preventDefault();
-                        showView('storyboard');
-                      }}
-                    />
-                    <NavItem
-                      icon="shotlist"
-                      contentKind="shotlist"
-                      label={t('nav.shotlist')}
-                      count={storyboardCounts?.frameCount}
-                      title={
-                        storyboardCounts
-                          ? `${t('nav.shotlist')} · ${t('nav.toShoot', { count: storyboardCounts.frameCount, left: storyboardCounts.framesToShoot })}`
-                          : undefined
-                      }
-                      active={filmRowActive('shotlist')}
-                      href={hrefFor('shotlist')}
-                      onClick={(e) => {
-                        e.preventDefault();
-                        showView('shotlist');
-                      }}
-                    />
-                    <NavItem
-                      icon="calendar"
-                      contentKind="schedule"
-                      label={t('nav.schedule')}
-                      active={filmRowActive('schedule')}
-                      href={hrefFor('schedule')}
-                      onClick={(e) => {
-                        e.preventDefault();
-                        showView('schedule');
-                      }}
-                    />
-                    <NavItem
-                      icon="people"
-                      contentKind="review"
-                      label={t('nav.clients')}
-                      active={filmRowActive('review')}
-                      href={hrefFor('review')}
-                      onClick={(e) => {
-                        e.preventDefault();
-                        showView('review');
-                      }}
-                    />
-                  </>
-                )}
-                <div className="ink-sidebar__collapsible">
-                  <div className="ink-sidebar__label">{t('nav.boards')}</div>
-                  <BoardTree
-                    projectId={p.id}
-                    parentId={p.rootBoardId}
-                    activeId={boardId}
-                    hiddenId={storyboardId}
-                    depth={1}
-                    go={go}
-                    counts={counts}
-                  />
-                </div>
-              </div>
-            )}
-          </div>
+        <div
+          className={looseDrop.isOver ? 'project-group-loose is-drop' : 'project-group-loose'}
+          {...looseDrop.props}
+        >
+          <SidebarSection
+            title={t('nav.projects')}
+            action={
+              canCreate ? (
+                <IconButton
+                  icon="plus"
+                  label={t('nav.newProject')}
+                  onClick={() => {
+                    setDrawerOpen(false);
+                    setCreating(true);
+                  }}
+                />
+              ) : undefined
+            }
+          />
+        </div>
+        {grouped.loose.map((p) =>
+          renderProject(p, (id) => void moveToGroup(id, null).catch(() => {})),
+        )}
+        {grouped.groups.map(({ group, items }) => (
+          <SidebarGroup
+            key={group.id}
+            group={group}
+            groups={groups}
+            count={items.length}
+            onNewProject={canCreate ? () => openNewProject(undefined, group.id) : undefined}
+          >
+            {items
+              // A folded group still shows the open project, with its boards.
+              .filter((p) => !group.collapsed || p.id === projectId)
+              .map((p, i, shown) =>
+                renderProject(p, (id, after) => {
+                  const next = after ? shown.slice(i + 1).find((o) => o.id !== id) : p;
+                  void moveToGroup(id, group.id, next?.id).catch(() => {});
+                }),
+              )}
+          </SidebarGroup>
         ))}
         {shared && shared.length > 0 && (
           <div className="ink-sidebar__collapsible">
@@ -767,7 +811,7 @@ export function AppLayout({ home }: { home?: ReactNode }) {
         value={{
           projects,
           shared,
-          openNewProject: (template) => canCreate && setCreating(template ?? true),
+          openNewProject,
           openImportProject: () => canCreate && setImporting(true),
           canCreateProjects: canCreate,
           openSearch: () => setSearching(true),
@@ -948,14 +992,20 @@ export function AppLayout({ home }: { home?: ReactNode }) {
         <NewProjectDialog
           open={canCreate && creating !== false}
           template={typeof creating === 'string' ? creating : undefined}
-          onClose={() => setCreating(false)}
+          onClose={() => {
+            setCreating(false);
+            newProjectGroup.current = undefined;
+          }}
           onImport={() => {
             setCreating(false);
             setImporting(true);
           }}
           onCreated={async (p) => {
             setCreating(false);
+            const group = newProjectGroup.current;
+            newProjectGroup.current = undefined;
             await refreshProjects();
+            if (group) await moveToGroup(p.id, group).catch(() => {});
             navigate(`/p/${p.id}`);
           }}
         />
