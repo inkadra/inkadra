@@ -13,6 +13,7 @@ import * as Y from 'yjs';
 import {
   copyElements,
   createElement,
+  deleteElements,
   duplicateElements,
   listElements,
   pasteElements,
@@ -552,4 +553,42 @@ it('knows the default layer of an item, whatever layer it was moved to', () => {
   expect(defaultLayer(text)).toBe('notes');
   expect(layerOf(text)).toBe('set');
   expect(defaultLayer({ ...camera, id: 'iconAAAAAAAAA', layer: 'notes' })).toBe('camera');
+});
+
+describe('variants without their base', () => {
+  it('keep the Set when the base is deleted, and stand alone', () => {
+    const { doc, id, read } = setup();
+    updateElement(doc, id, { scale: 150 });
+    addPlanIcon(doc, id, { ...camera, kind: 'sofa' });
+    addPlanIcon(doc, id, camera);
+    const variantId = addVariant(doc, read(), 'Sera', { userId: null });
+    deleteElements(doc, [id]);
+    const variant = listElements(doc).find((e) => e.id === variantId) as PlanElement;
+    expect(variant.variantOf).toBeUndefined();
+    expect(variant.icons?.map((i) => i.kind)).toEqual(['sofa', 'camera']);
+    expect(variant.scale).toBe(150);
+  });
+
+  it('take the Set of their base to another board, and leave scenes that are not there', () => {
+    const { doc, id, read } = setup();
+    addPlanIcon(doc, id, { ...camera, kind: 'sofa' });
+    const variantId = addVariant(doc, read(), 'Sera', { userId: null });
+    updateElement(doc, variantId, { sceneIds: ['sceneAAAAAAAA'] });
+    const data = copyElements(doc, [variantId]);
+    // On the same board it stays a variant of its base.
+    const [same] = pasteElements(doc, data, { x: 0, y: 900 }, { userId: null });
+    expect((listElements(doc).find((e) => e.id === same) as PlanElement).variantOf).toBe(id);
+    const other = createBoardDoc(boardId);
+    const [pasted] = pasteElements(other, data, { x: 0, y: 0 }, { userId: null });
+    const plan = listElements(other).find((e) => e.id === pasted) as PlanElement;
+    expect(plan.variantOf).toBeUndefined();
+    expect(plan.sceneIds).toBeUndefined();
+    expect(plan.icons?.map((i) => i.kind)).toEqual(['sofa']);
+  });
+});
+
+it('agrees with doc-schema on the layer of every icon kind', () => {
+  for (const c of PLAN_CATEGORIES)
+    for (const kind of c.kinds)
+      expect(layerOf({ ...camera, id: 'iconAAAAAAAAA', kind })).toBe(c.layer);
 });

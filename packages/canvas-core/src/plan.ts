@@ -13,6 +13,7 @@ import {
   type PlanSensor,
   type PlanShape,
   type PlanStroke,
+  planItemLayer,
   roots,
   STROKE_GRID,
 } from '@inkadra/doc-schema';
@@ -81,10 +82,7 @@ export function defaultLayer(item: PlanItem): PlanLayer {
 
 /** The layer an item is on: its own, or its family's (icons) or Set (strokes and shapes). */
 export function layerOf(item: PlanItem): PlanLayer {
-  if (item.layer) return item.layer;
-  if ('kind' in item && 'x' in item) return categoryOf(item.kind).layer;
-  if ('kind' in item && (item.kind === 'measure' || item.kind === 'text')) return 'notes';
-  return 'set';
+  return planItemLayer(item as Parameters<typeof planItemLayer>[0]);
 }
 
 // Icons ---------------------------------------------------------------------------

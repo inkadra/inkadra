@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MPL-2.0
-import { type Element, type ElementType, UNSORTED } from './elements.ts';
+import { type Element, type ElementType, planItemLayer, UNSORTED } from './elements.ts';
 
 /**
  * True when an element, or one of its containers, is hidden from guests of share links.
@@ -134,6 +134,15 @@ export function toGuestElement(element: Element, label?: string): Record<string,
   }
   if (element.type === 'frame' && label !== undefined) {
     out.label = label;
+  }
+  // Layers hidden on a plan (a variant's choice for everyone) are not sent to guests at all,
+  // blocking notes included.
+  if (element.type === 'plan' && element.hiddenLayers?.length) {
+    const hidden = new Set<string>(element.hiddenLayers);
+    for (const key of ['strokes', 'shapes', 'icons'] as const) {
+      const list = element[key] as Array<Parameters<typeof planItemLayer>[0]> | undefined;
+      if (list) out[key] = list.filter((item) => !hidden.has(planItemLayer(item)));
+    }
   }
   out.createdBy = null;
   return out;

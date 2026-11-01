@@ -223,7 +223,11 @@ export async function buildPages(
     boardTitle: (boardId) => env.boards?.find((b) => b.id === boardId)?.title ?? t('export.board'),
     frameLabel: (id) => labels.get(id) ?? '',
     frameAspect: (frame) => aspectValue(frame.aspect ?? boardAspect),
-    element: (id) => snapshot.byId.get(id),
+    // A client or guest export leaves out a hidden base: its variants print without its Set.
+    element: (id) => {
+      const el = lookup(id);
+      return el ? (exportable(el, lookup, filter) ?? undefined) : undefined;
+    },
     frameMeta: (frame) =>
       [
         preset('film.shot', SHOT_SIZES, frame.shot),

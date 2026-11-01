@@ -440,6 +440,47 @@ export const PLAN_LAYERS = ['set', 'lights', 'camera', 'actors', 'notes'] as con
 export const PlanLayer = z.enum(PLAN_LAYERS);
 export type PlanLayer = z.infer<typeof PlanLayer>;
 
+/** The layer each icon kind goes to without one of its own (decision 0062). */
+const LAYER_OF_KIND: Record<string, PlanLayer> = {
+  ...Object.fromEntries(
+    ['fresnel', 'led', 'tube', 'softbox', 'lantern', 'para', 'practical', 'sun', 'light'].map(
+      (k) => [k, 'lights'],
+    ),
+  ),
+  ...Object.fromEntries(['cstand', 'flag', 'frame', 'bounce', 'gel'].map((k) => [k, 'lights'])),
+  ...Object.fromEntries(
+    [
+      'camera',
+      'tripod',
+      'gimbal',
+      'dolly',
+      'track',
+      'slider',
+      'jib',
+      'drone',
+      'carrig',
+      'boom',
+      'monitor',
+      'recorder',
+    ].map((k) => [k, 'camera']),
+  ),
+  ...Object.fromEntries(['actor', 'group', 'crew'].map((k) => [k, 'actors'])),
+};
+
+/**
+ * The layer a plan item is on: its own, else its kind's (furniture and walls on Set, texts and
+ * measures on Notes, strokes and other shapes on Set).
+ */
+export function planItemLayer(item: {
+  layer?: PlanLayer | undefined;
+  kind?: string;
+  x?: number;
+}): PlanLayer {
+  if (item.layer) return item.layer;
+  if (item.kind !== undefined && item.x !== undefined) return LAYER_OF_KIND[item.kind] ?? 'set';
+  return item.kind === 'measure' || item.kind === 'text' ? 'notes' : 'set';
+}
+
 /** Plain extras every plan item may carry (since version 15). */
 const PlanItemExtras = {
   layer: PlanLayer.optional().describe("Omitted = the layer of the item's family."),

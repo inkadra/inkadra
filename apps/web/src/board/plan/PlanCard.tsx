@@ -2,6 +2,7 @@
 import { type PlanElement, variantView } from '@inkadra/canvas-core';
 import { Icon } from '@inkadra/ui';
 import type { TFunction } from 'i18next';
+import { useSyncExternalStore } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useInRouterContext } from 'react-router';
 import { useBoard } from '../context.ts';
@@ -29,7 +30,10 @@ export function PlanCard({ element }: { element: PlanElement }) {
   const { store } = useBoard();
   const byId = store.getSnapshot().byId;
   const scenes = scenesOfPlan(element, byId);
-  const base = element.variantOf ? byId.get(element.variantOf) : undefined;
+  // The base of a variant is another card: follow it, so a wall moved there moves here.
+  const base = useSyncExternalStore(store.subscribe, () =>
+    element.variantOf ? store.getSnapshot().byId.get(element.variantOf) : undefined,
+  );
   return (
     <div className="plan">
       <div className="plan__head">
