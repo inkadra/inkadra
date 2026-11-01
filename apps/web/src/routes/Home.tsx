@@ -22,8 +22,8 @@ import {
   useRecentBoards,
   useShootingDays,
 } from './home-data.ts';
-import { PROJECT_TEMPLATES, TEMPLATE_ICONS } from './project-setup.ts';
 import { MyTasks } from './MyTasks.tsx';
+import { PROJECT_TEMPLATES, TEMPLATE_ICONS } from './project-setup.ts';
 import './home.css';
 
 function greetingKey(hour: number) {

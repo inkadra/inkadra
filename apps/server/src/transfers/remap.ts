@@ -79,11 +79,12 @@ export function remapDoc(doc: Y.Doc, boardId: string, maps: IdMaps): void {
       if (el.get('type') === 'board') el.set('boardId', mapped(maps.boards, el.get('boardId')));
       const items = el.get('items');
       if (el.get('type') === 'todo' && items instanceof Y.Array) {
-        for (const item of items) if (item instanceof Y.Map && item.has('assigneeId')) {
-          const person = maps.person(item.get('assigneeId') as string);
-          if (person) item.set('assigneeId', person);
-          else item.delete('assigneeId');
-        }
+        for (const item of items)
+          if (item instanceof Y.Map && item.has('assigneeId')) {
+            const person = maps.person(item.get('assigneeId') as string);
+            if (person) item.set('assigneeId', person);
+            else item.delete('assigneeId');
+          }
       }
       const by = el.get('createdBy');
       if (typeof by === 'string') el.set('createdBy', maps.person(by));

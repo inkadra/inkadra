@@ -22,8 +22,8 @@ export function assignedItems(doc: Y.Doc) {
 export async function notifyAssignment(db: Database, boardId: string, elementId: string, assigneeId: string, actorId: string) {
   const access = await boardRole(db, { id: actorId }, boardId);
   if (!access?.role || !atLeast(access.role, 'editor')) return false;
-  if (!await projectRole(db, { id: assigneeId }, access.board.projectId)) return false;
-  await notify(db, { actor: { userId: actorId }, projectId: access.board.projectId, boardId, elementId }, new Recipients(actorId).add(assigneeId, 'task_assigned'));
+  if (!await projectRole(db, { id: assigneeId }, access.projectId)) return false;
+  await notify(db, { actor: { userId: actorId }, projectId: access.projectId, boardId, elementId }, new Recipients(actorId).add(assigneeId, 'task_assigned'));
   return true;
 }
 
@@ -80,6 +80,6 @@ export async function validateTaskUpdate(db: Database, boardId: string, actorId:
     if (!actorId) throw new Error('Guests cannot assign tasks');
     const access = await boardRole(db, { id: actorId }, boardId);
     if (!access?.role || !atLeast(access.role, 'editor')) throw new Error('Assignment requires editor access');
-    for (const id of changed) if (!await projectRole(db, { id }, access.board.projectId)) throw new Error('Assignee must be a project member');
+    for (const id of changed) if (!await projectRole(db, { id }, access.projectId)) throw new Error('Assignee must be a project member');
   } finally { candidate.destroy(); }
 }

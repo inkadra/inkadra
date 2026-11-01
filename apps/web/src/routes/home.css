@@ -449,8 +449,26 @@ a.home__activity-item:hover {
 .home__preview[data-tint="pink"] {
   --tint: var(--ink-tag-pink);
 }
-.my-tasks__group { margin-top: 16px; }
-.my-tasks__group--overdue h3 { color: var(--ink-danger-fg); }
-.my-tasks__group--today h3 { color: var(--ink-status-warn); }
-.my-tasks__row { display: flex; align-items: center; gap: 10px; padding: 10px 0; color: var(--ink-text-primary); text-decoration: none; border-bottom: 1px solid var(--ink-border-default); font-size: 13px; }
-.my-tasks__row > :last-child { margin-left: auto; font-size: 11px; }
+.my-tasks__group {
+  margin-top: 16px;
+}
+.my-tasks__group--overdue h3 {
+  color: var(--ink-danger-fg);
+}
+.my-tasks__group--today h3 {
+  color: var(--ink-status-warn);
+}
+.my-tasks__row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 0;
+  color: var(--ink-text-primary);
+  text-decoration: none;
+  border-bottom: 1px solid var(--ink-border-default);
+  font-size: 13px;
+}
+.my-tasks__row > :last-child {
+  margin-left: auto;
+  font-size: 11px;
+}

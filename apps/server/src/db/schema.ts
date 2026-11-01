@@ -756,7 +756,7 @@ export const notification = pgTable(
         'access_expiring',
         'access_expired',
         'link_opened',
-    'task_assigned',
+        'task_assigned',
       ],
     }).notNull(),
     actorId: uuid('actor_id').references(() => user.id, { onDelete: 'set null' }),

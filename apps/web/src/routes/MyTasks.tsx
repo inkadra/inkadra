@@ -30,7 +30,7 @@ export function MyTasks() {
     return () => { alive = false; window.removeEventListener('focus', load); };
   }, []);
   return <section className="home__section" aria-labelledby="my-tasks-title">
-    <h2 id="my-tasks-title">{t('tasks.title')}</h2>
+    <div className="home__section-head"><h2 id="my-tasks-title" className="ink-label">{t('tasks.title')}</h2></div>
     {error ? <p role="alert">{t('home.loadError')}</p> : !items ? <p className="ink-muted">{t('tasks.loading')}</p> : !items.length ? <p className="ink-muted">{t('tasks.empty')}</p> : ['overdue', 'today', 'week', 'later', 'undated'].map(group => {
       const rows = items.filter(item => taskGroup(item.dueDate, new Date()) === group);
       return rows.length > 0 && <div key={group} className={`my-tasks__group my-tasks__group--${group}`}>

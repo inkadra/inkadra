@@ -1,6 +1,48 @@
-.todo-assignment { display: flex; align-items: center; flex-wrap: wrap; gap: 4px; position: relative; font-size: 11px; margin-left: auto; }
-.todo-assignment__chip { display: inline-flex; align-items: center; gap: 4px; border: 0; border-radius: var(--ink-radius-sm); padding: 3px 5px; background: var(--ink-surface-2); color: var(--ink-text-secondary); font: inherit; }
-.todo-assignment--danger .todo-assignment__chip { color: var(--ink-danger-fg); background: var(--ink-danger-bg); }
-.todo-assignment--warning .todo-assignment__chip { color: var(--ink-status-warn); background: var(--ink-surface-2); }
-.todo-assignment .ink-date { height: 28px; font-size: 11px; }
-.todo-assignment__picker { position: absolute; top: 100%; right: 0; min-width: 220px; z-index: 10; padding: 8px; border: 1px solid var(--ink-border-default); border-radius: var(--ink-radius-md); background: var(--ink-surface-1); box-shadow: var(--ink-shadow-menu); }
+.todo-assignment {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px;
+  position: relative;
+  font-size: 11px;
+  margin-left: auto;
+}
+.todo-assignment__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border: 0;
+  border-radius: var(--ink-radius-sm);
+  padding: 3px 5px;
+  background: var(--ink-surface-2);
+  color: var(--ink-text-secondary);
+  font: inherit;
+}
+.todo-assignment--danger .todo-assignment__chip {
+  color: var(--ink-danger-fg);
+  background: var(--ink-danger-bg);
+}
+.todo-assignment--warning .todo-assignment__chip {
+  color: var(--ink-status-warn);
+  background: var(--ink-surface-2);
+}
+.todo-assignment .ink-date {
+  height: 28px;
+  font-size: 11px;
+}
+.todo-assignment__picker {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  min-width: 220px;
+  z-index: 10;
+  padding: 8px;
+  border: 1px solid var(--ink-border-default);
+  border-radius: var(--ink-radius-md);
+  background: var(--ink-surface-1);
+  box-shadow: var(--ink-shadow-menu);
+}
+.card__todo-list li { flex-wrap: wrap; }
+.card__todo-list li > .card__inline-input { flex: 1; min-width: 90px; }
+.todo-assignment__picker .people-picker__list { max-height: 180px; overflow-y: auto; }
+.notifications__list-container > .home__section { padding: 0 16px 16px; margin-top: 16px; }

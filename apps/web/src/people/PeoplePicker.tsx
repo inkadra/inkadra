@@ -54,7 +54,11 @@ export function PeoplePicker({
   const [open, setOpen] = useState(false);
   useEffect(() => {
     if (supplied) {
-      setFound(supplied.filter(p => p.name.toLocaleLowerCase().includes(value.replace(/^@/, '').trim().toLocaleLowerCase())));
+      setFound(
+        supplied.filter((p) =>
+          p.name.toLocaleLowerCase().includes(value.replace(/^@/, '').trim().toLocaleLowerCase()),
+        ),
+      );
       setOpen(true);
       return;
     }

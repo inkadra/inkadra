@@ -17,8 +17,8 @@ import { user } from '../db/schema.ts';
 import { readInstanceSettings } from '../instance-settings.ts';
 import type { Mailer } from '../mailer.ts';
 import { mediaTools } from '../media/video.ts';
-import { requireActor } from './auth-routes.ts';
 import { myTasks } from '../tasks.ts';
+import { requireActor } from './auth-routes.ts';
 import { HttpError } from './errors.ts';
 
 interface Deps {

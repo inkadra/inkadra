@@ -10,6 +10,7 @@ import { expiryDate } from '../lib/access.ts';
 import { api } from '../lib/api.ts';
 import { signedInId } from '../lib/me.ts';
 import { trackSave } from '../routes/settings-save.ts';
+import { MyTasks } from '../routes/MyTasks.tsx';
 import { InboxDetail } from './InboxDetail.tsx';
 import {
   dayLabel,
@@ -552,13 +553,22 @@ export function NotificationList({
             >
               {t('notifications.tabs.approvals')}
             </button>
-            <button type="button" role="tab" aria-selected={filter === 'tasks'} className={`notifications-filter-tab ${filter === 'tasks' ? 'is-active' : ''}`} onClick={() => setFilter('tasks')}>{t('tasks.title')}</button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={filter === 'tasks'}
+              className={`notifications-filter-tab ${filter === 'tasks' ? 'is-active' : ''}`}
+              onClick={() => setFilter('tasks')}
+            >
+              {t('tasks.title')}
+            </button>
           </div>
         )}
-        {fixed && filter !== 'all' && next && (
+        {fixed && filter !== 'all' && filter !== 'tasks' && next && (
           <p className="notifications__helper">{t('notifications.loadedOnly')}</p>
         )}
         <div className="notifications__list-container">
+          {filter === 'tasks' ? <MyTasks /> : <>
           {state === 'ready' && filteredItems.length === 0 && (
             <p className="notifications__empty">{t('notifications.empty')}</p>
           )}
@@ -668,6 +678,7 @@ export function NotificationList({
               {t('notifications.more')}
             </Button>
           )}
+          </>}
         </div>
         {onOpenInbox && (
           <footer className="notifications__foot">
@@ -677,7 +688,7 @@ export function NotificationList({
           </footer>
         )}
       </div>
-      {fixed && !mobile && (
+      {fixed && !mobile && filter !== 'tasks' && (
         <InboxDetail
           notification={selectedNotification}
           onNavigate={onNavigate}

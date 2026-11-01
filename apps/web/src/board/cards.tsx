@@ -8,6 +8,8 @@ import {
 } from '@inkadra/canvas-core';
 import { CARD_COLORS, type ContentCounts, contentCounts, type Element } from '@inkadra/doc-schema';
 import { Checkbox, fadeOutCopy, Icon, ProjectGlyph } from '@inkadra/ui';
+import type { Person, ProjectMember } from '@inkadra/shared';
+import { api } from '../lib/api.ts';
 import type { TFunction } from 'i18next';
 import {
   type CSSProperties,
@@ -22,7 +24,6 @@ import {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import * as Y from 'yjs';
-import { TodoAssignment } from './TodoAssignment.tsx';
 import { pickVariant, useAsset } from './assets.ts';
 import { canRenameBoard, renameBoard } from './boards.ts';
 import { CardCaption } from './CardCaption.tsx';
@@ -45,6 +46,7 @@ import { movingVariantUrl } from './moving.tsx';
 import { NoteBody, NoteEditor, useFragment } from './note.tsx';
 import { LOCAL } from './store.ts';
 import { TableCard } from './TableCard.tsx';
+import { TodoAssignment } from './TodoAssignment.tsx';
 import { TagList } from './tags.tsx';
 import { localPreview, useUploadProgress } from './uploads.ts';
 import { isInstagramUrl, videoEmbedUrl } from './youtube.ts';
@@ -655,7 +657,18 @@ function LinkCard({ element, width }: { element: Of<'link'>; width: number }) {
 }
 
 function TodoCard({ element, editing }: { element: Of<'todo'>; editing: boolean }) {
-  const { store, readOnly } = useBoard();
+  const { store, readOnly, projectId } = useBoard();
+  const guest = useContext(GuestModeContext);
+  const [people, setPeople] = useState<Person[]>([]);
+  const [peopleFailed, setPeopleFailed] = useState(false);
+  useEffect(() => {
+    if (guest) return;
+    let alive = true;
+    api.get<{ items: ProjectMember[] }>(`/projects/${projectId}/members`).then(r => {
+      if (alive) { setPeople(r.items.map(m => ({ ...m.user, email: null }))); setPeopleFailed(false); }
+    }).catch(() => { if (alive) setPeopleFailed(true); });
+    return () => { alive = false; };
+  }, [projectId, guest]);
   const { t } = useTranslation();
   const [draft, setDraft] = useState('');
   const [assigning, setAssigning] = useState<string | null>(null);
@@ -732,7 +745,14 @@ function TodoCard({ element, editing }: { element: Of<'todo'>; editing: boolean 
             ) : (
               <span>{item.text}</span>
             )}
-            <TodoAssignment elementId={element.id} item={item} editing={editing} open={assigning === item.id} onClose={() => setAssigning(null)} />
+            <TodoAssignment
+                people={people} failed={peopleFailed}
+              elementId={element.id}
+              item={item}
+              editing={editing}
+              open={assigning === item.id}
+              onClose={() => setAssigning(null)}
+            />
           </li>
         ))}
       </ul>

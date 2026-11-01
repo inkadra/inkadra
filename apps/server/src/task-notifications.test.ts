@@ -1,0 +1,36 @@
+import { addTodoItem, createElement, updateTodoItem } from '@inkadra/canvas-core';
+import { createBoardDoc } from '@inkadra/doc-schema';
+import { beforeEach, expect, it, vi } from 'vitest';
+import * as Y from 'yjs';
+import { boardRole, projectRole } from './access.ts';
+import type { Database } from './db/client.ts';
+import { notifyAssignment, validateTaskUpdate } from './tasks.ts';
+vi.mock('./access.ts', async (original) => ({ ...await original<typeof import('./access.ts')>(), boardRole: vi.fn(), projectRole: vi.fn(), boardRolesForPeople: vi.fn().mockResolvedValue(new Map([['0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10', 'viewer']])) }));
+const values = vi.fn().mockResolvedValue([]);
+const db = { insert: () => ({ values }) } as unknown as Database;
+const id = '0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10';
+beforeEach(() => { vi.clearAllMocks(); vi.mocked(boardRole).mockResolvedValue({ role: 'editor', projectId: id }); vi.mocked(projectRole).mockResolvedValue('viewer'); });
+it('creates an assignment notification only for a current member and an authorized account', async () => {
+  expect(await notifyAssignment(db, id, 'element-id', id, 'actor')).toBe(true);
+  expect(values).toHaveBeenCalledOnce();
+  expect(values.mock.calls[0]?.[0][0]).toMatchObject({ type: 'task_assigned', userId: id, emailedAt: expect.any(Date) });
+  vi.mocked(projectRole).mockResolvedValue(null);
+  expect(await notifyAssignment(db, id, 'element-id', id, 'actor')).toBe(false);
+  expect(values).toHaveBeenCalledOnce();
+  vi.mocked(boardRole).mockResolvedValue({ role: 'viewer', projectId: id });
+  expect(await notifyAssignment(db, id, 'element-id', id, 'actor')).toBe(false);
+});
+it('rejects guest and nonmember CRDT assignments before changing the live document', async () => {
+  const doc = createBoardDoc(id);
+  const todo = createElement(doc, 'todo', { x: 0, y: 0 }, { items: [] }, { userId: null });
+  const item = addTodoItem(doc, todo.id, 'Permit')!;
+  const next = new Y.Doc(); Y.applyUpdate(next, Y.encodeStateAsUpdate(doc));
+  updateTodoItem(next, todo.id, item, { assigneeId: id });
+  const update = Y.encodeStateAsUpdate(next, Y.encodeStateVector(doc));
+  await expect(validateTaskUpdate(db, id, undefined, doc, update)).rejects.toThrow('Guests');
+  vi.mocked(projectRole).mockResolvedValue(null);
+  await expect(validateTaskUpdate(db, id, 'actor', doc, update)).rejects.toThrow('member');
+  vi.mocked(projectRole).mockResolvedValue('viewer');
+  await expect(validateTaskUpdate(db, id, 'actor', doc, update)).resolves.toBeUndefined();
+  next.destroy(); doc.destroy();
+});
