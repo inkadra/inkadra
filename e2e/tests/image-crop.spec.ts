@@ -357,7 +357,9 @@ test('image card crop, rotate, reload persistence, moodboard + viewer toggle, ex
   expect(pngBytes.subarray(1, 4).toString()).toBe('PNG');
   expect(pngBytes.readUInt32BE(16)).toBeGreaterThanOrEqual(800);
 
-  // Restore original and verify persistence
+  // Restore original and verify persistence. A fresh load can leave the card under the
+  // floating navigation (#349): fit the view first, so the click lands on the card.
+  await page.getByRole('button', { name: 'Adatta alla vista' }).click();
   await card.click();
   const restoreBtn = page.getByRole('button', { name: 'Ripristina originale' });
   await expect(restoreBtn).toBeVisible();
