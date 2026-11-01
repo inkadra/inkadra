@@ -13,6 +13,7 @@ import { createDatabase, runMigrations } from '../db/client.ts';
 import { asset, assetVariant, project } from '../db/schema.ts';
 import { animatedVariantKey, originalKey, proxyKey, readAll } from '../storage.ts';
 import { testDeps } from '../test-deps.ts';
+import { writeZip } from '../transfers/zip.ts';
 import { chooseVideoEncoder, forgetVideoEncoder, readVideoEncoder } from './encoder-setting.ts';
 import { SOFTWARE_ENCODER } from './hwaccel.ts';
 import { ANIMATED_CAPS, fitsAnimatedCaps, processAsset, variantWidths } from './process.ts';
@@ -167,6 +168,85 @@ describe.skipIf(!url)('processAsset (needs DATABASE_URL)', () => {
     const variants = await db.select().from(assetVariant).where(eq(assetVariant.assetId, id));
     return { row, variants: variants.sort((a, b) => a.width - b.width) };
   };
+
+  it.each([1, 2])('extracts a generated Photoshop v%s thumbnail with exiftool', async (version) => {
+    if (!(await mediaTools()).exiftool) return;
+    const jpeg = await sharp(await stillPng())
+      .jpeg()
+      .toBuffer();
+    const header = Buffer.alloc(26);
+    header.write('8BPS');
+    header.writeUInt16BE(version, 4);
+    header.writeUInt16BE(3, 12);
+    header.writeUInt32BE(80, 14);
+    header.writeUInt32BE(120, 18);
+    header.writeUInt16BE(8, 22);
+    header.writeUInt16BE(3, 24);
+    const thumb = Buffer.alloc(28);
+    [1, 120, 80, 360, 28800, jpeg.length].forEach((n, i) => {
+      thumb.writeUInt32BE(n, i * 4);
+    });
+    thumb.writeUInt16BE(24, 24);
+    thumb.writeUInt16BE(1, 26);
+    const resource = Buffer.alloc(12);
+    resource.write('8BIM');
+    resource.writeUInt16BE(1036, 4);
+    resource.writeUInt32BE(thumb.length + jpeg.length, 8);
+    const resources = Buffer.concat([resource, thumb, jpeg, Buffer.alloc(jpeg.length % 2)]);
+    const length = Buffer.alloc(4);
+    length.writeUInt32BE(resources.length);
+    const body = Buffer.concat([
+      header,
+      Buffer.alloc(4),
+      length,
+      resources,
+      Buffer.alloc(version === 2 ? 8 : 4),
+      Buffer.alloc(2 + 120 * 80 * 3),
+    ]);
+    const id = await upload(
+      body,
+      'image/vnd.adobe.photoshop',
+      `art.${version === 2 ? 'psb' : 'psd'}`,
+    );
+    expect((await processAsset(deps, id)).variants).toBeGreaterThan(0);
+    expect((await load(id)).row).toMatchObject({
+      kind: 'file',
+      width: 120,
+      height: 80,
+      status: 'ready',
+    });
+  });
+
+  it.each([
+    ['procreate', 'QuickLook/Thumbnail.png'],
+    ['sketch', 'previews/preview.png'],
+    ['afdesign', 'previews/preview.png'],
+    ['afphoto', 'QuickLook/Thumbnail.png'],
+  ])('makes normal variants from %s and preserves the original', async (ext, entry) => {
+    const path = join(root, `generated-${ext}.zip`);
+    const zip = writeZip(path);
+    await zip.addBuffer(entry, await stillPng());
+    await zip.close();
+    const body = readFileSync(path);
+    const id = await upload(body, 'application/octet-stream', `art.${ext}`);
+    expect((await processAsset(deps, id)).variants).toBeGreaterThan(0);
+    const result = await load(id);
+    expect(result.row).toMatchObject({ kind: 'file', status: 'ready', width: 120, height: 80 });
+    expect(await readAll(await storage.read(originalKey(id)))).toEqual(body);
+  });
+
+  it('uses PDF page one for AI but keeps its MIME and download', async () => {
+    const id = await upload(fixture('two-pages.pdf'), 'application/postscript', 'art.ai');
+    await processAsset(deps, id);
+    expect((await load(id)).row).toMatchObject({
+      mime: 'application/postscript',
+      status: 'ready',
+      kind: 'file',
+    });
+    const broken = await upload(Buffer.from('%!PS no PDF'), 'application/postscript', 'old.ai');
+    expect(await processAsset(deps, broken)).toMatchObject({ variants: 0 });
+    expect((await load(broken)).row?.status).toBe('ready');
+  });
 
   it('makes WebP thumbnails without location data, keeps camera EXIF', async () => {
     const jpeg = await sharp({
