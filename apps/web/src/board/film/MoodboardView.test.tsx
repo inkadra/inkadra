@@ -37,7 +37,8 @@ vi.mock('../uploads.ts', () => ({ startUpload: (input: unknown) => startUpload(i
 const fillLinkPreview = vi.fn(async () => true);
 vi.mock('../links.ts', async (original) => ({
   ...(await original<typeof import('../links.ts')>()),
-  fillLinkPreview: (...args: unknown[]) => (fillLinkPreview as (...a: unknown[]) => unknown)(...args),
+  fillLinkPreview: (...args: unknown[]) =>
+    (fillLinkPreview as (...a: unknown[]) => unknown)(...args),
 }));
 vi.mock('../tags.tsx', () => ({
   normaliseTag: (value: string) => value.trim().toLowerCase(),
@@ -246,9 +247,7 @@ it('names the board and counts its tags in the side column, and the chips filter
   // The same chip again, or "All", clears the filter.
   await click(chip(host, 'night'));
   expect(host.querySelectorAll('.moodboard__card')).toHaveLength(3);
-  expect(
-    host.querySelector('.moodboard__chips button')?.getAttribute('aria-pressed'),
-  ).toBe('true');
+  expect(host.querySelector('.moodboard__chips button')?.getAttribute('aria-pressed')).toBe('true');
 });
 
 it('offers the existing ways to add a reference to editors only, in the bar and in the empty state', async () => {

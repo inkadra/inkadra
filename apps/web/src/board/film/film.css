@@ -3090,6 +3090,9 @@
   font-size: 12px;
 }
 .moodboard__chips {
+  margin: 0;
+  padding: 0;
+  border: 0;
   display: flex;
   flex: 1;
   gap: 8px;

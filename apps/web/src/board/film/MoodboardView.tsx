@@ -7,9 +7,9 @@ import { useTranslation } from 'react-i18next';
 import { useClassifications } from '../../lib/classifications.ts';
 import { pickVariant, useAsset } from '../assets.ts';
 import { CroppedImage } from '../CroppedImage.tsx';
-import { hasImageTransform } from '../image-crop.ts';
 import { UploadPanel } from '../chrome.tsx';
 import { uploadBoardId } from '../frame-grab.ts';
+import { hasImageTransform } from '../image-crop.ts';
 import { fillLinkPreview, webUrl } from '../links.ts';
 import { type BoardStore, LOCAL } from '../store.ts';
 import { normaliseTag } from '../tags.tsx';
@@ -117,14 +117,27 @@ function AddReferences({
     const away = (event: PointerEvent) => {
       if (!root.current?.contains(event.target as Node)) setAdding(null);
     };
-    const escape = (event: KeyboardEvent) => event.key === 'Escape' && setAdding(null);
+    const onKey = (event: KeyboardEvent) => event.key === 'Escape' && setAdding(null);
     document.addEventListener('pointerdown', away);
-    document.addEventListener('keydown', escape);
+    document.addEventListener('keydown', onKey);
     return () => {
       document.removeEventListener('pointerdown', away);
-      document.removeEventListener('keydown', escape);
+      document.removeEventListener('keydown', onKey);
     };
   }, [adding]);
+
+  // The native `change` fires when a color is chosen; React's onChange fires on every step of
+  // the picker's drag, which would add a card for each.
+  useEffect(() => {
+    const input = color.current;
+    if (!input) return;
+    const chosen = () => {
+      createElement(store.doc, 'color', at(), { hex: input.value.toUpperCase() }, opts);
+      store.undo.stopCapturing();
+    };
+    input.addEventListener('change', chosen);
+    return () => input.removeEventListener('change', chosen);
+  });
 
   const upload = (picked: File[]) => {
     picked.forEach((file, i) => {
@@ -196,10 +209,6 @@ function AddReferences({
         tabIndex={-1}
         aria-label={t('moodboard.addColor')}
         data-testid="moodboard-color"
-        onChange={(event) => {
-          createElement(store.doc, 'color', at(), { hex: event.target.value.toUpperCase() }, opts);
-          store.undo.stopCapturing();
-        }}
       />
       {adding && (
         <div className="moodboard__popover" id={menuId}>
@@ -336,11 +345,7 @@ export function MoodboardView({
             <ul>
               {chips.map((value) => (
                 <li key={value}>
-                  <button
-                    type="button"
-                    aria-pressed={tag === value}
-                    onClick={() => choose(value)}
-                  >
+                  <button type="button" aria-pressed={tag === value} onClick={() => choose(value)}>
                     <span>{tagLabel(value)}</span>
                     <small>{counts.get(value) ?? 0}</small>
                   </button>
@@ -355,7 +360,7 @@ export function MoodboardView({
           <span className="moodboard__count" role="status">
             {t('moodboard.count', { count: filtered.length })}
           </span>
-          <div className="moodboard__chips" role="group" aria-label={t('moodboard.filter')}>
+          <fieldset className="moodboard__chips" aria-label={t('moodboard.filter')}>
             <button
               type="button"
               className="moodboard__chip"
@@ -375,7 +380,7 @@ export function MoodboardView({
                 {tagLabel(value)}
               </button>
             ))}
-          </div>
+          </fieldset>
           {!readOnly && (
             <AddReferences
               store={store}
@@ -392,7 +397,10 @@ export function MoodboardView({
         )}
         {filtered.length === 0 ? (
           <div className="moodboard__empty">
-            <EmptyState icon="image" title={t(references.length ? 'moodboard.noMatches' : 'moodboard.empty')} />
+            <EmptyState
+              icon="image"
+              title={t(references.length ? 'moodboard.noMatches' : 'moodboard.empty')}
+            />
           </div>
         ) : (
           <div className="moodboard__gallery">
