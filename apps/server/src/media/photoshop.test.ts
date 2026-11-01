@@ -87,6 +87,7 @@ describe('Photoshop saved composite', () => {
     header.writeUInt16BE(row.length, 42);
     const valid = await decode(Buffer.concat([header, row, row]));
     expect(valid.pixels?.width).toBe(1025);
+    expect(valid.pixels ? valid.document : null).toEqual({ width: 2049, height: 1 });
     expect(valid.pixels?.height).toBe(1);
     expect(valid.pixels?.data.every((value) => value === 7)).toBe(true);
     header.writeUInt16BE(1, 42);

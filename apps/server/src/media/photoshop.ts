@@ -130,6 +130,8 @@ export async function readPhotoshop(file: string) {
         height: previewHeight,
         channels: colourChannels as 1 | 3,
       },
+      // The card shows the document's real size, not the subsampled preview's.
+      document: { width, height },
       layerCount,
     };
   } catch {

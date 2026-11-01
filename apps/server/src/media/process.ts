@@ -317,8 +317,8 @@ async function processDesign(
         await save(deps.db, row.id, result.variants, {
           ...plain,
           ...metadata,
-          width: result.width,
-          height: result.height,
+          width: photoshop.document.width,
+          height: photoshop.document.height,
           palette: result.palette,
         });
         return { variants: result.variants.length };
