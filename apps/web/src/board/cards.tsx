@@ -27,6 +27,7 @@ import { CardCaption } from './CardCaption.tsx';
 import { CardReview } from './CardReview.tsx';
 import { CroppedImage } from './CroppedImage.tsx';
 import { CardExtrasContext, GuestModeContext, useBoard } from './context.ts';
+import { FileCard, RawImageFooter } from './FileCard.tsx';
 import { useBoardAspect } from './film/aspect.ts';
 import { FramePicture } from './film/FramePicture.tsx';
 import { StoryPicture } from './film/StoryCardPanel.tsx';
@@ -419,6 +420,7 @@ function ImageCard({
           </span>
         )}
       </div>
+      {ready && <RawImageFooter asset={ready} />}
       <CardCaption element={element} />
     </>
   );
@@ -505,79 +507,6 @@ function LinkCard({ element, width }: { element: Of<'link'>; width: number }) {
           <span className="card__host">{element.url}</span>
         )}
       </div>
-    </>
-  );
-}
-
-function formatSize(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`;
-  const units = ['KB', 'MB', 'GB', 'TB'];
-  let v = bytes / 1024;
-  let i = 0;
-  while (v >= 1024 && i < units.length - 1) {
-    v /= 1024;
-    i += 1;
-  }
-  return `${v < 10 ? v.toFixed(1) : Math.round(v)} ${units[i]}`;
-}
-
-function FileCard({ element, width }: { element: Of<'file'>; width: number }) {
-  const { t } = useTranslation();
-  const { scale } = useBoard();
-  const asset = useAsset(element.assetId);
-  const progress = useUploadProgress(element.assetId);
-  const ready = asset && asset !== 'missing' ? asset : null;
-  if (ready?.kind === 'video' && progress === null) {
-    const poster = pickVariant(ready, width * scale * (window.devicePixelRatio || 1));
-    return (
-      <>
-        <div
-          className="card__media card__video"
-          style={{
-            aspectRatio:
-              ready.width && ready.height ? `${ready.width} / ${ready.height}` : '16 / 9',
-          }}
-        >
-          {poster && ready.variants.length > 0 && (
-            <img src={poster} alt={ready.filename} draggable={false} decoding="async" />
-          )}
-          <span className="card__play" aria-hidden="true">
-            <Icon name="play" size={16} />
-          </span>
-          {ready.durationMs !== null && (
-            <span className="card__duration">{formatDuration(ready.durationMs)}</span>
-          )}
-        </div>
-        <div className="card__caption">{ready.filename}</div>
-        <CardCaption element={element} />
-      </>
-    );
-  }
-  const ext = ready?.filename.split('.').pop()?.slice(0, 4).toUpperCase() ?? '';
-  return (
-    <>
-      <div className="card__pad card__file">
-        <span className="card__file-tile" aria-hidden="true">
-          {ext || <Icon name="file" size={14} />}
-        </span>
-        <span className="card__file-meta">
-          <span className="card__title">
-            {ready ? ready.filename || t('board.types.file') : t('board.file.loading')}
-          </span>
-          <span className="card__desc">
-            {progress !== null
-              ? t('board.file.uploading', { percent: Math.round(progress * 100) })
-              : ready
-                ? ready.size > 0
-                  ? formatSize(ready.size)
-                  : ''
-                : asset === 'missing'
-                  ? t('board.file.missing')
-                  : ''}
-          </span>
-        </span>
-      </div>
-      <CardCaption element={element} />
     </>
   );
 }

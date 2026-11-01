@@ -371,7 +371,13 @@
     "file": {
       "loading": "File",
       "uploading": "Uploading {{percent}}%",
-      "missing": "File not found"
+      "missing": "File not found",
+      "pages_one": "{{count}} page",
+      "pages_other": "{{count}} pages",
+      "preparing": "Preparing preview",
+      "play": "Play {{name}}",
+      "pause": "Pause {{name}}",
+      "seek": "Position in {{name}}"
     },
     "todo": {
       "title": "List title",
@@ -595,7 +601,9 @@
     "thumbnails": "Thumbnails",
     "item": "Item {{n}}",
     "showOriginal": "Show original",
-    "showEdited": "Show cropped"
+    "showEdited": "Show cropped",
+    "noView": "This file opens outside the browser",
+    "pageOne": "Page 1 of {{count}}"
   },
   "search": {
     "title": "Search",

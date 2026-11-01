@@ -315,28 +315,390 @@
   color: var(--ink-text-primary);
 }
 
-/* Files */
-.card__file {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-.card__file-tile {
-  flex: none;
-  width: 26px;
-  height: 32px;
-  border-radius: var(--ink-radius-xs);
-  display: grid;
-  place-items: center;
-  background: var(--ink-accent-soft-bg);
-  color: var(--ink-accent-soft-fg);
-  font-size: 9px;
-  font-weight: 600;
-}
-.card__file-meta {
+/* Files: one card family (#325). Preview on top, then name and badge · size · details. */
+.card--file {
   display: flex;
   flex-direction: column;
+}
+.fcard {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+}
+.fcard__media {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.fcard__preview {
+  --fcard-bg: var(--ink-surface-2);
+  position: relative;
+  flex: 1 1 auto;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  background: var(--fcard-bg);
+}
+.fcard__img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  pointer-events: none;
+}
+.fcard__preview--tile {
+  --fcard-bg: color-mix(in srgb, var(--ink-surface-1) 75%, var(--ink-bg-canvas));
+  min-height: 110px;
+}
+.fcard__preview--page {
+  min-height: 150px;
+  padding: 16px 0;
+}
+.fcard__preview--audio {
+  min-height: 120px;
+  background: color-mix(in srgb, var(--ink-tag-green) 6%, var(--ink-surface-2));
+}
+.fcard__preview--video {
+  background: #111113;
+}
+.fcard__preview--picture {
+  background: var(--ink-surface-2);
+}
+.fcard__page {
+  display: block;
+  width: 58%;
+  height: auto;
+  object-fit: contain;
+  border-radius: 2px;
+  background: #fff;
+  box-shadow: 0 4px 12px rgb(0 0 0 / 0.45);
+  pointer-events: none;
+}
+.fcard__tile {
+  position: relative;
+  width: 48px;
+  height: 58px;
+  border-radius: var(--ink-radius-sm);
+  display: grid;
+  place-items: center;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  overflow: hidden;
+}
+.fcard__tile::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 14px;
+  height: 14px;
+  background: linear-gradient(
+    225deg,
+    var(--fcard-bg, var(--ink-surface-2)) 50%,
+    color-mix(in srgb, currentColor 22%, transparent) 50%
+  );
+}
+.fcard__footer {
+  padding: 9px 10px 10px;
   min-width: 0;
+  flex-shrink: 0;
+}
+.fcard__name {
+  display: flex;
+  min-width: 0;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.35;
+  white-space: nowrap;
+}
+.fcard__stem {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.fcard__ext {
+  flex: none;
+}
+.fcard__meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 5px;
+  min-width: 0;
+  font-size: 11px;
+  line-height: 1.3;
+  color: var(--ink-text-muted);
+  white-space: nowrap;
+}
+.fcard__meta-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-variant-numeric: tabular-nums;
+}
+.fbadge {
+  flex: none;
+  padding: 2px 5px;
+  border-radius: var(--ink-radius-xs);
+  font-size: 9.5px;
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: 0.04em;
+}
+.fbadge--doc {
+  background: var(--ink-tag-red-bg);
+  color: var(--ink-tag-red);
+}
+.fbadge--text {
+  background: var(--ink-accent-soft-bg);
+  color: var(--ink-accent-soft-fg);
+}
+.fbadge--video {
+  background: var(--ink-tag-purple-bg);
+  color: var(--ink-tag-purple);
+}
+.fbadge--audio {
+  background: var(--ink-tag-green-bg);
+  color: var(--ink-tag-green);
+}
+.fbadge--image {
+  background: var(--ink-tag-teal-bg);
+  color: var(--ink-tag-teal);
+}
+.fbadge--design {
+  background: var(--ink-tag-orange-bg);
+  color: var(--ink-tag-orange);
+}
+.fbadge--map {
+  background: var(--ink-tool-link-bg);
+  color: var(--ink-tool-link);
+}
+.fbadge--3d {
+  background: var(--ink-tool-color-bg);
+  color: var(--ink-tool-color);
+}
+.fbadge--font {
+  background: var(--ink-surface-3);
+  color: var(--ink-text-icon);
+}
+.fbadge--generic {
+  background: var(--ink-surface-3);
+  color: var(--ink-text-secondary);
+}
+.fcard__play {
+  width: 34px;
+  height: 34px;
+  background: rgb(0 0 0 / 0.62);
+  pointer-events: none;
+  transition: background-color var(--ink-dur-fast) var(--ink-ease-out);
+}
+.card--file:hover .fcard__play {
+  background: rgb(0 0 0 / 0.8);
+}
+.fcard__play svg {
+  fill: currentColor;
+}
+.fcard__prep {
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 7px;
+  border-radius: var(--ink-radius-sm);
+  background: rgb(0 0 0 / 0.62);
+  color: #fff;
+  font-size: 10.5px;
+  white-space: nowrap;
+}
+.fcard__bar {
+  flex: 1;
+  height: 3px;
+  border-radius: var(--ink-radius-full);
+  background: rgb(255 255 255 / 0.19);
+  overflow: hidden;
+}
+.fcard__bar i {
+  display: block;
+  height: 100%;
+  background: var(--ink-accent-soft-fg);
+  transition: width var(--ink-dur-slow) var(--ink-ease-out);
+}
+.fcard__bar i.is-indeterminate {
+  width: 30%;
+  animation: fcard-indeterminate 1.4s var(--ink-ease-in) infinite alternate;
+}
+@keyframes fcard-indeterminate {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(340%);
+  }
+}
+.fcard__percent {
+  font-variant-numeric: tabular-nums;
+}
+.fcard__state {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 8px;
+  text-align: center;
+  font-size: 11px;
+  color: var(--ink-text-muted);
+}
+.fcard--processing .fcard__tile {
+  animation: fcard-pulse 1.6s var(--ink-ease-in) infinite alternate;
+}
+@keyframes fcard-pulse {
+  to {
+    opacity: 0.55;
+  }
+}
+.fcard__failed {
+  position: absolute;
+  left: 8px;
+  top: 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 6px;
+  border-radius: var(--ink-radius-xs);
+  background: var(--ink-danger-bg);
+  color: var(--ink-danger-fg);
+  font-size: 10.5px;
+}
+.fcard__audio-icon {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: var(--ink-radius-full);
+  background: var(--ink-tag-green-bg);
+  color: var(--ink-tag-green);
+}
+/* Audio mini player: round play, a flat bar to scrub (waveform with #327), time chip. */
+.fcard__player {
+  position: absolute;
+  inset: 0;
+}
+.fcard__scrub {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  top: calc(50% - 16px);
+  height: 24px;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  touch-action: none;
+  border-radius: var(--ink-radius-xs);
+}
+.fcard__scrub:focus-visible {
+  outline: 2px solid var(--ink-accent-primary);
+  outline-offset: 2px;
+}
+.fcard__scrub-track {
+  position: relative;
+  flex: 1;
+  height: 4px;
+  border-radius: var(--ink-radius-full);
+  background: color-mix(in srgb, var(--ink-tag-green) 22%, transparent);
+}
+.fcard__scrub-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  border-radius: var(--ink-radius-full);
+  background: var(--ink-tag-green);
+  opacity: 0.85;
+}
+.fcard__scrub-knob {
+  position: absolute;
+  top: 50%;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--ink-tag-green);
+  transform: translate(-50%, -50%) scale(0);
+  transition: transform var(--ink-dur-fast) var(--ink-ease-out);
+}
+.fcard__player.is-playing .fcard__scrub-knob,
+.fcard__scrub:hover .fcard__scrub-knob,
+.fcard__scrub:focus-visible .fcard__scrub-knob {
+  transform: translate(-50%, -50%) scale(1);
+}
+button.fcard__audio-play {
+  left: 10px;
+  top: auto;
+  bottom: 8px;
+  width: 28px;
+  height: 28px;
+  transform: none;
+  background: rgb(0 0 0 / 0.62);
+  transition: background-color var(--ink-dur-fast) var(--ink-ease-out);
+}
+button.fcard__audio-play:hover {
+  background: rgb(0 0 0 / 0.8);
+}
+button.fcard__audio-play:focus-visible {
+  outline: 2px solid var(--ink-accent-primary);
+  outline-offset: 2px;
+}
+.fcard__audio-play svg {
+  fill: currentColor;
+}
+@media (prefers-reduced-motion: reduce) {
+  .fcard__bar i.is-indeterminate,
+  .fcard--processing .fcard__tile {
+    animation: none;
+  }
+}
+
+/* Viewer stage for files the browser shows no picture of. */
+.viewer__file {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  color: var(--ink-text-secondary);
+}
+.viewer__file .fcard__tile {
+  width: 72px;
+  height: 88px;
+  font-size: 14px;
+}
+.viewer__file-msg {
+  margin: 0;
+  font-size: 13px;
+}
+.viewer__audio {
+  width: min(480px, 80vw);
+}
+.viewer__file--pdf {
+  max-height: 100%;
+}
+.viewer__pdf-page {
+  max-height: calc(100vh - 220px);
+  background: #fff;
+  box-shadow: 0 8px 30px rgb(0 0 0 / 0.4);
+}
+.viewer__pdf-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 12px;
+}
+.viewer__file .ink-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
 }
 
 /* To-do */
