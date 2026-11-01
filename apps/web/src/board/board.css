@@ -2760,13 +2760,39 @@ button.crumb--editable:focus-visible {
   }
 }
 
-.card--link .card__media--link:has(.card__play) {
+.card--link .card__media--link:is(.card__embed, :has(.card__play)) {
   aspect-ratio: 16 / 9;
 }
 button.card__play {
   pointer-events: auto;
   cursor: pointer;
   border: 0;
+}
+/* The player replaces the thumbnail. The card is dragged by its title and frame below. */
+.card__embed {
+  background: #000;
+}
+.card__embed iframe {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: 0;
+}
+/* ↗ over the playing video: opens the viewer. */
+.card__expand {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--ink-radius-sm);
+  background: rgb(0 0 0 / 0.6);
+  color: #fff;
+  cursor: pointer;
 }
 
 .toolbar__group--navigate .toolbar__btn:not([aria-pressed="true"]):hover,

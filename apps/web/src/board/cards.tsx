@@ -36,6 +36,7 @@ import { useSlugline } from './film/storyboard-data.ts';
 import { GuestVisibility } from './guest-visibility.tsx';
 import { ImageCropStage } from './ImageCropEditor.tsx';
 import { croppedRotatedSize, rotatedBounds } from './image-crop.ts';
+import { playInline, stopInline, useInlinePlaying } from './inline-player.ts';
 import { webUrl } from './links.ts';
 import { useMeasure } from './measure.ts';
 import { movingVariantUrl } from './moving.tsx';
@@ -43,7 +44,7 @@ import { NoteBody, NoteEditor, useFragment } from './note.tsx';
 import { LOCAL } from './store.ts';
 import { TagList } from './tags.tsx';
 import { localPreview, useUploadProgress } from './uploads.ts';
-import { isYoutubeUrl } from './youtube.ts';
+import { videoEmbedUrl } from './youtube.ts';
 
 type Of<T extends Element['type']> = Extract<Element, { type: T }>;
 
@@ -485,20 +486,91 @@ function shortUrl(url: string): string {
   return text.length > 80 ? `${text.slice(0, 79)}…` : text;
 }
 
+/** The player takes the place of the thumbnail; ↗ hands over to the viewer. */
+function InlineVideo({
+  element,
+  embedUrl,
+  title,
+}: {
+  element: Of<'link'>;
+  embedUrl: string;
+  title: string;
+}) {
+  const { t } = useTranslation();
+  const { openElement } = useBoard();
+  const ref = useRef<HTMLDivElement>(null);
+  const mounted = useRef(false);
+  const id = element.id;
+  useEffect(() => {
+    mounted.current = true;
+    const stop = () => stopInline(id);
+    const onKey = (event: { key: string }) => {
+      if (event.key === 'Escape') stop();
+    };
+    window.addEventListener('keydown', onKey);
+    // Far off-screen means more than a screen away: a small pan keeps the video running.
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry && !entry.isIntersecting) stop();
+      },
+      { rootMargin: '100% 100% 100% 100%' },
+    );
+    if (ref.current) observer.observe(ref.current);
+    return () => {
+      window.removeEventListener('keydown', onKey);
+      observer.disconnect();
+      mounted.current = false;
+      // StrictMode remounts at once: only a card that really went away stops.
+      queueMicrotask(() => {
+        if (!mounted.current) stop();
+      });
+    };
+  }, [id]);
+  return (
+    <div className="card__media card__media--link card__embed" ref={ref}>
+      <iframe
+        src={embedUrl}
+        title={t('board.menu.videoPlayer', { title })}
+        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
+        allowFullScreen
+      />
+      <button
+        type="button"
+        className="card__expand"
+        data-no-drag
+        data-play-link={id}
+        title={t('board.menu.openInViewer')}
+        aria-label={t('board.menu.openInViewer')}
+        onClick={(event) => {
+          event.stopPropagation();
+          stopInline(id);
+          openElement?.(element);
+        }}
+      >
+        <Icon name="arrow" size={14} />
+      </button>
+    </div>
+  );
+}
+
 function LinkCard({ element, width }: { element: Of<'link'>; width: number }) {
   const { t } = useTranslation();
-  const { scale, openElement } = useBoard();
+  const { scale } = useBoard();
   const image = useAsset(element.imageAssetId);
+  const playing = useInlinePlaying(element.id);
   const ready = image && image !== 'missing' ? image : null;
   const src = ready ? pickVariant(ready, width * scale * (window.devicePixelRatio || 1)) : '';
   const href = webUrl(element.url);
-  const isYoutube = isYoutubeUrl(element.url);
+  const title = element.title || (href ? new URL(href).hostname : element.url);
+  const embedUrl = videoEmbedUrl(element.url);
   return (
     <>
-      {src ? (
-        <div className="card__media card__media--link">
-          <img src={src} alt="" draggable={false} decoding="async" />
-          {isYoutube && (
+      {embedUrl && playing ? (
+        <InlineVideo element={element} embedUrl={embedUrl} title={title} />
+      ) : src || embedUrl ? (
+        <div className={`card__media card__media--link${src ? '' : ' card__video'}`}>
+          {src && <img src={src} alt="" draggable={false} decoding="async" />}
+          {embedUrl && (
             <button
               type="button"
               className="card__play"
@@ -506,33 +578,13 @@ function LinkCard({ element, width }: { element: Of<'link'>; width: number }) {
               data-play-link={element.id}
               onClick={(event) => {
                 event.stopPropagation();
-                openElement?.(element);
+                playInline(element.id);
               }}
-              aria-label={t('board.menu.playLink', {
-                title: element.title || (href ? new URL(href).hostname : element.url),
-              })}
+              aria-label={t('board.menu.playLink', { title })}
             >
               <Icon name="play" size={16} />
             </button>
           )}
-        </div>
-      ) : isYoutube ? (
-        <div className="card__media card__media--link card__video">
-          <button
-            type="button"
-            className="card__play"
-            data-no-drag
-            data-play-link={element.id}
-            onClick={(event) => {
-              event.stopPropagation();
-              openElement?.(element);
-            }}
-            aria-label={t('board.menu.playLink', {
-              title: element.title || (href ? new URL(href).hostname : element.url),
-            })}
-          >
-            <Icon name="play" size={16} />
-          </button>
         </div>
       ) : null}
       <div className="card__pad card__link">

@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { isYoutubeUrl, parseYoutubeStartTime, youtubeEmbedUrl, youtubeVideoId } from './youtube.ts';
+import {
+  isYoutubeUrl,
+  parseYoutubeStartTime,
+  videoEmbedUrl,
+  youtubeEmbedUrl,
+  youtubeVideoId,
+} from './youtube.ts';
 
 describe('youtube utilities', () => {
   it('extracts video id from standard watch URLs', () => {
@@ -36,11 +42,16 @@ describe('youtube utilities', () => {
 
   it('builds privacy-enhanced embed URL', () => {
     expect(youtubeEmbedUrl('https://www.youtube.com/watch?v=dQw4w9WgXcQ')).toBe(
-      'https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ?autoplay=1&rel=0',
+      'https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ?autoplay=1&rel=0&playsinline=1',
     );
     expect(youtubeEmbedUrl('https://youtu.be/dQw4w9WgXcQ?t=45')).toBe(
-      'https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ?autoplay=1&rel=0&start=45',
+      'https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ?autoplay=1&rel=0&playsinline=1&start=45',
     );
     expect(youtubeEmbedUrl('https://vimeo.com/12345')).toBeNull();
+  });
+
+  it('plays only YouTube inside the card', () => {
+    expect(videoEmbedUrl('https://youtu.be/dQw4w9WgXcQ')).toContain('youtube-nocookie.com');
+    expect(videoEmbedUrl('https://vimeo.com/123456')).toBeNull();
   });
 });

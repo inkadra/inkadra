@@ -28,7 +28,7 @@ export function youtubeEmbedUrl(url: string): string | null {
   const id = youtubeVideoId(url);
   if (!id) return null;
   const start = parseYoutubeStartTime(url);
-  const base = `https://www.youtube-nocookie.com/embed/${id}?autoplay=1&rel=0`;
+  const base = `https://www.youtube-nocookie.com/embed/${id}?autoplay=1&rel=0&playsinline=1`;
   return start ? `${base}&start=${start}` : base;
 }
 
@@ -51,13 +51,20 @@ export function isVideoLink(url: string): boolean {
   }
 }
 
+/** Origin of the privacy-enhanced YouTube player. */
+export const YOUTUBE_ORIGIN = 'https://www.youtube-nocookie.com';
+
+/** Player address with autoplay, for the providers that play inside Inkadra. */
+export function videoEmbedUrl(url: string): string | null {
+  return youtubeEmbedUrl(url);
+}
+
 /** Accept playback updates only from this viewer's privacy-enhanced YouTube player. */
 export function youtubePlayerTime(
   event: Pick<MessageEvent, 'origin' | 'source' | 'data'>,
   player: Window | null,
 ): number | null {
-  if (!player || event.origin !== 'https://www.youtube-nocookie.com' || event.source !== player)
-    return null;
+  if (!player || event.origin !== YOUTUBE_ORIGIN || event.source !== player) return null;
   try {
     const data = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
     const time = data?.info?.currentTime;

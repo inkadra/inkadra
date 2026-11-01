@@ -452,6 +452,8 @@
     },
     "menu": {
       "playLink": "Riproduci {{title}}",
+      "openInViewer": "Apri nel visualizzatore",
+      "videoPlayer": "Video: {{title}}",
       "refreshPreviewFailed": "Impossibile aggiornare l’anteprima. Riprova più tardi.",
       "refreshPreview": "Aggiorna anteprima",
       "setCover": "Usa come copertina",

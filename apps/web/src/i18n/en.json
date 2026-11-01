@@ -452,6 +452,8 @@
     },
     "menu": {
       "playLink": "Play {{title}}",
+      "openInViewer": "Open in viewer",
+      "videoPlayer": "Video: {{title}}",
       "refreshPreviewFailed": "Could not refresh preview. Please try again later.",
       "refreshPreview": "Refresh preview",
       "setCover": "Use as cover",
