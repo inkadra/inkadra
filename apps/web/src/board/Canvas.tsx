@@ -73,6 +73,7 @@ import {
 } from '@inkadra/canvas-core';
 import { type Element, TODO_LISTS, UNSORTED } from '@inkadra/doc-schema';
 import { API_PREFIX, type Board, defaultProjectIcon, isMapLink } from '@inkadra/shared';
+import { Button, Icon, kindStyle } from '@inkadra/ui';
 import type { Editor } from '@tiptap/react';
 import {
   type DragEvent,
@@ -94,6 +95,7 @@ import * as Y from 'yjs';
 import { addActions, type PaletteAction, useRegisterActions } from '../commands/actions.ts';
 import { canvasActions, duplicateInStore } from '../commands/board-actions.ts';
 import { useIsPhone } from '../lib/phone.ts';
+import { api } from '../lib/api.ts';
 import { getPreferences, updatePreferences, usePreferences } from '../lib/preferences.ts';
 import { useSession } from '../lib/session.tsx';
 import { ProjectAppearanceDialog } from '../routes/ProjectAppearance.tsx';
@@ -103,7 +105,13 @@ import { accessNotices } from './access-notices.ts';
 import { addedSummary } from './added-summary.ts';
 import { ArrowLayer, ArrowStyleButtons, onArrowStyleButton } from './arrows.tsx';
 import { getCachedAsset } from './assets.ts';
-import { canRenameBoard, createBoard, setBoardCover, setBoardIcon } from './boards.ts';
+import {
+  canRenameBoard,
+  createBoard,
+  refreshBoards,
+  setBoardCover,
+  setBoardIcon,
+} from './boards.ts';
 import { ColorPicker } from './ColorPicker.tsx';
 import { loadBoardGrid, loadTidyGap, saveBoardGrid, saveTidyGap } from './canvas-prefs.ts';
 import {
@@ -144,8 +152,10 @@ import { FramePanel } from './film/FramePanel.tsx';
 import { NeededKind, sceneLabel } from './film/NeededItems.tsx';
 import { StoryCardPanel } from './film/StoryCardPanel.tsx';
 import { createScreenplayStoryboard } from './film/screenplay/new-storyboard.ts';
+import { detectScreenplay } from './film/screenplay/parse.ts';
 import type { ImportPlan } from './film/screenplay/plan.ts';
 import { ScreenplayImportDialog } from './film/screenplay/ScreenplayImportDialog.tsx';
+import type { Script } from './film/screenplay/script.ts';
 import { viewableInOrder } from './gallery.ts';
 import { toggleGuestHidden } from './guest-visibility.tsx';
 import { ImageCropToolbar, restoreOriginalImage } from './ImageCropEditor.tsx';
@@ -969,6 +979,21 @@ export function Canvas({
   );
 
   const [importingScript, setImportingScript] = useState(false);
+  const [detectedScripts, setDetectedScripts] = useState<
+    Record<string, { name: string; script: Script }>
+  >({});
+  const [scriptHint, setScriptHint] = useState<string | null>(null);
+  const [initialScript, setInitialScript] = useState<
+    { name: string; script: Script } | undefined
+  >();
+  const openDetectedScript = useCallback(
+    (id: string) => {
+      setInitialScript(detectedScripts[id]);
+      setScriptHint(null);
+      setImportingScript(true);
+    },
+    [detectedScripts],
+  );
   /** Where the voice note being recorded will go (#327), while the recorder is open. */
   const [recording, setRecording] = useState<Point | null>(null);
   /** A storyboard card from a screenplay: the board is filled in the background, like a template. */
@@ -997,7 +1022,18 @@ export function Canvas({
           scenes: t('screenplay.scenes', { count: plan.scenes.length }),
           frames: t('screenplay.framesCount', { count: plan.frameCount }),
         }),
-        undo: true,
+        undo: () => {
+          // The API trashes the generated board and its contents; the uploaded file stays.
+          void api
+            .delete(`/boards/${board.id}`)
+            .then(async () => {
+              store.undo.stopCapturing();
+              deleteElements(doc, [card.id], LOCAL);
+              store.undo.stopCapturing();
+              await refreshBoards(projectId);
+            })
+            .catch(() => setToast({ text: t('screenplay.failed'), undo: false }));
+        },
         show: [card.id],
         ok: true,
       });
@@ -1099,6 +1135,14 @@ export function Canvas({
         const step = magnetRef.current ? GRID : 24;
         const pos = place({ x: at.x + i * step, y: at.y + i * step });
         const type = file.type.startsWith('image/') && !isDesignFile(file.name) ? 'image' : 'file';
+        const detection = type === 'file' ? detectScreenplay(file) : Promise.resolve(null);
+        const rememberScript = (id: string) => {
+          void detection.then((script) => {
+            if (!script || !store.map(id)) return;
+            setDetectedScripts((previous) => ({ ...previous, [id]: { name: file.name, script } }));
+            setScriptHint(id);
+          });
+        };
         startUpload({
           file,
           projectId,
@@ -1109,6 +1153,7 @@ export function Canvas({
               (e) => (e.type === 'image' || e.type === 'file') && e.assetId === assetId,
             );
             if (card) {
+              rememberScript(card.id);
               if (i === 0) select([card.id]);
               settled();
               return;
@@ -1117,6 +1162,7 @@ export function Canvas({
             store.undo.stopCapturing();
             if (i === 0) select([el.id]);
             created.push(el.id);
+            rememberScript(el.id);
             settled();
           },
           onFailed: (assetId) => {
@@ -2186,7 +2232,9 @@ export function Canvas({
     const cmd = commandFor(e);
     if (!cmd) return;
     // Enter on the toast's buttons and a colour's copy button presses them (#310, #308).
-    const presses = e.target instanceof HTMLElement && !!e.target.closest('.toast, .card__copy');
+    const presses =
+      e.target instanceof HTMLElement &&
+      !!e.target.closest('.toast, .card__copy, .screenplay-hint');
     if (cmd.kind === 'edit' && (onArrowStyleButton(e.target) || presses)) return;
     const single = selection.size === 1 ? snap.byId.get([...selection][0] ?? '') : undefined;
     switch (cmd.kind) {
@@ -2773,6 +2821,15 @@ export function Canvas({
     };
     const items: MenuItem[] = [
       ...listItems,
+      ...(single?.type === 'file' && !readOnly && detectedScripts[single.id]
+        ? [
+            {
+              label: t('screenplay.buildFromFile'),
+              icon: 'storyboard' as const,
+              action: () => openDetectedScript(single.id),
+            },
+          ]
+        : []),
       ...(single?.type === 'link' && !readOnly && !single.locked
         ? [
             {
@@ -2998,6 +3055,8 @@ export function Canvas({
     snap,
     openScene,
     newVariant,
+    detectedScripts,
+    openDetectedScript,
   ]);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: sizeVersion invalidates measured heights
@@ -3177,6 +3236,45 @@ export function Canvas({
             }}
           />
         )}
+        {!readOnly &&
+          scriptHint &&
+          snap.byId.has(scriptHint) &&
+          !importingScript &&
+          (() => {
+            const element = snap.byId.get(scriptHint);
+            if (!element) return null;
+            const rect = liveRect(element);
+            const at = worldToScreen(viewport, { x: rect.x, y: rect.y + rect.h });
+            return (
+              <div
+                className="screenplay-hint"
+                style={{
+                  ['--hint-left' as string]: `${Math.max(10, Math.min(at.x, size.w - 460))}px`,
+                  ['--hint-top' as string]: `${at.y + 10}px`,
+                }}
+                role="status"
+                onPointerDown={(e) => e.stopPropagation()}
+              >
+                <span className="screenplay-hint__icon" style={kindStyle('storyboard')} aria-hidden>
+                  <Icon name="storyboard" size={14} />
+                </span>
+                <span>{t('screenplay.detected')}</span>
+                <Button
+                  className="screenplay-hint__action"
+                  variant="ghost"
+                  onClick={() => openDetectedScript(scriptHint)}
+                >
+                  {t('screenplay.build')}
+                </Button>
+                <Button
+                  variant="ghost"
+                  icon="close"
+                  aria-label={t('screenplay.cancel')}
+                  onClick={() => setScriptHint(null)}
+                />
+              </div>
+            );
+          })()}
         {dropHint && <div className="canvas__drophint">{t('board.dropFiles')}</div>}
 
         {/* Starting points (#312): only for people who can edit, gone with the first card. */}
@@ -3535,8 +3633,12 @@ export function Canvas({
           createPortal(
             <ScreenplayImportDialog
               targets={['new']}
+              initialFile={initialScript}
               onImport={insertScreenplay}
-              onClose={() => setImportingScript(false)}
+              onClose={() => {
+                setImportingScript(false);
+                setInitialScript(undefined);
+              }}
             />,
             document.body,
           )}

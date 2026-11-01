@@ -34,19 +34,23 @@ export type ImportTarget = 'append' | 'new';
  */
 export function ScreenplayImportDialog({
   targets,
+  initialFile,
   confirmLabel,
   onImport,
   onClose,
 }: {
   /** `append` adds to the open storyboard; both offer the choice. */
   targets: readonly ImportTarget[];
+  initialFile?: { name: string; script: Script };
   confirmLabel?: string;
   onImport: (plan: ImportPlan, target: ImportTarget) => void | Promise<void>;
   onClose: () => void;
 }) {
   const { t } = useTranslation();
-  const [file, setFile] = useState<{ name: string; script: Script } | null>(null);
-  const [options, setOptions] = useState<ImportOptions | null>(null);
+  const [file, setFile] = useState<{ name: string; script: Script } | null>(initialFile ?? null);
+  const [options, setOptions] = useState<ImportOptions | null>(
+    initialFile ? defaultOptions(initialFile.script) : null,
+  );
   const [target, setTarget] = useState<ImportTarget>(targets[0] ?? 'new');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -162,6 +166,15 @@ export function ScreenplayImportDialog({
             <p className="export__hint">
               {busy ? t('screenplay.reading') : t('screenplay.formats')}
             </p>
+            {error && (
+              <div className="script-import__error" role="alert">
+                <Icon name="warning" size={18} />
+                <div>
+                  <strong>{error}</strong>
+                  {error === t('screenplay.errors.noText') && <p>{t('screenplay.noTextDetail')}</p>}
+                </div>
+              </div>
+            )}
           </div>
         ) : (
           <div className="script-import">
@@ -308,7 +321,7 @@ export function ScreenplayImportDialog({
             )}
           </div>
         )}
-        {error && (
+        {file && error && (
           <p className="export__hint export__hint--error" role="alert">
             {error}
           </p>

@@ -204,3 +204,126 @@ test('the import dialog opened from the Canvas toolbar is modal and the board st
   await expect(note).toHaveCount(1);
   await expect(page.locator('.card.is-selected')).toHaveCount(0);
 });
+
+/** Original synthetic PDF: a standard Courier screenplay, or an empty image-only stand-in. */
+function scriptPdf(textLayer = true, pages = 1): Buffer {
+  const rows: Array<[number, number, string]> = [];
+  for (let i = 0; i < 5; i++) {
+    const y = 740 - i * 130;
+    rows.push([
+      72,
+      y,
+      `${i + 1} ${i % 2 ? 'INT.' : 'EST.'} ROOM ${i + 1} - ${i % 2 ? 'NOTTE' : 'GIORNO'} ${i + 1}`,
+    ]);
+    rows.push([72, y - 28, 'A door opens.']);
+    rows.push([220, y - 56, 'ELENA']);
+    rows.push([150, y - 70, '(quietly)']);
+    rows.push([150, y - 84, 'Hello.']);
+  }
+  const content = textLayer
+    ? rows
+        .map(([x, y, text]) => `BT /F1 12 Tf ${x} ${y} Td (${text.replace(/[()]/g, '\\$&')}) Tj ET`)
+        .join('\n')
+    : '';
+  const objects = [
+    '<< /Type /Catalog /Pages 2 0 R >>',
+    `<< /Type /Pages /Kids [${Array.from({ length: pages }, () => '3 0 R').join(' ')}] /Count ${pages} >>`,
+    '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>',
+    '<< /Type /Font /Subtype /Type1 /BaseFont /Courier >>',
+    `<< /Length ${Buffer.byteLength(content)} >>\nstream\n${content}\nendstream`,
+  ];
+  let pdf = '%PDF-1.4\n';
+  const offsets = [0];
+  for (const [i, object] of objects.entries()) {
+    offsets.push(Buffer.byteLength(pdf));
+    pdf += `${i + 1} 0 obj\n${object}\nendobj\n`;
+  }
+  const xref = Buffer.byteLength(pdf);
+  pdf += `xref\n0 6\n0000000000 65535 f \n${offsets
+    .slice(1)
+    .map((n) => `${String(n).padStart(10, '0')} 00000 n \n`)
+    .join('')}trailer\n<< /Size 6 /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF`;
+  return Buffer.from(pdf);
+}
+
+async function capture294(page: Page, state: string) {
+  if (!process.env.SHOTS_294) return;
+  await page.mouse.move(0, 0);
+  await page.screenshot({ path: `${process.env.SHOTS_294}/${state}.png`, animations: 'disabled' });
+}
+
+for (const theme of ['dark', 'light'] as const) {
+  for (const phone of [false, true]) {
+    test(`PDF drop, preloaded preview and undo (${theme}, ${phone ? 'phone' : 'desktop'})`, async ({
+      page,
+    }) => {
+      await page.setViewportSize({ width: 1280, height: 900 });
+      await page.addInitScript((value) => localStorage.setItem('inkadra.theme', value), theme);
+      await signedIn(page);
+      const response = await page.request.post(`/api/v1/projects/${seeded.projectId}/boards`, {
+        headers: { origin: new URL(page.url()).origin },
+        data: { parentBoardId: seeded.canvasId, kind: 'board', title: 'Screenplay drop' },
+      });
+      expect(response.ok()).toBe(true);
+      const { id: dropBoardId } = await response.json();
+      await page.goto(`/p/${seeded.projectId}/b/${dropBoardId}`);
+      await expect(page.getByRole('status').getByText('Sincronizzato')).toBeVisible();
+      if (phone) await page.setViewportSize({ width: 390, height: 844 });
+      const dt = await page.evaluateHandle(
+        (bytes) => {
+          const transfer = new DataTransfer();
+          transfer.items.add(
+            new File([new Uint8Array(bytes)], 'five-scenes.pdf', { type: 'application/pdf' }),
+          );
+          return transfer;
+        },
+        [...scriptPdf()],
+      );
+      await page
+        .locator('.canvas')
+        .dispatchEvent('drop', { dataTransfer: dt, clientX: phone ? 75 : 400, clientY: 260 });
+      const hint = page.locator('.screenplay-hint');
+      await expect(hint).toBeVisible({ timeout: 20_000 });
+      await capture294(page, `${theme}-${phone ? 'phone' : 'desktop'}-hint`);
+      await page.getByRole('button', { name: 'Altre azioni', exact: true }).click();
+      await expect(
+        page.getByRole('menuitem', { name: 'Crea storyboard da questa sceneggiatura…' }),
+      ).toBeVisible();
+      await capture294(page, `${theme}-${phone ? 'phone' : 'desktop'}-menu`);
+      await page.keyboard.press('Escape');
+      await hint.getByRole('button', { name: 'Crea storyboard…', exact: true }).focus();
+      await page.keyboard.press('Enter');
+      const dialog = page.getByRole('dialog', { name: 'Importa una sceneggiatura' });
+      await expect(dialog.getByText('Crea 5 scene e 5 inquadrature.')).toBeVisible();
+      await expect(dialog.locator('.script-import__cast')).toContainText('Elena');
+      await capture294(page, `${theme}-${phone ? 'phone' : 'desktop'}-preview`);
+      const before = await page.locator('.card--board').count();
+      const boardsBefore = await page.getByRole('link', { name: /^Sceneggiatura/ }).count();
+      await dialog.getByRole('button', { name: 'Importa', exact: true }).click();
+      await expect(page.locator('.card--board')).toHaveCount(before + 1);
+      await expect(page.locator('.card--board').last()).toContainText('5 card');
+      await capture294(page, `${theme}-${phone ? 'phone' : 'desktop'}-imported`);
+      await page.locator('.toast').getByRole('button', { name: 'Annulla', exact: true }).click();
+      await expect(page.locator('.card--board')).toHaveCount(before);
+      await expect(page.getByRole('link', { name: /^Sceneggiatura/ })).toHaveCount(boardsBefore);
+      await expect(page.locator('.card--file').last()).toBeVisible();
+      // Use the existing entry point to verify all PDF errors in the actual worker.
+      await page.locator('.toolbar__btn--canvas').click();
+      await page.getByRole('menuitem', { name: 'Storyboard da sceneggiatura…' }).click();
+      for (const [buffer, error] of [
+        [scriptPdf(false), 'Questo PDF non ha un livello di testo'],
+        [scriptPdf(true, 301), 'Il PDF supera il limite di 300 pagine.'],
+        [Buffer.alloc(5 * 1024 * 1024 + 1), /5 MB/],
+        [Buffer.from('%PDF-1.7\nmalformed'), /PDF|leggere|valido/],
+      ] as const) {
+        await dialog
+          .getByLabel('Scegli un file')
+          .setInputFiles({ name: 'test.pdf', mimeType: 'application/pdf', buffer });
+        await expect(dialog.locator('.script-import__drop [role="alert"]')).toContainText(error);
+        if (typeof error === 'string' && error.startsWith('Questo'))
+          await capture294(page, `${theme}-${phone ? 'phone' : 'desktop'}-no-text`);
+      }
+      await dialog.getByRole('button', { name: 'Annulla', exact: true }).click();
+    });
+  }
+}

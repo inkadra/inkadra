@@ -49,7 +49,15 @@ export const MAX_SCRIPT_BYTES = 5 * 1024 * 1024;
 
 export class ScriptError extends Error {
   constructor(
-    readonly code: 'tooLarge' | 'unsupported' | 'unsafe' | 'invalid' | 'empty',
+    readonly code:
+      | 'tooLarge'
+      | 'unsupported'
+      | 'unsafe'
+      | 'invalid'
+      | 'empty'
+      | 'noText'
+      | 'timeout'
+      | 'tooManyPages',
     message = code,
   ) {
     super(message);
