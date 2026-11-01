@@ -711,3 +711,54 @@ it('shows the filter helper only for an active filter when more pages exist', as
   expect(host.textContent).toContain('notifications.loadedOnly');
   await act(async () => root.unmount());
 });
+
+it('does not auto-read hidden assignment notifications when opening My tasks', async () => {
+  const host = document.createElement('div');
+  const root = createRoot(host);
+  const items = [
+    { ...baseNotification, id: 'read-comment', type: 'comment' },
+    {
+      ...baseNotification,
+      id: 'task',
+      type: 'task_assigned',
+      readAt: null,
+      commentId: null,
+      threadId: null,
+    },
+  ];
+  vi.mocked(api.get).mockImplementation(async (path: string) =>
+    path.startsWith('/me/notifications') ? { items, nextCursor: null } : { items: [] },
+  );
+  vi.mocked(api.post).mockResolvedValue({});
+  try {
+    await act(async () =>
+      root.render(
+        <MemoryRouter>
+          <NotificationList
+            fixed
+            unread={1}
+            onClose={vi.fn()}
+            onNavigate={vi.fn()}
+            onCount={vi.fn().mockResolvedValue(undefined)}
+          />
+        </MemoryRouter>,
+      ),
+    );
+    await act(async () =>
+      [...host.querySelectorAll('button')]
+        .find((button) => button.textContent === 'tasks.title')
+        ?.click(),
+    );
+    expect(host.querySelector('.notifications--tasks')).not.toBeNull();
+    expect(api.post).not.toHaveBeenCalled();
+    const down = new KeyboardEvent('keydown', {
+      key: 'ArrowDown',
+      bubbles: true,
+      cancelable: true,
+    });
+    host.querySelector('[role="dialog"]')?.dispatchEvent(down);
+    expect(down.defaultPrevented).toBe(false);
+  } finally {
+    await act(async () => root.unmount());
+  }
+});

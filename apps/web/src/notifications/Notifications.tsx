@@ -391,6 +391,7 @@ export function NotificationList({
   useEffect(() => {
     if (
       fixed &&
+      filter !== 'tasks' &&
       !mobile &&
       filteredItems.length > 0 &&
       (!selectedId || !filteredItems.some((n) => n.id === selectedId))
@@ -403,7 +404,7 @@ export function NotificationList({
         }
       }
     }
-  }, [fixed, mobile, filteredItems, selectedId, markRead]);
+  }, [fixed, filter, mobile, filteredItems, selectedId, markRead]);
 
   const selectNotification = useCallback(
     (n: Notification, options?: { deferRead?: boolean }) => {
@@ -443,6 +444,7 @@ export function NotificationList({
           onClose();
           return;
         }
+        if (filter === 'tasks') return;
         if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
         e.preventDefault();
         // Enter uses the focused button's native click, including detail and action buttons.
