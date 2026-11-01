@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-import { mkdtemp, writeFile } from 'node:fs/promises';
+import { mkdtemp, open, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { ThumbnailSize } from '@inkadra/shared';
 import { beforeAll, describe, expect, it } from 'vitest';
 import { photoshopFixture } from './fixtures/photoshop.ts';
 import { readPhotoshop } from './photoshop.ts';
@@ -33,6 +34,65 @@ describe('Photoshop saved composite', () => {
     });
     expect(result.layerCount).toBe(0);
   });
+  it('subsamples a large sparse raw composite into a bounded buffer', async () => {
+    const fixture = photoshopFixture();
+    const header = Buffer.from(
+      fixture.data.subarray(0, fixture.data.length - fixture.expected.length),
+    );
+    const width = 10_000;
+    const height = 9_999;
+    header.writeUInt32BE(height, 14);
+    header.writeUInt32BE(width, 18);
+    const path = join(dir, 'large-sparse.psd');
+    const file = await open(path, 'w');
+    try {
+      await file.truncate(header.length + width * height * 3);
+      await file.write(header, 0, header.length, 0);
+      for (const [channel, x, y, value] of [
+        [0, 5, 5, 17],
+        [0, 6, 5, 222],
+        [2, 9995, 9995, 99],
+        [1, 0, 0, 33],
+      ] as const) {
+        await file.write(
+          Buffer.from([value]),
+          0,
+          1,
+          header.length + channel * width * height + y * width + x,
+        );
+      }
+    } finally {
+      await file.close();
+    }
+    const { pixels } = await readPhotoshop(path);
+    expect(pixels?.width).toBe(2000);
+    expect(pixels?.height).toBe(2000);
+    expect(pixels?.data.length).toBe(2000 * 2000 * 3);
+    expect(pixels?.data.length).toBeLessThanOrEqual(
+      Math.max(...ThumbnailSize.options.map(Number)) ** 2 * 3,
+    );
+    expect(pixels?.data[1]).toBe(33);
+    expect(pixels?.data[(2000 + 1) * 3]).toBe(17);
+    expect(pixels?.data[(2000 * 2000 - 1) * 3 + 2]).toBe(99);
+  });
+
+  it('still validates packed rows that are not retained in the subsampled output', async () => {
+    const header = Buffer.from(photoshopFixture({ gray: true, rle: true }).data.subarray(0, 44));
+    header.writeUInt32BE(2049, 18);
+    const row = Buffer.concat([
+      ...Array.from({ length: 16 }, () => Buffer.from([129, 7])),
+      Buffer.from([0, 7]),
+    ]);
+    header.writeUInt16BE(row.length, 40);
+    header.writeUInt16BE(row.length, 42);
+    const valid = await decode(Buffer.concat([header, row, row]));
+    expect(valid.pixels?.width).toBe(1025);
+    expect(valid.pixels?.height).toBe(1);
+    expect(valid.pixels?.data.every((value) => value === 7)).toBe(true);
+    header.writeUInt16BE(1, 42);
+    expect((await decode(Buffer.concat([header, row, Buffer.from([128])]))).pixels).toBeNull();
+  });
+
   it.each([1, 2])('reads the absolute signed layer count in v%s', async (version) => {
     expect((await decode(photoshopFixture({ version, layers: -24 }).data)).layerCount).toBe(24);
   });

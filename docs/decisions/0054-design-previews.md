@@ -5,13 +5,17 @@ Accepted, 2026-11. Extends media worker decision 0048 and file card family #325.
 Design files stay file assets and downloads always serve the original. Their cards reuse the
 existing picture preview, footer and design badge tokens. No document schema or migration.
 
-PSD/PSB prefer the saved full-resolution composite, without rendering layers. The bundled
+PSD/PSB prefer the saved composite, without rendering layers. The bundled
 sharp/libvips has no PSD loader; ImageMagick is absent. The media image's FFmpeg decoder
 accepts PSD v1 but rejects PSB v2 ([decoder](https://github.com/FFmpeg/FFmpeg/blob/master/libavcodec/psd.c)).
 A bounded reader handles both versions using the [Adobe specification](https://www.adobe.com/devnet-apps/photoshop/fileformatashtml/):
 8/16-bit RGB or Grayscale, raw or PackBits RLE. It seeks past colour/resources/layer sections,
 reads one row at a time and interleaves only colour channels; extra alpha is ignored for the
-flattened preview. High bytes downsample 16-bit samples to 8-bit. Limits: 30,000 px per side,
+flattened preview. Every row is still read/unpacked and validated, but only every nth row
+and column is stored, with `n = ceil(longest side / largest ThumbnailSize)` (at least 1).
+The largest variant is 2048 px, so the RGB output buffer is at most 2048×2048×3 bytes
+(12 MiB), independent of the source's pixel count. Returned dimensions describe this sampled
+preview. High bytes downsample 16-bit samples to 8-bit. Limits: 30,000 px per side,
 100 MP total, 30 seconds, exact row and section bounds, and the existing 2 GiB source cap.
 Unsupported modes, ZIP compression and malformed composites fall back to exiftool's
 PhotoshopThumbnail under the existing runner (30 seconds, 2 GiB address space, 64 MiB output,

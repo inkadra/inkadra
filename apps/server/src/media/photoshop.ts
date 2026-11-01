@@ -1,5 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 import { open } from 'node:fs/promises';
+import { ThumbnailSize } from '@inkadra/shared';
+
+const PREVIEW_SIDE = Math.max(...ThumbnailSize.options.map(Number));
 
 /** Saved composite only; no layer rendering, colour profiles or ZIP prediction. */
 export async function readPhotoshop(file: string) {
@@ -96,7 +99,11 @@ export async function readPhotoshop(file: string) {
       if (total !== size - offset) throw new Error('Invalid packed image length');
     } else if (rowBytes * height * channels !== size - offset)
       throw new Error('Invalid raw image length');
-    const data = Buffer.alloc(width * height * colourChannels);
+    // Store only what the largest variant can use, while validating every source row.
+    const step = Math.max(1, Math.ceil(Math.max(width, height) / PREVIEW_SIDE));
+    const previewWidth = Math.ceil(width / step);
+    const previewHeight = Math.ceil(height / step);
+    const data = Buffer.alloc(previewWidth * previewHeight * colourChannels);
     for (let channel = 0; channel < channels; channel++) {
       for (let y = 0; y < height; y++) {
         const rowIndex = channel * height + y;
@@ -108,14 +115,23 @@ export async function readPhotoshop(file: string) {
         const encoded = await read(offset, n);
         offset += n;
         const row = lengths ? unpackRow(encoded, rowBytes) : encoded;
-        if (channel >= colourChannels) continue;
-        for (let x = 0; x < width; x++) {
+        if (channel >= colourChannels || y % step !== 0) continue;
+        for (let x = 0; x < width; x += step) {
           // PSD 16-bit samples are big-endian: the high byte gives an 8-bit preview.
-          data[(y * width + x) * colourChannels + channel] = row[x * (depth / 8)] ?? 0;
+          data[((y / step) * previewWidth + x / step) * colourChannels + channel] =
+            row[x * (depth / 8)] ?? 0;
         }
       }
     }
-    return { pixels: { data, width, height, channels: colourChannels as 1 | 3 }, layerCount };
+    return {
+      pixels: {
+        data,
+        width: previewWidth,
+        height: previewHeight,
+        channels: colourChannels as 1 | 3,
+      },
+      layerCount,
+    };
   } catch {
     return { pixels: null, layerCount };
   } finally {
