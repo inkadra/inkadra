@@ -3062,7 +3062,7 @@
 .moodboard__side li button:hover {
   background: var(--ink-surface-2);
 }
-.moodboard__side li button[aria-pressed='true'] {
+.moodboard__side li button[aria-pressed="true"] {
   background: var(--ink-accent-soft-bg);
   color: var(--ink-accent-soft-fg);
 }
@@ -3120,7 +3120,7 @@
 .moodboard__chip:hover {
   color: var(--ink-text-primary);
 }
-.moodboard__chip[aria-pressed='true'] {
+.moodboard__chip[aria-pressed="true"] {
   background: var(--ink-accent-soft-bg);
   color: var(--ink-accent-soft-fg);
 }
@@ -3140,11 +3140,11 @@
   background: var(--ink-surface-float);
   box-shadow: var(--ink-shadow-menu);
 }
-.moodboard__popover [role='menu'] {
+.moodboard__popover [role="menu"] {
   display: flex;
   flex-direction: column;
 }
-.moodboard__popover [role='menuitem'] {
+.moodboard__popover [role="menuitem"] {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -3157,7 +3157,7 @@
   text-align: left;
   cursor: pointer;
 }
-.moodboard__popover [role='menuitem']:hover {
+.moodboard__popover [role="menuitem"]:hover {
   background: var(--ink-surface-2);
 }
 .moodboard__popover .ink-input {
@@ -3273,7 +3273,10 @@ button.moodboard__card:focus-visible {
   color: rgb(0 0 0 / 0.75);
 }
 .moodboard__card--color code {
-  font: 600 11px ui-monospace, Menlo, monospace;
+  font:
+    600 11px ui-monospace,
+    Menlo,
+    monospace;
 }
 .moodboard__placeholder {
   display: grid;
