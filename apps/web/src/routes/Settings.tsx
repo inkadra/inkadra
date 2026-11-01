@@ -168,7 +168,7 @@ export function Preferences() {
   const timeFormat =
     prefs.timeFormat === 'auto' ? (browserClock ? '12h' : '24h') : prefs.timeFormat;
   const toggle = (
-    key: 'dotGrid' | 'snapToGrid' | 'doubleClickNote' | 'undoButtons',
+    key: 'dotGrid' | 'snapToGrid' | 'doubleClickNote' | 'keepAroundContent' | 'undoButtons',
     label: string,
     help: string,
   ) => (
@@ -271,6 +271,11 @@ export function Preferences() {
             'doubleClickNote',
             t('settingsUi.preferences.doubleClick'),
             t('settingsUi.preferences.doubleClickHelp'),
+          )}
+          {toggle(
+            'keepAroundContent',
+            t('settingsUi.preferences.keepAround'),
+            t('settingsUi.preferences.keepAroundHelp'),
           )}
           {toggle(
             'undoButtons',

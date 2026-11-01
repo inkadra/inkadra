@@ -139,6 +139,7 @@ const KEYWORD_PAIRS: Record<string, [string, string][]> = {
     ['Dot grid', 'Griglia a punti'],
     ['Snap to grid', 'Aggancia alla griglia'],
     ['Double-click creates a note', 'Doppio clic crea una nota'],
+    ['Keep the board around its content', 'Mantieni la board attorno al contenuto'],
     ['Undo and redo buttons', 'Pulsanti Annulla e Ripeti'],
   ],
   toolbar: [

@@ -694,7 +694,8 @@
       "files_other": "{{count}} files",
       "boards_one": "{{count}} board",
       "boards_other": "{{count}} boards"
-    }
+    },
+    "history": "Undo and redo"
   },
   "tags": {
     "title": "Tags",
@@ -2159,7 +2160,9 @@
       "doubleClick": "Double-click on empty canvas creates a note",
       "doubleClickHelp": "Double tap too on phones and tablets",
       "undoButtons": "Undo and redo buttons on the board",
-      "undoButtonsHelp": "Ctrl/⌘ Z works either way"
+      "undoButtonsHelp": "Ctrl/⌘ Z works either way",
+      "keepAround": "Keep the board around its content",
+      "keepAroundHelp": "You cannot get lost in empty space: the area grows as you add or move cards"
     },
     "notifications": {
       "short": {
@@ -2227,7 +2230,7 @@
     "noResults": "No settings found",
     "keywords": {
       "account": "Name, Email, Profile photo, Password, Two-step verification (2FA), Backup codes, Sign-in methods, Sessions, Devices, Apps and tokens, Delete account",
-      "preferences": "Theme, Dark theme, Light theme, Language, Continue playing videos off-screen, Date format, Time format, Dot grid, Snap to grid, Double-click creates a note, Undo and redo buttons",
+      "preferences": "Theme, Dark theme, Light theme, Language, Continue playing videos off-screen, Date format, Time format, Dot grid, Snap to grid, Double-click creates a note, Keep the board around its content, Undo and redo buttons",
       "notifications": "Email notifications, Mentions, Replies, Reviews, Daily digest, Inbox, Comments on your cards",
       "members": "Invite members, Invitations, Invitation link, Role, Administrators, Deactivate account, Reactivate account, People",
       "workspace": "Space used, Uploaded files, Storage",

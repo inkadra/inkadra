@@ -5201,6 +5201,10 @@
             "type": "boolean",
             "description": "Undo and redo buttons on the board."
           },
+          "keepAroundContent": {
+            "type": "boolean",
+            "description": "Boards pan only around their content plus a margin, an area that grows with it (#324)."
+          },
           "toolbar": {
             "type": [
               "array",
@@ -5222,6 +5226,7 @@
           "snapToGrid",
           "doubleClickNote",
           "undoButtons",
+          "keepAroundContent",
           "toolbar"
         ]
       },
@@ -5262,6 +5267,10 @@
           "undoButtons": {
             "type": "boolean",
             "description": "Undo and redo buttons on the board."
+          },
+          "keepAroundContent": {
+            "type": "boolean",
+            "description": "Boards pan only around their content plus a margin, an area that grows with it (#324)."
           },
           "toolbar": {
             "type": [

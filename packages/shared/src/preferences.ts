@@ -30,6 +30,10 @@ const fields = {
     description: 'A double click or double tap on empty canvas creates a note.',
   }),
   undoButtons: z.boolean().openapi({ description: 'Undo and redo buttons on the board.' }),
+  keepAroundContent: z.boolean().openapi({
+    description:
+      'Boards pan only around their content plus a margin, an area that grows with it (#324).',
+  }),
   toolbar: z
     .array(z.string().min(1).max(40))
     .max(40)
@@ -58,6 +62,7 @@ export const DEFAULT_USER_PREFERENCES: UserPreferences = {
   snapToGrid: false,
   doubleClickNote: true,
   undoButtons: false,
+  keepAroundContent: true,
   toolbar: null,
 };
 

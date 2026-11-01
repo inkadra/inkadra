@@ -999,49 +999,55 @@ export function Minimap({
   );
 }
 
+/** Undo and redo, for people who turned the buttons on (#302): a small pill of their own. */
+export function HistoryControls({ onUndo, onRedo }: { onUndo: () => void; onRedo: () => void }) {
+  const { t } = useTranslation();
+  return (
+    <fieldset className="zoom zoom--history" aria-label={t('board.history')}>
+      <button
+        type="button"
+        aria-label={t('board.palette.undo')}
+        aria-keyshortcuts={isMac() ? 'Meta+Z' : 'Control+Z'}
+        data-ink-tooltip={`${t('board.palette.undo')} (${mod()}Z)`}
+        onClick={onUndo}
+      >
+        <Icon name="undo" size={14} />
+      </button>
+      <button
+        type="button"
+        className="zoom__redo"
+        aria-label={t('board.palette.redo')}
+        aria-keyshortcuts={isMac() ? 'Meta+Shift+Z' : 'Control+Shift+Z'}
+        data-ink-tooltip={`${t('board.palette.redo')} (${mod()}⇧Z)`}
+        onClick={onRedo}
+      >
+        <Icon name="undo" size={14} />
+      </button>
+    </fieldset>
+  );
+}
+
 export function ZoomControls({
   zoom,
   onZoom,
   snap,
-  history,
+  zoomOutDisabled = false,
 }: {
   zoom: number;
+  /** At the farthest zoom out of a board kept around its content (#324). */
+  zoomOutDisabled?: boolean;
   onZoom: (to: 'in' | 'out' | 'reset' | 'fit') => void;
   /** The magnet (#296): snap to grid, for people who can edit. */
   snap?: { on: boolean; onToggle: () => void } | undefined;
-  /** Undo and redo buttons, for people who turned them on (#302). */
-  history?: { onUndo: () => void; onRedo: () => void } | undefined;
 }) {
   const { t } = useTranslation();
   return (
     <fieldset className="zoom" aria-label={t('board.zoom.label')}>
-      {history && (
-        <>
-          <button
-            type="button"
-            aria-label={t('board.palette.undo')}
-            aria-keyshortcuts={isMac() ? 'Meta+Z' : 'Control+Z'}
-            data-ink-tooltip={`${t('board.palette.undo')} (${mod()}Z)`}
-            onClick={history.onUndo}
-          >
-            <Icon name="undo" size={14} />
-          </button>
-          <button
-            type="button"
-            className="zoom__redo"
-            aria-label={t('board.palette.redo')}
-            aria-keyshortcuts={isMac() ? 'Meta+Shift+Z' : 'Control+Shift+Z'}
-            data-ink-tooltip={`${t('board.palette.redo')} (${mod()}⇧Z)`}
-            onClick={history.onRedo}
-          >
-            <Icon name="undo" size={14} />
-          </button>
-        </>
-      )}
       <button
         type="button"
         aria-label={t('board.zoom.out')}
         data-ink-tooltip={t('board.zoom.out')}
+        disabled={zoomOutDisabled}
         onClick={() => onZoom('out')}
       >
         <Icon name="minus" size={14} />

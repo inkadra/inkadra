@@ -694,7 +694,8 @@
       "files_other": "{{count}} file",
       "boards_one": "{{count}} board",
       "boards_other": "{{count}} board"
-    }
+    },
+    "history": "Annulla e ripeti"
   },
   "tags": {
     "title": "Tag",
@@ -2159,7 +2160,9 @@
       "doubleClick": "Doppio clic sul vuoto crea una nota",
       "doubleClickHelp": "Anche doppio tocco su telefono e tablet",
       "undoButtons": "Pulsanti Annulla e Ripeti sulla board",
-      "undoButtonsHelp": "Ctrl/⌘ Z funziona comunque"
+      "undoButtonsHelp": "Ctrl/⌘ Z funziona comunque",
+      "keepAround": "Mantieni la board attorno al contenuto",
+      "keepAroundHelp": "Non puoi perderti nel vuoto: l’area cresce quando aggiungi o sposti card"
     },
     "notifications": {
       "short": {
@@ -2227,7 +2230,7 @@
     "noResults": "Nessuna impostazione trovata",
     "keywords": {
       "account": "Nome, Email, Foto profilo, Password, Verifica in due passaggi (2FA), Codici di riserva, Metodi di accesso, Sessioni, Dispositivi, App e token, Elimina account",
-      "preferences": "Tema, Tema scuro, Tema chiaro, Lingua, Continua a riprodurre i video fuori schermo, Formato data, Formato ora, Griglia a punti, Aggancia alla griglia, Doppio clic crea una nota, Pulsanti Annulla e Ripeti",
+      "preferences": "Tema, Tema scuro, Tema chiaro, Lingua, Continua a riprodurre i video fuori schermo, Formato data, Formato ora, Griglia a punti, Aggancia alla griglia, Doppio clic crea una nota, Mantieni la board attorno al contenuto, Pulsanti Annulla e Ripeti",
       "notifications": "Notifiche email, Menzioni, Risposte, Revisioni, Riepilogo giornaliero, Inbox, Commenti sulle tue card",
       "members": "Invita membri, Inviti, Link di invito, Ruolo, Amministratori, Disattiva account, Riattiva account, Persone",
       "workspace": "Spazio usato, File caricati, Archiviazione",

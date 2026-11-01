@@ -31,6 +31,81 @@
   background-position: 0 0;
   pointer-events: none;
 }
+/* A board kept around its content (#324): past the area's edge the background covers the
+   dots, and the edge pulled past glows softly. Moved with transforms and opacity only. */
+.canvas__edges,
+.canvas__glow {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+.canvas__edge {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  --edge-solid: var(--ink-bg-canvas);
+}
+.canvas__edge--left {
+  background: linear-gradient(to left, transparent, var(--edge-solid) 64px);
+}
+.canvas__edge--right {
+  background: linear-gradient(to right, transparent, var(--edge-solid) 64px);
+}
+.canvas__edge--top {
+  background: linear-gradient(to top, transparent, var(--edge-solid) 64px);
+}
+.canvas__edge--bottom {
+  background: linear-gradient(to bottom, transparent, var(--edge-solid) 64px);
+}
+.canvas__glow > span {
+  position: absolute;
+  opacity: 0;
+  will-change: opacity;
+  --glow: color-mix(in srgb, var(--ink-accent-primary) 14%, transparent);
+}
+.canvas__glow-left,
+.canvas__glow-right {
+  top: 0;
+  bottom: 0;
+  width: 28px;
+}
+.canvas__glow-top,
+.canvas__glow-bottom {
+  left: 0;
+  right: 0;
+  height: 28px;
+}
+.canvas__glow > .canvas__glow-left {
+  left: 0;
+  opacity: var(--pull-left, 0);
+  background: linear-gradient(to right, var(--glow), transparent);
+}
+.canvas__glow > .canvas__glow-right {
+  right: 0;
+  opacity: var(--pull-right, 0);
+  background: linear-gradient(to left, var(--glow), transparent);
+}
+.canvas__glow > .canvas__glow-top {
+  top: 0;
+  opacity: var(--pull-top, 0);
+  background: linear-gradient(to bottom, var(--glow), transparent);
+}
+.canvas__glow > .canvas__glow-bottom {
+  bottom: 0;
+  opacity: var(--pull-bottom, 0);
+  background: linear-gradient(to top, var(--glow), transparent);
+}
+.canvas--moving .canvas__edge {
+  will-change: transform;
+}
+.zoom button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
 .canvas__world {
   position: absolute;
   left: 0;
@@ -2046,11 +2121,10 @@ body:has(.colorpicker) .card-reactions {
 .zoom .zoom__value {
   color: var(--ink-text-primary);
 }
-/* Undo and redo (#302): the group grows past the minimap's width instead of crowding. */
-.zoom:has(.zoom__redo) {
+/* Undo and redo (#302): their own small pill above the minimap, which keeps its width. */
+.zoom.zoom--history {
   align-self: flex-start;
   gap: 2px;
-  width: max-content;
 }
 .zoom .zoom__redo svg {
   transform: scaleX(-1);
@@ -4000,6 +4074,7 @@ button.card__play {
     pointer-events: none;
   }
   .canvas--moving :is(.toolbar, .minimap, .zoom, .unsorted__toggle)::before {
+    background: var(--ink-surface-float);
     -webkit-backdrop-filter: none;
     backdrop-filter: none;
   }
@@ -4017,6 +4092,10 @@ button.card__play {
     left: calc(var(--ink-board-left, 0px) + 12px);
     /* Above the corner: the minimap (90 + its border), the gap and the zoom. */
     bottom: calc(12px + 92px + 8px + 36px + 8px);
+  }
+  /* With undo and redo on, the corner has one more pill to stay above. */
+  .canvas:has(.zoom--history) .unsorted {
+    bottom: calc(12px + 36px + 8px + 92px + 8px + 36px + 8px);
   }
   .canvas .uploads {
     right: 12px;
