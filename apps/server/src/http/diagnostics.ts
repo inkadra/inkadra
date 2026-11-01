@@ -6,6 +6,7 @@ import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { type Auth, countUsers } from '../auth.ts';
 import { type Config, VERSION } from '../config.ts';
 import type { Database } from '../db/client.ts';
+import { readVideoEncoder } from '../media/encoder-setting.ts';
 import { addressBucket, RateLimiter } from '../rate-limits.ts';
 import type { Storage } from '../storage.ts';
 import { requireSession } from './auth-routes.ts';
@@ -111,6 +112,19 @@ export function registerDiagnostics(app: FastifyInstance, deps: Deps) {
       add('storage', 'ok', null, config.STORAGE_DRIVER);
     } catch (err) {
       add('storage', 'error', config.STORAGE_DRIVER, message(err));
+    }
+
+    // Saved by the worker when it starts: the web role may run in another container.
+    const encoder = await readVideoEncoder(db).catch(() => null);
+    if (encoder) {
+      const forced = encoder.requested !== 'auto' && encoder.requested !== 'none';
+      const missed = forced && encoder.backend === 'software';
+      add(
+        'video_encoding',
+        missed ? 'warning' : 'ok',
+        missed ? `VIDEO_PROXY_HWACCEL=${encoder.requested}` : null,
+        encoder.label,
+      );
     }
 
     const body: Diagnostics = {

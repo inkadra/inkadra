@@ -38,8 +38,11 @@ if [ "$(id -u)" = 0 ]; then
     echo "inkadra: giving $data to uid $uid:$gid (once, it belonged to another user)" >&2
     chown -R "$uid:$gid" "$data"
   fi
-  # Switching from root to another user clears every capability.
-  exec setpriv --reuid="$uid" --regid="$gid" --init-groups -- "$0" "$@"
+  # Switching from root to another user clears every capability. node keeps its own groups and
+  # those compose adds with group_add (the render group of /dev/dri for hardware encoding), but
+  # never the root group.
+  groups=$({ id -G node; id -G; } | tr ' ' '\n' | grep -vx 0 | sort -un | paste -sd, -)
+  exec setpriv --reuid="$uid" --regid="$gid" --groups="$groups" -- "$0" "$@"
 fi
 
 if ! mkdir -p "${TMPDIR:-$data/tmp}" 2>/dev/null || [ ! -w "$data" ]; then

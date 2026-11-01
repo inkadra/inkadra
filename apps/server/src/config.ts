@@ -86,9 +86,21 @@ const Env = z.object({
     .default('5M'),
   /**
    * Copies made at once by each worker. Each takes up to 4 GiB of address space (about 1 to
-   * 2 GB of RAM in practice for 1080p) and VIDEO_PROXY_THREADS cores.
+   * 2 GB of RAM in practice for 1080p) and VIDEO_PROXY_THREADS cores. Unset: 1 with libx264,
+   * 2 with a hardware encoder (consumer NVIDIA cards allow a handful of sessions at once).
    */
-  VIDEO_PROXY_CONCURRENCY: z.coerce.number().int().min(1).max(4).default(1),
+  VIDEO_PROXY_CONCURRENCY: z.coerce.number().int().min(1).max(4).optional(),
+  /**
+   * Hardware encoding of playable copies (#358): `auto` tries NVENC, QSV then VAAPI with a
+   * one-second test encode when the worker starts; `none` keeps libx264. A copy the GPU fails
+   * is made again with libx264.
+   */
+  VIDEO_PROXY_HWACCEL: z.enum(['auto', 'nvenc', 'qsv', 'vaapi', 'none']).default('auto'),
+  /** Render node of QSV and VAAPI. */
+  VIDEO_PROXY_VAAPI_DEVICE: z
+    .string()
+    .regex(/^\/dev\/[\w./-]+$/, 'Use a device path such as /dev/dri/renderD128')
+    .default('/dev/dri/renderD128'),
   /** Encoder threads of one copy; it runs at a lower priority (nice 10) than the web role. */
   VIDEO_PROXY_THREADS: z.coerce.number().int().min(1).max(16).default(2),
   /**

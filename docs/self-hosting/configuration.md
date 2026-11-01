@@ -43,17 +43,98 @@ or share the real `.env`.
 These need the `-media` image (see [The image](README.md#the-image)); the standard image has no
 media tools and ignores them. The policy is in [decision 0048](../decisions/0048-media-worker-previews.md).
 
-| Variable                      | Default | Meaning                                                                                                                                                           |
-| ----------------------------- | ------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `RAW_PREVIEWS`                | `true`  | Thumbnails of camera RAW files (CR2, CR3, NEF, ARW, DNG, RAF, ORF, RW2) from the JPEG preview the camera embedded                                                 |
-| `PDF_PREVIEWS`                | `true`  | Thumbnails of page 1 of PDFs and their page count, rendered once on upload                                                                                        |
-| `VIDEO_PROXIES`               | `true`  | Make a playable H.264/AAC MP4 of videos browsers cannot play (ProRes, MKV, AVI, MXF, HEVC). `false` saves the storage                                             |
-| `VIDEO_PROXY_MAX_DURATION`    | `7200`  | Longest video, in seconds, that gets a playable copy; `0` for no limit                                                                                            |
-| `VIDEO_PROXY_MAX_SOURCE_SIZE` | `20GB`  | Largest video that gets a playable copy, as bytes or with a unit; `0` for no limit                                                                                |
-| `VIDEO_PROXY_RESOLUTION`      | `1080`  | Shorter side of the copy in pixels (`1080` gives 1920×1080 at most); never upscaled                                                                               |
-| `VIDEO_PROXY_BITRATE`         | `5M`    | Peak video bitrate of the copy (`5M`, `2500k`); about 40 MB per minute at `5M`                                                                                    |
-| `VIDEO_PROXY_CONCURRENCY`     | `1`     | Copies one worker makes at once, at most `4`. Count 1 to 2 GB of RAM per copy at 1080p (each is capped at 4 GiB of address space) and `VIDEO_PROXY_THREADS` cores |
-| `VIDEO_PROXY_THREADS`         | `2`     | Encoder threads of one copy. Copies run at a lower priority (`nice 10`) than the web role                                                                         |
+| Variable                      | Default               | Meaning                                                                                                                                                                                                               |
+| ----------------------------- | --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `RAW_PREVIEWS`                | `true`                | Thumbnails of camera RAW files (CR2, CR3, NEF, ARW, DNG, RAF, ORF, RW2) from the JPEG preview the camera embedded                                                                                                     |
+| `PDF_PREVIEWS`                | `true`                | Thumbnails of page 1 of PDFs and their page count, rendered once on upload                                                                                                                                            |
+| `VIDEO_PROXIES`               | `true`                | Make a playable H.264/AAC MP4 of videos browsers cannot play (ProRes, MKV, AVI, MXF, HEVC). `false` saves the storage                                                                                                 |
+| `VIDEO_PROXY_MAX_DURATION`    | `7200`                | Longest video, in seconds, that gets a playable copy; `0` for no limit                                                                                                                                                |
+| `VIDEO_PROXY_MAX_SOURCE_SIZE` | `20GB`                | Largest video that gets a playable copy, as bytes or with a unit; `0` for no limit                                                                                                                                    |
+| `VIDEO_PROXY_RESOLUTION`      | `1080`                | Shorter side of the copy in pixels (`1080` gives 1920×1080 at most); never upscaled                                                                                                                                   |
+| `VIDEO_PROXY_BITRATE`         | `5M`                  | Peak video bitrate of the copy (`5M`, `2500k`); about 40 MB per minute at `5M`                                                                                                                                        |
+| `VIDEO_PROXY_CONCURRENCY`     | `1`, `2` with a GPU   | Copies one worker makes at once, at most `4`. Count 1 to 2 GB of RAM per copy at 1080p (each is capped at 4 GiB of address space) and `VIDEO_PROXY_THREADS` cores. Unset, it is `2` when a hardware encoder was found |
+| `VIDEO_PROXY_THREADS`         | `2`                   | Encoder threads of one copy. Copies run at a lower priority (`nice 10`) than the web role                                                                                                                             |
+| `VIDEO_PROXY_HWACCEL`         | `auto`                | Hardware encoding of the copies: `auto`, `nvenc`, `qsv`, `vaapi` or `none` (libx264 only). See [Hardware video encoding](#hardware-video-encoding)                                                                    |
+| `VIDEO_PROXY_VAAPI_DEVICE`    | `/dev/dri/renderD128` | Render node used by `qsv` and `vaapi`                                                                                                                                                                                 |
+
+### Hardware video encoding
+
+With the `-media` image, the worker can make playable copies on a GPU instead of the CPU:
+NVIDIA cards with **NVENC**, Intel GPUs (integrated ones too, such as the N100) with **Quick
+Sync** (`qsv`) or **VAAPI**, and AMD GPUs with **VAAPI**. When the worker starts, `auto` tries
+NVENC, then Quick Sync, then VAAPI: each needs its encoder in ffmpeg, the device, and a
+one-second test encode that works. The first that passes is used, and the log says which
+(`video encoding: Intel Quick Sync (Intel, /dev/dri/renderD128, low power)`), as does
+**Settings → Diagnostics** (_Video encoding_). Naming one backend tries only that one; if it
+does not work the worker falls back to libx264 and Diagnostics shows a warning.
+
+The copy is the same whatever encodes it: H.264 High and AAC in an MP4, the shorter side at
+most `VIDEO_PROXY_RESOLUTION`, `VIDEO_PROXY_BITRATE` at peak, and the same length, size and
+time limits. H.264, HEVC, VP9 and AV1 in 8-bit 4:2:0 (10-bit for HEVC, VP9 and AV1) are also
+decoded and scaled on the GPU; ProRes, DNxHD and 4:2:2 sources are decoded on the CPU and only
+encoded on the GPU. **If the GPU fails on a file** (a profile it does not take, a busy device),
+that copy is made again with libx264: a video never ends up without its copy because of the GPU.
+NVENC runs without the 4 GiB address-space cap (CUDA reserves much more virtual memory than it
+uses); VAAPI and Quick Sync, which map GPU surfaces into the process, get 8 GiB.
+
+**Intel and AMD (`/dev/dri`).** Pass the render node to the container and give it the group
+that owns it on the host (`stat -c %g /dev/dri/renderD128`), with
+[`deploy/compose.vaapi.yaml`](../../deploy/compose.vaapi.yaml):
+
+```sh
+echo RENDER_GID=$(stat -c %g /dev/dri/renderD128) >> .env
+docker compose -f compose.yaml -f deploy/compose.vaapi.yaml up -d
+```
+
+```yaml
+services:
+  inkadra: # `worker` in split mode
+    devices:
+      - /dev/dri:/dev/dri
+    group_add:
+      - "${RENDER_GID}" # group of /dev/dri/renderD128 on the host
+      - "44" # video, where the host gives the node to it
+    environment:
+      VIDEO_PROXY_HWACCEL: auto # or qsv / vaapi
+```
+
+The image has Intel's media driver and the oneVPL runtime of Quick Sync (amd64) and Mesa's
+VAAPI drivers for AMD, all from Debian main. Intel's free driver only has the low-power encoder
+(VDEnc, Gen 9 and later, including Alder Lake-N): the worker tries it when the normal one
+fails. Older Intel GPUs (before Broadwell) are not supported. `docker compose exec inkadra
+vainfo --display drm --device /dev/dri/renderD128` lists what the driver offers.
+
+**NVIDIA.** Install the driver and the
+[NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/)
+on the host, then use [`deploy/compose.nvidia.yaml`](../../deploy/compose.nvidia.yaml):
+
+```yaml
+services:
+  inkadra: # `worker` in split mode
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu, video, compute, utility]
+    environment:
+      NVIDIA_DRIVER_CAPABILITIES: compute,video,utility
+      VIDEO_PROXY_HWACCEL: auto # or nvenc
+```
+
+On older Docker versions, `runtime: nvidia` with `NVIDIA_VISIBLE_DEVICES: all` does the same.
+Consumer GeForce cards allow a limited number of NVENC sessions at once (8 with current drivers,
+fewer with old ones): keep `VIDEO_PROXY_CONCURRENCY` under it, counting other programs (Plex,
+Jellyfin) that use the card.
+
+**Checking it.** After starting the stack:
+
+1. the worker log has `video encoding: …` with the backend, not `Software (libx264)`;
+2. Settings → Diagnostics shows the same under _Video encoding_;
+3. upload a ProRes or HEVC clip: the copy is made, and `nvidia-smi` (NVIDIA) or
+   `intel_gpu_top` (Intel, on the host) shows the encoder busy meanwhile;
+4. the worker log has no `hardware encoding failed` for it (which would mean libx264 made it).
 
 ## Compose only
 

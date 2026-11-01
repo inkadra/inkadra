@@ -19,6 +19,8 @@ import { createApp } from './http/app.ts';
 import { sweepClipTemp } from './http/clip-routes.ts';
 import type { Jobs } from './jobs.ts';
 import { createMailer } from './mailer.ts';
+import { chooseVideoEncoder, forgetVideoEncoder } from './media/encoder-setting.ts';
+import type { VideoEncoder } from './media/hwaccel.ts';
 import { sweepJobDirs } from './media/scratch.ts';
 import {
   createQueues,
@@ -116,6 +118,17 @@ async function main() {
   // Scratch folders of media jobs a crash left behind (not those of a job still running).
   const sweptJobs = await sweepJobDirs(tmpDir);
   if (sweptJobs > 0) log.info({ swept: sweptJobs }, 'removed stale media job folders');
+  // The encoder of playable copies, where they are made: tried once, at start (#358).
+  let encoder: VideoEncoder | undefined;
+  if (command === 'worker' || command === 'all' || (command === 'web' && !config.REDIS_URL)) {
+    if (config.VIDEO_PROXIES)
+      encoder = await chooseVideoEncoder(
+        db,
+        { mode: config.VIDEO_PROXY_HWACCEL, vaapiDevice: config.VIDEO_PROXY_VAAPI_DEVICE },
+        log,
+      );
+    else await forgetVideoEncoder(db);
+  }
   const media = {
     db,
     storage,
@@ -130,6 +143,7 @@ async function main() {
       resolution: config.VIDEO_PROXY_RESOLUTION,
       bitrate: config.VIDEO_PROXY_BITRATE,
       threads: config.VIDEO_PROXY_THREADS,
+      ...(encoder ? { encoder } : {}),
     },
   };
   const transfers = transferDeps(config);
@@ -142,7 +156,8 @@ async function main() {
     if (!config.REDIS_URL) throw new Error('REDIS_URL is required by the worker.');
     const workers = await startWorkers(config.REDIS_URL, log, {
       ...media,
-      proxyConcurrency: config.VIDEO_PROXY_CONCURRENCY,
+      proxyConcurrency:
+        config.VIDEO_PROXY_CONCURRENCY ?? (encoder && encoder.backend !== 'software' ? 2 : 1),
       mailer,
       publicUrl: config.PUBLIC_URL,
       instanceName: config.INSTANCE_NAME,

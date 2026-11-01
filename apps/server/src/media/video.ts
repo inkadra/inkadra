@@ -1,5 +1,13 @@
 import { spawn } from 'node:child_process';
 import { stat } from 'node:fs/promises';
+import {
+  encoderMemory,
+  FFMPEG_MEMORY,
+  gpuDecodes,
+  SOFTWARE_ENCODER,
+  type VideoEncoder,
+  videoPipeline,
+} from './hwaccel.ts';
 import { limitedCommand, runTool, toolEnv } from './tools.ts';
 
 export { type MediaTools, mediaTools, resetMediaTools } from './tools.ts';
@@ -11,9 +19,6 @@ export { type MediaTools, mediaTools, resetMediaTools } from './tools.ts';
  */
 const FORMATS = 'mov,mp4,m4a,3gp,3g2,mj2,matroska,webm,avi,mpeg,mpegts,mxf';
 const SAFE_INPUT = ['-protocol_whitelist', 'file', '-format_whitelist', FORMATS];
-
-/** Address space of one ffmpeg or ffprobe run: decoding 8K ProRes fits, a bomb does not. */
-const FFMPEG_MEMORY = 4 * 1024 ** 3;
 
 /** Video container from the first bytes, or null if it is not one ffmpeg should open. */
 export function sniffVideo(head: Uint8Array): string | null {
@@ -173,6 +178,8 @@ export interface ProxySettings {
   bitrate: string;
   /** Encoder threads of one copy. */
   threads: number;
+  /** Detected when the worker starts (VIDEO_PROXY_HWACCEL); libx264 if unset. */
+  encoder?: VideoEncoder;
 }
 
 export const DEFAULT_PROXY_SETTINGS: ProxySettings = {
@@ -260,33 +267,32 @@ export function proxyMaxBytes(info: VideoInfo, settings: ProxySettings, sourceBy
   return Math.ceil(capped + margin);
 }
 
-/** `5M` → `10M`: the rate-control buffer is two seconds at the peak rate. */
-const doubled = (bitrate: string) => {
-  const m = /^(\d+(?:\.\d+)?)([kKmM]?)$/.exec(bitrate);
-  return m ? `${Number(m[1]) * 2}${m[2]}` : bitrate;
-};
-
-/** ffmpeg arguments of the playable copy of `input`, progress on stdout. */
+/**
+ * ffmpeg arguments of the playable copy of `input`, progress on stdout, with `encoder` (the
+ * one of `settings`, else libx264). A remux uses no encoder at all.
+ */
 export function proxyArgs(
   input: string,
   output: string,
   info: VideoInfo,
   settings: ProxySettings,
   sourceBytes: number,
+  encoder: VideoEncoder = settings.encoder ?? SOFTWARE_ENCODER,
 ) {
   const copyVideo = copiesVideo(info, settings);
   const copyAudio = info.audioCodec === 'aac';
-  const r = settings.resolution;
-  // The shorter side at most `r` (1080 makes 1920×1080 or 1080×1920), never upscaled, even.
-  const scale =
-    `scale='if(gte(iw,ih),-2,min(${r},trunc(iw/2)*2))'` +
-    `:'if(gte(iw,ih),min(${r},trunc(ih/2)*2),-2)'`;
+  const pipeline = videoPipeline(encoder, {
+    resolution: settings.resolution,
+    bitrate: settings.bitrate,
+    gpu: !encoder.cpuDecode && gpuDecodes(info.videoCodec, info.pixelFormat),
+  });
   return [
     '-nostdin',
     '-v',
     'error',
     '-y',
     ...SAFE_INPUT,
+    ...(copyVideo ? [] : pipeline.input),
     '-i',
     input,
     // `V`, not `v`: video streams that are not cover art (attached pictures).
@@ -300,26 +306,7 @@ export function proxyArgs(
     '-1',
     '-map_chapters',
     '-1',
-    ...(copyVideo
-      ? ['-c:v', 'copy']
-      : [
-          '-vf',
-          scale,
-          '-c:v',
-          'libx264',
-          '-preset',
-          'veryfast',
-          '-crf',
-          '23',
-          '-maxrate',
-          settings.bitrate,
-          '-bufsize',
-          doubled(settings.bitrate),
-          '-pix_fmt',
-          'yuv420p',
-          '-profile:v',
-          'high',
-        ]),
+    ...(copyVideo ? ['-c:v', 'copy'] : ['-vf', pipeline.filter, ...pipeline.codec]),
     ...(copyAudio ? ['-c:a', 'copy'] : ['-c:a', 'aac', '-b:a', '128k', '-ac', '2']),
     '-threads',
     String(settings.threads),
@@ -352,13 +339,20 @@ export async function makeProxy(
   output: string,
   info: VideoInfo,
   settings: ProxySettings,
-  opts: { timeoutMs: number; sourceBytes: number; onProgress?: (percent: number) => void },
+  opts: {
+    timeoutMs: number;
+    sourceBytes: number;
+    /** Overrides the encoder of `settings`: the software retry of a failed hardware copy. */
+    encoder?: VideoEncoder;
+    onProgress?: (percent: number) => void;
+  },
 ): Promise<void> {
+  const encoder = opts.encoder ?? settings.encoder ?? SOFTWARE_ENCODER;
   const [file, argv] = await limitedCommand(
     ffmpeg,
-    proxyArgs(input, output, info, settings, opts.sourceBytes),
+    proxyArgs(input, output, info, settings, opts.sourceBytes, encoder),
     {
-      memoryBytes: FFMPEG_MEMORY,
+      memoryBytes: copiesVideo(info, settings) ? FFMPEG_MEMORY : encoderMemory(encoder),
       // Above -fs: ffmpeg stops cleanly at its own limit, the kernel only past it.
       fileBytes: proxyMaxBytes(info, settings, opts.sourceBytes) + 64 * 1024 * 1024,
       nice: true,

@@ -34,6 +34,15 @@ browser.
   ffmpeg starts. Jobs run in their own BullMQ queue, `media-proxies`, one at a time per worker
   (`VIDEO_PROXY_CONCURRENCY`, at most 4), two attempts, none after a timeout; a second pass of
   the asset queues it again. Without Redis they run one after the other in the web process.
+- **Hardware encoding** (#358). `VIDEO_PROXY_HWACCEL` (`auto` by default) lets the worker
+  encode copies with NVENC, Quick Sync or VAAPI. It picks the backend once, at start, with a
+  one-second test encode of each candidate, saves the choice for Diagnostics, and makes two
+  copies at once by default when one works. The output and every limit above stay the same;
+  sources the GPU decodes (H.264, HEVC, VP9, AV1 in 4:2:0) are decoded and scaled there too.
+  A copy the GPU fails is made again with libx264, so the GPU never leaves a video without
+  its copy. NVENC runs without the address-space cap, which CUDA cannot start under; VAAPI and Quick
+  Sync get 8 GiB. The image
+  only ships drivers from Debian main; NVIDIA's come from the host through its toolkit.
 - **Scratch files.** Every media job (copies, posters, RAW previews, PDF pages) works in a
   folder of its own, `DATA_DIR/tmp/job-*`, removed when it ends; folders older than 6 hours,
   left by a crash, are swept when the server starts.

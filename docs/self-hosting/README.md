@@ -142,7 +142,9 @@ version you pin, with `-media`) to use it. The server reports which of these it 
 [decision 0048](../decisions/0048-media-worker-previews.md) the limits.
 
 The `-media` image adds Debian's `ffmpeg`, `libimage-exiftool-perl` and `poppler-utils` packages
-and the libraries they depend on. Debian builds ffmpeg with GPL components, so that package is
+and the libraries they depend on, and the free VAAPI and Quick Sync drivers (`mesa-va-drivers`,
+`intel-media-va-driver`, `libmfx-gen1.2`, `libvpl2`, `vainfo`) for
+[hardware video encoding](configuration.md#hardware-video-encoding). Debian builds ffmpeg with GPL components, so that package is
 under the GPL (version 2 or later), and some of its libraries under the LGPL; poppler is under the
 GPL as well, and exiftool under the Perl licence (GPL or Artistic). Their licence texts are in the
 image under `/usr/share/doc/<package>/copyright`. The GPL is compatible with distributing Inkadra
@@ -159,6 +161,8 @@ after it; they combine, in this order:
 | `deploy/compose.split.yaml`         | `web`, `collab` and `worker` in separate containers         |
 | `deploy/compose.s3.yaml`            | Files in an S3-compatible bucket you already have           |
 | `deploy/compose.rustfs.yaml`        | Files in a bundled S3-compatible store (RustFS)             |
+| `deploy/compose.vaapi.yaml`         | Hardware video encoding on Intel or AMD GPUs (`-media`)     |
+| `deploy/compose.nvidia.yaml`        | Hardware video encoding on NVIDIA GPUs (`-media`)           |
 | `deploy/proxy/<proxy>/compose.yaml` | A reverse proxy in the stack: `caddy`, `traefik` or `nginx` |
 
 Split mode is for larger teams: you can restart or scale the parts on their own, and a busy

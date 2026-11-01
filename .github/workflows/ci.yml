@@ -294,6 +294,11 @@ jobs:
           docker run --rm --entrypoint exiftool "$IMAGE:ci-media" -ver
           docker run --rm --entrypoint pdftoppm "$IMAGE:ci-media" -v
           docker run --rm --entrypoint prlimit "$IMAGE:ci-media" --version
+          # Hardware encoding (#358): the encoders, the free VAAPI drivers and the Quick Sync runtime.
+          docker run --rm --entrypoint sh "$IMAGE:ci-media" -c \
+            'ffmpeg -hide_banner -encoders | grep -cE " h264_(nvenc|qsv|vaapi) " | grep -qx 3 &&
+             ls /usr/lib/x86_64-linux-gnu/dri/iHD_drv_video.so /usr/lib/x86_64-linux-gnu/dri/radeonsi_drv_video.so &&
+             ls /usr/lib/x86_64-linux-gnu/libmfx-gen.so.1.2* && command -v vainfo'
           docker image ls "$IMAGE"
       # ffmpeg brings its own libraries (codecs, X11, Mesa…): scan them like the standard image.
       - name: Fail on critical vulnerabilities that have a fix

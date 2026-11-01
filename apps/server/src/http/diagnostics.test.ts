@@ -6,6 +6,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createAuth } from '../auth.ts';
 import { loadConfig } from '../config.ts';
 import { createDatabase, runMigrations } from '../db/client.ts';
+import { instanceSetting } from '../db/schema.ts';
 import { testDeps } from '../test-deps.ts';
 import { createApp } from './app.ts';
 
@@ -93,6 +94,12 @@ describe.skipIf(!url)('diagnostics (needs DATABASE_URL)', () => {
     expect(signUp.statusCode).toBe(200);
     expect((await get(viaProxy)).statusCode).toBe(401);
 
+    // A worker asked for QSV and fell back to libx264.
+    const value = { backend: 'software', label: 'Software (libx264)', requested: 'qsv' };
+    await db
+      .insert(instanceSetting)
+      .values({ key: 'videoEncoder', value })
+      .onConflictDoUpdate({ target: instanceSetting.key, set: { value } });
     const res = await get({ ...viaProxy, cookie: cookieOf(signUp) });
     expect(res.statusCode).toBe(200);
     const body = res.json<Diagnostics>();
@@ -105,6 +112,12 @@ describe.skipIf(!url)('diagnostics (needs DATABASE_URL)', () => {
       actual: 'TRUST_PROXY=127.0.0.1',
     });
     expect(check(body, 'data_dir_writable')?.actual).toBe(deps.root);
+    expect(check(body, 'video_encoding')).toEqual({
+      id: 'video_encoding',
+      status: 'warning',
+      expected: 'VIDEO_PROXY_HWACCEL=qsv',
+      actual: 'Software (libx264)',
+    });
   });
 
   it('refuses members who are not administrators', async () => {

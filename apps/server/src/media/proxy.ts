@@ -5,8 +5,10 @@ import { and, eq } from 'drizzle-orm';
 import type { Database } from '../db/client.ts';
 import { asset, assetVariant } from '../db/schema.ts';
 import { proxyKey, readAll, type Storage } from '../storage.ts';
+import { gpuDecodes, SOFTWARE_ENCODER, type VideoEncoder } from './hwaccel.ts';
 import { ensureFreeSpace, withJobDir } from './scratch.ts';
 import {
+  copiesVideo,
   DEFAULT_PROXY_SETTINGS,
   makeProxy,
   mediaTools,
@@ -23,6 +25,7 @@ export interface ProxyDeps {
   storage: Storage;
   tmpDir: string;
   proxies?: ProxySettings;
+  log?: { warn: (fields: Record<string, unknown>, message: string) => void };
 }
 
 /** How often progress is written to the row while ffmpeg runs. */
@@ -113,20 +116,54 @@ async function transcode(
   let written = 0;
   let shown = 0;
   let writing: Promise<unknown> = Promise.resolve();
-  await makeProxy(ffmpeg, source, out, info, settings, {
-    timeoutMs: proxyTimeoutMs(info, settings),
-    sourceBytes: row.size,
-    onProgress: (percent) => {
-      // One write at a time, every few seconds: a fast copy must not flood the database.
-      if (Date.now() - written < PROGRESS_EVERY_MS || percent <= shown) return;
-      written = Date.now();
-      shown = percent;
-      writing = writing
-        .then(() => setProxy(db, assetId, { proxyStatus: 'processing', proxyProgress: percent }))
-        .then(() => onProgress?.(percent))
-        .catch(() => {});
-    },
-  });
+  const encoder = copiesVideo(info, settings) ? null : (settings.encoder ?? SOFTWARE_ENCODER);
+  const run = (override?: VideoEncoder) =>
+    makeProxy(ffmpeg, source, out, info, settings, {
+      timeoutMs: proxyTimeoutMs(info, settings),
+      sourceBytes: row.size,
+      ...(override ? { encoder: override } : {}),
+      onProgress: (percent) => {
+        // One write at a time, every few seconds: a fast copy must not flood the database.
+        if (Date.now() - written < PROGRESS_EVERY_MS || percent <= shown) return;
+        written = Date.now();
+        shown = percent;
+        writing = writing
+          .then(() => setProxy(db, assetId, { proxyStatus: 'processing', proxyProgress: percent }))
+          .then(() => onProgress?.(percent))
+          .catch(() => {});
+      },
+    });
+  // What made the picture: `copy` (a remux), a hardware backend, or `software`.
+  let used: string = encoder?.backend ?? 'copy';
+  // A GPU that cannot take this file never fails the copy: when it decoded the source, it is
+  // tried again decoding on the CPU (a codec or profile the card does not decode), then with
+  // libx264 (an encoder that refuses it, a busy device), under the same limits each time.
+  const retries: VideoEncoder[] =
+    encoder && encoder.backend !== 'software'
+      ? [
+          ...(gpuDecodes(info.videoCodec, info.pixelFormat)
+            ? [{ ...encoder, cpuDecode: true }]
+            : []),
+          SOFTWARE_ENCODER,
+        ]
+      : [];
+  for (let attempt = 0; ; attempt++) {
+    try {
+      await run(attempt === 0 ? undefined : retries[attempt - 1]);
+      break;
+    } catch (err) {
+      const next = retries[attempt];
+      if (!next) throw err;
+      deps.log?.warn(
+        { err, assetId, encoder: encoder?.backend },
+        next.backend === 'software'
+          ? 'hardware encoding failed: making the playable copy with libx264'
+          : 'hardware decoding failed: decoding on the CPU, encoding on the GPU',
+      );
+      await writing;
+      used = next.backend === 'software' ? 'software' : `${next.backend}+cpu-decode`;
+    }
+  }
   await writing;
 
   const result = await probeVideo(ffprobe, out);
@@ -143,7 +180,7 @@ async function transcode(
     throw err;
   }
   await onProgress?.(100);
-  return { bytes };
+  return { bytes, encoder: used };
 }
 
 async function saveProxy(
