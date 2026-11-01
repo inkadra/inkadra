@@ -7,6 +7,7 @@ import {
   type CommentThread,
   type CommentVisibility,
   MAX_COMMENT_LENGTH,
+  type ReactionEmoji,
   type UserSummary,
 } from '@inkadra/shared';
 import { Button, ChoiceTile, Icon, IconButton, Radio, Select, Switch } from '@inkadra/ui';
@@ -36,6 +37,7 @@ import { CommentsOnBoard } from './CommentsOnBoard.tsx';
 import { commentPanelPosition } from './comment-panel-position.ts';
 import { GuestTag } from './GuestTag.tsx';
 import { plainText } from './note.tsx';
+import { ReactionBar } from './ReactionBar.tsx';
 import { ReviewSection } from './ReviewSection.tsx';
 import {
   authorName,
@@ -811,6 +813,20 @@ function CommentItem({
             ),
           )}
         </p>
+      )}
+      {!comment.deletedAt && !editing && (
+        <ReactionBar
+          reactions={comment.reactions}
+          {...(writable
+            ? {
+                onToggle: async (emoji: ReactionEmoji, on: boolean) => {
+                  const path = `/comments/${comment.id}/reactions/${encodeURIComponent(emoji)}`;
+                  await (on ? api.put(path, {}) : api.delete(path));
+                  refreshReviews('comments', elementId);
+                },
+              }
+            : {})}
+        />
       )}
       {writable && !comment.deletedAt && !editing && !confirming && (
         <div className="review-row" ref={actions}>

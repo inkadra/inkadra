@@ -1385,7 +1385,11 @@
     "popoverTitle_one": "{{count}} discussione aperta",
     "popoverTitle_other": "{{count}} discussioni aperte",
     "openInPanel": "Apri nel pannello",
-    "closePopover": "Chiudi le discussioni"
+    "closePopover": "Chiudi le discussioni",
+    "reactions": "Reazioni",
+    "reactionChip": "{{emoji}} {{count}}: {{names}}",
+    "reactAdd": "Aggiungi una reazione",
+    "reactWith": "Reagisci con {{emoji}}"
   },
   "review": {
     "title": "Revisione",

@@ -84,6 +84,7 @@ describe('contract additions of API 0.5.0', () => {
       mentions: [],
       visibility: 'everyone',
       shareLinkId: id,
+      reactions: [],
       canEdit: false,
       canDelete: true,
     };

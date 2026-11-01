@@ -534,6 +534,69 @@ export const comment = pgTable(
   ],
 );
 
+/** The quick reactions (decision 0013): a small fixed set, on comments and on cards. */
+export const reactionEmojiEnum = ['👍', '❤️', '✅', '❓'] as const;
+
+/**
+ * A quick reaction to a comment or reply, by an account or by a guest of a share link (never
+ * both). Stored with the review data, not in the board document. One row per person and emoji;
+ * it goes with the comment, the account or the guest.
+ */
+export const commentReaction = pgTable(
+  'comment_reaction',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    commentId: uuid('comment_id')
+      .notNull()
+      .references(() => comment.id, { onDelete: 'cascade' }),
+    emoji: text('emoji', { enum: reactionEmojiEnum }).notNull(),
+    userId: uuid('user_id').references(() => user.id, { onDelete: 'cascade' }),
+    /** A guest of `share_link_id` (composite foreign key). */
+    guestId: uuid('guest_id'),
+    shareLinkId: uuid('share_link_id').references(() => shareLink.id, { onDelete: 'cascade' }),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    foreignKey({
+      name: 'comment_reaction_guest_fk',
+      columns: [t.guestId, t.shareLinkId],
+      foreignColumns: [shareGuest.id, shareGuest.shareLinkId],
+    }).onDelete('cascade'),
+    uniqueIndex('comment_reaction_user_uq')
+      .on(t.commentId, t.emoji, t.userId)
+      .where(sql`${t.userId} is not null`),
+    uniqueIndex('comment_reaction_guest_uq')
+      .on(t.commentId, t.emoji, t.guestId)
+      .where(sql`${t.guestId} is not null`),
+    index('comment_reaction_user_idx').on(t.userId).where(sql`${t.userId} is not null`),
+    index('comment_reaction_share_link_idx')
+      .on(t.shareLinkId)
+      .where(sql`${t.shareLinkId} is not null`),
+    check('comment_reaction_one_author_ck', sql`num_nonnulls(${t.userId}, ${t.guestId}) = 1`),
+  ],
+);
+
+/** A quick reaction to a card of the board, by an account. Gone with the board or the account. */
+export const elementReaction = pgTable(
+  'element_reaction',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    boardId: uuid('board_id')
+      .notNull()
+      .references(() => board.id, { onDelete: 'cascade' }),
+    elementId: text('element_id').notNull(),
+    emoji: text('emoji', { enum: reactionEmojiEnum }).notNull(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => user.id, { onDelete: 'cascade' }),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    unique('element_reaction_uq').on(t.boardId, t.elementId, t.emoji, t.userId),
+    index('element_reaction_user_idx').on(t.userId),
+  ],
+);
+
 const reviewStatusEnum = ['none', 'in_review', 'approved', 'changes_requested'] as const;
 
 /**

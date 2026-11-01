@@ -7,6 +7,7 @@ import type {
   CommentVisibility,
   ElementReview,
   ProjectRole,
+  ReactionSummary,
   UserSummary,
 } from '@inkadra/shared';
 import { useSyncExternalStore } from 'react';
@@ -33,6 +34,8 @@ export interface ReviewsState {
   role: ProjectRole | null;
   counts: ReadonlyMap<string | null, CommentCount>;
   reviews: ReadonlyMap<string, ElementReview>;
+  /** Quick reactions on cards, by card (#334); comments carry their own. */
+  elementReactions: ReadonlyMap<string, readonly ReactionSummary[]>;
   threads: readonly CommentThread[];
   pins: ReadonlyMap<string, readonly CommentThread[]>;
   people: readonly UserSummary[];
@@ -62,6 +65,7 @@ const EMPTY: ReviewsState = {
   role: null,
   counts: new Map(),
   reviews: new Map(),
+  elementReactions: new Map(),
   threads: [],
   pins: new Map(),
   people: [],

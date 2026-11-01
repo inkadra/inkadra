@@ -1385,7 +1385,11 @@
     "popoverTitle_one": "{{count}} open thread",
     "popoverTitle_other": "{{count}} open threads",
     "openInPanel": "Open in the panel",
-    "closePopover": "Close the threads"
+    "closePopover": "Close the threads",
+    "reactions": "Reactions",
+    "reactionChip": "{{emoji}} {{count}}: {{names}}",
+    "reactAdd": "Add a reaction",
+    "reactWith": "React with {{emoji}}"
   },
   "review": {
     "title": "Review",

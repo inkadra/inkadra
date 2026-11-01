@@ -35,11 +35,14 @@ import {
   Comment as CommentSchema,
   CommentThread,
   CreateComment,
+  ElementReactions,
   ElementRef,
   GuestComment,
   GuestCommentThread,
   GuestCreateComment,
   GuestUpdateComment,
+  ReactionEmoji,
+  Reactions,
   ReplyQuery,
   UpdateComment,
 } from './comments.ts';
@@ -1425,6 +1428,65 @@ registry.registerPath({
   responses: { 200: { description: 'Reopened', ...json(CommentThread) }, ...errors },
 });
 
+const reactionParams = z.object({ commentId: Id, emoji: ReactionEmoji });
+registry.registerPath({
+  method: 'put',
+  path: v1('/comments/{commentId}/reactions/{emoji}'),
+  tags: ['Comments'],
+  security: secured,
+  summary: 'React to a comment or reply with one of 👍 ❤️ ✅ ❓. Needs commenter.',
+  description: 'Idempotent. Returns the reactions now on the comment.' + realtime,
+  request: { params: reactionParams },
+  responses: { 200: { description: 'Reactions', ...json(Reactions) }, ...errors },
+});
+registry.registerPath({
+  method: 'delete',
+  path: v1('/comments/{commentId}/reactions/{emoji}'),
+  tags: ['Comments'],
+  security: secured,
+  summary: 'Take back your reaction to a comment or reply.',
+  description: 'Idempotent. Returns the reactions now on the comment.' + realtime,
+  request: { params: reactionParams },
+  responses: { 200: { description: 'Reactions', ...json(Reactions) }, ...errors },
+});
+const elementReactionParams = z.object({
+  boardId: Id,
+  elementId: ElementRef,
+  emoji: ReactionEmoji,
+});
+registry.registerPath({
+  method: 'get',
+  path: v1('/boards/{boardId}/reactions'),
+  tags: ['Comments'],
+  security: secured,
+  summary: 'Quick reactions on the cards of a board.',
+  description:
+    'Reactions are stored with the review data, not in the board document. Open boards are ' +
+    'told with the stateless collab message `{"type":"review"}` and fetch again.',
+  request: { params: idParam('boardId') },
+  responses: { 200: { description: 'Reactions', ...json(ElementReactions) }, ...errors },
+});
+registry.registerPath({
+  method: 'put',
+  path: v1('/boards/{boardId}/elements/{elementId}/reactions/{emoji}'),
+  tags: ['Comments'],
+  security: secured,
+  summary: 'React to a card with one of 👍 ❤️ ✅ ❓. Needs commenter.',
+  description: 'Idempotent. Returns the reactions now on the card.',
+  request: { params: elementReactionParams },
+  responses: { 200: { description: 'Reactions', ...json(Reactions) }, ...errors },
+});
+registry.registerPath({
+  method: 'delete',
+  path: v1('/boards/{boardId}/elements/{elementId}/reactions/{emoji}'),
+  tags: ['Comments'],
+  security: secured,
+  summary: 'Take back your reaction to a card.',
+  description: 'Idempotent. Returns the reactions now on the card.',
+  request: { params: elementReactionParams },
+  responses: { 200: { description: 'Reactions', ...json(Reactions) }, ...errors },
+});
+
 // Reviews --------------------------------------------------------------------
 
 const elementParams = z.object({ boardId: Id, elementId: ElementRef });
@@ -1638,6 +1700,7 @@ registry.register('ProjectCreationDenied', ProjectCreationDenied);
 const guestBoardParams = z.object({ linkId: Id, boardId: Id });
 const guestElementParams = guestBoardParams.extend({ elementId: ElementRef });
 const guestCommentParams = z.object({ linkId: Id, commentId: Id });
+const guestReactionParams = z.object({ linkId: Id, commentId: Id, emoji: ReactionEmoji });
 
 registry.registerPath({
   method: 'get',
@@ -1829,6 +1892,24 @@ registry.registerPath({
   summary: 'Delete a comment this guest wrote, on a board the guest can still open.',
   request: { params: guestCommentParams },
   responses: { 204: { description: 'Deleted' }, ...guestWriteErrors },
+});
+registry.registerPath({
+  method: 'put',
+  path: v1('/guest/links/{linkId}/comments/{commentId}/reactions/{emoji}'),
+  tags: ['Guests'],
+  security: guest,
+  summary: 'React to a comment this guest can read, under their name. For guest_comment.',
+  request: { params: guestReactionParams },
+  responses: { 200: { description: 'Reactions', ...json(Reactions) }, ...guestWriteErrors },
+});
+registry.registerPath({
+  method: 'delete',
+  path: v1('/guest/links/{linkId}/comments/{commentId}/reactions/{emoji}'),
+  tags: ['Guests'],
+  security: guest,
+  summary: 'Take back this guest’s reaction to a comment.',
+  request: { params: guestReactionParams },
+  responses: { 200: { description: 'Reactions', ...json(Reactions) }, ...guestWriteErrors },
 });
 registry.registerPath({
   method: 'put',

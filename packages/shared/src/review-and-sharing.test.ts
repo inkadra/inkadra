@@ -75,6 +75,7 @@ describe('review and sharing contracts', () => {
       createdAt: '2026-11-02T09:30:00.000Z',
       editedAt: null,
       deletedAt: null,
+      reactions: [],
       canEdit: false,
       canDelete: false,
     });

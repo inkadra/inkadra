@@ -2188,6 +2188,38 @@ describe.skipIf(!url)('guest share links (needs DATABASE_URL)', () => {
     ).toBe(404);
   });
 
+  it('lets guests react to threads they can read, under their name', async () => {
+    const [t1] = await db.select().from(comment).where(sql`${comment.body} like 'Per tutti%'`);
+    const [team] = await db.select().from(comment).where(eq(comment.body, 'Solo team'));
+    const thumbs = encodeURIComponent('👍');
+    const react = (method: string, id?: string) =>
+      call({ cookie: carla }, method, g(linkC, `/comments/${id}/reactions/${thumbs}`));
+    const added = await react('PUT', t1?.id);
+    expect(added.status).toBe(200);
+    expect(added.body.reactions).toEqual([{ emoji: '👍', count: 1, mine: true, names: ['Carla'] }]);
+    // Idempotent; the team and the guests of the same link see it, those of other links do not.
+    await react('PUT', t1?.id);
+    const same = await call(
+      { cookie: carla },
+      'GET',
+      g(linkC, `/boards/${B.A}/comments?status=all`),
+    );
+    expect(same.body.items.find((t: { id: string }) => t.id === t1?.id).reactions).toEqual([
+      { emoji: '👍', count: 1, mine: true, names: ['Carla'] },
+    ]);
+    const other = await call(
+      { cookie: anna },
+      'GET',
+      g(linkA, `/boards/${B.A}/comments?status=all`),
+    );
+    expect(other.body.items.find((t: { id: string }) => t.id === t1?.id).reactions).toEqual([]);
+    // What a guest cannot read, it cannot react to.
+    expect((await react('PUT', team?.id)).status).toBe(404);
+    const gone = await react('DELETE', t1?.id);
+    expect(gone.status).toBe(200);
+    expect(gone.body.reactions).toEqual([]);
+  });
+
   it('limits guest comments per guest', async () => {
     const o = await open(linkC, { name: 'Spam' });
     const path = g(linkC, `/boards/${B.A}/comments`);

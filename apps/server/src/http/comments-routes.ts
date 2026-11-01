@@ -6,10 +6,14 @@ import {
   CommentQuery,
   type CommentThread,
   CreateComment,
+  type ElementReactions,
+  ElementRef,
   Id,
   INLINE_REPLIES,
   mentionedIds,
   type ProjectRole,
+  ReactionEmoji,
+  type ReactionSummary,
   ReplyQuery,
   UpdateComment,
   z,
@@ -37,12 +41,13 @@ import {
   boardAccess,
   boardRolesForPeople,
   linkIncludesBoard,
+  requireBoardRole,
 } from '../access.ts';
 import type { Auth } from '../auth.ts';
 import { type BoardReader, storedElement } from '../board-content.ts';
 import { type BoardNotifier, noNotices } from '../board-notices.ts';
 import type { Database } from '../db/client.ts';
-import { comment, shareLink } from '../db/schema.ts';
+import { comment, commentReaction, elementReaction, shareLink } from '../db/schema.ts';
 import { afterCommit, notify, Recipients } from '../notifications.ts';
 import { iso } from './api-routes.ts';
 import { requireActor } from './auth-routes.ts';
@@ -50,6 +55,7 @@ import { authorOf, labelOf, loadPeople, type People } from './authors.ts';
 import { HttpError } from './errors.ts';
 import { afterCursor, atText, decodeCursor, pageOf } from './keyset.ts';
 import { RateLimiter } from './link-previews.ts';
+import { commentReactions, elementReactions } from './reactions.ts';
 
 interface Deps {
   db: Database;
@@ -60,6 +66,12 @@ interface Deps {
 
 const BoardParams = z.object({ boardId: Id });
 const CommentParams = z.object({ commentId: Id });
+const ReactionParams = z.object({ commentId: Id, emoji: ReactionEmoji });
+const ElementReactionParams = z.object({
+  boardId: Id,
+  elementId: ElementRef,
+  emoji: ReactionEmoji,
+});
 
 /** Comments a person may write in a minute: plenty for a conversation, little for a script. */
 const COMMENTS_PER_MINUTE = 30;
@@ -100,7 +112,14 @@ async function peopleOf(db: Database, rows: Row[], viewer: Viewer) {
   );
 }
 
-export function toComment(row: Row, people: People, viewer: Viewer): Comment {
+const noReactions: ReadonlyMap<string, ReactionSummary[]> = new Map();
+
+export function toComment(
+  row: Row,
+  people: People,
+  viewer: Viewer,
+  reactions: ReadonlyMap<string, ReactionSummary[]> = noReactions,
+): Comment {
   const mine = row.authorId === viewer.actorId && canWrite(viewer) && !row.deletedAt;
   return {
     id: row.id,
@@ -122,6 +141,7 @@ export function toComment(row: Row, people: People, viewer: Viewer): Comment {
     visibility: row.visibility,
     shareLinkId: row.shareLinkId,
     shareLinkLabel: labelOf(people, row.shareLinkId),
+    reactions: row.deletedAt ? [] : (reactions.get(row.id) ?? []),
     canEdit: mine,
     canDelete: !row.deletedAt && (mine || atLeast(viewer.role, 'editor')),
   };
@@ -154,16 +174,23 @@ async function toThreads(db: Database, rows: Row[], viewer: Viewer): Promise<Com
       .groupBy(comment.threadId),
   ]);
   const replyRows = replies.map(({ rank: _, ...r }) => r as Row);
-  const people = await peopleOf(db, [...rows, ...replyRows], viewer);
+  const [people, reactions] = await Promise.all([
+    peopleOf(db, [...rows, ...replyRows], viewer),
+    commentReactions(
+      db,
+      [...rows, ...replyRows].map((r) => r.id),
+      { userId: viewer.actorId },
+    ),
+  ]);
   const byThread = new Map<string, Comment[]>();
   for (const r of replyRows) {
     const list = byThread.get(r.threadId ?? '') ?? [];
-    list.push(toComment(r, people, viewer));
+    list.push(toComment(r, people, viewer, reactions));
     byThread.set(r.threadId ?? '', list);
   }
   const replyCount = new Map(counts.map((c) => [c.threadId, c.n]));
   return rows.map((r) => ({
-    ...toComment(r, people, viewer),
+    ...toComment(r, people, viewer, reactions),
     resolvedAt: r.resolvedAt ? iso(r.resolvedAt) : null,
     resolvedBy: r.resolvedAt ? authorOf(people, r.resolvedBy, null) : null,
     replyCount: replyCount.get(r.id) ?? 0,
@@ -389,9 +416,16 @@ export function registerCommentRoutes(app: FastifyInstance, deps: Deps) {
       .orderBy(asc(comment.createdAt), asc(comment.id))
       .limit(q.limit + 1);
     const page = pageOf(rows, q.limit);
-    const people = await peopleOf(db, page.rows, viewer);
+    const [people, reactions] = await Promise.all([
+      peopleOf(db, page.rows, viewer),
+      commentReactions(
+        db,
+        page.rows.map((r) => r.id),
+        { userId: viewer.actorId },
+      ),
+    ]);
     return {
-      items: page.rows.map((r) => toComment(r, people, viewer)),
+      items: page.rows.map((r) => toComment(r, people, viewer, reactions)),
       nextCursor: page.nextCursor,
     };
   });
@@ -431,7 +465,12 @@ export function registerCommentRoutes(app: FastifyInstance, deps: Deps) {
       );
     });
     await afterCommit(req.log, () => tell(updated));
-    return toComment(updated, await peopleOf(db, [updated], viewer), viewer);
+    return toComment(
+      updated,
+      await peopleOf(db, [updated], viewer),
+      viewer,
+      await commentReactions(db, [updated.id], { userId: actor.id }),
+    );
   });
 
   app.delete(v1('/comments/:commentId'), async (req, reply) => {
@@ -477,6 +516,94 @@ export function registerCommentRoutes(app: FastifyInstance, deps: Deps) {
     });
     await afterCommit(req.log, () => tell(row));
     return reply.status(204).send();
+  });
+
+  const reactionsPerMinute = new RateLimiter(120, 60_000);
+  for (const on of [true, false]) {
+    app.route({
+      method: on ? 'PUT' : 'DELETE',
+      url: v1('/comments/:commentId/reactions/:emoji'),
+      handler: async (req) => {
+        const actor = await requireActor(auth, req, db);
+        const { commentId, emoji } = ReactionParams.parse(req.params);
+        const { row, viewer } = await readableComment(actor, commentId);
+        requireWriter(viewer);
+        if (row.deletedAt) throw new HttpError('not_found', 'Comment not found.');
+        if (!reactionsPerMinute.take(actor.id))
+          throw new HttpError('rate_limited', 'Too many reactions: wait a minute.');
+        const changed = on
+          ? await db
+              .insert(commentReaction)
+              .values({ commentId, emoji, userId: actor.id })
+              .onConflictDoNothing()
+              .returning({ id: commentReaction.id })
+          : await db
+              .delete(commentReaction)
+              .where(
+                and(
+                  eq(commentReaction.commentId, commentId),
+                  eq(commentReaction.emoji, emoji),
+                  eq(commentReaction.userId, actor.id),
+                ),
+              )
+              .returning({ id: commentReaction.id });
+        if (changed.length > 0) {
+          // Guests learn of it through the version of their snapshot, which follows updated_at.
+          await db.update(comment).set({ updatedAt: new Date() }).where(eq(comment.id, commentId));
+          await afterCommit(req.log, () => tell(row));
+        }
+        const reactions = await commentReactions(db, [commentId], { userId: actor.id });
+        return { reactions: reactions.get(commentId) ?? [] };
+      },
+    });
+    app.route({
+      method: on ? 'PUT' : 'DELETE',
+      url: v1('/boards/:boardId/elements/:elementId/reactions/:emoji'),
+      handler: async (req) => {
+        const actor = await requireActor(auth, req, db);
+        const { boardId, elementId, emoji } = ElementReactionParams.parse(req.params);
+        await requireBoardRole(db, actor, boardId, 'commenter');
+        // Taking a reaction back works on a card that has since been removed.
+        if (on && !(await readElement(boardId, elementId)))
+          throw new HttpError('not_found', 'Card not found.');
+        if (!reactionsPerMinute.take(actor.id))
+          throw new HttpError('rate_limited', 'Too many reactions: wait a minute.');
+        const changed = on
+          ? await db
+              .insert(elementReaction)
+              .values({ boardId, elementId, emoji, userId: actor.id })
+              .onConflictDoNothing()
+              .returning({ id: elementReaction.id })
+          : await db
+              .delete(elementReaction)
+              .where(
+                and(
+                  eq(elementReaction.boardId, boardId),
+                  eq(elementReaction.elementId, elementId),
+                  eq(elementReaction.emoji, emoji),
+                  eq(elementReaction.userId, actor.id),
+                ),
+              )
+              .returning({ id: elementReaction.id });
+        // shortcut: reuses the `review` notice (clients fetch reviews and reactions again);
+        // give reactions a notice of their own when doc-schema is open to change.
+        if (changed.length > 0)
+          await afterCommit(req.log, () => notices.notify(boardId, { type: 'review', elementId }));
+        const reactions = await elementReactions(db, boardId, { userId: actor.id }, elementId);
+        return { reactions: reactions.get(elementId) ?? [] };
+      },
+    });
+  }
+
+  app.get(v1('/boards/:boardId/reactions'), async (req) => {
+    const actor = await requireActor(auth, req, db);
+    const { boardId } = BoardParams.parse(req.params);
+    await readableBoard(actor, boardId);
+    const all = await elementReactions(db, boardId, { userId: actor.id });
+    const body: ElementReactions = {
+      items: [...all].map(([elementId, reactions]) => ({ elementId, reactions })),
+    };
+    return body;
   });
 
   for (const action of ['resolve', 'reopen'] as const) {

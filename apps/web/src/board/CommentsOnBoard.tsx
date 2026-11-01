@@ -1,16 +1,21 @@
 // SPDX-License-Identifier: AGPL-3.0-only
+
+import type { ReactionEmoji } from '@inkadra/shared';
 import { Button, Icon, IconButton } from '@inkadra/ui';
-import { type KeyboardEvent, useEffect, useMemo, useRef } from 'react';
+import { type KeyboardEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
+import { api } from '../lib/api.ts';
 import { Thread, useCardLabel } from './CommentsPanel.tsx';
 import { bubbleLayout, popoverPosition, type Rect } from './comments-on-board-model.ts';
+import { ReactionBar } from './ReactionBar.tsx';
 import {
   canComment,
   closePopover,
   getReviews,
   openComments,
   openPopover,
+  refreshReviews,
   useReviews,
 } from './review-store.ts';
 import './review.css';
@@ -29,8 +34,34 @@ export function CommentsOnBoard() {
     () => [...counts].flatMap(([id, c]) => (id !== null && c.open > 0 ? [id] : [])),
     [counts],
   );
+  const reactions = useReviews((s) => s.elementReactions);
+  const writable = canComment(useReviews((s) => s.role));
   const layer = useRef<HTMLDivElement>(null);
-  const shown = onBoard && ids.length > 0;
+
+  // A card under the pointer shows its reaction picker, and keeps it while the pointer moves
+  // onto the chips (they sit below the card, outside it).
+  const [hover, setHover] = useState<string | null>(null);
+  useEffect(() => {
+    if (!onBoard || !writable) return;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const over = (e: PointerEvent) => {
+      const el = (e.target as Element).closest?.('.card[data-el], [data-reactions]');
+      const id = el?.getAttribute('data-el') ?? el?.getAttribute('data-reactions') ?? null;
+      clearTimeout(timer);
+      if (id) setHover(id);
+      else timer = setTimeout(() => setHover(null), 250);
+    };
+    document.addEventListener('pointerover', over);
+    return () => {
+      clearTimeout(timer);
+      document.removeEventListener('pointerover', over);
+    };
+  }, [onBoard, writable]);
+  const reacted = useMemo(
+    () => [...new Set([...reactions.keys(), ...(hover && writable ? [hover] : [])])],
+    [reactions, hover, writable],
+  );
+  const shown = onBoard && (ids.length > 0 || reacted.length > 0);
 
   // The popover goes with its bubble: a card whose threads were all resolved has neither.
   useEffect(() => {
@@ -50,6 +81,22 @@ export function CommentsOnBoard() {
         root.style.top = `${area.top}px`;
         root.style.width = `${area.width}px`;
         root.style.height = `${area.height}px`;
+        for (const node of root.querySelectorAll<HTMLElement>('[data-reactions]')) {
+          const card = document.querySelector<HTMLElement>(
+            `.card[data-el="${CSS.escape(node.dataset.reactions ?? '')}"]`,
+          );
+          const rect = card?.getBoundingClientRect();
+          const layout =
+            card && rect
+              ? bubbleLayout(toRect(rect, area), card.offsetWidth, {
+                  w: area.width,
+                  h: area.height,
+                })
+              : null;
+          node.hidden = !layout;
+          if (layout && rect)
+            node.style.transform = `translate(${rect.left - area.left}px, ${rect.bottom - area.top + 6}px) scale(${layout.scale})`;
+        }
         const line = root.querySelector<SVGLineElement>('[data-link]');
         line?.setAttribute('visibility', 'hidden');
         for (const bubble of root.querySelectorAll<HTMLElement>('[data-bubble]')) {
@@ -59,7 +106,10 @@ export function CommentsOnBoard() {
           const rect = card?.getBoundingClientRect();
           const layout =
             card && rect
-              ? bubbleLayout(toRect(rect, area), card.offsetWidth, { w: area.width, h: area.height })
+              ? bubbleLayout(toRect(rect, area), card.offsetWidth, {
+                  w: area.width,
+                  h: area.height,
+                })
               : null;
           bubble.hidden = !layout;
           if (!layout) continue;
@@ -119,6 +169,9 @@ export function CommentsOnBoard() {
       {ids.map((id) => (
         <BubbleButton key={id} elementId={id} open={counts.get(id)?.open ?? 0} />
       ))}
+      {reacted.map((id) => (
+        <CardReactions key={id} elementId={id} active={id === hover} />
+      ))}
       {popover && ids.includes(popover) && <Popover key={popover} elementId={popover} />}
     </div>,
     document.body,
@@ -172,9 +225,7 @@ function Popover({ elementId }: { elementId: string }) {
 
   // Focus goes in, and back to the bubble when the popover closes.
   useEffect(() => {
-    const bubble = document.querySelector<HTMLElement>(
-      `[data-bubble="${CSS.escape(elementId)}"]`,
-    );
+    const bubble = document.querySelector<HTMLElement>(`[data-bubble="${CSS.escape(elementId)}"]`);
     ref.current?.focus({ preventScroll: true });
     return () => {
       if (bubble?.isConnected && document.activeElement === document.body) bubble.focus();
@@ -220,5 +271,26 @@ function Popover({ elementId }: { elementId: string }) {
         ))}
       </div>
     </section>
+  );
+}
+
+/** Reaction chips under a card; the "+" shows while the card is under the pointer. */
+function CardReactions({ elementId, active }: { elementId: string; active: boolean }) {
+  const boardId = useReviews((s) => s.boardId);
+  const reactions = useReviews((s) => s.elementReactions.get(elementId));
+  const writable = canComment(useReviews((s) => s.role));
+  const toggle = async (emoji: ReactionEmoji, on: boolean) => {
+    const path = `/boards/${boardId}/elements/${elementId}/reactions/${encodeURIComponent(emoji)}`;
+    await (on ? api.put(path, {}) : api.delete(path));
+    refreshReviews('reviews');
+  };
+  return (
+    <div
+      className={active ? 'card-reactions is-active' : 'card-reactions'}
+      data-reactions={elementId}
+      hidden
+    >
+      <ReactionBar reactions={reactions ?? []} {...(writable ? { onToggle: toggle } : {})} />
+    </div>
   );
 }
