@@ -141,6 +141,13 @@
       "when": 1793517975596,
       "tag": "0019_comment_read",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1793520424588,
+      "tag": "0020_board_icon",
+      "breakpoints": true
     }
   ]
 }

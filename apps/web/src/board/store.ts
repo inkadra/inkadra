@@ -165,9 +165,11 @@ function estimateHeight(el: Element): number {
     case 'color':
       return el.w;
     case 'board':
-      return 120;
+      return 66;
     case 'todo':
       return 48 + el.items.length * 26;
+    case 'section':
+      return 44;
     default:
       return 64;
   }

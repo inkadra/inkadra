@@ -123,17 +123,17 @@ describe('writeVersionOver', () => {
     'keeps a %s hidden after restoring its parent from a hidden column to a visible one',
     (type) => {
       const live = createBoardDoc(BOARD);
-      addElement(live, { ...note('visible0'), type: 'column', title: 'Visible' });
+      addElement(live, { ...note('visible0'), type: 'column', title: 'Visible' } as Element);
       addElement(live, {
         ...note('card0000', { parent: 'visible0' }),
         ...(type === 'board' ? { type, boardId: BOARD } : { type }),
-      });
+      } as Element);
       const version = saved(live);
       addElement(live, {
         ...note('hidden00', { guestHidden: true }),
         type: 'column',
         title: 'Hidden',
-      });
+      } as Element);
       roots(live).elements.get('card0000')?.set('parent', 'hidden00');
       const lookup = (id: string) => element(live, id) ?? undefined;
       expect(hiddenFromGuests('card0000', lookup)).toBe(true);

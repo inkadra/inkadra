@@ -43,6 +43,7 @@ import {
   useSearchParams,
 } from 'react-router';
 import { childBoards, useProjectBoards, useSharedBoards } from '../board/boards.ts';
+import { useBoardCounts } from '../board/live-counts.ts';
 import {
   askedView,
   type BoardView,
@@ -58,7 +59,7 @@ import {
 } from '../board/views.ts';
 import { appActions } from '../commands/app-actions.ts';
 import { canCreateProjects } from '../lib/access.ts';
-import { api, authApi } from '../lib/api.ts';
+import { authApi } from '../lib/api.ts';
 import { HeaderContext, type HeaderParts } from '../lib/header.tsx';
 import { useSession } from '../lib/session.tsx';
 import { useTheme } from '../lib/theme.ts';
@@ -84,12 +85,7 @@ import {
 } from './projects.ts';
 import { SearchDialog } from './SearchDialog.tsx';
 import { SettingsWindow } from './SettingsWindow.tsx';
-import {
-  forgetSeededCounts,
-  mergeSeededCounts,
-  SeedQueue,
-  useSeededCounts,
-} from './seed-queue.tsx';
+import { SeedQueue } from './seed-queue.tsx';
 import { isSettingsPath } from './settings-sections.ts';
 import './mobile-shell.css';
 
@@ -1128,42 +1124,4 @@ function useSidebarPeek(collapsed: boolean) {
         }
       : {},
   };
-}
-
-/** Element and frame counts of the open project's boards; refreshed when its boards change. */
-function useBoardCounts(
-  projectId: string | undefined,
-  boards: readonly Board[] | null | undefined,
-): Map<string, BoardCount> {
-  const [counts, setCounts] = useState<Map<string, BoardCount>>(new Map());
-  // Any board edit moves its editedAt, so the newest one tells when to count again.
-  const stamp = boards
-    ?.map((b) => b.editedAt ?? '')
-    .sort()
-    .at(-1);
-  // biome-ignore lint/correctness/useExhaustiveDependencies: stamp is the refresh signal.
-  useEffect(() => {
-    if (!projectId) {
-      setCounts(new Map());
-      return;
-    }
-    let live = true;
-    api
-      .get<{ items: BoardCount[] }>(`/projects/${projectId}/board-counts`)
-      .then((r) => {
-        if (!live) return;
-        const next = new Map(r.items.map((c) => [c.boardId, c]));
-        setCounts(next);
-        forgetSeededCounts(next);
-      })
-      .catch(() => {
-        // Counts are a hint; the navigation works without them.
-      });
-    return () => {
-      live = false;
-    };
-  }, [projectId, stamp, boards?.length]);
-  // Boards laid out in the background (the Canvas menu) are counted as soon as they are seeded.
-  const seeded = useSeededCounts();
-  return useMemo(() => mergeSeededCounts(counts, seeded), [counts, seeded]);
 }

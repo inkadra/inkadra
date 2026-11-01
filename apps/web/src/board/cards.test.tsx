@@ -344,3 +344,69 @@ describe('file card family', () => {
     state.asset = {};
   });
 });
+
+describe('board elements (#307, #318, #322)', () => {
+  const at = { x: 0, y: 0, w: 240, z: 'a0', parent: null, createdBy: null, createdAt: 0 };
+  const note = (id: string) =>
+    ({ ...at, id, type: 'color', hex: '#56CCF2', parent: 'column_0001' }) as Element;
+
+  it('marks a coloured column and counts what it holds under the title', () => {
+    Object.assign(state, { editing: null, readOnly: false });
+    // Collapsed: the count stays in the header without drawing the cards.
+    const column = {
+      ...at,
+      id: 'column_0001',
+      type: 'column',
+      title: 'Da fare',
+      color: 'green',
+      collapsed: true,
+    };
+    const html = renderToStaticMarkup(
+      <Card
+        element={column as Element}
+        selected={false}
+        childrenOf={[note('note_00001'), note('note_00002'), { ...file, parent: 'column_0001' }]}
+      />,
+    );
+    expect(html).toContain('card--accent-green');
+    expect(html).toContain('board.count.cards:2 · board.count.files:1');
+  });
+
+  it('shows the icon of the target board and its counts on a board card', () => {
+    Object.assign(state, {
+      boards: [
+        {
+          id: 'b1',
+          title: 'Aereo',
+          kind: 'board',
+          myRole: 'editor',
+          icon: { shape: 'star', color: 'orange' },
+        },
+      ],
+      boardCounts: new Map([
+        [
+          'b1',
+          {
+            boardId: 'b1',
+            elementCount: 9,
+            frameCount: 0,
+            framesToShoot: 0,
+            cardCount: 6,
+            fileCount: 3,
+            boardCount: 0,
+          },
+        ],
+      ]),
+    });
+    const html = render({ ...at, id: 'board_00001', type: 'board', boardId: 'b1' } as Element);
+    expect(html).toContain('--board-bg:var(--ink-tag-orange-bg)');
+    expect(html).toContain('<svg');
+    expect(html).toContain('board.count.cards:6 · board.count.files:3');
+  });
+
+  it('draws a section heading as text, with a placeholder while empty', () => {
+    const section = { ...at, id: 'section_001', type: 'section', w: 640 } as const;
+    expect(render({ ...section, title: 'Sequenza 1' } as Element)).toContain('Sequenza 1');
+    expect(render({ ...section, title: '' } as Element)).toContain('is-empty');
+  });
+});

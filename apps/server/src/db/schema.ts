@@ -268,6 +268,8 @@ export const board = pgTable(
     title: text('title').notNull(),
     position: text('position').notNull(),
     coverAssetId: uuid('cover_asset_id').references(() => asset.id, { onDelete: 'set null' }),
+    /** Board card icon (symbol or emoji and colour, as projects); null = the default icon. */
+    icon: jsonb('icon').$type<import('@inkadra/shared').Board['icon']>(),
     docSchemaVersion: integer('doc_schema_version').notNull().default(1),
     deletedAt: timestamp('deleted_at', { withTimezone: true }),
     createdBy: uuid('created_by').references(() => user.id, { onDelete: 'set null' }),

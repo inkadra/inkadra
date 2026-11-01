@@ -55,7 +55,7 @@ export const GUEST_ELEMENT_FIELDS = {
   file: [...COMMON_GUEST_FIELDS, 'assetId', 'caption'],
   todo: [...COMMON_GUEST_FIELDS, 'title', 'items'],
   color: [...COMMON_GUEST_FIELDS, 'hex', 'label'],
-  column: [...COMMON_GUEST_FIELDS, 'title', 'collapsed'],
+  column: [...COMMON_GUEST_FIELDS, 'title', 'collapsed', 'color'],
   board: [...COMMON_GUEST_FIELDS, 'boardId'],
   scene: [
     ...COMMON_GUEST_FIELDS,
@@ -98,6 +98,7 @@ export const GUEST_ELEMENT_FIELDS = {
     'scenes',
   ],
   location: [...COMMON_GUEST_FIELDS, 'name', 'setting', 'assetId', 'light', 'scenes'],
+  section: [...COMMON_GUEST_FIELDS, 'title'],
 } as const satisfies Record<ElementType, readonly string[]>;
 
 /**

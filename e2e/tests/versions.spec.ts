@@ -700,7 +700,7 @@ test('comment bubbles stay clear of the header of a column and on the corner of 
   const columnBadge = page.locator(`[data-bubble="${column.id}"]`);
   await expect(columnBadge).toBeVisible();
   const badgeBox = (await columnBadge.boundingBox())!;
-  for (const part of ['.column__title', '.column__count', '.column__toggle']) {
+  for (const part of ['.column__title', '.column__summary', '.column__toggle']) {
     const box = await columnCard.locator(part).first().boundingBox();
     expect(box, part).not.toBeNull();
     expect(overlaps(badgeBox, box!), `${part} is covered by the badges`).toBe(false);

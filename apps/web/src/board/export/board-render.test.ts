@@ -53,3 +53,38 @@ describe('arrows in exports', () => {
     expect(ops.every((o) => o.kind === 'line')).toBe(true);
   });
 });
+
+const card = (fields: Record<string, unknown>) => ({
+  el: {
+    id: 'card0001',
+    x: 0,
+    y: 0,
+    w: 640,
+    z: 'a0',
+    parent: null,
+    createdBy: null,
+    createdAt: 0,
+    ...fields,
+  } as Element,
+  x: 0,
+  y: 0,
+  w: 640,
+  h: 44,
+});
+
+describe('board elements in exports', () => {
+  it('draws a section heading as text over a rule, without a card', () => {
+    const ops = drawBoard([card({ type: 'section', title: 'Sequenza 1' })], ctx);
+    expect(ops.map((o) => o.kind)).toEqual(['text', 'line']);
+    expect(ops[0]).toMatchObject({ text: 'Sequenza 1', size: 20 });
+  });
+
+  it('draws the accent bar and tint of a coloured column', () => {
+    const [, clip] = drawBoard([card({ type: 'column', title: 'Da fare', color: 'green' })], ctx);
+    const inner = (clip as Extract<typeof clip, { kind: 'clip' }>).ops;
+    expect(inner.slice(0, 2)).toMatchObject([
+      { kind: 'rect', fill: '#tag-green-bg' },
+      { kind: 'rect', h: 3, fill: '#tag-green' },
+    ]);
+  });
+});

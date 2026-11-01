@@ -108,6 +108,8 @@ export const ArchiveBoard = z.object({
   title: z.string().max(200),
   position: z.string().min(1).max(64),
   coverAssetId: Id.nullable(),
+  /** Board card icon; absent in archives from before it existed. */
+  icon: ProjectIcon.nullable().optional(),
   /** Schema version of `document.yjs` (doc-schema), so readers can refuse before loading it. */
   schemaVersion: z.int().min(0),
   createdBy: Id.nullable(),

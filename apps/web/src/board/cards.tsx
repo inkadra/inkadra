@@ -6,8 +6,9 @@ import {
   updateElement,
   updateTodoItem,
 } from '@inkadra/canvas-core';
-import type { Element } from '@inkadra/doc-schema';
-import { Checkbox, fadeOutCopy, Icon } from '@inkadra/ui';
+import { CARD_COLORS, type ContentCounts, contentCounts, type Element } from '@inkadra/doc-schema';
+import { Checkbox, fadeOutCopy, Icon, ProjectGlyph } from '@inkadra/ui';
+import type { TFunction } from 'i18next';
 import {
   type CSSProperties,
   type KeyboardEvent,
@@ -46,7 +47,22 @@ import { isYoutubeUrl } from './youtube.ts';
 
 type Of<T extends Element['type']> = Extract<Element, { type: T }>;
 
-export const NOTE_COLORS = ['blue', 'orange', 'purple', 'green'] as const;
+export const NOTE_COLORS = CARD_COLORS;
+
+/** "3 cards · 1 file": what a column or a board holds, under its title. */
+export function contentSummary(
+  t: TFunction,
+  c: Pick<ContentCounts, 'cardCount' | 'fileCount' | 'boardCount'>,
+): string {
+  return [
+    (c.cardCount > 0 || (c.fileCount === 0 && c.boardCount === 0)) &&
+      t('board.count.cards', { count: c.cardCount }),
+    c.fileCount > 0 && t('board.count.files', { count: c.fileCount }),
+    c.boardCount > 0 && t('board.count.boards', { count: c.boardCount }),
+  ]
+    .filter(Boolean)
+    .join(' · ');
+}
 
 interface CardProps {
   element: Element;
@@ -126,6 +142,7 @@ export const Card = memo(function Card({
     dimmed && 'is-dimmed',
     element.locked && 'is-locked',
     element.type === 'note' && element.color && `card--tint-${element.color}`,
+    element.type === 'column' && element.color && `card--accent-${element.color}`,
     entering && 'ink-motion-card',
   ]
     .filter(Boolean)
@@ -218,7 +235,36 @@ function CardBody({
       return <CharacterCard element={element} />;
     case 'location':
       return <LocationCard element={element} />;
+    case 'section':
+      return <SectionCard element={element} editing={editing} />;
   }
+}
+
+/** A section heading: large quiet text over a thin rule, without card chrome (#318). */
+function SectionCard({ element, editing }: { element: Of<'section'>; editing: boolean }) {
+  const { store, setEditing } = useBoard();
+  const { t } = useTranslation();
+  return editing ? (
+    <input
+      className="card__inline-input section__title"
+      defaultValue={element.title}
+      placeholder={t('board.section.placeholder')}
+      // biome-ignore lint/a11y/noAutofocus: the field opens because the user asked to rename
+      autoFocus
+      onFocus={(e) => e.currentTarget.select()}
+      onBlur={(e) => {
+        updateElement(store.doc, element.id, { title: e.target.value.trim() }, LOCAL);
+        setEditing(null);
+      }}
+      onKeyDown={blurOnEnter}
+      maxLength={200}
+      aria-label={t('board.section.title')}
+    />
+  ) : (
+    <h2 className={`section__title${element.title ? '' : ' is-empty'}`}>
+      {element.title || t('board.section.placeholder')}
+    </h2>
+  );
 }
 
 /** Compact face of a character: portrait, name, role; the rest is in its side sheet. */
@@ -659,43 +705,68 @@ function ColorCard({ element, editing }: { element: Of<'color'>; editing: boolea
 }
 
 function BoardCard({ element, editing }: { element: Of<'board'>; editing: boolean }) {
-  const { boards, projectId, setEditing, readOnly } = useBoard();
+  const { boards, boardCounts, projectId, setEditing, readOnly } = useBoard();
   const { t } = useTranslation();
   const board = boards?.find((b) => b.id === element.boardId);
   const title = board?.title ?? t('board.board.unknown');
+  const counts = boardCounts?.get(element.boardId);
+  const icon = board?.icon;
+  // The board's own symbol on a tile of its colour, as the project appearance shows it (#322).
+  const tile =
+    icon && !icon.emoji && icon.color !== 'neutral'
+      ? ({ '--board-bg': `var(--ink-tag-${icon.color}-bg)` } as CSSProperties)
+      : undefined;
   return (
     <div className="card__board">
-      <span className="card__board-tile" aria-hidden="true">
-        <Icon
-          name={board?.kind === 'storyboard' ? 'storyboard' : 'board'}
-          contentKind={board?.kind ?? 'board'}
-          size={22}
-        />
+      <span className="card__board-tile" style={tile} aria-hidden="true">
+        {icon ? (
+          <ProjectGlyph {...icon} />
+        ) : (
+          <Icon
+            name={board?.kind === 'storyboard' ? 'storyboard' : 'board'}
+            contentKind={board?.kind ?? 'board'}
+            size={20}
+          />
+        )}
       </span>
-      {editing && board && !readOnly && !element.locked && canRenameBoard(board) ? (
-        <input
-          className="card__inline-input card__title"
-          defaultValue={board.title}
-          // biome-ignore lint/a11y/noAutofocus: the field opens because the user asked to rename
-          autoFocus
-          onFocus={(e) => e.currentTarget.select()}
-          onBlur={(e) => {
-            const value = e.target.value.trim();
-            setEditing(null);
-            if (value && value !== board.title)
-              void renameBoard(projectId, board.id, value).catch(() => {});
-          }}
-          // Escape leaves the field keeping what was typed, like every other card field: a new
-          // board is named by typing and pressing Escape.
-          onKeyDown={blurOnEnter}
-          maxLength={200}
-          aria-label={t('board.board.title')}
-        />
-      ) : (
-        <span className="card__title">{title}</span>
-      )}
-      <span className="card__desc">
-        {board?.kind === 'storyboard' ? t('board.types.storyboard') : t('board.types.board')}
+      <span className="card__board-text">
+        {editing && board && !readOnly && !element.locked && canRenameBoard(board) ? (
+          <input
+            className="card__inline-input card__title"
+            defaultValue={board.title}
+            // biome-ignore lint/a11y/noAutofocus: the field opens because the user asked to rename
+            autoFocus
+            onFocus={(e) => e.currentTarget.select()}
+            onBlur={(e) => {
+              const value = e.target.value.trim();
+              setEditing(null);
+              if (value && value !== board.title)
+                void renameBoard(projectId, board.id, value).catch(() => {});
+            }}
+            // Escape leaves the field keeping what was typed, like every other card field: a new
+            // board is named by typing and pressing Escape.
+            onKeyDown={blurOnEnter}
+            maxLength={200}
+            aria-label={t('board.board.title')}
+          />
+        ) : (
+          <span className="card__title">{title}</span>
+        )}
+        <span className="card__desc">
+          {/* A storyboard keeps its kind before the count: "Storyboard · 12 cards". */}
+          {[
+            (board?.kind === 'storyboard' || !counts) &&
+              t(board?.kind === 'storyboard' ? 'board.types.storyboard' : 'board.types.board'),
+            counts &&
+              contentSummary(t, {
+                cardCount: counts.cardCount ?? counts.elementCount,
+                fileCount: counts.fileCount ?? 0,
+                boardCount: counts.boardCount ?? 0,
+              }),
+          ]
+            .filter(Boolean)
+            .join(' · ')}
+        </span>
       </span>
     </div>
   );
@@ -746,12 +817,15 @@ function ColumnCard({
             <span className="column__slug">{slugline(scene)}</span>
             {element.title && <span className="column__name">{element.title}</span>}
           </span>
+        ) : scene ? (
+          <span className="column__title">{element.title}</span>
         ) : (
-          <span className="column__title">
-            {element.title || (scene ? '' : t('board.column.untitled'))}
+          <span className="column__heading">
+            <span className="column__title">{element.title || t('board.column.untitled')}</span>
+            <span className="column__summary">{contentSummary(t, contentCounts(items))}</span>
           </span>
         )}
-        <span className="column__count">{items.length}</span>
+        {scene && <span className="column__count">{items.length}</span>}
         <GuestVisibility store={store} element={element} />
         <button
           type="button"

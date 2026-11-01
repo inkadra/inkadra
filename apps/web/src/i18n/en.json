@@ -337,7 +337,8 @@
       "arrow": "Arrow",
       "storyboard": "Storyboard",
       "character": "Character",
-      "location": "Location"
+      "location": "Location",
+      "section": "Section heading"
     },
     "tools": {
       "select": "Select",
@@ -474,7 +475,10 @@
       "viewImage": "Open image",
       "details": "Frame details",
       "draw": "Draw",
-      "rename": "Rename"
+      "rename": "Rename",
+      "boardIcon": "Icon and colour…",
+      "moveCardsOn": "Move with the cards under it",
+      "moveCardsOff": "Move the heading alone"
     },
     "zoom": {
       "label": "Zoom",
@@ -582,6 +586,18 @@
     "access": {
       "readOnly": "Your role changed: you can only view this board now.",
       "editable": "Your role changed: you can edit this board now."
+    },
+    "section": {
+      "title": "Section title",
+      "placeholder": "Section title"
+    },
+    "count": {
+      "cards_one": "{{count}} card",
+      "cards_other": "{{count}} cards",
+      "files_one": "{{count}} file",
+      "files_other": "{{count}} files",
+      "boards_one": "{{count}} board",
+      "boards_other": "{{count}} boards"
     }
   },
   "tags": {
@@ -2262,7 +2278,9 @@
     },
     "pasteEmoji": "Paste or type an emoji",
     "sidebarPreview": "How it looks in the sidebar",
-    "close": "Close"
+    "close": "Close",
+    "boardTitle": "Board icon and colour",
+    "boardPreview": "How it looks on board cards"
   },
   "transfer": {
     "exportMenu": "Export project…",

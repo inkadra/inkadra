@@ -1,5 +1,5 @@
 import type { Element } from '@inkadra/doc-schema';
-import type { Board } from '@inkadra/shared';
+import type { Board, BoardCount } from '@inkadra/shared';
 import type { Editor } from '@tiptap/react';
 import { createContext, type ReactNode, useContext } from 'react';
 import type { BoardStore } from './store.ts';
@@ -12,6 +12,8 @@ export interface BoardContextValue {
   userId: string;
   /** Boards of the project, for the titles of board cards. */
   boards: Board[] | null;
+  /** What each board holds, for the counts on board cards; not for guests. */
+  boardCounts?: ReadonlyMap<string, BoardCount>;
   /** Zoom rounded to a power of two, to pick image sizes without re-rendering on every step. */
   scale: number;
   /** Many cards: pictures keep their poster until they are hovered or selected. */

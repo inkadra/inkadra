@@ -337,7 +337,8 @@
       "arrow": "Freccia",
       "storyboard": "Storyboard",
       "character": "Personaggio",
-      "location": "Location"
+      "location": "Location",
+      "section": "Titolo di sezione"
     },
     "tools": {
       "select": "Seleziona",
@@ -474,7 +475,10 @@
       "viewImage": "Apri immagine",
       "details": "Dettagli inquadratura",
       "draw": "Disegna",
-      "rename": "Rinomina"
+      "rename": "Rinomina",
+      "boardIcon": "Icona e colore…",
+      "moveCardsOn": "Sposta insieme alle card sotto",
+      "moveCardsOff": "Sposta solo il titolo"
     },
     "zoom": {
       "label": "Zoom",
@@ -582,6 +586,18 @@
     "access": {
       "readOnly": "Il tuo ruolo è cambiato: ora puoi solo guardare questa board.",
       "editable": "Il tuo ruolo è cambiato: ora puoi modificare questa board."
+    },
+    "section": {
+      "title": "Titolo della sezione",
+      "placeholder": "Titolo della sezione"
+    },
+    "count": {
+      "cards_one": "{{count}} card",
+      "cards_other": "{{count}} card",
+      "files_one": "{{count}} file",
+      "files_other": "{{count}} file",
+      "boards_one": "{{count}} board",
+      "boards_other": "{{count}} board"
     }
   },
   "tags": {
@@ -2262,7 +2278,9 @@
     },
     "pasteEmoji": "Incolla o scrivi un'emoji",
     "sidebarPreview": "Così appare nella barra laterale",
-    "close": "Chiudi"
+    "close": "Chiudi",
+    "boardTitle": "Icona e colore della board",
+    "boardPreview": "Così appare nelle card della board"
   },
   "transfer": {
     "exportMenu": "Esporta progetto…",

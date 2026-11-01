@@ -82,12 +82,16 @@ describe('persisted board preview', () => {
 
 describe('board counts for the navigation', () => {
   it('counts elements, frames and frames still to shoot; tolerates bad state', () => {
-    expect(boardCounts()).toEqual({ elementCount: 0, frameCount: 0, framesToShoot: 0 });
-    expect(boardCounts(new Uint8Array([255]))).toEqual({
+    const zero = {
       elementCount: 0,
       frameCount: 0,
       framesToShoot: 0,
-    });
+      cardCount: 0,
+      fileCount: 0,
+      boardCount: 0,
+    };
+    expect(boardCounts()).toEqual(zero);
+    expect(boardCounts(new Uint8Array([255]))).toEqual(zero);
     const doc = new Y.Doc();
     const { elements } = roots(doc);
     const add = (id: string, type: string, status?: string) => {
@@ -101,10 +105,14 @@ describe('board counts for the navigation', () => {
     add('b', 'frame', 'todo');
     add('c', 'frame', 'shot');
     add('note', 'note');
+    add('pdf', 'file');
     expect(boardCounts(Y.encodeStateAsUpdate(doc))).toEqual({
-      elementCount: 5,
+      elementCount: 6,
       frameCount: 3,
       framesToShoot: 2,
+      cardCount: 4,
+      fileCount: 1,
+      boardCount: 0,
     });
     doc.destroy();
   });

@@ -1,4 +1,5 @@
 import { createElement, listElements } from '@inkadra/canvas-core';
+import { contentCounts } from '@inkadra/doc-schema';
 import { useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useBoardConnection } from '../board/connection.ts';
@@ -71,14 +72,7 @@ export function ProjectSetupSeed({
         !finished.current
       ) {
         finished.current = true;
-        const counts = { elementCount: 0, frameCount: 0, framesToShoot: 0 };
-        for (const el of listElements(conn.store.doc)) {
-          counts.elementCount++;
-          if (el.type !== 'frame') continue;
-          counts.frameCount++;
-          if (el.status !== 'shot') counts.framesToShoot++;
-        }
-        done(counts);
+        done(contentCounts(listElements(conn.store.doc)));
       }
     }, 100);
     const timeout = setTimeout(() => {

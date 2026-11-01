@@ -15,6 +15,7 @@ import {
   moveIntoParent,
   moveToCanvas,
   pasteElements,
+  sectionMembers,
   updateElement,
   updateTodoItem,
 } from './board.ts';
@@ -157,5 +158,25 @@ describe('board operations', () => {
     const el = listElements(doc)[0]!;
     expect(el.type === 'todo' && el.items[0]?.done).toBe(true);
     expect(el.type === 'todo' && el.title).toBe('Prima del 22');
+  });
+});
+
+describe('section headings', () => {
+  it('move the cards under them, up to the next heading and within their width', () => {
+    const doc = setup();
+    const head = createElement(doc, 'section', { x: 0, y: 0 }, { title: 'Sequenza 1' }, opts);
+    const under = createElement(doc, 'note', { x: 20, y: 60 }, {}, opts);
+    const column = createElement(doc, 'column', { x: 300, y: 60 }, { title: 'Da fare' }, opts);
+    const aside = createElement(doc, 'note', { x: 700, y: 60 }, {}, opts);
+    const locked = createElement(doc, 'note', { x: 20, y: 200 }, { locked: true }, opts);
+    const next = createElement(doc, 'section', { x: 100, y: 400 }, { title: 'Sequenza 2' }, opts);
+    const below = createElement(doc, 'note', { x: 20, y: 460 }, {}, opts);
+    const rectOf = (el: { x: number; y: number; w: number }) => ({ ...el, h: 40 });
+    const canvas = canvasElements(listElements(doc));
+    expect(sectionMembers(head, canvas, rectOf).sort()).toEqual([under.id, column.id].sort());
+    expect(sectionMembers(next, canvas, rectOf)).toEqual([below.id]);
+    expect(
+      ids([aside, locked]).some((id) => sectionMembers(head, canvas, rectOf).includes(id)),
+    ).toBe(false);
   });
 });

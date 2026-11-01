@@ -760,21 +760,60 @@ button.fcard__audio-play:focus-visible {
   flex-direction: column;
 }
 
-/* Board link */
+/* Board link: the board's icon on a tile of its colour, the name and what it holds (#322). */
 .card__board {
   display: flex;
-  flex-direction: column;
-  gap: 6px;
+  align-items: center;
+  gap: 10px;
   padding: 12px;
 }
 .card__board-tile {
-  width: 48px;
+  width: 40px;
   height: 40px;
+  flex: none;
   border-radius: var(--ink-radius-sm);
   display: grid;
   place-items: center;
-  background: var(--ink-surface-2);
+  background: var(--board-bg, var(--ink-surface-2));
   color: var(--ink-text-icon);
+}
+.card__board-tile svg {
+  width: 20px;
+  height: 20px;
+}
+.card__board-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.card__board-text .card__title {
+  font-size: 12.5px;
+  font-weight: 600;
+}
+.card__board-text .card__desc {
+  color: var(--ink-text-muted);
+}
+
+/* Section heading (#318): large quiet text over a thin rule, no card chrome. */
+.card--section {
+  background: transparent;
+  border-color: transparent;
+}
+.section__title {
+  display: block;
+  width: 100%;
+  padding: 4px 2px 8px;
+  border: 0;
+  border-bottom: 1px solid var(--ink-border-default);
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: 1.3;
+  color: var(--ink-text-primary);
+}
+.section__title.is-empty,
+.section__title::placeholder {
+  color: var(--ink-text-muted);
 }
 
 /* Columns and scenes */
@@ -800,6 +839,40 @@ button.fcard__audio-play:focus-visible {
   font-weight: 600;
   letter-spacing: 0.06em;
   text-transform: uppercase;
+}
+/* Column accent from the card palette (#307): a bar on the title, a light tint of the header. */
+.card--accent-blue {
+  --column-accent: var(--ink-tag-blue);
+}
+.card--accent-orange {
+  --column-accent: var(--ink-tag-orange);
+}
+.card--accent-purple {
+  --column-accent: var(--ink-tag-purple);
+}
+.card--accent-green {
+  --column-accent: var(--ink-tag-green);
+}
+.card--column[class*="card--accent-"] {
+  border-top: 3px solid var(--column-accent);
+  background:
+    linear-gradient(color-mix(in srgb, var(--column-accent) 8%, transparent), transparent 64px),
+    var(--ink-bg-app);
+}
+.card--column .column__title {
+  font-size: 12.5px;
+  letter-spacing: 0;
+  text-transform: none;
+}
+.column__heading {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+.column__summary {
+  font-size: 11px;
+  color: var(--ink-text-muted);
 }
 .column__count {
   margin-left: auto;
@@ -1397,6 +1470,10 @@ button.fcard__audio-play:focus-visible {
 }
 .minimap__svg {
   display: block;
+}
+.minimap__landmark {
+  stroke: var(--ink-text-secondary);
+  stroke-width: 1.5;
 }
 .minimap__el {
   fill: var(--ink-surface-3);

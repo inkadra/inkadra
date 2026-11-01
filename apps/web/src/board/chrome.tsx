@@ -58,7 +58,8 @@ export type ToolType =
   | 'scene'
   | 'storyboard'
   | 'character'
-  | 'location';
+  | 'location'
+  | 'section';
 export type CanvasTool = 'select' | 'hand' | 'arrow';
 export const TOOL_MIME = 'application/x-inkadra-tool';
 
@@ -77,6 +78,7 @@ export const TOOLS: Array<{ type: ToolType; icon: IconName; key?: string; menuOn
   // Story bible cards (decision 0044): from the Canvas menu and the command palette.
   { type: 'character', icon: 'user', menuOnly: true },
   { type: 'location', icon: 'pin', menuOnly: true },
+  { type: 'section', icon: 'heading', menuOnly: true },
 ];
 
 const mod = () => (isMac() ? '⌘' : 'Ctrl+');
@@ -209,8 +211,8 @@ function CanvasMenuButton({
 }: {
   onCanvas: (template: CanvasTemplate) => void;
   onScreenplay?: (() => void) | undefined;
-  /** Story bible cards, listed after the canvas types. */
-  onCard: (type: 'character' | 'location') => void;
+  /** Story bible cards and section headings, listed after the canvas types. */
+  onCard: (type: 'character' | 'location' | 'section') => void;
 }) {
   const { t } = useTranslation();
   const button = useRef<HTMLButtonElement>(null);
@@ -273,10 +275,10 @@ function CanvasMenuButton({
                 : []),
             ]).concat([
               { divider: true },
-              ...(['character', 'location'] as const).map(
+              ...(['character', 'location', 'section'] as const).map(
                 (type): MenuItem => ({
                   label: t(`board.types.${type}`),
-                  icon: type === 'character' ? 'user' : 'pin',
+                  icon: type === 'character' ? 'user' : type === 'location' ? 'pin' : 'heading',
                   kind: 'canvas',
                   action: () => onCard(type),
                 }),
@@ -428,7 +430,8 @@ export function ContextBar({
       </div>
     );
   const free = elements.filter((e) => e.parent === null);
-  const notes = elements.filter((e) => e.type === 'note');
+  // Notes take a tint and columns an accent, from the same card palette.
+  const colored = elements.filter((e) => e.type === 'note' || e.type === 'column');
   const locked = elements.some((e) => e.locked);
   const hideable = elements.filter((e) => e.type !== 'arrow');
   const guestHidden = hideable.length > 0 && hideable.every((e) => e.guestHidden);
@@ -472,7 +475,7 @@ export function ContextBar({
           <span className="ctxbar__sep" aria-hidden="true" />
         </>
       )}
-      {notes.length > 0 && notes.length === elements.length && (
+      {colored.length > 0 && colored.length === elements.length && (
         <>
           <button
             type="button"
@@ -890,10 +893,19 @@ export function Minimap({
         return `M${m.x.toFixed(1)} ${m.y.toFixed(1)}h${m.width.toFixed(1)}v${m.height.toFixed(1)}h${(-m.width).toFixed(1)}z`;
       })
       .join('');
-    return { minX, minY, s, ox, oy, map, path };
+    // Section headings are landmarks: a line along their rule.
+    const landmarks = elements
+      .flatMap((el, i) => {
+        const r = rects[i];
+        if (el.type !== 'section' || !r) return [];
+        const m = map(r);
+        return [`M${m.x.toFixed(1)} ${(m.y + m.height).toFixed(1)}h${m.width.toFixed(1)}`];
+      })
+      .join('');
+    return { minX, minY, s, ox, oy, map, path, landmarks };
   }, [elements, rectOf]);
   if (!layout || size.w === 0) return null;
-  const { minX, minY, s, ox, oy, map, path } = layout;
+  const { minX, minY, s, ox, oy, map, path, landmarks } = layout;
   const view = map({
     x: viewport.x,
     y: viewport.y,
@@ -915,6 +927,7 @@ export function Minimap({
     >
       <svg className="minimap__svg" width={W} height={H} aria-hidden="true">
         <path d={path} className="minimap__el" />
+        {landmarks && <path d={landmarks} className="minimap__landmark" />}
       </svg>
       <span
         className="minimap__view"

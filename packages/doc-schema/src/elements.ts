@@ -140,14 +140,36 @@ export const ColorElement = Base.extend({
   hex: z.string().regex(/^#[0-9A-F]{6}$/),
   label: z.string().max(80).optional(),
 });
+/** The card palette: tints of notes and accents of columns (decision 0033). */
+export const CARD_COLORS = ['blue', 'orange', 'purple', 'green'] as const;
+export const CardColor = z.enum(CARD_COLORS);
+export type CardColor = z.infer<typeof CardColor>;
+
 export const ColumnElement = Base.extend({
   type: z.literal('column'),
   title: z.string().max(200),
   collapsed: z.boolean().optional(),
+  color: CardColor.optional().describe(
+    'Accent from the card palette: a bar on the title and a light tint of the header. Omitted = none (since version 10).',
+  ),
 });
 export const BoardLinkElement = Base.extend({
   type: z.literal('board'),
   boardId: z.uuid(),
+});
+
+/**
+ * A section heading: one line of large text with a rule under it, no card chrome, resizable in
+ * width only (since version 10). With `moveCards`, dragging it also moves the cards placed under
+ * it (see sectionMembers in canvas-core).
+ */
+export const SectionElement = Base.extend({
+  type: z.literal('section'),
+  title: z.string().max(200),
+  moveCards: z
+    .boolean()
+    .optional()
+    .describe('True: dragging the heading moves the cards under it too. Omitted = alone.'),
 });
 
 /**
@@ -369,6 +391,7 @@ export const Element = z.discriminatedUnion('type', [
   ArrowElement,
   CharacterElement,
   LocationElement,
+  SectionElement,
 ]);
 
 /** Element types that hold other elements through `parent`. */
@@ -377,3 +400,43 @@ export type Element = z.infer<typeof Element>;
 export type ElementType = Element['type'];
 
 export const ELEMENT_TYPES = Element.options.map((o) => o.shape.type.value) as ElementType[];
+
+/** What a board or a column holds, for the counts under their titles and in the navigation. */
+export interface ContentCounts {
+  elementCount: number;
+  frameCount: number;
+  /** Frames whose status is not `shot` yet. */
+  framesToShoot: number;
+  /** Board cards. */
+  boardCount: number;
+  /** File cards. */
+  fileCount: number;
+  /** Every other card; arrows, columns, scenes and section headings only arrange cards. */
+  cardCount: number;
+}
+
+const STRUCTURE: ReadonlySet<unknown> = new Set(['arrow', 'column', 'scene', 'section']);
+
+/** Counts elements by what they are; takes plain elements or the fields read from Y.Maps. */
+export function contentCounts(
+  items: Iterable<{ type?: unknown; status?: unknown }>,
+): ContentCounts {
+  const counts: ContentCounts = {
+    elementCount: 0,
+    frameCount: 0,
+    framesToShoot: 0,
+    boardCount: 0,
+    fileCount: 0,
+    cardCount: 0,
+  };
+  for (const { type, status } of items) {
+    counts.elementCount++;
+    if (type === 'board') counts.boardCount++;
+    else if (type === 'file') counts.fileCount++;
+    else if (!STRUCTURE.has(type)) counts.cardCount++;
+    if (type !== 'frame') continue;
+    counts.frameCount++;
+    if (status !== 'shot') counts.framesToShoot++;
+  }
+  return counts;
+}

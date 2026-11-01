@@ -118,6 +118,7 @@ export function entryFor(el: Element, body: string, autoLabel?: string): IndexEn
     case 'color':
       return { ...base, title: el.label ?? el.hex, text: join(el.label, el.hex) };
     case 'column':
+    case 'section':
       return { ...base, title: el.title, text: join(el.title) };
     case 'board':
       return { ...base, title: '', text: '' };
