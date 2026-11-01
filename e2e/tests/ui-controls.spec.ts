@@ -61,6 +61,7 @@ for (const [device, width, height] of [
         await menu.click();
         await page.getByRole('menuitem', { name: 'Esporta…' }).click();
         const dialog = page.getByRole('dialog', { name: 'Esporta' });
+        await dialog.getByRole('button', { name: /Personalizza/ }).click();
         await dialog.getByRole('radio', { name: 'Il team' }).click();
         const cover = dialog.getByRole('checkbox', { name: /Copertina/ });
         await expect(cover).toBeVisible();

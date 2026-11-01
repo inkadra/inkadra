@@ -161,7 +161,8 @@ test('the project theme dresses the presentation and the PDF', async ({ page }, 
   await page.keyboard.press('Escape');
 
   await page.getByRole('button', { name: 'Esporta PDF' }).click();
-  const exporter = page.getByRole('dialog', { name: 'Esporta' });
+  const exporter = page.getByRole('dialog', { name: /Esporta/ });
+  await exporter.getByRole('button', { name: /Personalizza/ }).click();
   await exporter.getByRole('checkbox', { name: /Copertina/ }).check();
   const [download] = await Promise.all([
     page.waitForEvent('download'),

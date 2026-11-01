@@ -598,6 +598,7 @@ test('a short film is prepared from the moodboard to the shot list', async ({
     await page.getByRole('tab', { name: 'Storyboard', exact: true }).click();
     await page.getByRole('button', { name: 'Esporta PDF' }).click();
     const dialog = page.getByRole('dialog', { name: 'Esporta' });
+    await dialog.getByRole('button', { name: /Personalizza/ }).click();
     await dialog.getByRole('radio', { name: 'Il team' }).click();
     const cover = dialog.getByRole('checkbox', { name: /Copertina/ });
     if (!(await cover.isChecked())) await cover.check();

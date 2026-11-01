@@ -22,12 +22,17 @@ describe('export settings contract', () => {
       expect(UpdateExportSettings.safeParse({ framesPerPage: n }).success).toBe(false);
   });
 
-  it('takes partial updates, a logo or its removal, and nothing unknown', () => {
+  it('takes partial updates, a preset, a logo or its removal, and nothing unknown', () => {
     expect(UpdateExportSettings.parse({})).toEqual({});
-    expect(UpdateExportSettings.parse({ paper: null, logoAssetId: null })).toEqual({
+    expect(
+      UpdateExportSettings.parse({ preset: 'client-pitch', paper: null, logoAssetId: null }),
+    ).toEqual({
+      preset: 'client-pitch',
       paper: null,
       logoAssetId: null,
     });
+    expect(UpdateExportSettings.parse({ preset: null })).toEqual({ preset: null });
+    expect(UpdateExportSettings.safeParse({ preset: 'unknown' }).success).toBe(false);
     expect(UpdateExportSettings.safeParse({ logoAssetId: 'not-an-id' }).success).toBe(false);
     expect(UpdateExportSettings.safeParse({ logo: {} }).success).toBe(false);
     expect(UpdateExportSettings.safeParse({ audience: 'everyone' }).success).toBe(false);

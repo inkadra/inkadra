@@ -25,8 +25,9 @@ import { CommentsButton, useCardLabel } from './CommentsPanel.tsx';
 import { ContextMenu, Toast } from './chrome.tsx';
 import { type BoardConnection, useBoardConnection } from './connection.ts';
 import { DeniedState } from './DeniedState.tsx';
-import { ExportDialog, type ExportSource } from './export/ExportDialog.tsx';
+import { ExportDialog } from './export/ExportDialog.tsx';
 import type { ExportWhat } from './export/engine.ts';
+import type { ExportSource } from './export/settings.ts';
 import { ClientReviewView } from './film/ClientReviewView.tsx';
 import { MoodboardView } from './film/MoodboardView.tsx';
 import { ScheduleView } from './film/ScheduleView.tsx';
@@ -763,7 +764,7 @@ function BoardScreen({
 /** The canvas with the other people on the board. */
 /** The export dialog follows the open view; other views export the board's cards. */
 function exportSourceOf(view: string): ExportSource {
-  return view === 'storyboard' || view === 'shotlist' ? view : 'canvas';
+  return view === 'storyboard' || view === 'shotlist' || view === 'schedule' ? view : 'canvas';
 }
 
 function BoardCanvas(props: Omit<Parameters<typeof Canvas>[0], 'peers'>) {
