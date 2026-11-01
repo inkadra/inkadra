@@ -79,24 +79,60 @@ export function clientReviewBoard(
   return boards?.find((b) => counts.get(b.id)?.clientReview)?.id ?? null;
 }
 
-/**
- * What the header offers: canvas and the film views on a storyboard, or while a film view is
- * open so there is a way back. An ordinary board offers its own two views, canvas and
- * moodboard; nothing while its kind is still loading. A storyboard has no moodboard tab: its
- * pictures live in the frames, and references get a board of their own. An address that asks
- * for the moodboard still shows its tab, so the open view always has one.
- */
-export function headerViews(kind: BoardKind | undefined, active: BoardView): BoardView[] {
-  const film = kind === 'storyboard' || FILM_VIEWS.includes(active);
-  if (!film) return kind ? ['canvas', 'moodboard'] : [];
-  return pickerViews(kind, active);
+/** Which film links the sidebar, the header tabs and the phone switcher offer, for one project. */
+export interface FilmLinks {
+  /** Storyboard, Shot list and Schedule. */
+  film: boolean;
+  /** Review. */
+  review: boolean;
+  /** Where Review opens without a storyboard: the board with a live client review link. */
+  reviewBoard: string | null;
 }
 
-/** The phone's view picker: every view, but no moodboard on a storyboard, as in the header. */
-export function pickerViews(kind: BoardKind | undefined, active: BoardView | null): BoardView[] {
-  return ALL_VIEWS.filter(
-    (v) => v !== 'moodboard' || kind !== 'storyboard' || active === 'moodboard',
-  );
+/**
+ * The one rule for the film links, so the sidebar, the header and the phone never disagree. The
+ * film views show with the project's storyboard, and while one of them is open so there is a way
+ * back. Review also shows alone while a client review link is live (`reviewBoard`) or its view
+ * is open.
+ */
+export function filmLinks(
+  hasStoryboard: boolean,
+  reviewBoard: string | null,
+  active: BoardView | null,
+): FilmLinks {
+  const film = hasStoryboard || (isFilmView(active) && active !== 'review');
+  return { film, review: film || active === 'review' || !!reviewBoard, reviewBoard };
+}
+
+/** Everything is offered: before a layout has worked the rule out, and in tests of one view. */
+export const ALL_FILM_LINKS: FilmLinks = { film: true, review: true, reviewBoard: null };
+
+/**
+ * What the header offers: canvas always, the film views the project allows (`links`), and the
+ * moodboard, except on a storyboard, where pictures live in the frames and references get a
+ * board of their own. An address that asks for a view still shows its tab, so the open view
+ * always has one. Nothing while the board's kind is still loading.
+ */
+export function headerViews(
+  kind: BoardKind | undefined,
+  active: BoardView,
+  links: FilmLinks = ALL_FILM_LINKS,
+): BoardView[] {
+  if (!kind && !isFilmView(active)) return [];
+  return pickerViews(kind, active, links);
+}
+
+/** The phone's view picker: the same views as the header. */
+export function pickerViews(
+  kind: BoardKind | undefined,
+  active: BoardView | null,
+  links: FilmLinks = ALL_FILM_LINKS,
+): BoardView[] {
+  return ALL_VIEWS.filter((v) => {
+    if (v === active || v === 'canvas') return true;
+    if (v === 'moodboard') return kind !== 'storyboard';
+    return v === 'review' ? links.review : links.film;
+  });
 }
 
 /**

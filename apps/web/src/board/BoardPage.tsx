@@ -95,7 +95,7 @@ export function useBoardView(kind: Board['kind'] | undefined): [BoardView, (v: B
 /** /p/:projectId shows the root board, /p/:projectId/b/:boardId a nested one. */
 export function BoardPage() {
   const { projectId, boardId: param } = useParams();
-  const { projects, shared } = useProjects();
+  const { projects, shared, filmLinks } = useProjects();
   const project = projects?.find((p) => p.id === projectId);
   if (!projectId || !projects) return null;
   const landing = param ? null : projectLanding(projectId, projects, shared);
@@ -266,17 +266,22 @@ function BoardScreen({
   const storyboardId = useMemo(() => storyboardOf(boards), [boards]);
   const chooseView = useCallback(
     (next: BoardView) => {
-      const destination = viewDestination(next, { boardId, kind, rootBoardId }, storyboardId);
+      const destination = viewDestination(
+        next,
+        { boardId, kind, rootBoardId },
+        storyboardId,
+        filmLinks.reviewBoard,
+      );
       if (destination.boardId) {
         navigate(viewHref(projectId, destination, { boardId, rootBoardId, kind }));
         return;
       }
       setView(next);
     },
-    [boardId, kind, rootBoardId, storyboardId, navigate, projectId, setView],
+    [boardId, kind, rootBoardId, storyboardId, filmLinks.reviewBoard, navigate, projectId, setView],
   );
 
-  const tabs = useMemo(() => headerViews(kind, view), [kind, view]);
+  const tabs = useMemo(() => headerViews(kind, view, filmLinks), [kind, view, filmLinks]);
 
   // The palette offers a view only when the header shows its tab.
   useRegisterActions(

@@ -38,6 +38,21 @@ async function shoot(page: Page, name: string) {
   }
 }
 
+/** The view tabs of the board header, by name. */
+const viewTabs = (page: Page) =>
+  page.getByRole('tab').filter({ hasText: /^(Lavagna|Moodboard|Storyboard|Shot list|Piano riprese|Revisione)$/ });
+const filmTabs = ['Storyboard', 'Shot list', 'Piano riprese'];
+
+/** The phone's view switcher: the options it lists. */
+async function switcherOptions(page: Page) {
+  await page.getByLabel('Vista', { exact: true }).click();
+  const list = page.getByRole('listbox');
+  const names = await list.getByRole('option').allTextContents();
+  await page.keyboard.press('Escape');
+  await expect(list).toBeHidden();
+  return names;
+}
+
 /** The share dialog's guest links, opened from the board. */
 async function guestLinks(page: Page) {
   await page.getByRole('button', { name: 'Condividi' }).click();
@@ -66,6 +81,8 @@ test('the sidebar of a project without boards or storyboard, and Add storyboard 
   await expect(newBoard).toBeVisible();
   await expect(film).toHaveCount(0);
   await expect(review).toHaveCount(0);
+  // The header tabs follow the sidebar: the board's own two views only.
+  await expect(viewTabs(page)).toHaveText(['Lavagna', 'Moodboard']);
   await shoot(page, 'empty-project');
 
   // The row opens the New board dialog for this project.
@@ -94,6 +111,8 @@ test('the sidebar of a project without boards or storyboard, and Add storyboard 
   await expect(dialog2).toBeHidden();
   await expect(review).toBeVisible();
   await expect(film).toHaveCount(0);
+  // Live, like the sidebar: Review joins the header tabs, the film views stay out.
+  await expect(viewTabs(page)).toHaveText(['Lavagna', 'Revisione', 'Moodboard']);
   await shoot(page, 'review-without-storyboard');
   await review.click();
   await expect(page).toHaveURL(/view=review/);
@@ -101,6 +120,11 @@ test('the sidebar of a project without boards or storyboard, and Add storyboard 
   await expect(reviewView.locator('.client-review__frame')).toHaveCount(1);
   await expect(reviewView.getByText('Palette del cliente').first()).toBeVisible();
   await expect(film).toHaveCount(0);
+  await expect(viewTabs(page)).toHaveText(['Lavagna', 'Revisione', 'Moodboard']);
+  await expect(page.getByRole('tab', { name: 'Revisione', exact: true })).toHaveAttribute(
+    'aria-selected',
+    'true',
+  );
   await shoot(page, 'review-view-cards');
 
   // Revoked, the link no longer keeps Review in the sidebar.
@@ -114,6 +138,7 @@ test('the sidebar of a project without boards or storyboard, and Add storyboard 
   await page.keyboard.press('Escape');
   await expect(dialog3).toBeHidden();
   await expect(review).toHaveCount(0);
+  await expect(viewTabs(page)).toHaveText(['Lavagna', 'Moodboard']);
 
   // Add storyboard… in the project's menu makes one, opens it and lists the film links.
   await sidebar.getByRole('button', { name: `Opzioni progetto: ${project.name}` }).click();
@@ -125,6 +150,15 @@ test('the sidebar of a project without boards or storyboard, and Add storyboard 
   await openSidebar();
   await expect(film).toBeVisible();
   await expect(review).toBeVisible();
+  await expect(viewTabs(page)).toHaveText([
+    'Lavagna',
+    ...filmTabs,
+    'Revisione',
+  ]);
+  // The project's other boards offer the same tabs: here, the root board.
+  await page.goto(`/p/${project.id}`);
+  await expect(viewTabs(page)).toHaveText(['Lavagna', ...filmTabs, 'Revisione', 'Moodboard']);
+  await page.goBack();
   // Only the storyboard exists, listed as a module: the section is still empty.
   await expect(sidebar.getByRole('button', { name: 'Nuova board', exact: true })).toBeVisible();
   await shoot(page, 'with-storyboard');
@@ -145,7 +179,6 @@ test('the sidebar of a project without boards or storyboard, and Add storyboard 
 test.describe('on a phone', () => {
   test.use({ viewport: { width: 390, height: 844 }, hasTouch: true });
   test('the same states in the drawer', async ({ page, baseURL }) => {
-    test.skip(!shots, 'Screenshots only');
     const origin = baseURL ?? '';
     const project = await setup(page, origin);
     await page.goto(`/p/${project.id}`);
@@ -154,6 +187,11 @@ test.describe('on a phone', () => {
     const drawer = page.getByRole('dialog', { name: 'Navigazione', exact: true });
     await expect(drawer.getByRole('button', { name: 'Nuova board', exact: true })).toBeVisible();
     await shoot(page, 'phone-empty-project');
+    await page.keyboard.press('Escape');
+    await expect(drawer).toBeHidden();
+    expect(await switcherOptions(page)).toEqual(['Lavagna', 'Moodboard']);
+    await shoot(page, 'phone-switcher-empty');
+    await nav.getByRole('button', { name: 'Progetti', exact: true }).click();
     // A live client review link brings Review into the drawer.
     const made = await page.request.post(`/api/v1/boards/${project.rootBoardId}/share-links`, {
       headers: { origin },
@@ -164,6 +202,10 @@ test.describe('on a phone', () => {
     await nav.getByRole('button', { name: 'Progetti', exact: true }).click();
     await expect(drawer.getByRole('link', { name: 'Revisione', exact: true })).toBeVisible();
     await shoot(page, 'phone-review-without-storyboard');
+    await page.keyboard.press('Escape');
+    await expect(drawer).toBeHidden();
+    expect(await switcherOptions(page)).toEqual(['Lavagna', 'Revisione', 'Moodboard']);
+    await nav.getByRole('button', { name: 'Progetti', exact: true }).click();
     await drawer.getByRole('button', { name: `Opzioni progetto: ${project.name}` }).click();
     await expect(page.getByRole('menuitem', { name: 'Aggiungi storyboard…' })).toBeVisible();
     await shoot(page, 'phone-project-menu');
@@ -174,5 +216,14 @@ test.describe('on a phone', () => {
     await nav.getByRole('button', { name: 'Progetti', exact: true }).click();
     await expect(drawer.getByRole('link', { name: 'Revisione', exact: true })).toBeVisible();
     await shoot(page, 'phone-with-storyboard');
+    await page.keyboard.press('Escape');
+    await expect(drawer).toBeHidden();
+    expect(await switcherOptions(page)).toEqual([
+      'Lavagna',
+      'Storyboard',
+      'Shot list',
+      'Piano riprese',
+      'Revisione',
+    ]);
   });
 });

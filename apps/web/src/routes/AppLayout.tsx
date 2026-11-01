@@ -50,10 +50,13 @@ import {
 } from '../board/boards.ts';
 import { useBoardCounts } from '../board/live-counts.ts';
 import {
+  ALL_FILM_LINKS,
+  type FilmLinks,
   askedView,
   type BoardView,
   clientReviewBoard,
   defaultView,
+  filmLinks,
   isBoardView,
   isFilmView,
   pickerViews,
@@ -111,6 +114,8 @@ interface ProjectsState {
   openInbox: () => void;
   unread: number;
   refreshUnread: () => Promise<void>;
+  /** The film links of the open project: what the sidebar, the header tabs and the phone offer. */
+  filmLinks: FilmLinks;
 }
 
 const ProjectsContext = createContext<ProjectsState>({
@@ -123,6 +128,7 @@ const ProjectsContext = createContext<ProjectsState>({
   openInbox: () => {},
   unread: 0,
   refreshUnread: async () => {},
+  filmLinks: ALL_FILM_LINKS,
 });
 export const useProjects = () => useContext(ProjectsContext);
 
@@ -454,12 +460,10 @@ export function AppLayout({ home }: { home?: ReactNode }) {
   const filmView = isFilmView(currentView);
   // The film links appear with the project's first storyboard (or frame) and while a film view is
   // open, so there is always a way back; until the boards are known they stay out.
-  const hasStoryboard = projectHasStoryboard(projectBoards, counts);
-  // Review alone, on a board without a storyboard, does not bring the other three along.
-  const showFilmLinks = hasStoryboard || (filmView && currentView !== 'review');
-  // Review also stays for a project without a storyboard while a client review is live, and
-  // while its view is open.
-  const showReview = showFilmLinks || currentView === 'review' || !!reviewBoardId;
+  // One rule for the sidebar, the header tabs and the phone switcher (BoardPage reads it here).
+  const links = filmLinks(projectHasStoryboard(projectBoards, counts), reviewBoardId, currentView);
+  const showFilmLinks = links.film;
+  const showReview = links.review;
   const filmRowActive = (v: BoardView) =>
     currentView === v ||
     (v === 'storyboard' && !filmView && !!storyboardId && openBoardId === storyboardId);
@@ -819,7 +823,7 @@ export function AppLayout({ home }: { home?: ReactNode }) {
             value={currentView ?? ''}
             onChange={(e) => showView(e as BoardView)}
           >
-            {pickerViews(openKind, currentView).map((v) => (
+            {pickerViews(openKind, currentView, links).map((v) => (
               <option key={v} value={v}>
                 {t(`film.views.${v}`)}
               </option>
@@ -843,6 +847,7 @@ export function AppLayout({ home }: { home?: ReactNode }) {
           openInbox: () => setInboxOpen(true),
           unread,
           refreshUnread,
+          filmLinks: links,
         }}
       >
         <HeaderContext.Provider value={setHeaderContent}>

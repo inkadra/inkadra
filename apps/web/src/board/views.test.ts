@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   askedView,
   clientReviewBoard,
+  filmLinks,
   headerViews,
   isBoardView,
   pickerViews,
@@ -184,6 +185,42 @@ describe('projectHasStoryboard', () => {
     expect(
       projectHasStoryboard([makeBoard('a', 'board')], new Map([['a', { frameCount: 0 }]])),
     ).toBe(false);
+  });
+});
+
+describe('film links: one rule for the sidebar, the header and the phone', () => {
+  it('shows nothing of the film for a project without a storyboard or client review link', () => {
+    const links = filmLinks(false, null, 'canvas');
+    expect(links).toEqual({ film: false, review: false, reviewBoard: null });
+    expect(headerViews('board', 'canvas', links)).toEqual(['canvas', 'moodboard']);
+    expect(pickerViews('board', 'canvas', links)).toEqual(['canvas', 'moodboard']);
+  });
+
+  it('adds Review alone for a live client review link', () => {
+    const links = filmLinks(false, 'a', 'canvas');
+    expect(links).toEqual({ film: false, review: true, reviewBoard: 'a' });
+    expect(headerViews('board', 'canvas', links)).toEqual(['canvas', 'review', 'moodboard']);
+    expect(pickerViews('board', 'canvas', links)).toEqual(['canvas', 'review', 'moodboard']);
+  });
+
+  it('adds every film view with a storyboard, on any board of the project', () => {
+    const links = filmLinks(true, null, 'canvas');
+    expect(headerViews('board', 'canvas', links)).toEqual([
+      'canvas',
+      'storyboard',
+      'shotlist',
+      'schedule',
+      'review',
+      'moodboard',
+    ]);
+    expect(headerViews('storyboard', 'storyboard', links)).not.toContain('moodboard');
+  });
+
+  it('keeps the open film view, and Review alone while its view is open', () => {
+    expect(filmLinks(false, null, 'shotlist').film).toBe(true);
+    const reviewOnly = filmLinks(false, null, 'review');
+    expect(reviewOnly).toMatchObject({ film: false, review: true });
+    expect(headerViews('board', 'review', reviewOnly)).toEqual(['canvas', 'review', 'moodboard']);
   });
 });
 
