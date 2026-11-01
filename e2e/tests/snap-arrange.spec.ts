@@ -195,12 +195,27 @@ test('records tidying into a mosaic', async ({ browser, baseURL }) => {
     viewport: { width: 1280, height: 800 },
     locale: 'it-IT',
     colorScheme: 'dark',
+    // The suite reduces motion; this one shows it.
+    reducedMotion: 'no-preference',
     recordVideo: { dir: out, size: { width: 1280, height: 800 } },
   });
   const page = await context.newPage();
   await open(page, baseURL!, messy);
   await page.waitForTimeout(600);
+  // Count the animations started on the cards: the tidy eases them into place (#332).
+  await page.evaluate(() => {
+    const w = window as unknown as { eased: number };
+    w.eased = 0;
+    const animate = Element.prototype.animate;
+    Element.prototype.animate = function (this: Element, ...args: Parameters<typeof animate>) {
+      if (this.matches('.card--free')) w.eased += 1;
+      return animate.apply(this, args);
+    };
+  });
   await tidyIntoMosaic(page);
+  await expect
+    .poll(() => page.evaluate(() => (window as unknown as { eased: number }).eased))
+    .toBeGreaterThanOrEqual(3);
   await page.waitForTimeout(1200);
   await context.close();
 });

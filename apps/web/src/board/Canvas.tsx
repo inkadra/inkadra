@@ -118,6 +118,7 @@ import { decodeClipboard, encodeClipboard } from './clipboard.ts';
 import type { BoardConnection } from './connection.ts';
 import { BoardContext, type BoardContextValue, GuestModeContext, LARGE_BOARD } from './context.ts';
 import { EmptyBoardStart } from './EmptyBoardStart.tsx';
+import { easeCards } from './ease-cards.ts';
 import { useBoardAspect } from './film/aspect.ts';
 import { DrawingEditor } from './film/DrawingEditor.tsx';
 import { FramePanel } from './film/FramePanel.tsx';
@@ -239,6 +240,8 @@ interface Pinch {
 
 interface Overlay {
   offset?: { dx: number; dy: number };
+  /** Where a move lands when it differs from `offset`: on the grid, eased into on drop. */
+  land?: { dx: number; dy: number };
   moving?: Set<string>;
   ghost?: { element: Element; x: number; y: number; w: number };
   guides?: Guide[];
@@ -249,6 +252,12 @@ interface Overlay {
 }
 
 const NO_OVERLAY: Overlay = {};
+
+/** A plan to ease cards from these world positions once their move is rendered. */
+const easeFrom = (entries: Iterable<readonly [string, Point]>) => ({
+  from: new Map(entries),
+  at: performance.now(),
+});
 const EMPTY_SET: ReadonlySet<string> = new Set();
 
 export interface CanvasProps {
@@ -915,6 +924,12 @@ export function Canvas({
     until: number;
   } | null>(null);
 
+  /**
+   * Cards to ease from where they were drawn to their new place once the document change is
+   * rendered (arrange commands, a drop onto the grid): previous world positions by id.
+   */
+  const pendingEase = useRef<{ from: Map<string, Point>; at: number } | null>(null);
+
   /** How a card's height follows a new width when the selection is tidied up. */
   const arrangeItem = useCallback(
     (el: Element): ArrangeItem => {
@@ -966,6 +981,7 @@ export function Canvas({
         next = rects.map((r, i) => ({ ...r, x: moved[i]?.x ?? r.x, y: moved[i]?.y ?? r.y }));
       }
       const placed = new Map(els.map((e, i) => [e.id, next[i] ?? rects[i]] as const));
+      pendingEase.current = easeFrom(els.map((e) => [e.id, { x: e.x, y: e.y }] as const));
       store.undo.stopCapturing();
       doc.transact(() => {
         updateElements(
@@ -1030,11 +1046,32 @@ export function Canvas({
       return [{ id: e.id, patch: { y } }];
     });
     if (changes.length === 0) return;
+    pendingEase.current = easeFrom(
+      changes.flatMap(({ id }) => {
+        const el = byId.get(id);
+        return el ? [[id, { x: el.x, y: el.y }] as const] : [];
+      }),
+    );
     doc.transact(() => {
       updateElements(doc, changes, LOCAL);
       refreshArrows(doc, arrowsOf(), ids, (id) => placed.get(id) ?? cardRect(id), LOCAL);
     }, LOCAL);
   }, [sizeVersion]);
+  // Moved cards ease from where they were drawn to their new place, once it is in the DOM and
+  // before it is painted; the document already holds the final positions.
+  useLayoutEffect(() => {
+    const pending = pendingEase.current;
+    if (!pending) return;
+    pendingEase.current = null;
+    // Only the render of the change itself: a stale plan (nothing moved) is dropped.
+    if (performance.now() - pending.at > 500) return;
+    const { byId } = snap;
+    easeCards(rootRef.current, pending.from, (id) => {
+      const el = byId.get(id);
+      return el && el.parent === null ? { x: el.x, y: el.y } : undefined;
+    });
+  }, [snap]);
+
   // Undoing the mosaic must not be stacked into it again.
   useEffect(() => {
     const stop = () => {
@@ -1465,6 +1502,7 @@ export function Canvas({
     }
 
     let guides: Guide[] | undefined;
+    let land: Overlay['land'];
     // Alt leaves the guides out and inverts the magnet: the grid snaps when exactly one is on.
     const grid = magnetRef.current !== e.altKey ? GRID : null;
     if (!drop && (grid || !e.altKey) && free.length > 0) {
@@ -1484,12 +1522,17 @@ export function Canvas({
           SNAP_PX / v.zoom,
           { grid, guides: !e.altKey },
         );
-        dx += s.dx;
-        dy += s.dy;
+        // The cards follow the pointer and the guides; the grid is where they land on drop,
+        // eased into, so they do not jump from dot to dot under the hand.
+        const byX = s.guides.some((guide) => guide.axis === 'x');
+        const byY = s.guides.some((guide) => guide.axis === 'y');
+        if (grid) land = { dx: dx + s.dx, dy: dy + s.dy };
+        dx += byX ? s.dx : 0;
+        dy += byY ? s.dy : 0;
         guides = s.guides;
       }
     }
-    setOverlay({ offset: { dx, dy }, moving, ghost, guides, drop });
+    setOverlay({ offset: { dx, dy }, land, moving, ghost, guides, drop });
   }
 
   function onPointerUp(e: ReactPointerEvent<HTMLDivElement>) {
@@ -1556,9 +1599,21 @@ export function Canvas({
       if (g.clickOnly) select([g.clickOnly]);
       return;
     }
-    const { dx = 0, dy = 0 } = o.offset ?? {};
+    const { dx = 0, dy = 0 } = o.land ?? o.offset ?? {};
     const arrows = arrowsOf(g.ids);
     const cards = g.ids.filter((id) => !arrows.some((a) => a.id === id));
+    if (o.land && o.offset && !o.drop) {
+      // Dropped off the grid: ease from where the cards were drawn onto it.
+      const seen = o.offset;
+      pendingEase.current = easeFrom(
+        cards.flatMap((id) => {
+          const el = snap.byId.get(id);
+          return el && el.parent === null
+            ? [[id, { x: el.x + seen.dx, y: el.y + seen.dy }] as const]
+            : [];
+        }),
+      );
+    }
     doc.transact(() => {
       if (o.drop?.kind === 'unsorted') {
         moveToUnsorted(doc, cards, LOCAL);
