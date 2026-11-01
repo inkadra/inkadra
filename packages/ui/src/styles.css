@@ -555,6 +555,8 @@ select {
   position: relative;
 }
 .ink-main--canvas {
+  /* The board pans itself: nothing in the page around it may scroll (see .canvas). */
+  overflow: clip;
   background-color: var(--ink-bg-canvas);
   background-image: radial-gradient(circle, var(--ink-canvas-dot) 1px, transparent 1.5px);
   background-size: 22px 22px;

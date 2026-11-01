@@ -220,6 +220,59 @@ test('records tidying into a mosaic', async ({ browser, baseURL }) => {
   await context.close();
 });
 
+test('the board chrome stays put while the selection is arranged', async ({ browser, baseURL }) => {
+  test.setTimeout(90_000);
+  // With motion, as people see it: the cards ease, nothing else may move or scroll.
+  const context = await browser.newContext({
+    viewport: { width: 1280, height: 800 },
+    locale: 'it-IT',
+    colorScheme: 'dark',
+    reducedMotion: 'no-preference',
+  });
+  const page = await context.newPage();
+  await open(page, baseURL!, messy);
+  // Every frame, from before the menu opens until the cards have landed: where the chrome is
+  // drawn and how far anything around the board is scrolled.
+  await page.evaluate(() => {
+    const w = window as unknown as { samples: string[]; sampling: boolean };
+    w.samples = [];
+    w.sampling = true;
+    const box = (selector: string) => {
+      const r = document.querySelector(selector)?.getBoundingClientRect();
+      return r ? `${Math.round(r.x)},${Math.round(r.y)}` : '-';
+    };
+    const scrolled = () => {
+      const out: string[] = [];
+      let el: Element | null = document.querySelector('.canvas');
+      for (; el; el = el.parentElement) {
+        if (el.scrollLeft || el.scrollTop)
+          out.push(`${el.className}:${el.scrollLeft},${el.scrollTop}`);
+      }
+      return out.join(' ');
+    };
+    const tick = () => {
+      w.samples.push(
+        `toolbar ${box('.canvas .toolbar')} minimap ${box('.canvas .minimap')} zoom ${box(
+          '.canvas .zoom',
+        )} scroll [${scrolled()}]`,
+      );
+      if (w.sampling) requestAnimationFrame(tick);
+    };
+    tick();
+  });
+  await tidyIntoMosaic(page);
+  await page.waitForTimeout(600);
+  const samples = await page.evaluate(() => {
+    const w = window as unknown as { samples: string[]; sampling: boolean };
+    w.sampling = false;
+    return w.samples;
+  });
+  expect(samples.length).toBeGreaterThan(10);
+  expect([...new Set(samples)]).toEqual([samples[0]]);
+  expect(samples[0]).toContain('scroll []');
+  await context.close();
+});
+
 // Empty board (#312): three starting points, gone with the first card; tap wording on phones.
 for (const theme of ['dark', 'light'] as const) {
   test(`an empty board offers three starting points ${theme}`, async ({ browser, baseURL }) => {
