@@ -122,6 +122,22 @@ export function Team() {
       {settings && (
         <Card title={t('projectCreation.settings.title')}>
           <div className="settings-rows">
+            <Row label={t('calendar.admin')} help={t('calendar.adminHelp')}>
+              <Switch
+                aria-label={t('calendar.admin')}
+                checked={settings.calendarFeedEnabled ?? true}
+                disabled={busy}
+                onChange={(e) => {
+                  const calendarFeedEnabled = e.target.checked;
+                  setSettings({ ...settings, calendarFeedEnabled });
+                  void run(() => api.patch('/instance/settings', { calendarFeedEnabled })).then(
+                    (saved) => {
+                      if (!saved) void load().catch(() => {});
+                    },
+                  );
+                }}
+              />
+            </Row>
             <Row
               label={t('projectCreation.settings.label')}
               help={t('projectCreation.settings.help')}

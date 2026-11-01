@@ -29,6 +29,7 @@ import {
   RecentBoardQuery,
   UpdateBoard,
 } from './boards.ts';
+import { CalendarFeed } from './calendar.ts';
 import { ClassificationCatalogs } from './classifications.ts';
 import { BoardColumns, ClipRequest, ClipResult } from './clip.ts';
 import {
@@ -198,6 +199,39 @@ registry.register('OutcomeUnknown', OutcomeUnknown);
 
 // Schedule ------------------------------------------------------------------
 const schedulePath = v1('/boards/{boardId}/schedule');
+for (const method of ['get', 'post'] as const) {
+  registry.registerPath({
+    method,
+    path: v1('/me/calendar-feed'),
+    tags: ['Account'],
+    summary:
+      method === 'get'
+        ? 'Get or initialize your private calendar link'
+        : 'Regenerate and revoke your calendar link',
+    responses: {
+      200: { description: 'Private link; never cache', ...json(CalendarFeed) },
+      ...errors,
+    },
+  });
+}
+registry.registerPath({
+  method: 'get',
+  path: '/calendar/{token}.ics',
+  tags: ['Account'],
+  security: [{}],
+  summary:
+    'Private read-only calendar; bearer URL, rate limited; membership checked on every request',
+  request: { params: z.object({ token: z.string() }) },
+  responses: {
+    200: {
+      description: 'RFC 5545 calendar',
+      content: { 'text/calendar': { schema: { type: 'string' } } },
+    },
+    304: { description: 'Unchanged' },
+    404: errors[404],
+    429: { description: 'Rate limited' },
+  },
+});
 registry.registerPath({
   method: 'get',
   path: v1('/me/tasks'),

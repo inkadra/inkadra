@@ -2873,5 +2873,36 @@
       "tomorrow": "tomorrow"
     },
     "hint": "Type @ to assign · click the date to change it"
+  },
+  "calendar": {
+    "title": "Calendar",
+    "link": "Your calendar link",
+    "help": "In Google Calendar, Apple Calendar or Outlook, choose “Add calendar from URL”. It updates automatically.",
+    "copy": "Copy",
+    "copyLink": "Copy link",
+    "open": "Open in calendar",
+    "shooting": "Shooting days",
+    "shootingHelp": "From projects you belong to · location and call time in the project’s time zone",
+    "tasks": "Due dates of to-dos assigned to you",
+    "tasksHelp": "All-day event with the board name",
+    "privacy": "Anyone with this link can see these events without signing in to Inkadra. Keep it private.",
+    "regenerate": "Regenerate link",
+    "revokeHelp": "The current link stops working immediately: add the new one in your calendar apps",
+    "regenerateAction": "Regenerate…",
+    "confirmTitle": "Regenerate the calendar link?",
+    "confirmBody": "Apps using the current link will stop updating. Afterwards, copy the new link and replace it in each app.",
+    "confirm": "Regenerate link",
+    "copied": "Link copied",
+    "error": "Could not complete the operation. Try again.",
+    "helpPhone": "Add this link as a calendar from URL. It updates by itself.",
+    "shootingHelpPhone": "Location and call time",
+    "tasksPhone": "Your to-do due dates",
+    "tasksHelpPhone": "All day",
+    "privacyPhone": "Anyone with this link can see these events. Do not share it.",
+    "regenerateActionPhone": "Regenerate link…",
+    "rotated": "The installation secret changed: regenerate the link to use the calendar again.",
+    "disabled": "The administrator has disabled calendar feeds.",
+    "admin": "Calendar feeds",
+    "adminHelp": "Allow private calendar links for shooting days and due dates."
   }
 }

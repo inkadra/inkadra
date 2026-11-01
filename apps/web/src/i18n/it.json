@@ -2873,5 +2873,36 @@
       "tomorrow": "domani"
     },
     "hint": "Scrivi @ per assegnare · clic sulla data per cambiarla"
+  },
+  "calendar": {
+    "title": "Calendario",
+    "link": "Link del tuo calendario",
+    "help": "In Google Calendar, Calendario di Apple o Outlook: “Aggiungi calendario da URL”. Si aggiorna da solo.",
+    "copy": "Copia",
+    "copyLink": "Copia link",
+    "open": "Apri nel calendario",
+    "shooting": "Giorni di riprese",
+    "shootingHelp": "Dei progetti di cui fai parte · location e orario di convocazione, nel fuso del progetto",
+    "tasks": "Scadenze dei to-do assegnati a te",
+    "tasksHelp": "Evento di un giorno intero con il nome della board",
+    "privacy": "Chi ha il link vede questi eventi, senza accedere a Inkadra. Non condividerlo.",
+    "regenerate": "Rigenera il link",
+    "revokeHelp": "Il link attuale smette subito di funzionare: dovrai aggiungere quello nuovo nelle tue app",
+    "regenerateAction": "Rigenera…",
+    "confirmTitle": "Rigenerare il link del calendario?",
+    "confirmBody": "Le app che usano il link attuale smettono di aggiornarsi. Dopo, copia il nuovo link e sostituiscilo in ciascuna.",
+    "confirm": "Rigenera link",
+    "copied": "Link copiato",
+    "error": "Impossibile completare l’operazione. Riprova.",
+    "helpPhone": "Aggiungi questo link come calendario da URL. Si aggiorna da solo.",
+    "shootingHelpPhone": "Location e convocazione",
+    "tasksPhone": "Scadenze dei tuoi to-do",
+    "tasksHelpPhone": "Tutto il giorno",
+    "privacyPhone": "Chi ha il link vede questi eventi. Non condividerlo.",
+    "regenerateActionPhone": "Rigenera link…",
+    "rotated": "Il segreto dell’installazione è cambiato: rigenera il link per tornare a usare il calendario.",
+    "disabled": "Il feed del calendario è disattivato dall’amministratore.",
+    "admin": "Feed del calendario",
+    "adminHelp": "Consenti i link privati al calendario per giorni di riprese e scadenze."
   }
 }

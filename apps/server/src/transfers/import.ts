@@ -288,6 +288,7 @@ export async function importProject(
         iconColor: meta.icon.color,
         iconEmoji: meta.icon.emoji ?? null,
         type: meta.type,
+        timeZone: meta.timeZone,
         shootingStart: meta.shootingStart,
         shootingEnd: meta.shootingEnd,
         // Set at the end, under the instance lock (see below).

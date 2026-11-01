@@ -67,5 +67,7 @@ in order. An accepted decision is never rewritten: a later one supersedes it.
 
 | [0060](0060-release-news.md) | Opt-in release news and SMTP delivery claims |
 
+| [0061](0061-calendar-feed.md) | Private calendar subscriptions: revocable bearer URL, bounded read-only ICS |
+
 Two decisions share the number 0025: they were accepted in parallel, and accepted records
 are not renumbered.

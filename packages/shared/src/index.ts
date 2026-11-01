@@ -2,6 +2,7 @@
 export * from './assets.ts';
 export * from './backups.ts';
 export * from './boards.ts';
+export * from './calendar.ts';
 export * from './classifications.ts';
 export * from './clip.ts';
 export * from './comments.ts';
