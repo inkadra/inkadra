@@ -7,6 +7,7 @@ import { memo, useContext, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useClassifications } from '../lib/classifications.ts';
 import { pickVariant, playbackUrl, useAsset } from './assets.ts';
+import { fileBadge, fileFamily, isPdf } from './file-kinds.ts';
 import { CroppedImage } from './CroppedImage.tsx';
 import { GuestModeContext } from './context.ts';
 import { FrameGrab } from './FrameGrab.tsx';
@@ -591,6 +592,41 @@ export function MediaViewer({
                   />
                 )}
               </>
+            ) : ready?.kind === 'audio' ? (
+              <div className="viewer__file">
+                <span className={`fcard__tile fbadge--${fileFamily(ready)}`} aria-hidden="true">
+                  {fileBadge(ready) || <Icon name="volume" size={18} />}
+                </span>
+                {/* biome-ignore lint/a11y/useMediaCaption: people's own recordings have no captions */}
+                <audio className="viewer__audio" src={ready.url} controls autoPlay />
+              </div>
+            ) : ready && !pickVariant(ready, wide) ? (
+              <div className="viewer__file">
+                <span className={`fcard__tile fbadge--${fileFamily(ready)}`} aria-hidden="true">
+                  {fileBadge(ready) || <Icon name="file" size={18} />}
+                </span>
+                <p className="viewer__file-msg">{t('viewer.noView')}</p>
+                <a className="ink-btn ink-btn--primary" href={ready.url} download={ready.filename}>
+                  <Icon name="download" size={16} />
+                  {t('viewer.download')}
+                </a>
+              </div>
+            ) : ready && isPdf(ready) ? (
+              // No PDF view yet (pdf.js comes with #294): page 1 and the download.
+              <div className="viewer__file viewer__file--pdf">
+                <img
+                  className="viewer__media viewer__media--contain viewer__pdf-page"
+                  src={pickVariant(ready, wide)}
+                  alt={ready.filename}
+                />
+                <div className="viewer__pdf-bar">
+                  {ready.pageCount && <span>{t('viewer.pageOne', { count: ready.pageCount })}</span>}
+                  <a className="ink-btn ink-btn--primary" href={ready.url} download={ready.filename}>
+                    <Icon name="download" size={16} />
+                    {t('viewer.download')}
+                  </a>
+                </div>
+              </div>
             ) : ready ? (
               isTransformedImage && !showOriginal ? (
                 <CroppedImage
@@ -693,7 +729,7 @@ export function MediaViewer({
           </section>
         )}
 
-        {element.type !== 'link' && ready?.kind !== 'video' && (
+        {element.type !== 'link' && ready?.kind === 'image' && (
           <section>
             <h3 className="viewer__title">{t('viewer.exif')}</h3>
             {rows.length === 0 ? (

@@ -8,6 +8,7 @@ const state = vi.hoisted(() => ({
   readOnly: false,
   kind: 'file',
   status: 'ready' as 'ready' | 'missing' | 'loading',
+  asset: {} as Record<string, unknown>,
   boards: [
     { id: 'b1', title: 'Location Scout', kind: 'board', myRole: 'editor' },
     { id: 'b2', title: 'Storyboard 1', kind: 'storyboard', myRole: 'editor' },
@@ -18,7 +19,13 @@ vi.mock('./context.ts', async (original) => ({
   ...(await original<object>()),
   useBoard: () => ({ ...state, scale: 1, store: { takeAdded: () => false }, setEditing: vi.fn() }),
 }));
-vi.mock('react-i18next', () => ({ useTranslation: () => ({ t: (key: string) => key }) }));
+vi.mock('react-i18next', () => ({
+  useTranslation: () => ({
+    t: (key: string, opts?: { count?: number }) =>
+      opts?.count === undefined ? key : `${key}:${opts.count}`,
+    i18n: { language: 'en' },
+  }),
+}));
 vi.mock('./assets.ts', () => ({
   useAsset: () =>
     state.status === 'loading'
@@ -26,13 +33,26 @@ vi.mock('./assets.ts', () => ({
       : state.status === 'missing'
         ? 'missing'
         : {
+            id: 'asset-id',
             kind: state.kind,
+            mime: 'application/pdf',
             filename: 'schedule.pdf',
             size: 1024,
-            variants: [],
+            status: 'ready',
+            url: '/api/v1/assets/asset-id/file',
+            width: null,
+            height: null,
             durationMs: null,
+            videoCodec: null,
+            audioCodec: null,
+            frameRate: null,
+            pageCount: null,
+            proxy: null,
+            exif: null,
+            variants: [],
+            ...state.asset,
           },
-  pickVariant: () => '',
+  pickVariant: (asset: { variants: Array<{ url: string }> }) => asset.variants.at(-1)?.url ?? '',
 }));
 vi.mock('./uploads.ts', () => ({ useUploadProgress: () => null, localPreview: () => null }));
 vi.mock('./CardReview.tsx', () => ({ CardReview: () => null }));
@@ -169,5 +189,152 @@ describe('video link cards', () => {
     expect(html).toContain('<button');
     expect(html).toContain('aria-label="board.menu.playLink"');
     vi.unstubAllGlobals();
+  });
+});
+
+describe('file card family', () => {
+  const ready = (asset: Record<string, unknown>, kind = 'file') => {
+    Object.assign(state, { kind, status: 'ready', editing: null, readOnly: false, asset });
+    vi.stubGlobal('window', { devicePixelRatio: 1 });
+    const html = render(file);
+    vi.unstubAllGlobals();
+    state.asset = {};
+    return html;
+  };
+
+  it('keeps the extension visible and shows a PDF with its first page and page count', () => {
+    const html = ready({
+      filename: 'athlete-guide-2026.pdf',
+      size: 9 * 1024 * 1024,
+      pageCount: 24,
+      width: 1448,
+      height: 2048,
+      variants: [{ size: '512', width: 362, height: 512, url: '/v/512' }],
+    });
+    expect(html).toContain('<span class="fcard__stem">athlete-guide-2026</span>');
+    expect(html).toContain('<span class="fcard__ext">.pdf</span>');
+    expect(html).toContain('<span class="fbadge fbadge--doc">PDF</span>');
+    expect(html).toContain('9 MB · board.file.pages:24');
+    expect(html).toContain('class="fcard__page"');
+    expect(html).toContain('src="/v/512"');
+  });
+
+  it('falls back to the icon tile when a file has no preview', () => {
+    const html = ready({ filename: 'consegna-cliente.zip', mime: 'application/zip' });
+    expect(html).toContain('fcard__tile fbadge--generic');
+    expect(html).toContain('>ZIP</span>');
+    for (const [name, family] of [
+      ['trattamento-v3.docx', 'text'],
+      ['budget.xlsx', 'doc'],
+      ['poster.psd', 'design'],
+      ['set.glb', '3d'],
+      ['Recoleta-Bold.otf', 'font'],
+    ] as const) {
+      expect(ready({ filename: name, mime: 'application/octet-stream' })).toContain(
+        `fbadge fbadge--${family}`,
+      );
+    }
+  });
+
+  it('shows a ProRes video with poster, play, duration, resolution and frame rate', () => {
+    const html = ready(
+      {
+        kind: 'video',
+        mime: 'video/quicktime',
+        filename: 'intervista-A001.mov',
+        size: 3.8 * 1024 ** 3,
+        width: 3840,
+        height: 2160,
+        durationMs: 134_000,
+        videoCodec: 'prores',
+        frameRate: 25,
+        proxy: { status: 'ready', progress: 100, url: '/p', mime: 'video/mp4' },
+        variants: [{ size: '512', width: 512, height: 288, url: '/poster' }],
+      },
+      'video',
+    );
+    expect(html).toContain('<span class="fbadge fbadge--video">PRORES</span>');
+    expect(html).toContain('3.8 GB · 4K · 25 fps');
+    expect(html).toContain('<span class="card__play fcard__play" data-playable="file_caption_01"');
+    expect(html).toContain('<span class="card__duration">2:14</span>');
+    expect(html).toContain('src="/poster"');
+  });
+
+  it('says how far the playable copy is instead of offering to play it', () => {
+    const html = ready(
+      {
+        kind: 'video',
+        mime: 'application/mxf',
+        filename: 'drone-B014.mxf',
+        width: 6144,
+        height: 3456,
+        videoCodec: 'dnxhd',
+        proxy: { status: 'processing', progress: 42, url: null, mime: 'video/mp4' },
+      },
+      'video',
+    );
+    expect(html).toContain('board.file.preparing');
+    expect(html).toContain('width:42%');
+    expect(html).toContain('42%</span>');
+    expect(html).not.toContain('data-playable');
+    expect(html).toContain('<span class="fbadge fbadge--video">MXF</span>');
+    expect(html).toContain('DNxHD · 6K');
+  });
+
+  it('plays audio with the native control', () => {
+    const html = ready(
+      {
+        kind: 'audio',
+        mime: 'audio/mp4',
+        filename: 'nota-vocale-regista.m4a',
+        durationMs: 92_000,
+      },
+      'audio',
+    );
+    expect(html).toContain('<audio class="fcard__audio" src="/api/v1/assets/asset-id/file"');
+    expect(html).toContain('controls');
+    expect(html).toContain('<span class="fbadge fbadge--audio">M4A</span>');
+    expect(html).toContain('1:32');
+  });
+
+  it('marks failed and processing files', () => {
+    expect(ready({ status: 'failed', filename: 'broken.pdf' })).toContain('fcard fcard--failed');
+    expect(ready({ status: 'failed', filename: 'broken.pdf' })).toContain('board.image.failed');
+    const processing = ready({ status: 'processing', filename: 'slow.pdf' });
+    expect(processing).toContain('fcard fcard--processing');
+    expect(processing).toContain('board.image.processing');
+    Object.assign(state, { status: 'missing' });
+    expect(render(file)).toContain('fcard fcard--failed');
+    expect(render(file)).toContain('board.file.missing');
+  });
+
+  it('gives camera RAW images a RAW badge with camera and exposure', () => {
+    const exif = { Make: 'FUJIFILM', Model: 'X-T5', FNumber: 2, ExposureTime: 1 / 250 };
+    const raw = {
+      kind: 'image',
+      mime: 'image/x-fuji-raf',
+      filename: 'DSCF4417.RAF',
+      size: 33 * 1024 * 1024,
+      width: 6240,
+      height: 4160,
+      exif,
+      variants: [{ size: '512', width: 512, height: 341, url: '/raw-preview' }],
+    };
+    const asFile = ready(raw, 'image');
+    expect(asFile).toContain('<span class="fbadge fbadge--image">RAW</span>');
+    expect(asFile).toContain('33 MB · X-T5 · f/2 · 1/250');
+    expect(asFile).toContain('src="/raw-preview"');
+    Object.assign(state, { kind: 'image', status: 'ready', asset: raw });
+    vi.stubGlobal('window', { devicePixelRatio: 1 });
+    const asImage = render({ ...file, type: 'image' });
+    vi.unstubAllGlobals();
+    expect(asImage).toContain('<span class="fbadge fbadge--image">RAW</span>');
+    expect(asImage).toContain('X-T5 · f/2 · 1/250');
+    // Plain photos keep their caption-only look.
+    Object.assign(state, { asset: { ...raw, mime: 'image/jpeg', filename: 'bosco.jpg' } });
+    vi.stubGlobal('window', { devicePixelRatio: 1 });
+    expect(render({ ...file, type: 'image' })).not.toContain('fbadge');
+    vi.unstubAllGlobals();
+    state.asset = {};
   });
 });

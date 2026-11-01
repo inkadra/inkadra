@@ -367,7 +367,11 @@
     "file": {
       "loading": "File",
       "uploading": "Caricamento {{percent}}%",
-      "missing": "File non trovato"
+      "missing": "File non trovato",
+      "pages_one": "{{count}} pagina",
+      "pages_other": "{{count}} pagine",
+      "preparing": "Preparo l’anteprima",
+      "play": "Riproduci {{name}}"
     },
     "todo": {
       "title": "Titolo della lista",
@@ -591,7 +595,9 @@
     "thumbnails": "Miniature",
     "item": "Elemento {{n}}",
     "showOriginal": "Mostra originale",
-    "showEdited": "Mostra ritaglio"
+    "showEdited": "Mostra ritaglio",
+    "noView": "Questo file si apre fuori dal browser",
+    "pageOne": "Pagina 1 di {{count}}"
   },
   "search": {
     "title": "Cerca",
