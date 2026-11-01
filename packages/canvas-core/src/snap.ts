@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: MPL-2.0
-import type { Rect } from './geometry.ts';
+import { MIN_WIDTH } from './board.ts';
+import { type Point, type Rect, snap } from './geometry.ts';
+import type { ResizeCorner, ResizeOptions } from './resize.ts';
 
 /** A guide drawn while dragging: a vertical (x) or horizontal (y) line in world units. */
 export interface Guide {
@@ -105,12 +107,15 @@ export function alignRects(rects: Rect[], how: Alignment): Array<{ x: number; y:
   });
 }
 
-/** Spreads rects so the gaps between them are equal, along the axis they span the most. */
-export function distributeRects(rects: Rect[]): Array<{ x: number; y: number }> {
+/**
+ * Spreads rects so the gaps between them are equal along `axis` (x: horizontally), or along the
+ * axis they span the most when it is omitted.
+ */
+export function distributeRects(rects: Rect[], axis?: 'x' | 'y'): Array<{ x: number; y: number }> {
   if (rects.length < 3) return rects.map((r) => ({ x: r.x, y: r.y }));
   const spanX = Math.max(...rects.map((r) => r.x + r.w)) - Math.min(...rects.map((r) => r.x));
   const spanY = Math.max(...rects.map((r) => r.y + r.h)) - Math.min(...rects.map((r) => r.y));
-  const horizontal = spanX >= spanY;
+  const horizontal = axis ? axis === 'x' : spanX >= spanY;
   const order = rects
     .map((r, i) => ({ r, i }))
     .sort((a, b) => (horizontal ? a.r.x - b.r.x : a.r.y - b.r.y));
@@ -127,4 +132,79 @@ export function distributeRects(rects: Rect[]): Array<{ x: number; y: number }> 
     cursor += (horizontal ? r.w : r.h) + gap;
   }
   return out;
+}
+
+/**
+ * Where a dragged rect lands: aligned to the other cards when an edge or centre is within
+ * `threshold`, and, on each axis no guide took, with its top-left corner on the world grid when
+ * `grid` is set. A guide within reach always wins over the grid. `guides: false` skips the
+ * guides (Alt held).
+ */
+export function snapMove(
+  moving: Rect,
+  others: Rect[],
+  threshold: number,
+  { grid = null, guides = true }: { grid?: number | null; guides?: boolean } = {},
+): SnapResult {
+  const s = guides ? snapRect(moving, others, threshold) : { dx: 0, dy: 0, guides: [] };
+  if (!grid) return s;
+  const byX = s.guides.some((g) => g.axis === 'x');
+  const byY = s.guides.some((g) => g.axis === 'y');
+  return {
+    dx: byX ? s.dx : snap(moving.x, grid) - moving.x,
+    dy: byY ? s.dy : snap(moving.y, grid) - moving.y,
+    guides: s.guides,
+  };
+}
+
+/** A point on the world grid (a new card's corner, an arrow's free end). */
+export function snapPoint(p: Point, grid: number): Point {
+  return { x: snap(p.x, grid), y: snap(p.y, grid) };
+}
+
+const MIN_HEIGHT = 40;
+
+/**
+ * Puts the edges a resize drags on the world grid; the opposite edges stay where they are.
+ * Ratio-locked cards (images) snap the dragged side edge and keep their ratio; cards that only
+ * change width (links) snap that edge alone. Never smaller than the minimum size.
+ */
+export function snapResize(
+  rect: Rect,
+  corner: ResizeCorner,
+  grid: number,
+  { aspectRatio, fixedHeight = 0, widthOnly = false }: ResizeOptions = {},
+): Rect {
+  const west = corner.endsWith('w');
+  const north = corner.startsWith('n');
+  const right = rect.x + rect.w;
+  const bottom = rect.y + rect.h;
+  let x = rect.x;
+  let w = rect.w;
+  if (west) {
+    x = snap(rect.x, grid);
+    while (right - x < MIN_WIDTH) x -= grid;
+    w = right - x;
+  } else {
+    let r = snap(right, grid);
+    while (r - rect.x < MIN_WIDTH) r += grid;
+    w = r - rect.x;
+  }
+  let y = rect.y;
+  let h = rect.h;
+  if (aspectRatio && Number.isFinite(aspectRatio) && aspectRatio > 0) {
+    h = w / aspectRatio + fixedHeight;
+    if (north) y = bottom - h;
+  } else if (!widthOnly) {
+    if (north) {
+      y = snap(rect.y, grid);
+      while (bottom - y < MIN_HEIGHT) y -= grid;
+      h = bottom - y;
+    } else {
+      let b = snap(bottom, grid);
+      while (b - rect.y < MIN_HEIGHT) b += grid;
+      h = b - rect.y;
+    }
+  }
+  return { x, y, w, h };
 }

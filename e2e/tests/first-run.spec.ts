@@ -68,7 +68,7 @@ test('the board takes notes and columns, with undo', async ({ page }) => {
   await signIn(page);
   await page.getByRole('link', { name: 'Ultima corsa' }).first().click();
   await expect(page.getByRole('status').getByText('Sincronizzato')).toBeVisible();
-  await expect(page.getByText('Board vuota')).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Da dove partiamo?' })).toBeVisible();
   const canvas = page.getByTestId('canvas');
 
   // A double click starts a note and puts the cursor in it.
@@ -107,7 +107,7 @@ test('the board takes notes and columns, with undo', async ({ page }) => {
   await expect(sub).toContainText('Sopralluoghi');
   await sub.dblclick();
   await expect(page).toHaveURL(/\/p\/[0-9a-f-]{36}\/b\/[0-9a-f-]{36}$/);
-  await expect(page.getByText('Board vuota')).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Da dove partiamo?' })).toBeVisible();
   await page.getByRole('banner').getByRole('link', { name: 'Ultima corsa' }).click();
   await expect(page.locator('[data-type="board"]')).toContainText('Sopralluoghi');
 

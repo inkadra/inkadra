@@ -312,10 +312,16 @@
     "selected_one": "1 selezionato",
     "selected_other": "{{count}} selezionati",
     "empty": {
-      "title": "Board vuota",
-      "body": "Doppio clic per una nota, trascina file o usa la barra in basso. / apre i comandi.",
-      "bodyTouch": "Tocca due volte per una nota o usa la barra in basso.",
-      "templates": "Oppure parti da un modello"
+      "title": "Da dove partiamo?",
+      "body": "Scegli un punto di partenza, oppure fai doppio clic per scrivere una nota.",
+      "bodyTouch": "Scegli un punto di partenza, oppure tocca due volte per scrivere una nota.",
+      "moodboard": "Riferimenti e palette",
+      "storyboard": "Scene e inquadrature",
+      "screenplay": "Importa sceneggiatura",
+      "screenplayBody": "Fountain o Final Draft",
+      "browse": "Sfoglia tutti i modelli",
+      "hint": "Puoi anche trascinare qui file e immagini.",
+      "hintTouch": "Aggiungi foto e file dalla barra in basso."
     },
     "types": {
       "note": "Nota",
@@ -430,6 +436,19 @@
       "distribute": "Distribuisci",
       "group": "Raggruppa in colonna"
     },
+    "arrange": {
+      "label": "Disponi",
+      "distributeX": "Distribuisci in orizzontale",
+      "distributeY": "Distribuisci in verticale",
+      "mosaic": "Metti in ordine a mosaico",
+      "rows": "Metti in ordine a righe",
+      "gap": "Spazio",
+      "gaps": {
+        "s": "Spazio piccolo",
+        "m": "Spazio medio",
+        "l": "Spazio grande"
+      }
+    },
     "menu": {
       "playLink": "Riproduci {{title}}",
       "refreshPreviewFailed": "Impossibile aggiornare l’anteprima. Riprova più tardi.",
@@ -464,6 +483,13 @@
       "reset": "Zoom al 100%",
       "fit": "Adatta alla vista",
       "selection": "Zoom alla selezione"
+    },
+    "snap": {
+      "label": "Aggancia alla griglia",
+      "tooltip": "Aggancia alla griglia · G",
+      "on": "Aggancio alla griglia attivo",
+      "off": "Aggancio alla griglia disattivato",
+      "palette": "Aggancia alla griglia: attiva o disattiva"
     },
     "unsorted": {
       "empty": "Niente da smistare. Qui arriva ciò che salvi dal browser o dal telefono."

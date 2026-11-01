@@ -911,53 +911,112 @@ button.fcard__audio-play:focus-visible {
   color: var(--ink-accent-soft-fg);
   pointer-events: none;
 }
-.canvas__empty {
+.canvas__start {
   position: absolute;
-  left: 50%;
-  top: 42%;
+  /* Centred on the free part of the board, beside the floating navigation (#333). */
+  left: calc(50% + var(--ink-board-left, 0px) / 2);
+  top: 44%;
   transform: translate(-50%, -50%);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
-  max-width: 360px;
+  width: min(440px, calc(100% - var(--ink-board-left, 0px) - 32px));
   text-align: center;
-  pointer-events: none;
+  animation: ink-fade-in var(--ink-dur-base) var(--ink-ease-out) backwards;
 }
-.canvas__empty-title {
+.canvas__start-title {
+  margin: 0 0 4px;
+  font-size: 15px;
   font-weight: 600;
+  color: var(--ink-text-primary);
 }
-.canvas__templates-title {
-  margin-top: 18px;
-  font-size: 12px;
+.canvas__start-body {
+  margin: 0 0 16px;
+  font-size: 12.5px;
   color: var(--ink-text-secondary);
 }
-.canvas__templates {
-  display: flex;
+.canvas__start-options {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 8px;
-  margin-top: 6px;
-  pointer-events: auto;
 }
-.canvas__template {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  width: 140px;
-  padding: 10px 12px;
+.canvas__start-option {
+  display: grid;
+  justify-items: center;
+  align-content: start;
+  gap: 8px;
+  padding: 14px 10px;
   border: 1px solid var(--ink-border-default);
   border-radius: var(--ink-radius-md);
   background: var(--ink-surface-1);
   color: var(--ink-text-primary);
-  font-size: 11px;
-  text-align: left;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 500;
   cursor: pointer;
+  transition:
+    border-color var(--ink-dur-fast) var(--ink-ease-out),
+    scale var(--ink-dur-fast) var(--ink-ease-out);
 }
-.canvas__template:hover {
+.canvas__start-option:hover {
   border-color: var(--ink-accent-primary);
 }
-.canvas__template-name {
-  font-size: 13px;
-  font-weight: 600;
+.canvas__start-option:active {
+  scale: 0.98;
+}
+.canvas__start-option:focus-visible,
+.canvas__start-browse:focus-visible {
+  outline: 2px solid var(--ink-accent-primary);
+  outline-offset: 2px;
+}
+.canvas__start-tile {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: var(--ink-radius-sm);
+  color: var(--kind-fg, var(--ink-text-secondary));
+  background: var(--kind-bg, var(--ink-surface-2));
+}
+.canvas__start-desc {
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--ink-text-muted);
+}
+.canvas__start-browse {
+  margin-top: 12px;
+  padding: 4px 8px;
+  border: 0;
+  border-radius: var(--ink-radius-sm);
+  background: transparent;
+  color: var(--ink-accent-soft-fg);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+.canvas__start-browse:hover {
+  text-decoration: underline;
+}
+.canvas__start-hint {
+  margin: 6px 0 0;
+  font-size: 11px;
+  color: var(--ink-text-muted);
+}
+@media (prefers-reduced-motion: reduce) {
+  .canvas__start {
+    animation: none;
+  }
+  .canvas__start-option:active {
+    scale: none;
+  }
+}
+/* Phones: three finger-sized choices in a row, the browse link a full touch target. */
+@media (pointer: coarse) {
+  .canvas__start-option {
+    min-height: 44px;
+    padding: 12px 6px;
+  }
+  .canvas__start-browse {
+    min-height: 44px;
+    padding: 0 12px;
+  }
 }
 .canvas__linkdraft {
   position: absolute;
@@ -1250,6 +1309,61 @@ button.fcard__audio-play:focus-visible {
   height: 26px;
   margin-right: 10px;
 }
+/* The selection bar's Arrange menu (#320): the gap of the tidy-up commands as S, M, L chips. */
+.arrange-menu {
+  width: 232px;
+}
+.arrange-menu .menu__item {
+  gap: 8px;
+}
+.arrange-menu .menu__item > svg {
+  flex: none;
+  color: var(--ink-text-icon);
+}
+.arrange-menu__gap {
+  min-width: 0;
+  margin: 0;
+  border: 0;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 8px 4px;
+  font-size: 11.5px;
+  color: var(--ink-text-secondary);
+}
+.arrange-menu__gap > span {
+  margin-right: 4px;
+}
+.arrange-menu__chip {
+  min-width: 28px;
+  height: 22px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: var(--ink-radius-full);
+  background: var(--ink-surface-2);
+  color: var(--ink-text-secondary);
+  font: inherit;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color var(--ink-dur-fast) var(--ink-ease-out);
+}
+.arrange-menu__chip:hover {
+  color: var(--ink-text-primary);
+}
+.arrange-menu__chip[aria-checked="true"] {
+  background: var(--ink-accent-soft-bg);
+  color: var(--ink-accent-soft-fg);
+}
+.arrange-menu__chip:focus-visible {
+  outline: 2px solid var(--ink-accent-primary);
+  outline-offset: 1px;
+}
+@media (pointer: coarse) {
+  .arrange-menu__chip {
+    min-width: 44px;
+    height: 36px;
+  }
+}
 .menu__divider {
   height: 1px;
   border: 0;
@@ -1325,6 +1439,11 @@ button.fcard__audio-play:focus-visible {
 }
 .zoom .zoom__value {
   color: var(--ink-text-primary);
+}
+/* The magnet (#296): pressed while cards snap to the grid. */
+.zoom .zoom__snap[aria-pressed="true"] {
+  background: var(--ink-accent-soft-bg);
+  color: var(--ink-accent-soft-fg);
 }
 
 .unsorted {
@@ -3076,7 +3195,8 @@ button.card__play {
   }
   .canvas .zoom button {
     height: 28px;
-    min-width: 28px;
+    /* Five buttons with the magnet still fit the 150 px corner. */
+    min-width: 26px;
     border-radius: var(--ink-radius-sm);
   }
   .canvas .unsorted {

@@ -1,5 +1,5 @@
 import {
-  type Alignment,
+  type ArrangeItem,
   type ArrowElement,
   type ArrowGeometry,
   addScene,
@@ -22,6 +22,7 @@ import {
   dropIndex,
   fitRect,
   frameLabels,
+  GRID,
   type Guide,
   inflate,
   intersects,
@@ -43,10 +44,17 @@ import {
   resizeFromCorner,
   screenToWorld,
   sendToBack,
-  snapRect,
+  snapMove,
+  snapPoint,
+  snapResize,
+  snap as snapToGrid,
+  stackColumns,
   storyboardOf,
-  TEMPLATE_IDS,
   type TemplateId,
+  TIDY_GAPS,
+  type TidyGap,
+  tidyMosaic,
+  tidyRows,
   updateElement,
   updateElements,
   type Viewport,
@@ -74,13 +82,14 @@ import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router';
 import * as Y from 'yjs';
-import { addActions, useRegisterActions } from '../commands/actions.ts';
+import { addActions, type PaletteAction, useRegisterActions } from '../commands/actions.ts';
 import { canvasActions, duplicateInStore } from '../commands/board-actions.ts';
 import { useSession } from '../lib/session.tsx';
 import { queueSeeds } from '../routes/seed-queue.tsx';
 import { accessNotices } from './access-notices.ts';
 import { ArrowLayer, ArrowStyleButtons, onArrowStyleButton } from './arrows.tsx';
 import { canRenameBoard, createBoard, setBoardCover } from './boards.ts';
+import { loadSnapToGrid, loadTidyGap, saveSnapToGrid, saveTidyGap } from './canvas-prefs.ts';
 import {
   type CanvasTemplate,
   createCanvasBoards,
@@ -88,6 +97,7 @@ import {
 } from './canvas-templates.ts';
 import { Card } from './cards.tsx';
 import {
+  type ArrangeCommand,
   BarButton,
   type CanvasTool,
   CommandPalette,
@@ -107,6 +117,8 @@ import {
 import { decodeClipboard, encodeClipboard } from './clipboard.ts';
 import type { BoardConnection } from './connection.ts';
 import { BoardContext, type BoardContextValue, GuestModeContext, LARGE_BOARD } from './context.ts';
+import { EmptyBoardStart } from './EmptyBoardStart.tsx';
+import { easeCards } from './ease-cards.ts';
 import { useBoardAspect } from './film/aspect.ts';
 import { DrawingEditor } from './film/DrawingEditor.tsx';
 import { FramePanel } from './film/FramePanel.tsx';
@@ -228,6 +240,8 @@ interface Pinch {
 
 interface Overlay {
   offset?: { dx: number; dy: number };
+  /** Where a move lands when it differs from `offset`: on the grid, eased into on drop. */
+  land?: { dx: number; dy: number };
   moving?: Set<string>;
   ghost?: { element: Element; x: number; y: number; w: number };
   guides?: Guide[];
@@ -238,6 +252,12 @@ interface Overlay {
 }
 
 const NO_OVERLAY: Overlay = {};
+
+/** A plan to ease cards from these world positions once their move is rendered. */
+const easeFrom = (entries: Iterable<readonly [string, Point]>) => ({
+  from: new Map(entries),
+  at: performance.now(),
+});
 const EMPTY_SET: ReadonlySet<string> = new Set();
 
 export interface CanvasProps {
@@ -340,6 +360,18 @@ export function Canvas({
   const [editing, setEditingState] = useState<string | null>(null);
   const [cropping, setCropping] = useState<string | null>(null);
   const [tool, setTool] = useState<CanvasTool>('select');
+  /** Snap to grid (#296): this person's choice on this device, off by default. */
+  const [magnet, setMagnetState] = useState(() => loadSnapToGrid(userId));
+  const magnetRef = useRef(magnet);
+  magnetRef.current = magnet;
+  const toggleMagnet = useCallback(() => {
+    const next = !magnetRef.current;
+    magnetRef.current = next;
+    setMagnetState(next);
+    saveSnapToGrid(userId, next);
+  }, [userId]);
+  /** Where a new card lands: on the grid while the magnet is on. */
+  const place = useCallback((p: Point): Point => (magnetRef.current ? snapPoint(p, GRID) : p), []);
   /** Frame whose details panel is open, frame being drawn, image or video in the viewer. */
   const [framePanel, setFramePanel] = useState<string | null>(null);
   /** Character or location card whose side sheet is open. */
@@ -622,7 +654,7 @@ export function Canvas({
   const insertCanvas = useCallback(
     async (template: CanvasTemplate, at?: Point) => {
       if (readOnly) return;
-      const pos = at ?? center(DEFAULT_WIDTH.board);
+      const pos = place(at ?? center(DEFAULT_WIDTH.board));
       try {
         const { board, jobs } = await createCanvasBoards(projectId, boardId, template, t, userId);
         store.undo.stopCapturing();
@@ -647,7 +679,7 @@ export function Canvas({
         });
       }
     },
-    [readOnly, center, t, projectId, boardId, userId, store, doc, select, setEditing],
+    [readOnly, center, place, t, projectId, boardId, userId, store, doc, select, setEditing],
   );
 
   const [importingScript, setImportingScript] = useState(false);
@@ -666,19 +698,19 @@ export function Canvas({
       const card = createElement(
         doc,
         'board',
-        center(DEFAULT_WIDTH.board),
+        place(center(DEFAULT_WIDTH.board)),
         { boardId: board.id },
         { userId, origin: LOCAL },
       );
       select([card.id]);
     },
-    [readOnly, projectId, boardId, t, userId, store, doc, center, select],
+    [readOnly, projectId, boardId, t, userId, store, doc, center, place, select],
   );
 
   const add = useCallback(
     async (type: ToolType, at?: Point) => {
       if (readOnly) return;
-      const pos = at ?? center(DEFAULT_WIDTH[type as Element['type']] ?? 240);
+      const pos = place(at ?? center(DEFAULT_WIDTH[type as Element['type']] ?? 240));
       const opts = { userId, origin: LOCAL };
       store.undo.stopCapturing();
       let created: Element | null = null;
@@ -728,7 +760,7 @@ export function Canvas({
         setEditing(created.id);
       }
     },
-    [readOnly, center, userId, store, doc, select, setEditing, insertCanvas],
+    [readOnly, center, place, userId, store, doc, select, setEditing, insertCanvas],
   );
 
   const uploadFiles = useCallback(
@@ -742,7 +774,8 @@ export function Canvas({
       files
         .filter((f) => !tooBig.includes(f))
         .forEach((file, i) => {
-          const pos = { x: at.x + i * 24, y: at.y + i * 24 };
+          const step = magnetRef.current ? GRID : 24;
+          const pos = place({ x: at.x + i * step, y: at.y + i * step });
           const type = file.type.startsWith('image/') ? 'image' : 'file';
           startUpload({
             file,
@@ -768,14 +801,15 @@ export function Canvas({
           });
         });
     },
-    [readOnly, projectId, boardId, doc, userId, store, select, t, instance],
+    [readOnly, projectId, boardId, doc, userId, store, select, t, instance, place],
   );
 
   const addText = useCallback(
-    (text: string, at: Point) => {
+    (text: string, where: Point) => {
       const trimmed = text.trim();
       if (!trimmed || readOnly) return;
       const opts = { userId, origin: LOCAL };
+      const at = place(where);
       if (/^https?:\/\/\S+$/i.test(trimmed)) {
         const el = createElement(doc, 'link', at, { url: trimmed }, opts);
         select([el.id]);
@@ -789,7 +823,7 @@ export function Canvas({
       }, LOCAL);
       select([el.id]);
     },
-    [readOnly, userId, doc, store, select, projectId, boardId],
+    [readOnly, userId, doc, store, select, projectId, boardId, place],
   );
 
   const removeSelection = useCallback(() => {
@@ -807,6 +841,33 @@ export function Canvas({
   }, [readOnly, selection, store, userId, select]);
 
   const onlySelected = selection.size === 1 ? [...selection][0] : undefined;
+  /** Cards the Arrange commands can move: on the canvas, unlocked, not arrows. */
+  const arrangeable = [...selection].filter((id) => {
+    const el = snap.byId.get(id);
+    return el && el.parent === null && !el.locked && el.type !== 'arrow';
+  }).length;
+  const arrangeActions = (): PaletteAction[] => {
+    if (arrangeable < 2) return [];
+    const action = (how: ArrangeCommand, label: string, hint?: string): PaletteAction => ({
+      id: `arrange-${how}`,
+      label,
+      hint,
+      run: () => arrange(how),
+    });
+    return [
+      action('mosaic', t('board.arrange.mosaic'), '⇧T'),
+      action('rows', t('board.arrange.rows')),
+      ...(['left', 'center', 'right', 'top', 'middle', 'bottom'] as const).map((how) =>
+        action(how, t(`board.align.${how}`)),
+      ),
+      ...(arrangeable > 2
+        ? [
+            action('distributeX', t('board.arrange.distributeX')),
+            action('distributeY', t('board.arrange.distributeY')),
+          ]
+        : []),
+    ];
+  };
   useRegisterActions(
     canvasActions({
       readOnly,
@@ -826,6 +887,10 @@ export function Canvas({
       store,
       t,
       duplicateHint: `${isMac() ? '⌘' : 'Ctrl+'}D`,
+      extra: [
+        { id: 'snap-to-grid', label: t('board.snap.palette'), hint: 'G', run: toggleMagnet },
+        ...arrangeActions(),
+      ],
     }),
   );
 
@@ -840,33 +905,181 @@ export function Canvas({
     );
   }, [readOnly, selection, snap, doc]);
 
-  const align = useCallback(
-    (how: Alignment | 'distribute') => {
+  const [tidyGap, setTidyGapState] = useState<TidyGap>(() => loadTidyGap(userId));
+  const setTidyGap = useCallback(
+    (gap: TidyGap) => {
+      setTidyGapState(gap);
+      saveTidyGap(userId, gap);
+    },
+    [userId],
+  );
+  /**
+   * A mosaic just made: notes reflow at their new width, so their columns are stacked again as
+   * their real heights arrive, for a moment, in the same undo step.
+   */
+  const pendingTidy = useRef<{
+    groups: string[][];
+    top: number;
+    gap: number;
+    until: number;
+  } | null>(null);
+
+  /**
+   * Cards to ease from where they were drawn to their new place once the document change is
+   * rendered (arrange commands, a drop onto the grid): previous world positions by id.
+   */
+  const pendingEase = useRef<{ from: Map<string, Point>; at: number } | null>(null);
+
+  /** How a card's height follows a new width when the selection is tidied up. */
+  const arrangeItem = useCallback(
+    (el: Element): ArrangeItem => {
+      const rect = store.rectOf(el);
+      const media = rootRef.current
+        ?.querySelector<HTMLElement>(`.card[data-el="${CSS.escape(el.id)}"]`)
+        ?.querySelector<HTMLElement>('.card__media')?.offsetHeight;
+      // Images keep the ratio of their picture, a caption under it does not scale.
+      if (el.type === 'image' || el.type === 'frame')
+        return { ...rect, fit: 'ratio', fixed: media ? Math.max(0, rect.h - media) : 0 };
+      return { ...rect, fit: el.h !== undefined || el.type === 'color' ? 'ratio' : 'content' };
+    },
+    [store],
+  );
+
+  /** Align, distribute or tidy up the selected cards on the canvas; one undo step each. */
+  const arrange = useCallback(
+    (how: ArrangeCommand) => {
+      if (readOnly) return;
       const els = [...selection]
         .map((id) => snap.byId.get(id))
         .filter((e): e is Element => !!e && e.parent === null && !e.locked && e.type !== 'arrow');
+      if (els.length < 2) return;
       const rects = els.map((e) => store.rectOf(e));
-      const next = how === 'distribute' ? distributeRects(rects) : alignRects(rects, how);
+      let next: Rect[];
+      pendingTidy.current = null;
+      if (how === 'mosaic' || how === 'rows') {
+        const bounds = boundsOf(rects);
+        if (!bounds) return;
+        // With the magnet on, the tidied block starts on the grid.
+        const origin = magnetRef.current ? snapPoint(bounds, GRID) : { x: bounds.x, y: bounds.y };
+        const gap = TIDY_GAPS[tidyGap];
+        const items = els.map(arrangeItem);
+        const tidy =
+          how === 'mosaic' ? tidyMosaic(items, gap, { origin }) : tidyRows(items, gap, { origin });
+        next = tidy.rects;
+        if (how === 'mosaic')
+          pendingTidy.current = {
+            groups: tidy.groups.map((g) => g.flatMap((i) => (els[i] ? [els[i].id] : []))),
+            top: origin.y,
+            gap,
+            until: performance.now() + 1000,
+          };
+      } else {
+        const moved =
+          how === 'distributeX' || how === 'distributeY'
+            ? distributeRects(rects, how === 'distributeX' ? 'x' : 'y')
+            : alignRects(rects, how);
+        next = rects.map((r, i) => ({ ...r, x: moved[i]?.x ?? r.x, y: moved[i]?.y ?? r.y }));
+      }
+      const placed = new Map(els.map((e, i) => [e.id, next[i] ?? rects[i]] as const));
+      pendingEase.current = easeFrom(els.map((e) => [e.id, { x: e.x, y: e.y }] as const));
+      store.undo.stopCapturing();
       doc.transact(() => {
         updateElements(
           doc,
-          els.map((e, i) => ({
-            id: e.id,
-            patch: { x: Math.round(next[i]?.x ?? e.x), y: Math.round(next[i]?.y ?? e.y) },
-          })),
+          els.map((e, i) => {
+            const r = next[i] ?? rects[i];
+            const patch: Record<string, number> = {
+              x: Math.round(r?.x ?? e.x),
+              y: Math.round(r?.y ?? e.y),
+            };
+            // Tidying resizes: the width always, the height only where it is set, else it
+            // follows the content (an image's picture, a note's text).
+            if (r && r.w !== e.w) patch.w = Math.round(r.w);
+            if (r && e.h !== undefined && e.type !== 'link') patch.h = Math.round(r.h);
+            return { id: e.id, patch };
+          }),
           LOCAL,
         );
+        // The store updates after this transaction; attached arrows need the new rects now.
         refreshArrows(
           doc,
           arrowsOf(),
           els.map((e) => e.id),
-          cardRect,
+          (id) => placed.get(id) ?? cardRect(id),
           LOCAL,
         );
       }, LOCAL);
+      if (!pendingTidy.current) store.undo.stopCapturing();
     },
-    [selection, snap, store, doc, arrowsOf, cardRect],
+    [readOnly, selection, snap, store, doc, arrowsOf, cardRect, tidyGap, arrangeItem],
   );
+
+  // A mosaic's notes measured at their new width: stack their columns again with the same gap.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: only new measured heights restack the mosaic
+  useEffect(() => {
+    const plan = pendingTidy.current;
+    if (!plan) return;
+    if (performance.now() > plan.until) {
+      pendingTidy.current = null;
+      store.undo.stopCapturing();
+      return;
+    }
+    const { byId } = store.getSnapshot();
+    const ids = plan.groups.flat();
+    const els = ids.map((id) => byId.get(id));
+    if (els.some((e) => !e || e.parent !== null)) {
+      pendingTidy.current = null;
+      return;
+    }
+    const index = new Map(ids.map((id, i) => [id, i]));
+    const tops = stackColumns(
+      plan.groups.map((g) => g.map((id) => index.get(id) ?? 0)),
+      els.map((e) => (e ? store.heightOf(e) : 0)),
+      plan.top,
+      plan.gap,
+    );
+    const placed = new Map<string, Rect>();
+    const changes = els.flatMap((e, i) => {
+      const y = tops[i];
+      if (!e || y === undefined || !Number.isFinite(y) || y === e.y) return [];
+      placed.set(e.id, { ...store.rectOf(e), y });
+      return [{ id: e.id, patch: { y } }];
+    });
+    if (changes.length === 0) return;
+    pendingEase.current = easeFrom(
+      changes.flatMap(({ id }) => {
+        const el = byId.get(id);
+        return el ? [[id, { x: el.x, y: el.y }] as const] : [];
+      }),
+    );
+    doc.transact(() => {
+      updateElements(doc, changes, LOCAL);
+      refreshArrows(doc, arrowsOf(), ids, (id) => placed.get(id) ?? cardRect(id), LOCAL);
+    }, LOCAL);
+  }, [sizeVersion]);
+  // Moved cards ease from where they were drawn to their new place, once it is in the DOM and
+  // before it is painted; the document already holds the final positions.
+  useLayoutEffect(() => {
+    const pending = pendingEase.current;
+    if (!pending) return;
+    pendingEase.current = null;
+    // Only the render of the change itself: a stale plan (nothing moved) is dropped.
+    if (performance.now() - pending.at > 500) return;
+    const { byId } = snap;
+    easeCards(rootRef.current, pending.from, (id) => {
+      const el = byId.get(id);
+      return el && el.parent === null ? { x: el.x, y: el.y } : undefined;
+    });
+  }, [snap]);
+
+  // Undoing the mosaic must not be stacked into it again.
+  useEffect(() => {
+    const stop = () => {
+      pendingTidy.current = null;
+    };
+    store.undo.on('stack-item-popped', stop);
+    return () => store.undo.off('stack-item-popped', stop);
+  }, [store]);
 
   const groupIntoColumn = useCallback(() => {
     const els = [...selection]
@@ -1069,6 +1282,8 @@ export function Canvas({
   }
 
   function onPointerDown(e: ReactPointerEvent<HTMLDivElement>) {
+    // A hand on the board ends the restacking of a mosaic just made.
+    pendingTidy.current = null;
     if (touchDown(e)) return;
     if (e.button === 2) return;
     const target = e.target as HTMLElement;
@@ -1091,7 +1306,13 @@ export function Canvas({
       if (cropping) setCropping(null);
       const from = targetId ? snap.byId.get(targetId) : undefined;
       const fromId = from && from.parent === null && from.type !== 'arrow' ? from.id : null;
-      gesture.current = { kind: 'arrow', start: screenToWorld(vp.current, p), fromId };
+      const start = screenToWorld(vp.current, p);
+      // A free end lands on the grid with the magnet on (Alt inverts it).
+      gesture.current = {
+        kind: 'arrow',
+        start: !fromId && magnetRef.current !== e.altKey ? snapPoint(start, GRID) : start,
+        fromId,
+      };
       rootRef.current?.setPointerCapture(e.pointerId);
       e.preventDefault();
       return;
@@ -1192,13 +1413,14 @@ export function Canvas({
       return;
     }
     if (g.kind === 'arrow') {
-      const b = screenToWorld(v, p);
+      const world = screenToWorld(v, p);
+      const b = magnetRef.current !== e.altKey ? snapPoint(world, GRID) : world;
       const from = { x: g.start.x, y: g.start.y, ...(g.fromId ? { elementId: g.fromId } : {}) };
       setOverlay({ arrow: arrowEnds({ from, to: b }, cardRect) });
       return;
     }
     if (g.kind === 'resize') {
-      const rect = resizeFromCorner(
+      const free = resizeFromCorner(
         g.rect,
         g.corner,
         {
@@ -1207,6 +1429,9 @@ export function Canvas({
         },
         g.options,
       );
+      // The dragged edges land on the grid with the magnet on; Alt inverts it for this drag.
+      const rect =
+        magnetRef.current !== e.altKey ? snapResize(free, g.corner, GRID, g.options) : free;
       setOverlay({ resize: { id: g.id, ...rect } });
       return;
     }
@@ -1277,25 +1502,37 @@ export function Canvas({
     }
 
     let guides: Guide[] | undefined;
-    if (!drop && !e.altKey && free.length > 0) {
+    let land: Overlay['land'];
+    // Alt leaves the guides out and inverts the magnet: the grid snaps when exactly one is on.
+    const grid = magnetRef.current !== e.altKey ? GRID : null;
+    if (!drop && (grid || !e.altKey) && free.length > 0) {
       const bounds = boundsOf(free.map((x) => store.rectOf(x)));
       if (bounds) {
         const area = inflate(visibleWorld(v, size.w, size.h), 200 / v.zoom);
-        const others = snap.canvas
-          .filter((o) => !moving.has(o.id) && o.type !== 'arrow')
-          .map((o) => store.rectOf(o))
-          .filter((r) => intersects(r, area));
-        const s = snapRect(
+        const others = e.altKey
+          ? []
+          : snap.canvas
+              .filter((o) => !moving.has(o.id) && o.type !== 'arrow')
+              .map((o) => store.rectOf(o))
+              .filter((r) => intersects(r, area));
+        // A selection moves as one: its top-left corner snaps, the gaps inside stay.
+        const s = snapMove(
           { ...bounds, x: bounds.x + dx, y: bounds.y + dy },
           others,
           SNAP_PX / v.zoom,
+          { grid, guides: !e.altKey },
         );
-        dx += s.dx;
-        dy += s.dy;
+        // The cards follow the pointer and the guides; the grid is where they land on drop,
+        // eased into, so they do not jump from dot to dot under the hand.
+        const byX = s.guides.some((guide) => guide.axis === 'x');
+        const byY = s.guides.some((guide) => guide.axis === 'y');
+        if (grid) land = { dx: dx + s.dx, dy: dy + s.dy };
+        dx += byX ? s.dx : 0;
+        dy += byY ? s.dy : 0;
         guides = s.guides;
       }
     }
-    setOverlay({ offset: { dx, dy }, moving, ghost, guides, drop });
+    setOverlay({ offset: { dx, dy }, land, moving, ghost, guides, drop });
   }
 
   function onPointerUp(e: ReactPointerEvent<HTMLDivElement>) {
@@ -1309,7 +1546,8 @@ export function Canvas({
     setOverlay(NO_OVERLAY);
     if (!g || (e.type === 'pointercancel' && g.kind === 'resize')) return;
     if (g.kind === 'arrow') {
-      const end = toWorld(e.clientX, e.clientY);
+      const pointer = toWorld(e.clientX, e.clientY);
+      const end = magnetRef.current !== e.altKey ? snapPoint(pointer, GRID) : pointer;
       const under = (
         document.elementFromPoint(e.clientX, e.clientY) as HTMLElement | null
       )?.closest<HTMLElement>('[data-el]');
@@ -1318,7 +1556,7 @@ export function Canvas({
         target && target.parent === null && target.type !== 'arrow' && target.id !== g.fromId
           ? target.id
           : null;
-      const short = Math.hypot(end.x - g.start.x, end.y - g.start.y) < 12 / vp.current.zoom;
+      const short = Math.hypot(pointer.x - g.start.x, pointer.y - g.start.y) < 12 / vp.current.zoom;
       if (short && !toId) return;
       store.undo.stopCapturing();
       const arrow = createArrow(
@@ -1361,9 +1599,21 @@ export function Canvas({
       if (g.clickOnly) select([g.clickOnly]);
       return;
     }
-    const { dx = 0, dy = 0 } = o.offset ?? {};
+    const { dx = 0, dy = 0 } = o.land ?? o.offset ?? {};
     const arrows = arrowsOf(g.ids);
     const cards = g.ids.filter((id) => !arrows.some((a) => a.id === id));
+    if (o.land && o.offset && !o.drop) {
+      // Dropped off the grid: ease from where the cards were drawn onto it.
+      const seen = o.offset;
+      pendingEase.current = easeFrom(
+        cards.flatMap((id) => {
+          const el = snap.byId.get(id);
+          return el && el.parent === null
+            ? [[id, { x: el.x + seen.dx, y: el.y + seen.dy }] as const]
+            : [];
+        }),
+      );
+    }
     doc.transact(() => {
       if (o.drop?.kind === 'unsorted') {
         moveToUnsorted(doc, cards, LOCAL);
@@ -1616,14 +1866,24 @@ export function Canvas({
           .map((id) => snap.byId.get(id))
           .filter((x): x is Element => !!x && x.parent === null && !x.locked);
         const cards = els.filter((x) => x.type !== 'arrow');
+        let { dx, dy } = cmd;
+        const bounds = boundsOf(cards.map((x) => store.rectOf(x)));
+        if (magnetRef.current && bounds) {
+          // One grid step, four with Shift, onto the grid: the selection moves as one.
+          const step = GRID * (e.shiftKey ? 4 : 1);
+          dx = snapToGrid(bounds.x + Math.sign(dx) * step, GRID) - bounds.x;
+          dy = snapToGrid(bounds.y + Math.sign(dy) * step, GRID) - bounds.y;
+          if (cmd.dx === 0) dx = 0;
+          if (cmd.dy === 0) dy = 0;
+        }
         doc.transact(() => {
           updateElements(
             doc,
-            cards.map((x) => ({ id: x.id, patch: { x: x.x + cmd.dx, y: x.y + cmd.dy } })),
+            cards.map((x) => ({ id: x.id, patch: { x: x.x + dx, y: x.y + dy } })),
             LOCAL,
           );
           const arrows = els.filter((x): x is ArrowElement => x.type === 'arrow');
-          if (arrows.length > 0) moveArrows(doc, arrows, cmd.dx, cmd.dy, cardRect, LOCAL);
+          if (arrows.length > 0) moveArrows(doc, arrows, dx, dy, cardRect, LOCAL);
           refreshArrows(
             doc,
             arrowsOf(),
@@ -1636,6 +1896,16 @@ export function Canvas({
       }
       case 'zoom':
         zoomTo(cmd.to);
+        break;
+      case 'tidy':
+        if (readOnly) return;
+        arrange('mosaic');
+        break;
+      case 'snap':
+        if (readOnly) return;
+        toggleMagnet();
+        // The key gives no visible feedback where the eyes are: say what changed.
+        setToast({ text: t(magnetRef.current ? 'board.snap.on' : 'board.snap.off'), undo: false });
         break;
       case 'help':
         setPalette(true);
@@ -1668,7 +1938,7 @@ export function Canvas({
     }
     if (readOnly) return;
     const p = lastPointer.current ?? { x: size.w / 2, y: size.h / 2 };
-    const at = screenToWorld(vp.current, p);
+    const at = place(screenToWorld(vp.current, p));
     const data = decodeClipboard(e.clipboardData);
     e.preventDefault();
     if (data) {
@@ -2084,6 +2354,18 @@ export function Canvas({
               label: t('board.menu.toUnsorted'),
               action: () => moveToUnsorted(doc, [...selection], LOCAL),
             },
+            // Arrange (#320): the tidy-ups; the selection bar's Arrange menu has them all.
+            ...(arrangeable > 1
+              ? [
+                  {
+                    toolbar: true,
+                    label: t('board.arrange.mosaic'),
+                    shortcut: '⇧T',
+                    action: () => arrange('mosaic'),
+                  },
+                  { toolbar: true, label: t('board.arrange.rows'), action: () => arrange('rows') },
+                ]
+              : []),
             ...(menu.fromToolbar ? [] : [{ divider: true as const }]),
             {
               toolbar: true,
@@ -2116,6 +2398,8 @@ export function Canvas({
     doc,
     setEditing,
     onExportSelection,
+    arrangeable,
+    arrange,
   ]);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: sizeVersion invalidates measured heights
@@ -2278,28 +2562,21 @@ export function Canvas({
         )}
         {dropHint && <div className="canvas__drophint">{t('board.dropFiles')}</div>}
 
-        {snap.canvas.length === 0 && conn.status === 'synced' && !readOnly && (
-          <div className="canvas__empty">
-            <span className="canvas__empty-title">{t('board.empty.title')}</span>
-            {/* A finger gets its own wording, without the keyboard tip (board.css). */}
-            <span className="ink-muted canvas__empty-pointer">{t('board.empty.body')}</span>
-            <span className="ink-muted canvas__empty-touch">{t('board.empty.bodyTouch')}</span>
-            <span className="canvas__templates-title">{t('board.empty.templates')}</span>
-            <div className="canvas__templates" data-chrome>
-              {TEMPLATE_IDS.map((id) => (
-                <button
-                  key={id}
-                  type="button"
-                  className="canvas__template"
-                  onClick={() => void addTemplate(id)}
-                >
-                  <span className="canvas__template-name">{t(`templates.${id}.name`)}</span>
-                  <span className="ink-muted">{t(`templates.${id}.body`)}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
+        {/* Starting points (#312): only for people who can edit, gone with the first card. */}
+        {snap.canvas.length === 0 &&
+          conn.status === 'synced' &&
+          !readOnly &&
+          !guest &&
+          !preview && (
+            <EmptyBoardStart
+              onMoodboard={() => void addTemplate('moodboard')}
+              onStoryboard={() => void addTemplate('storyboard')}
+              onScreenplay={() => setImportingScript(true)}
+              onBrowse={() =>
+                rootRef.current?.querySelector<HTMLButtonElement>('.toolbar__btn--canvas')?.click()
+              }
+            />
+          )}
 
         {!overlay.offset &&
           !overlay.marquee &&
@@ -2324,7 +2601,9 @@ export function Canvas({
                   ? openComments.bind(null, { elementId: selectedEls[0].id })
                   : undefined
               }
-              onAlign={align}
+              onArrange={arrange}
+              gap={tidyGap}
+              onGap={setTidyGap}
               onGroup={groupIntoColumn}
               onLock={toggleLock}
               onGuestHidden={() => toggleGuestHidden(store, [...selection])}
@@ -2540,7 +2819,11 @@ export function Canvas({
             size={size}
             onJump={(p) => setViewport(centerOn(vp.current, p, size.w, size.h))}
           />
-          <ZoomControls zoom={viewport.zoom} onZoom={zoomTo} />
+          <ZoomControls
+            zoom={viewport.zoom}
+            onZoom={zoomTo}
+            snap={readOnly ? undefined : { on: magnet, onToggle: toggleMagnet }}
+          />
         </div>
         {!readOnly && (
           // Centres the bar on the part of the board beside the navigation, clear of the corner.
@@ -2586,6 +2869,10 @@ export function Canvas({
         {palette && (
           <CommandPalette
             readOnly={readOnly}
+            extra={[
+              { id: 'snap-to-grid', label: t('board.snap.palette'), hint: 'G', run: toggleMagnet },
+              ...arrangeActions(),
+            ]}
             onClose={() => setPalette(false)}
             onAdd={(type) => void add(type)}
             onTemplate={(id) => void addTemplate(id)}

@@ -31,3 +31,16 @@ it('maps X to the crop command', () => {
   expect(commandFor(key('x'), false)).toEqual({ kind: 'crop' });
   expect(commandFor(key('x', { ctrlKey: true }), false)).toBeNull();
 });
+
+it('maps G to the snap-to-grid toggle, without modifiers', () => {
+  expect(commandFor(key('g'), false)).toEqual({ kind: 'snap' });
+  expect(commandFor(key('G', { shiftKey: true }), false)).toBeNull();
+  expect(commandFor(key('g', { ctrlKey: true }), false)).toBeNull();
+  expect(commandFor(key('g', { altKey: true }), false)).toBeNull();
+});
+
+it('maps Shift+T to tidying into a mosaic and leaves T to the to-do', () => {
+  expect(commandFor(key('T', { shiftKey: true }), false)).toEqual({ kind: 'tidy' });
+  expect(commandFor(key('t'), false)).toEqual({ kind: 'add', type: 'todo' });
+  expect(commandFor(key('T', { shiftKey: true, ctrlKey: true }), false)).toBeNull();
+});

@@ -73,6 +73,7 @@ export function canvasActions({
   store,
   t,
   duplicateHint,
+  extra = [],
 }: {
   readOnly: boolean;
   guest: boolean;
@@ -85,11 +86,14 @@ export function canvasActions({
   store: BoardStore;
   t: TFunction;
   duplicateHint: string;
+  /** Board commands of the canvas itself: snap to grid, arranging the selection. */
+  extra?: PaletteAction[];
 }): PaletteAction[] {
   if (readOnly || guest) return [];
   if (framePanelOpen) return add;
   return [
     ...add,
+    ...extra,
     ...(selectedFrame ? frameStatusActions(store, selectedFrame, t) : []),
     ...(selection.size
       ? [

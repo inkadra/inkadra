@@ -312,10 +312,16 @@
     "selected_one": "1 selected",
     "selected_other": "{{count}} selected",
     "empty": {
-      "title": "Empty board",
-      "body": "Double-click for a note, drop files or use the bar below. / opens the commands.",
-      "bodyTouch": "Double-tap for a note or use the bar below.",
-      "templates": "Or start from a template"
+      "title": "Where do we start?",
+      "body": "Pick a starting point, or double-click to write a note.",
+      "bodyTouch": "Pick a starting point, or double-tap to write a note.",
+      "moodboard": "References and palette",
+      "storyboard": "Scenes and shots",
+      "screenplay": "Import screenplay",
+      "screenplayBody": "Fountain or Final Draft",
+      "browse": "Browse all templates",
+      "hint": "You can also drop files and images here.",
+      "hintTouch": "Add photos and files from the bar below."
     },
     "types": {
       "note": "Note",
@@ -430,6 +436,19 @@
       "distribute": "Distribute",
       "group": "Group in a column"
     },
+    "arrange": {
+      "label": "Arrange",
+      "distributeX": "Distribute horizontally",
+      "distributeY": "Distribute vertically",
+      "mosaic": "Tidy into mosaic",
+      "rows": "Tidy into rows",
+      "gap": "Gap",
+      "gaps": {
+        "s": "Small gap",
+        "m": "Medium gap",
+        "l": "Large gap"
+      }
+    },
     "menu": {
       "playLink": "Play {{title}}",
       "refreshPreviewFailed": "Could not refresh preview. Please try again later.",
@@ -464,6 +483,13 @@
       "reset": "Zoom to 100%",
       "fit": "Fit to view",
       "selection": "Zoom to selection"
+    },
+    "snap": {
+      "label": "Snap to grid",
+      "tooltip": "Snap to grid · G",
+      "on": "Snap to grid on",
+      "off": "Snap to grid off",
+      "palette": "Snap to grid: on or off"
     },
     "unsorted": {
       "empty": "Nothing to sort. What you save from the browser or your phone lands here."
