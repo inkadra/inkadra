@@ -1314,6 +1314,7 @@
     "filter": "Show threads",
     "filterStatus": {
       "open": "Open",
+      "mentions": "Mentions and replies",
       "resolved": "Resolved",
       "all": "All"
     },
@@ -1389,7 +1390,14 @@
     "reactions": "Reactions",
     "reactionChip": "{{emoji}} {{count}}: {{names}}",
     "reactAdd": "Add a reaction",
-    "reactWith": "React with {{emoji}}"
+    "reactWith": "React with {{emoji}}",
+    "unread": "Unread",
+    "unreadCount_one": "{{count}} unread",
+    "unreadCount_other": "{{count}} unread",
+    "threadMenu": "Thread actions",
+    "markUnread": "Mark as unread",
+    "markRead": "Mark as read",
+    "emptyMentions": "No open threads mention you or reply to you."
   },
   "review": {
     "title": "Review",

@@ -47,7 +47,7 @@ import type { Auth } from '../auth.ts';
 import { type BoardReader, storedElement } from '../board-content.ts';
 import { type BoardNotifier, noNotices } from '../board-notices.ts';
 import type { Database } from '../db/client.ts';
-import { comment, commentReaction, elementReaction, shareLink } from '../db/schema.ts';
+import { comment, commentReaction, commentRead, elementReaction, shareLink } from '../db/schema.ts';
 import { afterCommit, notify, Recipients } from '../notifications.ts';
 import { iso } from './api-routes.ts';
 import { requireActor } from './auth-routes.ts';
@@ -147,6 +147,39 @@ export function toComment(
   };
 }
 
+/**
+ * The threads among `threadIds` the person has not read: marked unread by hand, or written in
+ * by someone else after they last opened them (or never opened, with something by someone else).
+ */
+async function unreadThreads(db: Database, threadIds: string[], personId: string) {
+  const threadOf = sql<string>`coalesce(${comment.threadId}, ${comment.id})`;
+  const [reads, latest] = await Promise.all([
+    db
+      .select()
+      .from(commentRead)
+      .where(and(eq(commentRead.userId, personId), inArray(commentRead.threadId, threadIds))),
+    db
+      .select({ threadId: threadOf.as('thread_id'), at: sql<Date>`max(${comment.createdAt})` })
+      .from(comment)
+      .where(
+        and(
+          or(inArray(comment.id, threadIds), inArray(comment.threadId, threadIds)),
+          sql`${comment.authorId} is distinct from ${personId}`,
+          isNull(comment.deletedAt),
+        ),
+      )
+      .groupBy(threadOf),
+  ]);
+  const read = new Map(reads.map((r) => [r.threadId, r]));
+  const unread = new Set<string>();
+  for (const id of threadIds) if (read.get(id)?.markedUnread) unread.add(id);
+  for (const l of latest) {
+    const r = read.get(l.threadId);
+    if (!r || new Date(l.at) > r.readAt) unread.add(l.threadId);
+  }
+  return unread;
+}
+
 /** Threads with their reply counts and latest replies, in the order of `rows`. */
 async function toThreads(db: Database, rows: Row[], viewer: Viewer): Promise<CommentThread[]> {
   if (rows.length === 0) return [];
@@ -174,13 +207,14 @@ async function toThreads(db: Database, rows: Row[], viewer: Viewer): Promise<Com
       .groupBy(comment.threadId),
   ]);
   const replyRows = replies.map(({ rank: _, ...r }) => r as Row);
-  const [people, reactions] = await Promise.all([
+  const [people, reactions, unread] = await Promise.all([
     peopleOf(db, [...rows, ...replyRows], viewer),
     commentReactions(
       db,
       [...rows, ...replyRows].map((r) => r.id),
       { userId: viewer.actorId },
     ),
+    unreadThreads(db, ids, viewer.actorId),
   ]);
   const byThread = new Map<string, Comment[]>();
   for (const r of replyRows) {
@@ -191,6 +225,7 @@ async function toThreads(db: Database, rows: Row[], viewer: Viewer): Promise<Com
   const replyCount = new Map(counts.map((c) => [c.threadId, c.n]));
   return rows.map((r) => ({
     ...toComment(r, people, viewer, reactions),
+    unread: unread.has(r.id),
     resolvedAt: r.resolvedAt ? iso(r.resolvedAt) : null,
     resolvedBy: r.resolvedAt ? authorOf(people, r.resolvedBy, null) : null,
     replyCount: replyCount.get(r.id) ?? 0,
@@ -517,6 +552,24 @@ export function registerCommentRoutes(app: FastifyInstance, deps: Deps) {
     await afterCommit(req.log, () => tell(row));
     return reply.status(204).send();
   });
+
+  // Read state is per person: no notice, and open to everyone who can read the board.
+  for (const action of ['read', 'unread'] as const) {
+    app.post(v1(`/comments/:commentId/${action}`), async (req, reply) => {
+      const actor = await requireActor(auth, req, db);
+      const { commentId } = CommentParams.parse(req.params);
+      const { row } = await readableComment(actor, commentId);
+      const marked = action === 'unread';
+      await db
+        .insert(commentRead)
+        .values({ userId: actor.id, threadId: row.threadId ?? row.id, markedUnread: marked })
+        .onConflictDoUpdate({
+          target: [commentRead.userId, commentRead.threadId],
+          set: { readAt: sql`now()`, markedUnread: marked },
+        });
+      return reply.status(204).send();
+    });
+  }
 
   const reactionsPerMinute = new RateLimiter(120, 60_000);
   for (const on of [true, false]) {

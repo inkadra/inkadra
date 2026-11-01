@@ -1428,6 +1428,27 @@ registry.registerPath({
   responses: { 200: { description: 'Reopened', ...json(CommentThread) }, ...errors },
 });
 
+registry.registerPath({
+  method: 'post',
+  path: v1('/comments/{commentId}/read'),
+  tags: ['Comments'],
+  security: secured,
+  summary: 'Mark a thread read for you. Opening it does this.',
+  description:
+    'Per person: it changes nothing for others and sends no realtime message. Replies are ' +
+    'accepted too and mean their thread.',
+  request: { params: commentParams },
+  responses: { 204: { description: 'Marked' }, ...errors },
+});
+registry.registerPath({
+  method: 'post',
+  path: v1('/comments/{commentId}/unread'),
+  tags: ['Comments'],
+  security: secured,
+  summary: 'Mark a thread unread for you, until you open it again.',
+  request: { params: commentParams },
+  responses: { 204: { description: 'Marked' }, ...errors },
+});
 const reactionParams = z.object({ commentId: Id, emoji: ReactionEmoji });
 registry.registerPath({
   method: 'put',

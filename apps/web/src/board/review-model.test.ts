@@ -17,12 +17,14 @@ import {
   findThreadDirect,
   groupByDay,
   guestTag,
+  involvesMe,
   mentionQuery,
   mergeReplies,
   mergeThreads,
   refreshOlderReplies,
   reviewKey,
   shareLinkTag,
+  unreadCount,
 } from './review-model.ts';
 import {
   addOlderReplies,
@@ -368,4 +370,48 @@ it('groups by local day keeping the order', () => {
     ['2026-10-24', [1, 2]],
     ['2026-10-23', [3]],
   ]);
+});
+
+describe('mentions and replies filter', () => {
+  const by = (user: typeof giulia, at: string, extra: Record<string, unknown> = {}) =>
+    ({
+      id: `${user.name}-${at}`,
+      author: { kind: 'user', user },
+      createdAt: at,
+      mentions: [],
+      deletedAt: null,
+      ...extra,
+    }) as unknown as Comment;
+  const thread = (start: Comment, ...replies: Comment[]) =>
+    ({ ...start, replies, unread: false, resolvedAt: null }) as unknown as CommentThread;
+
+  it('picks threads that mention me', () => {
+    const mentioned = thread(by(anna, '1', { mentions: [giulia] }));
+    expect(involvesMe(mentioned, giulia.id)).toBe(true);
+    expect(involvesMe(thread(by(anna, '1')), giulia.id)).toBe(false);
+  });
+
+  it('picks threads where someone wrote after a comment of mine', () => {
+    expect(involvesMe(thread(by(giulia, '1'), by(anna, '2')), giulia.id)).toBe(true);
+    expect(involvesMe(thread(by(anna, '1'), by(giulia, '2')), giulia.id)).toBe(false);
+    expect(involvesMe(thread(by(anna, '1'), by(giulia, '2'), by(anna, '3')), giulia.id)).toBe(true);
+    expect(involvesMe(thread(by(giulia, '1')), giulia.id)).toBe(false);
+    expect(involvesMe(thread(by(giulia, '1'), by(anna, '2', { deletedAt: 'x' })), giulia.id)).toBe(
+      false,
+    );
+    expect(involvesMe(thread(by(anna, '1', { mentions: [giulia] })), undefined)).toBe(false);
+  });
+
+  it('counts the open threads not read yet', () => {
+    const unread = (extra: Record<string, unknown>) =>
+      ({ unread: true, ...extra }) as CommentThread;
+    expect(
+      unreadCount([
+        unread({}),
+        unread({ resolvedAt: '2026-10-24T10:00:00Z' }),
+        unread({ deletedAt: '2026-10-24T10:00:00Z' }),
+        { unread: false } as CommentThread,
+      ]),
+    ).toBe(1);
+  });
 });

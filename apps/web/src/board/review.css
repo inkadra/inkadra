@@ -631,6 +631,10 @@ button.review-link:hover:not(:disabled) {
 body[data-comments-on-board] .card-review__count {
   display: none;
 }
+/* Off: no markers on the board, to present or to work on a phone (#336). */
+body[data-comments-on-board="off"] .comment-pin {
+  display: none;
+}
 .comment-popover {
   position: absolute;
   left: 0;
@@ -740,4 +744,40 @@ body[data-comments-on-board] .card-review__count {
 .card-reactions:hover .reaction-add,
 .card-reactions:focus-within .reaction-add {
   opacity: 1;
+}
+
+/* Unread and mentions (#336) ------------------------------------------------------- */
+.comment-unread {
+  flex: none;
+  width: 7px;
+  height: 7px;
+  border-radius: var(--ink-radius-full);
+  background: var(--ink-accent-primary);
+}
+.comment-thread__more {
+  margin-left: auto;
+  display: inline-grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border: 0;
+  border-radius: var(--ink-radius-sm);
+  background: transparent;
+  color: var(--ink-text-secondary);
+  cursor: pointer;
+}
+.comment-thread__more:hover {
+  background: var(--ink-surface-2);
+  color: var(--ink-text-primary);
+}
+.comment-thread__more:focus-visible {
+  outline: 2px solid var(--ink-accent-primary);
+  outline-offset: 2px;
+}
+.comment-thread[data-unread] {
+  background: var(--ink-surface-1);
+}
+.review-count--unread {
+  background: var(--ink-accent-button);
+  color: var(--ink-on-accent);
 }

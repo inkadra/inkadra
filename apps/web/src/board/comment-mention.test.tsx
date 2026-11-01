@@ -26,6 +26,7 @@ const thread = {
   author: { kind: 'user', user: { id: 'luca', name: 'Luca' } },
   mentions: [],
   reactions: [],
+  unread: false,
 } as unknown as CommentThread;
 
 let host: HTMLDivElement;

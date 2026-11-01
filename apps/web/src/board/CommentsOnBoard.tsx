@@ -16,6 +16,7 @@ import {
   openComments,
   openPopover,
   refreshReviews,
+  setThreadRead,
   useReviews,
 } from './review-store.ts';
 import './review.css';
@@ -138,10 +139,10 @@ export function CommentsOnBoard() {
     return () => cancelAnimationFrame(frame);
   }, [shown]);
 
-  // The CSS hides the count badge of the cards while the bubbles stand in for it (review.css).
+  // The CSS hides the count badge of the cards while the bubbles stand in for it, and every
+  // marker (badges and pins) while "Show on board" is off (review.css).
   useEffect(() => {
-    if (!onBoard) return;
-    document.body.dataset.commentsOnBoard = '';
+    document.body.dataset.commentsOnBoard = onBoard ? 'on' : 'off';
     return () => {
       delete document.body.dataset.commentsOnBoard;
     };
@@ -231,6 +232,16 @@ function Popover({ elementId }: { elementId: string }) {
       if (bubble?.isConnected && document.activeElement === document.body) bubble.focus();
     };
   }, [elementId]);
+
+  // Opening the threads reads them. A thread already seen stays as the person left it (marked
+  // unread by hand, or with a reply that arrived since), so only new ones are read here.
+  const unread = open.filter((th) => th.unread).map((th) => th.id);
+  const arrived = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    const fresh = unread.filter((id) => !arrived.current.has(id));
+    for (const id of fresh) setThreadRead(id, true);
+    arrived.current = new Set([...arrived.current, ...open.map((th) => th.id)]);
+  }, [open, unread]);
 
   const onKeyDown = (e: KeyboardEvent) => {
     // Keys typed here are not board shortcuts.

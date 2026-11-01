@@ -29,7 +29,7 @@ type Who = (typeof roles)[number];
 const thumbs = encodeURIComponent('👍');
 const heart = encodeURIComponent('❤️');
 
-describe.skipIf(!url)('quick reactions on comments and cards', () => {
+describe.skipIf(!url)('quick reactions, unread and mentions on comments', () => {
   const config = loadConfig({
     NODE_ENV: 'test',
     AUTH_RATE_LIMITS: 'off',
@@ -193,5 +193,25 @@ describe.skipIf(!url)('quick reactions on comments and cards', () => {
     await call('commenter', 'DELETE', path);
     await call('owner', 'DELETE', path);
     expect((await call('viewer', 'GET', `/boards/${root}/reactions`)).json().items).toEqual([]);
+  });
+
+  it('tracks what each person has read of a thread', async () => {
+    const thread = await create('owner');
+    // Own comments are never unread; the others' are, until opened.
+    expect((await threads('owner'))[0]?.unread).toBe(false);
+    expect((await threads('commenter'))[0]?.unread).toBe(true);
+    expect((await call('commenter', 'POST', `/comments/${thread.id}/read`)).statusCode).toBe(204);
+    expect((await threads('commenter'))[0]?.unread).toBe(false);
+    // A reply from someone else makes it unread again, for the thread's writer only.
+    const reply = await create('commenter', { parentId: thread.id });
+    expect((await threads('owner'))[0]?.unread).toBe(true);
+    expect((await threads('commenter'))[0]?.unread).toBe(false);
+    // Marking by hand wins over the time, and works through a reply's id; it is per person.
+    await call('commenter', 'POST', `/comments/${reply.id}/unread`);
+    expect((await threads('commenter'))[0]?.unread).toBe(true);
+    expect((await threads('viewer'))[0]?.unread).toBe(true);
+    await call('commenter', 'POST', `/comments/${thread.id}/read`);
+    expect((await threads('commenter'))[0]?.unread).toBe(false);
+    expect((await call('other', 'POST', `/comments/${thread.id}/read`)).statusCode).toBe(404);
   });
 });

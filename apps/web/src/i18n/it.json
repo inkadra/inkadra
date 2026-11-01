@@ -1314,6 +1314,7 @@
     "filter": "Mostra le discussioni",
     "filterStatus": {
       "open": "Aperte",
+      "mentions": "Menzioni e risposte",
       "resolved": "Risolte",
       "all": "Tutte"
     },
@@ -1389,7 +1390,14 @@
     "reactions": "Reazioni",
     "reactionChip": "{{emoji}} {{count}}: {{names}}",
     "reactAdd": "Aggiungi una reazione",
-    "reactWith": "Reagisci con {{emoji}}"
+    "reactWith": "Reagisci con {{emoji}}",
+    "unread": "Non letta",
+    "unreadCount_one": "{{count}} non letta",
+    "unreadCount_other": "{{count}} non lette",
+    "threadMenu": "Azioni sulla discussione",
+    "markUnread": "Segna come non letta",
+    "markRead": "Segna come letta",
+    "emptyMentions": "Nessuna discussione aperta ti menziona o ti risponde."
   },
   "review": {
     "title": "Revisione",

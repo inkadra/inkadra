@@ -11,6 +11,7 @@ import type {
   UserSummary,
 } from '@inkadra/shared';
 import { useSyncExternalStore } from 'react';
+import { api } from '../lib/api.ts';
 import type { BoardConnection } from './connection.ts';
 import { mergeReplies } from './review-model.ts';
 
@@ -154,6 +155,21 @@ export function setOnBoard(on: boolean, userId: string | undefined) {
     // Private mode: the choice lasts for this page only.
   }
   setReviews({ onBoard: on, ...(on ? {} : { popover: null }) });
+}
+
+/**
+ * Marks a thread read or unread for the person (#336). The list changes at once; the server
+ * keeps it per person, so a failure just fetches the threads again.
+ */
+export function setThreadRead(threadId: string, read: boolean) {
+  const thread = state.threads.find((t) => t.id === threadId);
+  if (!thread || thread.unread === !read) return;
+  setReviews({
+    threads: state.threads.map((t) => (t.id === threadId ? { ...t, unread: !read } : t)),
+  });
+  api.post(`/comments/${threadId}/${read ? 'read' : 'unread'}`, {}).catch(() => {
+    refreshReviews('comments', thread.elementId);
+  });
 }
 
 export function openPopover(elementId: string) {

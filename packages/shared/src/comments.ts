@@ -225,6 +225,11 @@ const repliesDescription =
 
 export const CommentThread = Comment.extend({
   ...threadFields,
+  unread: z.boolean().openapi({
+    description:
+      'The caller has not read it: someone else wrote in it since they last opened it, or ' +
+      'they marked it unread (`POST /comments/{commentId}/unread`).',
+  }),
   resolvedBy: Author.nullable(),
   replies: z.array(Comment).max(INLINE_REPLIES).openapi({ description: repliesDescription }),
 }).openapi('CommentThread');

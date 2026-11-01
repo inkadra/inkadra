@@ -238,3 +238,23 @@ export function groupByDay<T extends { createdAt: string }>(
   }
   return [...groups];
 }
+
+/**
+ * A thread that concerns the person (#336): someone else mentions them in it, or writes in it
+ * after a comment of theirs (a reply to them, or to the thread they started).
+ */
+export function involvesMe(thread: CommentThread, myId: string | undefined): boolean {
+  if (!myId) return false;
+  const comments = [thread, ...thread.replies].filter((c) => !c.deletedAt);
+  let wrote = false;
+  for (const c of comments) {
+    if (c.author.kind === 'user' && c.author.user.id === myId) wrote = true;
+    else if (wrote || c.mentions.some((u) => u.id === myId)) return true;
+  }
+  return false;
+}
+
+/** Open threads the person has not read. */
+export function unreadCount(threads: readonly CommentThread[]): number {
+  return threads.filter((t) => t.unread && !t.resolvedAt && !t.deletedAt).length;
+}

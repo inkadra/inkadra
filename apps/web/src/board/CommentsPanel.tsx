@@ -34,6 +34,7 @@ import { api, RequestError } from '../lib/api.ts';
 import { useSession } from '../lib/session.tsx';
 import { ReviewChip } from './CardReview.tsx';
 import { CommentsOnBoard } from './CommentsOnBoard.tsx';
+import { ContextMenu } from './chrome.tsx';
 import { commentPanelPosition } from './comment-panel-position.ts';
 import { GuestTag } from './GuestTag.tsx';
 import { plainText } from './note.tsx';
@@ -44,10 +45,12 @@ import {
   commentParts,
   editableText,
   encodeMentions,
+  involvesMe,
   mentionQuery,
   mergeReplies,
   REVIEW_STATUSES,
   shareLinkTag,
+  unreadCount,
 } from './review-model.ts';
 import {
   addOlderReplies,
@@ -63,6 +66,7 @@ import {
   saveDraft,
   setOnBoard,
   setReviews,
+  setThreadRead,
   useReviews,
 } from './review-store.ts';
 import type { BoardStore } from './store.ts';
@@ -79,6 +83,7 @@ export function CommentsButton() {
   const isOpen = useReviews((s) => s.target !== null);
   const preview = useReviews((s) => s.preview);
   const canvas = useReviews((s) => s.canvas);
+  const unread = unreadCount(useReviews((s) => s.threads));
   const { user } = useSession();
   // The choice of "Show on board" is the person's own: read it again for each board.
   useEffect(() => {
@@ -93,11 +98,18 @@ export function CommentsButton() {
         icon="comment"
         className="comments-button"
         aria-expanded={isOpen}
-        aria-label={t('comments.button', { count: open })}
+        aria-label={
+          t('comments.button', { count: open }) +
+          (unread > 0 ? `, ${t('comments.unreadCount', { count: unread })}` : '')
+        }
         onClick={() => (isOpen ? closeComments() : openComments())}
       >
         <span className="comments-button__label">{t('comments.title')}</span>
-        {open > 0 && <span className="review-count">{open}</span>}
+        {unread > 0 ? (
+          <span className="review-count review-count--unread">{unread}</span>
+        ) : (
+          open > 0 && <span className="review-count">{open}</span>
+        )}
       </Button>
       {canvas && <CommentsOnBoard />}
       {isOpen && createPortal(<CommentsPanel key={boardId} />, document.body)}
@@ -187,7 +199,7 @@ function CommentsPanel() {
   const writable = canComment(role);
   const cards = useCardLabel(conn?.store);
   const [, setParams] = useSearchParams();
-  const [filter, setFilter] = useState<'open' | 'resolved' | 'all'>('open');
+  const [filter, setFilter] = useState<'open' | 'mentions' | 'resolved' | 'all'>('open');
   const [reviewFilter, setReviewFilter] = useState<string>('');
   const [limit, setLimit] = useState(THREADS_PAGE);
   const ref = useRef<HTMLElement>(null);
@@ -307,11 +319,14 @@ function CommentsPanel() {
     [jump],
   );
 
-  const shownThreads = threads.filter(
-    (thread) =>
-      (!elementId || thread.elementId === elementId) &&
-      (filter === 'all' || (filter === 'resolved') === !!thread.resolvedAt),
-  );
+  const inScope = threads.filter((thread) => !elementId || thread.elementId === elementId);
+  const mentioned = inScope.filter((thread) => !thread.resolvedAt && involvesMe(thread, user?.id));
+  const shownThreads =
+    filter === 'mentions'
+      ? mentioned
+      : inScope.filter(
+          (thread) => filter === 'all' || (filter === 'resolved') === !!thread.resolvedAt,
+        );
   const focusIndex = shownThreads.findIndex((thread) => thread.id === focusThread);
   const visible = shownThreads.slice(0, Math.max(limit, focusIndex + 1));
   const removed = !!elementId && !cards.exists(elementId);
@@ -373,7 +388,8 @@ function CommentsPanel() {
 
         <fieldset className="review-segments">
           <legend className="review-hidden">{t('comments.filter')}</legend>
-          {(['open', 'resolved', 'all'] as const).map((value) => (
+          {/* `all` is only for a linked thread: no pill is checked then. */}
+          {(['open', 'mentions', 'resolved'] as const).map((value) => (
             <ChoiceTile
               key={value}
               name="comments-filter"
@@ -385,6 +401,7 @@ function CommentsPanel() {
               }}
             >
               {t(`comments.filterStatus.${value}`)}
+              {value === 'mentions' && mentioned.length > 0 && ` · ${mentioned.length}`}
             </ChoiceTile>
           ))}
         </fieldset>
@@ -459,7 +476,13 @@ function CommentsPanel() {
         )}
         {status === 'ready' && shownThreads.length === 0 && (
           <p className="review-empty">
-            {t(filter === 'open' ? 'comments.emptyOpen' : 'comments.empty')}
+            {t(
+              filter === 'open'
+                ? 'comments.emptyOpen'
+                : filter === 'mentions'
+                  ? 'comments.emptyMentions'
+                  : 'comments.empty',
+            )}
           </p>
         )}
         <div className="comment-threads">
@@ -639,10 +662,19 @@ export const Thread = memo(function Thread({
     <article
       className={thread.resolvedAt ? 'comment-thread is-resolved' : 'comment-thread'}
       data-thread={thread.id}
+      data-unread={thread.unread || undefined}
       tabIndex={-1}
       aria-label={t('comments.threadLabel', { card: targetLabel })}
+      onFocus={(e) => {
+        // Coming into the thread is opening it.
+        if (thread.unread && !e.currentTarget.contains(e.relatedTarget as Node | null))
+          setThreadRead(thread.id, true);
+      }}
     >
       <div className="review-row">
+        {thread.unread && (
+          <span className="comment-unread" role="img" aria-label={t('comments.unread')} />
+        )}
         {showTarget &&
           (canJump ? (
             <button
@@ -672,6 +704,7 @@ export const Thread = memo(function Thread({
             {linkTag}
           </span>
         )}
+        <ThreadMenu thread={thread} />
       </div>
       <CommentItem comment={thread} elementId={thread.elementId} writable={writable} />
       {hidden > 0 && (
@@ -759,6 +792,49 @@ export const Thread = memo(function Thread({
     </article>
   );
 });
+
+/** The ⋯ menu of a thread: mark it unread, or read again. */
+function ThreadMenu({ thread }: { thread: CommentThread }) {
+  const { t } = useTranslation();
+  const [at, setAt] = useState<{ x: number; y: number } | null>(null);
+  const button = useRef<HTMLButtonElement>(null);
+  if (thread.deletedAt && !thread.replyCount) return null;
+  return (
+    <>
+      <button
+        ref={button}
+        type="button"
+        className="comment-thread__more"
+        aria-haspopup="menu"
+        aria-expanded={at !== null}
+        aria-label={t('comments.threadMenu')}
+        onClick={(e) => {
+          const r = e.currentTarget.getBoundingClientRect();
+          setAt(at ? null : { x: Math.max(8, r.right - 210), y: r.bottom + 4 });
+        }}
+      >
+        <Icon name="more" size={14} />
+      </button>
+      {at &&
+        // Out of the panel or popover, whose transform would be the box `fixed` is measured from.
+        createPortal(
+          <ContextMenu
+            style={{ position: 'fixed', left: at.x, top: at.y, zIndex: 60 }}
+            label={t('comments.threadMenu')}
+            anchor={button}
+            items={[
+              {
+                label: t(thread.unread ? 'comments.markRead' : 'comments.markUnread'),
+                action: () => setThreadRead(thread.id, !!thread.unread),
+              },
+            ]}
+            onClose={() => setAt(null)}
+          />,
+          document.body,
+        )}
+    </>
+  );
+}
 
 function CommentItem({
   comment,

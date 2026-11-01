@@ -597,6 +597,29 @@ export const elementReaction = pgTable(
   ],
 );
 
+/**
+ * What a person has read of a thread: when they last opened it, and whether they marked it
+ * unread by hand. A thread is unread for them when `marked_unread` is set or someone else wrote
+ * in it after `read_at` (or they never opened it). Per person, so it needs no notice.
+ */
+export const commentRead = pgTable(
+  'comment_read',
+  {
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => user.id, { onDelete: 'cascade' }),
+    threadId: uuid('thread_id')
+      .notNull()
+      .references(() => comment.id, { onDelete: 'cascade' }),
+    readAt: timestamp('read_at', { withTimezone: true }).notNull().defaultNow(),
+    markedUnread: boolean('marked_unread').notNull().default(false),
+  },
+  (t) => [
+    primaryKey({ columns: [t.userId, t.threadId] }),
+    index('comment_read_thread_idx').on(t.threadId),
+  ],
+);
+
 const reviewStatusEnum = ['none', 'in_review', 'approved', 'changes_requested'] as const;
 
 /**

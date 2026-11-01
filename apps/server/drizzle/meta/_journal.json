@@ -134,6 +134,13 @@
       "when": 1793517951668,
       "tag": "0018_comment_reactions",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1793517975596,
+      "tag": "0019_comment_read",
+      "breakpoints": true
     }
   ]
 }
