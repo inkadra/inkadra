@@ -144,6 +144,7 @@ async function main(browser: Browser) {
 
 const browser = await chromium.launch({
   ...(process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {}),
+  args: process.env.SHOTS_ARGS?.split(' ').filter(Boolean) ?? [],
 });
 try {
   await main(browser);
