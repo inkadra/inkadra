@@ -80,7 +80,7 @@ for (const theme of ['light', 'dark'] as const)
       await card.getByRole('option').click();
       await card
         .getByRole('button', { name: /nov|ott|dic|gen|feb|mar|apr|mag|giu|lug|ago|set|Oggi/ })
-        .first()
+        .last()
         .click();
       const field = card.locator('input[type="date"]').first();
       await expect(field).toBeVisible();

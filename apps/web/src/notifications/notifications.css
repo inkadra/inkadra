@@ -754,3 +754,20 @@
     left: 0;
   }
 }
+
+.notifications__list-container > .home__section {
+  padding: 0 16px 16px;
+  margin-top: 16px;
+}
+
+.notifications--tasks .notifications__list-pane {
+  flex: 1;
+  width: auto;
+  min-width: 0;
+  max-width: none;
+  border-right: 0;
+}
+.notifications--tasks .home__section {
+  max-width: 960px;
+  margin-inline: auto;
+}
