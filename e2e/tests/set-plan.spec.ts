@@ -400,6 +400,8 @@ for (const theme of ['dark', 'light'] as const) {
     await expect(editor.locator('.plan-editor__status')).toHaveText(
       'Camera nascosta · Set bloccato',
     );
+    // Hidden here, it is not drawn either: no camera on the plan.
+    await expect(editor.locator('[data-icon]').filter({ hasText: 'B cam' })).toHaveCount(0);
     await page.screenshot({ path: join(out, `desktop-${theme}-layers.png`) });
     await editor.getByRole('button', { name: 'Mostra Camera' }).click();
     await editor.getByRole('button', { name: 'Sblocca Set' }).click();
@@ -468,7 +470,7 @@ for (const theme of ['dark', 'light'] as const) {
     await page.screenshot({ path: join(out, `desktop-${theme}-variant-editor.png`) });
     await page.keyboard.press('Escape');
 
-    if (theme === 'dark') {
+    {
       // Scenes (round 6, b): the badge on the card links to the scene in the storyboard, the
       // scene opens its plan, and the editor links the plan to more scenes.
       await expect(card.getByRole('button', { name: 'Sc. 5' })).toBeVisible();
@@ -480,7 +482,7 @@ for (const theme of ['dark', 'light'] as const) {
       await page.keyboard.press('Escape');
       await expect(picker).toHaveCount(0);
       await expect(editor.getByRole('button', { name: 'Sc. 7' })).toBeVisible();
-      await page.screenshot({ path: join(out, 'desktop-dark-scenes.png') });
+      await page.screenshot({ path: join(out, `desktop-${theme}-scenes.png`) });
       await page.keyboard.press('Escape');
       await expect(editor).toHaveCount(0);
       await card.getByRole('button', { name: 'Sc. 5' }).click();
@@ -496,7 +498,7 @@ for (const theme of ['dark', 'light'] as const) {
       const present = page.getByRole('dialog', { name: 'Presenta' });
       await expect(present.locator('.present-scene__plan .plan__svg')).toBeVisible();
       await expect(present.locator('.present-scene__frames .frame-pic')).toHaveCount(3);
-      await page.screenshot({ path: join(out, 'desktop-dark-presentation.png') });
+      await page.screenshot({ path: join(out, `desktop-${theme}-presentation.png`) });
       await page.keyboard.press('Escape');
 
       // The call sheet: the scene with its frames, the plan and the kit list.
@@ -510,7 +512,7 @@ for (const theme of ['dark', 'light'] as const) {
       await page
         .getByRole('dialog', { name: 'Foglio di lavorazione' })
         .evaluate((el) => Promise.all(el.getAnimations({ subtree: true }).map((a) => a.finished)));
-      await page.screenshot({ path: join(out, 'desktop-dark-callsheet.png') });
+      await page.screenshot({ path: join(out, `desktop-${theme}-callsheet.png`) });
       await page.keyboard.press('Escape');
     }
     const state = await page.context().storageState();
@@ -536,6 +538,16 @@ for (const theme of ['dark', 'light'] as const) {
       await plan.dblclick();
       const full = mobile.getByRole('dialog', { name: /Pianta del set/ });
       await expect(full.getByRole('button', { name: 'Fatto' })).toBeVisible();
+      // A tap on A cam: the bar of the selected item above the tools.
+      const phoneBox = (await full.locator('.plan-editor__stage').boundingBox())!;
+      await mobile.touchscreen.tap(
+        phoneBox.x + (100 / 400) * phoneBox.width,
+        phoneBox.y + (200 / (400 / 1.5)) * phoneBox.height,
+      );
+      await expect(full.getByRole('toolbar', { name: 'Elemento selezionato' })).toBeVisible();
+      await mobile.screenshot({ path: join(out, `phone-${theme}-selection.png`) });
+      await full.getByRole('button', { name: 'Seleziona (V)' }).tap();
+      await mobile.keyboard.press('Escape');
       await full.getByRole('button', { name: 'Icone da set' }).tap();
       await expect(full.getByRole('button', { name: 'Fresnel', exact: true })).toBeVisible();
       await full.getByRole('tab', { name: 'Arredi' }).tap();

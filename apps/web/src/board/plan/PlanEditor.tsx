@@ -429,7 +429,13 @@ export function PlanEditor({
       else onClose();
     } else if ((e.key === 'Delete' || e.key === 'Backspace') && selection.length) remove();
     else if (mod && key === 'a')
-      setSelection(itemsInRect(drawn, { x: -1, y: -1, w: 2000, h: 2000 }, viewOf));
+      // Everything on the active layer, as the round 6 mockup says.
+      setSelection(
+        itemsInRect(drawn, { x: -1, y: -1, w: 2000, h: 2000 }, viewOf).filter((r) => {
+          const found = planItem(drawn, r);
+          return !!found && layerOf(found) === activeLayer;
+        }),
+      );
     else if (mod && key === 'g' && selection.length > 1) write(toggleGroup(many));
     else if (e.key.startsWith('Arrow') && selection.length) {
       const k = e.shiftKey ? step * 4 : step;
@@ -1843,7 +1849,7 @@ export function PlanEditor({
           onPointerCancel={onPointerUp}
         >
           {rulers}
-          <PlanDrawing plan={shown} grid={step} ghosts={ghosts}>
+          <PlanDrawing plan={shown} grid={step} ghosts={ghosts} hidden={[...myHidden]}>
             {liveLayer}
           </PlanDrawing>
           {text && (
