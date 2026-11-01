@@ -44,7 +44,7 @@ import { NoteBody, NoteEditor, useFragment } from './note.tsx';
 import { LOCAL } from './store.ts';
 import { TagList } from './tags.tsx';
 import { localPreview, useUploadProgress } from './uploads.ts';
-import { videoEmbedUrl } from './youtube.ts';
+import { isInstagramUrl, videoEmbedUrl } from './youtube.ts';
 
 type Of<T extends Element['type']> = Extract<Element, { type: T }>;
 
@@ -563,6 +563,7 @@ function LinkCard({ element, width }: { element: Of<'link'>; width: number }) {
   const href = webUrl(element.url);
   const title = element.title || (href ? new URL(href).hostname : element.url);
   const embedUrl = videoEmbedUrl(element.url);
+  const instagram = isInstagramUrl(element.url);
   return (
     <>
       {embedUrl && playing ? (
@@ -584,6 +585,24 @@ function LinkCard({ element, width }: { element: Of<'link'>; width: number }) {
             >
               <Icon name="play" size={16} />
             </button>
+          )}
+          {instagram && src && (
+            <>
+              <span className="card__badge">{t('board.menu.instagram')}</span>
+              {href && (
+                <a
+                  className="card__expand"
+                  href={href}
+                  target="_blank"
+                  rel="noopener noreferrer nofollow"
+                  data-no-drag
+                  title={t('board.menu.openOnInstagram')}
+                  aria-label={t('board.menu.openOnInstagram')}
+                >
+                  <Icon name="arrow" size={14} />
+                </a>
+              )}
+            </>
           )}
         </div>
       ) : null}

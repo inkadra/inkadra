@@ -55,9 +55,14 @@ test('a video plays inside its card, one at a time, and the viewer is one click 
       description: 'Another Channel',
     },
     {
-      url: 'https://youtu.be/dQw4w9WgXcQ',
+      url: 'https://vimeo.com/123456',
       title: 'Beyond the Grid',
-      description: 'Studio',
+      description: 'Studio · 4:21',
+    },
+    {
+      url: 'https://www.instagram.com/reel/C1abc_-9/',
+      title: 'Behind the scenes, night shoot',
+      description: '@lasttrain',
     },
   ];
   for (const [i, link] of links.entries())
@@ -73,7 +78,7 @@ test('a video plays inside its card, one at a time, and the viewer is one click 
   // The players are third-party pages: answer for them, and record every request to check
   // that nothing is asked of them before play.
   const requested: string[] = [];
-  for (const origin of ['https://www.youtube-nocookie.com']) {
+  for (const origin of ['https://www.youtube-nocookie.com', 'https://player.vimeo.com']) {
     await page.route(`${origin}/**`, (route) => {
       requested.push(route.request().url());
       return route.fulfill({
@@ -99,12 +104,21 @@ test('a video plays inside its card, one at a time, and the viewer is one click 
   await expect(page.getByRole('status').getByText('Sincronizzato')).toBeVisible();
 
   const youtube = page.locator('[data-type="link"]', { hasText: 'Homepod' });
-  const second = page.locator('[data-type="link"]', { hasText: 'Beyond the Grid' });
-  await expect(page.locator('[data-type="link"]')).toHaveCount(2);
+  const vimeo = page.locator('[data-type="link"]', { hasText: 'Beyond the Grid' });
+  const instagram = page.locator('[data-type="link"]', { hasText: 'night shoot' });
+  await expect(page.locator('[data-type="link"]')).toHaveCount(3);
 
-  // Before play there is no iframe and nothing was asked of YouTube.
+  // Before play there is no iframe and nothing was asked of YouTube or Vimeo.
   await expect(page.locator('iframe')).toHaveCount(0);
   expect(requested).toEqual([]);
+
+  // Instagram: a badge and a link out, never a player.
+  await expect(instagram.locator('.card__badge')).toHaveText('Instagram');
+  await expect(instagram.locator('a.card__expand')).toHaveAttribute(
+    'href',
+    'https://www.instagram.com/reel/C1abc_-9/',
+  );
+  await expect(instagram.locator('.card__play')).toHaveCount(0);
 
   // Play on the card: the player takes the thumbnail's place in the card.
   await youtube.locator('.card__play').click();
@@ -118,10 +132,10 @@ test('a video plays inside its card, one at a time, and the viewer is one click 
   await expect(page.locator('.viewer')).toHaveCount(0);
 
   // A second video returns the first to its thumbnail.
-  await second.locator('.card__play').click();
-  await expect(second.locator('.card__embed iframe')).toHaveAttribute(
+  await vimeo.locator('.card__play').click();
+  await expect(vimeo.locator('.card__embed iframe')).toHaveAttribute(
     'src',
-    /^https:\/\/www\.youtube-nocookie\.com\/embed\/dQw4w9WgXcQ\?autoplay=1/,
+    /^https:\/\/player\.vimeo\.com\/video\/123456\?dnt=1&autoplay=1/,
   );
   await expect(page.locator('iframe')).toHaveCount(1);
   await expect(youtube.locator('iframe')).toHaveCount(0);
@@ -135,13 +149,13 @@ test('a video plays inside its card, one at a time, and the viewer is one click 
       await page.mouse.move(700, 600);
       await page.screenshot({ path: `${shots}/cards-${theme}.png` });
     }
-    await second.locator('.card__play').click();
+    await vimeo.locator('.card__play').click();
   }
 
   // Esc returns the playing card to its thumbnail.
   await page.keyboard.press('Escape');
   await expect(page.locator('iframe')).toHaveCount(0);
-  await expect(second.locator('.card__play')).toBeVisible();
+  await expect(vimeo.locator('.card__play')).toBeVisible();
 
   // ↗ stops the card's player and opens the viewer, which plays the same video.
   await youtube.locator('.card__play').click();
@@ -154,7 +168,7 @@ test('a video plays inside its card, one at a time, and the viewer is one click 
   await page.keyboard.press('Escape');
   await expect(page.locator('.viewer__iframe')).toHaveCount(0);
 
-  // The CSP let the player in.
+  // The CSP let both players in.
   expect(
     await page.evaluate(() => (window as unknown as { violations: string[] }).violations),
   ).toEqual([]);

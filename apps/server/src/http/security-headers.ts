@@ -22,7 +22,7 @@ export function securityHeaders(
     `media-src 'self' blob: ${storage}`.trim(),
     "font-src 'self'",
     `connect-src 'self' ${storage}`.trim(),
-    'frame-src https://www.youtube-nocookie.com',
+    'frame-src https://www.youtube-nocookie.com https://player.vimeo.com',
     "worker-src 'self'",
     "manifest-src 'self'",
     "object-src 'none'",
@@ -32,7 +32,7 @@ export function securityHeaders(
     ...(config.CSP_REPORT_URI ? [`report-uri ${config.CSP_REPORT_URI}`] : []),
     ...(config.CSP_ENFORCE && secure ? ['upgrade-insecure-requests'] : []),
   ].join('; ');
-  const youtube = '(self "https://www.youtube-nocookie.com")';
+  const youtube = '(self "https://www.youtube-nocookie.com" "https://player.vimeo.com")';
   return {
     [config.CSP_ENFORCE ? 'content-security-policy' : 'content-security-policy-report-only']:
       policy,

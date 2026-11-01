@@ -2778,7 +2778,7 @@ button.card__play {
   height: 100%;
   border: 0;
 }
-/* ↗ over the playing video: opens the viewer. */
+/* ↗ over the picture: the viewer for a playing video, Instagram for a post. */
 .card__expand {
   position: absolute;
   top: 8px;
@@ -2793,6 +2793,16 @@ button.card__play {
   background: rgb(0 0 0 / 0.6);
   color: #fff;
   cursor: pointer;
+}
+.card__badge {
+  position: absolute;
+  left: 8px;
+  bottom: 8px;
+  padding: 1px 6px;
+  border-radius: var(--ink-radius-xs);
+  background: rgb(0 0 0 / 0.6);
+  color: #fff;
+  font-size: 11px;
 }
 
 .toolbar__group--navigate .toolbar__btn:not([aria-pressed="true"]):hover,

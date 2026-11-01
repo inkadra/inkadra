@@ -84,6 +84,45 @@ export function readPageMeta(html: string, pageUrl: string): PageMeta {
   };
 }
 
+/** 4:21 or 1:02:03 from a number of seconds; null for anything else. */
+export function clockTime(seconds: unknown): string | null {
+  if (typeof seconds !== 'number' || !Number.isFinite(seconds) || seconds <= 0) return null;
+  const total = Math.round(seconds);
+  const h = Math.floor(total / 3600);
+  const m = Math.floor((total % 3600) / 60);
+  const s = String(total % 60).padStart(2, '0');
+  return h ? `${h}:${String(m).padStart(2, '0')}:${s}` : `${m}:${s}`;
+}
+
+const INSTAGRAM_POST = /^\/(?:[\w.]+\/)?(?:p|reel|reels|tv)\/[\w-]+\/?$/;
+
+/**
+ * Instagram serves Open Graph tags like `Name on Instagram: "caption"` and
+ * `12 likes, 1 comments - handle on May 3, 2025: "caption"`. The card shows the caption as its
+ * title and the author handle below. Without those shapes the page metadata stands as it is.
+ * shortcut: no oEmbed, Instagram's needs an app token; when Instagram hides the tags behind a
+ * login page the card is a plain link.
+ */
+export function instagramMeta(meta: PageMeta, pageUrl: string): PageMeta {
+  let post = false;
+  try {
+    const url = new URL(pageUrl);
+    post = /^(www\.)?instagram\.com$/.test(url.hostname) && INSTAGRAM_POST.test(url.pathname);
+  } catch {}
+  if (!post) return meta;
+  const quote = /["“](.*)["”]\.?\s*$/s;
+  const caption = quote.exec(meta.title ?? '')?.[1] ?? quote.exec(meta.description ?? '')?.[1];
+  const handle = /^[^-]*- (\S+) on /.exec(meta.description ?? '')?.[1];
+  const name = /^(.+?) on Instagram/.exec(meta.title ?? '')?.[1];
+  const author = handle ? `@${handle}` : name;
+  return {
+    ...meta,
+    title: clip(caption, 140) ?? (author ? `${author} on Instagram` : meta.title),
+    description: author ? clip(author, 200) : meta.description,
+    siteName: 'Instagram',
+  };
+}
+
 /** Provider metadata never bypasses safeFetch's network and response limits. */
 export async function videoPageMeta(
   url: string,
@@ -97,7 +136,7 @@ export async function videoPageMeta(
     const parsed = new URL(url);
     if (!/^(www\.)?vimeo\.com$/.test(parsed.hostname) || !/^\/\d+\/?$/.test(parsed.pathname))
       return null;
-    endpoint = `https://vimeo.com/api/oembed.json?url=${encodeURIComponent(url)}`;
+    endpoint = `https://vimeo.com/api/oembed.json?url=${encodeURIComponent(url)}&width=1280`;
   }
   try {
     const response = await safeFetch(endpoint, {
@@ -109,7 +148,13 @@ export async function videoPageMeta(
     if (typeof data.title !== 'string' || !data.title.trim()) return null;
     return {
       title: clip(data.title, 500),
-      description: typeof data.author_name === 'string' ? clip(data.author_name, 2000) : null,
+      description:
+        [
+          typeof data.author_name === 'string' ? clip(data.author_name, 2000) : null,
+          id ? null : clockTime(data.duration),
+        ]
+          .filter(Boolean)
+          .join(' · ') || null,
       siteName: id ? 'YouTube' : 'Vimeo',
       image: id
         ? `https://i.ytimg.com/vi/${id}/maxresdefault.jpg`
@@ -188,7 +233,7 @@ export async function pagePreview(
 ): Promise<LinkPreview> {
   const meta =
     (await videoPageMeta(page.url, deps.allowAddresses)) ??
-    readPageMeta(page.body.toString('utf8'), page.url);
+    instagramMeta(readPageMeta(page.body.toString('utf8'), page.url), page.url);
   let imageAssetId: string | null = null;
   const videoId = youtubeVideoId(page.url);
   const images = [

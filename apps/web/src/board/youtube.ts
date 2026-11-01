@@ -36,27 +36,48 @@ export function isYoutubeUrl(url: string): boolean {
   return youtubeVideoId(url) !== null;
 }
 
-/** Video reference links supported by the viewer; Vimeo uses only its stored thumbnail. */
-export function isVideoLink(url: string): boolean {
-  if (isYoutubeUrl(url)) return true;
+/** Numeric id of a public Vimeo video link (`vimeo.com/123456`). */
+export function vimeoVideoId(url: string): string | null {
   try {
     const parsed = new URL(url);
-    return (
-      /^https?:$/.test(parsed.protocol) &&
+    return /^https?:$/.test(parsed.protocol) &&
       /^(www\.)?vimeo\.com$/.test(parsed.hostname) &&
       /^\/\d+\/?$/.test(parsed.pathname)
-    );
+      ? parsed.pathname.replaceAll('/', '')
+      : null;
   } catch {
-    return false;
+    return null;
   }
+}
+
+/** Video reference links supported by the viewer and the inline player. */
+export function isVideoLink(url: string): boolean {
+  return isYoutubeUrl(url) || vimeoVideoId(url) !== null;
 }
 
 /** Origin of the privacy-enhanced YouTube player. */
 export const YOUTUBE_ORIGIN = 'https://www.youtube-nocookie.com';
 
-/** Player address with autoplay, for the providers that play inside Inkadra. */
+/** Privacy-friendly player address with autoplay: youtube-nocookie, or Vimeo with `dnt=1`. */
 export function videoEmbedUrl(url: string): string | null {
-  return youtubeEmbedUrl(url);
+  const vimeo = vimeoVideoId(url);
+  return vimeo
+    ? `https://player.vimeo.com/video/${vimeo}?dnt=1&autoplay=1&playsinline=1`
+    : youtubeEmbedUrl(url);
+}
+
+/** Instagram post or reel: previewed on the board, opened on Instagram (no embed, see decision 0050). */
+export function isInstagramUrl(url: string): boolean {
+  try {
+    const parsed = new URL(url);
+    return (
+      /^https?:$/.test(parsed.protocol) &&
+      /^(www\.)?instagram\.com$/.test(parsed.hostname) &&
+      /^\/(?:[\w.]+\/)?(?:p|reel|reels|tv)\/[\w-]+\/?$/.test(parsed.pathname)
+    );
+  } catch {
+    return false;
+  }
 }
 
 /** Accept playback updates only from this viewer's privacy-enhanced YouTube player. */

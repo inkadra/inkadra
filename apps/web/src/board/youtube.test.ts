@@ -1,8 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import {
+  isInstagramUrl,
+  isVideoLink,
   isYoutubeUrl,
   parseYoutubeStartTime,
   videoEmbedUrl,
+  vimeoVideoId,
   youtubeEmbedUrl,
   youtubeVideoId,
 } from './youtube.ts';
@@ -50,8 +53,23 @@ describe('youtube utilities', () => {
     expect(youtubeEmbedUrl('https://vimeo.com/12345')).toBeNull();
   });
 
-  it('plays only YouTube inside the card', () => {
+  it('embeds Vimeo with do-not-track and rejects look-alike hosts', () => {
+    expect(vimeoVideoId('https://vimeo.com/123456')).toBe('123456');
+    expect(vimeoVideoId('https://vimeo.com.evil.test/123456')).toBeNull();
+    expect(vimeoVideoId('https://vimeo.com/channels/staff')).toBeNull();
+    expect(videoEmbedUrl('https://vimeo.com/123456')).toBe(
+      'https://player.vimeo.com/video/123456?dnt=1&autoplay=1&playsinline=1',
+    );
     expect(videoEmbedUrl('https://youtu.be/dQw4w9WgXcQ')).toContain('youtube-nocookie.com');
-    expect(videoEmbedUrl('https://vimeo.com/123456')).toBeNull();
+    expect(videoEmbedUrl('https://example.com/video')).toBeNull();
+    expect(isVideoLink('https://vimeo.com/123456')).toBe(true);
+    expect(isVideoLink('https://www.instagram.com/reel/C1abc/')).toBe(false);
+  });
+
+  it('recognises Instagram posts and reels only', () => {
+    expect(isInstagramUrl('https://www.instagram.com/p/C1abc_-9/')).toBe(true);
+    expect(isInstagramUrl('https://instagram.com/someone/reel/C1abc/')).toBe(true);
+    expect(isInstagramUrl('https://www.instagram.com/someone/')).toBe(false);
+    expect(isInstagramUrl('https://instagram.com.evil.test/p/C1abc/')).toBe(false);
   });
 });
