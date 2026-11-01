@@ -195,6 +195,81 @@ export function iconCone(
   };
 }
 
+// Blocking ------------------------------------------------------------------------
+
+/** The positions of an icon in blocking, first first, ending where it stands; view units. */
+export function blockingPositions(icon: PlanIcon): Point[] {
+  return [
+    ...(icon.steps ?? []).map((s) => ({
+      x: (s.x / STROKE_GRID) * PLAN_VIEW_W,
+      y: (s.y / STROKE_GRID) * PLAN_VIEW_H,
+    })),
+    iconCentre(icon),
+  ];
+}
+
+/**
+ * The move from `a` to `b`, bowed by `bend` view units at its middle (positive to the left of
+ * the way), as a quadratic curve: its control point and its middle.
+ */
+export function blockingCurve(a: Point, b: Point, bend = 0): { control: Point; middle: Point } {
+  const len = Math.hypot(b.x - a.x, b.y - a.y) || 1;
+  const n = { x: (b.y - a.y) / len, y: -(b.x - a.x) / len };
+  const mid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+  return {
+    control: { x: mid.x + n.x * bend * 2, y: mid.y + n.y * bend * 2 },
+    middle: { x: mid.x + n.x * bend, y: mid.y + n.y * bend },
+  };
+}
+
+/** The bend that puts the middle of the move from `a` to `b` through `p`. */
+export function bendThrough(a: Point, b: Point, p: Point): number {
+  const len = Math.hypot(b.x - a.x, b.y - a.y) || 1;
+  const n = { x: (b.y - a.y) / len, y: -(b.x - a.x) / len };
+  const mid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+  return Math.max(-1000, Math.min(1000, (p.x - mid.x) * n.x + (p.y - mid.y) * n.y));
+}
+
+/** Points along a quadratic curve, for exports. */
+export function curvePoints(a: Point, control: Point, b: Point, steps = 16): Point[] {
+  return Array.from({ length: steps + 1 }, (_, i) => {
+    const t = i / steps;
+    const u = 1 - t;
+    return {
+      x: u * u * a.x + 2 * u * t * control.x + t * t * b.x,
+      y: u * u * a.y + 2 * u * t * control.y + t * t * b.y,
+    };
+  });
+}
+
+/**
+ * The icon moved on to `to` (relative to the drawing): where it stood becomes its last step.
+ * People turn to face the way they walk; cameras keep their direction.
+ */
+export function addBlockingStep(icon: PlanIcon, to: Point): PlanIcon {
+  const from = iconCentre(icon);
+  const at = { x: to.x * PLAN_VIEW_W, y: to.y * PLAN_VIEW_H };
+  const step = {
+    x: icon.x,
+    y: icon.y,
+    ...(icon.rotation ? { rotation: icon.rotation } : {}),
+    ...(icon.note ? { note: icon.note } : {}),
+  };
+  const next: PlanIcon = {
+    ...icon,
+    x: clampGrid(to.x * STROKE_GRID),
+    y: clampGrid(to.y * STROKE_GRID),
+    steps: [...(icon.steps ?? []), step].slice(-30),
+  };
+  delete next.note;
+  if (categoryOf(icon.kind).family === 'person') {
+    const facing = normalizeRotation((Math.atan2(at.y - from.y, at.x - from.x) * 180) / Math.PI);
+    if (facing) next.rotation = facing;
+    else delete next.rotation;
+  }
+  return next;
+}
+
 // Moving, turning and finding items ---------------------------------------------
 
 /** Converts a move in view units to STROKE_GRID units. */

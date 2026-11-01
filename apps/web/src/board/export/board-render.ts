@@ -2,6 +2,9 @@
 import {
   arrowGeometry,
   arrowPolyline,
+  blockingCurve,
+  blockingPositions,
+  curvePoints,
   decodeStroke,
   flattenGlyph,
   glyphOf,
@@ -18,6 +21,7 @@ import {
   type Element,
   type FrameShape,
   PLAN_ASPECT,
+  type PlanIcon,
   type PlanShape,
   type Stroke,
 } from '@inkadra/doc-schema';
@@ -877,7 +881,13 @@ function mix(hex: string, base: string, t: number): string {
  * A set plan's drawing as vectors, without the grid (decision 0062): strokes, shapes, then the
  * set icons with their labels, in the printed theme's colours.
  */
-export function planOps(el: Extract<Element, { type: 'plan' }>, box: Rect, ctx: CardContext): Op[] {
+/** `moves`: blocking moves and numbers, on unless an export leaves them out (round 6, i). */
+export function planOps(
+  el: Extract<Element, { type: 'plan' }>,
+  box: Rect,
+  ctx: CardContext,
+  moves = true,
+): Op[] {
   const c = ctx.colors;
   const ink = (hex: string) => {
     const token = planToken(hex);
@@ -892,13 +902,80 @@ export function planOps(el: Extract<Element, { type: 'plan' }>, box: Rect, ctx: 
     inside.push(strokeOp({ ...stroke, color: ink(stroke.color) }, box));
   for (const shape of shown(el.shapes))
     inside.push(...planShapeOps(shape, box, ink(shape.color), el.scale, ctx));
-  for (const icon of shown(el.icons)) {
+  // Blocking: the moves, the veiled earlier positions and the numbers (round 6, d).
+  for (const icon of moves ? shown(el.icons) : []) {
+    const steps = icon.steps ?? [];
+    if (steps.length === 0) continue;
     const color = ink(icon.color);
-    const cone = iconCone(icon, el.sensor);
+    const at = blockingPositions(icon);
+    for (let i = 0; i + 1 < at.length; i++) {
+      const a = at[i] as { x: number; y: number };
+      const b = at[i + 1] as { x: number; y: number };
+      const { control } = blockingCurve(a, b, steps[i]?.bend);
+      const pts = curvePoints(a, control, b).map((p) => ({
+        x: box.x + p.x * k,
+        y: box.y + p.y * k,
+      }));
+      // Stop short of the icon so the head shows.
+      while (
+        pts.length > 2 &&
+        Math.hypot((pts.at(-1)?.x ?? 0) - b.x * k - box.x, (pts.at(-1)?.y ?? 0) - b.y * k - box.y) <
+          26 * k
+      )
+        pts.pop();
+      const w = 2.5 * k;
+      if (icon.dashed) inside.push(...dashes(pts, 10 * k, 8 * k, color, w));
+      else
+        inside.push({ kind: 'polyline', points: pts.flatMap((p) => [p.x, p.y]), color, width: w });
+      const end = pts.at(-1) as { x: number; y: number };
+      const prev = pts.at(-2) as { x: number; y: number };
+      inside.push(head(prev.x, prev.y, end.x, end.y, 14 * k, color));
+    }
+    for (const step of steps)
+      inside.push(
+        ...iconOps(
+          { ...icon, x: step.x, y: step.y, rotation: step.rotation ?? 0 },
+          color,
+          0.4,
+          false,
+        ),
+      );
+    at.forEach((p, i) => {
+      const cx = box.x + (p.x - 24) * k;
+      const cy = box.y + (p.y - 24) * k;
+      const ring: number[] = [];
+      for (let j = 0; j < 20; j++)
+        ring.push(
+          cx + 11 * k * Math.cos((j / 20) * Math.PI * 2),
+          cy + 11 * k * Math.sin((j / 20) * Math.PI * 2),
+        );
+      const label = String(i + 1);
+      inside.push(
+        { kind: 'polygon', points: ring, fill: color },
+        {
+          kind: 'text',
+          x: cx - ctx.measure(label, 13 * k, 600) / 2,
+          y: cy + 4.5 * k,
+          text: label,
+          size: 13 * k,
+          weight: 600,
+          color: c['surface-1'],
+        },
+      );
+    });
+  }
+  for (const icon of shown(el.icons)) inside.push(...iconOps(icon, ink(icon.color), 1, true));
+  return [{ kind: 'clip', ...box, ops: inside }];
+
+  /** An icon: its cone or beam, its glyph and its label; `veil` fades a blocking copy. */
+  function iconOps(icon: PlanIcon, base: string, veil: number, full: boolean): Op[] {
+    const out: Op[] = [];
+    const color = veil < 1 ? mix(base, c['surface-1'], veil) : base;
+    const cone = full ? iconCone(icon, el.sensor) : null;
     if (cone) {
       const pts = cone.points.map((p) => at(p.x, p.y));
       const shade = cone.beam ? 0.06 + 0.16 * (icon.intensity ?? 0.8) : 0.14;
-      inside.push(
+      out.push(
         {
           kind: 'polygon',
           points: pts.flatMap((p) => [p.x, p.y]),
@@ -924,13 +1001,13 @@ export function planOps(el: Extract<Element, { type: 'plan' }>, box: Rect, ctx: 
       for (let i = 0; i + 1 < part.points.length; i += 2)
         pts.push(place(part.points[i] as number, part.points[i + 1] as number));
       if (part.closed && pts[0]) {
-        inside.push({ kind: 'polygon', points: pts.flatMap((p) => [p.x, p.y]), fill: wash });
+        out.push({ kind: 'polygon', points: pts.flatMap((p) => [p.x, p.y]), fill: wash });
         pts.push(pts[0]);
       }
       const w = (width * part.width) / 1.5;
       const stroke = part.opacity !== undefined ? mix(color, c['surface-1'], part.opacity) : color;
       if (part.dash)
-        inside.push(
+        out.push(
           ...dashes(
             pts,
             (part.dash[0] as number) * w,
@@ -940,7 +1017,7 @@ export function planOps(el: Extract<Element, { type: 'plan' }>, box: Rect, ctx: 
           ),
         );
       else
-        inside.push({
+        out.push({
           kind: 'polyline',
           points: pts.flatMap((p) => [p.x, p.y]),
           color: stroke,
@@ -948,10 +1025,10 @@ export function planOps(el: Extract<Element, { type: 'plan' }>, box: Rect, ctx: 
         });
     }
     const label = iconLabel(icon);
-    if (label) {
+    if (label && full) {
       const a = labelAnchor(icon);
       const size = LABEL_SIZE * k;
-      inside.push({
+      out.push({
         kind: 'text',
         x: box.x + a.x * k - ctx.measure(label, size, 500) / 2,
         y: box.y + a.y * k,
@@ -961,8 +1038,8 @@ export function planOps(el: Extract<Element, { type: 'plan' }>, box: Rect, ctx: 
         color,
       });
     }
+    return out;
   }
-  return [{ kind: 'clip', ...box, ops: inside }];
 }
 
 /** A plan shape: zones and measures, and frame shapes turned by their rotation. */

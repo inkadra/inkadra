@@ -269,6 +269,26 @@ for (const theme of ['dark', 'light'] as const) {
     await editor.getByLabel('Mostra l’ottica nell’etichetta').check();
     await expect(editor.locator('.plan__svg text', { hasText: '85 mm' })).toBeVisible();
     await page.screenshot({ path: join(out, `desktop-${theme}-lens.png`) });
+
+    // Blocking (round 6, d): the Movement tool, from Anna through two more positions.
+    await editor.getByRole('button', { name: 'Movimento (M)' }).click();
+    const anna = at(204, 78);
+    await page.mouse.click(anna.x, anna.y);
+    for (const [x, y] of [
+      [300, 120],
+      [262, 178],
+    ] as const) {
+      const q = at(x, y);
+      await page.mouse.click(q.x, q.y);
+    }
+    const annaNow = async () => (await saved()).plan?.icons?.find((i) => i.label === 'Anna');
+    await expect.poll(async () => (await annaNow())?.steps?.length).toBe(2);
+    await editor.getByLabel('Nota della posizione 1').fill('Porta, entra');
+    await expect.poll(async () => (await annaNow())?.steps?.[0]?.note).toBe('Porta, entra');
+    await expect(editor.locator('.plan__step')).toHaveCount(3);
+    await page.screenshot({ path: join(out, `desktop-${theme}-blocking.png`) });
+    await page.keyboard.press('Escape');
+    await editor.getByRole('button', { name: 'Seleziona (V)' }).click();
     await editor.getByRole('tab', { name: 'Icone' }).click();
 
     // Duplicate, then delete the copy; the plan keeps the nine icons it had.

@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 import {
+  blockingCurve,
+  blockingPositions,
   categoryOf,
   type GlyphPart,
   glyphOf,
@@ -200,6 +202,74 @@ export function PlanIconView({
   );
 }
 
+/** Radius of the number of a blocking position, in view units. */
+const STEP_DOT = 11;
+
+/**
+ * The blocking of an icon (round 6, d): its earlier positions as veiled copies, the moves
+ * between them as arrows (dashed for the camera, say), each position numbered. `ghosts` false
+ * leaves the veiled copies out.
+ */
+export function BlockingView({ icon, ghosts = true }: { icon: PlanIcon; ghosts?: boolean }) {
+  const steps = icon.steps ?? [];
+  if (steps.length === 0) return null;
+  const at = blockingPositions(icon);
+  const dash = icon.dashed ? '10 8' : undefined;
+  return (
+    <g style={{ color: planCss(icon.color) }} data-blocking={icon.id}>
+      {at.slice(1).map((b, i) => {
+        const a = at[i] as { x: number; y: number };
+        const { control } = blockingCurve(a, b, steps[i]?.bend);
+        const angle = Math.atan2(b.y - control.y, b.x - control.x);
+        // Stop short of the icon so the head shows.
+        const back = 26;
+        const end = { x: b.x - back * Math.cos(angle), y: b.y - back * Math.sin(angle) };
+        const wing = (side: number) =>
+          `${end.x - 14 * Math.cos(angle + side * 0.5)} ${end.y - 14 * Math.sin(angle + side * 0.5)}`;
+        return (
+          <path
+            // biome-ignore lint/suspicious/noArrayIndexKey: moves are the gaps between steps.
+            key={i}
+            d={`M${a.x} ${a.y}Q${control.x} ${control.y} ${end.x} ${end.y}M${wing(-1)}L${end.x} ${end.y}L${wing(1)}`}
+            style={{
+              fill: 'none',
+              stroke: 'currentColor',
+              strokeWidth: 2.5,
+              strokeDasharray: dash,
+              strokeLinecap: 'round',
+              strokeLinejoin: 'round',
+            }}
+          />
+        );
+      })}
+      {ghosts &&
+        steps.map((step, i) => (
+          <PlanIconView
+            // biome-ignore lint/suspicious/noArrayIndexKey: a step is its place in the order.
+            key={i}
+            icon={{
+              ...icon,
+              x: step.x,
+              y: step.y,
+              ...(step.rotation ? { rotation: step.rotation } : { rotation: 0 }),
+            }}
+            faded
+            noCone
+          />
+        ))}
+      {at.map((p, i) => (
+        // biome-ignore lint/suspicious/noArrayIndexKey: the number is the place in the order.
+        <g key={i} className="plan__step" transform={`translate(${p.x - 24} ${p.y - 24})`}>
+          <circle r={STEP_DOT} style={{ fill: 'currentColor' }} />
+          <text textAnchor="middle" y={4.5} fontSize={13} fontWeight={700}>
+            {i + 1}
+          </text>
+        </g>
+      ))}
+    </g>
+  );
+}
+
 /** Length of a measure in metres, "2,70 m", or null on a plan without a scale. */
 export function measureText(shape: PlanShape, scale: number | undefined, locale?: string): string {
   if (!scale) return '';
@@ -326,9 +396,12 @@ export const PlanDrawing = memo(function PlanDrawing({
   plan,
   grid,
   hidden,
+  ghosts = true,
   children,
 }: {
   plan: PlanLike;
+  /** Veiled copies of the earlier blocking positions; the arrows and numbers stay. */
+  ghosts?: boolean;
   grid?: number | undefined;
   /** Layers this person hides while editing, on top of the plan's own. */
   hidden?: readonly string[] | undefined;
@@ -350,6 +423,9 @@ export const PlanDrawing = memo(function PlanDrawing({
       ))}
       {visible(plan.shapes, off).map((s) => (
         <PlanShapeView key={s.id} shape={s} scale={plan.scale} />
+      ))}
+      {visible(plan.icons, off).map((icon) => (
+        <BlockingView key={`b${icon.id}`} icon={icon} ghosts={ghosts} />
       ))}
       {visible(plan.icons, off).map((icon) => (
         <PlanIconView key={icon.id} icon={icon} sensor={plan.sensor} />

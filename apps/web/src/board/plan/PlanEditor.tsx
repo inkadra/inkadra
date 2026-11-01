@@ -1,8 +1,12 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 import {
+  addBlockingStep,
   addPlanIcon,
   addShape,
   addStroke,
+  bendThrough,
+  blockingCurve,
+  blockingPositions,
   categoryOf,
   DEFAULT_LENS,
   duplicatePlanItems,
@@ -41,6 +45,7 @@ import {
   type PlanIconKind,
   type PlanSensor,
   type PlanShape,
+  type PlanStep,
 } from '@inkadra/doc-schema';
 import { Button, Icon, IconButton, type IconName, Select, Switch } from '@inkadra/ui';
 import { type PointerEvent, type ReactNode, useEffect, useRef, useState } from 'react';
@@ -68,7 +73,7 @@ import { SceneBadges, ScenePicker, scenesOfPlan } from './scenes.tsx';
 import './plan.css';
 
 type DragKind = 'line' | 'arrow' | 'rect' | 'ellipse' | 'zone' | 'measure';
-type Tool = 'select' | 'pencil' | 'text' | 'icons' | DragKind;
+type Tool = 'select' | 'pencil' | 'text' | 'icons' | 'move' | DragKind;
 type Panel = 'icons' | 'props';
 
 /** The tools of the frame drawing that plans use, in the order of the mockup, with their keys. */
@@ -95,7 +100,8 @@ type Gesture =
   | { kind: 'move'; ref: PlanItemRef; start: Point; item: PlanItem }
   | { kind: 'rotate'; ref: PlanItemRef; centre: Point; from: number; item: PlanItem }
   | { kind: 'draw'; points: Point[] }
-  | { kind: 'shape'; shape: DragKind; a: Point; b: Point };
+  | { kind: 'shape'; shape: DragKind; a: Point; b: Point }
+  | { kind: 'bend'; index: number; item: PlanIcon };
 
 /** View units of a point of the drawing (0 to 1). */
 const view = (p: Point): Point => ({ x: p.x * PLAN_VIEW_W, y: p.y * PLAN_VIEW_H });
@@ -140,6 +146,9 @@ export function PlanEditor({
   const [snap, setSnap] = useState(true);
   const [picking, setPicking] = useState<{ x: number; y: number } | null>(null);
   const [otherLens, setOtherLens] = useState(false);
+  /** The icon whose blocking is being drawn with the Movement tool, and the veiled copies. */
+  const [moving, setMoving] = useState<string | null>(null);
+  const [ghosts, setGhosts] = useState(true);
   const linked = scenesOfPlan(plan, new Map(scenes.map((s) => [s.id, s])));
   const [selected, setSelected] = useState<PlanItemRef | null>(null);
   /** The item being moved or turned, shown in place until the gesture ends. */
@@ -167,6 +176,7 @@ export function PlanEditor({
     locked: new Set(plan.lockedLayers ?? []),
   };
   const item = selected ? planItem(plan, selected) : undefined;
+  const movingIcon = (plan.icons ?? []).find((i) => i.id === moving) ?? null;
   const shown =
     preview === null
       ? plan
@@ -185,6 +195,10 @@ export function PlanEditor({
   useEffect(() => {
     if (text) textInput.current?.focus();
   }, [text]);
+  // Another tool ends the movement being drawn.
+  useEffect(() => {
+    if (tool !== 'move') setMoving(null);
+  }, [tool]);
 
   /** One change, one undo step. */
   const change = (write: () => void) => {
@@ -289,7 +303,8 @@ export function PlanEditor({
     const mod = isMac() ? e.metaKey : e.ctrlKey;
     const key = e.key.toLowerCase();
     if (e.key === 'Escape') {
-      if (armed) {
+      if (moving) setMoving(null);
+      else if (armed) {
         setArmed(null);
         setTool('select');
       } else if (selected) setSelected(null);
@@ -306,7 +321,10 @@ export function PlanEditor({
         document.querySelector<HTMLInputElement>('.plan-lib__search input')?.focus(),
       );
     } else if (!mod && key === 'g') setSnap((v) => !v);
-    else if (!mod && TOOLS.some((x) => x.key.toLowerCase() === key)) {
+    else if (!mod && key === 'm') {
+      setArmed(null);
+      setTool('move');
+    } else if (!mod && TOOLS.some((x) => x.key.toLowerCase() === key)) {
       setArmed(null);
       setTool(TOOLS.find((x) => x.key.toLowerCase() === key)?.tool ?? 'select');
     } else return;
@@ -327,6 +345,22 @@ export function PlanEditor({
     if (text) {
       // A click away from the text being typed finishes it.
       commitText();
+      return;
+    }
+    const bend = (e.target as Element).closest<SVGElement>('[data-bend]');
+    if (bend && isIcon(item)) {
+      e.currentTarget.setPointerCapture(e.pointerId);
+      gesture.current = { kind: 'bend', index: Number(bend.dataset.bend), item };
+      return;
+    }
+    if (tool === 'move') {
+      const hit = planItemAt(plan, p, viewOf);
+      const target = hit && planItem(plan, hit);
+      if (hit && isIcon(target)) {
+        setSelected(hit);
+        setMoving(target.id);
+        setPanel('props');
+      } else if (movingIcon) write(addBlockingStep(movingIcon, snapped(p)));
       return;
     }
     const handle = (e.target as Element).closest('[data-rotate]');
@@ -399,6 +433,16 @@ export function PlanEditor({
         d = { x: view(to).x - c.x, y: view(to).y - c.y };
       }
       setPreview(moveItem(g.item, d));
+    } else if (g.kind === 'bend') {
+      const at = blockingPositions(g.item);
+      const a = at[g.index] as Point;
+      const b = at[g.index + 1] as Point;
+      const steps = [...(g.item.steps ?? [])];
+      steps[g.index] = {
+        ...(steps[g.index] as PlanStep),
+        bend: Math.round(bendThrough(a, b, view(p))),
+      };
+      setPreview({ ...g.item, steps });
     } else if (g.kind === 'rotate') {
       const q = view(p);
       const angle = Math.atan2(q.y - g.centre.y, q.x - g.centre.x);
@@ -420,7 +464,7 @@ export function PlanEditor({
     const g = gesture.current;
     gesture.current = null;
     if (!g) return;
-    if (g.kind === 'move' || g.kind === 'rotate') {
+    if (g.kind === 'move' || g.kind === 'rotate' || g.kind === 'bend') {
       const next = previewRef.current;
       setPreview(null);
       if (next) write(next);
@@ -469,6 +513,24 @@ export function PlanEditor({
         <line x1={box.x + box.w / 2} y1={box.y - pad} x2={box.x + box.w / 2} y2={box.y - 40} />
         <circle cx={box.x + box.w / 2} cy={box.y - 48} r={12} />
       </g>
+      {isIcon(current) &&
+        blockingPositions(current)
+          .slice(1)
+          .map((b, i) => {
+            const a = blockingPositions(current)[i] as Point;
+            const { middle } = blockingCurve(a, b, current.steps?.[i]?.bend);
+            return (
+              <circle
+                // biome-ignore lint/suspicious/noArrayIndexKey: a move is its place in the order.
+                key={i}
+                data-bend={i}
+                className="plan-editor__bend"
+                cx={middle.x}
+                cy={middle.y}
+                r={9}
+              />
+            );
+          })}
     </g>
   );
   const liveLayer = (
@@ -554,6 +616,16 @@ export function PlanEditor({
         () => {
           setTool('icons');
           setPanel('icons');
+        },
+      )}
+      {toolButton(
+        'move',
+        `${t('board.plan.tool.move')} (M)`,
+        <Icon name="blocking" size={16} />,
+        tool === 'move',
+        () => {
+          setArmed(null);
+          setTool('move');
         },
       )}
       {!phone && (
@@ -822,6 +894,110 @@ export function PlanEditor({
     </>
   );
 
+  const blocking = icon && (icon.steps?.length ?? 0) > 0 && (
+    <>
+      <div className="plan-props__label">
+        {t('board.plan.positions', { count: (icon.steps?.length ?? 0) + 1 })}
+      </div>
+      <ol className="plan-props__steps">
+        {[...(icon.steps ?? []), null].map((stepAt, i) => (
+          // biome-ignore lint/suspicious/noArrayIndexKey: a position is its place in the order.
+          <li key={i}>
+            <span className="plan-props__num">{i + 1}</span>
+            <input
+              className="plan-editor__field"
+              aria-label={t('board.plan.stepNote', { number: i + 1 })}
+              placeholder={t('board.plan.stepPlaceholder')}
+              maxLength={200}
+              value={(stepAt ? stepAt.note : icon.note) ?? ''}
+              onFocus={() => store.undo.stopCapturing()}
+              onChange={(e) => {
+                const note = e.target.value;
+                const next: PlanIcon = { ...icon, steps: [...(icon.steps ?? [])] };
+                if (stepAt) {
+                  const edited: PlanStep = { ...stepAt, note };
+                  if (!note) delete edited.note;
+                  (next.steps as PlanStep[])[i] = edited;
+                } else if (note) next.note = note;
+                else delete next.note;
+                updatePlanItems(doc, plan.id, [next], LOCAL);
+              }}
+            />
+          </li>
+        ))}
+      </ol>
+      <div className="plan-props__row">
+        <span>{t('board.plan.line')}</span>
+        <span className="plan-props__segmented" role="radiogroup" aria-label={t('board.plan.line')}>
+          {([false, true] as const).map((dashed) => (
+            <button
+              key={String(dashed)}
+              type="button"
+              role="radio"
+              aria-checked={!!icon.dashed === dashed}
+              onClick={() => {
+                const next = { ...icon, dashed };
+                if (!dashed) delete (next as Partial<PlanIcon>).dashed;
+                write(next);
+              }}
+            >
+              {t(dashed ? 'board.plan.dashed' : 'board.plan.solid')}
+            </button>
+          ))}
+        </span>
+      </div>
+      <label className="plan-props__row">
+        <span>{t('board.plan.ghosts')}</span>
+        <Switch checked={ghosts} onChange={(e) => setGhosts(e.target.checked)} />
+      </label>
+    </>
+  );
+  /** The bar of the Movement tool, over the plan (round 6, d). */
+  const moveBar = movingIcon && (
+    <div
+      className="plan-editor__movebar ink-motion-pop"
+      role="toolbar"
+      aria-label={t('board.plan.moveOf', {
+        name: movingIcon.label || t(`board.plan.icons.${movingIcon.kind}`),
+      })}
+    >
+      <span>
+        {t('board.plan.moveOf', {
+          name: movingIcon.label || t(`board.plan.icons.${movingIcon.kind}`),
+        })}
+      </span>
+      <span className="plan-editor__vr" aria-hidden="true" />
+      <IconButton
+        icon="line"
+        label={t('board.plan.solid')}
+        aria-pressed={!movingIcon.dashed}
+        onClick={() => {
+          const next = { ...movingIcon };
+          delete next.dashed;
+          write(next);
+        }}
+      />
+      <IconButton
+        icon="dashed"
+        label={t('board.plan.dashed')}
+        aria-pressed={!!movingIcon.dashed}
+        onClick={() => write({ ...movingIcon, dashed: true })}
+      />
+      <span className="plan-editor__vr" aria-hidden="true" />
+      <IconButton
+        icon="trash"
+        label={t('board.plan.clearMoves')}
+        onClick={() => {
+          const next = { ...movingIcon };
+          delete next.steps;
+          delete next.note;
+          delete next.dashed;
+          write(next);
+        }}
+      />
+    </div>
+  );
+
   const properties = current ? (
     <div className="plan-props">
       <h3 className="plan-props__title">
@@ -840,6 +1016,7 @@ export function PlanEditor({
         </div>
       )}
       {camera}
+      {blocking}
       {light}
       {icon && (
         <p className="plan-props__hint">
@@ -863,7 +1040,7 @@ export function PlanEditor({
           onPointerUp={onPointerUp}
           onPointerCancel={onPointerUp}
         >
-          <PlanDrawing plan={shown} grid={step}>
+          <PlanDrawing plan={shown} grid={step} ghosts={ghosts}>
             {liveLayer}
           </PlanDrawing>
           {text && (
@@ -896,6 +1073,12 @@ export function PlanEditor({
           )}
         </div>
       </div>
+      {moveBar}
+      {phone && movingIcon && (
+        <p className="plan-editor__hint">
+          {t('board.plan.moveHint', { number: (movingIcon.steps?.length ?? 0) + 2 })}
+        </p>
+      )}
       {!phone && bar}
     </div>
   );

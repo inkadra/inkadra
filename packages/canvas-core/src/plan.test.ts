@@ -17,7 +17,11 @@ import {
 } from './board.ts';
 import { addShape, addStroke } from './film.ts';
 import {
+  addBlockingStep,
   addPlanIcon,
+  bendThrough,
+  blockingCurve,
+  blockingPositions,
   duplicatePlanItems,
   iconCone,
   iconHit,
@@ -230,5 +234,43 @@ describe('the icon library', () => {
     expect(layerOf({ ...camera, id: 'iconAAAAAAAAA', kind: 'fresnel' })).toBe('lights');
     expect(layerOf({ ...camera, id: 'iconAAAAAAAAA', kind: 'sofa' })).toBe('set');
     expect(layerOf({ ...camera, id: 'iconAAAAAAAAA', layer: 'notes' })).toBe('notes');
+  });
+});
+
+describe('blocking', () => {
+  it('moves an icon on, keeping where it stood as a numbered step', () => {
+    const actor: PlanIcon = {
+      id: 'iconAAAAAAAAA',
+      kind: 'actor',
+      color: '#B897F0',
+      x: 1000,
+      y: 1000,
+      note: 'Porta, entra',
+    };
+    const two = addBlockingStep(actor, { x: 0.5, y: 0.25 });
+    expect(two).toMatchObject({
+      x: 2048,
+      y: 1024,
+      steps: [{ x: 1000, y: 1000, note: 'Porta, entra' }],
+    });
+    expect(two).not.toHaveProperty('note');
+    // People face the way they walk: here to the right and a little down.
+    expect(two.rotation).toBeGreaterThan(0);
+    expect(two.rotation).toBeLessThan(10);
+    const three = addBlockingStep(two, { x: 0.5, y: 0.75 });
+    expect(blockingPositions(three)).toHaveLength(3);
+    expect(three.rotation).toBe(90);
+    // Cameras keep their direction.
+    expect(
+      addBlockingStep({ ...actor, kind: 'camera', rotation: 45 }, { x: 0.9, y: 0.9 }).rotation,
+    ).toBe(45);
+  });
+
+  it('bows a move through the point it is dragged to', () => {
+    const a = { x: 0, y: 0 };
+    const b = { x: 100, y: 0 };
+    const bend = bendThrough(a, b, { x: 50, y: -30 });
+    expect(bend).toBeCloseTo(30);
+    expect(blockingCurve(a, b, bend).middle).toEqual({ x: 50, y: -30 });
   });
 });

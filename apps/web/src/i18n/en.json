@@ -723,7 +723,8 @@
         "rect": "Rectangle",
         "ellipse": "Ellipse",
         "text": "Text",
-        "icons": "Set icons"
+        "icons": "Set icons",
+        "move": "Movement"
       },
       "snap": "Snap to grid",
       "library": "Set icons",
@@ -911,7 +912,18 @@
       "showLens": "Show the lens in the label",
       "power": "Power",
       "beam": "Beam",
-      "intensity": "Intensity"
+      "intensity": "Intensity",
+      "positions_one": "{{count}} position",
+      "positions_other": "{{count}} positions",
+      "stepNote": "Note for position {{number}}",
+      "stepPlaceholder": "What happens here",
+      "line": "Line",
+      "solid": "Solid",
+      "dashed": "Dashed",
+      "ghosts": "Show earlier positions",
+      "moveOf": "Movement of {{name}}",
+      "clearMoves": "Clear the movement",
+      "moveHint": "Tap position {{number}} · Done ends the movement"
     }
   },
   "tags": {

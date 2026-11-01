@@ -723,7 +723,8 @@
         "rect": "Rettangolo",
         "ellipse": "Ellisse",
         "text": "Testo",
-        "icons": "Icone da set"
+        "icons": "Icone da set",
+        "move": "Movimento"
       },
       "snap": "Aggancia alla griglia",
       "library": "Icone da set",
@@ -911,7 +912,18 @@
       "showLens": "Mostra l’ottica nell’etichetta",
       "power": "Potenza",
       "beam": "Fascio",
-      "intensity": "Intensità"
+      "intensity": "Intensità",
+      "positions_one": "{{count}} posizione",
+      "positions_other": "{{count}} posizioni",
+      "stepNote": "Nota della posizione {{number}}",
+      "stepPlaceholder": "Cosa succede qui",
+      "line": "Linea",
+      "solid": "Continua",
+      "dashed": "Tratteggio",
+      "ghosts": "Mostra posizioni precedenti",
+      "moveOf": "Movimento di {{name}}",
+      "clearMoves": "Cancella il movimento",
+      "moveHint": "Tocca la posizione {{number}} · Fatto per chiudere il movimento"
     }
   },
   "tags": {
