@@ -80,6 +80,8 @@ test('CSV upload previews inert cells, creates the first sheet and undoes withou
     .click();
   await expect(viewer).not.toBeVisible();
   await expect(page.locator('.tcard')).toHaveCount(1);
+  await page.getByRole('button', { name: 'Mostra', exact: true }).click();
+  await expect(page.locator('.tcard')).toBeInViewport();
   await expect(card).toBeVisible();
   if (process.env.OFFICE_SHOTS) {
     for (const width of [1280, 390]) {
