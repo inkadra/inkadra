@@ -42,9 +42,9 @@ RUN apt-get update \
  && apt-get install -y --no-install-recommends tini \
  && if [ "$MEDIA" = "true" ]; then \
       apt-get install -y --no-install-recommends ffmpeg libimage-exiftool-perl poppler-utils \
-        mesa-va-drivers libvpl2 vainfo \
+        mesa-va-drivers vainfo \
       && if [ "$(dpkg --print-architecture)" = "amd64" ]; then \
-           apt-get install -y --no-install-recommends intel-media-va-driver libmfx-gen1.2; \
+           apt-get install -y --no-install-recommends intel-media-va-driver libmfx-gen1.2 libvpl2; \
          fi; \
     fi \
  && rm -rf /var/lib/apt/lists/* \
