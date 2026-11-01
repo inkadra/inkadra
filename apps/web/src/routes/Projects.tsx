@@ -444,7 +444,7 @@ function ProjectCard({
         disabled: busy,
         action: () => void mutate(p, 'pin'),
       },
-      ...addStoryboardItem(p, t, user.id, navigate, onError),
+      ...(user ? addStoryboardItem(p, t, user.id, navigate, onError) : []),
       ...(editor
         ? [{ label: t('onboarding.type'), disabled: busy, action: () => setTyping(true) }]
         : []),
