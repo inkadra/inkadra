@@ -375,7 +375,7 @@ async function sendTo(
     const texts = mailText(me);
     const items = await renderNotifications(db, userId, rows);
     const lines = items.map((n) => mailLine(texts, n, userId));
-    lines.push(texts.notificationSettings(`${deps.publicUrl}/settings`));
+    const settingsUrl = `${deps.publicUrl}/settings?section=notifications`;
     const first = items[0];
     const sameBoard = first?.boardId && items.every((n) => n.boardId === first.boardId);
     const url =
@@ -387,7 +387,20 @@ async function sendTo(
         ? texts.digestSubject(deps.instanceName)
         : texts.notificationSubject(rows.length, deps.instanceName);
     await mailer.send(
-      actionMail(me.email, subject, lines, { label: texts.notificationAction, url }),
+      actionMail(
+        me.email,
+        subject,
+        lines,
+        { label: texts.notificationAction, url },
+        {
+          instanceName: deps.instanceName,
+          footer: {
+            text: texts.notificationSettings(settingsUrl),
+            label: texts.releaseSettingsAction,
+            url: settingsUrl,
+          },
+        },
+      ),
     );
   } catch (err) {
     await db

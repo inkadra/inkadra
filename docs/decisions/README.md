@@ -65,5 +65,7 @@ in order. An accepted decision is never rewritten: a later one supersedes it.
 
 | [0059](0059-model-font-previews.md) | Bounded model and font metadata, scoped browser font specimens |
 
+| [0060](0060-release-news.md) | Opt-in release news and SMTP delivery claims |
+
 Two decisions share the number 0025: they were accepted in parallel, and accepted records
 are not renumbered.

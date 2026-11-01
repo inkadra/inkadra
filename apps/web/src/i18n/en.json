@@ -2226,7 +2226,10 @@
       "reviewHelp": "Approved or changes requested",
       "always": "Always",
       "alwaysNote": "Grey = always on in the Inbox.",
-      "sendMe": "Send me"
+      "sendMe": "Send me",
+      "releaseNews": "Inkadra news",
+      "releaseNewsHelp": "Only when the instance sends it",
+      "releaseNewsAdminHelp": "Let people receive release news after an update. Requires SMTP and personal opt-in."
     },
     "members": {
       "invite": "Invite members",

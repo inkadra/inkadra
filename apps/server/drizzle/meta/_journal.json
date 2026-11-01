@@ -176,6 +176,13 @@
       "when": 1793554949414,
       "tag": "0024_project_theme",
       "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1793556922194,
+      "tag": "0025_release_news",
+      "breakpoints": true
     }
   ]
 }

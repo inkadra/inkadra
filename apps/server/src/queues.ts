@@ -24,6 +24,7 @@ import {
   BoardEditNotStarted,
   type BoardWriter,
 } from './board-writer.ts';
+import { VERSION } from './config.ts';
 import type { Database } from './db/client.ts';
 import { asset } from './db/schema.ts';
 import type { Jobs } from './jobs.ts';
@@ -32,6 +33,7 @@ import { type MediaDeps, markFailed, processAsset } from './media/process.ts';
 import { markProxyFailed, runProxy } from './media/proxy.ts';
 import { ProxyTimeout } from './media/video.ts';
 import { purgeNotifications, sendDigests, sendImmediateEmails } from './notifications.ts';
+import { enqueueReleaseNews, sendReleaseNews } from './release-news.ts';
 import { clearExpiredGuestNames } from './share-links.ts';
 import { type Storage, UPLOAD_EXPIRY_MS } from './storage.ts';
 import { runTransfer, sweepTransfers } from './transfers/service.ts';
@@ -95,6 +97,7 @@ export type JobPayloads = {
   'email:notifications': Record<string, never>;
   /** `daily` digests, checked every hour. */
   'email:digest': Record<string, never>;
+  'email:release-news': { version: string };
 };
 
 const ATTEMPTS = { attempts: 3, backoff: { type: 'exponential', delay: 10_000 } } as const;
@@ -354,6 +357,8 @@ export async function startWorkers(
     QUEUES.email,
     async (job) => {
       if (job.name === 'notifications') return sendImmediateEmails(mailDeps);
+      if (job.name === 'release-news')
+        return sendReleaseNews(deps.db, mailDeps.mailer, job.data.version, mailDeps);
       if (job.name === 'digest') return sendDigests(mailDeps);
       throw new Error(`Unknown job ${job.name}`);
     },
@@ -386,6 +391,22 @@ export async function startWorkers(
     },
   );
   const mailScheduler = new Queue(QUEUES.email, { connection, prefix: opts.prefix });
+  if (deps.mailer?.enabled)
+    await enqueueReleaseNews(deps.db, VERSION, deps.mailer, async (version) => {
+      const jobId = `release-news-${version}`;
+      const old = await mailScheduler.getJob(jobId);
+      if (old && ['completed', 'failed'].includes(await old.getState())) await old.remove();
+      await mailScheduler.add(
+        'release-news',
+        { version },
+        {
+          jobId,
+          ...ATTEMPTS,
+          ...KEEP,
+          removeOnComplete: true,
+        },
+      );
+    });
   const QUIET = { removeOnComplete: { age: 600, count: 100 }, removeOnFail: { age: 86400 } };
   await mailScheduler.upsertJobScheduler(
     'notifications',

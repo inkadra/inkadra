@@ -324,6 +324,21 @@ function InstancePage({ section, setup }: { section: string; setup: Setup }) {
           </Row>
         </div>
       </Card>
+      <Card title={t('settingsUi.access.email')}>
+        <div className="settings-rows">
+          <Row
+            label={t('settingsUi.notifications.releaseNews')}
+            help={t('settingsUi.notifications.releaseNewsAdminHelp')}
+          >
+            <Switch
+              aria-label={t('settingsUi.notifications.releaseNews')}
+              checked={settings.releaseNews ?? true}
+              disabled={!instance?.auth.email}
+              onChange={(e) => void save({ releaseNews: e.target.checked }).catch(() => {})}
+            />
+          </Row>
+        </div>
+      </Card>
       <InstanceStatus setup={setup} />
     </>
   );

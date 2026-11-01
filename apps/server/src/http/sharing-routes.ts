@@ -240,6 +240,7 @@ export function registerSharingRoutes(app: FastifyInstance, deps: Deps) {
         t.inviteSubject(who, what),
         t.inviteLines(who, what, row.role, config.INSTANCE_NAME),
         { label: t.inviteAction, url: joinUrl(token) },
+        { instanceName: config.INSTANCE_NAME },
       ),
     );
     const [sent] = await db

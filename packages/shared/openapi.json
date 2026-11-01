@@ -717,6 +717,10 @@
               "email"
             ]
           },
+          "releaseNews": {
+            "type": "boolean",
+            "description": "Release news available: SMTP configured and administrator switch enabled."
+          },
           "collabPath": {
             "type": "string",
             "example": "/collab"
@@ -808,6 +812,10 @@
       "InstanceSettings": {
         "type": "object",
         "properties": {
+          "releaseNews": {
+            "type": "boolean",
+            "default": true
+          },
           "name": {
             "type": "string",
             "minLength": 1,
@@ -840,6 +848,9 @@
       "UpdateInstanceSettings": {
         "type": "object",
         "properties": {
+          "releaseNews": {
+            "type": "boolean"
+          },
           "name": {
             "type": "string",
             "minLength": 1,
@@ -5284,6 +5295,10 @@
       "UserPreferences": {
         "type": "object",
         "properties": {
+          "releaseNews": {
+            "type": "boolean",
+            "description": "Opt in to one email after an instance update. Off by default."
+          },
           "dateFormat": {
             "type": "string",
             "enum": [
@@ -5338,6 +5353,7 @@
           }
         },
         "required": [
+          "releaseNews",
           "dateFormat",
           "timeFormat",
           "dotGrid",
@@ -5351,6 +5367,10 @@
       "UpdateUserPreferences": {
         "type": "object",
         "properties": {
+          "releaseNews": {
+            "type": "boolean",
+            "description": "Opt in to one email after an instance update. Off by default."
+          },
           "dateFormat": {
             "type": "string",
             "enum": [

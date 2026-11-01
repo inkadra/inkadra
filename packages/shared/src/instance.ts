@@ -37,6 +37,9 @@ export const Instance = z
         description: 'The instance can send email (invitations, sign-in links).',
       }),
     }),
+    releaseNews: z.boolean().optional().openapi({
+      description: 'Release news available: SMTP configured and administrator switch enabled.',
+    }),
     collabPath: z.string().openapi({ example: '/collab' }),
     media: z
       .object({

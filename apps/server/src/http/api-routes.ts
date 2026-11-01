@@ -89,6 +89,7 @@ export function registerApiRoutes(app: FastifyInstance, deps: Deps) {
         magicLink: deps.mailer.enabled,
         email: deps.mailer.enabled,
       },
+      releaseNews: deps.mailer.enabled && settings.releaseNews,
       collabPath: COLLAB_PATH,
       // The web role runs the same image as the worker, so it sees the same tools.
       media: await (async () => {

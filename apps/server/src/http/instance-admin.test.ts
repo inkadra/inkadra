@@ -524,6 +524,7 @@ describe.skipIf(!url)('instance administration', () => {
     ).toEqual({
       name: 'Studio',
       registration: 'invite',
+      releaseNews: true,
       requireAdminTwoFactor: false,
       // Decision 0041: on by default, the behaviour before the setting existed.
       membersCanCreateProjects: true,

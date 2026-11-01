@@ -20,6 +20,9 @@ export const TimeFormat = z.enum(['auto', '24h', '12h']).openapi({
 export type TimeFormat = z.infer<typeof TimeFormat>;
 
 const fields = {
+  releaseNews: z
+    .boolean()
+    .openapi({ description: 'Opt in to one email after an instance update. Off by default.' }),
   dateFormat: DateFormat,
   timeFormat: TimeFormat,
   dotGrid: z.boolean().openapi({
@@ -56,6 +59,7 @@ export type UpdateUserPreferences = z.infer<typeof UpdateUserPreferences>;
 
 /** What a person who never changed anything gets. */
 export const DEFAULT_USER_PREFERENCES: UserPreferences = {
+  releaseNews: false,
   dateFormat: 'auto',
   timeFormat: 'auto',
   dotGrid: true,

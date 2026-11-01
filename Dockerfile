@@ -61,6 +61,7 @@ COPY --from=build /out/node_modules ./node_modules
 COPY --from=build /out/package.json ./package.json
 COPY --from=build /src/apps/server/dist ./dist
 COPY --from=build /src/apps/server/drizzle ./drizzle
+COPY --from=build /src/docs/releases ./releases
 COPY --from=build /src/apps/server/scripts/healthcheck.mjs ./healthcheck.mjs
 COPY --from=build --chmod=755 /src/apps/server/scripts/docker-entrypoint.sh ./docker-entrypoint.sh
 COPY --from=build /src/apps/web/dist ./web

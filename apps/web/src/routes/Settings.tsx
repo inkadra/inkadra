@@ -58,7 +58,7 @@ export function Settings() {
   const { t } = useTranslation();
   const { pathname, search } = useLocation();
   const phone = useIsPhone();
-  const { user } = useSession();
+  const { user, instance } = useSession();
   if (phone && isSettingsHome(pathname, search)) return <SettingsHome setup={setup} />;
   const page = settingsSection(pathname, search);
   if (page.admin && user?.role !== 'admin')
@@ -85,7 +85,7 @@ export function Settings() {
     case 'notifications':
       return (
         <SettingsShell page={page}>
-          <EmailNotifications />
+          <EmailNotifications releaseNewsAvailable={instance?.releaseNews === true} />
         </SettingsShell>
       );
     case 'classifications':
