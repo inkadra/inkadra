@@ -395,6 +395,7 @@
       "processing": "Processing…",
       "failed": "Preview unavailable",
       "cropRotate": "Crop and rotate",
+      "palette": "Create palette",
       "restoreOriginal": "Restore original",
       "cropToolbar": "Crop and rotation",
       "cropStage": "Crop area",
@@ -441,9 +442,21 @@
       "add": "Add an item"
     },
     "color": {
-      "pick": "Pick the colour",
       "label": "Colour name",
-      "labelPlaceholder": "Name"
+      "labelPlaceholder": "Name",
+      "hex": "Hex",
+      "red": "Red",
+      "green": "Green",
+      "blue": "Blue",
+      "copy": "Copy {{hex}} (RGB {{rgb}})",
+      "copied": "Copied {{hex}}",
+      "edit": "Edit colour",
+      "picker": "Colour picker",
+      "square": "Saturation and brightness",
+      "squareValue": "Saturation {{s}}%, brightness {{v}}%",
+      "hue": "Hue",
+      "fromBoard": "From this board",
+      "use": "Use {{hex}}"
     },
     "board": {
       "untitled": "New board",

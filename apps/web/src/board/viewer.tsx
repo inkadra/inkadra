@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-import { createElement, updateElement } from '@inkadra/canvas-core';
+import { updateElement } from '@inkadra/canvas-core';
 import type { Element } from '@inkadra/doc-schema';
 import { type Asset, isRawImageType } from '@inkadra/shared';
 import { Avatar, Button, Icon } from '@inkadra/ui';
@@ -8,6 +8,7 @@ import { useTranslation } from 'react-i18next';
 import { useClassifications } from '../lib/classifications.ts';
 import { pickVariant, playbackUrl, useAsset } from './assets.ts';
 import { CroppedImage } from './CroppedImage.tsx';
+import { addPalette } from './colors.ts';
 import { GuestModeContext } from './context.ts';
 import { FrameGrab } from './FrameGrab.tsx';
 import { fileBadge, fileFamily, isPdf } from './file-kinds.ts';
@@ -399,18 +400,7 @@ export function MediaViewer({
   const wide = Math.min(2400, window.innerWidth * (window.devicePixelRatio || 1));
 
   function addColors() {
-    store.undo.stopCapturing();
-    store.doc.transact(() => {
-      palette.forEach((hex, i) => {
-        createElement(
-          store.doc,
-          'color',
-          { x: element.x + element.w + 24 + (i % 3) * 132, y: element.y + Math.floor(i / 3) * 132 },
-          { hex },
-          { userId, origin: LOCAL },
-        );
-      });
-    }, LOCAL);
+    addPalette(store, element, palette, userId);
     onClose();
   }
 

@@ -29,6 +29,7 @@ import { canRenameBoard, renameBoard } from './boards.ts';
 import { CardCaption } from './CardCaption.tsx';
 import { CardReview } from './CardReview.tsx';
 import { CroppedImage } from './CroppedImage.tsx';
+import { copyHex, hexToRgb } from './colors.ts';
 import { CardExtrasContext, GuestModeContext, useBoard } from './context.ts';
 import { FileCard, RawImageFooter } from './FileCard.tsx';
 import { useBoardAspect } from './film/aspect.ts';
@@ -807,22 +808,14 @@ function blurOnEnter(e: KeyboardEvent<HTMLInputElement>) {
 }
 
 function ColorCard({ element, editing }: { element: Of<'color'>; editing: boolean }) {
-  const { store } = useBoard();
+  const { store, notify } = useBoard();
   const { t } = useTranslation();
   return (
     <>
       <div className="card__swatch" style={{ background: element.hex }}>
-        {editing && (
-          <input
-            type="color"
-            value={element.hex.toLowerCase()}
-            onChange={(e) =>
-              updateElement(store.doc, element.id, { hex: e.target.value.toUpperCase() }, LOCAL)
-            }
-            aria-label={t('board.color.pick')}
-            data-no-drag
-          />
-        )}
+        <span className="card__rgb ink-mono" aria-hidden="true">
+          {hexToRgb(element.hex).join(' ')}
+        </span>
       </div>
       <div className="card__pad card__color-meta">
         {editing ? (
@@ -844,9 +837,41 @@ function ColorCard({ element, editing }: { element: Of<'color'>; editing: boolea
         ) : (
           element.label && <span className="card__title">{element.label}</span>
         )}
-        <span className="card__desc ink-mono">{element.hex}</span>
+        <span className="card__color-hex">
+          <span className="ink-mono">
+            <span className="card__hash">#</span>
+            {element.hex.slice(1)}
+          </span>
+          <CopyHexButton hex={element.hex} onCopied={notify} />
+        </span>
       </div>
     </>
+  );
+}
+
+/** Copies a colour's hex, with its RGB in the name; `onCopied` gets the confirmation (#308). */
+export function CopyHexButton({
+  hex,
+  onCopied,
+}: {
+  hex: string;
+  onCopied?: ((text: string) => void) | undefined;
+}) {
+  const { t } = useTranslation();
+  const label = t('board.color.copy', { hex, rgb: hexToRgb(hex).join(' ') });
+  return (
+    <button
+      type="button"
+      className="card__copy"
+      aria-label={label}
+      data-ink-tooltip={label}
+      onClick={(e) => {
+        e.stopPropagation();
+        void copyHex(hex).then((ok) => ok && onCopied?.(t('board.color.copied', { hex })));
+      }}
+    >
+      <Icon name="copy" size={12} />
+    </button>
   );
 }
 

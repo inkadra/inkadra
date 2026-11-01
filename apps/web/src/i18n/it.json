@@ -395,6 +395,7 @@
       "processing": "Elaborazione…",
       "failed": "Anteprima non disponibile",
       "cropRotate": "Ritaglia e ruota",
+      "palette": "Crea palette",
       "restoreOriginal": "Ripristina originale",
       "cropToolbar": "Ritaglio e rotazione",
       "cropStage": "Area di ritaglio",
@@ -441,9 +442,21 @@
       "add": "Aggiungi una voce"
     },
     "color": {
-      "pick": "Scegli il colore",
       "label": "Nome del colore",
-      "labelPlaceholder": "Nome"
+      "labelPlaceholder": "Nome",
+      "hex": "Esadecimale",
+      "red": "Rosso",
+      "green": "Verde",
+      "blue": "Blu",
+      "copy": "Copia {{hex}} (RGB {{rgb}})",
+      "copied": "Copiato {{hex}}",
+      "edit": "Modifica colore",
+      "picker": "Selettore colore",
+      "square": "Saturazione e luminosità",
+      "squareValue": "Saturazione {{s}}%, luminosità {{v}}%",
+      "hue": "Tinta",
+      "fromBoard": "Da questa board",
+      "use": "Usa {{hex}}"
     },
     "board": {
       "untitled": "Nuova board",

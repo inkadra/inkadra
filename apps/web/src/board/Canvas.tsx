@@ -94,7 +94,9 @@ import { queueSeeds } from '../routes/seed-queue.tsx';
 import { accessNotices } from './access-notices.ts';
 import { addedSummary } from './added-summary.ts';
 import { ArrowLayer, ArrowStyleButtons, onArrowStyleButton } from './arrows.tsx';
+import { getCachedAsset } from './assets.ts';
 import { canRenameBoard, createBoard, setBoardCover, setBoardIcon } from './boards.ts';
+import { ColorPicker } from './ColorPicker.tsx';
 import { loadSnapToGrid, loadTidyGap, saveSnapToGrid, saveTidyGap } from './canvas-prefs.ts';
 import {
   type CanvasTemplate,
@@ -121,6 +123,7 @@ import {
   ZoomControls,
 } from './chrome.tsx';
 import { decodeClipboard, encodeClipboard } from './clipboard.ts';
+import { addPalette } from './colors.ts';
 import type { BoardConnection } from './connection.ts';
 import { BoardContext, type BoardContextValue, GuestModeContext, LARGE_BOARD } from './context.ts';
 import { EmptyBoardStart } from './EmptyBoardStart.tsx';
@@ -435,6 +438,8 @@ export function Canvas({
     ok?: boolean;
   } | null>(null);
   const closeToast = useCallback(() => setToast(null), []);
+  /** A short confirmation from a card, such as a copied colour (#308). */
+  const notify = useCallback((text: string) => setToast({ text, undo: false, ok: true }), []);
   // A new toast starts its count and its Undo afresh.
   const toastKey = useMemo(() => (toast ? ++toastCount : 0), [toast]);
   const [dropHint, setDropHint] = useState(false);
@@ -1950,8 +1955,8 @@ export function Canvas({
     if (e.type !== 'keydown' || isTyping(e.target) || palette) return;
     const cmd = commandFor(e);
     if (!cmd) return;
-    // Enter on the toast's buttons presses them (#310).
-    const presses = e.target instanceof HTMLElement && !!e.target.closest('.toast');
+    // Enter on the toast's buttons and a colour's copy button presses them (#310, #308).
+    const presses = e.target instanceof HTMLElement && !!e.target.closest('.toast, .card__copy');
     if (cmd.kind === 'edit' && (onArrowStyleButton(e.target) || presses)) return;
     const single = selection.size === 1 ? snap.byId.get([...selection][0] ?? '') : undefined;
     switch (cmd.kind) {
@@ -2184,6 +2189,19 @@ export function Canvas({
     return labelsRef.current;
   }, [snap]);
   const largeBoard = snap.byId.size > LARGE_BOARD;
+  // Editing a swatch opens its colour picker, with the board's other colours (#308).
+  const editedEl = editing ? snap.byId.get(editing) : undefined;
+  const pickingColor = editedEl?.type === 'color' && !readOnly ? editedEl : null;
+  const usedColors = useMemo(
+    () =>
+      [
+        ...new Set(
+          [...snap.byId.values()].flatMap((e) => (e.type === 'color' ? [e.hex.toUpperCase()] : [])),
+        ),
+      ].slice(0, 12),
+    [snap],
+  );
+  const closePicker = useCallback(() => setEditing(null), [setEditing]);
   // Guests have no project to count in; versions show the counts of today.
   const boardCounts = useBoardCounts(guest ? undefined : projectId, boards);
   const ctx = useMemo<BoardContextValue>(
@@ -2207,8 +2225,10 @@ export function Canvas({
       frameLabels: labels,
       mapAttribution,
       mapTiles,
+      notify,
     }),
     [
+      notify,
       labels,
       mapAttribution,
       mapTiles,
@@ -2413,6 +2433,22 @@ export function Canvas({
           ),
       };
     };
+    // The colours the media worker found in the picture, as cards beside it (#308).
+    const paletteItem = (image: Element): MenuItem[] => {
+      const asset = image.type === 'image' && image.assetId && getCachedAsset(image.assetId);
+      const colours = asset && asset !== 'missing' ? (asset.palette ?? []) : [];
+      if (colours.length === 0) return [];
+      return [
+        {
+          label: t('board.image.palette'),
+          action: () => {
+            const ids = addPalette(store, image, colours, userId);
+            select(ids);
+            summarize(ids);
+          },
+        },
+      ];
+    };
     const items: MenuItem[] = [
       ...(single?.type === 'link' && !readOnly && !single.locked
         ? [
@@ -2440,6 +2476,9 @@ export function Canvas({
               action: () => setIconBoard(boards?.find((b) => b.id === single.boardId) ?? null),
             },
           ]
+        : []),
+      ...(single?.type === 'color' && !readOnly && !single.locked
+        ? [{ label: t('board.color.edit'), action: () => setEditing(single.id) }]
         : []),
       ...(single?.type === 'section' && !readOnly && !single.locked
         ? [
@@ -2478,6 +2517,7 @@ export function Canvas({
                   },
                 ]
               : []),
+            ...paletteItem(single),
           ]
         : []),
       ...(single &&
@@ -2604,6 +2644,9 @@ export function Canvas({
     onExportSelection,
     arrangeable,
     arrange,
+    userId,
+    select,
+    summarize,
   ]);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: sizeVersion invalidates measured heights
@@ -3011,6 +3054,16 @@ export function Canvas({
             document.body,
           )}
 
+        {pickingColor && (
+          <ColorPicker
+            id={pickingColor.id}
+            hex={pickingColor.hex}
+            used={usedColors}
+            onChange={(hex) => updateElement(doc, pickingColor.id, { hex }, LOCAL)}
+            onCopied={notify}
+            onClose={closePicker}
+          />
+        )}
         {menu && menuItems.length > 0 && (
           <ContextMenu x={menu.x} y={menu.y} items={menuItems} onClose={() => setMenu(null)} />
         )}
