@@ -17,6 +17,7 @@ import {
   PLAN_VIEW_W,
   type PlanItem,
   type Rect,
+  variantView,
 } from '@inkadra/canvas-core';
 import {
   type Element,
@@ -84,6 +85,8 @@ export interface CardContext {
   storyMeta(card: Extract<Element, { type: 'character' | 'location' }>): string;
   /** `plan`: the name of a set plan, in its header. */
   words: { board: string; file: string; plan?: string };
+  /** Another element of the board: the base of a plan variant, whose Set layer it shows. */
+  element?(id: string): Element | undefined;
 }
 
 const PAD = 12;
@@ -562,7 +565,9 @@ function body(p: Placed, ctx: CardContext): Op[] {
     case 'table':
       return tableOps(el, p, c, m);
     case 'plan': {
-      const title = [ctx.words.plan, el.title].filter(Boolean).join(' · ');
+      const title = el.variant
+        ? [el.title || ctx.words.plan, el.variant].filter(Boolean).join(' · ')
+        : [ctx.words.plan, el.title].filter(Boolean).join(' · ');
       const ops: Op[] = [
         {
           kind: 'text',
@@ -584,7 +589,9 @@ function body(p: Placed, ctx: CardContext): Op[] {
         },
       ];
       const box = { x: p.x, y: p.y + PLAN_HEAD, w: p.w, h: p.w / PLAN_ASPECT };
-      return [...ops, ...planOps(el, box, ctx)];
+      const base = el.variantOf ? ctx.element?.(el.variantOf) : undefined;
+      const drawn = base?.type === 'plan' ? variantView(el, base) : el;
+      return [...ops, ...planOps(drawn, box, ctx)];
     }
     case 'map': {
       const ops: Op[] = [];

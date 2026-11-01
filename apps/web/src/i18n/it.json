@@ -951,7 +951,34 @@
       "lineIs": "La linea che hai tracciato è lunga",
       "metres": "metri",
       "grid": "Griglia",
-      "apply": "Imposta"
+      "apply": "Imposta",
+      "showLayer": "Mostra {{layer}}",
+      "hideLayer": "Nascondi {{layer}}",
+      "lockLayer": "Blocca {{layer}}",
+      "unlockLayer": "Sblocca {{layer}}",
+      "layersHint": "Il livello attivo ({{layer}}) riceve i tratti e le forme nuove; le icone vanno nel livello della loro famiglia. Cosa nascondi qui è solo tuo; cosa nascondi in una variante vale per tutti.",
+      "hiddenAs": {
+        "set": "Set nascosto",
+        "lights": "Luci nascoste",
+        "camera": "Camera nascosta",
+        "actors": "Attori nascosti",
+        "notes": "Note nascoste"
+      },
+      "lockedAs": {
+        "set": "Set bloccato",
+        "lights": "Luci bloccate",
+        "camera": "Camera bloccata",
+        "actors": "Attori bloccati",
+        "notes": "Note bloccate"
+      },
+      "variants": "Varianti",
+      "variant": "Variante",
+      "base": "Base",
+      "newVariant": "Nuova variante",
+      "layer": "Livello",
+      "variantMenu": "Duplica come variante",
+      "variantName": "Variante {{n}}",
+      "variantField": "Nome della variante"
     }
   },
   "tags": {

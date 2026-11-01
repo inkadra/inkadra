@@ -223,6 +223,7 @@ export async function buildPages(
     boardTitle: (boardId) => env.boards?.find((b) => b.id === boardId)?.title ?? t('export.board'),
     frameLabel: (id) => labels.get(id) ?? '',
     frameAspect: (frame) => aspectValue(frame.aspect ?? boardAspect),
+    element: (id) => snapshot.byId.get(id),
     frameMeta: (frame) =>
       [
         preset('film.shot', SHOT_SIZES, frame.shot),

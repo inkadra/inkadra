@@ -19,6 +19,7 @@ import {
   itemFrame,
   itemsBox,
   itemsInRect,
+  layerCounts,
   layerOf,
   moveItem,
   normalizeRotation,
@@ -32,6 +33,7 @@ import {
   type Point,
   planItem,
   planItemAt,
+  planItems,
   type ResizeHandle,
   ROTATE_STEP,
   removePlanItems,
@@ -45,6 +47,7 @@ import {
   toggleGroup,
   updateElement,
   updatePlanItems,
+  variantView,
   withGroups,
 } from '@inkadra/canvas-core';
 import {
@@ -53,8 +56,10 @@ import {
   MAX_SHAPES,
   MAX_STROKES,
   PLAN_ICON_KINDS,
+  PLAN_LAYERS,
   type PlanIcon,
   type PlanIconKind,
+  type PlanLayer,
   type PlanSensor,
   type PlanShape,
   type PlanStep,
@@ -87,7 +92,7 @@ import './plan.css';
 
 type DragKind = 'line' | 'arrow' | 'rect' | 'ellipse' | 'zone' | 'measure' | 'scale';
 type Tool = 'select' | 'pencil' | 'text' | 'icons' | 'move' | DragKind;
-type Panel = 'icons' | 'props';
+type Panel = 'icons' | 'layers' | 'props';
 
 /** The tools of the frame drawing that plans use, in the order of the mockup, with their keys. */
 const TOOLS: Array<{ tool: Tool; icon: IconName; key: string; phone: boolean }> = [
@@ -155,6 +160,10 @@ export function PlanEditor({
   plan,
   phone,
   scenes,
+  base,
+  family = [],
+  onSwitch,
+  onNewVariant,
   lenses = [],
   onOpenScene,
   onClose,
@@ -164,6 +173,12 @@ export function PlanEditor({
   phone: boolean;
   /** Scenes of the board, in shooting order, to link the plan to. */
   scenes: readonly SceneElement[];
+  /** The base of a variant, whose Set layer it shows and edits (round 6, h). */
+  base?: PlanElement | undefined;
+  /** The base and its variants, for the tabs of the header. */
+  family?: readonly PlanElement[];
+  onSwitch?: (id: string) => void;
+  onNewVariant?: () => void;
   /** Lenses of the frames of the plan's scenes, proposed for a camera ("5A · 35 mm"). */
   lenses?: ReadonlyArray<{ label: string; mm: number }>;
   onOpenScene: (id: string) => void;
@@ -181,6 +196,10 @@ export function PlanEditor({
   const [ghosts, setGhosts] = useState(true);
   /** The angle shown over the rotate handle while it turns. */
   const [chip, setChip] = useState<string | null>(null);
+  /** Layers this person hides on the base plan; on a variant hiding is the variant's own. */
+  const [myHidden, setMyHidden] = useState<ReadonlySet<PlanLayer>>(new Set());
+  /** The layer new strokes and shapes go to (round 6, h). */
+  const [activeLayer, setActiveLayer] = useState<PlanLayer>('set');
   /** The line drawn to set the scale, waiting for its length in metres (round 6, g). */
   const [scaleDraft, setScaleDraft] = useState<{ length: number; metres: string } | null>(null);
   const [gridDraft, setGridDraft] = useState<'0.25' | '0.5' | '1'>(plan.grid ?? '0.5');
@@ -189,7 +208,8 @@ export function PlanEditor({
   /** The selected items, groups whole (round 6, f). */
   const [selection, setSelection] = useState<PlanItemRef[]>([]);
   const selected = selection.length === 1 ? (selection[0] as PlanItemRef) : null;
-  const setSelected = (ref: PlanItemRef | null) => setSelection(ref ? withGroups(plan, [ref]) : []);
+  const setSelected = (ref: PlanItemRef | null) =>
+    setSelection(ref ? withGroups(drawn, [ref]) : []);
   const [marquee, setMarquee] = useState<{ a: Point; b: Point } | null>(null);
   /** The item being moved or turned, shown in place until the gesture ends. */
   const [preview, setPreviewState] = useState<PlanItem[] | null>(null);
@@ -212,20 +232,31 @@ export function PlanEditor({
   const step = gridStep(plan);
   /** Annotations from the library draw green; the tools of the column draw in ink. */
   const ink = armed && !isIconKind(armed) ? NOTE_COLOR : PLAN_INK;
+  /** A variant shows its base's Set layer under its own (round 6, h). */
+  const drawn = base ? variantView(plan, base) : plan;
+  const baseIds = new Set(
+    base ? planItems(drawn).flatMap(({ item }) => (layerOf(item) === 'set' ? [item.id] : [])) : [],
+  );
+  /** Where an item lives: the base for the shared Set layer of a variant, else the plan. */
+  const ownerOf = (id: string) => (base && baseIds.has(id) ? base.id : plan.id);
+  const targetFor = (layer: PlanLayer) => (base && layer === 'set' ? base.id : plan.id);
+  const hiddenLayers = new Set<PlanLayer>([...(plan.hiddenLayers ?? []), ...myHidden]);
   const viewOf = {
-    hidden: new Set(plan.hiddenLayers ?? []),
+    hidden: hiddenLayers,
     locked: new Set(plan.lockedLayers ?? []),
   };
-  const item = selected ? planItem(plan, selected) : undefined;
-  const movingIcon = (plan.icons ?? []).find((i) => i.id === moving) ?? null;
+  /** Strokes and shapes go to the active layer; Set, their default, is not written. */
+  const onLayer = activeLayer === 'set' ? {} : { layer: activeLayer };
+  const item = selected ? planItem(drawn, selected) : undefined;
+  const movingIcon = (drawn.icons ?? []).find((i) => i.id === moving) ?? null;
   const shown =
     preview === null
-      ? plan
+      ? drawn
       : {
-          ...plan,
-          strokes: replaceIn(plan.strokes, preview),
-          shapes: replaceIn(plan.shapes, preview),
-          icons: replaceIn(plan.icons, preview),
+          ...drawn,
+          strokes: replaceIn(drawn.strokes, preview),
+          shapes: replaceIn(drawn.shapes, preview),
+          icons: replaceIn(drawn.icons, preview),
         };
   const current = preview?.find((p) => p.id === item?.id) ?? item ?? null;
   /** The selected items as drawn, the previews of a gesture included. */
@@ -233,9 +264,9 @@ export function PlanEditor({
 
   // The selection loses the items that go (deleted here, by undo or by someone else).
   useEffect(() => {
-    if (selection.some((r) => !planItem(plan, r)))
-      setSelection((s) => s.filter((r) => planItem(plan, r)));
-  }, [selection, plan]);
+    if (selection.some((r) => !planItem(drawn, r)))
+      setSelection((s) => s.filter((r) => planItem(drawn, r)));
+  }, [selection, drawn]);
   useEffect(() => {
     if (text) textInput.current?.focus();
   }, [text]);
@@ -265,7 +296,7 @@ export function PlanEditor({
     change(() => {
       id = addPlanIcon(
         doc,
-        plan.id,
+        targetFor(categoryOf(kind).layer),
         { kind, color: iconColor(kind), x: toGrid(q.x), y: toGrid(q.y) },
         LOCAL,
       );
@@ -292,21 +323,47 @@ export function PlanEditor({
   const remove = () => {
     if (selection.length === 0) return;
     const ids = selection.map((r) => r.id);
-    change(() => removePlanItems(doc, plan.id, ids, LOCAL));
+    change(() => {
+      removePlanItems(doc, plan.id, ids, LOCAL);
+      if (base) removePlanItems(doc, base.id, ids, LOCAL);
+    });
     setSelection([]);
   };
   const duplicate = () => {
     if (selection.length === 0) return;
     let copies: PlanItemRef[] = [];
     change(() => {
-      copies = duplicatePlanItems(doc, plan, selection, { x: step, y: step }, LOCAL);
+      const d = { x: step, y: step };
+      copies = [
+        ...duplicatePlanItems(
+          doc,
+          plan,
+          selection.filter((r) => ownerOf(r.id) === plan.id),
+          d,
+          LOCAL,
+        ),
+        ...(base
+          ? duplicatePlanItems(
+              doc,
+              base,
+              selection.filter((r) => ownerOf(r.id) === base.id),
+              d,
+              LOCAL,
+            )
+          : []),
+      ];
     });
     setSelection(copies);
   };
+  /** Writes items where they live: the base's Set layer, or the plan (no undo step). */
+  const writeItems = (items: readonly PlanItem[]) => {
+    const own = items.filter((i) => ownerOf(i.id) === plan.id);
+    const shared = items.filter((i) => ownerOf(i.id) !== plan.id);
+    if (own.length) updatePlanItems(doc, plan.id, own, LOCAL);
+    if (shared.length && base) updatePlanItems(doc, base.id, shared, LOCAL);
+  };
   const write = (next: PlanItem | readonly PlanItem[]) =>
-    change(() =>
-      updatePlanItems(doc, plan.id, Array.isArray(next) ? next : [next as PlanItem], LOCAL),
-    );
+    change(() => writeItems(Array.isArray(next) ? next : [next as PlanItem]));
   const rotate = (degrees: number) => {
     if (many.length > 1) {
       const b = itemsBox(many);
@@ -323,7 +380,7 @@ export function PlanEditor({
     if (!isIcon(item)) return;
     const next = { ...item, label: label.slice(0, 60) };
     if (!label) delete (next as Partial<PlanIcon>).label;
-    updatePlanItems(doc, plan.id, [next], LOCAL);
+    writeItems([next]);
   };
 
   const commitText = () => {
@@ -337,8 +394,9 @@ export function PlanEditor({
     change(() =>
       addShape(
         doc,
-        plan.id,
+        targetFor(activeLayer),
         {
+          ...onLayer,
           kind: 'text',
           color: draft.color,
           width: PLAN_TEXT,
@@ -371,7 +429,7 @@ export function PlanEditor({
       else onClose();
     } else if ((e.key === 'Delete' || e.key === 'Backspace') && selection.length) remove();
     else if (mod && key === 'a')
-      setSelection(itemsInRect(plan, { x: -1, y: -1, w: 2000, h: 2000 }, viewOf));
+      setSelection(itemsInRect(drawn, { x: -1, y: -1, w: 2000, h: 2000 }, viewOf));
     else if (mod && key === 'g' && selection.length > 1) write(toggleGroup(many));
     else if (e.key.startsWith('Arrow') && selection.length) {
       const k = e.shiftKey ? step * 4 : step;
@@ -439,8 +497,8 @@ export function PlanEditor({
       return;
     }
     if (tool === 'move') {
-      const hit = planItemAt(plan, p, viewOf);
-      const target = hit && planItem(plan, hit);
+      const hit = planItemAt(drawn, p, viewOf);
+      const target = hit && planItem(drawn, hit);
       if (hit && isIcon(target)) {
         setSelected(hit);
         setMoving(target.id);
@@ -477,10 +535,10 @@ export function PlanEditor({
       return;
     }
     if (tool === 'select' || tool === 'icons') {
-      const hit = planItemAt(plan, p, viewOf);
+      const hit = planItemAt(drawn, p, viewOf);
       if (hit && (e.shiftKey || (phone && tool === 'select' && selection.length > 0))) {
         // Shift (or, on a phone, a tap while something is picked) adds or takes away.
-        const group = withGroups(plan, [hit]);
+        const group = withGroups(drawn, [hit]);
         const has = selection.some((r) => r.id === hit.id);
         setSelection(
           has
@@ -492,7 +550,7 @@ export function PlanEditor({
       const picked = hit
         ? selection.some((r) => r.id === hit.id)
           ? selection
-          : withGroups(plan, [hit])
+          : withGroups(drawn, [hit])
         : [];
       if (hit && picked.length > 1) {
         setSelection(picked);
@@ -501,12 +559,12 @@ export function PlanEditor({
         gesture.current = {
           kind: 'moveMany',
           start: p,
-          items: picked.flatMap((r) => planItem(plan, r) ?? []),
+          items: picked.flatMap((r) => planItem(drawn, r) ?? []),
         };
         return;
       }
       if (hit) {
-        const target = planItem(plan, hit);
+        const target = planItem(drawn, hit);
         setSelected(hit);
         // Picked with the arrow, a camera or a light shows its lens or beam (round 6, c).
         if (tool === 'select' && !phone && isIcon(target) && iconCone(target)) setPanel('props');
@@ -655,7 +713,7 @@ export function PlanEditor({
         h: Math.abs(b.y - a.y),
       };
       if (rect.w + rect.h < 4) return;
-      const hits = withGroups(plan, itemsInRect(plan, rect, viewOf));
+      const hits = withGroups(drawn, itemsInRect(drawn, rect, viewOf));
       setSelection(
         g.add ? [...selection, ...hits.filter((h) => !selection.some((r) => r.id === h.id))] : hits,
       );
@@ -673,8 +731,14 @@ export function PlanEditor({
       change(() =>
         addStroke(
           doc,
-          plan.id,
-          { tool: 'pencil', color: ink, width: PLAN_PEN, points: encodeStroke(g.points) },
+          targetFor(activeLayer),
+          {
+            ...onLayer,
+            tool: 'pencil',
+            color: ink,
+            width: PLAN_PEN,
+            points: encodeStroke(g.points),
+          },
           LOCAL,
         ),
       );
@@ -691,8 +755,8 @@ export function PlanEditor({
     // A measure's ends that start or land on an icon stay on it (round 6, g).
     const endOn = (q: Point) => {
       if (g.shape !== 'measure') return null;
-      const hit = planItemAt(plan, q, viewOf);
-      const target = hit && planItem(plan, hit);
+      const hit = planItemAt(drawn, q, viewOf);
+      const target = hit && planItem(drawn, hit);
       return isIcon(target) ? target : null;
     };
     // Where the pointer was, not the grid point: the icon under it.
@@ -714,7 +778,14 @@ export function PlanEditor({
     };
     // A click without a drag draws nothing.
     if (Math.abs(shape.x1 - shape.x0) + Math.abs(shape.y1 - shape.y0) >= 8)
-      change(() => addShape(doc, plan.id, shape as unknown as FrameShape, LOCAL));
+      change(() =>
+        addShape(
+          doc,
+          targetFor(shape.layer ?? activeLayer),
+          { ...(shape.layer ? {} : onLayer), ...shape } as unknown as FrameShape,
+          LOCAL,
+        ),
+      );
   }
 
   const box = current ? itemBox(current) : null;
@@ -1272,9 +1343,7 @@ export function PlanEditor({
             max={900}
             value={Math.round(cone.reach)}
             onPointerDown={() => store.undo.stopCapturing()}
-            onChange={(e) =>
-              updatePlanItems(doc, plan.id, [{ ...icon, reach: Number(e.target.value) }], LOCAL)
-            }
+            onChange={(e) => writeItems([{ ...icon, reach: Number(e.target.value) }])}
           />
         )}
       </div>
@@ -1310,7 +1379,7 @@ export function PlanEditor({
         value={value}
         onPointerDown={() => store.undo.stopCapturing()}
         onPointerUp={() => store.undo.stopCapturing()}
-        onChange={(e) => updatePlanItems(doc, plan.id, [set(Number(e.target.value))], LOCAL)}
+        onChange={(e) => writeItems([set(Number(e.target.value))])}
       />
       <b className="plan-props__value">{shown}</b>
     </div>
@@ -1329,7 +1398,7 @@ export function PlanEditor({
           onChange={(e) => {
             const next = { ...icon, power: e.target.value };
             if (!e.target.value) delete (next as Partial<PlanIcon>).power;
-            updatePlanItems(doc, plan.id, [next], LOCAL);
+            writeItems([next]);
           }}
         />
       </div>
@@ -1374,7 +1443,7 @@ export function PlanEditor({
                   (next.steps as PlanStep[])[i] = edited;
                 } else if (note) next.note = note;
                 else delete next.note;
-                updatePlanItems(doc, plan.id, [next], LOCAL);
+                writeItems([next]);
               }}
             />
           </li>
@@ -1470,6 +1539,20 @@ export function PlanEditor({
       )}
       {camera}
       {blocking}
+      <div className="plan-props__row">
+        <span>{t('board.plan.layer')}</span>
+        <Select
+          value={layerOf(current)}
+          disabled={ownerOf(current.id) !== plan.id}
+          onChange={(v) => {
+            const next = { ...current, layer: v as PlanLayer };
+            if (isIcon(current) ? categoryOf(current.kind).layer === v : v === 'set')
+              delete (next as Partial<PlanIcon>).layer;
+            write(next);
+          }}
+          options={PLAN_LAYERS.map((l) => ({ value: l, label: t(`board.plan.layers.${l}`) }))}
+        />
+      </div>
       {light}
       {icon && (
         <p className="plan-props__hint">
@@ -1481,6 +1564,22 @@ export function PlanEditor({
   ) : (
     <div className="plan-props">
       <h3 className="plan-props__title">{t('board.plan.settings')}</h3>
+      {plan.variantOf && (
+        <div className="plan-props__row">
+          <span>{t('board.plan.variantField')}</span>
+          <input
+            className="plan-editor__field"
+            aria-label={t('board.plan.variantField')}
+            maxLength={60}
+            defaultValue={plan.variant ?? ''}
+            onBlur={(e) =>
+              change(() =>
+                updateElement(doc, plan.id, { variant: e.target.value.trim() || undefined }, LOCAL),
+              )
+            }
+          />
+        </div>
+      )}
       <div className="plan-props__row">
         <span>{t('board.plan.scale')}</span>
         <b>
@@ -1624,6 +1723,98 @@ export function PlanEditor({
     </>
   );
 
+  const counts = layerCounts(drawn);
+  const locked = new Set(plan.lockedLayers ?? []);
+  const toggleHidden = (layer: PlanLayer) => {
+    if (plan.variantOf) {
+      // On a variant, hiding is the variant's: for everyone, and in its exports.
+      const next = hiddenLayers.has(layer)
+        ? (plan.hiddenLayers ?? []).filter((l) => l !== layer)
+        : [...(plan.hiddenLayers ?? []), layer];
+      change(() =>
+        updateElement(doc, plan.id, { hiddenLayers: next.length ? next : undefined }, LOCAL),
+      );
+    } else
+      setMyHidden((s) => {
+        const next = new Set(s);
+        if (next.has(layer)) next.delete(layer);
+        else next.add(layer);
+        return next;
+      });
+  };
+  const toggleLocked = (layer: PlanLayer) => {
+    const next = locked.has(layer) ? [...locked].filter((l) => l !== layer) : [...locked, layer];
+    change(() =>
+      updateElement(doc, plan.id, { lockedLayers: next.length ? next : undefined }, LOCAL),
+    );
+  };
+  const layersPane = (
+    <div className="plan-layers">
+      <ul>
+        {PLAN_LAYERS.map((layer) => (
+          <li key={layer} className={activeLayer === layer ? 'is-active' : undefined}>
+            <button
+              type="button"
+              className="plan-layers__name"
+              aria-pressed={activeLayer === layer}
+              onClick={() => setActiveLayer(layer)}
+            >
+              <i className={`plan-layers__dot plan-layers__dot--${layer}`} />
+              <span className={hiddenLayers.has(layer) ? 'is-off' : undefined}>
+                {t(`board.plan.layers.${layer}`)}
+              </span>
+              <span className="plan-layers__count">{counts[layer]}</span>
+            </button>
+            <IconButton
+              icon={hiddenLayers.has(layer) ? 'eyeOff' : 'eye'}
+              label={t(hiddenLayers.has(layer) ? 'board.plan.showLayer' : 'board.plan.hideLayer', {
+                layer: t(`board.plan.layers.${layer}`),
+              })}
+              aria-pressed={hiddenLayers.has(layer)}
+              onClick={() => toggleHidden(layer)}
+            />
+            <IconButton
+              icon={locked.has(layer) ? 'lock' : 'unlock'}
+              label={t(locked.has(layer) ? 'board.plan.unlockLayer' : 'board.plan.lockLayer', {
+                layer: t(`board.plan.layers.${layer}`),
+              })}
+              aria-pressed={locked.has(layer)}
+              onClick={() => toggleLocked(layer)}
+            />
+          </li>
+        ))}
+      </ul>
+      <p className="plan-props__hint">
+        {t('board.plan.layersHint', { layer: t(`board.plan.layers.${activeLayer}`) })}
+      </p>
+    </div>
+  );
+  const layerStatus = [
+    ...[...hiddenLayers].map((l) => t(`board.plan.hiddenAs.${l}`)),
+    ...[...locked].map((l) => t(`board.plan.lockedAs.${l}`)),
+  ];
+  const variantTabs = family.length > 1 && (
+    <nav className="plan-editor__variants" aria-label={t('board.plan.variants')}>
+      {family.map((p) => {
+        const scene = scenes.find((sc) => p.sceneIds?.includes(sc.id));
+        const name = p.variantOf ? p.variant || t('board.plan.variant') : t('board.plan.base');
+        return (
+          <button
+            key={p.id}
+            type="button"
+            aria-current={p.id === plan.id ? 'page' : undefined}
+            onClick={() => p.id !== plan.id && onSwitch?.(p.id)}
+          >
+            {scene ? `${name} · ${t('needed.sceneNumber', { number: scene.number })}` : name}
+          </button>
+        );
+      })}
+      {onNewVariant && (
+        <IconButton icon="plus" label={t('board.plan.newVariant')} onClick={onNewVariant} />
+      )}
+    </nav>
+  );
+
   const stageArea = (
     <div className="plan-editor__stage-wrap">
       <div className="plan-editor__fit">
@@ -1670,6 +1861,9 @@ export function PlanEditor({
         </div>
       </div>
       {moveBar}
+      {layerStatus.length > 0 && !phone && (
+        <p className="plan-editor__status">{layerStatus.join(' · ')}</p>
+      )}
       {tool === 'scale' && (
         <p className="plan-editor__movebar plan-editor__tip">{t('board.plan.scaleHint')}</p>
       )}
@@ -1752,6 +1946,7 @@ export function PlanEditor({
               onClose={() => setPicking(null)}
             />
           )}
+          {variantTabs}
           <span className="plan-editor__spacer" />
           <Button variant="primary" onClick={onClose}>
             {t('film.pen.done')}
@@ -1762,7 +1957,7 @@ export function PlanEditor({
           {stageArea}
           <aside className="plan-editor__panel">
             <div className="plan-editor__tabs" role="tablist">
-              {(['icons', 'props'] as const).map((p) => (
+              {(['icons', 'layers', 'props'] as const).map((p) => (
                 <button
                   key={p}
                   type="button"
@@ -1774,7 +1969,7 @@ export function PlanEditor({
                 </button>
               ))}
             </div>
-            {panel === 'icons' ? library : properties}
+            {panel === 'icons' ? library : panel === 'layers' ? layersPane : properties}
           </aside>
         </div>
       </div>

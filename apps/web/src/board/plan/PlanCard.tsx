@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-import type { PlanElement } from '@inkadra/canvas-core';
+import { type PlanElement, variantView } from '@inkadra/canvas-core';
 import { Icon } from '@inkadra/ui';
 import type { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
@@ -14,7 +14,9 @@ function LinkedScenes({ scenes }: { scenes: Parameters<typeof SceneBadges>[0]['s
 }
 
 /** "Set plan · Kitchen, day 2": the header of a plan, on the board and in the editor. */
-export function planTitle(t: TFunction, plan: Pick<PlanElement, 'title'>): string {
+export function planTitle(t: TFunction, plan: Pick<PlanElement, 'title' | 'variant'>): string {
+  // A variant reads "Kitchen · Evening", as its tab does.
+  if (plan.variant) return `${plan.title || t('board.plan.name')} · ${plan.variant}`;
   return plan.title ? `${t('board.plan.name')} · ${plan.title}` : t('board.plan.name');
 }
 
@@ -25,7 +27,9 @@ export function planTitle(t: TFunction, plan: Pick<PlanElement, 'title'>): strin
 export function PlanCard({ element }: { element: PlanElement }) {
   const { t } = useTranslation();
   const { store } = useBoard();
-  const scenes = scenesOfPlan(element, store.getSnapshot().byId);
+  const byId = store.getSnapshot().byId;
+  const scenes = scenesOfPlan(element, byId);
+  const base = element.variantOf ? byId.get(element.variantOf) : undefined;
   return (
     <div className="plan">
       <div className="plan__head">
@@ -34,7 +38,7 @@ export function PlanCard({ element }: { element: PlanElement }) {
         {useInRouterContext() ? <LinkedScenes scenes={scenes} /> : <SceneBadges scenes={scenes} />}
       </div>
       <div className="plan__body card__media">
-        <PlanDrawing plan={element} />
+        <PlanDrawing plan={base?.type === 'plan' ? variantView(element, base) : element} />
       </div>
     </div>
   );

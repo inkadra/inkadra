@@ -17,6 +17,7 @@ import {
   STROKE_GRID,
 } from '@inkadra/doc-schema';
 import * as Y from 'yjs';
+import { keyAtEnd, listElements } from './board.ts';
 import { shapeHit, strokeHit } from './film.ts';
 import type { Point } from './geometry.ts';
 import { BEAM_KINDS, categoryOf, GLYPH_FACING, glyphBox, glyphOf } from './plan-icons.ts';
@@ -735,6 +736,98 @@ export function toggleGroup<T extends PlanItem>(items: readonly T[]): T[] {
     else next.group = id;
     return next;
   });
+}
+
+// Layers and variants -------------------------------------------------------------
+
+/** How many items each layer holds. */
+export function layerCounts(
+  plan: Pick<PlanElement, 'strokes' | 'shapes' | 'icons'>,
+): Record<PlanLayer, number> {
+  const out: Record<PlanLayer, number> = { set: 0, lights: 0, camera: 0, actors: 0, notes: 0 };
+  for (const { item } of planItems(plan)) out[layerOf(item)] += 1;
+  return out;
+}
+
+const notSet = <T extends PlanItem>(items: readonly T[] | undefined) =>
+  (items ?? []).filter((i) => layerOf(i) !== 'set');
+const onlySet = <T extends PlanItem>(items: readonly T[] | undefined) =>
+  (items ?? []).filter((i) => layerOf(i) === 'set');
+
+/**
+ * What a variant shows: the Set layer of its base (walls and furniture shared by all the
+ * variants) under its own lights, cameras, actors and notes (decision 0062).
+ */
+export function variantView<P extends Pick<PlanElement, 'strokes' | 'shapes' | 'icons'>>(
+  plan: P,
+  base: Pick<PlanElement, 'strokes' | 'shapes' | 'icons'> | undefined,
+): P {
+  if (!base) return plan;
+  return {
+    ...plan,
+    strokes: [...onlySet(base.strokes), ...notSet(plan.strokes)],
+    shapes: [...onlySet(base.shapes), ...notSet(plan.shapes)],
+    icons: [...onlySet(base.icons), ...notSet(plan.icons)],
+  };
+}
+
+/** A plan and its variants, the base first, then the variants oldest first. */
+export function variantFamily(
+  elements: Iterable<Element>,
+  plan: Pick<PlanElement, 'id' | 'variantOf'>,
+): PlanElement[] {
+  const baseId = plan.variantOf ?? plan.id;
+  const plans = [...elements].filter((e): e is PlanElement => e.type === 'plan');
+  const base = plans.find((p) => p.id === baseId);
+  const variants = plans
+    .filter((p) => p.variantOf === baseId)
+    .sort((a, b) => a.createdAt - b.createdAt);
+  return base ? [base, ...variants] : variants;
+}
+
+/**
+ * A new variant card next to `source`: a copy of its lights, cameras, actors and notes, the
+ * Set layer shared with `base` (the source itself when it is no variant). Returns its id.
+ */
+export function addVariant(
+  doc: Y.Doc,
+  source: PlanElement,
+  name: string,
+  opts: { userId: string | null; origin?: unknown },
+): string {
+  const baseId = source.variantOf ?? source.id;
+  const fresh = <T extends PlanItem>(items: readonly T[]) =>
+    items.map((i) => ({ ...i, id: newElementId() }));
+  const id = newElementId();
+  const z = keyAtEnd(listElements(doc), source.parent);
+  doc.transact(() => {
+    const copy = new Y.Map<unknown>();
+    const fields: Record<string, unknown> = {
+      id,
+      type: 'plan',
+      x: Math.round(source.x + source.w + 40),
+      y: source.y,
+      w: source.w,
+      z,
+      parent: source.parent,
+      createdBy: opts.userId,
+      createdAt: Date.now(),
+      variantOf: baseId,
+      variant: name,
+      ...(source.title ? { title: source.title } : {}),
+      ...(source.h ? { h: source.h } : {}),
+      ...(source.sensor ? { sensor: source.sensor } : {}),
+    };
+    for (const [k, v] of Object.entries(fields)) copy.set(k, v);
+    copy.set('strokes', Y.Array.from(fresh(notSet(source.strokes))));
+    copy.set('shapes', Y.Array.from(fresh(notSet(source.shapes))));
+    copy.set(
+      'icons',
+      Y.Array.from(fresh(notSet(source.icons)).map((i) => new Y.Map<unknown>(Object.entries(i)))),
+    );
+    roots(doc).elements.set(id, copy);
+  }, opts.origin);
+  return id;
 }
 
 // Writing to the document --------------------------------------------------------

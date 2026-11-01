@@ -3,6 +3,7 @@ import {
   type ArrowElement,
   type ArrowGeometry,
   addScene,
+  addVariant,
   alignRects,
   applyTemplate,
   arrowBox,
@@ -65,6 +66,7 @@ import {
   updateElement,
   updateElements,
   type Viewport,
+  variantFamily,
   visibleWorld,
   worldToScreen,
   zoomAt,
@@ -2438,6 +2440,23 @@ export function Canvas({
     if (!readOnly) setEditing(el.id);
   }, [planParam, takePlanParam, conn.status, snap, select, setEditing, readOnly]);
   const pickingScenes = scenePicker ? snap.byId.get(scenePicker.id) : undefined;
+  const editedBaseEl = editedPlan?.variantOf ? snap.byId.get(editedPlan.variantOf) : undefined;
+  const editedBase = editedBaseEl?.type === 'plan' ? editedBaseEl : undefined;
+  /** "Duplica come variante": a card next to the plan sharing its Set layer (round 6, h). */
+  const newVariant = useCallback(
+    (source: Extract<Element, { type: 'plan' }>, open = false) => {
+      const count = variantFamily(store.getSnapshot().byId.values(), source).length;
+      store.undo.stopCapturing();
+      const id = addVariant(doc, source, t('board.plan.variantName', { n: count + 1 }), {
+        userId,
+        origin: LOCAL,
+      });
+      store.undo.stopCapturing();
+      select([id]);
+      if (open) setEditing(id);
+    },
+    [doc, store, t, userId, select, setEditing],
+  );
   // The lenses of the frames of a plan's scenes, proposed for its cameras (round 6, c).
   const planLenses = useMemo(() => {
     const sceneIds = new Set(editedPlan?.sceneIds ?? []);
@@ -2848,6 +2867,10 @@ export function Canvas({
                     label: t('board.plan.linkSceneMenu'),
                     action: () => setScenePicker({ id: single.id, x: menu.x, y: menu.y }),
                   },
+                  {
+                    label: t('board.plan.variantMenu'),
+                    action: () => newVariant(single),
+                  },
                 ]),
             ...scenesOfPlan(single, snap.byId)
               .slice(0, 1)
@@ -2972,6 +2995,7 @@ export function Canvas({
     toggleDots,
     snap,
     openScene,
+    newVariant,
   ]);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: sizeVersion invalidates measured heights
@@ -3343,6 +3367,13 @@ export function Canvas({
             phone={isPhone}
             scenes={boardScenes}
             lenses={planLenses}
+            base={editedBase}
+            family={editedPlan ? variantFamily(snap.byId.values(), editedPlan) : []}
+            onSwitch={(id) => {
+              select([id]);
+              setEditing(id);
+            }}
+            onNewVariant={() => editedPlan && newVariant(editedPlan, true)}
             onOpenScene={openScene}
             onClose={() => setEditing(null)}
           />

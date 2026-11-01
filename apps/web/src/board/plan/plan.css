@@ -1033,3 +1033,99 @@ button.plan__badge:hover {
   justify-content: flex-end;
   gap: 8px;
 }
+
+/* Layers and variants (round 6, h). */
+.plan-layers {
+  padding: 4px 8px;
+  overflow-y: auto;
+}
+.plan-layers ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.plan-layers li {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  border-radius: var(--ink-radius-sm);
+}
+.plan-layers li.is-active {
+  background: var(--ink-surface-2);
+}
+.plan-layers__name {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 36px;
+  padding: 0 8px;
+  border: 0;
+  background: transparent;
+  color: var(--ink-text-primary);
+  font: inherit;
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+}
+.plan-layers__name .is-off {
+  color: var(--ink-text-muted);
+}
+.plan-layers__count {
+  margin-left: auto;
+  font-size: 11.5px;
+  color: var(--ink-text-muted);
+}
+.plan-layers__dot {
+  width: 10px;
+  height: 10px;
+  border-radius: var(--ink-radius-xs);
+  background: var(--ink-text-secondary);
+}
+.plan-layers__dot--lights {
+  background: var(--ink-tag-yellow);
+}
+.plan-layers__dot--camera {
+  background: var(--ink-tag-blue);
+}
+.plan-layers__dot--actors {
+  background: var(--ink-tag-purple);
+}
+.plan-layers__dot--notes {
+  background: var(--ink-tag-green);
+}
+.plan-layers .ink-iconbtn[aria-pressed="true"] {
+  color: var(--ink-accent-soft-fg);
+}
+.plan-editor__status {
+  position: absolute;
+  left: 14px;
+  bottom: 14px;
+  margin: 0;
+  font-size: 11.5px;
+  font-weight: 400;
+  color: var(--ink-text-muted);
+}
+.plan-editor__variants {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  margin-left: 8px;
+}
+.plan-editor__variants button:not(.ink-iconbtn) {
+  height: 28px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: var(--ink-radius-sm);
+  background: transparent;
+  color: var(--ink-text-secondary);
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 500;
+  cursor: pointer;
+}
+.plan-editor__variants button[aria-current="page"] {
+  background: var(--ink-surface-2);
+  color: var(--ink-text-primary);
+}

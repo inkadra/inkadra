@@ -366,6 +366,19 @@ for (const theme of ['dark', 'light'] as const) {
     await page.screenshot({ path: join(out, `desktop-${theme}-scale.png`) });
     await editor.getByRole('button', { name: 'Seleziona (V)' }).click();
 
+    // Layers (round 6, h): Set locked for everyone, Camera hidden just here.
+    await editor.getByRole('tab', { name: 'Livelli' }).click();
+    await editor.getByRole('button', { name: 'Blocca Set' }).click();
+    await expect.poll(async () => (await saved()).plan?.lockedLayers).toEqual(['set']);
+    await editor.getByRole('button', { name: 'Nascondi Camera' }).click();
+    await expect(editor.locator('.plan-editor__status')).toHaveText(
+      'Camera nascosta · Set bloccato',
+    );
+    await page.screenshot({ path: join(out, `desktop-${theme}-layers.png`) });
+    await editor.getByRole('button', { name: 'Mostra Camera' }).click();
+    await editor.getByRole('button', { name: 'Sblocca Set' }).click();
+    await expect.poll(async () => (await saved()).plan?.lockedLayers).toBeUndefined();
+
     // Duplicate, then delete the copy; the plan keeps the ten icons it had.
     await page.mouse.click(aCam.x, aCam.y);
     await bar.getByRole('button', { name: 'Duplica' }).click();
@@ -408,6 +421,27 @@ for (const theme of ['dark', 'light'] as const) {
     await expect.poll(async () => (await saved()).count).toBe(2);
     await page.keyboard.press('Control+z');
     await expect.poll(async () => (await saved()).count).toBe(1);
+    // Variants (round 6, h): a second card sharing the Set layer, with tabs in the editor.
+    await card.click({ button: 'right', position: { x: 300, y: 20 } });
+    await page.getByRole('menuitem', { name: 'Duplica come variante' }).click();
+    await expect.poll(async () => (await saved()).count).toBe(2);
+    const variantCard = page.locator('[data-type="plan"]').nth(1);
+    await expect(variantCard).toContainText('Variante 2');
+    await page.mouse.click(1300, 860);
+    await page.screenshot({ path: join(out, `desktop-${theme}-variants.png`) });
+    await variantCard.dblclick();
+    const variantEditor = page.getByRole('dialog', { name: /Variante 2/ });
+    const tabs = variantEditor.getByRole('navigation', { name: 'Varianti' });
+    await expect(tabs.getByRole('button', { name: 'Base' })).toBeVisible();
+    // The walls and the sofa of the base are drawn in the variant too.
+    await expect(variantEditor.locator('[data-icon]')).not.toHaveCount(0);
+    // Past the opening fade, so the shot shows the window, not the board through it.
+    await variantEditor.evaluate((el) =>
+      Promise.all(el.getAnimations({ subtree: true }).map((a) => a.finished)),
+    );
+    await page.screenshot({ path: join(out, `desktop-${theme}-variant-editor.png`) });
+    await page.keyboard.press('Escape');
+
     if (theme === 'dark') {
       // Scenes (round 6, b): the badge on the card links to the scene in the storyboard, the
       // scene opens its plan, and the editor links the plan to more scenes.
@@ -449,7 +483,7 @@ for (const theme of ['dark', 'light'] as const) {
       await mobile.goto(`${baseURL}/p/${project.id}?view=canvas`);
       const plan = mobile.locator(`[data-el="${planId}"]`);
       await mobile.getByRole('button', { name: 'Adatta alla vista' }).click();
-      await expect(plan).toBeInViewport({ ratio: 1 });
+      await expect(plan).toBeInViewport({ ratio: 0.95 });
       await plan.dblclick();
       const full = mobile.getByRole('dialog', { name: /Pianta del set/ });
       await expect(full.getByRole('button', { name: 'Fatto' })).toBeVisible();

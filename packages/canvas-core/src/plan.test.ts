@@ -19,6 +19,7 @@ import { addShape, addStroke } from './film.ts';
 import {
   addBlockingStep,
   addPlanIcon,
+  addVariant,
   alignItems,
   bendThrough,
   blockingCurve,
@@ -29,6 +30,7 @@ import {
   iconHit,
   iconSize,
   itemsInRect,
+  layerCounts,
   layerOf,
   lensAngle,
   measureEnds,
@@ -48,6 +50,8 @@ import {
   snapPlanPoint,
   toggleGroup,
   updatePlanItems,
+  variantFamily,
+  variantView,
   withGroups,
 } from './plan.ts';
 import { flattenPath, glyphBox, glyphOf, PLAN_CATEGORIES } from './plan-icons.ts';
@@ -413,5 +417,31 @@ describe('scale and measures', () => {
     });
     // An icon gone: its end stays.
     expect(measureEnds(measure, [cam])).toMatchObject({ x0: 100, y0: 200, x1: 1, y1: 1 });
+  });
+});
+
+describe('layers and variants', () => {
+  it('counts the items of each layer', () => {
+    const { doc, id, read } = setup();
+    addPlanIcon(doc, id, camera);
+    addPlanIcon(doc, id, { ...camera, kind: 'sofa' });
+    addStroke(doc, id, { tool: 'pencil', color: '#1C1C1E', width: 4, points: [0, 0, 9, 9] });
+    expect(layerCounts(read())).toEqual({ set: 2, lights: 0, camera: 1, actors: 0, notes: 0 });
+  });
+
+  it('makes a variant that shares the Set layer of its base', () => {
+    const { doc, id, read } = setup();
+    addPlanIcon(doc, id, { ...camera, kind: 'sofa' });
+    addPlanIcon(doc, id, { ...camera, kind: 'fresnel' });
+    const variantId = addVariant(doc, read(), 'Sera', { userId: null });
+    const all = listElements(doc);
+    const variant = all.find((e) => e.id === variantId) as PlanElement;
+    // Its own copy of the light, not of the sofa.
+    expect(variant.icons?.map((i) => i.kind)).toEqual(['fresnel']);
+    expect(variant.icons?.[0]?.id).not.toBe(read().icons?.[1]?.id);
+    expect(variant).toMatchObject({ variantOf: id, variant: 'Sera' });
+    // Seen together: the base's sofa under the variant's light.
+    expect(variantView(variant, read()).icons?.map((i) => i.kind)).toEqual(['sofa', 'fresnel']);
+    expect(variantFamily(all, variant).map((p) => p.id)).toEqual([id, variantId]);
   });
 });

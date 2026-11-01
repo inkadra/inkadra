@@ -951,7 +951,34 @@
       "lineIs": "The line you drew is",
       "metres": "metres",
       "grid": "Grid",
-      "apply": "Set"
+      "apply": "Set",
+      "showLayer": "Show {{layer}}",
+      "hideLayer": "Hide {{layer}}",
+      "lockLayer": "Lock {{layer}}",
+      "unlockLayer": "Unlock {{layer}}",
+      "layersHint": "The active layer ({{layer}}) takes new strokes and shapes; icons go to the layer of their family. What you hide here is yours alone; what you hide in a variant is for everyone.",
+      "hiddenAs": {
+        "set": "Set hidden",
+        "lights": "Lights hidden",
+        "camera": "Camera hidden",
+        "actors": "Actors hidden",
+        "notes": "Notes hidden"
+      },
+      "lockedAs": {
+        "set": "Set locked",
+        "lights": "Lights locked",
+        "camera": "Camera locked",
+        "actors": "Actors locked",
+        "notes": "Notes locked"
+      },
+      "variants": "Variants",
+      "variant": "Variant",
+      "base": "Base",
+      "newVariant": "New variant",
+      "layer": "Layer",
+      "variantMenu": "Duplicate as a variant",
+      "variantName": "Variant {{n}}",
+      "variantField": "Variant name"
     }
   },
   "tags": {
