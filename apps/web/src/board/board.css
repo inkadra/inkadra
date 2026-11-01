@@ -2066,21 +2066,111 @@ button.fcard__audio-play:focus-visible {
   transform: translateX(-50%);
   display: flex;
   align-items: center;
-  gap: 14px;
-  padding: 10px 14px;
+  gap: 6px;
+  min-height: 38px;
+  box-sizing: border-box;
+  padding: 6px 6px 6px 12px;
   border-radius: var(--ink-radius-md);
   background: var(--ink-surface-float);
   border: 1px solid var(--ink-border-default);
   box-shadow: var(--shadow-float);
-  font-size: 12px;
+  font-size: 12.5px;
+  white-space: nowrap;
+  overflow: hidden;
+}
+/* Without actions the text sits alone, padded evenly. */
+.toast:not(:has(button)) {
+  padding-right: 12px;
+}
+.toast__ok {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--ink-status-ok) 15%, transparent);
+  color: var(--ink-status-ok);
+}
+.toast__text {
+  margin-right: 6px;
 }
 .toast__action {
-  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  height: 26px;
+  padding: 0 9px;
   border: 0;
+  border-radius: var(--ink-radius-sm);
   background: transparent;
   color: var(--ink-accent-soft-fg);
+  font: inherit;
   font-weight: 500;
   cursor: pointer;
+}
+.toast__action:hover {
+  background: var(--ink-accent-soft-bg);
+}
+.toast__divider {
+  flex: none;
+  width: 1px;
+  height: 16px;
+  background: var(--ink-border-default);
+}
+.toast__close {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--ink-radius-sm);
+  background: transparent;
+  color: var(--ink-text-muted);
+  cursor: pointer;
+}
+.toast__close:hover {
+  color: var(--ink-text-primary);
+}
+/* Time left before the toast leaves: it stops with the count, on hover or focus. */
+.toast__bar {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: 2px;
+  height: 2px;
+  border-radius: var(--ink-radius-full);
+  background: var(--ink-text-muted);
+  transform-origin: left;
+  animation: toast-left linear forwards;
+}
+.toast__bar[data-held] {
+  animation-play-state: paused;
+}
+@keyframes toast-left {
+  to {
+    transform: scaleX(0);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .toast__bar {
+    display: none;
+  }
+}
+@media (width < 768px) {
+  .toast {
+    left: 10px;
+    right: 10px;
+    transform: none;
+    white-space: normal;
+  }
+  .toast__text {
+    flex: 1;
+  }
+  .toast__divider,
+  .toast__close {
+    display: none;
+  }
 }
 
 /* Header ------------------------------------------------------------------------ */
