@@ -666,7 +666,7 @@ function BoardScreen({
         projectId={projectId}
         userId={user.id}
         readOnly={!!preview || !editable}
-        onClose={() => setView(kind === 'storyboard' ? 'storyboard' : 'canvas')}
+        boardTitle={crumbs.at(-1)?.title ?? detail?.title ?? ''}
       />
     ) : preview ? (
       <Canvas
