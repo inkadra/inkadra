@@ -313,7 +313,9 @@ for (const theme of ['dark', 'light'] as const) {
       // The new storyboard is the project's first: the sidebar counts its frames now, without
       // waiting for the server to store the board.
       if (!phone)
-        await expect(shots).toHaveAttribute('data-ink-tooltip', /5 inquadrature/, { timeout: 1500 });
+        await expect(shots).toHaveAttribute('data-ink-tooltip', /5 inquadrature/, {
+          timeout: 1500,
+        });
       await capture294(page, `${theme}-${phone ? 'phone' : 'desktop'}-imported`);
       await page.locator('.toast').getByRole('button', { name: 'Annulla', exact: true }).click();
       await expect(page.locator('.card--board')).toHaveCount(before);
