@@ -64,7 +64,7 @@ import {
   zoomAt,
 } from '@inkadra/canvas-core';
 import { type Element, UNSORTED } from '@inkadra/doc-schema';
-import type { Board } from '@inkadra/shared';
+import { type Board, defaultProjectIcon } from '@inkadra/shared';
 import type { Editor } from '@tiptap/react';
 import {
   type DragEvent,
@@ -86,10 +86,11 @@ import * as Y from 'yjs';
 import { addActions, type PaletteAction, useRegisterActions } from '../commands/actions.ts';
 import { canvasActions, duplicateInStore } from '../commands/board-actions.ts';
 import { useSession } from '../lib/session.tsx';
+import { ProjectAppearanceDialog } from '../routes/ProjectAppearance.tsx';
 import { queueSeeds } from '../routes/seed-queue.tsx';
 import { accessNotices } from './access-notices.ts';
 import { ArrowLayer, ArrowStyleButtons, onArrowStyleButton } from './arrows.tsx';
-import { canRenameBoard, createBoard, setBoardCover } from './boards.ts';
+import { canRenameBoard, createBoard, setBoardCover, setBoardIcon } from './boards.ts';
 import { loadSnapToGrid, loadTidyGap, saveSnapToGrid, saveTidyGap } from './canvas-prefs.ts';
 import {
   type CanvasTemplate,
@@ -132,6 +133,7 @@ import { toggleGuestHidden } from './guest-visibility.tsx';
 import { ImageCropToolbar, restoreOriginalImage } from './ImageCropEditor.tsx';
 import { hasImageTransform } from './image-crop.ts';
 import { fillLinkPreview, webUrl } from './links.ts';
+import { useBoardCounts } from './live-counts.ts';
 import { NoteSideSheet } from './NoteSideSheet.tsx';
 import { fillFragment, isEmpty } from './note.tsx';
 import { PresenceLayer } from './PresenceLayer.tsx';
@@ -381,6 +383,8 @@ export function Canvas({
   const [drawing, setDrawing] = useState<string | null>(null);
   const [viewing, setViewing] = useState<string | null>(null);
   const [tagging, setTagging] = useState<{ x: number; y: number; ids: string[] } | null>(null);
+  /** The board whose icon and colour are being picked from a board card (#322). */
+  const [iconBoard, setIconBoard] = useState<Board | null>(null);
   const boardAspect = useBoardAspect(doc);
   const [params, setParams] = useSearchParams();
   const [overlay, setOverlayState] = useState<Overlay>(NO_OVERLAY);
@@ -2024,6 +2028,8 @@ export function Canvas({
     return labelsRef.current;
   }, [snap]);
   const largeBoard = snap.byId.size > LARGE_BOARD;
+  // Guests have no project to count in; versions show the counts of today.
+  const boardCounts = useBoardCounts(guest ? undefined : projectId, boards);
   const ctx = useMemo<BoardContextValue>(
     () => ({
       store,
@@ -2032,6 +2038,7 @@ export function Canvas({
       boardId,
       userId,
       boards,
+      boardCounts,
       scale,
       largeBoard,
       editing,
@@ -2051,6 +2058,7 @@ export function Canvas({
       boardId,
       userId,
       boards,
+      boardCounts,
       scale,
       largeBoard,
       editing,
@@ -2264,7 +2272,13 @@ export function Canvas({
       !readOnly &&
       !single.locked &&
       canRenameBoard(boards?.find((b) => b.id === single.boardId))
-        ? [{ label: t('board.menu.rename'), shortcut: 'F2', action: () => setEditing(single.id) }]
+        ? [
+            { label: t('board.menu.rename'), shortcut: 'F2', action: () => setEditing(single.id) },
+            {
+              label: t('board.menu.boardIcon'),
+              action: () => setIconBoard(boards?.find((b) => b.id === single.boardId) ?? null),
+            },
+          ]
         : []),
       ...(single?.type === 'section' && !readOnly && !single.locked
         ? [
@@ -2690,6 +2704,18 @@ export function Canvas({
               }
             />
           ))}
+        {iconBoard && (
+          <ProjectAppearanceDialog
+            project={{
+              id: iconBoard.id,
+              name: iconBoard.title,
+              icon: iconBoard.icon ?? defaultProjectIcon(iconBoard.id),
+              myRole: iconBoard.myRole,
+            }}
+            board={{ save: (icon) => setBoardIcon(projectId, iconBoard.id, icon) }}
+            onClose={() => setIconBoard(null)}
+          />
+        )}
         {tagging && (
           <TagPopover
             x={tagging.x}

@@ -30,7 +30,7 @@ export const DEFAULT_WIDTH: Record<ElementType, number> = {
   todo: 240,
   color: 120,
   column: 260,
-  board: 140,
+  board: 180,
   scene: 260,
   frame: 240,
   arrow: 1,

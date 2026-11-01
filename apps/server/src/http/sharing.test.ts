@@ -334,6 +334,22 @@ describe.skipIf(!url)('sharing, invitations, tokens and accounts (needs DATABASE
       ).toBe(200);
   });
 
+  it('stores a board icon for editors and clears it, but not for viewers', async () => {
+    const icon = { shape: 'star', color: 'orange', emoji: null };
+    const set = await call('editor', 'PATCH', `/api/v1/boards/${mood}`, { icon });
+    expect(set.status).toBe(200);
+    expect(set.body.icon).toEqual(icon);
+    expect((await call('viewer', 'PATCH', `/api/v1/boards/${mood}`, { icon: null })).status).toBe(
+      403,
+    );
+    const bad = await call('editor', 'PATCH', `/api/v1/boards/${mood}`, {
+      icon: { shape: 'blob', color: 'orange' },
+    });
+    expect(bad.status).toBe(400);
+    const cleared = await call('editor', 'PATCH', `/api/v1/boards/${mood}`, { icon: null });
+    expect(cleared.body.icon).toBeNull();
+  });
+
   it('lets editors add people but keeps role changes for owners', async () => {
     const members = `/api/v1/projects/${projectId}/members`;
     expect(

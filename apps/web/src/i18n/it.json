@@ -476,6 +476,7 @@
       "details": "Dettagli inquadratura",
       "draw": "Disegna",
       "rename": "Rinomina",
+      "boardIcon": "Icona e colore…",
       "moveCardsOn": "Sposta insieme alle card sotto",
       "moveCardsOff": "Sposta solo il titolo"
     },
@@ -2277,7 +2278,9 @@
     },
     "pasteEmoji": "Incolla o scrivi un'emoji",
     "sidebarPreview": "Così appare nella barra laterale",
-    "close": "Chiudi"
+    "close": "Chiudi",
+    "boardTitle": "Icona e colore della board",
+    "boardPreview": "Così appare nelle card della board"
   },
   "transfer": {
     "exportMenu": "Esporta progetto…",

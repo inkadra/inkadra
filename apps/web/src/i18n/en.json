@@ -476,6 +476,7 @@
       "details": "Frame details",
       "draw": "Draw",
       "rename": "Rename",
+      "boardIcon": "Icon and colour…",
       "moveCardsOn": "Move with the cards under it",
       "moveCardsOff": "Move the heading alone"
     },
@@ -2277,7 +2278,9 @@
     },
     "pasteEmoji": "Paste or type an emoji",
     "sidebarPreview": "How it looks in the sidebar",
-    "close": "Close"
+    "close": "Close",
+    "boardTitle": "Board icon and colour",
+    "boardPreview": "How it looks on board cards"
   },
   "transfer": {
     "exportMenu": "Export project…",

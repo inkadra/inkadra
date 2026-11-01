@@ -269,6 +269,7 @@ export async function exportProject(
         title: b.title,
         position: b.position,
         coverAssetId: b.coverAssetId && assetIds.has(b.coverAssetId) ? b.coverAssetId : null,
+        icon: b.icon ?? null,
         schemaVersion,
         createdBy: b.createdBy,
         createdAt: iso(b.createdAt),

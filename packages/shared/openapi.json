@@ -2847,6 +2847,57 @@
             "format": "uuid",
             "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10"
           },
+          "icon": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "shape": {
+                "type": "string",
+                "enum": [
+                  "diamond",
+                  "circle",
+                  "triangle",
+                  "square",
+                  "hexagon",
+                  "star",
+                  "pentagon",
+                  "cross",
+                  "octagon",
+                  "drop",
+                  "moon",
+                  "clapperboard"
+                ]
+              },
+              "color": {
+                "type": "string",
+                "enum": [
+                  "blue",
+                  "orange",
+                  "purple",
+                  "green",
+                  "neutral",
+                  "teal",
+                  "yellow",
+                  "red",
+                  "pink"
+                ]
+              },
+              "emoji": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "maxLength": 32
+              }
+            },
+            "required": [
+              "shape",
+              "color"
+            ],
+            "description": "Symbol or emoji and colour of the board, picked like the project ones and shown on board cards. Null or omitted = the default board icon."
+          },
           "docSchemaVersion": {
             "type": "integer",
             "minimum": 1,
@@ -2987,6 +3038,19 @@
             ],
             "format": "uuid",
             "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10"
+          },
+          "icon": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ProjectIcon"
+              },
+              {
+                "type": [
+                  "object",
+                  "null"
+                ]
+              }
+            ]
           }
         }
       },
@@ -6145,6 +6209,21 @@
             "type": "integer",
             "minimum": 0,
             "description": "Frames whose status is not `shot` yet."
+          },
+          "cardCount": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Cards other than files and boards; arrows, columns, scenes and headings excluded."
+          },
+          "fileCount": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "File cards."
+          },
+          "boardCount": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Board cards."
           }
         },
         "required": [

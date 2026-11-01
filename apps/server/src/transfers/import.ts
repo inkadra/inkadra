@@ -337,6 +337,7 @@ export async function importProject(
           title: isRoot ? meta.name : b.title,
           position: isRoot ? 'a0' : b.position,
           coverAssetId: cover ?? null,
+          icon: b.icon ?? null,
           docSchemaVersion: CURRENT_SCHEMA_VERSION,
           createdBy: personOrNull(b.createdBy),
           createdAt: new Date(b.createdAt),

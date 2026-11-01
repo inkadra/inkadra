@@ -291,10 +291,16 @@ export function ProjectAppearanceDialog({
   project,
   onClose,
   onSaved,
+  board,
 }: {
-  project: Project;
+  project: Pick<Project, 'id' | 'name' | 'icon' | 'myRole'>;
   onClose: () => void;
   onSaved?: (project: Project) => void;
+  /**
+   * Picks the icon of a board card instead (#322): saved through `save`, where null returns to
+   * the default board icon.
+   */
+  board?: { save: (icon: Appearance | null) => Promise<unknown> };
 }) {
   const { t } = useTranslation();
   const [icon, setIcon] = useState<Appearance>({ ...project.icon });
@@ -321,13 +327,16 @@ export function ProjectAppearanceDialog({
     (payload.shape !== project.icon.shape ||
       payload.color !== project.icon.color ||
       (payload.emoji ?? null) !== (project.icon.emoji ?? null));
-  async function save() {
-    if (!allowed || !valid || busy) return;
+  async function save(reset = false) {
+    if (!allowed || (!valid && !reset) || busy) return;
     setBusy(true);
     setError(false);
     try {
-      const updated = await updateProjectAppearance(project.id, payload);
-      onSaved?.(updated);
+      if (board) await board.save(reset ? null : payload);
+      else {
+        const updated = await updateProjectAppearance(project.id, payload);
+        onSaved?.(updated);
+      }
       onClose();
     } catch {
       setError(true);
@@ -342,7 +351,7 @@ export function ProjectAppearanceDialog({
         ref={dialog}
         open
         dirty={dirty}
-        title={t('appearance.title')}
+        title={t(board ? 'appearance.boardTitle' : 'appearance.title')}
         onClose={onClose}
         onCancel={(event) => {
           if (busy) event.preventDefault();
@@ -380,7 +389,7 @@ export function ProjectAppearanceDialog({
             </div>
             <div className="project-appearance__name">
               <strong>{project.name}</strong>
-              <small>{t('appearance.sidebarPreview')}</small>
+              <small>{t(board ? 'appearance.boardPreview' : 'appearance.sidebarPreview')}</small>
             </div>
           </div>
           <div
@@ -559,6 +568,10 @@ export function ProjectAppearanceDialog({
               className="project-appearance__reset"
               disabled={disabled}
               onClick={() => {
+                if (board) {
+                  void save(true);
+                  return;
+                }
                 setIcon(defaultProjectIcon(project.id));
                 setTyped('');
                 setTab('symbol');

@@ -58,6 +58,7 @@ export function toBoard(row: typeof board.$inferSelect, myRole: ProjectRole): Bo
     title: row.title,
     position: row.position,
     coverAssetId: row.coverAssetId,
+    icon: row.icon ?? null,
     docSchemaVersion: row.docSchemaVersion,
     createdAt: iso(row.createdAt),
     updatedAt: iso(row.updatedAt),
@@ -342,6 +343,7 @@ export function registerBoardRoutes(app: FastifyInstance, deps: Deps) {
     const set: Partial<typeof board.$inferInsert> = {};
     if (patch.title !== undefined) set.title = patch.title;
     if (patch.position !== undefined) set.position = patch.position;
+    if (patch.icon !== undefined) set.icon = patch.icon;
     if (patch.coverAssetId !== undefined) {
       if (patch.coverAssetId !== null) {
         const [cover] = await db

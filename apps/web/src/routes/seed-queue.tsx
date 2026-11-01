@@ -61,9 +61,7 @@ export function useSeededCounts(): ReadonlyMap<string, SeededCounts> {
 }
 
 const sameCounts = (a: SeededCounts, b: SeededCounts) =>
-  a.elementCount === b.elementCount &&
-  a.frameCount === b.frameCount &&
-  a.framesToShoot === b.framesToShoot;
+  (Object.keys(b) as (keyof SeededCounts)[]).every((key) => a[key] === b[key]);
 
 /**
  * Counts of the board open in a Canvas, taken from its synced doc: imports, grabbed frames and

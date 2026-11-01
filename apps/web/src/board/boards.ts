@@ -1,4 +1,4 @@
-import type { Board, BoardDetail, BoardKind } from '@inkadra/shared';
+import type { Board, BoardDetail, BoardKind, UpdateBoard } from '@inkadra/shared';
 import { useEffect, useState, useSyncExternalStore } from 'react';
 import { api } from '../lib/api.ts';
 
@@ -84,8 +84,17 @@ export async function renameBoard(projectId: string, boardId: string, title: str
 }
 
 /** The image the home and project cards show for this board; null returns to the first image. */
-export async function setBoardCover(projectId: string, boardId: string, assetId: string | null) {
-  const board = await api.patch<Board>(`/boards/${boardId}`, { coverAssetId: assetId });
+export function setBoardCover(projectId: string, boardId: string, assetId: string | null) {
+  return updateBoard(projectId, boardId, { coverAssetId: assetId });
+}
+
+/** The symbol or emoji and colour of a board's cards; null returns to the default icon. */
+export function setBoardIcon(projectId: string, boardId: string, icon: Board['icon']) {
+  return updateBoard(projectId, boardId, { icon: icon ?? null });
+}
+
+async function updateBoard(projectId: string, boardId: string, patch: UpdateBoard) {
+  const board = await api.patch<Board>(`/boards/${boardId}`, patch);
   const current = cache.get(projectId)?.items ?? [];
   cache.set(projectId, {
     items: current.map((b) => (b.id === boardId ? board : b)),

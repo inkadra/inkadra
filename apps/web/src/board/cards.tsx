@@ -7,7 +7,7 @@ import {
   updateTodoItem,
 } from '@inkadra/canvas-core';
 import { CARD_COLORS, type ContentCounts, contentCounts, type Element } from '@inkadra/doc-schema';
-import { Checkbox, fadeOutCopy, Icon } from '@inkadra/ui';
+import { Checkbox, fadeOutCopy, Icon, ProjectGlyph } from '@inkadra/ui';
 import type { TFunction } from 'i18next';
 import {
   type CSSProperties,
@@ -705,43 +705,68 @@ function ColorCard({ element, editing }: { element: Of<'color'>; editing: boolea
 }
 
 function BoardCard({ element, editing }: { element: Of<'board'>; editing: boolean }) {
-  const { boards, projectId, setEditing, readOnly } = useBoard();
+  const { boards, boardCounts, projectId, setEditing, readOnly } = useBoard();
   const { t } = useTranslation();
   const board = boards?.find((b) => b.id === element.boardId);
   const title = board?.title ?? t('board.board.unknown');
+  const counts = boardCounts?.get(element.boardId);
+  const icon = board?.icon;
+  // The board's own symbol on a tile of its colour, as the project appearance shows it (#322).
+  const tile =
+    icon && !icon.emoji && icon.color !== 'neutral'
+      ? ({ '--board-bg': `var(--ink-tag-${icon.color}-bg)` } as CSSProperties)
+      : undefined;
   return (
     <div className="card__board">
-      <span className="card__board-tile" aria-hidden="true">
-        <Icon
-          name={board?.kind === 'storyboard' ? 'storyboard' : 'board'}
-          contentKind={board?.kind ?? 'board'}
-          size={22}
-        />
+      <span className="card__board-tile" style={tile} aria-hidden="true">
+        {icon ? (
+          <ProjectGlyph {...icon} />
+        ) : (
+          <Icon
+            name={board?.kind === 'storyboard' ? 'storyboard' : 'board'}
+            contentKind={board?.kind ?? 'board'}
+            size={20}
+          />
+        )}
       </span>
-      {editing && board && !readOnly && !element.locked && canRenameBoard(board) ? (
-        <input
-          className="card__inline-input card__title"
-          defaultValue={board.title}
-          // biome-ignore lint/a11y/noAutofocus: the field opens because the user asked to rename
-          autoFocus
-          onFocus={(e) => e.currentTarget.select()}
-          onBlur={(e) => {
-            const value = e.target.value.trim();
-            setEditing(null);
-            if (value && value !== board.title)
-              void renameBoard(projectId, board.id, value).catch(() => {});
-          }}
-          // Escape leaves the field keeping what was typed, like every other card field: a new
-          // board is named by typing and pressing Escape.
-          onKeyDown={blurOnEnter}
-          maxLength={200}
-          aria-label={t('board.board.title')}
-        />
-      ) : (
-        <span className="card__title">{title}</span>
-      )}
-      <span className="card__desc">
-        {board?.kind === 'storyboard' ? t('board.types.storyboard') : t('board.types.board')}
+      <span className="card__board-text">
+        {editing && board && !readOnly && !element.locked && canRenameBoard(board) ? (
+          <input
+            className="card__inline-input card__title"
+            defaultValue={board.title}
+            // biome-ignore lint/a11y/noAutofocus: the field opens because the user asked to rename
+            autoFocus
+            onFocus={(e) => e.currentTarget.select()}
+            onBlur={(e) => {
+              const value = e.target.value.trim();
+              setEditing(null);
+              if (value && value !== board.title)
+                void renameBoard(projectId, board.id, value).catch(() => {});
+            }}
+            // Escape leaves the field keeping what was typed, like every other card field: a new
+            // board is named by typing and pressing Escape.
+            onKeyDown={blurOnEnter}
+            maxLength={200}
+            aria-label={t('board.board.title')}
+          />
+        ) : (
+          <span className="card__title">{title}</span>
+        )}
+        <span className="card__desc">
+          {/* A storyboard keeps its kind before the count: "Storyboard · 12 cards". */}
+          {[
+            (board?.kind === 'storyboard' || !counts) &&
+              t(board?.kind === 'storyboard' ? 'board.types.storyboard' : 'board.types.board'),
+            counts &&
+              contentSummary(t, {
+                cardCount: counts.cardCount ?? counts.elementCount,
+                fileCount: counts.fileCount ?? 0,
+                boardCount: counts.boardCount ?? 0,
+              }),
+          ]
+            .filter(Boolean)
+            .join(' · ')}
+        </span>
       </span>
     </div>
   );

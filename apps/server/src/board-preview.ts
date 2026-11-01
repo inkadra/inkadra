@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { FrameShape, roots, Stroke } from '@inkadra/doc-schema';
+import { contentCounts, FrameShape, roots, Stroke } from '@inkadra/doc-schema';
 import type { BoardCount, BoardPreview } from '@inkadra/shared';
 import * as Y from 'yjs';
 
@@ -96,24 +96,22 @@ export function projectPreview(state?: Uint8Array): BoardPreview {
 
 const counts = new Map<string, Omit<BoardCount, 'boardId'>>();
 
-/** Elements and storyboard frames of a stored document, for the navigation counts. */
+/** Elements, storyboard frames and content of a stored document, for the navigation counts. */
 export function boardCounts(state?: Uint8Array): Omit<BoardCount, 'boardId'> {
-  const empty = { elementCount: 0, frameCount: 0, framesToShoot: 0 };
+  const empty = contentCounts([]);
   if (!state) return empty;
   const key = createHash('sha256').update(state).digest('hex');
   const cached = counts.get(key);
   if (cached) return { ...cached };
   const doc = new Y.Doc();
-  const result = { ...empty };
+  let result = empty;
   try {
     Y.applyUpdate(doc, state);
-    for (const el of roots(doc).elements.values()) {
-      if (!(el instanceof Y.Map)) continue;
-      result.elementCount++;
-      if (el.get('type') !== 'frame') continue;
-      result.frameCount++;
-      if (el.get('status') !== 'shot') result.framesToShoot++;
-    }
+    result = contentCounts(
+      [...roots(doc).elements.values()]
+        .filter((el) => el instanceof Y.Map)
+        .map((el) => ({ type: el.get('type'), status: el.get('status') })),
+    );
   } catch {
     return empty;
   } finally {

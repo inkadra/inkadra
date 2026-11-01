@@ -1,5 +1,14 @@
-import { useEffect, useSyncExternalStore } from 'react';
-import { releaseLiveCounts, setLiveCounts } from '../routes/seed-queue.tsx';
+import { contentCounts } from '@inkadra/doc-schema';
+import type { Board, BoardCount } from '@inkadra/shared';
+import { useEffect, useMemo, useState, useSyncExternalStore } from 'react';
+import { api } from '../lib/api.ts';
+import {
+  forgetSeededCounts,
+  mergeSeededCounts,
+  releaseLiveCounts,
+  setLiveCounts,
+  useSeededCounts,
+} from '../routes/seed-queue.tsx';
 import type { BoardConnection } from './connection.ts';
 
 /**
@@ -19,16 +28,50 @@ export function useLiveBoardCounts(
   );
   useEffect(() => {
     if (!snap || !synced || !boardId) return;
-    const counts = { elementCount: 0, frameCount: 0, framesToShoot: 0 };
-    for (const el of snap.byId.values()) {
-      counts.elementCount++;
-      if (el.type !== 'frame') continue;
-      counts.frameCount++;
-      if (el.status !== 'shot') counts.framesToShoot++;
-    }
-    setLiveCounts(boardId, counts);
+    setLiveCounts(boardId, contentCounts(snap.byId.values()));
   }, [snap, synced, boardId]);
   useEffect(() => {
     if (boardId) return () => releaseLiveCounts(boardId);
   }, [boardId]);
+}
+
+/**
+ * Counts of the open project's boards, for the navigation and the board cards; refreshed when
+ * its boards change.
+ */
+export function useBoardCounts(
+  projectId: string | undefined,
+  boards: readonly Board[] | null | undefined,
+): Map<string, BoardCount> {
+  const [counts, setCounts] = useState<Map<string, BoardCount>>(new Map());
+  // Any board edit moves its editedAt, so the newest one tells when to count again.
+  const stamp = boards
+    ?.map((b) => b.editedAt ?? '')
+    .sort()
+    .at(-1);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: stamp is the refresh signal.
+  useEffect(() => {
+    if (!projectId) {
+      setCounts(new Map());
+      return;
+    }
+    let live = true;
+    api
+      .get<{ items: BoardCount[] }>(`/projects/${projectId}/board-counts`)
+      .then((r) => {
+        if (!live) return;
+        const next = new Map(r.items.map((c) => [c.boardId, c]));
+        setCounts(next);
+        forgetSeededCounts(next);
+      })
+      .catch(() => {
+        // Counts are a hint; the navigation works without them.
+      });
+    return () => {
+      live = false;
+    };
+  }, [projectId, stamp, boards?.length]);
+  // Boards laid out in the background (the Canvas menu) are counted as soon as they are seeded.
+  const seeded = useSeededCounts();
+  return useMemo(() => mergeSeededCounts(counts, seeded), [counts, seeded]);
 }

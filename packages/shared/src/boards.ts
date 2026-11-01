@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MPL-2.0
 import { FractionalIndex, Id, Timestamp, z } from './common.ts';
 import { CLIP_BOARD_HISTORY_LIMIT } from './constants.ts';
-import { ProjectRole } from './projects.ts';
+import { ProjectIcon, ProjectRole } from './projects.ts';
 
 export const BoardKind = z.enum(['board', 'storyboard']);
 export type BoardKind = z.infer<typeof BoardKind>;
@@ -15,6 +15,13 @@ export const Board = z
     title: z.string().min(1).max(200),
     position: FractionalIndex,
     coverAssetId: Id.nullable(),
+    icon: ProjectIcon.nullable()
+      .optional()
+      .openapi({
+        description:
+          'Symbol or emoji and colour of the board, picked like the project ones and shown on ' +
+          'board cards. Null or omitted = the default board icon.',
+      }),
     docSchemaVersion: z.int().min(1).openapi({
       description:
         'Version of the Yjs document schema (@inkadra/doc-schema) stored for this board.',
@@ -51,6 +58,7 @@ export const UpdateBoard = z
     parentBoardId: Id,
     position: FractionalIndex,
     coverAssetId: Id.nullable(),
+    icon: ProjectIcon.nullable(),
   })
   .partial()
   .openapi('UpdateBoard');
@@ -98,6 +106,12 @@ export const BoardCount = z
       .int()
       .nonnegative()
       .openapi({ description: 'Frames whose status is not `shot` yet.' }),
+    cardCount: z.int().nonnegative().optional().openapi({
+      description:
+        'Cards other than files and boards; arrows, columns, scenes and headings excluded.',
+    }),
+    fileCount: z.int().nonnegative().optional().openapi({ description: 'File cards.' }),
+    boardCount: z.int().nonnegative().optional().openapi({ description: 'Board cards.' }),
   })
   .openapi('BoardCount');
 export type BoardCount = z.infer<typeof BoardCount>;
