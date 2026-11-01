@@ -867,6 +867,27 @@ export const notificationPreference = pgTable('notification_preference', {
  * Personal preferences (#302, decision 0055): one JSON record per account, read through
  * `readUserPreferences` so fields a newer or older server wrote never break it.
  */
+export const releaseAnnouncement = pgTable('release_announcement', {
+  version: text('version').primaryKey(),
+  createdAt: createdAt(),
+  completedAt: timestamp('completed_at', { withTimezone: true }),
+});
+
+export const releaseDelivery = pgTable(
+  'release_delivery',
+  {
+    version: text('version')
+      .notNull()
+      .references(() => releaseAnnouncement.version),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => user.id, { onDelete: 'cascade' }),
+    // A durable claim before SMTP avoids duplicates after an ambiguous delivery/crash.
+    attemptedAt: timestamp('attempted_at', { withTimezone: true }),
+  },
+  (t) => [primaryKey({ columns: [t.version, t.userId] })],
+);
+
 export const userPreference = pgTable('user_preference', {
   userId: uuid('user_id')
     .primaryKey()

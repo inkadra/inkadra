@@ -3,6 +3,13 @@
  * The web app has its own catalogues; emails are rendered on the server, so they live here.
  */
 const it = {
+  releaseSubject: (version: string) => `Novità di Inkadra ${version}`,
+  releaseIntro: (version: string) =>
+    `La tua istanza è stata aggiornata a Inkadra ${version}. Scopri le novità di questa versione.`,
+  releaseConsent:
+    'Ricevi questa email perché hai attivato Novità di Inkadra nelle impostazioni Notifiche. Puoi disattivarla lì in qualsiasi momento.',
+  releaseAction: 'Leggi le note di rilascio',
+
   securitySubjects: {
     password: 'Password modificata',
     twoFactor: 'Autenticazione a due fattori disabilitata',
@@ -91,6 +98,13 @@ const it = {
 type Texts = typeof it;
 
 const en: Texts = {
+  releaseSubject: (version) => `Inkadra ${version} news`,
+  releaseIntro: (version) =>
+    `Your instance was updated to Inkadra ${version}. Discover what is new in this release.`,
+  releaseConsent:
+    'You receive this email because you enabled Inkadra news in Notifications settings. You can turn it off there at any time.',
+  releaseAction: 'Read release notes',
+
   securitySubjects: {
     password: 'Password changed',
     twoFactor: 'Two-factor authentication disabled',

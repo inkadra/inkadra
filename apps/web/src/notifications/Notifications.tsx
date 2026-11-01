@@ -1,3 +1,4 @@
+import { updatePreferences, usePreferences } from '../lib/preferences.ts';
 // SPDX-License-Identifier: AGPL-3.0-only
 
 import {
@@ -719,7 +720,12 @@ export function NotificationList({
 
 /** Settings → Account: how often notifications arrive by email. */
 /** The notification matrix (#302): Inbox and email per event, then what else to send. */
-export function EmailNotifications() {
+export function EmailNotifications({
+  releaseNewsAvailable = false,
+}: {
+  releaseNewsAvailable?: boolean;
+}) {
+  const personal = usePreferences();
   const { t } = useTranslation();
   const [prefs, setPrefs] = useState<Required<NotificationPreferences> | null>(null);
   const [loadError, setLoadError] = useState(false);
@@ -835,6 +841,22 @@ export function EmailNotifications() {
               }
             />
           </Row>
+          {releaseNewsAvailable && (
+            <Row
+              label={t('settingsUi.notifications.releaseNews')}
+              help={t('settingsUi.notifications.releaseNewsHelp')}
+            >
+              <Switch
+                aria-label={t('settingsUi.notifications.releaseNews')}
+                checked={personal.releaseNews}
+                onChange={(e) =>
+                  void trackSave(updatePreferences({ releaseNews: e.target.checked })).catch(
+                    () => {},
+                  )
+                }
+              />
+            </Row>
+          )}
         </div>
       </Card>
     </>

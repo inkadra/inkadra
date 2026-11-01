@@ -2188,7 +2188,10 @@
       "reviewHelp": "Approvata o modifiche richieste",
       "always": "Sempre",
       "alwaysNote": "Grigio = sempre attivo nella Inbox.",
-      "sendMe": "Inviami"
+      "sendMe": "Inviami",
+      "releaseNews": "Novità di Inkadra",
+      "releaseNewsHelp": "Solo se l’istanza le invia",
+      "releaseNewsAdminHelp": "Consenti alle persone di ricevere le novità dopo un aggiornamento. Richiede SMTP e il consenso personale."
     },
     "members": {
       "invite": "Invita membri",

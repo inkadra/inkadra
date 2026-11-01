@@ -4,6 +4,7 @@ import { InstanceRole } from './users.ts';
 
 export const InstanceSettings = z
   .object({
+    releaseNews: z.boolean().default(true),
     name: z.string().trim().min(1).max(120),
     registration: z.enum(['open', 'invite', 'closed']),
     requireAdminTwoFactor: z.boolean().openapi({
@@ -25,6 +26,7 @@ export type InstanceSettings = z.infer<typeof InstanceSettings>;
 export const UpdateInstanceSettings = InstanceSettings.partial()
   // A PATCH omission must preserve the stored policy, not apply its read-time default.
   .extend({
+    releaseNews: z.boolean().optional(),
     requireAdminTwoFactor: z.boolean().optional(),
     membersCanCreateProjects: z.boolean().optional(),
   })

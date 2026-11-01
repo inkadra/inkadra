@@ -3,7 +3,9 @@
 **/.turbo
 .git
 .github
-docs
+docs/*
+!docs/releases
+!docs/releases/**
 deploy
 scripts
 e2e/test-results
