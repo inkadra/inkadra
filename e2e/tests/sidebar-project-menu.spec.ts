@@ -56,7 +56,8 @@ test('the sidebar of a project without boards or storyboard, and Add storyboard 
   const project = await setup(page, origin);
   const sidebar = page.locator('.ink-shell > .ink-sidebar');
   const openSidebar = () => expect(sidebar).toBeVisible();
-  const film = sidebar.getByRole('link', { name: 'Storyboard', exact: true });
+  // The row carries the frame count after its name.
+  const film = sidebar.getByRole('link', { name: /^Storyboard\b/ });
   const review = sidebar.getByRole('link', { name: 'Revisione', exact: true });
 
   // No boards, no storyboard: the Board heading has a quiet New board row, and no film links.
@@ -132,6 +133,8 @@ test.describe('on a phone', () => {
     await shoot(page, 'phone-project-menu');
     await page.getByRole('menuitem', { name: 'Aggiungi storyboard…' }).click();
     await expect(page).toHaveURL(new RegExp(`/p/${project.id}/b/`));
+    // The drawer closes on the new board, as it does for a link.
+    await expect(drawer).toBeHidden();
     await nav.getByRole('button', { name: 'Progetti', exact: true }).click();
     await expect(drawer.getByRole('link', { name: 'Revisione', exact: true })).toBeVisible();
     await shoot(page, 'phone-with-storyboard');

@@ -463,7 +463,10 @@ export function AppLayout({ home }: { home?: ReactNode }) {
       <ProjectNavItem
         project={p}
         onDropProject={onDropProject}
-        extra={addStoryboardItem(p, t, user.id, navigate)}
+        extra={addStoryboardItem(p, t, user.id, (to) => {
+          setDrawerOpen(false);
+          navigate(to);
+        })}
         active={p.id === projectId && !boardId && !filmView}
         onClick={go(`/p/${p.id}`)}
       />
