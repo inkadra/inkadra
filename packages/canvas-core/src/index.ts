@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: MPL-2.0
+export * from './arrange.ts';
 export * from './arrows.ts';
 export * from './board.ts';
 export * from './column.ts';

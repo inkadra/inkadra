@@ -30,6 +30,7 @@ export type Command =
   | { kind: 'nudge'; dx: number; dy: number }
   | { kind: 'zoom'; to: 'in' | 'out' | 'reset' | 'fit' | 'selection' }
   | { kind: 'snap' }
+  | { kind: 'tidy' }
   | { kind: 'help' };
 
 export interface KeyInput {
@@ -87,6 +88,8 @@ export function commandFor(e: KeyInput, mac = isMac()): Command | null {
     case '?':
       return { kind: 'help' };
   }
+  // Shift+T tidies the selection into a mosaic (#320).
+  if (e.shiftKey && key === 't') return { kind: 'tidy' };
   if (e.shiftKey) return null;
   switch (key) {
     case 'F2':

@@ -1,8 +1,10 @@
 import {
+  type Alignment,
   type Point,
   type Rect,
   TEMPLATE_IDS,
   type TemplateId,
+  type TidyGap,
   type Viewport,
 } from '@inkadra/canvas-core';
 import type { Element } from '@inkadra/doc-schema';
@@ -364,7 +366,9 @@ export function ContextBar({
   elements,
   editor,
   readOnly,
-  onAlign,
+  onArrange,
+  gap,
+  onGap,
   onGroup,
   onLock,
   onGuestHidden,
@@ -381,7 +385,10 @@ export function ContextBar({
   elements: Element[];
   editor: Editor | null;
   readOnly: boolean;
-  onAlign: (how: 'left' | 'center' | 'right' | 'top' | 'middle' | 'bottom' | 'distribute') => void;
+  onArrange: (how: ArrangeCommand) => void;
+  /** Gap of the tidy-up commands, remembered per person. */
+  gap: TidyGap;
+  onGap: (gap: TidyGap) => void;
   onGroup: () => void;
   onLock: () => void;
   onGuestHidden: () => void;
@@ -492,29 +499,7 @@ export function ContextBar({
       {free.length > 1 && (
         <>
           <span className="ctxbar__count">{t('board.selected', { count: elements.length })}</span>
-          <BarButton
-            icon="alignLeft"
-            label={t('board.align.left')}
-            onClick={() => onAlign('left')}
-          />
-          <BarButton
-            icon="alignCenter"
-            label={t('board.align.center')}
-            onClick={() => onAlign('center')}
-          />
-          <BarButton icon="alignTop" label={t('board.align.top')} onClick={() => onAlign('top')} />
-          <BarButton
-            icon="alignMiddle"
-            label={t('board.align.middle')}
-            onClick={() => onAlign('middle')}
-          />
-          {free.length > 2 && (
-            <BarButton
-              icon="distribute"
-              label={t('board.align.distribute')}
-              onClick={() => onAlign('distribute')}
-            />
-          )}
+          <ArrangeButton count={free.length} gap={gap} onGap={onGap} onArrange={onArrange} />
           <BarButton icon="column" label={t('board.align.group')} onClick={onGroup} />
           <span className="ctxbar__sep" aria-hidden="true" />
         </>
@@ -561,6 +546,168 @@ export function ContextBar({
         <Icon name="more" size={14} />
       </button>
     </div>
+  );
+}
+
+/** What the Arrange menu does to the selection (#320). */
+export type ArrangeCommand = Alignment | 'distributeX' | 'distributeY' | 'mosaic' | 'rows';
+
+const ALIGN_ITEMS: Array<{ how: Alignment; icon: IconName }> = [
+  { how: 'left', icon: 'alignLeft' },
+  { how: 'center', icon: 'alignCenter' },
+  { how: 'right', icon: 'alignRight' },
+  { how: 'top', icon: 'alignTop' },
+  { how: 'middle', icon: 'alignMiddle' },
+  { how: 'bottom', icon: 'alignBottom' },
+];
+const GAPS: TidyGap[] = ['s', 'm', 'l'];
+
+/**
+ * The selection bar's Arrange button and its menu: align, distribute and tidy up into a mosaic
+ * or rows with a gap of S, M or L. The menu sits beside the bar, which scrolls on phones.
+ */
+function ArrangeButton({
+  count,
+  gap,
+  onGap,
+  onArrange,
+}: {
+  count: number;
+  gap: TidyGap;
+  onGap: (gap: TidyGap) => void;
+  onArrange: (how: ArrangeCommand) => void;
+}) {
+  const { t } = useTranslation();
+  const [open, setOpen] = useState(false);
+  const button = useRef<HTMLButtonElement>(null);
+  const menu = useRef<HTMLDivElement>(null);
+  const label = t('board.arrange.label');
+  // Under the button, or above the bar when there is no room below; inside the board.
+  useLayoutEffect(() => {
+    const el = menu.current;
+    const btn = button.current;
+    const bar = btn?.parentElement;
+    const room = el?.offsetParent as HTMLElement | null;
+    if (!el || !btn || !bar || !room) return;
+    const left = bar.offsetLeft + btn.offsetLeft - bar.scrollLeft;
+    el.style.left = `${Math.max(8, Math.min(left, room.clientWidth - el.offsetWidth - 8))}px`;
+    const below = bar.offsetTop + bar.offsetHeight + 6;
+    el.style.top = `${
+      below + el.offsetHeight > room.clientHeight - 8
+        ? Math.max(8, bar.offsetTop - el.offsetHeight - 6)
+        : below
+    }px`;
+  });
+  useEffect(() => {
+    if (!open) return;
+    menu.current?.querySelector<HTMLElement>('[role="menuitem"]')?.focus();
+    const away = (e: PointerEvent) => {
+      const target = e.target as Node;
+      if (menu.current?.contains(target) || button.current?.contains(target)) return;
+      setOpen(false);
+    };
+    document.addEventListener('pointerdown', away, true);
+    return () => document.removeEventListener('pointerdown', away, true);
+  }, [open]);
+  const run = (how: ArrangeCommand) => {
+    setOpen(false);
+    onArrange(how);
+  };
+  const item = (how: ArrangeCommand, icon: IconName, text: string, shortcut?: string) => (
+    <button
+      key={how}
+      type="button"
+      role="menuitem"
+      className="menu__item"
+      onMouseDown={(e) => e.preventDefault()}
+      onClick={() => run(how)}
+    >
+      <Icon name={icon} size={14} />
+      {text}
+      {shortcut && <span className="menu__key">{shortcut}</span>}
+    </button>
+  );
+  return (
+    <>
+      <button
+        ref={button}
+        type="button"
+        className={`ctxbar__btn${open ? ' is-active' : ''}`}
+        aria-label={label}
+        data-ink-tooltip={label}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        onMouseDown={(e) => e.preventDefault()}
+        onClick={() => setOpen((o) => !o)}
+      >
+        <Icon name="arrange" size={14} />
+      </button>
+      {open &&
+        createPortal(
+          <div
+            ref={menu}
+            className="menu arrange-menu"
+            role="menu"
+            aria-label={label}
+            data-chrome
+            onKeyDown={(e) => {
+              if (e.key === 'Escape') {
+                e.preventDefault();
+                e.stopPropagation();
+                setOpen(false);
+                button.current?.focus();
+              }
+              if (['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(e.key)) {
+                // The keys move through the menu, not the selected cards.
+                e.preventDefault();
+                e.stopPropagation();
+                const all = [
+                  ...(menu.current?.querySelectorAll<HTMLElement>(
+                    '[role="menuitem"], [role="menuitemradio"]',
+                  ) ?? []),
+                ];
+                const i = all.indexOf(document.activeElement as HTMLElement);
+                const next =
+                  e.key === 'Home'
+                    ? 0
+                    : e.key === 'End'
+                      ? all.length - 1
+                      : (i + (e.key === 'ArrowDown' ? 1 : -1) + all.length) % all.length;
+                all[next]?.focus();
+              }
+            }}
+          >
+            {ALIGN_ITEMS.map(({ how, icon }) => item(how, icon, t(`board.align.${how}`)))}
+            {count > 2 && (
+              <>
+                {item('distributeX', 'distribute', t('board.arrange.distributeX'))}
+                {item('distributeY', 'distributeVertical', t('board.arrange.distributeY'))}
+              </>
+            )}
+            <hr className="menu__divider" />
+            {item('mosaic', 'mosaic', t('board.arrange.mosaic'), '⇧T')}
+            {item('rows', 'rows', t('board.arrange.rows'))}
+            <fieldset className="arrange-menu__gap" aria-label={t('board.arrange.gap')}>
+              <span aria-hidden="true">{t('board.arrange.gap')}</span>
+              {GAPS.map((g) => (
+                <button
+                  key={g}
+                  type="button"
+                  role="menuitemradio"
+                  aria-checked={gap === g}
+                  aria-label={t(`board.arrange.gaps.${g}`)}
+                  className="arrange-menu__chip"
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={() => onGap(g)}
+                >
+                  {g.toUpperCase()}
+                </button>
+              ))}
+            </fieldset>
+          </div>,
+          button.current?.closest('.canvas') ?? document.body,
+        )}
+    </>
   );
 }
 
@@ -941,8 +1088,11 @@ export function CommandPalette({
   onUndo,
   onRedo,
   onToggleUnsorted,
+  extra = [],
 }: {
   readOnly: boolean;
+  /** Commands of the board itself: snap to grid, arranging the selection. */
+  extra?: PaletteAction[];
   onClose: () => void;
   onAdd: (type: ToolType) => void;
   onTemplate: (id: TemplateId) => void;
@@ -970,6 +1120,7 @@ export function CommandPalette({
           label: t('board.palette.template', { name: t(`templates.${id}.name`) }),
           run: () => onTemplate(id),
         }))),
+    ...(readOnly ? [] : extra),
     { id: 'fit', label: t('board.zoom.fit'), hint: '⇧1', run: () => onZoom('fit') },
     {
       id: 'selection',

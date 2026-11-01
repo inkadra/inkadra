@@ -107,12 +107,15 @@ export function alignRects(rects: Rect[], how: Alignment): Array<{ x: number; y:
   });
 }
 
-/** Spreads rects so the gaps between them are equal, along the axis they span the most. */
-export function distributeRects(rects: Rect[]): Array<{ x: number; y: number }> {
+/**
+ * Spreads rects so the gaps between them are equal along `axis` (x: horizontally), or along the
+ * axis they span the most when it is omitted.
+ */
+export function distributeRects(rects: Rect[], axis?: 'x' | 'y'): Array<{ x: number; y: number }> {
   if (rects.length < 3) return rects.map((r) => ({ x: r.x, y: r.y }));
   const spanX = Math.max(...rects.map((r) => r.x + r.w)) - Math.min(...rects.map((r) => r.x));
   const spanY = Math.max(...rects.map((r) => r.y + r.h)) - Math.min(...rects.map((r) => r.y));
-  const horizontal = spanX >= spanY;
+  const horizontal = axis ? axis === 'x' : spanX >= spanY;
   const order = rects
     .map((r, i) => ({ r, i }))
     .sort((a, b) => (horizontal ? a.r.x - b.r.x : a.r.y - b.r.y));

@@ -430,6 +430,19 @@
       "distribute": "Distribuisci",
       "group": "Raggruppa in colonna"
     },
+    "arrange": {
+      "label": "Disponi",
+      "distributeX": "Distribuisci in orizzontale",
+      "distributeY": "Distribuisci in verticale",
+      "mosaic": "Metti in ordine a mosaico",
+      "rows": "Metti in ordine a righe",
+      "gap": "Spazio",
+      "gaps": {
+        "s": "Spazio piccolo",
+        "m": "Spazio medio",
+        "l": "Spazio grande"
+      }
+    },
     "menu": {
       "playLink": "Riproduci {{title}}",
       "refreshPreviewFailed": "Impossibile aggiornare l’anteprima. Riprova più tardi.",

@@ -430,6 +430,19 @@
       "distribute": "Distribute",
       "group": "Group in a column"
     },
+    "arrange": {
+      "label": "Arrange",
+      "distributeX": "Distribute horizontally",
+      "distributeY": "Distribute vertically",
+      "mosaic": "Tidy into mosaic",
+      "rows": "Tidy into rows",
+      "gap": "Gap",
+      "gaps": {
+        "s": "Small gap",
+        "m": "Medium gap",
+        "l": "Large gap"
+      }
+    },
     "menu": {
       "playLink": "Play {{title}}",
       "refreshPreviewFailed": "Could not refresh preview. Please try again later.",

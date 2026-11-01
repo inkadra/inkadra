@@ -1,5 +1,5 @@
 import {
-  type Alignment,
+  type ArrangeItem,
   type ArrowElement,
   type ArrowGeometry,
   addScene,
@@ -48,9 +48,14 @@ import {
   snapPoint,
   snapResize,
   snap as snapToGrid,
+  stackColumns,
   storyboardOf,
   TEMPLATE_IDS,
   type TemplateId,
+  TIDY_GAPS,
+  type TidyGap,
+  tidyMosaic,
+  tidyRows,
   updateElement,
   updateElements,
   type Viewport,
@@ -78,14 +83,14 @@ import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router';
 import * as Y from 'yjs';
-import { addActions, useRegisterActions } from '../commands/actions.ts';
+import { addActions, type PaletteAction, useRegisterActions } from '../commands/actions.ts';
 import { canvasActions, duplicateInStore } from '../commands/board-actions.ts';
 import { useSession } from '../lib/session.tsx';
 import { queueSeeds } from '../routes/seed-queue.tsx';
 import { accessNotices } from './access-notices.ts';
 import { ArrowLayer, ArrowStyleButtons, onArrowStyleButton } from './arrows.tsx';
 import { canRenameBoard, createBoard, setBoardCover } from './boards.ts';
-import { loadSnapToGrid, saveSnapToGrid } from './canvas-prefs.ts';
+import { loadSnapToGrid, loadTidyGap, saveSnapToGrid, saveTidyGap } from './canvas-prefs.ts';
 import {
   type CanvasTemplate,
   createCanvasBoards,
@@ -93,6 +98,7 @@ import {
 } from './canvas-templates.ts';
 import { Card } from './cards.tsx';
 import {
+  type ArrangeCommand,
   BarButton,
   type CanvasTool,
   CommandPalette,
@@ -826,6 +832,33 @@ export function Canvas({
   }, [readOnly, selection, store, userId, select]);
 
   const onlySelected = selection.size === 1 ? [...selection][0] : undefined;
+  /** Cards the Arrange commands can move: on the canvas, unlocked, not arrows. */
+  const arrangeable = [...selection].filter((id) => {
+    const el = snap.byId.get(id);
+    return el && el.parent === null && !el.locked && el.type !== 'arrow';
+  }).length;
+  const arrangeActions = (): PaletteAction[] => {
+    if (arrangeable < 2) return [];
+    const action = (how: ArrangeCommand, label: string, hint?: string): PaletteAction => ({
+      id: `arrange-${how}`,
+      label,
+      hint,
+      run: () => arrange(how),
+    });
+    return [
+      action('mosaic', t('board.arrange.mosaic'), '⇧T'),
+      action('rows', t('board.arrange.rows')),
+      ...(['left', 'center', 'right', 'top', 'middle', 'bottom'] as const).map((how) =>
+        action(how, t(`board.align.${how}`)),
+      ),
+      ...(arrangeable > 2
+        ? [
+            action('distributeX', t('board.arrange.distributeX')),
+            action('distributeY', t('board.arrange.distributeY')),
+          ]
+        : []),
+    ];
+  };
   useRegisterActions(
     canvasActions({
       readOnly,
@@ -845,7 +878,10 @@ export function Canvas({
       store,
       t,
       duplicateHint: `${isMac() ? '⌘' : 'Ctrl+'}D`,
-      extra: [{ id: 'snap-to-grid', label: t('board.snap.palette'), hint: 'G', run: toggleMagnet }],
+      extra: [
+        { id: 'snap-to-grid', label: t('board.snap.palette'), hint: 'G', run: toggleMagnet },
+        ...arrangeActions(),
+      ],
     }),
   );
 
@@ -860,33 +896,153 @@ export function Canvas({
     );
   }, [readOnly, selection, snap, doc]);
 
-  const align = useCallback(
-    (how: Alignment | 'distribute') => {
+  const [tidyGap, setTidyGapState] = useState<TidyGap>(() => loadTidyGap(userId));
+  const setTidyGap = useCallback(
+    (gap: TidyGap) => {
+      setTidyGapState(gap);
+      saveTidyGap(userId, gap);
+    },
+    [userId],
+  );
+  /**
+   * A mosaic just made: notes reflow at their new width, so their columns are stacked again as
+   * their real heights arrive, for a moment, in the same undo step.
+   */
+  const pendingTidy = useRef<{
+    groups: string[][];
+    top: number;
+    gap: number;
+    until: number;
+  } | null>(null);
+
+  /** How a card's height follows a new width when the selection is tidied up. */
+  const arrangeItem = useCallback(
+    (el: Element): ArrangeItem => {
+      const rect = store.rectOf(el);
+      const media = rootRef.current
+        ?.querySelector<HTMLElement>(`.card[data-el="${CSS.escape(el.id)}"]`)
+        ?.querySelector<HTMLElement>('.card__media')?.offsetHeight;
+      // Images keep the ratio of their picture, a caption under it does not scale.
+      if (el.type === 'image' || el.type === 'frame')
+        return { ...rect, fit: 'ratio', fixed: media ? Math.max(0, rect.h - media) : 0 };
+      return { ...rect, fit: el.h !== undefined || el.type === 'color' ? 'ratio' : 'content' };
+    },
+    [store],
+  );
+
+  /** Align, distribute or tidy up the selected cards on the canvas; one undo step each. */
+  const arrange = useCallback(
+    (how: ArrangeCommand) => {
+      if (readOnly) return;
       const els = [...selection]
         .map((id) => snap.byId.get(id))
         .filter((e): e is Element => !!e && e.parent === null && !e.locked && e.type !== 'arrow');
+      if (els.length < 2) return;
       const rects = els.map((e) => store.rectOf(e));
-      const next = how === 'distribute' ? distributeRects(rects) : alignRects(rects, how);
+      let next: Rect[];
+      pendingTidy.current = null;
+      if (how === 'mosaic' || how === 'rows') {
+        const bounds = boundsOf(rects);
+        if (!bounds) return;
+        // With the magnet on, the tidied block starts on the grid.
+        const origin = magnetRef.current ? snapPoint(bounds, GRID) : { x: bounds.x, y: bounds.y };
+        const gap = TIDY_GAPS[tidyGap];
+        const items = els.map(arrangeItem);
+        const tidy =
+          how === 'mosaic' ? tidyMosaic(items, gap, { origin }) : tidyRows(items, gap, { origin });
+        next = tidy.rects;
+        if (how === 'mosaic')
+          pendingTidy.current = {
+            groups: tidy.groups.map((g) => g.flatMap((i) => (els[i] ? [els[i].id] : []))),
+            top: origin.y,
+            gap,
+            until: performance.now() + 1000,
+          };
+      } else {
+        const moved =
+          how === 'distributeX' || how === 'distributeY'
+            ? distributeRects(rects, how === 'distributeX' ? 'x' : 'y')
+            : alignRects(rects, how);
+        next = rects.map((r, i) => ({ ...r, x: moved[i]?.x ?? r.x, y: moved[i]?.y ?? r.y }));
+      }
+      const placed = new Map(els.map((e, i) => [e.id, next[i] ?? rects[i]] as const));
+      store.undo.stopCapturing();
       doc.transact(() => {
         updateElements(
           doc,
-          els.map((e, i) => ({
-            id: e.id,
-            patch: { x: Math.round(next[i]?.x ?? e.x), y: Math.round(next[i]?.y ?? e.y) },
-          })),
+          els.map((e, i) => {
+            const r = next[i] ?? rects[i];
+            const patch: Record<string, number> = {
+              x: Math.round(r?.x ?? e.x),
+              y: Math.round(r?.y ?? e.y),
+            };
+            // Tidying resizes: the width always, the height only where it is set, else it
+            // follows the content (an image's picture, a note's text).
+            if (r && r.w !== e.w) patch.w = Math.round(r.w);
+            if (r && e.h !== undefined && e.type !== 'link') patch.h = Math.round(r.h);
+            return { id: e.id, patch };
+          }),
           LOCAL,
         );
+        // The store updates after this transaction; attached arrows need the new rects now.
         refreshArrows(
           doc,
           arrowsOf(),
           els.map((e) => e.id),
-          cardRect,
+          (id) => placed.get(id) ?? cardRect(id),
           LOCAL,
         );
       }, LOCAL);
+      if (!pendingTidy.current) store.undo.stopCapturing();
     },
-    [selection, snap, store, doc, arrowsOf, cardRect],
+    [readOnly, selection, snap, store, doc, arrowsOf, cardRect, tidyGap, arrangeItem],
   );
+
+  // A mosaic's notes measured at their new width: stack their columns again with the same gap.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: only new measured heights restack the mosaic
+  useEffect(() => {
+    const plan = pendingTidy.current;
+    if (!plan) return;
+    if (performance.now() > plan.until) {
+      pendingTidy.current = null;
+      store.undo.stopCapturing();
+      return;
+    }
+    const { byId } = store.getSnapshot();
+    const ids = plan.groups.flat();
+    const els = ids.map((id) => byId.get(id));
+    if (els.some((e) => !e || e.parent !== null)) {
+      pendingTidy.current = null;
+      return;
+    }
+    const index = new Map(ids.map((id, i) => [id, i]));
+    const tops = stackColumns(
+      plan.groups.map((g) => g.map((id) => index.get(id) ?? 0)),
+      els.map((e) => (e ? store.heightOf(e) : 0)),
+      plan.top,
+      plan.gap,
+    );
+    const placed = new Map<string, Rect>();
+    const changes = els.flatMap((e, i) => {
+      const y = tops[i];
+      if (!e || y === undefined || !Number.isFinite(y) || y === e.y) return [];
+      placed.set(e.id, { ...store.rectOf(e), y });
+      return [{ id: e.id, patch: { y } }];
+    });
+    if (changes.length === 0) return;
+    doc.transact(() => {
+      updateElements(doc, changes, LOCAL);
+      refreshArrows(doc, arrowsOf(), ids, (id) => placed.get(id) ?? cardRect(id), LOCAL);
+    }, LOCAL);
+  }, [sizeVersion]);
+  // Undoing the mosaic must not be stacked into it again.
+  useEffect(() => {
+    const stop = () => {
+      pendingTidy.current = null;
+    };
+    store.undo.on('stack-item-popped', stop);
+    return () => store.undo.off('stack-item-popped', stop);
+  }, [store]);
 
   const groupIntoColumn = useCallback(() => {
     const els = [...selection]
@@ -1089,6 +1245,8 @@ export function Canvas({
   }
 
   function onPointerDown(e: ReactPointerEvent<HTMLDivElement>) {
+    // A hand on the board ends the restacking of a mosaic just made.
+    pendingTidy.current = null;
     if (touchDown(e)) return;
     if (e.button === 2) return;
     const target = e.target as HTMLElement;
@@ -1684,6 +1842,10 @@ export function Canvas({
       case 'zoom':
         zoomTo(cmd.to);
         break;
+      case 'tidy':
+        if (readOnly) return;
+        arrange('mosaic');
+        break;
       case 'snap':
         if (readOnly) return;
         toggleMagnet();
@@ -2137,6 +2299,18 @@ export function Canvas({
               label: t('board.menu.toUnsorted'),
               action: () => moveToUnsorted(doc, [...selection], LOCAL),
             },
+            // Arrange (#320): the tidy-ups; the selection bar's Arrange menu has them all.
+            ...(arrangeable > 1
+              ? [
+                  {
+                    toolbar: true,
+                    label: t('board.arrange.mosaic'),
+                    shortcut: '⇧T',
+                    action: () => arrange('mosaic'),
+                  },
+                  { toolbar: true, label: t('board.arrange.rows'), action: () => arrange('rows') },
+                ]
+              : []),
             ...(menu.fromToolbar ? [] : [{ divider: true as const }]),
             {
               toolbar: true,
@@ -2169,6 +2343,8 @@ export function Canvas({
     doc,
     setEditing,
     onExportSelection,
+    arrangeable,
+    arrange,
   ]);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: sizeVersion invalidates measured heights
@@ -2377,7 +2553,9 @@ export function Canvas({
                   ? openComments.bind(null, { elementId: selectedEls[0].id })
                   : undefined
               }
-              onAlign={align}
+              onArrange={arrange}
+              gap={tidyGap}
+              onGap={setTidyGap}
               onGroup={groupIntoColumn}
               onLock={toggleLock}
               onGuestHidden={() => toggleGuestHidden(store, [...selection])}
@@ -2643,6 +2821,10 @@ export function Canvas({
         {palette && (
           <CommandPalette
             readOnly={readOnly}
+            extra={[
+              { id: 'snap-to-grid', label: t('board.snap.palette'), hint: 'G', run: toggleMagnet },
+              ...arrangeActions(),
+            ]}
             onClose={() => setPalette(false)}
             onAdd={(type) => void add(type)}
             onTemplate={(id) => void addTemplate(id)}
