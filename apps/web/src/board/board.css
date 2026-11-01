@@ -587,7 +587,7 @@
   background: var(--ink-tag-green-bg);
   color: var(--ink-tag-green);
 }
-/* Audio mini player: round play, a flat bar to scrub (waveform with #327), time chip. */
+/* Audio mini player: round play, the waveform to scrub (a flat bar without it), time chip. */
 .fcard__player {
   position: absolute;
   inset: 0;
@@ -607,6 +607,29 @@
 .fcard__scrub:focus-visible {
   outline: 2px solid var(--ink-accent-primary);
   outline-offset: 2px;
+}
+.fcard__scrub--wave {
+  top: calc(50% - 30px);
+  height: 44px;
+}
+.fcard__wave {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  width: 100%;
+  height: 100%;
+}
+/* Played bars full, the rest dimmed: only their opacity changes as the sound plays. */
+.fcard__wave i {
+  flex: 1;
+  min-width: 2px;
+  border-radius: var(--ink-radius-full);
+  background: var(--ink-tag-green);
+  opacity: 0.35;
+  transition: opacity var(--ink-dur-fast) var(--ink-ease-out);
+}
+.fcard__wave i.is-played {
+  opacity: 0.85;
 }
 .fcard__scrub-track {
   position: relative;
@@ -661,6 +684,10 @@ button.fcard__audio-play:focus-visible {
   .fcard__bar i.is-indeterminate,
   .fcard--processing .fcard__tile {
     animation: none;
+  }
+  .fcard__wave i,
+  .fcard__scrub-knob {
+    transition: none;
   }
 }
 
@@ -1586,6 +1613,47 @@ button.fcard__audio-play:focus-visible {
   border: 1px solid var(--ink-border-strong);
   box-shadow: var(--shadow-float);
   font-size: 12px;
+}
+/* Voice note (#327): a pill above the tool bar while the microphone records. */
+.voicenote {
+  position: absolute;
+  left: 50%;
+  bottom: 88px;
+  translate: -50% 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 6px 6px 14px;
+  border-radius: var(--ink-radius-full);
+  background: var(--ink-surface-float);
+  border: 1px solid var(--ink-border-strong);
+  box-shadow: var(--shadow-float);
+  font-size: 13px;
+  white-space: nowrap;
+  animation: voicenote-in var(--ink-dur-base) var(--ink-ease-out);
+}
+.voicenote__dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--ink-danger-fg);
+  animation: fcard-pulse 0.8s var(--ink-ease-in) infinite alternate;
+}
+.voicenote__time {
+  color: var(--ink-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+@keyframes voicenote-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .voicenote,
+  .voicenote__dot {
+    animation: none;
+  }
 }
 .uploads__row {
   display: flex;

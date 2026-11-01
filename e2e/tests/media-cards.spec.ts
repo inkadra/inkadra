@@ -147,12 +147,14 @@ function png(width: number, height: number): Buffer {
   ]);
 }
 
-/** Half a second of a 440 Hz tone, 8 kHz mono WAV. */
-function wav(): Buffer {
-  const samples = 4000;
+/** `seconds` of a 440 Hz tone, 8 kHz mono WAV, swelling and fading every 2 s. */
+function wav(seconds = 0.5): Buffer {
+  const samples = Math.round(seconds * 8000);
   const data = Buffer.alloc(samples * 2);
-  for (let i = 0; i < samples; i++)
-    data.writeInt16LE(Math.round(Math.sin((2 * Math.PI * 440 * i) / 8000) * 8000), i * 2);
+  for (let i = 0; i < samples; i++) {
+    const swell = 0.25 + 0.75 * Math.abs(Math.sin((Math.PI * i) / 16000));
+    data.writeInt16LE(Math.round(Math.sin((2 * Math.PI * 440 * i) / 8000) * 8000 * swell), i * 2);
+  }
   const head = Buffer.alloc(44);
   head.write('RIFF', 0);
   head.writeUInt32LE(36 + data.length, 4);
@@ -268,4 +270,126 @@ test('one card per file type, as in the approved mockup', async ({ page, baseURL
     }, theme);
     await page.screenshot({ path: join(dir, `file-cards-${theme}.png`), animations: 'disabled' });
   }
+});
+
+test('audio cards show their waveform, play one at a time, and voice notes record', async ({
+  page,
+  baseURL,
+}) => {
+  test.setTimeout(120_000);
+  const base = baseURL as string;
+  const files = [
+    { name: 'tema-principale.wav', type: 'audio/wav', body: wav(20) },
+    { name: 'nota-regista.wav', type: 'audio/wav', body: wav(20) },
+  ];
+  const ids: string[] = [];
+  for (const file of files) {
+    const id = await uploadFile(base, cookie, projectId, file);
+    if (!id) throw new Error(`upload of ${file.name} failed`);
+    ids.push(id);
+  }
+  await waitForAssets(base, cookie, ids);
+  const res = await fetch(`${base}/api/v1/projects/${projectId}/boards`, {
+    method: 'POST',
+    headers: { cookie, 'content-type': 'application/json', origin: base },
+    body: JSON.stringify({ title: 'Suoni', kind: 'board', parentBoardId: rootBoardId }),
+  });
+  if (!res.ok) throw new Error(`board: ${res.status} ${await res.text()}`);
+  const boardId = ((await res.json()) as { id: string }).id;
+  const doc = new Y.Doc();
+  initBoardDoc(doc, boardId);
+  ids.forEach((assetId, i) => {
+    createElement(doc, 'file', { x: 40 + i * 290, y: 40 }, { w: 260, assetId }, { userId: null });
+  });
+  await pushBoardDoc(base, cookie, boardId, doc);
+
+  // The microphone of the voice note: a Web Audio tone instead of a device.
+  await page.addInitScript(() => {
+    navigator.mediaDevices.getUserMedia = async () => {
+      const ctx = new AudioContext();
+      await ctx.resume();
+      const tone = ctx.createOscillator();
+      const out = ctx.createMediaStreamDestination();
+      tone.connect(out);
+      tone.start();
+      return out.stream;
+    };
+  });
+  await signInPage(page);
+  await page.goto(`/p/${projectId}/b/${boardId}`);
+  await expect(page.getByRole('status').getByText('Sincronizzato')).toBeVisible();
+  const first = page.locator('[data-type="file"]', { hasText: 'tema-principale' });
+  const second = page.locator('[data-type="file"]', { hasText: 'nota-regista' });
+  const play = (card: typeof first) => card.locator('button.fcard__audio-play');
+
+  // The waveform the worker read, with the duration in the meta line.
+  await expect(first.locator('.fcard__wave i').first()).toBeVisible({ timeout: 30_000 });
+  await expect(second.locator('.fcard__wave i').first()).toBeVisible();
+  await expect(first.locator('.fcard__meta')).toContainText('0:20');
+
+  // One sound at a time across the board.
+  await play(first).click();
+  await expect(play(first)).toHaveAttribute('aria-pressed', 'true');
+  await play(second).click();
+  await expect(play(second)).toHaveAttribute('aria-pressed', 'true');
+  await expect(play(first)).toHaveAttribute('aria-pressed', 'false');
+  await expect(second.locator('.fcard__wave i.is-played').first()).toBeVisible();
+
+  // Space toggles the focused card instead of panning the board.
+  await second.locator('.fcard__scrub').focus();
+  await page.keyboard.press('Space');
+  await expect(play(second)).toHaveAttribute('aria-pressed', 'false');
+  await page.keyboard.press('Space');
+  await expect(play(second)).toHaveAttribute('aria-pressed', 'true');
+  await page.keyboard.press('Space');
+
+  // Screenshots for the pull request, only when asked for (light and dark, desktop and phone).
+  const shots = process.env.AUDIO_CARD_SCREENSHOTS;
+  const theme = (t: 'dark' | 'light') =>
+    page.evaluate((value) => {
+      document.documentElement.dataset.theme = value;
+    }, t);
+  const sizes = { desktop: { width: 1440, height: 900 }, phone: { width: 390, height: 844 } };
+  if (shots) {
+    mkdirSync(shots, { recursive: true });
+    for (const [device, size] of Object.entries(sizes)) {
+      await page.setViewportSize(size);
+      await page.getByRole('button', { name: 'Adatta alla vista' }).first().click();
+      await expect(play(first)).toBeInViewport();
+      for (const t of ['dark', 'light'] as const) {
+        await theme(t);
+        await page.screenshot({ path: join(shots, `audio-idle-${device}-${t}.png`) });
+        await play(first).click();
+        await page.waitForTimeout(1500);
+        await page.screenshot({ path: join(shots, `audio-playing-${device}-${t}.png`) });
+        await play(first).click();
+      }
+    }
+    await page.setViewportSize(sizes.desktop);
+    await theme('dark');
+  }
+
+  // A voice note from the + menu becomes an audio card.
+  await page.locator('.toolbar__btn--canvas').click();
+  await page.getByRole('menuitem', { name: 'Nota vocale' }).click();
+  const pill = page.locator('.voicenote');
+  await expect(pill).toContainText('Registrazione');
+  await expect(pill.locator('.voicenote__time')).toHaveText('0:01', { timeout: 5000 });
+  if (shots) {
+    for (const [device, size] of Object.entries(sizes)) {
+      await page.setViewportSize(size);
+      for (const t of ['dark', 'light'] as const) {
+        await theme(t);
+        await page.screenshot({ path: join(shots, `voice-note-${device}-${t}.png`) });
+      }
+    }
+    await page.setViewportSize(sizes.desktop);
+    await theme('dark');
+  }
+  await pill.getByRole('button', { name: 'Salva' }).click();
+  await expect(pill).toBeHidden();
+  const note = page.locator('[data-type="file"]', { hasText: 'nota-vocale-' });
+  await expect(note).toHaveCount(1, { timeout: 30_000 });
+  await expect(note.locator('.fbadge')).toHaveClass(/fbadge--audio/);
+  await expect(note.locator('button.fcard__audio-play')).toBeVisible({ timeout: 30_000 });
 });

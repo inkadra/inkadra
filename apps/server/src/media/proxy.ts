@@ -19,6 +19,7 @@ import {
   proxyMaxBytes,
   proxyPlan,
   proxyTimeoutMs,
+  sniffAudio,
   sniffVideo,
 } from './video.ts';
 
@@ -40,8 +41,9 @@ const setProxy = (
 ) => db.update(asset).set(fields).where(eq(asset.id, assetId));
 
 /**
- * Makes the playable H.264/AAC MP4 of a video (decision 0048) and stores it as the `proxy`
- * variant, at `variants/<assetId>/proxy.mp4`. Queued by `processAsset` once the poster is
+ * Makes the playable H.264/AAC MP4 of a video (decision 0048), or the AAC M4A of an audio file
+ * browsers do not all play (#327), and stores it as the `proxy` variant, at
+ * `variants/<assetId>/proxy.mp4`. Queued by `processAsset` once the poster is
  * there, so a long transcode never holds thumbnails back. Safe to run twice: a copy already
  * made is kept, since originals never change. `onProgress` gets the percent done.
  */
@@ -53,7 +55,7 @@ export async function runProxy(
   const { db, storage } = deps;
   const settings = deps.proxies ?? DEFAULT_PROXY_SETTINGS;
   const [row] = await db.select().from(asset).where(eq(asset.id, assetId));
-  if (row?.kind !== 'video') {
+  if (row?.kind !== 'video' && row?.kind !== 'audio') {
     // An earlier attempt may have written the file just as the asset was deleted.
     if (!row) await storage.remove([proxyKey(assetId)]);
     return { skipped: 'gone' as const };
@@ -73,7 +75,7 @@ export async function runProxy(
   }
 
   const head = await readAll(await storage.read(row.storageKey, { start: 0, end: 255 }));
-  const container = sniffVideo(head);
+  const container = row.kind === 'audio' ? sniffAudio(head) : sniffVideo(head);
   if (!container) {
     await setProxy(db, assetId, { proxyStatus: null, proxyProgress: null });
     return { skipped: 'not-video' as const };
@@ -119,7 +121,8 @@ async function transcode(
   let written = 0;
   let shown = 0;
   let writing: Promise<unknown> = Promise.resolve();
-  const encoder = copiesVideo(info, settings) ? null : (settings.encoder ?? SOFTWARE_ENCODER);
+  const encoder =
+    copiesVideo(info, settings) || !info.videoCodec ? null : (settings.encoder ?? SOFTWARE_ENCODER);
   // A GPU that cannot take this file never fails the copy: when it decoded the source, it is
   // tried again decoding on the CPU (a codec or profile the card does not decode), then with
   // libx264 (an encoder that refuses it, a busy device). Not after a timeout, though.
@@ -173,10 +176,14 @@ async function transcode(
   });
   await writing;
 
-  const result = await probeVideo(ffprobe, out, 'video/mp4');
+  const result = await probeVideo(ffprobe, out, info.videoCodec ? 'video/mp4' : 'audio/mp4');
   const bytes = (await stat(out)).size;
   const key = proxyKey(assetId);
-  await storage.writeStream(key, createReadStream(out), 'video/mp4');
+  await storage.writeStream(
+    key,
+    createReadStream(out),
+    info.videoCodec ? 'video/mp4' : 'audio/mp4',
+  );
   try {
     await saveProxy(db, row, info, result, key, bytes);
   } catch (err) {
@@ -248,7 +255,7 @@ async function saveProxy(
       width: result.width ?? info.width ?? 0,
       height: result.height ?? info.height ?? 0,
       storageKey: key,
-      mime: 'video/mp4',
+      mime: info.videoCodec ? 'video/mp4' : 'audio/mp4',
       bytes,
     });
     await tx

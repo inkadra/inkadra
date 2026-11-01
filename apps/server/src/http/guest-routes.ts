@@ -53,7 +53,13 @@ import {
 } from '../share-links.ts';
 import { animatedVariantKey, type Storage } from '../storage.ts';
 import { iso } from './api-routes.ts';
-import { contentDisposition, fileHeaders, isThumbnail, parseRange } from './assets-routes.ts';
+import {
+  contentDisposition,
+  fileHeaders,
+  isThumbnail,
+  parseRange,
+  sendWaveform,
+} from './assets-routes.ts';
 import { toHeaders } from './auth-routes.ts';
 import { HttpError } from './errors.ts';
 import {
@@ -240,9 +246,13 @@ export async function registerGuestRoutes(app: FastifyInstance, deps: Deps) {
     };
   }
 
-  /** The ready audio file of a storyboard animatic of the link (decision 0046). */
+  /**
+   * A ready audio file guests may play inline: the sound track of a storyboard animatic of the
+   * link (decision 0046), or the audio card of a board they see (#327).
+   */
   function streamable(ctx: GuestContext, row: { id: string; kind: string; status: string }) {
-    return ctx.assets.audio.has(row.id) && row.kind === 'audio' && row.status === 'ready';
+    const reachable = ctx.assets.audio.has(row.id) || ctx.assets.shown.has(row.id);
+    return reachable && row.kind === 'audio' && row.status === 'ready';
   }
 
   async function guestAssets(ctx: GuestContext, ids: string[]): Promise<GuestAsset[]> {
@@ -282,6 +292,12 @@ export async function registerGuestRoutes(app: FastifyInstance, deps: Deps) {
             : [],
         downloadUrl: download ? `${assetPath(ctx.link.id, row.id)}/file` : null,
         streamUrl: streamable(ctx, row) ? `${assetPath(ctx.link.id, row.id)}/stream` : null,
+        waveformUrl:
+          row.status === 'ready' &&
+          ctx.assets.shown.has(row.id) &&
+          variants.some((v) => v.assetId === row.id && v.size === 'waveform')
+            ? `${assetPath(ctx.link.id, row.id)}/waveform`
+            : null,
       }));
   }
 
@@ -692,30 +708,54 @@ export async function registerGuestRoutes(app: FastifyInstance, deps: Deps) {
 
     // The sound track of a storyboard animatic: played inline whatever `allowDownload` says,
     // never as an attachment nor with its name (decision 0046).
+    // Audio cards (#327) stream the same way, as their AAC copy when the worker made one: that
+    // copy exists only when browsers do not all play the original.
     scope.get(v1('/guest/links/:linkId/assets/:assetId/stream'), async (req, reply) => {
       const { linkId, assetId } = AssetParams.parse(req.params);
       const ctx = await guests.requireGuest(req, reply, linkId);
-      if (!ctx.assets.audio.has(assetId)) throw new HttpError('not_found', 'Asset not found.');
+      if (!ctx.assets.audio.has(assetId) && !ctx.assets.shown.has(assetId))
+        throw new HttpError('not_found', 'Asset not found.');
       const row = await projectAsset(ctx, assetId);
       if (!streamable(ctx, row)) throw new HttpError('not_found', 'Asset not found.');
+      const [copy] =
+        row.proxyStatus === 'ready'
+          ? await db
+              .select()
+              .from(assetVariant)
+              .where(and(eq(assetVariant.assetId, assetId), eq(assetVariant.size, 'proxy')))
+          : [];
+      const key = copy?.storageKey ?? row.storageKey;
+      const size = copy ? (copy.bytes ?? (await storage.size(copy.storageKey)) ?? 0) : row.size;
       guestFileHeaders(reply, row.sha256 ?? row.id);
       reply.header('cache-control', 'private, no-store');
-      reply.header('content-type', row.mime.startsWith('audio/') ? row.mime : 'audio/mpeg');
+      reply.header(
+        'content-type',
+        copy ? 'audio/mp4' : row.mime.startsWith('audio/') ? row.mime : 'audio/mpeg',
+      );
       reply.header('content-disposition', 'inline');
       reply.header('accept-ranges', 'bytes');
-      const range = parseRange(req.headers.range, row.size);
+      const range = parseRange(req.headers.range, size);
       if (range === undefined) {
-        reply.header('content-range', `bytes */${row.size}`);
+        reply.header('content-range', `bytes */${size}`);
         return reply.status(416).send();
       }
       if (range) {
         reply.status(206);
-        reply.header('content-range', `bytes ${range.start}-${range.end}/${row.size}`);
+        reply.header('content-range', `bytes ${range.start}-${range.end}/${size}`);
         reply.header('content-length', range.end - range.start + 1);
-        return reply.send(await storage.read(row.storageKey, range));
+        return reply.send(await storage.read(key, range));
       }
-      reply.header('content-length', row.size);
-      return reply.send(await storage.read(row.storageKey));
+      reply.header('content-length', size);
+      return reply.send(await storage.read(key));
+    });
+
+    scope.get(v1('/guest/links/:linkId/assets/:assetId/waveform'), async (req, reply) => {
+      const { linkId, assetId } = AssetParams.parse(req.params);
+      const ctx = await guests.requireGuest(req, reply, linkId);
+      if (!ctx.assets.shown.has(assetId)) throw new HttpError('not_found', 'Asset not found.');
+      if ((await projectAsset(ctx, assetId)).status !== 'ready')
+        throw new HttpError('not_found', 'Asset not found.');
+      return sendWaveform(db, storage, req, reply, assetId, guestFileHeaders);
     });
 
     scope.put(

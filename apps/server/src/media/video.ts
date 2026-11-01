@@ -18,7 +18,8 @@ export { type MediaTools, mediaTools, resetMediaTools } from './tools.ts';
  * protocol.
  */
 const FORMATS = 'mov,mp4,m4a,3gp,3g2,mj2,matroska,webm,avi,mpeg,mpegts,mxf';
-const SAFE_INPUT = ['-protocol_whitelist', 'file', '-format_whitelist', FORMATS];
+/** The same for audio files (#327): only the demuxers of the formats audio cards take. */
+const AUDIO_FORMATS = 'mov,mp4,m4a,3gp,3g2,mj2,matroska,webm,mp3,wav,aac,ogg,flac,aiff,caf';
 
 /**
  * Input options of an untrusted video whose sniffed type is `container`. QuickTime and MP4 also
@@ -27,8 +28,15 @@ const SAFE_INPUT = ['-protocol_whitelist', 'file', '-format_whitelist', FORMATS]
  * demuxer.
  */
 export function safeInput(container: string | null) {
-  const mov = container === 'video/quicktime' || container === 'video/mp4';
-  return [...SAFE_INPUT, ...(mov ? ['-enable_drefs', '0'] : [])];
+  const audio = container?.startsWith('audio/') ?? false;
+  const mov = ['video/quicktime', 'video/mp4', 'audio/mp4'].includes(container ?? '');
+  return [
+    '-protocol_whitelist',
+    'file',
+    '-format_whitelist',
+    audio ? AUDIO_FORMATS : FORMATS,
+    ...(mov ? ['-enable_drefs', '0'] : []),
+  ];
 }
 
 /** Video container from the first bytes, or null if it is not one ffmpeg should open. */
@@ -44,6 +52,37 @@ export function sniffVideo(head: Uint8Array): string | null {
   if (starts(0x06, 0x0e, 0x2b, 0x34)) return 'application/mxf';
   return null;
 }
+
+/**
+ * Audio container from the first bytes (#327), or null: MP3 (with or without ID3), ADTS AAC,
+ * WAV, Ogg, FLAC, MP4/M4A, WebM (voice notes from Chrome and Firefox), AIFF and CAF.
+ */
+export function sniffAudio(head: Uint8Array): string | null {
+  const text = (from: number, length: number) =>
+    String.fromCharCode(...head.subarray(from, from + length));
+  const b1 = head[1] ?? 0;
+  if (text(0, 3) === 'ID3') return 'audio/mpeg';
+  if (text(0, 4) === 'RIFF' && text(8, 4) === 'WAVE') return 'audio/wav';
+  if (text(0, 4) === 'OggS') return 'audio/ogg';
+  if (text(0, 4) === 'fLaC') return 'audio/flac';
+  if (text(4, 4) === 'ftyp') return 'audio/mp4';
+  if (text(0, 4) === '\x1a\x45\xdf\xa3') return 'audio/webm';
+  if (text(0, 4) === 'FORM' && ['AIFF', 'AIFC'].includes(text(8, 4))) return 'audio/aiff';
+  if (text(0, 4) === 'caff') return 'audio/x-caf';
+  // Frame sync: layer 00 is ADTS AAC, any other layer MPEG audio.
+  if (head[0] === 0xff && (b1 & 0xf6) === 0xf0) return 'audio/aac';
+  if (head[0] === 0xff && (b1 & 0xe0) === 0xe0 && (b1 & 0x06) !== 0) return 'audio/mpeg';
+  return null;
+}
+
+/** Audio every browser plays as it is, by sniffed container: the rest gets an AAC copy. */
+const PLAYABLE_AUDIO: Record<string, string[]> = {
+  'audio/mpeg': ['mp3'],
+  'audio/aac': ['aac'],
+  'audio/mp4': ['aac', 'mp3'],
+  'audio/wav': ['pcm_s16le', 'pcm_s24le', 'pcm_u8', 'pcm_f32le'],
+  'audio/flac': ['flac'],
+};
 
 export interface VideoInfo {
   durationMs: number | null;
@@ -241,7 +280,11 @@ export function proxyPlan(
   sourceBytes: number,
   settings: ProxySettings,
 ): 'none' | 'skip' | 'make' {
-  if (!info.videoCodec || webPlayable(container, info)) return 'none';
+  if (container.startsWith('audio/')) {
+    // Audio files (#327): Ogg, Opus, WebM voice notes, AIFF, CAF, ALAC get an AAC copy.
+    const plays = PLAYABLE_AUDIO[container]?.includes(info.audioCodec ?? '') ?? false;
+    if (!info.audioCodec || plays) return 'none';
+  } else if (!info.videoCodec || webPlayable(container, info)) return 'none';
   if (!settings.enabled) return 'skip';
   if (settings.maxSourceBytes > 0 && sourceBytes > settings.maxSourceBytes) return 'skip';
   if (settings.maxDurationS > 0 && (info.durationMs ?? 0) > settings.maxDurationS * 1000)
@@ -275,9 +318,10 @@ export function copiesVideo(info: VideoInfo, settings: ProxySettings) {
  */
 export function proxyMaxBytes(info: VideoInfo, settings: ProxySettings, sourceBytes: number) {
   const margin = 16 * 1024 * 1024;
+  const video = info.videoCodec ? bitsPerSecond(settings.bitrate) : 0;
   const estimate = copiesVideo(info, settings)
     ? sourceBytes * 1.1
-    : (plannedSeconds(info, settings) * (bitsPerSecond(settings.bitrate) + 384_000) * 1.5) / 8;
+    : (plannedSeconds(info, settings) * (video + 384_000) * 1.5) / 8;
   const capped =
     settings.maxSourceBytes > 0 ? Math.min(estimate, settings.maxSourceBytes * 1.1) : estimate;
   return Math.ceil(capped + margin);
@@ -306,6 +350,8 @@ export function proxyArgs(
   container: string | null = null,
 ) {
   const copyVideo = copiesVideo(info, settings);
+  // An audio file (#327) has no picture: only its sound is copied or encoded, as for videos.
+  const soundOnly = !info.videoCodec;
   const copyAudio = info.audioCodec === 'aac';
   const pipeline = videoPipeline(encoder, {
     resolution: settings.resolution,
@@ -318,21 +364,22 @@ export function proxyArgs(
     'error',
     '-y',
     ...safeInput(container),
-    ...(copyVideo ? [] : pipeline.input),
+    ...(copyVideo || soundOnly ? [] : pipeline.input),
     '-i',
     input,
     // `V`, not `v`: video streams that are not cover art (attached pictures).
-    '-map',
-    '0:V:0',
-    '-map',
-    '0:a:0?',
+    ...(soundOnly ? ['-map', '0:a:0', '-vn'] : ['-map', '0:V:0', '-map', '0:a:0?']),
     '-sn',
     '-dn',
     '-map_metadata',
     '-1',
     '-map_chapters',
     '-1',
-    ...(copyVideo ? ['-c:v', 'copy'] : ['-vf', pipeline.filter, ...pipeline.codec]),
+    ...(soundOnly
+      ? []
+      : copyVideo
+        ? ['-c:v', 'copy']
+        : ['-vf', pipeline.filter, ...pipeline.codec]),
     ...(copyAudio ? ['-c:a', 'copy'] : ['-c:a', 'aac', '-b:a', '128k', '-ac', '2']),
     '-threads',
     String(settings.threads),
@@ -353,7 +400,7 @@ export function proxyArgs(
 
 /** Address-space cap of the copy of `info` with `encoder`: 4 GiB whenever the CPU decodes. */
 export function proxyMemory(info: VideoInfo, settings: ProxySettings, encoder: VideoEncoder) {
-  return copiesVideo(info, settings)
+  return copiesVideo(info, settings) || !info.videoCodec
     ? FFMPEG_MEMORY
     : encoderMemory(encoder, decodesOnGpu(encoder, info));
 }

@@ -2297,6 +2297,13 @@
           "proxy": {
             "$ref": "#/components/schemas/AssetProxy"
           },
+          "waveformUrl": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Peaks of an audio file (`AudioWaveform`), same-origin path `/api/v1/assets/{assetId}/waveform`, once ready; null for other files and without ffmpeg on the server."
+          },
           "status": {
             "type": "string",
             "enum": [
@@ -2368,6 +2375,7 @@
           "frameRate",
           "pageCount",
           "proxy",
+          "waveformUrl",
           "status",
           "url",
           "variants",
@@ -2414,7 +2422,8 @@
           "mime": {
             "type": "string",
             "enum": [
-              "video/mp4"
+              "video/mp4",
+              "audio/mp4"
             ]
           },
           "width": {
@@ -2435,7 +2444,7 @@
               "null"
             ],
             "minimum": 0,
-            "description": "Bytes of the MP4 once ready."
+            "description": "Bytes of the copy once ready."
           }
         },
         "required": [
@@ -2447,7 +2456,7 @@
           "height",
           "size"
         ],
-        "description": "Playable MP4 copy of a video in a format browsers do not play. Null for other files and for videos that already play (H.264 MP4, WebM): use `url` then."
+        "description": "Playable MP4 copy of a video in a format browsers do not play, or AAC copy of an audio file not every browser plays. Null for other files and for media that already play (H.264 MP4, WebM, MP3, AAC, WAV, FLAC): use `url` then."
       },
       "AssetVariant": {
         "type": "object",
@@ -3646,6 +3655,23 @@
         "required": [
           "projectId",
           "boardId"
+        ]
+      },
+      "AudioWaveform": {
+        "type": "object",
+        "properties": {
+          "peaks": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 100
+            },
+            "maxItems": 1000
+          }
+        },
+        "required": [
+          "peaks"
         ]
       },
       "LinkPreview": {
@@ -5552,7 +5578,14 @@
               "string",
               "null"
             ],
-            "description": "`/api/v1/guest/links/{linkId}/assets/{assetId}/stream`: only for the sound track of a storyboard animatic (`board.animaticAudio`), else null. Plays inline with byte ranges, whatever `allowDownload` says; it is never served as an attachment."
+            "description": "`/api/v1/guest/links/{linkId}/assets/{assetId}/stream`: for ready audio files, the sound track of a storyboard animatic (`board.animaticAudio`) or an audio card of a board of the link, else null. Plays inline with byte ranges, whatever `allowDownload` says, as the AAC copy when the server made one; it is never served as an attachment."
+          },
+          "waveformUrl": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "`/api/v1/guest/links/{linkId}/assets/{assetId}/waveform`: the peaks of an audio card (`AudioWaveform`), else null."
           }
         },
         "required": [
@@ -5567,7 +5600,8 @@
           "animated",
           "variants",
           "downloadUrl",
-          "streamUrl"
+          "streamUrl",
+          "waveformUrl"
         ]
       },
       "GuestAssetVariant": {
@@ -12513,8 +12547,8 @@
             "bearer": []
           }
         ],
-        "summary": "The playable H.264/AAC MP4 copy of a video, when `Asset.proxy.status` is `ready`.",
-        "description": "Made by the worker for videos browsers do not play (ProRes, MKV, AVI, MXF, HEVC). Supports `Range`. Readable by every role that sees the asset; the original stays at `/assets/{assetId}/file`. 404 while there is none.",
+        "summary": "The playable copy of a video or audio file, when `Asset.proxy.status` is `ready`.",
+        "description": "Made by the worker for videos browsers do not play (ProRes, MKV, AVI, MXF, HEVC), as H.264/AAC MP4, and for audio files not every browser plays (Ogg, Opus, WebM, AIFF), as AAC M4A. Supports `Range`. Readable by every role that sees the asset; the original stays at `/assets/{assetId}/file`. 404 while there is none.",
         "parameters": [
           {
             "schema": {
@@ -12529,9 +12563,14 @@
         ],
         "responses": {
           "200": {
-            "description": "MP4 video",
+            "description": "MP4 video or M4A audio",
             "content": {
               "video/mp4": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "audio/mp4": {
                 "schema": {
                   "type": "string"
                 }
@@ -12539,7 +12578,88 @@
             }
           },
           "206": {
-            "description": "Part of the video"
+            "description": "Part of the file"
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/assets/{assetId}/waveform": {
+      "get": {
+        "tags": [
+          "Assets"
+        ],
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "The waveform of an audio file, when `Asset.waveformUrl` is set.",
+        "description": "Peaks the worker read once with ffmpeg. Readable by every role that sees the asset. 404 while there is none.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10"
+            },
+            "required": true,
+            "name": "assetId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Peaks",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AudioWaveform"
+                }
+              }
+            }
           },
           "400": {
             "description": "Invalid request",
@@ -16300,8 +16420,8 @@
             "guest": []
           }
         ],
-        "summary": "The sound track of a storyboard animatic, to play inline. Supports `Range`.",
-        "description": "Only for the asset named by `meta.animaticAudio` of a storyboard of the link, whatever `allowDownload` says (decision 0046); checked on every request. Sent inline, without a filename, with `Cache-Control: private, no-store`.",
+        "summary": "An audio file of the link, to play inline. Supports `Range`.",
+        "description": "For the asset named by `meta.animaticAudio` of a storyboard of the link (decision 0046) and for audio cards of its boards, whatever `allowDownload` says; checked on every request. Sent inline, without a filename, with `Cache-Control: private, no-store`; as the AAC copy when the server made one.",
         "parameters": [
           {
             "schema": {
@@ -16330,6 +16450,93 @@
           },
           "206": {
             "description": "Part of the audio"
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No guest session, or it expired (details: GuestDenied)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Link expired, revoked or suspended, password changed, role too low, or a cross-site write (GuestDenied)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found, or not visible to guests of this link (hidden cards included)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/guest/links/{linkId}/assets/{assetId}/waveform": {
+      "get": {
+        "tags": [
+          "Guests"
+        ],
+        "security": [
+          {
+            "guest": []
+          }
+        ],
+        "summary": "The waveform of an audio card of the link (`GuestAsset.waveformUrl`).",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10"
+            },
+            "required": true,
+            "name": "linkId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10"
+            },
+            "required": true,
+            "name": "assetId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Peaks",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AudioWaveform"
+                }
+              }
+            }
           },
           "400": {
             "description": "Invalid request",

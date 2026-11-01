@@ -56,6 +56,8 @@ export const animatedVariantKey = (assetId: string, size: string) =>
 
 /** The playable H.264/AAC copy of a video browsers cannot play: the `proxy` variant row. */
 export const proxyKey = (assetId: string) => `variants/${assetId}/proxy.mp4`;
+/** The peaks of an audio file as JSON (#327): the `waveform` variant row. */
+export const waveformKey = (assetId: string) => `variants/${assetId}/waveform.json`;
 
 const SAFE_KEY = /^[a-z]+(\/[A-Za-z0-9._-]+)+$/;
 function checkKey(key: string) {

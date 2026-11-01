@@ -1462,6 +1462,7 @@ describe.skipIf(!url)('guest share links (needs DATABASE_URL)', () => {
       ],
       downloadUrl: null,
       streamUrl: null,
+      waveformUrl: null,
     });
     expect(res.body.board).toMatchObject({ id: B.A, parentBoardId: null, aspect: null });
     expect(res.body.breadcrumb).toEqual([]);
@@ -1895,6 +1896,73 @@ describe.skipIf(!url)('guest share links (needs DATABASE_URL)', () => {
     expect((await call({ cookie: p.cookie }, 'GET', g(plain, `/assets/${A}/stream`))).status).toBe(
       404,
     );
+  });
+
+  it('streams audio cards as their AAC copy, with their waveform (#327)', async () => {
+    const [sb] = await db
+      .insert(board)
+      .values({ projectId: P, title: 'Suoni', position: 'a9', parentBoardId: B.R, kind: 'board' })
+      .returning();
+    const S = sb?.id as string;
+    const [note] = await db
+      .insert(asset)
+      .values({
+        projectId: P,
+        kind: 'audio',
+        mime: 'audio/ogg',
+        filename: 'nota.ogg',
+        size: 4,
+        storageKey: 'originals/nota.ogg',
+        status: 'ready',
+        proxyStatus: 'ready',
+      })
+      .returning();
+    const A = note?.id as string;
+    await deps.storage.write('originals/nota.ogg', Buffer.from('ogg!'), 'audio/ogg');
+    await deps.storage.write(`variants/${A}/proxy.mp4`, Buffer.from('aac copy'), 'audio/mp4');
+    await deps.storage.write(
+      `variants/${A}/waveform.json`,
+      Buffer.from('{"peaks":[0,100]}'),
+      'application/json',
+    );
+    await db.insert(assetVariant).values([
+      {
+        assetId: A,
+        size: 'proxy',
+        width: 0,
+        height: 0,
+        storageKey: `variants/${A}/proxy.mp4`,
+        mime: 'audio/mp4',
+        bytes: 8,
+      },
+      {
+        assetId: A,
+        size: 'waveform',
+        width: 2,
+        height: 100,
+        storageKey: `variants/${A}/waveform.json`,
+        mime: 'application/json',
+        bytes: 17,
+      },
+    ]);
+    await saveDoc(S, [{ ...el, id: 'file_audio_1', type: 'file', assetId: A, parent: null }]);
+    const link = await createLink('editor', S);
+    const o = await open(link);
+    const snap = await call({ cookie: o.cookie }, 'GET', g(link, `/boards/${S}`));
+    expect(snap.body.assets.find((a: { id: string }) => a.id === A)).toMatchObject({
+      downloadUrl: null,
+      streamUrl: `/api/v1/guest/links/${link.id}/assets/${A}/stream`,
+      waveformUrl: `/api/v1/guest/links/${link.id}/assets/${A}/waveform`,
+    });
+    const stream = await call({ cookie: o.cookie }, 'GET', g(link, `/assets/${A}/stream`));
+    expect(stream.text).toBe('aac copy');
+    expect(stream.headers.get('content-type')).toBe('audio/mp4');
+    const wave = await call({ cookie: o.cookie }, 'GET', g(link, `/assets/${A}/waveform`));
+    expect(wave.body).toEqual({ peaks: [0, 100] });
+    expect((await call(null, 'GET', g(link, `/assets/${A}/waveform`))).status).toBe(401);
+    expect(
+      (await call({ cookie: o.cookie }, 'GET', g(link, `/assets/${X.x1}/waveform`))).status,
+    ).toBe(404);
   });
 
   // Comments -----------------------------------------------------------------------------

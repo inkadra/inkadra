@@ -2,6 +2,7 @@
 import { OpenAPIRegistry, OpenApiGeneratorV31 } from '@asteasolutions/zod-to-openapi';
 import {
   Asset,
+  AudioWaveform,
   CreateLinkPreview,
   LinkPreview,
   ThumbnailSize,
@@ -1257,15 +1258,37 @@ registry.registerPath({
   path: v1('/assets/{assetId}/proxy'),
   tags: ['Assets'],
   security: secured,
-  summary: 'The playable H.264/AAC MP4 copy of a video, when `Asset.proxy.status` is `ready`.',
+  summary: 'The playable copy of a video or audio file, when `Asset.proxy.status` is `ready`.',
   description:
-    'Made by the worker for videos browsers do not play (ProRes, MKV, AVI, MXF, HEVC). ' +
-    'Supports `Range`. Readable by every role that sees the asset; the original stays at ' +
-    '`/assets/{assetId}/file`. 404 while there is none.',
+    'Made by the worker for videos browsers do not play (ProRes, MKV, AVI, MXF, HEVC), as ' +
+    'H.264/AAC MP4, and for audio files not every browser plays (Ogg, Opus, WebM, AIFF), as ' +
+    'AAC M4A. Supports `Range`. Readable by every role that sees the asset; the original ' +
+    'stays at `/assets/{assetId}/file`. 404 while there is none.',
   request: { params: idParam('assetId') },
   responses: {
-    200: { description: 'MP4 video', content: { 'video/mp4': { schema: z.string() } } },
-    206: { description: 'Part of the video' },
+    200: {
+      description: 'MP4 video or M4A audio',
+      content: {
+        'video/mp4': { schema: z.string() },
+        'audio/mp4': { schema: z.string() },
+      },
+    },
+    206: { description: 'Part of the file' },
+    ...errors,
+  },
+});
+registry.registerPath({
+  method: 'get',
+  path: v1('/assets/{assetId}/waveform'),
+  tags: ['Assets'],
+  security: secured,
+  summary: 'The waveform of an audio file, when `Asset.waveformUrl` is set.',
+  description:
+    'Peaks the worker read once with ffmpeg. Readable by every role that sees the asset. ' +
+    '404 while there is none.',
+  request: { params: idParam('assetId') },
+  responses: {
+    200: { description: 'Peaks', ...json(AudioWaveform) },
     ...errors,
   },
 });
@@ -1846,15 +1869,28 @@ registry.registerPath({
   path: v1('/guest/links/{linkId}/assets/{assetId}/stream'),
   tags: ['Guests'],
   security: guest,
-  summary: 'The sound track of a storyboard animatic, to play inline. Supports `Range`.',
+  summary: 'An audio file of the link, to play inline. Supports `Range`.',
   description:
-    'Only for the asset named by `meta.animaticAudio` of a storyboard of the link, whatever ' +
-    '`allowDownload` says (decision 0046); checked on every request. Sent inline, without a ' +
-    'filename, with `Cache-Control: private, no-store`.',
+    'For the asset named by `meta.animaticAudio` of a storyboard of the link (decision ' +
+    '0046) and for audio cards of its boards, whatever `allowDownload` says; checked on ' +
+    'every request. Sent inline, without a filename, with `Cache-Control: private, ' +
+    'no-store`; as the AAC copy when the server made one.',
   request: { params: z.object({ linkId: Id, assetId: Id }) },
   responses: {
     200: { description: 'Audio' },
     206: { description: 'Part of the audio' },
+    ...guestErrors,
+  },
+});
+registry.registerPath({
+  method: 'get',
+  path: v1('/guest/links/{linkId}/assets/{assetId}/waveform'),
+  tags: ['Guests'],
+  security: guest,
+  summary: 'The waveform of an audio card of the link (`GuestAsset.waveformUrl`).',
+  request: { params: z.object({ linkId: Id, assetId: Id }) },
+  responses: {
+    200: { description: 'Peaks', ...json(AudioWaveform) },
     ...guestErrors,
   },
 });

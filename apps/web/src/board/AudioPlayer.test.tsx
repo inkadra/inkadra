@@ -2,7 +2,7 @@
 import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { AudioPlayer, resetAudioPlayers } from './AudioPlayer.tsx';
+import { AudioPlayer, claimPlayback, resetAudioPlayers, waveformBars } from './AudioPlayer.tsx';
 
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (key: string) => key }),
@@ -45,14 +45,20 @@ afterEach(() => {
   host.remove();
 });
 
-function mount(count = 1) {
+function mount(count = 1, peaks: number[] | null = null) {
   act(() =>
     root.render(
       <>
         {Array.from({ length: count }, (_, i) => (
           // biome-ignore lint/suspicious/noArrayIndexKey: fixed list
           <div key={i} className="card">
-            <AudioPlayer src={`/a${i}.m4a`} name={`nota-${i}.m4a`} durationMs={92_000} />
+            <AudioPlayer
+              src={`/a${i}.m4a`}
+              name={`nota-${i}.m4a`}
+              durationMs={92_000}
+              peaks={peaks}
+              bars={4}
+            />
           </div>
         ))}
       </>,
@@ -146,5 +152,42 @@ describe('audio card player', () => {
       scrub.dispatchEvent(new KeyboardEvent('keydown', { key: 'End', bubbles: true }));
     });
     expect(chip(player)).toBe('1:32 / 1:32');
+  });
+});
+
+describe('audio card waveform (#327)', () => {
+  it('groups the stored peaks into as many bars as the card fits', () => {
+    expect(waveformBars([10, 50, 20, 80, 0, 30, 90, 40], 4)).toEqual([50, 80, 30, 90]);
+    expect(waveformBars([10, 20], 8)).toEqual([10, 20]);
+    expect(waveformBars([], 8)).toEqual([]);
+  });
+
+  it('draws the played part full and the rest dimmed, scrubbing on the bars', () => {
+    const [player] = mount(1, [10, 50, 20, 80, 0, 30, 90, 40]);
+    if (!player) throw new Error('no player');
+    const scrub = player.querySelector<HTMLDivElement>('[role="slider"]');
+    if (!scrub) throw new Error('no bar');
+    expect(scrub.classList.contains('fcard__scrub--wave')).toBe(true);
+    const bars = [...player.querySelectorAll<HTMLElement>('.fcard__wave i')];
+    expect(bars.map((b) => b.style.height)).toEqual(['50%', '80%', '30%', '90%']);
+    expect(player.querySelectorAll('.is-played')).toHaveLength(0);
+    scrub.getBoundingClientRect = () =>
+      ({ left: 0, top: 0, width: 200, height: 44, right: 200, bottom: 44 }) as DOMRect;
+    act(() => {
+      scrub.dispatchEvent(
+        new PointerEvent('pointerdown', { bubbles: true, clientX: 100, pointerId: 1 }),
+      );
+    });
+    // Half way: the first two bars are played.
+    expect(bars.map((b) => b.classList.contains('is-played'))).toEqual([true, true, false, false]);
+  });
+
+  it('pauses the card when the viewer starts a video', () => {
+    const [player] = mount();
+    if (!player) throw new Error('no player');
+    act(() => button(player).click());
+    const video = document.createElement('video');
+    act(() => claimPlayback(video));
+    expect(audio(player).paused).toBe(true);
   });
 });

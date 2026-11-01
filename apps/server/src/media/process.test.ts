@@ -149,7 +149,9 @@ describe.skipIf(!url)('processAsset (needs DATABASE_URL)', () => {
           ? 'image'
           : mime.startsWith('video/') || mime === 'application/vnd.apple.mpegurl'
             ? 'video'
-            : 'file',
+            : mime.startsWith('audio/')
+              ? 'audio'
+              : 'file',
       mime,
       filename,
       size: body.length,
@@ -723,6 +725,80 @@ describe.skipIf(!url)('processAsset (needs DATABASE_URL)', () => {
         delete process.env.FFMPEG_PATH;
         resetMediaTools();
       }
+    });
+  });
+  describe('audio (#327)', async () => {
+    const tools = await mediaTools();
+    // 1 s of silence, then 1 s of tone: the waveform starts flat and ends at its loudest.
+    const tone = (ext: string) => {
+      const out = join(root, `tone-${randomUUID()}.${ext}`);
+      execFileSync(tools.ffmpeg ?? 'ffmpeg', [
+        '-v',
+        'error',
+        '-f',
+        'lavfi',
+        '-i',
+        'anullsrc=r=44100:cl=mono:d=1',
+        '-f',
+        'lavfi',
+        '-i',
+        'sine=f=440:r=44100:d=1',
+        '-filter_complex',
+        '[0][1]concat=n=2:v=0:a=1',
+        out,
+      ]);
+      return readFileSync(out);
+    };
+
+    it.skipIf(!tools.ffmpeg || !tools.ffprobe)(
+      'reads the duration and the waveform, and copies nothing a browser plays',
+      async () => {
+        const queued: string[] = [];
+        const id = await upload(tone('wav'), 'audio/wav', 'nota.wav');
+        await processAsset({ ...deps, enqueueProxy: async (a) => void queued.push(a) }, id);
+        const { row, variants } = await load(id);
+        expect(row).toMatchObject({ status: 'ready', audioCodec: 'pcm_s16le', proxyStatus: null });
+        expect(row?.durationMs).toBeGreaterThan(1900);
+        expect(row?.durationMs).toBeLessThan(2200);
+        expect(queued).toEqual([]);
+        expect(variants.map((v) => v.size)).toEqual(['waveform']);
+        const json = JSON.parse(
+          (await readAll(await storage.read(variants[0]?.storageKey ?? ''))).toString(),
+        ) as { peaks: number[] };
+        expect(json.peaks).toHaveLength(160);
+        expect(json.peaks[0]).toBe(0);
+        expect(json.peaks.at(-1)).toBeGreaterThan(90);
+      },
+    );
+
+    it.skipIf(!tools.ffmpeg || !tools.ffprobe)(
+      'makes an AAC copy of what not every browser plays',
+      async () => {
+        const queued: string[] = [];
+        const id = await upload(tone('aiff'), 'audio/aiff', 'take.aif');
+        await processAsset({ ...deps, enqueueProxy: async (a) => void queued.push(a) }, id);
+        expect((await load(id)).row?.proxyStatus).toBe('queued');
+        expect(queued).toEqual([id]);
+        await runProxy(deps, id);
+        const { row, variants } = await load(id);
+        expect(row?.proxyStatus).toBe('ready');
+        const proxy = variants.find((v) => v.size === 'proxy');
+        expect(proxy?.mime).toBe('audio/mp4');
+        const out = join(root, `audio-proxy-${id}.m4a`);
+        writeFileSync(out, await readAll(await storage.read(proxy?.storageKey ?? '')));
+        const made = await probeVideo(tools.ffprobe ?? '', out, 'audio/mp4');
+        expect(made).toMatchObject({ videoCodec: null, audioCodec: 'aac' });
+        // The waveform outlives the copy job.
+        expect(variants.some((v) => v.size === 'waveform')).toBe(true);
+      },
+    );
+
+    it('keeps a file that is no audio ready, without a waveform', async () => {
+      const id = await upload(Buffer.from('not a sound'), 'audio/mpeg', 'fake.mp3');
+      await processAsset(deps, id);
+      const { row, variants } = await load(id);
+      expect(row?.status).toBe('ready');
+      expect(variants).toHaveLength(0);
     });
   });
 });

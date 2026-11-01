@@ -7,7 +7,7 @@ import { and, eq, ne } from 'drizzle-orm';
 import sharp, { type Sharp } from 'sharp';
 import type { Database } from '../db/client.ts';
 import { asset, assetVariant } from '../db/schema.ts';
-import { animatedVariantKey, readAll, type Storage, variantKey } from '../storage.ts';
+import { animatedVariantKey, readAll, type Storage, variantKey, waveformKey } from '../storage.ts';
 import { readExif } from './exif.ts';
 import { decodeHeic, sniffImage } from './heic.ts';
 import { palette } from './palette.ts';
@@ -21,9 +21,11 @@ import {
   type ProxySettings,
   probeVideo,
   proxyPlan,
+  sniffAudio,
   sniffVideo,
   type VideoInfo,
 } from './video.ts';
+import { readPeaks } from './waveform.ts';
 
 export interface MediaDeps {
   db: Database;
@@ -158,6 +160,7 @@ export async function processAsset(
   const rawType = sniffRaw(head, row.filename, row.mime);
   if (rawType) return processRaw(deps, row, digest, rawType);
   if (row.kind === 'file' && isPdf(head)) return processPdf(deps, row, digest);
+  if (row.kind === 'audio') return processAudio(deps, row, digest, head);
   const sniffed = sniffImage(head);
   // SVG is rasterised only when it was declared as such: it cannot be sniffed safely.
   const svg = !sniffed && row.kind === 'image' && row.mime === 'image/svg+xml';
@@ -356,6 +359,75 @@ async function processPdf(deps: MediaDeps, row: typeof asset.$inferSelect, diges
         palette: result.palette,
       });
       return { variants: result.variants.length, pageCount };
+    } finally {
+      await copy.done();
+    }
+  });
+}
+
+/**
+ * An audio file (#327): duration and codec from ffprobe, the peaks of its waveform as a small
+ * JSON variant, and an AAC copy queued when browsers do not all play the original. Without
+ * ffmpeg, or for a file that is no audio container, it is ready as it is: the card still
+ * plays it, over a flat bar. The real type replaces a vague declared one.
+ */
+async function processAudio(
+  deps: MediaDeps,
+  row: typeof asset.$inferSelect,
+  digest: string,
+  head: Uint8Array,
+) {
+  const { db, storage } = deps;
+  const container = sniffAudio(head);
+  const plain = {
+    sha256: digest,
+    status: 'ready' as const,
+    animated: false,
+    ...(container && !row.mime.startsWith('audio/') ? { mime: container } : {}),
+  };
+  const { ffmpeg, ffprobe } = await mediaTools();
+  if (!container || !ffmpeg || !ffprobe) {
+    await save(db, row.id, [], plain);
+    return { variants: 0 };
+  }
+  return withJobDir(deps.tmpDir, async (dir) => {
+    const copy = await localSource(storage, row, dir);
+    try {
+      const input = await privateInput(dir, copy.path);
+      const info = await probeVideo(ffprobe, input, container).catch(() => null);
+      const durationMs = info?.durationMs ?? null;
+      const peaks = info?.audioCodec
+        ? await readPeaks(ffmpeg, input, container, durationMs).catch((err) => {
+            // No waveform is not a broken upload: the card plays over a flat bar.
+            deps.log?.warn({ err, assetId: row.id }, 'audio waveform failed');
+            return null;
+          })
+        : null;
+      const variants: Array<typeof assetVariant.$inferInsert> = [];
+      if (peaks && peaks.length > 0) {
+        const key = waveformKey(row.id);
+        const data = Buffer.from(JSON.stringify({ peaks }));
+        await storage.write(key, data, 'application/json');
+        variants.push({
+          assetId: row.id,
+          size: 'waveform',
+          width: peaks.length,
+          height: 100,
+          storageKey: key,
+          mime: 'application/json',
+          bytes: data.length,
+        });
+      }
+      const proxyStatus = await proxyState(deps, row.id, container, info, row.size);
+      await save(db, row.id, variants, {
+        ...plain,
+        durationMs,
+        audioCodec: info?.audioCodec ?? null,
+        proxyStatus,
+        proxyProgress: proxyStatus === 'ready' ? 100 : null,
+      });
+      if (proxyStatus === 'queued') await deps.enqueueProxy?.(row.id);
+      return { variants: variants.length, proxy: proxyStatus };
     } finally {
       await copy.done();
     }

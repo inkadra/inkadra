@@ -43,7 +43,8 @@ export const AssetVariant = z
 
 /**
  * State of the H.264/AAC MP4 copy the worker makes of a video the browser cannot play
- * (ProRes, MKV, AVI, MXF, HEVC…). `skipped` means one was needed but not made: proxies are
+ * (ProRes, MKV, AVI, MXF, HEVC…), or of the AAC M4A of an audio file not every browser plays
+ * (Ogg, Opus, WebM, AIFF, CAF, ALAC). `skipped` means one was needed but not made: proxies are
  * turned off (VIDEO_PROXIES), the source is past the limits, or the server has no ffmpeg.
  */
 export const AssetProxyStatus = z.enum(['queued', 'processing', 'ready', 'failed', 'skipped']);
@@ -63,10 +64,10 @@ export const AssetProxy = z
           'Same-origin path, `/api/v1/assets/{assetId}/proxy`, once `ready`; null before. ' +
           'Supports `Range`. The original stays at `Asset.url`.',
       }),
-    mime: z.literal('video/mp4'),
+    mime: z.enum(['video/mp4', 'audio/mp4']),
     width: z.int().nullable(),
     height: z.int().nullable(),
-    size: z.int().min(0).nullable().openapi({ description: 'Bytes of the MP4 once ready.' }),
+    size: z.int().min(0).nullable().openapi({ description: 'Bytes of the copy once ready.' }),
   })
   .openapi('AssetProxy');
 export type AssetProxy = z.infer<typeof AssetProxy>;
@@ -101,9 +102,19 @@ export const Asset = z
       }),
     proxy: AssetProxy.nullable().openapi({
       description:
-        'Playable MP4 copy of a video in a format browsers do not play. Null for other ' +
-        'files and for videos that already play (H.264 MP4, WebM): use `url` then.',
+        'Playable MP4 copy of a video in a format browsers do not play, or AAC copy of an ' +
+        'audio file not every browser plays. Null for other files and for media that already ' +
+        'play (H.264 MP4, WebM, MP3, AAC, WAV, FLAC): use `url` then.',
     }),
+    waveformUrl: z
+      .string()
+      .nullable()
+      .openapi({
+        description:
+          'Peaks of an audio file (`AudioWaveform`), same-origin path ' +
+          '`/api/v1/assets/{assetId}/waveform`, once ready; null for other files and without ' +
+          'ffmpeg on the server.',
+      }),
     status: AssetStatus,
     url: z.string().openapi({
       description:
@@ -136,6 +147,12 @@ export const Asset = z
   })
   .openapi('Asset');
 export type Asset = z.infer<typeof Asset>;
+
+/** The waveform of an audio file: peaks from 0 to 100, the loudest at 100, oldest first. */
+export const AudioWaveform = z
+  .object({ peaks: z.array(z.int().min(0).max(100)).max(1000) })
+  .openapi('AudioWaveform');
+export type AudioWaveform = z.infer<typeof AudioWaveform>;
 
 /**
  * Metadata sent in the tus `Upload-Metadata` header (values base64 encoded, as tus requires).

@@ -6,6 +6,7 @@ import { Avatar, Button, Icon } from '@inkadra/ui';
 import { memo, useContext, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useClassifications } from '../lib/classifications.ts';
+import { claimPlayback, releasePlayback } from './AudioPlayer.tsx';
 import { pickVariant, playbackUrl, useAsset } from './assets.ts';
 import { CroppedImage } from './CroppedImage.tsx';
 import { GuestModeContext } from './context.ts';
@@ -598,8 +599,14 @@ export function MediaViewer({
                   controls
                   autoPlay
                   onError={onVideoError}
-                  onPlay={() => setVideoPaused(false)}
-                  onPause={() => setVideoPaused(true)}
+                  onPlay={(e) => {
+                    claimPlayback(e.currentTarget);
+                    setVideoPaused(false);
+                  }}
+                  onPause={(e) => {
+                    releasePlayback(e.currentTarget);
+                    setVideoPaused(true);
+                  }}
                   onLoadedData={(e) => setVideoPaused(e.currentTarget.paused)}
                   style={unplayable ? { display: 'none' } : undefined}
                 />
@@ -619,7 +626,14 @@ export function MediaViewer({
                   {fileBadge(ready) || <Icon name="volume" size={18} />}
                 </span>
                 {/* biome-ignore lint/a11y/useMediaCaption: people's own recordings have no captions */}
-                <audio className="viewer__audio" src={ready.url} controls autoPlay />
+                <audio
+                  className="viewer__audio"
+                  src={playbackUrl(ready)}
+                  controls
+                  autoPlay
+                  onPlay={(e) => claimPlayback(e.currentTarget)}
+                  onPause={(e) => releasePlayback(e.currentTarget)}
+                />
               </div>
             ) : ready &&
               !pickVariant(ready, wide) &&

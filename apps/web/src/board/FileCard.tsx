@@ -5,8 +5,8 @@ import type { Asset } from '@inkadra/shared';
 import { Icon } from '@inkadra/ui';
 import type { CSSProperties, ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { AudioPlayer } from './AudioPlayer.tsx';
-import { pickVariant, useAsset } from './assets.ts';
+import { AudioPlayer, useWaveform } from './AudioPlayer.tsx';
+import { pickVariant, playbackUrl, useAsset } from './assets.ts';
 import { CardCaption } from './CardCaption.tsx';
 import { useBoard } from './context.ts';
 import {
@@ -190,7 +190,7 @@ function ReadyFileCard({
   if (asset.kind === 'video') {
     preview = <VideoPreview element={element} asset={asset} pixels={pixels} state={state} />;
   } else if (family === 'audio') {
-    preview = <AudioPreview asset={asset} state={state} />;
+    preview = <AudioPreview asset={asset} state={state} width={width} />;
   } else {
     const src =
       localPreview(element.assetId) ??
@@ -308,14 +308,22 @@ function VideoPreview({
   );
 }
 
-/** Audio is not processed by the worker yet (#327): a flat bar where the waveform will be. */
+/**
+ * The waveform the worker read (#327), played and scrubbed on the card; a flat bar until it
+ * arrives. Plays the original where the browser reads it, else the AAC copy.
+ */
 function AudioPreview({
   asset,
   state,
+  width,
 }: {
   asset: Asset;
   state: 'ready' | 'processing' | 'failed';
+  width: number;
 }) {
+  const peaks = useWaveform(asset.waveformUrl);
+  // One bar every 7 board pixels inside the 12 px margins of the preview.
+  const bars = Math.max(12, Math.min(120, Math.floor((width - 24) / 7)));
   return (
     <Preview family="audio" className="fcard__preview--audio">
       {state === 'failed' ? (
@@ -323,7 +331,13 @@ function AudioPreview({
           <Icon name="volume" size={22} />
         </span>
       ) : (
-        <AudioPlayer src={asset.url} name={asset.filename} durationMs={asset.durationMs} />
+        <AudioPlayer
+          src={playbackUrl(asset)}
+          name={asset.filename}
+          durationMs={asset.durationMs}
+          peaks={peaks}
+          bars={bars}
+        />
       )}
     </Preview>
   );
