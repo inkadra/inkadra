@@ -1,0 +1,156 @@
+/* Personal project groups (decision 0056): sidebar rows, Projects page sections, menu, dialog. */
+.project-group-dot {
+  width: 8px;
+  height: 8px;
+  flex: none;
+  border-radius: 3px;
+  background: var(--group);
+}
+.project-group-chevron {
+  flex: none;
+  color: var(--ink-text-muted);
+  transition: transform var(--ink-dur-fast) var(--ink-ease-out);
+}
+[aria-expanded="true"] > .project-group-chevron,
+[aria-expanded="true"] .project-group-chevron {
+  transform: rotate(90deg);
+}
+
+/* Sidebar: a group row with its projects indented under it. */
+.project-group-nav > .project-navigation > .ink-nav {
+  color: var(--ink-text-secondary);
+  font-weight: 500;
+}
+.project-group-nav__items .project-navigation > .ink-nav {
+  padding-left: 22px;
+}
+.project-navigation.is-drop > .ink-nav,
+.project-group-loose.is-drop > .ink-sidebar__section {
+  box-shadow: inset 0 0 0 1.5px var(--ink-accent-primary);
+  background: var(--ink-accent-soft-bg);
+  color: var(--ink-text-primary);
+}
+.project-group-loose.is-drop > .ink-sidebar__section {
+  border-radius: var(--ink-radius-sm);
+}
+.project-navigation.is-dragging,
+.project-card.is-dragging {
+  opacity: 0.4;
+}
+/* The card stays where it was, as a dashed placeholder, while it is dragged. */
+.project-card.is-dragging {
+  outline: 1.5px dashed var(--ink-border-strong);
+  outline-offset: -1.5px;
+}
+
+/* Projects page: a header per group over its own grid or list. */
+.project-group-section + .project-group-section,
+.projects-page__items + .project-group-section {
+  margin-top: 8px;
+}
+.project-group-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 14px 0 8px;
+  padding: 2px 4px;
+  border-radius: var(--ink-radius-sm);
+}
+.project-group-head.is-drop {
+  box-shadow: inset 0 0 0 1.5px var(--ink-accent-primary);
+  background: var(--ink-accent-soft-bg);
+}
+.project-group-head__toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 32px;
+  padding: 0 4px;
+  border: 0;
+  border-radius: var(--ink-radius-sm);
+  background: transparent;
+  color: var(--ink-text-primary);
+  font: inherit;
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+}
+.project-group-head__toggle:focus-visible {
+  outline: 2px solid var(--ink-accent-primary);
+}
+.project-group-head__count {
+  color: var(--ink-text-muted);
+  font-size: 12px;
+}
+.project-group-head__options {
+  margin-left: auto;
+}
+/* Where a dragged project lands: a slot at the end of the group. */
+.project-group-slot {
+  min-height: 120px;
+  border-radius: var(--ink-radius-md);
+  box-shadow: inset 0 0 0 1.5px var(--ink-accent-primary);
+  background: var(--ink-accent-soft-bg);
+  opacity: 0.5;
+}
+.projects-page__items--list .project-group-slot {
+  min-height: 56px;
+}
+
+/* The group ⋯ menu: a colour row and a destructive last item. */
+.project-context-menu__label {
+  padding: 8px 10px 2px;
+  color: var(--ink-text-secondary);
+  font-size: 12px;
+}
+.project-context-menu__swatches {
+  display: flex;
+  gap: 4px;
+  padding: 4px 6px 6px;
+}
+.project-context-menu__swatches > button {
+  width: 28px;
+  height: 28px;
+  padding: 5px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--swatch) content-box;
+  cursor: pointer;
+}
+.project-context-menu__swatches > [aria-checked="true"] {
+  box-shadow: 0 0 0 1.5px var(--swatch);
+}
+.project-context-menu__swatches > button:focus-visible {
+  outline: 2px solid var(--ink-accent-primary);
+}
+.project-context-menu__separator {
+  height: 1px;
+  margin: 4px 2px;
+  border: 0;
+  background: var(--ink-border-default);
+}
+.project-context-menu > button.is-danger {
+  color: var(--ink-danger-fg);
+}
+
+.project-group-dialog__swatches {
+  --appearance-swatch: 22px;
+  margin: 4px 0;
+}
+.project-group-dialog__note {
+  margin: 0;
+  font-size: 12px;
+}
+
+@media (pointer: coarse) {
+  .project-context-menu__swatches > button {
+    width: 44px;
+    height: 44px;
+    padding: 11px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .project-group-chevron {
+    transition: none;
+  }
+}

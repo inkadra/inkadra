@@ -84,12 +84,16 @@ import {
 } from './notifications.ts';
 import {
   CreateProject,
+  CreateProjectGroup,
   Project,
   ProjectCreationDenied,
+  ProjectGroup,
   ProjectMember,
+  SetProjectGroup,
   SetProjectMember,
   SetProjectPin,
   UpdateProject,
+  UpdateProjectGroup,
 } from './projects.ts';
 import {
   BoardReviews,
@@ -838,6 +842,57 @@ registry.registerPath({
   responses: { 200: { description: 'Updated', ...json(Project) }, ...errors },
 });
 
+registry.registerPath({
+  method: 'put',
+  path: v1('/projects/{projectId}/group'),
+  tags: ['Projects'],
+  security: secured,
+  summary: 'Put the project in one of the caller’s groups, or take it out. Requires membership.',
+  description:
+    'Groups are personal (decision 0056): this changes only how the caller sees the list. ' +
+    'Another person’s group answers `not_found`.',
+  request: { params: idParam('projectId'), body: json(SetProjectGroup) },
+  responses: { 200: { description: 'Updated', ...json(Project) }, ...errors },
+});
+registry.registerPath({
+  method: 'get',
+  path: v1('/project-groups'),
+  tags: ['Projects'],
+  security: secured,
+  summary: 'The caller’s project groups, in their order.',
+  responses: {
+    200: { description: 'Groups', ...json(z.object({ items: z.array(ProjectGroup) })) },
+    ...errors,
+  },
+});
+registry.registerPath({
+  method: 'post',
+  path: v1('/project-groups'),
+  tags: ['Projects'],
+  security: secured,
+  summary: 'Create a personal project group, last in the caller’s order.',
+  description: 'Refused with `conflict` past MAX_PROJECT_GROUPS (200) groups.',
+  request: { body: json(CreateProjectGroup) },
+  responses: { 201: { description: 'Created', ...json(ProjectGroup) }, ...errors },
+});
+registry.registerPath({
+  method: 'patch',
+  path: v1('/project-groups/{groupId}'),
+  tags: ['Projects'],
+  security: secured,
+  summary: 'Rename, recolour, move, fold or unfold one of the caller’s groups.',
+  request: { params: idParam('groupId'), body: json(UpdateProjectGroup) },
+  responses: { 200: { description: 'Updated', ...json(ProjectGroup) }, ...errors },
+});
+registry.registerPath({
+  method: 'delete',
+  path: v1('/project-groups/{groupId}'),
+  tags: ['Projects'],
+  security: secured,
+  summary: 'Dissolve one of the caller’s groups. Its projects stay, outside any group.',
+  request: { params: idParam('groupId') },
+  responses: { 204: { description: 'Dissolved' }, ...errors },
+});
 registry.registerPath({
   method: 'get',
   path: v1('/projects/{projectId}/export-settings'),

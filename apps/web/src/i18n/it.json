@@ -1978,6 +1978,23 @@
     "pinned": "Fissato",
     "saveError": "Non è stato possibile salvare la modifica. Riprova."
   },
+  "groups": {
+    "new": "Nuovo gruppo",
+    "rename": "Rinomina",
+    "name": "Nome del gruppo",
+    "color": "Colore",
+    "personal": "Solo per te. Sciogliere un gruppo non tocca i progetti.",
+    "create": "Crea",
+    "group": "Gruppo",
+    "none": "Nessun gruppo",
+    "move": "Sposta",
+    "moveTo": "Sposta in gruppo…",
+    "options": "Opzioni gruppo: {{name}}",
+    "newProject": "Nuovo progetto nel gruppo",
+    "dissolve": "Sciogli il gruppo",
+    "count_one": "{{count}} progetto",
+    "count_other": "{{count}} progetti"
+  },
   "onboarding": {
     "guidedSetup": "Configurazione guidata",
     "title": "Nuovo progetto",

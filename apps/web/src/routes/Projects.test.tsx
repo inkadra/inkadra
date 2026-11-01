@@ -6,6 +6,7 @@ import { MemoryRouter } from 'react-router';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { api } from '../lib/api.ts';
 import { Projects } from './Projects.tsx';
+import { refreshGroups } from './project-groups.ts';
 import { projectOverviews } from './projects-overview.ts';
 
 const session = vi.hoisted(() => ({ role: 'member' }));
@@ -118,8 +119,12 @@ it('shows New project off, with why, to people who cannot create projects', asyn
   await render([member('me', 'Giulia')]);
   const actions = host.querySelector('.projects-page__actions');
   const button = [...(actions?.querySelectorAll('button') ?? [])];
-  expect(button.map((b) => [b.textContent, b.disabled])).toEqual([['nav.newProject', true]]);
-  expect(button[0]?.getAttribute('aria-describedby')).toBe('projects-creation-off');
+  // New group stays on: groups are personal (decision 0056).
+  expect(button.map((b) => [b.textContent, b.disabled])).toEqual([
+    ['groups.new', false],
+    ['nav.newProject', true],
+  ]);
+  expect(button[1]?.getAttribute('aria-describedby')).toBe('projects-creation-off');
   expect(actions?.textContent).toContain('projectCreation.off');
   // No import and no guided setup either.
   expect(actions?.querySelector('a')).toBeNull();
@@ -186,4 +191,50 @@ it('formats admin storage in decimal units', async () => {
   } finally {
     session.role = 'member';
   }
+});
+
+it('shows each group of the person with its projects, and folds it', async () => {
+  const group = {
+    id: 'g1',
+    name: 'Caffè Aurora',
+    color: 'orange',
+    position: 'a0',
+    collapsed: false,
+  };
+  vi.mocked(api.get).mockImplementation(async (path: string) =>
+    path === '/project-groups' ? { items: [group] } : { items: [] },
+  );
+  await act(async () => refreshGroups());
+  const inGroup = {
+    ...project,
+    id: 'p2',
+    name: 'Spot Aurora',
+    group: { id: 'g1', position: 'a0' },
+  };
+  vi.mocked(projectOverviews).mockResolvedValue([
+    { project, boards: [], members: [], activity: project.updatedAt },
+    { project: inGroup, boards: [], members: [], activity: project.updatedAt },
+  ]);
+  await act(async () =>
+    root.render(
+      <MemoryRouter>
+        <Projects />
+      </MemoryRouter>,
+    ),
+  );
+  const section = host.querySelector<HTMLElement>('section[aria-label="Caffè Aurora"]');
+  expect(section?.querySelector('h2')?.textContent).toBe('Spot Aurora');
+  expect(host.querySelector('.projects-page__items h2')?.textContent).toBe('Last Train');
+  const toggle = section?.querySelector<HTMLButtonElement>('[aria-expanded]');
+  vi.mocked(api.patch).mockResolvedValue({ ...group, collapsed: true });
+  await act(async () => toggle?.click());
+  expect(api.patch).toHaveBeenCalledWith('/project-groups/g1', { collapsed: true });
+  expect(section?.querySelector('h2')).toBeNull();
+  // The project menu now offers Move to group….
+  await act(async () => host.querySelector<HTMLButtonElement>('.project-card__options')?.click());
+  expect([...document.querySelectorAll('[role="menuitem"]')].map((i) => i.textContent)).toContain(
+    'groups.moveTo',
+  );
+  vi.mocked(api.get).mockResolvedValue({ items: [] });
+  await act(async () => refreshGroups());
 });

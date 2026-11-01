@@ -155,6 +155,13 @@
       "when": 1793522049980,
       "tag": "0021_asset_track",
       "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1793547555912,
+      "tag": "0022_project_groups",
+      "breakpoints": true
     }
   ]
 }
