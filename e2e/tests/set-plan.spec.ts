@@ -213,7 +213,8 @@ for (const theme of ['dark', 'light'] as const) {
       const plans = [...roots(doc).elements.values()]
         .map((m) => readElement(m))
         .filter((e): e is Plan => e?.type === 'plan');
-      return { plan: plans.find((e) => e.id === planId), count: plans.length };
+      const notes = [...roots(doc).elements.values()].filter((m) => m.get('type') === 'note');
+      return { plan: plans.find((e) => e.id === planId), count: plans.length, notes: notes.length };
     };
     await page.goto(`/p/${project.id}?view=canvas`);
 
@@ -234,6 +235,11 @@ for (const theme of ['dark', 'light'] as const) {
     // 42 icons and 4 annotations, plus the recent and starred ones of earlier runs.
     expect(await editor.locator('.plan-lib__tile').count()).toBeGreaterThanOrEqual(46);
     // The last match: the category tile, after Recent and Favourites.
+    // The board behind never gets the editor's keys: Delete, N or Ctrl+D act on nothing there.
+    await expect(editor).toBeFocused();
+    for (const key of ['Delete', 'n', 'Control+d', 'ArrowLeft']) await page.keyboard.press(key);
+    await expect.poll(async () => (await saved()).count).toBe(1);
+    expect((await saved()).notes).toBe(1);
     const tile = (name: string) => editor.getByRole('button', { name, exact: true }).last();
     await expect(tile('Binario')).toBeVisible();
     // The tools stay inside the window: nothing covers the cards next to the plan.

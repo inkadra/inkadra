@@ -414,8 +414,12 @@ export function PlanEditor({
   const keys = useRef<(e: KeyboardEvent) => void>(() => {});
   keys.current = (e: KeyboardEvent) => {
     const target = e.target as HTMLElement | null;
-    // The scene picker has the keyboard while it is open.
-    if (picking || target?.tagName === 'INPUT' || target?.tagName === 'TEXTAREA') return;
+    // The scene picker has the keyboard while it is open; fields keep their keys.
+    if (picking || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target?.tagName ?? '')) return;
+    // Whatever the editor does not use never reaches the board behind it: Delete, arrows,
+    // copy and paste or a tool letter would act on the plan card (as DrawingEditor.tsx).
+    e.stopImmediatePropagation();
+    if (e.type !== 'keydown') return;
     const mod = isMac() ? e.metaKey : e.ctrlKey;
     const key = e.key.toLowerCase();
     if (e.key === 'Escape') {
@@ -464,14 +468,29 @@ export function PlanEditor({
       setArmed(null);
       setTool(TOOLS.find((x) => x.key.toLowerCase() === key)?.tool ?? 'select');
     } else return;
-    // The canvas behind listens on window too: the editor has these keys while open.
     e.preventDefault();
-    e.stopImmediatePropagation();
   };
   useEffect(() => {
     const on = (e: KeyboardEvent) => keys.current(e);
     window.addEventListener('keydown', on, true);
-    return () => window.removeEventListener('keydown', on, true);
+    window.addEventListener('keyup', on, true);
+    return () => {
+      window.removeEventListener('keydown', on, true);
+      window.removeEventListener('keyup', on, true);
+    };
+  }, []);
+  // A modal: the app behind is inert, the editor takes the focus and gives it back on close.
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const before = document.activeElement as HTMLElement | null;
+    const app = document.getElementById('root');
+    const wasInert = app?.inert ?? false;
+    if (app) app.inert = true;
+    dialogRef.current?.focus({ preventScroll: true });
+    return () => {
+      if (app) app.inert = wasInert;
+      before?.focus?.({ preventScroll: true });
+    };
   }, []);
 
   function onPointerDown(e: PointerEvent<HTMLDivElement>) {
@@ -700,6 +719,16 @@ export function PlanEditor({
       g.raw[1] = p;
       setLiveShape({ kind: g.shape, a: g.a, b: g.b });
     }
+  }
+
+  /** A gesture the browser took away (a scroll, a second finger): nothing is written. */
+  function onPointerCancel() {
+    gesture.current = null;
+    setPreview(null);
+    setChip(null);
+    setLive(null);
+    setLiveShape(null);
+    setMarquee(null);
   }
 
   function onPointerUp() {
@@ -1578,11 +1607,11 @@ export function PlanEditor({
             aria-label={t('board.plan.variantField')}
             maxLength={60}
             defaultValue={plan.variant ?? ''}
-            onBlur={(e) =>
-              change(() =>
-                updateElement(doc, plan.id, { variant: e.target.value.trim() || undefined }, LOCAL),
-              )
-            }
+            onBlur={(e) => {
+              const variant = e.target.value.trim() || undefined;
+              if (variant !== plan.variant)
+                change(() => updateElement(doc, plan.id, { variant }, LOCAL));
+            }}
           />
         </div>
       )}
@@ -1846,7 +1875,7 @@ export function PlanEditor({
           onPointerDown={onPointerDown}
           onPointerMove={onPointerMove}
           onPointerUp={onPointerUp}
-          onPointerCancel={onPointerUp}
+          onPointerCancel={onPointerCancel}
         >
           {rulers}
           <PlanDrawing plan={shown} grid={step} ghosts={ghosts} hidden={[...myHidden]}>
@@ -1903,6 +1932,8 @@ export function PlanEditor({
     // On the body: over the phone's navigation bar, which the canvas does not cover.
     return createPortal(
       <div
+        ref={dialogRef}
+        tabIndex={-1}
         className="plan-editor plan-editor--phone"
         data-chrome=""
         role="dialog"
@@ -1927,7 +1958,14 @@ export function PlanEditor({
   return createPortal(
     <div className="plan-editor" data-chrome="">
       <div className="plan-editor__backdrop" aria-hidden="true" onPointerDown={onClose} />
-      <div className="plan-editor__window ink-motion-rise" role="dialog" aria-label={title}>
+      <div
+        ref={dialogRef}
+        tabIndex={-1}
+        className="plan-editor__window ink-motion-rise"
+        role="dialog"
+        aria-modal="true"
+        aria-label={title}
+      >
         <header className="plan-editor__head">
           <Icon name="map" size={15} />
           <span className="plan-editor__name">{t('board.plan.name')} ·</span>
@@ -1938,11 +1976,10 @@ export function PlanEditor({
             maxLength={200}
             defaultValue={plan.title ?? ''}
             size={Math.max(8, (plan.title ?? '').length + 1)}
-            onBlur={(e) =>
-              change(() =>
-                updateElement(doc, plan.id, { title: e.target.value.trim() || undefined }, LOCAL),
-              )
-            }
+            onBlur={(e) => {
+              const title = e.target.value.trim() || undefined;
+              if (title !== plan.title) change(() => updateElement(doc, plan.id, { title }, LOCAL));
+            }}
             onKeyDown={(e) => {
               if (e.key === 'Enter' || e.key === 'Escape') {
                 e.preventDefault();

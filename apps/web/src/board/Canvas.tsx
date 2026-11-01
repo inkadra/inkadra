@@ -2319,7 +2319,9 @@ export function Canvas({
   // Clipboard ---------------------------------------------------------------------
   const clipHandler = useRef<(e: ClipboardEvent) => void>(() => {});
   clipHandler.current = (e: ClipboardEvent) => {
-    if (insideDialog()) return;
+    // A plan being edited has the keyboard; copy and paste never act on its card.
+    if (insideDialog() || store.getSnapshot().byId.get(editingRef.current ?? '')?.type === 'plan')
+      return;
     if (isTyping(e.target) || !e.clipboardData) return;
     if (e.type === 'copy' || e.type === 'cut') {
       if (selection.size === 0) return;
@@ -3362,6 +3364,7 @@ export function Canvas({
         )}
         {editedPlan && (
           <PlanEditor
+            key={editedPlan.id}
             store={store}
             plan={editedPlan}
             phone={isPhone}

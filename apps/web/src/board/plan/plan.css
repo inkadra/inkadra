@@ -1129,3 +1129,7 @@ button.plan__badge:hover {
   background: var(--ink-surface-2);
   color: var(--ink-text-primary);
 }
+.plan-editor__window:focus,
+.plan-editor--phone:focus {
+  outline: none;
+}
