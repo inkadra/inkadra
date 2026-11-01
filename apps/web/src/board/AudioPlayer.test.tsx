@@ -50,19 +50,21 @@ afterEach(() => {
 function mount(count = 1, peaks: number[] | null = null) {
   act(() =>
     root.render(
-      Array.from({ length: count }, (_, i) => (
-        // biome-ignore lint/suspicious/noArrayIndexKey: fixed list
-        <div key={i} className="card">
-          <AudioPlayer
-            id={`file_${i}`}
-            src={`/a${i}.m4a`}
-            name={`nota-${i}.m4a`}
-            durationMs={92_000}
-            peaks={peaks}
-            bars={4}
-          />
-        </div>
-      )),
+      <>
+        {Array.from({ length: count }, (_, i) => (
+          // biome-ignore lint/suspicious/noArrayIndexKey: fixed list
+          <div key={i} className="card">
+            <AudioPlayer
+              id={`file_${i}`}
+              src={`/a${i}.m4a`}
+              name={`nota-${i}.m4a`}
+              durationMs={92_000}
+              peaks={peaks}
+              bars={4}
+            />
+          </div>
+        ))}
+      </>,
     ),
   );
   return [...host.querySelectorAll<HTMLDivElement>('.fcard__player')];
