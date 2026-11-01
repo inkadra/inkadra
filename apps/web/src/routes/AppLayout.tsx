@@ -75,10 +75,10 @@ import {
   useNotificationFeed,
   useUnreadCount,
 } from '../notifications/Notifications.tsx';
+import { addStoryboardItem } from './add-storyboard.ts';
 import { editableProjects } from './home-data.ts';
 import { useInstanceSetup } from './InstanceSetup.tsx';
 import { MobileNavigation } from './MobileNavigation.tsx';
-import { addStoryboardItem } from './add-storyboard.ts';
 import { NewBoardDialog } from './NewBoardDialog.tsx';
 import { NewProjectDialog } from './NewProjectDialog.tsx';
 import { ProjectNavItem } from './ProjectAppearance.tsx';

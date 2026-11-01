@@ -2,8 +2,8 @@ import type { Project } from '@inkadra/shared';
 import { boardPath, loadBoards } from '../board/boards.ts';
 import { createCanvasBoards } from '../board/canvas-templates.ts';
 import { storyboardOf } from '../board/views.ts';
-import { queueSeeds } from './seed-queue.tsx';
 import type { ProjectMenuItem } from './ProjectAppearance.tsx';
+import { queueSeeds } from './seed-queue.tsx';
 
 /**
  * The project's storyboard, made the way the Canvas menu makes one (a storyboard board under the
@@ -20,7 +20,13 @@ export async function addStoryboard(
   if (!boards) throw new Error('boards unavailable');
   let id = storyboardOf(boards);
   if (!id) {
-    const created = await createCanvasBoards(project.id, project.rootBoardId, 'storyboard', t, userId);
+    const created = await createCanvasBoards(
+      project.id,
+      project.rootBoardId,
+      'storyboard',
+      t,
+      userId,
+    );
     queueSeeds(created.jobs);
     id = created.board.id;
   }

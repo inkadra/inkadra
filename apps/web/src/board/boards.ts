@@ -145,9 +145,7 @@ export function hasListedBoards(
 ): boolean {
   if (depth > 4) return false;
   return childBoards(items, parentId).some((b) =>
-    b.id === hiddenId
-      ? hasListedBoards(items, b.id, hiddenId, depth)
-      : true,
+    b.id === hiddenId ? hasListedBoards(items, b.id, hiddenId, depth) : true,
   );
 }
 

@@ -8,8 +8,8 @@ import { useClassifications } from '../lib/classifications.ts';
 import { useSession } from '../lib/session.tsx';
 import { relativeTime } from '../notifications/Notifications.tsx';
 import { useProjects } from './AppLayout.tsx';
-import { BoardPreview } from './BoardPreview.tsx';
 import { addStoryboardItem } from './add-storyboard.ts';
+import { BoardPreview } from './BoardPreview.tsx';
 import { useProjectMenu } from './ProjectAppearance.tsx';
 import {
   GroupChevron,

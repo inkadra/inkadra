@@ -6672,6 +6672,11 @@
             "type": "integer",
             "minimum": 0,
             "description": "Board cards."
+          },
+          "inReviewCount": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Cards whose team review status is `in_review`: the board has a client review under way."
           }
         },
         "required": [
