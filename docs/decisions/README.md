@@ -62,13 +62,10 @@ in order. An accepted decision is never rewritten: a later one supersedes it.
 | [0056](0056-personal-project-groups.md)              | Personal project groups: organisation only, per person, never access                   |
 | [0057](0057-project-theme.md)                        | Project theme: accent, bundled heading fonts and logo for presentations and PDFs       |
 | [0058](0058-needed-items-by-shooting-day.md)         | Needed items: typed to-do lists linked to scenes, rolled up by shooting day            |
+| [0059](0059-model-font-previews.md)                  | Bounded model and font metadata, scoped browser font specimens                         |
+| [0060](0060-release-news.md)                         | Opt-in release news and SMTP delivery claims                                           |
+| [0061](0061-calendar-feed.md)                        | Private calendar subscriptions: revocable bearer URL, bounded read-only ICS            |
 | [0062](0062-set-plans.md)                            | Set plans: frame strokes and shapes plus set icons on a card of their own              |
-
-| [0059](0059-model-font-previews.md) | Bounded model and font metadata, scoped browser font specimens |
-
-| [0060](0060-release-news.md) | Opt-in release news and SMTP delivery claims |
-
-| [0061](0061-calendar-feed.md) | Private calendar subscriptions: revocable bearer URL, bounded read-only ICS |
 
 Two decisions share the number 0025: they were accepted in parallel, and accepted records
 are not renumbered.
