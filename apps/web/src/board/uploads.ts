@@ -2,6 +2,7 @@ import { API_PREFIX } from '@inkadra/shared/constants';
 import { useSyncExternalStore } from 'react';
 import { Upload } from 'tus-js-client';
 import { setBusy } from '../pwa/busy.ts';
+import { isDesignFile } from './file-kinds.ts';
 
 export interface UploadItem {
   key: string;
@@ -102,7 +103,7 @@ export function startUpload({
   }
   seq += 1;
   const key = `u${seq}`;
-  const isImage = file.type.startsWith('image/');
+  const isImage = file.type.startsWith('image/') && !isDesignFile(file.name);
   items.push({
     key,
     name: file.name,

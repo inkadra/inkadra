@@ -76,6 +76,19 @@ afterEach(() => vi.useRealTimers());
 const flush = () => vi.advanceTimersByTimeAsync(0);
 
 describe('the reload guard and tus uploads', () => {
+  it('leaves design previews to the worker even with an image MIME', () => {
+    const preview = vi.spyOn(URL, 'createObjectURL');
+    const key = startUpload({
+      file: new File(['8BPS'], 'poster.psd', { type: 'image/vnd.adobe.photoshop' }),
+      projectId: 'p1',
+      boardId: 'b1',
+      onAsset: vi.fn(),
+    });
+    expect(preview).not.toHaveBeenCalled();
+    cancelUpload(key);
+    preview.mockRestore();
+  });
+
   it('holds it for a failed upload that can still be retried, and releases it on cancel', async () => {
     const onFailed = vi.fn();
     const { key, upload } = start({ name: 'failed.pdf', onFailed });
