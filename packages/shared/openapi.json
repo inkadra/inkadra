@@ -13880,6 +13880,17 @@
                       "minimum": 0,
                       "maximum": 50
                     },
+                    "uploadedBy": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "uploadedAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "example": "2026-11-02T09:30:00.000Z"
+                    },
                     "sheets": {
                       "type": "array",
                       "items": {
