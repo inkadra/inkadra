@@ -1,12 +1,17 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
+import type { FrameElement } from '@inkadra/canvas-core';
+import type { AspectRatio } from '@inkadra/doc-schema';
 import type { Asset, Person, ShootingDay, ShootingDayInput } from '@inkadra/shared';
 import { Button, Dialog, DialogActions, Select, Switch } from '@inkadra/ui';
 import { type ReactNode, useEffect, useId, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Field } from '../export/fields.tsx';
 import { fetchExportSettings, logoUrl } from '../export/settings.ts';
+import { kitList } from '../plan/kit.ts';
+import { PlanDrawing, type PlanLike } from '../plan/PlanDrawing.tsx';
 import { castCalls, departmentNotes, plannedWrap } from './call-sheet.ts';
+import { FramePicture } from './FramePicture.tsx';
 import type { NeededRow } from './needed.ts';
 import { clockLabel, scheduleTimes } from './schedule.ts';
 import './call-sheet.css';
@@ -32,12 +37,25 @@ export interface CallSheetModalProps {
   initialDayId?: string | undefined;
   /** Some days have edits that are not saved yet: the sheet only knows the saved plan. */
   unsaved?: boolean;
+  /** The scenes of a day with their frames and set plan, in shooting order. */
+  scenes?: (day: ShootingDayInput) => SheetScene[];
   /** What the scenes of a day need (decision 0058), and the people who bring it. */
   needed?: (day: ShootingDayInput) => NeededRow[];
   people?: Person[];
   onClose: () => void;
 }
-const sections = ['schedule', 'cast', 'location', 'departments', 'needed', 'notes'] as const;
+const sections = [
+  'schedule',
+  'frames',
+  'plans',
+  'cast',
+  'location',
+  'departments',
+  'needed',
+  'notes',
+] as const;
+/** Options of the set plans on the sheet (#335 round 6, i). */
+const planOptions = ['kit', 'moves', 'fullPage'] as const;
 type Section = (typeof sections)[number];
 
 function useDateLabel(style: 'short' | 'long') {
@@ -63,6 +81,7 @@ export function CallSheetModal({
   initialDayId,
   unsaved,
   needed: neededOf,
+  scenes: scenesOf,
   people = [],
   onClose,
 }: CallSheetModalProps) {
@@ -77,7 +96,10 @@ export function CallSheetModal({
     departments: true,
     needed: true,
     notes: true,
+    frames: true,
+    plans: true,
   });
+  const [planOpts, setPlanOpts] = useState({ kit: true, moves: false, fullPage: false });
   const groupId = useId();
   const [logo, setLogo] = useState<Asset | null>(null);
   useEffect(() => {
@@ -104,6 +126,7 @@ export function CallSheetModal({
   const departments = day ? departmentNotes(day) : [];
   const wrap = day ? plannedWrap(day) : null;
   const needed = day && neededOf ? neededOf(day) : [];
+  const dayScenes = day && scenesOf ? scenesOf(day) : [];
   // "Giulia R.": a sheet column is narrow.
   const bringer = (row: NeededRow) => {
     const [first = '', ...rest] = (people.find((p) => p.id === row.assigneeId)?.name ?? '')
@@ -119,6 +142,8 @@ export function CallSheetModal({
     departments: departments.length > 0,
     needed: needed.length > 0,
     notes: !!day?.notes.trim(),
+    frames: dayScenes.some((s) => s.frames.length > 0),
+    plans: dayScenes.some((s) => s.plan),
   };
   const show = (section: Section) => included[section] && filled[section];
   const shotOf = (shotId: string | null) => (shotId ? shots.get(shotId) : undefined);
@@ -174,8 +199,21 @@ export function CallSheetModal({
                   onChange={(checked) =>
                     setIncluded((current) => ({ ...current, [section]: checked }))
                   }
+                  badge={section === 'plans' ? t('callSheet.new') : undefined}
                 />
               ))}
+              {show('plans') &&
+                planOptions.map((option) => (
+                  <ToggleRow
+                    key={option}
+                    nested
+                    label={t(`callSheet.${option}`)}
+                    help={option === 'kit' ? t('callSheet.kitHelp') : undefined}
+                    checked={planOpts[option]}
+                    disabled={false}
+                    onChange={(checked) => setPlanOpts((o) => ({ ...o, [option]: checked }))}
+                  />
+                ))}
             </section>
             {unsaved && <p className="call-sheet__notice">{t('callSheet.unsaved')}</p>}
           </div>
@@ -271,6 +309,19 @@ export function CallSheetModal({
                     ) : (
                       <p className="sheet__muted">{t('callSheet.noBlocks')}</p>
                     )}
+                  </SheetSection>
+                )}
+                {(show('frames') || show('plans')) && (
+                  <SheetSection title={t('callSheet.scenes')}>
+                    {dayScenes.map((scene) => (
+                      <SheetSceneBlock
+                        key={scene.id}
+                        scene={scene}
+                        frames={show('frames')}
+                        plan={show('plans')}
+                        options={planOpts}
+                      />
+                    ))}
                   </SheetSection>
                 )}
                 {show('cast') && (
@@ -392,18 +443,25 @@ function ToggleRow({
   checked,
   disabled,
   onChange,
+  badge,
+  nested,
 }: {
   label: string;
   help?: string | undefined;
   checked: boolean;
   disabled: boolean;
   onChange: (checked: boolean) => void;
+  badge?: string | undefined;
+  nested?: boolean;
 }) {
   const id = useId();
   return (
-    <div className="call-sheet__row">
+    <div className={`call-sheet__row${nested ? ' call-sheet__row--nested' : ''}`}>
       <label className="call-sheet__row-text" htmlFor={id}>
-        <span className="call-sheet__row-label">{label}</span>
+        <span className="call-sheet__row-label">
+          {label}
+          {badge && <span className="call-sheet__badge">{badge}</span>}
+        </span>
         {help && <span className="call-sheet__row-help">{help}</span>}
       </label>
       <Switch
@@ -440,5 +498,75 @@ function SheetSection({ title, children }: { title: string; children: ReactNode 
       <h4>{title}</h4>
       {children}
     </section>
+  );
+}
+
+/** A scene of the day on the sheet, with its frames and its set plan. */
+export interface SheetScene {
+  id: string;
+  /** "Sc. 5". */
+  title: string;
+  /** "INT. CUCINA – GIORNO". */
+  heading: string;
+  frames: ReadonlyArray<{ id: string; label: string; frame: FrameElement }>;
+  plan?: PlanLike | undefined;
+  boardAspect: AspectRatio;
+}
+
+function SheetSceneBlock({
+  scene,
+  frames,
+  plan,
+  options,
+}: {
+  scene: SheetScene;
+  frames: boolean;
+  plan: boolean;
+  options: { kit: boolean; moves: boolean; fullPage: boolean };
+}) {
+  const { t, i18n } = useTranslation();
+  const kit = scene.plan && options.kit ? kitList(scene.plan, t, i18n.language) : [];
+  return (
+    <div className={`sheet__scene${plan && options.fullPage ? ' sheet__scene--page' : ''}`}>
+      <p className="sheet__scene-head">
+        <b>{scene.title}</b> {scene.heading}
+      </p>
+      <div className="sheet__scene-body">
+        {frames && scene.frames.length > 0 && (
+          <div className="sheet__scene-frames">
+            {scene.frames.map((f) => (
+              <figure key={f.id}>
+                <FramePicture
+                  assetId={f.frame.assetId}
+                  aspect={f.frame.aspect}
+                  boardAspect={scene.boardAspect}
+                  strokes={f.frame.strokes}
+                  shapes={f.frame.shapes}
+                  referenceOpacity={f.frame.referenceOpacity}
+                  pixels={360}
+                />
+                <figcaption>{f.label}</figcaption>
+              </figure>
+            ))}
+          </div>
+        )}
+        {plan && scene.plan && (
+          <div className="sheet__scene-plan">
+            <div className="plan">
+              <PlanDrawing plan={scene.plan} moves={options.moves} />
+            </div>
+            {kit.length > 0 && (
+              <ul className="sheet__kit">
+                {kit.map((k) => (
+                  <li key={k.name}>
+                    {k.name} ×{k.count}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
   );
 }

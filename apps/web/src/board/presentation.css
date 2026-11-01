@@ -460,3 +460,25 @@
     padding: 0 16px 16px;
   }
 }
+
+/* A scene slide with its set plan (#335 round 6, i). */
+.present-stage__canvas--scene {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
+  gap: 16px;
+  align-items: center;
+}
+.present-scene__frames {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+.present-scene__plan {
+  padding: 12px;
+  border-radius: var(--ink-radius-md);
+  background: var(--ink-surface-1);
+}
+.present-thumb__pic .plan__svg {
+  width: 100%;
+  height: 100%;
+}

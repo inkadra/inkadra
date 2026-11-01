@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-import { type FrameElement, formatDuration } from '@inkadra/canvas-core';
+import { type FrameElement, formatDuration, variantView } from '@inkadra/canvas-core';
 import {
   ShootingDayInput as DaySchema,
   type Person,
@@ -22,7 +22,10 @@ import {
 import { useTranslation } from 'react-i18next';
 import { api, RequestError } from '../../lib/api.ts';
 import { useIsPhone } from '../../lib/phone.ts';
+import { plansOfScene, ScenePlanButton } from '../plan/scenes.tsx';
 import { type BoardStore, LOCAL } from '../store.ts';
+import { useBoardAspect } from './aspect.ts';
+import type { SheetScene } from './CallSheetModal.tsx';
 import { CallSheetModal } from './CallSheetModal.tsx';
 import { plannedWrap } from './call-sheet.ts';
 import { AutoTime, TokenField } from './fields.tsx';
@@ -356,6 +359,37 @@ export function ScheduleView({
   const phone = useIsPhone();
   const [sheetOpen, setSheetOpen] = useState(false);
   const neededOf = (day: ShootingDayInput) => neededForDay(day, snap.byId.values());
+  const boardAspect = useBoardAspect(store.doc);
+  /** The scenes a day shoots, in order, with their frames and set plan (#335 round 6, i). */
+  const scenesOf = (day: ShootingDayInput): SheetScene[] => {
+    const ids: string[] = [];
+    for (const block of day.blocks) {
+      const frame = block.shotId ? snap.byId.get(block.shotId) : undefined;
+      if (frame?.type === 'frame' && frame.parent && !ids.includes(frame.parent))
+        ids.push(frame.parent);
+    }
+    return ids.flatMap((id) => {
+      const scene = snap.byId.get(id);
+      if (scene?.type !== 'scene') return [];
+      const plan = plansOfScene(snap.byId.values(), id)[0];
+      const base = plan?.variantOf ? snap.byId.get(plan.variantOf) : undefined;
+      const shot = groups.find((g) => g.scene?.id === id)?.frames ?? [];
+      return [
+        {
+          id,
+          title: t('needed.sceneNumber', { number: scene.number }),
+          heading: slugline(scene),
+          frames: shot.slice(0, 3).map((frame) => ({
+            id: frame.id,
+            label: labels.get(frame.id) ?? '',
+            frame,
+          })),
+          plan: plan && base?.type === 'plan' ? variantView(plan, base) : plan,
+          boardAspect,
+        },
+      ];
+    });
+  };
   const neededRows = active ? neededOf(active.draft) : [];
   const inspector = active && (
     <DayInspector
@@ -472,6 +506,12 @@ export function ScheduleView({
                           .filter(Boolean)
                           .join(' · ')
                       : t('film.loose')}
+                    {group.scene && (
+                      <ScenePlanButton
+                        compact
+                        plans={plansOfScene(store.getSnapshot().byId.values(), group.scene.id)}
+                      />
+                    )}
                   </h3>
                   {items.map((frame) => (
                     <QueueShot
@@ -561,6 +601,7 @@ export function ScheduleView({
           days={days}
           shots={callSheetShots}
           needed={neededOf}
+          scenes={scenesOf}
           people={people}
           projectName={projectName}
           projectId={projectId}

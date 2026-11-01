@@ -230,8 +230,10 @@ function drawingOf<T>(
   key: 'strokes' | 'shapes',
   create: boolean,
 ): Y.Array<T> | null {
+  // Set plans draw with the same strokes and shapes as frames (decision 0062).
   const map = roots(doc).elements.get(frameId);
-  if (map?.get('type') !== 'frame') return null;
+  const type = map?.get('type');
+  if (!map || (type !== 'frame' && type !== 'plan')) return null;
   const current = map.get(key);
   if (current instanceof Y.Array) return current as Y.Array<T>;
   if (!create) return null;

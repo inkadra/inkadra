@@ -14,6 +14,7 @@ import {
   getAnimaticAudio,
   getBoardAspect,
   getSchemaVersion,
+  MAX_PLAN_ICONS,
   migrateBoardDoc,
   newElementId,
   parseBoardDocName,
@@ -105,7 +106,7 @@ describe('board document', () => {
     const file = { ...base(), type: 'file' as const, assetId: 'asset-id' };
     addElement(doc, file);
     const before = roots(doc).elements.toJSON();
-    expect(migrateBoardDoc(doc, boardId)).toEqual([4, 5, 6, 7, 8, 9, 10, 11, 12, 13]);
+    expect(migrateBoardDoc(doc, boardId)).toEqual([4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]);
     expect(getSchemaVersion(doc)).toBe(CURRENT_SCHEMA_VERSION);
     expect(roots(doc).elements.toJSON()).toEqual(before);
     expect(readElement(roots(doc).elements.get(file.id)!)).not.toHaveProperty('caption');
@@ -165,7 +166,7 @@ describe('board document', () => {
     addElement(doc, note);
     addElement(doc, column);
     const before = [...roots(doc).elements.values()].map((m) => readElement(m));
-    expect(migrateBoardDoc(doc, boardId)).toEqual([3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13]);
+    expect(migrateBoardDoc(doc, boardId)).toEqual([3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]);
     expect(getSchemaVersion(doc)).toBe(CURRENT_SCHEMA_VERSION);
     expect([...roots(doc).elements.values()].map((m) => readElement(m))).toEqual(before);
     expect(validateBoardDoc(doc)).toEqual([]);
@@ -343,7 +344,7 @@ describe('board document', () => {
   it('migrates version 8 without adding a sound track', () => {
     const doc = createBoardDoc(boardId);
     roots(doc).meta.set('schemaVersion', 8);
-    expect(migrateBoardDoc(doc, boardId)).toEqual([9, 10, 11, 12, 13]);
+    expect(migrateBoardDoc(doc, boardId)).toEqual([9, 10, 11, 12, 13, 14, 15]);
     expect(getAnimaticAudio(doc)).toBeNull();
   });
 
@@ -354,7 +355,7 @@ describe('board document', () => {
     expect(getSchemaVersion(doc)).toBe(1);
     const before = [...roots(doc).elements.values()].map((m) => readElement(m));
     expect(before.every(Boolean)).toBe(true);
-    expect(migrateBoardDoc(doc, boardId)).toEqual([2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13]);
+    expect(migrateBoardDoc(doc, boardId)).toEqual([2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]);
     expect(getSchemaVersion(doc)).toBe(CURRENT_SCHEMA_VERSION);
     expect([...roots(doc).elements.values()].map((m) => readElement(m))).toEqual(before);
     const note = roots(doc).elements.get('note_v1_00001')!;
@@ -470,7 +471,7 @@ describe('video still provenance', () => {
     const frame = { ...base(), type: 'frame' as const, assetId, notes: 'Last Train' };
     addElement(doc, frame);
     const before = roots(doc).elements.toJSON();
-    expect(migrateBoardDoc(doc, boardId)).toEqual([5, 6, 7, 8, 9, 10, 11, 12, 13]);
+    expect(migrateBoardDoc(doc, boardId)).toEqual([5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]);
     expect(getSchemaVersion(doc)).toBe(CURRENT_SCHEMA_VERSION);
     expect(roots(doc).elements.toJSON()).toEqual(before);
     expect(readElement(roots(doc).elements.get(frame.id)!)).not.toHaveProperty('source');
@@ -513,7 +514,7 @@ describe('arrow path', () => {
     const element = arrow();
     addElement(doc, element);
     const before = roots(doc).elements.toJSON();
-    expect(migrateBoardDoc(doc, boardId)).toEqual([6, 7, 8, 9, 10, 11, 12, 13]);
+    expect(migrateBoardDoc(doc, boardId)).toEqual([6, 7, 8, 9, 10, 11, 12, 13, 14, 15]);
     expect(getSchemaVersion(doc)).toBe(CURRENT_SCHEMA_VERSION);
     expect(roots(doc).elements.toJSON()).toEqual(before);
     expect(readElement(roots(doc).elements.get(element.id)!)).not.toHaveProperty('path');
@@ -576,7 +577,7 @@ describe('story bible cards', () => {
     roots(doc).meta.set('schemaVersion', 6);
     addElement(doc, { ...base(), type: 'note' });
     const before = roots(doc).elements.toJSON();
-    expect(migrateBoardDoc(doc, boardId)).toEqual([7, 8, 9, 10, 11, 12, 13]);
+    expect(migrateBoardDoc(doc, boardId)).toEqual([7, 8, 9, 10, 11, 12, 13, 14, 15]);
     expect(getSchemaVersion(doc)).toBe(CURRENT_SCHEMA_VERSION);
     expect(roots(doc).elements.toJSON()).toEqual(before);
   });
@@ -625,7 +626,7 @@ describe('image crop and rotation', () => {
     const image = { ...base(), type: 'image' as const, assetId, caption: 'Locandina' };
     addElement(doc, image);
     const before = roots(doc).elements.toJSON();
-    expect(migrateBoardDoc(doc, boardId)).toEqual([8, 9, 10, 11, 12, 13]);
+    expect(migrateBoardDoc(doc, boardId)).toEqual([8, 9, 10, 11, 12, 13, 14, 15]);
     expect(getSchemaVersion(doc)).toBe(CURRENT_SCHEMA_VERSION);
     expect(roots(doc).elements.toJSON()).toEqual(before);
     const parsed = readElement(roots(doc).elements.get(image.id)!);
@@ -673,7 +674,7 @@ describe('column colours and section headings', () => {
     const column = { ...base(), type: 'column' as const, title: 'Brief' };
     addElement(doc, column);
     const before = roots(doc).elements.toJSON();
-    expect(migrateBoardDoc(doc, boardId)).toEqual([10, 11, 12, 13]);
+    expect(migrateBoardDoc(doc, boardId)).toEqual([10, 11, 12, 13, 14, 15]);
     expect(roots(doc).elements.toJSON()).toEqual(before);
     expect(readElement(roots(doc).elements.get(column.id)!)).not.toHaveProperty('color');
   });
@@ -746,7 +747,7 @@ describe('table cards', () => {
     roots(doc).meta.set('schemaVersion', 10);
     addElement(doc, { ...base(), type: 'section' as const, title: 'Sequenza 1' });
     const before = roots(doc).elements.toJSON();
-    expect(migrateBoardDoc(doc, boardId)).toEqual([11, 12, 13]);
+    expect(migrateBoardDoc(doc, boardId)).toEqual([11, 12, 13, 14, 15]);
     expect(roots(doc).elements.toJSON()).toEqual(before);
   });
 });
@@ -769,5 +770,160 @@ describe('map cards', () => {
     expect(validateBoardDoc(doc)).toEqual([]);
     expect(Element.safeParse({ ...map, lat: 91 }).success).toBe(false);
     expect(Element.safeParse({ ...map, url: 'javascript:alert(1)' }).success).toBe(false);
+  });
+});
+
+describe('set plans', () => {
+  const plan = () => ({
+    ...base(),
+    type: 'plan' as const,
+    title: 'Cucina, giorno 2',
+    strokes: [
+      {
+        id: 'strokeAAAAAAA',
+        tool: 'pencil' as const,
+        color: '#1C1C1E',
+        width: 3,
+        points: [0, 0, 400, 400],
+      },
+    ],
+    shapes: [
+      {
+        id: 'shapeAAAAAAAA',
+        kind: 'text' as const,
+        color: '#1C1C1E',
+        width: 24,
+        x0: 100,
+        y0: 100,
+        x1: 100,
+        y1: 100,
+        text: 'tavolo',
+      },
+    ],
+    icons: [
+      {
+        id: 'iconAAAAAAAAA',
+        kind: 'camera' as const,
+        color: '#9DB8F2',
+        x: 1000,
+        y: 3000,
+        rotation: 310,
+        label: 'A cam',
+      },
+      { id: 'iconBBBBBBBBB', kind: 'actor' as const, color: '#B897F0', x: 2000, y: 1200 },
+    ],
+  });
+
+  it('keeps strokes, shapes and icons through Yjs, icons as Y.Maps', () => {
+    const doc = createBoardDoc(boardId);
+    const el = plan();
+    addElement(doc, el);
+    const map = roots(doc).elements.get(el.id)!;
+    expect(readElement(map)).toEqual(el);
+    expect((map.get('icons') as Y.Array<unknown>).get(0)).toBeInstanceOf(Y.Map);
+    expect(validateBoardDoc(doc)).toEqual([]);
+  });
+
+  it('creates empty arrays so two people drawing on a new plan merge', () => {
+    const doc = createBoardDoc(boardId);
+    const el = { ...base(), type: 'plan' as const };
+    addElement(doc, el);
+    const map = roots(doc).elements.get(el.id)!;
+    for (const key of ['strokes', 'shapes', 'icons']) expect(map.get(key)).toBeInstanceOf(Y.Array);
+  });
+
+  it('leaves out icons it cannot read, such as a kind added later or a full turn', () => {
+    const el = plan();
+    const camera = el.icons[0];
+    const parsed = Element.parse({
+      ...el,
+      icons: [
+        ...el.icons,
+        { id: 'iconCCCCCCCCC', kind: 'crane', color: '#9DB8F2', x: 1, y: 1 },
+        { ...camera, id: 'iconDDDDDDDDD', rotation: 360 },
+      ],
+    });
+    expect(parsed.type === 'plan' && parsed.icons?.map((i) => i.id)).toEqual([
+      'iconAAAAAAAAA',
+      'iconBBBBBBBBB',
+    ]);
+  });
+
+  it('migrates version 13 documents unchanged', () => {
+    const doc = createBoardDoc(boardId);
+    roots(doc).meta.set('schemaVersion', 13);
+    addElement(doc, { ...base(), type: 'todo' as const, items: [], list: 'props' as const });
+    const before = roots(doc).elements.toJSON();
+    expect(migrateBoardDoc(doc, boardId)).toEqual([14, 15]);
+    expect(roots(doc).elements.toJSON()).toEqual(before);
+    expect(getSchemaVersion(doc)).toBe(15);
+  });
+
+  it('cuts items past the limits instead of refusing the whole plan', () => {
+    const el = plan();
+    const icons = Array.from({ length: MAX_PLAN_ICONS + 3 }, (_, i) => ({
+      ...el.icons[0]!,
+      id: `icon${String(i).padStart(9, '0')}`,
+    }));
+    const parsed = Element.safeParse({ ...el, icons });
+    expect(parsed.success).toBe(true);
+    expect(parsed.success && parsed.data.type === 'plan' && parsed.data.icons?.length).toBe(
+      MAX_PLAN_ICONS,
+    );
+  });
+
+  it('migrates version 14 plans unchanged and keeps the version 15 fields', () => {
+    const doc = createBoardDoc(boardId);
+    roots(doc).meta.set('schemaVersion', 14);
+    const old = plan();
+    addElement(doc, old);
+    expect(migrateBoardDoc(doc, boardId)).toEqual([15]);
+    expect(readElement(roots(doc).elements.get(old.id)!)).toEqual(old);
+
+    const rich = {
+      ...base(),
+      type: 'plan' as const,
+      sceneIds: ['sceneAAAAAAAA'],
+      variantOf: 'planBaseAAAAA',
+      variant: 'Sera',
+      hiddenLayers: ['camera' as const],
+      lockedLayers: ['set' as const],
+      scale: 192.3,
+      grid: '0.5' as const,
+      rulers: true,
+      sensor: 'ff' as const,
+      presentation: false,
+      strokes: [{ ...old.strokes[0]!, layer: 'notes' as const, group: 'groupAAAAAAAA' }],
+      shapes: [
+        { ...old.shapes[0]!, rotation: 340 },
+        {
+          ...old.shapes[0]!,
+          id: 'measureAAAAAA',
+          kind: 'measure' as const,
+          from: 'iconAAAAAAAAA',
+          to: 'iconBBBBBBBBB',
+        },
+      ],
+      icons: [
+        {
+          ...old.icons[0]!,
+          kind: 'fresnel' as const,
+          power: '1,2K',
+          beam: 30,
+          intensity: 0.8,
+          size: 'L' as const,
+        },
+        {
+          ...old.icons[1]!,
+          steps: [{ x: 10, y: 20, note: 'Porta, entra', bend: 40 }],
+          note: 'Al tavolo',
+          dashed: true,
+        },
+        { id: 'sofaAAAAAAAAA', kind: 'sofa' as const, color: '#1C1C1E', x: 9, y: 9, w: 110, h: 45 },
+      ],
+    };
+    addElement(doc, rich);
+    expect(readElement(roots(doc).elements.get(rich.id)!)).toEqual(rich);
+    expect(validateBoardDoc(doc)).toEqual([]);
   });
 });

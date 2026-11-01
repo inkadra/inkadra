@@ -408,3 +408,62 @@
     print-color-adjust: exact;
   }
 }
+
+/* Scenes of the day with their set plan (#335 round 6, i). */
+.call-sheet__row--nested {
+  padding-left: 18px;
+}
+.call-sheet__badge {
+  margin-left: 6px;
+  padding: 1px 6px;
+  border-radius: var(--ink-radius-xs);
+  background: var(--ink-accent-soft-bg);
+  color: var(--ink-accent-soft-fg);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.sheet__scene {
+  break-inside: avoid;
+  margin-bottom: 12px;
+}
+.sheet__scene--page {
+  break-before: page;
+}
+.sheet__scene-head {
+  margin: 0 0 6px;
+  font-size: 10px;
+}
+.sheet__scene-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
+  gap: 10px;
+}
+.sheet__scene--page .sheet__scene-body {
+  grid-template-columns: 1fr;
+}
+.sheet__scene-frames {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.sheet__scene-frames figure {
+  margin: 0;
+}
+.sheet__scene-frames figcaption {
+  font-size: 9px;
+}
+.sheet__scene-plan .plan {
+  border: 1px solid var(--ink-border-default);
+  border-radius: var(--ink-radius-xs);
+}
+.sheet__kit {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1px 12px;
+  margin: 6px 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: 9px;
+}

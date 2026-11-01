@@ -3,6 +3,7 @@ import {
   type ArrowElement,
   type ArrowGeometry,
   addScene,
+  addVariant,
   alignRects,
   applyTemplate,
   arrowBox,
@@ -65,6 +66,7 @@ import {
   updateElement,
   updateElements,
   type Viewport,
+  variantFamily,
   visibleWorld,
   worldToScreen,
   zoomAt,
@@ -91,6 +93,7 @@ import { useSearchParams } from 'react-router';
 import * as Y from 'yjs';
 import { addActions, type PaletteAction, useRegisterActions } from '../commands/actions.ts';
 import { canvasActions, duplicateInStore } from '../commands/board-actions.ts';
+import { useIsPhone } from '../lib/phone.ts';
 import { getPreferences, updatePreferences, usePreferences } from '../lib/preferences.ts';
 import { useSession } from '../lib/session.tsx';
 import { ProjectAppearanceDialog } from '../routes/ProjectAppearance.tsx';
@@ -154,6 +157,14 @@ import { fillMapPreview } from './maps.ts';
 import { NoteSideSheet } from './NoteSideSheet.tsx';
 import { fillFragment, isEmpty } from './note.tsx';
 import { PresenceLayer } from './PresenceLayer.tsx';
+import { PlanEditor } from './plan/PlanEditor.tsx';
+import {
+  lensMillimetres,
+  ScenePicker,
+  scenesOfPlan,
+  usePlanNav,
+  useTakeParam,
+} from './plan/scenes.tsx';
 import { type Peer, useLocalPresence } from './presence.ts';
 import { canvasElementId, ResizeHandles } from './ResizeHandles.tsx';
 import { openComments } from './review-store.ts';
@@ -482,6 +493,8 @@ export function Canvas({
   const [tagging, setTagging] = useState<{ x: number; y: number; ids: string[] } | null>(null);
   /** The board whose icon and colour are being picked from a board card (#322). */
   const [iconBoard, setIconBoard] = useState<Board | null>(null);
+  /** The plan whose scenes are being picked from its card menu, and where. */
+  const [scenePicker, setScenePicker] = useState<{ id: string; x: number; y: number } | null>(null);
   const boardAspect = useBoardAspect(doc);
   const [params, setParams] = useSearchParams();
   const [overlay, setOverlayState] = useState<Overlay>(NO_OVERLAY);
@@ -1016,6 +1029,10 @@ export function Canvas({
         case 'table':
           created = createElement(doc, 'table', pos, { ...newTable(3, 3), header: true }, opts);
           break;
+        case 'plan':
+          // Opens in its editor, like a new note.
+          created = createElement(doc, 'plan', pos, {}, opts);
+          break;
         case 'color':
           created = createElement(doc, 'color', pos, { hex: '#808086' }, opts);
           break;
@@ -1264,7 +1281,7 @@ export function Canvas({
         ?.querySelector<HTMLElement>(`.card[data-el="${CSS.escape(el.id)}"]`)
         ?.querySelector<HTMLElement>('.card__media')?.offsetHeight;
       // Images keep the ratio of their picture, a caption under it does not scale.
-      if (el.type === 'image' || el.type === 'frame')
+      if (el.type === 'image' || el.type === 'frame' || el.type === 'plan')
         return { ...rect, fit: 'ratio', fixed: media ? Math.max(0, rect.h - media) : 0 };
       return { ...rect, fit: el.h !== undefined || el.type === 'color' ? 'ratio' : 'content' };
     },
@@ -1695,8 +1712,9 @@ export function Canvas({
         `.card[data-el="${CSS.escape(id)}"]`,
       );
       const mediaHeight = card?.querySelector<HTMLElement>('.card__media')?.offsetHeight;
+      // Images keep the ratio of their picture and plans of their drawing; the header stays.
       const options: ResizeOptions =
-        el.type === 'image'
+        el.type === 'image' || el.type === 'plan'
           ? {
               aspectRatio: rect.w / (mediaHeight || rect.h),
               fixedHeight: mediaHeight ? Math.max(0, rect.h - mediaHeight) : 0,
@@ -2301,7 +2319,9 @@ export function Canvas({
   // Clipboard ---------------------------------------------------------------------
   const clipHandler = useRef<(e: ClipboardEvent) => void>(() => {});
   clipHandler.current = (e: ClipboardEvent) => {
-    if (insideDialog()) return;
+    // A plan being edited has the keyboard; copy and paste never act on its card.
+    if (insideDialog() || store.getSnapshot().byId.get(editingRef.current ?? '')?.type === 'plan')
+      return;
     if (isTyping(e.target) || !e.clipboardData) return;
     if (e.type === 'copy' || e.type === 'cut') {
       if (selection.size === 0) return;
@@ -2404,6 +2424,51 @@ export function Canvas({
   // Editing a swatch opens its colour picker, with the board's other colours (#308).
   const editedEl = editing ? snap.byId.get(editing) : undefined;
   const pickingColor = editedEl?.type === 'color' && !readOnly ? editedEl : null;
+  const editedPlan = editedEl?.type === 'plan' && !readOnly ? editedEl : null;
+  const isPhone = useIsPhone();
+  const { openScene } = usePlanNav();
+  const boardScenes = useMemo(
+    () => storyboardOf([...snap.byId.values()]).flatMap((g) => (g.scene ? [g.scene] : [])),
+    [snap],
+  );
+  // A scene's "Pianta del set" links to ?plan=<id>: open that plan in its editor, once.
+  const [planParam, takePlanParam] = useTakeParam('plan');
+  useEffect(() => {
+    if (!planParam || conn.status !== 'synced') return;
+    takePlanParam();
+    const el = snap.byId.get(planParam);
+    if (el?.type !== 'plan') return;
+    select([el.id]);
+    if (!readOnly) setEditing(el.id);
+  }, [planParam, takePlanParam, conn.status, snap, select, setEditing, readOnly]);
+  const pickingScenes = scenePicker ? snap.byId.get(scenePicker.id) : undefined;
+  const editedBaseEl = editedPlan?.variantOf ? snap.byId.get(editedPlan.variantOf) : undefined;
+  const editedBase = editedBaseEl?.type === 'plan' ? editedBaseEl : undefined;
+  /** "Duplica come variante": a card next to the plan sharing its Set layer (round 6, h). */
+  const newVariant = useCallback(
+    (source: Extract<Element, { type: 'plan' }>, open = false) => {
+      const count = variantFamily(store.getSnapshot().byId.values(), source).length;
+      store.undo.stopCapturing();
+      const id = addVariant(doc, source, t('board.plan.variantName', { n: count + 1 }), {
+        userId,
+        origin: LOCAL,
+      });
+      store.undo.stopCapturing();
+      select([id]);
+      if (open) setEditing(id);
+    },
+    [doc, store, t, userId, select, setEditing],
+  );
+  // The lenses of the frames of a plan's scenes, proposed for its cameras (round 6, c).
+  const planLenses = useMemo(() => {
+    const sceneIds = new Set(editedPlan?.sceneIds ?? []);
+    if (sceneIds.size === 0) return [];
+    return [...snap.byId.values()].flatMap((e) => {
+      if (e.type !== 'frame' || !e.parent || !sceneIds.has(e.parent)) return [];
+      const mm = lensMillimetres(e.lens);
+      return mm ? [{ label: labels.get(e.id) ?? '', mm }] : [];
+    });
+  }, [editedPlan, snap, labels]);
   const usedColors = useMemo(
     () =>
       [
@@ -2794,6 +2859,29 @@ export function Canvas({
       ...(single?.type === 'note'
         ? [{ label: t('board.menu.openDoc'), action: () => openElement(single) }]
         : []),
+      ...(single?.type === 'plan'
+        ? [
+            ...(readOnly
+              ? []
+              : [
+                  { label: t('board.plan.edit'), shortcut: '↵', action: () => openElement(single) },
+                  {
+                    label: t('board.plan.linkSceneMenu'),
+                    action: () => setScenePicker({ id: single.id, x: menu.x, y: menu.y }),
+                  },
+                  {
+                    label: t('board.plan.variantMenu'),
+                    action: () => newVariant(single),
+                  },
+                ]),
+            ...scenesOfPlan(single, snap.byId)
+              .slice(0, 1)
+              .map((scene) => ({
+                label: t('board.plan.openScene', { number: scene.number }),
+                action: () => openScene(scene.id),
+              })),
+          ]
+        : []),
       ...(single?.type === 'frame'
         ? [
             { label: t('board.menu.details'), action: () => openElement(single) },
@@ -2908,6 +2996,8 @@ export function Canvas({
     dots,
     toggleDots,
     snap,
+    openScene,
+    newVariant,
   ]);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: sizeVersion invalidates measured heights
@@ -3009,6 +3099,7 @@ export function Canvas({
                 (el) =>
                   selection.has(el.id) &&
                   el.id !== cropping &&
+                  el.id !== editedPlan?.id &&
                   !el.locked &&
                   el.parent === null &&
                   el.type !== 'arrow',
@@ -3107,6 +3198,8 @@ export function Canvas({
         {!overlay.offset &&
           !overlay.marquee &&
           selectionBox &&
+          // A plan being edited has its own tools and bar.
+          !editedPlan &&
           (croppingElement ? (
             <ImageCropToolbar
               box={selectionBox}
@@ -3268,6 +3361,34 @@ export function Canvas({
               onClose={() => setStoryPanel(null)}
             />
           </div>
+        )}
+        {editedPlan && (
+          <PlanEditor
+            key={editedPlan.id}
+            store={store}
+            plan={editedPlan}
+            phone={isPhone}
+            scenes={boardScenes}
+            lenses={planLenses}
+            base={editedBase}
+            family={editedPlan ? variantFamily(snap.byId.values(), editedPlan) : []}
+            onSwitch={(id) => {
+              select([id]);
+              setEditing(id);
+            }}
+            onNewVariant={() => editedPlan && newVariant(editedPlan, true)}
+            onOpenScene={openScene}
+            onClose={() => setEditing(null)}
+          />
+        )}
+        {pickingScenes?.type === 'plan' && scenePicker && (
+          <ScenePicker
+            store={store}
+            plan={pickingScenes}
+            scenes={boardScenes}
+            style={{ position: 'fixed', left: scenePicker.x, top: scenePicker.y }}
+            onClose={() => setScenePicker(null)}
+          />
         )}
         {drawnFrame && (
           <DrawingEditor

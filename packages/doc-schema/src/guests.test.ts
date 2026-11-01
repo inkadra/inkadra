@@ -256,3 +256,31 @@ describe('guest element fields', () => {
     expect(Element.parse(cabin)).toEqual(cabin);
   });
 });
+
+it('leaves the layers hidden on a plan out of what guests receive', () => {
+  const plan = {
+    id: 'planAAAAAAAAA',
+    type: 'plan' as const,
+    x: 0,
+    y: 0,
+    w: 480,
+    z: 'a0',
+    parent: null,
+    createdBy: 'u',
+    createdAt: 0,
+    hiddenLayers: ['camera' as const],
+    icons: [
+      {
+        id: 'camAAAAAAAAAA',
+        kind: 'camera' as const,
+        color: '#9DB8F2',
+        x: 1,
+        y: 1,
+        note: 'privata',
+      },
+      { id: 'sofaAAAAAAAAA', kind: 'sofa' as const, color: '#1C1C1E', x: 1, y: 1 },
+    ],
+  };
+  const out = toGuestElement(plan) as { icons: Array<{ id: string }> };
+  expect(out.icons.map((i) => i.id)).toEqual(['sofaAAAAAAAAA']);
+});

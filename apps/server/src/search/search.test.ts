@@ -84,6 +84,42 @@ describe('index entries', () => {
     );
   });
 
+  it('indexes the title, icon labels and texts of a set plan', () => {
+    const doc = createBoardDoc('board');
+    const plan = {
+      ...base(),
+      type: 'plan' as const,
+      title: 'Cucina',
+      icons: [
+        {
+          id: newElementId(),
+          kind: 'camera' as const,
+          color: '#9DB8F2',
+          x: 9,
+          y: 9,
+          label: 'A cam',
+        },
+      ],
+      shapes: [
+        {
+          id: newElementId(),
+          kind: 'text' as const,
+          color: '#1C1C1E',
+          width: 24,
+          x0: 9,
+          y0: 9,
+          x1: 9,
+          y1: 9,
+          text: 'finestra',
+        },
+      ],
+    };
+    addElement(doc, plan);
+    expect(entriesFor(doc)).toEqual([
+      expect.objectContaining({ type: 'plan', title: 'Cucina', text: 'Cucina A cam finestra' }),
+    ]);
+  });
+
   it('indexes file captions and accepts files without a caption', () => {
     const doc = createBoardDoc('board');
     const file = {

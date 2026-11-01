@@ -12,6 +12,7 @@ import {
 import { generateKeyBetween, generateNKeysBetween } from 'fractional-indexing';
 import * as Y from 'yjs';
 import type { Point, Rect } from './geometry.ts';
+import { adoptBase, type PlanBase, planBaseOf } from './plan-variants.ts';
 
 /**
  * Edits on a board document. Every function runs in one transaction tagged with `origin`, so
@@ -39,6 +40,7 @@ export const DEFAULT_WIDTH: Record<ElementType, number> = {
   section: 640,
   table: 420,
   map: 240,
+  plan: 480,
 };
 
 export const MIN_WIDTH = 80;
@@ -200,7 +202,20 @@ export function deleteElements(doc: Y.Doc, ids: Iterable<string>, origin?: unkno
     const parent = map.get('parent');
     if (typeof parent === 'string' && doomed.has(parent)) doomed.add(id);
   }
+  // Variants of a plan that goes keep its Set: copied into them, the link dropped (0062).
+  const orphans: Array<[Y.Map<unknown>, Y.Map<unknown>]> = [];
+  for (const [id, map] of elements.entries()) {
+    const base = map.get('variantOf');
+    if (map.get('type') !== 'plan' || typeof base !== 'string') continue;
+    const baseMap = elements.get(base);
+    if (doomed.has(base) && !doomed.has(id) && baseMap) orphans.push([map, baseMap]);
+  }
   doc.transact(() => {
+    for (const [variant, base] of orphans) {
+      const plan = readElement(base);
+      if (plan?.type === 'plan') adoptBase(variant, planBaseOf(plan));
+      else variant.delete('variantOf');
+    }
     for (const id of doomed) elements.delete(id);
   }, origin);
 }
@@ -331,6 +346,15 @@ export function duplicateElements(
       // A to-do list copied with its scene follows the copy, as arrows follow their cards.
       if (e.type === 'todo' && e.sceneId && fresh.has(e.sceneId))
         copy.set('sceneId', fresh.get(e.sceneId));
+      // A plan copied with its base or its scenes follows their copies.
+      if (e.type === 'plan') {
+        if (e.variantOf && fresh.has(e.variantOf)) copy.set('variantOf', fresh.get(e.variantOf));
+        if (e.sceneIds?.some((s) => fresh.has(s)))
+          copy.set(
+            'sceneIds',
+            e.sceneIds.map((s) => fresh.get(s) ?? s),
+          );
+      }
       if (e.parent === null) {
         copy.set('x', Math.round(e.x + offset.x));
         copy.set('y', Math.round(e.y + offset.y));
@@ -429,6 +453,8 @@ export interface ClipboardData {
   version: 1;
   elements: Element[];
   bodies: Record<string, string>;
+  /** The Set of the base of each copied plan variant, for a board that lacks its base. */
+  planBases?: Record<string, PlanBase>;
 }
 
 export function copyElements(doc: Y.Doc, ids: string[]): ClipboardData {
@@ -445,7 +471,13 @@ export function copyElements(doc: Y.Doc, ids: string[]): ClipboardData {
     tmp.getMap('m').set('body', body.clone());
     bodies[e.id] = toBase64(Y.encodeStateAsUpdate(tmp));
   }
-  return { version: 1, elements, bodies };
+  const planBases: Record<string, PlanBase> = {};
+  for (const e of elements) {
+    if (e.type !== 'plan' || !e.variantOf) continue;
+    const base = all.find((b) => b.id === e.variantOf);
+    if (base?.type === 'plan') planBases[e.id] = planBaseOf(base);
+  }
+  return { version: 1, elements, bodies, ...(Object.keys(planBases).length ? { planBases } : {}) };
 }
 
 /** Pastes copied elements with their top-left corner at `at`. Returns the new top-level ids. */
@@ -484,6 +516,29 @@ export function pasteElements(
       };
       if (copy.type === 'todo' && copy.sceneId)
         copy.sceneId = fresh.get(copy.sceneId) ?? copy.sceneId;
+      if (copy.type === 'plan') {
+        // Scenes: the copies of scenes pasted with it, or those of this board; others go.
+        const here = new Set(all.map((x) => x.id));
+        const scenes = (copy.sceneIds ?? [])
+          .map((s) => fresh.get(s) ?? s)
+          .filter((s) => here.has(s) || [...fresh.values()].includes(s));
+        if (scenes.length) copy.sceneIds = scenes;
+        else delete copy.sceneIds;
+        // A variant follows the copy of its base, or its base on this board; on a board
+        // without it, it stands alone with the base's Set (decision 0062).
+        if (copy.variantOf && fresh.has(copy.variantOf)) copy.variantOf = fresh.get(copy.variantOf);
+        else if (copy.variantOf && !here.has(copy.variantOf)) {
+          const base = data.planBases?.[e.id];
+          delete copy.variantOf;
+          if (base) {
+            copy.strokes = [...base.strokes, ...(copy.strokes ?? [])];
+            copy.shapes = [...base.shapes, ...(copy.shapes ?? [])];
+            copy.icons = [...base.icons, ...(copy.icons ?? [])];
+            if (base.scale && !copy.scale)
+              Object.assign(copy, { scale: base.scale, grid: base.grid, rulers: base.rulers });
+          }
+        }
+      }
       if (copy.type === 'arrow') {
         // Ends move with the arrow; an attached end follows the copy of its card when the
         // card was copied too, else the original card.

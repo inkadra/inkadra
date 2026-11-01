@@ -1,8 +1,35 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-import { arrowGeometry, arrowPolyline, decodeStroke, type Rect } from '@inkadra/canvas-core';
-import type { Element, FrameShape, Stroke } from '@inkadra/doc-schema';
+import {
+  arrowGeometry,
+  arrowPolyline,
+  blockingCurve,
+  blockingPositions,
+  curvePoints,
+  decodeStroke,
+  flattenGlyph,
+  glyphOf,
+  iconCone,
+  iconPoint,
+  iconTransform,
+  labelAnchor,
+  layerOf,
+  measureEnds,
+  PLAN_VIEW_W,
+  type PlanItem,
+  type Rect,
+  variantView,
+} from '@inkadra/canvas-core';
+import {
+  type Element,
+  type FrameShape,
+  PLAN_ASPECT,
+  type PlanIcon,
+  type PlanShape,
+  type Stroke,
+} from '@inkadra/doc-schema';
 import type { AssetTrack } from '@inkadra/shared';
 import { croppedRotatedSize } from '../image-crop.ts';
+import { iconLabel, LABEL_SIZE, measureText, planToken } from '../plan/PlanDrawing.tsx';
 import type { Placed } from './board-model.ts';
 import type { ImageInfo, Measure, Op } from './pages.ts';
 import { ellipsize, lineHeight, type TextStyle, textBlock, wrapText } from './text.ts';
@@ -26,6 +53,7 @@ export type Palette = Record<
   | 'tag-orange-bg'
   | 'tag-purple-bg'
   | 'tag-green-bg'
+  | 'tag-yellow'
   | 'tag-red',
   string
 >;
@@ -55,7 +83,10 @@ export interface CardContext {
   slugline(scene: Extract<Element, { type: 'scene' }>): string;
   /** Actor or INT./EXT. and the scene count of a character or location, on one line. */
   storyMeta(card: Extract<Element, { type: 'character' | 'location' }>): string;
-  words: { board: string; file: string };
+  /** `plan`: the name of a set plan, in its header. */
+  words: { board: string; file: string; plan?: string };
+  /** Another element of the board: the base of a plan variant, whose Set layer it shows. */
+  element?(id: string): Element | undefined;
 }
 
 const PAD = 12;
@@ -111,6 +142,8 @@ export function cardHeight(el: Element, w: number, ctx: CardContext): number | n
     }
     case 'table':
       return el.rows.length * TABLE_ROW;
+    case 'plan':
+      return PLAN_HEAD + w / PLAN_ASPECT;
     case 'map':
       return (ctx.image(el.imageAssetId) ? (w * 560) / 1024 : 0) + 52;
     case 'location': {
@@ -531,6 +564,35 @@ function body(p: Placed, ctx: CardContext): Op[] {
       return [];
     case 'table':
       return tableOps(el, p, c, m);
+    case 'plan': {
+      const title = el.variant
+        ? [el.title || ctx.words.plan, el.variant].filter(Boolean).join(' · ')
+        : [ctx.words.plan, el.title].filter(Boolean).join(' · ');
+      const ops: Op[] = [
+        {
+          kind: 'text',
+          x,
+          y: p.y + 21,
+          text: ellipsize(title, inner, 12, 500, m),
+          size: 12,
+          weight: 500,
+          color: c['text-primary'],
+        },
+        {
+          kind: 'line',
+          x1: p.x,
+          y1: p.y + PLAN_HEAD,
+          x2: p.x + p.w,
+          y2: p.y + PLAN_HEAD,
+          color: c['border-default'],
+          width: 1,
+        },
+      ];
+      const box = { x: p.x, y: p.y + PLAN_HEAD, w: p.w, h: p.w / PLAN_ASPECT };
+      const base = el.variantOf ? ctx.element?.(el.variantOf) : undefined;
+      const drawn = base?.type === 'plan' ? variantView(el, base) : el;
+      return [...ops, ...planOps(drawn, box, ctx)];
+    }
     case 'map': {
       const ops: Op[] = [];
       let top = p.y + 10;
@@ -804,6 +866,303 @@ function shapeOps(shape: FrameShape, box: Rect): Op[] {
   }
 }
 
+/** Height of a set plan's header, on the board and in exports. */
+const PLAN_HEAD = 34;
+
+/** `hex` mixed with `base` (both #RRGGBB), `t` of the way to `hex`; other colours stay. */
+function mix(hex: string, base: string, t: number): string {
+  const rgb = (h: string) =>
+    /^#[0-9a-f]{6}$/i.test(h) ? [1, 3, 5].map((i) => Number.parseInt(h.slice(i, i + 2), 16)) : null;
+  const a = rgb(hex);
+  const b = rgb(base);
+  if (!a || !b) return hex;
+  return `#${a
+    .map((v, i) =>
+      Math.round((b[i] as number) + (v - (b[i] as number)) * t)
+        .toString(16)
+        .padStart(2, '0'),
+    )
+    .join('')}`;
+}
+
+/**
+ * A set plan's drawing as vectors, without the grid (decision 0062): strokes, shapes, then the
+ * set icons with their labels, in the printed theme's colours.
+ */
+/** `moves`: blocking moves and numbers, on unless an export leaves them out (round 6, i). */
+export function planOps(
+  el: Extract<Element, { type: 'plan' }>,
+  box: Rect,
+  ctx: CardContext,
+  moves = true,
+): Op[] {
+  const c = ctx.colors;
+  const ink = (hex: string) => {
+    const token = planToken(hex);
+    return token ? c[token as keyof Palette] : hex;
+  };
+  const shown = <T extends PlanItem>(items: readonly T[] | undefined) =>
+    (items ?? []).filter((item) => !el.hiddenLayers?.includes(layerOf(item)));
+  const k = box.w / PLAN_VIEW_W;
+  const at = (x: number, y: number) => ({ x: box.x + x * k, y: box.y + y * k });
+  const inside: Op[] = [];
+  for (const stroke of shown(el.strokes))
+    inside.push(strokeOp({ ...stroke, color: ink(stroke.color) }, box));
+  for (const shape of shown(el.shapes))
+    inside.push(
+      ...planShapeOps(measureEnds(shape, el.icons), box, ink(shape.color), el.scale, ctx),
+    );
+  // Blocking: the moves, the veiled earlier positions and the numbers (round 6, d).
+  for (const icon of moves ? shown(el.icons) : []) {
+    const steps = icon.steps ?? [];
+    if (steps.length === 0) continue;
+    const color = ink(icon.color);
+    const at = blockingPositions(icon);
+    for (let i = 0; i + 1 < at.length; i++) {
+      const a = at[i] as { x: number; y: number };
+      const b = at[i + 1] as { x: number; y: number };
+      const { control } = blockingCurve(a, b, steps[i]?.bend);
+      const pts = curvePoints(a, control, b).map((p) => ({
+        x: box.x + p.x * k,
+        y: box.y + p.y * k,
+      }));
+      // Stop short of the icon so the head shows.
+      while (
+        pts.length > 2 &&
+        Math.hypot((pts.at(-1)?.x ?? 0) - b.x * k - box.x, (pts.at(-1)?.y ?? 0) - b.y * k - box.y) <
+          26 * k
+      )
+        pts.pop();
+      const w = 2.5 * k;
+      if (icon.dashed) inside.push(...dashes(pts, 10 * k, 8 * k, color, w));
+      else
+        inside.push({ kind: 'polyline', points: pts.flatMap((p) => [p.x, p.y]), color, width: w });
+      const end = pts.at(-1) as { x: number; y: number };
+      const prev = pts.at(-2) as { x: number; y: number };
+      inside.push(head(prev.x, prev.y, end.x, end.y, 14 * k, color));
+    }
+    for (const step of steps)
+      inside.push(
+        ...iconOps(
+          { ...icon, x: step.x, y: step.y, rotation: step.rotation ?? 0 },
+          color,
+          0.4,
+          false,
+        ),
+      );
+    at.forEach((p, i) => {
+      const cx = box.x + (p.x - 24) * k;
+      const cy = box.y + (p.y - 24) * k;
+      const ring: number[] = [];
+      for (let j = 0; j < 20; j++)
+        ring.push(
+          cx + 11 * k * Math.cos((j / 20) * Math.PI * 2),
+          cy + 11 * k * Math.sin((j / 20) * Math.PI * 2),
+        );
+      const label = String(i + 1);
+      inside.push(
+        { kind: 'polygon', points: ring, fill: color },
+        {
+          kind: 'text',
+          x: cx - ctx.measure(label, 13 * k, 600) / 2,
+          y: cy + 4.5 * k,
+          text: label,
+          size: 13 * k,
+          weight: 600,
+          color: c['surface-1'],
+        },
+      );
+    });
+  }
+  const labels: Op[] = [];
+  for (const icon of shown(el.icons)) inside.push(...iconOps(icon, ink(icon.color), 1, true));
+  inside.push(...labels);
+  return [{ kind: 'clip', ...box, ops: inside }];
+
+  /** An icon: its cone or beam, its glyph and its label; `veil` fades a blocking copy. */
+  function iconOps(icon: PlanIcon, base: string, veil: number, full: boolean): Op[] {
+    const out: Op[] = [];
+    const color = veil < 1 ? mix(base, c['surface-1'], veil) : base;
+    const cone = full ? iconCone(icon, el.sensor) : null;
+    if (cone) {
+      const pts = cone.points.map((p) => at(p.x, p.y));
+      const shade = cone.beam ? 0.06 + 0.16 * (icon.intensity ?? 0.8) : 0.14;
+      out.push(
+        {
+          kind: 'polygon',
+          points: pts.flatMap((p) => [p.x, p.y]),
+          fill: mix(color, c['surface-1'], shade),
+        },
+        {
+          kind: 'polyline',
+          points: [...pts, pts[0] as { x: number; y: number }].flatMap((p) => [p.x, p.y]),
+          color: mix(color, c['surface-1'], 0.5),
+          width: 1.5 * k,
+        },
+      );
+    }
+    const t = iconTransform(icon);
+    const place = (x: number, y: number) => {
+      const q = iconPoint(t, x, y);
+      return at(q.x, q.y);
+    };
+    const width = Math.min(1.6, 1.7 / Math.sqrt(t.sx * t.sy)) * Math.sqrt(t.sx * t.sy) * k;
+    const wash = mix(color, c['surface-1'], 0.12);
+    for (const part of flattenGlyph(glyphOf(icon.kind))) {
+      const pts: Array<{ x: number; y: number }> = [];
+      for (let i = 0; i + 1 < part.points.length; i += 2)
+        pts.push(place(part.points[i] as number, part.points[i + 1] as number));
+      if (part.closed && pts[0]) {
+        out.push({ kind: 'polygon', points: pts.flatMap((p) => [p.x, p.y]), fill: wash });
+        pts.push(pts[0]);
+      }
+      const w = (width * part.width) / 1.5;
+      const stroke = part.opacity !== undefined ? mix(color, c['surface-1'], part.opacity) : color;
+      if (part.dash)
+        out.push(
+          ...dashes(
+            pts,
+            (part.dash[0] as number) * w,
+            (part.dash[1] ?? (part.dash[0] as number)) * w,
+            stroke,
+            w,
+          ),
+        );
+      else
+        out.push({
+          kind: 'polyline',
+          points: pts.flatMap((p) => [p.x, p.y]),
+          color: stroke,
+          width: w,
+        });
+    }
+    const label = iconLabel(icon);
+    if (label && full) {
+      // Labels go last, on a patch of the card's colour: the halo of the board.
+      const a = labelAnchor(icon);
+      const size = LABEL_SIZE * k;
+      const w = ctx.measure(label, size, 500);
+      const x = box.x + a.x * k - w / 2;
+      const y = box.y + a.y * k;
+      labels.push(
+        {
+          kind: 'rect',
+          x: x - 2 * k,
+          y: y - size,
+          w: w + 4 * k,
+          h: size * 1.3,
+          fill: c['surface-1'],
+        },
+        { kind: 'text', x, y, text: label, size, weight: 500, color },
+      );
+    }
+    return out;
+  }
+}
+
+/** A plan shape: zones and measures, and frame shapes turned by their rotation. */
+function planShapeOps(
+  shape: PlanShape,
+  box: Rect,
+  color: string,
+  scale: number | undefined,
+  ctx: CardContext,
+): Op[] {
+  const c = ctx.colors;
+  const g = (v: number, size: number) => (v / 4096) * size;
+  const x0 = box.x + g(shape.x0, box.w);
+  const y0 = box.y + g(shape.y0, box.h);
+  const x1 = box.x + g(shape.x1, box.w);
+  const y1 = box.y + g(shape.y1, box.h);
+  const width = (shape.width / 1000) * box.w;
+  if (shape.kind === 'measure') {
+    const label = measureText(shape, scale);
+    const ops: Op[] = [
+      { kind: 'line', x1: x0, y1: y0, x2: x1, y2: y1, color, width: (2 / 1000) * box.w },
+    ];
+    if (label) {
+      const size = (18 / 1000) * box.w;
+      const w = ctx.measure(label, size, 600);
+      ops.push(
+        {
+          kind: 'rect',
+          x: (x0 + x1) / 2 - w / 2 - 4,
+          y: (y0 + y1) / 2 - size,
+          w: w + 8,
+          h: size * 1.6,
+          radius: 3,
+          fill: c['surface-1'],
+          stroke: color,
+          lineWidth: 0.75,
+        },
+        {
+          kind: 'text',
+          x: (x0 + x1) / 2 - w / 2,
+          y: (y0 + y1) / 2 + size * 0.35,
+          text: label,
+          size,
+          weight: 600,
+          color: c['text-primary'],
+        },
+      );
+    }
+    return ops;
+  }
+  const turned = (ops: Op[]): Op[] => {
+    if (!shape.rotation) return ops;
+    const cx = (x0 + x1) / 2;
+    const cy = (y0 + y1) / 2;
+    const t = (shape.rotation * Math.PI) / 180;
+    const pts = (p: readonly number[]) =>
+      p.map((v, i) =>
+        i % 2 === 0
+          ? cx + (v - cx) * Math.cos(t) - ((p[i + 1] as number) - cy) * Math.sin(t)
+          : cy + ((p[i - 1] as number) - cx) * Math.sin(t) + (v - cy) * Math.cos(t),
+      );
+    return ops.map((op) => {
+      if (op.kind === 'polyline' || op.kind === 'polygon') return { ...op, points: pts(op.points) };
+      if (op.kind === 'ellipse') {
+        const ring: number[] = [];
+        for (let i = 0; i <= 32; i++) {
+          const a = (i / 32) * Math.PI * 2;
+          ring.push(op.cx + op.rx * Math.cos(a), op.cy + op.ry * Math.sin(a));
+        }
+        return { kind: 'polyline', points: pts(ring), color: op.stroke, width: op.width };
+      }
+      // shortcut: exported texts stay level; turned texts print unturned until text ops can turn.
+      return op;
+    });
+  };
+  if (shape.kind === 'zone') {
+    const corners = [x0, y0, x1, y0, x1, y1, x0, y1];
+    const ring = [x0, y0, x1, y0, x1, y1, x0, y1, x0, y0];
+    const edge: Array<{ x: number; y: number }> = [];
+    const turnedRing = (
+      turned([{ kind: 'polyline', points: ring, color, width }])[0] as { points: number[] }
+    ).points;
+    for (let i = 0; i + 1 < turnedRing.length; i += 2)
+      edge.push({ x: turnedRing[i] as number, y: turnedRing[i + 1] as number });
+    const ops: Op[] = [
+      ...turned([{ kind: 'polygon', points: corners, fill: mix(color, c['surface-1'], 0.1) }]),
+      ...dashes(edge, width * 3, width * 2.5, color, width),
+    ];
+    if (shape.text) {
+      const size = (18 / 1000) * box.w;
+      ops.push({
+        kind: 'text',
+        x: Math.min(x0, x1) + 0.01 * box.w,
+        y: Math.min(y0, y1) + size * 1.3,
+        text: shape.text,
+        size,
+        weight: 400,
+        color,
+      });
+    }
+    return ops;
+  }
+  return turned(shapeOps({ ...shape, kind: shape.kind, color }, box));
+}
+
 function head(x0: number, y0: number, x1: number, y1: number, size: number, color: string): Op {
   const angle = Math.atan2(y1 - y0, x1 - x0);
   const a = angle + Math.PI - 0.45;
@@ -894,6 +1253,7 @@ function dashes(
   on: number,
   off: number,
   color: string,
+  width = 1.5,
 ): Op[] {
   const ops: Op[] = [];
   let drawing = true;
@@ -908,7 +1268,7 @@ function dashes(
       const t = step / len;
       const next: { x: number; y: number } = { x: p.x + (q.x - p.x) * t, y: p.y + (q.y - p.y) * t };
       if (drawing)
-        ops.push({ kind: 'line', x1: p.x, y1: p.y, x2: next.x, y2: next.y, color, width: 1.5 });
+        ops.push({ kind: 'line', x1: p.x, y1: p.y, x2: next.x, y2: next.y, color, width });
       p = next;
       len -= step;
       left -= step;

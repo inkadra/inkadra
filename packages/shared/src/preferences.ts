@@ -37,6 +37,18 @@ const fields = {
     description:
       'Boards pan only around their content plus a margin, an area that grows with it (#324).',
   }),
+  planFavorites: z
+    .array(z.string().min(1).max(40))
+    .max(60)
+    .openapi({
+      description:
+        'Set plan icons starred by this person, in order (#335). Open list: clients skip kinds ' +
+        'they do not know.',
+    }),
+  planRecents: z
+    .array(z.string().min(1).max(40))
+    .max(8)
+    .openapi({ description: 'The last set plan icons this person placed, newest first.' }),
   toolbar: z
     .array(z.string().min(1).max(40))
     .max(40)
@@ -57,6 +69,9 @@ export const UpdateUserPreferences = z
   .openapi('UpdateUserPreferences', { description: 'Only the fields given change.' });
 export type UpdateUserPreferences = z.infer<typeof UpdateUserPreferences>;
 
+/** Lists of set plan icons and their limits, read entry by entry. */
+const ICON_LISTS = { planFavorites: 60, planRecents: 8 } as const;
+
 /** What a person who never changed anything gets. */
 export const DEFAULT_USER_PREFERENCES: UserPreferences = {
   releaseNews: false,
@@ -67,6 +82,8 @@ export const DEFAULT_USER_PREFERENCES: UserPreferences = {
   doubleClickNote: true,
   undoButtons: false,
   keepAroundContent: true,
+  planFavorites: [],
+  planRecents: [],
   toolbar: null,
 };
 
@@ -80,6 +97,15 @@ export function readUserPreferences(stored: unknown): UserPreferences {
   for (const [key, schema] of Object.entries(fields)) {
     const parsed = schema.safeParse(record[key]);
     if (parsed.success && record[key] !== undefined) out[key] = parsed.data;
+    else if (key in ICON_LISTS && Array.isArray(record[key]))
+      // One bad entry does not cost the person the whole list: keep the valid ones.
+      out[key] = [
+        ...new Set(
+          (record[key] as unknown[]).filter(
+            (v): v is string => typeof v === 'string' && v.length > 0 && v.length <= 40,
+          ),
+        ),
+      ].slice(0, ICON_LISTS[key as keyof typeof ICON_LISTS]);
   }
   return out as UserPreferences;
 }

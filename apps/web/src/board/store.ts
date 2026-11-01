@@ -1,5 +1,5 @@
 import { canvasElements, childrenOf, isContainer, listElements } from '@inkadra/canvas-core';
-import { type Element, readElement, roots, UNSORTED } from '@inkadra/doc-schema';
+import { type Element, PLAN_ASPECT, readElement, roots, UNSORTED } from '@inkadra/doc-schema';
 import * as Y from 'yjs';
 import { croppedRotatedSize } from './image-crop.ts';
 
@@ -172,6 +172,8 @@ function estimateHeight(el: Element): number {
       return 44;
     case 'table':
       return el.rows.length * 31 + 2;
+    case 'plan':
+      return Math.round(el.w / PLAN_ASPECT) + 34;
     case 'map':
       return el.imageAssetId ? Math.round((el.w * 560) / 1024) + 52 : 52;
     default:

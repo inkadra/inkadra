@@ -5376,6 +5376,26 @@
             "type": "boolean",
             "description": "Boards pan only around their content plus a margin, an area that grows with it (#324)."
           },
+          "planFavorites": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 40
+            },
+            "maxItems": 60,
+            "description": "Set plan icons starred by this person, in order (#335). Open list: clients skip kinds they do not know."
+          },
+          "planRecents": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 40
+            },
+            "maxItems": 8,
+            "description": "The last set plan icons this person placed, newest first."
+          },
           "toolbar": {
             "type": [
               "array",
@@ -5399,6 +5419,8 @@
           "doubleClickNote",
           "undoButtons",
           "keepAroundContent",
+          "planFavorites",
+          "planRecents",
           "toolbar"
         ]
       },
@@ -5447,6 +5469,26 @@
           "keepAroundContent": {
             "type": "boolean",
             "description": "Boards pan only around their content plus a margin, an area that grows with it (#324)."
+          },
+          "planFavorites": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 40
+            },
+            "maxItems": 60,
+            "description": "Set plan icons starred by this person, in order (#335). Open list: clients skip kinds they do not know."
+          },
+          "planRecents": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 40
+            },
+            "maxItems": 8,
+            "description": "The last set plan icons this person placed, newest first."
           },
           "toolbar": {
             "type": [

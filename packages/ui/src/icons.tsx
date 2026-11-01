@@ -285,6 +285,52 @@ const paths = {
   crop: <path d="M6 2v14a2 2 0 0 0 2 2h14M2 6h14a2 2 0 0 1 2 2v14" />,
   rotateLeft: <path d="M4 9V4m0 5h5M4.5 9A8 8 0 1 1 6 17.5" />,
   rotateRight: <path d="M20 9V4m0 5h-5m4.5 0A8 8 0 1 0 18 17.5" />,
+  // Set icons of a set plan (#335), on the 24 grid of the rest.
+  planCamera: (
+    <>
+      <rect x="3" y="8" width="12" height="9" rx="1.5" />
+      <path d="M15 11l5-3v9l-5-3" />
+    </>
+  ),
+  iconLibrary: (
+    <>
+      <rect x="4" y="4" width="7" height="7" rx="1.5" />
+      <rect x="13" y="4" width="7" height="7" rx="1.5" />
+      <rect x="4" y="13" width="7" height="7" rx="1.5" />
+      <path d="M16.5 13v7M13 16.5h7" />
+    </>
+  ),
+  grid: <path d="M4 9h16M4 15h16M9 4v16M15 4v16" />,
+  eye: (
+    <>
+      <path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z" />
+      <circle cx="12" cy="12" r="3" />
+    </>
+  ),
+  eyeOff: (
+    <path d="M3 3l18 18M10.6 5.1A10 10 0 0 1 12 5c6 0 10 7 10 7a17 17 0 0 1-3 3.6M6.6 6.6C3.8 8.4 2 12 2 12s4 7 10 7a9.6 9.6 0 0 0 4.4-1.1" />
+  ),
+  blocking: (
+    <>
+      <path d="M5 18c3-7 7-10 14-11" />
+      <path d="M15 4l4 3-3 4" />
+      <circle cx="5" cy="18" r="1.5" />
+    </>
+  ),
+  ruler: <path d="M3 15L15 3l6 6L9 21zM7 11l2 2M10 8l2 2M13 5l2 2" />,
+  groupItems: (
+    <>
+      <rect x="3" y="3" width="18" height="18" rx="2" strokeDasharray="3 2.5" />
+      <rect x="7" y="7" width="5" height="5" rx="1" />
+      <rect x="12" y="12" width="5" height="5" rx="1" />
+    </>
+  ),
+  film: (
+    <>
+      <rect x="3" y="5" width="18" height="14" rx="2" />
+      <path d="M7 5v14M17 5v14M3 9h4M3 15h4M17 9h4M17 15h4" />
+    </>
+  ),
   warning: (
     <>
       <path d="M12 4l9 16H3z" />

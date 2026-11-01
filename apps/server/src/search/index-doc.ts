@@ -129,6 +129,14 @@ export function entryFor(el: Element, body: string, autoLabel?: string): IndexEn
         text: join(el.name, el.address),
         assetId: uuidOrNull(el.imageAssetId),
       };
+    case 'plan': {
+      // Labels of icons and the texts written on the plan, as on the card.
+      const words = [
+        ...(el.icons ?? []).map((i) => i.label),
+        ...(el.shapes ?? []).map((s) => s.text),
+      ].filter((w): w is string => !!w);
+      return { ...base, title: el.title ?? '', text: join(el.title, words) };
+    }
     case 'table': {
       const cells = el.rows.flatMap((r) => el.columns.map((c) => r.cells[c.id] ?? ''));
       return { ...base, title: cells.find(Boolean) ?? '', text: join(cells) };

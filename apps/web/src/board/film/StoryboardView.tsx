@@ -11,7 +11,7 @@ import {
 } from '@inkadra/canvas-core';
 import { ASPECT_RATIOS, type AspectRatio, SHOT_SIZES, setBoardAspect } from '@inkadra/doc-schema';
 import { Button, EmptyState, Icon, IconButton, Select } from '@inkadra/ui';
-import { type DragEvent, memo, useCallback, useId, useState } from 'react';
+import { type DragEvent, memo, useCallback, useEffect, useId, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useRegisterActions } from '../../commands/actions.ts';
 import { useSession } from '../../lib/session.tsx';
@@ -19,6 +19,7 @@ import { CardReview } from '../CardReview.tsx';
 import { Toast, UploadPanel } from '../chrome.tsx';
 import { GuestVisibility, GuestVisibilityIcon, toggleGuestHidden } from '../guest-visibility.tsx';
 import { PresentationView } from '../PresentationView.tsx';
+import { plansOfScene, ScenePlanButton, useTakeParam } from '../plan/scenes.tsx';
 import { type BoardStore, LOCAL } from '../store.ts';
 import { startUpload } from '../uploads.ts';
 import { aspectLabel, useBoardAspect } from './aspect.ts';
@@ -90,6 +91,15 @@ export function StoryboardView({
   const { groups, frames, labels } = useStoryboard(store);
   const [size, setSize] = useState<TileSize>('m');
   const [sceneFilter, setSceneFilter] = useState<string | null>(null);
+  // A plan's scene badge links to ?scene=<id>: bring that scene into view, once.
+  const [sceneParam, takeSceneParam] = useTakeParam('scene');
+  useEffect(() => {
+    if (!sceneParam || !groups.some((g) => g.scene?.id === sceneParam)) return;
+    takeSceneParam();
+    document
+      .querySelector(`[data-story-scene="${CSS.escape(sceneParam)}"]`)
+      ?.scrollIntoView({ block: 'start' });
+  }, [sceneParam, takeSceneParam, groups]);
   const [present, setPresent] = useState(false);
   const [selected, setSelected] = useState<string | null>(null);
   const [drawing, setDrawing] = useState<string | null>(null);
@@ -679,6 +689,7 @@ function SceneSection({
         <span className="story__scene-meta">
           {t('film.total', { count: frames.length, duration })}
         </span>
+        <ScenePlanButton plans={plansOfScene(store.getSnapshot().byId.values(), scene.id)} />
         {/* An editor's pressed toggle already says the scene is hidden. */}
         {(readOnly || !scene.guestHidden) && <GuestVisibility store={store} element={scene} />}
         {!readOnly && (

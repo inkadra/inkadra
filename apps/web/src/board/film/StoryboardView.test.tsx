@@ -2,6 +2,7 @@
 import { addFrame, addScene, storyboardOf } from '@inkadra/canvas-core';
 import { act } from 'react';
 import { createRoot } from 'react-dom/client';
+import { MemoryRouter } from 'react-router';
 import { expect, it, vi } from 'vitest';
 import * as Y from 'yjs';
 import { chooseSelect } from '../../test/select.ts';
@@ -45,7 +46,9 @@ it('drops images between two frames as one new frame each, and not for a read-on
   const render = (readOnly: boolean) =>
     act(async () =>
       root.render(
-        <StoryboardView store={store} projectId="p" boardId="b" userId="u" readOnly={readOnly} />,
+        <MemoryRouter>
+          <StoryboardView store={store} projectId="p" boardId="b" userId="u" readOnly={readOnly} />
+        </MemoryRouter>,
       ),
     );
   try {
@@ -107,7 +110,11 @@ it('shares the scene filter between compact and desktop navigation without modif
   const root = createRoot(host);
   try {
     await act(async () =>
-      root.render(<StoryboardView store={store} projectId="p" boardId="b" userId="u" readOnly />),
+      root.render(
+        <MemoryRouter>
+          <StoryboardView store={store} projectId="p" boardId="b" userId="u" readOnly />
+        </MemoryRouter>,
+      ),
     );
     const picker = host.querySelector<HTMLButtonElement>('.story__scene-picker .ink-select');
     expect(picker?.getAttribute('aria-haspopup')).toBe('listbox');

@@ -1,0 +1,2113 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+import {
+  addBlockingStep,
+  addPlanIcon,
+  addShape,
+  addStroke,
+  alignItems,
+  bendThrough,
+  blockingCurve,
+  blockingPositions,
+  categoryOf,
+  DEFAULT_LENS,
+  defaultLayer,
+  duplicatePlanItems,
+  encodeStroke,
+  gridLength,
+  gridStep,
+  iconCone,
+  isSized,
+  itemBox,
+  itemFrame,
+  itemsBox,
+  itemsInRect,
+  layerCounts,
+  layerOf,
+  measureEnds,
+  moveItem,
+  normalizeRotation,
+  PLAN_VIEW_H,
+  PLAN_VIEW_W,
+  type PlanAlign,
+  type PlanElement,
+  type PlanItem,
+  type PlanItemRef,
+  type PlanNoteTool,
+  type Point,
+  planItem,
+  planItemAt,
+  planItems,
+  type ResizeHandle,
+  ROTATE_STEP,
+  removePlanItems,
+  resizeItem,
+  rotateItem,
+  type SceneElement,
+  scaleFor,
+  shownAngle,
+  snapPlanPoint,
+  toGrid,
+  toggleGroup,
+  updateElement,
+  updatePlanItems,
+  variantView,
+  withGroups,
+} from '@inkadra/canvas-core';
+import {
+  type FrameShape,
+  MAX_PLAN_ICONS,
+  MAX_SHAPES,
+  MAX_STROKES,
+  PLAN_ICON_KINDS,
+  PLAN_LAYERS,
+  type PlanIcon,
+  type PlanIconKind,
+  type PlanLayer,
+  type PlanSensor,
+  type PlanShape,
+  type PlanStep,
+} from '@inkadra/doc-schema';
+import { Button, Icon, IconButton, type IconName, Select, Switch } from '@inkadra/ui';
+import { type PointerEvent, type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
+import { useTranslation } from 'react-i18next';
+import { pathOf } from '../film/strokes.ts';
+import { isMac } from '../shortcuts.ts';
+import { type BoardStore, LOCAL } from '../store.ts';
+import { NumberField } from './NumberField.tsx';
+import { planTitle } from './PlanCard.tsx';
+import {
+  iconColor,
+  NOTE_COLOR,
+  PLAN_COLORS,
+  PLAN_INK,
+  PLAN_PEN,
+  PLAN_TEXT,
+  PlanDrawing,
+  PlanGlyph,
+  PlanShapeView,
+  planCss,
+  TEXT_SIZES,
+} from './PlanDrawing.tsx';
+import { type LibraryItem, PlanLibrary, rememberRecent } from './PlanLibrary.tsx';
+import { SceneBadges, ScenePicker, scenesOfPlan } from './scenes.tsx';
+import './plan.css';
+
+type DragKind = 'line' | 'arrow' | 'rect' | 'ellipse' | 'zone' | 'measure' | 'scale';
+type Tool = 'select' | 'pencil' | 'text' | 'icons' | 'move' | DragKind;
+type Panel = 'icons' | 'layers' | 'props';
+
+/** The tools of the frame drawing that plans use, in the order of the mockup, with their keys. */
+const TOOLS: Array<{ tool: Tool; icon: IconName; key: string; phone: boolean }> = [
+  { tool: 'select', icon: 'pointer', key: 'V', phone: true },
+  { tool: 'pencil', icon: 'pen', key: 'P', phone: true },
+  { tool: 'line', icon: 'line', key: 'L', phone: false },
+  { tool: 'arrow', icon: 'arrow', key: 'A', phone: true },
+  { tool: 'rect', icon: 'rect', key: 'Q', phone: true },
+  { tool: 'ellipse', icon: 'ellipse', key: 'O', phone: false },
+  { tool: 'text', icon: 'text', key: 'T', phone: true },
+];
+const KINDS = new Set<string>(PLAN_ICON_KINDS);
+/** Schema bounds: sizes and reaches up to 4000 view units, a scale up to 100000 per metre. */
+const MAX_UNITS = 4000;
+const MAX_SCALE = 100000;
+/** A finger held this long (ms) on the empty plan starts a selection box. */
+const LONG_PRESS = 400;
+/** A set of primes, as on the mockup; Other takes any focal length. */
+const LENSES = [18, 24, 35, 50, 85, 135];
+const HANDLES = ['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w'] as const;
+const HANDLE_SIGN: Record<ResizeHandle, [number, number]> = {
+  nw: [-1, -1],
+  n: [0, -1],
+  ne: [1, -1],
+  e: [1, 0],
+  se: [1, 1],
+  s: [0, 1],
+  sw: [-1, 1],
+  w: [-1, 0],
+};
+const isIconKind = (item: LibraryItem): item is PlanIconKind => KINDS.has(item);
+
+interface TextDraft {
+  at: Point;
+  value: string;
+  color: string;
+}
+type Gesture =
+  | { kind: 'move'; ref: PlanItemRef; start: Point; item: PlanItem }
+  | { kind: 'rotate'; ref: PlanItemRef; centre: Point; from: number; item: PlanItem }
+  | { kind: 'draw'; points: Point[] }
+  | { kind: 'shape'; shape: DragKind; a: Point; b: Point; raw: [Point, Point] }
+  | { kind: 'bend'; index: number; item: PlanIcon }
+  | { kind: 'resize'; handle: ResizeHandle; item: PlanItem }
+  | { kind: 'moveMany'; start: Point; items: PlanItem[] }
+  | { kind: 'rotateMany'; centre: Point; from: number; items: PlanItem[] }
+  | { kind: 'marquee'; a: Point; add: boolean; touch: boolean; at: number; live: boolean }
+  | { kind: 'end'; which: 0 | 1; item: PlanShape };
+
+/** View units of a point of the drawing (0 to 1). */
+const view = (p: Point): Point => ({ x: p.x * PLAN_VIEW_W, y: p.y * PLAN_VIEW_H });
+const isIcon = (item: PlanItem | null | undefined): item is PlanIcon => !!item && 'x' in item;
+
+const replaceIn = <T extends { id: string }>(
+  list: T[] | undefined,
+  next: readonly PlanItem[],
+): T[] | undefined =>
+  list?.map((item) => (next.find((n) => n.id === item.id) as unknown as T | undefined) ?? item);
+
+/**
+ * The editor of a set plan (#335): a window in front of the dimmed board, on a desktop with
+ * the tools on its left, the icon library and the properties on its right and the bar of the
+ * selected item under the plan; on a phone it takes the whole screen with the library as a
+ * sheet from the bottom. Every finished line, shape, icon or edit is one change of the
+ * document, so it syncs as you go and undo goes back one gesture at a time. The tool, the
+ * selection and the grid snap are local to this person.
+ */
+export function PlanEditor({
+  store,
+  plan,
+  phone,
+  scenes,
+  base,
+  family = [],
+  onSwitch,
+  onNewVariant,
+  lenses = [],
+  onOpenScene,
+  onClose,
+}: {
+  store: BoardStore;
+  plan: PlanElement;
+  phone: boolean;
+  /** Scenes of the board, in shooting order, to link the plan to. */
+  scenes: readonly SceneElement[];
+  /** The base of a variant, whose Set layer it shows and edits (round 6, h). */
+  base?: PlanElement | undefined;
+  /** The base and its variants, for the tabs of the header. */
+  family?: readonly PlanElement[];
+  onSwitch?: (id: string) => void;
+  onNewVariant?: () => void;
+  /** Lenses of the frames of the plan's scenes, proposed for a camera ("5A · 35 mm"). */
+  lenses?: ReadonlyArray<{ label: string; mm: number }>;
+  onOpenScene: (id: string) => void;
+  onClose: () => void;
+}) {
+  const { t, i18n } = useTranslation();
+  const [tool, setTool] = useState<Tool>('select');
+  const [armed, setArmed] = useState<LibraryItem | null>(null);
+  const [panel, setPanel] = useState<Panel>('icons');
+  const [snap, setSnap] = useState(true);
+  const [picking, setPicking] = useState<{ x: number; y: number } | null>(null);
+  const [otherLens, setOtherLens] = useState(false);
+  /** The icon whose blocking is being drawn with the Movement tool, and the veiled copies. */
+  const [moving, setMoving] = useState<string | null>(null);
+  const [ghosts, setGhosts] = useState(true);
+  /** The angle shown over the rotate handle while it turns. */
+  const [chip, setChip] = useState<string | null>(null);
+  /** Layers this person hides on the base plan; on a variant hiding is the variant's own. */
+  const [myHidden, setMyHidden] = useState<ReadonlySet<PlanLayer>>(new Set());
+  /** The layer new strokes and shapes go to (round 6, h). */
+  /**
+   * The layer new items go to, icons included (round 6, h); none picked, each icon goes to its
+   * family's layer and strokes and shapes to Set.
+   */
+  const [activeLayer, setActiveLayer] = useState<PlanLayer | null>(null);
+  /** The line drawn to set the scale, waiting for its length in metres (round 6, g). */
+  const [scaleDraft, setScaleDraft] = useState<{ length: number; metres: string } | null>(null);
+  const [gridDraft, setGridDraft] = useState<'0.25' | '0.5' | '1'>(plan.grid ?? '0.5');
+  const [rulersDraft, setRulersDraft] = useState(plan.rulers ?? true);
+  const linked = scenesOfPlan(plan, new Map(scenes.map((s) => [s.id, s])));
+  /** The selected items, groups whole (round 6, f). */
+  const [selection, setSelection] = useState<PlanItemRef[]>([]);
+  const selected = selection.length === 1 ? (selection[0] as PlanItemRef) : null;
+  const setSelected = (ref: PlanItemRef | null) =>
+    setSelection(ref ? withGroups(drawn, [ref]) : []);
+  const [marquee, setMarquee] = useState<{ a: Point; b: Point } | null>(null);
+  /** The item being moved or turned, shown in place until the gesture ends. */
+  const [preview, setPreviewState] = useState<PlanItem[] | null>(null);
+  // The pointer-up handler reads the preview of the last move, which may not be rendered yet.
+  const previewRef = useRef<PlanItem[] | null>(null);
+  const setPreview = (next: PlanItem | PlanItem[] | null) => {
+    const list = next === null ? null : Array.isArray(next) ? next : [next];
+    previewRef.current = list;
+    setPreviewState(list);
+  };
+  /** The line being drawn: its points grow in place, a counter redraws it (no copy per move). */
+  const [live, setLiveState] = useState<{ points: Point[]; n: number } | null>(null);
+  const setLive = (points: Point[] | null) =>
+    setLiveState(points ? { points, n: points.length } : null);
+  const [liveShape, setLiveShape] = useState<{ kind: DragKind; a: Point; b: Point } | null>(null);
+  const [text, setText] = useState<TextDraft | null>(null);
+  const textRef = useRef<TextDraft | null>(null);
+  const gesture = useRef<Gesture | null>(null);
+  const stage = useRef<HTMLDivElement>(null);
+  const textInput = useRef<HTMLInputElement>(null);
+
+  const doc = store.doc;
+  /** Annotations from the library draw green; the tools of the column draw in ink. */
+  const ink = armed && !isIconKind(armed) ? NOTE_COLOR : PLAN_INK;
+  /** A variant shows its base's Set layer under its own (round 6, h). */
+  // Attached measures are drawn, picked and boxed where their icons stand now.
+  const drawn = useMemo(() => {
+    const merged = base ? variantView(plan, base) : plan;
+    return { ...merged, shapes: merged.shapes?.map((sh) => measureEnds(sh, merged.icons)) };
+  }, [plan, base]);
+  const step = gridStep(drawn);
+  /** The scale belongs to the plan whose Set it measures: the base of a variant. */
+  const scaleOwner = base?.id ?? plan.id;
+  const baseIds = new Set(
+    base ? planItems(drawn).flatMap(({ item }) => (layerOf(item) === 'set' ? [item.id] : [])) : [],
+  );
+  /** Where an item lives: the base for the shared Set layer of a variant, else the plan. */
+  const ownerOf = (id: string) => (base && baseIds.has(id) ? base.id : plan.id);
+  const targetFor = (layer: PlanLayer) => (base && layer === 'set' ? base.id : plan.id);
+  const hiddenLayers = new Set<PlanLayer>([...(plan.hiddenLayers ?? []), ...myHidden]);
+  const viewOf = {
+    hidden: hiddenLayers,
+    locked: new Set(plan.lockedLayers ?? []),
+  };
+  /** Strokes and shapes go to the active layer; Set, their default, is not written. */
+  const onLayer = activeLayer ? { layer: activeLayer } : {};
+  const item = selected ? planItem(drawn, selected) : undefined;
+  const movingIcon = (drawn.icons ?? []).find((i) => i.id === moving) ?? null;
+  const shown =
+    preview === null
+      ? drawn
+      : {
+          ...drawn,
+          strokes: replaceIn(drawn.strokes, preview),
+          shapes: replaceIn(drawn.shapes, preview),
+          icons: replaceIn(drawn.icons, preview),
+        };
+  const current = preview?.find((p) => p.id === item?.id) ?? item ?? null;
+  /** The selected items as drawn, the previews of a gesture included. */
+  const liftedIds = useMemo(() => new Set(selection.map((r) => r.id)), [selection]);
+  const hiddenList = useMemo(() => [...myHidden], [myHidden]);
+  const many = selection.length > 1 ? selection.flatMap((r) => planItem(shown, r) ?? []) : [];
+
+  // The selection loses the items that go (deleted here, by undo or by someone else).
+  useEffect(() => {
+    if (selection.some((r) => !planItem(drawn, r)))
+      setSelection((s) => s.filter((r) => planItem(drawn, r)));
+  }, [selection, drawn]);
+  useEffect(() => {
+    if (text) textInput.current?.focus();
+  }, [text]);
+  // Another tool ends the movement being drawn.
+  useEffect(() => {
+    if (tool !== 'move') setMoving(null);
+  }, [tool]);
+
+  /** One change, one undo step. */
+  const change = (write: () => void) => {
+    store.undo.stopCapturing();
+    write();
+    store.undo.stopCapturing();
+  };
+  const snapped = (p: Point) => (snap ? snapPlanPoint(p, step) : p);
+  const pointAt = (e: { clientX: number; clientY: number }): Point => {
+    const r = stage.current?.getBoundingClientRect();
+    if (!r || r.width === 0) return { x: 0, y: 0 };
+    return { x: (e.clientX - r.left) / r.width, y: (e.clientY - r.top) / r.height };
+  };
+  const inside = (p: Point) => p.x >= 0 && p.x <= 1 && p.y >= 0 && p.y <= 1;
+
+  const placeIcon = (kind: PlanIconKind, p: Point) => {
+    if ((plan.icons?.length ?? 0) >= MAX_PLAN_ICONS) return;
+    const q = snapped(p);
+    let id: string | null = null;
+    change(() => {
+      const layer = activeLayer ?? categoryOf(kind).layer;
+      id = addPlanIcon(
+        doc,
+        targetFor(layer),
+        {
+          kind,
+          color: iconColor(kind),
+          x: toGrid(q.x),
+          y: toGrid(q.y),
+          ...(layer !== categoryOf(kind).layer ? { layer } : {}),
+        },
+        LOCAL,
+      );
+    });
+    rememberRecent(kind);
+    if (id) setSelected({ kind: 'icons', id });
+  };
+
+  /** A library tile: icons wait for a tap on the plan; annotations pick their tool. */
+  const arm = (next: LibraryItem) => {
+    setArmed(next);
+    setSelected(null);
+    if (isIconKind(next)) setTool('icons');
+    else {
+      rememberRecent(next);
+      setTool(TOOL_OF_NOTE[next]);
+    }
+  };
+  const dropAt = (next: LibraryItem, at: { clientX: number; clientY: number }) => {
+    const p = pointAt(at);
+    if (isIconKind(next) && inside(p)) placeIcon(next, p);
+  };
+
+  const remove = () => {
+    if (selection.length === 0) return;
+    const ids = selection.map((r) => r.id);
+    change(() => {
+      removePlanItems(doc, plan.id, ids, LOCAL);
+      if (base) removePlanItems(doc, base.id, ids, LOCAL);
+    });
+    setSelection([]);
+  };
+  const duplicate = () => {
+    if (selection.length === 0) return;
+    let copies: PlanItemRef[] = [];
+    change(() => {
+      const d = { x: step, y: step };
+      copies = [
+        ...duplicatePlanItems(
+          doc,
+          plan,
+          selection.filter((r) => ownerOf(r.id) === plan.id),
+          d,
+          LOCAL,
+        ),
+        ...(base
+          ? duplicatePlanItems(
+              doc,
+              base,
+              selection.filter((r) => ownerOf(r.id) === base.id),
+              d,
+              LOCAL,
+            )
+          : []),
+      ];
+    });
+    setSelection(copies);
+  };
+  /** Writes items where they live: the base's Set layer, or the plan (no undo step). */
+  const writeItems = (items: readonly PlanItem[]) => {
+    // Only what changed since this render is written (the item as drawn when the gesture
+    // started), so another person's edit of another field made meanwhile stays.
+    const all = planItems(drawn);
+    const before = items.flatMap((i) => all.find((e) => e.item.id === i.id)?.item ?? []);
+    const own = items.filter((i) => ownerOf(i.id) === plan.id);
+    const shared = items.filter((i) => ownerOf(i.id) !== plan.id);
+    if (own.length) updatePlanItems(doc, plan.id, own, LOCAL, before);
+    if (shared.length && base) updatePlanItems(doc, base.id, shared, LOCAL, before);
+  };
+  const write = (next: PlanItem | readonly PlanItem[]) =>
+    change(() => writeItems(Array.isArray(next) ? next : [next as PlanItem]));
+  const rotate = (degrees: number) => {
+    if (many.length > 1) {
+      const b = itemsBox(many);
+      const c = { x: b.x + b.w / 2, y: b.y + b.h / 2 };
+      write(many.map((i) => rotateItem(i, degrees, c)));
+    } else if (item) write(rotateItem(item, degrees));
+  };
+  const nudge = (d: Point) => {
+    const items = many.length > 1 ? many : item ? [item] : [];
+    if (items.length) write(items.map((i) => moveItem(i, d)));
+  };
+  const recolor = (hex: string) => item && write({ ...item, color: hex });
+  const relabel = (label: string) => {
+    if (!isIcon(item)) return;
+    const next = { ...item, label: label.slice(0, 60) };
+    if (!label) delete (next as Partial<PlanIcon>).label;
+    writeItems([next]);
+  };
+
+  const commitText = () => {
+    const draft = textRef.current;
+    textRef.current = null;
+    setText(null);
+    const value = draft?.value.trim().slice(0, 500);
+    if (!draft || !value) return;
+    const x = toGrid(draft.at.x);
+    const y = toGrid(draft.at.y);
+    // A text is a note unless a layer is active: it goes where that layer lives.
+    change(() =>
+      addShape(
+        doc,
+        targetFor(activeLayer ?? 'notes'),
+        {
+          ...onLayer,
+          kind: 'text',
+          color: draft.color,
+          width: PLAN_TEXT,
+          x0: x,
+          y0: y,
+          x1: x,
+          y1: y,
+          text: value,
+        },
+        LOCAL,
+      ),
+    );
+  };
+
+  const keys = useRef<(e: KeyboardEvent) => void>(() => {});
+  keys.current = (e: KeyboardEvent) => {
+    const target = e.target as HTMLElement | null;
+    // The scene picker has the keyboard while it is open; fields keep their keys.
+    if (picking || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target?.tagName ?? '')) return;
+    // Whatever the editor does not use never reaches the board behind it: Delete, arrows,
+    // copy and paste or a tool letter would act on the plan card (as DrawingEditor.tsx).
+    e.stopImmediatePropagation();
+    if (e.type !== 'keydown') return;
+    const mod = isMac() ? e.metaKey : e.ctrlKey;
+    const key = e.key.toLowerCase();
+    if (e.key === 'Escape') {
+      if (scaleDraft) setScaleDraft(null);
+      else if (moving) setMoving(null);
+      else if (armed) {
+        setArmed(null);
+        setTool('select');
+      } else if (selection.length) setSelection([]);
+      else if (tool !== 'select') setTool('select');
+      else onClose();
+    } else if ((e.key === 'Delete' || e.key === 'Backspace') && selection.length) remove();
+    else if (mod && key === 'a')
+      // Everything on the active layer, as the round 6 mockup says.
+      setSelection(
+        itemsInRect(drawn, { x: -1, y: -1, w: 2000, h: 2000 }, viewOf).filter((r) => {
+          const found = planItem(drawn, r);
+          return !!found && layerOf(found) === activeLayer;
+        }),
+      );
+    else if (mod && key === 'g' && selection.length > 1) write(toggleGroup(many));
+    else if (e.key.startsWith('Arrow') && selection.length) {
+      const k = e.shiftKey ? step * 4 : step;
+      nudge({
+        x: e.key === 'ArrowLeft' ? -k : e.key === 'ArrowRight' ? k : 0,
+        y: e.key === 'ArrowUp' ? -k : e.key === 'ArrowDown' ? k : 0,
+      });
+    } else if (mod && key === 'z') e.shiftKey ? store.undo.redo() : store.undo.undo();
+    else if (mod && key === 'y') store.undo.redo();
+    else if (mod && key === 'd' && selection.length) duplicate();
+    else if (!mod && key === 'r' && selection.length)
+      rotate(e.shiftKey ? -ROTATE_STEP : ROTATE_STEP);
+    else if (!mod && key === '/' && !phone) {
+      setPanel('icons');
+      requestAnimationFrame(() =>
+        document.querySelector<HTMLInputElement>('.plan-lib__search input')?.focus(),
+      );
+    } else if (!mod && key === 'g') setSnap((v) => !v);
+    else if (!mod && key === 'u' && !phone) {
+      setArmed(null);
+      setTool('measure');
+    } else if (!mod && key === 'm') {
+      setArmed(null);
+      setTool('move');
+    } else if (!mod && TOOLS.some((x) => x.key.toLowerCase() === key)) {
+      setArmed(null);
+      setTool(TOOLS.find((x) => x.key.toLowerCase() === key)?.tool ?? 'select');
+    } else return;
+    e.preventDefault();
+  };
+  useEffect(() => {
+    const on = (e: KeyboardEvent) => keys.current(e);
+    window.addEventListener('keydown', on, true);
+    window.addEventListener('keyup', on, true);
+    return () => {
+      window.removeEventListener('keydown', on, true);
+      window.removeEventListener('keyup', on, true);
+    };
+  }, []);
+  // A modal: the app behind is inert, the editor takes the focus and gives it back on close.
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const before = document.activeElement as HTMLElement | null;
+    const app = document.getElementById('root');
+    const wasInert = app?.inert ?? false;
+    if (app) app.inert = true;
+    dialogRef.current?.focus({ preventScroll: true });
+    return () => {
+      if (app) app.inert = wasInert;
+      before?.focus?.({ preventScroll: true });
+    };
+  }, []);
+
+  function onPointerDown(e: PointerEvent<HTMLDivElement>) {
+    if (e.button !== 0 || (e.target as HTMLElement).closest('.plan-editor__text')) return;
+    e.stopPropagation();
+    const p = pointAt(e);
+    if (text) {
+      // A click away from the text being typed finishes it.
+      commitText();
+      return;
+    }
+    const grip = (e.target as Element).closest<SVGElement>('[data-handle]');
+    if (grip && item) {
+      e.currentTarget.setPointerCapture(e.pointerId);
+      store.undo.stopCapturing();
+      gesture.current = { kind: 'resize', handle: grip.dataset.handle as ResizeHandle, item };
+      return;
+    }
+    const end = (e.target as Element).closest<SVGElement>('[data-end]');
+    if (end && item && 'x0' in item) {
+      e.currentTarget.setPointerCapture(e.pointerId);
+      gesture.current = { kind: 'end', which: end.dataset.end === '1' ? 1 : 0, item };
+      return;
+    }
+    const bend = (e.target as Element).closest<SVGElement>('[data-bend]');
+    if (bend && isIcon(item)) {
+      e.currentTarget.setPointerCapture(e.pointerId);
+      gesture.current = { kind: 'bend', index: Number(bend.dataset.bend), item };
+      return;
+    }
+    if (tool === 'move') {
+      const hit = planItemAt(drawn, p, viewOf);
+      const target = hit && planItem(drawn, hit);
+      if (hit && isIcon(target)) {
+        setSelected(hit);
+        setMoving(target.id);
+        setPanel('props');
+      } else if (movingIcon) write(addBlockingStep(movingIcon, snapped(p)));
+      return;
+    }
+    const handle = (e.target as Element).closest('[data-rotate]');
+    if (handle && many.length > 1) {
+      e.currentTarget.setPointerCapture(e.pointerId);
+      const b = itemsBox(many);
+      const centre = { x: b.x + b.w / 2, y: b.y + b.h / 2 };
+      const q = view(p);
+      gesture.current = {
+        kind: 'rotateMany',
+        centre,
+        from: Math.atan2(q.y - centre.y, q.x - centre.x),
+        items: many,
+      };
+      return;
+    }
+    if (handle && item && selected) {
+      e.currentTarget.setPointerCapture(e.pointerId);
+      const box = itemBox(item);
+      const centre = { x: box.x + box.w / 2, y: box.y + box.h / 2 };
+      const q = view(p);
+      gesture.current = {
+        kind: 'rotate',
+        ref: selected,
+        centre,
+        from: Math.atan2(q.y - centre.y, q.x - centre.x),
+        item,
+      };
+      return;
+    }
+    if (tool === 'select' || tool === 'icons') {
+      const hit = planItemAt(drawn, p, viewOf);
+      if (hit && (e.shiftKey || (phone && tool === 'select' && selection.length > 0))) {
+        // Shift (or, on a phone, a tap while something is picked) adds or takes away.
+        const group = withGroups(drawn, [hit]);
+        const has = selection.some((r) => r.id === hit.id);
+        setSelection(
+          has
+            ? selection.filter((r) => !group.some((g) => g.id === r.id))
+            : [...selection, ...group.filter((g) => !selection.some((r) => r.id === g.id))],
+        );
+        return;
+      }
+      const picked = hit
+        ? selection.some((r) => r.id === hit.id)
+          ? selection
+          : withGroups(drawn, [hit])
+        : [];
+      if (hit && picked.length > 1) {
+        setSelection(picked);
+        e.currentTarget.setPointerCapture(e.pointerId);
+        store.undo.stopCapturing();
+        gesture.current = {
+          kind: 'moveMany',
+          start: p,
+          items: picked.flatMap((r) => planItem(drawn, r) ?? []),
+        };
+        return;
+      }
+      if (hit) {
+        const target = planItem(drawn, hit);
+        setSelected(hit);
+        // Picked with the arrow, a camera or a light shows its lens or beam (round 6, c).
+        if (tool === 'select' && !phone && isIcon(target) && iconCone(target)) setPanel('props');
+        if (!target) return;
+        e.currentTarget.setPointerCapture(e.pointerId);
+        store.undo.stopCapturing();
+        gesture.current = { kind: 'move', ref: hit, start: p, item: target };
+        return;
+      }
+      if (tool === 'icons' && armed && isIconKind(armed)) placeIcon(armed, p);
+      else {
+        // A drag on the empty plan picks what its box touches (round 6, f).
+        if (!e.shiftKey) setSelection([]);
+        e.currentTarget.setPointerCapture(e.pointerId);
+        // A finger draws the box after a long press (round 6, f); a mouse at once.
+        const touch = e.pointerType === 'touch';
+        gesture.current = {
+          kind: 'marquee',
+          a: p,
+          add: e.shiftKey,
+          touch,
+          at: e.timeStamp,
+          live: !touch,
+        };
+        if (!touch) setMarquee({ a: p, b: p });
+      }
+      return;
+    }
+    setSelected(null);
+    if (tool === 'text') {
+      if ((plan.shapes?.length ?? 0) >= MAX_SHAPES) return;
+      e.preventDefault();
+      const draft = { at: p, value: '', color: ink };
+      textRef.current = draft;
+      setText(draft);
+      return;
+    }
+    e.currentTarget.setPointerCapture(e.pointerId);
+    if (tool === 'pencil') {
+      if ((plan.strokes?.length ?? 0) >= MAX_STROKES) return;
+      gesture.current = { kind: 'draw', points: [p] };
+      setLive([p]);
+      return;
+    }
+    if ((plan.shapes?.length ?? 0) >= MAX_SHAPES) return;
+    const a = snapped(p);
+    gesture.current = { kind: 'shape', shape: tool, a, b: a, raw: [p, p] };
+    setLiveShape({ kind: tool, a, b: a });
+  }
+
+  function onPointerMove(e: PointerEvent<HTMLDivElement>) {
+    const g = gesture.current;
+    if (!g) return;
+    const p = pointAt(e);
+    if (g.kind === 'marquee') {
+      if (!g.live) {
+        const moved = Math.hypot(view(p).x - view(g.a).x, view(p).y - view(g.a).y) > 12;
+        if (e.timeStamp - g.at >= LONG_PRESS) g.live = true;
+        else if (moved) gesture.current = null;
+        if (!g.live) return;
+      }
+      setMarquee({ a: g.a, b: p });
+      return;
+    }
+    if (g.kind === 'moveMany') {
+      let d = { x: view(p).x - view(g.start).x, y: view(p).y - view(g.start).y };
+      if (snap) {
+        const b = itemsBox(g.items);
+        const to = snapPlanPoint(
+          { x: (b.x + d.x) / PLAN_VIEW_W, y: (b.y + d.y) / PLAN_VIEW_H },
+          step,
+        );
+        d = { x: view(to).x - b.x, y: view(to).y - b.y };
+      }
+      setPreview(g.items.map((i) => moveItem(i, d)));
+      return;
+    }
+    if (g.kind === 'rotateMany') {
+      const q = view(p);
+      let degrees = ((Math.atan2(q.y - g.centre.y, q.x - g.centre.x) - g.from) * 180) / Math.PI;
+      if (snap || e.shiftKey) degrees = Math.round(degrees / ROTATE_STEP) * ROTATE_STEP;
+      setPreview(g.items.map((i) => rotateItem(i, normalizeRotation(degrees), g.centre)));
+      const shownDeg = normalizeRotation(degrees);
+      setChip(`${shownDeg > 180 ? shownDeg - 360 : shownDeg}°`);
+      return;
+    }
+    if (g.kind === 'move') {
+      let d = { x: view(p).x - view(g.start).x, y: view(p).y - view(g.start).y };
+      if (snap && isIcon(g.item)) {
+        // An icon's centre lands on the grid.
+        const c = { x: (g.item.x / 4096) * PLAN_VIEW_W, y: (g.item.y / 4096) * PLAN_VIEW_H };
+        const to = snapPlanPoint(
+          { x: (c.x + d.x) / PLAN_VIEW_W, y: (c.y + d.y) / PLAN_VIEW_H },
+          step,
+        );
+        d = { x: view(to).x - c.x, y: view(to).y - c.y };
+      }
+      setPreview(moveItem(g.item, d));
+    } else if (g.kind === 'resize') {
+      const symbol = isIcon(g.item) && !isSized(g.item.kind);
+      setPreview(
+        resizeItem(g.item, g.handle, view(p), {
+          keepRatio: e.shiftKey || symbol,
+          fromCentre: e.altKey,
+          textSizes: Object.values(TEXT_SIZES),
+        }),
+      );
+    } else if (g.kind === 'end') {
+      const q = snapped(p);
+      const next: PlanShape =
+        g.which === 0
+          ? { ...g.item, x0: toGrid(q.x), y0: toGrid(q.y) }
+          : { ...g.item, x1: toGrid(q.x), y1: toGrid(q.y) };
+      // A measure's end let go anywhere no longer follows its icon.
+      delete next[g.which === 0 ? 'from' : 'to'];
+      setPreview(next);
+    } else if (g.kind === 'bend') {
+      const at = blockingPositions(g.item);
+      const a = at[g.index] as Point;
+      const b = at[g.index + 1] as Point;
+      const steps = [...(g.item.steps ?? [])];
+      steps[g.index] = {
+        ...(steps[g.index] as PlanStep),
+        bend: Math.round(bendThrough(a, b, view(p))),
+      };
+      setPreview({ ...g.item, steps });
+    } else if (g.kind === 'rotate') {
+      const q = view(p);
+      const angle = Math.atan2(q.y - g.centre.y, q.x - g.centre.x);
+      let degrees = ((angle - g.from) * 180) / Math.PI;
+      if (snap || e.shiftKey) degrees = Math.round(degrees / ROTATE_STEP) * ROTATE_STEP;
+      const turned = rotateItem(g.item, normalizeRotation(degrees));
+      setPreview(turned);
+      setChip(`${shownAngle(turned)}°`);
+    } else if (g.kind === 'draw') {
+      // Coalesced events keep fast lines smooth on pens and fast mice.
+      const events = e.nativeEvent.getCoalescedEvents?.() ?? [e.nativeEvent];
+      for (const ev of events.length > 0 ? events : [e.nativeEvent]) g.points.push(pointAt(ev));
+      setLive(g.points);
+    } else {
+      g.b = snapped(p);
+      g.raw[1] = p;
+      setLiveShape({ kind: g.shape, a: g.a, b: g.b });
+    }
+  }
+
+  /** A gesture the browser took away (a scroll, a second finger): nothing is written. */
+  function onPointerCancel() {
+    gesture.current = null;
+    setPreview(null);
+    setChip(null);
+    setLive(null);
+    setLiveShape(null);
+    setMarquee(null);
+  }
+
+  function onPointerUp() {
+    const g = gesture.current;
+    gesture.current = null;
+    if (!g) return;
+    if (g.kind === 'marquee') {
+      const m = marquee;
+      setMarquee(null);
+      if (!m) return;
+      const a = view(m.a);
+      const b = view(m.b);
+      const rect = {
+        x: Math.min(a.x, b.x),
+        y: Math.min(a.y, b.y),
+        w: Math.abs(b.x - a.x),
+        h: Math.abs(b.y - a.y),
+      };
+      if (rect.w + rect.h < 4) return;
+      const hits = withGroups(drawn, itemsInRect(drawn, rect, viewOf));
+      setSelection(
+        g.add ? [...selection, ...hits.filter((h) => !selection.some((r) => r.id === h.id))] : hits,
+      );
+      return;
+    }
+    if (g.kind !== 'draw' && g.kind !== 'shape') {
+      setChip(null);
+      const next = previewRef.current;
+      setPreview(null);
+      if (next) write(next);
+      return;
+    }
+    if (g.kind === 'draw') {
+      setLive(null);
+      change(() =>
+        addStroke(
+          doc,
+          targetFor(activeLayer ?? 'set'),
+          {
+            ...onLayer,
+            tool: 'pencil',
+            color: ink,
+            width: PLAN_PEN,
+            points: encodeStroke(g.points),
+          },
+          LOCAL,
+        ),
+      );
+      return;
+    }
+    setLiveShape(null);
+    if (g.shape === 'scale') {
+      // "Imposta la scala": the line drawn on something of known length.
+      const length = gridLength(toGrid(g.a.x), toGrid(g.a.y), toGrid(g.b.x), toGrid(g.b.y));
+      setTool('select');
+      if (length > 10) setScaleDraft({ length, metres: '' });
+      return;
+    }
+    // A measure's ends that start or land on an icon stay on it (round 6, g).
+    const endOn = (q: Point) => {
+      if (g.shape !== 'measure') return null;
+      const hit = planItemAt(drawn, q, viewOf);
+      const target = hit && planItem(drawn, hit);
+      return isIcon(target) ? target : null;
+    };
+    // Where the pointer was, not the grid point: the icon under it.
+    const fromIcon = endOn(g.raw[0]);
+    const toIcon = endOn(g.raw[1]);
+    if (fromIcon) g.a = { x: fromIcon.x / 4096, y: fromIcon.y / 4096 };
+    if (toIcon) g.b = { x: toIcon.x / 4096, y: toIcon.y / 4096 };
+    const shape = {
+      kind: g.shape,
+      color: ink,
+      width: PLAN_PEN,
+      x0: toGrid(g.a.x),
+      y0: toGrid(g.a.y),
+      x1: toGrid(g.b.x),
+      y1: toGrid(g.b.y),
+      ...(g.shape === 'zone' || g.shape === 'measure' ? { layer: 'notes' as const } : {}),
+      ...(fromIcon ? { from: fromIcon.id } : {}),
+      ...(toIcon ? { to: toIcon.id } : {}),
+    };
+    // A click without a drag draws nothing.
+    if (Math.abs(shape.x1 - shape.x0) + Math.abs(shape.y1 - shape.y0) >= 8)
+      change(() =>
+        addShape(
+          doc,
+          targetFor(shape.layer ?? activeLayer ?? 'set'),
+          { ...(shape.layer ? {} : onLayer), ...shape } as unknown as FrameShape,
+          LOCAL,
+        ),
+      );
+  }
+
+  const box = current ? itemBox(current) : null;
+  const frame = current ? itemFrame(current) : null;
+  const pad = 8;
+  const symbol = isIcon(current) && !isSized(current.kind);
+  const ends =
+    current && 'x0' in current && !frame
+      ? [
+          { x: current.x0 * (PLAN_VIEW_W / 4096), y: current.y0 * (PLAN_VIEW_H / 4096) },
+          { x: current.x1 * (PLAN_VIEW_W / 4096), y: current.y1 * (PLAN_VIEW_H / 4096) },
+        ]
+      : null;
+  const rotateGrip = (x: number, y: number) => (
+    <g data-rotate="" className="plan-editor__rotate">
+      <line x1={x} y1={y} x2={x} y2={y - 32} />
+      <circle cx={x} cy={y - 40} r={12} />
+      {chip && (
+        <g className="plan-editor__chip">
+          <rect x={x - 30} y={y - 92} width={60} height={28} rx={6} />
+          <text x={x} y={y - 72} textAnchor="middle">
+            {chip}
+          </text>
+        </g>
+      )}
+    </g>
+  );
+  const outline =
+    box &&
+    (frame ? (
+      <g
+        className="plan-editor__selection"
+        transform={`translate(${frame.centre.x} ${frame.centre.y}) rotate(${frame.angle})`}
+      >
+        <rect
+          x={-frame.w / 2 - pad}
+          y={-frame.h / 2 - pad}
+          width={frame.w + pad * 2}
+          height={frame.h + pad * 2}
+          rx={4}
+        />
+        {HANDLES.filter((h) => !symbol || h.length === 2).map((h) => {
+          const [sx, sy] = HANDLE_SIGN[h];
+          return (
+            <rect
+              key={h}
+              data-handle={h}
+              className={`plan-editor__handle plan-editor__handle--${h}`}
+              x={sx * (frame.w / 2 + pad) - 6}
+              y={sy * (frame.h / 2 + pad) - 6}
+              width={12}
+              height={12}
+              rx={2}
+            />
+          );
+        })}
+        {rotateGrip(0, -frame.h / 2 - pad)}
+      </g>
+    ) : (
+      <g className="plan-editor__selection">
+        <rect
+          x={box.x - pad}
+          y={box.y - pad}
+          width={box.w + pad * 2}
+          height={box.h + pad * 2}
+          rx={4}
+        />
+        {ends?.map((p, i) => (
+          <circle
+            // biome-ignore lint/suspicious/noArrayIndexKey: the two ends of a line.
+            key={i}
+            data-end={i}
+            className="plan-editor__bend"
+            cx={p.x}
+            cy={p.y}
+            r={8}
+          />
+        ))}
+        {rotateGrip(box.x + box.w / 2, box.y - pad)}
+      </g>
+    ));
+  const groupBox = many.length > 1 ? itemsBox(many) : null;
+  const manyBox = groupBox && (
+    <g className="plan-editor__selection">
+      {many.map((i) => {
+        const b = itemBox(i);
+        return (
+          <rect
+            key={i.id}
+            className="plan-editor__member"
+            x={b.x - 3}
+            y={b.y - 3}
+            width={b.w + 6}
+            height={b.h + 6}
+            rx={3}
+          />
+        );
+      })}
+      <rect
+        x={groupBox.x - pad}
+        y={groupBox.y - pad}
+        width={groupBox.w + pad * 2}
+        height={groupBox.h + pad * 2}
+        rx={4}
+      />
+      {rotateGrip(groupBox.x + groupBox.w / 2, groupBox.y - pad)}
+    </g>
+  );
+  const blockingGrips = isIcon(current) && (
+    <g className="plan-editor__selection">
+      {blockingPositions(current)
+        .slice(1)
+        .map((b, i) => {
+          const a = blockingPositions(current)[i] as Point;
+          const { middle } = blockingCurve(a, b, current.steps?.[i]?.bend);
+          return (
+            <circle
+              // biome-ignore lint/suspicious/noArrayIndexKey: a move is its place in the order.
+              key={i}
+              data-bend={i}
+              className="plan-editor__bend"
+              cx={middle.x}
+              cy={middle.y}
+              r={9}
+            />
+          );
+        })}
+    </g>
+  );
+  const liveLayer = (
+    <>
+      {live && (
+        <path
+          d={pathOf(live.points, PLAN_VIEW_H)}
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={PLAN_PEN}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          style={{ color: planCss(ink) }}
+        />
+      )}
+      {liveShape && (
+        <PlanShapeView
+          shape={
+            {
+              id: 'liveAAAA',
+              kind: liveShape.kind === 'scale' ? 'measure' : liveShape.kind,
+              ...(liveShape.kind === 'scale' ? { dashed: true } : {}),
+              color: ink,
+              width: PLAN_PEN,
+              x0: toGrid(liveShape.a.x),
+              y0: toGrid(liveShape.a.y),
+              x1: toGrid(liveShape.b.x),
+              y1: toGrid(liveShape.b.y),
+            } as PlanShape
+          }
+        />
+      )}
+      {many.length > 1 ? manyBox : outline}
+      {blockingGrips}
+      {marquee && (
+        <rect
+          className="plan-editor__marquee"
+          x={Math.min(marquee.a.x, marquee.b.x) * PLAN_VIEW_W}
+          y={Math.min(marquee.a.y, marquee.b.y) * PLAN_VIEW_H}
+          width={Math.abs(marquee.b.x - marquee.a.x) * PLAN_VIEW_W}
+          height={Math.abs(marquee.b.y - marquee.a.y) * PLAN_VIEW_H}
+        />
+      )}
+    </>
+  );
+
+  const title = planTitle(t, plan);
+  const iconName = (i: PlanItem) =>
+    isIcon(i)
+      ? t(`board.plan.icons.${i.kind}`)
+      : 'points' in i
+        ? t('board.plan.tool.pencil')
+        : t(`board.plan.shapes.${i.kind}`);
+
+  const toolButton = (
+    key: string,
+    label: string,
+    icon: ReactNode,
+    on: boolean,
+    act: () => void,
+  ) => (
+    <button
+      key={key}
+      type="button"
+      className="plan-editor__btn"
+      aria-pressed={on}
+      aria-label={label}
+      data-ink-tooltip={label}
+      onClick={act}
+    >
+      {icon}
+    </button>
+  );
+  const tools = (
+    <div className="plan-editor__tools" role="toolbar" aria-label={t('board.plan.tools')}>
+      {TOOLS.filter((x) => !phone || x.phone).map((x) =>
+        toolButton(
+          x.tool,
+          `${t(`board.plan.tool.${x.tool}`)} (${x.key})`,
+          <Icon name={x.icon} size={16} />,
+          tool === x.tool && !armed,
+          () => {
+            setArmed(null);
+            setTool(x.tool);
+          },
+        ),
+      )}
+      <span className="plan-editor__sep" aria-hidden="true" />
+      {toolButton(
+        'icons',
+        t('board.plan.tool.icons'),
+        <Icon name="iconLibrary" size={16} />,
+        tool === 'icons' || (phone && armed !== null),
+        () => {
+          setTool('icons');
+          setPanel('icons');
+        },
+      )}
+      {!phone &&
+        toolButton(
+          'measure',
+          `${t('board.plan.tool.measure')} (U)`,
+          <Icon name="ruler" size={16} />,
+          tool === 'measure' && !armed,
+          () => {
+            setArmed(null);
+            setTool('measure');
+          },
+        )}
+      {toolButton(
+        'move',
+        `${t('board.plan.tool.move')} (M)`,
+        <Icon name="blocking" size={16} />,
+        tool === 'move',
+        () => {
+          setArmed(null);
+          setTool('move');
+        },
+      )}
+      {!phone && (
+        <>
+          <span className="plan-editor__sep" aria-hidden="true" />
+          {toolButton(
+            'snap',
+            `${t('board.plan.snap')} (G)`,
+            <Icon name="grid" size={16} />,
+            snap,
+            () => setSnap((v) => !v),
+          )}
+        </>
+      )}
+    </div>
+  );
+
+  const swatches = current && (
+    <>
+      {PLAN_COLORS.map((c) => (
+        <button
+          key={c.hex}
+          type="button"
+          className="plan-editor__swatch"
+          aria-pressed={current.color === c.hex}
+          aria-label={t(`board.plan.colors.${c.name}`)}
+          data-ink-tooltip={t(`board.plan.colors.${c.name}`)}
+          onClick={() => recolor(c.hex)}
+        >
+          <i style={{ background: `var(--ink-${c.token})` }} />
+        </button>
+      ))}
+    </>
+  );
+  const labelField = isIcon(current) && (
+    <input
+      className="plan-editor__field"
+      aria-label={t('board.plan.labelField')}
+      placeholder={t('board.plan.labelPlaceholder')}
+      maxLength={60}
+      value={current.label ?? ''}
+      onFocus={() => store.undo.stopCapturing()}
+      onBlur={() => store.undo.stopCapturing()}
+      onChange={(e) => relabel(e.target.value)}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === 'Escape') {
+          e.preventDefault();
+          e.currentTarget.blur();
+        }
+      }}
+    />
+  );
+  /** Width and depth of furniture in metres; S, M, L of symbols and texts (round 6, e). */
+  const sizeFields = current && (
+    <>
+      {isIcon(current) && isSized(current.kind) && drawn.scale && frame && (
+        <>
+          <span className="plan-editor__vr" aria-hidden="true" />
+          <NumberField
+            value={Math.round((frame.w / drawn.scale) * 100) / 100}
+            min={0.01}
+            max={MAX_UNITS / drawn.scale}
+            step={0.01}
+            label={t('board.plan.width')}
+            onCommit={(m) => write({ ...current, w: m * (drawn.scale as number), h: frame.h })}
+          />
+          <span className="plan-editor__times">×</span>
+          <NumberField
+            value={Math.round((frame.h / drawn.scale) * 100) / 100}
+            min={0.01}
+            max={MAX_UNITS / drawn.scale}
+            step={0.01}
+            unit="m"
+            label={t('board.plan.depth')}
+            onCommit={(m) => write({ ...current, w: frame.w, h: m * (drawn.scale as number) })}
+          />
+        </>
+      )}
+      {(symbol || ('x0' in current && current.kind === 'text')) && (
+        <>
+          <span className="plan-editor__vr" aria-hidden="true" />
+          <fieldset className="plan-props__segmented" aria-label={t('board.plan.size')}>
+            {(['S', 'M', 'L'] as const).map((size) => {
+              const on = isIcon(current)
+                ? (current.size ?? 'M') === size
+                : 'x0' in current && current.width === TEXT_SIZES[size];
+              return (
+                <button
+                  key={size}
+                  type="button"
+                  aria-pressed={on}
+                  onClick={() => {
+                    if (isIcon(current)) {
+                      const next = { ...current, size: size as 'S' | 'L' };
+                      if (size === 'M') delete (next as Partial<PlanIcon>).size;
+                      write(next);
+                    } else if ('x0' in current) write({ ...current, width: TEXT_SIZES[size] });
+                  }}
+                >
+                  {size}
+                </button>
+              );
+            })}
+          </fieldset>
+        </>
+      )}
+    </>
+  );
+  const align = (how: PlanAlign) => write(alignItems(many, how));
+  const sameColor = many.length > 1 && many.every((i) => i.color === many[0]?.color);
+  const manyBar = many.length > 1 && (
+    <div
+      className="plan-editor__bar ink-motion-pop"
+      role="toolbar"
+      aria-label={t('board.plan.selection')}
+    >
+      <span className="plan-editor__count">{t('board.plan.items', { count: many.length })}</span>
+      {sameColor &&
+        PLAN_COLORS.map((c) => (
+          <button
+            key={c.hex}
+            type="button"
+            className="plan-editor__swatch"
+            aria-pressed={many[0]?.color === c.hex}
+            aria-label={t(`board.plan.colors.${c.name}`)}
+            onClick={() => write(many.map((i) => ({ ...i, color: c.hex })))}
+          >
+            <i style={{ background: `var(--ink-${c.token})` }} />
+          </button>
+        ))}
+      <span className="plan-editor__vr" aria-hidden="true" />
+      <IconButton
+        icon="alignLeft"
+        label={t('board.plan.align.left')}
+        onClick={() => align('left')}
+      />
+      <IconButton
+        icon="alignCenter"
+        label={t('board.plan.align.centre')}
+        onClick={() => align('centre')}
+      />
+      <IconButton icon="alignTop" label={t('board.plan.align.top')} onClick={() => align('top')} />
+      <IconButton
+        icon="distribute"
+        label={t('board.plan.align.distribute')}
+        onClick={() => align('distribute')}
+      />
+      <span className="plan-editor__vr" aria-hidden="true" />
+      <IconButton
+        icon="groupItems"
+        label={`${t(many.every((i) => i.group && i.group === many[0]?.group) ? 'board.plan.ungroup' : 'board.plan.group')} (${isMac() ? '⌘' : 'Ctrl+'}G)`}
+        onClick={() => write(toggleGroup(many))}
+      />
+      <IconButton
+        icon="rotateRight"
+        label={`${t('board.plan.rotate')} (R)`}
+        onClick={() => rotate(ROTATE_STEP)}
+      />
+      <IconButton icon="copy" label={t('board.plan.duplicate')} onClick={duplicate} />
+      <IconButton icon="trash" label={t('board.plan.delete')} onClick={remove} />
+    </div>
+  );
+  const bar = current && !(phone && tool === 'icons' && armed) && (
+    <div
+      className="plan-editor__bar ink-motion-pop"
+      role="toolbar"
+      aria-label={t('board.plan.selection')}
+    >
+      {swatches}
+      {labelField && (
+        <>
+          <span className="plan-editor__vr" aria-hidden="true" />
+          {labelField}
+        </>
+      )}
+      {isIcon(current) && current.kind === 'camera' && (
+        <button type="button" className="plan-editor__lens" onClick={() => setPanel('props')}>
+          {current.lens ?? DEFAULT_LENS} mm
+        </button>
+      )}
+      {sizeFields}
+      <span className="plan-editor__vr" aria-hidden="true" />
+      <IconButton
+        icon="rotateRight"
+        label={`${t('board.plan.rotate')} (R)`}
+        onClick={() => rotate(ROTATE_STEP)}
+      />
+      {frame && (
+        <NumberField
+          value={shownAngle(current)}
+          min={-360}
+          max={360}
+          unit="°"
+          label={t('board.plan.angleField')}
+          onCommit={(deg) => rotate(normalizeRotation(deg - shownAngle(current)))}
+        />
+      )}
+      <IconButton icon="copy" label={t('board.plan.duplicate')} onClick={duplicate} />
+      <IconButton icon="trash" label={t('board.plan.delete')} onClick={remove} />
+    </div>
+  );
+
+  const library = (
+    <PlanLibrary
+      armed={armed}
+      phone={phone}
+      onArm={arm}
+      onDrop={dropAt}
+      onPlaceFirst={(next) => {
+        arm(next);
+        if (isIconKind(next)) placeIcon(next, { x: 0.5, y: 0.5 });
+      }}
+    />
+  );
+
+  const icon = isIcon(current) ? current : null;
+  const cone = icon ? iconCone(icon, plan.sensor) : null;
+  const camera = icon?.kind === 'camera' && cone && (
+    <>
+      <div className="plan-props__label">{t('board.plan.lens')}</div>
+      <div className="plan-props__lenses">
+        {LENSES.map((mm) => (
+          <button
+            key={mm}
+            type="button"
+            aria-pressed={(icon.lens ?? DEFAULT_LENS) === mm}
+            onClick={() => write({ ...icon, lens: mm })}
+          >
+            {mm}
+          </button>
+        ))}
+        <button
+          type="button"
+          className="plan-props__other"
+          aria-pressed={otherLens || !LENSES.includes(icon.lens ?? DEFAULT_LENS)}
+          onClick={() => setOtherLens(true)}
+        >
+          {t('board.plan.otherLens')}
+        </button>
+      </div>
+      {(otherLens || !LENSES.includes(icon.lens ?? DEFAULT_LENS)) && (
+        <div className="plan-props__row">
+          <span>{t('board.plan.focal')}</span>
+          <NumberField
+            value={icon.lens ?? DEFAULT_LENS}
+            min={4}
+            max={2000}
+            unit="mm"
+            label={t('board.plan.focal')}
+            onCommit={(mm) => write({ ...icon, lens: Math.round(mm) })}
+          />
+        </div>
+      )}
+      {lenses.length > 0 && (
+        <div className="plan-props__hints">
+          <span>{t('board.plan.fromFrames')}</span>
+          {lenses.map((l) => (
+            <button
+              key={l.label}
+              type="button"
+              className="plan__badge"
+              onClick={() => write({ ...icon, lens: l.mm })}
+            >
+              {l.label} · {l.mm} mm
+            </button>
+          ))}
+        </div>
+      )}
+      <div className="plan-props__row">
+        <span>{t('board.plan.sensor')}</span>
+        <Select
+          value={plan.sensor ?? 's35'}
+          onChange={(v) =>
+            change(() =>
+              updateElement(
+                doc,
+                plan.id,
+                { sensor: v === 's35' ? undefined : (v as PlanSensor) },
+                LOCAL,
+              ),
+            )
+          }
+          options={(['s35', 'ff', 'm43', 's16'] as const).map((v) => ({
+            value: v,
+            label: t(`board.plan.sensors.${v}`),
+          }))}
+        />
+      </div>
+      <div className="plan-props__row">
+        <span>{t('board.plan.angle')}</span>
+        <b>{t('board.plan.angleValue', { angle: Math.round(cone.angle) })}</b>
+      </div>
+      <div className="plan-props__row">
+        <span>{t('board.plan.reach')}</span>
+        {drawn.scale ? (
+          <NumberField
+            value={Math.round((cone.reach / drawn.scale) * 10) / 10}
+            min={0.01}
+            max={MAX_UNITS / drawn.scale}
+            step={0.5}
+            unit="m"
+            label={t('board.plan.reach')}
+            onCommit={(m) => write({ ...icon, reach: (drawn.scale as number) * m })}
+          />
+        ) : (
+          <input
+            type="range"
+            className="plan-props__range"
+            aria-label={t('board.plan.reach')}
+            min={60}
+            max={900}
+            value={Math.round(cone.reach)}
+            onPointerDown={() => store.undo.stopCapturing()}
+            onChange={(e) => writeItems([{ ...icon, reach: Number(e.target.value) }])}
+          />
+        )}
+      </div>
+      <label className="plan-props__row">
+        <span>{t('board.plan.showLens')}</span>
+        <Switch
+          checked={!!icon.showLens}
+          onChange={(e) => {
+            const next = { ...icon, showLens: e.target.checked };
+            if (!e.target.checked) delete (next as Partial<PlanIcon>).showLens;
+            write(next);
+          }}
+        />
+      </label>
+    </>
+  );
+  const range = (
+    label: string,
+    value: number,
+    min: number,
+    max: number,
+    shown: string,
+    set: (v: number) => PlanIcon,
+  ) => (
+    <div className="plan-props__row">
+      <span>{label}</span>
+      <input
+        type="range"
+        className="plan-props__range"
+        aria-label={label}
+        min={min}
+        max={max}
+        value={value}
+        onPointerDown={() => store.undo.stopCapturing()}
+        onPointerUp={() => store.undo.stopCapturing()}
+        onChange={(e) => writeItems([set(Number(e.target.value))])}
+      />
+      <b className="plan-props__value">{shown}</b>
+    </div>
+  );
+  const light = icon && cone?.beam && (
+    <>
+      <div className="plan-props__row">
+        <span>{t('board.plan.power')}</span>
+        <input
+          className="plan-editor__field"
+          aria-label={t('board.plan.power')}
+          placeholder="1,2K"
+          maxLength={20}
+          value={icon.power ?? ''}
+          onFocus={() => store.undo.stopCapturing()}
+          onChange={(e) => {
+            const next = { ...icon, power: e.target.value };
+            if (!e.target.value) delete (next as Partial<PlanIcon>).power;
+            writeItems([next]);
+          }}
+        />
+      </div>
+      {range(t('board.plan.beam'), icon.beam ?? 30, 5, 180, `${icon.beam ?? 30}°`, (v) => ({
+        ...icon,
+        beam: v,
+      }))}
+      {range(
+        t('board.plan.intensity'),
+        Math.round((icon.intensity ?? 0.8) * 100),
+        0,
+        100,
+        `${Math.round((icon.intensity ?? 0.8) * 100)}%`,
+        (v) => ({ ...icon, intensity: v / 100 }),
+      )}
+    </>
+  );
+
+  const blocking = icon && (icon.steps?.length ?? 0) > 0 && (
+    <>
+      <div className="plan-props__label">
+        {t('board.plan.positions', { count: (icon.steps?.length ?? 0) + 1 })}
+      </div>
+      <ol className="plan-props__steps">
+        {[...(icon.steps ?? []), null].map((stepAt, i) => (
+          // biome-ignore lint/suspicious/noArrayIndexKey: a position is its place in the order.
+          <li key={i}>
+            <span className="plan-props__num">{i + 1}</span>
+            <input
+              className="plan-editor__field"
+              aria-label={t('board.plan.stepNote', { number: i + 1 })}
+              placeholder={t('board.plan.stepPlaceholder')}
+              maxLength={200}
+              value={(stepAt ? stepAt.note : icon.note) ?? ''}
+              onFocus={() => store.undo.stopCapturing()}
+              onChange={(e) => {
+                const note = e.target.value;
+                const next: PlanIcon = { ...icon, steps: [...(icon.steps ?? [])] };
+                if (stepAt) {
+                  const edited: PlanStep = { ...stepAt, note };
+                  if (!note) delete edited.note;
+                  (next.steps as PlanStep[])[i] = edited;
+                } else if (note) next.note = note;
+                else delete next.note;
+                writeItems([next]);
+              }}
+            />
+          </li>
+        ))}
+      </ol>
+      <div className="plan-props__row">
+        <span>{t('board.plan.line')}</span>
+        <fieldset className="plan-props__segmented" aria-label={t('board.plan.line')}>
+          {([false, true] as const).map((dashed) => (
+            <button
+              key={String(dashed)}
+              type="button"
+              aria-pressed={!!icon.dashed === dashed}
+              onClick={() => {
+                const next = { ...icon, dashed };
+                if (!dashed) delete (next as Partial<PlanIcon>).dashed;
+                write(next);
+              }}
+            >
+              {t(dashed ? 'board.plan.dashed' : 'board.plan.solid')}
+            </button>
+          ))}
+        </fieldset>
+      </div>
+      <label className="plan-props__row">
+        <span>{t('board.plan.ghosts')}</span>
+        <Switch checked={ghosts} onChange={(e) => setGhosts(e.target.checked)} />
+      </label>
+    </>
+  );
+  /** The bar of the Movement tool, over the plan (round 6, d). */
+  const moveBar = movingIcon && (
+    <div
+      className="plan-editor__movebar ink-motion-pop"
+      role="toolbar"
+      aria-label={t('board.plan.moveOf', {
+        name: movingIcon.label || t(`board.plan.icons.${movingIcon.kind}`),
+      })}
+    >
+      <span>
+        {t('board.plan.moveOf', {
+          name: movingIcon.label || t(`board.plan.icons.${movingIcon.kind}`),
+        })}
+      </span>
+      <span className="plan-editor__vr" aria-hidden="true" />
+      <IconButton
+        icon="line"
+        label={t('board.plan.solid')}
+        aria-pressed={!movingIcon.dashed}
+        onClick={() => {
+          const next = { ...movingIcon };
+          delete next.dashed;
+          write(next);
+        }}
+      />
+      <IconButton
+        icon="dashed"
+        label={t('board.plan.dashed')}
+        aria-pressed={!!movingIcon.dashed}
+        onClick={() => write({ ...movingIcon, dashed: true })}
+      />
+      <span className="plan-editor__vr" aria-hidden="true" />
+      <IconButton
+        icon="trash"
+        label={t('board.plan.clearMoves')}
+        onClick={() => {
+          const next = { ...movingIcon };
+          delete next.steps;
+          delete next.note;
+          delete next.dashed;
+          write(next);
+        }}
+      />
+    </div>
+  );
+
+  const properties = current ? (
+    <div className="plan-props">
+      <h3 className="plan-props__title">
+        {icon && <PlanGlyph kind={icon.kind} size={18} />}
+        {iconName(current)}
+        {icon?.label && <span> · {icon.label}</span>}
+      </h3>
+      <div className="plan-props__row">
+        <span>{t('board.plan.color')}</span>
+        <span className="plan-props__swatches">{swatches}</span>
+      </div>
+      {labelField && (
+        <div className="plan-props__row">
+          <span>{t('board.plan.labelField')}</span>
+          {labelField}
+        </div>
+      )}
+      {camera}
+      {blocking}
+      <div className="plan-props__row">
+        <span>{t('board.plan.layer')}</span>
+        <Select
+          value={layerOf(current)}
+          disabled={ownerOf(current.id) !== plan.id}
+          onChange={(v) => {
+            const next = { ...current, layer: v as PlanLayer };
+            // The item's own default layer is not written (a text's is Notes, not Set).
+            if (defaultLayer(current) === v) delete (next as Partial<PlanIcon>).layer;
+            write(next);
+          }}
+          // On a variant the Set is the base's: the variant's own items cannot go there.
+          options={PLAN_LAYERS.filter((l) => !(base && l === 'set')).map((l) => ({
+            value: l,
+            label: t(`board.plan.layers.${l}`),
+          }))}
+        />
+      </div>
+      {light}
+      {icon && (
+        <p className="plan-props__hint">
+          {t(`board.plan.categories.${categoryOf(icon.kind).id}`)} ·{' '}
+          {t(`board.plan.layers.${layerOf(icon)}`)}
+        </p>
+      )}
+    </div>
+  ) : (
+    <div className="plan-props">
+      <h3 className="plan-props__title">{t('board.plan.settings')}</h3>
+      {plan.variantOf && (
+        <div className="plan-props__row">
+          <span>{t('board.plan.variantField')}</span>
+          <input
+            className="plan-editor__field"
+            aria-label={t('board.plan.variantField')}
+            maxLength={60}
+            defaultValue={plan.variant ?? ''}
+            onBlur={(e) => {
+              const variant = e.target.value.trim() || undefined;
+              if (variant !== plan.variant)
+                change(() => updateElement(doc, plan.id, { variant }, LOCAL));
+            }}
+          />
+        </div>
+      )}
+      <div className="plan-props__row">
+        <span>{t('board.drawn.scale')}</span>
+        <b>
+          {drawn.scale
+            ? t('board.drawn.scaleGrid', {
+                grid: Number(drawn.grid ?? '0.5').toLocaleString(i18n.language),
+              })
+            : t('board.plan.noScale')}
+        </b>
+      </div>
+      <Button icon="ruler" onClick={() => setTool('scale')}>
+        {t('board.plan.setScale')}
+      </Button>
+      {drawn.scale && (
+        <>
+          <label className="plan-props__row">
+            <span>{t('board.drawn.rulers')}</span>
+            <Switch
+              checked={!!drawn.rulers}
+              onChange={(e) =>
+                change(() =>
+                  updateElement(doc, scaleOwner, { rulers: e.target.checked || undefined }, LOCAL),
+                )
+              }
+            />
+          </label>
+          <Button
+            variant="ghost"
+            onClick={() =>
+              change(() =>
+                updateElement(
+                  doc,
+                  scaleOwner,
+                  { scale: undefined, grid: undefined, rulers: undefined },
+                  LOCAL,
+                ),
+              )
+            }
+          >
+            {t('board.plan.clearScale')}
+          </Button>
+        </>
+      )}
+      <label className="plan-props__row">
+        <span>{t('board.plan.inPresentation')}</span>
+        <Switch
+          checked={plan.presentation !== false}
+          onChange={(e) =>
+            change(() =>
+              updateElement(
+                doc,
+                plan.id,
+                { presentation: e.target.checked ? undefined : false },
+                LOCAL,
+              ),
+            )
+          }
+        />
+      </label>
+      <p className="plan-props__empty">{t('board.plan.noSelection')}</p>
+    </div>
+  );
+  const metresDraft = scaleDraft ? Number(scaleDraft.metres.replace(',', '.')) : 0;
+  // Within the schema: at least a centimetre, and a scale the document accepts.
+  const scaleOk =
+    !!scaleDraft &&
+    metresDraft >= 0.01 &&
+    metresDraft < 1000 &&
+    (scaleFor(scaleDraft.length, metresDraft) ?? Infinity) <= MAX_SCALE;
+  const scaleDialog = scaleDraft && (
+    <div className="plan-scale ink-motion-pop" role="dialog" aria-label={t('board.plan.setScale')}>
+      <div className="plan-scale__head">
+        <b>{t('board.plan.setScale')}</b>
+        <IconButton
+          icon="close"
+          label={t('board.plan.cancel')}
+          onClick={() => setScaleDraft(null)}
+        />
+      </div>
+      <label className="plan-scale__field">
+        <span>{t('board.plan.lineIs')}</span>
+        <span className="plan-num">
+          <input
+            inputMode="decimal"
+            // biome-ignore lint/a11y/noAutofocus: the dialog opens to take this one number.
+            autoFocus
+            aria-label={t('board.plan.lineIs')}
+            value={scaleDraft.metres}
+            onChange={(e) => setScaleDraft({ ...scaleDraft, metres: e.target.value })}
+          />
+          <span>{t('board.plan.metres')}</span>
+        </span>
+      </label>
+      <div className="plan-props__row">
+        <span>{t('board.drawn.grid')}</span>
+        <fieldset className="plan-props__segmented" aria-label={t('board.drawn.grid')}>
+          {(['0.25', '0.5', '1'] as const).map((g) => (
+            <button
+              key={g}
+              type="button"
+              aria-pressed={gridDraft === g}
+              onClick={() => setGridDraft(g)}
+            >
+              {Number(g).toLocaleString(i18n.language)}
+              {g === '1' ? ' m' : ''}
+            </button>
+          ))}
+        </fieldset>
+      </div>
+      <label className="plan-props__row">
+        <span>{t('board.drawn.rulers')}</span>
+        <Switch checked={rulersDraft} onChange={(e) => setRulersDraft(e.target.checked)} />
+      </label>
+      <div className="plan-scale__actions">
+        <Button variant="ghost" onClick={() => setScaleDraft(null)}>
+          {t('board.plan.cancel')}
+        </Button>
+        <Button
+          variant="primary"
+          disabled={!scaleOk}
+          onClick={() => {
+            const next = scaleFor(scaleDraft.length, metresDraft);
+            if (!next || !scaleOk) return;
+            change(() =>
+              updateElement(
+                doc,
+                scaleOwner,
+                {
+                  scale: Math.round(next * 100) / 100,
+                  grid: gridDraft,
+                  rulers: rulersDraft || undefined,
+                },
+                LOCAL,
+              ),
+            );
+            setScaleDraft(null);
+          }}
+        >
+          {t('board.plan.apply')}
+        </Button>
+      </div>
+    </div>
+  );
+  /** Rulers in metres along the top and the left of a scaled plan. */
+  const rulers = !phone && drawn.scale && drawn.rulers && (
+    <>
+      <div className="plan-ruler plan-ruler--top" aria-hidden="true">
+        {Array.from({ length: Math.floor(PLAN_VIEW_W / drawn.scale) + 1 }, (_, m) => (
+          // biome-ignore lint/suspicious/noArrayIndexKey: a metre is its place on the ruler.
+          <span key={m} style={{ left: `${((m * (drawn.scale as number)) / PLAN_VIEW_W) * 100}%` }}>
+            {m === 1 ? '1 m' : m}
+          </span>
+        ))}
+      </div>
+      <div className="plan-ruler plan-ruler--left" aria-hidden="true">
+        {Array.from({ length: Math.floor(PLAN_VIEW_H / drawn.scale) + 1 }, (_, m) => (
+          // biome-ignore lint/suspicious/noArrayIndexKey: a metre is its place on the ruler.
+          <span key={m} style={{ top: `${((m * (drawn.scale as number)) / PLAN_VIEW_H) * 100}%` }}>
+            {m}
+          </span>
+        ))}
+      </div>
+    </>
+  );
+
+  const counts = layerCounts(drawn);
+  const locked = new Set(plan.lockedLayers ?? []);
+  const toggleHidden = (layer: PlanLayer) => {
+    if (plan.variantOf) {
+      // On a variant, hiding is the variant's: for everyone, and in its exports.
+      const next = hiddenLayers.has(layer)
+        ? (plan.hiddenLayers ?? []).filter((l) => l !== layer)
+        : [...(plan.hiddenLayers ?? []), layer];
+      change(() =>
+        updateElement(doc, plan.id, { hiddenLayers: next.length ? next : undefined }, LOCAL),
+      );
+    } else
+      setMyHidden((s) => {
+        const next = new Set(s);
+        if (next.has(layer)) next.delete(layer);
+        else next.add(layer);
+        return next;
+      });
+  };
+  const toggleLocked = (layer: PlanLayer) => {
+    const next = locked.has(layer) ? [...locked].filter((l) => l !== layer) : [...locked, layer];
+    change(() =>
+      updateElement(doc, plan.id, { lockedLayers: next.length ? next : undefined }, LOCAL),
+    );
+  };
+  const layersPane = (
+    <div className="plan-layers">
+      <ul>
+        {PLAN_LAYERS.map((layer) => (
+          <li key={layer} className={activeLayer === layer ? 'is-active' : undefined}>
+            <button
+              type="button"
+              className="plan-layers__name"
+              aria-pressed={activeLayer === layer}
+              onClick={() => setActiveLayer((l) => (l === layer ? null : layer))}
+            >
+              <i className={`plan-layers__dot plan-layers__dot--${layer}`} />
+              <span className={hiddenLayers.has(layer) ? 'is-off' : undefined}>
+                {t(`board.plan.layers.${layer}`)}
+              </span>
+              <span className="plan-layers__count">{counts[layer]}</span>
+            </button>
+            <IconButton
+              icon={hiddenLayers.has(layer) ? 'eyeOff' : 'eye'}
+              label={t(hiddenLayers.has(layer) ? 'board.plan.showLayer' : 'board.plan.hideLayer', {
+                layer: t(`board.plan.layers.${layer}`),
+              })}
+              aria-pressed={hiddenLayers.has(layer)}
+              onClick={() => toggleHidden(layer)}
+            />
+            <IconButton
+              icon={locked.has(layer) ? 'lock' : 'unlock'}
+              label={t(locked.has(layer) ? 'board.plan.unlockLayer' : 'board.plan.lockLayer', {
+                layer: t(`board.plan.layers.${layer}`),
+              })}
+              aria-pressed={locked.has(layer)}
+              onClick={() => toggleLocked(layer)}
+            />
+          </li>
+        ))}
+      </ul>
+      <p className="plan-props__hint">
+        {activeLayer
+          ? t('board.plan.layersHint', { layer: t(`board.plan.layers.${activeLayer}`) })
+          : t('board.plan.layersHintNone')}
+      </p>
+    </div>
+  );
+  const layerStatus = [
+    ...[...hiddenLayers].map((l) => t(`board.plan.hiddenAs.${l}`)),
+    ...[...locked].map((l) => t(`board.plan.lockedAs.${l}`)),
+  ];
+  const variantTabs = family.length > 1 && (
+    <nav className="plan-editor__variants" aria-label={t('board.plan.variants')}>
+      {family.map((p) => {
+        const scene = scenes.find((sc) => p.sceneIds?.includes(sc.id));
+        const name = p.variantOf ? p.variant || t('board.plan.variant') : t('board.plan.base');
+        return (
+          <button
+            key={p.id}
+            type="button"
+            aria-current={p.id === plan.id ? 'page' : undefined}
+            onClick={() => p.id !== plan.id && onSwitch?.(p.id)}
+          >
+            {scene ? `${name} · ${t('needed.sceneNumber', { number: scene.number })}` : name}
+          </button>
+        );
+      })}
+      {onNewVariant && (
+        <IconButton icon="plus" label={t('board.plan.newVariant')} onClick={onNewVariant} />
+      )}
+    </nav>
+  );
+
+  const stageArea = (
+    <div className="plan-editor__stage-wrap">
+      <div className="plan-editor__fit">
+        <div
+          ref={stage}
+          className={`plan-editor__stage plan-editor__stage--${tool}`}
+          onPointerDown={onPointerDown}
+          onPointerMove={onPointerMove}
+          onPointerUp={onPointerUp}
+          onPointerCancel={onPointerCancel}
+        >
+          {rulers}
+          <PlanDrawing
+            plan={shown}
+            grid={step}
+            ghosts={ghosts}
+            hidden={hiddenList}
+            lifted={liftedIds}
+          >
+            {liveLayer}
+          </PlanDrawing>
+          {text && (
+            <input
+              ref={textInput}
+              className="plan-editor__text"
+              aria-label={t('film.pen.textField')}
+              placeholder={t('film.pen.textPlaceholder')}
+              maxLength={500}
+              value={text.value}
+              style={{ left: `${text.at.x * 100}%`, top: `${text.at.y * 100}%` }}
+              onChange={(e) => {
+                const draft = { ...text, value: e.target.value };
+                textRef.current = draft;
+                setText(draft);
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  commitText();
+                } else if (e.key === 'Escape') {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  textRef.current = null;
+                  setText(null);
+                }
+              }}
+              onBlur={commitText}
+            />
+          )}
+        </div>
+      </div>
+      {!phone && moveBar}
+      {layerStatus.length > 0 && !phone && (
+        <p className="plan-editor__status">{layerStatus.join(' · ')}</p>
+      )}
+      {tool === 'scale' && (
+        <p className="plan-editor__movebar plan-editor__tip">{t('board.drawn.scaleHint')}</p>
+      )}
+      {scaleDialog}
+      {phone && movingIcon && (
+        <p className="plan-editor__hint">
+          {t('board.plan.moveHint', { number: (movingIcon.steps?.length ?? 0) + 2 })}
+        </p>
+      )}
+      {!phone && (manyBar || bar)}
+    </div>
+  );
+
+  if (phone)
+    // On the body: over the phone's navigation bar, which the canvas does not cover.
+    return createPortal(
+      <div
+        ref={dialogRef}
+        tabIndex={-1}
+        className="plan-editor plan-editor--phone"
+        data-chrome=""
+        role="dialog"
+        aria-modal="true"
+        aria-label={title}
+      >
+        <header className="plan-editor__head">
+          <IconButton icon="close" label={t('viewer.close')} onClick={onClose} />
+          <b>{t('board.plan.name')}</b>
+          <Button variant="primary" onClick={onClose}>
+            {t('film.pen.done')}
+          </Button>
+        </header>
+        {stageArea}
+        {tool === 'icons' && !current && library}
+        {!movingIcon && (manyBar || bar)}
+        {tools}
+      </div>,
+      document.body,
+    );
+  // On the body too: the window sits in front of the whole app, the shell dimmed with the board.
+  return createPortal(
+    <div className="plan-editor" data-chrome="">
+      <div className="plan-editor__backdrop" aria-hidden="true" onPointerDown={onClose} />
+      <div
+        ref={dialogRef}
+        tabIndex={-1}
+        className="plan-editor__window ink-motion-rise"
+        role="dialog"
+        aria-modal="true"
+        aria-label={title}
+      >
+        <header className="plan-editor__head">
+          <Icon name="map" size={15} />
+          <span className="plan-editor__name">{t('board.plan.name')} ·</span>
+          <input
+            className="plan-editor__title"
+            aria-label={t('board.plan.titleField')}
+            placeholder={t('board.plan.titlePlaceholder')}
+            maxLength={200}
+            defaultValue={plan.title ?? ''}
+            size={Math.max(8, (plan.title ?? '').length + 1)}
+            onBlur={(e) => {
+              const title = e.target.value.trim() || undefined;
+              if (title !== plan.title) change(() => updateElement(doc, plan.id, { title }, LOCAL));
+            }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === 'Escape') {
+                e.preventDefault();
+                e.currentTarget.blur();
+              }
+            }}
+          />
+          <SceneBadges scenes={linked} onOpen={onOpenScene} />
+          <IconButton
+            icon="link"
+            label={t('board.plan.linkScene')}
+            onClick={(e) => {
+              const r = e.currentTarget.getBoundingClientRect();
+              setPicking({ x: r.left, y: r.bottom + 6 });
+            }}
+          />
+          {picking && (
+            <ScenePicker
+              store={store}
+              plan={plan}
+              scenes={scenes}
+              style={{ position: 'fixed', left: picking.x, top: picking.y }}
+              onClose={() => setPicking(null)}
+            />
+          )}
+          {variantTabs}
+          <span className="plan-editor__spacer" />
+          <Button variant="primary" onClick={onClose}>
+            {t('film.pen.done')}
+          </Button>
+        </header>
+        <div className="plan-editor__body">
+          {tools}
+          {stageArea}
+          <aside className="plan-editor__panel">
+            <div className="plan-editor__tabs" role="tablist">
+              {(['icons', 'layers', 'props'] as const).map((p) => (
+                <button
+                  key={p}
+                  type="button"
+                  role="tab"
+                  aria-selected={panel === p}
+                  onClick={() => setPanel(p)}
+                >
+                  {t(`board.plan.panel.${p}`)}
+                </button>
+              ))}
+            </div>
+            {panel === 'icons' ? library : panel === 'layers' ? layersPane : properties}
+          </aside>
+        </div>
+      </div>
+    </div>,
+    document.body,
+  );
+}
+
+const TOOL_OF_NOTE: Record<PlanNoteTool, Tool> = {
+  arrow: 'arrow',
+  text: 'text',
+  measure: 'measure',
+  zone: 'zone',
+};

@@ -47,6 +47,7 @@ import { MapCard } from './MapCard.tsx';
 import { useMeasure } from './measure.ts';
 import { movingVariantUrl } from './moving.tsx';
 import { NoteBody, NoteEditor, useFragment } from './note.tsx';
+import { PlanCard } from './plan/PlanCard.tsx';
 import { LOCAL } from './store.ts';
 import { TableCard } from './TableCard.tsx';
 import { TodoAssignment } from './TodoAssignment.tsx';
@@ -250,6 +251,8 @@ function CardBody({
       return <TableCard element={element} editing={editing} />;
     case 'map':
       return <MapCard element={element} width={width} />;
+    case 'plan':
+      return <PlanCard element={element} />;
   }
 }
 
