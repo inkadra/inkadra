@@ -2,6 +2,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   DEFAULT_EXPORT_PREFERENCES,
+  DEFAULT_PROJECT_THEME,
   ExportPreferences,
   ExportSettings,
   UpdateExportSettings,
@@ -37,10 +38,24 @@ describe('export settings contract', () => {
       ...DEFAULT_EXPORT_PREFERENCES,
       logoAssetId: null,
       logo: null,
+      theme: DEFAULT_PROJECT_THEME,
+      projectColor: 'green',
       canEdit: false,
       updatedAt: null,
     };
     expect(ExportSettings.parse(settings)).toEqual(settings);
     expect(ExportSettings.safeParse({ ...settings, canEdit: undefined }).success).toBe(false);
+  });
+
+  it('starts the theme from the project colour and Inter, and takes only known values', () => {
+    expect(DEFAULT_PROJECT_THEME).toEqual({ accent: null, headingFont: 'inter' });
+    expect(UpdateExportSettings.parse({ theme: { headingFont: 'fraunces' } })).toEqual({
+      theme: { headingFont: 'fraunces' },
+    });
+    expect(UpdateExportSettings.safeParse({ theme: { accent: 'teal' } }).success).toBe(true);
+    expect(UpdateExportSettings.safeParse({ theme: { accent: '#ff0000' } }).success).toBe(false);
+    expect(UpdateExportSettings.safeParse({ theme: { headingFont: 'Comic Sans' } }).success).toBe(
+      false,
+    );
   });
 });

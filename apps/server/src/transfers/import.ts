@@ -46,7 +46,7 @@ import {
   projectMember,
   shootingDay,
 } from '../db/schema.ts';
-import { readPreferences } from '../http/export-settings-routes.ts';
+import { readPreferences, readTheme } from '../http/export-settings-routes.ts';
 import { cleanMime, kindOf } from '../http/uploads.ts';
 import type { Jobs } from '../jobs.ts';
 import { writeBoardIndex } from '../search/index-doc.ts';
@@ -476,6 +476,7 @@ export async function importProject(
         await tx.insert(projectExportSettings).values({
           projectId,
           preferences: readPreferences(exportSettings.preferences),
+          theme: readTheme(exportSettings.theme ?? null),
           logoAssetId: fits ? file.id : null,
           updatedBy: userId,
         });

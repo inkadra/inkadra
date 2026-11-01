@@ -2441,7 +2441,30 @@
     "sidebarPreview": "How it looks in the sidebar",
     "close": "Close",
     "boardTitle": "Board icon and colour",
-    "boardPreview": "How it looks on board cards"
+    "boardPreview": "How it looks on board cards",
+    "presentation": "Presentation",
+    "theme": {
+      "accent": "Accent",
+      "accentDefault": "{{color}} · project colour",
+      "font": "Heading font",
+      "fontNote": "Bundled, OFL licence",
+      "fonts": {
+        "inter": "like the app",
+        "fraunces": "serif",
+        "space-grotesk": "grotesk",
+        "ibm-plex-mono": "mono"
+      },
+      "logo": "Logo",
+      "logoNote": "PNG or JPEG up to 512 KB",
+      "logoUse": "Cover and page headers",
+      "noLogo": "No logo",
+      "logoRemove": "Remove",
+      "previewSlide": "Preview · presentation",
+      "previewPdf": "PDF · cover and page (always on light paper)",
+      "paperNote": "On paper the accent uses the darker shade of the same hue, for contrast.",
+      "sampleTitle": "Scene 1",
+      "sampleMeta": "Wide shot · 8 shots"
+    }
   },
   "transfer": {
     "exportMenu": "Export project…",

@@ -169,6 +169,13 @@
       "when": 1793551073167,
       "tag": "0023_user_preferences",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1793554949414,
+      "tag": "0024_project_theme",
+      "breakpoints": true
     }
   ]
 }

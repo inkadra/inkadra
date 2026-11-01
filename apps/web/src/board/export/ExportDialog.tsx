@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { getReviews } from '../review-store.ts';
 import type { BoardStore } from '../store.ts';
+import { resolveTheme } from '../theme.ts';
 import { ExportCache } from './cache.ts';
 import type {
   ExportEnv,
@@ -72,11 +73,20 @@ export function ExportDialog(props: ExportDialogProps) {
       (loaded) => {
         if (!live) return;
         setSettings(loaded);
-        const { logo, logoAssetId: _id, canEdit: _edit, updatedAt: _at, ...prefs } = loaded;
+        const {
+          logo,
+          logoAssetId: _id,
+          canEdit: _edit,
+          updatedAt: _at,
+          theme: _theme,
+          projectColor: _color,
+          ...prefs
+        } = loaded;
+        const theme = resolveTheme(loaded);
         setReq((r) =>
           touched.current
-            ? { ...r, logo }
-            : { ...r, ...prefs, paper: prefs.paper ?? localePaper(), logo },
+            ? { ...r, logo, theme }
+            : { ...r, ...prefs, paper: prefs.paper ?? localePaper(), logo, theme },
         );
       },
       () => {},
@@ -478,7 +488,7 @@ function Preview({
         el.width = Math.round(page.width * scale);
         el.height = Math.round(page.height * scale);
         const ctx = el.getContext('2d');
-        if (ctx) drawPage(ctx, page, scale, built.images);
+        if (ctx) drawPage(ctx, page, scale, built.images, 0, built.fonts.headingFamily);
         setState({ status: 'ready', pages: built.pages.length });
         onMissing(built.missing);
       } catch {

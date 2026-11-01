@@ -423,6 +423,7 @@ export async function exportProject(
     if (exportSettings) {
       const settings: ArchiveExportSettings = {
         preferences: exportSettings.preferences,
+        theme: exportSettings.theme,
         logoAssetId:
           exportSettings.logoAssetId && assetIds.has(exportSettings.logoAssetId)
             ? exportSettings.logoAssetId

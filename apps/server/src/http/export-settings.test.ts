@@ -1,5 +1,5 @@
 import { fileURLToPath } from 'node:url';
-import { DEFAULT_EXPORT_PREFERENCES, ExportSettings } from '@inkadra/shared';
+import { DEFAULT_EXPORT_PREFERENCES, DEFAULT_PROJECT_THEME, ExportSettings } from '@inkadra/shared';
 import { eq, sql } from 'drizzle-orm';
 import pino from 'pino';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -10,7 +10,7 @@ import { asset, board, boardGrant, projectExportSettings } from '../db/schema.ts
 import type { Storage } from '../storage.ts';
 import { testDeps } from '../test-deps.ts';
 import { createApp } from './app.ts';
-import { readPreferences } from './export-settings-routes.ts';
+import { readPreferences, readTheme } from './export-settings-routes.ts';
 
 describe('readPreferences', () => {
   it('keeps valid stored values and falls back field by field', () => {
@@ -18,6 +18,14 @@ describe('readPreferences', () => {
     expect(
       readPreferences({ framesPerPage: 6, paper: 'letter', audience: 'everyone', future: true }),
     ).toEqual({ ...DEFAULT_EXPORT_PREFERENCES, framesPerPage: 6, paper: 'letter' });
+  });
+
+  it('reads the theme the same way', () => {
+    expect(readTheme(null)).toEqual(DEFAULT_PROJECT_THEME);
+    expect(readTheme({ accent: 'teal', headingFont: 'Papyrus' })).toEqual({
+      accent: 'teal',
+      headingFont: 'inter',
+    });
   });
 });
 
@@ -37,6 +45,7 @@ describe.skipIf(!url)('project export settings', () => {
   const people: Record<string, { cookie: string; id: string }> = {};
   let projectId: string;
   let otherProjectId: string;
+  let projectColor: string;
   let storage: Storage;
   let rootBoardId: string;
   const request = (who: string, method: 'GET' | 'PATCH' | 'PUT', path: string, payload?: object) =>
@@ -101,6 +110,7 @@ describe.skipIf(!url)('project export settings', () => {
     });
     projectId = project.json().id;
     rootBoardId = project.json().rootBoardId;
+    projectColor = project.json().icon.color;
     const other = await app.inject({
       method: 'POST',
       url: '/api/v1/projects',
@@ -170,6 +180,29 @@ describe.skipIf(!url)('project export settings', () => {
       400,
     );
     expect((await request('owner', 'PATCH', settingsPath(), { unknown: 1 })).statusCode).toBe(400);
+  });
+
+  it('keeps a theme that follows the project colour until an accent is chosen', async () => {
+    const start = (await request('guest', 'GET', settingsPath())).json();
+    expect(start.theme).toEqual(DEFAULT_PROJECT_THEME);
+    expect(start.projectColor).toBe(projectColor);
+    let res = await request('editor', 'PATCH', settingsPath(), { theme: { accent: 'teal' } });
+    expect(res.statusCode).toBe(200);
+    res = await request('owner', 'PATCH', settingsPath(), { theme: { headingFont: 'fraunces' } });
+    expect(res.json().theme).toEqual({ accent: 'teal', headingFont: 'fraunces' });
+    expect(res.json().framesPerPage).toBe(6);
+    res = await request('owner', 'PATCH', settingsPath(), { theme: { accent: null } });
+    expect((await request('viewer', 'GET', settingsPath())).json().theme).toEqual({
+      accent: null,
+      headingFont: 'fraunces',
+    });
+    expect(
+      (await request('owner', 'PATCH', settingsPath(), { theme: { headingFont: 'Arial' } }))
+        .statusCode,
+    ).toBe(400);
+    expect(
+      (await request('viewer', 'PATCH', settingsPath(), { theme: { accent: 'red' } })).statusCode,
+    ).toBe(403);
   });
 
   it('refuses changes from viewers, board-only grants and strangers', async () => {

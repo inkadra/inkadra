@@ -1,15 +1,18 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 import type { FrameElement, SceneGroup } from '@inkadra/canvas-core';
 import { SHOT_MOVEMENTS, SHOT_SIZES } from '@inkadra/doc-schema';
+import type { ExportSettings } from '@inkadra/shared';
 import { Button, Icon, IconButton, KeyCap } from '@inkadra/ui';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { type CSSProperties, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { fetchExportSettings, logoUrl } from './export/settings.ts';
 import { useBoardAspect } from './film/aspect.ts';
 import { FramePicture } from './film/FramePicture.tsx';
 import { usePresetText } from './film/fields.tsx';
 import './presentation.css';
 import { isTyping } from './shortcuts.ts';
 import type { BoardStore } from './store.ts';
+import { headingFamily, loadHeadingFont, resolveTheme, screenAccent } from './theme.ts';
 
 export interface SlideItem {
   id: string;
@@ -39,6 +42,7 @@ export function formatElapsed(seconds: number): string {
 
 export function PresentationView({
   store,
+  projectId,
   groups,
   labels,
   boardTitle,
@@ -46,6 +50,8 @@ export function PresentationView({
   onClose,
 }: {
   store: BoardStore;
+  /** Whose theme and logo the slides wear (decision 0057); left out, the app's own look. */
+  projectId?: string;
   /** Only the scenes the viewer may see and has not filtered out. */
   groups: readonly SceneGroup[];
   labels: Map<string, string>;
@@ -65,6 +71,24 @@ export function PresentationView({
     new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
   );
   const rootRef = useRef<HTMLDialogElement>(null);
+  const [settings, setSettings] = useState<ExportSettings | null>(null);
+  useEffect(() => {
+    if (!projectId) return;
+    let live = true;
+    fetchExportSettings(projectId).then(
+      (loaded) => {
+        if (live) setSettings(loaded);
+      },
+      () => {},
+    );
+    return () => {
+      live = false;
+    };
+  }, [projectId]);
+  const theme = resolveTheme(settings);
+  useEffect(() => {
+    void loadHeadingFont(theme.headingFont);
+  }, [theme.headingFont]);
   // Whatever had focus when the presentation opened gets it back when it closes.
   const opener = useRef<Element | null>(document.activeElement);
 
@@ -192,6 +216,14 @@ export function PresentationView({
     <dialog
       ref={rootRef}
       className="present-view"
+      style={
+        settings
+          ? ({
+              '--present-accent': screenAccent(theme.color),
+              '--present-heading': headingFamily(theme.headingFont),
+            } as CSSProperties)
+          : undefined
+      }
       tabIndex={-1}
       aria-label={t('present.title')}
       onCancel={(e) => e.preventDefault()}
@@ -203,6 +235,9 @@ export function PresentationView({
           <KeyCap>Esc</KeyCap>
         </button>
         <span className="present-header__sep">/</span>
+        {settings?.logo && (
+          <img className="present-header__logo" src={logoUrl(settings.logo)} alt="" />
+        )}
         <span className="present-header__title">
           {projectTitle ? `${projectTitle} · ` : ''}
           {boardTitle}

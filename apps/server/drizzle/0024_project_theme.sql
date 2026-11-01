@@ -1,0 +1,1 @@
+ALTER TABLE "project_export_settings" ADD COLUMN "theme" jsonb DEFAULT '{}'::jsonb NOT NULL;

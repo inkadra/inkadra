@@ -433,6 +433,7 @@ export function StoryboardView({
       {present && (
         <PresentationView
           store={store}
+          projectId={projectId}
           groups={visible}
           labels={labels}
           boardTitle={boardTitle}
