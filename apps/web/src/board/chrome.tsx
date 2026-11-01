@@ -786,9 +786,15 @@ export type MenuItem =
       /** A leading icon on a tile in the content-kind colour, as in the Canvas menu. */
       icon?: IconName;
       kind?: ContentKind;
+      /** Drawn instead of the label, which stays the item's name. */
+      content?: ReactNode;
+      /** One choice of a set, ticked when it is the current one. */
+      checked?: boolean;
       divider?: never;
+      heading?: never;
     }
-  | { divider: true };
+  | { divider: true; heading?: never }
+  | { heading: string; divider?: never };
 
 export function ContextMenu({
   x,
@@ -827,7 +833,7 @@ export function ContextMenu({
   }, [x, y, style]);
   useEffect(() => {
     ref.current
-      ?.querySelector<HTMLButtonElement>('[role="menuitem"]:not([aria-disabled="true"])')
+      ?.querySelector<HTMLButtonElement>('[role^="menuitem"]:not([aria-disabled="true"])')
       ?.focus();
     const away = (e: PointerEvent) => {
       const target = e.target as Node;
@@ -855,7 +861,7 @@ export function ContextMenu({
           e.preventDefault();
           const all = [
             // Disabled items stay in the walk so their "coming soon" hint can be found.
-            ...(ref.current?.querySelectorAll<HTMLElement>('[role="menuitem"]') ?? []),
+            ...(ref.current?.querySelectorAll<HTMLElement>('[role^="menuitem"]') ?? []),
           ];
           const i = all.indexOf(document.activeElement as HTMLElement);
           const next =
@@ -872,11 +878,18 @@ export function ContextMenu({
         item.divider ? (
           // biome-ignore lint/suspicious/noArrayIndexKey: dividers have no identity
           <hr key={`d${i}`} className="menu__divider" />
+        ) : item.heading !== undefined ? (
+          <p key={item.heading} className="menu__heading" role="presentation">
+            {item.heading}
+          </p>
         ) : (
+          // biome-ignore lint/a11y/useAriaPropsSupportedByRole: aria-checked only comes with menuitemradio.
           <button
             key={item.label}
             type="button"
-            role="menuitem"
+            role={item.checked === undefined ? 'menuitem' : 'menuitemradio'}
+            aria-checked={item.checked}
+            aria-label={item.content ? item.label : undefined}
             className={`menu__item${item.danger ? ' is-danger' : ''}${item.disabled ? ' is-disabled' : ''}`}
             aria-disabled={item.disabled || undefined}
             aria-describedby={item.hint ? `${hintId}-${i}` : undefined}
@@ -895,7 +908,12 @@ export function ContextMenu({
                 <Icon name={item.icon} size={14} />
               </span>
             )}
-            {item.label}
+            {item.content ?? item.label}
+            {item.checked && (
+              <span className="menu__check" aria-hidden="true">
+                <Icon name="check" size={14} />
+              </span>
+            )}
             {item.hint && (
               <span id={`${hintId}-${i}`} className="menu__hint" aria-hidden="true">
                 {item.hint}

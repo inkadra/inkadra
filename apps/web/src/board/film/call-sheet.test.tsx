@@ -86,6 +86,23 @@ async function mount(days: ShootingDay[]) {
           ])
         }
         projectName="Film"
+        needed={(d) =>
+          d.blocks.length
+            ? [
+                {
+                  key: 'towel',
+                  list: 'wardrobe',
+                  text: 'Towel',
+                  count: 2,
+                  scenes: ['3', '5'],
+                  done: true,
+                  assigneeId: 'u1',
+                  items: [],
+                },
+              ]
+            : []
+        }
+        people={[{ id: 'u1', name: 'Giulia Rossi', image: null, email: null }]}
         onClose={() => {}}
       />,
     ),
@@ -116,6 +133,9 @@ it('renders saved data and linked or removed shots, toggles sections and prints 
   // The description of a shot is what happens in it, not the block type.
   expect(paper()?.textContent).toContain('Anna steps off the train');
   expect(paper()?.textContent).toContain('EXT. PLATFORM');
+  // What the day's scenes need, with an empty box to tick by hand even when ticked online.
+  const needed = paper()?.querySelector('tbody tr:has(.sheet__box)');
+  expect(needed?.textContent).toBe('Towel ×2board.todo.lists.wardrobe3, 5Giulia R.');
   expect(paper()?.textContent).toContain('schedule.missingShot');
   expect(paper()?.textContent).toContain('bring lights');
   expect(paper()?.textContent).toContain('05:00 (+1)');
@@ -136,7 +156,7 @@ it('renders saved data and linked or removed shots, toggles sections and prints 
   );
   expect(print).toHaveBeenCalledOnce();
   // Day 2 has no blocks, cast, departments or notes: those sections say so and stay out.
-  expect(host.querySelectorAll('input[role=switch]')).toHaveLength(5);
+  expect(host.querySelectorAll('input[role=switch]')).toHaveLength(6);
   expect(host.textContent).toContain('callSheet.emptyHelp');
   expect(paper()?.textContent).not.toContain('bring lights');
 });

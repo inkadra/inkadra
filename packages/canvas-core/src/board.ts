@@ -328,6 +328,9 @@ export function duplicateElements(
       copy.set('createdAt', Date.now());
       const parent = (e.parent && fresh.get(e.parent)) ?? e.parent;
       copy.set('parent', parent);
+      // A to-do list copied with its scene follows the copy, as arrows follow their cards.
+      if (e.type === 'todo' && e.sceneId && fresh.has(e.sceneId))
+        copy.set('sceneId', fresh.get(e.sceneId));
       if (e.parent === null) {
         copy.set('x', Math.round(e.x + offset.x));
         copy.set('y', Math.round(e.y + offset.y));
@@ -479,6 +482,8 @@ export function pasteElements(
         y,
         z: onCanvas ? (keys[placed.indexOf(e)] ?? keyAtEnd(all, null)) : e.z,
       };
+      if (copy.type === 'todo' && copy.sceneId)
+        copy.sceneId = fresh.get(copy.sceneId) ?? copy.sceneId;
       if (copy.type === 'arrow') {
         // Ends move with the arrow; an attached end follows the copy of its card when the
         // card was copied too, else the original card.

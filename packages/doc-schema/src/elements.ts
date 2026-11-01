@@ -136,10 +136,21 @@ export const TodoItem = z.object({
   assigneeId: z.uuid().optional(),
   dueDate: z.iso.date().optional(),
 });
+/** What a to-do list gathers for the shoot: wardrobe, props or equipment (decision 0058). */
+export const TODO_LISTS = ['wardrobe', 'props', 'equipment'] as const;
+export const TodoList = z.enum(TODO_LISTS);
+export type TodoList = z.infer<typeof TodoList>;
 export const TodoElement = Base.extend({
   type: z.literal('todo'),
   title: z.string().max(200).optional(),
   items: z.array(TodoItem),
+  list: TodoList.optional().describe(
+    'Kind of things the list gathers for the shoot. Omitted = an ordinary to-do (since version 13).',
+  ),
+  sceneId: ElementId.optional().describe(
+    'Scene of the same board the items are needed for; shooting days that shoot it list them ' +
+      '(since version 13).',
+  ),
 });
 export const ColorElement = Base.extend({
   type: z.literal('color'),

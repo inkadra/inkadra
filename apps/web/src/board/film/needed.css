@@ -1,0 +1,229 @@
+/* "Da portare": kinds of to-do lists and a shooting day's roll-up (#323, decision 0058). */
+
+.needed-kind {
+  display: inline-block;
+  padding: 2px 7px;
+  border-radius: var(--ink-radius-full);
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1.3;
+  white-space: nowrap;
+}
+.needed-kind--wardrobe {
+  color: var(--ink-tag-pink);
+  background: var(--ink-tag-pink-bg);
+}
+.needed-kind--props {
+  color: var(--ink-tag-yellow);
+  background: var(--ink-tag-yellow-bg);
+}
+.needed-kind--equipment {
+  color: var(--ink-tag-teal);
+  background: var(--ink-tag-teal-bg);
+}
+
+/* "Da portare" widens the day panel to the mockup's 470 px, less on narrower screens; the day
+   columns beside it scroll sideways as they already do. Phones show the panel in a sheet. */
+.schedule__inspector.schedule__inspector--wide {
+  width: clamp(340px, 34vw, 470px);
+}
+.ink-dialog .schedule__inspector.schedule__inspector--wide {
+  width: auto;
+}
+
+/* The tabs of a day in the schedule's side panel. */
+.schedule__tabs {
+  display: flex;
+  gap: 2px;
+  margin: 0 -16px;
+  padding: 0 12px;
+  border-bottom: 1px solid var(--ink-border-muted);
+}
+.schedule__tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 10px 8px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: var(--ink-text-secondary);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+}
+.schedule__tab:hover {
+  color: var(--ink-text-primary);
+}
+.schedule__tab[aria-selected="true"] {
+  color: var(--ink-text-primary);
+  border-bottom-color: var(--ink-accent-primary);
+}
+.schedule__panel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.schedule__tab-count {
+  min-width: 18px;
+  padding: 0 5px;
+  border-radius: var(--ink-radius-full);
+  background: var(--ink-surface-3);
+  color: var(--ink-text-secondary);
+  font-size: 10.5px;
+  line-height: 16px;
+  text-align: center;
+}
+
+.needed__progress {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 11.5px;
+  color: var(--ink-text-secondary);
+}
+.needed__bar {
+  flex: 1;
+  height: 4px;
+  overflow: hidden;
+  border-radius: var(--ink-radius-full);
+  background: var(--ink-surface-3);
+}
+.needed__bar > i {
+  display: block;
+  height: 100%;
+  background: var(--ink-status-ok);
+  transform: scaleX(var(--needed-ready, 0));
+  transform-origin: left;
+  transition: transform var(--ink-dur-base) var(--ink-ease-out);
+}
+.needed__mine {
+  border: 0;
+  padding: 0;
+  background: none;
+  color: var(--ink-accent-soft-fg);
+  font: inherit;
+  cursor: pointer;
+}
+.needed__mine[aria-pressed="true"] {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.needed__filter {
+  margin: 8px 0 0;
+}
+.needed__filter .ink-radio-group__options {
+  width: 100%;
+}
+.needed__filter .ink-radio-group__option {
+  flex: 1;
+  justify-content: center;
+}
+.needed__group {
+  margin-top: 12px;
+}
+.needed__group-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 2px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--ink-text-muted);
+}
+.needed__group ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.needed__group li + li {
+  border-top: 1px solid var(--ink-border-muted);
+}
+.needed__row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 34px;
+  font-size: 12.5px;
+}
+.needed__name {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.needed__name small {
+  margin-left: 6px;
+  font-size: 11px;
+  color: var(--ink-text-muted);
+}
+.needed li.is-done .needed__name {
+  color: var(--ink-text-muted);
+}
+.needed__scenes {
+  flex: none;
+  padding: 1px 6px;
+  border-radius: var(--ink-radius-xs);
+  background: var(--ink-surface-2);
+  color: var(--ink-text-secondary);
+  font-size: 11px;
+  white-space: nowrap;
+}
+.needed__who {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  flex: none;
+  width: 92px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--ink-text-secondary);
+  font: inherit;
+  font-size: 11.5px;
+  text-align: left;
+  cursor: pointer;
+}
+span.needed__who {
+  cursor: default;
+}
+.needed__who.is-none {
+  color: var(--ink-text-muted);
+}
+.needed__plus {
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 1.2px var(--ink-border-strong);
+  font-size: 12px;
+  line-height: 1;
+}
+.needed__picker {
+  padding: 4px 0 10px 26px;
+}
+.needed__picker .people-picker__list {
+  max-height: 180px;
+  overflow-y: auto;
+}
+
+/* Phone: a checklist with a second line for scenes and who, tap targets of 44 px. */
+.needed--phone .needed__row {
+  min-height: 44px;
+}
+.needed--phone .needed__name small.needed__meta {
+  display: block;
+  margin: 0;
+}
+.needed--phone .needed__who {
+  width: 44px;
+  height: 44px;
+  justify-content: center;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .needed__bar > i {
+    transition: none;
+  }
+}

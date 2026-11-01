@@ -835,6 +835,23 @@ button.fcard__audio-play:focus-visible {
   color: var(--ink-text-muted);
   text-decoration: line-through;
 }
+.card__todo-head .needed-kind {
+  align-self: center;
+  margin-left: auto;
+}
+.card__todo-head .needed-kind + .card__desc {
+  margin-left: 0;
+}
+.card__todo-scene {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 7px 0 0;
+  padding-top: 7px;
+  border-top: 1px solid var(--ink-border-muted);
+  color: var(--ink-text-secondary);
+  font-size: 11px;
+}
 .card__todo-add {
   margin-top: 6px;
   font-size: 12px;
@@ -1948,6 +1965,20 @@ body:has(.colorpicker) .card-reactions {
   padding-left: 12px;
   font-size: 10px;
   color: var(--ink-text-muted);
+}
+.menu__heading {
+  margin: 4px 8px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--ink-text-muted);
+}
+.menu__item > .needed-kind {
+  margin-left: -2px;
+}
+.menu__check {
+  display: inline-flex;
+  margin-left: auto;
+  color: var(--ink-accent-soft-fg);
 }
 .menu__key {
   margin-left: auto;

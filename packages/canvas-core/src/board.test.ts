@@ -149,6 +149,23 @@ describe('board operations', () => {
     expect(validateBoardDoc(other)).toEqual([]);
   });
 
+  it('points a to-do list copied with its scene at the copy of the scene', () => {
+    const doc = setup();
+    const scene = createElement(doc, 'scene', { x: 0, y: 0 }, { number: '3', title: '' }, opts);
+    const list = createElement(doc, 'todo', { x: 0, y: 0 }, { items: [], parent: scene.id }, opts);
+    updateElement(doc, list.id, { list: 'props', sceneId: scene.id });
+    const [copy] = duplicateElements(doc, [scene.id], { x: 20, y: 20 }, opts);
+    const kid = childrenOf(listElements(doc), copy!)[0];
+    expect(kid?.type === 'todo' && kid.sceneId).toBe(copy);
+    const pasted = setup();
+    pasteElements(pasted, copyElements(doc, [scene.id]), { x: 0, y: 0 }, opts);
+    const all = listElements(pasted);
+    const newList = all.find((e) => e.type === 'todo');
+    expect(newList?.type === 'todo' && newList.sceneId).toBe(
+      all.find((e) => e.type === 'scene')?.id,
+    );
+  });
+
   it('edits to-do items', () => {
     const doc = setup();
     const a = createElement(doc, 'todo', { x: 0, y: 0 }, { items: [] }, opts);

@@ -1,12 +1,13 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import type { Asset, ShootingDay } from '@inkadra/shared';
+import type { Asset, Person, ShootingDay, ShootingDayInput } from '@inkadra/shared';
 import { Button, Dialog, DialogActions, Select, Switch } from '@inkadra/ui';
 import { type ReactNode, useEffect, useId, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Field } from '../export/fields.tsx';
 import { fetchExportSettings, logoUrl } from '../export/settings.ts';
 import { castCalls, departmentNotes, plannedWrap } from './call-sheet.ts';
+import type { NeededRow } from './needed.ts';
 import { clockLabel, scheduleTimes } from './schedule.ts';
 import './call-sheet.css';
 import { formatClock } from '../../lib/datetime.ts';
@@ -31,9 +32,12 @@ export interface CallSheetModalProps {
   initialDayId?: string | undefined;
   /** Some days have edits that are not saved yet: the sheet only knows the saved plan. */
   unsaved?: boolean;
+  /** What the scenes of a day need (decision 0058), and the people who bring it. */
+  needed?: (day: ShootingDayInput) => NeededRow[];
+  people?: Person[];
   onClose: () => void;
 }
-const sections = ['schedule', 'cast', 'location', 'departments', 'notes'] as const;
+const sections = ['schedule', 'cast', 'location', 'departments', 'needed', 'notes'] as const;
 type Section = (typeof sections)[number];
 
 function useDateLabel(style: 'short' | 'long') {
@@ -58,6 +62,8 @@ export function CallSheetModal({
   projectId,
   initialDayId,
   unsaved,
+  needed: neededOf,
+  people = [],
   onClose,
 }: CallSheetModalProps) {
   const { t } = useTranslation();
@@ -69,6 +75,7 @@ export function CallSheetModal({
     cast: true,
     location: true,
     departments: true,
+    needed: true,
     notes: true,
   });
   const groupId = useId();
@@ -96,12 +103,21 @@ export function CallSheetModal({
   const calls = day ? castCalls(day) : [];
   const departments = day ? departmentNotes(day) : [];
   const wrap = day ? plannedWrap(day) : null;
+  const needed = day && neededOf ? neededOf(day) : [];
+  // "Giulia R.": a sheet column is narrow.
+  const bringer = (row: NeededRow) => {
+    const [first = '', ...rest] = (people.find((p) => p.id === row.assigneeId)?.name ?? '')
+      .trim()
+      .split(/\s+/);
+    return [first, rest.at(-1) && `${rest.at(-1)?.[0]}.`].filter(Boolean).join(' ');
+  };
   // A section with nothing to print is left out of the sheet and says so in its row.
   const filled: Record<Section, boolean> = {
     schedule: true,
     cast: calls.length > 0,
     location: !!day?.location.trim(),
     departments: departments.length > 0,
+    needed: needed.length > 0,
     notes: !!day?.notes.trim(),
   };
   const show = (section: Section) => included[section] && filled[section];
@@ -299,6 +315,42 @@ export function CallSheetModal({
                             </td>
                             <td className="sheet__time">{clockLabel(entry.start)}</td>
                             <td className="sheet__pre">{entry.note}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </SheetSection>
+                )}
+                {show('needed') && (
+                  <SheetSection title={t('callSheet.needed')}>
+                    <table className="sheet__table">
+                      <thead>
+                        <tr>
+                          <th scope="col">
+                            <span className="ink-sr-only">{t('callSheet.check')}</span>
+                          </th>
+                          <th scope="col">{t('callSheet.item')}</th>
+                          <th scope="col">{t('callSheet.type')}</th>
+                          <th scope="col">{t('callSheet.scenes')}</th>
+                          <th scope="col">{t('callSheet.bringer')}</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {/* The boxes stay empty on paper: they are ticked by hand on set. */}
+                        {needed.map((row) => (
+                          <tr key={row.key}>
+                            <td>
+                              <span className="sheet__box" />
+                            </td>
+                            <td>
+                              {row.text}
+                              {row.count > 1 && ` ×${row.count}`}
+                            </td>
+                            <td>{t(`board.todo.lists.${row.list}`)}</td>
+                            <td>{row.scenes.join(', ')}</td>
+                            <td className={row.assigneeId ? undefined : 'sheet__muted'}>
+                              {bringer(row) || '—'}
+                            </td>
                           </tr>
                         ))}
                       </tbody>

@@ -439,7 +439,18 @@
       "title": "Titolo della lista",
       "titlePlaceholder": "Titolo",
       "item": "Voce",
-      "add": "Aggiungi una voce"
+      "add": "Aggiungi una voce",
+      "listType": "Tipo di lista",
+      "lists": {
+        "none": "Normale",
+        "wardrobe": "Costumi",
+        "props": "Attrezzeria",
+        "equipment": "Attrezzatura"
+      },
+      "scene": "Scena",
+      "sceneOf": "Scena: {{scene}}",
+      "noScene": "Nessuna scena",
+      "noScenes": "Nessuna scena nella board"
     },
     "color": {
       "label": "Nome del colore",
@@ -1929,7 +1940,27 @@
     "department": "Reparto",
     "note": "Nota",
     "noBlocks": "Nessun blocco in programma.",
-    "name": "Nome"
+    "name": "Nome",
+    "needed": "Da portare",
+    "check": "Spunta",
+    "item": "Elemento",
+    "type": "Tipo",
+    "scenes": "Scene",
+    "bringer": "Chi porta"
+  },
+  "needed": {
+    "title": "Da portare",
+    "progress": "{{ready}} di {{total}} pronti",
+    "mine": "Solo i miei",
+    "all": "Tutti",
+    "filter": "Mostra",
+    "who": "Chi porta",
+    "changeWho": "Porta {{name}}: cambia",
+    "nobody": "nessuno",
+    "scenes": "Sc. {{scenes}}",
+    "sceneNumber": "Sc. {{number}}",
+    "empty": "Le scene di questo giorno non hanno liste da portare. Dal menu di una card to-do scegli Costumi, Attrezzeria o Attrezzatura e la scena.",
+    "emptyMine": "Per questo giorno non porti niente."
   },
   "clientReview": {
     "progress": "{{approved}} di {{total}} inquadrature approvate",

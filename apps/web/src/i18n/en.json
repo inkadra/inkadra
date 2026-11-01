@@ -439,7 +439,18 @@
       "title": "List title",
       "titlePlaceholder": "Title",
       "item": "Item",
-      "add": "Add an item"
+      "add": "Add an item",
+      "listType": "List type",
+      "lists": {
+        "none": "Ordinary",
+        "wardrobe": "Wardrobe",
+        "props": "Props",
+        "equipment": "Equipment"
+      },
+      "scene": "Scene",
+      "sceneOf": "Scene: {{scene}}",
+      "noScene": "No scene",
+      "noScenes": "No scenes on this board"
     },
     "color": {
       "label": "Colour name",
@@ -1929,7 +1940,27 @@
     "department": "Department",
     "note": "Note",
     "noBlocks": "No blocks scheduled.",
-    "name": "Name"
+    "name": "Name",
+    "needed": "To bring",
+    "check": "Tick",
+    "item": "Item",
+    "type": "Type",
+    "scenes": "Scenes",
+    "bringer": "Who brings"
+  },
+  "needed": {
+    "title": "To bring",
+    "progress": "{{ready}} of {{total}} ready",
+    "mine": "Only mine",
+    "all": "All",
+    "filter": "Show",
+    "who": "Who brings",
+    "changeWho": "{{name}} brings it: change",
+    "nobody": "nobody",
+    "scenes": "Sc. {{scenes}}",
+    "sceneNumber": "Sc. {{number}}",
+    "empty": "The scenes of this day have no lists to bring. From a to-do card's menu pick Wardrobe, Props or Equipment and the scene.",
+    "emptyMine": "You bring nothing on this day."
   },
   "clientReview": {
     "progress": "{{approved}} of {{total}} frames approved",

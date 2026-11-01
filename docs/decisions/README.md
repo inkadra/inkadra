@@ -61,6 +61,7 @@ in order. An accepted decision is never rewritten: a later one supersedes it.
 | [0055](0055-personal-preferences.md)                 | Personal preferences that follow the person: one JSON record per account               |
 | [0056](0056-personal-project-groups.md)              | Personal project groups: organisation only, per person, never access                   |
 | [0057](0057-project-theme.md)                        | Project theme: accent, bundled heading fonts and logo for presentations and PDFs       |
+| [0058](0058-needed-items-by-shooting-day.md)         | Needed items: typed to-do lists linked to scenes, rolled up by shooting day            |
 
 Two decisions share the number 0025: they were accepted in parallel, and accepted records
 are not renumbered.
