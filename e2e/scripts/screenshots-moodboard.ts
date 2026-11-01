@@ -5,7 +5,7 @@ import { readElement, roots } from '@inkadra/doc-schema';
 import { type Browser, chromium, type Page } from '@playwright/test';
 import { readBoard } from '../tests/frame-grab.helpers.ts';
 import { pushBoardDoc } from '../tests/perf/seed.ts';
-import { type SampleProject, seedSampleProject } from './sample-project.ts';
+import { api, type SampleProject, seedSampleProject } from './sample-project.ts';
 
 /**
  * Screenshots of the Moodboard view (#301): the sample project's moodboard with tagged
@@ -84,6 +84,12 @@ async function main(browser: Browser) {
   mkdirSync(out, { recursive: true });
   const sample = await seedSampleProject(browser, base);
   await enrich(sample);
+  // A board with no pictures, links or colors: the casting board holds some.
+  const nothing = await api<{ id: string }>(base, sample.cookie, `/projects/${sample.project.id}/boards`, {
+    parentBoardId: sample.project.rootBoardId,
+    kind: 'board',
+    title: 'Empty',
+  });
   const shots: Array<{ id: string; width: number; height: number; phone: boolean; board: string; themes: Array<'dark' | 'light'>; after?: (page: Page) => Promise<void> }> = [
     { id: 'gallery', width: 1440, height: 900, phone: false, board: sample.project.rootBoardId, themes: ['dark', 'light'] },
     {
@@ -111,8 +117,8 @@ async function main(browser: Browser) {
       },
     },
     { id: 'gallery', width: 390, height: 844, phone: true, board: sample.project.rootBoardId, themes: ['dark', 'light'] },
-    { id: 'empty', width: 1440, height: 900, phone: false, board: sample.casting.id, themes: ['dark', 'light'] },
-    { id: 'empty', width: 390, height: 844, phone: true, board: sample.casting.id, themes: ['dark'] },
+    { id: 'empty', width: 1440, height: 900, phone: false, board: nothing.id, themes: ['dark', 'light'] },
+    { id: 'empty', width: 390, height: 844, phone: true, board: nothing.id, themes: ['dark'] },
   ];
   for (const shot of shots)
     for (const theme of shot.themes) {
