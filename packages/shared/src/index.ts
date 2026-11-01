@@ -14,6 +14,7 @@ export * from './instance-admin.ts';
 export * from './maps.ts';
 export * from './notifications.ts';
 export * from './permissions.ts';
+export * from './preferences.ts';
 export * from './project-archive.ts';
 export * from './projects.ts';
 export * from './reviews.ts';

@@ -1,17 +1,41 @@
 import type {
   AccountSession,
   CreatedPersonalToken,
+  DateFormat,
   DeleteMeBlocked,
   PersonalToken,
+  UpdateUserPreferences,
+  UserPreferences,
 } from '@inkadra/shared';
-import { Avatar, Button, Dialog, DialogActions, Select, Switch, TextField } from '@inkadra/ui';
+import {
+  Avatar,
+  Button,
+  Checkbox,
+  Dialog,
+  DialogActions,
+  Icon,
+  Select,
+  Switch,
+  TextField,
+  toolStyle,
+} from '@inkadra/ui';
 import { type FormEvent, useCallback, useEffect, useId, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation } from 'react-router';
 import { encode } from 'uqr';
 import { setKeepsPlayingOffscreen, useKeepsPlayingOffscreen } from '../board/inline-player.ts';
+import {
+  BAR_ICONS,
+  BAR_TOOLS,
+  type BarTool,
+  barKind,
+  barTools,
+  toggleBarTool,
+} from '../board/toolbar-prefs.ts';
 import { LOCALES } from '../i18n/index.ts';
 import { api, authApi, RequestError } from '../lib/api.ts';
+import { formatClock } from '../lib/datetime.ts';
+import { updatePreferences, usePreferences } from '../lib/preferences.ts';
 import { useSession } from '../lib/session.tsx';
 import { type ThemePreference, useTheme } from '../lib/theme.ts';
 import { EmailNotifications } from '../notifications/Notifications.tsx';
@@ -26,6 +50,7 @@ import { AutosaveText, Badge, Card, Row, Segmented, useIsPhone } from './setting
 import './projects.css';
 import { ProviderIcon } from './ProviderIcon.tsx';
 import './settings.css';
+import { formatDateTime } from '../lib/datetime.ts';
 
 /** Every settings page except Members; plain `/settings` is the home list on phones. */
 export function Settings() {
@@ -49,6 +74,12 @@ export function Settings() {
       return (
         <SettingsShell page={page}>
           <Preferences />
+        </SettingsShell>
+      );
+    case 'toolbar':
+      return (
+        <SettingsShell page={page}>
+          <ToolbarSettings />
         </SettingsShell>
       );
     case 'notifications':
@@ -104,12 +135,14 @@ function useStatus() {
   return { show, showKey, fail, node, clear: () => setStatus(null) };
 }
 
-/** Theme and video playback apply instantly on this device; language is saved to the account. */
+/** Choices that follow the person across devices (#302); video playback stays per device. */
 export function Preferences() {
   const { t, i18n } = useTranslation();
   const { user, refresh } = useSession();
   const { preference, choose } = useTheme();
+  const prefs = usePreferences();
   const languageId = useId();
+  const dateId = useId();
   const keepPlayingId = useId();
   const keepPlaying = useKeepsPlayingOffscreen();
   const [locale, setLocale] = useState(user?.locale ?? i18n.language);
@@ -124,49 +157,188 @@ export function Preferences() {
       setLocale(previous);
     }
   }
+  const save = (patch: UpdateUserPreferences) =>
+    void trackSave(updatePreferences(patch)).catch(() => {});
+  const example = new Date(2026, 10, 14, 7, 30);
+  const sample = (formats: Pick<UserPreferences, 'dateFormat' | 'timeFormat'>) =>
+    formatDateTime(example, { day: 'numeric', month: 'numeric', year: 'numeric' }, formats);
+  const browserClock = /\d\s?[AP]M|[ap]\.?\s?m\./i.test(
+    formatDateTime(example, { timeStyle: 'short' }, { dateFormat: 'auto', timeFormat: 'auto' }),
+  );
+  const timeFormat =
+    prefs.timeFormat === 'auto' ? (browserClock ? '12h' : '24h') : prefs.timeFormat;
+  const toggle = (
+    key: 'dotGrid' | 'snapToGrid' | 'doubleClickNote' | 'undoButtons',
+    label: string,
+    help: string,
+  ) => (
+    <Row label={label} help={help}>
+      <Switch
+        aria-label={label}
+        checked={prefs[key]}
+        onChange={(event) => save({ [key]: event.target.checked })}
+      />
+    </Row>
+  );
+  return (
+    <>
+      <Card title={t('settingsUi.preferences.appearance')}>
+        <div className="settings-rows">
+          <Row label={t('admin.theme')} help={t('settingsUi.preferences.themeHelp')}>
+            <Segmented
+              label={t('admin.theme')}
+              value={preference}
+              onChange={(value: ThemePreference) => choose(value)}
+              options={(['dark', 'light', 'system'] as const).map((value) => ({
+                value,
+                label: t(`admin.themes.${value}`),
+              }))}
+            />
+          </Row>
+          <Row
+            label={t('settings.profile.language')}
+            help={t('settingsUi.preferences.languageHelp')}
+            htmlFor={languageId}
+          >
+            <Select
+              id={languageId}
+              className="ink-input settings-input"
+              value={locale}
+              onChange={(e) => void changeLocale(e)}
+            >
+              {LOCALES.map((l) => (
+                <option key={l} value={l}>
+                  {t(`settings.profile.languages.${l}`)}
+                </option>
+              ))}
+            </Select>
+          </Row>
+        </div>
+      </Card>
+      <Card title={t('settingsUi.preferences.dateTime')}>
+        <div className="settings-rows">
+          <Row
+            label={t('settingsUi.preferences.dateFormat')}
+            help={t('settingsUi.preferences.dateFormatHelp')}
+            htmlFor={dateId}
+          >
+            <Select
+              id={dateId}
+              className="ink-input settings-input"
+              value={prefs.dateFormat}
+              onChange={(value) => save({ dateFormat: value as DateFormat })}
+            >
+              {(['auto', 'dmy', 'mdy', 'ymd'] as const).map((value) => (
+                <option key={value} value={value}>
+                  {value === 'auto'
+                    ? t('settingsUi.preferences.fromBrowser', {
+                        example: sample({ dateFormat: 'auto', timeFormat: 'auto' }),
+                      })
+                    : sample({ dateFormat: value, timeFormat: 'auto' })}
+                </option>
+              ))}
+            </Select>
+          </Row>
+          <Row
+            label={t('settingsUi.preferences.timeFormat')}
+            help={t('settingsUi.preferences.timeFormatHelp')}
+          >
+            <Segmented
+              label={t('settingsUi.preferences.timeFormat')}
+              value={timeFormat}
+              onChange={(value: '24h' | '12h') => save({ timeFormat: value })}
+              options={(['24h', '12h'] as const).map((value) => ({
+                value,
+                label: `${t(`settingsUi.preferences.clock.${value}`)} · ${formatClock('07:30', { dateFormat: 'auto', timeFormat: value })}`,
+              }))}
+            />
+          </Row>
+        </div>
+      </Card>
+      <Card title={t('settingsUi.preferences.canvas')}>
+        <div className="settings-rows">
+          {toggle(
+            'dotGrid',
+            t('settingsUi.preferences.dotGrid'),
+            t('settingsUi.preferences.dotGridHelp'),
+          )}
+          {toggle(
+            'snapToGrid',
+            t('settingsUi.preferences.snap'),
+            t('settingsUi.preferences.snapHelp'),
+          )}
+          {toggle(
+            'doubleClickNote',
+            t('settingsUi.preferences.doubleClick'),
+            t('settingsUi.preferences.doubleClickHelp'),
+          )}
+          {toggle(
+            'undoButtons',
+            t('settingsUi.preferences.undoButtons'),
+            t('settingsUi.preferences.undoButtonsHelp'),
+          )}
+          <Row
+            label={t('settingsUi.preferences.keepPlaying')}
+            help={t('settingsUi.preferences.keepPlayingHelp')}
+            htmlFor={keepPlayingId}
+          >
+            <Switch
+              id={keepPlayingId}
+              checked={keepPlaying}
+              onChange={(event) => setKeepsPlayingOffscreen(event.target.checked)}
+            />
+          </Row>
+        </div>
+      </Card>
+    </>
+  );
+}
+
+/** The tools of the board's bottom bar (#302): hidden ones stay in "+" and the palette. */
+export function ToolbarSettings() {
+  const { t } = useTranslation();
+  const prefs = usePreferences();
+  const shown = barTools(prefs.toolbar);
+  const label = (tool: BarTool) =>
+    t(tool === 'arrow' ? 'board.tools.arrow' : `board.types.${tool}`);
+  const save = (toolbar: string[] | null) =>
+    void trackSave(updatePreferences({ toolbar })).catch(() => {});
   return (
     <Card>
-      <div className="settings-rows">
-        <Row label={t('admin.theme')} help={t('settingsUi.preferences.themeHelp')}>
-          <Segmented
-            label={t('admin.theme')}
-            value={preference}
-            onChange={(value: ThemePreference) => choose(value)}
-            options={(['dark', 'light', 'system'] as const).map((value) => ({
-              value,
-              label: t(`admin.themes.${value}`),
-            }))}
-          />
-        </Row>
-        <Row
-          label={t('settings.profile.language')}
-          help={t('settingsUi.preferences.languageHelp')}
-          htmlFor={languageId}
-        >
-          <Select
-            id={languageId}
-            className="ink-input settings-input"
-            value={locale}
-            onChange={(e) => void changeLocale(e)}
-          >
-            {LOCALES.map((l) => (
-              <option key={l} value={l}>
-                {t(`settings.profile.languages.${l}`)}
-              </option>
-            ))}
-          </Select>
-        </Row>
-        <Row
-          label={t('settingsUi.preferences.keepPlaying')}
-          help={t('settingsUi.preferences.keepPlayingHelp')}
-          htmlFor={keepPlayingId}
-        >
-          <Switch
-            id={keepPlayingId}
-            checked={keepPlaying}
-            onChange={(event) => setKeepsPlayingOffscreen(event.target.checked)}
-          />
-        </Row>
+      <div className="settings-card__pad toolbar-settings">
+        <div className="toolbar-settings__tiles">
+          {BAR_TOOLS.map((tool) => (
+            <label key={tool} className="toolbar-settings__tile" style={toolStyle(barKind(tool))}>
+              <Checkbox
+                className="toolbar-settings__check"
+                checked={shown.includes(tool)}
+                onChange={() => save(toggleBarTool(prefs.toolbar, tool))}
+              />
+              <span className="toolbar-settings__icon" aria-hidden="true">
+                <Icon name={BAR_ICONS[tool]} size={18} />
+              </span>
+              {label(tool)}
+            </label>
+          ))}
+        </div>
+        <span className="toolbar-settings__label">{t('settingsUi.toolbar.preview')}</span>
+        <div className="toolbar-settings__preview" aria-hidden="true">
+          {shown.map((tool) => (
+            <span key={tool} style={toolStyle(barKind(tool))}>
+              <Icon name={BAR_ICONS[tool]} size={16} />
+            </span>
+          ))}
+          <span className="toolbar-settings__plus">
+            <Icon name="plus" size={14} />
+            <Icon name="caretDown" size={10} />
+          </span>
+        </div>
+        <div className="toolbar-settings__foot">
+          <Button variant="ghost" disabled={prefs.toolbar === null} onClick={() => save(null)}>
+            {t('settingsUi.toolbar.reset')}
+          </Button>
+          <span className="settings-muted">{t('settingsUi.toolbar.synced')}</span>
+        </div>
       </div>
     </Card>
   );
@@ -631,7 +803,7 @@ function deviceName(ua: string | null, t: (k: string) => string): string {
 const SESSIONS_SHOWN = 4;
 
 function Sessions() {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const [items, setItems] = useState<AccountSession[] | null>(null);
   const [all, setAll] = useState(false);
   const status = useStatus();
@@ -643,8 +815,7 @@ function Sessions() {
     void load().catch(() => setItems([]));
   }, [load]);
 
-  const when = (iso: string) =>
-    new Date(iso).toLocaleString(i18n.language, { dateStyle: 'medium', timeStyle: 'short' });
+  const when = (iso: string) => formatDateTime(iso, { dateStyle: 'medium', timeStyle: 'short' });
 
   return (
     <Card
@@ -713,7 +884,7 @@ function Sessions() {
 }
 
 function Tokens() {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const [items, setItems] = useState<PersonalToken[] | null>(null);
   const [name, setName] = useState('');
   const [open, setOpen] = useState(false);
@@ -726,7 +897,7 @@ function Tokens() {
     void load().catch(() => setItems([]));
   }, [load]);
   const date = (iso: string) =>
-    new Date(iso).toLocaleDateString(i18n.language, {
+    formatDateTime(iso, {
       day: 'numeric',
       month: 'short',
       year: 'numeric',

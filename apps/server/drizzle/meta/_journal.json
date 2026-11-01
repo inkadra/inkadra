@@ -162,6 +162,13 @@
       "when": 1793547555912,
       "tag": "0022_project_groups",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1793551073167,
+      "tag": "0023_user_preferences",
+      "breakpoints": true
     }
   ]
 }

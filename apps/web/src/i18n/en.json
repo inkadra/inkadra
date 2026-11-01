@@ -543,7 +543,9 @@
       "rename": "Rename",
       "boardIcon": "Icon and colour…",
       "moveCardsOn": "Move with the cards under it",
-      "moveCardsOff": "Move the heading alone"
+      "moveCardsOff": "Move the heading alone",
+      "hideGrid": "Hide the dot grid",
+      "showGrid": "Show the dot grid"
     },
     "zoom": {
       "label": "Zoom",
@@ -2102,17 +2104,19 @@
     },
     "pages": {
       "access": "Sign-in",
-      "about": "About"
+      "about": "About",
+      "toolbar": "Toolbar"
     },
     "leads": {
       "account": "Your profile and how you sign in.",
-      "preferences": "They apply only to you.",
-      "notifications": "Mentions, replies and reviews always reach your Inbox. Choose whether to get them by email too.",
+      "preferences": "They apply only to you and follow you on every device.",
+      "notifications": "Some notifications always reach your Inbox. Choose which ones you also get by email.",
       "storage": "Original files uploaded to this instance.",
       "access": "Sign-in methods come from the server configuration; here you see what is active.",
       "registration": "Who can create a new account.",
       "about": "Instance name, address, version and setup status.",
-      "backups": "Nightly copies of the database, to restore the server after a failure."
+      "backups": "Nightly copies of the database, to restore the server after a failure.",
+      "toolbar": "Choose what you see in the bottom bar. Hidden tools stay in \"+ ▾\" and in the command palette."
     },
     "autosave": {
       "idle": "Autosave on",
@@ -2135,7 +2139,27 @@
       "themeHelp": "System follows your device setting",
       "languageHelp": "Interface and email language",
       "keepPlaying": "Continue playing videos off-screen",
-      "keepPlayingHelp": "A video in a link card keeps playing when you move it out of view. Off stops it, which keeps the board smooth."
+      "keepPlayingHelp": "The video keeps playing when you move the view. Applies to this device only.",
+      "appearance": "Appearance",
+      "dateTime": "Date and time",
+      "canvas": "Canvas",
+      "dateFormat": "Date format",
+      "dateFormatHelp": "Schedule, call sheet, PDF, comments and activity",
+      "fromBrowser": "From the browser · {{example}}",
+      "timeFormat": "Time format",
+      "timeFormatHelp": "For call times and the shooting schedule",
+      "clock": {
+        "24h": "24 h",
+        "12h": "12 h"
+      },
+      "dotGrid": "Show the dot grid",
+      "dotGridHelp": "Default for boards; each board can change it from the canvas menu",
+      "snap": "Snap to grid",
+      "snapHelp": "Default when a board opens · G to change it on the fly",
+      "doubleClick": "Double-click on empty canvas creates a note",
+      "doubleClickHelp": "Double tap too on phones and tablets",
+      "undoButtons": "Undo and redo buttons on the board",
+      "undoButtonsHelp": "Ctrl/⌘ Z works either way"
     },
     "notifications": {
       "short": {
@@ -2147,7 +2171,21 @@
         "immediate": "Notifications close together arrive in one email",
         "daily": "One email a day with everything that happened",
         "off": "Only the in-app Inbox"
-      }
+      },
+      "when": "When",
+      "inbox": "Inbox",
+      "email": "Email",
+      "events": {
+        "mention": "Someone mentions you",
+        "reply": "Someone replies to your thread",
+        "comment": "Someone comments on your card",
+        "review": "Review decision",
+        "task_assigned": "Someone assigns you a task"
+      },
+      "reviewHelp": "Approved or changes requested",
+      "always": "Always",
+      "alwaysNote": "Grey = always on in the Inbox.",
+      "sendMe": "Send me"
     },
     "members": {
       "invite": "Invite members",
@@ -2189,18 +2227,24 @@
     "noResults": "No settings found",
     "keywords": {
       "account": "Name, Email, Profile photo, Password, Two-step verification (2FA), Backup codes, Sign-in methods, Sessions, Devices, Apps and tokens, Delete account",
-      "preferences": "Theme, Dark theme, Light theme, Language, Continue playing videos off-screen",
-      "notifications": "Email notifications, Mentions, Replies, Reviews, Daily digest, Inbox",
+      "preferences": "Theme, Dark theme, Light theme, Language, Continue playing videos off-screen, Date format, Time format, Dot grid, Snap to grid, Double-click creates a note, Undo and redo buttons",
+      "notifications": "Email notifications, Mentions, Replies, Reviews, Daily digest, Inbox, Comments on your cards",
       "members": "Invite members, Invitations, Invitation link, Role, Administrators, Deactivate account, Reactivate account, People",
       "workspace": "Space used, Uploaded files, Storage",
       "classifications": "Project types, Tags, Catalogs",
       "providers": "Google, OIDC, Single sign-on (SSO), Email sign-in link, Email and password, SMTP, Outgoing email",
       "registration": "New accounts, Open registration, Invitation only, Closed registration",
       "instance": "Instance name, Public address, Version, Diagnostics, Instance status",
-      "backups": "Backups, Back up now, Restore, Retention, Nightly backup"
+      "backups": "Backups, Back up now, Restore, Retention, Nightly backup",
+      "toolbar": "Toolbar, Tools, Note, Image, Link, To-do, Colour, Arrow, Frame, Storyboard, Reset to default toolbar"
     },
     "close": "Close settings",
-    "dangerZone": "Danger zone"
+    "dangerZone": "Danger zone",
+    "toolbar": {
+      "preview": "Preview",
+      "reset": "Reset to default toolbar",
+      "synced": "Synced with your account"
+    }
   },
   "admin": {
     "requireAdminTwoFactor": "Require two-step verification for administrators",

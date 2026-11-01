@@ -9,6 +9,7 @@ import { fetchExportSettings, logoUrl } from '../export/settings.ts';
 import { castCalls, departmentNotes, plannedWrap } from './call-sheet.ts';
 import { clockLabel, scheduleTimes } from './schedule.ts';
 import './call-sheet.css';
+import { formatClock } from '../../lib/datetime.ts';
 
 /** What the sheet prints for a shot: its label, what happens in it and its scene. */
 export interface CallSheetShot {
@@ -178,7 +179,7 @@ export function CallSheetModal({
                   </Fact>
                   <Fact label={t('callSheet.date')}>{longDate(day.date)}</Fact>
                   <Fact label={t('callSheet.call')} strong>
-                    {day.callTime}
+                    {formatClock(day.callTime)}
                   </Fact>
                   <Fact label={t('callSheet.wrap')} strong>
                     {wrap === null ? '—' : clockLabel(wrap)}

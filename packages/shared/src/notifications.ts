@@ -137,8 +137,43 @@ export const EmailFrequency = z.enum(['immediate', 'daily', 'off']).openapi({
 });
 export type EmailFrequency = z.infer<typeof EmailFrequency>;
 
+/**
+ * Notifications a person may turn off by channel in the notification matrix (#302): the matrix
+ * and the server read this list, and each type has a label at
+ * `settingsUi.notifications.events.<type>`.
+ */
+export const NotificationChannelType = z.enum([
+  'mention',
+  'reply',
+  'comment',
+  'review',
+  'task_assigned',
+]);
+export type NotificationChannelType = z.infer<typeof NotificationChannelType>;
+
+/** The ones that always reach the Inbox: only their email can be turned off. */
+export const INBOX_ALWAYS: readonly NotificationChannelType[] = ['mention'];
+
 export const NotificationPreferences = z
-  .object({ email: EmailFrequency })
+  .object({
+    email: EmailFrequency,
+    inboxOff: z
+      .array(NotificationChannelType)
+      .optional()
+      .openapi({
+        description:
+          'Types this person does not want in the Inbox: they are not written at all, so they ' +
+          'are not emailed either. `mention` always arrives. Missing from older servers.',
+      }),
+    emailOff: z
+      .array(NotificationChannelType)
+      .optional()
+      .openapi({
+        description:
+          'Types that stay in the Inbox but are never emailed, alone or in the digest. Missing ' +
+          'from older servers.',
+      }),
+  })
   .openapi('NotificationPreferences');
 export type NotificationPreferences = z.infer<typeof NotificationPreferences>;
 

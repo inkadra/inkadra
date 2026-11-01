@@ -2046,6 +2046,15 @@ body:has(.colorpicker) .card-reactions {
 .zoom .zoom__value {
   color: var(--ink-text-primary);
 }
+/* Undo and redo (#302): the group grows past the minimap's width instead of crowding. */
+.zoom:has(.zoom__redo) {
+  align-self: flex-start;
+  gap: 2px;
+  width: max-content;
+}
+.zoom .zoom__redo svg {
+  transform: scaleX(-1);
+}
 /* The magnet (#296): pressed while cards snap to the grid. */
 .zoom .zoom__snap[aria-pressed="true"] {
   background: var(--ink-accent-soft-bg);

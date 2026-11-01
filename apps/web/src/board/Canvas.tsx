@@ -87,6 +87,7 @@ import { useSearchParams } from 'react-router';
 import * as Y from 'yjs';
 import { addActions, type PaletteAction, useRegisterActions } from '../commands/actions.ts';
 import { canvasActions, duplicateInStore } from '../commands/board-actions.ts';
+import { getPreferences, updatePreferences, usePreferences } from '../lib/preferences.ts';
 import { useSession } from '../lib/session.tsx';
 import { ProjectAppearanceDialog } from '../routes/ProjectAppearance.tsx';
 import { setupBoards } from '../routes/project-setup.ts';
@@ -97,7 +98,7 @@ import { ArrowLayer, ArrowStyleButtons, onArrowStyleButton } from './arrows.tsx'
 import { getCachedAsset } from './assets.ts';
 import { canRenameBoard, createBoard, setBoardCover, setBoardIcon } from './boards.ts';
 import { ColorPicker } from './ColorPicker.tsx';
-import { loadSnapToGrid, loadTidyGap, saveSnapToGrid, saveTidyGap } from './canvas-prefs.ts';
+import { loadBoardGrid, loadTidyGap, saveBoardGrid, saveTidyGap } from './canvas-prefs.ts';
 import {
   type CanvasTemplate,
   createCanvasBoards,
@@ -386,16 +387,22 @@ export function Canvas({
   const [editing, setEditingState] = useState<string | null>(null);
   const [cropping, setCropping] = useState<string | null>(null);
   const [tool, setTool] = useState<CanvasTool>('select');
-  /** Snap to grid (#296): this person's choice on this device, off by default. */
-  const [magnet, setMagnetState] = useState(() => loadSnapToGrid(userId));
+  const prefs = usePreferences();
+  /** Snap to grid (#296): this person's preference (#302), so the magnet follows them. */
+  const magnet = prefs.snapToGrid;
   const magnetRef = useRef(magnet);
   magnetRef.current = magnet;
   const toggleMagnet = useCallback(() => {
-    const next = !magnetRef.current;
-    magnetRef.current = next;
-    setMagnetState(next);
-    saveSnapToGrid(userId, next);
-  }, [userId]);
+    magnetRef.current = !magnetRef.current;
+    void updatePreferences({ snapToGrid: magnetRef.current }).catch(() => {});
+  }, []);
+  /** The dot grid: this board's choice from the canvas menu, else the preference (#302). */
+  const [boardGrid, setBoardGrid] = useState(() => loadBoardGrid(userId, boardId));
+  const dots = boardGrid ?? prefs.dotGrid;
+  const toggleDots = useCallback(() => {
+    saveBoardGrid(userId, boardId, !dots);
+    setBoardGrid(!dots);
+  }, [userId, boardId, dots]);
   /** Where a new card lands: on the grid while the magnet is on. */
   const place = useCallback((p: Point): Point => (magnetRef.current ? snapPoint(p, GRID) : p), []);
   /** Frame whose details panel is open, frame being drawn, image or video in the viewer. */
@@ -1802,7 +1809,7 @@ export function Canvas({
       (e.target as HTMLElement);
     const targetId = canvasElementId(target);
     if (!targetId) {
-      if (target.closest('[data-chrome]') || readOnly) return;
+      if (target.closest('[data-chrome]') || readOnly || !getPreferences().doubleClickNote) return;
       const at = toWorld(e.clientX, e.clientY);
       void add('note', { x: at.x - 20, y: at.y - 20 });
       return;
@@ -2401,9 +2408,15 @@ export function Canvas({
   const menuItems = useMemo<MenuItem[]>(() => {
     if (!menu) return [];
     if (selection.size === 0) {
+      const grid: MenuItem = {
+        label: t(dots ? 'board.menu.hideGrid' : 'board.menu.showGrid'),
+        action: toggleDots,
+      };
       return readOnly
-        ? []
+        ? [grid]
         : [
+            grid,
+            { divider: true },
             { label: t('board.menu.newNote'), action: () => void add('note', menu.at) },
             { label: t('board.menu.newColumn'), action: () => void add('column', menu.at) },
             {
@@ -2647,6 +2660,8 @@ export function Canvas({
     userId,
     select,
     summarize,
+    dots,
+    toggleDots,
   ]);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: sizeVersion invalidates measured heights
@@ -2701,7 +2716,7 @@ export function Canvas({
         aria-label={t('board.canvas')}
         role="application"
       >
-        <Dots viewport={viewport} />
+        {dots && <Dots viewport={viewport} />}
         <div
           className={
             viewport.zoom < FAR_ZOOM ? 'canvas__world canvas__world--far' : 'canvas__world'
@@ -3093,6 +3108,11 @@ export function Canvas({
             zoom={viewport.zoom}
             onZoom={zoomTo}
             snap={readOnly ? undefined : { on: magnet, onToggle: toggleMagnet }}
+            history={
+              readOnly || !prefs.undoButtons
+                ? undefined
+                : { onUndo: () => store.undo.undo(), onRedo: () => store.undo.redo() }
+            }
           />
         </div>
         {!readOnly && (

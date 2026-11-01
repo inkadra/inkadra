@@ -20,6 +20,7 @@ type Setup = { checks: Array<{ id: string; ok: boolean }> | null; error: boolean
 const SECTION_ICONS: Record<string, IconName> = {
   account: 'user',
   preferences: 'settings',
+  toolbar: 'stickyNote',
   notifications: 'bell',
   members: 'people',
   workspace: 'archive',

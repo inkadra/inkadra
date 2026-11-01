@@ -25,6 +25,7 @@ import {
   statusOf,
 } from './guest-links.ts';
 import './guest-links.css';
+import { formatDateTime } from '../lib/datetime.ts';
 import { PermissionsMatrix } from './PermissionsMatrix.tsx';
 
 type T = (key: string, opts?: Record<string, unknown>) => string;
@@ -40,12 +41,17 @@ function errorText(t: T, err: unknown): string {
 }
 
 function formatDate(iso: string, locale: string, time = false): string {
-  return new Date(iso).toLocaleString(locale, {
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
-    ...(time ? { hour: '2-digit', minute: '2-digit' } : {}),
-  });
+  return formatDateTime(
+    iso,
+    {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+      ...(time ? { hour: '2-digit', minute: '2-digit' } : {}),
+    },
+    undefined,
+    locale,
+  );
 }
 
 function saveFile(name: string, text: string, type: string) {

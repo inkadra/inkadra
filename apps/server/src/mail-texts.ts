@@ -56,6 +56,8 @@ const it = {
         return `${who} ha commentato una tua scheda su "${where}"${said}`;
       case 'review':
         return `${who} ha cambiato la revisione di una scheda su "${where}": ${it.reviewStatuses[status ?? ''] ?? status ?? ''}`;
+      case 'task_assigned':
+        return `${who} ti ha assegnato un compito su "${where}"`;
       case 'invitation_accepted':
         return where
           ? `${who} ha accettato il tuo invito su "${where}"`
@@ -136,6 +138,8 @@ const en: Texts = {
         return `${who} commented on one of your cards on "${where}"${said}`;
       case 'review':
         return `${who} changed the review of a card on "${where}": ${en.reviewStatuses[status ?? ''] ?? status ?? ''}`;
+      case 'task_assigned':
+        return `${who} assigned you a task on "${where}"`;
       case 'invitation_accepted':
         return where
           ? `${who} accepted your invitation to "${where}"`

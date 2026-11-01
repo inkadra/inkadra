@@ -159,6 +159,7 @@ export function SettingsHome({ setup }: { setup: Setup }) {
           label={t('settings.profile.language')}
           value={t(`settings.profile.languages.${user?.locale ?? i18n.language}`)}
         />
+        <Item to={href('toolbar')} label={t('settingsUi.pages.toolbar')} />
       </Group>
       {admin && <AdminGroups setup={setup} />}
       <button type="button" className="settings-home__signout" onClick={() => void signOut()}>

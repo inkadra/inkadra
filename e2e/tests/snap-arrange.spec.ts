@@ -30,6 +30,12 @@ async function open(page: Page, baseURL: string, seed: Seed, theme: 'light' | 'd
   );
   await page.addInitScript((theme) => localStorage.setItem('inkadra.theme', theme), theme);
   await page.goto('/');
+  // The magnet is the account's preference (#302): every test starts with it off.
+  const reset = await page.request.patch('/api/v1/me/preferences', {
+    headers: { origin: baseURL },
+    data: { snapToGrid: false },
+  });
+  expect(reset.ok()).toBe(true);
   const response = await page.request.post('/api/v1/projects', {
     headers: { origin: baseURL },
     data: { name: 'Ultimo Treno', type: 'short_film' },
@@ -118,7 +124,7 @@ for (const theme of ['dark', 'light'] as const) {
     await page.keyboard.press('ArrowRight');
     await expect.poll(async () => (await rectOf(page, card)).x).toBe(snapped.x + GRID);
 
-    // The choice is this person's on this device: still on after a reload, and G turns it off.
+    // The choice is this person's preference (#302): still on after a reload, and G turns it off.
     await page.reload();
     await expect(magnet).toHaveAttribute('aria-pressed', 'true');
     await page.keyboard.press('g');

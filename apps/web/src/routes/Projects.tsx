@@ -35,6 +35,7 @@ import {
 import { formatStorage } from './StorageCharts.tsx';
 import './home.css';
 import './projects.css';
+import { formatDateTime } from '../lib/datetime.ts';
 
 export function Projects() {
   const { catalogs, typeLabel } = useClassifications();
@@ -455,7 +456,7 @@ function ProjectCard({
     onAppearanceSaved,
   );
   const date = (value: string) =>
-    new Date(`${value}T12:00:00`).toLocaleDateString(i18n.language, {
+    formatDateTime(`${value}T12:00:00`, {
       day: 'numeric',
       month: 'short',
       year: 'numeric',

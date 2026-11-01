@@ -72,6 +72,7 @@ import {
 import type { BoardStore } from './store.ts';
 import { fetchReplies } from './use-board-reviews.ts';
 import './review.css';
+import { formatDateTime } from '../lib/datetime.ts';
 
 const THREADS_PAGE = 30;
 
@@ -602,14 +603,12 @@ function NewThread({
 }
 
 function AuthorLine({ author, at, edited }: { author: Author; at: string; edited?: boolean }) {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   return (
     <div className="comment-author">
       <strong>{authorName(author) ?? t('comments.deletedAuthor')}</strong>
       <GuestTag author={author} />
-      <time dateTime={at}>
-        {new Date(at).toLocaleString(i18n.language, { dateStyle: 'medium', timeStyle: 'short' })}
-      </time>
+      <time dateTime={at}>{formatDateTime(at, { dateStyle: 'medium', timeStyle: 'short' })}</time>
       {edited && <span>· {t('comments.edited')}</span>}
     </div>
   );

@@ -17,6 +17,7 @@ import {
 import { type FormEvent, useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api, RequestError } from '../lib/api.ts';
+import { formatDateTime } from '../lib/datetime.ts';
 import { useSession } from '../lib/session.tsx';
 import { SettingsShell } from './SettingsShell.tsx';
 import { trackSave } from './settings-save.ts';
@@ -96,7 +97,7 @@ export function Team() {
       `${m.name} ${m.email}`.toLocaleLowerCase().includes(query.toLocaleLowerCase()),
   );
   const date = (value: string) =>
-    new Date(value).toLocaleString(i18n.language, { dateStyle: 'medium', timeStyle: 'short' });
+    formatDateTime(value, { dateStyle: 'medium', timeStyle: 'short' });
 
   if (!admin)
     return (

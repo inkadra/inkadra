@@ -161,6 +161,7 @@ it.each([
         '/instance',
         '/me',
         '/instance/version',
+        '/me/preferences',
       ]);
     } finally {
       await act(async () => root.unmount());
@@ -196,7 +197,12 @@ it('clears enrollment after the next successful version probe', async () => {
     await act(async () => latestRefresh());
     expect(snapshot.enrollmentRequired).toBe(false);
     expect(snapshot.version).toBe('0.4.2');
-    expect(get.mock.calls.map(([path]) => path)).toEqual(['/instance', '/me', '/instance/version']);
+    expect(get.mock.calls.map(([path]) => path)).toEqual([
+      '/instance',
+      '/me',
+      '/instance/version',
+      '/me/preferences',
+    ]);
   } finally {
     await act(async () => root.unmount());
   }

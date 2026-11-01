@@ -1,5 +1,6 @@
 import {
   type Notification,
+  NotificationChannelType,
   type NotificationType,
   type ReviewStatus,
   renderMentions,
@@ -121,7 +122,23 @@ export async function notify(
     ? await boardRolesForPeople(db, event.boardId, [...recipients.types.keys()])
     : null;
   const actorKey = event.actor.userId ?? event.actor.guestId;
+  // Types people turned off in their Inbox (#302) are not written at all; only the types of
+  // the notification matrix can be.
+  const people = [...recipients.types].flatMap(([userId, type]) =>
+    NotificationChannelType.safeParse(type).success ? [userId] : [],
+  );
+  const inboxOff = new Map(
+    people.length === 0
+      ? []
+      : (
+          await db
+            .select({ userId: notificationPreference.userId, off: notificationPreference.inboxOff })
+            .from(notificationPreference)
+            .where(inArray(notificationPreference.userId, people))
+        ).map((p) => [p.userId, p.off] as const),
+  );
   for (const [userId, type] of recipients.types) {
+    if (inboxOff.get(userId)?.includes(type)) continue;
     const visible = roles ? roles.has(userId) : (await visibility(db, userId, [event]))(event);
     if (!visible) continue;
     if (actorKey && !limiter.take(actorKey)) break;
@@ -136,8 +153,6 @@ export async function notify(
       commentId: event.commentId ?? null,
       reviewStatus: event.reviewStatus ?? null,
       shareLinkId: event.shareLinkId ?? null,
-      // Per-type email preferences (#302) are not available yet: Inbox only.
-      emailedAt: type === 'task_assigned' ? new Date() : null,
     });
   }
   if (values.length > 0) await db.insert(notification).values(values);
@@ -326,7 +341,10 @@ async function sendTo(
     .from(notificationPreference)
     .where(eq(notificationPreference.userId, userId));
   if ((preference?.email ?? 'immediate') !== kind) return false;
-  const visible = await visibility(db, userId, pending);
+  // Types turned off for email (#302) count as sent, so they never wait for a later email.
+  const emailOff = new Set(preference?.emailOff ?? []);
+  const seen = await visibility(db, userId, pending);
+  const visible = (row: NotificationRow) => seen(row) && !emailOff.has(row.type);
   await skipHiddenMail(db, pending, visible);
   const shown = pending.filter(visible);
   if (shown.length === 0) return false;

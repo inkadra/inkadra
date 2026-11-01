@@ -1,4 +1,5 @@
 import type { User } from '@inkadra/shared';
+import { formatDateTime } from './datetime.ts';
 
 /** Decision 0041: servers before API 0.9.0 do not say, and there everyone can. */
 export function canCreateProjects(user: Pick<User, 'canCreateProjects'> | null | undefined) {
@@ -18,11 +19,16 @@ export function expiresSoon(iso: string, now = Date.now()) {
 /** "15 Dec", with the year only when it is not this year's. */
 export function expiryDate(iso: string, locale: string, now = new Date()) {
   const at = new Date(iso);
-  return at.toLocaleDateString(locale, {
-    day: 'numeric',
-    month: 'short',
-    ...(at.getFullYear() === now.getFullYear() ? {} : { year: 'numeric' }),
-  });
+  return formatDateTime(
+    at,
+    {
+      day: 'numeric',
+      month: 'short',
+      ...(at.getFullYear() === now.getFullYear() ? {} : { year: 'numeric' }),
+    },
+    undefined,
+    locale,
+  );
 }
 
 const pad = (n: number) => String(n).padStart(2, '0');

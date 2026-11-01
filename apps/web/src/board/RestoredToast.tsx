@@ -4,6 +4,7 @@ import type { BoardVersion } from '@inkadra/shared';
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api } from '../lib/api.ts';
+import { formatDateTime } from '../lib/datetime.ts';
 import { Toast } from './chrome.tsx';
 import type { BoardStore } from './store.ts';
 
@@ -21,7 +22,7 @@ export function RestoredToast({
   store: BoardStore;
   canList: boolean;
 }) {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const [notice, setNotice] = useState<{ id: number; text: string } | null>(null);
   const close = useCallback(() => setNotice(null), []);
   useEffect(() => {
@@ -53,7 +54,7 @@ export function RestoredToast({
           t('versions.restored', {
             version:
               version.name ??
-              new Date(version.createdAt).toLocaleString(i18n.language, {
+              formatDateTime(version.createdAt, {
                 dateStyle: 'medium',
                 timeStyle: 'short',
               }),
@@ -70,7 +71,7 @@ export function RestoredToast({
       clearTimeout(fallback);
       provider.off('stateless', onNotice);
     };
-  }, [provider, boardId, store, canList, t, i18n.language]);
+  }, [provider, boardId, store, canList, t]);
   // A new key per restore restarts the toast's timer.
   return notice ? <Toast key={notice.id} text={notice.text} onClose={close} /> : null;
 }

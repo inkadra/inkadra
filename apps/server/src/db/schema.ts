@@ -856,6 +856,22 @@ export const notificationPreference = pgTable('notification_preference', {
     .notNull()
     .default('immediate'),
   lastDigestAt: timestamp('last_digest_at', { withTimezone: true }),
+  /** Notification types never written for this person (#302); `mention` is never here. */
+  inboxOff: text('inbox_off').array().notNull().default(sql`'{}'::text[]`),
+  /** Notification types kept in the Inbox but never emailed (#302). */
+  emailOff: text('email_off').array().notNull().default(sql`'{}'::text[]`),
+  updatedAt: updatedAt(),
+});
+
+/**
+ * Personal preferences (#302, decision 0055): one JSON record per account, read through
+ * `readUserPreferences` so fields a newer or older server wrote never break it.
+ */
+export const userPreference = pgTable('user_preference', {
+  userId: uuid('user_id')
+    .primaryKey()
+    .references(() => user.id, { onDelete: 'cascade' }),
+  preferences: jsonb('preferences').$type<Record<string, unknown>>().notNull().default({}),
   updatedAt: updatedAt(),
 });
 

@@ -36,6 +36,7 @@ import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import type * as Y from 'yjs';
 import { addActions, type PaletteAction, rankActions } from '../commands/actions.ts';
+import { usePreferences } from '../lib/preferences.ts';
 import {
   CANVAS_TEMPLATES,
   type CanvasTemplate,
@@ -45,6 +46,7 @@ import {
 import { Card, NOTE_COLORS } from './cards.tsx';
 import { GuestVisibilityIcon } from './guest-visibility.tsx';
 import { isMac } from './shortcuts.ts';
+import { BAR_ICONS, type BarTool, barTools, DEFAULT_BAR } from './toolbar-prefs.ts';
 import { cancelUpload, retryUpload, useUploads } from './uploads.ts';
 
 export type ToolType =
@@ -94,7 +96,6 @@ const MENU_CARDS = [
   ['table', 'table'],
   ['map', 'map'],
 ] as const satisfies ReadonlyArray<readonly [ToolType, IconName]>;
-type MenuCard = (typeof MENU_CARDS)[number][0];
 
 const mod = () => (isMac() ? '⌘' : 'Ctrl+');
 
@@ -145,6 +146,7 @@ export function Toolbar({
 }) {
   const { t } = useTranslation();
   const tools = useScrollEdges<HTMLDivElement>();
+  const shown = barTools(usePreferences().toolbar);
   return (
     <div className="toolbar" role="toolbar" aria-label={t('board.toolbar')} data-chrome>
       {/* On phones the tools scroll sideways and the Canvas button stays pinned beside them. */}
@@ -169,14 +171,16 @@ export function Toolbar({
             pressed={tool === 'hand'}
             onClick={() => onTool('hand')}
           />
-          <ToolButton
-            icon="arrow"
-            kind="arrow"
-            label={t('board.tools.arrow')}
-            keyHint="A"
-            pressed={tool === 'arrow'}
-            onClick={() => onTool(tool === 'arrow' ? 'select' : 'arrow')}
-          />
+          {shown.includes('arrow') && (
+            <ToolButton
+              icon="arrow"
+              kind="arrow"
+              label={t('board.tools.arrow')}
+              keyHint="A"
+              pressed={tool === 'arrow'}
+              onClick={() => onTool(tool === 'arrow' ? 'select' : 'arrow')}
+            />
+          )}
         </fieldset>
         {(['create', 'organize'] as const).map((group) => (
           <fieldset
@@ -186,10 +190,10 @@ export function Toolbar({
           >
             {TOOLS.filter(
               (tl) =>
-                !tl.menuOnly &&
+                shown.includes(tl.type as BarTool) &&
                 (group === 'create'
                   ? ['note', 'image', 'link', 'todo', 'color'].includes(tl.type)
-                  : ['column', 'frame'].includes(tl.type)),
+                  : ['column', 'frame', 'storyboard'].includes(tl.type)),
             ).map((tl) => (
               <ToolButton
                 key={tl.type}
@@ -197,8 +201,8 @@ export function Toolbar({
                 icon={tl.icon}
                 label={t(`board.types.${tl.type}`)}
                 keyHint={tl.key ?? ''}
-                onClick={() => onAdd(tl.type)}
-                dragType={tl.type}
+                onClick={() => (tl.type === 'storyboard' ? onCanvas('storyboard') : onAdd(tl.type))}
+                dragType={tl.type === 'storyboard' ? undefined : tl.type}
               />
             ))}
           </fieldset>
@@ -209,6 +213,8 @@ export function Toolbar({
         aria-label={t('board.canvasMenu.hint')}
       >
         <CanvasMenuButton
+          hidden={DEFAULT_BAR.filter((tl) => !shown.includes(tl))}
+          onTool={onTool}
           onCanvas={onCanvas}
           onScreenplay={onScreenplay}
           onVoiceNote={onVoiceNote}
@@ -224,17 +230,22 @@ export function Toolbar({
  * content-kind colour. The menu sits outside the bar, whose tools scroll sideways on phones.
  */
 function CanvasMenuButton({
+  hidden,
+  onTool,
   onCanvas,
   onScreenplay,
   onVoiceNote,
   onCard,
 }: {
+  /** Tools of the default bar this person hid (#302): they open the menu. */
+  hidden: readonly BarTool[];
+  onTool: (tool: CanvasTool) => void;
   onCanvas: (template: CanvasTemplate) => void;
   onScreenplay?: (() => void) | undefined;
   /** Records a voice note (#327); absent where the browser cannot record. */
   onVoiceNote?: (() => void) | undefined;
   /** Story bible cards, section headings and tables, listed after the canvas types. */
-  onCard: (type: MenuCard) => void;
+  onCard: (type: ToolType) => void;
 }) {
   const { t } = useTranslation();
   const button = useRef<HTMLButtonElement>(null);
@@ -278,45 +289,57 @@ function CanvasMenuButton({
             className="menu--canvas"
             style={{ right: at.right, bottom: at.bottom }}
             anchor={button}
-            items={CANVAS_TEMPLATES.flatMap((template): MenuItem[] => [
-              {
-                label: canvasTemplateLabel(template, t),
-                icon: canvasTemplateIcon(template),
-                kind: template,
-                action: () => onCanvas(template),
-              },
-              ...(template === 'storyboard' && onScreenplay
-                ? [
-                    {
-                      label: t('screenplay.fromScreenplay'),
-                      icon: 'upload' as const,
-                      kind: 'storyboard' as const,
-                      action: onScreenplay,
-                    },
-                  ]
-                : []),
-            ]).concat([
-              { divider: true },
-              ...MENU_CARDS.map(
-                ([type, icon]): MenuItem => ({
-                  label: t(`board.types.${type}`),
-                  icon,
+            items={[
+              ...hidden.map(
+                (tool): MenuItem => ({
+                  label: t(tool === 'arrow' ? 'board.tools.arrow' : `board.types.${tool}`),
+                  icon: BAR_ICONS[tool],
                   kind: 'canvas',
-                  action: () => onCard(type),
+                  action: () => (tool === 'arrow' ? onTool('arrow') : onCard(tool as ToolType)),
                 }),
               ),
-              ...(onVoiceNote
-                ? [
-                    { divider: true } as MenuItem,
-                    {
-                      label: t('board.voiceNote.label'),
-                      icon: 'mic' as const,
-                      kind: 'canvas' as const,
-                      action: onVoiceNote,
-                    },
-                  ]
-                : []),
-            ])}
+              ...(hidden.length > 0 ? [{ divider: true } as MenuItem] : []),
+            ].concat(
+              CANVAS_TEMPLATES.flatMap((template): MenuItem[] => [
+                {
+                  label: canvasTemplateLabel(template, t),
+                  icon: canvasTemplateIcon(template),
+                  kind: template,
+                  action: () => onCanvas(template),
+                },
+                ...(template === 'storyboard' && onScreenplay
+                  ? [
+                      {
+                        label: t('screenplay.fromScreenplay'),
+                        icon: 'upload' as const,
+                        kind: 'storyboard' as const,
+                        action: onScreenplay,
+                      },
+                    ]
+                  : []),
+              ]).concat([
+                { divider: true },
+                ...MENU_CARDS.map(
+                  ([type, icon]): MenuItem => ({
+                    label: t(`board.types.${type}`),
+                    icon,
+                    kind: 'canvas',
+                    action: () => onCard(type),
+                  }),
+                ),
+                ...(onVoiceNote
+                  ? [
+                      { divider: true } as MenuItem,
+                      {
+                        label: t('board.voiceNote.label'),
+                        icon: 'mic' as const,
+                        kind: 'canvas' as const,
+                        action: onVoiceNote,
+                      },
+                    ]
+                  : []),
+              ]),
+            )}
             onClose={(reason) => {
               setAt(null);
               if (reason === 'escape') button.current?.focus();
@@ -980,15 +1003,41 @@ export function ZoomControls({
   zoom,
   onZoom,
   snap,
+  history,
 }: {
   zoom: number;
   onZoom: (to: 'in' | 'out' | 'reset' | 'fit') => void;
   /** The magnet (#296): snap to grid, for people who can edit. */
   snap?: { on: boolean; onToggle: () => void } | undefined;
+  /** Undo and redo buttons, for people who turned them on (#302). */
+  history?: { onUndo: () => void; onRedo: () => void } | undefined;
 }) {
   const { t } = useTranslation();
   return (
     <fieldset className="zoom" aria-label={t('board.zoom.label')}>
+      {history && (
+        <>
+          <button
+            type="button"
+            aria-label={t('board.palette.undo')}
+            aria-keyshortcuts={isMac() ? 'Meta+Z' : 'Control+Z'}
+            data-ink-tooltip={`${t('board.palette.undo')} (${mod()}Z)`}
+            onClick={history.onUndo}
+          >
+            <Icon name="undo" size={14} />
+          </button>
+          <button
+            type="button"
+            className="zoom__redo"
+            aria-label={t('board.palette.redo')}
+            aria-keyshortcuts={isMac() ? 'Meta+Shift+Z' : 'Control+Shift+Z'}
+            data-ink-tooltip={`${t('board.palette.redo')} (${mod()}⇧Z)`}
+            onClick={history.onRedo}
+          >
+            <Icon name="undo" size={14} />
+          </button>
+        </>
+      )}
       <button
         type="button"
         aria-label={t('board.zoom.out')}

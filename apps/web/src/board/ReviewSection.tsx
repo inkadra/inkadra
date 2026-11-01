@@ -4,20 +4,19 @@ import { Button, ChoiceTile } from '@inkadra/ui';
 import { useEffect, useId, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api, RequestError } from '../lib/api.ts';
+import { formatDateTime } from '../lib/datetime.ts';
 import { ReviewChip } from './CardReview.tsx';
 import { GuestTag } from './GuestTag.tsx';
 import { authorName, type Page, REVIEW_STATUSES } from './review-model.ts';
 import { canComment, getReviews, refreshReviews, useReviews } from './review-store.ts';
 
 function Attribution({ author, at }: { author: Author; at: string }) {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   return (
     <span className="comment-author">
       <strong>{authorName(author) ?? t('comments.deletedAuthor')}</strong>
       <GuestTag author={author} />
-      <time dateTime={at}>
-        {new Date(at).toLocaleString(i18n.language, { dateStyle: 'medium', timeStyle: 'short' })}
-      </time>
+      <time dateTime={at}>{formatDateTime(at, { dateStyle: 'medium', timeStyle: 'short' })}</time>
     </span>
   );
 }

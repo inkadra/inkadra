@@ -543,7 +543,9 @@
       "rename": "Rinomina",
       "boardIcon": "Icona e colore…",
       "moveCardsOn": "Sposta insieme alle card sotto",
-      "moveCardsOff": "Sposta solo il titolo"
+      "moveCardsOff": "Sposta solo il titolo",
+      "hideGrid": "Nascondi la griglia a punti",
+      "showGrid": "Mostra la griglia a punti"
     },
     "zoom": {
       "label": "Zoom",
@@ -2102,17 +2104,19 @@
     },
     "pages": {
       "access": "Accesso e login",
-      "about": "Informazioni"
+      "about": "Informazioni",
+      "toolbar": "Barra degli strumenti"
     },
     "leads": {
       "account": "Il tuo profilo e come accedi.",
-      "preferences": "Valgono solo per te.",
-      "notifications": "Menzioni, risposte e revisioni arrivano sempre nella Inbox. Scegli se riceverle anche per email.",
+      "preferences": "Valgono solo per te e ti seguono su ogni dispositivo.",
+      "notifications": "Alcune notifiche arrivano sempre nella Inbox. Scegli quali ricevere anche per email.",
       "storage": "File originali caricati nell’istanza.",
       "access": "I metodi di accesso si configurano sul server; qui vedi cosa è attivo.",
       "registration": "Chi può creare un nuovo account.",
       "about": "Nome, indirizzo, versione e stato della configurazione dell’istanza.",
-      "backups": "Copie notturne del database, per ripristinare il server dopo un guasto."
+      "backups": "Copie notturne del database, per ripristinare il server dopo un guasto.",
+      "toolbar": "Scegli cosa vedi nella barra in basso. Gli strumenti nascosti restano in \"+ ▾\" e nella palette dei comandi."
     },
     "autosave": {
       "idle": "Salvataggio automatico",
@@ -2135,7 +2139,27 @@
       "themeHelp": "Sistema segue l’impostazione del dispositivo",
       "languageHelp": "Lingua dell’interfaccia e delle email",
       "keepPlaying": "Continua a riprodurre i video fuori schermo",
-      "keepPlayingHelp": "Un video in una card continua a suonare quando lo sposti fuori dalla vista. Spento, si ferma: la lavagna resta fluida."
+      "keepPlayingHelp": "Il video resta in riproduzione quando sposti la vista. Vale solo su questo dispositivo.",
+      "appearance": "Aspetto",
+      "dateTime": "Data e ora",
+      "canvas": "Canvas",
+      "dateFormat": "Formato data",
+      "dateFormatHelp": "Piano riprese, ordine del giorno, PDF, commenti e attività",
+      "fromBrowser": "Dal browser · {{example}}",
+      "timeFormat": "Formato ora",
+      "timeFormatHelp": "Per orari di convocazione e piano riprese",
+      "clock": {
+        "24h": "24 h",
+        "12h": "12 h"
+      },
+      "dotGrid": "Mostra la griglia a punti",
+      "dotGridHelp": "Predefinito per le board; ogni board può cambiarlo dal menu del canvas",
+      "snap": "Aggancia alla griglia",
+      "snapHelp": "Predefinito all’apertura di una board · G per cambiarlo al volo",
+      "doubleClick": "Doppio clic sul vuoto crea una nota",
+      "doubleClickHelp": "Anche doppio tocco su telefono e tablet",
+      "undoButtons": "Pulsanti Annulla e Ripeti sulla board",
+      "undoButtonsHelp": "Ctrl/⌘ Z funziona comunque"
     },
     "notifications": {
       "short": {
@@ -2147,7 +2171,21 @@
         "immediate": "Le notifiche ravvicinate arrivano in un’unica email",
         "daily": "Una email al giorno con tutto quello che è successo",
         "off": "Solo la Inbox dell’app"
-      }
+      },
+      "when": "Quando",
+      "inbox": "Inbox",
+      "email": "Email",
+      "events": {
+        "mention": "Qualcuno ti menziona",
+        "reply": "Rispondono a una tua discussione",
+        "comment": "Commentano una tua card",
+        "review": "Decisione su una revisione",
+        "task_assigned": "Ti assegnano un compito"
+      },
+      "reviewHelp": "Approvata o modifiche richieste",
+      "always": "Sempre",
+      "alwaysNote": "Grigio = sempre attivo nella Inbox.",
+      "sendMe": "Inviami"
     },
     "members": {
       "invite": "Invita membri",
@@ -2189,18 +2227,24 @@
     "noResults": "Nessuna impostazione trovata",
     "keywords": {
       "account": "Nome, Email, Foto profilo, Password, Verifica in due passaggi (2FA), Codici di riserva, Metodi di accesso, Sessioni, Dispositivi, App e token, Elimina account",
-      "preferences": "Tema, Tema scuro, Tema chiaro, Lingua, Continua a riprodurre i video fuori schermo",
-      "notifications": "Notifiche email, Menzioni, Risposte, Revisioni, Riepilogo giornaliero, Inbox",
+      "preferences": "Tema, Tema scuro, Tema chiaro, Lingua, Continua a riprodurre i video fuori schermo, Formato data, Formato ora, Griglia a punti, Aggancia alla griglia, Doppio clic crea una nota, Pulsanti Annulla e Ripeti",
+      "notifications": "Notifiche email, Menzioni, Risposte, Revisioni, Riepilogo giornaliero, Inbox, Commenti sulle tue card",
       "members": "Invita membri, Inviti, Link di invito, Ruolo, Amministratori, Disattiva account, Riattiva account, Persone",
       "workspace": "Spazio usato, File caricati, Archiviazione",
       "classifications": "Tipi di progetto, Tag, Cataloghi",
       "providers": "Google, OIDC, Single sign-on (SSO), Link di accesso via email, Email e password, SMTP, Invio email",
       "registration": "Nuovi account, Registrazione aperta, Solo su invito, Registrazione chiusa",
       "instance": "Nome dell’istanza, Indirizzo pubblico, Versione, Diagnostica, Stato dell’istanza",
-      "backups": "Backup, Esegui backup ora, Ripristino, Conservazione, Backup notturno"
+      "backups": "Backup, Esegui backup ora, Ripristino, Conservazione, Backup notturno",
+      "toolbar": "Barra degli strumenti, Strumenti, Nota, Immagine, Link, To-do, Colore, Freccia, Frame, Storyboard, Ripristina la barra predefinita"
     },
     "close": "Chiudi impostazioni",
-    "dangerZone": "Zona sensibile"
+    "dangerZone": "Zona sensibile",
+    "toolbar": {
+      "preview": "Anteprima",
+      "reset": "Ripristina la barra predefinita",
+      "synced": "Sincronizzata con il tuo account"
+    }
   },
   "admin": {
     "requireAdminTwoFactor": "Richiedi la verifica in due passaggi agli amministratori",

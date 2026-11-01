@@ -26,6 +26,7 @@ import { ExpiryLabel, ExpiryPicker } from './ExpiryPicker.tsx';
 import { GuestLinks } from './GuestLinks.tsx';
 import { PermissionsMatrix } from './PermissionsMatrix.tsx';
 import './share.css';
+import { formatDateTime } from '../lib/datetime.ts';
 import { linkRoleChoices, rank, roleChoices } from './share-roles.ts';
 
 /**
@@ -573,7 +574,7 @@ function LinkSection({
   onChange: () => Promise<void>;
   onError: (err: unknown) => void;
 }) {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const [role, setRole] = useState<ProjectRole>('viewer');
   const [days, setDays] = useState(7);
 
@@ -597,7 +598,7 @@ function LinkSection({
             {link
               ? t('share.link.active', {
                   role: link.role ? t(`roles.${link.role}`) : '',
-                  date: new Date(link.expiresAt).toLocaleDateString(i18n.language, {
+                  date: formatDateTime(link.expiresAt, {
                     day: 'numeric',
                     month: 'long',
                   }),

@@ -12,6 +12,7 @@ import { formatStorage } from './StorageCharts.tsx';
 import { trackSave } from './settings-save.ts';
 import { Badge, Card, Row } from './settings-ui.tsx';
 import './backup-settings.css';
+import { formatDateTime } from '../lib/datetime.ts';
 
 const POLL_MS = 2000;
 const RETENTION_CHOICES = [3, 7, 14, 30, 60, BACKUP_RETENTION_MAX];
@@ -82,7 +83,7 @@ export function BackupSettings() {
 
   const { settings } = data;
   const time = (value: string) =>
-    new Date(value).toLocaleString(i18n.language, { dateStyle: 'medium', timeStyle: 'short' });
+    formatDateTime(value, { dateStyle: 'medium', timeStyle: 'short' });
   const size = (bytes: number | null) =>
     bytes === null ? null : formatStorage(bytes, i18n.language);
   const last = data.items.find((b) => b.status !== 'running') ?? null;

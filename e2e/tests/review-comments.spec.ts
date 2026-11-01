@@ -256,27 +256,46 @@ test('comments, mentions, review status and notifications between two people', a
   await other.context().close();
 });
 
-test('the email notification preference is saved', async ({ page }) => {
+test('the notification matrix and the daily digest are saved', async ({ page }) => {
   await signIn(page);
   try {
     await page.getByRole('button', { name: 'Impostazioni' }).click();
     await page.getByRole('link', { name: 'Notifiche', exact: true }).click();
-    const section = page.locator('section', {
-      has: page.getByRole('heading', { name: 'Notifiche email' }),
+    const mentionInbox = page.getByRole('checkbox', { name: 'Qualcuno ti menziona: Inbox' });
+    const replyEmail = page.getByRole('checkbox', {
+      name: 'Rispondono a una tua discussione: Email',
     });
-    await expect(section.getByRole('radio', { name: /^Subito/ })).toBeChecked();
-    // The choice saves itself; the header confirms it.
-    const saved = page.waitForResponse(
-      (r) => r.url().endsWith('/me/notification-preferences') && r.request().method() === 'PATCH',
-    );
-    await section.getByRole('radio', { name: /^Riepilogo giornaliero/ }).check();
-    expect((await saved).ok()).toBe(true);
+    const digest = page.getByRole('switch', { name: 'Riepilogo giornaliero' });
+    // Mentions always reach the Inbox: shown, never changeable.
+    await expect(mentionInbox).toBeChecked();
+    await expect(mentionInbox).toBeDisabled();
+    await expect(replyEmail).toBeChecked();
+    await expect(digest).not.toBeChecked();
+    // To-do assignments (#304) are in the matrix too, both channels changeable.
+    await expect(
+      page.getByRole('checkbox', { name: 'Ti assegnano un compito: Inbox' }),
+    ).toBeEnabled();
+    await expect(
+      page.getByRole('checkbox', { name: 'Ti assegnano un compito: Email' }),
+    ).toBeChecked();
+    // Each choice saves itself; the header confirms it.
+    const saved = () =>
+      page.waitForResponse(
+        (r) => r.url().endsWith('/me/notification-preferences') && r.request().method() === 'PATCH',
+      );
+    let response = saved();
+    await replyEmail.uncheck();
+    expect((await response).ok()).toBe(true);
+    response = saved();
+    await digest.check();
+    expect((await response).ok()).toBe(true);
     await expect(page.getByRole('status').filter({ hasText: 'Salvato' })).toBeVisible();
     await page.reload();
-    await expect(section.getByRole('radio', { name: /^Riepilogo giornaliero/ })).toBeChecked();
+    await expect(replyEmail).not.toBeChecked();
+    await expect(digest).toBeChecked();
   } finally {
     // The preference is the administrator's own: the next run starts from the default again.
-    await api(page, '/me/notification-preferences', 'PATCH', { email: 'immediate' });
+    await api(page, '/me/notification-preferences', 'PATCH', { email: 'immediate', emailOff: [] });
   }
 });
 
