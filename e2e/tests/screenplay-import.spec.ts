@@ -260,13 +260,15 @@ for (const theme of ['dark', 'light'] as const) {
       await page.setViewportSize({ width: 1280, height: 900 });
       await page.addInitScript((value) => localStorage.setItem('inkadra.theme', value), theme);
       await signedIn(page);
-      const response = await page.request.post(`/api/v1/projects/${seeded.projectId}/boards`, {
+      // A project of its own: with no storyboard yet, the one made from the drop is the first,
+      // and the sidebar's Storyboard row counts its frames.
+      const response = await page.request.post('/api/v1/projects', {
         headers: { origin: new URL(page.url()).origin },
-        data: { parentBoardId: seeded.canvasId, kind: 'board', title: 'Screenplay drop' },
+        data: { name: 'Screenplay drop' },
       });
       expect(response.ok()).toBe(true);
-      const { id: dropBoardId } = await response.json();
-      await page.goto(`/p/${seeded.projectId}/b/${dropBoardId}`);
+      const { id: dropProjectId, rootBoardId } = await response.json();
+      await page.goto(`/p/${dropProjectId}/b/${rootBoardId}`);
       await expect(page.getByRole('status').getByText('Sincronizzato')).toBeVisible();
       if (phone) await page.setViewportSize({ width: 390, height: 844 });
       const dt = await page.evaluateHandle(
@@ -284,6 +286,10 @@ for (const theme of ['dark', 'light'] as const) {
         .dispatchEvent('drop', { dataTransfer: dt, clientX: phone ? 75 : 400, clientY: 260 });
       const hint = page.locator('.screenplay-hint');
       await expect(hint).toBeVisible({ timeout: 20_000 });
+      // The card shows the PDF once the server has processed it, not the placeholder.
+      await expect(page.locator('.card--file').first()).not.toContainText('Elaborazione', {
+        timeout: 60_000,
+      });
       await capture294(page, `${theme}-${phone ? 'phone' : 'desktop'}-hint`);
       await page.getByRole('button', { name: 'Altre azioni', exact: true }).click();
       await expect(
@@ -298,14 +304,21 @@ for (const theme of ['dark', 'light'] as const) {
       await expect(dialog.locator('.script-import__cast')).toContainText('Elena');
       await capture294(page, `${theme}-${phone ? 'phone' : 'desktop'}-preview`);
       const before = await page.locator('.card--board').count();
-      const boardsBefore = await page.getByRole('link', { name: /^Sceneggiatura/ }).count();
+      // On the phone the navigation is a drawer, closed here.
+      const shots = page.getByRole('link', { name: /^Storyboard/ }).first();
+      if (!phone) await expect(shots).toHaveCount(0);
       await dialog.getByRole('button', { name: 'Importa', exact: true }).click();
       await expect(page.locator('.card--board')).toHaveCount(before + 1);
       await expect(page.locator('.card--board').last()).toContainText('5 card');
+      // The new storyboard is the project's first: the sidebar counts its frames now, without
+      // waiting for the server to store the board.
+      if (!phone)
+        await expect(shots).toHaveAttribute('data-ink-tooltip', /5 inquadrature/, { timeout: 1500 });
       await capture294(page, `${theme}-${phone ? 'phone' : 'desktop'}-imported`);
       await page.locator('.toast').getByRole('button', { name: 'Annulla', exact: true }).click();
       await expect(page.locator('.card--board')).toHaveCount(before);
-      await expect(page.getByRole('link', { name: /^Sceneggiatura/ })).toHaveCount(boardsBefore);
+      await expect(page.getByRole('link', { name: /^Sceneggiatura/ })).toHaveCount(0);
+      if (!phone) await expect(shots).toHaveCount(0);
       await expect(page.locator('.card--file').last()).toBeVisible();
       // Use the existing entry point to verify all PDF errors in the actual worker.
       await page.locator('.toolbar__btn--canvas').click();
