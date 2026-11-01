@@ -172,6 +172,44 @@ export const SectionElement = Base.extend({
     .describe('True: dragging the heading moves the cards under it too. Omitted = alone.'),
 });
 
+/** Limits of a table card: a planning grid on the board, not a spreadsheet. */
+export const MAX_TABLE_COLUMNS = 20;
+export const MAX_TABLE_ROWS = 500;
+export const MAX_TABLE_CELL = 2000;
+
+export const TableColumn = z.object({
+  id: ElementId,
+  width: z
+    .number()
+    .int()
+    .min(40)
+    .max(1200)
+    .optional()
+    .describe('Width in world units. Omitted = the columns share what the card leaves.'),
+});
+export type TableColumn = z.infer<typeof TableColumn>;
+
+export const TableRow = z.object({
+  id: ElementId,
+  cells: z
+    .record(z.string(), z.string().max(MAX_TABLE_CELL))
+    .describe('Plain text by column id; a missing key is an empty cell.'),
+});
+export type TableRow = z.infer<typeof TableRow>;
+
+/**
+ * A table card (since version 11, decision 0052): plain-text cells, links detected when shown.
+ * Columns and rows are Y.Arrays of Y.Maps and the cells of a row a Y.Map, so people editing
+ * different cells, or adding rows, merge.
+ */
+export const TableElement = Base.extend({
+  type: z.literal('table'),
+  columns: z.array(TableColumn).min(1).max(MAX_TABLE_COLUMNS),
+  rows: z.array(TableRow).max(MAX_TABLE_ROWS),
+  header: z.boolean().optional().describe('True: the first row is a header row.'),
+  color: CardColor.optional().describe('Tint of the header row, from the card palette.'),
+});
+
 /**
  * A scene of a storyboard: a container like a column, whose children are frames (and any
  * other card) in shooting order.
@@ -392,6 +430,7 @@ export const Element = z.discriminatedUnion('type', [
   CharacterElement,
   LocationElement,
   SectionElement,
+  TableElement,
 ]);
 
 /** Element types that hold other elements through `parent`. */

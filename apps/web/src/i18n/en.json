@@ -338,7 +338,8 @@
       "storyboard": "Storyboard",
       "character": "Character",
       "location": "Location",
-      "section": "Section heading"
+      "section": "Section heading",
+      "table": "Table"
     },
     "tools": {
       "select": "Select",
@@ -603,6 +604,24 @@
     "section": {
       "title": "Section title",
       "placeholder": "Section title"
+    },
+    "table": {
+      "cell": "Row {{row}}, column {{column}}",
+      "resize": "Column width",
+      "addRow": "Row",
+      "addColumn": "Column",
+      "headerOn": "First row as header",
+      "headerOff": "Remove the header row",
+      "rowAbove": "Insert row above",
+      "rowBelow": "Insert row below",
+      "columnLeft": "Insert column left",
+      "columnRight": "Insert column right",
+      "rowUp": "Move row up",
+      "rowDown": "Move row down",
+      "columnLeftMove": "Move column left",
+      "columnRightMove": "Move column right",
+      "deleteRow": "Delete row",
+      "deleteColumn": "Delete column"
     },
     "count": {
       "cards_one": "{{count}} card",

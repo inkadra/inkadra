@@ -105,6 +105,8 @@ export function cardHeight(el: Element, w: number, ctx: CardContext): number | n
         (ctx.storyMeta(el) ? lines(ctx.storyMeta(el), SMALL, 1) : 0);
       return Math.max(PORTRAIT, text + 4) + 20;
     }
+    case 'table':
+      return el.rows.length * TABLE_ROW;
     case 'location': {
       const pic = ctx.image(el.assetId) ? (w * 9) / 16 : 0;
       return (
@@ -513,7 +515,74 @@ function body(p: Placed, ctx: CardContext): Op[] {
     case 'section':
       // Drawn by drawCard without a card.
       return [];
+    case 'table':
+      return tableOps(el, p, c, m);
   }
+}
+
+/** Height of a table row in exports, as on the board. */
+const TABLE_ROW = 30;
+
+/** A table card: a grid of rows, the header row tinted, each cell on one line. */
+function tableOps(
+  el: Extract<Element, { type: 'table' }>,
+  p: Placed,
+  c: Palette,
+  m: Measure,
+): Op[] {
+  const ops: Op[] = [];
+  // Set widths keep their share of the card; the others split what is left.
+  const set = el.columns.reduce((sum, col) => sum + (col.width ?? 0), 0);
+  const free = el.columns.filter((col) => col.width === undefined).length;
+  const share = free > 0 ? Math.max(80, (p.w - set) / free) : 0;
+  const total = set + share * free;
+  const widths = el.columns.map((col) => ((col.width ?? share) * p.w) / total);
+  el.rows.forEach((row, r) => {
+    const top = p.y + r * TABLE_ROW;
+    const head = el.header === true && r === 0;
+    if (head)
+      ops.push({
+        kind: 'rect',
+        x: p.x,
+        y: top,
+        w: p.w,
+        h: TABLE_ROW,
+        fill: el.color ? c[TINTS[el.color]] : c['surface-2'],
+      });
+    else if (r > 0)
+      ops.push({
+        kind: 'line',
+        x1: p.x,
+        y1: top,
+        x2: p.x + p.w,
+        y2: top,
+        color: c['border-default'],
+        width: 1,
+      });
+    let left = p.x;
+    el.columns.forEach((col, i) => {
+      const w = widths[i] ?? 0;
+      const value = (row.cells[col.id] ?? '').replace(/\s+/g, ' ');
+      if (value)
+        ops.push({
+          kind: 'text',
+          x: left + 9,
+          y: top + 19,
+          text: ellipsize(value, w - 18, head ? 11 : 11.5, head ? 600 : 400, m),
+          size: head ? 11 : 11.5,
+          weight: head ? 600 : 400,
+          color: head
+            ? el.color
+              ? c[`tag-${el.color}`]
+              : c['text-secondary']
+            : i === 0
+              ? c['text-primary']
+              : c['text-secondary'],
+        });
+      left += w;
+    });
+  });
+  return ops;
 }
 
 function hostOf(url: string): string {

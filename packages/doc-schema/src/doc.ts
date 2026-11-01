@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MPL-2.0
 import * as Y from 'yjs';
 import { z } from 'zod';
-import { AspectRatio, Element, type ElementType } from './elements.ts';
+import { AspectRatio, Element, type ElementType, type TableRow } from './elements.ts';
 
 /** Bump when the shape of the board document changes, and add a migration below. */
-export const CURRENT_SCHEMA_VERSION = 10;
+export const CURRENT_SCHEMA_VERSION = 11;
 
 export const DOC_NAME_PREFIX = 'board:';
 
@@ -86,6 +86,9 @@ const migrations: Record<number, Migration> = {
   // 10: optional `color` on columns and the section heading element (#307, #318). Additive;
   // older builds must not drop a column's colour or refuse documents with headings.
   9: () => {},
+  // 11: the table element (#317, decision 0050). Additive; the bump keeps older servers from
+  // loading documents with element types they would refuse to validate.
+  10: () => {},
 };
 
 /**
@@ -187,13 +190,23 @@ function toYMap(value: object): Y.Map<unknown> {
   return new Y.Map(Object.entries(value));
 }
 
+/** A table row as Yjs stores it: its cells in a Y.Map of their own. */
+export function tableRowMap(row: TableRow): Y.Map<unknown> {
+  return new Y.Map<unknown>([
+    ['id', row.id],
+    ['cells', new Y.Map(Object.entries(row.cells))],
+  ]);
+}
+
 /**
- * To-do items are Y.Maps in a Y.Array so two people can tick different items; pen strokes are
+ * To-do items and table columns are Y.Maps in a Y.Array so two people can tick different
+ * items; table rows too, with their cells in a nested Y.Map; pen strokes are
  * plain objects in a Y.Array (so are frame shapes) so two people can draw on the same frame. Everything else is a
  * plain value that a write replaces.
  */
 function toYValue(key: string, value: unknown): unknown {
-  if (key === 'items') return Y.Array.from((value as object[]).map(toYMap));
+  if (key === 'items' || key === 'columns') return Y.Array.from((value as object[]).map(toYMap));
+  if (key === 'rows') return Y.Array.from((value as TableRow[]).map(tableRowMap));
   if (key === 'strokes' || key === 'shapes') return Y.Array.from(value as object[]);
   return value;
 }

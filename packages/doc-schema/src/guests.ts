@@ -99,6 +99,7 @@ export const GUEST_ELEMENT_FIELDS = {
   ],
   location: [...COMMON_GUEST_FIELDS, 'name', 'setting', 'assetId', 'light', 'scenes'],
   section: [...COMMON_GUEST_FIELDS, 'title'],
+  table: [...COMMON_GUEST_FIELDS, 'columns', 'rows', 'header', 'color'],
 } as const satisfies Record<ElementType, readonly string[]>;
 
 /**

@@ -89,11 +89,22 @@ it('opens the Canvas menu of canvas types, walks it with the keyboard and insert
       'board.types.character',
       'board.types.location',
       'board.types.section',
+      'board.types.table',
     ]);
     // No shortcut hints in the menu (B and S still work on the canvas).
     expect(menu.querySelector('.menu__key')).toBeNull();
     expect(items.map((i) => i.querySelector('.menu__tile svg')?.innerHTML)).toEqual(
-      ['page', 'tiles', 'storyboard', 'shotlist', 'calendar', 'user', 'pin', 'heading'].map(
+      [
+        'page',
+        'tiles',
+        'storyboard',
+        'shotlist',
+        'calendar',
+        'user',
+        'pin',
+        'heading',
+        'table',
+      ].map(
         (name) =>
           renderToStaticMarkup(<Icon name={name as IconName} />).match(
             /<svg[^>]*>(.*)<\/svg>/,
@@ -111,6 +122,7 @@ it('opens the Canvas menu of canvas types, walks it with the keyboard and insert
     expect(tiles[5]).toContain('--kind-fg: var(--ink-text-secondary)');
     expect(tiles[6]).toContain('--kind-fg: var(--ink-text-secondary)');
     expect(tiles[7]).toContain('--kind-fg: var(--ink-text-secondary)');
+    expect(tiles[8]).toContain('--kind-fg: var(--ink-text-secondary)');
     expect(document.activeElement).toBe(items[0]);
     const key = (k: string) =>
       act(async () => {
@@ -121,7 +133,7 @@ it('opens the Canvas menu of canvas types, walks it with the keyboard and insert
     await key('ArrowDown');
     expect(document.activeElement).toBe(items[1]);
     await key('End');
-    expect(document.activeElement).toBe(items[7]);
+    expect(document.activeElement).toBe(items[8]);
     await key('ArrowDown');
     expect(document.activeElement).toBe(items[0]);
     await key('Escape');

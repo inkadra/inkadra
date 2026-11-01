@@ -122,6 +122,10 @@ export function entryFor(el: Element, body: string, autoLabel?: string): IndexEn
       return { ...base, title: el.title, text: join(el.title) };
     case 'board':
       return { ...base, title: '', text: '' };
+    case 'table': {
+      const cells = el.rows.flatMap((r) => el.columns.map((c) => r.cells[c.id] ?? ''));
+      return { ...base, title: cells.find(Boolean) ?? '', text: join(cells) };
+    }
     case 'scene':
       return {
         ...base,

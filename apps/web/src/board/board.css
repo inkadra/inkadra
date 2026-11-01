@@ -843,6 +843,123 @@ button.fcard__audio-play:focus-visible {
   color: var(--ink-text-muted);
 }
 
+/* Table (#317): plain cells on the card, the header row tinted from the card palette. */
+.card--table {
+  overflow: hidden;
+}
+.tcard {
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+}
+.tcard[data-no-drag] {
+  touch-action: pan-x;
+}
+.tcard__grid {
+  width: 100%;
+  table-layout: fixed;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 11.5px;
+  line-height: 1.4;
+}
+.tcard__grid td,
+.tcard__grid th {
+  position: relative;
+  height: 31px;
+  padding: 7px 9px;
+  text-align: left;
+  vertical-align: top;
+  white-space: pre-wrap;
+  overflow: hidden;
+}
+.tcard__grid td {
+  border-top: 1px solid var(--ink-border-default);
+  color: var(--ink-text-secondary);
+}
+.tcard__grid tr:first-child td {
+  border-top: 0;
+}
+.tcard__grid td:first-child {
+  color: var(--ink-text-primary);
+}
+.tcard__grid th {
+  font-size: 11px;
+  font-weight: 600;
+  background: var(--ink-surface-2);
+  color: var(--ink-text-secondary);
+}
+.tcard__grid--blue th {
+  background: var(--ink-tag-blue-bg);
+  color: var(--ink-tag-blue);
+}
+.tcard__grid--orange th {
+  background: var(--ink-tag-orange-bg);
+  color: var(--ink-tag-orange);
+}
+.tcard__grid--purple th {
+  background: var(--ink-tag-purple-bg);
+  color: var(--ink-tag-purple);
+}
+.tcard__grid--green th {
+  background: var(--ink-tag-green-bg);
+  color: var(--ink-tag-green);
+}
+.tcard__grid a {
+  color: var(--ink-accent-soft-fg);
+  text-decoration: none;
+  white-space: nowrap;
+}
+.tcard__grid a:hover {
+  text-decoration: underline;
+}
+.tcard__input {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  margin: -2px -4px;
+  padding: 2px 4px;
+  border: 0;
+  border-radius: var(--ink-radius-xs);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  outline: none;
+  user-select: text;
+}
+.tcard__input:focus {
+  box-shadow: 0 0 0 1px var(--ink-accent-primary);
+  background: var(--ink-surface-1);
+}
+.tcard__resize {
+  position: absolute;
+  top: 0;
+  right: -3px;
+  width: 7px;
+  height: 100%;
+  cursor: col-resize;
+  touch-action: none;
+  z-index: 1;
+}
+.tcard__resize:hover,
+.tcard__resize:active {
+  background:
+    linear-gradient(var(--ink-accent-primary), var(--ink-accent-primary)) center / 1px 100%
+    no-repeat;
+}
+.tcard__add {
+  display: flex;
+  gap: 4px;
+  padding: 4px 6px;
+  border-top: 1px solid var(--ink-border-default);
+}
+@media (pointer: coarse) {
+  .tcard__grid td,
+  .tcard__grid th {
+    height: 44px;
+    vertical-align: middle;
+  }
+}
+
 /* Columns and scenes */
 .card--column,
 .card--scene {

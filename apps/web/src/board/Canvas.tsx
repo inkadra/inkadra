@@ -20,6 +20,7 @@ import {
   deleteElements,
   distributeRects,
   dropIndex,
+  fillTable,
   fitRect,
   frameLabels,
   GRID,
@@ -32,6 +33,7 @@ import {
   moveIntoParent,
   moveToCanvas,
   moveToUnsorted,
+  newTable,
   nextZoomStep,
   type Point,
   pasteElements,
@@ -142,6 +144,7 @@ import { canvasElementId, ResizeHandles } from './ResizeHandles.tsx';
 import { openComments } from './review-store.ts';
 import { canSpacePan, commandFor, insideDialog, isMac, isTyping } from './shortcuts.ts';
 import { LOCAL } from './store.ts';
+import { clipboardGrid, tableMenu } from './table.ts';
 import { TagPopover } from './tags.tsx';
 import { templateLabels, templateRect } from './templates.ts';
 import { startUpload } from './uploads.ts';
@@ -400,6 +403,8 @@ export function Canvas({
     y: number;
     at: Point;
     fromToolbar?: boolean;
+    /** Row and column of the table cell the menu was opened on. */
+    cell?: { r: number; c: number };
   } | null>(null);
   const [palette, setPalette] = useState(false);
   const [linkDraft, setLinkDraft] = useState<{ at: Point } | null>(null);
@@ -735,6 +740,9 @@ export function Canvas({
           break;
         case 'section':
           created = createElement(doc, 'section', pos, { title: '' }, opts);
+          break;
+        case 'table':
+          created = createElement(doc, 'table', pos, { ...newTable(3, 3), header: true }, opts);
           break;
         case 'color':
           created = createElement(doc, 'color', pos, { hex: '#808086' }, opts);
@@ -1682,7 +1690,9 @@ export function Canvas({
   function onContextMenu(e: ReactMouseEvent<HTMLDivElement>) {
     const target = e.target as HTMLElement;
     if (target.closest('[data-chrome]') && !canvasElementId(target)) return;
-    if (isTyping(target)) return;
+    // A table cell keeps the table's menu while it is being edited.
+    const cell = target.closest<HTMLElement>('[data-table-cell]')?.dataset.tableCell;
+    if (isTyping(target) && !cell) return;
     e.preventDefault();
     // A long press of the fingers of a pinch.
     if (touchHeld.current) return;
@@ -1690,7 +1700,13 @@ export function Canvas({
     if (id && !selection.has(id)) select([id]);
     if (!id) setSelection(EMPTY_SET);
     const p = screenPoint(e);
-    setMenu({ x: p.x, y: p.y, at: screenToWorld(vp.current, p) });
+    const [r, c] = (cell ?? '').split(':').map(Number);
+    setMenu({
+      x: p.x,
+      y: p.y,
+      at: screenToWorld(vp.current, p),
+      ...(cell && r !== undefined && c !== undefined ? { cell: { r, c } } : {}),
+    });
   }
 
   // Wheel: scroll pans, pinch or Ctrl/⌘ + wheel zooms. A mouse wheel notch is one small step that
@@ -1968,6 +1984,17 @@ export function Canvas({
     const files = [...e.clipboardData.files];
     if (files.length > 0) {
       uploadFiles(files, at);
+      return;
+    }
+    const grid = clipboardGrid(
+      e.clipboardData.getData('text/plain'),
+      e.clipboardData.getData('text/html'),
+    );
+    if (grid) {
+      store.undo.stopCapturing();
+      const el = createElement(doc, 'table', at, newTable(1, 1), { userId, origin: LOCAL });
+      fillTable(doc, el.id, 0, 0, grid, LOCAL);
+      select([el.id]);
       return;
     }
     addText(e.clipboardData.getData('text/plain'), at);
@@ -2296,6 +2323,9 @@ export function Canvas({
                 ),
             },
           ]
+        : []),
+      ...(single?.type === 'table' && !readOnly && !single.locked
+        ? tableMenu(doc, single, menu.cell, t)
         : []),
       ...(single && (single.type === 'image' || single.type === 'file')
         ? [{ label: t('board.menu.viewImage'), action: () => openElement(single) }]
@@ -2657,7 +2687,7 @@ export function Canvas({
               }
               onColor={(color) => {
                 for (const el of selectedEls) {
-                  if (el.type === 'note' || el.type === 'column')
+                  if (el.type === 'note' || el.type === 'column' || el.type === 'table')
                     updateElement(doc, el.id, { color }, LOCAL);
                 }
               }}

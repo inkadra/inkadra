@@ -37,6 +37,7 @@ export const DEFAULT_WIDTH: Record<ElementType, number> = {
   character: 240,
   location: 260,
   section: 640,
+  table: 420,
 };
 
 export const MIN_WIDTH = 80;

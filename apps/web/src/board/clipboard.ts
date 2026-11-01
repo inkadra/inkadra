@@ -1,4 +1,4 @@
-import type { ClipboardData } from '@inkadra/canvas-core';
+import { type ClipboardData, tableGrid, toTsv } from '@inkadra/canvas-core';
 
 /**
  * Board elements travel through the system clipboard as HTML with the data in an attribute,
@@ -20,7 +20,16 @@ export function encodeClipboard(target: DataTransfer, data: ClipboardData) {
   const payload = encode(JSON.stringify(data));
   const text = data.elements
     .map((e) =>
-      e.type === 'link' ? e.url : e.type === 'column' ? e.title : e.type === 'color' ? e.hex : '',
+      e.type === 'link'
+        ? e.url
+        : e.type === 'column'
+          ? e.title
+          : e.type === 'color'
+            ? e.hex
+            : // Spreadsheets paste a copied table as cells.
+              e.type === 'table'
+              ? toTsv(tableGrid(e))
+              : '',
     )
     .filter(Boolean)
     .join('\n');

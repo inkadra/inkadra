@@ -170,6 +170,8 @@ function estimateHeight(el: Element): number {
       return 48 + el.items.length * 26;
     case 'section':
       return 44;
+    case 'table':
+      return el.rows.length * 31 + 2;
     default:
       return 64;
   }
