@@ -91,6 +91,7 @@ import { useSearchParams } from 'react-router';
 import * as Y from 'yjs';
 import { addActions, type PaletteAction, useRegisterActions } from '../commands/actions.ts';
 import { canvasActions, duplicateInStore } from '../commands/board-actions.ts';
+import { useIsPhone } from '../lib/phone.ts';
 import { getPreferences, updatePreferences, usePreferences } from '../lib/preferences.ts';
 import { useSession } from '../lib/session.tsx';
 import { ProjectAppearanceDialog } from '../routes/ProjectAppearance.tsx';
@@ -154,6 +155,7 @@ import { fillMapPreview } from './maps.ts';
 import { NoteSideSheet } from './NoteSideSheet.tsx';
 import { fillFragment, isEmpty } from './note.tsx';
 import { PresenceLayer } from './PresenceLayer.tsx';
+import { PlanEditor } from './plan/PlanEditor.tsx';
 import { type Peer, useLocalPresence } from './presence.ts';
 import { canvasElementId, ResizeHandles } from './ResizeHandles.tsx';
 import { openComments } from './review-store.ts';
@@ -1016,6 +1018,10 @@ export function Canvas({
         case 'table':
           created = createElement(doc, 'table', pos, { ...newTable(3, 3), header: true }, opts);
           break;
+        case 'plan':
+          // Opens in its editor, like a new note.
+          created = createElement(doc, 'plan', pos, {}, opts);
+          break;
         case 'color':
           created = createElement(doc, 'color', pos, { hex: '#808086' }, opts);
           break;
@@ -1264,7 +1270,7 @@ export function Canvas({
         ?.querySelector<HTMLElement>(`.card[data-el="${CSS.escape(el.id)}"]`)
         ?.querySelector<HTMLElement>('.card__media')?.offsetHeight;
       // Images keep the ratio of their picture, a caption under it does not scale.
-      if (el.type === 'image' || el.type === 'frame')
+      if (el.type === 'image' || el.type === 'frame' || el.type === 'plan')
         return { ...rect, fit: 'ratio', fixed: media ? Math.max(0, rect.h - media) : 0 };
       return { ...rect, fit: el.h !== undefined || el.type === 'color' ? 'ratio' : 'content' };
     },
@@ -1695,8 +1701,9 @@ export function Canvas({
         `.card[data-el="${CSS.escape(id)}"]`,
       );
       const mediaHeight = card?.querySelector<HTMLElement>('.card__media')?.offsetHeight;
+      // Images keep the ratio of their picture and plans of their drawing; the header stays.
       const options: ResizeOptions =
-        el.type === 'image'
+        el.type === 'image' || el.type === 'plan'
           ? {
               aspectRatio: rect.w / (mediaHeight || rect.h),
               fixedHeight: mediaHeight ? Math.max(0, rect.h - mediaHeight) : 0,
@@ -2404,6 +2411,44 @@ export function Canvas({
   // Editing a swatch opens its colour picker, with the board's other colours (#308).
   const editedEl = editing ? snap.byId.get(editing) : undefined;
   const pickingColor = editedEl?.type === 'color' && !readOnly ? editedEl : null;
+  const editedPlan = editedEl?.type === 'plan' && !readOnly ? editedEl : null;
+  const editedPlanId = editedPlan?.id ?? null;
+  const isPhone = useIsPhone();
+  // A plan opened on a desktop comes into view with room for its tools, its set icons on the
+  // right and the bar under it; where it already fits, the view stays.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: once per plan opened.
+  useEffect(() => {
+    const el = editedPlanId ? store.getSnapshot().byId.get(editedPlanId) : undefined;
+    const root = rootRef.current;
+    if (!el || isPhone || !root || size.w === 0) return;
+    const r = liveRect(el);
+    const inset = chromeInsets(root);
+    const left = inset.left + 64;
+    const right = size.w - 272;
+    const top = inset.top + 24;
+    const bottom = size.h - 64;
+    const v = vp.current;
+    const a = worldToScreen(v, { x: r.x, y: r.y });
+    const fits =
+      v.zoom >= 0.75 &&
+      a.x >= left &&
+      a.x + r.w * v.zoom <= right &&
+      a.y >= top &&
+      a.y + r.h * v.zoom <= bottom;
+    if (fits || right - left < 200) return;
+    const zoom = clampZoom(Math.min(1, (right - left) / r.w, (bottom - top) / r.h));
+    setViewport({
+      zoom,
+      x: r.x + r.w / 2 - (left + right) / 2 / zoom,
+      y: r.y + r.h / 2 - (top + bottom) / 2 / zoom,
+    });
+  }, [editedPlanId, isPhone]);
+  const planAt = (() => {
+    if (!editedPlan || isPhone) return null;
+    const r = liveRect(editedPlan);
+    const a = worldToScreen(viewport, { x: r.x, y: r.y });
+    return { x: a.x, y: a.y, w: r.w * viewport.zoom, h: r.h * viewport.zoom, zoom: viewport.zoom };
+  })();
   const usedColors = useMemo(
     () =>
       [
@@ -3009,6 +3054,7 @@ export function Canvas({
                 (el) =>
                   selection.has(el.id) &&
                   el.id !== cropping &&
+                  el.id !== editedPlan?.id &&
                   !el.locked &&
                   el.parent === null &&
                   el.type !== 'arrow',
@@ -3107,6 +3153,8 @@ export function Canvas({
         {!overlay.offset &&
           !overlay.marquee &&
           selectionBox &&
+          // A plan being edited has its own tools and bar.
+          !editedPlan &&
           (croppingElement ? (
             <ImageCropToolbar
               box={selectionBox}
@@ -3268,6 +3316,14 @@ export function Canvas({
               onClose={() => setStoryPanel(null)}
             />
           </div>
+        )}
+        {editedPlan && (
+          <PlanEditor
+            store={store}
+            plan={editedPlan}
+            at={planAt}
+            onClose={() => setEditing(null)}
+          />
         )}
         {drawnFrame && (
           <DrawingEditor

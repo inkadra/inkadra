@@ -241,7 +241,7 @@ export async function buildPages(
       ]
         .filter(Boolean)
         .join(' · '),
-    words: { board: t('export.board'), file: t('export.file') },
+    words: { board: t('export.board'), file: t('export.file'), plan: t('board.plan.name') },
   };
 
   const dateFormat = new Intl.DateTimeFormat(env.language, { dateStyle: 'long' });

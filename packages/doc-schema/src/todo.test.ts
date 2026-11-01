@@ -16,7 +16,7 @@ it('upgrades v11 without assigning or dating existing items, preserves optional 
   const doc = createBoardDoc('0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10');
   roots(doc).meta.set('schemaVersion', 11);
   const item = { id: 'test-item', text: 'Collect permits', done: false };
-  expect(migrateBoardDoc(doc, '0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10')).toEqual([12, 13]);
+  expect(migrateBoardDoc(doc, '0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10')).toEqual([12, 13, 14]);
   expect(TodoItem.parse(item)).toEqual(item);
   const assigned = {
     ...item,
@@ -50,7 +50,7 @@ it('upgrades v12 to-do cards as ordinary lists and keeps a list kind and scene',
     items: [{ id: 'test-item', text: 'Towel', done: false }],
   };
   addElement(doc, card);
-  expect(migrateBoardDoc(doc, boardId)).toEqual([13]);
+  expect(migrateBoardDoc(doc, boardId)).toEqual([13, 14]);
   expect(TodoElement.parse(card).list).toBeUndefined();
   const live = roots(doc).elements.get(card.id);
   live?.set('list', 'wardrobe');

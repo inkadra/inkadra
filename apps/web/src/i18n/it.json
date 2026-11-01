@@ -376,7 +376,8 @@
       "location": "Location",
       "section": "Titolo di sezione",
       "table": "Tabella",
-      "map": "Mappa"
+      "map": "Mappa",
+      "plan": "Pianta del set"
     },
     "tools": {
       "select": "Seleziona",
@@ -710,7 +711,48 @@
       "boards_one": "{{count}} board",
       "boards_other": "{{count}} board"
     },
-    "history": "Annulla e ripeti"
+    "history": "Annulla e ripeti",
+    "plan": {
+      "name": "Pianta del set",
+      "tools": "Strumenti della pianta",
+      "tool": {
+        "select": "Seleziona",
+        "pencil": "Matita",
+        "line": "Linea",
+        "arrow": "Freccia",
+        "rect": "Rettangolo",
+        "ellipse": "Ellisse",
+        "text": "Testo",
+        "icons": "Icone da set"
+      },
+      "snap": "Aggancia alla griglia",
+      "library": "Icone da set",
+      "libraryHint": "Trascina sulla pianta, oppure tocca e poi tocca la pianta. R ruota di 15°.",
+      "icons": {
+        "camera": "Camera",
+        "light": "Luce",
+        "actor": "Attore",
+        "door": "Porta",
+        "window": "Finestra",
+        "table": "Tavolo",
+        "track": "Binario"
+      },
+      "selection": "Elemento selezionato",
+      "colors": {
+        "ink": "Inchiostro",
+        "blue": "Blu",
+        "yellow": "Giallo",
+        "purple": "Viola",
+        "green": "Verde"
+      },
+      "labelField": "Etichetta",
+      "labelPlaceholder": "Etichetta",
+      "rotate": "Ruota",
+      "duplicate": "Duplica",
+      "delete": "Elimina",
+      "titleField": "Titolo della pianta",
+      "titlePlaceholder": "Cucina, giorno 2"
+    }
   },
   "tags": {
     "title": "Tag",

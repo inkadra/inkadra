@@ -62,6 +62,7 @@ in order. An accepted decision is never rewritten: a later one supersedes it.
 | [0056](0056-personal-project-groups.md)              | Personal project groups: organisation only, per person, never access                   |
 | [0057](0057-project-theme.md)                        | Project theme: accent, bundled heading fonts and logo for presentations and PDFs       |
 | [0058](0058-needed-items-by-shooting-day.md)         | Needed items: typed to-do lists linked to scenes, rolled up by shooting day            |
+| [0062](0062-set-plans.md)                            | Set plans: frame strokes and shapes plus set icons on a card of their own              |
 
 | [0059](0059-model-font-previews.md) | Bounded model and font metadata, scoped browser font specimens |
 

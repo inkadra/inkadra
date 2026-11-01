@@ -88,3 +88,47 @@ describe('board elements in exports', () => {
     ]);
   });
 });
+
+describe('set plans in exports', () => {
+  it('draws the title, the drawing in theme colours and the icon labels, without a grid', () => {
+    const plan = card({
+      type: 'plan',
+      title: 'Cucina',
+      strokes: [
+        { id: 'stroke001', tool: 'pencil', color: '#1C1C1E', width: 4, points: [0, 0, 4096, 4096] },
+      ],
+      icons: [
+        {
+          id: 'icon0001',
+          kind: 'camera',
+          color: '#9DB8F2',
+          x: 2048,
+          y: 2048,
+          rotation: 90,
+          label: 'A cam',
+        },
+      ],
+    });
+    const [, clip] = drawBoard([{ ...plan, h: 34 + 640 / 1.5 }], {
+      ...ctx,
+      words: { board: '', file: '', plan: 'Pianta del set' },
+    });
+    const face = (clip as Extract<typeof clip, { kind: 'clip' }>).ops;
+    expect(face[0]).toMatchObject({ kind: 'text', text: 'Pianta del set · Cucina' });
+    const drawing = face.find((o) => o.kind === 'clip') as Extract<
+      (typeof face)[number],
+      { kind: 'clip' }
+    >;
+    expect(drawing).toMatchObject({ x: 0, y: 34, w: 640 });
+    // Ink and palette colours print with the theme's tokens.
+    expect(drawing.ops[0]).toMatchObject({ kind: 'polyline', color: '#text-secondary' });
+    const polygons = drawing.ops.filter((o) => o.kind === 'polygon');
+    // The view cone, the body and the lens of the camera.
+    expect(polygons).toHaveLength(3);
+    // Turned 90°: the cone points down from the centre (320, 34 + 213).
+    const cone = polygons[0] as Extract<(typeof polygons)[number], { kind: 'polygon' }>;
+    const ys = cone.points.filter((_, i) => i % 2 === 1);
+    expect(Math.min(...ys)).toBeGreaterThan(34 + 213);
+    expect(drawing.ops.at(-1)).toMatchObject({ kind: 'text', text: 'A cam', color: '#tag-blue' });
+  });
+});

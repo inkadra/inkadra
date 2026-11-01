@@ -380,6 +380,61 @@ export const FrameElement = Base.extend({
     .describe('Opacity of the reference picture under the drawing. Omitted = 1.'),
 });
 
+/** Width divided by height of a set plan's drawing; its coordinates are STROKE_GRID units of it. */
+export const PLAN_ASPECT = 3 / 2;
+export const MAX_PLAN_ICONS = 300;
+/** The set icons of a plan, drawn by renderers at a fixed size (decision 0062). */
+export const PLAN_ICON_KINDS = [
+  'camera',
+  'light',
+  'actor',
+  'door',
+  'window',
+  'table',
+  'track',
+] as const;
+export type PlanIconKind = (typeof PLAN_ICON_KINDS)[number];
+
+/**
+ * A set icon of a plan, centred on (x, y) in STROKE_GRID units of the drawing. `rotation` turns
+ * it clockwise from facing right: a camera looks, a light shines and an actor faces that way.
+ */
+export const PlanIcon = z.object({
+  id: ElementId,
+  kind: z.enum(PLAN_ICON_KINDS),
+  color: z.string().regex(/^#[0-9A-F]{6}$/),
+  x: GridCoord,
+  y: GridCoord,
+  rotation: z.int().min(0).max(359).optional().describe('Degrees clockwise. Omitted = 0.'),
+  label: z.string().max(60).optional().describe('"A cam", "Anna", "Key 1,2K".'),
+});
+export type PlanIcon = z.infer<typeof PlanIcon>;
+
+/** Read one by one, like frame shapes: an icon of a kind added later is left out. */
+const PlanIcons = z
+  .array(z.unknown())
+  .max(MAX_PLAN_ICONS)
+  .transform((items) =>
+    items.flatMap((item) => {
+      const parsed = PlanIcon.safeParse(item);
+      return parsed.success ? [parsed.data] : [];
+    }),
+  );
+
+/**
+ * A set plan (since version 14, decision 0062): a lighting or blocking diagram drawn with the
+ * frame drawing's strokes and shapes, plus set icons, over a drawing PLAN_ASPECT wide per unit
+ * of height. Strokes and shapes are plain objects in Y.Arrays, as on frames; icons are Y.Maps
+ * in a Y.Array, so two people moving and labelling different icons merge.
+ */
+export const PlanElement = Base.extend({
+  type: z.literal('plan'),
+  title: z.string().max(200).optional().describe('Shown after "Set plan" in the header.'),
+  strokes: z.array(Stroke).max(MAX_STROKES).optional().describe('Pen drawing, oldest first.'),
+  shapes: FrameShapes.optional().describe('Shapes and texts over the strokes, oldest first.'),
+  icons: PlanIcons.optional().describe('Set icons over the shapes, oldest first.'),
+});
+
 /** One end of an arrow: attached to an element, or a free point on the canvas. */
 export const ArrowEnd = z.object({
   elementId: ElementId.optional().describe('Element the end follows while it exists.'),
@@ -468,6 +523,7 @@ export const Element = z.discriminatedUnion('type', [
   SectionElement,
   TableElement,
   MapElement,
+  PlanElement,
 ]);
 
 /** Element types that hold other elements through `parent`. */

@@ -376,7 +376,8 @@
       "location": "Location",
       "section": "Section heading",
       "table": "Table",
-      "map": "Map"
+      "map": "Map",
+      "plan": "Set plan"
     },
     "tools": {
       "select": "Select",
@@ -710,7 +711,48 @@
       "boards_one": "{{count}} board",
       "boards_other": "{{count}} boards"
     },
-    "history": "Undo and redo"
+    "history": "Undo and redo",
+    "plan": {
+      "name": "Set plan",
+      "tools": "Plan tools",
+      "tool": {
+        "select": "Select",
+        "pencil": "Pencil",
+        "line": "Line",
+        "arrow": "Arrow",
+        "rect": "Rectangle",
+        "ellipse": "Ellipse",
+        "text": "Text",
+        "icons": "Set icons"
+      },
+      "snap": "Snap to grid",
+      "library": "Set icons",
+      "libraryHint": "Drag onto the plan, or tap one and then tap the plan. R turns by 15°.",
+      "icons": {
+        "camera": "Camera",
+        "light": "Light",
+        "actor": "Actor",
+        "door": "Door",
+        "window": "Window",
+        "table": "Table",
+        "track": "Track"
+      },
+      "selection": "Selected item",
+      "colors": {
+        "ink": "Ink",
+        "blue": "Blue",
+        "yellow": "Yellow",
+        "purple": "Purple",
+        "green": "Green"
+      },
+      "labelField": "Label",
+      "labelPlaceholder": "Label",
+      "rotate": "Rotate",
+      "duplicate": "Duplicate",
+      "delete": "Delete",
+      "titleField": "Plan title",
+      "titlePlaceholder": "Kitchen, day 2"
+    }
   },
   "tags": {
     "title": "Tags",

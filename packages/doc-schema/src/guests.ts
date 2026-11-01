@@ -101,6 +101,7 @@ export const GUEST_ELEMENT_FIELDS = {
   section: [...COMMON_GUEST_FIELDS, 'title'],
   table: [...COMMON_GUEST_FIELDS, 'columns', 'rows', 'header', 'color'],
   map: [...COMMON_GUEST_FIELDS, 'name', 'address', 'url', 'lat', 'lon', 'zoom', 'imageAssetId'],
+  plan: [...COMMON_GUEST_FIELDS, 'title', 'strokes', 'shapes', 'icons'],
 } as const satisfies Record<ElementType, readonly string[]>;
 
 /**

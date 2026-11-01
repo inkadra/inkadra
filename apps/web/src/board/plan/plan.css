@@ -1,0 +1,345 @@
+/* Set plan (#335): the card on the board and its editor. */
+
+.card--plan {
+  overflow: hidden;
+}
+.plan__head {
+  height: 34px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 10px;
+  border-bottom: 1px solid var(--ink-border-muted);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--ink-text-primary);
+  white-space: nowrap;
+}
+.plan__head .ink-icon {
+  flex: none;
+  color: var(--ink-text-icon);
+}
+.plan__title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.card__media.plan__body,
+.plan__body {
+  position: relative;
+  background: var(--ink-surface-1);
+}
+.plan__svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: hidden;
+  font-family: inherit;
+}
+.plan__dot {
+  fill: var(--ink-canvas-dot);
+}
+
+/* The editor on a desktop: an overlay of the canvas, its parts placed in screen pixels. */
+.plan-editor {
+  position: absolute;
+  inset: 0;
+  z-index: 6;
+  pointer-events: none;
+}
+.plan-editor > * {
+  pointer-events: auto;
+}
+.plan-editor__sheet {
+  position: absolute;
+  transform-origin: 0 0;
+  background: var(--ink-surface-1);
+  border: 1px solid var(--ink-accent-primary);
+  border-radius: var(--ink-radius-md);
+  outline: 1.5px solid var(--ink-accent-primary);
+  outline-offset: 2px;
+  overflow: hidden;
+}
+.plan-editor__title {
+  flex: 1;
+  min-width: 0;
+  height: 24px;
+  padding: 0 4px;
+  border: 0;
+  border-radius: var(--ink-radius-xs);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+}
+.plan-editor__title:focus-visible {
+  outline: 2px solid var(--ink-accent-soft-fg);
+}
+.plan-editor__stage {
+  container-type: inline-size;
+  touch-action: none;
+  cursor: crosshair;
+}
+.plan-editor__stage--select {
+  cursor: default;
+}
+.plan-editor__stage--icons {
+  cursor: copy;
+}
+.plan-editor__selection rect {
+  fill: none;
+  stroke: var(--ink-accent-primary);
+  stroke-width: 1.5;
+  vector-effect: non-scaling-stroke;
+}
+.plan-editor__rotate {
+  cursor: grab;
+}
+.plan-editor__rotate line {
+  stroke: var(--ink-accent-primary);
+  stroke-width: 1.5;
+  vector-effect: non-scaling-stroke;
+}
+.plan-editor__rotate circle {
+  fill: var(--ink-surface-1);
+  stroke: var(--ink-accent-primary);
+  stroke-width: 1.5;
+  vector-effect: non-scaling-stroke;
+}
+.plan-editor__text {
+  position: absolute;
+  min-width: 120px;
+  translate: 0 -100%;
+  padding: 0 2px;
+  border: 1px dashed var(--ink-accent-primary);
+  border-radius: 2px;
+  background: transparent;
+  color: var(--ink-text-secondary);
+  font-family: inherit;
+  font-size: 2.4cqw;
+  font-weight: 500;
+  line-height: 1.2;
+}
+
+.plan-editor__tools,
+.plan-editor__lib,
+.plan-editor__bar {
+  position: absolute;
+  background: var(--ink-surface-float);
+  border: 1px solid var(--ink-border-default);
+  border-radius: var(--ink-radius-md);
+  box-shadow: var(--ink-shadow-menu);
+}
+.plan-editor__tools {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 4px;
+}
+.plan-editor__btn {
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--ink-radius-sm);
+  background: transparent;
+  color: var(--ink-text-icon);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+}
+.plan-editor__btn:hover {
+  background: var(--ink-surface-2);
+}
+.plan-editor__btn[aria-pressed="true"] {
+  background: var(--ink-accent-soft-bg);
+  color: var(--ink-accent-soft-fg);
+}
+/* The grid snap is a switch, not a tool: on, it only takes the accent colour. */
+.plan-editor__btn--snap[aria-pressed="true"] {
+  background: transparent;
+}
+.plan-editor__btn:focus-visible,
+.plan-editor__tile:focus-visible,
+.plan-editor__swatch:focus-visible {
+  outline: 2px solid var(--ink-accent-soft-fg);
+  outline-offset: 1px;
+}
+.plan-editor__sep {
+  height: 1px;
+  margin: 3px 2px;
+  background: var(--ink-border-default);
+}
+
+.plan-editor__lib {
+  width: 236px;
+  padding: 10px;
+}
+.plan-editor__label {
+  margin: 0 2px 6px;
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-text-muted);
+}
+.plan-editor__grid {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 4px;
+}
+.plan-editor__tile {
+  display: grid;
+  justify-items: center;
+  gap: 3px;
+  padding: 7px 2px 5px;
+  border: 0;
+  border-radius: var(--ink-radius-sm);
+  background: transparent;
+  color: var(--ink-text-secondary);
+  font: inherit;
+  font-size: 10.5px;
+  cursor: grab;
+  touch-action: none;
+}
+.plan-editor__tile .ink-icon {
+  stroke-width: 1.5;
+  color: var(--ink-text-icon);
+}
+.plan-editor__tile:hover,
+.plan-editor__tile[aria-pressed="true"] {
+  background: var(--ink-surface-2);
+  color: var(--ink-text-primary);
+}
+.plan-editor__hint {
+  margin: 8px 2px 0;
+  font-size: 11px;
+  color: var(--ink-text-muted);
+}
+
+.plan-editor__bar {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 4px;
+  font-size: 12px;
+}
+.plan-editor__swatch {
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--ink-radius-sm);
+  background: transparent;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+}
+.plan-editor__swatch i {
+  display: block;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+}
+.plan-editor__swatch[aria-pressed="true"] i {
+  box-shadow:
+    0 0 0 2px var(--ink-surface-float),
+    0 0 0 3.5px var(--ink-text-secondary);
+}
+.plan-editor__vr {
+  width: 1px;
+  height: 18px;
+  margin: 0 3px;
+  background: var(--ink-border-strong);
+}
+.plan-editor__field {
+  width: 96px;
+  height: 26px;
+  padding: 0 8px;
+  border: 1px solid var(--ink-border-default);
+  border-radius: var(--ink-radius-sm);
+  background: var(--ink-surface-1);
+  color: var(--ink-text-primary);
+  font: inherit;
+}
+
+/* The editor on a phone: the whole screen, tools at the bottom (#335 mockup). */
+.plan-editor--phone {
+  position: fixed;
+  inset: 0;
+  /* Over the phone's navigation bar (110): editing takes the whole screen. */
+  z-index: 115;
+  display: flex;
+  flex-direction: column;
+  background: var(--ink-surface-1);
+}
+.plan-editor__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: max(8px, env(safe-area-inset-top)) 12px 8px;
+  border-bottom: 1px solid var(--ink-border-muted);
+  font-size: 14px;
+}
+.plan-editor__phone-stage {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  align-items: center;
+  padding: 0 0 132px;
+  background:
+    var(--ink-surface-1) radial-gradient(var(--ink-canvas-dot) 1px, transparent 1.1px) 0 0 / 14px
+    14px;
+}
+.plan-editor--phone .plan-editor__sheet {
+  position: relative;
+  border: 0;
+  border-radius: 0;
+  outline: 0;
+  background: transparent;
+}
+.plan-editor--phone .plan__body {
+  background: transparent;
+}
+.plan-editor__tools--phone {
+  left: 50%;
+  bottom: calc(14px + env(safe-area-inset-bottom));
+  translate: -50% 0;
+  flex-direction: row;
+}
+.plan-editor__tools--phone .plan-editor__btn {
+  width: 40px;
+  height: 40px;
+}
+.plan-editor__tools--phone .plan-editor__sep {
+  width: 1px;
+  height: 22px;
+  margin: 9px 3px;
+}
+.plan-editor__lib--phone,
+.plan-editor__bar--phone {
+  left: 12px;
+  right: 12px;
+  bottom: 70px;
+  width: auto;
+}
+.plan-editor__lib--phone {
+  padding: 8px;
+}
+.plan-editor__lib--phone .plan-editor__grid {
+  grid-template-columns: repeat(7, 1fr);
+}
+.plan-editor__lib--phone .plan-editor__tile {
+  padding: 6px 0;
+}
+.plan-editor__bar--phone {
+  justify-content: space-between;
+}
+.plan-editor__bar--phone .plan-editor__field {
+  flex: 1;
+  min-width: 0;
+  font-size: 16px;
+}

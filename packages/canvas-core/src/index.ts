@@ -6,6 +6,7 @@ export * from './bounds.ts';
 export * from './column.ts';
 export * from './film.ts';
 export * from './geometry.ts';
+export * from './plan.ts';
 export * from './resize.ts';
 export * from './snap.ts';
 export * from './table.ts';

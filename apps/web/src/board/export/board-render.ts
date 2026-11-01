@@ -1,8 +1,20 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-import { arrowGeometry, arrowPolyline, decodeStroke, type Rect } from '@inkadra/canvas-core';
-import type { Element, FrameShape, Stroke } from '@inkadra/doc-schema';
+import {
+  arrowGeometry,
+  arrowPolyline,
+  decodeStroke,
+  iconCentre,
+  labelAnchor,
+  PLAN_VIEW_W,
+  type PlanPaint,
+  type PlanPart,
+  planIconParts,
+  type Rect,
+} from '@inkadra/canvas-core';
+import { type Element, type FrameShape, PLAN_ASPECT, type Stroke } from '@inkadra/doc-schema';
 import type { AssetTrack } from '@inkadra/shared';
 import { croppedRotatedSize } from '../image-crop.ts';
+import { planToken } from '../plan/PlanDrawing.tsx';
 import type { Placed } from './board-model.ts';
 import type { ImageInfo, Measure, Op } from './pages.ts';
 import { ellipsize, lineHeight, type TextStyle, textBlock, wrapText } from './text.ts';
@@ -26,6 +38,7 @@ export type Palette = Record<
   | 'tag-orange-bg'
   | 'tag-purple-bg'
   | 'tag-green-bg'
+  | 'tag-yellow'
   | 'tag-red',
   string
 >;
@@ -55,7 +68,8 @@ export interface CardContext {
   slugline(scene: Extract<Element, { type: 'scene' }>): string;
   /** Actor or INT./EXT. and the scene count of a character or location, on one line. */
   storyMeta(card: Extract<Element, { type: 'character' | 'location' }>): string;
-  words: { board: string; file: string };
+  /** `plan`: the name of a set plan, in its header. */
+  words: { board: string; file: string; plan?: string };
 }
 
 const PAD = 12;
@@ -111,6 +125,8 @@ export function cardHeight(el: Element, w: number, ctx: CardContext): number | n
     }
     case 'table':
       return el.rows.length * TABLE_ROW;
+    case 'plan':
+      return PLAN_HEAD + w / PLAN_ASPECT;
     case 'map':
       return (ctx.image(el.imageAssetId) ? (w * 560) / 1024 : 0) + 52;
     case 'location': {
@@ -531,6 +547,31 @@ function body(p: Placed, ctx: CardContext): Op[] {
       return [];
     case 'table':
       return tableOps(el, p, c, m);
+    case 'plan': {
+      const title = [ctx.words.plan, el.title].filter(Boolean).join(' · ');
+      const ops: Op[] = [
+        {
+          kind: 'text',
+          x,
+          y: p.y + 21,
+          text: ellipsize(title, inner, 12, 500, m),
+          size: 12,
+          weight: 500,
+          color: c['text-primary'],
+        },
+        {
+          kind: 'line',
+          x1: p.x,
+          y1: p.y + PLAN_HEAD,
+          x2: p.x + p.w,
+          y2: p.y + PLAN_HEAD,
+          color: c['border-default'],
+          width: 1,
+        },
+      ];
+      const box = { x: p.x, y: p.y + PLAN_HEAD, w: p.w, h: p.w / PLAN_ASPECT };
+      return [...ops, ...planOps(el, box, ctx)];
+    }
     case 'map': {
       const ops: Op[] = [];
       let top = p.y + 10;
@@ -804,6 +845,119 @@ function shapeOps(shape: FrameShape, box: Rect): Op[] {
   }
 }
 
+/** Height of a set plan's header, on the board and in exports. */
+const PLAN_HEAD = 34;
+
+/** `hex` mixed with `base` (both #RRGGBB), `t` of the way to `hex`; other colours stay. */
+function mix(hex: string, base: string, t: number): string {
+  const rgb = (h: string) =>
+    /^#[0-9a-f]{6}$/i.test(h) ? [1, 3, 5].map((i) => Number.parseInt(h.slice(i, i + 2), 16)) : null;
+  const a = rgb(hex);
+  const b = rgb(base);
+  if (!a || !b) return hex;
+  return `#${a
+    .map((v, i) =>
+      Math.round((b[i] as number) + (v - (b[i] as number)) * t)
+        .toString(16)
+        .padStart(2, '0'),
+    )
+    .join('')}`;
+}
+
+/**
+ * A set plan's drawing as vectors, without the grid (decision 0062): strokes, shapes, then the
+ * set icons with their labels, in the printed theme's colours.
+ */
+export function planOps(el: Extract<Element, { type: 'plan' }>, box: Rect, ctx: CardContext): Op[] {
+  const c = ctx.colors;
+  const ink = (hex: string) => {
+    const token = planToken(hex);
+    return token ? c[token as keyof Palette] : hex;
+  };
+  const inside: Op[] = [];
+  for (const stroke of el.strokes ?? [])
+    inside.push(strokeOp({ ...stroke, color: ink(stroke.color) }, box));
+  for (const shape of el.shapes ?? [])
+    inside.push(...shapeOps({ ...shape, color: ink(shape.color) }, box));
+  const k = box.w / PLAN_VIEW_W;
+  for (const icon of el.icons ?? []) {
+    const color = ink(icon.color);
+    const paint = (p: PlanPaint | undefined): string | null => {
+      switch (p) {
+        case undefined:
+          return null;
+        case 'ink':
+          return color;
+        case 'soft':
+          return mix(color, c['surface-1'], 0.25);
+        case 'wash':
+          return mix(color, c['surface-1'], 0.14);
+        case 'faint':
+          return mix(color, c['surface-1'], 0.5);
+        case 'muted':
+          return c['text-muted'];
+        case 'surface':
+          return c['surface-1'];
+        case 'raised':
+          return c['surface-2'];
+      }
+    };
+    const centre = iconCentre(icon);
+    const t = ((icon.rotation ?? 0) * Math.PI) / 180;
+    const place = (x: number, y: number) => ({
+      x: box.x + (centre.x + x * Math.cos(t) - y * Math.sin(t)) * k,
+      y: box.y + (centre.y + x * Math.sin(t) + y * Math.cos(t)) * k,
+    });
+    for (const part of planIconParts(icon.kind)) inside.push(...partOps(part, place, k, paint));
+    if (icon.label) {
+      const at = labelAnchor(icon);
+      const size = 24 * k;
+      inside.push({
+        kind: 'text',
+        x: box.x + at.x * k - ctx.measure(icon.label, size, 500) / 2,
+        y: box.y + at.y * k,
+        text: icon.label,
+        size,
+        weight: 500,
+        color,
+      });
+    }
+  }
+  return [{ kind: 'clip', ...box, ops: inside }];
+}
+
+function partOps(
+  part: PlanPart,
+  place: (x: number, y: number) => { x: number; y: number },
+  k: number,
+  paint: (p: PlanPaint | undefined) => string | null,
+): Op[] {
+  const fill = paint(part.fill);
+  const stroke = paint(part.stroke);
+  const width = part.width * k;
+  let pts: Array<{ x: number; y: number }>;
+  if (part.circle) {
+    const { cx, cy, r } = part.circle;
+    pts = Array.from({ length: 25 }, (_, i) => {
+      const a = (i / 24) * Math.PI * 2;
+      return place(cx + r * Math.cos(a), cy + r * Math.sin(a));
+    });
+  } else {
+    const raw = part.points ?? [];
+    pts = [];
+    for (let i = 0; i + 1 < raw.length; i += 2)
+      pts.push(place(raw[i] as number, raw[i + 1] as number));
+    if (part.closed && pts[0]) pts.push(pts[0]);
+  }
+  const ops: Op[] = [];
+  if (fill && (part.closed || part.circle))
+    ops.push({ kind: 'polygon', points: pts.flatMap((p) => [p.x, p.y]), fill });
+  if (stroke && part.dash) ops.push(...dashes(pts, width * 3, width * 3, stroke, width));
+  else if (stroke)
+    ops.push({ kind: 'polyline', points: pts.flatMap((p) => [p.x, p.y]), color: stroke, width });
+  return ops;
+}
+
 function head(x0: number, y0: number, x1: number, y1: number, size: number, color: string): Op {
   const angle = Math.atan2(y1 - y0, x1 - x0);
   const a = angle + Math.PI - 0.45;
@@ -894,6 +1048,7 @@ function dashes(
   on: number,
   off: number,
   color: string,
+  width = 1.5,
 ): Op[] {
   const ops: Op[] = [];
   let drawing = true;
@@ -908,7 +1063,7 @@ function dashes(
       const t = step / len;
       const next: { x: number; y: number } = { x: p.x + (q.x - p.x) * t, y: p.y + (q.y - p.y) * t };
       if (drawing)
-        ops.push({ kind: 'line', x1: p.x, y1: p.y, x2: next.x, y2: next.y, color, width: 1.5 });
+        ops.push({ kind: 'line', x1: p.x, y1: p.y, x2: next.x, y2: next.y, color, width });
       p = next;
       len -= step;
       left -= step;

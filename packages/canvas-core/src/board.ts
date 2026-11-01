@@ -39,6 +39,7 @@ export const DEFAULT_WIDTH: Record<ElementType, number> = {
   section: 640,
   table: 420,
   map: 240,
+  plan: 480,
 };
 
 export const MIN_WIDTH = 80;

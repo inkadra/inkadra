@@ -285,6 +285,34 @@ const paths = {
   crop: <path d="M6 2v14a2 2 0 0 0 2 2h14M2 6h14a2 2 0 0 1 2 2v14" />,
   rotateLeft: <path d="M4 9V4m0 5h5M4.5 9A8 8 0 1 1 6 17.5" />,
   rotateRight: <path d="M20 9V4m0 5h-5m4.5 0A8 8 0 1 0 18 17.5" />,
+  // Set icons of a set plan (#335), on the 24 grid of the rest.
+  planCamera: (
+    <>
+      <rect x="3" y="8" width="12" height="9" rx="1.5" />
+      <path d="M15 11l5-3v9l-5-3" />
+    </>
+  ),
+  planLight: (
+    <>
+      <circle cx="8.25" cy="12" r="3.75" />
+      <path d="M12 9.75l8.25-4.5v13.5L12 14.25" />
+    </>
+  ),
+  planActor: (
+    <>
+      <circle cx="12" cy="10.5" r="4.5" />
+      <path d="M9 16.5l3 3.75 3-3.75" />
+    </>
+  ),
+  planDoor: (
+    <>
+      <path d="M4.5 19.5h15M6.75 19.5V7.5" />
+      <path d="M6.75 7.5a12 12 0 0 1 12 12" strokeDasharray="2.25 2.25" />
+    </>
+  ),
+  planWindow: <path d="M3 9.75h18v4.5H3zM3 12h18" />,
+  planTable: <rect x="4.5" y="7.5" width="15" height="9" rx="1.5" />,
+  planTrack: <path d="M3 9h18M3 15h18M6 9v6M9.75 9v6M13.5 9v6M17.25 9v6" />,
   warning: (
     <>
       <path d="M12 4l9 16H3z" />

@@ -4,7 +4,7 @@ import { z } from 'zod';
 import { AspectRatio, Element, type ElementType, type TableRow } from './elements.ts';
 
 /** Bump when the shape of the board document changes, and add a migration below. */
-export const CURRENT_SCHEMA_VERSION = 13;
+export const CURRENT_SCHEMA_VERSION = 14;
 
 export const DOC_NAME_PREFIX = 'board:';
 
@@ -94,6 +94,9 @@ const migrations: Record<number, Migration> = {
   // 13: optional `list` and `sceneId` on to-do cards (#323, decision 0058). Existing lists stay
   // ordinary; older builds must not drop the kind or the scene when copying a card.
   12: () => {},
+  // 14: the set plan element (#335, decision 0062). Additive; the bump keeps older servers from
+  // loading documents with an element type they would refuse to validate.
+  13: () => {},
 };
 
 /**
@@ -186,6 +189,11 @@ export function addElement(doc: Y.Doc, element: Element): Y.Map<unknown> {
     // instead of each replacing the field with their own.
     if (parsed.type === 'frame' && !parsed.strokes) map.set('strokes', new Y.Array());
     if (parsed.type === 'frame' && !parsed.shapes) map.set('shapes', new Y.Array());
+    if (parsed.type === 'plan') {
+      if (!parsed.strokes) map.set('strokes', new Y.Array());
+      if (!parsed.shapes) map.set('shapes', new Y.Array());
+      if (!parsed.icons) map.set('icons', new Y.Array());
+    }
     roots(doc).elements.set(parsed.id, map);
   });
   return map;
@@ -204,13 +212,14 @@ export function tableRowMap(row: TableRow): Y.Map<unknown> {
 }
 
 /**
- * To-do items and table columns are Y.Maps in a Y.Array so two people can tick different
- * items; table rows too, with their cells in a nested Y.Map; pen strokes are
+ * To-do items, table columns and plan icons are Y.Maps in a Y.Array so two people can edit
+ * different items; table rows too, with their cells in a nested Y.Map; pen strokes are
  * plain objects in a Y.Array (so are frame shapes) so two people can draw on the same frame. Everything else is a
  * plain value that a write replaces.
  */
 function toYValue(key: string, value: unknown): unknown {
-  if (key === 'items' || key === 'columns') return Y.Array.from((value as object[]).map(toYMap));
+  if (key === 'items' || key === 'columns' || key === 'icons')
+    return Y.Array.from((value as object[]).map(toYMap));
   if (key === 'rows') return Y.Array.from((value as TableRow[]).map(tableRowMap));
   if (key === 'strokes' || key === 'shapes') return Y.Array.from(value as object[]);
   return value;
