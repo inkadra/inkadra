@@ -46,10 +46,11 @@ const viewTabs = (page: Page) =>
 const filmTabs = ['Storyboard', 'Shot list', 'Piano riprese'];
 
 /** The phone's view switcher: the options it lists. */
-async function switcherOptions(page: Page) {
+async function switcherOptions(page: Page, shot: string) {
   await page.getByRole('combobox', { name: 'Vista', exact: true }).click();
   const list = page.getByRole('listbox');
   const names = await list.getByRole('option').allTextContents();
+  await shoot(page, shot);
   await page.keyboard.press('Escape');
   await expect(list).toBeHidden();
   return names;
@@ -187,8 +188,7 @@ test.describe('on a phone', () => {
     await shoot(page, 'phone-empty-project');
     await page.keyboard.press('Escape');
     await expect(drawer).toBeHidden();
-    expect(await switcherOptions(page)).toEqual(['Lavagna', 'Moodboard']);
-    await shoot(page, 'phone-switcher-empty');
+    expect(await switcherOptions(page, 'phone-switcher-empty')).toEqual(['Lavagna', 'Moodboard']);
     await nav.getByRole('button', { name: 'Progetti', exact: true }).click();
     // A live client review link brings Review into the drawer.
     const made = await page.request.post(`/api/v1/boards/${project.rootBoardId}/share-links`, {
@@ -202,7 +202,11 @@ test.describe('on a phone', () => {
     await shoot(page, 'phone-review-without-storyboard');
     await page.keyboard.press('Escape');
     await expect(drawer).toBeHidden();
-    expect(await switcherOptions(page)).toEqual(['Lavagna', 'Revisione', 'Moodboard']);
+    expect(await switcherOptions(page, 'phone-switcher-review')).toEqual([
+      'Lavagna',
+      'Revisione',
+      'Moodboard',
+    ]);
     await nav.getByRole('button', { name: 'Progetti', exact: true }).click();
     await drawer.getByRole('button', { name: `Opzioni progetto: ${project.name}` }).click();
     await expect(page.getByRole('menuitem', { name: 'Aggiungi storyboard…' })).toBeVisible();
@@ -216,7 +220,7 @@ test.describe('on a phone', () => {
     await shoot(page, 'phone-with-storyboard');
     await page.keyboard.press('Escape');
     await expect(drawer).toBeHidden();
-    expect(await switcherOptions(page)).toEqual([
+    expect(await switcherOptions(page, 'phone-switcher-storyboard')).toEqual([
       'Lavagna',
       'Storyboard',
       'Shot list',
