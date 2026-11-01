@@ -528,6 +528,7 @@ describe.skipIf(!url)('instance administration', () => {
       requireAdminTwoFactor: false,
       // Decision 0041: on by default, the behaviour before the setting existed.
       membersCanCreateProjects: true,
+      calendarFeedEnabled: true,
     });
     expect((await app.inject('/api/v1/instance')).json()).toMatchObject({
       name: 'Studio',

@@ -2,7 +2,7 @@
 
 import { CommentPin, CommentVisibility, ElementRef, MAX_COMMENT_LENGTH } from './comments.ts';
 import { Id, Timestamp, z } from './common.ts';
-import { ProjectIcon, ProjectType } from './projects.ts';
+import { ProjectIcon, ProjectTimeZone, ProjectType } from './projects.ts';
 import { ReviewStatus } from './reviews.ts';
 import { ShootingDayInput } from './schedule.ts';
 
@@ -93,6 +93,7 @@ export const ArchiveProject = z.object({
   name: z.string().trim().min(1).max(120),
   icon: ProjectIcon,
   type: ProjectType.nullable(),
+  timeZone: ProjectTimeZone.optional(),
   shootingStart: z.iso.date().nullable(),
   shootingEnd: z.iso.date().nullable(),
   archived: z.boolean(),

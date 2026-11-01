@@ -183,6 +183,13 @@
       "when": 1793556922194,
       "tag": "0025_release_news",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1793561046013,
+      "tag": "0026_calendar_feed",
+      "breakpoints": true
     }
   ]
 }

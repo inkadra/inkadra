@@ -201,6 +201,7 @@ export const project = pgTable('project', {
   position: text('position').notNull(),
   archivedAt: timestamp('archived_at', { withTimezone: true }),
   type: text('type'),
+  timeZone: text('time_zone').notNull().default('UTC'),
   shootingStart: date('shooting_start'),
   shootingEnd: date('shooting_end'),
   createdBy: uuid('created_by').references(() => user.id, { onDelete: 'set null' }),
@@ -1186,3 +1187,15 @@ export const instanceBackup = pgTable(
     uniqueIndex('instance_backup_running_uq').on(t.status).where(sql`${t.status} = 'running'`),
   ],
 );
+
+/** Only a digest of the bearer credential; generation is public key-derivation context. */
+export const calendarFeed = pgTable('calendar_feed', {
+  userId: uuid('user_id')
+    .primaryKey()
+    .references(() => user.id, { onDelete: 'cascade' }),
+  generation: uuid('generation').notNull(),
+  tokenHash: text('token_hash').notNull(),
+  contentHash: text('content_hash'),
+  lastModified: timestamp('last_modified', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: updatedAt(),
+});

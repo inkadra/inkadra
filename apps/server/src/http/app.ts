@@ -25,6 +25,7 @@ import { registerApiRoutes } from './api-routes.ts';
 import { registerAssetRoutes } from './assets-routes.ts';
 import { registerAuthRoutes } from './auth-routes.ts';
 import { registerBoardRoutes } from './boards-routes.ts';
+import { registerCalendarRoutes } from './calendar-routes.ts';
 import { registerClipRoutes } from './clip-routes.ts';
 import { registerCommentRoutes } from './comments-routes.ts';
 import { registerCsrfCheck } from './csrf.ts';
@@ -81,11 +82,13 @@ export async function createApp(deps: AppDeps) {
         serializers: {
           req(req: FastifyRequest) {
             // These paths contain bearer credentials. Never persist them in request logs.
-            const url = req.url.startsWith(GUEST_PAGE_PATH)
-              ? `${GUEST_PAGE_PATH}[redacted]`
-              : req.url.startsWith(`${API_PREFIX}/guest/by-token/`)
-                ? `${API_PREFIX}/guest/by-token/[redacted]`
-                : req.url;
+            const url = req.url.startsWith('/calendar/')
+              ? '/calendar/[redacted].ics'
+              : req.url.startsWith(GUEST_PAGE_PATH)
+                ? `${GUEST_PAGE_PATH}[redacted]`
+                : req.url.startsWith(`${API_PREFIX}/guest/by-token/`)
+                  ? `${API_PREFIX}/guest/by-token/[redacted]`
+                  : req.url;
             return { method: req.method, url, hostname: req.hostname, remoteAddress: req.ip };
           },
         },
@@ -112,7 +115,7 @@ export async function createApp(deps: AppDeps) {
     reply.header('x-frame-options', 'DENY');
     // The token of a share link is in the path of its guest page: it must not leak to the
     // sites of link cards nor into search engines (decision 0013).
-    if (req.url.startsWith(GUEST_PAGE_PATH)) {
+    if (req.url.startsWith(GUEST_PAGE_PATH) || req.url.startsWith('/calendar/')) {
       reply.header('referrer-policy', 'no-referrer');
       reply.header('x-robots-tag', 'noindex, nofollow');
     } else reply.header('referrer-policy', 'strict-origin-when-cross-origin');
@@ -140,6 +143,7 @@ export async function createApp(deps: AppDeps) {
   registerReviewRoutes(app, deps);
   registerScheduleRoutes(app, deps);
   registerNotificationRoutes(app, deps);
+  registerCalendarRoutes(app, deps);
   registerTransferRoutes(app, deps);
   registerUploads(app, { ...deps, uploadMaxSize: config.UPLOAD_MAX_SIZE });
   await registerClipRoutes(app, { ...deps, uploadMaxSize: config.UPLOAD_MAX_SIZE });
@@ -162,7 +166,10 @@ export async function createApp(deps: AppDeps) {
     });
     app.setNotFoundHandler((req, reply) => {
       const path = req.url.split('?')[0] ?? '/';
-      const isApi = path.startsWith(API_PREFIX) || path.startsWith(AUTH_PREFIX);
+      const isApi =
+        path.startsWith(API_PREFIX) ||
+        path.startsWith(AUTH_PREFIX) ||
+        path.startsWith('/calendar/');
       const isFile = path.startsWith('/assets/') || path.startsWith(COLLAB_PATH);
       // HEAD too: uptime monitors and proxies probe the site with it.
       if ((req.method !== 'GET' && req.method !== 'HEAD') || isApi || isFile)

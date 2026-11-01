@@ -53,6 +53,17 @@ export const ProjectIcon = z
 /** Stable ID in the instance project-type catalog. */
 export const ProjectType = z.string().min(1).max(40);
 export type ProjectType = z.infer<typeof ProjectType>;
+export const ProjectTimeZone = z
+  .string()
+  .max(100)
+  .refine((value) => {
+    try {
+      new Intl.DateTimeFormat('en', { timeZone: value });
+      return true;
+    } catch {
+      return false;
+    }
+  }, 'Use an IANA time zone.');
 const ShootingDate = z.iso.date();
 
 export const Project = z
@@ -67,6 +78,7 @@ export const Project = z
     updatedAt: Timestamp,
     myRole: ProjectRole,
     type: ProjectType.nullable().optional(),
+    timeZone: ProjectTimeZone.optional(),
     shootingStart: ShootingDate.nullable().optional(),
     shootingEnd: ShootingDate.nullable().optional(),
     pinned: z.boolean().optional(),
@@ -83,6 +95,7 @@ export const CreateProject = z
     name: z.string().trim().min(1).max(120),
     icon: ProjectIcon.optional(),
     type: ProjectType.nullable().optional(),
+    timeZone: ProjectTimeZone.optional(),
     shootingStart: ShootingDate.nullable().optional(),
     shootingEnd: ShootingDate.nullable().optional(),
   })
@@ -96,6 +109,7 @@ export const UpdateProject = z
     position: FractionalIndex,
     archived: z.boolean(),
     type: ProjectType.nullable(),
+    timeZone: ProjectTimeZone.optional(),
     shootingStart: ShootingDate.nullable(),
     shootingEnd: ShootingDate.nullable(),
   })

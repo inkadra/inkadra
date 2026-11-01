@@ -955,3 +955,51 @@
   gap: 12px;
   font-size: 12px;
 }
+
+.calendar-link {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 4px 0 12px;
+}
+.calendar-link input {
+  flex: 1;
+  min-width: 0;
+  font-family: monospace;
+}
+.calendar-intro {
+  margin: 10px 0 8px;
+  font-size: 12px;
+  color: var(--ink-text-secondary);
+}
+.calendar-icon {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: var(--ink-radius-sm);
+  background: var(--ink-surface-2);
+  color: var(--ink-text-secondary);
+}
+.calendar-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 6px 0 12px;
+  padding: 9px 11px;
+  border-radius: var(--ink-radius-sm);
+  background: var(--ink-surface-2);
+  color: var(--ink-text-secondary);
+  font-size: 12px;
+}
+.calendar-note svg {
+  flex: none;
+  margin-top: 1px;
+  color: var(--ink-text-muted);
+}
+@media (width < 768px) {
+  .calendar-link input {
+    flex-basis: 100%;
+  }
+}

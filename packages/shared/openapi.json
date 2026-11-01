@@ -215,6 +215,59 @@
           "reason"
         ]
       },
+      "CalendarFeed": {
+        "type": "object",
+        "properties": {
+          "enabled": {
+            "type": "boolean"
+          },
+          "url": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uri"
+          }
+        },
+        "required": [
+          "enabled",
+          "url"
+        ]
+      },
+      "ApiError": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "object",
+            "properties": {
+              "code": {
+                "type": "string",
+                "enum": [
+                  "bad_request",
+                  "unauthorized",
+                  "forbidden",
+                  "not_found",
+                  "conflict",
+                  "payload_too_large",
+                  "rate_limited",
+                  "internal"
+                ]
+              },
+              "message": {
+                "type": "string"
+              },
+              "details": {}
+            },
+            "required": [
+              "code",
+              "message"
+            ]
+          }
+        },
+        "required": [
+          "error"
+        ]
+      },
       "MyTasks": {
         "type": "object",
         "properties": {
@@ -270,40 +323,6 @@
           "elementId",
           "itemId",
           "text"
-        ]
-      },
-      "ApiError": {
-        "type": "object",
-        "properties": {
-          "error": {
-            "type": "object",
-            "properties": {
-              "code": {
-                "type": "string",
-                "enum": [
-                  "bad_request",
-                  "unauthorized",
-                  "forbidden",
-                  "not_found",
-                  "conflict",
-                  "payload_too_large",
-                  "rate_limited",
-                  "internal"
-                ]
-              },
-              "message": {
-                "type": "string"
-              },
-              "details": {}
-            },
-            "required": [
-              "code",
-              "message"
-            ]
-          }
-        },
-        "required": [
-          "error"
         ]
       },
       "Schedule": {
@@ -821,6 +840,10 @@
             "minLength": 1,
             "maxLength": 120
           },
+          "calendarFeedEnabled": {
+            "type": "boolean",
+            "default": true
+          },
           "registration": {
             "type": "string",
             "enum": [
@@ -855,6 +878,9 @@
             "type": "string",
             "minLength": 1,
             "maxLength": 120
+          },
+          "calendarFeedEnabled": {
+            "type": "boolean"
           },
           "registration": {
             "type": "string",
@@ -2167,6 +2193,10 @@
             "minLength": 1,
             "maxLength": 40
           },
+          "timeZone": {
+            "type": "string",
+            "maxLength": 100
+          },
           "shootingStart": {
             "type": [
               "string",
@@ -3102,6 +3132,10 @@
             "minLength": 1,
             "maxLength": 40
           },
+          "timeZone": {
+            "type": "string",
+            "maxLength": 100
+          },
           "shootingStart": {
             "type": [
               "string",
@@ -3149,6 +3183,10 @@
             ],
             "minLength": 1,
             "maxLength": 40
+          },
+          "timeZone": {
+            "type": "string",
+            "maxLength": 100
           },
           "shootingStart": {
             "type": [
@@ -7067,6 +7105,173 @@
     "parameters": {}
   },
   "paths": {
+    "/api/v1/me/calendar-feed": {
+      "get": {
+        "tags": [
+          "Account"
+        ],
+        "summary": "Get or initialize your private calendar link",
+        "responses": {
+          "200": {
+            "description": "Private link; never cache",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CalendarFeed"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Account"
+        ],
+        "summary": "Regenerate and revoke your calendar link",
+        "responses": {
+          "200": {
+            "description": "Private link; never cache",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CalendarFeed"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/calendar/{token}.ics": {
+      "get": {
+        "tags": [
+          "Account"
+        ],
+        "security": [
+          {}
+        ],
+        "summary": "Private read-only calendar; bearer URL, rate limited; membership checked on every request",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "token",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "RFC 5545 calendar",
+            "content": {
+              "text/calendar": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "304": {
+            "description": "Unchanged"
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited"
+          }
+        }
+      }
+    },
     "/api/v1/me/tasks": {
       "get": {
         "tags": [

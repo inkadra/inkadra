@@ -95,6 +95,12 @@ const it = {
   notificationSettings: (url: string) =>
     `Scegli quando ricevere queste email nelle impostazioni: ${url}`,
   notificationAction: 'Apri Inkadra',
+  calendar: {
+    deadline: (task: string, board: string) => `Scadenza: ${task} · ${board}`,
+    todo: (board: string) => `To-do · board "${board}" · tutto il giorno`,
+    call: (time: string, place: string, wrap: string | null) =>
+      [`Conv. ${time}`, place, wrap && `fine prevista ${wrap}`].filter(Boolean).join(' · '),
+  },
 };
 
 type Texts = typeof it;
@@ -180,6 +186,12 @@ const en: Texts = {
   digestSubject: (instance) => `Today on ${instance}`,
   notificationSettings: (url) => `Choose when you get these emails in your settings: ${url}`,
   notificationAction: 'Open Inkadra',
+  calendar: {
+    deadline: (task, board) => `Due: ${task} · ${board}`,
+    todo: (board) => `To-do · board "${board}" · all day`,
+    call: (time, place, wrap) =>
+      [`Call ${time}`, place, wrap && `wrap ${wrap}`].filter(Boolean).join(' · '),
+  },
 };
 
 /**

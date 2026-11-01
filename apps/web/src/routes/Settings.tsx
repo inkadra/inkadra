@@ -38,6 +38,7 @@ import { formatClock } from '../lib/datetime.ts';
 import { updatePreferences, usePreferences } from '../lib/preferences.ts';
 import { useSession } from '../lib/session.tsx';
 import { type ThemePreference, useTheme } from '../lib/theme.ts';
+import { CalendarSettings } from '../notifications/CalendarSettings.tsx';
 import { EmailNotifications } from '../notifications/Notifications.tsx';
 import { useInstanceSetupState } from './AppLayout.tsx';
 import { ClassificationSettings } from './ClassificationSettings.tsx';
@@ -86,6 +87,7 @@ export function Settings() {
       return (
         <SettingsShell page={page}>
           <EmailNotifications releaseNewsAvailable={instance?.releaseNews === true} />
+          <CalendarSettings />
         </SettingsShell>
       );
     case 'classifications':

@@ -89,6 +89,7 @@ export function toProject(
     updatedAt: iso(row.updatedAt),
     myRole,
     type: row.type,
+    timeZone: row.timeZone,
     shootingStart: row.shootingStart,
     shootingEnd: row.shootingEnd,
     pinned,
@@ -298,6 +299,7 @@ export function registerProjectRoutes(app: FastifyInstance, deps: Deps) {
           id,
           name: input.name,
           type: input.type,
+          timeZone: input.timeZone,
           shootingStart: input.shootingStart,
           shootingEnd: input.shootingEnd,
           iconShape: icon.shape,
@@ -338,6 +340,7 @@ export function registerProjectRoutes(app: FastifyInstance, deps: Deps) {
     );
     const set: Partial<typeof project.$inferInsert> = {};
     if (patch.type !== undefined) set.type = patch.type;
+    if (patch.timeZone !== undefined) set.timeZone = patch.timeZone;
     if (patch.shootingStart !== undefined) set.shootingStart = patch.shootingStart;
     if (patch.shootingEnd !== undefined) set.shootingEnd = patch.shootingEnd;
     if (patch.name !== undefined) set.name = patch.name;

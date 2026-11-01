@@ -6,6 +6,7 @@ export const InstanceSettings = z
   .object({
     releaseNews: z.boolean().default(true),
     name: z.string().trim().min(1).max(120),
+    calendarFeedEnabled: z.boolean().default(true),
     registration: z.enum(['open', 'invite', 'closed']),
     requireAdminTwoFactor: z.boolean().openapi({
       description:
@@ -27,6 +28,7 @@ export const UpdateInstanceSettings = InstanceSettings.partial()
   // A PATCH omission must preserve the stored policy, not apply its read-time default.
   .extend({
     releaseNews: z.boolean().optional(),
+    calendarFeedEnabled: z.boolean().optional(),
     requireAdminTwoFactor: z.boolean().optional(),
     membersCanCreateProjects: z.boolean().optional(),
   })
