@@ -3,7 +3,10 @@
 .canvas {
   position: absolute;
   inset: 0;
-  overflow: hidden;
+  /* Clip, not hidden: the dot layer reaches 64px past the edges and eased cards may too, and a
+     hidden overflow is still a scroll container that focus() or scrollIntoView() scrolls, which
+     shifted the whole board and its chrome under the floating panels. */
+  overflow: clip;
   touch-action: none;
   user-select: none;
   -webkit-user-select: none;
