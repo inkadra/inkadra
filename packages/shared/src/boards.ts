@@ -112,9 +112,9 @@ export const BoardCount = z
     }),
     fileCount: z.int().nonnegative().optional().openapi({ description: 'File cards.' }),
     boardCount: z.int().nonnegative().optional().openapi({ description: 'Board cards.' }),
-    inReviewCount: z.int().nonnegative().optional().openapi({
+    clientReview: z.boolean().optional().openapi({
       description:
-        'Cards whose team review status is `in_review`: the board has a client review under way.',
+        'A share link that lets guests set the review status of cards (`guest_approve`) is live on this board: not revoked, not expired.',
     }),
   })
   .openapi('BoardCount');

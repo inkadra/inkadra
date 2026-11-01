@@ -1930,6 +1930,9 @@
     "name": "Name"
   },
   "clientReview": {
+    "cardProgress": "{{approved}} of {{total}} cards approved",
+    "allCards": "All cards",
+    "noCards": "No cards to review on this board.",
     "progress": "{{approved}} of {{total}} frames approved",
     "guestThreads": "Client threads",
     "audienceHint": "Threads shared with guests. Replies keep the original share-link audience.",

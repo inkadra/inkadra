@@ -35,6 +35,22 @@ export function useLiveBoardCounts(
   }, [boardId]);
 }
 
+// Bumped when something the counts report changes without a board edit (a client review link).
+let revision = 0;
+const refreshListeners = new Set<() => void>();
+const subscribeRefresh = (onChange: () => void) => {
+  refreshListeners.add(onChange);
+  return () => {
+    refreshListeners.delete(onChange);
+  };
+};
+
+/** Counts again now: a link was made, changed or revoked, which no board notice announces. */
+export function refreshBoardCounts() {
+  revision++;
+  for (const listener of refreshListeners) listener();
+}
+
 /**
  * Counts of the open project's boards, for the navigation and the board cards; refreshed when
  * its boards change.
@@ -44,6 +60,7 @@ export function useBoardCounts(
   boards: readonly Board[] | null | undefined,
 ): Map<string, BoardCount> {
   const [counts, setCounts] = useState<Map<string, BoardCount>>(new Map());
+  const refreshed = useSyncExternalStore(subscribeRefresh, () => revision);
   // Any board edit moves its editedAt, so the newest one tells when to count again.
   const stamp = boards
     ?.map((b) => b.editedAt ?? '')
@@ -70,7 +87,7 @@ export function useBoardCounts(
     return () => {
       live = false;
     };
-  }, [projectId, stamp, boards?.length]);
+  }, [projectId, stamp, boards?.length, refreshed]);
   // Boards laid out in the background (the Canvas menu) are counted as soon as they are seeded.
   const seeded = useSeededCounts();
   return useMemo(() => mergeSeededCounts(counts, seeded), [counts, seeded]);

@@ -52,11 +52,11 @@ import { useBoardCounts } from '../board/live-counts.ts';
 import {
   askedView,
   type BoardView,
+  clientReviewBoard,
   defaultView,
   isBoardView,
   isFilmView,
   pickerViews,
-  projectHasReview,
   projectHasStoryboard,
   storyboardOf,
   viewDestination,
@@ -395,6 +395,8 @@ export function AppLayout({ home }: { home?: ReactNode }) {
   const here = writable.find((p) => p.id === projectId);
   const openBoardId = boardId ?? current?.rootBoardId;
   const storyboardId = storyboardOf(projectBoards);
+  // Without a storyboard, Review opens the board that has a live client review link.
+  const reviewBoardId = clientReviewBoard(projectBoards, counts);
   // Until the project's boards are known the kind is too: no tab is active before that.
   const openBoard = projectBoards?.find((b) => b.id === openBoardId);
   const openKind: BoardKind | undefined = openBoard?.kind;
@@ -412,6 +414,7 @@ export function AppLayout({ home }: { home?: ReactNode }) {
       v,
       { boardId: openBoardId, kind: openKind, rootBoardId: current?.rootBoardId },
       storyboardId,
+      reviewBoardId,
     );
 
   const hrefFor = (v: BoardView) => {
@@ -451,9 +454,12 @@ export function AppLayout({ home }: { home?: ReactNode }) {
   const filmView = isFilmView(currentView);
   // The film links appear with the project's first storyboard (or frame) and while a film view is
   // open, so there is always a way back; until the boards are known they stay out.
-  const showFilmLinks = filmView || projectHasStoryboard(projectBoards, counts);
-  // Review also stays for a project without a storyboard while cards are in client review.
-  const showReview = showFilmLinks || projectHasReview(counts);
+  const hasStoryboard = projectHasStoryboard(projectBoards, counts);
+  // Review alone, on a board without a storyboard, does not bring the other three along.
+  const showFilmLinks = hasStoryboard || (filmView && currentView !== 'review');
+  // Review also stays for a project without a storyboard while a client review is live, and
+  // while its view is open.
+  const showReview = showFilmLinks || currentView === 'review' || !!reviewBoardId;
   const filmRowActive = (v: BoardView) =>
     currentView === v ||
     (v === 'storyboard' && !filmView && !!storyboardId && openBoardId === storyboardId);

@@ -3385,6 +3385,18 @@ button.moodboard__card:focus-visible {
   gap: 8px;
   max-width: 1100px;
 }
+.client-review__card {
+  max-width: 1100px;
+  padding: 40px 44px;
+  border: 1px solid var(--ink-border-subtle);
+  border-radius: var(--ink-radius-md);
+  background: var(--ink-surface-1);
+}
+.client-review__card h2 {
+  margin: 0;
+  font-size: 18px;
+  overflow-wrap: anywhere;
+}
 .client-review__picture .frame-pic {
   border: 1px solid var(--ink-border-subtle);
   border-radius: var(--ink-radius-md);

@@ -130,6 +130,39 @@ it('renders the dropped shot identity and rejects foreign, malformed and read-on
   expect(put).toHaveBeenCalledOnce();
 });
 
+it('reviews the cards of a board without shots, in reading order, and leaves out structure', async () => {
+  const { doc, store } = board();
+  createElement(doc, 'note', { x: 0, y: 200 }, { label: 'Second card' }, { userId: null });
+  const first = createElement(doc, 'note', { x: 0, y: 0 }, { label: 'First card' }, { userId: null });
+  createElement(doc, 'arrow', { x: 0, y: 0 }, {}, { userId: null });
+  resetReviews({
+    boardId: 'review-board',
+    role: 'viewer',
+    status: 'ready',
+    reviewsStatus: 'ready',
+    reviews: new Map([
+      [
+        first.id,
+        {
+          elementId: first.id,
+          status: 'approved',
+          note: null,
+          changedBy: { kind: 'deleted' },
+          changedAt: '2026-10-26T00:00:00Z',
+        },
+      ],
+    ]),
+  });
+  const host = await mount(<ClientReviewView store={store} boardId="review-board" />);
+  const rows = [...host.querySelectorAll('.client-review__frame strong')].map((e) => e.textContent);
+  expect(rows).toEqual(['First card', 'Second card']);
+  expect(host.textContent).toContain('clientReview.allCards');
+  expect(host.textContent).not.toContain('shells.noShots');
+  expect(host.querySelector('progress')?.value).toBe(1);
+  expect(host.querySelector('progress')?.max).toBe(2);
+  expect(host.querySelector('.client-review__card h2')?.textContent).toBe('First card');
+});
+
 it('filters real review decisions, counts approval progress and respects viewer permissions', async () => {
   const { doc, store } = board();
   const approved = createElement(

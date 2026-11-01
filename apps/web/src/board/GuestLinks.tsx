@@ -9,6 +9,7 @@ import { Button, Checkbox, Icon, IconButton, Select } from '@inkadra/ui';
 import { type FormEvent, useCallback, useEffect, useId, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api, RequestError } from '../lib/api.ts';
+import { refreshBoardCounts } from './live-counts.ts';
 import { relativeTime } from '../notifications/Notifications.tsx';
 import {
   canChangeScope,
@@ -116,6 +117,8 @@ export function GuestLinks({
           setFresh(link.id);
           setError(null);
           await load();
+          // A review link shows in the sidebar's Review row at once.
+          refreshBoardCounts();
         }}
       />
       {error && (
@@ -138,6 +141,7 @@ export function GuestLinks({
               onChanged={async () => {
                 setError(null);
                 await load();
+                refreshBoardCounts();
               }}
               onError={(err) => setError(errorText(t, err))}
               onResults={() => setResults(link)}

@@ -17,7 +17,7 @@ import {
   UpdateBoard,
   z,
 } from '@inkadra/shared';
-import { and, asc, desc, eq, inArray, isNull, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, gt, inArray, isNull, or, sql } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
 import { generateKeyBetween } from 'fractional-indexing';
 import {
@@ -34,7 +34,7 @@ import type { Auth } from '../auth.ts';
 import { type BoardReader, storedColumns } from '../board-content.ts';
 import { boardCounts, projectPreview } from '../board-preview.ts';
 import type { Database } from '../db/client.ts';
-import { asset, board, boardDoc, clipBoardUse, elementReview, project } from '../db/schema.ts';
+import { asset, board, boardDoc, clipBoardUse, project, shareLink } from '../db/schema.ts';
 import { iso } from './api-routes.ts';
 import { requireActor } from './auth-routes.ts';
 import { HttpError } from './errors.ts';
@@ -263,26 +263,26 @@ export function registerBoardRoutes(app: FastifyInstance, deps: Deps) {
       projectGrants(db, actor, projectId),
     ]);
     if (!pRole && grants.size === 0) throw new HttpError('not_found', 'Project not found.');
-    const [rows, inReview] = await Promise.all([
+    const [rows, links] = await Promise.all([
       db
         .select({ board, state: boardDoc.state })
         .from(board)
         .leftJoin(boardDoc, eq(boardDoc.boardId, board.id))
         .where(and(eq(board.projectId, projectId), isNull(board.deletedAt))),
-      // The team's own rows (no link): cards sent to the client and not decided yet.
+      // Client review under way: a live link whose guests can set review statuses.
       db
-        .select({ boardId: elementReview.boardId, n: sql<number>`count(*)::int` })
-        .from(elementReview)
+        .selectDistinct({ boardId: shareLink.boardId })
+        .from(shareLink)
         .where(
           and(
-            eq(elementReview.projectId, projectId),
-            isNull(elementReview.shareLinkId),
-            eq(elementReview.status, 'in_review'),
+            eq(shareLink.projectId, projectId),
+            eq(shareLink.role, 'guest_approve'),
+            isNull(shareLink.revokedAt),
+            or(isNull(shareLink.expiresAt), gt(shareLink.expiresAt, sql`now()`)),
           ),
-        )
-        .groupBy(elementReview.boardId),
+        ),
     ]);
-    const reviewing = new Map(inReview.map((r) => [r.boardId, r.n]));
+    const reviewing = new Set(links.map((l) => l.boardId));
     const roles = effectiveRoles(
       rows.map((r) => r.board),
       grants,
@@ -295,7 +295,7 @@ export function registerBoardRoutes(app: FastifyInstance, deps: Deps) {
             {
               boardId: r.board.id,
               ...boardCounts(r.state ?? undefined),
-              inReviewCount: reviewing.get(r.board.id) ?? 0,
+              clientReview: reviewing.has(r.board.id),
             },
           ]
         : [],

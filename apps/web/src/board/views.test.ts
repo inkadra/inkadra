@@ -5,7 +5,7 @@ import {
   headerViews,
   isBoardView,
   pickerViews,
-  projectHasReview,
+  clientReviewBoard,
   projectHasStoryboard,
   storyboardOf,
   VIEWS,
@@ -187,18 +187,32 @@ describe('projectHasStoryboard', () => {
   });
 });
 
-describe('projectHasReview', () => {
-  it('is true only while a board has cards in client review', () => {
-    expect(projectHasReview(new Map())).toBe(false);
-    expect(projectHasReview(new Map([['a', {}]]))).toBe(false);
-    expect(projectHasReview(new Map([['a', { inReviewCount: 0 }]]))).toBe(false);
+describe('clientReviewBoard', () => {
+  const boards = [makeBoard('a', 'board'), makeBoard('b', 'board')];
+  it('is the first board with a live client review link, else null', () => {
+    expect(clientReviewBoard(boards, new Map())).toBeNull();
+    expect(clientReviewBoard(null, new Map([['a', { clientReview: true }]]))).toBeNull();
+    expect(clientReviewBoard(boards, new Map([['a', { clientReview: false }]]))).toBeNull();
     expect(
-      projectHasReview(
+      clientReviewBoard(
+        boards,
         new Map([
-          ['a', { inReviewCount: 0 }],
-          ['b', { inReviewCount: 2 }],
+          ['b', { clientReview: true }],
+          ['a', { clientReview: true }],
         ]),
       ),
-    ).toBe(true);
+    ).toBe('a');
+  });
+
+  it('is where Review opens without a storyboard, never over a storyboard', () => {
+    const here = { boardId: 'root', kind: 'board' as const, rootBoardId: 'root' };
+    expect(viewDestination('review', here, null, 'a')).toEqual({
+      boardId: 'a',
+      view: 'review',
+      kind: 'board',
+    });
+    expect(viewDestination('review', here, null)).toMatchObject({ boardId: null });
+    expect(viewDestination('review', here, 's', 'a')).toMatchObject({ boardId: 's' });
+    expect(viewDestination('shotlist', here, null, 'a')).toMatchObject({ boardId: null });
   });
 });

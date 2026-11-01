@@ -1,4 +1,5 @@
 import { expect, type Page, test } from '@playwright/test';
+import { chooseSelect } from '../helpers/select.ts';
 
 // Uses the account created by first-run.spec.ts, and creates it when run on its own.
 const admin = {
@@ -37,15 +38,12 @@ async function shoot(page: Page, name: string) {
   }
 }
 
-/** The server answers board-counts as is; the flag is what a card in client review adds. */
-async function reviewing(page: Page, rootBoardId: string, on: boolean) {
-  await page.unroute('**/board-counts');
-  if (!on) return;
-  await page.route('**/board-counts', async (route) => {
-    const body = await (await route.fetch()).json();
-    for (const item of body.items) if (item.boardId === rootBoardId) item.inReviewCount = 1;
-    await route.fulfill({ json: body });
-  });
+/** The share dialog's guest links, opened from the board. */
+async function guestLinks(page: Page) {
+  await page.getByRole('button', { name: 'Condividi' }).click();
+  const dialog = page.getByRole('dialog', { name: /^Condividi/ });
+  await dialog.getByRole('tab', { name: 'Link per ospiti' }).click();
+  return dialog;
 }
 
 test('the sidebar of a project without boards or storyboard, and Add storyboard in its menu', async ({
@@ -77,16 +75,44 @@ test('the sidebar of a project without boards or storyboard, and Add storyboard 
   await page.keyboard.press('Escape');
   await expect(dialog).toBeHidden();
 
-  // A card in client review keeps Review listed, without the rest of the film links.
-  await reviewing(page, project.rootBoardId, true);
-  await page.reload();
-  await openSidebar();
+  // A client review link on a board without a storyboard: Review appears at once, without the
+  // other film links, and opens the cards of that board.
+  const canvas = page.getByTestId('canvas');
+  await expect(page.getByRole('status').getByText('Sincronizzato')).toBeVisible();
+  await canvas.dblclick({ position: { x: 300, y: 250 } });
+  await page.keyboard.type('Palette del cliente');
+  await page.keyboard.press('Escape');
+  await expect(page.locator('[data-type="note"]')).toHaveText('Palette del cliente');
+  const dialog2 = await guestLinks(page);
+  await dialog2.getByRole('button', { name: 'Nuovo link per ospiti' }).click();
+  await chooseSelect(dialog2.getByLabel('Chi apre il link'), 'guest_approve');
+  await dialog2.getByLabel('Per chi è (facoltativo)').fill('Cliente');
+  await dialog2.getByRole('button', { name: 'Crea link per ospiti' }).click();
+  const row = dialog2.getByRole('listitem').filter({ hasText: 'Cliente' });
+  await expect(row.getByText('Attivo', { exact: true })).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(dialog2).toBeHidden();
   await expect(review).toBeVisible();
   await expect(film).toHaveCount(0);
   await shoot(page, 'review-without-storyboard');
-  await reviewing(page, project.rootBoardId, false);
-  await page.reload();
-  await openSidebar();
+  await review.click();
+  await expect(page).toHaveURL(/view=review/);
+  const reviewView = page.getByRole('region', { name: 'Revisione', exact: true });
+  await expect(reviewView.locator('.client-review__frame')).toHaveCount(1);
+  await expect(reviewView.getByText('Palette del cliente').first()).toBeVisible();
+  await expect(film).toHaveCount(0);
+  await shoot(page, 'review-view-cards');
+
+  // Revoked, the link no longer keeps Review in the sidebar.
+  await page.goto(`/p/${project.id}`);
+  await expect(page.getByRole('status').getByText('Sincronizzato')).toBeVisible();
+  const dialog3 = await guestLinks(page);
+  const live = dialog3.getByRole('listitem').filter({ hasText: 'Cliente' });
+  await live.getByRole('button', { name: 'Revoca' }).click();
+  await live.getByRole('button', { name: 'Revoca il link' }).click();
+  await expect(live.getByText('Revocato', { exact: true })).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(dialog3).toBeHidden();
   await expect(review).toHaveCount(0);
 
   // Add storyboard… in the project's menu makes one, opens it and lists the film links.
@@ -128,6 +154,16 @@ test.describe('on a phone', () => {
     const drawer = page.getByRole('dialog', { name: 'Navigazione', exact: true });
     await expect(drawer.getByRole('button', { name: 'Nuova board', exact: true })).toBeVisible();
     await shoot(page, 'phone-empty-project');
+    // A live client review link brings Review into the drawer.
+    const made = await page.request.post(`/api/v1/boards/${project.rootBoardId}/share-links`, {
+      headers: { origin },
+      data: { role: 'guest_approve', label: 'Cliente' },
+    });
+    expect(made.ok()).toBe(true);
+    await page.reload();
+    await nav.getByRole('button', { name: 'Progetti', exact: true }).click();
+    await expect(drawer.getByRole('link', { name: 'Revisione', exact: true })).toBeVisible();
+    await shoot(page, 'phone-review-without-storyboard');
     await drawer.getByRole('button', { name: `Opzioni progetto: ${project.name}` }).click();
     await expect(page.getByRole('menuitem', { name: 'Aggiungi storyboard…' })).toBeVisible();
     await shoot(page, 'phone-project-menu');

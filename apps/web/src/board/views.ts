@@ -68,11 +68,15 @@ export function projectHasStoryboard(
   return !!boards?.some((b) => (counts.get(b.id)?.frameCount ?? 0) > 0);
 }
 
-/** Whether a board of the project has cards in client review: Review stays listed for it. */
-export function projectHasReview(
-  counts: ReadonlyMap<string, Pick<BoardCount, 'inReviewCount'>>,
-): boolean {
-  return [...counts.values()].some((c) => (c.inReviewCount ?? 0) > 0);
+/**
+ * The board with a live client review link, in the order of the boards: where Review opens for a
+ * project without a storyboard. Null when there is none, and while the boards are unknown.
+ */
+export function clientReviewBoard(
+  boards: readonly Board[] | null | undefined,
+  counts: ReadonlyMap<string, Pick<BoardCount, 'clientReview'>>,
+): string | null {
+  return boards?.find((b) => counts.get(b.id)?.clientReview)?.id ?? null;
 }
 
 /**
@@ -98,8 +102,9 @@ export function pickerViews(kind: BoardKind | undefined, active: BoardView | nul
 /**
  * Where each view opens. Film views belong to the project's storyboard, so choosing one from
  * an ordinary board opens that board; without a storyboard they open on the project's root
- * board, so the sidebar and rail always lead to the same place. `boardId: null` means the
- * board that is already open.
+ * board, so the sidebar and rail always lead to the same place, except Review, which opens the
+ * board with a live client review link (`reviewBoardId`) when there is one. `boardId: null`
+ * means the board that is already open.
  */
 export function viewDestination(
   view: BoardView,
@@ -109,10 +114,12 @@ export function viewDestination(
     rootBoardId: string | undefined;
   },
   storyboardId: string | null,
+  reviewBoardId: string | null = null,
 ): { boardId: string | null; view: BoardView; kind?: BoardKind } {
   const film = FILM_VIEWS.includes(view);
   if (!film || current.kind === 'storyboard') return { boardId: null, view };
-  const target = storyboardId ?? current.rootBoardId;
+  const target =
+    storyboardId ?? (view === 'review' ? reviewBoardId : null) ?? current.rootBoardId;
   if (!target || target === current.boardId) return { boardId: null, view };
   return { boardId: target, view, kind: storyboardId ? 'storyboard' : 'board' };
 }

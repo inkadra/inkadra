@@ -1930,6 +1930,9 @@
     "name": "Nome"
   },
   "clientReview": {
+    "cardProgress": "{{approved}} di {{total}} card approvate",
+    "allCards": "Tutte le card",
+    "noCards": "Nessuna card da rivedere su questa board.",
     "progress": "{{approved}} di {{total}} inquadrature approvate",
     "guestThreads": "Discussioni con il cliente",
     "audienceHint": "Discussioni condivise con gli ospiti. Le risposte mantengono il pubblico del link originale.",
