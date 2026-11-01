@@ -73,6 +73,12 @@ export function snapPlanPoint(p: Point, step = PLAN_GRID): Point {
 
 const clampGrid = (n: number) => Math.round(Math.max(0, Math.min(STROKE_GRID, n)));
 
+/** The layer an item goes to without one of its own: its family's, Notes for texts and measures. */
+export function defaultLayer(item: PlanItem): PlanLayer {
+  const { layer: _layer, ...rest } = item;
+  return layerOf(rest as PlanItem);
+}
+
 /** The layer an item is on: its own, or its family's (icons) or Set (strokes and shapes). */
 export function layerOf(item: PlanItem): PlanLayer {
   if (item.layer) return item.layer;
@@ -438,14 +444,17 @@ export function moveItem<T extends PlanItem>(item: T, d: Point): T {
       ...item,
       points: item.points.map((v, i) => clampGrid(v + (i % 2 === 0 ? g.x : g.y))),
     };
-  if ('x0' in item)
+  if ('x0' in item) {
+    // A measure moved on its own no longer follows the icons it was attached to.
+    const { from: _from, to: _to, ...rest } = item as PlanShape;
     return {
-      ...item,
+      ...(rest as T),
       x0: clampGrid(item.x0 + g.x),
       y0: clampGrid(item.y0 + g.y),
       x1: clampGrid(item.x1 + g.x),
       y1: clampGrid(item.y1 + g.y),
-    };
+    } as T;
+  }
   return { ...item, x: clampGrid(item.x + g.x), y: clampGrid(item.y + g.y) };
 }
 
@@ -760,11 +769,16 @@ const onlySet = <T extends PlanItem>(items: readonly T[] | undefined) =>
  */
 export function variantView<P extends Pick<PlanElement, 'strokes' | 'shapes' | 'icons'>>(
   plan: P,
-  base: Pick<PlanElement, 'strokes' | 'shapes' | 'icons'> | undefined,
+  base: Pick<PlanElement, 'strokes' | 'shapes' | 'icons' | 'scale' | 'grid' | 'rulers'> | undefined,
 ): P {
   if (!base) return plan;
+  // The Set is the base's, and so is its scale: walls measured once, metres in every variant.
+  const shared = base as Partial<Pick<PlanElement, 'scale' | 'grid' | 'rulers'>>;
   return {
     ...plan,
+    scale: shared.scale,
+    grid: shared.grid,
+    rulers: shared.rulers,
     strokes: [...onlySet(base.strokes), ...notSet(plan.strokes)],
     shapes: [...onlySet(base.shapes), ...notSet(plan.shapes)],
     icons: [...onlySet(base.icons), ...notSet(plan.icons)],
@@ -796,8 +810,6 @@ export function addVariant(
   opts: { userId: string | null; origin?: unknown },
 ): string {
   const baseId = source.variantOf ?? source.id;
-  const fresh = <T extends PlanItem>(items: readonly T[]) =>
-    items.map((i) => ({ ...i, id: newElementId() }));
   const id = newElementId();
   const z = keyAtEnd(listElements(doc), source.parent);
   doc.transact(() => {
@@ -817,14 +829,37 @@ export function addVariant(
       ...(source.title ? { title: source.title } : {}),
       ...(source.h ? { h: source.h } : {}),
       ...(source.sensor ? { sensor: source.sensor } : {}),
+      // What the card is to guests, to editing and to search, as for any copy.
+      ...(source.guestHidden ? { guestHidden: true } : {}),
+      ...(source.locked ? { locked: true } : {}),
+      ...(source.tags?.length ? { tags: [...source.tags] } : {}),
     };
     for (const [k, v] of Object.entries(fields)) copy.set(k, v);
-    copy.set('strokes', Y.Array.from(fresh(notSet(source.strokes))));
-    copy.set('shapes', Y.Array.from(fresh(notSet(source.shapes))));
-    copy.set(
-      'icons',
-      Y.Array.from(fresh(notSet(source.icons)).map((i) => new Y.Map<unknown>(Object.entries(i)))),
-    );
+    // Copies of the icons; measures follow the copies, groups become new groups.
+    const ids = new Map<string, string>();
+    const groups = new Map<string, string>();
+    const renew = <T extends PlanItem>(i: T): T => {
+      const id = newElementId();
+      ids.set(i.id, id);
+      const out = { ...i, id };
+      if (i.group) {
+        if (!groups.has(i.group)) groups.set(i.group, newElementId());
+        out.group = groups.get(i.group);
+      }
+      return out;
+    };
+    const icons = notSet(source.icons).map(renew);
+    const strokes = notSet(source.strokes).map(renew);
+    const shapes = notSet(source.shapes)
+      .map(renew)
+      .map((sh) => ({
+        ...sh,
+        ...(sh.from && ids.has(sh.from) ? { from: ids.get(sh.from) } : {}),
+        ...(sh.to && ids.has(sh.to) ? { to: ids.get(sh.to) } : {}),
+      }));
+    copy.set('strokes', Y.Array.from(strokes));
+    copy.set('shapes', Y.Array.from(shapes));
+    copy.set('icons', Y.Array.from(icons.map((i) => new Y.Map<unknown>(Object.entries(i)))));
     roots(doc).elements.set(id, copy);
   }, opts.origin);
   return id;
@@ -870,39 +905,59 @@ export function addPlanIcon(
   return id;
 }
 
+const same = (a: unknown, b: unknown) =>
+  a === b ||
+  (typeof a === 'object' && typeof b === 'object' && JSON.stringify(a) === JSON.stringify(b));
+
 /**
- * Writes new versions of items, matched by id. Icons change field by field, so two people
- * editing one icon merge; strokes and shapes are replaced where they are.
+ * Writes new versions of items, matched by id, field by field: only the fields that differ from
+ * `before` (the items as they were when the gesture started; omitted, as they are stored) are
+ * written, so an edit of one field never undoes someone else's edit of another made meanwhile.
+ * Icons are Y.Maps and change in place; strokes and shapes are replaced where they are, their
+ * stored version taking the changed fields.
  */
 export function updatePlanItems(
   doc: Y.Doc,
   planId: string,
   items: readonly PlanItem[],
   origin?: unknown,
+  before?: readonly PlanItem[],
 ): void {
   const byId = new Map(items.map((item) => [item.id, item]));
+  const baseline = new Map((before ?? []).map((item) => [item.id, item]));
   doc.transact(() => {
     for (const kind of ['strokes', 'shapes', 'icons'] as const) {
       const list = listOf(doc, planId, kind);
       if (!list) return;
       list.toArray().forEach((value, index) => {
-        const next = byId.get(idOf(value) as string);
+        const next = byId.get(idOf(value) as string) as Record<string, unknown> | undefined;
         if (!next) return;
+        const stored = (value instanceof Y.Map ? value.toJSON() : value) as Record<string, unknown>;
+        const old = (baseline.get(next.id as string) ?? stored) as Record<string, unknown>;
+        const keys = new Set([...Object.keys(old), ...Object.keys(next)]);
+        const changed = [...keys].filter((k) => !same(old[k], next[k]));
+        if (changed.length === 0) return;
         if (value instanceof Y.Map) {
-          for (const key of [...value.keys()])
-            if (!(key in next) || (next as Record<string, unknown>)[key] === undefined)
-              value.delete(key);
-          for (const [key, v] of Object.entries(next))
-            if (v !== undefined && value.get(key) !== v) value.set(key, v);
+          for (const k of changed)
+            if (next[k] === undefined) value.delete(k);
+            else value.set(k, next[k]);
         } else {
+          const merged: Record<string, unknown> = { ...stored };
+          for (const k of changed)
+            if (next[k] === undefined) delete merged[k];
+            else merged[k] = next[k];
           list.delete(index, 1);
-          list.insert(index, [next]);
+          list.insert(index, [merged]);
         }
       });
     }
   }, origin);
 }
 
+/**
+ * Removes items. Measures attached to a removed icon keep that end where the icon stood and
+ * stop following it.
+ */
 export function removePlanItems(
   doc: Y.Doc,
   planId: string,
@@ -911,6 +966,25 @@ export function removePlanItems(
 ): void {
   const doomed = new Set(ids);
   doc.transact(() => {
+    const icons = listOf(doc, planId, 'icons');
+    const shapes = listOf(doc, planId, 'shapes');
+    const gone = (icons?.toArray() ?? [])
+      .map((m) => (m instanceof Y.Map ? (m.toJSON() as PlanIcon) : (m as PlanIcon)))
+      .filter((i) => doomed.has(i.id));
+    if (shapes && gone.length) {
+      shapes.toArray().forEach((value, index) => {
+        const shape = value as PlanShape;
+        if (shape.kind !== 'measure' || doomed.has(shape.id)) return;
+        const from = gone.some((i) => i.id === shape.from);
+        const to = gone.some((i) => i.id === shape.to);
+        if (!from && !to) return;
+        const fixed = { ...measureEnds(shape, gone) };
+        if (from) delete fixed.from;
+        if (to) delete fixed.to;
+        shapes.delete(index, 1);
+        shapes.insert(index, [fixed]);
+      });
+    }
     for (const kind of ['strokes', 'shapes', 'icons'] as const) {
       const list = listOf(doc, planId, kind);
       if (!list) return;
@@ -920,7 +994,11 @@ export function removePlanItems(
   }, origin);
 }
 
-/** Copies items next to the originals, `offset` view units away. Returns the copies. */
+/**
+ * Copies items next to the originals, `offset` view units away. Returns the copies. Groups
+ * among them become new groups of the copies; an attached measure is copied where it is drawn,
+ * detached, so it does not land on the original.
+ */
 export function duplicatePlanItems(
   doc: Y.Doc,
   plan: PlanElement,
@@ -929,15 +1007,26 @@ export function duplicatePlanItems(
   origin?: unknown,
 ): PlanItemRef[] {
   const out: PlanItemRef[] = [];
+  const groups = new Map<string, string>();
+  const regroup = (g: string | undefined) => {
+    if (!g) return undefined;
+    if (!groups.has(g)) groups.set(g, newElementId());
+    return groups.get(g);
+  };
   doc.transact(() => {
     for (const ref of refs) {
-      const item = planItem(plan, ref);
+      const found = planItem(plan, ref);
       const list = listOf(doc, plan.id, ref.kind);
-      if (!item || !list || list.length >= LIMITS[ref.kind]) continue;
-      const copy = { ...moveItem(item, offset), id: newElementId() };
+      if (!found || !list || list.length >= LIMITS[ref.kind]) continue;
+      const item =
+        'x0' in found && found.kind === 'measure' ? measureEnds(found, plan.icons) : found;
+      const copy = { ...moveItem(item, offset), id: newElementId() } as PlanItem;
+      const group = regroup(item.group);
+      if (group) copy.group = group;
       if (ref.kind === 'icons') {
         const map = new Y.Map<unknown>();
-        for (const [key, value] of Object.entries(copy)) map.set(key, value);
+        for (const [key, value] of Object.entries(copy))
+          if (value !== undefined) map.set(key, value);
         list.push([map]);
       } else list.push([copy]);
       out.push({ kind: ref.kind, id: copy.id });

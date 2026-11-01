@@ -500,16 +500,23 @@ export const PlanIcon = z.object({
 });
 export type PlanIcon = z.infer<typeof PlanIcon>;
 
-/** Read one by one, like frame shapes: an icon of a kind added later is left out. */
-const PlanIcons = z
-  .array(z.unknown())
-  .max(MAX_PLAN_ICONS)
-  .transform((items) =>
-    items.flatMap((item) => {
-      const parsed = PlanIcon.safeParse(item);
-      return parsed.success ? [parsed.data] : [];
-    }),
+/**
+ * Items of a plan read one by one, like frame shapes: an item this build cannot read (a kind
+ * added later) is left out, and items past the limit are cut instead of failing the whole card,
+ * so two people adding at the limit at once never make the plan disappear.
+ */
+function lenientList<T extends z.ZodType>(item: T, max: number) {
+  return z.array(z.unknown()).transform((items) =>
+    items
+      .flatMap((value) => {
+        const parsed = item.safeParse(value);
+        return parsed.success ? [parsed.data as z.infer<T>] : [];
+      })
+      .slice(0, max),
   );
+}
+
+const PlanIcons = lenientList(PlanIcon, MAX_PLAN_ICONS);
 
 /** A pen stroke of a plan: a frame stroke with a layer and a group. */
 export const PlanStroke = Stroke.extend(PlanItemExtras);
@@ -530,15 +537,8 @@ export const PlanShape = FrameShape.extend({
 });
 export type PlanShape = z.infer<typeof PlanShape>;
 
-const PlanShapes = z
-  .array(z.unknown())
-  .max(MAX_SHAPES)
-  .transform((items) =>
-    items.flatMap((item) => {
-      const parsed = PlanShape.safeParse(item);
-      return parsed.success ? [parsed.data] : [];
-    }),
-  );
+const PlanShapes = lenientList(PlanShape, MAX_SHAPES);
+const PlanStrokes = lenientList(PlanStroke, MAX_STROKES);
 
 /** Sensor formats for a camera's angle of view; widths in mm. */
 export const PLAN_SENSORS = { s35: 24.89, ff: 36, m43: 17.3, s16: 12.52 } as const;
@@ -555,7 +555,7 @@ export type PlanSensor = keyof typeof PLAN_SENSORS;
 export const PlanElement = Base.extend({
   type: z.literal('plan'),
   title: z.string().max(200).optional().describe('Shown after "Set plan" in the header.'),
-  strokes: z.array(PlanStroke).max(MAX_STROKES).optional().describe('Pen drawing, oldest first.'),
+  strokes: PlanStrokes.optional().describe('Pen drawing, oldest first.'),
   shapes: PlanShapes.optional().describe('Shapes and texts over the strokes, oldest first.'),
   icons: PlanIcons.optional().describe('Set icons over the shapes, oldest first.'),
   sceneIds: z

@@ -14,6 +14,7 @@ import {
   getAnimaticAudio,
   getBoardAspect,
   getSchemaVersion,
+  MAX_PLAN_ICONS,
   migrateBoardDoc,
   newElementId,
   parseBoardDocName,
@@ -856,6 +857,19 @@ describe('set plans', () => {
     expect(migrateBoardDoc(doc, boardId)).toEqual([14, 15]);
     expect(roots(doc).elements.toJSON()).toEqual(before);
     expect(getSchemaVersion(doc)).toBe(15);
+  });
+
+  it('cuts items past the limits instead of refusing the whole plan', () => {
+    const el = plan();
+    const icons = Array.from({ length: MAX_PLAN_ICONS + 3 }, (_, i) => ({
+      ...el.icons[0]!,
+      id: `icon${String(i).padStart(9, '0')}`,
+    }));
+    const parsed = Element.safeParse({ ...el, icons });
+    expect(parsed.success).toBe(true);
+    expect(parsed.success && parsed.data.type === 'plan' && parsed.data.icons?.length).toBe(
+      MAX_PLAN_ICONS,
+    );
   });
 
   it('migrates version 14 plans unchanged and keeps the version 15 fields', () => {

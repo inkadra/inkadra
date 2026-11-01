@@ -1,8 +1,10 @@
 // SPDX-License-Identifier: MPL-2.0
 import {
   createBoardDoc,
+  type FrameShape,
   PLAN_ICON_KINDS,
   type PlanIcon,
+  type PlanShape,
   roots,
   STROKE_GRID,
 } from '@inkadra/doc-schema';
@@ -14,6 +16,7 @@ import {
   duplicateElements,
   listElements,
   pasteElements,
+  updateElement,
 } from './board.ts';
 import { addShape, addStroke } from './film.ts';
 import {
@@ -24,6 +27,7 @@ import {
   bendThrough,
   blockingCurve,
   blockingPositions,
+  defaultLayer,
   duplicatePlanItems,
   gridLength,
   iconCone,
@@ -444,4 +448,108 @@ describe('layers and variants', () => {
     expect(variantView(variant, read()).icons?.map((i) => i.kind)).toEqual(['sofa', 'fresnel']);
     expect(variantFamily(all, variant).map((p) => p.id)).toEqual([id, variantId]);
   });
+});
+
+describe('review of #391', () => {
+  it('writes only the fields a gesture changed, keeping another edit made meanwhile', () => {
+    const { doc, id, read } = setup();
+    addPlanIcon(doc, id, camera);
+    const before = read().icons?.[0] as PlanIcon;
+    // Someone else relabels the camera while this person turns it.
+    updatePlanItems(doc, id, [{ ...before, label: 'B cam' }]);
+    updatePlanItems(doc, id, [rotateItem(before, 30)], undefined, [before]);
+    expect(read().icons?.[0]).toMatchObject({ rotation: 30, label: 'B cam' });
+    // Shapes too: a recolour does not undo a move made meanwhile.
+    addShape(doc, id, { kind: 'rect', color: '#1C1C1E', width: 4, x0: 0, y0: 0, x1: 99, y1: 99 });
+    const shape = read().shapes?.[0] as PlanShape;
+    updatePlanItems(doc, id, [moveItem(shape, { x: 50, y: 0 })]);
+    updatePlanItems(doc, id, [{ ...shape, color: '#9DB8F2' }], undefined, [shape]);
+    expect(read().shapes?.[0]).toMatchObject({ color: '#9DB8F2' });
+    expect(read().shapes?.[0]?.x0).toBeGreaterThan(0);
+  });
+
+  it('gives duplicated groups new group ids', () => {
+    const { doc, id, read } = setup();
+    addPlanIcon(doc, id, { ...camera, group: 'groupAAAAAAAA' });
+    addPlanIcon(doc, id, { ...camera, kind: 'tripod', group: 'groupAAAAAAAA' });
+    const refs = read().icons?.map((i) => ({ kind: 'icons' as const, id: i.id })) ?? [];
+    duplicatePlanItems(doc, read(), refs, { x: 25, y: 25 });
+    const copies = read().icons?.slice(2) ?? [];
+    expect(copies[0]?.group).toBeDefined();
+    expect(copies[0]?.group).not.toBe('groupAAAAAAAA');
+    expect(copies[0]?.group).toBe(copies[1]?.group);
+  });
+
+  it('keeps measures where their icon stood when it goes, and copies them detached', () => {
+    const { doc, id, read } = setup();
+    const cam = addPlanIcon(doc, id, { ...camera, x: 400, y: 400 }) as string;
+    const actor = addPlanIcon(doc, id, { ...camera, kind: 'actor', x: 3000, y: 3000 }) as string;
+    addShape(doc, id, {
+      kind: 'measure',
+      color: '#1C1C1E',
+      width: 4,
+      x0: 0,
+      y0: 0,
+      x1: 0,
+      y1: 0,
+      from: cam,
+      to: actor,
+    } as unknown as FrameShape);
+    const measure = { kind: 'shapes' as const, id: read().shapes?.[0]?.id as string };
+    duplicatePlanItems(doc, read(), [measure], { x: 25, y: 0 });
+    const copy = read().shapes?.[1] as PlanShape;
+    expect(copy.from).toBeUndefined();
+    expect(copy.x0).toBeGreaterThan(400);
+    removePlanItems(doc, id, [actor]);
+    expect(read().shapes?.[0]).toMatchObject({ from: cam, x1: 3000, y1: 3000 });
+    expect(read().shapes?.[0]).not.toHaveProperty('to');
+  });
+
+  it('makes variants that keep the card flags, the scale of the base and their measures', () => {
+    const { doc, id, read } = setup();
+    updateElement(doc, id, {
+      guestHidden: true,
+      locked: true,
+      tags: ['luci'],
+      scale: 120,
+      grid: '1',
+    });
+    const cam = addPlanIcon(doc, id, camera) as string;
+    const actor = addPlanIcon(doc, id, { ...camera, kind: 'actor' }) as string;
+    addShape(doc, id, {
+      kind: 'measure',
+      color: '#1C1C1E',
+      width: 4,
+      x0: 0,
+      y0: 0,
+      x1: 1,
+      y1: 1,
+      from: cam,
+      to: actor,
+    } as unknown as FrameShape);
+    const variantId = addVariant(doc, read(), 'Sera', { userId: null });
+    const variant = listElements(doc).find((e) => e.id === variantId) as PlanElement;
+    expect(variant).toMatchObject({ guestHidden: true, locked: true, tags: ['luci'] });
+    const measure = variant.shapes?.[0] as PlanShape;
+    expect(variant.icons?.map((i) => i.id)).toEqual([measure.from, measure.to]);
+    expect(variantView(variant, read())).toMatchObject({ scale: 120, grid: '1' });
+  });
+});
+
+it('knows the default layer of an item, whatever layer it was moved to', () => {
+  const text = {
+    id: 'textAAAAAAAAA',
+    kind: 'text' as const,
+    color: '#1C1C1E',
+    width: 18,
+    x0: 0,
+    y0: 0,
+    x1: 0,
+    y1: 0,
+    text: 'tavolo',
+    layer: 'set' as const,
+  };
+  expect(defaultLayer(text)).toBe('notes');
+  expect(layerOf(text)).toBe('set');
+  expect(defaultLayer({ ...camera, id: 'iconAAAAAAAAA', layer: 'notes' })).toBe('camera');
 });

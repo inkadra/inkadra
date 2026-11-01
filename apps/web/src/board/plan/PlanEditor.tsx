@@ -10,6 +10,7 @@ import {
   blockingPositions,
   categoryOf,
   DEFAULT_LENS,
+  defaultLayer,
   duplicatePlanItems,
   encodeStroke,
   gridLength,
@@ -21,6 +22,7 @@ import {
   itemsInRect,
   layerCounts,
   layerOf,
+  measureEnds,
   moveItem,
   normalizeRotation,
   PLAN_VIEW_H,
@@ -65,7 +67,7 @@ import {
   type PlanStep,
 } from '@inkadra/doc-schema';
 import { Button, Icon, IconButton, type IconName, Select, Switch } from '@inkadra/ui';
-import { type PointerEvent, type ReactNode, useEffect, useRef, useState } from 'react';
+import { type PointerEvent, type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { pathOf } from '../film/strokes.ts';
@@ -105,6 +107,9 @@ const TOOLS: Array<{ tool: Tool; icon: IconName; key: string; phone: boolean }> 
   { tool: 'text', icon: 'text', key: 'T', phone: true },
 ];
 const KINDS = new Set<string>(PLAN_ICON_KINDS);
+/** Schema bounds: sizes and reaches up to 4000 view units, a scale up to 100000 per metre. */
+const MAX_UNITS = 4000;
+const MAX_SCALE = 100000;
 /** A set of primes, as on the mockup; Other takes any focal length. */
 const LENSES = [18, 24, 35, 50, 85, 135];
 const HANDLES = ['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w'] as const;
@@ -199,7 +204,11 @@ export function PlanEditor({
   /** Layers this person hides on the base plan; on a variant hiding is the variant's own. */
   const [myHidden, setMyHidden] = useState<ReadonlySet<PlanLayer>>(new Set());
   /** The layer new strokes and shapes go to (round 6, h). */
-  const [activeLayer, setActiveLayer] = useState<PlanLayer>('set');
+  /**
+   * The layer new items go to, icons included (round 6, h); none picked, each icon goes to its
+   * family's layer and strokes and shapes to Set.
+   */
+  const [activeLayer, setActiveLayer] = useState<PlanLayer | null>(null);
   /** The line drawn to set the scale, waiting for its length in metres (round 6, g). */
   const [scaleDraft, setScaleDraft] = useState<{ length: number; metres: string } | null>(null);
   const [gridDraft, setGridDraft] = useState<'0.25' | '0.5' | '1'>(plan.grid ?? '0.5');
@@ -229,11 +238,17 @@ export function PlanEditor({
   const textInput = useRef<HTMLInputElement>(null);
 
   const doc = store.doc;
-  const step = gridStep(plan);
   /** Annotations from the library draw green; the tools of the column draw in ink. */
   const ink = armed && !isIconKind(armed) ? NOTE_COLOR : PLAN_INK;
   /** A variant shows its base's Set layer under its own (round 6, h). */
-  const drawn = base ? variantView(plan, base) : plan;
+  // Attached measures are drawn, picked and boxed where their icons stand now.
+  const drawn = useMemo(() => {
+    const merged = base ? variantView(plan, base) : plan;
+    return { ...merged, shapes: merged.shapes?.map((sh) => measureEnds(sh, merged.icons)) };
+  }, [plan, base]);
+  const step = gridStep(drawn);
+  /** The scale belongs to the plan whose Set it measures: the base of a variant. */
+  const scaleOwner = base?.id ?? plan.id;
   const baseIds = new Set(
     base ? planItems(drawn).flatMap(({ item }) => (layerOf(item) === 'set' ? [item.id] : [])) : [],
   );
@@ -246,7 +261,7 @@ export function PlanEditor({
     locked: new Set(plan.lockedLayers ?? []),
   };
   /** Strokes and shapes go to the active layer; Set, their default, is not written. */
-  const onLayer = activeLayer === 'set' ? {} : { layer: activeLayer };
+  const onLayer = activeLayer ? { layer: activeLayer } : {};
   const item = selected ? planItem(drawn, selected) : undefined;
   const movingIcon = (drawn.icons ?? []).find((i) => i.id === moving) ?? null;
   const shown =
@@ -294,10 +309,17 @@ export function PlanEditor({
     const q = snapped(p);
     let id: string | null = null;
     change(() => {
+      const layer = activeLayer ?? categoryOf(kind).layer;
       id = addPlanIcon(
         doc,
-        targetFor(categoryOf(kind).layer),
-        { kind, color: iconColor(kind), x: toGrid(q.x), y: toGrid(q.y) },
+        targetFor(layer),
+        {
+          kind,
+          color: iconColor(kind),
+          x: toGrid(q.x),
+          y: toGrid(q.y),
+          ...(layer !== categoryOf(kind).layer ? { layer } : {}),
+        },
         LOCAL,
       );
     });
@@ -357,10 +379,14 @@ export function PlanEditor({
   };
   /** Writes items where they live: the base's Set layer, or the plan (no undo step). */
   const writeItems = (items: readonly PlanItem[]) => {
+    // Only what changed since this render is written (the item as drawn when the gesture
+    // started), so another person's edit of another field made meanwhile stays.
+    const all = planItems(drawn);
+    const before = items.flatMap((i) => all.find((e) => e.item.id === i.id)?.item ?? []);
     const own = items.filter((i) => ownerOf(i.id) === plan.id);
     const shared = items.filter((i) => ownerOf(i.id) !== plan.id);
-    if (own.length) updatePlanItems(doc, plan.id, own, LOCAL);
-    if (shared.length && base) updatePlanItems(doc, base.id, shared, LOCAL);
+    if (own.length) updatePlanItems(doc, plan.id, own, LOCAL, before);
+    if (shared.length && base) updatePlanItems(doc, base.id, shared, LOCAL, before);
   };
   const write = (next: PlanItem | readonly PlanItem[]) =>
     change(() => writeItems(Array.isArray(next) ? next : [next as PlanItem]));
@@ -391,10 +417,11 @@ export function PlanEditor({
     if (!draft || !value) return;
     const x = toGrid(draft.at.x);
     const y = toGrid(draft.at.y);
+    // A text is a note unless a layer is active: it goes where that layer lives.
     change(() =>
       addShape(
         doc,
-        targetFor(activeLayer),
+        targetFor(activeLayer ?? 'notes'),
         {
           ...onLayer,
           kind: 'text',
@@ -766,7 +793,7 @@ export function PlanEditor({
       change(() =>
         addStroke(
           doc,
-          targetFor(activeLayer),
+          targetFor(activeLayer ?? 'set'),
           {
             ...onLayer,
             tool: 'pencil',
@@ -816,7 +843,7 @@ export function PlanEditor({
       change(() =>
         addShape(
           doc,
-          targetFor(shape.layer ?? activeLayer),
+          targetFor(shape.layer ?? activeLayer ?? 'set'),
           { ...(shape.layer ? {} : onLayer), ...shape } as unknown as FrameShape,
           LOCAL,
         ),
@@ -1120,26 +1147,26 @@ export function PlanEditor({
   /** Width and depth of furniture in metres; S, M, L of symbols and texts (round 6, e). */
   const sizeFields = current && (
     <>
-      {isIcon(current) && categoryOf(current.kind).sized && plan.scale && frame && (
+      {isIcon(current) && categoryOf(current.kind).sized && drawn.scale && frame && (
         <>
           <span className="plan-editor__vr" aria-hidden="true" />
           <NumberField
-            value={Math.round((frame.w / plan.scale) * 100) / 100}
-            min={0.05}
-            max={100}
+            value={Math.round((frame.w / drawn.scale) * 100) / 100}
+            min={0.01}
+            max={MAX_UNITS / drawn.scale}
             step={0.01}
             label={t('board.plan.width')}
-            onCommit={(m) => write({ ...current, w: m * (plan.scale as number), h: frame.h })}
+            onCommit={(m) => write({ ...current, w: m * (drawn.scale as number), h: frame.h })}
           />
           <span className="plan-editor__times">×</span>
           <NumberField
-            value={Math.round((frame.h / plan.scale) * 100) / 100}
-            min={0.05}
-            max={100}
+            value={Math.round((frame.h / drawn.scale) * 100) / 100}
+            min={0.01}
+            max={MAX_UNITS / drawn.scale}
             step={0.01}
             unit="m"
             label={t('board.plan.depth')}
-            onCommit={(m) => write({ ...current, w: frame.w, h: m * (plan.scale as number) })}
+            onCommit={(m) => write({ ...current, w: frame.w, h: m * (drawn.scale as number) })}
           />
         </>
       )}
@@ -1359,15 +1386,15 @@ export function PlanEditor({
       </div>
       <div className="plan-props__row">
         <span>{t('board.plan.reach')}</span>
-        {plan.scale ? (
+        {drawn.scale ? (
           <NumberField
-            value={Math.round((cone.reach / plan.scale) * 10) / 10}
-            min={0.5}
-            max={100}
+            value={Math.round((cone.reach / drawn.scale) * 10) / 10}
+            min={0.01}
+            max={MAX_UNITS / drawn.scale}
             step={0.5}
             unit="m"
             label={t('board.plan.reach')}
-            onCommit={(m) => write({ ...icon, reach: (plan.scale as number) * m })}
+            onCommit={(m) => write({ ...icon, reach: (drawn.scale as number) * m })}
           />
         ) : (
           <input
@@ -1581,11 +1608,15 @@ export function PlanEditor({
           disabled={ownerOf(current.id) !== plan.id}
           onChange={(v) => {
             const next = { ...current, layer: v as PlanLayer };
-            if (isIcon(current) ? categoryOf(current.kind).layer === v : v === 'set')
-              delete (next as Partial<PlanIcon>).layer;
+            // The item's own default layer is not written (a text's is Notes, not Set).
+            if (defaultLayer(current) === v) delete (next as Partial<PlanIcon>).layer;
             write(next);
           }}
-          options={PLAN_LAYERS.map((l) => ({ value: l, label: t(`board.plan.layers.${l}`) }))}
+          // On a variant the Set is the base's: the variant's own items cannot go there.
+          options={PLAN_LAYERS.filter((l) => !(base && l === 'set')).map((l) => ({
+            value: l,
+            label: t(`board.plan.layers.${l}`),
+          }))}
         />
       </div>
       {light}
@@ -1616,11 +1647,11 @@ export function PlanEditor({
         </div>
       )}
       <div className="plan-props__row">
-        <span>{t('board.plan.scale')}</span>
+        <span>{t('board.drawn.scale')}</span>
         <b>
-          {plan.scale
-            ? t('board.plan.scaleGrid', {
-                grid: Number(plan.grid ?? '0.5').toLocaleString(i18n.language),
+          {drawn.scale
+            ? t('board.drawn.scaleGrid', {
+                grid: Number(drawn.grid ?? '0.5').toLocaleString(i18n.language),
               })
             : t('board.plan.noScale')}
         </b>
@@ -1628,15 +1659,15 @@ export function PlanEditor({
       <Button icon="ruler" onClick={() => setTool('scale')}>
         {t('board.plan.setScale')}
       </Button>
-      {plan.scale && (
+      {drawn.scale && (
         <>
           <label className="plan-props__row">
-            <span>{t('board.plan.rulers')}</span>
+            <span>{t('board.drawn.rulers')}</span>
             <Switch
-              checked={!!plan.rulers}
+              checked={!!drawn.rulers}
               onChange={(e) =>
                 change(() =>
-                  updateElement(doc, plan.id, { rulers: e.target.checked || undefined }, LOCAL),
+                  updateElement(doc, scaleOwner, { rulers: e.target.checked || undefined }, LOCAL),
                 )
               }
             />
@@ -1647,7 +1678,7 @@ export function PlanEditor({
               change(() =>
                 updateElement(
                   doc,
-                  plan.id,
+                  scaleOwner,
                   { scale: undefined, grid: undefined, rulers: undefined },
                   LOCAL,
                 ),
@@ -1678,6 +1709,12 @@ export function PlanEditor({
     </div>
   );
   const metresDraft = scaleDraft ? Number(scaleDraft.metres.replace(',', '.')) : 0;
+  // Within the schema: at least a centimetre, and a scale the document accepts.
+  const scaleOk =
+    !!scaleDraft &&
+    metresDraft >= 0.01 &&
+    metresDraft < 1000 &&
+    (scaleFor(scaleDraft.length, metresDraft) ?? Infinity) <= MAX_SCALE;
   const scaleDialog = scaleDraft && (
     <div className="plan-scale ink-motion-pop" role="dialog" aria-label={t('board.plan.setScale')}>
       <div className="plan-scale__head">
@@ -1703,8 +1740,8 @@ export function PlanEditor({
         </span>
       </label>
       <div className="plan-props__row">
-        <span>{t('board.plan.grid')}</span>
-        <fieldset className="plan-props__segmented" aria-label={t('board.plan.grid')}>
+        <span>{t('board.drawn.grid')}</span>
+        <fieldset className="plan-props__segmented" aria-label={t('board.drawn.grid')}>
           {(['0.25', '0.5', '1'] as const).map((g) => (
             <button
               key={g}
@@ -1719,7 +1756,7 @@ export function PlanEditor({
         </fieldset>
       </div>
       <label className="plan-props__row">
-        <span>{t('board.plan.rulers')}</span>
+        <span>{t('board.drawn.rulers')}</span>
         <Switch checked={rulersDraft} onChange={(e) => setRulersDraft(e.target.checked)} />
       </label>
       <div className="plan-scale__actions">
@@ -1728,14 +1765,14 @@ export function PlanEditor({
         </Button>
         <Button
           variant="primary"
-          disabled={!(metresDraft > 0 && metresDraft < 1000)}
+          disabled={!scaleOk}
           onClick={() => {
             const next = scaleFor(scaleDraft.length, metresDraft);
-            if (!next) return;
+            if (!next || !scaleOk) return;
             change(() =>
               updateElement(
                 doc,
-                plan.id,
+                scaleOwner,
                 {
                   scale: Math.round(next * 100) / 100,
                   grid: gridDraft,
@@ -1753,20 +1790,20 @@ export function PlanEditor({
     </div>
   );
   /** Rulers in metres along the top and the left of a scaled plan. */
-  const rulers = !phone && plan.scale && plan.rulers && (
+  const rulers = !phone && drawn.scale && drawn.rulers && (
     <>
       <div className="plan-ruler plan-ruler--top" aria-hidden="true">
-        {Array.from({ length: Math.floor(PLAN_VIEW_W / plan.scale) + 1 }, (_, m) => (
+        {Array.from({ length: Math.floor(PLAN_VIEW_W / drawn.scale) + 1 }, (_, m) => (
           // biome-ignore lint/suspicious/noArrayIndexKey: a metre is its place on the ruler.
-          <span key={m} style={{ left: `${((m * (plan.scale as number)) / PLAN_VIEW_W) * 100}%` }}>
+          <span key={m} style={{ left: `${((m * (drawn.scale as number)) / PLAN_VIEW_W) * 100}%` }}>
             {m === 1 ? '1 m' : m}
           </span>
         ))}
       </div>
       <div className="plan-ruler plan-ruler--left" aria-hidden="true">
-        {Array.from({ length: Math.floor(PLAN_VIEW_H / plan.scale) + 1 }, (_, m) => (
+        {Array.from({ length: Math.floor(PLAN_VIEW_H / drawn.scale) + 1 }, (_, m) => (
           // biome-ignore lint/suspicious/noArrayIndexKey: a metre is its place on the ruler.
-          <span key={m} style={{ top: `${((m * (plan.scale as number)) / PLAN_VIEW_H) * 100}%` }}>
+          <span key={m} style={{ top: `${((m * (drawn.scale as number)) / PLAN_VIEW_H) * 100}%` }}>
             {m}
           </span>
         ))}
@@ -1808,7 +1845,7 @@ export function PlanEditor({
               type="button"
               className="plan-layers__name"
               aria-pressed={activeLayer === layer}
-              onClick={() => setActiveLayer(layer)}
+              onClick={() => setActiveLayer((l) => (l === layer ? null : layer))}
             >
               <i className={`plan-layers__dot plan-layers__dot--${layer}`} />
               <span className={hiddenLayers.has(layer) ? 'is-off' : undefined}>
@@ -1836,7 +1873,9 @@ export function PlanEditor({
         ))}
       </ul>
       <p className="plan-props__hint">
-        {t('board.plan.layersHint', { layer: t(`board.plan.layers.${activeLayer}`) })}
+        {activeLayer
+          ? t('board.plan.layersHint', { layer: t(`board.plan.layers.${activeLayer}`) })
+          : t('board.plan.layersHintNone')}
       </p>
     </div>
   );
@@ -1916,7 +1955,7 @@ export function PlanEditor({
         <p className="plan-editor__status">{layerStatus.join(' · ')}</p>
       )}
       {tool === 'scale' && (
-        <p className="plan-editor__movebar plan-editor__tip">{t('board.plan.scaleHint')}</p>
+        <p className="plan-editor__movebar plan-editor__tip">{t('board.drawn.scaleHint')}</p>
       )}
       {scaleDialog}
       {phone && movingIcon && (

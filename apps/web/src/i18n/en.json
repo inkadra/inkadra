@@ -956,7 +956,7 @@
       "hideLayer": "Hide {{layer}}",
       "lockLayer": "Lock {{layer}}",
       "unlockLayer": "Unlock {{layer}}",
-      "layersHint": "The active layer ({{layer}}) takes new strokes and shapes; icons go to the layer of their family. What you hide here is yours alone; what you hide in a variant is for everyone.",
+      "layersHint": "The active layer ({{layer}}) takes new icons, strokes and shapes. What you hide here is yours alone; what you hide in a variant is for everyone.",
       "hiddenAs": {
         "set": "Set hidden",
         "lights": "Lights hidden",
@@ -979,7 +979,8 @@
       "variantMenu": "Duplicate as a variant",
       "variantName": "Variant {{n}}",
       "variantField": "Variant name",
-      "inPresentation": "In the presentation"
+      "inPresentation": "In the presentation",
+      "layersHintNone": "No active layer: each icon goes to its family’s layer, strokes and shapes to Set. What you hide here is yours alone; what you hide in a variant is for everyone."
     }
   },
   "tags": {

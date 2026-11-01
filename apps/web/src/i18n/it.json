@@ -956,7 +956,7 @@
       "hideLayer": "Nascondi {{layer}}",
       "lockLayer": "Blocca {{layer}}",
       "unlockLayer": "Sblocca {{layer}}",
-      "layersHint": "Il livello attivo ({{layer}}) riceve i tratti e le forme nuove; le icone vanno nel livello della loro famiglia. Cosa nascondi qui è solo tuo; cosa nascondi in una variante vale per tutti.",
+      "layersHint": "Il livello attivo ({{layer}}) riceve le icone, i tratti e le forme nuove. Cosa nascondi qui è solo tuo; cosa nascondi in una variante vale per tutti.",
       "hiddenAs": {
         "set": "Set nascosto",
         "lights": "Luci nascoste",
@@ -979,7 +979,8 @@
       "variantMenu": "Duplica come variante",
       "variantName": "Variante {{n}}",
       "variantField": "Nome della variante",
-      "inPresentation": "Nella presentazione"
+      "inPresentation": "Nella presentazione",
+      "layersHintNone": "Nessun livello attivo: ogni icona va nel livello della sua famiglia, tratti e forme nel Set. Cosa nascondi qui è solo tuo; cosa nascondi in una variante vale per tutti."
     }
   },
   "tags": {
