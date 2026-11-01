@@ -303,7 +303,7 @@ it('offers the existing ways to add a reference to editors only, in the bar and 
   expect(host.querySelector('.moodboard__empty')).toBeNull();
 
   // Link: a bare domain becomes https, and the preview is asked for.
-  await click(host.querySelector<HTMLButtonElement>('.moodboard__add button'));
+  expect(host.querySelector('.moodboard__popover')).not.toBeNull();
   await click(items()[1] ?? null);
   const field = host.querySelector<HTMLInputElement>('.moodboard__popover input');
   await act(async () => {
