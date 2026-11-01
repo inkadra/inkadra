@@ -183,6 +183,19 @@ for (const theme of ['dark', 'light'] as const)
       await expect(towel).toContainText('×2');
       await expect(towel).toContainText(phone ? 'Sc. 3, 5' : 'Sc. 3 · 5');
       await shot(`${prefix}-day.png`);
+      if (!phone) {
+        // The mockup's 470 px panel: names stay on one line; at 1280 px it narrows and the
+        // day columns keep their width.
+        const panel = page.locator('.schedule__inspector');
+        expect((await panel.boundingBox())?.width).toBe(470);
+        const led = inspector.locator('.needed__row').filter({ hasText: 'Pannello LED' });
+        expect((await led.boundingBox())?.height).toBeLessThanOrEqual(34);
+        await page.setViewportSize({ width: 1280, height: 800 });
+        expect((await panel.boundingBox())?.width).toBeLessThan(470);
+        expect((await page.locator('.schedule__day').nth(1).boundingBox())?.width).toBe(260);
+        await shot(`${prefix}-day-1280.png`);
+        await page.setViewportSize({ width: 1440, height: 900 });
+      }
       if (phone) {
         await inspector.getByRole('radio', { name: 'Solo i miei' }).check();
         await expect(inspector.locator('.needed__group li')).toHaveCount(4);

@@ -801,7 +801,12 @@ function DayInspector({
     update({ blocks });
   };
   return (
-    <aside className="schedule__inspector" aria-label={t('schedule.inspector')} data-scroll>
+    <aside
+      // "Da portare" is a table of names, scenes and people: it gets the mockup's wider panel.
+      className={`schedule__inspector${tab === 'needed' ? ' schedule__inspector--wide' : ''}`}
+      aria-label={t('schedule.inspector')}
+      data-scroll
+    >
       <header className="schedule__inspector-head">
         <span className="story__sidebar-title">{t('schedule.dayNumber', { n: index + 1 })}</span>
         <h2>{dayLabel(draft.date)}</h2>

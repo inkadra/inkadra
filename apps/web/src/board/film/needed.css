@@ -22,6 +22,15 @@
   background: var(--ink-tag-teal-bg);
 }
 
+/* "Da portare" widens the day panel to the mockup's 470 px, less on narrower screens; the day
+   columns beside it scroll sideways as they already do. Phones show the panel in a sheet. */
+.schedule__inspector.schedule__inspector--wide {
+  width: clamp(340px, 34vw, 470px);
+}
+.ink-dialog .schedule__inspector.schedule__inspector--wide {
+  width: auto;
+}
+
 /* The tabs of a day in the schedule's side panel. */
 .schedule__tabs {
   display: flex;
