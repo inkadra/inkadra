@@ -20,7 +20,13 @@ import { canComment, openComments, useReviews } from './review-store.ts';
 import { isTyping } from './shortcuts.ts';
 import { type BoardStore, LOCAL } from './store.ts';
 import { TagEditor } from './tags.tsx';
-import { isYoutubeUrl, videoEmbedUrl, YOUTUBE_ORIGIN, youtubePlayerTime } from './youtube.ts';
+import {
+  isVideoLink,
+  isYoutubeUrl,
+  videoEmbedUrl,
+  YOUTUBE_ORIGIN,
+  youtubePlayerTime,
+} from './youtube.ts';
 
 type Exif = Record<string, unknown>;
 
@@ -245,7 +251,8 @@ export function MediaViewer({
   const assetId = element.type === 'link' ? element.imageAssetId : element.assetId;
   const asset = useAsset(assetId);
   const isYoutube = element.type === 'link' && isYoutubeUrl(element.url);
-  const embedUrl = element.type === 'link' ? videoEmbedUrl(element.url) : null;
+  const embedUrl =
+    element.type === 'link' && isVideoLink(element.url) ? videoEmbedUrl(element.url) : null;
   const ready: Asset | null = asset && asset !== 'missing' ? asset : null;
   const dialogRef = useRef<HTMLDivElement>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);

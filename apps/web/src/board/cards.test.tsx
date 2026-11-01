@@ -408,6 +408,8 @@ describe('board elements (#307, #318, #322)', () => {
     const section = { ...at, id: 'section_001', type: 'section', w: 640 } as const;
     expect(render({ ...section, title: 'Sequenza 1' } as Element)).toContain('Sequenza 1');
     expect(render({ ...section, title: '' } as Element)).toContain('is-empty');
+  });
+});
 
 describe('Vimeo and Instagram link cards', () => {
   it('plays Vimeo in the card like YouTube, behind the same play button', () => {
@@ -419,7 +421,7 @@ describe('Vimeo and Instagram link cards', () => {
     vi.unstubAllGlobals();
   });
 
-  it('opens an Instagram post on Instagram, with a badge, and never embeds it', () => {
+  it('shows an Instagram post as a thumbnail with a badge and a play button, and loads nothing', () => {
     state.editing = null;
     state.status = 'ready';
     state.asset = { variants: [{ url: '/thumb.jpg' }] };
@@ -431,9 +433,8 @@ describe('Vimeo and Instagram link cards', () => {
       imageAssetId: 'asset-id',
     });
     expect(html).toContain('board.menu.instagram');
-    expect(html).toContain('href="https://www.instagram.com/reel/C1abc/"');
-    expect(html).toContain('aria-label="board.menu.openOnInstagram"');
-    expect(html).not.toContain('card__play');
+    expect(html).toContain('data-play-link="file_caption_01"');
+    expect(html).not.toContain('instagram.com/reel/C1abc/embed');
     expect(html).not.toContain('<iframe');
     state.asset = {};
     vi.unstubAllGlobals();

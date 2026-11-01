@@ -15,6 +15,45 @@ export function stopInline(id: string): void {
   if (active === id) playInline(null);
 }
 
+const KEEP_KEY = 'inkadra.video.keepPlayingOffscreen';
+const KEEP_EVENT = 'inkadra-video-prefs';
+
+/** Personal setting of this browser, like the theme: off by default, so a video that scrolls away stops. */
+export function keepsPlayingOffscreen(): boolean {
+  try {
+    return localStorage.getItem(KEEP_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
+
+export function setKeepsPlayingOffscreen(on: boolean): void {
+  try {
+    localStorage.setItem(KEEP_KEY, on ? '1' : '0');
+    window.dispatchEvent(new Event(KEEP_EVENT));
+  } catch {}
+}
+
+export function useKeepsPlayingOffscreen(): boolean {
+  return useSyncExternalStore(
+    (listener) => {
+      window.addEventListener('storage', listener);
+      window.addEventListener(KEEP_EVENT, listener);
+      return () => {
+        window.removeEventListener('storage', listener);
+        window.removeEventListener(KEEP_EVENT, listener);
+      };
+    },
+    keepsPlayingOffscreen,
+    () => false,
+  );
+}
+
+/** The card went far off-screen: stop its video unless this person asked to keep it playing. */
+export function stopWhenOffscreen(id: string): void {
+  if (!keepsPlayingOffscreen()) stopInline(id);
+}
+
 export const isPlayingInline = (id: string) => active === id;
 
 export function subscribeInline(listener: () => void): () => void {

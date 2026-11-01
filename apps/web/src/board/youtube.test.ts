@@ -63,6 +63,7 @@ describe('youtube utilities', () => {
     expect(videoEmbedUrl('https://youtu.be/dQw4w9WgXcQ')).toContain('youtube-nocookie.com');
     expect(videoEmbedUrl('https://example.com/video')).toBeNull();
     expect(isVideoLink('https://vimeo.com/123456')).toBe(true);
+    // Instagram plays on the card only: the viewer and the gallery stay with video files.
     expect(isVideoLink('https://www.instagram.com/reel/C1abc/')).toBe(false);
   });
 
@@ -71,5 +72,16 @@ describe('youtube utilities', () => {
     expect(isInstagramUrl('https://instagram.com/someone/reel/C1abc/')).toBe(true);
     expect(isInstagramUrl('https://www.instagram.com/someone/')).toBe(false);
     expect(isInstagramUrl('https://instagram.com.evil.test/p/C1abc/')).toBe(false);
+  });
+
+  it('embeds Instagram through its official embed page, and nothing else on that host', () => {
+    expect(videoEmbedUrl('https://www.instagram.com/p/C1abc_-9/?igsh=x')).toBe(
+      'https://www.instagram.com/p/C1abc_-9/embed',
+    );
+    expect(videoEmbedUrl('https://instagram.com/someone/reels/C1abc/')).toBe(
+      'https://www.instagram.com/reel/C1abc/embed',
+    );
+    expect(videoEmbedUrl('https://www.instagram.com/someone/')).toBeNull();
+    expect(videoEmbedUrl('https://instagram.com.evil.test/p/C1abc/')).toBeNull();
   });
 });

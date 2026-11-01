@@ -132,6 +132,7 @@ const KEYWORD_PAIRS: Record<string, [string, string][]> = {
     ['Dark theme', 'Tema scuro'],
     ['Light theme', 'Tema chiaro'],
     ['Language', 'Lingua'],
+    ['Continue playing videos off-screen', 'Continua a riprodurre i video fuori schermo'],
   ],
   notifications: [
     ['Email notifications', 'Notifiche email'],

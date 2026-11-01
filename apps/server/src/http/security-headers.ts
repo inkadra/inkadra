@@ -22,7 +22,7 @@ export function securityHeaders(
     `media-src 'self' blob: ${storage}`.trim(),
     "font-src 'self'",
     `connect-src 'self' ${storage}`.trim(),
-    'frame-src https://www.youtube-nocookie.com https://player.vimeo.com',
+    'frame-src https://www.youtube-nocookie.com https://player.vimeo.com https://www.instagram.com',
     "worker-src 'self'",
     "manifest-src 'self'",
     "object-src 'none'",
@@ -32,11 +32,12 @@ export function securityHeaders(
     ...(config.CSP_REPORT_URI ? [`report-uri ${config.CSP_REPORT_URI}`] : []),
     ...(config.CSP_ENFORCE && secure ? ['upgrade-insecure-requests'] : []),
   ].join('; ');
-  const youtube = '(self "https://www.youtube-nocookie.com" "https://player.vimeo.com")';
+  const players =
+    '(self "https://www.youtube-nocookie.com" "https://player.vimeo.com" "https://www.instagram.com")';
   return {
     [config.CSP_ENFORCE ? 'content-security-policy' : 'content-security-policy-report-only']:
       policy,
-    'permissions-policy': `camera=(), microphone=(), geolocation=(), payment=(), usb=(), autoplay=${youtube}, encrypted-media=${youtube}, picture-in-picture=${youtube}, fullscreen=${youtube}, clipboard-write=${youtube}`,
+    'permissions-policy': `camera=(), microphone=(), geolocation=(), payment=(), usb=(), autoplay=${players}, encrypted-media=${players}, picture-in-picture=${players}, fullscreen=${players}, clipboard-write=${players}`,
     'cross-origin-opener-policy': 'same-origin',
     ...(config.HSTS_ENABLED && secure ? { 'strict-transport-security': 'max-age=31536000' } : {}),
   };

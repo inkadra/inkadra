@@ -1,7 +1,27 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
-import { isPlayingInline, playInline, stopInline, subscribeInline } from './inline-player.ts';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import {
+  isPlayingInline,
+  keepsPlayingOffscreen,
+  playInline,
+  setKeepsPlayingOffscreen,
+  stopInline,
+  stopWhenOffscreen,
+  subscribeInline,
+} from './inline-player.ts';
 
-afterEach(() => playInline(null));
+const store = new Map<string, string>();
+beforeEach(() => {
+  store.clear();
+  vi.stubGlobal('localStorage', {
+    getItem: (key: string) => store.get(key) ?? null,
+    setItem: (key: string, value: string) => store.set(key, value),
+  });
+  vi.stubGlobal('window', { dispatchEvent: vi.fn() });
+});
+afterEach(() => {
+  playInline(null);
+  vi.unstubAllGlobals();
+});
 
 describe('inline player', () => {
   it('keeps one card playing at a time and stops only its own card', () => {
@@ -26,5 +46,23 @@ describe('inline player', () => {
     off();
     playInline(null);
     expect(listener).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe('playing off-screen', () => {
+  it('stops a card that left the screen unless the person asked to keep it playing', () => {
+    expect(keepsPlayingOffscreen()).toBe(false);
+    playInline('a');
+    stopWhenOffscreen('a');
+    expect(isPlayingInline('a')).toBe(false);
+
+    setKeepsPlayingOffscreen(true);
+    playInline('a');
+    stopWhenOffscreen('a');
+    expect(isPlayingInline('a')).toBe(true);
+
+    setKeepsPlayingOffscreen(false);
+    stopWhenOffscreen('a');
+    expect(isPlayingInline('a')).toBe(false);
   });
 });

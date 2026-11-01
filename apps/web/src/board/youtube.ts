@@ -58,26 +58,35 @@ export function isVideoLink(url: string): boolean {
 /** Origin of the privacy-enhanced YouTube player. */
 export const YOUTUBE_ORIGIN = 'https://www.youtube-nocookie.com';
 
-/** Privacy-friendly player address with autoplay: youtube-nocookie, or Vimeo with `dnt=1`. */
-export function videoEmbedUrl(url: string): string | null {
-  const vimeo = vimeoVideoId(url);
-  return vimeo
-    ? `https://player.vimeo.com/video/${vimeo}?dnt=1&autoplay=1&playsinline=1`
-    : youtubeEmbedUrl(url);
-}
-
-/** Instagram post or reel: previewed on the board, opened on Instagram (no embed, see decision 0050). */
-export function isInstagramUrl(url: string): boolean {
+/** Kind and code of an Instagram post, reel or IGTV link; `reels` is the same page as `reel`. */
+function instagramPost(url: string): { kind: string; code: string } | null {
   try {
     const parsed = new URL(url);
-    return (
+    const match = /^\/(?:[\w.]+\/)?(p|reel|reels|tv)\/([\w-]+)\/?$/.exec(parsed.pathname);
+    return match &&
       /^https?:$/.test(parsed.protocol) &&
-      /^(www\.)?instagram\.com$/.test(parsed.hostname) &&
-      /^\/(?:[\w.]+\/)?(?:p|reel|reels|tv)\/[\w-]+\/?$/.test(parsed.pathname)
-    );
+      /^(www\.)?instagram\.com$/.test(parsed.hostname)
+      ? { kind: match[1] === 'reels' ? 'reel' : (match[1] as string), code: match[2] as string }
+      : null;
   } catch {
-    return false;
+    return null;
   }
+}
+
+/** Instagram post or reel: previewed on the board, played in the card only after a click. */
+export function isInstagramUrl(url: string): boolean {
+  return instagramPost(url) !== null;
+}
+
+/**
+ * Player address with autoplay where the provider has it: youtube-nocookie, Vimeo with
+ * `dnt=1`, or Instagram's official embed (it cannot autoplay: its own play button follows).
+ */
+export function videoEmbedUrl(url: string): string | null {
+  const vimeo = vimeoVideoId(url);
+  if (vimeo) return `https://player.vimeo.com/video/${vimeo}?dnt=1&autoplay=1&playsinline=1`;
+  const post = instagramPost(url);
+  return post ? `https://www.instagram.com/${post.kind}/${post.code}/embed` : youtubeEmbedUrl(url);
 }
 
 /** Accept playback updates only from this viewer's privacy-enhanced YouTube player. */

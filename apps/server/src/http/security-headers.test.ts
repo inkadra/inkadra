@@ -21,12 +21,12 @@ describe('browser security policy', () => {
     expect(h['strict-transport-security']).toBeUndefined();
     expect(h['cross-origin-opener-policy']).toBe('same-origin');
     expect(h['permissions-policy']).toContain('camera=()');
-    // Only the two privacy-friendly players, and no Instagram embed (decision 0050).
+    // Only the three players of link cards, loaded after a click (decision 0050).
     expect(h['content-security-policy-report-only']).toContain(
-      'frame-src https://www.youtube-nocookie.com https://player.vimeo.com;',
+      'frame-src https://www.youtube-nocookie.com https://player.vimeo.com https://www.instagram.com;',
     );
     expect(h['permissions-policy']).toContain(
-      'fullscreen=(self "https://www.youtube-nocookie.com" "https://player.vimeo.com")',
+      'fullscreen=(self "https://www.youtube-nocookie.com" "https://player.vimeo.com" "https://www.instagram.com")',
     );
   });
   it('enforces only when opted in, including S3 presigned media and uploads', () => {

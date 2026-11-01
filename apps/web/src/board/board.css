@@ -2768,21 +2768,42 @@ button.card__play {
   cursor: pointer;
   border: 0;
 }
-/* The player replaces the thumbnail. The card is dragged by its title and frame below. */
+/*
+ * The player replaces the thumbnail, inside a frame that drags the card. Instagram's embed is
+ * a tall post, not a 16:9 picture.
+ */
 .card__embed {
-  background: #000;
+  box-sizing: border-box;
+  padding: 6px;
+  background: var(--ink-surface-2);
 }
 .card__embed iframe {
   display: block;
   width: 100%;
   height: 100%;
   border: 0;
+  border-radius: var(--ink-radius-xs);
+  background: #000;
 }
-/* ↗ over the picture: the viewer for a playing video, Instagram for a post. */
+.card--link .card__media--link.card__embed--portrait {
+  aspect-ratio: 10 / 13;
+}
+/* Instagram's embed has its own button at the top right: ↗ goes to the bottom, which is clear. */
+.card__embed--portrait .card__expand {
+  top: auto;
+  bottom: 12px;
+}
+/* Alt held: the player does not take the pointer, so the card drags from anywhere. */
+.card__shield {
+  position: absolute;
+  inset: 0;
+  cursor: grabbing;
+}
+/* ↗ over the player: the viewer for a video, Instagram for a post. */
 .card__expand {
   position: absolute;
-  top: 8px;
-  right: 8px;
+  top: 12px;
+  right: 12px;
   display: grid;
   place-items: center;
   width: 26px;

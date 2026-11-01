@@ -36,7 +36,7 @@ import { useSlugline } from './film/storyboard-data.ts';
 import { GuestVisibility } from './guest-visibility.tsx';
 import { ImageCropStage } from './ImageCropEditor.tsx';
 import { croppedRotatedSize, rotatedBounds } from './image-crop.ts';
-import { playInline, stopInline, useInlinePlaying } from './inline-player.ts';
+import { playInline, stopInline, stopWhenOffscreen, useInlinePlaying } from './inline-player.ts';
 import { webUrl } from './links.ts';
 import { useMeasure } from './measure.ts';
 import { movingVariantUrl } from './moving.tsx';
@@ -486,38 +486,52 @@ function shortUrl(url: string): string {
   return text.length > 80 ? `${text.slice(0, 79)}…` : text;
 }
 
-/** The player takes the place of the thumbnail; ↗ hands over to the viewer. */
+/**
+ * The player takes the place of the thumbnail, inside a frame a few pixels wide: the frame and
+ * the title below drag the card. Holding Alt lays a shield over the player, so the card can be
+ * dragged from anywhere. shortcut: while the player has keyboard focus the page never sees Alt;
+ * the frame still drags then.
+ */
 function InlineVideo({
   element,
   embedUrl,
   title,
+  instagram,
 }: {
   element: Of<'link'>;
   embedUrl: string;
   title: string;
+  instagram: boolean;
 }) {
   const { t } = useTranslation();
   const { openElement } = useBoard();
   const ref = useRef<HTMLDivElement>(null);
   const mounted = useRef(false);
+  const [alt, setAlt] = useState(false);
   const id = element.id;
   useEffect(() => {
     mounted.current = true;
     const stop = () => stopInline(id);
-    const onKey = (event: { key: string }) => {
+    const onKey = (event: { key: string; altKey: boolean }) => {
       if (event.key === 'Escape') stop();
+      setAlt(event.altKey);
     };
+    const onBlur = () => setAlt(false);
     window.addEventListener('keydown', onKey);
+    window.addEventListener('keyup', onKey);
+    window.addEventListener('blur', onBlur);
     // Far off-screen means more than a screen away: a small pan keeps the video running.
     const observer = new IntersectionObserver(
       ([entry]) => {
-        if (entry && !entry.isIntersecting) stop();
+        if (entry && !entry.isIntersecting) stopWhenOffscreen(id);
       },
       { rootMargin: '100% 100% 100% 100%' },
     );
     if (ref.current) observer.observe(ref.current);
     return () => {
       window.removeEventListener('keydown', onKey);
+      window.removeEventListener('keyup', onKey);
+      window.removeEventListener('blur', onBlur);
       observer.disconnect();
       mounted.current = false;
       // StrictMode remounts at once: only a card that really went away stops.
@@ -526,21 +540,26 @@ function InlineVideo({
       });
     };
   }, [id]);
+  const open = t(instagram ? 'board.menu.openOnInstagram' : 'board.menu.openInViewer');
   return (
-    <div className="card__media card__media--link card__embed" ref={ref}>
+    <div
+      className={`card__media card__media--link card__embed${instagram ? ' card__embed--portrait' : ''}`}
+      ref={ref}
+    >
       <iframe
         src={embedUrl}
         title={t('board.menu.videoPlayer', { title })}
         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
         allowFullScreen
       />
+      {alt && <div className="card__shield" />}
       <button
         type="button"
         className="card__expand"
         data-no-drag
         data-play-link={id}
-        title={t('board.menu.openInViewer')}
-        aria-label={t('board.menu.openInViewer')}
+        title={open}
+        aria-label={open}
         onClick={(event) => {
           event.stopPropagation();
           stopInline(id);
@@ -567,7 +586,7 @@ function LinkCard({ element, width }: { element: Of<'link'>; width: number }) {
   return (
     <>
       {embedUrl && playing ? (
-        <InlineVideo element={element} embedUrl={embedUrl} title={title} />
+        <InlineVideo element={element} embedUrl={embedUrl} title={title} instagram={instagram} />
       ) : src || embedUrl ? (
         <div className={`card__media card__media--link${src ? '' : ' card__video'}`}>
           {src && <img src={src} alt="" draggable={false} decoding="async" />}
@@ -586,24 +605,7 @@ function LinkCard({ element, width }: { element: Of<'link'>; width: number }) {
               <Icon name="play" size={16} />
             </button>
           )}
-          {instagram && src && (
-            <>
-              <span className="card__badge">{t('board.menu.instagram')}</span>
-              {href && (
-                <a
-                  className="card__expand"
-                  href={href}
-                  target="_blank"
-                  rel="noopener noreferrer nofollow"
-                  data-no-drag
-                  title={t('board.menu.openOnInstagram')}
-                  aria-label={t('board.menu.openOnInstagram')}
-                >
-                  <Icon name="arrow" size={14} />
-                </a>
-              )}
-            </>
-          )}
+          {instagram && <span className="card__badge">{t('board.menu.instagram')}</span>}
         </div>
       ) : null}
       <div className="card__pad card__link">

@@ -2025,7 +2025,9 @@
     },
     "preferences": {
       "themeHelp": "System follows your device setting",
-      "languageHelp": "Interface and email language"
+      "languageHelp": "Interface and email language",
+      "keepPlaying": "Continue playing videos off-screen",
+      "keepPlayingHelp": "A video in a link card keeps playing when you move it out of view. Off stops it, which keeps the board smooth."
     },
     "notifications": {
       "short": {
@@ -2079,7 +2081,7 @@
     "noResults": "No settings found",
     "keywords": {
       "account": "Name, Email, Profile photo, Password, Two-step verification (2FA), Backup codes, Sign-in methods, Sessions, Devices, Apps and tokens, Delete account",
-      "preferences": "Theme, Dark theme, Light theme, Language",
+      "preferences": "Theme, Dark theme, Light theme, Language, Continue playing videos off-screen",
       "notifications": "Email notifications, Mentions, Replies, Reviews, Daily digest, Inbox",
       "members": "Invite members, Invitations, Invitation link, Role, Administrators, Deactivate account, Reactivate account, People",
       "workspace": "Space used, Uploaded files, Storage",
