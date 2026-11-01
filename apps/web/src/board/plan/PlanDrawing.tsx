@@ -398,9 +398,12 @@ export const PlanDrawing = memo(function PlanDrawing({
   grid,
   hidden,
   ghosts = true,
+  moves = true,
   children,
 }: {
   plan: PlanLike;
+  /** Blocking moves and numbers; an export may leave them out. */
+  moves?: boolean;
   /** Veiled copies of the earlier blocking positions; the arrows and numbers stay. */
   ghosts?: boolean;
   grid?: number | undefined;
@@ -425,9 +428,10 @@ export const PlanDrawing = memo(function PlanDrawing({
       {visible(plan.shapes, off).map((s) => (
         <PlanShapeView key={s.id} shape={measureEnds(s, plan.icons)} scale={plan.scale} />
       ))}
-      {visible(plan.icons, off).map((icon) => (
-        <BlockingView key={`b${icon.id}`} icon={icon} ghosts={ghosts} />
-      ))}
+      {moves &&
+        visible(plan.icons, off).map((icon) => (
+          <BlockingView key={`b${icon.id}`} icon={icon} ghosts={ghosts} />
+        ))}
       {visible(plan.icons, off).map((icon) => (
         <PlanIconView key={icon.id} icon={icon} sensor={plan.sensor} />
       ))}

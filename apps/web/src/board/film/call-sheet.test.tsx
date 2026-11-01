@@ -155,8 +155,8 @@ it('renders saved data and linked or removed shots, toggles sections and prints 
     [...host.querySelectorAll('button')].find((b) => b.textContent === 'shells.print')?.click(),
   );
   expect(print).toHaveBeenCalledOnce();
-  // Day 2 has no blocks, cast, departments or notes: those sections say so and stay out.
-  expect(host.querySelectorAll('input[role=switch]')).toHaveLength(6);
+  // Day 2 has no blocks, cast, departments, notes, frames or plans: they say so and stay out.
+  expect(host.querySelectorAll('input[role=switch]')).toHaveLength(8);
   expect(host.textContent).toContain('callSheet.emptyHelp');
   expect(paper()?.textContent).not.toContain('bring lights');
 });

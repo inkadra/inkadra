@@ -42,6 +42,33 @@ under a reference image.
   labels and texts. **Exports** draw the plan as vectors, without the grid. Copy, paste and
   duplicate keep every stroke, shape and icon.
 
+**Version 15 (round 6 of the mockups, the answers Matteo approved).**
+- **Library.** 42 original line icons in 7 categories (lights, grip, camera and movement,
+  people, audio and video, furniture, exteriors) plus 4 annotation tools (arrow, text, measure,
+  area); generic types, no makes or models. One glyph per kind in canvas-core draws the library
+  tile, the plan and the exports; `light` of version 14 is drawn as a Fresnel. Icons start in
+  their family colour. Search knows names, synonyms and categories ("kino" finds the tube).
+  Favourites and the last 8 icons placed are personal and live in the preferences
+  (`planFavorites`, `planRecents`), not in the board.
+- **Icons** gain optional fields: `size` (S, M, L for symbols: lights, cameras and people stay
+  symbols), `w` and `h` (furniture and exteriors take a free size, in view units), `lens` (mm;
+  the cone follows it on the plan's `sensor`, Super 35 by default), `showLens`, `reach`,
+  `power`, `beam`, `intensity`, blocking `steps` (earlier positions with a `note` and a `bend`,
+  the icon standing at the last) with `note` and `dashed`, and `layer` and `group` (one level).
+  The lens of the frames of the plan's scenes is proposed, read only, never synced back.
+- **Shapes** may be measures (ends attached to icons by `from` and `to` follow them) and areas,
+  and turn by `rotation`; strokes and shapes carry `layer` and `group` too.
+- **The plan** gains `sceneIds` (one plan may serve several scenes), `variantOf` and `variant`
+  (a variant is a separate card that shows and edits the Set layer of its base, with its own
+  lights, cameras, actors and notes), `hiddenLayers` (on a variant, for everyone and its
+  exports; on a base plan hiding is personal and not stored), `lockedLayers`, `scale` (view
+  units per metre, set from a line of known length) with `grid` and `rulers`, `sensor` and
+  `presentation` (false leaves it out of the scene slides).
+- **Output.** The presentation shows a slide per scene with its frames and plan; the call
+  sheet prints, under each scene of the day, its frames, its plan and the kit list counted from
+  its icons, with numbered moves and full-page plans as options. No animated preview of the
+  blocking.
+
 **Consequences.** Builds before version 14 refuse boards with plans, as for every new element
 type. A plan is bounded (2,000 strokes, 500 shapes, 300 icons) so a board document stays small
 enough to sync. The presentation shows storyboard frames only, so plans are not in it. An

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-import type { FrameElement, SceneGroup } from '@inkadra/canvas-core';
+import { type FrameElement, type SceneGroup, variantView } from '@inkadra/canvas-core';
 import { SHOT_MOVEMENTS, SHOT_SIZES } from '@inkadra/doc-schema';
 import type { ExportSettings } from '@inkadra/shared';
 import { Button, Icon, IconButton, KeyCap } from '@inkadra/ui';
@@ -9,6 +9,8 @@ import { fetchExportSettings, logoUrl } from './export/settings.ts';
 import { useBoardAspect } from './film/aspect.ts';
 import { FramePicture } from './film/FramePicture.tsx';
 import { usePresetText } from './film/fields.tsx';
+import { PlanDrawing, type PlanLike } from './plan/PlanDrawing.tsx';
+import { plansOfScene } from './plan/scenes.tsx';
 import './presentation.css';
 import { isTyping } from './shortcuts.ts';
 import type { BoardStore } from './store.ts';
@@ -16,7 +18,7 @@ import { headingFamily, loadHeadingFont, resolveTheme, screenAccent } from './th
 
 export interface SlideItem {
   id: string;
-  type: 'frame' | 'card';
+  type: 'frame' | 'card' | 'scene';
   title?: string;
   sceneHeading?: string;
   location?: string;
@@ -31,6 +33,9 @@ export interface SlideItem {
   };
   notes?: string;
   frame?: FrameElement;
+  /** A scene slide (round 6, i): the scene's frames on the left, its set plan on the right. */
+  plan?: PlanLike;
+  frames?: readonly FrameElement[];
 }
 
 /** Formats elapsed seconds as mm:ss */
@@ -141,6 +146,26 @@ export function PresentationView({
       ].filter(Boolean);
       const sceneHeading = headingParts.join(' · ');
 
+      // The plan of the scene first, unless the plan leaves itself out of the slides.
+      const plan = scene
+        ? plansOfScene(store.getSnapshot().byId.values(), scene.id).find(
+            (p) => p.presentation !== false,
+          )
+        : undefined;
+      if (plan && scene) {
+        const base = plan.variantOf ? store.getSnapshot().byId.get(plan.variantOf) : undefined;
+        list.push({
+          id: `scene-${scene.id}`,
+          type: 'scene',
+          label: t('needed.sceneNumber', { number: scene.number }),
+          sceneHeading: sceneHeading || undefined,
+          location: scene.location,
+          action: scene.synopsis || '',
+          notes: scene.synopsis || '',
+          plan: base?.type === 'plan' ? variantView(plan, base) : plan,
+          frames: group.frames.slice(0, 4),
+        });
+      }
       for (const frame of group.frames) {
         const label = labels.get(frame.id) ?? frame.label ?? String(list.length + 1);
         list.push({
@@ -166,7 +191,7 @@ export function PresentationView({
     }
 
     return list;
-  }, [groups, labels, getPreset, t]);
+  }, [groups, labels, getPreset, t, store]);
 
   const total = slides.length;
   const safeIndex = Math.min(index, Math.max(0, total - 1));
@@ -259,7 +284,30 @@ export function PresentationView({
                 )}
               </div>
 
-              <div className="present-stage__canvas">
+              <div
+                className={`present-stage__canvas${current.plan ? ' present-stage__canvas--scene' : ''}`}
+              >
+                {current.plan && (
+                  <>
+                    <div className="present-scene__frames">
+                      {current.frames?.map((f) => (
+                        <FramePicture
+                          key={f.id}
+                          assetId={f.assetId}
+                          aspect={f.aspect}
+                          boardAspect={boardAspect}
+                          strokes={f.strokes}
+                          shapes={f.shapes}
+                          referenceOpacity={f.referenceOpacity}
+                          pixels={640}
+                        />
+                      ))}
+                    </div>
+                    <div className="present-scene__plan plan">
+                      <PlanDrawing plan={current.plan} />
+                    </div>
+                  </>
+                )}
                 {current.frame && (
                   <FramePicture
                     assetId={current.frame.assetId}
@@ -310,6 +358,7 @@ export function PresentationView({
                     onClick={() => setIndex(i)}
                   >
                     <span className="present-thumb__pic">
+                      {s.plan && <PlanDrawing plan={s.plan} />}
                       {s.frame && (
                         <FramePicture
                           assetId={s.frame.assetId}

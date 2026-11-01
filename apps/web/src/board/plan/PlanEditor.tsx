@@ -1623,6 +1623,22 @@ export function PlanEditor({
           </Button>
         </>
       )}
+      <label className="plan-props__row">
+        <span>{t('board.plan.inPresentation')}</span>
+        <Switch
+          checked={plan.presentation !== false}
+          onChange={(e) =>
+            change(() =>
+              updateElement(
+                doc,
+                plan.id,
+                { presentation: e.target.checked ? undefined : false },
+                LOCAL,
+              ),
+            )
+          }
+        />
+      </label>
       <p className="plan-props__empty">{t('board.plan.noSelection')}</p>
     </div>
   );
@@ -1860,7 +1876,7 @@ export function PlanEditor({
           )}
         </div>
       </div>
-      {moveBar}
+      {!phone && moveBar}
       {layerStatus.length > 0 && !phone && (
         <p className="plan-editor__status">{layerStatus.join(' · ')}</p>
       )}
@@ -1896,7 +1912,7 @@ export function PlanEditor({
         </header>
         {stageArea}
         {tool === 'icons' && !current && library}
-        {manyBar || bar}
+        {!movingIcon && (manyBar || bar)}
         {tools}
       </div>,
       document.body,

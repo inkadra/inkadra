@@ -978,7 +978,8 @@
       "layer": "Livello",
       "variantMenu": "Duplica come variante",
       "variantName": "Variante {{n}}",
-      "variantField": "Nome della variante"
+      "variantField": "Nome della variante",
+      "inPresentation": "Nella presentazione"
     }
   },
   "tags": {
@@ -2218,8 +2219,15 @@
     "check": "Spunta",
     "item": "Elemento",
     "type": "Tipo",
-    "scenes": "Scene",
-    "bringer": "Chi porta"
+    "scenes": "Scene del giorno",
+    "bringer": "Chi porta",
+    "frames": "Fotogrammi della scena",
+    "plans": "Pianta del set",
+    "kit": "Elenco del materiale",
+    "kitHelp": "Conta le icone per tipo ed etichetta.",
+    "moves": "Movimenti numerati",
+    "fullPage": "Piante a tutta pagina",
+    "new": "Nuovo"
   },
   "needed": {
     "title": "Da portare",

@@ -978,7 +978,8 @@
       "layer": "Layer",
       "variantMenu": "Duplicate as a variant",
       "variantName": "Variant {{n}}",
-      "variantField": "Variant name"
+      "variantField": "Variant name",
+      "inPresentation": "In the presentation"
     }
   },
   "tags": {
@@ -2218,8 +2219,15 @@
     "check": "Tick",
     "item": "Item",
     "type": "Type",
-    "scenes": "Scenes",
-    "bringer": "Who brings"
+    "scenes": "Scenes of the day",
+    "bringer": "Who brings",
+    "frames": "Frames of the scene",
+    "plans": "Set plan",
+    "kit": "Kit list",
+    "kitHelp": "Counts the icons by type and label.",
+    "moves": "Numbered moves",
+    "fullPage": "Plans on a full page",
+    "new": "New"
   },
   "needed": {
     "title": "To bring",

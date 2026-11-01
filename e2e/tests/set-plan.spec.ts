@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Set plans (#335): the card on the board, its editor on a desktop and on a phone. Runs after
 // first-run.spec.ts in CI; alone, it signs up.
+import { randomUUID } from 'node:crypto';
 import { mkdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { createElement, encodeStroke } from '@inkadra/canvas-core';
+import { addFrame, createElement, encodeStroke } from '@inkadra/canvas-core';
 import {
   createBoardDoc,
   type Element,
@@ -171,7 +172,32 @@ async function seed(page: Page, baseURL: string, theme: 'light' | 'dark') {
     },
     opts,
   );
+  const shots = ['Anna entra dalla porta', 'Anna alla finestra', 'Marco si siede'].map(
+    (action) => addFrame(doc, scene5.id, null, { action }, opts).id,
+  );
   await pushBoardDoc(baseURL, cookie, root, doc);
+  // A shooting day with the three frames of scene 5, for the call sheet.
+  const day = await page.request.post(`/api/v1/boards/${root}/schedule`, {
+    headers: { origin: baseURL },
+    data: {
+      date: '2026-11-10',
+      callTime: '07:00',
+      wrap: null,
+      location: 'Cucina',
+      notes: '',
+      blocks: shots.map((shotId) => ({
+        id: randomUUID(),
+        type: 'shot',
+        title: '',
+        start: null,
+        duration: 45,
+        shotId,
+        cast: [],
+        departments: [],
+      })),
+    },
+  });
+  expect(day.status()).toBe(201);
   return { cookie, project, planId: plan.id };
 }
 
@@ -416,13 +442,13 @@ for (const theme of ['dark', 'light'] as const) {
     await page.keyboard.press('Escape');
     await page.keyboard.press('Escape');
     await expect(editor).toHaveCount(0);
-    await card.click({ position: { x: 300, y: 20 } });
+    await card.click({ position: { x: 60, y: 10 } });
     await page.keyboard.press('Control+d');
     await expect.poll(async () => (await saved()).count).toBe(2);
     await page.keyboard.press('Control+z');
     await expect.poll(async () => (await saved()).count).toBe(1);
     // Variants (round 6, h): a second card sharing the Set layer, with tabs in the editor.
-    await card.click({ button: 'right', position: { x: 300, y: 20 } });
+    await card.click({ button: 'right', position: { x: 60, y: 10 } });
     await page.getByRole('menuitem', { name: 'Duplica come variante' }).click();
     await expect.poll(async () => (await saved()).count).toBe(2);
     const variantCard = page.locator('[data-type="plan"]').nth(1);
@@ -463,6 +489,29 @@ for (const theme of ['dark', 'light'] as const) {
       await sceneHead.getByRole('button', { name: 'Pianta del set' }).click();
       await expect(editor).toBeVisible();
       await page.keyboard.press('Escape');
+
+      // The presentation (round 6, i): a slide for scene 5 with its frames and its plan.
+      await page.goto(`/p/${project.id}?view=storyboard`);
+      await page.getByRole('button', { name: 'Presenta', exact: true }).click();
+      const present = page.getByRole('dialog', { name: 'Presenta' });
+      await expect(present.locator('.present-scene__plan .plan__svg')).toBeVisible();
+      await expect(present.locator('.present-scene__frames .frame-pic')).toHaveCount(3);
+      await page.screenshot({ path: join(out, 'desktop-dark-presentation.png') });
+      await page.keyboard.press('Escape');
+
+      // The call sheet: the scene with its frames, the plan and the kit list.
+      await page.goto(`/p/${project.id}?view=schedule`);
+      await page.getByRole('button', { name: 'Foglio di lavorazione', exact: true }).click();
+      const sheet = page.getByRole('article', { name: 'Anteprima foglio di lavorazione' });
+      const scenes = sheet.locator('.sheet__section').filter({ hasText: 'Scene del giorno' });
+      await expect(scenes.locator('.plan__svg')).toBeVisible();
+      await expect(scenes.locator('.sheet__kit')).toContainText('Fresnel');
+      await scenes.scrollIntoViewIfNeeded();
+      await page
+        .getByRole('dialog', { name: 'Foglio di lavorazione' })
+        .evaluate((el) => Promise.all(el.getAnimations({ subtree: true }).map((a) => a.finished)));
+      await page.screenshot({ path: join(out, 'desktop-dark-callsheet.png') });
+      await page.keyboard.press('Escape');
     }
     const state = await page.context().storageState();
     await page.close();
@@ -493,6 +542,19 @@ for (const theme of ['dark', 'light'] as const) {
       await expect(full.getByRole('button', { name: 'Divano', exact: true })).toBeVisible();
       await full.getByRole('tab', { name: 'Luci' }).tap();
       await mobile.screenshot({ path: join(out, `phone-${theme}-library.png`) });
+      // Blocking on a phone: the Movement tool, then a tap on Marco and on a new spot.
+      await full.getByRole('button', { name: 'Movimento (M)' }).tap();
+      const phoneStage = (await full.locator('.plan-editor__stage').boundingBox())!;
+      const pt = (x: number, y: number) => ({
+        x: phoneStage.x + (x / 400) * phoneStage.width,
+        y: phoneStage.y + (y / (400 / 1.5)) * phoneStage.height,
+      });
+      const marco = pt(214, 168);
+      await mobile.touchscreen.tap(marco.x, marco.y);
+      const spot3 = pt(120, 150);
+      await mobile.touchscreen.tap(spot3.x, spot3.y);
+      await expect(full.locator('.plan-editor__hint')).toBeVisible();
+      await mobile.screenshot({ path: join(out, `phone-${theme}-blocking.png`) });
       await full.getByRole('button', { name: 'Fatto' }).tap();
       await expect(full).toHaveCount(0);
     } finally {
