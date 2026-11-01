@@ -215,7 +215,11 @@ test('the palette inserts templates on a non-empty board and opens storyboard te
 
   await page.keyboard.press('/');
   await palette.getByRole('combobox').fill('modello: Storyboard');
+  const modelli = page.url();
   await page.keyboard.press('Enter');
+  // The project has a storyboard already, so this board's header shows the film tabs too: wait
+  // for the new storyboard to open before using them.
+  await expect(page).not.toHaveURL(modelli);
   await expect(page.getByRole('tab', { name: 'Shot list' })).toBeVisible();
   await page.getByRole('tab', { name: 'Shot list' }).click();
   await expect(page.getByRole('row', { name: /1B/ })).toBeVisible();
