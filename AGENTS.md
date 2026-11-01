@@ -35,4 +35,35 @@ Take the first option that fully works:
   can't be built, ask; don't swap in a simpler widget or drop it on your own.
 - Wait for builds, tests and CI without ending your turn: nothing wakes you up afterwards.
 
+## Bugs: find the cause before the fix
+
+Reproduce the bug first (a failing test or a recorded step), find the root cause, fix it once in
+the shared code, and keep the test. Don't patch symptoms in each caller. If you can't reproduce
+it, say so instead of guessing.
+
+## Before you say "done"
+
+Adapted from Superpowers (https://github.com/obra/superpowers, MIT): evidence over claims.
+
+1. **Spec check, then quality.** Re-read the issue and the approved mockup and go through them
+   point by point: every point is done, or listed as skipped with the reason. Only then polish.
+2. **Verify, don't assume.** Run the checks that prove it (tests, e2e, CI green on the pushed
+   head) and quote the result. A draft, a partial PR or "CI still running" is not done.
+
+## UI review before screenshots
+
+Inspired by Impeccable's "normalize" (https://github.com/pbakaus/impeccable, Apache-2.0) and
+design.how's "ui-review" (https://github.com/arla6ka/design.how, MIT). Before you send
+screenshots of a UI change, check and fix:
+
+1. **Mockup:** layout, copy, sizes and states match the approved mockup; list any deviation.
+2. **System:** only `packages/ui` components and tokens (radii, colours, spacing, motion); no
+   one-off styles that a token covers; animations use transform/opacity and respect reduced motion.
+3. **States:** light and dark, desktop and phone, plus empty, loading, error, disabled, hover and
+   keyboard focus. Take screenshots without a leftover hover or pressed state.
+4. **Overlap and fit:** nothing covers neighbouring cards or the floating shell; long text and
+   long names don't break the layout at 1280px or on a 390px phone.
+5. **Accessibility:** contrast (WCAG AA), labels and roles on controls, full keyboard use, focus
+   visible, no duplicate accessible names.
+
 End your report with one or two lines: what you skipped or didn't check, and any risk.
