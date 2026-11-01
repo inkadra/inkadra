@@ -58,6 +58,7 @@ const videoAsset: Asset = {
   proxy: null,
   waveformUrl: null,
   animated: false,
+  track: null,
   status: 'ready',
   url: '/api/v1/assets/video-prores/file',
   variants: [
@@ -371,6 +372,7 @@ describe('mounted viewer error events', () => {
     height: videoAsset.height,
     durationMs: videoAsset.durationMs,
     animated: videoAsset.animated,
+    track: null,
     variants: videoAsset.variants,
     downloadUrl: '/api/v1/guest/links/link/assets/video-prores/file',
     streamUrl: null,

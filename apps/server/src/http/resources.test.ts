@@ -120,6 +120,9 @@ describe.skipIf(!url)('projects, boards, uploads and assets (needs DATABASE_URL)
       } else if (req.url === '/cover.png') {
         res.setHeader('content-type', 'image/png');
         res.end(red);
+      } else if (req.url?.startsWith('/tiles/')) {
+        res.setHeader('content-type', 'image/png');
+        res.end(red);
       } else if (req.url === '/loop') {
         res.statusCode = 302;
         res.setHeader('location', '/loop');
@@ -610,6 +613,43 @@ describe.skipIf(!url)('projects, boards, uploads and assets (needs DATABASE_URL)
       url: 'ftp://example.com/x',
     });
     expect(ftp.statusCode).toBe(400);
+  });
+
+  // Map previews -------------------------------------------------------------------
+
+  it('places a map link and composites its map from the tile server', async () => {
+    config.MAP_TILE_URL = `${siteUrl}/tiles/{z}/{x}/{y}.png`;
+    const res = await call('owner', 'POST', '/api/v1/map-previews', {
+      projectId,
+      url: 'https://www.openstreetmap.org/?mlat=46.33&mlon=9.55#map=15/46.33/9.55',
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toMatchObject({ lat: 46.33, lon: 9.55, zoom: 15, name: null });
+    await deps.jobs.idle();
+    const image = await call('owner', 'GET', `/api/v1/assets/${res.json().imageAssetId}`);
+    expect(image.json()).toMatchObject({
+      status: 'ready',
+      filename: 'map.png',
+      width: 1024,
+      height: 560,
+    });
+    // Without a geocoder an address has no place, and nothing is fetched for it.
+    const address = await call('owner', 'POST', '/api/v1/map-previews', {
+      projectId,
+      query: 'Loreto, Sondrio',
+    });
+    expect(address.json()).toEqual({
+      lat: null,
+      lon: null,
+      zoom: null,
+      name: null,
+      url: null,
+      imageAssetId: null,
+    });
+    expect(
+      (await call('viewer', 'POST', '/api/v1/map-previews', { projectId, query: 'Loreto' }))
+        .statusCode,
+    ).toBe(403);
   });
 
   // Deletion ---------------------------------------------------------------------

@@ -277,6 +277,7 @@ export async function registerGuestRoutes(app: FastifyInstance, deps: Deps) {
         height: row.height,
         durationMs: row.durationMs,
         animated: row.animated,
+        track: row.track ?? null,
         variants:
           row.status === 'ready'
             ? variants

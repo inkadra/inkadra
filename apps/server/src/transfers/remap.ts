@@ -15,6 +15,7 @@ const ASSET_FIELDS = ['assetId', 'imageAssetId'] as const;
 const OPTIONAL_ASSET: Record<string, string> = {
   frame: 'assetId',
   link: 'imageAssetId',
+  map: 'imageAssetId',
   character: 'assetId',
   location: 'assetId',
 };

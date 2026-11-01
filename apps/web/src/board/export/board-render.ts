@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 import { arrowGeometry, arrowPolyline, decodeStroke, type Rect } from '@inkadra/canvas-core';
 import type { Element, FrameShape, Stroke } from '@inkadra/doc-schema';
+import type { AssetTrack } from '@inkadra/shared';
 import { croppedRotatedSize } from '../image-crop.ts';
 import type { Placed } from './board-model.ts';
 import type { ImageInfo, Measure, Op } from './pages.ts';
@@ -24,7 +25,8 @@ export type Palette = Record<
   | 'tag-blue-bg'
   | 'tag-orange-bg'
   | 'tag-purple-bg'
-  | 'tag-green-bg',
+  | 'tag-green-bg'
+  | 'tag-red',
   string
 >;
 
@@ -42,6 +44,8 @@ export interface CardContext {
   noteBlocks(id: string): NoteBlock[];
   image(assetId: string | undefined): { key: string; info: ImageInfo } | null;
   fileName(assetId: string): string;
+  /** The route of a GPX file, drawn over its map. */
+  track?(assetId: string): AssetTrack | null;
   boardTitle(boardId: string): string;
   frameLabel(id: string): string;
   /** Width / height of a frame's picture. */
@@ -107,6 +111,8 @@ export function cardHeight(el: Element, w: number, ctx: CardContext): number | n
     }
     case 'table':
       return el.rows.length * TABLE_ROW;
+    case 'map':
+      return (ctx.image(el.imageAssetId) ? (w * 560) / 1024 : 0) + 52;
     case 'location': {
       const pic = ctx.image(el.assetId) ? (w * 9) / 16 : 0;
       return (
@@ -297,9 +303,17 @@ function body(p: Placed, ctx: CardContext): Op[] {
     case 'file': {
       const name = ctx.fileName(el.assetId);
       const img = ctx.image(el.assetId);
+      const track = ctx.track?.(el.assetId) ?? null;
       const ops: Op[] = [];
       let top = p.y + 10;
-      if (img) {
+      if (track) {
+        const pic = { x: p.x, y: p.y, w: p.w, h: (p.w * 560) / 1024 };
+        ops.push(
+          img ? picture(img.key, pic, 'cover', c) : { kind: 'rect', ...pic, fill: c['surface-2'] },
+          ...routeOps(track, pic, c),
+        );
+        top = p.y + pic.h + 10;
+      } else if (img) {
         const h = Math.min(p.w * 0.6, (p.w * img.info.height) / img.info.width);
         ops.push(picture(img.key, { x: p.x, y: p.y, w: p.w, h }, 'cover', c));
         top = p.y + h + 10;
@@ -517,7 +531,56 @@ function body(p: Placed, ctx: CardContext): Op[] {
       return [];
     case 'table':
       return tableOps(el, p, c, m);
+    case 'map': {
+      const ops: Op[] = [];
+      let top = p.y + 10;
+      const img = ctx.image(el.imageAssetId);
+      if (img) {
+        const pic = { x: p.x, y: p.y, w: p.w, h: (p.w * 560) / 1024 };
+        ops.push(
+          picture(img.key, pic, 'cover', c),
+          ...dot(pic.x + pic.w / 2, pic.y + pic.h / 2, 6, c['tag-red'], c['surface-1']),
+        );
+        top = p.y + pic.h + 10;
+      }
+      const name = text(el.name || el.address || '', top, TITLE, c['text-primary'], 1);
+      ops.push(...name.ops);
+      if (el.address && el.address !== el.name)
+        ops.push(...text(el.address, name.bottom, SMALL, c['text-muted'], 1).ops);
+      return ops;
+    }
   }
+}
+
+/** A round dot with a ring, as the pins and route ends on the board. */
+function dot(cx: number, cy: number, r: number, fill: string, ring?: string): Op[] {
+  const ops: Op[] = [];
+  if (ring)
+    ops.push({
+      kind: 'rect',
+      x: cx - r - 2,
+      y: cy - r - 2,
+      w: 2 * r + 4,
+      h: 2 * r + 4,
+      radius: r + 2,
+      fill: ring,
+    });
+  ops.push({ kind: 'rect', x: cx - r, y: cy - r, w: 2 * r, h: 2 * r, radius: r, fill });
+  return ops;
+}
+
+/** A GPX route over its map picture: the line and its two ends. */
+function routeOps(track: AssetTrack, pic: Rect, c: Palette): Op[] {
+  const p = track.points;
+  if (p.length < 4) return [];
+  const points = p.map((v, i) => (i % 2 === 0 ? pic.x + v * pic.w : pic.y + v * pic.h));
+  const [sx, sy] = [points[0] as number, points[1] as number];
+  const [ex, ey] = [points[points.length - 2] as number, points[points.length - 1] as number];
+  return [
+    { kind: 'polyline', points, color: c['tag-green'], width: Math.max(1.5, pic.w / 150) },
+    ...dot(sx, sy, 3.5, c['tag-green']),
+    ...dot(ex, ey, 3.5, c['tag-red']),
+  ];
 }
 
 /** Height of a table row in exports, as on the board. */

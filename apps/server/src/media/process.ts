@@ -9,7 +9,9 @@ import type { Database } from '../db/client.ts';
 import { asset, assetVariant } from '../db/schema.ts';
 import { animatedVariantKey, readAll, type Storage, variantKey, waveformKey } from '../storage.ts';
 import { readExif } from './exif.ts';
+import { GPX_MAX_BYTES, parseGpx, trackStats } from './gpx.ts';
 import { decodeHeic, sniffImage } from './heic.ts';
+import { MAP_HEIGHT, MAP_WIDTH, type MapSettings, renderMap, routeLine, viewOf } from './maps.ts';
 import { palette } from './palette.ts';
 import { isPdf, readPdfInfo, renderFirstPage } from './pdf.ts';
 import { extractRawPreview, orientedPixels, readRawExif, sniffRaw } from './raw.ts';
@@ -36,6 +38,8 @@ export interface MediaDeps {
   raw?: boolean;
   /** Thumbnails of page 1 of PDFs and their page count (PDF_PREVIEWS); on if unset. */
   pdf?: boolean;
+  /** Tile server for the map behind GPX routes (decision 0053); no map when unset. */
+  maps?: MapSettings;
   /** Playable copies of videos browsers cannot play (decision 0048); on with defaults if unset. */
   proxies?: ProxySettings;
   /**
@@ -161,6 +165,7 @@ export async function processAsset(
   if (rawType) return processRaw(deps, row, digest, rawType);
   if (row.kind === 'file' && isPdf(head)) return processPdf(deps, row, digest);
   if (row.kind === 'audio') return processAudio(deps, row, digest, head);
+  if (row.kind === 'file' && isGpx(row, head)) return processGpx(deps, row, digest);
   const sniffed = sniffImage(head);
   // SVG is rasterised only when it was declared as such: it cannot be sniffed safely.
   const svg = !sniffed && row.kind === 'image' && row.mime === 'image/svg+xml';
@@ -363,6 +368,56 @@ async function processPdf(deps: MediaDeps, row: typeof asset.$inferSelect, diges
       await copy.done();
     }
   });
+}
+
+/** A GPX file: by its name or type, and XML inside. */
+function isGpx(row: typeof asset.$inferSelect, head: Buffer): boolean {
+  const named = row.filename.toLowerCase().endsWith('.gpx') || row.mime === 'application/gpx+xml';
+  const text = head
+    .toString('utf8')
+    .replace(/^\uFEFF/, '')
+    .trimStart();
+  return named && (text.startsWith('<?xml') || text.startsWith('<gpx'));
+}
+
+/**
+ * A GPX file (decision 0053): the length and climb of its route and the line to draw, and,
+ * when the instance has maps, thumbnails of the map around it. A file past the size limit or
+ * without points stays a plain file; a map that cannot be fetched leaves the route alone.
+ */
+async function processGpx(deps: MediaDeps, row: typeof asset.$inferSelect, digest: string) {
+  const { db, storage } = deps;
+  const plain = { sha256: digest, status: 'ready' as const, track: null };
+  if (row.size > GPX_MAX_BYTES) {
+    await save(db, row.id, [], plain);
+    return { variants: 0 };
+  }
+  const xml = (await readAll(await storage.read(row.storageKey))).toString('utf8');
+  const segments = parseGpx(xml);
+  if (segments.length === 0) {
+    await save(db, row.id, [], plain);
+    return { variants: 0 };
+  }
+  const view = viewOf(segments.flat());
+  const fields = {
+    ...plain,
+    track: { ...trackStats(segments), points: routeLine(segments, view) },
+    width: MAP_WIDTH,
+    height: MAP_HEIGHT,
+  };
+  if (!deps.maps) {
+    await save(db, row.id, [], fields);
+    return { variants: 0 };
+  }
+  try {
+    const result = await thumbnails(deps, row.id, sharp(await renderMap(deps.maps, view)));
+    await save(db, row.id, result.variants, fields);
+    return { variants: result.variants.length };
+  } catch (err) {
+    deps.log?.warn({ err, assetId: row.id }, 'map of a GPX route not made: keeping the route');
+    await save(db, row.id, [], fields);
+    return { variants: 0 };
+  }
 }
 
 /**

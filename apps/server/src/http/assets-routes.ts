@@ -107,6 +107,7 @@ export function toAsset(row: typeof asset.$inferSelect, variants: VariantRow[]):
     exif: row.exif ?? null,
     palette: row.palette ?? null,
     animated: row.animated,
+    track: row.track ?? null,
     sourceUrl: row.sourceUrl,
     createdAt: iso(row.createdAt),
   };

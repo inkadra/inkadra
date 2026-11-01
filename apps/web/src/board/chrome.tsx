@@ -60,7 +60,8 @@ export type ToolType =
   | 'character'
   | 'location'
   | 'section'
-  | 'table';
+  | 'table'
+  | 'map';
 export type CanvasTool = 'select' | 'hand' | 'arrow';
 export const TOOL_MIME = 'application/x-inkadra-tool';
 
@@ -81,6 +82,7 @@ export const TOOLS: Array<{ type: ToolType; icon: IconName; key?: string; menuOn
   { type: 'location', icon: 'pin', menuOnly: true },
   { type: 'section', icon: 'heading', menuOnly: true },
   { type: 'table', icon: 'table', menuOnly: true },
+  { type: 'map', icon: 'map', menuOnly: true },
 ];
 
 /** Cards of the Canvas menu listed after the canvas types, with their icons. */
@@ -89,6 +91,7 @@ const MENU_CARDS = [
   ['location', 'pin'],
   ['section', 'heading'],
   ['table', 'table'],
+  ['map', 'map'],
 ] as const satisfies ReadonlyArray<readonly [ToolType, IconName]>;
 type MenuCard = (typeof MENU_CARDS)[number][0];
 

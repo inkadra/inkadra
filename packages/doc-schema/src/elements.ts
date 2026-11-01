@@ -211,6 +211,25 @@ export const TableElement = Base.extend({
 });
 
 /**
+ * A map card (since version 11, decision 0053): a place from a map link or an address, with
+ * a map picture the server composited once, so viewers never contact a tile server.
+ */
+export const MapElement = Base.extend({
+  type: z.literal('map'),
+  name: z.string().max(200).describe('Place name, from the link or typed; may be empty.'),
+  address: z.string().max(500).optional(),
+  url: z
+    .url({ protocol: /^https?$/ })
+    .max(2048)
+    .optional()
+    .describe('The map link it came from, opened by "Open in Maps".'),
+  lat: z.number().finite().min(-90).max(90).optional(),
+  lon: z.number().finite().min(-180).max(180).optional(),
+  zoom: z.int().min(1).max(19).optional(),
+  imageAssetId: z.string().optional().describe('The map picture, centred on the place.'),
+});
+
+/**
  * A scene of a storyboard: a container like a column, whose children are frames (and any
  * other card) in shooting order.
  */
@@ -431,6 +450,7 @@ export const Element = z.discriminatedUnion('type', [
   LocationElement,
   SectionElement,
   TableElement,
+  MapElement,
 ]);
 
 /** Element types that hold other elements through `parent`. */

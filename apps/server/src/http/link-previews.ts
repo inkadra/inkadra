@@ -194,12 +194,12 @@ export function nameFromUrl(url: string, fallback: string): string {
 export async function saveFetchedImage(
   deps: Pick<FetchDeps, 'db' | 'storage'>,
   image: SafeResponse,
-  opts: { projectId: string; actorId: string; sourceUrl: string },
+  opts: { projectId: string; actorId: string; sourceUrl: string; filename?: string },
 ): Promise<string> {
   const mime = sniffImage(image.body.subarray(0, 256));
   if (!mime) throw new FetchRefused('The address does not hold an image.');
   const id = randomUUID();
-  const filename = nameFromUrl(image.url, 'image');
+  const filename = opts.filename ?? nameFromUrl(image.url, 'image');
   await deps.storage.write(originalKey(id), image.body, mime);
   try {
     await deps.db.insert(asset).values({

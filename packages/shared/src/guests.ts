@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MPL-2.0
-import { AssetVariant, ThumbnailSize } from './assets.ts';
+import { AssetTrack, AssetVariant, ThumbnailSize } from './assets.ts';
 import { BoardKind } from './boards.ts';
 import { CommentCount, ElementRef } from './comments.ts';
 import { Id, Timestamp, z } from './common.ts';
@@ -259,6 +259,7 @@ export const GuestAsset = z
         'the moving copy of a GIF or animated WebP.',
     }),
     variants: z.array(GuestAssetVariant).openapi({ description: 'Smallest first.' }),
+    track: AssetTrack.nullable().openapi({ description: 'As `Asset.track`: a GPX route.' }),
     downloadUrl: z
       .string()
       .nullable()

@@ -692,6 +692,30 @@
             ],
             "description": "Media tools available on this server (image tag `-media`)."
           },
+          "maps": {
+            "type": "object",
+            "properties": {
+              "enabled": {
+                "type": "boolean",
+                "description": "Map cards and GPX files get a map picture, composited by the server from its tile server (MAPS, MAP_TILE_URL). False: they show only the address and link."
+              },
+              "attribution": {
+                "type": "string",
+                "maxLength": 200,
+                "description": "Credit of the map data to show on every map picture."
+              },
+              "geocoding": {
+                "type": "boolean",
+                "description": "Addresses can be looked up (MAP_GEOCODER_URL); off by default."
+              }
+            },
+            "required": [
+              "enabled",
+              "attribution",
+              "geocoding"
+            ],
+            "description": "Maps of this server (decision 0053)."
+          },
           "limits": {
             "type": "object",
             "properties": {
@@ -719,6 +743,7 @@
           "auth",
           "collabPath",
           "media",
+          "maps",
           "limits",
           "serverTime"
         ]
@@ -2346,6 +2371,9 @@
             "type": "boolean",
             "description": "True when the source moves and the worker wrote moving thumbnails beside the posters: add `?animated=1` to a variant URL up to 1024 px wide to play it. False for still pictures, for videos, and for GIFs past the worker limits."
           },
+          "track": {
+            "$ref": "#/components/schemas/AssetTrack"
+          },
           "sourceUrl": {
             "type": [
               "string",
@@ -2382,6 +2410,7 @@
           "exif",
           "palette",
           "animated",
+          "track",
           "sourceUrl",
           "createdAt"
         ],
@@ -2487,6 +2516,41 @@
           "height",
           "url"
         ]
+      },
+      "AssetTrack": {
+        "type": [
+          "object",
+          "null"
+        ],
+        "properties": {
+          "distanceM": {
+            "type": "number",
+            "minimum": 0
+          },
+          "elevationGainM": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "minimum": 0,
+            "description": "Total climb, ignoring rises under 3 m; null without elevations."
+          },
+          "points": {
+            "type": "array",
+            "items": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "maxItems": 1024
+          }
+        },
+        "required": [
+          "distanceM",
+          "elevationGainM",
+          "points"
+        ],
+        "description": "The route of a GPX file, read by the worker; null for other files and GPX files without a track. Its preview (`variants`) is the map around the route, when the instance has maps (Instance.maps)."
       },
       "ExportPreferences": {
         "type": "object",
@@ -3744,6 +3808,100 @@
         "required": [
           "projectId",
           "url"
+        ]
+      },
+      "MapPreview": {
+        "type": "object",
+        "properties": {
+          "lat": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "minimum": -90,
+            "maximum": 90
+          },
+          "lon": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "minimum": -180,
+            "maximum": 180
+          },
+          "zoom": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 1,
+            "maximum": 19
+          },
+          "name": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 200,
+            "description": "The place name in the link, or the address the geocoder found."
+          },
+          "url": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uri",
+            "description": "The link after redirects (short links)."
+          },
+          "imageAssetId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid",
+            "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10",
+            "description": "The map around the place, composited by the server from the tile server of the instance and stored as an image asset of the project. Null when maps are off, or the place has no coordinates."
+          }
+        },
+        "required": [
+          "lat",
+          "lon",
+          "zoom",
+          "name",
+          "url",
+          "imageAssetId"
+        ]
+      },
+      "CreateMapPreview": {
+        "type": "object",
+        "properties": {
+          "projectId": {
+            "type": "string",
+            "format": "uuid",
+            "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10",
+            "description": "Project that will own the map picture."
+          },
+          "boardId": {
+            "type": "string",
+            "format": "uuid",
+            "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10",
+            "description": "As in UploadMetadata."
+          },
+          "url": {
+            "type": "string",
+            "maxLength": 2048,
+            "format": "uri",
+            "description": "A Google Maps, Apple Maps or OpenStreetMap link."
+          },
+          "query": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 500,
+            "description": "An address, looked up with the geocoder of the instance when it has one."
+          }
+        },
+        "required": [
+          "projectId"
         ]
       },
       "SearchResult": {
@@ -5566,6 +5724,16 @@
             },
             "description": "Smallest first."
           },
+          "track": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AssetTrack"
+              },
+              {
+                "description": "As `Asset.track`: a GPX route."
+              }
+            ]
+          },
           "downloadUrl": {
             "type": [
               "string",
@@ -5599,6 +5767,7 @@
           "durationMs",
           "animated",
           "variants",
+          "track",
           "downloadUrl",
           "streamUrl",
           "waveformUrl"
@@ -12849,6 +13018,84 @@
           },
           "400": {
             "description": "Invalid address, or the page could not be fetched",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/map-previews": {
+      "post": {
+        "tags": [
+          "Assets"
+        ],
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Find a place from a map link or an address, with a map picture, for a map card.",
+        "description": "Coordinates come from the link itself; a short link (`maps.app.goo.gl`) is followed like a link preview, and an address goes to the geocoder of the instance when it has one (Instance.maps.geocoding). With maps on, the server composites the tiles around the place into one picture, an image asset of the project, so viewers never contact the tile server (decision 0053). Needs `editor` on the project.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateMapPreview"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Preview",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MapPreview"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
             "content": {
               "application/json": {
                 "schema": {

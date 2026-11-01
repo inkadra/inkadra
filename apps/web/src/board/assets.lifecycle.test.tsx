@@ -30,6 +30,7 @@ const asset: Asset = {
   proxy: null,
   waveformUrl: null,
   animated: false,
+  track: null,
   status: 'pending',
   url: '/api/v1/assets/upload/file',
   variants: [],

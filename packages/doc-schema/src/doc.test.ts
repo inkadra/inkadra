@@ -750,3 +750,24 @@ describe('table cards', () => {
     expect(roots(doc).elements.toJSON()).toEqual(before);
   });
 });
+
+describe('map cards', () => {
+  it('keeps a place through Yjs and checks its coordinates', () => {
+    const doc = createBoardDoc(boardId);
+    const map = {
+      ...base(),
+      type: 'map' as const,
+      name: 'Rifugio Lagunc',
+      url: 'https://www.openstreetmap.org/?mlat=46.33&mlon=9.55',
+      lat: 46.33,
+      lon: 9.55,
+      zoom: 15,
+      imageAssetId: '0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10',
+    };
+    addElement(doc, map);
+    expect(readElement(roots(doc).elements.get(map.id)!)).toEqual(map);
+    expect(validateBoardDoc(doc)).toEqual([]);
+    expect(Element.safeParse({ ...map, lat: 91 }).success).toBe(false);
+    expect(Element.safeParse({ ...map, url: 'javascript:alert(1)' }).success).toBe(false);
+  });
+});

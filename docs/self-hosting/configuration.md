@@ -144,6 +144,27 @@ Jellyfin) that use the card.
    `intel_gpu_top` (Intel, on the host) shows the encoder busy meanwhile;
 4. the worker log has no `hardware encoding failed` for it (which would mean libx264 made it).
 
+## Maps
+
+Map cards and GPX files show a map picture. The server makes it once, when someone pastes a map
+link, types an address or uploads a GPX file: it fetches the tiles around the place from the tile
+server and stores the composite as a picture of the project. Browsers, guests and exports only
+load that picture, never the tile server. See [decision 0053](../decisions/0053-maps.md).
+
+| Variable               | Default                                          | Meaning                                                                                                   |
+| ---------------------- | ------------------------------------------------ | --------------------------------------------------------------------------------------------------------- |
+| `MAPS`                 | `true`                                           | `false`: map cards show only the place name, address and link, and GPX files only their route line        |
+| `MAP_TILE_URL`         | `https://tile.openstreetmap.org/{z}/{x}/{y}.png` | Tile server, with `{z}`, `{x}` and `{y}`. It may be on your network. No API key is needed for the default |
+| `MAP_TILE_ATTRIBUTION` | `© OpenStreetMap contributors`                   | Credit of the tiles, shown on every map                                                                   |
+| `MAP_GEOCODER_URL`     | empty                                            | A Nominatim-compatible `/search` address to look up typed addresses; empty leaves addresses unlooked      |
+
+The OpenStreetMap tile servers are run by volunteers: their
+[usage policy](https://operations.osmfoundation.org/policies/tiles/) allows a few maps added by
+hand, which is what Inkadra does (about twenty tiles a map, with the instance's address in the
+user agent). An instance that makes many maps should use a tile provider or its own tile server.
+The same goes for `https://nominatim.openstreetmap.org/search` as a geocoder (at most one search
+a second).
+
 ## Compose only
 
 These change `compose.yaml` itself, not the server.

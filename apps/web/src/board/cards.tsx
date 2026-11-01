@@ -38,6 +38,7 @@ import { ImageCropStage } from './ImageCropEditor.tsx';
 import { croppedRotatedSize, rotatedBounds } from './image-crop.ts';
 import { playInline, stopInline, stopWhenOffscreen, useInlinePlaying } from './inline-player.ts';
 import { webUrl } from './links.ts';
+import { MapCard } from './MapCard.tsx';
 import { useMeasure } from './measure.ts';
 import { movingVariantUrl } from './moving.tsx';
 import { NoteBody, NoteEditor, useFragment } from './note.tsx';
@@ -241,6 +242,8 @@ function CardBody({
       return <SectionCard element={element} editing={editing} />;
     case 'table':
       return <TableCard element={element} editing={editing} />;
+    case 'map':
+      return <MapCard element={element} width={width} />;
   }
 }
 

@@ -94,6 +94,11 @@ export function registerApiRoutes(app: FastifyInstance, deps: Deps) {
           videoProxies: config.VIDEO_PROXIES && tools.ffmpeg !== null && tools.ffprobe !== null,
         };
       })(),
+      maps: {
+        enabled: config.MAPS,
+        attribution: config.MAP_TILE_ATTRIBUTION,
+        geocoding: Boolean(config.MAP_GEOCODER_URL),
+      },
       limits: { uploadMaxBytes: config.UPLOAD_MAX_SIZE },
       serverTime: new Date().toISOString(),
     };

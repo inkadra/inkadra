@@ -339,7 +339,8 @@
       "character": "Character",
       "location": "Location",
       "section": "Section heading",
-      "table": "Table"
+      "table": "Table",
+      "map": "Map"
     },
     "tools": {
       "select": "Select",
@@ -622,6 +623,12 @@
       "columnRightMove": "Move column right",
       "deleteRow": "Delete row",
       "deleteColumn": "Delete column"
+    },
+    "map": {
+      "label": "Address or map link",
+      "placeholder": "Paste a Maps link or type an address",
+      "open": "Open in Maps",
+      "untitled": "Place"
     },
     "count": {
       "cards_one": "{{count}} card",

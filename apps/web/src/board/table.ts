@@ -10,13 +10,15 @@ import {
   updateElement,
 } from '@inkadra/canvas-core';
 import { type Element, MAX_TABLE_COLUMNS, MAX_TABLE_ROWS } from '@inkadra/doc-schema';
+import { isMapLink } from '@inkadra/shared';
 import type { TFunction } from 'i18next';
 import type * as Y from 'yjs';
 import type { MenuItem } from './chrome.tsx';
 import { LOCAL } from './store.ts';
 
-/** What a link in a table cell shows: its host, without `www.`. */
+/** What a link in a table cell shows: `maps` for a map link, else its host without `www.`. */
 export function linkLabel(href: string): string {
+  if (isMapLink(href)) return 'maps';
   try {
     return new URL(href).hostname.replace(/^www\./, '');
   } catch {

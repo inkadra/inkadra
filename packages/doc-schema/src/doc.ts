@@ -86,8 +86,8 @@ const migrations: Record<number, Migration> = {
   // 10: optional `color` on columns and the section heading element (#307, #318). Additive;
   // older builds must not drop a column's colour or refuse documents with headings.
   9: () => {},
-  // 11: the table element (#317, decision 0050). Additive; the bump keeps older servers from
-  // loading documents with element types they would refuse to validate.
+  // 11: the table and map elements (#317, #319, decisions 0052 and 0053). Additive; the bump
+  // keeps older servers from loading documents with element types they would refuse to validate.
   10: () => {},
 };
 

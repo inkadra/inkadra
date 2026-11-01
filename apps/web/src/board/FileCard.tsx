@@ -18,6 +18,8 @@ import {
   metaParts,
   splitName,
 } from './file-kinds.ts';
+import { MAP_ASPECT, MapCredit, TrackLine } from './MapCard.tsx';
+import { formatClimb, formatDistance } from './maps.ts';
 import { localPreview, useUploadProgress } from './uploads.ts';
 
 type FileElement = Extract<Element, { type: 'file' }>;
@@ -65,10 +67,19 @@ export function FileFooter({
   );
 }
 
-/** Badge and meta of a ready asset, with the page count of a PDF in the person's language. */
+/**
+ * Badge and meta of a ready asset, with the page count of a PDF in the person's language; a
+ * GPX route says its length and climb instead, as in the mockup.
+ */
 export function useFileMeta(asset: Asset): { family: FileFamily; badge: string; meta: string[] } {
   const { t, i18n } = useTranslation();
-  const meta = metaParts(asset, i18n.language);
+  const track = asset.track;
+  const meta = track
+    ? [
+        formatDistance(track.distanceM, i18n.language),
+        ...(track.elevationGainM ? [formatClimb(track.elevationGainM)] : []),
+      ]
+    : metaParts(asset, i18n.language);
   if (asset.pageCount) meta.push(t('board.file.pages', { count: asset.pageCount }));
   return { family: fileFamily(asset), badge: fileBadge(asset), meta };
 }
@@ -195,7 +206,21 @@ function ReadyFileCard({
     const src =
       localPreview(element.assetId) ??
       (asset.variants.length > 0 ? pickVariant(asset, pixels) : '');
-    if (src && isPdf(asset)) {
+    if (asset.track) {
+      preview = (
+        <Preview
+          family={family}
+          className="fcard__preview--map"
+          style={{ aspectRatio: MAP_ASPECT }}
+        >
+          {src && (
+            <img className="fcard__img" src={src} alt="" draggable={false} decoding="async" />
+          )}
+          <TrackLine track={asset.track} />
+          {src && <MapCredit />}
+        </Preview>
+      );
+    } else if (src && isPdf(asset)) {
       preview = (
         <Preview family={family} className="fcard__preview--page">
           <img

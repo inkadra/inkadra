@@ -36,6 +36,11 @@ services:
       RAW_PREVIEWS: ${RAW_PREVIEWS:-true}
       PDF_PREVIEWS: ${PDF_PREVIEWS:-true}
       VIDEO_PROXIES: ${VIDEO_PROXIES:-true}
+      # Map pictures of map cards and GPX files (decision 0053)
+      MAPS: ${MAPS:-true}
+      MAP_TILE_URL: ${MAP_TILE_URL:-https://tile.openstreetmap.org/{z}/{x}/{y}.png}
+      MAP_TILE_ATTRIBUTION: ${MAP_TILE_ATTRIBUTION:-© OpenStreetMap contributors}
+      MAP_GEOCODER_URL: ${MAP_GEOCODER_URL:-}
       # Hardware encoding of playable copies: deploy/compose.vaapi.yaml, deploy/compose.nvidia.yaml
       VIDEO_PROXY_HWACCEL: ${VIDEO_PROXY_HWACCEL:-auto}
       VIDEO_PROXY_VAAPI_DEVICE: ${VIDEO_PROXY_VAAPI_DEVICE:-/dev/dri/renderD128}

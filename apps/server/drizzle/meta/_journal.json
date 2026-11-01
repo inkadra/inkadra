@@ -148,6 +148,13 @@
       "when": 1793520424588,
       "tag": "0020_board_icon",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1793522049980,
+      "tag": "0021_asset_track",
+      "breakpoints": true
     }
   ]
 }

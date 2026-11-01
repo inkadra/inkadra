@@ -72,6 +72,22 @@ export const AssetProxy = z
   .openapi('AssetProxy');
 export type AssetProxy = z.infer<typeof AssetProxy>;
 
+/**
+ * The route of a GPX file (decision 0053): its length, the climb when the points have an
+ * elevation, and the line to draw over the preview, as x, y pairs in fractions of the
+ * preview's width and height (at most 512 points).
+ */
+export const AssetTrack = z
+  .object({
+    distanceM: z.number().min(0),
+    elevationGainM: z.number().min(0).nullable().openapi({
+      description: 'Total climb, ignoring rises under 3 m; null without elevations.',
+    }),
+    points: z.array(z.number().min(0).max(1)).max(1024),
+  })
+  .openapi('AssetTrack');
+export type AssetTrack = z.infer<typeof AssetTrack>;
+
 export const Asset = z
   .object({
     id: Id,
@@ -141,6 +157,12 @@ export const Asset = z
         'True when the source moves and the worker wrote moving thumbnails beside the ' +
         'posters: add `?animated=1` to a variant URL up to 1024 px wide to play it. False ' +
         'for still pictures, for videos, and for GIFs past the worker limits.',
+    }),
+    track: AssetTrack.nullable().openapi({
+      description:
+        'The route of a GPX file, read by the worker; null for other files and GPX files ' +
+        'without a track. Its preview (`variants`) is the map around the route, when the ' +
+        'instance has maps (Instance.maps).',
     }),
     sourceUrl: z.url().nullable(),
     createdAt: Timestamp,

@@ -17,7 +17,8 @@ describe('table clipboard', () => {
     expect(clipboardGrid('just a sentence\nand another', '<p>x</p>')).toBeNull();
   });
 
-  it('labels links by host', () => {
-    expect(linkLabel('https://www.google.com/maps/place/x')).toBe('google.com');
+  it('labels links by host, and map links as maps', () => {
+    expect(linkLabel('https://www.example.com/sheet')).toBe('example.com');
+    expect(linkLabel('https://maps.app.goo.gl/x')).toBe('maps');
   });
 });

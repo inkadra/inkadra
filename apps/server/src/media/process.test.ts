@@ -1,6 +1,8 @@
 import { execFileSync } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
 import { readFileSync, writeFileSync } from 'node:fs';
+import { createServer } from 'node:http';
+import type { AddressInfo } from 'node:net';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { eq, sql } from 'drizzle-orm';
@@ -394,6 +396,84 @@ describe.skipIf(!url)('processAsset (needs DATABASE_URL)', () => {
       const { row, variants } = await load(id);
       expect(row).toMatchObject({ status: 'ready', mime: 'image/x-adobe-dng' });
       expect(variants).toHaveLength(0);
+    });
+  });
+
+  describe('GPX', () => {
+    const route = `<?xml version="1.0"?><gpx><trk><trkseg>
+      <trkpt lat="46.30" lon="9.40"><ele>1000</ele></trkpt>
+      <trkpt lat="46.35" lon="9.50"><ele>1200</ele></trkpt>
+      <trkpt lat="46.40" lon="9.60"><ele>1150</ele></trkpt>
+    </trkseg></trk></gpx>`;
+
+    it('reads the route and draws its map from the tile server', async () => {
+      const tile = await sharp({
+        create: { width: 256, height: 256, channels: 3, background: { r: 200, g: 220, b: 200 } },
+      })
+        .png()
+        .toBuffer();
+      const requests: string[] = [];
+      const server = createServer((req, res) => {
+        requests.push(req.url ?? '');
+        res.writeHead(200, { 'content-type': 'image/png' }).end(tile);
+      });
+      await new Promise<void>((done) => server.listen(0, '127.0.0.1', done));
+      const { port } = server.address() as AddressInfo;
+      try {
+        const id = await upload(Buffer.from(route), 'application/gpx+xml', 'trail.gpx');
+        const maps = { tileUrl: `http://127.0.0.1:${port}/{z}/{x}/{y}.png`, userAgent: 'test' };
+        await processAsset({ ...deps, maps }, id);
+        const { row, variants } = await load(id);
+        expect(row).toMatchObject({ status: 'ready', width: 1024, height: 560 });
+        expect(row?.track?.elevationGainM).toBe(200);
+        expect(row?.track?.distanceM).toBeGreaterThan(18_000);
+        expect(row?.track?.points).toHaveLength(6);
+        expect(variants.map((v) => v.size)).toEqual(['256', '512']);
+        expect(requests.length).toBeGreaterThanOrEqual(15);
+        expect(requests.every((r) => /^\/\d+\/\d+\/\d+\.png$/.test(r))).toBe(true);
+        // A second pass (a retried job) takes every tile from the cache.
+        const fetched = requests.length;
+        await processAsset({ ...deps, maps }, id);
+        expect(requests).toHaveLength(fetched);
+        expect((await load(id)).variants).toHaveLength(2);
+      } finally {
+        server.close();
+      }
+    });
+
+    it('keeps the route without a map when the tile server redirects', async () => {
+      const server = createServer((_req, res) => {
+        res.writeHead(302, { location: 'http://169.254.169.254/' }).end();
+      });
+      await new Promise<void>((done) => server.listen(0, '127.0.0.1', done));
+      const { port } = server.address() as AddressInfo;
+      try {
+        const id = await upload(Buffer.from(route), 'application/gpx+xml', 'moved.gpx');
+        // Another area than the test above, so nothing comes from the cache.
+        const maps = { tileUrl: `http://127.0.0.1:${port}/r/{z}/{x}/{y}.png`, userAgent: 'test' };
+        await processAsset({ ...deps, maps, log: { warn: () => {} } }, id);
+        const { row, variants } = await load(id);
+        expect(row?.track?.points).toHaveLength(6);
+        expect(variants).toHaveLength(0);
+      } finally {
+        server.close();
+      }
+    });
+
+    it('keeps the route without a map when maps are off, and plain files as they are', async () => {
+      const id = await upload(Buffer.from(route), 'application/octet-stream', 'trail.gpx');
+      await processAsset(deps, id);
+      const { row, variants } = await load(id);
+      expect(row?.track?.points).toHaveLength(6);
+      expect(variants).toHaveLength(0);
+
+      const empty = await upload(
+        Buffer.from('<?xml version="1.0"?><gpx/>'),
+        'application/gpx+xml',
+        'empty.gpx',
+      );
+      await processAsset(deps, empty);
+      expect((await load(empty)).row).toMatchObject({ status: 'ready', track: null });
     });
   });
 

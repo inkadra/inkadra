@@ -339,7 +339,8 @@
       "character": "Personaggio",
       "location": "Location",
       "section": "Titolo di sezione",
-      "table": "Tabella"
+      "table": "Tabella",
+      "map": "Mappa"
     },
     "tools": {
       "select": "Seleziona",
@@ -622,6 +623,12 @@
       "columnRightMove": "Sposta colonna a destra",
       "deleteRow": "Elimina riga",
       "deleteColumn": "Elimina colonna"
+    },
+    "map": {
+      "label": "Indirizzo o link di una mappa",
+      "placeholder": "Incolla un link di Maps o scrivi un indirizzo",
+      "open": "Apri in Mappe",
+      "untitled": "Luogo"
     },
     "count": {
       "cards_one": "{{count}} card",
