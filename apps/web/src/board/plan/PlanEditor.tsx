@@ -4,6 +4,7 @@ import {
   addPlanIcon,
   addShape,
   addStroke,
+  alignItems,
   bendThrough,
   blockingCurve,
   blockingPositions,
@@ -15,11 +16,14 @@ import {
   iconCone,
   itemBox,
   itemFrame,
+  itemsBox,
+  itemsInRect,
   layerOf,
   moveItem,
   normalizeRotation,
   PLAN_VIEW_H,
   PLAN_VIEW_W,
+  type PlanAlign,
   type PlanElement,
   type PlanItem,
   type PlanItemRef,
@@ -36,8 +40,10 @@ import {
   shownAngle,
   snapPlanPoint,
   toGrid,
+  toggleGroup,
   updateElement,
   updatePlanItems,
+  withGroups,
 } from '@inkadra/canvas-core';
 import {
   type FrameShape,
@@ -119,6 +125,9 @@ type Gesture =
   | { kind: 'shape'; shape: DragKind; a: Point; b: Point }
   | { kind: 'bend'; index: number; item: PlanIcon }
   | { kind: 'resize'; handle: ResizeHandle; item: PlanItem }
+  | { kind: 'moveMany'; start: Point; items: PlanItem[] }
+  | { kind: 'rotateMany'; centre: Point; from: number; items: PlanItem[] }
+  | { kind: 'marquee'; a: Point; add: boolean }
   | { kind: 'end'; which: 0 | 1; item: PlanShape };
 
 /** View units of a point of the drawing (0 to 1). */
@@ -127,8 +136,9 @@ const isIcon = (item: PlanItem | null | undefined): item is PlanIcon => !!item &
 
 const replaceIn = <T extends { id: string }>(
   list: T[] | undefined,
-  next: PlanItem,
-): T[] | undefined => list?.map((item) => (item.id === next.id ? (next as unknown as T) : item));
+  next: readonly PlanItem[],
+): T[] | undefined =>
+  list?.map((item) => (next.find((n) => n.id === item.id) as unknown as T | undefined) ?? item);
 
 /**
  * The editor of a set plan (#335): a window in front of the dimmed board, on a desktop with
@@ -170,14 +180,19 @@ export function PlanEditor({
   /** The angle shown over the rotate handle while it turns. */
   const [chip, setChip] = useState<string | null>(null);
   const linked = scenesOfPlan(plan, new Map(scenes.map((s) => [s.id, s])));
-  const [selected, setSelected] = useState<PlanItemRef | null>(null);
+  /** The selected items, groups whole (round 6, f). */
+  const [selection, setSelection] = useState<PlanItemRef[]>([]);
+  const selected = selection.length === 1 ? (selection[0] as PlanItemRef) : null;
+  const setSelected = (ref: PlanItemRef | null) => setSelection(ref ? withGroups(plan, [ref]) : []);
+  const [marquee, setMarquee] = useState<{ a: Point; b: Point } | null>(null);
   /** The item being moved or turned, shown in place until the gesture ends. */
-  const [preview, setPreviewState] = useState<PlanItem | null>(null);
+  const [preview, setPreviewState] = useState<PlanItem[] | null>(null);
   // The pointer-up handler reads the preview of the last move, which may not be rendered yet.
-  const previewRef = useRef<PlanItem | null>(null);
-  const setPreview = (next: PlanItem | null) => {
-    previewRef.current = next;
-    setPreviewState(next);
+  const previewRef = useRef<PlanItem[] | null>(null);
+  const setPreview = (next: PlanItem | PlanItem[] | null) => {
+    const list = next === null ? null : Array.isArray(next) ? next : [next];
+    previewRef.current = list;
+    setPreviewState(list);
   };
   const [live, setLive] = useState<Point[] | null>(null);
   const [liveShape, setLiveShape] = useState<{ kind: DragKind; a: Point; b: Point } | null>(null);
@@ -206,12 +221,15 @@ export function PlanEditor({
           shapes: replaceIn(plan.shapes, preview),
           icons: replaceIn(plan.icons, preview),
         };
-  const current = (preview && preview.id === item?.id ? preview : item) ?? null;
+  const current = preview?.find((p) => p.id === item?.id) ?? item ?? null;
+  /** The selected items as drawn, the previews of a gesture included. */
+  const many = selection.length > 1 ? selection.flatMap((r) => planItem(shown, r) ?? []) : [];
 
-  // The selection goes when its item does (deleted here, by undo or by someone else).
+  // The selection loses the items that go (deleted here, by undo or by someone else).
   useEffect(() => {
-    if (selected && !item) setSelected(null);
-  }, [selected, item]);
+    if (selection.some((r) => !planItem(plan, r)))
+      setSelection((s) => s.filter((r) => planItem(plan, r)));
+  }, [selection, plan]);
   useEffect(() => {
     if (text) textInput.current?.focus();
   }, [text]);
@@ -266,20 +284,34 @@ export function PlanEditor({
   };
 
   const remove = () => {
-    if (!selected) return;
-    change(() => removePlanItems(doc, plan.id, [selected.id], LOCAL));
-    setSelected(null);
+    if (selection.length === 0) return;
+    const ids = selection.map((r) => r.id);
+    change(() => removePlanItems(doc, plan.id, ids, LOCAL));
+    setSelection([]);
   };
   const duplicate = () => {
-    if (!selected) return;
+    if (selection.length === 0) return;
     let copies: PlanItemRef[] = [];
     change(() => {
-      copies = duplicatePlanItems(doc, plan, [selected], { x: step, y: step }, LOCAL);
+      copies = duplicatePlanItems(doc, plan, selection, { x: step, y: step }, LOCAL);
     });
-    if (copies[0]) setSelected(copies[0]);
+    setSelection(copies);
   };
-  const write = (next: PlanItem) => change(() => updatePlanItems(doc, plan.id, [next], LOCAL));
-  const rotate = (degrees: number) => item && write(rotateItem(item, degrees));
+  const write = (next: PlanItem | readonly PlanItem[]) =>
+    change(() =>
+      updatePlanItems(doc, plan.id, Array.isArray(next) ? next : [next as PlanItem], LOCAL),
+    );
+  const rotate = (degrees: number) => {
+    if (many.length > 1) {
+      const b = itemsBox(many);
+      const c = { x: b.x + b.w / 2, y: b.y + b.h / 2 };
+      write(many.map((i) => rotateItem(i, degrees, c)));
+    } else if (item) write(rotateItem(item, degrees));
+  };
+  const nudge = (d: Point) => {
+    const items = many.length > 1 ? many : item ? [item] : [];
+    if (items.length) write(items.map((i) => moveItem(i, d)));
+  };
   const recolor = (hex: string) => item && write({ ...item, color: hex });
   const relabel = (label: string) => {
     if (!isIcon(item)) return;
@@ -327,14 +359,24 @@ export function PlanEditor({
       else if (armed) {
         setArmed(null);
         setTool('select');
-      } else if (selected) setSelected(null);
+      } else if (selection.length) setSelection([]);
       else if (tool !== 'select') setTool('select');
       else onClose();
-    } else if ((e.key === 'Delete' || e.key === 'Backspace') && selected) remove();
-    else if (mod && key === 'z') e.shiftKey ? store.undo.redo() : store.undo.undo();
+    } else if ((e.key === 'Delete' || e.key === 'Backspace') && selection.length) remove();
+    else if (mod && key === 'a')
+      setSelection(itemsInRect(plan, { x: -1, y: -1, w: 2000, h: 2000 }, viewOf));
+    else if (mod && key === 'g' && selection.length > 1) write(toggleGroup(many));
+    else if (e.key.startsWith('Arrow') && selection.length) {
+      const k = e.shiftKey ? step * 4 : step;
+      nudge({
+        x: e.key === 'ArrowLeft' ? -k : e.key === 'ArrowRight' ? k : 0,
+        y: e.key === 'ArrowUp' ? -k : e.key === 'ArrowDown' ? k : 0,
+      });
+    } else if (mod && key === 'z') e.shiftKey ? store.undo.redo() : store.undo.undo();
     else if (mod && key === 'y') store.undo.redo();
-    else if (mod && key === 'd' && selected) duplicate();
-    else if (!mod && key === 'r' && selected) rotate(e.shiftKey ? -ROTATE_STEP : ROTATE_STEP);
+    else if (mod && key === 'd' && selection.length) duplicate();
+    else if (!mod && key === 'r' && selection.length)
+      rotate(e.shiftKey ? -ROTATE_STEP : ROTATE_STEP);
     else if (!mod && key === '/' && !phone) {
       setPanel('icons');
       requestAnimationFrame(() =>
@@ -397,6 +439,19 @@ export function PlanEditor({
       return;
     }
     const handle = (e.target as Element).closest('[data-rotate]');
+    if (handle && many.length > 1) {
+      e.currentTarget.setPointerCapture(e.pointerId);
+      const b = itemsBox(many);
+      const centre = { x: b.x + b.w / 2, y: b.y + b.h / 2 };
+      const q = view(p);
+      gesture.current = {
+        kind: 'rotateMany',
+        centre,
+        from: Math.atan2(q.y - centre.y, q.x - centre.x),
+        items: many,
+      };
+      return;
+    }
     if (handle && item && selected) {
       e.currentTarget.setPointerCapture(e.pointerId);
       const box = itemBox(item);
@@ -413,6 +468,33 @@ export function PlanEditor({
     }
     if (tool === 'select' || tool === 'icons') {
       const hit = planItemAt(plan, p, viewOf);
+      if (hit && (e.shiftKey || (phone && tool === 'select' && selection.length > 0))) {
+        // Shift (or, on a phone, a tap while something is picked) adds or takes away.
+        const group = withGroups(plan, [hit]);
+        const has = selection.some((r) => r.id === hit.id);
+        setSelection(
+          has
+            ? selection.filter((r) => !group.some((g) => g.id === r.id))
+            : [...selection, ...group.filter((g) => !selection.some((r) => r.id === g.id))],
+        );
+        return;
+      }
+      const picked = hit
+        ? selection.some((r) => r.id === hit.id)
+          ? selection
+          : withGroups(plan, [hit])
+        : [];
+      if (hit && picked.length > 1) {
+        setSelection(picked);
+        e.currentTarget.setPointerCapture(e.pointerId);
+        store.undo.stopCapturing();
+        gesture.current = {
+          kind: 'moveMany',
+          start: p,
+          items: picked.flatMap((r) => planItem(plan, r) ?? []),
+        };
+        return;
+      }
       if (hit) {
         const target = planItem(plan, hit);
         setSelected(hit);
@@ -425,7 +507,13 @@ export function PlanEditor({
         return;
       }
       if (tool === 'icons' && armed && isIconKind(armed)) placeIcon(armed, p);
-      else setSelected(null);
+      else {
+        // A drag on the empty plan picks what its box touches (round 6, f).
+        if (!e.shiftKey) setSelection([]);
+        e.currentTarget.setPointerCapture(e.pointerId);
+        gesture.current = { kind: 'marquee', a: p, add: e.shiftKey };
+        setMarquee({ a: p, b: p });
+      }
       return;
     }
     setSelected(null);
@@ -454,6 +542,32 @@ export function PlanEditor({
     const g = gesture.current;
     if (!g) return;
     const p = pointAt(e);
+    if (g.kind === 'marquee') {
+      setMarquee({ a: g.a, b: p });
+      return;
+    }
+    if (g.kind === 'moveMany') {
+      let d = { x: view(p).x - view(g.start).x, y: view(p).y - view(g.start).y };
+      if (snap) {
+        const b = itemsBox(g.items);
+        const to = snapPlanPoint(
+          { x: (b.x + d.x) / PLAN_VIEW_W, y: (b.y + d.y) / PLAN_VIEW_H },
+          step,
+        );
+        d = { x: view(to).x - b.x, y: view(to).y - b.y };
+      }
+      setPreview(g.items.map((i) => moveItem(i, d)));
+      return;
+    }
+    if (g.kind === 'rotateMany') {
+      const q = view(p);
+      let degrees = ((Math.atan2(q.y - g.centre.y, q.x - g.centre.x) - g.from) * 180) / Math.PI;
+      if (snap || e.shiftKey) degrees = Math.round(degrees / ROTATE_STEP) * ROTATE_STEP;
+      setPreview(g.items.map((i) => rotateItem(i, normalizeRotation(degrees), g.centre)));
+      const shownDeg = normalizeRotation(degrees);
+      setChip(`${shownDeg > 180 ? shownDeg - 360 : shownDeg}°`);
+      return;
+    }
     if (g.kind === 'move') {
       let d = { x: view(p).x - view(g.start).x, y: view(p).y - view(g.start).y };
       if (snap && isIcon(g.item)) {
@@ -517,6 +631,25 @@ export function PlanEditor({
     const g = gesture.current;
     gesture.current = null;
     if (!g) return;
+    if (g.kind === 'marquee') {
+      const m = marquee;
+      setMarquee(null);
+      if (!m) return;
+      const a = view(m.a);
+      const b = view(m.b);
+      const rect = {
+        x: Math.min(a.x, b.x),
+        y: Math.min(a.y, b.y),
+        w: Math.abs(b.x - a.x),
+        h: Math.abs(b.y - a.y),
+      };
+      if (rect.w + rect.h < 4) return;
+      const hits = withGroups(plan, itemsInRect(plan, rect, viewOf));
+      setSelection(
+        g.add ? [...selection, ...hits.filter((h) => !selection.some((r) => r.id === h.id))] : hits,
+      );
+      return;
+    }
     if (g.kind !== 'draw' && g.kind !== 'shape') {
       setChip(null);
       const next = previewRef.current;
@@ -577,7 +710,7 @@ export function PlanEditor({
       )}
     </g>
   );
-  const selection =
+  const outline =
     box &&
     (frame ? (
       <g
@@ -631,6 +764,33 @@ export function PlanEditor({
         {rotateGrip(box.x + box.w / 2, box.y - pad)}
       </g>
     ));
+  const groupBox = many.length > 1 ? itemsBox(many) : null;
+  const manyBox = groupBox && (
+    <g className="plan-editor__selection">
+      {many.map((i) => {
+        const b = itemBox(i);
+        return (
+          <rect
+            key={i.id}
+            className="plan-editor__member"
+            x={b.x - 3}
+            y={b.y - 3}
+            width={b.w + 6}
+            height={b.h + 6}
+            rx={3}
+          />
+        );
+      })}
+      <rect
+        x={groupBox.x - pad}
+        y={groupBox.y - pad}
+        width={groupBox.w + pad * 2}
+        height={groupBox.h + pad * 2}
+        rx={4}
+      />
+      {rotateGrip(groupBox.x + groupBox.w / 2, groupBox.y - pad)}
+    </g>
+  );
   const blockingGrips = isIcon(current) && (
     <g className="plan-editor__selection">
       {blockingPositions(current)
@@ -681,8 +841,17 @@ export function PlanEditor({
           }
         />
       )}
-      {selection}
+      {many.length > 1 ? manyBox : outline}
       {blockingGrips}
+      {marquee && (
+        <rect
+          className="plan-editor__marquee"
+          x={Math.min(marquee.a.x, marquee.b.x) * PLAN_VIEW_W}
+          y={Math.min(marquee.a.y, marquee.b.y) * PLAN_VIEW_H}
+          width={Math.abs(marquee.b.x - marquee.a.x) * PLAN_VIEW_W}
+          height={Math.abs(marquee.b.y - marquee.a.y) * PLAN_VIEW_H}
+        />
+      )}
     </>
   );
 
@@ -853,6 +1022,60 @@ export function PlanEditor({
         </>
       )}
     </>
+  );
+  const align = (how: PlanAlign) => write(alignItems(many, how));
+  const sameColor = many.length > 1 && many.every((i) => i.color === many[0]?.color);
+  const manyBar = many.length > 1 && (
+    <div
+      className="plan-editor__bar ink-motion-pop"
+      role="toolbar"
+      aria-label={t('board.plan.selection')}
+    >
+      <span className="plan-editor__count">{t('board.plan.items', { count: many.length })}</span>
+      {sameColor &&
+        PLAN_COLORS.map((c) => (
+          <button
+            key={c.hex}
+            type="button"
+            className="plan-editor__swatch"
+            aria-pressed={many[0]?.color === c.hex}
+            aria-label={t(`board.plan.colors.${c.name}`)}
+            onClick={() => write(many.map((i) => ({ ...i, color: c.hex })))}
+          >
+            <i style={{ background: `var(--ink-${c.token})` }} />
+          </button>
+        ))}
+      <span className="plan-editor__vr" aria-hidden="true" />
+      <IconButton
+        icon="alignLeft"
+        label={t('board.plan.align.left')}
+        onClick={() => align('left')}
+      />
+      <IconButton
+        icon="alignCenter"
+        label={t('board.plan.align.centre')}
+        onClick={() => align('centre')}
+      />
+      <IconButton icon="alignTop" label={t('board.plan.align.top')} onClick={() => align('top')} />
+      <IconButton
+        icon="distribute"
+        label={t('board.plan.align.distribute')}
+        onClick={() => align('distribute')}
+      />
+      <span className="plan-editor__vr" aria-hidden="true" />
+      <IconButton
+        icon="groupItems"
+        label={`${t(many.every((i) => i.group && i.group === many[0]?.group) ? 'board.plan.ungroup' : 'board.plan.group')} (${isMac() ? '⌘' : 'Ctrl+'}G)`}
+        onClick={() => write(toggleGroup(many))}
+      />
+      <IconButton
+        icon="rotateRight"
+        label={`${t('board.plan.rotate')} (R)`}
+        onClick={() => rotate(ROTATE_STEP)}
+      />
+      <IconButton icon="copy" label={t('board.plan.duplicate')} onClick={duplicate} />
+      <IconButton icon="trash" label={t('board.plan.delete')} onClick={remove} />
+    </div>
   );
   const bar = current && !(phone && tool === 'icons' && armed) && (
     <div
@@ -1265,7 +1488,7 @@ export function PlanEditor({
           {t('board.plan.moveHint', { number: (movingIcon.steps?.length ?? 0) + 2 })}
         </p>
       )}
-      {!phone && bar}
+      {!phone && (manyBar || bar)}
     </div>
   );
 
@@ -1288,7 +1511,7 @@ export function PlanEditor({
         </header>
         {stageArea}
         {tool === 'icons' && !current && library}
-        {bar}
+        {manyBar || bar}
         {tools}
       </div>,
       document.body,

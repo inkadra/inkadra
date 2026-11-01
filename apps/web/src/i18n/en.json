@@ -927,7 +927,17 @@
       "angleField": "Angle",
       "width": "Width",
       "depth": "Depth",
-      "size": "Size"
+      "size": "Size",
+      "items_one": "{{count}} item",
+      "items_other": "{{count}} items",
+      "align": {
+        "left": "Align left",
+        "centre": "Align centre",
+        "top": "Align top",
+        "distribute": "Distribute"
+      },
+      "group": "Group",
+      "ungroup": "Ungroup"
     }
   },
   "tags": {

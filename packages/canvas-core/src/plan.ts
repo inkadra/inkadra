@@ -593,6 +593,123 @@ export function itemBox(item: PlanItem): { x: number; y: number; w: number; h: n
   return { x, y, w: Math.max(...xs) - x, h: Math.max(...ys) - y };
 }
 
+// Several items -------------------------------------------------------------------
+
+export type PlanAlign = 'left' | 'centre' | 'top' | 'distribute';
+
+const refOf = (kind: PlanItemKind, item: PlanItem): PlanItemRef => ({ kind, id: item.id });
+
+/** Every item of a plan with the array it lives in, strokes first. */
+export function planItems(
+  plan: Pick<PlanElement, 'strokes' | 'shapes' | 'icons'>,
+): Array<{ ref: PlanItemRef; item: PlanItem }> {
+  return (['strokes', 'shapes', 'icons'] as const).flatMap((kind) =>
+    ((plan[kind] ?? []) as PlanItem[]).map((item) => ({ ref: refOf(kind, item), item })),
+  );
+}
+
+/** The refs with the rest of their groups: a group is picked whole (one level, no nesting). */
+export function withGroups(
+  plan: Pick<PlanElement, 'strokes' | 'shapes' | 'icons'>,
+  refs: readonly PlanItemRef[],
+): PlanItemRef[] {
+  const all = planItems(plan);
+  const ids = new Set(refs.map((r) => r.id));
+  const groups = new Set(
+    all.filter((e) => ids.has(e.item.id) && e.item.group).map((e) => e.item.group),
+  );
+  return all
+    .filter((e) => ids.has(e.item.id) || (e.item.group && groups.has(e.item.group)))
+    .map((e) => e.ref);
+}
+
+/** Items whose box touches `rect` (view units), the hidden and locked layers left out. */
+export function itemsInRect(
+  plan: Pick<PlanElement, 'strokes' | 'shapes' | 'icons'>,
+  rect: { x: number; y: number; w: number; h: number },
+  view?: PlanView,
+): PlanItemRef[] {
+  return planItems(plan)
+    .filter(({ item }) => {
+      if (!reachable(item, view)) return false;
+      const b = itemBox(item);
+      return (
+        b.x <= rect.x + rect.w &&
+        b.x + b.w >= rect.x &&
+        b.y <= rect.y + rect.h &&
+        b.y + b.h >= rect.y
+      );
+    })
+    .map((e) => e.ref);
+}
+
+/** The box around several items, in view units. */
+export function itemsBox(items: readonly PlanItem[]): {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+} {
+  const boxes = items.map(itemBox);
+  const x = Math.min(...boxes.map((b) => b.x));
+  const y = Math.min(...boxes.map((b) => b.y));
+  return {
+    x,
+    y,
+    w: Math.max(...boxes.map((b) => b.x + b.w)) - x,
+    h: Math.max(...boxes.map((b) => b.y + b.h)) - y,
+  };
+}
+
+/**
+ * Items lined up on the left edge, the middle or the top of their box, or spread evenly across
+ * it (by their middles, first and last staying).
+ */
+export function alignItems<T extends PlanItem>(items: readonly T[], how: PlanAlign): T[] {
+  if (items.length < 2) return [...items];
+  const all = itemsBox(items);
+  if (how === 'distribute') {
+    const sorted = [...items].sort((a, b) => {
+      const ba = itemBox(a);
+      const bb = itemBox(b);
+      return ba.x + ba.w / 2 - (bb.x + bb.w / 2);
+    });
+    const first = itemBox(sorted[0] as T);
+    const last = itemBox(sorted.at(-1) as T);
+    const from = first.x + first.w / 2;
+    const gap = (last.x + last.w / 2 - from) / (sorted.length - 1);
+    const moved = new Map(
+      sorted.map((item, i) => {
+        const b = itemBox(item);
+        return [item.id, moveItem(item, { x: from + gap * i - (b.x + b.w / 2), y: 0 })];
+      }),
+    );
+    return items.map((item) => moved.get(item.id) as T);
+  }
+  return items.map((item) => {
+    const b = itemBox(item);
+    if (how === 'left') return moveItem(item, { x: all.x - b.x, y: 0 });
+    if (how === 'top') return moveItem(item, { x: 0, y: all.y - b.y });
+    return moveItem(item, { x: all.x + all.w / 2 - (b.x + b.w / 2), y: 0 });
+  });
+}
+
+/**
+ * Groups the items under a new group id, or ungroups them when they already form one group.
+ * Returns the items to write.
+ */
+export function toggleGroup<T extends PlanItem>(items: readonly T[]): T[] {
+  const first = items[0]?.group;
+  const grouped = !!first && items.every((i) => i.group === first);
+  const id = newElementId();
+  return items.map((item) => {
+    const next = { ...item };
+    if (grouped) delete next.group;
+    else next.group = id;
+    return next;
+  });
+}
+
 // Writing to the document --------------------------------------------------------
 
 function listOf(doc: Y.Doc, planId: string, kind: PlanItemKind): Y.Array<unknown> | null {

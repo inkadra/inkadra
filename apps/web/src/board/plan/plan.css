@@ -180,6 +180,9 @@
 }
 .plan-editor__stage {
   position: relative;
+  /* A dragged box picks items, never the words drawn on the plan. */
+  user-select: none;
+  -webkit-user-select: none;
   width: min(100cqw - 48px, (100cqh - 96px) * 1.5);
   background: var(--ink-surface-1);
   border: 1px solid var(--ink-border-muted);
@@ -935,4 +938,20 @@ button.plan__badge:hover {
 }
 .plan-editor__bar .plan-num {
   height: 26px;
+}
+
+/* Several items (round 6, f). */
+.plan-editor__marquee {
+  fill: color-mix(in srgb, var(--ink-accent-primary) 10%, transparent);
+  stroke: var(--ink-accent-primary);
+  stroke-width: 1.5;
+  stroke-dasharray: 6 4;
+  vector-effect: non-scaling-stroke;
+}
+.plan-editor__selection .plan-editor__member {
+  stroke-opacity: 0.5;
+}
+.plan-editor__count {
+  padding: 0 8px 0 6px;
+  color: var(--ink-text-secondary);
 }

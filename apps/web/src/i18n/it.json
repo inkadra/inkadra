@@ -927,7 +927,17 @@
       "angleField": "Angolo",
       "width": "Larghezza",
       "depth": "Profondità",
-      "size": "Misura"
+      "size": "Misura",
+      "items_one": "{{count}} elemento",
+      "items_other": "{{count}} elementi",
+      "align": {
+        "left": "Allinea a sinistra",
+        "centre": "Allinea al centro",
+        "top": "Allinea in alto",
+        "distribute": "Distribuisci"
+      },
+      "group": "Raggruppa",
+      "ungroup": "Separa"
     }
   },
   "tags": {

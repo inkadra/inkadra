@@ -19,6 +19,7 @@ import { addShape, addStroke } from './film.ts';
 import {
   addBlockingStep,
   addPlanIcon,
+  alignItems,
   bendThrough,
   blockingCurve,
   blockingPositions,
@@ -26,6 +27,7 @@ import {
   iconCone,
   iconHit,
   iconSize,
+  itemsInRect,
   layerOf,
   lensAngle,
   moveItem,
@@ -41,7 +43,9 @@ import {
   SYMBOL_SIZES,
   shownAngle,
   snapPlanPoint,
+  toggleGroup,
   updatePlanItems,
+  withGroups,
 } from './plan.ts';
 import { flattenPath, glyphBox, glyphOf, PLAN_CATEGORIES } from './plan-icons.ts';
 
@@ -334,5 +338,43 @@ describe('resizing', () => {
   it('shows turned items with a signed angle', () => {
     expect(shownAngle({ ...camera, id: 'iconAAAAAAAAA', rotation: 340 })).toBe(-20);
     expect(shownAngle({ ...camera, id: 'iconAAAAAAAAA', rotation: 90 })).toBe(90);
+  });
+});
+
+describe('several items', () => {
+  const chair = (id: string, x: number, y: number): PlanIcon => ({
+    id: `chair${id}`.padEnd(13, 'A'),
+    kind: 'chair',
+    color: '#1C1C1E',
+    x,
+    y,
+  });
+  const a = chair('A', 1000, 1000);
+  const b = chair('B', 2000, 1500);
+  const c = chair('C', 2600, 2000);
+
+  it('lines items up on the left, the middle or the top, and spreads them evenly', () => {
+    const left = alignItems([a, b, c], 'left');
+    expect(new Set(left.map((i) => i.x))).toEqual(new Set([1000]));
+    const top = alignItems([a, b, c], 'top');
+    expect(new Set(top.map((i) => i.y))).toEqual(new Set([1000]));
+    const spread = alignItems([c, a, b], 'distribute');
+    // First and last stay; the one between moves to the middle.
+    expect(spread.map((i) => i.x)).toEqual([2600, 1000, 1800]);
+  });
+
+  it('groups items, picks a group whole and ungroups it again', () => {
+    const [ga, gb] = toggleGroup([a, b]);
+    expect(ga?.group).toBeDefined();
+    expect(ga?.group).toBe(gb?.group);
+    const plan = { icons: [ga as PlanIcon, gb as PlanIcon, c] };
+    expect(withGroups(plan, [{ kind: 'icons', id: a.id }]).map((r) => r.id)).toEqual([a.id, b.id]);
+    expect(toggleGroup([ga as PlanIcon, gb as PlanIcon]).every((i) => !i.group)).toBe(true);
+  });
+
+  it('takes what a dragged box touches', () => {
+    const plan = { icons: [a, b, c] };
+    const hit = itemsInRect(plan, { x: 0, y: 0, w: 300, h: 200 });
+    expect(hit.map((r) => r.id)).toEqual([a.id]);
   });
 });

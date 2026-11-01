@@ -310,13 +310,37 @@ for (const theme of ['dark', 'light'] as const) {
     await expect.poll(async () => (await sofa())?.rotation).toBe(340);
     await page.screenshot({ path: join(out, `desktop-${theme}-resize.png`) });
 
+    // Several items (round 6, f): a box dragged over the table and Marco picks both; Group
+    // keeps them together, Align lines them up.
+    const from2 = at(160, 95);
+    const to2 = at(250, 185);
+    await page.mouse.move(from2.x, from2.y);
+    await page.mouse.down();
+    await page.mouse.move(to2.x, to2.y, { steps: 5 });
+    await page.mouse.up();
+    const manyBar = editor.getByRole('toolbar', { name: 'Elemento selezionato' });
+    await expect(manyBar).toContainText(/\d+ elementi/);
+    await manyBar.getByRole('button', { name: /^Raggruppa/ }).click();
+    await expect
+      .poll(async () => {
+        const icons = (await saved()).plan?.icons ?? [];
+        const table = icons.find((i) => i.kind === 'table');
+        const marco = icons.find((i) => i.label === 'Marco');
+        return !!table?.group && table.group === marco?.group;
+      })
+      .toBe(true);
+    await page.screenshot({ path: join(out, `desktop-${theme}-multi.png`) });
+    await page.keyboard.press('Escape');
+
     // Duplicate, then delete the copy; the plan keeps the ten icons it had.
+    await page.mouse.click(aCam.x, aCam.y);
     await bar.getByRole('button', { name: 'Duplica' }).click();
     await expect.poll(async () => (await saved()).plan?.icons?.length).toBe(11);
     await page.keyboard.press('Delete');
     await expect.poll(async () => (await saved()).plan?.icons?.length).toBe(10);
 
     // Tap Fresnel, then tap the plan twice: it stays armed and places two, then Recent shows it.
+    await editor.getByRole('tab', { name: 'Icone' }).click();
     await tile('Fresnel').click();
     const spot = at(60, 60);
     await page.mouse.click(spot.x, spot.y);
