@@ -1,6 +1,6 @@
 {
-  "id": "f676a0f3-d4d4-4c85-9b4d-e85f0e722264",
-  "prevId": "49a5a10e-c923-475e-8326-4bcea798eb14",
+  "id": "0bdda305-a1ef-4b22-b0fd-ad165f76fee3",
+  "prevId": "724e7fbc-5c54-4953-a9e6-9c467656710b",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -3551,6 +3551,13 @@
           "type": "uuid",
           "primaryKey": false,
           "notNull": false
+        },
+        "theme": {
+          "name": "theme",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'{}'::jsonb"
         },
         "updated_by": {
           "name": "updated_by",

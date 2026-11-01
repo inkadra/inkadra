@@ -9,6 +9,8 @@ const it = {
   releaseConsent:
     'Ricevi questa email perché hai attivato Novità di Inkadra nelle impostazioni Notifiche. Puoi disattivarla lì in qualsiasi momento.',
   releaseAction: 'Leggi le note di rilascio',
+  releaseHighlights: 'Novità principali',
+  releaseSettingsAction: 'Impostazioni notifiche',
 
   securitySubjects: {
     password: 'Password modificata',
@@ -104,6 +106,8 @@ const en: Texts = {
   releaseConsent:
     'You receive this email because you enabled Inkadra news in Notifications settings. You can turn it off there at any time.',
   releaseAction: 'Read release notes',
+  releaseHighlights: 'Highlights',
+  releaseSettingsAction: 'Notification settings',
 
   securitySubjects: {
     password: 'Password changed',

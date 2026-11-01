@@ -358,7 +358,7 @@ export async function startWorkers(
     async (job) => {
       if (job.name === 'notifications') return sendImmediateEmails(mailDeps);
       if (job.name === 'release-news')
-        return sendReleaseNews(deps.db, mailDeps.mailer, job.data.version);
+        return sendReleaseNews(deps.db, mailDeps.mailer, job.data.version, mailDeps);
       if (job.name === 'digest') return sendDigests(mailDeps);
       throw new Error(`Unknown job ${job.name}`);
     },

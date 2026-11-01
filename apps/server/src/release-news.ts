@@ -82,9 +82,41 @@ export async function enqueueReleaseNews(
   }
 }
 
+/** A bounded, text-only summary of the first section; never interprets note HTML. */
+export function releaseHighlights(notes: string): string[] {
+  const lines = notes
+    .slice(0, 32_000)
+    .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, '')
+    .split(/\r?\n/)
+    .filter((line) => !/^#\s/.test(line));
+  const firstSection = lines.findIndex((line) => /^#{2,6}\s/.test(line));
+  const section = lines.slice(firstSection >= 0 ? firstSection + 1 : 0);
+  const end = section.findIndex((line) => /^#{1,6}\s/.test(line));
+  const body = (end >= 0 ? section.slice(0, end) : section).filter((line) => !/^#\s/.test(line));
+  const bullets = body.filter((line) => /^\s*(?:[-*+] |\d+[.)] )/.test(line));
+  const paragraphs = body.join('\n').split(/\n\s*\n/);
+  return (bullets.length ? bullets : paragraphs)
+    .map((line) =>
+      line
+        .replace(/^\s*(?:[-*+] |\d+[.)] )/, '')
+        .replace(/!?\[([^\]]*)\]\([^)]*\)/g, '$1')
+        .replace(/<[^>]*>/g, '')
+        .replace(/(?:https?:\/\/|www\.)[^\s]+/gi, '')
+        .replace(/[*_`~]/g, '')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .slice(0, 280),
+    )
+    .filter(Boolean)
+    .slice(0, 5);
+}
+
+export type ReleaseMailInstance = { instanceName: string; publicUrl: string };
+
 export async function releaseNewsMail(
   person: { email: string; locale: string | null },
   version: string,
+  instance: ReleaseMailInstance,
 ) {
   if (!semver.test(version)) throw new Error('Invalid release version');
   const t = mailText(person);
@@ -110,17 +142,27 @@ export async function releaseNewsMail(
   return actionMail(
     person.email,
     t.releaseSubject(version),
-    [
-      t.releaseIntro(version),
-      ...(notes ? [notes.replace(/https?:\/\/\S+/g, '').slice(0, 4000)] : []),
-      t.releaseConsent,
-    ],
+    [t.releaseIntro(version)],
     { label: t.releaseAction, url: `https://github.com/inkadra/inkadra/releases/tag/v${version}` },
+    {
+      instanceName: instance.instanceName,
+      highlights: { title: t.releaseHighlights, items: releaseHighlights(notes) },
+      footer: {
+        text: t.releaseConsent,
+        label: t.releaseSettingsAction,
+        url: `${instance.publicUrl}/settings?section=notifications`,
+      },
+    },
   );
 }
 
 /** One durable claim per person. A job retry resumes at the next unattempted recipient. */
-export async function sendReleaseNews(db: Database, mailer: Mailer, version: string) {
+export async function sendReleaseNews(
+  db: Database,
+  mailer: Mailer,
+  version: string,
+  instance: ReleaseMailInstance,
+) {
   if (!mailer.enabled) return;
   while (await releaseNewsEnabled(db)) {
     const done = await db.transaction(async (tx) => {
@@ -149,7 +191,7 @@ export async function sendReleaseNews(db: Database, mailer: Mailer, version: str
       }
       const mail =
         !row.deactivated && row.preferences?.releaseNews === true
-          ? await releaseNewsMail(row, version)
+          ? await releaseNewsMail(row, version, instance)
           : null;
       await tx
         .update(releaseDelivery)
@@ -160,7 +202,7 @@ export async function sendReleaseNews(db: Database, mailer: Mailer, version: str
     });
     if (!done) return;
     if (done.mail) {
-      // shortcut: SMTP has no idempotency key; an ambiguous failure is not retried (ADR 0058).
+      // shortcut: SMTP has no idempotency key; an ambiguous failure is not retried (ADR 0060).
       await mailer.send(done.mail);
     }
   }

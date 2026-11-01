@@ -1,4 +1,4 @@
-# 0058 — Opt-in release news and SMTP delivery claims
+# 0060 — Opt-in release news and SMTP delivery claims
 
 ## Context
 
@@ -23,8 +23,11 @@ already opted in. Disabling delivery leaves pending recipients paused until a su
 
 ## Consequences
 
-No tracking resources or remote content. Bundled notes are escaped plain text, bounded to 4000
-characters; missing notes use a localised generic introduction and the project release URL.
+No tracking resources or remote content. The first section of bundled notes supplies at most
+five plain-text highlights of 280 characters each. HTML, Markdown markup and embedded URLs
+are removed; the full-notes button links only to the project release. Missing notes use a
+localised generic introduction. The common action-email layout supplies the instance header
+and a consent footer linking to this instance's Notifications settings.
 Notes may use `<version>.it.md`, `<version>.en.md`, or `<version>.md`. Deactivated
 accounts never receive release news. Exactly-once delivery would need a provider supporting
 idempotency keys; this implementation deliberately adds no provider integration.
