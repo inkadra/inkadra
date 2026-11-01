@@ -104,7 +104,14 @@ export function useFileMeta(asset: Asset): { family: FileFamily; badge: string; 
     if (typeof info.polygons === 'number')
       meta.push(t('board.file.polygons', { count: info.polygons }));
   }
-  if (asset.pageCount) meta.push(t('board.file.pages', { count: asset.pageCount }));
+  if (typeof asset.exif?.OfficeSheetCount === 'number')
+    meta.push(t('office.sheetCount', { count: asset.exif.OfficeSheetCount }));
+  else if (asset.pageCount)
+    meta.push(
+      t(/\.(pptx|odp)$/i.test(asset.filename) ? 'office.slideCount' : 'board.file.pages', {
+        count: asset.pageCount,
+      }),
+    );
   return { family: fileFamily(asset), badge: fileBadge(asset), meta };
 }
 
@@ -264,7 +271,10 @@ function ReadyFileCard({
           {src && <MapCredit />}
         </Preview>
       );
-    } else if (src && isPdf(asset)) {
+    } else if (
+      src &&
+      (isPdf(asset) || /\.(docx|xlsx|pptx|odt|ods|odp|csv)$/i.test(asset.filename))
+    ) {
       preview = (
         <Preview family={family} className="fcard__preview--page">
           <img

@@ -14,6 +14,8 @@ import { readFileMetadata } from './file-metadata.ts';
 import { GPX_MAX_BYTES, parseGpx, trackStats } from './gpx.ts';
 import { decodeHeic, sniffImage } from './heic.ts';
 import { MAP_HEIGHT, MAP_WIDTH, type MapSettings, renderMap, routeLine, viewOf } from './maps.ts';
+import { convertOffice, OFFICE_CAPS, officeExtension, officeKey } from './office.ts';
+import { type OfficeSheet, parseCsv, readXlsx, SHEET_LIMITS } from './office-sheets.ts';
 import { palette } from './palette.ts';
 import { isPdf, readPdfInfo, renderFirstPage } from './pdf.ts';
 import { readPhotoshop } from './photoshop.ts';
@@ -168,6 +170,8 @@ export async function processAsset(
   if (rawType) return processRaw(deps, row, digest, rawType);
   const design = designExtension(row.filename);
   if (design) return processDesign(deps, row, digest, design, head);
+  const office = officeExtension(row.filename);
+  if (row.kind === 'file' && office) return processOffice(deps, row, digest, office);
   if (row.kind === 'file' && isPdf(head)) return processPdf(deps, row, digest);
   if (row.kind === 'audio') return processAudio(deps, row, digest, head);
   if (row.kind === 'file' && isGpx(row, head)) return processGpx(deps, row, digest);
@@ -731,4 +735,80 @@ async function save(
 /** Called when the last retry failed. */
 export async function markFailed(db: Database, assetId: string) {
   await db.update(asset).set({ status: 'failed' }).where(eq(asset.id, assetId));
+}
+
+/** Office uses the same bounded Poppler render and thumbnails as PDFs. */
+async function processOffice(
+  deps: MediaDeps,
+  row: typeof asset.$inferSelect,
+  digest: string,
+  ext: string,
+) {
+  const plain = { sha256: digest, status: 'ready' as const, pageCount: null };
+  return withJobDir(deps.tmpDir, async (dir) => {
+    if (row.size > OFFICE_CAPS.input) {
+      await save(deps.db, row.id, [], plain);
+      return { variants: 0 };
+    }
+    const copy = await localSource(deps.storage, row, dir);
+    let sheets: OfficeSheet[] = [];
+    try {
+      if (row.size <= SHEET_LIMITS.bytes) {
+        try {
+          if (ext === 'csv')
+            sheets = [
+              {
+                name: row.filename.replace(/\.[^.]*$/, ''),
+                rows: parseCsv((await readFile(copy.path)).toString('utf8')),
+              },
+            ];
+          if (ext === 'xlsx') sheets = await readXlsx(copy.path);
+        } catch (err) {
+          deps.log?.warn({ err, assetId: row.id }, 'Spreadsheet cannot be previewed');
+        }
+      }
+      let pageCount = 0;
+      let first: Awaited<ReturnType<typeof thumbnails>> | null = null;
+      try {
+        const pdf = await convertOffice(copy.path, dir, ext);
+        const { pdftoppm, pdfinfo } = await mediaTools();
+        if (pdf && pdftoppm && pdfinfo) {
+          const info = await readPdfInfo(pdfinfo, pdf);
+          if (!info.pageCount || info.pageCount > OFFICE_CAPS.pages)
+            throw new Error('Office page cap');
+          const deadline = Date.now() + 120_000;
+          let total = 0;
+          for (let n = 1; n <= info.pageCount; n++) {
+            if (Date.now() > deadline) throw new Error('Office rendering timeout');
+            const page = await renderFirstPage(pdftoppm, pdf, join(dir, `page${n}`), n);
+            if (!page) throw new Error('Cannot render Office page');
+            const image = sharp(page, { failOn: 'error' });
+            const data = await image.webp({ quality: 85 }).toBuffer();
+            total += data.length;
+            if (total > 32 * 1024 ** 2) throw new Error('Office page bytes cap');
+            await deps.storage.write(officeKey(row.id, `page-${n}.webp`), data, 'image/webp');
+            if (n === 1) first = await thumbnails(deps, row.id, sharp(page, { failOn: 'error' }));
+          }
+          pageCount = info.pageCount;
+        }
+      } catch (err) {
+        first = null;
+        deps.log?.warn({ err, assetId: row.id }, 'Office conversion unavailable');
+      }
+      await deps.storage.write(
+        officeKey(row.id, 'manifest.json'),
+        Buffer.from(JSON.stringify({ pageCount, sheets })),
+        'application/json',
+      );
+      await save(deps.db, row.id, first?.variants ?? [], {
+        ...plain,
+        pageCount: pageCount || null,
+        exif: { ...row.exif, ...(sheets.length ? { OfficeSheetCount: sheets.length } : {}) },
+        ...(first ? { width: first.width, height: first.height } : {}),
+      });
+      return { variants: first?.variants.length ?? 0, pageCount: pageCount || null };
+    } finally {
+      await copy.done();
+    }
+  });
 }

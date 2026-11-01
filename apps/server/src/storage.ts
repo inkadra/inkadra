@@ -59,6 +59,22 @@ export const proxyKey = (assetId: string) => `variants/${assetId}/proxy.mp4`;
 /** The peaks of an audio file as JSON (#327): the `waveform` variant row. */
 export const waveformKey = (assetId: string) => `variants/${assetId}/waveform.json`;
 
+/** Office derivatives have deterministic keys and follow the original's lifecycle. */
+export const officeKey = (id: string, name: string) => `variants/${id}/office-${name}`;
+export function officeDerivativeKeys(id: string): string[] {
+  return [
+    officeKey(id, 'manifest.json'),
+    ...Array.from({ length: 50 }, (_, i) => officeKey(id, `page-${i + 1}.webp`)),
+  ];
+}
+function withOfficeDerivatives(keys: string[]): string[] {
+  return keys.flatMap((key) =>
+    key.startsWith('originals/') && !key.endsWith('.info') && !key.endsWith('.json')
+      ? [key, ...officeDerivativeKeys(key.slice('originals/'.length))]
+      : [key],
+  );
+}
+
 const SAFE_KEY = /^[a-z]+(\/[A-Za-z0-9._-]+)+$/;
 function checkKey(key: string) {
   if (!SAFE_KEY.test(key) || key.includes('..')) throw new Error(`Invalid storage key ${key}`);
@@ -118,6 +134,7 @@ export function localStorage(root: string): Storage {
       return { path: path(key), done: async () => {} };
     },
     async remove(keys) {
+      keys = withOfficeDerivatives(keys);
       for (const key of keys) {
         await rm(path(key), { force: true });
         // The tus store keeps upload state next to the file.
@@ -232,6 +249,7 @@ function s3Storage(config: Config): Storage {
       return { path: target, done: () => rm(target, { force: true }) };
     },
     async remove(keys) {
+      keys = withOfficeDerivatives(keys);
       for (const key of keys) checkKey(key);
       const all = keys.flatMap((k) => (k.startsWith('originals/') ? [k, `${k}.info`] : [k]));
       for (let i = 0; i < all.length; i += 1000) {
