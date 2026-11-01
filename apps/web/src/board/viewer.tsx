@@ -780,13 +780,22 @@ export function MediaViewer({
                 {t('viewer.info')}
               </Button>
             )}
-            <a
-              className="ink-btn ink-btn--secondary"
-              href={`${ready.url}?download=1`}
-              download={ready.filename}
-            >
-              {t('office.download')}
-            </a>
+            {officeData?.sheets[0] ? (
+              <p className="office-mobile-summary">
+                {t('office.summary', {
+                  rows: officeData.sheets[0].rows.length,
+                  columns: Math.max(0, ...officeData.sheets[0].rows.map((row) => row.length)),
+                })}
+              </p>
+            ) : (
+              <a
+                className="ink-btn ink-btn--secondary"
+                href={`${ready.url}?download=1`}
+                download={ready.filename}
+              >
+                {t('office.download')}
+              </a>
+            )}
           </div>
         )}
         {/* Thumbnails Strip */}

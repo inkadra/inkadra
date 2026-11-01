@@ -3222,6 +3222,7 @@
       "ods": "OpenDocument spreadsheet",
       "odp": "OpenDocument presentation",
       "csv": "Comma-separated values"
-    }
+    },
+    "summary": "{{rows}} rows × {{columns}} columns · the file stays on the board"
   }
 }

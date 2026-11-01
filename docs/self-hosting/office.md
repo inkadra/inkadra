@@ -17,7 +17,7 @@ access to its queue/storage; its LibreOffice child has a separate network namesp
 interfaces. The converter sees only system binaries, its private job directory and an empty
 temporary filesystem. It cannot see other uploads or the server's environment variables.
 
-LibreOffice adds roughly 300–600 MiB uncompressed depending on architecture/version; the
+LibreOffice adds roughly 600–800 MiB uncompressed depending on architecture/version; the
 base image is unchanged. Allocate at least 4 GiB address space and adequate worker memory,
 plus scratch disk for the 32 MiB input, 64 MiB PDF and page renders. Keep worker concurrency
 low. Conversion lasts at most 60 seconds, followed by a bounded Poppler pass (50 pages maximum,
