@@ -31,3 +31,10 @@ it('maps X to the crop command', () => {
   expect(commandFor(key('x'), false)).toEqual({ kind: 'crop' });
   expect(commandFor(key('x', { ctrlKey: true }), false)).toBeNull();
 });
+
+it('maps G to the snap-to-grid toggle, without modifiers', () => {
+  expect(commandFor(key('g'), false)).toEqual({ kind: 'snap' });
+  expect(commandFor(key('G', { shiftKey: true }), false)).toBeNull();
+  expect(commandFor(key('g', { ctrlKey: true }), false)).toBeNull();
+  expect(commandFor(key('g', { altKey: true }), false)).toBeNull();
+});

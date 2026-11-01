@@ -784,9 +784,12 @@ export function Minimap({
 export function ZoomControls({
   zoom,
   onZoom,
+  snap,
 }: {
   zoom: number;
   onZoom: (to: 'in' | 'out' | 'reset' | 'fit') => void;
+  /** The magnet (#296): snap to grid, for people who can edit. */
+  snap?: { on: boolean; onToggle: () => void } | undefined;
 }) {
   const { t } = useTranslation();
   return (
@@ -823,6 +826,19 @@ export function ZoomControls({
       >
         <Icon name="fit" size={14} />
       </button>
+      {snap && (
+        <button
+          type="button"
+          className={`zoom__snap${snap.on ? ' is-active' : ''}`}
+          aria-label={t('board.snap.label')}
+          aria-pressed={snap.on}
+          aria-keyshortcuts="G"
+          data-ink-tooltip={t('board.snap.tooltip')}
+          onClick={snap.onToggle}
+        >
+          <Icon name="magnet" size={14} />
+        </button>
+      )}
     </fieldset>
   );
 }

@@ -29,6 +29,7 @@ export type Command =
   | { kind: 'back' }
   | { kind: 'nudge'; dx: number; dy: number }
   | { kind: 'zoom'; to: 'in' | 'out' | 'reset' | 'fit' | 'selection' }
+  | { kind: 'snap' }
   | { kind: 'help' };
 
 export interface KeyInput {
@@ -117,6 +118,8 @@ export function commandFor(e: KeyInput, mac = isMac()): Command | null {
       return { kind: 'add', type: 'color' };
     case 'x':
       return { kind: 'crop' };
+    case 'g':
+      return { kind: 'snap' };
     case '+':
     case '=':
       return { kind: 'zoom', to: 'in' };

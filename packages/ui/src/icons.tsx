@@ -183,6 +183,7 @@ const paths = {
   alignMiddle: <path d="M3 12h18M7 6v12M13 8v8" />,
   alignBottom: <path d="M3 20h18M7 6v10M13 10v6" />,
   distribute: <path d="M4 4v16M20 4v16M9 8h6v8H9z" />,
+  magnet: <path d="M6 3v8a6 6 0 0 0 12 0V3h-4v8a2 2 0 0 1-4 0V3zM6 7h4M14 7h4" />,
   bold: <path d="M7 5h6a3.5 3.5 0 0 1 0 7H7zM7 12h7a3.5 3.5 0 0 1 0 7H7z" />,
   italic: <path d="M10 5h8M6 19h8M14 5l-4 14" />,
   list: <path d="M9 6h11M9 12h11M9 18h11M4 6h1M4 12h1M4 18h1" />,

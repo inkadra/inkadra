@@ -303,7 +303,8 @@
     flex: none;
   }
   .canvas .canvas__corner {
-    width: 180px;
+    /* Five 44 px targets: zoom out, the value, zoom in, fit and the magnet. */
+    width: 226px;
     /* Above the touch toolbar: one row of 44px targets, its padding and a gap. */
     bottom: 80px;
     left: max(12px, env(safe-area-inset-left));

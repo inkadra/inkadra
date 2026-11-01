@@ -22,6 +22,7 @@ import {
   dropIndex,
   fitRect,
   frameLabels,
+  GRID,
   type Guide,
   inflate,
   intersects,
@@ -43,7 +44,10 @@ import {
   resizeFromCorner,
   screenToWorld,
   sendToBack,
-  snapRect,
+  snapMove,
+  snapPoint,
+  snapResize,
+  snap as snapToGrid,
   storyboardOf,
   TEMPLATE_IDS,
   type TemplateId,
@@ -81,6 +85,7 @@ import { queueSeeds } from '../routes/seed-queue.tsx';
 import { accessNotices } from './access-notices.ts';
 import { ArrowLayer, ArrowStyleButtons, onArrowStyleButton } from './arrows.tsx';
 import { canRenameBoard, createBoard, setBoardCover } from './boards.ts';
+import { loadSnapToGrid, saveSnapToGrid } from './canvas-prefs.ts';
 import {
   type CanvasTemplate,
   createCanvasBoards,
@@ -340,6 +345,18 @@ export function Canvas({
   const [editing, setEditingState] = useState<string | null>(null);
   const [cropping, setCropping] = useState<string | null>(null);
   const [tool, setTool] = useState<CanvasTool>('select');
+  /** Snap to grid (#296): this person's choice on this device, off by default. */
+  const [magnet, setMagnetState] = useState(() => loadSnapToGrid(userId));
+  const magnetRef = useRef(magnet);
+  magnetRef.current = magnet;
+  const toggleMagnet = useCallback(() => {
+    const next = !magnetRef.current;
+    magnetRef.current = next;
+    setMagnetState(next);
+    saveSnapToGrid(userId, next);
+  }, [userId]);
+  /** Where a new card lands: on the grid while the magnet is on. */
+  const place = useCallback((p: Point): Point => (magnetRef.current ? snapPoint(p, GRID) : p), []);
   /** Frame whose details panel is open, frame being drawn, image or video in the viewer. */
   const [framePanel, setFramePanel] = useState<string | null>(null);
   /** Character or location card whose side sheet is open. */
@@ -622,7 +639,7 @@ export function Canvas({
   const insertCanvas = useCallback(
     async (template: CanvasTemplate, at?: Point) => {
       if (readOnly) return;
-      const pos = at ?? center(DEFAULT_WIDTH.board);
+      const pos = place(at ?? center(DEFAULT_WIDTH.board));
       try {
         const { board, jobs } = await createCanvasBoards(projectId, boardId, template, t, userId);
         store.undo.stopCapturing();
@@ -647,7 +664,7 @@ export function Canvas({
         });
       }
     },
-    [readOnly, center, t, projectId, boardId, userId, store, doc, select, setEditing],
+    [readOnly, center, place, t, projectId, boardId, userId, store, doc, select, setEditing],
   );
 
   const [importingScript, setImportingScript] = useState(false);
@@ -666,19 +683,19 @@ export function Canvas({
       const card = createElement(
         doc,
         'board',
-        center(DEFAULT_WIDTH.board),
+        place(center(DEFAULT_WIDTH.board)),
         { boardId: board.id },
         { userId, origin: LOCAL },
       );
       select([card.id]);
     },
-    [readOnly, projectId, boardId, t, userId, store, doc, center, select],
+    [readOnly, projectId, boardId, t, userId, store, doc, center, place, select],
   );
 
   const add = useCallback(
     async (type: ToolType, at?: Point) => {
       if (readOnly) return;
-      const pos = at ?? center(DEFAULT_WIDTH[type as Element['type']] ?? 240);
+      const pos = place(at ?? center(DEFAULT_WIDTH[type as Element['type']] ?? 240));
       const opts = { userId, origin: LOCAL };
       store.undo.stopCapturing();
       let created: Element | null = null;
@@ -728,7 +745,7 @@ export function Canvas({
         setEditing(created.id);
       }
     },
-    [readOnly, center, userId, store, doc, select, setEditing, insertCanvas],
+    [readOnly, center, place, userId, store, doc, select, setEditing, insertCanvas],
   );
 
   const uploadFiles = useCallback(
@@ -742,7 +759,8 @@ export function Canvas({
       files
         .filter((f) => !tooBig.includes(f))
         .forEach((file, i) => {
-          const pos = { x: at.x + i * 24, y: at.y + i * 24 };
+          const step = magnetRef.current ? GRID : 24;
+          const pos = place({ x: at.x + i * step, y: at.y + i * step });
           const type = file.type.startsWith('image/') ? 'image' : 'file';
           startUpload({
             file,
@@ -768,14 +786,15 @@ export function Canvas({
           });
         });
     },
-    [readOnly, projectId, boardId, doc, userId, store, select, t, instance],
+    [readOnly, projectId, boardId, doc, userId, store, select, t, instance, place],
   );
 
   const addText = useCallback(
-    (text: string, at: Point) => {
+    (text: string, where: Point) => {
       const trimmed = text.trim();
       if (!trimmed || readOnly) return;
       const opts = { userId, origin: LOCAL };
+      const at = place(where);
       if (/^https?:\/\/\S+$/i.test(trimmed)) {
         const el = createElement(doc, 'link', at, { url: trimmed }, opts);
         select([el.id]);
@@ -789,7 +808,7 @@ export function Canvas({
       }, LOCAL);
       select([el.id]);
     },
-    [readOnly, userId, doc, store, select, projectId, boardId],
+    [readOnly, userId, doc, store, select, projectId, boardId, place],
   );
 
   const removeSelection = useCallback(() => {
@@ -826,6 +845,7 @@ export function Canvas({
       store,
       t,
       duplicateHint: `${isMac() ? '⌘' : 'Ctrl+'}D`,
+      extra: [{ id: 'snap-to-grid', label: t('board.snap.palette'), hint: 'G', run: toggleMagnet }],
     }),
   );
 
@@ -1091,7 +1111,13 @@ export function Canvas({
       if (cropping) setCropping(null);
       const from = targetId ? snap.byId.get(targetId) : undefined;
       const fromId = from && from.parent === null && from.type !== 'arrow' ? from.id : null;
-      gesture.current = { kind: 'arrow', start: screenToWorld(vp.current, p), fromId };
+      const start = screenToWorld(vp.current, p);
+      // A free end lands on the grid with the magnet on (Alt inverts it).
+      gesture.current = {
+        kind: 'arrow',
+        start: !fromId && magnetRef.current !== e.altKey ? snapPoint(start, GRID) : start,
+        fromId,
+      };
       rootRef.current?.setPointerCapture(e.pointerId);
       e.preventDefault();
       return;
@@ -1192,13 +1218,14 @@ export function Canvas({
       return;
     }
     if (g.kind === 'arrow') {
-      const b = screenToWorld(v, p);
+      const world = screenToWorld(v, p);
+      const b = magnetRef.current !== e.altKey ? snapPoint(world, GRID) : world;
       const from = { x: g.start.x, y: g.start.y, ...(g.fromId ? { elementId: g.fromId } : {}) };
       setOverlay({ arrow: arrowEnds({ from, to: b }, cardRect) });
       return;
     }
     if (g.kind === 'resize') {
-      const rect = resizeFromCorner(
+      const free = resizeFromCorner(
         g.rect,
         g.corner,
         {
@@ -1207,6 +1234,9 @@ export function Canvas({
         },
         g.options,
       );
+      // The dragged edges land on the grid with the magnet on; Alt inverts it for this drag.
+      const rect =
+        magnetRef.current !== e.altKey ? snapResize(free, g.corner, GRID, g.options) : free;
       setOverlay({ resize: { id: g.id, ...rect } });
       return;
     }
@@ -1277,18 +1307,24 @@ export function Canvas({
     }
 
     let guides: Guide[] | undefined;
-    if (!drop && !e.altKey && free.length > 0) {
+    // Alt leaves the guides out and inverts the magnet: the grid snaps when exactly one is on.
+    const grid = magnetRef.current !== e.altKey ? GRID : null;
+    if (!drop && (grid || !e.altKey) && free.length > 0) {
       const bounds = boundsOf(free.map((x) => store.rectOf(x)));
       if (bounds) {
         const area = inflate(visibleWorld(v, size.w, size.h), 200 / v.zoom);
-        const others = snap.canvas
-          .filter((o) => !moving.has(o.id) && o.type !== 'arrow')
-          .map((o) => store.rectOf(o))
-          .filter((r) => intersects(r, area));
-        const s = snapRect(
+        const others = e.altKey
+          ? []
+          : snap.canvas
+              .filter((o) => !moving.has(o.id) && o.type !== 'arrow')
+              .map((o) => store.rectOf(o))
+              .filter((r) => intersects(r, area));
+        // A selection moves as one: its top-left corner snaps, the gaps inside stay.
+        const s = snapMove(
           { ...bounds, x: bounds.x + dx, y: bounds.y + dy },
           others,
           SNAP_PX / v.zoom,
+          { grid, guides: !e.altKey },
         );
         dx += s.dx;
         dy += s.dy;
@@ -1309,7 +1345,8 @@ export function Canvas({
     setOverlay(NO_OVERLAY);
     if (!g || (e.type === 'pointercancel' && g.kind === 'resize')) return;
     if (g.kind === 'arrow') {
-      const end = toWorld(e.clientX, e.clientY);
+      const pointer = toWorld(e.clientX, e.clientY);
+      const end = magnetRef.current !== e.altKey ? snapPoint(pointer, GRID) : pointer;
       const under = (
         document.elementFromPoint(e.clientX, e.clientY) as HTMLElement | null
       )?.closest<HTMLElement>('[data-el]');
@@ -1318,7 +1355,7 @@ export function Canvas({
         target && target.parent === null && target.type !== 'arrow' && target.id !== g.fromId
           ? target.id
           : null;
-      const short = Math.hypot(end.x - g.start.x, end.y - g.start.y) < 12 / vp.current.zoom;
+      const short = Math.hypot(pointer.x - g.start.x, pointer.y - g.start.y) < 12 / vp.current.zoom;
       if (short && !toId) return;
       store.undo.stopCapturing();
       const arrow = createArrow(
@@ -1616,14 +1653,24 @@ export function Canvas({
           .map((id) => snap.byId.get(id))
           .filter((x): x is Element => !!x && x.parent === null && !x.locked);
         const cards = els.filter((x) => x.type !== 'arrow');
+        let { dx, dy } = cmd;
+        const bounds = boundsOf(cards.map((x) => store.rectOf(x)));
+        if (magnetRef.current && bounds) {
+          // One grid step, four with Shift, onto the grid: the selection moves as one.
+          const step = GRID * (e.shiftKey ? 4 : 1);
+          dx = snapToGrid(bounds.x + Math.sign(dx) * step, GRID) - bounds.x;
+          dy = snapToGrid(bounds.y + Math.sign(dy) * step, GRID) - bounds.y;
+          if (cmd.dx === 0) dx = 0;
+          if (cmd.dy === 0) dy = 0;
+        }
         doc.transact(() => {
           updateElements(
             doc,
-            cards.map((x) => ({ id: x.id, patch: { x: x.x + cmd.dx, y: x.y + cmd.dy } })),
+            cards.map((x) => ({ id: x.id, patch: { x: x.x + dx, y: x.y + dy } })),
             LOCAL,
           );
           const arrows = els.filter((x): x is ArrowElement => x.type === 'arrow');
-          if (arrows.length > 0) moveArrows(doc, arrows, cmd.dx, cmd.dy, cardRect, LOCAL);
+          if (arrows.length > 0) moveArrows(doc, arrows, dx, dy, cardRect, LOCAL);
           refreshArrows(
             doc,
             arrowsOf(),
@@ -1636,6 +1683,12 @@ export function Canvas({
       }
       case 'zoom':
         zoomTo(cmd.to);
+        break;
+      case 'snap':
+        if (readOnly) return;
+        toggleMagnet();
+        // The key gives no visible feedback where the eyes are: say what changed.
+        setToast({ text: t(magnetRef.current ? 'board.snap.on' : 'board.snap.off'), undo: false });
         break;
       case 'help':
         setPalette(true);
@@ -1668,7 +1721,7 @@ export function Canvas({
     }
     if (readOnly) return;
     const p = lastPointer.current ?? { x: size.w / 2, y: size.h / 2 };
-    const at = screenToWorld(vp.current, p);
+    const at = place(screenToWorld(vp.current, p));
     const data = decodeClipboard(e.clipboardData);
     e.preventDefault();
     if (data) {
@@ -2540,7 +2593,11 @@ export function Canvas({
             size={size}
             onJump={(p) => setViewport(centerOn(vp.current, p, size.w, size.h))}
           />
-          <ZoomControls zoom={viewport.zoom} onZoom={zoomTo} />
+          <ZoomControls
+            zoom={viewport.zoom}
+            onZoom={zoomTo}
+            snap={readOnly ? undefined : { on: magnet, onToggle: toggleMagnet }}
+          />
         </div>
         {!readOnly && (
           // Centres the bar on the part of the board beside the navigation, clear of the corner.

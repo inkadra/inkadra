@@ -465,6 +465,13 @@
       "fit": "Fit to view",
       "selection": "Zoom to selection"
     },
+    "snap": {
+      "label": "Snap to grid",
+      "tooltip": "Snap to grid · G",
+      "on": "Snap to grid on",
+      "off": "Snap to grid off",
+      "palette": "Snap to grid: on or off"
+    },
     "unsorted": {
       "empty": "Nothing to sort. What you save from the browser or your phone lands here."
     },

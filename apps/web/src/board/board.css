@@ -1326,6 +1326,11 @@ button.fcard__audio-play:focus-visible {
 .zoom .zoom__value {
   color: var(--ink-text-primary);
 }
+/* The magnet (#296): pressed while cards snap to the grid. */
+.zoom .zoom__snap[aria-pressed="true"] {
+  background: var(--ink-accent-soft-bg);
+  color: var(--ink-accent-soft-fg);
+}
 
 .unsorted {
   position: absolute;
@@ -3076,7 +3081,8 @@ button.card__play {
   }
   .canvas .zoom button {
     height: 28px;
-    min-width: 28px;
+    /* Five buttons with the magnet still fit the 150 px corner. */
+    min-width: 26px;
     border-radius: var(--ink-radius-sm);
   }
   .canvas .unsorted {
