@@ -99,7 +99,7 @@ export function mergeSeededCounts(
   const merged = new Map(server);
   for (const [boardId, counts] of local)
     if (live.has(boardId) || !server.get(boardId)?.elementCount)
-      merged.set(boardId, { boardId, ...counts });
+      merged.set(boardId, { ...server.get(boardId), boardId, ...counts });
   return merged;
 }
 

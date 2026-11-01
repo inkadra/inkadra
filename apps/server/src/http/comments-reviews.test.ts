@@ -1069,6 +1069,18 @@ describe.skipIf(!url)('team comments, reviews and notifications', () => {
     expect((await call('owner', 'GET', `/boards/${foreign}/reviews`)).statusCode).toBe(404);
   });
 
+  it('reports the cards in review in the board counts, for the navigation', async () => {
+    const reviewing = async () =>
+      (await call('viewer', 'GET', `/projects/${projectId}/board-counts`))
+        .json<{ items: Array<{ boardId: string; inReviewCount?: number }> }>()
+        .items.find((c) => c.boardId === root)?.inReviewCount;
+    expect(await reviewing()).toBe(0);
+    await call('commenter', 'PUT', reviewPath(), { status: 'in_review' });
+    expect(await reviewing()).toBe(1);
+    await call('editor', 'PUT', reviewPath(), { status: 'approved' });
+    expect(await reviewing()).toBe(0);
+  });
+
   it('keeps team/link reviews separate, history append-only and requested_by notified once', async () => {
     await call('commenter', 'PUT', reviewPath(), { status: 'in_review', note: 'Please' });
     const l = await link();

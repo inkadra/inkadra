@@ -117,6 +117,7 @@
     "collapse": "Collapse navigation",
     "expand": "Expand navigation",
     "boards": "Boards",
+    "addStoryboard": "Add storyboard…",
     "shots_one": "{{count}} shot",
     "shots_other": "{{count}} shots",
     "toShoot_one": "{{left}} of {{count}} shot still to shoot",

@@ -117,6 +117,7 @@
     "collapse": "Riduci la navigazione",
     "expand": "Espandi la navigazione",
     "boards": "Board",
+    "addStoryboard": "Aggiungi storyboard…",
     "shots_one": "{{count}} inquadratura",
     "shots_other": "{{count}} inquadrature",
     "toShoot_one": "{{left}} di {{count}} inquadratura ancora da girare",

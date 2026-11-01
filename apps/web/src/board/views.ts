@@ -68,6 +68,13 @@ export function projectHasStoryboard(
   return !!boards?.some((b) => (counts.get(b.id)?.frameCount ?? 0) > 0);
 }
 
+/** Whether a board of the project has cards in client review: Review stays listed for it. */
+export function projectHasReview(
+  counts: ReadonlyMap<string, Pick<BoardCount, 'inReviewCount'>>,
+): boolean {
+  return [...counts.values()].some((c) => (c.inReviewCount ?? 0) > 0);
+}
+
 /**
  * What the header offers: canvas and the film views on a storyboard, or while a film view is
  * open so there is a way back. An ordinary board offers its own two views, canvas and

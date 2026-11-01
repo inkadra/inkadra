@@ -34,7 +34,7 @@ import type { Auth } from '../auth.ts';
 import { type BoardReader, storedColumns } from '../board-content.ts';
 import { boardCounts, projectPreview } from '../board-preview.ts';
 import type { Database } from '../db/client.ts';
-import { asset, board, boardDoc, clipBoardUse, project } from '../db/schema.ts';
+import { asset, board, boardDoc, clipBoardUse, elementReview, project } from '../db/schema.ts';
 import { iso } from './api-routes.ts';
 import { requireActor } from './auth-routes.ts';
 import { HttpError } from './errors.ts';
@@ -263,11 +263,26 @@ export function registerBoardRoutes(app: FastifyInstance, deps: Deps) {
       projectGrants(db, actor, projectId),
     ]);
     if (!pRole && grants.size === 0) throw new HttpError('not_found', 'Project not found.');
-    const rows = await db
-      .select({ board, state: boardDoc.state })
-      .from(board)
-      .leftJoin(boardDoc, eq(boardDoc.boardId, board.id))
-      .where(and(eq(board.projectId, projectId), isNull(board.deletedAt)));
+    const [rows, inReview] = await Promise.all([
+      db
+        .select({ board, state: boardDoc.state })
+        .from(board)
+        .leftJoin(boardDoc, eq(boardDoc.boardId, board.id))
+        .where(and(eq(board.projectId, projectId), isNull(board.deletedAt))),
+      // The team's own rows (no link): cards sent to the client and not decided yet.
+      db
+        .select({ boardId: elementReview.boardId, n: sql<number>`count(*)::int` })
+        .from(elementReview)
+        .where(
+          and(
+            eq(elementReview.projectId, projectId),
+            isNull(elementReview.shareLinkId),
+            eq(elementReview.status, 'in_review'),
+          ),
+        )
+        .groupBy(elementReview.boardId),
+    ]);
+    const reviewing = new Map(inReview.map((r) => [r.boardId, r.n]));
     const roles = effectiveRoles(
       rows.map((r) => r.board),
       grants,
@@ -276,7 +291,13 @@ export function registerBoardRoutes(app: FastifyInstance, deps: Deps) {
     // Same visibility as the board list: only boards the caller can open.
     const items = rows.flatMap((r) =>
       roles.get(r.board.id)?.role
-        ? [{ boardId: r.board.id, ...boardCounts(r.state ?? undefined) }]
+        ? [
+            {
+              boardId: r.board.id,
+              ...boardCounts(r.state ?? undefined),
+              inReviewCount: reviewing.get(r.board.id) ?? 0,
+            },
+          ]
         : [],
     );
     return { items };

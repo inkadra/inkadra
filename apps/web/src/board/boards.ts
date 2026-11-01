@@ -37,6 +37,13 @@ export async function refreshBoards(projectId: string): Promise<void> {
   }
 }
 
+/** The project's boards from the server, which also fills the cache the sidebar reads. */
+export async function loadBoards(projectId: string): Promise<Board[] | null> {
+  await refreshBoards(projectId);
+  const cached = cache.get(projectId);
+  return cached && !cached.error ? cached.items : null;
+}
+
 export function useProjectBoards(projectId: string | undefined): ProjectBoards {
   const value = useSyncExternalStore(
     (l) => {
@@ -124,6 +131,24 @@ export function childBoards(items: Board[] | null, parentId: string): Board[] {
   return (items ?? [])
     .filter((b) => b.parentBoardId === parentId)
     .sort((a, b) => (a.position < b.position ? -1 : a.position > b.position ? 1 : 0));
+}
+
+/**
+ * Whether the sidebar lists any board under `parentId`: the storyboard (`hiddenId`) is listed as
+ * a module, so only its sub-boards count. Mirrors the sidebar tree, to the same depth.
+ */
+export function hasListedBoards(
+  items: Board[] | null,
+  parentId: string,
+  hiddenId: string | null,
+  depth = 1,
+): boolean {
+  if (depth > 4) return false;
+  return childBoards(items, parentId).some((b) =>
+    b.id === hiddenId
+      ? hasListedBoards(items, b.id, hiddenId, depth)
+      : true,
+  );
 }
 
 /** Top boards of the subtrees shared with you in projects you are not a member of. */

@@ -5,6 +5,7 @@ import {
   headerViews,
   isBoardView,
   pickerViews,
+  projectHasReview,
   projectHasStoryboard,
   storyboardOf,
   VIEWS,
@@ -183,5 +184,21 @@ describe('projectHasStoryboard', () => {
     expect(
       projectHasStoryboard([makeBoard('a', 'board')], new Map([['a', { frameCount: 0 }]])),
     ).toBe(false);
+  });
+});
+
+describe('projectHasReview', () => {
+  it('is true only while a board has cards in client review', () => {
+    expect(projectHasReview(new Map())).toBe(false);
+    expect(projectHasReview(new Map([['a', {}]]))).toBe(false);
+    expect(projectHasReview(new Map([['a', { inReviewCount: 0 }]]))).toBe(false);
+    expect(
+      projectHasReview(
+        new Map([
+          ['a', { inReviewCount: 0 }],
+          ['b', { inReviewCount: 2 }],
+        ]),
+      ),
+    ).toBe(true);
   });
 });
