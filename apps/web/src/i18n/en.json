@@ -381,6 +381,8 @@
       "loading": "File",
       "uploading": "Uploading {{percent}}%",
       "missing": "File not found",
+      "layers_one": "{{count}} layer",
+      "layers_other": "{{count}} layers",
       "pages_one": "{{count}} page",
       "pages_other": "{{count}} pages",
       "preparing": "Preparing preview",

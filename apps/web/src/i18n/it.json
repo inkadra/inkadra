@@ -381,6 +381,8 @@
       "loading": "File",
       "uploading": "Caricamento {{percent}}%",
       "missing": "File non trovato",
+      "layers_one": "{{count}} livello",
+      "layers_other": "{{count}} livelli",
       "pages_one": "{{count}} pagina",
       "pages_other": "{{count}} pagine",
       "preparing": "Preparo l’anteprima",

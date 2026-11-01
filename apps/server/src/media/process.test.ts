@@ -15,6 +15,7 @@ import { animatedVariantKey, originalKey, proxyKey, readAll } from '../storage.t
 import { testDeps } from '../test-deps.ts';
 import { writeZip } from '../transfers/zip.ts';
 import { chooseVideoEncoder, forgetVideoEncoder, readVideoEncoder } from './encoder-setting.ts';
+import { photoshopFixture } from './fixtures/photoshop.ts';
 import { SOFTWARE_ENCODER } from './hwaccel.ts';
 import { ANIMATED_CAPS, fitsAnimatedCaps, processAsset, variantWidths } from './process.ts';
 import { runProxy } from './proxy.ts';
@@ -169,6 +170,22 @@ describe.skipIf(!url)('processAsset (needs DATABASE_URL)', () => {
     return { row, variants: variants.sort((a, b) => a.width - b.width) };
   };
 
+  it.each([1, 2])(
+    'prefers the full v%s saved composite and persists layer count',
+    async (version) => {
+      const fixture = photoshopFixture({ version, rle: true, depth: 16, layers: -24 });
+      const id = await upload(
+        fixture.data,
+        'image/vnd.adobe.photoshop',
+        `composite.${version === 2 ? 'psb' : 'psd'}`,
+      );
+      expect((await processAsset(deps, id)).variants).toBeGreaterThan(0);
+      const { row } = await load(id);
+      expect(row).toMatchObject({ width: 4, height: 2, exif: { LayerCount: 24 }, status: 'ready' });
+      expect(await readAll(await storage.read(originalKey(id)))).toEqual(fixture.data);
+    },
+  );
+
   it.each([1, 2])('extracts a generated Photoshop v%s thumbnail with exiftool', async (version) => {
     if (!(await mediaTools()).exiftool) return;
     const jpeg = await sharp(await stillPng())
@@ -201,7 +218,7 @@ describe.skipIf(!url)('processAsset (needs DATABASE_URL)', () => {
       length,
       resources,
       Buffer.alloc(version === 2 ? 8 : 4),
-      Buffer.alloc(2 + 120 * 80 * 3),
+      Buffer.from([0, 2]), // Unsupported ZIP composite exercises the thumbnail fallback.
     ]);
     const id = await upload(
       body,

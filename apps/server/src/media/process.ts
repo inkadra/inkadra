@@ -15,6 +15,7 @@ import { decodeHeic, sniffImage } from './heic.ts';
 import { MAP_HEIGHT, MAP_WIDTH, type MapSettings, renderMap, routeLine, viewOf } from './maps.ts';
 import { palette } from './palette.ts';
 import { isPdf, readPdfInfo, renderFirstPage } from './pdf.ts';
+import { readPhotoshop } from './photoshop.ts';
 import { extractRawPreview, orientedPixels, readRawExif, sniffRaw } from './raw.ts';
 import { ensureFreeSpace, privateInput, withJobDir } from './scratch.ts';
 import {
@@ -305,6 +306,23 @@ async function processDesign(
   return withJobDir(deps.tmpDir, async (dir) => {
     const copy = await localSource(deps.storage, row, dir);
     try {
+      const photoshop = ext === 'psd' || ext === 'psb' ? await readPhotoshop(copy.path) : null;
+      const metadata =
+        photoshop?.layerCount !== null && photoshop?.layerCount !== undefined
+          ? { exif: { LayerCount: photoshop.layerCount } }
+          : {};
+      if (photoshop?.pixels) {
+        const { data, ...raw } = photoshop.pixels;
+        const result = await thumbnails(deps, row.id, sharp(data, { raw }));
+        await save(deps.db, row.id, result.variants, {
+          ...plain,
+          ...metadata,
+          width: result.width,
+          height: result.height,
+          palette: result.palette,
+        });
+        return { variants: result.variants.length };
+      }
       const preview = await (async () => {
         if (ext === 'psd' || ext === 'psb') {
           if (head.toString('ascii', 0, 4) !== '8BPS') return null;
@@ -334,6 +352,7 @@ async function processDesign(
           );
           await save(deps.db, row.id, result.variants, {
             ...plain,
+            ...metadata,
             width: result.width,
             height: result.height,
             palette: result.palette,
@@ -341,7 +360,7 @@ async function processDesign(
           return { variants: result.variants.length };
         }
       }
-      await save(deps.db, row.id, [], plain);
+      await save(deps.db, row.id, [], { ...plain, ...metadata });
       return { variants: 0 };
     } finally {
       await copy.done();

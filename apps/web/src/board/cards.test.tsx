@@ -211,6 +211,7 @@ describe('file card family', () => {
         filename: `poster.${ext}`,
         mime: ext === 'ai' ? 'application/pdf' : 'image/vnd.adobe.photoshop',
         size: 1024,
+        exif: { LayerCount: 24 },
         width: 800,
         height: 600,
         variants: [{ size: '512', width: 512, height: 384, url: '/design-preview' }],
@@ -219,6 +220,7 @@ describe('file card family', () => {
       expect(html).toContain(`>${ext.toUpperCase()}</span>`);
       expect(html).toContain(`>.${ext}</span>`);
       expect(html).toContain('800×600');
+      expect(html).toContain('board.file.layers:24');
       expect(html).toContain('src="/design-preview"');
       expect(html).toContain('fcard__preview--picture');
       expect(ready({ filename: `poster.${ext}`, variants: [] })).toContain(
