@@ -138,6 +138,56 @@ describe('ExportDialog preset state and customization', () => {
     );
   });
 
+  it('waits for settings before offering presets and restores the remembered value without early clicks', async () => {
+    let resolveSettings!: (settings: ExportSettings) => void;
+    getMock.mockReturnValue(
+      new Promise((resolve) => {
+        resolveSettings = resolve;
+      }),
+    );
+    await act(async () => {
+      root.render(
+        <ExportDialog
+          source="storyboard"
+          store={{} as BoardStore}
+          projectId="p1"
+          boardId="b1"
+          projectName="Spot Lagunc"
+          boardTitle="Storyboard"
+          boards={null}
+          selection={new Set()}
+          visible={null}
+          onClose={() => {}}
+        />,
+      );
+    });
+    expect(host.querySelector('.export__preset-input')).toBeNull();
+    expect(host.querySelector<HTMLButtonElement>('.export__submit')?.disabled).toBe(true);
+    await act(async () =>
+      resolveSettings({
+        ...DEFAULT_EXPORT_PREFERENCES,
+        preset: 'internal-kickoff',
+        audience: 'team',
+        comments: true,
+        hideGuestHidden: false,
+        logoAssetId: null,
+        logo: null,
+        theme: DEFAULT_PROJECT_THEME,
+        projectColor: 'blue',
+        canEdit: true,
+        updatedAt: '2026-10-01T12:00:00.000Z',
+      }),
+    );
+    expect(host.querySelector<HTMLInputElement>('input[value="internal-kickoff"]')?.checked).toBe(
+      true,
+    );
+    expect(host.querySelector<HTMLInputElement>('input[value="client-pitch"]')?.checked).toBe(
+      false,
+    );
+    expect(host.querySelector('.export__disclosure')?.getAttribute('aria-expanded')).toBe('false');
+    expect(host.querySelector<HTMLButtonElement>('.export__submit')?.disabled).toBe(false);
+  });
+
   it('hides "Ricordato per questo progetto" when the user cannot edit project settings and preserves canvas scope across presets', async () => {
     getMock.mockResolvedValue({
       ...DEFAULT_EXPORT_PREFERENCES,
