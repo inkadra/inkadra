@@ -5,8 +5,10 @@ import { join, resolve } from 'node:path';
 const JOB_PREFIX = 'job-';
 
 /**
- * Longer than any media job runs (a playable copy stops at 4 hours): a job folder this old
- * was left by a process that died, never by one still at work in another container.
+ * Longer than any media job runs: a job folder this old (by mtime) was left by a process that
+ * died, never by one still at work in another container. A playable copy has 4 hours in all,
+ * every attempt and fallback included (runAttempts), and touches its folder when each attempt
+ * starts.
  */
 export const STALE_JOB_MS = 6 * 60 * 60 * 1000;
 
@@ -28,9 +30,10 @@ export async function withJobDir<T>(tmpDir: string, work: (dir: string) => Promi
 
 /**
  * The path ffmpeg and ffprobe open for `source`: a symlink to it alone in a private folder of
- * the job (`dir/in/source`, mode 700). A QuickTime file can point at other files by a relative
- * path (`dref` atoms) and ffmpeg looks for them next to the path it was given; through the
- * link, that is an empty folder, never the other originals in `files/originals/`.
+ * the job (`dir/in/source`, mode 700). Defence in depth: a QuickTime file can point at other
+ * files by a relative path (`dref` atoms), which ffmpeg does not follow by default and is told
+ * not to (`-enable_drefs 0`, see safeInput); were it to, it would look next to the path it was
+ * given, an empty folder, never the other originals in `files/originals/`.
  */
 export async function privateInput(dir: string, source: string) {
   const folder = join(dir, 'in');

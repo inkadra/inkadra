@@ -20,6 +20,17 @@ export { type MediaTools, mediaTools, resetMediaTools } from './tools.ts';
 const FORMATS = 'mov,mp4,m4a,3gp,3g2,mj2,matroska,webm,avi,mpeg,mpegts,mxf';
 const SAFE_INPUT = ['-protocol_whitelist', 'file', '-format_whitelist', FORMATS];
 
+/**
+ * Input options of an untrusted video whose sniffed type is `container`. QuickTime and MP4 also
+ * get `-enable_drefs 0`: external references are off by default in ffmpeg, said again here as
+ * defence in depth (see privateInput). Only there: ffmpeg refuses the option for any other
+ * demuxer.
+ */
+export function safeInput(container: string | null) {
+  const mov = container === 'video/quicktime' || container === 'video/mp4';
+  return [...SAFE_INPUT, ...(mov ? ['-enable_drefs', '0'] : [])];
+}
+
 /** Video container from the first bytes, or null if it is not one ffmpeg should open. */
 export function sniffVideo(head: Uint8Array): string | null {
   const text = (from: number, length: number) =>
@@ -95,13 +106,17 @@ export function parseProbe(json: unknown): VideoInfo {
   };
 }
 
-export async function probeVideo(ffprobe: string, file: string): Promise<VideoInfo> {
+export async function probeVideo(
+  ffprobe: string,
+  file: string,
+  container: string | null,
+): Promise<VideoInfo> {
   const stdout = await runTool(
     ffprobe,
     [
       '-v',
       'error',
-      ...SAFE_INPUT,
+      ...safeInput(container),
       '-show_entries',
       'format=duration:stream=codec_type,codec_name,pix_fmt,width,height,avg_frame_rate,' +
         'r_frame_rate:stream_disposition=attached_pic:stream_side_data=rotation',
@@ -123,6 +138,7 @@ export async function extractPoster(
   file: string,
   out: string,
   durationMs: number | null,
+  container: string | null,
 ): Promise<void> {
   const at = durationMs ? Math.min(5, durationMs / 10_000) : 0;
   const grab = (seek: number) =>
@@ -133,7 +149,7 @@ export async function extractPoster(
         '-v',
         'error',
         '-y',
-        ...SAFE_INPUT,
+        ...safeInput(container),
         '-ss',
         seek.toFixed(3),
         '-i',
@@ -267,6 +283,15 @@ export function proxyMaxBytes(info: VideoInfo, settings: ProxySettings, sourceBy
   return Math.ceil(capped + margin);
 }
 
+/** Whether `encoder` decodes `info` on the GPU (else the CPU decodes, and it is capped as such). */
+export function decodesOnGpu(encoder: VideoEncoder, info: VideoInfo) {
+  return (
+    encoder.backend !== 'software' &&
+    !encoder.cpuDecode &&
+    gpuDecodes(info.videoCodec, info.pixelFormat)
+  );
+}
+
 /**
  * ffmpeg arguments of the playable copy of `input`, progress on stdout, with `encoder` (the
  * one of `settings`, else libx264). A remux uses no encoder at all.
@@ -278,20 +303,21 @@ export function proxyArgs(
   settings: ProxySettings,
   sourceBytes: number,
   encoder: VideoEncoder = settings.encoder ?? SOFTWARE_ENCODER,
+  container: string | null = null,
 ) {
   const copyVideo = copiesVideo(info, settings);
   const copyAudio = info.audioCodec === 'aac';
   const pipeline = videoPipeline(encoder, {
     resolution: settings.resolution,
     bitrate: settings.bitrate,
-    gpu: !encoder.cpuDecode && gpuDecodes(info.videoCodec, info.pixelFormat),
+    gpu: decodesOnGpu(encoder, info),
   });
   return [
     '-nostdin',
     '-v',
     'error',
     '-y',
-    ...SAFE_INPUT,
+    ...safeInput(container),
     ...(copyVideo ? [] : pipeline.input),
     '-i',
     input,
@@ -325,6 +351,13 @@ export function proxyArgs(
   ];
 }
 
+/** Address-space cap of the copy of `info` with `encoder`: 4 GiB whenever the CPU decodes. */
+export function proxyMemory(info: VideoInfo, settings: ProxySettings, encoder: VideoEncoder) {
+  return copiesVideo(info, settings)
+    ? FFMPEG_MEMORY
+    : encoderMemory(encoder, decodesOnGpu(encoder, info));
+}
+
 /** ffmpeg ran out of time: another attempt would too. */
 export class ProxyTimeout extends Error {}
 
@@ -344,15 +377,17 @@ export async function makeProxy(
     sourceBytes: number;
     /** Overrides the encoder of `settings`: the software retry of a failed hardware copy. */
     encoder?: VideoEncoder;
+    /** Sniffed type of the source (sniffVideo). */
+    container?: string | null;
     onProgress?: (percent: number) => void;
   },
 ): Promise<void> {
   const encoder = opts.encoder ?? settings.encoder ?? SOFTWARE_ENCODER;
   const [file, argv] = await limitedCommand(
     ffmpeg,
-    proxyArgs(input, output, info, settings, opts.sourceBytes, encoder),
+    proxyArgs(input, output, info, settings, opts.sourceBytes, encoder, opts.container ?? null),
     {
-      memoryBytes: copiesVideo(info, settings) ? FFMPEG_MEMORY : encoderMemory(encoder),
+      memoryBytes: proxyMemory(info, settings, encoder),
       // Above -fs: ffmpeg stops cleanly at its own limit, the kernel only past it.
       fileBytes: proxyMaxBytes(info, settings, opts.sourceBytes) + 64 * 1024 * 1024,
       nice: true,

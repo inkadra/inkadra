@@ -5,14 +5,20 @@
 # In split mode the copies are made by the `worker` service: put these lines under `worker`
 # instead (see docs/self-hosting/configuration.md#hardware-video-encoding).
 #
-# RENDER_GID is the group that owns the render node on the host:
+# Only the render node is passed, at the same path inside: VIDEO_PROXY_VAAPI_DEVICE (in .env,
+# /dev/dri/renderD128 by default) names both, so they always match.
+#
+# RENDER_GID is the group that owns that node on the host:
 #   stat -c %g /dev/dri/renderD128
-# Some systems give it to `video` instead (VIDEO_GID, 44 on Debian and Ubuntu).
+# Add only the group that owns /dev/dri/renderD*, never `disk`, `docker` or another group
+# that gives more than the GPU.
 
 services:
   inkadra:
     devices:
-      - /dev/dri:/dev/dri
+      - "${VIDEO_PROXY_VAAPI_DEVICE:-/dev/dri/renderD128}:${VIDEO_PROXY_VAAPI_DEVICE:-/dev/dri/renderD128}"
     group_add:
       - "${RENDER_GID:?set RENDER_GID to the group of /dev/dri/renderD128 on the host}"
-      - "${VIDEO_GID:-44}"
+      # Only where the host gives the render node to `video` (44 on Debian and Ubuntu) rather
+      # than to `render`: then set RENDER_GID to that group instead, or uncomment this line.
+      # - "${VIDEO_GID:-44}"

@@ -564,7 +564,7 @@ describe.skipIf(!url)('processAsset (needs DATABASE_URL)', () => {
         expect(proxy?.bytes).toBeGreaterThan(0);
         const out = join(root, `proxy-${id}.mp4`);
         writeFileSync(out, await readAll(await storage.read(proxy?.storageKey ?? '')));
-        const made = await probeVideo(tools.ffprobe ?? '', out);
+        const made = await probeVideo(tools.ffprobe ?? '', out, 'video/mp4');
         expect(made).toMatchObject({
           videoCodec: 'h264',
           audioCodec: 'aac',
@@ -599,7 +599,7 @@ describe.skipIf(!url)('processAsset (needs DATABASE_URL)', () => {
         const proxy = variants.find((v) => v.size === 'proxy');
         const out = join(root, `remux-${id}.mp4`);
         writeFileSync(out, await readAll(await storage.read(proxy?.storageKey ?? '')));
-        expect(await probeVideo(tools.ffprobe ?? '', out)).toMatchObject({
+        expect(await probeVideo(tools.ffprobe ?? '', out, 'video/mp4')).toMatchObject({
           videoCodec: 'h264',
           audioCodec: 'aac',
         });

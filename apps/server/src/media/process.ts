@@ -179,10 +179,10 @@ export async function processAsset(
         // ffmpeg reads the original through a link in a folder of its own (see privateInput).
         const input = await privateInput(dir, copy.path);
         const info: VideoInfo | null = tools.ffprobe
-          ? await probeVideo(tools.ffprobe, input).catch(() => null)
+          ? await probeVideo(tools.ffprobe, input, video).catch(() => null)
           : null;
         const durationMs = info?.durationMs ?? null;
-        await extractPoster(tools.ffmpeg, input, posterPath, durationMs);
+        await extractPoster(tools.ffmpeg, input, posterPath, durationMs, video);
         const result = await thumbnails(deps, assetId, sharp(posterPath, { failOn: 'error' }));
         const proxyStatus = await proxyState(deps, assetId, video, info, row.size);
         await save(db, assetId, result.variants, {

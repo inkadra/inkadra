@@ -1,7 +1,8 @@
 import { execFile } from 'node:child_process';
 import { constants } from 'node:fs';
-import { access, readFile } from 'node:fs/promises';
-import { basename } from 'node:path';
+import { access, mkdtemp, readFile, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { basename, join } from 'node:path';
 import { promisify } from 'node:util';
 import { limitedCommand, toolEnv } from './tools.ts';
 
@@ -36,17 +37,19 @@ const ENCODER_NAME = { nvenc: 'h264_nvenc', qsv: 'h264_qsv', vaapi: 'h264_vaapi'
 /** Address space of one ffmpeg run (as in video.ts). */
 export const FFMPEG_MEMORY = 4 * 1024 ** 3;
 
+/** Cap of an NVENC run whose frames the GPU decodes: CUDA reserves tens of GB of address space. */
+export const NVENC_GPU_MEMORY = 64 * 1024 ** 3;
+
 /**
- * Address-space cap of an encode with `encoder`. CUDA reserves tens of GB of virtual memory
- * at start, so NVENC runs without one; its frames are on the card. VAAPI and Quick Sync map
- * their surfaces into the process, so they get twice the software cap.
+ * Address-space cap of an encode with `encoder`. Whenever the CPU decodes the untrusted source
+ * (software, ProRes and 4:2:2, the CPU-decode retry, `cpuDecode`), the software cap of 4 GiB
+ * holds, whatever encodes. When the GPU decodes, the process maps GPU memory: 8 GiB for VAAPI
+ * and Quick Sync, 64 GiB for NVENC, which CUDA cannot start under less.
  */
-export const encoderMemory = (encoder: VideoEncoder) =>
-  encoder.backend === 'nvenc'
-    ? undefined
-    : encoder.backend === 'software'
-      ? FFMPEG_MEMORY
-      : 2 * FFMPEG_MEMORY;
+export function encoderMemory(encoder: VideoEncoder, gpuDecode: boolean) {
+  if (encoder.backend === 'software' || !gpuDecode || encoder.cpuDecode) return FFMPEG_MEMORY;
+  return encoder.backend === 'nvenc' ? NVENC_GPU_MEMORY : 2 * FFMPEG_MEMORY;
+}
 
 /** Input of a pipeline: what ffmpeg is told before `-i`, the filter graph, the encoder. */
 export interface VideoPipeline {
@@ -210,8 +213,18 @@ export const DEFAULT_VAAPI_DEVICE = '/dev/dri/renderD128';
 export interface DetectIo {
   /** stdout of `ffmpeg -hide_banner -encoders`, or '' when it fails. */
   encoders(ffmpeg: string): Promise<string>;
-  /** Runs one test encode; resolves with null when it worked, else the error text. */
-  testEncode(ffmpeg: string, args: string[], encoder: VideoEncoder): Promise<string | null>;
+  /**
+   * Runs one test encode, under the cap of `encoder` decoding on the GPU or not; resolves
+   * with null when it worked, else the error text.
+   */
+  testEncode(
+    ffmpeg: string,
+    args: string[],
+    encoder: VideoEncoder,
+    gpuDecode: boolean,
+  ): Promise<string | null>;
+  /** A one-second H.264 clip made with libx264, for the test of the GPU decode; null if not. */
+  sample(ffmpeg: string): Promise<{ path: string; done: () => Promise<void> } | null>;
   /** Whether the worker may open `path` for reading and writing. */
   canOpen(path: string): Promise<boolean>;
   /** Name of the first NVIDIA GPU (`nvidia-smi`), or null. */
@@ -235,9 +248,9 @@ export const defaultDetectIo: DetectIo = {
       return '';
     }
   },
-  async testEncode(ffmpeg, args, encoder) {
+  async testEncode(ffmpeg, args, encoder, gpuDecode) {
     const [file, argv] = await limitedCommand(ffmpeg, args, {
-      memoryBytes: encoderMemory(encoder),
+      memoryBytes: encoderMemory(encoder, gpuDecode),
     });
     try {
       await exec(file, argv, {
@@ -250,6 +263,37 @@ export const defaultDetectIo: DetectIo = {
     } catch (err) {
       const e = err as { stderr?: string; message?: string };
       return (e.stderr || e.message || 'failed').trim().slice(0, 300);
+    }
+  },
+  async sample(ffmpeg) {
+    const dir = await mkdtemp(join(tmpdir(), 'inkadra-hwaccel-'));
+    const path = join(dir, 'sample.mp4');
+    const done = () => rm(dir, { recursive: true, force: true });
+    try {
+      await exec(
+        ffmpeg,
+        [
+          '-nostdin',
+          '-v',
+          'error',
+          '-f',
+          'lavfi',
+          '-i',
+          'testsrc2=size=1280x720:rate=25:duration=1',
+          '-c:v',
+          'libx264',
+          '-preset',
+          'ultrafast',
+          '-pix_fmt',
+          'yuv420p',
+          path,
+        ],
+        { timeout: TEST_TIMEOUT_MS, killSignal: 'SIGKILL', env: toolEnv() },
+      );
+      return { path, done };
+    } catch {
+      await done();
+      return null;
     }
   },
   async canOpen(path) {
@@ -283,21 +327,20 @@ export const defaultDetectIo: DetectIo = {
 };
 
 /**
- * Arguments of the one-second test encode of `encoder`: generated frames, scaled on the CPU
- * and uploaded as a real copy of a ProRes file would be, thrown away.
+ * Arguments of the one-second test encode of `encoder`, thrown away. Without `sample`:
+ * generated frames, scaled on the CPU and uploaded, as for a ProRes file. With `sample` (an
+ * H.264 clip): decoded and scaled on the GPU, as for most camera and phone files.
  */
-export function testEncodeArgs(encoder: VideoEncoder) {
-  const pipeline = videoPipeline(encoder, { resolution: 360, bitrate: '2M', gpu: false });
+export function testEncodeArgs(encoder: VideoEncoder, sample?: string) {
+  const gpu = sample !== undefined;
+  const pipeline = videoPipeline(encoder, { resolution: 360, bitrate: '2M', gpu });
   return [
     '-nostdin',
     '-hide_banner',
     '-v',
     'error',
     ...pipeline.input,
-    '-f',
-    'lavfi',
-    '-i',
-    'testsrc2=size=1280x720:rate=25:duration=1',
+    ...(gpu ? ['-i', sample] : ['-f', 'lavfi', '-i', 'testsrc2=size=1280x720:rate=25:duration=1']),
     '-vf',
     pipeline.filter,
     ...pipeline.codec,
@@ -313,11 +356,17 @@ const VENDORS: Record<string, string> = { '0x8086': 'Intel', '0x1002': 'AMD', '0
 async function label(encoder: VideoEncoder, io: DetectIo) {
   if (encoder.backend === 'nvenc') {
     const name = await io.nvidiaName();
-    return name ? `NVENC (${name})` : 'NVENC';
+    const details = [name, encoder.cpuDecode ? 'CPU decode' : null].filter(Boolean);
+    return details.length ? `NVENC (${details.join(', ')})` : 'NVENC';
   }
   const device = encoder.device ?? DEFAULT_VAAPI_DEVICE;
   const vendor = VENDORS[(await io.vendor(device)) ?? ''];
-  const details = [vendor, device, encoder.lowPower ? 'low power' : null].filter(Boolean);
+  const details = [
+    vendor,
+    device,
+    encoder.lowPower ? 'low power' : null,
+    encoder.cpuDecode ? 'CPU decode' : null,
+  ].filter(Boolean);
   return `${encoder.backend === 'qsv' ? 'Intel Quick Sync' : 'VAAPI'} (${details.join(', ')})`;
 }
 
@@ -332,7 +381,9 @@ export interface Detection {
 /**
  * Picks the encoder of playable copies: with `auto`, the first of NVENC, QSV and VAAPI that
  * ffmpeg has, whose device the worker can open and that passes a one-second test encode;
- * with a backend named, only that one; with `none`, or when none works, libx264. Never throws.
+ * with a backend named, only that one; with `none`, or when none works, libx264. The chosen
+ * one is then tested decoding an H.264 clip on the GPU: if that fails, it keeps `cpuDecode`
+ * for the life of the process, so no file pays a failed GPU decode first. Never throws.
  */
 export async function detectVideoEncoder(
   ffmpeg: string,
@@ -363,8 +414,20 @@ export async function detectVideoEncoder(
         ...(backend === 'nvenc' ? {} : { device }),
         ...(lowPower ? { lowPower } : {}),
       };
-      const error = await io.testEncode(ffmpeg, testEncodeArgs(candidate), candidate);
+      const error = await io.testEncode(ffmpeg, testEncodeArgs(candidate), candidate, false);
       if (error === null) {
+        const sample = await io.sample(ffmpeg);
+        try {
+          const gpuError = sample
+            ? await io.testEncode(ffmpeg, testEncodeArgs(candidate, sample.path), candidate, true)
+            : 'no sample clip';
+          if (gpuError !== null) {
+            candidate.cpuDecode = true;
+            rejected.push({ backend, reason: `GPU decode failed, CPU decode only: ${gpuError}` });
+          }
+        } finally {
+          await sample?.done();
+        }
         candidate.label = await label(candidate, io);
         return { encoder: candidate, requested, rejected };
       }

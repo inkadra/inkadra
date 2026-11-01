@@ -4,12 +4,13 @@ import {
   detectVideoEncoder,
   encoderMemory,
   gpuDecodes,
+  NVENC_GPU_MEMORY,
   SOFTWARE_ENCODER,
   testEncodeArgs,
   type VideoEncoder,
   videoPipeline,
 } from './hwaccel.ts';
-import { DEFAULT_PROXY_SETTINGS, proxyArgs, type VideoInfo } from './video.ts';
+import { DEFAULT_PROXY_SETTINGS, proxyArgs, proxyMemory, type VideoInfo } from './video.ts';
 
 const ENCODERS = `Encoders:
  V....D libx264              libx264 H.264 / AVC / MPEG-4 AVC / MPEG-4 part 10 (codec h264)
@@ -18,14 +19,25 @@ const ENCODERS = `Encoders:
  V....D h264_vaapi           H.264/AVC (VAAPI) (codec h264)
 `;
 
-/** Detection with every probe mocked: `works` lists the backends whose test encode passes. */
-function io(over: Partial<DetectIo> & { works?: string[] } = {}) {
+/**
+ * Detection with every probe mocked: `works` lists the backends whose test encode passes,
+ * `gpuFails` those whose GPU-decode test then fails.
+ */
+function io(over: Partial<DetectIo> & { works?: string[]; gpuFails?: string[] } = {}) {
   const works = over.works ?? [];
+  const gpuFails = over.gpuFails ?? [];
+  const sampleDone = vi.fn(async () => {});
   const mock = {
+    sampleDone,
     encoders: vi.fn(async () => ENCODERS),
-    testEncode: vi.fn(async (_ffmpeg: string, _args: string[], e: VideoEncoder) =>
-      works.includes(e.lowPower ? `${e.backend}-lp` : e.backend) ? null : 'Device creation failed',
+    testEncode: vi.fn(
+      async (_ffmpeg: string, _args: string[], e: VideoEncoder, gpuDecode: boolean) => {
+        if (!works.includes(e.lowPower ? `${e.backend}-lp` : e.backend))
+          return 'Device creation failed';
+        return gpuDecode && gpuFails.includes(e.backend) ? 'Impossible to convert' : null;
+      },
     ),
+    sample: vi.fn(async () => ({ path: '/tmp/sample.mp4', done: sampleDone })),
     canOpen: vi.fn(async () => true),
     nvidiaName: vi.fn(async () => 'NVIDIA GeForce RTX 3060'),
     vendor: vi.fn(async () => '0x8086'),
@@ -130,10 +142,38 @@ describe('videoPipeline', () => {
     expect(gpuDecodes(null, null)).toBe(false);
   });
 
-  it('caps the address space of every encoder but NVENC', () => {
-    expect(encoderMemory(SOFTWARE_ENCODER)).toBe(4 * 1024 ** 3);
-    expect(encoderMemory({ backend: 'qsv', label: '' })).toBe(8 * 1024 ** 3);
-    expect(encoderMemory({ backend: 'nvenc', label: '' })).toBeUndefined();
+  it('keeps the 4 GiB cap whenever the CPU decodes, whatever encodes', () => {
+    const nvenc: VideoEncoder = { backend: 'nvenc', label: '' };
+    const qsv: VideoEncoder = { backend: 'qsv', label: '' };
+    expect(encoderMemory(SOFTWARE_ENCODER, true)).toBe(4 * 1024 ** 3);
+    expect(encoderMemory(nvenc, false)).toBe(4 * 1024 ** 3);
+    expect(encoderMemory({ ...nvenc, cpuDecode: true }, true)).toBe(4 * 1024 ** 3);
+    expect(encoderMemory(qsv, false)).toBe(4 * 1024 ** 3);
+    // Raised only when the GPU decodes, and never left unbounded.
+    expect(encoderMemory(qsv, true)).toBe(8 * 1024 ** 3);
+    expect(encoderMemory(nvenc, true)).toBe(NVENC_GPU_MEMORY);
+    expect(NVENC_GPU_MEMORY).toBe(64 * 1024 ** 3);
+  });
+
+  it('picks the cap of a copy from what decodes its source', () => {
+    const nvenc: VideoEncoder = { backend: 'nvenc', label: '' };
+    const settings = { ...DEFAULT_PROXY_SETTINGS, encoder: nvenc };
+    const base = {
+      durationMs: 10_000,
+      width: 3840,
+      height: 2160,
+      audioCodec: null,
+      frameRate: 25,
+    };
+    const hevc = { ...base, videoCodec: 'hevc', pixelFormat: 'yuv420p' };
+    const prores = { ...base, videoCodec: 'prores', pixelFormat: 'yuv422p10le' };
+    const small = { ...base, width: 1280, height: 720, videoCodec: 'h264', pixelFormat: 'yuv420p' };
+    expect(proxyMemory(hevc, settings, nvenc)).toBe(NVENC_GPU_MEMORY);
+    expect(proxyMemory(prores, settings, nvenc)).toBe(4 * 1024 ** 3);
+    expect(proxyMemory(hevc, settings, { ...nvenc, cpuDecode: true })).toBe(4 * 1024 ** 3);
+    expect(proxyMemory(hevc, settings, SOFTWARE_ENCODER)).toBe(4 * 1024 ** 3);
+    // A remux decodes nothing: the software cap.
+    expect(proxyMemory(small, settings, nvenc)).toBe(4 * 1024 ** 3);
   });
 });
 
@@ -185,6 +225,14 @@ describe('proxyArgs with a hardware encoder', () => {
     expect(args.join(' ')).toContain('hwupload=extra_hw_frames=64,format=qsv');
   });
 
+  it('turns QuickTime references off for MOV and MP4 only', () => {
+    const mov = proxyArgs('/in/source', '/out.mp4', info(), settings, 1e9, qsv, 'video/quicktime');
+    expect(mov.slice(0, mov.indexOf('-i'))).toEqual(expect.arrayContaining(['-enable_drefs', '0']));
+    // ffmpeg refuses the option for other demuxers.
+    const mkv = proxyArgs('/in/source', '/out.mp4', info(), settings, 1e9, qsv, 'video/webm');
+    expect(mkv).not.toContain('-enable_drefs');
+  });
+
   it('uses no device for a remux', () => {
     const args = proxyArgs(
       '/in/source',
@@ -210,8 +258,45 @@ describe('detectVideoEncoder', () => {
     const { encoder, rejected } = await detectVideoEncoder('ffmpeg', { mode: 'auto' }, mock);
     expect(encoder).toEqual({ backend: 'nvenc', label: 'NVENC (NVIDIA GeForce RTX 3060)' });
     expect(rejected).toEqual([]);
-    expect(mock.testEncode).toHaveBeenCalledTimes(1);
+    // The CPU-decode test, under 4 GiB, then the GPU-decode test on a sample clip.
+    expect(vi.mocked(mock.testEncode).mock.calls.map((c) => c[3])).toEqual([false, true]);
+    expect(vi.mocked(mock.testEncode).mock.calls[1]?.[1]).toEqual(
+      expect.arrayContaining(['-hwaccel', 'cuda', '-i', '/tmp/sample.mp4']),
+    );
+    expect(mock.sampleDone).toHaveBeenCalledTimes(1);
     expect(mock.canOpen).not.toHaveBeenCalled();
+  });
+
+  it('keeps a backend whose GPU decode fails, decoding on the CPU for good', async () => {
+    const mock = io({ works: ['qsv'], gpuFails: ['qsv'], encoders: async () => ENCODERS });
+    const { encoder, rejected } = await detectVideoEncoder('ffmpeg', { mode: 'qsv' }, mock);
+    expect(encoder).toEqual({
+      backend: 'qsv',
+      device: '/dev/dri/renderD128',
+      cpuDecode: true,
+      label: 'Intel Quick Sync (Intel, /dev/dri/renderD128, CPU decode)',
+    });
+    expect(rejected).toEqual([
+      { backend: 'qsv', reason: 'GPU decode failed, CPU decode only: Impossible to convert' },
+    ]);
+    // Then every copy is decoded on the CPU: no failed GPU attempt first.
+    const args = proxyArgs(
+      '/in/source',
+      '/out.mp4',
+      {
+        durationMs: 1000,
+        width: 3840,
+        height: 2160,
+        videoCodec: 'hevc',
+        audioCodec: null,
+        frameRate: 25,
+        pixelFormat: 'yuv420p',
+      },
+      { ...DEFAULT_PROXY_SETTINGS, encoder },
+      1e9,
+    );
+    expect(args).not.toContain('-hwaccel');
+    expect(args).toContain('h264_qsv');
   });
 
   it('goes on to QSV when there is no NVIDIA card, and tries low power second', async () => {
@@ -262,7 +347,7 @@ describe('detectVideoEncoder', () => {
     const named = await detectVideoEncoder('ffmpeg', { mode: 'vaapi' }, vaapi);
     expect(named.encoder.backend).toBe('vaapi');
     expect(named.requested).toBe('vaapi');
-    expect(vaapi.testEncode).toHaveBeenCalledTimes(1);
+    expect(vaapi.testEncode).toHaveBeenCalledTimes(2);
 
     const failing = io({ works: [] });
     const missed = await detectVideoEncoder('ffmpeg', { mode: 'nvenc' }, failing);
@@ -291,5 +376,11 @@ describe('detectVideoEncoder', () => {
       ]),
     );
     expect(args.indexOf('-init_hw_device')).toBeLessThan(args.indexOf('-i'));
+    const gpu = testEncodeArgs(
+      { backend: 'vaapi', device: '/dev/dri/renderD128', label: '' },
+      '/tmp/sample.mp4',
+    );
+    expect(gpu).toEqual(expect.arrayContaining(['-hwaccel', 'vaapi', '-i', '/tmp/sample.mp4']));
+    expect(gpu).not.toContain('lavfi');
   });
 });

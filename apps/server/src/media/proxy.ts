@@ -1,18 +1,20 @@
 import { createReadStream } from 'node:fs';
-import { stat } from 'node:fs/promises';
+import { stat, utimes } from 'node:fs/promises';
 import { join } from 'node:path';
 import { and, eq } from 'drizzle-orm';
 import type { Database } from '../db/client.ts';
 import { asset, assetVariant } from '../db/schema.ts';
 import { proxyKey, readAll, type Storage } from '../storage.ts';
-import { gpuDecodes, SOFTWARE_ENCODER, type VideoEncoder } from './hwaccel.ts';
+import { SOFTWARE_ENCODER, type VideoEncoder } from './hwaccel.ts';
 import { ensureFreeSpace, privateInput, withJobDir } from './scratch.ts';
 import {
   copiesVideo,
   DEFAULT_PROXY_SETTINGS,
+  decodesOnGpu,
   makeProxy,
   mediaTools,
   type ProxySettings,
+  ProxyTimeout,
   probeVideo,
   proxyMaxBytes,
   proxyPlan,
@@ -103,7 +105,7 @@ async function transcode(
   const { ffmpeg, ffprobe } = await mediaTools();
   if (!ffmpeg || !ffprobe) throw new Error('ffmpeg is not there any more');
   const out = join(dir, 'proxy.mp4');
-  const info = await probeVideo(ffprobe, source);
+  const info = await probeVideo(ffprobe, source, container);
   const plan = proxyPlan(container, info, row.size, settings);
   if (plan !== 'make') {
     await setProxy(db, assetId, {
@@ -118,43 +120,26 @@ async function transcode(
   let shown = 0;
   let writing: Promise<unknown> = Promise.resolve();
   const encoder = copiesVideo(info, settings) ? null : (settings.encoder ?? SOFTWARE_ENCODER);
-  const run = (override?: VideoEncoder) =>
-    makeProxy(ffmpeg, source, out, info, settings, {
-      timeoutMs: proxyTimeoutMs(info, settings),
-      sourceBytes: row.size,
-      ...(override ? { encoder: override } : {}),
-      onProgress: (percent) => {
-        // One write at a time, every few seconds: a fast copy must not flood the database.
-        if (Date.now() - written < PROGRESS_EVERY_MS || percent <= shown) return;
-        written = Date.now();
-        shown = percent;
-        writing = writing
-          .then(() => setProxy(db, assetId, { proxyStatus: 'processing', proxyProgress: percent }))
-          .then(() => onProgress?.(percent))
-          .catch(() => {});
-      },
-    });
-  // What made the picture: `copy` (a remux), a hardware backend, or `software`.
-  let used: string = encoder?.backend ?? 'copy';
   // A GPU that cannot take this file never fails the copy: when it decoded the source, it is
   // tried again decoding on the CPU (a codec or profile the card does not decode), then with
-  // libx264 (an encoder that refuses it, a busy device), under the same limits each time.
+  // libx264 (an encoder that refuses it, a busy device). Not after a timeout, though.
   const retries: VideoEncoder[] =
     encoder && encoder.backend !== 'software'
       ? [
-          ...(gpuDecodes(info.videoCodec, info.pixelFormat)
-            ? [{ ...encoder, cpuDecode: true }]
-            : []),
+          ...(decodesOnGpu(encoder, info) ? [{ ...encoder, cpuDecode: true }] : []),
           SOFTWARE_ENCODER,
         ]
       : [];
-  for (let attempt = 0; ; attempt++) {
-    try {
-      await run(attempt === 0 ? undefined : retries[attempt - 1]);
-      break;
-    } catch (err) {
-      const next = retries[attempt];
-      if (!next) throw err;
+  const used = await runAttempts({
+    first: encoder,
+    retries,
+    totalMs: proxyTimeoutMs(info, settings),
+    // The sweep of stale job folders goes by mtime: each attempt marks this one as alive.
+    touch: async () => {
+      const now = new Date();
+      await utimes(dir, now, now);
+    },
+    onRetry: async (err, next) => {
       deps.log?.warn(
         { err, assetId, encoder: encoder?.backend },
         next.backend === 'software'
@@ -162,12 +147,33 @@ async function transcode(
           : 'hardware decoding failed: decoding on the CPU, encoding on the GPU',
       );
       await writing;
-      used = next.backend === 'software' ? 'software' : `${next.backend}+cpu-decode`;
-    }
-  }
+      // The new attempt starts from 0 %: its progress is shown again.
+      written = 0;
+      shown = 0;
+    },
+    run: (attempt, timeoutMs) =>
+      makeProxy(ffmpeg, source, out, info, settings, {
+        timeoutMs,
+        sourceBytes: row.size,
+        container,
+        ...(attempt ? { encoder: attempt } : {}),
+        onProgress: (percent) => {
+          // One write at a time, every few seconds: a fast copy must not flood the database.
+          if (Date.now() - written < PROGRESS_EVERY_MS || percent <= shown) return;
+          written = Date.now();
+          shown = percent;
+          writing = writing
+            .then(() =>
+              setProxy(db, assetId, { proxyStatus: 'processing', proxyProgress: percent }),
+            )
+            .then(() => onProgress?.(percent))
+            .catch(() => {});
+        },
+      }),
+  });
   await writing;
 
-  const result = await probeVideo(ffprobe, out);
+  const result = await probeVideo(ffprobe, out, 'video/mp4');
   const bytes = (await stat(out)).size;
   const key = proxyKey(assetId);
   await storage.writeStream(key, createReadStream(out), 'video/mp4');
@@ -182,6 +188,45 @@ async function transcode(
   }
   await onProgress?.(100);
   return { bytes, encoder: used };
+}
+
+/**
+ * Runs the copy with `first` (null: a remux), then with each of `retries` while the previous
+ * attempt failed. All attempts share one deadline, `totalMs` from now: each gets the time
+ * left, none starts past it, and a ProxyTimeout is never retried, so a hung GPU costs the
+ * job at most `totalMs` (4 hours) in all. Returns what made the copy: `copy`, a backend,
+ * `<backend>+cpu-decode` or `software`.
+ */
+export async function runAttempts(opts: {
+  first: VideoEncoder | null;
+  retries: VideoEncoder[];
+  totalMs: number;
+  touch: () => Promise<void>;
+  onRetry: (err: unknown, next: VideoEncoder) => Promise<void>;
+  run: (encoder: VideoEncoder | null, timeoutMs: number) => Promise<void>;
+  now?: () => number;
+}) {
+  const now = opts.now ?? Date.now;
+  const deadline = now() + opts.totalMs;
+  const attempts = [opts.first, ...opts.retries];
+  for (let i = 0; i < attempts.length; i++) {
+    const encoder = attempts[i] ?? null;
+    const left = deadline - now();
+    if (left <= 0)
+      throw new ProxyTimeout(`ffmpeg ran past ${Math.round(opts.totalMs / 60_000)} minutes`);
+    await opts.touch();
+    try {
+      await opts.run(i === 0 ? null : encoder, left);
+      if (!encoder) return 'copy';
+      if (i === 0 || encoder.backend === 'software') return encoder.backend;
+      return `${encoder.backend}+cpu-decode`;
+    } catch (err) {
+      const next = attempts[i + 1];
+      if (err instanceof ProxyTimeout || !next) throw err;
+      await opts.onRetry(err, next);
+    }
+  }
+  throw new Error('no attempt ran');
 }
 
 async function saveProxy(

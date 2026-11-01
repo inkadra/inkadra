@@ -40,8 +40,10 @@ browser.
   copies at once by default when one works. The output and every limit above stay the same;
   sources the GPU decodes (H.264, HEVC, VP9, AV1 in 4:2:0) are decoded and scaled there too.
   A copy the GPU fails is made again with libx264, so the GPU never leaves a video without
-  its copy. NVENC runs without the address-space cap, which CUDA cannot start under; VAAPI and Quick
-  Sync get 8 GiB. The image
+  its copy. All attempts share the copy's time limit, and a timeout is never retried. When the
+  CPU decodes, the 4 GiB cap holds whatever encodes; when the GPU decodes, VAAPI and Quick Sync
+  get 8 GiB and NVENC 64 GiB (CUDA cannot start under much less), bounded by the container's
+  `mem_limit`. A worker whose GPU fails the decode test at start decodes on the CPU throughout. The image
   only ships drivers from Debian main; NVIDIA's come from the host through its toolkit.
 - **Scratch files.** Every media job (copies, posters, RAW previews, PDF pages) works in a
   folder of its own, `DATA_DIR/tmp/job-*`, removed when it ends; folders older than 6 hours,
@@ -49,6 +51,8 @@ browser.
   ffmpeg and ffprobe never open an original where it is stored: they get a symlink to it,
   alone in `job-*/in/` (mode 700), so the relative file references a QuickTime movie can carry
   (`dref`) find nothing beside it instead of the other originals in `files/originals/` (#357).
+  This is defence in depth: ffmpeg does not follow them by default, and QuickTime and MP4
+  inputs also get `-enable_drefs 0` (other demuxers refuse the option).
 - **Image checks.** CI fails the `-media` image on any high or critical vulnerability that has
   a fix (the standard image: critical), since its libraries parse untrusted files, and when it
   has a setuid or setgid file the standard image does not (#357).

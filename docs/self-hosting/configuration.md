@@ -74,12 +74,19 @@ time limits. H.264, HEVC, VP9 and AV1 in 8-bit 4:2:0 (10-bit for HEVC, VP9 and A
 decoded and scaled on the GPU; ProRes, DNxHD and 4:2:2 sources are decoded on the CPU and only
 encoded on the GPU. **If the GPU fails on a file** (a profile it does not take, a busy device),
 that copy is made again with libx264: a video never ends up without its copy because of the GPU.
-NVENC runs without the 4 GiB address-space cap (CUDA reserves much more virtual memory than it
-uses); VAAPI and Quick Sync, which map GPU surfaces into the process, get 8 GiB.
+Whenever the CPU decodes the source, whatever encodes it, ffmpeg keeps the 4 GiB
+address-space cap of software copies. When the GPU decodes, VAAPI and Quick Sync, which map GPU
+surfaces into the process, get 8 GiB, and NVENC 64 GiB (CUDA reserves much more virtual memory
+than it uses): bound what it really uses with a `mem_limit` on the container. The worker also
+tests the GPU decode when it starts, on a short H.264 clip; if that fails it decodes on the CPU
+for its whole life (`CPU decode` in the label), so no file pays a failed GPU decode first. All
+attempts of one copy, fallbacks included, share its time limit (at most 4 hours).
 
-**Intel and AMD (`/dev/dri`).** Pass the render node to the container and give it the group
-that owns it on the host (`stat -c %g /dev/dri/renderD128`), with
-[`deploy/compose.vaapi.yaml`](../../deploy/compose.vaapi.yaml):
+**Intel and AMD (`/dev/dri`).** Pass only the render node to the container, at the path
+`VIDEO_PROXY_VAAPI_DEVICE` names (the two must match), and give it the group that owns the node
+on the host (`stat -c %g /dev/dri/renderD128`), with
+[`deploy/compose.vaapi.yaml`](../../deploy/compose.vaapi.yaml). Add only the group that owns
+`/dev/dri/renderD*`: never `disk`, `docker` or any group that gives more than the GPU.
 
 ```sh
 echo RENDER_GID=$(stat -c %g /dev/dri/renderD128) >> .env
@@ -90,12 +97,12 @@ docker compose -f compose.yaml -f deploy/compose.vaapi.yaml up -d
 services:
   inkadra: # `worker` in split mode
     devices:
-      - /dev/dri:/dev/dri
+      - /dev/dri/renderD128:/dev/dri/renderD128 # same path as VIDEO_PROXY_VAAPI_DEVICE
     group_add:
-      - "${RENDER_GID}" # group of /dev/dri/renderD128 on the host
-      - "44" # video, where the host gives the node to it
+      - "${RENDER_GID}" # the group that owns /dev/dri/renderD128 on the host, nothing else
     environment:
       VIDEO_PROXY_HWACCEL: auto # or qsv / vaapi
+      VIDEO_PROXY_VAAPI_DEVICE: /dev/dri/renderD128
 ```
 
 The image has Intel's media driver and the oneVPL runtime of Quick Sync (amd64) and Mesa's
@@ -111,6 +118,7 @@ on the host, then use [`deploy/compose.nvidia.yaml`](../../deploy/compose.nvidia
 ```yaml
 services:
   inkadra: # `worker` in split mode
+    mem_limit: 8g # bounds what NVENC copies really use (see above)
     deploy:
       resources:
         reservations:
