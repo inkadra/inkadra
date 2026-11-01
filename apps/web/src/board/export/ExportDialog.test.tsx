@@ -225,5 +225,6 @@ describe('ExportDialog preset state and customization', () => {
     );
     await act(async () => bookRadio?.click());
     expect(bookRadio?.checked).toBe(true);
+    expect(host.querySelector('.export__custom-body')?.textContent).toContain('Selezione (2 card)');
   });
 });

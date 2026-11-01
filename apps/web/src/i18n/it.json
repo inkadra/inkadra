@@ -2660,15 +2660,15 @@
     "presets": {
       "client-pitch": {
         "title": "Pitch cliente",
-        "description": "Orizzontale · una inquadratura per pagina · per i clienti · niente note interne"
+        "description": "Orizzontale · una inquadratura per pagina · copertina · per i clienti, senza commenti né card nascoste"
       },
       "production-book": {
         "title": "Libro di produzione",
-        "description": "A4 verticale · shot list con tutti i campi · per il team · copertina inclusa"
+        "description": "A4 verticale · shot list con tutti i campi · copertina · per il team, senza commenti"
       },
       "internal-kickoff": {
         "title": "Kickoff interno",
-        "description": "Orizzontale · 4 per pagina · per il team · commenti e card nascoste inclusi"
+        "description": "Orizzontale · 4 per pagina · copertina · per il team, con commenti e card nascoste"
       }
     }
   },

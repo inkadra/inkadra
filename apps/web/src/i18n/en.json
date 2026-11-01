@@ -2660,15 +2660,15 @@
     "presets": {
       "client-pitch": {
         "title": "Client pitch",
-        "description": "Landscape · one frame per page · for clients · no internal notes"
+        "description": "Landscape · one frame per page · title page · for clients, no comments or hidden cards"
       },
       "production-book": {
         "title": "Production book",
-        "description": "A4 portrait · shot list with every field · for the team · title page included"
+        "description": "A4 portrait · shot list with every field · title page · for the team, no comments"
       },
       "internal-kickoff": {
         "title": "Internal kickoff",
-        "description": "Landscape · 4 per page · for the team · comments and hidden cards included"
+        "description": "Landscape · 4 per page · title page · for the team, with comments and hidden cards"
       }
     }
   },
