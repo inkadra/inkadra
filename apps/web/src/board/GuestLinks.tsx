@@ -24,6 +24,7 @@ import {
   picksCsv,
   statusOf,
 } from './guest-links.ts';
+import { refreshBoardCounts } from './live-counts.ts';
 import './guest-links.css';
 import { formatDateTime } from '../lib/datetime.ts';
 import { PermissionsMatrix } from './PermissionsMatrix.tsx';
@@ -122,6 +123,8 @@ export function GuestLinks({
           setFresh(link.id);
           setError(null);
           await load();
+          // A review link shows in the sidebar's Review row at once.
+          refreshBoardCounts();
         }}
       />
       {error && (
@@ -144,6 +147,7 @@ export function GuestLinks({
               onChanged={async () => {
                 setError(null);
                 await load();
+                refreshBoardCounts();
               }}
               onError={(err) => setError(errorText(t, err))}
               onResults={() => setResults(link)}

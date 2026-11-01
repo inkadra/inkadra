@@ -117,6 +117,7 @@
     "collapse": "Collapse navigation",
     "expand": "Expand navigation",
     "boards": "Boards",
+    "addStoryboard": "Add storyboard…",
     "shots_one": "{{count}} shot",
     "shots_other": "{{count}} shots",
     "toShoot_one": "{{left}} of {{count}} shot still to shoot",
@@ -1963,6 +1964,9 @@
     "emptyMine": "You bring nothing on this day."
   },
   "clientReview": {
+    "cardProgress": "{{approved}} of {{total}} cards approved",
+    "allCards": "All cards",
+    "noCards": "No cards to review on this board.",
     "progress": "{{approved}} of {{total}} frames approved",
     "guestThreads": "Client threads",
     "audienceHint": "Threads shared with guests. Replies keep the original share-link audience.",

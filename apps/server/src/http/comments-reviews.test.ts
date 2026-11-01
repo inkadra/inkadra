@@ -1128,6 +1128,23 @@ describe.skipIf(!url)('team comments, reviews and notifications', () => {
     expect((await call('owner', 'GET', `/boards/${foreign}/reviews`)).statusCode).toBe(404);
   });
 
+  it('flags a board with a live client review link in the board counts, for the navigation', async () => {
+    const flagged = async () =>
+      (await call('viewer', 'GET', `/projects/${projectId}/board-counts`))
+        .json<{ items: Array<{ boardId: string; clientReview?: boolean }> }>()
+        .items.find((c) => c.boardId === root)?.clientReview;
+    expect(await flagged()).toBe(false);
+    // Links that cannot review, revoked or expired ones do not count.
+    await link(root, { role: 'guest_comment' });
+    await link(root, { role: 'guest_approve', revokedAt: new Date() });
+    await link(root, { role: 'guest_approve', expiresAt: new Date(Date.now() - 1000) });
+    expect(await flagged()).toBe(false);
+    const live = await link(root, { role: 'guest_approve' });
+    expect(await flagged()).toBe(true);
+    await db.update(shareLink).set({ revokedAt: new Date() }).where(eq(shareLink.id, live.id));
+    expect(await flagged()).toBe(false);
+  });
+
   it('keeps team/link reviews separate, history append-only and requested_by notified once', async () => {
     await call('commenter', 'PUT', reviewPath(), { status: 'in_review', note: 'Please' });
     const l = await link();

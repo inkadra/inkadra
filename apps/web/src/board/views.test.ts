@@ -2,6 +2,8 @@ import type { Board } from '@inkadra/shared';
 import { describe, expect, it } from 'vitest';
 import {
   askedView,
+  clientReviewBoard,
+  filmLinks,
   headerViews,
   isBoardView,
   pickerViews,
@@ -37,33 +39,36 @@ const boards = [root, storyboard, makeBoard('child', 'board', 'root')];
 const current = { boardId: root.id, kind: root.kind, rootBoardId: root.id };
 const onStoryboard = { boardId: storyboard.id, kind: storyboard.kind, rootBoardId: root.id };
 
+const all = { film: true, review: true, reviewBoard: null };
+const none = { film: false, review: false, reviewBoard: null };
+
 describe('header views', () => {
   it('offers canvas and moodboard on an ordinary board, nothing while the kind loads', () => {
-    expect(headerViews('board', 'canvas')).toEqual(['canvas', 'moodboard']);
-    expect(headerViews('board', 'moodboard')).toEqual(['canvas', 'moodboard']);
-    expect(headerViews(undefined, 'moodboard')).toEqual([]);
+    expect(headerViews('board', 'canvas', none)).toEqual(['canvas', 'moodboard']);
+    expect(headerViews('board', 'moodboard', none)).toEqual(['canvas', 'moodboard']);
+    expect(headerViews(undefined, 'moodboard', all)).toEqual([]);
   });
 
   it('offers the film views on a storyboard', () => {
-    expect(headerViews('storyboard', 'storyboard')).toEqual([
+    expect(headerViews('storyboard', 'storyboard', all)).toEqual([
       'canvas',
       'storyboard',
       'shotlist',
       'schedule',
       'review',
     ]);
-    expect(headerViews('storyboard', 'moodboard')).toContain('moodboard');
+    expect(headerViews('storyboard', 'moodboard', all)).toContain('moodboard');
   });
 
   it('leaves the moodboard out of the phone picker on a storyboard only', () => {
-    expect(pickerViews('storyboard', 'storyboard')).not.toContain('moodboard');
-    expect(pickerViews('board', 'canvas')).toHaveLength(6);
-    expect(pickerViews(undefined, null)).toHaveLength(6);
+    expect(pickerViews('storyboard', 'storyboard', all)).not.toContain('moodboard');
+    expect(pickerViews('board', 'canvas', all)).toHaveLength(6);
+    expect(pickerViews(undefined, null, all)).toHaveLength(6);
   });
 
   it('keeps the film views reachable while one of them is open', () => {
-    expect(headerViews('board', 'shotlist')).toContain('shotlist');
-    expect(headerViews('board', 'shotlist')).toHaveLength(6);
+    expect(headerViews('board', 'shotlist', none)).toContain('shotlist');
+    expect(headerViews('board', 'shotlist', filmLinks(false, null, 'shotlist'))).toHaveLength(6);
   });
 
   it('keeps the icon of every view', () => {
@@ -183,5 +188,71 @@ describe('projectHasStoryboard', () => {
     expect(
       projectHasStoryboard([makeBoard('a', 'board')], new Map([['a', { frameCount: 0 }]])),
     ).toBe(false);
+  });
+});
+
+describe('film links: one rule for the sidebar, the header and the phone', () => {
+  it('shows nothing of the film for a project without a storyboard or client review link', () => {
+    const links = filmLinks(false, null, 'canvas');
+    expect(links).toEqual({ film: false, review: false, reviewBoard: null });
+    expect(headerViews('board', 'canvas', links)).toEqual(['canvas', 'moodboard']);
+    expect(pickerViews('board', 'canvas', links)).toEqual(['canvas', 'moodboard']);
+  });
+
+  it('adds Review alone for a live client review link', () => {
+    const links = filmLinks(false, 'a', 'canvas');
+    expect(links).toEqual({ film: false, review: true, reviewBoard: 'a' });
+    expect(headerViews('board', 'canvas', links)).toEqual(['canvas', 'review', 'moodboard']);
+    expect(pickerViews('board', 'canvas', links)).toEqual(['canvas', 'review', 'moodboard']);
+  });
+
+  it('adds every film view with a storyboard, on any board of the project', () => {
+    const links = filmLinks(true, null, 'canvas');
+    expect(headerViews('board', 'canvas', links)).toEqual([
+      'canvas',
+      'storyboard',
+      'shotlist',
+      'schedule',
+      'review',
+      'moodboard',
+    ]);
+    expect(headerViews('storyboard', 'storyboard', links)).not.toContain('moodboard');
+  });
+
+  it('keeps the open film view, and Review alone while its view is open', () => {
+    expect(filmLinks(false, null, 'shotlist').film).toBe(true);
+    const reviewOnly = filmLinks(false, null, 'review');
+    expect(reviewOnly).toMatchObject({ film: false, review: true });
+    expect(headerViews('board', 'review', reviewOnly)).toEqual(['canvas', 'review', 'moodboard']);
+  });
+});
+
+describe('clientReviewBoard', () => {
+  const boards = [makeBoard('a', 'board'), makeBoard('b', 'board')];
+  it('is the first board with a live client review link, else null', () => {
+    expect(clientReviewBoard(boards, new Map())).toBeNull();
+    expect(clientReviewBoard(null, new Map([['a', { clientReview: true }]]))).toBeNull();
+    expect(clientReviewBoard(boards, new Map([['a', { clientReview: false }]]))).toBeNull();
+    expect(
+      clientReviewBoard(
+        boards,
+        new Map([
+          ['b', { clientReview: true }],
+          ['a', { clientReview: true }],
+        ]),
+      ),
+    ).toBe('a');
+  });
+
+  it('is where Review opens without a storyboard, never over a storyboard', () => {
+    const here = { boardId: 'root', kind: 'board' as const, rootBoardId: 'root' };
+    expect(viewDestination('review', here, null, 'a')).toEqual({
+      boardId: 'a',
+      view: 'review',
+      kind: 'board',
+    });
+    expect(viewDestination('review', here, null)).toMatchObject({ boardId: null });
+    expect(viewDestination('review', here, 's', 'a')).toMatchObject({ boardId: 's' });
+    expect(viewDestination('shotlist', here, null, 'a')).toMatchObject({ boardId: null });
   });
 });

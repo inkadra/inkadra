@@ -7,7 +7,7 @@ import { type KeyboardEvent, useId, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api, RequestError } from '../../lib/api.ts';
 import { ReviewChip } from '../CardReview.tsx';
-import { Thread } from '../CommentsPanel.tsx';
+import { Thread, useCardLabel } from '../CommentsPanel.tsx';
 import { ReviewSection } from '../ReviewSection.tsx';
 import { canComment, refreshReviews, useReviews } from '../review-store.ts';
 import type { BoardStore } from '../store.ts';
@@ -20,6 +20,15 @@ import './film.css';
 const filters = ['all', 'pending', 'approved', 'changes_requested'] as const;
 type Filter = (typeof filters)[number];
 const decisions = ['approved', 'changes_requested'] as const;
+/** What is not a card to review: structure, frames (reviewed as shots) and links to boards. */
+const NOT_CARDS: ReadonlySet<string> = new Set([
+  'arrow',
+  'column',
+  'scene',
+  'section',
+  'frame',
+  'board',
+]);
 
 /** Arrow keys step through the frames, except while typing. */
 function typing(target: EventTarget) {
@@ -42,7 +51,8 @@ export function ClientReviewView({
   const { t } = useTranslation();
   const id = useId();
   const presetText = usePresetText();
-  const { frames, labels } = useStoryboard(store);
+  const { groups, frames, labels } = useStoryboard(store);
+  const cardNames = useCardLabel(store);
   const aspect = useBoardAspect(store.doc);
   const state = useReviews((s) => s);
   const [filter, setFilter] = useState<Filter>('all');
@@ -59,14 +69,25 @@ export function ClientReviewView({
     const status = statusOf(elementId);
     return filter === 'all' || (filter === 'pending' ? matchesPending(status) : status === filter);
   };
-  const visible = frames.filter((f) => !ready || matches(f.id));
+  // A board without shots (no storyboard) is reviewed card by card, in reading order.
+  type Entry = { id: string; frame?: (typeof frames)[number] };
+  const entries: Entry[] = frames.length
+    ? frames.map((frame) => ({ id: frame.id, frame }))
+    : cardNames
+        .elements()
+        .filter((el) => !NOT_CARDS.has(el.type))
+        .map((el) => ({ id: el.id, rect: store.rectOf(el) }))
+        .sort((a, b) => a.rect.y - b.rect.y || a.rect.x - b.rect.x);
+  const cardMode = frames.length === 0;
+  const nameOf = (id: string) => labels.get(id) ?? cardNames.label(id);
+  const visible = entries.filter((f) => !ready || matches(f.id));
   const currentIndex = Math.max(
     0,
     visible.findIndex((f) => f.id === selected),
   );
   const current = visible[currentIndex];
-  const approved = frames.filter((f) => statusOf(f.id) === 'approved').length;
-  const changes = frames.filter((f) => statusOf(f.id) === 'changes_requested').length;
+  const approved = entries.filter((f) => statusOf(f.id) === 'approved').length;
+  const changes = entries.filter((f) => statusOf(f.id) === 'changes_requested').length;
   const writable = ready && canComment(state.role);
   const threads = state.threads.filter(
     (thread) =>
@@ -109,7 +130,9 @@ export function ClientReviewView({
         </div>
       </section>
     );
-  const shot = current ? presetText('film.shot', SHOT_SIZES, current.shot) : '';
+  const frame = current?.frame;
+  const emptyKey = groups.length ? 'shells.noShots' : 'clientReview.noCards';
+  const shot = frame ? presetText('film.shot', SHOT_SIZES, frame.shot) : '';
   return (
     <section
       onKeyDown={(e: KeyboardEvent) => {
@@ -132,7 +155,11 @@ export function ClientReviewView({
               aria-pressed={filter === value}
               onClick={() => setFilter(value)}
             >
-              {t(`clientReview.filters.${value}`)}
+              {t(
+                value === 'all' && cardMode
+                  ? 'clientReview.allCards'
+                  : `clientReview.filters.${value}`,
+              )}
             </button>
           ))}
         </fieldset>
@@ -153,84 +180,90 @@ export function ClientReviewView({
         <section aria-label={t('nav.shotlist')} className="client-review__frames" data-scroll>
           {visible.length === 0 && (
             <p className="schedule__hint">
-              {t(frames.length ? 'review.filteredEmpty' : 'shells.noShots')}
+              {t(entries.length ? 'review.filteredEmpty' : emptyKey)}
             </p>
           )}
-          {visible.map((frame) => (
+          {visible.map(({ id, frame }) => (
             <button
               type="button"
               className="client-review__frame"
-              key={frame.id}
-              aria-pressed={current?.id === frame.id}
-              onClick={() => setSelected(frame.id)}
+              key={id}
+              aria-pressed={current?.id === id}
+              onClick={() => setSelected(id)}
             >
-              <FramePicture
-                assetId={frame.assetId}
-                aspect={frame.aspect}
-                boardAspect={aspect}
-                strokes={frame.strokes}
-                pixels={360}
-              />
+              {frame && (
+                <FramePicture
+                  assetId={frame.assetId}
+                  aspect={frame.aspect}
+                  boardAspect={aspect}
+                  strokes={frame.strokes}
+                  pixels={360}
+                />
+              )}
               <span className="client-review__frame-meta">
-                <strong>{labels.get(frame.id)}</strong>
+                <strong>{nameOf(id)}</strong>
                 {ready && (
                   <ReviewChip
-                    status={statusOf(frame.id)}
+                    status={statusOf(id)}
                     compact
                     // "Pending" groups the open statuses, as the filter above does.
                     label={
-                      matchesPending(statusOf(frame.id))
-                        ? t('clientReview.filters.pending')
-                        : undefined
+                      matchesPending(statusOf(id)) ? t('clientReview.filters.pending') : undefined
                     }
                   />
                 )}
               </span>
-              {frame.action && <span className="client-review__frame-action">{frame.action}</span>}
+              {frame?.action && <span className="client-review__frame-action">{frame.action}</span>}
             </button>
           ))}
         </section>
         <div className="client-review__stage" data-scroll>
           {current ? (
             <>
-              <div className="client-review__picture">
-                <Button
-                  variant="ghost"
-                  className="client-review__step"
-                  aria-label={t('clientReview.previous')}
-                  data-ink-tooltip={t('clientReview.previous')}
-                  disabled={currentIndex === 0}
-                  onClick={() => step(-1)}
-                >
-                  ‹
-                </Button>
-                <FramePicture
-                  key={current.id}
-                  assetId={current.assetId}
-                  aspect={current.aspect}
-                  boardAspect={aspect}
-                  strokes={current.strokes}
-                  pixels={960}
-                />
-                <Button
-                  variant="ghost"
-                  className="client-review__step"
-                  aria-label={t('clientReview.next')}
-                  data-ink-tooltip={t('clientReview.next')}
-                  disabled={currentIndex >= visible.length - 1}
-                  onClick={() => step(1)}
-                >
-                  ›
-                </Button>
-              </div>
+              {frame ? (
+                <div className="client-review__picture">
+                  <Button
+                    variant="ghost"
+                    className="client-review__step"
+                    aria-label={t('clientReview.previous')}
+                    data-ink-tooltip={t('clientReview.previous')}
+                    disabled={currentIndex === 0}
+                    onClick={() => step(-1)}
+                  >
+                    ‹
+                  </Button>
+                  <FramePicture
+                    key={current.id}
+                    assetId={frame.assetId}
+                    aspect={frame.aspect}
+                    boardAspect={aspect}
+                    strokes={frame.strokes}
+                    pixels={960}
+                  />
+                  <Button
+                    variant="ghost"
+                    className="client-review__step"
+                    aria-label={t('clientReview.next')}
+                    data-ink-tooltip={t('clientReview.next')}
+                    disabled={currentIndex >= visible.length - 1}
+                    onClick={() => step(1)}
+                  >
+                    ›
+                  </Button>
+                </div>
+              ) : (
+                <div className="client-review__card">
+                  <h2>{nameOf(current.id)}</h2>
+                </div>
+              )}
               <p className="client-review__caption">
-                <strong>{labels.get(current.id)}</strong>
+                <strong>{nameOf(current.id)}</strong>
                 {shot && <span>{shot}</span>}
-                {current.durationMs !== undefined && (
-                  <span className="story__tile-duration">{formatDuration(current.durationMs)}</span>
+                {frame?.durationMs !== undefined && (
+                  <span className="story__tile-duration">{formatDuration(frame.durationMs)}</span>
                 )}
-                {current.action && (
-                  <span className="client-review__caption-action">{current.action}</span>
+                {frame?.action && (
+                  <span className="client-review__caption-action">{frame.action}</span>
                 )}
                 <span className="ink-header__spacer" />
                 <span className="story__tile-duration">
@@ -244,7 +277,7 @@ export function ClientReviewView({
           ) : (
             <div className="board-state">
               <EmptyState icon="storyboard" title={t('film.views.review')}>
-                {t(frames.length ? 'review.filteredEmpty' : 'shells.noShots')}
+                {t(entries.length ? 'review.filteredEmpty' : emptyKey)}
               </EmptyState>
             </div>
           )}
@@ -252,13 +285,13 @@ export function ClientReviewView({
         {(current || ready) && (
           <aside
             className="client-review__panel"
-            aria-label={current ? labels.get(current.id) : t('film.views.review')}
+            aria-label={current ? nameOf(current.id) : t('film.views.review')}
             key={current?.id ?? ''}
           >
             {current && (
               <div className="client-review__panel-body" data-scroll>
                 <header className="client-review__panel-head">
-                  <h2>{labels.get(current.id)}</h2>
+                  <h2>{nameOf(current.id)}</h2>
                   {writable && <span className="ink-muted">{t('clientReview.yourDecision')}</span>}
                 </header>
                 {writable && (
@@ -324,7 +357,7 @@ export function ClientReviewView({
                       key={thread.id}
                       thread={thread}
                       writable={canComment(state.role) && !state.preview}
-                      targetLabel={labels.get(current.id) ?? ''}
+                      targetLabel={nameOf(current.id)}
                       pinNumber={0}
                       showTarget={false}
                       canJump={false}
@@ -337,16 +370,23 @@ export function ClientReviewView({
               <footer className="client-review__progress">
                 <div className="client-review__progress-row">
                   <label htmlFor={`${id}-progress`}>
-                    {t('clientReview.progress', { approved, total: frames.length })}
+                    {t(cardMode ? 'clientReview.cardProgress' : 'clientReview.progress', {
+                      approved,
+                      total: entries.length,
+                    })}
                   </label>
                   <span className="ink-muted">
                     {t('clientReview.breakdown', {
                       changes,
-                      pending: frames.length - approved - changes,
+                      pending: entries.length - approved - changes,
                     })}
                   </span>
                 </div>
-                <progress id={`${id}-progress`} max={Math.max(1, frames.length)} value={approved} />
+                <progress
+                  id={`${id}-progress`}
+                  max={Math.max(1, entries.length)}
+                  value={approved}
+                />
               </footer>
             )}
           </aside>

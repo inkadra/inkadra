@@ -215,6 +215,8 @@ function BoardScreen({
   const navigate = useNavigate();
   const location = useLocation();
   const { user } = useSession();
+  // The sidebar's rule for the film links, so the header tabs never disagree with it.
+  const { filmLinks } = useProjects();
   const { items: boards } = useProjectBoards(projectId);
   const conn = useBoardConnection(boardId);
   useLiveBoardCounts(conn, boardId);
@@ -264,19 +266,30 @@ function BoardScreen({
   const editable = !!conn && !conn.readOnly && canEdit(detail?.myRole ?? projectRole);
   // Film views open on the project's storyboard, as they do from the sidebar and the rail.
   const storyboardId = useMemo(() => storyboardOf(boards), [boards]);
+  const { film, review, reviewBoard } = filmLinks;
   const chooseView = useCallback(
     (next: BoardView) => {
-      const destination = viewDestination(next, { boardId, kind, rootBoardId }, storyboardId);
+      const destination = viewDestination(
+        next,
+        { boardId, kind, rootBoardId },
+        storyboardId,
+        reviewBoard,
+      );
       if (destination.boardId) {
         navigate(viewHref(projectId, destination, { boardId, rootBoardId, kind }));
         return;
       }
       setView(next);
     },
-    [boardId, kind, rootBoardId, storyboardId, navigate, projectId, setView],
+    [boardId, kind, rootBoardId, storyboardId, reviewBoard, navigate, projectId, setView],
   );
 
-  const tabs = useMemo(() => headerViews(kind, view), [kind, view]);
+  // The layout builds its links anew on every render: the tabs depend on their fields, so the
+  // palette's actions below are not registered again each time.
+  const tabs = useMemo(
+    () => headerViews(kind, view, { film, review, reviewBoard }),
+    [kind, view, film, review, reviewBoard],
+  );
 
   // The palette offers a view only when the header shows its tab.
   useRegisterActions(

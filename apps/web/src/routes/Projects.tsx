@@ -2,12 +2,13 @@ import type { Project, ProjectGroup } from '@inkadra/shared';
 import { Avatar, Button, Dialog, DialogActions, Select } from '@inkadra/ui';
 import { type FormEvent, type ReactNode, useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router';
+import { Link, useNavigate } from 'react-router';
 import { api } from '../lib/api.ts';
 import { useClassifications } from '../lib/classifications.ts';
 import { useSession } from '../lib/session.tsx';
 import { relativeTime } from '../notifications/Notifications.tsx';
 import { useProjects } from './AppLayout.tsx';
+import { addStoryboardItem } from './add-storyboard.ts';
 import { BoardPreview } from './BoardPreview.tsx';
 import { useProjectMenu } from './ProjectAppearance.tsx';
 import {
@@ -164,6 +165,7 @@ export function Projects() {
       busy={busy}
       mutate={mutate}
       onAppearanceSaved={replace}
+      onError={() => setError(true)}
     />
   );
   const change = (key: keyof typeof query, value: string) =>
@@ -417,14 +419,18 @@ function ProjectCard({
   busy,
   mutate,
   onAppearanceSaved,
+  onError,
 }: {
   row: ProjectOverview;
+  onError: () => void;
   onAppearanceSaved: (project: Project) => void;
   busy: boolean;
   mutate: (p: Project, change: Change) => Promise<boolean>;
 }) {
   const { typeLabel } = useClassifications();
   const { t, i18n } = useTranslation();
+  const { user } = useSession();
+  const navigate = useNavigate();
   const [typing, setTyping] = useState(false);
   const p = row.project;
   const drag = useProjectDrag(p);
@@ -439,6 +445,7 @@ function ProjectCard({
         disabled: busy,
         action: () => void mutate(p, 'pin'),
       },
+      ...(user ? addStoryboardItem(p, t, user.id, navigate, onError) : []),
       ...(editor
         ? [{ label: t('onboarding.type'), disabled: busy, action: () => setTyping(true) }]
         : []),

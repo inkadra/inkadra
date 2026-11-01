@@ -102,6 +102,7 @@ it('shows the Home card with the actions in its menu', async () => {
   ).toEqual([
     'appearance.title',
     'projectsPage.pin',
+    'nav.addStoryboard',
     'onboarding.type',
     'transfer.exportMenu',
     'projectsPage.archive',

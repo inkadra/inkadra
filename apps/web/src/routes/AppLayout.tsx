@@ -42,12 +42,21 @@ import {
   useOutlet,
   useSearchParams,
 } from 'react-router';
-import { childBoards, useProjectBoards, useSharedBoards } from '../board/boards.ts';
+import {
+  childBoards,
+  hasListedBoards,
+  useProjectBoards,
+  useSharedBoards,
+} from '../board/boards.ts';
 import { useBoardCounts } from '../board/live-counts.ts';
 import {
+  ALL_FILM_LINKS,
   askedView,
   type BoardView,
+  clientReviewBoard,
   defaultView,
+  type FilmLinks,
+  filmLinks,
   isBoardView,
   isFilmView,
   pickerViews,
@@ -69,6 +78,7 @@ import {
   useNotificationFeed,
   useUnreadCount,
 } from '../notifications/Notifications.tsx';
+import { addStoryboardItem } from './add-storyboard.ts';
 import { editableProjects } from './home-data.ts';
 import { useInstanceSetup } from './InstanceSetup.tsx';
 import { MobileNavigation } from './MobileNavigation.tsx';
@@ -104,6 +114,8 @@ interface ProjectsState {
   openInbox: () => void;
   unread: number;
   refreshUnread: () => Promise<void>;
+  /** The film links of the open project: what the sidebar, the header tabs and the phone offer. */
+  filmLinks: FilmLinks;
 }
 
 const ProjectsContext = createContext<ProjectsState>({
@@ -116,6 +128,7 @@ const ProjectsContext = createContext<ProjectsState>({
   openInbox: () => {},
   unread: 0,
   refreshUnread: async () => {},
+  filmLinks: ALL_FILM_LINKS,
 });
 export const useProjects = () => useContext(ProjectsContext);
 
@@ -388,6 +401,8 @@ export function AppLayout({ home }: { home?: ReactNode }) {
   const here = writable.find((p) => p.id === projectId);
   const openBoardId = boardId ?? current?.rootBoardId;
   const storyboardId = storyboardOf(projectBoards);
+  // Without a storyboard, Review opens the board that has a live client review link.
+  const reviewBoardId = clientReviewBoard(projectBoards, counts);
   // Until the project's boards are known the kind is too: no tab is active before that.
   const openBoard = projectBoards?.find((b) => b.id === openBoardId);
   const openKind: BoardKind | undefined = openBoard?.kind;
@@ -405,6 +420,7 @@ export function AppLayout({ home }: { home?: ReactNode }) {
       v,
       { boardId: openBoardId, kind: openKind, rootBoardId: current?.rootBoardId },
       storyboardId,
+      reviewBoardId,
     );
 
   const hrefFor = (v: BoardView) => {
@@ -444,7 +460,10 @@ export function AppLayout({ home }: { home?: ReactNode }) {
   const filmView = isFilmView(currentView);
   // The film links appear with the project's first storyboard (or frame) and while a film view is
   // open, so there is always a way back; until the boards are known they stay out.
-  const showFilmLinks = filmView || projectHasStoryboard(projectBoards, counts);
+  // One rule for the sidebar, the header tabs and the phone switcher (BoardPage reads it here).
+  const links = filmLinks(projectHasStoryboard(projectBoards, counts), reviewBoardId, currentView);
+  const showFilmLinks = links.film;
+  const showReview = links.review;
   const filmRowActive = (v: BoardView) =>
     currentView === v ||
     (v === 'storyboard' && !filmView && !!storyboardId && openBoardId === storyboardId);
@@ -454,6 +473,10 @@ export function AppLayout({ home }: { home?: ReactNode }) {
       <ProjectNavItem
         project={p}
         onDropProject={onDropProject}
+        extra={addStoryboardItem(p, t, user.id, (to) => {
+          setDrawerOpen(false);
+          navigate(to);
+        })}
         active={p.id === projectId && !boardId && !filmView}
         onClick={go(`/p/${p.id}`)}
       />
@@ -506,31 +529,37 @@ export function AppLayout({ home }: { home?: ReactNode }) {
                   showView('schedule');
                 }}
               />
-              <NavItem
-                icon="people"
-                contentKind="review"
-                label={t('nav.clients')}
-                active={filmRowActive('review')}
-                href={hrefFor('review')}
-                onClick={(e) => {
-                  e.preventDefault();
-                  showView('review');
-                }}
-              />
             </>
           )}
-          <div className="ink-sidebar__collapsible">
-            <div className="ink-sidebar__label">{t('nav.boards')}</div>
-            <BoardTree
-              projectId={p.id}
-              parentId={p.rootBoardId}
-              activeId={boardId}
-              hiddenId={storyboardId}
-              depth={1}
-              go={go}
-              counts={counts}
+          {showReview && (
+            <NavItem
+              icon="people"
+              contentKind="review"
+              label={t('nav.clients')}
+              active={filmRowActive('review')}
+              href={hrefFor('review')}
+              onClick={(e) => {
+                e.preventDefault();
+                showView('review');
+              }}
             />
-          </div>
+          )}
+          <ProjectBoards
+            projectId={p.id}
+            rootBoardId={p.rootBoardId}
+            activeId={boardId}
+            hiddenId={storyboardId}
+            go={go}
+            counts={counts}
+            onNewBoard={
+              writable.some((w) => w.id === p.id)
+                ? () => {
+                    setBoardProject(p.id);
+                    setCreatingBoard(true);
+                  }
+                : undefined
+            }
+          />
         </div>
       )}
     </div>
@@ -794,7 +823,7 @@ export function AppLayout({ home }: { home?: ReactNode }) {
             value={currentView ?? ''}
             onChange={(e) => showView(e as BoardView)}
           >
-            {pickerViews(openKind, currentView).map((v) => (
+            {pickerViews(openKind, currentView, links).map((v) => (
               <option key={v} value={v}>
                 {t(`film.views.${v}`)}
               </option>
@@ -818,6 +847,7 @@ export function AppLayout({ home }: { home?: ReactNode }) {
           openInbox: () => setInboxOpen(true),
           unread,
           refreshUnread,
+          filmLinks: links,
         }}
       >
         <HeaderContext.Provider value={setHeaderContent}>
@@ -1013,6 +1043,56 @@ export function AppLayout({ home }: { home?: ReactNode }) {
         <SeedQueue />
       </ProjectsContext.Provider>
     </InstanceSetupContext.Provider>
+  );
+}
+
+/**
+ * The Board heading and the project's boards. A project with none gets a quiet New board row
+ * under the heading (nothing for a reader); until the boards are known there is no heading yet.
+ */
+function ProjectBoards({
+  projectId,
+  rootBoardId,
+  activeId,
+  hiddenId,
+  go,
+  counts,
+  onNewBoard,
+}: {
+  projectId: string;
+  rootBoardId: string;
+  activeId: string | undefined;
+  hiddenId: string | null;
+  go: (to: string) => (e: MouseEvent) => void;
+  counts: Map<string, BoardCount>;
+  onNewBoard: (() => void) | undefined;
+}) {
+  const { t } = useTranslation();
+  const { items } = useProjectBoards(projectId);
+  const listed = hasListedBoards(items, rootBoardId, hiddenId);
+  if (!items || (!listed && !onNewBoard)) return null;
+  return (
+    <div className="ink-sidebar__collapsible">
+      <div className="ink-sidebar__label">{t('nav.boards')}</div>
+      {listed ? (
+        <BoardTree
+          projectId={projectId}
+          parentId={rootBoardId}
+          activeId={activeId}
+          hiddenId={hiddenId}
+          depth={1}
+          go={go}
+          counts={counts}
+        />
+      ) : (
+        <NavItem
+          icon="plus"
+          label={t('home.newBoard.action')}
+          className="ink-nav project-boards__new"
+          onClick={onNewBoard}
+        />
+      )}
+    </div>
   );
 }
 

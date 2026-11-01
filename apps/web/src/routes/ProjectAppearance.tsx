@@ -327,14 +327,17 @@ export function ProjectNavItem({
   active,
   onClick,
   onDropProject,
+  extra,
 }: {
   project: Project;
   active: boolean;
   onClick: (event: MouseEvent<HTMLAnchorElement>) => void;
+  /** More ⋯ menu items, from the caller that can navigate. */
+  extra?: ProjectMenuItem[];
   /** A project dropped on this one, on its upper or lower half. */
   onDropProject?: (projectId: string, after: boolean) => void;
 }) {
-  const { trigger, targetProps, layer } = useProjectMenu(project);
+  const { trigger, targetProps, layer } = useProjectMenu(project, extra);
   const drag = useProjectDrag(project);
   const drop = useDropTarget(`row:${project.id}`, (id, after) => {
     if (id !== project.id) onDropProject?.(id, after);

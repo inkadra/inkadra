@@ -62,8 +62,9 @@ test('mobile shell gives the canvas full width and keeps shell actions reachable
   expect(bounds?.width).toBe(390);
   expect(bounds?.height).toBeGreaterThan(600);
   await expect(page.locator('.mobile-view-switcher')).toBeVisible();
-  await chooseSelect(page.locator('.mobile-view-switcher'), 'shotlist');
-  await expect(page).toHaveURL(/view=shotlist/);
+  // No storyboard in this project: the switcher offers the board's own views only.
+  await chooseSelect(page.locator('.mobile-view-switcher'), 'moodboard');
+  await expect(page).toHaveURL(/view=moodboard/);
   await chooseSelect(page.locator('.mobile-view-switcher'), 'canvas');
   await expect(canvas).toBeVisible();
   const toolbar = page.locator('.canvas .toolbar');

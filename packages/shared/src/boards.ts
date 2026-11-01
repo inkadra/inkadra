@@ -112,6 +112,10 @@ export const BoardCount = z
     }),
     fileCount: z.int().nonnegative().optional().openapi({ description: 'File cards.' }),
     boardCount: z.int().nonnegative().optional().openapi({ description: 'Board cards.' }),
+    clientReview: z.boolean().optional().openapi({
+      description:
+        'A share link that lets guests set the review status of cards (`guest_approve`) is live on this board: not revoked, not expired.',
+    }),
   })
   .openapi('BoardCount');
 export type BoardCount = z.infer<typeof BoardCount>;

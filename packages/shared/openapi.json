@@ -6944,6 +6944,10 @@
             "type": "integer",
             "minimum": 0,
             "description": "Board cards."
+          },
+          "clientReview": {
+            "type": "boolean",
+            "description": "A share link that lets guests set the review status of cards (`guest_approve`) is live on this board: not revoked, not expired."
           }
         },
         "required": [

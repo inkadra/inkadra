@@ -69,30 +69,78 @@ export function projectHasStoryboard(
 }
 
 /**
- * What the header offers: canvas and the film views on a storyboard, or while a film view is
- * open so there is a way back. An ordinary board offers its own two views, canvas and
- * moodboard; nothing while its kind is still loading. A storyboard has no moodboard tab: its
- * pictures live in the frames, and references get a board of their own. An address that asks
- * for the moodboard still shows its tab, so the open view always has one.
+ * The board with a live client review link, in the order of the boards: where Review opens for a
+ * project without a storyboard. Null when there is none, and while the boards are unknown.
  */
-export function headerViews(kind: BoardKind | undefined, active: BoardView): BoardView[] {
-  const film = kind === 'storyboard' || FILM_VIEWS.includes(active);
-  if (!film) return kind ? ['canvas', 'moodboard'] : [];
-  return pickerViews(kind, active);
+export function clientReviewBoard(
+  boards: readonly Board[] | null | undefined,
+  counts: ReadonlyMap<string, Pick<BoardCount, 'clientReview'>>,
+): string | null {
+  return boards?.find((b) => counts.get(b.id)?.clientReview)?.id ?? null;
 }
 
-/** The phone's view picker: every view, but no moodboard on a storyboard, as in the header. */
-export function pickerViews(kind: BoardKind | undefined, active: BoardView | null): BoardView[] {
-  return ALL_VIEWS.filter(
-    (v) => v !== 'moodboard' || kind !== 'storyboard' || active === 'moodboard',
-  );
+/** Which film links the sidebar, the header tabs and the phone switcher offer, for one project. */
+export interface FilmLinks {
+  /** Storyboard, Shot list and Schedule. */
+  film: boolean;
+  /** Review. */
+  review: boolean;
+  /** Where Review opens without a storyboard: the board with a live client review link. */
+  reviewBoard: string | null;
+}
+
+/**
+ * The one rule for the film links, so the sidebar, the header and the phone never disagree. The
+ * film views show with the project's storyboard, and while one of them is open so there is a way
+ * back. Review also shows alone while a client review link is live (`reviewBoard`) or its view
+ * is open.
+ */
+export function filmLinks(
+  hasStoryboard: boolean,
+  reviewBoard: string | null,
+  active: BoardView | null,
+): FilmLinks {
+  const film = hasStoryboard || (isFilmView(active) && active !== 'review');
+  return { film, review: film || active === 'review' || !!reviewBoard, reviewBoard };
+}
+
+/** Everything is offered: the layout's default before it has worked the rule out. */
+export const ALL_FILM_LINKS: FilmLinks = { film: true, review: true, reviewBoard: null };
+
+/**
+ * What the header offers: canvas always, the film views the project allows (`links`), and the
+ * moodboard, except on a storyboard, where pictures live in the frames and references get a
+ * board of their own. An address that asks for a view still shows its tab, so the open view
+ * always has one. Nothing while the board's kind is still loading.
+ */
+export function headerViews(
+  kind: BoardKind | undefined,
+  active: BoardView,
+  links: FilmLinks,
+): BoardView[] {
+  if (!kind && !isFilmView(active)) return [];
+  return pickerViews(kind, active, links);
+}
+
+/** The phone's view picker: the same views as the header. */
+export function pickerViews(
+  kind: BoardKind | undefined,
+  active: BoardView | null,
+  links: FilmLinks,
+): BoardView[] {
+  return ALL_VIEWS.filter((v) => {
+    if (v === active || v === 'canvas') return true;
+    if (v === 'moodboard') return kind !== 'storyboard';
+    return v === 'review' ? links.review : links.film;
+  });
 }
 
 /**
  * Where each view opens. Film views belong to the project's storyboard, so choosing one from
  * an ordinary board opens that board; without a storyboard they open on the project's root
- * board, so the sidebar and rail always lead to the same place. `boardId: null` means the
- * board that is already open.
+ * board, so the sidebar and rail always lead to the same place, except Review, which opens the
+ * board with a live client review link (`reviewBoardId`) when there is one. `boardId: null`
+ * means the board that is already open.
  */
 export function viewDestination(
   view: BoardView,
@@ -102,10 +150,11 @@ export function viewDestination(
     rootBoardId: string | undefined;
   },
   storyboardId: string | null,
+  reviewBoardId: string | null = null,
 ): { boardId: string | null; view: BoardView; kind?: BoardKind } {
   const film = FILM_VIEWS.includes(view);
   if (!film || current.kind === 'storyboard') return { boardId: null, view };
-  const target = storyboardId ?? current.rootBoardId;
+  const target = storyboardId ?? (view === 'review' ? reviewBoardId : null) ?? current.rootBoardId;
   if (!target || target === current.boardId) return { boardId: null, view };
   return { boardId: target, view, kind: storyboardId ? 'storyboard' : 'board' };
 }
