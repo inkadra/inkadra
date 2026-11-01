@@ -628,7 +628,12 @@
       "label": "Address or map link",
       "placeholder": "Paste a Maps link or type an address",
       "open": "Open in Maps",
-      "untitled": "Place"
+      "untitled": "Place",
+      "explore": "Explore",
+      "exploreLabel": "Explore the map of {{name}}",
+      "interactive": "Map of {{name}}: drag to move, Esc to finish",
+      "zoomIn": "Zoom the map in",
+      "zoomOut": "Zoom the map out"
     },
     "count": {
       "cards_one": "{{count}} card",

@@ -652,6 +652,25 @@ describe.skipIf(!url)('projects, boards, uploads and assets (needs DATABASE_URL)
     ).toBe(403);
   });
 
+  it('serves map tiles to people signed in, through the tile server of the instance', async () => {
+    config.MAP_TILE_URL = `${siteUrl}/tiles/{z}/{x}/{y}.png`;
+    const tile = await call('viewer', 'GET', '/api/v1/map-tiles/15/17246/11500');
+    expect(tile.statusCode).toBe(200);
+    expect(tile.headers['content-type']).toBe('image/png');
+    expect(tile.headers['cache-control']).toBe('private, max-age=86400');
+    for (const bad of ['0/0/0', '20/0/0', '3/8/0', '3/0/-1', '3/1.5/0', '3/0x1/0'])
+      expect((await call('viewer', 'GET', `/api/v1/map-tiles/${bad}`)).statusCode, bad).toBe(400);
+    expect((await app.inject({ method: 'GET', url: '/api/v1/map-tiles/1/0/0' })).statusCode).toBe(
+      401,
+    );
+    // A tile server that answers something other than a picture serves nothing.
+    config.MAP_TILE_URL = `${siteUrl}/{z}/{x}/{y}`;
+    expect((await call('viewer', 'GET', '/api/v1/map-tiles/2/1/1')).statusCode).toBe(404);
+    config.MAPS = false;
+    expect((await call('viewer', 'GET', '/api/v1/map-tiles/15/17246/11500')).statusCode).toBe(404);
+    config.MAPS = true;
+  });
+
   // Deletion ---------------------------------------------------------------------
 
   it('deletes a project with its files', async () => {

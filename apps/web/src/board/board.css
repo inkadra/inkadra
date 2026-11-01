@@ -1036,6 +1036,121 @@ button.fcard__audio-play:focus-visible {
   text-decoration: underline;
 }
 
+/*
+ * Exploring a map (#373): the picture gives way to a map that pans and zooms, inside the 6 px
+ * frame of the inline player of link cards (.card__embed), which drags the card. Leaflet's controls take
+ * the tokens of the theme.
+ */
+.mcard__explore {
+  position: absolute;
+  left: 8px;
+  top: 8px;
+  padding: 3px 9px;
+  border: 0;
+  border-radius: var(--ink-radius-sm);
+  background: color-mix(in srgb, var(--ink-surface-1) 88%, transparent);
+  box-shadow: var(--ink-shadow-menu);
+  color: var(--ink-text-primary);
+  font: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.5;
+  cursor: pointer;
+  transition: background-color var(--ink-dur-fast) var(--ink-ease-out);
+}
+.mcard__explore:hover {
+  background: var(--ink-surface-1);
+}
+.mcard__explore:focus-visible {
+  outline: 2px solid var(--ink-accent-primary);
+  outline-offset: 1px;
+}
+.mcard__live {
+  position: absolute;
+  inset: 0;
+}
+/* Twice the class: Leaflet's stylesheet, loaded later, must not repaint it grey. */
+.mcard__leaflet.mcard__leaflet {
+  width: 100%;
+  height: 100%;
+  /* Leaflet's panes and controls stack up to 1000: keep them inside the card. */
+  isolation: isolate;
+  border-radius: var(--ink-radius-xs);
+  background: var(--fcard-bg);
+  font: inherit;
+  animation: mcard-live-in var(--ink-dur-base) var(--ink-ease-out);
+}
+@keyframes mcard-live-in {
+  from {
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .mcard__leaflet {
+    animation: none;
+  }
+}
+.mcard__leaflet:focus-visible {
+  outline: 2px solid var(--ink-accent-primary);
+  outline-offset: -2px;
+}
+.mcard__leaflet .leaflet-bar {
+  overflow: hidden;
+  border: 0;
+  border-radius: var(--ink-radius-sm);
+  box-shadow: var(--ink-shadow-menu);
+}
+.mcard__leaflet .leaflet-bar a {
+  width: 26px;
+  height: 26px;
+  border-radius: 0;
+  border-bottom-color: var(--ink-border-subtle);
+  background: var(--ink-surface-float);
+  color: var(--ink-text-primary);
+  line-height: 26px;
+  transition: background-color var(--ink-dur-fast) var(--ink-ease-out);
+}
+.mcard__leaflet .leaflet-bar a:hover {
+  background: var(--ink-surface-3);
+}
+.mcard__leaflet .leaflet-bar a.leaflet-disabled {
+  color: var(--ink-text-muted);
+}
+.mcard__leaflet .leaflet-control-zoom {
+  margin: 8px 0 0 8px;
+}
+.mcard__live-route {
+  fill: none;
+  stroke: var(--ink-tag-green);
+  stroke-opacity: 1;
+  stroke-width: 4;
+}
+.mcard__live-halo {
+  fill: none;
+  stroke: var(--ink-surface-1);
+  stroke-opacity: 0.6;
+  stroke-width: 8;
+}
+.mcard__live-start,
+.mcard__live-end,
+.mcard__live-pin {
+  fill-opacity: 1;
+  stroke: var(--ink-on-accent);
+  stroke-opacity: 1;
+  stroke-width: 2;
+}
+.mcard__live-start {
+  fill: var(--ink-tag-green);
+}
+.mcard__live-end,
+.mcard__live-pin {
+  fill: var(--ink-tag-red);
+}
+.mcard__live ~ .mcard__credit {
+  right: 10px;
+  bottom: 9px;
+}
+
 /* Columns and scenes */
 .card--column,
 .card--scene {

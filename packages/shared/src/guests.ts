@@ -226,6 +226,16 @@ export const GuestSession = z
         '30 days after the last request, never after the link expires. After that, or after ' +
         'a password change, the page opens the link again with POST …/session.',
     }),
+    maps: z
+      .object({ attribution: z.string().max(200) })
+      .nullable()
+      .optional()
+      .openapi({
+        description:
+          'Maps of the instance (Instance.maps): the credit to show on map pictures, and map ' +
+          'cards can be explored through GET …/map-tiles. Null when maps are off; absent from ' +
+          'servers older than the field.',
+      }),
   })
   .openapi('GuestSession');
 export type GuestSession = z.infer<typeof GuestSession>;

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 import { updateElement } from '@inkadra/canvas-core';
 import type { Element } from '@inkadra/doc-schema';
-import type { MapPreview } from '@inkadra/shared';
+import type { AssetTrack, MapPreview } from '@inkadra/shared';
 import type * as Y from 'yjs';
 import { api } from '../lib/api.ts';
 import { webUrl } from './links.ts';
@@ -71,4 +71,23 @@ export function formatDistance(metres: number, locale?: string): string {
 /** +1050 m of climb. */
 export function formatClimb(metres: number): string {
   return `+${Math.round(metres)} m`;
+}
+
+/**
+ * The points of a route as [lat, lon], for an interactive map: its line is kept in fractions of
+ * the map picture, put back on the map through the picture's view (Web Mercator, 256 px tiles).
+ * Null for routes read before the view was recorded.
+ */
+export function trackLatLngs(track: AssetTrack): Array<[number, number]> | null {
+  const { view, points } = track;
+  if (!view) return null;
+  const world = 256 * 2 ** view.zoom;
+  const out: Array<[number, number]> = [];
+  for (let i = 0; i + 1 < points.length; i += 2) {
+    const x = (view.left + (points[i] as number) * 1024) / world;
+    const y = (view.top + (points[i + 1] as number) * 560) / world;
+    const lat = (Math.atan(Math.sinh(Math.PI * (1 - 2 * y))) * 180) / Math.PI;
+    out.push([lat, x * 360 - 180]);
+  }
+  return out;
 }

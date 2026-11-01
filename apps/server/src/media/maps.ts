@@ -145,10 +145,17 @@ export async function readCapped(res: Response, max: number): Promise<Buffer> {
 const TILES_PER_SECOND = 6;
 let nextSlot = 0;
 
-/** Waits for this request's turn: requests are spaced evenly, in the order they asked. */
-async function tileSlot(): Promise<void> {
+/** Thrown when the queue of tile requests is longer than a caller is willing to wait. */
+export class TilesBusy extends Error {}
+
+/**
+ * Waits for this request's turn: requests are spaced evenly, in the order they asked. A caller
+ * that cannot wait long (an interactive map) gives up without taking a turn.
+ */
+async function tileSlot(maxWaitMs = Infinity): Promise<void> {
   const now = Date.now();
   const at = Math.max(now, nextSlot);
+  if (at - now > maxWaitMs) throw new TilesBusy('Too many tile requests.');
   nextSlot = at + 1000 / TILES_PER_SECOND;
   if (at > now) await new Promise((done) => setTimeout(done, at - now));
 }
@@ -172,7 +179,27 @@ function remember(url: string, body: Buffer) {
   }
 }
 
-async function fetchTile(settings: MapSettings, z: number, x: number, y: number) {
+/** The image type of a tile from its first bytes: PNG, JPEG or WebP, else null. */
+export function tileType(body: Buffer): 'image/png' | 'image/jpeg' | 'image/webp' | null {
+  if (body.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10])))
+    return 'image/png';
+  if (body[0] === 0xff && body[1] === 0xd8 && body[2] === 0xff) return 'image/jpeg';
+  if (body.toString('latin1', 0, 4) === 'RIFF' && body.toString('latin1', 8, 12) === 'WEBP')
+    return 'image/webp';
+  return null;
+}
+
+/**
+ * One tile, from the cache or the tile server, through the process-wide queue. `maxWaitMs`
+ * refuses (TilesBusy) rather than queue longer than that.
+ */
+export async function fetchTile(
+  settings: MapSettings,
+  z: number,
+  x: number,
+  y: number,
+  maxWaitMs?: number,
+) {
   const url = settings.tileUrl
     .replace('{z}', String(z))
     .replace('{x}', String(x))
@@ -184,7 +211,7 @@ async function fetchTile(settings: MapSettings, z: number, x: number, y: number)
     tileCache.set(url, cached);
     return cached;
   }
-  await tileSlot();
+  await tileSlot(maxWaitMs);
   const res = await fetch(url, {
     headers: { 'user-agent': settings.userAgent, accept: 'image/png,image/*' },
     // The administrator's address is the one fetched: a redirect could lead anywhere.

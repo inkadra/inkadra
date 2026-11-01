@@ -5,6 +5,7 @@ import { Icon } from '@inkadra/ui';
 import { useTranslation } from 'react-i18next';
 import { pickVariant, useAsset } from './assets.ts';
 import { useBoard } from './context.ts';
+import { ExploreButton, LiveMap, useExploring } from './MapExplore.tsx';
 import { openInMapsUrl } from './maps.ts';
 
 type MapElement = Extract<Element, { type: 'map' }>;
@@ -43,13 +44,15 @@ export function TrackLine({ track }: { track: AssetTrack }) {
 }
 
 /**
- * A map card (#319): the map picture with a pin on the place, its name and "Open in Maps".
+ * A map card (#319): the map picture with a pin on the place, its name and "Open in Maps";
+ * "Explore" (or a double click) turns the picture into a map that pans and zooms (#373).
  * Without a picture (maps off, an address the server could not place) it is the name, the
  * address and the link, in the footer every file card shares.
  */
 export function MapCard({ element, width }: { element: MapElement; width: number }) {
   const { t } = useTranslation();
   const { scale } = useBoard();
+  const exploring = useExploring(element.id);
   const image = useAsset(element.imageAssetId);
   const ready = image && image !== 'missing' ? image : null;
   const dpr = typeof window === 'undefined' ? 1 : window.devicePixelRatio || 1;
@@ -68,6 +71,17 @@ export function MapCard({ element, width }: { element: MapElement; width: number
           <div className="fcard__preview mcard__map" style={{ aspectRatio: MAP_ASPECT }}>
             <img className="fcard__img" src={src} alt="" draggable={false} decoding="async" />
             <span className="mcard__pin" aria-hidden="true" />
+            {element.lat !== undefined &&
+              element.lon !== undefined &&
+              (exploring ? (
+                <LiveMap
+                  id={element.id}
+                  name={title}
+                  place={{ lat: element.lat, lon: element.lon, zoom: element.zoom ?? 16 }}
+                />
+              ) : (
+                <ExploreButton id={element.id} name={title} />
+              ))}
             <MapCredit />
           </div>
         </div>

@@ -628,7 +628,12 @@
       "label": "Indirizzo o link di una mappa",
       "placeholder": "Incolla un link di Maps o scrivi un indirizzo",
       "open": "Apri in Mappe",
-      "untitled": "Luogo"
+      "untitled": "Luogo",
+      "explore": "Esplora",
+      "exploreLabel": "Esplora la mappa di {{name}}",
+      "interactive": "Mappa di {{name}}: trascina per spostarti, Esc per finire",
+      "zoomIn": "Ingrandisci la mappa",
+      "zoomOut": "Riduci la mappa"
     },
     "count": {
       "cards_one": "{{count}} card",

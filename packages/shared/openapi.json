@@ -2543,6 +2543,28 @@
               "maximum": 1
             },
             "maxItems": 1024
+          },
+          "view": {
+            "type": "object",
+            "properties": {
+              "zoom": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 19
+              },
+              "left": {
+                "type": "number"
+              },
+              "top": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "zoom",
+              "left",
+              "top"
+            ],
+            "description": "Where the picture of the route sits on the map: its zoom and top-left corner in Web Mercator pixels, 256 per tile, so `points` can be placed on an interactive map. Absent for routes read before it was recorded."
           }
         },
         "required": [
@@ -5414,6 +5436,22 @@
             "format": "date-time",
             "example": "2026-11-02T09:30:00.000Z",
             "description": "30 days after the last request, never after the link expires. After that, or after a password change, the page opens the link again with POST …/session."
+          },
+          "maps": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "attribution": {
+                "type": "string",
+                "maxLength": 200
+              }
+            },
+            "required": [
+              "attribution"
+            ],
+            "description": "Maps of the instance (Instance.maps): the credit to show on map pictures, and map cards can be explored through GET …/map-tiles. Null when maps are off; absent from servers older than the field."
           }
         },
         "required": [
@@ -13137,6 +13175,109 @@
         }
       }
     },
+    "/api/v1/map-tiles/{z}/{x}/{y}": {
+      "get": {
+        "tags": [
+          "Assets"
+        ],
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "A map tile for an interactive map card, fetched by the server.",
+        "description": "The server fetches the tile from the tile server of the instance (MAP_TILE_URL), through the queue and cache of map pictures, so browsers never contact it (decision 0053). 404 when maps are off (Instance.maps.enabled) or the tile server has no such tile; 429 past 600 tiles a minute per person, or when the queue is too long (`Retry-After`).",
+        "parameters": [
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 19
+            },
+            "required": true,
+            "name": "z",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "From 0 to 2^z − 1."
+            },
+            "required": true,
+            "description": "From 0 to 2^z − 1.",
+            "name": "x",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "From 0 to 2^z − 1."
+            },
+            "required": true,
+            "description": "From 0 to 2^z − 1.",
+            "name": "y",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The tile, as the tile server sent it (PNG, JPEG or WebP)",
+            "content": {
+              "image/png": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/search": {
       "get": {
         "tags": [
@@ -16524,6 +16665,116 @@
             "description": "WebP image",
             "content": {
               "image/webp": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No guest session, or it expired (details: GuestDenied)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Link expired, revoked or suspended, password changed, role too low, or a cross-site write (GuestDenied)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found, or not visible to guests of this link (hidden cards included)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/guest/links/{linkId}/map-tiles/{z}/{x}/{y}": {
+      "get": {
+        "tags": [
+          "Guests"
+        ],
+        "security": [
+          {
+            "guest": []
+          }
+        ],
+        "summary": "A map tile for the interactive map cards of the link.",
+        "description": "As GET /map-tiles/{z}/{x}/{y}, for any guest of the link while GuestSession.maps is set; the 600 tiles a minute are counted per guest.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10"
+            },
+            "required": true,
+            "name": "linkId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 19
+            },
+            "required": true,
+            "name": "z",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "From 0 to 2^z − 1."
+            },
+            "required": true,
+            "description": "From 0 to 2^z − 1.",
+            "name": "x",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "From 0 to 2^z − 1."
+            },
+            "required": true,
+            "description": "From 0 to 2^z − 1.",
+            "name": "y",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The tile, as the tile server sent it (PNG, JPEG or WebP)",
+            "content": {
+              "image/png": {
                 "schema": {
                   "type": "string"
                 }

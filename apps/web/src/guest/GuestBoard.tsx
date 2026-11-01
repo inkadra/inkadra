@@ -7,6 +7,7 @@ import type {
   SetPick,
   ShareLinkPreview,
 } from '@inkadra/shared';
+import { API_PREFIX } from '@inkadra/shared/constants';
 import { Logo } from '@inkadra/ui';
 import {
   Fragment,
@@ -463,6 +464,14 @@ export function GuestBoardScreen({
                       onOpenBoard={openBoard}
                       onSelectionChange={onSelectionChange}
                       onOpen={onOpen}
+                      guestMaps={
+                        session.maps
+                          ? {
+                              attribution: session.maps.attribution,
+                              tiles: `${API_PREFIX}/guest/links/${session.linkId}/map-tiles/{z}/{x}/{y}`,
+                            }
+                          : undefined
+                      }
                     />
                   </CardExtrasContext.Provider>
                 </GuestModeContext.Provider>
