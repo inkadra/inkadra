@@ -69,7 +69,7 @@ import {
   worldToScreen,
   zoomAt,
 } from '@inkadra/canvas-core';
-import { type Element, UNSORTED } from '@inkadra/doc-schema';
+import { type Element, TODO_LISTS, UNSORTED } from '@inkadra/doc-schema';
 import { API_PREFIX, type Board, defaultProjectIcon, isMapLink } from '@inkadra/shared';
 import type { Editor } from '@tiptap/react';
 import {
@@ -138,6 +138,7 @@ import { isDesignFile } from './file-kinds.ts';
 import { useBoardAspect } from './film/aspect.ts';
 import { DrawingEditor } from './film/DrawingEditor.tsx';
 import { FramePanel } from './film/FramePanel.tsx';
+import { NeededKind, sceneLabel } from './film/NeededItems.tsx';
 import { StoryCardPanel } from './film/StoryCardPanel.tsx';
 import { createScreenplayStoryboard } from './film/screenplay/new-storyboard.ts';
 import type { ImportPlan } from './film/screenplay/plan.ts';
@@ -497,6 +498,8 @@ export function Canvas({
     fromToolbar?: boolean;
     /** Row and column of the table cell the menu was opened on. */
     cell?: { r: number; c: number };
+    /** The scene picker of a to-do list, opened from its "Scene" item. */
+    scenes?: boolean;
   } | null>(null);
   const [palette, setPalette] = useState(false);
   /** The address field of a new link card, or of a map card (an address or a map link). */
@@ -2633,6 +2636,45 @@ export function Canvas({
     }
     const locked = selectedEls.some((e) => e.locked);
     const single = selectedEls.length === 1 ? selectedEls[0] : undefined;
+    // A to-do list gathers costumes, props or equipment for a scene (#323, decision 0058).
+    const listable = single?.type === 'todo' && !readOnly && !single.locked ? single : undefined;
+    const scenes = storyboardOf([...snap.byId.values()]).flatMap((g) => (g.scene ? [g.scene] : []));
+    if (listable && menu.scenes) {
+      const link = (sceneId: string | undefined) => () =>
+        updateElement(doc, listable.id, { sceneId }, LOCAL);
+      return [
+        { heading: t('board.todo.scene') },
+        { label: t('board.todo.noScene'), checked: !listable.sceneId, action: link(undefined) },
+        ...scenes.map((scene) => ({
+          label: sceneLabel(scene, t),
+          checked: listable.sceneId === scene.id,
+          action: link(scene.id),
+        })),
+      ];
+    }
+    const linked = scenes.find((scene) => scene.id === listable?.sceneId);
+    const listItems: MenuItem[] = listable
+      ? [
+          { heading: t('board.todo.listType') },
+          ...([undefined, ...TODO_LISTS] as const).map((list) => ({
+            label: t(`board.todo.lists.${list ?? 'none'}`),
+            content: list && <NeededKind list={list} />,
+            checked: listable.list === list,
+            action: () => updateElement(doc, listable.id, { list }, LOCAL),
+          })),
+          { divider: true as const },
+          {
+            label: t('board.todo.sceneOf', {
+              scene: linked ? t('needed.sceneNumber', { number: linked.number || '—' }) : '—',
+            }),
+            icon: 'link' as const,
+            disabled: scenes.length === 0,
+            hint: scenes.length === 0 ? t('board.todo.noScenes') : undefined,
+            action: () => setMenu({ ...menu, scenes: true }),
+          },
+          { divider: true as const },
+        ]
+      : [];
     const coverItem = (assetId: string): MenuItem => {
       const isCover = boards?.find((b) => b.id === boardId)?.coverAssetId === assetId;
       return {
@@ -2665,6 +2707,7 @@ export function Canvas({
       ];
     };
     const items: MenuItem[] = [
+      ...listItems,
       ...(single?.type === 'link' && !readOnly && !single.locked
         ? [
             {
@@ -2864,6 +2907,7 @@ export function Canvas({
     summarize,
     dots,
     toggleDots,
+    snap,
   ]);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: sizeVersion invalidates measured heights
@@ -3300,7 +3344,13 @@ export function Canvas({
           />
         )}
         {menu && menuItems.length > 0 && (
-          <ContextMenu x={menu.x} y={menu.y} items={menuItems} onClose={() => setMenu(null)} />
+          <ContextMenu
+            key={menu.scenes ? 'scenes' : 'main'}
+            x={menu.x}
+            y={menu.y}
+            items={menuItems}
+            onClose={() => setMenu(null)}
+          />
         )}
 
         {/* Guests don't see the unsorted tray; members and previews still do. */}

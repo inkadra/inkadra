@@ -20,6 +20,7 @@ import {
   useLayoutEffect,
   useRef,
   useState,
+  useSyncExternalStore,
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import * as Y from 'yjs';
@@ -34,6 +35,7 @@ import { CardExtrasContext, GuestModeContext, useBoard } from './context.ts';
 import { FileCard, RawImageFooter } from './FileCard.tsx';
 import { useBoardAspect } from './film/aspect.ts';
 import { FramePicture } from './film/FramePicture.tsx';
+import { NeededKind, sceneLabel } from './film/NeededItems.tsx';
 import { StoryPicture } from './film/StoryCardPanel.tsx';
 import { useSlugline } from './film/storyboard-data.ts';
 import { GuestVisibility } from './guest-visibility.tsx';
@@ -726,6 +728,7 @@ function TodoCard({
         ) : (
           <span className="card__title">{element.title || t('board.types.todo')}</span>
         )}
+        {element.list && <NeededKind list={element.list} />}
         {element.items.length > 0 && (
           <span className="card__desc">
             {done}/{element.items.length}
@@ -776,6 +779,7 @@ function TodoCard({
           </li>
         ))}
       </ul>
+      {element.sceneId && <TodoScene sceneId={element.sceneId} />}
       {(selected || editing) && !guest && !readOnly && (
         <p className="card__todo-hint">{t('tasks.hint')}</p>
       )}
@@ -797,6 +801,20 @@ function TodoCard({
         />
       )}
     </div>
+  );
+}
+
+/** The scene a to-do list is needed for, read live so a renamed scene shows its new name. */
+function TodoScene({ sceneId }: { sceneId: string }) {
+  const { store } = useBoard();
+  const { t } = useTranslation();
+  const scene = useSyncExternalStore(store.subscribe, () => store.getSnapshot().byId.get(sceneId));
+  if (scene?.type !== 'scene') return null;
+  return (
+    <p className="card__todo-scene">
+      <Icon name="link" size={12} />
+      {sceneLabel(scene, t)}
+    </p>
   );
 }
 

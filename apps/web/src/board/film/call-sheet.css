@@ -207,6 +207,15 @@
 .sheet__table strong {
   font-weight: 600;
 }
+/* "Da portare": an empty box to tick by hand on set (#323). */
+.sheet__box {
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  margin-top: 2px;
+  border: 1px solid var(--ink-text-secondary);
+  border-radius: 2px;
+}
 .sheet__time {
   white-space: nowrap;
   font-variant-numeric: tabular-nums;

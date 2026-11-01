@@ -2,6 +2,8 @@
 import { type FrameElement, formatDuration } from '@inkadra/canvas-core';
 import {
   ShootingDayInput as DaySchema,
+  type Person,
+  type ProjectMember,
   type Schedule,
   type ScheduleBlock,
   type ShootingDay,
@@ -10,6 +12,7 @@ import {
 import { Button, Dialog, DialogActions, EmptyState, Select } from '@inkadra/ui';
 import {
   type CSSProperties,
+  type ReactNode,
   useEffect,
   useId,
   useMemo,
@@ -19,10 +22,12 @@ import {
 import { useTranslation } from 'react-i18next';
 import { api, RequestError } from '../../lib/api.ts';
 import { useIsPhone } from '../../lib/phone.ts';
-import type { BoardStore } from '../store.ts';
+import { type BoardStore, LOCAL } from '../store.ts';
 import { CallSheetModal } from './CallSheetModal.tsx';
 import { plannedWrap } from './call-sheet.ts';
 import { AutoTime, TokenField } from './fields.tsx';
+import { NeededItems } from './NeededItems.tsx';
+import { neededForDay, updateNeededRow } from './needed.ts';
 import { castConflicts, clockLabel, newScheduleBlock, scheduleTimes } from './schedule.ts';
 import { useSlugline, useStoryboard } from './storyboard-data.ts';
 import './film.css';
@@ -96,12 +101,14 @@ function minutesLabel(minutes: number): string {
 }
 
 type Selection = { day: string | null; block: string | null };
+type DayTab = 'plan' | 'needed';
 
 export function ScheduleView({
   store,
   projectName,
   projectId,
   boardId = '',
+  userId,
   readOnly = false,
 }: {
   store: BoardStore;
@@ -129,7 +136,22 @@ export function ScheduleView({
   const [busy, setBusy] = useState(false);
   const [refresh, setRefresh] = useState(0);
   const [notice, setNotice] = useState('');
+  const [tab, setTab] = useState<DayTab>('plan');
+  const [people, setPeople] = useState<Person[]>([]);
   const path = `/boards/${boardId}/schedule`;
+
+  // Who brings what: the project's members, as on the to-do cards.
+  useEffect(() => {
+    if (!projectId) return;
+    let alive = true;
+    api.get<{ items: ProjectMember[] }>(`/projects/${projectId}/members`).then(
+      (r) => alive && setPeople(r.items.map((m) => ({ ...m.user, email: null }))),
+      () => {},
+    );
+    return () => {
+      alive = false;
+    };
+  }, [projectId]);
 
   // Shooting days are saved over the API, not in the live board: they are fetched again when
   // the tab comes back into view and after a conflict, so there is no manual reload.
@@ -333,6 +355,8 @@ export function ScheduleView({
   ].sort((a, b) => a.localeCompare(b));
   const phone = useIsPhone();
   const [sheetOpen, setSheetOpen] = useState(false);
+  const neededOf = (day: ShootingDayInput) => neededForDay(day, snap.byId.values());
+  const neededRows = active ? neededOf(active.draft) : [];
   const inspector = active && (
     <DayInspector
       key={active.day.id}
@@ -347,6 +371,19 @@ export function ScheduleView({
       castSuggestions={castSuggestions}
       readOnly={readOnly}
       busy={busy}
+      tab={tab}
+      onTab={setTab}
+      neededCount={neededRows.length}
+      needed={
+        <NeededItems
+          rows={neededRows}
+          people={people}
+          userId={userId}
+          readOnly={readOnly}
+          phone={phone}
+          onChange={(row, patch) => updateNeededRow(store.doc, row, patch, LOCAL)}
+        />
+      }
       onChange={(draft) => setDraft(active.day, draft)}
       onSelectBlock={(block) => setSelection({ day: active.day.id, block })}
       onSave={() => save(active.day, active.draft)}
@@ -523,6 +560,8 @@ export function ScheduleView({
         <CallSheetModal
           days={days}
           shots={callSheetShots}
+          needed={neededOf}
+          people={people}
           projectName={projectName}
           projectId={projectId}
           initialDayId={active?.day.id}
@@ -698,6 +737,10 @@ function DayInspector({
   castSuggestions,
   readOnly,
   busy,
+  tab,
+  onTab,
+  neededCount,
+  needed,
   onChange,
   onSelectBlock,
   onSave,
@@ -716,6 +759,10 @@ function DayInspector({
   castSuggestions: string[];
   readOnly: boolean;
   busy: boolean;
+  tab: DayTab;
+  onTab: (tab: DayTab) => void;
+  neededCount: number;
+  needed: ReactNode;
   onChange: (draft: ShootingDayInput) => void;
   onSelectBlock: (block: string | null) => void;
   onSave: () => Promise<void>;
@@ -762,219 +809,277 @@ function DayInspector({
           {t('schedule.summary', { count: draft.blocks.length, planned: minutesLabel(planned) })}
         </p>
       </header>
-      {stale && !readOnly && (
-        <div role="alert" className="schedule__stale">
-          <p>{t('schedule.staleBody')}</p>
-          <div className="schedule__actions">
-            <Button disabled={busy} onClick={onReload}>
-              {t('schedule.staleReload')}
-            </Button>
-            <Button variant="primary" disabled={busy} onClick={onKeep}>
-              {t('schedule.staleKeep')}
-            </Button>
-          </div>
-        </div>
-      )}
-      <fieldset disabled={disabled}>
-        <legend className="ink-sr-only">{t('schedule.day', { date: draft.date })}</legend>
-        <div className="schedule__fields">
-          <label>
-            {t('schedule.date')}
-            <input
-              className="ink-input"
-              type="date"
-              required
-              value={draft.date}
-              onChange={(e) => update({ date: e.target.value })}
-            />
-          </label>
-          <label>
-            {t('schedule.callTime')}
-            <input
-              className="ink-input"
-              type="time"
-              required
-              value={draft.callTime}
-              onChange={(e) => update({ callTime: e.target.value })}
-            />
-          </label>
-          <label htmlFor={`${idBase}-wrap`}>
-            {t('schedule.wrap')}
-            <AutoTime
-              id={`${idBase}-wrap`}
-              value={draft.wrap}
-              computed={wrapAuto === null ? null : clockLabel(wrapAuto)}
-              autoLabel={t('schedule.auto')}
-              onChange={(wrap) => update({ wrap })}
-            />
-          </label>
-        </div>
-        {/* The first line names the place; the next lines the address and how to get in. */}
-        <div className="schedule__wide">
-          <label htmlFor={`${idBase}-location`}>{t('schedule.location')}</label>
-          <textarea
-            id={`${idBase}-location`}
-            className="ink-input"
-            rows={3}
-            maxLength={1000}
-            value={draft.location}
-            onChange={(e) => update({ location: e.target.value })}
-          />
-        </div>
-        {/* Labels beside, not around, the text areas: their name stays the label alone. */}
-        <div className="schedule__wide">
-          <label htmlFor={`${idBase}-notes`}>{t('schedule.notes')}</label>
-          <textarea
-            id={`${idBase}-notes`}
-            className="ink-input"
-            rows={3}
-            maxLength={10000}
-            value={draft.notes}
-            onChange={(e) => update({ notes: e.target.value })}
-          />
-        </div>
-        <h3 className="story__sidebar-title">{t('schedule.block')}</h3>
-        {block ? (
-          <div className="schedule__block-editor" key={block.id}>
-            {block.shotId && <p className="schedule__block-shot">{shotTitle(block.shotId)}</p>}
-            <div className="schedule__fields">
-              {/* biome-ignore lint/a11y/noLabelWithoutControl: Select renders a labelable button. */}
-              <label>
-                {t('schedule.type')}
-                <Select
-                  className="ink-input"
-                  value={block.type}
-                  onChange={(e) => blockUpdate(block.id, { type: e as ScheduleBlock['type'] })}
-                >
-                  {(['setup', 'shot', 'break', 'move', 'note'] as const).map((type) => (
-                    <option key={type} value={type}>
-                      {t(`schedule.types.${type}`)}
-                    </option>
-                  ))}
-                </Select>
-              </label>
-              <label>
-                {t('schedule.title')}
-                <input
-                  className="ink-input"
-                  maxLength={500}
-                  value={block.title}
-                  onChange={(e) => blockUpdate(block.id, { title: e.target.value })}
-                />
-              </label>
-              <label htmlFor={`${idBase}-start`}>
-                {t('schedule.start')}
-                <AutoTime
-                  key={block.id}
-                  id={`${idBase}-start`}
-                  value={block.start}
-                  computed={slot ? clockLabel(slot.start) : null}
-                  autoLabel={t('schedule.auto')}
-                  onChange={(start) => blockUpdate(block.id, { start })}
-                />
-              </label>
-              <label>
-                {t('schedule.duration')}
-                <input
-                  className="ink-input"
-                  type="number"
-                  min={1}
-                  max={1440}
-                  value={block.duration}
-                  onChange={(e) => blockUpdate(block.id, { duration: Number(e.target.value) })}
-                />
-              </label>
-            </div>
-            <label htmlFor={`${idBase}-cast`}>
-              {t('schedule.cast')}
-              <TokenField
-                id={`${idBase}-cast`}
-                values={block.cast}
-                suggestions={castSuggestions}
-                placeholder={t('schedule.castPlaceholder')}
-                disabled={disabled}
-                removeLabel={(name) => t('schedule.removeToken', { name })}
-                onChange={(cast) => blockUpdate(block.id, { cast })}
-              />
-            </label>
-            <label htmlFor={`${idBase}-departments`}>
-              {t('schedule.departments')}
-              <TokenField
-                id={`${idBase}-departments`}
-                values={block.departments}
-                placeholder={t('schedule.departmentsPlaceholder')}
-                disabled={disabled}
-                removeLabel={(name) => t('schedule.removeToken', { name })}
-                onChange={(departments) => blockUpdate(block.id, { departments })}
-              />
-            </label>
-            {conflicts.has(block.id) && (
-              <p role="status" className="schedule__error">
-                {t('schedule.castConflict')}
-              </p>
+      <div className="schedule__tabs" role="tablist" aria-label={t('schedule.inspector')}>
+        {(['plan', 'needed'] as const).map((value) => (
+          <button
+            key={value}
+            id={`${idBase}-tab-${value}`}
+            type="button"
+            role="tab"
+            className="schedule__tab"
+            aria-selected={tab === value}
+            aria-controls={`${idBase}-panel`}
+            tabIndex={tab === value ? 0 : -1}
+            onClick={() => onTab(value)}
+            onKeyDown={(event) => {
+              if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+              event.preventDefault();
+              const next = value === 'plan' ? 'needed' : 'plan';
+              onTab(next);
+              document.getElementById(`${idBase}-tab-${next}`)?.focus();
+            }}
+          >
+            {t(value === 'plan' ? 'callSheet.schedule' : 'needed.title')}
+            {value === 'needed' && neededCount > 0 && (
+              <span className="schedule__tab-count">{neededCount}</span>
             )}
-            {!readOnly && (
-              <div className="schedule__actions schedule__actions--block">
-                <Button disabled={blockIndex === 0} onClick={() => move(-1)}>
-                  {t('schedule.up')}
-                </Button>
-                <Button disabled={blockIndex === draft.blocks.length - 1} onClick={() => move(1)}>
-                  {t('schedule.down')}
-                </Button>
-                <span className="ink-header__spacer" />
-                <Button
-                  variant="ghost"
-                  className="schedule__remove"
-                  onClick={() => {
-                    // An empty block carries nothing to lose: drop it without asking.
-                    if (block.title.trim() || block.shotId) {
-                      setPendingDelete({ kind: 'block', id: block.id });
-                    } else {
-                      removeBlock(block.id);
-                    }
-                  }}
-                >
-                  {t('schedule.removeBlock')}
-                </Button>
+          </button>
+        ))}
+      </div>
+      <div
+        role="tabpanel"
+        id={`${idBase}-panel`}
+        aria-labelledby={`${idBase}-tab-${tab}`}
+        className="schedule__panel"
+      >
+        {tab === 'needed' ? (
+          needed
+        ) : (
+          <>
+            {stale && !readOnly && (
+              <div role="alert" className="schedule__stale">
+                <p>{t('schedule.staleBody')}</p>
+                <div className="schedule__actions">
+                  <Button disabled={busy} onClick={onReload}>
+                    {t('schedule.staleReload')}
+                  </Button>
+                  <Button variant="primary" disabled={busy} onClick={onKeep}>
+                    {t('schedule.staleKeep')}
+                  </Button>
+                </div>
               </div>
             )}
-          </div>
-        ) : (
-          <p className="schedule__hint">
-            {t(draft.blocks.length ? 'schedule.blockHint' : 'schedule.noBlocks')}
-          </p>
+            <fieldset disabled={disabled}>
+              <legend className="ink-sr-only">{t('schedule.day', { date: draft.date })}</legend>
+              <div className="schedule__fields">
+                <label>
+                  {t('schedule.date')}
+                  <input
+                    className="ink-input"
+                    type="date"
+                    required
+                    value={draft.date}
+                    onChange={(e) => update({ date: e.target.value })}
+                  />
+                </label>
+                <label>
+                  {t('schedule.callTime')}
+                  <input
+                    className="ink-input"
+                    type="time"
+                    required
+                    value={draft.callTime}
+                    onChange={(e) => update({ callTime: e.target.value })}
+                  />
+                </label>
+                <label htmlFor={`${idBase}-wrap`}>
+                  {t('schedule.wrap')}
+                  <AutoTime
+                    id={`${idBase}-wrap`}
+                    value={draft.wrap}
+                    computed={wrapAuto === null ? null : clockLabel(wrapAuto)}
+                    autoLabel={t('schedule.auto')}
+                    onChange={(wrap) => update({ wrap })}
+                  />
+                </label>
+              </div>
+              {/* The first line names the place; the next lines the address and how to get in. */}
+              <div className="schedule__wide">
+                <label htmlFor={`${idBase}-location`}>{t('schedule.location')}</label>
+                <textarea
+                  id={`${idBase}-location`}
+                  className="ink-input"
+                  rows={3}
+                  maxLength={1000}
+                  value={draft.location}
+                  onChange={(e) => update({ location: e.target.value })}
+                />
+              </div>
+              {/* Labels beside, not around, the text areas: their name stays the label alone. */}
+              <div className="schedule__wide">
+                <label htmlFor={`${idBase}-notes`}>{t('schedule.notes')}</label>
+                <textarea
+                  id={`${idBase}-notes`}
+                  className="ink-input"
+                  rows={3}
+                  maxLength={10000}
+                  value={draft.notes}
+                  onChange={(e) => update({ notes: e.target.value })}
+                />
+              </div>
+              <h3 className="story__sidebar-title">{t('schedule.block')}</h3>
+              {block ? (
+                <div className="schedule__block-editor" key={block.id}>
+                  {block.shotId && (
+                    <p className="schedule__block-shot">{shotTitle(block.shotId)}</p>
+                  )}
+                  <div className="schedule__fields">
+                    {/* biome-ignore lint/a11y/noLabelWithoutControl: Select renders a labelable button. */}
+                    <label>
+                      {t('schedule.type')}
+                      <Select
+                        className="ink-input"
+                        value={block.type}
+                        onChange={(e) =>
+                          blockUpdate(block.id, { type: e as ScheduleBlock['type'] })
+                        }
+                      >
+                        {(['setup', 'shot', 'break', 'move', 'note'] as const).map((type) => (
+                          <option key={type} value={type}>
+                            {t(`schedule.types.${type}`)}
+                          </option>
+                        ))}
+                      </Select>
+                    </label>
+                    <label>
+                      {t('schedule.title')}
+                      <input
+                        className="ink-input"
+                        maxLength={500}
+                        value={block.title}
+                        onChange={(e) => blockUpdate(block.id, { title: e.target.value })}
+                      />
+                    </label>
+                    <label htmlFor={`${idBase}-start`}>
+                      {t('schedule.start')}
+                      <AutoTime
+                        key={block.id}
+                        id={`${idBase}-start`}
+                        value={block.start}
+                        computed={slot ? clockLabel(slot.start) : null}
+                        autoLabel={t('schedule.auto')}
+                        onChange={(start) => blockUpdate(block.id, { start })}
+                      />
+                    </label>
+                    <label>
+                      {t('schedule.duration')}
+                      <input
+                        className="ink-input"
+                        type="number"
+                        min={1}
+                        max={1440}
+                        value={block.duration}
+                        onChange={(e) =>
+                          blockUpdate(block.id, { duration: Number(e.target.value) })
+                        }
+                      />
+                    </label>
+                  </div>
+                  <label htmlFor={`${idBase}-cast`}>
+                    {t('schedule.cast')}
+                    <TokenField
+                      id={`${idBase}-cast`}
+                      values={block.cast}
+                      suggestions={castSuggestions}
+                      placeholder={t('schedule.castPlaceholder')}
+                      disabled={disabled}
+                      removeLabel={(name) => t('schedule.removeToken', { name })}
+                      onChange={(cast) => blockUpdate(block.id, { cast })}
+                    />
+                  </label>
+                  <label htmlFor={`${idBase}-departments`}>
+                    {t('schedule.departments')}
+                    <TokenField
+                      id={`${idBase}-departments`}
+                      values={block.departments}
+                      placeholder={t('schedule.departmentsPlaceholder')}
+                      disabled={disabled}
+                      removeLabel={(name) => t('schedule.removeToken', { name })}
+                      onChange={(departments) => blockUpdate(block.id, { departments })}
+                    />
+                  </label>
+                  {conflicts.has(block.id) && (
+                    <p role="status" className="schedule__error">
+                      {t('schedule.castConflict')}
+                    </p>
+                  )}
+                  {!readOnly && (
+                    <div className="schedule__actions schedule__actions--block">
+                      <Button disabled={blockIndex === 0} onClick={() => move(-1)}>
+                        {t('schedule.up')}
+                      </Button>
+                      <Button
+                        disabled={blockIndex === draft.blocks.length - 1}
+                        onClick={() => move(1)}
+                      >
+                        {t('schedule.down')}
+                      </Button>
+                      <span className="ink-header__spacer" />
+                      <Button
+                        variant="ghost"
+                        className="schedule__remove"
+                        onClick={() => {
+                          // An empty block carries nothing to lose: drop it without asking.
+                          if (block.title.trim() || block.shotId) {
+                            setPendingDelete({ kind: 'block', id: block.id });
+                          } else {
+                            removeBlock(block.id);
+                          }
+                        }}
+                      >
+                        {t('schedule.removeBlock')}
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <p className="schedule__hint">
+                  {t(draft.blocks.length ? 'schedule.blockHint' : 'schedule.noBlocks')}
+                </p>
+              )}
+              {!readOnly && (
+                <div className="schedule__actions">
+                  <Button
+                    icon="plus"
+                    onClick={() => {
+                      const next = newScheduleBlock('setup');
+                      update({ blocks: [...draft.blocks, next] });
+                      onSelectBlock(next.id);
+                    }}
+                  >
+                    {t('schedule.addBlock')}
+                  </Button>
+                </div>
+              )}
+              {!readOnly && (
+                <div className="schedule__save">
+                  <Button
+                    variant="primary"
+                    block
+                    disabled={!valid || stale}
+                    onClick={() => onSave()}
+                  >
+                    {t('schedule.save')}
+                  </Button>
+                  {dirty && <span className="schedule__hint">{t('schedule.unsaved')}</span>}
+                </div>
+              )}
+              {/* Away from the everyday actions, and confirmed in a dialog. */}
+              {!readOnly && (
+                <div className="schedule__danger">
+                  <Button
+                    variant="danger"
+                    icon="trash"
+                    onClick={() => setPendingDelete({ kind: 'day' })}
+                  >
+                    {t('schedule.deleteDay')}
+                  </Button>
+                </div>
+              )}
+            </fieldset>
+          </>
         )}
-        {!readOnly && (
-          <div className="schedule__actions">
-            <Button
-              icon="plus"
-              onClick={() => {
-                const next = newScheduleBlock('setup');
-                update({ blocks: [...draft.blocks, next] });
-                onSelectBlock(next.id);
-              }}
-            >
-              {t('schedule.addBlock')}
-            </Button>
-          </div>
-        )}
-        {!readOnly && (
-          <div className="schedule__save">
-            <Button variant="primary" block disabled={!valid || stale} onClick={() => onSave()}>
-              {t('schedule.save')}
-            </Button>
-            {dirty && <span className="schedule__hint">{t('schedule.unsaved')}</span>}
-          </div>
-        )}
-        {/* Away from the everyday actions, and confirmed in a dialog. */}
-        {!readOnly && (
-          <div className="schedule__danger">
-            <Button variant="danger" icon="trash" onClick={() => setPendingDelete({ kind: 'day' })}>
-              {t('schedule.deleteDay')}
-            </Button>
-          </div>
-        )}
-      </fieldset>
+      </div>
       {/* Outside the fieldset: a disabled fieldset would also disable the dialog buttons. */}
       <Dialog
         open={pendingDelete !== null}
