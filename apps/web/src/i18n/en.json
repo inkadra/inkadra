@@ -371,7 +371,9 @@
       "pages_one": "{{count}} page",
       "pages_other": "{{count}} pages",
       "preparing": "Preparing preview",
-      "play": "Play {{name}}"
+      "play": "Play {{name}}",
+      "pause": "Pause {{name}}",
+      "seek": "Position in {{name}}"
     },
     "todo": {
       "title": "List title",

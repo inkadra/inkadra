@@ -283,7 +283,7 @@ describe('file card family', () => {
     expect(html).toContain('DNxHD · 6K');
   });
 
-  it('plays audio with the native control', () => {
+  it('plays audio with the themed mini player', () => {
     const html = ready(
       {
         kind: 'audio',
@@ -293,8 +293,10 @@ describe('file card family', () => {
       },
       'audio',
     );
-    expect(html).toContain('<audio class="fcard__audio" src="/api/v1/assets/asset-id/file"');
-    expect(html).toContain('controls');
+    expect(html).toContain('class="fcard__player"');
+    expect(html).toMatch(/<audio src="\/api\/v1\/assets\/asset-id\/file" preload="metadata" hidden/);
+    expect(html).not.toContain('controls');
+    expect(html).toContain('0:00 / 1:32');
     expect(html).toContain('<span class="fbadge fbadge--audio">M4A</span>');
     expect(html).toContain('1:32');
   });

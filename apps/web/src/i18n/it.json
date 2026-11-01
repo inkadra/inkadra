@@ -371,7 +371,9 @@
       "pages_one": "{{count}} pagina",
       "pages_other": "{{count}} pagine",
       "preparing": "Preparo l’anteprima",
-      "play": "Riproduci {{name}}"
+      "play": "Riproduci {{name}}",
+      "pause": "Metti in pausa {{name}}",
+      "seek": "Posizione in {{name}}"
     },
     "todo": {
       "title": "Titolo della lista",

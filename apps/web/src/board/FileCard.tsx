@@ -6,6 +6,7 @@ import { Icon } from '@inkadra/ui';
 import type { CSSProperties, ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { pickVariant, useAsset } from './assets.ts';
+import { AudioPlayer } from './AudioPlayer.tsx';
 import { CardCaption } from './CardCaption.tsx';
 import { useBoard } from './context.ts';
 import {
@@ -307,30 +308,16 @@ function VideoPreview({
   );
 }
 
-/** Audio is not processed by the worker yet (#327): a native player over a quiet panel. */
-function AudioPreview({
-  asset,
-  state,
-}: {
-  asset: Asset;
-  state: 'ready' | 'processing' | 'failed';
-}) {
-  const { t } = useTranslation();
+/** Audio is not processed by the worker yet (#327): a flat bar where the waveform will be. */
+function AudioPreview({ asset, state }: { asset: Asset; state: 'ready' | 'processing' | 'failed' }) {
   return (
     <Preview family="audio" className="fcard__preview--audio">
-      <span className="fcard__audio-icon" aria-hidden="true">
-        <Icon name="volume" size={22} />
-      </span>
-      {state !== 'failed' && (
-        // biome-ignore lint/a11y/useMediaCaption: people's own recordings have no captions
-        <audio
-          className="fcard__audio"
-          src={asset.url}
-          controls
-          preload="none"
-          data-no-drag
-          aria-label={t('board.file.play', { name: asset.filename })}
-        />
+      {state === 'failed' ? (
+        <span className="fcard__audio-icon" aria-hidden="true">
+          <Icon name="volume" size={22} />
+        </span>
+      ) : (
+        <AudioPlayer src={asset.url} name={asset.filename} durationMs={asset.durationMs} />
       )}
     </Preview>
   );

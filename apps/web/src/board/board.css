@@ -359,11 +359,7 @@
 }
 .fcard__preview--audio {
   min-height: 120px;
-  grid-template-rows: 1fr auto;
-  gap: 8px;
-  padding: 12px 10px 10px;
-  box-sizing: border-box;
-  background: color-mix(in srgb, var(--ink-tag-green) 7%, var(--ink-surface-2));
+  background: color-mix(in srgb, var(--ink-tag-green) 6%, var(--ink-surface-2));
 }
 .fcard__preview--video {
   background: #111113;
@@ -588,9 +584,75 @@
   background: var(--ink-tag-green-bg);
   color: var(--ink-tag-green);
 }
-.fcard__audio {
-  width: 100%;
-  height: 32px;
+/* Audio mini player: round play, a flat bar to scrub (waveform with #327), time chip. */
+.fcard__player {
+  position: absolute;
+  inset: 0;
+}
+.fcard__scrub {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  top: calc(50% - 16px);
+  height: 24px;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  touch-action: none;
+  border-radius: var(--ink-radius-xs);
+}
+.fcard__scrub:focus-visible {
+  outline: 2px solid var(--ink-accent-primary);
+  outline-offset: 2px;
+}
+.fcard__scrub-track {
+  position: relative;
+  flex: 1;
+  height: 4px;
+  border-radius: var(--ink-radius-full);
+  background: color-mix(in srgb, var(--ink-tag-green) 22%, transparent);
+}
+.fcard__scrub-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  border-radius: var(--ink-radius-full);
+  background: var(--ink-tag-green);
+  opacity: 0.85;
+}
+.fcard__scrub-knob {
+  position: absolute;
+  top: 50%;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--ink-tag-green);
+  transform: translate(-50%, -50%) scale(0);
+  transition: transform var(--ink-dur-fast) var(--ink-ease-out);
+}
+.fcard__player.is-playing .fcard__scrub-knob,
+.fcard__scrub:hover .fcard__scrub-knob,
+.fcard__scrub:focus-visible .fcard__scrub-knob {
+  transform: translate(-50%, -50%) scale(1);
+}
+button.fcard__audio-play {
+  left: 10px;
+  top: auto;
+  bottom: 8px;
+  width: 28px;
+  height: 28px;
+  transform: none;
+  background: rgb(0 0 0 / 0.62);
+  transition: background-color var(--ink-dur-fast) var(--ink-ease-out);
+}
+button.fcard__audio-play:hover {
+  background: rgb(0 0 0 / 0.8);
+}
+button.fcard__audio-play:focus-visible {
+  outline: 2px solid var(--ink-accent-primary);
+  outline-offset: 2px;
+}
+.fcard__audio-play svg {
+  fill: currentColor;
 }
 @media (prefers-reduced-motion: reduce) {
   .fcard__bar i.is-indeterminate,
