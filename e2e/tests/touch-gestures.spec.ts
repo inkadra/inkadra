@@ -36,6 +36,12 @@ async function boardWithNote(page: Page, baseURL: string) {
     },
   );
   expect(auth.ok()).toBe(true);
+  // These tests measure exact pans on a one-note board: no bounds around its content (#324).
+  const prefs = await page.request.patch('/api/v1/me/preferences', {
+    headers: { origin: baseURL },
+    data: { keepAroundContent: false },
+  });
+  expect(prefs.ok()).toBe(true);
   const response = await page.request.post('/api/v1/projects', {
     headers: { origin: baseURL },
     data: { name: `Touch ${Date.now()}` },

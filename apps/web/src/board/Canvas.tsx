@@ -9,6 +9,7 @@ import {
   arrowEnds,
   arrowGeometry,
   boundsOf,
+  boundViewport,
   bringToFront,
   centerOn,
   clampZoom,
@@ -25,10 +26,12 @@ import {
   frameLabels,
   GRID,
   type Guide,
+  gestureArea,
   inflate,
   intersects,
   isContainer,
   listElements,
+  minZoomFor,
   moveArrows,
   moveIntoParent,
   moveToCanvas,
@@ -36,6 +39,7 @@ import {
   newTable,
   nextZoomStep,
   type Point,
+  panArea,
   pasteElements,
   pinchViewport,
   type Rect,
@@ -87,6 +91,7 @@ import { useSearchParams } from 'react-router';
 import * as Y from 'yjs';
 import { addActions, type PaletteAction, useRegisterActions } from '../commands/actions.ts';
 import { canvasActions, duplicateInStore } from '../commands/board-actions.ts';
+import { getPreferences, updatePreferences, usePreferences } from '../lib/preferences.ts';
 import { useSession } from '../lib/session.tsx';
 import { ProjectAppearanceDialog } from '../routes/ProjectAppearance.tsx';
 import { setupBoards } from '../routes/project-setup.ts';
@@ -97,7 +102,7 @@ import { ArrowLayer, ArrowStyleButtons, onArrowStyleButton } from './arrows.tsx'
 import { getCachedAsset } from './assets.ts';
 import { canRenameBoard, createBoard, setBoardCover, setBoardIcon } from './boards.ts';
 import { ColorPicker } from './ColorPicker.tsx';
-import { loadSnapToGrid, loadTidyGap, saveSnapToGrid, saveTidyGap } from './canvas-prefs.ts';
+import { loadBoardGrid, loadTidyGap, saveBoardGrid, saveTidyGap } from './canvas-prefs.ts';
 import {
   type CanvasTemplate,
   createCanvasBoards,
@@ -111,6 +116,7 @@ import {
   CommandPalette,
   ContextBar,
   ContextMenu,
+  HistoryControls,
   type MenuItem,
   Minimap,
   TOOL_MIME,
@@ -217,6 +223,67 @@ function Dots({ viewport }: { viewport: Viewport }) {
     />
   );
 }
+/** Pull past the edge, in screen pixels, at which its glow is fully shown (#324). */
+const PULL_FULL = 48;
+/** Time a view pulled past the edge takes to come back, as --ink-dur-slow. */
+const SPRING_BACK_MS = 260;
+/** A wheel or trackpad scroll this long without events has ended. */
+const SPRING_IDLE_MS = 140;
+/** Dots fade over this much of the area's edge. */
+const EDGE_FADE = 64;
+
+/** The part of the canvas beside the floating panels (#333). */
+const freeSize = (size: { w: number; h: number }, inset: { left: number; top: number }) => ({
+  w: size.w - inset.left,
+  h: size.h - inset.top,
+});
+
+const reducedMotion = () =>
+  typeof window !== 'undefined' &&
+  (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false);
+
+/**
+ * The edge of a bounded board (#324): past it the canvas background covers the dots, which
+ * fade out over the last stretch. Four panels moved with transforms, like the dots.
+ */
+function AreaEdges({
+  area,
+  viewport,
+  width,
+  height,
+}: {
+  area: Rect;
+  viewport: Viewport;
+  width: number;
+  height: number;
+}) {
+  const a = worldToScreen(viewport, { x: area.x, y: area.y });
+  const b = worldToScreen(viewport, { x: area.x + area.w, y: area.y + area.h });
+  // Kept near the screen, so panels far away do not carry huge transforms.
+  const near = (value: number, size: number) =>
+    Math.round(Math.min(size + EDGE_FADE, Math.max(-EDGE_FADE, value)));
+  return (
+    <div className="canvas__edges" aria-hidden="true">
+      <div
+        className="canvas__edge canvas__edge--left"
+        style={{ transform: `translateX(calc(${near(a.x, width) + EDGE_FADE}px - 100%))` }}
+      />
+      <div
+        className="canvas__edge canvas__edge--right"
+        style={{ transform: `translateX(${near(b.x, width) - EDGE_FADE}px)` }}
+      />
+      <div
+        className="canvas__edge canvas__edge--top"
+        style={{ transform: `translateY(calc(${near(a.y, height) + EDGE_FADE}px - 100%))` }}
+      />
+      <div
+        className="canvas__edge canvas__edge--bottom"
+        style={{ transform: `translateY(${near(b.y, height) - EDGE_FADE}px)` }}
+      />
+    </div>
+  );
+}
+
 /** How long after the first fit measured heights may still fit the board again. */
 const REFIT_MS = 2000;
 
@@ -224,7 +291,7 @@ const REFIT_MS = 2000;
 const SETTLE_MS = 160;
 
 type Gesture =
-  | { kind: 'pan'; last: Point }
+  | { kind: 'pan'; last: Point; raw: Viewport }
   | {
       kind: 'move';
       start: Point;
@@ -386,16 +453,22 @@ export function Canvas({
   const [editing, setEditingState] = useState<string | null>(null);
   const [cropping, setCropping] = useState<string | null>(null);
   const [tool, setTool] = useState<CanvasTool>('select');
-  /** Snap to grid (#296): this person's choice on this device, off by default. */
-  const [magnet, setMagnetState] = useState(() => loadSnapToGrid(userId));
+  const prefs = usePreferences();
+  /** Snap to grid (#296): this person's preference (#302), so the magnet follows them. */
+  const magnet = prefs.snapToGrid;
   const magnetRef = useRef(magnet);
   magnetRef.current = magnet;
   const toggleMagnet = useCallback(() => {
-    const next = !magnetRef.current;
-    magnetRef.current = next;
-    setMagnetState(next);
-    saveSnapToGrid(userId, next);
-  }, [userId]);
+    magnetRef.current = !magnetRef.current;
+    void updatePreferences({ snapToGrid: magnetRef.current }).catch(() => {});
+  }, []);
+  /** The dot grid: this board's choice from the canvas menu, else the preference (#302). */
+  const [boardGrid, setBoardGrid] = useState(() => loadBoardGrid(userId, boardId));
+  const dots = boardGrid ?? prefs.dotGrid;
+  const toggleDots = useCallback(() => {
+    saveBoardGrid(userId, boardId, !dots);
+    setBoardGrid(!dots);
+  }, [userId, boardId, dots]);
   /** Where a new card lands: on the grid while the magnet is on. */
   const place = useCallback((p: Point): Point => (magnetRef.current ? snapPoint(p, GRID) : p), []);
   /** Frame whose details panel is open, frame being drawn, image or video in the viewer. */
@@ -482,6 +555,113 @@ export function Canvas({
       );
     },
     [boardId, preview],
+  );
+
+  // Bounded canvas (#324) -------------------------------------------------------
+  /** The board stays around its content: this person's preference, in every view of a board. */
+  const bounded = prefs.keepAroundContent && !preview;
+  const boundedRef = useRef(bounded);
+  boundedRef.current = bounded;
+  const sizeRef = useRef(size);
+  sizeRef.current = size;
+  /** Bounding box of the cards, which arrows run between; the area grows and shrinks with it. */
+  // biome-ignore lint/correctness/useExhaustiveDependencies: sizeVersion invalidates measured heights
+  const content = useMemo(
+    () => boundsOf(snap.canvas.filter((e) => e.type !== 'arrow').map((e) => store.rectOf(e))),
+    [snap, store, sizeVersion],
+  );
+  const contentRef = useRef(content);
+  contentRef.current = content;
+  /** Area of the pan or zoom in progress: the board's, widened to where the view was. */
+  const viewArea = useRef<Rect | null>(null);
+  /**
+   * What the floating panels cover (#333), measured when a gesture starts: the bounds keep the
+   * cards in the free part of the canvas, never parked under the panels.
+   */
+  const freeInset = useRef({ left: 0, top: 0 });
+  // biome-ignore lint/correctness/useExhaustiveDependencies: the panels are measured as the canvas resizes
+  useLayoutEffect(() => {
+    if (rootRef.current) freeInset.current = chromeInsets(rootRef.current);
+  }, [size]);
+  /** A pointer or two fingers are panning: the view springs back once they lift. */
+  const holding = useRef(false);
+  const settleFrame = useRef<number | undefined>(undefined);
+  const idleTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  /** The glow at the edges pulled past, set without rendering (opacity only). */
+  const glowRef = useRef<HTMLDivElement>(null);
+  const shownPull = useRef({ x: 0, y: 0 });
+  const showPull = useCallback((pull: Point) => {
+    const style = glowRef.current?.style;
+    const last = shownPull.current;
+    if (!style || (last.x === pull.x && last.y === pull.y)) return;
+    shownPull.current = pull;
+    const shown = (value: number) => String(Math.min(1, Math.max(0, value) / PULL_FULL));
+    style.setProperty('--pull-left', shown(-pull.x));
+    style.setProperty('--pull-right', shown(pull.x));
+    style.setProperty('--pull-top', shown(-pull.y));
+    style.setProperty('--pull-bottom', shown(pull.y));
+  }, []);
+  /** Eases a view pulled past the edge back inside, then forgets the gesture's area. */
+  const settle = useCallback(() => {
+    clearTimeout(idleTimer.current);
+    const area = viewArea.current;
+    viewArea.current = null;
+    const inset = freeInset.current;
+    const { w, h } = freeSize(sizeRef.current, inset);
+    if (!area || w <= 0 || h <= 0) return;
+    const from = vp.current;
+    const inside = boundViewport(shiftViewport(from, inset, 1), area, w, h, false).viewport;
+    const to = shiftViewport(inside, inset, -1);
+    const pull = { x: (from.x - to.x) * to.zoom, y: (from.y - to.y) * to.zoom };
+    if (pull.x === 0 && pull.y === 0) return showPull(pull);
+    const start = performance.now();
+    const step = (now: number) => {
+      const t = reducedMotion() ? 1 : Math.min(1, (now - start) / SPRING_BACK_MS);
+      // Ease-out, as --ink-ease-out.
+      const k = 1 - (1 - t) ** 3;
+      setViewport({
+        zoom: to.zoom,
+        x: from.x + (to.x - from.x) * k,
+        y: from.y + (to.y - from.y) * k,
+      });
+      showPull({ x: pull.x * (1 - k), y: pull.y * (1 - k) });
+      settleFrame.current = t < 1 ? requestAnimationFrame(step) : undefined;
+    };
+    settleFrame.current = requestAnimationFrame(step);
+  }, [setViewport, showPull]);
+  /**
+   * The view to draw for one a pan or zoom asks for: inside the area, with a rubber band past
+   * its edge when `elastic` (never with reduced motion). Unchanged on a board that is not
+   * bounded.
+   */
+  const bound = useCallback(
+    (raw: Viewport, elastic: boolean): Viewport => {
+      if (!boundedRef.current || !sizeRef.current.w || !sizeRef.current.h) return raw;
+      if (settleFrame.current !== undefined) cancelAnimationFrame(settleFrame.current);
+      settleFrame.current = undefined;
+      if (!viewArea.current && rootRef.current) freeInset.current = chromeInsets(rootRef.current);
+      const inset = freeInset.current;
+      const { w, h } = freeSize(sizeRef.current, inset);
+      if (w <= 0 || h <= 0) return raw;
+      viewArea.current ??= gestureArea(
+        panArea(contentRef.current, w, h),
+        visibleWorld(shiftViewport(vp.current, inset, 1), w, h),
+      );
+      const bounded = boundViewport(
+        shiftViewport(raw, inset, 1),
+        viewArea.current,
+        w,
+        h,
+        elastic && !reducedMotion(),
+      );
+      const viewport = shiftViewport(bounded.viewport, inset, -1);
+      showPull(bounded.overshoot);
+      // A wheel or a button has no release: the view springs back once it stops.
+      clearTimeout(idleTimer.current);
+      if (!holding.current) idleTimer.current = setTimeout(settle, SPRING_IDLE_MS);
+      return viewport;
+    },
+    [settle, showPull],
   );
 
   const editingRef = useRef<string | null>(null);
@@ -1252,9 +1432,11 @@ export function Canvas({
     (to: 'in' | 'out' | 'reset' | 'fit' | 'selection') => {
       const mid = { x: size.w / 2, y: size.h / 2 };
       if (to === 'in' || to === 'out') {
-        setViewport((v) => zoomAt(v, mid, nextZoomStep(v.zoom, to === 'in' ? 1 : -1)));
+        setViewport((v) =>
+          bound(zoomAt(v, mid, nextZoomStep(v.zoom, to === 'in' ? 1 : -1)), false),
+        );
       } else if (to === 'reset') {
-        setViewport((v) => zoomAt(v, mid, 1));
+        setViewport((v) => bound(zoomAt(v, mid, 1), false));
       } else {
         const els =
           to === 'selection'
@@ -1264,7 +1446,7 @@ export function Canvas({
         if (bounds) setViewport(fitView(bounds, 64, to === 'selection' ? 2 : 1));
       }
     },
-    [size, selection, snap, liveRect, setViewport, fitView],
+    [size, selection, snap, liveRect, setViewport, fitView, bound],
   );
 
   const openElement = useCallback(
@@ -1333,7 +1515,7 @@ export function Canvas({
     const p = pinch.current;
     const a = p && touches.current.get(p.ids[0]);
     const b = p && touches.current.get(p.ids[1]);
-    if (p && a && b) setViewport(pinchViewport(p.viewport, p.from, [a, b]));
+    if (p && a && b) setViewport(bound(pinchViewport(p.viewport, p.from, [a, b]), true));
   }
 
   /**
@@ -1381,6 +1563,7 @@ export function Canvas({
     if (g && g.kind !== 'pan') setSelection(touchSelection.current);
     setMenu(null);
     touchHeld.current = true;
+    holding.current = true;
     pinch.current = pinchPair();
   }
 
@@ -1413,6 +1596,10 @@ export function Canvas({
     }
     const held = touchHeld.current;
     if (touches.current.size === 0) touchHeld.current = false;
+    if (!pinch.current && holding.current) {
+      holding.current = false;
+      settle();
+    }
     if (held && rootRef.current?.hasPointerCapture(e.pointerId)) {
       rootRef.current.releasePointerCapture(e.pointerId);
     }
@@ -1440,7 +1627,8 @@ export function Canvas({
     const pan = e.button === 1 || tool === 'hand' || spaceDown.current;
     if (pan) {
       e.preventDefault();
-      gesture.current = { kind: 'pan', last: p };
+      gesture.current = { kind: 'pan', last: p, raw: vp.current };
+      holding.current = true;
       rootRef.current?.setPointerCapture(e.pointerId);
       return;
     }
@@ -1552,7 +1740,9 @@ export function Canvas({
       const dx = p.x - g.last.x;
       const dy = p.y - g.last.y;
       g.last = p;
-      setViewport({ ...v, x: v.x - dx / v.zoom, y: v.y - dy / v.zoom });
+      // The pointer moves the view it asked for; past the edge the drawn view gives way less.
+      g.raw = { ...g.raw, x: g.raw.x - dx / g.raw.zoom, y: g.raw.y - dy / g.raw.zoom };
+      setViewport(bound(g.raw, true));
       return;
     }
     if (g.kind === 'marquee') {
@@ -1696,6 +1886,10 @@ export function Canvas({
     }
     const o = overlayRef.current;
     setOverlay(NO_OVERLAY);
+    if (g?.kind === 'pan') {
+      holding.current = false;
+      settle();
+    }
     if (!g || (e.type === 'pointercancel' && g.kind === 'resize')) return;
     if (g.kind === 'arrow') {
       const pointer = toWorld(e.clientX, e.clientY);
@@ -1802,7 +1996,7 @@ export function Canvas({
       (e.target as HTMLElement);
     const targetId = canvasElementId(target);
     if (!targetId) {
-      if (target.closest('[data-chrome]') || readOnly) return;
+      if (target.closest('[data-chrome]') || readOnly || !getPreferences().doubleClickNote) return;
       const at = toWorld(e.clientX, e.clientY);
       void add('note', { x: at.x - 20, y: at.y - 20 });
       return;
@@ -1845,6 +2039,9 @@ export function Canvas({
     let applied = 1;
     let anchor = { x: 0, y: 0 };
     let last = 0;
+    /** The view scrolling asked for, while it goes on. */
+    let raw: Viewport | null = null;
+    let rawTimer: ReturnType<typeof setTimeout> | undefined;
     const stop = () => {
       if (frame !== undefined) cancelAnimationFrame(frame);
       frame = undefined;
@@ -1855,9 +2052,10 @@ export function Canvas({
       if (vp.current.zoom !== applied) return;
       const next = easeZoom(vp.current.zoom, target, Math.min(now - last, 50));
       last = now;
-      setViewport(zoomAt(vp.current, anchor, next));
+      setViewport(bound(zoomAt(vp.current, anchor, next), false));
       applied = vp.current.zoom;
-      if (next !== target) frame = requestAnimationFrame(tick);
+      // A bounded board stops at its farthest zoom out (#324).
+      if (next !== target && applied === next) frame = requestAnimationFrame(tick);
     };
     const onWheel = (e: WheelEvent) => {
       if ((e.target as HTMLElement).closest('[data-scroll]')) return;
@@ -1868,9 +2066,10 @@ export function Canvas({
       if (e.ctrlKey || e.metaKey) {
         const { factor, discrete } = wheelZoomFactor(e.deltaY, e.deltaMode);
         const reduced = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+        raw = null;
         if (!discrete || reduced) {
           stop();
-          setViewport(zoomAt(v, point, v.zoom * factor));
+          setViewport(bound(zoomAt(v, point, v.zoom * factor), false));
           return;
         }
         // Notches pile up on the target the view is still easing toward.
@@ -1886,7 +2085,14 @@ export function Canvas({
         stop();
         const dx = e.shiftKey ? e.deltaY : e.deltaX;
         const dy = e.shiftKey ? 0 : e.deltaY;
-        setViewport({ ...v, x: v.x + dx / v.zoom, y: v.y + dy / v.zoom });
+        // Scrolling builds on the view it asked for, so a trackpad pull past the edge resists.
+        const base = raw ?? v;
+        raw = { ...base, x: base.x + dx / base.zoom, y: base.y + dy / base.zoom };
+        setViewport(bound(raw, true));
+        clearTimeout(rawTimer);
+        rawTimer = setTimeout(() => {
+          raw = null;
+        }, SPRING_IDLE_MS);
       }
     };
     // Older Safari zooms the page on a pinch even where touch-action is none; the canvas zooms itself.
@@ -1895,14 +2101,17 @@ export function Canvas({
     el.addEventListener('gesturestart', noPageZoom);
     return () => {
       stop();
+      clearTimeout(rawTimer);
       el.removeEventListener('wheel', onWheel);
       el.removeEventListener('gesturestart', noPageZoom);
     };
-  }, [setViewport]);
+  }, [setViewport, bound]);
 
   useEffect(
     () => () => {
       clearTimeout(settleTimer.current);
+      clearTimeout(idleTimer.current);
+      if (settleFrame.current !== undefined) cancelAnimationFrame(settleFrame.current);
       if (pinchFrame.current !== undefined) cancelAnimationFrame(pinchFrame.current);
     },
     [],
@@ -2401,9 +2610,15 @@ export function Canvas({
   const menuItems = useMemo<MenuItem[]>(() => {
     if (!menu) return [];
     if (selection.size === 0) {
+      const grid: MenuItem = {
+        label: t(dots ? 'board.menu.hideGrid' : 'board.menu.showGrid'),
+        action: toggleDots,
+      };
       return readOnly
-        ? []
+        ? [grid]
         : [
+            grid,
+            { divider: true },
             { label: t('board.menu.newNote'), action: () => void add('note', menu.at) },
             { label: t('board.menu.newColumn'), action: () => void add('column', menu.at) },
             {
@@ -2647,10 +2862,14 @@ export function Canvas({
     userId,
     select,
     summarize,
+    dots,
+    toggleDots,
   ]);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: sizeVersion invalidates measured heights
   const rectOf = useCallback((el: Element) => store.rectOf(el), [store, sizeVersion]);
+  // The free part of the canvas, as the bounds of a board kept around its content use it (#324).
+  const freeArea = freeSize(size, freeInset.current);
   const draggingNested = overlay.ghost ? new Set([overlay.ghost.element.id]) : undefined;
   /** Cards with a selection outline or handles, their own or a nested card's. */
   /** Where a card someone else selected sits on the board; nested cards show their column. */
@@ -2701,7 +2920,23 @@ export function Canvas({
         aria-label={t('board.canvas')}
         role="application"
       >
-        <Dots viewport={viewport} />
+        {dots && <Dots viewport={viewport} />}
+        {bounded && size.w > 0 && (
+          <AreaEdges
+            area={panArea(content, freeArea.w, freeArea.h)}
+            viewport={viewport}
+            width={size.w}
+            height={size.h}
+          />
+        )}
+        {bounded && (
+          <div ref={glowRef} className="canvas__glow" aria-hidden="true">
+            <span className="canvas__glow-left" />
+            <span className="canvas__glow-right" />
+            <span className="canvas__glow-top" />
+            <span className="canvas__glow-bottom" />
+          </div>
+        )}
         <div
           className={
             viewport.zoom < FAR_ZOOM ? 'canvas__world canvas__world--far' : 'canvas__world'
@@ -3082,6 +3317,9 @@ export function Canvas({
           />
         )}
         <div className="canvas__corner" data-chrome>
+          {!readOnly && prefs.undoButtons && (
+            <HistoryControls onUndo={() => store.undo.undo()} onRedo={() => store.undo.redo()} />
+          )}
           <Minimap
             elements={visibleCards}
             rectOf={rectOf}
@@ -3092,6 +3330,12 @@ export function Canvas({
           <ZoomControls
             zoom={viewport.zoom}
             onZoom={zoomTo}
+            zoomOutDisabled={
+              bounded &&
+              size.w > 0 &&
+              viewport.zoom <=
+                minZoomFor(panArea(content, freeArea.w, freeArea.h), freeArea.w, freeArea.h) + 1e-3
+            }
             snap={readOnly ? undefined : { on: magnet, onToggle: toggleMagnet }}
           />
         </div>

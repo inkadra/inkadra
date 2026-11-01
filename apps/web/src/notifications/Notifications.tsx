@@ -1,7 +1,13 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import type { Notification, NotificationPreferences, UnreadCount } from '@inkadra/shared';
-import { Button, Icon, IconButton, Radio, swallowOutsidePress } from '@inkadra/ui';
+import {
+  INBOX_ALWAYS,
+  type Notification,
+  NotificationChannelType,
+  type NotificationPreferences,
+  type UnreadCount,
+} from '@inkadra/shared';
+import { Button, Checkbox, Icon, IconButton, Switch, swallowOutsidePress } from '@inkadra/ui';
 import { type RefObject, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router';
@@ -11,6 +17,7 @@ import { api } from '../lib/api.ts';
 import { signedInId } from '../lib/me.ts';
 import { MyTasks } from '../routes/MyTasks.tsx';
 import { trackSave } from '../routes/settings-save.ts';
+import { Card, Row } from '../routes/settings-ui.tsx';
 import { InboxDetail } from './InboxDetail.tsx';
 import {
   dayLabel,
@@ -711,9 +718,10 @@ export function NotificationList({
 }
 
 /** Settings → Account: how often notifications arrive by email. */
+/** The notification matrix (#302): Inbox and email per event, then what else to send. */
 export function EmailNotifications() {
   const { t } = useTranslation();
-  const [email, setEmail] = useState<NotificationPreferences['email'] | null>(null);
+  const [prefs, setPrefs] = useState<Required<NotificationPreferences> | null>(null);
   const [loadError, setLoadError] = useState(false);
 
   useEffect(() => {
@@ -721,7 +729,8 @@ export function EmailNotifications() {
     api
       .get<NotificationPreferences>('/me/notification-preferences')
       .then((p) => {
-        if (alive) setEmail(p.email);
+        if (alive)
+          setPrefs({ email: p.email, inboxOff: p.inboxOff ?? [], emailOff: p.emailOff ?? [] });
       })
       .catch(() => {
         if (alive) setLoadError(true);
@@ -731,51 +740,103 @@ export function EmailNotifications() {
     };
   }, []);
 
-  async function choose(value: NotificationPreferences['email']) {
-    const previous = email;
-    setEmail(value);
+  async function change(patch: NotificationPreferences | Partial<NotificationPreferences>) {
+    if (!prefs) return;
+    const previous = prefs;
+    setPrefs({ ...prefs, ...patch });
     try {
-      await trackSave(api.patch('/me/notification-preferences', { email: value }));
+      await trackSave(api.patch('/me/notification-preferences', patch));
     } catch {
-      setEmail(previous);
+      setPrefs(previous);
     }
   }
 
+  if (loadError) return <p role="alert">{t('notifications.preferencesError')}</p>;
+  const types = NotificationChannelType.options;
+  const inbox = (type: NotificationChannelType) => !prefs?.inboxOff.includes(type);
+  // "Never" (an older choice) shows every email off; changing one keeps the others off.
+  const emailOff = prefs?.email === 'off' ? [...types] : (prefs?.emailOff ?? []);
+  const fromOff = prefs?.email === 'off' ? { email: 'immediate' as const } : {};
   return (
-    <section className="settings-card" aria-labelledby="email-notifications-title">
-      <header className="settings-card__head">
-        <div className="settings-card__title">
-          <h2 id="email-notifications-title">{t('notifications.emailTitle')}</h2>
-        </div>
-        <p>{t('notifications.emailHint')}</p>
-      </header>
-      <div className="settings-card__pad">
-        {loadError ? (
-          <p role="alert">{t('notifications.preferencesError')}</p>
-        ) : (
-          <div
-            role="radiogroup"
-            aria-label={t('notifications.emailLabel')}
-            className="notification-frequency"
-            aria-disabled={email === null}
+    <>
+      <Card>
+        <table className="notification-matrix" aria-busy={prefs === null}>
+          <thead>
+            <tr>
+              <th scope="col">{t('settingsUi.notifications.when')}</th>
+              <th scope="col">{t('settingsUi.notifications.inbox')}</th>
+              <th scope="col">{t('settingsUi.notifications.email')}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {types.map((type) => {
+              const label = t(`settingsUi.notifications.events.${type}`);
+              const always = INBOX_ALWAYS.includes(type);
+              return (
+                <tr key={type}>
+                  <th scope="row">
+                    {label}
+                    {type === 'review' && <small>{t('settingsUi.notifications.reviewHelp')}</small>}
+                  </th>
+                  <td>
+                    <Checkbox
+                      aria-label={`${label}: ${t('settingsUi.notifications.inbox')}`}
+                      title={always ? t('settingsUi.notifications.always') : undefined}
+                      checked={always || inbox(type)}
+                      disabled={always || prefs === null}
+                      onChange={(e) =>
+                        void change({
+                          inboxOff: e.target.checked
+                            ? (prefs?.inboxOff ?? []).filter((x) => x !== type)
+                            : [...(prefs?.inboxOff ?? []), type],
+                        })
+                      }
+                    />
+                  </td>
+                  <td>
+                    <Checkbox
+                      aria-label={`${label}: ${t('settingsUi.notifications.email')}`}
+                      checked={inbox(type) && !emailOff.includes(type)}
+                      disabled={!inbox(type) || prefs === null}
+                      onChange={(e) =>
+                        void change({
+                          ...fromOff,
+                          emailOff: e.target.checked
+                            ? emailOff.filter((x) => x !== type)
+                            : [...emailOff, type],
+                        })
+                      }
+                    />
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+        <p className="settings-card__pad settings-muted notification-matrix__note">
+          {t('settingsUi.notifications.alwaysNote')}
+        </p>
+      </Card>
+      <Card title={t('settingsUi.notifications.sendMe')}>
+        <div className="settings-rows">
+          <Row
+            label={t('settingsUi.notifications.short.daily')}
+            help={t('settingsUi.notifications.help.daily')}
           >
-            {(['immediate', 'daily', 'off'] as const).map((value) => (
-              <label key={value} className={email === value ? 'is-on' : undefined}>
-                <Radio
-                  name="email-frequency"
-                  value={value}
-                  checked={email === value}
-                  onChange={() => void choose(value)}
-                />
-                <span>
-                  <strong>{t(`settingsUi.notifications.short.${value}`)}</strong>
-                  <span>{t(`settingsUi.notifications.help.${value}`)}</span>
-                </span>
-              </label>
-            ))}
-          </div>
-        )}
-      </div>
-    </section>
+            <Switch
+              aria-label={t('settingsUi.notifications.short.daily')}
+              checked={prefs?.email === 'daily'}
+              disabled={prefs === null}
+              onChange={(e) =>
+                void change({
+                  email: e.target.checked ? 'daily' : 'immediate',
+                  ...(prefs?.email === 'off' ? { emailOff: [...types] } : {}),
+                })
+              }
+            />
+          </Row>
+        </div>
+      </Card>
+    </>
   );
 }

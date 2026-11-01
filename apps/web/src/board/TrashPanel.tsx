@@ -4,6 +4,7 @@ import { Button } from '@inkadra/ui';
 import { type MutableRefObject, useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api } from '../lib/api.ts';
+import { formatDateTime } from '../lib/datetime.ts';
 import type { BoardStore } from './store.ts';
 import { collectTrash, restoreTrashItem, type TrashItem } from './trash.ts';
 
@@ -26,7 +27,7 @@ export function TrashPanel({
   editable: boolean;
   cache?: MutableRefObject<TrashScan | null>;
 }) {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const reload = useRef<HTMLElement>(null);
   const live = useSyncExternalStore(store.subscribe, store.getSnapshot);
   const cached = cache?.current?.boardId === boardId ? cache.current : null;
@@ -116,7 +117,9 @@ export function TrashPanel({
                   t(`board.types.${item.element.type}`)}
               </strong>
               <span>
-                {t('trash.savedAt', { date: new Date(item.savedAt).toLocaleString(i18n.language) })}
+                {t('trash.savedAt', {
+                  date: formatDateTime(item.savedAt, { dateStyle: 'short', timeStyle: 'short' }),
+                })}
               </span>
               <code>{item.element.id}</code>
               {item.element.type === 'board' && <span>{t('trash.boardLinkOnly')}</span>}

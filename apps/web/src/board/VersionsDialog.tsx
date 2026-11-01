@@ -16,6 +16,7 @@ import {
   versionStore,
 } from './versions.ts';
 import './versions.css';
+import { formatDateTime } from '../lib/datetime.ts';
 
 type VersionPage = { items: BoardVersion[]; nextCursor: string | null };
 export type VersionPreview = { version: BoardVersion; store: BoardStore };
@@ -41,7 +42,7 @@ export function VersionsDialog({
   onPreview: (value: VersionPreview | null) => void;
   onRestored: () => void;
 }) {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const tabsId = useId();
   const [tab, setTab] = useState<'versions' | 'trash'>('versions');
   // Kept for the dialog session only: closing drops the scan and its elements.
@@ -184,7 +185,7 @@ export function VersionsDialog({
     }
   }
   const date = (v: BoardVersion) =>
-    new Date(v.createdAt).toLocaleString(i18n.language, {
+    formatDateTime(v.createdAt, {
       dateStyle: 'medium',
       timeStyle: 'short',
     });
@@ -291,11 +292,11 @@ export function VersionsDialog({
                   {groupVersions(page?.items ?? []).map((group) => (
                     <section
                       key={group.day.toDateString()}
-                      aria-label={group.day.toLocaleDateString(i18n.language, {
+                      aria-label={formatDateTime(group.day, {
                         dateStyle: 'full',
                       })}
                     >
-                      <h3>{group.day.toLocaleDateString(i18n.language, { dateStyle: 'full' })}</h3>
+                      <h3>{formatDateTime(group.day, { dateStyle: 'full' })}</h3>
                       <ul>
                         {group.items.map((v) => (
                           <li key={v.id} className="versions__item">

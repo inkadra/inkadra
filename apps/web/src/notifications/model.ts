@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 import type { Notification } from '@inkadra/shared';
+import { formatDateTime } from '../lib/datetime.ts';
 
 export const KNOWN_TYPES = [
   'mention',
@@ -48,11 +49,16 @@ export function dayLabel(
   const days = Math.round((startOfDay(now) - startOfDay(date)) / 86_400_000);
   if (days === 0) return t('notifications.today');
   if (days === 1) return t('notifications.yesterday');
-  return date.toLocaleDateString(locale, {
-    day: 'numeric',
-    month: 'long',
-    ...(date.getFullYear() === now.getFullYear() ? {} : { year: 'numeric' }),
-  });
+  return formatDateTime(
+    date,
+    {
+      day: 'numeric',
+      month: 'long',
+      ...(date.getFullYear() === now.getFullYear() ? {} : { year: 'numeric' }),
+    },
+    undefined,
+    locale,
+  );
 }
 
 export type InboxFilter = 'all' | 'mentions' | 'approvals' | 'tasks';

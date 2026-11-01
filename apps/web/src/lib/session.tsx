@@ -11,6 +11,7 @@ import {
 import i18n, { LOCALES, type Locale } from '../i18n/index.ts';
 import { api, RequestError } from './api.ts';
 import { setSignedInId } from './me.ts';
+import { loadPreferences } from './preferences.ts';
 
 interface SessionState {
   instance: Instance | null;
@@ -61,6 +62,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     setInstance(inst);
     setUser(me);
     setSignedInId(me?.id ?? null);
+    // The cached preferences stay in use if the server cannot be reached.
+    if (me) void loadPreferences().catch(() => {});
     if (me?.locale) {
       const base = me.locale.slice(0, 2) as Locale;
       if (LOCALES.includes(base) && i18n.language !== base) {

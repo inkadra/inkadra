@@ -628,10 +628,12 @@ select {
     pointer-events: none;
   }
   /* A moving board is redrawn every frame: the panels over it drop the blur until it settles
-     (only these layers restyle; a custom property would restyle the whole board). */
+     (only these layers restyle; a custom property would restyle the whole board), and turn
+     opaque meanwhile, so cards moving under them never show through unblurred. */
   .ink-shell:has(.canvas--moving) > .ink-sidebar::before,
   .ink-shell:has(.canvas--moving) > .ink-header .ink-header__group::before,
   .ink-shell:has(.canvas--moving) > .ink-shell__launcher::before {
+    background: var(--ink-surface-float);
     -webkit-backdrop-filter: none;
     backdrop-filter: none;
   }

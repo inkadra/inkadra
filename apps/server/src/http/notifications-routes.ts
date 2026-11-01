@@ -1,11 +1,16 @@
 import {
   API_PREFIX,
   Id,
+  INBOX_ALWAYS,
   MarkAllRead,
+  NotificationChannelType,
   type NotificationPreferences,
   NotificationQuery,
+  readUserPreferences,
   type UnreadCount,
   UpdateNotificationPreferences,
+  UpdateUserPreferences,
+  type UserPreferences,
   z,
 } from '@inkadra/shared';
 import { and, desc, eq, getTableColumns, isNull, lte, sql } from 'drizzle-orm';
@@ -13,7 +18,7 @@ import type { FastifyInstance } from 'fastify';
 import { notificationAccess } from '../access.ts';
 import type { Auth } from '../auth.ts';
 import type { Database } from '../db/client.ts';
-import { notification, notificationPreference } from '../db/schema.ts';
+import { notification, notificationPreference, userPreference } from '../db/schema.ts';
 import { renderNotifications, unreadCount, visibility } from '../notifications.ts';
 import { requireActor } from './auth-routes.ts';
 import { HttpError } from './errors.ts';
@@ -102,10 +107,22 @@ export function registerNotificationRoutes(app: FastifyInstance, deps: Deps) {
 
   async function preferences(userId: string): Promise<NotificationPreferences> {
     const [row] = await db
-      .select({ email: notificationPreference.email })
+      .select({
+        email: notificationPreference.email,
+        inboxOff: notificationPreference.inboxOff,
+        emailOff: notificationPreference.emailOff,
+      })
       .from(notificationPreference)
       .where(eq(notificationPreference.userId, userId));
-    return { email: row?.email ?? 'immediate' };
+    const known = (types: string[] | undefined) =>
+      (types ?? []).filter(
+        (t): t is NotificationChannelType => NotificationChannelType.safeParse(t).success,
+      );
+    return {
+      email: row?.email ?? 'immediate',
+      inboxOff: known(row?.inboxOff),
+      emailOff: known(row?.emailOff),
+    };
   }
 
   app.get(v1('/me/notification-preferences'), async (req) => {
@@ -116,6 +133,20 @@ export function registerNotificationRoutes(app: FastifyInstance, deps: Deps) {
   app.patch(v1('/me/notification-preferences'), async (req) => {
     const actor = await requireActor(auth, req, db);
     const patch = UpdateNotificationPreferences.parse(req.body ?? {});
+    if (patch.inboxOff || patch.emailOff) {
+      await db.insert(notificationPreference).values({ userId: actor.id }).onConflictDoNothing();
+      await db
+        .update(notificationPreference)
+        .set({
+          // Mentions always reach the Inbox, whatever a client sends.
+          ...(patch.inboxOff && {
+            inboxOff: [...new Set(patch.inboxOff)].filter((t) => !INBOX_ALWAYS.includes(t)),
+          }),
+          ...(patch.emailOff && { emailOff: [...new Set(patch.emailOff)] }),
+          updatedAt: new Date(),
+        })
+        .where(eq(notificationPreference.userId, actor.id));
+    }
     if (patch.email) {
       const email = patch.email;
       await db.transaction(async (tx) => {
@@ -146,5 +177,37 @@ export function registerNotificationRoutes(app: FastifyInstance, deps: Deps) {
       });
     }
     return preferences(actor.id);
+  });
+
+  async function userPreferences(userId: string): Promise<UserPreferences> {
+    const [row] = await db
+      .select({ preferences: userPreference.preferences })
+      .from(userPreference)
+      .where(eq(userPreference.userId, userId));
+    return readUserPreferences(row?.preferences);
+  }
+
+  app.get(v1('/me/preferences'), async (req) => {
+    const actor = await requireActor(auth, req, db);
+    return userPreferences(actor.id);
+  });
+
+  app.patch(v1('/me/preferences'), async (req) => {
+    const actor = await requireActor(auth, req, db);
+    const patch = UpdateUserPreferences.parse(req.body ?? {});
+    await db.transaction(async (tx) => {
+      await tx.insert(userPreference).values({ userId: actor.id }).onConflictDoNothing();
+      const [row] = await tx
+        .select({ preferences: userPreference.preferences })
+        .from(userPreference)
+        .where(eq(userPreference.userId, actor.id))
+        .for('update');
+      // Fields this server does not know are kept for the clients that wrote them.
+      await tx
+        .update(userPreference)
+        .set({ preferences: { ...row?.preferences, ...patch }, updatedAt: new Date() })
+        .where(eq(userPreference.userId, actor.id));
+    });
+    return userPreferences(actor.id);
   });
 }

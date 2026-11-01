@@ -15,7 +15,12 @@ vi.mock('./access.ts', async (original) => ({
     .mockResolvedValue(new Map([['0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10', 'viewer']])),
 }));
 const values = vi.fn().mockResolvedValue([]);
-const db = { insert: () => ({ values }) } as unknown as Database;
+/** The notification preferences notify() reads: who turned which types off in the Inbox. */
+const preferences = vi.fn().mockResolvedValue([]);
+const db = {
+  insert: () => ({ values }),
+  select: () => ({ from: () => ({ where: preferences }) }),
+} as unknown as Database;
 const id = '0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10';
 beforeEach(() => {
   vi.clearAllMocks();
@@ -25,16 +30,19 @@ beforeEach(() => {
 it('creates an assignment notification only for a current member and an authorized account', async () => {
   expect(await notifyAssignment(db, id, 'element-id', id, 'actor')).toBe(true);
   expect(values).toHaveBeenCalledOnce();
-  expect(values.mock.calls[0]?.[0][0]).toMatchObject({
-    type: 'task_assigned',
-    userId: id,
-    emailedAt: expect.any(Date),
-  });
+  // Emailed as the notification matrix says (#302), not marked as sent.
+  expect(values.mock.calls[0]?.[0][0]).toMatchObject({ type: 'task_assigned', userId: id });
+  expect(values.mock.calls[0]?.[0][0].emailedAt).toBeUndefined();
   vi.mocked(projectRole).mockResolvedValue(null);
   expect(await notifyAssignment(db, id, 'element-id', id, 'actor')).toBe(false);
   expect(values).toHaveBeenCalledOnce();
   vi.mocked(boardRole).mockResolvedValue({ role: 'viewer', projectId: id });
   expect(await notifyAssignment(db, id, 'element-id', id, 'actor')).toBe(false);
+});
+it('writes no assignment notification for a person who turned them off in the Inbox', async () => {
+  preferences.mockResolvedValueOnce([{ userId: id, off: ['task_assigned'] }]);
+  expect(await notifyAssignment(db, id, 'element-id', id, 'actor')).toBe(true);
+  expect(values).not.toHaveBeenCalled();
 });
 it('rejects guest and nonmember CRDT assignments before changing the live document', async () => {
   const doc = createBoardDoc(id);

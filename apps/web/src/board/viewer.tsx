@@ -6,6 +6,7 @@ import { Avatar, Button, Icon } from '@inkadra/ui';
 import { memo, useContext, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useClassifications } from '../lib/classifications.ts';
+import { formatDateTime } from '../lib/datetime.ts';
 import { pickVariant, playbackUrl, useAsset } from './assets.ts';
 import { CroppedImage } from './CroppedImage.tsx';
 import { addPalette } from './colors.ts';
@@ -63,7 +64,7 @@ export function exifRows(exif: Exif | null, locale: string): Array<{ key: string
   add(
     'taken',
     date && !Number.isNaN(date.getTime())
-      ? date.toLocaleString(locale, { dateStyle: 'medium', timeStyle: 'short' })
+      ? formatDateTime(date, { dateStyle: 'medium', timeStyle: 'short' }, undefined, locale)
       : '',
   );
   return rows;

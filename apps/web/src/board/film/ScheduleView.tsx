@@ -26,6 +26,7 @@ import { AutoTime, TokenField } from './fields.tsx';
 import { castConflicts, clockLabel, newScheduleBlock, scheduleTimes } from './schedule.ts';
 import { useSlugline, useStoryboard } from './storyboard-data.ts';
 import './film.css';
+import { formatClock } from '../../lib/datetime.ts';
 
 export const SHOT_DRAG_TYPE = 'application/x-inkadra-schedule-shot';
 export function resolveDroppedShot(
@@ -637,7 +638,7 @@ function DayColumn({
       </button>
       <ol className="schedule__timeline">
         <li className="schedule__marker">
-          {draft.callTime} {t('schedule.callRow')}
+          {formatClock(draft.callTime)} {t('schedule.callRow')}
         </li>
         {scheduleTimes(draft).map(({ block, start, end }) => (
           <li

@@ -1,7 +1,12 @@
 import { randomUUID } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { boardDocName, createBoardDoc, roots } from '@inkadra/doc-schema';
-import { type Comment, type CommentThread, INLINE_REPLIES } from '@inkadra/shared';
+import {
+  type Comment,
+  type CommentThread,
+  DEFAULT_USER_PREFERENCES,
+  INLINE_REPLIES,
+} from '@inkadra/shared';
 import { Queue, QueueEvents } from 'bullmq';
 import { and, eq, sql } from 'drizzle-orm';
 import type { HTTPMethods } from 'fastify';
@@ -316,6 +321,58 @@ describe.skipIf(!url)('team comments, reviews and notifications', () => {
     expect(await recipients(later.id)).toEqual([[people.commenter.id, 'reply']]);
   });
 
+  it('honours the notification matrix: Inbox off writes nothing, email off stays in the Inbox', async () => {
+    expect(
+      (
+        await call('owner', 'PATCH', '/me/notification-preferences', {
+          inboxOff: ['reply', 'mention'],
+          emailOff: ['mention', 'mention'],
+        })
+      ).json(),
+    ).toEqual({ email: 'immediate', inboxOff: ['reply'], emailOff: ['mention'] });
+    expect(
+      (await call('owner', 'PATCH', '/me/notification-preferences', { inboxOff: ['invented'] }))
+        .statusCode,
+    ).toBe(400);
+    const thread = await create('owner');
+    const reply = await create('editor', { parentId: thread.id });
+    expect(
+      await db.select().from(notification).where(eq(notification.commentId, reply.id)),
+    ).toEqual([]);
+    const mention = await create('commenter', { body: `Hi @{${people.owner.id}}` });
+    await db
+      .update(notification)
+      .set({ createdAt: new Date(Date.now() - EMAIL_GROUP_DELAY_MS - 1000) });
+    const mailer = memoryMailer();
+    const mailDeps = { db, log, mailer, publicUrl: config.PUBLIC_URL, instanceName: 'Studio' };
+    expect(await sendImmediateEmails(mailDeps)).toEqual({ sent: 0 });
+    const [row] = await db
+      .select()
+      .from(notification)
+      .where(eq(notification.commentId, mention.id));
+    expect(row).toMatchObject({ type: 'mention', readAt: null });
+    expect(row?.emailedAt).not.toBeNull();
+  });
+
+  it('keeps personal preferences per account, merging partial updates over the defaults', async () => {
+    expect((await call('owner', 'GET', '/me/preferences')).json()).toEqual(
+      DEFAULT_USER_PREFERENCES,
+    );
+    await call('owner', 'PATCH', '/me/preferences', { timeFormat: '12h' });
+    const saved = await call('owner', 'PATCH', '/me/preferences', { toolbar: ['note', 'map'] });
+    expect(saved.json()).toEqual({
+      ...DEFAULT_USER_PREFERENCES,
+      timeFormat: '12h',
+      toolbar: ['note', 'map'],
+    });
+    expect((await call('editor', 'GET', '/me/preferences')).json()).toEqual(
+      DEFAULT_USER_PREFERENCES,
+    );
+    expect(
+      (await call('owner', 'PATCH', '/me/preferences', { dateFormat: 'roman' })).statusCode,
+    ).toBe(400);
+  });
+
   it('limits creation and edits together and review writes per person', async () => {
     const thread = await create();
     for (let i = 0; i < 29; i++)
@@ -395,6 +452,8 @@ describe.skipIf(!url)('team comments, reviews and notifications', () => {
       ['POST', `/me/notifications/${randomUUID()}/unread`],
       ['GET', '/me/notification-preferences'],
       ['PATCH', '/me/notification-preferences', { email: 'off' }],
+      ['GET', '/me/preferences'],
+      ['PATCH', '/me/preferences', { dotGrid: false }],
     ];
     for (const [method, path, body] of endpoints)
       expect((await call(null, method, path, body)).statusCode, path).toBe(401);
@@ -1201,14 +1260,17 @@ describe.skipIf(!url)('team comments, reviews and notifications', () => {
     expect((await call(who, 'POST', '/me/notifications/read-all')).json()).toEqual({ unread: 0 });
     const other = who === 'owner' ? 'editor' : 'owner';
     expect((await call(other, 'POST', `/me/notifications/${n.id}/read`)).statusCode).toBe(404);
+    const none = { inboxOff: [], emailOff: [] };
     expect((await call(who, 'GET', '/me/notification-preferences')).json()).toEqual({
       email: 'immediate',
+      ...none,
     });
     expect(
       (await call(who, 'PATCH', '/me/notification-preferences', { email: 'daily' })).json(),
-    ).toEqual({ email: 'daily' });
+    ).toEqual({ email: 'daily', ...none });
     expect((await call(other, 'GET', '/me/notification-preferences')).json()).toEqual({
       email: 'immediate',
+      ...none,
     });
     expect(
       (await call(who, 'PATCH', '/me/notification-preferences', { email: 'invalid' })).statusCode,

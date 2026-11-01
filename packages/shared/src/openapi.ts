@@ -82,6 +82,7 @@ import {
   UnreadCount,
   UpdateNotificationPreferences,
 } from './notifications.ts';
+import { UpdateUserPreferences, UserPreferences } from './preferences.ts';
 import {
   CreateProject,
   CreateProjectGroup,
@@ -1757,6 +1758,25 @@ registry.registerPath({
   security: secured,
   request: { body: json(UpdateNotificationPreferences) },
   responses: { 200: { description: 'Updated', ...json(NotificationPreferences) }, ...errors },
+});
+registry.registerPath({
+  method: 'get',
+  path: v1('/me/preferences'),
+  tags: ['Users'],
+  security: secured,
+  summary: 'Personal preferences (#302), with defaults for what was never set.',
+  responses: {
+    200: { description: 'Preferences', ...json(UserPreferences) },
+    401: errors[401],
+  },
+});
+registry.registerPath({
+  method: 'patch',
+  path: v1('/me/preferences'),
+  tags: ['Users'],
+  security: secured,
+  request: { body: json(UpdateUserPreferences) },
+  responses: { 200: { description: 'Updated', ...json(UserPreferences) }, ...errors },
 });
 
 // Share links (managed by editors and owners) ---------------------------------

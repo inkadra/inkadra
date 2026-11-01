@@ -5087,6 +5087,34 @@
               "off"
             ],
             "description": "`immediate`: within a few minutes, several notifications in one email. `daily`: one digest a day of what is still unread. `off`: no email. Without SMTP (Instance.auth.email false) nothing is sent whatever the choice."
+          },
+          "inboxOff": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "mention",
+                "reply",
+                "comment",
+                "review",
+                "task_assigned"
+              ]
+            },
+            "description": "Types this person does not want in the Inbox: they are not written at all, so they are not emailed either. `mention` always arrives. Missing from older servers."
+          },
+          "emailOff": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "mention",
+                "reply",
+                "comment",
+                "review",
+                "task_assigned"
+              ]
+            },
+            "description": "Types that stay in the Inbox but are never emailed, alone or in the digest. Missing from older servers."
           }
         },
         "required": [
@@ -5104,8 +5132,161 @@
               "off"
             ],
             "description": "`immediate`: within a few minutes, several notifications in one email. `daily`: one digest a day of what is still unread. `off`: no email. Without SMTP (Instance.auth.email false) nothing is sent whatever the choice."
+          },
+          "inboxOff": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "mention",
+                "reply",
+                "comment",
+                "review",
+                "task_assigned"
+              ]
+            },
+            "description": "Types this person does not want in the Inbox: they are not written at all, so they are not emailed either. `mention` always arrives. Missing from older servers."
+          },
+          "emailOff": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "mention",
+                "reply",
+                "comment",
+                "review",
+                "task_assigned"
+              ]
+            },
+            "description": "Types that stay in the Inbox but are never emailed, alone or in the digest. Missing from older servers."
           }
         }
+      },
+      "UserPreferences": {
+        "type": "object",
+        "properties": {
+          "dateFormat": {
+            "type": "string",
+            "enum": [
+              "auto",
+              "dmy",
+              "mdy",
+              "ymd"
+            ],
+            "description": "`auto`: the order and style of the browser language. `dmy`: 14/11/2026. `mdy`: 11/14/2026. `ymd`: 2026-11-14."
+          },
+          "timeFormat": {
+            "type": "string",
+            "enum": [
+              "auto",
+              "24h",
+              "12h"
+            ],
+            "description": "`auto`: as the browser language writes times."
+          },
+          "dotGrid": {
+            "type": "boolean",
+            "description": "Boards show the dot grid unless this person turned it off on that board."
+          },
+          "snapToGrid": {
+            "type": "boolean",
+            "description": "Boards open with snap to grid on."
+          },
+          "doubleClickNote": {
+            "type": "boolean",
+            "description": "A double click or double tap on empty canvas creates a note."
+          },
+          "undoButtons": {
+            "type": "boolean",
+            "description": "Undo and redo buttons on the board."
+          },
+          "keepAroundContent": {
+            "type": "boolean",
+            "description": "Boards pan only around their content plus a margin, an area that grows with it (#324)."
+          },
+          "toolbar": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 40
+            },
+            "maxItems": 40,
+            "description": "Tools in the bottom bar of the board, in order; null for the default bar. Open list: clients skip the tools they do not know, and hidden tools stay in the + menu."
+          }
+        },
+        "required": [
+          "dateFormat",
+          "timeFormat",
+          "dotGrid",
+          "snapToGrid",
+          "doubleClickNote",
+          "undoButtons",
+          "keepAroundContent",
+          "toolbar"
+        ]
+      },
+      "UpdateUserPreferences": {
+        "type": "object",
+        "properties": {
+          "dateFormat": {
+            "type": "string",
+            "enum": [
+              "auto",
+              "dmy",
+              "mdy",
+              "ymd"
+            ],
+            "description": "`auto`: the order and style of the browser language. `dmy`: 14/11/2026. `mdy`: 11/14/2026. `ymd`: 2026-11-14."
+          },
+          "timeFormat": {
+            "type": "string",
+            "enum": [
+              "auto",
+              "24h",
+              "12h"
+            ],
+            "description": "`auto`: as the browser language writes times."
+          },
+          "dotGrid": {
+            "type": "boolean",
+            "description": "Boards show the dot grid unless this person turned it off on that board."
+          },
+          "snapToGrid": {
+            "type": "boolean",
+            "description": "Boards open with snap to grid on."
+          },
+          "doubleClickNote": {
+            "type": "boolean",
+            "description": "A double click or double tap on empty canvas creates a note."
+          },
+          "undoButtons": {
+            "type": "boolean",
+            "description": "Undo and redo buttons on the board."
+          },
+          "keepAroundContent": {
+            "type": "boolean",
+            "description": "Boards pan only around their content plus a margin, an area that grows with it (#324)."
+          },
+          "toolbar": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 40
+            },
+            "maxItems": 40,
+            "description": "Tools in the bottom bar of the board, in order; null for the default bar. Open list: clients skip the tools they do not know, and hidden tools stay in the + menu."
+          }
+        },
+        "description": "Only the fields given change."
       },
       "ShareLink": {
         "type": "object",
@@ -16280,6 +16461,118 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/NotificationPreferences"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/me/preferences": {
+      "get": {
+        "tags": [
+          "Users"
+        ],
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Personal preferences (#302), with defaults for what was never set.",
+        "responses": {
+          "200": {
+            "description": "Preferences",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserPreferences"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "Users"
+        ],
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateUserPreferences"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserPreferences"
                 }
               }
             }

@@ -13,6 +13,7 @@ import { api, RequestError } from '../lib/api.ts';
 import { refreshProjects } from './projects.ts';
 import { formatStorage } from './StorageCharts.tsx';
 import './transfer.css';
+import { formatDateTime } from '../lib/datetime.ts';
 
 const POLL_MS = 1000;
 const KNOWN_FAILURES: readonly string[] = TRANSFER_FAILURES;
@@ -131,7 +132,7 @@ export function ExportProjectDialog({
   const pending = transfer?.status === 'queued' || transfer?.status === 'running';
   const ready = transfer?.status === 'ready';
   const time = (value: string) =>
-    new Date(value).toLocaleString(i18n.language, { dateStyle: 'medium', timeStyle: 'short' });
+    formatDateTime(value, { dateStyle: 'medium', timeStyle: 'short' });
   return (
     <Dialog open title={t('transfer.exportTitle', { name: project.name })} onClose={onClose}>
       <div className="transfer-dialog">

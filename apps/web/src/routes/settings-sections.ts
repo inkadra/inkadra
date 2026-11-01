@@ -33,6 +33,15 @@ export const SETTINGS_PAGES: SettingsPage[] = [
     admin: false,
   },
   {
+    id: 'toolbar',
+    group: 'personal',
+    href: '/settings?section=toolbar',
+    title: 'settingsUi.pages.toolbar',
+    lead: 'settingsUi.leads.toolbar',
+    keywords: 'settingsUi.keywords.toolbar',
+    admin: false,
+  },
+  {
     id: 'notifications',
     group: 'personal',
     href: '/settings?section=notifications',

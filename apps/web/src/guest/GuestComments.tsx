@@ -3,6 +3,7 @@ import { Button } from '@inkadra/ui';
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactionBar } from '../board/ReactionBar.tsx';
+import { formatDateTime } from '../lib/datetime.ts';
 import { useGuestActions } from './actions.ts';
 import { guestApi } from './api.ts';
 import { failureOf } from './model.ts';
@@ -146,7 +147,7 @@ export function authorName(
 }
 
 function when(iso: string, locale: string): string {
-  return new Date(iso).toLocaleString(locale, { dateStyle: 'medium', timeStyle: 'short' });
+  return formatDateTime(iso, { dateStyle: 'medium', timeStyle: 'short' }, undefined, locale);
 }
 
 function CommentView({ comment, onDone }: { comment: GuestComment; onDone: () => Promise<void> }) {
