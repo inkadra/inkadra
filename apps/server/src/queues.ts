@@ -319,7 +319,7 @@ export async function startWorkers(
       if (job.name !== 'make') throw new Error(`Unknown job ${job.name}`);
       const { assetId } = job.data as JobPayloads['media-proxies:make'];
       try {
-        return await runProxy(deps, assetId, (percent) => job.updateProgress(percent));
+        return await runProxy({ ...deps, log }, assetId, (percent) => job.updateProgress(percent));
       } catch (err) {
         // A copy that ran out of time would run out of time again.
         if (err instanceof ProxyTimeout) throw new UnrecoverableError(err.message);
@@ -681,7 +681,7 @@ export function inlineJobs(
     },
     async makeProxy(assetId) {
       const run = proxyChain.then(() =>
-        runProxy(deps, assetId).catch(async (err) => {
+        runProxy({ ...deps, log }, assetId).catch(async (err) => {
           await markProxyFailed(deps.db, assetId);
           throw err;
         }),

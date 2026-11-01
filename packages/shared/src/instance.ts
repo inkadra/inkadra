@@ -78,6 +78,7 @@ export const DiagnosticId = z
     'queue',
     'data_dir_writable',
     'storage',
+    'video_encoding',
   ])
   .openapi({
     description:
@@ -86,7 +87,10 @@ export const DiagnosticId = z
       'headers, match PUBLIC_URL (error otherwise: secure cookies break). `proxy_trusted`: a ' +
       'request carrying X-Forwarded-For comes from a peer that TRUST_PROXY accepts. `database`, ' +
       '`queue`: as in Health. `data_dir_writable`: DATA_DIR accepts writes. `storage`: a test ' +
-      'file can be written to and removed from the configured storage.',
+      'file can be written to and removed from the configured storage. `video_encoding`: the ' +
+      'encoder of playable video copies the last worker to start chose (`actual`), a warning ' +
+      'when the hardware encoder VIDEO_PROXY_HWACCEL names did not work; absent without a ' +
+      'worker with ffmpeg.',
   });
 export type DiagnosticId = z.infer<typeof DiagnosticId>;
 

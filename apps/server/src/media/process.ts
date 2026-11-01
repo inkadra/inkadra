@@ -13,7 +13,7 @@ import { decodeHeic, sniffImage } from './heic.ts';
 import { palette } from './palette.ts';
 import { isPdf, readPdfInfo, renderFirstPage } from './pdf.ts';
 import { extractRawPreview, orientedPixels, readRawExif, sniffRaw } from './raw.ts';
-import { ensureFreeSpace, withJobDir } from './scratch.ts';
+import { ensureFreeSpace, privateInput, withJobDir } from './scratch.ts';
 import {
   DEFAULT_PROXY_SETTINGS,
   extractPoster,
@@ -176,11 +176,13 @@ export async function processAsset(
     const posterPath = join(dir, 'poster.png');
     try {
       if (video && tools?.ffmpeg) {
+        // ffmpeg reads the original through a link in a folder of its own (see privateInput).
+        const input = await privateInput(dir, copy.path);
         const info: VideoInfo | null = tools.ffprobe
-          ? await probeVideo(tools.ffprobe, copy.path).catch(() => null)
+          ? await probeVideo(tools.ffprobe, input, video).catch(() => null)
           : null;
         const durationMs = info?.durationMs ?? null;
-        await extractPoster(tools.ffmpeg, copy.path, posterPath, durationMs);
+        await extractPoster(tools.ffmpeg, input, posterPath, durationMs, video);
         const result = await thumbnails(deps, assetId, sharp(posterPath, { failOn: 'error' }));
         const proxyStatus = await proxyState(deps, assetId, video, info, row.size);
         await save(db, assetId, result.variants, {

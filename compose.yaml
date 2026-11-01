@@ -5,6 +5,8 @@
 #   deploy/compose.split.yaml          web, collab and worker as separate containers
 #   deploy/compose.s3.yaml             files in an S3-compatible bucket you already have
 #   deploy/compose.rustfs.yaml         files in a bundled S3-compatible store (RustFS)
+#   deploy/compose.vaapi.yaml          hardware video encoding on Intel or AMD GPUs (-media image)
+#   deploy/compose.nvidia.yaml         hardware video encoding on NVIDIA GPUs (-media image)
 #   deploy/proxy/<name>/compose.yaml   a reverse proxy in the same stack: caddy, traefik, nginx
 #   deploy/compose.postgres-old-layout.yaml   stay on PostgreSQL 16 for now (docs/self-hosting/upgrades.md)
 
@@ -34,6 +36,9 @@ services:
       RAW_PREVIEWS: ${RAW_PREVIEWS:-true}
       PDF_PREVIEWS: ${PDF_PREVIEWS:-true}
       VIDEO_PROXIES: ${VIDEO_PROXIES:-true}
+      # Hardware encoding of playable copies: deploy/compose.vaapi.yaml, deploy/compose.nvidia.yaml
+      VIDEO_PROXY_HWACCEL: ${VIDEO_PROXY_HWACCEL:-auto}
+      VIDEO_PROXY_VAAPI_DEVICE: ${VIDEO_PROXY_VAAPI_DEVICE:-/dev/dri/renderD128}
       # Sign-in with Google, an OIDC provider, email (see docs/self-hosting/sign-in.md)
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}

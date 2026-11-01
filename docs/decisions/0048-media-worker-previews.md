@@ -34,9 +34,28 @@ browser.
   ffmpeg starts. Jobs run in their own BullMQ queue, `media-proxies`, one at a time per worker
   (`VIDEO_PROXY_CONCURRENCY`, at most 4), two attempts, none after a timeout; a second pass of
   the asset queues it again. Without Redis they run one after the other in the web process.
+- **Hardware encoding** (#358). `VIDEO_PROXY_HWACCEL` (`auto` by default) lets the worker
+  encode copies with NVENC, Quick Sync or VAAPI. It picks the backend once, at start, with a
+  one-second test encode of each candidate, saves the choice for Diagnostics, and makes two
+  copies at once by default when one works. The output and every limit above stay the same;
+  sources the GPU decodes (H.264, HEVC, VP9, AV1 in 4:2:0) are decoded and scaled there too.
+  A copy the GPU fails is made again with libx264, so the GPU never leaves a video without
+  its copy. All attempts share the copy's time limit, and a timeout is never retried. When the
+  CPU decodes, the 4 GiB cap holds whatever encodes; when the GPU decodes, VAAPI and Quick Sync
+  get 8 GiB and NVENC 64 GiB (CUDA cannot start under much less), bounded by the container's
+  `mem_limit`. A worker whose GPU fails the decode test at start decodes on the CPU throughout. The image
+  only ships drivers from Debian main; NVIDIA's come from the host through its toolkit.
 - **Scratch files.** Every media job (copies, posters, RAW previews, PDF pages) works in a
   folder of its own, `DATA_DIR/tmp/job-*`, removed when it ends; folders older than 6 hours,
   left by a crash, are swept when the server starts.
+  ffmpeg and ffprobe never open an original where it is stored: they get a symlink to it,
+  alone in `job-*/in/` (mode 700), so the relative file references a QuickTime movie can carry
+  (`dref`) find nothing beside it instead of the other originals in `files/originals/` (#357).
+  This is defence in depth: ffmpeg does not follow them by default, and QuickTime and MP4
+  inputs also get `-enable_drefs 0` (other demuxers refuse the option).
+- **Image checks.** CI fails the `-media` image on any high or critical vulnerability that has
+  a fix (the standard image: critical), since its libraries parse untrusted files, and when it
+  has a setuid or setgid file the standard image does not (#357).
 - **Storage.** The copy is the `proxy` row of `asset_variant` (`mime`, `bytes`), at
   `variants/<assetId>/proxy.mp4`, so it is removed with the asset like the thumbnails. It is
   never listed with the thumbnails. A second pass of the thumbnails keeps it: originals never

@@ -264,6 +264,10 @@
       "storage": {
         "title": "File storage",
         "fix": "Check the storage settings: local folder or S3 bucket, credentials and permissions."
+      },
+      "video_encoding": {
+        "title": "Video encoding",
+        "fix": "VIDEO_PROXY_HWACCEL names a hardware encoder the worker cannot use, so playable copies are made with libx264. Check the devices passed to the container (/dev/dri, the NVIDIA runtime) and the worker log."
       }
     },
     "expected": "Expected",

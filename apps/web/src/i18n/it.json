@@ -264,6 +264,10 @@
       "storage": {
         "title": "Archiviazione dei file",
         "fix": "Controlla la configurazione dell’archiviazione: cartella locale o bucket S3, credenziali e permessi."
+      },
+      "video_encoding": {
+        "title": "Codifica video",
+        "fix": "VIDEO_PROXY_HWACCEL indica un encoder hardware che il worker non riesce a usare, quindi le copie riproducibili vengono fatte con libx264. Controlla i dispositivi passati al container (/dev/dri, runtime NVIDIA) e il log del worker."
       }
     },
     "expected": "Atteso",

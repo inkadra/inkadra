@@ -1,0 +1,28 @@
+# Hardware encoding of playable video copies on an NVIDIA GPU (NVENC). Needs the -media image
+# (INKADRA_TAG=…-media), the NVIDIA driver on the host and the NVIDIA Container Toolkit
+# (https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/). The driver libraries
+# come from the host: the image ships none.
+# Use together with compose.yaml:
+#   docker compose -f compose.yaml -f deploy/compose.nvidia.yaml up -d
+# In split mode the copies are made by the `worker` service: put these lines under `worker`
+# instead (see docs/self-hosting/configuration.md#hardware-video-encoding).
+#
+# Memory: when the GPU decodes, an NVENC copy runs with a 64 GiB address-space cap, since CUDA
+# reserves far more virtual memory than it uses. What it really uses is bounded by the
+# container limit below (mem_limit): size it for the worker plus VIDEO_PROXY_CONCURRENCY
+# copies, about 1 to 2 GB each at 1080p. When the CPU decodes (ProRes, 4:2:2), the 4 GiB cap
+# of software copies holds.
+
+services:
+  inkadra:
+    mem_limit: ${INKADRA_MEM_LIMIT:-8g}
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu, video, compute, utility]
+    environment:
+      # `video` mounts the NVENC and NVDEC libraries, `utility` nvidia-smi (the card name).
+      NVIDIA_DRIVER_CAPABILITIES: compute,video,utility

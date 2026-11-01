@@ -11,6 +11,8 @@ import { createDatabase, runMigrations } from '../db/client.ts';
 import { asset, assetVariant, project } from '../db/schema.ts';
 import { animatedVariantKey, originalKey, proxyKey, readAll } from '../storage.ts';
 import { testDeps } from '../test-deps.ts';
+import { chooseVideoEncoder, forgetVideoEncoder, readVideoEncoder } from './encoder-setting.ts';
+import { SOFTWARE_ENCODER } from './hwaccel.ts';
 import { ANIMATED_CAPS, fitsAnimatedCaps, processAsset, variantWidths } from './process.ts';
 import { runProxy } from './proxy.ts';
 import {
@@ -562,7 +564,7 @@ describe.skipIf(!url)('processAsset (needs DATABASE_URL)', () => {
         expect(proxy?.bytes).toBeGreaterThan(0);
         const out = join(root, `proxy-${id}.mp4`);
         writeFileSync(out, await readAll(await storage.read(proxy?.storageKey ?? '')));
-        const made = await probeVideo(tools.ffprobe ?? '', out);
+        const made = await probeVideo(tools.ffprobe ?? '', out, 'video/mp4');
         expect(made).toMatchObject({
           videoCodec: 'h264',
           audioCodec: 'aac',
@@ -597,10 +599,95 @@ describe.skipIf(!url)('processAsset (needs DATABASE_URL)', () => {
         const proxy = variants.find((v) => v.size === 'proxy');
         const out = join(root, `remux-${id}.mp4`);
         writeFileSync(out, await readAll(await storage.read(proxy?.storageKey ?? '')));
-        expect(await probeVideo(tools.ffprobe ?? '', out)).toMatchObject({
+        expect(await probeVideo(tools.ffprobe ?? '', out, 'video/mp4')).toMatchObject({
           videoCodec: 'h264',
           audioCodec: 'aac',
         });
+      });
+
+      it('makes the copy again with libx264 when the hardware encoder fails', async () => {
+        const id = await upload(fixture('prores-proxy.mov'), 'video/quicktime', 'gpu.mov');
+        await processAsset(withQueue().deps, id);
+        const warned: string[] = [];
+        // No such render node: the VAAPI run fails at once, as a GPU refusing a file would.
+        const gpu = { backend: 'vaapi' as const, device: '/nonexistent/renderD128', label: 'x' };
+        const result = await runProxy(
+          {
+            ...deps,
+            proxies: { ...DEFAULT_PROXY_SETTINGS, encoder: gpu },
+            log: { warn: (_fields, message) => void warned.push(message) },
+          },
+          id,
+        );
+        expect(result).toMatchObject({ encoder: 'software' });
+        expect(warned).toEqual(['hardware encoding failed: making the playable copy with libx264']);
+        const { row, variants } = await load(id);
+        expect(row).toMatchObject({ proxyStatus: 'ready', proxyProgress: 100 });
+        expect(variants.some((v) => v.size === 'proxy')).toBe(true);
+      });
+
+      it('tries a CPU decode before libx264 when the GPU decoded the source', async () => {
+        // H.264 in Matroska, larger than the copy: transcoded, and decodable by a GPU.
+        const out = join(root, `gpu-${randomUUID()}.mkv`);
+        execFileSync(tools.ffmpeg ?? 'ffmpeg', [
+          '-v',
+          'error',
+          '-f',
+          'lavfi',
+          '-i',
+          'testsrc2=size=640x360:rate=24:duration=0.5',
+          '-pix_fmt',
+          'yuv420p',
+          '-c:v',
+          'libx264',
+          out,
+        ]);
+        const id = await upload(readFileSync(out), 'video/x-matroska', 'gpu.mkv');
+        await processAsset(withQueue().deps, id);
+        const warned: string[] = [];
+        const gpu = { backend: 'qsv' as const, device: '/nonexistent/renderD128', label: 'x' };
+        const result = await runProxy(
+          {
+            ...deps,
+            proxies: { ...DEFAULT_PROXY_SETTINGS, resolution: 180, encoder: gpu },
+            log: { warn: (_fields, message) => void warned.push(message) },
+          },
+          id,
+        );
+        expect(result).toMatchObject({ encoder: 'software' });
+        expect(warned).toEqual([
+          'hardware decoding failed: decoding on the CPU, encoding on the GPU',
+          'hardware encoding failed: making the playable copy with libx264',
+        ]);
+        const { variants } = await load(id);
+        expect(variants.find((v) => v.size === 'proxy')).toMatchObject({ width: 320, height: 180 });
+      });
+
+      it('saves the encoder the worker chose, for Diagnostics', async () => {
+        const logged: string[] = [];
+        const log = {
+          info: (_f: unknown, m: string) => void logged.push(m),
+          warn: (_f: unknown, m: string) => void logged.push(m),
+        };
+        const encoder = await chooseVideoEncoder(
+          db,
+          { mode: 'qsv', vaapiDevice: '/dev/dri/renderD128' },
+          log,
+          async (_ffmpeg, opts) => ({
+            encoder: SOFTWARE_ENCODER,
+            requested: opts.mode,
+            rejected: [{ backend: 'qsv', reason: 'test encode failed' }],
+          }),
+        );
+        expect(encoder).toBe(SOFTWARE_ENCODER);
+        expect(logged).toEqual(['VIDEO_PROXY_HWACCEL=qsv does not work here: using libx264']);
+        expect(await readVideoEncoder(db)).toMatchObject({
+          backend: 'software',
+          label: 'Software (libx264)',
+          requested: 'qsv',
+        });
+        await forgetVideoEncoder(db);
+        expect(await readVideoEncoder(db)).toBeNull();
       });
 
       it('says skipped when proxies are turned off or the video is too long', async () => {

@@ -33,13 +33,19 @@ LABEL org.opencontainers.image.title="Inkadra" \
 # MEDIA=true builds the `-media` variant (decisions 0010 and 0048): ffmpeg gives videos a poster,
 # a duration and a playable copy; exiftool reads the previews embedded in camera RAW files;
 # poppler renders page 1 of PDFs. It adds a few hundred MB, so the default image goes without
-# (see docs/self-hosting).
+# (see docs/self-hosting). For hardware encoding of the copies (#358) it also has the free VAAPI
+# drivers (Mesa for AMD, Intel's media driver) and the oneVPL runtime of Quick Sync, all from
+# Debian main; NVENC uses the driver the NVIDIA Container Toolkit mounts from the host.
 ARG MEDIA=false
 RUN apt-get update \
  && apt-get upgrade -y --no-install-recommends \
  && apt-get install -y --no-install-recommends tini \
  && if [ "$MEDIA" = "true" ]; then \
-      apt-get install -y --no-install-recommends ffmpeg libimage-exiftool-perl poppler-utils; \
+      apt-get install -y --no-install-recommends ffmpeg libimage-exiftool-perl poppler-utils \
+        mesa-va-drivers libvpl2 vainfo \
+      && if [ "$(dpkg --print-architecture)" = "amd64" ]; then \
+           apt-get install -y --no-install-recommends intel-media-va-driver libmfx-gen1.2; \
+         fi; \
     fi \
  && rm -rf /var/lib/apt/lists/* \
  && rm -rf /usr/local/lib/node_modules/npm /usr/local/lib/node_modules/corepack /opt/yarn-* \
