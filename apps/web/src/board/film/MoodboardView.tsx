@@ -94,11 +94,14 @@ function AddReferences({
   projectId,
   userId,
   onNotice,
+  inline = false,
 }: {
   store: BoardStore;
   projectId: string;
   userId: string;
   onNotice: (text: string) => void;
+  /** The three actions as buttons in the empty state, instead of the bar's "+ Add" menu. */
+  inline?: boolean;
 }) {
   const { t } = useTranslation();
   const [adding, setAdding] = useState<Adding>(null);
@@ -178,17 +181,8 @@ function AddReferences({
     });
   };
 
-  return (
-    <div className="moodboard__add" ref={root}>
-      <Button
-        icon="plus"
-        aria-haspopup="menu"
-        aria-expanded={adding !== null}
-        aria-controls={menuId}
-        onClick={() => setAdding(adding ? null : 'menu')}
-      >
-        {t('moodboard.add')}
-      </Button>
+  const inputs = (
+    <>
       <input
         ref={files}
         type="file"
@@ -210,18 +204,75 @@ function AddReferences({
         aria-label={t('moodboard.addColor')}
         data-testid="moodboard-color"
       />
+    </>
+  );
+  const linkForm = (
+    <form
+      onSubmit={(event) => {
+        event.preventDefault();
+        addLink();
+      }}
+    >
+      <input
+        className="ink-input"
+        // biome-ignore lint/a11y/noAutofocus: the field opens because the user asked for a link
+        autoFocus
+        value={url}
+        placeholder={t('board.link.placeholder')}
+        aria-label={t('board.link.label')}
+        aria-invalid={invalid || undefined}
+        onChange={(event) => {
+          setUrl(event.target.value);
+          setInvalid(false);
+        }}
+      />
+    </form>
+  );
+  const pickImages = () => {
+    setAdding(null);
+    files.current?.click();
+  };
+  const pickColor = () => {
+    setAdding(null);
+    color.current?.click();
+  };
+
+  if (inline)
+    return (
+      <div className="moodboard__add moodboard__add--inline" ref={root}>
+        {inputs}
+        <div className="moodboard__actions">
+          <Button icon="upload" onClick={pickImages}>
+            {t('moodboard.addImage')}
+          </Button>
+          <Button icon="link" onClick={() => setAdding('link')}>
+            {t('moodboard.addLink')}
+          </Button>
+          <Button icon="color" onClick={pickColor}>
+            {t('moodboard.addColor')}
+          </Button>
+        </div>
+        {adding === 'link' && linkForm}
+      </div>
+    );
+
+  return (
+    <div className="moodboard__add" ref={root}>
+      <Button
+        icon="plus"
+        aria-haspopup="menu"
+        aria-expanded={adding !== null}
+        aria-controls={menuId}
+        onClick={() => setAdding(adding ? null : 'menu')}
+      >
+        {t('moodboard.add')}
+      </Button>
+      {inputs}
       {adding && (
         <div className="moodboard__popover" id={menuId}>
           {adding === 'menu' ? (
             <div role="menu" aria-label={t('moodboard.add')}>
-              <button
-                type="button"
-                role="menuitem"
-                onClick={() => {
-                  setAdding(null);
-                  files.current?.click();
-                }}
-              >
+              <button type="button" role="menuitem" onClick={pickImages}>
                 <Icon name="upload" size={16} />
                 {t('moodboard.addImage')}
               </button>
@@ -229,39 +280,13 @@ function AddReferences({
                 <Icon name="link" size={16} />
                 {t('moodboard.addLink')}
               </button>
-              <button
-                type="button"
-                role="menuitem"
-                onClick={() => {
-                  setAdding(null);
-                  color.current?.click();
-                }}
-              >
+              <button type="button" role="menuitem" onClick={pickColor}>
                 <Icon name="color" size={16} />
                 {t('moodboard.addColor')}
               </button>
             </div>
           ) : (
-            <form
-              onSubmit={(event) => {
-                event.preventDefault();
-                addLink();
-              }}
-            >
-              <input
-                className="ink-input"
-                // biome-ignore lint/a11y/noAutofocus: the field opens because the user asked for a link
-                autoFocus
-                value={url}
-                placeholder={t('board.link.placeholder')}
-                aria-label={t('board.link.label')}
-                aria-invalid={invalid || undefined}
-                onChange={(event) => {
-                  setUrl(event.target.value);
-                  setInvalid(false);
-                }}
-              />
-            </form>
+            linkForm
           )}
         </div>
       )}
@@ -400,6 +425,17 @@ export function MoodboardView({
             <EmptyState
               icon="image"
               title={t(references.length ? 'moodboard.noMatches' : 'moodboard.empty')}
+              actions={
+                !readOnly && references.length === 0 ? (
+                  <AddReferences
+                    inline
+                    store={store}
+                    projectId={projectId}
+                    userId={userId}
+                    onNotice={setNotice}
+                  />
+                ) : undefined
+              }
             />
           </div>
         ) : (

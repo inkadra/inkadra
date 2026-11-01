@@ -255,11 +255,18 @@ it('offers the existing ways to add a reference to editors only, in the bar and 
   const readOnly = await mount(empty.store, true);
   expect(readOnly.textContent).toContain('moodboard.empty');
   expect(readOnly.querySelector('.moodboard__add')).toBeNull();
+  expect(readOnly.querySelector('.moodboard__actions')).toBeNull();
 
   const { doc, store } = board();
   const host = await mount(store, false);
   expect(host.querySelector('.moodboard__empty svg')).not.toBeNull();
-  const add = host.querySelector<HTMLButtonElement>('.moodboard__add button');
+  // The empty state offers the same three actions as buttons.
+  expect(
+    [...host.querySelectorAll('.moodboard__empty .moodboard__actions button')].map(
+      (b) => b.textContent,
+    ),
+  ).toEqual(['moodboard.addImage', 'moodboard.addLink', 'moodboard.addColor']);
+  const add = host.querySelector<HTMLButtonElement>('.moodboard__bar .moodboard__add button');
   expect(add?.getAttribute('aria-expanded')).toBe('false');
   await click(add ?? null);
   const items = () => [...host.querySelectorAll<HTMLElement>('[role="menuitem"]')];
