@@ -2788,10 +2788,15 @@ button.card__play {
 .card--link .card__media--link.card__embed--portrait {
   aspect-ratio: 10 / 13;
 }
-/* Instagram's embed has its own button at the top right: ↗ goes to the bottom, which is clear. */
-.card__embed--portrait .card__expand {
-  top: auto;
-  bottom: 12px;
+/* Instagram: ↗ sits in the footer, right-aligned on the host's line. */
+.card__host-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.card__host-row .card__expand {
+  position: static;
+  flex: none;
 }
 /* Alt held: the player does not take the pointer, so the card drags from anywhere. */
 .card__shield {

@@ -162,6 +162,19 @@ test('a video plays inside its card, one at a time, and the viewer is one click 
   await expect(vimeo.locator('iframe')).toHaveCount(0);
   expect((await box(instagram.locator('.card__embed'))).height).toBeGreaterThan(thumbnailHeight);
 
+  // ↗ stays out of Instagram's own bars: it is in the footer, on the host's line, at the right.
+  await expect(instagram.locator('.card__embed .card__expand')).toHaveCount(0);
+  const out = instagram.locator('.card__host-row .card__expand');
+  await expect(out).toHaveAttribute('aria-label', 'Apri su Instagram');
+  const [outBox, hostBox, cardBox] = await Promise.all([
+    box(out),
+    box(instagram.locator('.card__host')),
+    box(instagram),
+  ]);
+  expect(outBox.width).toBe(26);
+  expect(Math.abs(outBox.y + outBox.height / 2 - (hostBox.y + hostBox.height / 2))).toBeLessThan(8);
+  expect(cardBox.x + cardBox.width - (outBox.x + outBox.width)).toBeLessThan(20);
+
   // Esc returns the playing card to its thumbnail.
   await page.keyboard.press('Escape');
   await expect(page.locator('iframe')).toHaveCount(0);

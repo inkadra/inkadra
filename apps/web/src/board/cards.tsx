@@ -504,7 +504,6 @@ function InlineVideo({
   instagram: boolean;
 }) {
   const { t } = useTranslation();
-  const { openElement } = useBoard();
   const ref = useRef<HTMLDivElement>(null);
   const mounted = useRef(false);
   const [alt, setAlt] = useState(false);
@@ -540,7 +539,6 @@ function InlineVideo({
       });
     };
   }, [id]);
-  const open = t(instagram ? 'board.menu.openOnInstagram' : 'board.menu.openInViewer');
   return (
     <div
       className={`card__media card__media--link card__embed${instagram ? ' card__embed--portrait' : ''}`}
@@ -553,22 +551,32 @@ function InlineVideo({
         allowFullScreen
       />
       {alt && <div className="card__shield" />}
-      <button
-        type="button"
-        className="card__expand"
-        data-no-drag
-        data-play-link={id}
-        title={open}
-        aria-label={open}
-        onClick={(event) => {
-          event.stopPropagation();
-          stopInline(id);
-          openElement?.(element);
-        }}
-      >
-        <Icon name="arrow" size={14} />
-      </button>
+      {!instagram && <OpenOutButton element={element} instagram={false} />}
     </div>
+  );
+}
+
+/** ↗ on a playing card: the viewer for a video, Instagram for a post. */
+function OpenOutButton({ element, instagram }: { element: Of<'link'>; instagram: boolean }) {
+  const { t } = useTranslation();
+  const { openElement } = useBoard();
+  const label = t(instagram ? 'board.menu.openOnInstagram' : 'board.menu.openInViewer');
+  return (
+    <button
+      type="button"
+      className="card__expand"
+      data-no-drag
+      data-play-link={element.id}
+      title={label}
+      aria-label={label}
+      onClick={(event) => {
+        event.stopPropagation();
+        stopInline(element.id);
+        openElement?.(element);
+      }}
+    >
+      <Icon name="arrow" size={14} />
+    </button>
   );
 }
 
@@ -583,6 +591,20 @@ function LinkCard({ element, width }: { element: Of<'link'>; width: number }) {
   const title = element.title || (href ? new URL(href).hostname : element.url);
   const embedUrl = videoEmbedUrl(element.url);
   const instagram = isInstagramUrl(element.url);
+  const host = href ? (
+    <a
+      className="card__host"
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer nofollow"
+      data-no-drag
+    >
+      <Icon name="link" size={12} />
+      {hostOf(element.url)}
+    </a>
+  ) : (
+    <span className="card__host">{element.url}</span>
+  );
   return (
     <>
       {embedUrl && playing ? (
@@ -611,19 +633,14 @@ function LinkCard({ element, width }: { element: Of<'link'>; width: number }) {
       <div className="card__pad card__link">
         <span className="card__title">{element.title || shortUrl(element.url)}</span>
         {element.description && <span className="card__desc">{element.description}</span>}
-        {href ? (
-          <a
-            className="card__host"
-            href={href}
-            target="_blank"
-            rel="noopener noreferrer nofollow"
-            data-no-drag
-          >
-            <Icon name="link" size={12} />
-            {hostOf(element.url)}
-          </a>
+        {embedUrl && playing && instagram ? (
+          // Instagram's embed fills its picture with its own bars: ↗ waits below, by the host.
+          <div className="card__host-row">
+            {host}
+            <OpenOutButton element={element} instagram />
+          </div>
         ) : (
-          <span className="card__host">{element.url}</span>
+          host
         )}
       </div>
     </>
