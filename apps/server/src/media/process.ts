@@ -10,6 +10,7 @@ import { asset, assetVariant } from '../db/schema.ts';
 import { animatedVariantKey, readAll, type Storage, variantKey, waveformKey } from '../storage.ts';
 import { archiveDesignPreview, designExtension, photoshopPreview } from './design.ts';
 import { readExif } from './exif.ts';
+import { readFileMetadata } from './file-metadata.ts';
 import { GPX_MAX_BYTES, parseGpx, trackStats } from './gpx.ts';
 import { decodeHeic, sniffImage } from './heic.ts';
 import { MAP_HEIGHT, MAP_WIDTH, type MapSettings, renderMap, routeLine, viewOf } from './maps.ts';
@@ -170,6 +171,10 @@ export async function processAsset(
   if (row.kind === 'file' && isPdf(head)) return processPdf(deps, row, digest);
   if (row.kind === 'audio') return processAudio(deps, row, digest, head);
   if (row.kind === 'file' && isGpx(row, head)) return processGpx(deps, row, digest);
+  const filePreview =
+    row.kind === 'file'
+      ? await readFileMetadata(storage, row.storageKey, row.filename, row.size, deps.tmpDir)
+      : null;
   const sniffed = sniffImage(head);
   // SVG is rasterised only when it was declared as such: it cannot be sniffed safely.
   const svg = !sniffed && row.kind === 'image' && row.mime === 'image/svg+xml';
@@ -178,7 +183,12 @@ export async function processAsset(
   if (!sniffed && !svg && !(video && tools?.ffmpeg)) {
     await db
       .update(asset)
-      .set({ sha256: digest, status: 'ready', animated: false })
+      .set({
+        sha256: digest,
+        status: 'ready',
+        animated: false,
+        ...(filePreview ? { exif: { ...row.exif, filePreview } } : {}),
+      })
       .where(eq(asset.id, assetId));
     return { variants: 0 };
   }

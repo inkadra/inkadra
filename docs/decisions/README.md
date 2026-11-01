@@ -62,5 +62,7 @@ in order. An accepted decision is never rewritten: a later one supersedes it.
 | [0056](0056-personal-project-groups.md)              | Personal project groups: organisation only, per person, never access                   |
 | [0057](0057-project-theme.md)                        | Project theme: accent, bundled heading fonts and logo for presentations and PDFs       |
 
+| [0059](0059-model-font-previews.md) | Bounded model and font metadata, scoped browser font specimens |
+
 Two decisions share the number 0025: they were accepted in parallel, and accepted records
 are not renumbered.

@@ -11,6 +11,7 @@ import { pickVariant, playbackUrl, useAsset } from './assets.ts';
 import { CroppedImage } from './CroppedImage.tsx';
 import { addPalette } from './colors.ts';
 import { GuestModeContext } from './context.ts';
+import { FontSpecimen } from './FontSpecimen.tsx';
 import { FrameGrab } from './FrameGrab.tsx';
 import { fileBadge, fileFamily, isPdf } from './file-kinds.ts';
 import { VideoFrameStepper } from './frame-grab.ts';
@@ -200,14 +201,14 @@ const ThumbnailImage = memo(function ThumbnailImage({
   if (!ready) {
     return <span className="viewer__thumb-placeholder" />;
   }
-  return (
-    <img
-      className="viewer__thumb-img"
-      src={pickVariant(ready, 120) || ready.url}
-      alt={alt ?? ''}
-      loading="lazy"
-    />
-  );
+  const src =
+    ready.variants.length > 0
+      ? pickVariant(ready, 120)
+      : ready.kind === 'image' && !isRawImageType(ready.mime)
+        ? ready.url
+        : null;
+  if (!src) return <span className="viewer__thumb-placeholder">{fileBadge(ready)}</span>;
+  return <img className="viewer__thumb-img" src={src} alt={alt ?? ''} loading="lazy" />;
 });
 
 /** Thumbnails farther than this from the current item stay empty until it gets close. */
@@ -614,6 +615,8 @@ export function MediaViewer({
                   />
                 )}
               </>
+            ) : ready && fileFamily(ready) === 'font' ? (
+              <FontSpecimen key={ready.id} asset={ready} editable />
             ) : ready?.kind === 'audio' ? (
               <div className="viewer__file">
                 <span className={`fcard__tile fbadge--${fileFamily(ready)}`} aria-hidden="true">

@@ -9,6 +9,7 @@ import { AudioPlayer, useWaveform } from './AudioPlayer.tsx';
 import { pickVariant, playbackUrl, useAsset } from './assets.ts';
 import { CardCaption } from './CardCaption.tsx';
 import { useBoard } from './context.ts';
+import { FontSpecimen, ModelTile } from './FontSpecimen.tsx';
 import {
   type FileFamily,
   fileBadge,
@@ -90,6 +91,19 @@ export function useFileMeta(asset: Asset): { family: FileFamily; badge: string; 
     layers <= 32768
   )
     meta.push(t('board.file.layers', { count: layers }));
+  const details = asset.exif?.filePreview;
+  if (details && typeof details === 'object') {
+    const info = details as Record<string, unknown>;
+    if (fileFamily(asset) === 'font') {
+      meta.length = 0;
+      for (const value of [info.family, info.style ?? info.weight])
+        if (typeof value === 'string' || typeof value === 'number') meta.push(String(value));
+      if (typeof info.glyphs === 'number')
+        meta.push(t('board.file.glyphs', { count: info.glyphs }));
+    }
+    if (typeof info.polygons === 'number')
+      meta.push(t('board.file.polygons', { count: info.polygons }));
+  }
   if (asset.pageCount) meta.push(t('board.file.pages', { count: asset.pageCount }));
   return { family: fileFamily(asset), badge: fileBadge(asset), meta };
 }
@@ -209,7 +223,19 @@ function ReadyFileCard({
     : meta;
 
   let preview: ReactNode;
-  if (asset.kind === 'video') {
+  if (family === 'font') {
+    preview = (
+      <Preview family={family} className="fcard__preview--font">
+        <FontSpecimen asset={asset} />
+      </Preview>
+    );
+  } else if (family === '3d') {
+    preview = (
+      <Preview family={family} className="fcard__preview--model">
+        <ModelTile />
+      </Preview>
+    );
+  } else if (asset.kind === 'video') {
     preview = <VideoPreview element={element} asset={asset} pixels={pixels} state={state} />;
   } else if (family === 'audio') {
     preview = <AudioPreview id={element.id} asset={asset} state={state} width={width} />;

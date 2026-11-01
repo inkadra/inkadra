@@ -424,7 +424,10 @@
       "preparing": "Preparo l’anteprima",
       "play": "Riproduci {{name}}",
       "pause": "Metti in pausa {{name}}",
-      "seek": "Posizione in {{name}}"
+      "seek": "Posizione in {{name}}",
+      "sampleText": "Testo di esempio",
+      "glyphs": "{{count}} glifi",
+      "polygons": "{{count}} poligoni"
     },
     "voiceNote": {
       "label": "Nota vocale",
