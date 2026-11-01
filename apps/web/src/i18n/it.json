@@ -1378,7 +1378,14 @@
     "rateLimited": "Troppi commenti in poco tempo: aspetta un minuto.",
     "escapeAgain": "Premi di nuovo Esc per scartare il testo.",
     "arrived_one": "È arrivato un nuovo commento.",
-    "arrived_other": "Sono arrivati {{count}} nuovi commenti."
+    "arrived_other": "Sono arrivati {{count}} nuovi commenti.",
+    "showOnBoard": "Mostra sulla board",
+    "showOnBoardHint": "Fumetti accanto alle card con discussioni aperte",
+    "popoverLabel": "Discussioni su {{card}}",
+    "popoverTitle_one": "{{count}} discussione aperta",
+    "popoverTitle_other": "{{count}} discussioni aperte",
+    "openInPanel": "Apri nel pannello",
+    "closePopover": "Chiudi le discussioni"
   },
   "review": {
     "title": "Revisione",

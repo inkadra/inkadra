@@ -1378,7 +1378,14 @@
     "rateLimited": "Too many comments in a short time: wait a minute.",
     "escapeAgain": "Press Esc again to discard the text.",
     "arrived_one": "A new comment arrived.",
-    "arrived_other": "{{count}} new comments arrived."
+    "arrived_other": "{{count}} new comments arrived.",
+    "showOnBoard": "Show on board",
+    "showOnBoardHint": "Bubbles next to the cards with open threads",
+    "popoverLabel": "Threads on {{card}}",
+    "popoverTitle_one": "{{count}} open thread",
+    "popoverTitle_other": "{{count}} open threads",
+    "openInPanel": "Open in the panel",
+    "closePopover": "Close the threads"
   },
   "review": {
     "title": "Review",

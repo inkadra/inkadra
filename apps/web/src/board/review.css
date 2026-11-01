@@ -575,3 +575,105 @@ button.review-link:hover:not(:disabled) {
   border-radius: 0;
   background: none;
 }
+
+/* On the board (#311) ---------------------------------------------------------- */
+/* A layer above the canvas, sized to it each frame; only its children take the pointer. */
+.comments-on-board {
+  position: fixed;
+  z-index: 30;
+  pointer-events: none;
+  overflow: hidden;
+}
+.comments-on-board__link {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+.comments-on-board__link line {
+  stroke: var(--ink-accent-primary);
+  stroke-opacity: 0.65;
+  stroke-width: 1.5;
+}
+.comment-bubble {
+  position: absolute;
+  left: 0;
+  top: 0;
+  pointer-events: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 20px;
+  padding: 0 7px;
+  border: 0;
+  border-radius: var(--ink-radius-full);
+  background: var(--ink-accent-button);
+  color: var(--ink-on-accent);
+  font: inherit;
+  font-size: 10.5px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.35);
+}
+.comment-bubble[hidden] {
+  display: none;
+}
+.comment-bubble:hover {
+  background: var(--ink-accent-button-hover);
+}
+.comment-bubble:focus-visible {
+  outline: 2px solid var(--ink-accent-primary);
+  outline-offset: 2px;
+}
+/* The bubbles stand in for the count badge of the cards. */
+body[data-comments-on-board] .card-review__count {
+  display: none;
+}
+.comment-popover {
+  position: absolute;
+  left: 0;
+  top: 0;
+  pointer-events: auto;
+  display: flex;
+  flex-direction: column;
+  width: 300px;
+  max-height: min(440px, 80%);
+  padding: 10px;
+  border: 1px solid var(--ink-border-default);
+  border-radius: var(--ink-radius-md);
+  background: var(--ink-surface-float);
+  color: var(--ink-text-primary);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
+  outline: none;
+  will-change: transform;
+}
+.comment-popover__head {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 8px;
+  font-size: 12px;
+}
+.comment-popover__head strong {
+  flex: 1;
+  font-weight: 600;
+}
+.comment-popover__body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.comments-panel__toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 12px;
+  color: var(--ink-text-secondary);
+}

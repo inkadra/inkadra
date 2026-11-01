@@ -9,7 +9,7 @@ import {
   MAX_COMMENT_LENGTH,
   type UserSummary,
 } from '@inkadra/shared';
-import { Button, ChoiceTile, Icon, IconButton, Radio, Select } from '@inkadra/ui';
+import { Button, ChoiceTile, Icon, IconButton, Radio, Select, Switch } from '@inkadra/ui';
 import {
   type FormEvent,
   type KeyboardEvent,
@@ -32,6 +32,7 @@ import * as Y from 'yjs';
 import { api, RequestError } from '../lib/api.ts';
 import { useSession } from '../lib/session.tsx';
 import { ReviewChip } from './CardReview.tsx';
+import { CommentsOnBoard } from './CommentsOnBoard.tsx';
 import { commentPanelPosition } from './comment-panel-position.ts';
 import { GuestTag } from './GuestTag.tsx';
 import { plainText } from './note.tsx';
@@ -55,8 +56,11 @@ import {
   getReviews,
   openComments,
   placePin,
+  readOnBoard,
   refreshReviews,
   saveDraft,
+  setOnBoard,
+  setReviews,
   useReviews,
 } from './review-store.ts';
 import type { BoardStore } from './store.ts';
@@ -72,6 +76,12 @@ export function CommentsButton() {
   const counts = useReviews((s) => s.counts);
   const isOpen = useReviews((s) => s.target !== null);
   const preview = useReviews((s) => s.preview);
+  const canvas = useReviews((s) => s.canvas);
+  const { user } = useSession();
+  // The choice of "Show on board" is the person's own: read it again for each board.
+  useEffect(() => {
+    if (boardId) setReviews({ onBoard: readOnBoard(user?.id) });
+  }, [boardId, user?.id]);
   if (!boardId || preview) return null;
   let open = 0;
   for (const c of counts.values()) open += c.open;
@@ -87,6 +97,7 @@ export function CommentsButton() {
         <span className="comments-button__label">{t('comments.title')}</span>
         {open > 0 && <span className="review-count">{open}</span>}
       </Button>
+      {canvas && <CommentsOnBoard />}
       {isOpen && createPortal(<CommentsPanel key={boardId} />, document.body)}
     </>
   );
@@ -184,6 +195,7 @@ function CommentsPanel() {
   // Read the rendered card so every entry point (toolbar, badge, pin, linked thread)
   // follows pan, zoom and layout changes without storing stale screen coordinates.
   const canvas = useReviews((s) => s.canvas);
+  const onBoard = useReviews((s) => s.onBoard);
   useEffect(() => {
     if (!elementId || !canvas) return;
     let frame = 0;
@@ -349,6 +361,13 @@ function CommentsPanel() {
           </div>
         ) : null}
         {elementId && !removed && <ReviewSection key={elementId} elementId={elementId} />}
+
+        {canvas && (
+          <label className="comments-panel__toggle">
+            {t('comments.showOnBoard')}
+            <Switch checked={onBoard} onChange={(e) => setOnBoard(e.target.checked, user?.id)} />
+          </label>
+        )}
 
         <fieldset className="review-segments">
           <legend className="review-hidden">{t('comments.filter')}</legend>
