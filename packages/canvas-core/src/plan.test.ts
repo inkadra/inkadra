@@ -24,12 +24,14 @@ import {
   blockingCurve,
   blockingPositions,
   duplicatePlanItems,
+  gridLength,
   iconCone,
   iconHit,
   iconSize,
   itemsInRect,
   layerOf,
   lensAngle,
+  measureEnds,
   moveItem,
   normalizeRotation,
   PLAN_GRID,
@@ -41,6 +43,7 @@ import {
   resizeItem,
   rotateItem,
   SYMBOL_SIZES,
+  scaleFor,
   shownAngle,
   snapPlanPoint,
   toggleGroup,
@@ -376,5 +379,39 @@ describe('several items', () => {
     const plan = { icons: [a, b, c] };
     const hit = itemsInRect(plan, { x: 0, y: 0, w: 300, h: 200 });
     expect(hit.map((r) => r.id)).toEqual([a.id]);
+  });
+});
+
+describe('scale and measures', () => {
+  it('sets the scale from a line of known length', () => {
+    const length = gridLength(0, 0, 4096, 0);
+    expect(length).toBe(PLAN_VIEW_W);
+    expect(scaleFor(length, 5.2)).toBeCloseTo(1000 / 5.2);
+    expect(scaleFor(length, 0)).toBeNull();
+  });
+
+  it('keeps a measure on the icons it is attached to', () => {
+    const cam: PlanIcon = { ...camera, id: 'iconCAMAAAAAA', x: 100, y: 200 };
+    const actor: PlanIcon = { ...camera, id: 'iconACTAAAAAA', kind: 'actor', x: 900, y: 800 };
+    const measure = {
+      id: 'measureAAAAAA',
+      kind: 'measure' as const,
+      color: '#1C1C1E',
+      width: 4,
+      x0: 0,
+      y0: 0,
+      x1: 1,
+      y1: 1,
+      from: cam.id,
+      to: actor.id,
+    };
+    expect(measureEnds(measure, [cam, actor])).toMatchObject({
+      x0: 100,
+      y0: 200,
+      x1: 900,
+      y1: 800,
+    });
+    // An icon gone: its end stays.
+    expect(measureEnds(measure, [cam])).toMatchObject({ x0: 100, y0: 200, x1: 1, y1: 1 });
   });
 });

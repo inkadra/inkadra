@@ -12,6 +12,7 @@ import {
   DEFAULT_LENS,
   duplicatePlanItems,
   encodeStroke,
+  gridLength,
   gridStep,
   iconCone,
   itemBox,
@@ -37,6 +38,7 @@ import {
   resizeItem,
   rotateItem,
   type SceneElement,
+  scaleFor,
   shownAngle,
   snapPlanPoint,
   toGrid,
@@ -83,7 +85,7 @@ import { type LibraryItem, PlanLibrary, rememberRecent } from './PlanLibrary.tsx
 import { SceneBadges, ScenePicker, scenesOfPlan } from './scenes.tsx';
 import './plan.css';
 
-type DragKind = 'line' | 'arrow' | 'rect' | 'ellipse' | 'zone' | 'measure';
+type DragKind = 'line' | 'arrow' | 'rect' | 'ellipse' | 'zone' | 'measure' | 'scale';
 type Tool = 'select' | 'pencil' | 'text' | 'icons' | 'move' | DragKind;
 type Panel = 'icons' | 'props';
 
@@ -122,7 +124,7 @@ type Gesture =
   | { kind: 'move'; ref: PlanItemRef; start: Point; item: PlanItem }
   | { kind: 'rotate'; ref: PlanItemRef; centre: Point; from: number; item: PlanItem }
   | { kind: 'draw'; points: Point[] }
-  | { kind: 'shape'; shape: DragKind; a: Point; b: Point }
+  | { kind: 'shape'; shape: DragKind; a: Point; b: Point; raw: [Point, Point] }
   | { kind: 'bend'; index: number; item: PlanIcon }
   | { kind: 'resize'; handle: ResizeHandle; item: PlanItem }
   | { kind: 'moveMany'; start: Point; items: PlanItem[] }
@@ -167,7 +169,7 @@ export function PlanEditor({
   onOpenScene: (id: string) => void;
   onClose: () => void;
 }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [tool, setTool] = useState<Tool>('select');
   const [armed, setArmed] = useState<LibraryItem | null>(null);
   const [panel, setPanel] = useState<Panel>('icons');
@@ -179,6 +181,10 @@ export function PlanEditor({
   const [ghosts, setGhosts] = useState(true);
   /** The angle shown over the rotate handle while it turns. */
   const [chip, setChip] = useState<string | null>(null);
+  /** The line drawn to set the scale, waiting for its length in metres (round 6, g). */
+  const [scaleDraft, setScaleDraft] = useState<{ length: number; metres: string } | null>(null);
+  const [gridDraft, setGridDraft] = useState<'0.25' | '0.5' | '1'>(plan.grid ?? '0.5');
+  const [rulersDraft, setRulersDraft] = useState(plan.rulers ?? true);
   const linked = scenesOfPlan(plan, new Map(scenes.map((s) => [s.id, s])));
   /** The selected items, groups whole (round 6, f). */
   const [selection, setSelection] = useState<PlanItemRef[]>([]);
@@ -355,7 +361,8 @@ export function PlanEditor({
     const mod = isMac() ? e.metaKey : e.ctrlKey;
     const key = e.key.toLowerCase();
     if (e.key === 'Escape') {
-      if (moving) setMoving(null);
+      if (scaleDraft) setScaleDraft(null);
+      else if (moving) setMoving(null);
       else if (armed) {
         setArmed(null);
         setTool('select');
@@ -383,7 +390,10 @@ export function PlanEditor({
         document.querySelector<HTMLInputElement>('.plan-lib__search input')?.focus(),
       );
     } else if (!mod && key === 'g') setSnap((v) => !v);
-    else if (!mod && key === 'm') {
+    else if (!mod && key === 'u' && !phone) {
+      setArmed(null);
+      setTool('measure');
+    } else if (!mod && key === 'm') {
       setArmed(null);
       setTool('move');
     } else if (!mod && TOOLS.some((x) => x.key.toLowerCase() === key)) {
@@ -534,7 +544,7 @@ export function PlanEditor({
     }
     if ((plan.shapes?.length ?? 0) >= MAX_SHAPES) return;
     const a = snapped(p);
-    gesture.current = { kind: 'shape', shape: tool, a, b: a };
+    gesture.current = { kind: 'shape', shape: tool, a, b: a, raw: [p, p] };
     setLiveShape({ kind: tool, a, b: a });
   }
 
@@ -623,6 +633,7 @@ export function PlanEditor({
       setLive([...g.points]);
     } else {
       g.b = snapped(p);
+      g.raw[1] = p;
       setLiveShape({ kind: g.shape, a: g.a, b: g.b });
     }
   }
@@ -670,6 +681,25 @@ export function PlanEditor({
       return;
     }
     setLiveShape(null);
+    if (g.shape === 'scale') {
+      // "Imposta la scala": the line drawn on something of known length.
+      const length = gridLength(toGrid(g.a.x), toGrid(g.a.y), toGrid(g.b.x), toGrid(g.b.y));
+      setTool('select');
+      if (length > 10) setScaleDraft({ length, metres: '' });
+      return;
+    }
+    // A measure's ends that start or land on an icon stay on it (round 6, g).
+    const endOn = (q: Point) => {
+      if (g.shape !== 'measure') return null;
+      const hit = planItemAt(plan, q, viewOf);
+      const target = hit && planItem(plan, hit);
+      return isIcon(target) ? target : null;
+    };
+    // Where the pointer was, not the grid point: the icon under it.
+    const fromIcon = endOn(g.raw[0]);
+    const toIcon = endOn(g.raw[1]);
+    if (fromIcon) g.a = { x: fromIcon.x / 4096, y: fromIcon.y / 4096 };
+    if (toIcon) g.b = { x: toIcon.x / 4096, y: toIcon.y / 4096 };
     const shape = {
       kind: g.shape,
       color: ink,
@@ -679,6 +709,8 @@ export function PlanEditor({
       x1: toGrid(g.b.x),
       y1: toGrid(g.b.y),
       ...(g.shape === 'zone' || g.shape === 'measure' ? { layer: 'notes' as const } : {}),
+      ...(fromIcon ? { from: fromIcon.id } : {}),
+      ...(toIcon ? { to: toIcon.id } : {}),
     };
     // A click without a drag draws nothing.
     if (Math.abs(shape.x1 - shape.x0) + Math.abs(shape.y1 - shape.y0) >= 8)
@@ -830,7 +862,8 @@ export function PlanEditor({
           shape={
             {
               id: 'liveAAAA',
-              kind: liveShape.kind,
+              kind: liveShape.kind === 'scale' ? 'measure' : liveShape.kind,
+              ...(liveShape.kind === 'scale' ? { dashed: true } : {}),
               color: ink,
               width: PLAN_PEN,
               x0: toGrid(liveShape.a.x),
@@ -907,6 +940,17 @@ export function PlanEditor({
           setPanel('icons');
         },
       )}
+      {!phone &&
+        toolButton(
+          'measure',
+          `${t('board.plan.tool.measure')} (U)`,
+          <Icon name="ruler" size={16} />,
+          tool === 'measure' && !armed,
+          () => {
+            setArmed(null);
+            setTool('measure');
+          },
+        )}
       {toolButton(
         'move',
         `${t('board.plan.tool.move')} (M)`,
@@ -1435,7 +1479,149 @@ export function PlanEditor({
       )}
     </div>
   ) : (
-    <p className="plan-props__empty">{t('board.plan.noSelection')}</p>
+    <div className="plan-props">
+      <h3 className="plan-props__title">{t('board.plan.settings')}</h3>
+      <div className="plan-props__row">
+        <span>{t('board.plan.scale')}</span>
+        <b>
+          {plan.scale
+            ? t('board.plan.scaleGrid', {
+                grid: Number(plan.grid ?? '0.5').toLocaleString(i18n.language),
+              })
+            : t('board.plan.noScale')}
+        </b>
+      </div>
+      <Button icon="ruler" onClick={() => setTool('scale')}>
+        {t('board.plan.setScale')}
+      </Button>
+      {plan.scale && (
+        <>
+          <label className="plan-props__row">
+            <span>{t('board.plan.rulers')}</span>
+            <Switch
+              checked={!!plan.rulers}
+              onChange={(e) =>
+                change(() =>
+                  updateElement(doc, plan.id, { rulers: e.target.checked || undefined }, LOCAL),
+                )
+              }
+            />
+          </label>
+          <Button
+            variant="ghost"
+            onClick={() =>
+              change(() =>
+                updateElement(
+                  doc,
+                  plan.id,
+                  { scale: undefined, grid: undefined, rulers: undefined },
+                  LOCAL,
+                ),
+              )
+            }
+          >
+            {t('board.plan.clearScale')}
+          </Button>
+        </>
+      )}
+      <p className="plan-props__empty">{t('board.plan.noSelection')}</p>
+    </div>
+  );
+  const metresDraft = scaleDraft ? Number(scaleDraft.metres.replace(',', '.')) : 0;
+  const scaleDialog = scaleDraft && (
+    <div className="plan-scale ink-motion-pop" role="dialog" aria-label={t('board.plan.setScale')}>
+      <div className="plan-scale__head">
+        <b>{t('board.plan.setScale')}</b>
+        <IconButton
+          icon="close"
+          label={t('board.plan.cancel')}
+          onClick={() => setScaleDraft(null)}
+        />
+      </div>
+      <label className="plan-scale__field">
+        <span>{t('board.plan.lineIs')}</span>
+        <span className="plan-num">
+          <input
+            inputMode="decimal"
+            // biome-ignore lint/a11y/noAutofocus: the dialog opens to take this one number.
+            autoFocus
+            aria-label={t('board.plan.lineIs')}
+            value={scaleDraft.metres}
+            onChange={(e) => setScaleDraft({ ...scaleDraft, metres: e.target.value })}
+          />
+          <span>{t('board.plan.metres')}</span>
+        </span>
+      </label>
+      <div className="plan-props__row">
+        <span>{t('board.plan.grid')}</span>
+        <fieldset className="plan-props__segmented" aria-label={t('board.plan.grid')}>
+          {(['0.25', '0.5', '1'] as const).map((g) => (
+            <button
+              key={g}
+              type="button"
+              aria-pressed={gridDraft === g}
+              onClick={() => setGridDraft(g)}
+            >
+              {Number(g).toLocaleString(i18n.language)}
+              {g === '1' ? ' m' : ''}
+            </button>
+          ))}
+        </fieldset>
+      </div>
+      <label className="plan-props__row">
+        <span>{t('board.plan.rulers')}</span>
+        <Switch checked={rulersDraft} onChange={(e) => setRulersDraft(e.target.checked)} />
+      </label>
+      <div className="plan-scale__actions">
+        <Button variant="ghost" onClick={() => setScaleDraft(null)}>
+          {t('board.plan.cancel')}
+        </Button>
+        <Button
+          variant="primary"
+          disabled={!(metresDraft > 0 && metresDraft < 1000)}
+          onClick={() => {
+            const next = scaleFor(scaleDraft.length, metresDraft);
+            if (!next) return;
+            change(() =>
+              updateElement(
+                doc,
+                plan.id,
+                {
+                  scale: Math.round(next * 100) / 100,
+                  grid: gridDraft,
+                  rulers: rulersDraft || undefined,
+                },
+                LOCAL,
+              ),
+            );
+            setScaleDraft(null);
+          }}
+        >
+          {t('board.plan.apply')}
+        </Button>
+      </div>
+    </div>
+  );
+  /** Rulers in metres along the top and the left of a scaled plan. */
+  const rulers = !phone && plan.scale && plan.rulers && (
+    <>
+      <div className="plan-ruler plan-ruler--top" aria-hidden="true">
+        {Array.from({ length: Math.floor(PLAN_VIEW_W / plan.scale) + 1 }, (_, m) => (
+          // biome-ignore lint/suspicious/noArrayIndexKey: a metre is its place on the ruler.
+          <span key={m} style={{ left: `${((m * (plan.scale as number)) / PLAN_VIEW_W) * 100}%` }}>
+            {m === 1 ? '1 m' : m}
+          </span>
+        ))}
+      </div>
+      <div className="plan-ruler plan-ruler--left" aria-hidden="true">
+        {Array.from({ length: Math.floor(PLAN_VIEW_H / plan.scale) + 1 }, (_, m) => (
+          // biome-ignore lint/suspicious/noArrayIndexKey: a metre is its place on the ruler.
+          <span key={m} style={{ top: `${((m * (plan.scale as number)) / PLAN_VIEW_H) * 100}%` }}>
+            {m}
+          </span>
+        ))}
+      </div>
+    </>
   );
 
   const stageArea = (
@@ -1449,6 +1635,7 @@ export function PlanEditor({
           onPointerUp={onPointerUp}
           onPointerCancel={onPointerUp}
         >
+          {rulers}
           <PlanDrawing plan={shown} grid={step} ghosts={ghosts}>
             {liveLayer}
           </PlanDrawing>
@@ -1483,6 +1670,10 @@ export function PlanEditor({
         </div>
       </div>
       {moveBar}
+      {tool === 'scale' && (
+        <p className="plan-editor__movebar plan-editor__tip">{t('board.plan.scaleHint')}</p>
+      )}
+      {scaleDialog}
       {phone && movingIcon && (
         <p className="plan-editor__hint">
           {t('board.plan.moveHint', { number: (movingIcon.steps?.length ?? 0) + 2 })}

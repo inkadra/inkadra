@@ -593,6 +593,33 @@ export function itemBox(item: PlanItem): { x: number; y: number; w: number; h: n
   return { x, y, w: Math.max(...xs) - x, h: Math.max(...ys) - y };
 }
 
+// Scale and measures --------------------------------------------------------------
+
+/**
+ * A measure with its ends on the icons they are attached to, where those icons stand now:
+ * the measure follows them when they move. Ends of icons that are gone stay where they were.
+ */
+export function measureEnds(shape: PlanShape, icons: readonly PlanIcon[] = []): PlanShape {
+  if (shape.kind !== 'measure' || (!shape.from && !shape.to)) return shape;
+  const from = shape.from ? icons.find((i) => i.id === shape.from) : undefined;
+  const to = shape.to ? icons.find((i) => i.id === shape.to) : undefined;
+  return {
+    ...shape,
+    ...(from ? { x0: from.x, y0: from.y } : {}),
+    ...(to ? { x1: to.x, y1: to.y } : {}),
+  };
+}
+
+/** Length of a line between two grid points, in view units. */
+export function gridLength(x0: number, y0: number, x1: number, y1: number): number {
+  return Math.hypot((x1 - x0) * kx, (y1 - y0) * ky);
+}
+
+/** The scale (view units per metre) that makes a line `length` view units long `metres` long. */
+export function scaleFor(length: number, metres: number): number | null {
+  return metres > 0 && length > 0 ? length / metres : null;
+}
+
 // Several items -------------------------------------------------------------------
 
 export type PlanAlign = 'left' | 'centre' | 'top' | 'distribute';

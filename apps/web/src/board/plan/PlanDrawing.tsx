@@ -9,6 +9,7 @@ import {
   iconTransform,
   labelAnchor,
   layerOf,
+  measureEnds,
   PLAN_VIEW_H,
   PLAN_VIEW_W,
   type PlanElement,
@@ -422,7 +423,7 @@ export const PlanDrawing = memo(function PlanDrawing({
         </g>
       ))}
       {visible(plan.shapes, off).map((s) => (
-        <PlanShapeView key={s.id} shape={s} scale={plan.scale} />
+        <PlanShapeView key={s.id} shape={measureEnds(s, plan.icons)} scale={plan.scale} />
       ))}
       {visible(plan.icons, off).map((icon) => (
         <BlockingView key={`b${icon.id}`} icon={icon} ghosts={ghosts} />

@@ -13,6 +13,7 @@ import {
   iconTransform,
   labelAnchor,
   layerOf,
+  measureEnds,
   PLAN_VIEW_W,
   type PlanItem,
   type Rect,
@@ -901,7 +902,9 @@ export function planOps(
   for (const stroke of shown(el.strokes))
     inside.push(strokeOp({ ...stroke, color: ink(stroke.color) }, box));
   for (const shape of shown(el.shapes))
-    inside.push(...planShapeOps(shape, box, ink(shape.color), el.scale, ctx));
+    inside.push(
+      ...planShapeOps(measureEnds(shape, el.icons), box, ink(shape.color), el.scale, ctx),
+    );
   // Blocking: the moves, the veiled earlier positions and the numbers (round 6, d).
   for (const icon of moves ? shown(el.icons) : []) {
     const steps = icon.steps ?? [];

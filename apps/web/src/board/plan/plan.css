@@ -955,3 +955,81 @@ button.plan__badge:hover {
   padding: 0 8px 0 6px;
   color: var(--ink-text-secondary);
 }
+
+/* Scale and measures (round 6, g). */
+.plan-ruler {
+  position: absolute;
+  font-size: 10.5px;
+  color: var(--ink-text-muted);
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
+}
+.plan-ruler--top {
+  left: 0;
+  right: 0;
+  top: -20px;
+  height: 16px;
+  border-bottom: 1px solid var(--ink-border-default);
+}
+.plan-ruler--left {
+  top: 0;
+  bottom: 0;
+  left: -22px;
+  width: 18px;
+  border-right: 1px solid var(--ink-border-default);
+}
+.plan-ruler span {
+  position: absolute;
+  white-space: nowrap;
+}
+.plan-ruler--top span {
+  top: 0;
+  translate: 2px 0;
+}
+.plan-ruler--left span {
+  left: 0;
+  translate: 0 2px;
+}
+.plan-editor__tip {
+  margin: 0;
+  padding: 6px 12px;
+}
+.plan-scale {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 280px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px 16px 16px;
+  background: var(--ink-surface-float);
+  border: 1px solid var(--ink-border-default);
+  border-radius: var(--ink-radius-md);
+  box-shadow: var(--ink-shadow-menu);
+  font-size: 12.5px;
+}
+.plan-scale__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 14px;
+}
+.plan-scale__field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  color: var(--ink-text-secondary);
+}
+.plan-scale__field .plan-num {
+  height: 32px;
+}
+.plan-scale__field .plan-num input {
+  width: 100%;
+  text-align: left;
+}
+.plan-scale__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}

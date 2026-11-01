@@ -332,6 +332,40 @@ for (const theme of ['dark', 'light'] as const) {
     await page.screenshot({ path: join(out, `desktop-${theme}-multi.png`) });
     await page.keyboard.press('Escape');
 
+    // Scale and measures (round 6, g): a line along the top wall is 5,20 m; the grid turns to
+    // metres, rulers show; a measure from A cam to Anna stays on both.
+    const empty = at(390, 255);
+    await page.mouse.click(empty.x, empty.y);
+    await editor.getByRole('tab', { name: 'Proprietà' }).click();
+    await editor.getByRole('button', { name: 'Imposta la scala' }).click();
+    const wallA = at(20, 20);
+    const wallB = at(380, 20);
+    await page.mouse.move(wallA.x, wallA.y);
+    await page.mouse.down();
+    await page.mouse.move(wallB.x, wallB.y, { steps: 6 });
+    await page.mouse.up();
+    const scaleDialog = editor.getByRole('dialog', { name: 'Imposta la scala' });
+    await scaleDialog.getByLabel('La linea che hai tracciato è lunga').fill('5,20');
+    await scaleDialog.getByRole('button', { name: 'Imposta', exact: true }).click();
+    await expect.poll(async () => Math.round((await saved()).plan?.scale ?? 0)).toBe(173);
+    await expect(editor.locator('.plan-ruler--top')).toContainText('1 m');
+    await editor.getByRole('button', { name: 'Misura (U)' }).click();
+    const camAt = at(100, 200);
+    const annaEnd = at(262, 178);
+    await page.mouse.move(camAt.x, camAt.y);
+    await page.mouse.down();
+    await page.mouse.move(annaEnd.x, annaEnd.y, { steps: 6 });
+    await page.mouse.up();
+    await expect
+      .poll(async () => {
+        const m = (await saved()).plan?.shapes?.find((x) => x.kind === 'measure');
+        return !!m?.from && !!m?.to;
+      })
+      .toBe(true);
+    await expect(editor.locator('.plan__chip text')).toContainText(' m');
+    await page.screenshot({ path: join(out, `desktop-${theme}-scale.png`) });
+    await editor.getByRole('button', { name: 'Seleziona (V)' }).click();
+
     // Duplicate, then delete the copy; the plan keeps the ten icons it had.
     await page.mouse.click(aCam.x, aCam.y);
     await bar.getByRole('button', { name: 'Duplica' }).click();

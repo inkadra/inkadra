@@ -724,7 +724,8 @@
         "ellipse": "Ellipse",
         "text": "Text",
         "icons": "Set icons",
-        "move": "Movement"
+        "move": "Movement",
+        "measure": "Measure"
       },
       "snap": "Snap to grid",
       "library": "Set icons",
@@ -937,7 +938,20 @@
         "distribute": "Distribute"
       },
       "group": "Group",
-      "ungroup": "Ungroup"
+      "ungroup": "Ungroup",
+      "settings": "Plan",
+      "scale": "Scale",
+      "scaleGrid": "{{grid}} m per square",
+      "noScale": "None, no metres",
+      "setScale": "Set the scale",
+      "scaleHint": "Draw a line along something whose length you know",
+      "rulers": "Rulers",
+      "clearScale": "Remove the scale",
+      "cancel": "Cancel",
+      "lineIs": "The line you drew is",
+      "metres": "metres",
+      "grid": "Grid",
+      "apply": "Set"
     }
   },
   "tags": {

@@ -724,7 +724,8 @@
         "ellipse": "Ellisse",
         "text": "Testo",
         "icons": "Icone da set",
-        "move": "Movimento"
+        "move": "Movimento",
+        "measure": "Misura"
       },
       "snap": "Aggancia alla griglia",
       "library": "Icone da set",
@@ -937,7 +938,20 @@
         "distribute": "Distribuisci"
       },
       "group": "Raggruppa",
-      "ungroup": "Separa"
+      "ungroup": "Separa",
+      "settings": "Pianta",
+      "scale": "Scala",
+      "scaleGrid": "{{grid}} m per quadretto",
+      "noScale": "Nessuna, senza metri",
+      "setScale": "Imposta la scala",
+      "scaleHint": "Traccia una linea su qualcosa di cui conosci la misura",
+      "rulers": "Righelli",
+      "clearScale": "Togli la scala",
+      "cancel": "Annulla",
+      "lineIs": "La linea che hai tracciato è lunga",
+      "metres": "metri",
+      "grid": "Griglia",
+      "apply": "Imposta"
     }
   },
   "tags": {
