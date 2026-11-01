@@ -4197,3 +4197,43 @@ button.card__play {
     box-shadow: var(--ink-float-shadow);
   }
 }
+
+.fcard__preview--font,
+.fcard__preview--model {
+  min-height: 110px;
+  background: #1d1d20;
+  color: #ececee;
+}
+.fcard__preview--model {
+  background: radial-gradient(circle at 50% 60%, #3a3f2a, #1d1f18);
+  color: var(--ink-tool-color);
+}
+.font-specimen {
+  display: grid;
+  place-items: center;
+  gap: 8px;
+  padding: 16px;
+  font-size: 48px;
+  line-height: 1.2;
+}
+.font-specimen__family {
+  font-size: 16px;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.font-specimen--viewer {
+  width: min(800px, 100%);
+}
+.font-specimen textarea {
+  width: 100%;
+  min-height: 240px;
+  font: inherit;
+  font-size: clamp(32px, 6vw, 72px);
+  color: inherit;
+  background: var(--ink-surface-2);
+  border: 1px solid var(--ink-border-default);
+  border-radius: var(--ink-radius-sm);
+  padding: 16px;
+}

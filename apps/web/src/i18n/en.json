@@ -425,7 +425,10 @@
       "preparing": "Preparing preview",
       "play": "Play {{name}}",
       "pause": "Pause {{name}}",
-      "seek": "Position in {{name}}"
+      "seek": "Position in {{name}}",
+      "sampleText": "Sample text",
+      "glyphs": "{{count}} glyphs",
+      "polygons": "{{count}} polygons"
     },
     "voiceNote": {
       "label": "Voice note",

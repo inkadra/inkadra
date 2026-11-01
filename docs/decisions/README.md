@@ -63,5 +63,7 @@ in order. An accepted decision is never rewritten: a later one supersedes it.
 | [0057](0057-project-theme.md)                        | Project theme: accent, bundled heading fonts and logo for presentations and PDFs       |
 | [0058](0058-needed-items-by-shooting-day.md)         | Needed items: typed to-do lists linked to scenes, rolled up by shooting day            |
 
+| [0059](0059-model-font-previews.md) | Bounded model and font metadata, scoped browser font specimens |
+
 Two decisions share the number 0025: they were accepted in parallel, and accepted records
 are not renumbered.
