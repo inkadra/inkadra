@@ -22,6 +22,7 @@ import {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import * as Y from 'yjs';
+import { TodoAssignment } from './TodoAssignment.tsx';
 import { pickVariant, useAsset } from './assets.ts';
 import { canRenameBoard, renameBoard } from './boards.ts';
 import { CardCaption } from './CardCaption.tsx';
@@ -657,6 +658,7 @@ function TodoCard({ element, editing }: { element: Of<'todo'>; editing: boolean 
   const { store, readOnly } = useBoard();
   const { t } = useTranslation();
   const [draft, setDraft] = useState('');
+  const [assigning, setAssigning] = useState<string | null>(null);
   const done = element.items.filter((i) => i.done).length;
   const addRef = useRef<HTMLInputElement>(null);
   useEffect(() => {
@@ -719,12 +721,18 @@ function TodoCard({ element, editing }: { element: Of<'todo'>; editing: boolean 
                   if (text) updateTodoItem(store.doc, element.id, item.id, { text }, LOCAL);
                   else removeTodoItem(store.doc, element.id, item.id, LOCAL);
                 }}
-                onKeyDown={blurOnEnter}
+                onKeyDown={(e) => {
+                  if (e.key === '@') {
+                    e.preventDefault();
+                    setAssigning(item.id);
+                  } else blurOnEnter(e);
+                }}
                 aria-label={t('board.todo.item')}
               />
             ) : (
               <span>{item.text}</span>
             )}
+            <TodoAssignment elementId={element.id} item={item} editing={editing} open={assigning === item.id} onClose={() => setAssigning(null)} />
           </li>
         ))}
       </ul>

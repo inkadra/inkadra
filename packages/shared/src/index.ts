@@ -24,3 +24,5 @@ export * from './transfers.ts';
 export * from './users.ts';
 export * from './versions.ts';
 export { youtubeVideoId } from './youtube.ts';
+
+export * from './tasks.ts';

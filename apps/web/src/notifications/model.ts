@@ -12,6 +12,7 @@ export const KNOWN_TYPES = [
   'access_expiring',
   'access_expired',
   'link_opened',
+    'task_assigned',
 ] as const;
 
 /** Where a notification leads: the board, with the card selected and the thread open. */
@@ -54,13 +55,13 @@ export function dayLabel(
   });
 }
 
-export type InboxFilter = 'all' | 'mentions' | 'approvals';
+export type InboxFilter = 'all' | 'mentions' | 'approvals' | 'tasks';
 export function filterNotifications<T extends Pick<Notification, 'type'>>(
   items: T[],
   filter: InboxFilter,
 ): T[] {
   return items.filter(
-    (item) => filter === 'all' || item.type === (filter === 'mentions' ? 'mention' : 'review'),
+    (item) => filter === 'all' || item.type === (filter === 'mentions' ? 'mention' : filter === 'tasks' ? 'task_assigned' : 'review'),
   );
 }
 /** The badge comes from the API total, never from the currently loaded page. */

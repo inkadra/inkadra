@@ -129,7 +129,11 @@ export const FileElement = Base.extend({
   assetId: z.string(),
   caption: z.string().max(2000).optional(),
 });
-export const TodoItem = z.object({ id: ElementId, text: z.string().max(2000), done: z.boolean() });
+export const TodoItem = z.object({
+  id: ElementId, text: z.string().max(2000), done: z.boolean(),
+  assigneeId: z.uuid().optional(),
+  dueDate: z.iso.date().optional(),
+});
 export const TodoElement = Base.extend({
   type: z.literal('todo'),
   title: z.string().max(200).optional(),

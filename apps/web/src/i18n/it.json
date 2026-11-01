@@ -1512,7 +1512,8 @@
       "access_expired": "L’accesso di {{name}} è scaduto",
       "access_expiredOwn": "Il tuo accesso è scaduto",
       "guest": "Un ospite",
-      "link_opened": "ha aperto la board"
+      "link_opened": "ha aperto la board",
+      "task_assigned": "ti ha assegnato un compito"
     },
     "emailTitle": "Notifiche email",
     "emailHint": "Menzioni, risposte e revisioni anche per email, se il server può inviarle.",
@@ -2651,5 +2652,19 @@
       "contact": "Contatto (proprietario, permessi)",
       "delete": "Elimina la location"
     }
+  },
+  "tasks": {
+    "title": "I miei compiti",
+    "assignee": "Assegna persona",
+    "dueDate": "Scadenza",
+    "clearDate": "Rimuovi scadenza",
+    "unassign": "Rimuovi assegnazione",
+    "today": "Oggi",
+    "overdue": "In ritardo",
+    "week": "Questa settimana",
+    "later": "Più avanti",
+    "undated": "Senza scadenza",
+    "loading": "Caricamento…",
+    "empty": "Nessun compito assegnato a te."
   }
 }

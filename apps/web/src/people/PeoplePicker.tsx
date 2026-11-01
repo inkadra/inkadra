@@ -17,6 +17,7 @@ export const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export interface PeoplePickerProps
   extends Omit<InputHTMLAttributes<HTMLInputElement>, 'value' | 'onChange' | 'role'> {
+  people?: Person[];
   value: string;
   onChange: (value: string) => void;
   /** Someone picked from the suggestions, with the mouse, a tap or Enter. */
@@ -35,6 +36,7 @@ export interface PeoplePickerProps
  * nobody stays in the field for the caller to invite by email.
  */
 export function PeoplePicker({
+  people: supplied,
   value,
   onChange,
   onPick,
@@ -51,6 +53,11 @@ export function PeoplePicker({
   const [active, setActive] = useState(0);
   const [open, setOpen] = useState(false);
   useEffect(() => {
+    if (supplied) {
+      setFound(supplied.filter(p => p.name.toLocaleLowerCase().includes(value.replace(/^@/, '').trim().toLocaleLowerCase())));
+      setOpen(true);
+      return;
+    }
     const q = value.trim();
     // Results of the previous text must never be picked for the new one.
     setFound([]);
@@ -71,7 +78,7 @@ export function PeoplePicker({
       current = false;
       clearTimeout(timer);
     };
-  }, [value]);
+  }, [value, supplied]);
   const results = useRef(onResults);
   results.current = onResults;
   useEffect(() => {

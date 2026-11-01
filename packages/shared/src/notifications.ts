@@ -20,6 +20,7 @@ export const NotificationType = z
     'access_expiring',
     'access_expired',
     'link_opened',
+    'task_assigned',
   ])
   .openapi({
     description:

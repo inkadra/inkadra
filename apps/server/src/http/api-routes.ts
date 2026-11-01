@@ -18,6 +18,7 @@ import { readInstanceSettings } from '../instance-settings.ts';
 import type { Mailer } from '../mailer.ts';
 import { mediaTools } from '../media/video.ts';
 import { requireActor } from './auth-routes.ts';
+import { myTasks } from '../tasks.ts';
 import { HttpError } from './errors.ts';
 
 interface Deps {
@@ -46,6 +47,11 @@ export function toUser(row: typeof user.$inferSelect): User {
 export function registerApiRoutes(app: FastifyInstance, deps: Deps) {
   const { config, db, auth } = deps;
   const v1 = (path: string) => `${API_PREFIX}${path}`;
+
+  app.get(v1('/me/tasks'), async (req) => {
+    const actor = await requireActor(auth, req, db);
+    return { items: await myTasks(db, actor.id) };
+  });
 
   // Polled by Docker and proxies every few seconds: keep it out of the request log.
   app.get(v1('/health'), { logLevel: 'warn' }, async (_req, reply) => {

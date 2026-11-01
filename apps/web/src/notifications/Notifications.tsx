@@ -552,6 +552,7 @@ export function NotificationList({
             >
               {t('notifications.tabs.approvals')}
             </button>
+            <button type="button" role="tab" aria-selected={filter === 'tasks'} className={`notifications-filter-tab ${filter === 'tasks' ? 'is-active' : ''}`} onClick={() => setFilter('tasks')}>{t('tasks.title')}</button>
           </div>
         )}
         {fixed && filter !== 'all' && next && (

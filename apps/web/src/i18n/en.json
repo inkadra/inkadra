@@ -1512,7 +1512,8 @@
       "access_expired": "{{name}}’s access has ended",
       "access_expiredOwn": "Your access has ended",
       "guest": "A guest",
-      "link_opened": "opened the board"
+      "link_opened": "opened the board",
+      "task_assigned": "assigned you a task"
     },
     "emailTitle": "Email notifications",
     "emailHint": "Mentions, replies and reviews by email too, when the server can send it.",
@@ -2651,5 +2652,19 @@
       "contact": "Contact (owner, permits)",
       "delete": "Delete location"
     }
+  },
+  "tasks": {
+    "title": "My tasks",
+    "assignee": "Assign person",
+    "dueDate": "Due date",
+    "clearDate": "Clear due date",
+    "unassign": "Unassign",
+    "today": "Today",
+    "overdue": "Overdue",
+    "week": "This week",
+    "later": "Later",
+    "undated": "No due date",
+    "loading": "Loading…",
+    "empty": "No tasks assigned to you."
   }
 }
