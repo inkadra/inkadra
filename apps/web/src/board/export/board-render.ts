@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 import { arrowGeometry, arrowPolyline, decodeStroke, type Rect } from '@inkadra/canvas-core';
 import type { Element, FrameShape, Stroke } from '@inkadra/doc-schema';
+import type { AssetTrack } from '@inkadra/shared';
 import { croppedRotatedSize } from '../image-crop.ts';
 import type { Placed } from './board-model.ts';
 import type { ImageInfo, Measure, Op } from './pages.ts';
@@ -24,7 +25,8 @@ export type Palette = Record<
   | 'tag-blue-bg'
   | 'tag-orange-bg'
   | 'tag-purple-bg'
-  | 'tag-green-bg',
+  | 'tag-green-bg'
+  | 'tag-red',
   string
 >;
 
@@ -42,6 +44,8 @@ export interface CardContext {
   noteBlocks(id: string): NoteBlock[];
   image(assetId: string | undefined): { key: string; info: ImageInfo } | null;
   fileName(assetId: string): string;
+  /** The route of a GPX file, drawn over its map. */
+  track?(assetId: string): AssetTrack | null;
   boardTitle(boardId: string): string;
   frameLabel(id: string): string;
   /** Width / height of a frame's picture. */
@@ -105,6 +109,10 @@ export function cardHeight(el: Element, w: number, ctx: CardContext): number | n
         (ctx.storyMeta(el) ? lines(ctx.storyMeta(el), SMALL, 1) : 0);
       return Math.max(PORTRAIT, text + 4) + 20;
     }
+    case 'table':
+      return el.rows.length * TABLE_ROW;
+    case 'map':
+      return (ctx.image(el.imageAssetId) ? (w * 560) / 1024 : 0) + 52;
     case 'location': {
       const pic = ctx.image(el.assetId) ? (w * 9) / 16 : 0;
       return (
@@ -295,9 +303,17 @@ function body(p: Placed, ctx: CardContext): Op[] {
     case 'file': {
       const name = ctx.fileName(el.assetId);
       const img = ctx.image(el.assetId);
+      const track = ctx.track?.(el.assetId) ?? null;
       const ops: Op[] = [];
       let top = p.y + 10;
-      if (img) {
+      if (track) {
+        const pic = { x: p.x, y: p.y, w: p.w, h: (p.w * 560) / 1024 };
+        ops.push(
+          img ? picture(img.key, pic, 'cover', c) : { kind: 'rect', ...pic, fill: c['surface-2'] },
+          ...routeOps(track, pic, c),
+        );
+        top = p.y + pic.h + 10;
+      } else if (img) {
         const h = Math.min(p.w * 0.6, (p.w * img.info.height) / img.info.width);
         ops.push(picture(img.key, { x: p.x, y: p.y, w: p.w, h }, 'cover', c));
         top = p.y + h + 10;
@@ -513,7 +529,123 @@ function body(p: Placed, ctx: CardContext): Op[] {
     case 'section':
       // Drawn by drawCard without a card.
       return [];
+    case 'table':
+      return tableOps(el, p, c, m);
+    case 'map': {
+      const ops: Op[] = [];
+      let top = p.y + 10;
+      const img = ctx.image(el.imageAssetId);
+      if (img) {
+        const pic = { x: p.x, y: p.y, w: p.w, h: (p.w * 560) / 1024 };
+        ops.push(
+          picture(img.key, pic, 'cover', c),
+          ...dot(pic.x + pic.w / 2, pic.y + pic.h / 2, 6, c['tag-red'], c['surface-1']),
+        );
+        top = p.y + pic.h + 10;
+      }
+      const name = text(el.name || el.address || '', top, TITLE, c['text-primary'], 1);
+      ops.push(...name.ops);
+      if (el.address && el.address !== el.name)
+        ops.push(...text(el.address, name.bottom, SMALL, c['text-muted'], 1).ops);
+      return ops;
+    }
   }
+}
+
+/** A round dot with a ring, as the pins and route ends on the board. */
+function dot(cx: number, cy: number, r: number, fill: string, ring?: string): Op[] {
+  const ops: Op[] = [];
+  if (ring)
+    ops.push({
+      kind: 'rect',
+      x: cx - r - 2,
+      y: cy - r - 2,
+      w: 2 * r + 4,
+      h: 2 * r + 4,
+      radius: r + 2,
+      fill: ring,
+    });
+  ops.push({ kind: 'rect', x: cx - r, y: cy - r, w: 2 * r, h: 2 * r, radius: r, fill });
+  return ops;
+}
+
+/** A GPX route over its map picture: the line and its two ends. */
+function routeOps(track: AssetTrack, pic: Rect, c: Palette): Op[] {
+  const p = track.points;
+  if (p.length < 4) return [];
+  const points = p.map((v, i) => (i % 2 === 0 ? pic.x + v * pic.w : pic.y + v * pic.h));
+  const [sx, sy] = [points[0] as number, points[1] as number];
+  const [ex, ey] = [points[points.length - 2] as number, points[points.length - 1] as number];
+  return [
+    { kind: 'polyline', points, color: c['tag-green'], width: Math.max(1.5, pic.w / 150) },
+    ...dot(sx, sy, 3.5, c['tag-green']),
+    ...dot(ex, ey, 3.5, c['tag-red']),
+  ];
+}
+
+/** Height of a table row in exports, as on the board. */
+const TABLE_ROW = 30;
+
+/** A table card: a grid of rows, the header row tinted, each cell on one line. */
+function tableOps(
+  el: Extract<Element, { type: 'table' }>,
+  p: Placed,
+  c: Palette,
+  m: Measure,
+): Op[] {
+  const ops: Op[] = [];
+  // Set widths keep their share of the card; the others split what is left.
+  const set = el.columns.reduce((sum, col) => sum + (col.width ?? 0), 0);
+  const free = el.columns.filter((col) => col.width === undefined).length;
+  const share = free > 0 ? Math.max(80, (p.w - set) / free) : 0;
+  const total = set + share * free;
+  const widths = el.columns.map((col) => ((col.width ?? share) * p.w) / total);
+  el.rows.forEach((row, r) => {
+    const top = p.y + r * TABLE_ROW;
+    const head = el.header === true && r === 0;
+    if (head)
+      ops.push({
+        kind: 'rect',
+        x: p.x,
+        y: top,
+        w: p.w,
+        h: TABLE_ROW,
+        fill: el.color ? c[TINTS[el.color]] : c['surface-2'],
+      });
+    else if (r > 0)
+      ops.push({
+        kind: 'line',
+        x1: p.x,
+        y1: top,
+        x2: p.x + p.w,
+        y2: top,
+        color: c['border-default'],
+        width: 1,
+      });
+    let left = p.x;
+    el.columns.forEach((col, i) => {
+      const w = widths[i] ?? 0;
+      const value = (row.cells[col.id] ?? '').replace(/\s+/g, ' ');
+      if (value)
+        ops.push({
+          kind: 'text',
+          x: left + 9,
+          y: top + 19,
+          text: ellipsize(value, w - 18, head ? 11 : 11.5, head ? 600 : 400, m),
+          size: head ? 11 : 11.5,
+          weight: head ? 600 : 400,
+          color: head
+            ? el.color
+              ? c[`tag-${el.color}`]
+              : c['text-secondary']
+            : i === 0
+              ? c['text-primary']
+              : c['text-secondary'],
+        });
+      left += w;
+    });
+  });
+  return ops;
 }
 
 function hostOf(url: string): string {

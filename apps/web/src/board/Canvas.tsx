@@ -20,6 +20,7 @@ import {
   deleteElements,
   distributeRects,
   dropIndex,
+  fillTable,
   fitRect,
   frameLabels,
   GRID,
@@ -32,6 +33,7 @@ import {
   moveIntoParent,
   moveToCanvas,
   moveToUnsorted,
+  newTable,
   nextZoomStep,
   type Point,
   pasteElements,
@@ -64,7 +66,7 @@ import {
   zoomAt,
 } from '@inkadra/canvas-core';
 import { type Element, UNSORTED } from '@inkadra/doc-schema';
-import { type Board, defaultProjectIcon } from '@inkadra/shared';
+import { type Board, defaultProjectIcon, isMapLink } from '@inkadra/shared';
 import type { Editor } from '@tiptap/react';
 import {
   type DragEvent,
@@ -134,6 +136,7 @@ import { ImageCropToolbar, restoreOriginalImage } from './ImageCropEditor.tsx';
 import { hasImageTransform } from './image-crop.ts';
 import { fillLinkPreview, webUrl } from './links.ts';
 import { useBoardCounts } from './live-counts.ts';
+import { fillMapPreview } from './maps.ts';
 import { NoteSideSheet } from './NoteSideSheet.tsx';
 import { fillFragment, isEmpty } from './note.tsx';
 import { PresenceLayer } from './PresenceLayer.tsx';
@@ -142,6 +145,7 @@ import { canvasElementId, ResizeHandles } from './ResizeHandles.tsx';
 import { openComments } from './review-store.ts';
 import { canSpacePan, commandFor, insideDialog, isMac, isTyping } from './shortcuts.ts';
 import { LOCAL } from './store.ts';
+import { clipboardGrid, tableMenu } from './table.ts';
 import { TagPopover } from './tags.tsx';
 import { templateLabels, templateRect } from './templates.ts';
 import { startUpload } from './uploads.ts';
@@ -400,9 +404,12 @@ export function Canvas({
     y: number;
     at: Point;
     fromToolbar?: boolean;
+    /** Row and column of the table cell the menu was opened on. */
+    cell?: { r: number; c: number };
   } | null>(null);
   const [palette, setPalette] = useState(false);
-  const [linkDraft, setLinkDraft] = useState<{ at: Point } | null>(null);
+  /** The address field of a new link card, or of a map card (an address or a map link). */
+  const [linkDraft, setLinkDraft] = useState<{ at: Point; map?: boolean } | null>(null);
   const [unsortedOpen, setUnsortedOpen] = useState(false);
   const [toast, setToast] = useState<{ text: string; undo: boolean } | null>(null);
   const closeToast = useCallback(() => setToast(null), []);
@@ -736,11 +743,17 @@ export function Canvas({
         case 'section':
           created = createElement(doc, 'section', pos, { title: '' }, opts);
           break;
+        case 'table':
+          created = createElement(doc, 'table', pos, { ...newTable(3, 3), header: true }, opts);
+          break;
         case 'color':
           created = createElement(doc, 'color', pos, { hex: '#808086' }, opts);
           break;
         case 'link':
           setLinkDraft({ at: pos });
+          return;
+        case 'map':
+          setLinkDraft({ at: pos, map: true });
           return;
         case 'image':
           pendingImageAt.current = pos;
@@ -815,12 +828,28 @@ export function Canvas({
     [readOnly, projectId, boardId, doc, userId, store, select, t, instance, place],
   );
 
+  /** A map card from a map link or a typed address; the server finds the place and its map. */
+  const addMap = useCallback(
+    (at: Point, from: { url: string } | { query: string }) => {
+      const fields =
+        'url' in from ? { name: '', url: from.url } : { name: from.query, address: from.query };
+      const el = createElement(doc, 'map', at, fields, { userId, origin: LOCAL });
+      select([el.id]);
+      void fillMapPreview(doc, el.id, projectId, boardId, from);
+    },
+    [doc, userId, select, projectId, boardId],
+  );
+
   const addText = useCallback(
     (text: string, where: Point) => {
       const trimmed = text.trim();
       if (!trimmed || readOnly) return;
       const opts = { userId, origin: LOCAL };
       const at = place(where);
+      if (/^https?:\/\/\S+$/i.test(trimmed) && isMapLink(trimmed)) {
+        addMap(at, { url: trimmed });
+        return;
+      }
       if (/^https?:\/\/\S+$/i.test(trimmed)) {
         const el = createElement(doc, 'link', at, { url: trimmed }, opts);
         select([el.id]);
@@ -834,7 +863,7 @@ export function Canvas({
       }, LOCAL);
       select([el.id]);
     },
-    [readOnly, userId, doc, store, select, projectId, boardId, place],
+    [readOnly, userId, doc, store, select, projectId, boardId, place, addMap],
   );
 
   const removeSelection = useCallback(() => {
@@ -1682,7 +1711,9 @@ export function Canvas({
   function onContextMenu(e: ReactMouseEvent<HTMLDivElement>) {
     const target = e.target as HTMLElement;
     if (target.closest('[data-chrome]') && !canvasElementId(target)) return;
-    if (isTyping(target)) return;
+    // A table cell keeps the table's menu while it is being edited.
+    const cell = target.closest<HTMLElement>('[data-table-cell]')?.dataset.tableCell;
+    if (isTyping(target) && !cell) return;
     e.preventDefault();
     // A long press of the fingers of a pinch.
     if (touchHeld.current) return;
@@ -1690,7 +1721,13 @@ export function Canvas({
     if (id && !selection.has(id)) select([id]);
     if (!id) setSelection(EMPTY_SET);
     const p = screenPoint(e);
-    setMenu({ x: p.x, y: p.y, at: screenToWorld(vp.current, p) });
+    const [r, c] = (cell ?? '').split(':').map(Number);
+    setMenu({
+      x: p.x,
+      y: p.y,
+      at: screenToWorld(vp.current, p),
+      ...(cell && r !== undefined && c !== undefined ? { cell: { r, c } } : {}),
+    });
   }
 
   // Wheel: scroll pans, pinch or Ctrl/⌘ + wheel zooms. A mouse wheel notch is one small step that
@@ -1970,6 +2007,17 @@ export function Canvas({
       uploadFiles(files, at);
       return;
     }
+    const grid = clipboardGrid(
+      e.clipboardData.getData('text/plain'),
+      e.clipboardData.getData('text/html'),
+    );
+    if (grid) {
+      store.undo.stopCapturing();
+      const el = createElement(doc, 'table', at, newTable(1, 1), { userId, origin: LOCAL });
+      fillTable(doc, el.id, 0, 0, grid, LOCAL);
+      select([el.id]);
+      return;
+    }
     addText(e.clipboardData.getData('text/plain'), at);
   };
   useEffect(() => {
@@ -2033,6 +2081,7 @@ export function Canvas({
   const largeBoard = snap.byId.size > LARGE_BOARD;
   // Guests have no project to count in; versions show the counts of today.
   const boardCounts = useBoardCounts(guest ? undefined : projectId, boards);
+  const mapAttribution = instance?.maps?.attribution;
   const ctx = useMemo<BoardContextValue>(
     () => ({
       store,
@@ -2052,9 +2101,11 @@ export function Canvas({
       openElement,
       setNoteEditor,
       frameLabels: labels,
+      mapAttribution,
     }),
     [
       labels,
+      mapAttribution,
       store,
       readOnly,
       projectId,
@@ -2296,6 +2347,9 @@ export function Canvas({
                 ),
             },
           ]
+        : []),
+      ...(single?.type === 'table' && !readOnly && !single.locked
+        ? tableMenu(doc, single, menu.cell, t)
         : []),
       ...(single && (single.type === 'image' || single.type === 'file')
         ? [{ label: t('board.menu.viewImage'), action: () => openElement(single) }]
@@ -2657,7 +2711,7 @@ export function Canvas({
               }
               onColor={(color) => {
                 for (const el of selectedEls) {
-                  if (el.type === 'note' || el.type === 'column')
+                  if (el.type === 'note' || el.type === 'column' || el.type === 'table')
                     updateElement(doc, el.id, { color }, LOCAL);
                 }
               }}
@@ -2911,7 +2965,18 @@ export function Canvas({
             />,
             document.body,
           )}
-        {linkDraft && (
+        {linkDraft?.map && (
+          <LinkDraft
+            map
+            at={worldToScreen(viewport, linkDraft.at)}
+            onCancel={() => setLinkDraft(null)}
+            onSubmit={(value) => {
+              setLinkDraft(null);
+              addMap(linkDraft.at, webUrl(value) ? { url: value } : { query: value });
+            }}
+          />
+        )}
+        {linkDraft && !linkDraft.map && (
           <LinkDraft
             at={worldToScreen(viewport, linkDraft.at)}
             onCancel={() => setLinkDraft(null)}
@@ -2982,16 +3047,20 @@ function outsideDialogs<E extends { target: EventTarget }>(handler: (e: E) => vo
 
 function LinkDraft({
   at,
+  map,
   onSubmit,
   onCancel,
 }: {
   at: Point;
-  onSubmit: (url: string) => void;
+  /** A map card: an address or a map link; addresses are sent as typed. */
+  map?: boolean;
+  onSubmit: (value: string) => void;
   onCancel: () => void;
 }) {
   const { t } = useTranslation();
   const [value, setValue] = useState('');
   const [error, setError] = useState(false);
+  const prefix = map ? 'board.map' : 'board.link';
   return (
     <form
       className="canvas__linkdraft"
@@ -2999,7 +3068,12 @@ function LinkDraft({
       data-chrome
       onSubmit={(e) => {
         e.preventDefault();
-        const url = /^[a-z]+:\/\//i.test(value.trim()) ? value.trim() : `https://${value.trim()}`;
+        const text = value.trim().slice(0, map ? 2048 : undefined);
+        if (map && !/^https?:\/\//i.test(text)) {
+          if (text) onSubmit(text.slice(0, 500));
+          return;
+        }
+        const url = /^[a-z]+:\/\//i.test(text) ? text : `https://${text}`;
         const href = webUrl(url);
         if (href) onSubmit(href);
         else setError(true);
@@ -3010,8 +3084,8 @@ function LinkDraft({
         // biome-ignore lint/a11y/noAutofocus: the field opens because the user picked the link tool
         autoFocus
         value={value}
-        placeholder={t('board.link.placeholder')}
-        aria-label={t('board.link.label')}
+        placeholder={t(`${prefix}.placeholder`)}
+        aria-label={t(`${prefix}.label`)}
         aria-invalid={error || undefined}
         onChange={(e) => {
           setValue(e.target.value);

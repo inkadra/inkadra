@@ -21,6 +21,7 @@ import type { Jobs } from './jobs.ts';
 import { createMailer } from './mailer.ts';
 import { chooseVideoEncoder, forgetVideoEncoder } from './media/encoder-setting.ts';
 import type { VideoEncoder } from './media/hwaccel.ts';
+import { mapUserAgent } from './media/maps.ts';
 import { sweepJobDirs } from './media/scratch.ts';
 import {
   createQueues,
@@ -136,6 +137,9 @@ async function main() {
     heic: config.HEIC_PREVIEWS,
     raw: config.RAW_PREVIEWS,
     pdf: config.PDF_PREVIEWS,
+    ...(config.MAPS
+      ? { maps: { tileUrl: config.MAP_TILE_URL, userAgent: mapUserAgent(config.PUBLIC_URL) } }
+      : {}),
     proxies: {
       enabled: config.VIDEO_PROXIES,
       maxDurationS: config.VIDEO_PROXY_MAX_DURATION,

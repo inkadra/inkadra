@@ -27,6 +27,8 @@ export interface BoardContextValue {
   setNoteEditor: (editor: Editor | null) => void;
   /** Shot number of each frame, from the scenes it sits in. */
   frameLabels: ReadonlyMap<string, string>;
+  /** Credit of the map data on map pictures (Instance.maps). */
+  mapAttribution?: string | undefined;
 }
 
 export const BoardContext = createContext<BoardContextValue | null>(null);

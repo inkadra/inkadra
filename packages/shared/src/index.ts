@@ -11,6 +11,7 @@ export * from './export-settings.ts';
 export * from './guests.ts';
 export * from './instance.ts';
 export * from './instance-admin.ts';
+export * from './maps.ts';
 export * from './notifications.ts';
 export * from './permissions.ts';
 export * from './project-archive.ts';
@@ -22,5 +23,4 @@ export * from './sharing.ts';
 export * from './transfers.ts';
 export * from './users.ts';
 export * from './versions.ts';
-
 export { youtubeVideoId } from './youtube.ts';

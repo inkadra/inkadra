@@ -19,6 +19,7 @@ const instance: Instance = {
   setupRequired: false,
   registration: 'invite',
   media: { videoPosters: false, rawPreviews: false, pdfPreviews: false, videoProxies: false },
+  maps: { enabled: false, attribution: '', geocoding: false },
   limits: { uploadMaxBytes: 0 },
   serverTime: '2026-10-27T00:00:00Z',
   auth: { emailPassword: true, magicLink: false, email: true, google: false, oidc: [] },

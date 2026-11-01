@@ -422,6 +422,8 @@ export const asset = pgTable(
     proxyProgress: integer('proxy_progress'),
     /** Pages of a PDF, when poppler could read it. */
     pageCount: integer('page_count'),
+    /** The route of a GPX file (decision 0053). */
+    track: jsonb('track').$type<import('@inkadra/shared').AssetTrack>(),
     status: text('status', { enum: ['pending', 'processing', 'ready', 'failed'] })
       .notNull()
       .default('pending'),

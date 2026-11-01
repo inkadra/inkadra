@@ -281,6 +281,7 @@ const paths = {
     </>
   ),
   table: <path d="M4 5h16v14H4zM4 10h16M4 15h16M10 5v14" />,
+  map: <path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2zM9 4v14M15 6v14" />,
   crop: <path d="M6 2v14a2 2 0 0 0 2 2h14M2 6h14a2 2 0 0 1 2 2v14" />,
   rotateLeft: <path d="M4 9V4m0 5h5M4.5 9A8 8 0 1 1 6 17.5" />,
   rotateRight: <path d="M20 9V4m0 5h-5m4.5 0A8 8 0 1 0 18 17.5" />,

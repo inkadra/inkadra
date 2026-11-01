@@ -302,6 +302,7 @@ export function elementAssetIds(el: Element): string[] {
     case 'location':
       return el.assetId ? [el.assetId] : [];
     case 'link':
+    case 'map':
       return el.imageAssetId ? [el.imageAssetId] : [];
     default:
       return [];

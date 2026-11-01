@@ -11,6 +11,9 @@ import { defineConfig, devices } from '@playwright/test';
  */
 const vitePort = Number(process.env.E2E_VITE_PORT ?? 5179);
 const port = Number(process.env.E2E_PORT ?? 3100);
+// Map tiles come from a local stand-in, unless a run asks for a real server (screenshots).
+const tilePort = Number(process.env.E2E_TILE_PORT ?? 3190);
+const tileUrl = process.env.E2E_MAP_TILE_URL ?? `http://127.0.0.1:${tilePort}/{z}/{x}/{y}.png`;
 // Lets setOffline() and routes reach the service worker's own requests, as a real outage would.
 process.env.PW_EXPERIMENTAL_SERVICE_WORKER_NETWORK_EVENTS ??= '1';
 const baseURL = `http://localhost:${port}`;
@@ -86,8 +89,16 @@ export default defineConfig({
         // Uploaded files; the default /data only exists in the image.
         DATA_DIR: process.env.E2E_DATA_DIR ?? join(tmpdir(), 'inkadra-e2e'),
         INKADRA_VERSION: '0.1.0-e2e',
+        MAP_TILE_URL: tileUrl,
         LOG_LEVEL: 'warn',
       },
+    },
+    // Last: canvas-06 and frame-grab drop the first entry (Vite) and keep the rest.
+    {
+      command: 'node scripts/tile-server.mjs',
+      url: `http://127.0.0.1:${tilePort}/0/0/0.png`,
+      env: { E2E_TILE_PORT: String(tilePort) },
+      timeout: 10_000,
     },
   ],
 });

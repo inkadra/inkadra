@@ -72,6 +72,7 @@ import {
   UpdateInstanceMember,
   UpdateInstanceSettings,
 } from './instance-admin.ts';
+import { CreateMapPreview, MapPreview } from './maps.ts';
 import {
   MarkAllRead,
   Notification,
@@ -1321,6 +1322,25 @@ registry.registerPath({
     200: { description: 'Preview', ...json(LinkPreview) },
     ...errors,
     400: { description: 'Invalid address, or the page could not be fetched', ...json(ApiError) },
+  },
+});
+
+registry.registerPath({
+  method: 'post',
+  path: v1('/map-previews'),
+  tags: ['Assets'],
+  security: secured,
+  summary: 'Find a place from a map link or an address, with a map picture, for a map card.',
+  description:
+    'Coordinates come from the link itself; a short link (`maps.app.goo.gl`) is followed like a ' +
+    'link preview, and an address goes to the geocoder of the instance when it has one ' +
+    '(Instance.maps.geocoding). With maps on, the server composites the tiles around the place ' +
+    'into one picture, an image asset of the project, so viewers never contact the tile server ' +
+    '(decision 0053). Needs `editor` on the project.',
+  request: { body: json(CreateMapPreview) },
+  responses: {
+    200: { description: 'Preview', ...json(MapPreview) },
+    ...errors,
   },
 });
 

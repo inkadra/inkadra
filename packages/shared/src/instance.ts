@@ -58,6 +58,21 @@ export const Instance = z
         }),
       })
       .openapi({ description: 'Media tools available on this server (image tag `-media`).' }),
+    maps: z
+      .object({
+        enabled: z.boolean().openapi({
+          description:
+            'Map cards and GPX files get a map picture, composited by the server from its ' +
+            'tile server (MAPS, MAP_TILE_URL). False: they show only the address and link.',
+        }),
+        attribution: z.string().max(200).openapi({
+          description: 'Credit of the map data to show on every map picture.',
+        }),
+        geocoding: z.boolean().openapi({
+          description: 'Addresses can be looked up (MAP_GEOCODER_URL); off by default.',
+        }),
+      })
+      .openapi({ description: 'Maps of this server (decision 0053).' }),
     limits: z.object({
       uploadMaxBytes: z
         .int()

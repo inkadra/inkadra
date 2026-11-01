@@ -33,6 +33,7 @@ export function toAsset(g: GuestAsset): Asset {
     variants: g.variants.map((v) => ({ ...v })),
     exif: null,
     palette: null,
+    track: g.track,
     sourceUrl: null,
     createdAt: new Date(0).toISOString(),
   };

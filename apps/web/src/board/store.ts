@@ -170,6 +170,10 @@ function estimateHeight(el: Element): number {
       return 48 + el.items.length * 26;
     case 'section':
       return 44;
+    case 'table':
+      return el.rows.length * 31 + 2;
+    case 'map':
+      return el.imageAssetId ? Math.round((el.w * 560) / 1024) + 52 : 52;
     default:
       return 64;
   }

@@ -15,7 +15,7 @@ import {
   SHOT_MOVEMENTS,
   SHOT_SIZES,
 } from '@inkadra/doc-schema';
-import type { Asset, Board, CommentThread } from '@inkadra/shared';
+import type { Asset, AssetTrack, Board, CommentThread } from '@inkadra/shared';
 import { light } from '@inkadra/ui/tokens';
 import type { TFunction } from 'i18next';
 import { DEFAULT_ASPECT } from '../film/aspect.ts';
@@ -156,6 +156,7 @@ export async function buildPages(
   const images = new Map<string, LoadedImage>();
   const mode: ImageMode = preview || req.format === 'png' ? 'bitmap' : 'pdf';
   const names = preview ? env.cache.names : new Map<string, string>();
+  const tracks = new Map<string, AssetTrack>();
   // Loads pictures into `images`: from the dialog's cache for the preview, else afresh.
   const load = async (ids: Iterable<string>) => {
     const todo = [...ids].filter((id) => !images.has(id));
@@ -167,7 +168,9 @@ export async function buildPages(
       async (id) => {
         const meta = await assetMeta(id);
         if (meta) names.set(id, meta.filename);
-        if (meta?.kind === 'image') {
+        if (meta?.track) tracks.set(id, meta.track);
+        // A GPX file's preview is the map under its route.
+        if (meta?.kind === 'image' || (meta?.track && meta.variants.length > 0)) {
           const img = preview
             ? await env.cache.image(meta, pixels, signal)
             : await loadAssetImage(meta, pixels, mode, signal);
@@ -213,6 +216,7 @@ export async function buildPages(
       return { key: assetId, info: img ?? { width: 4, height: 3 } };
     },
     fileName: (assetId) => names.get(assetId) ?? t('export.file'),
+    track: (assetId) => tracks.get(assetId) ?? null,
     boardTitle: (boardId) => env.boards?.find((b) => b.id === boardId)?.title ?? t('export.board'),
     frameLabel: (id) => labels.get(id) ?? '',
     frameAspect: (frame) => aspectValue(frame.aspect ?? boardAspect),
@@ -391,7 +395,7 @@ function assetIdsOf(elements: readonly Element[]): Set<string> {
     if (el.type === 'image' || el.type === 'file' || el.type === 'frame') {
       if (el.assetId) ids.add(el.assetId);
     }
-    if (el.type === 'link' && el.imageAssetId) ids.add(el.imageAssetId);
+    if ((el.type === 'link' || el.type === 'map') && el.imageAssetId) ids.add(el.imageAssetId);
   }
   return ids;
 }

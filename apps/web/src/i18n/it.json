@@ -338,7 +338,9 @@
       "storyboard": "Storyboard",
       "character": "Personaggio",
       "location": "Location",
-      "section": "Titolo di sezione"
+      "section": "Titolo di sezione",
+      "table": "Tabella",
+      "map": "Mappa"
     },
     "tools": {
       "select": "Seleziona",
@@ -603,6 +605,30 @@
     "section": {
       "title": "Titolo della sezione",
       "placeholder": "Titolo della sezione"
+    },
+    "table": {
+      "cell": "Riga {{row}}, colonna {{column}}",
+      "resize": "Larghezza della colonna",
+      "addRow": "Riga",
+      "addColumn": "Colonna",
+      "headerOn": "Prima riga come intestazione",
+      "headerOff": "Togli la riga di intestazione",
+      "rowAbove": "Inserisci riga sopra",
+      "rowBelow": "Inserisci riga sotto",
+      "columnLeft": "Inserisci colonna a sinistra",
+      "columnRight": "Inserisci colonna a destra",
+      "rowUp": "Sposta riga su",
+      "rowDown": "Sposta riga giù",
+      "columnLeftMove": "Sposta colonna a sinistra",
+      "columnRightMove": "Sposta colonna a destra",
+      "deleteRow": "Elimina riga",
+      "deleteColumn": "Elimina colonna"
+    },
+    "map": {
+      "label": "Indirizzo o link di una mappa",
+      "placeholder": "Incolla un link di Maps o scrivi un indirizzo",
+      "open": "Apri in Mappe",
+      "untitled": "Luogo"
     },
     "count": {
       "cards_one": "{{count}} card",

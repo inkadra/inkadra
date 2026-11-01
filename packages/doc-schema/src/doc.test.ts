@@ -105,7 +105,7 @@ describe('board document', () => {
     const file = { ...base(), type: 'file' as const, assetId: 'asset-id' };
     addElement(doc, file);
     const before = roots(doc).elements.toJSON();
-    expect(migrateBoardDoc(doc, boardId)).toEqual([4, 5, 6, 7, 8, 9, 10]);
+    expect(migrateBoardDoc(doc, boardId)).toEqual([4, 5, 6, 7, 8, 9, 10, 11]);
     expect(getSchemaVersion(doc)).toBe(CURRENT_SCHEMA_VERSION);
     expect(roots(doc).elements.toJSON()).toEqual(before);
     expect(readElement(roots(doc).elements.get(file.id)!)).not.toHaveProperty('caption');
@@ -165,7 +165,7 @@ describe('board document', () => {
     addElement(doc, note);
     addElement(doc, column);
     const before = [...roots(doc).elements.values()].map((m) => readElement(m));
-    expect(migrateBoardDoc(doc, boardId)).toEqual([3, 4, 5, 6, 7, 8, 9, 10]);
+    expect(migrateBoardDoc(doc, boardId)).toEqual([3, 4, 5, 6, 7, 8, 9, 10, 11]);
     expect(getSchemaVersion(doc)).toBe(CURRENT_SCHEMA_VERSION);
     expect([...roots(doc).elements.values()].map((m) => readElement(m))).toEqual(before);
     expect(validateBoardDoc(doc)).toEqual([]);
@@ -343,7 +343,7 @@ describe('board document', () => {
   it('migrates version 8 without adding a sound track', () => {
     const doc = createBoardDoc(boardId);
     roots(doc).meta.set('schemaVersion', 8);
-    expect(migrateBoardDoc(doc, boardId)).toEqual([9, 10]);
+    expect(migrateBoardDoc(doc, boardId)).toEqual([9, 10, 11]);
     expect(getAnimaticAudio(doc)).toBeNull();
   });
 
@@ -354,7 +354,7 @@ describe('board document', () => {
     expect(getSchemaVersion(doc)).toBe(1);
     const before = [...roots(doc).elements.values()].map((m) => readElement(m));
     expect(before.every(Boolean)).toBe(true);
-    expect(migrateBoardDoc(doc, boardId)).toEqual([2, 3, 4, 5, 6, 7, 8, 9, 10]);
+    expect(migrateBoardDoc(doc, boardId)).toEqual([2, 3, 4, 5, 6, 7, 8, 9, 10, 11]);
     expect(getSchemaVersion(doc)).toBe(CURRENT_SCHEMA_VERSION);
     expect([...roots(doc).elements.values()].map((m) => readElement(m))).toEqual(before);
     const note = roots(doc).elements.get('note_v1_00001')!;
@@ -470,7 +470,7 @@ describe('video still provenance', () => {
     const frame = { ...base(), type: 'frame' as const, assetId, notes: 'Last Train' };
     addElement(doc, frame);
     const before = roots(doc).elements.toJSON();
-    expect(migrateBoardDoc(doc, boardId)).toEqual([5, 6, 7, 8, 9, 10]);
+    expect(migrateBoardDoc(doc, boardId)).toEqual([5, 6, 7, 8, 9, 10, 11]);
     expect(getSchemaVersion(doc)).toBe(CURRENT_SCHEMA_VERSION);
     expect(roots(doc).elements.toJSON()).toEqual(before);
     expect(readElement(roots(doc).elements.get(frame.id)!)).not.toHaveProperty('source');
@@ -513,7 +513,7 @@ describe('arrow path', () => {
     const element = arrow();
     addElement(doc, element);
     const before = roots(doc).elements.toJSON();
-    expect(migrateBoardDoc(doc, boardId)).toEqual([6, 7, 8, 9, 10]);
+    expect(migrateBoardDoc(doc, boardId)).toEqual([6, 7, 8, 9, 10, 11]);
     expect(getSchemaVersion(doc)).toBe(CURRENT_SCHEMA_VERSION);
     expect(roots(doc).elements.toJSON()).toEqual(before);
     expect(readElement(roots(doc).elements.get(element.id)!)).not.toHaveProperty('path');
@@ -576,7 +576,7 @@ describe('story bible cards', () => {
     roots(doc).meta.set('schemaVersion', 6);
     addElement(doc, { ...base(), type: 'note' });
     const before = roots(doc).elements.toJSON();
-    expect(migrateBoardDoc(doc, boardId)).toEqual([7, 8, 9, 10]);
+    expect(migrateBoardDoc(doc, boardId)).toEqual([7, 8, 9, 10, 11]);
     expect(getSchemaVersion(doc)).toBe(CURRENT_SCHEMA_VERSION);
     expect(roots(doc).elements.toJSON()).toEqual(before);
   });
@@ -625,7 +625,7 @@ describe('image crop and rotation', () => {
     const image = { ...base(), type: 'image' as const, assetId, caption: 'Locandina' };
     addElement(doc, image);
     const before = roots(doc).elements.toJSON();
-    expect(migrateBoardDoc(doc, boardId)).toEqual([8, 9, 10]);
+    expect(migrateBoardDoc(doc, boardId)).toEqual([8, 9, 10, 11]);
     expect(getSchemaVersion(doc)).toBe(CURRENT_SCHEMA_VERSION);
     expect(roots(doc).elements.toJSON()).toEqual(before);
     const parsed = readElement(roots(doc).elements.get(image.id)!);
@@ -673,7 +673,7 @@ describe('column colours and section headings', () => {
     const column = { ...base(), type: 'column' as const, title: 'Brief' };
     addElement(doc, column);
     const before = roots(doc).elements.toJSON();
-    expect(migrateBoardDoc(doc, boardId)).toEqual([10]);
+    expect(migrateBoardDoc(doc, boardId)).toEqual([10, 11]);
     expect(roots(doc).elements.toJSON()).toEqual(before);
     expect(readElement(roots(doc).elements.get(column.id)!)).not.toHaveProperty('color');
   });
@@ -690,5 +690,84 @@ describe('column colours and section headings', () => {
       fileCount: 1,
       cardCount: 3,
     });
+  });
+});
+
+describe('table cards', () => {
+  const table = (): Extract<Element, { type: 'table' }> => ({
+    ...base(),
+    type: 'table',
+    w: 420,
+    header: true,
+    color: 'orange',
+    columns: [{ id: 'colAAAAAAAA', width: 120 }, { id: 'colBBBBBBBB' }],
+    rows: [
+      { id: 'rowAAAAAAAA', cells: { colAAAAAAAA: 'Operatore', colBBBBBBBB: 'Zona' } },
+      { id: 'rowBBBBBBBB', cells: { colAAAAAAAA: 'Matteo' } },
+    ],
+  });
+
+  it('keeps columns, rows and cells through Yjs, as nested types', () => {
+    const doc = createBoardDoc(boardId);
+    const el = table();
+    const map = addElement(doc, el);
+    expect(map.get('rows')).toBeInstanceOf(Y.Array);
+    expect((map.get('rows') as Y.Array<Y.Map<unknown>>).get(0).get('cells')).toBeInstanceOf(Y.Map);
+    const copy = new Y.Doc();
+    Y.applyUpdate(copy, Y.encodeStateAsUpdate(doc));
+    expect(readElement(roots(copy).elements.get(el.id)!)).toEqual(el);
+    expect(validateBoardDoc(copy)).toEqual([]);
+  });
+
+  it('merges two people editing different cells of the same row', () => {
+    const a = createBoardDoc(boardId);
+    const el = table();
+    addElement(a, el);
+    const b = new Y.Doc();
+    Y.applyUpdate(b, Y.encodeStateAsUpdate(a));
+    const cells = (doc: Y.Doc) =>
+      (roots(doc).elements.get(el.id)!.get('rows') as Y.Array<Y.Map<unknown>>)
+        .get(1)
+        .get('cells') as Y.Map<string>;
+    cells(a).set('colAAAAAAAA', 'Niccolò');
+    cells(b).set('colBBBBBBBB', 'Lagunc');
+    Y.applyUpdate(a, Y.encodeStateAsUpdate(b));
+    expect(cells(a).toJSON()).toEqual({ colAAAAAAAA: 'Niccolò', colBBBBBBBB: 'Lagunc' });
+  });
+
+  it('refuses a table without columns or with too many', () => {
+    const parse = (columns: unknown[]) => Element.safeParse({ ...table(), columns }).success;
+    expect(parse([])).toBe(false);
+    expect(parse(Array.from({ length: 21 }, (_, i) => ({ id: `col${i}AAAAAAA` })))).toBe(false);
+  });
+
+  it('migrates version 10 documents unchanged', () => {
+    const doc = createBoardDoc(boardId);
+    roots(doc).meta.set('schemaVersion', 10);
+    addElement(doc, { ...base(), type: 'section' as const, title: 'Sequenza 1' });
+    const before = roots(doc).elements.toJSON();
+    expect(migrateBoardDoc(doc, boardId)).toEqual([11]);
+    expect(roots(doc).elements.toJSON()).toEqual(before);
+  });
+});
+
+describe('map cards', () => {
+  it('keeps a place through Yjs and checks its coordinates', () => {
+    const doc = createBoardDoc(boardId);
+    const map = {
+      ...base(),
+      type: 'map' as const,
+      name: 'Rifugio Lagunc',
+      url: 'https://www.openstreetmap.org/?mlat=46.33&mlon=9.55',
+      lat: 46.33,
+      lon: 9.55,
+      zoom: 15,
+      imageAssetId: '0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10',
+    };
+    addElement(doc, map);
+    expect(readElement(roots(doc).elements.get(map.id)!)).toEqual(map);
+    expect(validateBoardDoc(doc)).toEqual([]);
+    expect(Element.safeParse({ ...map, lat: 91 }).success).toBe(false);
+    expect(Element.safeParse({ ...map, url: 'javascript:alert(1)' }).success).toBe(false);
   });
 });

@@ -172,6 +172,63 @@ export const SectionElement = Base.extend({
     .describe('True: dragging the heading moves the cards under it too. Omitted = alone.'),
 });
 
+/** Limits of a table card: a planning grid on the board, not a spreadsheet. */
+export const MAX_TABLE_COLUMNS = 20;
+export const MAX_TABLE_ROWS = 500;
+export const MAX_TABLE_CELL = 2000;
+
+export const TableColumn = z.object({
+  id: ElementId,
+  width: z
+    .number()
+    .int()
+    .min(40)
+    .max(1200)
+    .optional()
+    .describe('Width in world units. Omitted = the columns share what the card leaves.'),
+});
+export type TableColumn = z.infer<typeof TableColumn>;
+
+export const TableRow = z.object({
+  id: ElementId,
+  cells: z
+    .record(z.string(), z.string().max(MAX_TABLE_CELL))
+    .describe('Plain text by column id; a missing key is an empty cell.'),
+});
+export type TableRow = z.infer<typeof TableRow>;
+
+/**
+ * A table card (since version 11, decision 0052): plain-text cells, links detected when shown.
+ * Columns and rows are Y.Arrays of Y.Maps and the cells of a row a Y.Map, so people editing
+ * different cells, or adding rows, merge.
+ */
+export const TableElement = Base.extend({
+  type: z.literal('table'),
+  columns: z.array(TableColumn).min(1).max(MAX_TABLE_COLUMNS),
+  rows: z.array(TableRow).max(MAX_TABLE_ROWS),
+  header: z.boolean().optional().describe('True: the first row is a header row.'),
+  color: CardColor.optional().describe('Tint of the header row, from the card palette.'),
+});
+
+/**
+ * A map card (since version 11, decision 0053): a place from a map link or an address, with
+ * a map picture the server composited once, so viewers never contact a tile server.
+ */
+export const MapElement = Base.extend({
+  type: z.literal('map'),
+  name: z.string().max(200).describe('Place name, from the link or typed; may be empty.'),
+  address: z.string().max(500).optional(),
+  url: z
+    .url({ protocol: /^https?$/ })
+    .max(2048)
+    .optional()
+    .describe('The map link it came from, opened by "Open in Maps".'),
+  lat: z.number().finite().min(-90).max(90).optional(),
+  lon: z.number().finite().min(-180).max(180).optional(),
+  zoom: z.int().min(1).max(19).optional(),
+  imageAssetId: z.string().optional().describe('The map picture, centred on the place.'),
+});
+
 /**
  * A scene of a storyboard: a container like a column, whose children are frames (and any
  * other card) in shooting order.
@@ -392,6 +449,8 @@ export const Element = z.discriminatedUnion('type', [
   CharacterElement,
   LocationElement,
   SectionElement,
+  TableElement,
+  MapElement,
 ]);
 
 /** Element types that hold other elements through `parent`. */

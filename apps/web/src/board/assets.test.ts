@@ -38,6 +38,7 @@ const sampleAsset: Asset = {
   proxy: null,
   waveformUrl: null,
   animated: false,
+  track: null,
   status: 'ready',
   url: '/api/v1/assets/asset-01/file',
   variants: [],

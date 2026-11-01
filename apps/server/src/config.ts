@@ -104,6 +104,27 @@ const Env = z.object({
   /** Encoder threads of one copy; it runs at a lower priority (nice 10) than the web role. */
   VIDEO_PROXY_THREADS: z.coerce.number().int().min(1).max(16).default(2),
   /**
+   * Map pictures of map cards and GPX files (decision 0053). The server fetches the tiles,
+   * once per picture, when someone adds a map; viewers never contact the tile server. `false`
+   * leaves map cards with the address and link only.
+   */
+  MAPS: bool('true'),
+  /** Tile server, with `{z}`, `{x}` and `{y}`; mind the usage policy of the default one. */
+  MAP_TILE_URL: z
+    .string()
+    .regex(
+      /^https?:\/\/\S*\{z\}\S*\{x\}\S*\{y\}\S*$/,
+      'Use an http(s) address with {z}, {x} and {y}',
+    )
+    .default('https://tile.openstreetmap.org/{z}/{x}/{y}.png'),
+  /** Credit of the tiles, shown on every map picture. */
+  MAP_TILE_ATTRIBUTION: z.string().min(1).max(200).default('© OpenStreetMap contributors'),
+  /**
+   * Address search for map cards: a Nominatim-compatible `/search` endpoint (for example
+   * `https://nominatim.openstreetmap.org/search`). Unset: addresses are not looked up.
+   */
+  MAP_GEOCODER_URL: z.preprocess(emptyToUndefined, z.url().optional()),
+  /**
    * Which peers may set X-Forwarded-For: `false`, or a comma-separated list of addresses,
    * CIDRs or the presets `loopback`, `linklocal`, `uniquelocal` (private networks, where a
    * reverse proxy normally sits). `true` trusts everyone and lets clients pick their address.

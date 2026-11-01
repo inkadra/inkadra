@@ -55,6 +55,8 @@ in order. An accepted decision is never rewritten: a later one supersedes it.
 | [0049](0049-floating-desktop-shell.md)               | Desktop shell: floating panels over a full-bleed board                                 |
 | [0050](0050-link-card-video-playback.md)             | Link cards: inline video playback, Vimeo and Instagram                                 |
 | [0051](0051-audio-cards.md)                          | Audio cards: waveform, AAC copies and voice notes                                      |
+| [0052](0052-table-cards.md)                          | Table cards: plain-text cells in Yjs, pasted from spreadsheets                         |
+| [0053](0053-maps.md)                                 | Map cards and GPX routes: static pictures made once by the server                      |
 
 Two decisions share the number 0025: they were accepted in parallel, and accepted records
 are not renumbered.

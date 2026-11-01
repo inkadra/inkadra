@@ -59,7 +59,9 @@ export type ToolType =
   | 'storyboard'
   | 'character'
   | 'location'
-  | 'section';
+  | 'section'
+  | 'table'
+  | 'map';
 export type CanvasTool = 'select' | 'hand' | 'arrow';
 export const TOOL_MIME = 'application/x-inkadra-tool';
 
@@ -79,7 +81,19 @@ export const TOOLS: Array<{ type: ToolType; icon: IconName; key?: string; menuOn
   { type: 'character', icon: 'user', menuOnly: true },
   { type: 'location', icon: 'pin', menuOnly: true },
   { type: 'section', icon: 'heading', menuOnly: true },
+  { type: 'table', icon: 'table', menuOnly: true },
+  { type: 'map', icon: 'map', menuOnly: true },
 ];
+
+/** Cards of the Canvas menu listed after the canvas types, with their icons. */
+const MENU_CARDS = [
+  ['character', 'user'],
+  ['location', 'pin'],
+  ['section', 'heading'],
+  ['table', 'table'],
+  ['map', 'map'],
+] as const satisfies ReadonlyArray<readonly [ToolType, IconName]>;
+type MenuCard = (typeof MENU_CARDS)[number][0];
 
 const mod = () => (isMac() ? '⌘' : 'Ctrl+');
 
@@ -218,8 +232,8 @@ function CanvasMenuButton({
   onScreenplay?: (() => void) | undefined;
   /** Records a voice note (#327); absent where the browser cannot record. */
   onVoiceNote?: (() => void) | undefined;
-  /** Story bible cards and section headings, listed after the canvas types. */
-  onCard: (type: 'character' | 'location' | 'section') => void;
+  /** Story bible cards, section headings and tables, listed after the canvas types. */
+  onCard: (type: MenuCard) => void;
 }) {
   const { t } = useTranslation();
   const button = useRef<HTMLButtonElement>(null);
@@ -282,10 +296,10 @@ function CanvasMenuButton({
                 : []),
             ]).concat([
               { divider: true },
-              ...(['character', 'location', 'section'] as const).map(
-                (type): MenuItem => ({
+              ...MENU_CARDS.map(
+                ([type, icon]): MenuItem => ({
                   label: t(`board.types.${type}`),
-                  icon: type === 'character' ? 'user' : type === 'location' ? 'pin' : 'heading',
+                  icon,
                   kind: 'canvas',
                   action: () => onCard(type),
                 }),
@@ -448,8 +462,10 @@ export function ContextBar({
       </div>
     );
   const free = elements.filter((e) => e.parent === null);
-  // Notes take a tint and columns an accent, from the same card palette.
-  const colored = elements.filter((e) => e.type === 'note' || e.type === 'column');
+  // Notes take a tint, columns an accent and tables a header tint, from the same card palette.
+  const colored = elements.filter(
+    (e) => e.type === 'note' || e.type === 'column' || e.type === 'table',
+  );
   const locked = elements.some((e) => e.locked);
   const hideable = elements.filter((e) => e.type !== 'arrow');
   const guestHidden = hideable.length > 0 && hideable.every((e) => e.guestHidden);
