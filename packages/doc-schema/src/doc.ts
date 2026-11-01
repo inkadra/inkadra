@@ -83,8 +83,8 @@ const migrations: Record<number, Migration> = {
   // 9: optional `meta.animaticAudio`, the sound track of a storyboard's animatic (decision
   // 0046). Existing storyboards play silent; older builds must not drop the track on restore.
   8: () => {},
-  // 10: optional `color` on columns (#307). Additive; older builds must not drop a column's
-  // colour when copying it.
+  // 10: optional `color` on columns and the section heading element (#307, #318). Additive;
+  // older builds must not drop a column's colour or refuse documents with headings.
   9: () => {},
 };
 

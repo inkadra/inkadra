@@ -235,7 +235,36 @@ function CardBody({
       return <CharacterCard element={element} />;
     case 'location':
       return <LocationCard element={element} />;
+    case 'section':
+      return <SectionCard element={element} editing={editing} />;
   }
+}
+
+/** A section heading: large quiet text over a thin rule, without card chrome (#318). */
+function SectionCard({ element, editing }: { element: Of<'section'>; editing: boolean }) {
+  const { store, setEditing } = useBoard();
+  const { t } = useTranslation();
+  return editing ? (
+    <input
+      className="card__inline-input section__title"
+      defaultValue={element.title}
+      placeholder={t('board.section.placeholder')}
+      // biome-ignore lint/a11y/noAutofocus: the field opens because the user asked to rename
+      autoFocus
+      onFocus={(e) => e.currentTarget.select()}
+      onBlur={(e) => {
+        updateElement(store.doc, element.id, { title: e.target.value.trim() }, LOCAL);
+        setEditing(null);
+      }}
+      onKeyDown={blurOnEnter}
+      maxLength={200}
+      aria-label={t('board.section.title')}
+    />
+  ) : (
+    <h2 className={`section__title${element.title ? '' : ' is-empty'}`}>
+      {element.title || t('board.section.placeholder')}
+    </h2>
+  );
 }
 
 /** Compact face of a character: portrait, name, role; the rest is in its side sheet. */

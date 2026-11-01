@@ -98,6 +98,7 @@ export const GUEST_ELEMENT_FIELDS = {
     'scenes',
   ],
   location: [...COMMON_GUEST_FIELDS, 'name', 'setting', 'assetId', 'light', 'scenes'],
+  section: [...COMMON_GUEST_FIELDS, 'title'],
 } as const satisfies Record<ElementType, readonly string[]>;
 
 /**

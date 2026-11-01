@@ -345,7 +345,7 @@ describe('file card family', () => {
   });
 });
 
-describe('column colours (#307)', () => {
+describe('board elements (#307, #318)', () => {
   const at = { x: 0, y: 0, w: 240, z: 'a0', parent: null, createdBy: null, createdAt: 0 };
   const note = (id: string) =>
     ({ ...at, id, type: 'color', hex: '#56CCF2', parent: 'column_0001' }) as Element;
@@ -370,5 +370,11 @@ describe('column colours (#307)', () => {
     );
     expect(html).toContain('card--accent-green');
     expect(html).toContain('board.count.cards:2 · board.count.files:1');
+  });
+
+  it('draws a section heading as text, with a placeholder while empty', () => {
+    const section = { ...at, id: 'section_001', type: 'section', w: 640 } as const;
+    expect(render({ ...section, title: 'Sequenza 1' } as Element)).toContain('Sequenza 1');
+    expect(render({ ...section, title: '' } as Element)).toContain('is-empty');
   });
 });

@@ -168,6 +168,8 @@ function estimateHeight(el: Element): number {
       return 120;
     case 'todo':
       return 48 + el.items.length * 26;
+    case 'section':
+      return 44;
     default:
       return 64;
   }

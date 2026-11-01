@@ -159,6 +159,20 @@ export const BoardLinkElement = Base.extend({
 });
 
 /**
+ * A section heading: one line of large text with a rule under it, no card chrome, resizable in
+ * width only (since version 10). With `moveCards`, dragging it also moves the cards placed under
+ * it (see sectionMembers in canvas-core).
+ */
+export const SectionElement = Base.extend({
+  type: z.literal('section'),
+  title: z.string().max(200),
+  moveCards: z
+    .boolean()
+    .optional()
+    .describe('True: dragging the heading moves the cards under it too. Omitted = alone.'),
+});
+
+/**
  * A scene of a storyboard: a container like a column, whose children are frames (and any
  * other card) in shooting order.
  */
@@ -377,6 +391,7 @@ export const Element = z.discriminatedUnion('type', [
   ArrowElement,
   CharacterElement,
   LocationElement,
+  SectionElement,
 ]);
 
 /** Element types that hold other elements through `parent`. */
@@ -396,11 +411,11 @@ export interface ContentCounts {
   boardCount: number;
   /** File cards. */
   fileCount: number;
-  /** Every other card; arrows, columns and scenes only arrange cards. */
+  /** Every other card; arrows, columns, scenes and section headings only arrange cards. */
   cardCount: number;
 }
 
-const STRUCTURE: ReadonlySet<unknown> = new Set(['arrow', 'column', 'scene']);
+const STRUCTURE: ReadonlySet<unknown> = new Set(['arrow', 'column', 'scene', 'section']);
 
 /** Counts elements by what they are; takes plain elements or the fields read from Y.Maps. */
 export function contentCounts(

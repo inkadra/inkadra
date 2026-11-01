@@ -140,6 +140,28 @@ export function drawBoard(items: readonly Placed[], ctx: CardContext): Op[] {
 export function drawCard(p: Placed, ctx: CardContext): Op[] {
   const { el } = p;
   const c = ctx.colors;
+  // A section heading has no card: large text over a thin rule, as on the board.
+  if (el.type === 'section')
+    return [
+      {
+        kind: 'text',
+        x: p.x + 2,
+        y: p.y + 26,
+        text: ellipsize(el.title, p.w - 4, 20, 600, ctx.measure),
+        size: 20,
+        weight: 600,
+        color: c['text-primary'],
+      },
+      {
+        kind: 'line',
+        x1: p.x,
+        y1: p.y + p.h - 1,
+        x2: p.x + p.w,
+        y2: p.y + p.h - 1,
+        color: c['border-default'],
+        width: 1,
+      },
+    ];
   const tint =
     el.type === 'note' && el.color && el.color in TINTS
       ? c[TINTS[el.color as keyof typeof TINTS]]
@@ -488,6 +510,9 @@ function body(p: Placed, ctx: CardContext): Op[] {
       if (el.light) ops.push(...text(el.light, below + 2, SMALL, c['text-secondary'], 2).ops);
       return ops;
     }
+    case 'section':
+      // Drawn by drawCard without a card.
+      return [];
   }
 }
 

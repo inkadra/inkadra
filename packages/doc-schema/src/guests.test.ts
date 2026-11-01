@@ -57,6 +57,8 @@ describe('guest element fields', () => {
     image: ['source'],
     character: ['contact', 'notes'],
     location: ['address', 'mapUrl', 'availability', 'contact', 'notes'],
+    // How the heading moves while editing; guests only look.
+    section: ['moveCards'],
   };
 
   it('decides for every field of every element type', () => {

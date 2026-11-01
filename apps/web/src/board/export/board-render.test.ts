@@ -73,6 +73,12 @@ const card = (fields: Record<string, unknown>) => ({
 });
 
 describe('board elements in exports', () => {
+  it('draws a section heading as text over a rule, without a card', () => {
+    const ops = drawBoard([card({ type: 'section', title: 'Sequenza 1' })], ctx);
+    expect(ops.map((o) => o.kind)).toEqual(['text', 'line']);
+    expect(ops[0]).toMatchObject({ text: 'Sequenza 1', size: 20 });
+  });
+
   it('draws the accent bar and tint of a coloured column', () => {
     const [, clip] = drawBoard([card({ type: 'column', title: 'Da fare', color: 'green' })], ctx);
     const inner = (clip as Extract<typeof clip, { kind: 'clip' }>).ops;

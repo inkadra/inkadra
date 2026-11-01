@@ -43,6 +43,7 @@ import {
   refreshArrows,
   resizeFromCorner,
   screenToWorld,
+  sectionMembers,
   sendToBack,
   snapMove,
   snapPoint,
@@ -725,6 +726,9 @@ export function Canvas({
         case 'column':
           created = createElement(doc, 'column', pos, { title: '' }, opts);
           break;
+        case 'section':
+          created = createElement(doc, 'section', pos, { title: '' }, opts);
+          break;
         case 'color':
           created = createElement(doc, 'color', pos, { hex: '#808086' }, opts);
           break;
@@ -1365,7 +1369,7 @@ export function Canvas({
               aspectRatio: rect.w / (mediaHeight || rect.h),
               fixedHeight: mediaHeight ? Math.max(0, rect.h - mediaHeight) : 0,
             }
-          : { widthOnly: el.type === 'link' };
+          : { widthOnly: el.type === 'link' || el.type === 'section' };
       store.undo.stopCapturing();
       gesture.current = { kind: 'resize', id, corner: handle, start: p, rect, options };
       rootRef.current?.setPointerCapture(e.pointerId);
@@ -1374,6 +1378,13 @@ export function Canvas({
     }
     const ids = [...next].filter((i) => !snap.byId.get(i)?.locked);
     if (!ids.includes(id)) return;
+    // A heading set to move its section takes the cards under it along; Alt moves it alone.
+    if (!e.altKey)
+      for (const head of ids.map((i) => snap.byId.get(i))) {
+        if (head?.type !== 'section' || !head.moveCards || head.parent !== null) continue;
+        for (const m of sectionMembers(head, snap.canvas, liveRect))
+          if (!ids.includes(m)) ids.push(m);
+      }
     const r = target.closest<HTMLElement>('[data-el], [data-resize-el]')?.getBoundingClientRect();
     if (!r) return;
     gesture.current = {
@@ -1581,7 +1592,8 @@ export function Canvas({
       if (!current || current.locked || readOnly || current.parent !== null) return;
       const { x, y, w, h } = o.resize;
       doc.transact(() => {
-        updateElement(doc, g.id, current.type === 'link' ? { x, w } : { x, y, w, h }, LOCAL);
+        const widthOnly = current.type === 'link' || current.type === 'section';
+        updateElement(doc, g.id, widthOnly ? { x, w } : { x, y, w, h }, LOCAL);
         // The store updates after this transaction; attached arrows need the new rect now.
         refreshArrows(
           doc,
@@ -2253,6 +2265,20 @@ export function Canvas({
       !single.locked &&
       canRenameBoard(boards?.find((b) => b.id === single.boardId))
         ? [{ label: t('board.menu.rename'), shortcut: 'F2', action: () => setEditing(single.id) }]
+        : []),
+      ...(single?.type === 'section' && !readOnly && !single.locked
+        ? [
+            {
+              label: t(single.moveCards ? 'board.menu.moveCardsOff' : 'board.menu.moveCardsOn'),
+              action: () =>
+                updateElement(
+                  doc,
+                  single.id,
+                  { moveCards: single.moveCards ? undefined : true },
+                  LOCAL,
+                ),
+            },
+          ]
         : []),
       ...(single && (single.type === 'image' || single.type === 'file')
         ? [{ label: t('board.menu.viewImage'), action: () => openElement(single) }]

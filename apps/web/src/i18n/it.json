@@ -337,7 +337,8 @@
       "arrow": "Freccia",
       "storyboard": "Storyboard",
       "character": "Personaggio",
-      "location": "Location"
+      "location": "Location",
+      "section": "Titolo di sezione"
     },
     "tools": {
       "select": "Seleziona",
@@ -474,7 +475,9 @@
       "viewImage": "Apri immagine",
       "details": "Dettagli inquadratura",
       "draw": "Disegna",
-      "rename": "Rinomina"
+      "rename": "Rinomina",
+      "moveCardsOn": "Sposta insieme alle card sotto",
+      "moveCardsOff": "Sposta solo il titolo"
     },
     "zoom": {
       "label": "Zoom",
@@ -582,6 +585,10 @@
     "access": {
       "readOnly": "Il tuo ruolo è cambiato: ora puoi solo guardare questa board.",
       "editable": "Il tuo ruolo è cambiato: ora puoi modificare questa board."
+    },
+    "section": {
+      "title": "Titolo della sezione",
+      "placeholder": "Titolo della sezione"
     },
     "count": {
       "cards_one": "{{count}} card",

@@ -634,8 +634,8 @@ describe('image crop and rotation', () => {
   });
 });
 
-describe('column colours', () => {
-  it('keeps a column colour through Yjs', () => {
+describe('column colours and section headings', () => {
+  it('keeps a column colour and a section heading through Yjs', () => {
     const doc = createBoardDoc(boardId);
     const column = {
       ...base(),
@@ -643,10 +643,19 @@ describe('column colours', () => {
       title: 'Da fare',
       color: 'green' as const,
     };
+    const section = {
+      ...base(),
+      type: 'section' as const,
+      w: 640,
+      title: 'Sequenza 1 · La preparazione',
+      moveCards: true,
+    };
     addElement(doc, column);
+    addElement(doc, section);
     const copy = new Y.Doc();
     Y.applyUpdate(copy, Y.encodeStateAsUpdate(doc));
     expect(readElement(roots(copy).elements.get(column.id)!)).toEqual(column);
+    expect(readElement(roots(copy).elements.get(section.id)!)).toEqual(section);
     expect(validateBoardDoc(copy)).toEqual([]);
   });
 
@@ -670,11 +679,11 @@ describe('column colours', () => {
   });
 
   it('counts cards, files and boards, not the structure that arranges them', () => {
-    const types = ['note', 'image', 'file', 'board', 'column', 'arrow', 'scene'];
+    const types = ['note', 'image', 'file', 'board', 'column', 'arrow', 'section', 'scene'];
     expect(
       contentCounts([...types.map((type) => ({ type })), { type: 'frame', status: 'shot' }]),
     ).toEqual({
-      elementCount: 8,
+      elementCount: 9,
       frameCount: 1,
       framesToShoot: 0,
       boardCount: 1,

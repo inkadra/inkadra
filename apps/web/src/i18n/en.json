@@ -337,7 +337,8 @@
       "arrow": "Arrow",
       "storyboard": "Storyboard",
       "character": "Character",
-      "location": "Location"
+      "location": "Location",
+      "section": "Section heading"
     },
     "tools": {
       "select": "Select",
@@ -474,7 +475,9 @@
       "viewImage": "Open image",
       "details": "Frame details",
       "draw": "Draw",
-      "rename": "Rename"
+      "rename": "Rename",
+      "moveCardsOn": "Move with the cards under it",
+      "moveCardsOff": "Move the heading alone"
     },
     "zoom": {
       "label": "Zoom",
@@ -582,6 +585,10 @@
     "access": {
       "readOnly": "Your role changed: you can only view this board now.",
       "editable": "Your role changed: you can edit this board now."
+    },
+    "section": {
+      "title": "Section title",
+      "placeholder": "Section title"
     },
     "count": {
       "cards_one": "{{count}} card",

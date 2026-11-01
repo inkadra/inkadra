@@ -11,7 +11,7 @@ import {
 } from '@inkadra/doc-schema';
 import { generateKeyBetween, generateNKeysBetween } from 'fractional-indexing';
 import * as Y from 'yjs';
-import type { Point } from './geometry.ts';
+import type { Point, Rect } from './geometry.ts';
 
 /**
  * Edits on a board document. Every function runs in one transaction tagged with `origin`, so
@@ -36,6 +36,7 @@ export const DEFAULT_WIDTH: Record<ElementType, number> = {
   arrow: 1,
   character: 240,
   location: 260,
+  section: 640,
 };
 
 export const MIN_WIDTH = 80;
@@ -43,6 +44,35 @@ export const MIN_WIDTH = 80;
 /** Columns and scenes hold other cards through `parent`; they cannot be nested. */
 export function isContainer(el: Pick<Element, 'type'>): boolean {
   return (CONTAINER_TYPES as readonly string[]).includes(el.type);
+}
+
+/**
+ * Cards a section heading moves when `moveCards` is on: free cards whose top sits below the
+ * heading's middle and above the next heading that overlaps it, and whose centre falls within
+ * its width. Locked cards and arrows stay (arrows follow the cards they attach to).
+ */
+export function sectionMembers(
+  section: Element,
+  canvas: readonly Element[],
+  rectOf: (el: Element) => Rect,
+): string[] {
+  const s = rectOf(section);
+  const top = s.y + s.h / 2;
+  let bottom = Number.POSITIVE_INFINITY;
+  for (const el of canvas) {
+    if (el.type !== 'section' || el.id === section.id || el.parent !== null) continue;
+    const r = rectOf(el);
+    if (r.y > top && r.x < s.x + s.w && r.x + r.w > s.x) bottom = Math.min(bottom, r.y);
+  }
+  return canvas
+    .filter((el) => {
+      if (el.parent !== null || el.locked || el.type === 'arrow' || el.type === 'section')
+        return false;
+      const r = rectOf(el);
+      const cx = r.x + r.w / 2;
+      return r.y >= top && r.y < bottom && cx >= s.x && cx <= s.x + s.w;
+    })
+    .map((el) => el.id);
 }
 
 export type NewElement<T extends ElementType = ElementType> = Omit<
