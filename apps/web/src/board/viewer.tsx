@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 import { createElement, updateElement } from '@inkadra/canvas-core';
 import type { Element } from '@inkadra/doc-schema';
-import type { Asset } from '@inkadra/shared';
+import { type Asset, isRawImageType } from '@inkadra/shared';
 import { Avatar, Button, Icon } from '@inkadra/ui';
 import { memo, useContext, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -600,7 +600,9 @@ export function MediaViewer({
                 {/* biome-ignore lint/a11y/useMediaCaption: people's own recordings have no captions */}
                 <audio className="viewer__audio" src={ready.url} controls autoPlay />
               </div>
-            ) : ready && !pickVariant(ready, wide) ? (
+            ) : ready &&
+              !pickVariant(ready, wide) &&
+              (ready.kind !== 'image' || isRawImageType(ready.mime)) ? (
               <div className="viewer__file">
                 <span className={`fcard__tile fbadge--${fileFamily(ready)}`} aria-hidden="true">
                   {fileBadge(ready) || <Icon name="file" size={18} />}
