@@ -6,6 +6,7 @@ import {
   addElement,
   boardDocName,
   CURRENT_SCHEMA_VERSION,
+  contentCounts,
   createBoardDoc,
   Element,
   FrameElement,
@@ -104,7 +105,7 @@ describe('board document', () => {
     const file = { ...base(), type: 'file' as const, assetId: 'asset-id' };
     addElement(doc, file);
     const before = roots(doc).elements.toJSON();
-    expect(migrateBoardDoc(doc, boardId)).toEqual([4, 5, 6, 7, 8, 9]);
+    expect(migrateBoardDoc(doc, boardId)).toEqual([4, 5, 6, 7, 8, 9, 10]);
     expect(getSchemaVersion(doc)).toBe(CURRENT_SCHEMA_VERSION);
     expect(roots(doc).elements.toJSON()).toEqual(before);
     expect(readElement(roots(doc).elements.get(file.id)!)).not.toHaveProperty('caption');
@@ -164,7 +165,7 @@ describe('board document', () => {
     addElement(doc, note);
     addElement(doc, column);
     const before = [...roots(doc).elements.values()].map((m) => readElement(m));
-    expect(migrateBoardDoc(doc, boardId)).toEqual([3, 4, 5, 6, 7, 8, 9]);
+    expect(migrateBoardDoc(doc, boardId)).toEqual([3, 4, 5, 6, 7, 8, 9, 10]);
     expect(getSchemaVersion(doc)).toBe(CURRENT_SCHEMA_VERSION);
     expect([...roots(doc).elements.values()].map((m) => readElement(m))).toEqual(before);
     expect(validateBoardDoc(doc)).toEqual([]);
@@ -342,7 +343,7 @@ describe('board document', () => {
   it('migrates version 8 without adding a sound track', () => {
     const doc = createBoardDoc(boardId);
     roots(doc).meta.set('schemaVersion', 8);
-    expect(migrateBoardDoc(doc, boardId)).toEqual([9]);
+    expect(migrateBoardDoc(doc, boardId)).toEqual([9, 10]);
     expect(getAnimaticAudio(doc)).toBeNull();
   });
 
@@ -353,7 +354,7 @@ describe('board document', () => {
     expect(getSchemaVersion(doc)).toBe(1);
     const before = [...roots(doc).elements.values()].map((m) => readElement(m));
     expect(before.every(Boolean)).toBe(true);
-    expect(migrateBoardDoc(doc, boardId)).toEqual([2, 3, 4, 5, 6, 7, 8, 9]);
+    expect(migrateBoardDoc(doc, boardId)).toEqual([2, 3, 4, 5, 6, 7, 8, 9, 10]);
     expect(getSchemaVersion(doc)).toBe(CURRENT_SCHEMA_VERSION);
     expect([...roots(doc).elements.values()].map((m) => readElement(m))).toEqual(before);
     const note = roots(doc).elements.get('note_v1_00001')!;
@@ -469,7 +470,7 @@ describe('video still provenance', () => {
     const frame = { ...base(), type: 'frame' as const, assetId, notes: 'Last Train' };
     addElement(doc, frame);
     const before = roots(doc).elements.toJSON();
-    expect(migrateBoardDoc(doc, boardId)).toEqual([5, 6, 7, 8, 9]);
+    expect(migrateBoardDoc(doc, boardId)).toEqual([5, 6, 7, 8, 9, 10]);
     expect(getSchemaVersion(doc)).toBe(CURRENT_SCHEMA_VERSION);
     expect(roots(doc).elements.toJSON()).toEqual(before);
     expect(readElement(roots(doc).elements.get(frame.id)!)).not.toHaveProperty('source');
@@ -512,7 +513,7 @@ describe('arrow path', () => {
     const element = arrow();
     addElement(doc, element);
     const before = roots(doc).elements.toJSON();
-    expect(migrateBoardDoc(doc, boardId)).toEqual([6, 7, 8, 9]);
+    expect(migrateBoardDoc(doc, boardId)).toEqual([6, 7, 8, 9, 10]);
     expect(getSchemaVersion(doc)).toBe(CURRENT_SCHEMA_VERSION);
     expect(roots(doc).elements.toJSON()).toEqual(before);
     expect(readElement(roots(doc).elements.get(element.id)!)).not.toHaveProperty('path');
@@ -575,7 +576,7 @@ describe('story bible cards', () => {
     roots(doc).meta.set('schemaVersion', 6);
     addElement(doc, { ...base(), type: 'note' });
     const before = roots(doc).elements.toJSON();
-    expect(migrateBoardDoc(doc, boardId)).toEqual([7, 8, 9]);
+    expect(migrateBoardDoc(doc, boardId)).toEqual([7, 8, 9, 10]);
     expect(getSchemaVersion(doc)).toBe(CURRENT_SCHEMA_VERSION);
     expect(roots(doc).elements.toJSON()).toEqual(before);
   });
@@ -624,11 +625,61 @@ describe('image crop and rotation', () => {
     const image = { ...base(), type: 'image' as const, assetId, caption: 'Locandina' };
     addElement(doc, image);
     const before = roots(doc).elements.toJSON();
-    expect(migrateBoardDoc(doc, boardId)).toEqual([8, 9]);
+    expect(migrateBoardDoc(doc, boardId)).toEqual([8, 9, 10]);
     expect(getSchemaVersion(doc)).toBe(CURRENT_SCHEMA_VERSION);
     expect(roots(doc).elements.toJSON()).toEqual(before);
     const parsed = readElement(roots(doc).elements.get(image.id)!);
     expect(parsed).not.toHaveProperty('crop');
     expect(parsed).not.toHaveProperty('rotation');
+  });
+});
+
+describe('column colours', () => {
+  it('keeps a column colour through Yjs', () => {
+    const doc = createBoardDoc(boardId);
+    const column = {
+      ...base(),
+      type: 'column' as const,
+      title: 'Da fare',
+      color: 'green' as const,
+    };
+    addElement(doc, column);
+    const copy = new Y.Doc();
+    Y.applyUpdate(copy, Y.encodeStateAsUpdate(doc));
+    expect(readElement(roots(copy).elements.get(column.id)!)).toEqual(column);
+    expect(validateBoardDoc(copy)).toEqual([]);
+  });
+
+  it('accepts only colours of the card palette on columns', () => {
+    const column = (color: string) =>
+      Element.safeParse({ ...base(), type: 'column', title: '', color }).success;
+    expect(column('orange')).toBe(true);
+    expect(column('red')).toBe(false);
+    expect(column('#FF0000')).toBe(false);
+  });
+
+  it('migrates version 9 columns unchanged, without a colour', () => {
+    const doc = createBoardDoc(boardId);
+    roots(doc).meta.set('schemaVersion', 9);
+    const column = { ...base(), type: 'column' as const, title: 'Brief' };
+    addElement(doc, column);
+    const before = roots(doc).elements.toJSON();
+    expect(migrateBoardDoc(doc, boardId)).toEqual([10]);
+    expect(roots(doc).elements.toJSON()).toEqual(before);
+    expect(readElement(roots(doc).elements.get(column.id)!)).not.toHaveProperty('color');
+  });
+
+  it('counts cards, files and boards, not the structure that arranges them', () => {
+    const types = ['note', 'image', 'file', 'board', 'column', 'arrow', 'scene'];
+    expect(
+      contentCounts([...types.map((type) => ({ type })), { type: 'frame', status: 'shot' }]),
+    ).toEqual({
+      elementCount: 8,
+      frameCount: 1,
+      framesToShoot: 0,
+      boardCount: 1,
+      fileCount: 1,
+      cardCount: 3,
+    });
   });
 });

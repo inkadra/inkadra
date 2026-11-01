@@ -2614,7 +2614,8 @@ export function Canvas({
               }
               onColor={(color) => {
                 for (const el of selectedEls) {
-                  if (el.type === 'note') updateElement(doc, el.id, { color }, LOCAL);
+                  if (el.type === 'note' || el.type === 'column')
+                    updateElement(doc, el.id, { color }, LOCAL);
                 }
               }}
               onTags={(x, y) => setTagging({ x, y, ids: [...selection] })}

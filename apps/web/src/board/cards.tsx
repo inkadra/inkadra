@@ -6,8 +6,9 @@ import {
   updateElement,
   updateTodoItem,
 } from '@inkadra/canvas-core';
-import type { Element } from '@inkadra/doc-schema';
+import { CARD_COLORS, type ContentCounts, contentCounts, type Element } from '@inkadra/doc-schema';
 import { Checkbox, fadeOutCopy, Icon } from '@inkadra/ui';
+import type { TFunction } from 'i18next';
 import {
   type CSSProperties,
   type KeyboardEvent,
@@ -46,7 +47,22 @@ import { isYoutubeUrl } from './youtube.ts';
 
 type Of<T extends Element['type']> = Extract<Element, { type: T }>;
 
-export const NOTE_COLORS = ['blue', 'orange', 'purple', 'green'] as const;
+export const NOTE_COLORS = CARD_COLORS;
+
+/** "3 cards · 1 file": what a column or a board holds, under its title. */
+export function contentSummary(
+  t: TFunction,
+  c: Pick<ContentCounts, 'cardCount' | 'fileCount' | 'boardCount'>,
+): string {
+  return [
+    (c.cardCount > 0 || (c.fileCount === 0 && c.boardCount === 0)) &&
+      t('board.count.cards', { count: c.cardCount }),
+    c.fileCount > 0 && t('board.count.files', { count: c.fileCount }),
+    c.boardCount > 0 && t('board.count.boards', { count: c.boardCount }),
+  ]
+    .filter(Boolean)
+    .join(' · ');
+}
 
 interface CardProps {
   element: Element;
@@ -126,6 +142,7 @@ export const Card = memo(function Card({
     dimmed && 'is-dimmed',
     element.locked && 'is-locked',
     element.type === 'note' && element.color && `card--tint-${element.color}`,
+    element.type === 'column' && element.color && `card--accent-${element.color}`,
     entering && 'ink-motion-card',
   ]
     .filter(Boolean)
@@ -746,12 +763,15 @@ function ColumnCard({
             <span className="column__slug">{slugline(scene)}</span>
             {element.title && <span className="column__name">{element.title}</span>}
           </span>
+        ) : scene ? (
+          <span className="column__title">{element.title}</span>
         ) : (
-          <span className="column__title">
-            {element.title || (scene ? '' : t('board.column.untitled'))}
+          <span className="column__heading">
+            <span className="column__title">{element.title || t('board.column.untitled')}</span>
+            <span className="column__summary">{contentSummary(t, contentCounts(items))}</span>
           </span>
         )}
-        <span className="column__count">{items.length}</span>
+        {scene && <span className="column__count">{items.length}</span>}
         <GuestVisibility store={store} element={element} />
         <button
           type="button"

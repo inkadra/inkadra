@@ -801,6 +801,40 @@ button.fcard__audio-play:focus-visible {
   letter-spacing: 0.06em;
   text-transform: uppercase;
 }
+/* Column accent from the card palette (#307): a bar on the title, a light tint of the header. */
+.card--accent-blue {
+  --column-accent: var(--ink-tag-blue);
+}
+.card--accent-orange {
+  --column-accent: var(--ink-tag-orange);
+}
+.card--accent-purple {
+  --column-accent: var(--ink-tag-purple);
+}
+.card--accent-green {
+  --column-accent: var(--ink-tag-green);
+}
+.card--column[class*="card--accent-"] {
+  border-top: 3px solid var(--column-accent);
+  background:
+    linear-gradient(color-mix(in srgb, var(--column-accent) 8%, transparent), transparent 64px),
+    var(--ink-bg-app);
+}
+.card--column .column__title {
+  font-size: 12.5px;
+  letter-spacing: 0;
+  text-transform: none;
+}
+.column__heading {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+.column__summary {
+  font-size: 11px;
+  color: var(--ink-text-muted);
+}
 .column__count {
   margin-left: auto;
   font-size: 11px;

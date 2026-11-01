@@ -157,6 +157,12 @@ export function drawCard(p: Placed, ctx: CardContext): Op[] {
     lineWidth: 1,
   };
   const inner = body(p, ctx);
+  // A column's accent: a bar on the title over a light tint of the header.
+  if (el.type === 'column' && el.color)
+    inner.unshift(
+      { kind: 'rect', x: p.x, y: p.y, w: p.w, h: 40, fill: c[TINTS[el.color]] },
+      { kind: 'rect', x: p.x, y: p.y, w: p.w, h: 3, fill: c[`tag-${el.color}`] },
+    );
   return [frame, { kind: 'clip', x: p.x, y: p.y, w: p.w, h: p.h, radius: RADIUS, ops: inner }];
 }
 

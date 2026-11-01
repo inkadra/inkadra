@@ -582,6 +582,14 @@
     "access": {
       "readOnly": "Il tuo ruolo è cambiato: ora puoi solo guardare questa board.",
       "editable": "Il tuo ruolo è cambiato: ora puoi modificare questa board."
+    },
+    "count": {
+      "cards_one": "{{count}} card",
+      "cards_other": "{{count}} card",
+      "files_one": "{{count}} file",
+      "files_other": "{{count}} file",
+      "boards_one": "{{count}} board",
+      "boards_other": "{{count}} board"
     }
   },
   "tags": {

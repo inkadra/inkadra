@@ -4,7 +4,7 @@ import { z } from 'zod';
 import { AspectRatio, Element, type ElementType } from './elements.ts';
 
 /** Bump when the shape of the board document changes, and add a migration below. */
-export const CURRENT_SCHEMA_VERSION = 9;
+export const CURRENT_SCHEMA_VERSION = 10;
 
 export const DOC_NAME_PREFIX = 'board:';
 
@@ -83,6 +83,9 @@ const migrations: Record<number, Migration> = {
   // 9: optional `meta.animaticAudio`, the sound track of a storyboard's animatic (decision
   // 0046). Existing storyboards play silent; older builds must not drop the track on restore.
   8: () => {},
+  // 10: optional `color` on columns (#307). Additive; older builds must not drop a column's
+  // colour when copying it.
+  9: () => {},
 };
 
 /**

@@ -428,7 +428,8 @@ export function ContextBar({
       </div>
     );
   const free = elements.filter((e) => e.parent === null);
-  const notes = elements.filter((e) => e.type === 'note');
+  // Notes take a tint and columns an accent, from the same card palette.
+  const colored = elements.filter((e) => e.type === 'note' || e.type === 'column');
   const locked = elements.some((e) => e.locked);
   const hideable = elements.filter((e) => e.type !== 'arrow');
   const guestHidden = hideable.length > 0 && hideable.every((e) => e.guestHidden);
@@ -472,7 +473,7 @@ export function ContextBar({
           <span className="ctxbar__sep" aria-hidden="true" />
         </>
       )}
-      {notes.length > 0 && notes.length === elements.length && (
+      {colored.length > 0 && colored.length === elements.length && (
         <>
           <button
             type="button"
