@@ -10,6 +10,7 @@ import type { Auth } from '../auth.ts';
 import type { Database } from '../db/client.ts';
 import { asset } from '../db/schema.ts';
 import type { Jobs } from '../jobs.ts';
+import { designExtension } from '../media/design.ts';
 import { rawTypeOf } from '../media/raw.ts';
 import { originalKey, type Storage } from '../storage.ts';
 import { requireActor } from './auth-routes.ts';
@@ -38,6 +39,7 @@ const AUDIO = /\.(mp3|m4a|aac|wav|flac|ogg|oga|opus|aif|aiff|caf)$/i;
  * camera RAW files and audio files, which browsers often send without a type.
  */
 export function kindOf(mime: string, filename: string): AssetKind {
+  if (designExtension(filename)) return 'file';
   if (mime.startsWith('image/') || HEIC.test(filename) || rawTypeOf(filename)) return 'image';
   if (mime.startsWith('video/')) return 'video';
   if (mime.startsWith('audio/') || (mime === 'application/octet-stream' && AUDIO.test(filename)))

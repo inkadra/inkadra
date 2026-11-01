@@ -204,6 +204,31 @@ describe('file card family', () => {
     return html;
   };
 
+  it.each(['psd', 'psb', 'procreate', 'sketch', 'afdesign', 'afphoto', 'ai'])(
+    'shows %s in the design card family',
+    (ext) => {
+      const html = ready({
+        filename: `poster.${ext}`,
+        mime: ext === 'ai' ? 'application/pdf' : 'image/vnd.adobe.photoshop',
+        size: 1024,
+        exif: { LayerCount: 24 },
+        width: 800,
+        height: 600,
+        variants: [{ size: '512', width: 512, height: 384, url: '/design-preview' }],
+      });
+      expect(html).toContain('fbadge--design');
+      expect(html).toContain(`>${ext.toUpperCase()}</span>`);
+      expect(html).toContain(`>.${ext}</span>`);
+      expect(html).toContain('800×600');
+      expect(html).toContain('board.file.layers:24');
+      expect(html).toContain('src="/design-preview"');
+      expect(html).toContain('fcard__preview--picture');
+      expect(ready({ filename: `poster.${ext}`, variants: [] })).toContain(
+        'fcard__tile fbadge--design',
+      );
+    },
+  );
+
   it('keeps the extension visible and shows a PDF with its first page and page count', () => {
     const html = ready({
       filename: 'athlete-guide-2026.pdf',

@@ -123,6 +123,7 @@ import type { BoardConnection } from './connection.ts';
 import { BoardContext, type BoardContextValue, GuestModeContext, LARGE_BOARD } from './context.ts';
 import { EmptyBoardStart } from './EmptyBoardStart.tsx';
 import { easeCards } from './ease-cards.ts';
+import { isDesignFile } from './file-kinds.ts';
 import { useBoardAspect } from './film/aspect.ts';
 import { DrawingEditor } from './film/DrawingEditor.tsx';
 import { FramePanel } from './film/FramePanel.tsx';
@@ -810,7 +811,8 @@ export function Canvas({
         .forEach((file, i) => {
           const step = magnetRef.current ? GRID : 24;
           const pos = place({ x: at.x + i * step, y: at.y + i * step });
-          const type = file.type.startsWith('image/') ? 'image' : 'file';
+          const type =
+            file.type.startsWith('image/') && !isDesignFile(file.name) ? 'image' : 'file';
           startUpload({
             file,
             projectId,

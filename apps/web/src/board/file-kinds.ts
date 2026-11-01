@@ -29,7 +29,7 @@ const families: Array<[FileFamily, string]> = [
     'image',
     'jpg jpeg png gif webp avif heic heif tif tiff bmp svg cr2 cr3 nef arw dng raf orf rw2 exr',
   ],
-  ['design', 'psd psb ai indd idml sketch fig xd afdesign afphoto aep prproj drp'],
+  ['design', 'psd psb procreate ai indd idml sketch fig xd afdesign afphoto aep prproj drp'],
   ['map', 'gpx kml kmz geojson'],
   ['3d', 'glb gltf obj fbx stl usdz blend 3ds dae ply'],
   ['font', 'otf ttf woff woff2'],
@@ -50,14 +50,19 @@ export function extensionOf(filename: string): string {
  */
 export function splitName(filename: string): { stem: string; ext: string } {
   const ext = extensionOf(filename);
-  if (!ext || ext.length > 8) return { stem: filename, ext: '' };
+  if (!ext || ext.length > 9) return { stem: filename, ext: '' };
   return { stem: filename.slice(0, -(ext.length + 1)), ext: filename.slice(-(ext.length + 1)) };
 }
+
+export const isDesignFile = (filename: string) => BY_EXTENSION[extensionOf(filename)] === 'design';
 
 type Kind = Pick<Asset, 'kind' | 'mime' | 'filename'>;
 
 export function isPdf(asset: Kind): boolean {
-  return asset.mime === 'application/pdf' || extensionOf(asset.filename) === 'pdf';
+  return (
+    extensionOf(asset.filename) !== 'ai' &&
+    (asset.mime === 'application/pdf' || extensionOf(asset.filename) === 'pdf')
+  );
 }
 
 export function isRaw(asset: Kind): boolean {
@@ -65,6 +70,7 @@ export function isRaw(asset: Kind): boolean {
 }
 
 export function fileFamily(asset: Kind): FileFamily {
+  if (isDesignFile(asset.filename)) return 'design';
   if (asset.kind === 'video') return 'video';
   if (asset.kind === 'audio') return 'audio';
   if (asset.kind === 'image' || isRaw(asset)) return 'image';
@@ -107,7 +113,7 @@ export function fileBadge(asset: Pick<Asset, 'kind' | 'mime' | 'filename' | 'vid
   if (isRaw(asset)) return 'RAW';
   if (asset.videoCodec?.toLowerCase().startsWith('prores')) return 'PRORES';
   const ext = extensionOf(asset.filename);
-  if (ext) return ext.slice(0, 5).toUpperCase();
+  if (ext) return (fileFamily(asset) === 'design' ? ext : ext.slice(0, 5)).toUpperCase();
   if (isPdf(asset)) return 'PDF';
   return '';
 }
@@ -198,7 +204,12 @@ export function metaParts(
       parts.push(formatDuration(asset.durationMs));
   } else if (isRaw(asset)) {
     parts.push(...exposureParts(asset.exif));
-  } else if (asset.kind === 'image' && asset.width && asset.height && !isPdf(asset)) {
+  } else if (
+    (asset.kind === 'image' || family === 'design') &&
+    asset.width &&
+    asset.height &&
+    !isPdf(asset)
+  ) {
     parts.push(`${asset.width}×${asset.height}`);
   }
   return parts.filter(Boolean);

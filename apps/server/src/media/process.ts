@@ -8,12 +8,14 @@ import sharp, { type Sharp } from 'sharp';
 import type { Database } from '../db/client.ts';
 import { asset, assetVariant } from '../db/schema.ts';
 import { animatedVariantKey, readAll, type Storage, variantKey, waveformKey } from '../storage.ts';
+import { archiveDesignPreview, designExtension, photoshopPreview } from './design.ts';
 import { readExif } from './exif.ts';
 import { GPX_MAX_BYTES, parseGpx, trackStats } from './gpx.ts';
 import { decodeHeic, sniffImage } from './heic.ts';
 import { MAP_HEIGHT, MAP_WIDTH, type MapSettings, renderMap, routeLine, viewOf } from './maps.ts';
 import { palette } from './palette.ts';
 import { isPdf, readPdfInfo, renderFirstPage } from './pdf.ts';
+import { readPhotoshop } from './photoshop.ts';
 import { extractRawPreview, orientedPixels, readRawExif, sniffRaw } from './raw.ts';
 import { ensureFreeSpace, privateInput, withJobDir } from './scratch.ts';
 import {
@@ -163,6 +165,8 @@ export async function processAsset(
   // Most RAW formats are TIFF inside: they are told apart before the photos.
   const rawType = sniffRaw(head, row.filename, row.mime);
   if (rawType) return processRaw(deps, row, digest, rawType);
+  const design = designExtension(row.filename);
+  if (design) return processDesign(deps, row, digest, design, head);
   if (row.kind === 'file' && isPdf(head)) return processPdf(deps, row, digest);
   if (row.kind === 'audio') return processAudio(deps, row, digest, head);
   if (row.kind === 'file' && isGpx(row, head)) return processGpx(deps, row, digest);
@@ -278,6 +282,92 @@ async function localSource(storage: Storage, row: typeof asset.$inferSelect, dir
   return storage.localCopy(row.storageKey, dir);
 }
 
+/** A missing/broken embedded preview leaves the untouched original as an icon card. */
+async function processDesign(
+  deps: MediaDeps,
+  row: typeof asset.$inferSelect,
+  digest: string,
+  ext: string,
+  head: Buffer,
+) {
+  // Keep AI's type: a PDF-compatible Illustrator file still belongs to the design family.
+  if (ext === 'ai' && isPdf(head)) return processPdf(deps, row, digest, row.mime);
+  const plain = {
+    sha256: digest,
+    status: 'ready' as const,
+    animated: false,
+    kind: 'file' as const,
+  };
+  // shortcut: source files above 2 GiB keep their icon; raise with a streaming use case.
+  if (row.size > 2 * 1024 ** 3 || ext === 'ai') {
+    await save(deps.db, row.id, [], plain);
+    return { variants: 0 };
+  }
+  return withJobDir(deps.tmpDir, async (dir) => {
+    const copy = await localSource(deps.storage, row, dir);
+    try {
+      const photoshop = ext === 'psd' || ext === 'psb' ? await readPhotoshop(copy.path) : null;
+      const metadata =
+        photoshop?.layerCount !== null && photoshop?.layerCount !== undefined
+          ? { exif: { LayerCount: photoshop.layerCount } }
+          : {};
+      if (photoshop?.pixels) {
+        const { data, ...raw } = photoshop.pixels;
+        const result = await thumbnails(deps, row.id, sharp(data, { raw }));
+        await save(deps.db, row.id, result.variants, {
+          ...plain,
+          ...metadata,
+          width: photoshop.document.width,
+          height: photoshop.document.height,
+          palette: result.palette,
+        });
+        return { variants: result.variants.length };
+      }
+      const preview = await (async () => {
+        if (ext === 'psd' || ext === 'psb') {
+          if (head.toString('ascii', 0, 4) !== '8BPS') return null;
+          const { exiftool } = await mediaTools();
+          return exiftool ? photoshopPreview(exiftool, copy.path) : null;
+        }
+        return archiveDesignPreview(copy.path, ext);
+      })().catch(() => null);
+      // Archive names are hints: accept only raster PNG/JPEG bytes, never SVG or documents.
+      if (preview && ['image/png', 'image/jpeg'].includes(sniffImage(preview) ?? '')) {
+        const pixels = await sharp(preview, { failOn: 'error', limitInputPixels: 100_000_000 })
+          .rotate()
+          .raw()
+          .toBuffer({ resolveWithObject: true })
+          .catch(() => null);
+        if (pixels) {
+          const result = await thumbnails(
+            deps,
+            row.id,
+            sharp(pixels.data, {
+              raw: {
+                width: pixels.info.width,
+                height: pixels.info.height,
+                channels: pixels.info.channels,
+              },
+            }),
+          );
+          await save(deps.db, row.id, result.variants, {
+            ...plain,
+            ...metadata,
+            width: result.width,
+            height: result.height,
+            palette: result.palette,
+          });
+          return { variants: result.variants.length };
+        }
+      }
+      await save(deps.db, row.id, [], { ...plain, ...metadata });
+      return { variants: 0 };
+    } finally {
+      await copy.done();
+    }
+  });
+}
+
 /**
  * A camera RAW file: thumbnails from the largest JPEG preview the camera embedded, turned by
  * the orientation of the RAW, and its EXIF, read by exiftool. The RAW itself is never
@@ -337,9 +427,14 @@ async function processRaw(
  * limits. Encrypted or broken PDFs, or a server without poppler, leave the file ready with no
  * thumbnails: the card falls back to its badge.
  */
-async function processPdf(deps: MediaDeps, row: typeof asset.$inferSelect, digest: string) {
+async function processPdf(
+  deps: MediaDeps,
+  row: typeof asset.$inferSelect,
+  digest: string,
+  mime = 'application/pdf',
+) {
   const { db, storage } = deps;
-  const plain = { sha256: digest, mime: 'application/pdf', status: 'ready' as const };
+  const plain = { sha256: digest, mime, status: 'ready' as const, kind: 'file' as const };
   const { pdftoppm, pdfinfo } = await mediaTools();
   if (deps.pdf === false || !pdftoppm || !pdfinfo) {
     await save(db, row.id, [], { ...plain, pageCount: null });

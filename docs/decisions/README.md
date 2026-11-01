@@ -57,6 +57,7 @@ in order. An accepted decision is never rewritten: a later one supersedes it.
 | [0051](0051-audio-cards.md)                          | Audio cards: waveform, AAC copies and voice notes                                      |
 | [0052](0052-table-cards.md)                          | Table cards: plain-text cells in Yjs, pasted from spreadsheets                         |
 | [0053](0053-maps.md)                                 | Map cards and GPX routes: static pictures made once by the server, explored on request |
+| [0054](0054-design-previews.md)                      | Design source files: bounded embedded previews and shared cards                        |
 
 Two decisions share the number 0025: they were accepted in parallel, and accepted records
 are not renumbered.

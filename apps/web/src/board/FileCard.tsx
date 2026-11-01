@@ -81,6 +81,15 @@ export function useFileMeta(asset: Asset): { family: FileFamily; badge: string; 
         ...(track.elevationGainM ? [formatClimb(track.elevationGainM)] : []),
       ]
     : metaParts(asset, i18n.language);
+  const layers = asset.exif?.LayerCount;
+  if (
+    fileFamily(asset) === 'design' &&
+    typeof layers === 'number' &&
+    Number.isInteger(layers) &&
+    layers >= 0 &&
+    layers <= 32768
+  )
+    meta.push(t('board.file.layers', { count: layers }));
   if (asset.pageCount) meta.push(t('board.file.pages', { count: asset.pageCount }));
   return { family: fileFamily(asset), badge: fileBadge(asset), meta };
 }
