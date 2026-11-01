@@ -3,8 +3,15 @@ import type { PlanElement } from '@inkadra/canvas-core';
 import { Icon } from '@inkadra/ui';
 import type { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
+import { useInRouterContext } from 'react-router';
+import { useBoard } from '../context.ts';
 import { PlanDrawing } from './PlanDrawing.tsx';
+import { SceneBadges, scenesOfPlan, usePlanNav } from './scenes.tsx';
 import './plan.css';
+
+function LinkedScenes({ scenes }: { scenes: Parameters<typeof SceneBadges>[0]['scenes'] }) {
+  return <SceneBadges scenes={scenes} onOpen={usePlanNav().openScene} />;
+}
 
 /** "Set plan · Kitchen, day 2": the header of a plan, on the board and in the editor. */
 export function planTitle(t: TFunction, plan: Pick<PlanElement, 'title'>): string {
@@ -17,11 +24,14 @@ export function planTitle(t: TFunction, plan: Pick<PlanElement, 'title'>): strin
  */
 export function PlanCard({ element }: { element: PlanElement }) {
   const { t } = useTranslation();
+  const { store } = useBoard();
+  const scenes = scenesOfPlan(element, store.getSnapshot().byId);
   return (
     <div className="plan">
       <div className="plan__head">
         <Icon name="map" size={14} />
         <span className="plan__title">{planTitle(t, element)}</span>
+        {useInRouterContext() ? <LinkedScenes scenes={scenes} /> : <SceneBadges scenes={scenes} />}
       </div>
       <div className="plan__body card__media">
         <PlanDrawing plan={element} />

@@ -628,3 +628,76 @@
 .plan-lib--sheet .plan-lib__hint {
   text-align: center;
 }
+
+/* Scenes of a plan (round 6, b): badges that link to the storyboard, the picker. */
+.plan__badge {
+  height: 20px;
+  padding: 0 7px;
+  border: 0;
+  border-radius: var(--ink-radius-full);
+  background: var(--ink-accent-soft-bg);
+  color: var(--ink-accent-soft-fg);
+  font: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 20px;
+  white-space: nowrap;
+}
+button.plan__badge {
+  cursor: pointer;
+}
+button.plan__badge:hover {
+  box-shadow: inset 0 0 0 1px currentColor;
+}
+.plan-editor__head .plan__badges {
+  margin-left: 4px;
+}
+.plan-scenes {
+  z-index: 160;
+  width: 260px;
+  padding: 10px 6px 8px;
+  background: var(--ink-surface-float);
+  border: 1px solid var(--ink-border-default);
+  border-radius: var(--ink-radius-md);
+  box-shadow: var(--ink-shadow-menu);
+  font-size: 13px;
+  font-weight: 400;
+}
+.plan-scenes__title {
+  margin: 0 8px 4px;
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-text-muted);
+}
+.plan-scenes .plan-lib__search {
+  margin: 6px 4px;
+}
+.plan-scenes__list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  max-height: 280px;
+  overflow-y: auto;
+}
+.plan-scenes__item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 34px;
+  padding: 0 8px;
+  border-radius: var(--ink-radius-sm);
+  cursor: pointer;
+}
+.plan-scenes__item:hover {
+  background: var(--ink-surface-2);
+}
+.plan-chip {
+  height: 22px;
+  margin-left: 8px;
+  padding: 0 8px;
+  gap: 4px;
+  font-size: 11.5px;
+  font-weight: 500;
+}

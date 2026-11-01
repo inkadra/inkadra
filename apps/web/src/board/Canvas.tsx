@@ -156,6 +156,7 @@ import { NoteSideSheet } from './NoteSideSheet.tsx';
 import { fillFragment, isEmpty } from './note.tsx';
 import { PresenceLayer } from './PresenceLayer.tsx';
 import { PlanEditor } from './plan/PlanEditor.tsx';
+import { ScenePicker, scenesOfPlan, usePlanNav, useTakeParam } from './plan/scenes.tsx';
 import { type Peer, useLocalPresence } from './presence.ts';
 import { canvasElementId, ResizeHandles } from './ResizeHandles.tsx';
 import { openComments } from './review-store.ts';
@@ -484,6 +485,8 @@ export function Canvas({
   const [tagging, setTagging] = useState<{ x: number; y: number; ids: string[] } | null>(null);
   /** The board whose icon and colour are being picked from a board card (#322). */
   const [iconBoard, setIconBoard] = useState<Board | null>(null);
+  /** The plan whose scenes are being picked from its card menu, and where. */
+  const [scenePicker, setScenePicker] = useState<{ id: string; x: number; y: number } | null>(null);
   const boardAspect = useBoardAspect(doc);
   const [params, setParams] = useSearchParams();
   const [overlay, setOverlayState] = useState<Overlay>(NO_OVERLAY);
@@ -2413,6 +2416,22 @@ export function Canvas({
   const pickingColor = editedEl?.type === 'color' && !readOnly ? editedEl : null;
   const editedPlan = editedEl?.type === 'plan' && !readOnly ? editedEl : null;
   const isPhone = useIsPhone();
+  const { openScene } = usePlanNav();
+  const boardScenes = useMemo(
+    () => storyboardOf([...snap.byId.values()]).flatMap((g) => (g.scene ? [g.scene] : [])),
+    [snap],
+  );
+  // A scene's "Pianta del set" links to ?plan=<id>: open that plan in its editor, once.
+  const [planParam, takePlanParam] = useTakeParam('plan');
+  useEffect(() => {
+    if (!planParam || conn.status !== 'synced') return;
+    takePlanParam();
+    const el = snap.byId.get(planParam);
+    if (el?.type !== 'plan') return;
+    select([el.id]);
+    if (!readOnly) setEditing(el.id);
+  }, [planParam, takePlanParam, conn.status, snap, select, setEditing, readOnly]);
+  const pickingScenes = scenePicker ? snap.byId.get(scenePicker.id) : undefined;
   const usedColors = useMemo(
     () =>
       [
@@ -2803,6 +2822,25 @@ export function Canvas({
       ...(single?.type === 'note'
         ? [{ label: t('board.menu.openDoc'), action: () => openElement(single) }]
         : []),
+      ...(single?.type === 'plan'
+        ? [
+            ...(readOnly
+              ? []
+              : [
+                  { label: t('board.plan.edit'), shortcut: '↵', action: () => openElement(single) },
+                  {
+                    label: t('board.plan.linkSceneMenu'),
+                    action: () => setScenePicker({ id: single.id, x: menu.x, y: menu.y }),
+                  },
+                ]),
+            ...scenesOfPlan(single, snap.byId)
+              .slice(0, 1)
+              .map((scene) => ({
+                label: t('board.plan.openScene', { number: scene.number }),
+                action: () => openScene(scene.id),
+              })),
+          ]
+        : []),
       ...(single?.type === 'frame'
         ? [
             { label: t('board.menu.details'), action: () => openElement(single) },
@@ -2917,6 +2955,7 @@ export function Canvas({
     dots,
     toggleDots,
     snap,
+    openScene,
   ]);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: sizeVersion invalidates measured heights
@@ -3286,7 +3325,18 @@ export function Canvas({
             store={store}
             plan={editedPlan}
             phone={isPhone}
+            scenes={boardScenes}
+            onOpenScene={openScene}
             onClose={() => setEditing(null)}
+          />
+        )}
+        {pickingScenes?.type === 'plan' && scenePicker && (
+          <ScenePicker
+            store={store}
+            plan={pickingScenes}
+            scenes={boardScenes}
+            style={{ position: 'fixed', left: scenePicker.x, top: scenePicker.y }}
+            onClose={() => setScenePicker(null)}
           />
         )}
         {drawnFrame && (

@@ -109,6 +109,20 @@ async function seed(page: Page, baseURL: string, theme: 'light' | 'dark') {
     [266, 72],
     [272, 92],
   ].map(([x, y]) => ({ x: (x as number) / 400, y: (y as number) / (400 / 1.5) }));
+  const scene5 = createElement(
+    doc,
+    'scene',
+    { x: 60, y: 560 },
+    { number: '5', title: '', location: 'Cucina', setting: 'int', time: 'day' },
+    opts,
+  );
+  createElement(
+    doc,
+    'scene',
+    { x: 360, y: 560 },
+    { number: '7', title: '', location: 'Cucina', setting: 'int', time: 'dusk' },
+    opts,
+  );
   const plan = createElement(
     doc,
     'plan',
@@ -116,6 +130,7 @@ async function seed(page: Page, baseURL: string, theme: 'light' | 'dark') {
     {
       w: 480,
       title: 'Cucina, giorno 2',
+      sceneIds: [scene5.id],
       strokes: [
         {
           id: 'strokeAnnaAAA',
@@ -281,6 +296,28 @@ for (const theme of ['dark', 'light'] as const) {
     await expect.poll(async () => (await saved()).count).toBe(2);
     await page.keyboard.press('Control+z');
     await expect.poll(async () => (await saved()).count).toBe(1);
+    if (theme === 'dark') {
+      // Scenes (round 6, b): the badge on the card links to the scene in the storyboard, the
+      // scene opens its plan, and the editor links the plan to more scenes.
+      await expect(card.getByRole('button', { name: 'Sc. 5' })).toBeVisible();
+      await card.dblclick();
+      await editor.getByRole('button', { name: 'Collega a una scena' }).click();
+      const picker = page.getByRole('dialog', { name: 'Collega a una scena' });
+      await picker.getByText(/^Sc\. 7/).click();
+      await expect.poll(async () => (await saved()).plan?.sceneIds?.length).toBe(2);
+      await page.keyboard.press('Escape');
+      await expect(picker).toHaveCount(0);
+      await expect(editor.getByRole('button', { name: 'Sc. 7' })).toBeVisible();
+      await page.screenshot({ path: join(out, 'desktop-dark-scenes.png') });
+      await page.keyboard.press('Escape');
+      await expect(editor).toHaveCount(0);
+      await card.getByRole('button', { name: 'Sc. 5' }).click();
+      await expect(page).toHaveURL(/view=storyboard/);
+      const sceneHead = page.locator('[data-story-scene]').first();
+      await sceneHead.getByRole('button', { name: 'Pianta del set' }).click();
+      await expect(editor).toBeVisible();
+      await page.keyboard.press('Escape');
+    }
     const state = await page.context().storageState();
     await page.close();
 

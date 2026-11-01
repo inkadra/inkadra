@@ -22,6 +22,7 @@ import {
 import { useTranslation } from 'react-i18next';
 import { api, RequestError } from '../../lib/api.ts';
 import { useIsPhone } from '../../lib/phone.ts';
+import { plansOfScene, ScenePlanButton } from '../plan/scenes.tsx';
 import { type BoardStore, LOCAL } from '../store.ts';
 import { CallSheetModal } from './CallSheetModal.tsx';
 import { plannedWrap } from './call-sheet.ts';
@@ -472,6 +473,12 @@ export function ScheduleView({
                           .filter(Boolean)
                           .join(' · ')
                       : t('film.loose')}
+                    {group.scene && (
+                      <ScenePlanButton
+                        compact
+                        plans={plansOfScene(store.getSnapshot().byId.values(), group.scene.id)}
+                      />
+                    )}
                   </h3>
                   {items.map((frame) => (
                     <QueueShot

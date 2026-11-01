@@ -23,6 +23,7 @@ import {
   ROTATE_STEP,
   removePlanItems,
   rotateItem,
+  type SceneElement,
   snapPlanPoint,
   toGrid,
   updateElement,
@@ -58,6 +59,7 @@ import {
   planCss,
 } from './PlanDrawing.tsx';
 import { type LibraryItem, PlanLibrary, rememberRecent } from './PlanLibrary.tsx';
+import { SceneBadges, ScenePicker, scenesOfPlan } from './scenes.tsx';
 import './plan.css';
 
 type DragKind = 'line' | 'arrow' | 'rect' | 'ellipse' | 'zone' | 'measure';
@@ -109,14 +111,16 @@ export function PlanEditor({
   store,
   plan,
   phone,
-  header,
+  scenes,
+  onOpenScene,
   onClose,
 }: {
   store: BoardStore;
   plan: PlanElement;
   phone: boolean;
-  /** More of the header: the scenes of the plan, its variants. */
-  header?: ReactNode;
+  /** Scenes of the board, in shooting order, to link the plan to. */
+  scenes: readonly SceneElement[];
+  onOpenScene: (id: string) => void;
   onClose: () => void;
 }) {
   const { t } = useTranslation();
@@ -124,6 +128,8 @@ export function PlanEditor({
   const [armed, setArmed] = useState<LibraryItem | null>(null);
   const [panel, setPanel] = useState<Panel>('icons');
   const [snap, setSnap] = useState(true);
+  const [picking, setPicking] = useState<{ x: number; y: number } | null>(null);
+  const linked = scenesOfPlan(plan, new Map(scenes.map((s) => [s.id, s])));
   const [selected, setSelected] = useState<PlanItemRef | null>(null);
   /** The item being moved or turned, shown in place until the gesture ends. */
   const [preview, setPreviewState] = useState<PlanItem | null>(null);
@@ -267,7 +273,8 @@ export function PlanEditor({
   const keys = useRef<(e: KeyboardEvent) => void>(() => {});
   keys.current = (e: KeyboardEvent) => {
     const target = e.target as HTMLElement | null;
-    if (target?.tagName === 'INPUT' || target?.tagName === 'TEXTAREA') return;
+    // The scene picker has the keyboard while it is open.
+    if (picking || target?.tagName === 'INPUT' || target?.tagName === 'TEXTAREA') return;
     const mod = isMac() ? e.metaKey : e.ctrlKey;
     const key = e.key.toLowerCase();
     if (e.key === 'Escape') {
@@ -749,7 +756,24 @@ export function PlanEditor({
               }
             }}
           />
-          {header}
+          <SceneBadges scenes={linked} onOpen={onOpenScene} />
+          <IconButton
+            icon="link"
+            label={t('board.plan.linkScene')}
+            onClick={(e) => {
+              const r = e.currentTarget.getBoundingClientRect();
+              setPicking({ x: r.left, y: r.bottom + 6 });
+            }}
+          />
+          {picking && (
+            <ScenePicker
+              store={store}
+              plan={plan}
+              scenes={scenes}
+              style={{ position: 'fixed', left: picking.x, top: picking.y }}
+              onClose={() => setPicking(null)}
+            />
+          )}
           <span className="plan-editor__spacer" />
           <Button variant="primary" onClick={onClose}>
             {t('film.pen.done')}

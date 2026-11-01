@@ -886,7 +886,14 @@
       "sheetHalf": "Shrink the library",
       "sheetFull": "Full-screen library",
       "color": "Colour",
-      "noSelection": "Select an item of the plan to see its properties."
+      "noSelection": "Select an item of the plan to see its properties.",
+      "edit": "Edit",
+      "linkScene": "Link to a scene",
+      "linkSceneMenu": "Link to a scene…",
+      "searchScene": "Search scenes",
+      "noScenes": "No scenes",
+      "openScene": "Open scene {{number}}",
+      "short": "Plan"
     }
   },
   "tags": {

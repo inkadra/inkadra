@@ -886,7 +886,14 @@
       "sheetHalf": "Riduci la libreria",
       "sheetFull": "Libreria a tutto schermo",
       "color": "Colore",
-      "noSelection": "Seleziona un elemento della pianta per vederne le proprietà."
+      "noSelection": "Seleziona un elemento della pianta per vederne le proprietà.",
+      "edit": "Modifica",
+      "linkScene": "Collega a una scena",
+      "linkSceneMenu": "Collega a una scena…",
+      "searchScene": "Cerca scena",
+      "noScenes": "Nessuna scena",
+      "openScene": "Apri la scena {{number}}",
+      "short": "Pianta"
     }
   },
   "tags": {
