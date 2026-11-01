@@ -156,7 +156,9 @@ export function ClientReviewView({
               onClick={() => setFilter(value)}
             >
               {t(
-                value === 'all' && cardMode ? 'clientReview.allCards' : `clientReview.filters.${value}`,
+                value === 'all' && cardMode
+                  ? 'clientReview.allCards'
+                  : `clientReview.filters.${value}`,
               )}
             </button>
           ))}
@@ -211,9 +213,7 @@ export function ClientReviewView({
                   />
                 )}
               </span>
-              {frame?.action && (
-                <span className="client-review__frame-action">{frame.action}</span>
-              )}
+              {frame?.action && <span className="client-review__frame-action">{frame.action}</span>}
             </button>
           ))}
         </section>
@@ -221,36 +221,36 @@ export function ClientReviewView({
           {current ? (
             <>
               {frame ? (
-              <div className="client-review__picture">
-                <Button
-                  variant="ghost"
-                  className="client-review__step"
-                  aria-label={t('clientReview.previous')}
-                  data-ink-tooltip={t('clientReview.previous')}
-                  disabled={currentIndex === 0}
-                  onClick={() => step(-1)}
-                >
-                  ‹
-                </Button>
-                <FramePicture
-                  key={current.id}
-                  assetId={frame.assetId}
-                  aspect={frame.aspect}
-                  boardAspect={aspect}
-                  strokes={frame.strokes}
-                  pixels={960}
-                />
-                <Button
-                  variant="ghost"
-                  className="client-review__step"
-                  aria-label={t('clientReview.next')}
-                  data-ink-tooltip={t('clientReview.next')}
-                  disabled={currentIndex >= visible.length - 1}
-                  onClick={() => step(1)}
-                >
-                  ›
-                </Button>
-              </div>
+                <div className="client-review__picture">
+                  <Button
+                    variant="ghost"
+                    className="client-review__step"
+                    aria-label={t('clientReview.previous')}
+                    data-ink-tooltip={t('clientReview.previous')}
+                    disabled={currentIndex === 0}
+                    onClick={() => step(-1)}
+                  >
+                    ‹
+                  </Button>
+                  <FramePicture
+                    key={current.id}
+                    assetId={frame.assetId}
+                    aspect={frame.aspect}
+                    boardAspect={aspect}
+                    strokes={frame.strokes}
+                    pixels={960}
+                  />
+                  <Button
+                    variant="ghost"
+                    className="client-review__step"
+                    aria-label={t('clientReview.next')}
+                    data-ink-tooltip={t('clientReview.next')}
+                    disabled={currentIndex >= visible.length - 1}
+                    onClick={() => step(1)}
+                  >
+                    ›
+                  </Button>
+                </div>
               ) : (
                 <div className="client-review__card">
                   <h2>{nameOf(current.id)}</h2>
@@ -382,7 +382,11 @@ export function ClientReviewView({
                     })}
                   </span>
                 </div>
-                <progress id={`${id}-progress`} max={Math.max(1, entries.length)} value={approved} />
+                <progress
+                  id={`${id}-progress`}
+                  max={Math.max(1, entries.length)}
+                  value={approved}
+                />
               </footer>
             )}
           </aside>

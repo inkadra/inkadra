@@ -118,8 +118,7 @@ export function viewDestination(
 ): { boardId: string | null; view: BoardView; kind?: BoardKind } {
   const film = FILM_VIEWS.includes(view);
   if (!film || current.kind === 'storyboard') return { boardId: null, view };
-  const target =
-    storyboardId ?? (view === 'review' ? reviewBoardId : null) ?? current.rootBoardId;
+  const target = storyboardId ?? (view === 'review' ? reviewBoardId : null) ?? current.rootBoardId;
   if (!target || target === current.boardId) return { boardId: null, view };
   return { boardId: target, view, kind: storyboardId ? 'storyboard' : 'board' };
 }

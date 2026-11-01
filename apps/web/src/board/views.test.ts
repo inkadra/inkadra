@@ -2,10 +2,10 @@ import type { Board } from '@inkadra/shared';
 import { describe, expect, it } from 'vitest';
 import {
   askedView,
+  clientReviewBoard,
   headerViews,
   isBoardView,
   pickerViews,
-  clientReviewBoard,
   projectHasStoryboard,
   storyboardOf,
   VIEWS,

@@ -133,7 +133,13 @@ it('renders the dropped shot identity and rejects foreign, malformed and read-on
 it('reviews the cards of a board without shots, in reading order, and leaves out structure', async () => {
   const { doc, store } = board();
   createElement(doc, 'note', { x: 0, y: 200 }, { label: 'Second card' }, { userId: null });
-  const first = createElement(doc, 'note', { x: 0, y: 0 }, { label: 'First card' }, { userId: null });
+  const first = createElement(
+    doc,
+    'note',
+    { x: 0, y: 0 },
+    { label: 'First card' },
+    { userId: null },
+  );
   createElement(doc, 'arrow', { x: 0, y: 0 }, {}, { userId: null });
   resetReviews({
     boardId: 'review-board',

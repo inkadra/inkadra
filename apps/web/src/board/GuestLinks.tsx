@@ -9,7 +9,6 @@ import { Button, Checkbox, Icon, IconButton, Select } from '@inkadra/ui';
 import { type FormEvent, useCallback, useEffect, useId, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api, RequestError } from '../lib/api.ts';
-import { refreshBoardCounts } from './live-counts.ts';
 import { relativeTime } from '../notifications/Notifications.tsx';
 import {
   canChangeScope,
@@ -25,6 +24,7 @@ import {
   picksCsv,
   statusOf,
 } from './guest-links.ts';
+import { refreshBoardCounts } from './live-counts.ts';
 import './guest-links.css';
 import { PermissionsMatrix } from './PermissionsMatrix.tsx';
 

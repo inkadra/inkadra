@@ -6673,10 +6673,9 @@
             "minimum": 0,
             "description": "Board cards."
           },
-          "inReviewCount": {
-            "type": "integer",
-            "minimum": 0,
-            "description": "Cards whose team review status is `in_review`: the board has a client review under way."
+          "clientReview": {
+            "type": "boolean",
+            "description": "A share link that lets guests set the review status of cards (`guest_approve`) is live on this board: not revoked, not expired."
           }
         },
         "required": [
