@@ -205,3 +205,37 @@ test('records tidying into a mosaic', async ({ browser, baseURL }) => {
   await context.close();
 });
 
+// Empty board (#312): three starting points, gone with the first card; tap wording on phones.
+for (const theme of ['dark', 'light'] as const) {
+  test(`an empty board offers three starting points ${theme}`, async ({ browser, baseURL }) => {
+    test.setTimeout(90_000);
+    mkdirSync(out, { recursive: true });
+    for (const phone of [false, true]) {
+      const context = await browser.newContext({
+        viewport: phone ? { width: 390, height: 844 } : { width: 1440, height: 900 },
+        ...(phone ? { hasTouch: true, isMobile: true } : {}),
+        locale: 'it-IT',
+        colorScheme: theme,
+        reducedMotion: 'reduce',
+      });
+      const page = await context.newPage();
+      await open(page, baseURL!, [], theme);
+      const start = page.getByRole('region', { name: 'Da dove partiamo?' });
+      await expect(start).toBeVisible();
+      for (const name of [/^Moodboard/, /^Storyboard/, /^Importa sceneggiatura/]) {
+        await expect(start.getByRole('button', { name })).toBeVisible();
+      }
+      await expect(start.getByText(phone ? /tocca due volte/ : /doppio clic/)).toBeVisible();
+      await page.screenshot({ path: `${out}/empty-${phone ? 'phone' : 'desktop'}-${theme}.png` });
+      if (!phone) {
+        // Browse opens the Canvas menu with every template; the first card hides the card.
+        await start.getByRole('button', { name: /Sfoglia tutti i modelli/ }).click();
+        await expect(page.getByRole('menu', { name: 'Canvas' })).toBeVisible();
+        await page.keyboard.press('Escape');
+        await page.getByTestId('canvas').dblclick({ position: { x: 300, y: 200 } });
+        await expect(start).toBeHidden();
+      }
+      await context.close();
+    }
+  });
+}

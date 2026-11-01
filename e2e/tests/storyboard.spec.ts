@@ -155,8 +155,8 @@ test('the empty-board Storyboard template opens a real storyboard with a shot li
   await page.getByLabel('Titolo della board').fill('Modelli');
   await page.getByLabel('Titolo della board').press('Enter');
   await page.locator('[data-type="board"]', { hasText: 'Modelli' }).dblclick();
-  await expect(page.getByText('Board vuota')).toBeVisible();
-  await page.getByRole('button', { name: /^Storyboard Una board Storyboard/ }).click();
+  await expect(page.getByRole('heading', { name: 'Da dove partiamo?' })).toBeVisible();
+  await page.getByRole('button', { name: /^Storyboard Scene e inquadrature/ }).click();
   await expect(page.getByRole('tab', { name: 'Storyboard', exact: true })).toHaveAttribute(
     'aria-selected',
     'true',
@@ -185,7 +185,7 @@ test('the palette inserts templates on a non-empty board and opens storyboard te
   const canvas = page.getByTestId('canvas');
   const existing = page.locator('[data-type="board"]', { hasText: 'Storyboard' });
   await expect(existing).toHaveCount(1);
-  await expect(page.locator('.canvas__templates')).toHaveCount(0);
+  await expect(page.locator('.canvas__start')).toHaveCount(0);
 
   await page.keyboard.press('/');
   const palette = page.getByRole('dialog', { name: 'Comandi' });

@@ -312,10 +312,16 @@
     "selected_one": "1 selezionato",
     "selected_other": "{{count}} selezionati",
     "empty": {
-      "title": "Board vuota",
-      "body": "Doppio clic per una nota, trascina file o usa la barra in basso. / apre i comandi.",
-      "bodyTouch": "Tocca due volte per una nota o usa la barra in basso.",
-      "templates": "Oppure parti da un modello"
+      "title": "Da dove partiamo?",
+      "body": "Scegli un punto di partenza, oppure fai doppio clic per scrivere una nota.",
+      "bodyTouch": "Scegli un punto di partenza, oppure tocca due volte per scrivere una nota.",
+      "moodboard": "Riferimenti e palette",
+      "storyboard": "Scene e inquadrature",
+      "screenplay": "Importa sceneggiatura",
+      "screenplayBody": "Fountain o Final Draft",
+      "browse": "Sfoglia tutti i modelli",
+      "hint": "Puoi anche trascinare qui file e immagini.",
+      "hintTouch": "Aggiungi foto e file dalla barra in basso."
     },
     "types": {
       "note": "Nota",

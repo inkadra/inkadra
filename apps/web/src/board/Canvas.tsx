@@ -50,7 +50,6 @@ import {
   snap as snapToGrid,
   stackColumns,
   storyboardOf,
-  TEMPLATE_IDS,
   type TemplateId,
   TIDY_GAPS,
   type TidyGap,
@@ -118,6 +117,7 @@ import {
 import { decodeClipboard, encodeClipboard } from './clipboard.ts';
 import type { BoardConnection } from './connection.ts';
 import { BoardContext, type BoardContextValue, GuestModeContext, LARGE_BOARD } from './context.ts';
+import { EmptyBoardStart } from './EmptyBoardStart.tsx';
 import { useBoardAspect } from './film/aspect.ts';
 import { DrawingEditor } from './film/DrawingEditor.tsx';
 import { FramePanel } from './film/FramePanel.tsx';
@@ -2507,28 +2507,21 @@ export function Canvas({
         )}
         {dropHint && <div className="canvas__drophint">{t('board.dropFiles')}</div>}
 
-        {snap.canvas.length === 0 && conn.status === 'synced' && !readOnly && (
-          <div className="canvas__empty">
-            <span className="canvas__empty-title">{t('board.empty.title')}</span>
-            {/* A finger gets its own wording, without the keyboard tip (board.css). */}
-            <span className="ink-muted canvas__empty-pointer">{t('board.empty.body')}</span>
-            <span className="ink-muted canvas__empty-touch">{t('board.empty.bodyTouch')}</span>
-            <span className="canvas__templates-title">{t('board.empty.templates')}</span>
-            <div className="canvas__templates" data-chrome>
-              {TEMPLATE_IDS.map((id) => (
-                <button
-                  key={id}
-                  type="button"
-                  className="canvas__template"
-                  onClick={() => void addTemplate(id)}
-                >
-                  <span className="canvas__template-name">{t(`templates.${id}.name`)}</span>
-                  <span className="ink-muted">{t(`templates.${id}.body`)}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
+        {/* Starting points (#312): only for people who can edit, gone with the first card. */}
+        {snap.canvas.length === 0 &&
+          conn.status === 'synced' &&
+          !readOnly &&
+          !guest &&
+          !preview && (
+            <EmptyBoardStart
+              onMoodboard={() => void addTemplate('moodboard')}
+              onStoryboard={() => void addTemplate('storyboard')}
+              onScreenplay={() => setImportingScript(true)}
+              onBrowse={() =>
+                rootRef.current?.querySelector<HTMLButtonElement>('.toolbar__btn--canvas')?.click()
+              }
+            />
+          )}
 
         {!overlay.offset &&
           !overlay.marquee &&
