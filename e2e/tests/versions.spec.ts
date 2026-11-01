@@ -619,6 +619,8 @@ test('storyboard and shot list preview a version read-only, and editors hide fra
   await seed(page, baseURL!);
   await page.keyboard.press('s');
   const card = page.locator('[data-type="board"]', { hasText: 'Storyboard' });
+  // Typed before the card exists, the name would go to the board's shortcuts (as elsewhere).
+  await expect(card).toHaveCount(1);
   await page.keyboard.type('Preview film');
   await page.keyboard.press('Escape');
   await card.dblclick();
