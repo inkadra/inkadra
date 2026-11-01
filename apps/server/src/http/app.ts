@@ -35,6 +35,7 @@ import { registerGuestRoutes } from './guest-routes.ts';
 import { registerInstanceAdminRoutes } from './instance-admin-routes.ts';
 import { registerLinkPreviews } from './link-previews.ts';
 import { registerMapPreviews } from './map-previews.ts';
+import { registerMapTiles } from './map-tiles.ts';
 import { registerNotificationRoutes } from './notifications-routes.ts';
 import { registerProjectRoutes } from './projects-routes.ts';
 import { registerReviewRoutes } from './reviews-routes.ts';
@@ -133,6 +134,7 @@ export async function createApp(deps: AppDeps) {
   registerSearchRoutes(app, deps);
   registerLinkPreviews(app, deps);
   registerMapPreviews(app, deps);
+  registerMapTiles(app, deps);
   registerDiagnostics(app, deps);
   registerCommentRoutes(app, deps);
   registerReviewRoutes(app, deps);

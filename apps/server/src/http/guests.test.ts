@@ -1077,6 +1077,7 @@ describe.skipIf(!url)('guest share links (needs DATABASE_URL)', () => {
       allowDownload: false,
       proofing: false,
       linkExpiresAt: null,
+      maps: { attribution: '© OpenStreetMap contributors' },
     });
     // A visible board card leads to A1; A2 is behind a hidden card, A3 behind a hidden card
     // on A1, A4 is not editable by the creator, A5 is in the trash, B is not below A.
@@ -1092,6 +1093,9 @@ describe.skipIf(!url)('guest share links (needs DATABASE_URL)', () => {
     ]);
     carla = res.cookie;
     expect((await call({ cookie: carla }, 'GET', g(linkC, '/session'))).status).toBe(200);
+    // Map tiles: only for guests of the link, and only real tiles (no request leaves here).
+    expect((await call(null, 'GET', g(linkC, '/map-tiles/1/0/0'))).status).toBe(401);
+    expect((await call({ cookie: carla }, 'GET', g(linkC, '/map-tiles/1/2/0'))).status).toBe(400);
     // The token of another link opens nothing here.
     expect((await open(linkC, { token: linkV.token })).status).toBe(404);
     expect((await call(null, 'GET', g(linkC, '/session'))).body.error.details).toEqual({

@@ -1,7 +1,24 @@
 import { describe, expect, it } from 'vitest';
-import { MAP_HEIGHT, MAP_WIDTH, project, routeLine, tilesOf, viewAround, viewOf } from './maps.ts';
+import {
+  MAP_HEIGHT,
+  MAP_WIDTH,
+  project,
+  routeLine,
+  tilesOf,
+  tileType,
+  viewAround,
+  viewOf,
+} from './maps.ts';
 
 describe('static maps', () => {
+  it('types a tile by its bytes, and refuses what is not a PNG, JPEG or WebP', () => {
+    expect(tileType(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10, 0]))).toBe('image/png');
+    expect(tileType(Buffer.from([0xff, 0xd8, 0xff, 0xe0]))).toBe('image/jpeg');
+    expect(tileType(Buffer.from('RIFF\0\0\0\0WEBPVP8 ', 'latin1'))).toBe('image/webp');
+    expect(tileType(Buffer.from('<svg xmlns="http://www.w3.org/2000/svg"/>'))).toBeNull();
+    expect(tileType(Buffer.alloc(0))).toBeNull();
+  });
+
   it('projects with Web Mercator', () => {
     expect(project(0, 0, 0)).toEqual({ x: 128, y: 128 });
     const p = project(85.05, -180, 1);

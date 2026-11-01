@@ -1344,6 +1344,33 @@ registry.registerPath({
   },
 });
 
+/** Path of the map tile routes, as documented; the server checks it with MapTileParams. */
+const tilePath = {
+  z: z.int().min(1).max(19),
+  x: z.int().min(0).openapi({ description: 'From 0 to 2^z − 1.' }),
+  y: z.int().min(0).openapi({ description: 'From 0 to 2^z − 1.' }),
+};
+const tile = {
+  200: {
+    description: 'The tile, as the tile server sent it (PNG, JPEG or WebP)',
+    content: { 'image/png': { schema: z.string() } },
+  },
+};
+registry.registerPath({
+  method: 'get',
+  path: v1('/map-tiles/{z}/{x}/{y}'),
+  tags: ['Assets'],
+  security: secured,
+  summary: 'A map tile for an interactive map card, fetched by the server.',
+  description:
+    'The server fetches the tile from the tile server of the instance (MAP_TILE_URL), through ' +
+    'the queue and cache of map pictures, so browsers never contact it (decision 0053). 404 ' +
+    'when maps are off (Instance.maps.enabled) or the tile server has no such tile; 429 past ' +
+    '600 tiles a minute per person, or when the queue is too long (`Retry-After`).',
+  request: { params: z.object(tilePath) },
+  responses: { ...tile, ...errors },
+});
+
 // Search ---------------------------------------------------------------------
 
 registry.registerPath({
@@ -1867,6 +1894,18 @@ registry.registerPath({
     200: { description: 'WebP image', content: { 'image/webp': { schema: z.string() } } },
     ...guestErrors,
   },
+});
+registry.registerPath({
+  method: 'get',
+  path: v1('/guest/links/{linkId}/map-tiles/{z}/{x}/{y}'),
+  tags: ['Guests'],
+  security: guest,
+  summary: 'A map tile for the interactive map cards of the link.',
+  description:
+    'As GET /map-tiles/{z}/{x}/{y}, for any guest of the link while GuestSession.maps is set; ' +
+    'the 600 tiles a minute are counted per guest.',
+  request: { params: z.object({ linkId: Id, ...tilePath }) },
+  responses: { ...tile, ...guestErrors },
 });
 registry.registerPath({
   method: 'get',

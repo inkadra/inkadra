@@ -76,6 +76,7 @@ import {
   linkStopped,
 } from './guest-context.ts';
 import { RateLimiter } from './link-previews.ts';
+import { createTileServer } from './map-tiles.ts';
 
 interface Deps {
   config: Config;
@@ -188,6 +189,7 @@ export async function registerGuestRoutes(app: FastifyInstance, deps: Deps) {
     );
   }
   const guests = createGuestAuth({ config, db, docs });
+  const serveTile = createTileServer(config);
   const previews = new RateLimiter(60, 60_000);
   const wrongPasswords = new Failures(10, 15 * 60_000);
   const linkPasswords = new Failures(100, 15 * 60_000);
@@ -243,6 +245,7 @@ export async function registerGuestRoutes(app: FastifyInstance, deps: Deps) {
       proofing: ctx.link.proofing,
       linkExpiresAt: ctx.link.expiresAt ? iso(ctx.link.expiresAt) : null,
       sessionExpiresAt: iso(ctx.guest.sessionExpiresAt),
+      maps: config.MAPS ? { attribution: config.MAP_TILE_ATTRIBUTION } : null,
     };
   }
 
@@ -675,6 +678,13 @@ export async function registerGuestRoutes(app: FastifyInstance, deps: Deps) {
       if (matchesEtag(req.headers['if-none-match'], etag)) return reply.status(304).send();
       reply.header('content-type', 'image/webp');
       return reply.send(await storage.read(variant.storageKey));
+    });
+
+    // Tiles are public map data: any guest of a working link may pan the maps of its boards.
+    scope.get(v1('/guest/links/:linkId/map-tiles/:z/:x/:y'), async (req, reply) => {
+      const { linkId } = LinkParams.parse(req.params);
+      const ctx = await guests.requireGuest(req, reply, linkId);
+      return serveTile(req, reply, `guest:${ctx.guest.id}`);
     });
 
     scope.get(v1('/guest/links/:linkId/assets/:assetId/file'), async (req, reply) => {

@@ -401,7 +401,7 @@ async function processGpx(deps: MediaDeps, row: typeof asset.$inferSelect, diges
   const view = viewOf(segments.flat());
   const fields = {
     ...plain,
-    track: { ...trackStats(segments), points: routeLine(segments, view) },
+    track: { ...trackStats(segments), points: routeLine(segments, view), view },
     width: MAP_WIDTH,
     height: MAP_HEIGHT,
   };

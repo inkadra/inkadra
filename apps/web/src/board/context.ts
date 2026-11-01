@@ -29,6 +29,8 @@ export interface BoardContextValue {
   frameLabels: ReadonlyMap<string, string>;
   /** Credit of the map data on map pictures (Instance.maps). */
   mapAttribution?: string | undefined;
+  /** Leaflet URL of the tiles of interactive maps, from Inkadra; unset when maps are off. */
+  mapTiles?: string | undefined;
 }
 
 export const BoardContext = createContext<BoardContextValue | null>(null);

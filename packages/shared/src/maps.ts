@@ -150,3 +150,19 @@ export const MapPreview = z
   })
   .openapi('MapPreview');
 export type MapPreview = z.infer<typeof MapPreview>;
+
+const tileNumber = z
+  .string()
+  .regex(/^(?:0|[1-9]\d{0,5})$/)
+  .transform(Number);
+
+/**
+ * Path of the map tile routes (decision 0053): whole numbers, `z` from 1 to 19, `x` and `y`
+ * inside the world at that zoom (0 to 2^z − 1).
+ */
+export const MapTileParams = z
+  .object({ z: tileNumber, x: tileNumber, y: tileNumber })
+  .refine((t) => t.z >= 1 && t.z <= 19 && t.x < 2 ** t.z && t.y < 2 ** t.z, {
+    message: 'No such tile.',
+  });
+export type MapTileParams = z.infer<typeof MapTileParams>;

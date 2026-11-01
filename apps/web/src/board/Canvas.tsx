@@ -66,7 +66,7 @@ import {
   zoomAt,
 } from '@inkadra/canvas-core';
 import { type Element, UNSORTED } from '@inkadra/doc-schema';
-import { type Board, defaultProjectIcon, isMapLink } from '@inkadra/shared';
+import { API_PREFIX, type Board, defaultProjectIcon, isMapLink } from '@inkadra/shared';
 import type { Editor } from '@tiptap/react';
 import {
   type DragEvent,
@@ -136,6 +136,7 @@ import { ImageCropToolbar, restoreOriginalImage } from './ImageCropEditor.tsx';
 import { hasImageTransform } from './image-crop.ts';
 import { fillLinkPreview, webUrl } from './links.ts';
 import { useBoardCounts } from './live-counts.ts';
+import { exploreMap } from './MapExplore.tsx';
 import { fillMapPreview } from './maps.ts';
 import { NoteSideSheet } from './NoteSideSheet.tsx';
 import { fillFragment, isEmpty } from './note.tsx';
@@ -289,6 +290,8 @@ export interface CanvasProps {
   onExportSelection?: () => void;
   /** Filled with a reader of the part of the board on screen, for the export dialog. */
   visibleRef?: { current: (() => Rect | null) | null };
+  /** Maps of the guest page, which has no instance: the credit and the guest tile URL. */
+  guestMaps?: { attribution: string; tiles: string } | undefined;
 }
 
 export function Canvas({
@@ -307,10 +310,17 @@ export function Canvas({
   onOpen,
   onExportSelection,
   visibleRef,
+  guestMaps,
 }: CanvasProps) {
   const { t } = useTranslation();
   const guest = useContext(GuestModeContext);
   const { instance } = useSession();
+  const mapAttribution = guestMaps ? guestMaps.attribution : instance?.maps?.attribution;
+  const mapTiles = guestMaps
+    ? guestMaps.tiles
+    : instance?.maps?.enabled
+      ? `${API_PREFIX}/map-tiles/{z}/{x}/{y}`
+      : undefined;
   const { store } = conn;
   const doc = store.doc;
   const readOnly = conn.readOnly || !canEdit;
@@ -1185,6 +1195,8 @@ export function Canvas({
         select([el.id]);
         setFramePanel(null);
         setStoryPanel(el.id);
+      } else if (el.type === 'map' && el.lat !== undefined && el.imageAssetId && mapTiles) {
+        exploreMap(el.id);
       } else if (el.type === 'note') {
         select([el.id]);
         // The sheet takes over the note's document: leave inline editing first.
@@ -1195,7 +1207,7 @@ export function Canvas({
         setEditing(el.id);
       }
     },
-    [onOpenBoard, onOpen, readOnly, select, setEditing],
+    [onOpenBoard, onOpen, readOnly, select, setEditing, mapTiles],
   );
 
   // Pointer gestures ----------------------------------------------------------
@@ -2081,7 +2093,6 @@ export function Canvas({
   const largeBoard = snap.byId.size > LARGE_BOARD;
   // Guests have no project to count in; versions show the counts of today.
   const boardCounts = useBoardCounts(guest ? undefined : projectId, boards);
-  const mapAttribution = instance?.maps?.attribution;
   const ctx = useMemo<BoardContextValue>(
     () => ({
       store,
@@ -2102,10 +2113,12 @@ export function Canvas({
       setNoteEditor,
       frameLabels: labels,
       mapAttribution,
+      mapTiles,
     }),
     [
       labels,
       mapAttribution,
+      mapTiles,
       store,
       readOnly,
       projectId,

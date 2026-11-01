@@ -84,6 +84,15 @@ export const AssetTrack = z
       description: 'Total climb, ignoring rises under 3 m; null without elevations.',
     }),
     points: z.array(z.number().min(0).max(1)).max(1024),
+    view: z
+      .object({ zoom: z.int().min(1).max(19), left: z.number(), top: z.number() })
+      .optional()
+      .openapi({
+        description:
+          'Where the picture of the route sits on the map: its zoom and top-left corner in ' +
+          'Web Mercator pixels, 256 per tile, so `points` can be placed on an interactive map. ' +
+          'Absent for routes read before it was recorded.',
+      }),
   })
   .openapi('AssetTrack');
 export type AssetTrack = z.infer<typeof AssetTrack>;

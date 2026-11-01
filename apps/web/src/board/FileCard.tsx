@@ -19,6 +19,7 @@ import {
   splitName,
 } from './file-kinds.ts';
 import { MAP_ASPECT, MapCredit, TrackLine } from './MapCard.tsx';
+import { ExploreButton, LiveMap, useExploring } from './MapExplore.tsx';
 import { formatClimb, formatDistance } from './maps.ts';
 import { localPreview, useUploadProgress } from './uploads.ts';
 
@@ -184,6 +185,7 @@ function ReadyFileCard({
   const { t } = useTranslation();
   const { scale } = useBoard();
   const { family, badge, meta } = useFileMeta(asset);
+  const exploring = useExploring(element.id);
   const dpr = typeof window === 'undefined' ? 1 : window.devicePixelRatio || 1;
   const pixels = width * scale * dpr;
   const uploading = progress !== null;
@@ -217,6 +219,13 @@ function ReadyFileCard({
             <img className="fcard__img" src={src} alt="" draggable={false} decoding="async" />
           )}
           <TrackLine track={asset.track} />
+          {src &&
+            asset.track.view &&
+            (exploring ? (
+              <LiveMap id={element.id} name={asset.filename} track={asset.track} />
+            ) : (
+              <ExploreButton id={element.id} name={asset.filename} />
+            ))}
           {src && <MapCredit />}
         </Preview>
       );

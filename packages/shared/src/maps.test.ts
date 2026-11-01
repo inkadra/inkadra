@@ -1,6 +1,12 @@
 // SPDX-License-Identifier: MPL-2.0
 import { describe, expect, it } from 'vitest';
-import { CreateMapPreview, isMapLink, isShortMapLink, parseMapLink } from './maps.ts';
+import {
+  CreateMapPreview,
+  isMapLink,
+  isShortMapLink,
+  MapTileParams,
+  parseMapLink,
+} from './maps.ts';
 
 describe('map links', () => {
   it('reads Google Maps places, preferring the pin to the view', () => {
@@ -54,5 +60,24 @@ describe('map links', () => {
     expect(
       CreateMapPreview.safeParse({ projectId, query: 'x', url: 'https://osm.org/' }).success,
     ).toBe(false);
+  });
+});
+
+describe('map tile paths', () => {
+  const ok = (z: string, x: string, y: string) => MapTileParams.safeParse({ z, x, y }).success;
+
+  it('takes whole numbers inside the world at zoom 1 to 19', () => {
+    expect(MapTileParams.parse({ z: '1', x: '0', y: '1' })).toEqual({ z: 1, x: 0, y: 1 });
+    expect(ok('19', '524287', '524287')).toBe(true);
+    expect(ok('3', '7', '0')).toBe(true);
+  });
+
+  it('refuses zooms, tiles and numbers outside that', () => {
+    expect(ok('0', '0', '0')).toBe(false);
+    expect(ok('20', '0', '0')).toBe(false);
+    expect(ok('3', '8', '0')).toBe(false);
+    expect(ok('3', '0', '8')).toBe(false);
+    for (const bad of ['-1', '1.5', '1e1', '0x1', '01', ' 1', '', '9999999'])
+      expect(ok('3', bad, '0'), bad).toBe(false);
   });
 });

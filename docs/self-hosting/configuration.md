@@ -149,7 +149,9 @@ Jellyfin) that use the card.
 Map cards and GPX files show a map picture. The server makes it once, when someone pastes a map
 link, types an address or uploads a GPX file: it fetches the tiles around the place from the tile
 server and stores the composite as a picture of the project. Browsers, guests and exports only
-load that picture, never the tile server. See [decision 0053](../decisions/0053-maps.md).
+load that picture, never the tile server. "Explore" on a map card pans and zooms it with tiles
+that the server fetches on the person's behalf, through the same queue and cache. See
+[decision 0053](../decisions/0053-maps.md).
 
 | Variable               | Default                                          | Meaning                                                                                                   |
 | ---------------------- | ------------------------------------------------ | --------------------------------------------------------------------------------------------------------- |
@@ -161,7 +163,8 @@ load that picture, never the tile server. See [decision 0053](../decisions/0053-
 The OpenStreetMap tile servers are run by volunteers: their
 [usage policy](https://operations.osmfoundation.org/policies/tiles/) allows a few maps added by
 hand, which is what Inkadra does (about twenty tiles a map, with the instance's address in the
-user agent). An instance that makes many maps should use a tile provider or its own tile server.
+user agent), and exploring a map asks for a few dozen more. An instance that makes or explores
+many maps should use a tile provider or its own tile server.
 The same goes for `https://nominatim.openstreetmap.org/search` as a geocoder (at most one search
 a second).
 
