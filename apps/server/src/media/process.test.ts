@@ -235,6 +235,24 @@ describe.skipIf(!url)('processAsset (needs DATABASE_URL)', () => {
     expect(await readAll(await storage.read(originalKey(id)))).toEqual(body);
   });
 
+  it('ignores disguised SVG previews and broken design files without failing the upload', async () => {
+    const path = join(root, 'disguised.zip');
+    const zip = writeZip(path);
+    await zip.addBuffer(
+      'previews/preview.png',
+      '<svg xmlns="http://www.w3.org/2000/svg" width="8" height="8"><rect width="8" height="8"/></svg>',
+    );
+    await zip.close();
+    for (const [name, body] of [
+      ['art.sketch', readFileSync(path)],
+      ['broken.psd', Buffer.from('bad')],
+    ] as const) {
+      const id = await upload(body, 'application/octet-stream', name);
+      expect(await processAsset(deps, id)).toMatchObject({ variants: 0 });
+      expect((await load(id)).row?.status).toBe('ready');
+    }
+  });
+
   it('uses PDF page one for AI but keeps its MIME and download', async () => {
     const id = await upload(fixture('two-pages.pdf'), 'application/postscript', 'art.ai');
     await processAsset(deps, id);

@@ -313,7 +313,8 @@ async function processDesign(
         }
         return archiveDesignPreview(copy.path, ext);
       })().catch(() => null);
-      if (preview) {
+      // Archive names are hints: accept only raster PNG/JPEG bytes, never SVG or documents.
+      if (preview && ['image/png', 'image/jpeg'].includes(sniffImage(preview) ?? '')) {
         const pixels = await sharp(preview, { failOn: 'error', limitInputPixels: 100_000_000 })
           .rotate()
           .raw()
