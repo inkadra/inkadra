@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: MPL-2.0
+
 import { OpenAPIRegistry, OpenApiGeneratorV31 } from '@asteasolutions/zod-to-openapi';
 import {
   Asset,
@@ -121,6 +122,7 @@ import {
   SetBoardGrant,
   UserSearchQuery,
 } from './sharing.ts';
+import { MyTasks } from './tasks.ts';
 import { ProjectTransfer, ProjectTransfers } from './transfers.ts';
 import {
   AccountSession,
@@ -191,6 +193,16 @@ registry.register('OutcomeUnknown', OutcomeUnknown);
 
 // Schedule ------------------------------------------------------------------
 const schedulePath = v1('/boards/{boardId}/schedule');
+registry.registerPath({
+  method: 'get',
+  path: v1('/me/tasks'),
+  tags: ['Tasks'],
+  security: secured,
+  summary:
+    'Open to-do items assigned to you in active projects and readable boards, ordered by due date.',
+  responses: { 200: { description: 'My tasks', ...json(MyTasks) }, 401: errors[401] },
+});
+
 registry.registerPath({
   method: 'get',
   path: schedulePath,

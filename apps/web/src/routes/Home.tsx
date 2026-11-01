@@ -22,6 +22,7 @@ import {
   useRecentBoards,
   useShootingDays,
 } from './home-data.ts';
+import { MyTasks } from './MyTasks.tsx';
 import { PROJECT_TEMPLATES, TEMPLATE_ICONS } from './project-setup.ts';
 import './home.css';
 
@@ -118,6 +119,7 @@ export function Home() {
           </section>
         )}
       </header>
+      <MyTasks />
       <Section
         id="home-recent"
         title={t('home.recentBoards')}

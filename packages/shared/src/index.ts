@@ -20,6 +20,7 @@ export * from './reviews.ts';
 export * from './schedule.ts';
 export * from './search.ts';
 export * from './sharing.ts';
+export * from './tasks.ts';
 export * from './transfers.ts';
 export * from './users.ts';
 export * from './versions.ts';

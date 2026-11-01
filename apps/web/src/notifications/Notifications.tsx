@@ -9,6 +9,7 @@ import { authorName, groupByDay, type Page, reviewKey } from '../board/review-mo
 import { expiryDate } from '../lib/access.ts';
 import { api } from '../lib/api.ts';
 import { signedInId } from '../lib/me.ts';
+import { MyTasks } from '../routes/MyTasks.tsx';
 import { trackSave } from '../routes/settings-save.ts';
 import { InboxDetail } from './InboxDetail.tsx';
 import {
@@ -390,6 +391,7 @@ export function NotificationList({
   useEffect(() => {
     if (
       fixed &&
+      filter !== 'tasks' &&
       !mobile &&
       filteredItems.length > 0 &&
       (!selectedId || !filteredItems.some((n) => n.id === selectedId))
@@ -402,7 +404,7 @@ export function NotificationList({
         }
       }
     }
-  }, [fixed, mobile, filteredItems, selectedId, markRead]);
+  }, [fixed, filter, mobile, filteredItems, selectedId, markRead]);
 
   const selectNotification = useCallback(
     (n: Notification, options?: { deferRead?: boolean }) => {
@@ -431,7 +433,7 @@ export function NotificationList({
   return (
     <div
       ref={panel}
-      className={`notifications${fixed ? ' notifications--fixed' : ''}`}
+      className={`notifications${fixed ? ' notifications--fixed' : ''}${filter === 'tasks' ? ' notifications--tasks' : ''}`}
       tabIndex={-1}
       role="dialog"
       aria-labelledby="notifications-title"
@@ -442,6 +444,7 @@ export function NotificationList({
           onClose();
           return;
         }
+        if (filter === 'tasks') return;
         if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
         e.preventDefault();
         // Enter uses the focused button's native click, including detail and action buttons.
@@ -552,120 +555,140 @@ export function NotificationList({
             >
               {t('notifications.tabs.approvals')}
             </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={filter === 'tasks'}
+              className={`notifications-filter-tab ${filter === 'tasks' ? 'is-active' : ''}`}
+              onClick={() => setFilter('tasks')}
+            >
+              {t('tasks.title')}
+            </button>
           </div>
         )}
-        {fixed && filter !== 'all' && next && (
+        {fixed && filter !== 'all' && filter !== 'tasks' && next && (
           <p className="notifications__helper">{t('notifications.loadedOnly')}</p>
         )}
         <div className="notifications__list-container">
-          {state === 'ready' && filteredItems.length === 0 && (
-            <p className="notifications__empty">{t('notifications.empty')}</p>
-          )}
-          {groups.map(([day, list]) => (
-            <section key={day} aria-label={day}>
-              <h3 className="notifications__day">{day}</h3>
-              <ul className="notifications__list">
-                {list.map((n) => {
-                  const path = notificationPath(n);
-                  const actor = notificationActor(n, t);
-                  const isSelected = n.id === selectedId;
-                  return (
-                    <li
-                      key={n.id}
-                      className={`notification ${n.readAt ? '' : 'is-unread'} ${
-                        isSelected ? 'is-selected' : ''
-                      }`}
-                    >
-                      <button
-                        type="button"
-                        data-notification-id={n.id}
-                        tabIndex={n.id === tabStopId ? 0 : -1}
-                        aria-current={isSelected ? 'true' : undefined}
-                        onFocus={() => setFocusedId(n.id)}
-                        className="notification__open notification__open--drawer"
-                        disabled={!path}
-                        onClick={async () => {
-                          setActionError(false);
-                          selectNotification(n);
-                          if (!fixed && path) {
-                            onNavigate();
-                            navigate(path);
-                          }
-                        }}
-                      >
-                        {(!n.readAt || (fixed && isSelected)) && (
-                          <span className="notification__bar" />
-                        )}
-                        <span className="notification__av" style={{ background: avatarBg(actor) }}>
-                          {initials(actor)}
-                        </span>
-                        <div className="notification__body">
-                          <span className="notification__line">
-                            {actor && <b>{actor} </b>}
-                            {describeNotification(n, t, { locale: i18n.language })}
-                          </span>
-                          <div className="notification__subline">
-                            {(n.boardTitle || n.projectName) && (
-                              <span className="notification__pill">
-                                {[...new Set([n.projectName, n.boardTitle])]
-                                  .filter(Boolean)
-                                  .join(' · ')}
-                              </span>
+          {filter === 'tasks' ? (
+            <MyTasks onNavigate={onNavigate} />
+          ) : (
+            <>
+              {state === 'ready' && filteredItems.length === 0 && (
+                <p className="notifications__empty">{t('notifications.empty')}</p>
+              )}
+              {groups.map(([day, list]) => (
+                <section key={day} aria-label={day}>
+                  <h3 className="notifications__day">{day}</h3>
+                  <ul className="notifications__list">
+                    {list.map((n) => {
+                      const path = notificationPath(n);
+                      const actor = notificationActor(n, t);
+                      const isSelected = n.id === selectedId;
+                      return (
+                        <li
+                          key={n.id}
+                          className={`notification ${n.readAt ? '' : 'is-unread'} ${
+                            isSelected ? 'is-selected' : ''
+                          }`}
+                        >
+                          <button
+                            type="button"
+                            data-notification-id={n.id}
+                            tabIndex={n.id === tabStopId ? 0 : -1}
+                            aria-current={isSelected ? 'true' : undefined}
+                            onFocus={() => setFocusedId(n.id)}
+                            className="notification__open notification__open--drawer"
+                            disabled={!path}
+                            onClick={async () => {
+                              setActionError(false);
+                              selectNotification(n);
+                              if (!fixed && path) {
+                                onNavigate();
+                                navigate(path);
+                              }
+                            }}
+                          >
+                            {(!n.readAt || (fixed && isSelected)) && (
+                              <span className="notification__bar" />
                             )}
-                            <time dateTime={n.createdAt}>
-                              {relativeTime(n.createdAt, i18n.language)}
-                            </time>
-                          </div>
-                          {n.excerpt && <span className="notification__excerpt">{n.excerpt}</span>}
-                        </div>
-                        {!n.readAt && (
-                          <span className="notification__dot" style={{ flex: 'none' }} />
-                        )}
-                      </button>
-                      {!n.readAt && (
-                        <IconButton
-                          icon="check"
-                          label={t('notifications.read')}
-                          onClick={(e) => {
-                            // The button goes away once read: focus stays on the notification.
-                            const open = e.currentTarget
-                              .closest('li')
-                              ?.querySelector<HTMLButtonElement>('.notification__open');
-                            void markRead(n.id).then(
-                              () => (open && !open.disabled ? open : panel.current)?.focus(),
-                              () => setActionError(true),
-                            );
-                          }}
-                        />
-                      )}
-                    </li>
-                  );
-                })}
-              </ul>
-            </section>
-          ))}
-          {state === 'loading' && (
-            <p role="status" className="ink-muted notifications__status">
-              {t('comments.loading')}
-            </p>
-          )}
-          {state === 'error' && (
-            <p role="alert" className="review-error notifications__status">
-              {t('notifications.error')}{' '}
-              <button type="button" className="review-link" onClick={() => void load(null)}>
-                {t('comments.retry')}
-              </button>
-            </p>
-          )}
-          {actionError && (
-            <p role="alert" className="review-error notifications__status">
-              {t('notifications.actionError')}
-            </p>
-          )}
-          {next && state === 'ready' && (
-            <Button variant="ghost" onClick={() => void load(next)}>
-              {t('notifications.more')}
-            </Button>
+                            <span
+                              className="notification__av"
+                              style={{ background: avatarBg(actor) }}
+                            >
+                              {initials(actor)}
+                            </span>
+                            <div className="notification__body">
+                              <span className="notification__line">
+                                {actor && <b>{actor} </b>}
+                                {describeNotification(n, t, { locale: i18n.language })}
+                              </span>
+                              <div className="notification__subline">
+                                {(n.boardTitle || n.projectName) && (
+                                  <span className="notification__pill">
+                                    {[...new Set([n.projectName, n.boardTitle])]
+                                      .filter(Boolean)
+                                      .join(' · ')}
+                                  </span>
+                                )}
+                                <time dateTime={n.createdAt}>
+                                  {relativeTime(n.createdAt, i18n.language)}
+                                </time>
+                              </div>
+                              {n.excerpt && (
+                                <span className="notification__excerpt">{n.excerpt}</span>
+                              )}
+                            </div>
+                            {!n.readAt && (
+                              <span className="notification__dot" style={{ flex: 'none' }} />
+                            )}
+                          </button>
+                          {!n.readAt && (
+                            <IconButton
+                              icon="check"
+                              label={t('notifications.read')}
+                              onClick={(e) => {
+                                // The button goes away once read: focus stays on the notification.
+                                const open = e.currentTarget
+                                  .closest('li')
+                                  ?.querySelector<HTMLButtonElement>('.notification__open');
+                                void markRead(n.id).then(
+                                  () => (open && !open.disabled ? open : panel.current)?.focus(),
+                                  () => setActionError(true),
+                                );
+                              }}
+                            />
+                          )}
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </section>
+              ))}
+              {state === 'loading' && (
+                <p role="status" className="ink-muted notifications__status">
+                  {t('comments.loading')}
+                </p>
+              )}
+              {state === 'error' && (
+                <p role="alert" className="review-error notifications__status">
+                  {t('notifications.error')}{' '}
+                  <button type="button" className="review-link" onClick={() => void load(null)}>
+                    {t('comments.retry')}
+                  </button>
+                </p>
+              )}
+              {actionError && (
+                <p role="alert" className="review-error notifications__status">
+                  {t('notifications.actionError')}
+                </p>
+              )}
+              {next && state === 'ready' && (
+                <Button variant="ghost" onClick={() => void load(next)}>
+                  {t('notifications.more')}
+                </Button>
+              )}
+            </>
           )}
         </div>
         {onOpenInbox && (
@@ -676,7 +699,7 @@ export function NotificationList({
           </footer>
         )}
       </div>
-      {fixed && !mobile && (
+      {fixed && !mobile && filter !== 'tasks' && (
         <InboxDetail
           notification={selectedNotification}
           onNavigate={onNavigate}

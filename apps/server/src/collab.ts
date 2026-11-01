@@ -20,6 +20,7 @@ import type { Database } from './db/client.ts';
 import { board, boardDoc, personalToken, session, user } from './db/schema.ts';
 import { allowedOrigin, ORIGIN_HEADER, rawOrigin } from './request-origin.ts';
 import { writeBoardIndex } from './search/index-doc.ts';
+import { assignedItems, notifyAssignment, validateTaskUpdate } from './tasks.ts';
 import { actorFromToken, isToken } from './tokens.ts';
 import { AUTO_VERSION_EVERY_MS, takeAutoVersion } from './versions.ts';
 
@@ -147,6 +148,11 @@ export function createCollabServer(deps: {
     }
   }
 
+  const assignments = new WeakMap<Y.Doc, ReturnType<typeof assignedItems>>();
+  const pendingAssignments = new WeakMap<
+    Y.Doc,
+    Map<string, { actorId: string; elementId: string; assigneeId: string }>
+  >();
   let timer: NodeJS.Timeout | undefined;
 
   const server: Server<Context> = new Server<Context>({
@@ -248,7 +254,25 @@ export function createCollabServer(deps: {
       if (row) Y.applyUpdate(document, row.state);
       const steps = migrateBoardDoc(document, boardId);
       if (steps.length > 0) log.info({ boardId, steps }, 'board document migrated');
+      assignments.set(document, assignedItems(document));
       return document;
+    },
+
+    async beforeSync({ document, context, type, payload }) {
+      if (type !== 1 && type !== 2) return;
+      await validateTaskUpdate(db, context.boardId, context.actor?.id, document, payload);
+    },
+
+    async onChange({ document, context }) {
+      const before = assignments.get(document) ?? new Map();
+      const after = assignedItems(document);
+      const pending = pendingAssignments.get(document) ?? new Map();
+      for (const [key, item] of after) {
+        if (before.get(key)?.assigneeId !== item.assigneeId && context?.actor?.id)
+          pending.set(key, { ...item, actorId: context.actor.id });
+      }
+      assignments.set(document, after);
+      pendingAssignments.set(document, pending);
     },
 
     async onStoreDocument({ document, documentName }) {
@@ -256,6 +280,7 @@ export function createCollabServer(deps: {
       if (!boardId) return;
       const issues = validateBoardDoc(document);
       if (issues.length > 0) log.warn({ boardId, issues: issues.slice(0, 10) }, 'invalid elements');
+      const pending = new Map(pendingAssignments.get(document));
       const state = Y.encodeStateAsUpdate(document);
       const schemaVersion = document.getMap('meta').get('schemaVersion') as number;
       const elementCount = document.getMap('elements').size;
@@ -266,6 +291,18 @@ export function createCollabServer(deps: {
           target: boardDoc.boardId,
           set: { state, schemaVersion, size: state.byteLength, updatedAt: new Date() },
         });
+      for (const [key, value] of pending) {
+        if (pendingAssignments.get(document)?.get(key) === value)
+          pendingAssignments.get(document)?.delete(key);
+      }
+      for (const [key, item] of pending ?? []) {
+        if (assignedItems(document).get(key)?.assigneeId !== item.assigneeId) continue;
+        try {
+          await notifyAssignment(db, boardId, item.elementId, item.assigneeId, item.actorId);
+        } catch (err) {
+          log.error({ err, boardId }, 'task notification failed');
+        }
+      }
       // The document is safe at this point. If indexing fails, the backfill job retries it
       // (indexed_at stays older than updated_at).
       try {

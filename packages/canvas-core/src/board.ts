@@ -392,7 +392,7 @@ export function updateTodoItem(
   doc: Y.Doc,
   id: string,
   itemId: string,
-  patch: { text?: string; done?: boolean },
+  patch: { text?: string; done?: boolean; assigneeId?: string | null; dueDate?: string | null },
   origin?: unknown,
 ): void {
   const items = todoItems(doc, id);
@@ -402,6 +402,10 @@ export function updateTodoItem(
       if (item.get('id') !== itemId) continue;
       if (patch.text !== undefined) item.set('text', patch.text);
       if (patch.done !== undefined) item.set('done', patch.done);
+      for (const key of ['assigneeId', 'dueDate'] as const) {
+        if (patch[key] === null) item.delete(key);
+        else if (patch[key] !== undefined) item.set(key, patch[key]);
+      }
     }
   }, origin);
 }

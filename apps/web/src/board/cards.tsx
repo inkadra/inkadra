@@ -7,6 +7,7 @@ import {
   updateTodoItem,
 } from '@inkadra/canvas-core';
 import { CARD_COLORS, type ContentCounts, contentCounts, type Element } from '@inkadra/doc-schema';
+import type { Person, ProjectMember } from '@inkadra/shared';
 import { Checkbox, fadeOutCopy, Icon, ProjectGlyph } from '@inkadra/ui';
 import type { TFunction } from 'i18next';
 import {
@@ -22,6 +23,7 @@ import {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import * as Y from 'yjs';
+import { api } from '../lib/api.ts';
 import { pickVariant, useAsset } from './assets.ts';
 import { canRenameBoard, renameBoard } from './boards.ts';
 import { CardCaption } from './CardCaption.tsx';
@@ -44,6 +46,7 @@ import { movingVariantUrl } from './moving.tsx';
 import { NoteBody, NoteEditor, useFragment } from './note.tsx';
 import { LOCAL } from './store.ts';
 import { TableCard } from './TableCard.tsx';
+import { TodoAssignment } from './TodoAssignment.tsx';
 import { TagList } from './tags.tsx';
 import { localPreview, useUploadProgress } from './uploads.ts';
 import { isInstagramUrl, videoEmbedUrl } from './youtube.ts';
@@ -213,7 +216,7 @@ function CardBody({
     case 'file':
       return <FileCard element={element} width={width} />;
     case 'todo':
-      return <TodoCard element={element} editing={editing} />;
+      return <TodoCard element={element} editing={editing} selected={selected} />;
     case 'color':
       return <ColorCard element={element} editing={editing} />;
     case 'board':
@@ -653,10 +656,40 @@ function LinkCard({ element, width }: { element: Of<'link'>; width: number }) {
   );
 }
 
-function TodoCard({ element, editing }: { element: Of<'todo'>; editing: boolean }) {
-  const { store, readOnly } = useBoard();
+function TodoCard({
+  element,
+  editing,
+  selected,
+}: {
+  element: Of<'todo'>;
+  editing: boolean;
+  selected: boolean;
+}) {
+  const { store, readOnly, projectId } = useBoard();
+  const guest = useContext(GuestModeContext);
+  const [people, setPeople] = useState<Person[]>([]);
+  const [peopleFailed, setPeopleFailed] = useState(false);
+  useEffect(() => {
+    if (guest) return;
+    let alive = true;
+    api
+      .get<{ items: ProjectMember[] }>(`/projects/${projectId}/members`)
+      .then((r) => {
+        if (alive) {
+          setPeople(r.items.map((m) => ({ ...m.user, email: null })));
+          setPeopleFailed(false);
+        }
+      })
+      .catch(() => {
+        if (alive) setPeopleFailed(true);
+      });
+    return () => {
+      alive = false;
+    };
+  }, [projectId, guest]);
   const { t } = useTranslation();
   const [draft, setDraft] = useState('');
+  const [assigning, setAssigning] = useState<string | null>(null);
   const done = element.items.filter((i) => i.done).length;
   const addRef = useRef<HTMLInputElement>(null);
   useEffect(() => {
@@ -719,15 +752,32 @@ function TodoCard({ element, editing }: { element: Of<'todo'>; editing: boolean 
                   if (text) updateTodoItem(store.doc, element.id, item.id, { text }, LOCAL);
                   else removeTodoItem(store.doc, element.id, item.id, LOCAL);
                 }}
-                onKeyDown={blurOnEnter}
+                onKeyDown={(e) => {
+                  if (e.key === '@') {
+                    e.preventDefault();
+                    setAssigning(item.id);
+                  } else blurOnEnter(e);
+                }}
                 aria-label={t('board.todo.item')}
               />
             ) : (
               <span>{item.text}</span>
             )}
+            <TodoAssignment
+              people={people}
+              failed={peopleFailed}
+              elementId={element.id}
+              item={item}
+              editing={editing}
+              open={assigning === item.id}
+              onClose={() => setAssigning(null)}
+            />
           </li>
         ))}
       </ul>
+      {(selected || editing) && !guest && !readOnly && (
+        <p className="card__todo-hint">{t('tasks.hint')}</p>
+      )}
       {editing && (
         <input
           ref={addRef}

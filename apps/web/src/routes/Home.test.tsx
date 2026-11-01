@@ -51,6 +51,7 @@ function respond(data: {
   vi.mocked(api.get).mockImplementation(async (path: string) => {
     if (path.endsWith('/preview'))
       return { assetIds: [], excerpts: ['Location notes'], elementCount: 2, drawing: [] };
+    if (path === '/me/tasks') return { items: [] };
     if (path.startsWith('/me/shooting-days')) return { items: data.days ?? [], nextCursor: null };
     if (path.startsWith('/me/recent-boards')) return { items: data.boards ?? [], nextCursor: null };
     if (path.startsWith('/me/notifications'))
@@ -235,7 +236,7 @@ it('says so when a section cannot load instead of showing anything made up', asy
   context();
   vi.mocked(api.get).mockRejectedValue(new Error('offline'));
   await render();
-  expect(host.querySelectorAll('[role="alert"]')).toHaveLength(3);
+  expect(host.querySelectorAll('[role="alert"]')).toHaveLength(4);
   expect(host.querySelector('[aria-labelledby="home-today"] [role="alert"]')).not.toBeNull();
 });
 

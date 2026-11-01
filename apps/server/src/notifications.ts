@@ -136,6 +136,8 @@ export async function notify(
       commentId: event.commentId ?? null,
       reviewStatus: event.reviewStatus ?? null,
       shareLinkId: event.shareLinkId ?? null,
+      // Per-type email preferences (#302) are not available yet: Inbox only.
+      emailedAt: type === 'task_assigned' ? new Date() : null,
     });
   }
   if (values.length > 0) await db.insert(notification).values(values);

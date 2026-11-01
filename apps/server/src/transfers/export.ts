@@ -85,6 +85,14 @@ export function readableElements(doc: Y.Doc) {
 /** createdBy of every element: people the archive must name. */
 function elementAuthors(doc: Y.Doc, into: Set<string>) {
   for (const map of roots(doc).elements.values()) {
+    const items = map.get('items');
+    if (map.get('type') === 'todo' && items instanceof Y.Array) {
+      for (const item of items)
+        if (item instanceof Y.Map) {
+          const assignee = item.get('assigneeId');
+          if (typeof assignee === 'string') into.add(assignee);
+        }
+    }
     const by = map.get('createdBy');
     if (typeof by === 'string') into.add(by);
   }

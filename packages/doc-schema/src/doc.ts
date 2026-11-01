@@ -4,7 +4,7 @@ import { z } from 'zod';
 import { AspectRatio, Element, type ElementType, type TableRow } from './elements.ts';
 
 /** Bump when the shape of the board document changes, and add a migration below. */
-export const CURRENT_SCHEMA_VERSION = 11;
+export const CURRENT_SCHEMA_VERSION = 12;
 
 export const DOC_NAME_PREFIX = 'board:';
 
@@ -89,6 +89,8 @@ const migrations: Record<number, Migration> = {
   // 11: the table and map elements (#317, #319, decisions 0052 and 0053). Additive; the bump
   // keeps older servers from loading documents with element types they would refuse to validate.
   10: () => {},
+  // 12: optional assigneeId and dueDate on to-do items; old items stay unassigned.
+  11: () => {},
 };
 
 /**

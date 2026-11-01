@@ -215,6 +215,97 @@
           "reason"
         ]
       },
+      "MyTasks": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MyTask"
+            }
+          }
+        },
+        "required": [
+          "items"
+        ]
+      },
+      "MyTask": {
+        "type": "object",
+        "properties": {
+          "projectId": {
+            "type": "string",
+            "format": "uuid",
+            "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10"
+          },
+          "projectName": {
+            "type": "string"
+          },
+          "boardId": {
+            "type": "string",
+            "format": "uuid",
+            "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10"
+          },
+          "boardTitle": {
+            "type": "string"
+          },
+          "elementId": {
+            "type": "string"
+          },
+          "itemId": {
+            "type": "string"
+          },
+          "text": {
+            "type": "string"
+          },
+          "dueDate": {
+            "type": "string",
+            "format": "date"
+          }
+        },
+        "required": [
+          "projectId",
+          "projectName",
+          "boardId",
+          "boardTitle",
+          "elementId",
+          "itemId",
+          "text"
+        ]
+      },
+      "ApiError": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "object",
+            "properties": {
+              "code": {
+                "type": "string",
+                "enum": [
+                  "bad_request",
+                  "unauthorized",
+                  "forbidden",
+                  "not_found",
+                  "conflict",
+                  "payload_too_large",
+                  "rate_limited",
+                  "internal"
+                ]
+              },
+              "message": {
+                "type": "string"
+              },
+              "details": {}
+            },
+            "required": [
+              "code",
+              "message"
+            ]
+          }
+        },
+        "required": [
+          "error"
+        ]
+      },
       "Schedule": {
         "type": "object",
         "properties": {
@@ -374,40 +465,6 @@
           "departments"
         ],
         "additionalProperties": false
-      },
-      "ApiError": {
-        "type": "object",
-        "properties": {
-          "error": {
-            "type": "object",
-            "properties": {
-              "code": {
-                "type": "string",
-                "enum": [
-                  "bad_request",
-                  "unauthorized",
-                  "forbidden",
-                  "not_found",
-                  "conflict",
-                  "payload_too_large",
-                  "rate_limited",
-                  "internal"
-                ]
-              },
-              "message": {
-                "type": "string"
-              },
-              "details": {}
-            },
-            "required": [
-              "code",
-              "message"
-            ]
-          }
-        },
-        "required": [
-          "error"
-        ]
       },
       "ShootingDayInput": {
         "type": "object",
@@ -4677,7 +4734,8 @@
               "import_ready",
               "access_expiring",
               "access_expired",
-              "link_opened"
+              "link_opened",
+              "task_assigned"
             ],
             "description": "`mention`: someone mentioned you in a comment. `reply`: a reply in a thread you wrote in. `comment`: a new thread on a card you created. `review`: the review status of a card you created, or asked a review for, changed. `invitation_accepted`: someone accepted your invitation. `export_ready`: your export of `projectId` can be downloaded; it carries no transfer id, clients find the archive in `GET /transfers`. `import_ready`: your import finished as `projectId`. Both are in-app only, without actor, and arrive from API 0.8.0. `access_expiring`: the role of `subject` on `projectId` (or on `boardId` and its sub-boards) ends at `accessExpiresAt`, sent three days before to that person and to the project owners. `access_expired`: it has ended. Both from API 0.9.0 (decision 0041). `link_opened`: a guest opened a share link you made for the first time, or for the first time since a new named version of the board; it has no actor (`shareLinkLabel` says which link) and nothing about the visit. Open: clients show types they do not know as a plain line with the actor, the board and the time."
           },
@@ -6537,6 +6595,44 @@
     "parameters": {}
   },
   "paths": {
+    "/api/v1/me/tasks": {
+      "get": {
+        "tags": [
+          "Tasks"
+        ],
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Open to-do items assigned to you in active projects and readable boards, ordered by due date.",
+        "responses": {
+          "200": {
+            "description": "My tasks",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MyTasks"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/boards/{boardId}/schedule": {
       "get": {
         "tags": [
