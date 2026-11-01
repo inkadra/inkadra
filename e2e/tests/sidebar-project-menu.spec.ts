@@ -40,7 +40,9 @@ async function shoot(page: Page, name: string) {
 
 /** The view tabs of the board header, by name. */
 const viewTabs = (page: Page) =>
-  page.getByRole('tab').filter({ hasText: /^(Lavagna|Moodboard|Storyboard|Shot list|Piano riprese|Revisione)$/ });
+  page
+    .getByRole('tab')
+    .filter({ hasText: /^(Lavagna|Moodboard|Storyboard|Shot list|Piano riprese|Revisione)$/ });
 const filmTabs = ['Storyboard', 'Shot list', 'Piano riprese'];
 
 /** The phone's view switcher: the options it lists. */
@@ -150,11 +152,7 @@ test('the sidebar of a project without boards or storyboard, and Add storyboard 
   await openSidebar();
   await expect(film).toBeVisible();
   await expect(review).toBeVisible();
-  await expect(viewTabs(page)).toHaveText([
-    'Lavagna',
-    ...filmTabs,
-    'Revisione',
-  ]);
+  await expect(viewTabs(page)).toHaveText(['Lavagna', ...filmTabs, 'Revisione']);
   // The project's other boards offer the same tabs: here, the root board.
   await page.goto(`/p/${project.id}`);
   await expect(viewTabs(page)).toHaveText(['Lavagna', ...filmTabs, 'Revisione', 'Moodboard']);
