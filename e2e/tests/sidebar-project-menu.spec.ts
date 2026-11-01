@@ -47,7 +47,7 @@ const filmTabs = ['Storyboard', 'Shot list', 'Piano riprese'];
 
 /** The phone's view switcher: the options it lists. */
 async function switcherOptions(page: Page) {
-  await page.getByLabel('Vista', { exact: true }).click();
+  await page.getByRole('combobox', { name: 'Vista', exact: true }).click();
   const list = page.getByRole('listbox');
   const names = await list.getByRole('option').allTextContents();
   await page.keyboard.press('Escape');
