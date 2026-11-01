@@ -75,17 +75,32 @@ for (const theme of ['light', 'dark'] as const)
       await expect(card).toContainText('Permessi parcheggio');
       await expect(card.locator('.todo-assignment--danger')).toHaveCount(1);
       await expect(card.locator('.todo-assignment--warning')).toHaveCount(1);
+      await expect(
+        card.locator('.todo-assignment__date').filter({ hasText: 'ieri' }),
+      ).toBeVisible();
+      await expect(
+        card.locator('.todo-assignment__date').filter({ hasText: 'oggi' }),
+      ).toBeVisible();
+      const assignees = card.locator('.todo-assignment__person');
+      await expect(assignees.first()).toHaveText('GB');
+      await expect(assignees.first()).toHaveAttribute('title', 'Giulia Bianchi');
+      const colors = await assignees.evaluateAll((nodes) =>
+        nodes.map((node) => getComputedStyle(node).color),
+      );
+      expect(new Set(colors).size).toBe(1);
+      await expect(card.locator('.card__todo-hint')).toHaveCount(0);
+      await card.getByText('Prima delle riprese', { exact: true }).click();
+      await expect(card.locator('.card__todo-hint')).toHaveText(
+        'Scrivi @ per assegnare · clic sulla data per cambiarla',
+      );
       await page.screenshot({ path: join(out, `${prefix}-chips.png`) });
-      await card.getByRole('button', { name: 'Assegna persona', exact: true }).first().click();
+      await card.getByRole('button', { name: 'Giulia Bianchi', exact: true }).first().click();
       await expect(card.getByRole('combobox')).toBeVisible();
       await card.getByRole('combobox').fill('Giulia');
       await expect(card.getByRole('option')).toBeVisible();
       await page.screenshot({ path: join(out, `${prefix}-people.png`) });
       await card.getByRole('option').click();
-      await card
-        .getByRole('button', { name: /nov|ott|dic|gen|feb|mar|apr|mag|giu|lug|ago|set|Oggi/ })
-        .last()
-        .click();
+      await card.locator('button.todo-assignment__date').last().click();
       const field = card.locator('input[type="date"]').first();
       await expect(field).toBeVisible();
       await field.focus();

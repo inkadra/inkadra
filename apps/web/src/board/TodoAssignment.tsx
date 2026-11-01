@@ -11,6 +11,22 @@ import { GuestModeContext, useBoard } from './context.ts';
 import { LOCAL } from './store.ts';
 import './todo-assignment.css';
 
+/** Calendar neighbours in the viewer's time zone, including month/year and DST boundaries. */
+export function relativeTaskDay(
+  date: string,
+  now: Date,
+): 'yesterday' | 'today' | 'tomorrow' | null {
+  for (const [offset, key] of [
+    [-1, 'yesterday'],
+    [0, 'today'],
+    [1, 'tomorrow'],
+  ] as const) {
+    if (date === localDate(new Date(now.getFullYear(), now.getMonth(), now.getDate() + offset)))
+      return key;
+  }
+  return null;
+}
+
 export function TodoAssignment({
   elementId,
   item,
@@ -36,7 +52,10 @@ export function TodoAssignment({
   const [query, setQuery] = useState('');
   if (guest) return null;
   const person = people.find((p) => p.id === item.assigneeId);
-  const today = localDate(new Date());
+  const now = new Date();
+  const today = localDate(now);
+  const relativeDay = item.dueDate ? relativeTaskDay(item.dueDate, now) : null;
+  const hasAvatar = person && (person.image || person.name.trim().split(/\s+/).length > 1);
   const tone =
     !item.done && item.dueDate
       ? item.dueDate < today
@@ -48,21 +67,28 @@ export function TodoAssignment({
   const change = (patch: Parameters<typeof updateTodoItem>[3]) =>
     updateTodoItem(store.doc, elementId, item.id, patch, LOCAL);
   return (
-    <div className={`todo-assignment ${tone ? `todo-assignment--${tone}` : ''}`} data-no-drag>
+    <div className="todo-assignment" data-no-drag>
       {(item.assigneeId || editing) && (
         <button
           type="button"
-          className="todo-assignment__chip"
+          className="todo-assignment__chip todo-assignment__person"
           disabled={readOnly}
           onClick={() => setPicking((v) => !v)}
-          aria-label={t('tasks.assignee')}
+          title={person?.name || t('tasks.assignee')}
+          aria-label={person?.name || t('tasks.assignee')}
         >
-          {person && <Avatar name={person.name} image={person.image} size={14} />}
-          {person ? `@${person.name}` : t('tasks.assignee')}
+          {hasAvatar ? (
+            <Avatar name={person.name} size={14} />
+          ) : person ? (
+            `@${person.name.trim().split(/\s+/)[0]}`
+          ) : (
+            t('tasks.assignee')
+          )}
         </button>
       )}
       {(editing || dating) && !readOnly ? (
         <DateField
+          className={`todo-assignment__date${tone ? ` todo-assignment--${tone}` : ''}`}
           label={t('tasks.dueDate')}
           aria-label={t('tasks.dueDate')}
           value={item.dueDate ?? ''}
@@ -77,11 +103,11 @@ export function TodoAssignment({
           <button
             type="button"
             disabled={readOnly}
-            className="todo-assignment__chip"
+            className={`todo-assignment__chip todo-assignment__date${tone ? ` todo-assignment--${tone}` : ''}`}
             onClick={() => setDating(true)}
           >
-            {item.dueDate === today
-              ? t('tasks.today')
+            {relativeDay
+              ? t(`tasks.relative.${relativeDay}`)
               : new Date(`${item.dueDate}T00:00`).toLocaleDateString(i18n.language, {
                   day: 'numeric',
                   month: 'short',

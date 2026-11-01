@@ -18,11 +18,11 @@
   color: var(--ink-text-secondary);
   font: inherit;
 }
-.todo-assignment--danger .todo-assignment__chip {
+.todo-assignment--danger {
   color: var(--ink-danger-fg);
   background: var(--ink-danger-bg);
 }
-.todo-assignment--warning .todo-assignment__chip {
+.todo-assignment--warning {
   color: var(--ink-status-warn);
   background: var(--ink-surface-2);
 }
@@ -52,4 +52,10 @@
 .todo-assignment__picker .people-picker__list {
   max-height: 180px;
   overflow-y: auto;
+}
+
+.card__todo-hint {
+  margin: 6px 0 0;
+  font-size: 11px;
+  color: var(--ink-text-muted);
 }

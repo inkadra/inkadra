@@ -2665,6 +2665,12 @@
     "later": "Later",
     "undated": "No due date",
     "loading": "Loading…",
-    "empty": "No tasks assigned to you."
+    "empty": "No tasks assigned to you.",
+    "relative": {
+      "yesterday": "yesterday",
+      "today": "today",
+      "tomorrow": "tomorrow"
+    },
+    "hint": "Type @ to assign · click the date to change it"
   }
 }

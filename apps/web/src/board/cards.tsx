@@ -216,7 +216,7 @@ function CardBody({
     case 'file':
       return <FileCard element={element} width={width} />;
     case 'todo':
-      return <TodoCard element={element} editing={editing} />;
+      return <TodoCard element={element} editing={editing} selected={selected} />;
     case 'color':
       return <ColorCard element={element} editing={editing} />;
     case 'board':
@@ -656,7 +656,15 @@ function LinkCard({ element, width }: { element: Of<'link'>; width: number }) {
   );
 }
 
-function TodoCard({ element, editing }: { element: Of<'todo'>; editing: boolean }) {
+function TodoCard({
+  element,
+  editing,
+  selected,
+}: {
+  element: Of<'todo'>;
+  editing: boolean;
+  selected: boolean;
+}) {
   const { store, readOnly, projectId } = useBoard();
   const guest = useContext(GuestModeContext);
   const [people, setPeople] = useState<Person[]>([]);
@@ -767,6 +775,9 @@ function TodoCard({ element, editing }: { element: Of<'todo'>; editing: boolean 
           </li>
         ))}
       </ul>
+      {(selected || editing) && !guest && !readOnly && (
+        <p className="card__todo-hint">{t('tasks.hint')}</p>
+      )}
       {editing && (
         <input
           ref={addRef}

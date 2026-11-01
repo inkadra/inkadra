@@ -2665,6 +2665,12 @@
     "later": "Più avanti",
     "undated": "Senza scadenza",
     "loading": "Caricamento…",
-    "empty": "Nessun compito assegnato a te."
+    "empty": "Nessun compito assegnato a te.",
+    "relative": {
+      "yesterday": "ieri",
+      "today": "oggi",
+      "tomorrow": "domani"
+    },
+    "hint": "Scrivi @ per assegnare · clic sulla data per cambiarla"
   }
 }
