@@ -191,7 +191,9 @@ function ReadyFileCard({
   } else if (family === 'audio') {
     preview = <AudioPreview asset={asset} state={state} />;
   } else {
-    const src = localPreview(element.assetId) ?? (asset.variants.length > 0 ? pickVariant(asset, pixels) : '');
+    const src =
+      localPreview(element.assetId) ??
+      (asset.variants.length > 0 ? pickVariant(asset, pixels) : '');
     if (src && isPdf(asset)) {
       preview = (
         <Preview family={family} className="fcard__preview--page">
@@ -212,7 +214,7 @@ function ReadyFileCard({
           className="fcard__preview--picture"
           style={{ aspectRatio: ratioOf(asset.width, asset.height, '4 / 3') }}
         >
-          <img src={src} alt="" draggable={false} decoding="async" />
+          <img className="fcard__img" src={src} alt="" draggable={false} decoding="async" />
         </Preview>
       );
     } else {
@@ -239,7 +241,12 @@ function ReadyFileCard({
           </span>
         )}
       </div>
-      <FileFooter name={asset.filename || t('board.types.file')} family={family} badge={badge} meta={footerMeta} />
+      <FileFooter
+        name={asset.filename || t('board.types.file')}
+        family={family}
+        badge={badge}
+        meta={footerMeta}
+      />
       <CardCaption element={element} />
     </div>
   );
@@ -267,7 +274,9 @@ function VideoPreview({
       className="fcard__preview--video"
       style={{ aspectRatio: ratioOf(asset.width, asset.height, '16 / 9') }}
     >
-      {poster && <img src={poster} alt="" draggable={false} decoding="async" />}
+      {poster && (
+        <img className="fcard__img" src={poster} alt="" draggable={false} decoding="async" />
+      )}
       {preparing ? (
         <span className="fcard__prep" role="status">
           <span>{t('board.file.preparing')}</span>
@@ -299,7 +308,13 @@ function VideoPreview({
 }
 
 /** Audio is not processed by the worker yet (#327): a native player over a quiet panel. */
-function AudioPreview({ asset, state }: { asset: Asset; state: 'ready' | 'processing' | 'failed' }) {
+function AudioPreview({
+  asset,
+  state,
+}: {
+  asset: Asset;
+  state: 'ready' | 'processing' | 'failed';
+}) {
   const { t } = useTranslation();
   return (
     <Preview family="audio" className="fcard__preview--audio">

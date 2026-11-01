@@ -7,10 +7,10 @@ import { memo, useContext, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useClassifications } from '../lib/classifications.ts';
 import { pickVariant, playbackUrl, useAsset } from './assets.ts';
-import { fileBadge, fileFamily, isPdf } from './file-kinds.ts';
 import { CroppedImage } from './CroppedImage.tsx';
 import { GuestModeContext } from './context.ts';
 import { FrameGrab } from './FrameGrab.tsx';
+import { fileBadge, fileFamily, isPdf } from './file-kinds.ts';
 import { VideoFrameStepper } from './frame-grab.ts';
 import { hasImageTransform } from './image-crop.ts';
 import { MovingPicture, movingVariantUrl } from './moving.tsx';
@@ -620,8 +620,14 @@ export function MediaViewer({
                   alt={ready.filename}
                 />
                 <div className="viewer__pdf-bar">
-                  {ready.pageCount && <span>{t('viewer.pageOne', { count: ready.pageCount })}</span>}
-                  <a className="ink-btn ink-btn--primary" href={ready.url} download={ready.filename}>
+                  {ready.pageCount && (
+                    <span>{t('viewer.pageOne', { count: ready.pageCount })}</span>
+                  )}
+                  <a
+                    className="ink-btn ink-btn--primary"
+                    href={ready.url}
+                    download={ready.filename}
+                  >
                     <Icon name="download" size={16} />
                     {t('viewer.download')}
                   </a>

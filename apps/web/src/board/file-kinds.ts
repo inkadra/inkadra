@@ -25,14 +25,18 @@ const families: Array<[FileFamily, string]> = [
   ['text', 'doc docx odt rtf pages txt md'],
   ['video', 'mov mp4 m4v mkv avi mxf webm mts m2ts mpg mpeg wmv flv 3gp r3d braw'],
   ['audio', 'mp3 m4a aac wav aif aiff flac ogg oga opus wma caf'],
-  ['image', 'jpg jpeg png gif webp avif heic heif tif tiff bmp svg cr2 cr3 nef arw dng raf orf rw2 exr'],
+  [
+    'image',
+    'jpg jpeg png gif webp avif heic heif tif tiff bmp svg cr2 cr3 nef arw dng raf orf rw2 exr',
+  ],
   ['design', 'psd psb ai indd idml sketch fig xd afdesign afphoto aep prproj drp'],
   ['map', 'gpx kml kmz geojson'],
   ['3d', 'glb gltf obj fbx stl usdz blend 3ds dae ply'],
   ['font', 'otf ttf woff woff2'],
   ['generic', 'zip rar 7z tar gz tgz bz2 xz dmg iso'],
 ];
-for (const [family, list] of families) for (const ext of list.split(' ')) BY_EXTENSION[ext] = family;
+for (const [family, list] of families)
+  for (const ext of list.split(' ')) BY_EXTENSION[ext] = family;
 
 /** Lower-case extension of a file name, without the dot; empty when it has none. */
 export function extensionOf(filename: string): string {

@@ -176,11 +176,19 @@ test('one card per file type, as in the approved mockup', async ({ page, baseURL
     '<?xml version="1.0"?><gpx version="1.1" creator="inkadra"><trk><trkseg>' +
     '<trkpt lat="46.33" lon="9.55"/><trkpt lat="46.34" lon="9.57"/></trkseg></trk></gpx>';
   const files: Array<{ name: string; type: string; body: Buffer }> = [
-    { name: 'intervista-A001.mov', type: 'video/quicktime', body: await fixture('prores-proxy.mov') },
+    {
+      name: 'intervista-A001.mov',
+      type: 'video/quicktime',
+      body: await fixture('prores-proxy.mov'),
+    },
     { name: 'drone-B014.mov', type: 'video/quicktime', body: await fixture('prores-proxy.mov') },
     { name: 'nota-vocale-regista.wav', type: 'audio/wav', body: wav() },
     { name: 'bosco-alba.png', type: 'image/png', body: png(600, 400) },
-    { name: 'athlete-guide-2026.pdf', type: 'application/pdf', body: await fixture('two-pages.pdf') },
+    {
+      name: 'athlete-guide-2026.pdf',
+      type: 'application/pdf',
+      body: await fixture('two-pages.pdf'),
+    },
     { name: 'DSCF4417.dng', type: 'image/x-adobe-dng', body: await fixture('orientation-6.dng') },
     { name: 'trattamento-v3.docx', type: 'application/octet-stream', body: Buffer.alloc(2048) },
     { name: 'poster-locandina.psd', type: 'application/octet-stream', body: Buffer.alloc(4096) },
@@ -204,7 +212,11 @@ test('one card per file type, as in the approved mockup', async ({ page, baseURL
   const res = await fetch(`${base}/api/v1/projects/${projectId}/boards`, {
     method: 'POST',
     headers: { cookie, 'content-type': 'application/json', origin: base },
-    body: JSON.stringify({ title: 'Famiglia delle card', kind: 'board', parentBoardId: rootBoardId }),
+    body: JSON.stringify({
+      title: 'Famiglia delle card',
+      kind: 'board',
+      parentBoardId: rootBoardId,
+    }),
   });
   if (!res.ok) throw new Error(`board: ${res.status} ${await res.text()}`);
   const boardId = ((await res.json()) as { id: string }).id;

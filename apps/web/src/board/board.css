@@ -342,7 +342,7 @@
   overflow: hidden;
   background: var(--fcard-bg);
 }
-.fcard__preview > img {
+.fcard__img {
   display: block;
   width: 100%;
   height: 100%;
@@ -394,7 +394,7 @@
   overflow: hidden;
 }
 .fcard__tile::after {
-  content: '';
+  content: "";
   position: absolute;
   top: 0;
   right: 0;
