@@ -297,7 +297,7 @@ function VideoPreview({
           </span>
         )
       )}
-      {asset.durationMs !== null && asset.durationMs > 0 && (
+      {!preparing && asset.durationMs !== null && asset.durationMs > 0 && (
         <span className="card__duration">{formatDuration(asset.durationMs)}</span>
       )}
       {state === 'processing' && !poster && (

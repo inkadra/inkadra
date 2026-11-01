@@ -268,6 +268,7 @@ describe('file card family', () => {
         filename: 'drone-B014.mxf',
         width: 6144,
         height: 3456,
+        durationMs: 60_000,
         videoCodec: 'dnxhd',
         proxy: { status: 'processing', progress: 42, url: null, mime: 'video/mp4' },
       },
@@ -277,6 +278,7 @@ describe('file card family', () => {
     expect(html).toContain('width:42%');
     expect(html).toContain('42%</span>');
     expect(html).not.toContain('data-playable');
+    expect(html).not.toContain('card__duration');
     expect(html).toContain('<span class="fbadge fbadge--video">MXF</span>');
     expect(html).toContain('DNxHD · 6K');
   });
