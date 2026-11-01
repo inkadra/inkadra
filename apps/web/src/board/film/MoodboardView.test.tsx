@@ -85,7 +85,7 @@ async function mount(store: BoardStore, readOnly = true) {
 }
 const chip = (host: HTMLElement, name: string) =>
   [...host.querySelectorAll<HTMLButtonElement>('.moodboard__chips button')].find(
-    (button) => button.textContent?.toLowerCase() === name,
+    (button) => button.textContent?.toLowerCase() === `#${name}`,
   ) ?? null;
 const click = async (element: HTMLElement | null) => act(async () => element?.click());
 const key = async (value: string, target: EventTarget = window, shiftKey = false) =>
@@ -240,7 +240,7 @@ it('names the board and counts its tags in the side column, and the chips filter
   expect(side?.textContent).toContain('Last Train');
   expect(side?.textContent).toContain('moodboard.count');
   const rows = [...(side?.querySelectorAll('li button') ?? [])].map((b) => b.textContent);
-  expect(rows).toEqual(['night2', 'rain2']);
+  expect(rows).toEqual(['#night2', '#rain2']);
   await click(side?.querySelector<HTMLButtonElement>('li button') ?? null);
   expect(host.querySelectorAll('.moodboard__card')).toHaveLength(2);
   expect(chip(host, 'night')?.getAttribute('aria-pressed')).toBe('true');

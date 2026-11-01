@@ -346,7 +346,7 @@ export function MoodboardView({
               {chips.map((value) => (
                 <li key={value}>
                   <button type="button" aria-pressed={tag === value} onClick={() => choose(value)}>
-                    <span>{tagLabel(value)}</span>
+                    <span>#{tagLabel(value)}</span>
                     <small>{counts.get(value) ?? 0}</small>
                   </button>
                 </li>
@@ -377,7 +377,7 @@ export function MoodboardView({
                 aria-pressed={tag === value}
                 onClick={() => choose(value)}
               >
-                {tagLabel(value)}
+                #{tagLabel(value)}
               </button>
             ))}
           </fieldset>
