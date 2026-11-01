@@ -39,6 +39,7 @@ function context(overrides: Partial<ReturnType<typeof useProjects>> = {}) {
     openInbox: vi.fn(),
     unread: 0,
     refreshUnread: vi.fn(async () => {}),
+    filmLinks: { film: true, review: true, reviewBoard: null },
     ...overrides,
   });
 }

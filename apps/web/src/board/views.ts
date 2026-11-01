@@ -104,7 +104,7 @@ export function filmLinks(
   return { film, review: film || active === 'review' || !!reviewBoard, reviewBoard };
 }
 
-/** Everything is offered: before a layout has worked the rule out, and in tests of one view. */
+/** Everything is offered: the layout's default before it has worked the rule out. */
 export const ALL_FILM_LINKS: FilmLinks = { film: true, review: true, reviewBoard: null };
 
 /**
@@ -116,7 +116,7 @@ export const ALL_FILM_LINKS: FilmLinks = { film: true, review: true, reviewBoard
 export function headerViews(
   kind: BoardKind | undefined,
   active: BoardView,
-  links: FilmLinks = ALL_FILM_LINKS,
+  links: FilmLinks,
 ): BoardView[] {
   if (!kind && !isFilmView(active)) return [];
   return pickerViews(kind, active, links);
@@ -126,7 +126,7 @@ export function headerViews(
 export function pickerViews(
   kind: BoardKind | undefined,
   active: BoardView | null,
-  links: FilmLinks = ALL_FILM_LINKS,
+  links: FilmLinks,
 ): BoardView[] {
   return ALL_VIEWS.filter((v) => {
     if (v === active || v === 'canvas') return true;

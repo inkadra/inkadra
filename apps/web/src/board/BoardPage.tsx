@@ -95,7 +95,7 @@ export function useBoardView(kind: Board['kind'] | undefined): [BoardView, (v: B
 /** /p/:projectId shows the root board, /p/:projectId/b/:boardId a nested one. */
 export function BoardPage() {
   const { projectId, boardId: param } = useParams();
-  const { projects, shared, filmLinks } = useProjects();
+  const { projects, shared } = useProjects();
   const project = projects?.find((p) => p.id === projectId);
   if (!projectId || !projects) return null;
   const landing = param ? null : projectLanding(projectId, projects, shared);
@@ -215,6 +215,8 @@ function BoardScreen({
   const navigate = useNavigate();
   const location = useLocation();
   const { user } = useSession();
+  // The sidebar's rule for the film links, so the header tabs never disagree with it.
+  const { filmLinks } = useProjects();
   const { items: boards } = useProjectBoards(projectId);
   const conn = useBoardConnection(boardId);
   useLiveBoardCounts(conn, boardId);

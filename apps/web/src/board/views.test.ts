@@ -39,33 +39,36 @@ const boards = [root, storyboard, makeBoard('child', 'board', 'root')];
 const current = { boardId: root.id, kind: root.kind, rootBoardId: root.id };
 const onStoryboard = { boardId: storyboard.id, kind: storyboard.kind, rootBoardId: root.id };
 
+const all = { film: true, review: true, reviewBoard: null };
+const none = { film: false, review: false, reviewBoard: null };
+
 describe('header views', () => {
   it('offers canvas and moodboard on an ordinary board, nothing while the kind loads', () => {
-    expect(headerViews('board', 'canvas')).toEqual(['canvas', 'moodboard']);
-    expect(headerViews('board', 'moodboard')).toEqual(['canvas', 'moodboard']);
-    expect(headerViews(undefined, 'moodboard')).toEqual([]);
+    expect(headerViews('board', 'canvas', none)).toEqual(['canvas', 'moodboard']);
+    expect(headerViews('board', 'moodboard', none)).toEqual(['canvas', 'moodboard']);
+    expect(headerViews(undefined, 'moodboard', all)).toEqual([]);
   });
 
   it('offers the film views on a storyboard', () => {
-    expect(headerViews('storyboard', 'storyboard')).toEqual([
+    expect(headerViews('storyboard', 'storyboard', all)).toEqual([
       'canvas',
       'storyboard',
       'shotlist',
       'schedule',
       'review',
     ]);
-    expect(headerViews('storyboard', 'moodboard')).toContain('moodboard');
+    expect(headerViews('storyboard', 'moodboard', all)).toContain('moodboard');
   });
 
   it('leaves the moodboard out of the phone picker on a storyboard only', () => {
-    expect(pickerViews('storyboard', 'storyboard')).not.toContain('moodboard');
-    expect(pickerViews('board', 'canvas')).toHaveLength(6);
-    expect(pickerViews(undefined, null)).toHaveLength(6);
+    expect(pickerViews('storyboard', 'storyboard', all)).not.toContain('moodboard');
+    expect(pickerViews('board', 'canvas', all)).toHaveLength(6);
+    expect(pickerViews(undefined, null, all)).toHaveLength(6);
   });
 
   it('keeps the film views reachable while one of them is open', () => {
-    expect(headerViews('board', 'shotlist')).toContain('shotlist');
-    expect(headerViews('board', 'shotlist')).toHaveLength(6);
+    expect(headerViews('board', 'shotlist', none)).toContain('shotlist');
+    expect(headerViews('board', 'shotlist', filmLinks(false, null, 'shotlist'))).toHaveLength(6);
   });
 
   it('keeps the icon of every view', () => {
