@@ -1,24 +1,55 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 import { formatDuration } from '@inkadra/canvas-core';
+import { AudioWaveform } from '@inkadra/shared';
 import { Icon } from '@inkadra/ui';
 import { type KeyboardEvent, type PointerEvent, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-
-/** The one audio playing on the board: starting another pauses it. */
-let playing: HTMLAudioElement | null = null;
-
-function claim(audio: HTMLAudioElement) {
-  if (playing && playing !== audio) playing.pause();
-  playing = audio;
-}
-
-function release(audio: HTMLAudioElement) {
-  if (playing === audio) playing = null;
-}
+import { useInlineMedia } from './inline-player.ts';
 
 /** Tests only. */
 export function resetAudioPlayers() {
-  playing = null;
+  waveforms.clear();
+}
+
+/** Waveforms by URL, fetched once per page: they never change. */
+const waveforms = new Map<string, Promise<number[] | null>>();
+
+/** The peaks the worker read for an audio file (#327); null until they arrive, or without. */
+export function useWaveform(url: string | null): number[] | null {
+  const [peaks, setPeaks] = useState<number[] | null>(null);
+  useEffect(() => {
+    setPeaks(null);
+    if (!url) return;
+    let live = true;
+    let load = waveforms.get(url);
+    if (!load) {
+      load = fetch(url, { credentials: 'same-origin' })
+        .then((r) => (r.ok ? r.json() : null))
+        .then((json) => AudioWaveform.safeParse(json).data?.peaks ?? null)
+        .catch(() => null);
+      waveforms.set(url, load);
+    }
+    void load.then((p) => {
+      // A failed fetch is tried again the next time a card asks.
+      if (!p) waveforms.delete(url);
+      if (live) setPeaks(p);
+    });
+    return () => {
+      live = false;
+    };
+  }, [url]);
+  return peaks;
+}
+
+/** `count` bars of `peaks` (0–100), each the loudest of its slice; none without peaks. */
+export function waveformBars(peaks: readonly number[], count: number): number[] {
+  if (peaks.length === 0 || count <= 0) return [];
+  const n = Math.min(count, peaks.length);
+  return Array.from({ length: n }, (_, i) => {
+    const from = Math.floor((i * peaks.length) / n);
+    const to = Math.max(from + 1, Math.floor(((i + 1) * peaks.length) / n));
+    return Math.max(...peaks.slice(from, to));
+  });
 }
 
 /** 0:48: whole seconds played, never ahead of the sound. */
@@ -30,18 +61,27 @@ const clock = (seconds: number) => {
 const clamp = (v: number, min: number, max: number) => Math.min(max, Math.max(min, v));
 
 /**
- * The themed mini player of an audio card: a round play button, a thin bar to scrub (flat
- * until the worker draws waveforms, #327) and the time in a chip. A hidden `<audio>` plays.
- * Space toggles while the player has focus; only one audio plays on a board at a time.
+ * The themed mini player of an audio card: a round play button, the waveform to scrub (a thin
+ * bar until the worker has read it, or without ffmpeg) and the time in a chip. A hidden
+ * `<audio>` plays. Space toggles while the player has focus; only one sound plays on a board
+ * at a time, with link card videos and the viewer (inline-player.ts).
  */
 export function AudioPlayer({
+  id,
   src,
   name,
   durationMs,
+  peaks = null,
+  bars = 32,
 }: {
+  /** The card's element id: its turn in the one-player rule. */
+  id: string;
   src: string;
   name: string;
   durationMs: number | null;
+  peaks?: readonly number[] | null;
+  /** Bars the waveform is drawn with, from the width of the card. */
+  bars?: number;
 }) {
   const { t } = useTranslation();
   const audio = useRef<HTMLAudioElement>(null);
@@ -49,21 +89,17 @@ export function AudioPlayer({
   const [time, setTime] = useState(0);
   const [duration, setDuration] = useState(durationMs ? durationMs / 1000 : 0);
   const scrubbing = useRef(false);
+  const turn = useInlineMedia(id, audio);
 
   useEffect(() => {
     const el = audio.current;
-    return () => {
-      if (!el) return;
-      el.pause();
-      release(el);
-    };
+    return () => el?.pause();
   }, []);
 
   function toggle() {
     const el = audio.current;
     if (!el) return;
     if (el.paused) {
-      claim(el);
       void el.play()?.catch(() => setPlaying(false));
     } else {
       el.pause();
@@ -93,6 +129,7 @@ export function AudioPlayer({
   }
 
   const progress = duration > 0 ? clamp(time / duration, 0, 1) : 0;
+  const wave = peaks ? waveformBars(peaks, bars) : [];
   const label = t(isPlaying ? 'board.file.pause' : 'board.file.play', { name });
   return (
     // biome-ignore lint/a11y/noStaticElementInteractions: Space for the whole player, as on the play button
@@ -108,14 +145,13 @@ export function AudioPlayer({
         src={src}
         preload="metadata"
         hidden
-        onPlay={(e) => {
-          claim(e.currentTarget);
+        onPlay={() => {
+          turn.onPlay();
           setPlaying(true);
         }}
-        onPause={() => setPlaying(false)}
-        onEnded={(e) => {
+        onPause={() => {
+          turn.onPause();
           setPlaying(false);
-          release(e.currentTarget);
         }}
         onTimeUpdate={(e) => {
           if (!scrubbing.current) setTime(e.currentTarget.currentTime);
@@ -126,7 +162,7 @@ export function AudioPlayer({
         }}
       />
       <div
-        className="fcard__scrub"
+        className={`fcard__scrub${wave.length > 0 ? ' fcard__scrub--wave' : ''}`}
         role="slider"
         tabIndex={0}
         aria-label={t('board.file.seek', { name })}
@@ -161,10 +197,23 @@ export function AudioPlayer({
           e.stopPropagation();
         }}
       >
-        <span className="fcard__scrub-track">
-          <span className="fcard__scrub-fill" style={{ width: `${progress * 100}%` }} />
-          <span className="fcard__scrub-knob" style={{ left: `${progress * 100}%` }} />
-        </span>
+        {wave.length > 0 ? (
+          <span className="fcard__wave" aria-hidden="true">
+            {wave.map((h, i) => (
+              <i
+                // biome-ignore lint/suspicious/noArrayIndexKey: bars are positions in time
+                key={i}
+                className={(i + 0.5) / wave.length <= progress ? 'is-played' : undefined}
+                style={{ height: `${Math.max(8, h)}%` }}
+              />
+            ))}
+          </span>
+        ) : (
+          <span className="fcard__scrub-track">
+            <span className="fcard__scrub-fill" style={{ width: `${progress * 100}%` }} />
+            <span className="fcard__scrub-knob" style={{ left: `${progress * 100}%` }} />
+          </span>
+        )}
       </div>
       <button
         type="button"

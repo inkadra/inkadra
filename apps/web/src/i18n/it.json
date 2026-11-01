@@ -386,6 +386,15 @@
       "pause": "Metti in pausa {{name}}",
       "seek": "Posizione in {{name}}"
     },
+    "voiceNote": {
+      "label": "Nota vocale",
+      "recording": "Registrazione",
+      "save": "Salva",
+      "cancel": "Annulla",
+      "close": "Chiudi",
+      "denied": "Microfono non disponibile: controlla i permessi del browser.",
+      "file": "nota-vocale"
+    },
     "todo": {
       "title": "Titolo della lista",
       "titlePlaceholder": "Titolo",

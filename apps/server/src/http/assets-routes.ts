@@ -34,11 +34,18 @@ export const fileUrl = (assetId: string) => v1(`/assets/${assetId}/file`);
 export const variantUrl = (assetId: string, size: string) =>
   v1(`/assets/${assetId}/variants/${size}`);
 export const proxyUrl = (assetId: string) => v1(`/assets/${assetId}/proxy`);
+export const waveformUrl = (assetId: string) => v1(`/assets/${assetId}/waveform`);
 
 type VariantRow = typeof assetVariant.$inferSelect;
-/** A WebP thumbnail row, not the playable copy of a video (`proxy`, decision 0048). */
-export type ThumbnailRow = VariantRow & { size: Exclude<VariantRow['size'], 'proxy'> };
-export const isThumbnail = (v: VariantRow): v is ThumbnailRow => v.size !== 'proxy';
+/**
+ * A WebP thumbnail row, not the playable copy of a video or audio file (`proxy`, decision
+ * 0048) nor the peaks of an audio file (`waveform`, #327).
+ */
+export type ThumbnailRow = VariantRow & {
+  size: Exclude<VariantRow['size'], 'proxy' | 'waveform'>;
+};
+export const isThumbnail = (v: VariantRow): v is ThumbnailRow =>
+  v.size !== 'proxy' && v.size !== 'waveform';
 
 /** Where the playable copy of a video stands, for the API; null when there is none to make. */
 export function toProxy(row: typeof asset.$inferSelect, variants: VariantRow[]): AssetProxy | null {
@@ -48,7 +55,7 @@ export function toProxy(row: typeof asset.$inferSelect, variants: VariantRow[]):
     status: row.proxyStatus === 'ready' && !made ? 'failed' : row.proxyStatus,
     progress: row.proxyProgress,
     url: made ? proxyUrl(row.id) : null,
-    mime: 'video/mp4',
+    mime: row.kind === 'audio' ? 'audio/mp4' : 'video/mp4',
     width: made?.width ?? null,
     height: made?.height ?? null,
     size: made?.bytes ?? null,
@@ -79,6 +86,10 @@ export function toAsset(row: typeof asset.$inferSelect, variants: VariantRow[]):
     frameRate: row.frameRate,
     pageCount: row.pageCount,
     proxy: toProxy(row, variants),
+    waveformUrl:
+      row.status === 'ready' && variants.some((v) => v.size === 'waveform')
+        ? waveformUrl(row.id)
+        : null,
     status: row.status,
     url: fileUrl(row.id),
     variants:
@@ -213,15 +224,24 @@ export function registerAssetRoutes(app: FastifyInstance, deps: Deps) {
       .from(assetVariant)
       .where(and(eq(assetVariant.assetId, assetId), eq(assetVariant.size, 'proxy')));
     if (!made || row.proxyStatus !== 'ready')
-      return sendError(reply, 'not_found', 'This video has no playable copy.');
+      return sendError(reply, 'not_found', 'This file has no playable copy.');
     const etag = `${row.sha256 ?? row.id}-proxy`;
     fileHeaders(reply, etag);
     if (req.headers['if-none-match'] === `"${etag}"`) return reply.status(304).send();
-    reply.header('content-type', 'video/mp4');
-    const name = `${row.filename.replace(/\.[^.]*$/, '') || 'video'}.mp4`;
+    const audio = made.mime === 'audio/mp4';
+    reply.header('content-type', audio ? 'audio/mp4' : 'video/mp4');
+    const name = `${row.filename.replace(/\.[^.]*$/, '') || 'video'}.${audio ? 'm4a' : 'mp4'}`;
     reply.header('content-disposition', contentDisposition('inline', name));
     const size = made.bytes ?? (await storage.size(made.storageKey)) ?? 0;
     return sendRanged(req, reply, storage, made.storageKey, size);
+  });
+
+  // The peaks of an audio file (#327), for every role that sees its card.
+  app.get(v1('/assets/:assetId/waveform'), async (req, reply) => {
+    const actor = await requireActor(auth, req, db);
+    const { assetId } = AssetParams.parse(req.params);
+    await requireAssetRole(db, actor, assetId, 'viewer');
+    return sendWaveform(db, storage, req, reply, assetId, fileHeaders);
   });
 
   app.get(v1('/assets/:assetId/variants/:size'), async (req, reply) => {
@@ -252,4 +272,25 @@ export function registerAssetRoutes(app: FastifyInstance, deps: Deps) {
     reply.header('content-type', 'image/webp');
     return reply.send(await storage.read(variant.storageKey));
   });
+}
+
+/** Sends the `waveform` variant of an asset as JSON, or 404 when it has none. */
+export async function sendWaveform(
+  db: Database,
+  storage: Storage,
+  req: FastifyRequest,
+  reply: FastifyReply,
+  assetId: string,
+  headers: (reply: FastifyReply, etag: string) => void,
+) {
+  const [made] = await db
+    .select()
+    .from(assetVariant)
+    .where(and(eq(assetVariant.assetId, assetId), eq(assetVariant.size, 'waveform')));
+  if (!made) return sendError(reply, 'not_found', 'This file has no waveform.');
+  const etag = `${assetId}-waveform-${made.bytes ?? 0}`;
+  headers(reply, etag);
+  if (req.headers['if-none-match'] === `"${etag}"`) return reply.status(304).send();
+  reply.header('content-type', 'application/json; charset=utf-8');
+  return reply.send(await storage.read(made.storageKey));
 }

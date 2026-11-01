@@ -386,6 +386,15 @@
       "pause": "Pause {{name}}",
       "seek": "Position in {{name}}"
     },
+    "voiceNote": {
+      "label": "Voice note",
+      "recording": "Recording",
+      "save": "Save",
+      "cancel": "Cancel",
+      "close": "Close",
+      "denied": "No microphone: check the browser's permissions.",
+      "file": "voice-note"
+    },
     "todo": {
       "title": "List title",
       "titlePlaceholder": "Title",

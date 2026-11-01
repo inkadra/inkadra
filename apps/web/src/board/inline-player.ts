@@ -1,6 +1,9 @@
-import { useSyncExternalStore } from 'react';
+import { type RefObject, useEffect, useSyncExternalStore } from 'react';
 
-/** The link card whose video plays in place. Only one at a time: starting another stops it. */
+/**
+ * What plays on the board: a link card's video, an audio card (#327) or the viewer's media.
+ * Only one at a time: starting another stops it.
+ */
 let active: string | null = null;
 const listeners = new Set<() => void>();
 
@@ -67,4 +70,25 @@ export function useInlinePlaying(id: string): boolean {
     () => isPlayingInline(id),
     () => false,
   );
+}
+
+/**
+ * Puts a `<video>` or `<audio>` under the one-player rule as `id`: playing it takes the turn,
+ * and it pauses as soon as something else does. Spread the handlers on the element.
+ */
+export function useInlineMedia(id: string, media: RefObject<HTMLMediaElement | null>) {
+  useEffect(() => {
+    const off = subscribeInline(() => {
+      const el = media.current;
+      if (el && !el.paused && !isPlayingInline(id)) el.pause();
+    });
+    return () => {
+      off();
+      stopInline(id);
+    };
+  }, [id, media]);
+  return {
+    onPlay: () => playInline(id),
+    onPause: () => stopInline(id),
+  };
 }

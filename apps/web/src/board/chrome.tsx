@@ -116,6 +116,7 @@ export function Toolbar({
   onAdd,
   onCanvas,
   onScreenplay,
+  onVoiceNote,
 }: {
   tool: CanvasTool;
   onTool: (tool: CanvasTool) => void;
@@ -124,6 +125,8 @@ export function Toolbar({
   onCanvas: (template: CanvasTemplate) => void;
   /** A storyboard made from a screenplay file, after the Canvas menu's Storyboard. */
   onScreenplay?: () => void;
+  /** Records a voice note from the microphone, saved as an audio card (#327). */
+  onVoiceNote?: (() => void) | undefined;
 }) {
   const { t } = useTranslation();
   const tools = useScrollEdges<HTMLDivElement>();
@@ -193,6 +196,7 @@ export function Toolbar({
         <CanvasMenuButton
           onCanvas={onCanvas}
           onScreenplay={onScreenplay}
+          onVoiceNote={onVoiceNote}
           onCard={(type) => onAdd(type)}
         />
       </fieldset>
@@ -207,10 +211,13 @@ export function Toolbar({
 function CanvasMenuButton({
   onCanvas,
   onScreenplay,
+  onVoiceNote,
   onCard,
 }: {
   onCanvas: (template: CanvasTemplate) => void;
   onScreenplay?: (() => void) | undefined;
+  /** Records a voice note (#327); absent where the browser cannot record. */
+  onVoiceNote?: (() => void) | undefined;
   /** Story bible cards and section headings, listed after the canvas types. */
   onCard: (type: 'character' | 'location' | 'section') => void;
 }) {
@@ -283,6 +290,17 @@ function CanvasMenuButton({
                   action: () => onCard(type),
                 }),
               ),
+              ...(onVoiceNote
+                ? [
+                    { divider: true } as MenuItem,
+                    {
+                      label: t('board.voiceNote.label'),
+                      icon: 'mic' as const,
+                      kind: 'canvas' as const,
+                      action: onVoiceNote,
+                    },
+                  ]
+                : []),
             ])}
             onClose={(reason) => {
               setAt(null);

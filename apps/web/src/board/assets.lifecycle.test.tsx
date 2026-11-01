@@ -28,6 +28,7 @@ const asset: Asset = {
   frameRate: null,
   pageCount: null,
   proxy: null,
+  waveformUrl: null,
   animated: false,
   status: 'pending',
   url: '/api/v1/assets/upload/file',

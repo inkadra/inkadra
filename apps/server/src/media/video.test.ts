@@ -8,6 +8,8 @@ import {
   proxyMaxBytes,
   proxyPlan,
   proxyTimeoutMs,
+  safeInput,
+  sniffAudio,
   type VideoInfo,
   webPlayable,
 } from './video.ts';
@@ -194,5 +196,81 @@ describe('proxyTimeoutMs', () => {
       PROXY_MAX_RUN_MS,
     );
     expect(PROXY_MAX_RUN_MS).toBeLessThan(MAX_INT32);
+  });
+});
+
+describe('audio files (#327)', () => {
+  const bytes = (...parts: Array<string | number[]>) =>
+    Uint8Array.from(
+      parts.flatMap((p) => (typeof p === 'string' ? [...p].map((c) => c.charCodeAt(0)) : p)),
+    );
+  const sound = (audioCodec: string) =>
+    info({ videoCodec: null, width: null, height: null, frameRate: null, audioCodec });
+
+  it('tells audio containers apart from their first bytes', () => {
+    expect(sniffAudio(bytes('ID3', [4, 0]))).toBe('audio/mpeg');
+    expect(sniffAudio(bytes([0xff, 0xfb, 0x90]))).toBe('audio/mpeg');
+    expect(sniffAudio(bytes([0xff, 0xf1, 0x50]))).toBe('audio/aac');
+    expect(sniffAudio(bytes('RIFF', [0, 0, 0, 0], 'WAVEfmt '))).toBe('audio/wav');
+    expect(sniffAudio(bytes('OggS'))).toBe('audio/ogg');
+    expect(sniffAudio(bytes('fLaC'))).toBe('audio/flac');
+    expect(sniffAudio(bytes([0, 0, 0, 32], 'ftypM4A '))).toBe('audio/mp4');
+    expect(sniffAudio(bytes([0x1a, 0x45, 0xdf, 0xa3]))).toBe('audio/webm');
+    expect(sniffAudio(bytes('FORM', [0, 0, 0, 0], 'AIFF'))).toBe('audio/aiff');
+    expect(sniffAudio(bytes('#EXTM3U\n'))).toBeNull();
+    expect(sniffAudio(bytes('RIFF', [0, 0, 0, 0], 'AVI '))).toBeNull();
+  });
+
+  it('opens audio with the audio demuxers only, never playlists', () => {
+    const list = safeInput('audio/ogg');
+    expect(list[list.indexOf('-format_whitelist') + 1]).toContain('ogg');
+    expect(list.join(' ')).not.toMatch(/hls|concat|m3u/);
+    expect(safeInput('audio/mp4')).toContain('-enable_drefs');
+  });
+
+  it('copies only what not every browser plays', () => {
+    const plan = (container: string, codec: string) =>
+      proxyPlan(container, sound(codec), 1000, DEFAULT_PROXY_SETTINGS);
+    expect(plan('audio/mpeg', 'mp3')).toBe('none');
+    expect(plan('audio/mp4', 'aac')).toBe('none');
+    expect(plan('audio/wav', 'pcm_s16le')).toBe('none');
+    expect(plan('audio/flac', 'flac')).toBe('none');
+    expect(plan('audio/ogg', 'opus')).toBe('make');
+    expect(plan('audio/webm', 'opus')).toBe('make');
+    expect(plan('audio/mp4', 'alac')).toBe('make');
+    expect(plan('audio/aiff', 'pcm_s16be')).toBe('make');
+    expect(
+      proxyPlan('audio/ogg', sound('opus'), 1000, { ...DEFAULT_PROXY_SETTINGS, enabled: false }),
+    ).toBe('skip');
+    expect(
+      proxyPlan(
+        'audio/ogg',
+        info({ videoCodec: null, audioCodec: null }),
+        1,
+        DEFAULT_PROXY_SETTINGS,
+      ),
+    ).toBe('none');
+  });
+
+  it('encodes the sound alone to AAC, with the same caps as a video', () => {
+    const args = proxyArgs(
+      '/in',
+      '/out.mp4',
+      sound('opus'),
+      DEFAULT_PROXY_SETTINGS,
+      1e6,
+      undefined,
+      'audio/ogg',
+    );
+    const line = args.join(' ');
+    expect(line).toContain('-map 0:a:0 -vn');
+    expect(line).toContain('-c:a aac');
+    expect(line).not.toContain('-c:v');
+    expect(line).toContain('-t 7200');
+    expect(line).toContain('-fs');
+    // Sized for sound, not for a 5 Mbit/s picture.
+    expect(proxyMaxBytes(sound('opus'), DEFAULT_PROXY_SETTINGS, 1e6)).toBeLessThan(
+      proxyMaxBytes(info({ videoCodec: 'prores' }), DEFAULT_PROXY_SETTINGS, 1e6),
+    );
   });
 });

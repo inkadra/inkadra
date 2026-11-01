@@ -30,15 +30,18 @@ export const ASSET_ID_HEADER = 'Inkadra-Asset-Id';
 const context = new AsyncLocalStorage<{ actor: Actor; assetId: string }>();
 
 const HEIC = /\.(heic|heif)$/i;
+/** Audio files browsers often send without a type (#327). */
+const AUDIO = /\.(mp3|m4a|aac|wav|flac|ogg|oga|opus|aif|aiff|caf)$/i;
 
 /**
- * Asset kind from the declared type, falling back on the extension for HEIC from iPhones and
- * camera RAW files, which browsers often send without a type.
+ * Asset kind from the declared type, falling back on the extension for HEIC from iPhones,
+ * camera RAW files and audio files, which browsers often send without a type.
  */
 export function kindOf(mime: string, filename: string): AssetKind {
   if (mime.startsWith('image/') || HEIC.test(filename) || rawTypeOf(filename)) return 'image';
   if (mime.startsWith('video/')) return 'video';
-  if (mime.startsWith('audio/')) return 'audio';
+  if (mime.startsWith('audio/') || (mime === 'application/octet-stream' && AUDIO.test(filename)))
+    return 'audio';
   return 'file';
 }
 

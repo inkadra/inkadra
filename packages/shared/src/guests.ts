@@ -272,9 +272,19 @@ export const GuestAsset = z
       .nullable()
       .openapi({
         description:
-          '`/api/v1/guest/links/{linkId}/assets/{assetId}/stream`: only for the sound track of ' +
-          'a storyboard animatic (`board.animaticAudio`), else null. Plays inline with byte ' +
-          'ranges, whatever `allowDownload` says; it is never served as an attachment.',
+          '`/api/v1/guest/links/{linkId}/assets/{assetId}/stream`: for ready audio files, the ' +
+          'sound track of a storyboard animatic (`board.animaticAudio`) or an audio card of a ' +
+          'board of the link, else null. Plays inline with byte ranges, whatever ' +
+          '`allowDownload` says, as the AAC copy when the server made one; it is never served ' +
+          'as an attachment.',
+      }),
+    waveformUrl: z
+      .string()
+      .nullable()
+      .openapi({
+        description:
+          '`/api/v1/guest/links/{linkId}/assets/{assetId}/waveform`: the peaks of an audio ' +
+          'card (`AudioWaveform`), else null.',
       }),
   })
   .openapi('GuestAsset');

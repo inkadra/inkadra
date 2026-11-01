@@ -445,10 +445,11 @@ export const assetVariant = pgTable(
       .notNull()
       .references(() => asset.id, { onDelete: 'cascade' }),
     /**
-     * A WebP thumbnail width, or `proxy`: the playable MP4 copy of a video (decision 0048),
-     * which is not a thumbnail and never listed with them (`isThumbnail`).
+     * A WebP thumbnail width, `proxy`: the playable copy of a video or audio file (decision
+     * 0048), or `waveform`: the peaks of an audio file as JSON (#327). The last two are not
+     * thumbnails and never listed with them (`isThumbnail`).
      */
-    size: text('size', { enum: ['256', '512', '1024', '2048', 'proxy'] }).notNull(),
+    size: text('size', { enum: ['256', '512', '1024', '2048', 'proxy', 'waveform'] }).notNull(),
     width: integer('width').notNull(),
     height: integer('height').notNull(),
     storageKey: text('storage_key').notNull(),

@@ -56,6 +56,7 @@ const videoAsset: Asset = {
   frameRate: null,
   pageCount: null,
   proxy: null,
+  waveformUrl: null,
   animated: false,
   status: 'ready',
   url: '/api/v1/assets/video-prores/file',
@@ -373,6 +374,7 @@ describe('mounted viewer error events', () => {
     variants: videoAsset.variants,
     downloadUrl: '/api/v1/guest/links/link/assets/video-prores/file',
     streamUrl: null,
+    waveformUrl: null,
   };
   const guest = (download: boolean, asset = guestAsset) => (
     <GuestActionsContext.Provider

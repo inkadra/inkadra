@@ -145,6 +145,7 @@ import { LOCAL } from './store.ts';
 import { TagPopover } from './tags.tsx';
 import { templateLabels, templateRect } from './templates.ts';
 import { startUpload } from './uploads.ts';
+import { canRecord, VoiceNoteRecorder } from './VoiceNote.tsx';
 import { MediaViewer } from './viewer.tsx';
 import { loadViewport, saveViewport, shiftViewport } from './viewport.ts';
 import { easeZoom, wheelZoomFactor } from './wheel-zoom.ts';
@@ -688,6 +689,8 @@ export function Canvas({
   );
 
   const [importingScript, setImportingScript] = useState(false);
+  /** Where the voice note being recorded will go (#327), while the recorder is open. */
+  const [recording, setRecording] = useState<Point | null>(null);
   /** A storyboard card from a screenplay: the board is filled in the background, like a template. */
   const insertScreenplay = useCallback(
     async (plan: ImportPlan) => {
@@ -2887,8 +2890,15 @@ export function Canvas({
               onAdd={(type) => void add(type)}
               onCanvas={(template) => void insertCanvas(template)}
               onScreenplay={() => setImportingScript(true)}
+              onVoiceNote={canRecord() ? () => setRecording(center()) : undefined}
             />
           </div>
+        )}
+        {recording && !readOnly && (
+          <VoiceNoteRecorder
+            onSave={(file) => uploadFiles([file], recording)}
+            onClose={() => setRecording(null)}
+          />
         )}
         <UploadPanel />
         {/* On the body: the dialog is the viewport's, not a card of the board. */}

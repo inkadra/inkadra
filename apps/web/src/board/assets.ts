@@ -174,12 +174,18 @@ const BROWSER_IMAGES = new Set([
   'image/avif',
 ]);
 
+const browserPlays = (mime: string) =>
+  typeof document !== 'undefined' && document.createElement('audio').canPlayType(mime) !== '';
+
 /**
- * What a video element plays: the playable MP4 copy the worker made of a format browsers do
- * not read (decision 0048), else the original.
+ * What a media element plays: the playable copy the worker made of a format browsers do not
+ * read (decision 0048), else the original. Audio (#327) keeps its original wherever this
+ * browser plays it: the AAC copy is for the others (Ogg or WebM on Safari, AIFF on Chrome).
  */
-export function playbackUrl(asset: Asset): string {
-  return asset.proxy?.status === 'ready' && asset.proxy.url ? asset.proxy.url : asset.url;
+export function playbackUrl(asset: Asset, canPlay = browserPlays): string {
+  const copy = asset.proxy?.status === 'ready' ? asset.proxy.url : null;
+  if (!copy || (asset.kind === 'audio' && canPlay(asset.mime))) return asset.url;
+  return copy;
 }
 
 /**

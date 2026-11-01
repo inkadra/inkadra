@@ -1,7 +1,13 @@
 import type { Asset } from '@inkadra/shared';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { RequestError } from '../lib/api.ts';
-import { getCachedAsset, loadAsset, resetAssetCache, setAssetLoader } from './assets.ts';
+import {
+  getCachedAsset,
+  loadAsset,
+  playbackUrl,
+  resetAssetCache,
+  setAssetLoader,
+} from './assets.ts';
 
 const mockApi = vi.hoisted(() => ({
   get: vi.fn(),
@@ -30,6 +36,7 @@ const sampleAsset: Asset = {
   frameRate: null,
   pageCount: null,
   proxy: null,
+  waveformUrl: null,
   animated: false,
   status: 'ready',
   url: '/api/v1/assets/asset-01/file',
@@ -104,5 +111,40 @@ describe('asset loader and network errors', () => {
 
     resetAssetCache();
     expect(getCachedAsset('guest-unknown')).toBeUndefined();
+  });
+});
+
+describe('playbackUrl', () => {
+  const copy = {
+    status: 'ready' as const,
+    progress: 100,
+    url: '/copy',
+    mime: 'audio/mp4' as const,
+    width: null,
+    height: null,
+    size: 10,
+  };
+  const voice: Asset = {
+    ...sampleAsset,
+    kind: 'audio',
+    mime: 'audio/ogg',
+    url: '/orig',
+    proxy: copy,
+  };
+
+  it('plays the original audio where the browser reads it, else the AAC copy', () => {
+    expect(playbackUrl(voice, () => true)).toBe('/orig');
+    expect(playbackUrl(voice, () => false)).toBe('/copy');
+    expect(playbackUrl({ ...voice, proxy: null }, () => false)).toBe('/orig');
+  });
+
+  it('always plays the copy of a video', () => {
+    const video: Asset = {
+      ...voice,
+      kind: 'video',
+      mime: 'video/quicktime',
+      proxy: { ...copy, mime: 'video/mp4' },
+    };
+    expect(playbackUrl(video, () => true)).toBe('/copy');
   });
 });

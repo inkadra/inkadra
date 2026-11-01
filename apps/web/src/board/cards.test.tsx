@@ -48,11 +48,13 @@ vi.mock('./assets.ts', () => ({
             frameRate: null,
             pageCount: null,
             proxy: null,
+            waveformUrl: null,
             exif: null,
             variants: [],
             ...state.asset,
           },
   pickVariant: (asset: { variants: Array<{ url: string }> }) => asset.variants.at(-1)?.url ?? '',
+  playbackUrl: (asset: { url: string }) => asset.url,
 }));
 vi.mock('./uploads.ts', () => ({ useUploadProgress: () => null, localPreview: () => null }));
 vi.mock('./CardReview.tsx', () => ({ CardReview: () => null }));
