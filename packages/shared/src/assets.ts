@@ -254,6 +254,8 @@ export type OfficeSheet = z.infer<typeof OfficeSheet>;
 export const OfficePreview = z
   .object({
     pageCount: z.int().min(0).max(50),
+    uploadedBy: z.string().nullable().optional(),
+    uploadedAt: Timestamp.optional(),
     sheets: z.array(OfficeSheet).max(16),
   })
   .refine(
