@@ -2937,6 +2937,7 @@
       "ods": "Foglio OpenDocument",
       "odp": "Presentazione OpenDocument",
       "csv": "Valori separati da virgole"
-    }
+    },
+    "summary": "{{rows}} righe × {{columns}} colonne · il file resta sulla board"
   }
 }

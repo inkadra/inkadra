@@ -83,5 +83,9 @@ describe('XLSX', () => {
 });
 it('keeps sparse row and column coordinates', async () => {
   const sheets = await readXlsx(await workbook('<row><c r="B3"><v>7</v></c></row>'));
-  expect(sheets[0]?.rows).toEqual([['', ''], ['', ''], ['', '7']]);
+  expect(sheets[0]?.rows).toEqual([
+    ['', ''],
+    ['', ''],
+    ['', '7'],
+  ]);
 });

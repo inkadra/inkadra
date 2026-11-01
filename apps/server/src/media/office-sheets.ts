@@ -183,7 +183,12 @@ export async function readXlsx(file: string): Promise<OfficeSheet[]> {
         if (targetRow) targetRow[col] = checked(str ?? '');
       }
       const width = Math.max(1, ...Array.from(rows, (r) => r?.length ?? 0));
-      if (result.reduce((n, s) => n + s.rows.length * (s.rows[0]?.length ?? 0), 0) + rows.length * width > 10_000) fail();
+      if (
+        result.reduce((n, s) => n + s.rows.length * (s.rows[0]?.length ?? 0), 0) +
+          rows.length * width >
+        10_000
+      )
+        fail();
       result.push({
         name: checked(sheet.attrs.name ?? ''),
         rows: Array.from({ length: rows.length }, (_, r) =>

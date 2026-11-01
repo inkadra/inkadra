@@ -41,7 +41,7 @@ the existing six-second toast offers Show and Undo. The original is retained.
 ## Consequences
 
 The default image size is unchanged. `--build-arg OFFICE=true` adds Debian LibreOffice Writer,
-Calc, Impress, fonts, Poppler and bubblewrap: budget approximately 300–600 MiB extra uncompressed
+Calc, Impress, fonts, Poppler and bubblewrap: budget approximately 600–800 MiB extra uncompressed
 (depending on architecture and Debian version); measure the exact tag in your registry.
 Only the separate worker needs that image. Linux must permit unprivileged user namespaces;
 operators must not run the application privileged or bypass a failed sandbox. See

@@ -53,12 +53,23 @@ describe('Office sandbox', () => {
 it('the subprocess runner kills a hung job within its wall-clock limit', async () => {
   const { runTool: actualRun } = await vi.importActual<typeof import('./tools.ts')>('./tools.ts');
   const start = Date.now();
-  await expect(actualRun(process.execPath, ['-e', 'setInterval(() => {}, 1000)'], { timeoutMs: 100 })).rejects.toThrow();
+  await expect(
+    actualRun(process.execPath, ['-e', 'setInterval(() => {}, 1000)'], { timeoutMs: 100 }),
+  ).rejects.toThrow();
   expect(Date.now() - start).toBeLessThan(5000);
 });
-it.skipIf(process.platform !== 'linux')('enforces the output file cap in the subprocess', async () => {
-  const { runTool: actualRun } = await vi.importActual<typeof import('./tools.ts')>('./tools.ts');
-  const dir = await mkdtemp(join(tmpdir(), 'office-file-cap-'));
-  const out = join(dir, 'oversized');
-  await expect(actualRun(process.execPath, ['-e', 'require("node:fs").writeFileSync(process.argv[1], Buffer.alloc(4096))', out], { timeoutMs: 5000, fileBytes: 1024 })).rejects.toThrow();
-});
+it.skipIf(process.platform !== 'linux')(
+  'enforces the output file cap in the subprocess',
+  async () => {
+    const { runTool: actualRun } = await vi.importActual<typeof import('./tools.ts')>('./tools.ts');
+    const dir = await mkdtemp(join(tmpdir(), 'office-file-cap-'));
+    const out = join(dir, 'oversized');
+    await expect(
+      actualRun(
+        process.execPath,
+        ['-e', 'require("node:fs").writeFileSync(process.argv[1], Buffer.alloc(4096))', out],
+        { timeoutMs: 5000, fileBytes: 1024 },
+      ),
+    ).rejects.toThrow();
+  },
+);

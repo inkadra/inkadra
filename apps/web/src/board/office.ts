@@ -2,8 +2,10 @@
 import { createElement, newTable } from '@inkadra/canvas-core';
 import type { Element } from '@inkadra/doc-schema';
 import { type BoardStore, LOCAL } from './store.ts';
-export type { OfficeSheet, OfficePreview } from '@inkadra/shared';
-import { type OfficeSheet, OfficePreview } from '@inkadra/shared';
+
+export type { OfficePreview, OfficeSheet } from '@inkadra/shared';
+
+import { OfficePreview, type OfficeSheet } from '@inkadra/shared';
 export const isOffice = (name: string) => /\.(docx|xlsx|pptx|odt|ods|odp|csv)$/i.test(name);
 export const officeUrl = (id: string, part = 'manifest.json') =>
   `/api/v1/assets/${id}/office/${part}`;
