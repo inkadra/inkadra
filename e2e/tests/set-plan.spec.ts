@@ -166,6 +166,7 @@ async function seed(page: Page, baseURL: string, theme: 'light' | 'dark') {
         icon('Key', 'fresnel', '#EDD963', 340, 198, 225, 'Key 1,2K'),
         icon('Anna', 'actor', '#B897F0', 204, 78, 90, 'Anna'),
         icon('Marco', 'actor', '#7AD689', 214, 168, 270, 'Marco'),
+        { ...icon('Sofa', 'sofa', INK, 318, 140), w: 100, h: 42 },
       ],
     },
     opts,
@@ -291,11 +292,29 @@ for (const theme of ['dark', 'light'] as const) {
     await editor.getByRole('button', { name: 'Seleziona (V)' }).click();
     await editor.getByRole('tab', { name: 'Icone' }).click();
 
-    // Duplicate, then delete the copy; the plan keeps the nine icons it had.
+    // Resize and rotate (round 6, e): furniture takes any size from a corner, and an angle.
+    const sofaAt = at(318, 140);
+    await page.mouse.click(sofaAt.x, sofaAt.y);
+    const sofa = async () => (await saved()).plan?.icons?.find((i) => i.kind === 'sofa');
+    const grip = editor.locator('[data-handle="se"]');
+    await expect(grip).toBeVisible();
+    const g = (await grip.boundingBox())!;
+    await page.mouse.move(g.x + g.width / 2, g.y + g.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(g.x + 60, g.y + 20, { steps: 4 });
+    await page.mouse.up();
+    await expect.poll(async () => (await sofa())?.w ?? 0).toBeGreaterThan(130);
+    const angle = editor.getByLabel('Angolo', { exact: true });
+    await angle.fill('-20');
+    await angle.press('Enter');
+    await expect.poll(async () => (await sofa())?.rotation).toBe(340);
+    await page.screenshot({ path: join(out, `desktop-${theme}-resize.png`) });
+
+    // Duplicate, then delete the copy; the plan keeps the ten icons it had.
     await bar.getByRole('button', { name: 'Duplica' }).click();
-    await expect.poll(async () => (await saved()).plan?.icons?.length).toBe(10);
+    await expect.poll(async () => (await saved()).plan?.icons?.length).toBe(11);
     await page.keyboard.press('Delete');
-    await expect.poll(async () => (await saved()).plan?.icons?.length).toBe(9);
+    await expect.poll(async () => (await saved()).plan?.icons?.length).toBe(10);
 
     // Tap Fresnel, then tap the plan twice: it stays armed and places two, then Recent shows it.
     await tile('Fresnel').click();

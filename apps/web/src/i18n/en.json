@@ -923,7 +923,11 @@
       "ghosts": "Show earlier positions",
       "moveOf": "Movement of {{name}}",
       "clearMoves": "Clear the movement",
-      "moveHint": "Tap position {{number}} · Done ends the movement"
+      "moveHint": "Tap position {{number}} · Done ends the movement",
+      "angleField": "Angle",
+      "width": "Width",
+      "depth": "Depth",
+      "size": "Size"
     }
   },
   "tags": {

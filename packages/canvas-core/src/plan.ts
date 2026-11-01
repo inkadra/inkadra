@@ -270,6 +270,125 @@ export function addBlockingStep(icon: PlanIcon, to: Point): PlanIcon {
   return next;
 }
 
+// Resizing ------------------------------------------------------------------------
+
+/** A handle of the selection box: corners and sides. */
+export type ResizeHandle = 'nw' | 'n' | 'ne' | 'e' | 'se' | 's' | 'sw' | 'w';
+
+/**
+ * The box an item resizes in: its middle, its size along its own axes and the angle those
+ * axes are turned by, in view units. Null for items that do not resize (strokes, lines,
+ * arrows and measures, which move their ends instead).
+ */
+export function itemFrame(
+  item: PlanItem,
+): { centre: Point; w: number; h: number; angle: number } | null {
+  if ('x' in item) {
+    const size = iconSize(item);
+    return { centre: iconCentre(item), w: size.w, h: size.h, angle: iconAngle(item) };
+  }
+  if ('points' in item || !TURNED.has(item.kind)) return null;
+  const a = { x: item.x0 * kx, y: item.y0 * ky };
+  const b =
+    item.kind === 'text'
+      ? { x: a.x + item.width * 0.6 * (item.text?.length ?? 1), y: a.y - item.width }
+      : { x: item.x1 * kx, y: item.y1 * ky };
+  return {
+    centre: { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 },
+    w: Math.abs(b.x - a.x),
+    h: Math.abs(b.y - a.y),
+    angle: item.rotation ?? 0,
+  };
+}
+
+const SIGN: Record<ResizeHandle, [number, number]> = {
+  nw: [-1, -1],
+  n: [0, -1],
+  ne: [1, -1],
+  e: [1, 0],
+  se: [1, 1],
+  s: [0, 1],
+  sw: [-1, 1],
+  w: [-1, 0],
+};
+
+/**
+ * The item with its `handle` dragged to `p` (view units). The opposite side stays, or the
+ * middle with `fromCentre`; `keepRatio` keeps the proportions. Furniture takes any width and
+ * depth; symbols snap to S, M or L; texts to the three font sizes in `textSizes`.
+ */
+export function resizeItem<T extends PlanItem>(
+  item: T,
+  handle: ResizeHandle,
+  p: Point,
+  opts: { keepRatio?: boolean; fromCentre?: boolean; textSizes?: readonly number[] } = {},
+): T {
+  const f = itemFrame(item);
+  if (!f) return item;
+  const [sx, sy] = SIGN[handle];
+  const q = turn({ x: p.x - f.centre.x, y: p.y - f.centre.y }, -f.angle);
+  const fixed = {
+    x: opts.fromCentre ? 0 : -sx * (f.w / 2),
+    y: opts.fromCentre ? 0 : -sy * (f.h / 2),
+  };
+  const k = opts.fromCentre ? 2 : 1;
+  let w = sx ? Math.max(8, Math.abs(q.x - fixed.x) * k) : f.w;
+  let h = sy ? Math.max(8, Math.abs(q.y - fixed.y) * k) : f.h;
+  if (opts.keepRatio && sx && sy) {
+    const r = Math.max(w / f.w, h / f.h);
+    w = f.w * r;
+    h = f.h * r;
+  }
+  const local = opts.fromCentre
+    ? { x: 0, y: 0 }
+    : { x: fixed.x + (sx * w) / 2, y: fixed.y + (sy * h) / 2 };
+  const off = turn(local, f.angle);
+  const centre = { x: f.centre.x + off.x, y: f.centre.y + off.y };
+  if ('x' in item) {
+    if (categoryOf(item.kind).sized)
+      return {
+        ...item,
+        w: Math.round(w * 10) / 10,
+        h: Math.round(h * 10) / 10,
+        x: clampGrid(centre.x / kx),
+        y: clampGrid(centre.y / ky),
+      };
+    // Symbols keep their middle and pick the nearest of the three sizes.
+    const long = Math.max(f.w, f.h) * Math.max(w / f.w, h / f.h);
+    const sizes = Object.entries(SYMBOL_SIZES) as Array<['S' | 'M' | 'L', number]>;
+    const [size] = sizes.reduce((best, s) =>
+      Math.abs(s[1] - long) < Math.abs(best[1] - long) ? s : best,
+    );
+    const next = { ...item, size };
+    if (size === 'M') delete (next as Partial<PlanIcon>).size;
+    return next;
+  }
+  if ('x0' in item && item.kind === 'text') {
+    const sizes = opts.textSizes ?? [item.width];
+    const want = (h / f.h) * item.width;
+    const width = sizes.reduce((best, s) =>
+      Math.abs(s - want) < Math.abs(best - want) ? s : best,
+    );
+    return { ...item, width };
+  }
+  if ('x0' in item) {
+    return {
+      ...item,
+      x0: clampGrid((centre.x - w / 2) / kx),
+      y0: clampGrid((centre.y - h / 2) / ky),
+      x1: clampGrid((centre.x + w / 2) / kx),
+      y1: clampGrid((centre.y + h / 2) / ky),
+    };
+  }
+  return item;
+}
+
+/** The angle shown for an item: -180 to 180, "−20°" rather than "340°". */
+export function shownAngle(item: PlanItem): number {
+  const r = 'rotation' in item ? (item.rotation ?? 0) : 0;
+  return r > 180 ? r - 360 : r;
+}
+
 // Moving, turning and finding items ---------------------------------------------
 
 /** Converts a move in view units to STROKE_GRID units. */

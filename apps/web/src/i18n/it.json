@@ -923,7 +923,11 @@
       "ghosts": "Mostra posizioni precedenti",
       "moveOf": "Movimento di {{name}}",
       "clearMoves": "Cancella il movimento",
-      "moveHint": "Tocca la posizione {{number}} · Fatto per chiudere il movimento"
+      "moveHint": "Tocca la posizione {{number}} · Fatto per chiudere il movimento",
+      "angleField": "Angolo",
+      "width": "Larghezza",
+      "depth": "Profondità",
+      "size": "Misura"
     }
   },
   "tags": {

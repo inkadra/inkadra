@@ -14,6 +14,7 @@ import {
   gridStep,
   iconCone,
   itemBox,
+  itemFrame,
   layerOf,
   moveItem,
   normalizeRotation,
@@ -26,10 +27,13 @@ import {
   type Point,
   planItem,
   planItemAt,
+  type ResizeHandle,
   ROTATE_STEP,
   removePlanItems,
+  resizeItem,
   rotateItem,
   type SceneElement,
+  shownAngle,
   snapPlanPoint,
   toGrid,
   updateElement,
@@ -67,6 +71,7 @@ import {
   PlanGlyph,
   PlanShapeView,
   planCss,
+  TEXT_SIZES,
 } from './PlanDrawing.tsx';
 import { type LibraryItem, PlanLibrary, rememberRecent } from './PlanLibrary.tsx';
 import { SceneBadges, ScenePicker, scenesOfPlan } from './scenes.tsx';
@@ -89,6 +94,17 @@ const TOOLS: Array<{ tool: Tool; icon: IconName; key: string; phone: boolean }> 
 const KINDS = new Set<string>(PLAN_ICON_KINDS);
 /** A set of primes, as on the mockup; Other takes any focal length. */
 const LENSES = [18, 24, 35, 50, 85, 135];
+const HANDLES = ['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w'] as const;
+const HANDLE_SIGN: Record<ResizeHandle, [number, number]> = {
+  nw: [-1, -1],
+  n: [0, -1],
+  ne: [1, -1],
+  e: [1, 0],
+  se: [1, 1],
+  s: [0, 1],
+  sw: [-1, 1],
+  w: [-1, 0],
+};
 const isIconKind = (item: LibraryItem): item is PlanIconKind => KINDS.has(item);
 
 interface TextDraft {
@@ -101,7 +117,9 @@ type Gesture =
   | { kind: 'rotate'; ref: PlanItemRef; centre: Point; from: number; item: PlanItem }
   | { kind: 'draw'; points: Point[] }
   | { kind: 'shape'; shape: DragKind; a: Point; b: Point }
-  | { kind: 'bend'; index: number; item: PlanIcon };
+  | { kind: 'bend'; index: number; item: PlanIcon }
+  | { kind: 'resize'; handle: ResizeHandle; item: PlanItem }
+  | { kind: 'end'; which: 0 | 1; item: PlanShape };
 
 /** View units of a point of the drawing (0 to 1). */
 const view = (p: Point): Point => ({ x: p.x * PLAN_VIEW_W, y: p.y * PLAN_VIEW_H });
@@ -149,6 +167,8 @@ export function PlanEditor({
   /** The icon whose blocking is being drawn with the Movement tool, and the veiled copies. */
   const [moving, setMoving] = useState<string | null>(null);
   const [ghosts, setGhosts] = useState(true);
+  /** The angle shown over the rotate handle while it turns. */
+  const [chip, setChip] = useState<string | null>(null);
   const linked = scenesOfPlan(plan, new Map(scenes.map((s) => [s.id, s])));
   const [selected, setSelected] = useState<PlanItemRef | null>(null);
   /** The item being moved or turned, shown in place until the gesture ends. */
@@ -347,6 +367,19 @@ export function PlanEditor({
       commitText();
       return;
     }
+    const grip = (e.target as Element).closest<SVGElement>('[data-handle]');
+    if (grip && item) {
+      e.currentTarget.setPointerCapture(e.pointerId);
+      store.undo.stopCapturing();
+      gesture.current = { kind: 'resize', handle: grip.dataset.handle as ResizeHandle, item };
+      return;
+    }
+    const end = (e.target as Element).closest<SVGElement>('[data-end]');
+    if (end && item && 'x0' in item) {
+      e.currentTarget.setPointerCapture(e.pointerId);
+      gesture.current = { kind: 'end', which: end.dataset.end === '1' ? 1 : 0, item };
+      return;
+    }
     const bend = (e.target as Element).closest<SVGElement>('[data-bend]');
     if (bend && isIcon(item)) {
       e.currentTarget.setPointerCapture(e.pointerId);
@@ -433,6 +466,24 @@ export function PlanEditor({
         d = { x: view(to).x - c.x, y: view(to).y - c.y };
       }
       setPreview(moveItem(g.item, d));
+    } else if (g.kind === 'resize') {
+      const symbol = isIcon(g.item) && !categoryOf(g.item.kind).sized;
+      setPreview(
+        resizeItem(g.item, g.handle, view(p), {
+          keepRatio: e.shiftKey || symbol,
+          fromCentre: e.altKey,
+          textSizes: Object.values(TEXT_SIZES),
+        }),
+      );
+    } else if (g.kind === 'end') {
+      const q = snapped(p);
+      const next: PlanShape =
+        g.which === 0
+          ? { ...g.item, x0: toGrid(q.x), y0: toGrid(q.y) }
+          : { ...g.item, x1: toGrid(q.x), y1: toGrid(q.y) };
+      // A measure's end let go anywhere no longer follows its icon.
+      delete next[g.which === 0 ? 'from' : 'to'];
+      setPreview(next);
     } else if (g.kind === 'bend') {
       const at = blockingPositions(g.item);
       const a = at[g.index] as Point;
@@ -448,7 +499,9 @@ export function PlanEditor({
       const angle = Math.atan2(q.y - g.centre.y, q.x - g.centre.x);
       let degrees = ((angle - g.from) * 180) / Math.PI;
       if (snap || e.shiftKey) degrees = Math.round(degrees / ROTATE_STEP) * ROTATE_STEP;
-      setPreview(rotateItem(g.item, normalizeRotation(degrees)));
+      const turned = rotateItem(g.item, normalizeRotation(degrees));
+      setPreview(turned);
+      setChip(`${shownAngle(turned)}°`);
     } else if (g.kind === 'draw') {
       // Coalesced events keep fast lines smooth on pens and fast mice.
       const events = e.nativeEvent.getCoalescedEvents?.() ?? [e.nativeEvent];
@@ -464,7 +517,8 @@ export function PlanEditor({
     const g = gesture.current;
     gesture.current = null;
     if (!g) return;
-    if (g.kind === 'move' || g.kind === 'rotate' || g.kind === 'bend') {
+    if (g.kind !== 'draw' && g.kind !== 'shape') {
+      setChip(null);
       const next = previewRef.current;
       setPreview(null);
       if (next) write(next);
@@ -499,38 +553,103 @@ export function PlanEditor({
   }
 
   const box = current ? itemBox(current) : null;
+  const frame = current ? itemFrame(current) : null;
   const pad = 8;
-  const selection = box && (
-    <g className="plan-editor__selection">
-      <rect
-        x={box.x - pad}
-        y={box.y - pad}
-        width={box.w + pad * 2}
-        height={box.h + pad * 2}
-        rx={4}
-      />
-      <g data-rotate="" className="plan-editor__rotate">
-        <line x1={box.x + box.w / 2} y1={box.y - pad} x2={box.x + box.w / 2} y2={box.y - 40} />
-        <circle cx={box.x + box.w / 2} cy={box.y - 48} r={12} />
+  const symbol = isIcon(current) && !categoryOf(current.kind).sized;
+  const ends =
+    current && 'x0' in current && !frame
+      ? [
+          { x: current.x0 * (PLAN_VIEW_W / 4096), y: current.y0 * (PLAN_VIEW_H / 4096) },
+          { x: current.x1 * (PLAN_VIEW_W / 4096), y: current.y1 * (PLAN_VIEW_H / 4096) },
+        ]
+      : null;
+  const rotateGrip = (x: number, y: number) => (
+    <g data-rotate="" className="plan-editor__rotate">
+      <line x1={x} y1={y} x2={x} y2={y - 32} />
+      <circle cx={x} cy={y - 40} r={12} />
+      {chip && (
+        <g className="plan-editor__chip">
+          <rect x={x - 30} y={y - 92} width={60} height={28} rx={6} />
+          <text x={x} y={y - 72} textAnchor="middle">
+            {chip}
+          </text>
+        </g>
+      )}
+    </g>
+  );
+  const selection =
+    box &&
+    (frame ? (
+      <g
+        className="plan-editor__selection"
+        transform={`translate(${frame.centre.x} ${frame.centre.y}) rotate(${frame.angle})`}
+      >
+        <rect
+          x={-frame.w / 2 - pad}
+          y={-frame.h / 2 - pad}
+          width={frame.w + pad * 2}
+          height={frame.h + pad * 2}
+          rx={4}
+        />
+        {HANDLES.filter((h) => !symbol || h.length === 2).map((h) => {
+          const [sx, sy] = HANDLE_SIGN[h];
+          return (
+            <rect
+              key={h}
+              data-handle={h}
+              className={`plan-editor__handle plan-editor__handle--${h}`}
+              x={sx * (frame.w / 2 + pad) - 6}
+              y={sy * (frame.h / 2 + pad) - 6}
+              width={12}
+              height={12}
+              rx={2}
+            />
+          );
+        })}
+        {rotateGrip(0, -frame.h / 2 - pad)}
       </g>
-      {isIcon(current) &&
-        blockingPositions(current)
-          .slice(1)
-          .map((b, i) => {
-            const a = blockingPositions(current)[i] as Point;
-            const { middle } = blockingCurve(a, b, current.steps?.[i]?.bend);
-            return (
-              <circle
-                // biome-ignore lint/suspicious/noArrayIndexKey: a move is its place in the order.
-                key={i}
-                data-bend={i}
-                className="plan-editor__bend"
-                cx={middle.x}
-                cy={middle.y}
-                r={9}
-              />
-            );
-          })}
+    ) : (
+      <g className="plan-editor__selection">
+        <rect
+          x={box.x - pad}
+          y={box.y - pad}
+          width={box.w + pad * 2}
+          height={box.h + pad * 2}
+          rx={4}
+        />
+        {ends?.map((p, i) => (
+          <circle
+            // biome-ignore lint/suspicious/noArrayIndexKey: the two ends of a line.
+            key={i}
+            data-end={i}
+            className="plan-editor__bend"
+            cx={p.x}
+            cy={p.y}
+            r={8}
+          />
+        ))}
+        {rotateGrip(box.x + box.w / 2, box.y - pad)}
+      </g>
+    ));
+  const blockingGrips = isIcon(current) && (
+    <g className="plan-editor__selection">
+      {blockingPositions(current)
+        .slice(1)
+        .map((b, i) => {
+          const a = blockingPositions(current)[i] as Point;
+          const { middle } = blockingCurve(a, b, current.steps?.[i]?.bend);
+          return (
+            <circle
+              // biome-ignore lint/suspicious/noArrayIndexKey: a move is its place in the order.
+              key={i}
+              data-bend={i}
+              className="plan-editor__bend"
+              cx={middle.x}
+              cy={middle.y}
+              r={9}
+            />
+          );
+        })}
     </g>
   );
   const liveLayer = (
@@ -563,6 +682,7 @@ export function PlanEditor({
         />
       )}
       {selection}
+      {blockingGrips}
     </>
   );
 
@@ -678,6 +798,62 @@ export function PlanEditor({
       }}
     />
   );
+  /** Width and depth of furniture in metres; S, M, L of symbols and texts (round 6, e). */
+  const sizeFields = current && (
+    <>
+      {isIcon(current) && categoryOf(current.kind).sized && plan.scale && frame && (
+        <>
+          <span className="plan-editor__vr" aria-hidden="true" />
+          <NumberField
+            value={Math.round((frame.w / plan.scale) * 100) / 100}
+            min={0.05}
+            max={100}
+            step={0.01}
+            label={t('board.plan.width')}
+            onCommit={(m) => write({ ...current, w: m * (plan.scale as number), h: frame.h })}
+          />
+          <span className="plan-editor__times">×</span>
+          <NumberField
+            value={Math.round((frame.h / plan.scale) * 100) / 100}
+            min={0.05}
+            max={100}
+            step={0.01}
+            unit="m"
+            label={t('board.plan.depth')}
+            onCommit={(m) => write({ ...current, w: frame.w, h: m * (plan.scale as number) })}
+          />
+        </>
+      )}
+      {(symbol || ('x0' in current && current.kind === 'text')) && (
+        <>
+          <span className="plan-editor__vr" aria-hidden="true" />
+          <fieldset className="plan-props__segmented" aria-label={t('board.plan.size')}>
+            {(['S', 'M', 'L'] as const).map((size) => {
+              const on = isIcon(current)
+                ? (current.size ?? 'M') === size
+                : 'x0' in current && current.width === TEXT_SIZES[size];
+              return (
+                <button
+                  key={size}
+                  type="button"
+                  aria-pressed={on}
+                  onClick={() => {
+                    if (isIcon(current)) {
+                      const next = { ...current, size: size as 'S' | 'L' };
+                      if (size === 'M') delete (next as Partial<PlanIcon>).size;
+                      write(next);
+                    } else if ('x0' in current) write({ ...current, width: TEXT_SIZES[size] });
+                  }}
+                >
+                  {size}
+                </button>
+              );
+            })}
+          </fieldset>
+        </>
+      )}
+    </>
+  );
   const bar = current && !(phone && tool === 'icons' && armed) && (
     <div
       className="plan-editor__bar ink-motion-pop"
@@ -696,12 +872,23 @@ export function PlanEditor({
           {current.lens ?? DEFAULT_LENS} mm
         </button>
       )}
+      {sizeFields}
       <span className="plan-editor__vr" aria-hidden="true" />
       <IconButton
         icon="rotateRight"
         label={`${t('board.plan.rotate')} (R)`}
         onClick={() => rotate(ROTATE_STEP)}
       />
+      {frame && (
+        <NumberField
+          value={shownAngle(current)}
+          min={-360}
+          max={360}
+          unit="°"
+          label={t('board.plan.angleField')}
+          onCommit={(deg) => rotate(normalizeRotation(deg - shownAngle(current)))}
+        />
+      )}
       <IconButton icon="copy" label={t('board.plan.duplicate')} onClick={duplicate} />
       <IconButton icon="trash" label={t('board.plan.delete')} onClick={remove} />
     </div>
@@ -928,13 +1115,12 @@ export function PlanEditor({
       </ol>
       <div className="plan-props__row">
         <span>{t('board.plan.line')}</span>
-        <span className="plan-props__segmented" role="radiogroup" aria-label={t('board.plan.line')}>
+        <fieldset className="plan-props__segmented" aria-label={t('board.plan.line')}>
           {([false, true] as const).map((dashed) => (
             <button
               key={String(dashed)}
               type="button"
-              role="radio"
-              aria-checked={!!icon.dashed === dashed}
+              aria-pressed={!!icon.dashed === dashed}
               onClick={() => {
                 const next = { ...icon, dashed };
                 if (!dashed) delete (next as Partial<PlanIcon>).dashed;
@@ -944,7 +1130,7 @@ export function PlanEditor({
               {t(dashed ? 'board.plan.dashed' : 'board.plan.solid')}
             </button>
           ))}
-        </span>
+        </fieldset>
       </div>
       <label className="plan-props__row">
         <span>{t('board.plan.ghosts')}</span>

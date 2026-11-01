@@ -871,6 +871,9 @@ button.plan__badge:hover {
   font-weight: 700;
 }
 .plan-props__segmented {
+  min-width: 0;
+  margin: 0;
+  border: 0;
   display: inline-flex;
   padding: 3px;
   border-radius: var(--ink-radius-sm);
@@ -887,8 +890,49 @@ button.plan__badge:hover {
   font-size: 12px;
   cursor: pointer;
 }
-.plan-props__segmented button[aria-checked="true"] {
+.plan-props__segmented button[aria-pressed="true"] {
   background: var(--ink-surface-1);
   color: var(--ink-text-primary);
   box-shadow: 0 0 0 1px var(--ink-border-default);
+}
+
+/* Resize and rotate (round 6, e). */
+/* Over the selection outline's `fill: none`: the whole square takes the pointer. */
+.plan-editor__selection .plan-editor__handle {
+  fill: var(--ink-surface-1);
+  stroke: var(--ink-accent-primary);
+  stroke-width: 1.5;
+  vector-effect: non-scaling-stroke;
+}
+.plan-editor__handle--nw,
+.plan-editor__handle--se {
+  cursor: nwse-resize;
+}
+.plan-editor__handle--ne,
+.plan-editor__handle--sw {
+  cursor: nesw-resize;
+}
+.plan-editor__handle--n,
+.plan-editor__handle--s {
+  cursor: ns-resize;
+}
+.plan-editor__handle--e,
+.plan-editor__handle--w {
+  cursor: ew-resize;
+}
+.plan-editor__chip rect {
+  fill: var(--ink-accent-button);
+}
+.plan-editor__chip text {
+  fill: var(--ink-on-accent);
+  font-size: 15px;
+  font-weight: 600;
+  font-family: inherit;
+}
+.plan-editor__times {
+  padding: 0 2px;
+  color: var(--ink-text-muted);
+}
+.plan-editor__bar .plan-num {
+  height: 26px;
 }

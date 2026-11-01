@@ -36,8 +36,10 @@ import {
   type PlanElement,
   planItemAt,
   removePlanItems,
+  resizeItem,
   rotateItem,
   SYMBOL_SIZES,
+  shownAngle,
   snapPlanPoint,
   updatePlanItems,
 } from './plan.ts';
@@ -272,5 +274,65 @@ describe('blocking', () => {
     const bend = bendThrough(a, b, { x: 50, y: -30 });
     expect(bend).toBeCloseTo(30);
     expect(blockingCurve(a, b, bend).middle).toEqual({ x: 50, y: -30 });
+  });
+});
+
+describe('resizing', () => {
+  it('gives furniture any width and depth from the opposite corner', () => {
+    const sofa: PlanIcon = {
+      id: 'iconAAAAAAAAA',
+      kind: 'sofa',
+      color: '#1C1C1E',
+      x: 2048,
+      y: 2048,
+      w: 100,
+      h: 50,
+    };
+    const c = { x: 500, y: (2048 / STROKE_GRID) * PLAN_VIEW_H };
+    const out = resizeItem(sofa, 'se', { x: c.x + 50 + 120, y: c.y + 25 + 40 });
+    expect(out.w).toBeCloseTo(220);
+    expect(out.h).toBeCloseTo(90);
+    // The top left corner stayed: the middle moved half the growth.
+    expect((out.x / STROKE_GRID) * PLAN_VIEW_W).toBeCloseTo(500 + 60, 0);
+  });
+
+  it('snaps symbols to S, M or L and texts to their three sizes', () => {
+    const fresnel: PlanIcon = {
+      id: 'iconAAAAAAAAA',
+      kind: 'fresnel',
+      color: '#EDD963',
+      x: 2048,
+      y: 2048,
+    };
+    const c = { x: 500, y: (2048 / STROKE_GRID) * PLAN_VIEW_H };
+    expect(resizeItem(fresnel, 'se', { x: c.x + 40, y: c.y + 40 }, { keepRatio: true }).size).toBe(
+      'L',
+    );
+    expect(resizeItem(fresnel, 'se', { x: c.x + 10, y: c.y + 10 }, { keepRatio: true }).size).toBe(
+      'S',
+    );
+    const text = {
+      id: 'textAAAAAAAAA',
+      kind: 'text' as const,
+      color: '#1C1C1E',
+      width: 18,
+      x0: 1000,
+      y0: 1000,
+      x1: 1000,
+      y1: 1000,
+      text: 'uscita',
+    };
+    const big = resizeItem(
+      text,
+      's',
+      { x: 0, y: (1000 / STROKE_GRID) * PLAN_VIEW_H + 12 },
+      { textSizes: [14, 18, 26] },
+    );
+    expect(big.width).toBe(26);
+  });
+
+  it('shows turned items with a signed angle', () => {
+    expect(shownAngle({ ...camera, id: 'iconAAAAAAAAA', rotation: 340 })).toBe(-20);
+    expect(shownAngle({ ...camera, id: 'iconAAAAAAAAA', rotation: 90 })).toBe(90);
   });
 });
