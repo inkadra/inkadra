@@ -36,6 +36,17 @@ describe('Photoshop saved composite', () => {
   it.each([1, 2])('reads the absolute signed layer count in v%s', async (version) => {
     expect((await decode(photoshopFixture({ version, layers: -24 }).data)).layerCount).toBe(24);
   });
+  it('does not invent a zero count when only tagged layer info may be present', async () => {
+    const fixture = photoshopFixture();
+    const file = Buffer.concat([
+      fixture.data.subarray(0, 34),
+      Buffer.from([0, 0, 0, 8, 0, 0, 0, 0, 0, 0, 0, 0]),
+      fixture.data.subarray(38),
+    ]);
+    const result = await decode(file);
+    expect(result.layerCount).toBeNull();
+    expect(result.pixels?.data).toEqual(fixture.expected);
+  });
   it.each([
     'huge',
     'pixel cap',

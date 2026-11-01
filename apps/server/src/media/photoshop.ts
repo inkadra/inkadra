@@ -63,7 +63,8 @@ export async function readPhotoshop(file: string) {
       if (infoLength > maskLength - lengthBytes || (infoLength > 0 && infoLength < 2))
         throw new Error('Invalid layer info');
       if (infoLength) layerCount = Math.abs((await read(offset + lengthBytes, 2)).readInt16BE());
-      else layerCount = 0;
+      // With no primary Layer Info, layers may live in a tagged 16/32-bit block.
+      // Leave the count unknown rather than claiming there are zero layers.
     } else layerCount = 0;
     offset += maskLength;
     // shortcut: RGB/Grayscale, 8/16-bit raw or PackBits; other encodings use the thumbnail.
