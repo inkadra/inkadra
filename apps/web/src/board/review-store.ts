@@ -7,9 +7,11 @@ import type {
   CommentVisibility,
   ElementReview,
   ProjectRole,
+  ReactionSummary,
   UserSummary,
 } from '@inkadra/shared';
 import { useSyncExternalStore } from 'react';
+import { api } from '../lib/api.ts';
 import type { BoardConnection } from './connection.ts';
 import { mergeReplies } from './review-model.ts';
 
@@ -33,6 +35,8 @@ export interface ReviewsState {
   role: ProjectRole | null;
   counts: ReadonlyMap<string | null, CommentCount>;
   reviews: ReadonlyMap<string, ElementReview>;
+  /** Quick reactions on cards, by card (#334); comments carry their own. */
+  elementReactions: ReadonlyMap<string, readonly ReactionSummary[]>;
   threads: readonly CommentThread[];
   pins: ReadonlyMap<string, readonly CommentThread[]>;
   people: readonly UserSummary[];
@@ -48,6 +52,10 @@ export interface ReviewsState {
   target: CommentTarget | null;
   /** Card waiting for the point of a new pinned comment. */
   pinTarget: string | null;
+  /** Show the threads on the board: a bubble at the edge of each card and a popover (#311). */
+  onBoard: boolean;
+  /** Card whose threads are open in a popover beside it; null when none. */
+  popover: string | null;
   commentsRevision: number;
   reviewsRevision: number;
 }
@@ -58,6 +66,7 @@ const EMPTY: ReviewsState = {
   role: null,
   counts: new Map(),
   reviews: new Map(),
+  elementReactions: new Map(),
   threads: [],
   pins: new Map(),
   people: [],
@@ -68,6 +77,8 @@ const EMPTY: ReviewsState = {
   canvas: true,
   target: null,
   pinTarget: null,
+  onBoard: true,
+  popover: null,
   commentsRevision: 0,
   reviewsRevision: 0,
 };
@@ -122,6 +133,51 @@ export function openComments(target: CommentTarget = {}) {
 
 export function closeComments() {
   setReviews({ target: null });
+}
+
+const ON_BOARD_KEY = 'inkadra.comments.onBoard';
+/** One choice per person, kept on this device; on until someone turns it off. */
+const onBoardKey = (userId: string | undefined) =>
+  userId ? `${ON_BOARD_KEY}.${userId}` : ON_BOARD_KEY;
+
+export function readOnBoard(userId: string | undefined): boolean {
+  try {
+    return localStorage.getItem(onBoardKey(userId)) !== '0';
+  } catch {
+    return true;
+  }
+}
+
+export function setOnBoard(on: boolean, userId: string | undefined) {
+  try {
+    localStorage.setItem(onBoardKey(userId), on ? '1' : '0');
+  } catch {
+    // Private mode: the choice lasts for this page only.
+  }
+  setReviews({ onBoard: on, ...(on ? {} : { popover: null }) });
+}
+
+/**
+ * Marks a thread read or unread for the person (#336). The list changes at once; the server
+ * keeps it per person, so a failure just fetches the threads again.
+ */
+export function setThreadRead(threadId: string, read: boolean) {
+  const thread = state.threads.find((t) => t.id === threadId);
+  if (!thread || thread.unread === !read) return;
+  setReviews({
+    threads: state.threads.map((t) => (t.id === threadId ? { ...t, unread: !read } : t)),
+  });
+  api.post(`/comments/${threadId}/${read ? 'read' : 'unread'}`, {}).catch(() => {
+    refreshReviews('comments', thread.elementId);
+  });
+}
+
+export function openPopover(elementId: string) {
+  setReviews({ popover: elementId });
+}
+
+export function closePopover() {
+  if (state.popover !== null) setReviews({ popover: null });
 }
 
 export function placePin(elementId: string | null) {

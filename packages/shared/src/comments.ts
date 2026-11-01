@@ -130,6 +130,44 @@ const GuestBody = z.string().trim().min(1).max(MAX_COMMENT_LENGTH).openapi({
   description: 'Plain text. Guests cannot mention: `@{…}` is kept as typed and is no mention.',
 });
 
+/** The quick reactions on cards and comments: a small fixed set (decision 0013). */
+export const REACTION_EMOJIS = ['👍', '❤️', '✅', '❓'] as const;
+export const ReactionEmoji = z.enum(REACTION_EMOJIS).openapi('ReactionEmoji');
+export type ReactionEmoji = z.infer<typeof ReactionEmoji>;
+
+/** Most names listed per reaction; `count` is always the full number. */
+export const MAX_REACTION_NAMES = 20;
+
+export const ReactionSummary = z
+  .object({
+    emoji: ReactionEmoji,
+    count: z.int().min(1),
+    mine: z.boolean().openapi({ description: 'The caller reacted with this emoji.' }),
+    names: z
+      .array(z.string())
+      .max(MAX_REACTION_NAMES)
+      .openapi({
+        description:
+          'Who reacted, oldest first, for the hover; guests by the name they typed. Guests of ' +
+          'other links never appear (nor count) in what a guest receives.',
+      }),
+  })
+  .openapi('ReactionSummary');
+export type ReactionSummary = z.infer<typeof ReactionSummary>;
+
+export const Reactions = z
+  .object({ reactions: z.array(ReactionSummary) })
+  .openapi('Reactions', { description: 'The reactions now on the comment or card.' });
+export type Reactions = z.infer<typeof Reactions>;
+
+/** Reactions of the cards of a board; cards without any are left out. */
+export const ElementReactions = z
+  .object({
+    items: z.array(z.object({ elementId: ElementRef, reactions: z.array(ReactionSummary) })),
+  })
+  .openapi('ElementReactions');
+export type ElementReactions = z.infer<typeof ElementReactions>;
+
 const commentFields = {
   id: Id,
   boardId: Id,
@@ -168,6 +206,9 @@ export const Comment = z
         'or a `team` thread. A reply carries the link of the guest who wrote it, or null.',
     }),
     shareLinkLabel: shareLinkLabel('Label of the link in `shareLinkId`'),
+    reactions: z.array(ReactionSummary).openapi({
+      description: 'Quick reactions, in the order of the fixed set; none without reactions.',
+    }),
     canEdit: z.boolean().openapi({ description: 'The caller wrote it.' }),
     canDelete: z.boolean().openapi({ description: 'The caller wrote it, or is editor or owner.' }),
   })
@@ -184,6 +225,11 @@ const repliesDescription =
 
 export const CommentThread = Comment.extend({
   ...threadFields,
+  unread: z.boolean().openapi({
+    description:
+      'The caller has not read it: someone else wrote in it since they last opened it, or ' +
+      'they marked it unread (`POST /comments/{commentId}/unread`).',
+  }),
   resolvedBy: Author.nullable(),
   replies: z.array(Comment).max(INLINE_REPLIES).openapi({ description: repliesDescription }),
 }).openapi('CommentThread');
@@ -198,6 +244,9 @@ export const GuestComment = z
       description:
         'Empty once deleted. Mentions are already written as `@Name`, with no ids; a deleted ' +
         'account becomes `@…`.',
+    }),
+    reactions: z.array(ReactionSummary).openapi({
+      description: 'Quick reactions of the team and of the guests of the same link.',
     }),
     canEdit: z.boolean().openapi({ description: 'This guest wrote it.' }),
     canDelete: z.boolean().openapi({ description: 'This guest wrote it.' }),

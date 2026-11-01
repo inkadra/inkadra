@@ -6,6 +6,8 @@ import type {
   GuestPick,
   GuestSession,
   GuestSetElementReview,
+  ReactionEmoji,
+  Reactions,
   SetPick,
   ShareLinkPreview,
 } from '@inkadra/shared';
@@ -127,6 +129,12 @@ export const guestApi = {
 
   deleteComment: (linkId: string, commentId: string) =>
     send<null>(`/links/${linkId}/comments/${commentId}`, { method: 'DELETE' }),
+
+  react: (linkId: string, commentId: string, emoji: ReactionEmoji, on: boolean) =>
+    send<Reactions>(
+      `/links/${linkId}/comments/${commentId}/reactions/${encodeURIComponent(emoji)}`,
+      { method: on ? 'PUT' : 'DELETE' },
+    ),
 
   review: (linkId: string, boardId: string, elementId: string, body: GuestSetElementReview) =>
     send<GuestElementReview>(

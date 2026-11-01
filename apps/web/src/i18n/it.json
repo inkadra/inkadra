@@ -1314,6 +1314,7 @@
     "filter": "Mostra le discussioni",
     "filterStatus": {
       "open": "Aperte",
+      "mentions": "Menzioni e risposte",
       "resolved": "Risolte",
       "all": "Tutte"
     },
@@ -1378,7 +1379,25 @@
     "rateLimited": "Troppi commenti in poco tempo: aspetta un minuto.",
     "escapeAgain": "Premi di nuovo Esc per scartare il testo.",
     "arrived_one": "È arrivato un nuovo commento.",
-    "arrived_other": "Sono arrivati {{count}} nuovi commenti."
+    "arrived_other": "Sono arrivati {{count}} nuovi commenti.",
+    "showOnBoard": "Mostra sulla board",
+    "showOnBoardHint": "Fumetti accanto alle card con discussioni aperte",
+    "popoverLabel": "Discussioni su {{card}}",
+    "popoverTitle_one": "{{count}} discussione aperta",
+    "popoverTitle_other": "{{count}} discussioni aperte",
+    "openInPanel": "Apri nel pannello",
+    "closePopover": "Chiudi le discussioni",
+    "reactions": "Reazioni",
+    "reactionChip": "{{emoji}} {{count}}: {{names}}",
+    "reactAdd": "Aggiungi una reazione",
+    "reactWith": "Reagisci con {{emoji}}",
+    "unread": "Non letta",
+    "unreadCount_one": "{{count}} non letta",
+    "unreadCount_other": "{{count}} non lette",
+    "threadMenu": "Azioni sulla discussione",
+    "markUnread": "Segna come non letta",
+    "markRead": "Segna come letta",
+    "emptyMentions": "Nessuna discussione aperta ti menziona o ti risponde."
   },
   "review": {
     "title": "Revisione",

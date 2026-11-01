@@ -1,7 +1,8 @@
-import type { GuestAuthor, GuestComment, GuestCommentThread } from '@inkadra/shared';
+import type { GuestAuthor, GuestComment, GuestCommentThread, ReactionEmoji } from '@inkadra/shared';
 import { Button } from '@inkadra/ui';
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ReactionBar } from '../board/ReactionBar.tsx';
 import { useGuestActions } from './actions.ts';
 import { guestApi } from './api.ts';
 import { failureOf } from './model.ts';
@@ -183,6 +184,27 @@ function CommentView({ comment, onDone }: { comment: GuestComment; onDone: () =>
             <span className="ink-muted"> {t('guest.comments.edited')}</span>
           )}
         </p>
+      )}
+      {!deleted && !editing && (
+        <ReactionBar
+          reactions={comment.reactions}
+          {...(actions.rights.comments
+            ? {
+                onToggle: (emoji: ReactionEmoji, on: boolean) => {
+                  // Reacting is under the guest's name: asked first if it is missing.
+                  actions.withName(async () => {
+                    try {
+                      await guestApi.react(actions.linkId, comment.id, emoji, on);
+                      await onDone();
+                    } catch (err) {
+                      actions.notify(actions.fail(err));
+                    }
+                  });
+                  return Promise.resolve();
+                },
+              }
+            : {})}
+        />
       )}
       {own && !editing && actions.rights.comments && (
         <div className="guest-comment__actions">

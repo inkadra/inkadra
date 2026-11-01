@@ -6,6 +6,7 @@ import type {
   Comment,
   CommentCounts,
   CommentThread,
+  ElementReactions,
   ProjectRole,
 } from '@inkadra/shared';
 import { useEffect, useRef } from 'react';
@@ -150,6 +151,26 @@ export function useBoardReviews(
       })
       .catch(() => {
         if (alive) setReviews({ reviewsStatus: 'error' });
+      });
+    return () => {
+      alive = false;
+    };
+  }, [boardId, synced, accessVersion, reviewsRevision]);
+
+  // Reactions on cards come with the review data and follow its notices.
+  useEffect(() => {
+    if (!synced) return;
+    let alive = true;
+    void accessVersion;
+    void reviewsRevision;
+    api
+      .get<ElementReactions>(`/boards/${boardId}/reactions`)
+      .then((r) => {
+        if (alive)
+          setReviews({ elementReactions: new Map(r.items.map((i) => [i.elementId, i.reactions])) });
+      })
+      .catch(() => {
+        // Reactions are a nicety: the board works without them until the next change.
       });
     return () => {
       alive = false;

@@ -105,7 +105,7 @@ test('comments, mentions, review status and notifications between two people', a
 
   // The owner sees it live: badge on the card and count in the header.
   await expect(
-    card.getByRole('button', { name: '1 discussione aperta: apri i commenti' }),
+    page.getByRole('button', { name: '1 discussione aperta: apri i commenti' }),
   ).toBeVisible();
   await expect(page.getByRole('button', { name: 'Commenti: 1 discussione aperta' })).toBeVisible();
 

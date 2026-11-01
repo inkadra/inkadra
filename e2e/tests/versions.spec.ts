@@ -109,14 +109,18 @@ test('named versions preview an isolated read-only canvas and restore every open
       { timeout: 15_000 },
     )
     .toBe(true);
-  const badge = page.locator(`[data-el="${note.id}"] .card-review`);
+  // The bubble on the card's top-right corner stands in for the count badge of the card.
+  const badge = page.locator(`[data-bubble="${note.id}"]`);
   await expect(badge).toBeVisible();
   const noteBox = await page.locator(`[data-el="${note.id}"]`).boundingBox();
   const badgeBox = await badge.boundingBox();
   expect(badgeBox).not.toBeNull();
   expect(noteBox).not.toBeNull();
   if (badgeBox && noteBox) {
-    expect(badgeBox.y).toBeGreaterThanOrEqual(noteBox.y);
+    expect(Math.abs(badgeBox.y + badgeBox.height / 2 - noteBox.y)).toBeLessThanOrEqual(2);
+    expect(
+      Math.abs(badgeBox.x + badgeBox.width * 0.2 - (noteBox.x + noteBox.width)),
+    ).toBeLessThanOrEqual(2);
   }
   const commentsButton = page.getByRole('button', { name: /^Commenti:/ });
   const secondContext = await browser.newContext({ locale: 'it-IT' });
@@ -159,7 +163,7 @@ test('named versions preview an isolated read-only canvas and restore every open
     await previewVersion();
     await expect(page.locator('[data-el]')).toHaveCount(4);
     await expect(page.getByText('New live note')).toHaveCount(0);
-    await expect(page.locator('.card-review, .comment-pin')).toHaveCount(0);
+    await expect(page.locator('.card-review, .comment-pin, .comment-bubble')).toHaveCount(0);
     await expect(commentsButton).toHaveCount(0);
     await page.locator(`[data-el="${note.id}"]`).click();
     await expect(page.getByRole('button', { name: 'Commenti e revisione' })).toHaveCount(0);
@@ -671,7 +675,7 @@ test('storyboard and shot list preview a version read-only, and editors hide fra
   await expect(hideTile).toHaveAttribute('aria-pressed', 'false');
 });
 
-test('card badges stay clear of the header of a column and inside other cards', async ({
+test('comment bubbles stay clear of the header of a column and on the corner of other cards', async ({
   page,
   baseURL,
 }) => {
@@ -693,7 +697,7 @@ test('card badges stay clear of the header of a column and inside other cards', 
   const overlaps = (a: { x: number; y: number; width: number; height: number }, b: typeof a) =>
     a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height;
   const columnCard = page.locator(`[data-el="${column.id}"]`);
-  const columnBadge = columnCard.locator(':scope > .card-review');
+  const columnBadge = page.locator(`[data-bubble="${column.id}"]`);
   await expect(columnBadge).toBeVisible();
   const badgeBox = (await columnBadge.boundingBox())!;
   for (const part of ['.column__title', '.column__count', '.column__toggle']) {
@@ -702,11 +706,13 @@ test('card badges stay clear of the header of a column and inside other cards', 
     expect(overlaps(badgeBox, box!), `${part} is covered by the badges`).toBe(false);
   }
   const noteCard = page.locator(`[data-el="${note.id}"]`);
-  await expect(noteCard.locator('.card-review')).toBeVisible();
+  const noteBadge = page.locator(`[data-bubble="${note.id}"]`);
+  await expect(noteBadge).toBeVisible();
   const noteBox = (await noteCard.boundingBox())!;
-  const noteBadge = (await noteCard.locator('.card-review').boundingBox())!;
-  expect(noteBadge.y).toBeGreaterThanOrEqual(noteBox.y);
-  expect(noteBadge.x + noteBadge.width).toBeLessThanOrEqual(noteBox.x + noteBox.width);
+  const noteBadgeBox = (await noteBadge.boundingBox())!;
+  // On the corner: it hangs over the edges by less than its own size.
+  expect(noteBadgeBox.y).toBeGreaterThanOrEqual(noteBox.y - noteBadgeBox.height);
+  expect(noteBadgeBox.x + noteBadgeBox.width).toBeGreaterThan(noteBox.x + noteBox.width);
 });
 
 test('visible header icon button opens the versions dialog', async ({ page, baseURL }) => {

@@ -9,6 +9,8 @@ import {
   GuestUpdateComment,
   Id,
   INLINE_REPLIES,
+  ReactionEmoji,
+  type ReactionSummary,
   ReplyQuery,
   renderMentions,
   z,
@@ -30,11 +32,12 @@ import {
 import type { FastifyInstance } from 'fastify';
 import { boardAccess } from '../access.ts';
 import type { Database } from '../db/client.ts';
-import { comment, shareGuest, user } from '../db/schema.ts';
+import { comment, commentReaction, shareGuest, user } from '../db/schema.ts';
 import { iso } from './api-routes.ts';
 import { HttpError } from './errors.ts';
 import type { GuestAuth, GuestContext } from './guest-context.ts';
 import { RateLimiter } from './link-previews.ts';
+import { commentReactions } from './reactions.ts';
 
 /**
  * Comments as guests of a share link see and write them (decision 0013): only `everyone`
@@ -58,6 +61,7 @@ export type GuestCommentEvent = {
 
 const BoardParams = z.object({ linkId: Id, boardId: Id });
 const CommentParams = z.object({ linkId: Id, commentId: Id });
+const ReactionParams = z.object({ linkId: Id, commentId: Id, emoji: ReactionEmoji });
 
 /** Replies a guest may read: of the team (no link) or of their own link. */
 const replyOfLink = (linkId: string) =>
@@ -195,7 +199,14 @@ async function namesFor(db: Database, ctx: GuestContext, boardId: string, rows: 
 
 type Names = Awaited<ReturnType<typeof namesFor>>;
 
-function toGuestComment(row: CommentRow, ctx: GuestContext, names: Names): GuestComment {
+const noReactions: ReadonlyMap<string, ReactionSummary[]> = new Map();
+
+function toGuestComment(
+  row: CommentRow,
+  ctx: GuestContext,
+  names: Names,
+  reactions: ReadonlyMap<string, ReactionSummary[]> = noReactions,
+): GuestComment {
   const mine = row.authorGuestId === ctx.guest.id;
   let author: GuestAuthor;
   if (row.authorId)
@@ -224,6 +235,7 @@ function toGuestComment(row: CommentRow, ctx: GuestContext, names: Names): Guest
     deletedAt: row.deletedAt ? iso(row.deletedAt) : null,
     author,
     body,
+    reactions: row.deletedAt ? [] : (reactions.get(row.id) ?? []),
     canEdit: mine && !row.deletedAt,
     canDelete: mine && !row.deletedAt,
   };
@@ -345,12 +357,17 @@ export function registerGuestCommentRoutes(
       ctx,
       page.map((r) => r.c.id),
     );
-    const names = await namesFor(db, ctx, boardId, [
-      ...page.map((r) => r.c),
-      ...[...replies.values()].flat(),
+    const shown = [...page.map((r) => r.c), ...[...replies.values()].flat()];
+    const [names, reactions] = await Promise.all([
+      namesFor(db, ctx, boardId, shown),
+      commentReactions(
+        db,
+        shown.map((c) => c.id),
+        { guestId: ctx.guest.id, linkId },
+      ),
     ]);
     const items: GuestCommentThread[] = page.map(({ c }) => ({
-      ...toGuestComment(c, ctx, names),
+      ...toGuestComment(c, ctx, names, reactions),
       resolvedAt: c.resolvedAt ? iso(c.resolvedAt) : null,
       resolvedBy: c.resolvedAt
         ? c.resolvedBy
@@ -358,7 +375,7 @@ export function registerGuestCommentRoutes(
           : { kind: 'deleted', name: null, isYou: false }
         : null,
       replyCount: counts.get(c.id) ?? 0,
-      replies: (replies.get(c.id) ?? []).map((r) => toGuestComment(r, ctx, names)),
+      replies: (replies.get(c.id) ?? []).map((r) => toGuestComment(r, ctx, names, reactions)),
     }));
     return { items, nextCursor };
   });
@@ -385,14 +402,21 @@ export function registerGuestCommentRoutes(
       .limit(query.limit + 1);
     const page = rows.slice(0, query.limit);
     const last = page.at(-1);
-    const names = await namesFor(
-      db,
-      ctx,
-      thread.boardId,
-      page.map((r) => r.c),
-    );
+    const [names, reactions] = await Promise.all([
+      namesFor(
+        db,
+        ctx,
+        thread.boardId,
+        page.map((r) => r.c),
+      ),
+      commentReactions(
+        db,
+        page.map((r) => r.c.id),
+        { guestId: ctx.guest.id, linkId },
+      ),
+    ]);
     return {
-      items: page.map((r) => toGuestComment(r.c, ctx, names)),
+      items: page.map((r) => toGuestComment(r.c, ctx, names, reactions)),
       nextCursor: rows.length > query.limit && last ? encodeCursor(last.key, last.c.id) : null,
     };
   });
@@ -475,7 +499,12 @@ export function registerGuestCommentRoutes(
       threadId: row.threadId ?? row.id,
       guestId: ctx.guest.id,
     });
-    return toGuestComment(updated, ctx, await namesFor(db, ctx, row.boardId, [updated]));
+    return toGuestComment(
+      updated,
+      ctx,
+      await namesFor(db, ctx, row.boardId, [updated]),
+      await commentReactions(db, [updated.id], { guestId: ctx.guest.id, linkId }),
+    );
   });
 
   app.delete(v1('/guest/links/:linkId/comments/:commentId'), async (req, reply) => {
@@ -524,4 +553,65 @@ export function registerGuestCommentRoutes(
     });
     return reply.status(204).send();
   });
+  for (const on of [true, false]) {
+    app.route({
+      method: on ? 'PUT' : 'DELETE',
+      url: v1('/guest/links/:linkId/comments/:commentId/reactions/:emoji'),
+      handler: async (req, reply) => {
+        const { linkId, commentId, emoji } = ReactionParams.parse(req.params);
+        const ctx = await guests.requireGuest(req, reply, linkId);
+        guests.requireCan(ctx, 'write_comments');
+        // Any comment this guest can read, not only their own.
+        const [row] = await db.select().from(comment).where(eq(comment.id, commentId));
+        if (!row || !ctx.boards.has(row.boardId) || row.deletedAt)
+          throw new HttpError('not_found', 'Comment not found.');
+        await readableThread(ctx, row.threadId ?? row.id);
+        if (row.threadId) {
+          const [visible] = await db
+            .select({ id: comment.id })
+            .from(comment)
+            .where(and(eq(comment.id, row.id), replyOfLink(ctx.link.id)));
+          if (!visible) throw new HttpError('not_found', 'Comment not found.');
+        }
+        guests.requireName(ctx);
+        guests.takeWrite(ctx, reply);
+        const changed = on
+          ? await db
+              .insert(commentReaction)
+              .values({ commentId, emoji, guestId: ctx.guest.id, shareLinkId: ctx.link.id })
+              .onConflictDoNothing()
+              .returning({ id: commentReaction.id })
+          : await db
+              .delete(commentReaction)
+              .where(
+                and(
+                  eq(commentReaction.commentId, commentId),
+                  eq(commentReaction.emoji, emoji),
+                  eq(commentReaction.guestId, ctx.guest.id),
+                ),
+              )
+              .returning({ id: commentReaction.id });
+        if (changed.length > 0) {
+          await db.update(comment).set({ updatedAt: new Date() }).where(eq(comment.id, commentId));
+          // Tells the team's open boards; a reaction sends no notification (kind 'comment',
+          // action 'edited').
+          await afterWrite({
+            kind: 'comment',
+            projectId: ctx.link.projectId,
+            action: 'edited',
+            boardId: row.boardId,
+            elementId: row.elementId,
+            commentId: row.id,
+            threadId: row.threadId ?? row.id,
+            guestId: ctx.guest.id,
+          });
+        }
+        const reactions = await commentReactions(db, [commentId], {
+          guestId: ctx.guest.id,
+          linkId,
+        });
+        return { reactions: reactions.get(commentId) ?? [] };
+      },
+    });
+  }
 }
