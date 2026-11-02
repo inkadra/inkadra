@@ -68,6 +68,7 @@ in order. An accepted decision is never rewritten: a later one supersedes it.
 | [0062](0062-set-plans.md)                            | Set plans: frame strokes and shapes plus set icons on a card of their own              |
 | [0064](0064-pdf-screenplay-import.md)                | PDF screenplays read in a disposable browser worker, with bounded size, pages and time |
 | [0065](0065-office-previews.md)                      | Optional Office previews: sandboxed LibreOffice worker, bounded spreadsheet grids      |
+| [0066](0066-password-change-keeps-the-session.md)    | A password change closes the other sessions and keeps the one that made it             |
 
 Two decisions share the number 0025: they were accepted in parallel, and accepted records
 are not renumbered.

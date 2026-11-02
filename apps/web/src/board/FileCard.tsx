@@ -389,9 +389,12 @@ function VideoPreview({
 
 /**
  * The waveform the worker read (#327), played and scrubbed on the card; a flat bar until it
- * arrives. Plays the original where the browser reads it, else the AAC copy.
+ * arrives. Plays the original where the browser reads it, else the AAC copy. Until the asset
+ * is ready (uploading, queued, being read) there is no player: an `<audio>` given the address
+ * of a file that is not there yet gets a 404, stays in error, and the first play fails with
+ * "Format error" (QA 2026-11-02 round 2, R2-03).
  */
-function AudioPreview({
+export function AudioPreview({
   id,
   asset,
   state,
@@ -402,16 +405,13 @@ function AudioPreview({
   state: 'ready' | 'processing' | 'failed';
   width: number;
 }) {
-  const peaks = useWaveform(asset.waveformUrl);
+  const { t } = useTranslation();
+  const peaks = useWaveform(state === 'ready' ? asset.waveformUrl : null);
   // One bar every 7 board pixels inside the 12 px margins of the preview.
   const bars = Math.max(12, Math.min(120, Math.floor((width - 24) / 7)));
   return (
     <Preview family="audio" className="fcard__preview--audio">
-      {state === 'failed' ? (
-        <span className="fcard__audio-icon" aria-hidden="true">
-          <Icon name="volume" size={22} />
-        </span>
-      ) : (
+      {state === 'ready' ? (
         <AudioPlayer
           id={id}
           src={playbackUrl(asset)}
@@ -420,6 +420,15 @@ function AudioPreview({
           peaks={peaks}
           bars={bars}
         />
+      ) : (
+        <>
+          <span className="fcard__audio-icon" aria-hidden="true">
+            <Icon name="volume" size={22} />
+          </span>
+          {state === 'processing' && (
+            <span className="fcard__state">{t('board.image.processing')}</span>
+          )}
+        </>
       )}
     </Preview>
   );

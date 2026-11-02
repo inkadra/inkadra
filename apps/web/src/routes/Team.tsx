@@ -244,7 +244,7 @@ export function Team() {
                         </span>
                       </span>
                     </th>
-                    <td>
+                    <td className="team-col--role" data-label={t('admin.role')}>
                       <Select
                         className="ink-input team-role"
                         aria-label={t('admin.roleFor', { name: m.name })}

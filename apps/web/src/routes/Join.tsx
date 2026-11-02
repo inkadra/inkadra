@@ -29,6 +29,8 @@ export function Join() {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [creating, setCreating] = useState(true);
+  // The claim sets the cookie a sign-up needs: the form waits for it, or a quick submit is refused.
+  const [claimed, setClaimed] = useState(false);
   const signedInHere = useRef(false);
 
   useEffect(() => {
@@ -41,7 +43,10 @@ export function Join() {
   // Signed out and still valid: claim it, so a sign-up with any method may go through.
   useEffect(() => {
     if (!user && preview?.status === 'valid')
-      void api.post(`/invitations/by-token/${encodeURIComponent(token)}/claim`, {}).catch(() => {});
+      api
+        .post(`/invitations/by-token/${encodeURIComponent(token)}/claim`, {})
+        .catch(() => {})
+        .finally(() => setClaimed(true));
   }, [user, preview, token]);
 
   const accept = useCallback(async () => {
@@ -94,7 +99,7 @@ export function Join() {
   let body: React.ReactNode;
   if (missing) {
     body = <p className="login__error login__error--box">{t('join.missing')}</p>;
-  } else if (!preview || checkingUsed) {
+  } else if (!preview || checkingUsed || (!user && preview.status === 'valid' && !claimed)) {
     body = null;
   } else if (preview.status !== 'valid') {
     body = <p className="login__error login__error--box">{t(`join.status.${preview.status}`)}</p>;
