@@ -23,6 +23,7 @@ import {
   SESSION_REFRESH_MS,
   shotLabels,
   shownStatus,
+  storyboardOrder,
   togglePick,
   toggleStars,
 } from './model.ts';
@@ -283,5 +284,47 @@ describe('shot labels', () => {
     ]);
     expect(labels.get('f0000001')).toBe('1A');
     expect(labels.get('f0000003')).toBe('1B');
+  });
+});
+
+describe('storyboard order', () => {
+  const el = (over: Record<string, unknown>): GuestElement =>
+    ({
+      id: 'e0000001',
+      type: 'note',
+      x: 0,
+      y: 0,
+      w: 10,
+      z: '1',
+      parent: null,
+      createdBy: null,
+      createdAt: 0,
+      ...over,
+    }) as GuestElement;
+
+  // QA 2026-11-02 round 2: the card list read 8E, 2A, 13C… in whatever order the server sent.
+  it('lists frames scene by scene, then shot by shot, and other cards after them', () => {
+    const elements = [
+      el({ id: 'f0000008', type: 'frame', parent: 's0000008', z: '5' }),
+      el({ id: 'n0000001', type: 'note', z: '1' }),
+      el({ id: 'f0000002', type: 'frame', parent: 's0000002', z: '1' }),
+      el({ id: 'f0000013', type: 'frame', parent: 's0000013', z: '3' }),
+      el({ id: 'f0000003', type: 'frame', parent: 's0000002', z: '2' }),
+      el({ id: 's0000013', type: 'scene', number: '13', title: 'C', z: '3' }),
+      el({ id: 's0000002', type: 'scene', number: '2', title: 'A', z: '1' }),
+      el({ id: 's0000008', type: 'scene', number: '8', title: 'B', z: '2' }),
+      el({ id: 'f0000099', type: 'frame', parent: null, z: '9' }),
+      el({ id: 'n0000002', type: 'note', z: '2' }),
+    ];
+    const cards = elements.filter((e) => e.type !== 'scene');
+    expect(storyboardOrder(cards, elements).map((e) => e.id)).toEqual([
+      'f0000002',
+      'f0000003',
+      'f0000008',
+      'f0000013',
+      'f0000099',
+      'n0000001',
+      'n0000002',
+    ]);
   });
 });

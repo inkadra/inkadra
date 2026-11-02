@@ -6,7 +6,15 @@ import { useTranslation } from 'react-i18next';
 import { useGuestActions } from './actions.ts';
 import { PickControls, ReviewChip } from './GuestCardExtras.tsx';
 import { GuestComments } from './GuestComments.tsx';
-import { boardTree, canWithdraw, cardLabel, isPicture, shotLabels, shownStatus } from './model.ts';
+import {
+  boardTree,
+  canWithdraw,
+  cardLabel,
+  isPicture,
+  shotLabels,
+  shownStatus,
+  storyboardOrder,
+} from './model.ts';
 
 const LISTED = new Set(['note', 'image', 'link', 'file', 'todo', 'color', 'board', 'frame']);
 
@@ -31,7 +39,14 @@ export function GuestPanel({
   const tree = boardTree(session.boards, session.boardId);
   const cardsId = useId();
   const elements = snapshot?.elements ?? [];
-  const cards = elements.filter((e) => LISTED.has(e.type) && e.parent !== UNSORTED);
+  const cards = useMemo(
+    () =>
+      storyboardOrder(
+        elements.filter((e) => LISTED.has(e.type) && e.parent !== UNSORTED),
+        elements,
+      ),
+    [elements],
+  );
   const shots = useMemo(() => shotLabels(elements), [elements]);
   // Frames take the shot label of the canvas; cards without text of their own are told apart
   // by number: "Immagine 1", "Immagine 2".

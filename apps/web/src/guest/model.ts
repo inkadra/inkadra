@@ -270,3 +270,26 @@ export function shotLabels(elements: readonly GuestElement[]): Map<string, strin
 
   return labels;
 }
+
+/**
+ * The cards of a board as a storyboard reads: frames scene by scene and shot by shot, then
+ * every other card in the order it came. Scenes and frames are ordered by the document, not by
+ * the order the server sent them (that gave 8E, 2A, 13C…).
+ */
+export function storyboardOrder<T extends GuestElement>(
+  cards: readonly T[],
+  elements: readonly GuestElement[],
+): T[] {
+  const parsed: Element[] = [];
+  for (const raw of elements) {
+    const { body: _body, ...fields } = raw;
+    const result = Element.safeParse(fields);
+    if (result.success) parsed.push(result.data);
+  }
+  const position = new Map<string, number>();
+  for (const { frames } of storyboardOf(parsed))
+    for (const frame of frames) position.set(frame.id, position.size);
+  const frames = cards.filter((c) => position.has(c.id));
+  frames.sort((a, b) => (position.get(a.id) ?? 0) - (position.get(b.id) ?? 0));
+  return [...frames, ...cards.filter((c) => !position.has(c.id))];
+}
