@@ -234,7 +234,9 @@ export function MediaViewer({
   gallery,
   initialFrameId,
   onOfficeTable,
+  instanceAdmin = false,
 }: {
+  instanceAdmin?: boolean;
   onOfficeTable?: (id: string, name: string, rows: number) => void;
   initialFrameId?: string;
   store: BoardStore;
@@ -677,6 +679,7 @@ export function MediaViewer({
                 setPage={setOfficePage}
                 sheet={officeSheet}
                 setSheet={setOfficeSheet}
+                admin={instanceAdmin}
               />
             ) : ready && fileFamily(ready) === 'font' ? (
               <FontSpecimen key={ready.id} asset={ready} editable />

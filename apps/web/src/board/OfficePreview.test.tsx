@@ -7,8 +7,6 @@ import { expect, it, vi } from 'vitest';
 import { OfficeInfo, OfficeStage, useOfficePreview } from './OfficePreview.tsx';
 import type { OfficePreview } from './office.ts';
 
-const session = vi.hoisted(() => ({ role: 'member' }));
-vi.mock('../lib/session.tsx', () => ({ useSession: () => ({ user: { role: session.role } }) }));
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (key: string) => key, i18n: { language: 'it' } }),
 }));
@@ -50,9 +48,9 @@ async function mount(node: React.ReactNode) {
 }
 const sheetAsset = { id: 'a', filename: 'budget.xlsx', size: 10, url: '/f' } as Asset;
 const stage = (data: OfficePreview | null, role = 'member') => {
-  session.role = role;
   return (
     <OfficeStage
+      admin={role === 'admin'}
       asset={sheetAsset}
       data={data}
       page={1}

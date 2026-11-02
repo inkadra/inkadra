@@ -25,8 +25,6 @@ vi.mock('./tags.tsx', () => ({
   TagEditor: () => null,
 }));
 
-vi.mock('../lib/session.tsx', () => ({ useSession: () => ({ user: null }) }));
-
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
     t: (key: string) => {
