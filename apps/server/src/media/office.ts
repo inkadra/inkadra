@@ -112,7 +112,6 @@ export function officeCommand(dir: string, ext: string, disableUserns = true): s
     '/usr/bin/libreoffice',
     '-env:UserInstallation=file:///profile',
     '--headless',
-    '--safe-mode',
     '--nologo',
     '--nodefault',
     '--nofirststartwizard',

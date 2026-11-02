@@ -219,6 +219,10 @@ describe('the real sandbox (Linux with user namespaces)', () => {
       const pdf = await convertOffice(csv, dir, 'csv');
       expect(pdf).toBe(join(dir, 'render', 'converted.pdf'));
       expect((await readFile(pdf as string)).subarray(0, 5).toString()).toBe('%PDF-');
+      // LibreOffice kept the policy (a safe-mode start would have replaced the profile).
+      expect(
+        await readFile(join(dir, 'profile', 'user', 'registrymodifications.xcu'), 'utf8'),
+      ).toContain('MacroSecurityLevel');
       vi.unstubAllEnvs();
     },
     90_000,
