@@ -97,16 +97,19 @@ it('says so when a sheet is too big to read at all, and hides the tabs of a sing
   await done();
 });
 
-it('tells admins where to turn conversion on, and everyone else only that it is off', async () => {
+it('tells admins who can turn conversion on and links the guide; others only that it is off', async () => {
   const off: OfficePreview = { pageCount: 0, sheets: [] };
-  for (const [role, text] of [
-    ['admin', 'office.disabledAdmin'],
-    ['member', 'office.disabled'],
-  ] as const) {
-    const { host, done } = await mount(stage(off, role));
-    expect(host.querySelector('.viewer__file p')?.textContent).toBe(text);
-    await done();
-  }
+  const admin = await mount(stage(off, 'admin'));
+  expect(admin.host.textContent).toContain('office.disabledAdmin');
+  expect(admin.host.querySelector('a[href$="docs/self-hosting/office.md"]')?.textContent).toBe(
+    'office.guide',
+  );
+  await admin.done();
+  const member = await mount(stage(off, 'member'));
+  expect(member.host.textContent).toContain('office.disabled');
+  expect(member.host.textContent).not.toContain('office.disabledAdmin');
+  expect(member.host.querySelector('a[href$="office.md"]')).toBeNull();
+  await member.done();
 });
 
 it('does not offer a table for a sheet with rows left out', async () => {

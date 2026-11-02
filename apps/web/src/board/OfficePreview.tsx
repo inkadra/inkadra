@@ -113,12 +113,25 @@ export function OfficeStage({
   }
   if (!pages)
     return (
-      <div className="viewer__file">
+      <div className="viewer__file office-unavailable">
         <span className={`fcard__tile fbadge--${fileFamily(asset)}`} aria-hidden="true">
           {fileBadge(asset)}
         </span>
         <strong>{t('office.unavailable')}</strong>
-        <p>{t(admin ? 'office.disabledAdmin' : 'office.disabled')}</p>
+        <p>{t('office.disabled')}</p>
+        {admin && (
+          <p>
+            {t('office.disabledAdmin')}{' '}
+            <a
+              href="https://github.com/inkadra/inkadra/blob/main/docs/self-hosting/office.md"
+              target="_blank"
+              rel="noreferrer"
+            >
+              {t('office.guide')}
+            </a>
+            .
+          </p>
+        )}
         <a
           className="ink-btn ink-btn--secondary"
           href={`${asset.url}?download=1`}

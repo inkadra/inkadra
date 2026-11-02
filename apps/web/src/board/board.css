@@ -4452,3 +4452,15 @@ button.card__play {
     color: var(--ink-text-secondary);
   }
 }
+/* The viewer stage is a dark scrim in both themes: its text must not follow the theme. */
+.office-unavailable,
+.office-unavailable strong {
+  color: #ededed;
+}
+.office-unavailable p {
+  margin: 0;
+}
+.office-unavailable a:not(.ink-btn) {
+  color: #9db8f2;
+  text-decoration: underline;
+}

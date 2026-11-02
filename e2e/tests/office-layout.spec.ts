@@ -124,7 +124,10 @@ for (const scenario of [
     }
     if (unavailable) {
       await expect(page.getByText('Anteprima non disponibile', { exact: true })).toBeVisible();
-      await expect(page.getByText('Gli admin la attivano da Istanza.')).toHaveCount(
+      await expect(page.getByText('Chi gestisce il server può attivarla:')).toHaveCount(
+        scenario === 'unavailable-admin' ? 1 : 0,
+      );
+      await expect(page.getByRole('link', { name: 'vedi la guida all’installazione' })).toHaveCount(
         scenario === 'unavailable-admin' ? 1 : 0,
       );
     }
