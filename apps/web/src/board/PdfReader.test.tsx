@@ -17,7 +17,7 @@ afterEach(() => {
 });
 it('shows an error and destroys a PDF load that stalls', async () => {
   vi.useFakeTimers();
-  const destroy = vi.fn();
+  const destroy = vi.fn(async () => {});
   mock.getDocument.mockReturnValue({ promise: new Promise(() => {}), destroy });
   await act(async () => root.render(<PdfReader url="/pdf" name="Script" />));
   await act(async () => vi.advanceTimersByTimeAsync(15_000));
@@ -25,10 +25,10 @@ it('shows an error and destroys a PDF load that stalls', async () => {
   expect(destroy).toHaveBeenCalledOnce();
 });
 it('surfaces unreadable PDF errors instead of leaving a loader', async () => {
-  mock.getDocument.mockReturnValue({
+  mock.getDocument.mockImplementation(() => ({
     promise: Promise.reject(new Error('Invalid PDF')),
-    destroy: vi.fn(),
-  });
+    destroy: vi.fn(async () => {}),
+  }));
   await act(async () => root.render(<PdfReader url="/pdf" name="Script" />));
   expect(host.querySelector('[role="alert"]')).not.toBeNull();
   expect(host.querySelector('[role="status"]')).toBeNull();
