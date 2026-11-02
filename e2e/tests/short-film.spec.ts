@@ -292,14 +292,10 @@ test('a short film is prepared from the moodboard to the shot list', async ({
     const before = await swatches.count();
     // The four uploads land stacked at the centre of the board.
     await gap(page, 'moodboard-uploads-stacked');
-    // Pull them apart, top one first, into the free area on the empty canvas.
-    const stack = (await images.first().boundingBox()) as { x: number; y: number };
-    for (let i = 0; i < 4; i++) {
-      await page.mouse.move(stack.x + 110 + i * 8, stack.y + 90 + i * 8);
-      await page.mouse.down();
-      await page.mouse.move(300 + i * 190, 280, { steps: 6 });
-      await page.mouse.up();
-    }
+    // Arrange the uploaded cards with the same mosaic command offered by the canvas.
+    await page.keyboard.press('ControlOrMeta+a');
+    await page.keyboard.press('Shift+t');
+    await page.keyboard.press('Shift+Digit1');
     await page.keyboard.press('Escape');
     await images.first().dblclick();
     const addColors = page.getByRole('button', { name: 'Aggiungi i colori alla board' });
