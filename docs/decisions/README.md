@@ -69,8 +69,7 @@ in order. An accepted decision is never rewritten: a later one supersedes it.
 | [0064](0064-pdf-screenplay-import.md)                | PDF screenplays read in a disposable browser worker, with bounded size, pages and time |
 | [0065](0065-office-previews.md)                      | Optional Office previews: sandboxed LibreOffice worker, bounded spreadsheet grids      |
 | [0066](0066-password-change-keeps-the-session.md)    | A password change closes the other sessions and keeps the one that made it             |
+| [0067](0067-remove-project-and-board-templates.md) | Remove project and board templates; keep empty creation and film views |
 
 Two decisions share the number 0025: they were accepted in parallel, and accepted records
 are not renumbered.
-
-[0067 · Remove project and board templates](0067-remove-project-and-board-templates.md)
