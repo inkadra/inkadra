@@ -29,8 +29,8 @@ import type { Database } from './db/client.ts';
 import { asset } from './db/schema.ts';
 import type { Jobs } from './jobs.ts';
 import { type Mailer, noMailer } from './mailer.ts';
-import { type MediaDeps, markFailed, processAsset } from './media/process.ts';
 import { officeConverterInstalled } from './media/office.ts';
+import { type MediaDeps, markFailed, processAsset } from './media/process.ts';
 import { markProxyFailed, runProxy } from './media/proxy.ts';
 import { ProxyTimeout } from './media/video.ts';
 import { purgeNotifications, sendDigests, sendImmediateEmails } from './notifications.ts';
@@ -322,6 +322,9 @@ export async function startWorkers(
   if (officePreviews && !converter)
     log.info('OFFICE_PREVIEWS is on without LibreOffice here: an -office worker converts them');
   const enqueueProxy = (id: string) => queues.jobs.makeProxy?.(id) ?? Promise.resolve();
+  const enqueueOffice = officePreviews
+    ? (id: string) => queues.jobs.convertOffice?.(id) ?? Promise.resolve()
+    : undefined;
   const markAssetFailed = (job: Job | undefined) => {
     if (job && job.attemptsMade >= (job.opts.attempts ?? 1))
       void markFailed(deps.db, (job.data as JobPayloads['media:process']).assetId).catch((e) =>
@@ -335,35 +338,25 @@ export async function startWorkers(
     async (job) => {
       if (job.name !== 'process') throw new Error(`Unknown job ${job.name}`);
       const { assetId } = job.data as JobPayloads['media:process'];
-      return processAsset(
-        {
-          ...deps,
-          log,
-          enqueueProxy,
-          ...(officePreviews
-            ? { enqueueOffice: (id: string) => queues.jobs.convertOffice?.(id) ?? Promise.resolve() }
-            : {}),
-        },
-        assetId,
-      );
+      return processAsset({ ...deps, log, enqueueProxy, enqueueOffice }, assetId);
     },
     { connection, concurrency: 2, prefix: opts.prefix },
   );
   media.on('failed', markAssetFailed);
 
   // A conversion holds up to 4 GiB: one at a time.
-  const office =
-    converter &&
-    new Worker(
-      QUEUES.office,
-      async (job) => {
-        if (job.name !== 'convert') throw new Error(`Unknown job ${job.name}`);
-        const { assetId } = job.data as JobPayloads['office:convert'];
-        return processAsset({ ...deps, log, enqueueProxy }, assetId);
-      },
-      { connection, concurrency: 1, prefix: opts.prefix, lockDuration: 5 * 60 * 1000 },
-    );
-  if (office) office.on('failed', markAssetFailed);
+  const office = converter
+    ? new Worker(
+        QUEUES.office,
+        async (job) => {
+          if (job.name !== 'convert') throw new Error(`Unknown job ${job.name}`);
+          const { assetId } = job.data as JobPayloads['office:convert'];
+          return processAsset({ ...deps, log, enqueueProxy }, assetId);
+        },
+        { connection, concurrency: 1, prefix: opts.prefix, lockDuration: 5 * 60 * 1000 },
+      )
+    : undefined;
+  office?.on('failed', markAssetFailed);
 
   // Playable copies of videos: a transcode can take as long as the video, so the lock is long
   // and progress goes to the job as well as to the asset row.
@@ -511,7 +504,7 @@ export async function startWorkers(
         maintenance.close(),
         media.close(),
         proxies.close(),
-        office && office.close(),
+        office?.close(),
         email.close(),
         transfers.close(),
         scheduler.close(),
