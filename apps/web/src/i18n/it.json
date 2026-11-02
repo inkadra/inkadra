@@ -354,7 +354,7 @@
       "moodboard": "Riferimenti e palette",
       "storyboard": "Scene e inquadrature",
       "screenplay": "Importa sceneggiatura",
-      "screenplayBody": "Fountain o Final Draft",
+      "screenplayBody": "Fountain, Final Draft o PDF",
       "browse": "Sfoglia tutti i modelli",
       "hint": "Puoi anche trascinare qui file e immagini.",
       "hintTouch": "Aggiungi foto e file dalla barra in basso."
@@ -2998,7 +2998,7 @@
     "title": "Importa una sceneggiatura",
     "drop": "Trascina qui una sceneggiatura o scegli un file",
     "choose": "Scegli un file",
-    "formats": "Fountain (.fountain, .spmd, .txt) o Final Draft (.fdx), fino a 5 MB. Il file viene letto in questo browser e non viene caricato.",
+    "formats": "Fountain, Final Draft o PDF, fino a 5 MB. Il file viene letto in questo browser e non viene caricato.",
     "reading": "Lettura della sceneggiatura…",
     "another": "Scegli un altro file",
     "by": "di {{author}}",
@@ -3038,11 +3038,14 @@
     "imported": "Importate {{scenes}} e {{frames}}.",
     "errors": {
       "tooLarge": "Il file supera i 5 MB.",
-      "unsupported": "Scegli un file Fountain (.fountain, .spmd, .txt) o Final Draft (.fdx).",
+      "unsupported": "Scegli un file Fountain (.fountain, .spmd, .txt), Final Draft (.fdx) o PDF.",
       "unsafe": "Questo file Final Draft dichiara entità XML e non può essere letto in sicurezza.",
-      "invalid": "Questo file non è una sceneggiatura Final Draft leggibile.",
+      "invalid": "Questo file non è un PDF o una sceneggiatura Final Draft leggibile.",
       "empty": "Nessuna scena trovata in questo file.",
-      "read": "Non è stato possibile leggere il file."
+      "read": "Non è stato possibile leggere il file.",
+      "noText": "Questo PDF non ha un livello di testo",
+      "timeout": "Lettura interrotta: il PDF richiede troppo tempo.",
+      "tooManyPages": "Il PDF supera il limite di 300 pagine."
     },
     "setup": {
       "label": "Sceneggiatura",
@@ -3051,7 +3054,11 @@
       "remove": "Togli la sceneggiatura"
     },
     "characterCards": "Crea le schede dei personaggi che parlano",
-    "characterCardsHint": "Una scheda personaggio per nome, con le sue scene; i nomi già presenti sulla board vengono saltati."
+    "characterCardsHint": "Una scheda personaggio per nome, con le sue scene; i nomi già presenti sulla board vengono saltati.",
+    "detected": "Sembra una sceneggiatura",
+    "build": "Crea storyboard…",
+    "buildFromFile": "Crea storyboard da questa sceneggiatura…",
+    "noTextDetail": "Sembra una scansione: Inkadra non legge il testo dalle immagini. Esporta di nuovo il PDF dal programma di scrittura, oppure usa un file Fountain o Final Draft."
   },
   "frameGrab": {
     "grab": "Cattura fotogramma",

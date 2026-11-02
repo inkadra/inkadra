@@ -66,6 +66,7 @@ in order. An accepted decision is never rewritten: a later one supersedes it.
 | [0060](0060-release-news.md)                         | Opt-in release news and SMTP delivery claims                                           |
 | [0061](0061-calendar-feed.md)                        | Private calendar subscriptions: revocable bearer URL, bounded read-only ICS            |
 | [0062](0062-set-plans.md)                            | Set plans: frame strokes and shapes plus set icons on a card of their own              |
+| [0064](0064-pdf-screenplay-import.md)                | PDF screenplays read in a disposable browser worker, with bounded size, pages and time |
 
 Two decisions share the number 0025: they were accepted in parallel, and accepted records
 are not renumbered.

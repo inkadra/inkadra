@@ -339,7 +339,8 @@ for (const provider of ['youtube', 'vimeo']) {
         },
       }),
     );
-    await page.route('https://www.youtube-nocookie.com/**', (route) =>
+    // Keep both providers offline: Vimeo may otherwise redirect outside the frame-src policy.
+    await page.route(/^https:\/\/(?:www\.youtube-nocookie\.com|player\.vimeo\.com)\//, (route) =>
       route.fulfill({
         contentType: 'text/html',
         body: '<!doctype html><title>Mock player</title>',

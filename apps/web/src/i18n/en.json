@@ -354,7 +354,7 @@
       "moodboard": "References and palette",
       "storyboard": "Scenes and shots",
       "screenplay": "Import screenplay",
-      "screenplayBody": "Fountain or Final Draft",
+      "screenplayBody": "Fountain, Final Draft or PDF",
       "browse": "Browse all templates",
       "hint": "You can also drop files and images here.",
       "hintTouch": "Add photos and files from the bar below."
@@ -2998,7 +2998,7 @@
     "title": "Import a screenplay",
     "drop": "Drop a screenplay here or choose a file",
     "choose": "Choose a file",
-    "formats": "Fountain (.fountain, .spmd, .txt) or Final Draft (.fdx), up to 5 MB. The file is read in this browser and is not uploaded.",
+    "formats": "Fountain, Final Draft or PDF, up to 5 MB. Read in this browser, without uploading.",
     "reading": "Reading the screenplay…",
     "another": "Choose another file",
     "by": "by {{author}}",
@@ -3038,11 +3038,14 @@
     "imported": "Imported {{scenes}} and {{frames}}.",
     "errors": {
       "tooLarge": "The file is larger than 5 MB.",
-      "unsupported": "Choose a Fountain (.fountain, .spmd, .txt) or Final Draft (.fdx) file.",
+      "unsupported": "Choose a Fountain (.fountain, .spmd, .txt), Final Draft (.fdx) or PDF file.",
       "unsafe": "This Final Draft file declares XML entities and cannot be read safely.",
-      "invalid": "This file is not a readable Final Draft screenplay.",
+      "invalid": "This file is not a readable PDF or Final Draft screenplay.",
       "empty": "No scenes found in this file.",
-      "read": "The file could not be read."
+      "read": "The file could not be read.",
+      "noText": "This PDF has no text layer",
+      "timeout": "Reading stopped: this PDF takes too long.",
+      "tooManyPages": "This PDF exceeds the 300-page limit."
     },
     "setup": {
       "label": "Screenplay",
@@ -3051,7 +3054,11 @@
       "remove": "Remove the screenplay"
     },
     "characterCards": "Create cards for the speaking characters",
-    "characterCardsHint": "One character card per name, with its scenes; names already on the board are skipped."
+    "characterCardsHint": "One character card per name, with its scenes; names already on the board are skipped.",
+    "detected": "This looks like a screenplay",
+    "build": "Build storyboard…",
+    "buildFromFile": "Build storyboard from this script…",
+    "noTextDetail": "It looks like a scan: Inkadra cannot read text from images. Export the PDF again from your writing app, or use Fountain or Final Draft."
   },
   "frameGrab": {
     "grab": "Grab frame",
