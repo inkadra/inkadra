@@ -1,3 +1,4 @@
+import { isRawImageType } from '@inkadra/shared';
 import { API_PREFIX } from '@inkadra/shared/constants';
 import { useSyncExternalStore } from 'react';
 import { Upload } from 'tus-js-client';
@@ -103,7 +104,8 @@ export function startUpload({
   }
   seq += 1;
   const key = `u${seq}`;
-  const isImage = file.type.startsWith('image/') && !isDesignFile(file.name);
+  const isImage =
+    file.type.startsWith('image/') && !isDesignFile(file.name) && !isRawImageType(file.type);
   items.push({
     key,
     name: file.name,

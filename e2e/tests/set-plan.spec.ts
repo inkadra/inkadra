@@ -562,6 +562,35 @@ for (const theme of ['dark', 'light'] as const) {
         phoneBox.y + (200 / (400 / 1.5)) * phoneBox.height,
       );
       await expect(full.getByRole('toolbar', { name: 'Elemento selezionato' })).toBeVisible();
+      const selection = full.getByRole('toolbar', { name: 'Elemento selezionato' });
+      for (const size of ['S', 'M', 'L']) {
+        const button = selection.getByRole('button', { name: size, exact: true });
+        expect(
+          await button.evaluate((el) => {
+            const r = el.getBoundingClientRect();
+            return el.contains(document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2));
+          }),
+        ).toBe(true);
+        await button.tap();
+        await expect(button).toHaveAttribute('aria-pressed', 'true');
+      }
+      const labelBox = (await selection.getByLabel('Etichetta').boundingBox())!;
+      expect(labelBox.width).toBeGreaterThanOrEqual(96);
+      const overlaps = await selection.evaluate((bar) => {
+        const controls = [...bar.children].filter((el) => !el.matches('[aria-hidden="true"]'));
+        return controls.some((a, i) =>
+          controls.slice(i + 1).some((b) => {
+            const x = a.getBoundingClientRect();
+            const y = b.getBoundingClientRect();
+            return (
+              Math.min(x.right, y.right) > Math.max(x.left, y.left) &&
+              Math.min(x.bottom, y.bottom) > Math.max(x.top, y.top)
+            );
+          }),
+        );
+      });
+      expect(overlaps).toBe(false);
+      await mobile.mouse.move(0, 0);
       await mobile.screenshot({ path: join(out, `phone-${theme}-selection.png`) });
       await full.getByRole('button', { name: 'Seleziona (V)' }).tap();
       await mobile.keyboard.press('Escape');

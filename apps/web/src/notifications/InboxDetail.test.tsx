@@ -321,6 +321,7 @@ it('reads the selected frame label, thumbnail and shot metadata from the board',
     id: 'picture',
     mime: 'image/png',
     url: '/original.png',
+    status: 'ready',
     variants: [],
   } as unknown as import('@inkadra/shared').Asset);
   map?.set('lens', '35mm');

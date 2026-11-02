@@ -723,6 +723,7 @@ describe.skipIf(!url)('project export and import (needs DATABASE_URL)', () => {
     sha256?: string | null;
     compress?: boolean;
     withFile?: boolean;
+    extraRoot?: string;
   }) {
     const ids = {
       root: '0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a20',
@@ -730,6 +731,7 @@ describe.skipIf(!url)('project export and import (needs DATABASE_URL)', () => {
     };
     const at = new Date().toISOString();
     const doc = createBoardDoc(ids.root);
+    if (file.extraRoot) doc.getMap(file.extraRoot).set('done', true);
     addElement(doc, {
       id: 'image-00001',
       type: 'image',
@@ -823,6 +825,29 @@ describe.skipIf(!url)('project export and import (needs DATABASE_URL)', () => {
   });
   const storedOriginals = async () =>
     (await readdir(join(target.deps.root, 'files', 'originals')).catch(() => [])).length;
+
+  it('imports Tiptap position migrations but rejects unrelated roots', async () => {
+    const owner = await signUp(target.app, 'tiptap-roots');
+    const path = await handmade({
+      data: png,
+      extraRoot: '__tiptap_position_migrations:item:1244454727:98',
+    });
+    const result = await importProject(importDeps(), path, owner.id);
+    expect(result.summary).toMatchObject({ boards: 1, files: 1 });
+    const unknown = await handmade({ data: png, extraRoot: 'unexpected' });
+    await expect(importProject(importDeps(), unknown, owner.id)).rejects.toThrow(
+      'Unknown root type',
+    );
+  });
+
+  it.skipIf(!process.env.QA_PROJECT_ARCHIVE)(
+    'imports the real QA round 3 project archive',
+    async () => {
+      const owner = await signUp(target.app, 'qa-round-three');
+      const result = await importProject(importDeps(), process.env.QA_PROJECT_ARCHIVE!, owner.id);
+      expect(result.summary).toMatchObject({ boards: 2, files: 11, comments: 1 });
+    },
+  );
 
   it('fails, and keeps no file, when a file entry is truncated', async () => {
     const owner = await signUp(target.app, 'damaged');

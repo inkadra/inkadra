@@ -193,6 +193,8 @@ export function playbackUrl(asset: Asset, canPlay = browserPlays): string {
  * made variants, the original when the browser can show it, else an empty string.
  */
 export function pickVariant(asset: Asset, pixels: number): string {
+  // A premature request can leave an img in error even after metadata becomes ready.
+  if (asset.status !== 'ready') return '';
   const variants = [...asset.variants].sort((a, b) => a.width - b.width);
   const fit = variants.find((v) => v.width >= pixels) ?? variants.at(-1);
   if (fit) return fit.url;

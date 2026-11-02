@@ -316,6 +316,20 @@ describe('board document', () => {
     expect(readElement(roots(doc).elements.get(arrow.id)!)).toEqual(arrow);
   });
 
+  it('accepts Tiptap position migration roots after a Yjs round-trip, but rejects other roots', () => {
+    const doc = createBoardDoc(boardId);
+    doc.getMap('__tiptap_position_migrations:item:1244454727:98').set('done', true);
+    const copy = new Y.Doc();
+    Y.applyUpdate(copy, Y.encodeStateAsUpdate(doc));
+    expect(validateBoardDoc(copy)).toEqual([]);
+    copy.getMap('unexpected').set('value', true);
+    copy.getMap('__tiptap_position_migrations:unexpected').set('value', true);
+    expect(validateBoardDoc(copy).map((issue) => issue.message)).toEqual([
+      'Unknown root type "unexpected".',
+      'Unknown root type "__tiptap_position_migrations:unexpected".',
+    ]);
+  });
+
   it('keeps the aspect ratio of the board in meta', () => {
     const doc = createBoardDoc(boardId);
     expect(getBoardAspect(doc)).toBeNull();

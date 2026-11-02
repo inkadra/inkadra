@@ -272,6 +272,8 @@
     0 0 0 3.5px var(--ink-text-secondary);
 }
 .plan-editor__vr {
+  flex-shrink: 0;
+  pointer-events: none;
   width: 1px;
   height: 18px;
   margin: 0 3px;
@@ -557,11 +559,19 @@
   right: 12px;
   bottom: calc(70px + env(safe-area-inset-bottom));
   translate: none;
-  justify-content: space-between;
+  flex-wrap: wrap;
+  justify-content: flex-start;
+  gap: var(--ink-space-1);
+}
+.plan-editor--phone .plan-editor__bar > * {
+  flex-shrink: 0;
+}
+.plan-editor--phone .plan-editor__bar .plan-editor__vr {
+  display: none;
 }
 .plan-editor--phone .plan-editor__field {
-  flex: 1;
-  min-width: 0;
+  flex: 1 0 96px;
+  min-width: 96px;
   font-size: 16px;
 }
 .plan-lib--sheet {

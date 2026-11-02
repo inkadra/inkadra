@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { Card } from './cards.tsx';
 
 const state = vi.hoisted(() => ({
+  preview: null as string | null,
   editing: null as string | null,
   readOnly: false,
   kind: 'file',
@@ -56,7 +57,10 @@ vi.mock('./assets.ts', () => ({
   pickVariant: (asset: { variants: Array<{ url: string }> }) => asset.variants.at(-1)?.url ?? '',
   playbackUrl: (asset: { url: string }) => asset.url,
 }));
-vi.mock('./uploads.ts', () => ({ useUploadProgress: () => null, localPreview: () => null }));
+vi.mock('./uploads.ts', () => ({
+  useUploadProgress: () => null,
+  localPreview: () => state.preview,
+}));
 vi.mock('./CardReview.tsx', () => ({ CardReview: () => null }));
 
 const file = {
@@ -339,6 +343,27 @@ describe('file card family', () => {
     Object.assign(state, { status: 'missing' });
     expect(render(file)).toContain('fcard fcard--failed');
     expect(render(file)).toContain('board.file.missing');
+  });
+
+  it('replaces a local image with the ready server thumbnail for file and image cards', () => {
+    Object.assign(state, {
+      kind: 'image',
+      status: 'ready',
+      preview: 'blob:unsupported-raw',
+      asset: {
+        mime: 'image/x-nikon-nef',
+        filename: 'sample.NEF',
+        status: 'ready',
+        variants: [{ size: '256', width: 256, height: 170, url: '/processed' }],
+      },
+    });
+    for (const type of ['file', 'image'] as const) {
+      const html = render({ ...file, type });
+      expect(html).toContain('src="/processed"');
+      expect(html).not.toContain('blob:unsupported-raw');
+    }
+    state.preview = null;
+    state.asset = {};
   });
 
   it('gives camera RAW images a RAW badge with camera and exposure', () => {
