@@ -6,6 +6,7 @@ import {
   CAPABILITY_ROLE,
   Id,
   OfficePartParams,
+  OfficePartQuery,
   OfficePreview,
   VariantParams,
   VariantQuery,
@@ -190,13 +191,17 @@ export function registerAssetRoutes(app: FastifyInstance, deps: Deps) {
   app.get(v1('/assets/:assetId/office/:part'), async (req, reply) => {
     const actor = await requireActor(auth, req, db);
     const { assetId, part } = OfficePartParams.parse(req.params);
+    const { v } = OfficePartQuery.parse(req.query);
     const { asset: row } = await requireAssetRole(db, actor, assetId, 'viewer');
     if (part !== 'manifest.json' && Number(part.match(/\d+/)?.[0]) > (row.pageCount ?? 0))
       return sendError(reply, 'not_found', 'Office page unavailable.');
     const key = officeKey(assetId, part);
     if (row.status !== 'ready' || (await storage.size(key)) === null)
       return sendError(reply, 'not_found', 'Office preview unavailable.');
-    fileHeaders(reply, `${row.sha256 ?? row.id}-${part}`);
+    fileHeaders(reply, `${row.sha256 ?? row.id}-${part}-${v ?? ''}`);
+    // Reprocessing replaces the derivatives under the same names: only a URL that carries the
+    // revision of the manifest (`v`) may be cached for a year; without it the page is not kept.
+    if (part !== 'manifest.json' && !v) reply.header('cache-control', 'private, no-store');
     if (part === 'manifest.json') {
       const manifest = OfficePreview.parse(
         JSON.parse((await readAll(await storage.read(key))).toString('utf8')),
