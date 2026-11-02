@@ -1,24 +1,45 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import { mkdtemp, writeFile } from 'node:fs/promises';
+import { mkdtemp, readFile, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { convertOffice, OFFICE_CAPS, officeCommand } from './office.ts';
+import { convertOffice, LIBREOFFICE_POLICY, OFFICE_CAPS, officeCommand } from './office.ts';
 import { mediaTools, runTool } from './tools.ts';
 
 vi.mock('./tools.ts', () => ({ mediaTools: vi.fn(), runTool: vi.fn() }));
 afterEach(() => vi.unstubAllEnvs());
 describe('Office sandbox', () => {
-  it('unshares the network, PID and user namespaces and exposes only system programs and this job', () => {
+  it('unshares everything, requires user namespaces, forbids nesting and mounts only the job folders', () => {
     const args = officeCommand('/private/job-123', 'docx');
-    expect(args).toContain('--unshare-all');
-    expect(args).toContain('--die-with-parent');
-    expect(args).toContain('--cap-drop');
+    for (const flag of ['--unshare-all', '--unshare-user', '--disable-userns', '--die-with-parent'])
+      expect(args).toContain(flag);
+    expect(args).not.toContain('--unshare-user-try');
     expect(args).not.toContain('--share-net');
-    expect(args).toContain('/private/job-123');
+    expect(args.join(' ')).toContain('--cap-drop ALL');
+    expect(args.join(' ')).toContain('--seccomp 0');
+    // /tmp is a bounded tmpfs: --size applies to the next --tmpfs.
+    expect(args.indexOf('--size')).toBe(args.indexOf('--tmpfs') - 2);
+    expect(args[args.indexOf('--size') + 1]).toBe(String(OFFICE_CAPS.tmp));
+    // Only in/ (read-only), out/ and profile/ of the job; never the job folder itself.
+    const job = (name: string) => join('/private/job-123', name);
+    expect(args.join(' ')).toContain(`--ro-bind ${job('in')} /in`);
+    expect(args.join(' ')).toContain(`--bind ${job('out')} /out`);
+    expect(args.join(' ')).toContain(`--bind ${job('profile')} /profile`);
+    expect(args).not.toContain('/private/job-123');
     expect(args).not.toContain('/data');
-    expect(args).toContain('-env:UserInstallation=file:///work/profile');
+    expect(args).toContain('-env:UserInstallation=file:///profile');
+    expect(args.at(-1)).toBe('/in/source.docx');
+  });
+  it('turns macros and link updates off in the LibreOffice profile', () => {
+    expect(LIBREOFFICE_POLICY).toMatch(/MacroSecurityLevel"[^>]*><value>3</);
+    expect(LIBREOFFICE_POLICY).toMatch(/DisableMacrosExecution"[^>]*><value>true</);
+    expect(LIBREOFFICE_POLICY).toMatch(
+      /Office\.Calc\/Content\/Update"><prop oor:name="Link"[^>]*><value>2</,
+    );
+    expect(LIBREOFFICE_POLICY).toMatch(
+      /Office\.Writer\/Content\/Update"><prop oor:name="Link"[^>]*><value>2</,
+    );
   });
   it('never runs without explicit opt in or resource limits', async () => {
     vi.mocked(mediaTools).mockResolvedValue({ prlimit: null } as Awaited<
@@ -46,7 +67,13 @@ describe('Office sandbox', () => {
         timeoutMs: OFFICE_CAPS.timeout,
         memoryBytes: OFFICE_CAPS.memory,
         fileBytes: OFFICE_CAPS.pdf,
+        processes: OFFICE_CAPS.processes,
+        input: expect.any(Buffer),
       }),
+    );
+    // The profile that disables macros is seeded before LibreOffice starts.
+    expect(await readFile(join(dir, 'profile', 'user', 'registrymodifications.xcu'), 'utf8')).toBe(
+      LIBREOFFICE_POLICY,
     );
   });
 });
