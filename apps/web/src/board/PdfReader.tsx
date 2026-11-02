@@ -84,7 +84,7 @@ export function PdfReader({ url, name }: { url: string; name: string }) {
         role="img"
         ref={canvas}
         className="viewer__media viewer__media--contain viewer__pdf-page"
-        aria-label={t('viewer.pdfPage', { name, page, count: pdf?.numPages ?? 0 })}
+        aria-label={t('viewer.pdfPage', { name, page, total: pdf?.numPages ?? 0 })}
         hidden={!rendered || error}
       />
       {pdf && !error && (
@@ -92,7 +92,7 @@ export function PdfReader({ url, name }: { url: string; name: string }) {
           <Button variant="secondary" disabled={page <= 1} onClick={() => setPage(page - 1)}>
             {t('viewer.pdfPrevious')}
           </Button>
-          <span aria-live="polite">{t('viewer.pdfPageNumber', { page, count: pdf.numPages })}</span>
+          <span aria-live="polite">{t('viewer.pdfPageNumber', { page, total: pdf.numPages })}</span>
           <Button
             variant="secondary"
             disabled={page >= pdf.numPages}

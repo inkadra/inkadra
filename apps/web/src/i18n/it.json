@@ -1034,10 +1034,10 @@
     "pageOne": "Pagina 1 di {{count}}",
     "pdfError": "Impossibile leggere il PDF. Puoi scaricare l’originale.",
     "pdfLoading": "Caricamento PDF…",
-    "pdfPage": "{{name}}, pagina {{page}} di {{count}}",
+    "pdfPage": "{{name}}, pagina {{page}} di {{total}}",
     "pdfPrevious": "Pagina precedente",
     "pdfNext": "Pagina successiva",
-    "pdfPageNumber": "Pagina {{page}} di {{count}}"
+    "pdfPageNumber": "Pagina {{page}} di {{total}}"
   },
   "search": {
     "title": "Cerca",

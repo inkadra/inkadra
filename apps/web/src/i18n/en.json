@@ -1034,10 +1034,10 @@
     "pageOne": "Page 1 of {{count}}",
     "pdfError": "Could not read the PDF. You can download the original.",
     "pdfLoading": "Loading PDF…",
-    "pdfPage": "{{name}}, page {{page}} of {{count}}",
+    "pdfPage": "{{name}}, page {{page}} of {{total}}",
     "pdfPrevious": "Previous page",
     "pdfNext": "Next page",
-    "pdfPageNumber": "Page {{page}} of {{count}}"
+    "pdfPageNumber": "Page {{page}} of {{total}}"
   },
   "search": {
     "title": "Search",
