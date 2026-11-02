@@ -69,5 +69,7 @@ in order. An accepted decision is never rewritten: a later one supersedes it.
 
 | [0061](0061-calendar-feed.md) | Private calendar subscriptions: revocable bearer URL, bounded read-only ICS |
 
+| [0065](0065-office-previews.md) | Optional Office previews: sandboxed LibreOffice worker, bounded spreadsheet grids |
+
 Two decisions share the number 0025: they were accepted in parallel, and accepted records
 are not renumbered.

@@ -59,6 +59,17 @@ export const proxyKey = (assetId: string) => `variants/${assetId}/proxy.mp4`;
 /** The peaks of an audio file as JSON (#327): the `waveform` variant row. */
 export const waveformKey = (assetId: string) => `variants/${assetId}/waveform.json`;
 
+/**
+ * Office derivatives have deterministic keys. Whoever deletes an Office original adds these
+ * keys (see `officeFiles`); other assets have none, so they cost no extra requests.
+ */
+export const officeKey = (id: string, name: string) => `variants/${id}/office-${name}`;
+export function officeDerivativeKeys(id: string): string[] {
+  return [
+    officeKey(id, 'manifest.json'),
+    ...Array.from({ length: 50 }, (_, i) => officeKey(id, `page-${i + 1}.webp`)),
+  ];
+}
 const SAFE_KEY = /^[a-z]+(\/[A-Za-z0-9._-]+)+$/;
 function checkKey(key: string) {
   if (!SAFE_KEY.test(key) || key.includes('..')) throw new Error(`Invalid storage key ${key}`);

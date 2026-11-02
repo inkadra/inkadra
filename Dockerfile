@@ -36,6 +36,8 @@ LABEL org.opencontainers.image.title="Inkadra" \
 # (see docs/self-hosting). For hardware encoding of the copies (#358) it also has the free VAAPI
 # drivers (Mesa for AMD, Intel's media driver) and the oneVPL runtime of Quick Sync, all from
 # Debian main; NVENC uses the driver the NVIDIA Container Toolkit mounts from the host.
+# Optional Office worker image; the default and -media image do not include LibreOffice.
+ARG OFFICE=false
 ARG MEDIA=false
 RUN apt-get update \
  && apt-get upgrade -y --no-install-recommends \
@@ -46,6 +48,10 @@ RUN apt-get update \
       && if [ "$(dpkg --print-architecture)" = "amd64" ]; then \
            apt-get install -y --no-install-recommends intel-media-va-driver libmfx-gen1.2 libvpl2; \
          fi; \
+    fi \
+ && if [ "$OFFICE" = "true" ]; then \
+      apt-get install -y --no-install-recommends libreoffice-writer libreoffice-calc libreoffice-impress \
+        bubblewrap util-linux poppler-utils fonts-liberation fonts-crosextra-carlito; \
     fi \
  && rm -rf /var/lib/apt/lists/* \
  && rm -rf /usr/local/lib/node_modules/npm /usr/local/lib/node_modules/corepack /opt/yarn-* \
