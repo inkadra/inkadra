@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import { Readable } from 'node:stream';
 import { describe, expect, it } from 'vitest';
 import { loadConfig } from './config.ts';
+import { officeFiles } from './media/office.ts';
 import { createStorage, localStorage, readAll, type Storage, variantKey } from './storage.ts';
 
 const s3Endpoint = process.env.S3_TEST_ENDPOINT;
@@ -71,7 +72,7 @@ describe.skipIf(!s3Endpoint)('s3 storage (needs S3_TEST_ENDPOINT)', () => {
   );
 });
 
-it('removes Office derivatives together with their original', async () => {
+it('removes only the keys it is given; Office derivatives are listed for Office assets only', async () => {
   const dir = mkdtempSync(join(tmpdir(), 'office-storage-'));
   const storage = localStorage(dir);
   const id = 'office-test';
@@ -79,6 +80,14 @@ it('removes Office derivatives together with their original', async () => {
   await storage.write(`variants/${id}/office-manifest.json`, Buffer.from('{}'), 'application/json');
   await storage.write(`variants/${id}/office-page-50.webp`, Buffer.from('page'), 'image/webp');
   await storage.remove([`originals/${id}`]);
+  expect(await storage.size(`variants/${id}/office-manifest.json`)).toBe(2);
+  const keys = officeFiles([
+    { id, filename: 'Budget.XLSX' },
+    { id: 'photo', filename: 'photo.jpg' },
+  ]);
+  expect(keys).toHaveLength(51);
+  expect(keys.every((key) => key.startsWith(`variants/${id}/office-`))).toBe(true);
+  await storage.remove(keys);
   expect(await storage.size(`variants/${id}/office-manifest.json`)).toBeNull();
   expect(await storage.size(`variants/${id}/office-page-50.webp`)).toBeNull();
 });
