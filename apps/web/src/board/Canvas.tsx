@@ -198,7 +198,6 @@ const SNAP_PX = 6;
 const OVERSCAN_PX = 400;
 /** Below this zoom, text is too small to read: cards are drawn as plain shapes. */
 const FAR_ZOOM = 0.3;
-const DOT_GRID = 22;
 
 /**
  * How much of the canvas the shell's floating panels cover (#333): the navigation at the left
@@ -224,7 +223,7 @@ function chromeInsets(canvas: HTMLElement): { left: number; top: number } {
 
 /** On-screen spacing of the background dots: the grid doubles as you zoom out, never denser than 16px. */
 function dotSpacing(zoom: number): number {
-  let step = DOT_GRID * zoom;
+  let step = GRID * zoom;
   while (step < 16) step *= 2;
   return step;
 }
@@ -241,7 +240,11 @@ function Dots({ viewport }: { viewport: Viewport }) {
     <div
       className="canvas__dots"
       aria-hidden="true"
-      style={{ backgroundSize: `${step}px ${step}px`, transform: `translate(${x}px, ${y}px)` }}
+      style={{
+        backgroundSize: `${step}px ${step}px`,
+        backgroundPosition: `${-step / 2}px ${-step / 2}px`,
+        transform: `translate(${x}px, ${y}px)`,
+      }}
     />
   );
 }
@@ -1765,7 +1768,7 @@ export function Canvas({
               aspectRatio: rect.w / (mediaHeight || rect.h),
               fixedHeight: mediaHeight ? Math.max(0, rect.h - mediaHeight) : 0,
             }
-          : { widthOnly: el.type === 'link' || el.type === 'section' };
+          : { widthOnly: el.type === 'link' || el.type === 'section' || isContainer(el) };
       store.undo.stopCapturing();
       gesture.current = { kind: 'resize', id, corner: handle, start: p, rect, options };
       rootRef.current?.setPointerCapture(e.pointerId);
@@ -1994,8 +1997,14 @@ export function Canvas({
       if (!current || current.locked || readOnly || current.parent !== null) return;
       const { x, y, w, h } = o.resize;
       doc.transact(() => {
-        const widthOnly = current.type === 'link' || current.type === 'section';
-        updateElement(doc, g.id, widthOnly ? { x, w } : { x, y, w, h }, LOCAL);
+        const widthOnly =
+          current.type === 'link' || current.type === 'section' || isContainer(current);
+        updateElement(
+          doc,
+          g.id,
+          widthOnly ? { x, w, ...(isContainer(current) ? { h: undefined } : {}) } : { x, y, w, h },
+          LOCAL,
+        );
         // The store updates after this transaction; attached arrows need the new rect now.
         refreshArrows(
           doc,
@@ -2070,6 +2079,10 @@ export function Canvas({
     }
     const el = snap.byId.get(targetId);
     if (el && editing !== el.id) {
+      if (target.closest('.card__caption') && (el.type === 'image' || el.type === 'file')) {
+        if (!readOnly && !el.locked) setEditing(el.id);
+        return;
+      }
       openElement(el);
     }
   }
@@ -3397,6 +3410,14 @@ export function Canvas({
           <TagPopover
             x={tagging.x}
             y={tagging.y}
+            anchor={() => {
+              const id = tagging.ids[0];
+              return id
+                ? (rootRef.current?.querySelector<HTMLElement>(
+                    `.card[data-el="${CSS.escape(id)}"]`,
+                  ) ?? null)
+                : null;
+            }}
             projectId={projectId}
             elements={tagging.ids.map((id) => snap.byId.get(id)).filter((e) => e !== undefined)}
             onChange={(changes) =>

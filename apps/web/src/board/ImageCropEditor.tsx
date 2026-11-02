@@ -32,7 +32,6 @@ import {
   resizeCropRect,
   rotatedBounds,
   sanitizeCrop,
-  splitRotation,
 } from './image-crop.ts';
 import { LOCAL } from './store.ts';
 
@@ -298,7 +297,6 @@ export function ImageCropToolbar({
   const baseH = ready?.height && ready.height > 0 ? ready.height : 3;
 
   const rot = normalizeRotation(element.rotation);
-  const { base: quarterBase, fine } = splitRotation(rot);
   const crop = element.crop ? sanitizeCrop(element.crop) : FULL_CROP;
   const activeAspect: ImageCropAspect = crop.aspect ?? 'free';
   const rBounds = rotatedBounds(baseW, baseH, rot);
@@ -320,7 +318,7 @@ export function ImageCropToolbar({
 
   function stepRotate(direction: 1 | -1) {
     store.undo.stopCapturing();
-    const nextRot = normalizeRotation(quarterBase + direction * 90 + fine);
+    const nextRot = normalizeRotation(rot + direction * 90);
     const bounds = rotatedBounds(baseW, baseH, nextRot);
     const nextCrop = inscribeCrop(
       cropAfterQuarterTurn(crop, direction, bounds.width, bounds.height),
@@ -332,8 +330,7 @@ export function ImageCropToolbar({
     store.undo.stopCapturing();
   }
 
-  function changeFineAngle(nextFine: number) {
-    const nextRot = normalizeRotation(quarterBase + nextFine);
+  function changeAngle(nextRot: number) {
     const bounds = rotatedBounds(baseW, baseH, nextRot);
     // A free angle leaves the bounding box's corners empty: the crop shrinks to stay on the
     // picture.
@@ -399,27 +396,28 @@ export function ImageCropToolbar({
       </button>
       <span className="crop-bar__angle">
         <Slider
-          min={-45}
-          max={45}
+          // One full turn of integer angles; -180 equals +180 after normalization.
+          min={-179}
+          max={180}
           step={1}
-          value={fine}
+          value={rot}
           aria-label={t('board.image.angle')}
           data-ink-tooltip={t('board.image.resetAngleHint')}
           onPointerDown={() => store.undo.stopCapturing()}
           onPointerUp={() => store.undo.stopCapturing()}
-          onDoubleClick={() => changeFineAngle(0)}
-          onChange={changeFineAngle}
+          onDoubleClick={() => changeAngle(Math.round(rot / 90) * 90)}
+          onChange={changeAngle}
         />
         <button
           type="button"
           className="crop-bar__deg ink-mono"
-          disabled={fine === 0}
+          disabled={rot % 90 === 0}
           aria-label={t('board.image.resetAngle')}
           data-ink-tooltip={t('board.image.resetAngle')}
           onMouseDown={(e) => e.preventDefault()}
           onClick={() => {
             store.undo.stopCapturing();
-            changeFineAngle(0);
+            changeAngle(Math.round(rot / 90) * 90);
           }}
         >
           {Math.round(rot)}°

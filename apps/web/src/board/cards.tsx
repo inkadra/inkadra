@@ -137,7 +137,10 @@ export const Card = memo(function Card({
         left: resize?.x ?? element.x,
         top: resize?.y ?? element.y,
         width: w,
-        height: element.type === 'link' || isCropping ? undefined : (resize?.h ?? element.h),
+        height:
+          element.type === 'link' || isContainer(element) || isCropping
+            ? undefined
+            : (resize?.h ?? element.h),
         transform: offset ? `translate(${offset.dx}px, ${offset.dy}px)` : undefined,
       };
   if (zoom !== undefined) (style as Record<string, unknown>)['--zoom'] = zoom;

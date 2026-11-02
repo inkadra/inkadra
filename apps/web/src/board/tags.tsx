@@ -1,7 +1,7 @@
 import { MAX_TAGS } from '@inkadra/doc-schema';
 import type { TagCount } from '@inkadra/shared';
 import { Icon } from '@inkadra/ui';
-import { useEffect, useId, useState } from 'react';
+import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api } from '../lib/api.ts';
 import { useClassifications } from '../lib/classifications.ts';
@@ -207,14 +207,39 @@ export function TagPopover({
   projectId,
   onChange,
   onClose,
+  anchor,
 }: {
   x: number;
   y: number;
+  anchor: () => HTMLElement | null;
   elements: ReadonlyArray<{ id: string; tags?: string[] | undefined }>;
   projectId: string;
   onChange: (changes: Array<{ id: string; tags: string[] | undefined }>) => void;
   onClose: () => void;
 }) {
+  const popup = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    let frame: number;
+    const position = () => {
+      const node = popup.current;
+      const host = node?.offsetParent;
+      if (node && host instanceof HTMLElement) {
+        const bounds = host.getBoundingClientRect();
+        const card = anchor()?.getBoundingClientRect();
+        const left = card ? card.left - bounds.left : x;
+        const below = card ? card.bottom - bounds.top + 8 : y;
+        const top =
+          below + node.offsetHeight <= bounds.height - 8
+            ? below
+            : (card ? card.top - bounds.top : y) - node.offsetHeight - 8;
+        node.style.left = `${Math.max(8, Math.min(left, bounds.width - node.offsetWidth - 8))}px`;
+        node.style.top = `${Math.max(8, Math.min(top, bounds.height - node.offsetHeight - 8))}px`;
+      }
+      frame = requestAnimationFrame(position);
+    };
+    position();
+    return () => cancelAnimationFrame(frame);
+  }, [anchor, x, y]);
   const { t } = useTranslation();
   const { tagOption } = useClassifications();
   const canonical = (values: readonly string[]) => [
@@ -231,7 +256,9 @@ export function TagPopover({
   return (
     <div className="palette__backdrop tag-popover__backdrop" data-chrome onPointerDown={onClose}>
       <div
+        ref={popup}
         className="tag-popover"
+        data-scroll
         role="dialog"
         aria-label={t('tags.title')}
         style={{ left: x, top: y }}
