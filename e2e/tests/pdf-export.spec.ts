@@ -17,6 +17,7 @@ interface Seeded {
   projectId: string;
   rootBoardId: string;
   storyboardId: string;
+  longStoryboardId: string;
 }
 let seeded: Seeded;
 
@@ -106,6 +107,12 @@ test.beforeAll(async ({ baseURL }) => {
     title: 'Night platform',
   });
 
+  const longBoard = await post<{ id: string }>(`/projects/${project.id}/boards`, {
+    parentBoardId: project.rootBoardId,
+    kind: 'storyboard',
+    title: 'Long sequence',
+  });
+
   const board = new Y.Doc();
   initBoardDoc(board, project.rootBoardId);
   const note = (x: number, text: string) => {
@@ -156,6 +163,14 @@ test.beforeAll(async ({ baseURL }) => {
       updateElement(story, frame.id, { guestHidden: true, action: 'Hidden frame action' });
   }
   await pushBoardDoc(base, cookie, storyboard.id, story);
+  // 32 frames, enough to squeeze into a strip when the pages were stacked in one image.
+  const long = new Y.Doc();
+  initBoardDoc(long, longBoard.id);
+  const longScene = addScene(long, { number: '1', title: 'Many shots' }, opts);
+  for (let i = 0; i < 32; i++) {
+    addFrame(long, longScene.id, null, { action: `Long action ${i + 1}`, shot: 'ws' }, opts);
+  }
+  await pushBoardDoc(base, cookie, longBoard.id, long);
   // One comment for everyone, one for the team only, on the first frame.
   for (const [body, visibility] of [
     ['Shared with the client', 'everyone'],
@@ -163,7 +178,12 @@ test.beforeAll(async ({ baseURL }) => {
   ] as const) {
     await post(`/boards/${storyboard.id}/comments`, { elementId: firstFrameId, body, visibility });
   }
-  seeded = { projectId: project.id, rootBoardId: project.rootBoardId, storyboardId: storyboard.id };
+  seeded = {
+    projectId: project.id,
+    rootBoardId: project.rootBoardId,
+    storyboardId: storyboard.id,
+    longStoryboardId: longBoard.id,
+  };
 });
 
 test('a board exports to PDF for clients without the cards hidden from guests', async ({
@@ -325,6 +345,9 @@ test('a storyboard exports to PDF with frames per page, and to PNG', async ({ pa
 
   await page.getByRole('button', { name: 'Esporta PDF' }).click();
   await dialog.getByRole('radio', { name: 'Immagine (PNG)' }).click();
+  // Five frames on one page: a single image, not an archive.
+  await dialog.getByRole('radio', { name: '6', exact: true }).click();
+  await expect(dialog.getByText('1 pagina')).toBeVisible();
   const [png] = await Promise.all([
     page.waitForEvent('download'),
     dialog.getByRole('button', { name: 'Esporta', exact: true }).click(),
@@ -425,4 +448,68 @@ test('each audience preset exports a PDF and remembers the last preset for the p
   ).json();
   expect(stored.preset).toBe('internal-kickoff');
   expect(await violations()).toEqual([]);
+});
+
+/** The PNG files of a stored ZIP: name and the width and height from each IHDR. */
+function pngsInZip(zip: Buffer) {
+  const end = zip.lastIndexOf(Buffer.from([0x50, 0x4b, 0x05, 0x06]));
+  const count = zip.readUInt16LE(end + 10);
+  let at = zip.readUInt32LE(end + 16);
+  const files: { name: string; width: number; height: number }[] = [];
+  for (let i = 0; i < count; i++) {
+    const nameLength = zip.readUInt16LE(at + 28);
+    const extraLength = zip.readUInt16LE(at + 30);
+    const commentLength = zip.readUInt16LE(at + 32);
+    const local = zip.readUInt32LE(at + 42);
+    const name = zip.subarray(at + 46, at + 46 + nameLength).toString();
+    const data = local + 30 + zip.readUInt16LE(local + 26) + zip.readUInt16LE(local + 28);
+    expect(zip.subarray(data + 1, data + 4).toString()).toBe('PNG');
+    files.push({ name, width: zip.readUInt32BE(data + 16), height: zip.readUInt32BE(data + 20) });
+    at += 46 + nameLength + extraLength + commentLength;
+  }
+  return files;
+}
+
+test('a long storyboard exports to PNG as one readable image per page, zipped (QA R2-05)', async ({
+  page,
+}, info) => {
+  // 32 pages drawn and encoded one by one on a CI runner.
+  test.setTimeout(180_000);
+  await signInPage(page);
+  await page.goto(`/p/${seeded.projectId}/b/${seeded.longStoryboardId}?view=storyboard`);
+  await expect(page.getByRole('status').getByText('Sincronizzato')).toBeVisible();
+  await page.getByRole('button', { name: 'Esporta PDF' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Esporta' });
+  await dialog.getByRole('button', { name: /Personalizza/ }).click();
+  await dialog.getByRole('radio', { name: 'Immagine (PNG)' }).click();
+  await dialog.getByRole('radio', { name: '1', exact: true }).click();
+  await expect(dialog.getByText('32 pagine')).toBeVisible();
+  await expect(dialog.getByText(/scaricate in un unico file ZIP/)).toBeVisible();
+  const shots = process.env.PNG_SHOTS_DIR;
+  if (shots) {
+    await dialog.screenshot({ path: `${shots}/export-png-dialog-dark.png` });
+    await page.evaluate(() => {
+      document.documentElement.dataset.theme = 'light';
+    });
+    await dialog.screenshot({ path: `${shots}/export-png-dialog-light.png` });
+  }
+  const [download] = await Promise.all([
+    page.waitForEvent('download', { timeout: 150_000 }),
+    dialog.getByRole('button', { name: 'Esporta', exact: true }).click(),
+  ]);
+  expect(download.suggestedFilename()).toBe('Long sequence.zip');
+  const zipPath = info.outputPath('long-sequence.zip');
+  await download.saveAs(zipPath);
+  if (shots) await download.saveAs(`${shots}/long-sequence.zip`);
+  const files = pngsInZip(await readFile(zipPath));
+  expect(files).toHaveLength(32);
+  expect(files[0]?.name).toBe('Long sequence-001.png');
+  expect(files[31]?.name).toBe('Long sequence-032.png');
+  // Every page keeps the PDF's proportions at a size where the text can be read.
+  for (const f of files) {
+    expect(Math.min(f.width, f.height)).toBeGreaterThanOrEqual(1200);
+    expect(
+      Math.abs(Math.max(f.width, f.height) / Math.min(f.width, f.height) - 842 / 595),
+    ).toBeLessThan(0.01);
+  }
 });

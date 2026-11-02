@@ -4,9 +4,11 @@ import {
   contentBox,
   fitRegion,
   gridCells,
+  PNG_TOTAL_PIXELS,
   pageSize,
   paginateRows,
   pixelRatio,
+  pngScales,
   storyboardCells,
   storyboardGrid,
 } from './layout.ts';
@@ -112,5 +114,20 @@ describe('fitting', () => {
     expect(pixelRatio(20000, 400) * 20000).toBeLessThanOrEqual(16384);
     const r = pixelRatio(3000, 3000, 100000);
     expect(3000 * r * 3000 * r).toBeLessThanOrEqual(64_000_001);
+  });
+
+  it('keeps every page of a long PNG export readable and shrinks only past the pixel budget', () => {
+    // QA R2-05: 55 stacked A4 pages came out 107 px wide. One image per page stays near 200 dpi.
+    const a4 = { width: 842, height: 595 };
+    const long = pngScales(Array.from({ length: 55 }, () => a4));
+    expect(long.reduced).toBe(false);
+    expect(Math.round(a4.width * (long.scales[0] as number))).toBeGreaterThanOrEqual(2000);
+    expect(Math.round(a4.height * (long.scales[0] as number))).toBeGreaterThanOrEqual(1200);
+    // A single page keeps the high resolution.
+    expect(pngScales([a4]).scales).toEqual([4]);
+    const huge = pngScales(Array.from({ length: 300 }, () => a4));
+    expect(huge.reduced).toBe(true);
+    const pixels = huge.scales.reduce((sum, s) => sum + a4.width * a4.height * s * s, 0);
+    expect(pixels).toBeLessThanOrEqual(PNG_TOTAL_PIXELS * 1.001);
   });
 });

@@ -147,3 +147,24 @@ export function pixelRatio(width: number, height: number, target = 4096): number
   const byArea = Math.sqrt(64_000_000 / (width * height));
   return Math.max(0.1, Math.min(byTarget, bySide, byArea));
 }
+
+/** Longer side, in pixels, of each page of a multi-page PNG export: 200 dpi on A4, readable text. */
+const PNG_PAGE_TARGET = 2400;
+/** Pixels all the pages of one PNG export may add up to; beyond this the pages are drawn smaller. */
+export const PNG_TOTAL_PIXELS = 400_000_000;
+
+/**
+ * Pixels per point of every page of a PNG export (one image per page). A single page may reach
+ * 4096 px; with several, each stays readable at `PNG_PAGE_TARGET` and, when the sequence is so
+ * long that the images would not fit in memory, all shrink together (`reduced`).
+ */
+export function pngScales(pages: readonly { width: number; height: number }[]) {
+  const target = pages.length > 1 ? PNG_PAGE_TARGET : 4096;
+  const scales = pages.map((p) => pixelRatio(p.width, p.height, target));
+  const total = pages.reduce(
+    (sum, p, i) => sum + p.width * p.height * (scales[i] as number) ** 2,
+    0,
+  );
+  const shrink = Math.min(1, Math.sqrt(PNG_TOTAL_PIXELS / total));
+  return { scales: scales.map((s) => s * shrink), reduced: shrink < 1 };
+}
