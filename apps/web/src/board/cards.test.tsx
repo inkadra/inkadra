@@ -308,7 +308,7 @@ describe('file card family', () => {
     expect(html).toContain('board.file.preparing');
     expect(html).toContain('width:42%');
     expect(html).toContain('42%</span>');
-    expect(html).not.toContain('data-playable');
+    expect(html).not.toContain('fcard__play');
     expect(html).not.toContain('card__duration');
     expect(html).toContain('<span class="fbadge fbadge--video">MXF</span>');
     expect(html).toContain('DNxHD · 6K');
