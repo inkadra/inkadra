@@ -48,3 +48,7 @@ so the documentation cannot drift from what works.
 `MEDIA=true` and published under every tag with the suffix `-media`. The default image stays
 small and free of GPL packages; the `-media` one carries Debian's GPL build of ffmpeg, is scanned
 the same way, and is attested in the same release.
+
+**Update (Office previews).** A third variant, `OFFICE=true` on top of `MEDIA=true`, is published
+under every tag with the suffix `-office` for the Office preview worker
+([decision 0065](0065-office-previews.md)), and attested in the same release.

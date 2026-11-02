@@ -4,19 +4,24 @@ Office previews are optional. The ordinary image and the `-media` image do not i
 LibreOffice. Without conversion, DOCX/XLSX/PPTX/ODT/ODS/ODP/CSV retain their type icon and
 original download. CSV and XLSX grid previews and first-sheet-to-table work without conversion.
 
-## Build the worker image
+## The worker image
 
-One build argument is enough: it adds LibreOffice (Writer, Calc, Impress), fonts, Poppler,
-bubblewrap and `prlimit`, everything the converter needs.
+Every tag also exists with the suffix `-office` (`ghcr.io/inkadra/inkadra:0.4.0-office`,
+`latest-office`, `edge-office`…): the `-media` image plus LibreOffice (Writer, Calc, Impress),
+fonts, Poppler, bubblewrap and `prlimit`, everything the converter needs. It is built, attested
+and published like the other variants, for linux/amd64 and linux/arm64. Pin the version you run,
+with `-office`; until a stable release includes it, only `edge-office` and `sha-…-office` exist.
+
+To build it yourself instead, one build argument is enough:
 
 ```sh
 docker build --build-arg OFFICE=true -t inkadra-office-worker .
 ```
 
 Add `--build-arg MEDIA=true` only if the same worker should also make video, audio and RAW
-previews. Use the image for the **worker** role only, with your existing database, Redis and
-storage settings, and set `OFFICE_PREVIEWS=true` on that worker. The web/collab roles keep their
-ordinary image. Do not expose a converter HTTP endpoint or mount the Docker socket. The worker
+previews (the published `-office` image has both). Use the image for the **worker** role only,
+with your existing database, Redis and storage settings, and set `OFFICE_PREVIEWS=true` on that
+worker. The web/collab roles keep their ordinary image. Do not expose a converter HTTP endpoint or mount the Docker socket. The worker
 needs network access to its queue/storage; its LibreOffice child has a separate network
 namespace with no interfaces.
 
@@ -51,7 +56,8 @@ Then point the worker at it. With the split layout (`deploy/compose.split.yaml`)
 # compose.office.yaml — docker compose -f compose.yaml -f deploy/compose.split.yaml -f compose.office.yaml up -d
 services:
   worker:
-    image: inkadra-office-worker
+    # Same version as the other roles; set INKADRA_TAG without a suffix (0.4.0, not 0.4.0-media).
+    image: ${INKADRA_IMAGE:-ghcr.io/inkadra/inkadra}:${INKADRA_TAG:-latest}-office # or inkadra-office-worker
     environment:
       OFFICE_PREVIEWS: "true"
     security_opt:

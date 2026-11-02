@@ -151,6 +151,9 @@ image under `/usr/share/doc/<package>/copyright`. The GPL is compatible with dis
 under the AGPL-3.0. The server only runs the `ffmpeg`, `ffprobe`, `exiftool`, `pdftoppm` and
 `pdfinfo` programs and does not link to them.
 
+The suffix `-office` (`0.4.0-office`, `edge-office`…) is the `-media` image plus LibreOffice, for
+the worker role only when you enable [Office document previews](office.md).
+
 ## Compose variants
 
 `compose.yaml` is the all-in-one setup. Other files in `deploy/` change it when added with `-f`
