@@ -87,8 +87,9 @@ treat files as Office documents in guest mode, and asks for no account derivativ
 
 ## Consequences
 
-The default image size is unchanged. `--build-arg OFFICE=true` adds Debian LibreOffice Writer,
-Calc, Impress, fonts, Poppler and bubblewrap: budget approximately 600–800 MiB extra uncompressed
+The default image size is unchanged. The published `-office` image (`--build-arg OFFICE=true`
+on top of `MEDIA=true`) adds Debian LibreOffice Writer, Calc, Impress, fonts, Poppler and
+bubblewrap: budget approximately 600–800 MiB extra uncompressed
 (depending on architecture and Debian version); measure the exact tag in your registry.
 Only the separate worker needs that image. Linux must permit unprivileged user namespaces;
 under Docker that takes a custom seccomp profile, never `seccomp=unconfined` nor a privileged
