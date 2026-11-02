@@ -263,7 +263,13 @@ export function validateBoardDoc(doc: Y.Doc): ValidationIssue[] {
     issues.push({ elementId: '', message: 'meta.animaticAudio is not a valid sound track.' });
   }
   for (const name of doc.share.keys()) {
-    if (name !== 'meta' && name !== 'elements') {
+    // Tiptap collaboration stores per-item position migration markers alongside our roots.
+    // Keep these CRDT markers intact; unrelated roots still fail at the import boundary.
+    if (
+      name !== 'meta' &&
+      name !== 'elements' &&
+      !/^__tiptap_position_migrations:item:\d+:\d+$/.test(name)
+    ) {
       issues.push({ elementId: '', message: `Unknown root type "${name}".` });
     }
   }
