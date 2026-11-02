@@ -299,10 +299,8 @@ export function MediaViewer({
     setOfficeSheet(0);
   }, [element.id]);
   const isTransformedImage = element.type === 'image' && hasImageTransform(element);
-  const { videoRef, unplayable, setUnplayable } = useVideoUnplayable(
-    ready ? playbackUrl(ready) : undefined,
-    ready?.id,
-  );
+  const playback = ready ? playbackUrl(ready) : undefined;
+  const { videoRef, unplayable, setUnplayable } = useVideoUnplayable(playback, ready?.id);
   // The viewer's own media take turns with the cards (one player at a time).
   const audioRef = useRef<HTMLAudioElement>(null);
   const videoTurn = useInlineMedia('viewer-video', videoRef);
@@ -312,10 +310,10 @@ export function MediaViewer({
   const [videoPaused, setVideoPaused] = useState(false);
   useEffect(() => {
     const player = videoRef.current;
-    if (!player || !ready?.id) return;
+    if (!player || !ready?.id || !playback) return;
     stepper.current = new VideoFrameStepper();
     return stepper.current.start(player);
-  }, [ready?.id, videoRef]);
+  }, [ready?.id, videoRef, playback]);
 
   const threads = useReviews((s) => s.threads);
   const reviewsReady = useReviews((s) => s.status);
@@ -639,7 +637,7 @@ export function MediaViewer({
                   allowFullScreen
                 />
               </div>
-            ) : ready?.kind === 'video' && !playbackUrl(ready) ? (
+            ) : ready?.kind === 'video' && !playback ? (
               <VideoUnplayable
                 poster={ready.variants.length > 0 ? pickVariant(ready, wide) : undefined}
                 filename={ready.filename}
@@ -657,7 +655,7 @@ export function MediaViewer({
                 <video
                   ref={videoRef}
                   className="viewer__media viewer__media--contain"
-                  src={playbackUrl(ready)}
+                  src={playback}
                   poster={ready.variants.length > 0 ? pickVariant(ready, wide) : undefined}
                   controls
                   autoPlay
@@ -704,7 +702,7 @@ export function MediaViewer({
                 {/* biome-ignore lint/a11y/useMediaCaption: people's own recordings have no captions */}
                 <audio
                   className="viewer__audio"
-                  src={playbackUrl(ready)}
+                  src={playback}
                   controls
                   autoPlay
                   ref={audioRef}
