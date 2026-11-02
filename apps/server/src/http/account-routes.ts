@@ -40,6 +40,7 @@ import {
 } from '../db/schema.ts';
 import type { Jobs } from '../jobs.ts';
 import { type Mailer, securityNotification } from '../mailer.ts';
+import { officeFiles } from '../media/office.ts';
 import { addressBucket, RateLimiter } from '../rate-limits.ts';
 import { newSecret, pkceChallenge, safeEqual, sha256 } from '../secrets.ts';
 import { animatedVariantKey } from '../storage.ts';
@@ -406,7 +407,7 @@ export function registerAccountRoutes(app: FastifyInstance, deps: Deps) {
       let files: string[] = [];
       if (alone.length > 0) {
         const originals = await tx
-          .select({ key: asset.storageKey })
+          .select({ key: asset.storageKey, id: asset.id, filename: asset.filename })
           .from(asset)
           .where(inArray(asset.projectId, alone));
         const variants = await tx
@@ -420,6 +421,7 @@ export function registerAccountRoutes(app: FastifyInstance, deps: Deps) {
           .where(inArray(asset.projectId, alone));
         files = [
           ...originals.map((r) => r.key),
+          ...officeFiles(originals),
           ...variants.flatMap((r) => [r.key, animatedVariantKey(r.assetId, r.size)]),
         ];
         await tx.delete(project).where(inArray(project.id, alone));

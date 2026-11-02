@@ -67,6 +67,8 @@ export interface ProcessLimits {
   memoryBytes?: number;
   /** Largest file the process may write (`--fsize`): it is killed past it. */
   fileBytes?: number;
+  /** Most tasks (`--nproc`) the user may have: a fork bomb in the tool fails instead of the host. */
+  processes?: number;
   /** Runs at `nice -n 10`, below the web role. */
   nice?: boolean;
 }
@@ -76,6 +78,8 @@ export interface RunLimits extends ProcessLimits {
   timeoutMs: number;
   /** Largest stdout kept; past it the run fails. */
   maxBuffer?: number;
+  /** Written to the standard input of the tool (bwrap reads its seccomp filter from fd 0). */
+  input?: Buffer;
 }
 
 /** The environment of a tool: no variables of the server (secrets, proxies) reach it. */
@@ -99,6 +103,7 @@ export async function limitedCommand(
   const caps = [
     ...(limits.memoryBytes ? [`--as=${Math.floor(limits.memoryBytes)}`] : []),
     ...(limits.fileBytes ? [`--fsize=${Math.floor(limits.fileBytes)}`] : []),
+    ...(limits.processes ? [`--nproc=${Math.floor(limits.processes)}`] : []),
   ];
   if (prlimit && caps.length > 0) command = [prlimit, [...caps, '--', ...command.flat()]];
   return command;
@@ -110,12 +115,16 @@ export async function limitedCommand(
  */
 export async function runTool(bin: string, args: string[], limits: RunLimits) {
   const [file, argv] = await limitedCommand(bin, args, limits);
-  const { stdout } = await exec(file, argv, {
+  const run = exec(file, argv, {
     timeout: limits.timeoutMs,
     maxBuffer: limits.maxBuffer ?? 1024 * 1024,
     encoding: 'buffer',
     killSignal: 'SIGKILL',
     env: toolEnv(),
   });
-  return stdout;
+  if (limits.input) {
+    run.child.stdin?.on('error', () => {});
+    run.child.stdin?.end(limits.input);
+  }
+  return (await run).stdout;
 }

@@ -53,6 +53,7 @@ import {
   user,
 } from '../db/schema.ts';
 import type { Jobs } from '../jobs.ts';
+import { officeFiles } from '../media/office.ts';
 import { animatedVariantKey } from '../storage.ts';
 import { storageUsage } from '../storage-usage.ts';
 import { iso } from './api-routes.ts';
@@ -537,7 +538,7 @@ export function registerProjectRoutes(app: FastifyInstance, deps: Deps) {
     await requireProjectRole(db, actor, projectId, 'owner');
     const keys = await db.transaction(async (tx) => {
       const originals = await tx
-        .select({ key: asset.storageKey })
+        .select({ key: asset.storageKey, id: asset.id, filename: asset.filename })
         .from(asset)
         .where(eq(asset.projectId, projectId));
       const variants = await tx
@@ -552,6 +553,7 @@ export function registerProjectRoutes(app: FastifyInstance, deps: Deps) {
       await tx.delete(project).where(eq(project.id, projectId));
       return [
         ...originals.map((r) => r.key),
+        ...officeFiles(originals),
         ...variants.flatMap((r) => [r.key, animatedVariantKey(r.assetId, r.size)]),
       ];
     });

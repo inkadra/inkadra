@@ -18,6 +18,8 @@ import { VideoFrameStepper } from './frame-grab.ts';
 import { hasImageTransform } from './image-crop.ts';
 import { playInline, useInlineMedia } from './inline-player.ts';
 import { MovingPicture, movingVariantUrl } from './moving.tsx';
+import { OfficeInfo, OfficeStage, useOfficePreview } from './OfficePreview.tsx';
+import { isOffice, officeTable, SHEET_PREVIEW, tableable } from './office.ts';
 import { authorName, editableText } from './review-model.ts';
 import { canComment, openComments, useReviews } from './review-store.ts';
 import { isTyping } from './shortcuts.ts';
@@ -231,7 +233,11 @@ export function MediaViewer({
   onClose,
   gallery,
   initialFrameId,
+  onOfficeTable,
+  instanceAdmin = false,
 }: {
+  instanceAdmin?: boolean;
+  onOfficeTable?: (id: string, name: string, rows: number) => void;
   initialFrameId?: string;
   store: BoardStore;
   element: Extract<Element, { type: 'image' | 'file' | 'link' }>;
@@ -257,6 +263,13 @@ export function MediaViewer({
   const embedUrl =
     element.type === 'link' && isVideoLink(element.url) ? videoEmbedUrl(element.url) : null;
   const ready: Asset | null = asset && asset !== 'missing' ? asset : null;
+  // Guests have no account asset URLs (their files come from the share link): they keep the
+  // thumbnail and download viewer, with no Office derivatives to ask for.
+  const guestMode = useContext(GuestModeContext);
+  const office = ready && !guestMode && isOffice(ready.filename);
+  const officeData = useOfficePreview(office ? ready : null);
+  const [officePage, setOfficePage] = useState(1);
+  const [officeSheet, setOfficeSheet] = useState(0);
   const dialogRef = useRef<HTMLDivElement>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [youtubeTime, setYoutubeTime] = useState<number | null>(null);
@@ -281,6 +294,8 @@ export function MediaViewer({
   // biome-ignore lint/correctness/useExhaustiveDependencies: reset original toggle when switching elements
   useEffect(() => {
     setShowOriginal(false);
+    setOfficePage(1);
+    setOfficeSheet(0);
   }, [element.id]);
   const isTransformedImage = element.type === 'image' && hasImageTransform(element);
   const { videoRef, unplayable, setUnplayable } = useVideoUnplayable(
@@ -301,7 +316,6 @@ export function MediaViewer({
     return stepper.current.start(player);
   }, [ready?.id, videoRef]);
 
-  const guestMode = useContext(GuestModeContext);
   const threads = useReviews((s) => s.threads);
   const reviewsReady = useReviews((s) => s.status);
   const reviewsBoard = useReviews((s) => s.boardId);
@@ -339,6 +353,34 @@ export function MediaViewer({
       if (e.key === 'Escape') {
         e.preventDefault();
         onClose();
+      }
+      if (office && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) {
+        const target = e.target instanceof HTMLElement ? e.target.closest('[role="tab"]') : null;
+        if (target) {
+          e.preventDefault();
+          const tabs = [
+            ...(target.parentElement?.querySelectorAll<HTMLButtonElement>('[role="tab"]') ?? []),
+          ];
+          const next =
+            tabs[
+              (tabs.indexOf(target as HTMLButtonElement) +
+                (e.key === 'ArrowLeft' ? -1 : 1) +
+                tabs.length) %
+                tabs.length
+            ];
+          next?.click();
+          next?.focus();
+          return;
+        }
+        // A page to turn, else the arrow goes on to the gallery like for any other file.
+        const button = dialogRef.current?.querySelector<HTMLButtonElement>(
+          e.key === 'ArrowLeft' ? '[data-office-prev]' : '[data-office-next]',
+        );
+        if (button && !button.disabled) {
+          e.preventDefault();
+          button.click();
+          return;
+        }
       }
       if (gallery && !e.shiftKey && e.key === 'ArrowLeft') {
         e.preventDefault();
@@ -382,7 +424,7 @@ export function MediaViewer({
       window.removeEventListener('keydown', onKey, true);
       window.removeEventListener('keyup', onKey, true);
     };
-  }, [onClose, gallery, videoRef]);
+  }, [onClose, gallery, videoRef, office]);
 
   // Focus once on opening, keep it during navigation, give it back to the opener on close.
   useEffect(() => {
@@ -430,7 +472,7 @@ export function MediaViewer({
   return (
     <div
       ref={dialogRef}
-      className={`viewer${infoOpen ? ' viewer--info-open' : ''}`}
+      className={`viewer${office ? ' viewer--office' : ''}${infoOpen ? ' viewer--info-open' : ''}`}
       role="dialog"
       tabIndex={-1}
       aria-modal="true"
@@ -441,6 +483,19 @@ export function MediaViewer({
         {/* Stage Top Bar */}
         <header className="viewer__stage-header">
           <span className="viewer__stage-title">{displayName}</span>
+          {office && ready && (
+            <span className={`fbadge fbadge--${fileFamily(ready)}`}>{fileBadge(ready)}</span>
+          )}
+          {office && !!officeData?.pageCount && (
+            <span className="viewer__stage-counter">
+              {t('office.page', { page: officePage, count: officeData.pageCount })}
+            </span>
+          )}
+          {office && !!officeData && officeData.sheets.length > 1 && (
+            <span className="viewer__stage-counter">
+              {t('office.sheetOf', { sheet: officeSheet + 1, count: officeData.sheets.length })}
+            </span>
+          )}
           {gallery && (
             <span className="viewer__stage-counter">
               {gallery.index + 1} / {gallery.total}
@@ -615,6 +670,17 @@ export function MediaViewer({
                   />
                 )}
               </>
+            ) : ready && office ? (
+              <OfficeStage
+                key={ready.id}
+                asset={ready}
+                data={officeData}
+                page={officePage}
+                setPage={setOfficePage}
+                sheet={officeSheet}
+                setSheet={setOfficeSheet}
+                admin={instanceAdmin}
+              />
             ) : ready && fileFamily(ready) === 'font' ? (
               <FontSpecimen key={ready.id} asset={ready} editable />
             ) : ready?.kind === 'audio' ? (
@@ -693,7 +759,7 @@ export function MediaViewer({
           </div>
 
           {/* Bottom Hints */}
-          {(ready?.kind !== 'video' || videoPaused) && (
+          {!office && (ready?.kind !== 'video' || videoPaused) && (
             <div className="viewer__hints">
               <span className="viewer__hint">
                 <span className="viewer__hint-kbd">
@@ -705,6 +771,51 @@ export function MediaViewer({
           )}
         </div>
 
+        {office && ready && (
+          <div className="office-mobile-actions">
+            {officeData?.sheets[0] && !readOnly && onOfficeTable ? (
+              <Button
+                variant="primary"
+                disabled={!tableable(officeData.sheets[0])}
+                onClick={() => {
+                  const id = officeTable(store, element, officeData.sheets, userId);
+                  if (id) {
+                    onOfficeTable(
+                      id,
+                      officeData.sheets[0]?.name ?? '',
+                      officeData.sheets[0]?.rows.length ?? 0,
+                    );
+                    onClose();
+                  }
+                }}
+              >
+                {t('office.toTable')}
+              </Button>
+            ) : (
+              <Button variant="ghost" onClick={() => setInfoOpen(true)}>
+                {t('viewer.info')}
+              </Button>
+            )}
+            {officeData?.sheets[0] ? (
+              <p className="office-mobile-summary">
+                {officeData.sheets[0].truncated
+                  ? t('office.truncatedTable', SHEET_PREVIEW)
+                  : t('office.summary', {
+                      rows: officeData.sheets[0].rows.length,
+                      columns: Math.max(0, ...officeData.sheets[0].rows.map((row) => row.length)),
+                    })}
+              </p>
+            ) : (
+              <a
+                className="ink-btn ink-btn--secondary"
+                href={`${ready.url}?download=1`}
+                download={ready.filename}
+              >
+                {t('office.download')}
+              </a>
+            )}
+          </div>
+        )}
         {/* Thumbnails Strip */}
         {gallery?.items && gallery.items.length > 1 && (
           <nav className="viewer__thumbnails" aria-label={t('viewer.thumbnails')}>
@@ -735,6 +846,27 @@ export function MediaViewer({
 
       {/* Sidebar Details */}
       <aside id="viewer-info" className="viewer__side" data-scroll>
+        {office && ready && (
+          <OfficeInfo
+            asset={ready}
+            data={officeData}
+            onTable={
+              !readOnly && onOfficeTable
+                ? () => {
+                    const id = officeTable(store, element, officeData?.sheets ?? [], userId);
+                    if (id) {
+                      onOfficeTable(
+                        id,
+                        officeData?.sheets[0]?.name ?? '',
+                        officeData?.sheets[0]?.rows.length ?? 0,
+                      );
+                      onClose();
+                    }
+                  }
+                : undefined
+            }
+          />
+        )}
         {gallery && !ready && (
           <p role="status">
             {t(asset === 'missing' ? 'moodboard.unavailable' : 'moodboard.loading')}
@@ -754,7 +886,7 @@ export function MediaViewer({
           </section>
         )}
 
-        {ready?.width && ready.height && (
+        {!office && ready?.width && ready.height && (
           <dl className="viewer__facts">
             <dt>{t('viewer.size')}</dt>
             <dd>
@@ -904,7 +1036,8 @@ export function MediaViewer({
             {t(isYoutube ? 'viewer.openOnYoutube' : 'moodboard.openSource')}
           </a>
         ) : (
-          ready && (
+          ready &&
+          !office && (
             <a
               className="ink-btn ink-btn--ghost viewer__download"
               href={ready.url}

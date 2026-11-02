@@ -411,7 +411,7 @@ export function Canvas({
 }: CanvasProps) {
   const { t, i18n } = useTranslation();
   const guest = useContext(GuestModeContext);
-  const { instance } = useSession();
+  const { instance, user } = useSession();
   const mapAttribution = guestMaps ? guestMaps.attribution : instance?.maps?.attribution;
   const mapTiles = guestMaps
     ? guestMaps.tiles
@@ -3508,6 +3508,15 @@ export function Canvas({
         {viewed &&
           createPortal(
             <MediaViewer
+              instanceAdmin={user?.role === 'admin'}
+              onOfficeTable={(id, name, rows) =>
+                setToast({
+                  text: t('office.created', { name, rows }),
+                  undo: true,
+                  show: [id],
+                  ok: true,
+                })
+              }
               store={store}
               element={viewed}
               projectId={projectId}

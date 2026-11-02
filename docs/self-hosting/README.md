@@ -225,3 +225,5 @@ The restore loads the tables in order, rebuilds the search index on the next sta
 any file named by the backup that storage does not have (a warning, not an error: restore the
 volume or the bucket and they come back). To restore a backup copied elsewhere, put it in the
 data folder first, for example with `docker compose cp`.
+
+Optional [Office document previews](office.md): isolated LibreOffice worker and spreadsheet limits.

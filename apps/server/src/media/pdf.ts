@@ -52,16 +52,16 @@ export async function readPdfInfo(pdfinfo: string, file: string) {
  * 500-page PDF costs what a 1-page one does. Poppler runs no scripts and fetches nothing.
  * Returns the PNG path, or null when the PDF does not render (encrypted, broken).
  */
-export async function renderFirstPage(pdftoppm: string, file: string, outPrefix: string) {
+export async function renderFirstPage(pdftoppm: string, file: string, outPrefix: string, page = 1) {
   const out = `${outPrefix}.png`;
   try {
     await runTool(
       pdftoppm,
       [
         '-f',
-        '1',
+        String(page),
         '-l',
-        '1',
+        String(page),
         '-singlefile',
         '-png',
         '-cropbox',
