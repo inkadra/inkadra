@@ -21,6 +21,9 @@ export async function zipBlobs(files: readonly { name: string; blob: Blob }[]): 
   const parts: BlobPart[] = [];
   const central: BlobPart[] = [];
   let offset = 0;
+  const now = new Date();
+  const dosTime = (now.getHours() << 11) | (now.getMinutes() << 5) | (now.getSeconds() >> 1);
+  const dosDate = ((now.getFullYear() - 1980) << 9) | ((now.getMonth() + 1) << 5) | now.getDate();
   for (const { name, blob } of files) {
     const nameBytes = new TextEncoder().encode(name);
     const crc = crc32(new Uint8Array(await blob.arrayBuffer()));
@@ -28,6 +31,8 @@ export async function zipBlobs(files: readonly { name: string; blob: Blob }[]): 
     head.setUint32(0, 0x04034b50, true);
     head.setUint16(4, 20, true); // version needed
     head.setUint16(6, 0x0800, true); // UTF-8 names
+    head.setUint16(10, dosTime, true);
+    head.setUint16(12, dosDate, true);
     head.setUint32(14, crc, true);
     head.setUint32(18, blob.size, true);
     head.setUint32(22, blob.size, true);
@@ -37,6 +42,8 @@ export async function zipBlobs(files: readonly { name: string; blob: Blob }[]): 
     entry.setUint16(4, 20, true);
     entry.setUint16(6, 20, true);
     entry.setUint16(8, 0x0800, true);
+    entry.setUint16(12, dosTime, true);
+    entry.setUint16(14, dosDate, true);
     entry.setUint32(16, crc, true);
     entry.setUint32(20, blob.size, true);
     entry.setUint32(24, blob.size, true);

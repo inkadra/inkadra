@@ -15,6 +15,10 @@ describe('zipBlobs', () => {
     expect(view.getUint32(0, true)).toBe(0x04034b50);
     expect(view.getUint32(14, true)).toBe(0x3610a686);
     expect(view.getUint32(18, true)).toBe(5);
+    // Modification date is today (DOS format), not the invalid 1980-00-00.
+    const dosDate = view.getUint16(12, true);
+    expect((dosDate >> 9) + 1980).toBe(new Date().getFullYear());
+    expect((dosDate >> 5) & 0xf).toBe(new Date().getMonth() + 1);
     expect(new TextDecoder().decode(bytes.subarray(30, 39))).toBe('a-001.png');
     expect(new TextDecoder().decode(bytes.subarray(39, 44))).toBe('hello');
     // End of central directory: two entries, central directory right after the files.
