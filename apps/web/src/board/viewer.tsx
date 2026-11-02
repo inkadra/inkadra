@@ -19,7 +19,7 @@ import { hasImageTransform } from './image-crop.ts';
 import { playInline, useInlineMedia } from './inline-player.ts';
 import { MovingPicture, movingVariantUrl } from './moving.tsx';
 import { OfficeInfo, OfficeStage, useOfficePreview } from './OfficePreview.tsx';
-import { isOffice, officeTable } from './office.ts';
+import { isOffice, officeTable, SHEET_PREVIEW, tableable } from './office.ts';
 import { authorName, editableText } from './review-model.ts';
 import { canComment, openComments, useReviews } from './review-store.ts';
 import { isTyping } from './shortcuts.ts';
@@ -261,9 +261,13 @@ export function MediaViewer({
   const embedUrl =
     element.type === 'link' && isVideoLink(element.url) ? videoEmbedUrl(element.url) : null;
   const ready: Asset | null = asset && asset !== 'missing' ? asset : null;
-  const office = ready && isOffice(ready.filename);
+  // Guests have no account asset URLs (their files come from the share link): they keep the
+  // thumbnail and download viewer, with no Office derivatives to ask for.
+  const guestMode = useContext(GuestModeContext);
+  const office = ready && !guestMode && isOffice(ready.filename);
   const officeData = useOfficePreview(office ? ready : null);
   const [officePage, setOfficePage] = useState(1);
+  const [officeSheet, setOfficeSheet] = useState(0);
   const dialogRef = useRef<HTMLDivElement>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [youtubeTime, setYoutubeTime] = useState<number | null>(null);
@@ -289,6 +293,7 @@ export function MediaViewer({
   useEffect(() => {
     setShowOriginal(false);
     setOfficePage(1);
+    setOfficeSheet(0);
   }, [element.id]);
   const isTransformedImage = element.type === 'image' && hasImageTransform(element);
   const { videoRef, unplayable, setUnplayable } = useVideoUnplayable(
@@ -309,7 +314,6 @@ export function MediaViewer({
     return stepper.current.start(player);
   }, [ready?.id, videoRef]);
 
-  const guestMode = useContext(GuestModeContext);
   const threads = useReviews((s) => s.threads);
   const reviewsReady = useReviews((s) => s.status);
   const reviewsBoard = useReviews((s) => s.boardId);
@@ -364,16 +368,17 @@ export function MediaViewer({
             ];
           next?.click();
           next?.focus();
-        } else {
-          const button = dialogRef.current?.querySelector<HTMLButtonElement>(
-            e.key === 'ArrowLeft' ? '[data-office-prev]' : '[data-office-next]',
-          );
-          if (button) {
-            e.preventDefault();
-            button.click();
-          }
+          return;
         }
-        return;
+        // A page to turn, else the arrow goes on to the gallery like for any other file.
+        const button = dialogRef.current?.querySelector<HTMLButtonElement>(
+          e.key === 'ArrowLeft' ? '[data-office-prev]' : '[data-office-next]',
+        );
+        if (button && !button.disabled) {
+          e.preventDefault();
+          button.click();
+          return;
+        }
       }
       if (gallery && !e.shiftKey && e.key === 'ArrowLeft') {
         e.preventDefault();
@@ -481,7 +486,12 @@ export function MediaViewer({
           )}
           {office && !!officeData?.pageCount && (
             <span className="viewer__stage-counter">
-              {officePage} / {officeData.pageCount}
+              {t('office.page', { page: officePage, count: officeData.pageCount })}
+            </span>
+          )}
+          {office && !!officeData && officeData.sheets.length > 1 && (
+            <span className="viewer__stage-counter">
+              {t('office.sheetOf', { sheet: officeSheet + 1, count: officeData.sheets.length })}
             </span>
           )}
           {gallery && (
@@ -665,6 +675,8 @@ export function MediaViewer({
                 data={officeData}
                 page={officePage}
                 setPage={setOfficePage}
+                sheet={officeSheet}
+                setSheet={setOfficeSheet}
               />
             ) : ready && fileFamily(ready) === 'font' ? (
               <FontSpecimen key={ready.id} asset={ready} editable />
@@ -761,6 +773,7 @@ export function MediaViewer({
             {officeData?.sheets[0] && !readOnly && onOfficeTable ? (
               <Button
                 variant="primary"
+                disabled={!tableable(officeData.sheets[0])}
                 onClick={() => {
                   const id = officeTable(store, element, officeData.sheets, userId);
                   if (id) {
@@ -782,10 +795,12 @@ export function MediaViewer({
             )}
             {officeData?.sheets[0] ? (
               <p className="office-mobile-summary">
-                {t('office.summary', {
-                  rows: officeData.sheets[0].rows.length,
-                  columns: Math.max(0, ...officeData.sheets[0].rows.map((row) => row.length)),
-                })}
+                {officeData.sheets[0].truncated
+                  ? t('office.truncatedTable', SHEET_PREVIEW)
+                  : t('office.summary', {
+                      rows: officeData.sheets[0].rows.length,
+                      columns: Math.max(0, ...officeData.sheets[0].rows.map((row) => row.length)),
+                    })}
               </p>
             ) : (
               <a

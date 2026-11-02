@@ -25,6 +25,8 @@ vi.mock('./tags.tsx', () => ({
   TagEditor: () => null,
 }));
 
+vi.mock('../lib/session.tsx', () => ({ useSession: () => ({ user: null }) }));
+
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
     t: (key: string) => {
@@ -871,5 +873,136 @@ describe('capture permission matrix', () => {
       );
       expect(html.includes('viewer__grab')).toBe(visible);
     }
+  });
+});
+
+describe('MediaViewer Office documents', () => {
+  let container: HTMLDivElement;
+  let root: Root;
+  const render = (node: ReactNode) => act(async () => root.render(node));
+  const element = {
+    id: 'el-office',
+    type: 'file',
+    x: 0,
+    y: 0,
+    w: 100,
+    h: 100,
+    assetId: 'office-1',
+  } as unknown as Extract<Element, { type: 'file' }>;
+  const gallery = (next: () => void, previous: () => void) => ({
+    index: 1,
+    total: 3,
+    onPrevious: previous,
+    onNext: next,
+    usedIn: [],
+  });
+  const viewer = (next: () => void, previous: () => void) => (
+    <MediaViewer
+      store={{} as import('./store.ts').BoardStore}
+      element={element}
+      projectId="proj-01"
+      userId="user-01"
+      readOnly={false}
+      onClose={vi.fn()}
+      gallery={gallery(next, previous)}
+    />
+  );
+  const arrow = (key: 'ArrowLeft' | 'ArrowRight') =>
+    act(async () => {
+      window.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true }));
+    });
+  const manifest = (body: unknown) =>
+    vi.fn().mockResolvedValue({ ok: true, json: async () => body });
+
+  beforeEach(() => {
+    container = document.createElement('div');
+    document.body.appendChild(container);
+    root = createRoot(container);
+    resetReviews();
+  });
+  afterEach(() => {
+    act(() => root.unmount());
+    container.remove();
+    vi.unstubAllGlobals();
+    resetReviews();
+  });
+  const office = (filename: string) =>
+    ({
+      id: 'office-1',
+      kind: 'file',
+      filename,
+      mime: 'application/octet-stream',
+      size: 2048,
+      url: '/api/v1/assets/office-1/file',
+      status: 'ready',
+      variants: [],
+      palette: [],
+    }) as unknown as Asset;
+
+  it('turns pages with the arrows, then lets them go on to the gallery', async () => {
+    mockState.asset = office('treatment.docx');
+    vi.stubGlobal('fetch', manifest({ pageCount: 2, sheets: [], revision: 'r1' }));
+    const next = vi.fn();
+    const previous = vi.fn();
+    await render(viewer(next, previous));
+    const counters = () =>
+      [...container.querySelectorAll('.viewer__stage-counter')].map((c) => c.textContent);
+    expect(counters()).toContain('office.page');
+    expect(container.querySelector('.office-pages__paper img')?.getAttribute('src')).toBe(
+      '/api/v1/assets/office-1/office/page-1.webp?v=r1',
+    );
+    await arrow('ArrowRight');
+    expect(container.querySelector('.office-pages__paper img')?.getAttribute('src')).toContain(
+      'page-2.webp',
+    );
+    expect(next).not.toHaveBeenCalled();
+    // Last page: no page to turn, so the arrow moves to the next item of the gallery.
+    await arrow('ArrowRight');
+    expect(next).toHaveBeenCalledTimes(1);
+    await arrow('ArrowLeft');
+    expect(previous).not.toHaveBeenCalled();
+    await arrow('ArrowLeft');
+    expect(previous).toHaveBeenCalledTimes(1);
+  });
+
+  it('moves through the gallery with the arrows on a sheet, which has no pages', async () => {
+    mockState.asset = office('budget.xlsx');
+    vi.stubGlobal(
+      'fetch',
+      manifest({
+        pageCount: 0,
+        sheets: [
+          {
+            name: 'Budget',
+            rows: [
+              ['Voce', 'Totale'],
+              ['Luci', '1080.5'],
+            ],
+          },
+          { name: 'Troupe', rows: [['Nome']] },
+        ],
+      }),
+    );
+    const next = vi.fn();
+    await render(viewer(next, vi.fn()));
+    expect(container.querySelectorAll('.office-sheet__tabs [role="tab"]')).toHaveLength(2);
+    expect(container.querySelector('td.n')?.textContent).toBe('1080.5');
+    await arrow('ArrowRight');
+    expect(next).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps guests on the thumbnail and download viewer: no Office derivatives are asked for', async () => {
+    mockState.asset = office('budget.xlsx');
+    const fetcher = manifest({ pageCount: 0, sheets: [] });
+    vi.stubGlobal('fetch', fetcher);
+    await render(
+      <GuestModeContext.Provider value={true}>
+        {viewer(vi.fn(), vi.fn())}
+      </GuestModeContext.Provider>,
+    );
+    const asked = fetcher.mock.calls.map((call) => String(call[0]));
+    expect(asked.filter((url) => url.includes('/office/'))).toEqual([]);
+    expect(container.querySelector('.viewer--office')).toBeNull();
+    expect(container.querySelector('.office-sheet')).toBeNull();
   });
 });
