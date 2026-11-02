@@ -171,3 +171,59 @@ describe('pickVariant processing boundary', () => {
     }
   });
 });
+
+describe('video audio safety', () => {
+  it.each(['ac3', 'eac3', 'dts', 'flac', 'opus', 'aac'])(
+    'never falls back to the H.264 MKV original with %s sound',
+    (audioCodec) => {
+      const video: Asset = {
+        ...sampleAsset,
+        kind: 'video',
+        mime: 'video/x-matroska',
+        videoCodec: 'h264',
+        audioCodec,
+        url: '/original.mkv',
+      };
+      for (const status of ['queued', 'processing', 'failed', 'skipped'] as const) {
+        expect(
+          playbackUrl({
+            ...video,
+            proxy: {
+              status,
+              progress: null,
+              url: null,
+              mime: 'video/mp4',
+              width: null,
+              height: null,
+              size: null,
+            },
+          }),
+        ).toBeUndefined();
+      }
+      expect(playbackUrl({ ...video, proxy: null })).toBeUndefined();
+    },
+  );
+});
+
+it.each([
+  ['video/mp4', 'h264', 'aac', true],
+  ['video/mp4', 'h264', 'ac3', false],
+  ['video/webm', 'vp9', 'opus', true],
+  ['video/webm', 'h264', 'ac3', false],
+] as const)(
+  'checks the picture and sound of a %s original',
+  (mime, videoCodec, audioCodec, playable) => {
+    const video: Asset = {
+      ...sampleAsset,
+      kind: 'video',
+      status: 'ready',
+      mime,
+      videoCodec,
+      audioCodec,
+      url: '/orig',
+      proxy: null,
+    };
+    expect(playbackUrl(video)).toBe(playable ? '/orig' : undefined);
+    expect(playbackUrl({ ...video, status: 'processing' })).toBeUndefined();
+  },
+);

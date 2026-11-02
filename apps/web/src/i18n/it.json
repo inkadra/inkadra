@@ -431,7 +431,8 @@
       "glyphs_one": "{{count}} glifo",
       "glyphs_other": "{{count}} glifi",
       "polygons_one": "{{count}} poligono",
-      "polygons_other": "{{count}} poligoni"
+      "polygons_other": "{{count}} poligoni",
+      "unavailable": "Formato non supportato: copia riproducibile non disponibile."
     },
     "voiceNote": {
       "label": "Nota vocale",

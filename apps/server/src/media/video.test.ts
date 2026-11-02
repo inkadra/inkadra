@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  copiesVideo,
   DEFAULT_PROXY_SETTINGS,
   MAX_INT32,
   PROXY_MAX_RUN_MS,
@@ -274,3 +275,16 @@ describe('audio files (#327)', () => {
     );
   });
 });
+
+it.each(['ac3', 'eac3', 'dts', 'flac', 'opus', 'aac'])(
+  'remuxes H.264 MKV and preserves %s audio as AAC',
+  (audioCodec) => {
+    const source = info({ width: 1280, height: 720, audioCodec });
+    expect(webPlayable('video/webm', source)).toBe(false);
+    expect(copiesVideo(source, DEFAULT_PROXY_SETTINGS)).toBe(true);
+    const args = proxyArgs('/in.mkv', '/out.mp4', source, DEFAULT_PROXY_SETTINGS, 32e6);
+    expect(args.join(' ')).toContain('-map 0:V:0 -map 0:a:0?');
+    expect(args.join(' ')).toContain('-c:v copy');
+    expect(args.join(' ')).toContain(audioCodec === 'aac' ? '-c:a copy' : '-c:a aac');
+  },
+);

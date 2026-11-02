@@ -431,7 +431,8 @@
       "glyphs_one": "{{count}} glyph",
       "glyphs_other": "{{count}} glyphs",
       "polygons_one": "{{count}} polygon",
-      "polygons_other": "{{count}} polygons"
+      "polygons_other": "{{count}} polygons",
+      "unavailable": "Unsupported format: no playable copy is available."
     },
     "voiceNote": {
       "label": "Voice note",

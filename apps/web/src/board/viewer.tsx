@@ -639,6 +639,18 @@ export function MediaViewer({
                   allowFullScreen
                 />
               </div>
+            ) : ready?.kind === 'video' && !playbackUrl(ready) ? (
+              <VideoUnplayable
+                poster={ready.variants.length > 0 ? pickVariant(ready, wide) : undefined}
+                filename={ready.filename}
+                downloadUrl={ready.url}
+                downloadLabel={t('viewer.download')}
+                message={t(
+                  ready.proxy?.status === 'queued' || ready.proxy?.status === 'processing'
+                    ? 'board.file.preparing'
+                    : 'viewer.unplayable',
+                )}
+              />
             ) : ready?.kind === 'video' ? (
               <>
                 {/* biome-ignore lint/a11y/useMediaCaption: people's own footage has no captions */}
