@@ -72,13 +72,11 @@ test('each member is a tidy card on a phone: the columns line up and Disattiva e
   if (!first?.role || !first.create || !first.action) throw new Error('missing cell');
   for (const c of cards) {
     if (!c.tr || !c.person || !c.role || !c.create || !c.action) throw new Error('missing cell');
-    // Role and project creation side by side, in the same two columns on every row.
+    // Role, then project creation, each on its own full-width line, the same on every row.
     expect(Math.abs(c.role.left - first.role.left)).toBeLessThan(1);
     expect(Math.abs(c.create.left - first.create.left)).toBeLessThan(1);
-    expect(Math.abs(c.create.width - first.create.width)).toBeLessThan(1);
-    // Wide enough for "Come l’istanza (sì)", the longest choice.
-    expect(c.create.width).toBeGreaterThan(170);
-    expect(Math.abs(c.create.top - c.role.top)).toBeLessThan(1);
+    expect(Math.abs(c.role.width - first.role.width)).toBeLessThan(1);
+    expect(c.create.top).toBeGreaterThanOrEqual(c.role.bottom - 1);
     // Disattiva at the end of the first line, the same place on every row, inside the card.
     expect(Math.abs(c.action.right - first.action.right)).toBeLessThan(1);
     expect(c.action.right).toBeLessThanOrEqual(c.tr.right);
