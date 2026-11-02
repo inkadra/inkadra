@@ -242,43 +242,6 @@
   font-size: 15px;
   border-radius: var(--ink-radius-sm);
 }
-.project-setup__template-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 6px;
-}
-.ink-tile--card.project-setup__template {
-  flex-direction: row;
-  align-items: center;
-  gap: 8px;
-  min-width: 0;
-  padding: 8px 9px;
-  border-color: transparent;
-  border-radius: var(--ink-radius-md);
-  font-size: 12px;
-  font-weight: 500;
-}
-.ink-tile--card.project-setup__template:has(> .ink-tile__input:checked) {
-  border-color: transparent;
-  background: var(--ink-accent-soft-bg);
-  box-shadow: inset 0 0 0 1.5px var(--ink-accent-primary);
-}
-.project-setup__template-icon {
-  display: grid;
-  place-items: center;
-  flex: none;
-  width: 24px;
-  height: 24px;
-  border-radius: var(--ink-radius-sm);
-  background: var(--kind-bg);
-  color: var(--kind-fg);
-}
-.project-setup__template-name {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
 .project-setup__hint {
   margin: 6px 0 0;
   font-size: 11.5px;
@@ -483,29 +446,6 @@
     grid-template-columns: 112px minmax(0, 1fr);
   }
 }
-/* Optional screenplay for the template's storyboard, under the templates. */
-.project-setup__script {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 12px;
-  border: 1px solid var(--ink-border-default);
-  border-radius: var(--ink-radius-md);
-}
-.project-setup__script-text {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  flex: 1;
-  min-width: 0;
-}
-.project-setup__script-text strong {
-  font-size: 12px;
-}
-.project-setup__script-text small {
-  font-size: 11px;
-  line-height: 1.5;
-}
 
 /* Phones: fields and their buttons line up at 44 px. */
 @media (width < 768px) {
@@ -526,11 +466,5 @@
   }
   .project-setup .ink-dialog__actions > .ink-btn {
     flex: 1;
-  }
-  .project-setup__script {
-    flex-wrap: wrap;
-  }
-  .project-setup__script-text {
-    flex-basis: 200px;
   }
 }

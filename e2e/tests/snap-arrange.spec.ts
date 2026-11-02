@@ -296,16 +296,12 @@ for (const theme of ['dark', 'light'] as const) {
       await open(page, baseURL!, [], theme);
       const start = page.getByRole('region', { name: 'Da dove partiamo?' });
       await expect(start).toBeVisible();
-      for (const name of [/^Moodboard/, /^Storyboard/, /^Importa sceneggiatura/]) {
+      for (const name of [/^Importa sceneggiatura/]) {
         await expect(start.getByRole('button', { name })).toBeVisible();
       }
       await expect(start.getByText(phone ? /tocca due volte/ : /doppio clic/)).toBeVisible();
       await page.screenshot({ path: `${out}/empty-${phone ? 'phone' : 'desktop'}-${theme}.png` });
       if (!phone) {
-        // Browse opens the Canvas menu with every template; the first card hides the card.
-        await start.getByRole('button', { name: /Sfoglia tutti i modelli/ }).click();
-        await expect(page.getByRole('menu', { name: 'Canvas' })).toBeVisible();
-        await page.keyboard.press('Escape');
         await page.getByTestId('canvas').dblclick({ position: { x: 300, y: 200 } });
         await expect(start).toBeHidden();
       }

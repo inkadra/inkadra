@@ -43,7 +43,7 @@ own server.
 ## What it does
 
 - **Boards on an infinite canvas.** Notes, images, files, links, to-do lists, colour swatches,
-  columns, arrows and boards inside boards. Start from scratch or from a template. YouTube and
+  columns, arrows and boards inside boards. YouTube and
   Vimeo links show their preview, and YouTube videos play in the viewer.
 - **Storyboards, shot lists and schedules.** Scenes and frames with shot size, angle, movement,
   lens, duration, cast and status. Draw on a frame with the pen, or start from a picture. The
@@ -89,7 +89,7 @@ own server.
     <td colspan="2">
       <picture>
         <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/readme/home-dark.png">
-        <img src="docs/screenshots/readme/home-light.png" alt="Home: today's shooting day, the recent boards with their kind colours, activity and templates">
+        <img src="docs/screenshots/readme/home-light.png" alt="Home: today's shooting day, the recent boards with their kind colours, and activity">
       </picture>
       <p align="center"><sub>Home: today's shoot, recent boards and what changed</sub></p>
     </td>

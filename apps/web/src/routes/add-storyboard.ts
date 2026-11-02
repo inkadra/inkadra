@@ -1,34 +1,24 @@
 import type { Project } from '@inkadra/shared';
-import { boardPath, loadBoards } from '../board/boards.ts';
-import { createCanvasBoards } from '../board/canvas-templates.ts';
+import { boardPath, createBoard, loadBoards } from '../board/boards.ts';
 import { storyboardOf } from '../board/views.ts';
 import type { ProjectMenuItem } from './ProjectAppearance.tsx';
-import { queueSeeds } from './seed-queue.tsx';
 
-/**
- * The project's storyboard, made the way the Canvas menu makes one (a storyboard board under the
- * root, laid out in the background). A project that already has one gets that one: there is
- * a single storyboard per project, and the menu cannot know without loading the boards.
- * Resolves to the address of the board.
- */
+/** Open the existing storyboard, or create an empty one under the project root. */
 export async function addStoryboard(
   project: Pick<Project, 'id' | 'rootBoardId'>,
   t: (key: string) => string,
-  userId: string,
 ): Promise<string> {
   const boards = await loadBoards(project.id);
   if (!boards) throw new Error('boards unavailable');
   let id = storyboardOf(boards);
   if (!id) {
-    const created = await createCanvasBoards(
+    const board = await createBoard(
       project.id,
       project.rootBoardId,
+      t('film.views.storyboard'),
       'storyboard',
-      t,
-      userId,
     );
-    queueSeeds(created.jobs);
-    id = created.board.id;
+    id = board.id;
   }
   return boardPath(project.id, id, project.rootBoardId);
 }
@@ -37,7 +27,6 @@ export async function addStoryboard(
 export function addStoryboardItem(
   project: Project,
   t: (key: string) => string,
-  userId: string,
   go: (to: string) => void,
   onError?: () => void,
 ): ProjectMenuItem[] {
@@ -45,7 +34,7 @@ export function addStoryboardItem(
   return [
     {
       label: t('nav.addStoryboard'),
-      action: () => void addStoryboard(project, t, userId).then(go, onError),
+      action: () => void addStoryboard(project, t).then(go, onError),
     },
   ];
 }

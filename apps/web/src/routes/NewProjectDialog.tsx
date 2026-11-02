@@ -15,34 +15,16 @@ import {
   DialogActions,
   type DialogHandle,
   Icon,
-  kindStyle,
   Select,
   TextField,
 } from '@inkadra/ui';
 import { type FormEvent, useEffect, useId, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { castName, type ImportPlan } from '../board/film/screenplay/plan.ts';
-import { ScreenplayImportDialog } from '../board/film/screenplay/ScreenplayImportDialog.tsx';
 import { api } from '../lib/api.ts';
 import { useClassifications } from '../lib/classifications.ts';
 import { useSession } from '../lib/session.tsx';
 import { PeoplePicker } from '../people/PeoplePicker.tsx';
-import { ProjectSetupSeed } from './ProjectSetupSeed.tsx';
-import {
-  type CreatedSetupBoard,
-  createSetupBoards,
-  PROJECT_TEMPLATES,
-  type ProjectTemplate,
-  setupBoards,
-  TEMPLATE_ICONS,
-} from './project-setup.ts';
 import './projects.css';
-
-/** Blank first: it is the default, and the rest read as ready-made starts. */
-const TEMPLATE_ORDER: ProjectTemplate[] = [
-  'blank',
-  ...PROJECT_TEMPLATES.filter((v) => v !== 'blank'),
-];
 
 interface Invite {
   email: string;
@@ -54,14 +36,11 @@ interface Invite {
 
 export function NewProjectDialog({
   open,
-  template,
   onClose,
   onCreated,
   onImport,
 }: {
   open: boolean;
-  /** Preselected, as when opened from a template on Home. */
-  template?: ProjectTemplate;
   onClose: () => void;
   /** Switches to Import project… for someone holding an archive. */
   onImport?: () => void;
@@ -84,7 +63,6 @@ export function NewProjectDialog({
     >
       {open && (
         <ProjectSetupForm
-          template={template}
           onClose={() => dialog.current?.requestClose()}
           onCreated={onCreated}
           onImport={onImport}
@@ -97,14 +75,12 @@ export function NewProjectDialog({
 }
 
 export function ProjectSetupForm({
-  template: initialTemplate = 'blank',
   onClose,
   onCreated,
   onImport,
   onBusyChange,
   onDirtyChange,
 }: {
-  template?: ProjectTemplate;
   onClose: () => void;
   onCreated: (p: Project) => void;
   /** Shows a quiet Import archive… link in the footer. */
@@ -115,13 +91,12 @@ export function ProjectSetupForm({
 }) {
   const { catalogs, typeLabel } = useClassifications();
   const { t } = useTranslation();
-  const { user, instance } = useSession();
+  const { instance } = useSession();
   const detailsId = useId();
   const [name, setName] = useState('');
   const [type, setType] = useState<ProjectType | ''>('');
   const [start, setStart] = useState('');
   const [end, setEnd] = useState('');
-  const [template, setTemplate] = useState<ProjectTemplate>(initialTemplate);
   const [details, setDetails] = useState(false);
   const [email, setEmail] = useState('');
   const [role, setRole] = useState<ProjectRole>('editor');
@@ -130,18 +105,11 @@ export function ProjectSetupForm({
   const [results, setResults] = useState<InvitationResult[]>([]);
   const [busy, setBusy] = useState(false);
   const [created, setCreated] = useState<Project | null>(null);
-  const [seeding, setSeeding] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [screenplay, setScreenplay] = useState<ImportPlan | null>(null);
-  const [pickingScript, setPickingScript] = useState(false);
-  // The screenplay fills the template's storyboard instead of its sample scene.
-  const withStoryboard = setupBoards(template).some((b) => b.kind === 'storyboard');
   const progress = useRef<{
     project: Project | null;
-    boards: CreatedSetupBoard[];
-    seeded: number;
     invitations: InvitationResult[];
-  }>({ project: null, boards: [], seeded: 0, invitations: [] });
+  }>({ project: null, invitations: [] });
   // The list the running creation invites, including an address left typed in the field.
   const inviteList = useRef(invites);
   inviteList.current = invites;
@@ -150,9 +118,7 @@ export function ProjectSetupForm({
   }, [busy, onBusyChange]);
   const locked = busy || !!progress.current.project;
   const dirty =
-    !created &&
-    !locked &&
-    !!(name.trim() || start || end || email.trim() || invites.length || screenplay);
+    !created && !locked && !!(name.trim() || start || end || email.trim() || invites.length);
   useEffect(() => {
     onDirtyChange?.(dirty);
   }, [dirty, onDirtyChange]);
@@ -227,30 +193,12 @@ export function ProjectSetupForm({
         shootingStart: start || null,
         shootingEnd: end || null,
       });
-      await createSetupBoards(p.project, template, p.boards, (key) =>
-        t(`onboarding.boards.${key}`),
-      );
-      if (p.seeded <= p.boards.length) setSeeding(p.seeded);
-      else await inviteTeam();
+      await inviteTeam();
     } catch {
       setBusy(false);
       setError(t(progress.current.project ? 'onboarding.partialError' : 'auth.errors.generic'));
     }
   }
-  const seedDone = () => {
-    const next = ++progress.current.seeded;
-    if (next <= progress.current.boards.length) setSeeding(next);
-    else {
-      setSeeding(null);
-      void inviteTeam();
-    }
-  };
-  const seedFailed = () => {
-    setSeeding(null);
-    setBusy(false);
-    setError(t('onboarding.partialError'));
-  };
-  const seedBoard = seeding === null ? null : progress.current.boards[seeding];
   const project = progress.current.project;
   return (
     <form className="project-setup" onSubmit={submit}>
@@ -265,61 +213,6 @@ export function ProjectSetupForm({
           maxLength={120}
           required
         />
-        <fieldset className="project-setup__templates">
-          <legend>{t('onboarding.startFrom')}</legend>
-          <div className="project-setup__template-grid">
-            {TEMPLATE_ORDER.map((v) => (
-              <ChoiceTile
-                key={v}
-                variant="card"
-                className="project-setup__template"
-                name="projectTemplate"
-                value={v}
-                checked={template === v}
-                onChange={() => setTemplate(v)}
-              >
-                <span
-                  className="project-setup__template-icon"
-                  style={kindStyle(v)}
-                  aria-hidden="true"
-                >
-                  <Icon name={TEMPLATE_ICONS[v]} size={14} />
-                </span>
-                <span className="project-setup__template-name">
-                  {t(`onboarding.templates.${v}.name`)}
-                </span>
-              </ChoiceTile>
-            ))}
-          </div>
-          <p className="project-setup__hint">{t(`onboarding.templates.${template}.body`)}</p>
-        </fieldset>
-        {withStoryboard && (
-          <div className="project-setup__script">
-            <span className="project-setup__script-text">
-              <strong>{t('screenplay.setup.label')}</strong>
-              <small className="ink-muted">
-                {screenplay
-                  ? t('screenplay.setup.chosen', {
-                      title: screenplay.title
-                        ? castName(screenplay.title)
-                        : t('screenplay.untitled'),
-                      scenes: t('screenplay.scenes', { count: screenplay.scenes.length }),
-                      frames: t('screenplay.framesCount', { count: screenplay.frameCount }),
-                    })
-                  : t('screenplay.setup.hint')}
-              </small>
-            </span>
-            {screenplay ? (
-              <Button variant="ghost" onClick={() => setScreenplay(null)}>
-                {t('screenplay.setup.remove')}
-              </Button>
-            ) : (
-              <Button icon="upload" onClick={() => setPickingScript(true)}>
-                {t('screenplay.open')}
-              </Button>
-            )}
-          </div>
-        )}
         <div className="project-setup__details">
           <button
             type="button"
@@ -498,33 +391,6 @@ export function ProjectSetupForm({
           </Button>
         )}
       </DialogActions>
-      {seeding !== null && project && user && (
-        <ProjectSetupSeed
-          key={seedBoard?.board.id ?? project.rootBoardId}
-          boardId={seedBoard?.board.id ?? project.rootBoardId}
-          seed={seedBoard?.seed}
-          screenplay={
-            withStoryboard && seedBoard?.board.kind === 'storyboard'
-              ? (screenplay ?? undefined)
-              : undefined
-          }
-          links={seedBoard ? undefined : progress.current.boards}
-          userId={user.id}
-          done={seedDone}
-          failed={seedFailed}
-        />
-      )}
-      {pickingScript && (
-        <ScreenplayImportDialog
-          targets={['new']}
-          confirmLabel={t('screenplay.use')}
-          onImport={(plan) => {
-            setScreenplay(plan);
-            if (!name.trim() && plan.title) setName(castName(plan.title).slice(0, 120));
-          }}
-          onClose={() => setPickingScript(false)}
-        />
-      )}
     </form>
   );
 }

@@ -5,7 +5,6 @@ import {
   addScene,
   addVariant,
   alignRects,
-  applyTemplate,
   arrowBox,
   arrowEnds,
   arrowGeometry,
@@ -58,7 +57,6 @@ import {
   snap as snapToGrid,
   stackColumns,
   storyboardOf,
-  type TemplateId,
   TIDY_GAPS,
   type TidyGap,
   tidyMosaic,
@@ -99,8 +97,6 @@ import { useIsPhone } from '../lib/phone.ts';
 import { getPreferences, updatePreferences, usePreferences } from '../lib/preferences.ts';
 import { useSession } from '../lib/session.tsx';
 import { ProjectAppearanceDialog } from '../routes/ProjectAppearance.tsx';
-import { setupBoards } from '../routes/project-setup.ts';
-import { queueSeeds } from '../routes/seed-queue.tsx';
 import { accessNotices } from './access-notices.ts';
 import { addedSummary } from './added-summary.ts';
 import { ArrowLayer, ArrowStyleButtons, onArrowStyleButton } from './arrows.tsx';
@@ -114,11 +110,6 @@ import {
 } from './boards.ts';
 import { ColorPicker } from './ColorPicker.tsx';
 import { loadBoardGrid, loadTidyGap, saveBoardGrid, saveTidyGap } from './canvas-prefs.ts';
-import {
-  type CanvasTemplate,
-  createCanvasBoards,
-  isStoryboardTemplate,
-} from './canvas-templates.ts';
 import { Card } from './cards.tsx';
 import {
   type ArrangeCommand,
@@ -182,7 +173,6 @@ import { canSpacePan, commandFor, insideDialog, isMac, isTyping } from './shortc
 import { LOCAL } from './store.ts';
 import { clipboardGrid, tableMenu } from './table.ts';
 import { TagPopover } from './tags.tsx';
-import { templateLabels, templateRect } from './templates.ts';
 import { startUpload } from './uploads.ts';
 import { canRecord, VoiceNoteRecorder } from './VoiceNote.tsx';
 import { MediaViewer } from './viewer.tsx';
@@ -378,7 +368,7 @@ export interface CanvasProps {
   preview?: boolean;
   initialSelection?: ReadonlySet<string>;
   peers: Peer[];
-  onOpenBoard: (boardId: string, template?: 'storyboard') => void;
+  onOpenBoard: (boardId: string) => void;
   /** Told whenever the selection changes. */
   onSelectionChange?: (ids: ReadonlySet<string>) => void;
   /** Opens an image, file or frame in a view of the page's own; return false for the default. */
@@ -922,13 +912,18 @@ export function Canvas({
 
   const select = useCallback((ids: Iterable<string>) => setSelection(new Set(ids)), []);
 
-  /** A board card from the Canvas menu; templates are laid out in the background. */
+  /** An empty board card from the Canvas menu. */
   const insertCanvas = useCallback(
-    async (template: CanvasTemplate, at?: Point) => {
+    async (kind: 'board' | 'storyboard' = 'board', at?: Point) => {
       if (readOnly) return;
       const pos = place(at ?? center(DEFAULT_WIDTH.board));
       try {
-        const { board, jobs } = await createCanvasBoards(projectId, boardId, template, t, userId);
+        const board = await createBoard(
+          projectId,
+          boardId,
+          t(kind === 'board' ? 'board.board.untitled' : 'film.views.storyboard'),
+          kind,
+        );
         store.undo.stopCapturing();
         const card = createElement(
           doc,
@@ -938,44 +933,16 @@ export function Canvas({
           { userId, origin: LOCAL },
         );
         store.undo.stopCapturing();
-        queueSeeds(jobs);
         select([card.id]);
         setEditing(card.id);
-        // A template made boards that the card stands for: say how many, with Undo (#310).
-        if (template !== 'board') {
-          const count = Math.max(1, setupBoards(template).length);
-          setToast({
-            text: addedSummary(t, i18n.language, Array(count).fill('board')),
-            undo: true,
-            show: [card.id],
-            ok: true,
-          });
-        }
       } catch {
         setToast({
-          text: t(
-            isStoryboardTemplate(template)
-              ? 'board.errors.storyboardCreate'
-              : 'board.errors.boardCreate',
-          ),
+          text: t('board.errors.boardCreate'),
           undo: false,
         });
       }
     },
-    [
-      readOnly,
-      center,
-      place,
-      t,
-      i18n.language,
-      projectId,
-      boardId,
-      userId,
-      store,
-      doc,
-      select,
-      setEditing,
-    ],
+    [readOnly, center, place, t, projectId, boardId, userId, store, doc, select, setEditing],
   );
 
   const [importingScript, setImportingScript] = useState(false);
@@ -996,7 +963,7 @@ export function Canvas({
   );
   /** Where the voice note being recorded will go (#327), while the recorder is open. */
   const [recording, setRecording] = useState<Point | null>(null);
-  /** A storyboard card from a screenplay: the board is filled in the background, like a template. */
+  /** A storyboard card from a screenplay: the board is filled in the background. */
   const insertScreenplay = useCallback(
     async (plan: ImportPlan) => {
       if (readOnly) return;
@@ -2660,45 +2627,6 @@ export function Canvas({
     setViewing(null);
   }, []);
 
-  const addTemplate = async (id: TemplateId) => {
-    if (readOnly) return;
-    const rect = templateRect(
-      id,
-      screenToWorld(vp.current, { x: size.w / 2, y: size.h / 2 }),
-      store.getSnapshot().canvas.map((e) => store.rectOf(e)),
-    );
-    if (id === 'storyboard') {
-      try {
-        const board = await createBoard(
-          projectId,
-          boardId,
-          t('templates.storyboard.name'),
-          'storyboard',
-        );
-        store.undo.stopCapturing();
-        const card = createElement(
-          doc,
-          'board',
-          rect,
-          { boardId: board.id },
-          { userId, origin: LOCAL },
-        );
-        store.undo.stopCapturing();
-        select([card.id]);
-        onOpenBoard(board.id, 'storyboard');
-      } catch {
-        setToast({ text: t('board.errors.storyboardCreate'), undo: false });
-      }
-      return;
-    }
-    store.undo.stopCapturing();
-    const ids = applyTemplate(doc, id, rect, templateLabels(t), { userId, origin: LOCAL });
-    store.undo.stopCapturing();
-    select(ids);
-    setViewport(fitRect(rect, size.w, size.h));
-    summarize(ids);
-  };
-
   // A search result links to ?el=<id>: select that card and bring it into view, once.
   const focusId = params.get('el');
   useEffect(() => {
@@ -3282,16 +3210,7 @@ export function Canvas({
           conn.status === 'synced' &&
           !readOnly &&
           !guest &&
-          !preview && (
-            <EmptyBoardStart
-              onMoodboard={() => void addTemplate('moodboard')}
-              onStoryboard={() => void addTemplate('storyboard')}
-              onScreenplay={() => setImportingScript(true)}
-              onBrowse={() =>
-                rootRef.current?.querySelector<HTMLButtonElement>('.toolbar__btn--canvas')?.click()
-              }
-            />
-          )}
+          !preview && <EmptyBoardStart onScreenplay={() => setImportingScript(true)} />}
 
         {!overlay.offset &&
           !overlay.marquee &&
@@ -3624,7 +3543,7 @@ export function Canvas({
               tool={tool}
               onTool={setTool}
               onAdd={(type) => void add(type)}
-              onCanvas={(template) => void insertCanvas(template)}
+              onCanvas={() => void insertCanvas()}
               onScreenplay={() => setImportingScript(true)}
               onVoiceNote={canRecord() ? () => setRecording(center()) : undefined}
             />
@@ -3689,7 +3608,6 @@ export function Canvas({
             ]}
             onClose={() => setPalette(false)}
             onAdd={(type) => void add(type)}
-            onTemplate={(id) => void addTemplate(id)}
             onZoom={zoomTo}
             onUndo={() => store.undo.undo()}
             onRedo={() => store.undo.redo()}

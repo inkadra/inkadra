@@ -72,3 +72,5 @@ in order. An accepted decision is never rewritten: a later one supersedes it.
 
 Two decisions share the number 0025: they were accepted in parallel, and accepted records
 are not renumbered.
+
+[0067 · Remove project and board templates](0067-remove-project-and-board-templates.md)

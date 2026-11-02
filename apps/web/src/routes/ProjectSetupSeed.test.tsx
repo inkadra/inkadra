@@ -1,6 +1,5 @@
 // @vitest-environment happy-dom
 import { listElements } from '@inkadra/canvas-core';
-import type { Board } from '@inkadra/shared';
 import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
@@ -43,44 +42,29 @@ afterEach(() => {
 const render = (props = {}) =>
   act(async () =>
     root.render(
-      <ProjectSetupSeed
-        boardId="board"
-        seed="storyboard"
-        userId="user"
-        done={done}
-        failed={failed}
-        {...props}
-      />,
+      <ProjectSetupSeed boardId="board" userId="user" done={done} failed={failed} {...props} />,
     ),
   );
 it('waits for editable sync and acknowledgement before finishing', async () => {
   conn.status = 'connecting';
   await render();
   expect(listElements(store.doc)).toHaveLength(0);
-  conn.status = 'synced';
+  conn = { ...conn, status: 'synced' };
+  vi.mocked(useBoardConnection).mockReturnValue(conn);
   conn.readOnly = true;
   await render();
   expect(listElements(store.doc)).toHaveLength(0);
-  conn.readOnly = false;
+  conn = { ...conn, readOnly: false };
+  vi.mocked(useBoardConnection).mockReturnValue(conn);
   Object.assign(conn.provider, { hasUnsyncedChanges: true });
   await render();
-  expect(listElements(store.doc)).toHaveLength(4);
+  expect(listElements(store.doc)).toHaveLength(0);
   await act(async () => vi.advanceTimersByTime(200));
   expect(done).not.toHaveBeenCalled();
   Object.assign(conn.provider, { hasUnsyncedChanges: false });
   await act(async () => vi.advanceTimersByTime(200));
   expect(done).toHaveBeenCalledOnce();
   expect(failed).not.toHaveBeenCalled();
-});
-it('links child boards once and never overwrites initialized content on retry', async () => {
-  const links = [{ board: { id: '0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10' } as Board }];
-  await render({ seed: undefined, links });
-  expect(listElements(store.doc)).toMatchObject([
-    { type: 'board', boardId: '0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10' },
-  ]);
-  await act(async () => root.render(null));
-  await render({ seed: undefined, links });
-  expect(listElements(store.doc)).toHaveLength(1);
 });
 it('reports connection timeout without claiming success', async () => {
   conn.status = 'denied';

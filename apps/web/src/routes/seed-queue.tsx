@@ -2,17 +2,13 @@ import type { BoardCount } from '@inkadra/shared';
 import { useSyncExternalStore } from 'react';
 import type { ImportPlan } from '../board/film/screenplay/plan.ts';
 import { ProjectSetupSeed } from './ProjectSetupSeed.tsx';
-import type { CreatedSetupBoard } from './project-setup.ts';
 
 /**
- * A board to lay out from a template or an imported screenplay, or to fill with cards for
- * `links`, once it syncs.
+ * A board to fill from an imported screenplay once it syncs.
  */
 export interface SeedJob {
   boardId: string;
-  seed?: CreatedSetupBoard['seed'];
   screenplay?: ImportPlan;
-  links?: CreatedSetupBoard[];
   userId: string;
 }
 
@@ -113,7 +109,7 @@ export function forgetSeededCounts(server: ReadonlyMap<string, BoardCount>) {
   emit();
 }
 
-/** Mounted once by the app layout. A board that fails to seed stays empty, with its templates. */
+/** Mounted once by the app layout. A board that fails to import stays empty. */
 export function SeedQueue() {
   const job = useSyncExternalStore(subscribe, () => queue[0]);
   if (!job) return null;
@@ -121,9 +117,7 @@ export function SeedQueue() {
     <ProjectSetupSeed
       key={job.id}
       boardId={job.boardId}
-      seed={job.seed}
       screenplay={job.screenplay}
-      links={job.links}
       userId={job.userId}
       done={seededDone(job.boardId)}
       failed={next}

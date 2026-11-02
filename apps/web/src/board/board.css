@@ -1655,8 +1655,7 @@ body:has(.colorpicker) .card-reactions {
 .canvas__start-option:active {
   scale: 0.98;
 }
-.canvas__start-option:focus-visible,
-.canvas__start-browse:focus-visible {
+.canvas__start-option:focus-visible {
   outline: 2px solid var(--ink-accent-primary);
   outline-offset: 2px;
 }
@@ -1673,20 +1672,6 @@ body:has(.colorpicker) .card-reactions {
   font-size: 11px;
   font-weight: 400;
   color: var(--ink-text-muted);
-}
-.canvas__start-browse {
-  margin-top: 12px;
-  padding: 4px 8px;
-  border: 0;
-  border-radius: var(--ink-radius-sm);
-  background: transparent;
-  color: var(--ink-accent-soft-fg);
-  font: inherit;
-  font-size: 12px;
-  cursor: pointer;
-}
-.canvas__start-browse:hover {
-  text-decoration: underline;
 }
 .canvas__start-hint {
   margin: 6px 0 0;
@@ -1706,10 +1691,6 @@ body:has(.colorpicker) .card-reactions {
   .canvas__start-option {
     min-height: 44px;
     padding: 12px 6px;
-  }
-  .canvas__start-browse {
-    min-height: 44px;
-    padding: 0 12px;
   }
 }
 .canvas__linkdraft {
