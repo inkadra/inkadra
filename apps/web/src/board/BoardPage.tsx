@@ -11,7 +11,7 @@ import {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Navigate, useLocation, useNavigate, useParams, useSearchParams } from 'react-router';
+import { Navigate, useNavigate, useParams, useSearchParams } from 'react-router';
 import { useRegisterActions } from '../commands/actions.ts';
 import { useHeaderContent } from '../lib/header.tsx';
 import { useIsPhone } from '../lib/phone.ts';
@@ -57,7 +57,6 @@ import './film/film.css';
 import { type Peer, usePeers } from './presence.ts';
 import { projectLanding } from './project-landing.ts';
 import { ShareDialog } from './ShareDialog.tsx';
-import { isStartTemplate, seedStoryboard, seedTemplate, templateLabels } from './templates.ts';
 import { useBoardReviews } from './use-board-reviews.ts';
 import './board.css';
 
@@ -214,7 +213,6 @@ function BoardScreen({
 }) {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const location = useLocation();
   const { user } = useSession();
   // The sidebar's rule for the film links, so the header tabs never disagree with it.
   const { filmLinks } = useProjects();
@@ -309,23 +307,6 @@ function BoardScreen({
         ],
   );
   useEffect(() => {
-    const template: unknown = location.state?.template;
-    const storyboard = template === 'storyboard' && kind === 'storyboard';
-    const canvas = isStartTemplate(template) && kind === 'board';
-    if ((!storyboard && !canvas) || conn?.status !== 'synced' || !editable || !user) return;
-    conn.store.undo.stopCapturing();
-    if (isStartTemplate(template)) {
-      seedTemplate(conn.store.doc, template, templateLabels(t), user.id);
-    } else {
-      seedStoryboard(conn.store.doc, t('templates.storyboard.scene'), user.id);
-    }
-    conn.store.undo.stopCapturing();
-    void navigate(
-      { pathname: location.pathname, search: location.search, hash: location.hash },
-      { replace: true, state: null },
-    );
-  }, [location, kind, conn, editable, user, t, navigate]);
-  useEffect(() => {
     if (!editable) {
       setVersionsOpen(false);
       setPreview(null);
@@ -377,8 +358,7 @@ function BoardScreen({
   }, [boardId, accessVersion]);
 
   const openBoard = useCallback(
-    (id: string, template?: 'storyboard') =>
-      navigate(boardPath(projectId, id, rootBoardId), { state: template ? { template } : null }),
+    (id: string) => navigate(boardPath(projectId, id, rootBoardId)),
     [navigate, projectId, rootBoardId],
   );
   useBoardReviews(boardId, conn, detail?.myRole ?? projectRole, {

@@ -1,12 +1,4 @@
-import {
-  type Alignment,
-  type Point,
-  type Rect,
-  TEMPLATE_IDS,
-  type TemplateId,
-  type TidyGap,
-  type Viewport,
-} from '@inkadra/canvas-core';
+import type { Alignment, Point, Rect, TidyGap, Viewport } from '@inkadra/canvas-core';
 import type { Element } from '@inkadra/doc-schema';
 import {
   type ContentKind,
@@ -37,12 +29,6 @@ import { useTranslation } from 'react-i18next';
 import type * as Y from 'yjs';
 import { addActions, type PaletteAction, rankActions } from '../commands/actions.ts';
 import { usePreferences } from '../lib/preferences.ts';
-import {
-  CANVAS_TEMPLATES,
-  type CanvasTemplate,
-  canvasTemplateIcon,
-  canvasTemplateLabel,
-} from './canvas-templates.ts';
 import { Card, NOTE_COLORS } from './cards.tsx';
 import { GuestVisibilityIcon } from './guest-visibility.tsx';
 import { toggleSelectedHeading } from './note.tsx';
@@ -141,9 +127,9 @@ export function Toolbar({
   tool: CanvasTool;
   onTool: (tool: CanvasTool) => void;
   onAdd: (type: ToolType) => void;
-  /** A board from the Canvas menu: plain or laid out from a template. */
-  onCanvas: (template: CanvasTemplate) => void;
-  /** A storyboard made from a screenplay file, after the Canvas menu's Storyboard. */
+  /** An empty board from the Canvas menu. */
+  onCanvas: () => void;
+  /** A storyboard made from a screenplay file. */
   onScreenplay?: () => void;
   /** Records a voice note from the microphone, saved as an audio card (#327). */
   onVoiceNote?: (() => void) | undefined;
@@ -205,7 +191,7 @@ export function Toolbar({
                 icon={tl.icon}
                 label={t(`board.types.${tl.type}`)}
                 keyHint={tl.key ?? ''}
-                onClick={() => (tl.type === 'storyboard' ? onCanvas('storyboard') : onAdd(tl.type))}
+                onClick={() => onAdd(tl.type)}
                 dragType={tl.type === 'storyboard' ? undefined : tl.type}
               />
             ))}
@@ -244,7 +230,7 @@ function CanvasMenuButton({
   /** Tools of the default bar this person hid (#302): they open the menu. */
   hidden: readonly BarTool[];
   onTool: (tool: CanvasTool) => void;
-  onCanvas: (template: CanvasTemplate) => void;
+  onCanvas: () => void;
   onScreenplay?: (() => void) | undefined;
   /** Records a voice note (#327); absent where the browser cannot record. */
   onVoiceNote?: (() => void) | undefined;
@@ -304,24 +290,21 @@ function CanvasMenuButton({
               ),
               ...(hidden.length > 0 ? [{ divider: true } as MenuItem] : []),
             ].concat(
-              CANVAS_TEMPLATES.flatMap((template): MenuItem[] => [
-                {
-                  label: canvasTemplateLabel(template, t),
-                  icon: canvasTemplateIcon(template),
-                  kind: template,
-                  action: () => onCanvas(template),
-                },
-                ...(template === 'storyboard' && onScreenplay
-                  ? [
-                      {
-                        label: t('screenplay.fromScreenplay'),
-                        icon: 'upload' as const,
-                        kind: 'storyboard' as const,
-                        action: onScreenplay,
-                      },
-                    ]
-                  : []),
-              ]).concat([
+              (
+                [
+                  { label: t('board.types.board'), icon: 'page', kind: 'board', action: onCanvas },
+                  ...(onScreenplay
+                    ? [
+                        {
+                          label: t('screenplay.fromScreenplay'),
+                          icon: 'upload',
+                          kind: 'storyboard',
+                          action: onScreenplay,
+                        } as MenuItem,
+                      ]
+                    : []),
+                ] as MenuItem[]
+              ).concat([
                 { divider: true },
                 ...MENU_CARDS.map(
                   ([type, icon]): MenuItem => ({
@@ -1208,7 +1191,6 @@ export function CommandPalette({
   readOnly,
   onClose,
   onAdd,
-  onTemplate,
   onZoom,
   onUndo,
   onRedo,
@@ -1220,7 +1202,6 @@ export function CommandPalette({
   extra?: PaletteAction[];
   onClose: () => void;
   onAdd: (type: ToolType) => void;
-  onTemplate: (id: TemplateId) => void;
   onZoom: (to: 'in' | 'out' | 'reset' | 'fit' | 'selection') => void;
   onUndo: () => void;
   onRedo: () => void;
@@ -1238,13 +1219,6 @@ export function CommandPalette({
           (type) => t('board.palette.add', { type: t(`board.types.${type}`) }),
           onAdd,
         )),
-    ...(readOnly
-      ? []
-      : TEMPLATE_IDS.map((id) => ({
-          id: `template-${id}`,
-          label: t('board.palette.template', { name: t(`templates.${id}.name`) }),
-          run: () => onTemplate(id),
-        }))),
     ...(readOnly ? [] : extra),
     { id: 'fit', label: t('board.zoom.fit'), hint: '⇧1', run: () => onZoom('fit') },
     {

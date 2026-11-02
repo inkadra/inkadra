@@ -1,11 +1,10 @@
 // @vitest-environment happy-dom
 
-import { Icon, type IconName, kindColor, toolColor } from '@inkadra/ui';
+import { Icon, type IconName, toolColor } from '@inkadra/ui';
 import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { expect, it, vi } from 'vitest';
-import { CANVAS_TEMPLATES } from './canvas-templates.ts';
 import { TOOLS, Toolbar } from './chrome.tsx';
 
 vi.mock('react-i18next', () => ({ useTranslation: () => ({ t: (key: string) => key }) }));
@@ -82,10 +81,6 @@ it('opens the Canvas menu of canvas types, walks it with the keyboard and insert
     const items = [...menu.querySelectorAll<HTMLElement>('[role="menuitem"]')];
     expect(items.map((i) => i.textContent)).toEqual([
       'board.types.board',
-      'onboarding.templates.moodboard.name',
-      'onboarding.templates.storyboard.name',
-      'onboarding.templates.shotlist.name',
-      'onboarding.templates.production.name',
       'board.types.character',
       'board.types.location',
       'board.types.section',
@@ -96,19 +91,7 @@ it('opens the Canvas menu of canvas types, walks it with the keyboard and insert
     // No shortcut hints in the menu (B and S still work on the canvas).
     expect(menu.querySelector('.menu__key')).toBeNull();
     expect(items.map((i) => i.querySelector('.menu__tile svg')?.innerHTML)).toEqual(
-      [
-        'page',
-        'tiles',
-        'storyboard',
-        'shotlist',
-        'calendar',
-        'user',
-        'pin',
-        'heading',
-        'table',
-        'map',
-        'planCamera',
-      ].map(
+      ['page', 'user', 'pin', 'heading', 'table', 'map', 'planCamera'].map(
         (name) =>
           renderToStaticMarkup(<Icon name={name as IconName} />).match(
             /<svg[^>]*>(.*)<\/svg>/,
@@ -118,17 +101,7 @@ it('opens the Canvas menu of canvas types, walks it with the keyboard and insert
     // Each canvas type carries its content-kind colour; Board stays neutral.
     const tiles = items.map((i) => i.querySelector('.menu__tile')?.getAttribute('style') ?? '');
     expect(tiles[0]).toContain('--kind-fg: var(--ink-text-secondary)');
-    expect(tiles[1]).toContain('--ink-tag-orange');
-    expect(tiles[2]).toContain('--ink-tag-purple');
-    expect(tiles[3]).toContain('--ink-tag-green');
-    expect(tiles[4]).toContain('--ink-tag-green');
-    // Story bible cards are neutral: colour only where it means a kind of canvas.
-    expect(tiles[5]).toContain('--kind-fg: var(--ink-text-secondary)');
-    expect(tiles[6]).toContain('--kind-fg: var(--ink-text-secondary)');
-    expect(tiles[7]).toContain('--kind-fg: var(--ink-text-secondary)');
-    expect(tiles[8]).toContain('--kind-fg: var(--ink-text-secondary)');
-    expect(tiles[9]).toContain('--kind-fg: var(--ink-text-secondary)');
-    expect(tiles[10]).toContain('--kind-fg: var(--ink-text-secondary)');
+    for (const tile of tiles) expect(tile).toContain('--kind-fg: var(--ink-text-secondary)');
     expect(document.activeElement).toBe(items[0]);
     const key = (k: string) =>
       act(async () => {
@@ -139,7 +112,7 @@ it('opens the Canvas menu of canvas types, walks it with the keyboard and insert
     await key('ArrowDown');
     expect(document.activeElement).toBe(items[1]);
     await key('End');
-    expect(document.activeElement).toBe(items[10]);
+    expect(document.activeElement).toBe(items[6]);
     await key('ArrowDown');
     expect(document.activeElement).toBe(items[0]);
     await key('Escape');
@@ -148,12 +121,12 @@ it('opens the Canvas menu of canvas types, walks it with the keyboard and insert
     expect(button.getAttribute('aria-expanded')).toBe('false');
 
     await act(async () => button.click());
-    await act(async () => document.querySelectorAll<HTMLElement>('[role="menuitem"]')[2]?.click());
-    expect(onCanvas).toHaveBeenCalledWith('storyboard');
+    await act(async () => document.querySelectorAll<HTMLElement>('[role="menuitem"]')[0]?.click());
+    expect(onCanvas).toHaveBeenCalledWith();
     expect(document.querySelector('[role="menu"]')).toBeNull();
 
     await act(async () => button.click());
-    await act(async () => document.querySelectorAll<HTMLElement>('[role="menuitem"]')[5]?.click());
+    await act(async () => document.querySelectorAll<HTMLElement>('[role="menuitem"]')[1]?.click());
     expect(onAdd).toHaveBeenCalledWith('character');
   } finally {
     await cleanup();
@@ -163,5 +136,4 @@ it('opens the Canvas menu of canvas types, walks it with the keyboard and insert
 it('covers every tool with a tool colour and every menu entry with a canvas colour', () => {
   for (const { type, menuOnly } of TOOLS)
     if (!menuOnly) expect(Object.hasOwn(toolColor, type)).toBe(true);
-  for (const template of CANVAS_TEMPLATES) expect(Object.hasOwn(kindColor, template)).toBe(true);
 });

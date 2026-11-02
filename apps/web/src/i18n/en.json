@@ -155,7 +155,7 @@
     "recentBoards": "Recent boards",
     "continue": "Continue",
     "recentBoardsHint": "by last edit",
-    "noRecentBoards": "No boards yet. Create one or start from a template.",
+    "noRecentBoards": "No boards yet. Create one.",
     "kind": {
       "project": "Project board"
     },
@@ -166,18 +166,10 @@
       "empty": "No activity in the last 24 hours."
     },
     "loadError": "This section could not be loaded. Reload the page to try again.",
-    "templates": {
-      "title": "Start from a template",
-      "blank": {
-        "name": "Blank board",
-        "body": "Start from scratch"
-      }
-    },
     "newBoard": {
       "action": "New board",
       "title": "New board",
       "project": "Project",
-      "start": "Start from",
       "name": "Board name",
       "namePlaceholder": "Location scouting",
       "create": "Create board",
@@ -351,11 +343,8 @@
       "title": "Where do we start?",
       "body": "Pick a starting point, or double-click to write a note.",
       "bodyTouch": "Pick a starting point, or double-tap to write a note.",
-      "moodboard": "References and palette",
-      "storyboard": "Scenes and shots",
       "screenplay": "Import screenplay",
       "screenplayBody": "Fountain, Final Draft or PDF",
-      "browse": "Browse all templates",
       "hint": "You can also drop files and images here.",
       "hintTouch": "Add photos and files from the bar below."
     },
@@ -600,8 +589,7 @@
       "unsorted": "Show or hide Unsorted",
       "undo": "Undo",
       "redo": "Redo",
-      "none": "No commands",
-      "template": "Insert template: {{name}}"
+      "none": "No commands"
     },
     "status": {
       "backOnline": "Back online",
@@ -627,8 +615,7 @@
     "errors": {
       "boardCreate": "The board could not be created.",
       "upload": "Uploading {{name}} failed.",
-      "tooBig": "{{name}} is larger than the allowed maximum.",
-      "storyboardCreate": "The storyboard could not be created."
+      "tooBig": "{{name}} is larger than the allowed maximum."
     },
     "arrow": {
       "label": "Arrow label",
@@ -1058,46 +1045,6 @@
     "tagSuggestions": "Suggested tags",
     "noTags": "No matching tags",
     "actions": "Actions"
-  },
-  "templates": {
-    "moodboard": {
-      "name": "Moodboard",
-      "body": "References, colours, light and locations",
-      "refs": "References",
-      "light": "Light",
-      "locations": "Locations",
-      "palette": "Palette"
-    },
-    "storyboard": {
-      "name": "Storyboard",
-      "body": "A storyboard board with a scene, three shots and a shot list",
-      "scene": "Opening"
-    },
-    "production": {
-      "name": "Production",
-      "body": "To do, in progress, done",
-      "todo": "To do",
-      "doing": "In progress",
-      "done": "Done"
-    },
-    "brief": {
-      "name": "Brief",
-      "body": "Logline, synopsis and tone",
-      "column": "Brief",
-      "logline": "Logline",
-      "synopsis": "Synopsis",
-      "tone": "Tone"
-    },
-    "locations": {
-      "name": "Locations",
-      "body": "Locations and scouting",
-      "column": "Locations"
-    },
-    "casting": {
-      "name": "Casting",
-      "body": "Roles and cast",
-      "column": "Casting"
-    }
   },
   "film": {
     "viewOptions": {
@@ -2329,7 +2276,7 @@
     "guidedSetup": "Guided setup",
     "title": "New project",
     "firstTitle": "Your first project",
-    "subtitle": "Choose a template, set the dates and invite your team. You can change everything later.",
+    "subtitle": "Choose dates and invite your team. You can change everything later.",
     "firstSubtitle": "Choose a starting point and invite your team. You can finish the details later.",
     "type": "Project type",
     "types": {
@@ -2341,41 +2288,6 @@
     },
     "start": "Shooting start",
     "end": "Shooting end",
-    "templates": {
-      "production": {
-        "name": "Film pre-production",
-        "body": "Brief, locations, casting, moodboard and storyboard with a shot list view."
-      },
-      "moodboard": {
-        "name": "Moodboard",
-        "body": "References, light, locations and palette."
-      },
-      "storyboard": {
-        "name": "Storyboard",
-        "body": "One scene and three frames shared with the shot list."
-      },
-      "shotlist": {
-        "name": "Shot list",
-        "body": "The same storyboard frames, in a table view."
-      },
-      "pitch": {
-        "name": "Client pitch",
-        "body": "A presentation board. Create a guest link from the Share panel."
-      },
-      "blank": {
-        "name": "Blank",
-        "body": "A free canvas."
-      }
-    },
-    "boards": {
-      "brief": "Brief",
-      "locations": "Locations",
-      "casting": "Casting",
-      "moodboard": "Moodboard",
-      "storyboard": "Storyboard and shot list",
-      "shotlist": "Shot list and storyboard",
-      "pitch": "Client pitch"
-    },
     "invite": "Team",
     "role": "Role",
     "add": "Add",
@@ -2413,7 +2325,6 @@
       "phone": "Save to Unsorted from your phone."
     },
     "settingsPending": "Settings, instance setup incomplete",
-    "startFrom": "Start from",
     "details": "Details",
     "detailsHint": "type, dates, team",
     "clearDate": "Clear {{label}}",
@@ -3050,7 +2961,6 @@
     "summary": "Creates {{scenes}} and {{frames}}.",
     "truncated": "The screenplay is long: only the first {{scenes}} and {{frames}} fit in one import.",
     "submit": "Import",
-    "use": "Use this screenplay",
     "cancel": "Cancel",
     "untitled": "Screenplay",
     "failed": "The storyboard could not be created. Try again.",
@@ -3065,12 +2975,6 @@
       "noText": "This PDF has no text layer",
       "timeout": "Reading stopped: this PDF takes too long.",
       "tooManyPages": "This PDF exceeds the 300-page limit."
-    },
-    "setup": {
-      "label": "Screenplay",
-      "hint": "Start the storyboard from a Fountain or Final Draft file.",
-      "chosen": "{{title}} · {{scenes}} · {{frames}}",
-      "remove": "Remove the screenplay"
     },
     "characterCards": "Create cards for the speaking characters",
     "characterCardsHint": "One character card per name, with its scenes; names already on the board are skipped.",

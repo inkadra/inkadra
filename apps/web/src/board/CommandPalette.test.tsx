@@ -5,7 +5,7 @@ import { expect, it, vi } from 'vitest';
 import i18n from '../i18n/index.ts';
 import { CommandPalette } from './chrome.tsx';
 
-it('lists exactly the three template options when an Italian editor types "modello"', async () => {
+it('offers no templates when an Italian editor types "modello"', async () => {
   await i18n.changeLanguage('it');
   const host = document.createElement('div');
   document.body.append(host);
@@ -17,7 +17,6 @@ it('lists exactly the three template options when an Italian editor types "model
           readOnly={false}
           onClose={vi.fn()}
           onAdd={vi.fn()}
-          onTemplate={vi.fn()}
           onZoom={vi.fn()}
           onUndo={vi.fn()}
           onRedo={vi.fn()}
@@ -35,8 +34,7 @@ it('lists exactly the three template options when an Italian editor types "model
       field.dispatchEvent(new Event('input', { bubbles: true }));
     });
     const options = [...host.querySelectorAll('[role="option"]')].map((o) => o.textContent);
-    expect(options).toHaveLength(3);
-    for (const option of options) expect(option).toMatch(/^Inserisci modello: /);
+    expect(options).toHaveLength(0);
   } finally {
     await act(async () => root.unmount());
     host.remove();

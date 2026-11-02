@@ -1,39 +1,19 @@
 import type { Project } from '@inkadra/shared';
-import {
-  Button,
-  ChoiceTile,
-  Dialog,
-  DialogActions,
-  type DialogHandle,
-  Select,
-  TextField,
-} from '@inkadra/ui';
+import { Button, Dialog, DialogActions, type DialogHandle, Select, TextField } from '@inkadra/ui';
 import { type FormEvent, useEffect, useId, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router';
 import { createBoard } from '../board/boards.ts';
 
-/** What Home offers to start from: the board templates of decision 0021, or nothing. */
-export const START_CHOICES = ['production', 'moodboard', 'storyboard', 'blank'] as const;
-export type StartChoice = (typeof START_CHOICES)[number];
-export const choiceKey = (c: StartChoice, part: 'name' | 'body') =>
-  c === 'blank' ? `home.templates.blank.${part}` : `templates.${c}.${part}`;
-
-/**
- * A new board under a project's root board. The template is a one-time navigation request,
- * applied by the board page once the empty document has synced (decision 0021).
- */
 export function NewBoardDialog({
   open,
   projects,
-  initial,
   initialProject,
   onClose,
 }: {
   open: boolean;
   /** Projects where the person can add a board, most recent first. */
   projects: Project[];
-  initial: StartChoice;
   /** Preselected project, e.g. the one open behind the dialog; else the last one picked. */
   initialProject?: string;
   onClose: () => void;
@@ -42,7 +22,6 @@ export function NewBoardDialog({
   const navigate = useNavigate();
   const projectId = useId();
   const [project, setProject] = useState('');
-  const [choice, setChoice] = useState<StartChoice>(initial);
   const [title, setTitle] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -52,8 +31,7 @@ export function NewBoardDialog({
   // biome-ignore lint/correctness/useExhaustiveDependencies: only when it opens, not on refresh.
   useEffect(() => {
     if (!open) return;
-    setChoice(initial);
-    setTitle(initial === 'blank' ? '' : t(choiceKey(initial, 'name')));
+    setTitle('');
     setProject((current) =>
       initialProject && projects.some((p) => p.id === initialProject)
         ? initialProject
@@ -62,11 +40,10 @@ export function NewBoardDialog({
           : (projects[0]?.id ?? ''),
     );
     setError(null);
-  }, [open, initial]);
+  }, [open]);
 
   const target = projects.find((p) => p.id === project);
-  // Only a title the person changed counts: the template's own name is not input.
-  const dirty = !busy && title !== (choice === 'blank' ? '' : t(choiceKey(choice, 'name')));
+  const dirty = !busy && !!title;
 
   async function submit(e: FormEvent) {
     e.preventDefault();
@@ -74,16 +51,9 @@ export function NewBoardDialog({
     setBusy(true);
     setError(null);
     try {
-      const board = await createBoard(
-        target.id,
-        target.rootBoardId,
-        title.trim(),
-        choice === 'storyboard' ? 'storyboard' : 'board',
-      );
+      const board = await createBoard(target.id, target.rootBoardId, title.trim(), 'board');
       onClose();
-      navigate(`/p/${target.id}/b/${board.id}`, {
-        state: choice === 'blank' ? null : { template: choice },
-      });
+      navigate(`/p/${target.id}/b/${board.id}`);
     } catch {
       setError(t('home.newBoard.error'));
     } finally {
@@ -117,28 +87,6 @@ export function NewBoardDialog({
             ))}
           </Select>
         </div>
-        <fieldset className="home-new__choices">
-          <legend className="ink-field__label">{t('home.newBoard.start')}</legend>
-          {START_CHOICES.map((c) => (
-            <ChoiceTile
-              key={c}
-              variant="card"
-              className="home-new__choice"
-              name="start"
-              value={c}
-              checked={choice === c}
-              onChange={() => {
-                // A title still matching the previous template follows the new one.
-                const previous = choice === 'blank' ? '' : t(choiceKey(choice, 'name'));
-                if (title === previous) setTitle(c === 'blank' ? '' : t(choiceKey(c, 'name')));
-                setChoice(c);
-              }}
-            >
-              <span className="home-new__name">{t(choiceKey(c, 'name'))}</span>
-              <span className="ink-muted home-new__body">{t(choiceKey(c, 'body'))}</span>
-            </ChoiceTile>
-          ))}
-        </fieldset>
         <TextField
           label={t('home.newBoard.name')}
           placeholder={t('home.newBoard.namePlaceholder')}

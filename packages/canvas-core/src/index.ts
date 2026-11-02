@@ -12,4 +12,3 @@ export * from './plan-variants.ts';
 export * from './resize.ts';
 export * from './snap.ts';
 export * from './table.ts';
-export * from './templates.ts';

@@ -199,65 +199,10 @@ a.home__activity-item:hover {
   clip-path: inset(50%);
   white-space: nowrap;
 }
-.home__templates {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
-  gap: 12px;
-}
-.home__template {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 4px;
-  padding: 14px;
-  border-radius: var(--ink-radius-md);
-  color: inherit;
-  font: inherit;
-  text-align: left;
-  cursor: pointer;
-}
-.home__template:hover:not(:disabled) {
-  border-color: var(--ink-border-strong);
-}
-.home__template:disabled {
-  cursor: default;
-  opacity: 0.5;
-}
-.home__template-icon {
-  display: grid;
-  place-items: center;
-  width: 28px;
-  height: 28px;
-  margin-bottom: 6px;
-  border-radius: var(--ink-radius-sm);
-  background: var(--ink-surface-2);
-  color: var(--ink-text-secondary);
-}
 .home-new {
   display: flex;
   flex-direction: column;
   gap: 14px;
-}
-.home-new__choices {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  margin: 0;
-  padding: 0;
-  border: 0;
-}
-.home-new__choices legend {
-  margin-bottom: 6px;
-}
-.home-new__choice {
-  width: 100%;
-  padding: 12px 16px;
-}
-.home-new__name {
-  font-weight: 500;
-}
-.home-new__body {
-  font-size: 12px;
 }
 
 /* Phones keep everything, in one column; the native app takes over there later. */

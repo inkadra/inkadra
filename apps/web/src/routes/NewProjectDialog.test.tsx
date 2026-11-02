@@ -27,14 +27,6 @@ vi.mock('../lib/api.ts', () => ({
   },
 }));
 vi.mock('../board/boards.ts', () => ({ createBoard: vi.fn() }));
-// Collaboration seeding is covered separately; advance only when this test asks.
-let advance: () => void;
-vi.mock('./ProjectSetupSeed.tsx', () => ({
-  ProjectSetupSeed: ({ done }: { done: () => void }) => {
-    advance = done;
-    return null;
-  },
-}));
 let host: HTMLDivElement;
 let root: ReturnType<typeof createRoot>;
 const close = vi.fn();
@@ -63,9 +55,6 @@ const button = (key: string) =>
   [...host.querySelectorAll<HTMLButtonElement>('button')].find((b) => b.textContent === key);
 async function blank() {
   await input('input[maxlength="120"]', 'Last Run');
-  await act(async () =>
-    host.querySelector<HTMLInputElement>('input[name="projectTemplate"][value="blank"]')?.click(),
-  );
 }
 async function openDetails() {
   await act(async () =>
@@ -79,7 +68,7 @@ const submit = () =>
       .querySelector('form')
       ?.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })),
   );
-it('shows only the name and the templates until Details opens', async () => {
+it('shows only the name without templates until Details opens', async () => {
   expect(host.querySelector('input[name="projectType"]')).toBeNull();
   expect(host.querySelector('input[type="date"]')).toBeNull();
   expect(host.querySelector(people)).toBeNull();
@@ -96,7 +85,7 @@ it('cancels without creating data', async () => {
   expect(close).toHaveBeenCalledOnce();
   expect(api.post).not.toHaveBeenCalled();
 });
-it('creates metadata, waits for root sync, then opens the real project', async () => {
+it('creates metadata and opens the real project', async () => {
   await blank();
   await openDetails();
   await input('input[type="date"]', '2026-11-02');
@@ -113,8 +102,6 @@ it('creates metadata, waits for root sync, then opens the real project', async (
     shootingStart: '2026-11-02',
     shootingEnd: null,
   });
-  expect(created).not.toHaveBeenCalled();
-  await act(async () => advance());
   expect(created).toHaveBeenCalledWith({ id: 'p', rootBoardId: 'root' });
 });
 it('keeps a project and successful invites on failure; retries only missing invitations', async () => {
@@ -141,7 +128,6 @@ it('keeps a project and successful invites on failure; retries only missing invi
       .querySelector('form')
       ?.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })),
   );
-  await act(async () => advance());
   expect(host.textContent).toContain('onboarding.partialError');
   expect(host.querySelector<HTMLInputElement>('input[readonly]')?.value).toBe(invitation.url);
   vi.mocked(api.post).mockResolvedValueOnce({
@@ -183,7 +169,6 @@ it('does not let a half-typed email block Create, and invites a complete one', a
     invitation: { id: 'i', email: 'team@example.com', emailSent: true, url: null },
   });
   await submit();
-  await act(async () => advance());
   expect(api.post).toHaveBeenCalledWith('/invitations', {
     kind: 'email',
     projectId: 'p',
@@ -210,18 +195,7 @@ it('suggests people on the instance and leaves out those already added', async (
 });
 
 it('defaults to blank without creating child boards or template content', async () => {
-  const choices = host.querySelectorAll<HTMLInputElement>('input[name="projectTemplate"]');
-  expect([...choices].map((choice) => choice.checked)).toEqual([
-    true,
-    false,
-    false,
-    false,
-    false,
-    false,
-  ]);
-  expect(host.querySelector('.project-setup__hint')?.textContent).toBe(
-    'onboarding.templates.blank.body',
-  );
+  expect(host.querySelector('[name="projectTemplate"]')).toBeNull();
   await input('input[maxlength="120"]', 'Blank project');
   const project = { id: 'p', rootBoardId: 'root' } as Project;
   vi.mocked(api.post).mockResolvedValueOnce(project);
@@ -232,7 +206,6 @@ it('defaults to blank without creating child boards or template content', async 
   );
   expect(createBoard).not.toHaveBeenCalled();
   expect(api.post).toHaveBeenCalledTimes(1);
-  await act(async () => advance());
   expect(created).toHaveBeenCalledWith(project);
 });
 
@@ -259,15 +232,4 @@ it('offers configured active project types using stable identifiers', async () =
   );
   expect(api.post).toHaveBeenCalledWith('/projects', expect.objectContaining({ type: custom.id }));
   await act(async () => setClassifications(structuredClone(DEFAULT_CLASSIFICATIONS)));
-});
-it('starts from the template picked on Home', async () => {
-  // A new form: the template is only where it starts.
-  await act(async () => root.unmount());
-  root = createRoot(host);
-  await act(async () =>
-    root.render(<ProjectSetupForm template="moodboard" onClose={close} onCreated={created} />),
-  );
-  const checked = host.querySelector<HTMLInputElement>('input[name="projectTemplate"]:checked');
-  const radios = [...host.querySelectorAll<HTMLInputElement>('input[name="projectTemplate"]')];
-  expect(radios.indexOf(checked as HTMLInputElement)).toBe(2);
 });

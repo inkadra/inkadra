@@ -313,9 +313,7 @@ export function Projects() {
               count={inside.length}
               view={view}
               onDrop={drop(group.id)}
-              onNewProject={
-                canCreateProjects ? () => openNewProject(undefined, group.id) : undefined
-              }
+              onNewProject={canCreateProjects ? () => openNewProject(group.id) : undefined}
             >
               {inside.map(card)}
             </GroupSection>
@@ -445,7 +443,7 @@ function ProjectCard({
         disabled: busy,
         action: () => void mutate(p, 'pin'),
       },
-      ...(user ? addStoryboardItem(p, t, user.id, navigate, onError) : []),
+      ...(user ? addStoryboardItem(p, t, navigate, onError) : []),
       ...(editor
         ? [{ label: t('onboarding.type'), disabled: busy, action: () => setTyping(true) }]
         : []),

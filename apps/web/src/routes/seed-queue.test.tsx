@@ -38,12 +38,12 @@ it('seeds queued boards one at a time and moves on when one fails', async () => 
     expect(shown()).toBeNull();
     await act(async () =>
       queueSeeds([
-        { boardId: 'a', seed: 'storyboard', userId: 'u' },
-        { boardId: 'b', seed: 'moodboard', userId: 'u' },
+        { boardId: 'a', userId: 'u' },
+        { boardId: 'b', userId: 'u' },
       ]),
     );
     expect(shown()).toBe('a');
-    await act(async () => queueSeeds([{ boardId: 'c', links: [], userId: 'u' }]));
+    await act(async () => queueSeeds([{ boardId: 'c', userId: 'u' }]));
     expect(shown()).toBe('a');
     await act(async () => finish.done?.());
     expect(shown()).toBe('b');
@@ -78,9 +78,9 @@ it('counts a seeded board in the navigation until the server has stored it', asy
         </>,
       ),
     );
-    await act(async () => queueSeeds([{ boardId: 's', seed: 'storyboard', userId: 'u' }]));
+    await act(async () => queueSeeds([{ boardId: 's', userId: 'u' }]));
     expect(shown.get('s')?.frameCount).toBe(0);
-    // The Canvas menu's storyboard: a scene and three frames.
+    // A screenplay import: a scene and three frames.
     await act(async () => finish.done?.({ elementCount: 4, frameCount: 3, framesToShoot: 3 }));
     expect(shown.get('s')).toEqual({
       boardId: 's',

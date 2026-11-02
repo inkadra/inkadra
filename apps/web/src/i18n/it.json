@@ -155,7 +155,7 @@
     "recentBoards": "Recenti",
     "continue": "Continua",
     "recentBoardsHint": "ordinate per ultima modifica",
-    "noRecentBoards": "Ancora nessuna board. Creane una o parti da un modello.",
+    "noRecentBoards": "Ancora nessuna board. Creane una.",
     "kind": {
       "project": "Board del progetto"
     },
@@ -166,18 +166,10 @@
       "empty": "Nessuna attività nelle ultime 24 ore."
     },
     "loadError": "Non riesco a caricare questa sezione. Ricarica la pagina per riprovare.",
-    "templates": {
-      "title": "Inizia da un modello",
-      "blank": {
-        "name": "Board vuota",
-        "body": "Parti da zero"
-      }
-    },
     "newBoard": {
       "action": "Nuova board",
       "title": "Nuova board",
       "project": "Progetto",
-      "start": "Parti da",
       "name": "Nome della board",
       "namePlaceholder": "Sopralluoghi",
       "create": "Crea board",
@@ -351,11 +343,8 @@
       "title": "Da dove partiamo?",
       "body": "Scegli un punto di partenza, oppure fai doppio clic per scrivere una nota.",
       "bodyTouch": "Scegli un punto di partenza, oppure tocca due volte per scrivere una nota.",
-      "moodboard": "Riferimenti e palette",
-      "storyboard": "Scene e inquadrature",
       "screenplay": "Importa sceneggiatura",
       "screenplayBody": "Fountain, Final Draft o PDF",
-      "browse": "Sfoglia tutti i modelli",
       "hint": "Puoi anche trascinare qui file e immagini.",
       "hintTouch": "Aggiungi foto e file dalla barra in basso."
     },
@@ -600,8 +589,7 @@
       "unsorted": "Mostra o nascondi Non ordinati",
       "undo": "Annulla",
       "redo": "Ripeti",
-      "none": "Nessun comando",
-      "template": "Inserisci modello: {{name}}"
+      "none": "Nessun comando"
     },
     "status": {
       "backOnline": "Di nuovo online",
@@ -627,8 +615,7 @@
     "errors": {
       "boardCreate": "Non è stato possibile creare la board.",
       "upload": "Caricamento di {{name}} non riuscito.",
-      "tooBig": "{{name}} supera la dimensione massima consentita.",
-      "storyboardCreate": "Non è stato possibile creare lo storyboard."
+      "tooBig": "{{name}} supera la dimensione massima consentita."
     },
     "arrow": {
       "label": "Etichetta della freccia",
@@ -1058,46 +1045,6 @@
     "tagSuggestions": "Tag suggeriti",
     "noTags": "Nessun tag corrispondente",
     "actions": "Azioni"
-  },
-  "templates": {
-    "moodboard": {
-      "name": "Moodboard",
-      "body": "Riferimenti, colori, luce e location",
-      "refs": "Riferimenti",
-      "light": "Luce",
-      "locations": "Location",
-      "palette": "Palette"
-    },
-    "storyboard": {
-      "name": "Storyboard",
-      "body": "Una board Storyboard con una scena, tre inquadrature e Shot list",
-      "scene": "Apertura"
-    },
-    "production": {
-      "name": "Produzione",
-      "body": "Da fare, in corso, fatto",
-      "todo": "Da fare",
-      "doing": "In corso",
-      "done": "Fatto"
-    },
-    "brief": {
-      "name": "Brief",
-      "body": "Logline, sinossi e tono",
-      "column": "Brief",
-      "logline": "Logline",
-      "synopsis": "Sinossi",
-      "tone": "Tono"
-    },
-    "locations": {
-      "name": "Location",
-      "body": "Location e sopralluoghi",
-      "column": "Location"
-    },
-    "casting": {
-      "name": "Casting",
-      "body": "Ruoli e cast",
-      "column": "Casting"
-    }
   },
   "film": {
     "viewOptions": {
@@ -2329,7 +2276,7 @@
     "guidedSetup": "Configurazione guidata",
     "title": "Nuovo progetto",
     "firstTitle": "Il tuo primo progetto",
-    "subtitle": "Scegli un modello, le date e invita il team. Potrai cambiare tutto dopo.",
+    "subtitle": "Scegli le date e invita il team. Potrai cambiare tutto dopo.",
     "firstSubtitle": "Scegli il punto di partenza e invita il team. Puoi completare i dettagli più avanti.",
     "type": "Tipo di progetto",
     "types": {
@@ -2341,41 +2288,6 @@
     },
     "start": "Inizio riprese",
     "end": "Fine riprese",
-    "templates": {
-      "production": {
-        "name": "Pre-produzione film",
-        "body": "Brief, location, casting, moodboard e storyboard con vista shotlist."
-      },
-      "moodboard": {
-        "name": "Moodboard",
-        "body": "Riferimenti, luce, location e palette."
-      },
-      "storyboard": {
-        "name": "Storyboard",
-        "body": "Una scena e tre inquadrature condivise con la shotlist."
-      },
-      "shotlist": {
-        "name": "Shotlist",
-        "body": "Le stesse inquadrature di storyboard, in vista tabella."
-      },
-      "pitch": {
-        "name": "Pitch cliente",
-        "body": "Una board per la presentazione. Crea un link ospite dal pannello Condividi."
-      },
-      "blank": {
-        "name": "Vuoto",
-        "body": "Un canvas libero."
-      }
-    },
-    "boards": {
-      "brief": "Brief",
-      "locations": "Location",
-      "casting": "Casting",
-      "moodboard": "Moodboard",
-      "storyboard": "Storyboard e shotlist",
-      "shotlist": "Shotlist e storyboard",
-      "pitch": "Pitch cliente"
-    },
     "invite": "Team",
     "role": "Ruolo",
     "add": "Aggiungi",
@@ -2413,7 +2325,6 @@
       "phone": "Dal telefono salva nei Non ordinati."
     },
     "settingsPending": "Impostazioni, configurazione istanza incompleta",
-    "startFrom": "Parti da",
     "details": "Dettagli",
     "detailsHint": "tipo, date, team",
     "clearDate": "Cancella {{label}}",
@@ -3050,7 +2961,6 @@
     "summary": "Crea {{scenes}} e {{frames}}.",
     "truncated": "La sceneggiatura è lunga: in un’importazione entrano solo le prime {{scenes}} e {{frames}}.",
     "submit": "Importa",
-    "use": "Usa questa sceneggiatura",
     "cancel": "Annulla",
     "untitled": "Sceneggiatura",
     "failed": "Non è stato possibile creare lo storyboard. Riprova.",
@@ -3065,12 +2975,6 @@
       "noText": "Questo PDF non ha un livello di testo",
       "timeout": "Lettura interrotta: il PDF richiede troppo tempo.",
       "tooManyPages": "Il PDF supera il limite di 300 pagine."
-    },
-    "setup": {
-      "label": "Sceneggiatura",
-      "hint": "Fai partire lo storyboard da un file Fountain o Final Draft.",
-      "chosen": "{{title}} · {{scenes}} · {{frames}}",
-      "remove": "Togli la sceneggiatura"
     },
     "characterCards": "Crea le schede dei personaggi che parlano",
     "characterCardsHint": "Una scheda personaggio per nome, con le sue scene; i nomi già presenti sulla board vengono saltati.",

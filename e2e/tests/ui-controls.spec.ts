@@ -93,7 +93,7 @@ for (const [device, width, height] of [
         await expect(tooltip).toBeHidden();
       }
 
-      // New project: type pills and template cards are radios without a visible circle.
+      // New project: type pills are radios without a visible circle.
       await page.goto('/');
       if (device === 'desktop') {
         await page.getByRole('button', { name: 'Nuovo progetto' }).first().click();

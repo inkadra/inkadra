@@ -10,7 +10,7 @@ export const storyboardTitle = (plan: ImportPlan, fallback: string) =>
 
 /**
  * A storyboard board under `parentId` filled from the plan once it syncs, by the seed queue
- * like the Canvas menu's templates, so it carries on if the person opens it straight away.
+ * so it carries on if the person opens it straight away.
  */
 export async function createScreenplayStoryboard(
   projectId: string,
