@@ -38,7 +38,12 @@ const ADDRESS_ZOOM = 16;
  * The first match of a Nominatim-compatible geocoder, or null. The address leaves the server
  * only here, when someone asked for a map of it, and only to the geocoder the administrator set.
  */
-async function geocode(endpoint: string, query: string, userAgent: string, language?: string) {
+export async function geocode(
+  endpoint: string,
+  query: string,
+  userAgent: string,
+  language?: string,
+) {
   const url = new URL(endpoint);
   url.searchParams.set('q', query);
   url.searchParams.set('format', 'jsonv2');
@@ -59,8 +64,13 @@ async function geocode(endpoint: string, query: string, userAgent: string, langu
     lon?: unknown;
     display_name?: unknown;
   }>;
-  const lat = Number(first?.lat);
-  const lon = Number(first?.lon);
+  // Missing or empty coordinates must not coerce to a plausible location at 0, 0.
+  const coordinate = (value: unknown) =>
+    typeof value === 'number' || (typeof value === 'string' && value.trim() !== '')
+      ? Number(value)
+      : Number.NaN;
+  const lat = coordinate(first?.lat);
+  const lon = coordinate(first?.lon);
   if (!Number.isFinite(lat) || !Number.isFinite(lon) || Math.abs(lat) > 85 || Math.abs(lon) > 180)
     return null;
   const place: MapPlace = { lat, lon, zoom: ADDRESS_ZOOM };

@@ -162,7 +162,7 @@ import { ImageCropToolbar, restoreOriginalImage } from './ImageCropEditor.tsx';
 import { hasImageTransform } from './image-crop.ts';
 import { fillLinkPreview, webUrl } from './links.ts';
 import { useBoardCounts } from './live-counts.ts';
-import { exploreMap } from './MapExplore.tsx';
+import { MapDialog } from './MapExplore.tsx';
 import { fillMapPreview } from './maps.ts';
 import { NoteSideSheet } from './NoteSideSheet.tsx';
 import { fillFragment, isEmpty } from './note.tsx';
@@ -497,6 +497,7 @@ export function Canvas({
   const [framePanel, setFramePanel] = useState<string | null>(null);
   /** Character or location card whose side sheet is open. */
   const [storyPanel, setStoryPanel] = useState<string | null>(null);
+  const [mapSheet, setMapSheet] = useState<string | null>(null);
   const [noteSheet, setNoteSheet] = useState<string | null>(null);
   const [drawing, setDrawing] = useState<string | null>(null);
   const [viewing, setViewing] = useState<string | null>(null);
@@ -1183,9 +1184,11 @@ export function Canvas({
         'url' in from ? { name: '', url: from.url } : { name: from.query, address: from.query };
       const el = createElement(doc, 'map', at, fields, { userId, origin: LOCAL });
       select([el.id]);
-      void fillMapPreview(doc, el.id, projectId, boardId, from);
+      void fillMapPreview(doc, el.id, projectId, boardId, from).then((found) => {
+        if (!found) setToast({ text: t('board.map.notFound'), undo: false });
+      });
     },
-    [doc, userId, select, projectId, boardId],
+    [doc, userId, select, projectId, boardId, t],
   );
 
   const addText = useCallback(
@@ -1536,8 +1539,8 @@ export function Canvas({
         select([el.id]);
         setFramePanel(null);
         setStoryPanel(el.id);
-      } else if (el.type === 'map' && el.lat !== undefined && el.imageAssetId && mapTiles) {
-        exploreMap(el.id);
+      } else if (el.type === 'map' && el.lat !== undefined && el.lon !== undefined && mapTiles) {
+        setMapSheet(el.id);
       } else if (el.type === 'note') {
         select([el.id]);
         // The sheet takes over the note's document: leave inline editing first.
@@ -1718,6 +1721,8 @@ export function Canvas({
     }
 
     if (!targetId) {
+      setStoryPanel(null);
+      setFramePanel(null);
       if (editing) setEditing(null);
       if (cropping) setCropping(null);
       const base = e.shiftKey ? new Set(selection) : new Set<string>();
@@ -3651,9 +3656,22 @@ export function Canvas({
             />,
             document.body,
           )}
+        {mapSheet &&
+          (() => {
+            const map = snap.byId.get(mapSheet);
+            return map?.type === 'map' && map.lat !== undefined && map.lon !== undefined ? (
+              <MapDialog
+                id={map.id}
+                name={map.name || map.address || t('board.map.untitled')}
+                place={{ lat: map.lat, lon: map.lon, zoom: map.zoom ?? 16 }}
+                onClose={() => setMapSheet(null)}
+              />
+            ) : null;
+          })()}
         {linkDraft?.map && (
           <LinkDraft
             map
+            geocoding={instance?.maps?.geocoding ?? false}
             at={worldToScreen(viewport, linkDraft.at)}
             onCancel={() => setLinkDraft(null)}
             onSubmit={(value) => {
@@ -3740,12 +3758,14 @@ function outsideDialogs<E extends { target: EventTarget }>(handler: (e: E) => vo
 function LinkDraft({
   at,
   map,
+  geocoding = false,
   onSubmit,
   onCancel,
 }: {
   at: Point;
   /** A map card: an address or a map link; addresses are sent as typed. */
   map?: boolean;
+  geocoding?: boolean;
   onSubmit: (value: string) => void;
   onCancel: () => void;
 }) {
@@ -3762,6 +3782,10 @@ function LinkDraft({
         e.preventDefault();
         const text = value.trim().slice(0, map ? 2048 : undefined);
         if (map && !/^https?:\/\//i.test(text)) {
+          if (!geocoding) {
+            setError(true);
+            return;
+          }
           if (text) onSubmit(text.slice(0, 500));
           return;
         }
@@ -3786,6 +3810,9 @@ function LinkDraft({
         onKeyDown={(e) => e.key === 'Escape' && onCancel()}
         onBlur={() => !value && onCancel()}
       />
+      {map && error && (
+        <p role="alert">{t(geocoding ? 'board.map.notFound' : 'board.map.geocoderUnavailable')}</p>
+      )}
     </form>
   );
 }

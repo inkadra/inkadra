@@ -37,7 +37,7 @@ export function securityHeaders(
   return {
     [config.CSP_ENFORCE ? 'content-security-policy' : 'content-security-policy-report-only']:
       policy,
-    'permissions-policy': `camera=(), microphone=(), geolocation=(), payment=(), usb=(), autoplay=${players}, encrypted-media=${players}, picture-in-picture=${players}, fullscreen=${players}, clipboard-write=${players}`,
+    'permissions-policy': `camera=(), microphone=(self), geolocation=(), payment=(), usb=(), autoplay=${players}, encrypted-media=${players}, picture-in-picture=${players}, fullscreen=${players}, clipboard-write=${players}`,
     'cross-origin-opener-policy': 'same-origin',
     ...(config.HSTS_ENABLED && secure ? { 'strict-transport-security': 'max-age=31536000' } : {}),
   };

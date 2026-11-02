@@ -45,6 +45,7 @@ import {
 } from './canvas-templates.ts';
 import { Card, NOTE_COLORS } from './cards.tsx';
 import { GuestVisibilityIcon } from './guest-visibility.tsx';
+import { toggleSelectedHeading } from './note.tsx';
 import { isMac } from './shortcuts.ts';
 import { BAR_ICONS, type BarTool, barTools, DEFAULT_BAR } from './toolbar-prefs.ts';
 import { cancelUpload, retryUpload, useUploads } from './uploads.ts';
@@ -525,7 +526,7 @@ export function ContextBar({
             icon="heading"
             label={t('board.format.heading')}
             active={editor.isActive('heading')}
-            onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}
+            onClick={() => toggleSelectedHeading(editor)}
           />
           <BarButton
             icon="list"

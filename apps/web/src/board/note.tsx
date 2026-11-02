@@ -1,5 +1,6 @@
 import Collaboration from '@tiptap/extension-collaboration';
 import { Placeholder } from '@tiptap/extensions';
+import { TextSelection } from '@tiptap/pm/state';
 import { type Editor, EditorContent, useEditor } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import { type ReactNode, useEffect, useReducer } from 'react';
@@ -152,4 +153,25 @@ export function NoteEditor({
     if (editor) onReady?.(editor);
   }, [editor, onReady]);
   return <EditorContent editor={editor} />;
+}
+
+export function toggleSelectedHeading(editor: Editor) {
+  return editor
+    .chain()
+    .focus()
+    .command(({ tr }) => {
+      const { from, to, empty, $from, $to } = tr.selection;
+      // A heading is a block: isolate a partial selection before changing its node type.
+      if (!empty && $from.sameParent($to) && $from.parent.type.name === 'paragraph') {
+        if ($to.parentOffset < $to.parent.content.size) tr.split(to);
+        const splitStart = $from.parentOffset > 0;
+        if (splitStart) tr.split(from);
+        tr.setSelection(
+          TextSelection.create(tr.doc, from + (splitStart ? 2 : 0), to + (splitStart ? 2 : 0)),
+        );
+      }
+      return true;
+    })
+    .toggleHeading({ level: 1 })
+    .run();
 }

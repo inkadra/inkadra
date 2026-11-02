@@ -698,12 +698,15 @@
       "label": "Address or map link",
       "placeholder": "Paste a Maps link or type an address",
       "open": "Open in Maps",
+      "notFound": "Address not found. Check the address or use a map link; address search requires a configured geocoder.",
+      "close": "Close map",
       "untitled": "Place",
       "explore": "Explore",
       "exploreLabel": "Explore the map of {{name}}",
       "interactive": "Map of {{name}}: drag to move, Esc to finish",
       "zoomIn": "Zoom the map in",
-      "zoomOut": "Zoom the map out"
+      "zoomOut": "Zoom the map out",
+      "geocoderUnavailable": "Address search is not configured on this instance. Paste a map link."
     },
     "count": {
       "cards_one": "{{count}} card",

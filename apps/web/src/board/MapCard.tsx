@@ -56,7 +56,7 @@ export function MapCard({ element, width }: { element: MapElement; width: number
   const image = useAsset(element.imageAssetId);
   const ready = image && image !== 'missing' ? image : null;
   const dpr = typeof window === 'undefined' ? 1 : window.devicePixelRatio || 1;
-  const src = ready && ready.variants.length > 0 ? pickVariant(ready, width * scale * dpr) : '';
+  const src = ready ? pickVariant(ready, width * scale * dpr) : '';
   const href = openInMapsUrl(element);
   const coords =
     element.lat !== undefined && element.lon !== undefined

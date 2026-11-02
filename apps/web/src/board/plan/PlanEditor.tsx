@@ -421,6 +421,10 @@ export function PlanEditor({
     const draft = textRef.current;
     textRef.current = null;
     setText(null);
+    if (draft) {
+      setTool('select');
+      setArmed(null);
+    }
     const value = draft?.value.trim().slice(0, 500);
     if (!draft || !value) return;
     const x = toGrid(draft.at.x);
@@ -627,7 +631,13 @@ export function PlanEditor({
         const target = planItem(drawn, hit);
         setSelected(hit);
         // Picked with the arrow, a camera or a light shows its lens or beam (round 6, c).
-        if (tool === 'select' && !phone && isIcon(target) && iconCone(target)) setPanel('props');
+        if (
+          tool === 'select' &&
+          !phone &&
+          ((isIcon(target) && iconCone(target)) ||
+            (target && 'x0' in target && target.kind === 'text'))
+        )
+          setPanel('props');
         if (!target) return;
         e.currentTarget.setPointerCapture(e.pointerId);
         store.undo.stopCapturing();
@@ -1149,24 +1159,27 @@ export function PlanEditor({
       ))}
     </>
   );
-  const labelField = isIcon(current) && (
-    <input
-      className="plan-editor__field"
-      aria-label={t('board.plan.labelField')}
-      placeholder={t('board.plan.labelPlaceholder')}
-      maxLength={60}
-      value={current.label ?? ''}
-      onFocus={() => store.undo.stopCapturing()}
-      onBlur={() => store.undo.stopCapturing()}
-      onChange={(e) => relabel(e.target.value)}
-      onKeyDown={(e) => {
-        if (e.key === 'Enter' || e.key === 'Escape') {
-          e.preventDefault();
-          e.currentTarget.blur();
+  const labelField = current &&
+    (isIcon(current) || ('x0' in current && current.kind === 'text')) && (
+      <input
+        className="plan-editor__field"
+        aria-label={t(isIcon(current) ? 'board.plan.labelField' : 'film.pen.textField')}
+        placeholder={t('board.plan.labelPlaceholder')}
+        maxLength={isIcon(current) ? 60 : 500}
+        value={(isIcon(current) ? current.label : current.text) ?? ''}
+        onFocus={() => store.undo.stopCapturing()}
+        onBlur={() => store.undo.stopCapturing()}
+        onChange={(e) =>
+          isIcon(current) ? relabel(e.target.value) : write({ ...current, text: e.target.value })
         }
-      }}
-    />
-  );
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === 'Escape') {
+            e.preventDefault();
+            e.currentTarget.blur();
+          }
+        }}
+      />
+    );
   /** Width and depth of furniture in metres; S, M, L of symbols and texts (round 6, e). */
   const sizeFields = current && (
     <>
@@ -1284,7 +1297,7 @@ export function PlanEditor({
       aria-label={t('board.plan.selection')}
     >
       {swatches}
-      {labelField && (
+      {labelField && (phone || isIcon(current)) && (
         <>
           <span className="plan-editor__vr" aria-hidden="true" />
           {labelField}
@@ -1618,7 +1631,7 @@ export function PlanEditor({
       </div>
       {labelField && (
         <div className="plan-props__row">
-          <span>{t('board.plan.labelField')}</span>
+          <span>{t(isIcon(current) ? 'board.plan.labelField' : 'film.pen.textField')}</span>
           {labelField}
         </div>
       )}

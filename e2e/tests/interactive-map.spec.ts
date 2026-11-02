@@ -177,10 +177,13 @@ test('explores a map card in place: pan, drag by the frame, Esc', async ({
       await expect(live).toHaveCount(0);
       await expect(explore).toBeVisible();
 
-      // A double click explores too; one map at a time; a press outside ends it.
+      // A double click opens the interactive map at full size; Explore stays in the card.
       const picture = (await card.locator('.mcard__map').boundingBox())!;
       await desk.mouse.dblclick(picture.x + 40, picture.y + picture.height - 30);
-      await expect(live).toBeVisible();
+      const fullMap = desk.getByRole('dialog', { name: 'Rifugio Lagunc' });
+      await expect(fullMap.locator('[data-explored]')).toBeVisible();
+      await desk.getByRole('button', { name: 'Chiudi la mappa' }).click();
+      await expect(fullMap).toHaveCount(0);
       const route = desk.locator(`[data-el="${seeded.file}"]`);
       await route.getByRole('button', { name: 'Esplora la mappa di sentiero.gpx' }).click();
       await expect(route.locator('.mcard__live-route')).toBeVisible();
