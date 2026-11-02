@@ -221,9 +221,21 @@ export function tableGrid(table: Pick<TableElement, 'columns' | 'rows'>): string
   return table.rows.map((r: TableRow) => table.columns.map((c) => r.cells[c.id] ?? ''));
 }
 
-/** A table as tab-separated values, as spreadsheets paste it; cells with tabs, quotes or line breaks are quoted. */
+/** Text a spreadsheet would run as a formula (`=SUM(A1)`, `@x`, `+1+1`); plain numbers like `-5` are not. */
+const FORMULA = /^[=+\-@]/;
+const NUMBER = /^[+-]?(\d+([.,]\d+)?|[.,]\d+)(e[+-]?\d+)?%?$/i;
+
+/**
+ * A table as tab-separated values, as spreadsheets paste it; cells with tabs, quotes or line
+ * breaks are quoted. A cell a spreadsheet would run as a formula gets a leading apostrophe, so
+ * a shared board cannot put one in someone else's sheet (the same rule as the shot list CSV);
+ * `parseTsv` takes the apostrophe off again.
+ */
 export function toTsv(grid: readonly (readonly string[])[]): string {
-  const cell = (text: string) => (/[\t\n\r"]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text);
+  const cell = (raw: string) => {
+    const text = FORMULA.test(raw) && !NUMBER.test(raw) ? `'${raw}` : raw;
+    return /[\t\n\r"]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+  };
   return grid.map((r) => r.map(cell).join('\t')).join('\n');
 }
 
@@ -277,5 +289,6 @@ export function parseTsv(text: string): string[][] {
     row.push(cell);
     rows.push(row);
   }
-  return rows;
+  // The apostrophe `toTsv` puts before a formula-like cell is not part of its text.
+  return rows.map((r) => r.map((c) => (/^'[=+\-@]/.test(c) ? c.slice(1) : c)));
 }

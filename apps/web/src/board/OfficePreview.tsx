@@ -4,8 +4,9 @@ import { type Asset, OfficePreview as OfficePreviewSchema } from '@inkadra/share
 import { Button } from '@inkadra/ui';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useSession } from '../lib/session.tsx';
 import { fileBadge, fileFamily } from './file-kinds.ts';
-import { type OfficePreview, officeUrl } from './office.ts';
+import { isNumeric, type OfficePreview, officeUrl, SHEET_PREVIEW, tableable } from './office.ts';
 
 export function useOfficePreview(asset: Asset | null) {
   const [state, setState] = useState<{ id: string; data: OfficePreview | null } | null>(null);
@@ -31,58 +32,84 @@ export function OfficeStage({
   data,
   page,
   setPage,
+  sheet,
+  setSheet,
 }: {
   asset: Asset;
   data: OfficePreview | null | undefined;
   page: number;
   setPage: (page: number) => void;
+  sheet: number;
+  setSheet: (sheet: number) => void;
 }) {
   const { t } = useTranslation();
-  const [sheet, setSheet] = useState(0);
+  const { user } = useSession();
   const [zoom, setZoom] = useState(100);
   const [failed, setFailed] = useState(false);
   const selected = data?.sheets[sheet] ?? data?.sheets[0];
   const pages = data?.pageCount ?? 0;
   if (data === undefined) return <p role="status">{t('office.loading')}</p>;
-  if (selected)
+  if (selected) {
+    const columns = Math.max(1, ...selected.rows.map((r) => r.length));
     return (
       <div className="office-sheet">
         {/* biome-ignore lint/a11y/noNoninteractiveTabindex: keyboard users must be able to scroll the bounded sheet */}
-        <section className="office-sheet__scroll" tabIndex={0} aria-label={selected.name}>
-          <table>
-            <tbody>
-              {selected.rows.map((row, r) => (
-                <tr key={r}>
-                  {row.map((cell, c) =>
-                    r === 0 ? (
-                      <th key={c} scope="col">
-                        {cell}
-                      </th>
-                    ) : (
-                      <td key={c}>{cell}</td>
-                    ),
-                  )}
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <section className="office-sheet__scroll ink-paper" tabIndex={0} aria-label={selected.name}>
+          {selected.rows.length > 0 ? (
+            <table>
+              <tbody>
+                {selected.rows.map((row, r) => (
+                  <tr key={r}>
+                    {row.map((cell, c) =>
+                      r === 0 ? (
+                        <th key={c} scope="col">
+                          {cell}
+                        </th>
+                      ) : (
+                        <td key={c} className={isNumeric(cell) ? 'n' : undefined}>
+                          {cell}
+                        </td>
+                      ),
+                    )}
+                  </tr>
+                ))}
+                {selected.truncated && (
+                  <tr className="office-sheet__more">
+                    <td colSpan={columns}>…</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          ) : (
+            <p className="office-sheet__empty">
+              {t(selected.truncated ? 'office.tooBig' : 'office.empty')}
+            </p>
+          )}
         </section>
-        <div className="office-sheet__tabs" role="tablist" aria-label={t('office.sheets')}>
-          {data?.sheets.map((s, i) => (
-            <button
-              type="button"
-              role="tab"
-              aria-selected={sheet === i}
-              tabIndex={sheet === i ? 0 : -1}
-              key={i}
-              onClick={() => setSheet(i)}
-            >
-              {s.name}
-            </button>
-          ))}
-        </div>
+        {selected.truncated && selected.rows.length > 0 && (
+          <p className="office-sheet__note" role="status">
+            {t('office.truncated', SHEET_PREVIEW)}
+          </p>
+        )}
+        {data && data.sheets.length > 1 && (
+          <div className="office-sheet__tabs" role="tablist" aria-label={t('office.sheets')}>
+            {data.sheets.map((s, i) => (
+              <button
+                type="button"
+                role="tab"
+                aria-selected={sheet === i}
+                tabIndex={sheet === i ? 0 : -1}
+                key={i}
+                onClick={() => setSheet(i)}
+              >
+                {s.name}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
     );
+  }
   if (!pages)
     return (
       <div className="viewer__file">
@@ -90,7 +117,7 @@ export function OfficeStage({
           {fileBadge(asset)}
         </span>
         <strong>{t('office.unavailable')}</strong>
-        <p>{t('office.disabled')}</p>
+        <p>{t(user?.role === 'admin' ? 'office.disabledAdmin' : 'office.disabled')}</p>
         <a
           className="ink-btn ink-btn--secondary"
           href={`${asset.url}?download=1`}
@@ -115,7 +142,11 @@ export function OfficeStage({
                 setPage(i + 1);
               }}
             >
-              <img loading="lazy" src={officeUrl(asset.id, `page-${i + 1}.webp`)} alt="" />
+              <img
+                loading="lazy"
+                src={officeUrl(asset.id, `page-${i + 1}.webp`, data?.revision)}
+                alt=""
+              />
             </button>
           ))}
         </nav>
@@ -125,7 +156,7 @@ export function OfficeStage({
           <p role="alert">{t('office.error')}</p>
         ) : (
           <img
-            src={officeUrl(asset.id, `page-${page}.webp`)}
+            src={officeUrl(asset.id, `page-${page}.webp`, data?.revision)}
             alt={t('office.page', { page, count: pages })}
             style={{ width: `${zoom}%` }}
             onError={() => setFailed(true)}
@@ -228,15 +259,17 @@ export function OfficeInfo({
       {!!data?.pageCount && <p className="ink-muted">{t('office.conversion')}</p>}
       {first && (
         <>
-          <Button variant="primary" disabled={!onTable || !first.rows.length} onClick={onTable}>
+          <Button variant="primary" disabled={!onTable || !tableable(first)} onClick={onTable}>
             {t('office.toTable')}
           </Button>
           <p className="ink-muted">
-            {t('office.firstSheet', {
-              name: first.name,
-              rows: first.rows.length,
-              columns: Math.max(0, ...first.rows.map((r) => r.length)),
-            })}
+            {first.truncated
+              ? t('office.truncatedTable', SHEET_PREVIEW)
+              : t('office.firstSheet', {
+                  name: first.name,
+                  rows: first.rows.length,
+                  columns: Math.max(0, ...first.rows.map((r) => r.length)),
+                })}
           </p>
         </>
       )}

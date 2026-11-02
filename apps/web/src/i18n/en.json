@@ -2938,6 +2938,12 @@
       "odp": "OpenDocument presentation",
       "csv": "Comma-separated values"
     },
-    "summary": "{{rows}} rows × {{columns}} columns · the file stays on the board"
+    "summary": "{{rows}} rows × {{columns}} columns · the file stays on the board",
+    "sheetOf": "Sheet {{sheet}} of {{count}}",
+    "disabledAdmin": "Document conversion is not enabled on this server, or the document exceeds the conversion limits. Admins turn it on from Instance.",
+    "tooBig": "This sheet is too large to preview. Download the original to open it.",
+    "empty": "The sheet is empty.",
+    "truncated": "The sheet exceeds the preview limits: at most {{rows}} rows and {{columns}} columns are shown. Download the original for the rest.",
+    "truncatedTable": "The sheet exceeds the table limits ({{rows}} rows × {{columns}} columns): download the original."
   }
 }
