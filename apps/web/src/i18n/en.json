@@ -412,7 +412,7 @@
       "layers_other": "{{count}} layers",
       "pages_one": "{{count}} page",
       "pages_other": "{{count}} pages",
-      "preparing": "Preparing preview",
+      "preparing": "Unsupported format: the server is preparing a playable version.",
       "play": "Play {{name}}",
       "pause": "Pause {{name}}",
       "seek": "Position in {{name}}",
@@ -420,7 +420,8 @@
       "glyphs_one": "{{count}} glyph",
       "glyphs_other": "{{count}} glyphs",
       "polygons_one": "{{count}} polygon",
-      "polygons_other": "{{count}} polygons"
+      "polygons_other": "{{count}} polygons",
+      "unavailable": "Unsupported format: no playable copy is available."
     },
     "voiceNote": {
       "label": "Voice note",
@@ -580,7 +581,8 @@
       "cancelled": "Cancelled",
       "retry": "Retry",
       "offline": "Waiting for network",
-      "reconnecting": "Reconnecting…"
+      "reconnecting": "Reconnecting…",
+      "transfer": "{{speed}} MB/s · {{seconds}} s remaining"
     },
     "palette": {
       "title": "Commands",
@@ -1025,7 +1027,13 @@
     "showOriginal": "Show original",
     "showEdited": "Show cropped",
     "noView": "This file opens outside the browser",
-    "pageOne": "Page 1 of {{count}}"
+    "pageOne": "Page 1 of {{count}}",
+    "pdfError": "Could not read the PDF. You can download the original.",
+    "pdfLoading": "Loading PDF…",
+    "pdfPage": "{{name}}, page {{page}} of {{total}}",
+    "pdfPrevious": "Previous page",
+    "pdfNext": "Next page",
+    "pdfPageNumber": "Page {{page}} of {{total}}"
   },
   "search": {
     "title": "Search",

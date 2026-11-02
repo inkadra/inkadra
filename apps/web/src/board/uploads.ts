@@ -10,6 +10,8 @@ export interface UploadItem {
   name: string;
   size: number;
   sent: number;
+  bytesPerSecond: number;
+  remainingSeconds: number | null;
   /** `offline`: paused while the browser has no network, resumes by itself when it is back. */
   state: 'uploading' | 'offline' | 'done' | 'failed' | 'cancelled';
   /** A request failed and tus is retrying it, while the browser still reports a network. */
@@ -111,6 +113,8 @@ export function startUpload({
     name: file.name,
     size: file.size,
     sent: 0,
+    bytesPerSecond: 0,
+    remainingSeconds: null,
     state: 'uploading',
     reconnecting: false,
     fingerprint,
@@ -118,9 +122,11 @@ export function startUpload({
     preview: isImage ? URL.createObjectURL(file) : null,
   });
   emit();
+  let sampledAt = performance.now();
+  let sampledBytes = 0;
   let announced = false;
   const announce = (assetId: string | null) => {
-    if (!assetId || announced) return;
+    if (!uploads.has(key) || !assetId || announced) return;
     announced = true;
     patch(key, { assetId });
     onAsset(assetId);
@@ -131,7 +137,7 @@ export function startUpload({
     retryDelays: [0, 1000, 3000, 5000, 10000, 20000, 30000, 60000],
     // Offline, retrying only burns attempts: the upload pauses and resumes on "online".
     onShouldRetry: (err) => {
-      if (!online()) return false;
+      if (!uploads.has(key) || !online()) return false;
       const status = err.originalResponse?.getStatus() ?? 0;
       const retry = status < 400 || status >= 500 || status === 409 || status === 423;
       if (retry) patch(key, { reconnecting: true });
@@ -145,9 +151,37 @@ export function startUpload({
       filename: file.name,
       filetype: file.type || 'application/octet-stream',
     },
+    // tus can finish opening the File after abort() and reset its internal aborted flag.
+    // Guard the request boundary as well, so that delayed work cannot restart a cancelled upload.
+    onBeforeRequest: (req) => {
+      if (!uploads.has(key) && req.getMethod() !== 'DELETE') throw new Error('Upload cancelled');
+    },
     onAfterResponse: (_req, res) => announce(res.getHeader('Inkadra-Asset-Id') ?? null),
-    onProgress: (sent) => patch(key, { sent, reconnecting: false }),
+    onProgress: (sent) => {
+      if (!uploads.has(key)) return;
+      const now = performance.now();
+      const elapsed = (now - sampledAt) / 1000;
+      if (elapsed < 0.5 || sent < sampledBytes) {
+        if (sent < sampledBytes) {
+          sampledAt = now;
+          sampledBytes = sent;
+        }
+        patch(key, { sent, reconnecting: false });
+        return;
+      }
+      const bytesPerSecond = (sent - sampledBytes) / elapsed;
+      sampledAt = now;
+      sampledBytes = sent;
+      patch(key, {
+        sent,
+        bytesPerSecond,
+        remainingSeconds:
+          bytesPerSecond > 0 ? Math.ceil((file.size - sent) / bytesPerSecond) : null,
+        reconnecting: false,
+      });
+    },
     onSuccess: () => {
+      if (!uploads.has(key)) return;
       patch(key, { state: 'done', sent: file.size, reconnecting: false });
       uploads.delete(key);
       const assetId = items.find((i) => i.key === key)?.assetId;
@@ -155,6 +189,7 @@ export function startUpload({
       setTimeout(() => dismiss(key), 4000);
     },
     onError: () => {
+      if (!uploads.has(key)) return;
       if (!online()) {
         patch(key, { state: 'offline', reconnecting: false });
         return;
@@ -190,7 +225,7 @@ export function cancelUpload(key: string) {
   const upload = uploads.get(key);
   if (!upload) return;
   uploads.delete(key);
-  void upload.abort(true);
+  void upload.abort(true).catch(() => {});
   patch(key, { state: 'cancelled' });
   setTimeout(() => dismiss(key), 1500);
 }

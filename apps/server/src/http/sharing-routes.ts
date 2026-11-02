@@ -547,23 +547,47 @@ export function registerSharingRoutes(app: FastifyInstance, deps: Deps) {
         ? INSTANCE_LINK_DAYS
         : input.expiresInDays;
     const token = newSecret('', 24);
-    const [created] = await db
-      .insert(invitation)
-      .values({
-        kind: input.kind,
-        tokenHash: sha256(token),
-        // Email invitations get a new token when sent again, so they need no copy.
-        tokenSealed: input.kind === 'link' ? seal.seal(token) : null,
-        email,
-        projectId,
-        boardId,
-        role,
-        invitedBy: actor.id,
-        maxUses: input.kind === 'email' || instanceLink ? 1 : null,
-        expiresAt: new Date(Date.now() + expiresInDays * 86_400_000),
-        accessExpiresAt,
-      })
-      .returning();
+    const [created] = await db.transaction(async (tx) => {
+      if (email) {
+        // Serialize the check and insert across requests and server processes without a schema change.
+        await tx.execute(
+          sql`select pg_advisory_xact_lock(hashtextextended(${JSON.stringify([email, projectId, boardId])}, 0))`,
+        );
+        const [pending] = await tx
+          .select({ id: invitation.id })
+          .from(invitation)
+          .where(
+            and(
+              eq(invitation.kind, 'email'),
+              eq(invitation.email, email),
+              projectId ? eq(invitation.projectId, projectId) : isNull(invitation.projectId),
+              boardId ? eq(invitation.boardId, boardId) : isNull(invitation.boardId),
+              isNull(invitation.revokedAt),
+              gt(invitation.expiresAt, new Date()),
+              eq(invitation.uses, 0),
+            ),
+          );
+        if (pending)
+          throw new HttpError('conflict', 'An invitation for this email is already pending.');
+      }
+      return tx
+        .insert(invitation)
+        .values({
+          kind: input.kind,
+          tokenHash: sha256(token),
+          // Email invitations get a new token when sent again, so they need no copy.
+          tokenSealed: input.kind === 'link' ? seal.seal(token) : null,
+          email,
+          projectId,
+          boardId,
+          role,
+          invitedBy: actor.id,
+          maxUses: input.kind === 'email' || instanceLink ? 1 : null,
+          expiresAt: new Date(Date.now() + expiresInDays * 86_400_000),
+          accessExpiresAt,
+        })
+        .returning();
+    });
     if (!created) throw new Error('Invitation insert returned nothing');
     let row = created;
     try {

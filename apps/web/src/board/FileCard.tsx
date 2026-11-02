@@ -345,7 +345,9 @@ function VideoPreview({
   state: 'ready' | 'processing' | 'failed';
 }) {
   const { t } = useTranslation();
+  const { openElement } = useBoard();
   const poster = asset.variants.length > 0 ? pickVariant(asset, pixels) : '';
+  const source = playbackUrl(asset);
   const proxy = asset.proxy;
   const preparing = proxy?.status === 'queued' || proxy?.status === 'processing';
   const percent = proxy?.status === 'processing' ? (proxy.progress ?? null) : null;
@@ -370,15 +372,24 @@ function VideoPreview({
           {percent !== null && <span className="fcard__percent">{percent}%</span>}
         </span>
       ) : (
-        state === 'ready' && (
-          // Decorative, like every card: a double click or Enter opens the shared viewer,
-          // which plays the playable copy once it is ready.
-          <span className="card__play fcard__play" data-playable={element.id} aria-hidden="true">
+        state === 'ready' &&
+        source && (
+          <button
+            type="button"
+            className="card__play fcard__play"
+            aria-label={t('board.file.play', { name: asset.filename })}
+            onClick={() => openElement?.(element)}
+          >
             <Icon name="play" size={14} />
-          </span>
+          </button>
         )
       )}
-      {!preparing && asset.durationMs !== null && asset.durationMs > 0 && (
+      {!preparing && state === 'ready' && !source && (
+        <span className="fcard__prep" role="status">
+          {t('board.file.unavailable')}
+        </span>
+      )}
+      {!preparing && source && asset.durationMs !== null && asset.durationMs > 0 && (
         <span className="card__duration">{formatDuration(asset.durationMs)}</span>
       )}
       {state === 'processing' && !poster && (
@@ -415,7 +426,7 @@ export function AudioPreview({
       {state === 'ready' ? (
         <AudioPlayer
           id={id}
-          src={playbackUrl(asset)}
+          src={playbackUrl(asset) ?? asset.url}
           name={asset.filename}
           durationMs={asset.durationMs}
           peaks={peaks}

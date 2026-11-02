@@ -171,3 +171,39 @@ describe('pickVariant processing boundary', () => {
     }
   });
 });
+
+describe('video audio safety', () => {
+  it.each(['ac3', 'eac3', 'dts', 'flac', 'opus', 'aac'])(
+    'never falls back to the H.264 MKV original with %s sound',
+    (audioCodec) => {
+      const video: Asset = {
+        ...sampleAsset,
+        kind: 'video',
+        mime: 'video/x-matroska',
+        videoCodec: 'h264',
+        audioCodec,
+        url: '/original.mkv',
+      };
+      for (const status of ['queued', 'processing', 'failed', 'skipped'] as const) {
+        expect(
+          playbackUrl({
+            ...video,
+            proxy: {
+              status,
+              progress: null,
+              url: null,
+              mime: 'video/mp4',
+              width: null,
+              height: null,
+              size: null,
+            },
+          }),
+        ).toBeUndefined();
+      }
+    },
+  );
+});
+
+it('plays a video original the server needs no copy of', () => {
+  expect(playbackUrl({ ...sampleAsset, kind: 'video', url: '/orig', proxy: null })).toBe('/orig');
+});

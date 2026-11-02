@@ -689,7 +689,14 @@ export function AppLayout({ home }: { home?: ReactNode }) {
       </div>
       <span className="ink-sidebar__spacer" />
       <div className="ink-sidebar__user">
-        <Avatar image={user.image} name={user.name} />
+        <button
+          type="button"
+          className="ink-btn ink-btn--ghost"
+          aria-label={t('admin.account')}
+          onClick={go('/settings?section=account')}
+        >
+          <Avatar image={user.image} name={user.name} />
+        </button>
         <span className="ink-sidebar__who">
           <span>{user.name}</span>
           <small>{instance?.name}</small>
@@ -918,7 +925,7 @@ export function AppLayout({ home }: { home?: ReactNode }) {
           onInbox={() => setInboxOpen((o) => !o)}
           onProfile={() => {
             setInboxOpen(false);
-            navigate('/settings');
+            navigate('/settings?section=account');
           }}
         />
         {overlay.settings && (

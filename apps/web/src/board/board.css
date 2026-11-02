@@ -594,13 +594,17 @@
   bottom: 8px;
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 6px;
   padding: 5px 7px;
   border-radius: var(--ink-radius-sm);
   background: rgb(0 0 0 / 0.62);
   color: #fff;
   font-size: 10.5px;
-  white-space: nowrap;
+  white-space: normal;
+}
+.fcard__prep > span:first-child {
+  flex-basis: 100%;
 }
 .fcard__bar {
   flex: 1;

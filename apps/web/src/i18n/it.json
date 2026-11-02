@@ -412,7 +412,7 @@
       "layers_other": "{{count}} livelli",
       "pages_one": "{{count}} pagina",
       "pages_other": "{{count}} pagine",
-      "preparing": "Preparo l’anteprima",
+      "preparing": "Formato non supportato: il server sta preparando una versione riproducibile.",
       "play": "Riproduci {{name}}",
       "pause": "Metti in pausa {{name}}",
       "seek": "Posizione in {{name}}",
@@ -420,7 +420,8 @@
       "glyphs_one": "{{count}} glifo",
       "glyphs_other": "{{count}} glifi",
       "polygons_one": "{{count}} poligono",
-      "polygons_other": "{{count}} poligoni"
+      "polygons_other": "{{count}} poligoni",
+      "unavailable": "Formato non supportato: copia riproducibile non disponibile."
     },
     "voiceNote": {
       "label": "Nota vocale",
@@ -580,7 +581,8 @@
       "cancelled": "Annullato",
       "retry": "Riprova",
       "offline": "In attesa di rete",
-      "reconnecting": "Riconnessione…"
+      "reconnecting": "Riconnessione…",
+      "transfer": "{{speed}} MB/s · {{seconds}} s rimanenti"
     },
     "palette": {
       "title": "Comandi",
@@ -1025,7 +1027,13 @@
     "showOriginal": "Mostra originale",
     "showEdited": "Mostra ritaglio",
     "noView": "Questo file si apre fuori dal browser",
-    "pageOne": "Pagina 1 di {{count}}"
+    "pageOne": "Pagina 1 di {{count}}",
+    "pdfError": "Impossibile leggere il PDF. Puoi scaricare l’originale.",
+    "pdfLoading": "Caricamento PDF…",
+    "pdfPage": "{{name}}, pagina {{page}} di {{total}}",
+    "pdfPrevious": "Pagina precedente",
+    "pdfNext": "Pagina successiva",
+    "pdfPageNumber": "Pagina {{page}} di {{total}}"
   },
   "search": {
     "title": "Cerca",

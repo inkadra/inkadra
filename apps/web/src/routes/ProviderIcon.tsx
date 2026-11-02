@@ -25,12 +25,12 @@ export function GoogleG() {
   );
 }
 
-/** Which sign-in method a tile stands for. An OIDC provider named Google gets Google's mark. */
+/** Provider identity comes from its id, never its administrator-chosen display name. */
 export function providerKind(
   id: string,
-  name?: string,
+  _name?: string,
 ): 'google' | 'password' | 'oidc' | 'link' | 'smtp' {
-  if (id === 'google' || (id === 'oidc' && /\bgoogle\b/i.test(name ?? ''))) return 'google';
+  if (id === 'google') return 'google';
   if (id === 'password' || id === 'link' || id === 'smtp') return id;
   return 'oidc';
 }

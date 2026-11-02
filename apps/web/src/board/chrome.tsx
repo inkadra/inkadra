@@ -1178,6 +1178,14 @@ export function UploadPanel() {
               </button>
             )}
           </div>
+          {u.state === 'uploading' && !u.reconnecting && u.remainingSeconds !== null && (
+            <span className="ink-muted">
+              {t('board.uploads.transfer', {
+                speed: (u.bytesPerSecond / 1024 / 1024).toFixed(1),
+                seconds: u.remainingSeconds,
+              })}
+            </span>
+          )}
           <div className="uploads__bar">
             <span style={{ width: `${(u.sent / (u.size || 1)) * 100}%` }} />
           </div>

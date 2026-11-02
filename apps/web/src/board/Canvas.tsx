@@ -1751,12 +1751,19 @@ export function Canvas({
       const card = rootRef.current?.querySelector<HTMLElement>(
         `.card[data-el="${CSS.escape(id)}"]`,
       );
-      const mediaHeight = card?.querySelector<HTMLElement>('.card__media')?.offsetHeight;
+      const mediaHeight = card?.querySelector<HTMLElement>(
+        '.card__media, .fcard__preview',
+      )?.offsetHeight;
+      const media = el.type === 'file' ? getCachedAsset(el.assetId) : null;
+      const video = media && media !== 'missing' && media.kind === 'video';
       // Images keep the ratio of their picture and plans of their drawing; the header stays.
       const options: ResizeOptions =
-        el.type === 'image' || el.type === 'plan'
+        el.type === 'image' || el.type === 'plan' || video
           ? {
-              aspectRatio: rect.w / (mediaHeight || rect.h),
+              aspectRatio:
+                video && media.width && media.height
+                  ? media.width / media.height
+                  : rect.w / (mediaHeight || rect.h),
               fixedHeight: mediaHeight ? Math.max(0, rect.h - mediaHeight) : 0,
             }
           : { widthOnly: el.type === 'link' || el.type === 'section' || isContainer(el) };

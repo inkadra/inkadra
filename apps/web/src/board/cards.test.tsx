@@ -27,7 +27,8 @@ vi.mock('react-i18next', () => ({
     i18n: { language: 'en' },
   }),
 }));
-vi.mock('./assets.ts', () => ({
+vi.mock('./assets.ts', async (original) => ({
+  ...(await original<object>()),
   useAsset: () =>
     state.status === 'loading'
       ? undefined
@@ -55,7 +56,6 @@ vi.mock('./assets.ts', () => ({
             ...state.asset,
           },
   pickVariant: (asset: { variants: Array<{ url: string }> }) => asset.variants.at(-1)?.url ?? '',
-  playbackUrl: (asset: { url: string }) => asset.url,
 }));
 vi.mock('./uploads.ts', () => ({
   useUploadProgress: () => null,
@@ -286,7 +286,7 @@ describe('file card family', () => {
     );
     expect(html).toContain('<span class="fbadge fbadge--video">PRORES</span>');
     expect(html).toContain('3.8 GB · 4K · 25 fps');
-    expect(html).toContain('<span class="card__play fcard__play" data-playable="file_caption_01"');
+    expect(html).toContain('<button type="button" class="card__play fcard__play"');
     expect(html).toContain('<span class="card__duration">2:14</span>');
     expect(html).toContain('src="/poster"');
   });
@@ -308,11 +308,29 @@ describe('file card family', () => {
     expect(html).toContain('board.file.preparing');
     expect(html).toContain('width:42%');
     expect(html).toContain('42%</span>');
-    expect(html).not.toContain('data-playable');
+    expect(html).not.toContain('fcard__play');
     expect(html).not.toContain('card__duration');
     expect(html).toContain('<span class="fbadge fbadge--video">MXF</span>');
     expect(html).toContain('DNxHD · 6K');
   });
+
+  it.each(['skipped', 'failed'] as const)(
+    'shows unavailable instead of a play button for a %s MKV copy',
+    (status) => {
+      const html = ready(
+        {
+          kind: 'video',
+          mime: 'video/x-matroska',
+          filename: 'trailer.mkv',
+          proxy: { status, progress: null, url: null, mime: 'video/mp4' },
+        },
+        'video',
+      );
+      expect(html).toContain('board.file.unavailable');
+      expect(html).not.toContain('fcard__play');
+      expect(html).not.toContain('fcard__bar');
+    },
+  );
 
   it('plays audio with the themed mini player', () => {
     const html = ready(

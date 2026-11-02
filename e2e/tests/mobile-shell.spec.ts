@@ -111,12 +111,16 @@ test('mobile shell gives the canvas full width and keeps shell actions reachable
   // A DOM marker survives only if opening settings keeps this canvas instance mounted.
   await canvas.evaluate((el) => el.setAttribute('data-settings-mount-probe', 'alive'));
   await nav.getByRole('button', { name: 'Profilo', exact: true }).click();
-  await expect(page).toHaveURL('/settings');
+  // Your own profile opens Settings → Account (QA 0.8).
+  await expect(page).toHaveURL('/settings?section=account');
   await expect(canvas).toHaveAttribute('data-settings-mount-probe', 'alive');
-  // Settings slide up as a full-screen sheet: the list first, then one page with a way back.
+  // Settings slide up as a full-screen sheet: one page with a way back to the list.
   const settings = page.locator('dialog.settings-window');
-  await expect(settings.getByRole('heading', { name: 'Profilo', exact: true })).toBeVisible();
+  await expect(settings.getByRole('heading', { name: 'Account', exact: true })).toBeVisible();
   expect((await settings.boundingBox())?.width).toBe(390);
+  await settings.getByRole('button', { name: 'Indietro', exact: true }).click();
+  await expect(page).toHaveURL('/settings');
+  await expect(settings.getByRole('heading', { name: 'Profilo', exact: true })).toBeVisible();
   await settings.getByRole('link', { name: /^Notifiche email/ }).click();
   await expect(page).toHaveURL('/settings?section=notifications');
   await expect(settings.getByRole('heading', { name: 'Notifiche', exact: true })).toBeVisible();
