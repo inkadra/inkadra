@@ -20,7 +20,6 @@ const { BoardStore } = await import('/src/board/store.ts');
 const { createBoardDoc } = await import('/@fs/${root}/packages/doc-schema/src/index.ts');
 const { createElement } = await import('/@fs/${root}/packages/canvas-core/src/index.ts');
 const { BoardContext } = await import('/src/board/context.ts');
-const { SessionProvider } = await import('/src/lib/session.tsx');
 const { FileCard } = await import('/src/board/FileCard.tsx');
 const scenario = ${JSON.stringify(scenario)};
 const doc = createBoardDoc('visual'); const store = new BoardStore(doc);
@@ -34,7 +33,7 @@ return createElement(doc,'file',{x:20+i*260,y:20},{assetId:id,w:240},{userId:'u'
 });
 setAssetLoader(async id => assets[id] ?? null);
 const ctx = { store, readOnly:true, projectId:'p', boardId:'visual', userId:'u', boards:[], scale:1, largeBoard:false, editing:null, setEditing:()=>{}, openBoard:()=>{}, setNoteEditor:()=>{}, frameLabels:new Map() };
-const view = React.createElement(SessionProvider, null, scenario === 'cards' ? React.createElement(BoardContext.Provider,{value:ctx}, React.createElement('div',{style:{display:'flex',flexWrap:'wrap',gap:20,padding:20,background:'var(--ink-bg-canvas)',minHeight:'100vh'}},...elements.map(el=>React.createElement('div',{key:el.id,style:{width:240}},React.createElement(FileCard,{element:el,width:240}))))) : React.createElement(MediaViewer,{store,element:elements[0],projectId:'p',userId:'u',readOnly:false,onClose:()=>{},onOfficeTable:()=>{}}));
+const view = (scenario === 'cards' ? React.createElement(BoardContext.Provider,{value:ctx}, React.createElement('div',{style:{display:'flex',flexWrap:'wrap',gap:20,padding:20,background:'var(--ink-bg-canvas)',minHeight:'100vh'}},...elements.map(el=>React.createElement('div',{key:el.id,style:{width:240}},React.createElement(FileCard,{element:el,width:240}))))) : React.createElement(MediaViewer,{store,element:elements[0],projectId:'p',userId:'u',readOnly:false,onClose:()=>{},onOfficeTable:()=>{},instanceAdmin:scenario==='unavailable-admin'}));
 ReactDOM.createRoot(document.getElementById('root')).render(view);
 </script></body></html>`;
 }
@@ -50,12 +49,6 @@ for (const scenario of [
   test(`Office layout ${scenario}`, async ({ page }) => {
     const unavailable = scenario.startsWith('unavailable');
     await page.route('**/api/v1/**', (route) => route.fulfill({ status: 404, json: {} }));
-    await page.route('**/api/v1/instance', (route) => route.fulfill({ json: {} }));
-    await page.route('**/api/v1/me', (route) =>
-      route.fulfill({
-        json: { id: 'u', role: scenario === 'unavailable-admin' ? 'admin' : 'member' },
-      }),
-    );
     await page.route('**/office/manifest.json', (route) =>
       route.fulfill({
         json: {

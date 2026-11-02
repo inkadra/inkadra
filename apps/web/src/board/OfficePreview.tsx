@@ -4,7 +4,6 @@ import { type Asset, OfficePreview as OfficePreviewSchema } from '@inkadra/share
 import { Button } from '@inkadra/ui';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useSession } from '../lib/session.tsx';
 import { fileBadge, fileFamily } from './file-kinds.ts';
 import { isNumeric, type OfficePreview, officeUrl, SHEET_PREVIEW, tableable } from './office.ts';
 
@@ -34,6 +33,7 @@ export function OfficeStage({
   setPage,
   sheet,
   setSheet,
+  admin = false,
 }: {
   asset: Asset;
   data: OfficePreview | null | undefined;
@@ -41,9 +41,10 @@ export function OfficeStage({
   setPage: (page: number) => void;
   sheet: number;
   setSheet: (sheet: number) => void;
+  /** Instance administrators are told where conversion is turned on. */
+  admin?: boolean;
 }) {
   const { t } = useTranslation();
-  const { user } = useSession();
   const [zoom, setZoom] = useState(100);
   const [failed, setFailed] = useState(false);
   const selected = data?.sheets[sheet] ?? data?.sheets[0];
@@ -117,7 +118,7 @@ export function OfficeStage({
           {fileBadge(asset)}
         </span>
         <strong>{t('office.unavailable')}</strong>
-        <p>{t(user?.role === 'admin' ? 'office.disabledAdmin' : 'office.disabled')}</p>
+        <p>{t(admin ? 'office.disabledAdmin' : 'office.disabled')}</p>
         <a
           className="ink-btn ink-btn--secondary"
           href={`${asset.url}?download=1`}
