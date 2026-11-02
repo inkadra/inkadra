@@ -126,14 +126,20 @@ for (const width of [1280, 390]) {
           await expect(editor).toHaveCSS('box-shadow', 'none');
           await page.getByRole('button', { name: 'Modifica sulla board', exact: true }).click();
           const inline = card.locator('.tiptap');
-          await inline.evaluate((element) => {
+          await expect(inline).toHaveText('Primo secondo terzo');
+          const word = await inline.evaluate((element) => {
             const node = element.querySelector('p')!.firstChild!;
             const range = document.createRange();
             range.setStart(node, 6);
             range.setEnd(node, 13);
-            window.getSelection()!.removeAllRanges();
-            window.getSelection()!.addRange(range);
+            const rect = range.getBoundingClientRect();
+            return { x: rect.x + rect.width / 2, y: rect.y + rect.height / 2 };
           });
+          // Native word selection exercises the reporter's path and the editor's DOM observer.
+          await page.mouse.dblclick(word.x, word.y);
+          await expect
+            .poll(() => page.evaluate(() => window.getSelection()?.toString().trim()))
+            .toBe('secondo');
           await page.getByRole('button', { name: 'Titolo', exact: true }).click();
           await expect(inline.locator('h1')).toHaveText('secondo');
           await expect(inline.locator('p')).toHaveText(['Primo ', ' terzo']);
@@ -182,6 +188,10 @@ for (const width of [1280, 390]) {
               { timeout: 20000 },
             )
             .toBeGreaterThan(0);
+          await shot('photo-loaded');
+          if (width === 1280) await page.locator('.canvas').click({ position: { x: 500, y: 650 } });
+          else await page.getByRole('button', { name: 'Chiudi la scheda', exact: true }).click();
+          await expect(page.locator('.story-panel')).toHaveCount(0);
         } else if (kind === 'plan') {
           await card.dblclick();
           await page.getByRole('button', { name: 'Testo (T)', exact: true }).click();
