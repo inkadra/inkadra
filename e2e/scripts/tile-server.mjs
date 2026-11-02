@@ -40,6 +40,24 @@ function tile() {
 }
 
 const png = tile();
-createServer((_req, res) => {
+createServer((req, res) => {
+  const url = new URL(req.url, `http://127.0.0.1:${port}`);
+  if (url.pathname === '/geocode') {
+    const query = url.searchParams.get('q') ?? '';
+    res.setHeader('content-type', 'application/json');
+    if (query === 'unavailable') {
+      res.writeHead(503).end('{}');
+      return;
+    }
+    const items =
+      query === 'unknown'
+        ? []
+        : [
+            { lat: '45.4642', lon: '9.19', display_name: 'Via Roma, Milano' },
+            { lat: '46.1699', lon: '9.8788', display_name: 'Via Roma, Sondrio' },
+          ];
+    res.end(JSON.stringify(items.slice(0, Number(url.searchParams.get('limit') ?? 5))));
+    return;
+  }
   res.writeHead(200, { 'content-type': 'image/png', 'content-length': png.length }).end(png);
 }).listen(port, '127.0.0.1');

@@ -706,7 +706,12 @@
       "interactive": "Map of {{name}}: drag to move, Esc to finish",
       "zoomIn": "Zoom the map in",
       "zoomOut": "Zoom the map out",
-      "geocoderUnavailable": "Address search is not configured on this instance. Paste a map link."
+      "geocoderUnavailable": "Address search is not configured on this instance. Paste a map link.",
+      "suggestions": "Suggested places",
+      "searching": "Searching places…",
+      "noResults": "No places found. Include the town and address.",
+      "searchError": "Search unavailable. Try again or paste a map link.",
+      "searchHint": "Type at least 3 characters."
     },
     "count": {
       "cards_one": "{{count}} card",

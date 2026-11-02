@@ -51,6 +51,13 @@ for (const width of [1280, 390]) {
                   : createElement(doc, 'note', at, { w: 380 }, opts);
         if (kind === 'todo') addTodoItem(doc, el.id, 'Preparare il set');
         await pushBoardDoc(baseURL!, cookie, project.rootBoardId, doc);
+        if (kind === 'map')
+          await page.route('**/api/v1/instance', async (route) => {
+            const response = await route.fetch();
+            const data = await response.json();
+            data.maps.geocoding = false;
+            await route.fulfill({ response, json: data });
+          });
         await page.goto(`/p/${project.id}?view=canvas`);
         const card = page.locator(`[data-el="${el.id}"]`).first();
         await expect(card).toBeVisible({ timeout: 20000 });
@@ -206,7 +213,7 @@ for (const width of [1280, 390]) {
           await page.getByRole('button', { name: 'Chiudi la mappa' }).click();
           await page.getByRole('button', { name: 'Canvas', exact: true }).click();
           await page.getByRole('menuitem', { name: 'Mappa', exact: true }).click();
-          const address = page.getByRole('textbox', { name: 'Indirizzo o link di una mappa' });
+          const address = page.getByRole('combobox', { name: 'Indirizzo o link di una mappa' });
           await address.fill('Via Roma, Milano');
           await address.press('Enter');
           await expect(page.getByRole('alert')).toContainText('non è configurata');

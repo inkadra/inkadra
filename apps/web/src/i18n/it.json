@@ -706,7 +706,12 @@
       "interactive": "Mappa di {{name}}: trascina per spostarti, Esc per finire",
       "zoomIn": "Ingrandisci la mappa",
       "zoomOut": "Riduci la mappa",
-      "geocoderUnavailable": "La ricerca degli indirizzi non è configurata su questa istanza. Incolla un link alla mappa."
+      "geocoderUnavailable": "La ricerca degli indirizzi non è configurata su questa istanza. Incolla un link alla mappa.",
+      "suggestions": "Luoghi suggeriti",
+      "searching": "Cerco luoghi…",
+      "noResults": "Nessun luogo trovato. Specifica città e indirizzo.",
+      "searchError": "Ricerca non disponibile. Riprova o incolla un link alla mappa.",
+      "searchHint": "Scrivi almeno 3 caratteri."
     },
     "count": {
       "cards_one": "{{count}} card",

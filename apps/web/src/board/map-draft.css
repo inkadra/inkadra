@@ -1,0 +1,41 @@
+.map-draft {
+  max-width: calc(100vw - 32px);
+}
+.map-draft > ul {
+  list-style: none;
+  margin: 4px 0 0;
+  padding: 4px;
+  max-height: 240px;
+  overflow-y: auto;
+  background: var(--ink-surface-float);
+  border: 1px solid var(--ink-border-default);
+  border-radius: var(--ink-radius-md);
+  box-shadow: var(--ink-shadow-menu);
+}
+.map-draft > ul[hidden] {
+  display: none;
+}
+.map-draft li > button {
+  display: block;
+  width: 100%;
+  min-height: 44px;
+  border: 0;
+  border-radius: var(--ink-radius-sm);
+  padding: 8px;
+  text-align: left;
+  font: inherit;
+  color: var(--ink-text-primary);
+  background: transparent;
+  cursor: pointer;
+}
+.map-draft li[aria-selected="true"] > button {
+  background: var(--ink-surface-2);
+}
+.map-draft > p {
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: var(--ink-text-secondary);
+}
+.map-draft > p:empty {
+  display: none;
+}

@@ -162,6 +162,7 @@ import { ImageCropToolbar, restoreOriginalImage } from './ImageCropEditor.tsx';
 import { hasImageTransform } from './image-crop.ts';
 import { fillLinkPreview, webUrl } from './links.ts';
 import { useBoardCounts } from './live-counts.ts';
+import { MapDraft, type MapSource } from './MapDraft.tsx';
 import { MapDialog } from './MapExplore.tsx';
 import { fillMapPreview } from './maps.ts';
 import { NoteSideSheet } from './NoteSideSheet.tsx';
@@ -1179,12 +1180,30 @@ export function Canvas({
 
   /** A map card from a map link or a typed address; the server finds the place and its map. */
   const addMap = useCallback(
-    (at: Point, from: { url: string } | { query: string }) => {
+    (at: Point, from: MapSource) => {
       const fields =
-        'url' in from ? { name: '', url: from.url } : { name: from.query, address: from.query };
+        'url' in from
+          ? { name: '', url: from.url }
+          : {
+              name: from.place.name,
+              address: from.query,
+              lat: from.place.lat,
+              lon: from.place.lon,
+              zoom: from.place.zoom,
+            };
       const el = createElement(doc, 'map', at, fields, { userId, origin: LOCAL });
       select([el.id]);
-      void fillMapPreview(doc, el.id, projectId, boardId, from).then((found) => {
+      void fillMapPreview(
+        doc,
+        el.id,
+        projectId,
+        boardId,
+        'url' in from
+          ? from
+          : {
+              url: `https://www.openstreetmap.org/?mlat=${from.place.lat}&mlon=${from.place.lon}#map=${from.place.zoom}/${from.place.lat}/${from.place.lon}`,
+            },
+      ).then((found) => {
         if (!found) setToast({ text: t('board.map.notFound'), undo: false });
       });
     },
@@ -3669,14 +3688,15 @@ export function Canvas({
             ) : null;
           })()}
         {linkDraft?.map && (
-          <LinkDraft
-            map
+          <MapDraft
+            projectId={projectId}
+            boardId={boardId}
             geocoding={instance?.maps?.geocoding ?? false}
             at={worldToScreen(viewport, linkDraft.at)}
             onCancel={() => setLinkDraft(null)}
             onSubmit={(value) => {
               setLinkDraft(null);
-              addMap(linkDraft.at, webUrl(value) ? { url: value } : { query: value });
+              addMap(linkDraft.at, value);
             }}
           />
         )}
@@ -3757,22 +3777,16 @@ function outsideDialogs<E extends { target: EventTarget }>(handler: (e: E) => vo
 
 function LinkDraft({
   at,
-  map,
-  geocoding = false,
   onSubmit,
   onCancel,
 }: {
   at: Point;
-  /** A map card: an address or a map link; addresses are sent as typed. */
-  map?: boolean;
-  geocoding?: boolean;
   onSubmit: (value: string) => void;
   onCancel: () => void;
 }) {
   const { t } = useTranslation();
   const [value, setValue] = useState('');
   const [error, setError] = useState(false);
-  const prefix = map ? 'board.map' : 'board.link';
   return (
     <form
       className="canvas__linkdraft"
@@ -3780,15 +3794,7 @@ function LinkDraft({
       data-chrome
       onSubmit={(e) => {
         e.preventDefault();
-        const text = value.trim().slice(0, map ? 2048 : undefined);
-        if (map && !/^https?:\/\//i.test(text)) {
-          if (!geocoding) {
-            setError(true);
-            return;
-          }
-          if (text) onSubmit(text.slice(0, 500));
-          return;
-        }
+        const text = value.trim();
         const url = /^[a-z]+:\/\//i.test(text) ? text : `https://${text}`;
         const href = webUrl(url);
         if (href) onSubmit(href);
@@ -3800,8 +3806,8 @@ function LinkDraft({
         // biome-ignore lint/a11y/noAutofocus: the field opens because the user picked the link tool
         autoFocus
         value={value}
-        placeholder={t(`${prefix}.placeholder`)}
-        aria-label={t(`${prefix}.label`)}
+        placeholder={t('board.link.placeholder')}
+        aria-label={t('board.link.label')}
         aria-invalid={error || undefined}
         onChange={(e) => {
           setValue(e.target.value);
@@ -3810,9 +3816,6 @@ function LinkDraft({
         onKeyDown={(e) => e.key === 'Escape' && onCancel()}
         onBlur={() => !value && onCancel()}
       />
-      {map && error && (
-        <p role="alert">{t(geocoding ? 'board.map.notFound' : 'board.map.geocoderUnavailable')}</p>
-      )}
     </form>
   );
 }

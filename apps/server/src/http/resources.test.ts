@@ -110,7 +110,15 @@ describe.skipIf(!url)('projects, boards, uploads and assets (needs DATABASE_URL)
       .png()
       .toBuffer();
     site = createServer((req, res) => {
-      if (req.url === '/article') {
+      if (req.url?.startsWith('/geocode?')) {
+        res.setHeader('content-type', 'application/json');
+        res.end(
+          JSON.stringify([
+            { lat: '45.46', lon: '9.19', display_name: 'Via Roma, Milano' },
+            { lat: '46.16', lon: '9.87', display_name: 'Via Roma, Sondrio' },
+          ]),
+        );
+      } else if (req.url === '/article') {
         res.setHeader('content-type', 'text/html; charset=utf-8');
         res.end(`<!doctype html><html><head><title>Fallback</title>
           <meta property="og:title" content="Location scouting &amp; light">
@@ -616,6 +624,38 @@ describe.skipIf(!url)('projects, boards, uploads and assets (needs DATABASE_URL)
   });
 
   // Map previews -------------------------------------------------------------------
+
+  it('searches addresses with editor access without creating image assets', async () => {
+    const project = (
+      await call('owner', 'POST', '/api/v1/projects', { name: 'Map search' })
+    ).json();
+    await call('owner', 'PUT', `/api/v1/projects/${project.id}/members/${as.viewer.id}`, {
+      role: 'viewer',
+    });
+    const previous = config.MAP_GEOCODER_URL;
+    try {
+      config.MAP_GEOCODER_URL = undefined;
+      const input = { projectId: project.id, query: 'Via Roma' };
+      expect((await call('owner', 'POST', '/api/v1/map-search', input)).statusCode).toBe(400);
+      config.MAP_GEOCODER_URL = 'https://nominatim.openstreetmap.org/search';
+      expect((await call('owner', 'POST', '/api/v1/map-search', input)).statusCode).toBe(400);
+      config.MAP_GEOCODER_URL = `${siteUrl}/geocode`;
+      const result = await call('owner', 'POST', '/api/v1/map-search', input);
+      expect(result.statusCode).toBe(200);
+      expect(result.json().items.map((p: { name: string }) => p.name)).toEqual([
+        'Via Roma, Milano',
+        'Via Roma, Sondrio',
+      ]);
+      expect(await db.select().from(asset).where(eq(asset.projectId, project.id))).toHaveLength(0);
+      expect((await call('viewer', 'POST', '/api/v1/map-search', input)).statusCode).toBe(403);
+      expect((await call('stranger', 'POST', '/api/v1/map-search', input)).statusCode).toBe(404);
+      expect(
+        (await call('owner', 'POST', '/api/v1/map-search', { ...input, query: 'a' })).statusCode,
+      ).toBe(400);
+    } finally {
+      config.MAP_GEOCODER_URL = previous;
+    }
+  });
 
   it('places a map link and composites its map from the tile server', async () => {
     config.MAP_TILE_URL = `${siteUrl}/tiles/{z}/{x}/{y}.png`;
