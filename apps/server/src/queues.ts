@@ -1,6 +1,6 @@
 import type { BoardNotice } from '@inkadra/doc-schema';
 import type { BackupSettings, BoardColumn } from '@inkadra/shared';
-import { Queue, QueueEvents, UnrecoverableError, Worker } from 'bullmq';
+import { type Job, Queue, QueueEvents, UnrecoverableError, Worker } from 'bullmq';
 import { and, eq, lt } from 'drizzle-orm';
 import IORedis from 'ioredis';
 import type { Logger } from 'pino';
@@ -30,6 +30,7 @@ import { asset } from './db/schema.ts';
 import type { Jobs } from './jobs.ts';
 import { type Mailer, noMailer } from './mailer.ts';
 import { type MediaDeps, markFailed, processAsset } from './media/process.ts';
+import { officeConverterInstalled } from './media/office.ts';
 import { markProxyFailed, runProxy } from './media/proxy.ts';
 import { ProxyTimeout } from './media/video.ts';
 import { purgeNotifications, sendDigests, sendImmediateEmails } from './notifications.ts';
@@ -58,6 +59,11 @@ export const QUEUES = {
    * so apart from the thumbnails and one at a time by default (VIDEO_PROXY_CONCURRENCY).
    */
   proxies: 'media-proxies',
+  /**
+   * Office documents where `OFFICE_PREVIEWS=true` (decision 0065): read only by workers that
+   * have LibreOffice, so an `all` container beside an `-office` worker never takes them.
+   */
+  office: 'office',
   /** Outgoing email (wave 2). */
   email: 'email',
   /** Housekeeping: trash purge, upload cleanup, backups (wave 3). */
@@ -78,6 +84,7 @@ export type JobPayloads = {
   'maintenance:anonymise-guests': Record<string, never>;
   'media:process': { assetId: string };
   'media-proxies:make': { assetId: string };
+  'office:convert': { assetId: string };
   'collab:read-element': { boardId: string; elementId: string; expiresAt: number };
   'collab:read-columns': { boardId: string; expiresAt: number };
   'collab:add-card': AddCard & { expiresAt: number };
@@ -113,6 +120,7 @@ export function createQueues(url: string, opts: { prefix?: string } = {}) {
   const maintenance = new Queue(QUEUES.maintenance, { connection, prefix: opts.prefix });
   const transfers = new Queue(QUEUES.transfers, { connection, prefix: opts.prefix });
   const proxies = new Queue(QUEUES.proxies, { connection, prefix: opts.prefix });
+  const office = new Queue(QUEUES.office, { connection, prefix: opts.prefix });
   const jobs: Jobs = {
     async processAsset(assetId) {
       // The job id makes a second enqueue of the same asset a no-op while the first is waiting.
@@ -140,6 +148,13 @@ export function createQueues(url: string, opts: { prefix?: string } = {}) {
         },
       );
     },
+    async convertOffice(assetId) {
+      // As with playable copies: a finished job would turn a reprocess into a no-op.
+      const jobId = `office-${assetId}`;
+      const old = await office.getJob(jobId);
+      if (old && ['completed', 'failed'].includes(await old.getState())) await old.remove();
+      await office.add('convert', { assetId }, { jobId, ...ATTEMPTS, ...KEEP });
+    },
     async deleteFiles(keys) {
       for (let i = 0; i < keys.length; i += 500)
         await maintenance.add(
@@ -163,7 +178,13 @@ export function createQueues(url: string, opts: { prefix?: string } = {}) {
     connection,
     jobs,
     async close() {
-      await Promise.all([media.close(), maintenance.close(), transfers.close(), proxies.close()]);
+      await Promise.all([
+        media.close(),
+        maintenance.close(),
+        transfers.close(),
+        proxies.close(),
+        office.close(),
+      ]);
       connection.disconnect();
     },
   };
@@ -294,6 +315,20 @@ export async function startWorkers(
     { connection, concurrency: 2, prefix: opts.prefix },
   );
 
+  // Office documents (decision 0065): with OFFICE_PREVIEWS=true they go to the `office` queue,
+  // which only a worker with LibreOffice reads; without it they are read here, grids only.
+  const officePreviews = process.env.OFFICE_PREVIEWS === 'true';
+  const converter = officePreviews && (await officeConverterInstalled());
+  if (officePreviews && !converter)
+    log.info('OFFICE_PREVIEWS is on without LibreOffice here: an -office worker converts them');
+  const enqueueProxy = (id: string) => queues.jobs.makeProxy?.(id) ?? Promise.resolve();
+  const markAssetFailed = (job: Job | undefined) => {
+    if (job && job.attemptsMade >= (job.opts.attempts ?? 1))
+      void markFailed(deps.db, (job.data as JobPayloads['media:process']).assetId).catch((e) =>
+        log.error({ err: e }, 'could not mark asset failed'),
+      );
+  };
+
   // Image work is CPU and memory heavy: two at a time keeps a small server responsive.
   const media = new Worker(
     QUEUES.media,
@@ -301,18 +336,34 @@ export async function startWorkers(
       if (job.name !== 'process') throw new Error(`Unknown job ${job.name}`);
       const { assetId } = job.data as JobPayloads['media:process'];
       return processAsset(
-        { ...deps, log, enqueueProxy: (id) => queues.jobs.makeProxy?.(id) ?? Promise.resolve() },
+        {
+          ...deps,
+          log,
+          enqueueProxy,
+          ...(officePreviews
+            ? { enqueueOffice: (id: string) => queues.jobs.convertOffice?.(id) ?? Promise.resolve() }
+            : {}),
+        },
         assetId,
       );
     },
     { connection, concurrency: 2, prefix: opts.prefix },
   );
-  media.on('failed', (job) => {
-    if (job && job.attemptsMade >= (job.opts.attempts ?? 1))
-      void markFailed(deps.db, (job.data as JobPayloads['media:process']).assetId).catch((e) =>
-        log.error({ err: e }, 'could not mark asset failed'),
-      );
-  });
+  media.on('failed', markAssetFailed);
+
+  // A conversion holds up to 4 GiB: one at a time.
+  const office =
+    converter &&
+    new Worker(
+      QUEUES.office,
+      async (job) => {
+        if (job.name !== 'convert') throw new Error(`Unknown job ${job.name}`);
+        const { assetId } = job.data as JobPayloads['office:convert'];
+        return processAsset({ ...deps, log, enqueueProxy }, assetId);
+      },
+      { connection, concurrency: 1, prefix: opts.prefix, lockDuration: 5 * 60 * 1000 },
+    );
+  if (office) office.on('failed', markAssetFailed);
 
   // Playable copies of videos: a transcode can take as long as the video, so the lock is long
   // and progress goes to the job as well as to the asset row.
@@ -451,7 +502,7 @@ export async function startWorkers(
     await scheduleBackups(scheduler, await readBackupSettings(deps.db));
   }
 
-  for (const w of [maintenance, media, proxies, email, transfers]) {
+  for (const w of [maintenance, media, proxies, email, transfers, ...(office ? [office] : [])]) {
     w.on('failed', (job, err) => log.error({ queue: w.name, job: job?.id, err }, 'job failed'));
   }
   return {
@@ -460,6 +511,7 @@ export async function startWorkers(
         maintenance.close(),
         media.close(),
         proxies.close(),
+        office && office.close(),
         email.close(),
         transfers.close(),
         scheduler.close(),

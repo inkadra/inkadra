@@ -10,6 +10,11 @@ export interface Jobs {
    * worker after the poster; missing where nothing makes them.
    */
   makeProxy?(assetId: string): Promise<void>;
+  /**
+   * The pages and grids of an Office document, made by a worker with LibreOffice (decision
+   * 0065); missing where nothing makes them.
+   */
+  convertOffice?(assetId: string): Promise<void>;
   /** Remove files from storage after their rows are gone. */
   deleteFiles(keys: string[]): Promise<void>;
   /** A queued project export or import (decision 0037); missing where transfers are off. */

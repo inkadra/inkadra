@@ -19,9 +19,20 @@ docker build --build-arg OFFICE=true -t inkadra-office-worker .
 ```
 
 Add `--build-arg MEDIA=true` only if the same worker should also make video, audio and RAW
-previews (the published `-office` image has both). Use the image for the **worker** role only,
-with your existing database, Redis and storage settings, and set `OFFICE_PREVIEWS=true` on that
-worker. The web/collab roles keep their ordinary image. Do not expose a converter HTTP endpoint or mount the Docker socket. The worker
+previews (the published `-office` image has both). Use the image for an extra **worker** role
+only, with your existing database, Redis and storage settings. The web/collab roles keep their
+ordinary image.
+
+Office documents travel on their own `office` queue, which only a worker with
+`OFFICE_PREVIEWS=true` **and** LibreOffice reads. Set `OFFICE_PREVIEWS=true` on the `-office`
+worker and also on every other container that runs workers (the single `all` container, or each
+`worker` of the split layout): there it only sends Office documents to that queue and never
+converts them itself, since it has no LibreOffice. A container without `OFFICE_PREVIEWS` reads
+Office documents itself, with CSV/XLSX grids and icon cards only, so leave the variable off
+everywhere if you run no `-office` worker: with it on and no such worker, Office cards stay
+"processing" until one starts.
+
+Do not expose a converter HTTP endpoint or mount the Docker socket. The worker
 needs network access to its queue/storage; its LibreOffice child has a separate network
 namespace with no interfaces.
 
@@ -50,7 +61,35 @@ curl -fsSL https://raw.githubusercontent.com/moby/profiles/main/seccomp/default.
   > inkadra-office-seccomp.json
 ```
 
-Then point the worker at it. With the split layout (`deploy/compose.split.yaml`):
+Then add the worker next to the single container of the default install (`command: all`):
+
+```yaml
+# compose.office.yaml — docker compose -f compose.yaml -f compose.office.yaml up -d
+services:
+  inkadra:
+    environment:
+      OFFICE_PREVIEWS: "true" # sends Office documents to the worker below
+  office-worker:
+    extends: # same database, Redis, storage and volume settings
+      file: compose.yaml
+      service: inkadra
+    # Same version as the other roles; set INKADRA_TAG without a suffix (0.4.0, not 0.4.0-media).
+    image: ${INKADRA_IMAGE:-ghcr.io/inkadra/inkadra}:${INKADRA_TAG:-latest}-office # or inkadra-office-worker
+    command: worker
+    ports: !reset []
+    depends_on:
+      inkadra:
+        condition: service_healthy
+    environment:
+      OFFICE_PREVIEWS: "true"
+    security_opt:
+      - seccomp=./inkadra-office-seccomp.json
+    cap_drop: [ALL]
+```
+
+The `inkadra` container keeps its ordinary image and keeps making every other preview. With the
+split layout (`deploy/compose.split.yaml`), give the `worker` role the image instead (and add
+`OFFICE_PREVIEWS: "true"` to any other worker you run):
 
 ```yaml
 # compose.office.yaml — docker compose -f compose.yaml -f deploy/compose.split.yaml -f compose.office.yaml up -d
@@ -74,7 +113,8 @@ lets it, and otherwise that same filter, which refuses `clone` with `CLONE_NEWUS
 `--disable-userns` needs a writable `/proc/sys`: it is skipped on a default container, and used
 if you add `systempaths=unconfined` to `security_opt` (optional, not needed for safety).
 
-Check the sandbox before enabling conversion for users:
+Check the sandbox before enabling conversion for users (the service is `office-worker` with the
+single-container layout):
 
 ```sh
 docker compose run --rm --no-deps worker bwrap --unshare-all --unshare-user \

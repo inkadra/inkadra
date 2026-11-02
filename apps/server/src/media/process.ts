@@ -60,6 +60,11 @@ export interface MediaDeps {
    * says `skipped`.
    */
   enqueueProxy?: (assetId: string) => Promise<void>;
+  /**
+   * Hands an Office document to the `office` queue, read only by workers with LibreOffice
+   * (decision 0065), instead of reading it here. Set where `OFFICE_PREVIEWS=true`.
+   */
+  enqueueOffice?: (assetId: string) => Promise<void>;
   /** Where a failed pass of the moving variants is reported; the posters are still saved. */
   log?: { warn: (fields: Record<string, unknown>, message: string) => void };
 }
@@ -155,6 +160,8 @@ async function sha256(storage: Storage, key: string) {
 /** What a pass did, for the job result and the tests. */
 export interface ProcessResult {
   skipped?: 'gone';
+  /** Left to the `office` queue. */
+  queued?: 'office';
   variants?: number;
   animated?: number;
   proxy?: (typeof asset.$inferInsert)['proxyStatus'];
@@ -179,7 +186,11 @@ export async function processAsset(
   const design = designExtension(row.filename);
   if (design) return processDesign(deps, row, digest, design, head);
   const office = officeExtension(row.filename);
-  if (row.kind === 'file' && office) return processOffice(deps, row, digest, office);
+  if (row.kind === 'file' && office) {
+    if (!deps.enqueueOffice) return processOffice(deps, row, digest, office);
+    await deps.enqueueOffice(row.id);
+    return { queued: 'office' as const };
+  }
   if (row.kind === 'file' && isPdf(head)) return processPdf(deps, row, digest);
   if (row.kind === 'audio') return processAudio(deps, row, digest, head);
   if (row.kind === 'file' && isGpx(row, head)) return processGpx(deps, row, digest);

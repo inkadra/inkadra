@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 import { constants, createWriteStream } from 'node:fs';
-import { copyFile, mkdir, open, stat, writeFile } from 'node:fs/promises';
+import { access, copyFile, mkdir, open, stat, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { pipeline } from 'node:stream/promises';
 import { readZip } from '../transfers/zip.ts';
@@ -184,6 +184,22 @@ export async function takeSandboxPdf(from: string, to: string): Promise<string> 
  * The PDF of an Office file, converted in the sandbox and copied out; null when conversion is
  * off or the host cannot sandbox it. Throws on a failed or invalid conversion.
  */
+/**
+ * Whether this process can convert Office documents: `OFFICE_PREVIEWS=true`, Linux, a filter
+ * for the architecture, prlimit, Poppler and LibreOffice (the `-office` image). Only then does
+ * a worker read the `office` queue, so a process without LibreOffice never takes those jobs.
+ */
+export async function officeConverterInstalled(): Promise<boolean> {
+  if (process.env.OFFICE_PREVIEWS !== 'true' || process.platform !== 'linux' || !officeSeccomp())
+    return false;
+  const { prlimit, pdftoppm, pdfinfo } = await mediaTools();
+  if (!prlimit || !pdftoppm || !pdfinfo) return false;
+  return access('/usr/bin/libreoffice', constants.X_OK).then(
+    () => true,
+    () => false,
+  );
+}
+
 export async function convertOffice(
   source: string,
   dir: string,
