@@ -248,8 +248,9 @@ function ReadyFileCard({
     preview = <AudioPreview id={element.id} asset={asset} state={state} width={width} />;
   } else {
     const src =
-      localPreview(element.assetId) ??
-      (asset.variants.length > 0 ? pickVariant(asset, pixels) : '');
+      (asset.variants.length > 0 ? pickVariant(asset, pixels) : '') ||
+      localPreview(element.assetId) ||
+      '';
     if (asset.track) {
       preview = (
         <Preview

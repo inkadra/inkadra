@@ -76,10 +76,13 @@ afterEach(() => vi.useRealTimers());
 const flush = () => vi.advanceTimersByTimeAsync(0);
 
 describe('the reload guard and tus uploads', () => {
-  it('leaves design previews to the worker even with an image MIME', () => {
+  it.each([
+    ['poster.psd', 'image/vnd.adobe.photoshop'],
+    ['sample.NEF', 'image/x-nikon-nef'],
+  ])('leaves %s previews to the worker even with an image MIME', (filename, mime) => {
     const preview = vi.spyOn(URL, 'createObjectURL');
     const key = startUpload({
-      file: new File(['8BPS'], 'poster.psd', { type: 'image/vnd.adobe.photoshop' }),
+      file: new File(['unsupported image bytes'], filename, { type: mime }),
       projectId: 'p1',
       boardId: 'b1',
       onAsset: vi.fn(),

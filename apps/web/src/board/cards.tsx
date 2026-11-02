@@ -421,7 +421,7 @@ function ImageCard({
   const [hover, setHover] = useState(false);
   const dpr = typeof window === 'undefined' ? 1 : window.devicePixelRatio || 1;
   const src =
-    localPreview(element.assetId) ?? (ready ? pickVariant(ready, width * scale * dpr) : '');
+    (ready ? pickVariant(ready, width * scale * dpr) : '') || localPreview(element.assetId) || '';
   // A board with many cards keeps the posters and plays a GIF only on hover or selection.
   const moving =
     ready && (!largeBoard || selected || hover)

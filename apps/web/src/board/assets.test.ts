@@ -4,6 +4,7 @@ import { RequestError } from '../lib/api.ts';
 import {
   getCachedAsset,
   loadAsset,
+  pickVariant,
   playbackUrl,
   resetAssetCache,
   setAssetLoader,
@@ -147,5 +148,26 @@ describe('playbackUrl', () => {
       proxy: { ...copy, mime: 'video/mp4' },
     };
     expect(playbackUrl(video, () => true)).toBe('/copy');
+  });
+});
+
+describe('pickVariant processing boundary', () => {
+  it('withholds remote thumbnails until ready, even when variants are advertised', () => {
+    for (const mime of [
+      'image/x-nikon-nef',
+      'image/vnd.adobe.photoshop',
+      'application/pdf',
+      'video/mp4',
+      'image/jpeg',
+    ]) {
+      const asset = {
+        ...sampleAsset,
+        mime,
+        variants: [{ size: '256' as const, width: 256, height: 170, url: '/thumb' }],
+      };
+      for (const status of ['pending', 'processing', 'failed'] as const)
+        expect(pickVariant({ ...asset, status }, 200)).toBe('');
+      expect(pickVariant({ ...asset, status: 'ready' }, 200)).toBe('/thumb');
+    }
   });
 });
