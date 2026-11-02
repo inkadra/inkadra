@@ -21,12 +21,20 @@ export function useInstanceSettings() {
   const [error, setError] = useState(false);
   useEffect(() => {
     let alive = true;
+    const controller = new AbortController();
+    const timer = setTimeout(() => {
+      controller.abort();
+      if (alive) setError(true);
+    }, 15_000);
     api
-      .get<Settings>('/instance/settings')
-      .then((data) => alive && setSettings(data))
-      .catch(() => alive && setError(true));
+      .get<Settings>('/instance/settings', controller.signal)
+      .then((data) => alive && !controller.signal.aborted && setSettings(data))
+      .catch(() => alive && setError(true))
+      .finally(() => clearTimeout(timer));
     return () => {
       alive = false;
+      clearTimeout(timer);
+      controller.abort();
     };
   }, []);
   const save = useCallback(

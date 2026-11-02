@@ -1,3 +1,4 @@
+// @vitest-environment happy-dom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 type Busy = typeof import('../pwa/busy.ts');
@@ -7,6 +8,11 @@ let whenIdle: Busy['whenIdle'];
 let cancelUpload: Uploads['cancelUpload'];
 let retryUpload: Uploads['retryUpload'];
 let startUpload: Uploads['startUpload'];
+let useUploads: Uploads['useUploads'];
+
+function Snapshot() {
+  return JSON.stringify(useUploads());
+}
 
 /**
  * A scripted double for `tus-js-client`'s Upload: each `start()` runs the next behaviour in
@@ -68,7 +74,7 @@ beforeEach(async () => {
   vi.resetModules();
   FakeUpload.all = [];
   ({ isBusy, whenIdle } = await import('../pwa/busy.ts'));
-  ({ cancelUpload, retryUpload, startUpload } = await import('./uploads.ts'));
+  ({ cancelUpload, retryUpload, startUpload, useUploads } = await import('./uploads.ts'));
 });
 afterEach(() => vi.useRealTimers());
 
@@ -171,4 +177,49 @@ describe('the reload guard and tus uploads', () => {
     expect(isBusy()).toBe(false);
     expect(release).toHaveBeenCalledTimes(1);
   });
+});
+
+it('rejects requests and ignores late responses after cancellation', async () => {
+  const onAsset = vi.fn();
+  const key = startUpload({
+    file: pdf('cancel-race.pdf'),
+    projectId: 'p1',
+    boardId: 'b1',
+    onAsset,
+  });
+  await flush();
+  const upload = FakeUpload.all.at(-1)!;
+  cancelUpload(key);
+  expect(() => upload.options.onBeforeRequest!({ getMethod: () => 'PATCH' })).toThrow();
+  expect(() => upload.options.onBeforeRequest!({ getMethod: () => 'DELETE' })).not.toThrow();
+  upload.options.onAfterResponse!(null, { getHeader: () => 'late-asset' });
+  upload.options.onError!();
+  expect(onAsset).not.toHaveBeenCalled();
+  expect(isBusy()).toBe(false);
+});
+
+it('reports speed and remaining time from progress samples', async () => {
+  const now = vi.spyOn(performance, 'now').mockReturnValue(0);
+  const key = startUpload({
+    file: new File(['1234567890'], 'speed.bin'),
+    projectId: 'p1',
+    boardId: 'b1',
+    onAsset: vi.fn(),
+  });
+  await flush();
+  const upload = FakeUpload.all.at(-1)!;
+  now.mockReturnValue(1000);
+  upload.options.onProgress!(5);
+  // The external-store snapshot is also the one consumed by the progress panel.
+  const { createRoot } = await import('react-dom/client');
+  const { act, createElement } = await import('react');
+  const host = document.createElement('div');
+  const root = createRoot(host);
+  await act(async () => root.render(createElement(Snapshot)));
+  const html = host.innerHTML;
+  expect(html).toContain('"bytesPerSecond":5');
+  expect(html).toContain('"remainingSeconds":1');
+  cancelUpload(key);
+  await act(async () => root.unmount());
+  now.mockRestore();
 });

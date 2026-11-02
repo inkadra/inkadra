@@ -345,6 +345,7 @@ function VideoPreview({
   state: 'ready' | 'processing' | 'failed';
 }) {
   const { t } = useTranslation();
+  const { openElement } = useBoard();
   const poster = asset.variants.length > 0 ? pickVariant(asset, pixels) : '';
   const proxy = asset.proxy;
   const preparing = proxy?.status === 'queued' || proxy?.status === 'processing';
@@ -371,11 +372,14 @@ function VideoPreview({
         </span>
       ) : (
         state === 'ready' && (
-          // Decorative, like every card: a double click or Enter opens the shared viewer,
-          // which plays the playable copy once it is ready.
-          <span className="card__play fcard__play" data-playable={element.id} aria-hidden="true">
+          <button
+            type="button"
+            className="card__play fcard__play"
+            aria-label={t('board.file.play', { name: asset.filename })}
+            onClick={() => openElement?.(element)}
+          >
             <Icon name="play" size={14} />
-          </span>
+          </button>
         )
       )}
       {!preparing && asset.durationMs !== null && asset.durationMs > 0 && (

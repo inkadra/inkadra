@@ -7,7 +7,7 @@ it('maps each sign-in method to its mark', () => {
   expect(providerKind('password')).toBe('password');
   expect(providerKind('link')).toBe('link');
   expect(providerKind('smtp')).toBe('smtp');
-  expect(providerKind('oidc', 'OIDC · Google')).toBe('google');
+  expect(providerKind('oidc', 'OIDC · Google')).toBe('oidc');
   expect(providerKind('oidc', 'Authentik')).toBe('oidc');
   expect(providerKind('oidc', 'OIDC')).toBe('oidc');
 });

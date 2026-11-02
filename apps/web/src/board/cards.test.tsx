@@ -286,7 +286,7 @@ describe('file card family', () => {
     );
     expect(html).toContain('<span class="fbadge fbadge--video">PRORES</span>');
     expect(html).toContain('3.8 GB · 4K · 25 fps');
-    expect(html).toContain('<span class="card__play fcard__play" data-playable="file_caption_01"');
+    expect(html).toContain('<button type="button" class="card__play fcard__play"');
     expect(html).toContain('<span class="card__duration">2:14</span>');
     expect(html).toContain('src="/poster"');
   });

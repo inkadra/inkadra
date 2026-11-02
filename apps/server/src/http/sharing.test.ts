@@ -467,6 +467,20 @@ describe.skipIf(!url)('sharing, invitations, tokens and accounts (needs DATABASE
     expect((await call('editor', 'GET', `/api/v1/boards/${mood}`)).body.myRole).toBe('editor');
   });
 
+  it('serializes concurrent invitations to the same email and scope', async () => {
+    const invite = () =>
+      call('editor', 'POST', '/api/v1/invitations', {
+        kind: 'email',
+        email: 'concurrent@example.com',
+        projectId,
+        role: 'viewer',
+      });
+    const results = await Promise.all([invite(), invite()]);
+    expect(results.map((r) => r.status).sort()).toEqual([201, 409]);
+    const created = results.find((r) => r.status === 201)!;
+    await call('editor', 'DELETE', `/api/v1/invitations/${created.body.invitation.id}`);
+  });
+
   it('invites by email and adds the person when they sign up', async () => {
     mailer.sent.length = 0;
     const invite = (who: Who, body: Record<string, unknown>) =>
@@ -484,6 +498,12 @@ describe.skipIf(!url)('sharing, invitations, tokens and accounts (needs DATABASE
       role: 'commenter',
     });
     expect(created.status).toBe(201);
+    const duplicate = await invite('editor', {
+      email: 'NEWBIE@example.com',
+      projectId,
+      role: 'commenter',
+    });
+    expect(duplicate.status).toBe(409);
     const { invitation } = created.body;
     expect(invitation).toMatchObject({ email: 'newbie@example.com', emailSent: true, maxUses: 1 });
     expect(mailer.sent).toHaveLength(1);
