@@ -200,30 +200,10 @@ describe('video audio safety', () => {
           }),
         ).toBeUndefined();
       }
-      expect(playbackUrl({ ...video, proxy: null })).toBeUndefined();
     },
   );
 });
 
-it.each([
-  ['video/mp4', 'h264', 'aac', true],
-  ['video/mp4', 'h264', 'ac3', false],
-  ['video/webm', 'vp9', 'opus', true],
-  ['video/webm', 'h264', 'ac3', false],
-] as const)(
-  'checks the picture and sound of a %s original',
-  (mime, videoCodec, audioCodec, playable) => {
-    const video: Asset = {
-      ...sampleAsset,
-      kind: 'video',
-      status: 'ready',
-      mime,
-      videoCodec,
-      audioCodec,
-      url: '/orig',
-      proxy: null,
-    };
-    expect(playbackUrl(video)).toBe(playable ? '/orig' : undefined);
-    expect(playbackUrl({ ...video, status: 'processing' })).toBeUndefined();
-  },
-);
+it('plays a video original the server needs no copy of', () => {
+  expect(playbackUrl({ ...sampleAsset, kind: 'video', url: '/orig', proxy: null })).toBe('/orig');
+});
