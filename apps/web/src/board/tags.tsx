@@ -218,28 +218,34 @@ export function TagPopover({
   onClose: () => void;
 }) {
   const popup = useRef<HTMLDivElement>(null);
-  useLayoutEffect(() => {
-    let frame: number;
-    const position = () => {
-      const node = popup.current;
-      const host = node?.offsetParent;
-      if (node && host instanceof HTMLElement) {
-        const bounds = host.getBoundingClientRect();
-        const card = anchor()?.getBoundingClientRect();
-        const left = card ? card.left - bounds.left : x;
-        const below = card ? card.bottom - bounds.top + 8 : y;
-        const top =
-          below + node.offsetHeight <= bounds.height - 8
-            ? below
-            : (card ? card.top - bounds.top : y) - node.offsetHeight - 8;
-        node.style.left = `${Math.max(8, Math.min(left, bounds.width - node.offsetWidth - 8))}px`;
-        node.style.top = `${Math.max(8, Math.min(top, bounds.height - node.offsetHeight - 8))}px`;
-      }
-      frame = requestAnimationFrame(position);
-    };
-    position();
-    return () => cancelAnimationFrame(frame);
-  }, [anchor, x, y]);
+  const place = useRef(() => {});
+  place.current = () => {
+    const node = popup.current;
+    const host = node?.offsetParent;
+    if (!node || !(host instanceof HTMLElement)) return;
+    const bounds = host.getBoundingClientRect();
+    const card = anchor()?.getBoundingClientRect();
+    const left = card ? card.left - bounds.left : x;
+    const below = card ? card.bottom - bounds.top + 8 : y;
+    const top =
+      below + node.offsetHeight <= bounds.height - 8
+        ? below
+        : (card ? card.top - bounds.top : y) - node.offsetHeight - 8;
+    node.style.left = `${Math.max(8, Math.min(left, bounds.width - node.offsetWidth - 8))}px`;
+    node.style.top = `${Math.max(8, Math.min(top, bounds.height - node.offsetHeight - 8))}px`;
+  };
+  // The canvas renders this again on every pan, zoom, drag and resize of a card, so following
+  // the card needs no frame loop: place it after each render...
+  useLayoutEffect(() => place.current());
+  // ...and when a size changes without one: the popover's content, the card, the canvas (window).
+  // biome-ignore lint/correctness/useExhaustiveDependencies: observed once, while open.
+  useEffect(() => {
+    const node = popup.current;
+    if (!node || typeof ResizeObserver === 'undefined') return;
+    const resize = new ResizeObserver(() => place.current());
+    for (const el of [node, node.offsetParent, anchor()]) if (el) resize.observe(el);
+    return () => resize.disconnect();
+  }, []);
   const { t } = useTranslation();
   const { tagOption } = useClassifications();
   const canonical = (values: readonly string[]) => [
