@@ -57,6 +57,7 @@ it('removes a shared managed tag from mixed legacy and UUID selections', async (
   await act(async () =>
     root.render(
       <TagPopover
+        anchor={() => null}
         x={0}
         y={0}
         projectId="p"
@@ -82,6 +83,7 @@ it('does not duplicate a legacy tag when adding its managed ID to multiple cards
   await act(async () =>
     root.render(
       <TagPopover
+        anchor={() => null}
         x={0}
         y={0}
         projectId="p"

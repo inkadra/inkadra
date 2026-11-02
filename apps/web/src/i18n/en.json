@@ -406,8 +406,8 @@
       "rotateLeft": "Rotate 90° left",
       "rotateRight": "Rotate 90° right",
       "angle": "Rotation angle",
-      "resetAngle": "Straighten: fine angle to 0°",
-      "resetAngleHint": "Double-click to go back to 0°",
+      "resetAngle": "Straighten to the nearest 90°",
+      "resetAngleHint": "Double-click to straighten to the nearest 90°",
       "done": "Done",
       "aspect": {
         "label": "Aspect ratio",

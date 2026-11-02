@@ -238,13 +238,15 @@ test('image card crop, rotate, reload persistence, moodboard + viewer toggle, ex
   await expect.poll(async () => (await cropBox.boundingBox())?.y).toBeGreaterThan(before?.y ?? 0);
   await page.keyboard.press('ArrowUp');
   await expect.poll(async () => (await cropBox.boundingBox())?.y).toBeCloseTo(before?.y ?? 0, 0);
-  // The angle slider is the themed one; double-click and the readout both go back to 0°.
+  // The angle slider is the themed one; double-click and the readout straighten to the nearest quarter turn.
   const angle = cropToolbar.getByRole('slider', { name: 'Angolo di rotazione' });
   await expect(angle).toHaveClass(/ink-slider/);
   await angle.focus();
   await page.keyboard.press('ArrowRight');
   await expect(cropToolbar.locator('.crop-bar__deg')).toHaveText('91°');
-  await cropToolbar.getByRole('button', { name: 'Raddrizza: angolo fine a 0°' }).click();
+  await cropToolbar
+    .getByRole('button', { name: 'Raddrizza al multiplo di 90° più vicino' })
+    .click();
   await expect(cropToolbar.locator('.crop-bar__deg')).toHaveText('90°');
   await page.mouse.move(0, 0);
 

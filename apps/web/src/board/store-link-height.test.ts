@@ -23,3 +23,29 @@ it('uses rendered link height instead of a stale persisted height for canvas hit
   store.destroy();
   doc.destroy();
 });
+
+it.each(['column', 'scene'] as const)(
+  'uses measured %s content height over a persisted resize height',
+  (type) => {
+    const doc = new Y.Doc();
+    const store = new BoardStore(doc);
+    const container = {
+      id: 'container',
+      number: '1',
+      type,
+      title: 'References',
+      x: 0,
+      y: 0,
+      w: 264,
+      h: 800,
+      z: 'a0',
+      parent: null,
+      createdBy: null,
+      createdAt: 0,
+    } as const;
+    store.setHeight(container.id, 210);
+    expect(store.rectOf(container).h).toBe(210);
+    store.destroy();
+    doc.destroy();
+  },
+);
