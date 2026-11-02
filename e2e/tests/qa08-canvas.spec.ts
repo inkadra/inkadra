@@ -100,6 +100,14 @@ for (const width of [1280, 390]) {
       await page.goto(`/p/${project.id}/b/${project.rootBoardId}?view=canvas`);
       await expect(page.locator(`[data-el="${imageId}"] img`)).toBeVisible();
     });
+    // The account is shared with the other specs: put its preferences back to the defaults.
+    test.afterEach(async ({ page, baseURL }) => {
+      const reset = await page.request.patch('/api/v1/me/preferences', {
+        headers: { origin: baseURL as string },
+        data: { keepAroundContent: true, snapToGrid: false },
+      });
+      expect(reset.ok()).toBe(true);
+    });
     test('snap lands on the visible dot grid after move and Ctrl resize', async ({ page }) => {
       const card = page.locator(`[data-el="${imageId}"]`);
       await card.click();
