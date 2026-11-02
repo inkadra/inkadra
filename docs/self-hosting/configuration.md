@@ -165,8 +165,13 @@ The OpenStreetMap tile servers are run by volunteers: their
 hand, which is what Inkadra does (about twenty tiles a map, with the instance's address in the
 user agent), and exploring a map asks for a few dozen more. An instance that makes or explores
 many maps should use a tile provider or its own tile server.
-The same goes for `https://nominatim.openstreetmap.org/search` as a geocoder (at most one search
-a second).
+With a geocoder configured, typing at least three characters requests up to five address
+suggestions after a short pause. Queries go through Inkadra to that provider; no picture is
+created until a result is chosen. Leave the setting empty to keep address queries private and
+use map links instead. Choose a provider that permits autocomplete: the public
+[public Nominatim service](https://operations.osmfoundation.org/policies/nominatim/) prohibits
+autocomplete (Inkadra rejects suggestion requests to that host), so use a self-hosted
+Nominatim instance or a compatible provider whose policy permits it.
 
 ## Compose only
 

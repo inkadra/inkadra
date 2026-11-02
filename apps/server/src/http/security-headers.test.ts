@@ -21,6 +21,7 @@ describe('browser security policy', () => {
     expect(h['strict-transport-security']).toBeUndefined();
     expect(h['cross-origin-opener-policy']).toBe('same-origin');
     expect(h['permissions-policy']).toContain('camera=()');
+    expect(h['permissions-policy']).toContain('microphone=(self)');
     // Only the three players of link cards, loaded after a click (decision 0050).
     expect(h['content-security-policy-report-only']).toContain(
       'frame-src https://www.youtube-nocookie.com https://player.vimeo.com https://www.instagram.com;',

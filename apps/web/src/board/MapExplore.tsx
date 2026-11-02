@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
+
 import type { AssetTrack } from '@inkadra/shared';
+import { IconButton, useBackdropClick } from '@inkadra/ui';
 import { useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useBoard } from './context.ts';
@@ -142,5 +144,48 @@ export function LiveMap({
         data-explored={id}
       />
     </div>
+  );
+}
+
+/** The same map as the card, in a modal viewport for inspecting a location. */
+export function MapDialog({
+  id,
+  name,
+  place,
+  onClose,
+}: {
+  id: string;
+  name: string;
+  place: { lat: number; lon: number; zoom: number };
+  onClose: () => void;
+}) {
+  const { t } = useTranslation();
+  const attribution = useBoard().mapAttribution;
+  const dialog = useRef<HTMLDialogElement>(null);
+  const backdrop = useBackdropClick(onClose);
+  useEffect(() => {
+    dialog.current?.showModal();
+    return () => dialog.current?.close();
+  }, []);
+  return (
+    <dialog
+      ref={dialog}
+      className="map-dialog"
+      aria-label={name}
+      data-chrome
+      {...backdrop}
+      onClose={onClose}
+      onCancel={(e) => {
+        e.preventDefault();
+        onClose();
+      }}
+    >
+      <header>
+        <span>{name}</span>
+        <IconButton icon="close" label={t('board.map.close')} onClick={onClose} />
+      </header>
+      <LiveMap id={id} name={name} place={place} />
+      {attribution && <span className="mcard__credit">{attribution}</span>}
+    </dialog>
   );
 }

@@ -8,7 +8,7 @@ import { pickVariant, useAsset } from '../assets.ts';
 import { GuestModeContext } from '../context.ts';
 import { type BoardStore, LOCAL } from '../store.ts';
 import { TagEditor } from '../tags.tsx';
-import { startUpload } from '../uploads.ts';
+import { localPreview, startUpload, useUploadProgress } from '../uploads.ts';
 import { TextField } from './fields.tsx';
 
 export type StoryCard = Extract<Element, { type: 'character' | 'location' }>;
@@ -355,12 +355,18 @@ export function StoryPicture({
   kind: 'character' | 'location';
 }) {
   const asset = useAsset(assetId);
+  useUploadProgress(assetId);
+  const preview = assetId ? localPreview(assetId) : null;
   const ready = asset && asset !== 'missing' ? asset : null;
   const dpr = typeof window === 'undefined' ? 1 : window.devicePixelRatio || 1;
   return (
     <div className={`story-picture story-picture--${kind}`}>
-      {ready ? (
-        <img src={pickVariant(ready, pixels * dpr)} alt={label} draggable={false} />
+      {ready || preview ? (
+        <img
+          src={(ready && pickVariant(ready, pixels * dpr)) || preview || undefined}
+          alt={label}
+          draggable={false}
+        />
       ) : (
         <span className="story-picture__empty" aria-hidden="true">
           {kind === 'character' ? initials(label) : null}

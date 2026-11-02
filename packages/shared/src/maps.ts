@@ -166,3 +166,28 @@ export const MapTileParams = z
     message: 'No such tile.',
   });
 export type MapTileParams = z.infer<typeof MapTileParams>;
+
+/** Address suggestions use the configured geocoder without generating image assets. */
+export const SearchMapPlaces = z
+  .object({
+    projectId: Id,
+    boardId: Id.optional(),
+    query: z.string().trim().min(3).max(500),
+  })
+  .openapi('SearchMapPlaces');
+export type SearchMapPlaces = z.infer<typeof SearchMapPlaces>;
+
+export const MapSearchPlace = z
+  .object({
+    lat: z.number().min(-85).max(85),
+    lon: z.number().min(-180).max(180),
+    zoom: z.int().min(1).max(19),
+    name: z.string().min(1).max(200),
+  })
+  .openapi('MapSearchPlace');
+export type MapSearchPlace = z.infer<typeof MapSearchPlace>;
+
+export const MapSearchResults = z
+  .object({ items: z.array(MapSearchPlace).max(5) })
+  .openapi('MapSearchResults');
+export type MapSearchResults = z.infer<typeof MapSearchResults>;
