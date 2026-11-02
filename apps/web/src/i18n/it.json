@@ -1031,7 +1031,13 @@
     "showOriginal": "Mostra originale",
     "showEdited": "Mostra ritaglio",
     "noView": "Questo file si apre fuori dal browser",
-    "pageOne": "Pagina 1 di {{count}}"
+    "pageOne": "Pagina 1 di {{count}}",
+    "pdfError": "Impossibile leggere il PDF. Puoi scaricare l’originale.",
+    "pdfLoading": "Caricamento PDF…",
+    "pdfPage": "{{name}}, pagina {{page}} di {{count}}",
+    "pdfPrevious": "Pagina precedente",
+    "pdfNext": "Pagina successiva",
+    "pdfPageNumber": "Pagina {{page}} di {{count}}"
   },
   "search": {
     "title": "Cerca",

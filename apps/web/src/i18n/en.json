@@ -1031,7 +1031,13 @@
     "showOriginal": "Show original",
     "showEdited": "Show cropped",
     "noView": "This file opens outside the browser",
-    "pageOne": "Page 1 of {{count}}"
+    "pageOne": "Page 1 of {{count}}",
+    "pdfError": "Could not read the PDF. You can download the original.",
+    "pdfLoading": "Loading PDF…",
+    "pdfPage": "{{name}}, page {{page}} of {{count}}",
+    "pdfPrevious": "Previous page",
+    "pdfNext": "Next page",
+    "pdfPageNumber": "Page {{page}} of {{count}}"
   },
   "search": {
     "title": "Search",

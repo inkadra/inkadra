@@ -20,6 +20,7 @@ import { playInline, useInlineMedia } from './inline-player.ts';
 import { MovingPicture, movingVariantUrl } from './moving.tsx';
 import { OfficeInfo, OfficeStage, useOfficePreview } from './OfficePreview.tsx';
 import { isOffice, officeTable, SHEET_PREVIEW, tableable } from './office.ts';
+import { PdfReader } from './PdfReader.tsx';
 import { authorName, editableText } from './review-model.ts';
 import { canComment, openComments, useReviews } from './review-store.ts';
 import { isTyping } from './shortcuts.ts';
@@ -699,6 +700,7 @@ export function MediaViewer({
                 />
               </div>
             ) : ready &&
+              !isPdf(ready) &&
               !pickVariant(ready, wide) &&
               (ready.kind !== 'image' || isRawImageType(ready.mime)) ? (
               <div className="viewer__file">
@@ -712,17 +714,9 @@ export function MediaViewer({
                 </a>
               </div>
             ) : ready && isPdf(ready) ? (
-              // No PDF view yet (pdf.js comes with #294): page 1 and the download.
               <div className="viewer__file viewer__file--pdf">
-                <img
-                  className="viewer__media viewer__media--contain viewer__pdf-page"
-                  src={pickVariant(ready, wide)}
-                  alt={ready.filename}
-                />
+                <PdfReader key={ready.url} url={ready.url} name={ready.filename} />
                 <div className="viewer__pdf-bar">
-                  {ready.pageCount && (
-                    <span>{t('viewer.pageOne', { count: ready.pageCount })}</span>
-                  )}
                   <a
                     className="ink-btn ink-btn--primary"
                     href={ready.url}
