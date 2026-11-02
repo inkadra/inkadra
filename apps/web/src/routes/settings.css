@@ -818,25 +818,22 @@
     max-width: none;
     flex-basis: 100%;
   }
+  /*
+   * A member is a small card: who (with Disattiva at the end of that line), then the role and
+   * the right to create projects side by side, each under its title, in the same two columns
+   * on every row so admins and members line up (the second holds "Come l’istanza (sì)").
+   */
   .team-table thead,
   .team-table .team-col--projects,
   .team-table .team-col--last {
     display: none;
   }
-  .team-table .team-col--create {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-  }
-  .team-table .team-col--create::before {
-    content: attr(data-label);
-    font-size: 11px;
-    color: var(--ink-text-muted);
-  }
   .team-table tr {
+    position: relative;
     display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
-    align-items: center;
+    grid-template-columns: 112px minmax(0, 1fr);
+    column-gap: 10px;
+    align-items: start;
     border-top: 1px solid var(--ink-border-muted);
   }
   .team-table tbody:first-of-type tr:first-child {
@@ -848,13 +845,48 @@
   }
   .team-table tbody th {
     grid-column: 1 / -1;
-    padding-bottom: 2px;
+    padding-bottom: 6px;
+  }
+  .team-table tbody:first-of-type th {
+    /* The room of the Disattiva button, which sits at the end of this line. */
+    padding-right: 104px;
   }
   .team-table td {
     padding-top: 2px;
   }
-  .team-table td:first-of-type {
-    padding-left: 50px;
+  .team-table .team-col--role,
+  .team-table .team-col--create {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 0;
+    padding-bottom: 12px;
+  }
+  .team-table .team-col--role::before,
+  .team-table .team-col--create::before {
+    content: attr(data-label);
+    font-size: 11px;
+    color: var(--ink-text-muted);
+  }
+  .team-table .team-col--role .team-role,
+  .team-table .team-col--create .team-role {
+    width: 100%;
+  }
+  .team-table .team-col--create > .settings-muted {
+    display: flex;
+    align-items: center;
+    min-height: 32px;
+  }
+  .team-table tbody:first-of-type .team-col--actions {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    padding: 0;
+  }
+  .team-pending .team-col--actions {
+    grid-column: 1 / -1;
+    justify-self: end;
+    padding-bottom: 8px;
   }
 }
 
