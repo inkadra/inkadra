@@ -4,8 +4,10 @@ import {
   CreateMapPreview,
   isMapLink,
   isShortMapLink,
+  MapSearchResults,
   MapTileParams,
   parseMapLink,
+  SearchMapPlaces,
 } from './maps.ts';
 
 describe('map links', () => {
@@ -80,4 +82,15 @@ describe('map tile paths', () => {
     for (const bad of ['-1', '1.5', '1e1', '0x1', '01', ' 1', '', '9999999'])
       expect(ok('3', bad, '0'), bad).toBe(false);
   });
+});
+
+it('validates bounded address searches and rejects malformed suggestion coordinates', () => {
+  const projectId = '11111111-1111-4111-8111-111111111111';
+  expect(SearchMapPlaces.parse({ projectId, query: ' Milano ' }).query).toBe('Milano');
+  expect(SearchMapPlaces.safeParse({ projectId, query: 'ab' }).success).toBe(false);
+  expect(SearchMapPlaces.safeParse({ projectId, query: 'a'.repeat(501) }).success).toBe(false);
+  const place = { lat: 45.46, lon: 9.19, zoom: 16, name: 'Milano' };
+  expect(MapSearchResults.safeParse({ items: [place] }).success).toBe(true);
+  expect(MapSearchResults.safeParse({ items: [{ ...place, lat: null }] }).success).toBe(false);
+  expect(MapSearchResults.safeParse({ items: Array(6).fill(place) }).success).toBe(false);
 });

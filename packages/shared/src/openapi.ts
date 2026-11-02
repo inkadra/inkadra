@@ -77,7 +77,7 @@ import {
   UpdateInstanceMember,
   UpdateInstanceSettings,
 } from './instance-admin.ts';
-import { CreateMapPreview, MapPreview } from './maps.ts';
+import { CreateMapPreview, MapPreview, MapSearchResults, SearchMapPlaces } from './maps.ts';
 import {
   MarkAllRead,
   Notification,
@@ -1447,6 +1447,24 @@ registry.registerPath({
     200: { description: 'Preview', ...json(LinkPreview) },
     ...errors,
     400: { description: 'Invalid address, or the page could not be fetched', ...json(ApiError) },
+  },
+});
+
+registry.registerPath({
+  method: 'post',
+  path: v1('/map-search'),
+  tags: ['Assets'],
+  security: secured,
+  summary: 'Suggest up to five places for a typed address without creating map images.',
+  description:
+    'Needs editor access to the project or supplied board and an administrator-configured ' +
+    'Nominatim-compatible geocoder (Instance.maps.geocoding). The query is sent to that ' +
+    'provider. An empty list means no matches; an unavailable geocoder returns an error. ' +
+    'Clients should debounce requests and discard stale answers. Rate limited per person.',
+  request: { body: json(SearchMapPlaces) },
+  responses: {
+    200: { description: 'Place suggestions', ...json(MapSearchResults) },
+    ...errors,
   },
 });
 

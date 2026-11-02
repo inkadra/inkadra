@@ -4205,6 +4205,76 @@
           "url"
         ]
       },
+      "MapSearchResults": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MapSearchPlace"
+            },
+            "maxItems": 5
+          }
+        },
+        "required": [
+          "items"
+        ]
+      },
+      "MapSearchPlace": {
+        "type": "object",
+        "properties": {
+          "lat": {
+            "type": "number",
+            "minimum": -85,
+            "maximum": 85
+          },
+          "lon": {
+            "type": "number",
+            "minimum": -180,
+            "maximum": 180
+          },
+          "zoom": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 19
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          }
+        },
+        "required": [
+          "lat",
+          "lon",
+          "zoom",
+          "name"
+        ]
+      },
+      "SearchMapPlaces": {
+        "type": "object",
+        "properties": {
+          "projectId": {
+            "type": "string",
+            "format": "uuid",
+            "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10"
+          },
+          "boardId": {
+            "type": "string",
+            "format": "uuid",
+            "example": "0193f0a4-6c1e-7b9a-9c51-2b1f6f5f2a10"
+          },
+          "query": {
+            "type": "string",
+            "minLength": 3,
+            "maxLength": 500
+          }
+        },
+        "required": [
+          "projectId",
+          "query"
+        ]
+      },
       "MapPreview": {
         "type": "object",
         "properties": {
@@ -14441,6 +14511,84 @@
           },
           "400": {
             "description": "Invalid address, or the page could not be fetched",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/map-search": {
+      "post": {
+        "tags": [
+          "Assets"
+        ],
+        "security": [
+          {
+            "session": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Suggest up to five places for a typed address without creating map images.",
+        "description": "Needs editor access to the project or supplied board and an administrator-configured Nominatim-compatible geocoder (Instance.maps.geocoding). The query is sent to that provider. An empty list means no matches; an unavailable geocoder returns an error. Clients should debounce requests and discard stale answers. Rate limited per person.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SearchMapPlaces"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Place suggestions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MapSearchResults"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
             "content": {
               "application/json": {
                 "schema": {
