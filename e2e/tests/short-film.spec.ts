@@ -347,6 +347,9 @@ test('a short film is prepared from the moodboard to the shot list', async ({
   });
   await test.step('3. storyboard: screenplay import, 30 frames, details, pen, picture, reorder', async () => {
     await page.getByRole('banner').getByRole('link', { name: 'Ultimo Treno' }).click();
+    // The URL changes before the previous canvas unmounts; wait for the project's board.
+    await expect(page.locator('[data-type="board"]', { hasText: /^Moodboard/ })).toBeVisible();
+    await synced(page);
     await page.keyboard.press('s');
     const storyboard = page.locator('[data-type="board"]', { hasText: 'Storyboard' });
     await expect(storyboard).toHaveCount(1);
