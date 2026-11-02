@@ -33,6 +33,10 @@
 .project-group-loose.is-drop > .ink-sidebar__section {
   border-radius: var(--ink-radius-sm);
 }
+/* A held finger opens the project menu: no link preview or callout on top of it (iOS). */
+.project-navigation > .ink-nav {
+  -webkit-touch-callout: none;
+}
 .project-navigation.is-dragging,
 .project-card.is-dragging {
   opacity: 0.4;

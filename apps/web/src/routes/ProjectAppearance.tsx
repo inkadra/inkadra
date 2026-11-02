@@ -25,6 +25,7 @@ import {
   type KeyboardEvent,
   type MouseEvent,
   type ReactNode,
+  type PointerEvent as ReactPointerEvent,
   useEffect,
   useRef,
   useState,
@@ -208,6 +209,10 @@ export function useMenu(label: string, items: ProjectMenuItem[]) {
   return { open, close, isOpen: !!menu, opener, layer };
 }
 
+/** How long a finger rests on a project before its menu opens, and how far it may drift. */
+const LONG_PRESS_MS = 500;
+const PRESS_SLOP = 10;
+
 /**
  * The ⋯ menu of a project, shared by the sidebar and the Projects page: project appearance
  * for editors, then the caller's own actions, then Export project… for owners and editors. Returns the trigger, the right-click handlers
@@ -242,19 +247,68 @@ export function useProjectMenu(
   const { open, close, isOpen, opener, layer: menuLayer } = useMenu(project.name, items);
   // The target can be a whole card that holds the menu's own dialogs: events from those, or
   // from anything portalled out of it, keep their native behaviour.
-  const fromTarget = (event: MouseEvent<HTMLElement> | KeyboardEvent<HTMLElement>) => {
+  const fromTarget = (
+    event: MouseEvent<HTMLElement> | KeyboardEvent<HTMLElement> | ReactPointerEvent<HTMLElement>,
+  ) => {
     const target = event.target as Element;
     if (!event.currentTarget.contains(target)) return false;
     const dialog = target.closest('dialog');
     return !dialog || dialog.contains(event.currentTarget);
   };
   // A card itself takes no focus: return it to the link under the event, else to the ⋯ button.
-  const focusFor = (event: MouseEvent<HTMLElement> | KeyboardEvent<HTMLElement>) =>
+  const focusFor = (
+    event: MouseEvent<HTMLElement> | KeyboardEvent<HTMLElement> | ReactPointerEvent<HTMLElement>,
+  ) =>
     (event.target as Element).closest<HTMLElement>('a[href], button') ??
     (event.currentTarget.matches('a[href], button, [tabindex]') ? event.currentTarget : null) ??
     triggerRef.current;
+  // A finger held on the project opens the menu (about half a second, as the system does for a
+  // link) and the lift that follows does not open the project. Browsers that send a
+  // contextmenu event for it are covered too; iOS and touch emulation send none.
+  const press = useRef<{ x: number; y: number; timer: number; fired: boolean } | null>(null);
+  const endPress = () => {
+    if (!press.current) return;
+    window.clearTimeout(press.current.timer);
+    // Kept until the click that follows the lift has been refused.
+    if (!press.current.fired) press.current = null;
+    else press.current.timer = window.setTimeout(() => (press.current = null), 400);
+  };
+  useEffect(() => () => window.clearTimeout(press.current?.timer), []);
+  const touchProps = {
+    onPointerDown: (event: ReactPointerEvent<HTMLElement>) => {
+      if (event.pointerType !== 'touch' || !fromTarget(event)) return;
+      window.clearTimeout(press.current?.timer);
+      const anchor = event.currentTarget;
+      const focus = focusFor(event);
+      const { clientX: x, clientY: y } = event;
+      press.current = {
+        x,
+        y,
+        fired: false,
+        timer: window.setTimeout(() => {
+          if (press.current) press.current.fired = true;
+          open(anchor, focus, x, y);
+        }, LONG_PRESS_MS),
+      };
+    },
+    onPointerMove: (event: ReactPointerEvent<HTMLElement>) => {
+      const held = press.current;
+      if (!held || held.fired) return;
+      if (Math.hypot(event.clientX - held.x, event.clientY - held.y) > PRESS_SLOP) endPress();
+    },
+    onPointerUp: endPress,
+    onPointerCancel: endPress,
+    onClickCapture: (event: MouseEvent<HTMLElement>) => {
+      if (!press.current?.fired) return;
+      window.clearTimeout(press.current.timer);
+      press.current = null;
+      event.preventDefault();
+      event.stopPropagation();
+    },
+  };
   const targetProps = enabled
     ? {
+        ...touchProps,
         onContextMenu: (event: MouseEvent<HTMLElement>) => {
           if (!fromTarget(event)) return;
           event.preventDefault();
