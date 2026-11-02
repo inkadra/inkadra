@@ -2,7 +2,7 @@ import { APIError, betterAuth } from 'better-auth';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
 import { createAuthMiddleware, getSessionFromCtx } from 'better-auth/api';
 import { genericOAuth, magicLink } from 'better-auth/plugins';
-import { and, count, eq, lt, sql } from 'drizzle-orm';
+import { and, count, eq, lt, ne, sql } from 'drizzle-orm';
 import type { Logger } from 'pino';
 import { DEVICE_AGE, DEVICE_COOKIE, knownDevices } from './auth-device.ts';
 import { authSecurity, authSource } from './auth-security.ts';
@@ -153,7 +153,7 @@ function createAuthInstance(
   const devices = knownDevices(config.AUTH_SECRET);
   // Hooks receive shallow copies of the endpoint context but share ctx.context; reservations
   // made before the password check live there until the after hook settles them.
-  type BudgetContext = { inkadraReservations?: string[] };
+  type BudgetContext = { inkadraReservations?: string[]; inkadraCloseOthers?: boolean };
   const mailBudget = async (address: string, ip: string) =>
     (await security.take(`mail:${address}:${authSource(ip)}`, 3, 900)) &&
     (await security.take(`mail:${address}`, 10, 3600));
@@ -437,6 +437,43 @@ function createAuthInstance(
               headers,
             }),
           };
+        },
+      },
+      {
+        id: 'keep-current-session',
+        // Better Auth's own revocation deletes every session and issues a new one, so the board
+        // the person is editing would lose its collaboration sign-in (it follows the session id).
+        // The current session stays; only the others are removed once the password has changed.
+        hooks: {
+          before: [
+            {
+              matcher: (ctx) => ctx.path === '/change-password',
+              handler: createAuthMiddleware(async (ctx) => {
+                if (ctx.body?.revokeOtherSessions !== true) return;
+                (ctx.context as BudgetContext).inkadraCloseOthers = true;
+                return { context: { ...ctx, body: { ...ctx.body, revokeOtherSessions: false } } };
+              }),
+            },
+          ],
+          after: [
+            {
+              matcher: (ctx) => ctx.path === '/change-password',
+              handler: createAuthMiddleware(async (ctx) => {
+                if (!(ctx.context as BudgetContext).inkadraCloseOthers) return;
+                if (ctx.context.returned instanceof APIError) return;
+                const current = ctx.context.session;
+                if (!current) return;
+                await db
+                  .delete(schema.session)
+                  .where(
+                    and(
+                      eq(schema.session.userId, current.user.id),
+                      ne(schema.session.id, current.session.id),
+                    ),
+                  );
+              }),
+            },
+          ],
         },
       },
       hardenedTwoFactor(config.INSTANCE_NAME),

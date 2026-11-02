@@ -274,6 +274,54 @@ describe.skipIf(!url)('collab (needs DATABASE_URL)', () => {
     c.close();
   });
 
+  it('keeps the connection of the session that changes the password, and closes the others', async () => {
+    await signUp('changer');
+    await app.inject({
+      method: 'PUT',
+      url: `/api/v1/projects/${projectId}/members/${people.changer?.id}`,
+      headers: as('owner'),
+      payload: { role: 'editor' },
+    });
+    const signIn = async () =>
+      String(
+        (
+          await app.inject({
+            method: 'POST',
+            url: '/api/auth/sign-in/email',
+            headers: { origin: config.PUBLIC_URL },
+            payload: { email: 'changer@example.com', password: 'correct-horse-battery' },
+          })
+        ).headers['set-cookie'],
+      ).split(';')[0] ?? '';
+    const current = people.changer?.cookie ?? '';
+    const other = await signIn();
+    const here = connect({ cookie: current });
+    const elsewhere = connect({ cookie: other });
+    await Promise.all([here.synced, elsewhere.synced]);
+    const hereClosed = closedWith(here);
+    const elsewhereClosed = closedWith(elsewhere);
+    const changed = await app.inject({
+      method: 'POST',
+      url: '/api/auth/change-password',
+      headers: { cookie: current, origin: config.PUBLIC_URL },
+      payload: {
+        currentPassword: 'correct-horse-battery',
+        newPassword: 'another-correct-horse',
+        revokeOtherSessions: true,
+      },
+    });
+    expect(changed.statusCode).toBe(200);
+    expect(await elsewhereClosed).toBe('Unauthorized');
+    expect(await hereClosed).toBeNull();
+    // The tab that changed the password keeps editing with the cookie it already has.
+    const el = column('After password change');
+    addElement(here.doc, el);
+    const peer = connect(as('owner'));
+    await peer.synced;
+    await expect.poll(() => roots(peer.doc).elements.has(el.id), { timeout: 5000 }).toBe(true);
+    for (const c of [here, elsewhere, peer]) c.close();
+  });
+
   it('stamps presence with the signed-in person', async () => {
     const a = connect(as('editor'));
     const b = connect(as('viewer'));

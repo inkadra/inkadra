@@ -1002,23 +1002,31 @@ describe.skipIf(!url)('sharing, invitations, tokens and accounts (needs DATABASE
     as.viewer.cookie = cookieOf(disabled.cookies, 'inkadra.session_token');
   });
 
-  it('rotates the password session only through its httpOnly cookie', async () => {
+  it('closes the other sessions on a password change but keeps the one that made it', async () => {
     const issued = await call('guest', 'POST', '/api/v1/me/tokens', {
       name: 'Before password change',
     });
     expect(issued.status).toBe(201);
+    const elsewhere = await call(null, 'POST', '/api/auth/sign-in/email', {
+      email: as.guest.email,
+      password: PASSWORD,
+    });
+    const elsewhereCookie = cookieOf(elsewhere.cookies, 'inkadra.session_token');
+    expect((await call({ cookie: elsewhereCookie }, 'GET', '/api/v1/me')).status).toBe(200);
     const changed = await call('guest', 'POST', '/api/auth/change-password', {
       currentPassword: PASSWORD,
       newPassword: `${PASSWORD}-changed`,
       revokeOtherSessions: true,
     });
-    await expectSessionCookie(changed);
+    await expectPrivateSession(changed);
     expect((await call({ bearer: issued.body.token }, 'GET', '/api/v1/me')).status).toBe(401);
+    expect((await call({ cookie: elsewhereCookie }, 'GET', '/api/v1/me')).status).toBe(401);
     expect(
       mailer.sent.some((m) => m.to === as.guest.email && m.subject === 'Password modificata'),
     ).toBe(true);
-    expect((await call('guest', 'GET', '/api/v1/me')).status).toBe(401);
-    const changedCookie = cookieOf(changed.cookies, 'inkadra.session_token');
+    // The session that changed it stays: the board open in that tab keeps its collaboration.
+    expect((await call('guest', 'GET', '/api/v1/me')).status).toBe(200);
+    const changedCookie = as.guest.cookie;
     const token = await call({ cookie: changedCookie }, 'POST', '/api/v1/me/tokens', {
       name: 'Before reset',
     });
