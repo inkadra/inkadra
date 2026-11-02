@@ -220,7 +220,7 @@ test('the archive imports as a new project with everything in it', async ({ page
   const result = dialog.getByRole('status');
   await expect(result.getByText(`«${NAME}» è pronto`)).toBeVisible({ timeout: 60_000 });
   // Boards, files (the picture and the logo) and comments, as the archive counted them.
-  await expect(result.getByText('3 board · 2 file · 1 commenti')).toBeVisible();
+  await expect(result.getByText('3 board · 2 file · 1 commento')).toBeVisible();
   await dialog.getByRole('link', { name: 'Apri progetto' }).click();
   await expect(page).toHaveURL(/\/p\/[0-9a-f-]{36}$/);
   const projectId = page.url().split('/p/')[1] as string;

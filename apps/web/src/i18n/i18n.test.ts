@@ -37,6 +37,59 @@ describe('translations', () => {
     expect(missing).toEqual([]);
   });
 
+  // R2-04: "1 commenti", "1 poligoni". A count needs a `_one` and an `_other` form in both
+  // languages; these show a count that is never 1 or reads the same in the singular.
+  const INVARIABLE = [
+    'tags.max',
+    'settingsUi.account.allSessions',
+    'viewer.pageOne',
+    'comments.reactionChip',
+    'office.page',
+    'office.sheetOf',
+  ];
+  it.each([
+    ['Italian', itMessages],
+    ['English', en],
+  ])('%s counts have a singular and a plural form', (_name, messages) => {
+    const all = Object.fromEntries(
+      keys(messages).map((key) => [key, key.split('.').reduce<any>((o, k) => o[k], messages)]),
+    ) as Record<string, string>;
+    const alone = Object.keys(all).filter(
+      (key) =>
+        /\{\{count\}\}/.test(all[key] ?? '') &&
+        !/_(one|other)$/.test(key) &&
+        !INVARIABLE.includes(key) &&
+        !(all[`${key}_one`] && all[`${key}_other`]),
+    );
+    expect(alone).toEqual([]);
+    const half = Object.keys(all).filter(
+      (key) => key.endsWith('_one') && !all[key.replace(/_one$/, '_other')],
+    );
+    expect(half).toEqual([]);
+  });
+
+  it('pluralises the import summary and file details', async () => {
+    await i18n.changeLanguage('it');
+    expect(i18n.t('transfer.summary', { boards: 1, files: 1, comments: 1 })).toBe(
+      '1 board · 1 file · 1 commento',
+    );
+    expect(i18n.t('transfer.summary', { boards: 3, files: 9, comments: 2 })).toBe(
+      '3 board · 9 file · 2 commenti',
+    );
+    expect(i18n.t('board.file.polygons', { count: 1 })).toBe('1 poligono');
+    expect(i18n.t('board.file.polygons', { count: 12 })).toBe('12 poligoni');
+    expect(i18n.t('board.file.glyphs', { count: 1 })).toBe('1 glifo');
+    expect(i18n.t('film.list.selectedCount', { count: 1 })).toBe('1 selezionata');
+    expect(i18n.t('film.list.selectedCount', { count: 4 })).toBe('4 selezionate');
+    await i18n.changeLanguage('en');
+    expect(i18n.t('transfer.summary', { boards: 1, files: 1, comments: 1 })).toBe(
+      '1 board · 1 file · 1 comment',
+    );
+    expect(i18n.t('board.file.polygons', { count: 1 })).toBe('1 polygon');
+    expect(i18n.t('admin.membersCount', { count: 1 })).toBe('1 account');
+    await i18n.changeLanguage('it');
+  });
+
   it('pluralises onboarding summary in English and Italian', async () => {
     await i18n.changeLanguage('en');
     expect(i18n.t('onboarding.summary', { boards: 1, invitations: 1 })).toBe(
