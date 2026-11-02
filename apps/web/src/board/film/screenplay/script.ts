@@ -133,15 +133,28 @@ export function parseHeading(raw: string): Omit<ScriptScene, 'blocks' | 'charact
   return scene;
 }
 
-/** Character name for the cast: without extensions, dual-dialogue mark or trailing spaces. */
+/** Voice and continuity words written after a cue without brackets: GIORGIA V.O., ENEA CONT'D. */
+const BARE_EXTENSION =
+  /\s+(V\.?\s?O\.?|O\.?\s?S\.?|O\.?\s?C\.?|F\.\s?C\.?|CONT(?:['’]?D|\.)?|OFF|OFF[\s-]?SCREEN|VOICE[\s-]?OVER|VOCE(?: FUORI CAMPO| OFF)?|FUORI CAMPO)$/i;
+
+/**
+ * Character name for the cast: without extensions (bracketed or bare, as in `GIORGIA V.O.`),
+ * the dual-dialogue mark or trailing spaces. The extensions are returned in brackets, in the
+ * order written, so the dialogue line can keep them.
+ */
 export function splitCue(raw: string): { character: string; extension?: string } {
   const text = clean(raw)
     .slice(0, 200)
     .replace(/\s*\^$/, '');
   const m = /^(.*?)\s*((?:\([^)]*\)\s*)+)$/.exec(text);
-  const character = (m ? m[1] : text)?.trim() ?? '';
-  const extension = m?.[2]?.trim();
-  return extension ? { character, extension } : { character };
+  let character = (m ? m[1] : text)?.trim() ?? '';
+  const extensions = m?.[2] ? [m[2].trim()] : [];
+  // GIORGIA V.O. (CONT'D): bare words before the brackets, never the whole name.
+  for (let bare = BARE_EXTENSION.exec(character); bare; bare = BARE_EXTENSION.exec(character)) {
+    extensions.unshift(`(${(bare[1] ?? '').trim()})`);
+    character = character.slice(0, bare.index).trim();
+  }
+  return extensions.length ? { character, extension: extensions.join(' ') } : { character };
 }
 
 /** Whitespace folded, invisible characters removed. */

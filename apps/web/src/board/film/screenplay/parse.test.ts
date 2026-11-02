@@ -4,7 +4,7 @@ import fdx from './fixtures/last-train.fdx?raw';
 import fountain from './fixtures/last-train.fountain?raw';
 import { parseFountain } from './fountain.ts';
 import { parseScreenplay } from './parse.ts';
-import { parseHeading, ScriptError } from './script.ts';
+import { parseHeading, ScriptError, splitCue } from './script.ts';
 
 describe('scene headings', () => {
   it.each([
@@ -205,5 +205,34 @@ describe('files', () => {
 
   it('reads a misnamed Final Draft file as XML', () => {
     expect(parseScreenplay('script.txt', fdx).format).toBe('fdx');
+  });
+});
+
+describe('character extensions', () => {
+  it.each([
+    ['GIORGIA', { character: 'GIORGIA' }],
+    ['GIORGIA V.O.', { character: 'GIORGIA', extension: '(V.O.)' }],
+    ['GIORGIA (V.O.)', { character: 'GIORGIA', extension: '(V.O.)' }],
+    ['GIORGIA O.S.', { character: 'GIORGIA', extension: '(O.S.)' }],
+    ["ENEA CONT'D", { character: 'ENEA', extension: "(CONT'D)" }],
+    ['ENEA OFF', { character: 'ENEA', extension: '(OFF)' }],
+    ['ENEA FUORI CAMPO', { character: 'ENEA', extension: '(FUORI CAMPO)' }],
+    ['ENEA F.C.', { character: 'ENEA', extension: '(F.C.)' }],
+    ['ENEA (VOCE)', { character: 'ENEA', extension: '(VOCE)' }],
+    ["MARA V.O. (CONT'D)", { character: 'MARA', extension: "(V.O.) (CONT'D)" }],
+    ['MARA ^', { character: 'MARA' }],
+    ["DR. O'NEIL", { character: "DR. O'NEIL" }],
+    ['OFF', { character: 'OFF' }],
+  ])('%s', (cue, expected) => {
+    expect(splitCue(cue)).toEqual(expected);
+  });
+
+  it('counts GIORGIA and GIORGIA V.O. as one person and keeps V.O. on the line', () => {
+    const s = parseFountain(
+      'INT. KITCHEN - DAY\n\nGIORGIA\nCiao.\n\nGIORGIA V.O.\nTi aspetto.\n\nGiorgia (O.S.)\nArrivo!\n',
+    );
+    expect(s.characters).toEqual(['GIORGIA']);
+    expect(s.scenes[0]?.characters).toEqual(['GIORGIA']);
+    expect(s.scenes[0]?.blocks[1]).toMatchObject({ character: 'GIORGIA', extension: '(V.O.)' });
   });
 });

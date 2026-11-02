@@ -15,6 +15,11 @@ Only inline bytes are parsed: no remote font/CMap resources, evaluation or PDF a
 Reconstruct lines from text positions and paragraph gaps, then use the Fountain parser and
 existing plan limits (500 scenes / 1500 frames). Image-only PDFs produce a specific error;
 there is no OCR. Detection runs once per local upload and keeps the parsed result for preview.
+The text is cleaned before it is parsed (`pdf-text.ts`): a first page with a credit or draft line
+and no scene heading becomes the Fountain title page, not a scene; page numbers, footers
+("Created using Celtx"), MORE / CONTINUED markers and lines repeated at the top or bottom of at
+least half of the pages are dropped; wrapped action lines are one paragraph; paragraphs, speeches
+and parentheticals that a page break cuts are joined; right-aligned CUT TO lines are transitions.
 Offer the hint only for at least five actual scene headings. Confirmation remains mandatory.
 
 ## Consequences

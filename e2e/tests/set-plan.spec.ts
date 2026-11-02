@@ -374,6 +374,11 @@ for (const theme of ['dark', 'light'] as const) {
     const empty = at(390, 255);
     await page.mouse.click(empty.x, empty.y);
     await editor.getByRole('tab', { name: 'Proprietà' }).click();
+    // Nothing selected, no scale: the row has its label, not a translation key (QA 2026-11-02).
+    await expect(editor.getByText('Nessuna, senza metri')).toBeVisible();
+    await expect(editor.getByText('Scala', { exact: true })).toBeVisible();
+    await expect(editor).not.toContainText(/\bboard\.[a-z]+\.[a-zA-Z]+/);
+    await page.screenshot({ path: join(out, `desktop-${theme}-properties.png`) });
     await editor.getByRole('button', { name: 'Imposta la scala' }).click();
     const wallA = at(20, 20);
     const wallB = at(380, 20);

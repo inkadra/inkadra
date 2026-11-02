@@ -1670,10 +1670,10 @@ export function PlanEditor({
         </div>
       )}
       <div className="plan-props__row">
-        <span>{t('board.drawn.scale')}</span>
+        <span>{t('board.plan.scale')}</span>
         <b>
           {drawn.scale
-            ? t('board.drawn.scaleGrid', {
+            ? t('board.plan.scaleGrid', {
                 grid: Number(drawn.grid ?? '0.5').toLocaleString(i18n.language),
               })
             : t('board.plan.noScale')}
@@ -1685,7 +1685,7 @@ export function PlanEditor({
       {drawn.scale && (
         <>
           <label className="plan-props__row">
-            <span>{t('board.drawn.rulers')}</span>
+            <span>{t('board.plan.rulers')}</span>
             <Switch
               checked={!!drawn.rulers}
               onChange={(e) =>
@@ -1763,8 +1763,8 @@ export function PlanEditor({
         </span>
       </label>
       <div className="plan-props__row">
-        <span>{t('board.drawn.grid')}</span>
-        <fieldset className="plan-props__segmented" aria-label={t('board.drawn.grid')}>
+        <span>{t('board.plan.grid')}</span>
+        <fieldset className="plan-props__segmented" aria-label={t('board.plan.grid')}>
           {(['0.25', '0.5', '1'] as const).map((g) => (
             <button
               key={g}
@@ -1779,7 +1779,7 @@ export function PlanEditor({
         </fieldset>
       </div>
       <label className="plan-props__row">
-        <span>{t('board.drawn.rulers')}</span>
+        <span>{t('board.plan.rulers')}</span>
         <Switch checked={rulersDraft} onChange={(e) => setRulersDraft(e.target.checked)} />
       </label>
       <div className="plan-scale__actions">
@@ -1984,7 +1984,7 @@ export function PlanEditor({
         <p className="plan-editor__status">{layerStatus.join(' · ')}</p>
       )}
       {tool === 'scale' && (
-        <p className="plan-editor__movebar plan-editor__tip">{t('board.drawn.scaleHint')}</p>
+        <p className="plan-editor__movebar plan-editor__tip">{t('board.plan.scaleHint')}</p>
       )}
       {scaleDialog}
       {phone && movingIcon && (

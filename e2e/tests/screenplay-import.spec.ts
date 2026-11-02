@@ -1,5 +1,6 @@
 import { readFile } from 'node:fs/promises';
 import { expect, type Page, test } from '@playwright/test';
+import { buildScriptPdf } from '../../apps/web/src/board/film/screenplay/fixtures/script-pdf.ts';
 import { signIn } from './perf/seed.ts';
 
 // Runs after first-run.spec.ts, on the same instance: the administrator exists.
@@ -204,6 +205,35 @@ test('the import dialog opened from the Canvas toolbar is modal and the board st
   await expect(note).toHaveCount(1);
   await expect(page.locator('.card.is-selected')).toHaveCount(0);
 });
+
+for (const theme of ['dark', 'light'] as const) {
+  test(`a Celtx-style PDF imports as its six scenes, without title page, footers or page numbers (${theme})`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await page.addInitScript((value) => localStorage.setItem('inkadra.theme', value), theme);
+    await openBoard(page, seeded.canvasId);
+    await page.locator('.toolbar__btn--canvas').click();
+    await page.getByRole('menuitem', { name: 'Storyboard da sceneggiatura…' }).click();
+    const dialog = page.getByRole('dialog', { name: 'Importa una sceneggiatura' });
+    await dialog.getByLabel('Scegli un file').setInputFiles({
+      name: 'una-festa-di-prova.pdf',
+      mimeType: 'application/pdf',
+      buffer: Buffer.from(await buildScriptPdf()),
+    });
+    // The title page is metadata: six scenes (not seven), four speakers (GIORGIA V.O. is Giorgia).
+    await expect(dialog.getByText('UNA FESTA DI PROVA.', { exact: true })).toBeVisible();
+    await expect(
+      dialog.getByText(/di Anna Rossi, Luca Bianchi · 6 scene · 4 personaggi/),
+    ).toBeVisible();
+    await expect(dialog.getByText(/Crea 6 scene e \d+ inquadrature\./)).toBeVisible();
+    await expect(dialog).not.toContainText('Prima della prima scena');
+    await expect(dialog).not.toContainText('Celtx');
+    await expect(dialog.locator('.script-import__cast')).not.toContainText('V.O.');
+    if (process.env.QA_SHOTS)
+      await page.screenshot({ path: `${process.env.QA_SHOTS}/${theme}-pdf-import-preview.png` });
+  });
+}
 
 /** Original synthetic PDF: a standard Courier screenplay, or an empty image-only stand-in. */
 function scriptPdf(textLayer = true, pages = 1): Buffer {

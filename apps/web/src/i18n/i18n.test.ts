@@ -1,3 +1,5 @@
+import { readdirSync, readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import en from './en.json';
 import i18n from './index.ts';
@@ -12,6 +14,27 @@ function keys(obj: object, prefix = ''): string[] {
 describe('translations', () => {
   it('English has every Italian key and nothing more', () => {
     expect(keys(en).sort()).toEqual(keys(itMessages).sort());
+  });
+
+  it('every literal t("…") key used in the sources exists', () => {
+    const have = new Set(keys(itMessages));
+    const sources = (dir: string): string[] =>
+      readdirSync(dir, { withFileTypes: true }).flatMap((e) =>
+        e.isDirectory()
+          ? sources(join(dir, e.name))
+          : /\.tsx?$/.test(e.name) && !/\.test\.tsx?$/.test(e.name)
+            ? [join(dir, e.name)]
+            : [],
+      );
+    const missing: string[] = [];
+    for (const file of sources(join(__dirname, '..'))) {
+      for (const m of readFileSync(file, 'utf8').matchAll(/(?<![\w.])t\(\s*'(\w+(?:\.\w+)+)'/g)) {
+        const key = m[1] as string;
+        if (!have.has(key) && !have.has(`${key}_one`) && !have.has(`${key}_other`))
+          missing.push(`${file}: ${key}`);
+      }
+    }
+    expect(missing).toEqual([]);
   });
 
   it('pluralises onboarding summary in English and Italian', async () => {
