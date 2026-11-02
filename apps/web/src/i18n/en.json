@@ -2953,7 +2953,6 @@
     "summary": "Creates {{scenes}} and {{frames}}.",
     "truncated": "The screenplay is long: only the first {{scenes}} and {{frames}} fit in one import.",
     "submit": "Import",
-    "use": "Use this screenplay",
     "cancel": "Cancel",
     "untitled": "Screenplay",
     "failed": "The storyboard could not be created. Try again.",

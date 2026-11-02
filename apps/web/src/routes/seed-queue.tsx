@@ -32,8 +32,8 @@ const subscribe = (l: () => void) => {
 };
 
 /**
- * Boards inserted from the Canvas menu are seeded here, one connection at a time as in the
- * project setup, so the work continues when the person opens one of them straight away.
+ * Screenplay imports run one connection at a time, so the work continues when the person
+ * opens the storyboard straight away.
  */
 export function queueSeeds(jobs: SeedJob[]) {
   if (jobs.length === 0) return;

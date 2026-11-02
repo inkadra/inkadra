@@ -2953,7 +2953,6 @@
     "summary": "Crea {{scenes}} e {{frames}}.",
     "truncated": "La sceneggiatura è lunga: in un’importazione entrano solo le prime {{scenes}} e {{frames}}.",
     "submit": "Importa",
-    "use": "Usa questa sceneggiatura",
     "cancel": "Annulla",
     "untitled": "Sceneggiatura",
     "failed": "Non è stato possibile creare lo storyboard. Riprova.",
