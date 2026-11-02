@@ -480,6 +480,7 @@ test('a long storyboard exports to PNG as one readable image per page, zipped (Q
   await expect(page.getByRole('status').getByText('Sincronizzato')).toBeVisible();
   await page.getByRole('button', { name: 'Esporta PDF' }).click();
   const dialog = page.getByRole('dialog', { name: 'Esporta' });
+  await dialog.getByRole('button', { name: /Personalizza/ }).click();
   await dialog.getByRole('radio', { name: 'Immagine (PNG)' }).click();
   await dialog.getByRole('radio', { name: '1', exact: true }).click();
   await expect(dialog.getByText('32 pagine')).toBeVisible();
