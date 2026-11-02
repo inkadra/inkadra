@@ -15,7 +15,15 @@ import { GPX_MAX_BYTES, parseGpx, trackStats } from './gpx.ts';
 import { decodeHeic, sniffImage } from './heic.ts';
 import { MAP_HEIGHT, MAP_WIDTH, type MapSettings, renderMap, routeLine, viewOf } from './maps.ts';
 import { convertOffice, OFFICE_CAPS, officeExtension, officeKey } from './office.ts';
-import { type OfficeSheet, parseCsv, readXlsx, SHEET_LIMITS } from './office-sheets.ts';
+import {
+  decodeCsv,
+  type OfficeSheet,
+  overLimits,
+  oversizedSheet,
+  parseCsv,
+  readXlsx,
+  SHEET_LIMITS,
+} from './office-sheets.ts';
 import { palette } from './palette.ts';
 import { isPdf, readPdfInfo, renderFirstPage } from './pdf.ts';
 import { readPhotoshop } from './photoshop.ts';
@@ -753,21 +761,15 @@ async function processOffice(
     const copy = await localSource(deps.storage, row, dir);
     let sheets: OfficeSheet[] = [];
     try {
-      if (row.size <= SHEET_LIMITS.bytes) {
-        try {
-          if (ext === 'csv')
-            sheets = [
-              {
-                name: row.filename.replace(/\.[^.]*$/, ''),
-                rows: parseCsv((await readFile(copy.path)).toString('utf8')),
-              },
-            ];
-          if (ext === 'xlsx') sheets = await readXlsx(copy.path);
-        } catch (err) {
-          deps.log?.warn({ err, assetId: row.id }, 'Spreadsheet cannot be previewed');
-        }
+      try {
+        sheets = await readSheets(copy.path, row.filename, row.size, ext);
+      } catch (err) {
+        deps.log?.warn({ err, assetId: row.id }, 'Spreadsheet cannot be previewed');
+        // Too big is said in the viewer; a file that is not a spreadsheet has no grid at all.
+        if (overLimits(err)) sheets = [oversizedSheet(row.filename)];
       }
       let pageCount = 0;
+      const revision = createHash('sha256').update(JSON.stringify(sheets));
       let first: Awaited<ReturnType<typeof thumbnails>> | null = null;
       try {
         const pdf = await convertOffice(copy.path, dir, ext);
@@ -785,6 +787,7 @@ async function processOffice(
             const image = sharp(page, { failOn: 'error' });
             const data = await image.webp({ quality: 85 }).toBuffer();
             total += data.length;
+            revision.update(data);
             if (total > 32 * 1024 ** 2) throw new Error('Office page bytes cap');
             await deps.storage.write(officeKey(row.id, `page-${n}.webp`), data, 'image/webp');
             if (n === 1) first = await thumbnails(deps, row.id, sharp(page, { failOn: 'error' }));
@@ -797,13 +800,24 @@ async function processOffice(
       }
       await deps.storage.write(
         officeKey(row.id, 'manifest.json'),
-        Buffer.from(JSON.stringify({ pageCount, sheets })),
+        Buffer.from(
+          JSON.stringify({ pageCount, revision: revision.digest('hex').slice(0, 16), sheets }),
+        ),
         'application/json',
       );
+      // Pages of an earlier, longer conversion are not served any more: do not keep them.
+      if (row.pageCount && row.pageCount > pageCount)
+        await deps.storage.remove(
+          Array.from({ length: row.pageCount - pageCount }, (_, i) =>
+            officeKey(row.id, `page-${pageCount + i + 1}.webp`),
+          ),
+        );
+      const { OfficeSheetCount: _before, ...exif } = row.exif ?? {};
+      const grid = sheets.some((s) => s.rows.length > 0);
       await save(deps.db, row.id, first?.variants ?? [], {
         ...plain,
         pageCount: pageCount || null,
-        exif: { ...row.exif, ...(sheets.length ? { OfficeSheetCount: sheets.length } : {}) },
+        exif: { ...exif, ...(grid ? { OfficeSheetCount: sheets.length } : {}) },
         ...(first ? { width: first.width, height: first.height } : {}),
       });
       return { variants: first?.variants.length ?? 0, pageCount: pageCount || null };
@@ -811,4 +825,13 @@ async function processOffice(
       await copy.done();
     }
   });
+}
+
+/** The grids of a CSV or XLSX, up to the limits; none for other Office files. */
+async function readSheets(path: string, filename: string, size: number, ext: string) {
+  if (ext !== 'csv' && ext !== 'xlsx') return [];
+  if (size > SHEET_LIMITS.bytes) return [oversizedSheet(filename)];
+  if (ext === 'xlsx') return readXlsx(path);
+  const { rows, truncated } = parseCsv(decodeCsv(await readFile(path)));
+  return [{ name: filename.replace(/\.[^.]*$/, ''), rows, ...(truncated ? { truncated } : {}) }];
 }
