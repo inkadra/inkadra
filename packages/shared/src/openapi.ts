@@ -6,6 +6,9 @@ import {
   AudioWaveform,
   CreateLinkPreview,
   LinkPreview,
+  OfficePartParams,
+  OfficePartQuery,
+  OfficePreview,
   ThumbnailSize,
   UploadMetadata,
   VariantParams,
@@ -1336,6 +1339,26 @@ registry.registerPath({
   security: secured,
   request: { params: idParam('assetId') },
   responses: { 200: { description: 'Asset', ...json(Asset) }, ...errors },
+});
+registry.registerPath({
+  method: 'get',
+  path: v1('/assets/{assetId}/office/{part}'),
+  tags: ['Assets'],
+  security: secured,
+  summary: 'Worker-generated Office preview: manifest.json or page-1.webp through page-50.webp.',
+  description:
+    'Requires access to the asset. No original is changed. 404 without a generated derivative.',
+  request: { params: OfficePartParams, query: OfficePartQuery },
+  responses: {
+    200: {
+      description: 'Office manifest or rendered page',
+      content: {
+        'application/json': { schema: OfficePreview },
+        'image/webp': { schema: { type: 'string', format: 'binary' } },
+      },
+    },
+    ...errors,
+  },
 });
 registry.registerPath({
   method: 'get',
