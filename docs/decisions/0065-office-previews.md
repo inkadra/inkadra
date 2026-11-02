@@ -31,8 +31,8 @@ bubblewrap. The converter gets:
 - `prlimit`: 4 GiB of address space, 64 MiB per file and **1,024 tasks** (`--nproc`) so a fork
   bomb fails inside the sandbox; 60 seconds of wall time;
 - a pre-seeded profile (`registrymodifications.xcu`): macro security level 3 and macro
-  execution disabled, links never updated, besides `--safe-mode`. The sandbox has no network
-  either way.
+  execution disabled, links never updated. (`--safe-mode` is not used: it starts from a clean profile and
+  discards this one.) The sandbox has no network either way.
 
 No server environment, network sockets or data volume enter the sandbox. No shell receives
 filenames. Missing namespaces, bubblewrap, LibreOffice, prlimit or a filter for the
