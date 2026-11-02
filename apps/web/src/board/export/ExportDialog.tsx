@@ -596,9 +596,11 @@ function Preview({
   const [state, setState] = useState<{
     status: 'loading' | 'ready' | 'error';
     pages: number;
+    reduced: boolean;
   }>({
     status: 'loading',
     pages: 0,
+    reduced: false,
   });
   useEffect(() => {
     if (!ready) return;
@@ -608,9 +610,10 @@ function Preview({
     setState((s) => ({ ...s, status: 'loading' }));
     const timer = setTimeout(async () => {
       try {
-        const [{ buildPages }, { drawPage }] = await Promise.all([
+        const [{ buildPages }, { drawPage }, { pngScales }] = await Promise.all([
           engine(),
           import('./render-canvas.ts'),
+          import('./layout.ts'),
         ]);
         await document.fonts.load('600 12px Inter');
         const built = await buildPages(req, env.current, {
@@ -630,7 +633,11 @@ function Preview({
           const ctx = el.getContext('2d');
           if (ctx) drawPage(ctx, page, scale, built.images, 0, built.fonts.headingFamily);
         }
-        setState({ status: 'ready', pages: built.pages.length });
+        setState({
+          status: 'ready',
+          pages: built.pages.length,
+          reduced: pngScales(built.pages).reduced,
+        });
         onPages(built.pages.length);
         onMissing(built.missing);
       } catch {
@@ -663,6 +670,7 @@ function Preview({
       <figcaption className="export__hint">
         {state.pages > 0 && `${t('export.preview')} · ${t('export.pages', { count: state.pages })}`}
         {req.format === 'png' && state.pages > 1 && ` · ${t('export.pngPages')}`}
+        {req.format === 'png' && state.reduced && ` ${t('export.pngReduced')}`}
       </figcaption>
     </figure>
   );

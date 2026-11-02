@@ -56,13 +56,14 @@ import {
   loadAssetImage,
   pool,
 } from './images.ts';
-import { type FramesPerPage, type Orientation, type PaperSize, pixelRatio } from './layout.ts';
+import { type FramesPerPage, type Orientation, type PaperSize, pngScales } from './layout.ts';
 import { noteBlocks } from './note-text.ts';
 import type { Op, Page } from './pages.ts';
-import { renderPng } from './render-canvas.ts';
+import { renderPngPages } from './render-canvas.ts';
 import { renderPdf } from './render-pdf.ts';
 import { logoUrl } from './settings.ts';
 import { missingGlyphs } from './text.ts';
+import { zipBlobs } from './zip.ts';
 
 export type ExportFormat = 'pdf' | 'png';
 export type ExportWhat = 'board' | 'selection' | 'visible' | 'storyboard' | 'shotlist';
@@ -432,14 +433,17 @@ export async function exportFile(
     onProgress?.({ phase: 'pages', done, total: pages.length });
   try {
     if (req.format === 'png') {
-      const width = Math.max(...pages.map((p) => p.width));
-      const height = pages.reduce((s, p) => s + p.height, 0);
-      const blob = await renderPng(pages, pixelRatio(width, height), images, PALETTE['surface-3'], {
+      // One image per page: stacking them squeezed a long storyboard into an unreadable strip.
+      const blobs = await renderPngPages(pages, pngScales(pages).scales, images, {
         ...(signal ? { signal } : {}),
         onPage: pageProgress,
         heading: fonts.headingFamily,
       });
-      return { blob, name: `${base}.png` };
+      if (blobs.length === 1) return { blob: blobs[0] as Blob, name: `${base}.png` };
+      const blob = await zipBlobs(
+        blobs.map((b, n) => ({ blob: b, name: `${base}-${String(n + 1).padStart(3, '0')}.png` })),
+      );
+      return { blob, name: `${base}.zip` };
     }
     const bytes = await renderPdf(
       pages,
