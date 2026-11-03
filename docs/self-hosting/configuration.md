@@ -153,14 +153,14 @@ load that picture, never the tile server. "Explore" on a map card pans and zooms
 that the server fetches on the person's behalf, through the same queue and cache. See
 [decision 0053](../decisions/0053-maps.md).
 
-| Variable               | Default                                          | Meaning                                                                                                   |
-| ---------------------- | ------------------------------------------------ | --------------------------------------------------------------------------------------------------------- |
-| `MAPS`                 | `true`                                           | `false`: map cards show only the place name, address and link, and GPX files only their route line        |
-| `MAP_TILE_URL`         | `https://tile.openstreetmap.org/{z}/{x}/{y}.png` | Tile server, with `{z}`, `{x}` and `{y}`. It may be on your network. No API key is needed for the default |
-| `MAP_TILE_ATTRIBUTION` | `© OpenStreetMap contributors`                   | Credit of the tiles, shown on every map                                                                   |
-| `MAP_GEOCODER_URL`     | empty                                            | A Nominatim-compatible `/search` address to look up typed addresses; empty leaves addresses unlooked      |
-| `MAP_SATELLITE_TILE_URL` | empty                                          | A second tile server, with `{z}`, `{x}` and `{y}`, for satellite views; empty hides the Map/Satellite switch |
-| `MAP_SATELLITE_TILE_ATTRIBUTION` | `Satellite`                            | Credit of the satellite tiles, shown while they are on screen                                             |
+| Variable                         | Default                                          | Meaning                                                                                                      |
+| -------------------------------- | ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------ |
+| `MAPS`                           | `true`                                           | `false`: map cards show only the place name, address and link, and GPX files only their route line           |
+| `MAP_TILE_URL`                   | `https://tile.openstreetmap.org/{z}/{x}/{y}.png` | Tile server, with `{z}`, `{x}` and `{y}`. It may be on your network. No API key is needed for the default    |
+| `MAP_TILE_ATTRIBUTION`           | `© OpenStreetMap contributors`                   | Credit of the tiles, shown on every map                                                                      |
+| `MAP_GEOCODER_URL`               | empty                                            | A Nominatim-compatible `/search` address to look up typed addresses; empty leaves addresses unlooked         |
+| `MAP_SATELLITE_TILE_URL`         | empty                                            | A second tile server, with `{z}`, `{x}` and `{y}`, for satellite views; empty hides the Map/Satellite switch |
+| `MAP_SATELLITE_TILE_ATTRIBUTION` | `Satellite`                                      | Credit of the satellite tiles, shown while they are on screen                                                |
 
 The OpenStreetMap tile servers are run by volunteers: their
 [usage policy](https://operations.osmfoundation.org/policies/tiles/) allows a few maps added by

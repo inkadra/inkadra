@@ -572,7 +572,8 @@ select {
   --ink-float-bg: color-mix(in srgb, var(--ink-surface-float) 86%, transparent);
   --ink-float-hairline: color-mix(in srgb, var(--ink-text-primary) 8%, transparent);
   --ink-float-shadow: var(--ink-shadow-menu), 0 0 0 1px var(--ink-float-hairline);
-  --ink-float-blur: blur(14px) saturate(1.2);
+  /* Continuous glass also repaints while the board moves; keep its sampling radius small. */
+  --ink-float-blur: blur(8px) saturate(1.2);
 }
 .ink-shell__launcher,
 .ink-shell__edge,

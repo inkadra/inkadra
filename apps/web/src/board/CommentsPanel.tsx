@@ -81,7 +81,8 @@ export function CommentsButton() {
   const { t } = useTranslation();
   const boardId = useReviews((s) => s.boardId);
   const counts = useReviews((s) => s.counts);
-  const isOpen = useReviews((s) => s.target !== null);
+  const target = useReviews((s) => s.target);
+  const isOpen = target !== null;
   const preview = useReviews((s) => s.preview);
   const canvas = useReviews((s) => s.canvas);
   const unread = unreadCount(useReviews((s) => s.threads));
@@ -103,7 +104,7 @@ export function CommentsButton() {
           t('comments.button', { count: open }) +
           (unread > 0 ? `, ${t('comments.unreadCount', { count: unread })}` : '')
         }
-        onClick={() => (isOpen ? closeComments() : openComments())}
+        onClick={() => (isOpen && !target.elementId ? closeComments() : openComments())}
       >
         <span className="comments-button__label">{t('comments.title')}</span>
         {unread > 0 ? (
