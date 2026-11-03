@@ -75,7 +75,7 @@ for (const width of [1280,390]) {
       await expect(editor).toHaveCount(0);await expect(bar).toHaveCount(1);
       const heading = page.locator(`[data-el="${section.id}"]`);await heading.dblclick();
       await bar.getByRole('button',{name:'Corsivo',exact:true}).click();
-      await bar.getByRole('button',{name:'Linea',exact:true}).click();
+      await bar.getByRole('switch',{name:'Linea',exact:true}).click();
       await expect(heading.locator('.has-rule')).toHaveCount(0);
       await screenshot(page,`${width}-section`);await bar.getByRole('button',{name:'Fatto',exact:true}).click();
       const photo = page.locator(`[data-el="${image.id}"]`);await photo.dblclick();

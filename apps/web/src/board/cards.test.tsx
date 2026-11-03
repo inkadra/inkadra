@@ -478,6 +478,11 @@ describe('board elements (#307, #318, #322)', () => {
     const section = { ...at, id: 'section_001', type: 'section', w: 640 } as const;
     expect(render({ ...section, title: 'Sequenza 1' } as Element)).toContain('Sequenza 1');
     expect(render({ ...section, title: '' } as Element)).toContain('is-empty');
+    expect(render({ ...section, title: 'Legacy' } as Element)).toContain('font-size:20px;font-weight:600');
+    const styled = render({ ...section, title:'New',size:'L',bold:false,italic:true,align:'right',color:'teal',line:false } as Element);
+    expect(styled).toContain('font-size:34px;font-weight:400;font-style:italic;text-align:right');
+    expect(styled).toContain('var(--ink-tag-teal)');
+    expect(styled).not.toContain('has-rule');
   });
 });
 
