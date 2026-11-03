@@ -199,10 +199,12 @@
   display: grid;
   place-items: center;
   background: color-mix(in srgb, var(--ink-bg-rail) 80%, transparent);
-  color: var(--ink-text-primary);
+  color: var(--ink-status-danger);
 }
 
 .canvas__resize-handles {
+  /* Intersection of the 45-degree corner diagonal with the card's round outline. */
+  --handle-inset: calc(var(--ink-radius-md) * 0.293);
   position: absolute;
   pointer-events: none;
   z-index: 6;
@@ -218,29 +220,29 @@
 .card__handle::after {
   content: "";
   position: absolute;
-  inset: calc(8px / var(--zoom, 1));
-  border-radius: calc(2px / var(--zoom, 1));
-  background: #ffffff;
+  inset: calc(6px / var(--zoom, 1));
+  border-radius: 50%;
+  background: var(--ink-surface-1);
   border: calc(1px / var(--zoom, 1)) solid var(--ink-accent-primary);
 }
 .card__handle--nw {
-  left: 0;
-  top: 0;
+  left: var(--handle-inset);
+  top: var(--handle-inset);
   cursor: nwse-resize;
 }
 .card__handle--ne {
-  left: 100%;
-  top: 0;
+  left: calc(100% - var(--handle-inset));
+  top: var(--handle-inset);
   cursor: nesw-resize;
 }
 .card__handle--sw {
-  left: 0;
-  top: 100%;
+  left: var(--handle-inset);
+  top: calc(100% - var(--handle-inset));
   cursor: nesw-resize;
 }
 .card__handle--se {
-  left: 100%;
-  top: 100%;
+  left: calc(100% - var(--handle-inset));
+  top: calc(100% - var(--handle-inset));
   cursor: nwse-resize;
 }
 
@@ -831,8 +833,8 @@ button.fcard__audio-play:focus-visible {
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 5px;
-  font-size: 12px;
+  gap: 8px;
+  font-size: inherit;
 }
 .card__todo-list li {
   display: flex;
@@ -1337,6 +1339,7 @@ body:has(.colorpicker) .card-reactions {
  */
 .mcard__explore {
   position: absolute;
+  z-index: 2;
   left: 8px;
   top: 8px;
   padding: 3px 9px;
@@ -2796,6 +2799,8 @@ button.crumb--editable:focus-visible {
   box-shadow: none;
 }
 .viewer__stage {
+  position: relative;
+  overflow: hidden;
   container-type: size;
   min-height: 0;
   flex: 1;
@@ -4100,11 +4105,6 @@ button.card__play {
     box-shadow: var(--ink-float-shadow);
     pointer-events: none;
   }
-  .canvas--moving :is(.toolbar, .minimap, .zoom, .unsorted__toggle)::before {
-    background: var(--ink-surface-float);
-    -webkit-backdrop-filter: none;
-    backdrop-filter: none;
-  }
   .canvas .zoom {
     height: 36px;
     padding: 0 4px;
@@ -4485,7 +4485,7 @@ button.card__play {
   justify-content: space-between;
   padding: 8px 16px;
 }
-.map-dialog > .mcard__live {
+.map-dialog__map {
   position: relative;
   flex: 1;
   min-height: 0;
@@ -4496,4 +4496,61 @@ button.card__play {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.mcard__layer {
+  left: auto;
+  right: 8px;
+}
+.mcard__static {
+  pointer-events: none;
+}
+.mcard__satellite-credit ~ .mcard__credit {
+  display: none;
+}
+
+.viewer__image-view {
+  position: absolute;
+  inset: 0 0 var(--viewer-thumbs-h, 0px);
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  touch-action: none;
+}
+.viewer__image-plane {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  max-width: 100%;
+  max-height: 100%;
+  min-height: 0;
+}
+.viewer__image-plane .viewer__media {
+  max-height: calc(100cqh - 48px - var(--viewer-thumbs-h, 0px));
+  max-width: 100%;
+}
+.viewer__image-tools {
+  position: absolute;
+  bottom: 12px;
+  display: flex;
+  gap: 8px;
+  border: 0;
+  padding: 0;
+  margin: 0;
+}
+
+.ctxbar__btn.is-danger {
+  color: var(--ink-status-danger);
+}
+
+/* The tray scrolls instead of squashing its cards into strips; pictures show whole. */
+.unsorted__panel > .card {
+  flex-shrink: 0;
+}
+.unsorted__panel .card--image .card__media {
+  flex: none;
+  height: 140px;
+}
+.unsorted__panel .card--image .card__media img {
+  object-fit: contain;
 }

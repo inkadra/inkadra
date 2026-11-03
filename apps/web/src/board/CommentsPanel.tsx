@@ -81,7 +81,8 @@ export function CommentsButton() {
   const { t } = useTranslation();
   const boardId = useReviews((s) => s.boardId);
   const counts = useReviews((s) => s.counts);
-  const isOpen = useReviews((s) => s.target !== null);
+  const target = useReviews((s) => s.target);
+  const isOpen = target !== null;
   const preview = useReviews((s) => s.preview);
   const canvas = useReviews((s) => s.canvas);
   const unread = unreadCount(useReviews((s) => s.threads));
@@ -103,7 +104,7 @@ export function CommentsButton() {
           t('comments.button', { count: open }) +
           (unread > 0 ? `, ${t('comments.unreadCount', { count: unread })}` : '')
         }
-        onClick={() => (isOpen ? closeComments() : openComments())}
+        onClick={() => (isOpen && !target.elementId ? closeComments() : openComments())}
       >
         <span className="comments-button__label">{t('comments.title')}</span>
         {unread > 0 ? (
@@ -360,12 +361,10 @@ function CommentsPanel() {
         <h2 id="comments-panel-title">{t('comments.title')}</h2>
         <IconButton icon="close" label={t('comments.close')} onClick={closeComments} />
       </header>
-      <div className="comments-panel__body">
+      <div className="comments-panel__body" data-scroll>
         {elementId ? (
-          <div className="review-row review-row--between">
-            <Button variant="ghost" onClick={() => openComments()}>
-              {t('comments.allThreads')}
-            </Button>
+          // Every thread of the board is one click away on the Comments button (QA 0.8).
+          <div className="review-row">
             <button
               type="button"
               className="review-link"

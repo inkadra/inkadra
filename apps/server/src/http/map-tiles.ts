@@ -1,4 +1,4 @@
-import { API_PREFIX, MapTileParams } from '@inkadra/shared';
+import { API_PREFIX, MapTileParams, MapTileQuery } from '@inkadra/shared';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import type { Auth } from '../auth.ts';
 import type { Config } from '../config.ts';
@@ -27,13 +27,16 @@ export function createTileServer(config: Config) {
   return async function serveTile(req: FastifyRequest, reply: FastifyReply, key: string) {
     if (!config.MAPS) throw new HttpError('not_found', 'Maps are off on this server.');
     const { z, x, y } = MapTileParams.parse(req.params);
+    const { layer } = MapTileQuery.parse(req.query);
+    const tileUrl = layer === 'satellite' ? config.MAP_SATELLITE_TILE_URL : config.MAP_TILE_URL;
+    if (!tileUrl) throw new HttpError('not_found', 'Tile source not configured.');
     if (!limiter.take(key)) {
       reply.header('retry-after', limiter.retryAfterSeconds(key));
       throw new HttpError('rate_limited', 'Too many map tiles: wait a minute.');
     }
     let body: Buffer;
     try {
-      body = await fetchTile({ tileUrl: config.MAP_TILE_URL, userAgent }, z, x, y, MAX_QUEUE_MS);
+      body = await fetchTile({ tileUrl, userAgent }, z, x, y, MAX_QUEUE_MS);
     } catch (err) {
       if (err instanceof TilesBusy) {
         reply.header('retry-after', '1');

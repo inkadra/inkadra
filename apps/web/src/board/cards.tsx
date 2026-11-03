@@ -8,7 +8,7 @@ import {
 } from '@inkadra/canvas-core';
 import { CARD_COLORS, type ContentCounts, contentCounts, type Element } from '@inkadra/doc-schema';
 import type { Person, ProjectMember } from '@inkadra/shared';
-import { Checkbox, fadeOutCopy, Icon, ProjectGlyph } from '@inkadra/ui';
+import { Checkbox, fadeOutCopy, Icon, ProjectGlyph, tokens } from '@inkadra/ui';
 import type { TFunction } from 'i18next';
 import {
   type CSSProperties,
@@ -713,7 +713,7 @@ function TodoCard({
   }
 
   return (
-    <div className="card__pad card__todo">
+    <div className="card__pad card__todo" style={{ fontSize: tokens.type.noteBody[0] }}>
       <div className="card__todo-head">
         {editing ? (
           <input

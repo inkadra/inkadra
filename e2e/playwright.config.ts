@@ -90,6 +90,7 @@ export default defineConfig({
         DATA_DIR: process.env.E2E_DATA_DIR ?? join(tmpdir(), 'inkadra-e2e'),
         INKADRA_VERSION: '0.1.0-e2e',
         MAP_TILE_URL: tileUrl,
+        MAP_SATELLITE_TILE_URL: `http://127.0.0.1:${tilePort}/satellite/{z}/{x}/{y}.png`,
         MAP_GEOCODER_URL: process.env.E2E_GEOCODER_URL ?? `http://127.0.0.1:${tilePort}/geocode`,
         LOG_LEVEL: 'warn',
       },

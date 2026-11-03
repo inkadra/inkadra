@@ -191,3 +191,6 @@ export const MapSearchResults = z
   .object({ items: z.array(MapSearchPlace).max(5) })
   .openapi('MapSearchResults');
 export type MapSearchResults = z.infer<typeof MapSearchResults>;
+
+/** Optional source of a proxied tile; older clients keep the standard map. */
+export const MapTileQuery = z.object({ layer: z.enum(['standard', 'satellite']).optional() });

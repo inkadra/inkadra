@@ -71,6 +71,10 @@ export const Instance = z
         attribution: z.string().max(200).openapi({
           description: 'Credit of the map data to show on every map picture.',
         }),
+        satelliteAttribution: z.string().max(200).optional().openapi({
+          description:
+            'Credit of the optional satellite source; absent when no source is configured.',
+        }),
         geocoding: z.boolean().openapi({
           description: 'Addresses can be looked up (MAP_GEOCODER_URL); off by default.',
         }),
