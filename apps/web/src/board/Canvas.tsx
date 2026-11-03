@@ -725,7 +725,7 @@ export function Canvas({
       noteEditor.current = null;
       if (!id) {
         pendingText.current = null;
-        if (previous) restoreEditingFocus(rootRef.current, previous);
+        if (previous) restoreEditingFocus(rootRef.current);
       }
       // A note left empty disappears, as on paper. Not an undo step of its own.
       const body = previous ? store.map(previous)?.get('body') : null;

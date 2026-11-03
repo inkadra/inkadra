@@ -5,13 +5,10 @@ export function isContextualFocus(target: EventTarget | null): boolean {
 }
 
 /** Never take focus back from Search, comments, or another field outside the removed editor. */
-export function restoreEditingFocus(canvas: HTMLElement | null, previous: string): void {
+export function restoreEditingFocus(canvas: HTMLElement | null): void {
   requestAnimationFrame(() => {
-    const active = document.activeElement;
-    if (
-      active === document.body ||
-      (active instanceof HTMLElement && active.closest(`[data-el="${CSS.escape(previous)}"]`))
-    )
-      canvas?.focus({ preventScroll: true });
+    // Removing a focused editor returns focus to body. Any surviving control owns its focus,
+    // including buttons in the same card; do not infer ownership just from the old card ID.
+    if (document.activeElement === document.body) canvas?.focus({ preventScroll: true });
   });
 }

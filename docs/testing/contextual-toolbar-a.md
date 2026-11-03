@@ -109,7 +109,8 @@ animations; the existing motion rules respect reduced motion.
    the removed editor. Blur to contextual controls/menus keeps edit mode alive. The browser
    regression failed when focusing the ellipsis; it now checks Tab to Done, native
    Enter/Space activation instead of canvas shortcuts, and Search focus while typing N
-   without creating a board note. Read-only schema checks preserve the sync handshake.
+   without creating a board note. Two focused unit tests also cover surviving controls in the
+   same card and restoring focus after the editor disappears. Read-only schema checks preserve the sync handshake.
 5. **Section weight:** omitted bold remains legacy 600 and B inactive; the first press
    makes it explicit 700. Explicit false is 400. PDF embedding, browser font loading,
    measurement and PNG rendering now support the real 700 font. Both the toggle and export
@@ -122,7 +123,7 @@ animations; the existing motion rules respect reduced motion.
 
 Review validation ran only on the workstation, using a separate `inkadra_review` database
 for server integration tests and the existing disposable E2E database for browser tests.
-The focused checks pass: 16 schema-contract tests, 78 web tests, 11 restore/drawing server
+The focused checks pass: 16 schema-contract tests, 80 web tests, 11 restore/drawing server
 tests and 17 real-WebSocket collaboration tests. Workspace typecheck and production build
 pass. Browser evidence includes `review-schema-{1280,390}-{dark,light}.png`; actual mobile
 keyboards are still outside the Chromium viewport verification.
