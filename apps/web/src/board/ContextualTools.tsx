@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-import { insertTableColumn, insertTableRow, removeTableColumn, removeTableRow, updateElement } from '@inkadra/canvas-core';
+import { GRID, insertTableColumn, insertTableRow, removeTableColumn, removeTableRow, updateElement } from '@inkadra/canvas-core';
 import type { Element } from '@inkadra/doc-schema';
 import { Icon, type IconName } from '@inkadra/ui';
 import type { Editor } from '@tiptap/react';
@@ -63,10 +63,10 @@ export function ContextualTools({ element: el, editor }: { element: Element; edi
   if (el.type === 'note' && editor) return <fieldset className="contextual-note" disabled={noSelection}>
     <ToolPopover label={t('board.contextual.typography')}>
       <div className="contextual-row">{option(t('board.contextual.text'),() => selectedBlocks(editor).setParagraph().run(),editor.isActive('paragraph'))}{([1,2,3] as const).map(level => option(`H${level}`,() => selectedBlocks(editor).toggleHeading({level}).run(),editor.isActive('heading',{level})))}</div>
-      {option(t('board.format.list'),() => selectedBlocks(editor).toggleBulletList().run(),editor.isActive('bulletList'))}
-      {option(t('board.contextual.orderedList'),() => selectedBlocks(editor).toggleOrderedList().run(),editor.isActive('orderedList'))}
-      {option(t('board.contextual.taskList'),() => selectedBlocks(editor).toggleList('taskList','taskItem').run(),editor.isActive('taskList'))}
-      {(['left','center','right'] as const).map(textAlign => option(t(`board.align.${textAlign}`),() => selectedBlocks(editor).updateAttributes('paragraph',{textAlign}).updateAttributes('heading',{textAlign}).run()))}
+      {option(t('board.format.list'),() => editor.chain().focus().toggleBulletList().run(),editor.isActive('bulletList'))}
+      {option(t('board.contextual.orderedList'),() => editor.chain().focus().toggleOrderedList().run(),editor.isActive('orderedList'))}
+      {option(t('board.contextual.taskList'),() => editor.chain().focus().toggleList('taskList','taskItem').run(),editor.isActive('taskList'))}
+      {(['left','center','right'] as const).map(textAlign => option(t(`board.align.${textAlign}`),() => editor.chain().focus().updateAttributes('paragraph',{textAlign}).updateAttributes('heading',{textAlign}).run()))}
     </ToolPopover>
     <BarButton icon="bold" label={t('board.format.bold')} active={editor.isActive('bold')} onClick={() => editor.chain().focus().toggleBold().run()} />
     <BarButton icon="italic" label={t('board.format.italic')} active={editor.isActive('italic')} onClick={() => editor.chain().focus().toggleItalic().run()} />
@@ -76,14 +76,14 @@ export function ContextualTools({ element: el, editor }: { element: Element; edi
     <ToolPopover label={t('board.contextual.ink')} icon="color"><div>{t('board.contextual.textColor')}</div>{palette(editor.getAttributes('noteInk').color,c => editor.chain().focus().setMark('noteInk',{color:c ?? null}).run())}<div>{t('board.contextual.highlight')}</div>{palette(editor.getAttributes('noteInk').highlight,c => editor.chain().focus().setMark('noteInk',{highlight:c ?? null}).run(),true)}{option(t('board.contextual.clear'),() => selectedBlocks(editor).unsetAllMarks().clearNodes().run())}</ToolPopover>
   </fieldset>;
   if (el.type === 'section') return <>
-    <ToolPopover label={t('board.contextual.typography')}><div className="contextual-row">{(['s','m','l'] as const).map(size => option(size.toUpperCase(),() => patch({size}),el.size === size))}</div>{(['left','center','right'] as const).map(align => option(t(`board.align.${align}`),() => patch({align}),el.align === align))}</ToolPopover>
+    <ToolPopover label={t('board.contextual.typography')}><div className="contextual-row">{(['S','M','L'] as const).map(size => option(size.toUpperCase(),() => patch({size}),el.size === size))}</div>{(['left','center','right'] as const).map(align => option(t(`board.align.${align}`),() => patch({align}),el.align === align))}</ToolPopover>
     <BarButton icon="bold" label={t('board.format.bold')} active={el.bold ?? true} onClick={() => patch({bold: !(el.bold ?? true)})} />
     <BarButton icon="italic" label={t('board.format.italic')} active={el.italic ?? false} onClick={() => patch({italic: !el.italic})} />
     <ToolPopover label={t('board.contextual.textColor')} icon="color">{palette(el.color,color => patch({color}))}</ToolPopover>
     <button type="button" role="switch" aria-checked={el.line !== false} className="ctxbar__btn ctxbar__done" onClick={() => patch({line: el.line === false})}>{t('board.contextual.line')}</button>
   </>;
   if (el.type === 'image') return <fieldset className="contextual-note" disabled={!asset || asset === 'missing' || asset.status !== 'ready'}>
-    <BarButton icon="mosaic" label={t('board.contextual.gridFit')} onClick={() => patch({w: Math.max(20,Math.round(el.w/20)*20),x: Math.round(el.x/20)*20,y:Math.round(el.y/20)*20})} />
+    <BarButton icon="mosaic" label={t('board.contextual.gridFit')} onClick={() => patch({w: Math.max(GRID,Math.round(el.w/GRID)*GRID),x: Math.round(el.x/GRID)*GRID,y:Math.round(el.y/GRID)*GRID})} />
     <BarButton icon="crop" label={t('board.image.cropRotate')} onClick={() => setCropping?.(el.id)} />
     <BarButton icon="rotateRight" label={t('board.image.rotateRight')} onClick={() => patch({rotation: normalizeRotation((el.rotation ?? 0)+90)})} />
     <BarButton icon="pen" label={t('board.contextual.draw')} onClick={() => { window.dispatchEvent(new CustomEvent('inkadra:image-draw',{detail:el.id})); }} />

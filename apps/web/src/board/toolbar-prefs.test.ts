@@ -20,6 +20,10 @@ describe('toolbar preferences', () => {
       'later-tool',
     ]);
     expect(barTools(toggleBarTool(hidden, 'color'))).toEqual(DEFAULT_BAR);
-    expect(BAR_TOOLS).toHaveLength(9);
+    expect(BAR_TOOLS).toHaveLength(14);
   });
+});
+
+it('includes every approved dock addition in the configurable defaults', () => {
+  for (const tool of ['section','table','voice','map','plan']) expect(DEFAULT_BAR).toContain(tool);
 });

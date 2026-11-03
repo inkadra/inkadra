@@ -4515,3 +4515,5 @@ button.card__play {
 .contextual-note { border: 0; padding: 0; margin: 0; display: flex; align-items: center; gap: 1px; min-width: 0; }
 .contextual-note:disabled { opacity: .5; }
 .ctxbar > .menu__item { width: auto; white-space: nowrap; }
+
+.section-heading.has-rule::after { content: ''; display: block; height: 3px; background: linear-gradient(currentColor,currentColor) left center / 48px 3px no-repeat, linear-gradient(var(--ink-border-strong),var(--ink-border-strong)) center / 100% 1px no-repeat; }

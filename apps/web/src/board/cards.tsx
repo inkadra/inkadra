@@ -265,11 +265,11 @@ function CardBody({
 function SectionCard({ element, editing }: { element: Of<'section'>; editing: boolean }) {
   const { store, setEditing } = useBoard();
   const { t } = useTranslation();
-  const style = { fontSize: element.size ? {s:20,m:26,l:34}[element.size] : 20,
+  const style = { fontSize: element.size ? {S:20,M:26,L:34}[element.size] : 20,
     fontWeight: element.bold === undefined ? 600 : element.bold ? 700 : 400,
     fontStyle: element.italic ? 'italic' : 'normal', textAlign: element.align ?? 'left',
-    color: noteColor(element.color), borderBottom: element.line === false ? 'none' : undefined } as const;
-  return editing ? (
+    color: noteColor(element.color), borderBottom: element.line === false || element.size || element.bold !== undefined ? 'none' : undefined } as const;
+  return <div className={element.line !== false && (element.size || element.bold !== undefined) ? 'section-heading has-rule' : 'section-heading'} style={{color:noteColor(element.color)}}>{editing ? (
     <input
       className="card__inline-input section__title"
       style={style}
@@ -283,7 +283,7 @@ function SectionCard({ element, editing }: { element: Of<'section'>; editing: bo
         updateElement(store.doc, element.id, { title: e.target.value.trim() }, LOCAL);
 
       }}
-      onKeyDown={blurOnEnter}
+      onKeyDown={e => { if (e.key === 'Enter' || e.key === 'Escape') { e.preventDefault(); setEditing(null); } }}
       maxLength={200}
       aria-label={t('board.section.title')}
     />
@@ -291,7 +291,7 @@ function SectionCard({ element, editing }: { element: Of<'section'>; editing: bo
     <h2 style={style} className={`section__title${element.title ? '' : ' is-empty'}`}>
       {element.title || t('board.section.placeholder')}
     </h2>
-  );
+  )}</div>;
 }
 
 /** Compact face of a character: portrait, name, role; the rest is in its side sheet. */

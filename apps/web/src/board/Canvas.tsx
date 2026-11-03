@@ -1,4 +1,3 @@
-import { getCachedAsset } from './assets.ts';
 import {
   type ArrangeItem,
   type ArrowElement,
@@ -1033,7 +1032,7 @@ export function Canvas({
           created = createElement(doc, 'column', pos, { title: '' }, opts);
           break;
         case 'section':
-          created = createElement(doc, 'section', pos, { title: '', size: 'm', bold: true }, opts);
+          created = createElement(doc, 'section', pos, { title: '', size: 'M', bold: true }, opts);
           break;
         case 'table':
           created = createElement(doc, 'table', pos, { ...newTable(3, 3), header: true }, opts);
@@ -1713,7 +1712,7 @@ export function Canvas({
     if (!targetId) {
       setStoryPanel(null);
       setFramePanel(null);
-      if (editing) setEditing(null);
+      if (editing) { setEditing(null); return; }
       if (cropping) setCropping(null);
       const base = e.shiftKey ? new Set(selection) : new Set<string>();
       if (!e.shiftKey) setSelection(EMPTY_SET);

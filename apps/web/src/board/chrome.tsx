@@ -195,7 +195,7 @@ export function Toolbar({
                 dragType={tl.type === 'storyboard' ? undefined : tl.type}
               />
             ))}
-            {group === 'create' && shown.includes('voice') && onVoiceNote && <ToolButton icon="mic" kind="voice" label={t('board.voiceNote.label')} onClick={onVoiceNote} />}
+            {group === 'create' && shown.includes('voice') && onVoiceNote && <ToolButton keyHint="" icon="mic" kind="voice" label={t('board.voiceNote.label')} onClick={onVoiceNote} />}
           </fieldset>
         ))}
       </div>
@@ -502,7 +502,7 @@ export function ContextBar({
     >
       {editing && !locked ? (
         <>
-          <ContextualTools element={elements[0]!} editor={editor} />
+          <ContextualTools key={elements[0]!.id} element={elements[0]!} editor={editor} />
           {elements[0]?.type === 'arrow' && extra}
           <BarButton icon="more" label={t('board.menu.more')} onClick={() => {
             const rect = bar.current!;
