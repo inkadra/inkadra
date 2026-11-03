@@ -98,24 +98,6 @@ export const ImageCrop = z
   });
 export type ImageCrop = z.infer<typeof ImageCrop>;
 
-export const ImageElement = Base.extend({
-  type: z.literal('image'),
-  source: VideoFrameSource.optional(),
-  assetId: z.string(),
-  caption: z.string().max(2000).optional(),
-  crop: ImageCrop.optional().describe(
-    'Non-destructive crop rectangle in normalized [0, 1] coordinates of the rotated image (since version 8).',
-  ),
-  rotation: z
-    .number()
-    .finite()
-    .min(-360)
-    .max(360)
-    .optional()
-    .describe(
-      'Clockwise rotation in degrees (90° steps or free angle; omitted or 0 = unrotated, since version 8).',
-    ),
-});
 export const LinkElement = Base.extend({
   type: z.literal('link'),
   // Web addresses only: the card renders it as a link.
@@ -123,9 +105,23 @@ export const LinkElement = Base.extend({
   title: z.string().max(500).optional(),
   description: z.string().max(2000).optional(),
   imageAssetId: z.string().optional(),
+  showInfo: z
+    .boolean()
+    .optional()
+    .describe('Omitted = true. False shows only the URL; metadata is kept (since version 16).'),
+  showPreview: z
+    .boolean()
+    .optional()
+    .describe(
+      'Embedded video preview; omitted = true. Independent of showInfo (since version 16).',
+    ),
 });
 export const FileElement = Base.extend({
   type: z.literal('file'),
+  showPreview: z
+    .boolean()
+    .optional()
+    .describe('Video preview; omitted = true. Other file kinds ignore it (since version 16).'),
   assetId: z.string(),
   caption: z.string().max(2000).optional(),
 });
@@ -180,9 +176,23 @@ export const BoardLinkElement = Base.extend({
  * width only (since version 10). With `moveCards`, dragging it also moves the cards placed under
  * it (see sectionMembers in canvas-core).
  */
+/** Section text accents from the approved toolbar; omission is the neutral choice. */
+export const SECTION_COLORS = [...CARD_COLORS, 'teal', 'yellow', 'red', 'pink'] as const;
+export const SectionColor = z.enum(SECTION_COLORS);
+export type SectionColor = z.infer<typeof SectionColor>;
+
 export const SectionElement = Base.extend({
   type: z.literal('section'),
   title: z.string().max(200),
+  size: z
+    .enum(['S', 'M', 'L'])
+    .optional()
+    .describe('20, 26 or 34 world units. Omitted = legacy 20 (since version 16).'),
+  bold: z.boolean().optional().describe('True = 700, false = 400; omitted = legacy 600.'),
+  italic: z.boolean().optional().describe('Omitted = false.'),
+  align: z.enum(['left', 'center', 'right']).optional().describe('Omitted = left.'),
+  color: SectionColor.optional().describe('Text and leading rule accent; omitted = primary text.'),
+  line: z.boolean().optional().describe('False hides the rule; omitted = true.'),
   moveCards: z
     .boolean()
     .optional()
@@ -342,6 +352,32 @@ const FrameShapes = z
       return parsed.success ? [parsed.data] : [];
     }),
   );
+
+export const ImageElement = Base.extend({
+  type: z.literal('image'),
+  source: VideoFrameSource.optional(),
+  strokes: z
+    .array(Stroke)
+    .max(MAX_STROKES)
+    .optional()
+    .describe(
+      'Drawing over the source image, before crop and rotation, in STROKE_GRID units. Omitted = empty (since version 16).',
+    ),
+  assetId: z.string(),
+  caption: z.string().max(2000).optional(),
+  crop: ImageCrop.optional().describe(
+    'Non-destructive crop rectangle in normalized [0, 1] coordinates of the rotated image (since version 8).',
+  ),
+  rotation: z
+    .number()
+    .finite()
+    .min(-360)
+    .max(360)
+    .optional()
+    .describe(
+      'Clockwise rotation in degrees (90° steps or free angle; omitted or 0 = unrotated, since version 8).',
+    ),
+});
 
 /** A storyboard frame: a picture (drawn or uploaded) with the data of the shot. */
 export const FrameElement = Base.extend({

@@ -50,9 +50,17 @@ const COMMON_GUEST_FIELDS = [
  */
 export const GUEST_ELEMENT_FIELDS = {
   note: [...COMMON_GUEST_FIELDS, 'color'],
-  image: [...COMMON_GUEST_FIELDS, 'assetId', 'caption', 'crop', 'rotation'],
-  link: [...COMMON_GUEST_FIELDS, 'url', 'title', 'description', 'imageAssetId'],
-  file: [...COMMON_GUEST_FIELDS, 'assetId', 'caption'],
+  image: [...COMMON_GUEST_FIELDS, 'assetId', 'caption', 'crop', 'rotation', 'strokes'],
+  link: [
+    ...COMMON_GUEST_FIELDS,
+    'url',
+    'title',
+    'description',
+    'imageAssetId',
+    'showInfo',
+    'showPreview',
+  ],
+  file: [...COMMON_GUEST_FIELDS, 'assetId', 'caption', 'showPreview'],
   todo: [...COMMON_GUEST_FIELDS, 'title', 'items', 'list', 'sceneId'],
   color: [...COMMON_GUEST_FIELDS, 'hex', 'label'],
   column: [...COMMON_GUEST_FIELDS, 'title', 'collapsed', 'color'],
@@ -98,7 +106,7 @@ export const GUEST_ELEMENT_FIELDS = {
     'scenes',
   ],
   location: [...COMMON_GUEST_FIELDS, 'name', 'setting', 'assetId', 'light', 'scenes'],
-  section: [...COMMON_GUEST_FIELDS, 'title'],
+  section: [...COMMON_GUEST_FIELDS, 'title', 'size', 'bold', 'italic', 'align', 'color', 'line'],
   table: [...COMMON_GUEST_FIELDS, 'columns', 'rows', 'header', 'color'],
   map: [...COMMON_GUEST_FIELDS, 'name', 'address', 'url', 'lat', 'lon', 'zoom', 'imageAssetId'],
   plan: [

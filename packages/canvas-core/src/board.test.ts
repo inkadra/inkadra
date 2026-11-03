@@ -1,5 +1,12 @@
 // SPDX-License-Identifier: MPL-2.0
-import { createBoardDoc, roots, UNSORTED, validateBoardDoc } from '@inkadra/doc-schema';
+import {
+  addElement,
+  createBoardDoc,
+  Element,
+  roots,
+  UNSORTED,
+  validateBoardDoc,
+} from '@inkadra/doc-schema';
 import { describe, expect, it } from 'vitest';
 import * as Y from 'yjs';
 import {
@@ -196,4 +203,57 @@ describe('section headings', () => {
       ids([aside, locked]).some((id) => sectionMembers(head, canvas, rectOf).includes(id)),
     ).toBe(false);
   });
+});
+
+it('keeps contextual appearance and image strokes in duplicate and clipboard copies', () => {
+  const doc = setup();
+  const fields = [
+    {
+      type: 'section',
+      title: 'Act II',
+      size: 'L',
+      bold: false,
+      italic: true,
+      align: 'right',
+      color: 'teal',
+      line: false,
+    },
+    { type: 'link', url: 'https://example.com', showInfo: false, showPreview: true },
+    { type: 'file', assetId: 'video', showPreview: false },
+    {
+      type: 'image',
+      assetId: 'photo',
+      strokes: [
+        {
+          id: 'strokeAAAAAA',
+          tool: 'marker',
+          color: '#123456',
+          width: 20,
+          points: [0, 0, 100, 100],
+        },
+      ],
+    },
+  ] as const;
+  for (const { type, ...data } of fields) {
+    const original = Element.parse({
+      ...data,
+      type,
+      id: 'contextAAAAA',
+      x: 0,
+      y: 0,
+      w: 240,
+      z: 'a0',
+      parent: null,
+      createdBy: null,
+      createdAt: 0,
+    });
+    addElement(doc, original);
+    const [duplicate] = duplicateElements(doc, [original.id], { x: 20, y: 20 }, opts);
+    expect(listElements(doc).find((card) => card.id === duplicate)).toMatchObject(data);
+    const target = setup();
+    const clipboard = JSON.parse(JSON.stringify(copyElements(doc, [original.id])));
+    const [pasted] = pasteElements(target, clipboard, { x: 0, y: 0 }, opts);
+    expect(listElements(target).find((card) => card.id === pasted)).toMatchObject(data);
+    expect(validateBoardDoc(target)).toEqual([]);
+  }
 });
