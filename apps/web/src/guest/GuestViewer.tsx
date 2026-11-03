@@ -87,6 +87,7 @@ export function GuestViewer({ element, onClose }: { element: GuestElement; onClo
           </>
         ) : src && asset ? (
           <CroppedImage
+            strokes={element.type === 'image' ? element.strokes : undefined}
             className="guest-viewer__media"
             poster={src}
             moving={movingVariantUrl(asset, wide)}

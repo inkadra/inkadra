@@ -1,3 +1,4 @@
+import { getCachedAsset } from './assets.ts';
 import {
   type ArrangeItem,
   type ArrowElement,
@@ -2081,7 +2082,8 @@ export function Canvas({
         if (!readOnly && !el.locked) setEditing(el.id);
         return;
       }
-      openElement(el);
+      if (!readOnly && !el.locked && (el.type === 'note' || el.type === 'image')) setEditing(el.id);
+      else openElement(el);
     }
   }
 
@@ -2285,6 +2287,7 @@ export function Canvas({
         break;
       case 'edit':
         if (cropping) setCropping(null);
+        else if (single && !readOnly && !single.locked && (single.type === 'image' || single.type === 'note')) setEditing(single.id);
         else if (single) openElement(single);
         break;
       case 'rename':
@@ -2802,6 +2805,10 @@ export function Canvas({
             },
           ]
         : []),
+      ...(single && !readOnly && !single.locked && (single.type === 'link' || (single.type === 'file' && (() => { const asset = getCachedAsset(single.assetId); return asset && asset !== 'missing' && asset.kind === 'video'; })()))
+        ? [{ label: t('board.contextual.appearance'), action: () => setEditing(single.id) }]
+        : []),
+      ...(editing && single?.type === 'note' && noteEditor.current ? [{ label: t('board.contextual.clear'), disabled: noteEditor.current.state.selection.empty, action: () => noteEditor.current?.chain().focus().unsetAllMarks().clearNodes().run() }] : []),
       ...(single?.type === 'link' && !readOnly && !single.locked
         ? [
             {
@@ -3000,6 +3007,7 @@ export function Canvas({
     return menu.fromToolbar && !editing ? items.filter((item) => !('toolbar' in item && item.toolbar)) : items;
   }, [
     menu,
+    editing,
     selection,
     selectedEls,
     boards,

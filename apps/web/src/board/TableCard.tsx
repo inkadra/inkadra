@@ -8,7 +8,6 @@ import {
   setTableColumnWidth,
 } from '@inkadra/canvas-core';
 import type { Element } from '@inkadra/doc-schema';
-import { Button } from '@inkadra/ui';
 import {
   type ClipboardEvent,
   type KeyboardEvent,
@@ -271,30 +270,7 @@ export function TableCard({ element, editing }: { element: TableElement; editing
           ))}
         </tbody>
       </table>
-      {editing && !readOnly && (
-        <div className="tcard__add">
-          <Button
-            variant="ghost"
-            icon="plus"
-            onClick={() => {
-              if (insertTableRow(store.doc, element.id, undefined, LOCAL) !== null)
-                pending.current = { r: rows.length, c: 0 };
-            }}
-          >
-            {t('board.table.addRow')}
-          </Button>
-          <Button
-            variant="ghost"
-            icon="plus"
-            onClick={() => {
-              if (insertTableColumn(store.doc, element.id, undefined, LOCAL) !== null)
-                pending.current = { r: 0, c: columns.length };
-            }}
-          >
-            {t('board.table.addColumn')}
-          </Button>
-        </div>
-      )}
+
     </div>
   );
 }

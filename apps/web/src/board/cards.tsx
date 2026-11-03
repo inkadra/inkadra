@@ -29,6 +29,7 @@ import { pickVariant, useAsset } from './assets.ts';
 import { canRenameBoard, renameBoard } from './boards.ts';
 import { CardCaption } from './CardCaption.tsx';
 import { CardReview } from './CardReview.tsx';
+import { appendImageStroke } from './image-drawing.ts';
 import { noteColor } from './note-format.ts';
 import { CroppedImage } from './CroppedImage.tsx';
 import { copyHex, hexToRgb } from './colors.ts';
@@ -427,6 +428,14 @@ function ImageCard({
   const { t } = useTranslation();
   const asset = useAsset(element.assetId);
   const progress = useUploadProgress(element.assetId);
+  const board = useBoard();
+  const [drawing, setDrawing] = useState(false);
+  useEffect(() => {
+    const toggle = (event: Event) => { if ((event as CustomEvent).detail === element.id) setDrawing(value => !value); };
+    window.addEventListener('inkadra:image-draw',toggle);
+    return () => window.removeEventListener('inkadra:image-draw',toggle);
+  },[element.id]);
+  useEffect(() => { if (board.editing !== element.id) setDrawing(false); },[board.editing,element.id]);
   const ready = asset && asset !== 'missing' ? asset : null;
   const [hover, setHover] = useState(false);
   const dpr = typeof window === 'undefined' ? 1 : window.devicePixelRatio || 1;
@@ -465,6 +474,8 @@ function ImageCard({
             />
           ) : (
             <CroppedImage
+              strokes={element.strokes}
+              onStroke={drawing && board.editing === element.id && !board.readOnly && !element.locked ? points => { appendImageStroke(board.store.doc,element.id,points); } : undefined}
               poster={src}
               moving={moving}
               alt={element.caption ?? ready?.filename ?? ''}

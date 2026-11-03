@@ -48,9 +48,10 @@ function ReferenceImage({ element }: { element: MediaReference }) {
       </span>
     );
   }
-  if (element.type === 'image' && hasImageTransform(element)) {
+  if (element.type === 'image' && (hasImageTransform(element) || element.strokes?.length)) {
     return (
       <CroppedImage
+            strokes={element.type === 'image' ? element.strokes : undefined}
         poster={src}
         alt={label || asset.filename}
         width={asset.width}

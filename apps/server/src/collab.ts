@@ -21,6 +21,7 @@ import { board, boardDoc, personalToken, session, user } from './db/schema.ts';
 import { allowedOrigin, ORIGIN_HEADER, rawOrigin } from './request-origin.ts';
 import { writeBoardIndex } from './search/index-doc.ts';
 import { assignedItems, notifyAssignment, validateTaskUpdate } from './tasks.ts';
+import { prepareImageDrawings } from './image-drawing.ts';
 import { actorFromToken, isToken } from './tokens.ts';
 import { AUTO_VERSION_EVERY_MS, takeAutoVersion } from './versions.ts';
 
@@ -254,6 +255,7 @@ export function createCollabServer(deps: {
       if (row) Y.applyUpdate(document, row.state);
       const steps = migrateBoardDoc(document, boardId);
       if (steps.length > 0) log.info({ boardId, steps }, 'board document migrated');
+      prepareImageDrawings(document);
       assignments.set(document, assignedItems(document));
       return document;
     },

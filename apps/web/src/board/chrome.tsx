@@ -452,7 +452,11 @@ export function ContextBar({
 }) {
   const { t } = useTranslation();
   const bar = useRef<HTMLDivElement>(null);
-  const left = Math.max(8, box.x);
+  const editBox = useRef<Rect | null>(null);
+  if (!editing) editBox.current = null;
+  else if (!editBox.current) editBox.current = box;
+  const anchor = editBox.current ?? box;
+  const left = Math.max(8, anchor.x);
   // A selection near the right edge would push the bar off a narrow screen: keep it inside.
   // The bar is taller with touch targets, so it also clears the selection by its real height.
   useLayoutEffect(() => {
@@ -460,8 +464,9 @@ export function ContextBar({
     const room = (el?.offsetParent as HTMLElement | null)?.clientWidth;
     if (!el || !room) return;
     el.style.left = `${Math.max(8, Math.min(left, room - el.offsetWidth - 8))}px`;
-    const above = box.y - el.offsetHeight - 10;
-    el.style.top = `${above < 8 ? box.y + box.h + 8 : above}px`;
+    const above = anchor.y - el.offsetHeight - 10;
+    const top = above < 8 ? anchor.y + anchor.h + 8 : above;
+    el.style.top = `${Math.max(8,Math.min(top, (el.offsetParent as HTMLElement).clientHeight - el.offsetHeight - 8))}px`;
   });
   if (elements.length === 0 || (readOnly && !onComments)) return null;
   if (readOnly && onComments)
@@ -498,6 +503,7 @@ export function ContextBar({
       {editing && !locked ? (
         <>
           <ContextualTools element={elements[0]!} editor={editor} />
+          {elements[0]?.type === 'arrow' && extra}
           <BarButton icon="more" label={t('board.menu.more')} onClick={() => {
             const rect = bar.current!;
             onMore(rect.offsetLeft, rect.offsetTop + rect.offsetHeight + 6);

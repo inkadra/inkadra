@@ -738,8 +738,9 @@ export function MediaViewer({
                 </div>
               </div>
             ) : ready ? (
-              isTransformedImage && !showOriginal ? (
+              element.type === 'image' && (isTransformedImage || element.strokes?.length) && !showOriginal ? (
                 <CroppedImage
+            strokes={element.type === 'image' ? element.strokes : undefined}
                   className="viewer__media viewer__media--contain"
                   poster={pickVariant(ready, wide) || ready.url}
                   moving={movingVariantUrl(ready, wide)}

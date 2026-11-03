@@ -1010,7 +1010,8 @@
         "yellow": "Yellow",
         "red": "Red",
         "pink": "Pink"
-      }
+      },
+      "appearance": "Appearance"
     }
   },
   "tags": {

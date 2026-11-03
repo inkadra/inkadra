@@ -1010,7 +1010,8 @@
         "yellow": "Giallo",
         "red": "Rosso",
         "pink": "Rosa"
-      }
+      },
+      "appearance": "Aspetto"
     }
   },
   "tags": {
