@@ -112,13 +112,14 @@ for (const width of [1280, 390]) {
       ).toBeVisible();
       await screenshot(page, `${width}-note-typography`);
       if (width === 390) {
-        await page.setViewportSize({width,height:500});
-        const popup = page.getByRole('dialog',{name:'Dimensione, liste e allineamento'});
+        await page.setViewportSize({ width, height: 500 });
+        const popup = page.getByRole('dialog', { name: 'Dimensione, liste e allineamento' });
         await expect(popup).toBeVisible();
         const box = await popup.boundingBox();
-        expect(box!.y).toBeGreaterThanOrEqual(0); expect(box!.y+box!.height).toBeLessThanOrEqual(500);
-        await screenshot(page,`${width}-short-viewport`);
-        await page.setViewportSize({width,height:900});
+        expect(box!.y).toBeGreaterThanOrEqual(0);
+        expect(box!.y + box!.height).toBeLessThanOrEqual(500);
+        await screenshot(page, `${width}-short-viewport`);
+        await page.setViewportSize({ width, height: 900 });
       }
       await bar.getByRole('button', { name: 'Colore testo ed evidenziatore', exact: true }).click();
       await expect(page.locator('.contextual-popover')).toHaveCount(1);

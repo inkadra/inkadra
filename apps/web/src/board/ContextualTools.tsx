@@ -64,22 +64,26 @@ export function ToolPopover({
     if (!open) return;
     const viewport = window.visualViewport;
     const position = () => {
-      const popup = panel.current; const trigger = button.current?.getBoundingClientRect();
+      const popup = panel.current;
+      const trigger = button.current?.getBoundingClientRect();
       if (!popup || !trigger) return;
       const height = viewport?.height ?? window.innerHeight;
       const top = viewport?.offsetTop ?? 0;
-      const below = Math.max(0,top+height-trigger.bottom-14);
-      const above = Math.max(0,trigger.top-top-14);
-      const down = below >= Math.min(popup.scrollHeight,above);
-      popup.style.maxHeight = `${Math.min(height-16,Math.max(44,down ? below : above))}px`;
-      const preferred = down ? trigger.bottom+6 : trigger.top-popup.offsetHeight-6;
-      popup.style.top = `${Math.max(top+8,Math.min(preferred,top+height-popup.offsetHeight-8))}px`;
+      const below = Math.max(0, top + height - trigger.bottom - 14);
+      const above = Math.max(0, trigger.top - top - 14);
+      const down = below >= Math.min(popup.scrollHeight, above);
+      popup.style.maxHeight = `${Math.min(height - 16, Math.max(44, down ? below : above))}px`;
+      const preferred = down ? trigger.bottom + 6 : trigger.top - popup.offsetHeight - 6;
+      popup.style.top = `${Math.max(top + 8, Math.min(preferred, top + height - popup.offsetHeight - 8))}px`;
     };
     position();
-    viewport?.addEventListener('resize',position);
-    window.addEventListener('resize',position);
-    return () => { viewport?.removeEventListener('resize',position); window.removeEventListener('resize',position); };
-  },[open]);
+    viewport?.addEventListener('resize', position);
+    window.addEventListener('resize', position);
+    return () => {
+      viewport?.removeEventListener('resize', position);
+      window.removeEventListener('resize', position);
+    };
+  }, [open]);
   const rect = button.current?.getBoundingClientRect();
   return (
     <>
@@ -180,7 +184,13 @@ export function ContextualTools({
   if (readOnly || el.locked) return null;
   const noSelection = el.type === 'note' && (!editor || editor.state.selection.empty);
   const patch = (value: Record<string, unknown>) => updateElement(store.doc, el.id, value, LOCAL);
-  const option = (label: string, run: () => void, pressed?: boolean, disabled?: boolean, display?: string) => (
+  const option = (
+    label: string,
+    run: () => void,
+    pressed?: boolean,
+    disabled?: boolean,
+    display?: string,
+  ) => (
     <button
       key={label}
       type="button"
@@ -233,26 +243,58 @@ export function ContextualTools({
           </div>
           <div className="contextual-label">{t('board.contextual.lists')}</div>
           <div className="contextual-row">
-            {option(t('board.format.list'),() => editor.chain().focus().toggleBulletList().run(),editor.isActive('bulletList'),undefined,t('board.contextual.bulletsShort'))}
-            {option(t('board.contextual.orderedList'),() => editor.chain().focus().toggleOrderedList().run(),editor.isActive('orderedList'),undefined,t('board.contextual.orderedShort'))}
-            {option(t('board.contextual.taskList'),() => editor.chain().focus().toggleList('taskList','taskItem').run(),editor.isActive('taskList'),undefined,t('board.contextual.tasksShort'))}
+            {option(
+              t('board.format.list'),
+              () => editor.chain().focus().toggleBulletList().run(),
+              editor.isActive('bulletList'),
+              undefined,
+              t('board.contextual.bulletsShort'),
+            )}
+            {option(
+              t('board.contextual.orderedList'),
+              () => editor.chain().focus().toggleOrderedList().run(),
+              editor.isActive('orderedList'),
+              undefined,
+              t('board.contextual.orderedShort'),
+            )}
+            {option(
+              t('board.contextual.taskList'),
+              () => editor.chain().focus().toggleList('taskList', 'taskItem').run(),
+              editor.isActive('taskList'),
+              undefined,
+              t('board.contextual.tasksShort'),
+            )}
           </div>
           <div className="contextual-label">{t('board.contextual.alignment')}</div>
           <div className="contextual-row">
-            {(['left','center','right'] as const).map(textAlign => option(t(`board.align.${textAlign}`),() => editor.chain().focus().updateAttributes('paragraph',{textAlign}).updateAttributes('heading',{textAlign}).run(),undefined,undefined,t(`board.contextual.alignShort.${textAlign}`)))}
+            {(['left', 'center', 'right'] as const).map((textAlign) =>
+              option(
+                t(`board.align.${textAlign}`),
+                () =>
+                  editor
+                    .chain()
+                    .focus()
+                    .updateAttributes('paragraph', { textAlign })
+                    .updateAttributes('heading', { textAlign })
+                    .run(),
+                undefined,
+                undefined,
+                t(`board.contextual.alignShort.${textAlign}`),
+              ),
+            )}
           </div>
           <div className="contextual-mobile">
             <div className="contextual-row">
-            {option(
-              t('board.contextual.underline'),
-              () => editor.chain().focus().toggleUnderline().run(),
-              editor.isActive('underline'),
-            )}
-            {option(
-              t('board.contextual.strike'),
-              () => editor.chain().focus().toggleStrike().run(),
-              editor.isActive('strike'),
-            )}
+              {option(
+                t('board.contextual.underline'),
+                () => editor.chain().focus().toggleUnderline().run(),
+                editor.isActive('underline'),
+              )}
+              {option(
+                t('board.contextual.strike'),
+                () => editor.chain().focus().toggleStrike().run(),
+                editor.isActive('strike'),
+              )}
             </div>
             <input
               aria-label={t('board.contextual.link')}
@@ -261,15 +303,15 @@ export function ContextualTools({
               placeholder="https://"
             />
             <div className="contextual-row">
-            {option(
-              t('board.contextual.apply'),
-              () => editor.chain().focus().setLink({ href }).run(),
-              undefined,
-              !/^(https?:\/\/|mailto:)/i.test(href),
-            )}
-            {option(t('board.contextual.removeLink'), () =>
-              editor.chain().focus().unsetLink().run(),
-            )}
+              {option(
+                t('board.contextual.apply'),
+                () => editor.chain().focus().setLink({ href }).run(),
+                undefined,
+                !/^(https?:\/\/|mailto:)/i.test(href),
+              )}
+              {option(t('board.contextual.removeLink'), () =>
+                editor.chain().focus().unsetLink().run(),
+              )}
             </div>
             {option(t('board.contextual.clear'), () =>
               selectedBlocks(editor).unsetAllMarks().clearNodes().run(),

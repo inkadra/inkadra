@@ -516,6 +516,8 @@ export function Canvas({
     y: number;
     at: Point;
     fromToolbar?: boolean;
+    /** Keep editing actions available when focusing the menu blurs an inline title. */
+    fromEditing?: boolean;
     /** Row and column of the table cell the menu was opened on. */
     cell?: { r: number; c: number };
     /** The scene picker of a to-do list, opened from its "Scene" item. */
@@ -691,9 +693,29 @@ export function Canvas({
   /** Keys typed between creating a note and its editor taking focus. */
   const pendingText = useRef<string | null>(null);
 
+  /** True while the field being left is blurred, so its own `setEditing(null)` is ignored. */
+  const finishingEdit = useRef(false);
+
   const setEditing = useCallback(
     (id: string | null, keepEmpty = false) => {
+      if (finishingEdit.current) return;
       const previous = editingRef.current;
+      // A canvas click or "Done" unmounts inline fields before they blur: blur the focused field
+      // of the card being left first, so titles, names and captions commit what was typed.
+      if (previous && previous !== id) {
+        const active = document.activeElement;
+        if (
+          active instanceof HTMLElement &&
+          active.closest(`[data-el="${CSS.escape(previous)}"]`)
+        ) {
+          finishingEdit.current = true;
+          try {
+            active.blur();
+          } finally {
+            finishingEdit.current = false;
+          }
+        }
+      }
       editingRef.current = id;
       setEditingState(id);
       // One editor per note: its side sheet and the inline editor share the same document.
@@ -2821,7 +2843,7 @@ export function Canvas({
     };
     const items: MenuItem[] = [
       ...listItems,
-      ...(editing &&
+      ...(menu.fromEditing &&
       single &&
       !readOnly &&
       !single.locked &&
@@ -3060,7 +3082,7 @@ export function Canvas({
     ];
     // These flags mark actions actually rendered by ContextBar for the same selection.
     // Standalone right-click menus keep the complete permission-filtered action list.
-    return menu.fromToolbar && !editing && !appearance
+    return menu.fromToolbar && !menu.fromEditing
       ? items.filter((item) => !('toolbar' in item && item.toolbar))
       : items;
   }, [
@@ -3362,7 +3384,7 @@ export function Canvas({
               onDelete={removeSelection}
               onDuplicate={duplicate}
               onMore={(x, y) =>
-                setMenu({ x, y, at: screenToWorld(vp.current, { x, y }), fromToolbar: true })
+                setMenu({ x, y, at: screenToWorld(vp.current, { x, y }), fromToolbar: true, fromEditing: Boolean(editing || appearance) })
               }
               onColor={(color) => {
                 for (const el of selectedEls) {

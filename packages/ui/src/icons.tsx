@@ -320,7 +320,12 @@ const paths = {
       <path d="M3 3h10v18H3zM8 3v18M16 12h6" />
     </>
   ),
-  textColor: <><path d="M4 17L10 3l6 14M6 12h8M3 21h13"/><circle cx="20" cy="19" r="2"/></>,
+  textColor: (
+    <>
+      <path d="M4 17L10 3l6 14M6 12h8M3 21h13" />
+      <circle cx="20" cy="19" r="2" />
+    </>
+  ),
   grid: <path d="M4 9h16M4 15h16M9 4v16M15 4v16" />,
   eye: (
     <>
