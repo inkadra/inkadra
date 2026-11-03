@@ -159,12 +159,20 @@ that the server fetches on the person's behalf, through the same queue and cache
 | `MAP_TILE_URL`         | `https://tile.openstreetmap.org/{z}/{x}/{y}.png` | Tile server, with `{z}`, `{x}` and `{y}`. It may be on your network. No API key is needed for the default |
 | `MAP_TILE_ATTRIBUTION` | `© OpenStreetMap contributors`                   | Credit of the tiles, shown on every map                                                                   |
 | `MAP_GEOCODER_URL`     | empty                                            | A Nominatim-compatible `/search` address to look up typed addresses; empty leaves addresses unlooked      |
+| `MAP_SATELLITE_TILE_URL` | empty                                          | A second tile server, with `{z}`, `{x}` and `{y}`, for satellite views; empty hides the Map/Satellite switch |
+| `MAP_SATELLITE_TILE_ATTRIBUTION` | `Satellite`                            | Credit of the satellite tiles, shown while they are on screen                                             |
 
 The OpenStreetMap tile servers are run by volunteers: their
 [usage policy](https://operations.osmfoundation.org/policies/tiles/) allows a few maps added by
 hand, which is what Inkadra does (about twenty tiles a map, with the instance's address in the
 user agent), and exploring a map asks for a few dozen more. An instance that makes or explores
 many maps should use a tile provider or its own tile server.
+With `MAP_SATELLITE_TILE_URL` set, map cards and GPX files get a Map/Satellite switch, for the
+card picture and while exploring. Satellite tiles go through the same proxy, queue, cache and
+limits (`/api/v1/map-tiles/{z}/{x}/{y}?layer=satellite`, and the guest equivalent): the address
+and any key in it stay on the server, and browsers never contact the provider. The switch is
+per person and per view; it does not change the board. Use a provider whose licence and usage
+policy allow your deployment, and set the credit it requires.
 With a geocoder configured, typing at least three characters requests up to five address
 suggestions after a short pause. Queries go through Inkadra to that provider; no picture is
 created until a result is chosen. Leave the setting empty to keep address queries private and

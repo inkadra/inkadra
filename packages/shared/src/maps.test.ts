@@ -94,3 +94,10 @@ it('validates bounded address searches and rejects malformed suggestion coordina
   expect(MapSearchResults.safeParse({ items: [{ ...place, lat: null }] }).success).toBe(false);
   expect(MapSearchResults.safeParse({ items: Array(6).fill(place) }).success).toBe(false);
 });
+
+it('accepts only the two configured tile layers', async () => {
+  const { MapTileQuery } = await import('./maps.ts');
+  expect(MapTileQuery.parse({})).toEqual({});
+  expect(MapTileQuery.parse({ layer: 'satellite' }).layer).toBe('satellite');
+  expect(MapTileQuery.safeParse({ layer: 'https://example.com' }).success).toBe(false);
+});

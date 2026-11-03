@@ -784,6 +784,11 @@
                 "maxLength": 200,
                 "description": "Credit of the map data to show on every map picture."
               },
+              "satelliteAttribution": {
+                "type": "string",
+                "maxLength": 200,
+                "description": "Credit of the optional satellite source; absent when no source is configured."
+              },
               "geocoding": {
                 "type": "boolean",
                 "description": "Addresses can be looked up (MAP_GEOCODER_URL); off by default."
@@ -6120,6 +6125,10 @@
             ],
             "properties": {
               "attribution": {
+                "type": "string",
+                "maxLength": 200
+              },
+              "satelliteAttribution": {
                 "type": "string",
                 "maxLength": 200
               }
@@ -14755,6 +14764,18 @@
             "description": "From 0 to 2^z − 1.",
             "name": "y",
             "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "standard",
+                "satellite"
+              ]
+            },
+            "required": false,
+            "name": "layer",
+            "in": "query"
           }
         ],
         "responses": {
@@ -18413,6 +18434,18 @@
             "description": "From 0 to 2^z − 1.",
             "name": "y",
             "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "standard",
+                "satellite"
+              ]
+            },
+            "required": false,
+            "name": "layer",
+            "in": "query"
           }
         ],
         "responses": {
