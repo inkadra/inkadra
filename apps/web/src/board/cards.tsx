@@ -32,6 +32,7 @@ import { CardReview } from './CardReview.tsx';
 import { CroppedImage } from './CroppedImage.tsx';
 import { copyHex, hexToRgb } from './colors.ts';
 import { CardExtrasContext, GuestModeContext, useBoard } from './context.ts';
+import { isContextualFocus } from './editing-focus.ts';
 import { FileCard, RawImageFooter } from './FileCard.tsx';
 import { useBoardAspect } from './film/aspect.ts';
 import { FramePicture } from './film/FramePicture.tsx';
@@ -41,7 +42,6 @@ import { useSlugline } from './film/storyboard-data.ts';
 import { GuestVisibility } from './guest-visibility.tsx';
 import { ImageCropStage } from './ImageCropEditor.tsx';
 import { croppedRotatedSize, rotatedBounds } from './image-crop.ts';
-import { isContextualFocus } from './editing-focus.ts';
 import { appendImageStroke } from './image-drawing.ts';
 import { playInline, stopInline, stopWhenOffscreen, useInlinePlaying } from './inline-player.ts';
 import { webUrl } from './links.ts';
@@ -506,7 +506,8 @@ function ImageCard({
               onStroke={
                 drawing && board.editing === element.id && !board.readOnly && !element.locked
                   ? (points) => {
-                      if (!appendImageStroke(board.store.doc, element.id, points)) board.notify?.(t('board.contextual.drawFailed'));
+                      if (!appendImageStroke(board.store.doc, element.id, points))
+                        board.notify?.(t('board.contextual.drawFailed'));
                     }
                   : undefined
               }

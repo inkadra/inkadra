@@ -7,11 +7,11 @@ import { LOCAL } from './store.ts';
 export function appendImageStroke(doc: Y.Doc, id: string, points: number[]): boolean {
   const map = roots(doc).elements.get(id);
   if (map?.get('type') !== 'image') return false;
-  let strokes=map.get('strokes');
+  let strokes = map.get('strokes');
   // Restores and rollout imports can remove this field while the board remains loaded.
   if (strokes === undefined) {
-    strokes=new Y.Array();
-    doc.transact(()=>map.set('strokes',strokes),LOCAL);
+    strokes = new Y.Array();
+    doc.transact(() => map.set('strokes', strokes), LOCAL);
   }
   if (!(strokes instanceof Y.Array) || strokes.length >= MAX_STROKES) return false;
   const stroke = Stroke.safeParse({
@@ -22,7 +22,7 @@ export function appendImageStroke(doc: Y.Doc, id: string, points: number[]): boo
     points,
   });
   if (!stroke.success) return false;
-  const target=strokes;
+  const target = strokes;
   doc.transact(() => target.push([stroke.data]), LOCAL);
   return true;
 }

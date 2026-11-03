@@ -1,4 +1,3 @@
-import { CURRENT_SCHEMA_VERSION } from '@inkadra/doc-schema';
 import { mkdirSync, mkdtempSync, readdirSync, utimesSync, writeFileSync } from 'node:fs';
 import { createServer, type Server } from 'node:http';
 import {
@@ -14,6 +13,7 @@ import { HocuspocusProvider, HocuspocusProviderWebsocket } from '@hocuspocus/pro
 import {
   addElement,
   boardDocName,
+  CURRENT_SCHEMA_VERSION,
   type Element,
   newElementId,
   readElement,

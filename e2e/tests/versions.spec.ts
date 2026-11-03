@@ -1,7 +1,6 @@
-import { CURRENT_SCHEMA_VERSION } from '@inkadra/doc-schema';
 import { HocuspocusProvider, HocuspocusProviderWebsocket } from '@hocuspocus/provider';
 import { createElement, moveIntoParent } from '@inkadra/canvas-core';
-import { boardDocName, roots } from '@inkadra/doc-schema';
+import { boardDocName, CURRENT_SCHEMA_VERSION, roots } from '@inkadra/doc-schema';
 import { expect, type Page, test } from '@playwright/test';
 import WebSocket from 'ws';
 import * as Y from 'yjs';

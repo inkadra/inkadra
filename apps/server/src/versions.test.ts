@@ -208,9 +208,22 @@ describe('writeVersionOver', () => {
 });
 
 it('reinitializes image drawing arrays when restoring a pre-v16 image', () => {
-  const live=createBoardDoc(BOARD); const version=createBoardDoc(BOARD);
-  const image={id:'imageAAAAAAAA',type:'image' as const,assetId:'assetAAAAAAAA',x:0,y:0,w:240,z:'a0',parent:null,createdBy:null,createdAt:0};
-  addElement(live,{...image,strokes:[]}); addElement(version,image);
-  writeVersionOver(live,version);
+  const live = createBoardDoc(BOARD);
+  const version = createBoardDoc(BOARD);
+  const image = {
+    id: 'imageAAAAAAAA',
+    type: 'image' as const,
+    assetId: 'assetAAAAAAAA',
+    x: 0,
+    y: 0,
+    w: 240,
+    z: 'a0',
+    parent: null,
+    createdBy: null,
+    createdAt: 0,
+  };
+  addElement(live, { ...image, strokes: [] });
+  addElement(version, image);
+  writeVersionOver(live, version);
   expect(roots(live).elements.get(image.id)!.get('strokes')).toBeInstanceOf(Y.Array);
 });

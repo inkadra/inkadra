@@ -161,8 +161,13 @@ it('adds the voice recorder to the dock when recording is available', async () =
   }
 });
 
-it('omits empty keyboard shortcuts from the voice recorder',async () => {
-  const view=await renderToolbar(vi.fn());
-  try { expect(view.host.querySelector('.toolbar__btn--mic')?.hasAttribute('aria-keyshortcuts')).toBe(false); }
-  finally {await view.cleanup();}
+it('omits empty keyboard shortcuts from the voice recorder', async () => {
+  const view = await renderToolbar(vi.fn());
+  try {
+    expect(view.host.querySelector('.toolbar__btn--mic')?.hasAttribute('aria-keyshortcuts')).toBe(
+      false,
+    );
+  } finally {
+    await view.cleanup();
+  }
 });

@@ -1,6 +1,5 @@
-import { CURRENT_SCHEMA_VERSION } from '@inkadra/doc-schema';
 import { HocuspocusProvider, HocuspocusProviderWebsocket } from '@hocuspocus/provider';
-import { boardDocName } from '@inkadra/doc-schema';
+import { boardDocName, CURRENT_SCHEMA_VERSION } from '@inkadra/doc-schema';
 import WebSocket from 'ws';
 import * as Y from 'yjs';
 

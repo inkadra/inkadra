@@ -1,8 +1,7 @@
-import { CURRENT_SCHEMA_VERSION } from '@inkadra/doc-schema';
 import { deflateSync } from 'node:zlib';
 import { HocuspocusProvider, HocuspocusProviderWebsocket } from '@hocuspocus/provider';
 import { createElement } from '@inkadra/canvas-core';
-import { boardDocName, roots } from '@inkadra/doc-schema';
+import { boardDocName, CURRENT_SCHEMA_VERSION, roots } from '@inkadra/doc-schema';
 import { type Browser, expect, type Page, test } from '@playwright/test';
 import WebSocket from 'ws';
 import * as Y from 'yjs';

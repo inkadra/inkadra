@@ -697,7 +697,11 @@ function BoardScreen({
       className={preview ? 'board-preview' : undefined}
       style={preview ? undefined : { display: 'contents' }}
     >
-      {conn.schemaTooNew && <div role="alert" className="board-update-notice">{t('board.contextual.updateApp')}</div>}
+      {conn.schemaTooNew && (
+        <div role="alert" className="board-update-notice">
+          {t('board.contextual.updateApp')}
+        </div>
+      )}
       {versions}
       {content}
       {shareDialog}

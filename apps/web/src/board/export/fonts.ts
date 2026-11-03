@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import bold from '@fontsource/inter/files/inter-latin-700-normal.woff?url';
 import regular from '@fontsource/inter/files/inter-latin-400-normal.woff?url';
 // Inter, the interface font (OFL-1.1). WOFF rather than WOFF2: fontkit reads it without Brotli.
 import medium from '@fontsource/inter/files/inter-latin-500-normal.woff?url';
 import semibold from '@fontsource/inter/files/inter-latin-600-normal.woff?url';
+import bold from '@fontsource/inter/files/inter-latin-700-normal.woff?url';
 import type { ThemeFont } from '@inkadra/shared';
 import fontkit from '@pdf-lib/fontkit';
 import { headingFamily, headingPdfUrl, loadHeadingFont } from '../theme.ts';
@@ -22,7 +22,12 @@ export interface Fonts {
 }
 
 type Inter = Record<400 | 500 | 600 | 700, Uint8Array>;
-const URLS: Record<400 | 500 | 600 | 700, string> = { 400: regular, 500: medium, 600: semibold, 700: bold };
+const URLS: Record<400 | 500 | 600 | 700, string> = {
+  400: regular,
+  500: medium,
+  600: semibold,
+  700: bold,
+};
 let inter: Promise<Inter> | null = null;
 const loading = new Map<ThemeFont, Promise<Fonts>>();
 

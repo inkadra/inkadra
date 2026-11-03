@@ -1,8 +1,7 @@
-import { CURRENT_SCHEMA_VERSION } from '@inkadra/doc-schema';
 import { createServer } from 'node:http';
 import { fileURLToPath } from 'node:url';
 import { HocuspocusProvider, HocuspocusProviderWebsocket } from '@hocuspocus/provider';
-import { boardDocName } from '@inkadra/doc-schema';
+import { boardDocName, CURRENT_SCHEMA_VERSION } from '@inkadra/doc-schema';
 import { sql } from 'drizzle-orm';
 import pino from 'pino';
 import { expect, it } from 'vitest';

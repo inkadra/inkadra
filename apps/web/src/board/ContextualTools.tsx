@@ -454,7 +454,10 @@ export function ContextualTools({
         <BarButton
           icon="rotateRight"
           label={t('board.image.rotateRight')}
-          onClick={() => { if (asset && asset !== 'missing') rotateImageQuarterTurn(store,el,asset.width || 4,asset.height || 3,1); }}
+          onClick={() => {
+            if (asset && asset !== 'missing')
+              rotateImageQuarterTurn(store, el, asset.width || 4, asset.height || 3, 1);
+          }}
         />
         <BarButton
           icon="pen"

@@ -45,7 +45,9 @@ function CaptionEditor({ element }: { element: CaptionedElement }) {
           LOCAL,
         );
       }}
-      onBlur={(e) => { if (!isContextualFocus(e.relatedTarget)) setEditing(null); }}
+      onBlur={(e) => {
+        if (!isContextualFocus(e.relatedTarget)) setEditing(null);
+      }}
       onKeyDown={(e) => {
         if (e.key === 'Escape' || (e.key === 'Enter' && !e.shiftKey)) {
           e.preventDefault();

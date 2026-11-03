@@ -2,8 +2,9 @@ import type { Server as HttpServer, IncomingMessage } from 'node:http';
 import type { Duplex } from 'node:stream';
 import { type Connection, Server } from '@hocuspocus/server';
 import {
-  LocalPresence,
   CURRENT_SCHEMA_VERSION,
+  getSchemaVersion,
+  LocalPresence,
   migrateBoardDoc,
   type PresenceState,
   type PresenceUser,
@@ -135,7 +136,9 @@ export function createCollabServer(deps: {
             log.info({ boardId: ctx.boardId }, 'collab connection closed: access removed');
             connection.close({ code: 4403, reason: 'Forbidden' });
           } else {
-            const readOnly = !atLeast(access.role, 'editor') || ctx.supportedSchemaVersion < CURRENT_SCHEMA_VERSION;
+            const readOnly =
+              !atLeast(access.role, 'editor') ||
+              ctx.supportedSchemaVersion < Math.max(CURRENT_SCHEMA_VERSION,getSchemaVersion(document));
             if (readOnly !== connection.readOnly) {
               connection.readOnly = readOnly;
               // Tell the client, so the editor follows instead of dropping what someone types.
@@ -191,7 +194,13 @@ export function createCollabServer(deps: {
         if (key.startsWith('x-forwarded-')) delete request.headers[key];
     },
 
-    async onAuthenticate({ documentName, requestHeaders, connectionConfig, token, requestParameters }) {
+    async onAuthenticate({
+      documentName,
+      requestHeaders,
+      connectionConfig,
+      token,
+      requestParameters,
+    }) {
       const boardId = parseBoardDocName(documentName);
       if (!boardId) throw new Error('Unknown document');
       // Browsers always send Origin on WebSocket upgrades; native apps send none.
@@ -207,9 +216,13 @@ export function createCollabServer(deps: {
         .select({ name: user.name, image: user.image })
         .from(user)
         .where(eq(user.id, actor.id));
-      const advertised=requestParameters.get('schemaVersion');
-      const supportedSchemaVersion=advertised && /^\d+$/.test(advertised) && Number.isSafeInteger(Number(advertised)) ? Number(advertised) : 0;
-      connectionConfig.readOnly = !atLeast(access.role, 'editor') || supportedSchemaVersion < CURRENT_SCHEMA_VERSION;
+      const advertised = requestParameters.get('schemaVersion');
+      const supportedSchemaVersion =
+        advertised && /^\d+$/.test(advertised) && Number.isSafeInteger(Number(advertised))
+          ? Number(advertised)
+          : 0;
+      connectionConfig.readOnly =
+        !atLeast(access.role, 'editor') || supportedSchemaVersion < CURRENT_SCHEMA_VERSION;
       return {
         actor,
         supportedSchemaVersion,
@@ -267,11 +280,18 @@ export function createCollabServer(deps: {
 
     async beforeSync({ document, context, type, payload }) {
       if (type !== 1 && type !== 2) return;
+      if (context.supportedSchemaVersion < getSchemaVersion(document)) throw new Error('Update the app before editing this document');
       await validateTaskUpdate(db, context.boardId, context.actor?.id, document, payload);
     },
 
     async onChange({ document, context }) {
       prepareImageDrawings(document);
+      for (const connection of document.getConnections() as Array<Connection<Context>>) {
+        if ((connection.context?.supportedSchemaVersion ?? 0) < getSchemaVersion(document) && !connection.readOnly) {
+          connection.readOnly=true;
+          connection.sendStateless(JSON.stringify({type:'access',readOnly:true} satisfies AccessMessage));
+        }
+      }
       const before = assignments.get(document) ?? new Map();
       const after = assignedItems(document);
       const pending = pendingAssignments.get(document) ?? new Map();

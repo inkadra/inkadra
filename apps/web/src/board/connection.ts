@@ -101,11 +101,20 @@ export function watchSaves(
 }
 
 /** Watch the live document, rather than only guarding saved-version previews. */
-export function watchDocumentSchema(doc:Y.Doc, changed:(tooNew:boolean)=>void, supported=CURRENT_SCHEMA_VERSION):()=>void {
-  const meta=doc.getMap('meta');
-  const check=()=>changed(typeof meta.get('schemaVersion') === 'number' && (meta.get('schemaVersion') as number)>supported);
-  meta.observe(check); check();
-  return ()=>meta.unobserve(check);
+export function watchDocumentSchema(
+  doc: Y.Doc,
+  changed: (tooNew: boolean) => void,
+  supported = CURRENT_SCHEMA_VERSION,
+): () => void {
+  const meta = doc.getMap('meta');
+  const check = () =>
+    changed(
+      typeof meta.get('schemaVersion') === 'number' &&
+        (meta.get('schemaVersion') as number) > supported,
+    );
+  meta.observe(check);
+  check();
+  return () => meta.unobserve(check);
 }
 
 /** Opens the board document over the collaboration WebSocket; the session cookie signs in. */
@@ -149,15 +158,15 @@ export function useBoardConnection(boardId: string, trackBusy = true): BoardConn
       onAuthenticated: ({ scope }) => update({ readOnly: scope === 'readonly' }),
       onAuthenticationFailed: () => update({ status: 'denied' }),
     });
-    let roleReadOnly=true;
+    let roleReadOnly = true;
     function update(patch: Partial<typeof state>) {
-      if (patch.readOnly !== undefined) roleReadOnly=patch.readOnly;
+      if (patch.readOnly !== undefined) roleReadOnly = patch.readOnly;
       state = { ...state, ...patch };
-      state.readOnly=roleReadOnly || state.schemaTooNew === true;
+      state.readOnly = roleReadOnly || state.schemaTooNew === true;
       hold();
       setConn({ store, provider, saves, ...state });
     }
-    const stopSchema=watchDocumentSchema(doc,schemaTooNew=>update({schemaTooNew}));
+    const stopSchema = watchDocumentSchema(doc, (schemaTooNew) => update({ schemaTooNew }));
     // The provider sends nothing before the socket opens, so no count is missed here.
     const stopSaves = watchSaves(provider, (next) => {
       unsynced = next.pending;

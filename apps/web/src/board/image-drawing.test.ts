@@ -26,9 +26,15 @@ it('merges the first simultaneous strokes on an initialized image and rejects in
 });
 
 it('recovers an image whose shared strokes array disappeared during restore or rollout', () => {
-  const doc=createBoardDoc('boardAAAAAAAA');
-  const image=createElement(doc,'image',{x:0,y:0},{assetId:'imageAAAAAAAA'},{userId:null});
+  const doc = createBoardDoc('boardAAAAAAAA');
+  const image = createElement(
+    doc,
+    'image',
+    { x: 0, y: 0 },
+    { assetId: 'imageAAAAAAAA' },
+    { userId: null },
+  );
   roots(doc).elements.get(image.id)!.delete('strokes');
-  expect(appendImageStroke(doc,image.id,[0,0,100,100])).toBe(true);
+  expect(appendImageStroke(doc, image.id, [0, 0, 100, 100])).toBe(true);
   expect(roots(doc).elements.get(image.id)!.get('strokes')).toBeInstanceOf(Y.Array);
 });

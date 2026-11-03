@@ -118,7 +118,11 @@ describe.skipIf(!url)('collab (needs DATABASE_URL)', () => {
     await client.end();
   });
 
-  function connect(credentials: { cookie?: string; token?: string }, origin?: string, schemaVersion: number | null = CURRENT_SCHEMA_VERSION) {
+  function connect(
+    credentials: { cookie?: string; token?: string },
+    origin?: string,
+    schemaVersion: number | null = CURRENT_SCHEMA_VERSION,
+  ) {
     class CookieSocket extends WebSocket {
       constructor(address: string, protocols?: string | string[]) {
         super(address, protocols, {
@@ -231,22 +235,31 @@ describe.skipIf(!url)('collab (needs DATABASE_URL)', () => {
     for (const c of [owner, viewer, fresh]) c.close();
   });
 
-  it.each([null,15])('keeps stale editor schema %s read-only even after role rechecks',async schemaVersion => {
-    const current=connect(as('owner'));
-    const legacy=connect(as('editor'),undefined,schemaVersion);
-    await Promise.all([current.synced,legacy.synced]);
-    expect(legacy.provider.authorizedScope).toBe('readonly');
-    const forged=column('Stale writer'); addElement(legacy.doc,forged);
-    const real=column('Current writer');addElement(current.doc,real);
-    await expect.poll(()=>roots(legacy.doc).elements.has(real.id)).toBe(true);
-    expect(roots(current.doc).elements.has(forged.id)).toBe(false);
-    // The test server rechecks every 30 ms. A permission refresh must not re-enable this client.
-    await new Promise(resolve=>setTimeout(resolve,150));
-    const another=column('Still stale');addElement(legacy.doc,another);
-    const fresh=connect(as('owner'));await fresh.synced;
-    expect(roots(fresh.doc).elements.has(another.id)).toBe(false);
-    current.close();legacy.close();fresh.close();
-  });
+  it.each([null, 15])(
+    'keeps stale editor schema %s read-only even after role rechecks',
+    async (schemaVersion) => {
+      const current = connect(as('owner'));
+      const legacy = connect(as('editor'), undefined, schemaVersion);
+      await Promise.all([current.synced, legacy.synced]);
+      expect(legacy.provider.authorizedScope).toBe('readonly');
+      const forged = column('Stale writer');
+      addElement(legacy.doc, forged);
+      const real = column('Current writer');
+      addElement(current.doc, real);
+      await expect.poll(() => roots(legacy.doc).elements.has(real.id)).toBe(true);
+      expect(roots(current.doc).elements.has(forged.id)).toBe(false);
+      // The test server rechecks every 30 ms. A permission refresh must not re-enable this client.
+      await new Promise((resolve) => setTimeout(resolve, 150));
+      const another = column('Still stale');
+      addElement(legacy.doc, another);
+      const fresh = connect(as('owner'));
+      await fresh.synced;
+      expect(roots(fresh.doc).elements.has(another.id)).toBe(false);
+      current.close();
+      legacy.close();
+      fresh.close();
+    },
+  );
 
   it('signs in with a personal token', async () => {
     const created = await app.inject({

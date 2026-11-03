@@ -1,4 +1,3 @@
-import { prepareImageDrawings } from './image-drawing.ts';
 import { isDeepStrictEqual } from 'node:util';
 import {
   type BoardNotice,
@@ -17,6 +16,7 @@ import * as Y from 'yjs';
 import type { CollabServer } from './collab.ts';
 import type { Database } from './db/client.ts';
 import { boardDoc, boardVersion } from './db/schema.ts';
+import { prepareImageDrawings } from './image-drawing.ts';
 
 /**
  * Saved states of board documents (decision 0013): automatic versions taken while a board is

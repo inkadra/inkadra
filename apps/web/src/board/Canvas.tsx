@@ -97,7 +97,6 @@ import { useIsPhone } from '../lib/phone.ts';
 import { getPreferences, updatePreferences, usePreferences } from '../lib/preferences.ts';
 import { useSession } from '../lib/session.tsx';
 import { ProjectAppearanceDialog } from '../routes/ProjectAppearance.tsx';
-import { restoreEditingFocus } from './editing-focus.ts';
 import { accessNotices } from './access-notices.ts';
 import { addedSummary } from './added-summary.ts';
 import { ArrowLayer, ArrowStyleButtons, onArrowStyleButton } from './arrows.tsx';
@@ -137,6 +136,7 @@ import type { BoardConnection } from './connection.ts';
 import { BoardContext, type BoardContextValue, GuestModeContext, LARGE_BOARD } from './context.ts';
 import { EmptyBoardStart } from './EmptyBoardStart.tsx';
 import { easeCards } from './ease-cards.ts';
+import { restoreEditingFocus } from './editing-focus.ts';
 import { isDesignFile } from './file-kinds.ts';
 import { useBoardAspect } from './film/aspect.ts';
 import { DrawingEditor } from './film/DrawingEditor.tsx';
@@ -725,7 +725,7 @@ export function Canvas({
       noteEditor.current = null;
       if (!id) {
         pendingText.current = null;
-        if (previous) restoreEditingFocus(rootRef.current,previous);
+        if (previous) restoreEditingFocus(rootRef.current, previous);
       }
       // A note left empty disappears, as on paper. Not an undo step of its own.
       const body = previous ? store.map(previous)?.get('body') : null;
