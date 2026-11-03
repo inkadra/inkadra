@@ -980,6 +980,37 @@
       "variantField": "Nome della variante",
       "inPresentation": "Nella presentazione",
       "layersHintNone": "Nessun livello attivo: ogni icona va nel livello della sua famiglia, tratti e forme nel Set. Cosa nascondi qui è solo tuo; cosa nascondi in una variante vale per tutti."
+    },
+    "contextual": {
+      "done": "Fatto",
+      "typography": "Dimensione, liste e allineamento",
+      "text": "Testo",
+      "orderedList": "Lista numerata",
+      "taskList": "Lista attività",
+      "underline": "Sottolineato",
+      "strike": "Barrato",
+      "link": "Collegamento",
+      "apply": "Applica",
+      "removeLink": "Rimuovi collegamento",
+      "ink": "Colore testo ed evidenziatore",
+      "textColor": "Colore testo",
+      "highlight": "Evidenziatore",
+      "clear": "Cancella formattazione",
+      "line": "Linea",
+      "gridFit": "Adatta alla griglia",
+      "draw": "Disegna",
+      "info": "Info",
+      "preview": "Anteprima",
+      "colors": {
+        "blue": "Blu",
+        "orange": "Arancione",
+        "purple": "Viola",
+        "green": "Verde",
+        "teal": "Turchese",
+        "yellow": "Giallo",
+        "red": "Rosso",
+        "pink": "Rosa"
+      }
     }
   },
   "tags": {

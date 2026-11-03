@@ -29,6 +29,7 @@ import { pickVariant, useAsset } from './assets.ts';
 import { canRenameBoard, renameBoard } from './boards.ts';
 import { CardCaption } from './CardCaption.tsx';
 import { CardReview } from './CardReview.tsx';
+import { noteColor } from './note-format.ts';
 import { CroppedImage } from './CroppedImage.tsx';
 import { copyHex, hexToRgb } from './colors.ts';
 import { CardExtrasContext, GuestModeContext, useBoard } from './context.ts';
@@ -263,24 +264,30 @@ function CardBody({
 function SectionCard({ element, editing }: { element: Of<'section'>; editing: boolean }) {
   const { store, setEditing } = useBoard();
   const { t } = useTranslation();
+  const style = { fontSize: element.size ? {s:20,m:26,l:34}[element.size] : 20,
+    fontWeight: element.bold === undefined ? 600 : element.bold ? 700 : 400,
+    fontStyle: element.italic ? 'italic' : 'normal', textAlign: element.align ?? 'left',
+    color: noteColor(element.color), borderBottom: element.line === false ? 'none' : undefined } as const;
   return editing ? (
     <input
       className="card__inline-input section__title"
+      style={style}
       defaultValue={element.title}
       placeholder={t('board.section.placeholder')}
       // biome-ignore lint/a11y/noAutofocus: the field opens because the user asked to rename
       autoFocus
       onFocus={(e) => e.currentTarget.select()}
+      onChange={(e) => updateElement(store.doc, element.id, { title: e.target.value }, LOCAL)}
       onBlur={(e) => {
         updateElement(store.doc, element.id, { title: e.target.value.trim() }, LOCAL);
-        setEditing(null);
+
       }}
       onKeyDown={blurOnEnter}
       maxLength={200}
       aria-label={t('board.section.title')}
     />
   ) : (
-    <h2 className={`section__title${element.title ? '' : ' is-empty'}`}>
+    <h2 style={style} className={`section__title${element.title ? '' : ' is-empty'}`}>
       {element.title || t('board.section.placeholder')}
     </h2>
   );
@@ -625,7 +632,7 @@ function LinkCard({ element, width }: { element: Of<'link'>; width: number }) {
   );
   return (
     <>
-      {embedUrl && playing ? (
+      {(embedUrl ? element.showPreview !== false : element.showInfo !== false) && (embedUrl && playing ? (
         <InlineVideo element={element} embedUrl={embedUrl} title={title} instagram={instagram} />
       ) : src || embedUrl ? (
         <div className={`card__media card__media--link${src ? '' : ' card__video'}`}>
@@ -647,11 +654,11 @@ function LinkCard({ element, width }: { element: Of<'link'>; width: number }) {
           )}
           {instagram && <span className="card__badge">{t('board.menu.instagram')}</span>}
         </div>
-      ) : null}
+      ) : null)}
       <div className="card__pad card__link">
-        <span className="card__title">{element.title || shortUrl(element.url)}</span>
-        {element.description && <span className="card__desc">{element.description}</span>}
-        {embedUrl && playing && instagram ? (
+        <span className="card__title">{element.showInfo === false ? shortUrl(element.url) : element.title || shortUrl(element.url)}</span>
+        {element.showInfo !== false && element.description && <span className="card__desc">{element.description}</span>}
+        {element.showInfo !== false && (embedUrl && playing && instagram ? (
           // Instagram's embed fills its picture with its own bars: ↗ waits below, by the host.
           <div className="card__host-row">
             {host}
@@ -659,7 +666,7 @@ function LinkCard({ element, width }: { element: Of<'link'>; width: number }) {
           </div>
         ) : (
           host
-        )}
+        ))}
       </div>
     </>
   );

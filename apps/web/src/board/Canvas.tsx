@@ -1032,7 +1032,7 @@ export function Canvas({
           created = createElement(doc, 'column', pos, { title: '' }, opts);
           break;
         case 'section':
-          created = createElement(doc, 'section', pos, { title: '' }, opts);
+          created = createElement(doc, 'section', pos, { title: '', size: 'm', bold: true }, opts);
           break;
         case 'table':
           created = createElement(doc, 'table', pos, { ...newTable(3, 3), header: true }, opts);
@@ -2997,7 +2997,7 @@ export function Canvas({
     ];
     // These flags mark actions actually rendered by ContextBar for the same selection.
     // Standalone right-click menus keep the complete permission-filtered action list.
-    return menu.fromToolbar ? items.filter((item) => !('toolbar' in item && item.toolbar)) : items;
+    return menu.fromToolbar && !editing ? items.filter((item) => !('toolbar' in item && item.toolbar)) : items;
   }, [
     menu,
     selection,
@@ -3271,6 +3271,8 @@ export function Canvas({
             <ContextBar
               box={selectionBox}
               elements={selectedEls}
+              editing={editing}
+              onDone={() => setEditing(null)}
               editor={editing ? noteEditor.current : null}
               readOnly={readOnly}
               onComments={

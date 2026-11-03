@@ -307,7 +307,7 @@ export function ToolbarSettings() {
   const prefs = usePreferences();
   const shown = barTools(prefs.toolbar);
   const label = (tool: BarTool) =>
-    t(tool === 'arrow' ? 'board.tools.arrow' : `board.types.${tool}`);
+    t(tool === 'arrow' ? 'board.tools.arrow' : tool === 'voice' ? 'board.voiceNote.label' : `board.types.${tool}`);
   const save = (toolbar: string[] | null) =>
     void trackSave(updatePreferences({ toolbar })).catch(() => {});
   return (

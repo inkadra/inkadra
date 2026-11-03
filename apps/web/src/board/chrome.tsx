@@ -31,7 +31,7 @@ import { addActions, type PaletteAction, rankActions } from '../commands/actions
 import { usePreferences } from '../lib/preferences.ts';
 import { Card, NOTE_COLORS } from './cards.tsx';
 import { GuestVisibilityIcon } from './guest-visibility.tsx';
-import { toggleSelectedHeading } from './note.tsx';
+import { ContextualTools } from './ContextualTools.tsx';
 import { isMac } from './shortcuts.ts';
 import { BAR_ICONS, type BarTool, barTools, DEFAULT_BAR } from './toolbar-prefs.ts';
 import { cancelUpload, retryUpload, useUploads } from './uploads.ts';
@@ -182,8 +182,8 @@ export function Toolbar({
               (tl) =>
                 shown.includes(tl.type as BarTool) &&
                 (group === 'create'
-                  ? ['note', 'image', 'link', 'todo', 'color'].includes(tl.type)
-                  : ['column', 'frame', 'storyboard'].includes(tl.type)),
+                  ? ['note', 'image', 'link', 'todo', 'color', 'table'].includes(tl.type)
+                  : ['column', 'frame', 'storyboard', 'section', 'map', 'plan'].includes(tl.type)),
             ).map((tl) => (
               <ToolButton
                 key={tl.type}
@@ -195,6 +195,7 @@ export function Toolbar({
                 dragType={tl.type === 'storyboard' ? undefined : tl.type}
               />
             ))}
+            {group === 'create' && shown.includes('voice') && onVoiceNote && <ToolButton icon="mic" kind="voice" label={t('board.voiceNote.label')} onClick={onVoiceNote} />}
           </fieldset>
         ))}
       </div>
@@ -282,10 +283,10 @@ function CanvasMenuButton({
             items={[
               ...hidden.map(
                 (tool): MenuItem => ({
-                  label: t(tool === 'arrow' ? 'board.tools.arrow' : `board.types.${tool}`),
+                  label: t(tool === 'arrow' ? 'board.tools.arrow' : tool === 'voice' ? 'board.voiceNote.label' : `board.types.${tool}`),
                   icon: BAR_ICONS[tool],
                   kind: 'canvas',
-                  action: () => (tool === 'arrow' ? onTool('arrow') : onCard(tool as ToolType)),
+                  action: () => tool === 'arrow' ? onTool('arrow') : tool === 'voice' ? onVoiceNote?.() : onCard(tool as ToolType),
                 }),
               ),
               ...(hidden.length > 0 ? [{ divider: true } as MenuItem] : []),
@@ -306,7 +307,7 @@ function CanvasMenuButton({
                 ] as MenuItem[]
               ).concat([
                 { divider: true },
-                ...MENU_CARDS.map(
+                ...MENU_CARDS.filter(([type]) => !['section','table','map','plan'].includes(type)).map(
                   ([type, icon]): MenuItem => ({
                     label: t(`board.types.${type}`),
                     icon,
@@ -314,7 +315,7 @@ function CanvasMenuButton({
                     action: () => onCard(type),
                   }),
                 ),
-                ...(onVoiceNote
+                ...(onVoiceNote && hidden.includes('voice')
                   ? [
                       { divider: true } as MenuItem,
                       {
@@ -424,7 +425,11 @@ export function ContextBar({
   onTags,
   extra,
   onComments,
+  editing,
+  onDone,
 }: {
+  editing?: string | null;
+  onDone?: () => void;
   box: Rect;
   onComments?: (() => void) | undefined;
   elements: Element[];
@@ -490,36 +495,18 @@ export function ContextBar({
       style={{ left, top }}
       data-chrome
     >
-      {onComments && <BarButton icon="comment" label={t('comments.open')} onClick={onComments} />}
-      {editor && (
+      {editing && !locked ? (
         <>
-          <BarButton
-            icon="bold"
-            label={t('board.format.bold')}
-            active={editor.isActive('bold')}
-            onClick={() => editor.chain().focus().toggleBold().run()}
-          />
-          <BarButton
-            icon="italic"
-            label={t('board.format.italic')}
-            active={editor.isActive('italic')}
-            onClick={() => editor.chain().focus().toggleItalic().run()}
-          />
-          <BarButton
-            icon="heading"
-            label={t('board.format.heading')}
-            active={editor.isActive('heading')}
-            onClick={() => toggleSelectedHeading(editor)}
-          />
-          <BarButton
-            icon="list"
-            label={t('board.format.list')}
-            active={editor.isActive('bulletList')}
-            onClick={() => editor.chain().focus().toggleBulletList().run()}
-          />
+          <ContextualTools element={elements[0]!} editor={editor} />
+          <BarButton icon="more" label={t('board.menu.more')} onClick={() => {
+            const rect = bar.current!;
+            onMore(rect.offsetLeft, rect.offsetTop + rect.offsetHeight + 6);
+          }} />
           <span className="ctxbar__sep" aria-hidden="true" />
+          <button type="button" className="ctxbar__btn ctxbar__done" onClick={onDone}>{t('board.contextual.done')}</button>
         </>
-      )}
+      ) : (<>
+      {onComments && <BarButton icon="comment" label={t('comments.open')} onClick={onComments} />}
       {colored.length > 0 && colored.length === elements.length && (
         <>
           <button
@@ -593,6 +580,7 @@ export function ContextBar({
       >
         <Icon name="more" size={14} />
       </button>
+      </>)}
     </div>
   );
 }
