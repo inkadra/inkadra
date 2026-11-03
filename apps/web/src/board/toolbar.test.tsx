@@ -9,7 +9,7 @@ import { TOOLS, Toolbar } from './chrome.tsx';
 
 vi.mock('react-i18next', () => ({ useTranslation: () => ({ t: (key: string) => key }) }));
 
-async function renderToolbar() {
+async function renderToolbar(onVoiceNote?: () => void) {
   const host = document.createElement('div');
   document.body.append(host);
   const root = createRoot(host);
@@ -17,7 +17,7 @@ async function renderToolbar() {
   const onTool = vi.fn();
   const onCanvas = vi.fn();
   await act(async () =>
-    root.render(<Toolbar tool="hand" onAdd={onAdd} onTool={onTool} onCanvas={onCanvas} />),
+    root.render(<Toolbar onVoiceNote={onVoiceNote} tool="hand" onAdd={onAdd} onTool={onTool} onCanvas={onCanvas} />),
   );
   const cleanup = async () => {
     await act(async () => root.unmount());
@@ -137,4 +137,10 @@ it('opens the Canvas menu of canvas types, walks it with the keyboard and insert
 it('covers every tool with a tool colour and every menu entry with a canvas colour', () => {
   for (const { type, menuOnly } of TOOLS)
     if (!menuOnly) expect(Object.hasOwn(toolColor, type)).toBe(true);
+});
+
+it('adds the voice recorder to the dock when recording is available',async () => {
+  const record = vi.fn(); const view = await renderToolbar(record);
+  try { const mic = view.host.querySelector<HTMLButtonElement>('.toolbar__btn--mic'); expect(mic).not.toBeNull(); mic?.click(); expect(record).toHaveBeenCalledOnce(); expect(view.host.querySelectorAll('button')).toHaveLength(16); }
+  finally {await view.cleanup();}
 });

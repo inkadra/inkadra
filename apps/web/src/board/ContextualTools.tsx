@@ -77,7 +77,7 @@ export function ToolPopover({
           setOpen(next);
         }}
       >
-        {icon ? <Icon name={icon} size={14} /> : text ?? 'Tt'}
+        {icon ? <Icon name={icon} size={14} /> : (text ?? 'Tt')}
       </button>
       {open &&
         rect &&

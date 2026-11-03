@@ -872,7 +872,14 @@ export function Canvas({
     ) {
       setCropping(null);
     }
-    if (appearance && (readOnly || !selection.has(appearance) || !snap.byId.has(appearance) || snap.byId.get(appearance)?.locked)) setAppearance(null);
+    if (
+      appearance &&
+      (readOnly ||
+        !selection.has(appearance) ||
+        !snap.byId.has(appearance) ||
+        snap.byId.get(appearance)?.locked)
+    )
+      setAppearance(null);
     if (noteSheet && !snap.byId.has(noteSheet)) setNoteSheet(null);
   }, [snap, editing, setEditing, cropping, readOnly, selection, noteSheet, appearance]);
 
@@ -3332,7 +3339,10 @@ export function Canvas({
               box={selectionBox}
               elements={selectedEls}
               editing={editing ?? appearance}
-              onDone={() => { setEditing(null); setAppearance(null); }}
+              onDone={() => {
+                setEditing(null);
+                setAppearance(null);
+              }}
               editor={editing ? noteEditor.current : null}
               readOnly={readOnly}
               onComments={

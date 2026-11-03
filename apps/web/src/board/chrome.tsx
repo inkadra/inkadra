@@ -289,7 +289,7 @@ function CanvasMenuButton({
             style={{ right: at.right, bottom: at.bottom }}
             anchor={button}
             items={[
-              ...hidden.map(
+              ...hidden.filter(tool => tool !== 'voice' || onVoiceNote).map(
                 (tool): MenuItem => ({
                   label: t(
                     tool === 'arrow'
@@ -336,17 +336,7 @@ function CanvasMenuButton({
                     action: () => onCard(type),
                   }),
                 ),
-                ...(onVoiceNote && hidden.includes('voice')
-                  ? [
-                      { divider: true } as MenuItem,
-                      {
-                        label: t('board.voiceNote.label'),
-                        icon: 'mic' as const,
-                        kind: 'canvas' as const,
-                        action: onVoiceNote,
-                      },
-                    ]
-                  : []),
+
               ]),
             )}
             onClose={(reason) => {
