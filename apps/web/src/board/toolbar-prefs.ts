@@ -14,7 +14,11 @@ export const BAR_TOOLS = [
   'column',
   'frame',
   'storyboard',
-  'section', 'table', 'voice', 'map', 'plan',
+  'section',
+  'table',
+  'voice',
+  'map',
+  'plan',
 ] as const;
 export type BarTool = (typeof BAR_TOOLS)[number];
 
@@ -29,7 +33,11 @@ export const BAR_ICONS: Record<BarTool, IconName> = {
   column: 'splitPanel',
   frame: 'frame',
   storyboard: 'storyboard',
-  section: 'heading', table: 'table', voice: 'mic', map: 'map', plan: 'planCamera',
+  section: 'heading',
+  table: 'table',
+  voice: 'mic',
+  map: 'map',
+  plan: 'planCamera',
 };
 
 /** Colour of a tool's icon; the storyboard is neutral like Frame. */

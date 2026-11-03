@@ -25,5 +25,6 @@ describe('toolbar preferences', () => {
 });
 
 it('includes every approved dock addition in the configurable defaults', () => {
-  for (const tool of ['section','table','voice','map','plan']) expect(DEFAULT_BAR).toContain(tool);
+  for (const tool of ['section', 'table', 'voice', 'map', 'plan'])
+    expect(DEFAULT_BAR).toContain(tool);
 });

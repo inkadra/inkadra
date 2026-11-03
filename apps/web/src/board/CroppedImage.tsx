@@ -41,7 +41,8 @@ export function CroppedImage({
   rotation,
   className,
   style,
-  strokes, onStroke,
+  strokes,
+  onStroke,
 }: CroppedImageProps) {
   const [draft, setDraft] = useState<number[] | null>(null);
   if (!hasImageTransform({ crop, rotation }) && !strokes?.length && !onStroke) {
@@ -86,13 +87,57 @@ export function CroppedImage({
           }}
         >
           <MovingPicture poster={poster} moving={moving ?? null} alt={alt} />
-          <svg className="image-drawing" viewBox={`0 0 1000 ${1000*baseH/baseW}`} preserveAspectRatio="none" aria-hidden="true" style={{pointerEvents:onStroke ? 'auto' : 'none',touchAction:onStroke ? 'none' : undefined}}
-            onPointerDown={onStroke ? e => { e.stopPropagation(); e.preventDefault(); e.currentTarget.setPointerCapture(e.pointerId); setDraft(imagePoint(e,baseW,baseH)); } : undefined}
-            onPointerMove={onStroke ? e => { if (!draft || draft.length >= 2048) return; setDraft([...draft,...imagePoint(e,baseW,baseH)]); } : undefined}
-            onPointerUp={onStroke ? e => { e.stopPropagation(); if (draft) onStroke([...draft,...(draft.length < 2048 ? imagePoint(e,baseW,baseH) : [])]); setDraft(null); } : undefined}
-            onPointerCancel={() => setDraft(null)}>
-            {strokes?.map(stroke => <StrokePath key={stroke.id} stroke={stroke} height={1000*baseH/baseW} />)}
-            {draft && <StrokePath stroke={{id:'draft',tool:'pencil',color:'#E5484D',width:3,points:draft}} height={1000*baseH/baseW} />}
+          <svg
+            className="image-drawing"
+            viewBox={`0 0 1000 ${(1000 * baseH) / baseW}`}
+            preserveAspectRatio="none"
+            aria-hidden="true"
+            style={{
+              pointerEvents: onStroke ? 'auto' : 'none',
+              touchAction: onStroke ? 'none' : undefined,
+            }}
+            onPointerDown={
+              onStroke
+                ? (e) => {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    e.currentTarget.setPointerCapture(e.pointerId);
+                    setDraft(imagePoint(e, baseW, baseH));
+                  }
+                : undefined
+            }
+            onPointerMove={
+              onStroke
+                ? (e) => {
+                    if (!draft || draft.length >= 2048) return;
+                    setDraft([...draft, ...imagePoint(e, baseW, baseH)]);
+                  }
+                : undefined
+            }
+            onPointerUp={
+              onStroke
+                ? (e) => {
+                    e.stopPropagation();
+                    if (draft)
+                      onStroke([
+                        ...draft,
+                        ...(draft.length < 2048 ? imagePoint(e, baseW, baseH) : []),
+                      ]);
+                    setDraft(null);
+                  }
+                : undefined
+            }
+            onPointerCancel={() => setDraft(null)}
+          >
+            {strokes?.map((stroke) => (
+              <StrokePath key={stroke.id} stroke={stroke} height={(1000 * baseH) / baseW} />
+            ))}
+            {draft && (
+              <StrokePath
+                stroke={{ id: 'draft', tool: 'pencil', color: '#E5484D', width: 3, points: draft }}
+                height={(1000 * baseH) / baseW}
+              />
+            )}
           </svg>
         </div>
       </div>
@@ -103,7 +148,10 @@ export function CroppedImage({
 /** SVG's inverse screen matrix includes the image's crop, rotation and canvas zoom. */
 function imagePoint(e: PointerEvent<SVGSVGElement>, w: number, h: number): number[] {
   const matrix = e.currentTarget.getScreenCTM();
-  if (!matrix) return [0,0];
-  const point = new DOMPoint(e.clientX,e.clientY).matrixTransform(matrix.inverse());
-  return [Math.round(Math.max(0,Math.min(4096,point.x/1000*4096))),Math.round(Math.max(0,Math.min(4096,point.y/(1000*h/w)*4096)))];
+  if (!matrix) return [0, 0];
+  const point = new DOMPoint(e.clientX, e.clientY).matrixTransform(matrix.inverse());
+  return [
+    Math.round(Math.max(0, Math.min(4096, (point.x / 1000) * 4096))),
+    Math.round(Math.max(0, Math.min(4096, (point.y / ((1000 * h) / w)) * 4096))),
+  ];
 }

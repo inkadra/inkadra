@@ -700,7 +700,7 @@ export function Canvas({
       noteEditor.current = null;
       if (!id) {
         pendingText.current = null;
-        requestAnimationFrame(() => rootRef.current?.focus({preventScroll:true}));
+        requestAnimationFrame(() => rootRef.current?.focus({ preventScroll: true }));
       }
       // A note left empty disappears, as on paper. Not an undo step of its own.
       const body = previous ? store.map(previous)?.get('body') : null;
@@ -1715,7 +1715,10 @@ export function Canvas({
     if (!targetId) {
       setStoryPanel(null);
       setFramePanel(null);
-      if (editing) { setEditing(null); return; }
+      if (editing) {
+        setEditing(null);
+        return;
+      }
       if (cropping) setCropping(null);
       const base = e.shiftKey ? new Set(selection) : new Set<string>();
       if (!e.shiftKey) setSelection(EMPTY_SET);
@@ -2289,7 +2292,13 @@ export function Canvas({
         break;
       case 'edit':
         if (cropping) setCropping(null);
-        else if (single && !readOnly && !single.locked && (single.type === 'image' || single.type === 'note')) setEditing(single.id);
+        else if (
+          single &&
+          !readOnly &&
+          !single.locked &&
+          (single.type === 'image' || single.type === 'note')
+        )
+          setEditing(single.id);
         else if (single) openElement(single);
         break;
       case 'rename':
@@ -2797,7 +2806,9 @@ export function Canvas({
       ];
     };
     const items: MenuItem[] = [
-      ...(single?.type === 'note' ? [{ label: t('board.contextual.openDocument'), action: () => openElement(single) }] : []),
+      ...(single?.type === 'note'
+        ? [{ label: t('board.contextual.openDocument'), action: () => openElement(single) }]
+        : []),
       ...listItems,
       ...(single?.type === 'file' && !readOnly && detectedScripts[single.id]
         ? [
@@ -2808,10 +2819,26 @@ export function Canvas({
             },
           ]
         : []),
-      ...(single && !readOnly && !single.locked && (single.type === 'link' || (single.type === 'file' && (() => { const asset = getCachedAsset(single.assetId); return asset && asset !== 'missing' && asset.kind === 'video'; })()))
+      ...(single &&
+      !readOnly &&
+      !single.locked &&
+      (single.type === 'link' ||
+        (single.type === 'file' &&
+          (() => {
+            const asset = getCachedAsset(single.assetId);
+            return asset && asset !== 'missing' && asset.kind === 'video';
+          })()))
         ? [{ label: t('board.contextual.appearance'), action: () => setEditing(single.id) }]
         : []),
-      ...(editing && single?.type === 'note' && noteEditor.current ? [{ label: t('board.contextual.clear'), disabled: noteEditor.current.state.selection.empty, action: () => noteEditor.current?.chain().focus().unsetAllMarks().clearNodes().run() }] : []),
+      ...(editing && single?.type === 'note' && noteEditor.current
+        ? [
+            {
+              label: t('board.contextual.clear'),
+              disabled: noteEditor.current.state.selection.empty,
+              action: () => noteEditor.current?.chain().focus().unsetAllMarks().clearNodes().run(),
+            },
+          ]
+        : []),
       ...(single?.type === 'link' && !readOnly && !single.locked
         ? [
             {
@@ -3007,7 +3034,9 @@ export function Canvas({
     ];
     // These flags mark actions actually rendered by ContextBar for the same selection.
     // Standalone right-click menus keep the complete permission-filtered action list.
-    return menu.fromToolbar && !editing ? items.filter((item) => !('toolbar' in item && item.toolbar)) : items;
+    return menu.fromToolbar && !editing
+      ? items.filter((item) => !('toolbar' in item && item.toolbar))
+      : items;
   }, [
     menu,
     editing,

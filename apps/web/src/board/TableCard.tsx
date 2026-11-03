@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 import {
   fillTable,
-  insertTableColumn,
   insertTableRow,
   parseTsv,
   setTableCell,
@@ -270,7 +269,6 @@ export function TableCard({ element, editing }: { element: TableElement; editing
           ))}
         </tbody>
       </table>
-
     </div>
   );
 }

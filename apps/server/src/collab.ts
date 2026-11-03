@@ -18,10 +18,10 @@ import { adminEnrollmentRequired } from './admin-two-factor.ts';
 import type { Auth } from './auth.ts';
 import type { Database } from './db/client.ts';
 import { board, boardDoc, personalToken, session, user } from './db/schema.ts';
+import { prepareImageDrawings } from './image-drawing.ts';
 import { allowedOrigin, ORIGIN_HEADER, rawOrigin } from './request-origin.ts';
 import { writeBoardIndex } from './search/index-doc.ts';
 import { assignedItems, notifyAssignment, validateTaskUpdate } from './tasks.ts';
-import { prepareImageDrawings } from './image-drawing.ts';
 import { actorFromToken, isToken } from './tokens.ts';
 import { AUTO_VERSION_EVERY_MS, takeAutoVersion } from './versions.ts';
 

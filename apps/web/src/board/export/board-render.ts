@@ -28,12 +28,12 @@ import {
   type Stroke,
 } from '@inkadra/doc-schema';
 import type { AssetTrack } from '@inkadra/shared';
+import { light } from '@inkadra/ui/tokens';
 import { croppedRotatedSize } from '../image-crop.ts';
 import { iconLabel, LABEL_SIZE, measureText, planToken } from '../plan/PlanDrawing.tsx';
-import type { Placed } from './board-model.ts';
-import { imagePlacement, type ImageInfo, type Measure, type Op } from './pages.ts';
 import { videoEmbedUrl } from '../youtube.ts';
-import { light } from '@inkadra/ui/tokens';
+import type { Placed } from './board-model.ts';
+import { type ImageInfo, imagePlacement, type Measure, type Op } from './pages.ts';
 import { ellipsize, lineHeight, type TextStyle, textBlock, wrapText } from './text.ts';
 
 /** Colours of a printed page: the light theme tokens of packages/ui. */
@@ -185,16 +185,38 @@ export function drawCard(p: Placed, ctx: CardContext): Op[] {
   const c = ctx.colors;
   // A section heading has no card: large text over a thin rule, as on the board.
   if (el.type === 'section') {
-    const size = el.size ? { S:20, M:26, L:34 }[el.size] : 20;
+    const size = el.size ? { S: 20, M: 26, L: 34 }[el.size] : 20;
     const weight = el.bold === false ? 400 : 600;
     const color = el.color ? light[`tag-${el.color}`] : c['text-primary'];
-    const title = ellipsize(el.title,p.w-4,size,weight,ctx.measure);
-    const width = ctx.measure(title,size,weight);
-    const x = el.align === 'center' ? p.x+(p.w-width)/2 : el.align === 'right' ? p.x+p.w-width-2 : p.x+2;
-    const ops: Op[] = [{kind:'text',x,y:p.y+size+6,text:title,size,weight,color}];
+    const title = ellipsize(el.title, p.w - 4, size, weight, ctx.measure);
+    const width = ctx.measure(title, size, weight);
+    const x =
+      el.align === 'center'
+        ? p.x + (p.w - width) / 2
+        : el.align === 'right'
+          ? p.x + p.w - width - 2
+          : p.x + 2;
+    const ops: Op[] = [{ kind: 'text', x, y: p.y + size + 6, text: title, size, weight, color }];
     if (el.line !== false) {
-      ops.push({kind:'line',x1:p.x,y1:p.y+p.h-1,x2:p.x+p.w,y2:p.y+p.h-1,color:c['border-default'],width:1});
-      if (el.size || el.bold !== undefined) ops.push({kind:'line',x1:p.x,y1:p.y+p.h-1,x2:p.x+48,y2:p.y+p.h-1,color,width:3});
+      ops.push({
+        kind: 'line',
+        x1: p.x,
+        y1: p.y + p.h - 1,
+        x2: p.x + p.w,
+        y2: p.y + p.h - 1,
+        color: c['border-default'],
+        width: 1,
+      });
+      if (el.size || el.bold !== undefined)
+        ops.push({
+          kind: 'line',
+          x1: p.x,
+          y1: p.y + p.h - 1,
+          x2: p.x + 48,
+          y2: p.y + p.h - 1,
+          color,
+          width: 3,
+        });
     }
     return ops;
   }
@@ -303,18 +325,32 @@ function body(p: Placed, ctx: CardContext): Op[] {
         picture(img?.key, pic, 'cover', c, { crop: el.crop, rotation: el.rotation }),
       ];
       if (img && el.strokes?.length) {
-        const placement = imagePlacement(img.info,{...pic,fit:'cover',crop:el.crop,rotation:el.rotation});
-        const rad = placement.rotation*Math.PI/180;
+        const placement = imagePlacement(img.info, {
+          ...pic,
+          fit: 'cover',
+          crop: el.crop,
+          rotation: el.rotation,
+        });
+        const rad = (placement.rotation * Math.PI) / 180;
         const drawing = el.strokes.map((stroke): Op => {
           const points: number[] = [];
-          for (let i=0;i<stroke.points.length;i+=2) {
-            const x = (stroke.points[i]!/4096-.5)*placement.drawW;
-            const y = (stroke.points[i+1]!/4096-.5)*placement.drawH;
-            points.push(placement.cx+x*Math.cos(rad)-y*Math.sin(rad),placement.cy+x*Math.sin(rad)+y*Math.cos(rad));
+          for (let i = 0; i < stroke.points.length; i += 2) {
+            const x = (stroke.points[i]! / 4096 - 0.5) * placement.drawW;
+            const y = (stroke.points[i + 1]! / 4096 - 0.5) * placement.drawH;
+            points.push(
+              placement.cx + x * Math.cos(rad) - y * Math.sin(rad),
+              placement.cy + x * Math.sin(rad) + y * Math.cos(rad),
+            );
           }
-          return {kind:'polyline',points,color:stroke.color,width:stroke.width/1000*placement.drawW,opacity:stroke.opacity};
+          return {
+            kind: 'polyline',
+            points,
+            color: stroke.color,
+            width: (stroke.width / 1000) * placement.drawW,
+            opacity: stroke.opacity,
+          };
         });
-        ops.push({kind:'clip',...pic,ops:drawing});
+        ops.push({ kind: 'clip', ...pic, ops: drawing });
       }
       if (captionLines.length) {
         ops.push(
@@ -334,7 +370,13 @@ function body(p: Placed, ctx: CardContext): Op[] {
         top = p.y + h + 10;
       }
       const host = hostOf(el.url);
-      const title = text(el.showInfo === false ? el.url : el.title || host, top, TITLE, c['text-primary'], 2);
+      const title = text(
+        el.showInfo === false ? el.url : el.title || host,
+        top,
+        TITLE,
+        c['text-primary'],
+        2,
+      );
       ops.push(...title.ops);
       if (el.showInfo === false) return ops;
       const hostLine = text(host, title.bottom, SMALL, c['text-muted'], 1);

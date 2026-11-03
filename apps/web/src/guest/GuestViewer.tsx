@@ -87,7 +87,14 @@ export function GuestViewer({ element, onClose }: { element: GuestElement; onClo
           </>
         ) : src && asset ? (
           <CroppedImage
-            strokes={element.type === 'image' && Array.isArray(element.strokes) ? element.strokes.flatMap(value => { const stroke = Stroke.safeParse(value); return stroke.success ? [stroke.data] : []; }) : undefined}
+            strokes={
+              element.type === 'image' && Array.isArray(element.strokes)
+                ? element.strokes.flatMap((value) => {
+                    const stroke = Stroke.safeParse(value);
+                    return stroke.success ? [stroke.data] : [];
+                  })
+                : undefined
+            }
             className="guest-viewer__media"
             poster={src}
             moving={movingVariantUrl(asset, wide)}

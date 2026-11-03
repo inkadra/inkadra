@@ -13,7 +13,11 @@ export const toolColor = {
   todo: 'todo',
   // Olive: in the light theme only 0.12 OKLab from the canvas green (decision 0033).
   color: 'color',
-  table: 'table', voice: 'voice', map: 'map', plan: 'plan', section: null,
+  table: 'table',
+  voice: 'voice',
+  map: 'map',
+  plan: 'plan',
+  section: null,
   column: null,
   frame: null,
   // Story bible cards are neutral like their surfaces (decision 0044).

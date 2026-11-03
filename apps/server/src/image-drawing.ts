@@ -6,7 +6,7 @@ import * as Y from 'yjs';
 export function prepareImageDrawings(doc: Y.Doc) {
   doc.transact(() => {
     for (const map of roots(doc).elements.values()) {
-      if (map.get('type') === 'image' && !map.has('strokes')) map.set('strokes',new Y.Array());
+      if (map.get('type') === 'image' && !map.has('strokes')) map.set('strokes', new Y.Array());
     }
   });
 }

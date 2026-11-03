@@ -29,9 +29,9 @@ import { useTranslation } from 'react-i18next';
 import type * as Y from 'yjs';
 import { addActions, type PaletteAction, rankActions } from '../commands/actions.ts';
 import { usePreferences } from '../lib/preferences.ts';
+import { ContextualTools } from './ContextualTools.tsx';
 import { Card, NOTE_COLORS } from './cards.tsx';
 import { GuestVisibilityIcon } from './guest-visibility.tsx';
-import { ContextualTools } from './ContextualTools.tsx';
 import { isMac } from './shortcuts.ts';
 import { BAR_ICONS, type BarTool, barTools, DEFAULT_BAR } from './toolbar-prefs.ts';
 import { cancelUpload, retryUpload, useUploads } from './uploads.ts';
@@ -195,7 +195,15 @@ export function Toolbar({
                 dragType={tl.type === 'storyboard' ? undefined : tl.type}
               />
             ))}
-            {group === 'create' && shown.includes('voice') && onVoiceNote && <ToolButton keyHint="" icon="mic" kind="voice" label={t('board.voiceNote.label')} onClick={onVoiceNote} />}
+            {group === 'create' && shown.includes('voice') && onVoiceNote && (
+              <ToolButton
+                keyHint=""
+                icon="mic"
+                kind="voice"
+                label={t('board.voiceNote.label')}
+                onClick={onVoiceNote}
+              />
+            )}
           </fieldset>
         ))}
       </div>
@@ -283,10 +291,21 @@ function CanvasMenuButton({
             items={[
               ...hidden.map(
                 (tool): MenuItem => ({
-                  label: t(tool === 'arrow' ? 'board.tools.arrow' : tool === 'voice' ? 'board.voiceNote.label' : `board.types.${tool}`),
+                  label: t(
+                    tool === 'arrow'
+                      ? 'board.tools.arrow'
+                      : tool === 'voice'
+                        ? 'board.voiceNote.label'
+                        : `board.types.${tool}`,
+                  ),
                   icon: BAR_ICONS[tool],
                   kind: 'canvas',
-                  action: () => tool === 'arrow' ? onTool('arrow') : tool === 'voice' ? onVoiceNote?.() : onCard(tool as ToolType),
+                  action: () =>
+                    tool === 'arrow'
+                      ? onTool('arrow')
+                      : tool === 'voice'
+                        ? onVoiceNote?.()
+                        : onCard(tool as ToolType),
                 }),
               ),
               ...(hidden.length > 0 ? [{ divider: true } as MenuItem] : []),
@@ -307,7 +326,9 @@ function CanvasMenuButton({
                 ] as MenuItem[]
               ).concat([
                 { divider: true },
-                ...MENU_CARDS.filter(([type]) => !['section','table','map','plan'].includes(type)).map(
+                ...MENU_CARDS.filter(
+                  ([type]) => !['section', 'table', 'map', 'plan'].includes(type),
+                ).map(
                   ([type, icon]): MenuItem => ({
                     label: t(`board.types.${type}`),
                     icon,
@@ -466,7 +487,7 @@ export function ContextBar({
     el.style.left = `${Math.max(8, Math.min(left, room - el.offsetWidth - 8))}px`;
     const above = anchor.y - el.offsetHeight - 10;
     const top = above < 8 ? anchor.y + anchor.h + 8 : above;
-    el.style.top = `${Math.max(8,Math.min(top, (el.offsetParent as HTMLElement).clientHeight - el.offsetHeight - 8))}px`;
+    el.style.top = `${Math.max(8, Math.min(top, (el.offsetParent as HTMLElement).clientHeight - el.offsetHeight - 8))}px`;
   });
   if (elements.length === 0 || (readOnly && !onComments)) return null;
   if (readOnly && onComments)
@@ -504,89 +525,103 @@ export function ContextBar({
         <>
           <ContextualTools key={elements[0]!.id} element={elements[0]!} editor={editor} />
           {elements[0]?.type === 'arrow' && extra}
-          <BarButton icon="more" label={t('board.menu.more')} onClick={() => {
-            const rect = bar.current!;
-            onMore(rect.offsetLeft, rect.offsetTop + rect.offsetHeight + 6);
-          }} />
+          <BarButton
+            icon="more"
+            label={t('board.menu.more')}
+            onClick={() => {
+              const rect = bar.current!;
+              onMore(rect.offsetLeft, rect.offsetTop + rect.offsetHeight + 6);
+            }}
+          />
           <span className="ctxbar__sep" aria-hidden="true" />
-          <button type="button" className="ctxbar__btn ctxbar__done" onClick={onDone}>{t('board.contextual.done')}</button>
+          <button type="button" className="ctxbar__btn ctxbar__done" onClick={onDone}>
+            {t('board.contextual.done')}
+          </button>
         </>
-      ) : (<>
-      {onComments && <BarButton icon="comment" label={t('comments.open')} onClick={onComments} />}
-      {colored.length > 0 && colored.length === elements.length && (
+      ) : (
         <>
+          {onComments && (
+            <BarButton icon="comment" label={t('comments.open')} onClick={onComments} />
+          )}
+          {colored.length > 0 && colored.length === elements.length && (
+            <>
+              <button
+                type="button"
+                className="ctxbar__swatch"
+                aria-label={t('board.colors.none')}
+                data-ink-tooltip={t('board.colors.none')}
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => onColor(undefined)}
+              />
+              {NOTE_COLORS.map((c) => (
+                <button
+                  key={c}
+                  type="button"
+                  className={`ctxbar__swatch ctxbar__swatch--${c}`}
+                  aria-label={t(`board.colors.${c}`)}
+                  data-ink-tooltip={t(`board.colors.${c}`)}
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={() => onColor(c)}
+                />
+              ))}
+              <span className="ctxbar__sep" aria-hidden="true" />
+            </>
+          )}
+          {free.length > 1 && (
+            <>
+              <span className="ctxbar__count">
+                {t('board.selected', { count: elements.length })}
+              </span>
+              <ArrangeButton count={free.length} gap={gap} onGap={onGap} onArrange={onArrange} />
+              <BarButton icon="column" label={t('board.align.group')} onClick={onGroup} />
+              <span className="ctxbar__sep" aria-hidden="true" />
+            </>
+          )}
+          <BarButton
+            icon={locked ? 'unlock' : 'lock'}
+            label={locked ? t('board.menu.unlock') : t('board.menu.lock')}
+            onClick={onLock}
+            active={locked}
+          />
+          {hideable.length > 0 && (
+            <button
+              type="button"
+              className={`ctxbar__btn${guestHidden ? ' is-active' : ''}`}
+              aria-label={t('guestVisibility.hide')}
+              data-ink-tooltip={t('guestVisibility.hide')}
+              aria-pressed={guestHidden}
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={onGuestHidden}
+            >
+              <GuestVisibilityIcon />
+            </button>
+          )}
+          {extra}
+          <BarButton
+            icon="tag"
+            label={t('tags.title')}
+            onClick={() => onTags(left, box.y + box.h + 8)}
+          />
+          <BarButton icon="copy" label={t('board.menu.duplicate')} onClick={onDuplicate} />
+          <BarButton icon="trash" label={t('board.menu.delete')} onClick={onDelete} />
           <button
             type="button"
-            className="ctxbar__swatch"
-            aria-label={t('board.colors.none')}
-            data-ink-tooltip={t('board.colors.none')}
-            onMouseDown={(e) => e.preventDefault()}
-            onClick={() => onColor(undefined)}
-          />
-          {NOTE_COLORS.map((c) => (
-            <button
-              key={c}
-              type="button"
-              className={`ctxbar__swatch ctxbar__swatch--${c}`}
-              aria-label={t(`board.colors.${c}`)}
-              data-ink-tooltip={t(`board.colors.${c}`)}
-              onMouseDown={(e) => e.preventDefault()}
-              onClick={() => onColor(c)}
-            />
-          ))}
-          <span className="ctxbar__sep" aria-hidden="true" />
+            className="ctxbar__btn"
+            aria-label={t('board.menu.more')}
+            data-ink-tooltip={t('board.menu.more')}
+            aria-haspopup="menu"
+            onClick={(e) => {
+              const bar = (e.currentTarget.parentElement as HTMLElement).getBoundingClientRect();
+              const root = (
+                e.currentTarget.closest('.canvas') as HTMLElement
+              ).getBoundingClientRect();
+              onMore(bar.right - root.left - 200, bar.bottom - root.top + 6);
+            }}
+          >
+            <Icon name="more" size={14} />
+          </button>
         </>
       )}
-      {free.length > 1 && (
-        <>
-          <span className="ctxbar__count">{t('board.selected', { count: elements.length })}</span>
-          <ArrangeButton count={free.length} gap={gap} onGap={onGap} onArrange={onArrange} />
-          <BarButton icon="column" label={t('board.align.group')} onClick={onGroup} />
-          <span className="ctxbar__sep" aria-hidden="true" />
-        </>
-      )}
-      <BarButton
-        icon={locked ? 'unlock' : 'lock'}
-        label={locked ? t('board.menu.unlock') : t('board.menu.lock')}
-        onClick={onLock}
-        active={locked}
-      />
-      {hideable.length > 0 && (
-        <button
-          type="button"
-          className={`ctxbar__btn${guestHidden ? ' is-active' : ''}`}
-          aria-label={t('guestVisibility.hide')}
-          data-ink-tooltip={t('guestVisibility.hide')}
-          aria-pressed={guestHidden}
-          onMouseDown={(e) => e.preventDefault()}
-          onClick={onGuestHidden}
-        >
-          <GuestVisibilityIcon />
-        </button>
-      )}
-      {extra}
-      <BarButton
-        icon="tag"
-        label={t('tags.title')}
-        onClick={() => onTags(left, box.y + box.h + 8)}
-      />
-      <BarButton icon="copy" label={t('board.menu.duplicate')} onClick={onDuplicate} />
-      <BarButton icon="trash" label={t('board.menu.delete')} onClick={onDelete} />
-      <button
-        type="button"
-        className="ctxbar__btn"
-        aria-label={t('board.menu.more')}
-        data-ink-tooltip={t('board.menu.more')}
-        aria-haspopup="menu"
-        onClick={(e) => {
-          const bar = (e.currentTarget.parentElement as HTMLElement).getBoundingClientRect();
-          const root = (e.currentTarget.closest('.canvas') as HTMLElement).getBoundingClientRect();
-          onMore(bar.right - root.left - 200, bar.bottom - root.top + 6);
-        }}
-      >
-        <Icon name="more" size={14} />
-      </button>
-      </>)}
     </div>
   );
 }

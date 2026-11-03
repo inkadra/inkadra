@@ -29,8 +29,6 @@ import { pickVariant, useAsset } from './assets.ts';
 import { canRenameBoard, renameBoard } from './boards.ts';
 import { CardCaption } from './CardCaption.tsx';
 import { CardReview } from './CardReview.tsx';
-import { appendImageStroke } from './image-drawing.ts';
-import { noteColor } from './note-format.ts';
 import { CroppedImage } from './CroppedImage.tsx';
 import { copyHex, hexToRgb } from './colors.ts';
 import { CardExtrasContext, GuestModeContext, useBoard } from './context.ts';
@@ -43,12 +41,14 @@ import { useSlugline } from './film/storyboard-data.ts';
 import { GuestVisibility } from './guest-visibility.tsx';
 import { ImageCropStage } from './ImageCropEditor.tsx';
 import { croppedRotatedSize, rotatedBounds } from './image-crop.ts';
+import { appendImageStroke } from './image-drawing.ts';
 import { playInline, stopInline, stopWhenOffscreen, useInlinePlaying } from './inline-player.ts';
 import { webUrl } from './links.ts';
 import { MapCard } from './MapCard.tsx';
 import { useMeasure } from './measure.ts';
 import { movingVariantUrl } from './moving.tsx';
 import { NoteBody, NoteEditor, useFragment } from './note.tsx';
+import { noteColor } from './note-format.ts';
 import { PlanCard } from './plan/PlanCard.tsx';
 import { LOCAL } from './store.ts';
 import { TableCard } from './TableCard.tsx';
@@ -265,33 +265,53 @@ function CardBody({
 function SectionCard({ element, editing }: { element: Of<'section'>; editing: boolean }) {
   const { store, setEditing } = useBoard();
   const { t } = useTranslation();
-  const style = { fontSize: element.size ? {S:20,M:26,L:34}[element.size] : 20,
+  const style = {
+    fontSize: element.size ? { S: 20, M: 26, L: 34 }[element.size] : 20,
     fontWeight: element.bold === undefined ? 600 : element.bold ? 700 : 400,
-    fontStyle: element.italic ? 'italic' : 'normal', textAlign: element.align ?? 'left',
-    color: noteColor(element.color), borderBottom: element.line === false || element.size || element.bold !== undefined ? 'none' : undefined } as const;
-  return <div className={element.line !== false && (element.size || element.bold !== undefined) ? 'section-heading has-rule' : 'section-heading'} style={{color:noteColor(element.color)}}>{editing ? (
-    <input
-      className="card__inline-input section__title"
-      style={style}
-      defaultValue={element.title}
-      placeholder={t('board.section.placeholder')}
-      // biome-ignore lint/a11y/noAutofocus: the field opens because the user asked to rename
-      autoFocus
-      onFocus={(e) => e.currentTarget.select()}
-      onChange={(e) => updateElement(store.doc, element.id, { title: e.target.value }, LOCAL)}
-      onBlur={(e) => {
-        updateElement(store.doc, element.id, { title: e.target.value.trim() }, LOCAL);
-
-      }}
-      onKeyDown={e => { if (e.key === 'Enter' || e.key === 'Escape') { e.preventDefault(); setEditing(null); } }}
-      maxLength={200}
-      aria-label={t('board.section.title')}
-    />
-  ) : (
-    <h2 style={style} className={`section__title${element.title ? '' : ' is-empty'}`}>
-      {element.title || t('board.section.placeholder')}
-    </h2>
-  )}</div>;
+    fontStyle: element.italic ? 'italic' : 'normal',
+    textAlign: element.align ?? 'left',
+    color: noteColor(element.color),
+    borderBottom:
+      element.line === false || element.size || element.bold !== undefined ? 'none' : undefined,
+  } as const;
+  return (
+    <div
+      className={
+        element.line !== false && (element.size || element.bold !== undefined)
+          ? 'section-heading has-rule'
+          : 'section-heading'
+      }
+      style={{ color: noteColor(element.color) }}
+    >
+      {editing ? (
+        <input
+          className="card__inline-input section__title"
+          style={style}
+          defaultValue={element.title}
+          placeholder={t('board.section.placeholder')}
+          // biome-ignore lint/a11y/noAutofocus: the field opens because the user asked to rename
+          autoFocus
+          onFocus={(e) => e.currentTarget.select()}
+          onChange={(e) => updateElement(store.doc, element.id, { title: e.target.value }, LOCAL)}
+          onBlur={(e) => {
+            updateElement(store.doc, element.id, { title: e.target.value.trim() }, LOCAL);
+          }}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === 'Escape') {
+              e.preventDefault();
+              setEditing(null);
+            }
+          }}
+          maxLength={200}
+          aria-label={t('board.section.title')}
+        />
+      ) : (
+        <h2 style={style} className={`section__title${element.title ? '' : ' is-empty'}`}>
+          {element.title || t('board.section.placeholder')}
+        </h2>
+      )}
+    </div>
+  );
 }
 
 /** Compact face of a character: portrait, name, role; the rest is in its side sheet. */
@@ -431,11 +451,15 @@ function ImageCard({
   const board = useBoard();
   const [drawing, setDrawing] = useState(false);
   useEffect(() => {
-    const toggle = (event: Event) => { if ((event as CustomEvent).detail === element.id) setDrawing(value => !value); };
-    window.addEventListener('inkadra:image-draw',toggle);
-    return () => window.removeEventListener('inkadra:image-draw',toggle);
-  },[element.id]);
-  useEffect(() => { if (board.editing !== element.id) setDrawing(false); },[board.editing,element.id]);
+    const toggle = (event: Event) => {
+      if ((event as CustomEvent).detail === element.id) setDrawing((value) => !value);
+    };
+    window.addEventListener('inkadra:image-draw', toggle);
+    return () => window.removeEventListener('inkadra:image-draw', toggle);
+  }, [element.id]);
+  useEffect(() => {
+    if (board.editing !== element.id) setDrawing(false);
+  }, [board.editing, element.id]);
   const ready = asset && asset !== 'missing' ? asset : null;
   const [hover, setHover] = useState(false);
   const dpr = typeof window === 'undefined' ? 1 : window.devicePixelRatio || 1;
@@ -475,7 +499,13 @@ function ImageCard({
           ) : (
             <CroppedImage
               strokes={element.strokes}
-              onStroke={drawing && board.editing === element.id && !board.readOnly && !element.locked ? points => { appendImageStroke(board.store.doc,element.id,points); } : undefined}
+              onStroke={
+                drawing && board.editing === element.id && !board.readOnly && !element.locked
+                  ? (points) => {
+                      appendImageStroke(board.store.doc, element.id, points);
+                    }
+                  : undefined
+              }
               poster={src}
               moving={moving}
               alt={element.caption ?? ready?.filename ?? ''}
@@ -643,41 +673,49 @@ function LinkCard({ element, width }: { element: Of<'link'>; width: number }) {
   );
   return (
     <>
-      {(embedUrl ? element.showPreview !== false : element.showInfo !== false) && (embedUrl && playing ? (
-        <InlineVideo element={element} embedUrl={embedUrl} title={title} instagram={instagram} />
-      ) : src || embedUrl ? (
-        <div className={`card__media card__media--link${src ? '' : ' card__video'}`}>
-          {src && <img src={src} alt="" draggable={false} decoding="async" />}
-          {embedUrl && (
-            <button
-              type="button"
-              className="card__play"
-              data-no-drag
-              data-play-link={element.id}
-              onClick={(event) => {
-                event.stopPropagation();
-                playInline(element.id);
-              }}
-              aria-label={t('board.menu.playLink', { title })}
-            >
-              <Icon name="play" size={16} />
-            </button>
-          )}
-          {instagram && <span className="card__badge">{t('board.menu.instagram')}</span>}
-        </div>
-      ) : null)}
-      <div className="card__pad card__link">
-        <span className="card__title">{element.showInfo === false ? shortUrl(element.url) : element.title || shortUrl(element.url)}</span>
-        {element.showInfo !== false && element.description && <span className="card__desc">{element.description}</span>}
-        {element.showInfo !== false && (embedUrl && playing && instagram ? (
-          // Instagram's embed fills its picture with its own bars: ↗ waits below, by the host.
-          <div className="card__host-row">
-            {host}
-            <OpenOutButton element={element} instagram />
+      {(embedUrl ? element.showPreview !== false : element.showInfo !== false) &&
+        (embedUrl && playing ? (
+          <InlineVideo element={element} embedUrl={embedUrl} title={title} instagram={instagram} />
+        ) : src || embedUrl ? (
+          <div className={`card__media card__media--link${src ? '' : ' card__video'}`}>
+            {src && <img src={src} alt="" draggable={false} decoding="async" />}
+            {embedUrl && (
+              <button
+                type="button"
+                className="card__play"
+                data-no-drag
+                data-play-link={element.id}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  playInline(element.id);
+                }}
+                aria-label={t('board.menu.playLink', { title })}
+              >
+                <Icon name="play" size={16} />
+              </button>
+            )}
+            {instagram && <span className="card__badge">{t('board.menu.instagram')}</span>}
           </div>
-        ) : (
-          host
-        ))}
+        ) : null)}
+      <div className="card__pad card__link">
+        <span className="card__title">
+          {element.showInfo === false
+            ? shortUrl(element.url)
+            : element.title || shortUrl(element.url)}
+        </span>
+        {element.showInfo !== false && element.description && (
+          <span className="card__desc">{element.description}</span>
+        )}
+        {element.showInfo !== false &&
+          (embedUrl && playing && instagram ? (
+            // Instagram's embed fills its picture with its own bars: ↗ waits below, by the host.
+            <div className="card__host-row">
+              {host}
+              <OpenOutButton element={element} instagram />
+            </div>
+          ) : (
+            host
+          ))}
       </div>
     </>
   );

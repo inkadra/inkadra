@@ -134,10 +134,33 @@ describe('set plans in exports', () => {
 });
 
 it('exports source image strokes through the same crop and rotation as the picture', () => {
-  const local = {...ctx,image:() => ({key:'image',info:{width:1000,height:500}})};
-  const ops = drawBoard([card({type:'image',assetId:'assetAAAAAAAA',rotation:90,crop:{x:0,y:0,w:1,h:1},strokes:[{id:'strokeAAAAAA',tool:'pencil',color:'#E5484D',width:3,points:[0,0,4096,4096]}]})],local);
-  const flatten = (items: typeof ops): typeof ops => items.flatMap(op => op.kind === 'clip' ? flatten(op.ops) : [op]);
-  const stroke = flatten(ops).find(op => op.kind === 'polyline');
+  const local = { ...ctx, image: () => ({ key: 'image', info: { width: 1000, height: 500 } }) };
+  const ops = drawBoard(
+    [
+      card({
+        type: 'image',
+        assetId: 'assetAAAAAAAA',
+        rotation: 90,
+        crop: { x: 0, y: 0, w: 1, h: 1 },
+        strokes: [
+          {
+            id: 'strokeAAAAAA',
+            tool: 'pencil',
+            color: '#E5484D',
+            width: 3,
+            points: [0, 0, 4096, 4096],
+          },
+        ],
+      }),
+    ],
+    local,
+  );
+  const flatten = (items: typeof ops): typeof ops =>
+    items.flatMap((op) => (op.kind === 'clip' ? flatten(op.ops) : [op]));
+  const stroke = flatten(ops).find((op) => op.kind === 'polyline');
   expect(stroke).toBeDefined();
-  if (stroke?.kind === 'polyline') { expect(stroke.points[0]).toBeGreaterThan(stroke.points[2]!); expect(stroke.points[1]).toBeLessThan(stroke.points[3]!); }
+  if (stroke?.kind === 'polyline') {
+    expect(stroke.points[0]).toBeGreaterThan(stroke.points[2]!);
+    expect(stroke.points[1]).toBeLessThan(stroke.points[3]!);
+  }
 });
