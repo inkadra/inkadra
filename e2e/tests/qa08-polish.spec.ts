@@ -216,7 +216,8 @@ for (const width of [1280, 390]) {
           1,
         );
       await shot('zoom-toolbar');
-      await card.dblclick();
+      await card.click({ button: 'right' });
+      await page.getByRole('menuitem', { name: 'Apri immagine', exact: true }).click();
       const viewer = page.locator('.viewer');
       await expect(viewer).toBeVisible();
       await viewer.getByRole('button', { name: 'Ingrandisci', exact: true }).click();
