@@ -61,7 +61,7 @@ for (const width of [1280,390]) {
       await screenshot(page,`${width}-note-typography`);
       await bar.getByRole('button',{name:'Colore testo ed evidenziatore',exact:true}).click();
       await expect(page.locator('.contextual-popover')).toHaveCount(1);
-      await page.getByRole('dialog',{name:'Colore testo ed evidenziatore'}).getByRole('button',{name:'Turchese',exact:true}).first().click();
+      await page.getByRole('dialog',{name:'Colore testo ed evidenziatore'}).getByRole('button',{name:'Colore testo: Turchese',exact:true}).first().click();
       await expect(editor.locator('[data-ink-color=teal]')).toBeVisible();
       await screenshot(page,`${width}-note-colors`);
       await page.keyboard.press('Escape');

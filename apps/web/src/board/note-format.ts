@@ -98,7 +98,7 @@ export const TaskItem = Node.create({
       const dom = document.createElement('li');
       dom.dataset.type = 'taskItem';
       const checkbox = document.createElement('input');
-      checkbox.type = 'checkbox'; checkbox.checked = node.attrs.checked; checkbox.contentEditable = 'false';
+      checkbox.type = 'checkbox'; checkbox.checked = node.attrs.checked; checkbox.contentEditable = 'false'; checkbox.setAttribute('aria-label',node.textContent);
       const contentDOM = document.createElement('div');
       dom.append(checkbox,contentDOM);
       checkbox.addEventListener('change',() => {

@@ -44,8 +44,13 @@ export function ToolPopover({
       if (!panel.current?.contains(e.target as Node) && !button.current?.contains(e.target as Node))
         setOpen(false);
     };
+    const escape = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return;
+      event.preventDefault(); event.stopImmediatePropagation(); setOpen(false); button.current?.focus();
+    };
+    document.addEventListener('keydown',escape,true);
     document.addEventListener('pointerdown', close, true);
-    return () => document.removeEventListener('pointerdown', close, true);
+    return () => { document.removeEventListener('pointerdown', close, true); document.removeEventListener('keydown',escape,true); };
   }, [open]);
   const rect = button.current?.getBoundingClientRect();
   return (
@@ -95,7 +100,7 @@ export function ToolPopover({
               ) {
                 e.preventDefault();
                 const all = [
-                  ...panel.current!.querySelectorAll<HTMLButtonElement>('button:not(:disabled)'),
+                  ...(panel.current?.querySelectorAll<HTMLButtonElement>('button:not(:disabled)') ?? []),
                 ];
                 const i = all.indexOf(document.activeElement as HTMLButtonElement);
                 all[
@@ -134,8 +139,8 @@ export function ContextualTools({
       const target =
         element instanceof HTMLElement ? element.closest<HTMLElement>('[data-table-cell]') : null;
       if (target?.closest('[data-el]')?.getAttribute('data-el') !== el.id) return;
-      const [r, c] = target.dataset.tableCell!.split(':').map(Number);
-      setActiveCell({ r: r!, c: c! });
+      const [r, c] = (target.dataset.tableCell ?? '').split(':').map(Number);
+      if (r !== undefined && c !== undefined && Number.isInteger(r) && Number.isInteger(c)) setActiveCell({ r, c });
     };
     const focus = (event: FocusEvent) => remember(event.target);
     remember(document.activeElement);
@@ -163,7 +168,7 @@ export function ContextualTools({
         <button
           key={c ?? 'none'}
           type="button"
-          aria-label={c ? t(`board.contextual.colors.${c}`) : t('board.colors.none')}
+          aria-label={`${t(highlight ? 'board.contextual.highlight' : 'board.contextual.textColor')}: ${c ? t(`board.contextual.colors.${c}`) : t('board.colors.none')}`}
           aria-pressed={value === c}
           disabled={noSelection}
           style={{

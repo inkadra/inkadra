@@ -110,7 +110,7 @@ import {
 } from './boards.ts';
 import { ColorPicker } from './ColorPicker.tsx';
 import { loadBoardGrid, loadTidyGap, saveBoardGrid, saveTidyGap } from './canvas-prefs.ts';
-import { Card } from './cards.tsx';
+import { Card, NOTE_COLORS } from './cards.tsx';
 import {
   type ArrangeCommand,
   BarButton,
@@ -859,7 +859,7 @@ export function Canvas({
       if ([...sel].every((id) => snap.byId.has(id))) return sel;
       return new Set([...sel].filter((id) => snap.byId.has(id)));
     });
-    if (editing && !snap.byId.has(editing)) setEditing(null);
+    if (editing && (!snap.byId.has(editing) || snap.byId.get(editing)?.locked || readOnly)) setEditing(null);
     if (
       cropping &&
       (readOnly ||
@@ -2806,10 +2806,10 @@ export function Canvas({
       ];
     };
     const items: MenuItem[] = [
-      ...(single?.type === 'note'
-        ? [{ label: t('board.contextual.openDocument'), action: () => openElement(single) }]
-        : []),
       ...listItems,
+      ...(editing && single && !readOnly && !single.locked && ['note','table','column'].includes(single.type)
+        ? [{ heading: t('board.contextual.cardColor') }, ...[undefined,...NOTE_COLORS].map(color => ({ label: t(color ? `board.colors.${color}` : 'board.colors.none'), action: () => updateElement(doc,single.id,{color},LOCAL) }))]
+        : []),
       ...(single?.type === 'file' && !readOnly && detectedScripts[single.id]
         ? [
             {

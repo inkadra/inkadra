@@ -1676,7 +1676,7 @@ body:has(.colorpicker) .card-reactions {
   height: 34px;
   border-radius: var(--ink-radius-sm);
   color: var(--kind-fg, var(--ink-text-secondary));
-  background: var(--kind-bg, var(--ink-surface-2));
+  background: var(--ink-surface-2);
 }
 .canvas__start-desc {
   font-size: 11px;
@@ -1985,7 +1985,7 @@ body:has(.colorpicker) .card-reactions {
   margin-right: 8px;
   border-radius: var(--ink-radius-sm);
   color: var(--kind-fg, var(--ink-text-secondary));
-  background: var(--kind-bg, var(--ink-surface-2));
+  background: var(--ink-surface-2);
 }
 /* Opened from the toolbar: fixed above its button, outside the bar that scrolls on phones. */
 .menu--canvas {
@@ -3433,12 +3433,12 @@ button.crumb--editable:focus-visible {
 }
 .toolbar__group--create .toolbar__btn,
 .toolbar__group--organize .toolbar__btn {
-  background: var(--kind-bg);
+  background: transparent;
 }
 .toolbar__btn:not([aria-pressed="true"]):hover,
 .toolbar__btn:not([aria-pressed="true"]):active {
   /* Buttons without a kind (the pen editor's) keep the plain hover. */
-  background: var(--kind-bg, var(--ink-surface-2));
+  background: var(--ink-surface-2);
   color: var(--kind-fg, var(--ink-text-primary));
 }
 .toolbar__btn[aria-pressed="true"] {

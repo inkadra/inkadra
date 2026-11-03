@@ -521,15 +521,16 @@ export function ContextBar({
       style={{ left, top }}
       data-chrome
     >
-      {editing && !locked ? (
+      {editing && !locked && elements[0] ? (
         <>
-          <ContextualTools key={elements[0]!.id} element={elements[0]!} editor={editor} />
+          <ContextualTools key={elements[0].id} element={elements[0]} editor={editor} />
           {elements[0]?.type === 'arrow' && extra}
           <BarButton
             icon="more"
             label={t('board.menu.more')}
             onClick={() => {
-              const rect = bar.current!;
+              const rect = bar.current;
+              if (!rect) return;
               onMore(rect.offsetLeft, rect.offsetTop + rect.offsetHeight + 6);
             }}
           />
