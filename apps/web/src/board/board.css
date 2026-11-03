@@ -1337,6 +1337,7 @@ body:has(.colorpicker) .card-reactions {
  */
 .mcard__explore {
   position: absolute;
+  z-index: 2;
   left: 8px;
   top: 8px;
   padding: 3px 9px;
@@ -4485,7 +4486,7 @@ button.card__play {
   justify-content: space-between;
   padding: 8px 16px;
 }
-.map-dialog > .mcard__live {
+.map-dialog__map {
   position: relative;
   flex: 1;
   min-height: 0;
@@ -4496,4 +4497,15 @@ button.card__play {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.mcard__layer {
+  left: auto;
+  right: 8px;
+}
+.mcard__static {
+  pointer-events: none;
+}
+.mcard__satellite-credit ~ .mcard__credit {
+  display: none;
 }

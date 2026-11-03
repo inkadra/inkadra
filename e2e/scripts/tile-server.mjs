@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // A stand-in map tile server for the end-to-end tests (decision 0053): every tile is the same
-// pale 256 px square with two roads, so no test ever reaches OpenStreetMap.
+// pale 256 px square with two roads, so no test ever reaches OpenStreetMap. Under /satellite/ the
+// ground is dark green, so screenshots tell the two sources apart.
 import { createServer } from 'node:http';
 import { crc32, deflateSync } from 'node:zlib';
 
@@ -16,14 +17,14 @@ function chunk(type, data) {
   return Buffer.concat([head.subarray(0, 4), body, tail]);
 }
 
-function tile() {
+function tile(ground) {
   const size = 256;
   const rows = Buffer.alloc((size * 3 + 1) * size);
   for (let y = 0; y < size; y++) {
     const row = y * (size * 3 + 1);
     for (let x = 0; x < size; x++) {
       const road = Math.abs(x - 96) < 3 || Math.abs(y - 170) < 3;
-      const [r, g, b] = road ? [255, 255, 255] : [228, 232, 221];
+      const [r, g, b] = road ? [255, 255, 255] : ground;
       rows.set([r, g, b], row + 1 + x * 3);
     }
   }
@@ -39,7 +40,8 @@ function tile() {
   ]);
 }
 
-const png = tile();
+const png = tile([228, 232, 221]);
+const satellite = tile([46, 74, 52]);
 createServer((req, res) => {
   const url = new URL(req.url, `http://127.0.0.1:${port}`);
   if (url.pathname === '/geocode') {
@@ -59,5 +61,6 @@ createServer((req, res) => {
     res.end(JSON.stringify(items.slice(0, Number(url.searchParams.get('limit') ?? 5))));
     return;
   }
-  res.writeHead(200, { 'content-type': 'image/png', 'content-length': png.length }).end(png);
+  const body = url.pathname.startsWith('/satellite/') ? satellite : png;
+  res.writeHead(200, { 'content-type': 'image/png', 'content-length': body.length }).end(body);
 }).listen(port, '127.0.0.1');

@@ -684,6 +684,8 @@
       "deleteColumn": "Delete column"
     },
     "map": {
+      "standard": "Map",
+      "satellite": "Satellite",
       "label": "Address or map link",
       "placeholder": "Paste a Maps link or type an address",
       "open": "Open in Maps",

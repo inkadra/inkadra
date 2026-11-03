@@ -382,7 +382,9 @@ export interface CanvasProps {
   /** Filled with a reader of the part of the board on screen, for the export dialog. */
   visibleRef?: { current: (() => Rect | null) | null };
   /** Maps of the guest page, which has no instance: the credit and the guest tile URL. */
-  guestMaps?: { attribution: string; tiles: string } | undefined;
+  guestMaps?:
+    | { attribution: string; tiles: string; satelliteAttribution?: string | undefined }
+    | undefined;
 }
 
 export function Canvas({
@@ -407,6 +409,9 @@ export function Canvas({
   const guest = useContext(GuestModeContext);
   const { instance, user } = useSession();
   const mapAttribution = guestMaps ? guestMaps.attribution : instance?.maps?.attribution;
+  const mapSatelliteAttribution = guestMaps
+    ? guestMaps.satelliteAttribution
+    : instance?.maps?.satelliteAttribution;
   const mapTiles = guestMaps
     ? guestMaps.tiles
     : instance?.maps?.enabled
@@ -2560,6 +2565,7 @@ export function Canvas({
       setNoteEditor,
       frameLabels: labels,
       mapAttribution,
+      mapSatelliteAttribution,
       mapTiles,
       notify,
     }),
@@ -2567,6 +2573,7 @@ export function Canvas({
       notify,
       labels,
       mapAttribution,
+      mapSatelliteAttribution,
       mapTiles,
       store,
       readOnly,
