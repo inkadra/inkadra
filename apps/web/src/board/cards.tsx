@@ -32,6 +32,7 @@ import { CardReview } from './CardReview.tsx';
 import { CroppedImage } from './CroppedImage.tsx';
 import { copyHex, hexToRgb } from './colors.ts';
 import { CardExtrasContext, GuestModeContext, useBoard } from './context.ts';
+import { isContextualFocus } from './editing-focus.ts';
 import { FileCard, RawImageFooter } from './FileCard.tsx';
 import { useBoardAspect } from './film/aspect.ts';
 import { FramePicture } from './film/FramePicture.tsx';
@@ -41,12 +42,14 @@ import { useSlugline } from './film/storyboard-data.ts';
 import { GuestVisibility } from './guest-visibility.tsx';
 import { ImageCropStage } from './ImageCropEditor.tsx';
 import { croppedRotatedSize, rotatedBounds } from './image-crop.ts';
+import { appendImageStroke } from './image-drawing.ts';
 import { playInline, stopInline, stopWhenOffscreen, useInlinePlaying } from './inline-player.ts';
 import { webUrl } from './links.ts';
 import { MapCard } from './MapCard.tsx';
 import { useMeasure } from './measure.ts';
 import { movingVariantUrl } from './moving.tsx';
 import { NoteBody, NoteEditor, useFragment } from './note.tsx';
+import { noteColor } from './note-format.ts';
 import { PlanCard } from './plan/PlanCard.tsx';
 import { LOCAL } from './store.ts';
 import { TableCard } from './TableCard.tsx';
@@ -263,26 +266,55 @@ function CardBody({
 function SectionCard({ element, editing }: { element: Of<'section'>; editing: boolean }) {
   const { store, setEditing } = useBoard();
   const { t } = useTranslation();
-  return editing ? (
-    <input
-      className="card__inline-input section__title"
-      defaultValue={element.title}
-      placeholder={t('board.section.placeholder')}
-      // biome-ignore lint/a11y/noAutofocus: the field opens because the user asked to rename
-      autoFocus
-      onFocus={(e) => e.currentTarget.select()}
-      onBlur={(e) => {
-        updateElement(store.doc, element.id, { title: e.target.value.trim() }, LOCAL);
-        setEditing(null);
-      }}
-      onKeyDown={blurOnEnter}
-      maxLength={200}
-      aria-label={t('board.section.title')}
-    />
-  ) : (
-    <h2 className={`section__title${element.title ? '' : ' is-empty'}`}>
-      {element.title || t('board.section.placeholder')}
-    </h2>
+  const style = {
+    margin: element.size || element.bold !== undefined ? 0 : undefined,
+    whiteSpace: element.size || element.bold !== undefined ? 'nowrap' : undefined,
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    fontSize: element.size ? { S: 20, M: 26, L: 34 }[element.size] : 20,
+    fontWeight: element.bold === undefined ? 600 : element.bold ? 700 : 400,
+    fontStyle: element.italic ? 'italic' : 'normal',
+    textAlign: element.align ?? 'left',
+    color: noteColor(element.color),
+    borderBottom:
+      element.line === false || element.size || element.bold !== undefined ? 'none' : undefined,
+  } as const;
+  return (
+    <div
+      className={
+        element.line !== false && (element.size || element.bold !== undefined)
+          ? 'section-heading has-rule'
+          : 'section-heading'
+      }
+      style={{ color: noteColor(element.color) }}
+    >
+      {editing ? (
+        <input
+          className="card__inline-input section__title"
+          style={style}
+          defaultValue={element.title}
+          placeholder={t('board.section.placeholder')}
+          // biome-ignore lint/a11y/noAutofocus: the field opens because the user asked to rename
+          autoFocus
+          onFocus={(e) => e.currentTarget.select()}
+          onBlur={(e) => {
+            updateElement(store.doc, element.id, { title: e.target.value.trim() }, LOCAL);
+          }}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === 'Escape') {
+              e.preventDefault();
+              setEditing(null);
+            }
+          }}
+          maxLength={200}
+          aria-label={t('board.section.title')}
+        />
+      ) : (
+        <h2 style={style} className={`section__title${element.title ? '' : ' is-empty'}`}>
+          {element.title || t('board.section.placeholder')}
+        </h2>
+      )}
+    </div>
   );
 }
 
@@ -420,6 +452,18 @@ function ImageCard({
   const { t } = useTranslation();
   const asset = useAsset(element.assetId);
   const progress = useUploadProgress(element.assetId);
+  const board = useBoard();
+  const [drawing, setDrawing] = useState(false);
+  useEffect(() => {
+    const toggle = (event: Event) => {
+      if ((event as CustomEvent).detail === element.id) setDrawing((value) => !value);
+    };
+    window.addEventListener('inkadra:image-draw', toggle);
+    return () => window.removeEventListener('inkadra:image-draw', toggle);
+  }, [element.id]);
+  useEffect(() => {
+    if (board.editing !== element.id) setDrawing(false);
+  }, [board.editing, element.id]);
   const ready = asset && asset !== 'missing' ? asset : null;
   const [hover, setHover] = useState(false);
   const dpr = typeof window === 'undefined' ? 1 : window.devicePixelRatio || 1;
@@ -458,6 +502,15 @@ function ImageCard({
             />
           ) : (
             <CroppedImage
+              strokes={element.strokes}
+              onStroke={
+                drawing && board.editing === element.id && !board.readOnly && !element.locked
+                  ? (points) => {
+                      if (!appendImageStroke(board.store.doc, element.id, points))
+                        board.notify?.(t('board.contextual.drawFailed'));
+                    }
+                  : undefined
+              }
               poster={src}
               moving={moving}
               alt={element.caption ?? ready?.filename ?? ''}
@@ -625,41 +678,49 @@ function LinkCard({ element, width }: { element: Of<'link'>; width: number }) {
   );
   return (
     <>
-      {embedUrl && playing ? (
-        <InlineVideo element={element} embedUrl={embedUrl} title={title} instagram={instagram} />
-      ) : src || embedUrl ? (
-        <div className={`card__media card__media--link${src ? '' : ' card__video'}`}>
-          {src && <img src={src} alt="" draggable={false} decoding="async" />}
-          {embedUrl && (
-            <button
-              type="button"
-              className="card__play"
-              data-no-drag
-              data-play-link={element.id}
-              onClick={(event) => {
-                event.stopPropagation();
-                playInline(element.id);
-              }}
-              aria-label={t('board.menu.playLink', { title })}
-            >
-              <Icon name="play" size={16} />
-            </button>
-          )}
-          {instagram && <span className="card__badge">{t('board.menu.instagram')}</span>}
-        </div>
-      ) : null}
-      <div className="card__pad card__link">
-        <span className="card__title">{element.title || shortUrl(element.url)}</span>
-        {element.description && <span className="card__desc">{element.description}</span>}
-        {embedUrl && playing && instagram ? (
-          // Instagram's embed fills its picture with its own bars: ↗ waits below, by the host.
-          <div className="card__host-row">
-            {host}
-            <OpenOutButton element={element} instagram />
+      {(embedUrl ? element.showPreview !== false : element.showInfo !== false) &&
+        (embedUrl && playing ? (
+          <InlineVideo element={element} embedUrl={embedUrl} title={title} instagram={instagram} />
+        ) : src || embedUrl ? (
+          <div className={`card__media card__media--link${src ? '' : ' card__video'}`}>
+            {src && <img src={src} alt="" draggable={false} decoding="async" />}
+            {embedUrl && (
+              <button
+                type="button"
+                className="card__play"
+                data-no-drag
+                data-play-link={element.id}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  playInline(element.id);
+                }}
+                aria-label={t('board.menu.playLink', { title })}
+              >
+                <Icon name="play" size={16} />
+              </button>
+            )}
+            {instagram && <span className="card__badge">{t('board.menu.instagram')}</span>}
           </div>
-        ) : (
-          host
+        ) : null)}
+      <div className="card__pad card__link">
+        <span className="card__title">
+          {element.showInfo === false
+            ? shortUrl(element.url)
+            : element.title || shortUrl(element.url)}
+        </span>
+        {element.showInfo !== false && element.description && (
+          <span className="card__desc">{element.description}</span>
         )}
+        {element.showInfo !== false &&
+          (embedUrl && playing && instagram ? (
+            // Instagram's embed fills its picture with its own bars: ↗ waits below, by the host.
+            <div className="card__host-row">
+              {host}
+              <OpenOutButton element={element} instagram />
+            </div>
+          ) : (
+            host
+          ))}
       </div>
     </>
   );
@@ -934,7 +995,7 @@ function BoardCard({ element, editing }: { element: Of<'board'>; editing: boolea
             onFocus={(e) => e.currentTarget.select()}
             onBlur={(e) => {
               const value = e.target.value.trim();
-              setEditing(null);
+              if (!isContextualFocus(e.relatedTarget)) setEditing(null);
               if (value && value !== board.title)
                 void renameBoard(projectId, board.id, value).catch(() => {});
             }}
@@ -998,7 +1059,7 @@ function ColumnCard({
             onFocus={(e) => e.currentTarget.select()}
             onBlur={(e) => {
               updateElement(store.doc, element.id, { title: e.target.value.trim() }, LOCAL);
-              setEditing(null);
+              if (!isContextualFocus(e.relatedTarget)) setEditing(null);
             }}
             onKeyDown={blurOnEnter}
             aria-label={t('board.column.title')}

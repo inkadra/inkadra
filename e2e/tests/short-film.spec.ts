@@ -297,7 +297,8 @@ test('a short film is prepared from the moodboard to the shot list', async ({
     await page.keyboard.press('Shift+t');
     await page.keyboard.press('Shift+Digit1');
     await page.keyboard.press('Escape');
-    await images.first().dblclick();
+    await images.first().click({ button: 'right' });
+    await page.getByRole('menuitem', { name: 'Apri immagine', exact: true }).click();
     const addColors = page.getByRole('button', { name: 'Aggiungi i colori alla board' });
     await expect(addColors).toBeVisible({ timeout: 60_000 });
     await addColors.click();

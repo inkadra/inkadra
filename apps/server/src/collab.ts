@@ -2,6 +2,8 @@ import type { Server as HttpServer, IncomingMessage } from 'node:http';
 import type { Duplex } from 'node:stream';
 import { type Connection, Server } from '@hocuspocus/server';
 import {
+  CURRENT_SCHEMA_VERSION,
+  getSchemaVersion,
   LocalPresence,
   migrateBoardDoc,
   type PresenceState,
@@ -18,6 +20,7 @@ import { adminEnrollmentRequired } from './admin-two-factor.ts';
 import type { Auth } from './auth.ts';
 import type { Database } from './db/client.ts';
 import { board, boardDoc, personalToken, session, user } from './db/schema.ts';
+import { prepareImageDrawings } from './image-drawing.ts';
 import { allowedOrigin, ORIGIN_HEADER, rawOrigin } from './request-origin.ts';
 import { writeBoardIndex } from './search/index-doc.ts';
 import { assignedItems, notifyAssignment, validateTaskUpdate } from './tasks.ts';
@@ -26,6 +29,7 @@ import { AUTO_VERSION_EVERY_MS, takeAutoVersion } from './versions.ts';
 
 interface Context {
   actor: Actor;
+  supportedSchemaVersion: number;
   /** Browser sign-ins: the session behind the cookie, checked again like the role. */
   sessionId: string | null;
   boardId: string;
@@ -132,13 +136,20 @@ export function createCollabServer(deps: {
             log.info({ boardId: ctx.boardId }, 'collab connection closed: access removed');
             connection.close({ code: 4403, reason: 'Forbidden' });
           } else {
-            const readOnly = !atLeast(access.role, 'editor');
+            const readOnly =
+              !atLeast(access.role, 'editor') ||
+              ctx.supportedSchemaVersion <
+                Math.max(CURRENT_SCHEMA_VERSION, getSchemaVersion(document));
             if (readOnly !== connection.readOnly) {
               connection.readOnly = readOnly;
               // Tell the client, so the editor follows instead of dropping what someone types.
-              connection.sendStateless(
-                JSON.stringify({ type: 'access', readOnly } satisfies AccessMessage),
-              );
+              if (
+                ctx.supportedSchemaVersion >=
+                Math.max(CURRENT_SCHEMA_VERSION, getSchemaVersion(document))
+              )
+                connection.sendStateless(
+                  JSON.stringify({ type: 'access', readOnly } satisfies AccessMessage),
+                );
             }
           }
         } catch (err) {
@@ -188,7 +199,13 @@ export function createCollabServer(deps: {
         if (key.startsWith('x-forwarded-')) delete request.headers[key];
     },
 
-    async onAuthenticate({ documentName, requestHeaders, connectionConfig, token }) {
+    async onAuthenticate({
+      documentName,
+      requestHeaders,
+      connectionConfig,
+      token,
+      requestParameters,
+    }) {
       const boardId = parseBoardDocName(documentName);
       if (!boardId) throw new Error('Unknown document');
       // Browsers always send Origin on WebSocket upgrades; native apps send none.
@@ -204,9 +221,16 @@ export function createCollabServer(deps: {
         .select({ name: user.name, image: user.image })
         .from(user)
         .where(eq(user.id, actor.id));
-      connectionConfig.readOnly = !atLeast(access.role, 'editor');
+      const advertised = requestParameters.get('schemaVersion');
+      const supportedSchemaVersion =
+        advertised && /^\d+$/.test(advertised) && Number.isSafeInteger(Number(advertised))
+          ? Number(advertised)
+          : 0;
+      connectionConfig.readOnly =
+        !atLeast(access.role, 'editor') || supportedSchemaVersion < CURRENT_SCHEMA_VERSION;
       return {
         actor,
+        supportedSchemaVersion,
         sessionId: signed.sessionId,
         boardId,
         user: { id: actor.id, name: me?.name ?? '', image: me?.image ?? null },
@@ -254,6 +278,7 @@ export function createCollabServer(deps: {
       if (row) Y.applyUpdate(document, row.state);
       const steps = migrateBoardDoc(document, boardId);
       if (steps.length > 0) log.info({ boardId, steps }, 'board document migrated');
+      prepareImageDrawings(document);
       assignments.set(document, assignedItems(document));
       return document;
     },
@@ -264,6 +289,15 @@ export function createCollabServer(deps: {
     },
 
     async onChange({ document, context }) {
+      for (const connection of document.getConnections() as Array<Connection<Context>>) {
+        if (
+          (connection.context?.supportedSchemaVersion ?? 0) < getSchemaVersion(document) &&
+          !connection.readOnly
+        ) {
+          connection.readOnly = true;
+          // The live schema update drives the update-app notice; this is not a role change.
+        }
+      }
       const before = assignments.get(document) ?? new Map();
       const after = assignedItems(document);
       const pending = pendingAssignments.get(document) ?? new Map();

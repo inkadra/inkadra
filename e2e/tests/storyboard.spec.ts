@@ -154,24 +154,22 @@ test('opening a note edits its real document and preserves the canvas editor', a
   await openProject(page);
   const note = page.locator('[data-type="note"]').filter({ hasText: 'Sopralluogo al porto' });
   await note.dblclick();
-  const dialog = page.getByRole('dialog', { name: 'Testo della nota', exact: true });
-  const editor = dialog.locator('[contenteditable="true"]');
+  const editor = note.locator('[contenteditable=true]');
   await expect(editor).toContainText('Sopralluogo al porto');
-  await expect(dialog).not.toContainText('Antonio guida');
+  await expect(editor).not.toContainText('Antonio guida');
   await editor.fill('Sopralluogo al porto — aggiornato');
-  await dialog.getByRole('button', { name: 'Modifica sulla board' }).click();
-  await expect(dialog).not.toBeVisible();
-  await expect(note.locator('[contenteditable="true"]')).toContainText('aggiornato');
-  // Opening a sheet ends inline editing: never two editors on the canvas at once.
-  await page.locator('[data-type="note"]').filter({ hasText: 'Casting comparse' }).dblclick();
-  await expect(editor).toContainText('Casting comparse');
-  await expect(page.locator('[contenteditable="true"]')).toHaveCount(1);
+  await page.getByRole('button', { name: 'Fatto', exact: true }).click();
+  await expect(note).toContainText('aggiornato');
+  const other = page.locator('[data-type="note"]').filter({ hasText: 'Casting comparse' });
+  await other.dblclick();
+  await expect(other.locator('[contenteditable=true]')).toContainText('Casting comparse');
+  await expect(page.locator('[contenteditable=true]')).toHaveCount(1);
   await page.keyboard.press('Escape');
-  await expect(dialog).not.toBeVisible();
+  await expect(page.locator('[contenteditable=true]')).toHaveCount(0);
   await note.dblclick();
   await expect(editor).toContainText('Sopralluogo al porto — aggiornato');
   await page.keyboard.press('Escape');
-  await expect(dialog).not.toBeVisible();
+  await expect(page.locator('[contenteditable=true]')).toHaveCount(0);
 });
 
 test('shell views use real shots and the call sheet traps and restores focus', async ({ page }) => {

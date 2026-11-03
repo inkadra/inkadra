@@ -242,6 +242,8 @@ function ReadyFileCard({
         <ModelTile />
       </Preview>
     );
+  } else if (asset.kind === 'video' && element.showPreview === false) {
+    preview = null;
   } else if (asset.kind === 'video') {
     preview = <VideoPreview element={element} asset={asset} pixels={pixels} state={state} />;
   } else if (family === 'audio') {

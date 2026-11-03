@@ -180,9 +180,8 @@ for (const theme of ['dark', 'light'] as const) {
       await expect.poll(async () => (await at(ids.section))?.y).toBeLessThan(40 + moved);
       expect(await at(ids.todo)).toEqual({ x: 60, y: 120 + moved });
 
-      // A new heading comes from the Canvas menu, and the toggle sits in its menu.
-      await page.getByRole('button', { name: 'Canvas', exact: true }).click();
-      await page.getByRole('menuitem', { name: 'Titolo di sezione' }).click();
+      // A new heading comes from the dock, and the toggle sits in its menu.
+      await page.getByRole('button', { name: 'Titolo di sezione', exact: true }).click();
       await page.keyboard.type('Sequenza 2 · Il fiume');
       await page.keyboard.press('Enter');
       const fresh = page.locator('[data-type="section"]', { hasText: 'Sequenza 2' });

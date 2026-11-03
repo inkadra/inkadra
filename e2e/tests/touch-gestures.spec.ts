@@ -231,7 +231,6 @@ test('with the hand tool a finger on a note being written leaves no pan behind',
   if (!canvas) throw new Error('canvas missing');
   await page.locator('.canvas .toolbar').getByRole('button', { name: 'Mano', exact: true }).tap();
   await card.dblclick();
-  await page.getByRole('button', { name: 'Modifica sulla board', exact: true }).tap();
   const editor = card.locator('[data-no-drag] [contenteditable="true"]');
   await expect(editor).toBeVisible();
   const box = await editor.boundingBox();

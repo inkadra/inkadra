@@ -1,7 +1,7 @@
 import { createServer } from 'node:http';
 import { fileURLToPath } from 'node:url';
 import { HocuspocusProvider, HocuspocusProviderWebsocket } from '@hocuspocus/provider';
-import { boardDocName } from '@inkadra/doc-schema';
+import { boardDocName, CURRENT_SCHEMA_VERSION } from '@inkadra/doc-schema';
 import { sql } from 'drizzle-orm';
 import pino from 'pino';
 import { expect, it } from 'vitest';
@@ -148,7 +148,7 @@ it.skipIf(!process.env.DATABASE_URL)(
         port = typeof address === 'object' && address ? address.port : 0,
       ) {
         const websocket = new HocuspocusProviderWebsocket({
-          url: `ws://127.0.0.1:${port}/collab`,
+          url: `ws://127.0.0.1:${port}/collab?schemaVersion=${CURRENT_SCHEMA_VERSION}`,
           WebSocketPolyfill: class extends WebSocket {
             constructor(url: string) {
               super(url, { headers: requestHeaders });

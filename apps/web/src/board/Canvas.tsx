@@ -110,7 +110,7 @@ import {
 } from './boards.ts';
 import { ColorPicker } from './ColorPicker.tsx';
 import { loadBoardGrid, loadTidyGap, saveBoardGrid, saveTidyGap } from './canvas-prefs.ts';
-import { Card } from './cards.tsx';
+import { Card, NOTE_COLORS } from './cards.tsx';
 import {
   type ArrangeCommand,
   BarButton,
@@ -136,6 +136,7 @@ import type { BoardConnection } from './connection.ts';
 import { BoardContext, type BoardContextValue, GuestModeContext, LARGE_BOARD } from './context.ts';
 import { EmptyBoardStart } from './EmptyBoardStart.tsx';
 import { easeCards } from './ease-cards.ts';
+import { isContextualFocus, restoreEditingFocus } from './editing-focus.ts';
 import { isDesignFile } from './file-kinds.ts';
 import { useBoardAspect } from './film/aspect.ts';
 import { DrawingEditor } from './film/DrawingEditor.tsx';
@@ -158,6 +159,7 @@ import { MapDialog } from './MapExplore.tsx';
 import { fillMapPreview } from './maps.ts';
 import { NoteSideSheet } from './NoteSideSheet.tsx';
 import { fillFragment, isEmpty } from './note.tsx';
+import { selectedBlocks } from './note-format.ts';
 import { PresenceLayer } from './PresenceLayer.tsx';
 import { PlanEditor } from './plan/PlanEditor.tsx';
 import {
@@ -473,6 +475,7 @@ export function Canvas({
   const [selection, setSelection] = useState<ReadonlySet<string>>(initialSelection);
   const [editing, setEditingState] = useState<string | null>(null);
   const [cropping, setCropping] = useState<string | null>(null);
+  const [appearance, setAppearance] = useState<string | null>(null);
   const [tool, setTool] = useState<CanvasTool>('select');
   const prefs = usePreferences();
   /** Snap to grid (#296): this person's preference (#302), so the magnet follows them. */
@@ -519,6 +522,8 @@ export function Canvas({
     y: number;
     at: Point;
     fromToolbar?: boolean;
+    /** Keep editing actions available when focusing the menu blurs an inline title. */
+    fromEditing?: boolean;
     /** Row and column of the table cell the menu was opened on. */
     cell?: { r: number; c: number };
     /** The scene picker of a to-do list, opened from its "Scene" item. */
@@ -694,16 +699,39 @@ export function Canvas({
   /** Keys typed between creating a note and its editor taking focus. */
   const pendingText = useRef<string | null>(null);
 
+  /** True while the field being left is blurred, so its own `setEditing(null)` is ignored. */
+  const finishingEdit = useRef(false);
+
   const setEditing = useCallback(
     (id: string | null, keepEmpty = false) => {
+      if (finishingEdit.current) return;
       const previous = editingRef.current;
+      // A canvas click or "Done" unmounts inline fields before they blur: blur the focused field
+      // of the card being left first, so titles, names and captions commit what was typed.
+      if (previous && previous !== id) {
+        const active = document.activeElement;
+        if (
+          active instanceof HTMLElement &&
+          active.closest(`[data-el="${CSS.escape(previous)}"]`)
+        ) {
+          finishingEdit.current = true;
+          try {
+            active.blur();
+          } finally {
+            finishingEdit.current = false;
+          }
+        }
+      }
       editingRef.current = id;
       setEditingState(id);
       // One editor per note: its side sheet and the inline editor share the same document.
       if (id) setNoteSheet(null);
       if (previous === id) return;
       noteEditor.current = null;
-      if (!id) pendingText.current = null;
+      if (!id) {
+        pendingText.current = null;
+        if (previous) restoreEditingFocus(rootRef.current);
+      }
       // A note left empty disappears, as on paper. Not an undo step of its own.
       const body = previous ? store.map(previous)?.get('body') : null;
       if (previous && !keepEmpty && body instanceof Y.XmlFragment && isEmpty(body))
@@ -825,6 +853,10 @@ export function Canvas({
   // Others see where we point, what we selected and which card we write in.
   const presence = useLocalPresence(preview ? null : conn.provider);
 
+  useEffect(() => {
+    if (conn.schemaTooNew) setEditing(null);
+  }, [conn.schemaTooNew, setEditing]);
+
   // A role change while the board is open: leave the note being written and say why, and
   // publish presence again so the server stamps the new role for the others right away.
   const [nextAccessNotice] = useState(accessNotices);
@@ -861,7 +893,8 @@ export function Canvas({
       if ([...sel].every((id) => snap.byId.has(id))) return sel;
       return new Set([...sel].filter((id) => snap.byId.has(id)));
     });
-    if (editing && !snap.byId.has(editing)) setEditing(null);
+    if (editing && (!snap.byId.has(editing) || snap.byId.get(editing)?.locked || readOnly))
+      setEditing(null);
     if (
       cropping &&
       (readOnly ||
@@ -871,8 +904,16 @@ export function Canvas({
     ) {
       setCropping(null);
     }
+    if (
+      appearance &&
+      (readOnly ||
+        !selection.has(appearance) ||
+        !snap.byId.has(appearance) ||
+        snap.byId.get(appearance)?.locked)
+    )
+      setAppearance(null);
     if (noteSheet && !snap.byId.has(noteSheet)) setNoteSheet(null);
-  }, [snap, editing, setEditing, cropping, readOnly, selection, noteSheet]);
+  }, [snap, editing, setEditing, cropping, readOnly, selection, noteSheet, appearance]);
 
   const toWorld = useCallback((clientX: number, clientY: number): Point => {
     const r = rootRef.current?.getBoundingClientRect();
@@ -1037,7 +1078,7 @@ export function Canvas({
           created = createElement(doc, 'column', pos, { title: '' }, opts);
           break;
         case 'section':
-          created = createElement(doc, 'section', pos, { title: '' }, opts);
+          created = createElement(doc, 'section', pos, { title: '', size: 'M', bold: true }, opts);
           break;
         case 'table':
           created = createElement(doc, 'table', pos, { ...newTable(3, 3), header: true }, opts);
@@ -1717,7 +1758,11 @@ export function Canvas({
     if (!targetId) {
       setStoryPanel(null);
       setFramePanel(null);
-      if (editing) setEditing(null);
+      if (editing || appearance) {
+        setEditing(null);
+        setAppearance(null);
+        return;
+      }
       if (cropping) setCropping(null);
       const base = e.shiftKey ? new Set(selection) : new Set<string>();
       if (!e.shiftKey) setSelection(EMPTY_SET);
@@ -1732,6 +1777,7 @@ export function Canvas({
     const interactive = target.closest(INTERACTIVE);
     if ((editing === id || cropping === id) && interactive) return;
     if (editing && editing !== id) setEditing(null);
+    if (appearance && appearance !== id) setAppearance(null);
     if (cropping && cropping !== id) setCropping(null);
 
     let next: Set<string>;
@@ -2086,7 +2132,8 @@ export function Canvas({
         if (!readOnly && !el.locked) setEditing(el.id);
         return;
       }
-      openElement(el);
+      if (!readOnly && !el.locked && (el.type === 'note' || el.type === 'image')) setEditing(el.id);
+      else openElement(el);
     }
   }
 
@@ -2204,6 +2251,8 @@ export function Canvas({
   const keyHandler = useRef<(e: KeyboardEvent) => void>(() => {});
   keyHandler.current = (e: KeyboardEvent) => {
     if (insideDialog()) return;
+    // Contextual controls keep native Enter/Space activation instead of board edit/pan shortcuts.
+    if (isContextualFocus(e.target) && (e.key === 'Enter' || e.key === ' ')) return;
     // A menu or the version banner already handled this Escape; a preview has nothing to clear.
     if (e.key === 'Escape' && (e.defaultPrevented || preview)) return;
     if (e.key === ' ' && canSpacePan(e.target)) {
@@ -2284,12 +2333,20 @@ export function Canvas({
       case 'escape':
         setMenu(null);
         if (tool === 'arrow') setTool('select');
+        else if (appearance) setAppearance(null);
         else if (cropping) setCropping(null);
         else if (editing) setEditing(null);
         else setSelection(EMPTY_SET);
         break;
       case 'edit':
         if (cropping) setCropping(null);
+        else if (
+          single &&
+          !readOnly &&
+          !single.locked &&
+          (single.type === 'image' || single.type === 'note')
+        )
+          setEditing(single.id);
         else if (single) openElement(single);
         break;
       case 'rename':
@@ -2803,12 +2860,47 @@ export function Canvas({
     };
     const items: MenuItem[] = [
       ...listItems,
+      ...(menu.fromEditing &&
+      single &&
+      !readOnly &&
+      !single.locked &&
+      ['note', 'table', 'column'].includes(single.type)
+        ? [
+            { heading: t('board.contextual.cardColor') },
+            ...[undefined, ...NOTE_COLORS].map((color) => ({
+              label: t(color ? `board.colors.${color}` : 'board.colors.none'),
+              action: () => updateElement(doc, single.id, { color }, LOCAL),
+            })),
+          ]
+        : []),
       ...(single?.type === 'file' && !readOnly && detectedScripts[single.id]
         ? [
             {
               label: t('screenplay.buildFromFile'),
               icon: 'storyboard' as const,
               action: () => openDetectedScript(single.id),
+            },
+          ]
+        : []),
+      ...(single &&
+      !readOnly &&
+      !single.locked &&
+      (single.type === 'link' ||
+        (single.type === 'file' &&
+          (() => {
+            const asset = getCachedAsset(single.assetId);
+            return asset && asset !== 'missing' && asset.kind === 'video';
+          })()))
+        ? [{ label: t('board.contextual.appearance'), action: () => setAppearance(single.id) }]
+        : []),
+      ...(editing && single?.type === 'note' && noteEditor.current
+        ? [
+            {
+              label: t('board.contextual.clear'),
+              disabled: noteEditor.current.state.selection.empty,
+              action: () =>
+                noteEditor.current &&
+                selectedBlocks(noteEditor.current).unsetAllMarks().clearNodes().run(),
             },
           ]
         : []),
@@ -3007,9 +3099,12 @@ export function Canvas({
     ];
     // These flags mark actions actually rendered by ContextBar for the same selection.
     // Standalone right-click menus keep the complete permission-filtered action list.
-    return menu.fromToolbar ? items.filter((item) => !('toolbar' in item && item.toolbar)) : items;
+    return menu.fromToolbar && !menu.fromEditing
+      ? items.filter((item) => !('toolbar' in item && item.toolbar))
+      : items;
   }, [
     menu,
+    editing,
     selection,
     selectedEls,
     boards,
@@ -3281,6 +3376,11 @@ export function Canvas({
             <ContextBar
               box={selectionBox}
               elements={selectedEls}
+              editing={editing ?? appearance}
+              onDone={() => {
+                setEditing(null);
+                setAppearance(null);
+              }}
               editor={editing ? noteEditor.current : null}
               readOnly={readOnly}
               onComments={
@@ -3300,7 +3400,13 @@ export function Canvas({
               onDelete={removeSelection}
               onDuplicate={duplicate}
               onMore={(x, y) =>
-                setMenu({ x, y, at: screenToWorld(vp.current, { x, y }), fromToolbar: true })
+                setMenu({
+                  x,
+                  y,
+                  at: screenToWorld(vp.current, { x, y }),
+                  fromToolbar: true,
+                  fromEditing: Boolean(editing || appearance),
+                })
               }
               onColor={(color) => {
                 for (const el of selectedEls) {

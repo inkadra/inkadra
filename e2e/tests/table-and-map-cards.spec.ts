@@ -208,9 +208,8 @@ for (const theme of ['dark', 'light'] as const) {
       await page.getByRole('menuitem', { name: 'Elimina riga' }).click();
       await expect(table.locator('tr')).toHaveCount(5);
 
-      // A map card from the Canvas menu: the link is placed and its map made by the server.
-      await page.getByRole('button', { name: 'Canvas', exact: true }).click();
-      await page.getByRole('menuitem', { name: 'Mappa' }).click();
+      // A map card from the dock: the link is placed and its map made by the server.
+      await page.getByRole('button', { name: 'Mappa', exact: true }).click();
       await page
         .getByLabel('Indirizzo o link di una mappa')
         .fill('https://www.google.com/maps/place/Soglio/@46.3407,9.5383,15z');

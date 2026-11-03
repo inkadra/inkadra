@@ -1,7 +1,7 @@
 import { deflateSync } from 'node:zlib';
 import { HocuspocusProvider, HocuspocusProviderWebsocket } from '@hocuspocus/provider';
 import { createElement } from '@inkadra/canvas-core';
-import { boardDocName, roots } from '@inkadra/doc-schema';
+import { boardDocName, CURRENT_SCHEMA_VERSION, roots } from '@inkadra/doc-schema';
 import { type Browser, expect, type Page, test } from '@playwright/test';
 import WebSocket from 'ws';
 import * as Y from 'yjs';
@@ -123,7 +123,7 @@ async function seed(page: Page, baseURL: string): Promise<Seeded> {
   }
   const doc = new Y.Doc();
   const socket = new HocuspocusProviderWebsocket({
-    url: `${baseURL.replace(/^http/, 'ws')}/collab`,
+    url: `${baseURL.replace(/^http/, 'ws')}/collab?schemaVersion=${CURRENT_SCHEMA_VERSION}`,
     WebSocketPolyfill: CookieSocket,
   });
   const provider = new HocuspocusProvider({

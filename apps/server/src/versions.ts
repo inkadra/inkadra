@@ -16,6 +16,7 @@ import * as Y from 'yjs';
 import type { CollabServer } from './collab.ts';
 import type { Database } from './db/client.ts';
 import { boardDoc, boardVersion } from './db/schema.ts';
+import { prepareImageDrawings } from './image-drawing.ts';
 
 /**
  * Saved states of board documents (decision 0013): automatic versions taken while a board is
@@ -277,6 +278,7 @@ export function writeVersionOver(live: Y.Doc, version: Y.Doc): void {
     }
     for (const id of hidden)
       if (!hiddenFromGuests(id, lookup)) now.elements.get(id)?.set(GUEST_HIDDEN, true);
+    prepareImageDrawings(live);
     // The storyboard's aspect and animatic sound track come back with the frames.
     for (const key of ['aspect', 'animaticAudio']) {
       const value = then.meta.get(key);

@@ -4,6 +4,7 @@ import { HocuspocusProvider, HocuspocusProviderWebsocket } from '@hocuspocus/pro
 import {
   addElement,
   boardDocName,
+  CURRENT_SCHEMA_VERSION,
   newElementId,
   roots,
   validateBoardDoc,
@@ -87,7 +88,7 @@ describe.skipIf(!url || !process.env.REDIS_URL)('Gate 0.3 collaboration simulati
         const doc = new Y.Doc();
         docs.push(doc);
         const ws = new HocuspocusProviderWebsocket({
-          url: `ws://${base}/collab`,
+          url: `ws://${base}/collab?schemaVersion=${CURRENT_SCHEMA_VERSION}`,
           WebSocketPolyfill: CookieSocket,
         });
         const provider = new HocuspocusProvider({

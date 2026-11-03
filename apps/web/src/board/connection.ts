@@ -1,8 +1,9 @@
 import { HocuspocusProvider, type onUnsyncedChangesParameters } from '@hocuspocus/provider';
-import { boardDocName, readBoardNotice } from '@inkadra/doc-schema';
+import { boardDocName, CURRENT_SCHEMA_VERSION, readBoardNotice } from '@inkadra/doc-schema';
 import { COLLAB_PATH } from '@inkadra/shared/constants';
 import { useEffect, useState } from 'react';
 import * as Y from 'yjs';
+import { useSession } from '../lib/session.tsx';
 import { setBusy } from '../pwa/busy.ts';
 import { BoardStore } from './store.ts';
 
@@ -23,6 +24,7 @@ export interface BoardConnection {
   provider: HocuspocusProvider;
   status: ConnectionStatus;
   readOnly: boolean;
+  schemaTooNew?: boolean;
   /** When the server last changed our access while the board was open. */
   accessChangedAt: number | null;
   /** Save progress, kept out of this object so an edit does not re-render the board. */
@@ -31,7 +33,7 @@ export interface BoardConnection {
 
 function collabUrl(): string {
   const scheme = window.location.protocol === 'https:' ? 'wss' : 'ws';
-  return `${scheme}://${window.location.host}${COLLAB_PATH}`;
+  return `${scheme}://${window.location.host}${COLLAB_PATH}?schemaVersion=${CURRENT_SCHEMA_VERSION}`;
 }
 
 export interface SaveState {
@@ -99,16 +101,43 @@ export function watchSaves(
   };
 }
 
+/** Watch the live document, rather than only guarding saved-version previews. */
+export function watchDocumentSchema(
+  doc: Y.Doc,
+  changed: (tooNew: boolean) => void,
+  supported = CURRENT_SCHEMA_VERSION,
+): () => void {
+  const meta = doc.getMap('meta');
+  const check = () =>
+    changed(
+      typeof meta.get('schemaVersion') === 'number' &&
+        (meta.get('schemaVersion') as number) > supported,
+    );
+  meta.observe(check);
+  check();
+  return () => meta.unobserve(check);
+}
+
+// Keep reopened boards and their last authenticated role available while this tab is offline.
+// The application shell currently has no persistent offline navigation/document cache.
+const cachedBoards = new Map<string, { update: Uint8Array; readOnly: boolean }>();
+
 /** Opens the board document over the collaboration WebSocket; the session cookie signs in. */
 export function useBoardConnection(boardId: string, trackBusy = true): BoardConnection | null {
+  const { user } = useSession();
+  const userId = user?.id ?? '';
   const [conn, setConn] = useState<BoardConnection | null>(null);
 
   useEffect(() => {
+    const cacheKey = `${userId}:${boardId}`;
+    const cached = cachedBoards.get(cacheKey);
     const doc = new Y.Doc();
+    if (cached) Y.applyUpdate(doc, cached.update);
     const store = new BoardStore(doc);
     let state: Omit<BoardConnection, 'store' | 'provider' | 'saves'> = {
       status: 'connecting',
-      readOnly: false,
+      readOnly: cached?.readOnly ?? false,
+      schemaTooNew: false,
       accessChangedAt: null,
     };
     const saves = createSaveStore();
@@ -139,11 +168,15 @@ export function useBoardConnection(boardId: string, trackBusy = true): BoardConn
       onAuthenticated: ({ scope }) => update({ readOnly: scope === 'readonly' }),
       onAuthenticationFailed: () => update({ status: 'denied' }),
     });
+    let roleReadOnly = cached?.readOnly ?? false;
     function update(patch: Partial<typeof state>) {
+      if (patch.readOnly !== undefined) roleReadOnly = patch.readOnly;
       state = { ...state, ...patch };
+      state.readOnly = roleReadOnly || state.schemaTooNew === true;
       hold();
       setConn({ store, provider, saves, ...state });
     }
+    const stopSchema = watchDocumentSchema(doc, (schemaTooNew) => update({ schemaTooNew }));
     // The provider sends nothing before the socket opens, so no count is missed here.
     const stopSaves = watchSaves(provider, (next) => {
       unsynced = next.pending;
@@ -152,6 +185,10 @@ export function useBoardConnection(boardId: string, trackBusy = true): BoardConn
     });
     update({});
     return () => {
+      if (state.status === 'denied' || state.status === 'signedOut') cachedBoards.delete(cacheKey);
+      else
+        cachedBoards.set(cacheKey, { update: Y.encodeStateAsUpdate(doc), readOnly: roleReadOnly });
+      stopSchema();
       stopSaves();
       setBusy(busy, false);
       provider.destroy();
@@ -159,7 +196,7 @@ export function useBoardConnection(boardId: string, trackBusy = true): BoardConn
       doc.destroy();
       setConn(null);
     };
-  }, [boardId, trackBusy]);
+  }, [boardId, trackBusy, userId]);
 
   return conn;
 }

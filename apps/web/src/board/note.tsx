@@ -6,6 +6,7 @@ import StarterKit from '@tiptap/starter-kit';
 import { type ReactNode, useEffect, useReducer } from 'react';
 import { useTranslation } from 'react-i18next';
 import * as Y from 'yjs';
+import { NoteAppearance, NoteInk, noteColor, TaskItem, TaskList } from './note-format.ts';
 
 /**
  * Notes keep their rich text in a Y.XmlFragment (the ProseMirror document, as y-prosemirror
@@ -47,6 +48,8 @@ const BLOCKS: Record<string, string> = {
   bulletList: 'ul',
   orderedList: 'ol',
   listItem: 'li',
+  taskList: 'ul',
+  taskItem: 'li',
   codeBlock: 'pre',
   horizontalRule: 'hr',
   hardBreak: 'br',
@@ -56,18 +59,49 @@ function renderNode(node: unknown, key: number): ReactNode {
   if (node instanceof Y.XmlText) return renderText(node, key);
   if (!(node instanceof Y.XmlElement)) return null;
   const children = node.toArray().map((c, i) => renderNode(c, i));
+  const align = node.getAttribute('textAlign');
+  const style = ['left', 'center', 'right'].includes(align ?? '')
+    ? { textAlign: align as 'left' | 'center' | 'right' }
+    : undefined;
   if (node.nodeName === 'heading') {
     const level = Number(node.getAttribute('level')) || 1;
-    const Tag = (level <= 1 ? 'h3' : 'h4') as 'h3' | 'h4';
-    return <Tag key={key}>{children}</Tag>;
+    const Tag = (level <= 1 ? 'h1' : level === 2 ? 'h2' : 'h3') as 'h1' | 'h2' | 'h3';
+    return (
+      <Tag key={key} style={style}>
+        {children}
+      </Tag>
+    );
   }
+  if (node.nodeName === 'taskItem')
+    return (
+      <li key={key} data-type="taskItem">
+        <input
+          type="checkbox"
+          aria-label={plainText(node)}
+          checked={String(node.getAttribute('checked')) === 'true'}
+          disabled
+        />
+        <div>{children}</div>
+      </li>
+    );
   const tag = BLOCKS[node.nodeName] ?? 'div';
   if (tag === 'hr' || tag === 'br') {
     const Void = tag as 'hr' | 'br';
     return <Void key={key} />;
   }
   const Tag = tag as 'p';
-  return <Tag key={key}>{children}</Tag>;
+  return (
+    <Tag
+      key={key}
+      style={style}
+      data-type={
+        node.nodeName === 'taskList' || node.nodeName === 'taskItem' ? node.nodeName : undefined
+      }
+      data-checked={node.nodeName === 'taskItem' ? String(node.getAttribute('checked')) : undefined}
+    >
+      {children}
+    </Tag>
+  );
 }
 
 interface Delta {
@@ -88,7 +122,19 @@ function renderText(text: Y.XmlText, key: number): ReactNode {
       else if (base === 'underline') out = <u>{out}</u>;
       else if (base === 'strike') out = <s>{out}</s>;
       else if (base === 'code') out = <code>{out}</code>;
-      else if (base === 'link') {
+      else if (base === 'noteInk') {
+        const ink = marks[name] as { color?: string; highlight?: string } | null;
+        out = (
+          <span
+            style={{
+              color: noteColor(ink?.color),
+              backgroundColor: noteColor(ink?.highlight, true),
+            }}
+          >
+            {out}
+          </span>
+        );
+      } else if (base === 'link') {
         const href = (marks[name] as { href?: string } | null)?.href;
         if (href && /^(https?:|mailto:)/i.test(href)) {
           out = (
@@ -134,6 +180,10 @@ export function NoteEditor({
         undoRedo: false,
         link: { openOnClick: false, autolink: true, defaultProtocol: 'https' },
       }),
+      NoteAppearance,
+      NoteInk,
+      TaskList,
+      TaskItem,
       Collaboration.configure({ fragment }),
       Placeholder.configure({ placeholder: t('board.note.placeholder') }),
     ],

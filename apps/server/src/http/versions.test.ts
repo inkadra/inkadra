@@ -206,7 +206,7 @@ describe.skipIf(!url)('board versions (needs DATABASE_URL)', () => {
     const doc = new Y.Doc();
     const notices: unknown[] = [];
     const websocketProvider = new HocuspocusProviderWebsocket({
-      url: `ws://${base}/collab`,
+      url: `ws://${base}/collab?schemaVersion=${CURRENT_SCHEMA_VERSION}`,
       WebSocketPolyfill: CookieSocket,
     });
     const provider = new HocuspocusProvider({

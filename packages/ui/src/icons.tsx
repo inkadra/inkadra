@@ -300,6 +300,32 @@ const paths = {
       <path d="M16.5 13v7M13 16.5h7" />
     </>
   ),
+  rowAdd: (
+    <>
+      <path d="M3 4h18v9H3zM3 8h18M12 16v6M9 19h6" />
+    </>
+  ),
+  rowRemove: (
+    <>
+      <path d="M3 4h18v9H3zM3 8h18M9 19h6" />
+    </>
+  ),
+  columnAdd: (
+    <>
+      <path d="M3 3h10v18H3zM8 3v18M16 12h6M19 9v6" />
+    </>
+  ),
+  columnRemove: (
+    <>
+      <path d="M3 3h10v18H3zM8 3v18M16 12h6" />
+    </>
+  ),
+  textColor: (
+    <>
+      <path d="M4 17L10 3l6 14M6 12h8M3 21h13" />
+      <circle cx="20" cy="19" r="2" />
+    </>
+  ),
   grid: <path d="M4 9h16M4 15h16M9 4v16M15 4v16" />,
   eye: (
     <>

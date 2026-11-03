@@ -47,8 +47,15 @@ export default defineConfig({
   },
   projects: [
     {
+      // Create the administrator before any fixture can sign up the shared test account.
+      name: 'first-run',
+      testMatch: 'first-run.spec.ts',
+      use: { ...devices['Desktop Chrome'], viewport: { width: 1440, height: 900 } },
+    },
+    {
       name: 'chromium',
-      testIgnore: ['**/perf/**'],
+      testIgnore: ['**/perf/**', '**/first-run.spec.ts'],
+      dependencies: ['first-run'],
       use: { ...devices['Desktop Chrome'], viewport: { width: 1440, height: 900 } },
     },
     {
