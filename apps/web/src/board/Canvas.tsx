@@ -3088,7 +3088,6 @@ export function Canvas({
   }, [
     menu,
     editing,
-    appearance,
     selection,
     selectedEls,
     boards,
@@ -3384,7 +3383,13 @@ export function Canvas({
               onDelete={removeSelection}
               onDuplicate={duplicate}
               onMore={(x, y) =>
-                setMenu({ x, y, at: screenToWorld(vp.current, { x, y }), fromToolbar: true, fromEditing: Boolean(editing || appearance) })
+                setMenu({
+                  x,
+                  y,
+                  at: screenToWorld(vp.current, { x, y }),
+                  fromToolbar: true,
+                  fromEditing: Boolean(editing || appearance),
+                })
               }
               onColor={(color) => {
                 for (const el of selectedEls) {
