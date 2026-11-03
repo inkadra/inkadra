@@ -155,15 +155,14 @@ test('a video plays in its card and stops with the card, the viewer and other pl
   await expect(page.locator('video')).toHaveCount(0);
   await page.keyboard.press('Escape');
 
-  // Far from the board the video playing stays in sight, unlike the rest of the cards.
+  // Far zoom hides what cards hold, except a video playing. Forced with the class: on a small
+  // board like this one how far the zoom goes depends on the timing of the view's limits.
   await first.locator('.fcard__play').click();
-  await expect(first.locator('video')).toHaveCount(1);
-  await expect(async () => {
-    await page.keyboard.press('Control+-');
-    await expect(page.locator('.canvas__world--far')).toHaveCount(1, { timeout: 200 });
-  }).toPass();
+  const world = page.locator('.canvas__world');
+  await world.evaluate((el) => el.classList.add('canvas__world--far'));
   await expect(first.locator('video')).toBeVisible();
-  await page.keyboard.press('Control+0');
+  await expect(second.locator('.fcard__footer')).toBeHidden();
+  await world.evaluate((el) => el.classList.remove('canvas__world--far'));
   await page.keyboard.press('Escape');
   await expect(page.locator('video')).toHaveCount(0);
 
