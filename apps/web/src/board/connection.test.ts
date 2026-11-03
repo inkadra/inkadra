@@ -191,3 +191,17 @@ describe('save store', () => {
     expect(listener).toHaveBeenCalledTimes(2);
   });
 });
+
+it('observes live schema changes before permitting an editor and unsubscribes cleanly',async () => {
+  const connection=await import('./connection.ts');
+  const watch=(connection as unknown as Record<string,unknown>).watchDocumentSchema;
+  expect(typeof watch).toBe('function');
+  const doc=new Y.Doc(); const values:boolean[]=[];
+  const stop=(watch as (doc:Y.Doc,cb:(blocked:boolean)=>void,supported:number)=>()=>void)(doc,value=>values.push(value),15);
+  doc.getMap('meta').set('schemaVersion',16);
+  expect(values.at(-1)).toBe(true);
+  doc.getMap('meta').set('schemaVersion',15);
+  expect(values.at(-1)).toBe(false);
+  stop(); doc.getMap('meta').set('schemaVersion',17);
+  expect(values.at(-1)).toBe(false);
+});

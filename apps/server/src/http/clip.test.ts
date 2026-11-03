@@ -1,3 +1,4 @@
+import { CURRENT_SCHEMA_VERSION } from '@inkadra/doc-schema';
 import { mkdirSync, mkdtempSync, readdirSync, utimesSync, writeFileSync } from 'node:fs';
 import { createServer, type Server } from 'node:http';
 import {
@@ -231,7 +232,7 @@ describe.skipIf(!url)('clip (needs DATABASE_URL)', () => {
     }
     const doc = new Y.Doc();
     const websocketProvider = new HocuspocusProviderWebsocket({
-      url: `ws://${base}/collab`,
+      url: `ws://${base}/collab?schemaVersion=${CURRENT_SCHEMA_VERSION}`,
       WebSocketPolyfill: CookieSocket,
     });
     const provider = new HocuspocusProvider({

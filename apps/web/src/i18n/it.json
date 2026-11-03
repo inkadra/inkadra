@@ -1026,7 +1026,9 @@
         "left": "Sinistra",
         "center": "Centro",
         "right": "Destra"
-      }
+      },
+      "drawFailed": "Impossibile salvare il tratto. Riprova; se il problema continua, ricarica la board.",
+      "updateApp": "Questa board richiede una versione più recente. Aggiorna l’app per modificarla; puoi continuare a leggerla."
     }
   },
   "tags": {

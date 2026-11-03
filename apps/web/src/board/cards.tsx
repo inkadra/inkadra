@@ -41,6 +41,7 @@ import { useSlugline } from './film/storyboard-data.ts';
 import { GuestVisibility } from './guest-visibility.tsx';
 import { ImageCropStage } from './ImageCropEditor.tsx';
 import { croppedRotatedSize, rotatedBounds } from './image-crop.ts';
+import { isContextualFocus } from './editing-focus.ts';
 import { appendImageStroke } from './image-drawing.ts';
 import { playInline, stopInline, stopWhenOffscreen, useInlinePlaying } from './inline-player.ts';
 import { webUrl } from './links.ts';
@@ -296,7 +297,6 @@ function SectionCard({ element, editing }: { element: Of<'section'>; editing: bo
           // biome-ignore lint/a11y/noAutofocus: the field opens because the user asked to rename
           autoFocus
           onFocus={(e) => e.currentTarget.select()}
-          onChange={(e) => updateElement(store.doc, element.id, { title: e.target.value }, LOCAL)}
           onBlur={(e) => {
             updateElement(store.doc, element.id, { title: e.target.value.trim() }, LOCAL);
           }}
@@ -506,7 +506,7 @@ function ImageCard({
               onStroke={
                 drawing && board.editing === element.id && !board.readOnly && !element.locked
                   ? (points) => {
-                      appendImageStroke(board.store.doc, element.id, points);
+                      if (!appendImageStroke(board.store.doc, element.id, points)) board.notify?.(t('board.contextual.drawFailed'));
                     }
                   : undefined
               }
@@ -994,7 +994,7 @@ function BoardCard({ element, editing }: { element: Of<'board'>; editing: boolea
             onFocus={(e) => e.currentTarget.select()}
             onBlur={(e) => {
               const value = e.target.value.trim();
-              setEditing(null);
+              if (!isContextualFocus(e.relatedTarget)) setEditing(null);
               if (value && value !== board.title)
                 void renameBoard(projectId, board.id, value).catch(() => {});
             }}
@@ -1058,7 +1058,7 @@ function ColumnCard({
             onFocus={(e) => e.currentTarget.select()}
             onBlur={(e) => {
               updateElement(store.doc, element.id, { title: e.target.value.trim() }, LOCAL);
-              setEditing(null);
+              if (!isContextualFocus(e.relatedTarget)) setEditing(null);
             }}
             onKeyDown={blurOnEnter}
             aria-label={t('board.column.title')}

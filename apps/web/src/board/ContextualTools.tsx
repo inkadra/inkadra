@@ -16,7 +16,7 @@ import { useTranslation } from 'react-i18next';
 import { useAsset } from './assets.ts';
 import { BarButton } from './chrome.tsx';
 import { useBoard } from './context.ts';
-import { normalizeRotation } from './image-crop.ts';
+import { rotateImageQuarterTurn } from './ImageCropEditor.tsx';
 import { noteColor, selectedBlocks, TEXT_COLORS } from './note-format.ts';
 import { LOCAL } from './store.ts';
 import { videoEmbedUrl } from './youtube.ts';
@@ -406,8 +406,8 @@ export function ContextualTools({
         <BarButton
           icon="bold"
           label={t('board.format.bold')}
-          active={el.bold ?? true}
-          onClick={() => patch({ bold: !(el.bold ?? true) })}
+          active={el.bold === true}
+          onClick={() => patch({ bold: el.bold !== true })}
         />
         <BarButton
           icon="italic"
@@ -454,7 +454,7 @@ export function ContextualTools({
         <BarButton
           icon="rotateRight"
           label={t('board.image.rotateRight')}
-          onClick={() => patch({ rotation: normalizeRotation((el.rotation ?? 0) + 90) })}
+          onClick={() => { if (asset && asset !== 'missing') rotateImageQuarterTurn(store,el,asset.width || 4,asset.height || 3,1); }}
         />
         <BarButton
           icon="pen"

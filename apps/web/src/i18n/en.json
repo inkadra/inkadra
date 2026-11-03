@@ -1026,7 +1026,9 @@
         "left": "Left",
         "center": "Center",
         "right": "Right"
-      }
+      },
+      "drawFailed": "Could not save the stroke. Try again; if the problem continues, reload the board.",
+      "updateApp": "This board requires a newer version. Update the app to edit it; you can continue viewing it."
     }
   },
   "tags": {

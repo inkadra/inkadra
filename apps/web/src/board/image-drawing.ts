@@ -3,16 +3,17 @@ import { MAX_STROKES, newElementId, roots, Stroke } from '@inkadra/doc-schema';
 import * as Y from 'yjs';
 import { LOCAL } from './store.ts';
 
-/** Never replace the shared array on the first stroke: old images are prepared by the server. */
+/** Append to the authority's shared array; recover a missing field without replacing existing ink. */
 export function appendImageStroke(doc: Y.Doc, id: string, points: number[]): boolean {
   const map = roots(doc).elements.get(id);
-  const strokes = map?.get('strokes');
-  if (
-    map?.get('type') !== 'image' ||
-    !(strokes instanceof Y.Array) ||
-    strokes.length >= MAX_STROKES
-  )
-    return false;
+  if (map?.get('type') !== 'image') return false;
+  let strokes=map.get('strokes');
+  // Restores and rollout imports can remove this field while the board remains loaded.
+  if (strokes === undefined) {
+    strokes=new Y.Array();
+    doc.transact(()=>map.set('strokes',strokes),LOCAL);
+  }
+  if (!(strokes instanceof Y.Array) || strokes.length >= MAX_STROKES) return false;
   const stroke = Stroke.safeParse({
     id: newElementId(),
     tool: 'pencil',
@@ -21,6 +22,7 @@ export function appendImageStroke(doc: Y.Doc, id: string, points: number[]): boo
     points,
   });
   if (!stroke.success) return false;
-  doc.transact(() => strokes.push([stroke.data]), LOCAL);
+  const target=strokes;
+  doc.transact(() => target.push([stroke.data]), LOCAL);
   return true;
 }

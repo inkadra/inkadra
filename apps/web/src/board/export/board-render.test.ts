@@ -164,3 +164,10 @@ it('exports source image strokes through the same crop and rotation as the pictu
     expect(stroke.points[1]).toBeLessThan(stroke.points[3]!);
   }
 });
+
+it('exports explicit section bold at 700 while preserving legacy 600 and explicit normal 400', () => {
+  for (const [bold,weight] of [[undefined,600],[false,400],[true,700]] as const) {
+    const ops=drawBoard([card({type:'section',title:'Title',bold})],ctx);
+    expect(ops.find(op=>op.kind==='text')).toMatchObject({weight});
+  }
+});

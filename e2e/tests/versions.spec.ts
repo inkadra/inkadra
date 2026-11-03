@@ -1,3 +1,4 @@
+import { CURRENT_SCHEMA_VERSION } from '@inkadra/doc-schema';
 import { HocuspocusProvider, HocuspocusProviderWebsocket } from '@hocuspocus/provider';
 import { createElement, moveIntoParent } from '@inkadra/canvas-core';
 import { boardDocName, roots } from '@inkadra/doc-schema';
@@ -37,7 +38,7 @@ async function seed(page: Page, baseURL: string) {
   }
   const doc = new Y.Doc();
   const socket = new HocuspocusProviderWebsocket({
-    url: `${baseURL.replace(/^http/, 'ws')}/collab`,
+    url: `${baseURL.replace(/^http/, 'ws')}/collab?schemaVersion=${CURRENT_SCHEMA_VERSION}`,
     WebSocketPolyfill: CookieSocket,
   });
   const provider = new HocuspocusProvider({

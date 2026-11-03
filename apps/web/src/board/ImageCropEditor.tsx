@@ -77,6 +77,16 @@ export function applyImageTransform(
   }, LOCAL);
 }
 
+/** The contextual shortcut and crop editor must preserve the same source region. */
+export function rotateImageQuarterTurn(store: ReturnType<typeof useBoard>['store'], element: ImageEl, baseW: number, baseH: number, direction: 1 | -1) {
+  const nextRot=normalizeRotation((element.rotation ?? 0)+direction*90);
+  const bounds=rotatedBounds(baseW,baseH,nextRot);
+  const crop=inscribeCrop(cropAfterQuarterTurn(element.crop ?? FULL_CROP,direction,bounds.width,bounds.height),baseW,baseH,nextRot);
+  store.undo.stopCapturing();
+  applyImageTransform(store,element,crop,nextRot);
+  store.undo.stopCapturing();
+}
+
 /** Restores an image element to its original uncropped and unrotated state. */
 export function restoreOriginalImage(
   store: ReturnType<typeof useBoard>['store'],
@@ -317,17 +327,7 @@ export function ImageCropToolbar({
   }
 
   function stepRotate(direction: 1 | -1) {
-    store.undo.stopCapturing();
-    const nextRot = normalizeRotation(rot + direction * 90);
-    const bounds = rotatedBounds(baseW, baseH, nextRot);
-    const nextCrop = inscribeCrop(
-      cropAfterQuarterTurn(crop, direction, bounds.width, bounds.height),
-      baseW,
-      baseH,
-      nextRot,
-    );
-    applyImageTransform(store, element, nextCrop, nextRot);
-    store.undo.stopCapturing();
+    rotateImageQuarterTurn(store, element, baseW, baseH, direction);
   }
 
   function changeAngle(nextRot: number) {

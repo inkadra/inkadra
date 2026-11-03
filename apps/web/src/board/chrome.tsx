@@ -373,7 +373,7 @@ function ToolButton({
       type="button"
       className={`toolbar__btn toolbar__btn--${dragType ?? icon}`}
       style={toolStyle(kind)}
-      aria-keyshortcuts={keyHint}
+      aria-keyshortcuts={keyHint || undefined}
       aria-label={label}
       aria-pressed={pressed}
       data-ink-tooltip={keyHint ? `${label} (${keyHint})` : label}

@@ -1,5 +1,5 @@
 import { HocuspocusProvider, type onUnsyncedChangesParameters } from '@hocuspocus/provider';
-import { boardDocName, readBoardNotice } from '@inkadra/doc-schema';
+import { boardDocName, CURRENT_SCHEMA_VERSION, readBoardNotice } from '@inkadra/doc-schema';
 import { COLLAB_PATH } from '@inkadra/shared/constants';
 import { useEffect, useState } from 'react';
 import * as Y from 'yjs';
@@ -23,6 +23,7 @@ export interface BoardConnection {
   provider: HocuspocusProvider;
   status: ConnectionStatus;
   readOnly: boolean;
+  schemaTooNew?: boolean;
   /** When the server last changed our access while the board was open. */
   accessChangedAt: number | null;
   /** Save progress, kept out of this object so an edit does not re-render the board. */
@@ -31,7 +32,7 @@ export interface BoardConnection {
 
 function collabUrl(): string {
   const scheme = window.location.protocol === 'https:' ? 'wss' : 'ws';
-  return `${scheme}://${window.location.host}${COLLAB_PATH}`;
+  return `${scheme}://${window.location.host}${COLLAB_PATH}?schemaVersion=${CURRENT_SCHEMA_VERSION}`;
 }
 
 export interface SaveState {
@@ -99,6 +100,14 @@ export function watchSaves(
   };
 }
 
+/** Watch the live document, rather than only guarding saved-version previews. */
+export function watchDocumentSchema(doc:Y.Doc, changed:(tooNew:boolean)=>void, supported=CURRENT_SCHEMA_VERSION):()=>void {
+  const meta=doc.getMap('meta');
+  const check=()=>changed(typeof meta.get('schemaVersion') === 'number' && (meta.get('schemaVersion') as number)>supported);
+  meta.observe(check); check();
+  return ()=>meta.unobserve(check);
+}
+
 /** Opens the board document over the collaboration WebSocket; the session cookie signs in. */
 export function useBoardConnection(boardId: string, trackBusy = true): BoardConnection | null {
   const [conn, setConn] = useState<BoardConnection | null>(null);
@@ -108,7 +117,8 @@ export function useBoardConnection(boardId: string, trackBusy = true): BoardConn
     const store = new BoardStore(doc);
     let state: Omit<BoardConnection, 'store' | 'provider' | 'saves'> = {
       status: 'connecting',
-      readOnly: false,
+      readOnly: true,
+      schemaTooNew: false,
       accessChangedAt: null,
     };
     const saves = createSaveStore();
@@ -139,11 +149,15 @@ export function useBoardConnection(boardId: string, trackBusy = true): BoardConn
       onAuthenticated: ({ scope }) => update({ readOnly: scope === 'readonly' }),
       onAuthenticationFailed: () => update({ status: 'denied' }),
     });
+    let roleReadOnly=true;
     function update(patch: Partial<typeof state>) {
+      if (patch.readOnly !== undefined) roleReadOnly=patch.readOnly;
       state = { ...state, ...patch };
+      state.readOnly=roleReadOnly || state.schemaTooNew === true;
       hold();
       setConn({ store, provider, saves, ...state });
     }
+    const stopSchema=watchDocumentSchema(doc,schemaTooNew=>update({schemaTooNew}));
     // The provider sends nothing before the socket opens, so no count is missed here.
     const stopSaves = watchSaves(provider, (next) => {
       unsynced = next.pending;
@@ -152,6 +166,7 @@ export function useBoardConnection(boardId: string, trackBusy = true): BoardConn
     });
     update({});
     return () => {
+      stopSchema();
       stopSaves();
       setBusy(busy, false);
       provider.destroy();

@@ -3,6 +3,7 @@ import type { Duplex } from 'node:stream';
 import { type Connection, Server } from '@hocuspocus/server';
 import {
   LocalPresence,
+  CURRENT_SCHEMA_VERSION,
   migrateBoardDoc,
   type PresenceState,
   type PresenceUser,
@@ -27,6 +28,7 @@ import { AUTO_VERSION_EVERY_MS, takeAutoVersion } from './versions.ts';
 
 interface Context {
   actor: Actor;
+  supportedSchemaVersion: number;
   /** Browser sign-ins: the session behind the cookie, checked again like the role. */
   sessionId: string | null;
   boardId: string;
@@ -133,7 +135,7 @@ export function createCollabServer(deps: {
             log.info({ boardId: ctx.boardId }, 'collab connection closed: access removed');
             connection.close({ code: 4403, reason: 'Forbidden' });
           } else {
-            const readOnly = !atLeast(access.role, 'editor');
+            const readOnly = !atLeast(access.role, 'editor') || ctx.supportedSchemaVersion < CURRENT_SCHEMA_VERSION;
             if (readOnly !== connection.readOnly) {
               connection.readOnly = readOnly;
               // Tell the client, so the editor follows instead of dropping what someone types.
@@ -189,7 +191,7 @@ export function createCollabServer(deps: {
         if (key.startsWith('x-forwarded-')) delete request.headers[key];
     },
 
-    async onAuthenticate({ documentName, requestHeaders, connectionConfig, token }) {
+    async onAuthenticate({ documentName, requestHeaders, connectionConfig, token, requestParameters }) {
       const boardId = parseBoardDocName(documentName);
       if (!boardId) throw new Error('Unknown document');
       // Browsers always send Origin on WebSocket upgrades; native apps send none.
@@ -205,9 +207,12 @@ export function createCollabServer(deps: {
         .select({ name: user.name, image: user.image })
         .from(user)
         .where(eq(user.id, actor.id));
-      connectionConfig.readOnly = !atLeast(access.role, 'editor');
+      const advertised=requestParameters.get('schemaVersion');
+      const supportedSchemaVersion=advertised && /^\d+$/.test(advertised) && Number.isSafeInteger(Number(advertised)) ? Number(advertised) : 0;
+      connectionConfig.readOnly = !atLeast(access.role, 'editor') || supportedSchemaVersion < CURRENT_SCHEMA_VERSION;
       return {
         actor,
+        supportedSchemaVersion,
         sessionId: signed.sessionId,
         boardId,
         user: { id: actor.id, name: me?.name ?? '', image: me?.image ?? null },
@@ -266,6 +271,7 @@ export function createCollabServer(deps: {
     },
 
     async onChange({ document, context }) {
+      prepareImageDrawings(document);
       const before = assignments.get(document) ?? new Map();
       const after = assignedItems(document);
       const pending = pendingAssignments.get(document) ?? new Map();

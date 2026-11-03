@@ -186,7 +186,7 @@ export function drawCard(p: Placed, ctx: CardContext): Op[] {
   // A section heading has no card: large text over a thin rule, as on the board.
   if (el.type === 'section') {
     const size = el.size ? { S: 20, M: 26, L: 34 }[el.size] : 20;
-    const weight = el.bold === false ? 400 : 600;
+    const weight = el.bold === undefined ? 600 : el.bold ? 700 : 400;
     const color = el.color ? light[`tag-${el.color}`] : c['text-primary'];
     const title = ellipsize(el.title, p.w - 4, size, weight, ctx.measure);
     const width = ctx.measure(title, size, weight);
