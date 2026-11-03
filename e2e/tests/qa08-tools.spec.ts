@@ -23,6 +23,7 @@ for (const width of [1280, 390]) {
             return { name: pair.slice(0, i), value: pair.slice(i + 1), url: baseURL! };
           }),
         );
+        const me = await (await page.request.get('/api/v1/me')).json();
         await page.addInitScript((theme) => localStorage.setItem('inkadra.theme', theme), theme);
         const response = await page.request.post('/api/v1/projects', {
           headers: { origin: baseURL! },
@@ -90,8 +91,7 @@ for (const width of [1280, 390]) {
                     .state,
               ),
             ).toBe('prompt');
-            await page.getByRole('button', { name: 'Canvas', exact: true }).click();
-            await page.getByRole('menuitem', { name: 'Nota vocale', exact: true }).click();
+            await page.getByRole('button', { name: 'Nota vocale', exact: true }).click();
             await expect
               .poll(() =>
                 page.evaluate(() => (window as unknown as Record<string, unknown>).micRequested),
@@ -107,9 +107,8 @@ for (const width of [1280, 390]) {
                 viewport: { width, height: 844 },
               });
               const recording = await context.newPage();
-              await recording.goto(`/p/${project.id}?view=canvas`);
-              await recording.getByRole('button', { name: 'Canvas', exact: true }).click();
-              await recording.getByRole('menuitem', { name: 'Nota vocale', exact: true }).click();
+              await recording.goto(`${baseURL}/p/${project.id}?view=canvas`);
+              await recording.getByRole('button', { name: 'Nota vocale', exact: true }).click();
               await expect(recording.locator('.voicenote__time')).not.toHaveText('0:00');
               if (out) await recording.screenshot({ path: join(out, 'microphone-recording.png') });
               await recording.getByRole('button', { name: 'Salva', exact: true }).click();
@@ -121,10 +120,9 @@ for (const width of [1280, 390]) {
           }
         } else if (kind === 'note') {
           await card.dblclick();
-          const editor = page.locator('.note-sidesheet .tiptap');
+          const editor = card.locator('.tiptap');
           await editor.fill('Primo secondo terzo');
           await expect(editor).toHaveCSS('box-shadow', 'none');
-          await page.getByRole('button', { name: 'Modifica sulla board', exact: true }).click();
           const inline = card.locator('.tiptap');
           await expect(inline).toHaveText('Primo secondo terzo');
           const word = await inline.evaluate((element) => {
@@ -140,17 +138,24 @@ for (const width of [1280, 390]) {
           await expect
             .poll(() => page.evaluate(() => window.getSelection()?.toString().trim()))
             .toBe('secondo');
-          await page.getByRole('button', { name: 'Titolo', exact: true }).click();
+          await page
+            .getByRole('button', { name: 'Dimensione, liste e allineamento', exact: true })
+            .click();
+          await page.getByRole('button', { name: 'H1', exact: true }).click();
           await expect(inline.locator('h1')).toHaveText('secondo');
           await expect(inline.locator('p')).toHaveText(['Primo ', ' terzo']);
         } else if (kind === 'todo') {
           await card.dblclick();
           await card.getByRole('button', { name: 'Assegna persona', exact: true }).click();
-          await page.getByRole('option', { name: /Giulia Bianchi/ }).click();
+          await page
+            .locator('.todo-assignment__picker')
+            .getByRole('option')
+            .filter({ hasText: me.name })
+            .click();
           await expect(card.locator('.todo-assignment__picker')).toHaveCount(0);
           await card.locator('input[type=date]').fill('2026-11-12');
           await expect(card.locator('input[type=date]')).toHaveValue('2026-11-12');
-          await card.getByRole('button', { name: 'Giulia Bianchi', exact: true }).click();
+          await card.getByRole('button', { name: me.name, exact: true }).click();
           await page.locator('.canvas').click({ position: { x: width - 30, y: 600 } });
           await expect(card.locator('.todo-assignment__picker')).toHaveCount(0);
         } else if (kind === 'character') {
@@ -221,8 +226,7 @@ for (const width of [1280, 390]) {
           await expect(page.locator('.viewer')).toHaveCount(0);
           await expect(page.locator('.map-dialog .leaflet-container')).toBeVisible();
           await page.getByRole('button', { name: 'Chiudi la mappa' }).click();
-          await page.getByRole('button', { name: 'Canvas', exact: true }).click();
-          await page.getByRole('menuitem', { name: 'Mappa', exact: true }).click();
+          await page.getByRole('button', { name: 'Mappa', exact: true }).click();
           const address = page.getByRole('combobox', { name: 'Indirizzo o link di una mappa' });
           await address.fill('Via Roma, Milano');
           await address.press('Enter');

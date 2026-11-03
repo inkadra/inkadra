@@ -42,8 +42,7 @@ for (const width of [1280, 390]) {
         }
       };
       const open = async () => {
-        await page.getByRole('button', { name: 'Canvas', exact: true }).click();
-        await page.getByRole('menuitem', { name: 'Mappa', exact: true }).click();
+        await page.getByRole('button', { name: 'Mappa', exact: true }).click();
         return page.getByRole('combobox', { name: 'Indirizzo o link di una mappa' });
       };
       let previews = 0;

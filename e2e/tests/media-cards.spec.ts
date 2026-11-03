@@ -394,9 +394,8 @@ test('audio cards show their waveform, play one at a time, and voice notes recor
     await theme('dark');
   }
 
-  // A voice note from the + menu becomes an audio card.
-  await page.locator('.toolbar__btn--canvas').click();
-  await page.getByRole('menuitem', { name: 'Nota vocale' }).click();
+  // A voice note from the dock becomes an audio card.
+  await page.getByRole('button', { name: 'Nota vocale', exact: true }).click();
   const pill = page.locator('.voicenote');
   await expect(pill).toContainText('Registrazione');
   await expect(pill.locator('.voicenote__time')).toHaveText('0:01', { timeout: 5000 });
