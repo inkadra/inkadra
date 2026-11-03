@@ -227,7 +227,10 @@ export const GuestSession = z
         'a password change, the page opens the link again with POST …/session.',
     }),
     maps: z
-      .object({ attribution: z.string().max(200) })
+      .object({
+        attribution: z.string().max(200),
+        satelliteAttribution: z.string().max(200).optional(),
+      })
       .nullable()
       .optional()
       .openapi({

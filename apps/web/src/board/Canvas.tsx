@@ -384,7 +384,9 @@ export interface CanvasProps {
   /** Filled with a reader of the part of the board on screen, for the export dialog. */
   visibleRef?: { current: (() => Rect | null) | null };
   /** Maps of the guest page, which has no instance: the credit and the guest tile URL. */
-  guestMaps?: { attribution: string; tiles: string } | undefined;
+  guestMaps?:
+    | { attribution: string; tiles: string; satelliteAttribution?: string | undefined }
+    | undefined;
 }
 
 export function Canvas({
@@ -409,6 +411,9 @@ export function Canvas({
   const guest = useContext(GuestModeContext);
   const { instance, user } = useSession();
   const mapAttribution = guestMaps ? guestMaps.attribution : instance?.maps?.attribution;
+  const mapSatelliteAttribution = guestMaps
+    ? guestMaps.satelliteAttribution
+    : instance?.maps?.satelliteAttribution;
   const mapTiles = guestMaps
     ? guestMaps.tiles
     : instance?.maps?.enabled
@@ -2617,6 +2622,7 @@ export function Canvas({
       setNoteEditor,
       frameLabels: labels,
       mapAttribution,
+      mapSatelliteAttribution,
       mapTiles,
       notify,
     }),
@@ -2624,6 +2630,7 @@ export function Canvas({
       notify,
       labels,
       mapAttribution,
+      mapSatelliteAttribution,
       mapTiles,
       store,
       readOnly,
@@ -2689,11 +2696,14 @@ export function Canvas({
   // biome-ignore lint/correctness/useExhaustiveDependencies: sizeVersion invalidates measured heights
   const selectionBox = useMemo(() => {
     const free = selectedEls.filter((e) => e.parent === null);
-    const b = boundsOf(free.map(liveRect));
+    // A card being resized carries the bar along, not only once it is let go.
+    const b = boundsOf(
+      free.map((e) => (overlay.resize?.id === e.id ? overlay.resize : liveRect(e))),
+    );
     if (!b) return null;
     const a = worldToScreen(viewport, { x: b.x, y: b.y });
     return { x: a.x, y: a.y, w: b.w * viewport.zoom, h: b.h * viewport.zoom };
-  }, [selectedEls, viewport, liveRect, sizeVersion]);
+  }, [selectedEls, viewport, liveRect, sizeVersion, overlay.resize]);
 
   const visibleCards = useMemo(() => snap.canvas.filter((e) => e.type !== 'arrow'), [snap]);
   const frameOf = (id: string | null) => {

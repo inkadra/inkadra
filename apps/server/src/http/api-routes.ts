@@ -104,6 +104,9 @@ export function registerApiRoutes(app: FastifyInstance, deps: Deps) {
       maps: {
         enabled: config.MAPS,
         attribution: config.MAP_TILE_ATTRIBUTION,
+        ...(config.MAP_SATELLITE_TILE_URL
+          ? { satelliteAttribution: config.MAP_SATELLITE_TILE_ATTRIBUTION }
+          : {}),
         geocoding: Boolean(config.MAP_GEOCODER_URL),
       },
       limits: { uploadMaxBytes: config.UPLOAD_MAX_SIZE },

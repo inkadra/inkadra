@@ -26,6 +26,7 @@ import { canComment, openComments, useReviews } from './review-store.ts';
 import { isTyping } from './shortcuts.ts';
 import { type BoardStore, LOCAL } from './store.ts';
 import { TagEditor } from './tags.tsx';
+import { ViewerImage } from './ViewerImage.tsx';
 import {
   isVideoLink,
   isYoutubeUrl,
@@ -326,6 +327,16 @@ export function MediaViewer({
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (isTyping(e.target) && e.key !== 'Escape' && e.key !== 'Tab') return;
+      // Let the focused image handle local zoom/pan before isolating other viewer keys.
+      const image = e.target instanceof HTMLElement && e.target.matches('.viewer__image-view');
+      if (
+        e.type === 'keydown' &&
+        image &&
+        (['+', '=', '-', '0'].includes(e.key) ||
+          ((e.target as HTMLElement).dataset.imageZoomed === 'true' &&
+            ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key)))
+      )
+        return;
       // The canvas behind listens on window too.
       e.stopImmediatePropagation();
       if (e.type !== 'keydown') return;
@@ -738,30 +749,34 @@ export function MediaViewer({
                 </div>
               </div>
             ) : ready ? (
-              element.type === 'image' &&
-              (isTransformedImage || element.strokes?.length) &&
-              !showOriginal ? (
-                <CroppedImage
-                  strokes={element.type === 'image' ? element.strokes : undefined}
-                  className="viewer__media viewer__media--contain"
-                  poster={pickVariant(ready, wide) || ready.url}
-                  moving={movingVariantUrl(ready, wide)}
-                  alt={element.caption ?? ready.filename}
-                  width={ready.width}
-                  height={ready.height}
-                  crop={element.crop}
-                  rotation={element.rotation}
-                />
-              ) : (
-                <MovingPicture
-                  className="viewer__media viewer__media--contain"
-                  poster={pickVariant(ready, wide) || ready.url}
-                  moving={movingVariantUrl(ready, wide)}
-                  alt={
-                    element.type === 'image' ? (element.caption ?? ready.filename) : ready.filename
-                  }
-                />
-              )
+              <ViewerImage key={element.id} onClose={onClose}>
+                {element.type === 'image' &&
+                (isTransformedImage || element.strokes?.length) &&
+                !showOriginal ? (
+                  <CroppedImage
+                    strokes={element.type === 'image' ? element.strokes : undefined}
+                    className="viewer__media viewer__media--contain"
+                    poster={pickVariant(ready, wide) || ready.url}
+                    moving={movingVariantUrl(ready, wide)}
+                    alt={element.caption ?? ready.filename}
+                    width={ready.width}
+                    height={ready.height}
+                    crop={element.crop}
+                    rotation={element.rotation}
+                  />
+                ) : (
+                  <MovingPicture
+                    className="viewer__media viewer__media--contain"
+                    poster={pickVariant(ready, wide) || ready.url}
+                    moving={movingVariantUrl(ready, wide)}
+                    alt={
+                      element.type === 'image'
+                        ? (element.caption ?? ready.filename)
+                        : ready.filename
+                    }
+                  />
+                )}
+              </ViewerImage>
             ) : null}
           </div>
 

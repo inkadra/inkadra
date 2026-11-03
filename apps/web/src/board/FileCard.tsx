@@ -20,7 +20,7 @@ import {
   splitName,
 } from './file-kinds.ts';
 import { MAP_ASPECT, MapCredit, TrackLine } from './MapCard.tsx';
-import { ExploreButton, LiveMap, useExploring } from './MapExplore.tsx';
+import { MapSurface, useExploring } from './MapExplore.tsx';
 import { formatClimb, formatDistance } from './maps.ts';
 import { localPreview, useUploadProgress } from './uploads.ts';
 
@@ -264,13 +264,14 @@ function ReadyFileCard({
             <img className="fcard__img" src={src} alt="" draggable={false} decoding="async" />
           )}
           <TrackLine track={asset.track} />
-          {src &&
-            asset.track.view &&
-            (exploring ? (
-              <LiveMap id={element.id} name={asset.filename} track={asset.track} />
-            ) : (
-              <ExploreButton id={element.id} name={asset.filename} />
-            ))}
+          {src && asset.track.view && (
+            <MapSurface
+              id={element.id}
+              name={asset.filename}
+              track={asset.track}
+              exploring={exploring}
+            />
+          )}
           {src && <MapCredit />}
         </Preview>
       );

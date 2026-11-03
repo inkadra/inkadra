@@ -117,6 +117,15 @@ const Env = z.object({
       'Use an http(s) address with {z}, {x} and {y}',
     )
     .default('https://tile.openstreetmap.org/{z}/{x}/{y}.png'),
+  /** Optional second source, fetched only by the server. */
+  MAP_SATELLITE_TILE_URL: z.preprocess(
+    emptyToUndefined,
+    z
+      .string()
+      .regex(/^https?:\/\/\S*\{z\}\S*\{x\}\S*\{y\}\S*$/)
+      .optional(),
+  ),
+  MAP_SATELLITE_TILE_ATTRIBUTION: z.string().min(1).max(200).default('Satellite'),
   /** Credit of the tiles, shown on every map picture. */
   MAP_TILE_ATTRIBUTION: z.string().min(1).max(200).default('© OpenStreetMap contributors'),
   /**

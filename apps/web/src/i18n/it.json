@@ -684,6 +684,8 @@
       "deleteColumn": "Elimina colonna"
     },
     "map": {
+      "standard": "Mappa",
+      "satellite": "Satellite",
       "label": "Indirizzo o link di una mappa",
       "placeholder": "Incolla un link di Maps o scrivi un indirizzo",
       "open": "Apri in Mappe",
@@ -1041,6 +1043,9 @@
     "done": "Fatto"
   },
   "viewer": {
+    "zoom": "Zoom immagine",
+    "zoomIn": "Ingrandisci",
+    "zoomOut": "Riduci",
     "info": "Info",
     "title": "Immagine",
     "close": "Chiudi",
@@ -1723,7 +1728,6 @@
     "button_other": "Commenti: {{count}} discussioni aperte",
     "open": "Commenti e revisione",
     "close": "Chiudi i commenti",
-    "allThreads": "Tutte le discussioni",
     "jumpTo": "Vai alla card {{card}}",
     "filter": "Mostra le discussioni",
     "filterStatus": {

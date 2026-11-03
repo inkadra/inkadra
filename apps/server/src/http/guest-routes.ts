@@ -245,7 +245,14 @@ export async function registerGuestRoutes(app: FastifyInstance, deps: Deps) {
       proofing: ctx.link.proofing,
       linkExpiresAt: ctx.link.expiresAt ? iso(ctx.link.expiresAt) : null,
       sessionExpiresAt: iso(ctx.guest.sessionExpiresAt),
-      maps: config.MAPS ? { attribution: config.MAP_TILE_ATTRIBUTION } : null,
+      maps: config.MAPS
+        ? {
+            attribution: config.MAP_TILE_ATTRIBUTION,
+            ...(config.MAP_SATELLITE_TILE_URL
+              ? { satelliteAttribution: config.MAP_SATELLITE_TILE_ATTRIBUTION }
+              : {}),
+          }
+        : null,
     };
   }
 
