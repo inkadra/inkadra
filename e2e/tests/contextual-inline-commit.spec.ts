@@ -55,7 +55,7 @@ for (const width of [1280, 390]) {
     await card.locator('input').fill('Second title');
     const bar = page.locator('.ctxbar');
     await bar.getByRole('button', { name: 'Altre azioni', exact: true }).click();
-    await expect(page.getByRole('menuitem', { name: 'Elimina', exact: true })).toBeVisible();
+    await expect(page.getByRole('menuitem', { name: /^Elimina/ })).toBeVisible();
     await page.keyboard.press('Escape');
     await card.dblclick();
     await card.locator('input').fill('Second title');

@@ -4658,7 +4658,7 @@ button.card__play {
   height: 14px;
   flex: none;
   border: 1px solid var(--ink-border-strong);
-  border-radius: var(--ink-radius-pill);
+  border-radius: var(--ink-radius-full);
   background: radial-gradient(circle at 6px 6px, var(--ink-text-secondary) 4px, transparent 5px)
     var(--ink-surface-3);
 }
