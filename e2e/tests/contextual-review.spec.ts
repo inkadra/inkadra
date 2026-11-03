@@ -1,4 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
+import { mkdirSync } from 'node:fs';
+import { join } from 'node:path';
 import { createElement } from '@inkadra/canvas-core';
 import { CURRENT_SCHEMA_VERSION, createBoardDoc } from '@inkadra/doc-schema';
 import { expect, type Page, test } from '@playwright/test';
@@ -117,4 +119,13 @@ test('a newer live document opens read-only with an update-app notice', async ({
   await card.dblclick();
   await expect(card.locator('input')).toHaveCount(0);
   await expect(page.locator('.toolbar__btn--note')).toHaveCount(0);
+  if (process.env.CONTEXTUAL_SHOTS) {
+    mkdirSync(process.env.CONTEXTUAL_SHOTS,{recursive:true});
+    for (const width of [1280,390]) for (const theme of ['dark','light']) {
+      await page.setViewportSize({width,height:900});
+      await page.evaluate(theme=>{document.documentElement.dataset.theme=theme;},theme);
+      await page.mouse.move(0,0);
+      await page.screenshot({path:join(process.env.CONTEXTUAL_SHOTS,`review-schema-${width}-${theme}.png`),animations:'disabled'});
+    }
+  }
 });
