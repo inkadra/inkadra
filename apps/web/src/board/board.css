@@ -580,11 +580,26 @@
   width: 34px;
   height: 34px;
   background: rgb(0 0 0 / 0.62);
-  pointer-events: none;
   transition: background-color var(--ink-dur-fast) var(--ink-ease-out);
 }
 .card--file:hover .fcard__play {
   background: rgb(0 0 0 / 0.8);
+}
+button.fcard__play:focus-visible {
+  outline: 2px solid var(--ink-accent-primary);
+  outline-offset: 2px;
+}
+/* Fills the preview, whose overflow is hidden: the focus ring sits inside. */
+.fcard__video {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  background: #000;
+}
+.fcard__video:focus-visible {
+  outline: 2px solid var(--ink-accent-primary);
+  outline-offset: -2px;
 }
 .fcard__play svg {
   fill: currentColor;
@@ -2574,9 +2589,10 @@ button.crumb--editable:focus-visible {
   }
 }
 
-/* Far zoom: text and controls are not drawn, only the card shapes, images and swatches.
+/* Far zoom: text and controls are not drawn, only the card shapes, images and swatches, and a
+   video playing in its card, which must not be left as sound with nothing to see.
    A hairline border vanishes at this scale, so plain cards are filled with its colour. */
-.canvas__world--far .card--free > :not(.card__media, .card__swatch) {
+.canvas__world--far .card--free > :not(.card__media, .card__swatch, .fcard:has(.fcard__video)) {
   visibility: hidden;
 }
 .canvas__world--far .card--free:not([class*="card--tint-"]) {

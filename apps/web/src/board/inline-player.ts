@@ -1,7 +1,7 @@
-import { type RefObject, useEffect, useSyncExternalStore } from 'react';
+import { type RefObject, useEffect, useRef, useSyncExternalStore } from 'react';
 
 /**
- * What plays on the board: a link card's video, an audio card (#327) or the viewer's media.
+ * What plays on the board: a link or file card's video, an audio card (#327) or the viewer's media.
  * Only one at a time: starting another stops it.
  */
 let active: string | null = null;
@@ -62,6 +62,38 @@ export const isPlayingInline = (id: string) => active === id;
 export function subscribeInline(listener: () => void): () => void {
   listeners.add(listener);
   return () => listeners.delete(listener);
+}
+
+/**
+ * While a card's player is on screen: Escape stops it, so does going far off-screen (unless this
+ * person asked to keep it playing) and the card going away.
+ */
+export function useInlineStops(id: string, frame: RefObject<Element | null>): void {
+  const mounted = useRef(false);
+  useEffect(() => {
+    mounted.current = true;
+    const onKey = (event: { key: string }) => {
+      if (event.key === 'Escape') stopInline(id);
+    };
+    window.addEventListener('keydown', onKey);
+    // Far off-screen means more than a screen away: a small pan keeps the video running.
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry && !entry.isIntersecting) stopWhenOffscreen(id);
+      },
+      { rootMargin: '100% 100% 100% 100%' },
+    );
+    if (frame.current) observer.observe(frame.current);
+    return () => {
+      window.removeEventListener('keydown', onKey);
+      observer.disconnect();
+      mounted.current = false;
+      // StrictMode remounts at once: only a card that really went away stops.
+      queueMicrotask(() => {
+        if (!mounted.current) stopInline(id);
+      });
+    };
+  }, [id, frame]);
 }
 
 export function useInlinePlaying(id: string): boolean {

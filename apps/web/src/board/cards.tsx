@@ -43,7 +43,7 @@ import { GuestVisibility } from './guest-visibility.tsx';
 import { ImageCropStage } from './ImageCropEditor.tsx';
 import { croppedRotatedSize, rotatedBounds } from './image-crop.ts';
 import { appendImageStroke } from './image-drawing.ts';
-import { playInline, stopInline, stopWhenOffscreen, useInlinePlaying } from './inline-player.ts';
+import { playInline, stopInline, useInlinePlaying, useInlineStops } from './inline-player.ts';
 import { webUrl } from './links.ts';
 import { MapCard } from './MapCard.tsx';
 import { useMeasure } from './measure.ts';
@@ -576,40 +576,20 @@ function InlineVideo({
 }) {
   const { t } = useTranslation();
   const ref = useRef<HTMLDivElement>(null);
-  const mounted = useRef(false);
   const [alt, setAlt] = useState(false);
-  const id = element.id;
+  useInlineStops(element.id, ref);
   useEffect(() => {
-    mounted.current = true;
-    const stop = () => stopInline(id);
-    const onKey = (event: { key: string; altKey: boolean }) => {
-      if (event.key === 'Escape') stop();
-      setAlt(event.altKey);
-    };
+    const onKey = (event: { altKey: boolean }) => setAlt(event.altKey);
     const onBlur = () => setAlt(false);
     window.addEventListener('keydown', onKey);
     window.addEventListener('keyup', onKey);
     window.addEventListener('blur', onBlur);
-    // Far off-screen means more than a screen away: a small pan keeps the video running.
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry && !entry.isIntersecting) stopWhenOffscreen(id);
-      },
-      { rootMargin: '100% 100% 100% 100%' },
-    );
-    if (ref.current) observer.observe(ref.current);
     return () => {
       window.removeEventListener('keydown', onKey);
       window.removeEventListener('keyup', onKey);
       window.removeEventListener('blur', onBlur);
-      observer.disconnect();
-      mounted.current = false;
-      // StrictMode remounts at once: only a card that really went away stops.
-      queueMicrotask(() => {
-        if (!mounted.current) stop();
-      });
     };
-  }, [id]);
+  }, []);
   return (
     <div
       className={`card__media card__media--link card__embed${instagram ? ' card__embed--portrait' : ''}`}

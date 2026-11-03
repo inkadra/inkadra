@@ -62,7 +62,7 @@ test('QA video proportions, thumbnail playback and converted audio', async ({ pa
   await page.unroute(`**/api/v1/assets/${assetId}`);
   await page.reload();
   await expect(card.locator('.card__play')).toBeVisible();
-  await card.click();
+  await card.locator('.fcard__footer').click();
   const media = card.locator('.fcard__preview');
   const first = await media.boundingBox();
   const handle = page.locator('.canvas__resize-handles [data-handle="se"]');
@@ -75,16 +75,11 @@ test('QA video proportions, thumbnail playback and converted audio', async ({ pa
   expect.soft(resized!.width / resized!.height).toBeCloseTo(first!.width / first!.height, 1);
   if (process.env.QA_SHOTS)
     await page.screenshot({ path: `${process.env.QA_SHOTS}/01-video-resize.png` });
-  const play = card.getByRole('button', { name: 'Riproduci qa.mov' });
-  if (await play.count()) await play.click();
-  else {
-    expect.soft(await play.count()).toBe(1);
-    await card.dblclick();
-  }
-  const video = page.getByRole('dialog').locator('video');
+  await card.getByRole('button', { name: 'Riproduci qa.mov' }).click();
+  const video = card.locator('video');
   await expect(video).toBeVisible();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
   await expect.poll(() => video.evaluate((v: HTMLVideoElement) => v.readyState)).toBeGreaterThan(1);
-  await video.evaluate((v: HTMLVideoElement) => v.play());
   expect(
     await video.evaluate((v: HTMLVideoElement) => ({
       muted: v.muted,

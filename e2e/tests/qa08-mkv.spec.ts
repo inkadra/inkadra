@@ -91,7 +91,7 @@ for (const codec of ['ac3', 'eac3', 'dca', 'flac', 'libopus', 'aac']) {
       const playCount = await card.locator('.card__play').count();
       if (process.env.QA_SHOTS)
         await page.screenshot({ path: `${process.env.QA_SHOTS}/${codec}-${status}-card.png` });
-      await card.dblclick();
+      await card.locator('.fcard__footer').dblclick();
       const viewer = page.getByRole('dialog');
       await expect(viewer).toBeVisible();
       const videoCount = await viewer.locator('video').count();
@@ -127,9 +127,8 @@ for (const codec of ['ac3', 'eac3', 'dca', 'flac', 'libopus', 'aac']) {
     }
     await page.goto(`/p/${project.id}/b/${project.rootBoardId}`);
     await page.locator('.card--file .card__play').click();
-    const video = page.getByRole('dialog').locator('video');
+    const video = page.locator('.card--file video');
     await expect(video).toBeVisible();
-    await video.evaluate((v: HTMLVideoElement) => v.play());
     await expect
       .poll(() =>
         video.evaluate(
