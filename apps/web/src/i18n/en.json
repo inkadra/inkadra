@@ -1014,7 +1014,9 @@
       "appearance": "Appearance",
       "rows": "Rows",
       "columns": "Columns",
-      "cardColor": "Card color"
+      "cardColor": "Card color",
+      "addRow": "Add row",
+      "addColumn": "Add column"
     }
   },
   "tags": {

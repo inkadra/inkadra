@@ -411,7 +411,7 @@ export function ContextualTools({
     const rows = (
       <>
         {option(
-          t('board.table.addRow'),
+          t('board.contextual.addRow'),
           () => insertTableRow(store.doc, el.id, (activeCell?.r ?? 0) + 1, LOCAL),
           undefined,
           el.rows.length >= MAX_TABLE_ROWS,
@@ -429,7 +429,7 @@ export function ContextualTools({
     const columns = (
       <>
         {option(
-          t('board.table.addColumn'),
+          t('board.contextual.addColumn'),
           () => insertTableColumn(store.doc, el.id, (activeCell?.c ?? 0) + 1, LOCAL),
           undefined,
           el.columns.length >= MAX_TABLE_COLUMNS,

@@ -1014,7 +1014,9 @@
       "appearance": "Aspetto",
       "rows": "Righe",
       "columns": "Colonne",
-      "cardColor": "Colore scheda"
+      "cardColor": "Colore scheda",
+      "addRow": "Aggiungi riga",
+      "addColumn": "Aggiungi colonna"
     }
   },
   "tags": {

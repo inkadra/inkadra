@@ -100,6 +100,7 @@ import { ProjectAppearanceDialog } from '../routes/ProjectAppearance.tsx';
 import { accessNotices } from './access-notices.ts';
 import { addedSummary } from './added-summary.ts';
 import { ArrowLayer, ArrowStyleButtons, onArrowStyleButton } from './arrows.tsx';
+import { selectedBlocks } from './note-format.ts';
 import { getCachedAsset } from './assets.ts';
 import {
   canRenameBoard,
@@ -2835,7 +2836,7 @@ export function Canvas({
             {
               label: t('board.contextual.clear'),
               disabled: noteEditor.current.state.selection.empty,
-              action: () => noteEditor.current?.chain().focus().unsetAllMarks().clearNodes().run(),
+              action: () => noteEditor.current && selectedBlocks(noteEditor.current).unsetAllMarks().clearNodes().run(),
             },
           ]
         : []),
