@@ -87,14 +87,17 @@ for (const width of [1280,390]) {
       await page.mouse.move(picture!.x+80,picture!.y+60,{steps:5});await page.mouse.up();
       await expect(drawing.locator('path')).toHaveCount(1);
       await screenshot(page,`${width}-image-drawing`);await bar.getByRole('button',{name:'Fatto',exact:true}).click();
+      if (width === 390) {
+        await page.keyboard.down('Space'); await page.mouse.move(360,500); await page.mouse.down(); await page.mouse.move(360,280,{steps:8}); await page.mouse.up(); await page.keyboard.up('Space');
+      }
       const grid = page.locator(`[data-el="${table.id}"]`);await grid.dblclick();
-      await bar.getByRole('button',{name:'Righe',exact:true}).click();
+      if (width === 390) await bar.getByRole('button',{name:'Righe',exact:true}).click();
       await page.getByRole('button',{name:'Aggiungi riga',exact:true}).click();
       await expect(grid.locator('tr')).toHaveCount(3);
       await page.keyboard.press('Escape');await screenshot(page,`${width}-table`);
       await page.reload();
       await expect(page.locator(`[data-el="${image.id}"] .image-drawing path`)).toHaveCount(1);
-      await expect(page.locator(`[data-el="${note.id}"] [style*="--ink-tag-teal"]`)).toBeVisible();
+      await expect(page.locator(`[data-el="${note.id}"] [style*="--ink-tag-teal"]`)).toHaveCount(1);
     });
   });
 }

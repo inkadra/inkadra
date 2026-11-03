@@ -214,6 +214,8 @@ export function TableCard({ element, editing }: { element: TableElement; editing
                     key={col.id}
                     scope={Cell === 'th' ? 'col' : undefined}
                     data-table-cell={`${r}:${c}`}
+                    data-table-row={row.id}
+                    data-table-column={col.id}
                     // The canvas starts editing on the second press of a double click.
                     onPointerDown={
                       editing

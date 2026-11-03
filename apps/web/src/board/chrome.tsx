@@ -385,7 +385,7 @@ function ToolButton({
       aria-keyshortcuts={keyHint}
       aria-label={label}
       aria-pressed={pressed}
-      data-ink-tooltip={`${label} (${keyHint})`}
+      data-ink-tooltip={keyHint ? `${label} (${keyHint})` : label}
       onClick={onClick}
       draggable={!!dragType}
       onDragStart={(e) => {
@@ -405,16 +405,19 @@ export function BarButton({
   onClick,
   active,
   danger,
+  disabled,
 }: {
   icon: IconName;
   label: string;
   onClick: () => void;
   active?: boolean;
   danger?: boolean;
+  disabled?: boolean;
 }) {
   return (
     <button
       type="button"
+      disabled={disabled}
       className={`ctxbar__btn${active ? ' is-active' : ''}${danger ? ' is-danger' : ''}`}
       aria-label={label}
       data-ink-tooltip={label}

@@ -38,8 +38,7 @@ it('exposes no mutation controls to a read-only viewer',async()=>{
 });
 it('disables deleting table rows without a valid cell and at the minimum size',async()=>{
   const view=await mount('table');try {
-    await act(async()=>view.host.querySelector<HTMLButtonElement>('button')!.click());
-    const remove=[...document.querySelectorAll<HTMLButtonElement>('.contextual-popover button')].find(button=>button.textContent==='board.table.deleteRow');
+    const remove=view.host.querySelector<HTMLButtonElement>('[aria-label="board.table.deleteRow"]');
     expect(remove?.disabled).toBe(true);
   }finally{await view.cleanup();}
 });

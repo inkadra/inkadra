@@ -133,14 +133,15 @@ export function ContextualTools({
   const asset = useAsset(el.type === 'file' || el.type === 'image' ? el.assetId : undefined);
   const [href, setHref] = useState('');
   const [drawing, setDrawing] = useState(false);
-  const [activeCell, setActiveCell] = useState<{ r: number; c: number } | null>(null);
+  const [activeCell, setActiveCell] = useState<{ row: string; column: string } | null>(null);
   useEffect(() => {
     const remember = (element: EventTarget | null) => {
       const target =
         element instanceof HTMLElement ? element.closest<HTMLElement>('[data-table-cell]') : null;
       if (target?.closest('[data-el]')?.getAttribute('data-el') !== el.id) return;
-      const [r, c] = (target.dataset.tableCell ?? '').split(':').map(Number);
-      if (r !== undefined && c !== undefined && Number.isInteger(r) && Number.isInteger(c)) setActiveCell({ r, c });
+      const row = target.dataset.tableRow;
+      const column = target.dataset.tableColumn;
+      if (row && column) setActiveCell({row,column});
     };
     const focus = (event: FocusEvent) => remember(event.target);
     remember(document.activeElement);
@@ -406,13 +407,13 @@ export function ContextualTools({
       </fieldset>
     );
   if (el.type === 'table') {
-    const row = activeCell && el.rows[activeCell.r];
-    const col = activeCell && el.columns[activeCell.c];
+    const row = activeCell && el.rows.find(row => row.id === activeCell.row);
+    const col = activeCell && el.columns.find(col => col.id === activeCell.column);
     const rows = (
       <>
         {option(
           t('board.contextual.addRow'),
-          () => insertTableRow(store.doc, el.id, (activeCell?.r ?? 0) + 1, LOCAL),
+          () => insertTableRow(store.doc, el.id, row ? el.rows.indexOf(row)+1 : undefined, LOCAL),
           undefined,
           el.rows.length >= MAX_TABLE_ROWS,
         )}
@@ -420,6 +421,7 @@ export function ContextualTools({
           t('board.table.deleteRow'),
           () => {
             if (row) removeTableRow(store.doc, el.id, row.id, LOCAL);
+            setActiveCell(null);
           },
           undefined,
           !row || el.rows.length <= 1,
@@ -430,7 +432,7 @@ export function ContextualTools({
       <>
         {option(
           t('board.contextual.addColumn'),
-          () => insertTableColumn(store.doc, el.id, (activeCell?.c ?? 0) + 1, LOCAL),
+          () => insertTableColumn(store.doc, el.id, col ? el.columns.indexOf(col)+1 : undefined, LOCAL),
           undefined,
           el.columns.length >= MAX_TABLE_COLUMNS,
         )}
@@ -438,22 +440,23 @@ export function ContextualTools({
           t('board.table.deleteColumn'),
           () => {
             if (col) removeTableColumn(store.doc, el.id, col.id, LOCAL);
+            setActiveCell(null);
           },
           undefined,
           !col || el.columns.length <= 1,
         )}
       </>
     );
-    return (
-      <>
-        <ToolPopover label={t('board.contextual.rows')} icon="rows">
-          {rows}
-        </ToolPopover>
-        <ToolPopover label={t('board.contextual.columns')} icon="column">
-          {columns}
-        </ToolPopover>
-      </>
-    );
+    return <>
+      <span className="contextual-desktop">
+        <BarButton icon="rowAdd" label={t('board.contextual.addRow')} disabled={el.rows.length >= MAX_TABLE_ROWS} onClick={() => insertTableRow(store.doc,el.id,row ? el.rows.indexOf(row)+1 : undefined,LOCAL)} />
+        <BarButton icon="rowRemove" label={t('board.table.deleteRow')} disabled={!row || el.rows.length <= 1} onClick={() => { if(row) removeTableRow(store.doc,el.id,row.id,LOCAL); setActiveCell(null); }} />
+        <span className="ctxbar__sep" aria-hidden="true" />
+        <BarButton icon="columnAdd" label={t('board.contextual.addColumn')} disabled={el.columns.length >= MAX_TABLE_COLUMNS} onClick={() => insertTableColumn(store.doc,el.id,col ? el.columns.indexOf(col)+1 : undefined,LOCAL)} />
+        <BarButton icon="columnRemove" label={t('board.table.deleteColumn')} disabled={!col || el.columns.length <= 1} onClick={() => { if(col) removeTableColumn(store.doc,el.id,col.id,LOCAL); setActiveCell(null); }} />
+      </span>
+      <span className="contextual-mobile-tools"><ToolPopover label={t('board.contextual.rows')} icon="rows">{rows}</ToolPopover><ToolPopover label={t('board.contextual.columns')} icon="column">{columns}</ToolPopover></span>
+    </>;
   }
   if (el.type === 'link')
     return (

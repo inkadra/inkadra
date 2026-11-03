@@ -4616,3 +4616,6 @@ button.card__play {
 .note-text li[data-type=taskItem] { display: flex; align-items: baseline; gap: 6px; }
 .note-text li[data-type=taskItem]::before { content: none; }
 .note-text li[data-type=taskItem] input { flex: none; accent-color: var(--ink-accent-primary); }
+
+.contextual-mobile-tools { display: none; }
+@media (max-width: 600px) { .contextual-mobile-tools { display: inline-flex; } }

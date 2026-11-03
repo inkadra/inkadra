@@ -300,6 +300,10 @@ const paths = {
       <path d="M16.5 13v7M13 16.5h7" />
     </>
   ),
+  rowAdd: <><path d="M3 4h18v9H3zM3 8h18M12 16v6M9 19h6"/></>,
+  rowRemove: <><path d="M3 4h18v9H3zM3 8h18M9 19h6"/></>,
+  columnAdd: <><path d="M3 3h10v18H3zM8 3v18M16 12h6M19 9v6"/></>,
+  columnRemove: <><path d="M3 3h10v18H3zM8 3v18M16 12h6"/></>,
   grid: <path d="M4 9h16M4 15h16M9 4v16M15 4v16" />,
   eye: (
     <>
