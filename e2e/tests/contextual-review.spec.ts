@@ -120,12 +120,18 @@ test('a newer live document opens read-only with an update-app notice', async ({
   await expect(card.locator('input')).toHaveCount(0);
   await expect(page.locator('.toolbar__btn--note')).toHaveCount(0);
   if (process.env.CONTEXTUAL_SHOTS) {
-    mkdirSync(process.env.CONTEXTUAL_SHOTS,{recursive:true});
-    for (const width of [1280,390]) for (const theme of ['dark','light']) {
-      await page.setViewportSize({width,height:900});
-      await page.evaluate(theme=>{document.documentElement.dataset.theme=theme;},theme);
-      await page.mouse.move(0,0);
-      await page.screenshot({path:join(process.env.CONTEXTUAL_SHOTS,`review-schema-${width}-${theme}.png`),animations:'disabled'});
-    }
+    mkdirSync(process.env.CONTEXTUAL_SHOTS, { recursive: true });
+    for (const width of [1280, 390])
+      for (const theme of ['dark', 'light']) {
+        await page.setViewportSize({ width, height: 900 });
+        await page.evaluate((theme) => {
+          document.documentElement.dataset.theme = theme;
+        }, theme);
+        await page.mouse.move(0, 0);
+        await page.screenshot({
+          path: join(process.env.CONTEXTUAL_SHOTS, `review-schema-${width}-${theme}.png`),
+          animations: 'disabled',
+        });
+      }
   }
 });
