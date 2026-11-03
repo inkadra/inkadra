@@ -145,13 +145,16 @@ test('a video plays in its card and stops with the card, the viewer and other pl
   await first.locator('.fcard__play').click();
   await expect(first.locator('video')).toHaveCount(1);
   await first.locator('.fcard__footer').click();
-  const preview = page.getByRole('switch', { name: 'Anteprima' });
+  await page.locator('.ctxbar [aria-haspopup=menu]').last().click();
+  await page.getByRole('menuitem', { name: 'Aspetto', exact: true }).click();
+  const preview = page.locator('.ctxbar').getByRole('switch', { name: 'Anteprima', exact: true });
   await preview.click();
   await expect(first.locator('.fcard__preview')).toHaveCount(0);
   await expect(page.locator('video')).toHaveCount(0);
   await preview.click();
   await expect(first.locator('.fcard__play')).toBeVisible();
   await expect(page.locator('video')).toHaveCount(0);
+  await page.keyboard.press('Escape');
 
   // Far from the board the video playing stays in sight, unlike the rest of the cards.
   await first.locator('.fcard__play').click();
@@ -290,6 +293,14 @@ test('screenshots for the pull request', async ({ browser, page, baseURL }) => {
       await shot.mouse.move(viewport.width - 4, viewport.height - 4);
       await shot.waitForTimeout(400);
       await shot.screenshot({ path: `${shots}/${name}-${theme}-playing.png` });
+      if (name === '1280') {
+        // The rings of keyboard focus, on the video and then on the play button of the next card.
+        await shot.keyboard.press('Tab');
+        await video.focus();
+        await shot.screenshot({ path: `${shots}/${name}-${theme}-focus-video.png` });
+        await shot.locator('.fcard__play').first().focus();
+        await shot.screenshot({ path: `${shots}/${name}-${theme}-focus-play.png` });
+      }
       await context.close();
     }
 });
