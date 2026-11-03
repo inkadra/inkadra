@@ -1792,7 +1792,7 @@ body:has(.colorpicker) .card-reactions {
 .canvas {
   container: canvas / inline-size;
 }
-@container canvas (width < 640px) {
+@container canvas (width < 860px) {
   .toolbar .toolbar__btn.toolbar__btn--canvas {
     padding: 0 8px;
     gap: 2px;
@@ -1805,7 +1805,7 @@ body:has(.colorpicker) .card-reactions {
 .toolbar__tools {
   display: contents;
 }
-@container canvas (width < 600px) {
+@container canvas (width < 820px) {
   /* The tools scroll sideways; the Canvas button stays pinned at the end, always in view. */
   .toolbar {
     max-width: calc(100% - 16px);
