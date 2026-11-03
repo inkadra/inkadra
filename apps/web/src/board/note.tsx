@@ -72,7 +72,18 @@ function renderNode(node: unknown, key: number): ReactNode {
       </Tag>
     );
   }
-  if (node.nodeName === 'taskItem') return <li key={key} data-type="taskItem"><input type="checkbox" aria-label={plainText(node)} checked={String(node.getAttribute('checked')) === 'true'} disabled /><div>{children}</div></li>;
+  if (node.nodeName === 'taskItem')
+    return (
+      <li key={key} data-type="taskItem">
+        <input
+          type="checkbox"
+          aria-label={plainText(node)}
+          checked={String(node.getAttribute('checked')) === 'true'}
+          disabled
+        />
+        <div>{children}</div>
+      </li>
+    );
   const tag = BLOCKS[node.nodeName] ?? 'div';
   if (tag === 'hr' || tag === 'br') {
     const Void = tag as 'hr' | 'br';

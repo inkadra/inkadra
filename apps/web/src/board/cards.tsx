@@ -266,6 +266,9 @@ function SectionCard({ element, editing }: { element: Of<'section'>; editing: bo
   const { store, setEditing } = useBoard();
   const { t } = useTranslation();
   const style = {
+    margin: element.size || element.bold !== undefined ? 0 : undefined,
+    whiteSpace: element.size || element.bold !== undefined ? 'nowrap' : undefined,
+    overflow: 'hidden', textOverflow: 'ellipsis',
     fontSize: element.size ? { S: 20, M: 26, L: 34 }[element.size] : 20,
     fontWeight: element.bold === undefined ? 600 : element.bold ? 700 : 400,
     fontStyle: element.italic ? 'italic' : 'normal',

@@ -100,7 +100,6 @@ import { ProjectAppearanceDialog } from '../routes/ProjectAppearance.tsx';
 import { accessNotices } from './access-notices.ts';
 import { addedSummary } from './added-summary.ts';
 import { ArrowLayer, ArrowStyleButtons, onArrowStyleButton } from './arrows.tsx';
-import { selectedBlocks } from './note-format.ts';
 import { getCachedAsset } from './assets.ts';
 import {
   canRenameBoard,
@@ -159,6 +158,7 @@ import { MapDialog } from './MapExplore.tsx';
 import { fillMapPreview } from './maps.ts';
 import { NoteSideSheet } from './NoteSideSheet.tsx';
 import { fillFragment, isEmpty } from './note.tsx';
+import { selectedBlocks } from './note-format.ts';
 import { PresenceLayer } from './PresenceLayer.tsx';
 import { PlanEditor } from './plan/PlanEditor.tsx';
 import {
@@ -469,6 +469,7 @@ export function Canvas({
   const [selection, setSelection] = useState<ReadonlySet<string>>(initialSelection);
   const [editing, setEditingState] = useState<string | null>(null);
   const [cropping, setCropping] = useState<string | null>(null);
+  const [appearance, setAppearance] = useState<string | null>(null);
   const [tool, setTool] = useState<CanvasTool>('select');
   const prefs = usePreferences();
   /** Snap to grid (#296): this person's preference (#302), so the magnet follows them. */
@@ -860,7 +861,8 @@ export function Canvas({
       if ([...sel].every((id) => snap.byId.has(id))) return sel;
       return new Set([...sel].filter((id) => snap.byId.has(id)));
     });
-    if (editing && (!snap.byId.has(editing) || snap.byId.get(editing)?.locked || readOnly)) setEditing(null);
+    if (editing && (!snap.byId.has(editing) || snap.byId.get(editing)?.locked || readOnly))
+      setEditing(null);
     if (
       cropping &&
       (readOnly ||
@@ -870,8 +872,9 @@ export function Canvas({
     ) {
       setCropping(null);
     }
+    if (appearance && (readOnly || !selection.has(appearance) || !snap.byId.has(appearance) || snap.byId.get(appearance)?.locked)) setAppearance(null);
     if (noteSheet && !snap.byId.has(noteSheet)) setNoteSheet(null);
-  }, [snap, editing, setEditing, cropping, readOnly, selection, noteSheet]);
+  }, [snap, editing, setEditing, cropping, readOnly, selection, noteSheet, appearance]);
 
   const toWorld = useCallback((clientX: number, clientY: number): Point => {
     const r = rootRef.current?.getBoundingClientRect();
@@ -1716,8 +1719,9 @@ export function Canvas({
     if (!targetId) {
       setStoryPanel(null);
       setFramePanel(null);
-      if (editing) {
+      if (editing || appearance) {
         setEditing(null);
+        setAppearance(null);
         return;
       }
       if (cropping) setCropping(null);
@@ -1734,6 +1738,7 @@ export function Canvas({
     const interactive = target.closest(INTERACTIVE);
     if ((editing === id || cropping === id) && interactive) return;
     if (editing && editing !== id) setEditing(null);
+    if (appearance && appearance !== id) setAppearance(null);
     if (cropping && cropping !== id) setCropping(null);
 
     let next: Set<string>;
@@ -2287,6 +2292,7 @@ export function Canvas({
       case 'escape':
         setMenu(null);
         if (tool === 'arrow') setTool('select');
+        else if (appearance) setAppearance(null);
         else if (cropping) setCropping(null);
         else if (editing) setEditing(null);
         else setSelection(EMPTY_SET);
@@ -2808,8 +2814,18 @@ export function Canvas({
     };
     const items: MenuItem[] = [
       ...listItems,
-      ...(editing && single && !readOnly && !single.locked && ['note','table','column'].includes(single.type)
-        ? [{ heading: t('board.contextual.cardColor') }, ...[undefined,...NOTE_COLORS].map(color => ({ label: t(color ? `board.colors.${color}` : 'board.colors.none'), action: () => updateElement(doc,single.id,{color},LOCAL) }))]
+      ...(editing &&
+      single &&
+      !readOnly &&
+      !single.locked &&
+      ['note', 'table', 'column'].includes(single.type)
+        ? [
+            { heading: t('board.contextual.cardColor') },
+            ...[undefined, ...NOTE_COLORS].map((color) => ({
+              label: t(color ? `board.colors.${color}` : 'board.colors.none'),
+              action: () => updateElement(doc, single.id, { color }, LOCAL),
+            })),
+          ]
         : []),
       ...(single?.type === 'file' && !readOnly && detectedScripts[single.id]
         ? [
@@ -2829,14 +2845,16 @@ export function Canvas({
             const asset = getCachedAsset(single.assetId);
             return asset && asset !== 'missing' && asset.kind === 'video';
           })()))
-        ? [{ label: t('board.contextual.appearance'), action: () => setEditing(single.id) }]
+        ? [{ label: t('board.contextual.appearance'), action: () => setAppearance(single.id) }]
         : []),
       ...(editing && single?.type === 'note' && noteEditor.current
         ? [
             {
               label: t('board.contextual.clear'),
               disabled: noteEditor.current.state.selection.empty,
-              action: () => noteEditor.current && selectedBlocks(noteEditor.current).unsetAllMarks().clearNodes().run(),
+              action: () =>
+                noteEditor.current &&
+                selectedBlocks(noteEditor.current).unsetAllMarks().clearNodes().run(),
             },
           ]
         : []),
@@ -3035,12 +3053,13 @@ export function Canvas({
     ];
     // These flags mark actions actually rendered by ContextBar for the same selection.
     // Standalone right-click menus keep the complete permission-filtered action list.
-    return menu.fromToolbar && !editing
+    return menu.fromToolbar && !editing && !appearance
       ? items.filter((item) => !('toolbar' in item && item.toolbar))
       : items;
   }, [
     menu,
     editing,
+    appearance,
     selection,
     selectedEls,
     boards,
@@ -3312,8 +3331,8 @@ export function Canvas({
             <ContextBar
               box={selectionBox}
               elements={selectedEls}
-              editing={editing}
-              onDone={() => setEditing(null)}
+              editing={editing ?? appearance}
+              onDone={() => { setEditing(null); setAppearance(null); }}
               editor={editing ? noteEditor.current : null}
               readOnly={readOnly}
               onComments={

@@ -25,7 +25,9 @@ export function ToolPopover({
   label,
   icon,
   children,
+  text,
 }: {
+  text?: string;
   label: string;
   icon?: IconName;
   children: ReactNode;
@@ -44,13 +46,19 @@ export function ToolPopover({
       if (!panel.current?.contains(e.target as Node) && !button.current?.contains(e.target as Node))
         setOpen(false);
     };
-    const escape = (event: KeyboardEvent) => {
+    const onEscape = (event: KeyboardEvent) => {
       if (event.key !== 'Escape') return;
-      event.preventDefault(); event.stopImmediatePropagation(); setOpen(false); button.current?.focus();
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      setOpen(false);
+      button.current?.focus();
     };
-    document.addEventListener('keydown',escape,true);
+    document.addEventListener('keydown', onEscape, true);
     document.addEventListener('pointerdown', close, true);
-    return () => { document.removeEventListener('pointerdown', close, true); document.removeEventListener('keydown',escape,true); };
+    return () => {
+      document.removeEventListener('pointerdown', close, true);
+      document.removeEventListener('keydown', onEscape, true);
+    };
   }, [open]);
   const rect = button.current?.getBoundingClientRect();
   return (
@@ -69,7 +77,7 @@ export function ToolPopover({
           setOpen(next);
         }}
       >
-        {icon ? <Icon name={icon} size={14} /> : 'Tt'}
+        {icon ? <Icon name={icon} size={14} /> : text ?? 'Tt'}
       </button>
       {open &&
         rect &&
@@ -100,7 +108,8 @@ export function ToolPopover({
               ) {
                 e.preventDefault();
                 const all = [
-                  ...(panel.current?.querySelectorAll<HTMLButtonElement>('button:not(:disabled)') ?? []),
+                  ...(panel.current?.querySelectorAll<HTMLButtonElement>('button:not(:disabled)') ??
+                    []),
                 ];
                 const i = all.indexOf(document.activeElement as HTMLButtonElement);
                 all[
@@ -141,7 +150,7 @@ export function ContextualTools({
       if (target?.closest('[data-el]')?.getAttribute('data-el') !== el.id) return;
       const row = target.dataset.tableRow;
       const column = target.dataset.tableColumn;
-      if (row && column) setActiveCell({row,column});
+      if (row && column) setActiveCell({ row, column });
     };
     const focus = (event: FocusEvent) => remember(event.target);
     remember(document.activeElement);
@@ -332,7 +341,7 @@ export function ContextualTools({
   if (el.type === 'section')
     return (
       <>
-        <ToolPopover label={t('board.contextual.typography')}>
+        <ToolPopover label={t('board.contextual.typography')} text={el.size ?? 'S'}>
           <div className="contextual-row">
             {(['S', 'M', 'L'] as const).map((size) =>
               option(size.toUpperCase(), () => patch({ size }), el.size === size),
@@ -407,13 +416,13 @@ export function ContextualTools({
       </fieldset>
     );
   if (el.type === 'table') {
-    const row = activeCell && el.rows.find(row => row.id === activeCell.row);
-    const col = activeCell && el.columns.find(col => col.id === activeCell.column);
+    const row = activeCell && el.rows.find((row) => row.id === activeCell.row);
+    const col = activeCell && el.columns.find((col) => col.id === activeCell.column);
     const rows = (
       <>
         {option(
           t('board.contextual.addRow'),
-          () => insertTableRow(store.doc, el.id, row ? el.rows.indexOf(row)+1 : undefined, LOCAL),
+          () => insertTableRow(store.doc, el.id, row ? el.rows.indexOf(row) + 1 : undefined, LOCAL),
           undefined,
           el.rows.length >= MAX_TABLE_ROWS,
         )}
@@ -432,7 +441,13 @@ export function ContextualTools({
       <>
         {option(
           t('board.contextual.addColumn'),
-          () => insertTableColumn(store.doc, el.id, col ? el.columns.indexOf(col)+1 : undefined, LOCAL),
+          () =>
+            insertTableColumn(
+              store.doc,
+              el.id,
+              col ? el.columns.indexOf(col) + 1 : undefined,
+              LOCAL,
+            ),
           undefined,
           el.columns.length >= MAX_TABLE_COLUMNS,
         )}
@@ -447,16 +462,60 @@ export function ContextualTools({
         )}
       </>
     );
-    return <>
-      <span className="contextual-desktop">
-        <BarButton icon="rowAdd" label={t('board.contextual.addRow')} disabled={el.rows.length >= MAX_TABLE_ROWS} onClick={() => insertTableRow(store.doc,el.id,row ? el.rows.indexOf(row)+1 : undefined,LOCAL)} />
-        <BarButton icon="rowRemove" label={t('board.table.deleteRow')} disabled={!row || el.rows.length <= 1} onClick={() => { if(row) removeTableRow(store.doc,el.id,row.id,LOCAL); setActiveCell(null); }} />
-        <span className="ctxbar__sep" aria-hidden="true" />
-        <BarButton icon="columnAdd" label={t('board.contextual.addColumn')} disabled={el.columns.length >= MAX_TABLE_COLUMNS} onClick={() => insertTableColumn(store.doc,el.id,col ? el.columns.indexOf(col)+1 : undefined,LOCAL)} />
-        <BarButton icon="columnRemove" label={t('board.table.deleteColumn')} disabled={!col || el.columns.length <= 1} onClick={() => { if(col) removeTableColumn(store.doc,el.id,col.id,LOCAL); setActiveCell(null); }} />
-      </span>
-      <span className="contextual-mobile-tools"><ToolPopover label={t('board.contextual.rows')} icon="rows">{rows}</ToolPopover><ToolPopover label={t('board.contextual.columns')} icon="column">{columns}</ToolPopover></span>
-    </>;
+    return (
+      <>
+        <span className="contextual-desktop">
+          <BarButton
+            icon="rowAdd"
+            label={t('board.contextual.addRow')}
+            disabled={el.rows.length >= MAX_TABLE_ROWS}
+            onClick={() =>
+              insertTableRow(store.doc, el.id, row ? el.rows.indexOf(row) + 1 : undefined, LOCAL)
+            }
+          />
+          <BarButton
+            icon="rowRemove"
+            label={t('board.table.deleteRow')}
+            disabled={!row || el.rows.length <= 1}
+            onClick={() => {
+              if (row) removeTableRow(store.doc, el.id, row.id, LOCAL);
+              setActiveCell(null);
+            }}
+          />
+          <span className="ctxbar__sep" aria-hidden="true" />
+          <BarButton
+            icon="columnAdd"
+            label={t('board.contextual.addColumn')}
+            disabled={el.columns.length >= MAX_TABLE_COLUMNS}
+            onClick={() =>
+              insertTableColumn(
+                store.doc,
+                el.id,
+                col ? el.columns.indexOf(col) + 1 : undefined,
+                LOCAL,
+              )
+            }
+          />
+          <BarButton
+            icon="columnRemove"
+            label={t('board.table.deleteColumn')}
+            disabled={!col || el.columns.length <= 1}
+            onClick={() => {
+              if (col) removeTableColumn(store.doc, el.id, col.id, LOCAL);
+              setActiveCell(null);
+            }}
+          />
+        </span>
+        <span className="contextual-mobile-tools">
+          <ToolPopover label={t('board.contextual.rows')} icon="rows">
+            {rows}
+          </ToolPopover>
+          <ToolPopover label={t('board.contextual.columns')} icon="column">
+            {columns}
+          </ToolPopover>
+        </span>
+      </>
+    );
   }
   if (el.type === 'link')
     return (

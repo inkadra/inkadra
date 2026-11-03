@@ -186,6 +186,15 @@ describe('scene headers', () => {
 });
 
 describe('video link cards', () => {
+  it('renders video preview and metadata independently without losing their fields', () => {
+    vi.stubGlobal('window',{devicePixelRatio:1});
+    const link = {...file,type:'link' as const,url:'https://youtu.be/yMnFHFf43Qg',title:'Video title',description:'Video description'};
+    const preview = render({...link,showInfo:false,showPreview:true});
+    expect(preview).toContain('data-play-link='); expect(preview).not.toContain('Video description'); expect(preview).not.toContain('Video title');
+    const info = render({...link,showInfo:true,showPreview:false});
+    expect(info).not.toContain('data-play-link='); expect(info).toContain('Video description');
+    vi.unstubAllGlobals();
+  });
   it('fits content even for existing cards with an explicit oversized height and exposes a play button', () => {
     state.editing = null;
     vi.stubGlobal('window', { devicePixelRatio: 1 });
@@ -199,10 +208,10 @@ describe('video link cards', () => {
 });
 
 describe('file card family', () => {
-  const ready = (asset: Record<string, unknown>, kind = 'file') => {
+  const ready = (asset: Record<string, unknown>, kind = 'file', showPreview?: boolean) => {
     Object.assign(state, { kind, status: 'ready', editing: null, readOnly: false, asset });
     vi.stubGlobal('window', { devicePixelRatio: 1 });
-    const html = render(file);
+    const html = render({...file,showPreview});
     vi.unstubAllGlobals();
     state.asset = {};
     return html;
@@ -267,6 +276,13 @@ describe('file card family', () => {
     }
   });
 
+  it('hides only uploaded video previews and preserves other file previews and metadata', () => {
+    const video = ready({kind:'video',mime:'video/mp4',filename:'take.mp4',variants:[{size:'512',width:512,height:288,url:'/poster'}]},'video',false);
+    expect(video).not.toContain('fcard__preview');
+    expect(video).toContain('take');
+    const pdf = ready({mime:'application/pdf',filename:'script.pdf',variants:[{size:'512',width:512,height:700,url:'/page'}]},'file',false);
+    expect(pdf).toContain('fcard__preview--page');
+  });
   it('shows a ProRes video with poster, play, duration, resolution and frame rate', () => {
     const html = ready(
       {
@@ -478,8 +494,19 @@ describe('board elements (#307, #318, #322)', () => {
     const section = { ...at, id: 'section_001', type: 'section', w: 640 } as const;
     expect(render({ ...section, title: 'Sequenza 1' } as Element)).toContain('Sequenza 1');
     expect(render({ ...section, title: '' } as Element)).toContain('is-empty');
-    expect(render({ ...section, title: 'Legacy' } as Element)).toContain('font-size:20px;font-weight:600');
-    const styled = render({ ...section, title:'New',size:'L',bold:false,italic:true,align:'right',color:'teal',line:false } as Element);
+    expect(render({ ...section, title: 'Legacy' } as Element)).toContain(
+      'font-size:20px;font-weight:600',
+    );
+    const styled = render({
+      ...section,
+      title: 'New',
+      size: 'L',
+      bold: false,
+      italic: true,
+      align: 'right',
+      color: 'teal',
+      line: false,
+    } as Element);
     expect(styled).toContain('font-size:34px;font-weight:400;font-style:italic;text-align:right');
     expect(styled).toContain('var(--ink-tag-teal)');
     expect(styled).not.toContain('has-rule');

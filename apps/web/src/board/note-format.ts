@@ -94,20 +94,37 @@ export const TaskItem = Node.create({
     return ['li', mergeAttributes(HTMLAttributes, { 'data-type': 'taskItem' }), 0];
   },
   addNodeView() {
-    return ({node, editor, getPos}) => {
+    return ({ node, editor, getPos }) => {
       const dom = document.createElement('li');
       dom.dataset.type = 'taskItem';
       const checkbox = document.createElement('input');
-      checkbox.type = 'checkbox'; checkbox.checked = node.attrs.checked; checkbox.contentEditable = 'false'; checkbox.setAttribute('aria-label',node.textContent);
+      checkbox.type = 'checkbox';
+      checkbox.checked = node.attrs.checked;
+      checkbox.contentEditable = 'false';
+      checkbox.setAttribute('aria-label', node.textContent);
       const contentDOM = document.createElement('div');
-      dom.append(checkbox,contentDOM);
-      checkbox.addEventListener('change',() => {
+      dom.append(checkbox, contentDOM);
+      checkbox.addEventListener('change', () => {
         const pos = getPos();
         if (typeof pos !== 'number' || !editor.isEditable) return;
-        editor.view.dispatch(editor.state.tr.setNodeMarkup(pos,undefined,{...node.attrs,checked:checkbox.checked}));
+        editor.view.dispatch(
+          editor.state.tr.setNodeMarkup(pos, undefined, {
+            ...node.attrs,
+            checked: checkbox.checked,
+          }),
+        );
       });
-      return {dom,contentDOM,stopEvent:event => event.target === checkbox,
-        update:next => { if (next.type !== node.type) return false; node = next; checkbox.checked = next.attrs.checked; return true; }};
+      return {
+        dom,
+        contentDOM,
+        stopEvent: (event) => event.target === checkbox,
+        update: (next) => {
+          if (next.type !== node.type) return false;
+          node = next;
+          checkbox.checked = next.attrs.checked;
+          return true;
+        },
+      };
     };
   },
   addKeyboardShortcuts() {
