@@ -304,6 +304,76 @@ describe('MediaViewer pictures', () => {
     doc: { transact: vi.fn() },
   } as unknown as import('./store.ts').BoardStore;
 
+  it('routes focused image keys locally, isolates the board and resets only on gallery identity change', async () => {
+    mockState.asset = { ...gif, animated: false };
+    const host = document.createElement('div');
+    document.body.append(host);
+    const root = createRoot(host);
+    const next = vi.fn();
+    const previous = vi.fn();
+    const board = vi.fn();
+    const close = vi.fn();
+    const render = (id: string) =>
+      act(async () =>
+        root.render(
+          <MediaViewer
+            store={store}
+            element={{ ...picture, id }}
+            projectId="proj-01"
+            userId="user-01"
+            readOnly={false}
+            onClose={close}
+            gallery={{ index: 1, total: 3, onNext: next, onPrevious: previous, usedIn: [] }}
+          />,
+        ),
+      );
+    const plane = () => host.querySelector<HTMLElement>('.viewer__image-plane')!;
+    const key = async (value: string) => {
+      const canvas = host.querySelector<HTMLElement>('.viewer__image-view')!;
+      canvas.focus();
+      await act(async () => {
+        for (const type of ['keydown', 'keyup'])
+          canvas.dispatchEvent(
+            new KeyboardEvent(type, { key: value, bubbles: true, cancelable: true }),
+          );
+      });
+    };
+    try {
+      await render('first');
+      window.addEventListener('keydown', board);
+      window.addEventListener('keyup', board);
+      await key('+');
+      expect(plane().style.transform).toContain('scale(1.5)');
+      await key('ArrowRight');
+      await key('ArrowDown');
+      expect(plane().style.transform).toContain('translate(-32px, -32px)');
+      expect(next).not.toHaveBeenCalled();
+      expect(previous).not.toHaveBeenCalled();
+      await render('first');
+      expect(plane().style.transform).toContain('scale(1.5)');
+      await key('-');
+      expect(plane().style.transform).toContain('scale(1)');
+      await key('=');
+      await key('0');
+      expect(plane().style.transform).toBe('translate(0px, 0px) scale(1)');
+      await key('ArrowRight');
+      await key('ArrowLeft');
+      expect(next).toHaveBeenCalledOnce();
+      expect(previous).toHaveBeenCalledOnce();
+      await key('+');
+      await render('second');
+      expect(plane().style.transform).toBe('translate(0px, 0px) scale(1)');
+      await key('Escape');
+      expect(close).toHaveBeenCalledOnce();
+      expect(board).not.toHaveBeenCalled();
+    } finally {
+      window.removeEventListener('keydown', board);
+      window.removeEventListener('keyup', board);
+      await act(async () => root.unmount());
+      host.remove();
+    }
+  });
+
   it('shows the poster of a GIF, then its moving variant once loaded', async () => {
     mockState.asset = gif;
     const probes: FakeImage[] = [];
@@ -733,7 +803,7 @@ describe('MediaViewer keyboard, focus and comments', () => {
     expect(prevented).toBe(false);
   });
 
-  it('has no compare or zoom controls and keeps the image fitted', async () => {
+  it('offers image zoom controls and starts fitted', async () => {
     await render(
       viewer({
         gallery: { index: 0, total: 2, onPrevious: vi.fn(), onNext: vi.fn(), usedIn: [] },
@@ -742,7 +812,8 @@ describe('MediaViewer keyboard, focus and comments', () => {
     const labels = [...container.querySelectorAll('button')].map(
       (b) => `${b.getAttribute('aria-label') ?? ''} ${b.textContent ?? ''}`,
     );
-    expect(labels.filter((l) => /compare|zoom/i.test(l))).toEqual([]);
+    expect(labels.filter((l) => /zoom/i.test(l))).toHaveLength(2);
+    expect(labels.filter((l) => /compare/i.test(l))).toEqual([]);
     expect(container.querySelector('[aria-keyshortcuts="Space"]')).toBeNull();
     expect(container.querySelector('.viewer__media--contain')?.closest('button')).toBeNull();
     let prevented = false;
@@ -750,7 +821,9 @@ describe('MediaViewer keyboard, focus and comments', () => {
     await space(container.querySelector('.viewer__stage') as HTMLElement);
     expect(prevented).toBe(false);
     expect(container.querySelector('.viewer__media--contain')).not.toBeNull();
-    expect(container.textContent).not.toMatch(/zoom/i);
+    expect(container.querySelector('.viewer__image-plane')?.getAttribute('style')).toContain(
+      'scale(1)',
+    );
   });
 
   it('keeps Tab inside the dialog for a single image and restores focus on close', async () => {

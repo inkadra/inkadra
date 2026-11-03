@@ -572,7 +572,8 @@ select {
   --ink-float-bg: color-mix(in srgb, var(--ink-surface-float) 86%, transparent);
   --ink-float-hairline: color-mix(in srgb, var(--ink-text-primary) 8%, transparent);
   --ink-float-shadow: var(--ink-shadow-menu), 0 0 0 1px var(--ink-float-hairline);
-  --ink-float-blur: blur(14px) saturate(1.2);
+  /* Continuous glass also repaints while the board moves; keep its sampling radius small. */
+  --ink-float-blur: blur(8px) saturate(1.2);
 }
 .ink-shell__launcher,
 .ink-shell__edge,
@@ -627,17 +628,6 @@ select {
     box-shadow: var(--ink-float-shadow);
     pointer-events: none;
   }
-  /* A moving board is redrawn every frame: the panels over it drop the blur until it settles
-     (only these layers restyle; a custom property would restyle the whole board), and turn
-     opaque meanwhile, so cards moving under them never show through unblurred. */
-  .ink-shell:has(.canvas--moving) > .ink-sidebar::before,
-  .ink-shell:has(.canvas--moving) > .ink-header .ink-header__group::before,
-  .ink-shell:has(.canvas--moving) > .ink-shell__launcher::before {
-    background: var(--ink-surface-float);
-    -webkit-backdrop-filter: none;
-    backdrop-filter: none;
-  }
-
   /* The navigation panel. */
   .ink-shell > .ink-sidebar {
     position: absolute;

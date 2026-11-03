@@ -39,6 +39,8 @@ services:
       # Map pictures of map cards and GPX files (decision 0053)
       MAPS: ${MAPS:-true}
       MAP_TILE_URL: ${MAP_TILE_URL:-https://tile.openstreetmap.org/{z}/{x}/{y}.png}
+      MAP_SATELLITE_TILE_URL: ${MAP_SATELLITE_TILE_URL:-}
+      MAP_SATELLITE_TILE_ATTRIBUTION: ${MAP_SATELLITE_TILE_ATTRIBUTION:-Satellite}
       MAP_TILE_ATTRIBUTION: ${MAP_TILE_ATTRIBUTION:-© OpenStreetMap contributors}
       MAP_GEOCODER_URL: ${MAP_GEOCODER_URL:-}
       # Hardware encoding of playable copies: deploy/compose.vaapi.yaml, deploy/compose.nvidia.yaml

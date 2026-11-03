@@ -181,7 +181,8 @@ test('comments, mentions, review status and notifications between two people', a
   await expect(history).toContainText('Approvata');
 
   // Filter cards by status from the board's comments.
-  await panel.getByRole('button', { name: 'Tutte le discussioni' }).click();
+  await page.getByRole('button', { name: /^Commenti:/ }).click();
+  await expect(panel.getByLabel('Card per stato di revisione')).toBeVisible();
   await chooseSelect(panel.getByLabel('Card per stato di revisione'), 'approved');
   await expect(panel.getByRole('button', { name: /Luce sul volto.*Approvata/ })).toBeVisible();
   await chooseSelect(panel.getByLabel('Card per stato di revisione'), 'changes_requested');
@@ -203,7 +204,7 @@ test('comments, mentions, review status and notifications between two people', a
   await expect(composer).toHaveValue('');
 
   await composer.fill('Qui il riflesso');
-  await otherPanel.getByRole('button', { name: 'Tutte le discussioni' }).click();
+  await other.getByRole('button', { name: /^Commenti:/ }).click();
   await expect(otherPanel.getByRole('combobox', { name: 'Commento' })).toHaveValue('');
   await otherCard.getByRole('button', { name: /Revisione: Approvata/ }).click();
   await expect(otherPanel.getByRole('combobox', { name: 'Commento' })).toHaveValue(

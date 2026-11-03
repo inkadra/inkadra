@@ -146,11 +146,9 @@ for (const [width, height] of [
   [1280, 800],
   [412, 915],
 ] as const) {
-  test.describe(`no compare or zoom ${width}x${height}`, () => {
+  test.describe(`image zoom ${width}x${height}`, () => {
     test.use({ hasTouch: width < 1000, isMobile: width < 1000 });
-    test('the viewer has no compare or zoom action and always fits the image', async ({
-      page,
-    }, testInfo) => {
+    test('the viewer starts fitted and zooms the image locally', async ({ page }, testInfo) => {
       await page.setViewportSize({ width, height });
       await page.route('**/api/v1/**', (route) => route.fulfill({ status: 404, json: {} }));
       await page.route('**/__shot', (route) =>
@@ -169,9 +167,8 @@ for (const [width, height] of [
         .poll(() => media.evaluate((el) => (el as HTMLImageElement).naturalWidth))
         .toBe(1600);
       const viewer = page.locator('.viewer');
-      for (const name of [/confronta|compare/i, /zoom|adatta|\bfit\b/i]) {
-        await expect(viewer.getByRole('button', { name })).toHaveCount(0);
-      }
+      await expect(viewer.getByRole('button', { name: /confronta|compare/i })).toHaveCount(0);
+      await expect(viewer.getByRole('button', { name: 'Ingrandisci', exact: true })).toBeVisible();
       await expect(viewer.locator('[aria-keyshortcuts="Space"]')).toHaveCount(0);
       await expect(viewer.locator('.viewer__hints')).not.toContainText(/zoom/i);
       const fitted = async () => {
@@ -187,21 +184,17 @@ for (const [width, height] of [
       await media.click();
       await expect(media).toBeVisible();
       await fitted();
-      // Nothing in the viewer may block the browser's own pinch-zoom.
+      await viewer.getByRole('button', { name: 'Ingrandisci', exact: true }).click();
+      await expect(viewer.locator('.viewer__image-plane')).toHaveCSS(
+        'transform',
+        'matrix(1.5, 0, 0, 1.5, 0, 0)',
+      );
+      await viewer.getByRole('button', { name: '150%', exact: true }).click();
+      await fitted();
+      await expect(viewer.locator('.viewer__image-view')).toHaveCSS('touch-action', 'none');
       expect(
-        await page.evaluate(() =>
-          [
-            document.documentElement,
-            document.body,
-            ...Array.from(document.querySelectorAll('.viewer *')),
-          ]
-            .map((el) => getComputedStyle(el).touchAction)
-            .filter(
-              (value) =>
-                value !== 'auto' && !value.includes('pinch-zoom') && value !== 'manipulation',
-            ),
-        ),
-      ).toEqual([]);
+        await page.evaluate(() => getComputedStyle(document.documentElement).touchAction),
+      ).toBe('auto');
       await page.screenshot({ path: testInfo.outputPath(`fit-${width}x${height}.png`) });
     });
   });

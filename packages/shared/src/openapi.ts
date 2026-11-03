@@ -77,7 +77,13 @@ import {
   UpdateInstanceMember,
   UpdateInstanceSettings,
 } from './instance-admin.ts';
-import { CreateMapPreview, MapPreview, MapSearchResults, SearchMapPlaces } from './maps.ts';
+import {
+  CreateMapPreview,
+  MapPreview,
+  MapSearchResults,
+  MapTileQuery,
+  SearchMapPlaces,
+} from './maps.ts';
 import {
   MarkAllRead,
   Notification,
@@ -1510,7 +1516,7 @@ registry.registerPath({
     'the queue and cache of map pictures, so browsers never contact it (decision 0053). 404 ' +
     'when maps are off (Instance.maps.enabled) or the tile server has no such tile; 429 past ' +
     '600 tiles a minute per person, or when the queue is too long (`Retry-After`).',
-  request: { params: z.object(tilePath) },
+  request: { params: z.object(tilePath), query: MapTileQuery },
   responses: { ...tile, ...errors },
 });
 
@@ -2066,7 +2072,7 @@ registry.registerPath({
   description:
     'As GET /map-tiles/{z}/{x}/{y}, for any guest of the link while GuestSession.maps is set; ' +
     'the 600 tiles a minute are counted per guest.',
-  request: { params: z.object({ linkId: Id, ...tilePath }) },
+  request: { params: z.object({ linkId: Id, ...tilePath }), query: MapTileQuery },
   responses: { ...tile, ...guestErrors },
 });
 registry.registerPath({

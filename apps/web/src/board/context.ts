@@ -31,6 +31,7 @@ export interface BoardContextValue {
   mapAttribution?: string | undefined;
   /** Leaflet URL of the tiles of interactive maps, from Inkadra; unset when maps are off. */
   mapTiles?: string | undefined;
+  mapSatelliteAttribution?: string | undefined;
   /** A short confirmation toast, such as a copied colour (#308). */
   notify?: ((text: string) => void) | undefined;
 }

@@ -468,6 +468,7 @@ export function GuestBoardScreen({
                         session.maps
                           ? {
                               attribution: session.maps.attribution,
+                              satelliteAttribution: session.maps.satelliteAttribution,
                               tiles: `${API_PREFIX}/guest/links/${session.linkId}/map-tiles/{z}/{x}/{y}`,
                             }
                           : undefined
