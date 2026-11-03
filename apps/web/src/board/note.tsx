@@ -63,7 +63,7 @@ function renderNode(node: unknown, key: number): ReactNode {
   const style = ['left','center','right'].includes(align ?? '') ? { textAlign: align as 'left' | 'center' | 'right' } : undefined;
   if (node.nodeName === 'heading') {
     const level = Number(node.getAttribute('level')) || 1;
-    const Tag = (level <= 1 ? 'h3' : 'h4') as 'h3' | 'h4';
+    const Tag = (level <= 1 ? 'h1' : level === 2 ? 'h2' : 'h3') as 'h1' | 'h2' | 'h3';
     return <Tag key={key} style={style}>{children}</Tag>;
   }
   const tag = BLOCKS[node.nodeName] ?? 'div';

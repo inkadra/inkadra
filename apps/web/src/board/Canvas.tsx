@@ -698,7 +698,10 @@ export function Canvas({
       if (id) setNoteSheet(null);
       if (previous === id) return;
       noteEditor.current = null;
-      if (!id) pendingText.current = null;
+      if (!id) {
+        pendingText.current = null;
+        requestAnimationFrame(() => rootRef.current?.focus({preventScroll:true}));
+      }
       // A note left empty disappears, as on paper. Not an undo step of its own.
       const body = previous ? store.map(previous)?.get('body') : null;
       if (previous && !keepEmpty && body instanceof Y.XmlFragment && isEmpty(body))
@@ -2794,6 +2797,7 @@ export function Canvas({
       ];
     };
     const items: MenuItem[] = [
+      ...(single?.type === 'note' ? [{ label: t('board.contextual.openDocument'), action: () => openElement(single) }] : []),
       ...listItems,
       ...(single?.type === 'file' && !readOnly && detectedScripts[single.id]
         ? [

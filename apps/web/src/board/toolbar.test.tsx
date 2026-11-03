@@ -42,7 +42,7 @@ it('groups tools with described tooltips while preserving actions and pressed mo
       '--kind-fg: var(--ink-tool-color)',
     );
     expect(host.querySelectorAll('fieldset')).toHaveLength(4);
-    expect(host.querySelectorAll('button')).toHaveLength(11);
+    expect(host.querySelectorAll('button')).toHaveLength(15);
     // The primary action closes the bar, in its own group after a divider, with its label.
     const canvas = [...host.querySelectorAll('button')].at(-1)!;
     expect(canvas.className).toContain('toolbar__btn--canvas');
@@ -53,7 +53,7 @@ it('groups tools with described tooltips while preserving actions and pressed mo
       // One tooltip: the shared chip fed by data-ink-tooltip, never a second bubble in the DOM.
       expect(button.getAttribute('data-ink-tooltip')).toBeTruthy();
       expect(button.querySelector('[role="tooltip"]')).toBeNull();
-      if (!button.hasAttribute('aria-haspopup'))
+      if (!button.hasAttribute('aria-haspopup') && !['section','table','map','plan'].some(type => button.classList.contains(`toolbar__btn--${type}`)))
         expect(button.getAttribute('aria-keyshortcuts')).toBeTruthy();
     }
     expect(host.querySelector('[aria-pressed="true"]')?.getAttribute('aria-label')).toBe(
@@ -83,15 +83,11 @@ it('opens the Canvas menu of canvas types, walks it with the keyboard and insert
       'board.types.board',
       'board.types.character',
       'board.types.location',
-      'board.types.section',
-      'board.types.table',
-      'board.types.map',
-      'board.types.plan',
     ]);
     // No shortcut hints in the menu (B and S still work on the canvas).
     expect(menu.querySelector('.menu__key')).toBeNull();
     expect(items.map((i) => i.querySelector('.menu__tile svg')?.innerHTML)).toEqual(
-      ['page', 'user', 'pin', 'heading', 'table', 'map', 'planCamera'].map(
+      ['page', 'user', 'pin'].map(
         (name) =>
           renderToStaticMarkup(<Icon name={name as IconName} />).match(
             /<svg[^>]*>(.*)<\/svg>/,
@@ -112,7 +108,7 @@ it('opens the Canvas menu of canvas types, walks it with the keyboard and insert
     await key('ArrowDown');
     expect(document.activeElement).toBe(items[1]);
     await key('End');
-    expect(document.activeElement).toBe(items[6]);
+    expect(document.activeElement).toBe(items[2]);
     await key('ArrowDown');
     expect(document.activeElement).toBe(items[0]);
     await key('Escape');

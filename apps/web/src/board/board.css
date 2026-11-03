@@ -4517,3 +4517,14 @@ button.card__play {
 .ctxbar > .menu__item { width: auto; white-space: nowrap; }
 
 .section-heading.has-rule::after { content: ''; display: block; height: 3px; background: linear-gradient(currentColor,currentColor) left center / 48px 3px no-repeat, linear-gradient(var(--ink-border-strong),var(--ink-border-strong)) center / 100% 1px no-repeat; }
+
+.contextual-desktop { display: inline-flex; }
+.contextual-mobile { display: none; }
+@media (max-width: 600px) {
+  .contextual-desktop { display: none; }
+  .contextual-mobile { display: block; }
+  .contextual-palette button, .contextual-popover .menu__item { min-height: 44px; }
+}
+
+.note-text h1 { font-size: 20px; font-weight: 600; margin: 0 0 6px; }
+.note-text h2 { font-size: 17px; font-weight: 600; margin: 0 0 6px; }

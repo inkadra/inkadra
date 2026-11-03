@@ -1011,7 +1011,10 @@
         "red": "Red",
         "pink": "Pink"
       },
-      "appearance": "Appearance"
+      "appearance": "Appearance",
+      "rows": "Rows",
+      "columns": "Columns",
+      "openDocument": "Open document"
     }
   },
   "tags": {
