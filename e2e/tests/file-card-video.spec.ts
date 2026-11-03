@@ -37,8 +37,7 @@ async function seedVideos(page: Page, base: string) {
   await waitForAssets(base, cookie, [assetId]);
   const doc = createBoardDoc(project.rootBoardId);
   const opts = { userId: null } as const;
-  for (const x of [60, 420])
-    createElement(doc, 'file', { x, y: 80 }, { assetId, w: 320 }, opts);
+  for (const x of [60, 420]) createElement(doc, 'file', { x, y: 80 }, { assetId, w: 320 }, opts);
   await pushBoardDoc(base, cookie, project.rootBoardId, doc);
   const boardUrl = `/p/${project.id}/b/${project.rootBoardId}`;
   const asset = await (await page.request.get(`/api/v1/assets/${assetId}`)).json();
