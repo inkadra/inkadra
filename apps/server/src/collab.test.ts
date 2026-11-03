@@ -248,8 +248,8 @@ describe.skipIf(!url)('collab (needs DATABASE_URL)', () => {
       addElement(current.doc, real);
       await expect.poll(() => roots(legacy.doc).elements.has(real.id)).toBe(true);
       expect(roots(current.doc).elements.has(forged.id)).toBe(false);
-      // The test server rechecks every 30 ms. A permission refresh must not re-enable this client.
-      await new Promise((resolve) => setTimeout(resolve, 150));
+      // The test server rechecks every 200 ms. A permission refresh must not re-enable this client.
+      await new Promise((resolve) => setTimeout(resolve, 450));
       const another = column('Still stale');
       addElement(legacy.doc, another);
       const fresh = connect(as('owner'));

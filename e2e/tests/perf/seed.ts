@@ -156,6 +156,7 @@ export async function pushBoardDoc(
   cookie: string,
   boardId: string,
   doc: Y.Doc,
+  supportedSchemaVersion = CURRENT_SCHEMA_VERSION,
 ): Promise<void> {
   class CookieSocket extends WebSocket {
     constructor(address: string, protocols?: string | string[]) {
@@ -164,7 +165,7 @@ export async function pushBoardDoc(
   }
   const remote = new Y.Doc();
   const websocketProvider = new HocuspocusProviderWebsocket({
-    url: `${base.replace(/^http/, 'ws')}/collab?schemaVersion=${CURRENT_SCHEMA_VERSION}`,
+    url: `${base.replace(/^http/, 'ws')}/collab?schemaVersion=${supportedSchemaVersion}`,
     WebSocketPolyfill: CookieSocket,
   });
   const provider = new HocuspocusProvider({
