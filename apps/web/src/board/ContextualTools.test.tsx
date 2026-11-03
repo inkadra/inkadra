@@ -4,9 +4,14 @@ import { createBoardDoc, type Element, readElement, roots } from '@inkadra/doc-s
 import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { expect, it, vi } from 'vitest';
-import { cropAfterQuarterTurn, inscribeCrop, rotatedBounds, cropInsideImage } from './image-crop.ts';
 import { ContextualTools } from './ContextualTools.tsx';
 import { BoardContext, type BoardContextValue } from './context.ts';
+import {
+  cropAfterQuarterTurn,
+  cropInsideImage,
+  inscribeCrop,
+  rotatedBounds,
+} from './image-crop.ts';
 import { BoardStore } from './store.ts';
 
 vi.mock('./assets.ts', () => ({ useAsset: () => ({ status: 'ready', width: 1200, height: 800 }) }));
@@ -128,9 +133,16 @@ it('uses a quarter-turn crop transform, including fixed orientation and free-ang
       { type: 'image' }
     >;
     expect(after.rotation).toBe(107);
-    const bounds=rotatedBounds(1200,800,107);
-    expect(after.crop).toEqual(inscribeCrop(cropAfterQuarterTurn(before.crop!,1,bounds.width,bounds.height),1200,800,107));
-    expect(after.crop && cropInsideImage(after.crop,1200,800,107)).toBe(true);
+    const bounds = rotatedBounds(1200, 800, 107);
+    expect(after.crop).toEqual(
+      inscribeCrop(
+        cropAfterQuarterTurn(before.crop!, 1, bounds.width, bounds.height),
+        1200,
+        800,
+        107,
+      ),
+    );
+    expect(after.crop && cropInsideImage(after.crop, 1200, 800, 107)).toBe(true);
     expect(after.crop).not.toEqual(before.crop);
   } finally {
     await view.cleanup();

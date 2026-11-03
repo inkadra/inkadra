@@ -138,7 +138,8 @@ export function createCollabServer(deps: {
           } else {
             const readOnly =
               !atLeast(access.role, 'editor') ||
-              ctx.supportedSchemaVersion < Math.max(CURRENT_SCHEMA_VERSION,getSchemaVersion(document));
+              ctx.supportedSchemaVersion <
+                Math.max(CURRENT_SCHEMA_VERSION, getSchemaVersion(document));
             if (readOnly !== connection.readOnly) {
               connection.readOnly = readOnly;
               // Tell the client, so the editor follows instead of dropping what someone types.
@@ -280,16 +281,22 @@ export function createCollabServer(deps: {
 
     async beforeSync({ document, context, type, payload }) {
       if (type !== 1 && type !== 2) return;
-      if (context.supportedSchemaVersion < getSchemaVersion(document)) throw new Error('Update the app before editing this document');
+      if (context.supportedSchemaVersion < getSchemaVersion(document))
+        throw new Error('Update the app before editing this document');
       await validateTaskUpdate(db, context.boardId, context.actor?.id, document, payload);
     },
 
     async onChange({ document, context }) {
       prepareImageDrawings(document);
       for (const connection of document.getConnections() as Array<Connection<Context>>) {
-        if ((connection.context?.supportedSchemaVersion ?? 0) < getSchemaVersion(document) && !connection.readOnly) {
-          connection.readOnly=true;
-          connection.sendStateless(JSON.stringify({type:'access',readOnly:true} satisfies AccessMessage));
+        if (
+          (connection.context?.supportedSchemaVersion ?? 0) < getSchemaVersion(document) &&
+          !connection.readOnly
+        ) {
+          connection.readOnly = true;
+          connection.sendStateless(
+            JSON.stringify({ type: 'access', readOnly: true } satisfies AccessMessage),
+          );
         }
       }
       const before = assignments.get(document) ?? new Map();

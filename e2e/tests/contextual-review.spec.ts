@@ -98,14 +98,23 @@ test('section title stays local until blur and commits once', async ({ page, bas
   expect(updates).toBe(1);
 });
 
-test('a newer live document opens read-only with an update-app notice',async({page,baseURL})=>{
-  const base=baseURL as string;const card=await setup(page,base,'column');
-  const boardId=new URL(page.url()).pathname.split('/').at(-1)!;
-  const cookie=await signIn(base,{name:'Giulia',email:'giulia@example.com',password:'correct-horse-battery'});
-  const future=await readBoard(base,cookie,boardId);
-  future.getMap('meta').set('schemaVersion',CURRENT_SCHEMA_VERSION+1);
-  await pushBoardDoc(base,cookie,boardId,future,CURRENT_SCHEMA_VERSION+1);
-  await expect(page.getByRole('alert').filter({hasText:'Aggiorna l’app'})).toBeVisible();
-  await card.dblclick();await expect(card.locator('input')).toHaveCount(0);
+test('a newer live document opens read-only with an update-app notice', async ({
+  page,
+  baseURL,
+}) => {
+  const base = baseURL as string;
+  const card = await setup(page, base, 'column');
+  const boardId = new URL(page.url()).pathname.split('/').at(-1)!;
+  const cookie = await signIn(base, {
+    name: 'Giulia',
+    email: 'giulia@example.com',
+    password: 'correct-horse-battery',
+  });
+  const future = await readBoard(base, cookie, boardId);
+  future.getMap('meta').set('schemaVersion', CURRENT_SCHEMA_VERSION + 1);
+  await pushBoardDoc(base, cookie, boardId, future, CURRENT_SCHEMA_VERSION + 1);
+  await expect(page.getByRole('alert').filter({ hasText: 'Aggiorna l’app' })).toBeVisible();
+  await card.dblclick();
+  await expect(card.locator('input')).toHaveCount(0);
   await expect(page.locator('.toolbar__btn--note')).toHaveCount(0);
 });
