@@ -557,6 +557,7 @@ export function ContextBar({
         label={locked ? t('board.menu.unlock') : t('board.menu.lock')}
         onClick={onLock}
         active={locked}
+        danger={locked}
       />
       {hideable.length > 0 && (
         <button

@@ -199,10 +199,12 @@
   display: grid;
   place-items: center;
   background: color-mix(in srgb, var(--ink-bg-rail) 80%, transparent);
-  color: var(--ink-text-primary);
+  color: var(--ink-status-danger);
 }
 
 .canvas__resize-handles {
+  /* Intersection of the 45-degree corner diagonal with the card's round outline. */
+  --handle-inset: calc(var(--ink-radius-md) * 0.293);
   position: absolute;
   pointer-events: none;
   z-index: 6;
@@ -218,29 +220,29 @@
 .card__handle::after {
   content: "";
   position: absolute;
-  inset: calc(8px / var(--zoom, 1));
-  border-radius: calc(2px / var(--zoom, 1));
-  background: #ffffff;
+  inset: calc(6px / var(--zoom, 1));
+  border-radius: 50%;
+  background: var(--ink-surface-1);
   border: calc(1px / var(--zoom, 1)) solid var(--ink-accent-primary);
 }
 .card__handle--nw {
-  left: 0;
-  top: 0;
+  left: var(--handle-inset);
+  top: var(--handle-inset);
   cursor: nwse-resize;
 }
 .card__handle--ne {
-  left: 100%;
-  top: 0;
+  left: calc(100% - var(--handle-inset));
+  top: var(--handle-inset);
   cursor: nesw-resize;
 }
 .card__handle--sw {
-  left: 0;
-  top: 100%;
+  left: var(--handle-inset);
+  top: calc(100% - var(--handle-inset));
   cursor: nesw-resize;
 }
 .card__handle--se {
-  left: 100%;
-  top: 100%;
+  left: calc(100% - var(--handle-inset));
+  top: calc(100% - var(--handle-inset));
   cursor: nwse-resize;
 }
 
@@ -4103,11 +4105,6 @@ button.card__play {
     box-shadow: var(--ink-float-shadow);
     pointer-events: none;
   }
-  .canvas--moving :is(.toolbar, .minimap, .zoom, .unsorted__toggle)::before {
-    background: var(--ink-surface-float);
-    -webkit-backdrop-filter: none;
-    backdrop-filter: none;
-  }
   .canvas .zoom {
     height: 36px;
     padding: 0 4px;
@@ -4540,4 +4537,8 @@ button.card__play {
   border: 0;
   padding: 0;
   margin: 0;
+}
+
+.ctxbar__btn.is-danger {
+  color: var(--ink-status-danger);
 }

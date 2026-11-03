@@ -2639,11 +2639,14 @@ export function Canvas({
   // biome-ignore lint/correctness/useExhaustiveDependencies: sizeVersion invalidates measured heights
   const selectionBox = useMemo(() => {
     const free = selectedEls.filter((e) => e.parent === null);
-    const b = boundsOf(free.map(liveRect));
+    // A card being resized carries the bar along, not only once it is let go.
+    const b = boundsOf(
+      free.map((e) => (overlay.resize?.id === e.id ? overlay.resize : liveRect(e))),
+    );
     if (!b) return null;
     const a = worldToScreen(viewport, { x: b.x, y: b.y });
     return { x: a.x, y: a.y, w: b.w * viewport.zoom, h: b.h * viewport.zoom };
-  }, [selectedEls, viewport, liveRect, sizeVersion]);
+  }, [selectedEls, viewport, liveRect, sizeVersion, overlay.resize]);
 
   const visibleCards = useMemo(() => snap.canvas.filter((e) => e.type !== 'arrow'), [snap]);
   const frameOf = (id: string | null) => {
