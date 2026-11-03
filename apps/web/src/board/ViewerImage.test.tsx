@@ -47,3 +47,45 @@ it('zooms, resets and closes only on the background', async () => {
   await act(async () => root.unmount());
   host.remove();
 });
+
+it('does not close after a background pan made of movements of at most two pixels', async () => {
+  const host = document.createElement('div');
+  document.body.append(host);
+  const root = createRoot(host);
+  const close = vi.fn();
+  try {
+    await act(async () =>
+      root.render(
+        <ViewerImage onClose={close}>
+          <img src="test.png" alt="Mountains" />
+        </ViewerImage>,
+      ),
+    );
+    await act(async () =>
+      host.querySelector<HTMLButtonElement>('[aria-label="viewer.zoomIn"]')!.click(),
+    );
+    const canvas = host.querySelector<HTMLElement>('.viewer__image-view')!;
+    canvas.setPointerCapture = vi.fn();
+    const pointer = (type: string, x: number) =>
+      act(async () => {
+        canvas.dispatchEvent(
+          new PointerEvent(type, { bubbles: true, pointerId: 1, clientX: x, clientY: 10 }),
+        );
+      });
+    await pointer('pointerdown', 10);
+    for (const x of [11, 13, 14, 16]) await pointer('pointermove', x);
+    await pointer('pointerup', 16);
+    expect(host.querySelector<HTMLElement>('.viewer__image-plane')!.style.transform).toContain(
+      'translate(6px, 0px)',
+    );
+    await act(async () => canvas.click());
+    expect(close).not.toHaveBeenCalled();
+    await pointer('pointerdown', 20);
+    await pointer('pointerup', 20);
+    await act(async () => canvas.click());
+    expect(close).toHaveBeenCalledOnce();
+  } finally {
+    await act(async () => root.unmount());
+    host.remove();
+  }
+});

@@ -327,6 +327,16 @@ export function MediaViewer({
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (isTyping(e.target) && e.key !== 'Escape' && e.key !== 'Tab') return;
+      // Let the focused image handle local zoom/pan before isolating other viewer keys.
+      const image = e.target instanceof HTMLElement && e.target.matches('.viewer__image-view');
+      if (
+        e.type === 'keydown' &&
+        image &&
+        (['+', '=', '-', '0'].includes(e.key) ||
+          ((e.target as HTMLElement).dataset.imageZoomed === 'true' &&
+            ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key)))
+      )
+        return;
       // The canvas behind listens on window too.
       e.stopImmediatePropagation();
       if (e.type !== 'keydown') return;

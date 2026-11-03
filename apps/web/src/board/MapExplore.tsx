@@ -262,8 +262,8 @@ export function MapDialog({
       </header>
       <div className="map-dialog__map">
         <MapSurface id={id} name={name} place={place} exploring />
+        {attribution && <span className="mcard__credit">{attribution}</span>}
       </div>
-      {attribution && <span className="mcard__credit">{attribution}</span>}
     </dialog>
   );
 }

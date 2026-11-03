@@ -304,6 +304,76 @@ describe('MediaViewer pictures', () => {
     doc: { transact: vi.fn() },
   } as unknown as import('./store.ts').BoardStore;
 
+  it('routes focused image keys locally, isolates the board and resets only on gallery identity change', async () => {
+    mockState.asset = { ...gif, animated: false };
+    const host = document.createElement('div');
+    document.body.append(host);
+    const root = createRoot(host);
+    const next = vi.fn();
+    const previous = vi.fn();
+    const board = vi.fn();
+    const close = vi.fn();
+    const render = (id: string) =>
+      act(async () =>
+        root.render(
+          <MediaViewer
+            store={store}
+            element={{ ...picture, id }}
+            projectId="proj-01"
+            userId="user-01"
+            readOnly={false}
+            onClose={close}
+            gallery={{ index: 1, total: 3, onNext: next, onPrevious: previous, usedIn: [] }}
+          />,
+        ),
+      );
+    const plane = () => host.querySelector<HTMLElement>('.viewer__image-plane')!;
+    const key = async (value: string) => {
+      const canvas = host.querySelector<HTMLElement>('.viewer__image-view')!;
+      canvas.focus();
+      await act(async () => {
+        for (const type of ['keydown', 'keyup'])
+          canvas.dispatchEvent(
+            new KeyboardEvent(type, { key: value, bubbles: true, cancelable: true }),
+          );
+      });
+    };
+    try {
+      await render('first');
+      window.addEventListener('keydown', board);
+      window.addEventListener('keyup', board);
+      await key('+');
+      expect(plane().style.transform).toContain('scale(1.5)');
+      await key('ArrowRight');
+      await key('ArrowDown');
+      expect(plane().style.transform).toContain('translate(-32px, -32px)');
+      expect(next).not.toHaveBeenCalled();
+      expect(previous).not.toHaveBeenCalled();
+      await render('first');
+      expect(plane().style.transform).toContain('scale(1.5)');
+      await key('-');
+      expect(plane().style.transform).toContain('scale(1)');
+      await key('=');
+      await key('0');
+      expect(plane().style.transform).toBe('translate(0px, 0px) scale(1)');
+      await key('ArrowRight');
+      await key('ArrowLeft');
+      expect(next).toHaveBeenCalledOnce();
+      expect(previous).toHaveBeenCalledOnce();
+      await key('+');
+      await render('second');
+      expect(plane().style.transform).toBe('translate(0px, 0px) scale(1)');
+      await key('Escape');
+      expect(close).toHaveBeenCalledOnce();
+      expect(board).not.toHaveBeenCalled();
+    } finally {
+      window.removeEventListener('keydown', board);
+      window.removeEventListener('keyup', board);
+      await act(async () => root.unmount());
+      host.remove();
+    }
+  });
+
   it('shows the poster of a GIF, then its moving variant once loaded', async () => {
     mockState.asset = gif;
     const probes: FakeImage[] = [];

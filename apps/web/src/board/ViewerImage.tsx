@@ -10,6 +10,7 @@ export function ViewerImage({ children, onClose }: { children: ReactNode; onClos
   const [view, setView] = useState({ zoom: 1, x: 0, y: 0 });
   const points = useRef(new Map<number, { x: number; y: number }>());
   const dragged = useRef(false);
+  const travel = useRef(0);
   const pressed = useRef<EventTarget | null>(null);
   const zoom = useCallback(
     (factor: number) =>
@@ -38,6 +39,7 @@ export function ViewerImage({ children, onClose }: { children: ReactNode; onClos
       tabIndex={0}
       onKeyDown={(e) => {
         if (e.target !== e.currentTarget) return;
+        e.stopPropagation();
         if (e.key === '+' || e.key === '=') zoom(1.5);
         else if (e.key === '-') zoom(1 / 1.5);
         else if (e.key === '0') setView({ zoom: 1, x: 0, y: 0 });
@@ -54,6 +56,7 @@ export function ViewerImage({ children, onClose }: { children: ReactNode; onClos
           }));
         }
       }}
+      data-image-zoomed={view.zoom > 1}
       className="viewer__image-view"
       data-scroll
       onDoubleClick={(e) => {
@@ -64,6 +67,7 @@ export function ViewerImage({ children, onClose }: { children: ReactNode; onClos
         if ((e.target as HTMLElement).closest('button')) return;
         pressed.current = e.target;
         dragged.current = false;
+        travel.current = 0;
         points.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
         if (view.zoom > 1 || points.current.size > 1)
           e.currentTarget.setPointerCapture(e.pointerId);
@@ -75,7 +79,8 @@ export function ViewerImage({ children, onClose }: { children: ReactNode; onClos
         const next = { x: e.clientX, y: e.clientY };
         const dx = next.x - previous.x;
         const dy = next.y - previous.y;
-        if (Math.abs(dx) + Math.abs(dy) > 2) dragged.current = true;
+        travel.current += Math.abs(dx) + Math.abs(dy);
+        if (travel.current > 2) dragged.current = true;
         if (other) {
           const before = Math.hypot(previous.x - other.x, previous.y - other.y);
           const after = Math.hypot(next.x - other.x, next.y - other.y);
