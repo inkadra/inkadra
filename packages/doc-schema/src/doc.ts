@@ -4,7 +4,7 @@ import { z } from 'zod';
 import { AspectRatio, Element, type ElementType, type TableRow } from './elements.ts';
 
 /** Bump when the shape of the board document changes, and add a migration below. */
-export const CURRENT_SCHEMA_VERSION = 15;
+export const CURRENT_SCHEMA_VERSION = 16;
 
 export const DOC_NAME_PREFIX = 'board:';
 
@@ -101,6 +101,9 @@ const migrations: Record<number, Migration> = {
   // blocking steps, layers, groups, scenes, variants and a real scale. All optional; older
   // builds must not drop them when copying a plan.
   14: () => {},
+  // 16: optional contextual appearance and image strokes. Omitted fields preserve old
+  // documents; older builds must not drop the fields when copying cards.
+  15: () => {},
 };
 
 /**
