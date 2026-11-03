@@ -186,6 +186,8 @@
   font-weight: 600;
 }
 .comments-panel__body {
+  /* Scrolls by wheel, touch and keyboard without a bar of its own (QA 0.8). */
+  scrollbar-width: none;
   flex: 1;
   min-height: 0;
   overflow-y: auto;

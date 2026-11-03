@@ -1099,6 +1099,22 @@ export function ZoomControls({
   );
 }
 
+/** The open tray: rises in, and fades out as it closes. */
+function UnsortedPanel({ children }: { children: ReactNode }) {
+  const { t } = useTranslation();
+  const ref = useExitFade<HTMLElement>();
+  return (
+    <section
+      ref={ref}
+      className="unsorted__panel ink-motion-rise"
+      aria-label={t('nav.unsorted')}
+      data-scroll
+    >
+      {children}
+    </section>
+  );
+}
+
 /**
  * "Non ordinati": what arrives from the clipper, the phone or other boards, still to place.
  * Shown only while something waits there, while it is open (the command palette opens it) or
@@ -1128,7 +1144,7 @@ export function UnsortedDrawer({
   return (
     <div ref={ref} className={`unsorted${dropping ? ' is-dropping' : ''}`} data-chrome>
       {open && (
-        <section className="unsorted__panel" aria-label={t('nav.unsorted')} data-scroll>
+        <UnsortedPanel>
           {items.length === 0 ? (
             <p className="ink-muted unsorted__empty">{t('board.unsorted.empty')}</p>
           ) : (
@@ -1142,7 +1158,7 @@ export function UnsortedDrawer({
               />
             ))
           )}
-        </section>
+        </UnsortedPanel>
       )}
       <button type="button" className="unsorted__toggle" aria-expanded={open} onClick={onToggle}>
         <Icon name="unsorted" size={14} />

@@ -1679,7 +1679,6 @@
     "button_other": "Commenti: {{count}} discussioni aperte",
     "open": "Commenti e revisione",
     "close": "Chiudi i commenti",
-    "allThreads": "Tutte le discussioni",
     "jumpTo": "Vai alla card {{card}}",
     "filter": "Mostra le discussioni",
     "filterStatus": {

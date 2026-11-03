@@ -833,8 +833,8 @@ button.fcard__audio-play:focus-visible {
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 5px;
-  font-size: 12px;
+  gap: 8px;
+  font-size: inherit;
 }
 .card__todo-list li {
   display: flex;
@@ -4541,4 +4541,16 @@ button.card__play {
 
 .ctxbar__btn.is-danger {
   color: var(--ink-status-danger);
+}
+
+/* The tray scrolls instead of squashing its cards into strips; pictures show whole. */
+.unsorted__panel > .card {
+  flex-shrink: 0;
+}
+.unsorted__panel .card--image .card__media {
+  flex: none;
+  height: 140px;
+}
+.unsorted__panel .card--image .card__media img {
+  object-fit: contain;
 }

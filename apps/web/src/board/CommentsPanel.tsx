@@ -360,12 +360,10 @@ function CommentsPanel() {
         <h2 id="comments-panel-title">{t('comments.title')}</h2>
         <IconButton icon="close" label={t('comments.close')} onClick={closeComments} />
       </header>
-      <div className="comments-panel__body">
+      <div className="comments-panel__body" data-scroll>
         {elementId ? (
-          <div className="review-row review-row--between">
-            <Button variant="ghost" onClick={() => openComments()}>
-              {t('comments.allThreads')}
-            </Button>
+          // Every thread of the board is one click away on the Comments button (QA 0.8).
+          <div className="review-row">
             <button
               type="button"
               className="review-link"

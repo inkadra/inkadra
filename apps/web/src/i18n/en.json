@@ -1679,7 +1679,6 @@
     "button_other": "Comments: {{count}} open threads",
     "open": "Comments and review",
     "close": "Close comments",
-    "allThreads": "All threads",
     "jumpTo": "Go to card {{card}}",
     "filter": "Show threads",
     "filterStatus": {
