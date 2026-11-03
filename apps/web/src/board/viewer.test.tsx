@@ -733,7 +733,7 @@ describe('MediaViewer keyboard, focus and comments', () => {
     expect(prevented).toBe(false);
   });
 
-  it('has no compare or zoom controls and keeps the image fitted', async () => {
+  it('offers image zoom controls and starts fitted', async () => {
     await render(
       viewer({
         gallery: { index: 0, total: 2, onPrevious: vi.fn(), onNext: vi.fn(), usedIn: [] },
@@ -742,7 +742,8 @@ describe('MediaViewer keyboard, focus and comments', () => {
     const labels = [...container.querySelectorAll('button')].map(
       (b) => `${b.getAttribute('aria-label') ?? ''} ${b.textContent ?? ''}`,
     );
-    expect(labels.filter((l) => /compare|zoom/i.test(l))).toEqual([]);
+    expect(labels.filter((l) => /zoom/i.test(l))).toHaveLength(2);
+    expect(labels.filter((l) => /compare/i.test(l))).toEqual([]);
     expect(container.querySelector('[aria-keyshortcuts="Space"]')).toBeNull();
     expect(container.querySelector('.viewer__media--contain')?.closest('button')).toBeNull();
     let prevented = false;
@@ -750,7 +751,9 @@ describe('MediaViewer keyboard, focus and comments', () => {
     await space(container.querySelector('.viewer__stage') as HTMLElement);
     expect(prevented).toBe(false);
     expect(container.querySelector('.viewer__media--contain')).not.toBeNull();
-    expect(container.textContent).not.toMatch(/zoom/i);
+    expect(container.querySelector('.viewer__image-plane')?.getAttribute('style')).toContain(
+      'scale(1)',
+    );
   });
 
   it('keeps Tab inside the dialog for a single image and restores focus on close', async () => {

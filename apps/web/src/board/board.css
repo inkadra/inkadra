@@ -2797,6 +2797,8 @@ button.crumb--editable:focus-visible {
   box-shadow: none;
 }
 .viewer__stage {
+  position: relative;
+  overflow: hidden;
   container-type: size;
   min-height: 0;
   flex: 1;
@@ -4508,4 +4510,34 @@ button.card__play {
 }
 .mcard__satellite-credit ~ .mcard__credit {
   display: none;
+}
+
+.viewer__image-view {
+  position: absolute;
+  inset: 0 0 var(--viewer-thumbs-h, 0px);
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  touch-action: none;
+}
+.viewer__image-plane {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  max-width: 100%;
+  max-height: 100%;
+  min-height: 0;
+}
+.viewer__image-plane .viewer__media {
+  max-height: calc(100cqh - 48px - var(--viewer-thumbs-h, 0px));
+  max-width: 100%;
+}
+.viewer__image-tools {
+  position: absolute;
+  bottom: 12px;
+  display: flex;
+  gap: 8px;
+  border: 0;
+  padding: 0;
+  margin: 0;
 }

@@ -26,6 +26,7 @@ import { canComment, openComments, useReviews } from './review-store.ts';
 import { isTyping } from './shortcuts.ts';
 import { type BoardStore, LOCAL } from './store.ts';
 import { TagEditor } from './tags.tsx';
+import { ViewerImage } from './ViewerImage.tsx';
 import {
   isVideoLink,
   isYoutubeUrl,
@@ -738,27 +739,31 @@ export function MediaViewer({
                 </div>
               </div>
             ) : ready ? (
-              isTransformedImage && !showOriginal ? (
-                <CroppedImage
-                  className="viewer__media viewer__media--contain"
-                  poster={pickVariant(ready, wide) || ready.url}
-                  moving={movingVariantUrl(ready, wide)}
-                  alt={element.caption ?? ready.filename}
-                  width={ready.width}
-                  height={ready.height}
-                  crop={element.crop}
-                  rotation={element.rotation}
-                />
-              ) : (
-                <MovingPicture
-                  className="viewer__media viewer__media--contain"
-                  poster={pickVariant(ready, wide) || ready.url}
-                  moving={movingVariantUrl(ready, wide)}
-                  alt={
-                    element.type === 'image' ? (element.caption ?? ready.filename) : ready.filename
-                  }
-                />
-              )
+              <ViewerImage key={element.id} onClose={onClose}>
+                {isTransformedImage && !showOriginal ? (
+                  <CroppedImage
+                    className="viewer__media viewer__media--contain"
+                    poster={pickVariant(ready, wide) || ready.url}
+                    moving={movingVariantUrl(ready, wide)}
+                    alt={element.caption ?? ready.filename}
+                    width={ready.width}
+                    height={ready.height}
+                    crop={element.crop}
+                    rotation={element.rotation}
+                  />
+                ) : (
+                  <MovingPicture
+                    className="viewer__media viewer__media--contain"
+                    poster={pickVariant(ready, wide) || ready.url}
+                    moving={movingVariantUrl(ready, wide)}
+                    alt={
+                      element.type === 'image'
+                        ? (element.caption ?? ready.filename)
+                        : ready.filename
+                    }
+                  />
+                )}
+              </ViewerImage>
             ) : null}
           </div>
 

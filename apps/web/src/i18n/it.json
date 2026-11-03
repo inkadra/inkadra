@@ -994,6 +994,9 @@
     "done": "Fatto"
   },
   "viewer": {
+    "zoom": "Zoom immagine",
+    "zoomIn": "Ingrandisci",
+    "zoomOut": "Riduci",
     "info": "Info",
     "title": "Immagine",
     "close": "Chiudi",

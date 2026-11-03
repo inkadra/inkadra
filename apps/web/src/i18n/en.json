@@ -994,6 +994,9 @@
     "done": "Done"
   },
   "viewer": {
+    "zoom": "Image zoom",
+    "zoomIn": "Zoom in",
+    "zoomOut": "Zoom out",
     "info": "Info",
     "title": "Image",
     "close": "Close",
