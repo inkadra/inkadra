@@ -31,7 +31,22 @@ No API or database migration is required.
 Inventory of the remaining mockup: geometry/grid fitting and rotation already have fields;
 tables already store rows, columns, width and header; other card tools use existing fields.
 Note formatting lives in the existing Y.XmlFragment `body`, copied as a Yjs update, not
-parallel JSON fields. Its editor extensions/renderers remain UI work. The mockup names
+parallel JSON fields. Schema 16 explicitly includes the `noteInk` mark (`color` and
+`highlight`, each neutral/null or one of the eight section colors), `taskList` and
+`taskItem` nodes (`checked`: boolean), and `textAlign` on paragraph/heading blocks
+(null or left/center/right). `NOTE_BODY_FORMAT` records these persisted additions.
+
+These rich-text changes are not backward compatible: y-prosemirror can delete marks
+and nodes unknown to an older editor when it normalizes the shared fragment. A live
+client must compare the document schema version with its supported version before
+mounting an editor, stay read-only for newer documents and show an update-app notice.
+Collaboration clients advertise `schemaVersion` in their WebSocket query. The server
+keeps clients with absent/invalid or older versions read-only (including permission
+rechecks), so already installed PWAs that predate the live-client guard cannot rewrite
+schema-16 notes. New clients must send their actual supported version; native clients
+and test seeders follow the same protocol. This only restricts writes, not reading.
+Editor commands and renderers remain UI work; their persisted vocabulary is part of
+this contract. The mockup names
 “column type” as existing, but current tables contain plain text only and no such menu:
 column types are outside the approved add/delete row/column scope, so no type enum
 or menu is introduced. Dock tools and toolbar/focus state require no document data.

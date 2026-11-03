@@ -6,6 +6,14 @@ import { AspectRatio, Element, type ElementType, type TableRow } from './element
 /** Bump when the shape of the board document changes, and add a migration below. */
 export const CURRENT_SCHEMA_VERSION = 16;
 
+/** Persisted ProseMirror additions: older editor schemas can destructively normalize them. */
+export const NOTE_BODY_FORMAT = {
+  version: 16,
+  marks: ['noteInk'],
+  nodes: ['taskList', 'taskItem'],
+  blockAttributes: ['textAlign'],
+} as const;
+
 export const DOC_NAME_PREFIX = 'board:';
 
 /** Name of the Hocuspocus document for a board. */
@@ -101,7 +109,7 @@ const migrations: Record<number, Migration> = {
   // blocking steps, layers, groups, scenes, variants and a real scale. All optional; older
   // builds must not drop them when copying a plan.
   14: () => {},
-  // 16: optional contextual appearance and image strokes. Omitted fields preserve old
+  // 16: contextual appearance, image strokes and NOTE_BODY_FORMAT ProseMirror extensions. Omitted fields preserve old
   // documents; older builds must not drop the fields when copying cards.
   15: () => {},
 };
