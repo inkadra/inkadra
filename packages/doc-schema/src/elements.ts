@@ -176,6 +176,11 @@ export const BoardLinkElement = Base.extend({
  * width only (since version 10). With `moveCards`, dragging it also moves the cards placed under
  * it (see sectionMembers in canvas-core).
  */
+/** Section text accents from the approved toolbar; omission is the neutral choice. */
+export const SECTION_COLORS = [...CARD_COLORS, 'teal', 'yellow', 'red', 'pink'] as const;
+export const SectionColor = z.enum(SECTION_COLORS);
+export type SectionColor = z.infer<typeof SectionColor>;
+
 export const SectionElement = Base.extend({
   type: z.literal('section'),
   title: z.string().max(200),
@@ -186,7 +191,7 @@ export const SectionElement = Base.extend({
   bold: z.boolean().optional().describe('True = 700, false = 400; omitted = legacy 600.'),
   italic: z.boolean().optional().describe('Omitted = false.'),
   align: z.enum(['left', 'center', 'right']).optional().describe('Omitted = left.'),
-  color: CardColor.optional().describe('Text and leading rule accent; omitted = primary text.'),
+  color: SectionColor.optional().describe('Text and leading rule accent; omitted = primary text.'),
   line: z.boolean().optional().describe('False hides the rule; omitted = true.'),
   moveCards: z
     .boolean()

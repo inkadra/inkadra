@@ -215,7 +215,7 @@ it('keeps contextual appearance and image strokes in duplicate and clipboard cop
       bold: false,
       italic: true,
       align: 'right',
-      color: 'green',
+      color: 'teal',
       line: false,
     },
     { type: 'link', url: 'https://example.com', showInfo: false, showPreview: true },

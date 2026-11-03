@@ -4,7 +4,9 @@ The approved contextual toolbar A needs shared presentation choices, not viewer 
 Document version 16 adds optional fields, with a no-op migration from version 15.
 
 - Sections: `size` S/M/L (20/26/34 world units), `bold`, `italic`, `align`
-  left/center/right, `color` from the existing four card accents, and `line`.
+  left/center/right, `color` from the dedicated section palette (blue, orange, purple, green, teal,
+  yellow, red, pink), and `line`. Neutral is represented by omitting `color`;
+  the four-colour card palette is unchanged.
   Omission preserves the old 20-unit, 600-weight, upright, left-aligned title with
   primary text and a visible rule. Explicit bold false means 400, true means 700.
   The future UI must create new headings with M and bold true to match the mockup;
@@ -16,7 +18,9 @@ Document version 16 adds optional fields, with a no-op migration from version 15
   Other file families retain their existing presentation.
 - Images: `strokes`, omitted = empty, using the existing Stroke schema and limits.
   Coordinates refer to the full source image before crop and rotation; the drawing
-  undergoes the same transforms as its image. Yjs stores strokes in a Y.Array, as for frames.
+  undergoes the same transforms as its image. Each x/y axis spans 0–4096 across
+  the original width/height; line width is in thousandths of the source image width.
+  Yjs stores strokes in a Y.Array, as for frames.
 
 These presentation fields are included in the guest allowlist. They do not grant access
 or delete underlying metadata/assets. Generic Yjs snapshots, readable JSON exports and
@@ -29,8 +33,8 @@ tables already store rows, columns, width and header; other card tools use exist
 Note formatting lives in the existing Y.XmlFragment `body`, copied as a Yjs update, not
 parallel JSON fields. Its editor extensions/renderers remain UI work. The mockup names
 “column type” as existing, but current tables contain plain text only and no such menu:
-no unspecified type enum is invented here. The parent must resolve that mockup mismatch
-before implementing that menu. Dock tools and toolbar/focus state require no document data.
+column types are outside the approved add/delete row/column scope, so no type enum
+or menu is introduced. Dock tools and toolbar/focus state require no document data.
 
 This PR supplies the contract only. Rendering, commands, note formatting, image drawing
 editor integration, new-heading defaults and contextual toolbar/dock changes follow only

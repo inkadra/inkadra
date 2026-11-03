@@ -19,7 +19,7 @@ it('preserves contextual fields in readable exports and remapped archive documen
       bold: true,
       italic: true,
       align: 'center',
-      color: 'orange',
+      color: 'pink',
       line: false,
     },
     {

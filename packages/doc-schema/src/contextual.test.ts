@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import * as Y from 'yjs';
 import {
   addElement,
+  CardColor,
   createBoardDoc,
   Element,
   MAX_STROKE_POINTS,
@@ -71,6 +72,20 @@ describe('contextual appearance contract', () => {
     expect(Element.parse(toGuestElement(card))).toEqual(card);
     expect(validateBoardDoc(restored)).toEqual([]);
   });
+
+  it.each(['blue', 'orange', 'purple', 'green', 'teal', 'yellow', 'red', 'pink'])(
+    'preserves section accent %s without widening card colours',
+    (color) => {
+      const section = Element.parse({ ...cards[0], color });
+      const doc = createBoardDoc(boardId);
+      addElement(doc, section);
+      expect(readElement(roots(doc).elements.get(section.id)!)).toEqual(section);
+      expect(Element.parse(toGuestElement(section))).toEqual(section);
+      if (!['blue', 'orange', 'purple', 'green'].includes(color)) {
+        expect(CardColor.safeParse(color).success).toBe(false);
+      }
+    },
+  );
 
   it('upgrades version 15 without materialising defaults or changing elements', () => {
     const doc = createBoardDoc(boardId);
