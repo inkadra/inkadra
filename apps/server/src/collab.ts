@@ -281,8 +281,6 @@ export function createCollabServer(deps: {
 
     async beforeSync({ document, context, type, payload }) {
       if (type !== 1 && type !== 2) return;
-      if (context.supportedSchemaVersion < getSchemaVersion(document))
-        throw new Error('Update the app before editing this document');
       await validateTaskUpdate(db, context.boardId, context.actor?.id, document, payload);
     },
 

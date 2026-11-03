@@ -136,7 +136,7 @@ import type { BoardConnection } from './connection.ts';
 import { BoardContext, type BoardContextValue, GuestModeContext, LARGE_BOARD } from './context.ts';
 import { EmptyBoardStart } from './EmptyBoardStart.tsx';
 import { easeCards } from './ease-cards.ts';
-import { restoreEditingFocus } from './editing-focus.ts';
+import { isContextualFocus, restoreEditingFocus } from './editing-focus.ts';
 import { isDesignFile } from './file-kinds.ts';
 import { useBoardAspect } from './film/aspect.ts';
 import { DrawingEditor } from './film/DrawingEditor.tsx';
@@ -2242,6 +2242,8 @@ export function Canvas({
   const keyHandler = useRef<(e: KeyboardEvent) => void>(() => {});
   keyHandler.current = (e: KeyboardEvent) => {
     if (insideDialog()) return;
+    // Contextual controls keep native Enter/Space activation instead of board edit/pan shortcuts.
+    if (isContextualFocus(e.target) && (e.key === 'Enter' || e.key === ' ')) return;
     // A menu or the version banner already handled this Escape; a preview has nothing to clear.
     if (e.key === 'Escape' && (e.defaultPrevented || preview)) return;
     if (e.key === ' ' && canSpacePan(e.target)) {
