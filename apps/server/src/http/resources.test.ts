@@ -670,8 +670,8 @@ describe.skipIf(!url)('projects, boards, uploads and assets (needs DATABASE_URL)
     expect(image.json()).toMatchObject({
       status: 'ready',
       filename: 'map.png',
-      width: 1024,
-      height: 560,
+      width: 2048,
+      height: 1120,
     });
     // Without a geocoder an address has no place, and nothing is fetched for it.
     const address = await call('owner', 'POST', '/api/v1/map-previews', {
