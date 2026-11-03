@@ -289,25 +289,27 @@ function CanvasMenuButton({
             style={{ right: at.right, bottom: at.bottom }}
             anchor={button}
             items={[
-              ...hidden.filter(tool => tool !== 'voice' || onVoiceNote).map(
-                (tool): MenuItem => ({
-                  label: t(
-                    tool === 'arrow'
-                      ? 'board.tools.arrow'
-                      : tool === 'voice'
-                        ? 'board.voiceNote.label'
-                        : `board.types.${tool}`,
-                  ),
-                  icon: BAR_ICONS[tool],
-                  kind: 'canvas',
-                  action: () =>
-                    tool === 'arrow'
-                      ? onTool('arrow')
-                      : tool === 'voice'
-                        ? onVoiceNote?.()
-                        : onCard(tool as ToolType),
-                }),
-              ),
+              ...hidden
+                .filter((tool) => tool !== 'voice' || onVoiceNote)
+                .map(
+                  (tool): MenuItem => ({
+                    label: t(
+                      tool === 'arrow'
+                        ? 'board.tools.arrow'
+                        : tool === 'voice'
+                          ? 'board.voiceNote.label'
+                          : `board.types.${tool}`,
+                    ),
+                    icon: BAR_ICONS[tool],
+                    kind: 'canvas',
+                    action: () =>
+                      tool === 'arrow'
+                        ? onTool('arrow')
+                        : tool === 'voice'
+                          ? onVoiceNote?.()
+                          : onCard(tool as ToolType),
+                  }),
+                ),
               ...(hidden.length > 0 ? [{ divider: true } as MenuItem] : []),
             ].concat(
               (
@@ -336,7 +338,6 @@ function CanvasMenuButton({
                     action: () => onCard(type),
                   }),
                 ),
-
               ]),
             )}
             onClose={(reason) => {

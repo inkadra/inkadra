@@ -179,7 +179,7 @@ export function ContextualTools({
           key={c ?? 'none'}
           type="button"
           aria-label={`${t(highlight ? 'board.contextual.highlight' : 'board.contextual.textColor')}: ${c ? t(`board.contextual.colors.${c}`) : t('board.colors.none')}`}
-          aria-pressed={value === c}
+          aria-pressed={c ? value === c : value == null}
           disabled={noSelection}
           style={{
             color: noteColor(c),

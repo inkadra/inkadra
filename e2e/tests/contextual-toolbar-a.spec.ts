@@ -35,7 +35,10 @@ for (const width of [1280, 390]) {
           return { name: pair.slice(0, i), value: pair.slice(i + 1), url: base };
         }),
       );
-      await page.request.patch('/api/v1/me/preferences',{headers:{origin:base},data:{keepAroundContent:false}});
+      await page.request.patch('/api/v1/me/preferences', {
+        headers: { origin: base },
+        data: { keepAroundContent: false },
+      });
       const response = await page.request.post('/api/v1/projects', {
         headers: { origin: base },
         data: { name: 'Contextual toolbar A' },
@@ -182,7 +185,10 @@ for (const width of [1280, 390]) {
           return { name: pair.slice(0, i), value: pair.slice(i + 1), url: base };
         }),
       );
-      await page.request.patch('/api/v1/me/preferences',{headers:{origin:base},data:{keepAroundContent:false}});
+      await page.request.patch('/api/v1/me/preferences', {
+        headers: { origin: base },
+        data: { keepAroundContent: false },
+      });
       const response = await page.request.post('/api/v1/projects', {
         headers: { origin: base },
         data: { name: 'Link appearance A' },
