@@ -1016,7 +1016,17 @@
       "columns": "Columns",
       "cardColor": "Card color",
       "addRow": "Add row",
-      "addColumn": "Add column"
+      "addColumn": "Add column",
+      "lists": "Lists",
+      "alignment": "Alignment",
+      "bulletsShort": "• Bullets",
+      "orderedShort": "1. Numbers",
+      "tasksShort": "☑ Tasks",
+      "alignShort": {
+        "left": "Left",
+        "center": "Center",
+        "right": "Right"
+      }
     }
   },
   "tags": {

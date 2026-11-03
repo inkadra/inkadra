@@ -10,7 +10,7 @@ import {
 import { type Element, MAX_TABLE_COLUMNS, MAX_TABLE_ROWS } from '@inkadra/doc-schema';
 import { Icon, type IconName } from '@inkadra/ui';
 import type { Editor } from '@tiptap/react';
-import { type ReactNode, useEffect, useRef, useState } from 'react';
+import { type ReactNode, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { useAsset } from './assets.ts';
@@ -60,6 +60,26 @@ export function ToolPopover({
       document.removeEventListener('keydown', onEscape, true);
     };
   }, [open]);
+  useLayoutEffect(() => {
+    if (!open) return;
+    const viewport = window.visualViewport;
+    const position = () => {
+      const popup = panel.current; const trigger = button.current?.getBoundingClientRect();
+      if (!popup || !trigger) return;
+      const height = viewport?.height ?? window.innerHeight;
+      const top = viewport?.offsetTop ?? 0;
+      const below = Math.max(0,top+height-trigger.bottom-14);
+      const above = Math.max(0,trigger.top-top-14);
+      const down = below >= Math.min(popup.scrollHeight,above);
+      popup.style.maxHeight = `${Math.min(height-16,Math.max(44,down ? below : above))}px`;
+      const preferred = down ? trigger.bottom+6 : trigger.top-popup.offsetHeight-6;
+      popup.style.top = `${Math.max(top+8,Math.min(preferred,top+height-popup.offsetHeight-8))}px`;
+    };
+    position();
+    viewport?.addEventListener('resize',position);
+    window.addEventListener('resize',position);
+    return () => { viewport?.removeEventListener('resize',position); window.removeEventListener('resize',position); };
+  },[open]);
   const rect = button.current?.getBoundingClientRect();
   return (
     <>
@@ -160,16 +180,17 @@ export function ContextualTools({
   if (readOnly || el.locked) return null;
   const noSelection = el.type === 'note' && (!editor || editor.state.selection.empty);
   const patch = (value: Record<string, unknown>) => updateElement(store.doc, el.id, value, LOCAL);
-  const option = (label: string, run: () => void, pressed?: boolean, disabled?: boolean) => (
+  const option = (label: string, run: () => void, pressed?: boolean, disabled?: boolean, display?: string) => (
     <button
       key={label}
       type="button"
       className="menu__item"
+      aria-label={label}
       aria-pressed={pressed}
       disabled={disabled || noSelection}
       onClick={run}
     >
-      {label}
+      {display ?? label}
     </button>
   );
   const palette = (value: unknown, run: (c: string | undefined) => void, highlight = false) => (
@@ -210,32 +231,18 @@ export function ContextualTools({
               ),
             )}
           </div>
-          {option(
-            t('board.format.list'),
-            () => editor.chain().focus().toggleBulletList().run(),
-            editor.isActive('bulletList'),
-          )}
-          {option(
-            t('board.contextual.orderedList'),
-            () => editor.chain().focus().toggleOrderedList().run(),
-            editor.isActive('orderedList'),
-          )}
-          {option(
-            t('board.contextual.taskList'),
-            () => editor.chain().focus().toggleList('taskList', 'taskItem').run(),
-            editor.isActive('taskList'),
-          )}
-          {(['left', 'center', 'right'] as const).map((textAlign) =>
-            option(t(`board.align.${textAlign}`), () =>
-              editor
-                .chain()
-                .focus()
-                .updateAttributes('paragraph', { textAlign })
-                .updateAttributes('heading', { textAlign })
-                .run(),
-            ),
-          )}
+          <div className="contextual-label">{t('board.contextual.lists')}</div>
+          <div className="contextual-row">
+            {option(t('board.format.list'),() => editor.chain().focus().toggleBulletList().run(),editor.isActive('bulletList'),undefined,t('board.contextual.bulletsShort'))}
+            {option(t('board.contextual.orderedList'),() => editor.chain().focus().toggleOrderedList().run(),editor.isActive('orderedList'),undefined,t('board.contextual.orderedShort'))}
+            {option(t('board.contextual.taskList'),() => editor.chain().focus().toggleList('taskList','taskItem').run(),editor.isActive('taskList'),undefined,t('board.contextual.tasksShort'))}
+          </div>
+          <div className="contextual-label">{t('board.contextual.alignment')}</div>
+          <div className="contextual-row">
+            {(['left','center','right'] as const).map(textAlign => option(t(`board.align.${textAlign}`),() => editor.chain().focus().updateAttributes('paragraph',{textAlign}).updateAttributes('heading',{textAlign}).run(),undefined,undefined,t(`board.contextual.alignShort.${textAlign}`)))}
+          </div>
           <div className="contextual-mobile">
+            <div className="contextual-row">
             {option(
               t('board.contextual.underline'),
               () => editor.chain().focus().toggleUnderline().run(),
@@ -246,12 +253,14 @@ export function ContextualTools({
               () => editor.chain().focus().toggleStrike().run(),
               editor.isActive('strike'),
             )}
+            </div>
             <input
               aria-label={t('board.contextual.link')}
               value={href}
               onChange={(e) => setHref(e.target.value)}
               placeholder="https://"
             />
+            <div className="contextual-row">
             {option(
               t('board.contextual.apply'),
               () => editor.chain().focus().setLink({ href }).run(),
@@ -261,6 +270,7 @@ export function ContextualTools({
             {option(t('board.contextual.removeLink'), () =>
               editor.chain().focus().unsetLink().run(),
             )}
+            </div>
             {option(t('board.contextual.clear'), () =>
               selectedBlocks(editor).unsetAllMarks().clearNodes().run(),
             )}
@@ -315,7 +325,7 @@ export function ContextualTools({
             )}
           </ToolPopover>
         </span>
-        <ToolPopover label={t('board.contextual.ink')} icon="color">
+        <ToolPopover label={t('board.contextual.ink')} icon="textColor">
           <div>{t('board.contextual.textColor')}</div>
           {palette(editor.getAttributes('noteInk').color, (c) =>
             editor
@@ -363,7 +373,7 @@ export function ContextualTools({
           active={el.italic ?? false}
           onClick={() => patch({ italic: !el.italic })}
         />
-        <ToolPopover label={t('board.contextual.textColor')} icon="color">
+        <ToolPopover label={t('board.contextual.textColor')} icon="textColor">
           {palette(el.color, (color) => patch({ color }))}
         </ToolPopover>
         <button

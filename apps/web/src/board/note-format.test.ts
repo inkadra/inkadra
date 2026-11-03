@@ -59,14 +59,22 @@ it('renders persistent alignment, task items and safe ink for both board and gue
 });
 
 it('persists task checkbox changes through the editor document', () => {
-  const editor = new Editor({extensions:[StarterKit,NoteAppearance,NoteInk,TaskList,TaskItem],content:'<p>Prepare camera</p>'});
+  const editor = new Editor({
+    extensions: [StarterKit, NoteAppearance, NoteInk, TaskList, TaskItem],
+    content: '<p>Prepare camera</p>',
+  });
   try {
-    editor.commands.setTextSelection({from:1,to:15});
-    editor.chain().toggleList('taskList','taskItem').run();
+    editor.commands.setTextSelection({ from: 1, to: 15 });
+    editor.chain().toggleList('taskList', 'taskItem').run();
     expect(editor.getHTML()).toContain('data-type="taskList"');
-    const checkbox=editor.view.dom.querySelector<HTMLInputElement>('input[type=checkbox]');
+    const checkbox = editor.view.dom.querySelector<HTMLInputElement>('input[type=checkbox]');
     expect(checkbox).not.toBeNull();
-    if (checkbox) { checkbox.checked=true; checkbox.dispatchEvent(new Event('change',{bubbles:true})); }
-    expect(editor.getJSON().content?.[0]?.content?.[0]?.attrs?.checked).toBe(true);
-  } finally {editor.destroy();}
+    if (checkbox) {
+      checkbox.checked = true;
+      checkbox.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+    expect(editor.state.doc.firstChild?.firstChild?.attrs.checked).toBe(true);
+  } finally {
+    editor.destroy();
+  }
 });
