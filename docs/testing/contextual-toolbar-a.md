@@ -4,10 +4,12 @@ PR: https://github.com/inkadra/inkadra/pull/411
 
 ## Approved scope and stack
 
-The UI branch starts at reviewed contract commit
-`463cf4370f74e2f4d776b51455ce8795b99bb89d`. Its PR base remains
+The UI branch originally started at reviewed contract commit
+`463cf4370f74e2f4d776b51455ce8795b99bb89d` and is now rebased on the review-corrected
+contract `1fdf6646c1210a87cd1f97058ad4c5d6553bc757`. Its PR base remains
 `contract/contextual-toolbar-a`; the parent retargets after that PR merges. No file in
-`packages/doc-schema` is changed. The binding design is alternative A of
+`packages/doc-schema` is changed by the UI PR; schema-16 note-body declarations and
+ADR 0068 were corrected separately in contract PR #410. The binding design is alternative A of
 `mockup-v4.html`, with the dock from `mockup-v3.html` in the private
 `inkadra-contextual-menus` attachment folder.
 
@@ -83,9 +85,51 @@ short-height viewport, long section title fitting, selected/disabled states and
 focus restoration. Screenshot capture moves the pointer away and disables
 animations; the existing motion rules respect reduced motion.
 
+## Independent review corrections
+
+1. **Stale-client data loss:** #410 now declares `noteInk`, `taskList`, `taskItem`, and
+   block alignment as persisted schema-16 data in `NOTE_BODY_FORMAT` and ADR 0068.
+   The live connection observes document metadata before mounting editors, stays read-only
+   for newer schemas and shows an update-app alert. Clients advertise their supported schema
+   in the WebSocket query. The server refuses writes for absent/invalid/older versions,
+   retains this restriction across role rechecks, and demotes connected clients if the live
+   document advances beyond their support. The contract declaration and live observer tests
+   failed before; real-WebSocket tests for absent/schema-15 editor clients failed before and
+   now pass, including rejected forged writes and permission rechecks.
+2. **Quarter turns:** contextual rotation calls the same extracted command as the crop
+   editor, including `cropAfterQuarterTurn`, inscribing free angles and resetting explicit
+   geometry/refreshing arrows through `applyImageTransform`. The regression compares actual
+   crop geometry with the existing crop-editor rule and checks image bounds; presets retain
+   the existing crop-editor semantics, rather than introducing unsupported portrait enums.
+3. **Restored drawing arrays:** version restore prepares shared image arrays within its
+   transaction; collaboration changes also prepare rollout imports. The client recovers a
+   missing array lazily without replacing existing ink and reports an append failure through
+   a localized toast. Missing-array and pre-v16 restore tests failed before and now pass.
+4. **Focus:** leaving an editor only refocuses the canvas if focus is lost or remains in
+   the removed editor. Blur to contextual controls/menus keeps edit mode alive. The browser
+   regression failed when focusing the ellipsis; it now checks Tab to Done, native
+   Enter/Space activation instead of canvas shortcuts, and Search focus while typing N
+   without creating a board note. Read-only schema checks preserve the sync handshake.
+5. **Section weight:** omitted bold remains legacy 600 and B inactive; the first press
+   makes it explicit 700. Explicit false is 400. PDF embedding, browser font loading,
+   measurement and PNG rendering now support the real 700 font. Both the toggle and export
+   regressions failed before.
+6. **Section commit:** the inline field remains local until blur, Enter or Done; the shared
+   exit path commits before unmount. A browser test first observed 15 outgoing document
+   updates for 15 typed characters; it now requires zero while typing and one on commit.
+7. **ARIA shortcut:** empty key hints omit `aria-keyshortcuts` entirely. The voice-recorder
+   attribute regression failed before and now passes.
+
+Review validation ran only on the workstation, using a separate `inkadra_review` database
+for server integration tests and the existing disposable E2E database for browser tests.
+The focused checks pass: 16 schema-contract tests, 78 web tests, 11 restore/drawing server
+tests and 17 real-WebSocket collaboration tests. Workspace typecheck and production build
+pass. Browser evidence includes `review-schema-{1280,390}-{dark,light}.png`; actual mobile
+keyboards are still outside the Chromium viewport verification.
+
 ## Limits and review handoff
 
-The full CI suite and independent review belong to the parent; this implementation
-agent does not watch, poll or merge PRs. Existing dedicated editors and every file
+The user requested CI follow-through for both #410 and #411 after these fixes. Neither
+PR is merged by this implementation agent; independent approval remains with the reviewer. Existing dedicated editors and every file
 codec were not manually re-exercised. Real iOS/Android keyboard behavior is not
 claimed by the resized Chromium viewport check.
