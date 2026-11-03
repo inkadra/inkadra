@@ -14,7 +14,7 @@ import {
 import { Queue, QueueEvents } from 'bullmq';
 import { eq, sql } from 'drizzle-orm';
 import pino from 'pino';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import WebSocket from 'ws';
 import * as Y from 'yjs';
 import { createAuth } from './auth.ts';
@@ -25,6 +25,7 @@ import { loadConfig } from './config.ts';
 import { createDatabase, runMigrations } from './db/client.ts';
 import { boardDoc, boardElementIndex, projectMember } from './db/schema.ts';
 import { createApp } from './http/app.ts';
+import * as drawings from './image-drawing.ts';
 import { createRedis, QUEUES, queuedBoardNotifier, startBoardWorker } from './queues.ts';
 import { testDeps } from './test-deps.ts';
 
@@ -122,6 +123,7 @@ describe.skipIf(!url)('collab (needs DATABASE_URL)', () => {
     credentials: { cookie?: string; token?: string },
     origin?: string,
     schemaVersion: number | null = CURRENT_SCHEMA_VERSION,
+    targetBoardId = boardId,
   ) {
     class CookieSocket extends WebSocket {
       constructor(address: string, protocols?: string | string[]) {
@@ -138,7 +140,7 @@ describe.skipIf(!url)('collab (needs DATABASE_URL)', () => {
     });
     const provider = new HocuspocusProvider({
       websocketProvider,
-      name: boardDocName(boardId),
+      name: boardDocName(targetBoardId),
       document: doc,
       ...(credentials.token ? { token: credentials.token } : {}),
     });
@@ -233,6 +235,52 @@ describe.skipIf(!url)('collab (needs DATABASE_URL)', () => {
     await fresh.synced;
     expect(roots(fresh.doc).elements.has(forged.id)).toBe(false);
     for (const c of [owner, viewer, fresh]) c.close();
+  });
+
+  it('downgrades a live schema without claiming the role changed', async () => {
+    const project = await app.inject({
+      method: 'POST',
+      url: '/api/v1/projects',
+      headers: as('owner'),
+      payload: { name: 'Future schema' },
+    });
+    const id = project.json().rootBoardId;
+    const current = connect(as('owner'), undefined, CURRENT_SCHEMA_VERSION, id);
+    const future = connect(as('owner'), undefined, CURRENT_SCHEMA_VERSION + 1, id);
+    await Promise.all([current.synced, future.synced]);
+    const notices: unknown[] = [];
+    current.provider.on('stateless', ({ payload }: { payload: string }) =>
+      notices.push(JSON.parse(payload)),
+    );
+    roots(future.doc).meta.set('schemaVersion', CURRENT_SCHEMA_VERSION + 1);
+    await expect
+      .poll(() => roots(current.doc).meta.get('schemaVersion'))
+      .toBe(CURRENT_SCHEMA_VERSION + 1);
+    await new Promise((resolve) => setTimeout(resolve, 600));
+    expect(notices).toEqual([]);
+    const forged = column('Refused schema write');
+    addElement(current.doc, forged);
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    expect(roots(future.doc).elements.has(forged.id)).toBe(false);
+    current.close();
+    future.close();
+  });
+
+  it('prepares drawings on load but never rescans them for card updates', async () => {
+    const editor = connect(as('owner'));
+    const peer = connect(as('owner'));
+    await Promise.all([editor.synced, peer.synced]);
+    const prepare = vi.spyOn(drawings, 'prepareImageDrawings');
+    try {
+      const el = column('Dragged without drawing scan');
+      addElement(editor.doc, el);
+      await expect.poll(() => roots(peer.doc).elements.has(el.id)).toBe(true);
+      expect(prepare).not.toHaveBeenCalled();
+    } finally {
+      prepare.mockRestore();
+      editor.close();
+      peer.close();
+    }
   });
 
   it.each([null, 15])(

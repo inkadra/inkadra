@@ -143,9 +143,13 @@ export function createCollabServer(deps: {
             if (readOnly !== connection.readOnly) {
               connection.readOnly = readOnly;
               // Tell the client, so the editor follows instead of dropping what someone types.
-              connection.sendStateless(
-                JSON.stringify({ type: 'access', readOnly } satisfies AccessMessage),
-              );
+              if (
+                ctx.supportedSchemaVersion >=
+                Math.max(CURRENT_SCHEMA_VERSION, getSchemaVersion(document))
+              )
+                connection.sendStateless(
+                  JSON.stringify({ type: 'access', readOnly } satisfies AccessMessage),
+                );
             }
           }
         } catch (err) {
@@ -285,16 +289,13 @@ export function createCollabServer(deps: {
     },
 
     async onChange({ document, context }) {
-      prepareImageDrawings(document);
       for (const connection of document.getConnections() as Array<Connection<Context>>) {
         if (
           (connection.context?.supportedSchemaVersion ?? 0) < getSchemaVersion(document) &&
           !connection.readOnly
         ) {
           connection.readOnly = true;
-          connection.sendStateless(
-            JSON.stringify({ type: 'access', readOnly: true } satisfies AccessMessage),
-          );
+          // The live schema update drives the update-app notice; this is not a role change.
         }
       }
       const before = assignments.get(document) ?? new Map();

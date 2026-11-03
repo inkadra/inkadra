@@ -128,6 +128,33 @@ tests and 17 real-WebSocket collaboration tests. Workspace typecheck and product
 pass. Browser evidence includes `review-schema-{1280,390}-{dark,light}.png`; actual mobile
 keyboards are still outside the Chromium viewport verification.
 
+## Second independent review (A–E)
+
+- **A:** drawing preparation remains at load and version restore, and no longer runs in
+  `onChange`. A real-WebSocket regression first observed one preparation call for a card
+  update; it now observes none. Existing assignment processing is unchanged.
+- **B:** the lazy recovery has the required `shortcut:` comment: simultaneous offline
+  recovery can replace an array; authority-coordinated recovery is needed before concurrent
+  legacy restores offline are supported.
+- **C:** supported documents start editable without the read-only flash. Reopening a board
+  in the same tab restores its local Yjs snapshot and last authenticated role, keyed by
+  user and board. Cached viewers/newer schemas stay read-only, and denied/signed-out boards
+  are discarded. Unit regressions failed before; the browser regression first lost the
+  card on offline reopen and now edits offline, reconnects, waits for sync and verifies
+  persistence after reload. The existing application shell has no persistent document or
+  offline navigation cache: reopening the entire PWA offline is outside this correction.
+- **D:** a schema downgrade enforces server read-only without sending a role-change
+  `access` notice. The client also suppresses role toasts for schema restrictions and exits
+  editing. A real-WebSocket regression first received the misleading access notice; it
+  now receives none and still proves a forged write is refused. The browser checks that
+  the update-app notice appears without the role-change toast.
+- **E:** update notice position and dismissal behavior remain as approved.
+
+Validation runs only on the workstation: error-only scoped Biome, workspace typecheck,
+production build, focused connection/access/drawing tests, 19 collaboration integration
+checks and all 10 contextual Chromium scenarios. Existing desktop/390px light/dark evidence
+is retained; the offline path also has browser coverage. No dependency or contract change.
+
 ## Limits and review handoff
 
 The user requested CI follow-through for both #410 and #411 after these fixes. Neither

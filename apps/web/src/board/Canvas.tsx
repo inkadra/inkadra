@@ -848,6 +848,10 @@ export function Canvas({
   // Others see where we point, what we selected and which card we write in.
   const presence = useLocalPresence(preview ? null : conn.provider);
 
+  useEffect(() => {
+    if (conn.schemaTooNew) setEditing(null);
+  }, [conn.schemaTooNew, setEditing]);
+
   // A role change while the board is open: leave the note being written and say why, and
   // publish presence again so the server stamps the new role for the others right away.
   const [nextAccessNotice] = useState(accessNotices);

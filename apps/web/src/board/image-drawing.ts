@@ -9,6 +9,8 @@ export function appendImageStroke(doc: Y.Doc, id: string, points: number[]): boo
   if (map?.get('type') !== 'image') return false;
   let strokes = map.get('strokes');
   // Restores and rollout imports can remove this field while the board remains loaded.
+  // shortcut: simultaneous recovery by offline clients can replace one array; upgrade to
+  // authority-coordinated recovery before supporting concurrent legacy restores offline.
   if (strokes === undefined) {
     strokes = new Y.Array();
     doc.transact(() => map.set('strokes', strokes), LOCAL);

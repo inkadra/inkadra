@@ -116,6 +116,11 @@ test('a newer live document opens read-only with an update-app notice', async ({
   future.getMap('meta').set('schemaVersion', CURRENT_SCHEMA_VERSION + 1);
   await pushBoardDoc(base, cookie, boardId, future, CURRENT_SCHEMA_VERSION + 1);
   await expect(page.getByRole('alert').filter({ hasText: 'Aggiorna l’app' })).toBeVisible();
+  await expect(
+    page.getByText('Il tuo ruolo è cambiato: ora puoi solo guardare questa board.', {
+      exact: true,
+    }),
+  ).toHaveCount(0);
   await card.dblclick();
   await expect(card.locator('input')).toHaveCount(0);
   await expect(page.locator('.toolbar__btn--note')).toHaveCount(0);
@@ -134,4 +139,35 @@ test('a newer live document opens read-only with an update-app notice', async ({
         });
       }
   }
+});
+
+test('reopens a cached board offline, edits locally and syncs after reconnecting', async ({
+  page,
+  baseURL,
+}) => {
+  const card = await setup(page, baseURL as string, 'column');
+  await expect(card).toBeVisible();
+  const boardUrl = page.url();
+  const navigate = (url: string) =>
+    page.evaluate((url) => {
+      history.pushState(null, '', url);
+      dispatchEvent(new PopStateEvent('popstate'));
+    }, url);
+  await navigate('/');
+  await expect(card).toHaveCount(0);
+  await page.context().setOffline(true);
+  try {
+    await navigate(boardUrl);
+    await expect(card).toBeVisible();
+    await card.dblclick();
+    await expect(card.locator('input')).toBeVisible();
+    await card.locator('input').fill('Edited offline');
+    await page.locator('.ctxbar').getByRole('button', { name: 'Fatto', exact: true }).click();
+    await expect(card).toContainText('Edited offline');
+  } finally {
+    await page.context().setOffline(false);
+  }
+  await expect(page.getByText('Sincronizzato', { exact: true })).toBeVisible();
+  await page.reload();
+  await expect(card).toContainText('Edited offline');
 });

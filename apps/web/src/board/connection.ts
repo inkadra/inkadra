@@ -3,6 +3,7 @@ import { boardDocName, CURRENT_SCHEMA_VERSION, readBoardNotice } from '@inkadra/
 import { COLLAB_PATH } from '@inkadra/shared/constants';
 import { useEffect, useState } from 'react';
 import * as Y from 'yjs';
+import { useSession } from '../lib/session.tsx';
 import { setBusy } from '../pwa/busy.ts';
 import { BoardStore } from './store.ts';
 
@@ -117,16 +118,25 @@ export function watchDocumentSchema(
   return () => meta.unobserve(check);
 }
 
+// Keep reopened boards and their last authenticated role available while this tab is offline.
+// The application shell currently has no persistent offline navigation/document cache.
+const cachedBoards = new Map<string, { update: Uint8Array; readOnly: boolean }>();
+
 /** Opens the board document over the collaboration WebSocket; the session cookie signs in. */
 export function useBoardConnection(boardId: string, trackBusy = true): BoardConnection | null {
+  const { user } = useSession();
+  const userId = user?.id ?? '';
   const [conn, setConn] = useState<BoardConnection | null>(null);
 
   useEffect(() => {
+    const cacheKey = `${userId}:${boardId}`;
+    const cached = cachedBoards.get(cacheKey);
     const doc = new Y.Doc();
+    if (cached) Y.applyUpdate(doc, cached.update);
     const store = new BoardStore(doc);
     let state: Omit<BoardConnection, 'store' | 'provider' | 'saves'> = {
       status: 'connecting',
-      readOnly: true,
+      readOnly: cached?.readOnly ?? false,
       schemaTooNew: false,
       accessChangedAt: null,
     };
@@ -158,7 +168,7 @@ export function useBoardConnection(boardId: string, trackBusy = true): BoardConn
       onAuthenticated: ({ scope }) => update({ readOnly: scope === 'readonly' }),
       onAuthenticationFailed: () => update({ status: 'denied' }),
     });
-    let roleReadOnly = true;
+    let roleReadOnly = cached?.readOnly ?? false;
     function update(patch: Partial<typeof state>) {
       if (patch.readOnly !== undefined) roleReadOnly = patch.readOnly;
       state = { ...state, ...patch };
@@ -175,6 +185,9 @@ export function useBoardConnection(boardId: string, trackBusy = true): BoardConn
     });
     update({});
     return () => {
+      if (state.status === 'denied' || state.status === 'signedOut') cachedBoards.delete(cacheKey);
+      else
+        cachedBoards.set(cacheKey, { update: Y.encodeStateAsUpdate(doc), readOnly: roleReadOnly });
       stopSchema();
       stopSaves();
       setBusy(busy, false);
@@ -183,7 +196,7 @@ export function useBoardConnection(boardId: string, trackBusy = true): BoardConn
       doc.destroy();
       setConn(null);
     };
-  }, [boardId, trackBusy]);
+  }, [boardId, trackBusy, userId]);
 
   return conn;
 }
