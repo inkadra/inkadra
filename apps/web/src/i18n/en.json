@@ -2772,7 +2772,7 @@
       "storyboard": "Storyboard"
     },
     "renamed": "Renamed",
-    "restoreDefaults": "Restore default values",
+    "restoreDefaults": "Reactivate default values",
     "emptyShots": "No values yet. The frame panel only offers “Other…”.",
     "duplicate": "A value with this name already exists.",
     "required": "The name is required.",
