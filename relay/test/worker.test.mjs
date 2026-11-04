@@ -49,6 +49,10 @@ async function solve(seed, bits) {
 function mockGitHub() {
   const calls = [];
   globalThis.fetch = async (url, init) => {
+    // The Workers runtime refuses other values, while Node accepts them: this failed every report.
+    if (init.redirect && !['follow', 'manual'].includes(init.redirect)) {
+      throw new TypeError('Invalid redirect value, must be one of "follow" or "manual"');
+    }
     // File uploads arrive as a stream of JSON, everything else as a string.
     const text = init.body == null ? null : await new Response(init.body).text();
     calls.push({ url, method: init.method, body: text ? JSON.parse(text) : null });

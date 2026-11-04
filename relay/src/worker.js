@@ -413,7 +413,8 @@ function github(env) {
     const stream = body instanceof ReadableStream;
     const res = await fetch(base + path, {
       method,
-      redirect: 'error',
+      // Workers has no 'error' mode. A redirect is not ok below, so it is never followed.
+      redirect: 'manual',
       // shortcut: a 25 MiB file is a 34 MB body; a slower link needs a smaller file, not a longer wait.
       signal: AbortSignal.timeout(method === 'PUT' ? 120000 : 30000),
       headers: {
