@@ -3582,6 +3582,7 @@
     "relayRecordLimit": "Massimo 60 secondi e 25 MB; la registrazione si ferma automaticamente.",
     "relayVideoTooBig": "{{size}}: il relay accetta video fino a 25 MB.",
     "relayUnavailable": "Il relay non ha confermato l’invio. La segnalazione è salvata su questo server: se in attesa verrà ritentata; se l’esito è incerto o rifiutato, l’amministratore deve verificarla.",
-    "relayRetentionHelp": "Solo gli allegati locali. Le copie su GitHub restano fino alla rimozione da parte del team Inkadra."
+    "relayRetentionHelp": "Solo gli allegati locali. Le copie su GitHub restano fino alla rimozione da parte del team Inkadra.",
+    "relaySaved": "Segnalazione salvata su questo server"
   }
 }

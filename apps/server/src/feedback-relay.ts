@@ -87,7 +87,12 @@ export async function sendRelay(base: string, form: FormData) {
     throw new RelayFailure(502, true);
   }
   if (!res.ok) throw new RelayFailure(res.status, res.status >= 500);
-  const result = (await res.json()) as { number: number };
-  if (!Number.isSafeInteger(result.number) || result.number < 1) throw new RelayFailure(502, true);
-  return result.number;
+  try {
+    const result = (await res.json()) as { number: number };
+    if (!Number.isSafeInteger(result.number) || result.number < 1)
+      throw new Error('Invalid receipt');
+    return result.number;
+  } catch {
+    throw new RelayFailure(502, true);
+  }
 }

@@ -1102,7 +1102,13 @@ export function FeedbackLauncher({ linkId }: { linkId?: string }) {
         <span className="feedback-done__icon">
           <Icon name="check" size={20} />
         </span>
-        <b role="status">{t('feedback.sent')}</b>
+        <b role="status">
+          {t(
+            status?.destination === 'relay' && receipt?.delivery !== 'delivered'
+              ? 'feedback.relaySaved'
+              : 'feedback.sent',
+          )}
+        </b>
         <p>{message}</p>
       </div>
     );

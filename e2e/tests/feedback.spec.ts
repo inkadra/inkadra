@@ -43,7 +43,7 @@ test.afterEach(async ({ page }) => {
   });
 });
 
-test('stays off without configuration, and the shortcut says so', async ({ page }) => {
+test('respects an explicit off choice, and the shortcut says so', async ({ page }) => {
   await page.addInitScript(() => {
     window.addEventListener(
       'keydown',
@@ -56,6 +56,7 @@ test('stays off without configuration, and the shortcut says so', async ({ page 
   await login(page);
   await configure(page, 'off');
   await page.reload();
+  await expect(page.getByRole('heading', { name: /Giulia$/ })).toBeVisible();
   await expect(page.getByRole('button', FORM)).toHaveCount(0);
   await page.keyboard.press('Control+Shift+B');
   const dialog = page.getByRole('dialog', FORM);
@@ -853,6 +854,44 @@ test('relay disclosure, mandatory preview, limits and admin switch', async ({ pa
           path: join(process.env.FEEDBACK_SHOTS_DIR, `${theme}-${width}-relay-disclosure.png`),
         });
         await dialog.getByLabel('Titolo', { exact: true }).scrollIntoViewIfNeeded();
+      }
+    }
+  }
+  await dialog.getByLabel('Titolo', { exact: true }).fill('Relay unavailable');
+  await dialog.getByRole('button', { name: 'Screenshot', exact: true }).click();
+  await dialog.getByRole('button', { name: 'Anteprima', exact: true }).click();
+  const preview = page.getByRole('dialog', PREVIEW);
+  await expect(preview).toContainText('inkadra/inkadra-feedback');
+  await page.route('**/api/v1/feedback', async (route) =>
+    route.fulfill({
+      status: 201,
+      json: {
+        id: '00000000-0000-4000-8000-000000000001',
+        reference: '#local-1',
+        issueUrl: null,
+        delivery: 'pending',
+        duplicate: false,
+      },
+    }),
+  );
+  await preview.getByRole('button', { name: 'Invia segnalazione', exact: true }).click();
+  await expect(
+    page.getByText('Segnalazione salvata su questo server', { exact: true }),
+  ).toBeVisible();
+  await expect(page.getByRole('dialog')).toContainText('Il relay non ha confermato');
+  if (process.env.FEEDBACK_SHOTS_DIR) {
+    for (const theme of ['light', 'dark']) {
+      await page.evaluate((value) => {
+        localStorage.setItem('inkadra.theme', value);
+        window.dispatchEvent(new Event('inkadra-theme-change'));
+        document.documentElement.dataset.theme = value;
+      }, theme);
+      for (const width of [1280, 390]) {
+        await page.setViewportSize({ width, height: width === 390 ? 844 : 800 });
+        await page.mouse.move(0, 0);
+        await page.screenshot({
+          path: join(process.env.FEEDBACK_SHOTS_DIR, `${theme}-${width}-relay-pending.png`),
+        });
       }
     }
   }

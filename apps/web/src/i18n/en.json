@@ -3582,6 +3582,7 @@
     "relayRecordLimit": "Up to 60 seconds and 25 MB; recording stops automatically.",
     "relayVideoTooBig": "{{size}}: the relay accepts videos up to 25 MB.",
     "relayUnavailable": "The relay has not confirmed delivery. Your report is saved on this server: pending reports retry; uncertain or refused reports need an administrator to check them.",
-    "relayRetentionHelp": "Local attachments only. GitHub copies remain until removed by the Inkadra team."
+    "relayRetentionHelp": "Local attachments only. GitHub copies remain until removed by the Inkadra team.",
+    "relaySaved": "Report saved on this server"
   }
 }

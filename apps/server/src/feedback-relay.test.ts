@@ -8,7 +8,7 @@ afterEach(async () => {
   for (const server of servers.splice(0))
     await new Promise<void>((resolve) => server.close(() => resolve()));
 });
-async function fake(status = 201) {
+async function fake(status = 201, receipt = JSON.stringify({ number: 7 })) {
   const bodies: string[] = [];
   const server = createServer(async (req, res) => {
     let body = '';
@@ -19,7 +19,7 @@ async function fake(status = 201) {
       res.end(JSON.stringify({ ticket: 'ticket', seed: 'seed', bits: 0, nbf: Date.now() }));
     else {
       res.statusCode = status;
-      res.end(JSON.stringify({ number: 7 }));
+      res.end(receipt);
     }
   });
   servers.push(server);
@@ -60,4 +60,9 @@ it('marks ambiguous relay writes uncertain and permanent refusals refused', asyn
       uncertain,
     });
   }
+});
+
+it('never retries a successful write with a malformed receipt blindly', async () => {
+  const { base } = await fake(201, 'invalid JSON');
+  await expect(sendRelay(base, new FormData())).rejects.toMatchObject({ uncertain: true });
 });
