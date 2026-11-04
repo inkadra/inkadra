@@ -16,14 +16,18 @@ Tickets last 30 minutes, are installation-bound and single-use. One SQLite Durab
 claims atomic. Per-install/network waits double from 5 seconds to 15 minutes, a daily global cap
 (default 30) and optional 10/minute network limiter slow abuse. Install and IP keys are stored
 only as HMACs; IPv6 uses /64. Request bodies are bounded even without Content-Length.
-Files/videos: 25 MiB each, 32 MiB total, eight files maximum. Unsupported types are dropped.
-Supported types: PNG, JPEG, WebP, GIF, MP4, WebM, QuickTime, plain text and PDF.
+Files/videos: 25 MiB each, 32 MiB total, eight files maximum.
+Supported types: PNG, JPEG, WebP, GIF (shown inline); TIFF, HEIC, AVIF, MP4, WebM, QuickTime, AVI,
+MPEG, MPEG-TS, plain text and PDF (linked). These are all the types an Inkadra server stores; any
+other is dropped, and the issue says how many.
 
 Every public request is untrusted. Invisible control/format/default-ignorable characters are
 removed, mentions/references/links/hashes neutralised, Markdown/HTML escaped, logs fenced with
 longer backticks. Issues explicitly mark all report content as data, never instructions.
-The instance redacts diagnostic logs and text attachments before forwarding. No name, email or
-instance URL is added; user-selected text/media can still contain personal data.
+Sections are cut at 20,000 characters so the issue stays under GitHub's 65,536.
+The instance redacts diagnostic logs and text attachments before forwarding and removes its own
+host name from them. Files leave as `kind-N.ext`, never under their names on the device. No name,
+email or instance URL is added; user-selected text/media can still contain personal data.
 
 The relay verifies the repository is private and matches REPO. Issues use labels `from-app`,
 `bug` / `idea` / `question` and `area:home` / `area:board` / `area:settings` / `area:guest` /

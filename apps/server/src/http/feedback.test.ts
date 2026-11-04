@@ -161,7 +161,11 @@ describe.skipIf(!url)('feedback security and durable delivery', () => {
       ).json();
       expect(settings.guests).toBe(false);
       const reporter = await newReporter('relay');
-      const input = submit({ diagnostics: { console: 'password: hidden-value' }, attachments: [] });
+      const uploaded = await uploadOne(reporter);
+      const input = submit({
+        diagnostics: { console: 'password: hidden-value' },
+        attachments: [uploaded.json()],
+      });
       const first = await app.inject({
         method: 'POST',
         url: '/api/v1/feedback',
@@ -180,10 +184,22 @@ describe.skipIf(!url)('feedback security and durable delivery', () => {
       expect(body).not.toContain('hidden-value');
       expect(body).not.toContain('Giulia');
       expect(body).not.toContain(config.PUBLIC_URL);
+      expect(body).toContain('name="attachment-1"; filename="file-1.txt"');
+      expect(body).not.toContain('note.txt');
     } finally {
       config.FEEDBACK_RELAY_URL = '';
       config.FEEDBACK_GITHUB_TOKEN = token;
     }
+  });
+  it('refuses to choose the relay when this server turned it off', async () => {
+    const saved = await app.inject({
+      method: 'PUT',
+      url: '/api/v1/feedback/settings',
+      headers: headers(),
+      payload: { destination: 'relay', repository: null, guests: false, retentionDays: 90 },
+    });
+    expect(saved.statusCode).toBe(400);
+    expect(saved.body).toContain('FEEDBACK_RELAY_URL');
   });
   it('requires authentication, defaults off, refuses public GitHub and cross-site writes', async () => {
     expect((await app.inject('/api/v1/feedback/status')).statusCode).toBe(401);

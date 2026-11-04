@@ -88,6 +88,8 @@ export default defineConfig({
         AUTH_RATE_LIMITS: 'off',
         PORT: String(port),
         PUBLIC_URL: baseURL,
+        // Never the real relay: nothing listens here, so a report waits in the local queue.
+        FEEDBACK_RELAY_URL: 'http://127.0.0.1:9',
         DATABASE_URL:
           process.env.DATABASE_URL ?? 'postgres://inkadra:inkadra@localhost:5432/inkadra_e2e',
         REDIS_URL: process.env.REDIS_URL ?? 'redis://localhost:6379',

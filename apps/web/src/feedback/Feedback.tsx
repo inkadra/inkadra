@@ -1,6 +1,8 @@
 import {
   type CreateFeedback,
   FEEDBACK_FILE_BYTES,
+  FEEDBACK_RELAY_FILE_BYTES,
+  FEEDBACK_RELAY_TOTAL_BYTES,
   FEEDBACK_VIDEO_BYTES,
   type FeedbackAttachment,
   type FeedbackReceipt,
@@ -138,7 +140,8 @@ export function FeedbackLauncher({ linkId }: { linkId?: string }) {
   const [files, setFiles] = useState<LocalAttachment[]>([]);
   const [shot, setShot] = useState<LocalAttachment | null>(null);
   const [shotIncluded, setShotIncluded] = useState(true);
-  const videoLimit = status?.destination === 'relay' ? 25 * 1024 * 1024 : FEEDBACK_VIDEO_BYTES;
+  const relay = status?.destination === 'relay';
+  const videoLimit = relay ? FEEDBACK_RELAY_FILE_BYTES : FEEDBACK_VIDEO_BYTES;
   const [video, setVideo] = useState<LocalAttachment | null>(null);
   const [candidate, setCandidate] = useState<LocalAttachment | null>(null);
   const [data, setData] = useState<ReturnType<typeof diagnostics> | null>(null);
@@ -486,12 +489,9 @@ export function FeedbackLauncher({ linkId }: { linkId?: string }) {
       if (!ACCEPTED.test(file.type) && !ACCEPTED_NAME.test(file.name))
         item.error = t('feedback.typeRefused');
       else if (isVideo && file.size > videoLimit)
-        item.error = t(
-          status?.destination === 'relay' ? 'feedback.relayVideoTooBig' : 'feedback.videoTooBig',
-          {
-            size: formatStorage(file.size, i18n.language),
-          },
-        );
+        item.error = t(relay ? 'feedback.relayVideoTooBig' : 'feedback.videoTooBig', {
+          size: formatStorage(file.size, i18n.language),
+        });
       else if (!isVideo && file.size > FEEDBACK_FILE_BYTES)
         item.error = t('feedback.fileTooBig', {
           size: formatStorage(file.size, i18n.language),
@@ -525,6 +525,7 @@ export function FeedbackLauncher({ linkId }: { linkId?: string }) {
       focusTitle();
       return;
     }
+    if (relayOver) return;
     setData(diagnostics(version ?? fetchedVersion ?? 'unknown', i18n.language, prefill?.details));
     setFailure(null);
     setPhase('preview');
@@ -577,6 +578,8 @@ export function FeedbackLauncher({ linkId }: { linkId?: string }) {
     ...(video ? [video] : []),
     ...files.filter((f) => !f.error),
   ];
+  const relayOver =
+    relay && sent().reduce((n, a) => n + a.blob.size, 0) > FEEDBACK_RELAY_TOTAL_BYTES;
 
   async function send() {
     if (busy || !data) return;
@@ -684,9 +687,9 @@ export function FeedbackLauncher({ linkId }: { linkId?: string }) {
       <Icon name="lock" size={14} />
       <span>
         {guest
-          ? t(status?.destination === 'relay' ? 'feedback.privacyRelay' : 'feedback.privacyGuest')
+          ? t(relay ? 'feedback.privacyRelay' : 'feedback.privacyGuest')
           : t(
-              status?.destination === 'relay'
+              relay
                 ? 'feedback.privacyRelay'
                 : status?.destination === 'inbox'
                   ? 'feedback.privacyInbox'
@@ -694,8 +697,8 @@ export function FeedbackLauncher({ linkId }: { linkId?: string }) {
               {
                 days: status?.retentionDays ?? 90,
               },
-            )}{' '}
-        {t(status?.destination === 'relay' ? 'feedback.relayLimits' : 'feedback.linkPrivacy')}
+            )}
+        {!relay && ` ${t('feedback.linkPrivacy')}`}
       </span>
     </p>
   );
@@ -840,8 +843,10 @@ export function FeedbackLauncher({ linkId }: { linkId?: string }) {
           />
         )}
         {shotBlock()}
-        {status?.destination === 'relay' && (
-          <p className="feedback-text">{t('feedback.relayLimits')}</p>
+        {relay && !guest && (
+          <p className="feedback-text" role={relayOver ? 'alert' : undefined}>
+            {t(relayOver ? 'feedback.relayTotalTooBig' : 'feedback.relayLimits')}
+          </p>
         )}
         {!guest && (
           <div className="feedback-row feedback-att">
@@ -896,9 +901,7 @@ export function FeedbackLauncher({ linkId }: { linkId?: string }) {
           <div className="feedback-drop">
             <Icon name="upload" size={20} />
             {t('feedback.dropHere')}
-            <span>
-              {t(status?.destination === 'relay' ? 'feedback.relayLimits' : 'feedback.dropLimits')}
-            </span>
+            <span>{t(relay ? 'feedback.relayLimits' : 'feedback.dropLimits')}</span>
           </div>
         ) : (
           files.length > 0 && (
@@ -939,7 +942,14 @@ export function FeedbackLauncher({ linkId }: { linkId?: string }) {
             <div key={part}>{partChoice(part)}</div>
           ))}
         </fieldset>
-        {privacy}
+        {relay ? (
+          <p className="feedback-privacy">
+            <Icon name="lock" size={14} />
+            <span>{t('feedback.relayNote')}</span>
+          </p>
+        ) : (
+          guest && privacy
+        )}
       </>
     );
   }
@@ -1079,7 +1089,11 @@ export function FeedbackLauncher({ linkId }: { linkId?: string }) {
     const reference = receipt?.reference ?? '';
     const repository = receipt?.issueUrl?.match(/github\.com\/[^/]+\/([^/]+)\//)?.[1];
     const message =
-      status?.destination === 'relay' && receipt?.delivery !== 'delivered' ? (
+      relay && receipt?.delivery === 'pending' ? (
+        t('feedback.relayPending')
+      ) : relay && receipt?.delivery === 'refused' ? (
+        t('feedback.relayRefused')
+      ) : relay && receipt?.delivery === 'uncertain' ? (
         t('feedback.relayUnavailable')
       ) : receipt?.duplicate ? (
         <>
@@ -1103,11 +1117,7 @@ export function FeedbackLauncher({ linkId }: { linkId?: string }) {
           <Icon name="check" size={20} />
         </span>
         <b role="status">
-          {t(
-            status?.destination === 'relay' && receipt?.delivery !== 'delivered'
-              ? 'feedback.relaySaved'
-              : 'feedback.sent',
-          )}
+          {t(relay && receipt?.delivery !== 'delivered' ? 'feedback.relaySaved' : 'feedback.sent')}
         </b>
         <p>{message}</p>
       </div>
@@ -1296,11 +1306,7 @@ export function FeedbackLauncher({ linkId }: { linkId?: string }) {
                   <div className="feedback-send feedback-send--notes">
                     <p>
                       <Icon name="clock" size={14} />
-                      {t(
-                        status?.destination === 'relay'
-                          ? 'feedback.relayRecordLimit'
-                          : 'feedback.recordLimit',
-                      )}
+                      {t(relay ? 'feedback.relayRecordLimit' : 'feedback.recordLimit')}
                     </p>
                     <p>
                       <Icon name="eyeOff" size={14} />

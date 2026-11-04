@@ -1,9 +1,22 @@
 import { createHash } from 'node:crypto';
+import { extname } from 'node:path';
 import { setTimeout } from 'node:timers/promises';
 import { type CreateFeedback, redactFeedback } from '@inkadra/shared';
 
+/** Secrets go first; then the instance's own address, which a log can name without a scheme. */
+export function relayClean(text: string, publicUrl: string) {
+  return redactFeedback(text).replaceAll(new URL(publicUrl).hostname, '[instance]');
+}
+
+/** The name a file had on someone's device can hold a name: only its kind and extension leave. */
+export function relayFileName(file: { kind: string; name: string }, index: number) {
+  const extension = extname(file.name);
+  return `${file.kind}-${index + 1}${/^\.[a-z0-9]{1,8}$/i.test(extension) ? extension : ''}`;
+}
+
 /** Only fixed diagnostic fields leave the instance; never reporter or instance metadata. */
-export function relayMetadata(report: CreateFeedback) {
+export function relayMetadata(report: CreateFeedback, publicUrl: string) {
+  const clean = (text: string) => relayClean(text, publicUrl);
   return {
     requestId: report.requestId,
     kind: report.type === 'bug' ? 'problem' : report.type,
@@ -13,13 +26,15 @@ export function relayMetadata(report: CreateFeedback) {
     device: Object.fromEntries(
       Object.entries(report.diagnostics)
         .filter(([k]) => !['console', 'network'].includes(k))
-        .map(([k, v]) => [k, redactFeedback(v)]),
+        .map(([k, v]) => [k, clean(v)]),
     ),
-    logExcerpt: redactFeedback(
+    logExcerpt: clean(
       [report.diagnostics.console, report.diagnostics.network].filter(Boolean).join('\n'),
     ),
   };
 }
+
+const MAX_TICKET_WAIT_MS = 20000;
 
 export class RelayFailure extends Error {
   constructor(
@@ -70,6 +85,9 @@ export async function relayChallenge(base: string, installId: string) {
     }
     if (n % 1024 === 0) await setTimeout(0);
   }
+  // The relay's wait doubles with each report of the day. Holding a claimed report for minutes
+  // would mark it uncertain if the server restarted, so a long wait goes back in the queue.
+  if (t.nbf - Date.now() > MAX_TICKET_WAIT_MS) throw new RelayFailure(429);
   await setTimeout(Math.max(0, t.nbf - Date.now()));
   return { installId, ticket: t.ticket, powNonce };
 }

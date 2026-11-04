@@ -155,6 +155,8 @@ export function FeedbackSettings() {
   const uncertain = reports.filter((r) => r.delivery === 'uncertain').length;
   const refused = reports.filter((r) => r.delivery === 'refused');
   const github = settings.destination === 'github';
+  const relay = settings.destination === 'relay';
+  const relayWaiting = reports.filter((r) => r.delivery === 'pending' && r.failure);
   return (
     <>
       <Card title={t('feedback.settingsTitle')} body={t('feedback.settingsLead')}>
@@ -165,12 +167,12 @@ export function FeedbackSettings() {
               <div>{error}</div>
             </div>
           )}
-          {(github || settings.destination === 'relay') && refused.length > 0 && (
+          {(github || relay) && refused.length > 0 && (
             <div className="feedback-banner feedback-banner--danger" role="alert">
               <Icon name="warning" size={14} />
               <div>
                 <p>
-                  {t('feedback.refusedBanner', {
+                  {t(relay ? 'feedback.relayRefusedBanner' : 'feedback.refusedBanner', {
                     count: refused.length,
                     reason: refused[0]?.failure ?? '',
                   })}
@@ -179,6 +181,12 @@ export function FeedbackSettings() {
                   {t('feedback.retryRefused')}
                 </Button>
               </div>
+            </div>
+          )}
+          {relay && relayWaiting.length > 0 && (
+            <div className="feedback-banner feedback-banner--warn" role="status">
+              <Icon name="warning" size={14} />
+              <div>{t('feedback.relayDownBanner', { count: relayWaiting.length })}</div>
             </div>
           )}
           {github && !settings.tokenConfigured && (
@@ -235,7 +243,7 @@ export function FeedbackSettings() {
                 </Badge>
               </Row>
             )}
-            {(github || settings.destination === 'relay') && (
+            {(github || relay) && (
               <Row
                 label={t('feedback.lastDelivery')}
                 help={[
@@ -256,11 +264,7 @@ export function FeedbackSettings() {
             </Row>
             <Row
               label={t('feedback.retention')}
-              help={t(
-                settings.destination === 'relay'
-                  ? 'feedback.relayRetentionHelp'
-                  : 'feedback.retentionHelp',
-              )}
+              help={t(relay ? 'feedback.relayRetentionHelp' : 'feedback.retentionHelp')}
             >
               <Select
                 aria-label={t('feedback.retention')}

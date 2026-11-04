@@ -354,8 +354,8 @@ Use the pinned proxy container IP and verify the peer address in your deployment
 ### In-app reports (#338)
 
 Reporting to the **Inkadra developers is on without configuration** via the relay described below.
-Saved administrator choices override that default. In Settings → About → Reports
-an administrator chooses Inkadra developers, own GitHub, Inbox only or Off, the destination `owner/repository`, whether
+Saved administrator choices override that default. In Settings → About → Reports an administrator
+chooses Inkadra developers, own GitHub, Inbox only or Off, the destination `owner/repository`, whether
 guests may report (off by default) and how long attachments are kept (90 days by default; 30
 days or one year on request). Every report is first saved in the local database; attachments
 use the configured instance storage (`STORAGE_DRIVER`, `DATA_DIR` or the existing `S3_*`
@@ -420,9 +420,10 @@ Saved administrator choices always take precedence, including existing direct Gi
 After mandatory preview, selected title, description, diagnostics (redacted logs, version,
 browser/OS, screen, theme/language, route, sync and flags) and attachments go through Cloudflare
 to the private `inkadra/inkadra-feedback` repository, read by Inkadra developers. No reporter
-name, email or instance URL is added. User-written text and attachments can still contain
+name, email or instance URL is added, and files leave as `kind-N.ext` rather than under their own
+names. User-written text and attachments can still contain
 personal information: review them before sending. Installation IDs and network counters are
 stored by the relay only as HMACs. Videos/files: 25 MiB each, 32 MiB total on this route;
-direct GitHub keeps its 100 MiB video limit. Reports remain in the local queue during outages;
-ambiguous writes stop as uncertain for admin review. GitHub attachments live on feedback-assets
+direct GitHub keeps its 100 MiB video limit. Reports remain in the local queue during outages, and
+Settings says so; ambiguous writes stop as uncertain for admin review. GitHub attachments live on feedback-assets
 and are not removed by the local 30/90/365-day retention setting.

@@ -10,6 +10,8 @@ import {
   API_PREFIX,
   CreateFeedback,
   FEEDBACK_FILE_BYTES,
+  FEEDBACK_RELAY_FILE_BYTES,
+  FEEDBACK_RELAY_TOTAL_BYTES,
   FEEDBACK_RETENTION_DAYS,
   FEEDBACK_VIDEO_BYTES,
   FeedbackSettingsInput,
@@ -35,7 +37,14 @@ import {
   issueTitle,
   repeatComment,
 } from '../feedback.ts';
-import { RelayFailure, relayChallenge, relayMetadata, sendRelay } from '../feedback-relay.ts';
+import {
+  RelayFailure,
+  relayChallenge,
+  relayClean,
+  relayFileName,
+  relayMetadata,
+  sendRelay,
+} from '../feedback-relay.ts';
 import { readInstanceSettings } from '../instance-settings.ts';
 import { sniffImage } from '../media/heic.ts';
 import { sniffVideo } from '../media/video.ts';
@@ -58,6 +67,8 @@ const defaults = {
 } as const;
 /** The reporter waits this long for GitHub; the sweep finishes a slower delivery. */
 const DELIVERY_WAIT_MS = 8000;
+/** The relay makes a report wait for its ticket, then stores the files and opens the issue. */
+const RELAY_WAIT_MS = 30000;
 /** Formats the server can rewrite without their metadata: GPS, camera, owner. */
 const REWRITABLE = ['image/png', 'image/jpeg', 'image/webp'];
 const MAX_PIXELS = 40_000_000;
@@ -151,6 +162,8 @@ export function registerFeedbackRoutes(app: FastifyInstance, deps: AppDeps) {
   app.put(`${API_PREFIX}/feedback/settings`, async (req) => {
     await admin(req);
     const value = FeedbackSettingsInput.parse(req.body);
+    if (value.destination === 'relay' && !config.FEEDBACK_RELAY_URL)
+      throw new HttpError('bad_request', 'FEEDBACK_RELAY_URL turns the relay off on this server.');
     if (value.destination === 'github') {
       if (!value.repository) throw new HttpError('bad_request', 'Name a private repository.');
       // Without a token reports wait locally; delivery checks the repository again every time.
@@ -260,12 +273,11 @@ export function registerFeedbackRoutes(app: FastifyInstance, deps: AppDeps) {
             throw new HttpError('rate_limited', 'Too many uploads.');
           }
           const kind = (req.query as { kind?: string }).kind;
-          const s = await settings();
           const max = guest
             ? 5 * 1024 * 1024
             : kind === 'video'
               ? s.destination === 'relay'
-                ? 25 * 1024 * 1024
+                ? FEEDBACK_RELAY_FILE_BYTES
                 : FEEDBACK_VIDEO_BYTES
               : FEEDBACK_FILE_BYTES;
           if (Number(req.headers['content-length']) > max)
@@ -299,7 +311,7 @@ export function registerFeedbackRoutes(app: FastifyInstance, deps: AppDeps) {
           ? 5 * 1024 * 1024
           : q.kind === 'video'
             ? s.destination === 'relay'
-              ? 25 * 1024 * 1024
+              ? FEEDBACK_RELAY_FILE_BYTES
               : FEEDBACK_VIDEO_BYTES
             : FEEDBACK_FILE_BYTES;
         // The clip- prefix puts what a crash leaves behind under sweepClipTemp.
@@ -385,8 +397,8 @@ export function registerFeedbackRoutes(app: FastifyInstance, deps: AppDeps) {
           throw new HttpError('bad_request', 'Too many attachments.');
         if (
           s.destination === 'relay' &&
-          (input.attachments.some((a) => a.bytes > 25 * 1024 * 1024) ||
-            input.attachments.reduce((n, a) => n + a.bytes, 0) > 32 * 1024 * 1024)
+          (input.attachments.some((a) => a.bytes > FEEDBACK_RELAY_FILE_BYTES) ||
+            input.attachments.reduce((n, a) => n + a.bytes, 0) > FEEDBACK_RELAY_TOTAL_BYTES)
         )
           throw new HttpError('payload_too_large', 'Relay allows 25 MB per file and 32 MB total.');
         const clean = {
@@ -495,7 +507,12 @@ export function registerFeedbackRoutes(app: FastifyInstance, deps: AppDeps) {
         if (row.delivery === 'pending')
           await Promise.race([
             deliver(row.id).catch(() => {}),
-            new Promise((resolve) => setTimeout(resolve, DELIVERY_WAIT_MS).unref()),
+            new Promise((resolve) =>
+              setTimeout(
+                resolve,
+                s.destination === 'relay' ? RELAY_WAIT_MS : DELIVERY_WAIT_MS,
+              ).unref(),
+            ),
           ]);
         const [current] = await db.select().from(report).where(eq(report.id, row.id));
         const final = current ?? row;
@@ -546,15 +563,25 @@ export function registerFeedbackRoutes(app: FastifyInstance, deps: AppDeps) {
           return;
         }
         const form = new FormData();
-        form.set('report', JSON.stringify({ ...relayMetadata(row.report), ...ticket }));
+        form.set(
+          'report',
+          JSON.stringify({ ...relayMetadata(row.report, config.PUBLIC_URL), ...ticket }),
+        );
         const files = await db.select().from(attachment).where(eq(attachment.reportId, row.id));
         for (const [i, file] of files.entries()) {
           const stream = await storage.read(key(file.id));
           const chunks = [];
           for await (const chunk of stream) chunks.push(Buffer.from(chunk));
           const bytes = Buffer.concat(chunks);
-          const body = file.mime === 'text/plain' ? redactFeedback(bytes.toString('utf8')) : bytes;
-          form.set(`attachment-${i}`, new Blob([body], { type: file.mime }), file.name);
+          const body =
+            file.mime === 'text/plain'
+              ? relayClean(bytes.toString('utf8'), config.PUBLIC_URL)
+              : bytes;
+          form.set(
+            `attachment-${i + 1}`,
+            new Blob([body], { type: file.mime }),
+            relayFileName(file, i),
+          );
         }
         const issueNumber = await sendRelay(config.FEEDBACK_RELAY_URL, form);
         await db

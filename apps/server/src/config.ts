@@ -25,7 +25,8 @@ const Env = z.object({
   AUTH_SECRET: z.string().min(32, 'AUTH_SECRET must be at least 32 characters'),
   FEEDBACK_RELAY_URL: z
     .union([z.literal(''), z.url()])
-    .default('https://inkadra-report-relay.matte-maraffio.workers.dev'),
+    .default('https://inkadra-report-relay.matte-maraffio.workers.dev')
+    .transform((u) => u.replace(/\/+$/, '')),
   FEEDBACK_GITHUB_TOKEN: z.preprocess(emptyToUndefined, z.string().min(1).optional()),
   INSTANCE_NAME: z.string().min(1).default('Inkadra'),
   AUTH_RATE_LIMITS: z.enum(['on', 'off']).default('on'),

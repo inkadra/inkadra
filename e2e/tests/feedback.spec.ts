@@ -832,9 +832,11 @@ test('relay disclosure, mandatory preview, limits and admin switch', async ({ pa
   await ready(page);
   await page.getByRole('button', FORM).click();
   const dialog = page.getByRole('dialog', FORM);
-  await expect(dialog).toContainText('inkadra/inkadra-feedback');
+  await expect(dialog).toContainText('lasciano questo server');
   await expect(dialog).toContainText('32 MB totali');
-  await expect(dialog.getByRole('button', { name: 'Invia segnalazione', exact: true })).toHaveCount(0);
+  await expect(dialog.getByRole('button', { name: 'Invia segnalazione', exact: true })).toHaveCount(
+    0,
+  );
   if (process.env.FEEDBACK_SHOTS_DIR) {
     mkdirSync(process.env.FEEDBACK_SHOTS_DIR, { recursive: true });
     for (const theme of ['light', 'dark'] as const) {
@@ -878,7 +880,7 @@ test('relay disclosure, mandatory preview, limits and admin switch', async ({ pa
   await expect(
     page.getByText('Segnalazione salvata su questo server', { exact: true }),
   ).toBeVisible();
-  await expect(page.getByRole('dialog')).toContainText('Il relay non ha confermato');
+  await expect(page.getByRole('dialog')).toContainText('Il relay non risponde o è occupato');
   if (process.env.FEEDBACK_SHOTS_DIR) {
     for (const theme of ['light', 'dark']) {
       await page.evaluate((value) => {
@@ -925,4 +927,64 @@ test('relay disclosure, mandatory preview, limits and admin switch', async ({ pa
   expect((await (await page.request.get('/api/v1/feedback/settings')).json()).destination).toBe(
     'inbox',
   );
+});
+
+test('with the relay down the report stays queued and everyone is told', async ({ page }) => {
+  const shots = async (name: string, focus?: () => Promise<void>) => {
+    if (!process.env.FEEDBACK_SHOTS_DIR) return;
+    for (const theme of ['light', 'dark']) {
+      await page.evaluate((value) => {
+        localStorage.setItem('inkadra.theme', value);
+        window.dispatchEvent(new Event('inkadra-theme-change'));
+        document.documentElement.dataset.theme = value;
+      }, theme);
+      for (const width of [1280, 390]) {
+        await page.setViewportSize({ width, height: width === 390 ? 844 : 800 });
+        await focus?.();
+        await page.mouse.move(0, 0);
+        await page.screenshot({
+          path: join(process.env.FEEDBACK_SHOTS_DIR, `${theme}-${width}-${name}.png`),
+        });
+      }
+    }
+    // The next steps use the desktop entry, which a phone keeps in a menu.
+    await page.setViewportSize({ width: 1280, height: 800 });
+  };
+  await login(page);
+  await configure(page, 'relay');
+  await page.reload();
+  await ready(page);
+  await page.getByRole('button', FORM).click();
+  let dialog = page.getByRole('dialog', FORM);
+  await dialog.getByLabel('Titolo', { exact: true }).fill('Relay down');
+  const big = (name: string) => ({
+    name,
+    mimeType: 'text/plain',
+    buffer: Buffer.alloc(12 * 1024 * 1024, 'x'),
+  });
+  await page
+    .locator('input[type=file][multiple]')
+    .setInputFiles([big('a.txt'), big('b.txt'), big('c.txt')]);
+  await expect(dialog.getByRole('alert')).toContainText('superano i 32 MB');
+  await shots('relay-over-limit');
+  await dialog.getByRole('button', { name: 'Anteprima', exact: true }).click();
+  await expect(page.getByRole('dialog', PREVIEW)).toHaveCount(0);
+
+  await page.reload();
+  await ready(page);
+  await page.getByRole('button', FORM).click();
+  dialog = page.getByRole('dialog', FORM);
+  await dialog.getByLabel('Titolo', { exact: true }).fill('Relay down');
+  await dialog.getByRole('button', { name: 'Anteprima', exact: true }).click();
+  const preview = page.getByRole('dialog', PREVIEW);
+  await expect(preview).toContainText('inkadra/inkadra-feedback');
+  await shots('relay-preview');
+  await preview.getByRole('button', { name: 'Invia segnalazione', exact: true }).click();
+  await expect(page.getByRole('dialog')).toContainText('Il relay non risponde o è occupato');
+  await page.keyboard.press('Escape');
+
+  await page.goto('/settings?section=instance');
+  const banner = page.getByText(/Il relay non risponde o è occupato: \d+ segnalazion/);
+  await expect(banner).toBeVisible();
+  await shots('settings-relay-down', () => banner.scrollIntoViewIfNeeded());
 });

@@ -527,6 +527,40 @@ test('generated duplicate names cannot collide with another submitted name', () 
  });
 
 
+test('every type an Inkadra server stores survives, codec parameters included', () => {
+  const form = new FormData();
+  const types = ['video/webm;codecs=vp9', 'image/heic', 'image/tiff', 'image/avif', 'video/x-msvideo', 'video/mpeg', 'video/mp2t', 'application/pdf'];
+  types.forEach((type, i) => form.append(`attachment-${i + 1}`, new File(['x'], `f${i}`, { type })));
+  const files = collectFiles(form);
+  assert.equal(files.length, types.length);
+  assert.equal(files.dropped, undefined);
+  assert.equal(files[0].type, 'video/webm');
+});
+
+test('a dropped file is named in the issue and HEIC is linked, not shown inline', () => {
+  const form = new FormData();
+  form.append('attachment-1', new File(['x'], 'a.zip', { type: 'application/zip' }));
+  const dropped = collectFiles(form);
+  const r = sanitizeReport({ kind: 'problem', title: 'T', description: 'D' });
+  assert.match(issueBody(r, dropped), /1 attachment\(s\) of an unsupported type were not stored/);
+  const heic = issueBody(r, [{ name: 'p.heic', type: 'image/heic', size: 1, url: 'https://x/p' }]);
+  assert.doesNotMatch(heic, /!\[/);
+  assert.match(heic, /### Attachments/);
+});
+
+test('the issue fits GitHub limits however much the text grows when neutralised', () => {
+  const r = sanitizeReport({
+    kind: 'idea',
+    title: '#'.repeat(200),
+    description: '#'.repeat(12000),
+    device: { a: '@'.repeat(4000) },
+    screens: Array(12).fill('#'.repeat(120)),
+    logExcerpt: '#'.repeat(24000),
+  });
+  assert.ok(issueTitle(r).length <= 256);
+  assert.ok(issueBody(r, []).length <= 65536);
+});
+
 test('distinguishes pre-write failures from ambiguous GitHub writes', async () => {
   for (const duringWrite of [false, true]) {
     const e = env();

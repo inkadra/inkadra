@@ -5,6 +5,9 @@ export const FEEDBACK_RETENTION_DAYS = 90;
 export const FEEDBACK_RETENTION_OPTIONS = [30, 90, 365] as const;
 export const FEEDBACK_FILE_BYTES = 25 * 1024 * 1024;
 export const FEEDBACK_VIDEO_BYTES = 100 * 1024 * 1024;
+/** Limits of the route through the public relay: its Worker has 128 MB of memory. */
+export const FEEDBACK_RELAY_FILE_BYTES = 25 * 1024 * 1024;
+export const FEEDBACK_RELAY_TOTAL_BYTES = 32 * 1024 * 1024;
 export const FeedbackSettingsInput = z
   .object({
     destination: z.enum(['off', 'inbox', 'github', 'relay']),

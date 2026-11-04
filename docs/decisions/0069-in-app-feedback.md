@@ -19,8 +19,9 @@ of instance retention. Deploy is manual, performed separately by the coordinator
 For the direct GitHub path:
 Guests are disabled by default. The GitHub credential stays in a server environment variable;
 the token belongs to a service account with Issues read/write and Metadata read on one private
-repository. Visibility is checked before configuration and delivery. There are no public issues; the direct path uses expiring instance attachment links. Destination GitHub without a token keeps reports
-local until the token exists, as the approved mockup shows.
+repository. Visibility is checked before configuration and delivery. There are no public issues;
+the direct path uses expiring instance attachment links. Destination GitHub without a token keeps
+reports local until the token exists, as the approved mockup shows.
 
 The browser rasterizes the current page, with the approved new `html-to-image` dependency.
 Cross-origin embeds and video may be blank; capture failure does not prevent text reporting.

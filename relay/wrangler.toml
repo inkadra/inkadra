@@ -1,6 +1,5 @@
-# Inkadra report relay. Deployed by tools/deploy-relay.sh (or .github/workflows/report-relay.yml),
-# which also sets the secrets (GITHUB_TOKEN, TICKET_SECRET); nothing secret lives here. REPO is the
-# default target: the deploy overrides it with FEEDBACK_REPO when that is set.
+# Inkadra report relay. Deployed by hand from .github/workflows/report-relay.yml, which also sets
+# the secrets (GITHUB_TOKEN, TICKET_SECRET); nothing secret lives here.
 name = "inkadra-report-relay"
 main = "src/worker.js"
 compatibility_date = "2026-09-01"
