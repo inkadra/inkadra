@@ -429,6 +429,7 @@ for (const [device, width, height, theme] of matrix) {
     }
 
     // A location has the same sections, no new fields; its picker closes with Esc and Chiudi.
+    await page.keyboard.press('Escape'); // The selection bar could lie over the card.
     await page.locator(`[data-el="${ids.place}"]`).dblclick();
     const location = page.getByRole('complementary', { name: 'Scheda location' });
     await expect(location.locator('summary')).toHaveText([/Dettagli/, /Scene/, /Solo team/]);
