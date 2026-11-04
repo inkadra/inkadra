@@ -417,17 +417,43 @@ describe.skipIf(!url)('feedback security and durable delivery', () => {
         })
       ).statusCode,
     ).toBe(403);
-    for (let i = 0; i < 2; i++)
-      expect(
-        (
-          await app.inject({
-            method: 'POST',
-            url: prefix,
-            headers: guestHeaders,
-            payload: submit({ guestName: 'Guest Person', diagnostics: { page: '/guest/[id]' } }),
-          })
-        ).statusCode,
-      ).toBe(201);
+    const shot = await app.inject({
+      method: 'POST',
+      url: `${prefix}/attachments?kind=screenshot&name=guest.png`,
+      headers: { ...guestHeaders, 'content-type': 'application/octet-stream' },
+      payload: await sharp({
+        create: { width: 12, height: 12, channels: 3, background: 'white' },
+      })
+        .png()
+        .toBuffer(),
+    });
+    expect(shot.statusCode).toBe(201);
+    const withShot = await app.inject({
+      method: 'POST',
+      url: prefix,
+      headers: guestHeaders,
+      payload: submit({
+        guestName: 'Guest Person',
+        diagnostics: { page: '/guest/[id]' },
+        attachments: [shot.json()],
+      }),
+    });
+    expect(withShot.statusCode).toBe(201);
+    const [fromGuest] = await db
+      .select()
+      .from(feedbackReport)
+      .where(eq(feedbackReport.id, withShot.json().id));
+    expect(fromGuest?.reporter).toBe('Guest P. (guest)');
+    expect(
+      (
+        await app.inject({
+          method: 'POST',
+          url: prefix,
+          headers: guestHeaders,
+          payload: submit({ diagnostics: { page: '/guest/[id]' } }),
+        })
+      ).statusCode,
+    ).toBe(201);
     expect(
       (
         await app.inject({
