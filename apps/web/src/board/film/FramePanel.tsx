@@ -19,7 +19,7 @@ import { type BoardStore, LOCAL } from '../store.ts';
 import { TagEditor } from '../tags.tsx';
 import { aspectLabel } from './aspect.ts';
 import { FramePicture } from './FramePicture.tsx';
-import { PresetField, parseSeconds, StatusSelect, secondsText, TextField } from './fields.tsx';
+import { parseSeconds, ShotField, StatusSelect, secondsText, TextField } from './fields.tsx';
 import { moveImageToFrame } from './frame-image.ts';
 import { FrameUploadState, uploadToFrame } from './frame-upload.tsx';
 import { VideoReferencePicker } from './VideoReferencePicker.tsx';
@@ -227,14 +227,14 @@ export function FramePanel({
           onCommit={(v) => set({ action: text(v) })}
         />
         <div className="film-panel__row">
-          <PresetField
+          <ShotField
             label={t('film.frame.shot')}
             value={frame.shot}
             catalog="shotSizes"
             readOnly={readOnly}
             onCommit={(shot) => set({ shot })}
           />
-          <PresetField
+          <ShotField
             label={t('film.frame.angle')}
             value={frame.angle}
             catalog="shotAngles"
@@ -243,7 +243,7 @@ export function FramePanel({
           />
         </div>
         <div className="film-panel__row">
-          <PresetField
+          <ShotField
             label={t('film.frame.movement')}
             value={frame.movement}
             catalog="shotMovements"

@@ -81,29 +81,54 @@ export function blurOnEnter(e: KeyboardEvent<HTMLInputElement>) {
 const CUSTOM = '\u0000custom';
 
 /** A preset code (translated) or free text, for shot size, angle and movement. */
-export function PresetField({
-  label,
-  value,
-  catalog,
-  onCommit,
-  readOnly,
-  compact,
-}: {
+type FieldProps = {
   label: string;
   value: string | undefined;
-  /** The catalog of the instance with the values of this field. */
-  catalog: ShotCatalogKey;
   onCommit: (value: string | undefined) => void;
   readOnly: boolean;
   compact?: boolean;
+};
+
+export function PresetField({
+  codes,
+  prefix,
+  ...field
+}: FieldProps & {
+  codes: readonly string[];
+  /** i18n prefix of the codes, e.g. "film.character.roles". */
+  prefix: string;
 }) {
   const { t } = useTranslation();
-  const id = useId();
+  const choices = codes.map((id) => ({ id, label: t(`${prefix}.${id}`) }));
+  return <ChoiceField {...field} choices={choices} />;
+}
+
+/** A field whose values come from a catalog of the instance. */
+export function ShotField({ catalog, ...field }: FieldProps & { catalog: ShotCatalogKey }) {
+  const { t } = useTranslation();
   const options = useShotCatalogs()[catalog];
-  const inCatalog = !!value && options.some((o) => o.id === value);
   // A value added to a catalog not loaded yet stays selected, and its id is never shown as text.
-  const notLoaded = !!value && !inCatalog && CATALOG_UUID.test(value);
-  const isCode = !value || inCatalog || notLoaded;
+  const { value } = field;
+  const notLoaded = !!value && CATALOG_UUID.test(value) && !options.some((o) => o.id === value);
+  const choices = options
+    // An archived value leaves the menu, except on the frames that already use it.
+    .filter((o) => !o.archived || o.id === value)
+    .map((o) => ({ id: o.id, label: shotOptionLabel(catalog, o, t) }));
+  if (notLoaded) choices.push({ id: value, label: t('film.frame.unavailable') });
+  return <ChoiceField {...field} choices={choices} />;
+}
+
+function ChoiceField({
+  label,
+  value,
+  choices,
+  onCommit,
+  readOnly,
+  compact,
+}: FieldProps & { choices: readonly { id: string; label: string }[] }) {
+  const { t } = useTranslation();
+  const id = useId();
+  const isCode = !value || choices.some((c) => c.id === value);
   const [custom, setCustom] = useState(!isCode);
   const showText = custom || !isCode;
   const select = (
@@ -125,15 +150,11 @@ export function PresetField({
       }}
     >
       <option value="">{t('film.frame.none')}</option>
-      {/* An archived value leaves the menu, except on the frames that already use it. */}
-      {options
-        .filter((o) => !o.archived || o.id === value)
-        .map((o) => (
-          <option key={o.id} value={o.id}>
-            {shotOptionLabel(catalog, o, t)}
-          </option>
-        ))}
-      {notLoaded && <option value={value}>{t('film.frame.unavailable')}</option>}
+      {choices.map((c) => (
+        <option key={c.id} value={c.id}>
+          {c.label}
+        </option>
+      ))}
       <option value={CUSTOM}>{t('film.frame.custom')}</option>
     </Select>
   );

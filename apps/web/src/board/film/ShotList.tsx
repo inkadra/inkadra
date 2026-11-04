@@ -27,9 +27,9 @@ import { FramePicture } from './FramePicture.tsx';
 import { FrameVisibilityButton } from './FrameVisibilityButton.tsx';
 import {
   blurOnEnter,
-  PresetField,
   parseSeconds,
   StatusChip,
+  ShotField,
   StatusSelect,
   secondsText,
   usePresetText,
@@ -983,7 +983,7 @@ export function ShotList({
                               <FrameVisibilityButton store={store} frame={f} readOnly={readOnly} />
                             </td>
                             <td>
-                              <PresetField
+                              <ShotField
                                 compact
                                 label={t('film.frame.shot')}
                                 value={f.shot}
@@ -993,7 +993,7 @@ export function ShotList({
                               />
                             </td>
                             <td>
-                              <PresetField
+                              <ShotField
                                 compact
                                 label={t('film.frame.angle')}
                                 value={f.angle}
@@ -1003,7 +1003,7 @@ export function ShotList({
                               />
                             </td>
                             <td>
-                              <PresetField
+                              <ShotField
                                 compact
                                 label={t('film.frame.movement')}
                                 value={f.movement}
