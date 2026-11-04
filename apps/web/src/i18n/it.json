@@ -3171,6 +3171,8 @@
     "retry": "Riprova",
     "blackTitle": "Il fotogramma è nero",
     "black": "Il video non si lascia catturare: succede con i contenuti protetti. Non è stato salvato nulla.",
+    "noFrameTitle": "Dalla scheda non è arrivata nessuna immagine",
+    "noFrame": "Il browser non ha mandato il fotogramma. Riprova, oppure incolla uno screenshot. Non è stato salvato nulla.",
     "noTabTitle": "Qui non si può catturare la scheda",
     "noTabPhone": "I browser dei telefoni non lo permettono.",
     "noTabDesktop": "Questo browser non lo permette. Incolla uno screenshot o usa la miniatura.",

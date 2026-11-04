@@ -4,7 +4,8 @@ import { createBoardDoc } from '@inkadra/doc-schema';
 import type { Asset } from '@inkadra/shared';
 import { act } from 'react';
 import { createRoot } from 'react-dom/client';
-import { afterEach, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { NoFrame } from './frame-grab.ts';
 import { FrameGrab } from './FrameGrab.tsx';
 import { BoardStore } from './store.ts';
 import type { StartUpload } from './uploads.ts';
@@ -13,6 +14,7 @@ const state = vi.hoisted(() => ({
   upload: null as StartUpload | null,
   cancel: vi.fn(),
   bytes: vi.fn(),
+  captureTab: vi.fn(),
 }));
 vi.mock('./uploads.ts', () => ({
   startUpload: (input: StartUpload) => {
@@ -25,6 +27,7 @@ vi.mock('./uploads.ts', () => ({
 vi.mock('../lib/api.ts', () => ({ api: { bytes: state.bytes } }));
 vi.mock('./frame-grab.ts', async (original) => ({
   ...(await original<typeof import('./frame-grab.ts')>()),
+  captureTabFrame: state.captureTab,
   captureVideoFrame: async () => ({
     file: new File(['png'], 'capture.png', { type: 'image/png' }),
     timeSeconds: 1.25,
@@ -149,4 +152,71 @@ it('keeps the capture on screen when the server cannot read the original, and sa
   await click('.ink-btn--primary');
   expect(state.upload?.file.name).toBe('capture.png');
   expect(store.getSnapshot().byId.size).toBe(2);
+});
+
+describe('photo of the tab of a video link', () => {
+  async function openLink() {
+    Object.defineProperty(navigator, 'mediaDevices', {
+      configurable: true,
+      value: { getDisplayMedia: vi.fn() },
+    });
+    const store = new BoardStore(createBoardDoc(id));
+    const element = createElement(
+      store.doc,
+      'link',
+      { x: 0, y: 0 },
+      { url: 'https://www.youtube.com/watch?v=aqz-KE-bpKQ' },
+      { userId: 'u' },
+    );
+    if (element.type !== 'link') throw new Error('fixture');
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+    const root = createRoot(container);
+    await act(async () =>
+      root.render(
+        <FrameGrab
+          store={store}
+          element={element}
+          asset={null}
+          video={{ current: null }}
+          projectId={id}
+          userId="u"
+          readOnly={false}
+          onDone={vi.fn()}
+        />,
+      ),
+    );
+    const button = (name: string) =>
+      [...container.querySelectorAll('button')].find((b) => b.textContent === name);
+    const grab = container.querySelector<HTMLButtonElement>('.viewer__grab');
+    await act(async () => grab?.click());
+    await act(async () => button('frameGrab.tabContinue')?.click());
+    cleanup = () => {
+      act(() => root.unmount());
+      container.remove();
+    };
+    return { container, grab, button };
+  }
+
+  it('says no frame came and leaves the way out open', async () => {
+    state.captureTab.mockReset().mockRejectedValue(new NoFrame());
+    const { container, grab, button } = await openLink();
+    expect(container.querySelector('[role="alert"]')?.textContent).toContain(
+      'frameGrab.noFrameTitle',
+    );
+    expect(grab?.disabled).toBe(false);
+    state.captureTab.mockClear();
+    await act(async () => button('frameGrab.retry')?.click());
+    expect(state.captureTab).toHaveBeenCalledOnce();
+  });
+
+  it('ends a capture in progress as soon as the viewer closes', async () => {
+    state.captureTab.mockReset().mockImplementation(() => new Promise(() => {}));
+    await openLink();
+    const signal = state.captureTab.mock.calls[0]?.[1] as AbortSignal;
+    expect(signal.aborted).toBe(false);
+    cleanup();
+    cleanup = () => {};
+    expect(signal.aborted).toBe(true);
+  });
 });

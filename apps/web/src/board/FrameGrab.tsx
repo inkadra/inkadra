@@ -14,6 +14,7 @@ import {
   cropPicture,
   formatSourceTime,
   frameChoices,
+  NoFrame,
   placeVideoStill,
   uploadBoardId,
 } from './frame-grab.ts';
@@ -71,7 +72,7 @@ export function FrameGrab({
   const [shot, setShot] = useState<{ width: number; height: number } | null>(null);
   const [crop, setCrop] = useState(FULL_CROP);
   const [capturing, setCapturing] = useState(false);
-  const [tabIssue, setTabIssue] = useState<'denied' | 'black' | 'failed' | null>(null);
+  const [tabIssue, setTabIssue] = useState<'denied' | 'black' | 'noFrame' | 'failed' | null>(null);
   const lastTarget = useRef<string | null>(null);
   const screenshotInput = useRef<HTMLInputElement>(null);
   const button = useRef<HTMLButtonElement>(null);
@@ -182,8 +183,9 @@ export function FrameGrab({
     setFile(null);
     setShot(null);
     setCapturing(true);
+    const { signal } = (captureController.current = new AbortController());
     try {
-      const captured = await captureTabFrame(embed?.current ?? null);
+      const captured = await captureTabFrame(embed?.current ?? null, signal);
       if (!mounted.current) return;
       setFile(captured.file);
       setShot({ width: captured.width, height: captured.height });
@@ -196,8 +198,9 @@ export function FrameGrab({
         ...(youtube && youtubeTime != null ? { timeSeconds: youtubeTime } : {}),
       });
     } catch (err) {
-      if (!mounted.current) return;
+      if (!mounted.current || signal.aborted) return;
       if (err instanceof BlackFrame) setTabIssue('black');
+      else if (err instanceof NoFrame) setTabIssue('noFrame');
       else if (err instanceof DOMException && err.name === 'NotAllowedError') setTabIssue('denied');
       else setTabIssue('failed');
     } finally {
@@ -445,6 +448,14 @@ export function FrameGrab({
                 <div className="viewer__grab-call is-danger" role="alert">
                   <b>{t('frameGrab.blackTitle')}</b>
                   <p>{t('frameGrab.black')}</p>
+                </div>
+              ) : tabIssue === 'noFrame' ? (
+                <div className="viewer__grab-call is-danger" role="alert">
+                  <b>{t('frameGrab.noFrameTitle')}</b>
+                  <p>{t('frameGrab.noFrame')}</p>
+                  <Button variant="secondary" onClick={() => void captureTab()}>
+                    {t('frameGrab.retry')}
+                  </Button>
                 </div>
               ) : tabOffered ? (
                 <>

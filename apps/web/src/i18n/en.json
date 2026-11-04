@@ -3171,6 +3171,8 @@
     "retry": "Try again",
     "blackTitle": "The frame is black",
     "black": "This video cannot be captured: it happens with protected content. Nothing was saved.",
+    "noFrameTitle": "No picture came from the tab",
+    "noFrame": "The browser did not send the frame. Try again, or paste a screenshot. Nothing was saved.",
     "noTabTitle": "The tab cannot be captured here",
     "noTabPhone": "Phone browsers do not allow it.",
     "noTabDesktop": "This browser does not allow it. Paste a screenshot or use the thumbnail.",

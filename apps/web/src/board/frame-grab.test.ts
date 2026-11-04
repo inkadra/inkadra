@@ -6,7 +6,9 @@ import {
   BlackFrame,
   captureTabFrame,
   captureVideoFrame,
+  coarsePointer,
   formatSourceTime,
+  NoFrame,
   placeVideoStill,
   VideoFrameStepper,
 } from './frame-grab.ts';
@@ -238,8 +240,8 @@ describe('photo of a browser tab', () => {
     vi.restoreAllMocks();
     vi.unstubAllGlobals();
   });
-  const run = async (cropTo: Element | null = null) => {
-    const shot = captureTabFrame(cropTo);
+  const run = async (cropTo: Element | null = null, signal?: AbortSignal) => {
+    const shot = captureTabFrame(cropTo, signal);
     const settled = shot.then(
       (value) => ({ value }),
       (error: unknown) => ({ error }),
@@ -273,5 +275,74 @@ describe('photo of a browser tab', () => {
     const refused = await run();
     expect((refused as { error: DOMException }).error.name).toBe('NotAllowedError');
     expect(stop).toHaveBeenCalledOnce();
+  });
+
+  // A paused player: the tab does not change, so the stream delivers no frames and play() waits.
+  const never = () => new Promise<void>(() => {});
+
+  it('asks again for a frame when none comes, and keeps the crop', async () => {
+    const { stop, cropTo } = stubDisplayMedia(200);
+    vi.stubGlobal('CropTarget', { fromElement: async () => 'target' });
+    vi.spyOn(HTMLMediaElement.prototype, 'play').mockImplementationOnce(never);
+    const result = await run(document.createElement('iframe'));
+    expect(result).toMatchObject({ value: { width: 4, height: 4 } });
+    expect(cropTo).toHaveBeenCalledOnce();
+    expect(stop).toHaveBeenCalledOnce();
+  });
+
+  it('gives up the crop before giving up the picture', async () => {
+    const { stop, cropTo } = stubDisplayMedia(200);
+    vi.stubGlobal('CropTarget', { fromElement: async () => 'target' });
+    const play = vi.spyOn(HTMLMediaElement.prototype, 'play').mockImplementation(never);
+    cropTo.mockImplementation(async (region?: unknown) => {
+      if (region === undefined) play.mockResolvedValue();
+    });
+    const result = await run(document.createElement('iframe'));
+    expect(result).toMatchObject({ value: { width: 4, height: 4 } });
+    expect(cropTo).toHaveBeenLastCalledWith();
+    expect(stop).toHaveBeenCalledOnce();
+  });
+
+  it('never hangs on a stream with no frames: it says so and stops the tracks', async () => {
+    const { stop, cropTo } = stubDisplayMedia(200);
+    vi.stubGlobal('CropTarget', { fromElement: async () => 'target' });
+    vi.spyOn(HTMLMediaElement.prototype, 'play').mockImplementation(never);
+    cropTo.mockImplementation(never);
+    const result = await run(document.createElement('iframe'));
+    expect((result as { error: unknown }).error).toBeInstanceOf(NoFrame);
+    expect(stop).toHaveBeenCalledOnce();
+  });
+
+  it('stops the tracks at once when ended while waiting, with no timer left to run', async () => {
+    const { stop } = stubDisplayMedia(200);
+    vi.spyOn(HTMLMediaElement.prototype, 'play').mockImplementation(never);
+    const ended = new AbortController();
+    const shot = captureTabFrame(null, ended.signal).catch((error: unknown) => error);
+    await vi.waitFor(() => expect(HTMLMediaElement.prototype.play).toHaveBeenCalled());
+    expect(stop).not.toHaveBeenCalled();
+    ended.abort();
+    expect(await shot).toBeInstanceOf(Error);
+    expect(stop).toHaveBeenCalledOnce();
+  });
+
+  it('stops a stream that arrives after the viewer closed', async () => {
+    const { stop, getDisplayMedia } = stubDisplayMedia(200);
+    const ended = new AbortController();
+    ended.abort();
+    expect(await run(null, ended.signal)).toHaveProperty('error');
+    expect(getDisplayMedia).toHaveBeenCalledOnce();
+    expect(HTMLMediaElement.prototype.play).not.toHaveBeenCalled();
+    expect(stop).toHaveBeenCalledOnce();
+  });
+
+  it('tells a real touch device from a desktop with no mouse', () => {
+    const pointer = (kind: string) =>
+      vi.stubGlobal('matchMedia', (query: string) => ({ matches: query === `(pointer: ${kind})` }));
+    pointer('none');
+    expect(coarsePointer()).toBe(false);
+    pointer('fine');
+    expect(coarsePointer()).toBe(false);
+    pointer('coarse');
+    expect(coarsePointer()).toBe(true);
   });
 });
