@@ -1572,6 +1572,230 @@
       "ClassificationCatalogs": {
         "type": "object",
         "properties": {
+          "shotSizes": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 40
+                },
+                "label": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 40
+                },
+                "archived": {
+                  "type": "boolean"
+                },
+                "legacy": {
+                  "type": "string",
+                  "maxLength": 40
+                }
+              },
+              "required": [
+                "id",
+                "label",
+                "archived"
+              ]
+            },
+            "maxItems": 200,
+            "default": [
+              {
+                "id": "ews",
+                "label": "Extreme wide",
+                "archived": false
+              },
+              {
+                "id": "ws",
+                "label": "Wide",
+                "archived": false
+              },
+              {
+                "id": "fs",
+                "label": "Full",
+                "archived": false
+              },
+              {
+                "id": "ms",
+                "label": "Medium",
+                "archived": false
+              },
+              {
+                "id": "mcu",
+                "label": "Medium close-up",
+                "archived": false
+              },
+              {
+                "id": "cu",
+                "label": "Close-up",
+                "archived": false
+              },
+              {
+                "id": "ecu",
+                "label": "Extreme close-up",
+                "archived": false
+              },
+              {
+                "id": "insert",
+                "label": "Insert",
+                "archived": false
+              }
+            ]
+          },
+          "shotAngles": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 40
+                },
+                "label": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 40
+                },
+                "archived": {
+                  "type": "boolean"
+                },
+                "legacy": {
+                  "type": "string",
+                  "maxLength": 40
+                }
+              },
+              "required": [
+                "id",
+                "label",
+                "archived"
+              ]
+            },
+            "maxItems": 200,
+            "default": [
+              {
+                "id": "eye",
+                "label": "Eye level",
+                "archived": false
+              },
+              {
+                "id": "high",
+                "label": "High angle",
+                "archived": false
+              },
+              {
+                "id": "low",
+                "label": "Low angle",
+                "archived": false
+              },
+              {
+                "id": "overhead",
+                "label": "Overhead",
+                "archived": false
+              },
+              {
+                "id": "dutch",
+                "label": "Dutch",
+                "archived": false
+              },
+              {
+                "id": "pov",
+                "label": "POV",
+                "archived": false
+              },
+              {
+                "id": "ots",
+                "label": "Over the shoulder",
+                "archived": false
+              }
+            ]
+          },
+          "shotMovements": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 40
+                },
+                "label": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 40
+                },
+                "archived": {
+                  "type": "boolean"
+                },
+                "legacy": {
+                  "type": "string",
+                  "maxLength": 40
+                }
+              },
+              "required": [
+                "id",
+                "label",
+                "archived"
+              ]
+            },
+            "maxItems": 200,
+            "default": [
+              {
+                "id": "static",
+                "label": "Static",
+                "archived": false
+              },
+              {
+                "id": "pan",
+                "label": "Pan",
+                "archived": false
+              },
+              {
+                "id": "tilt",
+                "label": "Tilt",
+                "archived": false
+              },
+              {
+                "id": "dolly",
+                "label": "Dolly",
+                "archived": false
+              },
+              {
+                "id": "truck",
+                "label": "Truck",
+                "archived": false
+              },
+              {
+                "id": "crane",
+                "label": "Crane",
+                "archived": false
+              },
+              {
+                "id": "handheld",
+                "label": "Handheld",
+                "archived": false
+              },
+              {
+                "id": "steadicam",
+                "label": "Steadicam",
+                "archived": false
+              },
+              {
+                "id": "drone",
+                "label": "Drone",
+                "archived": false
+              },
+              {
+                "id": "zoom",
+                "label": "Zoom",
+                "archived": false
+              }
+            ]
+          },
           "revision": {
             "type": "integer",
             "minimum": 0
@@ -6488,6 +6712,236 @@
               "attribution"
             ],
             "description": "Maps of the instance (Instance.maps): the credit to show on map pictures, and map cards can be explored through GET …/map-tiles. Null when maps are off; absent from servers older than the field."
+          },
+          "shotCatalogs": {
+            "type": "object",
+            "properties": {
+              "shotSizes": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 40
+                    },
+                    "label": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 40
+                    },
+                    "archived": {
+                      "type": "boolean"
+                    },
+                    "legacy": {
+                      "type": "string",
+                      "maxLength": 40
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "label",
+                    "archived"
+                  ]
+                },
+                "maxItems": 200,
+                "default": [
+                  {
+                    "id": "ews",
+                    "label": "Extreme wide",
+                    "archived": false
+                  },
+                  {
+                    "id": "ws",
+                    "label": "Wide",
+                    "archived": false
+                  },
+                  {
+                    "id": "fs",
+                    "label": "Full",
+                    "archived": false
+                  },
+                  {
+                    "id": "ms",
+                    "label": "Medium",
+                    "archived": false
+                  },
+                  {
+                    "id": "mcu",
+                    "label": "Medium close-up",
+                    "archived": false
+                  },
+                  {
+                    "id": "cu",
+                    "label": "Close-up",
+                    "archived": false
+                  },
+                  {
+                    "id": "ecu",
+                    "label": "Extreme close-up",
+                    "archived": false
+                  },
+                  {
+                    "id": "insert",
+                    "label": "Insert",
+                    "archived": false
+                  }
+                ]
+              },
+              "shotAngles": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 40
+                    },
+                    "label": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 40
+                    },
+                    "archived": {
+                      "type": "boolean"
+                    },
+                    "legacy": {
+                      "type": "string",
+                      "maxLength": 40
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "label",
+                    "archived"
+                  ]
+                },
+                "maxItems": 200,
+                "default": [
+                  {
+                    "id": "eye",
+                    "label": "Eye level",
+                    "archived": false
+                  },
+                  {
+                    "id": "high",
+                    "label": "High angle",
+                    "archived": false
+                  },
+                  {
+                    "id": "low",
+                    "label": "Low angle",
+                    "archived": false
+                  },
+                  {
+                    "id": "overhead",
+                    "label": "Overhead",
+                    "archived": false
+                  },
+                  {
+                    "id": "dutch",
+                    "label": "Dutch",
+                    "archived": false
+                  },
+                  {
+                    "id": "pov",
+                    "label": "POV",
+                    "archived": false
+                  },
+                  {
+                    "id": "ots",
+                    "label": "Over the shoulder",
+                    "archived": false
+                  }
+                ]
+              },
+              "shotMovements": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 40
+                    },
+                    "label": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 40
+                    },
+                    "archived": {
+                      "type": "boolean"
+                    },
+                    "legacy": {
+                      "type": "string",
+                      "maxLength": 40
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "label",
+                    "archived"
+                  ]
+                },
+                "maxItems": 200,
+                "default": [
+                  {
+                    "id": "static",
+                    "label": "Static",
+                    "archived": false
+                  },
+                  {
+                    "id": "pan",
+                    "label": "Pan",
+                    "archived": false
+                  },
+                  {
+                    "id": "tilt",
+                    "label": "Tilt",
+                    "archived": false
+                  },
+                  {
+                    "id": "dolly",
+                    "label": "Dolly",
+                    "archived": false
+                  },
+                  {
+                    "id": "truck",
+                    "label": "Truck",
+                    "archived": false
+                  },
+                  {
+                    "id": "crane",
+                    "label": "Crane",
+                    "archived": false
+                  },
+                  {
+                    "id": "handheld",
+                    "label": "Handheld",
+                    "archived": false
+                  },
+                  {
+                    "id": "steadicam",
+                    "label": "Steadicam",
+                    "archived": false
+                  },
+                  {
+                    "id": "drone",
+                    "label": "Drone",
+                    "archived": false
+                  },
+                  {
+                    "id": "zoom",
+                    "label": "Zoom",
+                    "archived": false
+                  }
+                ]
+              }
+            },
+            "description": "Names of the storyboard lists, to show the shot, angle and movement of frames. Absent from servers older than the field: use the default lists."
           }
         },
         "required": [

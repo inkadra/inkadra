@@ -1139,6 +1139,9 @@ describe.skipIf(!url)('guest share links (needs DATABASE_URL)', () => {
   it('slides the session at most once an hour, never beyond the link expiry', async () => {
     const link = await createLink('editor', B.A, { expiresInDays: 2 });
     const opened = await open(link);
+    // The names of the storyboard lists reach guests with the link; the tags do not.
+    expect(opened.body.shotCatalogs.shotSizes[0].id).toBe('ews');
+    expect(opened.body.shotCatalogs.tags).toBeUndefined();
     const until = new Date(opened.body.sessionExpiresAt).getTime();
     expect(until).toBeLessThanOrEqual(Date.now() + 2 * 86_400_000 + 1000);
     expect(until).toBeGreaterThan(Date.now() + 86_400_000);

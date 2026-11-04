@@ -16,6 +16,7 @@ import { useNavigate } from 'react-router';
 import * as Y from 'yjs';
 import { pickVariant, useAsset } from '../board/assets.ts';
 import { useBoardConnection } from '../board/connection.ts';
+import { usePresetText } from '../board/film/fields.tsx';
 import { plainText, useFragment } from '../board/note.tsx';
 import {
   authorName,
@@ -57,6 +58,21 @@ export function InboxDetail(props: DetailProps) {
     />
   ) : (
     <InboxDetailWithElement {...props} />
+  );
+}
+
+/** Its own component so that only a frame asks for the storyboard lists. */
+function FrameFacts({ frame }: { frame: Extract<Element, { type: 'frame' }> }) {
+  const presetText = usePresetText();
+  return [
+    presetText('shotSizes', frame.shot),
+    presetText('shotAngles', frame.angle),
+    presetText('shotMovements', frame.movement),
+    frame.lens,
+    frame.location,
+  ].map((text, i) =>
+    // biome-ignore lint/suspicious/noArrayIndexKey: the five fields never move
+    text ? <span key={i}>{text}</span> : null,
   );
 }
 
@@ -514,10 +530,7 @@ function InboxDetailContent({
                   {cardTitle}
                 </span>
               )}
-              {element?.type === 'frame' &&
-                (['shot', 'angle', 'movement', 'lens', 'location'] as const).map((field) =>
-                  element[field] ? <span key={field}>{element[field]}</span> : null,
-                )}
+              {element?.type === 'frame' && <FrameFacts frame={element} />}
               {notification.boardTitle && (
                 <span>
                   <span className="inbox-detail__meta-label">{t('notifications.boardLabel')}:</span>

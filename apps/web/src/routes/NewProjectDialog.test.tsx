@@ -214,8 +214,8 @@ it('offers configured active project types using stable identifiers', async () =
   const custom = { id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', label: 'Feature', archived: false };
   await act(async () =>
     setClassifications({
+      ...DEFAULT_CLASSIFICATIONS,
       revision: 1,
-      tags: [],
       projectTypes: [custom, { ...custom, id: 'retired', label: 'Retired', archived: true }],
     }),
   );

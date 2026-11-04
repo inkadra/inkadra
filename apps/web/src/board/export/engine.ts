@@ -8,18 +8,11 @@ import {
   storyboardOf,
   totalDurationMs,
 } from '@inkadra/canvas-core';
-import {
-  aspectValue,
-  type Element,
-  getBoardAspect,
-  hiddenFromGuests,
-  SHOT_ANGLES,
-  SHOT_MOVEMENTS,
-  SHOT_SIZES,
-} from '@inkadra/doc-schema';
-import type { Asset, AssetTrack, Board, CommentThread } from '@inkadra/shared';
+import { aspectValue, type Element, getBoardAspect, hiddenFromGuests } from '@inkadra/doc-schema';
+import type { Asset, AssetTrack, Board, CommentThread, ShotCatalogKey } from '@inkadra/shared';
 import { light } from '@inkadra/ui/tokens';
 import type { TFunction } from 'i18next';
+import { getClassifications, shotText } from '../../lib/classifications.ts';
 import { DEFAULT_ASPECT } from '../film/aspect.ts';
 import {
   characterSceneCount,
@@ -214,8 +207,8 @@ export async function buildPages(
     : castAppearances(all.filter((el) => !hiddenFromGuests(el.id, lookup)));
   // Shot labels come from the whole board, as guests see them, before anything is left out.
   const labels = frameLabels(groupsAll);
-  const preset = (prefix: string, codes: readonly string[], value: string | undefined) =>
-    value ? (codes.includes(value) ? t(`${prefix}.${value}`) : value) : '';
+  const preset = (catalog: ShotCatalogKey, value: string | undefined) =>
+    shotText(getClassifications(), catalog, value, t);
   const seconds = (ms: number | undefined) => (ms ? `${Math.round(ms / 100) / 10} s` : '');
   const slugline = (scene: Extract<Element, { type: 'scene' }>) =>
     [
@@ -247,9 +240,9 @@ export async function buildPages(
     },
     frameMeta: (frame) =>
       [
-        preset('film.shot', SHOT_SIZES, frame.shot),
-        preset('film.angle', SHOT_ANGLES, frame.angle),
-        preset('film.movement', SHOT_MOVEMENTS, frame.movement),
+        preset('shotSizes', frame.shot),
+        preset('shotAngles', frame.angle),
+        preset('shotMovements', frame.movement),
         frame.lens,
         seconds(frame.durationMs),
       ]
@@ -337,9 +330,9 @@ export async function buildPages(
           frame,
           label: labels.get(frame.id) ?? '',
           scene,
-          size: preset('film.shot', SHOT_SIZES, frame.shot),
-          angle: preset('film.angle', SHOT_ANGLES, frame.angle),
-          movement: preset('film.movement', SHOT_MOVEMENTS, frame.movement),
+          size: preset('shotSizes', frame.shot),
+          angle: preset('shotAngles', frame.angle),
+          movement: preset('shotMovements', frame.movement),
           duration: seconds(frame.durationMs),
           status: team ? t(`film.status.${getFrameStatus(frame)}`) : undefined,
         });

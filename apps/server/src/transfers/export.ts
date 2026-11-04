@@ -16,10 +16,12 @@ import {
   type ArchiveReviews,
   type ArchiveShootingDay,
   type ArchiveVersion,
+  CATALOG_UUID,
   classificationOption,
   PROJECT_ARCHIVE_FORMAT,
   PROJECT_ARCHIVE_VERSION,
   type ProjectArchiveManifest,
+  SHOT_CATALOG_KEYS,
   type TransferSummary,
 } from '@inkadra/shared';
 import { and, asc, eq, getTableColumns, inArray, isNull, ne } from 'drizzle-orm';
@@ -245,6 +247,7 @@ export async function exportProject(
     const archiveBoards: ArchiveBoard[] = [];
     let elements = 0;
     const tags = new Set<string>();
+    const shotValues = new Set<string>();
     let maxSchema = 0;
     for (const b of ordered) {
       add(b.createdBy);
@@ -261,6 +264,9 @@ export async function exportProject(
       elements += readable.length;
       for (const el of readable)
         for (const tag of (el.tags as string[] | undefined) ?? []) tags.add(tag);
+      for (const el of readable)
+        for (const field of ['shot', 'angle', 'movement'])
+          if (typeof el[field] === 'string') shotValues.add(el[field]);
       await zip.addBuffer(`boards/${b.id}/document.yjs`, Buffer.from(Y.encodeStateAsUpdate(doc)));
       await zip.addJson(`boards/${b.id}/elements.json`, {
         boardId: b.id,
@@ -406,6 +412,10 @@ export async function exportProject(
     await zip.addJson('classifications.json', {
       projectTypes: p.type ? [label(catalogs.projectTypes, p.type)] : [],
       tags: [...tags].sort().map((t) => label(catalogs.tags, t)),
+      // An id means nothing on another instance: the import turns these into text.
+      shots: SHOT_CATALOG_KEYS.flatMap((key) => catalogs[key])
+        .filter((o) => shotValues.has(o.id) && CATALOG_UUID.test(o.id))
+        .map(({ id, label }) => ({ id, label })),
     });
 
     const ids = [...people].filter((id) => /^[0-9a-f-]{36}$/i.test(id));

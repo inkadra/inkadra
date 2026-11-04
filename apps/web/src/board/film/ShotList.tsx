@@ -10,7 +10,6 @@ import {
   moveFrames,
   updateElement,
 } from '@inkadra/canvas-core';
-import { SHOT_ANGLES, SHOT_MOVEMENTS, SHOT_SIZES } from '@inkadra/doc-schema';
 import { Button, Checkbox, EmptyState, Icon, Select } from '@inkadra/ui';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -28,8 +27,8 @@ import { FramePicture } from './FramePicture.tsx';
 import { FrameVisibilityButton } from './FrameVisibilityButton.tsx';
 import {
   blurOnEnter,
-  PresetField,
   parseSeconds,
+  ShotField,
   StatusChip,
   StatusSelect,
   secondsText,
@@ -161,9 +160,9 @@ export function ShotList({
           f.notes,
           f.location,
           f.lens,
-          presetText('film.shot', SHOT_SIZES, f.shot),
-          presetText('film.angle', SHOT_ANGLES, f.angle),
-          presetText('film.movement', SHOT_MOVEMENTS, f.movement),
+          presetText('shotSizes', f.shot),
+          presetText('shotAngles', f.angle),
+          presetText('shotMovements', f.movement),
           ...(f.cast ?? []),
           ...(f.tags ?? []).map(tagLabel),
         ];
@@ -445,9 +444,9 @@ export function ShotList({
       g.frames.map((f) => [
         g.scene ? `${g.scene.number} ${slugline(g.scene)} ${g.scene.title}`.trim() : '',
         labels.get(f.id) ?? '',
-        presetText('film.shot', SHOT_SIZES, f.shot),
-        presetText('film.angle', SHOT_ANGLES, f.angle),
-        presetText('film.movement', SHOT_MOVEMENTS, f.movement),
+        presetText('shotSizes', f.shot),
+        presetText('shotAngles', f.angle),
+        presetText('shotMovements', f.movement),
         f.lens ?? '',
         secondsText(f.durationMs),
         f.action ?? '',
@@ -686,7 +685,7 @@ export function ShotList({
                   const isOpen = selected === f.id;
                   const isChecked = selectedIds.has(f.id);
                   const meta = [
-                    presetText('film.shot', SHOT_SIZES, f.shot),
+                    presetText('shotSizes', f.shot),
                     f.lens,
                     f.durationMs !== undefined ? `${secondsText(f.durationMs)}s` : '',
                   ].filter(Boolean);
@@ -984,34 +983,31 @@ export function ShotList({
                               <FrameVisibilityButton store={store} frame={f} readOnly={readOnly} />
                             </td>
                             <td>
-                              <PresetField
+                              <ShotField
                                 compact
                                 label={t('film.frame.shot')}
                                 value={f.shot}
-                                codes={SHOT_SIZES}
-                                prefix="film.shot"
+                                catalog="shotSizes"
                                 readOnly={readOnly}
                                 onCommit={(shot) => set(f.id, { shot })}
                               />
                             </td>
                             <td>
-                              <PresetField
+                              <ShotField
                                 compact
                                 label={t('film.frame.angle')}
                                 value={f.angle}
-                                codes={SHOT_ANGLES}
-                                prefix="film.angle"
+                                catalog="shotAngles"
                                 readOnly={readOnly}
                                 onCommit={(angle) => set(f.id, { angle })}
                               />
                             </td>
                             <td>
-                              <PresetField
+                              <ShotField
                                 compact
                                 label={t('film.frame.movement')}
                                 value={f.movement}
-                                codes={SHOT_MOVEMENTS}
-                                prefix="film.movement"
+                                catalog="shotMovements"
                                 readOnly={readOnly}
                                 onCommit={(movement) => set(f.id, { movement })}
                               />

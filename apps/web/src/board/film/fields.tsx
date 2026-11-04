@@ -1,7 +1,9 @@
 import { FRAME_STATUSES, type FrameStatus } from '@inkadra/doc-schema';
+import { CATALOG_UUID, type ShotCatalogKey } from '@inkadra/shared';
 import { Select } from '@inkadra/ui';
 import { type KeyboardEvent, useId, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { shotOptionLabel, shotText, useShotCatalogs } from '../../lib/classifications.ts';
 import type { ShotDisplayStatus } from './film-status.ts';
 
 /**
@@ -79,27 +81,54 @@ export function blurOnEnter(e: KeyboardEvent<HTMLInputElement>) {
 const CUSTOM = '\u0000custom';
 
 /** A preset code (translated) or free text, for shot size, angle and movement. */
-export function PresetField({
-  label,
-  value,
-  codes,
-  prefix,
-  onCommit,
-  readOnly,
-  compact,
-}: {
+type FieldProps = {
   label: string;
   value: string | undefined;
-  codes: readonly string[];
-  /** i18n prefix of the codes, e.g. "film.shot". */
-  prefix: string;
   onCommit: (value: string | undefined) => void;
   readOnly: boolean;
   compact?: boolean;
+};
+
+export function PresetField({
+  codes,
+  prefix,
+  ...field
+}: FieldProps & {
+  codes: readonly string[];
+  /** i18n prefix of the codes, e.g. "story.character.roles". */
+  prefix: string;
 }) {
   const { t } = useTranslation();
+  const choices = codes.map((id) => ({ id, label: t(`${prefix}.${id}`) }));
+  return <ChoiceField {...field} choices={choices} />;
+}
+
+/** A field whose values come from a catalog of the instance. */
+export function ShotField({ catalog, ...field }: FieldProps & { catalog: ShotCatalogKey }) {
+  const { t } = useTranslation();
+  const options = useShotCatalogs()[catalog];
+  // A value added to a catalog not loaded yet stays selected, and its id is never shown as text.
+  const { value } = field;
+  const notLoaded = !!value && CATALOG_UUID.test(value) && !options.some((o) => o.id === value);
+  const choices = options
+    // An archived value leaves the menu, except on the frames that already use it.
+    .filter((o) => !o.archived || o.id === value)
+    .map((o) => ({ id: o.id, label: shotOptionLabel(catalog, o, t) }));
+  if (notLoaded) choices.push({ id: value, label: t('film.frame.unavailable') });
+  return <ChoiceField {...field} choices={choices} />;
+}
+
+function ChoiceField({
+  label,
+  value,
+  choices,
+  onCommit,
+  readOnly,
+  compact,
+}: FieldProps & { choices: readonly { id: string; label: string }[] }) {
+  const { t } = useTranslation();
   const id = useId();
-  const isCode = !value || codes.includes(value);
+  const isCode = !value || choices.some((c) => c.id === value);
   const [custom, setCustom] = useState(!isCode);
   const showText = custom || !isCode;
   const select = (
@@ -121,9 +150,9 @@ export function PresetField({
       }}
     >
       <option value="">{t('film.frame.none')}</option>
-      {codes.map((c) => (
-        <option key={c} value={c}>
-          {t(`${prefix}.${c}`)}
+      {choices.map((c) => (
+        <option key={c.id} value={c.id}>
+          {c.label}
         </option>
       ))}
       <option value={CUSTOM}>{t('film.frame.custom')}</option>
@@ -165,11 +194,12 @@ export function PresetField({
   );
 }
 
-/** Translated text of a preset field: the label of a code, or the text as typed. */
+/** Text of a preset field: the name of a catalog value, or the text as typed. */
 export function usePresetText() {
   const { t } = useTranslation();
-  return (prefix: string, codes: readonly string[], value: string | undefined) =>
-    value ? (codes.includes(value) ? t(`${prefix}.${value}`) : value) : '';
+  const catalogs = useShotCatalogs();
+  return (catalog: ShotCatalogKey, value: string | undefined) =>
+    shotText(catalogs, catalog, value, t);
 }
 
 export function StatusSelect({

@@ -1,4 +1,5 @@
 import {
+  ClassificationCatalogs,
   classificationLabel,
   classificationOption,
   DEFAULT_CLASSIFICATIONS,
@@ -41,6 +42,30 @@ describe('shared classification catalogs', () => {
       mutate(draft);
       expect(() => validateCatalogUpdate(before, draft)).toThrow();
     }
+  });
+  it('protects the storyboard lists like the others, and adds them to older stored settings', () => {
+    const stored = { revision: 3, projectTypes: copy().projectTypes, tags: [] };
+    const read = ClassificationCatalogs.parse(stored);
+    expect(read.shotMovements.map((o) => o.id)).toContain('handheld');
+
+    const removed = copy();
+    removed.shotSizes.pop();
+    expect(() => validateCatalogUpdate(copy(), removed)).toThrow();
+    const repeated = copy();
+    repeated.shotAngles[0]!.label = repeated.shotAngles[1]!.label;
+    expect(() => validateCatalogUpdate(copy(), repeated)).toThrow();
+
+    const renamed = copy();
+    renamed.shotSizes[0]!.label = 'Campo totale';
+    renamed.shotSizes[1]!.archived = true;
+    renamed.shotSizes.push({
+      id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+      label: 'Piano americano',
+      archived: false,
+    });
+    const next = validateCatalogUpdate(copy(), renamed);
+    expect(next.shotSizes.at(-1)?.legacy).toBeUndefined();
+    expect(next.shotSizes[0]?.id).toBe('ews');
   });
   it('binds original text tags once and keeps them readable after renaming/archive', () => {
     const draft = copy();

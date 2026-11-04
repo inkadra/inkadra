@@ -220,6 +220,8 @@ export type ArchiveShootingDay = z.infer<typeof ArchiveShootingDay>;
 export const ArchiveClassifications = z.object({
   projectTypes: z.array(z.object({ id: z.string().max(40), label: z.string().max(40) })),
   tags: z.array(z.object({ id: z.string().max(40), label: z.string().max(40) })),
+  /** Catalog values added on the source instance and used by frames; absent from older archives. */
+  shots: z.array(z.object({ id: z.string().max(40), label: z.string().max(40) })).optional(),
 });
 export type ArchiveClassifications = z.infer<typeof ArchiveClassifications>;
 

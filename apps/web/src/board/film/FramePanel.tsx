@@ -1,12 +1,5 @@
 import { deleteElements, type FrameElement, updateElement } from '@inkadra/canvas-core';
-import {
-  ASPECT_RATIOS,
-  type AspectRatio,
-  type Element,
-  SHOT_ANGLES,
-  SHOT_MOVEMENTS,
-  SHOT_SIZES,
-} from '@inkadra/doc-schema';
+import { ASPECT_RATIOS, type AspectRatio, type Element } from '@inkadra/doc-schema';
 import type { SearchResult } from '@inkadra/shared';
 import { Button, Icon, IconButton, Select } from '@inkadra/ui';
 import { useContext, useEffect, useId, useRef, useState, useSyncExternalStore } from 'react';
@@ -26,7 +19,7 @@ import { type BoardStore, LOCAL } from '../store.ts';
 import { TagEditor } from '../tags.tsx';
 import { aspectLabel } from './aspect.ts';
 import { FramePicture } from './FramePicture.tsx';
-import { PresetField, parseSeconds, StatusSelect, secondsText, TextField } from './fields.tsx';
+import { parseSeconds, ShotField, StatusSelect, secondsText, TextField } from './fields.tsx';
 import { moveImageToFrame } from './frame-image.ts';
 import { FrameUploadState, uploadToFrame } from './frame-upload.tsx';
 import { VideoReferencePicker } from './VideoReferencePicker.tsx';
@@ -234,29 +227,26 @@ export function FramePanel({
           onCommit={(v) => set({ action: text(v) })}
         />
         <div className="film-panel__row">
-          <PresetField
+          <ShotField
             label={t('film.frame.shot')}
             value={frame.shot}
-            codes={SHOT_SIZES}
-            prefix="film.shot"
+            catalog="shotSizes"
             readOnly={readOnly}
             onCommit={(shot) => set({ shot })}
           />
-          <PresetField
+          <ShotField
             label={t('film.frame.angle')}
             value={frame.angle}
-            codes={SHOT_ANGLES}
-            prefix="film.angle"
+            catalog="shotAngles"
             readOnly={readOnly}
             onCommit={(angle) => set({ angle })}
           />
         </div>
         <div className="film-panel__row">
-          <PresetField
+          <ShotField
             label={t('film.frame.movement')}
             value={frame.movement}
-            codes={SHOT_MOVEMENTS}
-            prefix="film.movement"
+            catalog="shotMovements"
             readOnly={readOnly}
             onCommit={(movement) => set({ movement })}
           />

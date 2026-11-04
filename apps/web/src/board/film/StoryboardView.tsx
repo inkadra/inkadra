@@ -9,7 +9,7 @@ import {
   type SceneGroup,
   updateElement,
 } from '@inkadra/canvas-core';
-import { ASPECT_RATIOS, type AspectRatio, SHOT_SIZES, setBoardAspect } from '@inkadra/doc-schema';
+import { ASPECT_RATIOS, type AspectRatio, setBoardAspect } from '@inkadra/doc-schema';
 import { Button, EmptyState, Icon, IconButton, Select } from '@inkadra/ui';
 import { type DragEvent, memo, useCallback, useEffect, useId, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -770,7 +770,7 @@ const FrameTile = memo(function FrameTile({
   onDrop: (e: DragEvent) => void;
 }) {
   const presetText = usePresetText();
-  const shot = presetText('film.shot', SHOT_SIZES, frame.shot);
+  const shot = presetText('shotSizes', frame.shot);
   return (
     <li
       className={`story__tile${selected ? ' is-selected' : ''}${dropBefore ? ' is-drop' : ''}${replacing ? ' is-replace' : ''}`}
