@@ -1041,3 +1041,49 @@ test('without ffmpeg a video from the device stays here, and says why', async ({
   await expect(dialog).toContainText('non può togliere GPS');
   await relayShots(page, 'relay-no-device-video');
 });
+
+// On by default, so the report button is in every header: the view tabs must still work.
+test('beside the report button the view tabs stay whole and every click lands', async ({
+  page,
+}) => {
+  await login(page);
+  await configure(page, 'relay');
+  const headers = ORIGIN_HEADERS(page);
+  const project = await (
+    await page.request.post('/api/v1/projects', {
+      headers,
+      data: { name: 'A project with a rather long name for the header' },
+    })
+  ).json();
+  const board = await (
+    await page.request.post(`/api/v1/projects/${project.id}/boards`, {
+      headers,
+      data: {
+        parentBoardId: project.rootBoardId,
+        title: 'A storyboard with a rather long name too',
+        kind: 'storyboard',
+      },
+    })
+  ).json();
+  await page.goto(`/p/${project.id}/b/${board.id}`);
+  await ready(page);
+  const strip = page.getByRole('tablist', { name: 'Vista' });
+  const tabs = strip.getByRole('tab');
+  await expect(tabs).toHaveCount(5);
+  // At 1440 nothing is cut off.
+  const box = await strip.boundingBox();
+  const last = await tabs.last().boundingBox();
+  expect((last?.x ?? 0) + (last?.width ?? 0)).toBeLessThanOrEqual(
+    (box?.x ?? 0) + (box?.width ?? 0),
+  );
+  // Narrower, the strip may scroll, and a click on a tab it cuts off still has to land.
+  for (const width of [1440, 1000]) {
+    await page.setViewportSize({ width, height: 900 });
+    for (const name of ['Piano riprese', 'Revisione', 'Shot list', 'Storyboard']) {
+      const tab = strip.getByRole('tab', { name, exact: true });
+      await tab.click();
+      await expect(tab).toHaveAttribute('aria-selected', 'true');
+    }
+  }
+  await relayShots(page, 'board-header-report');
+});

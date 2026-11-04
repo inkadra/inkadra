@@ -479,7 +479,13 @@ function BoardScreen({
                   // On narrow desktops only the open tab keeps its name: the rest say it on hover.
                   aria-label={t(`film.views.${v}`)}
                   data-ink-tooltip={t(`film.views.${v}`)}
-                  onClick={() => chooseView(v)}
+                  // Focus on press would scroll a tab cut off by the strip out from under the
+                  // pointer: the release lands on its neighbour and the click is lost.
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={(e) => {
+                    e.currentTarget.focus({ preventScroll: true });
+                    chooseView(v);
+                  }}
                 >
                   <Icon name={viewIcon(v)} contentKind={v} size={14} />
                   <span className="view-tabs__label">{t(`film.views.${v}`)}</span>

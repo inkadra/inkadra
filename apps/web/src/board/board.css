@@ -4328,9 +4328,6 @@ button.card__play {
   .ink-shell > .ink-header :is(.board-header-export, .board-header-present) {
     display: none;
   }
-  .ink-shell > .ink-header .ink-header__crumbs {
-    min-width: 72px;
-  }
 }
 /* A version preview on the full-bleed board: its banner floats under the header panels, beside
    the navigation, instead of sitting under them. */

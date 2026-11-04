@@ -838,7 +838,9 @@ select {
     display: none;
   }
   .ink-shell > .ink-header .ink-header__crumbs {
-    flex: 0 1 auto;
+    /* Where am I gives way first, down to a few letters: names shorten, the tabs stay whole. */
+    flex: 0 1000 auto;
+    min-width: 72px;
     overflow: hidden;
     margin-right: 4px;
   }
