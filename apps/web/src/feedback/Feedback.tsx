@@ -165,7 +165,7 @@ export function FeedbackLauncher({ linkId }: { linkId?: string }) {
   const [receipt, setReceipt] = useState<FeedbackReceipt | null>(null);
   const [fetchedVersion, setFetchedVersion] = useState<string>();
 
-  const requestId = useRef(crypto.randomUUID());
+  const requestId = useRef<string>(crypto.randomUUID());
   const abort = useRef<AbortController | null>(null);
   const titleBox = useRef<HTMLDivElement>(null);
   const fileInput = useRef<HTMLInputElement>(null);
@@ -1314,30 +1314,27 @@ export function FeedbackLauncher({ linkId }: { linkId?: string }) {
             )}
           </div>
           <DialogActions>
-            {phase === 'off' && (
-              <>
-                {user?.role === 'admin' ? (
-                  <>
-                    <Button variant="ghost" onClick={() => dialog.current?.requestClose()}>
-                      {t('feedback.close')}
-                    </Button>
-                    <Button
-                      variant="primary"
-                      onClick={() => {
-                        navigate('/settings?section=instance');
-                        dialog.current?.requestClose();
-                      }}
-                    >
-                      {t('feedback.configure')}
-                    </Button>
-                  </>
-                ) : (
-                  <Button variant="primary" onClick={() => dialog.current?.requestClose()}>
+            {phase === 'off' &&
+              (user?.role === 'admin' ? (
+                <>
+                  <Button variant="ghost" onClick={() => dialog.current?.requestClose()}>
                     {t('feedback.close')}
                   </Button>
-                )}
-              </>
-            )}
+                  <Button
+                    variant="primary"
+                    onClick={() => {
+                      navigate('/settings?section=instance');
+                      dialog.current?.requestClose();
+                    }}
+                  >
+                    {t('feedback.configure')}
+                  </Button>
+                </>
+              ) : (
+                <Button variant="primary" onClick={() => dialog.current?.requestClose()}>
+                  {t('feedback.close')}
+                </Button>
+              ))}
             {phase === 'done' && (
               <>
                 {receipt?.issueUrl ? (

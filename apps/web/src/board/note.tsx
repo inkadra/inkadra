@@ -3,10 +3,10 @@ import { Placeholder } from '@tiptap/extensions';
 import { TextSelection } from '@tiptap/pm/state';
 import { type Editor, EditorContent, useEditor } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
-import { isFeedbackKey } from '../feedback/state.ts';
 import { type ReactNode, useEffect, useReducer } from 'react';
 import { useTranslation } from 'react-i18next';
 import * as Y from 'yjs';
+import { isFeedbackKey } from '../feedback/state.ts';
 import { NoteAppearance, NoteInk, noteColor, TaskItem, TaskList } from './note-format.ts';
 
 /**

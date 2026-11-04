@@ -22,6 +22,7 @@ describe.skipIf(!url)('feedback security and durable delivery', () => {
   const config = loadConfig({
     NODE_ENV: 'test',
     REGISTRATION: 'open',
+    AUTH_RATE_LIMITS: 'off',
     PUBLIC_URL: 'http://localhost:3000',
     DATABASE_URL: url ?? 'postgres://unused',
     AUTH_SECRET: 'feedback-test-secret-feedback-test-secret-338',
@@ -347,9 +348,10 @@ describe.skipIf(!url)('feedback security and durable delivery', () => {
     const listed = (
       await app.inject({ url: '/api/v1/feedback/reports', headers: headers() })
     ).json();
-    expect(
-      listed.items.find((r: { id: string }) => r.id === refused.json().id),
-    ).toMatchObject({ delivery: 'refused', failure: 'GitHub HTTP 422' });
+    expect(listed.items.find((r: { id: string }) => r.id === refused.json().id)).toMatchObject({
+      delivery: 'refused',
+      failure: 'GitHub HTTP 422',
+    });
     await app.inject({
       method: 'PUT',
       url: '/api/v1/feedback/settings',
@@ -463,6 +465,7 @@ describe.skipIf(!url)('feedback security and durable delivery', () => {
     const enforcing = loadConfig({
       NODE_ENV: 'test',
       REGISTRATION: 'open',
+      AUTH_RATE_LIMITS: 'off',
       PUBLIC_URL: 'http://localhost:3000',
       DATABASE_URL: config.DATABASE_URL,
       AUTH_SECRET: 'feedback-test-secret-feedback-test-secret-338',
@@ -495,6 +498,7 @@ describe.skipIf(!url)('feedback security and durable delivery', () => {
     const noToken = loadConfig({
       NODE_ENV: 'test',
       REGISTRATION: 'open',
+      AUTH_RATE_LIMITS: 'off',
       PUBLIC_URL: 'http://localhost:3000',
       DATABASE_URL: config.DATABASE_URL,
       AUTH_SECRET: 'feedback-test-secret-feedback-test-secret-338',

@@ -100,14 +100,23 @@ it('removes every character a reader cannot see, in every field', () => {
     {
       ...report,
       description: `pri${hidden}ma`,
-      diagnostics: { environment: `Ver${hidden}sion`, console: `Err${hidden}or`, page: `/p${hidden}` },
-      attachments: [{ ...(report.attachments[2] as never), name: `fi${hidden}le.pdf` }],
+      diagnostics: {
+        environment: `Ver${hidden}sion`,
+        console: `Err${hidden}or`,
+        page: `/p${hidden}`,
+      },
+      attachments: [
+        {
+          ...(report.attachments[2] as CreateFeedback['attachments'][number]),
+          name: `fi${hidden}le.pdf`,
+        },
+      ],
     } as CreateFeedback,
     { ...context, reporter: `Giu${hidden}lia`, instance: `Ink${hidden}adra` },
   );
   // Our own separator is the one exception, and it sits after @ and # only.
   expect(body.replace(/(?<=[@#])\u200b/g, '')).not.toMatch(
-    /[\u00ad\u034f\u061c\u180e\u200b-\u200f\u202a-\u202e\u2060-\u206f\u3164\ufe00-\ufe0f\ufeff]|[\u{e0000}-\u{e0fff}]/u,
+    /[\p{Cf}\p{Default_Ignorable_Code_Point}]/u,
   );
   for (const word of ['prima', 'Version', 'Error', 'file\\.pdf', 'Giulia', 'Inkadra'])
     expect(body).toContain(word);
@@ -166,7 +175,9 @@ it('stays inside what GitHub accepts, whatever the report holds', () => {
     context,
   );
   expect(rows.match(/\| x \|/g)?.length).toBe(8);
-  expect(issueBody({ ...report, diagnostics: { environment: '\n'.repeat(4000) } }, context).length).toBeLessThan(5000);
+  expect(
+    issueBody({ ...report, diagnostics: { environment: '\n'.repeat(4000) } }, context).length,
+  ).toBeLessThan(5000);
   expect(issueTitle('@'.repeat(160)).length).toBeLessThanOrEqual(256);
   expect(issueTitle('a\n\nb')).toBe('a b');
 });

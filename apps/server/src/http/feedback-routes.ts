@@ -1,7 +1,7 @@
 import { randomBytes } from 'node:crypto';
+import { once } from 'node:events';
 import { createReadStream, createWriteStream } from 'node:fs';
 import { mkdtemp, rm } from 'node:fs/promises';
-import { once } from 'node:events';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Readable } from 'node:stream';
@@ -212,9 +212,8 @@ export function registerFeedbackRoutes(app: FastifyInstance, deps: AppDeps) {
     const guest = prefix.includes('/guest/');
     app.register(async (scope) => {
       const identities = new WeakMap<object, Reporter>();
-      scope.addContentTypeParser(
-        'application/octet-stream',
-        (_req, body, done) => done(null, body),
+      scope.addContentTypeParser('application/octet-stream', (_req, body, done) =>
+        done(null, body),
       );
       scope.addHook('onRequest', async (req, reply) => {
         reply.header('cache-control', 'no-store');

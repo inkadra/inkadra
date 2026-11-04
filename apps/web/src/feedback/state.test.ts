@@ -37,7 +37,10 @@ it('leaves secrets out of the screenshot', () => {
 
 it('keeps the request id with the draft, and survives what storage holds', () => {
   const requestId = '00000000-0000-4000-8000-000000000001';
-  localStorage.setItem('d', JSON.stringify({ title: 't', description: 'd', type: 'idea', requestId }));
+  localStorage.setItem(
+    'd',
+    JSON.stringify({ title: 't', description: 'd', type: 'idea', requestId }),
+  );
   expect(readFeedbackDraft('d')).toEqual({ title: 't', description: 'd', type: 'idea', requestId });
   localStorage.setItem('d', JSON.stringify({ title: 't', requestId: 'not-an-id', type: 'x' }));
   expect(readFeedbackDraft('d')).toEqual({ title: 't', description: '' });

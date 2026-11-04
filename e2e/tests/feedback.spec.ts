@@ -194,8 +194,10 @@ test('leaves the secrets on screen out of the screenshot', async ({ page }) => {
   };
 
   await page.goto('/settings?section=account');
-  await page.getByLabel('Password attuale', { exact: true }).last().fill('correct-horse-battery');
   await page.getByRole('button', { name: 'Attiva', exact: true }).click();
+  const enabling = page.getByRole('dialog', { name: 'Verifica in due passaggi', exact: true });
+  await enabling.getByLabel('Password attuale', { exact: true }).fill('correct-horse-battery');
+  await enabling.getByRole('button', { name: 'Attiva', exact: true }).click();
   await expect(page.getByText('BACKUPCODEVALUE')).toBeVisible();
   let text = await shoot();
   expect(text).not.toContain('BACKUPCODEVALUE');
@@ -256,9 +258,9 @@ test('still draws blob images while the content policy is enforced', async ({ pa
   await expect(
     page.getByRole('dialog', FORM).getByRole('img', { name: 'Screenshot', exact: true }),
   ).toBeVisible();
-  expect(
-    await page.evaluate(() => (window as unknown as { blocked: string[] }).blocked),
-  ).toEqual([]);
+  expect(await page.evaluate(() => (window as unknown as { blocked: string[] }).blocked)).toEqual(
+    [],
+  );
 });
 
 test('records a real Chromium tab without audio, reviews it and can remove it', async ({
