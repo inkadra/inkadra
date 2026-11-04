@@ -1,13 +1,14 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 import type { Author, ElementReviewEvent, ReviewStatus } from '@inkadra/shared';
-import { Button, ChoiceTile } from '@inkadra/ui';
+import { Button, ChoiceTile, Icon } from '@inkadra/ui';
 import { type ReactNode, useEffect, useId, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { api, RequestError } from '../lib/api.ts';
 import { formatDateTime } from '../lib/datetime.ts';
 import { ReviewChip } from './CardReview.tsx';
 import { GuestTag } from './GuestTag.tsx';
-import { authorName, type Page, REVIEW_STATUSES } from './review-model.ts';
+import { authorName, type Page, REVIEW_STATUSES, reviewKey } from './review-model.ts';
 import { canComment, getReviews, refreshReviews, useReviews } from './review-store.ts';
 
 function Attribution({ author, at }: { author: Author; at: string }) {
@@ -26,10 +27,13 @@ export function ReviewSection({
   elementId,
   compact = false,
   context,
+  detailsContainer,
 }: {
   elementId: string;
   compact?: boolean;
   context?: ReactNode;
+  /** Compact panels keep the summary fixed and render details in their scrolling body. */
+  detailsContainer?: HTMLElement | null;
 }) {
   const { t } = useTranslation();
   const current = useReviews((s) => s.reviews.get(elementId));
@@ -47,11 +51,133 @@ export function ReviewSection({
   const id = useId();
 
   const [expanded, setExpanded] = useState(false);
+  const details = (!compact || expanded) && (
+    <>
+      {!compact && (
+        <div className="review-row review-row--between">
+          <h3 id={`${id}-title`}>{t('review.title')}</h3>
+          <ReviewChip status={current?.status ?? 'none'} />
+        </div>
+      )}
+      {current && (
+        <div className="review-current">
+          <Attribution author={current.changedBy} at={current.changedAt} />
+          {current.note && <p className="comment-body">{current.note}</p>}
+        </div>
+      )}
+      <div className="review-row">
+        {/* A status this client does not know is shown without actions. */}
+        {!compact && writable && known(current?.status ?? 'none') && (
+          <Button
+            icon="pen"
+            aria-expanded={editing}
+            onClick={() => {
+              if (!editing) setStatus(known(current?.status) ? current.status : 'in_review');
+              setEditing((v) => !v);
+            }}
+          >
+            {t('review.change')}
+          </Button>
+        )}
+      </div>
+      {writable && known(current?.status ?? 'none') && editing && (
+        <form
+          className="review-form"
+          onSubmit={async (e) => {
+            e.preventDefault();
+            if (!known(current?.status ?? 'none')) return;
+            setBusy(true);
+            setError(null);
+            try {
+              const { boardId } = getReviews();
+              await api.put(`/boards/${boardId}/elements/${elementId}/review`, {
+                status,
+                ...(note.trim() ? { note: note.trim() } : {}),
+              });
+              setNote('');
+              setEditing(false);
+              if (compact) setExpanded(false);
+              refreshReviews('reviews');
+            } catch (err) {
+              setError(
+                t(
+                  err instanceof RequestError && err.status === 429
+                    ? 'comments.rateLimited'
+                    : 'review.error',
+                ),
+              );
+            } finally {
+              setBusy(false);
+            }
+          }}
+        >
+          <fieldset className="review-statuses">
+            <legend>{t('review.set')}</legend>
+            {REVIEW_STATUSES.map((value) => (
+              <ChoiceTile
+                key={value}
+                name={`${id}-status`}
+                value={value}
+                checked={status === value}
+                onChange={() => setStatus(value)}
+              >
+                <ReviewChip status={value} />
+              </ChoiceTile>
+            ))}
+          </fieldset>
+          <label className="review-field">
+            {t('review.note')}
+            <textarea
+              className="ink-input"
+              rows={2}
+              maxLength={500}
+              value={note}
+              readOnly={busy}
+              onChange={(e) => setNote(e.target.value)}
+            />
+          </label>
+          <p className="review-audience">{t('comments.statusAudience')}</p>
+          <div className="review-row">
+            <Button type="submit" variant="primary" disabled={busy}>
+              {t('review.apply')}
+            </Button>
+            <Button
+              variant="ghost"
+              disabled={busy}
+              onClick={() => {
+                setEditing(false);
+                if (compact) setExpanded(false);
+              }}
+            >
+              {t('comments.cancel')}
+            </Button>
+          </div>
+          {error && (
+            <p role="alert" className="review-error">
+              {error}
+            </p>
+          )}
+        </form>
+      )}
+      <div className="review-row">
+        <Button
+          variant="ghost"
+          icon="clock"
+          aria-expanded={history}
+          aria-controls={`${id}-history`}
+          onClick={() => setHistory((v) => !v)}
+        >
+          {t('review.history')}
+        </Button>
+      </div>
+      {history && <ReviewHistory id={`${id}-history`} elementId={elementId} />}
+    </>
+  );
   return (
     <section
       className={`review-section${compact ? ' review-section--compact' : ''}`}
-      aria-labelledby={!compact || expanded ? `${id}-title` : undefined}
-      aria-label={compact && !expanded ? t('review.title') : undefined}
+      aria-labelledby={!compact ? `${id}-title` : undefined}
+      aria-label={compact ? t('review.title') : undefined}
     >
       {compact && (
         <>
@@ -60,7 +186,7 @@ export function ReviewSection({
             <Button
               variant="ghost"
               aria-expanded={expanded}
-              aria-label={`${t('review.title')}: ${t(`review.status.${current?.status ?? 'none'}`)}. ${t(writable ? 'review.change' : 'review.history')}`}
+              aria-label={`${t('review.title')}: ${t(`review.status.${reviewKey(current?.status ?? 'none')}`)}. ${t(writable && known(current?.status ?? 'none') ? 'review.change' : 'review.history')}`}
               onClick={() => {
                 if (!expanded) {
                   setStatus(known(current?.status) ? current.status : 'in_review');
@@ -69,125 +195,22 @@ export function ReviewSection({
                 setExpanded((v) => !v);
               }}
             >
-              <ReviewChip status={current?.status ?? 'none'} /> <span aria-hidden="true">⌄</span>
+              <ReviewChip status={current?.status ?? 'none'} />{' '}
+              <Icon
+                className={expanded ? 'ink-icon review-chevron is-open' : 'ink-icon review-chevron'}
+                name="chevronDown"
+                size={14}
+              />
             </Button>
           </div>
-          {current?.note && !expanded && (
+          {current?.note && (
             <p className="review-note-preview">
               <strong>{authorName(current.changedBy)}:</strong> {current.note}
             </p>
           )}
         </>
       )}
-      {(!compact || expanded) && (
-        <>
-          <div className="review-row review-row--between">
-            <h3 id={`${id}-title`}>{t('review.title')}</h3>
-            <ReviewChip status={current?.status ?? 'none'} />
-          </div>
-          {current && (
-            <div className="review-current">
-              <Attribution author={current.changedBy} at={current.changedAt} />
-              {current.note && <p className="comment-body">{current.note}</p>}
-            </div>
-          )}
-          <div className="review-row">
-            {/* A status this client does not know is shown without actions. */}
-            {!compact && writable && known(current?.status ?? 'none') && (
-              <Button
-                icon="pen"
-                aria-expanded={editing}
-                onClick={() => {
-                  if (!editing) setStatus(known(current?.status) ? current.status : 'in_review');
-                  setEditing((v) => !v);
-                }}
-              >
-                {t('review.change')}
-              </Button>
-            )}
-            <Button
-              variant="ghost"
-              icon="clock"
-              aria-expanded={history}
-              aria-controls={`${id}-history`}
-              onClick={() => setHistory((v) => !v)}
-            >
-              {t('review.history')}
-            </Button>
-          </div>
-          {writable && editing && (
-            <form
-              className="review-form"
-              onSubmit={async (e) => {
-                e.preventDefault();
-                setBusy(true);
-                setError(null);
-                try {
-                  const { boardId } = getReviews();
-                  await api.put(`/boards/${boardId}/elements/${elementId}/review`, {
-                    status,
-                    ...(note.trim() ? { note: note.trim() } : {}),
-                  });
-                  setNote('');
-                  setEditing(false);
-                  refreshReviews('reviews');
-                } catch (err) {
-                  setError(
-                    t(
-                      err instanceof RequestError && err.status === 429
-                        ? 'comments.rateLimited'
-                        : 'review.error',
-                    ),
-                  );
-                } finally {
-                  setBusy(false);
-                }
-              }}
-            >
-              <p className="ink-muted">{t('comments.statusAudience')}</p>
-              <fieldset className="review-statuses">
-                <legend>{t('review.set')}</legend>
-                {REVIEW_STATUSES.map((value) => (
-                  <ChoiceTile
-                    key={value}
-                    name={`${id}-status`}
-                    value={value}
-                    checked={status === value}
-                    onChange={() => setStatus(value)}
-                  >
-                    <ReviewChip status={value} />
-                  </ChoiceTile>
-                ))}
-              </fieldset>
-              <label className="review-field">
-                {t('review.note')}
-                <textarea
-                  className="ink-input"
-                  rows={2}
-                  maxLength={500}
-                  value={note}
-                  readOnly={busy}
-                  onChange={(e) => setNote(e.target.value)}
-                />
-              </label>
-              <div className="review-row">
-                <Button type="submit" variant="primary" disabled={busy}>
-                  {t('review.apply')}
-                </Button>
-                <Button variant="ghost" disabled={busy} onClick={() => setEditing(false)}>
-                  {t('comments.cancel')}
-                </Button>
-              </div>
-              {error && (
-                <p role="alert" className="review-error">
-                  {error}
-                </p>
-              )}
-            </form>
-          )}
-          {history && <ReviewHistory id={`${id}-history`} elementId={elementId} />}
-        </>
-      )}
+      {compact && detailsContainer ? createPortal(details, detailsContainer) : details}
     </section>
   );
 }

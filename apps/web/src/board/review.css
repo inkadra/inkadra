@@ -268,8 +268,7 @@ button.review-link:hover:not(:disabled) {
 .review-statuses .review-chip {
   border: 0;
 }
-.review-statuses legend,
-.comment-visibility legend {
+.review-statuses legend {
   padding: 0;
   margin-bottom: 6px;
   color: var(--ink-text-secondary);
@@ -496,26 +495,6 @@ button.review-link:hover:not(:disabled) {
 .mention-suggestions button[aria-selected="true"] {
   background: var(--ink-accent-soft-bg);
   color: var(--ink-accent-soft-fg);
-}
-.comment-visibility {
-  margin: 0;
-  padding: 0;
-  border: 0;
-  display: flex;
-  flex-wrap: nowrap;
-  gap: 4px 14px;
-  font-size: 12px;
-}
-.comment-visibility label {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  cursor: pointer;
-}
-.comment-visibility > span {
-  flex-basis: 100%;
-  font-size: 11px;
-  line-height: 1.5;
 }
 
 /* The header is crowded on narrow screens: the button keeps its icon, count and name. */
@@ -804,6 +783,9 @@ body[data-comments-on-board="off"] .comment-pin {
   border-radius: var(--ink-radius-sm);
   padding: 6px 8px;
   font-size: 12px;
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
 }
 .comments-panel__composer.is-public textarea {
   border-color: var(--ink-status-warn);
@@ -842,32 +824,6 @@ body[data-comments-on-board="off"] .comment-pin {
   right: 0;
   top: 0;
 }
-.comment-visibility {
-  gap: 0;
-}
-.comment-visibility legend {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip-path: inset(50%);
-}
-.comment-visibility label {
-  padding: 4px 8px;
-  border: 1px solid var(--ink-border-default);
-}
-.comment-visibility label:first-of-type {
-  border-radius: var(--ink-radius-sm) 0 0 var(--ink-radius-sm);
-}
-.comment-visibility label:last-of-type {
-  border-radius: 0 var(--ink-radius-sm) var(--ink-radius-sm) 0;
-}
-.comment-visibility label:has(input:checked) {
-  background: var(--ink-surface-2);
-}
-.comment-visibility > span:empty {
-  display: none;
-}
 /* Mention choices take space inside the compact composer instead of being clipped by it. */
 .comment-composer--new .mention-suggestions {
   position: static;
@@ -902,9 +858,6 @@ body[data-comments-on-board="off"] .comment-pin {
   }
   .comment-item > .comment-author {
     padding-right: 44px;
-  }
-  .comment-visibility label {
-    min-height: 44px;
   }
 }
 .review-context {
@@ -956,10 +909,6 @@ body[data-comments-on-board="off"] .comment-pin {
 .comment-composer__pin .ink-btn {
   padding: 0 6px;
 }
-.comment-visibility label {
-  white-space: nowrap;
-  padding: 4px 6px;
-}
 @media (max-width: 767px) {
   .comment-composer--new > .comment-visibility {
     grid-column: span 2;
@@ -973,4 +922,109 @@ body[data-comments-on-board="off"] .comment-pin {
 }
 .comment-composer__pin:has(.review-chip) {
   grid-column: 1 / -1;
+}
+
+.comments-panel__context {
+  padding: 10px 16px 0;
+  flex: none;
+}
+.comments-panel__context:empty,
+.comments-panel__body > div:empty {
+  display: none;
+}
+.review-audience,
+.guest-comments__audience {
+  color: var(--ink-text-secondary);
+  font-size: 12px;
+}
+.guest-comments__audience {
+  margin: 0;
+  padding: 6px 8px;
+  background: var(--ink-accent-soft-bg);
+  border-radius: var(--ink-radius-sm);
+}
+.review-chevron {
+  transition: transform var(--ink-dur-fast);
+}
+.review-chevron.is-open {
+  transform: rotate(180deg);
+}
+@media (prefers-reduced-motion: reduce) {
+  .review-chevron {
+    transition: none;
+  }
+}
+
+.comment-audience > .ink-icon {
+  flex: none;
+  margin-top: 2px;
+  color: var(--ink-status-warn);
+}
+.comment-composer.is-public textarea {
+  border-color: var(--ink-status-warn);
+}
+.review-tag--out {
+  background: var(--ink-tag-orange-bg);
+  color: var(--ink-text-primary);
+}
+.comment-thread__foot {
+  flex-wrap: nowrap;
+}
+.comment-thread__tags {
+  margin-left: auto;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 4px;
+  min-width: 0;
+}
+.comment-thread > .comment-unread {
+  position: absolute;
+  left: 2px;
+  top: 18px;
+}
+.comment-thread {
+  position: relative;
+}
+.comment-thread[data-unread] {
+  padding-left: 14px;
+}
+.comment-thread:first-child {
+  border-top: 0;
+}
+.comment-replies .comment-thread__more {
+  opacity: 0;
+}
+.comment-replies .comment-item:hover .comment-thread__more,
+.comment-replies .comment-item:focus-within .comment-thread__more {
+  opacity: 1;
+}
+.comment-composer--new > .review-error {
+  order: 7;
+  grid-column: 1 / -1;
+}
+.comment-composer__pin .ink-iconbtn {
+  flex: none;
+}
+@media (hover: none), (pointer: coarse) {
+  .comment-replies .comment-thread__more {
+    opacity: 1;
+  }
+}
+@media (max-width: 767px) {
+  .comment-composer--new:not(.is-open) textarea {
+    height: 44px;
+    min-height: 44px;
+  }
+}
+
+.comments-panel__review-details {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.comment-visibility .ink-radio-group__text {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
 }

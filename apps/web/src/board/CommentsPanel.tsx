@@ -10,7 +10,7 @@ import {
   type ReactionEmoji,
   type UserSummary,
 } from '@inkadra/shared';
-import { Button, ChoiceTile, Icon, IconButton, Radio, Select, Switch } from '@inkadra/ui';
+import { Button, ChoiceTile, Icon, IconButton, Segmented, Select, Switch } from '@inkadra/ui';
 import {
   type FormEvent,
   type KeyboardEvent,
@@ -207,6 +207,7 @@ function CommentsPanel() {
   const [limit, setLimit] = useState(THREADS_PAGE);
   const ref = useRef<HTMLElement>(null);
   const bodyRef = useRef<HTMLDivElement>(null);
+  const [reviewDetails, setReviewDetails] = useState<HTMLDivElement | null>(null);
   const [moreBelow, setMoreBelow] = useState(false);
   const updateScroll = useCallback(() => {
     const body = bodyRef.current;
@@ -388,29 +389,33 @@ function CommentsPanel() {
         <h2 id="comments-panel-title">{t('comments.title')}</h2>
         <IconButton icon="close" label={t('comments.close')} onClick={closeComments} />
       </header>
+      <div className="comments-panel__context">
+        {elementId &&
+          (removed ? (
+            <span className="review-link">{cards.label(elementId)}</span>
+          ) : (
+            <ReviewSection
+              key={elementId}
+              elementId={elementId}
+              compact
+              detailsContainer={reviewDetails}
+              context={
+                <button
+                  type="button"
+                  className="review-link"
+                  onClick={() => jump(elementId)}
+                  aria-label={t('comments.jumpTo', { card: cards.label(elementId) })}
+                >
+                  <span>{cards.label(elementId)}</span>
+                  <Icon name="arrow" size={12} />
+                </button>
+              }
+            />
+          ))}
+      </div>
       <div className={`comments-panel__scroll${moreBelow ? ' has-more' : ''}`}>
         <div ref={bodyRef} className="comments-panel__body" data-scroll onScroll={updateScroll}>
-          {elementId &&
-            (removed ? (
-              <span className="review-link">{cards.label(elementId)}</span>
-            ) : (
-              <ReviewSection
-                key={elementId}
-                elementId={elementId}
-                compact
-                context={
-                  <button
-                    type="button"
-                    className="review-link"
-                    onClick={() => jump(elementId)}
-                    aria-label={t('comments.jumpTo', { card: cards.label(elementId) })}
-                  >
-                    <span>{cards.label(elementId)}</span>
-                    <Icon name="arrow" size={12} />
-                  </button>
-                }
-              />
-            ))}
+          <div className="comments-panel__review-details" ref={setReviewDetails} />
 
           {canvas && !elementId && (
             <label className="comments-panel__toggle">
@@ -559,6 +564,7 @@ function CommentsPanel() {
                 onClick={() => setResolvedOpen((v) => !v)}
               >
                 {t('comments.resolvedCount', { count: resolved.length })}
+                <Icon name="chevronDown" size={14} />
               </Button>
               {resolvedOpen && (
                 <div className="comment-threads">
@@ -613,6 +619,7 @@ function NewThread({
         submitLabel={t(visibility === 'everyone' ? 'comments.sendGuests' : 'comments.send')}
         publicAudience={visibility === 'everyone'}
         pinned={!!pin}
+        onCollapse={() => setVisibility('team')}
         onSend={async (body) => {
           await api.post(`/boards/${boardId}/comments`, {
             body,
@@ -633,10 +640,10 @@ function NewThread({
                 {t('comments.pinAttached')}
               </span>
             ) : null}
-            <Button
-              icon={pin ? 'close' : 'pointer'}
-              aria-label={t(pin ? 'comments.pinRemove' : 'comments.pinAdd')}
-              variant="ghost"
+            <IconButton
+              icon={pin ? 'close' : 'pin'}
+              aria-pressed={!!pin}
+              label={t(pin ? 'comments.pinRemove' : 'comments.pinAdd')}
               title={t(
                 !pin && !canvas
                   ? 'comments.pinsOnCanvas'
@@ -650,31 +657,30 @@ function NewThread({
                 if (!canvas) onJump(elementId);
                 placePin(elementId);
               }}
-            ></Button>
+            />
           </div>
         )}
         {visibility === 'everyone' && (
           <p id={`${id}-hint`} className="comment-audience">
-            {t('comments.publicWarning')}
+            <Icon name="people" size={14} />
+            <span>{t('comments.publicWarning')}</span>
           </p>
         )}
-        <fieldset
+        <Segmented<CommentVisibility>
           className="comment-visibility"
-          aria-describedby={visibility === 'everyone' ? `${id}-hint` : undefined}
-        >
-          <legend>{t('comments.visibilityLabel')}</legend>
-          {(['team', 'everyone'] as const).map((value) => (
-            <label key={value}>
-              <Radio
-                name={`${id}-visibility`}
-                value={value}
-                checked={visibility === value}
-                onChange={() => setVisibility(value)}
-              />
-              {t(`comments.visibility.${value}`)}
-            </label>
-          ))}
-        </fieldset>
+          label={t('comments.visibilityLabel')}
+          value={visibility}
+          onChange={setVisibility}
+          options={(['team', 'everyone'] as const).map((value) => ({
+            value,
+            label: (
+              <>
+                <Icon name={value === 'team' ? 'lock' : 'people'} size={12} />
+                {t(`comments.visibility.${value}`)}
+              </>
+            ),
+          }))}
+        />
       </Composer>
     </div>
   );
@@ -722,6 +728,15 @@ export const Thread = memo(function Thread({
     ? t('comments.oneLinkNamed', { label: linkLabel })
     : t('comments.oneLink');
 
+  const audience =
+    thread.visibility === 'team'
+      ? undefined
+      : thread.shareLinkId
+        ? linkLabel
+          ? t('comments.replyLink', { link: linkLabel })
+          : t('comments.replyOwnLink')
+        : t('comments.replyGuests');
+
   const run = async (action: () => Promise<unknown>) => {
     setError(false);
     setBusy(true);
@@ -748,40 +763,33 @@ export const Thread = memo(function Thread({
           setThreadRead(thread.id, true);
       }}
     >
-      <div className="review-row">
-        {thread.unread && (
-          <span className="comment-unread" role="img" aria-label={t('comments.unread')} />
-        )}
-        {showTarget &&
-          (canJump ? (
-            <button
-              type="button"
-              className="review-link"
-              onClick={() => onJump(thread)}
-              aria-label={t('comments.jumpTo', { card: targetLabel })}
-            >
-              {targetLabel}
-              <Icon name="arrow" size={12} />
-            </button>
-          ) : (
-            <span className="review-link">{targetLabel}</span>
-          ))}
-        {pinNumber > 0 && (
-          <span className="review-tag">{t('comments.pinNumber', { number: pinNumber })}</span>
-        )}
-        {thread.visibility !== 'team' && !thread.shareLinkId && (
-          <span className="review-tag comment-audience">
-            <Icon name="people" size={12} />
-            {t('comments.visibility.everyone')}
-          </span>
-        )}
-        {thread.shareLinkId && (
-          <span className="review-tag review-tag--truncate" title={linkTag}>
-            {linkTag}
-          </span>
-        )}
-      </div>
-      <CommentItem comment={thread} elementId={thread.elementId} writable={writable} />
+      {thread.unread && (
+        <span className="comment-unread" role="img" aria-label={t('comments.unread')} />
+      )}
+      {showTarget && (
+        <div className="review-row comment-thread__target">
+          {showTarget &&
+            (canJump ? (
+              <button
+                type="button"
+                className="review-link"
+                onClick={() => onJump(thread)}
+                aria-label={t('comments.jumpTo', { card: targetLabel })}
+              >
+                {targetLabel}
+                <Icon name="arrow" size={12} />
+              </button>
+            ) : (
+              <span className="review-link">{targetLabel}</span>
+            ))}
+        </div>
+      )}
+      <CommentItem
+        comment={thread}
+        elementId={thread.elementId}
+        writable={writable}
+        audience={audience}
+      />
       {hidden > 0 && (
         <Button
           variant="ghost"
@@ -808,6 +816,7 @@ export const Thread = memo(function Thread({
             <CommentItem
               key={reply.id}
               comment={reply}
+              audience={audience}
               elementId={thread.elementId}
               writable={writable}
             />
@@ -822,39 +831,56 @@ export const Thread = memo(function Thread({
           })}
         </p>
       )}
-      {writable && (
-        <div className="review-row">
-          <Button variant="ghost" aria-expanded={replying} onClick={() => setReplying((v) => !v)}>
-            {t('comments.reply')}
-          </Button>
-          {!thread.deletedAt && (
-            <Button
-              variant="ghost"
-              icon={thread.resolvedAt ? undefined : 'check'}
-              disabled={busy}
-              onClick={() =>
-                void run(() =>
-                  api.post(
-                    `/comments/${thread.id}/${thread.resolvedAt ? 'reopen' : 'resolve'}`,
-                    {},
-                  ),
-                )
-              }
-            >
-              {t(thread.resolvedAt ? 'comments.reopen' : 'comments.resolve')}
+      <div className="review-row comment-thread__foot">
+        {writable && (
+          <>
+            <Button variant="ghost" aria-expanded={replying} onClick={() => setReplying((v) => !v)}>
+              {t('comments.reply')}
             </Button>
+            {!thread.deletedAt && (
+              <Button
+                variant="ghost"
+                icon={thread.resolvedAt ? undefined : 'check'}
+                disabled={busy}
+                onClick={() =>
+                  void run(() =>
+                    api.post(
+                      `/comments/${thread.id}/${thread.resolvedAt ? 'reopen' : 'resolve'}`,
+                      {},
+                    ),
+                  )
+                }
+              >
+                {t(thread.resolvedAt ? 'comments.reopen' : 'comments.resolve')}
+              </Button>
+            )}
+          </>
+        )}
+        <span className="comment-thread__tags">
+          {pinNumber > 0 && (
+            <span className="review-tag">{t('comments.pinNumber', { number: pinNumber })}</span>
           )}
-        </div>
-      )}
+          {thread.visibility !== 'team' && !thread.shareLinkId && (
+            <span className="review-tag review-tag--out">
+              <Icon name="people" size={12} />
+              {t('comments.visibility.everyone')}
+            </span>
+          )}
+          {thread.shareLinkId && (
+            <span className="review-tag review-tag--out review-tag--truncate" title={linkTag}>
+              {linkTag}
+            </span>
+          )}
+        </span>
+      </div>
       {replying && writable && (
         <div className="comment-reply-box">
-          <p className="comment-audience">
-            {thread.visibility === 'team'
-              ? t('comments.replyTeam')
-              : thread.shareLinkId
-                ? t('comments.replyLink', { link: linkTag })
-                : t('comments.replyGuests')}
-          </p>
+          {audience && (
+            <p className="comment-audience">
+              <Icon name="people" size={14} />
+              <span>{audience}</span>
+            </p>
+          )}
           <Composer
             publicAudience={thread.visibility !== 'team'}
             autoFocus
@@ -902,7 +928,9 @@ function ThreadMenu({
         className="comment-thread__more"
         aria-haspopup="menu"
         aria-expanded={at !== null}
-        aria-label={t('comments.threadMenu')}
+        aria-label={t('comments.commentMenu', {
+          name: authorName(thread.author) ?? t('comments.deletedAuthor'),
+        })}
         onClick={(e) => {
           const r = e.currentTarget.getBoundingClientRect();
           setAt(at ? null : { x: Math.max(8, r.right - 210), y: r.bottom + 4 });
@@ -928,7 +956,10 @@ function ThreadMenu({
                 : []),
               ...items,
             ]}
-            onClose={() => setAt(null)}
+            onClose={(reason) => {
+              setAt(null);
+              if (reason === 'escape') button.current?.focus();
+            }}
           />,
           document.body,
         )}
@@ -940,8 +971,10 @@ function CommentItem({
   comment,
   elementId,
   writable,
+  audience,
 }: {
   comment: Comment;
+  audience?: string;
   elementId: string | null;
   writable: boolean;
 }) {
@@ -966,6 +999,7 @@ function CommentItem({
         <Composer
           autoFocus
           initial={comment}
+          publicAudience={!!audience}
           submitLabel={t('comments.save')}
           onCancel={() => setEditing(false)}
           onSend={async (body) => {
@@ -973,7 +1007,14 @@ function CommentItem({
             setEditing(false);
             refreshReviews('comments', elementId);
           }}
-        />
+        >
+          {audience && (
+            <p className="comment-audience">
+              <Icon name="people" size={14} />
+              <span>{audience}</span>
+            </p>
+          )}
+        </Composer>
       ) : comment.deletedAt ? (
         <p className="comment-body comment-body--deleted">{t('comments.deleted')}</p>
       ) : (
@@ -1089,6 +1130,7 @@ function Composer({
   children,
   publicAudience = false,
   pinned = false,
+  onCollapse,
 }: {
   onSend: (body: string) => Promise<void>;
   submitLabel: string;
@@ -1100,6 +1142,7 @@ function Composer({
   children?: ReactNode;
   publicAudience?: boolean;
   pinned?: boolean;
+  onCollapse?: () => void;
 }) {
   const { t } = useTranslation();
   const { user } = useSession();
@@ -1129,6 +1172,7 @@ function Composer({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const input = useRef<HTMLTextAreaElement>(null);
+  const pointerSubmit = useRef(false);
   const id = useId();
   // Where the caret goes once a picked mention is in the field.
   const pendingCaret = useRef<number | null>(null);
@@ -1181,7 +1225,10 @@ function Composer({
 
   async function send(e: FormEvent) {
     e.preventDefault();
-    if (busy || !body.trim() || tooLong) return;
+    // Implicit submit (including Enter on a radio) must never send outside the team.
+    const clicked = pointerSubmit.current;
+    pointerSubmit.current = false;
+    if ((publicAudience && !clicked) || busy || !body.trim() || tooLong) return;
     setBusy(true);
     setError(null);
     try {
@@ -1205,7 +1252,7 @@ function Composer({
 
   return (
     <form
-      className={`comment-composer${draft ? ' comment-composer--new' : ''}${focused || text || pinned ? ' is-open' : ''}`}
+      className={`comment-composer${publicAudience ? ' is-public' : ''}${draft ? ' comment-composer--new' : ''}${focused || text || pinned ? ' is-open' : ''}`}
       onFocus={() => {
         clearTimeout(collapseTimer.current);
         setFocused(true);
@@ -1213,7 +1260,10 @@ function Composer({
       onBlur={(e) => {
         // Finish a pointer click before shrinking the panel and moving its controls.
         if (!e.currentTarget.contains(e.relatedTarget))
-          collapseTimer.current = setTimeout(() => setFocused(false), 180);
+          collapseTimer.current = setTimeout(() => {
+            setFocused(false);
+            if (!text && !pinned) onCollapse?.();
+          }, 180);
       }}
       onSubmit={(e) => void send(e)}
     >
@@ -1319,7 +1369,14 @@ function Composer({
       </span>
       {children}
       <div className="review-row">
-        <Button type="submit" variant="primary" disabled={busy || !body.trim() || tooLong}>
+        <Button
+          type="submit"
+          variant="primary"
+          disabled={busy || !body.trim() || tooLong}
+          onClick={(e) => {
+            pointerSubmit.current = e.detail > 0;
+          }}
+        >
           {submitLabel}
         </Button>
         {onCancel && (

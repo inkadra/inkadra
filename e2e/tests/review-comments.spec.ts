@@ -176,8 +176,8 @@ test('comments, mentions, review status and notifications between two people', a
   await otherPanel.getByRole('button', { name: 'Aggiorna la revisione' }).click();
   await expect(card.getByRole('button', { name: /Revisione: Approvata/ })).toBeVisible();
   await panel.getByRole('button', { name: /^Revisione:/ }).click();
-  const section = panel.getByRole('region', { name: 'Revisione' });
-  await expect(section.getByText('Pronta per il montaggio')).toBeVisible();
+  const section = panel;
+  await expect(section.locator('.review-current').getByText('Pronta per il montaggio')).toBeVisible();
   await section.getByRole('button', { name: 'Cronologia' }).click();
   const history = section.getByRole('region', { name: 'Cronologia' });
   await expect(history.getByRole('listitem')).toHaveCount(1);
@@ -267,7 +267,7 @@ test('comments, mentions, review status and notifications between two people', a
   await panel
     .locator('.comment-item')
     .filter({ hasText: 'Qui il riflesso' })
-    .getByRole('button', { name: 'Azioni sulla discussione' })
+    .getByRole('button', { name: /^Azioni sul commento di / })
     .click();
   await page.getByRole('menuitem', { name: 'Elimina il commento di Luca Regista' }).click();
   await panel.getByRole('button', { name: 'Sì, elimina' }).click();
@@ -405,7 +405,7 @@ test('replies page in, and the board loads comment data once for all its cards',
   await expect(panelOf(page).locator('.comment-thread')).toBeFocused();
   const oldReply = panelOf(page).locator('[data-comment="reply-1"]');
   await expect(oldReply).toBeInViewport();
-  await oldReply.getByRole('button', { name: 'Azioni sulla discussione' }).click();
+  await oldReply.getByRole('button', { name: /^Azioni sul commento di / }).click();
   await page.getByRole('menuitem', { name: 'Modifica' }).click();
   await oldReply.getByRole('combobox', { name: 'Commento' }).fill('Risposta 1 aggiornata');
   await oldReply.getByRole('button', { name: 'Salva' }).click();
@@ -564,7 +564,7 @@ test('card comments keep their audience explicit and resolved conversations reac
   const thread = panel.locator('.comment-thread');
   await thread.getByRole('button', { name: 'Rispondi' }).first().click();
   await expect(
-    thread.getByText('Rispondi al team e agli ospiti dei link che leggono i commenti.'),
+    thread.getByText('Anche gli ospiti leggono questa risposta.'),
   ).toBeVisible();
   if (process.env.COMMENTS_SHOTS_DIR) {
     for (const theme of ['light', 'dark']) {
@@ -617,6 +617,6 @@ test('card comments keep their audience explicit and resolved conversations reac
   await expect(review.getByRole('button', { name: 'Cambia stato' })).toBeVisible();
   await review.getByRole('button', { name: 'Rispondi' }).first().click();
   await expect(
-    review.getByText('Rispondi al team e agli ospiti dei link che leggono i commenti.'),
+    review.getByText('Anche gli ospiti leggono questa risposta.'),
   ).toBeVisible();
 });
