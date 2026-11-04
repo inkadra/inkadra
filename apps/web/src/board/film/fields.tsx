@@ -95,7 +95,7 @@ export function PresetField({
   ...field
 }: FieldProps & {
   codes: readonly string[];
-  /** i18n prefix of the codes, e.g. "film.character.roles". */
+  /** i18n prefix of the codes, e.g. "story.character.roles". */
   prefix: string;
 }) {
   const { t } = useTranslation();

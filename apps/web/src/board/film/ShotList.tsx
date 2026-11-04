@@ -28,8 +28,8 @@ import { FrameVisibilityButton } from './FrameVisibilityButton.tsx';
 import {
   blurOnEnter,
   parseSeconds,
-  StatusChip,
   ShotField,
+  StatusChip,
   StatusSelect,
   secondsText,
   usePresetText,
