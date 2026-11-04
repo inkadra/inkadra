@@ -395,6 +395,7 @@ for (const theme of ['dark', 'light'] as const) {
     await measure.getByRole('button', { name: 'Fatto' }).click();
     await measure.getByRole('button', { name: 'Usa come scala' }).click();
     await expect.poll(async () => Math.round((await saved()).scale ?? 0)).toBe(100);
+    await expect(editor.locator('.plan-ruler--top')).toContainText('1 m');
     await expect(editor.locator('.plan__chip text').nth(1)).toHaveText('5,00 m');
     await expect(editor.getByRole('button', { name: /^Scala: 0,5 m per quadretto/ })).toBeVisible();
     // With a scale, the number written is only a label: the scale stays.
@@ -755,6 +756,20 @@ test('the length of the cone can be typed: in metres with a scale, in squares wi
   await reach.press('Enter');
   await expect.poll(async () => (await camera())?.reach).toBe(325);
   await expect(reach).toHaveValue('3,25');
+  // Arrows on the field change it by a tenth of a metre.
+  await reach.press('ArrowUp');
+  await expect(reach).toHaveValue('3,35');
+  await expect.poll(async () => (await camera())?.reach).toBe(335);
+  await reach.press('ArrowDown');
+  await expect.poll(async () => (await camera())?.reach).toBe(325);
+  // The point on the cone takes the focus and answers to the same arrows, and the camera stays.
+  const grip = editor.getByRole('slider', { name: 'Lunghezza cono' });
+  await grip.focus();
+  await expect(grip).toBeFocused();
+  const before = await camera();
+  await page.keyboard.press('ArrowRight');
+  await expect.poll(async () => (await camera())?.reach).toBe(335);
+  expect((await camera())?.x).toBe(before?.x);
 });
 
 test('on a phone a selection can be dragged, and a tap still takes an item out of it', async ({

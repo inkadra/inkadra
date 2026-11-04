@@ -829,11 +829,16 @@ function TodoCard({
               data-no-drag
             />
             {editing ? (
-              <input
-                className="card__inline-input"
+              <textarea
+                className="card__inline-input card__todo-text"
+                rows={1}
                 defaultValue={item.text}
+                ref={(el) => {
+                  if (el) fitHeight(el);
+                }}
+                onInput={(e) => fitHeight(e.currentTarget)}
                 onBlur={(e) => {
-                  const text = e.target.value.trim();
+                  const text = e.target.value.replace(/\s+/g, ' ').trim();
                   if (text) updateTodoItem(store.doc, element.id, item.id, { text }, LOCAL);
                   else removeTodoItem(store.doc, element.id, item.id, LOCAL);
                 }}
@@ -846,7 +851,7 @@ function TodoCard({
                 aria-label={t('board.todo.item')}
               />
             ) : (
-              <span>{item.text}</span>
+              <span className="card__todo-text">{item.text}</span>
             )}
             <TodoAssignment
               people={people}
@@ -899,7 +904,13 @@ function TodoScene({ sceneId }: { sceneId: string }) {
   );
 }
 
-function blurOnEnter(e: KeyboardEvent<HTMLInputElement>) {
+/** A field as tall as its text: an item of a to-do reads in full while it is edited too. */
+function fitHeight(el: HTMLTextAreaElement) {
+  el.style.height = 'auto';
+  el.style.height = `${el.scrollHeight}px`;
+}
+
+function blurOnEnter(e: KeyboardEvent<HTMLInputElement | HTMLTextAreaElement>) {
   if (e.key === 'Enter' || e.key === 'Escape') {
     e.preventDefault();
     e.currentTarget.blur();

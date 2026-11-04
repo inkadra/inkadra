@@ -46,5 +46,5 @@ it('returns bounded suggestions, skips invalid coordinates and rejects provider 
   fetcher.mockResolvedValueOnce(new Response('unavailable', { status: 503 }));
   await expect(
     searchMapPlaces('https://geocoder.example/search', 'Via Roma', 'Inkadra'),
-  ).rejects.toThrow('Geocoder did not answer');
+  ).rejects.toThrow('Geocoder did not answer (HTTP 503)');
 });

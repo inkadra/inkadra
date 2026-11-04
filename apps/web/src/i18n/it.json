@@ -546,6 +546,7 @@
       "newColumn": "Nuova colonna qui",
       "tags": "Tag…",
       "viewImage": "Apri immagine",
+      "viewFile": "Apri file",
       "details": "Dettagli inquadratura",
       "draw": "Disegna",
       "rename": "Rinomina",
@@ -1017,6 +1018,7 @@
       "zoomOut": "Riduci",
       "morePlan": "Altre azioni della pianta",
       "reach": "Lunghezza cono",
+      "drawing": "Disegno della pianta",
       "squares": "quadretti"
     },
     "contextual": {
@@ -1072,7 +1074,8 @@
   "tags": {
     "title": "Tag",
     "add": "Aggiungi un tag",
-    "placeholder": "Nuovo tag e Invio",
+    "placeholder": "Scegli un tag e premi Invio",
+    "notInCatalog": "«{{tag}}» non è nel catalogo. Solo gli amministratori aggiungono tag, in Impostazioni → Classificazioni.",
     "remove": "Togli il tag {{tag}}",
     "max": "Al massimo {{count}} tag",
     "suggested": "Usati nel progetto",

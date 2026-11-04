@@ -31,10 +31,16 @@
 .map-draft li[aria-selected="true"] > button {
   background: var(--ink-surface-2);
 }
+/* On a surface: it can open over anything, such as the start card of an empty board. */
 .map-draft > p {
   margin: 4px 0 0;
+  padding: 6px 8px;
   font-size: 12px;
   color: var(--ink-text-secondary);
+  background: var(--ink-surface-float);
+  border: 1px solid var(--ink-border-default);
+  border-radius: var(--ink-radius-md);
+  box-shadow: var(--ink-shadow-menu);
 }
 .map-draft > p:empty {
   display: none;

@@ -69,7 +69,8 @@ export async function searchMapPlaces(
     redirect: 'error',
     signal: AbortSignal.timeout(8000),
   });
-  if (!res.ok) throw new Error('Geocoder did not answer.');
+  // The status says which: a wrong address, a key, a provider refusing this server.
+  if (!res.ok) throw new Error(`Geocoder did not answer (HTTP ${res.status}).`);
   const text = (await readCapped(res, 256 * 1024)).toString('utf8');
   const results: unknown = JSON.parse(text);
   if (!Array.isArray(results)) throw new Error('Invalid geocoder response.');

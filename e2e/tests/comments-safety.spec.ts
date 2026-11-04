@@ -87,6 +87,24 @@ test('Enter on the focused send button sends to guests', async ({ page }) => {
   ).toBeVisible();
 });
 
+test('Enter on the audience selector never sends, not even to the team', async ({ page }) => {
+  const { panel, box } = await setup(page);
+  await box.fill('Still writing');
+  let posts = 0;
+  page.on('request', (request) => {
+    if (request.method() === 'POST' && request.url().endsWith('/comments')) posts++;
+  });
+  // On Team, the selected one, and on Anche ospiti, not selected yet.
+  await panel.getByRole('radio', { name: 'Team', exact: true }).press('Enter');
+  await panel.getByRole('radio', { name: 'Anche ospiti', exact: true }).press('Enter');
+  await expect(panel.getByRole('radio', { name: 'Team', exact: true })).toBeChecked();
+  await expect(box).toHaveValue('Still writing');
+  expect(posts).toBe(0);
+  // The field's own shortcut still sends to the team.
+  await box.press('ControlOrMeta+Enter');
+  await expect(panel.locator('.comment-body').filter({ hasText: 'Still writing' })).toBeVisible();
+});
+
 test('Enter on the audience radio cannot send to guests', async ({ page }) => {
   const { panel, box } = await setup(page);
   await box.fill('Do not send with a key');

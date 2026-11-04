@@ -117,6 +117,7 @@ describe('applyDrop', () => {
       file: File;
       onAsset: (id: string) => void;
       onFailed: (id: string | null) => void;
+      onCancelled: (id: string | null) => void;
     }> = [];
     const failed: string[] = [];
     const h: DropHooks = {
@@ -201,6 +202,29 @@ describe('applyDrop', () => {
     started[0]?.onFailed(null);
     started[1]?.onFailed('asset-b');
     expect(failed).toEqual(['a.png']);
+    store.destroy();
+  });
+
+  it('gives a frame its earlier picture back when the upload is cancelled', () => {
+    const { store, scene, a } = setup();
+    updateElement(store.doc, a.id, { assetId: 'old' });
+    const { h, started } = hooks();
+    applyDrop(
+      store,
+      { kind: 'replace', frameId: a.id, sceneId: scene.id, index: 0 },
+      [file('a.png')],
+      h,
+    );
+    started[0]?.onAsset('new');
+    expect(store.getSnapshot().byId.get(a.id)).toMatchObject({ assetId: 'new' });
+    started[0]?.onCancelled('new');
+    expect(store.getSnapshot().byId.get(a.id)).toMatchObject({ assetId: 'old' });
+    // An empty frame goes back to empty.
+    const { h: h2, started: more } = hooks();
+    applyDrop(store, { kind: 'insert', sceneId: scene.id, index: 0 }, [file('b.png')], h2);
+    more[0]?.onAsset('b');
+    more[0]?.onCancelled('b');
+    expect(board(store).some((f) => f.assetId === 'b')).toBe(false);
     store.destroy();
   });
 

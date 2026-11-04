@@ -108,14 +108,19 @@ export function TagEditor({
   const { t } = useTranslation();
   const id = useId();
   const [draft, setDraft] = useState('');
+  const [unknown, setUnknown] = useState<string | null>(null);
   const used = useProjectTags(projectId);
   const full = tags.length >= MAX_TAGS;
   const add = (text: string) => {
     const option =
       tagOption(text) ?? catalogs.tags.find((o) => o.label.toLowerCase() === normaliseTag(text));
     const tag = option?.id;
-    if (!option || option.archived) return;
+    if (!option || option.archived) {
+      setUnknown(text.trim());
+      return;
+    }
     setDraft('');
+    setUnknown(null);
     if (!tag || tags.some((value) => (tagOption(value)?.id ?? value) === tag) || full) return;
     onChange([...tags, tag]);
   };
@@ -165,7 +170,11 @@ export function TagEditor({
             disabled={full}
             placeholder={full ? t('tags.max', { count: MAX_TAGS }) : t('tags.placeholder')}
             aria-label={t('tags.add')}
-            onChange={(e) => setDraft(e.target.value)}
+            aria-invalid={unknown !== null || undefined}
+            onChange={(e) => {
+              setDraft(e.target.value);
+              setUnknown(null);
+            }}
             onKeyDown={(e) => {
               if (e.key === 'Enter' || e.key === ',') {
                 e.preventDefault();
@@ -176,6 +185,11 @@ export function TagEditor({
             }}
             onBlur={() => draft && add(draft)}
           />
+          {unknown && (
+            <p role="alert" className="ink-muted">
+              {t('tags.notInCatalog', { tag: unknown })}
+            </p>
+          )}
           {suggestions.length > 0 && (
             <div className="tag-suggest">
               <span className="tag-suggest__title">{t('tags.suggested')}</span>

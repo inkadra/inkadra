@@ -78,7 +78,9 @@ export function MapDraft({
         const url = link && webUrl(query);
         if (url) onSubmit({ url });
         else if (items[active]) pick(items[active]);
-        else if (status !== 'loading') setStatus('error');
+        // A link that is no web address, or no search to ask. With a search, an address waits
+        // for its answer or already has it: "no results" is not an error.
+        else if (link || !geocoding) setStatus('error');
       }}
     >
       <input

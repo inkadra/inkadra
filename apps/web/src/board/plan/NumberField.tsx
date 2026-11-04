@@ -11,6 +11,7 @@ export function NumberField({
   min,
   max,
   step = 1,
+  nudge = step,
   unit,
   label,
   onCommit,
@@ -19,6 +20,8 @@ export function NumberField({
   min: number;
   max: number;
   step?: number;
+  /** What an arrow key adds or takes away; the step of the field unless a finer one is typed. */
+  nudge?: number;
   unit?: string;
   label: string;
   onCommit: (value: number) => void;
@@ -46,6 +49,12 @@ export function NumberField({
           if (e.key === 'Enter') {
             e.preventDefault();
             e.currentTarget.blur();
+          } else if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+            e.preventDefault();
+            const delta = e.key === 'ArrowUp' ? nudge : -nudge;
+            const next = Math.min(max, Math.max(min, Math.round((value + delta) * 100) / 100));
+            setDraft(show(next));
+            if (next !== value) onCommit(next);
           } else if (e.key === 'Escape') {
             e.preventDefault();
             setDraft(show(value));

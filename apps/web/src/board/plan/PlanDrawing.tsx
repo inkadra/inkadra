@@ -293,6 +293,22 @@ export const BlockingView = memo(function BlockingView({
             noCone
           />
         ))}
+    </g>
+  );
+});
+
+/** The numbers of a blocking, drawn after the icons so that none hides under one. */
+const BlockingNumbers = memo(function BlockingNumbers({
+  icon,
+  route,
+}: {
+  icon: PlanIcon;
+  route: boolean;
+}) {
+  if (!icon.steps?.length) return null;
+  const at = blockingPositions(icon);
+  return (
+    <g style={{ color: planCss(icon.color) }}>
       {(route ? at.slice(0, -1) : at).map((p, i) => (
         <g
           // biome-ignore lint/suspicious/noArrayIndexKey: the number is the place in the order.
@@ -458,9 +474,12 @@ export const PlanDrawing = memo(function PlanDrawing({
   route = false,
   moves = true,
   lifted,
+  label,
   children,
 }: {
   plan: PlanLike;
+  /** Names the drawing for the editor, where it holds a control; elsewhere it stays hidden. */
+  label?: string;
   /** Blocking as the editor draws it: a line through numbered points. */
   route?: boolean;
   /** Icons whose labels move past the selection handles. */
@@ -476,11 +495,12 @@ export const PlanDrawing = memo(function PlanDrawing({
 }) {
   const off = [...(plan.hiddenLayers ?? []), ...(hidden ?? [])];
   return (
+    // biome-ignore lint/a11y/noSvgWithoutTitle: named by aria-label in the editor, hidden elsewhere.
     <svg
       className="plan__svg"
       viewBox={`0 0 ${PLAN_VIEW_W} ${PLAN_VIEW_H}`}
       style={{ aspectRatio: String(PLAN_ASPECT) }}
-      aria-hidden="true"
+      {...(label ? { role: 'group', 'aria-label': label } : { 'aria-hidden': true })}
     >
       {grid && <GridDots step={grid} />}
       {visible(plan.strokes, off).map((s) => (
@@ -496,6 +516,10 @@ export const PlanDrawing = memo(function PlanDrawing({
       {visible(plan.icons, off).map((icon) => (
         <PlanIconView key={icon.id} icon={icon} sensor={plan.sensor} />
       ))}
+      {moves &&
+        visible(plan.icons, off).map((icon) => (
+          <BlockingNumbers key={`n${icon.id}`} icon={icon} route={route} />
+        ))}
       {visible(plan.icons, off).map((icon) => (
         <PlanLabel key={`l${icon.id}`} icon={icon} lifted={lifted?.has(icon.id)} />
       ))}

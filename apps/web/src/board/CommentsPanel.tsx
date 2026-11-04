@@ -1230,10 +1230,12 @@ function Composer({
 
   async function send(e: FormEvent) {
     e.preventDefault();
-    // Implicit submit (including Enter on a radio) must never send outside the team.
+    // Implicit submit (including Enter on a radio) must never send. Only the button sends, or
+    // the field's own shortcut, to the team: Enter alone cannot submit from a textarea.
     const clicked = buttonSubmit.current;
     buttonSubmit.current = false;
-    if ((publicAudience && !clicked) || busy || !body.trim() || tooLong) return;
+    const shortcut = !publicAudience && document.activeElement === input.current;
+    if ((!clicked && !shortcut) || busy || !body.trim() || tooLong) return;
     setBusy(true);
     setError(null);
     try {
