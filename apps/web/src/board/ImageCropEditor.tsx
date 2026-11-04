@@ -406,9 +406,10 @@ export function ImageCropToolbar({
       </button>
       <span className="crop-bar__angle">
         <Slider
-          // One full turn with 0 in the middle; -180 reads as +180 once normalized.
-          min={-180}
-          max={180}
+          // 0 in the middle. Not ±180: -180 normalizes to +180 and the thumb would jump to the
+          // other end. A half turn is two 90° steps away, and shows at the end of the slider.
+          min={-179}
+          max={179}
           step={1}
           value={rot}
           aria-label={t('board.image.angle')}

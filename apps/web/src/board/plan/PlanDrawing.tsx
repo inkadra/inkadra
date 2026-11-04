@@ -495,6 +495,7 @@ export const PlanDrawing = memo(function PlanDrawing({
 }) {
   const off = [...(plan.hiddenLayers ?? []), ...(hidden ?? [])];
   return (
+    // biome-ignore lint/a11y/noSvgWithoutTitle: named by aria-label in the editor, hidden elsewhere.
     <svg
       className="plan__svg"
       viewBox={`0 0 ${PLAN_VIEW_W} ${PLAN_VIEW_H}`}

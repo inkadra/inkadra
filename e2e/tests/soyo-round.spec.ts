@@ -141,7 +141,8 @@ test('the crop comes back when the angle does, and a long to-do reads in full', 
     return s && b ? Math.round((b.width / s.width) * 100) : 0;
   };
   const slider = page.getByRole('slider', { name: 'Angolo di rotazione' });
-  await expect(slider).toHaveAttribute('min', '-180');
+  await expect(slider).toHaveAttribute('min', '-179');
+  await expect(slider).toHaveAttribute('max', '179');
   for (const sign of [1, -1]) {
     for (const angle of [10, 20, 30]) await slider.fill(String(angle * sign));
     await expect.poll(coverage).toBeLessThan(90);
