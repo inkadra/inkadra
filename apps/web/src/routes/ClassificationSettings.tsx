@@ -182,7 +182,7 @@ export function ClassificationSettings() {
                           <Icon
                             name="chevronDown"
                             size={14}
-                            className={expanded ? 'catalogs__chevron is-open' : 'catalogs__chevron'}
+                            className={`ink-icon catalogs__chevron${expanded ? ' is-open' : ''}`}
                           />
                         </button>
                       </h3>
@@ -374,7 +374,7 @@ export function ClassificationSettings() {
               </Button>
             )}
             <Button type="submit" variant="primary" disabled={busy || !dirty}>
-              {t(busy ? 'settings.autosave.saving' : 'settings.save')}
+              {t(busy ? 'settingsUi.autosave.saving' : 'settings.save')}
             </Button>
           </div>
         </form>

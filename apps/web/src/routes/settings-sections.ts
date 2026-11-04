@@ -141,7 +141,7 @@ export function isSettingsPath(pathname: string): boolean {
 
 /** Pages whose changes save themselves; the window header reports their progress. */
 export function autosaves(id: string): boolean {
-  return id !== 'workspace' && id !== 'providers';
+  return id !== 'workspace' && id !== 'providers' && id !== 'classifications';
 }
 
 /** Plain `/settings` is the phone settings home; every page has an explicit section. */

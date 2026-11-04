@@ -204,12 +204,19 @@
     width: 36px;
     height: 44px;
   }
+  /* Name and button share the first line; a chip sits under the name. */
   .catalogs__row {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
     gap: 4px;
-    flex-wrap: wrap;
   }
-  .catalogs__name {
-    flex-basis: 40%;
+  .catalogs__badge {
+    grid-column: 2;
+    grid-row: 2;
+    justify-self: start;
+  }
+  .catalogs__badge + .catalogs__badge {
+    grid-row: 3;
   }
   .catalogs__hint {
     margin-left: 76px;

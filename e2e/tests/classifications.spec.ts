@@ -159,11 +159,22 @@ test('frames keep their values while admins change the storyboard lists', async 
     await page.keyboard.press('Escape');
 
     if (shots) {
-      await menu.click();
-      await page.screenshot({ path: `${shots}/05-frame-menu-1280.png` });
-      await page.keyboard.press('Escape');
-      await page.mouse.move(0, 0);
-      await page.screenshot({ path: `${shots}/06-shotlist-1280.png` });
+      const url = page.url();
+      for (const theme of ['dark', 'light']) {
+        await page.evaluate((value) => localStorage.setItem('inkadra.theme', value), theme);
+        await page.goto(url);
+        await menu.click();
+        await page.waitForTimeout(400);
+        await page.screenshot({ path: `${shots}/05-frame-menu-1280-${theme}.png` });
+        await page.keyboard.press('Escape');
+        await page.mouse.move(0, 0);
+        await page.setViewportSize({ width: 390, height: 900 });
+        await page.goto(url);
+        await page.getByText('Libera').first().click();
+        await page.waitForTimeout(500);
+        await page.screenshot({ path: `${shots}/06-free-text-390-${theme}.png` });
+        await page.setViewportSize({ width: 1280, height: 900 });
+      }
     }
 
     // Export: the same names on paper.
@@ -196,17 +207,19 @@ test('frames keep their values while admins change the storyboard lists', async 
       if (r.url().includes('/instance/classifications')) asked.push(r.url());
     });
     const snapshots: Promise<unknown>[] = [];
+    const sessions: Promise<unknown>[] = [];
     guest.on('response', (r) => {
+      if (/\/guest\/links\/[^/]+\/session$/.test(new URL(r.url()).pathname) && r.ok())
+        sessions.push(r.json());
       if (/\/guest\/links\/[^/]+\/boards\/[^/]+$/.test(new URL(r.url()).pathname) && r.ok())
         snapshots.push(r.json());
     });
     await guest.goto(url);
     const frame = guest.locator('[data-el]', { hasText: 'Rinominata' }).first();
     await expect(frame).toBeVisible({ timeout: 20_000 });
-    await frame.dblclick();
-    const panel = guest.locator('.film-panel');
-    await expect(panel).toContainText('Piano americano');
-    if (shots) await guest.screenshot({ path: `${shots}/07-guest-panel-1280.png` });
+    // No guest screen shows these fields today; the names are there for when one does.
+    expect(JSON.stringify(await sessions[0])).toContain('Piano americano');
+    if (shots) await guest.screenshot({ path: `${shots}/07-guest-board-1280.png` });
     expect(asked).toEqual([]);
     // What is stored did not change: a code, not the new name.
     const snapshot = JSON.stringify(await Promise.all(snapshots));
@@ -220,13 +233,10 @@ test('frames keep their values while admins change the storyboard lists', async 
       await page.goto('/settings?section=classifications');
       await shoot(page, '08-empty', async () => {
         await page.getByRole('button', { name: /^Angolazione\b/ }).click();
-        const body = page.locator('.catalogs__card', { hasText: 'Angolazione' });
-        for (const button of await body.getByRole('button', { name: 'Archivia' }).all())
-          await body
-            .getByRole('button', { name: 'Archivia' })
-            .first()
-            .click({ noWaitAfter: true })
-            .catch(() => button);
+        const archive = page
+          .locator('.catalogs__card', { hasText: 'Angolazione' })
+          .getByRole('button', { name: 'Archivia' });
+        while ((await archive.count()) > 0) await archive.first().click();
       });
       await page.route('**/api/v1/instance/classifications', (route) =>
         route.request().method() === 'GET'
@@ -234,6 +244,12 @@ test('frames keep their values while admins change the storyboard lists', async 
           : route.fallback(),
       );
       await shoot(page, '09-error');
+      await page.unroute('**/api/v1/instance/classifications');
+      await page.route('**/api/v1/instance/classifications', async (route) => {
+        await new Promise((resolve) => setTimeout(resolve, 3000));
+        await route.fallback();
+      });
+      await shoot(page, '10-loading');
       await page.unroute('**/api/v1/instance/classifications');
     }
   } finally {
