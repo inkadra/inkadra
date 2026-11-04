@@ -439,8 +439,11 @@ for (const provider of ['youtube', 'vimeo']) {
       });
       await page.locator('[data-type="link"]').dblclick();
       await page.getByRole('button', { name: 'Cattura fotogramma', exact: true }).click();
+      const tabShots = process.env.FRAMES_SCREENSHOTS;
+      if (tabShots) await page.screenshot({ path: `${tabShots}/1280-tab-intro.png` });
       await page.getByRole('button', { name: 'Continua', exact: true }).click();
       await expect(page.getByRole('alert')).toContainText('Condivisione annullata');
+      if (tabShots) await page.screenshot({ path: `${tabShots}/1280-tab-denied.png` });
       await page.getByRole('button', { name: 'Riprova', exact: true }).click();
       await expect(page.locator('.viewer__tab-crop')).toBeVisible();
       await expect(page.locator('.viewer__grab-quality')).toContainText('800 × 450 px');
@@ -453,6 +456,22 @@ for (const provider of ['youtube', 'vimeo']) {
       await expect(page.getByRole('dialog')).toHaveCount(0);
       await expect(page.locator('.toast:not([inert])')).toContainText('Fotogramma aggiunto alla lavagna');
       expect(await page.evaluate(() => (window as unknown as { stopped: number }).stopped)).toBe(1);
+
+      // A phone has no tab to photograph: a screenshot or the thumbnail.
+      await page.evaluate(() => {
+        const original = window.matchMedia.bind(window);
+        window.matchMedia = (query) =>
+          query.includes('pointer: fine') ? ({ matches: false } as MediaQueryList) : original(query);
+      });
+      await page.setViewportSize({ width: 390, height: 800 });
+      await page.locator('[data-type="link"]').dispatchEvent('dblclick');
+      await page.getByRole('button', { name: 'Cattura fotogramma', exact: true }).click();
+      await expect(page.locator('.viewer__grab-call')).toContainText(
+        'I browser dei telefoni non lo permettono.',
+      );
+      await expect(page.getByRole('button', { name: 'Scegli uno screenshot' })).toBeVisible();
+      await expect(page.getByRole('button', { name: 'Continua', exact: true })).toHaveCount(0);
+      if (tabShots) await page.screenshot({ path: `${tabShots}/390-tab-phone.png` });
     }
     expect(
       await page.evaluate(() => (window as unknown as { violations: string[] }).violations),

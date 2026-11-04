@@ -74,6 +74,8 @@ for (const theme of ['dark', 'light'] as const)
         { assetId: imageAssetId! },
         { userId: null },
       );
+      // Below the first screen of the phone runs, which never reach it.
+      const empty = createElement(doc, 'frame', { x: 60, y: 340 }, { w: 200 }, { userId: null });
       const other = createElement(doc, 'note', { x: 400, y: 80 }, {}, { userId: null });
       const character = createElement(
         doc,
@@ -170,6 +172,12 @@ for (const theme of ['dark', 'light'] as const)
         if (!from || !to) throw new Error('Missing cards');
         await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2);
         await page.mouse.down();
+        const hole = await page.locator(`[data-el="${empty.id}"]`).boundingBox();
+        await page.mouse.move(hole!.x + hole!.width / 2, hole!.y + hole!.height / 2, { steps: 10 });
+        await expect(page.locator('.canvas__frame-drop')).toContainText(
+          /Rilascia: diventa l’inquadratura \d/,
+        );
+        if (out) await page.screenshot({ path: `${out}/1280-dark-drop-empty.png` });
         await page.mouse.move(to.x + to.width / 2, to.y + to.height / 2, { steps: 10 });
         await expect(page.locator('.canvas__frame-drop')).toContainText(
           'Rilascia per sostituire l’immagine',
@@ -182,6 +190,21 @@ for (const theme of ['dark', 'light'] as const)
         await page.keyboard.press('Control+z');
         await expect(page.locator(`[data-el="${image.id}"]`)).toBeVisible();
         await expect(page.locator(`[data-el="${frame.id}"] .frame-pic__ink path`)).toHaveCount(1);
+
+        // Several cards at once: a note on the frame says nothing goes in, and they just land.
+        await page.locator(`[data-el="${image.id}"]`).click();
+        await page.locator(`[data-el="${other.id}"]`).click({ modifiers: ['Shift'] });
+        const start = await page.locator(`[data-el="${image.id}"]`).boundingBox();
+        await page.mouse.move(start!.x + start!.width / 2, start!.y + start!.height / 2);
+        await page.mouse.down();
+        await page.mouse.move(to.x + to.width / 2, to.y + to.height / 2, { steps: 10 });
+        await expect(page.locator('.canvas__frame-note')).toHaveText(
+          '2 elementi: nessun inserimento',
+        );
+        if (out) await page.screenshot({ path: `${out}/1280-dark-drop-many.png` });
+        await page.mouse.up();
+        await expect(page.locator(`[data-el="${image.id}"]`)).toBeVisible();
+        await page.keyboard.press('Control+z');
 
         // A file that fails to upload leaves the picture alone, with the error and Retry on it.
         const before = await page.locator(`[data-el="${frame.id}"] img`).getAttribute('src');
@@ -203,7 +226,7 @@ for (const theme of ['dark', 'light'] as const)
         await expect(
           page.locator('.frame-upload').getByRole('button', { name: 'Riprova' }),
         ).toBeVisible();
-        if (out) await page.screenshot({ path: `${out}/1280-dark-upload-failed.png` });
+        if (out) await page.screenshot({ path: `${out}/1280-dark-upload-failed.png`, animations: 'disabled' });
         expect(await page.locator(`[data-el="${frame.id}"] img`).getAttribute('src')).toBe(before);
         await page.unroute('**/api/v1/uploads**');
       }
