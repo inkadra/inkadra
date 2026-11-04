@@ -40,7 +40,9 @@ async function shoot(page: Page, name: string, setup?: () => Promise<void>) {
     for (const width of [1280, 390]) {
       await page.setViewportSize({ width, height: 900 });
       await page.reload();
-      await expect(page.locator('.catalogs__group, .catalogs__loading, [role=alert]').first()).toBeVisible();
+      await expect(
+        page.locator('.catalogs__group, .catalogs__loading, [role=alert]').first(),
+      ).toBeVisible();
       await setup?.();
       await page.mouse.move(0, 0);
       await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
@@ -151,7 +153,9 @@ test('frames keep their values while admins change the storyboard lists', async 
 
     // The archived value stays on its frame's menu.
     await row('Archiviata').getByRole('combobox', { name: 'Campo', exact: true }).click();
-    await expect(page.getByRole('listbox').getByRole('option', { name: 'Primo piano', exact: true })).toBeVisible();
+    await expect(
+      page.getByRole('listbox').getByRole('option', { name: 'Primo piano', exact: true }),
+    ).toBeVisible();
     await page.keyboard.press('Escape');
 
     if (shots) {
@@ -218,10 +222,16 @@ test('frames keep their values while admins change the storyboard lists', async 
         await page.getByRole('button', { name: /^Angolazione\b/ }).click();
         const body = page.locator('.catalogs__card', { hasText: 'Angolazione' });
         for (const button of await body.getByRole('button', { name: 'Archivia' }).all())
-          await body.getByRole('button', { name: 'Archivia' }).first().click({ noWaitAfter: true }).catch(() => button);
+          await body
+            .getByRole('button', { name: 'Archivia' })
+            .first()
+            .click({ noWaitAfter: true })
+            .catch(() => button);
       });
       await page.route('**/api/v1/instance/classifications', (route) =>
-        route.request().method() === 'GET' ? route.fulfill({ status: 500, json: {} }) : route.fallback(),
+        route.request().method() === 'GET'
+          ? route.fulfill({ status: 500, json: {} })
+          : route.fallback(),
       );
       await shoot(page, '09-error');
       await page.unroute('**/api/v1/instance/classifications');
