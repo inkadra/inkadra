@@ -56,6 +56,15 @@ import { ApiError, Id, OutcomeUnknown, PageQuery, page, z } from './common.ts';
 import { API_PREFIX, AUTH_PREFIX } from './constants.ts';
 import { ExportSettings, UpdateExportSettings } from './export-settings.ts';
 import {
+  CreateFeedback,
+  FeedbackAttachment,
+  FeedbackReceipt,
+  FeedbackReport,
+  FeedbackSettings,
+  FeedbackSettingsInput,
+  FeedbackStatus,
+} from './feedback.ts';
+import {
   CreateGuestSession,
   CreateShareLink,
   GuestBoardSnapshot,
@@ -205,6 +214,104 @@ const outcome = {
   },
 };
 registry.register('OutcomeUnknown', OutcomeUnknown);
+
+// Feedback ------------------------------------------------------------------
+for (const prefix of ['/feedback', '/guest/links/{linkId}/feedback']) {
+  const guest = prefix.includes('/guest/');
+  const params = guest ? { params: idParam('linkId') } : {};
+  registry.registerPath({
+    method: 'get',
+    path: v1(`${prefix}/status`),
+    tags: ['Feedback'],
+    security: secured,
+    summary: 'Authenticated availability; guests require a live share-link session.',
+    request: params,
+    responses: { 200: { description: 'Availability', ...json(FeedbackStatus) }, ...errors },
+  });
+  registry.registerPath({
+    method: 'post',
+    path: v1(prefix),
+    tags: ['Feedback'],
+    security: secured,
+    summary:
+      'Save a reviewed report locally before GitHub delivery. Idempotent per reporter and requestId.',
+    description:
+      'Untrusted text is neutralized in GitHub. Guests: text and one screenshot (5 MiB), environment and page only; two reports/hour. Members: five reports/hour; instance: 100/hour. Attachments expire after 90 days. Only administrators receive issue links.',
+    request: { ...params, body: { required: true, ...json(CreateFeedback) } },
+    responses: {
+      201: { description: 'Durably accepted', ...json(FeedbackReceipt) },
+      ...errors,
+      413: { description: 'Size limit exceeded' },
+      429: { description: 'Rate limited' },
+    },
+  });
+  registry.registerPath({
+    method: 'post',
+    path: v1(`${prefix}/attachments`),
+    tags: ['Feedback'],
+    security: secured,
+    summary:
+      'Upload one sniffed attachment before sending. Query kind and name; binary body. Owner bound; unsubmitted uploads expire after 24 hours.',
+    request: {
+      ...params,
+      query: z.object({ kind: z.enum(['screenshot', 'video', 'file']), name: z.string().max(180) }),
+      body: {
+        required: true,
+        content: {
+          'application/octet-stream': { schema: z.string().openapi({ format: 'binary' }) },
+        },
+      },
+    },
+    responses: {
+      201: { description: 'Uploaded', ...json(FeedbackAttachment) },
+      ...errors,
+      413: { description: '25 MiB per file, 100 MiB per video; guest screenshot 5 MiB' },
+      429: { description: 'Rate limited' },
+    },
+  });
+}
+registry.registerPath({
+  method: 'get',
+  path: v1('/feedback/settings'),
+  tags: ['Feedback'],
+  security: secured,
+  summary:
+    'Administrator only: destination, repository, token status, guests and fixed 90-day retention.',
+  responses: { 200: { description: 'Settings', ...json(FeedbackSettings) }, ...errors },
+});
+registry.registerPath({
+  method: 'put',
+  path: v1('/feedback/settings'),
+  tags: ['Feedback'],
+  security: secured,
+  summary:
+    'Administrator only: configure delivery. GitHub destination requires a verified private repository.',
+  request: { body: { required: true, ...json(FeedbackSettingsInput) } },
+  responses: { 200: { description: 'Saved', ...json(FeedbackSettings) }, ...errors },
+});
+registry.registerPath({
+  method: 'get',
+  path: v1('/feedback/reports'),
+  tags: ['Feedback'],
+  security: secured,
+  summary: 'Administrator only: latest 100 local reports, including pending GitHub delivery.',
+  responses: {
+    200: { description: 'Reports', ...json(z.object({ items: z.array(FeedbackReport) })) },
+    ...errors,
+  },
+});
+registry.registerPath({
+  method: 'get',
+  path: v1('/feedback/attachments/{token}'),
+  tags: ['Feedback'],
+  summary:
+    'Bearer link: anyone holding the random URL can open the attachment until its 90-day expiry.',
+  request: { params: z.object({ token: z.string().regex(/^[a-f0-9]{64}$/) }) },
+  responses: {
+    200: { description: 'Attachment; nosniff, no-store, sandboxed, no referrer' },
+    404: errors[404],
+  },
+});
 
 // Schedule ------------------------------------------------------------------
 const schedulePath = v1('/boards/{boardId}/schedule');
@@ -2414,6 +2521,7 @@ export function buildOpenApiDocument() {
     servers: [{ url: '/' }],
     tags: [
       { name: 'Instance' },
+      { name: 'Feedback' },
       { name: 'Auth' },
       { name: 'Users' },
       { name: 'Projects' },

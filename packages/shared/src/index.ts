@@ -9,6 +9,8 @@ export * from './comments.ts';
 export * from './common.ts';
 export * from './constants.ts';
 export * from './export-settings.ts';
+export * from './feedback.ts';
+export * from './feedback-redaction.ts';
 export * from './guests.ts';
 export * from './instance.ts';
 export * from './instance-admin.ts';
