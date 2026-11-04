@@ -39,8 +39,8 @@ import {
   onOpenFeedback,
   readFeedbackDraft,
   reportArea,
-  setFeedbackStatus,
   STATUS_CHANGED,
+  setFeedbackStatus,
   useFeedbackStatus,
 } from './state.ts';
 import './feedback.css';
