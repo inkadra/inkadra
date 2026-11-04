@@ -14,10 +14,7 @@ export const isFrameImageFile = (file: File) =>
 /** A frame has no place for these: the card that holds them must not go. */
 function holdsOwnData(image: Extract<Element, { type: 'image' }>) {
   return (
-    (image.strokes?.length ?? 0) > 0 ||
-    !!image.crop ||
-    !!image.rotation ||
-    !!image.caption?.trim()
+    (image.strokes?.length ?? 0) > 0 || !!image.crop || !!image.rotation || !!image.caption?.trim()
   );
 }
 

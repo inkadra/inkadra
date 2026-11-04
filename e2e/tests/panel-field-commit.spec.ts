@@ -27,7 +27,13 @@ test('text typed in a side panel survives a click on the board', async ({ page, 
   const doc = createBoardDoc(project.rootBoardId);
   const first = createElement(doc, 'frame', { x: 60, y: 80 }, { w: 200 }, { userId: null });
   const second = createElement(doc, 'frame', { x: 60, y: 300 }, { w: 200 }, { userId: null });
-  const person = createElement(doc, 'character', { x: 320, y: 300 }, { name: 'Marta' }, { userId: null });
+  const person = createElement(
+    doc,
+    'character',
+    { x: 320, y: 300 },
+    { name: 'Marta' },
+    { userId: null },
+  );
   await pushBoardDoc(baseURL!, cookie, project.rootBoardId, doc);
   await page.goto(`/p/${project.id}/b/${project.rootBoardId}?view=canvas`);
   const card = (id: string) => page.locator(`[data-el="${id}"]`);

@@ -204,7 +204,10 @@ export async function captureTabFrame(cropTo: Element | null) {
 
 function encodePng(canvas: HTMLCanvasElement) {
   return new Promise<Blob>((resolve, reject) => {
-    canvas.toBlob((blob) => (blob ? resolve(blob) : reject(new Error('encode-failed'))), 'image/png');
+    canvas.toBlob(
+      (blob) => (blob ? resolve(blob) : reject(new Error('encode-failed'))),
+      'image/png',
+    );
   });
 }
 

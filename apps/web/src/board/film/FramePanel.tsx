@@ -2,10 +2,10 @@ import { deleteElements, type FrameElement, updateElement } from '@inkadra/canva
 import {
   ASPECT_RATIOS,
   type AspectRatio,
+  type Element,
   SHOT_ANGLES,
   SHOT_MOVEMENTS,
   SHOT_SIZES,
-  type Element,
 } from '@inkadra/doc-schema';
 import type { SearchResult } from '@inkadra/shared';
 import { Button, Icon, IconButton, Select } from '@inkadra/ui';

@@ -25,8 +25,8 @@ import { useTranslation } from 'react-i18next';
 import { isMac } from '../shortcuts.ts';
 import { type BoardStore, LOCAL } from '../store.ts';
 import { aspectLabel, frameRatio } from './aspect.ts';
-import { FrameUploadState, uploadToFrame } from './frame-upload.tsx';
 import { FramePicture } from './FramePicture.tsx';
+import { FrameUploadState, uploadToFrame } from './frame-upload.tsx';
 import { DRAG_SHAPES, type ShapeKind, ShapeView } from './shapes.tsx';
 import { PEN_COLOR_NAMES, PEN_COLORS, PENS, type PenTool, pathOf, VIEW_W } from './strokes.ts';
 

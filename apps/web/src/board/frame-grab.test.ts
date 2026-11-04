@@ -219,6 +219,10 @@ describe('photo of a browser tab', () => {
     vi.spyOn(HTMLMediaElement.prototype, 'play').mockResolvedValue();
     for (const size of ['videoWidth', 'videoHeight'])
       Object.defineProperty(HTMLVideoElement.prototype, size, { configurable: true, value: 4 });
+    Object.defineProperty(HTMLMediaElement.prototype, 'srcObject', {
+      configurable: true,
+      set: () => {},
+    });
     vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue({
       drawImage: vi.fn(),
       getImageData: () => ({ data: new Uint8ClampedArray(64).fill(pixels) }),

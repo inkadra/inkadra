@@ -121,7 +121,11 @@ for (const theme of ['dark', 'light'] as const)
         await expect(page.locator('.comments-panel')).toBeVisible();
         expect(await covered()).toBe(false);
         if (out) await page.screenshot({ path: `${out}/1280-${theme}-comments.png` });
-        await page.locator('.comments-panel').getByRole('button', { name: /Chiudi/ }).first().click();
+        await page
+          .locator('.comments-panel')
+          .getByRole('button', { name: /Chiudi/ })
+          .first()
+          .click();
         await expect(page.locator('.comments-panel')).toHaveCount(0);
       }
       await page.getByRole('button', { name: 'Disegna', exact: true }).last().click();
@@ -200,7 +204,9 @@ for (const theme of ['dark', 'light'] as const)
         await expect(page.locator('.frame-upload')).toContainText('Caricamento non riuscito', {
           timeout: 15_000,
         });
-        await expect(page.locator('.frame-upload').getByRole('button', { name: 'Riprova' })).toBeVisible();
+        await expect(
+          page.locator('.frame-upload').getByRole('button', { name: 'Riprova' }),
+        ).toBeVisible();
         if (out) await page.screenshot({ path: `${out}/1280-dark-upload-failed.png` });
         expect(await page.locator(`[data-el="${frame.id}"] img`).getAttribute('src')).toBe(before);
         await page.unroute('**/api/v1/uploads**');

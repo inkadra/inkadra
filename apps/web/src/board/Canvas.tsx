@@ -1637,15 +1637,18 @@ export function Canvas({
       : { kind: 'frame', id: frame.id };
   }
 
-  function frameInserted(frameId: string, result: 'moved' | 'kept') {
-    setToast({
-      text: t(result === 'kept' ? 'film.frame.insertedKept' : 'film.frame.inserted', {
-        label: labelsRef.current.get(frameId) ?? '',
-      }),
-      undo: true,
-      ok: true,
-    });
-  }
+  const frameInserted = useCallback(
+    (frameId: string, result: 'moved' | 'kept') => {
+      setToast({
+        text: t(result === 'kept' ? 'film.frame.insertedKept' : 'film.frame.inserted', {
+          label: labelsRef.current.get(frameId) ?? '',
+        }),
+        undo: true,
+        ok: true,
+      });
+    },
+    [t],
+  );
 
   function screenPoint(e: { clientX: number; clientY: number }): Point {
     const r = rootRef.current?.getBoundingClientRect();
@@ -3224,6 +3227,7 @@ export function Canvas({
   }, [
     menu,
     labels,
+    frameInserted,
     editing,
     selection,
     selectedEls,
