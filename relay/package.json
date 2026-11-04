@@ -6,6 +6,6 @@
     "test": "node --disable-warning=ExperimentalWarning --import ./test/cloudflare-shim.mjs --test test/*.test.mjs"
   },
   "devDependencies": {
-    "wrangler": "4.149.0"
+    "wrangler": "4.156.0"
   }
 }
