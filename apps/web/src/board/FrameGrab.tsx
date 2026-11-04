@@ -119,7 +119,7 @@ export function FrameGrab({
   const available = !readOnly && (external || asset?.kind === 'video');
   const uploads = useUploads();
   const uploading = uploadKey.current ? uploads.find((i) => i.key === uploadKey.current) : null;
-  const useScreenshot = (image: File) => {
+  const takeScreenshot = (image: File) => {
     if (element.type !== 'link') return;
     setFile(image);
     setShot(null);
@@ -128,8 +128,8 @@ export function FrameGrab({
     setError(false);
     setOpen(true);
   };
-  const pasted = useRef(useScreenshot);
-  pasted.current = useScreenshot;
+  const pasted = useRef(takeScreenshot);
+  pasted.current = takeScreenshot;
   // Anywhere in the viewer, not only in the panel; never onto the board behind.
   useEffect(() => {
     if (!available || !external) return;
@@ -151,7 +151,7 @@ export function FrameGrab({
   const hasThumbnail = external && asset?.kind === 'image';
   const service = youtube ? 'YouTube' : 'Vimeo';
   const tabOffered = canCaptureTab() && tabIssue !== 'failed';
-  const useThumbnail = () => {
+  const takeThumbnail = () => {
     if (element.type !== 'link') return;
     setFile(null);
     setShot(null);
@@ -164,7 +164,7 @@ export function FrameGrab({
       for (const item of await navigator.clipboard.read()) {
         const type = item.types.find((x) => x.startsWith('image/'));
         if (!type) continue;
-        useScreenshot(new File([await item.getType(type)], 'screenshot.png', { type }));
+        takeScreenshot(new File([await item.getType(type)], 'screenshot.png', { type }));
         return;
       }
     } catch {
@@ -351,7 +351,7 @@ export function FrameGrab({
         onChange={(e) => {
           const picked = e.target.files?.[0];
           e.target.value = '';
-          if (picked?.type.startsWith('image/')) useScreenshot(picked);
+          if (picked?.type.startsWith('image/')) takeScreenshot(picked);
         }}
       />
       <button
@@ -495,7 +495,7 @@ export function FrameGrab({
                 <button
                   type="button"
                   className="menu__item viewer__grab-item"
-                  onClick={useThumbnail}
+                  onClick={takeThumbnail}
                 >
                   <Icon name="film" size={16} />
                   {t('frameGrab.thumbnailVideo')}

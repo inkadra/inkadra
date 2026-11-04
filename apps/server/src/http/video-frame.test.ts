@@ -1,5 +1,6 @@
 import { writeFile } from 'node:fs/promises';
 import type { AddressInfo } from 'node:net';
+import { join } from 'node:path';
 import pino from 'pino';
 import { sql } from 'drizzle-orm';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
@@ -70,7 +71,7 @@ describe.skipIf(!url)('frame of a video: limits (needs DATABASE_URL)', () => {
     });
 
   beforeAll(async () => {
-    await runMigrations(db);
+    await runMigrations(db, join(import.meta.dirname, '..', '..', 'drizzle'));
     await db.execute(sql`truncate table "user", project, instance_setting cascade`);
     app = await createApp({ config, db, auth: createAuth(config, db), log, ...testDeps(db, log) });
   });
