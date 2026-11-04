@@ -463,8 +463,8 @@ for (const provider of ['youtube', 'vimeo']) {
         window.matchMedia = (query) =>
           query.includes('pointer: fine') ? ({ matches: false } as MediaQueryList) : original(query);
       });
+      await page.locator('[data-type="link"]').dblclick();
       await page.setViewportSize({ width: 390, height: 800 });
-      await page.locator('[data-type="link"]').dispatchEvent('dblclick');
       await page.getByRole('button', { name: 'Cattura fotogramma', exact: true }).click();
       await expect(page.locator('.viewer__grab-call')).toContainText(
         'I browser dei telefoni non lo permettono.',
