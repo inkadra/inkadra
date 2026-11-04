@@ -297,8 +297,9 @@ export function elementAssetIds(el: Element): string[] {
     case 'image':
     case 'file':
       return [el.assetId];
-    case 'frame':
     case 'character':
+      return [...(el.assetId ? [el.assetId] : []), ...(el.references ?? [])];
+    case 'frame':
     case 'location':
       return el.assetId ? [el.assetId] : [];
     case 'link':
@@ -320,6 +321,11 @@ export function pictureAssetId(el: Element): string | null {
 export function guestElement(view: BoardView, el: Element): Record<string, unknown> {
   const label = el.type === 'frame' ? (view.labels?.get(el.id) ?? el.label) : undefined;
   const out = toGuestElement(el, label);
+  // A relation with a character guests don't get would give away its label.
+  if (el.type === 'character' && el.relations) {
+    const shown = new Set(view.visible.map((other) => other.id));
+    out.relations = el.relations.filter((relation) => shown.has(relation.characterId));
+  }
   const body = view.bodies.get(el.id);
   if (body) out.body = body;
   return out;

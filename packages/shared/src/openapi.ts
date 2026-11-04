@@ -123,7 +123,13 @@ import {
   ShootingDayInput,
   UpdateShootingDay,
 } from './schedule.ts';
-import { SearchQuery, SearchResult, TagCount } from './search.ts';
+import {
+  CastAppearances,
+  CastAppearancesQuery,
+  SearchQuery,
+  SearchResult,
+  TagCount,
+} from './search.ts';
 import {
   AcceptedInvitation,
   BoardAccess,
@@ -1534,6 +1540,18 @@ registry.registerPath({
     'index of the board documents, updated a few seconds after each edit.',
   request: { query: SearchQuery },
   responses: { 200: { description: 'Results, best first', ...json(SearchResult) }, ...errors },
+});
+registry.registerPath({
+  method: 'get',
+  path: v1('/projects/{projectId}/cast-appearances'),
+  tags: ['Search'],
+  security: secured,
+  summary: 'Where each name of a frame cast appears in a project.',
+  description:
+    'Counts frames and lists scene numbers per name, from the boards the caller can read, for ' +
+    'the scenes of a character card. Names are compared without case.',
+  request: { params: z.object({ projectId: Id }), query: CastAppearancesQuery },
+  responses: { 200: { description: 'Names and scenes', ...json(CastAppearances) }, ...errors },
 });
 registry.registerPath({
   method: 'get',

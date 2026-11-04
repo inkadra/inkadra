@@ -3773,6 +3773,305 @@ button.moodboard__card:focus-visible {
   outline: 2px solid var(--ink-accent-primary);
   outline-offset: 1px;
 }
+.story-panel__sheet {
+  display: contents;
+}
+.story-panel__intro {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  min-width: 0;
+}
+.story-panel__intro .story-panel__picture .story-picture--character {
+  width: 96px;
+  height: 96px;
+  border-radius: var(--ink-radius-sm);
+}
+.story-panel__intro .story-panel__picture {
+  position: relative;
+  flex: none;
+}
+.story-panel__intro .story-panel__picture > button {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 20px;
+  height: 20px;
+  background: var(--ink-bg-panel);
+}
+.story-panel__who {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  gap: 6px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.story-panel__who > span {
+  font-size: 12.5px;
+  color: var(--ink-text-secondary);
+}
+.story-panel__guest-name {
+  font-size: 13.5px;
+  color: var(--ink-text-primary);
+}
+.story-panel__who .film-panel__picture-actions {
+  flex-wrap: wrap;
+  align-items: center;
+}
+.story-panel__locked {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--ink-danger-bg);
+  color: var(--ink-danger-fg);
+}
+.story-panel__progress {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+}
+.story-panel__bar {
+  height: 4px;
+  overflow: hidden;
+  border-radius: var(--ink-radius-full);
+  background: var(--ink-surface-3);
+}
+.story-panel__bar i {
+  display: block;
+  height: 100%;
+  background: var(--ink-accent-primary);
+  transform-origin: left;
+}
+.story-panel__alert {
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  gap: 4px;
+  padding: 10px 14px;
+  font-size: 13px;
+  color: var(--ink-text-secondary);
+  border: 1px solid var(--ink-border-default);
+  border-left: 3px solid var(--ink-status-danger);
+  border-radius: var(--ink-radius-sm);
+  background: var(--ink-surface-1);
+}
+.story-panel__alert strong {
+  color: var(--ink-text-primary);
+}
+.story-panel__chooser {
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  gap: 8px;
+}
+.story-panel__chooser .story-panel__pictures {
+  margin: 0;
+}
+.story-panel__chooser-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+.story-section {
+  flex-shrink: 0;
+  overflow: hidden;
+  border: 1px solid var(--ink-border-muted);
+  border-radius: var(--ink-radius-sm);
+}
+.story-section summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 10px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--ink-text-primary);
+  background: var(--ink-surface-1);
+  cursor: pointer;
+  list-style: none;
+}
+.story-section summary::-webkit-details-marker {
+  display: none;
+}
+.story-section summary:focus-visible {
+  outline: 2px solid var(--ink-accent-primary);
+  outline-offset: -2px;
+}
+.story-section summary small {
+  font-size: 11.5px;
+  font-weight: 400;
+  color: var(--ink-text-muted);
+}
+.story-section summary svg {
+  flex: none;
+  color: var(--ink-text-muted);
+}
+.story-section__title {
+  margin-right: auto;
+}
+.story-section[open] summary svg {
+  transform: rotate(180deg);
+}
+.story-section__body {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  min-width: 0;
+  padding: 10px;
+  border-top: 1px solid var(--ink-border-muted);
+  overflow-wrap: anywhere;
+}
+.story-section__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 9px;
+}
+/* The role reads as a field here, and its free text needs the whole row. */
+.story-section__grid .ink-select--quiet {
+  border-color: var(--ink-border-default);
+  background: var(--ink-surface-1);
+}
+.story-section__grid .film-field:has(.film-preset > input) {
+  grid-column: 1 / -1;
+}
+.story-panel__read p {
+  margin: 0;
+  font-size: 13px;
+  color: var(--ink-text-primary);
+  white-space: pre-wrap;
+}
+.story-panel__thumbs {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+}
+.story-panel__thumb {
+  position: relative;
+  min-width: 0;
+}
+.story-panel__thumb .story-picture--character {
+  width: 100%;
+  height: auto;
+  aspect-ratio: 1;
+}
+.story-panel__thumb button {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 20px;
+  height: 20px;
+  background: var(--ink-bg-panel);
+}
+.story-panel__thumb-add {
+  display: grid;
+  place-items: center;
+  aspect-ratio: 1;
+  padding: 0;
+  color: var(--ink-text-muted);
+  border: 1px dashed var(--ink-border-strong);
+  border-radius: var(--ink-radius-sm);
+  background: transparent;
+  cursor: pointer;
+}
+.story-panel__thumb-add:focus-visible,
+.story-panel__link:focus-visible {
+  outline: 2px solid var(--ink-accent-primary);
+  outline-offset: 1px;
+}
+.story-rel {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  font-size: 13px;
+}
+.story-rel .story-picture--character {
+  width: 24px;
+  height: 24px;
+  border-radius: var(--ink-radius-full);
+}
+.story-rel .story-picture__empty {
+  font-size: 10px;
+}
+.story-rel__name {
+  flex: 0 1 auto;
+  min-width: 48px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.story-rel.is-missing .story-rel__name {
+  color: var(--ink-text-muted);
+}
+.story-rel small {
+  margin-left: auto;
+  color: var(--ink-text-muted);
+  text-align: right;
+}
+.story-rel__label.ink-input {
+  flex: 1 1 72px;
+  min-width: 56px;
+  margin-left: auto;
+}
+.story-panel__link {
+  align-self: flex-start;
+  padding: 0;
+  font: inherit;
+  font-size: 13px;
+  color: var(--ink-accent-primary);
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+.story-panel__scenes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+/* The face of a character: width sets what it shows, its height follows the content. */
+.story-card--character {
+  container-type: inline-size;
+  align-items: center;
+}
+.story-card--character .story-picture--character {
+  width: 44px;
+  height: 44px;
+}
+.story-card--character .card__desc,
+.story-card--character .story-card__meta {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.story-card__more {
+  display: none;
+}
+.story-card__chips {
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 4px;
+}
+/* A 260 px card: 24 px of padding and 2 px of border leave 234 px of content. */
+@container (min-width: 235px) {
+  .story-card--character .story-picture--character {
+    width: 88px;
+    height: 88px;
+  }
+  .story-card--character .story-card__text {
+    align-self: flex-start;
+  }
+  .story-card__meta.story-card__more {
+    display: block;
+  }
+  .story-card__chips.story-card__more {
+    display: flex;
+  }
+}
 .film-cast__links {
   display: flex;
   flex-wrap: wrap;

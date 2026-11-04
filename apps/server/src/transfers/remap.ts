@@ -51,6 +51,12 @@ export function remapDoc(doc: Y.Doc, boardId: string, maps: IdMaps): void {
           if (field === 'assetId') pictureMissing = true;
         } else el.set(field, randomUUID());
       }
+      if (el.get('type') === 'character' && Array.isArray(el.get('references'))) {
+        el.set(
+          'references',
+          (el.get('references') as string[]).flatMap((id) => maps.assets.get(id) ?? []),
+        );
+      }
       if (el.has('source')) {
         const source = VideoFrameSource.safeParse(el.get('source'));
         if (pictureMissing || !el.has('assetId') || !source.success) el.delete('source');

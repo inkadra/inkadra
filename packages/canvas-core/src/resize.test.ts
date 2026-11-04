@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MPL-2.0
 import { describe, expect, it } from 'vitest';
 import { type ResizeCorner, resizeFromCorner } from './resize.ts';
+import { snapResize } from './snap.ts';
 
 const rect = { x: 100, y: 200, w: 240, h: 180 };
 const corners: ResizeCorner[] = ['nw', 'ne', 'sw', 'se'];
@@ -92,3 +93,16 @@ it.each(['nw', 'ne', 'sw', 'se'] as const)(
     expect(next.x + next.w).toBe(corner.endsWith('w') ? 340 : 390);
   },
 );
+
+it('keeps a card at the minimum width it asks for', () => {
+  const card = { x: 100, y: 0, w: 240, h: 70 };
+  const options = { widthOnly: true, minWidth: 160 };
+  expect(resizeFromCorner(card, 'se', { x: -200, y: 500 }, options)).toEqual({
+    x: 100,
+    y: 0,
+    w: 160,
+    h: 70,
+  });
+  expect(snapResize({ ...card, w: 100 }, 'se', 20, options).w).toBe(160);
+  expect(snapResize({ ...card, w: 100 }, 'sw', 20, options).w).toBeGreaterThanOrEqual(160);
+});

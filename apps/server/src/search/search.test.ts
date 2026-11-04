@@ -391,6 +391,36 @@ describe.skipIf(!url)('search (needs DATABASE_URL)', () => {
     });
   });
 
+  it('counts where the cast appears, on the boards the caller can read', async () => {
+    const created = await app.inject({
+      method: 'POST',
+      url: `/api/v1/projects/${projectId}/boards`,
+      headers: { cookie: cookies.owner, origin: config.PUBLIC_URL },
+      payload: { parentBoardId: boardId, kind: 'storyboard', title: 'Cast' },
+    });
+    const other = created.json().id as string;
+    const doc = createBoardDoc(other);
+    const scene = { ...base(), type: 'scene' as const, number: '7B', title: 'Il deposito' };
+    addElement(doc, scene);
+    addElement(doc, { ...base(scene.id), type: 'frame', cast: [' MARTA ', 'marta', 'Leo'] });
+    const state = Y.encodeStateAsUpdate(doc);
+    await db
+      .insert(boardDoc)
+      .values({ boardId: other, state, schemaVersion: 2, size: state.byteLength });
+    await db.transaction((tx) => writeBoardIndex(tx, other, doc));
+    const path = `/api/v1/projects/${projectId}/cast-appearances`;
+    const res = await get('owner', `${path}?excludeBoardId=${boardId}`);
+    expect(res.status).toBe(200);
+    expect(res.body.items).toEqual(
+      expect.arrayContaining([
+        { name: 'marta', frames: 1, scenes: ['7B'] },
+        { name: 'leo', frames: 1, scenes: ['7B'] },
+      ]),
+    );
+    expect((await get('stranger', path)).body.items).toEqual([]);
+    expect((await get('owner', `${path}?excludeBoardId=nope`)).status).toBe(400);
+  });
+
   it('lists the named cards of one type only to people who can read them', async () => {
     const path = `/api/v1/search?type=character&projectId=${projectId}`;
     const names = async (who: keyof typeof cookies) => {

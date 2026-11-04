@@ -173,7 +173,7 @@ export function snapResize(
   rect: Rect,
   corner: ResizeCorner,
   grid: number,
-  { aspectRatio, fixedHeight = 0, widthOnly = false }: ResizeOptions = {},
+  { aspectRatio, fixedHeight = 0, widthOnly = false, minWidth = MIN_WIDTH }: ResizeOptions = {},
 ): Rect {
   const west = corner.endsWith('w');
   const north = corner.startsWith('n');
@@ -183,11 +183,11 @@ export function snapResize(
   let w = rect.w;
   if (west) {
     x = snap(rect.x, grid);
-    while (right - x < MIN_WIDTH) x -= grid;
+    while (right - x < minWidth) x -= grid;
     w = right - x;
   } else {
     let r = snap(right, grid);
-    while (r - rect.x < MIN_WIDTH) r += grid;
+    while (r - rect.x < minWidth) r += grid;
     w = r - rect.x;
   }
   let y = rect.y;
