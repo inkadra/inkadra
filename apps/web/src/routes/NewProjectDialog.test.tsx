@@ -1,7 +1,6 @@
 // @vitest-environment happy-dom
 import { DEFAULT_CLASSIFICATIONS, type Project } from '@inkadra/shared';
 import { act } from 'react';
-import { DEFAULT_CLASSIFICATIONS } from '@inkadra/shared';
 import { createRoot } from 'react-dom/client';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { createBoard } from '../board/boards.ts';
