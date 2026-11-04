@@ -109,7 +109,7 @@ test('frames keep their values while admins change the storyboard lists', async 
     await shoot(page, '03-duplicate', async () => {
       await openCampo();
       await page.locator('.catalogs__name').nth(3).fill('Primo piano');
-      await expect(page.getByText('Esiste già un valore con questo nome.')).toBeVisible();
+      await expect(page.getByText('Esiste già un valore con questo nome.').first()).toBeVisible();
     });
 
     // The real edit: a rename, an archive and a new value.
