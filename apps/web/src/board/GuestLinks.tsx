@@ -486,6 +486,7 @@ function LinkRow({
           <input
             className="share__input share__url"
             readOnly
+            data-feedback-secret
             value={link.url}
             aria-label={t('guestLinks.url', { name })}
             // biome-ignore lint/a11y/noAutofocus: the link was just created, ready to copy

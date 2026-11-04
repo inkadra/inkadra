@@ -6,6 +6,7 @@ import StarterKit from '@tiptap/starter-kit';
 import { type ReactNode, useEffect, useReducer } from 'react';
 import { useTranslation } from 'react-i18next';
 import * as Y from 'yjs';
+import { isFeedbackKey } from '../feedback/state.ts';
 import { NoteAppearance, NoteInk, noteColor, TaskItem, TaskList } from './note-format.ts';
 
 /**
@@ -191,6 +192,11 @@ export function NoteEditor({
     editorProps: {
       attributes: { class: 'note-text note-text--editing', 'aria-label': t('board.note.label') },
       handleKeyDown: (_view, event) => {
+        // Reporting owns this chord, including when the reporting destination is off.
+        if (isFeedbackKey(event)) {
+          event.preventDefault();
+          return true;
+        }
         if (event.key === 'Escape') {
           onExit();
           return true;

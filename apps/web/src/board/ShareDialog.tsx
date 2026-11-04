@@ -613,6 +613,7 @@ function LinkSection({
           <input
             className="share__input share__url"
             readOnly
+            data-feedback-secret
             value={link.url}
             aria-label={t('share.link.title')}
           />

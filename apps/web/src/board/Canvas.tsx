@@ -548,6 +548,7 @@ export function Canvas({
     /** Cards that Show brings into view (#310). */
     show?: readonly string[];
     ok?: boolean;
+    error?: boolean;
   } | null>(null);
   const closeToast = useCallback(() => setToast(null), []);
   /** A short confirmation from a card, such as a copied colour (#308). */
@@ -1003,10 +1004,7 @@ export function Canvas({
         select([card.id]);
         setEditing(card.id);
       } catch {
-        setToast({
-          text: t('board.errors.boardCreate'),
-          undo: false,
-        });
+        setToast({ text: t('board.errors.boardCreate'), undo: false, error: true });
       }
     },
     [readOnly, center, place, t, projectId, boardId, userId, store, doc, select, setEditing],
@@ -1066,7 +1064,7 @@ export function Canvas({
               store.undo.stopCapturing();
               await refreshBoards(projectId);
             })
-            .catch(() => setToast({ text: t('screenplay.failed'), undo: false }));
+            .catch(() => setToast({ text: t('screenplay.failed'), undo: false, error: true }));
         },
         show: [card.id],
         ok: true,
@@ -1150,7 +1148,11 @@ export function Canvas({
       const max = instance?.limits.uploadMaxBytes ?? 0;
       const tooBig = max > 0 ? files.filter((f) => f.size > max) : [];
       if (tooBig.length > 0) {
-        setToast({ text: t('board.errors.tooBig', { name: tooBig[0]?.name }), undo: false });
+        setToast({
+          text: t('board.errors.tooBig', { name: tooBig[0]?.name }),
+          undo: false,
+          error: true,
+        });
       }
       const accepted = files.filter((f) => !tooBig.includes(f));
       // Several files: once each has its card or failed, one toast sums them up (#310). Each
@@ -1201,7 +1203,11 @@ export function Canvas({
           },
           onFailed: (assetId) => {
             if (!assetId)
-              setToast({ text: t('board.errors.upload', { name: file.name }), undo: false });
+              setToast({
+                text: t('board.errors.upload', { name: file.name }),
+                undo: false,
+                error: true,
+              });
             settled();
           },
         });
@@ -2959,7 +2965,7 @@ export function Canvas({
                 text: t(isCover ? 'board.menu.coverRemoved' : 'board.menu.coverSet'),
                 undo: false,
               }),
-            () => setToast({ text: t('board.menu.coverFailed'), undo: false }),
+            () => setToast({ text: t('board.menu.coverFailed'), undo: false, error: true }),
           ),
       };
     };
@@ -3031,7 +3037,12 @@ export function Canvas({
               label: t('board.menu.refreshPreview'),
               action: () =>
                 void fillLinkPreview(doc, single.id, projectId, boardId, single.url).then((ok) => {
-                  if (!ok) setToast({ text: t('board.menu.refreshPreviewFailed'), undo: false });
+                  if (!ok)
+                    setToast({
+                      text: t('board.menu.refreshPreviewFailed'),
+                      undo: false,
+                      error: true,
+                    });
                 }),
             },
           ]
@@ -3983,6 +3994,7 @@ export function Canvas({
             key={toastKey}
             text={toast.text}
             ok={toast.ok}
+            error={toast.error}
             onShow={toast.show ? () => showCards(toast.show ?? []) : undefined}
             onUndo={
               toast.undo === true ? () => store.undo.undo() : toast.undo ? toast.undo : undefined

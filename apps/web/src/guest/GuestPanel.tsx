@@ -3,6 +3,7 @@ import type { GuestBoardSnapshot, GuestElement, GuestSession } from '@inkadra/sh
 import { Button, Select } from '@inkadra/ui';
 import { useId, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { openFeedback, useFeedbackStatus } from '../feedback/state.ts';
 import { useGuestActions } from './actions.ts';
 import { PickControls, ReviewChip } from './GuestCardExtras.tsx';
 import { GuestComments } from './GuestComments.tsx';
@@ -34,6 +35,7 @@ export function GuestPanel({
 }) {
   const { t } = useTranslation();
   const actions = useGuestActions();
+  const reporting = !!useFeedbackStatus()?.enabled;
   const { rights } = actions;
   const writes = rights.comments || rights.review || rights.pick;
   const tree = boardTree(session.boards, session.boardId);
@@ -148,6 +150,18 @@ export function GuestPanel({
           </section>
           {rights.comments && snapshot && <GuestComments key="board" elementId={null} />}
         </>
+      )}
+      {reporting && (
+        <section className="guest-panel__section">
+          <Button
+            className="feedback-guest-entry"
+            variant="ghost"
+            icon="report"
+            onClick={() => openFeedback()}
+          >
+            {t('feedback.title')}
+          </Button>
+        </section>
       )}
     </aside>
   );

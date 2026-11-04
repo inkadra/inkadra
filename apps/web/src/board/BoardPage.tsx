@@ -13,6 +13,8 @@ import {
 import { useTranslation } from 'react-i18next';
 import { Navigate, useNavigate, useParams, useSearchParams } from 'react-router';
 import { useRegisterActions } from '../commands/actions.ts';
+import { setFeedbackConnection } from '../feedback/diagnostics.ts';
+import { openFeedback, useFeedbackStatus } from '../feedback/state.ts';
 import { useHeaderContent } from '../lib/header.tsx';
 import { useIsPhone } from '../lib/phone.ts';
 import { useSession } from '../lib/session.tsx';
@@ -42,6 +44,7 @@ import {
 import { boardPeople, EditingLine, editingPeople, SyncStatus } from './header-status.tsx';
 import { useLiveBoardCounts } from './live-counts.ts';
 import { RestoredToast } from './RestoredToast.tsx';
+import { isMac } from './shortcuts.ts';
 import { LOCAL } from './store.ts';
 import { type VersionPreview, VersionsDialog } from './VersionsDialog.tsx';
 import {
@@ -218,6 +221,13 @@ function BoardScreen({
   const { filmLinks } = useProjects();
   const { items: boards } = useProjectBoards(projectId);
   const conn = useBoardConnection(boardId);
+  useEffect(() => {
+    if (!conn) return;
+    return setFeedbackConnection(() => ({
+      sync: `${conn.status} · pending changes: ${conn.saves.get().pending}`,
+      flags: `readOnly: ${conn.readOnly} · schemaTooNew: ${!!conn.schemaTooNew}`,
+    }));
+  }, [conn]);
   useLiveBoardCounts(conn, boardId);
   const [detail, setDetail] = useState<BoardDetail | null>(null);
   const kind = detail?.kind ?? boards?.find((b) => b.id === boardId)?.kind;
@@ -225,6 +235,7 @@ function BoardScreen({
   const [sharing, setSharing] = useState(false);
   const [versionsOpen, setVersionsOpen] = useState(false);
   const [headerMenu, setHeaderMenu] = useState(false);
+  const reportingOn = !!useFeedbackStatus()?.enabled;
   const isPhone = useIsPhone();
   const liveSelection = useRef<ReadonlySet<string>>(new Set());
   const [exporting, setExporting] = useState<{
@@ -508,6 +519,17 @@ function BoardScreen({
                       disabled: true,
                       hint: t('board.present.soon'),
                     },
+                    ...(reportingOn
+                      ? [
+                          { divider: true as const },
+                          {
+                            label: t('feedback.title'),
+                            icon: 'report' as const,
+                            ...(isPhone ? {} : { shortcut: isMac() ? '⌘⇧B' : 'Ctrl+Shift+B' }),
+                            action: () => openFeedback(),
+                          },
+                        ]
+                      : []),
                   ]}
                 />
               )}
@@ -571,6 +593,7 @@ function BoardScreen({
       detail,
       editable,
       headerMenu,
+      reportingOn,
       isPhone,
       closeHeaderMenu,
       openExport,

@@ -4,6 +4,8 @@ import { type FormEvent, useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router';
 import { resetAssetCache, setAssetLoader } from '../board/assets.ts';
+import { FeedbackLauncher } from '../feedback/Feedback.tsx';
+import { NoSessionProvider } from '../lib/session.tsx';
 import { guestApi } from './api.ts';
 import { GuestBoardScreen } from './GuestBoard.tsx';
 import { failureOf, type Stop } from './model.ts';
@@ -128,37 +130,42 @@ function GuestLinkPage({ token }: { token: string }) {
     );
   }
   return (
-    <GuestBoardScreen
-      key={gate.generation}
-      preview={gate.preview}
-      session={gate.session}
-      onSession={(session) => {
-        if (recovery.current.isCurrent(gate.generation)) setGate({ ...gate, session });
-      }}
-      onStop={(stop) => {
-        if (!recovery.current.isCurrent(gate.generation)) return;
-        if (stop !== 'no_session') {
-          recovery.current.begin();
-          setGate({ kind: 'stop', stop });
-          return;
-        }
-        const action = recovery.current.noSession(
-          gate.generation,
-          Date.now(),
-          navigator.cookieEnabled,
-        );
-        if (action === 'cookies') setGate({ kind: 'stop', stop: 'cookies' });
-        if (action === 'reopen') {
-          setGate({ kind: 'loading' });
-          void start();
-        }
-      }}
-      onPasswordChanged={() => {
-        if (!recovery.current.isCurrent(gate.generation)) return;
-        const generation = recovery.current.begin();
-        setGate({ kind: 'password', preview: gate.preview, changed: true, generation });
-      }}
-    />
+    <>
+      <NoSessionProvider>
+        <FeedbackLauncher linkId={gate.preview.linkId} />
+      </NoSessionProvider>
+      <GuestBoardScreen
+        key={gate.generation}
+        preview={gate.preview}
+        session={gate.session}
+        onSession={(session) => {
+          if (recovery.current.isCurrent(gate.generation)) setGate({ ...gate, session });
+        }}
+        onStop={(stop) => {
+          if (!recovery.current.isCurrent(gate.generation)) return;
+          if (stop !== 'no_session') {
+            recovery.current.begin();
+            setGate({ kind: 'stop', stop });
+            return;
+          }
+          const action = recovery.current.noSession(
+            gate.generation,
+            Date.now(),
+            navigator.cookieEnabled,
+          );
+          if (action === 'cookies') setGate({ kind: 'stop', stop: 'cookies' });
+          if (action === 'reopen') {
+            setGate({ kind: 'loading' });
+            void start();
+          }
+        }}
+        onPasswordChanged={() => {
+          if (!recovery.current.isCurrent(gate.generation)) return;
+          const generation = recovery.current.begin();
+          setGate({ kind: 'password', preview: gate.preview, changed: true, generation });
+        }}
+      />
+    </>
   );
 }
 

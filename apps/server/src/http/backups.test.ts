@@ -113,7 +113,7 @@ describe.skipIf(!url)('instance backups (needs DATABASE_URL)', () => {
   beforeAll(async () => {
     await runMigrations(config.DATABASE_URL, migrations);
     await db.execute(
-      sql`truncate table "user", project, instance_setting, instance_backup cascade`,
+      sql`truncate table "user", project, instance_setting, instance_backup, feedback_report cascade`,
     );
     deps = testDeps(db, log);
     app = await createApp({

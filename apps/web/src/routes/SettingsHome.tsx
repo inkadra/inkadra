@@ -3,6 +3,7 @@ import { Avatar, Icon } from '@inkadra/ui';
 import { type ReactNode, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
+import { FeedbackProfileRow } from '../feedback/FeedbackSettings.tsx';
 import { api, authApi } from '../lib/api.ts';
 import { useSession } from '../lib/session.tsx';
 import { type ThemePreference, useTheme } from '../lib/theme.ts';
@@ -162,6 +163,9 @@ export function SettingsHome({ setup }: { setup: Setup }) {
         <Item to={href('toolbar')} label={t('settingsUi.pages.toolbar')} />
       </Group>
       {admin && <AdminGroups setup={setup} />}
+      <Group title={t('settingsUi.pages.about')}>
+        <FeedbackProfileRow />
+      </Group>
       <button type="button" className="settings-home__signout" onClick={() => void signOut()}>
         {t('auth.signOut')}
       </button>

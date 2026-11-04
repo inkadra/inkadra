@@ -21,7 +21,8 @@ export function securityHeaders(
     `img-src 'self' data: blob: https://*.googleusercontent.com ${storage}`.trim(),
     `media-src 'self' blob: ${storage}`.trim(),
     "font-src 'self'",
-    `connect-src 'self' ${storage}`.trim(),
+    // The report form's screenshot fetches the images on screen to draw them.
+    `connect-src 'self' ${storage} blob: https://*.googleusercontent.com`.replace('  ', ' '),
     'frame-src https://www.youtube-nocookie.com https://player.vimeo.com https://www.instagram.com',
     "worker-src 'self'",
     "manifest-src 'self'",

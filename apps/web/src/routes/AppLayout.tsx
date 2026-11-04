@@ -67,6 +67,8 @@ import {
   viewIcon,
 } from '../board/views.ts';
 import { appActions } from '../commands/app-actions.ts';
+import { FeedbackLauncher } from '../feedback/Feedback.tsx';
+import { FeedbackEntry } from '../feedback/FeedbackEntry.tsx';
 import { canCreateProjects } from '../lib/access.ts';
 import { authApi } from '../lib/api.ts';
 import { HeaderContext, type HeaderParts } from '../lib/header.tsx';
@@ -804,6 +806,7 @@ export function AppLayout({ home }: { home?: ReactNode }) {
         </div>
         <div className="ink-header__group ink-header__end">
           {headerContent ? headerContent.end : pathname === '/' && homeActions}
+          <FeedbackEntry />
           <NotificationBell
             unread={unread}
             onCount={refreshUnread}
@@ -856,6 +859,7 @@ export function AppLayout({ home }: { home?: ReactNode }) {
           filmLinks: links,
         }}
       >
+        <FeedbackLauncher />
         <HeaderContext.Provider value={setHeaderContent}>
           <AppShell
             launcher={launcher}

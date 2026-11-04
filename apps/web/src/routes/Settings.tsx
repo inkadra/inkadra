@@ -32,6 +32,7 @@ import {
   barTools,
   toggleBarTool,
 } from '../board/toolbar-prefs.ts';
+import { FeedbackRow } from '../feedback/FeedbackSettings.tsx';
 import { LOCALES } from '../i18n/index.ts';
 import { api, authApi, RequestError } from '../lib/api.ts';
 import { formatClock } from '../lib/datetime.ts';
@@ -358,6 +359,8 @@ export function ToolbarSettings() {
 }
 
 function Account() {
+  const { t } = useTranslation();
+  const { user } = useSession();
   const [accounts, setAccounts] = useState<Array<{ id: string; providerId: string }> | null>(null);
   const loadAccounts = useCallback(async () => setAccounts(await authApi.listAccounts()), []);
   useEffect(() => {
@@ -369,6 +372,13 @@ function Account() {
       <Profile />
       <SignInMethods accounts={accounts} hasPassword={hasPassword} onChange={loadAccounts} />
       <Sessions />
+      {user?.role !== 'admin' && (
+        <Card title={t('settingsUi.pages.about')}>
+          <div className="settings-rows">
+            <FeedbackRow />
+          </div>
+        </Card>
+      )}
       <Tokens />
       <DeleteAccount hasPassword={hasPassword} />
     </SettingsShell>
@@ -720,7 +730,7 @@ export function TwoFactor({
   return setup ? (
     <form className="settings-form" onSubmit={confirm}>
       <p>{t('settings.twoFactor.scan')}</p>
-      <div className="settings__qr-row">
+      <div className="settings__qr-row" data-feedback-secret>
         <QrCode text={setup.totpURI} />
         <div className="settings__secret">
           <span className="settings-muted">{t('settings.twoFactor.manual')}</span>
@@ -728,7 +738,7 @@ export function TwoFactor({
         </div>
       </div>
       <p>{t('settings.twoFactor.backup')}</p>
-      <ul className="settings__codes">
+      <ul className="settings__codes" data-feedback-secret>
         {setup.backupCodes.map((c) => (
           <li key={c}>
             <code>{c}</code>
@@ -982,7 +992,9 @@ function Tokens() {
         {created ? (
           <div className="settings-form" role="status">
             <p>{t('settings.tokens.copyNow', { name: created.name })}</p>
-            <code className="settings__token">{created.token}</code>
+            <code className="settings__token" data-feedback-secret>
+              {created.token}
+            </code>
             <DialogActions>
               <Button
                 onClick={() => navigator.clipboard?.writeText(created.token).catch(() => {})}

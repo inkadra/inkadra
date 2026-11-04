@@ -5,6 +5,7 @@ import { TooltipProvider } from '@inkadra/ui';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { createBrowserRouter, Outlet, RouterProvider } from 'react-router';
+import { installFeedbackDiagnostics } from './feedback/diagnostics.ts';
 import { DialogTexts } from './lib/DialogTexts.tsx';
 import { SessionProvider, useSession } from './lib/session.tsx';
 import { AppContextMenu } from './menus/AppContextMenu.tsx';
@@ -24,6 +25,8 @@ import { Projects } from './routes/Projects.tsx';
 import { ResetPassword } from './routes/ResetPassword.tsx';
 import { Settings, TwoFactor } from './routes/Settings.tsx';
 import { Team } from './routes/Team.tsx';
+
+installFeedbackDiagnostics();
 
 function Root() {
   const { loading } = useSession();

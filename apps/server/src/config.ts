@@ -23,6 +23,7 @@ const Env = z.object({
   DATABASE_URL: z.string().min(1),
   REDIS_URL: z.string().min(1).optional(),
   AUTH_SECRET: z.string().min(32, 'AUTH_SECRET must be at least 32 characters'),
+  FEEDBACK_GITHUB_TOKEN: z.preprocess(emptyToUndefined, z.string().min(1).optional()),
   INSTANCE_NAME: z.string().min(1).default('Inkadra'),
   AUTH_RATE_LIMITS: z.enum(['on', 'off']).default('on'),
   /** Empty when unset: compose passes every variable, set or not. */
