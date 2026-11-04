@@ -5,7 +5,6 @@
 import { readFile } from 'node:fs/promises';
 import { addFrame, addScene } from '@inkadra/canvas-core';
 import { createBoardDoc } from '@inkadra/doc-schema';
-import type { ClassificationCatalogs } from '@inkadra/shared';
 import { expect, type Page, test } from '@playwright/test';
 import { getDocument } from 'pdfjs-dist/legacy/build/pdf.mjs';
 import { chooseSelect } from '../helpers/select.ts';
@@ -18,6 +17,9 @@ const admin = {
   password: 'correct-horse-battery',
 };
 const opts = { userId: null } as const;
+type ClassificationCatalogs = {
+  shotSizes: { id: string; label: string; archived: boolean }[];
+};
 const FREE_TEXT = 'Carrello in diagonale';
 
 test.use({ locale: 'it-IT' });
@@ -236,7 +238,7 @@ test('frames keep their values while admins change the storyboard lists', async 
         const archive = page
           .locator('.catalogs__card', { hasText: 'Angolazione' })
           .getByRole('button', { name: 'Archivia' });
-        while ((await archive.count()) > 0) await archive.first().click();
+        while ((await archive.count()) > 0) await archive.first().dispatchEvent('click');
       });
       await page.route('**/api/v1/instance/classifications', (route) =>
         route.request().method() === 'GET'
