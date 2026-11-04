@@ -231,7 +231,12 @@ test('leaves navigation, account and names out of the automatic screenshot', asy
     await route.fulfill({ response, json });
   });
   const hidden = (text: string) => {
-    for (const secret of [name, 'Giulia', 'Persona Invitata']) expect(text).not.toContain(secret);
+    // Not `toContain`: a failure would print the whole page, fonts included.
+    for (const secret of [name, 'Giulia', 'Persona Invitata'])
+      expect(text.includes(secret), secret).toBe(false);
+    // Rounding at a fractional device ratio gave the copy of this panel scrollbars of its own.
+    if (text.includes('class="ink-main'))
+      expect(text).toMatch(/class="ink-main[^"]*"[^>]*scrollbar-width: none/);
   };
   for (const [width, height] of [
     [1280, 800],
@@ -239,20 +244,17 @@ test('leaves navigation, account and names out of the automatic screenshot', asy
   ] as const) {
     await page.setViewportSize({ width, height });
     await page.goto('/');
-    await ready(page);
     // They are really on screen: without the marks they would be drawn.
     await expect(page.getByText('Persona Invitata').first()).toBeVisible();
     await expect(page.getByRole('heading', { name: /Giulia$/ })).toBeVisible();
     hidden(await shootScreenshot(page, `capture-home-${width}`));
 
     await page.goto(`/p/${project.id}/b/${project.rootBoardId}`);
-    await ready(page);
-    await expect(page.locator('.ink-header__crumbs').getByText(name)).toBeVisible();
+    await expect(page.locator('.ink-header__crumbs')).toContainText(name);
     hidden(await shootScreenshot(page, `capture-board-${width}`));
   }
   // The phone's navigation drawer holds the same sidebar.
   await page.goto('/');
-  await ready(page);
   await page.locator('.mobile-bottom-nav').getByRole('button', { name: 'Progetti' }).click();
   await expect(page.locator('.mobile-drawer').getByText(name).first()).toBeVisible();
   hidden(await shootScreenshot(page, 'capture-drawer-390'));

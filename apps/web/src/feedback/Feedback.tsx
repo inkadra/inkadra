@@ -315,6 +315,8 @@ export function FeedbackLauncher({ linkId }: { linkId?: string }) {
   async function capture() {
     const run = ++captureRun.current;
     setCapturing('loading');
+    // The copy takes its styles from the page while this is on: see feedback.css.
+    document.documentElement.dataset.feedbackCapturing = '';
     try {
       const { toBlob } = await import('html-to-image');
       const blob = await Promise.race([
@@ -339,6 +341,8 @@ export function FeedbackLauncher({ linkId }: { linkId?: string }) {
       setCapturing('idle');
     } catch {
       if (run === captureRun.current) setCapturing('error');
+    } finally {
+      if (run === captureRun.current) delete document.documentElement.dataset.feedbackCapturing;
     }
   }
 
