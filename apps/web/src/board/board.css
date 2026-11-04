@@ -857,7 +857,20 @@ button.fcard__audio-play:focus-visible {
   gap: 8px;
 }
 .card__todo-list .ink-choice {
+  flex: none;
   margin-top: 3px;
+}
+.card__todo-text {
+  flex: 1 1 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+textarea.card__todo-text {
+  overflow: hidden;
+  resize: none;
+  color: inherit;
+  font: inherit;
+  text-decoration: inherit;
 }
 .card__todo-list li.is-done {
   color: var(--ink-text-muted);
@@ -3539,6 +3552,18 @@ button.crumb--editable:focus-visible {
   .ctxbar__sep {
     flex: none;
   }
+  /* What scrolls goes under the last two actions (Delete and More): they never leave the view. */
+  .ctxbar > .ctxbar__btn:nth-last-child(-n + 2) {
+    position: sticky;
+    right: 0;
+    z-index: 1;
+  }
+  .ctxbar > .ctxbar__btn:nth-last-child(2):has(+ .ctxbar__btn) {
+    right: 40px;
+  }
+  .ctxbar > .ctxbar__btn:nth-last-child(-n + 2):not(:active, .is-active) {
+    background: var(--ink-surface-2);
+  }
   /* Menus: finger-sized rows, no keyboard shortcuts to read. */
   .menu {
     overflow-y: auto;
@@ -4065,6 +4090,9 @@ button.card__play {
   padding: 0 6px;
   font-size: 11px;
   color: var(--ink-text-secondary);
+}
+.crop-bar__angle .ink-slider {
+  width: 180px;
 }
 .crop-bar__deg {
   min-width: 34px;

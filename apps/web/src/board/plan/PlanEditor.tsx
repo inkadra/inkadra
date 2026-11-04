@@ -657,7 +657,17 @@ export function PlanEditor({
         }),
       );
     else if (mod && key === 'g' && selection.length > 1) write(toggleGroup(many));
-    else if (e.key.startsWith('Arrow') && selection.length) {
+    else if (e.key.startsWith('Arrow') && target?.closest('[data-reach]') && isIcon(item)) {
+      // The point on the cone: longer with up and right, by a tenth of a metre or one square.
+      const reach = iconCone(item, plan.sensor)?.reach ?? 0;
+      const more = drawn.scale ? drawn.scale / 10 : step;
+      const by = e.key === 'ArrowUp' || e.key === 'ArrowRight' ? more : -more;
+      write({
+        ...item,
+        reach: Math.round(Math.min(MAX_UNITS, Math.max(20, reach + by)) * 100) / 100,
+      });
+      e.preventDefault();
+    } else if (e.key.startsWith('Arrow') && selection.length) {
       const k = e.shiftKey ? step * 4 : step;
       nudge({
         x: e.key === 'ArrowLeft' ? -k : e.key === 'ArrowRight' ? k : 0,
@@ -1165,7 +1175,7 @@ export function PlanEditor({
         updateElement(
           doc,
           scaleOwner,
-          { scale: Math.round(next * 100) / 100, grid: drawn.grid ?? '0.5' },
+          { scale: Math.round(next * 100) / 100, grid: drawn.grid ?? '0.5', rulers: true },
           LOCAL,
         ),
       );
@@ -1288,6 +1298,12 @@ export function PlanEditor({
       cx={reachEnd.x}
       cy={reachEnd.y}
       r={phone ? 20 : 8}
+      role="slider"
+      tabIndex={0}
+      aria-label={t('board.plan.reach')}
+      aria-valuemin={20}
+      aria-valuemax={MAX_UNITS}
+      aria-valuenow={Math.round(iconCone(current as PlanIcon, plan.sensor)?.reach ?? 0)}
     />
   );
   const blockingGrips = isIcon(current) && !moving && (
@@ -1795,6 +1811,7 @@ export function PlanEditor({
         min={20 / reachUnit}
         max={MAX_UNITS / reachUnit}
         step={0.01}
+        nudge={drawn.scale ? 0.1 : 1}
         unit={drawn.scale ? 'm' : t('board.plan.squares')}
         label={t('board.plan.reach')}
         onCommit={(v) => write({ ...icon, reach: Math.round(v * reachUnit * 100) / 100 })}
@@ -2578,6 +2595,7 @@ export function PlanEditor({
             route
             hidden={hiddenList}
             lifted={liftedIds}
+            label={t('board.plan.drawing')}
           >
             {liveLayer}
           </PlanDrawing>

@@ -19,8 +19,8 @@ import { useBoard } from './context.ts';
 import {
   CROP_HANDLES,
   type CropHandle,
-  conformCropAspect,
-  cropAfterQuarterTurn,
+  cropForAngle,
+  cropForQuarterTurn,
   cropInsideImage,
   FULL_CROP,
   fitCropToAspect,
@@ -86,12 +86,13 @@ export function rotateImageQuarterTurn(
   direction: 1 | -1,
 ) {
   const nextRot = normalizeRotation((element.rotation ?? 0) + direction * 90);
-  const bounds = rotatedBounds(baseW, baseH, nextRot);
-  const crop = inscribeCrop(
-    cropAfterQuarterTurn(element.crop ?? FULL_CROP, direction, bounds.width, bounds.height),
+  const crop = cropForQuarterTurn(
+    element.id,
+    element.crop ?? FULL_CROP,
     baseW,
     baseH,
     nextRot,
+    direction,
   );
   store.undo.stopCapturing();
   applyImageTransform(store, element, crop, nextRot);
@@ -342,16 +343,14 @@ export function ImageCropToolbar({
   }
 
   function changeAngle(nextRot: number) {
-    const bounds = rotatedBounds(baseW, baseH, nextRot);
     // A free angle leaves the bounding box's corners empty: the crop shrinks to stay on the
-    // picture.
-    const nextCrop = inscribeCrop(
-      conformCropAspect(crop, bounds.width, bounds.height),
-      baseW,
-      baseH,
+    // picture, and grows back with the angle.
+    applyImageTransform(
+      store,
+      element,
+      cropForAngle(element.id, crop, baseW, baseH, nextRot),
       nextRot,
     );
-    applyImageTransform(store, element, nextCrop, nextRot);
   }
 
   const presetLabel = (preset: ImageCropAspect) =>
@@ -407,8 +406,8 @@ export function ImageCropToolbar({
       </button>
       <span className="crop-bar__angle">
         <Slider
-          // One full turn of integer angles; -180 equals +180 after normalization.
-          min={-179}
+          // One full turn with 0 in the middle; -180 reads as +180 once normalized.
+          min={-180}
           max={180}
           step={1}
           value={rot}

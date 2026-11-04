@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-import { createElement, frameLabels, storyboardOf } from '@inkadra/canvas-core';
+import { createElement, deleteElements, frameLabels, storyboardOf } from '@inkadra/canvas-core';
 import type { Element } from '@inkadra/doc-schema';
 import { Button, EmptyState, Icon } from '@inkadra/ui';
 import { useCallback, useEffect, useId, useRef, useState, useSyncExternalStore } from 'react';
@@ -162,6 +162,13 @@ function AddReferences({
         onFailed: (assetId) => {
           if (!assetId) onNotice(t('board.errors.upload', { name: file.name }));
         },
+        onCancelled: (assetId) =>
+          deleteElements(
+            store.doc,
+            [...store.getSnapshot().byId.values()]
+              .filter((el) => el.type === 'image' && el.assetId === assetId)
+              .map((el) => el.id),
+          ),
       });
       if (i === 0) onNotice('');
     });

@@ -493,6 +493,11 @@
 .plan-editor__reach {
   fill: var(--ink-accent-primary);
   cursor: ew-resize;
+  outline: none;
+}
+.plan-editor__reach:focus-visible {
+  stroke: var(--ink-text-primary);
+  stroke-width: 3;
 }
 .plan-editor__swatch {
   width: 28px;

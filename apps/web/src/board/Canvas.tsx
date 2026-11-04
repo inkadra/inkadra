@@ -1216,6 +1216,15 @@ export function Canvas({
               });
             settled();
           },
+          onCancelled: (assetId) => {
+            if (!assetId) return settled();
+            // No undo step: Undo must not bring back a card whose file no longer exists.
+            const gone = listElements(doc)
+              .filter((e) => (e.type === 'image' || e.type === 'file') && e.assetId === assetId)
+              .map((e) => e.id);
+            deleteElements(doc, gone);
+            created.splice(0, created.length, ...created.filter((id) => !gone.includes(id)));
+          },
         });
       });
     },
@@ -3105,7 +3114,12 @@ export function Canvas({
         ? tableMenu(doc, single, menu.cell, t)
         : []),
       ...(single && (single.type === 'image' || single.type === 'file')
-        ? [{ label: t('board.menu.viewImage'), action: () => openElement(single) }]
+        ? [
+            {
+              label: t(single.type === 'image' ? 'board.menu.viewImage' : 'board.menu.viewFile'),
+              action: () => openElement(single),
+            },
+          ]
         : []),
       ...(single?.type === 'image' && !readOnly && !single.locked
         ? [

@@ -78,7 +78,8 @@ export function MapDraft({
         const url = link && webUrl(query);
         if (url) onSubmit({ url });
         else if (items[active]) pick(items[active]);
-        else if (status !== 'loading') setStatus('error');
+        // A link that is no web address; an address waits for, or already has, its answer.
+        else if (link) setStatus('error');
       }}
     >
       <input

@@ -63,6 +63,11 @@ export interface StartUpload {
   onAsset: (assetId: string) => void;
   onFailed?: (assetId: string | null) => void;
   onComplete?: (assetId: string) => void;
+  /**
+   * The person cancelled: the server drops the asset (null when it had none yet), so whatever
+   * `onAsset` put on the board has to go too.
+   */
+  onCancelled?: (assetId: string | null) => void;
 }
 
 /** Those who asked again for a file already on its way: they hear how it ends too. */
@@ -70,6 +75,8 @@ const followers = new Map<
   string,
   Array<{ onComplete: StartUpload['onComplete']; onFailed: StartUpload['onFailed'] }>
 >();
+
+const cancelHooks = new Map<string, NonNullable<StartUpload['onCancelled']>>();
 
 const online = () => typeof navigator === 'undefined' || navigator.onLine !== false;
 
@@ -101,6 +108,7 @@ export function startUpload({
   onAsset,
   onFailed,
   onComplete,
+  onCancelled,
 }: StartUpload): string {
   const fingerprint = [projectId, file.name, file.size, file.lastModified].join('|');
   const existing = items.find(
@@ -195,6 +203,7 @@ export function startUpload({
       if (!uploads.has(key)) return;
       patch(key, { state: 'done', sent: file.size, reconnecting: false });
       uploads.delete(key);
+      cancelHooks.delete(key);
       const assetId = items.find((i) => i.key === key)?.assetId;
       if (assetId) {
         onComplete?.(assetId);
@@ -216,6 +225,7 @@ export function startUpload({
     },
   });
   uploads.set(key, upload);
+  if (onCancelled) cancelHooks.set(key, onCancelled);
   void upload
     .findPreviousUploads()
     .then((previous) => {
@@ -245,6 +255,9 @@ export function cancelUpload(key: string) {
   followers.delete(key);
   void upload.abort(true).catch(() => {});
   patch(key, { state: 'cancelled' });
+  const hook = cancelHooks.get(key);
+  cancelHooks.delete(key);
+  hook?.(items.find((i) => i.key === key)?.assetId ?? null);
   setTimeout(() => dismiss(key), 1500);
 }
 

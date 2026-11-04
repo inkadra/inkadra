@@ -261,6 +261,55 @@ export function inscribeCrop(
   });
 }
 
+/**
+ * The crop each reduced crop was reduced from, by element: an angle always starts from it, so
+ * moving the slider never piles reductions up, coming back brings the crop back, and Undo finds
+ * it again. A crop set by hand is not in here, and so becomes the new starting point.
+ * shortcut: in memory only, after a reload a reduced crop stays as it is; storing the origin
+ * in the document would fix that, and needs a schema change.
+ */
+const cropOrigins = new Map<string, ImageCrop>();
+
+function originKey(id: string, crop: ImageCrop): string {
+  const c = sanitizeCrop(crop);
+  return [id, c.x, c.y, c.w, c.h, c.aspect === 'free' ? undefined : c.aspect].join('|');
+}
+
+/** The crop to show at `rotation`, for a slider move from the crop shown now. */
+export function cropForAngle(
+  id: string,
+  shown: ImageCrop,
+  width: number,
+  height: number,
+  rotation: number,
+): ImageCrop {
+  const origin = cropOrigins.get(originKey(id, shown)) ?? shown;
+  const b = rotatedBounds(width, height, rotation);
+  const next = sanitizeCrop(
+    inscribeCrop(conformCropAspect(origin, b.width, b.height), width, height, rotation),
+  );
+  cropOrigins.set(originKey(id, next), origin);
+  return next;
+}
+
+/** The crop to show after a 90° step to `rotation`; its origin turns with the picture. */
+export function cropForQuarterTurn(
+  id: string,
+  shown: ImageCrop,
+  width: number,
+  height: number,
+  rotation: number,
+  direction: 1 | -1,
+): ImageCrop {
+  const b = rotatedBounds(width, height, rotation);
+  const origin = cropOrigins.get(originKey(id, shown)) ?? shown;
+  const next = sanitizeCrop(
+    inscribeCrop(cropAfterQuarterTurn(shown, direction, b.width, b.height), width, height, rotation),
+  );
+  cropOrigins.set(originKey(id, next), cropAfterQuarterTurn(origin, direction, b.width, b.height));
+  return next;
+}
+
 /** Rotates a normalized crop rectangle by +90° CW (`1`) or -90° CCW (`-1`) with the image. */
 export function rotateCrop90(crop: ImageCrop, direction: 1 | -1): ImageCrop {
   const c = sanitizeCrop(crop);

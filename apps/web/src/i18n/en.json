@@ -546,6 +546,7 @@
       "newColumn": "New column here",
       "tags": "Tags…",
       "viewImage": "Open image",
+      "viewFile": "Open file",
       "details": "Frame details",
       "draw": "Draw",
       "rename": "Rename",
@@ -1017,6 +1018,7 @@
       "zoomOut": "Zoom out",
       "morePlan": "More plan actions",
       "reach": "Cone length",
+      "drawing": "Plan drawing",
       "squares": "squares"
     },
     "contextual": {
@@ -1072,7 +1074,8 @@
   "tags": {
     "title": "Tags",
     "add": "Add a tag",
-    "placeholder": "New tag and Enter",
+    "placeholder": "Pick a tag and press Enter",
+    "notInCatalog": "“{{tag}}” is not in the catalogue. Only administrators add tags, in Settings → Classifications.",
     "remove": "Remove the tag {{tag}}",
     "max": "At most {{count}} tags",
     "suggested": "Used in the project",
