@@ -106,10 +106,11 @@ test('the crop comes back when the angle does, and a long to-do reads in full', 
     name: 'portrait.png',
     type: 'image/png',
   });
+  if (!asset) throw new Error('upload failed');
   await waitForAssets(baseURL!, cookie, [asset]);
   const doc = createBoardDoc(project.rootBoardId);
   const image = createElement(doc, 'image', { x: 80, y: 40 }, { w: 280, assetId: asset }, { userId: null });
-  const todo = createElement(doc, 'todo', { x: 500, y: 40 }, { w: 240 }, { userId: null });
+  const todo = createElement(doc, 'todo', { x: 500, y: 40 }, { w: 240, items: [] }, { userId: null });
   addTodoItem(doc, todo.id, 'Voce uno', undefined);
   addTodoItem(doc, todo.id, LONG, undefined);
   await pushBoardDoc(baseURL!, cookie, project.rootBoardId, doc);
