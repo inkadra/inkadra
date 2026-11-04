@@ -183,6 +183,9 @@ const KEYWORD_PAIRS: Record<string, [string, string][]> = {
     ['Project types', 'Tipi di progetto'],
     ['Tags', 'Tag'],
     ['Catalogs', 'Cataloghi'],
+    ['Shot size', 'Campo'],
+    ['Angle', 'Angolazione'],
+    ['Movement', 'Movimento'],
   ],
   providers: [
     ['Google', 'Google'],

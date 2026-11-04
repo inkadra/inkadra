@@ -61,6 +61,21 @@ export function InboxDetail(props: DetailProps) {
   );
 }
 
+/** Its own component so that only a frame asks for the storyboard lists. */
+function FrameFacts({ frame }: { frame: Extract<Element, { type: 'frame' }> }) {
+  const presetText = usePresetText();
+  return [
+    presetText('shotSizes', frame.shot),
+    presetText('shotAngles', frame.angle),
+    presetText('shotMovements', frame.movement),
+    frame.lens,
+    frame.location,
+  ].map((text, i) =>
+    // biome-ignore lint/suspicious/noArrayIndexKey: the five fields never move
+    text ? <span key={i}>{text}</span> : null,
+  );
+}
+
 function ConnectedInboxDetail(props: DetailProps & { boardId: string }) {
   // Only observe the selected document. Never write through this connection.
   const conn = useBoardConnection(props.boardId, false);
@@ -142,7 +157,6 @@ function InboxDetailContent({
   refreshThreadId?: string;
 }) {
   const { t, i18n } = useTranslation();
-  const presetText = usePresetText();
   const navigate = useNavigate();
   const [boardDetail, setBoardDetail] = useState<BoardDetail | null>(null);
   const [threads, setThreads] = useState<CommentThread[]>([]);
@@ -516,17 +530,7 @@ function InboxDetailContent({
                   {cardTitle}
                 </span>
               )}
-              {element?.type === 'frame' &&
-                [
-                  presetText('shotSizes', element.shot),
-                  presetText('shotAngles', element.angle),
-                  presetText('shotMovements', element.movement),
-                  element.lens,
-                  element.location,
-                ].map((text, i) =>
-                  // biome-ignore lint/suspicious/noArrayIndexKey: the five fields never move
-                  text ? <span key={i}>{text}</span> : null,
-                )}
+              {element?.type === 'frame' && <FrameFacts frame={element} />}
               {notification.boardTitle && (
                 <span>
                   <span className="inbox-detail__meta-label">{t('notifications.boardLabel')}:</span>
