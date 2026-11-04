@@ -159,7 +159,7 @@ export function registerFeedbackRoutes(app: FastifyInstance, deps: AppDeps) {
       reply.header('content-security-policy', "sandbox; default-src 'none'");
       reply.header(
         'content-disposition',
-        `${row.kind === 'screenshot' ? 'inline' : 'attachment'}; filename="attachment"`,
+        `${row.kind === 'screenshot' ? 'inline' : 'attachment'}; filename="attachment"; filename*=UTF-8''${encodeURIComponent(row.name).replace(/['()*]/g, (c) => `%${c.charCodeAt(0).toString(16)}`)}`,
       );
       return reply.type(row.mime).send(await storage.read(key(row.id)));
     },

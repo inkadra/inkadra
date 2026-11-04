@@ -9,7 +9,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createAuth } from '../auth.ts';
 import { loadConfig } from '../config.ts';
 import { createDatabase, runMigrations } from '../db/client.ts';
-import { feedbackAttachment, feedbackReport } from '../db/schema.ts';
+import { feedbackAttachment, feedbackReport, user } from '../db/schema.ts';
 import { testDeps } from '../test-deps.ts';
 import { createApp } from './app.ts';
 
@@ -98,6 +98,8 @@ describe.skipIf(!url)('feedback security and durable delivery', () => {
       },
     });
     cookie = res.cookies.map((c) => `${c.name}=${c.value}`).join('; ');
+    // The database is shared with other test files: this may not be the instance's first account.
+    await db.update(user).set({ role: 'admin' }).where(eq(user.id, res.json().user.id));
   });
   afterAll(async () => {
     await app?.close();
@@ -203,6 +205,9 @@ describe.skipIf(!url)('feedback security and durable delivery', () => {
     const served = await app.inject(link);
     expect(served.statusCode).toBe(200);
     expect(served.headers['cache-control']).toContain('no-store');
+    expect(served.headers['content-disposition']).toBe(
+      'inline; filename="attachment"; filename*=UTF-8\'\'test.png',
+    );
     const second = await app.inject({
       method: 'POST',
       url: '/api/v1/feedback',
