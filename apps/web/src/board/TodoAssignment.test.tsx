@@ -92,3 +92,24 @@ it('finds local calendar neighbours across DST, month and year boundaries', () =
   expect(relativeTaskDay('2027-01-01', new Date(2026, 11, 31, 23, 59))).toBe('tomorrow');
   expect(relativeTaskDay('2026-10-29', new Date(2026, 10, 1))).toBeNull();
 });
+
+it('keeps empty controls on the active row or an explicitly opened picker only', () => {
+  for (const [editing, open, visible] of [
+    [false, false, false],
+    [true, false, true],
+    [false, true, true],
+  ]) {
+    const markup = renderToStaticMarkup(
+      <TodoAssignment
+        elementId="todo-card"
+        item={{ ...item, assigneeId: null, dueDate: null }}
+        editing={editing!}
+        open={open!}
+        onClose={() => {}}
+        people={[]}
+        failed={false}
+      />,
+    );
+    expect(markup.includes('todo-assignment__person')).toBe(visible);
+  }
+});
